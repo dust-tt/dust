@@ -1,3 +1,5 @@
+import { randomUUID } from "node:crypto";
+import path from "node:path";
 import { ensurePodSandboxReady } from "@app/lib/api/sandbox/lifecycle";
 import { shellEscape } from "@app/lib/api/sandbox/shell";
 import { SandboxFunctionError } from "@app/lib/api/sandbox_functions/errors";
@@ -10,6 +12,8 @@ import { z } from "zod";
 
 const DSBX_BIN_PATH = "/opt/bin/dsbx";
 const DB_EXEC_TIMEOUT_MS = 60 * 1000;
+// Non-mounted scratch root for regenerated schema files (file-output pattern).
+const DB_SCHEMA_STAGING_ROOT = "/tmp/dust-pod-db-schema";
 
 // Mirrors DEFAULT_POD_DATABASES_DIR in cli/dust-sandbox/src/commands/db/mod.rs (paths-env.v1).
 // Passed explicitly on every `dsbx db` exec, like DUST_FUNCTIONS_DIR on `function run`.
@@ -40,13 +44,48 @@ export interface ReconcileDatabaseResult {
   statements: string[];
 }
 
-// Runner error kinds the model can fix by editing its schema file — surfaced verbatim.
-const MODEL_CORRECTABLE_RECONCILE_KINDS = new Set([
+// Runner error kinds the model can fix itself (bad schema file, destructive DDL, bad SQL,
+// unknown database) — mapped to `reconcile_blocked` (surfaced verbatim, tracked:false at the
+// MCP boundary). Everything else maps to `reconcile_failed`.
+const MODEL_CORRECTABLE_DB_KINDS = new Set([
   "schema_unresolvable",
   "schema_invalid",
   "destructive_change",
   "disallowed_statement",
+  "database_not_found",
+  "query_failed",
+  "empty_sql",
 ]);
+
+function dbErrorToSandboxFunctionError(
+  database: string,
+  envelope: z.infer<typeof dbErrorEnvelopeSchema>
+): SandboxFunctionError {
+  if ("ok" in envelope) {
+    const { kind, message } = envelope.error;
+    // A destructive refusal can also mean the live schema drifted AHEAD of every stored
+    // manifest (a previous publish reconciled its DDL but failed before storing): the schema
+    // file then looks like it drops columns it simply never declared. Spell out the recovery.
+    const driftHint =
+      kind === "destructive_change"
+        ? " If you did not remove anything, the live database may be ahead of the stored " +
+          "schemas from a previously failed publish: republish the function that declares " +
+          "the wider schema, or regenerate the schema file with the pod_databases get_schema " +
+          "tool and declare everything it shows."
+        : "";
+    return new SandboxFunctionError(
+      MODEL_CORRECTABLE_DB_KINDS.has(kind)
+        ? "reconcile_blocked"
+        : "reconcile_failed",
+      `Database "${database}": ${message}${driftHint}`
+    );
+  }
+  // dsbx-level `{error}`: bad database name or missing schema file — model-correctable.
+  return new SandboxFunctionError(
+    "reconcile_blocked",
+    `Database "${database}": ${envelope.error}`
+  );
+}
 
 /**
  * Run `dsbx db reconcile <name> <schema-file>` on the pod sandbox: plan the DDL for the
@@ -108,38 +147,225 @@ export async function reconcileDatabaseOnSandbox(
     return new Ok({ created: parsed.created, statements: parsed.statements });
   }
 
-  if ("ok" in parsed) {
-    const { kind, message } = parsed.error;
-    if (MODEL_CORRECTABLE_RECONCILE_KINDS.has(kind)) {
-      return new Err(
-        new SandboxFunctionError(
-          "reconcile_blocked",
-          `Database "${database}": ${message}`
-        )
-      );
-    }
+  return new Err(dbErrorToSandboxFunctionError(database, parsed));
+}
+
+// Mirrors the `dsbx db list` envelope in cli/dust-sandbox/src/commands/db/list.rs.
+const listEnvelopeSchema = z.union([
+  z.object({
+    ok: z.literal(true),
+    databases: z.array(z.object({ name: z.string(), size_bytes: z.number() })),
+  }),
+  dbErrorEnvelopeSchema,
+]);
+
+export interface LiveDatabaseEntry {
+  name: string;
+  sizeBytes: number;
+}
+
+/**
+ * Run `dsbx db list` on the pod sandbox: enumerate the live `{db}.db` files with sizes.
+ */
+export async function listDatabasesOnSandbox(
+  auth: Authenticator,
+  { space }: { space: SpaceResource }
+): Promise<Result<LiveDatabaseEntry[], SandboxFunctionError>> {
+  const ensureResult = await ensurePodSandboxReady(auth, space);
+  if (ensureResult.isErr()) {
     return new Err(
       new SandboxFunctionError(
-        "reconcile_failed",
-        `Database "${database}": ${message}`
+        "sandbox_unavailable",
+        ensureResult.error.message
       )
     );
   }
+  const { sandbox } = ensureResult.value;
 
-  // dsbx-level `{error}`: bad database name or missing schema file.
-  return new Err(
-    new SandboxFunctionError(
-      "reconcile_blocked",
-      `Database "${database}": ${parsed.error}`
-    )
+  const execResult = await sandbox.exec(auth, `${DSBX_BIN_PATH} db list`, {
+    timeoutMs: DB_EXEC_TIMEOUT_MS,
+    envVars: { DUST_POD_DATABASES_DIR },
+    user: "agent-proxied",
+  });
+  if (execResult.isErr()) {
+    return new Err(
+      new SandboxFunctionError("internal", execResult.error.message)
+    );
+  }
+
+  const envelope = parseDbEnvelope(
+    execResult.value.stdout,
+    listEnvelopeSchema,
+    "dsbx db list"
   );
+  if (envelope.isErr()) {
+    return envelope;
+  }
+  const parsed = envelope.value;
+  if ("ok" in parsed && parsed.ok === true) {
+    return new Ok(
+      parsed.databases.map((db) => ({
+        name: db.name,
+        sizeBytes: db.size_bytes,
+      }))
+    );
+  }
+  return new Err(dbErrorToSandboxFunctionError("(list)", parsed));
+}
+
+// Mirrors the `db-schema` envelope in cli/dust-sandbox/functions-runner/runner.ts.
+const schemaEnvelopeSchema = z.union([
+  z.object({ ok: z.literal(true) }),
+  dbErrorEnvelopeSchema,
+]);
+
+/**
+ * Run `dsbx db schema` on the pod sandbox: regenerate the database's drizzle schema file from
+ * the live SQLite file and read it back. Column modes are NOT in the output (SQLite does not
+ * store them) — the caller merges them from the stored manifests.
+ */
+export async function generateSchemaOnSandbox(
+  auth: Authenticator,
+  { space, database }: { space: SpaceResource; database: string }
+): Promise<Result<string, SandboxFunctionError>> {
+  const ensureResult = await ensurePodSandboxReady(auth, space);
+  if (ensureResult.isErr()) {
+    return new Err(
+      new SandboxFunctionError(
+        "sandbox_unavailable",
+        ensureResult.error.message
+      )
+    );
+  }
+  const { sandbox } = ensureResult.value;
+
+  const outDir = path.posix.join(DB_SCHEMA_STAGING_ROOT, randomUUID());
+  const outPath = path.posix.join(outDir, `${database}.db.ts`);
+  const command = [
+    "set -euo pipefail",
+    `rm -rf -- ${shellEscape(outDir)}`,
+    `mkdir -p -- ${shellEscape(outDir)}`,
+    // `--` stops the model-influenced database name from being read as a flag.
+    `${DSBX_BIN_PATH} db schema -- ${shellEscape(database)} ${shellEscape(outPath)}`,
+  ].join("\n");
+
+  const execResult = await sandbox.exec(auth, command, {
+    timeoutMs: DB_EXEC_TIMEOUT_MS,
+    envVars: { DUST_POD_DATABASES_DIR },
+    user: "agent-proxied",
+  });
+  if (execResult.isErr()) {
+    return new Err(
+      new SandboxFunctionError("internal", execResult.error.message)
+    );
+  }
+
+  const envelope = parseDbEnvelope(
+    execResult.value.stdout,
+    schemaEnvelopeSchema,
+    `dsbx db schema ${database}`
+  );
+  if (envelope.isErr()) {
+    return envelope;
+  }
+  const parsed = envelope.value;
+  if (!("ok" in parsed) || parsed.ok !== true) {
+    return new Err(dbErrorToSandboxFunctionError(database, parsed));
+  }
+
+  const fileResult = await sandbox.readFile(auth, outPath);
+  if (fileResult.isErr()) {
+    return new Err(
+      new SandboxFunctionError("internal", fileResult.error.message)
+    );
+  }
+
+  return new Ok(fileResult.value.toString("utf8"));
+}
+
+// Mirrors QuerySuccess in cli/dust-sandbox/functions-runner/db_query.ts.
+const queryEnvelopeSchema = z.union([
+  z.object({
+    ok: z.literal(true),
+    columns: z.array(z.string()),
+    rows: z.array(z.record(z.unknown())),
+    row_count: z.number(),
+    truncated: z.boolean(),
+  }),
+  dbErrorEnvelopeSchema,
+]);
+
+export interface QueryDatabaseResult {
+  columns: string[];
+  rows: Record<string, unknown>[];
+  rowCount: number;
+  truncated: boolean;
+}
+
+/**
+ * Run `dsbx db query` on the pod sandbox: read-only SQL (passed on stdin, never in the command
+ * line) against the live database, rows capped runner-side.
+ */
+export async function queryDatabaseOnSandbox(
+  auth: Authenticator,
+  {
+    space,
+    database,
+    sql,
+  }: { space: SpaceResource; database: string; sql: string }
+): Promise<Result<QueryDatabaseResult, SandboxFunctionError>> {
+  const ensureResult = await ensurePodSandboxReady(auth, space);
+  if (ensureResult.isErr()) {
+    return new Err(
+      new SandboxFunctionError(
+        "sandbox_unavailable",
+        ensureResult.error.message
+      )
+    );
+  }
+  const { sandbox } = ensureResult.value;
+
+  const execResult = await sandbox.exec(
+    auth,
+    `${DSBX_BIN_PATH} db query -- ${shellEscape(database)}`,
+    {
+      timeoutMs: DB_EXEC_TIMEOUT_MS,
+      envVars: { DUST_POD_DATABASES_DIR },
+      stdin: sql,
+      user: "agent-proxied",
+    }
+  );
+  if (execResult.isErr()) {
+    return new Err(
+      new SandboxFunctionError("internal", execResult.error.message)
+    );
+  }
+
+  const envelope = parseDbEnvelope(
+    execResult.value.stdout,
+    queryEnvelopeSchema,
+    `dsbx db query ${database}`
+  );
+  if (envelope.isErr()) {
+    return envelope;
+  }
+  const parsed = envelope.value;
+  if ("ok" in parsed && parsed.ok === true) {
+    return new Ok({
+      columns: parsed.columns,
+      rows: parsed.rows,
+      rowCount: parsed.row_count,
+      truncated: parsed.truncated,
+    });
+  }
+  return new Err(dbErrorToSandboxFunctionError(database, parsed));
 }
 
 /**
  * Parse the one-line JSON envelope a `dsbx db` command prints as its last non-empty stdout
  * line (sandbox stdout can carry shell noise and be truncated; files carry big payloads).
  */
-export function parseDbEnvelope<S extends z.ZodTypeAny>(
+function parseDbEnvelope<S extends z.ZodTypeAny>(
   stdout: string,
   schema: S,
   what: string

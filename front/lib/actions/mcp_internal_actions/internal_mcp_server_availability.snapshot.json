@@ -34,7 +34,8 @@
     { "name": "skill_authoring", "id": 1034 },
     { "name": "workspace_analytics", "id": 1035 },
     { "name": "sandbox_functions", "id": 1037 },
-    { "name": "user_analytics", "id": 1039 }
+    { "name": "user_analytics", "id": 1039 },
+    { "name": "pod_databases", "id": 1040 }
   ],
   "manual": [
     { "name": "github", "id": 1 },

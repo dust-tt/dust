@@ -51,6 +51,7 @@ import { OPENAI_USAGE_SERVER } from "@app/lib/api/actions/servers/openai_usage/m
 import { OUTLOOK_CALENDAR_SERVER } from "@app/lib/api/actions/servers/outlook/calendar_metadata";
 import { OUTLOOK_MAIL_SERVER } from "@app/lib/api/actions/servers/outlook/mail_metadata";
 import { PLAN_MODE_SERVER } from "@app/lib/api/actions/servers/plan_mode/metadata";
+import { POD_DATABASES_SERVER } from "@app/lib/api/actions/servers/pod_databases/metadata";
 import { POD_MANAGER_SERVER } from "@app/lib/api/actions/servers/pod_manager/metadata";
 import { POD_TASKS_SERVER } from "@app/lib/api/actions/servers/pod_tasks/metadata";
 import { POKE_SERVER } from "@app/lib/api/actions/servers/poke/metadata";
@@ -221,6 +222,7 @@ export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   SKILL_AUTHORING_SERVER_NAME,
   "skill_management",
   "schedules_management",
+  "pod_databases",
   "pod_manager",
   "pod_tasks",
   "poke",
@@ -1064,6 +1066,21 @@ export const INTERNAL_MCP_SERVERS = {
     tools_retry_policies: undefined,
     timeoutMs: undefined,
     metadata: SANDBOX_FUNCTIONS_SERVER,
+  },
+  pod_databases: {
+    // 1039 was taken by user_analytics upstream while this stack was in flight.
+    id: 1040,
+    availability: "auto_hidden_builder",
+    allowMultipleInstances: false,
+    isPreview: true,
+    // Same gate as sandbox_functions: pod databases only exist through published functions.
+    isRestricted: ({ featureFlags }) => {
+      return !featureFlags.includes("sandbox_functions");
+    },
+    tools_arguments_requiring_approval: undefined,
+    tools_retry_policies: undefined,
+    timeoutMs: undefined,
+    metadata: POD_DATABASES_SERVER,
   },
   user_mentions: {
     id: 1026,

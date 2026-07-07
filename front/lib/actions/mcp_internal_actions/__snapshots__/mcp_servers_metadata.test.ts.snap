@@ -1705,6 +1705,20 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool billing info ac
       "toolCostCategory": "basic",
     },
   },
+  "pod_databases": {
+    "get_schema": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "list_databases": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "query": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+  },
   "pod_manager": {
     "add_content_node": {
       "freeUsage": true,
@@ -2980,6 +2994,11 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool stakes across a
     "close_plan": "never_ask",
     "create_plan": "never_ask",
     "edit_plan": "never_ask",
+  },
+  "pod_databases": {
+    "get_schema": "never_ask",
+    "list_databases": "never_ask",
+    "query": "never_ask",
   },
   "pod_manager": {
     "add_content_node": "never_ask",
