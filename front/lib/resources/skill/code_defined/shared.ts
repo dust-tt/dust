@@ -70,7 +70,8 @@ export type SkillDefinition =
   | WithDynamicInstructions<BaseSkillDefinition>;
 
 export type GlobalSkillDefinition = SkillDefinition;
-export type SystemSkillDefinition = SkillDefinition;
+// System skills have no definition of "equipped". When they are present they are directly part of the system prompt.
+export type SystemSkillDefinition = SkillDefinition & { isAutoEquippedForAgentLoop?: never };
 
 // Helper function that enforces unique sIds.
 export function ensureUniqueSIds<T extends readonly SkillDefinition[]>(
