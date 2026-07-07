@@ -37,12 +37,24 @@ export async function publishHandler(
   if (result.isErr()) {
     return new Err(toMCPError(result.error));
   }
+  const { sandboxFunction, warnings, staleSiblings } = result.value;
 
   return new Ok([
     {
       type: "text",
-      text: `Published sandbox function "${result.value.slug}".`,
+      text: `Published sandbox function "${sandboxFunction.slug}".`,
     },
+    ...warnings.map((warning): { type: "text"; text: string } => ({
+      type: "text",
+      text: `Warning — ${warning.message}`,
+    })),
+    ...staleSiblings.map((note): { type: "text"; text: string } => ({
+      type: "text",
+      text:
+        `Note — "${note.slug}" was published against an older schema of ` +
+        `${note.databases.join(", ")}. It keeps working, but republish it once its code is ` +
+        `aligned with the shared schema file${note.databases.length > 1 ? "s" : ""}.`,
+    })),
   ]);
 }
 
@@ -52,9 +64,16 @@ function toMCPError(error: SandboxFunctionError): MCPError {
     case "build_failed":
     case "schema_extraction_failed":
     case "invalid_contract":
+    // Compat blocks and reconcile refusals are model-correctable: the message carries the
+    // (function, table.column) list and the additive migrate path.
+    case "compat_blocked":
+    case "reconcile_blocked":
+    // Another publish holds the pod's lock; the model can simply retry.
+    case "publish_conflict":
       // The model controls the path and the function source, so surface the detail to let it fix.
       return new MCPError(error.message, { tracked: false });
     case "sandbox_unavailable":
+    case "reconcile_failed":
     case "internal":
       return new MCPError(error.message);
     default:
