@@ -16,6 +16,9 @@ import { baseUniquenessKey } from "@app/lib/metronome/alerts";
 import { DEFAULT_ALERT_UNIQUENESS_KEYS } from "@app/lib/metronome/alerts/default_alerts";
 import { getMetronomeClient } from "@app/lib/metronome/client";
 import {
+  AWU_AMOUNT_CUSTOM_FIELD_KEY,
+  AWU_DISCOUNT_PERCENT_CUSTOM_FIELD_KEY,
+  AWU_PURCHASE_ORDER_ID_CUSTOM_FIELD_KEY,
   CARRY_ON_RENEWAL_CUSTOM_FIELD_KEY,
   CONTRACT_CREDIT_TYPE_CUSTOM_FIELD_KEY,
   CONTRACT_CREDIT_TYPE_POOL,
@@ -1544,6 +1547,21 @@ const CUSTOM_FIELD_KEYS: Array<{
   {
     entity: "contract_credit",
     key: CARRY_ON_RENEWAL_CUSTOM_FIELD_KEY,
+  },
+  // Stamped on AWU pool commits (admin grants and self-serve top-ups) with the
+  // customer's PO number and the AWU credit amount purchased, for finance
+  // reconciliation against the Stripe invoice Metronome generates.
+  {
+    entity: "commit",
+    key: AWU_PURCHASE_ORDER_ID_CUSTOM_FIELD_KEY,
+  },
+  {
+    entity: "commit",
+    key: AWU_AMOUNT_CUSTOM_FIELD_KEY,
+  },
+  {
+    entity: "commit",
+    key: AWU_DISCOUNT_PERCENT_CUSTOM_FIELD_KEY,
   },
   // Stamped on each seat-style product (Workspace / Pro / Max / Free).
   // Runtime code reads `product.custom_fields.DUST_SEAT_TYPE` (cached in

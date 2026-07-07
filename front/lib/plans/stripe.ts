@@ -1,6 +1,7 @@
 import type { CheckoutSeatType } from "@app/lib/api/checkout/types";
 import config from "@app/lib/api/config";
 import { getMetronomeCustomerStripeCustomerId } from "@app/lib/metronome/client";
+import { CONTRACT_CREDIT_TYPE_POOL } from "@app/lib/metronome/constants";
 import { PlanModel, SubscriptionModel } from "@app/lib/models/plan";
 import { isOldFreePlan } from "@app/lib/plans/plan_codes";
 import { PHONE_TRIAL_ENABLED } from "@app/lib/plans/trial/constants";
@@ -1850,6 +1851,8 @@ async function cleanMetronomeInvoiceLines(
   totalsMatch: boolean;
   originalTotalCents: number;
   newTotalCents: number;
+  awuPurchaseMetadata: Record<string, string> | null;
+  purchaseOrder: string | null;
 }> {
   const invoiceCurrency = invoice.currency;
   const originalTotalCents = invoice.total;
@@ -1867,6 +1870,15 @@ async function cleanMetronomeInvoiceLines(
   }
 
   const commitAppliedLineIds = findCommitAppliedLineIds(lines);
+
+  // AWU pool commits are stamped (via Metronome custom fields on the commit,
+  // mapped to Stripe line-item metadata by Metronome's Stripe integration
+  // config) with credit_type=pool plus the credited amount, and optionally a
+  // PO / discount. Detected here so the whole invoice can be tagged
+  // awu_purchase=true, matching the shape `isAwuPurchaseInvoice` already
+  // reads for the payment-gated self-serve path.
+  let awuPurchaseMetadata: Record<string, string> | null = null;
+  let purchaseOrder: string | null = null;
 
   for (const line of lines) {
     const isNegative = line.amount < 1;
@@ -1890,6 +1902,20 @@ async function cleanMetronomeInvoiceLines(
       },
       "[Stripe] Metronome invoice line item"
     );
+
+    if (line.metadata?.credit_type === CONTRACT_CREDIT_TYPE_POOL) {
+      awuPurchaseMetadata = {
+        awu_purchase: "true",
+        awu_amount_credits: line.metadata.awu_amount ?? "",
+        ...(line.metadata.awu_discount_percent
+          ? { awu_discount_percent: line.metadata.awu_discount_percent }
+          : {}),
+      };
+    }
+
+    if (line.metadata?.purchase_order_id) {
+      purchaseOrder = line.metadata.purchase_order_id;
+    }
 
     if (!shouldRemove) {
       await normalizeSubCentUnitAmount(stripe, invoice, line);
@@ -1919,6 +1945,8 @@ async function cleanMetronomeInvoiceLines(
     totalsMatch: newTotalCents === originalTotalCents,
     originalTotalCents,
     newTotalCents,
+    awuPurchaseMetadata,
+    purchaseOrder,
   };
 }
 
@@ -1987,14 +2015,28 @@ export async function cleanAndFinalizeMetronomeDraftInvoice({
       creditConfig?.autoInvoiceFinalizationEnabled ??
       DEFAULT_AUTO_INVOICE_FINALIZATION_ENABLED;
 
-    const { totalsMatch, originalTotalCents, newTotalCents } =
-      await cleanMetronomeInvoiceLines(stripe, invoice);
+    const {
+      totalsMatch,
+      originalTotalCents,
+      newTotalCents,
+      awuPurchaseMetadata,
+      purchaseOrder,
+    } = await cleanMetronomeInvoiceLines(stripe, invoice);
 
     await stripe.invoices.update(invoiceId, {
       metadata: {
         ...invoice.metadata,
+        workspace_id: workspaceId,
+        ...awuPurchaseMetadata,
+        ...(purchaseOrder ? { purchase_order_id: purchaseOrder } : {}),
         [METRONOME_INVOICE_LINES_CLEANED_FLAG]: "true",
       },
+      // Displayed on the printed/hosted invoice, unlike `metadata`.
+      ...(purchaseOrder
+        ? {
+            custom_fields: [{ name: "Purchase Order", value: purchaseOrder }],
+          }
+        : {}),
     });
 
     if (!totalsMatch) {
@@ -2033,6 +2075,17 @@ export async function cleanAndFinalizeMetronomeDraftInvoice({
     );
     return new Ok({ outcome: "cleaned" });
   } catch (error) {
+    if (
+      error instanceof Stripe.errors.StripeInvalidRequestError &&
+      error.code === "resource_missing"
+    ) {
+      logger.info(
+        { stripeInvoiceId: invoiceId, workspaceId },
+        "[Stripe] Skipping invoice clean: invoice no longer exists"
+      );
+      return new Ok({ outcome: "skipped" });
+    }
+
     logger.error(
       {
         stripeInvoiceId: invoiceId,
