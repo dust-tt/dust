@@ -1549,10 +1549,16 @@ const CUSTOM_FIELD_KEYS: Array<{
     key: CARRY_ON_RENEWAL_CUSTOM_FIELD_KEY,
   },
   // Stamped on AWU pool commits (admin grants and self-serve top-ups) with the
-  // customer's PO number and the AWU credit amount purchased, for finance
-  // reconciliation against the Stripe invoice Metronome generates.
+  // customer's PO number, for finance reconciliation against the Stripe
+  // invoice Metronome generates.
   {
     entity: "commit",
+    key: AWU_PURCHASE_ORDER_ID_CUSTOM_FIELD_KEY,
+  },
+  // Also stamped directly on the contract (e.g. from the poke switch-contract
+  // dialog) so a PO covering the whole contract doesn't require a commit.
+  {
+    entity: "contract",
     key: AWU_PURCHASE_ORDER_ID_CUSTOM_FIELD_KEY,
   },
   {
