@@ -70,6 +70,7 @@ export function ImportFromRepositoryTab({
         onBlur={repoUrlField.onBlur}
         placeholder="https://github.com/owner/repo"
         disabled={isImporting}
+        className="bg-muted-background"
       />
       <DetectedSkillsList
         detectedSkills={detectedSkills}
