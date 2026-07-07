@@ -218,7 +218,7 @@ describe("GroupPermissionResource", () => {
       await GroupPermissionResource.deleteAllForWorkspace(auth);
 
       const remaining = await GroupPermissionResource.listForGroups(auth, {
-        groupIds: [groupA.id, groupB.id],
+        groupModelIds: [groupA.id, groupB.id],
       });
       expect(remaining).toEqual([]);
     });
