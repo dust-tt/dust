@@ -302,7 +302,8 @@ export function compareForFuzzySort(query: string, a: string, b: string) {
 
 export function filterAndSortAgents(
   agents: LightAgentConfigurationType[],
-  searchText: string
+  searchText: string,
+  { selectedAgentId }: { selectedAgentId?: string | null } = {}
 ) {
   const lowerCaseSearchText = searchText.toLowerCase();
 
@@ -316,6 +317,19 @@ export function filterAndSortAgents(
         compareForFuzzySort(lowerCaseSearchText, a.name, b.name) ||
         compareAgentsForSort(a, b)
     );
+  }
+
+  // Pin the selected agent to the front so it always displays first.
+  if (selectedAgentId) {
+    filtered.sort((a, b) => {
+      if (a.sId === selectedAgentId) {
+        return -1;
+      }
+      if (b.sId === selectedAgentId) {
+        return 1;
+      }
+      return 0;
+    });
   }
 
   return filtered;
