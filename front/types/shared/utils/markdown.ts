@@ -71,15 +71,12 @@ function replaceAgentSuggestions(text: string): string {
 }
 
 function replaceActionCards(text: string): string {
-  return (
-    text
-      .replaceAll(
-        /:::action_card\{([^}]*)\}\s*\n[\s\S]*?\n:::\s*/g,
-        (_full, attrs: string) => {
-          const title = /title="([^"]*)"/.exec(attrs)?.[1] ?? "";
-          return normalizeInlineLabel(title) || "Action";
-        }
-      )
+  return text.replaceAll(
+    /:::action_card\{([^}]*)\}\s*\n[\s\S]*?\n:::\s*/g,
+    (_full, attrs: string) => {
+      const title = /title="([^"]*)"/.exec(attrs)?.[1] ?? "";
+      return normalizeInlineLabel(title) || "Action";
+    }
   );
 }
 
