@@ -84,11 +84,11 @@ export type SystemSkillDefinition = SkillDefinition & {
 
 // Helper function that enforces unique sIds.
 export function ensureUniqueSIds<T extends readonly SkillDefinition[]>(
-  skills: T & {
+  skills: readonly [...T] & {
     // For each element in the array (I = index).
-    readonly [I in keyof T]: {
+    [I in keyof T]: {
       // For each property in that element (K = property key).
-      readonly [K in keyof T[I]]: K extends "sId"
+      [K in keyof T[I]]: K extends "sId"
         ? // Only check sId properties for duplicates.
           T[I][K] extends {
             // Build object of all OTHER elements (exclude current index I).
@@ -106,7 +106,7 @@ export function ensureUniqueSIds<T extends readonly SkillDefinition[]>(
     };
   }
 ): T {
-  return skills;
+  return skills as T;
 }
 
 function matchesFilter<T>(value: T, filter: T | T[]): boolean {

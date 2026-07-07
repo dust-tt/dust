@@ -1,4 +1,3 @@
-import type { SystemSkillDefinition } from "@app/lib/resources/skill/code_defined/shared";
 import { ensureUniqueSIds } from "@app/lib/resources/skill/code_defined/shared";
 import { discoverKnowledgeSkill } from "@app/lib/resources/skill/code_defined/system/discover_knowledge";
 import { discoverSkillsSkill } from "@app/lib/resources/skill/code_defined/system/discover_skills";
@@ -10,4 +9,4 @@ export const SYSTEM_SKILLS_ARRAY = ensureUniqueSIds([
   discoverSkillsSkill,
   discoverToolsSkill,
   planModeSkill,
-] as const satisfies readonly SystemSkillDefinition[]);
+] as const);
