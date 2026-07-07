@@ -66,7 +66,12 @@ describe("publishSandboxFunction", () => {
   it("publishes a new function with one bundle file under the dedicated prefix", async () => {
     const { workspace, space, auth } = await setupPod();
     vi.mocked(buildSandboxFunctionOnSandbox).mockResolvedValue(
-      new Ok({ bundleCode: "export default {};", inputSchema, outputSchema })
+      new Ok({
+        bundleCode: "export default {};",
+        inputSchema,
+        outputSchema,
+        manifests: null,
+      })
     );
 
     const result = await publishSandboxFunction(auth, {
@@ -114,7 +119,7 @@ describe("publishSandboxFunction", () => {
     const { workspace, space, auth } = await setupPod();
 
     vi.mocked(buildSandboxFunctionOnSandbox).mockResolvedValue(
-      new Ok({ bundleCode: "v1", inputSchema, outputSchema })
+      new Ok({ bundleCode: "v1", inputSchema, outputSchema, manifests: null })
     );
     const first = await publishSandboxFunction(auth, {
       space,
@@ -138,7 +143,12 @@ describe("publishSandboxFunction", () => {
       required: ["text"],
     };
     vi.mocked(buildSandboxFunctionOnSandbox).mockResolvedValue(
-      new Ok({ bundleCode: "v2", inputSchema, outputSchema: newOutputSchema })
+      new Ok({
+        bundleCode: "v2",
+        inputSchema,
+        outputSchema: newOutputSchema,
+        manifests: null,
+      })
     );
     const second = await publishSandboxFunction(auth, {
       space,
