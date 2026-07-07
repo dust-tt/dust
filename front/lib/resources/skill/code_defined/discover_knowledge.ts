@@ -1,4 +1,7 @@
-import type { SystemSkillDefinition } from "@app/lib/resources/skill/code_defined/shared";
+import {
+  SKILL_COMPANY_DATA_SERVER_NAME,
+  type SystemSkillDefinition,
+} from "@app/lib/resources/skill/code_defined/shared";
 
 const DISCOVER_KNOWLEDGE_INSTRUCTIONS =
   "Default behavior: optimize for speed by starting with `semantic_search`.\n" +
@@ -39,7 +42,10 @@ export const discoverKnowledgeSkill = {
     "Search documents, browse folder hierarchies, read file contents, and query data warehouse tables with SQL.",
   instructions: DISCOVER_KNOWLEDGE_INSTRUCTIONS,
   mcpServers: [
-    { name: "data_sources_file_system", serverNameOverride: "company_data" },
+    {
+      name: "data_sources_file_system",
+      serverNameOverride: SKILL_COMPANY_DATA_SERVER_NAME,
+    },
     { name: "data_warehouses" },
   ],
   version: 1,

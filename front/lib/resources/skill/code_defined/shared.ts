@@ -8,6 +8,8 @@ import type { AgentLoopExecutionData } from "@app/types/assistant/agent_run";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import { removeNulls } from "@app/types/shared/utils/general";
 
+export const SKILL_COMPANY_DATA_SERVER_NAME = "company_data";
+
 export type MCPServerDefinition = {
   name: AutoInternalMCPServerNameType;
   childAgentId?: string;
