@@ -383,9 +383,8 @@ export async function processTranscriptActivity(
     if (!dataSourceViewId) {
       localLogger.error(
         {},
-        "[processTranscriptActivity] No datasource view id found. Stopping."
+        "[processTranscriptActivity] No datasource view id found. Skipping file."
       );
-      await stopRetrieveTranscriptsWorkflow(transcriptsConfiguration);
       return;
     }
 
@@ -404,9 +403,8 @@ export async function processTranscriptActivity(
     if (!datasourceView) {
       localLogger.error(
         {},
-        "[processTranscriptActivity] No datasource view found. Stopping."
+        "[processTranscriptActivity] No datasource view found. Skipping file."
       );
-      await stopRetrieveTranscriptsWorkflow(transcriptsConfiguration);
       return;
     }
 
@@ -414,9 +412,8 @@ export async function processTranscriptActivity(
     if (!canWrite) {
       localLogger.error(
         {},
-        "[processTranscriptActivity] User does not have permission to write to datasource view. Stopping."
+        "[processTranscriptActivity] User does not have permission to write to datasource view. Skipping file."
       );
-      await stopRetrieveTranscriptsWorkflow(transcriptsConfiguration);
       return;
     }
 
@@ -425,9 +422,8 @@ export async function processTranscriptActivity(
     if (!dataSource) {
       localLogger.error(
         {},
-        "[processTranscriptActivity] No datasource found. Stopping."
+        "[processTranscriptActivity] No datasource found. Skipping file."
       );
-      await stopRetrieveTranscriptsWorkflow(transcriptsConfiguration);
       return;
     }
 
@@ -495,10 +491,9 @@ export async function processTranscriptActivity(
     const { agentConfigurationId } = transcriptsConfiguration;
 
     if (!agentConfigurationId) {
-      await stopRetrieveTranscriptsWorkflow(transcriptsConfiguration);
       localLogger.error(
         {},
-        "[processTranscriptActivity] No agent configuration id found. Stopping."
+        "[processTranscriptActivity] No agent configuration id found. Skipping file."
       );
       return;
     }
@@ -509,10 +504,9 @@ export async function processTranscriptActivity(
     });
 
     if (!agent) {
-      await stopRetrieveTranscriptsWorkflow(transcriptsConfiguration);
       localLogger.error(
         {},
-        "[processTranscriptActivity] Agent configuration not found. Stopping."
+        "[processTranscriptActivity] Agent configuration not found. Skipping file."
       );
       return;
     }
