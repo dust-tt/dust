@@ -154,8 +154,14 @@ export interface ToolManifest {
  * Declarative tags describing what a sandbox template supports.
  * The Docker image must actually have the corresponding tooling installed. The capability tag tells
  * orchestration it is safe to attempt the feature.
+ *
+ * - "gcsfuse": gcsfuse binary + token server, GCS mounts can be attempted.
+ * - "pod_state": litestream binary + dust-state user + /pod-state layout;
+ *   pod-state runtime touchpoints (state mount, restore, daemon start, sleep
+ *   barrier, probes) early-return when the image lacks it, so sandboxes on
+ *   older images keep working untouched.
  */
-export type SandboxCapability = "gcsfuse";
+export type SandboxCapability = "gcsfuse" | "pod_state";
 
 // ---------------------------------------------------------------------------
 // Base Image
