@@ -1,7 +1,7 @@
 import { renderAgentMessageContentView } from "@app/lib/api/assistant/activity_steps";
 import { getLightAgentMessageFromAgentMessage } from "@app/lib/api/assistant/citations";
 import { getAgentConfigurations } from "@app/lib/api/assistant/configuration/agent";
-import { requestedAgentModelFromColumns } from "@app/lib/api/assistant/models";
+import { resolvedModelFromAgentMessageRow } from "@app/lib/api/assistant/models";
 import { getMessagesReactions } from "@app/lib/api/assistant/reaction";
 import type { Authenticator } from "@app/lib/auth";
 import {
@@ -824,7 +824,7 @@ async function renderSingleAgentMessage(
     // Aggregated only when rendering a single agent message (see
     // batchRenderAgentMessages), so it is `null` for bulk conversation rendering.
     subAgentCostCredits,
-    requestedModel: requestedAgentModelFromColumns(agentMessage),
+    requestedModel: resolvedModelFromAgentMessageRow(agentMessage),
   } satisfies AgentMessageType;
 
   if (viewType === "full") {

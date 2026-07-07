@@ -1,6 +1,7 @@
 import { config as regionConfig } from "@app/lib/api/regions/config";
 import { isModelEnabled } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
+import type { AgentMessageModel } from "@app/lib/models/agent/conversation";
 import { isByokTransitioningPlan } from "@app/lib/plans/plan_codes";
 import {
   CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG,
@@ -278,28 +279,25 @@ export function reconcileModelSettings<T extends { responseFormat?: string }>(
 // Rebuilds a `ResolvedRequestedModel` from the raw agent-message columns, or null
 // when no override was stored (or the stored values fail validation). Values are
 // written by the resolver above, so validation is defensive.
-export function requestedAgentModelFromColumns(row: {
-  requestedProviderId: string | null;
-  requestedModelId: string | null;
-  requestedReasoningEffort: string | null;
-}): ResolvedRequestedModel | null {
-  const { requestedProviderId, requestedModelId, requestedReasoningEffort } =
-    row;
+export function resolvedModelFromAgentMessageRow(
+  row: AgentMessageModel
+): ResolvedRequestedModel | null {
+  const { resolvedProviderId, resolvedModelId, resolvedReasoningEffort } = row;
 
   if (
-    !requestedProviderId ||
-    !requestedModelId ||
-    !requestedReasoningEffort ||
-    !isModelProviderId(requestedProviderId) ||
-    !isModelId(requestedModelId) ||
-    !isReasoningEffort(requestedReasoningEffort)
+    !resolvedProviderId ||
+    !resolvedModelId ||
+    !resolvedReasoningEffort ||
+    !isModelProviderId(resolvedProviderId) ||
+    !isModelId(resolvedModelId) ||
+    !isReasoningEffort(resolvedReasoningEffort)
   ) {
     return null;
   }
 
   return {
-    providerId: requestedProviderId,
-    modelId: requestedModelId,
-    reasoningEffort: requestedReasoningEffort,
+    providerId: resolvedProviderId,
+    modelId: resolvedModelId,
+    reasoningEffort: resolvedReasoningEffort,
   };
 }

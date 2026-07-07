@@ -433,6 +433,10 @@ UserMessageModel.belongsTo(KeyModel, {
   onDelete: "RESTRICT",
 });
 
+const MODEL_RESOLUTION_METHODS = ["agent", "user", "auto"] as const;
+
+type ModelResolutionMethod = (typeof MODEL_RESOLUTION_METHODS)[number];
+
 export class AgentMessageModel extends WorkspaceAwareModel<AgentMessageModel> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
@@ -459,12 +463,12 @@ export class AgentMessageModel extends WorkspaceAwareModel<AgentMessageModel> {
   declare prunedContext: boolean | null;
   declare costCredits: number | null;
 
-  // Per-message model override from the input-bar model picker: the concrete
-  // provider/model/effort triplet the user picked at send time. All null when
-  // the message runs the agent's configured model.
-  declare requestedProviderId: string | null;
-  declare requestedModelId: string | null;
-  declare requestedReasoningEffort: string | null;
+  // The concrete provider/model/effort triplet used by the message when
+  // running the agent. Legacy: null when the message runs the agent's configured model.
+  declare resolvedProviderId: string | null;
+  declare resolvedModelId: string | null;
+  declare resolvedReasoningEffort: string | null;
+  declare modelResolutionMethod: ModelResolutionMethod | null;
 }
 
 AgentMessageModel.init(
@@ -555,20 +559,28 @@ AgentMessageModel.init(
       allowNull: true,
       defaultValue: null,
     },
-    requestedProviderId: {
+    resolvedProviderId: {
       type: DataTypes.STRING,
       allowNull: true,
       defaultValue: null,
     },
-    requestedModelId: {
+    resolvedModelId: {
       type: DataTypes.STRING,
       allowNull: true,
       defaultValue: null,
     },
-    requestedReasoningEffort: {
+    resolvedReasoningEffort: {
       type: DataTypes.STRING,
       allowNull: true,
       defaultValue: null,
+    },
+    modelResolutionMethod: {
+      type: DataTypes.STRING,
+      allowNull: true,
+      defaultValue: null,
+      validate: {
+        isIn: [MODEL_RESOLUTION_METHODS],
+      },
     },
   },
   {
