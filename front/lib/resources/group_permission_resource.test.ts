@@ -238,7 +238,7 @@ describe("GroupPermissionResource", () => {
       });
 
       const grants = await GroupPermissionResource.listForGroups(auth, {
-        groupIds: [groupA.id],
+        groupModelIds: [groupA.id],
       });
       expect(grants).toHaveLength(1);
       expect(grants[0].resourceId).toBe(-1);
@@ -267,7 +267,7 @@ describe("GroupPermissionResource", () => {
       });
 
       const grants = await GroupPermissionResource.listForGroups(auth, {
-        groupIds: [groupA.id],
+        groupModelIds: [groupA.id],
       });
       expect(grants).toHaveLength(0);
     });
@@ -282,7 +282,7 @@ describe("GroupPermissionResource", () => {
       });
 
       const grants = await GroupPermissionResource.listForGroups(auth, {
-        groupIds: [groupA.id, groupB.id],
+        groupModelIds: [groupA.id, groupB.id],
       });
       expect(grants).toHaveLength(2);
       expect(grants.every((g) => g.resourceId === -1)).toBe(true);
@@ -313,7 +313,7 @@ describe("GroupPermissionResource", () => {
       });
 
       const grants = await GroupPermissionResource.listForGroups(auth, {
-        groupIds: [groupA.id],
+        groupModelIds: [groupA.id],
       });
       expect(grants).toHaveLength(2);
     });
