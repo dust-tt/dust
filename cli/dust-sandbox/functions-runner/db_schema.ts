@@ -1,19 +1,27 @@
 // `dsbx db schema` runner backend: regenerate a drizzle `{db}.db.ts` schema file from a live
 // pod database.
 //
-// Introspection is PRAGMA-based (sqlite_master + table_xinfo + index_list/index_info):
-// drizzle-kit's `pull` requires a better-sqlite3/@libsql driver and cannot reuse bun:sqlite
-// (E2 verdict). Column modes (timestamp/json/boolean/...) are a drizzle-level concept that
-// SQLite does not store — they are NOT regenerated here; they live in the published
-// functions' stored manifests.
+// This would ideally be drizzle-kit `pull`, but at drizzle-kit 0.31.10 none of that pipeline
+// is reachable here: the TS codegen (`schemaToTypeScript`) is bundled only into the CLI
+// binary (bin.cjs, not a package export), the database introspection (`fromDatabase` /
+// `sqliteIntrospect`) is internal to the api bundle and absent from the `drizzle-kit/api`
+// export list, and the CLI itself cannot open a database through bun:sqlite (it needs a
+// better-sqlite3/@libsql driver, which the sandbox image does not ship). So introspection is
+// PRAGMA-based (sqlite_master + table_xinfo + index_list/index_info, shared with reconcile's
+// destructive pre-check) and the generation below mirrors pull's output as closely as it can.
+// Its correctness contract is the round-trip test: a regenerated file must reconcile to zero
+// statements against the database it came from.
+//
+// Column modes (timestamp/json/boolean/...) are a drizzle-level concept that SQLite does not
+// store — they are NOT regenerated here; they live in the published functions' stored
+// manifests.
 
 import type { LiveColumn, LiveTable } from "./db_common.ts";
 import { introspectLiveTables, openReadonly } from "./db_common.ts";
 
-const GENERATED_HEADER = `// Regenerated from the live database by \`dsbx db schema\`.
-// NOTE: column modes (e.g. { mode: "timestamp" | "json" | "boolean" }) are not stored in
-// SQLite and are NOT recovered here — re-add the modes your functions declare in their
-// published manifests before using this file as the shared schema source.
+const GENERATED_HEADER = `// Generated from the live database by \`dsbx db schema\`.
+// Column modes (e.g. { mode: "timestamp" | "json" | "boolean" }) are not stored in SQLite,
+// so none appear here; the pod's published functions carry them in their stored manifests.
 `;
 
 export function generateSchemaFileText(dbPath: string): string {

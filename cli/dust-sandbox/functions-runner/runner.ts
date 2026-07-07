@@ -5,7 +5,8 @@
 //   runner build <src> <outBundle> <outSchema>   bundle + extract schema to files
 //   runner db-reconcile <dbPath> <schemaFile>    additive-only DDL reconcile -> stdout envelope
 //   runner db-schema <dbPath> <outSchemaTs>      regenerate drizzle schema file -> file + envelope
-//   runner db-query <dbPath>                     stdin SQL -> stdout rows envelope (read-only)
+//   runner db-query <dbPath>                     stdin SQL -> stdout rows envelope (read-only;
+//                                                large results spill to a file the envelope names)
 
 import { build } from "./build.ts";
 import { errorEnvelope } from "./db_common.ts";
