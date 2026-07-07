@@ -32,13 +32,13 @@ import {
   useCreditCostMenuItem,
 } from "@app/components/assistant/conversation/useCreditCostMenuItem";
 import { ConfirmContext } from "@app/components/Confirm";
+import { getActionCardPlugin } from "@app/components/markdown/ActionCardDirective";
 import {
   CitationsContext,
   CiteBlock,
 } from "@app/components/markdown/CiteBlock";
 import type { MCPReferenceCitation } from "@app/components/markdown/MCPReferenceCitation";
 import { getQuickReplyPlugin } from "@app/components/markdown/QuickReplyBlock";
-import { getActionCardPlugin } from "@app/components/markdown/ActionCardDirective";
 import { getToolSetupPlugin } from "@app/components/markdown/tool/tool";
 import {
   getVisualizationPlugin,

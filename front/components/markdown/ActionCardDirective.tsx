@@ -1,12 +1,12 @@
-import { getIcon } from "@app/components/resources/resources_icons";
-import {
-  isCustomResourceIconType,
-  isInternalAllowedIcon,
-} from "@app/components/resources/resources_icon_names";
 import type {
   CustomResourceIconType,
   InternalAllowedIconType,
 } from "@app/components/resources/resources_icon_names";
+import {
+  isCustomResourceIconType,
+  isInternalAllowedIcon,
+} from "@app/components/resources/resources_icon_names";
+import { getIcon } from "@app/components/resources/resources_icons";
 import { ActionCardBlock, Avatar } from "@dust-tt/sparkle";
 import { useState } from "react";
 import { visit } from "unist-util-visit";
