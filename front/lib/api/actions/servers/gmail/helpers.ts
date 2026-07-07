@@ -330,10 +330,50 @@ export async function getErrorText(response: Response): Promise<string> {
 }
 
 /**
+ * Encode a string as an RFC 2047 "encoded-word" (UTF-8, base64). Required for
+ * header values that contain non-ASCII characters, otherwise the raw 8-bit
+ * bytes are interpreted as Latin-1 by mail clients (e.g. "é" becomes "Ã©").
+ */
+function encodeRfc2047Word(text: string): string {
+  return `=?UTF-8?B?${Buffer.from(text, "utf-8").toString("base64")}?=`;
+}
+
+/**
  * Encode subject line using RFC 2047 to handle special characters
  */
 export function encodeSubject(subject: string): string {
-  return `=?UTF-8?B?${Buffer.from(subject, "utf-8").toString("base64")}?=`;
+  return encodeRfc2047Word(subject);
+}
+
+/**
+ * Encode the display-name portion of an address header (To/From/Cc/Bcc) using
+ * RFC 2047 when it contains non-ASCII characters, leaving the `<email>` part
+ * untouched. Address headers must be pure ASCII, so an unencoded accented name
+ * like `Amélie Doré <a@x.com>` would otherwise render as `AmÃ©lie DorÃ©`.
+ * All-ASCII addresses are returned unchanged to keep the header readable.
+ */
+export function encodeEmailAddressHeader(address: string): string {
+  const trimmed = address.trim();
+
+  // Split `Display Name <email>`; leave bare `email` addresses as-is.
+  const match = trimmed.match(/^(.*?)\s*<([^>]+)>$/);
+  if (!match) {
+    return trimmed;
+  }
+
+  const [, rawName, email] = match;
+  // Strip surrounding quotes Gmail may include around the display name.
+  const name = rawName.replace(/^"(.*)"$/, "$1").trim();
+  if (!name) {
+    return `<${email}>`;
+  }
+
+  // eslint-disable-next-line no-control-regex
+  if (!/[^\x00-\x7F]/.test(name)) {
+    return `${name} <${email}>`;
+  }
+
+  return `${encodeRfc2047Word(name)} <${email}>`;
 }
 
 /**
