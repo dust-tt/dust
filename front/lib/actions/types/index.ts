@@ -122,7 +122,7 @@ export type StepContext = {
   // Dust run IDs of LLM runs made by the tool itself (e.g. image generation).
   // Flowed back to the agent loop so the runs are billed like any other LLM
   // usage of the agent message.
-  runIds?: string[];
+  toolRunIds?: string[];
 };
 
 type ActionGeneratedFileBase = {

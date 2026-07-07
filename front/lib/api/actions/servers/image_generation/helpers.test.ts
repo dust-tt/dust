@@ -135,7 +135,7 @@ describe("recordImageGenerationRunUsage", () => {
       action.id
     );
     assert(refreshedAction, "Action not found");
-    expect(refreshedAction.stepContext.runIds).toEqual([dustRunId]);
+    expect(refreshedAction.stepContext.toolRunIds).toEqual([dustRunId]);
     // Pre-existing stepContext fields are preserved.
     expect(refreshedAction.stepContext.retrievalTopK).toBe(
       action.stepContext.retrievalTopK

@@ -196,9 +196,9 @@ export async function runToolActivity(
     auth,
     actionId
   );
-  const toolRunIds = refreshedAction?.stepContext.runIds ?? [];
+  const toolRunIds = refreshedAction?.stepContext.toolRunIds ?? [];
 
-  return toolRunIds.length > 0 ? { ...result, runIds: toolRunIds } : result;
+  return toolRunIds.length > 0 ? { ...result, toolRunIds } : result;
 }
 
 async function executeToolStreaming(

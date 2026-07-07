@@ -490,7 +490,7 @@ async function executeStepIteration({
 
   // Collect LLM runs made by the tools themselves (e.g. image generation) so
   // they are billed like any other LLM usage of the agent message.
-  const toolRunIds = toolResults.flatMap((result) => result.runIds ?? []);
+  const toolRunIds = toolResults.flatMap((result) => result.toolRunIds ?? []);
 
   // Collect all deferred events from tool executions.
   const allDeferredEvents = toolResults.flatMap(

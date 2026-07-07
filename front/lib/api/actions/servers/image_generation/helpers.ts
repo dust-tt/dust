@@ -251,7 +251,7 @@ export async function recordImageGenerationRunUsage(
     if (action) {
       await action.updateStepContext({
         ...action.stepContext,
-        runIds: [...(action.stepContext.runIds ?? []), dustRunId],
+        toolRunIds: [...(action.stepContext.toolRunIds ?? []), dustRunId],
       });
     }
   }
