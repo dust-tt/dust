@@ -672,8 +672,7 @@ async function persistCreditConfig(
     usageCapCredits: body.usageCapCredits ?? null,
     balanceThresholdAwuCredits: body.balanceThresholdCredits ?? null,
     defaultPoolCapAwuCredits: body.defaultPoolCapCredits ?? null,
-    programmaticMonthlyCapAwuCredits:
-      body.programmaticMonthlyCapCredits ?? null,
+    programmaticMonthlyCapAwuCredits: body.programmaticMonthlyCapCredits ?? 0,
     autoSeatUpgradeEnabled: body.autoSeatUpgradeEnabled,
     topUpEnabled: body.topUpEnabled,
     autoInvoiceFinalizationEnabled: body.autoInvoiceFinalizationEnabled,

@@ -77,20 +77,32 @@ describe("syncProgrammaticUsageLimit persistence", () => {
     ).toHaveBeenCalled();
   });
 
-  it("clears the cap and the alerts when set to null", async () => {
+  it("resets to 0 (no access) and clears the alerts", async () => {
     const workspace = await WorkspaceFactory.creditPriced({
       metronomeCustomerId: METRONOME_CUSTOMER_ID,
     });
     const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
 
     await syncProgrammaticUsageLimit({ auth, monthlyCapCredits: 500 });
-    await syncProgrammaticUsageLimit({ auth, monthlyCapCredits: null });
+    await syncProgrammaticUsageLimit({ auth, monthlyCapCredits: 0 });
 
     const read = await getProgrammaticUsageLimit(auth);
-    expect(read.isOk() && read.value).toBe(null);
+    expect(read.isOk() && read.value).toBe(0);
     expect(
       programmaticCap.clearMetronomeProgrammaticCapAlerts
     ).toHaveBeenCalled();
+  });
+
+  it("clamps a negative cap to 0", async () => {
+    const workspace = await WorkspaceFactory.creditPriced({
+      metronomeCustomerId: METRONOME_CUSTOMER_ID,
+    });
+    const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
+
+    await syncProgrammaticUsageLimit({ auth, monthlyCapCredits: -5 });
+
+    const read = await getProgrammaticUsageLimit(auth);
+    expect(read.isOk() && read.value).toBe(0);
   });
 });
 
@@ -122,7 +134,7 @@ describe("syncProgrammaticUsageLimit audit", () => {
     );
   });
 
-  it("records previous as 'unset' when no cap existed", async () => {
+  it("records previous as '0' when no cap existed", async () => {
     const workspace = await WorkspaceFactory.creditPriced({
       metronomeCustomerId: METRONOME_CUSTOMER_ID,
     });
@@ -137,14 +149,14 @@ describe("syncProgrammaticUsageLimit audit", () => {
     expect(workosAudit.emitAuditLogEvent).toHaveBeenCalledWith(
       expect.objectContaining({
         metadata: {
-          previous_monthly_cap_credits: "unset",
+          previous_monthly_cap_credits: "0",
           new_monthly_cap_credits: "1000",
         },
       })
     );
   });
 
-  it("records new as 'unset' when clearing the cap", async () => {
+  it("records new as '0' when blocking access (cap set to 0)", async () => {
     const workspace = await WorkspaceFactory.creditPriced({
       metronomeCustomerId: METRONOME_CUSTOMER_ID,
     });
@@ -155,7 +167,7 @@ describe("syncProgrammaticUsageLimit audit", () => {
 
     await syncProgrammaticUsageLimit({
       auth,
-      monthlyCapCredits: null,
+      monthlyCapCredits: 0,
       auditContext: AUDIT_CONTEXT,
     });
 
@@ -163,7 +175,7 @@ describe("syncProgrammaticUsageLimit audit", () => {
       expect.objectContaining({
         metadata: {
           previous_monthly_cap_credits: "500",
-          new_monthly_cap_credits: "unset",
+          new_monthly_cap_credits: "0",
         },
       })
     );

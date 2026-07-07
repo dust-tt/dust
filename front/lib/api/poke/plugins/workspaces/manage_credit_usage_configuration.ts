@@ -183,8 +183,11 @@ export const manageCreditUsageConfigurationPlugin = createPlugin({
       usageCapCredits > 0 ? usageCapCredits : null;
     const resolvedBalanceThresholdCredits =
       balanceThresholdCredits > 0 ? balanceThresholdCredits : null;
-    const resolvedProgrammaticMonthlyCapCredits =
-      programmaticMonthlyCapCredits > 0 ? programmaticMonthlyCapCredits : null;
+    // The programmatic cap is non-nullable: 0 blocks all programmatic access.
+    const resolvedProgrammaticMonthlyCapCredits = Math.max(
+      0,
+      programmaticMonthlyCapCredits
+    );
 
     // Fetch current state upfront so each sync step can be skipped when its
     // inputs haven't changed (avoids triggering seat reconciliation for every

@@ -125,7 +125,7 @@ export class CreditUsageConfigurationResource extends BaseResource<CreditUsageCo
       allowMemberUpgradeRequests: boolean;
       upgradeRequestEmailEnabled: boolean;
       defaultPoolCapAwuCredits: number | null;
-      programmaticMonthlyCapAwuCredits: number | null;
+      programmaticMonthlyCapAwuCredits: number;
       autoSeatUpgradeEnabled: boolean;
       balanceThresholdAwuCredits: number | null;
       topUpEnabled: boolean;
