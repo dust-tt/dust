@@ -1261,10 +1261,38 @@ export function useCheckBusinessActivation({
 
   return {
     checkoutPayment: data?.checkoutPayment ?? null,
-    invoiceUrl: data?.invoiceUrl ?? null,
     isCheckoutPaymentLoading: !error && !data && !disabled && !!contractId,
     isCheckoutPaymentError: !!error,
   };
+}
+
+// Fetches the Stripe hosted invoice (receipt) URL for a completed checkout. Kept
+// separate from `useCheckBusinessActivation` because the underlying Stripe
+// round-trip is slow (~seconds): the status poll must stay fast so the success
+// screen shows immediately, and this fetches the receipt URL lazily afterwards
+// (only enabled once the checkout has succeeded).
+export function useCheckoutReceiptUrl({
+  workspaceId,
+  contractId,
+  disabled,
+}: {
+  workspaceId: string;
+  contractId: string | null;
+  disabled?: boolean;
+}) {
+  const { fetcher } = useFetcher();
+  const statusFetcher: Fetcher<GetBusinessActivationResponseBody> = fetcher;
+
+  const url =
+    disabled || !contractId
+      ? null
+      : `/api/w/${workspaceId}/subscriptions/checkout/business-activation?contract_id=${contractId}&receipt=true`;
+
+  const { data } = useSWRWithDefaults(url, statusFetcher, {
+    revalidateOnFocus: false,
+  });
+
+  return { receiptUrl: data?.invoiceUrl ?? null };
 }
 
 export function useInitiateBusinessActivation({

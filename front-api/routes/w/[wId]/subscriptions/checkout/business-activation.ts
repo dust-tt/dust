@@ -34,8 +34,16 @@ app.get(
       });
     }
 
+    // The polling UI omits `receipt`; only the success screen requests the
+    // (slow) Stripe hosted invoice URL, so status polls stay fast.
+    const includeReceiptUrl = ctx.req.query("receipt") === "true";
+
     const workspace = auth.getNonNullableWorkspace();
-    return ctx.json(await getBusinessActivationStatus(workspace, contractId));
+    return ctx.json(
+      await getBusinessActivationStatus(workspace, contractId, {
+        includeReceiptUrl,
+      })
+    );
   }
 );
 

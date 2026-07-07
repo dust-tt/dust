@@ -1,4 +1,5 @@
 import apiConfig from "@app/lib/api/config";
+import { markCheckoutPaymentActivating } from "@app/lib/credits/checkout_payment_status";
 import { unwrapMetronomeWebhook } from "@app/lib/metronome/client";
 import {
   getCustomerIdFromEvent,
@@ -109,6 +110,21 @@ app.post("/", async (ctx): HandlerResult<ResponseBody> => {
 
   if (!workspace) {
     return ctx.json({ success: true });
+  }
+
+  // Payment has cleared. The activation itself is deferred to the Temporal
+  // workflow below and can take several seconds (workflow scheduling + contract
+  // swap, seat sync, ...), during which the checkout polling UI would otherwise
+  // still show "processing payment". Advance it to "activating" here, at the
+  // earliest reliable point. No-op unless a checkout is pending on this contract.
+  if (
+    event.type === "payment_gate.payment_status" &&
+    event.properties.payment_status === "paid"
+  ) {
+    await markCheckoutPaymentActivating({
+      workspaceId: workspace.sId,
+      contractId: event.properties.contract_id,
+    });
   }
 
   // Hand the event off to a Temporal workflow for durable processing.

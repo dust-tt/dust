@@ -31,6 +31,10 @@ export const CheckoutPaymentSchema = z.object({
   invoiceId: z.string().optional(),
   errorMessage: z.string().optional(),
   previousMetronomeContractId: z.string().optional(),
+  // Coarse activation progress surfaced to the polling UI. While pending the
+  // record is either awaiting payment (no progress set) or being activated once
+  // payment cleared. Optional for records written before this field existed.
+  progress: z.literal("activating").optional(),
 });
 
 export type CheckoutPayment = z.infer<typeof CheckoutPaymentSchema>;
@@ -108,6 +112,23 @@ async function updatePayment(
     });
     return updated;
   });
+}
+
+// Marks the pending activation as "activating" so the polling UI can advance
+// from "processing payment" to "activating your workspace" once payment cleared
+// and the webhook has started the (multi-step) activation work. No-op if the
+// record is missing or already succeeded.
+export async function markCheckoutPaymentActivating({
+  workspaceId,
+  contractId,
+}: {
+  workspaceId: string;
+  contractId: string;
+}): Promise<void> {
+  await updatePayment(workspaceId, contractId, (current) => ({
+    ...current,
+    progress: "activating",
+  }));
 }
 
 export async function markCheckoutPaymentSucceeded({

@@ -14,6 +14,7 @@ import { useAppRouter, useSearchParam } from "@app/lib/platform";
 import {
   useAuthContext,
   useCheckBusinessActivation,
+  useCheckoutReceiptUrl,
   useCreateCheckoutSession,
   useInitiateBusinessActivation,
   usePreparePayment,
@@ -111,7 +112,6 @@ export function CheckoutPage() {
   const [pendingContractId, setPendingContractId] = useState<string | null>(
     null
   );
-  const [receiptUrl, setReceiptUrl] = useState<string | null>(null);
   // Prevents initSession from firing before URL params have been read on mount.
   const [isInitialized, setIsInitialized] = useState(false);
 
@@ -169,12 +169,22 @@ export function CheckoutPage() {
     }
   }, [livePreparePayment]);
 
-  // Poll checkout payment status while in waiting_for_payment phase.
-  const { checkoutPayment, invoiceUrl } = useCheckBusinessActivation({
+  // Poll checkout payment status while in waiting_for_payment phase. Status only
+  // (no receipt URL) so the poll stays fast and we transition on `succeeded`
+  // without waiting on the slow Stripe invoice-URL fetch.
+  const { checkoutPayment } = useCheckBusinessActivation({
     workspaceId: owner.sId,
     contractId: pendingContractId,
     disabled: phase !== "waiting_for_payment",
     pollIntervalMs: phase === "waiting_for_payment" ? 1500 : 0,
+  });
+
+  // Lazily fetch the Stripe receipt URL once on the success screen, so the "View
+  // receipt" button appears when ready without blocking the success transition.
+  const { receiptUrl } = useCheckoutReceiptUrl({
+    workspaceId: owner.sId,
+    contractId: pendingContractId,
+    disabled: phase !== "checkout_success",
   });
 
   // React to Redis activation status.
@@ -183,7 +193,6 @@ export function CheckoutPage() {
       return;
     }
     if (checkoutPayment.status === "succeeded") {
-      setReceiptUrl(invoiceUrl);
       setPhase("checkout_success");
       void mutateAuthContext();
     } else if (checkoutPayment.status === "failed") {
@@ -191,7 +200,7 @@ export function CheckoutPage() {
       setPhase("error");
     }
     // pending: keep polling
-  }, [phase, checkoutPayment, invoiceUrl, mutateAuthContext]);
+  }, [phase, checkoutPayment, mutateAuthContext]);
 
   const {
     register: registerCoupon,
@@ -368,6 +377,17 @@ export function CheckoutPage() {
     await initSession(couponCode.trim());
     setIsSessionRefreshing(false);
   });
+
+  // Progress step shown during the confirming / waiting_for_payment phases.
+  // waiting_for_payment starts on "Processing payment" (step 1) and advances to
+  // "Activating your workspace" (step 2) once the webhook reports activation has
+  // begun (surfaced through the polled checkout payment record).
+  const activeStepIndex =
+    phase === "confirming"
+      ? 0
+      : checkoutPayment?.progress === "activating"
+        ? 2
+        : 1;
 
   const showActualTax = preparePayment !== null;
 
@@ -600,14 +620,18 @@ export function CheckoutPage() {
       </div>
 
       {/* Right pane: phase-dependent content.
-          payment_review + error: top padding of 296px aligns content with the "Price per seat" row in the left pane.
+          payment_review + error + confirming/waiting_for_payment (progress steps): top padding of 296px aligns
+          content with the "Price per seat" row in the left pane.
           card_capture (with Stripe iframe): uniform p-24 with no centering so the iframe fills from the top.
           All other phases (spinners): centered. */}
       <div
         className={`flex w-1/2 flex-col overflow-y-auto bg-white ${
           phase === "card_capture" && clientSecret
             ? "p-24"
-            : phase === "payment_review" || phase === "error"
+            : phase === "payment_review" ||
+                phase === "error" ||
+                phase === "confirming" ||
+                phase === "waiting_for_payment"
               ? "px-24 pb-24 pt-[296px]"
               : "items-center justify-center p-24"
         }`}
@@ -615,6 +639,7 @@ export function CheckoutPage() {
         <RightPane
           phase={phase}
           phaseError={phaseError}
+          activeStepIndex={activeStepIndex}
           clientSecret={clientSecret}
           isCreating={isCreating}
           isPreparePaymentLoading={isPreparePaymentLoading}
@@ -686,6 +711,7 @@ function CheckoutSuccessPage({
 interface RightPaneProps {
   phase: CheckoutPhase;
   phaseError: PhaseError | null;
+  activeStepIndex: number;
   clientSecret: string | null;
   isCreating: boolean;
   isPreparePaymentLoading: boolean;
@@ -702,6 +728,7 @@ interface RightPaneProps {
 function RightPane({
   phase,
   phaseError,
+  activeStepIndex,
   clientSecret,
   isCreating,
   isPreparePaymentLoading,
@@ -797,20 +824,8 @@ function RightPane({
       );
 
     case "confirming":
-      return (
-        <div className="flex flex-col items-center gap-4">
-          <Spinner size="lg" />
-          <p className="text-sm text-muted-foreground">Processing payment…</p>
-        </div>
-      );
-
     case "waiting_for_payment":
-      return (
-        <div className="flex flex-col items-center gap-4">
-          <Spinner size="lg" />
-          <p className="text-sm text-muted-foreground">Processing payment…</p>
-        </div>
-      );
+      return <CheckoutProgress activeStepIndex={activeStepIndex} />;
 
     case "checkout_success":
       return null;
@@ -878,6 +893,55 @@ function RightPane({
       assertNeverAndIgnore(phase);
       return null;
   }
+}
+
+// Steps shown during the confirming / waiting_for_payment phases, in the order
+// they happen server-side: the subscription (Metronome customer + contract) is
+// set up while confirming, then payment is charged and the workspace activated
+// while polling for the webhook result.
+const CHECKOUT_STEPS = [
+  "Setting up your subscription",
+  "Processing payment",
+  "Activating your workspace",
+] as const;
+
+interface CheckoutProgressProps {
+  activeStepIndex: number;
+}
+
+function CheckoutProgress({ activeStepIndex }: CheckoutProgressProps) {
+  return (
+    <div className="flex flex-col gap-4">
+      {CHECKOUT_STEPS.map((label, index) => {
+        const isDone = index < activeStepIndex;
+        const isActive = index === activeStepIndex;
+        return (
+          <div key={label} className="flex items-center gap-3">
+            <div className="flex h-6 w-6 items-center justify-center">
+              {isDone ? (
+                <Icon
+                  visual={CheckCircle}
+                  size="sm"
+                  className="text-success-500"
+                />
+              ) : isActive ? (
+                <Spinner size="xs" />
+              ) : (
+                <div className="h-2.5 w-2.5 rounded-full bg-muted-foreground/30" />
+              )}
+            </div>
+            <span
+              className={`text-sm ${
+                isDone || isActive ? "text-foreground" : "text-muted-foreground"
+              }`}
+            >
+              {label}
+            </span>
+          </div>
+        );
+      })}
+    </div>
+  );
 }
 
 interface CheckoutErrorProps {

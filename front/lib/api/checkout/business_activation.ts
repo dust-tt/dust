@@ -878,13 +878,19 @@ export type GetBusinessActivationResponseBody = {
 };
 
 /**
- * Returns the checkout payment status and, when payment has succeeded, the
- * Stripe hosted invoice URL. Coordinates the two sequential external-service
- * calls so the GET handler stays thin.
+ * Returns the checkout payment status and, only when explicitly requested via
+ * `includeReceiptUrl`, the Stripe hosted invoice URL.
+ *
+ * The invoice-URL fetch is a slow (~seconds) Stripe round-trip, so the polling
+ * UI does NOT request it: it polls only for status and transitions to the
+ * success screen immediately on `succeeded`. The success screen then fetches the
+ * receipt URL lazily (a single call with `includeReceiptUrl`) for its "View
+ * receipt" button, without blocking the transition.
  */
 export async function getBusinessActivationStatus(
   workspace: LightWorkspaceType,
-  contractId: string
+  contractId: string,
+  { includeReceiptUrl = false }: { includeReceiptUrl?: boolean } = {}
 ): Promise<GetBusinessActivationResponseBody> {
   const checkoutPayment = await getCheckoutPaymentStatus({
     workspaceId: workspace.sId,
@@ -893,6 +899,7 @@ export async function getBusinessActivationStatus(
 
   let invoiceUrl: string | undefined;
   if (
+    includeReceiptUrl &&
     checkoutPayment?.status === "succeeded" &&
     checkoutPayment.invoiceId &&
     workspace.metronomeCustomerId
