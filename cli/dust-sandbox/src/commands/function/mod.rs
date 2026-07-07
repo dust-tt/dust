@@ -37,7 +37,7 @@ const RUNNER_JS: &str = include_str!("../../../functions-runner/runner.js");
 /// `agent-proxied` user created in the sandbox image; its `skuid` is what
 /// `dsbx healthcheck`'s nftables rules force through the egress proxy). Untrusted
 /// function code must run as this user too.
-const AGENT_USER: &str = "agent-proxied";
+pub(crate) const AGENT_USER: &str = "agent-proxied";
 const DEFAULT_FUNCTION_WORKING_DIR: &str = "/home/agent";
 
 #[derive(Subcommand)]
@@ -71,7 +71,7 @@ pub enum FunctionCommand {
 /// like agent code. When `dsbx` is already unprivileged (local dev), there is
 /// nothing to contain and no privilege to drop, so the function runs as the
 /// current user.
-fn running_as_root() -> bool {
+pub(crate) fn running_as_root() -> bool {
     rustix::process::geteuid().is_root()
 }
 
@@ -228,7 +228,7 @@ pub(crate) async fn spawn_build(src: &Path, out_bundle: &Path, out_schema: &Path
 /// NODE_PATH for the runner child: the global npm modules first, then any
 /// inherited entries. NODE_PATH is additive, so a missing dir (local dev) falls
 /// back to normal node_modules resolution.
-fn harness_node_path() -> String {
+pub(crate) fn harness_node_path() -> String {
     match std::env::var("NODE_PATH") {
         Ok(existing) if !existing.is_empty() => {
             format!("{FUNCTIONS_GLOBAL_NODE_MODULES}:{existing}")
@@ -251,7 +251,7 @@ fn function_working_dir() -> PathBuf {
 
 /// Set a path's permission bits (used to make the runner temp file readable by
 /// the dropped child without a uid lookup).
-fn set_mode(path: impl AsRef<Path>, mode: u32) -> std::io::Result<()> {
+pub(crate) fn set_mode(path: impl AsRef<Path>, mode: u32) -> std::io::Result<()> {
     std::fs::set_permissions(path, std::fs::Permissions::from_mode(mode))
 }
 
