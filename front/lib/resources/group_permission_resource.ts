@@ -184,6 +184,14 @@ export class GroupPermissionResource extends BaseResource<GroupPermissionModel> 
     });
   }
 
+  // Workspace-scrub hook: drop every grant for the workspace. Must run before groups and the
+  // workspace row are torn down, since both FKs are ON DELETE RESTRICT.
+  static async deleteAllForWorkspace(auth: Authenticator): Promise<void> {
+    await GroupPermissionModel.destroy({
+      where: { workspaceId: auth.getNonNullableWorkspace().id },
+    });
+  }
+
   async delete(
     auth: Authenticator,
     { transaction }: { transaction?: Transaction } = {}

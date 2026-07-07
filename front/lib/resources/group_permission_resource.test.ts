@@ -199,4 +199,28 @@ describe("GroupPermissionResource", () => {
       ).rejects.toThrow(/type-wide/);
     });
   });
+
+  describe("deleteAllForWorkspace", () => {
+    it("drops every grant for the workspace (scrub hook)", async () => {
+      await GroupPermissionResource.grant(auth, {
+        group: groupA,
+        permissionType: "read",
+        resourceType: "space",
+        resourceId: 1,
+      });
+      await GroupPermissionResource.grant(auth, {
+        group: groupB,
+        permissionType: "write",
+        resourceType: "agent",
+        resourceId: 2,
+      });
+
+      await GroupPermissionResource.deleteAllForWorkspace(auth);
+
+      const remaining = await GroupPermissionResource.listForGroups(auth, {
+        groupModelIds: [groupA.id, groupB.id],
+      });
+      expect(remaining).toEqual([]);
+    });
+  });
 });
