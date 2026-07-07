@@ -24,14 +24,13 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuPortal,
   DropdownMenuTrigger,
   SettingsList,
   SliderToggle,
 } from "@dust-tt/sparkle";
 import { zodResolver } from "@hookform/resolvers/zod";
 import cloneDeep from "lodash/cloneDeep";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import type { Control } from "react-hook-form";
 import { useController, useForm } from "react-hook-form";
 import { z } from "zod";
@@ -208,6 +207,10 @@ export function NotificationPreferences({
   const { field: slackField } = useController({ name: "slack", control });
   const { field: emailField } = useController({ name: "email", control });
 
+  const [portalContainer] = useState<HTMLElement | undefined>(() =>
+    typeof document !== "undefined" ? document.body : undefined
+  );
+
   const notificationsDisabled = notifyConditionField.value === "never";
   const isInAppEnabled = inAppField.value && workflowEnabled;
   const isSlackEnabled = slackField.value && workflowEnabled;
@@ -231,17 +234,15 @@ export function NotificationPreferences({
                 }
               />
             </DropdownMenuTrigger>
-            <DropdownMenuPortal>
-              <DropdownMenuContent>
-                {NOTIFICATION_CONDITION_OPTIONS.map((condition) => (
-                  <DropdownMenuItem
-                    key={condition}
-                    label={NOTIFICATION_CONDITION_LABELS[condition]}
-                    onClick={() => notifyConditionField.onChange(condition)}
-                  />
-                ))}
-              </DropdownMenuContent>
-            </DropdownMenuPortal>
+            <DropdownMenuContent mountPortalContainer={portalContainer}>
+              {NOTIFICATION_CONDITION_OPTIONS.map((condition) => (
+                <DropdownMenuItem
+                  key={condition}
+                  label={NOTIFICATION_CONDITION_LABELS[condition]}
+                  onClick={() => notifyConditionField.onChange(condition)}
+                />
+              ))}
+            </DropdownMenuContent>
           </DropdownMenu>
         }
       />
@@ -300,17 +301,15 @@ export function NotificationPreferences({
                 }
               />
             </DropdownMenuTrigger>
-            <DropdownMenuPortal>
-              <DropdownMenuContent>
-                {NOTIFICATION_DELAY_OPTIONS.map((delay) => (
-                  <DropdownMenuItem
-                    key={delay}
-                    label={NOTIFICATION_PREFERENCES_DELAY_LABELS[delay]}
-                    onClick={() => emailDelayField.onChange(delay)}
-                  />
-                ))}
-              </DropdownMenuContent>
-            </DropdownMenuPortal>
+            <DropdownMenuContent mountPortalContainer={portalContainer}>
+              {NOTIFICATION_DELAY_OPTIONS.map((delay) => (
+                <DropdownMenuItem
+                  key={delay}
+                  label={NOTIFICATION_PREFERENCES_DELAY_LABELS[delay]}
+                  onClick={() => emailDelayField.onChange(delay)}
+                />
+              ))}
+            </DropdownMenuContent>
           </DropdownMenu>
         }
       />
