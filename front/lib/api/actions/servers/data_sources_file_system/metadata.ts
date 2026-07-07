@@ -5,7 +5,7 @@ import {
   DataSourceFilesystemFindInputSchema,
   DataSourceFilesystemListInputSchema,
   DataSourceFilesystemLocateTreeInputSchema,
-  SearchMaxAgeSecondsInputSchema,
+  SearchDocumentTimeFrameInputSchema,
   SearchWithNodesInputSchema,
   TagsInputSchema,
 } from "@app/lib/actions/mcp_internal_actions/types";
@@ -23,8 +23,8 @@ export const FILESYSTEM_CAT_TOOL_NAME = "cat";
 export const FILESYSTEM_FIND_TOOL_NAME = "find";
 export const FILESYSTEM_LOCATE_IN_TREE_TOOL_NAME = "locate_in_tree";
 export const FILESYSTEM_LIST_TOOL_NAME = "list";
-export const DATA_SOURCE_SEARCH_MAX_AGE_FEATURE_FLAG =
-  "data_source_search_max_age";
+export const DATA_SOURCE_SEARCH_DOCUMENT_TIME_FRAME_FEATURE_FLAG =
+  "data_source_search_document_time_frame";
 
 export const DATA_SOURCES_FILE_SYSTEM_TOOLS_METADATA = createToolsRecord({
   [FILESYSTEM_CAT_TOOL_NAME]: {
@@ -150,7 +150,7 @@ export const DATA_SOURCES_FILE_SYSTEM_TOOLS_WITH_TAGS_METADATA =
     },
   });
 
-export const DATA_SOURCES_FILE_SYSTEM_TOOLS_WITH_MAX_AGE_METADATA =
+export const DATA_SOURCES_FILE_SYSTEM_TOOLS_WITH_DOCUMENT_TIME_FRAME_METADATA =
   createToolsRecord({
     [FILESYSTEM_CAT_TOOL_NAME]:
       DATA_SOURCES_FILE_SYSTEM_TOOLS_METADATA[FILESYSTEM_CAT_TOOL_NAME],
@@ -160,7 +160,7 @@ export const DATA_SOURCES_FILE_SYSTEM_TOOLS_WITH_MAX_AGE_METADATA =
       ...DATA_SOURCES_FILE_SYSTEM_TOOLS_METADATA[FILESYSTEM_SEARCH_TOOL_NAME],
       schema: {
         ...SearchWithNodesInputSchema.shape,
-        ...SearchMaxAgeSecondsInputSchema.shape,
+        ...SearchDocumentTimeFrameInputSchema.shape,
       },
     },
     [FILESYSTEM_FIND_TOOL_NAME]:
@@ -171,7 +171,7 @@ export const DATA_SOURCES_FILE_SYSTEM_TOOLS_WITH_MAX_AGE_METADATA =
       ],
   });
 
-export const DATA_SOURCES_FILE_SYSTEM_TOOLS_WITH_TAGS_AND_MAX_AGE_METADATA =
+export const DATA_SOURCES_FILE_SYSTEM_TOOLS_WITH_TAGS_AND_DOCUMENT_TIME_FRAME_METADATA =
   createToolsRecord({
     [FILESYSTEM_CAT_TOOL_NAME]:
       DATA_SOURCES_FILE_SYSTEM_TOOLS_METADATA[FILESYSTEM_CAT_TOOL_NAME],
@@ -181,7 +181,7 @@ export const DATA_SOURCES_FILE_SYSTEM_TOOLS_WITH_TAGS_AND_MAX_AGE_METADATA =
       ...DATA_SOURCES_FILE_SYSTEM_TOOLS_METADATA[FILESYSTEM_SEARCH_TOOL_NAME],
       schema: {
         ...SearchWithNodesInputSchema.shape,
-        ...SearchMaxAgeSecondsInputSchema.shape,
+        ...SearchDocumentTimeFrameInputSchema.shape,
         ...TagsInputSchema.shape,
       },
     },

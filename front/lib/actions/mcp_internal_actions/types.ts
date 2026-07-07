@@ -48,22 +48,21 @@ export type SearchWithNodesInputType = z.infer<
   typeof SearchWithNodesInputSchema
 >;
 
-export const SearchMaxAgeSecondsInputSchema = z.object({
-  maxAgeSeconds: z
-    .number()
-    .int()
-    .positive()
+export const SearchDocumentTimeFrameInputSchema = z.object({
+  documentTimeFrame: z
+    .string()
+    .regex(/^\d+[hdwmy]$/)
     .describe(
-      "Optional maximum document age in seconds for semantic search, relative to LOCAL_TIME. " +
+      "Optional relative time frame used to restrict semantic search to recently updated documents. " +
         "Use this only when the user asks for recent or fresh information. " +
-        "Examples: 1 day = 86400, 7 days = 604800, 30 days = 2592000. " +
+        "Examples: `1d` for the last day, `7d` for the last 7 days, `4w` for the last 4 weeks, `6m` for the last 6 months. " +
         "Leave it unset when older documents may still be relevant."
     )
     .optional(),
 });
 
-export type SearchMaxAgeSecondsInputType = z.infer<
-  typeof SearchMaxAgeSecondsInputSchema
+export type SearchDocumentTimeFrameInputType = z.infer<
+  typeof SearchDocumentTimeFrameInputSchema
 >;
 
 export const TagsInputSchema = z.object({

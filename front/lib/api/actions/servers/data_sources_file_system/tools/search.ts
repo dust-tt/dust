@@ -9,7 +9,7 @@ import {
   toCoreSearchArgs,
 } from "@app/lib/actions/mcp_internal_actions/tools/utils";
 import type {
-  SearchMaxAgeSecondsInputType,
+  SearchDocumentTimeFrameInputType,
   SearchWithNodesInputType,
   TagsInputType,
 } from "@app/lib/actions/mcp_internal_actions/types";
@@ -17,7 +17,7 @@ import {
   isAgentLoopRunContext,
   type ToolContextType,
 } from "@app/lib/actions/types";
-import { DATA_SOURCE_SEARCH_MAX_AGE_FEATURE_FLAG } from "@app/lib/api/actions/servers/data_sources_file_system/metadata";
+import { DATA_SOURCE_SEARCH_DOCUMENT_TIME_FRAME_FEATURE_FLAG } from "@app/lib/api/actions/servers/data_sources_file_system/metadata";
 import { getDataSourceSearchTimestampGtMs } from "@app/lib/api/actions/servers/data_sources_file_system/tools/search_time_frame";
 import { getRefs } from "@app/lib/api/assistant/citations";
 import config from "@app/lib/api/config";
@@ -41,20 +41,23 @@ export async function search(
     dataSources,
     query,
     relativeTimeFrame,
-    maxAgeSeconds,
+    documentTimeFrame,
     tagsIn,
     tagsNot,
   }: SearchWithNodesInputType &
-    Partial<SearchMaxAgeSecondsInputType> &
+    Partial<SearchDocumentTimeFrameInputType> &
     TagsInputType,
   { auth, toolContext }: { auth: Authenticator; toolContext?: ToolContextType }
 ): Promise<Result<CallToolResult["content"], MCPError>> {
   const timestampGtMsResult = getDataSourceSearchTimestampGtMs({
-    maxAgeSeconds,
+    documentTimeFrame,
     relativeTimeFrame,
-    isMaxAgeEnabled:
-      maxAgeSeconds !== undefined
-        ? await hasFeatureFlag(auth, DATA_SOURCE_SEARCH_MAX_AGE_FEATURE_FLAG)
+    isDocumentTimeFrameEnabled:
+      documentTimeFrame !== undefined
+        ? await hasFeatureFlag(
+            auth,
+            DATA_SOURCE_SEARCH_DOCUMENT_TIME_FRAME_FEATURE_FLAG
+          )
         : false,
   });
 

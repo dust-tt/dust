@@ -2,8 +2,8 @@ import type { ToolHandlers } from "@app/lib/actions/mcp_internal_actions/tool_de
 import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import {
   DATA_SOURCES_FILE_SYSTEM_TOOLS_METADATA,
-  DATA_SOURCES_FILE_SYSTEM_TOOLS_WITH_MAX_AGE_METADATA,
-  DATA_SOURCES_FILE_SYSTEM_TOOLS_WITH_TAGS_AND_MAX_AGE_METADATA,
+  DATA_SOURCES_FILE_SYSTEM_TOOLS_WITH_DOCUMENT_TIME_FRAME_METADATA,
+  DATA_SOURCES_FILE_SYSTEM_TOOLS_WITH_TAGS_AND_DOCUMENT_TIME_FRAME_METADATA,
   DATA_SOURCES_FILE_SYSTEM_TOOLS_WITH_TAGS_METADATA,
   FILESYSTEM_CAT_TOOL_NAME,
   FILESYSTEM_FIND_TOOL_NAME,
@@ -36,14 +36,14 @@ const handlersWithTags: ToolHandlers<
   },
 };
 
-const handlersWithMaxAge: ToolHandlers<
-  typeof DATA_SOURCES_FILE_SYSTEM_TOOLS_WITH_MAX_AGE_METADATA
+const handlersWithDocumentTimeFrame: ToolHandlers<
+  typeof DATA_SOURCES_FILE_SYSTEM_TOOLS_WITH_DOCUMENT_TIME_FRAME_METADATA
 > = handlers;
 
-const handlersWithTagsAndMaxAge: ToolHandlers<
-  typeof DATA_SOURCES_FILE_SYSTEM_TOOLS_WITH_TAGS_AND_MAX_AGE_METADATA
+const handlersWithTagsAndDocumentTimeFrame: ToolHandlers<
+  typeof DATA_SOURCES_FILE_SYSTEM_TOOLS_WITH_TAGS_AND_DOCUMENT_TIME_FRAME_METADATA
 > = {
-  ...handlersWithMaxAge,
+  ...handlersWithDocumentTimeFrame,
   [FIND_TAGS_TOOL_NAME]: async ({ query, dataSources }, { auth }) => {
     return executeFindTags(auth, query, dataSources);
   },
@@ -54,9 +54,9 @@ export const TOOLS_WITHOUT_TAGS = buildTools(
   handlers
 );
 
-export const TOOLS_WITH_MAX_AGE = buildTools(
-  DATA_SOURCES_FILE_SYSTEM_TOOLS_WITH_MAX_AGE_METADATA,
-  handlersWithMaxAge
+export const TOOLS_WITH_DOCUMENT_TIME_FRAME = buildTools(
+  DATA_SOURCES_FILE_SYSTEM_TOOLS_WITH_DOCUMENT_TIME_FRAME_METADATA,
+  handlersWithDocumentTimeFrame
 );
 
 export const TOOLS_WITH_TAGS = buildTools(
@@ -64,7 +64,7 @@ export const TOOLS_WITH_TAGS = buildTools(
   handlersWithTags
 );
 
-export const TOOLS_WITH_TAGS_AND_MAX_AGE = buildTools(
-  DATA_SOURCES_FILE_SYSTEM_TOOLS_WITH_TAGS_AND_MAX_AGE_METADATA,
-  handlersWithTagsAndMaxAge
+export const TOOLS_WITH_TAGS_AND_DOCUMENT_TIME_FRAME = buildTools(
+  DATA_SOURCES_FILE_SYSTEM_TOOLS_WITH_TAGS_AND_DOCUMENT_TIME_FRAME_METADATA,
+  handlersWithTagsAndDocumentTimeFrame
 );

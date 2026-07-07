@@ -6,10 +6,10 @@ describe("getDataSourceSearchTimestampGtMs", () => {
     vi.useRealTimers();
   });
 
-  it("rejects maxAgeSeconds when the feature flag is disabled", () => {
+  it("rejects documentTimeFrame when the feature flag is disabled", () => {
     const result = getDataSourceSearchTimestampGtMs({
-      maxAgeSeconds: 604800,
-      isMaxAgeEnabled: false,
+      documentTimeFrame: "7d",
+      isDocumentTimeFrameEnabled: false,
     });
 
     expect(result.isErr()).toBe(true);
@@ -18,14 +18,14 @@ describe("getDataSourceSearchTimestampGtMs", () => {
     }
   });
 
-  it("uses maxAgeSeconds over relativeTimeFrame when enabled", () => {
+  it("uses documentTimeFrame over relativeTimeFrame when enabled", () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-07-07T12:00:00.000Z"));
 
     const result = getDataSourceSearchTimestampGtMs({
-      maxAgeSeconds: 604800,
+      documentTimeFrame: "7d",
       relativeTimeFrame: "2y",
-      isMaxAgeEnabled: true,
+      isDocumentTimeFrameEnabled: true,
     });
 
     expect(result.isOk()).toBe(true);
@@ -34,13 +34,13 @@ describe("getDataSourceSearchTimestampGtMs", () => {
     }
   });
 
-  it("keeps existing relativeTimeFrame behavior without maxAgeSeconds", () => {
+  it("keeps existing relativeTimeFrame behavior without documentTimeFrame", () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-07-07T12:00:00.000Z"));
 
     const result = getDataSourceSearchTimestampGtMs({
       relativeTimeFrame: "4w",
-      isMaxAgeEnabled: false,
+      isDocumentTimeFrameEnabled: false,
     });
 
     expect(result.isOk()).toBe(true);

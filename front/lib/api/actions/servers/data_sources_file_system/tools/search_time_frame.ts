@@ -7,18 +7,18 @@ import {
 } from "@app/types/shared/utils/time_frame";
 
 export function getDataSourceSearchTimestampGtMs({
-  maxAgeSeconds,
+  documentTimeFrame,
   relativeTimeFrame,
-  isMaxAgeEnabled,
+  isDocumentTimeFrameEnabled,
 }: {
-  maxAgeSeconds?: number;
+  documentTimeFrame?: string;
   relativeTimeFrame?: string;
-  isMaxAgeEnabled: boolean;
+  isDocumentTimeFrameEnabled: boolean;
 }): Result<number | null, MCPError> {
-  if (maxAgeSeconds !== undefined && !isMaxAgeEnabled) {
+  if (documentTimeFrame !== undefined && !isDocumentTimeFrameEnabled) {
     return new Err(
       new MCPError(
-        "The `maxAgeSeconds` parameter is not enabled for this workspace.",
+        "The `documentTimeFrame` parameter is not enabled for this workspace.",
         {
           tracked: false,
         }
@@ -26,11 +26,12 @@ export function getDataSourceSearchTimestampGtMs({
     );
   }
 
-  if (maxAgeSeconds !== undefined) {
-    if (!Number.isInteger(maxAgeSeconds) || maxAgeSeconds <= 0) {
+  if (documentTimeFrame !== undefined) {
+    const timeFrame = parseTimeFrame(documentTimeFrame);
+    if (!timeFrame) {
       return new Err(
         new MCPError(
-          "Invalid `maxAgeSeconds` value. Use a positive integer number of seconds.",
+          "Invalid `documentTimeFrame` value. Use a duration like `7d`, `4w`, or `6m`.",
           {
             tracked: false,
           }
@@ -38,7 +39,7 @@ export function getDataSourceSearchTimestampGtMs({
       );
     }
 
-    return new Ok(Math.round(Date.now() - maxAgeSeconds * 1000));
+    return new Ok(timeFrameFromNow(timeFrame));
   }
 
   const timeFrame = parseTimeFrame(relativeTimeFrame ?? "all");
