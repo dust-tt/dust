@@ -93,7 +93,7 @@ const newButtonVariants = cva(
         ),
         warning: cn(
           OVERLAY,
-          "bg-linear-to-b from-red-400 to-red-500",
+          "bg-linear-to-b from-warning-400 to-warning-500",
           "text-white",
           RAISED_SHADOW
         ),
