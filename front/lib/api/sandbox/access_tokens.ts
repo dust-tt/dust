@@ -4,11 +4,7 @@ import type { Authenticator } from "@app/lib/auth";
 import type { SandboxResource } from "@app/lib/resources/sandbox_resource";
 import logger from "@app/logger/logger";
 import type { AgentMCPActionType } from "@app/types/actions";
-import type { AgentConfigurationType } from "@app/types/assistant/agent";
-import type {
-  AgentMessageType,
-  ConversationType,
-} from "@app/types/assistant/conversation";
+import type { AgentLoopExecutionData } from "@app/types/assistant/agent_run";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import crypto from "crypto";
 import jwt from "jsonwebtoken";
@@ -174,9 +170,9 @@ export async function generateSandboxExecToken(
     sandboxAction,
     expiryMs = 2 * 60 * 1000, // Default to 2 minutes
   }: {
-    agentConfiguration: AgentConfigurationType;
-    agentMessage: AgentMessageType;
-    conversation: ConversationType;
+    agentConfiguration: AgentLoopExecutionData["agentConfiguration"];
+    agentMessage: AgentLoopExecutionData["agentMessage"];
+    conversation: AgentLoopExecutionData["conversation"];
     sandbox: SandboxResource;
     execId: string;
     sandboxAction: AgentMCPActionType;

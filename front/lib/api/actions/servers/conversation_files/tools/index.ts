@@ -25,7 +25,6 @@ import {
 import { getConversationDataSourceViews } from "@app/lib/api/assistant/jit/utils";
 import { listAttachments } from "@app/lib/api/assistant/jit_utils";
 import type { Authenticator } from "@app/lib/auth";
-import { getSupportedModelConfig } from "@app/lib/llms/model_configurations";
 import {
   CONTENT_OUTDATED_MSG,
   getContentFragmentFromAttachmentFile,
@@ -146,12 +145,7 @@ const handlers: ToolHandlers<typeof CONVERSATION_FILES_TOOLS_METADATA> = {
     );
 
     const conversation = toolContext.runContext.conversation;
-    const model = getSupportedModelConfig(
-      toolContext.runContext.agentConfiguration.model
-    );
-    if (!model) {
-      return new Err(new MCPError("Model configuration not found"));
-    }
+    const model = toolContext.runContext.model;
 
     const fileRes = await getFileFromConversation(
       auth,

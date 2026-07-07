@@ -369,7 +369,7 @@ export const sandboxSkill = {
       agentLoopData,
     }: { spaceIds: string[]; agentLoopData?: AgentLoopExecutionData }
   ) => {
-    const providerId = agentLoopData?.agentConfiguration?.model.providerId;
+    const providerId = agentLoopData?.model.providerId;
     const flags = await getFeatureFlags(auth);
     const hasDsbxTools = isComputerFeatureEnabled(flags);
     const isProject = agentLoopData?.conversation

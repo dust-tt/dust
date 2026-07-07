@@ -1,6 +1,10 @@
 import { getSupportedModelConfig } from "@app/lib/llms/model_configurations";
 import assert from "@app/lib/utils/assert";
-import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
+import type {
+  AgentModelConfigurationType,
+  LightAgentConfigurationType,
+  LightAgentConfigurationWithoutModelType,
+} from "@app/types/assistant/agent";
 import {
   CHAIN_OF_THOUGHT_DELIMITERS_CONFIGURATION,
   DEEPSEEK_CHAIN_OF_THOUGHT_DELIMITERS_CONFIGURATION,
@@ -54,7 +58,7 @@ export class AgentMessageContentParser {
   >;
 
   constructor(
-    private agentConfiguration: LightAgentConfigurationType,
+    private agentConfiguration: LightAgentConfigurationWithoutModelType,
     private messageId: string,
     delimitersConfiguration: DelimitersConfiguration
   ) {
@@ -284,18 +288,21 @@ const DEEPSEEK_MODELS: ModelIdType[] = [
 ];
 
 export function getDelimitersConfiguration({
-  agentConfiguration,
+  model,
 }: {
-  agentConfiguration: LightAgentConfigurationType;
+  model: AgentModelConfigurationType;
 }): DelimitersConfiguration {
-  const model = getSupportedModelConfig(agentConfiguration.model);
-  assert(model, "Model configuration not found in getDelimitersConfiguration");
+  const supportedModel = getSupportedModelConfig(model);
+  assert(
+    supportedModel,
+    "Model configuration not found in getDelimitersConfiguration"
+  );
 
   if (DEEPSEEK_MODELS.includes(model.modelId)) {
     return DEEPSEEK_CHAIN_OF_THOUGHT_DELIMITERS_CONFIGURATION;
   }
   const reasoningEffort =
-    agentConfiguration.model.reasoningEffort ?? model.defaultReasoningEffort;
+    model.reasoningEffort ?? supportedModel.defaultReasoningEffort;
   if (reasoningEffort !== "light") {
     return {
       delimiters: [],

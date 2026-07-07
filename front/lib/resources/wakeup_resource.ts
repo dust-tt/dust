@@ -20,7 +20,7 @@ import {
   cancelWakeUpTemporalWorkflow,
   launchOrScheduleWakeUpTemporalWorkflow,
 } from "@app/temporal/triggers/wakeup_client";
-import type { AgentConfigurationType } from "@app/types/assistant/agent";
+import type { AgentLoopExecutionData } from "@app/types/assistant/agent_run";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import {
   ACTIVE_WAKE_UP_STATUSES,
@@ -203,7 +203,7 @@ export class WakeUpResource extends BaseResource<WakeUpModel> {
           reason: string;
         },
     conversation: ConversationWithoutContentType,
-    agentConfiguration: AgentConfigurationType,
+    agentConfiguration: AgentLoopExecutionData["agentConfiguration"],
     { transaction }: { transaction?: Transaction } = {}
   ): Promise<Result<WakeUpResource, Error>> {
     const { scheduleType, fireAt, cronExpression, cronTimezone, reason } = blob;

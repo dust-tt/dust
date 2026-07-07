@@ -238,9 +238,9 @@ describe("runSandboxBashTool", () => {
         runContext: {
           contextType: "agent_loop",
           agentConfiguration: {
-            model: { providerId: "openai" },
             sId: "agent-id",
           },
+          model: { providerId: "openai" },
           agentMessage: { sId: "message-id", agentMessageId: 1 },
           conversation: { sId: "conversation-id" },
           currentAction: { sId: "sandbox-action-id" },
@@ -675,9 +675,9 @@ describe("runSandboxBashTool", () => {
           runContext: {
             contextType: "agent_loop",
             agentConfiguration: {
-              model: { providerId: "openai" },
               sId: "agent-id",
             },
+            model: { providerId: "openai" },
             agentMessage: { sId: "message-id", agentMessageId: 1 },
             conversation: { sId: "conversation-id" },
             currentAction: { sId: "sandbox-action-id" },

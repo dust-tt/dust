@@ -27,12 +27,7 @@ import type { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action
 import { withPeriodicHeartbeat } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import { TOOL_ACTIVITY_HEARTBEAT_TIMEOUT_MS } from "@app/temporal/agent_loop/config";
-import type { AgentConfigurationType } from "@app/types/assistant/agent";
-import type {
-  AgentMessageType,
-  ConversationType,
-  UserMessageType,
-} from "@app/types/assistant/conversation";
+import type { AgentLoopExecutionData } from "@app/types/assistant/agent_run";
 import { removeNulls } from "@app/types/shared/utils/general";
 import { heartbeat } from "@temporalio/activity";
 
@@ -53,15 +48,17 @@ export async function* runToolWithStreaming(
   {
     action,
     agentConfiguration,
+    model,
     agentMessage,
     conversation,
     userMessage,
   }: {
     action: AgentMCPActionResource;
-    agentConfiguration: AgentConfigurationType;
-    agentMessage: AgentMessageType;
-    conversation: ConversationType;
-    userMessage: UserMessageType;
+    agentConfiguration: AgentLoopExecutionData["agentConfiguration"];
+    model: AgentLoopExecutionData["model"];
+    agentMessage: AgentLoopExecutionData["agentMessage"];
+    conversation: AgentLoopExecutionData["conversation"];
+    userMessage: AgentLoopExecutionData["userMessage"];
   },
   options?: { signal?: AbortSignal }
 ): AsyncGenerator<
@@ -91,6 +88,7 @@ export async function* runToolWithStreaming(
   const agentLoopRunContext: AgentLoopRunContextType = {
     contextType: "agent_loop",
     agentConfiguration,
+    model,
     agentMessage,
     currentAction: action.toJSON(),
     conversation,

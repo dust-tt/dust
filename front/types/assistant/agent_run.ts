@@ -7,10 +7,13 @@ import { PREVIOUS_INTERACTIONS_TO_PRESERVE } from "@app/lib/api/assistant/conver
 import { getStaticReplyForUserMessage } from "@app/lib/api/assistant/static_reply";
 import type { AuthenticatorType } from "@app/lib/auth";
 import { Authenticator } from "@app/lib/auth";
+import { getSupportedModelConfig } from "@app/lib/llms/model_configurations";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { cacheWithRedis } from "@app/lib/utils/cache";
 import type {
   AgentConfigurationType,
+  AgentConfigurationWithoutModelType,
+  AgentModelConfigurationType,
   GlobalAgentContext,
 } from "@app/types/assistant/agent";
 import type {
@@ -27,6 +30,7 @@ import type { Result } from "../shared/result";
 import { Err, Ok } from "../shared/result";
 import { isGlobalAgentId } from "./assistant";
 import { ConversationError } from "./conversation";
+import type { ModelConfigurationType } from "./models/types";
 
 /**
  * Error types for getAgentLoopData that indicate deleted or unavailable resources.
@@ -130,7 +134,9 @@ export type AgentMessageRef = {
 };
 
 export type AgentLoopExecutionData = {
-  agentConfiguration: AgentConfigurationType;
+  // No models on the agent configuration as it might be different at run time (eg: auto mode, override by inputbar picker)
+  agentConfiguration: AgentConfigurationWithoutModelType;
+  model: AgentModelConfigurationType & ModelConfigurationType;
   agentMessage: AgentMessageType;
   conversation: ConversationType;
   userMessage: UserMessageType;
@@ -315,11 +321,28 @@ export async function getAgentLoopDataWithAuth(
   });
 
   if (!agentConfiguration) {
-    return new Err(new Error("Agent configuration not found"));
+    return new Err(new Error(`Agent configuration not found ${agentId}`));
+  }
+
+  const { model: agentModel, ...agentConfigurationWithoutModel } =
+    agentConfiguration;
+
+  const model = getSupportedModelConfig(agentModel);
+
+  if (!model) {
+    return new Err(
+      new Error(
+        `The model you selected does not support multi-actions ${agentModel.modelId}.`
+      )
+    );
   }
 
   return new Ok({
-    agentConfiguration,
+    agentConfiguration: agentConfigurationWithoutModel,
+    model: {
+      ...agentModel,
+      ...model,
+    },
     agentMessage,
     auth,
     conversation,

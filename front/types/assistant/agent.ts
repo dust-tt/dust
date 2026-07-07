@@ -200,6 +200,16 @@ export const AgentConfigurationSchema = LightAgentConfigurationSchema.extend({
 
 export type AgentConfigurationType = z.infer<typeof AgentConfigurationSchema>;
 
+export type AgentConfigurationWithoutModelType = Omit<
+  AgentConfigurationType,
+  "model"
+>;
+
+export type LightAgentConfigurationWithoutModelType = Omit<
+  LightAgentConfigurationType,
+  "model"
+>;
+
 export interface TemplateAgentConfigurationType {
   name: string;
   pictureUrl: string;

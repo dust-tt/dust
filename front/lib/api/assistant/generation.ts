@@ -35,14 +35,13 @@ import type {
 } from "@app/lib/api/llm/types/options";
 import type { Authenticator } from "@app/lib/auth";
 import type { SkillResource } from "@app/lib/resources/skill/skill_resource";
-import type { AgentConfigurationType } from "@app/types/assistant/agent";
+import type { AgentLoopExecutionData } from "@app/types/assistant/agent_run";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import { CHAIN_OF_THOUGHT_META_PROMPT } from "@app/types/assistant/chain_of_thought_meta_prompt";
 import type {
   ConversationWithoutContentType,
   UserMessageType,
 } from "@app/types/assistant/conversation";
-import type { ModelConfigurationType } from "@app/types/assistant/models/types";
 import type { WorkspaceType } from "@app/types/user";
 import moment from "moment-timezone";
 
@@ -59,8 +58,8 @@ function constructContextSection({
   disableFormattingPrompt,
 }: {
   userMessage: UserMessageType;
-  agentConfiguration: AgentConfigurationType;
-  model: ModelConfigurationType;
+  agentConfiguration: AgentLoopExecutionData["agentConfiguration"];
+  model: AgentLoopExecutionData["model"];
   owner: WorkspaceType | null;
   errorContext?: string;
   disableFormattingPrompt: boolean;
@@ -157,8 +156,8 @@ function constructToolsSection({
   serverToolsAndInstructions,
 }: {
   hasAvailableActions: boolean;
-  model: ModelConfigurationType;
-  agentConfiguration: AgentConfigurationType;
+  model: AgentLoopExecutionData["model"];
+  agentConfiguration: AgentLoopExecutionData["agentConfiguration"];
   conversation?: ConversationWithoutContentType;
   serverToolsAndInstructions?: ServerToolsAndInstructions[];
 }): string {
@@ -170,7 +169,7 @@ function constructToolsSection({
   }
   if (
     hasAvailableActions &&
-    agentConfiguration.model.reasoningEffort === "light" &&
+    model.reasoningEffort === "light" &&
     !model.useNativeLightReasoning
   ) {
     toolsSection += `${CHAIN_OF_THOUGHT_META_PROMPT}\n`;
@@ -319,7 +318,7 @@ function constructPastedContentSection(): string {
 export function constructGuidelinesSection({
   agentConfiguration,
 }: {
-  agentConfiguration: AgentConfigurationType;
+  agentConfiguration: AgentLoopExecutionData["agentConfiguration"];
 }): string {
   let guidelinesSection = "# GUIDELINES\n";
 
@@ -366,7 +365,7 @@ function constructInstructionsSection({
   agentConfiguration,
   fallbackPrompt,
 }: {
-  agentConfiguration: AgentConfigurationType;
+  agentConfiguration: AgentLoopExecutionData["agentConfiguration"];
   fallbackPrompt?: string;
 }): string {
   let instructions = "# INSTRUCTIONS\n\n";
@@ -403,10 +402,10 @@ export function constructPromptMultiActions(
     hasSandboxTools = false,
     disableFormattingPrompt = false,
   }: {
-    userMessage: UserMessageType;
-    agentConfiguration: AgentConfigurationType;
+    userMessage: AgentLoopExecutionData["userMessage"];
+    agentConfiguration: AgentLoopExecutionData["agentConfiguration"];
     fallbackPrompt?: string;
-    model: ModelConfigurationType;
+    model: AgentLoopExecutionData["model"];
     hasAvailableActions: boolean;
     errorContext?: string;
     conversation?: ConversationWithoutContentType;

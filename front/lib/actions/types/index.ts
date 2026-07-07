@@ -5,12 +5,16 @@ import type {
 } from "@app/lib/actions/mcp";
 import type { SandboxFunctionInvocationResource } from "@app/lib/resources/sandbox_function_invocation_resource";
 import type { AgentMCPActionType } from "@app/types/actions";
-import type { AgentConfigurationType } from "@app/types/assistant/agent";
+import type {
+  AgentConfigurationWithoutModelType,
+  AgentModelConfigurationType,
+} from "@app/types/assistant/agent";
 import type {
   AgentMessageType,
   ConversationType,
   UserMessageType,
 } from "@app/types/assistant/conversation";
+import type { ModelConfigurationType } from "@app/types/assistant/models/types";
 import type { AllSupportedFileContentType } from "@app/types/files";
 import { z } from "zod";
 
@@ -148,7 +152,8 @@ export type ActionGeneratedFileType =
 
 export type AgentLoopRunContextType = {
   contextType: "agent_loop";
-  agentConfiguration: AgentConfigurationType;
+  agentConfiguration: AgentConfigurationWithoutModelType;
+  model: AgentModelConfigurationType & ModelConfigurationType;
   agentMessage: AgentMessageType;
   currentAction: AgentMCPActionType;
   conversation: ConversationType;
@@ -164,7 +169,7 @@ export type SandboxFunctionRunContextType = {
 };
 
 export type AgentLoopListToolsContextType = {
-  agentConfiguration: AgentConfigurationType;
+  agentConfiguration: AgentConfigurationWithoutModelType;
   agentActionConfiguration: MCPServerConfigurationType;
   clientSideActionConfigurations?: ClientSideMCPServerConfigurationType[];
   conversation: ConversationType;

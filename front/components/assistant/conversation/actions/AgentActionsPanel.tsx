@@ -173,7 +173,9 @@ function AgentActionsPanelContent({
           const contentParser = new AgentMessageContentParser(
             agentConfiguration,
             messageId,
-            getDelimitersConfiguration({ agentConfiguration })
+            getDelimitersConfiguration({
+              model: agentConfiguration.model,
+            })
           );
           const parsedContent = await contentParser.parseContents([
             c.content.value,

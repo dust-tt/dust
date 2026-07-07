@@ -4,13 +4,13 @@ import type { LLMErrorInfo } from "@app/lib/api/llm/types/errors";
 import type { SystemPromptSections } from "@app/lib/api/llm/types/options";
 import type { Authenticator } from "@app/lib/auth";
 import type { AgentMessageContentParser } from "@app/lib/llms/agent_message_content_parser";
-import type { AgentConfigurationType } from "@app/types/assistant/agent";
 import type {
   AgentFunctionCallContentType,
   AgentProviderPassthroughContentType,
   AgentReasoningContentType,
   AgentTextContentType,
 } from "@app/types/assistant/agent_message_content";
+import type { AgentLoopExecutionData } from "@app/types/assistant/agent_run";
 import type {
   AgentMessageType,
   ConversationType,
@@ -55,8 +55,8 @@ export type GetOutputRequestParams = {
   flushParserTokens: () => Promise<void>;
   contentParser: AgentMessageContentParser;
   step: number;
-  agentConfiguration: AgentConfigurationType;
-  agentMessage: AgentMessageType;
+  agentConfiguration: AgentLoopExecutionData["agentConfiguration"];
+  agentMessage: AgentLoopExecutionData["agentMessage"];
   model: ModelConfigurationType;
   activityTimeoutDeadlineMs: number;
   publishAgentError: (error: {

@@ -1,4 +1,5 @@
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
+import { getSupportedModelConfig } from "@app/lib/llms/model_configurations";
 import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { SkillDataSourceConfigurationModel } from "@app/lib/models/skill";
 import { GroupSkillModel } from "@app/lib/models/skill/group_skill";
@@ -1623,12 +1624,22 @@ describe("SkillResource", () => {
         }
       );
 
+      const { model: agentModel, ...agentConfiguration } = agent;
+      const modelConfig = getSupportedModelConfig(agentModel);
+      if (!modelConfig) {
+        throw new Error("Supported model config should exist");
+      }
+
       const skills = await SkillResource.fetchByIds(
         testContext.authenticator,
         ["mention_users"],
         {
           agentLoopData: {
-            agentConfiguration: agent,
+            agentConfiguration,
+            model: {
+              ...agentModel,
+              ...modelConfig,
+            },
             agentMessage,
             conversation,
             userMessage,
