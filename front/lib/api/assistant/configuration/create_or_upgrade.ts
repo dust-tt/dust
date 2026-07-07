@@ -149,18 +149,25 @@ export async function createOrUpgradeAgentConfiguration({
 
   const featureFlags = await getFeatureFlags(auth);
   const modelConfig = getSupportedModelConfig(assistant.model);
-  if (modelConfig) {
-    const accessError = await getAdvancedModelAccessErrorForAgentConfiguration(
-      auth,
-      {
-        agentName: assistant.name,
-        model: modelConfig,
-        featureFlags,
-      }
+  if (!modelConfig) {
+    return new Err(
+      new Error(
+        `Unsupported model "${assistant.model.modelId}" for provider ` +
+          `"${assistant.model.providerId}".`
+      )
     );
-    if (accessError) {
-      return new Err(new Error(accessError.message));
+  }
+
+  const accessError = await getAdvancedModelAccessErrorForAgentConfiguration(
+    auth,
+    {
+      agentName: assistant.name,
+      model: modelConfig,
+      featureFlags,
     }
+  );
+  if (accessError) {
+    return new Err(new Error(accessError.message));
   }
 
   const agentConfigurationRes = await createAgentConfiguration(auth, {

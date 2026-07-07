@@ -711,15 +711,18 @@ export async function runModel(
       !output.toolCalls?.length && output.content ? output.content : undefined,
   });
 
-  // Should not happen
+  // The model is listed as supported but no client (legacy or new router) can
+  // serve it. Surface an agent error instead of returning silently, which would
+  // leave the message pending and the UI stuck on "Thinking…" indefinitely.
   if (llm === null) {
-    localLogger.error(
-      {
-        conversationId: conversation.sId,
-        workspaceId: conversation.owner.sId,
-      },
-      "LLM is null in runModel, cannot proceed."
-    );
+    await publishAgentError({
+      code: "model_not_available",
+      message:
+        `The model you selected (${agentConfiguration.model.modelId}) ` +
+        `is not available. Please edit the agent to use another model ` +
+        `(advanced settings in the Instructions panel).`,
+      metadata: null,
+    });
 
     return null;
   }

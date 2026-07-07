@@ -796,7 +796,7 @@ export async function postUserMessage(
 
     const supportedModelConfig = getSupportedModelConfig(agentConfig.model);
     if (
-      supportedModelConfig &&
+      !supportedModelConfig ||
       !isModelAvailable(supportedModelConfig, {
         featureFlags,
         plan,
