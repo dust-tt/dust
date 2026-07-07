@@ -4,19 +4,16 @@ import { AgentBuilderAvatarSection } from "@app/components/agent_builder/setting
 import { AgentBuilderDescriptionSection } from "@app/components/agent_builder/settings/AgentBuilderDescriptionSection";
 import { AgentBuilderNameSection } from "@app/components/agent_builder/settings/AgentBuilderNameSection";
 import { TagsSection } from "@app/components/agent_builder/settings/TagsSection";
+import type { ReactNode } from "react";
 
 interface AgentBuilderSettingsBlockProps {
   agentConfigurationId: string | null;
-  isEditorGateVisible: boolean;
-  isAddingSelfAsEditor: boolean;
-  onAddSelfAsEditor: () => void;
+  editorGateButton?: ReactNode;
 }
 
 export function AgentBuilderSettingsBlock({
   agentConfigurationId,
-  isEditorGateVisible,
-  isAddingSelfAsEditor,
-  onAddSelfAsEditor,
+  editorGateButton,
 }: AgentBuilderSettingsBlockProps) {
   const isCreatingNew = !agentConfigurationId;
   return (
@@ -29,11 +26,7 @@ export function AgentBuilderSettingsBlock({
           <AgentBuilderAvatarSection isCreatingNew={isCreatingNew} />
         </div>
         <AgentBuilderDescriptionSection isCreatingNew={isCreatingNew} />
-        <AccessSection
-          isEditorGateVisible={isEditorGateVisible}
-          isAddingSelfAsEditor={isAddingSelfAsEditor}
-          onAddSelfAsEditor={onAddSelfAsEditor}
-        />
+        <AccessSection editorGateButton={editorGateButton} />
         <TagsSection />
       </div>
     </AgentBuilderSectionContainer>

@@ -33,6 +33,7 @@ import {
 import type { AgentBuilderMCPConfigurationWithId } from "@app/components/agent_builder/types";
 import { ConversationSidePanelProvider } from "@app/components/assistant/conversation/ConversationSidePanelContext";
 import { ConfirmContext } from "@app/components/Confirm";
+import { BecomeEditorButton } from "@app/components/shared/BecomeEditorButton";
 import {
   BuilderEditorGateMessage,
   BuilderEditorLoadErrorMessage,
@@ -864,9 +865,14 @@ function AgentBuilderContent({
             agentConfigurationId={agentConfiguration?.sId || null}
             isTriggersLoading={isTriggersLoading}
             initialRequestedSpaceIds={agentConfiguration?.requestedSpaceIds}
-            isEditorGateVisible={isEditorGateVisible}
-            isAddingSelfAsEditor={isAddingSelfAsEditor}
-            onAddSelfAsEditor={onAddSelfAsEditor}
+            editorGateButton={
+              isEditorGateVisible ? (
+                <BecomeEditorButton
+                  isLoading={isAddingSelfAsEditor}
+                  onClick={onAddSelfAsEditor}
+                />
+              ) : undefined
+            }
           />
         }
         rightPanel={

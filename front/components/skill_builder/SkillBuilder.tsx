@@ -1,3 +1,4 @@
+import { BecomeEditorButton } from "@app/components/shared/BecomeEditorButton";
 import {
   BuilderEditorGateMessage,
   BuilderEditorLoadErrorMessage,
@@ -53,6 +54,7 @@ import {
   ScrollArea,
 } from "@dust-tt/sparkle";
 import { zodResolver } from "@hookform/resolvers/zod";
+import type { ReactNode } from "react";
 import { useEffect, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 
@@ -301,11 +303,16 @@ export default function SkillBuilder({ skill, onSaved }: SkillBuilderProps) {
           <SkillBuilderSettingsOrComparisonFooter
             skill={skill}
             hasSelfImprovingSkills={hasSelfImprovingSkills}
-            isEditorGateVisible={isAdminNonEditor}
-            isAddingSelfAsEditor={isAddingSelfAsEditor}
-            onAddSelfAsEditor={() => {
-              void handleAddSelfAsEditor();
-            }}
+            editorGateButton={
+              isAdminNonEditor ? (
+                <BecomeEditorButton
+                  isLoading={isAddingSelfAsEditor}
+                  onClick={() => {
+                    void handleAddSelfAsEditor();
+                  }}
+                />
+              ) : undefined
+            }
           />
         </div>
       </ScrollArea>
@@ -376,15 +383,11 @@ export default function SkillBuilder({ skill, onSaved }: SkillBuilderProps) {
 function SkillBuilderSettingsOrComparisonFooter({
   skill,
   hasSelfImprovingSkills,
-  isEditorGateVisible,
-  isAddingSelfAsEditor,
-  onAddSelfAsEditor,
+  editorGateButton,
 }: {
   skill?: SkillType;
   hasSelfImprovingSkills: boolean;
-  isEditorGateVisible: boolean;
-  isAddingSelfAsEditor: boolean;
-  onAddSelfAsEditor: () => void;
+  editorGateButton?: ReactNode;
 }) {
   const { compareVersion } = useSkillVersionComparisonContext();
 
@@ -396,9 +399,7 @@ function SkillBuilderSettingsOrComparisonFooter({
     <SkillBuilderSettingsSection
       skill={skill}
       hasSelfImprovingSkills={hasSelfImprovingSkills}
-      isEditorGateVisible={isEditorGateVisible}
-      isAddingSelfAsEditor={isAddingSelfAsEditor}
-      onAddSelfAsEditor={onAddSelfAsEditor}
+      editorGateButton={editorGateButton}
     />
   );
 }

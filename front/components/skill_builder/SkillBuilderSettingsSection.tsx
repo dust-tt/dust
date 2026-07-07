@@ -15,21 +15,18 @@ import {
   LinkExternal01,
   LinkWrapper,
 } from "@dust-tt/sparkle";
+import type { ReactNode } from "react";
 
 interface SkillBuilderSettingsSectionProps {
   skill?: SkillType;
   hasSelfImprovingSkills: boolean;
-  isEditorGateVisible: boolean;
-  isAddingSelfAsEditor: boolean;
-  onAddSelfAsEditor: () => void;
+  editorGateButton?: ReactNode;
 }
 
 export function SkillBuilderSettingsSection({
   skill,
   hasSelfImprovingSkills,
-  isEditorGateVisible,
-  isAddingSelfAsEditor,
-  onAddSelfAsEditor,
+  editorGateButton,
 }: SkillBuilderSettingsSectionProps) {
   const githubSkillFolderUrl = getGitHubSkillFolderUrl(skill);
 
@@ -65,11 +62,7 @@ export function SkillBuilderSettingsSection({
           Editors
         </Label>
         <div className="mt-2 flex w-full flex-row flex-wrap items-center gap-2">
-          <SkillEditorsSheet
-            isEditorGateVisible={isEditorGateVisible}
-            isAddingSelfAsEditor={isAddingSelfAsEditor}
-            onAddSelfAsEditor={onAddSelfAsEditor}
-          />
+          <SkillEditorsSheet editorGateButton={editorGateButton} />
         </div>
       </div>
       {hasSelfImprovingSkills && (

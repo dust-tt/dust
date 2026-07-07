@@ -1,21 +1,17 @@
 import { ManageUsersPanel } from "@app/components/assistant/conversation/space/ManageUsersPanel";
-import { BecomeEditorButton } from "@app/components/shared/BecomeEditorButton";
 import { useSkillBuilderContext } from "@app/components/skill_builder/SkillBuilderContext";
 import type { SkillBuilderFormData } from "@app/components/skill_builder/SkillBuilderFormContext";
 import { Button, Users01 } from "@dust-tt/sparkle";
+import type { ReactNode } from "react";
 import { useState } from "react";
 import { useController } from "react-hook-form";
 
 interface SkillEditorsSheetProps {
-  isEditorGateVisible: boolean;
-  isAddingSelfAsEditor: boolean;
-  onAddSelfAsEditor: () => void;
+  editorGateButton?: ReactNode;
 }
 
 export function SkillEditorsSheet({
-  isEditorGateVisible,
-  isAddingSelfAsEditor,
-  onAddSelfAsEditor,
+  editorGateButton,
 }: SkillEditorsSheetProps) {
   const { owner } = useSkillBuilderContext();
   const [isOpen, setIsOpen] = useState(false);
@@ -26,13 +22,8 @@ export function SkillEditorsSheet({
     name: "editors",
   });
 
-  if (isEditorGateVisible) {
-    return (
-      <BecomeEditorButton
-        isLoading={isAddingSelfAsEditor}
-        onClick={onAddSelfAsEditor}
-      />
-    );
+  if (editorGateButton) {
+    return editorGateButton;
   }
 
   return (

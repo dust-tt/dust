@@ -4,7 +4,6 @@ import { useDataSourceViewsContext } from "@app/components/agent_builder/DataSou
 import { SlackSettingsSheet } from "@app/components/agent_builder/settings/SlackSettingsSheet";
 import { SettingSectionContainer } from "@app/components/agent_builder/shared/SettingSectionContainer";
 import { ManageUsersPanel } from "@app/components/assistant/conversation/space/ManageUsersPanel";
-import { BecomeEditorButton } from "@app/components/shared/BecomeEditorButton";
 import { getPublishingRestrictionForOwner } from "@app/lib/api/assistant/publishing_restrictions";
 import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { isBuilder } from "@app/types/user";
@@ -19,21 +18,16 @@ import {
   SlackLogo,
   Users01,
 } from "@dust-tt/sparkle";
+import type { ReactNode } from "react";
 // biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
 import React, { useState } from "react";
 import { useController } from "react-hook-form";
 
 interface AccessSectionProps {
-  isEditorGateVisible: boolean;
-  isAddingSelfAsEditor: boolean;
-  onAddSelfAsEditor: () => void;
+  editorGateButton?: ReactNode;
 }
 
-export function AccessSection({
-  isEditorGateVisible,
-  isAddingSelfAsEditor,
-  onAddSelfAsEditor,
-}: AccessSectionProps) {
+export function AccessSection({ editorGateButton }: AccessSectionProps) {
   const { field: scope } = useController<
     AgentBuilderFormData,
     "agentSettings.scope"
@@ -82,12 +76,7 @@ export function AccessSection({
   return (
     <SettingSectionContainer title="Editors & Access">
       <div className="mt-2 flex w-full flex-row flex-wrap items-center gap-2">
-        {isEditorGateVisible ? (
-          <BecomeEditorButton
-            isLoading={isAddingSelfAsEditor}
-            onClick={onAddSelfAsEditor}
-          />
-        ) : (
+        {editorGateButton ?? (
           <>
             <Button
               variant="outline"
