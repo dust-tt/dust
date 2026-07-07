@@ -200,7 +200,34 @@ function buildReplayOnlyToolSpecification(
       required: [],
       additionalProperties: true,
     },
-    eager: true,
+  };
+}
+
+// Replayed tools keep their intrinsic `eager` flag: providers resolve deferred
+// tools from the replayed history, and promoting them would invalidate the
+// cached tool prefix. We only append placeholders for replayed tools that are
+// no longer configured, since every tool referenced in history must have a
+// definition.
+export function buildSpecificationsWithReplayPlaceholders(
+  baseSpecifications: AgentActionSpecification[],
+  modelConversation: ModelConversationTypeMultiActions
+): {
+  specifications: AgentActionSpecification[];
+  missingReplayedToolNames: string[];
+} {
+  const currentToolNames = new Set(baseSpecifications.map((spec) => spec.name));
+  const missingReplayedToolNames = getReplayedToolNames(
+    modelConversation
+  ).filter((name) => !currentToolNames.has(name));
+
+  return {
+    specifications: [
+      ...baseSpecifications,
+      ...missingReplayedToolNames.map((name) =>
+        buildReplayOnlyToolSpecification(name)
+      ),
+    ],
+    missingReplayedToolNames,
   };
 }
 
@@ -559,33 +586,18 @@ export async function runModel(
     return null;
   }
 
-  const replayedToolNames = getReplayedToolNames(
-    modelConversationRes.value.modelConversation
-  );
-  const replayedToolNameSet = new Set(replayedToolNames);
-  const currentToolNames = new Set(baseSpecifications.map((spec) => spec.name));
-  const missingReplayedToolNames = replayedToolNames.filter(
-    (name) => !currentToolNames.has(name)
-  );
+  const { specifications, missingReplayedToolNames } =
+    buildSpecificationsWithReplayPlaceholders(
+      baseSpecifications,
+      modelConversationRes.value.modelConversation
+    );
 
   if (missingReplayedToolNames.length > 0) {
     localLogger.info(
-      {
-        missingReplayedToolNames,
-        replayedToolNames,
-      },
+      { missingReplayedToolNames },
       "Replayed tools missing from current specifications"
     );
   }
-
-  const specifications: AgentActionSpecification[] = [
-    ...baseSpecifications.map((spec) =>
-      replayedToolNameSet.has(spec.name) ? { ...spec, eager: true } : spec
-    ),
-    ...missingReplayedToolNames.map((name) =>
-      buildReplayOnlyToolSpecification(name)
-    ),
-  ];
 
   // Temporarily adding this to check if we can consider contents property only in llms
   const unexpectedMessage =
