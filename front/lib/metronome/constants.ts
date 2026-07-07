@@ -315,7 +315,7 @@ export const PRO_SEAT_MONTHLY_AWU_CREDITS = 8000;
 export const MAX_SEAT_MONTHLY_AWU_CREDITS = 40000;
 
 // Seat commit/credit priorities
-export const SEAT_PRIORITY_SUBSCRIPTION_COMMIT = 300;
+export const SEAT_PRIORITY_SUBSCRIPTION_COMMIT = 200;
 export const SEAT_PRIORITY_COUPON_CREDIT = 300;
 
 // 80% threshold for near-limit warnings: applies to both cap consumption
