@@ -106,7 +106,7 @@ export class GroupPermissionResource extends BaseResource<GroupPermissionModel> 
   }
 
   // Revoke a single instance-level grant. No-op if absent. Type-wide (-1) grants are removed via
-  // revokeOnAllResourcesOfType, mirroring the instance-only contract of grant().
+  // revokeTypeWide, mirroring the instance-only contract of grant().
   static async revoke(
     auth: Authenticator,
     {
@@ -119,7 +119,7 @@ export class GroupPermissionResource extends BaseResource<GroupPermissionModel> 
   ): Promise<void> {
     assert(
       resourceId > 0,
-      "revoke() is instance-level; use revokeOnAllResourcesOfType for type-wide grants."
+      "revoke() is instance-level; use revokeTypeWide for type-wide grants."
     );
     await GroupPermissionModel.destroy({
       where: {
@@ -199,38 +199,24 @@ export class GroupPermissionResource extends BaseResource<GroupPermissionModel> 
     });
   }
 
-  // Grant a type-wide permission (resourceId = -1: the whole type). Dedicated, explicitly named so a
-  // defaulted -1 can never silently reach `grant`. Idempotent. Used for type-level verbs (e.g.
-  // "create") and for governance capabilities (see the governance-toggle methods).
-  static async grantOnAllResourcesOfType(
+  // Grant a permission for the whole resource type (resourceId = -1). Single-group convenience over
+  // grantTypeWideForGroups. Dedicated, explicitly named so a defaulted -1 can never silently reach
+  // `grant`. Idempotent. Used for type-level verbs (e.g. "create") and governance capabilities.
+  static async grantTypeWide(
     auth: Authenticator,
     { group, permissionType, resourceType, transaction }: TypeWideGrantSpec
-  ): Promise<GroupPermissionResource> {
-    this.assertGroupInWorkspace(auth, group);
-    assertValidGrant({
+  ): Promise<void> {
+    await this.grantTypeWideForGroups(auth, {
+      groups: [group],
       permissionType,
       resourceType,
-      resourceId: WHOLE_TYPE_RESOURCE_ID,
-    });
-
-    const workspaceId = auth.getNonNullableWorkspace().id;
-    const [row] = await GroupPermissionModel.findOrCreate({
-      where: {
-        workspaceId,
-        groupId: group.id,
-        permissionType,
-        resourceType,
-        resourceId: WHOLE_TYPE_RESOURCE_ID,
-      },
       transaction,
     });
-
-    return new this(GroupPermissionModel, row.get());
   }
 
-  // Batch of grantOnAllResourcesOfType across groups (one INSERT, unique index dedupes). Backs the
+  // Batch of grantTypeWide across groups (one INSERT, unique index dedupes). Backs the
   // governance setGroups transition without an N+1.
-  static async grantOnAllResourcesOfTypeForGroups(
+  static async grantTypeWideForGroups(
     auth: Authenticator,
     {
       groups,
@@ -268,7 +254,7 @@ export class GroupPermissionResource extends BaseResource<GroupPermissionModel> 
   }
 
   // Revoke a group's type-wide grant. No-op if absent.
-  static async revokeOnAllResourcesOfType(
+  static async revokeTypeWide(
     auth: Authenticator,
     { group, permissionType, resourceType, transaction }: TypeWideGrantSpec
   ): Promise<void> {

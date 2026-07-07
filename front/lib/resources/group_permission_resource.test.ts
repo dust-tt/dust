@@ -224,14 +224,14 @@ describe("GroupPermissionResource", () => {
     });
   });
 
-  describe("grantOnAllResourcesOfType", () => {
+  describe("grantTypeWide", () => {
     it("writes a type-wide (-1) grant and dedupes on repeat", async () => {
-      await GroupPermissionResource.grantOnAllResourcesOfType(auth, {
+      await GroupPermissionResource.grantTypeWide(auth, {
         group: groupA,
         permissionType: "create",
         resourceType: "agent",
       });
-      await GroupPermissionResource.grantOnAllResourcesOfType(auth, {
+      await GroupPermissionResource.grantTypeWide(auth, {
         group: groupA,
         permissionType: "create",
         resourceType: "agent",
@@ -246,7 +246,7 @@ describe("GroupPermissionResource", () => {
 
     it("rejects a verb the registry does not allow", async () => {
       await expect(
-        GroupPermissionResource.grantOnAllResourcesOfType(auth, {
+        GroupPermissionResource.grantTypeWide(auth, {
           group: groupA,
           permissionType: "read",
           resourceType: "billing",
@@ -254,13 +254,13 @@ describe("GroupPermissionResource", () => {
       ).rejects.toThrow(/not allowed/);
     });
 
-    it("revokeOnAllResourcesOfType removes the -1 row", async () => {
-      await GroupPermissionResource.grantOnAllResourcesOfType(auth, {
+    it("revokeTypeWide removes the -1 row", async () => {
+      await GroupPermissionResource.grantTypeWide(auth, {
         group: groupA,
         permissionType: "admin",
         resourceType: "billing",
       });
-      await GroupPermissionResource.revokeOnAllResourcesOfType(auth, {
+      await GroupPermissionResource.revokeTypeWide(auth, {
         group: groupA,
         permissionType: "admin",
         resourceType: "billing",
@@ -274,8 +274,8 @@ describe("GroupPermissionResource", () => {
   });
 
   describe("batch writes", () => {
-    it("grantOnAllResourcesOfTypeForGroups writes one -1 row per group", async () => {
-      await GroupPermissionResource.grantOnAllResourcesOfTypeForGroups(auth, {
+    it("grantTypeWideForGroups writes one -1 row per group", async () => {
+      await GroupPermissionResource.grantTypeWideForGroups(auth, {
         groups: [groupA, groupB],
         permissionType: "create",
         resourceType: "skill",
