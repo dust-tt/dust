@@ -1567,48 +1567,32 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     const agentEquippedSkills = allAgentSkills.filter(
       (s) => !s.isSystemSkill && !isSystemSkillForLoop(s)
     );
-    const equippedSkillIds = new Set(agentEquippedSkills.map((s) => s.sId));
-    const autoEquippedRefs = autoEquippedSkillRefs.filter(
-      (ref) =>
-        !systemSkillIds.has(ref.globalSkillId) &&
-        !equippedSkillIds.has(ref.globalSkillId)
-    );
-    const autoEquippedSkills = autoEquippedRefs.length
-      ? await this.fetchBySkillReferences(auth, autoEquippedRefs, {
+    const autoEquippedSkills = autoEquippedSkillRefs.length
+      ? await this.fetchBySkillReferences(auth, autoEquippedSkillRefs, {
           agentLoopData,
           withInstructions: false,
           withTools: false,
         })
       : [];
-    for (const { sId } of autoEquippedSkills) {
-      equippedSkillIds.add(sId);
-    }
 
-    const podEquippedSkills = podDefaultSkills.filter(
-      (s) => !isSystemSkillForLoop(s) && !equippedSkillIds.has(s.sId)
-    );
-    for (const { sId } of podEquippedSkills) {
-      equippedSkillIds.add(sId);
-    }
-
-    const discoveredSkills = discoverableSkills.filter(
-      (s) => !isSystemSkillForLoop(s) && !equippedSkillIds.has(s.sId)
-    );
-    for (const { sId } of discoveredSkills) {
-      equippedSkillIds.add(sId);
+    const equippedSkillsById = new Map<string, SkillResource>();
+    for (const skill of [
+      ...agentEquippedSkills,
+      ...autoEquippedSkills,
+      ...podDefaultSkills,
+      ...discoverableSkills,
+    ]) {
+      if (!isSystemSkillForLoop(skill) && !equippedSkillsById.has(skill.sId)) {
+        equippedSkillsById.set(skill.sId, skill);
+      }
     }
 
     return {
+      systemSkills: systemSkills.sort(sortByName),
       enabledSkills: conversationEnabledSkills
         .filter((s) => !isSystemSkillForLoop(s))
         .sort(sortByName),
-      systemSkills: systemSkills.sort(sortByName),
-      equippedSkills: [
-        ...agentEquippedSkills,
-        ...autoEquippedSkills,
-        ...podEquippedSkills,
-        ...discoveredSkills,
-      ].sort(sortByName),
+      equippedSkills: [...equippedSkillsById.values()].sort(sortByName),
     };
   }
 
