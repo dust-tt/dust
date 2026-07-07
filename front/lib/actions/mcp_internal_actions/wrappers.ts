@@ -191,8 +191,13 @@ function withToolLogging<T>(
             result.error.message,
             MAX_LOGGED_ERROR_MESSAGE_LENGTH
           ),
-          tracked: result.error.tracked,
           code: result.error.code,
+          cause: result.error.cause
+            ? truncate(
+                errorToString(result.error.cause),
+                MAX_LOGGED_ERROR_MESSAGE_LENGTH
+              )
+            : undefined,
         },
       };
       if (result.error.tracked) {
