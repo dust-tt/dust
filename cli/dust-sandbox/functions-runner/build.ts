@@ -13,7 +13,6 @@
 import { dirname } from "node:path";
 import {
   extractManifests,
-  ManifestError,
   type ManifestErrorKind,
   readDeclaredDatabases,
 } from "./manifest.ts";
@@ -81,19 +80,16 @@ export async function build(
   // 3. Extract per-database manifests (manifest.v1) when the function declares databases.
   //    Schema files resolve relative to the SOURCE directory: the bundle has already inlined
   //    its own copy of them.
-  try {
-    const declared = await readDeclaredDatabases(outBundlePath);
-    if (declared.length > 0) {
-      schema.databases = await extractManifests(dirname(srcPath), declared);
+  const declared = await readDeclaredDatabases(outBundlePath);
+  if (!declared.ok) {
+    return declared;
+  }
+  if (declared.value.length > 0) {
+    const manifests = await extractManifests(dirname(srcPath), declared.value);
+    if (!manifests.ok) {
+      return manifests;
     }
-  } catch (e) {
-    if (e instanceof ManifestError) {
-      return { ok: false, error: { kind: e.kind, message: e.message } };
-    }
-    return {
-      ok: false,
-      error: { kind: "database_schema_invalid", message: errorMessage(e) },
-    };
+    schema.databases = manifests.value;
   }
 
   await Bun.write(outSchemaPath, JSON.stringify(schema));

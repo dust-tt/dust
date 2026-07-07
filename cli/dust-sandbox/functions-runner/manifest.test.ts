@@ -2,59 +2,64 @@ import { describe, expect, test } from "bun:test";
 import { join } from "node:path";
 import {
   extractManifests,
-  ManifestError,
+  type FunctionStateManifest,
+  type ManifestErrorKind,
+  type ManifestResult,
   readDeclaredDatabases,
 } from "./manifest.ts";
 
 const fixturesDir = join(import.meta.dir, "fixtures");
 const fx = (n: string) => join(fixturesDir, n);
 
-async function expectManifestError(
-  promise: Promise<unknown>,
-  kind: string,
+function expectManifestError(
+  result: ManifestResult<unknown>,
+  kind: ManifestErrorKind,
   messagePattern: RegExp
-): Promise<void> {
-  let caught: unknown;
-  try {
-    await promise;
-  } catch (e) {
-    caught = e;
+): void {
+  expect(result.ok).toBe(false);
+  if (!result.ok) {
+    expect(result.error.kind).toBe(kind);
+    expect(result.error.message).toMatch(messagePattern);
   }
-  expect(caught).toBeInstanceOf(ManifestError);
-  if (caught instanceof ManifestError) {
-    expect(caught.kind).toBe(kind);
-    expect(caught.message).toMatch(messagePattern);
+}
+
+function unwrap<T>(result: ManifestResult<T>): T {
+  if (!result.ok) {
+    throw new Error(`expected ok result, got: ${result.error.message}`);
   }
+  return result.value;
 }
 
 describe("readDeclaredDatabases", () => {
   test("returns [] when the function declares no databases", async () => {
-    expect(await readDeclaredDatabases(fx("greet.ts"))).toEqual([]);
+    expect(unwrap(await readDeclaredDatabases(fx("greet.ts")))).toEqual([]);
   });
 
   test("returns the declared names", async () => {
-    expect(await readDeclaredDatabases(fx("db-chat.ts"))).toEqual(["chat"]);
+    expect(unwrap(await readDeclaredDatabases(fx("db-chat.ts")))).toEqual([
+      "chat",
+    ]);
   });
 
   test("rejects a non-array declaration", async () => {
-    await expectManifestError(
-      readDeclaredDatabases(fx("db-badtype.ts")),
+    expectManifestError(
+      await readDeclaredDatabases(fx("db-badtype.ts")),
       "databases_declaration_invalid",
       /array of database names/
     );
   });
 
   test("rejects names violating the name contract", async () => {
-    await expectManifestError(
-      readDeclaredDatabases(fx("db-badname.ts")),
+    expectManifestError(
+      await readDeclaredDatabases(fx("db-badname.ts")),
       "databases_declaration_invalid",
       /invalid database name "ChatDb"/
     );
   });
 
   test("rejects duplicate names", async () => {
-    await expectManifestError(
-      readDeclaredDatabases(fx("db-dupe.ts")),
+    expectManifestError(
+      await readDeclaredDatabases(fx("db-dupe.ts")),
       "databases_declaration_invalid",
       /duplicate/
     );
@@ -63,7 +68,9 @@ describe("readDeclaredDatabases", () => {
 
 describe("extractManifests", () => {
   test("extracts the full manifest for the chat fixture", async () => {
-    const manifests = await extractManifests(fixturesDir, ["chat"]);
+    const manifests: FunctionStateManifest = unwrap(
+      await extractManifests(fixturesDir, ["chat"])
+    );
     expect(manifests.version).toBe(1);
     expect(Object.keys(manifests.databases)).toEqual(["chat"]);
 
@@ -115,93 +122,104 @@ describe("extractManifests", () => {
       unique: false,
       columns: ["created_at", "handle"],
     });
+    expect(chat.tables.messages.indexes.messages_slug_idx).toEqual({
+      unique: true,
+      columns: ["slug"],
+    });
 
-    // Column-level .unique() normalizes into the indexes map.
-    const messages = chat.tables.messages;
-    const slugIndexes = Object.entries(messages.indexes).filter(
-      ([, index]) => index.unique && index.columns.length === 1
-    );
-    expect(slugIndexes).toHaveLength(1);
-    expect(slugIndexes[0]?.[1]).toEqual({ unique: true, columns: ["slug"] });
-
-    // Table-level single-column primaryKey folds into the column flag; table-level unique()
-    // normalizes into the indexes map.
+    // Table-level single-column primaryKey folds into the column flag.
     const settings = chat.tables.settings;
     expect(settings.columns.key.primaryKey).toBe(true);
     expect(settings.columns.key.autoIncrement).toBe(false);
-    expect(settings.indexes.settings_scope_value_unique).toEqual({
+    expect(settings.indexes.settings_scope_value_idx).toEqual({
       unique: true,
       columns: ["scope", "value"],
     });
   });
 
   test("rejects inline foreign keys", async () => {
-    await expectManifestError(
-      extractManifests(fixturesDir, ["fk"]),
+    expectManifestError(
+      await extractManifests(fixturesDir, ["fk"]),
       "database_schema_invalid",
       /foreign keys .* not allowed/
     );
   });
 
   test("rejects table-level foreign keys", async () => {
-    await expectManifestError(
-      extractManifests(fixturesDir, ["fk_table"]),
+    expectManifestError(
+      await extractManifests(fixturesDir, ["fk_table"]),
       "database_schema_invalid",
       /foreign keys .* not allowed/
     );
   });
 
   test("rejects CHECK constraints", async () => {
-    await expectManifestError(
-      extractManifests(fixturesDir, ["checked"]),
+    expectManifestError(
+      await extractManifests(fixturesDir, ["checked"]),
       "database_schema_invalid",
       /CHECK constraints are not allowed/
     );
   });
 
+  test("rejects a column-level .unique() constraint", async () => {
+    expectManifestError(
+      await extractManifests(fixturesDir, ["unique_column"]),
+      "database_schema_invalid",
+      /use uniqueIndex\(\) instead/
+    );
+  });
+
+  test("rejects a table-level unique() constraint", async () => {
+    expectManifestError(
+      await extractManifests(fixturesDir, ["unique_table"]),
+      "database_schema_invalid",
+      /use uniqueIndex\(\) instead/
+    );
+  });
+
   test("rejects composite primary keys", async () => {
-    await expectManifestError(
-      extractManifests(fixturesDir, ["composite"]),
+    expectManifestError(
+      await extractManifests(fixturesDir, ["composite"]),
       "database_schema_invalid",
       /composite primary keys are not allowed/
     );
   });
 
   test("rejects a schema file exporting no tables", async () => {
-    await expectManifestError(
-      extractManifests(fixturesDir, ["empty"]),
+    expectManifestError(
+      await extractManifests(fixturesDir, ["empty"]),
       "database_schema_invalid",
       /exports no tables/
     );
   });
 
   test("rejects an SQL-expression index", async () => {
-    await expectManifestError(
-      extractManifests(fixturesDir, ["expr"]),
+    expectManifestError(
+      await extractManifests(fixturesDir, ["expr"]),
       "database_schema_invalid",
       /SQL expression/
     );
   });
 
   test("rejects a missing schema file", async () => {
-    await expectManifestError(
-      extractManifests(fixturesDir, ["nosuchdb"]),
+    expectManifestError(
+      await extractManifests(fixturesDir, ["nosuchdb"]),
       "database_schema_unresolvable",
       /schema file not found/
     );
   });
 
   test("rejects a table name with a reserved prefix", async () => {
-    await expectManifestError(
-      extractManifests(fixturesDir, ["reserved_prefix"]),
+    expectManifestError(
+      await extractManifests(fixturesDir, ["reserved_prefix"]),
       "database_schema_invalid",
       /reserved prefix/
     );
   });
 
   test("rejects a column named after an Object.prototype key", async () => {
-    await expectManifestError(
-      extractManifests(fixturesDir, ["proto_column"]),
+    expectManifestError(
+      await extractManifests(fixturesDir, ["proto_column"]),
       "database_schema_invalid",
       /"__proto__" is reserved/
     );

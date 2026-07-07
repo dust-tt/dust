@@ -1,4 +1,6 @@
-// Rejection fixture: column named after an Object.prototype key.
+// Rejection fixture: column named after an Object.prototype key. Table/column/index names
+// become plain-object keys in every manifest consumer (runner, front, JSONB), where
+// __proto__/constructor/prototype are prototype-pollution vectors.
 import { integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
 
 export const evil = sqliteTable("evil", {
