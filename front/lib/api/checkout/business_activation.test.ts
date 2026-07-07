@@ -13,6 +13,7 @@ const {
   mockGetCheckoutPaymentStatus,
   mockMarkCheckoutPaymentSucceeded,
   mockMarkCheckoutPaymentFailed,
+  mockMarkCheckoutPaymentActivating,
   mockRecordCheckoutPaymentSyncFailure,
   mockSwapMetronomeContract,
   mockFetchActiveSubscription,
@@ -29,6 +30,7 @@ const {
   mockGetCheckoutPaymentStatus: vi.fn(),
   mockMarkCheckoutPaymentSucceeded: vi.fn(),
   mockMarkCheckoutPaymentFailed: vi.fn(),
+  mockMarkCheckoutPaymentActivating: vi.fn(),
   mockRecordCheckoutPaymentSyncFailure: vi.fn(),
   mockSwapMetronomeContract: vi.fn(),
   mockFetchActiveSubscription: vi.fn(),
@@ -47,6 +49,7 @@ vi.mock("@app/lib/credits/checkout_payment_status", () => ({
   getCheckoutPaymentStatus: mockGetCheckoutPaymentStatus,
   markCheckoutPaymentSucceeded: mockMarkCheckoutPaymentSucceeded,
   markCheckoutPaymentFailed: mockMarkCheckoutPaymentFailed,
+  markCheckoutPaymentActivating: mockMarkCheckoutPaymentActivating,
   recordCheckoutPaymentSyncFailure: mockRecordCheckoutPaymentSyncFailure,
 }));
 
@@ -259,6 +262,7 @@ beforeEach(() => {
   mockGetCheckoutPaymentStatus.mockResolvedValue(CHECKOUT_PAYMENT_PENDING);
   mockMarkCheckoutPaymentSucceeded.mockResolvedValue(undefined);
   mockMarkCheckoutPaymentFailed.mockResolvedValue(undefined);
+  mockMarkCheckoutPaymentActivating.mockResolvedValue(undefined);
   mockRecordCheckoutPaymentSyncFailure.mockResolvedValue(undefined);
   mockSwapMetronomeContract.mockResolvedValue(undefined);
   mockInvalidateCache.mockResolvedValue(undefined);

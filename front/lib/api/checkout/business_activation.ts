@@ -9,6 +9,7 @@ import { Authenticator } from "@app/lib/auth";
 import {
   type CheckoutPayment,
   getCheckoutPaymentStatus,
+  markCheckoutPaymentActivating,
   markCheckoutPaymentFailed,
   markCheckoutPaymentSucceeded,
   recordCheckoutPaymentSyncFailure,
@@ -447,6 +448,17 @@ export async function handleSubscriptionActivationSuccess({
     );
     return;
   }
+
+  // Payment has cleared and activation is starting. Surface it to the polling UI
+  // as early as possible so the long-running work below (contract swap, workspace
+  // restore, seat update, seat sync, ending the previous contract, ...) shows as
+  // "activating your workspace" rather than still "processing payment". Marked
+  // here — the single entry point for both the webhook and the zero-amount fast
+  // path — so every activation route advances the UI consistently.
+  await markCheckoutPaymentActivating({
+    workspaceId: workspace.sId,
+    contractId,
+  });
 
   const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
   const lightWorkspace = renderLightWorkspaceType({ workspace });
