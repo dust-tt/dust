@@ -323,7 +323,7 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
   },
   models_picker: {
     description:
-      "Model picker in the conversation input bar: pick a model tier (Fast, Balanced, Powerful, Frontier) or a specific model.",
+      "Model picker in the conversation input bar: pick a specific model.",
     stage: "dust_only",
   },
   activation_skill: {

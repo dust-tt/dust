@@ -458,6 +458,13 @@ export class AgentMessageModel extends WorkspaceAwareModel<AgentMessageModel> {
   declare completedAt: Date | null;
   declare prunedContext: boolean | null;
   declare costCredits: number | null;
+
+  // Per-message model override from the input-bar model picker: the concrete
+  // provider/model/effort triplet the user picked at send time. All null when
+  // the message runs the agent's configured model.
+  declare requestedProviderId: string | null;
+  declare requestedModelId: string | null;
+  declare requestedReasoningEffort: string | null;
 }
 
 AgentMessageModel.init(
@@ -545,6 +552,21 @@ AgentMessageModel.init(
     },
     costCredits: {
       type: DataTypes.INTEGER,
+      allowNull: true,
+      defaultValue: null,
+    },
+    requestedProviderId: {
+      type: DataTypes.STRING,
+      allowNull: true,
+      defaultValue: null,
+    },
+    requestedModelId: {
+      type: DataTypes.STRING,
+      allowNull: true,
+      defaultValue: null,
+    },
+    requestedReasoningEffort: {
+      type: DataTypes.STRING,
       allowNull: true,
       defaultValue: null,
     },
