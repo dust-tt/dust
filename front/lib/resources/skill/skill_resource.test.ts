@@ -1794,6 +1794,49 @@ describe("SkillResource", () => {
 
       expect(equippedSkills.filter((s) => s.sId === skill.sId)).toHaveLength(1);
     });
+
+    it("sorts equipped skills across sources", async () => {
+      const { authenticator, workspace, user } = testContext;
+
+      const space = await SpaceFactory.project(workspace, user.id);
+      const podDefaultSkill = await SkillFactory.create(authenticator, {
+        name: "A Pod Default Skill",
+      });
+      const metadata = await ProjectMetadataResource.makeNew(
+        authenticator,
+        space,
+        { description: "d" }
+      );
+      await metadata.setDefaultSkills(authenticator, [podDefaultSkill]);
+
+      const agentSkill = await SkillFactory.create(authenticator, {
+        name: "Z Agent Skill",
+      });
+      const agent = await AgentConfigurationFactory.createTestAgent(
+        authenticator,
+        { name: "Pod Agent" }
+      );
+      await agentSkill.addToAgent(authenticator, agent);
+
+      const conversation = await ConversationFactory.create(authenticator, {
+        agentConfigurationId: agent.sId,
+        messagesCreatedAt: [],
+        spaceId: space.id,
+      });
+
+      const { equippedSkills } = await SkillResource.listForAgentLoop(
+        authenticator,
+        { agentConfiguration: agent, conversation }
+      );
+
+      expect(
+        equippedSkills
+          .map((s) => s.name)
+          .filter((name) =>
+            ["A Pod Default Skill", "Z Agent Skill"].includes(name)
+          )
+      ).toEqual(["A Pod Default Skill", "Z Agent Skill"]);
+    });
   });
 
   describe("batchFetchUsedBySkills", () => {
