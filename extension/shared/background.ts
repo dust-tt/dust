@@ -28,8 +28,11 @@ import type {
   GetSessionInfoMessage,
   GetSessionInfoResponse,
   InputBarStatusMessage,
+  SnapshotTabStateMessage,
+  SnapshotTabStateResponse,
   TabActionMessage,
   TabActionResponse,
+  TabInfo,
   TypeTextMessage,
   TypeTextResponse,
 } from "@extension/shared/messages";
@@ -80,6 +83,17 @@ function withTabLock<T>(fn: () => Promise<T>): Promise<T> {
   );
   return next;
 }
+
+const toTabInfo = (tabs: chrome.tabs.Tab[]): TabInfo[] =>
+  tabs.flatMap((t) =>
+    t.id !== undefined && t.url
+      ? [{ tabId: t.id, title: t.title || "", url: t.url, active: t.active }]
+      : []
+  );
+
+// Tabs captured at send time so tab tools stay anchored to what the user saw
+// when they sent, not where they navigated while the agent was processing.
+let currentTurnTabSnapshot: TabInfo[] | null = null;
 
 const shouldDisableContextMenuForDomain = async (
   url: string,
@@ -536,6 +550,7 @@ export const registerMessageListener = (platform: PlatformService) => {
         | GetActiveTabBackgroundMessage
         | CaptureMesssage
         | InputBarStatusMessage
+        | SnapshotTabStateMessage
         | TabActionMessage
         | GetPageElementsMessage
         | ClickPageElementMessage
@@ -550,6 +565,7 @@ export const registerMessageListener = (platform: PlatformService) => {
           | AuthBackgroundResponseError
           | CaptureResponse
           | GetActiveTabBackgroundResponse
+          | SnapshotTabStateResponse
           | TabActionResponse
           | GetPageElementsResponse
           | ClickPageElementResponse
@@ -859,20 +875,20 @@ export const registerMessageListener = (platform: PlatformService) => {
           })();
           return true;
 
-        case "LIST_TABS":
+        case "SNAPSHOT_TAB_STATE":
           void (async () => {
             const tabs = await chrome.tabs.query({ currentWindow: true });
-            sendResponse({
-              success: true,
-              tabs: tabs
-                .filter((t) => t.id !== undefined && t.url)
-                .map((t) => ({
-                  tabId: t.id!,
-                  title: t.title || "",
-                  url: t.url || "",
-                  active: t.active,
-                })),
-            });
+            currentTurnTabSnapshot = toTabInfo(tabs);
+            sendResponse({ success: true });
+          })();
+          return true;
+
+        case "LIST_TABS":
+          void (async () => {
+            const tabs =
+              currentTurnTabSnapshot ??
+              toTabInfo(await chrome.tabs.query({ currentWindow: true }));
+            sendResponse({ success: true, tabs });
           })();
           return true;
 
