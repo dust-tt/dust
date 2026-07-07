@@ -10,12 +10,20 @@
 // (sandbox results can be truncated). stdout only carries a small
 // `{ ok: true }` / `{ ok: false, error }` envelope.
 
+import { dirname } from "node:path";
+import {
+  extractManifests,
+  ManifestError,
+  type ManifestErrorKind,
+  readDeclaredDatabases,
+} from "./manifest.ts";
 import { getFunctionSchema } from "./schema.ts";
 
 export type BuildErrorKind =
   | "bad_args"
   | "build_failed"
-  | "schema_extraction_failed";
+  | "schema_extraction_failed"
+  | ManifestErrorKind;
 
 export type BuildResult =
   | { ok: true }
@@ -60,16 +68,35 @@ export async function build(
 
   // 2. Extract the schema from the built artifact. Importing it also validates that the bundle
   //    loads and exposes a well-formed `schema` export.
+  let schema;
   try {
-    const schema = await getFunctionSchema(outBundlePath);
-
-    await Bun.write(outSchemaPath, JSON.stringify(schema));
+    schema = await getFunctionSchema(outBundlePath);
   } catch (e) {
     return {
       ok: false,
       error: { kind: "schema_extraction_failed", message: errorMessage(e) },
     };
   }
+
+  // 3. Extract per-database manifests (manifest.v1) when the function declares databases.
+  //    Schema files resolve relative to the SOURCE directory: the bundle has already inlined
+  //    its own copy of them.
+  try {
+    const declared = await readDeclaredDatabases(outBundlePath);
+    if (declared.length > 0) {
+      schema.databases = await extractManifests(dirname(srcPath), declared);
+    }
+  } catch (e) {
+    if (e instanceof ManifestError) {
+      return { ok: false, error: { kind: e.kind, message: e.message } };
+    }
+    return {
+      ok: false,
+      error: { kind: "database_schema_invalid", message: errorMessage(e) },
+    };
+  }
+
+  await Bun.write(outSchemaPath, JSON.stringify(schema));
 
   return { ok: true };
 }
