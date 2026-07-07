@@ -134,6 +134,7 @@ import {
   isComputerFeatureEnabled,
   type WhitelistableFeature,
 } from "@app/types/shared/feature_flags";
+import { isWorkspaceAnalyticsEnabled } from "@app/types/user";
 
 // Exhaustive map of flags for each global agent. This is used to control which agents inject
 // per-user dynamic content (like the user profile) into the prompt context. This approach is not
@@ -1536,7 +1537,7 @@ export async function getGlobalAgents(
 
   const flags = await getFeatureFlags(auth);
 
-  if (!flags.includes("workspace_analytics")) {
+  if (!isWorkspaceAnalyticsEnabled(owner)) {
     agentsIdsToFetch = agentsIdsToFetch.filter(
       (sId) => sId !== GLOBAL_AGENTS_SID.ANALYST
     );

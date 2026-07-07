@@ -8,6 +8,7 @@ import { ProjectKnowledgePolicy } from "@app/components/workspace/settings/Proje
 import { RestrictAgentsPublishingCapability } from "@app/components/workspace/settings/RestrictAgentsPublishingCapability";
 import { SlackPersonalFooterRemovalToggle } from "@app/components/workspace/settings/SlackPersonalFooterRemovalToggle";
 import { VoiceTranscriptionToggle } from "@app/components/workspace/settings/VoiceTranscriptionToggle";
+import { WorkspaceAnalyticsToggle } from "@app/components/workspace/settings/WorkspaceAnalyticsToggle";
 import { useAuth, useFeatureFlags } from "@app/lib/auth/AuthContext";
 import type { WorkspaceType } from "@app/types/user";
 import { ContextItem, Page } from "@dust-tt/sparkle";
@@ -40,6 +41,7 @@ export function CapabilitiesSection({
         <EmailAgentsToggle owner={owner} />
         <PrivateConversationUrlsToggle owner={owner} />
         <SlackPersonalFooterRemovalToggle owner={owner} />
+        <WorkspaceAnalyticsToggle owner={owner} />
         <DustMcpServerSettingsItem owner={owner} />
         {hasAuditLogsAccess && <AuditLogsToggle owner={owner} />}
         {publishingRestrictionMessage && (

@@ -200,6 +200,10 @@ const WorkspaceAuditLogsUpdateBodySchema = z.object({
   disableAuditLogs: z.boolean(),
 });
 
+const WorkspaceAnalyticsUpdateBodySchema = z.object({
+  disableWorkspaceAnalytics: z.boolean(),
+});
+
 const WorkspaceSlackPersonalFooterRemovalUpdateBodySchema = z.object({
   slackPersonalAllowFooterRemoval: z.boolean(),
 });
@@ -234,6 +238,7 @@ const PostWorkspaceRequestBodySchema = z.union([
   WorkspaceReinforcementCapAwuCreditsUpdateBodySchema,
   WorkspaceSelfImprovementCapPerSkillAwuCreditsUpdateBodySchema,
   WorkspaceAuditLogsUpdateBodySchema,
+  WorkspaceAnalyticsUpdateBodySchema,
   WorkspaceDefaultAgentUpdateBodySchema,
   WorkspaceSlackPersonalFooterRemovalUpdateBodySchema,
 ]);
@@ -654,6 +659,23 @@ app.post(
         context: getAuditLogContext(auth),
         metadata: {
           enabled: String(!body.disableAuditLogs),
+        },
+      });
+    } else if ("disableWorkspaceAnalytics" in body) {
+      const previousMetadata = owner.metadata ?? {};
+      const newMetadata = {
+        ...previousMetadata,
+        disableWorkspaceAnalytics: body.disableWorkspaceAnalytics,
+      };
+      await workspace.updateWorkspaceSettings({ metadata: newMetadata });
+      owner.metadata = newMetadata;
+      void emitAuditLogEvent({
+        auth,
+        action: "workspace.analytics_updated",
+        targets: [buildAuditLogTarget("workspace", owner)],
+        context: getAuditLogContext(auth),
+        metadata: {
+          enabled: String(!body.disableWorkspaceAnalytics),
         },
       });
     } else if ("workspaceDefaultAgentId" in body) {

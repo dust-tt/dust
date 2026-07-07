@@ -43,7 +43,10 @@ import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { removeNulls } from "@app/types/shared/utils/general";
-import { formatUserFullName } from "@app/types/user";
+import {
+  formatUserFullName,
+  isWorkspaceAnalyticsEnabled,
+} from "@app/types/user";
 import assert from "assert";
 import uniq from "lodash/uniq";
 import type {
@@ -1110,10 +1113,12 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
     {
       featureFlags,
       isDeepDiveDisabled,
+      isWorkspaceAnalyticsEnabled,
       plan,
     }: {
       featureFlags: WhitelistableFeature[];
       isDeepDiveDisabled: boolean;
+      isWorkspaceAnalyticsEnabled: boolean;
       plan: PlanType;
     }
   ): string[] {
@@ -1126,6 +1131,7 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
       const isEnabled = !INTERNAL_MCP_SERVERS[name].isRestricted?.({
         featureFlags,
         isDeepDiveDisabled,
+        isWorkspaceAnalyticsEnabled,
         plan,
       });
       const availability = getAvailabilityOfInternalMCPServerByName(name);
@@ -1242,6 +1248,7 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
         this.computeEnabledAutoInternalMCPServerIds(workspace.id, {
           featureFlags,
           isDeepDiveDisabled,
+          isWorkspaceAnalyticsEnabled: isWorkspaceAnalyticsEnabled(workspace),
           plan,
         });
 
