@@ -355,6 +355,8 @@
 
   --color-separator: var(--color-separator);
 
+  --color-slider-toggle-bg-idle: var(--color-slider-toggle-bg-idle);
+
   --color-ring: var(--color-ring);
   --color-ring-warning: var(--color-ring-warning);
 

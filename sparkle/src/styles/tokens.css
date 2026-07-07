@@ -296,6 +296,11 @@
   /* Separators */
   --color-separator: var(--color-stone-100);
 
+  /* === Components === */
+
+  /* SliderToggle */
+  --color-slider-toggle-bg-idle: var(--color-stone-200);
+
   /* === Brand === */
 
   --color-brand: oklch(57.64% 0.1041 153.7);
@@ -446,6 +451,11 @@
 
   /* Separators */
   --color-separator: var(--color-stone-800);
+
+  /* === Components === */
+
+  /* SliderToggle */
+  --color-slider-toggle-bg-idle: var(--color-stone-700);
 }
 
 
