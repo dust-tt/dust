@@ -1522,7 +1522,7 @@ const QUERIES: LabeledQuery[] = [
 
   // --- data_sources_file_system ---
   {
-    query: "read a connected data source document by its nodeId",
+    query: "read a connected data source document or page",
     expected: "data_sources_file_system.cat",
   },
   {
@@ -1531,7 +1531,7 @@ const QUERIES: LabeledQuery[] = [
   },
   {
     query:
-      "semantically search connected data sources for content about a topic",
+      "semantically search company data sources for knowledge about a topic",
     expected: "data_sources_file_system.semantic_search",
   },
   {
@@ -1539,8 +1539,7 @@ const QUERIES: LabeledQuery[] = [
     expected: "data_sources_file_system.find",
   },
   {
-    query:
-      "show the breadcrumb ancestor path of a node in the data source tree",
+    query: "show the breadcrumb path of a connected data source item",
     expected: "data_sources_file_system.locate_in_tree",
   },
 
