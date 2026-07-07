@@ -341,7 +341,7 @@ export async function processToolResults(
               file: fileUpsertResult.value,
             };
           } else {
-            localLogger.warn(
+            localLogger.info(
               {
                 workspaceId: auth.getNonNullableWorkspace().sId,
                 conversationId: conversation.sId,
