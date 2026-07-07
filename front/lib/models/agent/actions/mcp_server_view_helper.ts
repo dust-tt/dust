@@ -7,7 +7,7 @@ import {
 } from "@app/lib/models/agent/actions/mcp";
 import { AgentTablesQueryConfigurationTableModel } from "@app/lib/models/agent/actions/tables_query";
 import { SkillMCPServerConfigurationModel } from "@app/lib/models/skill";
-import { SandboxFunctionMCPActionModel } from "@app/lib/resources/storage/models/sandbox_function_mcp_action";
+import { SandboxFunctionMCPActionResource } from "@app/lib/resources/sandbox_function_mcp_action_resource";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Transaction } from "sequelize";
 import { Op } from "sequelize";
@@ -89,14 +89,9 @@ export async function destroyMCPServerViewDependencies(
   });
 
   // Sandbox-function tool calls FK the view with RESTRICT, so their rows must go before the view.
-  // TODO(2026-07-03 sandbox-functions): route through SandboxFunctionMCPActionResource once it
-  // exists so `outputGcsPath` objects are deleted too — rows destroyed here would orphan their GCS
-  // output objects (none are written yet; the resource lands in the next PR).
-  await SandboxFunctionMCPActionModel.destroy({
-    where: {
-      workspaceId: auth.getNonNullableWorkspace().id,
-      mcpServerViewId: mcpServerViewIds,
-    },
+  // Routed through the resource so the output GCS objects are deleted alongside the rows.
+  await SandboxFunctionMCPActionResource.deleteAllForMCPServerViews(auth, {
+    mcpServerViewIds,
     transaction,
   });
 }

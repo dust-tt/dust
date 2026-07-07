@@ -1,3 +1,5 @@
+import type { ToolExecutionBaseStatus } from "@app/lib/actions/statuses";
+
 export const SANDBOX_FUNCTION_INVOCATION_STATUSES = ["created"] as const;
 
 export type SandboxFunctionInvocationStatus =
@@ -15,6 +17,18 @@ export type SandboxFunctionInvocationType = {
   functionId: string;
   status: SandboxFunctionInvocationStatus;
   createdAt: string;
+};
+
+export type SandboxFunctionMCPActionType = {
+  sId: string;
+  createdAt: number;
+  updatedAt: number;
+
+  invocationId: string;
+  toolName: string;
+  inputs: Record<string, unknown>;
+  status: ToolExecutionBaseStatus;
+  executionDurationMs: number | null;
 };
 
 export type SandboxFunctionInvocationCreatedEvent = {

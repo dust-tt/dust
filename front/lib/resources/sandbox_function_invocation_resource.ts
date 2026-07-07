@@ -1,5 +1,6 @@
 import type { Authenticator } from "@app/lib/auth";
 import { BaseResource } from "@app/lib/resources/base_resource";
+import { SandboxFunctionMCPActionResource } from "@app/lib/resources/sandbox_function_mcp_action_resource";
 import type { SandboxFunctionResource } from "@app/lib/resources/sandbox_function_resource";
 import { SandboxFunctionInvocationModel } from "@app/lib/resources/storage/models/sandbox_function";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
@@ -134,10 +135,12 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
     sandboxFunction: SandboxFunctionResource,
     { transaction }: { transaction?: Transaction } = {}
   ): Promise<number> {
-    // SandboxFunctionMCPActionModel FKs invocations with RESTRICT, but has no writer yet.
-    // TODO(2026-07-03 sandbox-functions): delete actions (rows + `outputGcsPath` GCS objects)
-    // before invocations, through SandboxFunctionMCPActionResource — lands with the resource,
-    // before any writer exists.
+    // MCP actions FK invocations with RESTRICT: delete them (rows + output GCS objects) first.
+    await SandboxFunctionMCPActionResource.deleteAllForSandboxFunction(
+      sandboxFunction,
+      { transaction }
+    );
+
     return this.model.destroy({
       where: {
         sandboxFunctionId: sandboxFunction.id,
@@ -152,10 +155,14 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
     { transaction }: { transaction?: Transaction } = {}
   ): Promise<Result<undefined, Error>> {
     try {
-      // SandboxFunctionMCPActionModel FKs invocations with RESTRICT, but has no writer yet.
-      // TODO(2026-07-03 sandbox-functions): delete actions (rows + `outputGcsPath` GCS objects)
-      // first, through SandboxFunctionMCPActionResource — lands with the resource, before any
-      // writer exists.
+      // MCP actions FK this invocation with RESTRICT: delete them (rows + output GCS objects)
+      // first.
+      await SandboxFunctionMCPActionResource.deleteAllForInvocation(
+        auth,
+        this,
+        { transaction }
+      );
+
       await this.model.destroy({
         where: {
           id: this.id,
