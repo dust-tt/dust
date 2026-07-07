@@ -42,7 +42,7 @@ export const goDeepSkill = {
       childAgentId: GLOBAL_AGENTS_SID.DUST_PLANNING,
       serverNameOverride: "planning_agent",
     },
-    { name: "data_sources_file_system" },
+    { name: "data_sources_file_system", serverNameOverride: "company_data" },
     { name: "web_search_&_browse" },
     { name: "data_warehouses" },
   ],
