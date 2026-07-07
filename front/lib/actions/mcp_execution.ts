@@ -28,7 +28,11 @@ import type { AgentMCPActionOutputItemModel } from "@app/lib/models/agent/action
 import type { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
-import type { SupportedFileContentType } from "@app/types/files";
+import type {
+  FileUseCase,
+  FileUseCaseMetadata,
+  SupportedFileContentType,
+} from "@app/types/files";
 import {
   extensionsForContentType,
   isSupportedFileContentType,
@@ -173,8 +177,8 @@ export async function processToolResults(
   assert(runContext, "processToolResults requires a tool run context.");
   const { toolConfiguration } = runContext;
 
-  // URL-fetched file outputs and conversation data source upserts are conversation-scoped; tools
-  // running in a sandbox function invocation have no conversation to attach them to.
+  // The JIT conversation data source upsert is conversation-scoped; tools running in a sandbox
+  // function invocation have no conversation to upsert to.
   const conversation = isAgentLoopRunContext(runContext)
     ? runContext.conversation
     : null;
@@ -319,24 +323,35 @@ export async function processToolResults(
               });
             }
 
-            if (!conversation) {
-              return {
-                content: {
-                  type: "text",
-                  text: "Storing generated files is not supported outside of a conversation.",
-                },
-                file: null,
-              };
-            }
-
             const fileName = isResourceWithName(block.resource)
               ? block.resource.name
               : (block.resource.uri.split("/").pop() ?? "generated-file");
 
+            // Files land on the conversation in an agent loop, on the pod's shared project
+            // context in a sandbox function invocation.
+            let fileUseCase: FileUseCase;
+            let fileUseCaseMetadata: FileUseCaseMetadata;
+            switch (runContext.contextType) {
+              case "agent_loop":
+                fileUseCase = "conversation";
+                fileUseCaseMetadata = {
+                  conversationId: runContext.conversation.sId,
+                };
+                break;
+              case "sandbox_function":
+                fileUseCase = "project_context";
+                fileUseCaseMetadata = {
+                  spaceId: runContext.invocation.sandboxFunction.space.sId,
+                };
+                break;
+              default:
+                assertNever(runContext);
+            }
+
             const fileUpsertResult = await processAndStoreFromUrl(auth, {
               url: block.resource.uri,
-              useCase: "conversation",
-              useCaseMetadata: { conversationId: conversation.sId },
+              useCase: fileUseCase,
+              useCaseMetadata: fileUseCaseMetadata,
               fileName,
               contentType: block.resource.mimeType,
             });
