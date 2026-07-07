@@ -193,10 +193,7 @@ function withToolLogging<T>(
           ),
           code: result.error.code,
           cause: result.error.cause
-            ? truncate(
-                errorToString(result.error.cause),
-                MAX_LOGGED_ERROR_MESSAGE_LENGTH
-              )
+            ? errorToString(result.error.cause)
             : undefined,
         },
       };
