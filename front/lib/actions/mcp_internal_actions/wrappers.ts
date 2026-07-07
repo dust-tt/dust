@@ -14,6 +14,7 @@ import logger from "@app/logger/logger";
 import type { Result } from "@app/types/shared/result";
 import { Ok } from "@app/types/shared/result";
 import { errorToString } from "@app/types/shared/utils/error_utils";
+import { truncate } from "@app/types/shared/utils/string_utils";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { RequestHandlerExtra } from "@modelcontextprotocol/sdk/shared/protocol.js";
 import type {
@@ -21,6 +22,8 @@ import type {
   ServerNotification,
   ServerRequest,
 } from "@modelcontextprotocol/sdk/types.js";
+
+const MAX_LOGGED_ERROR_MESSAGE_LENGTH = 200;
 
 export function registerTool(
   auth: Authenticator,
@@ -183,7 +186,16 @@ function withToolLogging<T>(
       const logContext = {
         ...loggerArgs,
         duration: elapsed,
-        error: result.error,
+        error: {
+          message: truncate(
+            result.error.message,
+            MAX_LOGGED_ERROR_MESSAGE_LENGTH
+          ),
+          code: result.error.code,
+          cause: result.error.cause
+            ? errorToString(result.error.cause)
+            : undefined,
+        },
       };
       if (result.error.tracked) {
         logger.error(logContext, "Tool execution error");
