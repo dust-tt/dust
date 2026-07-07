@@ -95,6 +95,9 @@ export function classifyMetronomePackageCurrencyByName(
   if (/\b(?:eur|euro)\b/.test(normalized)) {
     return "eur";
   }
+  if (/\b(?:gbp|pound|sterling)\b/.test(normalized)) {
+    return "gbp";
+  }
   return "usd";
 }
 

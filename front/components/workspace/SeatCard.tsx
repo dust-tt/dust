@@ -107,9 +107,11 @@ export function formatPriceCents(
     quarterly: "/qtr",
     annual: "/yr",
   };
-  return currency === "usd"
-    ? `${symbol}${amount}${suffixByFrequency[billingFrequency]}`
-    : `${amount}${symbol}${suffixByFrequency[billingFrequency]}`;
+  // EUR is the only currency we render with a trailing symbol (e.g. "30€");
+  // USD and GBP are prefix currencies ("$30", "£30").
+  return currency === "eur"
+    ? `${amount}${symbol}${suffixByFrequency[billingFrequency]}`
+    : `${symbol}${amount}${suffixByFrequency[billingFrequency]}`;
 }
 
 export function formatAwuCredits(info: SeatTypeInfo): string {
