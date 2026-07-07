@@ -177,12 +177,6 @@ export async function processToolResults(
   assert(runContext, "processToolResults requires a tool run context.");
   const { toolConfiguration } = runContext;
 
-  // The JIT conversation data source upsert is conversation-scoped; tools running in a sandbox
-  // function invocation have no conversation to upsert to.
-  const conversation = isAgentLoopRunContext(runContext)
-    ? runContext.conversation
-    : null;
-
   const timestamp = Date.now();
   const cleanContent: {
     content: CallToolResult["content"][number];
@@ -272,6 +266,10 @@ export async function processToolResults(
               auth,
               block.resource.fileId
             );
+            const conversation = isAgentLoopRunContext(runContext)
+              ? runContext.conversation
+              : null;
+
             // We need to create the conversation data source in case the file comes from a subagent
             // who uploaded it to its own conversation but not the main agent's.
             // Skip for project_context files — they are already indexed via their own data source.
@@ -378,7 +376,6 @@ export async function processToolResults(
             localLogger.info(
               {
                 workspaceId: auth.getNonNullableWorkspace().sId,
-                conversationId: conversation?.sId ?? null,
                 mimeType: block.resource.mimeType ?? null,
                 toolName: toolConfiguration.name,
                 serverName: toolConfiguration.mcpServerName,

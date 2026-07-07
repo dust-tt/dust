@@ -5,7 +5,6 @@ import { DustFileSystem } from "@app/lib/api/file_system/dust_file_system";
 import {
   conversationScopedPath,
   podScopedPath,
-  SCOPED_PREFIX_CONVERSATION,
 } from "@app/lib/api/file_system/types";
 import { makeFileName } from "@app/lib/api/files/action_output_fs/naming";
 import {
