@@ -20,6 +20,14 @@ pub use run::cmd_function_run;
 const FUNCTIONS_DIR_ENV: &str = "DUST_FUNCTIONS_DIR";
 const FUNCTION_WORKING_DIR_ENV: &str = "DUST_FUNCTION_WORKING_DIR";
 
+/// Where the pod's live SQLite databases live (`@dust/pod`'s `db()` opens
+/// `{dir}/{name}.db`). The location is hardcoded once, in front
+/// (`POD_SANDBOX_DATABASES_DIR`), and passed per-exec next to
+/// `DUST_FUNCTIONS_DIR` — the paths-env.v1 contract. dsbx forwards it to the
+/// bun child and carries no default of its own. `pub(crate)` so the `db`
+/// subcommands can share the same contract.
+pub(crate) const POD_DATABASES_DIR_ENV: &str = "DUST_POD_DATABASES_DIR";
+
 /// The image's global npm modules (NPM_CONFIG_PREFIX=/opt/npm-global), holding the external
 /// packages (zod and the curated `npm install -g` set) that function bundles leave as imports
 /// rather than inlining. We point the runner's `bun` child at it via NODE_PATH so those imports
@@ -128,6 +136,12 @@ pub(crate) async fn spawn_function(
         c.arg(&*runner).arg(subcommand).arg(&handler);
         c
     };
+    // Forward the caller-provided databases dir verbatim; normalize empty to
+    // unset so the child sees a single shape of "absent".
+    match pod_databases_dir() {
+        Some(dir) => cmd.env(POD_DATABASES_DIR_ENV, dir),
+        None => cmd.env_remove(POD_DATABASES_DIR_ENV),
+    };
     cmd.env("NODE_PATH", harness_node_path())
         .stdin(if inherit_stdin {
             Stdio::inherit()
@@ -210,6 +224,13 @@ pub(crate) async fn spawn_build(src: &Path, out_bundle: &Path, out_schema: &Path
             .arg(out_schema);
         c
     };
+    // The schema-extraction step imports the built bundle (running its
+    // top-level code), so a top-level `db()` call must see the same databases
+    // directory during build as at run time.
+    match pod_databases_dir() {
+        Some(dir) => cmd.env(POD_DATABASES_DIR_ENV, dir),
+        None => cmd.env_remove(POD_DATABASES_DIR_ENV),
+    };
     cmd.env("NODE_PATH", harness_node_path())
         .stdin(Stdio::null())
         .stdout(Stdio::inherit())
@@ -235,6 +256,17 @@ fn harness_node_path() -> String {
         }
         _ => FUNCTIONS_GLOBAL_NODE_MODULES.to_string(),
     }
+}
+
+/// The pod databases directory provided by the caller, `None` when absent or
+/// empty. There is no dsbx-side default: front owns the location and passes
+/// it per-exec; without it the bun child gets no `DUST_POD_DATABASES_DIR` and
+/// `@dust/pod`'s `db()` fails with a clear error. `pub(crate)` so the `db`
+/// subcommands resolve the same directory.
+pub(crate) fn pod_databases_dir() -> Option<String> {
+    std::env::var(POD_DATABASES_DIR_ENV)
+        .ok()
+        .filter(|dir| !dir.is_empty())
 }
 
 /// Cwd for `dsbx function run|get`.
@@ -404,6 +436,183 @@ mod tests {
         let _guard = ENV_LOCK.lock().unwrap();
         std::env::remove_var(FUNCTIONS_DIR_ENV);
         assert!(resolve_existing("../escape").is_err());
+    }
+
+    #[test]
+    fn pod_databases_dir_absent_or_empty_is_none() {
+        let _guard = ENV_LOCK.lock().unwrap();
+        let original = std::env::var_os(POD_DATABASES_DIR_ENV);
+
+        // No dsbx-side default: absent stays absent (front owns the location).
+        std::env::remove_var(POD_DATABASES_DIR_ENV);
+        assert_eq!(pod_databases_dir(), None);
+
+        // An empty value is normalized to absent (matches the env-contract
+        // semantics of the other DUST_* dirs).
+        std::env::set_var(POD_DATABASES_DIR_ENV, "");
+        assert_eq!(pod_databases_dir(), None);
+
+        match original {
+            Some(value) => std::env::set_var(POD_DATABASES_DIR_ENV, value),
+            None => std::env::remove_var(POD_DATABASES_DIR_ENV),
+        }
+    }
+
+    #[test]
+    fn pod_databases_dir_passes_through_when_set() {
+        let _guard = ENV_LOCK.lock().unwrap();
+        let original = std::env::var_os(POD_DATABASES_DIR_ENV);
+
+        std::env::set_var(POD_DATABASES_DIR_ENV, "/custom/databases");
+        assert_eq!(pod_databases_dir().as_deref(), Some("/custom/databases"));
+
+        match original {
+            Some(value) => std::env::set_var(POD_DATABASES_DIR_ENV, value),
+            None => std::env::remove_var(POD_DATABASES_DIR_ENV),
+        }
+    }
+
+    /// Restore an env var to its captured original value.
+    fn restore_env(key: &str, original: Option<std::ffi::OsString>) {
+        match original {
+            Some(value) => std::env::set_var(key, value),
+            None => std::env::remove_var(key),
+        }
+    }
+
+    /// The e2e env tests spawn the real embedded runner under `bun`; skip
+    /// gracefully where bun is unavailable (CI installs it before cargo test).
+    fn bun_available() -> bool {
+        std::process::Command::new("bun")
+            .arg("--version")
+            .output()
+            .is_ok()
+    }
+
+    /// Function fixture whose schema description echoes the pod databases dir
+    /// the bun child sees. `zod` resolves via NODE_PATH (set by the tests to
+    /// the functions-runner package's node_modules).
+    const ENV_PROBE_FIXTURE: &str = r#"import { z } from "zod";
+export const schema = {
+  description: `pod-databases-dir=${process.env.DUST_POD_DATABASES_DIR ?? "unset"}`,
+  input: z.object({}),
+  output: z.object({}),
+};
+export default {
+  fetch() {
+    return new Response("ok");
+  },
+};
+"#;
+
+    const RUNNER_NODE_MODULES: &str =
+        concat!(env!("CARGO_MANIFEST_DIR"), "/functions-runner/node_modules");
+
+    #[tokio::test]
+    // The spawned bun child inherits process-global env, so the env lock must
+    // span the spawn awaits; contending tests just block on the mutex (each
+    // #[tokio::test] runs its own runtime, so no deadlock is possible).
+    #[allow(clippy::await_holding_lock)]
+    async fn function_get_threads_pod_databases_dir_to_bun_child() {
+        let _guard = ENV_LOCK.lock().unwrap();
+        if !bun_available() {
+            eprintln!("skipping: bun not on PATH");
+            return;
+        }
+        let original_functions_dir = std::env::var_os(FUNCTIONS_DIR_ENV);
+        let original_working_dir = std::env::var_os(FUNCTION_WORKING_DIR_ENV);
+        let original_node_path = std::env::var_os("NODE_PATH");
+        let original_pod_dir = std::env::var_os(POD_DATABASES_DIR_ENV);
+
+        let dir = tempfile::tempdir().expect("tempdir");
+        std::fs::write(dir.path().join("envprobe.ts"), ENV_PROBE_FIXTURE).expect("fixture");
+        std::env::set_var(FUNCTIONS_DIR_ENV, dir.path());
+        std::env::set_var(FUNCTION_WORKING_DIR_ENV, dir.path());
+        std::env::set_var("NODE_PATH", RUNNER_NODE_MODULES);
+
+        // An explicit env var passes through to the child.
+        std::env::set_var(POD_DATABASES_DIR_ENV, "/custom/pod-databases");
+        let (code, stdout) = spawn_function("get", "envprobe", false, true)
+            .await
+            .expect("spawn get");
+        let stdout = stdout.unwrap_or_default();
+        assert_eq!(code, 0, "runner failed: {stdout}");
+        assert!(
+            stdout.contains("pod-databases-dir=/custom/pod-databases"),
+            "unexpected stdout: {stdout}"
+        );
+
+        // Absent env var: no dsbx-side default, the child sees it unset.
+        std::env::remove_var(POD_DATABASES_DIR_ENV);
+        let (code, stdout) = spawn_function("get", "envprobe", false, true)
+            .await
+            .expect("spawn get");
+        let stdout = stdout.unwrap_or_default();
+        assert_eq!(code, 0, "runner failed: {stdout}");
+        assert!(
+            stdout.contains("pod-databases-dir=unset"),
+            "unexpected stdout: {stdout}"
+        );
+
+        // Empty env var: normalized to unset for the child (env_remove), not
+        // forwarded as an empty string.
+        std::env::set_var(POD_DATABASES_DIR_ENV, "");
+        let (code, stdout) = spawn_function("get", "envprobe", false, true)
+            .await
+            .expect("spawn get");
+        let stdout = stdout.unwrap_or_default();
+        assert_eq!(code, 0, "runner failed: {stdout}");
+        assert!(
+            stdout.contains("pod-databases-dir=unset"),
+            "unexpected stdout: {stdout}"
+        );
+
+        restore_env(FUNCTIONS_DIR_ENV, original_functions_dir);
+        restore_env(FUNCTION_WORKING_DIR_ENV, original_working_dir);
+        restore_env("NODE_PATH", original_node_path);
+        restore_env(POD_DATABASES_DIR_ENV, original_pod_dir);
+    }
+
+    #[tokio::test]
+    // See function_get_threads_pod_databases_dir_to_bun_child: the env lock
+    // intentionally spans the spawn await.
+    #[allow(clippy::await_holding_lock)]
+    async fn build_threads_pod_databases_dir_to_bun_child() {
+        let _guard = ENV_LOCK.lock().unwrap();
+        if !bun_available() {
+            eprintln!("skipping: bun not on PATH");
+            return;
+        }
+        let original_node_path = std::env::var_os("NODE_PATH");
+        let original_pod_dir = std::env::var_os(POD_DATABASES_DIR_ENV);
+
+        let src_dir = tempfile::tempdir().expect("src tempdir");
+        let src = src_dir.path().join("envprobe.ts");
+        std::fs::write(&src, ENV_PROBE_FIXTURE).expect("fixture");
+        // Outputs go to a separate directory: bun's resolver caches the src
+        // directory's entries during Bun.build, so importing a bundle written
+        // into that same directory afterwards can fail resolution (observed on
+        // macOS with bun 1.3.14).
+        let out_dir = tempfile::tempdir().expect("out tempdir");
+        let out_bundle = out_dir.path().join("out.bundle.js");
+        let out_schema = out_dir.path().join("out.schema.json");
+        std::env::set_var("NODE_PATH", RUNNER_NODE_MODULES);
+        std::env::set_var(POD_DATABASES_DIR_ENV, "/custom/pod-databases");
+
+        // Build's schema extraction imports the built bundle, so the fixture's
+        // description records the env var the build-time bun child saw.
+        let code = spawn_build(&src, &out_bundle, &out_schema)
+            .await
+            .expect("spawn build");
+        assert_eq!(code, 0);
+        let schema = std::fs::read_to_string(&out_schema).expect("schema file");
+        assert!(
+            schema.contains("pod-databases-dir=/custom/pod-databases"),
+            "unexpected schema: {schema}"
+        );
+
+        restore_env("NODE_PATH", original_node_path);
+        restore_env(POD_DATABASES_DIR_ENV, original_pod_dir);
     }
 
     #[test]
