@@ -7,12 +7,8 @@ import { writeToToolOutputsFolder } from "@app/lib/api/files/action_output_fs";
 import { makeFileName } from "@app/lib/api/files/action_output_fs/naming";
 import { systemPromptToText } from "@app/lib/api/llm/types/options";
 import type { Authenticator } from "@app/lib/auth";
-import { getSupportedModelConfig } from "@app/lib/llms/model_configurations";
-import type { AgentConfigurationType } from "@app/types/assistant/agent";
-import type {
-  ConversationType,
-  UserMessageType,
-} from "@app/types/assistant/conversation";
+import type { AgentLoopExecutionData } from "@app/types/assistant/agent_run";
+import type { UserMessageType } from "@app/types/assistant/conversation";
 import { isUserMessageType } from "@app/types/assistant/conversation";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -87,11 +83,13 @@ export async function getCoreDataSourceSearchCriterias(
 export async function getPromptForProcessDustApp({
   auth,
   agentConfiguration,
+  model,
   conversation,
 }: {
   auth: Authenticator;
-  agentConfiguration: AgentConfigurationType;
-  conversation: ConversationType;
+  agentConfiguration: AgentLoopExecutionData["agentConfiguration"];
+  model: AgentLoopExecutionData["model"];
+  conversation: AgentLoopExecutionData["conversation"];
 }) {
   // Grab user message.
   const userMessagesFiltered = conversation.content.filter((m) =>
@@ -104,13 +102,6 @@ export async function getPromptForProcessDustApp({
   );
   const userMessage: UserMessageType =
     lastUserMessageTuple[0] as UserMessageType;
-
-  const model = getSupportedModelConfig(agentConfiguration.model);
-  if (!model) {
-    throw new Error(
-      `Model config not found for ${agentConfiguration.model.modelId}`
-    );
-  }
 
   return systemPromptToText(
     constructPromptMultiActions(auth, {

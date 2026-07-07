@@ -24,6 +24,7 @@ import { connectToMCPServer } from "@app/lib/actions/mcp_metadata";
 import type { AgentLoopRunContextType } from "@app/lib/actions/types";
 import type { ServerSideMCPToolTypeWithStakeAndRetryPolicy } from "@app/lib/api/mcp";
 import { Authenticator } from "@app/lib/auth";
+import { getSupportedModelConfig } from "@app/lib/llms/model_configurations";
 import {
   AgentMessageModel,
   MessageModel,
@@ -707,10 +708,20 @@ describe("tryCallMCPTool", () => {
       generatedFiles: [],
     };
 
+    const { model: agentModel, ...agentConfiguration } = agentConfig;
+    const modelConfig = getSupportedModelConfig(agentModel);
+    if (!modelConfig) {
+      throw new Error("Supported model config should exist");
+    }
+
     // Create agent loop run context
     const agentLoopRunContext: AgentLoopRunContextType = {
       contextType: "agent_loop",
-      agentConfiguration: agentConfig,
+      agentConfiguration,
+      model: {
+        ...agentModel,
+        ...modelConfig,
+      },
       agentMessage,
       conversation,
       stepContext: {

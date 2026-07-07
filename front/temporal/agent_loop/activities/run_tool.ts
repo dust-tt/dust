@@ -140,6 +140,7 @@ export async function runToolActivity(
 
   const {
     agentConfiguration,
+    model,
     conversation: originalConversation,
     agentMessage: originalAgentMessage,
     userMessage,
@@ -175,6 +176,7 @@ export async function runToolActivity(
       return executeToolStreaming(auth, {
         action,
         agentConfiguration,
+        model,
         agentMessage,
         conversation,
         deferredEvents,
@@ -192,6 +194,7 @@ async function executeToolStreaming(
   {
     action,
     agentConfiguration,
+    model,
     agentMessage,
     conversation,
     deferredEvents,
@@ -201,6 +204,7 @@ async function executeToolStreaming(
   }: {
     action: AgentMCPActionResource;
     agentConfiguration: AgentLoopExecutionData["agentConfiguration"];
+    model: AgentLoopExecutionData["model"];
     agentMessage: AgentLoopExecutionData["agentMessage"];
     conversation: AgentLoopExecutionData["conversation"];
     deferredEvents: ToolExecutionResult["deferredEvents"];
@@ -229,6 +233,7 @@ async function executeToolStreaming(
     {
       action,
       agentConfiguration,
+      model,
       agentMessage,
       conversation,
       userMessage,

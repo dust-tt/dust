@@ -3,14 +3,13 @@ import type { ToolExecutionStatus } from "@app/lib/actions/statuses";
 import { isToolExecutionStatusFinal } from "@app/lib/actions/statuses";
 import type { Authenticator } from "@app/lib/auth";
 import type { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
-import type { AgentConfigurationType } from "@app/types/assistant/agent";
-import type { AgentMessageType } from "@app/types/assistant/conversation";
+import type { AgentLoopExecutionData } from "@app/types/assistant/agent_run";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 
 type HandleErrorParams = {
   action: AgentMCPActionResource;
-  agentConfiguration: AgentConfigurationType;
-  agentMessage: AgentMessageType;
+  agentConfiguration: AgentLoopExecutionData["agentConfiguration"];
+  agentMessage: AgentLoopExecutionData["agentMessage"];
   errorContent: CallToolResult["content"];
   status: ToolExecutionStatus;
   executionDurationMs: number;

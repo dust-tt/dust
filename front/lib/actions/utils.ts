@@ -2,8 +2,7 @@ import type { MCPToolConfigurationType } from "@app/lib/actions/mcp";
 import { INTERNAL_SERVERS_WITH_WEBSEARCH } from "@app/lib/actions/mcp_internal_actions/constants";
 import type { StepContext } from "@app/lib/actions/types";
 import { isServerSideMCPToolConfigurationWithName } from "@app/lib/actions/types/guards";
-import { getSupportedModelConfig } from "@app/lib/llms/model_configurations";
-import type { AgentConfigurationType } from "@app/types/assistant/agent";
+import type { ModelConfigurationType } from "@app/types/assistant/models/types";
 
 export const WEBSEARCH_ACTION_NUM_RESULTS = 16;
 export const SLACK_SEARCH_ACTION_NUM_RESULTS = 24;
@@ -19,19 +18,12 @@ export const RUN_AGENT_ACTION_NUM_RESULTS = 64;
  * in the step.
  */
 export function getRetrievalTopK({
-  agentConfiguration,
+  model,
   stepActions,
 }: {
-  agentConfiguration: AgentConfigurationType;
+  model: ModelConfigurationType;
   stepActions: MCPToolConfigurationType[];
 }): number {
-  const model = getSupportedModelConfig(agentConfiguration.model);
-  if (!model) {
-    throw new Error(
-      `Model config not found for ${agentConfiguration.model.modelId}`
-    );
-  }
-
   const searchActions = stepActions.filter(
     (tool) =>
       isServerSideMCPToolConfigurationWithName(tool, "search") ||
@@ -104,11 +96,11 @@ export function getWebsearchNumResults({
  * - Returns the shared number of results for websearch actions.
  */
 export function getCitationsCount({
-  agentConfiguration,
+  model,
   stepActions,
   stepActionIndex,
 }: {
-  agentConfiguration: AgentConfigurationType;
+  model: ModelConfigurationType;
   stepActions: MCPToolConfigurationType[];
   stepActionIndex: number;
 }): number {
@@ -147,22 +139,22 @@ export function getCitationsCount({
   }
 
   return getRetrievalTopK({
-    agentConfiguration,
+    model,
     stepActions,
   });
 }
 
 export function computeStepContexts({
-  agentConfiguration,
+  model,
   stepActions,
   citationsRefsOffset,
 }: {
-  agentConfiguration: AgentConfigurationType;
+  model: ModelConfigurationType;
   stepActions: MCPToolConfigurationType[];
   citationsRefsOffset: number;
 }): StepContext[] {
   const retrievalTopK = getRetrievalTopK({
-    agentConfiguration,
+    model,
     stepActions,
   });
 
@@ -175,7 +167,7 @@ export function computeStepContexts({
 
   for (let i = 0; i < stepActions.length; i++) {
     const citationsCount = getCitationsCount({
-      agentConfiguration,
+      model,
       stepActions,
       stepActionIndex: i,
     });

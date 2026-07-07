@@ -5,6 +5,7 @@ import {
 } from "@app/lib/api/actions/servers/conversation_files/metadata";
 import { getJITServers } from "@app/lib/api/assistant/jit_actions";
 import type { Authenticator } from "@app/lib/auth";
+import { getSupportedModelConfig } from "@app/lib/llms/model_configurations";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { projectsSkill } from "@app/lib/resources/skill/code_defined/global/projects";
 import { sandboxSkill } from "@app/lib/resources/skill/code_defined/global/sandbox";
@@ -258,8 +259,18 @@ describe("getJITServers", () => {
         }
       );
 
+      const { model: agentModel, ...agentConfiguration } = agentConfig;
+      const modelConfig = getSupportedModelConfig(agentModel);
+      if (!modelConfig) {
+        throw new Error("Supported model config should exist");
+      }
+
       const { equippedSkills } = await SkillResource.listForAgentLoop(auth, {
-        agentConfiguration: agentConfig,
+        agentConfiguration,
+        model: {
+          ...agentModel,
+          ...modelConfig,
+        },
         agentMessage,
         conversation,
         userMessage,

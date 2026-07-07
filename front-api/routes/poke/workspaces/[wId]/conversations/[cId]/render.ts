@@ -202,7 +202,10 @@ app.post(
       userMessage,
       agentConfiguration,
       fallbackPrompt,
-      model,
+      model: {
+        ...agentConfiguration.model,
+        ...model,
+      },
       hasAvailableActions: availableActions.length > 0,
       errorContext: mcpToolsListingError,
       conversation,

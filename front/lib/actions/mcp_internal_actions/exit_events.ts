@@ -8,11 +8,8 @@ import type {
 import { pauseSandboxBashForBlockedChild } from "@app/lib/api/sandbox/sandbox_child_block";
 import type { Authenticator } from "@app/lib/auth";
 import type { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
-import type { AgentConfigurationType } from "@app/types/assistant/agent";
-import type {
-  AgentMessageType,
-  ConversationWithoutContentType,
-} from "@app/types/assistant/conversation";
+import type { AgentLoopExecutionData } from "@app/types/assistant/agent_run";
+import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import type { MCPApproveExecutionEvent } from "@dust-tt/client";
 import { assertNever, isAgentPauseOutputResourceType } from "@dust-tt/client";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
@@ -37,8 +34,8 @@ export async function getExitOrPauseEvents(
   }: {
     outputItems: MCPActionOutputItemWithContent[];
     action: AgentMCPActionResource;
-    agentConfiguration: AgentConfigurationType;
-    agentMessage: AgentMessageType;
+    agentConfiguration: AgentLoopExecutionData["agentConfiguration"];
+    agentMessage: AgentLoopExecutionData["agentMessage"];
     conversation: ConversationWithoutContentType;
   }
 ): Promise<

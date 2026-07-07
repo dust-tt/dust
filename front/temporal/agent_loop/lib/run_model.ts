@@ -57,7 +57,6 @@ import {
   AgentMessageContentParser,
   getDelimitersConfiguration,
 } from "@app/lib/llms/agent_message_content_parser";
-import { getSupportedModelConfig } from "@app/lib/llms/model_configurations";
 import { AgentStepContentResource } from "@app/lib/resources/agent_step_content_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
@@ -328,7 +327,7 @@ export async function runModel(
 
   localLogger.info("Starting multi-action loop iteration");
 
-  const model = getSupportedModelConfig(agentConfiguration.model);
+  const model = runAgentData.model;
 
   async function publishAgentError(
     error: {
@@ -373,17 +372,6 @@ export async function runModel(
         step,
       });
     }
-  }
-
-  if (!model) {
-    await publishAgentError({
-      code: "model_does_not_support_multi_actions",
-      message:
-        `The model you selected (${agentConfiguration.model.modelId}) ` +
-        `does not support multi-actions.`,
-      metadata: null,
-    });
-    return null;
   }
 
   const featureFlags = await getFeatureFlags(auth);
@@ -672,7 +660,7 @@ export async function runModel(
   const contentParser = new AgentMessageContentParser(
     agentConfiguration,
     agentMessage.sId,
-    getDelimitersConfiguration({ agentConfiguration })
+    getDelimitersConfiguration({ model })
   );
 
   const traceContext: LLMTraceContext = {
@@ -690,10 +678,10 @@ export async function runModel(
   const llm = await getStreamLLM(auth, {
     credentials,
     modelId: model.modelId,
-    temperature: agentConfiguration.model.temperature,
-    reasoningEffort: agentConfiguration.model.reasoningEffort,
-    responseFormat: agentConfiguration.model.responseFormat,
-    metaData: agentConfiguration.model.metaData,
+    temperature: model.temperature,
+    reasoningEffort: model.reasoningEffort,
+    responseFormat: model.responseFormat,
+    metaData: model.metaData,
     context: traceContext,
     omittedThinking: agentConfiguration.omittedThinking,
     // Custom trace input: show only the last user message instead of full conversation.
@@ -1170,7 +1158,7 @@ export async function runModel(
   agentMessage.contents.push(...newContents);
 
   const stepContexts = computeStepContexts({
-    agentConfiguration,
+    model,
     stepActions: actions.map((a) => a.action),
     citationsRefsOffset,
   });

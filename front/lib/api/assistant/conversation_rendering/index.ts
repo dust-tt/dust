@@ -6,7 +6,7 @@ import { getLlmCredentials } from "@app/lib/api/provider_credentials";
 import type { Authenticator } from "@app/lib/auth";
 import { tokenCountForTexts } from "@app/lib/tokenization";
 import logger from "@app/logger/logger";
-import type { AgentConfigurationType } from "@app/types/assistant/agent";
+import type { AgentLoopExecutionData } from "@app/types/assistant/agent_run";
 import type { ConversationType } from "@app/types/assistant/conversation";
 import type {
   ModelConversationTypeMultiActions,
@@ -66,7 +66,7 @@ export async function renderConversationForModel(
     excludeImages?: boolean;
     onMissingAction?: "inject-placeholder" | "skip";
     enablePreviousInteractionsPruning?: boolean;
-    agentConfiguration?: AgentConfigurationType;
+    agentConfiguration?: AgentLoopExecutionData["agentConfiguration"];
     enabledSkills: EnabledSkill[];
   }
 ): Promise<

@@ -177,7 +177,10 @@ makeScript(
       userMessage,
       agentConfiguration,
       fallbackPrompt,
-      model,
+      model: {
+        ...model,
+        ...agentConfiguration.model,
+      },
       hasAvailableActions: availableActions.length > 0,
       errorContext: mcpToolsListingError,
       conversation,

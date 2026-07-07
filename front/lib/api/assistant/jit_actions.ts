@@ -16,7 +16,7 @@ import { isSearchableFolder } from "@app/lib/api/assistant/jit_utils";
 import type { Authenticator } from "@app/lib/auth";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import type { ConversationAttachmentType } from "@app/types/api/assistant/conversation/attachments";
-import type { AgentConfigurationType } from "@app/types/assistant/agent";
+import type { AgentLoopExecutionData } from "@app/types/assistant/agent_run";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import { removeNulls } from "@app/types/shared/utils/general";
 
@@ -38,7 +38,7 @@ async function getUnconditionalJITServers(
     conversation,
     autoInternalViews,
   }: {
-    agentConfiguration: AgentConfigurationType;
+    agentConfiguration: AgentLoopExecutionData["agentConfiguration"];
     conversation: ConversationWithoutContentType;
     autoInternalViews: Map<
       AutoInternalMCPServerNameType,
@@ -92,7 +92,7 @@ async function getConditionalJITServers(
     attachments,
     autoInternalViews,
   }: {
-    agentConfiguration: AgentConfigurationType;
+    agentConfiguration: AgentLoopExecutionData["agentConfiguration"];
     conversation: ConversationWithoutContentType;
     attachments: ConversationAttachmentType[];
     autoInternalViews: Map<
@@ -158,7 +158,7 @@ export async function getJITServers(
     conversation,
     attachments,
   }: {
-    agentConfiguration: AgentConfigurationType;
+    agentConfiguration: AgentLoopExecutionData["agentConfiguration"];
     conversation: ConversationWithoutContentType;
     attachments: ConversationAttachmentType[];
   }

@@ -21,7 +21,6 @@ import { writeToToolOutputsFolder } from "@app/lib/api/files/action_output_fs";
 import { makeFileName } from "@app/lib/api/files/action_output_fs/naming";
 import type { Authenticator } from "@app/lib/auth";
 import { extractConfig } from "@app/lib/config";
-import { getSupportedModelConfig } from "@app/lib/llms/model_configurations";
 import { AppResource } from "@app/lib/resources/app_resource";
 import logger from "@app/logger/logger";
 import type { BlockRunConfig, SpecificationBlockType } from "@app/types/app";
@@ -293,11 +292,9 @@ export async function prepareParamsWithHistory(
   if (
     schema?.some((s) => s.key === DUST_CONVERSATION_HISTORY_MAGIC_INPUT_KEY)
   ) {
-    const model = getSupportedModelConfig(
-      agentLoopRunContext.agentConfiguration.model
-    );
+    const model = agentLoopRunContext.model;
 
-    if (model) {
+    if (agentLoopRunContext.model) {
       const allowedTokenCount = model.contextSize - MIN_GENERATION_TOKENS;
 
       const convoRes = await renderConversationForModel(auth, {

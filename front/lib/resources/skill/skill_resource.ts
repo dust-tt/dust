@@ -61,7 +61,7 @@ import { formatTimestampToFriendlyDate } from "@app/lib/utils";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { withTransaction } from "@app/lib/utils/sql_utils";
 import type {
-  AgentConfigurationType,
+  AgentConfigurationWithoutModelType,
   LightAgentConfigurationType,
 } from "@app/types/assistant/agent";
 import type { AgentLoopExecutionData } from "@app/types/assistant/agent_run";
@@ -1078,7 +1078,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
 
   static async listByAgentConfiguration(
     auth: Authenticator,
-    agentConfiguration: AgentConfigurationType,
+    agentConfiguration: AgentLoopExecutionData["agentConfiguration"],
     { agentLoopData }: { agentLoopData?: AgentLoopExecutionData } = {}
   ): Promise<SkillResource[]> {
     const refs = await this.getSkillReferencesForAgent(
@@ -1101,9 +1101,12 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
    */
   static async listByAgentConfigurations(
     auth: Authenticator,
-    agentConfigurations: AgentConfigurationType[]
+    agentConfigurations: AgentLoopExecutionData["agentConfiguration"][]
   ): Promise<
-    { agentConfiguration: AgentConfigurationType; skill: SkillResource }[]
+    {
+      agentConfiguration: AgentLoopExecutionData["agentConfiguration"];
+      skill: SkillResource;
+    }[]
   > {
     assert(
       agentConfigurations.every((c) => !isGlobalAgentId(c.sId)),
@@ -1175,7 +1178,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
    */
   static async getSkillReferencesForAgent(
     auth: Authenticator,
-    agentConfiguration: AgentConfigurationType
+    agentConfiguration: AgentLoopExecutionData["agentConfiguration"]
   ): Promise<
     {
       customSkillId: ModelId | null;
@@ -1389,7 +1392,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       transaction,
     }: {
       conversation: ConversationWithoutContentType;
-      agentConfiguration?: AgentConfigurationType;
+      agentConfiguration?: AgentConfigurationWithoutModelType;
       agentLoopData?: AgentLoopExecutionData;
       transaction?: Transaction;
     }
@@ -1451,7 +1454,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       | AgentLoopExecutionData
       | Pick<AgentLoopExecutionData, "agentConfiguration" | "conversation">
       | {
-          agentConfiguration: AgentConfigurationType;
+          agentConfiguration: AgentConfigurationWithoutModelType;
           conversation: ConversationWithoutContentType;
         }
   ): Promise<{
@@ -3305,7 +3308,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       agentConfiguration,
       conversation,
     }: {
-      agentConfiguration: AgentConfigurationType;
+      agentConfiguration: AgentLoopExecutionData["agentConfiguration"];
       conversation: ConversationType;
     }
   ): Promise<{ wasAlreadyEnabled: boolean }> {

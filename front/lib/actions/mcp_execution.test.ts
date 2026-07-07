@@ -15,6 +15,7 @@ import type { DataSourceNodeContentType } from "@app/lib/actions/mcp_internal_ac
 import type { ToolContextType } from "@app/lib/actions/types";
 import { TOOL_OUTPUTS_FOLDER_NAME } from "@app/lib/api/files/mount_path";
 import { Authenticator } from "@app/lib/auth";
+import { getSupportedModelConfig } from "@app/lib/llms/model_configurations";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
 import logger from "@app/logger/logger";
@@ -107,10 +108,18 @@ async function setupTest({
     rank: 1,
   });
 
+  const { model: agentModel, ...agentConfiguration } = agentConfig;
+  const modelConfig = getSupportedModelConfig(agentModel);
+  assert(modelConfig, "Supported model config should exist");
+
   const toolContext: ToolContextType = {
     runContext: {
       contextType: "agent_loop",
-      agentConfiguration: agentConfig,
+      agentConfiguration,
+      model: {
+        ...agentModel,
+        ...modelConfig,
+      },
       agentMessage,
       currentAction: action.toJSON(),
       conversation,

@@ -8,10 +8,8 @@ import { isRemoteDatabase } from "@app/lib/data_sources";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
-import type {
-  AgentConfigurationType,
-  LightAgentConfigurationType,
-} from "@app/types/assistant/agent";
+import type { AgentConfigurationType } from "@app/types/assistant/agent";
+import type { AgentLoopExecutionData } from "@app/types/assistant/agent_run";
 import type { ConversationType } from "@app/types/assistant/conversation";
 import { removeNulls } from "@app/types/shared/utils/general";
 
@@ -25,7 +23,7 @@ export async function getSkillServers(
     agentConfiguration,
     skills,
   }: {
-    agentConfiguration: LightAgentConfigurationType;
+    agentConfiguration: AgentLoopExecutionData["agentConfiguration"];
     skills: SkillResource[];
   }
 ): Promise<MCPServerConfigurationType[]> {

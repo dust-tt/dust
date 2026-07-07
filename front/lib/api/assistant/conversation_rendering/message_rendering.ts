@@ -13,8 +13,8 @@ import {
 import type { EnabledSkill } from "@app/lib/api/assistant/skills_rendering";
 import type { Authenticator } from "@app/lib/auth";
 import logger from "@app/logger/logger";
-import type { AgentConfigurationType } from "@app/types/assistant/agent";
 import type { AgentTextContentType } from "@app/types/assistant/agent_message_content";
+import type { AgentLoopExecutionData } from "@app/types/assistant/agent_run";
 import type {
   AgentMessageType,
   ConversationType,
@@ -153,7 +153,7 @@ export async function renderAllMessages(
     excludeActions?: boolean;
     excludeImages?: boolean;
     onMissingAction: "inject-placeholder" | "skip";
-    agentConfiguration?: AgentConfigurationType;
+    agentConfiguration?: AgentLoopExecutionData["agentConfiguration"];
     enabledSkills: EnabledSkill[];
   }
 ): Promise<ModelMessageTypeMultiActions[]> {

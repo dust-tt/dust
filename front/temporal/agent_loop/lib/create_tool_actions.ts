@@ -21,15 +21,10 @@ import type { Authenticator } from "@app/lib/auth";
 import { AgentStepContentResource } from "@app/lib/resources/agent_step_content_resource";
 import logger from "@app/logger/logger";
 import { updateResourceAndPublishEvent } from "@app/temporal/agent_loop/activities/common";
-import type {
-  AgentActionsEvent,
-  AgentConfigurationType,
-} from "@app/types/assistant/agent";
+import type { AgentActionsEvent } from "@app/types/assistant/agent";
 import type { AgentLoopExecutionData } from "@app/types/assistant/agent_run";
-import type {
-  AgentMessageType,
-  ConversationWithoutContentType,
-} from "@app/types/assistant/conversation";
+import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
+import type { ModelConfigurationType } from "@app/types/assistant/models/types";
 import type { ModelId } from "@app/types/shared/model_id";
 import assert from "assert";
 
@@ -62,7 +57,8 @@ export async function createToolActionsActivity(
     runIds: string[];
   }
 ): Promise<CreateToolActionsResult> {
-  const { agentConfiguration, agentMessage, conversation } = runAgentData;
+  const { agentConfiguration, model, agentMessage, conversation } =
+    runAgentData;
 
   const actionBlobs: ActionBlob[] = [];
   const approvalEvents: Omit<
@@ -79,6 +75,7 @@ export async function createToolActionsActivity(
     const result = await createActionForTool(auth, {
       actionConfiguration,
       agentConfiguration,
+      model,
       agentMessage,
       conversation,
       stepContentId,
@@ -120,6 +117,7 @@ async function createActionForTool(
   {
     actionConfiguration,
     agentConfiguration,
+    model,
     agentMessage,
     conversation,
     stepContentId,
@@ -128,8 +126,9 @@ async function createActionForTool(
     runIds,
   }: {
     actionConfiguration: MCPToolConfigurationType;
-    agentConfiguration: AgentConfigurationType;
-    agentMessage: AgentMessageType;
+    agentConfiguration: AgentLoopExecutionData["agentConfiguration"];
+    model: ModelConfigurationType;
+    agentMessage: AgentLoopExecutionData["agentMessage"];
     conversation: ConversationWithoutContentType;
     stepContentId: ModelId;
     stepContext: StepContext;
@@ -178,8 +177,8 @@ async function createActionForTool(
         conversationId: conversation.sId,
         agentMessageId: agentMessage.sId,
         stepContentId,
-        modelId: agentConfiguration.model.modelId,
-        providerId: agentConfiguration.model.providerId,
+        modelId: model.modelId,
+        providerId: model.providerId,
         error: validateToolInputsResult.error,
       },
       "Tool input validation failed"

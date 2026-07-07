@@ -14,7 +14,10 @@ import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFa
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { SkillFactory } from "@app/tests/utils/SkillFactory";
-import type { AgentConfigurationType } from "@app/types/assistant/agent";
+import type {
+  AgentConfigurationType,
+  AgentConfigurationWithoutModelType,
+} from "@app/types/assistant/agent";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import type {
   ConversationType,
@@ -24,6 +27,23 @@ import type {
 import type { ModelConfigurationType } from "@app/types/assistant/models/types";
 import type { WorkspaceType } from "@app/types/user";
 import { beforeEach, describe, expect, it } from "vitest";
+
+function withoutModel(
+  config: AgentConfigurationType
+): AgentConfigurationWithoutModelType {
+  const { model: _model, ...agentConfiguration } = config;
+  return agentConfiguration;
+}
+
+function agentLoopModel(
+  config: AgentConfigurationType,
+  modelConfig: ModelConfigurationType
+) {
+  return {
+    ...config.model,
+    ...modelConfig,
+  };
+}
 
 function createForkedData(user: NonNullable<UserMessageType["user"]>) {
   return {
@@ -128,8 +148,8 @@ describe("constructPromptMultiActions - system prompt stability", () => {
   it("should generate identical system prompts for the same inputs", () => {
     const params = {
       userMessage: userMessage1,
-      agentConfiguration: agentConfig1,
-      model: modelConfig,
+      agentConfiguration: withoutModel(agentConfig1),
+      model: agentLoopModel(agentConfig1, modelConfig),
       hasAvailableActions: true,
       systemSkills: [],
       enabledSkills: [],
@@ -146,8 +166,8 @@ describe("constructPromptMultiActions - system prompt stability", () => {
     // Same workspace, same agent, but different conversation metadata
     const baseParams = {
       userMessage: userMessage1,
-      agentConfiguration: agentConfig1,
-      model: modelConfig,
+      agentConfiguration: withoutModel(agentConfig1),
+      model: agentLoopModel(agentConfig1, modelConfig),
       hasAvailableActions: true,
       systemSkills: [],
       enabledSkills: [],
@@ -189,8 +209,8 @@ describe("constructPromptMultiActions - system prompt stability", () => {
     // Different workspaces should produce different prompts (workspace name is in the prompt)
     const params1 = {
       userMessage: userMessage1,
-      agentConfiguration: agentConfig1,
-      model: modelConfig,
+      agentConfiguration: withoutModel(agentConfig1),
+      model: agentLoopModel(agentConfig1, modelConfig),
       hasAvailableActions: true,
       systemSkills: [],
       enabledSkills: [],
@@ -200,8 +220,8 @@ describe("constructPromptMultiActions - system prompt stability", () => {
 
     const params2 = {
       userMessage: userMessage2,
-      agentConfiguration: agentConfig2,
-      model: modelConfig,
+      agentConfiguration: withoutModel(agentConfig2),
+      model: agentLoopModel(agentConfig1, modelConfig),
       hasAvailableActions: true,
       systemSkills: [],
       enabledSkills: [],
@@ -226,8 +246,8 @@ describe("constructPromptMultiActions - system prompt stability", () => {
   it("should return flat context array for regular agents", () => {
     const params = {
       userMessage: userMessage1,
-      agentConfiguration: agentConfig1,
-      model: modelConfig,
+      agentConfiguration: withoutModel(agentConfig1),
+      model: agentLoopModel(agentConfig1, modelConfig),
       hasAvailableActions: true,
       systemSkills: [],
       enabledSkills: [],
@@ -253,8 +273,8 @@ describe("constructPromptMultiActions - system prompt stability", () => {
 
     const params = {
       userMessage: userMessage1,
-      agentConfiguration: deepDiveConfig,
-      model: modelConfig,
+      agentConfiguration: withoutModel(deepDiveConfig),
+      model: agentLoopModel(agentConfig1, modelConfig),
       hasAvailableActions: true,
       systemSkills: [],
       enabledSkills: [],
@@ -289,8 +309,8 @@ describe("constructPromptMultiActions - system prompt stability", () => {
 
     const params = {
       userMessage: userMessage1,
-      agentConfiguration: sidekickConfig,
-      model: modelConfig,
+      agentConfiguration: withoutModel(sidekickConfig),
+      model: agentLoopModel(agentConfig1, modelConfig),
       hasAvailableActions: true,
       systemSkills: [],
       enabledSkills: [],
@@ -328,8 +348,8 @@ describe("constructPromptMultiActions - system prompt stability", () => {
   it("should include branch context in flat prompts using user-facing branch wording", () => {
     const params = {
       userMessage: userMessage1,
-      agentConfiguration: agentConfig1,
-      model: modelConfig,
+      agentConfiguration: withoutModel(agentConfig1),
+      model: agentLoopModel(agentConfig1, modelConfig),
       hasAvailableActions: true,
       systemSkills: [],
       enabledSkills: [],
@@ -363,10 +383,9 @@ describe("constructPromptMultiActions - system prompt stability", () => {
   it("should mention the conversation title tool in conversation prompts", () => {
     const params = {
       userMessage: userMessage1,
-      agentConfiguration: agentConfig1,
-      model: modelConfig,
+      agentConfiguration: withoutModel(agentConfig1),
+      model: agentLoopModel(agentConfig1, modelConfig),
       hasAvailableActions: true,
-      agentsList: null,
       systemSkills: [],
       enabledSkills: [],
       equippedSkills: [],
@@ -403,8 +422,8 @@ describe("constructPromptMultiActions - system prompt stability", () => {
 
     const baseParams = {
       userMessage: userMessage1,
-      agentConfiguration: agentConfig1,
-      model: modelWithFormatting,
+      agentConfiguration: withoutModel(agentConfig1),
+      model: agentLoopModel(agentConfig1, modelWithFormatting),
       hasAvailableActions: true,
       systemSkills: [],
       enabledSkills: [],
@@ -436,8 +455,8 @@ describe("constructPromptMultiActions - system prompt stability", () => {
 
     const params = {
       userMessage: userMessage1,
-      agentConfiguration: deepDiveConfig,
-      model: modelConfig,
+      agentConfiguration: withoutModel(deepDiveConfig),
+      model: agentLoopModel(agentConfig1, modelConfig),
       hasAvailableActions: true,
       systemSkills: [],
       enabledSkills: [],
@@ -479,8 +498,8 @@ describe("constructPromptMultiActions - system prompt stability", () => {
 
     const params = {
       userMessage: userMessage1,
-      agentConfiguration: agentConfig1,
-      model: modelConfig,
+      agentConfiguration: withoutModel(agentConfig1),
+      model: agentLoopModel(agentConfig1, modelConfig),
       hasAvailableActions: true,
       systemSkills: [],
       enabledSkills: [],
@@ -504,8 +523,8 @@ describe("constructPromptMultiActions - system prompt stability", () => {
   it("should point agents to the Computer for uploaded files when Computer is available", () => {
     const params = {
       userMessage: userMessage1,
-      agentConfiguration: agentConfig1,
-      model: modelConfig,
+      agentConfiguration: withoutModel(agentConfig1),
+      model: agentLoopModel(agentConfig1, modelConfig),
       hasAvailableActions: true,
       systemSkills: [],
       enabledSkills: [],
@@ -529,8 +548,8 @@ describe("constructPromptMultiActions - system prompt stability", () => {
   it("should point legacy attachment prompts to the Computer when Computer is available", () => {
     const params = {
       userMessage: userMessage1,
-      agentConfiguration: agentConfig1,
-      model: modelConfig,
+      agentConfiguration: withoutModel(agentConfig1),
+      model: agentLoopModel(agentConfig1, modelConfig),
       hasAvailableActions: true,
       systemSkills: [],
       enabledSkills: [],
@@ -553,8 +572,8 @@ describe("constructPromptMultiActions - system prompt stability", () => {
   it("should not mention the Computer file mount when Computer is unavailable", () => {
     const params = {
       userMessage: userMessage1,
-      agentConfiguration: agentConfig1,
-      model: modelConfig,
+      agentConfiguration: withoutModel(agentConfig1),
+      model: agentLoopModel(agentConfig1, modelConfig),
       hasAvailableActions: true,
       systemSkills: [],
       enabledSkills: [],
@@ -585,8 +604,8 @@ describe("constructPromptMultiActions - system prompt stability", () => {
 
     const params = {
       userMessage: userMessage1,
-      agentConfiguration: agentConfig1,
-      model: modelConfig,
+      agentConfiguration: withoutModel(agentConfig1),
+      model: agentLoopModel(agentConfig1, modelConfig),
       hasAvailableActions: true,
       systemSkills: [discoverSkills],
       enabledSkills: [],

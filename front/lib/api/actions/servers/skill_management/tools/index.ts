@@ -103,11 +103,17 @@ const handlers: ToolHandlers<typeof SKILL_MANAGEMENT_TOOLS_METADATA> = {
       "AgentLoopRunContext expected"
     );
 
-    const { agentConfiguration, agentMessage, conversation, userMessage } =
-      toolContext.runContext;
+    const {
+      agentConfiguration,
+      model,
+      agentMessage,
+      conversation,
+      userMessage,
+    } = toolContext.runContext;
 
     const agentLoopData = {
       agentConfiguration,
+      model,
       agentMessage,
       conversation,
       userMessage,
