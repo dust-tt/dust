@@ -194,7 +194,6 @@ pub trait Store {
         project: &Project,
         data_source_id: &str,
         document_id: &str,
-        version_hash: &Option<String>,
     ) -> Result<Option<Document>>;
     async fn find_data_source_document_ids(
         &self,
@@ -233,7 +232,6 @@ pub trait Store {
         document_id: &str,
         limit_offset: Option<(usize, usize)>,
         view_filter: &Option<SearchFilter>,
-        latest_hash: &Option<String>,
         include_count: bool,
     ) -> Result<(Vec<DocumentVersion>, usize)>;
     async fn list_data_source_documents(

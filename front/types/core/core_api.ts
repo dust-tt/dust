@@ -1150,13 +1150,11 @@ export class CoreAPI {
     dataSourceId,
     documentId,
     projectId,
-    versionHash,
     viewFilter,
   }: {
     dataSourceId: string;
     documentId: string;
     projectId: string;
-    versionHash?: string | null;
     viewFilter?: CoreAPISearchFilter | null;
   }): Promise<
     CoreAPIResponse<{
@@ -1165,10 +1163,6 @@ export class CoreAPI {
     }>
   > {
     const queryParams = new URLSearchParams();
-
-    if (versionHash) {
-      queryParams.append("version_hash", versionHash);
-    }
 
     if (viewFilter) {
       queryParams.append("view_filter", JSON.stringify(viewFilter));
@@ -1197,7 +1191,6 @@ export class CoreAPI {
     offset,
     limit,
     grep,
-    versionHash,
     viewFilter,
   }: {
     dataSourceId: string;
@@ -1206,7 +1199,6 @@ export class CoreAPI {
     offset?: number | null;
     limit?: number | null;
     grep?: string | null;
-    versionHash?: string | null;
     viewFilter?: CoreAPISearchFilter | null;
   }): Promise<
     CoreAPIResponse<{
@@ -1228,10 +1220,6 @@ export class CoreAPI {
 
     if (grep) {
       queryParams.append("grep", grep);
-    }
-
-    if (versionHash) {
-      queryParams.append("version_hash", versionHash);
     }
 
     if (viewFilter) {
@@ -1258,7 +1246,6 @@ export class CoreAPI {
     projectId,
     dataSourceId,
     documentId,
-    latest_hash,
     limit = 10,
     offset = 0,
   }: {
@@ -1267,7 +1254,6 @@ export class CoreAPI {
     documentId: string;
     limit: number;
     offset: number;
-    latest_hash?: string | null;
   }): Promise<
     CoreAPIResponse<{
       versions: CoreAPIDocumentVersion[];
@@ -1280,10 +1266,6 @@ export class CoreAPI {
       limit: String(limit),
       offset: String(offset),
     });
-
-    if (latest_hash) {
-      params.append("latest_hash", latest_hash);
-    }
 
     const response = await this._fetchWithError(
       `${this._url}/projects/${encodeURIComponent(
