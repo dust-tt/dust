@@ -1496,10 +1496,10 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     const sortByName = (a: SkillResource, b: SkillResource) =>
       a.name.localeCompare(b.name);
 
-    // Code-defined skills can auto-add themselves to system prompt content or
-    // to equipped candidates for the current agent loop. `findAll` already
-    // drops restricted skills, so a flag-gated skill only shows up once its
-    // feature flag is on.
+    // Code-defined skills can auto-add themselves for the current loop.
+    // Returning "enabled" promotes a global skill to a system skill.
+    // `findAll` already drops restricted skills, so a flag-gated skill only
+    // shows up once its feature flag is on.
     const autoEnabledSkillRefs: {
       globalSkillId: string;
       customSkillId: null;
