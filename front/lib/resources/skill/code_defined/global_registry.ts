@@ -1,39 +1,11 @@
 import type { Authenticator } from "@app/lib/auth";
-import { activationSkill } from "@app/lib/resources/skill/code_defined/global/activation";
-import { framesSkill } from "@app/lib/resources/skill/code_defined/global/frames";
-import { goDeepSkill } from "@app/lib/resources/skill/code_defined/global/go_deep";
-import { mentionUsersSkill } from "@app/lib/resources/skill/code_defined/global/mention_users";
-import { podFunctionsSkill } from "@app/lib/resources/skill/code_defined/global/pod_functions";
-import { pptxSkill } from "@app/lib/resources/skill/code_defined/global/pptx";
-import { projectsSkill } from "@app/lib/resources/skill/code_defined/global/projects";
-import { sandboxSkill } from "@app/lib/resources/skill/code_defined/global/sandbox";
-import { skillAuthoringSkill } from "@app/lib/resources/skill/code_defined/global/skill_authoring";
-import { supportSkill } from "@app/lib/resources/skill/code_defined/global/support";
-import { workspaceAnalyticsSkill } from "@app/lib/resources/skill/code_defined/global/workspace_analytics";
-import { xlsxSkill } from "@app/lib/resources/skill/code_defined/global/xlsx";
+import { GLOBAL_SKILLS_ARRAY } from "@app/lib/resources/skill/code_defined/global";
 import {
-  ensureUniqueSIds,
   filterSkillDefinitions,
   type GlobalSkillDefinition,
 } from "@app/lib/resources/skill/code_defined/shared";
 import type { AllSkillConfigurationFindOptions } from "@app/lib/resources/skill/types";
 import { serializeSkillTag } from "@app/lib/skills/format";
-
-// Registry is a simple array.
-const GLOBAL_SKILLS_ARRAY = ensureUniqueSIds([
-  activationSkill,
-  framesSkill,
-  goDeepSkill,
-  mentionUsersSkill,
-  podFunctionsSkill,
-  pptxSkill,
-  projectsSkill,
-  sandboxSkill,
-  skillAuthoringSkill,
-  supportSkill,
-  workspaceAnalyticsSkill,
-  xlsxSkill,
-] as const satisfies readonly GlobalSkillDefinition[]);
 
 // Build lookup map for direct access by sId.
 const GLOBAL_SKILLS_BY_ID: Map<string, GlobalSkillDefinition> = new Map(
