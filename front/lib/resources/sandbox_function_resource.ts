@@ -1,5 +1,8 @@
 import config from "@app/lib/api/config";
-import { getPodSandboxFunctionsMountPoint } from "@app/lib/api/files/mount_path";
+import {
+  getPodSandboxFunctionsMountPoint,
+  POD_SANDBOX_DATABASES_DIR,
+} from "@app/lib/api/files/mount_path";
 import {
   generateExecId,
   generateSandboxFunctionInvocationToken,
@@ -382,6 +385,7 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
         envVars: {
           DUST_API_URL: `${dustAPIBaseUrlForSandbox()}/api/v1/w/${auth.getNonNullableWorkspace().sId}`,
           DUST_FUNCTIONS_DIR: getPodSandboxFunctionsMountPoint(this.space.sId),
+          DUST_POD_DATABASES_DIR: POD_SANDBOX_DATABASES_DIR,
           DUST_SANDBOX_TOKEN: token,
         },
         stdin: JSON.stringify(inputEnvelope),
