@@ -3,17 +3,15 @@ import {
   Attachment01,
   Avatar,
   Bell01,
-  ZapOff,
   Breadcrumbs,
   Button,
   Card,
-  MessageCircle01,
-  MessageChatSquare,
   CheckDouble,
-  Settings01,
-  UserSquare,
+  Cube01,
+  CubeOutline,
   Dialog,
   DialogContent,
+  DotsHorizontal,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -26,12 +24,14 @@ import {
   DropdownMenuSubContent,
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
+  Edit04,
   Eye,
   Heart,
   Lightbulb04,
   Link01,
   LogOut01,
-  DotsHorizontal,
+  MessageChatSquare,
+  MessageCircle01,
   NavigationList,
   NavigationListCollapsibleSection,
   NavigationListCompactLabel,
@@ -40,20 +40,20 @@ import {
   NavTabPill,
   NavTabPillList,
   NavTabPillTrigger,
-  Edit04,
   Planet,
   Plus,
   PuzzlePiece01,
   ScrollArea,
   ScrollBar,
   SearchInput,
+  Settings01,
   SlackLogo,
-  Cube01,
-  CubeOutline,
   Trash01,
-  Users01,
   User03,
+  Users01,
+  UserSquare,
   XClose,
+  ZapOff,
 } from "@dust-tt/sparkle";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
@@ -1136,7 +1136,7 @@ function Pods() {
             {inboxConversations.length > 0 && (
               <NavigationListCollapsibleSection
                 label="Inbox"
-                className="border-b border-t border-border bg-background/50 px-2 pb-2"
+                className="border-b border-t border bg-background/50 px-2 pb-2"
                 actionOnHover={false}
                 action={
                   <>
@@ -1563,7 +1563,7 @@ function Pods() {
       )}
 
       {/* Bottom bar */}
-      <div className="flex h-14 items-center justify-between gap-2 border-t border-border pl-1 pr-2">
+      <div className="flex h-14 items-center justify-between gap-2 border-t border pl-1 pr-2">
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Card

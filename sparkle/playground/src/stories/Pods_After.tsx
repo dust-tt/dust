@@ -3,19 +3,15 @@ import {
   Attachment01,
   Avatar,
   Bell01,
-  ZapOff,
   Breadcrumbs,
   Button,
   Card,
-  Hexagon01,
-  IntersectDust,
-  MessageCircle01,
-  MessageChatSquare,
   CheckCircle,
-  Settings01,
-  UserSquare,
+  Cube01,
+  CubeOutline,
   Dialog,
   DialogContent,
+  DotsHorizontal,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -28,13 +24,17 @@ import {
   DropdownMenuSubContent,
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
+  Edit04,
   Eye,
   Heart,
+  Hexagon01,
   Inbox01,
+  IntersectDust,
   Lightbulb04,
   Link01,
   LogOut01,
-  DotsHorizontal,
+  MessageChatSquare,
+  MessageCircle01,
   NavigationList,
   NavigationListCollapsibleSection,
   NavigationListItem,
@@ -42,20 +42,20 @@ import {
   NavTabPill,
   NavTabPillList,
   NavTabPillTrigger,
-  Edit04,
   Planet,
   Plus,
   ScrollArea,
   ScrollBar,
   SearchInput,
+  Settings01,
   SlackLogo,
-  Cube01,
-  CubeOutline,
   Star01,
   Trash01,
-  Users01,
   User03,
+  Users01,
+  UserSquare,
   XClose,
+  ZapOff,
 } from "@dust-tt/sparkle";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
@@ -100,12 +100,12 @@ import { getDataSourcesBySpaceId } from "../data/dataSources";
 import { getRandomGreetingForName } from "../data/greetings";
 import {
   buildPodTabOptions,
+  type DynamicFileTab,
   getDefaultMainTabOrder,
   getFileTabValue,
+  type PodTabOption,
   resolvePodContext,
   shouldShowMemberChrome,
-  type DynamicFileTab,
-  type PodTabOption,
 } from "./podPanelConfig";
 import TemplateSelection, { type Template } from "./TemplateSelection";
 
@@ -1552,7 +1552,7 @@ export default function Pods_After() {
       )}
 
       {/* Bottom bar */}
-      <div className="flex h-14 items-center justify-between gap-2 border-t border-border pl-1 pr-2">
+      <div className="flex h-14 items-center justify-between gap-2 border-t border pl-1 pr-2">
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Card

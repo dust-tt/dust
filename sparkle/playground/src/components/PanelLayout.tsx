@@ -173,7 +173,7 @@ function PanelSection({
       {contentArea}
     </>
   ) : (
-    <div className="my-1 mr-1 flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border border-border bg-background shadow-sm">
+    <div className="my-1 mr-1 flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border border bg-background shadow-sm">
       {cloneElement(topBar, { hasBorder: isScrolled })}
       {contentArea}
     </div>

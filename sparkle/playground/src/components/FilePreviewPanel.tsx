@@ -1,10 +1,10 @@
 import {
-  Download01,
   Button,
   ButtonsSwitch,
   ButtonsSwitchList,
-  LinkExternal01,
+  Download01,
   Icon,
+  LinkExternal01,
 } from "@dust-tt/sparkle";
 import { useState } from "react";
 
@@ -17,7 +17,7 @@ interface FilePreviewPanelProps {
 
 function DocumentPreviewContent() {
   return (
-    <div className="flex h-full min-h-0 flex-1 flex-col items-center justify-center rounded-2xl border border-border bg-muted-background">
+    <div className="flex h-full min-h-0 flex-1 flex-col items-center justify-center rounded-2xl border border bg-muted-background">
       <p className="text-foreground">Document Preview</p>
     </div>
   );
@@ -82,7 +82,7 @@ export function FilePreviewPanel({
         {documentView === "preview" ? (
           <DocumentPreviewContent />
         ) : (
-          <div className="flex flex-1 flex-col items-center justify-center rounded-2xl border border-border bg-muted-background py-16">
+          <div className="flex flex-1 flex-col items-center justify-center rounded-2xl border border bg-muted-background py-16">
             <p className="text-foreground">Extracted information</p>
           </div>
         )}

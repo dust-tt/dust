@@ -1,17 +1,16 @@
 import {
   Atom01,
   Avatar,
-  ZapOff,
   BookOpen01,
   Button,
   Card,
-  MessageChatSquare,
-  Settings01,
   Code01,
   ContactsRobot,
-  UserSquare,
+  Cube01,
+  CubeOutline,
   Dialog,
   DialogContent,
+  DotsHorizontal,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -23,33 +22,34 @@ import {
   DropdownMenuSubContent,
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
+  Edit04,
   Heart,
   Inbox01,
+  LayoutLeft,
+  LayoutRight,
   Lightbulb04,
   ListSelect,
   LogOut01,
-  SearchMd,
-  DotsHorizontal,
+  MessageChatSquare,
   NavigationList,
   NavigationListCollapsibleSection,
   NavigationListCompactLabel,
   NavigationListItem,
   NavigationListItemAction,
-  Edit04,
   Plus,
   ScrollArea,
   ScrollBar,
   SearchInput,
+  SearchMd,
+  Settings01,
   SidebarLayout,
-  type SidebarLayoutRef,
-  LayoutLeft,
-  LayoutRight,
   SlackLogo,
-  Cube01,
-  CubeOutline,
   Star01,
   Trash01,
   User03,
+  UserSquare,
+  ZapOff,
+  type SidebarLayoutRef,
 } from "@dust-tt/sparkle";
 import { useEffect, useMemo, useRef, useState, type MouseEvent } from "react";
 
@@ -63,10 +63,7 @@ import { InboxView } from "../components/InboxView";
 import { InputBar } from "../components/InputBar";
 import { PersonAgentView } from "../components/PersonAgentView";
 import { ProfilePanel } from "../components/Profile";
-import TemplateSelection, { type Template } from "./TemplateSelection";
 import {
-  type Agent,
-  type Conversation,
   createConversationsWithMessages,
   getAgentById,
   getConversationsBySpaceId,
@@ -77,9 +74,12 @@ import {
   mockAgents,
   mockConversations,
   mockUsers,
+  type Agent,
+  type Conversation,
   type Space,
   type User,
 } from "../data";
+import TemplateSelection, { type Template } from "./TemplateSelection";
 
 type Collaborator =
   | { type: "agent"; data: Agent }
@@ -625,9 +625,9 @@ function DustMain() {
 
   // Sidebar content
   const sidebarContent = (
-    <div className="flex h-full flex-col border-r border-border bg-muted-background">
+    <div className="flex h-full flex-col border-r border bg-muted-background">
       {/* Top Bar */}
-      <div className="flex h-14 items-center justify-between gap-2 border-b border-border pl-1 pr-2">
+      <div className="flex h-14 items-center justify-between gap-2 border-b border pl-1 pr-2">
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Card

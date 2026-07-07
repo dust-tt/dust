@@ -4,7 +4,6 @@ import type {
   Conversation,
   ConversationItem,
   ConversationMessage,
-  ConversationPendingValidation,
 } from "./types";
 import { mockUsers } from "./users";
 
@@ -1053,51 +1052,6 @@ I also dropped the annotated mockup :file[top-nav-search.png]{type=image id=topn
         isRounded: true,
       },
     },
-    {
-      kind: "pendingValidation",
-      id: "pending-validation-finale-rewrite",
-      userMessage: {
-        kind: "message",
-        id: "pending-user-finale",
-        content:
-          "Can you draft the 2-3 beat montage of letters to the realm? I want to include it in the next revision.",
-        timestamp: new Date(conv1Start.getTime() + 32 * 60 * 1000),
-        ownerId: locutorId,
-        ownerType: "user",
-        type: "user",
-        group: {
-          id: "group-locutor-pending-finale",
-          type: "locutor",
-          timestamp: "09:32",
-        },
-      } as ConversationMessage,
-      agentMessage: {
-        kind: "message",
-        id: "pending-agent-finale",
-        markdown: `**Letters montage (draft)**
-
-- **Winterfell**: Sansa announces Bran's coronation, calls for unity
-- **Dorne**: Prince acknowledges new order, pledges fealty
-- **Iron Islands**: Yara secures independence, warns of future threats
-
-Each beat ~30 seconds. Ready for your review.`,
-        timestamp: new Date(conv1Start.getTime() + 33 * 60 * 1000),
-        ownerId: agent1.id,
-        ownerType: "agent",
-        type: "agent",
-        group: {
-          id: "group-agent-pending-finale",
-          type: "agent",
-          name: agent1.name,
-          timestamp: "09:32",
-          completionStatus: "Completed in 15 sec",
-          avatar: {
-            emoji: agent1.emoji,
-            backgroundColor: agent1.backgroundColor,
-          },
-        },
-      } as ConversationMessage,
-    } as ConversationPendingValidation,
   ];
 
   const conversation1: Conversation = {

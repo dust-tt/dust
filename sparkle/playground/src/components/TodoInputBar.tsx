@@ -160,7 +160,7 @@ export function TodoInputBar({
         "rounded-3xl border bg-primary-50/70 backdrop-blur-md transition-all",
         showFocusStyle
           ? "border-highlight-300 ring-2 ring-highlight-300/50"
-          : "border-border",
+          : "border",
         className
       )}
     >

@@ -836,7 +836,7 @@ export function NewConversation({
     if (item.logo) {
       const Logo = item.logo;
       return (
-        <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center overflow-hidden rounded-xl border border-border bg-background">
+        <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center overflow-hidden rounded-xl border border bg-background">
           <Logo className="h-5 w-5" />
         </div>
       );
@@ -928,6 +928,7 @@ export function NewConversation({
         <div className="heading-2xl text-foreground">{greeting}</div>
         <InputBar
           placeholder="Ask a question"
+          className="w-full max-w-4xl"
           beforeSendButton={
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
