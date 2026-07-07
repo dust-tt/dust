@@ -61,6 +61,8 @@ export const InputBarContext = createContext<{
   setIsLoadingGoTemplate: (loading: boolean) => void;
   fileUploaderService: FileUploaderService;
   captureActions?: CaptureActions;
+  // Fired right before submit; the extension uses it to snapshot browser tab state.
+  onBeforeSubmit?: () => void;
 }>({
   shouldFocusInput: false,
   getAndClearSelectedAgent: () => null,
@@ -92,12 +94,14 @@ interface InputBarContextProviderProps {
   children: ReactNode;
   fileUploaderService: FileUploaderService;
   captureActions?: CaptureActions;
+  onBeforeSubmit?: () => void;
 }
 
 export function InputBarContextProvider({
   children,
   fileUploaderService,
   captureActions,
+  onBeforeSubmit,
 }: InputBarContextProviderProps) {
   const [shouldFocusInput, setShouldFocusInput] = useState<boolean>(false);
 
@@ -202,6 +206,7 @@ export function InputBarContextProvider({
       setIsLoadingGoTemplate,
       captureActions,
       fileUploaderService,
+      onBeforeSubmit,
     }),
     [
       shouldFocusInput,
@@ -216,6 +221,7 @@ export function InputBarContextProvider({
       isLoadingGoTemplate,
       captureActions,
       fileUploaderService,
+      onBeforeSubmit,
     ]
   );
 

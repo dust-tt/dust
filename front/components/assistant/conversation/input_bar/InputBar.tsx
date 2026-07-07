@@ -122,6 +122,7 @@ export const InputBar = React.memo(function InputBar({
     getAndClearPendingInputText,
     fileUploaderService,
     isLoadingGoTemplate,
+    onBeforeSubmit,
   } = useContext(InputBarContext);
 
   // We use this specific hook because this component is involved in the new conversation page.
@@ -288,6 +289,8 @@ export const InputBar = React.memo(function InputBar({
     ) {
       return;
     }
+
+    onBeforeSubmit?.();
 
     const { mentions: rawMentions, markdown } = markdownAndMentions;
     const shouldInjectSelectedAgent =
