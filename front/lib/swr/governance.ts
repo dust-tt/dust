@@ -27,6 +27,21 @@ const TEST_GOVERNANCE_PERMISSIONS: GovernancePermission[] = [
     resourceType: "frame",
     configuration: { scope: "disabled" },
   },
+  {
+    permissionType: "publish",
+    resourceType: "frame",
+    configuration: { scope: "disabled" },
+  },
+  {
+    permissionType: "admin",
+    resourceType: "billing",
+    configuration: { scope: "disabled" },
+  },
+  {
+    permissionType: "admin",
+    resourceType: "identity",
+    configuration: { scope: "disabled" },
+  },
 ];
 
 export function useGovernancePermissions(owner: LightWorkspaceType): {

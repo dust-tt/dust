@@ -6,6 +6,7 @@ import type { ComponentType } from "react";
 
 interface GovernanceSettingSectionProps {
   label: string;
+  description?: string;
   icon: ComponentType;
   governancePermissions: GovernancePermission[];
   groups: GroupType[];
@@ -14,6 +15,7 @@ interface GovernanceSettingSectionProps {
 
 export const GovernanceSettingSection = ({
   label,
+  description,
   icon,
   governancePermissions,
   groups,
@@ -21,18 +23,26 @@ export const GovernanceSettingSection = ({
 }: GovernanceSettingSectionProps) => {
   return (
     <div className="flex w-full flex-col gap-4">
-      <div className="flex items-center gap-2">
-        <Icon visual={icon} className="text-muted-foreground" />
-        <Page.H variant="h5">{label}</Page.H>
+      <div className="flex flex-col">
+        <div className="flex items-center gap-2">
+          <Icon visual={icon} className="text-muted-foreground" />
+          <Page.H variant="h5">{label}</Page.H>
+        </div>
+        {!!description && (
+          <Page.P variant="secondary" size="sm">
+            {description}
+          </Page.P>
+        )}
       </div>
       <div className="w-full rounded-xl border border-border">
-        {governancePermissions.map((governancePermission) => (
+        {governancePermissions.map((governancePermission, idx) => (
           <GovernanceSettingRow
             key={
               governancePermission.permissionType +
               ":" +
               governancePermission.resourceType
             }
+            className={idx < governancePermissions.length - 1 ? "border-b" : ""}
             governancePermission={governancePermission}
             groups={groups}
             onChange={(newConfiguration) =>
