@@ -88,4 +88,88 @@ describe("runner build", () => {
     expect(code).toBe(2);
     expect(JSON.parse(stdout).error.kind).toBe("bad_args");
   });
+
+  test("writes manifest.v1 databases into the schema file for a declaring function", async () => {
+    await withOutDir(async (dir) => {
+      const bundlePath = join(dir, "db-chat.ts");
+      const schemaPath = join(dir, "db-chat.schema.json");
+      const { stdout, code } = await run([
+        "build",
+        fx("db-chat.ts"),
+        bundlePath,
+        schemaPath,
+      ]);
+
+      expect(code).toBe(0);
+      expect(JSON.parse(stdout)).toEqual({ ok: true });
+
+      const schema = JSON.parse(await readFile(schemaPath, "utf8"));
+      expect(schema.databases.version).toBe(1);
+      expect(Object.keys(schema.databases.databases)).toEqual(["chat"]);
+      const chat = schema.databases.databases.chat;
+      expect(chat.schemaFile).toBe("databases/chat.db.ts");
+      expect(chat.tables.users.columns.created_at.mode).toBe("timestamp");
+      expect(chat.tables.users.indexes.users_handle_idx.unique).toBe(true);
+    });
+  });
+
+  test("omits databases from the schema file for a non-declaring function", async () => {
+    await withOutDir(async (dir) => {
+      const schemaPath = join(dir, "greet.schema.json");
+      const { code } = await run([
+        "build",
+        fx("greet.ts"),
+        join(dir, "greet.ts"),
+        schemaPath,
+      ]);
+      expect(code).toBe(0);
+      const schema = JSON.parse(await readFile(schemaPath, "utf8"));
+      expect(schema.databases).toBeUndefined();
+    });
+  });
+
+  test("exits 1 with database_schema_invalid on a foreign-key schema", async () => {
+    await withOutDir(async (dir) => {
+      const { stdout, code } = await run([
+        "build",
+        fx("db-fk.ts"),
+        join(dir, "out.ts"),
+        join(dir, "out.json"),
+      ]);
+      expect(code).toBe(1);
+      const envelope = JSON.parse(stdout);
+      expect(envelope.error.kind).toBe("database_schema_invalid");
+      expect(envelope.error.message).toMatch(/foreign keys/);
+    });
+  });
+
+  test("exits 1 with database_schema_unresolvable on a missing schema file", async () => {
+    await withOutDir(async (dir) => {
+      const { stdout, code } = await run([
+        "build",
+        fx("db-missing.ts"),
+        join(dir, "out.ts"),
+        join(dir, "out.json"),
+      ]);
+      expect(code).toBe(1);
+      expect(JSON.parse(stdout).error.kind).toBe(
+        "database_schema_unresolvable"
+      );
+    });
+  });
+
+  test("exits 1 with databases_declaration_invalid on a malformed declaration", async () => {
+    await withOutDir(async (dir) => {
+      const { stdout, code } = await run([
+        "build",
+        fx("db-badname.ts"),
+        join(dir, "out.ts"),
+        join(dir, "out.json"),
+      ]);
+      expect(code).toBe(1);
+      expect(JSON.parse(stdout).error.kind).toBe(
+        "databases_declaration_invalid"
+      );
+    });
+  });
 });
