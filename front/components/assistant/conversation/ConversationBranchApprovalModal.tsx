@@ -1,4 +1,4 @@
-import { AgentActionsPanelForMessage } from "@app/components/assistant/conversation/actions/AgentActionsPanel";
+import { AgentSingleActionPanel } from "@app/components/assistant/conversation/actions/AgentActionsPanel";
 import { MessageItem } from "@app/components/assistant/conversation/MessageItem";
 import {
   type AgentMessageWithStreaming,
@@ -13,7 +13,6 @@ import {
 import { useAppRouter } from "@app/lib/platform";
 import { getPodRoute } from "@app/lib/utils/router";
 import {
-  ArrowLeft,
   ScrollArea,
   Sheet,
   SheetContent,
@@ -61,8 +60,10 @@ export function ConversationBranchApprovalModal({
   const [selectedTab, setSelectedTab] = useState<"messages" | "details">(
     "messages"
   );
-  const [selectedMessage, setSelectedMessage] =
-    useState<AgentMessageWithStreaming | null>(null);
+  const [selectedMessageAndAction, setSelectedMessageAndAction] = useState<{
+    message: AgentMessageWithStreaming;
+    actionId: string;
+  } | null>(null);
 
   const router = useAppRouter();
 
@@ -132,13 +133,25 @@ export function ConversationBranchApprovalModal({
                       context={context}
                       nextData={branchMessagesToApprove.at(index + 1) ?? null}
                       prevData={branchMessagesToApprove.at(index - 1) ?? null}
-                      onAgentMessageCompletionStatusClick={(messageId) => {
-                        setSelectedMessage(
-                          branchMessagesToApprove
+                      onAgentMessageCompletionStatusClick={(
+                        messageId,
+                        actionId
+                      ) => {
+                        if (messageId && actionId) {
+                          const message = branchMessagesToApprove
                             .filter(isAgentMessageWithStreaming)
-                            .find((m) => m.sId === messageId) ?? null
-                        );
-                        setSelectedTab("details");
+                            .find((m) => m.sId === messageId);
+
+                          setSelectedMessageAndAction(
+                            message
+                              ? {
+                                  message,
+                                  actionId,
+                                }
+                              : null
+                          );
+                          setSelectedTab("details");
+                        }
                       }}
                     />
                   </div>
@@ -147,21 +160,22 @@ export function ConversationBranchApprovalModal({
             </TabsContent>
             <TabsContent value="details" className="h-full">
               <div className="h-full">
-                {context.conversation && selectedMessage ? (
-                  <AgentActionsPanelForMessage
+                {context.conversation && selectedMessageAndAction ? (
+                  <AgentSingleActionPanel
+                    key={selectedMessageAndAction.actionId}
                     conversation={context.conversation}
                     owner={context.owner}
-                    messageId={selectedMessage.sId}
-                    virtuosoMsg={selectedMessage}
-                    closeIcon={ArrowLeft}
+                    messageId={selectedMessageAndAction.message.sId}
+                    actionId={selectedMessageAndAction.actionId}
+                    virtuosoMsg={selectedMessageAndAction.message}
                     onClose={() => {
-                      setSelectedMessage(null);
+                      setSelectedMessageAndAction(null);
                       setSelectedTab("messages");
                     }}
                   />
                 ) : (
                   <div className="flex h-full items-center justify-center px-4 text-sm text-muted-foreground">
-                    Select an agent message to view its details.
+                    Select an agent action to view its details.
                   </div>
                 )}
               </div>

@@ -24,7 +24,7 @@ interface InlineActivityStepsProps {
   lastAgentStateClassification: AgentStateClassification;
   completedSteps: InlineActivityStep[];
   pendingToolCalls: PendingToolCall[];
-  onOpenDetails?: (messageId: string) => void;
+  onOpenDetails?: (messageId: string, actionId?: string) => void;
   owner: WorkspaceType;
   isLastMessage: boolean;
 }
@@ -81,7 +81,7 @@ export function InlineActivitySteps({
 
   const openBreakdownPanel = (actionId?: string) => {
     if (onOpenDetails) {
-      onOpenDetails(agentMessage.sId);
+      onOpenDetails(agentMessage.sId, actionId);
       return;
     }
     togglePanel({
