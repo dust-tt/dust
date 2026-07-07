@@ -300,7 +300,7 @@ export const PRODUCTS: ProductDef[] = [
   {
     name: "AI Usage",
     type: "USAGE",
-    billable_metric_name: "LLM Provider Cost AWU",
+    billable_metric_name: "LLM Provider Cost AWU v2",
     pricing_group_key: [USAGE_TYPE_GROUP_KEY],
     presentation_group_key: ["user_id"],
     tags: [USAGE_TAG],
@@ -308,7 +308,7 @@ export const PRODUCTS: ProductDef[] = [
   {
     name: "Tool Usage",
     type: "USAGE",
-    billable_metric_name: "Tool Invocations",
+    billable_metric_name: "Tool Invocations v2",
     pricing_group_key: [USAGE_TYPE_GROUP_KEY, "tool_category"],
     presentation_group_key: ["user_id"],
     tags: [USAGE_TAG],
