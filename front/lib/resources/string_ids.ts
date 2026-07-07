@@ -105,6 +105,9 @@ export const RESOURCES_PREFIX = {
 
   // User project notification preferences.
   user_project_notification_preference: "upnp",
+
+  // Activation recommendations.
+  activation_recommendation: "arc",
 } as const;
 
 export const CROSS_WORKSPACE_RESOURCES_WORKSPACE_ID: ModelId = 0;

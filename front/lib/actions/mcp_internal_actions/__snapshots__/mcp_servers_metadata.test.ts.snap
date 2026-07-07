@@ -2,6 +2,20 @@
 
 exports[`MCP Servers Metadata Snapshot > should have stable tool billing info across all servers 1`] = `
 {
+  "activation_recommendations": {
+    "create_recommendation": {
+      "freeUsage": true,
+      "toolCostCategory": "basic",
+    },
+    "list_recommendations": {
+      "freeUsage": true,
+      "toolCostCategory": "basic",
+    },
+    "update_recommendation": {
+      "freeUsage": true,
+      "toolCostCategory": "basic",
+    },
+  },
   "agent_memory": {
     "compact_memory": {
       "freeUsage": true,
@@ -2490,6 +2504,11 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool billing info ac
 
 exports[`MCP Servers Metadata Snapshot > should have stable tool stakes across all servers 1`] = `
 {
+  "activation_recommendations": {
+    "create_recommendation": "never_ask",
+    "list_recommendations": "never_ask",
+    "update_recommendation": "never_ask",
+  },
   "agent_memory": {
     "compact_memory": "never_ask",
     "edit_entries": "never_ask",

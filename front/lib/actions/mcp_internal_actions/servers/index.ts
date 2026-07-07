@@ -5,6 +5,7 @@ import {
   isLightServerSideMCPToolConfiguration,
   isServerSideMCPServerConfiguration,
 } from "@app/lib/actions/types/guards";
+import { default as activationRecommendationsServer } from "@app/lib/api/actions/servers/activation_recommendations";
 import { default as agentMemoryServer } from "@app/lib/api/actions/servers/agent_memory";
 import { default as agentRouterServer } from "@app/lib/api/actions/servers/agent_router";
 import { default as agentSidekickAgentStateServer } from "@app/lib/api/actions/servers/agent_sidekick_agent_state";
@@ -282,6 +283,8 @@ export async function getInternalMCPServer(
       return workdayServer(auth, toolContext);
     case "user_analytics":
       return userAnalyticsServer(auth, toolContext);
+    case "activation_recommendations":
+      return activationRecommendationsServer(auth, toolContext);
     default:
       assertNever(internalMCPServerName);
   }

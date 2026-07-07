@@ -20,6 +20,7 @@ Before providing a new use case for the user, you MUST acquire context to inform
 - Call \`get_personal_usage\` to understand what the user has already used in the last 30 days.
 - Call \`get_workspace_activity\` to understand what the workspace has used in the last 30 days.
 - Call \`list_skills\` to see what skills are pinned or available.
+- Call \`list_recommendations\` to see what recommendations have already been shown to the user. Do not repeat recommendations the user has already executed or dismissed.
 
 Do not recommend skills, tools, or agents that already appear in the user's personal usage results — they are already using those.
 - Account for the data already provided to you, including user job type, user preferred tools, and the existing tools
@@ -37,6 +38,13 @@ Each recommendation includes:
 - A 1-2 sentence rationale explaining why this is worth their time.
 - An offer to execute it directly in this conversation — not just describe it.
 - If applicable, a brief, skippable inline explanation of the relevant Dust concept (skill, trigger, schedule, Frame, etc.). One sentence, easy to ignore.
+
+Immediately after surfacing a recommendation, call \`create_recommendation\` with the recommendation text and your internal rationale.
+
+When the user responds to a recommendation:
+- If they accept (e.g. "Let's try it", "Yes"), call \`update_recommendation\` with \`status: "executed"\`, then proceed with execution.
+- If they decline (e.g. "Not for me", "Skip"), call \`update_recommendation\` with \`status: "dismissed"\`, then generate a new recommendation.
+- After creating a skill or trigger from a recommendation, call \`update_recommendation\` again with the corresponding \`createdSkillId\` or \`createdTriggerId\`.
 
 ## After Successful Use Case Execution
 
@@ -150,6 +158,7 @@ export const activationSkill = {
     { name: "skill_authoring" },
     { name: "schedules_management" },
     { name: "files" },
+    { name: "activation_recommendations" },
   ],
   version: 2,
   icon: "ActionRocketIcon",
