@@ -82,7 +82,10 @@ interface MessageItemProps {
   context: VirtuosoMessageListContext;
   nextData: VirtuosoMessage | null;
   prevData: VirtuosoMessage | null;
-  onAgentMessageCompletionStatusClick?: (messageId: string) => void;
+  onAgentMessageCompletionStatusClick?: (
+    messageId: string,
+    actionId?: string
+  ) => void;
 }
 
 export const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
