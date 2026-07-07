@@ -43,7 +43,7 @@ describe("GroupPermissionResource — governance state (reads)", () => {
   });
 
   it("reports everybody when the global group holds the -1 row", async () => {
-    await GroupPermissionResource.grantOnAllResourcesOfType(auth, {
+    await GroupPermissionResource.grantTypeWide(auth, {
       group: globalGroup,
       ...CAPABILITY,
     });
@@ -61,7 +61,7 @@ describe("GroupPermissionResource — governance state (reads)", () => {
   });
 
   it("reports the specific groups when non-global groups hold -1 rows", async () => {
-    await GroupPermissionResource.grantOnAllResourcesOfTypeForGroups(auth, {
+    await GroupPermissionResource.grantTypeWideForGroups(auth, {
       groups: [groupA, groupB],
       ...CAPABILITY,
     });
