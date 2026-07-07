@@ -314,7 +314,7 @@ export async function runSandboxBashTool(
     agentConfiguration,
     model,
     agentMessage,
-    currentAction: sandboxAction,
+    action: sandboxAction,
     stepContext,
   } = runContext;
 
@@ -367,7 +367,7 @@ export async function runSandboxBashTool(
     // Token must outlive the longest plausible pause/resume cycle. Redis
     // revocation list bounds the real lifetime.
     expiryMs: DEFAULT_EXEC_TIMEOUT_MS,
-    sandboxAction,
+    sandboxAction: sandboxAction.toJSON(),
   });
 
   const metricsCtx = { workspaceId: auth.getNonNullableWorkspace().sId };

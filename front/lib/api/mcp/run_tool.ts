@@ -87,10 +87,10 @@ export async function* runToolWithStreaming(
 
   const agentLoopRunContext: AgentLoopRunContextType = {
     contextType: "agent_loop",
+    action,
     agentConfiguration,
     model,
     agentMessage,
-    currentAction: action.toJSON(),
     conversation,
     stepContext: action.stepContext,
     toolConfiguration,
@@ -112,7 +112,7 @@ export async function* runToolWithStreaming(
         const { event, storedItems } = await processToolNotification(
           auth,
           notification,
-          { action, toolContext: { runContext: agentLoopRunContext } }
+          { toolContext: { runContext: agentLoopRunContext } }
         );
         intermediateOutputItems.push(...storedItems);
         return event;
@@ -142,7 +142,6 @@ export async function* runToolWithStreaming(
   const { outputItems, generatedFiles } = await withPeriodicHeartbeat(
     () =>
       processToolResults(auth, {
-        action,
         localLogger,
         toolCallResultContent: toolCallResult.content,
         toolContext: { runContext: agentLoopRunContext },

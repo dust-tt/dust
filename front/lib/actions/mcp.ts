@@ -242,7 +242,6 @@ export type MCPErrorEvent = {
 type ToolNotificationEventBase = {
   type: "tool_notification";
   created: number;
-  action: AgentMCPActionWithOutputType;
   notification: ProgressNotificationContentType;
 };
 
@@ -252,9 +251,12 @@ export type AgentLoopToolNotificationEvent = ToolNotificationEventBase & {
   configurationId: string;
   conversationId: string;
   messageId: string;
+  action: AgentMCPActionWithOutputType;
 };
 
 // Tool notification emitted when running a tool within a sandbox function invocation.
+// TODO(SANDBOX_FUNCTIONS): carry the sandbox function action once SandboxFunctionMCPActionResource
+// is available.
 export type SandboxFunctionToolNotificationEvent = ToolNotificationEventBase & {
   sandboxFunctionId: string;
   invocationId: string;

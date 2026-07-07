@@ -3,8 +3,8 @@ import type {
   LightMCPToolConfigurationType,
   MCPServerConfigurationType,
 } from "@app/lib/actions/mcp";
+import type { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import type { SandboxFunctionInvocationResource } from "@app/lib/resources/sandbox_function_invocation_resource";
-import type { AgentMCPActionType } from "@app/types/actions";
 import type {
   AgentConfigurationWithoutModelType,
   AgentModelConfigurationType,
@@ -16,6 +16,7 @@ import type {
 } from "@app/types/assistant/conversation";
 import type { ModelConfigurationType } from "@app/types/assistant/models/types";
 import type { AllSupportedFileContentType } from "@app/types/files";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 import { z } from "zod";
 
 const FileAuthorizationInfoSchema = z.object({
@@ -152,10 +153,10 @@ export type ActionGeneratedFileType =
 
 export type AgentLoopRunContextType = {
   contextType: "agent_loop";
+  action: AgentMCPActionResource;
   agentConfiguration: AgentConfigurationWithoutModelType;
   model: AgentModelConfigurationType & ModelConfigurationType;
   agentMessage: AgentMessageType;
-  currentAction: AgentMCPActionType;
   conversation: ConversationType;
   stepContext: StepContext;
   toolConfiguration: LightMCPToolConfigurationType;
@@ -186,6 +187,26 @@ export function isAgentLoopRunContext(
   value: AgentLoopRunContextType | SandboxFunctionRunContextType | undefined
 ): value is AgentLoopRunContextType {
   return value?.contextType === "agent_loop";
+}
+
+/**
+ * Returns the MCP action resource associated with a tool run context.
+ */
+export function getMCPActionFromRunContext(
+  runContext: AgentLoopRunContextType | SandboxFunctionRunContextType
+): AgentMCPActionResource {
+  switch (runContext.contextType) {
+    case "agent_loop":
+      return runContext.action;
+    case "sandbox_function":
+      // TODO(SANDBOX_FUNCTIONS): return the invocation's SandboxFunctionMCPActionResource once
+      // available.
+      throw new Error(
+        "MCP actions are not available in sandbox function run contexts yet."
+      );
+    default:
+      return assertNever(runContext);
+  }
 }
 
 export type ToolContextType =

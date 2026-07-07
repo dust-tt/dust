@@ -19,13 +19,15 @@ import type {
   ActionGeneratedFileType,
   ToolContextType,
 } from "@app/lib/actions/types";
-import { isAgentLoopRunContext } from "@app/lib/actions/types";
+import {
+  getMCPActionFromRunContext,
+  isAgentLoopRunContext,
+} from "@app/lib/actions/types";
 import { isInternalServerSideMCPToolConfiguration } from "@app/lib/actions/types/guards";
 import { persistToolOutput } from "@app/lib/api/files/action_output_fs";
 import { processAndStoreFromUrl } from "@app/lib/api/files/upload";
 import type { Authenticator } from "@app/lib/auth";
 import type { AgentMCPActionOutputItemModel } from "@app/lib/models/agent/actions/mcp";
-import type { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import type {
@@ -74,10 +76,8 @@ export async function processToolNotification(
   auth: Authenticator,
   notification: MCPProgressNotificationType,
   {
-    action,
     toolContext,
   }: {
-    action: AgentMCPActionResource;
     toolContext: ToolContextType;
   }
 ): Promise<{
@@ -86,6 +86,7 @@ export async function processToolNotification(
 }> {
   const { runContext } = toolContext;
   assert(runContext, "processToolNotification requires a tool run context.");
+  const action = getMCPActionFromRunContext(runContext);
 
   const output = notification.params._meta.data.output;
 
@@ -113,12 +114,6 @@ export async function processToolNotification(
     });
   }
 
-  const actionWithOutput = {
-    ...action.toJSON(),
-    output: null,
-    generatedFiles: [],
-  };
-
   // Regular notifications, we yield them as is with the type "tool_notification", scoped to the
   // run context they were emitted from.
   switch (runContext.contextType) {
@@ -130,7 +125,11 @@ export async function processToolNotification(
           configurationId: runContext.agentConfiguration.sId,
           conversationId: runContext.conversation.sId,
           messageId: runContext.agentMessage.sId,
-          action: actionWithOutput,
+          action: {
+            ...action.toJSON(),
+            output: null,
+            generatedFiles: [],
+          },
           notification: notification.params,
         },
         storedItems,
@@ -142,7 +141,6 @@ export async function processToolNotification(
           created: Date.now(),
           sandboxFunctionId: runContext.invocation.sandboxFunction.sId,
           invocationId: runContext.invocation.sId,
-          action: actionWithOutput,
           notification: notification.params,
         },
         storedItems,
@@ -159,12 +157,10 @@ export async function processToolNotification(
 export async function processToolResults(
   auth: Authenticator,
   {
-    action,
     localLogger,
     toolCallResultContent,
     toolContext,
   }: {
-    action: AgentMCPActionResource;
     localLogger: Logger;
     toolCallResultContent: CallToolResult["content"];
     toolContext: ToolContextType;
@@ -176,6 +172,7 @@ export async function processToolResults(
   const { runContext } = toolContext;
   assert(runContext, "processToolResults requires a tool run context.");
   const { toolConfiguration } = runContext;
+  const action = getMCPActionFromRunContext(runContext);
 
   const timestamp = Date.now();
   const cleanContent: {

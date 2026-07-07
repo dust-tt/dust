@@ -8,7 +8,7 @@ import type {
 import { isAgentMessageWithStreaming } from "@app/components/assistant/conversation/types";
 import { useConversationContextUsage } from "@app/hooks/conversations";
 import { useEventSource } from "@app/hooks/useEventSource";
-import type { ToolNotificationEvent } from "@app/lib/actions/mcp";
+import type { AgentLoopToolNotificationEvent } from "@app/lib/actions/mcp";
 import { getActionOneLineLabel } from "@app/lib/api/assistant/activity_steps";
 import { getLightAgentMessageFromAgentMessage } from "@app/lib/api/assistant/citations";
 import type { AgentMCPActionWithOutputType } from "@app/types/actions";
@@ -174,7 +174,7 @@ export function updateMessageWithAction(
 
 export function updateProgress(
   agentMessage: AgentMessageWithStreaming,
-  event: ToolNotificationEvent
+  event: AgentLoopToolNotificationEvent
 ): AgentMessageWithStreaming {
   const actionId = event.action.id;
   const currentProgress = agentMessage.streaming.actionProgress.get(actionId);

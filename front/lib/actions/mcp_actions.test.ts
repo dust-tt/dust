@@ -29,6 +29,7 @@ import {
   AgentMessageModel,
   MessageModel,
 } from "@app/lib/models/agent/conversation";
+import type { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import { InternalMCPServerInMemoryResource } from "@app/lib/resources/internal_mcp_server_in_memory_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { RemoteMCPServerToolMetadataResource } from "@app/lib/resources/remote_mcp_server_tool_metadata_resource";
@@ -731,7 +732,8 @@ describe("tryCallMCPTool", () => {
         resumeState: null,
         websearchResultCount: 0,
       },
-      currentAction: mockAction,
+      // The action resource is never read by tryCallMCPTool; a plain mock is enough here.
+      action: mockAction as unknown as AgentMCPActionResource,
       toolConfiguration,
       userMessage,
     };
