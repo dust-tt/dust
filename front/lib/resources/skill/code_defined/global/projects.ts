@@ -6,7 +6,10 @@ import {
   readPodAgentsMdContent,
 } from "@app/lib/api/projects/agents_md";
 import type { Authenticator } from "@app/lib/auth";
-import type { GlobalSkillDefinition } from "@app/lib/resources/skill/code_defined/shared";
+import type {
+  AutoAgentLoopAvailability,
+  GlobalSkillDefinition,
+} from "@app/lib/resources/skill/code_defined/shared";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import {
   type ConversationWithoutContentType,
@@ -65,11 +68,10 @@ When you need to find information, use this order (skip steps if the relevant to
   version: 3,
   icon: "ActionFolderIcon",
   isRestricted: undefined,
-  // Auto-enabled whenever the conversation belongs to a Pod.
-  isAutoEnabledForAgentLoop: ({ conversation }) =>
-    isPodConversation(conversation),
-  // Auto-equipped for all agent loops.
-  isAutoEquippedForAgentLoop: (): boolean => true,
+  getAutoAgentLoopAvailability: ({
+    conversation,
+  }): AutoAgentLoopAvailability | undefined =>
+    isPodConversation(conversation) ? "enabled" : "equipped",
 } as const satisfies GlobalSkillDefinition;
 
 export async function constructProjectContext(

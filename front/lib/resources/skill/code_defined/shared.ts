@@ -15,6 +15,17 @@ export type MCPServerDefinition = {
   serverNameOverride?: string;
 };
 
+export type AutoAgentLoopAvailability = "enabled" | "equipped";
+
+type AutoAgentLoopAvailabilityParams = {
+  agentConfiguration: AgentLoopExecutionData["agentConfiguration"];
+  conversation: ConversationWithoutContentType;
+};
+
+type AutoAgentLoopAvailabilityCallback<
+  T extends AutoAgentLoopAvailability = AutoAgentLoopAvailability,
+> = (params: AutoAgentLoopAvailabilityParams) => T | undefined;
+
 interface BaseSkillDefinition {
   readonly agentFacingDescription: string;
   readonly userFacingDescription: string;
@@ -31,20 +42,10 @@ interface BaseSkillDefinition {
   // opted in per skill (e.g. docs/pptx/xlsx). System skills stay hidden.
   readonly exposeInstructions?: boolean;
   readonly isRestricted?: (auth: Authenticator) => Promise<boolean>;
-  // Optional callback to auto-equip a code-defined skill for an agent loop (subject to
-  // isRestricted), without enabling it. Return true to make the skill available through
-  // skill_management__enable_skill.
-  readonly isAutoEquippedForAgentLoop?: (params: {
-    agentConfiguration: AgentLoopExecutionData["agentConfiguration"];
-    conversation: ConversationWithoutContentType;
-  }) => boolean;
-  // Optional callback to auto-enable a code-defined skill for an agent loop (subject to
-  // isRestricted), without it being added to the agent configuration. Return true to enable.
-  // Used for skills that are on by default for a given context (e.g. Pods in a Pod conversation).
-  readonly isAutoEnabledForAgentLoop?: (params: {
-    agentConfiguration: AgentLoopExecutionData["agentConfiguration"];
-    conversation: ConversationWithoutContentType;
-  }) => boolean;
+  // Optional callback to auto-enable or auto-equip a code-defined skill for an
+  // agent loop (subject to isRestricted), without adding it to the agent
+  // configuration. Return undefined to leave the skill unchanged for this loop.
+  readonly getAutoAgentLoopAvailability?: AutoAgentLoopAvailabilityCallback;
   // Optional callback to hide a skill from a given agent loop (both from equipped and enabled).
   readonly isDisabledForAgentLoop?: (
     agentLoopData: AgentLoopExecutionData
@@ -78,7 +79,7 @@ export type GlobalSkillDefinition = SkillDefinition & {
 // System skills have no definition of "equipped". When they are present they are directly part of the system prompt.
 export type SystemSkillDefinition = SkillDefinition & {
   readonly kind: "system";
-  isAutoEquippedForAgentLoop?: never;
+  getAutoAgentLoopAvailability?: AutoAgentLoopAvailabilityCallback<"enabled">;
 };
 
 // Helper function that enforces unique sIds.

@@ -84,6 +84,7 @@ import { SKILL_GROUP_PREFIX } from "@app/types/groups";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { removeNulls } from "@app/types/shared/utils/general";
 import type { LightWorkspaceType } from "@app/types/user";
@@ -1499,24 +1500,44 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     // System skills are always treated as enabled when present in the agent configuration.
     const configSystemSkills = allAgentSkills.filter((s) => s.isSystemSkill);
 
-    // Code-defined skills can opt into being auto-equipped or auto-enabled for the agent loop
-    // without being added to the agent configuration. `findAll` already drops restricted skills,
-    // so a flag-gated skill only shows up once its feature flag is on.
+    // Code-defined skills can opt into being auto-equipped or auto-enabled for
+    // the agent loop without being added to the agent configuration. `findAll`
+    // already drops restricted skills, so a flag-gated skill only shows up once
+    // its feature flag is on.
     const codeDefinedDefs = [
       ...(await SystemSkillsRegistry.findAll(auth)),
       ...(await GlobalSkillsRegistry.findAll(auth)),
     ];
 
-    const autoEnabledDefs = codeDefinedDefs.filter((def) =>
-      def.isAutoEnabledForAgentLoop?.({
+    type CodeDefinedSkillReference = {
+      globalSkillId: string;
+      customSkillId: null;
+    };
+    const autoEnabledRefs: CodeDefinedSkillReference[] = [];
+    const autoEquippedCandidateRefs: CodeDefinedSkillReference[] = [];
+    for (const def of codeDefinedDefs) {
+      const autoAgentLoopAvailability = def.getAutoAgentLoopAvailability?.({
         agentConfiguration,
         conversation,
-      })
-    );
-    const autoEnabledRefs = autoEnabledDefs.map((def) => ({
-      globalSkillId: def.sId,
-      customSkillId: null,
-    }));
+      });
+
+      if (!autoAgentLoopAvailability) {
+        continue;
+      }
+
+      const ref = { globalSkillId: def.sId, customSkillId: null };
+      switch (autoAgentLoopAvailability) {
+        case "enabled":
+          autoEnabledRefs.push(ref);
+          break;
+        case "equipped":
+          autoEquippedCandidateRefs.push(ref);
+          break;
+        default:
+          assertNever(autoAgentLoopAvailability);
+      }
+    }
+
     const autoEnabledSkills = autoEnabledRefs.length
       ? await this.fetchBySkillReferences(auth, autoEnabledRefs, {
           agentLoopData,
@@ -1533,15 +1554,9 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         ...autoEnabledSkills.map((s) => s.globalSId),
       ])
     );
-    const autoEquippedRefs = codeDefinedDefs
-      .filter(
-        (def) =>
-          def.isAutoEquippedForAgentLoop?.({
-            agentConfiguration,
-            conversation,
-          }) && !equippedGlobalSkillIds.has(def.sId)
-      )
-      .map((def) => ({ globalSkillId: def.sId, customSkillId: null }));
+    const autoEquippedRefs = autoEquippedCandidateRefs.filter(
+      (ref) => !equippedGlobalSkillIds.has(ref.globalSkillId)
+    );
     const autoEquippedSkills = autoEquippedRefs.length
       ? await this.fetchBySkillReferences(auth, autoEquippedRefs, {
           agentLoopData,

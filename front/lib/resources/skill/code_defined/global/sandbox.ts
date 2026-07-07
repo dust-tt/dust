@@ -9,7 +9,10 @@ import {
 } from "@app/lib/api/sandbox/image";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
-import type { GlobalSkillDefinition } from "@app/lib/resources/skill/code_defined/shared";
+import type {
+  AutoAgentLoopAvailability,
+  GlobalSkillDefinition,
+} from "@app/lib/resources/skill/code_defined/shared";
 import logger from "@app/logger/logger";
 import type { AgentLoopExecutionData } from "@app/types/assistant/agent_run";
 import { isPodConversation } from "@app/types/assistant/conversation";
@@ -386,7 +389,8 @@ export const sandboxSkill = {
   icon: "CommandLineIcon",
   // Auto-equipped for every agent unless the workspace has disabled the
   // Computer, but not enabled until the agent decides to use it.
-  isAutoEquippedForAgentLoop: (): boolean => true,
+  getAutoAgentLoopAvailability: (): AutoAgentLoopAvailability | undefined =>
+    "equipped",
   isRestricted: async (auth: Authenticator) => {
     const flags = await getFeatureFlags(auth);
 
