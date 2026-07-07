@@ -14,6 +14,8 @@ import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { z } from "zod";
 
+import type { ManifestErrorKind } from "../../../../cli/dust-sandbox/functions-runner/manifest_types";
+
 const DSBX_BIN_PATH = "/opt/bin/dsbx";
 // Non-mounted scratch root, so a build never writes into the pod files mount.
 const BUILD_STAGING_ROOT = "/tmp/dust-sandbox-function-builds";
@@ -52,19 +54,34 @@ const functionSchemaFileSchema = z.object({
   databases: functionManifestsSchema.optional(),
 });
 
+// Manifest rejections (manifest.v1 typed build errors) map to the model-correctable
+// invalid_contract: the model fixes them by editing its `schema.databases` declaration or
+// the database schema file. Keyed by the runner's ManifestErrorKind so a renamed or added
+// kind fails the typecheck here instead of silently degrading to internal.
+const MANIFEST_ERROR_CODES: Record<
+  ManifestErrorKind,
+  SandboxFunctionErrorCode
+> = {
+  databases_declaration_invalid: "invalid_contract",
+  database_schema_unresolvable: "invalid_contract",
+  database_schema_invalid: "invalid_contract",
+};
+
+function isManifestErrorKind(kind: string): kind is ManifestErrorKind {
+  // hasOwnProperty, not `in`: the envelope kind is sandbox-influenced, and `in` would match
+  // Object.prototype keys like "constructor".
+  return Object.prototype.hasOwnProperty.call(MANIFEST_ERROR_CODES, kind);
+}
+
 function mapBuildErrorKind(kind: string): SandboxFunctionErrorCode {
+  if (isManifestErrorKind(kind)) {
+    return MANIFEST_ERROR_CODES[kind];
+  }
   switch (kind) {
     case "build_failed":
       return "build_failed";
     case "schema_extraction_failed":
       return "schema_extraction_failed";
-    // Manifest rejections (manifest.v1 typed build errors, see
-    // cli/dust-sandbox/functions-runner/manifest.ts): the model fixes them by editing its
-    // `schema.databases` declaration or the database schema file.
-    case "databases_declaration_invalid":
-    case "database_schema_unresolvable":
-    case "database_schema_invalid":
-      return "invalid_contract";
     default:
       // bad_args means our own argv is wrong, not the function.
       return "internal";
