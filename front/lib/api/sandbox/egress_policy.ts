@@ -199,6 +199,118 @@ export async function deleteSandboxPolicy(
   }
 }
 
+// ---------------------------------------------------------------------------
+// Pod space egress policy
+//
+// A Pod's egress allowlist is a space-keyed policy file
+// (`pods/{spaceSId}.json`) that the egress proxy reads directly and unions
+// with the workspace and sandbox policies. GCS-only, exactly like the
+// workspace policy above: the file is the store, there is no DB record.
+// Because it is keyed by the pod's stable space sId (not the ephemeral
+// sandbox providerId), it survives sandbox destroy/recreate cycles and
+// nothing is written at sandbox activation.
+// ---------------------------------------------------------------------------
+
+function getPodSpacePolicyPath(spaceId: string): string {
+  return `pods/${spaceId}.json`;
+}
+
+export async function readPodSpacePolicy(
+  spaceId: string
+): Promise<Result<EgressPolicy, Error>> {
+  try {
+    const content = await getPolicyBucket().fetchFileContent(
+      getPodSpacePolicyPath(spaceId)
+    );
+    const parsed = parseEgressPolicy(JSON.parse(content));
+
+    if (parsed.isErr()) {
+      return parsed;
+    }
+
+    return new Ok(parsed.value);
+  } catch (error) {
+    if (isGCSNotFoundError(error)) {
+      return new Ok(EMPTY_EGRESS_POLICY);
+    }
+
+    return new Err(normalizeError(error));
+  }
+}
+
+export async function writePodSpacePolicy(
+  spaceId: string,
+  { policy }: { policy: EgressPolicy }
+): Promise<Result<EgressPolicy, Error>> {
+  const normalizedPolicy = normalizeEgressPolicy(policy);
+
+  if (normalizedPolicy.isErr()) {
+    return normalizedPolicy;
+  }
+
+  try {
+    await getPolicyBucket().uploadRawContentToBucket({
+      content: JSON.stringify(normalizedPolicy.value),
+      contentType: "application/json",
+      filePath: getPodSpacePolicyPath(spaceId),
+    });
+
+    void invalidatePodPolicyCache(spaceId);
+
+    return new Ok(normalizedPolicy.value);
+  } catch (error) {
+    return new Err(normalizeError(error));
+  }
+}
+
+export async function deletePodSpacePolicy(
+  spaceId: string
+): Promise<Result<void, Error>> {
+  try {
+    await getPolicyBucket().delete(getPodSpacePolicyPath(spaceId), {
+      ignoreNotFound: true,
+    });
+
+    void invalidatePodPolicyCache(spaceId);
+
+    return new Ok(undefined);
+  } catch (error) {
+    return new Err(normalizeError(error));
+  }
+}
+
+async function invalidatePodPolicyCache(spaceId: string): Promise<void> {
+  try {
+    const baseUrl = config.getEgressProxyInternalUrl();
+    if (!baseUrl) {
+      return;
+    }
+
+    const token = mintEgressInvalidationJwt({ spaceId });
+    const url = `${baseUrl.replace(/\/+$/, "")}/invalidate-policy`;
+
+    const response = await fetch(url, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+      signal: AbortSignal.timeout(INVALIDATION_TIMEOUT_MS),
+    });
+
+    if (!response.ok) {
+      logger.warn(
+        { statusCode: response.status, spaceId },
+        "Egress proxy cache invalidation failed"
+      );
+    }
+  } catch (error) {
+    logger.warn(
+      { error: normalizeError(error), spaceId },
+      "Egress proxy cache invalidation error"
+    );
+  }
+}
+
 async function invalidateWorkspacePolicyCache(
   auth: Authenticator
 ): Promise<void> {
