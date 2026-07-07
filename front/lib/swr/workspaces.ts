@@ -54,6 +54,7 @@ import type {
 import type { GetBillingInfoResponseBody } from "@app/types/api/billing/info";
 import type { GetBillingInvoicesResponseBody } from "@app/types/api/billing/invoices";
 import type { GetPreparePaymentResponseBody } from "@app/types/api/checkout/prepare_payment";
+import type { GetWorkspaceCouponsResponseBody } from "@app/types/api/coupons";
 import type { GetMetronomeContractResponseBody } from "@app/types/api/credits/metronome_contract";
 import type { GetPendingInvitationsLookupResponseBody } from "@app/types/api/invitation";
 import type {
@@ -1353,6 +1354,33 @@ export function usePreparePayment({
       (!error && !data && !disabled && !!setupSessionId) ||
       (isPending && !pollTimedOut),
     isPreparePaymentError: !!error || pollTimedOut,
+  };
+}
+
+export function useWorkspaceCoupons({
+  workspaceId,
+  disabled,
+}: {
+  workspaceId: string;
+  disabled?: boolean;
+}) {
+  const { fetcher } = useFetcher();
+  const couponsFetcher: Fetcher<GetWorkspaceCouponsResponseBody> = fetcher;
+
+  const { data, error, mutate } = useSWRWithDefaults(
+    `/api/w/${workspaceId}/coupon/redemptions`,
+    couponsFetcher,
+    {
+      disabled,
+      revalidateOnFocus: false,
+    }
+  );
+
+  return {
+    coupons: data?.coupons ?? emptyArray(),
+    isCouponsLoading: !error && !data && !disabled,
+    isCouponsError: error,
+    mutateCoupons: mutate,
   };
 }
 
