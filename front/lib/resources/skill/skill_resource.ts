@@ -1508,7 +1508,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       ...(await GlobalSkillsRegistry.findAll(auth)),
     ];
 
-    const autoRefsByEnabledOrEquipped: Record<
+    const autoEnabledOrEquippedSkillsRef: Record<
       "enabled" | "equipped",
       { globalSkillId: string; customSkillId: null }[]
     > = {
@@ -1526,16 +1526,15 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       }
 
       const ref = { globalSkillId: def.sId, customSkillId: null };
-      autoRefsByEnabledOrEquipped[autoEnabledOrEquipped].push(ref);
+      autoEnabledOrEquippedSkillsRef[autoEnabledOrEquipped].push(ref);
     }
 
-    const autoEnabledRefs = autoRefsByEnabledOrEquipped.enabled;
-    const autoEnabledSkills = autoEnabledRefs.length
-      ? await this.fetchBySkillReferences(auth, autoEnabledRefs, {
+    const autoEnabledSkills = autoEnabledOrEquippedSkillsRef.enabled.length
+      ? await this.fetchBySkillReferences(auth, autoEnabledOrEquippedSkillsRef.enabled, {
           agentLoopData,
         })
       : [];
-    const autoEnabledGlobalSkillIds = new Set(
+    const autoEnabledSkillIds = new Set(
       autoEnabledSkills.map((s) => s.sId)
     );
 
@@ -1546,7 +1545,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         ...autoEnabledSkills.map((s) => s.globalSId),
       ])
     );
-    const autoEquippedRefs = autoRefsByEnabledOrEquipped.equipped.filter(
+    const autoEquippedRefs = autoEnabledOrEquippedSkillsRef.equipped.filter(
       (ref) => !activeGlobalSkillIds.has(ref.globalSkillId)
     );
     const autoEquippedSkills = autoEquippedRefs.length
@@ -1569,7 +1568,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     // code-defined skill is auto-enabled for this loop, systemSkills owns it instead.
     const enabledSkills = conversationEnabledSkills
       .filter(
-        (s) => !s.globalSId || !autoEnabledGlobalSkillIds.has(s.globalSId)
+        (s) => !s.globalSId || !autoEnabledSkillIds.has(s.globalSId)
       )
       .sort(sortByName);
 
@@ -1579,7 +1578,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     const agentEquippedSkills = allAgentSkills.filter(
       (s) =>
         !s.isSystemSkill &&
-        (!s.globalSId || !autoEnabledGlobalSkillIds.has(s.globalSId))
+        (!s.globalSId || !autoEnabledSkillIds.has(s.globalSId))
     );
 
     const agentEquippedSkillIds = new Set(
