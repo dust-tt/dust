@@ -5,6 +5,7 @@ import {
   getConversationFilesBasePath,
   getPodFilesBasePath,
   getPodSandboxFunctionsBasePath,
+  getPodStateBasePath,
   isAgentScopedPath,
   isCanonicalScopedPath,
   isLegacyScopedPath,
@@ -60,6 +61,14 @@ describe("mount_path helpers", () => {
       expect(
         getPodSandboxFunctionsBasePath({ workspaceId: "ws1", podId: "spc1" })
       ).toBe("w/ws1/pods/spc1/sandbox-functions/");
+    });
+  });
+
+  describe("getPodStateBasePath", () => {
+    it("should return a dedicated prefix separate from pod files and functions", () => {
+      expect(getPodStateBasePath({ workspaceId: "ws1", podId: "spc1" })).toBe(
+        "w/ws1/pods/spc1/state/"
+      );
     });
   });
 

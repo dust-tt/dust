@@ -12,6 +12,7 @@ import type { SandboxResource } from "@app/lib/resources/sandbox_resource";
 import logger from "@app/logger/logger";
 import { concurrentExecutor } from "@app/temporal/workflow_utils";
 import { Err, Ok, type Result } from "@app/types/shared/result";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 
 import type { SandboxMountAdapter } from "./sandbox_mount_adapter";
 
@@ -21,6 +22,21 @@ const TOKEN_SERVER_URL = "http://127.0.0.1:9876";
 const TOKEN_SERVER_POLL_ATTEMPTS = 100;
 const TOKEN_SERVER_POLL_INTERVAL_SECONDS = 0.05;
 const TOKEN_SERVER_EXEC_TIMEOUT_MS = 10_000;
+
+/**
+ * Per-target mount profile.
+ *
+ * - "workload": root-mounted with `allow_other` so the unprivileged sandbox
+ *   users can access it; permissive file/dir modes; 60s kernel list cache
+ *   (read-mostly workloads). All agent-facing mounts.
+ * - "pod_state_replica": mounted AS `dust-state` (via runuser) so the FUSE
+ *   default — only the mounting user can access the fs — makes it invisible to
+ *   every other uid, including the untrusted workload uid 1003 and root. No
+ *   `allow_other`, restrictive modes, and NO kernel list caching: litestream
+ *   restore must never see a stale LTX listing. Requires the image's
+ *   `pod_state` capability (dust-state user + /pod-state layout).
+ */
+export type GCSMountProfile = "workload" | "pod_state_replica";
 
 export type GCSMountTarget = {
   /**
@@ -36,6 +52,7 @@ export type GCSMountTarget = {
   legacySandboxMountPoint: string | null;
   /** When set, the mount uses `-o ro` and a read-only-scoped token (see buildAccessBoundaryRules). */
   readOnly: boolean;
+  mountProfile: GCSMountProfile;
 };
 
 /**
@@ -68,7 +85,8 @@ export class GCSSandboxMountAdapter implements SandboxMountAdapter {
       return new Ok(undefined);
     }
 
-    const { bucket, targets } = this;
+    const { bucket } = this;
+    const targets = this.activeTargets(image);
     const prefixes = targets.map((t) => t.gcsPrefix);
     const workspaceId = auth.getNonNullableWorkspace().sId;
 
@@ -142,12 +160,7 @@ export class GCSSandboxMountAdapter implements SandboxMountAdapter {
 
         const mountResult = await sandbox.execRoot(
           auth,
-          buildMountCommand({
-            bucket,
-            prefix: target.gcsPrefix,
-            mountPoint: target.sandboxMountPoint,
-            readOnly: target.readOnly,
-          }),
+          buildMountCommand({ bucket, target }),
           { timeoutMs: MOUNT_TIMEOUT_MS }
         );
 
@@ -221,9 +234,10 @@ export class GCSSandboxMountAdapter implements SandboxMountAdapter {
       return new Ok(undefined);
     }
 
+    const targets = this.activeTargets(image);
     const tokenResult = await mintDownscopedGcsToken({
       bucket: this.bucket,
-      prefixes: this.targets.map((t) => ({
+      prefixes: targets.map((t) => ({
         prefix: t.gcsPrefix,
         readOnly: t.readOnly,
       })),
@@ -244,12 +258,27 @@ export class GCSSandboxMountAdapter implements SandboxMountAdapter {
       {
         sandboxId: sandbox.sId,
         workspaceId: auth.getNonNullableWorkspace().sId,
-        prefixes: this.targets.map((t) => t.gcsPrefix),
+        prefixes: targets.map((t) => t.gcsPrefix),
       },
       "GCS sandbox mount: credential refreshed"
     );
 
     return new Ok(undefined);
+  }
+
+  /**
+   * Targets applicable to the given image. pod_state_replica targets need the
+   * dust-state user and the /pod-state layout, both introduced with the
+   * `pod_state` capability — on older images they are skipped entirely (no
+   * mount, no CAB rules) so existing sandboxes keep working untouched.
+   */
+  private activeTargets(image: SandboxImage): GCSMountTarget[] {
+    if (image.hasCapability("pod_state")) {
+      return [...this.targets];
+    }
+    return this.targets.filter(
+      (target) => target.mountProfile !== "pod_state_replica"
+    );
   }
 
   /** Exposed for testing and diagnostics. */
@@ -261,26 +290,17 @@ export class GCSSandboxMountAdapter implements SandboxMountAdapter {
   }
 }
 
-function buildMountCommand({
+/** Exported for testing. */
+export function buildMountCommand({
   bucket,
-  prefix,
-  mountPoint,
-  readOnly,
+  target,
 }: {
   bucket: string;
-  prefix: string;
-  mountPoint: string;
-  readOnly: boolean;
+  target: GCSMountTarget;
 }): RootCommand {
-  // allow_other lets the unprivileged sandbox user read the root-mounted fs. `ro` is only
-  // defense-in-depth: the real write protection is the read-only token scope (see
-  // buildAccessBoundaryRules), not this flag.
-  const mountOptions = ["allow_other"];
-  if (readOnly) {
-    mountOptions.push("ro");
-  }
+  const { gcsPrefix: prefix, sandboxMountPoint: mountPoint } = target;
 
-  const flags = [
+  const commonFlags = [
     "--token-url",
     TOKEN_SERVER_URL,
     // Disable token caching so gcsfuse fetches a fresh credential on every GCS API request.
@@ -288,22 +308,69 @@ function buildMountCommand({
     "--only-dir",
     prefix,
     "--implicit-dirs",
-    "-o",
-    mountOptions.join(","),
-    "--file-mode=666",
-    "--dir-mode=777",
-    "--kernel-list-cache-ttl-secs=60",
     // Disable HNS: GetStorageLayout requires unrestricted objects.list which CAB cannot grant
     // per-prefix. With HNS disabled we scope list access via objectListPrefix conditions.
     "--enable-hns=false",
   ];
 
-  return rootCommand.stderrToStdout(
-    rootCommand.timeout(
-      rootCommand.exec("/usr/bin/gcsfuse", [...flags, bucket, mountPoint]),
-      MOUNT_TIMEOUT_MS / 1_000
-    )
-  );
+  switch (target.mountProfile) {
+    case "workload": {
+      // allow_other lets the unprivileged sandbox user read the root-mounted fs. `ro` is only
+      // defense-in-depth: the real write protection is the read-only token scope (see
+      // buildAccessBoundaryRules), not this flag.
+      const mountOptions = ["allow_other"];
+      if (target.readOnly) {
+        mountOptions.push("ro");
+      }
+
+      const flags = [
+        ...commonFlags,
+        "-o",
+        mountOptions.join(","),
+        "--file-mode=666",
+        "--dir-mode=777",
+        "--kernel-list-cache-ttl-secs=60",
+      ];
+
+      return rootCommand.stderrToStdout(
+        rootCommand.timeout(
+          rootCommand.exec("/usr/bin/gcsfuse", [...flags, bucket, mountPoint]),
+          MOUNT_TIMEOUT_MS / 1_000
+        )
+      );
+    }
+
+    case "pod_state_replica": {
+      // Mounted AS dust-state (runuser): with no allow_other, the FUSE layer
+      // denies every uid but the mounting one — the kernel-enforced version of
+      // "invisible to uid 1003". List caching is OFF: litestream restore reads
+      // the LTX listing at cold start and must never see a cached view.
+      const flags = [
+        ...commonFlags,
+        "--file-mode=600",
+        "--dir-mode=700",
+        "--kernel-list-cache-ttl-secs=0",
+      ];
+
+      return rootCommand.stderrToStdout(
+        rootCommand.timeout(
+          rootCommand.exec("/usr/sbin/runuser", [
+            "-u",
+            "dust-state",
+            "--",
+            "/usr/bin/gcsfuse",
+            ...flags,
+            bucket,
+            mountPoint,
+          ]),
+          MOUNT_TIMEOUT_MS / 1_000
+        )
+      );
+    }
+
+    default:
+      assertNever(target.mountProfile);
+  }
 }
 
 function buildTokenJson({

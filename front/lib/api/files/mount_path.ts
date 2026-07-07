@@ -97,6 +97,22 @@ export function getPodSandboxFunctionsMountPoint(podId: string): string {
 }
 
 /**
+ * Prefix for the pod's Litestream state replica (LTX chains for the pod's SQLite databases). The
+ * sandbox's litestream daemon is the only writer, through the dust-state-only gcsfuse mount at
+ * /pod-state/replica. Never mounted under /files, never a FileResource: cleanup is a wholesale
+ * prefix delete at pod deletion (see deletePodStatePrefix).
+ */
+export function getPodStateBasePath({
+  workspaceId,
+  podId,
+}: {
+  workspaceId: string;
+  podId: string;
+}): string {
+  return `${getBaseMountPathForWorkspace({ workspaceId })}pods/${podId}/state/`;
+}
+
+/**
  * Given a mount file path like "w/.../files/report.pdf",
  * returns "w/.../files/report.processed.pdf".
  * For files without extension: "w/.../files/Makefile" -> "w/.../files/Makefile.processed".
