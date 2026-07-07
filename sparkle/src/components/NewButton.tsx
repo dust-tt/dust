@@ -62,12 +62,12 @@ const newButtonVariants = cva(
     "transition-[color,background-color,border-color,transform] duration-100 ease-out",
     "motion-reduce:transition-none",
     "focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-0",
-    // Disabled = the enabled button dimmed. One opacity rule reads as disabled
-    // in both themes; per-variant color tints only meant "faint" in light mode
-    // and broke under the dark flip. Gated on data-disabled so a loading button
-    // (which also carries the disabled attr) stays full-strength. The interaction
-    // guards below stay on :disabled so they cover loading too.
-    "data-[disabled]:opacity-40 data-[disabled]:shadow-none",
+    // Disabled = per-variant faint tints (below), matching Figma, plus no shadow.
+    // Gated on data-disabled so a loading button (which also carries the disabled
+    // attr) keeps its full-strength active look. The interaction guards below stay
+    // on :disabled so they cover loading too. NOTE: the tints come from ramp
+    // positions that flip in dark mode — pending designer sign-off on dark.
+    "data-[disabled]:shadow-none",
     "disabled:cursor-not-allowed disabled:focus-visible:ring-0"
   ),
   {
@@ -81,6 +81,7 @@ const newButtonVariants = cva(
           "bg-linear-to-b from-primary-700 to-primary-800",
           "text-primary-50",
           RAISED_SHADOW,
+          "data-[disabled]:from-primary-300 data-[disabled]:to-primary-400",
           // Light: dark button -> white overlay (size-based, below). Dark: light
           // button -> a faint dark overlay instead.
           "dark:hover:after:bg-black/[0.04] dark:active:after:bg-black/[0.04]"
@@ -89,13 +90,15 @@ const newButtonVariants = cva(
           OVERLAY,
           "bg-linear-to-b from-highlight-400 to-highlight-500",
           "text-white",
-          RAISED_SHADOW
+          RAISED_SHADOW,
+          "data-[disabled]:from-highlight-200 data-[disabled]:to-highlight-300"
         ),
         warning: cn(
           OVERLAY,
           "bg-linear-to-b from-warning-400 to-warning-500",
           "text-white",
-          RAISED_SHADOW
+          RAISED_SHADOW,
+          "data-[disabled]:from-warning-200 data-[disabled]:to-warning-300"
         ),
         // The mirror of primary: light gradient + muted text in light mode,
         // dark gradient + light text in dark mode, via the same flipping ramp.
@@ -107,28 +110,33 @@ const newButtonVariants = cva(
           RAISED_SHADOW,
           // Light: light button -> faint dark overlay. Dark: dark button ->
           // white overlay (size-based, below).
-          "hover:after:bg-black/[0.02] active:after:bg-black/[0.02]"
+          "hover:after:bg-black/[0.02] active:after:bg-black/[0.02]",
+          "data-[disabled]:text-faint"
         ),
         ghost: cn(
           "text-foreground",
           "hover:bg-black/[0.02] active:bg-black/[0.02]",
           "dark:hover:bg-white/[0.08] dark:active:bg-white/[0.08]",
+          "data-[disabled]:text-faint",
           "disabled:hover:bg-transparent dark:disabled:hover:bg-transparent"
         ),
         "ghost-secondary": cn(
           "text-muted-foreground",
           "hover:bg-black/[0.02] active:bg-black/[0.02]",
           "dark:hover:bg-white/[0.08] dark:active:bg-white/[0.08]",
+          "data-[disabled]:text-faint",
           "disabled:hover:bg-transparent dark:disabled:hover:bg-transparent"
         ),
         "highlight-ghost": cn(
           "text-highlight-500",
           "hover:bg-highlight-50 active:bg-highlight-50",
+          "data-[disabled]:text-highlight-muted",
           "disabled:hover:bg-transparent"
         ),
         "warning-ghost": cn(
           "text-warning-500",
           "hover:bg-warning-50 active:bg-warning-50",
+          "data-[disabled]:text-warning-muted",
           "disabled:hover:bg-transparent"
         ),
       },
