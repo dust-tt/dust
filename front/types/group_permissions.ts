@@ -51,3 +51,24 @@ export function isGroupPermissionResourceType(
     (resourceType) => resourceType === value
   );
 }
+
+const PERMISSION_SCOPES = ["everyone", "groups", "disabled"] as const;
+
+type PermissionScope = (typeof PERMISSION_SCOPES)[number];
+
+export const isValidPermissionScope = (
+  scope: string
+): scope is PermissionScope => {
+  return PERMISSION_SCOPES.some((validScope) => validScope === scope);
+};
+
+export type GovernanceSettingConfiguration = {
+  scope: PermissionScope;
+  groupIds?: string[];
+};
+
+export type GovernancePermission = {
+  permissionType: PermissionType;
+  resourceType: GroupPermissionResourceType;
+  configuration: GovernanceSettingConfiguration;
+};
