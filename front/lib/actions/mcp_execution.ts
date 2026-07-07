@@ -19,6 +19,7 @@ import type {
   ActionGeneratedFileType,
   ToolContextType,
 } from "@app/lib/actions/types";
+import { isAgentLoopRunContext } from "@app/lib/actions/types";
 import { isInternalServerSideMCPToolConfiguration } from "@app/lib/actions/types/guards";
 import { persistToolOutput } from "@app/lib/api/files/action_output_fs";
 import { processAndStoreFromUrl } from "@app/lib/api/files/upload";
@@ -27,8 +28,6 @@ import type { AgentMCPActionOutputItemModel } from "@app/lib/models/agent/action
 import type { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
-
-import type { ConversationType } from "@app/types/assistant/conversation";
 import type {
   FileUseCase,
   FileUseCaseMetadata,
@@ -161,13 +160,11 @@ export async function processToolResults(
   auth: Authenticator,
   {
     action,
-    conversation,
     localLogger,
     toolCallResultContent,
     toolContext,
   }: {
     action: AgentMCPActionResource;
-    conversation: ConversationType;
     localLogger: Logger;
     toolCallResultContent: CallToolResult["content"];
     toolContext: ToolContextType;
@@ -176,16 +173,9 @@ export async function processToolResults(
   outputItems: AgentMCPActionOutputItemModel[];
   generatedFiles: ActionGeneratedFileType[];
 }> {
-  assert(
-    toolContext.runContext,
-    "processToolResults requires a tool run context."
-  );
-  const { toolConfiguration } = toolContext.runContext;
-
-  const fileUseCase: FileUseCase = "conversation";
-  const fileUseCaseMetadata: FileUseCaseMetadata = {
-    conversationId: conversation.sId,
-  };
+  const { runContext } = toolContext;
+  assert(runContext, "processToolResults requires a tool run context.");
+  const { toolConfiguration } = runContext;
 
   const timestamp = Date.now();
   const cleanContent: {
@@ -246,7 +236,7 @@ export async function processToolResults(
             base64Data: block.data,
             mimeType: block.mimeType,
             fileName,
-            conversation,
+            toolContext,
           });
         }
 
@@ -276,10 +266,15 @@ export async function processToolResults(
               auth,
               block.resource.fileId
             );
+            const conversation = isAgentLoopRunContext(runContext)
+              ? runContext.conversation
+              : null;
+
             // We need to create the conversation data source in case the file comes from a subagent
             // who uploaded it to its own conversation but not the main agent's.
             // Skip for project_context files — they are already indexed via their own data source.
-            if (file && file.useCase !== "project_context") {
+            // Skip outside of a conversation — there is no conversation data source to upsert to.
+            if (file && file.useCase !== "project_context" && conversation) {
               // Files uploaded by client-side tools (e.g. the Chrome extension) may not have a
               // conversationId in their metadata since the tool doesn't know it at upload time.
               // Patch it here so the JIT data source creation works correctly.
@@ -322,13 +317,34 @@ export async function processToolResults(
                 base64Data: block.resource.blob,
                 mimeType: block.resource.mimeType,
                 fileName,
-                conversation,
+                toolContext,
               });
             }
 
             const fileName = isResourceWithName(block.resource)
               ? block.resource.name
               : (block.resource.uri.split("/").pop() ?? "generated-file");
+
+            // Files land on the conversation in an agent loop, on the pod's shared project
+            // context in a sandbox function invocation.
+            let fileUseCase: FileUseCase;
+            let fileUseCaseMetadata: FileUseCaseMetadata;
+            switch (runContext.contextType) {
+              case "agent_loop":
+                fileUseCase = "conversation";
+                fileUseCaseMetadata = {
+                  conversationId: runContext.conversation.sId,
+                };
+                break;
+              case "sandbox_function":
+                fileUseCase = "project_context";
+                fileUseCaseMetadata = {
+                  spaceId: runContext.invocation.sandboxFunction.space.sId,
+                };
+                break;
+              default:
+                assertNever(runContext);
+            }
 
             const fileUpsertResult = await processAndStoreFromUrl(auth, {
               url: block.resource.uri,
@@ -360,7 +376,6 @@ export async function processToolResults(
             localLogger.info(
               {
                 workspaceId: auth.getNonNullableWorkspace().sId,
-                conversationId: conversation.sId,
                 mimeType: block.resource.mimeType ?? null,
                 toolName: toolConfiguration.name,
                 serverName: toolConfiguration.mcpServerName,

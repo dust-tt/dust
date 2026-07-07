@@ -143,7 +143,6 @@ export async function* runToolWithStreaming(
     () =>
       processToolResults(auth, {
         action,
-        conversation,
         localLogger,
         toolCallResultContent: toolCallResult.content,
         toolContext: { runContext: agentLoopRunContext },
