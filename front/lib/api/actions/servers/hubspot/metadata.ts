@@ -178,13 +178,17 @@ export const HUBSPOT_TOOLS_METADATA = createToolsRecord({
   },
   search_crm_objects: {
     description:
-      "Find HubSpot contacts, companies, deals, leads, and activity records when " +
-      "you do not know the object ID. " +
-      "Use this to find contacts at a company, search deals by close date, " +
-      "or locate tasks, notes, meetings, calls, and emails. " +
-      "Supports advanced filtering by properties, date ranges, owners, and free-text queries. " +
-      "IMPORTANT: For enumeration properties (like industry), always use get_object_properties first to discover the exact values. " +
-      "Use this for specific searches, or use get_user_activity for comprehensive user activity across all types.",
+      "Search, filter, read, open, or retrieve HubSpot records: contacts, companies, deals, " +
+      "leads, tickets, and activity records (tasks, notes, meetings, calls, emails). " +
+      "Filter by any property to: open or read a single contact, company, or deal record " +
+      "by its id (hs_object_id EQ <id>); find a contact or company by email; " +
+      "find contacts at a company; search deals by close date or amount; " +
+      "filter by owner (hubspot_owner_id); or match any other property. " +
+      "Omit filters to get the most recently created records (sorted newest-first). " +
+      "Also supports free-text queries. " +
+      "IMPORTANT: For enumeration properties (like industry or dealstage), use " +
+      "get_object_properties first to discover the exact values. " +
+      "For comprehensive user activity across all types, use get_user_activity.",
     schema: {
       objectType: z.enum(searchableObjectTypes),
       filters: z

@@ -992,6 +992,33 @@ function getDynamicToolDisplayLabels({
       }
       return null;
 
+    case "hubspot":
+      if (toolName === "search_crm_objects" && isString(inputs.objectType)) {
+        const objectType = inputs.objectType;
+        const filters = inputs.filters;
+        const isByIdLookup =
+          Array.isArray(filters) &&
+          filters.some((f) => f?.propertyName === "hs_object_id");
+        if (isByIdLookup) {
+          return {
+            running: `Retrieving HubSpot ${objectType}`,
+            done: `Retrieve HubSpot ${objectType}`,
+          };
+        }
+        if (isString(inputs.query) && inputs.query.length > 0) {
+          const q = truncateQuery(inputs.query);
+          return {
+            running: `Searching HubSpot ${objectType} “${q}”`,
+            done: `Search HubSpot ${objectType} “${q}”`,
+          };
+        }
+        return {
+          running: `Searching HubSpot ${objectType}`,
+          done: `Search HubSpot ${objectType}`,
+        };
+      }
+      return null;
+
     // All other servers: no dynamic labels.
     case "agent_sidekick_agent_state":
     case "agent_sidekick_context":
@@ -1003,7 +1030,6 @@ function getDynamicToolDisplayLabels({
     case "fathom":
     case "freshservice":
     case "gong":
-    case "hubspot":
     case "include_data":
     case "luma":
     case "missing_action_catcher":

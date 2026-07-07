@@ -174,6 +174,50 @@ describe("getToolDisplayLabels", () => {
       done: "Read file",
     });
   });
+
+  it("labels a HubSpot search by object type", () => {
+    expect(
+      getToolDisplayLabels({
+        internalMCPServerName: "hubspot",
+        toolName: "search_crm_objects",
+        inputs: { objectType: "companies" },
+      })
+    ).toEqual({
+      running: "Searching HubSpot companies",
+      done: "Search HubSpot companies",
+    });
+  });
+
+  it("labels a HubSpot id lookup as a retrieval", () => {
+    expect(
+      getToolDisplayLabels({
+        internalMCPServerName: "hubspot",
+        toolName: "search_crm_objects",
+        inputs: {
+          objectType: "contacts",
+          filters: [
+            { propertyName: "hs_object_id", operator: "EQ", value: "1" },
+          ],
+        },
+      })
+    ).toEqual({
+      running: "Retrieving HubSpot contacts",
+      done: "Retrieve HubSpot contacts",
+    });
+  });
+
+  it("includes the free-text query in a HubSpot search label", () => {
+    expect(
+      getToolDisplayLabels({
+        internalMCPServerName: "hubspot",
+        toolName: "search_crm_objects",
+        inputs: { objectType: "deals", query: "acme renewal" },
+      })
+    ).toEqual({
+      running: "Searching HubSpot deals “acme renewal”",
+      done: "Search HubSpot deals “acme renewal”",
+    });
+  });
 });
 
 describe("getStaticToolDisplayLabelsFromFunctionCallName", () => {
