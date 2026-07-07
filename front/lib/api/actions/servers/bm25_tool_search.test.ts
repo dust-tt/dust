@@ -1535,6 +1535,20 @@ const QUERIES: LabeledQuery[] = [
     expected: "data_sources_file_system.semantic_search",
   },
   {
+    query:
+      "search recent connected data source documents about renewal pricing",
+    expected: "data_sources_file_system.semantic_search",
+  },
+  {
+    query:
+      "find passages in company knowledge that explain the onboarding policy",
+    expected: "data_sources_file_system.semantic_search",
+  },
+  {
+    query: "look for fresh docs from the last month about the SSO rollout plan",
+    expected: "data_sources_file_system.semantic_search",
+  },
+  {
     query: "find a wiki page in a data source by part of its title",
     expected: "data_sources_file_system.find",
   },
