@@ -6,10 +6,25 @@ import { Err, Ok } from "@app/types/shared/result";
 import { honoApp } from "@front-api/app";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { mockReadPodSpacePolicy, mockWritePodSpacePolicy } = vi.hoisted(() => ({
+const {
+  mockEmitAuditLogEvent,
+  mockReadPodSpacePolicy,
+  mockWritePodSpacePolicy,
+} = vi.hoisted(() => ({
+  mockEmitAuditLogEvent: vi.fn(),
   mockReadPodSpacePolicy: vi.fn(),
   mockWritePodSpacePolicy: vi.fn(),
 }));
+
+vi.mock("@app/lib/api/audit/workos_audit", async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import("@app/lib/api/audit/workos_audit")>();
+
+  return {
+    ...actual,
+    emitAuditLogEvent: mockEmitAuditLogEvent,
+  };
+});
 
 vi.mock("@app/lib/api/sandbox/egress_policy", () => ({
   readPodSpacePolicy: mockReadPodSpacePolicy,
@@ -100,6 +115,23 @@ describe("GET/PUT /api/w/:wId/spaces/:spaceId/sandbox/egress-policy", () => {
         allowedDomains: ["api.github.com", "*.github.com"],
       },
     });
+    expect(mockEmitAuditLogEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: "pod_egress_policy.updated",
+        auth: expect.any(Object),
+        context: expect.objectContaining({
+          location: expect.any(String),
+        }),
+        metadata: {
+          allowed_domain_count: "2",
+          allowed_domains: "api.github.com,*.github.com",
+        },
+        targets: [
+          expect.objectContaining({ type: "workspace", id: workspace.sId }),
+          expect.objectContaining({ type: "space", id: pod.sId }),
+        ],
+      })
+    );
   });
 
   it("rejects invalid domain entries", async () => {
@@ -112,6 +144,10 @@ describe("GET/PUT /api/w/:wId/spaces/:spaceId/sandbox/egress-policy", () => {
 
     expect(response.status).toBe(400);
     expect(mockWritePodSpacePolicy).not.toHaveBeenCalled();
+    // withSpace may emit `space.accessed`, but the policy-update event must not fire.
+    expect(mockEmitAuditLogEvent).not.toHaveBeenCalledWith(
+      expect.objectContaining({ action: "pod_egress_policy.updated" })
+    );
   });
 
   it("rejects non-admin users with a 403", async () => {

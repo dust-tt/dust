@@ -77,6 +77,7 @@ export const AUDIT_ACTIONS = [
   "sandbox_egress_policy.agent_requests_setting_updated",
   "sandbox_egress_policy.sandbox_updated",
   "sandbox_egress_policy.updated",
+  "pod_egress_policy.updated",
   "sandbox_env_var.allowed_domains_updated",
   "sandbox_env_var.created",
   "sandbox_env_var.deleted",

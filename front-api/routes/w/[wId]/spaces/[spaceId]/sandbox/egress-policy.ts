@@ -1,4 +1,9 @@
 import {
+  buildAuditLogTarget,
+  emitAuditLogEvent,
+  getAuditLogContext,
+} from "@app/lib/api/audit/workos_audit";
+import {
   readPodSpacePolicy,
   writePodSpacePolicy,
 } from "@app/lib/api/sandbox/egress_policy";
@@ -90,6 +95,21 @@ app.put(
         },
       });
     }
+
+    const auth = ctx.get("auth");
+    void emitAuditLogEvent({
+      auth,
+      action: "pod_egress_policy.updated",
+      targets: [
+        buildAuditLogTarget("workspace", auth.getNonNullableWorkspace()),
+        buildAuditLogTarget("space", space),
+      ],
+      context: getAuditLogContext(auth),
+      metadata: {
+        allowed_domain_count: String(result.value.allowedDomains.length),
+        allowed_domains: result.value.allowedDomains.join(","),
+      },
+    });
 
     return ctx.json({ policy: result.value });
   }
