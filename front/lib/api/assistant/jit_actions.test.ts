@@ -25,12 +25,8 @@ import type { WorkspaceType } from "@app/types/user";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 function disableAutoEquippedSkills() {
-  vi.spyOn(projectsSkill, "getAutoAgentLoopAvailability").mockReturnValue(
-    undefined
-  );
-  vi.spyOn(sandboxSkill, "getAutoAgentLoopAvailability").mockReturnValue(
-    undefined
-  );
+  vi.spyOn(projectsSkill, "getAutoModeForAgentLoop").mockReturnValue(undefined);
+  vi.spyOn(sandboxSkill, "getAutoModeForAgentLoop").mockReturnValue(undefined);
 }
 
 describe("getJITServers", () => {

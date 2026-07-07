@@ -10,7 +10,7 @@ import {
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
 import type {
-  AutoAgentLoopAvailability,
+  AutoSkillModeForAgentLoop,
   GlobalSkillDefinition,
 } from "@app/lib/resources/skill/code_defined/shared";
 import logger from "@app/logger/logger";
@@ -389,7 +389,7 @@ export const sandboxSkill = {
   icon: "CommandLineIcon",
   // Auto-equipped for every agent unless the workspace has disabled the
   // Computer, but not enabled until the agent decides to use it.
-  getAutoAgentLoopAvailability: (): AutoAgentLoopAvailability | undefined =>
+  getAutoModeForAgentLoop: (): AutoSkillModeForAgentLoop | undefined =>
     "equipped",
   isRestricted: async (auth: Authenticator) => {
     const flags = await getFeatureFlags(auth);

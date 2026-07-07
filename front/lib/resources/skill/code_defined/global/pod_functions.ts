@@ -2,7 +2,7 @@ import { SANDBOX_FUNCTIONS_SERVER_NAME } from "@app/lib/api/actions/servers/sand
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
 import type {
-  AutoAgentLoopAvailability,
+  AutoSkillModeForAgentLoop,
   GlobalSkillDefinition,
 } from "@app/lib/resources/skill/code_defined/shared";
 import { isPodConversation } from "@app/types/assistant/conversation";
@@ -84,6 +84,6 @@ function's contract before relying on it. See each tool's own description for it
     !agentLoopData.conversation ||
     !isPodConversation(agentLoopData.conversation),
   // Equipped in Pod conversations but not auto-enabled.
-  getAutoAgentLoopAvailability: (): AutoAgentLoopAvailability | undefined =>
+  getAutoModeForAgentLoop: (): AutoSkillModeForAgentLoop | undefined =>
     "equipped",
 } as const satisfies GlobalSkillDefinition;

@@ -15,16 +15,16 @@ export type MCPServerDefinition = {
   serverNameOverride?: string;
 };
 
-export type AutoAgentLoopAvailability = "enabled" | "equipped";
+export type AutoSkillModeForAgentLoop = "enabled" | "equipped";
 
-type AutoAgentLoopAvailabilityParams = {
+type AutoSkillModeForAgentLoopParams = {
   agentConfiguration: AgentLoopExecutionData["agentConfiguration"];
   conversation: ConversationWithoutContentType;
 };
 
-type AutoAgentLoopAvailabilityCallback<
-  T extends AutoAgentLoopAvailability = AutoAgentLoopAvailability,
-> = (params: AutoAgentLoopAvailabilityParams) => T | undefined;
+type AutoSkillModeForAgentLoopCallback<
+  T extends AutoSkillModeForAgentLoop = AutoSkillModeForAgentLoop,
+> = (params: AutoSkillModeForAgentLoopParams) => T | undefined;
 
 interface BaseSkillDefinition {
   readonly agentFacingDescription: string;
@@ -45,7 +45,7 @@ interface BaseSkillDefinition {
   // Optional callback to auto-enable or auto-equip a code-defined skill for an
   // agent loop (subject to isRestricted), without adding it to the agent
   // configuration. Return undefined to leave the skill unchanged for this loop.
-  readonly getAutoAgentLoopAvailability?: AutoAgentLoopAvailabilityCallback;
+  readonly getAutoModeForAgentLoop?: AutoSkillModeForAgentLoopCallback;
   // Optional callback to hide a skill from a given agent loop (both from equipped and enabled).
   readonly isDisabledForAgentLoop?: (
     agentLoopData: AgentLoopExecutionData
@@ -79,7 +79,7 @@ export type GlobalSkillDefinition = SkillDefinition & {
 // System skills have no definition of "equipped". When they are present they are directly part of the system prompt.
 export type SystemSkillDefinition = SkillDefinition & {
   readonly kind: "system";
-  getAutoAgentLoopAvailability?: AutoAgentLoopAvailabilityCallback<"enabled">;
+  getAutoModeForAgentLoop?: AutoSkillModeForAgentLoopCallback<"enabled">;
 };
 
 // Helper function that enforces unique sIds.
