@@ -1,6 +1,7 @@
 import { hardDeleteApp } from "@app/lib/api/apps";
 import { updateAgentRequirements } from "@app/lib/api/assistant/configuration/agent_requirements";
 import { createDataSourceAndConnectorForProject } from "@app/lib/api/projects/connector";
+import { deleteOwnerPolicy } from "@app/lib/api/sandbox/egress_policy";
 import { getWorkspaceAdministrationVersionLock } from "@app/lib/api/workspace";
 import type { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
@@ -421,6 +422,20 @@ export async function hardDeleteSpace(
       spaceId: space.sId,
       stopReason: "project hard deleted",
     });
+
+    // Best-effort scrub of the pod's sandbox egress allowlist file
+    // (owner-keyed, so it is not deleted with individual sandboxes). A
+    // failure logs but does not block the deletion.
+    const deleteOwnerPolicyRes = await deleteOwnerPolicy(auth, space.sId);
+    if (deleteOwnerPolicyRes.isErr()) {
+      logger.warn(
+        {
+          err: deleteOwnerPolicyRes.error,
+          spaceId: space.sId,
+        },
+        "Failed to delete pod egress policy file on space deletion."
+      );
+    }
   }
 
   return new Ok(undefined);

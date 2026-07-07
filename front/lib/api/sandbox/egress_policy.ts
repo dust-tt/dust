@@ -184,6 +184,41 @@ export async function readOwnerPolicy(
   return new Ok(policy.value ?? EMPTY_EGRESS_POLICY);
 }
 
+// Replaces an owner's whole allowlist. The admin-facing write for pod
+// (Shared Computer) policies: like the workspace policy — and unlike the
+// agent tool's exact-domain appends — wildcard entries such as
+// `*.github.com` are supported, and there is no domain-count cap (also
+// mirroring the workspace policy). Note the asymmetry with
+// addOwnerPolicyDomain, which caps at SANDBOX_POLICY_MAX_DOMAINS: if the
+// add_egress_domain tool is ever enabled on pod sandboxes, an admin list
+// over the cap would make every tool append fail — reconcile the two limits
+// then.
+export async function writeOwnerPolicy(
+  auth: Authenticator,
+  ownerId: string,
+  { policy }: { policy: EgressPolicy }
+): Promise<Result<EgressPolicy, Error>> {
+  const normalizedPolicy = normalizeEgressPolicy(policy);
+
+  if (normalizedPolicy.isErr()) {
+    return normalizedPolicy;
+  }
+
+  try {
+    await getPolicyBucket().uploadRawContentToBucket({
+      content: JSON.stringify(normalizedPolicy.value),
+      contentType: "application/json",
+      filePath: getOwnerPolicyPath(auth, ownerId),
+    });
+
+    void invalidateOwnerPolicyCache(auth, ownerId);
+
+    return new Ok(normalizedPolicy.value);
+  } catch (error) {
+    return new Err(normalizeError(error));
+  }
+}
+
 export async function addOwnerPolicyDomain(
   auth: Authenticator,
   { ownerId, domain }: { ownerId: string; domain: string }
