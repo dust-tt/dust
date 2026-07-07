@@ -486,7 +486,7 @@ export class GroupPermissionResource extends BaseResource<GroupPermissionModel> 
     await this.inTransaction(transaction, async (t) => {
       await this.lockCapability(auth, capability, t);
       await this.disable(auth, capability, { transaction: t });
-      await this.grantOnAllResourcesOfType(auth, {
+      await this.grantTypeWide(auth, {
         group: globalGroup,
         ...capability,
         transaction: t,
@@ -517,7 +517,7 @@ export class GroupPermissionResource extends BaseResource<GroupPermissionModel> 
     await this.inTransaction(transaction, async (t) => {
       await this.lockCapability(auth, capability, t);
       await this.disable(auth, capability, { transaction: t });
-      await this.grantOnAllResourcesOfTypeForGroups(auth, {
+      await this.grantTypeWideForGroups(auth, {
         groups,
         ...capability,
         transaction: t,
