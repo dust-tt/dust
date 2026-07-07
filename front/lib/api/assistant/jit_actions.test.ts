@@ -462,6 +462,30 @@ describe("getJITServers", () => {
       });
     });
 
+    it("keeps auto-enabled projects out of discoverable equipped skills in a project", async () => {
+      await SkillFactory.linkGlobalSkillToAgent(auth, {
+        globalSkillId: "discover_skills",
+        agentConfigurationId: agentConfig.id,
+      });
+
+      const buckets = await SkillResource.listForAgentLoop(auth, {
+        agentConfiguration: agentConfig,
+        conversation: {
+          ...conversation,
+          spaceId: conversationsSpace.sId,
+        },
+      });
+
+      expectSkillBuckets(buckets, "projects", {
+        enabled: false,
+        system: true,
+        equipped: false,
+      });
+      expect(
+        buckets.equippedSkills.filter((s) => s.sId === "projects")
+      ).toHaveLength(0);
+    });
+
     it("includes skill_management so agents can enable the projects skill", async () => {
       await MCPServerViewResource.ensureAllAutoToolsAreCreated(auth);
 

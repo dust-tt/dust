@@ -15,14 +15,18 @@ export type MCPServerDefinition = {
   serverNameOverride?: string;
 };
 
+type AutoEnabledOrEquippedForAgentLoop = "enabled" | "equipped";
+
 type AutoEnabledOrEquippedForAgentLoopCallback<
-  T extends "enabled" | "equipped" = "enabled" | "equipped",
+  T extends AutoEnabledOrEquippedForAgentLoop,
 > = (params: {
   agentConfiguration: AgentLoopExecutionData["agentConfiguration"];
   conversation: ConversationWithoutContentType;
 }) => T | undefined;
 
-interface BaseSkillDefinition {
+interface BaseSkillDefinition<
+  TAutoEnabledOrEquipped extends AutoEnabledOrEquippedForAgentLoop,
+> {
   readonly agentFacingDescription: string;
   readonly userFacingDescription: string;
   readonly kind: "global" | "system";
@@ -41,19 +45,23 @@ interface BaseSkillDefinition {
   // Optional callback to auto-enable or auto-equip a code-defined skill for an
   // agent loop (subject to isRestricted), without adding it to the agent
   // configuration. Return undefined to leave the skill unchanged for this loop.
-  readonly getAutoEnabledOrEquippedForAgentLoop?: AutoEnabledOrEquippedForAgentLoopCallback;
+  readonly getAutoEnabledOrEquippedForAgentLoop?: AutoEnabledOrEquippedForAgentLoopCallback<TAutoEnabledOrEquipped>;
   // Optional callback to hide a skill from a given agent loop (both from equipped and enabled).
   readonly isDisabledForAgentLoop?: (
     agentLoopData: AgentLoopExecutionData
   ) => boolean;
 }
 
-type WithStaticInstructions<T extends BaseSkillDefinition> = T & {
+type WithStaticInstructions<
+  T extends BaseSkillDefinition<AutoEnabledOrEquippedForAgentLoop>,
+> = T & {
   readonly instructions: string;
   readonly fetchInstructions?: never;
 };
 
-type WithDynamicInstructions<T extends BaseSkillDefinition> = T & {
+type WithDynamicInstructions<
+  T extends BaseSkillDefinition<AutoEnabledOrEquippedForAgentLoop>,
+> = T & {
   readonly instructions?: never;
   readonly fetchInstructions: (
     auth: Authenticator,
@@ -64,18 +72,27 @@ type WithDynamicInstructions<T extends BaseSkillDefinition> = T & {
   ) => Promise<string>;
 };
 
-export type SkillDefinition =
-  | WithStaticInstructions<BaseSkillDefinition>
-  | WithDynamicInstructions<BaseSkillDefinition>;
+export type SkillDefinition<
+  TAutoEnabledOrEquipped extends
+    AutoEnabledOrEquippedForAgentLoop = AutoEnabledOrEquippedForAgentLoop,
+> =
+  | WithStaticInstructions<BaseSkillDefinition<TAutoEnabledOrEquipped>>
+  | WithDynamicInstructions<BaseSkillDefinition<TAutoEnabledOrEquipped>>;
 
-export type GlobalSkillDefinition = SkillDefinition & {
+type ProjectSkillDefinition = SkillDefinition & {
   readonly kind: "global";
+  readonly sId: "projects";
 };
 
+// Global skills are equip-able by the agent, not added to the system prompt automatically.
+// Pods are the exception: the same code-defined skill is equip-able outside Pods and system
+// prompt content inside Pod conversations.
+export type GlobalSkillDefinition =
+  | (SkillDefinition<"equipped"> & { readonly kind: "global" })
+  | ProjectSkillDefinition;
 // System skills have no definition of "equipped". When they are present they are directly part of the system prompt.
-export type SystemSkillDefinition = SkillDefinition & {
+export type SystemSkillDefinition = SkillDefinition<"enabled"> & {
   readonly kind: "system";
-  getAutoEnabledOrEquippedForAgentLoop?: AutoEnabledOrEquippedForAgentLoopCallback<"enabled">;
 };
 
 // Helper function that enforces unique sIds.
