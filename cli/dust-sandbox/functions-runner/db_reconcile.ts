@@ -19,7 +19,7 @@ import { is } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/bun-sqlite";
 import { SQLiteTable } from "drizzle-orm/sqlite-core";
 import { DbCommandError, introspectLiveTables } from "./db_common.ts";
-import { extractDatabaseManifestFromFile, ManifestError } from "./manifest.ts";
+import { extractDatabaseManifestFromFile } from "./manifest.ts";
 
 export interface ReconcileSuccess {
   ok: true;
@@ -51,23 +51,19 @@ export async function reconcile(
   // 1. Validate the schema file: same FK/CHECK/composite-PK/empty rejections as build time.
   //    The manifest also gives us the desired shape for the destructive pre-check.
   const dbName = basename(dbPath, ".db");
-  let manifest;
-  try {
-    manifest = await extractDatabaseManifestFromFile(
-      dbName,
-      schemaPath,
-      schemaPath
-    );
-  } catch (e) {
-    if (e instanceof ManifestError) {
-      const kind =
-        e.kind === "database_schema_unresolvable"
-          ? "schema_unresolvable"
-          : "schema_invalid";
-      throw new DbCommandError(kind, e.message);
-    }
-    throw e;
+  const manifestResult = await extractDatabaseManifestFromFile(
+    dbName,
+    schemaPath,
+    schemaPath
+  );
+  if (!manifestResult.ok) {
+    const kind =
+      manifestResult.error.kind === "database_schema_unresolvable"
+        ? "schema_unresolvable"
+        : "schema_invalid";
+    throw new DbCommandError(kind, manifestResult.error.message);
   }
+  const manifest = manifestResult.value;
 
   // The schema module's table exports feed drizzle-kit directly; the manifest step above
   // already proved the module imports.
@@ -197,8 +193,9 @@ type DrizzleKitSQLiteDatabase = Parameters<PushSQLiteSchema>[1];
 // `.run(sql)` are used, which the bun-sqlite drizzle instance provides with compatible
 // signatures (verified in the E2 spike). This shim documents (and confines) the cast.
 function asLibSqlDatabase(db: {
-  all: (query: unknown) => unknown;
-  run: (query: unknown) => unknown;
+  // `never` params: callers pass functions with narrower query types (contravariance).
+  all: (query: never) => unknown;
+  run: (query: never) => unknown;
 }): DrizzleKitSQLiteDatabase {
   return db as DrizzleKitSQLiteDatabase;
 }
