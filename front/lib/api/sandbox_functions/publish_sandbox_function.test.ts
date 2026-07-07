@@ -1,7 +1,7 @@
 import { buildSandboxFunctionOnSandbox } from "@app/lib/api/sandbox_functions/build_on_sandbox";
 import { reconcileDatabaseOnSandbox } from "@app/lib/api/sandbox_functions/dsbx_db";
 import { SandboxFunctionError } from "@app/lib/api/sandbox_functions/errors";
-import type { FunctionManifests } from "@app/lib/api/sandbox_functions/manifests";
+import type { FunctionStateManifest } from "@app/lib/api/sandbox_functions/manifests";
 import { publishSandboxFunction } from "@app/lib/api/sandbox_functions/publish_sandbox_function";
 import { Authenticator } from "@app/lib/auth";
 import { SandboxFunctionResource } from "@app/lib/resources/sandbox_function_resource";
@@ -70,7 +70,7 @@ function chatManifests(
       autoIncrement: boolean;
     }
   >
-): FunctionManifests {
+): FunctionStateManifest {
   return {
     version: 1,
     databases: {

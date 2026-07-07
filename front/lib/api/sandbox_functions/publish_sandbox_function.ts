@@ -13,7 +13,7 @@ import {
 } from "@app/lib/api/sandbox_functions/compat";
 import { reconcileDatabaseOnSandbox } from "@app/lib/api/sandbox_functions/dsbx_db";
 import { SandboxFunctionError } from "@app/lib/api/sandbox_functions/errors";
-import type { FunctionManifests } from "@app/lib/api/sandbox_functions/manifests";
+import type { FunctionStateManifest } from "@app/lib/api/sandbox_functions/manifests";
 import type { Authenticator } from "@app/lib/auth";
 import { executeWithLock } from "@app/lib/lock";
 import { FileResource } from "@app/lib/resources/file_resource";
@@ -150,7 +150,7 @@ async function publishCriticalSection(
     bundleCode: string;
     inputSchema: JSONSchema;
     outputSchema: JSONSchema;
-    manifests: FunctionManifests | null;
+    manifests: FunctionStateManifest | null;
   }
 ): Promise<Result<PublishSandboxFunctionOutcome, SandboxFunctionError>> {
   const sectionStartMs = Date.now();
@@ -253,7 +253,7 @@ async function readPodManifests(
   slug: string
 ): Promise<{
   existing: SandboxFunctionResource | null;
-  previousManifests: FunctionManifests | null;
+  previousManifests: FunctionStateManifest | null;
   siblings: SiblingManifests[];
 }> {
   // One query: manifests live on the sandbox_functions rows themselves (GEN14).
@@ -276,7 +276,7 @@ interface PublishStoreArgs {
   bundleCode: string;
   inputSchema: JSONSchema;
   outputSchema: JSONSchema;
-  manifests: FunctionManifests | null;
+  manifests: FunctionStateManifest | null;
   existing: SandboxFunctionResource | null;
 }
 
