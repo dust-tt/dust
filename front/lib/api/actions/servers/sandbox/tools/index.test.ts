@@ -243,7 +243,10 @@ describe("runSandboxBashTool", () => {
           model: { providerId: "openai" },
           agentMessage: { sId: "message-id", agentMessageId: 1 },
           conversation: { sId: "conversation-id" },
-          currentAction: { sId: "sandbox-action-id" },
+          action: {
+            sId: "sandbox-action-id",
+            toJSON: () => ({ sId: "sandbox-action-id" }),
+          },
           stepContext: {
             citationsCount: 0,
             citationsOffset: 0,
@@ -680,7 +683,10 @@ describe("runSandboxBashTool", () => {
             model: { providerId: "openai" },
             agentMessage: { sId: "message-id", agentMessageId: 1 },
             conversation: { sId: "conversation-id" },
-            currentAction: { sId: "sandbox-action-id" },
+            action: {
+              sId: "sandbox-action-id",
+              toJSON: () => ({ sId: "sandbox-action-id" }),
+            },
             stepContext: {
               citationsCount: 0,
               citationsOffset: 0,

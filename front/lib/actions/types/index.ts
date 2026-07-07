@@ -3,8 +3,9 @@ import type {
   LightMCPToolConfigurationType,
   MCPServerConfigurationType,
 } from "@app/lib/actions/mcp";
+import type { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import type { SandboxFunctionInvocationResource } from "@app/lib/resources/sandbox_function_invocation_resource";
-import type { AgentMCPActionType } from "@app/types/actions";
+import type { SandboxFunctionMCPActionResource } from "@app/lib/resources/sandbox_function_mcp_action_resource";
 import type {
   AgentConfigurationWithoutModelType,
   AgentModelConfigurationType,
@@ -152,10 +153,10 @@ export type ActionGeneratedFileType =
 
 export type AgentLoopRunContextType = {
   contextType: "agent_loop";
+  action: AgentMCPActionResource;
   agentConfiguration: AgentConfigurationWithoutModelType;
   model: AgentModelConfigurationType & ModelConfigurationType;
   agentMessage: AgentMessageType;
-  currentAction: AgentMCPActionType;
   conversation: ConversationType;
   stepContext: StepContext;
   toolConfiguration: LightMCPToolConfigurationType;
@@ -164,6 +165,7 @@ export type AgentLoopRunContextType = {
 
 export type SandboxFunctionRunContextType = {
   contextType: "sandbox_function";
+  action: SandboxFunctionMCPActionResource;
   invocation: SandboxFunctionInvocationResource;
   toolConfiguration: LightMCPToolConfigurationType;
 };

@@ -25,7 +25,6 @@ import { persistToolOutput } from "@app/lib/api/files/action_output_fs";
 import { processAndStoreFromUrl } from "@app/lib/api/files/upload";
 import type { Authenticator } from "@app/lib/auth";
 import type { AgentMCPActionOutputItemModel } from "@app/lib/models/agent/actions/mcp";
-import type { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import type {
@@ -74,10 +73,8 @@ export async function processToolNotification(
   auth: Authenticator,
   notification: MCPProgressNotificationType,
   {
-    action,
     toolContext,
   }: {
-    action: AgentMCPActionResource;
     toolContext: ToolContextType;
   }
 ): Promise<{
@@ -93,7 +90,13 @@ export async function processToolNotification(
 
   // Handle store_resource notifications by creating output items immediately (fire-and-forget GCS).
   if (isStoreResourceProgressOutput(output)) {
-    storedItems = await action.createOutputItems(
+    // TODO(SANDBOX_FUNCTIONS): persist sandbox function outputs (writeOutput) when running in a
+    // sandbox function run context.
+    assert(
+      isAgentLoopRunContext(runContext),
+      "store_resource notifications require an agent loop run context."
+    );
+    storedItems = await runContext.action.createOutputItems(
       auth,
       output.contents.map((content) => ({
         content: sanitizeStringsDeep(content),
@@ -103,21 +106,20 @@ export async function processToolNotification(
 
   // Specific handling for run_agent notifications indicating the tool has
   // started and can be resumed: the action is updated to save the resumeState.
-  if (isRunAgentQueryProgressOutput(output)) {
-    await action.updateStepContext({
-      ...action.stepContext,
+  // Sandbox function actions carry no step context to persist a resume state on, so this only
+  // applies to agent loop run contexts.
+  if (
+    isRunAgentQueryProgressOutput(output) &&
+    isAgentLoopRunContext(runContext)
+  ) {
+    await runContext.action.updateStepContext({
+      ...runContext.action.stepContext,
       resumeState: {
         userMessageId: output.userMessageId,
         conversationId: output.conversationId,
       },
     });
   }
-
-  const actionWithOutput = {
-    ...action.toJSON(),
-    output: null,
-    generatedFiles: [],
-  };
 
   // Regular notifications, we yield them as is with the type "tool_notification", scoped to the
   // run context they were emitted from.
@@ -130,7 +132,11 @@ export async function processToolNotification(
           configurationId: runContext.agentConfiguration.sId,
           conversationId: runContext.conversation.sId,
           messageId: runContext.agentMessage.sId,
-          action: actionWithOutput,
+          action: {
+            ...runContext.action.toJSON(),
+            output: null,
+            generatedFiles: [],
+          },
           notification: notification.params,
         },
         storedItems,
@@ -142,7 +148,7 @@ export async function processToolNotification(
           created: Date.now(),
           sandboxFunctionId: runContext.invocation.sandboxFunction.sId,
           invocationId: runContext.invocation.sId,
-          action: actionWithOutput,
+          action: runContext.action.toJSON(),
           notification: notification.params,
         },
         storedItems,
@@ -159,12 +165,10 @@ export async function processToolNotification(
 export async function processToolResults(
   auth: Authenticator,
   {
-    action,
     localLogger,
     toolCallResultContent,
     toolContext,
   }: {
-    action: AgentMCPActionResource;
     localLogger: Logger;
     toolCallResultContent: CallToolResult["content"];
     toolContext: ToolContextType;
@@ -438,7 +442,13 @@ export async function processToolResults(
     }
   );
 
-  const outputItems = await action.createOutputItems(
+  // TODO(SANDBOX_FUNCTIONS): persist sandbox function outputs (writeOutput) when running in a
+  // sandbox function run context.
+  assert(
+    isAgentLoopRunContext(runContext),
+    "processToolResults requires an agent loop run context to store output items."
+  );
+  const outputItems = await runContext.action.createOutputItems(
     auth,
     cleanContent.map((c) => ({
       content: sanitizeStringsDeep(c.content),
