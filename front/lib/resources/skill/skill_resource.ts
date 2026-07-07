@@ -1499,30 +1499,43 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     // Code-defined skills can opt into being auto-equipped or auto-enabled for the agent loop
     // without being added to the agent configuration. `findAll` already drops restricted skills,
     // so a flag-gated skill only shows up once its feature flag is on.
-    const enabledGlobalSkillIds = new Set(
-      removeNulls([
-        ...configSystemSkills.map((s) => s.globalSId),
-        ...conversationEnabledSkills.map((s) => s.globalSId),
-      ])
-    );
     const codeDefinedDefs = [
       ...(await SystemSkillsRegistry.findAll(auth)),
       ...(await GlobalSkillsRegistry.findAll(auth)),
     ];
-    const autoEnabledRefs = codeDefinedDefs
-      .filter(
-        (def) =>
-          def.isAutoEnabledForAgentLoop?.({
-            agentConfiguration,
-            conversation,
-          }) && !enabledGlobalSkillIds.has(def.sId)
-      )
+
+    const autoEnabledDefs = codeDefinedDefs.filter((def) =>
+      def.isAutoEnabledForAgentLoop?.({
+        agentConfiguration,
+        conversation,
+      })
+    );
+    const autoEnabledGlobalSkillIds = new Set(
+      autoEnabledDefs.map((def) => def.sId)
+    );
+    const autoEnabledSkillsAlreadyLoaded = [
+      ...configSystemSkills,
+      ...conversationEnabledSkills,
+      ...allAgentSkills,
+    ].filter((s) => s.globalSId && autoEnabledGlobalSkillIds.has(s.globalSId));
+    const loadedAutoEnabledGlobalSkillIds = new Set(
+      removeNulls(autoEnabledSkillsAlreadyLoaded.map((s) => s.globalSId))
+    );
+    const autoEnabledRefs = autoEnabledDefs
+      .filter((def) => !loadedAutoEnabledGlobalSkillIds.has(def.sId))
       .map((def) => ({ globalSkillId: def.sId, customSkillId: null }));
-    const autoEnabledSkills = autoEnabledRefs.length
+    const fetchedAutoEnabledSkills = autoEnabledRefs.length
       ? await this.fetchBySkillReferences(auth, autoEnabledRefs, {
           agentLoopData,
         })
       : [];
+    const autoEnabledSkills = [
+      ...new Map(
+        [...autoEnabledSkillsAlreadyLoaded, ...fetchedAutoEnabledSkills].map(
+          (s) => [s.sId, s]
+        )
+      ).values(),
+    ];
 
     const equippedGlobalSkillIds = new Set(
       removeNulls([
@@ -1548,22 +1561,28 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         })
       : [];
 
-    // System skills land in `systemSkills` (always enabled); auto-enabled global skills join
-    // the conversation-enabled skills.
+    // System skills and contextually auto-enabled code-defined skills land in `systemSkills`.
+    // They are active for the current loop without being conversation-enabled records.
     const systemSkills = [
-      ...configSystemSkills,
-      ...autoEnabledSkills.filter((s) => s.isSystemSkill),
+      ...new Map(
+        [...configSystemSkills, ...autoEnabledSkills].map((s) => [s.sId, s])
+      ).values(),
     ];
 
-    const enabledSkills = [
-      ...conversationEnabledSkills,
-      ...autoEnabledSkills.filter((s) => !s.isSystemSkill),
-    ].sort(sortByName);
+    const enabledSkills = conversationEnabledSkills
+      .filter(
+        (s) => !s.globalSId || !autoEnabledGlobalSkillIds.has(s.globalSId)
+      )
+      .sort(sortByName);
 
-    // Compute the equipped skills: all non-system agent skills, auto-equipped skills,
-    // plus discoverable skills that are not already equipped. Keep this list stable
-    // even after a skill is enabled.
-    const agentEquippedSkills = allAgentSkills.filter((s) => !s.isSystemSkill);
+    // Compute the equipped skills: all non-system, non-auto-enabled agent skills,
+    // auto-equipped skills, plus discoverable skills that are not already equipped.
+    // Keep this list stable even after a skill is enabled explicitly.
+    const agentEquippedSkills = allAgentSkills.filter(
+      (s) =>
+        !s.isSystemSkill &&
+        (!s.globalSId || !autoEnabledGlobalSkillIds.has(s.globalSId))
+    );
 
     const agentEquippedSkillIds = new Set(
       [...agentEquippedSkills, ...autoEquippedSkills].map((s) => s.sId)

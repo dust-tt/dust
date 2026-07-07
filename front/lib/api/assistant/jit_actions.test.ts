@@ -296,7 +296,7 @@ describe("getJITServers", () => {
       ).toBeUndefined();
     });
 
-    it("should enable projects skill in listForAgentLoop when feature flag is enabled and conversation is in a project", async () => {
+    it("auto-enables projects as a system skill when conversation is in a project", async () => {
       await MCPServerViewResource.ensureAllAutoToolsAreCreated(auth);
 
       const conversationInProject = {
@@ -304,12 +304,16 @@ describe("getJITServers", () => {
         spaceId: conversationsSpace.sId,
       };
 
-      const { enabledSkills } = await SkillResource.listForAgentLoop(auth, {
-        agentConfiguration: agentConfig,
-        conversation: conversationInProject,
-      });
+      const { enabledSkills, systemSkills, equippedSkills } =
+        await SkillResource.listForAgentLoop(auth, {
+          agentConfiguration: agentConfig,
+          conversation: conversationInProject,
+        });
 
-      const projectsSkill = enabledSkills.find((s) => s.sId === "projects");
+      expect(enabledSkills.some((s) => s.sId === "projects")).toBe(false);
+      expect(equippedSkills.some((s) => s.sId === "projects")).toBe(false);
+
+      const projectsSkill = systemSkills.find((s) => s.sId === "projects");
       expect(projectsSkill).toBeDefined();
       const viewNames = projectsSkill?.mcpServerConfigurations.map((c) => {
         const json = c.view.toJSON();
@@ -318,13 +322,15 @@ describe("getJITServers", () => {
       expect(viewNames).toContain("pod_manager");
     });
 
-    it("should not enable projects skill in listForAgentLoop when conversation is not in a project", async () => {
-      const { enabledSkills } = await SkillResource.listForAgentLoop(auth, {
-        agentConfiguration: agentConfig,
-        conversation,
-      });
+    it("should not auto-enable projects skill when conversation is not in a project", async () => {
+      const { enabledSkills, systemSkills } =
+        await SkillResource.listForAgentLoop(auth, {
+          agentConfiguration: agentConfig,
+          conversation,
+        });
 
       expect(enabledSkills.some((s) => s.sId === "projects")).toBe(false);
+      expect(systemSkills.some((s) => s.sId === "projects")).toBe(false);
     });
 
     it("auto-equips the projects skill for any agent", async () => {
