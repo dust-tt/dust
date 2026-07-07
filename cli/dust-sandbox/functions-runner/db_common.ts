@@ -55,10 +55,16 @@ export function isInternalTable(name: string): boolean {
   );
 }
 
-export function openReadonly(dbPath: string): Database {
+export function openReadonly(
+  dbPath: string,
+  { safeIntegers = false }: { safeIntegers?: boolean } = {}
+): Database {
   let db: Database;
   try {
-    db = new Database(dbPath, { readonly: true });
+    // safeIntegers reads INTEGER columns as bigint instead of a possibly-lossy JS number
+    // (SQLite integers are 64-bit, JS numbers are exact only to 2^53):
+    // https://bun.com/docs/api/sqlite#datatypes
+    db = new Database(dbPath, { readonly: true, safeIntegers });
   } catch (e) {
     throw new DbCommandError(
       "database_not_found",
@@ -67,7 +73,12 @@ export function openReadonly(dbPath: string): Database {
       }`
     );
   }
+  // Second write barrier on top of the readonly open: any statement that changes the
+  // database fails with SQLITE_READONLY: https://sqlite.org/pragma.html#pragma_query_only
   db.exec("PRAGMA query_only = ON;");
+  // Wait up to 5s for a writer's lock instead of failing immediately with SQLITE_BUSY
+  // (function writes and litestream checkpoints hold short write locks):
+  // https://sqlite.org/pragma.html#pragma_busy_timeout
   db.exec("PRAGMA busy_timeout = 5000;");
   return db;
 }
@@ -99,51 +110,56 @@ export interface LiveTable {
 // Introspects the user-facing tables of a live database via sqlite_master + PRAGMAs.
 export function introspectLiveTables(db: Database): LiveTable[] {
   const rows = db
-    .query(
+    .query<{ name: string; sql: string | null }, []>(
       "SELECT name, sql FROM sqlite_master WHERE type = 'table' ORDER BY name"
     )
-    .all() as { name: string; sql: string | null }[];
+    .all();
 
   const tables: LiveTable[] = [];
   for (const row of rows) {
     if (isInternalTable(row.name)) {
       continue;
     }
-    const columns = (
-      db.query(`PRAGMA table_xinfo(${quoteIdentifier(row.name)})`).all() as {
-        name: string;
-        type: string;
-        notnull: number;
-        dflt_value: string | null;
-        pk: number;
-        hidden: number;
-      }[]
-    ).map((column) => ({
-      name: column.name,
-      declaredType: column.type,
-      notNull: column.notnull !== 0,
-      defaultValue: column.dflt_value,
-      pkOrdinal: column.pk,
-      hidden: column.hidden,
-    }));
+    const columns = db
+      .query<
+        {
+          name: string;
+          type: string;
+          notnull: number;
+          dflt_value: string | null;
+          pk: number;
+          hidden: number;
+        },
+        []
+      >(`PRAGMA table_xinfo(${quoteIdentifier(row.name)})`)
+      .all()
+      .map((column) => ({
+        name: column.name,
+        declaredType: column.type,
+        notNull: column.notnull !== 0,
+        defaultValue: column.dflt_value,
+        pkOrdinal: column.pk,
+        hidden: column.hidden,
+      }));
 
-    const indexes: LiveIndex[] = (
-      db.query(`PRAGMA index_list(${quoteIdentifier(row.name)})`).all() as {
-        name: string;
-        unique: number;
-        origin: string;
-      }[]
-    ).map((index) => {
-      const members = db
-        .query(`PRAGMA index_info(${quoteIdentifier(index.name)})`)
-        .all() as { name: string | null }[];
-      return {
-        name: index.name,
-        unique: index.unique !== 0,
-        origin: index.origin,
-        columns: members.map((member) => member.name),
-      };
-    });
+    const indexes: LiveIndex[] = db
+      .query<{ name: string; unique: number; origin: string }, []>(
+        `PRAGMA index_list(${quoteIdentifier(row.name)})`
+      )
+      .all()
+      .map((index) => {
+        const members = db
+          .query<{ name: string | null }, []>(
+            `PRAGMA index_info(${quoteIdentifier(index.name)})`
+          )
+          .all();
+        return {
+          name: index.name,
+          unique: index.unique !== 0,
+          origin: index.origin,
+          columns: members.map((member) => member.name),
+        };
+      });
 
     tables.push({
       name: row.name,
