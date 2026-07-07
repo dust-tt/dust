@@ -21,6 +21,7 @@ import {
   buildReplyBody,
   createThreadingHeaders,
   decodeMessageBody,
+  encodeEmailAddressHeader,
   encodeMessageForGmail,
   encodeSubject,
   extractAttachments,
@@ -93,10 +94,14 @@ function buildAndEncodeEmail(params: {
   let messageLines: string[];
 
   const commonLines = [
-    `To: ${params.to.join(", ")}`,
-    params.from ? `From: ${params.from}` : null,
-    params.cc?.length ? `Cc: ${params.cc.join(", ")}` : null,
-    params.bcc?.length ? `Bcc: ${params.bcc.join(", ")}` : null,
+    `To: ${params.to.map(encodeEmailAddressHeader).join(", ")}`,
+    params.from ? `From: ${encodeEmailAddressHeader(params.from)}` : null,
+    params.cc?.length
+      ? `Cc: ${params.cc.map(encodeEmailAddressHeader).join(", ")}`
+      : null,
+    params.bcc?.length
+      ? `Bcc: ${params.bcc.map(encodeEmailAddressHeader).join(", ")}`
+      : null,
     `Subject: ${encodedSubject}`,
   ].filter((line): line is string => line !== null);
 
