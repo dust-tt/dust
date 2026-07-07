@@ -54,7 +54,11 @@ import {
 } from "@app/lib/utils/cache";
 import logger from "@app/logger/logger";
 import type { MembershipSeatType } from "@app/types/memberships";
-import { isMembershipSeatType, SEAT_TYPE_ORDER } from "@app/types/memberships";
+import {
+  isMembershipSeatType,
+  isPaidSeatType,
+  SEAT_TYPE_ORDER,
+} from "@app/types/memberships";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
@@ -160,8 +164,12 @@ export type SeatChangeOutcome =
  *   else `noop`.
  * - `free` → `none`: `immediate`. A `free` seat carries no renewing, already-paid
  *   allowance to preserve, so removing it takes effect right away.
- * - New allocation ≥ previous: `immediate` (the user gains/keeps access
- *   right away).
+ * - Monthly → yearly switch (a monthly paid seat moving to a yearly cadence,
+ *   e.g. `pro` → `pro_yearly` or `pro` → `max_yearly`): `deferred`, even when
+ *   the target tier is higher. Committing to annual billing takes effect at
+ *   the end of the current period, never mid-period.
+ * - New allocation ≥ previous (and not the monthly→yearly case above):
+ *   `immediate` (the user gains/keeps access right away).
  * - New allocation < previous: `deferred` to the next time the previous
  *   seat's AWU allowance renews, so the user keeps the richer access through
  *   the allowance they already paid for. Returns `undefined` when no renewal
@@ -205,24 +213,37 @@ export function classifySeatChange({
     newSeatType,
     productSeatTypes
   );
-  // Keep or gain allowance — takes effect right away. This also covers
-  // removing a seat that carried no allowance (e.g. workspace seats:
-  // 0 >= 0): there's nothing already paid for to preserve, so the removal
-  // is immediate.
-  if (newAllocation >= previousAllocation) {
+  // A monthly→yearly switch commits the seat to annual billing. That
+  // commitment must never take effect mid-period — even when the target tier
+  // is higher (which the allocation comparison below would otherwise apply
+  // immediately) — so it is deferred to the end of the current period, exactly
+  // like a downgrade. Only a monthly paid seat can switch to yearly; adding a
+  // yearly seat from `free`/`none` is a fresh subscription and stays immediate.
+  const isMonthlyToYearlySwitch =
+    isPaidSeatType(previousSeatType) &&
+    !previousSeatType.endsWith("_yearly") &&
+    newSeatType.endsWith("_yearly");
+
+  // Keep or gain allowance — takes effect right away, unless it is the
+  // monthly→yearly commitment above. This also covers removing a seat that
+  // carried no allowance (e.g. workspace seats: 0 >= 0): there's nothing
+  // already paid for to preserve, so the removal is immediate.
+  if (newAllocation >= previousAllocation && !isMonthlyToYearlySwitch) {
     return { kind: "immediate" };
   }
 
-  // Losing allowance (downgrade, or removal of a seat that had allowance) —
-  // defer until the previous seat's AWU allowance next renews, so the user
-  // keeps the richer allowance they've already paid for until it would have
-  // refreshed anyway. The renewal cadence is the credit's `recurrence_frequency`
-  // (MONTHLY in new pricing, even for annually-billed seats — see
-  // `getNextSeatCreditRenewalDate`), which is independent of the billing period.
+  // Deferred: either losing allowance (downgrade, or removal of a seat that had
+  // allowance) or a monthly→yearly switch. Defer until the previous seat's AWU
+  // allowance next renews, so the user keeps the allowance they've already paid
+  // for until it would have refreshed anyway. The renewal cadence is the
+  // credit's `recurrence_frequency` (MONTHLY in new pricing, even for
+  // annually-billed seats — see `getNextSeatCreditRenewalDate`), which is
+  // independent of the billing period.
   //
-  // Defensive: a downgrade is always from a credit-bearing seat (`free` →
+  // Defensive: the previous seat is credit-bearing in the common case (`free` →
   // `none` is handled above as a no-op), but if the credit's recurrence can't
-  // be resolved, fall back to the next billing-period start rather than
+  // be resolved (e.g. a zero-allowance `workspace` seat switching to
+  // `workspace_yearly`), fall back to the next billing-period start rather than
   // failing the change.
   const creditRenewalAt = getNextSeatCreditRenewalDate({
     contract,

@@ -625,6 +625,81 @@ describe("classifySeatChange", () => {
     expect(classify("pro", "max")).toEqual({ kind: "immediate" });
   });
 
+  it("defers a monthly→yearly switch of the same tier (pro → pro_yearly) to the next credit renewal", () => {
+    // Same allowance, so not a downgrade — but committing to annual billing is
+    // deferred to end of period rather than applied mid-period.
+    const { contract: c, productSeatTypes: types } = makeContract({
+      seats: [
+        { seatType: "pro", awu: 100 },
+        { seatType: "pro_yearly", awu: 100, frequency: "ANNUAL" },
+      ],
+      currentBillingPeriodStartingAt: CURRENT_PERIOD,
+      nextBillingPeriodStartingAt: "2027-01-15T00:00:00Z",
+    });
+    expect(
+      classifySeatChange({
+        contract: c,
+        productSeatTypes: types,
+        now: NOW,
+        change: {
+          userId: "u1",
+          previousSeatType: "pro",
+          newSeatType: "pro_yearly",
+        },
+      })
+    ).toEqual({ kind: "deferred", at: NEXT_RENEWAL });
+  });
+
+  it("defers a monthly→yearly switch even when the target tier is higher (pro → max_yearly)", () => {
+    // A tier upgrade would normally be immediate, but the monthly→yearly
+    // billing commitment forces a deferral to end of period.
+    const { contract: c, productSeatTypes: types } = makeContract({
+      seats: [
+        { seatType: "pro", awu: 100 },
+        { seatType: "max_yearly", awu: 500, frequency: "ANNUAL" },
+      ],
+      currentBillingPeriodStartingAt: CURRENT_PERIOD,
+      nextBillingPeriodStartingAt: "2027-01-15T00:00:00Z",
+    });
+    expect(
+      classifySeatChange({
+        contract: c,
+        productSeatTypes: types,
+        now: NOW,
+        change: {
+          userId: "u1",
+          previousSeatType: "pro",
+          newSeatType: "max_yearly",
+        },
+      })
+    ).toEqual({ kind: "deferred", at: NEXT_RENEWAL });
+  });
+
+  it("applies a yearly→monthly switch immediately (pro_yearly → pro)", () => {
+    // Only monthly→yearly is deferred; the reverse keeps the default
+    // allocation-based timing (same allowance → immediate).
+    const { contract: c, productSeatTypes: types } = makeContract({
+      seats: [
+        { seatType: "pro", awu: 100 },
+        { seatType: "pro_yearly", awu: 100, frequency: "ANNUAL" },
+      ],
+      currentBillingPeriodStartingAt: CURRENT_PERIOD,
+      nextBillingPeriodStartingAt: "2027-01-15T00:00:00Z",
+    });
+    expect(
+      classifySeatChange({
+        contract: c,
+        productSeatTypes: types,
+        now: NOW,
+        change: {
+          userId: "u1",
+          previousSeatType: "pro_yearly",
+          newSeatType: "pro",
+        },
+      })
+    ).toEqual({ kind: "immediate" });
+  });
+
   it("is a noop when selecting the current seat with no pending change", () => {
     expect(classify("pro", "pro")).toEqual({ kind: "noop" });
   });
