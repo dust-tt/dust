@@ -86,6 +86,8 @@ describe("buildSandboxFunctionOnSandbox", () => {
       type: "object",
       properties: { greeting: { type: "string" } },
     });
+    // No `databases` field in the schema file -> no manifests.
+    expect(result.value.manifests).toBeNull();
 
     // Command shape: absolute dsbx, build subcommand, `--` then the escaped source path, and the
     // egress-controlled user.
@@ -116,6 +118,119 @@ describe("buildSandboxFunctionOnSandbox", () => {
     expect(command).toContain(schemaReadPath);
   });
 
+  it("parses manifest.v1 databases from the schema file", async () => {
+    const { authenticator, sandbox, space } = await setup();
+    const schemaWithManifests = JSON.stringify({
+      ...JSON.parse(validSchemaFile),
+      databases: {
+        version: 1,
+        databases: {
+          chat: {
+            schemaFile: "databases/chat.db.ts",
+            tables: {
+              users: {
+                columns: {
+                  id: {
+                    type: "integer",
+                    mode: null,
+                    notNull: true,
+                    hasDefault: true,
+                    primaryKey: true,
+                    autoIncrement: true,
+                  },
+                  created_at: {
+                    type: "integer",
+                    mode: "timestamp",
+                    notNull: true,
+                    hasDefault: false,
+                    primaryKey: false,
+                    autoIncrement: false,
+                  },
+                },
+                indexes: {
+                  users_handle_idx: { unique: true, columns: ["handle"] },
+                },
+              },
+            },
+          },
+        },
+      },
+    });
+    vi.spyOn(sandbox, "exec").mockResolvedValue(
+      new Ok({ exitCode: 0, stdout: okEnvelope, stderr: "" })
+    );
+    vi.spyOn(sandbox, "readFile")
+      .mockResolvedValueOnce(new Ok(Buffer.from("bundle")))
+      .mockResolvedValueOnce(new Ok(Buffer.from(schemaWithManifests)));
+
+    const result = await buildSandboxFunctionOnSandbox(authenticator, {
+      space,
+      srcSandboxPath: SRC,
+    });
+
+    expect(result.isOk()).toBe(true);
+    if (result.isErr()) {
+      return;
+    }
+    expect(result.value.manifests?.version).toBe(1);
+    expect(
+      result.value.manifests?.databases.chat?.tables.users?.columns.created_at
+        ?.mode
+    ).toBe("timestamp");
+  });
+
+  it("rejects manifests carrying reserved object keys (prototype pollution)", async () => {
+    const { authenticator, sandbox, space } = await setup();
+    // Built as a raw JSON string: an object literal with a "__proto__" key would set the
+    // prototype instead of creating the own key this test needs.
+    const hostileManifests =
+      `{"version":1,"databases":{"chat":{"schemaFile":"databases/chat.db.ts",` +
+      `"tables":{"__proto__":{"columns":{},"indexes":{}}}}}}`;
+    const schemaWithHostileManifests = `{${validSchemaFile.slice(1, -1)},"databases":${hostileManifests}}`;
+    vi.spyOn(sandbox, "exec").mockResolvedValue(
+      new Ok({ exitCode: 0, stdout: okEnvelope, stderr: "" })
+    );
+    vi.spyOn(sandbox, "readFile")
+      .mockResolvedValueOnce(new Ok(Buffer.from("bundle")))
+      .mockResolvedValueOnce(new Ok(Buffer.from(schemaWithHostileManifests)));
+
+    const result = await buildSandboxFunctionOnSandbox(authenticator, {
+      space,
+      srcSandboxPath: SRC,
+    });
+
+    expect(result.isErr()).toBe(true);
+    if (result.isOk()) {
+      return;
+    }
+    expect(result.error.code).toBe("schema_extraction_failed");
+  });
+
+  it("rejects a schema file with a malformed manifests shape", async () => {
+    const { authenticator, sandbox, space } = await setup();
+    const badManifests = JSON.stringify({
+      ...JSON.parse(validSchemaFile),
+      databases: { version: 2, databases: {} },
+    });
+    vi.spyOn(sandbox, "exec").mockResolvedValue(
+      new Ok({ exitCode: 0, stdout: okEnvelope, stderr: "" })
+    );
+    vi.spyOn(sandbox, "readFile")
+      .mockResolvedValueOnce(new Ok(Buffer.from("bundle")))
+      .mockResolvedValueOnce(new Ok(Buffer.from(badManifests)));
+
+    const result = await buildSandboxFunctionOnSandbox(authenticator, {
+      space,
+      srcSandboxPath: SRC,
+    });
+
+    expect(result.isErr()).toBe(true);
+    if (result.isOk()) {
+      return;
+    }
+    expect(result.error.code).toBe("schema_extraction_failed");
+  });
+
   it("surfaces a build failure from the envelope without reading files", async () => {
     const { authenticator, sandbox, space } = await setup();
     vi.spyOn(sandbox, "exec").mockResolvedValue(
@@ -142,6 +257,38 @@ describe("buildSandboxFunctionOnSandbox", () => {
     expect(result.error.code).toBe("build_failed");
     expect(result.error.message).toContain("Unexpected token");
     expect(readSpy).not.toHaveBeenCalled();
+  });
+
+  it("maps manifest build-error kinds to the model-correctable invalid_contract", async () => {
+    const { authenticator, sandbox, space } = await setup();
+    for (const kind of [
+      "databases_declaration_invalid",
+      "database_schema_unresolvable",
+      "database_schema_invalid",
+    ]) {
+      vi.spyOn(sandbox, "exec").mockResolvedValue(
+        new Ok({
+          exitCode: 1,
+          stdout: JSON.stringify({
+            ok: false,
+            error: { kind, message: `refused: ${kind}` },
+          }),
+          stderr: "",
+        })
+      );
+
+      const result = await buildSandboxFunctionOnSandbox(authenticator, {
+        space,
+        srcSandboxPath: SRC,
+      });
+
+      expect(result.isErr()).toBe(true);
+      if (result.isOk()) {
+        return;
+      }
+      expect(result.error.code).toBe("invalid_contract");
+      expect(result.error.message).toContain(kind);
+    }
   });
 
   it("maps an unknown error kind to internal", async () => {

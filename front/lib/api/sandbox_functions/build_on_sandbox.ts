@@ -4,6 +4,8 @@ import { ensurePodSandboxReady } from "@app/lib/api/sandbox/lifecycle";
 import { shellEscape } from "@app/lib/api/sandbox/shell";
 import type { SandboxFunctionErrorCode } from "@app/lib/api/sandbox_functions/errors";
 import { SandboxFunctionError } from "@app/lib/api/sandbox_functions/errors";
+import type { FunctionManifests } from "@app/lib/api/sandbox_functions/manifests";
+import { functionManifestsSchema } from "@app/lib/api/sandbox_functions/manifests";
 import type { Authenticator } from "@app/lib/auth";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import type { Result } from "@app/types/shared/result";
@@ -21,6 +23,8 @@ export interface SandboxFunctionBuildResult {
   bundleCode: string;
   inputSchema: JSONSchema;
   outputSchema: JSONSchema;
+  // Per-database manifests (manifest.v1); null when the function declares no databases.
+  manifests: FunctionManifests | null;
 }
 
 // dsbx writes the bundle and schema to files (sandbox stdout can be truncated) and prints only
@@ -38,12 +42,14 @@ const jsonSchemaValue = z.custom<JSONSchema>(
   (v) => typeof v === "object" && v !== null
 );
 
-// Mirrors FunctionSchema in cli/dust-sandbox/functions-runner/schema.ts.
+// Mirrors FunctionSchema in cli/dust-sandbox/functions-runner/schema.ts. `databases` stays
+// optional so schema files produced by older dsbx images keep parsing.
 const functionSchemaFileSchema = z.object({
   name: z.string(),
   description: z.string().nullable(),
   input_schema: jsonSchemaValue.nullable(),
   output_schema: jsonSchemaValue.nullable(),
+  databases: functionManifestsSchema.optional(),
 });
 
 function mapBuildErrorKind(kind: string): SandboxFunctionErrorCode {
@@ -52,6 +58,13 @@ function mapBuildErrorKind(kind: string): SandboxFunctionErrorCode {
       return "build_failed";
     case "schema_extraction_failed":
       return "schema_extraction_failed";
+    // Manifest rejections (manifest.v1 typed build errors, see
+    // cli/dust-sandbox/functions-runner/manifest.ts): the model fixes them by editing its
+    // `schema.databases` declaration or the database schema file.
+    case "databases_declaration_invalid":
+    case "database_schema_unresolvable":
+    case "database_schema_invalid":
+      return "invalid_contract";
     default:
       // bad_args means our own argv is wrong, not the function.
       return "internal";
@@ -216,5 +229,10 @@ function parseSchemaFile(
     );
   }
 
-  return new Ok({ bundleCode, inputSchema, outputSchema });
+  return new Ok({
+    bundleCode,
+    inputSchema,
+    outputSchema,
+    manifests: parsed.data.databases ?? null,
+  });
 }
