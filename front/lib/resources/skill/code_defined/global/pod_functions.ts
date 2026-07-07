@@ -139,11 +139,13 @@ published functions. First-publish quality therefore determines how often you hi
 - get table and column NAMES and TYPES right up front (renames are not possible later);
 - make columns nullable by default — add \`.notNull()\` only when certain, and never add a
   NOT NULL column without a \`.default(...)\` to an existing table;
-- no premature \`UNIQUE\` constraints — a unique index added later makes sibling writes fail;
+- no premature unique indexes — a unique index added later makes sibling writes fail;
 - give every table an \`id: integer("id").primaryKey({ autoIncrement: true })\` and a
   \`createdAt\` timestamp;
-- NO foreign keys (\`.references()\`), CHECK constraints or composite primary keys — they are
-  rejected at build time; enforce relational integrity in function code.
+- NO foreign keys (\`.references()\`), CHECK constraints, UNIQUE constraints (\`.unique()\` or
+  table-level \`unique()\` — use \`uniqueIndex()\` instead, SQLite cannot add or drop a UNIQUE
+  constraint later without a table rebuild) or composite primary keys — they are rejected at
+  build time; enforce relational integrity in function code.
 
 When a shape must change anyway, evolve additively:
 
