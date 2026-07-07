@@ -39,11 +39,13 @@ vi.mock("@app/lib/file_storage", () => ({
 
 import {
   addSandboxPolicyDomain,
+  deletePodSpacePolicy,
   deleteSandboxPolicy,
   deleteWorkspacePolicy,
   parseExactEgressDomain,
   readSandboxPolicy,
   readWorkspacePolicy,
+  writePodSpacePolicy,
   writeWorkspacePolicy,
 } from "./egress_policy";
 
@@ -316,5 +318,109 @@ describe("sandbox egress policy storage", () => {
     );
     expect(parseExactEgressDomain("127.0.0.1").isErr()).toBe(true);
     expect(parseExactEgressDomain("*.github.com").isErr()).toBe(true);
+  });
+});
+
+describe("pod space egress policy storage", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+
+    mockGetEgressPolicyBucket.mockReturnValue("egress-policy-bucket");
+    mockGetEgressProxyInternalUrl.mockReturnValue("https://egress-proxy");
+    mockMintEgressInvalidationJwt.mockReturnValue("invalidation-token");
+    mockFetch.mockResolvedValue({ ok: true, status: 200 });
+    vi.stubGlobal("fetch", mockFetch);
+    mockUploadRawContentToBucket.mockResolvedValue(undefined);
+    mockDelete.mockResolvedValue(undefined);
+    mockGetBucketInstance.mockReturnValue({
+      delete: mockDelete,
+      fetchFileContent: mockFetchFileContent,
+      uploadRawContentToBucket: mockUploadRawContentToBucket,
+    });
+  });
+
+  it("renders normalized pod domains to the space file and supports wildcards", async () => {
+    const result = await writePodSpacePolicy("space-sid", [
+      "API.GitHub.COM",
+      "*.GitHub.COM",
+    ]);
+
+    expect(result).toEqual(
+      new Ok({ allowedDomains: ["api.github.com", "*.github.com"] })
+    );
+    expect(mockUploadRawContentToBucket).toHaveBeenCalledWith({
+      content: JSON.stringify({
+        allowedDomains: ["api.github.com", "*.github.com"],
+      }),
+      contentType: "application/json",
+      filePath: "pods/space-sid.json",
+    });
+  });
+
+  it("renders an empty pod policy when no domains are configured", async () => {
+    const result = await writePodSpacePolicy("space-sid", []);
+
+    expect(result).toEqual(new Ok({ allowedDomains: [] }));
+    expect(mockUploadRawContentToBucket).toHaveBeenCalledWith({
+      content: JSON.stringify({ allowedDomains: [] }),
+      contentType: "application/json",
+      filePath: "pods/space-sid.json",
+    });
+  });
+
+  it("does not render invalid pod domains", async () => {
+    const result = await writePodSpacePolicy("space-sid", ["127.0.0.1"]);
+
+    expect(result.isErr()).toBe(true);
+    expect(mockUploadRawContentToBucket).not.toHaveBeenCalled();
+  });
+
+  it("rejects pod policies over the domain cap", async () => {
+    const domains = Array.from(
+      { length: 101 },
+      (_, i) => `domain-${i}.example.com`
+    );
+
+    const result = await writePodSpacePolicy("space-sid", domains);
+
+    expect(result.isErr()).toBe(true);
+    expect(mockUploadRawContentToBucket).not.toHaveBeenCalled();
+  });
+
+  it("invalidates the pod policy cache by spaceId after writes", async () => {
+    await writePodSpacePolicy("space-sid", ["example.org"]);
+
+    await vi.waitFor(() => {
+      expect(mockFetch).toHaveBeenCalledWith(
+        "https://egress-proxy/invalidate-policy",
+        expect.objectContaining({
+          headers: {
+            Authorization: "Bearer invalidation-token",
+          },
+          method: "POST",
+        })
+      );
+    });
+    expect(mockMintEgressInvalidationJwt).toHaveBeenCalledWith({
+      spaceId: "space-sid",
+    });
+  });
+
+  it("deletes pod space policy files and invalidates cache", async () => {
+    const result = await deletePodSpacePolicy("space-sid");
+
+    expect(result).toEqual(new Ok(undefined));
+    expect(mockDelete).toHaveBeenCalledWith("pods/space-sid.json", {
+      ignoreNotFound: true,
+    });
+    await vi.waitFor(() => {
+      expect(mockFetch).toHaveBeenCalledWith(
+        "https://egress-proxy/invalidate-policy",
+        expect.anything()
+      );
+    });
+    expect(mockMintEgressInvalidationJwt).toHaveBeenCalledWith({
+      spaceId: "space-sid",
+    });
   });
 });

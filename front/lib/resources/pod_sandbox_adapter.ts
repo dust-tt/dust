@@ -1,3 +1,4 @@
+import { ensurePodSpacePolicyFile } from "@app/lib/api/sandbox/pod_egress_policy";
 import type { Authenticator } from "@app/lib/auth";
 import {
   type EnsureSandboxResult,
@@ -122,13 +123,25 @@ export class PodSandboxAdapter {
   ): Promise<Result<EnsureSandboxResult, Error>> {
     this.assertPod(pod);
 
-    return SandboxResource.ensureActive(auth, {
+    const result = await SandboxResource.ensureActive(auth, {
       lockKey: pod.sId,
       envVars: { SPACE_ID: pod.sId },
       logLabel: "pod",
       fetchSandbox: () => this.fetchSandboxByPod(auth, pod),
       createSandbox: (blob) => this.createSandboxRecordForPod(auth, pod, blob),
     });
+
+    // Self-heal the pod's space policy file (`pods/{spaceSId}.json`) on fresh
+    // creation only. The file is space-keyed and survives sandbox
+    // destroy/recreate and sleep/wake cycles, so unlike a per-sandbox
+    // projection there is nothing to rewrite at wake; this covers a lost
+    // bucket object or a workspace relocation. Best-effort: a missing file
+    // only falls back to the (stricter) workspace-level allowlist.
+    if (result.isOk() && result.value.freshlyCreated) {
+      await ensurePodSpacePolicyFile(auth, pod);
+    }
+
+    return result;
   }
 
   static async pauseSandboxForApproval(

@@ -9,13 +9,14 @@ import {
   EMPTY_EGRESS_POLICY,
   normalizeEgressPolicy,
   normalizeEgressPolicyDomain,
+  normalizeEgressPolicyDomains,
   parseEgressPolicy,
 } from "@app/types/sandbox/egress_policy";
 import { Err, Ok, type Result } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 
 const INVALIDATION_TIMEOUT_MS = 5_000;
-const SANDBOX_POLICY_MAX_DOMAINS = 100;
+export const SANDBOX_POLICY_MAX_DOMAINS = 100;
 
 function getWorkspacePolicyPath(auth: Authenticator): string {
   return `workspaces/${auth.getNonNullableWorkspace().sId}.json`;
@@ -196,6 +197,108 @@ export async function deleteSandboxPolicy(
     return new Ok(undefined);
   } catch (error) {
     return new Err(normalizeError(error));
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Pod space egress policy
+//
+// A Pod's egress allowlist lives in a dedicated, space-keyed policy file
+// (`pods/{spaceSId}.json`) that the egress proxy reads directly and unions
+// with the workspace and sandbox policies. Unlike the per-sandbox file it
+// survives sandbox destroy/recreate cycles, so nothing needs re-projecting at
+// activation. The file is a render of the admin record of truth
+// (PodEgressPolicyResource); it is rewritten on every admin change and
+// deleted when the pod space is deleted.
+// ---------------------------------------------------------------------------
+
+function getPodSpacePolicyPath(spaceId: string): string {
+  return `pods/${spaceId}.json`;
+}
+
+// Renders the pod's configured domains to its space policy file and
+// invalidates the proxy cache. Like the workspace-level policy (and unlike
+// the sandbox `add_egress_domain` tool), wildcard domains such as
+// `*.github.com` are supported.
+export async function writePodSpacePolicy(
+  spaceId: string,
+  domains: string[]
+): Promise<Result<EgressPolicy, Error>> {
+  const normalizedDomains = normalizeEgressPolicyDomains(domains);
+  if (normalizedDomains.isErr()) {
+    return new Err(normalizedDomains.error);
+  }
+
+  if (normalizedDomains.value.length > SANDBOX_POLICY_MAX_DOMAINS) {
+    return new Err(
+      new Error(
+        `Pod egress policy cannot exceed ${SANDBOX_POLICY_MAX_DOMAINS} domains.`
+      )
+    );
+  }
+
+  const policy: EgressPolicy = { allowedDomains: normalizedDomains.value };
+
+  try {
+    await getPolicyBucket().uploadRawContentToBucket({
+      content: JSON.stringify(policy),
+      contentType: "application/json",
+      filePath: getPodSpacePolicyPath(spaceId),
+    });
+
+    void invalidatePodPolicyCache(spaceId);
+
+    return new Ok(policy);
+  } catch (error) {
+    return new Err(normalizeError(error));
+  }
+}
+
+export async function deletePodSpacePolicy(
+  spaceId: string
+): Promise<Result<void, Error>> {
+  try {
+    await getPolicyBucket().delete(getPodSpacePolicyPath(spaceId), {
+      ignoreNotFound: true,
+    });
+
+    void invalidatePodPolicyCache(spaceId);
+
+    return new Ok(undefined);
+  } catch (error) {
+    return new Err(normalizeError(error));
+  }
+}
+
+async function invalidatePodPolicyCache(spaceId: string): Promise<void> {
+  try {
+    const baseUrl = config.getEgressProxyInternalUrl();
+    if (!baseUrl) {
+      return;
+    }
+
+    const token = mintEgressInvalidationJwt({ spaceId });
+    const url = `${baseUrl.replace(/\/+$/, "")}/invalidate-policy`;
+
+    const response = await fetch(url, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+      signal: AbortSignal.timeout(INVALIDATION_TIMEOUT_MS),
+    });
+
+    if (!response.ok) {
+      logger.warn(
+        { statusCode: response.status, spaceId },
+        "Egress proxy cache invalidation failed"
+      );
+    }
+  } catch (error) {
+    logger.warn(
+      { error: normalizeError(error), spaceId },
+      "Egress proxy cache invalidation error"
+    );
   }
 }
 

@@ -1,6 +1,7 @@
 import { hardDeleteApp } from "@app/lib/api/apps";
 import { updateAgentRequirements } from "@app/lib/api/assistant/configuration/agent_requirements";
 import { createDataSourceAndConnectorForProject } from "@app/lib/api/projects/connector";
+import { deletePodSpacePolicy } from "@app/lib/api/sandbox/egress_policy";
 import { getWorkspaceAdministrationVersionLock } from "@app/lib/api/workspace";
 import type { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
@@ -12,6 +13,7 @@ import { DataSourceViewResource } from "@app/lib/resources/data_source_view_reso
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { GroupSpaceMemberResource } from "@app/lib/resources/group_space_member_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
+import { PodEgressPolicyResource } from "@app/lib/resources/pod_egress_policy_resource";
 import { ProjectMetadataResource } from "@app/lib/resources/project_metadata_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
@@ -426,6 +428,9 @@ export async function hardDeleteSpace(
       transaction: t,
     });
 
+    // FK is RESTRICT, so the pod egress policy row must go before the space.
+    await PodEgressPolicyResource.deleteBySpace(auth, space, t);
+
     const res = await space.delete(auth, { hardDelete: true, transaction: t });
     if (res.isErr()) {
       throw res.error;
@@ -437,6 +442,18 @@ export async function hardDeleteSpace(
       workspaceId: auth.getNonNullableWorkspace().sId,
       spaceId: space.sId,
       stopReason: "project hard deleted",
+    });
+
+    // Best-effort scrub of the pod's egress policy file: a stale file only
+    // matters if the space sId were ever reused (it is not), but we don't
+    // leave orphans in the bucket.
+    void deletePodSpacePolicy(space.sId).then((res) => {
+      if (res.isErr()) {
+        logger.warn(
+          { err: res.error, spaceId: space.sId },
+          "Failed to delete pod egress policy file on space deletion."
+        );
+      }
     });
   }
 

@@ -106,13 +106,22 @@ async function runSuccessfulRootCommand(
   return new Ok(undefined);
 }
 
-export function mintEgressJwt(providerId: string, workspaceId: string): string {
+// spaceId is set for pod (Shared Computer) sandboxes so the proxy evaluates
+// the pod's space policy file (`pods/{spaceId}.json`) in addition to the
+// workspace and sandbox policies. Optional and back-compatible: proxy builds
+// that predate the claim ignore it.
+export function mintEgressJwt(
+  providerId: string,
+  workspaceId: string,
+  { spaceId }: { spaceId?: string } = {}
+): string {
   return jwt.sign(
     {
       iss: "dust-front",
       aud: "dust-egress-proxy",
       sbId: providerId,
       wId: workspaceId,
+      ...(spaceId ? { spaceId } : {}),
     },
     config.getEgressProxyJwtSecret(),
     {
@@ -124,11 +133,15 @@ export function mintEgressJwt(providerId: string, workspaceId: string): string {
 
 const INVALIDATION_JWT_TTL_SECONDS = 60;
 
+// The proxy derives the cache key to evict from the claims: exactly one of
+// workspaceId, spaceId, or sandboxId must be set.
 export function mintEgressInvalidationJwt({
   workspaceId,
+  spaceId,
   sandboxId,
 }: {
   workspaceId?: string;
+  spaceId?: string;
   sandboxId?: string;
 }): string {
   return jwt.sign(
@@ -137,6 +150,7 @@ export function mintEgressInvalidationJwt({
       aud: "dust-egress-proxy",
       action: "invalidate-policy",
       ...(workspaceId ? { wId: workspaceId } : {}),
+      ...(spaceId ? { spaceId } : {}),
       ...(sandboxId ? { sbId: sandboxId } : {}),
     },
     config.getEgressProxyJwtSecret(),
@@ -507,7 +521,10 @@ export async function setupEgressForwarder(
 
   const token = mintEgressJwt(
     sandbox.providerId,
-    auth.getNonNullableWorkspace().sId
+    auth.getNonNullableWorkspace().sId,
+    // Pod sandboxes carry the pod's space sId so the proxy evaluates the
+    // pod-level policy file on top of the workspace/sandbox ones.
+    { spaceId: runtimeOwner.kind === "pod" ? runtimeOwner.spaceId : undefined }
   );
 
   // Token, secrets, and manifest are written in order, each gated on the
