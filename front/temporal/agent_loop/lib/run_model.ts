@@ -223,10 +223,17 @@ export function buildBaseSpecifications(
   agentConfiguration: Pick<AgentConfigurationType, "sId" | "actions">
 ): AgentActionSpecification[] {
   const isCustomAgent = !isGlobalAgentId(agentConfiguration.sId);
-  const agentActionViewIds = new Set(
+  // Tools are matched to configured actions through the configuration's
+  // persisted id, not the server view id: several configurations of the same
+  // internal server share one view (e.g. two query_tables actions), and
+  // runtime-built JIT and skill servers reuse those views too with a synthetic
+  // id of -1. Matching on the view id would wrongly promote JIT tools that
+  // appear mid-conversation, rewriting the cached tool prefix.
+  const agentActionModelIds = new Set(
     agentConfiguration.actions
       .filter(isServerSideMCPServerConfiguration)
-      .map((action) => action.mcpServerViewId)
+      .map((action) => action.id)
+      .filter((id) => id !== -1)
   );
 
   return availableActions.map((action) => {
@@ -234,7 +241,7 @@ export function buildBaseSpecifications(
     if (
       isCustomAgent &&
       isServerSideMCPToolConfiguration(action) &&
-      agentActionViewIds.has(action.mcpServerViewId)
+      agentActionModelIds.has(action.id)
     ) {
       return { ...specification, eager: true };
     }
