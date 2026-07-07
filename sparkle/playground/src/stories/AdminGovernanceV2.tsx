@@ -476,28 +476,28 @@ const INITIAL_GOVERNANCE: GovernanceSetting[] = [
   {
     id: "create_agents",
     label: "Create agents",
-    description: "Who can build agents in the Agent Builder.",
+    description: "Controls who can build agents in the Agent Builder.",
     scope: "groups",
     groups: ["Design Team", "Engineering Team"],
   },
   {
     id: "publish_agents",
     label: "Publish agents",
-    description: "Who can publish agents to the whole workspace.",
+    description: "Controls who can publish agents to the whole workspace.",
     scope: "everyone",
     groups: [],
   },
   {
     id: "create_skills",
     label: "Create Skills",
-    description: "Who can build custom Skills.",
+    description: "Controls who can build custom Skills.",
     scope: "everyone",
     groups: [],
   },
   {
     id: "publish_skills",
     label: "Publish Skills",
-    description: "Who can publish Skills to the whole workspace.",
+    description: "Controls who can publish Skills to the whole workspace.",
     scope: "disabled",
     groups: [],
   },
@@ -505,14 +505,15 @@ const INITIAL_GOVERNANCE: GovernanceSetting[] = [
     id: "billing_access",
     label: "Billing access",
     description:
-      "Who can manage billing settings, invoices, and payment methods.",
+      "Controls who can manage billing settings, invoices, and payment methods.",
     scope: "groups",
     groups: ["Managers"],
   },
   {
     id: "security_access",
     label: "Security access",
-    description: "Who can manage user access, identities, and provisioning.",
+    description:
+      "Controls who can manage user access, identities, and provisioning.",
     scope: "groups",
     groups: ["Managers"],
   },
@@ -2101,14 +2102,14 @@ const FRAME_VISIBILITY_OPTIONS: Omit<
   {
     level: "workspace_only",
     label: "Share by public link",
-    description: "Who can create public links to Frames.",
+    description: "Controls who can create public links to Frames.",
     icon: Globe01,
   },
   {
     level: "email_invite",
     label: "Invite people by email",
     description:
-      "Who can share Frames by email with people outside your organization.",
+      "Controls who can share Frames by email with people outside your organization.",
     icon: Mail01,
   },
 ];
