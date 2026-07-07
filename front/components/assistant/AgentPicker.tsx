@@ -17,6 +17,7 @@ import {
   DropdownMenuTrigger,
   Icon,
   Robot,
+  X,
 } from "@dust-tt/sparkle";
 import { useState } from "react";
 
@@ -130,10 +131,27 @@ export function AgentPicker({
                 icon={() => <Avatar size="xs" visual={c.pictureUrl} />}
                 label={c.name}
                 truncateText
-                className="group py-1 notranslate"
+                className={`group py-1 notranslate ${
+                  isSelected ? "bg-primary-100" : ""
+                }`}
                 endComponent={
                   <div className="flex items-center gap-1">
-                    {isSelected && <Icon visual={Check} size="sm" />}
+                    {isSelected && (
+                      // Show a tick by default; on hover swap it for an X to
+                      // signal that clicking will deselect the agent.
+                      <>
+                        <Icon
+                          visual={Check}
+                          size="sm"
+                          className="group-hover:hidden"
+                        />
+                        <Icon
+                          visual={X}
+                          size="sm"
+                          className="hidden group-hover:block"
+                        />
+                      </>
+                    )}
                     {onAgentDetailsClick && clientType !== "extension" ? (
                       <Button
                         icon={DotsHorizontal}
