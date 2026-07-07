@@ -1510,9 +1510,6 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         conversation,
       })
     );
-    const autoEnabledGlobalSkillIds = new Set(
-      autoEnabledDefs.map((def) => def.sId)
-    );
     const autoEnabledRefs = autoEnabledDefs.map((def) => ({
       globalSkillId: def.sId,
       customSkillId: null,
@@ -1522,6 +1519,9 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
           agentLoopData,
         })
       : [];
+    const autoEnabledGlobalSkillIds = new Set(
+      autoEnabledSkills.map((s) => s.sId)
+    );
 
     const equippedGlobalSkillIds = new Set(
       removeNulls([
