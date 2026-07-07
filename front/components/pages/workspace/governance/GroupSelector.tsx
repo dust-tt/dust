@@ -40,7 +40,7 @@ export const GroupSelector = ({
             isSelect
           />
         </DropdownMenuTrigger>
-        <DropdownMenuContent>
+        <DropdownMenuContent className="min-w-[320px]" collisionPadding={8}>
           <DropdownMenuSearchbar
             name="group-search"
             placeholder="Search groups"
