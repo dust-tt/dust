@@ -758,9 +758,11 @@ const QUERIES: LabeledQuery[] = [
   {
     query: "edit the code of my frame",
     expected: "interactive_content.edit_interactive_content_file",
-    // pod_manager.edit_information and files.edit collide on "edit". The tool is deprecated
-    // (kept for conversations without the file system), so a low rank is acceptable.
-    maxRank: 4,
+    // pod_manager.edit_information and files.edit collide on "edit" (files.edit is the
+    // intended winner in file-system conversations, see the frame-edit block below). The
+    // tool is deprecated (kept for conversations without the file system), so a low rank
+    // is acceptable.
+    maxRank: 5,
   },
   {
     query: "change the chart colors in my dashboard",
@@ -1671,6 +1673,60 @@ const QUERIES: LabeledQuery[] = [
 ];
 
 export const fullIndexWithAllServers = buildIndex(buildDocs(SERVERS));
+
+// File-system conversations drop the deprecated file-id edit and retrieve tools from the
+// interactive_content server: updating a Frame goes through files.edit on the source plus
+// publish, and reading it through files.cat. These queries pin the routing a model relies on
+// there — an edit intent must surface files.edit near the top instead of steering to
+// create_interactive_content_file (which regenerates the whole Frame and burns tokens).
+const FRAME_EDIT_QUERIES: LabeledQuery[] = [
+  { query: "edit the frame", expected: "files.edit", maxRank: 2 },
+  { query: "edit the code of my frame", expected: "files.edit", maxRank: 2 },
+  { query: "update my frame", expected: "files.edit", maxRank: 2 },
+  { query: "update the dashboard frame", expected: "files.edit" },
+  {
+    query: "change the chart colors in my dashboard",
+    expected: "files.edit",
+    maxRank: 2,
+  },
+  { query: "fix the chart in the frame", expected: "files.edit", maxRank: 2 },
+  { query: "edit frame source file", expected: "files.edit" },
+  { query: "update the existing visualization", expected: "files.edit" },
+];
+
+const fileSystemConversationIndex = buildIndex(
+  buildDocs(
+    SERVERS.map((server) =>
+      server.name === "interactive_content"
+        ? {
+            ...server,
+            tools: server.tools.filter(
+              (tool) =>
+                tool.name !== "edit_interactive_content_file" &&
+                tool.name !== "retrieve_interactive_content_file"
+            ),
+          }
+        : server
+    )
+  )
+);
+
+describe("BM25 tool-search retrieval (file-system conversation, frame edits)", () => {
+  for (const { query, expected, maxRank = 1 } of FRAME_EDIT_QUERIES) {
+    it(`"${query}" → ${expected} (rank ≤ ${maxRank})`, () => {
+      const ranked = rank(query, fileSystemConversationIndex);
+      const pos = ranked.findIndex((r) => r.name === expected) + 1;
+      expect(
+        pos,
+        `Expected "${expected}" in top ${maxRank} but got rank ${pos}. Top hit: "${ranked[0]?.name}"`
+      ).toBeGreaterThan(0);
+      expect(
+        pos,
+        `Expected "${expected}" in top ${maxRank} but got rank ${pos}. Top hit: "${ranked[0]?.name}"`
+      ).toBeLessThanOrEqual(maxRank);
+    });
+  }
+});
 
 describe("BM25 tool-search retrieval (single-server index)", () => {
   for (const { query, expected } of QUERIES) {

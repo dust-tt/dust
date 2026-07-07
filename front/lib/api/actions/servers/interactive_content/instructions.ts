@@ -6,6 +6,8 @@ import {
 import {
   FILES_CAT_ACTION_NAME,
   FILES_EDIT_ACTION_NAME,
+  FILES_LIST_ACTION_NAME,
+  FILES_RESOLVE_ACTION_NAME,
   FILES_SERVER_NAME,
 } from "@app/lib/api/actions/servers/files/metadata";
 import {
@@ -30,6 +32,14 @@ const FILES_EDIT_TOOL = getPrefixedToolName(
 const FILES_CAT_TOOL = getPrefixedToolName(
   FILES_SERVER_NAME,
   FILES_CAT_ACTION_NAME
+);
+const FILES_LIST_TOOL = getPrefixedToolName(
+  FILES_SERVER_NAME,
+  FILES_LIST_ACTION_NAME
+);
+const FILES_RESOLVE_TOOL = getPrefixedToolName(
+  FILES_SERVER_NAME,
+  FILES_RESOLVE_ACTION_NAME
 );
 
 const UPDATING_SECTION_LEGACY = `\
@@ -63,7 +73,15 @@ The edit tool requires exact text matching, so retrieving the current content fi
 `;
 
 const PUBLISH_PARAGRAPH = `\
-Publishing rebuilds the Frame from its source so viewers and shares see the new version. Until you publish, edits to the source do not change the rendered Frame. Multi-file Frames work the same way: edit any source file under that directory, keep every source file under it, then publish. A TypeScript or JSX syntax error blocks publishing and is reported back so you can fix it.`;
+Publishing rebuilds the Frame from its source so viewers and shares see the new version. It updates the existing Frame in place, keeping its identity and share URL. Until you publish, edits to the source do not change the rendered Frame. Multi-file Frames work the same way: edit any source file under that directory, keep every source file under it, then publish. A TypeScript or JSX syntax error blocks publishing and is reported back so you can fix it.`;
+
+// Shared decision gate between the creating and updating flows. Kept generic so it holds for
+// every variant, including legacy conversations whose edit flow goes through the file-id tool.
+const CREATE_VS_UPDATE_SECTION = `\
+### Creating vs. Updating
+
+Create a Frame only when the content does not exist yet. When the user asks for changes to a Frame that already exists in the conversation (fixing a bug, updating data, changing colors, text, charts, or layout, adding a section), update that Frame in place following "Updating Existing Files" below. Never create a new Frame, and never resend the full source, to change an existing one: a replacement Frame loses the original's identity and share URL and wastes tokens regenerating content that did not change, while targeted edits are cheap.
+`;
 
 // Computer-first variant, used when the Computer is available. The Frame's source is mounted in
 // the Computer, so the model edits the file in place and republishes.
@@ -71,8 +89,10 @@ const UPDATING_SECTION_COMPUTER_FIRST = `\
 ### Updating Existing Files (edit the source, then publish):
 
 After a Frame is created, its source file is already mounted in the Computer at \`/files/conversation-<conversationId>/<FrameName>.tsx\`. To update the Frame:
-1. Edit that file in place with your file tools. When the Computer is not available, edit it with \`${FILES_EDIT_TOOL}\` using the scoped path \`conversation-<conversationId>/<FrameName>.tsx\`.
+1. Edit that file in place with your file tools, changing only the parts that need to change. Do not rewrite the whole file for partial changes. When the Computer is not available, edit it with \`${FILES_EDIT_TOOL}\` using the scoped path \`conversation-<conversationId>/<FrameName>.tsx\`.
 2. Publish with \`${PUBLISH_INTERACTIVE_CONTENT_FILE_TOOL_NAME}\` using \`path: conversation-<conversationId>\` (the directory holding the file, not a subdirectory).
+
+If an edit fails because the text to replace is not found, the file differs from what you remember: re-read it and retry the targeted edit. Never respond to a failed match by resending the whole file.
 
 ${PUBLISH_PARAGRAPH}
 `;
@@ -83,8 +103,24 @@ const UPDATING_SECTION_FILES_FIRST = `\
 ### Updating Existing Files (edit the source, then publish):
 
 After a Frame is created, its source file is available to your file tools at \`conversation-<conversationId>/<FrameName>.tsx\`. To update the Frame:
-1. Edit that file in place with \`${FILES_EDIT_TOOL}\` (read it with \`${FILES_CAT_TOOL}\` if you need the current content).
-2. Publish with \`${PUBLISH_INTERACTIVE_CONTENT_FILE_TOOL_NAME}\` using \`path: conversation-<conversationId>\` (the directory holding the file, not a subdirectory).
+1. Read the source with \`${FILES_CAT_TOOL}\` if you need the current content. If you are unsure of the exact path, list the directory with \`${FILES_LIST_TOOL}\` or resolve the Frame's file id with \`${FILES_RESOLVE_TOOL}\`.
+2. Make targeted edits with \`${FILES_EDIT_TOOL}\`, replacing only the text that changes. Do not rewrite the whole file for partial changes.
+3. Publish with \`${PUBLISH_INTERACTIVE_CONTENT_FILE_TOOL_NAME}\` using \`path: conversation-<conversationId>\` (the directory holding the file, not a subdirectory).
+
+If an edit fails because the text to replace is not found, the file differs from what you remember: re-read it with \`${FILES_CAT_TOOL}\` and retry the targeted edit. Never respond to a failed match by resending the whole file.
+
+Example, updating one value of an existing Frame:
+\`\`\`
+${FILES_EDIT_TOOL}({
+  path: "conversation-<conversationId>/Dashboard.tsx",
+  old_string: "const REGIONS = [\\"EMEA\\", \\"AMER\\"];",
+  new_string: "const REGIONS = [\\"EMEA\\", \\"AMER\\", \\"APAC\\"];",
+})
+${PUBLISH_INTERACTIVE_CONTENT_FILE_TOOL_NAME}({
+  file_id: "fil_abc123",
+  path: "conversation-<conversationId>",
+})
+\`\`\`
 
 ${PUBLISH_PARAGRAPH}
 `;
@@ -103,6 +139,7 @@ const interactiveContentProseBeforeAuthoring = ({
 You have access to an Interactive Content system that allows you to create and update executable files. When creating visualizations, you should create files instead of using the :::visualization directive.
 This toolset is called Frame in the product, users may refer to it as such.
 
+${CREATE_VS_UPDATE_SECTION}
 ### Creating Files
 
 Use the \`${CREATE_INTERACTIVE_CONTENT_FILE_TOOL_NAME}\` tool to create JavaScript/TypeScript files:

@@ -3,6 +3,7 @@ import {
   CREATE_INTERACTIVE_CONTENT_FILE_TOOL_NAME,
   EDIT_INTERACTIVE_CONTENT_FILE_TOOL_NAME,
   PUBLISH_INTERACTIVE_CONTENT_FILE_TOOL_NAME,
+  RETRIEVE_INTERACTIVE_CONTENT_FILE_TOOL_NAME,
 } from "@app/lib/api/actions/servers/interactive_content/metadata";
 import { createInteractiveContentTools } from "@app/lib/api/actions/servers/interactive_content/tools";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
@@ -17,7 +18,7 @@ function toolContextWithUseFileSystem(
 }
 
 describe("createInteractiveContentTools", () => {
-  it("drops the file-id edit tool when the conversation has the file system", async () => {
+  it("drops the file-id edit and retrieve tools when the conversation has the file system", async () => {
     const { authenticator: auth } = await createResourceTest({});
 
     const tools = await createInteractiveContentTools(
@@ -27,30 +28,31 @@ describe("createInteractiveContentTools", () => {
     const names = tools.map((tool) => tool.name);
 
     expect(names).not.toContain(EDIT_INTERACTIVE_CONTENT_FILE_TOOL_NAME);
+    expect(names).not.toContain(RETRIEVE_INTERACTIVE_CONTENT_FILE_TOOL_NAME);
     expect(names).toContain(PUBLISH_INTERACTIVE_CONTENT_FILE_TOOL_NAME);
     expect(names).toContain(CREATE_INTERACTIVE_CONTENT_FILE_TOOL_NAME);
   });
 
-  it("keeps the file-id edit tool for legacy conversations", async () => {
+  it("keeps the file-id edit and retrieve tools for legacy conversations", async () => {
     const { authenticator: auth } = await createResourceTest({});
 
     const tools = await createInteractiveContentTools(
       auth,
       toolContextWithUseFileSystem(undefined)
     );
+    const names = tools.map((tool) => tool.name);
 
-    expect(tools.map((tool) => tool.name)).toContain(
-      EDIT_INTERACTIVE_CONTENT_FILE_TOOL_NAME
-    );
+    expect(names).toContain(EDIT_INTERACTIVE_CONTENT_FILE_TOOL_NAME);
+    expect(names).toContain(RETRIEVE_INTERACTIVE_CONTENT_FILE_TOOL_NAME);
   });
 
-  it("keeps the file-id edit tool when no conversation is available", async () => {
+  it("keeps the file-id edit and retrieve tools when no conversation is available", async () => {
     const { authenticator: auth } = await createResourceTest({});
 
     const tools = await createInteractiveContentTools(auth, undefined);
+    const names = tools.map((tool) => tool.name);
 
-    expect(tools.map((tool) => tool.name)).toContain(
-      EDIT_INTERACTIVE_CONTENT_FILE_TOOL_NAME
-    );
+    expect(names).toContain(EDIT_INTERACTIVE_CONTENT_FILE_TOOL_NAME);
+    expect(names).toContain(RETRIEVE_INTERACTIVE_CONTENT_FILE_TOOL_NAME);
   });
 });

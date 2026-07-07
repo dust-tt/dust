@@ -38,7 +38,9 @@ export const INTERACTIVE_CONTENT_TOOLS_METADATA = createToolsRecord({
       "presentation that users can run and interact with, beyond static viewing. Choose 'template' " +
       "mode to base it on an existing knowledge node, or 'inline' mode to provide the content " +
       "directly. Validation (Tailwind, TypeScript) is non-blocking: the file is saved even with " +
-      "warnings, which you should fix immediately.",
+      "warnings, which you should fix immediately. Only for a Frame that does not already " +
+      "exist: to alter a Frame the conversation already has, go through its source file (see " +
+      "the Frames skill instructions) rather than creating a replacement.",
     schema: {
       file_name: z
         .string()
@@ -267,10 +269,12 @@ export const INTERACTIVE_CONTENT_TOOLS_METADATA = createToolsRecord({
   },
   [PUBLISH_INTERACTIVE_CONTENT_FILE_TOOL_NAME]: {
     description:
-      "Publish a Frame from its source files in the Computer. A Frame you created is already " +
-      "mounted in the Computer at `/files/conversation-<conversationId>/<filename>`, so edit it " +
-      "there in place rather than copying it elsewhere, then call this to build it into the live " +
-      "Frame. It resolves the Frame's dependency tree from the given directory (inlining relative " +
+      "Publish a Frame from its source files, applying source edits to the live rendered Frame. " +
+      "A Frame's source lives on the conversation file system at " +
+      "`conversation-<conversationId>/<filename>` (mounted in the Computer at " +
+      "`/files/conversation-<conversationId>/<filename>` when the Computer is available), so " +
+      "edit it in place rather than copying it elsewhere, then call this to build it into the " +
+      "live Frame. It resolves the Frame's dependency tree from the given directory (inlining relative " +
       "imports), validates TypeScript and JSX, then updates the canonical Frame so viewers and " +
       "shares see the new version. A syntax error blocks publishing and is reported back so you " +
       "can fix it. Tailwind warnings are returned but do not block. Pass the `file_id` of the " +

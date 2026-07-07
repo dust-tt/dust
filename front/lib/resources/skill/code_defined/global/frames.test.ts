@@ -44,6 +44,9 @@ describe("framesSkill.fetchInstructions", () => {
     expect(instructions).toContain(COMPUTER_FIRST_MARKER);
     expect(instructions).toContain(PUBLISH_INTERACTIVE_CONTENT_FILE_TOOL_NAME);
     expect(instructions).not.toContain(EDIT_INTERACTIVE_CONTENT_FILE_TOOL_NAME);
+    expect(instructions).not.toContain(
+      RETRIEVE_INTERACTIVE_CONTENT_FILE_TOOL_NAME
+    );
   });
 
   it("teaches the files-tools flow when the Computer is disabled", async () => {
@@ -59,6 +62,9 @@ describe("framesSkill.fetchInstructions", () => {
     expect(instructions).toContain(FILES_EDIT_TOOL);
     expect(instructions).toContain(PUBLISH_INTERACTIVE_CONTENT_FILE_TOOL_NAME);
     expect(instructions).not.toContain(EDIT_INTERACTIVE_CONTENT_FILE_TOOL_NAME);
+    expect(instructions).not.toContain(
+      RETRIEVE_INTERACTIVE_CONTENT_FILE_TOOL_NAME
+    );
   });
 
   it("keeps the retrieve and file-id edit flow for legacy conversations", async () => {
