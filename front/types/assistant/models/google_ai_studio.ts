@@ -121,7 +121,7 @@ export const GEMINI_2_5_FLASH_MODEL_CONFIG: ModelConfigurationType = {
   description: "Google's fast large context model (1m context).",
   shortDescription: "Google's fast model.",
   isLegacy: false,
-  isLatest: true,
+  isLatest: false,
   generationTokensCount: 64_000,
   supportsVision: true,
   supportsResponseFormat: false, // response format not compatible with tool use
