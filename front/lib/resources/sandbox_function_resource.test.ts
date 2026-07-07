@@ -622,6 +622,7 @@ describe("SandboxFunctionResource", () => {
       description: "Second.",
       inputSchema: newInputSchema,
       outputSchema: newOutputSchema,
+      manifests: null,
     });
     expect(result.isOk()).toBe(true);
 
