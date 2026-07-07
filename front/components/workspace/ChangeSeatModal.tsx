@@ -177,10 +177,17 @@ export function ChangeSeatModal({
     }
     return (
       <span className="text-xs text-foreground">
-        {formatPriceCents(
-          info.priceCents,
-          info.currency,
-          info.billingFrequency
+        {info.billingFrequency === "annual" ? (
+          <>
+            {formatPriceCents(info.priceCents / 12, info.currency, "monthly")} ·
+            billed annually
+          </>
+        ) : (
+          formatPriceCents(
+            info.priceCents,
+            info.currency,
+            info.billingFrequency
+          )
         )}
       </span>
     );
