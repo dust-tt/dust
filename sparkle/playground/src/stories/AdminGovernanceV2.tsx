@@ -476,28 +476,28 @@ const INITIAL_GOVERNANCE: GovernanceSetting[] = [
   {
     id: "create_agents",
     label: "Create agents",
-    description: "Choose who can build agents in the Agent Builder.",
+    description: "Who can build agents in the Agent Builder.",
     scope: "groups",
     groups: ["Design Team", "Engineering Team"],
   },
   {
     id: "publish_agents",
     label: "Publish agents",
-    description: "Choose who can publish agents to the whole workspace.",
+    description: "Who can publish agents to the whole workspace.",
     scope: "everyone",
     groups: [],
   },
   {
     id: "create_skills",
     label: "Create Skills",
-    description: "Choose who can build custom Skills.",
+    description: "Who can build custom Skills.",
     scope: "everyone",
     groups: [],
   },
   {
     id: "publish_skills",
     label: "Publish Skills",
-    description: "Choose who can publish Skills to the whole workspace.",
+    description: "Who can publish Skills to the whole workspace.",
     scope: "disabled",
     groups: [],
   },
@@ -505,15 +505,14 @@ const INITIAL_GOVERNANCE: GovernanceSetting[] = [
     id: "billing_access",
     label: "Billing access",
     description:
-      "Choose who can manage billing settings, invoices, and payment methods.",
+      "Who can manage billing settings, invoices, and payment methods.",
     scope: "groups",
     groups: ["Managers"],
   },
   {
     id: "security_access",
     label: "Security access",
-    description:
-      "Choose who can manage user access, identities, and provisioning.",
+    description: "Who can manage user access, identities, and provisioning.",
     scope: "groups",
     groups: ["Managers"],
   },
@@ -2102,14 +2101,14 @@ const FRAME_VISIBILITY_OPTIONS: Omit<
   {
     level: "workspace_only",
     label: "Share by public link",
-    description: "Choose who can create public links to Frames.",
+    description: "Who can create public links to Frames.",
     icon: Globe01,
   },
   {
     level: "email_invite",
     label: "Invite people by email",
     description:
-      "Choose who can share Frames by email with people outside your organization.",
+      "Who can share Frames by email with people outside your organization.",
     icon: Mail01,
   },
 ];
@@ -2287,11 +2286,20 @@ function GovernancePage({
   const canEdit = role === "super_admin" || role === "admin";
   const update = (updated: GovernanceSetting) =>
     setSettings(settings.map((s) => (s.id === updated.id ? updated : s)));
+  const [podFiles, setPodFiles] = useState<
+    "manual_allowed" | "manual_disabled"
+  >("manual_allowed");
+  const [privateUrls, setPrivateUrls] = useState(true);
+  const [mcpServer, setMcpServer] = useState(false);
+  const podFilesOptions = [
+    { value: "manual_allowed" as const, label: "Manual updates allowed" },
+    { value: "manual_disabled" as const, label: "Manual updates disabled" },
+  ];
   return (
     <Page>
       <Page.Header
         title="Governance"
-        description="Choose what members can create, publish, and share. Use groups to grant exceptions."
+        description="Manage what members can do in your workspace."
         icon={Toggle01Left}
       />
       <div className="s-w-full s-rounded-xl s-bg-muted-background dark:s-bg-muted-background-night s-px-4 s-py-3">
@@ -2348,14 +2356,9 @@ function GovernancePage({
           </div>
         </div>
         <div className="s-flex s-w-full s-flex-col s-gap-4">
-          <div className="s-flex s-flex-col s-gap-1">
-            <div className="s-flex s-items-center s-gap-2">
-              <ActionFrame className="s-h-5 s-w-5 s-shrink-0 s-text-muted-foreground dark:s-text-muted-foreground-night" />
-              <Page.H variant="h5">Frame sharing</Page.H>
-            </div>
-            <Page.P variant="secondary" size="sm">
-              Choose how members can share Frames outside the workspace.
-            </Page.P>
+          <div className="s-flex s-items-center s-gap-2">
+            <ActionFrame className="s-h-5 s-w-5 s-shrink-0 s-text-muted-foreground dark:s-text-muted-foreground-night" />
+            <Page.H variant="h5">Frame sharing</Page.H>
           </div>
           <FrameSharingGovernanceRow
             settings={frameSharing}
@@ -2367,7 +2370,10 @@ function GovernancePage({
         </div>
         {role === "super_admin" && (
           <div className="s-flex s-w-full s-flex-col s-gap-4">
-            <Page.SectionHeader title="Billing and security" />
+            <div className="s-flex s-items-center s-gap-2">
+              <Lock01 className="s-h-5 s-w-5 s-shrink-0 s-text-muted-foreground dark:s-text-muted-foreground-night" />
+              <Page.H variant="h5">Billing and security</Page.H>
+            </div>
             <div className="s-w-full s-rounded-xl s-border s-border-border dark:s-border-border-night s-divide-y s-divide-border dark:s-divide-border-night">
               {settings
                 .filter(
@@ -2387,6 +2393,121 @@ function GovernancePage({
             </div>
           </div>
         )}
+        {/* Capabilities */}
+        <div className="s-flex s-w-full s-flex-col s-gap-4">
+          <div className="s-flex s-items-center s-gap-2">
+            <ShapesPlus className="s-h-5 s-w-5 s-shrink-0 s-text-muted-foreground dark:s-text-muted-foreground-night" />
+            <Page.H variant="h5">Capabilities</Page.H>
+          </div>
+          <div className="s-w-full s-rounded-xl s-border s-border-border dark:s-border-border-night s-divide-y s-divide-border dark:s-divide-border-night">
+            <div className="s-flex s-items-center s-justify-between s-gap-4 s-px-4 s-py-3">
+              <div className="s-flex s-items-center s-gap-3">
+                <Folder className="s-h-4 s-w-4 s-shrink-0 s-text-muted-foreground dark:s-text-muted-foreground-night" />
+                <div className="s-flex s-flex-col s-gap-0.5">
+                  <span className="s-text-sm s-font-semibold s-text-foreground dark:s-text-foreground-night">
+                    Pod files policy
+                  </span>
+                  <span className="s-text-sm s-text-muted-foreground dark:s-text-muted-foreground-night">
+                    Control whether members can manually add files to Pods.
+                  </span>
+                </div>
+              </div>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    icon={Folder}
+                    label={
+                      podFilesOptions.find((o) => o.value === podFiles)!.label
+                    }
+                    isSelect
+                    disabled={!canEdit}
+                  />
+                </DropdownMenuTrigger>
+                <DropdownMenuContent>
+                  {podFilesOptions.map((o) => (
+                    <DropdownMenuItem
+                      key={o.value}
+                      label={o.label}
+                      onClick={() => setPodFiles(o.value)}
+                    />
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+            <div className="s-flex s-items-center s-justify-between s-gap-4 s-px-4 s-py-3">
+              <div className="s-flex s-items-center s-gap-3">
+                <Lock01 className="s-h-4 s-w-4 s-shrink-0 s-text-muted-foreground dark:s-text-muted-foreground-night" />
+                <div className="s-flex s-flex-col s-gap-0.5">
+                  <span className="s-text-sm s-font-semibold s-text-foreground dark:s-text-foreground-night">
+                    Private conversation URLs by default
+                  </span>
+                  <span className="s-text-sm s-text-muted-foreground dark:s-text-muted-foreground-night">
+                    Restrict conversation URL access to participants only by
+                    default.
+                  </span>
+                </div>
+              </div>
+              <SliderToggle
+                selected={privateUrls}
+                onClick={() => canEdit && setPrivateUrls(!privateUrls)}
+              />
+            </div>
+            <div className="s-flex s-items-center s-justify-between s-gap-4 s-px-4 s-py-3">
+              <div className="s-flex s-items-center s-gap-3">
+                <Server01 className="s-h-4 s-w-4 s-shrink-0 s-text-muted-foreground dark:s-text-muted-foreground-night" />
+                <div className="s-flex s-flex-col s-gap-0.5">
+                  <span className="s-text-sm s-font-semibold s-text-foreground dark:s-text-foreground-night">
+                    MCP server
+                  </span>
+                  <span className="s-text-sm s-text-muted-foreground dark:s-text-muted-foreground-night">
+                    Allow external MCP clients to connect to this workspace via
+                    https://dust.tt/mcp
+                  </span>
+                </div>
+              </div>
+              <div className="s-flex s-shrink-0 s-items-center s-gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  icon={Settings01}
+                  label="Manage"
+                  disabled={!canEdit}
+                />
+                <SliderToggle
+                  selected={mcpServer}
+                  onClick={() => canEdit && setMcpServer(!mcpServer)}
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+        {/* Audit */}
+        <div className="s-flex s-w-full s-flex-col s-gap-4">
+          <div className="s-flex s-items-center s-gap-2">
+            <LayerSingle className="s-h-5 s-w-5 s-shrink-0 s-text-muted-foreground dark:s-text-muted-foreground-night" />
+            <Page.H variant="h5">Audit</Page.H>
+          </div>
+          <div className="s-w-full s-rounded-xl s-bg-muted-background dark:s-bg-muted-background-night s-flex s-items-center s-justify-between s-gap-4 s-px-4 s-py-4">
+            <div className="s-flex s-items-center s-gap-3">
+              <LayerSingle className="s-h-4 s-w-4 s-shrink-0 s-text-muted-foreground dark:s-text-muted-foreground-night" />
+              <div className="s-flex s-flex-col s-gap-0.5">
+                <span className="s-text-sm s-font-semibold s-text-foreground dark:s-text-foreground-night">
+                  Audit Logs
+                </span>
+                <span className="s-text-sm s-text-muted-foreground dark:s-text-muted-foreground-night">
+                  View workspace activity logs or configure export to your
+                  security information and event management (SIEM) system.
+                </span>
+              </div>
+            </div>
+            <div className="s-flex s-shrink-0 s-gap-2">
+              <Button variant="outline" size="sm" label="View Logs" />
+              <Button variant="outline" size="sm" label="Configure Export" />
+            </div>
+          </div>
+        </div>
       </div>
     </Page>
   );
@@ -3485,7 +3606,6 @@ function SpacePage({
 // ─── Workspace Settings Page ──────────────────────────────────────────────────
 
 type PodAccessPolicy = "restricted_only" | "restricted_and_open";
-type PodFilesPolicy = "manual_allowed" | "manual_disabled";
 
 interface IntegrationRow {
   id: string;
@@ -3510,28 +3630,6 @@ const WORKSPACE_CAPABILITIES = [
     description:
       "Allow workspace members to email agents at AGENT_NAME@dust.team",
     beta: true,
-  },
-  {
-    id: "private_urls",
-    icon: Lock01,
-    label: "Private conversation URLs by default",
-    description:
-      "Restrict conversation URL access to participants only by default",
-  },
-  {
-    id: "mcp_server",
-    icon: Server01,
-    label: "MCP server",
-    description:
-      "Allow external MCP clients to connect to this workspace via https://dust.tt/mcp",
-    hasManage: true,
-  },
-  {
-    id: "audit_logs",
-    icon: LayerSingle,
-    label: "Audit Logs",
-    description:
-      "Emit audit events to WorkOS and expose the audit logs section in workspace access. Turning this off stops emission and hides the section.",
   },
 ] as const;
 
@@ -3569,7 +3667,6 @@ function WorkspaceSettingsPage({ role }: { role: Role }) {
   const [podAccess, setPodAccess] = useState<PodAccessPolicy>(
     "restricted_and_open"
   );
-  const [podFiles, setPodFiles] = useState<PodFilesPolicy>("manual_allowed");
   const [capabilities, setCapabilities] = useState<Record<string, boolean>>(
     Object.fromEntries(WORKSPACE_CAPABILITIES.map((c) => [c.id, true]))
   );
@@ -3582,10 +3679,6 @@ function WorkspaceSettingsPage({ role }: { role: Role }) {
       value: "restricted_and_open" as const,
       label: "Restricted and open Pods",
     },
-  ];
-  const podFilesOptions = [
-    { value: "manual_allowed" as const, label: "Manual updates allowed" },
-    { value: "manual_disabled" as const, label: "Manual updates disabled" },
   ];
 
   return (
@@ -3678,44 +3771,6 @@ function WorkspaceSettingsPage({ role }: { role: Role }) {
                     key={o.value}
                     label={o.label}
                     onClick={() => setPodAccess(o.value)}
-                  />
-                ))}
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
-
-          {/* Pod files policy */}
-          <div className="s-flex s-items-center s-justify-between s-gap-4 s-px-4 s-py-3">
-            <div className="s-flex s-items-center s-gap-3">
-              <Folder className="s-h-4 s-w-4 s-shrink-0 s-text-muted-foreground dark:s-text-muted-foreground-night" />
-              <div className="s-flex s-items-baseline s-gap-2">
-                <span className="s-text-sm s-font-semibold s-text-foreground dark:s-text-foreground-night">
-                  Pod files policy
-                </span>
-                <span className="s-text-sm s-text-muted-foreground dark:s-text-muted-foreground-night">
-                  Control whether members can manually add files to Pods.
-                </span>
-              </div>
-            </div>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  icon={Folder}
-                  label={
-                    podFilesOptions.find((o) => o.value === podFiles)!.label
-                  }
-                  isSelect
-                  disabled={!canEdit}
-                />
-              </DropdownMenuTrigger>
-              <DropdownMenuContent>
-                {podFilesOptions.map((o) => (
-                  <DropdownMenuItem
-                    key={o.value}
-                    label={o.label}
-                    onClick={() => setPodFiles(o.value)}
                   />
                 ))}
               </DropdownMenuContent>
