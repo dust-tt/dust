@@ -1542,13 +1542,11 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       : [];
 
     const systemSkillsFromAgent = allAgentSkills.filter((s) => s.isSystemSkill);
-    const skillIdForLoop = (skill: SkillResource) =>
-      skill.globalSId ?? skill.sId;
     const systemSkillIds = new Set(
-      [...systemSkillsFromAgent, ...autoEnabledSystemSkills].map(skillIdForLoop)
+      [...systemSkillsFromAgent, ...autoEnabledSystemSkills].map(skill.sId)
     );
     const isSystemSkillForLoop = (skill: SkillResource) =>
-      systemSkillIds.has(skillIdForLoop(skill));
+      systemSkillIds.has(skill.sId);
 
     // Active baseline skills for this loop: configured system skills, plus
     // code-defined skills that this context promotes to system prompt content.
@@ -1565,7 +1563,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     // come from the agent configuration, context auto-equipping, Pod defaults,
     // and discoverable skills. System prompt skills are never enable-able.
     const agentEquippedSkills = allAgentSkills.filter(
-      (s) => !s.isSystemSkill && !isSystemSkillForLoop(s)
+      (s) => !isSystemSkillForLoop(s)
     );
     const autoEquippedSkills = autoEquippedSkillRefs.length
       ? await this.fetchBySkillReferences(auth, autoEquippedSkillRefs, {
