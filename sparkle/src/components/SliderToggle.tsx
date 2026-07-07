@@ -16,8 +16,8 @@ const baseClasses = cn(
 );
 
 const stateClasses = {
-  idle: cn("bg-primary-150", "hover:bg-primary-200"),
-  selected: cn("bg-highlight-500", "hover:bg-highlight-600"),
+  idle: cn("bg-slider-toggle-bg-idle", "hover:bg-highlight-300"),
+  selected: cn("bg-highlight-400"),
   disabled: cn(
     "bg-primary-200",
     "hover:bg-primary-200",
