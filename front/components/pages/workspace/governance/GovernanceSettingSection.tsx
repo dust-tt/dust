@@ -1,4 +1,3 @@
-import type { GovernanceSetting } from "@app/components/pages/workspace/governance/GovernancePage";
 import { GovernanceSettingRow } from "@app/components/pages/workspace/governance/GovernanceSettingRow";
 import type { GovernancePermission } from "@app/types/group_permissions";
 import type { GroupType } from "@app/types/groups";
@@ -8,7 +7,7 @@ import type { ComponentType } from "react";
 interface GovernanceSettingSectionProps {
   label: string;
   icon: ComponentType;
-  governanceSettings: GovernanceSetting[];
+  governancePermissions: GovernancePermission[];
   groups: GroupType[];
   onPermissionChange: (input: GovernancePermission) => void;
 }
@@ -16,7 +15,7 @@ interface GovernanceSettingSectionProps {
 export const GovernanceSettingSection = ({
   label,
   icon,
-  governanceSettings,
+  governancePermissions,
   groups,
   onPermissionChange,
 }: GovernanceSettingSectionProps) => {
@@ -27,15 +26,19 @@ export const GovernanceSettingSection = ({
         <Page.H variant="h5">{label}</Page.H>
       </div>
       <div className="w-full rounded-xl border border-border">
-        {governanceSettings.map((governanceSetting) => (
+        {governancePermissions.map((governancePermission) => (
           <GovernanceSettingRow
-            key={governanceSetting.label}
-            governanceSetting={governanceSetting}
+            key={
+              governancePermission.permissionType +
+              ":" +
+              governancePermission.resourceType
+            }
+            governancePermission={governancePermission}
             groups={groups}
             onChange={(newConfiguration) =>
               onPermissionChange({
-                permissionType: governanceSetting.permissionType,
-                resourceType: governanceSetting.resourceType,
+                permissionType: governancePermission.permissionType,
+                resourceType: governancePermission.resourceType,
                 configuration: newConfiguration,
               })
             }

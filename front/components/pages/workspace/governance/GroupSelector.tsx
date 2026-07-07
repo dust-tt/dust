@@ -75,18 +75,15 @@ export const GroupSelector = ({
         </DropdownMenuContent>
       </DropdownMenu>
       {selectedGroups.map((group) => (
-        <span key={group.sId}>
-          <Chip
-            label={group.name}
-            size="xs"
-            color="highlight"
-            onRemove={() =>
-              onSelectionChange(
-                selectedGroupIds.filter((id) => id !== group.sId)
-              )
-            }
-          />
-        </span>
+        <Chip
+          key={group.sId}
+          label={group.name}
+          size="xs"
+          color="highlight"
+          onRemove={() =>
+            onSelectionChange(selectedGroupIds.filter((id) => id !== group.sId))
+          }
+        />
       ))}
     </div>
   );

@@ -1,12 +1,8 @@
 import { GovernanceSettingSection } from "@app/components/pages/workspace/governance/GovernanceSettingSection";
-import { useWorkspace } from "@app/lib/auth/AuthContext";
+import { useFeatureFlags, useWorkspace } from "@app/lib/auth/AuthContext";
 import { useGovernancePermissions } from "@app/lib/swr/governance";
 import { useGroups } from "@app/lib/swr/groups";
-import type {
-  GovernancePermission,
-  GroupPermissionResourceType,
-  PermissionType,
-} from "@app/types/group_permissions";
+import type { GovernancePermission } from "@app/types/group_permissions";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
   ActionFrame,
@@ -17,57 +13,6 @@ import {
 } from "@dust-tt/sparkle";
 import groupBy from "lodash/groupBy";
 
-export type GovernanceSetting = GovernancePermission & {
-  label: string;
-  description: string;
-};
-
-const GOVERNANCE_SETTING_METADATA: Partial<
-  Record<
-    `${PermissionType}:${GroupPermissionResourceType}`,
-    { label: string; description: string }
-  >
-> = {
-  "create:agent": {
-    label: "Members can create agents",
-    description: "Build new agents in the Agent Builder",
-  },
-  "publish:agent": {
-    label: "Members can publish agents",
-    description: "Publish agents in the Agent Builder",
-  },
-  "create:skill": {
-    label: "Members can create skills",
-    description: "Build custom Skills",
-  },
-  "publish:skill": {
-    label: "Members can publish skills",
-    description: "Publish Skills workspace-wide for all members to use",
-  },
-  "invite:frame": {
-    label: "Members + email invites",
-    description:
-      "Frames can be shared with workspace members or via email invite",
-  },
-};
-
-function toGovernanceSettings(
-  permissions: GovernancePermission[]
-): GovernanceSetting[] {
-  return permissions
-    .map((permission): GovernanceSetting | null => {
-      const metadata =
-        GOVERNANCE_SETTING_METADATA[
-          `${permission.permissionType}:${permission.resourceType}`
-        ];
-      if (!metadata) {
-        return null;
-      }
-      return { ...permission, ...metadata };
-    })
-    .filter((setting): setting is GovernanceSetting => setting !== null);
-}
-
 function useUpdateGovernancePermission(owner: LightWorkspaceType) {
   return (input: GovernancePermission) => {
     return true;
@@ -75,19 +20,46 @@ function useUpdateGovernancePermission(owner: LightWorkspaceType) {
 }
 
 export const GovernancePage = () => {
+  const { hasFeature } = useFeatureFlags();
+  const hasAdminGovernanceFeature = hasFeature("admin_governance");
+
   const owner = useWorkspace();
-  const { groups } = useGroups({ owner, kinds: ["provisioned"] });
-  const { governancePermissions, isLoading } = useGovernancePermissions(owner);
+  const { groups, isGroupsLoading } = useGroups({
+    owner,
+    kinds: ["provisioned"],
+  });
+  const { governancePermissions, isLoading: isGovernancePermissionsLoading } =
+    useGovernancePermissions(owner);
   const onPermissionChange = useUpdateGovernancePermission(owner);
 
-  const governanceSettingsMap = groupBy(
-    toGovernanceSettings(governancePermissions),
+  const isLoading = isGroupsLoading || isGovernancePermissionsLoading;
+
+  const governancePermissionsMap = groupBy(
+    governancePermissions,
     "resourceType"
   );
 
-  const agentSettings = governanceSettingsMap.agent ?? [];
-  const skillSettings = governanceSettingsMap.skill ?? [];
-  const frameSettings = governanceSettingsMap.frame ?? [];
+  const sections = [
+    {
+      label: "Agents",
+      icon: Robot,
+      governancePermissions: governancePermissionsMap.agent ?? [],
+    },
+    {
+      label: "Skills",
+      icon: PuzzlePiece01,
+      governancePermissions: governancePermissionsMap.skill ?? [],
+    },
+    {
+      label: "Frames",
+      icon: ActionFrame,
+      governancePermissions: governancePermissionsMap.frame ?? [],
+    },
+  ];
+
+  if (!hasAdminGovernanceFeature) {
+    return null;
+  }
 
   if (isLoading) {
     return (
@@ -105,27 +77,16 @@ export const GovernancePage = () => {
         icon={Toggle01Left}
       />
       <div className="flex w-full flex-col gap-8">
-        <GovernanceSettingSection
-          label="Agents"
-          icon={Robot}
-          governanceSettings={agentSettings}
-          groups={groups}
-          onPermissionChange={onPermissionChange}
-        />
-        <GovernanceSettingSection
-          label="Skills"
-          icon={PuzzlePiece01}
-          governanceSettings={skillSettings}
-          groups={groups}
-          onPermissionChange={onPermissionChange}
-        />
-        <GovernanceSettingSection
-          label="Frames"
-          icon={ActionFrame}
-          governanceSettings={frameSettings}
-          groups={groups}
-          onPermissionChange={onPermissionChange}
-        />
+        {sections.map((section) => (
+          <GovernanceSettingSection
+            key={section.label}
+            label={section.label}
+            icon={section.icon}
+            governancePermissions={section.governancePermissions}
+            groups={groups}
+            onPermissionChange={onPermissionChange}
+          />
+        ))}
       </div>
     </Page>
   );

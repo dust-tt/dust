@@ -69,10 +69,14 @@ export const isValidPermissionConfigurationScope = (
   );
 };
 
-export type GovernancePermissionConfiguration = {
-  scope: PermissionConfigurationScope;
-  groupIds?: string[];
-};
+export type GovernancePermissionConfiguration =
+  | {
+      scope: Extract<PermissionConfigurationScope, "groups">;
+      groupIds: string[];
+    }
+  | {
+      scope: Exclude<PermissionConfigurationScope, "groups">;
+    };
 
 export type GovernancePermission = {
   permissionType: PermissionType;
