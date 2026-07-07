@@ -31,8 +31,8 @@ const DISCOVER_KNOWLEDGE_INSTRUCTIONS =
   "named documents, or cite the source location.\n" +
   "- `cat`: best for reading a known document or page. Use it for exact " +
   "wording, source checks, factual verification, and details that search " +
-  "snippets may omit. It is a follow-up tool, not the right starting point " +
-  "for broad discovery.\n" +
+  "snippets may omit, especially after a result has identified the right " +
+  "source.\n" +
   "\n" +
   "Data warehouses (tables and schemas):\n" +
   "- Warehouse content is organized as warehouse -> database -> schema -> " +
