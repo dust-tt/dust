@@ -1,5 +1,5 @@
 import type {
-  FunctionManifests,
+  FunctionStateManifest,
   ManifestColumn,
 } from "@app/lib/api/sandbox_functions/manifests";
 import isEqual from "lodash/isEqual";
@@ -19,7 +19,7 @@ import isEqual from "lodash/isEqual";
 
 export interface SiblingManifests {
   slug: string;
-  manifests: FunctionManifests | null;
+  manifests: FunctionStateManifest | null;
 }
 
 export interface CompatBlock {
@@ -62,8 +62,8 @@ export function diffManifestsAgainstSiblings({
   previousManifests,
   siblings,
 }: {
-  newManifests: FunctionManifests | null;
-  previousManifests: FunctionManifests | null;
+  newManifests: FunctionStateManifest | null;
+  previousManifests: FunctionStateManifest | null;
   siblings: SiblingManifests[];
 }): CompatDiff {
   if (newManifests === null) {
@@ -359,7 +359,7 @@ function formatMode(mode: string | null): string {
  * files are stale until republished.
  */
 export function computeStaleSiblings(
-  newManifests: FunctionManifests | null,
+  newManifests: FunctionStateManifest | null,
   siblings: SiblingManifests[]
 ): StaleSiblingNote[] {
   if (newManifests === null) {

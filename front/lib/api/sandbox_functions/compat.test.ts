@@ -7,7 +7,7 @@ import {
   diffManifestsAgainstSiblings,
 } from "@app/lib/api/sandbox_functions/compat";
 import type {
-  FunctionManifests,
+  FunctionStateManifest,
   ManifestColumn,
   ManifestIndex,
   ManifestTable,
@@ -45,7 +45,7 @@ function table(
 
 function manifests(
   tablesByDb: Record<string, Record<string, ManifestTable>>
-): FunctionManifests {
+): FunctionStateManifest {
   return {
     version: 1,
     databases: Object.fromEntries(
@@ -58,7 +58,7 @@ function manifests(
 }
 
 // The design's canonical chat example: messages(id, body, created_at).
-function chatMessagesManifests(): FunctionManifests {
+function chatMessagesManifests(): FunctionStateManifest {
   return manifests({
     chat: {
       messages: table({
@@ -75,8 +75,8 @@ function diff({
   previousManifests = null,
   siblings = [],
 }: {
-  newManifests: FunctionManifests | null;
-  previousManifests?: FunctionManifests | null;
+  newManifests: FunctionStateManifest | null;
+  previousManifests?: FunctionStateManifest | null;
   siblings?: SiblingManifests[];
 }): CompatDiff {
   return diffManifestsAgainstSiblings({
