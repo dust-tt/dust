@@ -1110,7 +1110,7 @@ export class Authenticator {
     }
 
     const grants = await GroupPermissionResource.listForGroups(this, {
-      groupIds: this._groupModelIds,
+      groupModelIds: this._groupModelIds,
       resourceId: WHOLE_TYPE_RESOURCE_ID,
     });
 
