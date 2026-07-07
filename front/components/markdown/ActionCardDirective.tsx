@@ -9,6 +9,7 @@ import {
 import { getIcon } from "@app/components/resources/resources_icons";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import { ActionCardBlock, Avatar } from "@dust-tt/sparkle";
+import type { ReactNode } from "react";
 import { useMemo, useState } from "react";
 import { visit } from "unist-util-visit";
 
@@ -16,29 +17,30 @@ const DEFAULT_ICON: InternalAllowedIconType | CustomResourceIconType =
   "ActionRobotIcon";
 
 /**
- * Remark plugin: transforms `::action_card[title]{...attrs}` into a custom
- * HTML element for React rendering.
+ * Remark plugin: transforms the `:::action_card{...attrs}` container directive
+ * into a custom HTML element for React rendering.
  *
- * - `[title]`: short headline
+ * - `title`: short headline (required)
  * - `subtitle`: optional context line shown below the title
  * - `description`: one supporting sentence
  * - `icon`: name of icon shown
- * - `cta`: primary action button label.
- * - `dismiss`: secondary action button label.
+ * - `cta`: primary action button label
+ * - `dismiss`: secondary action button label
  * - `actionMessage`: message sent to the agent when the primary action is taken (defaults to "Accept").
  * - `dismissMessage`: message sent to the agent when the secondary action is taken (defaults to "Dismiss").
+ * - `collapsibleLabel`: label for the collapsible trigger.
+ * - `collapsibleContent`: markdown rendered inside the collapsible section.
  */
 export function actionCardDirective() {
   return (tree: any) => {
-    visit(tree, ["textDirective", "leafDirective"], (node) => {
+    visit(tree, ["containerDirective"], (node) => {
       if (node.name !== "action_card") {
         return;
       }
       node.data ??= {};
       const data = node.data;
-      const title = node.children?.[0]?.value ?? "";
       data.hName = "action_card";
-      data.hProperties = { title, ...node.attributes };
+      data.hProperties = { ...node.attributes };
     });
   };
 }
@@ -54,6 +56,8 @@ interface ActionCardProps {
   dismiss?: string;
   actionMessage?: string;
   dismissMessage?: string;
+  collapsibleContent?: ReactNode;
+  collapsibleLabel?: string;
   isLastMessage?: boolean;
   onSend?: (message: string) => Promise<void>;
 }
@@ -67,6 +71,8 @@ function ActionCard({
   dismiss,
   actionMessage,
   dismissMessage,
+  collapsibleContent,
+  collapsibleLabel,
   isLastMessage = true,
   onSend,
 }: ActionCardProps) {
@@ -111,6 +117,12 @@ function ActionCard({
           title={title}
           subtitle={subtitle}
           description={description}
+          collapsibleContent={
+            collapsibleContent ? (
+              <div className="prose prose-sm">{collapsibleContent}</div>
+            ) : undefined
+          }
+          collapsibleLabel={collapsibleContent ? collapsibleLabel : undefined}
           applyLabel={applyLabel}
           rejectLabel={dismiss ?? "Dismiss"}
           acceptedTitle={title}
@@ -141,8 +153,10 @@ interface ActionCardPluginProps {
   icon?: string;
   cta?: string;
   dismiss?: string;
-  actionmessage?: string;
-  dismissmessage?: string;
+  actionMessage?: string;
+  dismissMessage?: string;
+  collapsibleLabel?: string;
+  children?: ReactNode;
 }
 
 export function getActionCardPlugin(
@@ -156,8 +170,10 @@ export function getActionCardPlugin(
     icon,
     cta,
     dismiss,
-    actionmessage,
-    dismissmessage,
+    actionMessage,
+    dismissMessage,
+    collapsibleLabel,
+    children,
   }: ActionCardPluginProps) => {
     if (!title) {
       return null;
@@ -170,8 +186,10 @@ export function getActionCardPlugin(
         icon={icon}
         cta={cta}
         dismiss={dismiss}
-        actionMessage={actionmessage}
-        dismissMessage={dismissmessage}
+        actionMessage={actionMessage}
+        dismissMessage={dismissMessage}
+        collapsibleContent={children}
+        collapsibleLabel={collapsibleLabel}
         isLastMessage={isLastMessage}
         onSend={onSend}
       />

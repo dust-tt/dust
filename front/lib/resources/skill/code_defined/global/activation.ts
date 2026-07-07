@@ -6,6 +6,7 @@ import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resour
 import type { GlobalSkillDefinition } from "@app/lib/resources/skill/code_defined/shared";
 import logger from "@app/logger/logger";
 import type { AgentLoopExecutionData } from "@app/types/assistant/agent_run";
+import { isPodConversation } from "@app/types/assistant/conversation";
 import { isFavoritePlatform } from "@app/types/favorite_platforms";
 import { isJobType, JOB_TYPE_LABELS } from "@app/types/job_type";
 import { isStringArray } from "@app/types/shared/utils/general";
@@ -22,6 +23,7 @@ Before providing a new use case for the user, you MUST acquire context to inform
 - Call \`get_workspace_activity\` to understand what the workspace has used in the last 30 days.
 - Call \`list_skills\` to see what skills are pinned or available.
 - Call \`list_recommendations\` to see what recommendations have already been shown to the user. Do not repeat recommendations the user has already executed or dismissed.
+- If a **Pod ID** is present in the context above, call \`list_conversations\` with \`includeMessages=true\` to scan the most recent Pod conversations. Use the message content to understand what the user has been working on inside this Pod — treat it as the strongest signal for what a relevant recommendation looks like.
 
 ## Guidelines
 
@@ -44,6 +46,7 @@ Prioritize recommendations that exploit Dust's core differentiators over generic
 ## Recommendation Requirements
 
 Every recommendation must meet the following requirements:
+- Its subject is the user's real domain work — the outputs and tasks of their actual job. Never recommend meta-work about Dust itself: analyzing their Dust usage, activation, onboarding, or "productivity/adoption" is never a valid recommendation, however much such activity dominates their usage data.
 - It replaces, shortens, or improves a task relevant to the user. It must be a tangible example of an activity that will improve the user's productivity.
 - It names actual tools, agents, skills, or usage patterns. Not a category ("automate your reporting") but an instance ("the pipeline summary you rebuild from HubSpot every week").
 - It is executable right now, in this conversation, with tools that are already connected. Never recommend connecting a new tool or data source — tool setup is an admin action outside the user's control. Only build on what is already available in the workspace context provided to you.
@@ -71,21 +74,34 @@ Every offer — new recommendations and post-execution conversion offers alike �
 1. Call \`create_recommendation\` with the recommendation text and your internal rationale.
 2. Using the \`recommendationId\` returned, render the card on its own line:
 
-::action_card[<short title, 3–6 words>]{sId=<recommendationId> subtitle="<context line>" description="<one sentence>" cta="<accept label>" dismiss="<reject label>" actionMessage="<message sent on accept>" dismissMessage="<message sent on dismiss>"}
+:::action_card{title="<short title, 3–6 words>" sId=<recommendationId> icon=<icon name> subtitle="<context line>" description="<one sentence>" cta="<accept label>" dismiss="<reject label>" actionMessage="<message sent on accept>" dismissMessage="<message sent on dismiss>" collapsibleLabel="<collapsible trigger label>"}
+<inline education — real markdown: bold, links, bullet lists>
+:::
 
-- \`[title]\`: short generic headline shown prominently (3–5 words), e.g. "Recommendation for you".
+This is a container directive: the opening \`:::action_card{...}\` line holds the attributes, the optional lines that follow are collapsible content (the inline education), and a closing \`:::\` line ends it. The collapsible content is rendered as real markdown, so put the explainer there — never in an attribute. Omit the collapsible lines if no education content is needed.
+
+- \`title\`: short generic headline shown prominently (3–5 words), e.g. "Recommendation for you".
+- \`icon\`: icon shown next to the card. Pick the one that matches the Dust concept behind the recommendation: \`ActionListCheckIcon\` (skill), \`ActionCalendarCheckIcon\` (trigger/schedule), \`ActionDashboardIcon\` (Frame/dashboard), \`ActionCloudArrowLeftRightIcon\` (connection), \`ActionRobotIcon\` (agent), \`ActionMailIcon\` (briefing/digest), \`ActionSparklesIcon\` (generic). Defaults to \`ActionRobotIcon\` if omitted.
 - \`subtitle\`: optional context line shown below the title. 3-5 word specific title for the recommendation: "Generate daily brief".
 - \`description\`: one sentence a stranger could visualize. Name what appears in the output, not what it "turns into".
 - \`cta\`: short accept button label, e.g. "Try it", "Save it", "Set it up". This is display-only.
 - \`dismiss\`: short reject button label, e.g. "Not now", "Not for me", "Already doing this". This is display-only.
 - \`actionMessage\`: message sent to you when the user clicks the accept button, e.g. "Yes, let's do it", "Go ahead". Defaults to "Accept" if omitted.
 - \`dismissMessage\`: message sent to you when the user clicks the dismiss button, e.g. "Not for me", "Skip this one". Defaults to "Dismiss" if omitted.
+- \`collapsibleLabel\`: label for the collapsible section. Required if collapsible content is included; omit otherwise. See "Inline education" below.
+- collapsible content (the lines between the attribute line and closing \`:::\`): optional inline education markdown. See "Inline education" below.
 
-Do NOT emit \`ask_question\` buttons when the message ends with an \`::action_card\` directive.
+Do NOT emit \`ask_question\` buttons when the message ends with an \`:::action_card\` directive.
 
 When the user responds to any card:
 - If they accept (the \`actionMessage\` arrives), call \`update_recommendation\` with \`status: "executed"\`, then proceed with execution.
 - If they decline (the \`dismissMessage\` arrives), call \`update_recommendation\` with \`status: "dismissed"\`. For a new recommendation, surface the next one. For a conversion card, follow the post-execution flow below.
+
+### Inline education
+
+Every recommendation card must carry a short, focused explainer that teaches the Dust concept behind the action — education rides along with every card, never as a separate flow.
+Use the **Dust Support** skill to generate content, including a Markdown-like description of the concept and a link to the relevant documentation page.
+Set \`collapsibleLabel\` to the specific concept name, not a generic phrase: "Learn more about Frames", "Learn more about triggers", "Learn more about Skills". The label tells the user exactly what they'll learn before they expand it.
 
 ## Executing
 
@@ -143,7 +159,8 @@ Never bundle these into one combined ask ("want me to save this as a skill and s
 
 async function buildActivationContext(
   auth: Authenticator,
-  spaceIds: string[]
+  spaceIds: string[],
+  agentLoopData?: AgentLoopExecutionData
 ): Promise<string> {
   const parts: string[] = [];
 
@@ -192,6 +209,13 @@ async function buildActivationContext(
     parts.push(buildToolsetsContext(availableToolsets));
   }
 
+  if (
+    agentLoopData?.conversation &&
+    isPodConversation(agentLoopData.conversation)
+  ) {
+    parts.push(`Pod ID: ${agentLoopData.conversation.spaceId}`);
+  }
+
   if (parts.length === 0) {
     return "";
   }
@@ -211,11 +235,14 @@ export const activationSkill = {
     "execute it, save it as a reusable skill, and set it up as a recurring schedule.",
   fetchInstructions: async (
     auth: Authenticator,
-    { spaceIds }: { spaceIds: string[]; agentLoopData?: AgentLoopExecutionData }
+    {
+      spaceIds,
+      agentLoopData,
+    }: { spaceIds: string[]; agentLoopData?: AgentLoopExecutionData }
   ): Promise<string> => {
     let context = "";
     try {
-      context = await buildActivationContext(auth, spaceIds);
+      context = await buildActivationContext(auth, spaceIds, agentLoopData);
     } catch (err) {
       logger.warn({ err }, "Failed to build activation context");
     }
@@ -230,6 +257,7 @@ export const activationSkill = {
     { name: "schedules_management" },
     { name: "files" },
     { name: "activation_recommendations" },
+    { name: "pod_manager" },
   ],
   version: 2,
   icon: "ActionRocketIcon",
