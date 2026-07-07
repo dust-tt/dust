@@ -9,7 +9,7 @@ import {
 } from "@app/lib/api/sandbox/access_tokens";
 import { ensurePodSandboxReady } from "@app/lib/api/sandbox/lifecycle";
 import { shellEscape } from "@app/lib/api/sandbox/shell";
-import type { FunctionManifests } from "@app/lib/api/sandbox_functions/manifests";
+import type { FunctionStateManifest } from "@app/lib/api/sandbox_functions/manifests";
 import type { Authenticator } from "@app/lib/auth";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
@@ -121,7 +121,7 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
       description: string;
       inputSchema: JSONSchema;
       outputSchema: JSONSchema;
-      manifests?: FunctionManifests | null;
+      manifests?: FunctionStateManifest | null;
     },
     transaction?: Transaction
   ): Promise<SandboxFunctionResource> {
@@ -187,7 +187,7 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
       description: string;
       inputSchema: JSONSchema;
       outputSchema: JSONSchema;
-      manifests: FunctionManifests | null;
+      manifests: FunctionStateManifest | null;
     }
   ): Promise<Result<undefined, Error>> {
     try {
