@@ -1492,6 +1492,9 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
 
     const sortByName = (a: SkillResource, b: SkillResource) =>
       a.name.localeCompare(b.name);
+    const uniqueBySId = (skills: SkillResource[]) => [
+      ...new Map(skills.map((s) => [s.sId, s])).values(),
+    ];
 
     // System skills are always treated as enabled when present in the agent configuration.
     const configSystemSkills = allAgentSkills.filter((s) => s.isSystemSkill);
@@ -1510,32 +1513,22 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         conversation,
       })
     );
+    // Auto-enabled means "active for this loop", not "stored as enabled on the conversation".
+    // For example, Pods is system context inside a Pod conversation but a normal global skill
+    // elsewhere. Keep these IDs handy so existing agent/conversation references do not also
+    // appear as enabled/equipped candidates in the same loop.
     const autoEnabledGlobalSkillIds = new Set(
       autoEnabledDefs.map((def) => def.sId)
     );
-    const autoEnabledSkillsAlreadyLoaded = [
-      ...configSystemSkills,
-      ...conversationEnabledSkills,
-      ...allAgentSkills,
-    ].filter((s) => s.globalSId && autoEnabledGlobalSkillIds.has(s.globalSId));
-    const loadedAutoEnabledGlobalSkillIds = new Set(
-      removeNulls(autoEnabledSkillsAlreadyLoaded.map((s) => s.globalSId))
-    );
-    const autoEnabledRefs = autoEnabledDefs
-      .filter((def) => !loadedAutoEnabledGlobalSkillIds.has(def.sId))
-      .map((def) => ({ globalSkillId: def.sId, customSkillId: null }));
-    const fetchedAutoEnabledSkills = autoEnabledRefs.length
+    const autoEnabledRefs = autoEnabledDefs.map((def) => ({
+      globalSkillId: def.sId,
+      customSkillId: null,
+    }));
+    const autoEnabledSkills = autoEnabledRefs.length
       ? await this.fetchBySkillReferences(auth, autoEnabledRefs, {
           agentLoopData,
         })
       : [];
-    const autoEnabledSkills = [
-      ...new Map(
-        [...autoEnabledSkillsAlreadyLoaded, ...fetchedAutoEnabledSkills].map(
-          (s) => [s.sId, s]
-        )
-      ).values(),
-    ];
 
     const equippedGlobalSkillIds = new Set(
       removeNulls([
@@ -1563,11 +1556,10 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
 
     // System skills and contextually auto-enabled code-defined skills land in `systemSkills`.
     // They are active for the current loop without being conversation-enabled records.
-    const systemSkills = [
-      ...new Map(
-        [...configSystemSkills, ...autoEnabledSkills].map((s) => [s.sId, s])
-      ).values(),
-    ];
+    const systemSkills = uniqueBySId([
+      ...configSystemSkills,
+      ...autoEnabledSkills,
+    ]);
 
     const enabledSkills = conversationEnabledSkills
       .filter(
