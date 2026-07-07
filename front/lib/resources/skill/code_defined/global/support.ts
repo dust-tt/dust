@@ -1,5 +1,5 @@
 import { WEB_SEARCH_BROWSE_SERVER_NAME } from "@app/lib/api/actions/servers/web_search_browse/metadata";
-import type { GlobalSkillDefinition } from "@app/lib/resources/skill/code_defined/global/types";
+import type { GlobalSkillDefinition } from "@app/lib/resources/skill/code_defined/shared";
 
 const SUPPORT_INSTRUCTIONS = `
 Ground every answer on the best available Dust-specific evidence. Start with public Dust surfaces:

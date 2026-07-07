@@ -1,6 +1,6 @@
 import { getPrefixedToolName } from "@app/lib/actions/tool_name_utils";
+import type { SystemSkillDefinition } from "@app/lib/resources/skill/code_defined/shared";
 import { SKILL_COMPANY_DATA_SERVER_NAME } from "@app/lib/resources/skill/code_defined/shared";
-import type { SystemSkillDefinition } from "@app/lib/resources/skill/code_defined/system/types";
 
 const DATA_WAREHOUSES_SERVER_NAME = "data_warehouses";
 

@@ -7,7 +7,7 @@ import {
 } from "@app/lib/api/actions/servers/plan_mode/metadata";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
-import type { SystemSkillDefinition } from "@app/lib/resources/skill/code_defined/system/types";
+import type { SystemSkillDefinition } from "@app/lib/resources/skill/code_defined/shared";
 
 const ASK_USER_QUESTION_TOOL_NAME =
   ASK_USER_QUESTION_TOOLS_METADATA.ask_user_question.name;

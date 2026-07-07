@@ -1,6 +1,6 @@
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
-import type { GlobalSkillDefinition } from "@app/lib/resources/skill/code_defined/global/types";
+import type { GlobalSkillDefinition } from "@app/lib/resources/skill/code_defined/shared";
 
 export const workspaceAnalyticsSkill = {
   sId: "workspace-analytics",

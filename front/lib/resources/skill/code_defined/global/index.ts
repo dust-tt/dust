@@ -8,9 +8,9 @@ import { projectsSkill } from "@app/lib/resources/skill/code_defined/global/proj
 import { sandboxSkill } from "@app/lib/resources/skill/code_defined/global/sandbox";
 import { skillAuthoringSkill } from "@app/lib/resources/skill/code_defined/global/skill_authoring";
 import { supportSkill } from "@app/lib/resources/skill/code_defined/global/support";
-import type { GlobalSkillDefinition } from "@app/lib/resources/skill/code_defined/global/types";
 import { workspaceAnalyticsSkill } from "@app/lib/resources/skill/code_defined/global/workspace_analytics";
 import { xlsxSkill } from "@app/lib/resources/skill/code_defined/global/xlsx";
+import type { GlobalSkillDefinition } from "@app/lib/resources/skill/code_defined/shared";
 import { ensureUniqueSIds } from "@app/lib/resources/skill/code_defined/shared";
 
 export const GLOBAL_SKILLS_ARRAY = ensureUniqueSIds([

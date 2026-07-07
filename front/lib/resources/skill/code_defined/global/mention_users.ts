@@ -3,7 +3,7 @@ import {
   SEARCH_AVAILABLE_USERS_TOOL_NAME,
   USER_MENTIONS_SERVER_NAME,
 } from "@app/lib/api/actions/servers/user_mentions/metadata";
-import type { GlobalSkillDefinition } from "@app/lib/resources/skill/code_defined/global/types";
+import type { GlobalSkillDefinition } from "@app/lib/resources/skill/code_defined/shared";
 
 export const mentionUsersSkill = {
   sId: "mention_users",

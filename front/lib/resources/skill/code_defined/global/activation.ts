@@ -3,7 +3,7 @@ import { buildToolsetsContext } from "@app/lib/api/assistant/global_agents/confi
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
-import type { GlobalSkillDefinition } from "@app/lib/resources/skill/code_defined/global/types";
+import type { GlobalSkillDefinition } from "@app/lib/resources/skill/code_defined/shared";
 import logger from "@app/logger/logger";
 import type { AgentLoopExecutionData } from "@app/types/assistant/agent_run";
 import { isFavoritePlatform } from "@app/types/favorite_platforms";

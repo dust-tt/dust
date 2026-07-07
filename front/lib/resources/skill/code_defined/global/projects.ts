@@ -6,7 +6,7 @@ import {
   readPodAgentsMdContent,
 } from "@app/lib/api/projects/agents_md";
 import type { Authenticator } from "@app/lib/auth";
-import type { GlobalSkillDefinition } from "@app/lib/resources/skill/code_defined/global/types";
+import type { GlobalSkillDefinition } from "@app/lib/resources/skill/code_defined/shared";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import {
   type ConversationWithoutContentType,
