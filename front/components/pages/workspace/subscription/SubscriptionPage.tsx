@@ -19,6 +19,7 @@ import { useSubmitFunction } from "@app/lib/client/utils";
 import { clientFetch } from "@app/lib/egress/client";
 import {
   isEnterprisePlanPrefix,
+  isProOrBusinessPlanCode,
   isProPlan,
   isUpgraded,
   isWhitelistedBusinessPlan,
@@ -444,14 +445,17 @@ export function SubscriptionPage() {
     });
 
   const plan = subscription.plan;
-  const isWorkspaceOnProPlan = isProPlan(plan);
+  // Legacy Pro (SEAT_29 / LARGE_FILES) and Business (SEAT_39) both migrate to
+  // Business and share the same cancel / migration flow — see
+  // FORCE_LEGACY_LARGE_PLAN_CODES.
+  const isWorkspaceOnProOrBusinessPlan = isProOrBusinessPlanCode(plan);
 
   // Hooks must run unconditionally (before any early return): the migration
   // fetch is gated via `disabled`, not by skipping the hook.
   const { pendingMigrationDate, willBeRefundedOnEnd, mutateMigration } =
     useWorkspaceMigration({
       workspaceId: owner.sId,
-      disabled: !isWorkspaceOnProPlan,
+      disabled: !isWorkspaceOnProOrBusinessPlan,
     });
   const { cancelMigration, isCancellingMigration } =
     useCancelWorkspaceMigration({ workspaceId: owner.sId });
@@ -464,8 +468,10 @@ export function SubscriptionPage() {
   }
 
   const isWorkspaceWhitelistedBusinessPlan = isWhitelistedBusinessPlan(owner);
+  // Only legacy Pro can upsell to Business; a Business (SEAT_39) workspace is
+  // already there.
   const canUpsellToBusinessPlan =
-    isWorkspaceOnProPlan &&
+    isProPlan(plan) &&
     isWorkspaceWhitelistedBusinessPlan &&
     !isMetronomeCheckout;
 
@@ -485,16 +491,16 @@ export function SubscriptionPage() {
   // Cancelled (churning at the end date) only when not migrating.
   const isCancelledNotMigrating = !isMigrating && subscription.endDate !== null;
 
-  // A legacy Pro workspace (Stripe-billed, not trialing) can cancel — while
+  // A Stripe-billed Pro or Business workspace (not trialing) can cancel — while
   // active or while migrating (opt out). Not when already cancelled (→ Resume).
   const canCancelSubscription =
-    isWorkspaceOnProPlan &&
+    isWorkspaceOnProOrBusinessPlan &&
     !subscription.trialing &&
     subscription.stripeSubscriptionId !== null &&
     !isCancelledNotMigrating;
   // Cancelled (not migrating) but not yet ended — resume re-stages the migration.
   const canResumeMigration =
-    isWorkspaceOnProPlan &&
+    isWorkspaceOnProOrBusinessPlan &&
     isCancelledNotMigrating &&
     subscription.endDate !== null &&
     new Date(subscription.endDate).getTime() > Date.now();
@@ -536,7 +542,11 @@ export function SubscriptionPage() {
     : null;
 
   const migrationDate = (() => {
-    if (!isWorkspaceOnProPlan || !isMetronomeCheckout || !perSeatPricing) {
+    if (
+      !isWorkspaceOnProOrBusinessPlan ||
+      !isMetronomeCheckout ||
+      !perSeatPricing
+    ) {
       return null;
     }
     // Rollout window [Jul 23, Aug 23) 2026 (UTC), matching the migration script.
