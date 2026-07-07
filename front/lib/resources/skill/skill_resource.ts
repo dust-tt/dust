@@ -1800,6 +1800,14 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     return this.editorGroup.canWrite(auth);
   }
 
+  canAdministrate(auth: Authenticator): boolean {
+    if (!this.editorGroup) {
+      return false;
+    }
+
+    return this.editorGroup.canAdministrate(auth);
+  }
+
   private async listActiveAgents(
     auth: Authenticator
   ): Promise<AgentConfigurationModel[]> {
