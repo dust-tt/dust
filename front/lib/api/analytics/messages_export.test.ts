@@ -1,7 +1,4 @@
-import {
-  fetchMessageExportRows,
-  MESSAGE_EXPORT_HEADERS,
-} from "@app/lib/api/analytics/messages_export";
+import { fetchMessageExportRows } from "@app/lib/api/analytics/messages_export";
 import type { ElasticsearchBaseDocument } from "@app/lib/api/elasticsearch";
 import { searchAnalytics } from "@app/lib/api/elasticsearch";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
