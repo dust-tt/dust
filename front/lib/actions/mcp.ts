@@ -18,6 +18,7 @@ import { hideInternalConfiguration } from "@app/lib/actions/mcp_internal_actions
 import type { ProgressNotificationContentType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import type { AuthorizationInfo } from "@app/lib/actions/mcp_metadata_extraction";
 import type {
+  ActionGeneratedFileType,
   FileAuthorizationInfo,
   UserQuestion,
 } from "@app/lib/actions/types";
@@ -30,6 +31,7 @@ import type {
 import type { AgentMCPActionWithOutputType } from "@app/types/actions";
 import type { SandboxFunctionMCPActionType } from "@app/types/api/sandbox_functions";
 import { assertNever } from "@app/types/shared/utils/assert_never";
+import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
 
 export type ActionApprovalStateType =
@@ -211,7 +213,9 @@ export function getMCPApprovalStateFromUserApprovalState(
   }
 }
 
-export type MCPParamsEvent = {
+// Emitted by the agent loop once tool arguments have been generated and the action created.
+// Published on the conversation message channel, hence the conversation-scoped identifiers.
+export type AgentLoopToolParamsEvent = {
   type: "tool_params";
   created: number;
   configurationId: string;
@@ -220,12 +224,13 @@ export type MCPParamsEvent = {
   runIds?: string[];
 };
 
+// Emitted by the tool runner when the tool execution completed. Generic across run contexts: it
+// carries the processed output only, consumers scope it to their own run context.
 export type MCPSuccessEvent = {
   type: "tool_success";
   created: number;
-  configurationId: string;
-  messageId: string;
-  action: AgentMCPActionWithOutputType;
+  output: CallToolResult["content"];
+  generatedFiles: ActionGeneratedFileType[];
 };
 
 export type MCPErrorEvent = {
@@ -274,7 +279,7 @@ export function isAgentLoopToolNotificationEvent(
 
 // AgentActionRunningEvents are events related action execution within an agent loop.
 export type AgentActionRunningEvents =
-  | MCPParamsEvent
+  | AgentLoopToolParamsEvent
   | MCPApproveExecutionEvent
   | AgentLoopToolNotificationEvent;
 

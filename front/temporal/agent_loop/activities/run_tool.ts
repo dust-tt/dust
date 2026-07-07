@@ -462,16 +462,15 @@ async function executeToolStreaming(
             created: event.created,
             configurationId: agentConfiguration.sId,
             messageId: agentMessage.sId,
-            action: event.action,
+            // The generic tool runner event only carries the processed output; the agent loop
+            // action payload is rebuilt from the action resource, which reflects the final status
+            // (updated in place during execution).
+            action: {
+              ...action.toJSON(),
+              output: event.output,
+              generatedFiles: event.generatedFiles,
+            },
           },
-          agentMessage,
-          conversation,
-          step,
-        });
-        break;
-      case "tool_params":
-        await handleNonDeferredEvents(auth, {
-          event,
           agentMessage,
           conversation,
           step,
