@@ -496,7 +496,7 @@ function ProviderPassthroughView({
             {title}
           </span>
           <Chip
-            color={kind === "call" ? "blue" : "green"}
+            color={kind === "call" ? "highlight" : "success"}
             label={kind}
             size="xs"
           />
