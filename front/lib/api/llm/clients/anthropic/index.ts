@@ -105,23 +105,16 @@ type AnthropicStreamPayload = BetaMessageStreamParams & {
 export function buildSystemBlocks(
   { instructions, sharedContext, ephemeralContext }: StructuredSystemPrompt,
   {
-    hasConditionalJITTools,
     includeToolSearchInstruction,
   }: {
-    hasConditionalJITTools?: boolean;
     includeToolSearchInstruction?: boolean;
   }
 ) {
   const instructionsText = instructions.map((s) => s.content).join("\n");
-  // The tool search instruction is a constant string that renders on every turn
-  // tool search is on, so it could live in the long-lived 1h instructions tier.
-  // It stays in the shared 5min tier for now because conditional JIT tools
-  // (attachment-driven: files, query, search) are auto-internal and hot, not
-  // deferred, so they still force the instructions tier to downgrade.
-  //
-  // TODO(tool-search): once the hot tool set is reduced to a minimal curated set
-  // so those conditional additions are deferred too, move this instruction to the
-  // instructions tier to get the 1h TTL.
+  // The tool search instruction stays in the shared 5min tier rather than the
+  // long-lived instructions tier: its presence is derived per request from
+  // whether the search tool is actually sent, so it is not guaranteed to be
+  // byte-stable across the lifetime of the 1h block.
   const sharedText = [
     sharedContext.map((s) => s.content).join("\n"),
     ...(includeToolSearchInstruction ? [TOOL_SEARCH_INSTRUCTION] : []),
@@ -133,18 +126,14 @@ export function buildSystemBlocks(
   const system: Anthropic.Beta.Messages.BetaTextBlockParam[] = [];
 
   if (instructionsText) {
-    // If we have conditional JIT tools, we expect more variability in the instructions, so we keep
-    // the default ephemeral cache. Otherwise, we can set a longer TTL to maximize cache hits.
-    //
-    // TODO: the tool directives and available-servers overview (the main source of JIT-driven
-    // variability in this block) now live in the shared-context block instead, so this downgrade
-    // should eventually be removable in favor of always using the 1h TTL, once we validate that no
-    // other conditional-JIT content remains in the instructions block.
-    const ttl: "1h" | undefined = hasConditionalJITTools ? undefined : "1h";
+    // The instructions tier only carries content that is stable per agent
+    // version and workspace settings (the tool directives and server listing,
+    // which vary with conversation state, live in the shared-context tier),
+    // so it always takes the 1h TTL.
     system.push({
       type: "text",
       text: instructionsText,
-      cache_control: { type: "ephemeral", ttl },
+      cache_control: { type: "ephemeral", ttl: "1h" },
     });
   }
 
@@ -207,7 +196,6 @@ export class AnthropicLLM extends LLM<BetaMessageStreamParams> {
   ): Promise<MessageCreateParamsNonStreaming> {
     const {
       conversation,
-      hasConditionalJITTools,
       toolSearchEnabled,
       prompt,
       specifications,
@@ -285,7 +273,6 @@ export class AnthropicLLM extends LLM<BetaMessageStreamParams> {
     }
 
     const system = buildSystemBlocks(normalizePrompt(prompt), {
-      hasConditionalJITTools,
       includeToolSearchInstruction: includesToolSearchTool(tools),
     });
 

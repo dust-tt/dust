@@ -95,7 +95,7 @@ makeScript(
     const userMessage: UserMessageType = lastUserMessage;
 
     const attachments = await listAttachments(auth, { conversation });
-    const { servers: jitServers } = await getJITServers(auth, {
+    const jitServers = await getJITServers(auth, {
       agentConfiguration,
       conversation,
       attachments,

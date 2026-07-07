@@ -238,7 +238,6 @@ export async function getOutputFromLLMStream(
   {
     modelConversationRes,
     conversation,
-    hasConditionalJITTools,
     toolSearchEnabled,
     disableToolUse,
     cacheDiagnosticsEnabled,
@@ -290,7 +289,6 @@ export async function getOutputFromLLMStream(
   const events = llm.stream(
     {
       conversation: modelConversationRes.value.modelConversation,
-      hasConditionalJITTools,
       toolSearchEnabled,
       disableToolUse,
       prompt,

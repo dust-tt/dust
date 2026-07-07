@@ -78,7 +78,7 @@ app.get("/", async (ctx): HandlerResult<GetSandboxToolsResponseType> => {
 
   const conversation = conversationResult.value;
   const attachments = await listAttachments(auth, { conversation });
-  const { servers: jitServers } = await getJITServers(auth, {
+  const jitServers = await getJITServers(auth, {
     agentConfiguration: agentConfig,
     conversation,
     attachments,

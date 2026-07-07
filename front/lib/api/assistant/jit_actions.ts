@@ -162,10 +162,7 @@ export async function getJITServers(
     conversation: ConversationWithoutContentType;
     attachments: ConversationAttachmentType[];
   }
-): Promise<{
-  servers: ServerSideMCPServerConfigurationType[];
-  hasConditionalJITTools: boolean;
-}> {
+): Promise<ServerSideMCPServerConfigurationType[]> {
   const mcpServersToFetch = new Set<AutoInternalMCPServerNameType>(
     ALWAYS_PREFETCHED_MCP_SERVERS
   );
@@ -204,8 +201,5 @@ export async function getJITServers(
     }),
   ]);
 
-  return {
-    servers: [...baseServers, ...conditionalServers],
-    hasConditionalJITTools: conditionalServers.length > 0,
-  };
+  return [...baseServers, ...conditionalServers];
 }

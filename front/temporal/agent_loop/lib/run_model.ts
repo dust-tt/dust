@@ -366,19 +366,15 @@ export async function runModel(
     enabledSkills,
     systemSkills,
     equippedSkills,
-    hasConditionalJITTools,
     mcpActions,
     mcpToolsListingError,
   } = await startActiveObservation("resolve-tools", async () => {
     const attachments = await listAttachments(auth, { conversation });
-    const { servers: jitServers, hasConditionalJITTools } = await getJITServers(
-      auth,
-      {
-        agentConfiguration,
-        conversation,
-        attachments,
-      }
-    );
+    const jitServers = await getJITServers(auth, {
+      agentConfiguration,
+      conversation,
+      attachments,
+    });
 
     const clientSideMCPServerIds = [
       ...(userMessage.context.clientSideMCPServerIds ?? []),
@@ -415,7 +411,6 @@ export async function runModel(
     );
 
     return {
-      hasConditionalJITTools,
       enabledSkills,
       equippedSkills,
       systemSkills,
@@ -735,7 +730,6 @@ export async function runModel(
   const getOutputFromActionResponse = await getOutputFromLLMStream(auth, {
     modelConversationRes,
     conversation,
-    hasConditionalJITTools,
     toolSearchEnabled,
     disableToolUse,
     cacheDiagnosticsEnabled: featureFlags.includes(
