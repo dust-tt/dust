@@ -1510,10 +1510,6 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         conversation,
       })
     );
-    // Auto-enabled means "active for this loop", not "stored as enabled on the conversation".
-    // For example, Pods is system context inside a Pod conversation but a normal global skill
-    // elsewhere. Keep these IDs handy so existing agent/conversation references do not also
-    // appear as enabled/equipped candidates in the same loop.
     const autoEnabledGlobalSkillIds = new Set(
       autoEnabledDefs.map((def) => def.sId)
     );
@@ -1551,23 +1547,25 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         })
       : [];
 
-    // System skills and contextually auto-enabled code-defined skills land in `systemSkills`.
-    // They are active for the current loop without being conversation-enabled records.
+    // Active baseline skills for this loop: configured system skills, plus code-defined
+    // skills that this context promotes to always-on system prompt content.
     const systemSkills = [
       ...new Map(
         [...configSystemSkills, ...autoEnabledSkills].map((s) => [s.sId, s])
       ).values(),
     ];
 
+    // Conversation-enabled skills are rendered after an enable_skill action. If the same
+    // code-defined skill is auto-enabled for this loop, systemSkills owns it instead.
     const enabledSkills = conversationEnabledSkills
       .filter(
         (s) => !s.globalSId || !autoEnabledGlobalSkillIds.has(s.globalSId)
       )
       .sort(sortByName);
 
-    // Compute the equipped skills: all non-system, non-auto-enabled agent skills,
-    // auto-equipped skills, plus discoverable skills that are not already equipped.
-    // Keep this list stable even after a skill is enabled explicitly.
+    // Equipped skills are the enable-able candidates shown to the model. Exclude anything
+    // already active as system prompt content, then add default/discoverable candidates
+    // without duplicating agent-provided ones.
     const agentEquippedSkills = allAgentSkills.filter(
       (s) =>
         !s.isSystemSkill &&
