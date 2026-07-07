@@ -99,7 +99,7 @@ export function SkillDetailsSheetContent({
 }: SkillDetailsSheetContentProps) {
   const [selectedTab, setSelectedTab] = useState<"info" | "editors">("info");
 
-  const showEditorsTabs = skill.status !== "suggested" && skill.canWrite;
+  const showEditorsTabs = skill.status !== "suggested" && skill.canAdministrate;
 
   if (showEditorsTabs) {
     return (

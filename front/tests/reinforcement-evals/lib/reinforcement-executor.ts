@@ -89,6 +89,7 @@ function makeSkillType(config: MockSkillConfig): SkillType {
     })),
     fileAttachments: [],
     canWrite: false,
+    canAdministrate: false,
     isDefault: false,
   };
 }

@@ -217,7 +217,7 @@ export function SkillsTable({
                 {
                   label: "Archive",
                   icon: Trash01,
-                  disabled: !skill.canWrite,
+                  disabled: !skill.canAdministrate,
                   variant: "warning" as const,
                   onClick: (e: React.MouseEvent) => {
                     e.stopPropagation();
