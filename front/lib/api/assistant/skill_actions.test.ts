@@ -1,6 +1,7 @@
 import { tryListMCPTools } from "@app/lib/actions/mcp_actions";
 import { resolveSkillMCPServers } from "@app/lib/api/assistant/skill_actions";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
+import { SKILL_COMPANY_DATA_SERVER_NAME } from "@app/lib/resources/skill/code_defined/shared";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
@@ -75,20 +76,22 @@ describe("resolveSkillMCPServers", () => {
     const serverNames = serverToolsAndInstructions.map(
       ({ serverName }) => serverName
     );
-    expect(serverNames).toContain("company_data");
+    expect(serverNames).toContain(SKILL_COMPANY_DATA_SERVER_NAME);
     expect(serverNames).not.toContain("data_sources_file_system");
 
     const companyDataTools = serverToolsAndInstructions
-      .filter(({ serverName }) => serverName === "company_data")
+      .filter(({ serverName }) => serverName === SKILL_COMPANY_DATA_SERVER_NAME)
       .flatMap(({ tools }) => tools);
     expect(companyDataTools.map((tool) => tool.name)).toEqual(
       expect.arrayContaining([
-        "company_data__cat",
-        "company_data__semantic_search",
+        `${SKILL_COMPANY_DATA_SERVER_NAME}__cat`,
+        `${SKILL_COMPANY_DATA_SERVER_NAME}__semantic_search`,
       ])
     );
     expect(
-      companyDataTools.filter((tool) => tool.name === "company_data__cat")
+      companyDataTools.filter(
+        (tool) => tool.name === `${SKILL_COMPANY_DATA_SERVER_NAME}__cat`
+      )
     ).toHaveLength(1);
     expect(
       serverToolsAndInstructions

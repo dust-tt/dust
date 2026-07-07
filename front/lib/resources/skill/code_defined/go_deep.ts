@@ -2,7 +2,10 @@ import { getDeepDiveInstructions } from "@app/lib/api/assistant/global_agents/co
 import { isDeepDiveDisabledByAdmin } from "@app/lib/api/assistant/global_agents/configurations/dust/utils";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
-import type { GlobalSkillDefinition } from "@app/lib/resources/skill/code_defined/shared";
+import {
+  type GlobalSkillDefinition,
+  SKILL_COMPANY_DATA_SERVER_NAME,
+} from "@app/lib/resources/skill/code_defined/shared";
 import type { AgentLoopExecutionData } from "@app/types/assistant/agent_run";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import { isComputerFeatureEnabled } from "@app/types/shared/feature_flags";
@@ -42,7 +45,10 @@ export const goDeepSkill = {
       childAgentId: GLOBAL_AGENTS_SID.DUST_PLANNING,
       serverNameOverride: "planning_agent",
     },
-    { name: "data_sources_file_system", serverNameOverride: "company_data" },
+    {
+      name: "data_sources_file_system",
+      serverNameOverride: SKILL_COMPANY_DATA_SERVER_NAME,
+    },
     { name: "web_search_&_browse" },
     { name: "data_warehouses" },
   ],
