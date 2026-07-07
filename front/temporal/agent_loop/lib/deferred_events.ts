@@ -49,4 +49,9 @@ export type ToolExecutionResult = {
 
   // Whether this event should pause the agent loop until external action is taken.
   shouldPauseAgentLoop?: boolean;
+
+  // Dust run IDs of LLM runs made by the tool itself (e.g. image generation),
+  // accumulated by the workflow into the agent message runIds for usage
+  // tracking.
+  runIds?: string[];
 };

@@ -257,21 +257,23 @@ export async function agentLoopWorkflow({
 
         const stepStartTime = Date.now();
 
-        const { runId, shouldContinue } = await executeStepIteration({
-          authType,
-          agentLoopArgs: {
-            ...agentLoopArgs,
-            initialStartTime,
-          },
-          currentStep,
-          runIds,
-          startStep,
-        });
+        const { runId, toolRunIds, shouldContinue } =
+          await executeStepIteration({
+            authType,
+            agentLoopArgs: {
+              ...agentLoopArgs,
+              initialStartTime,
+            },
+            currentStep,
+            runIds,
+            startStep,
+          });
 
         // Update state with results.
         if (runId) {
           runIds.push(runId);
         }
+        runIds.push(...toolRunIds);
 
         metrics.logStepCompletion(
           agentMessageId,
@@ -423,6 +425,7 @@ async function executeStepIteration({
   startStep: number;
 }): Promise<{
   runId: string | null;
+  toolRunIds: string[];
   shouldContinue: boolean;
 }> {
   const result = await runModelAndCreateActionsActivity({
@@ -437,6 +440,7 @@ async function executeStepIteration({
     // Error occurred — no runId to capture.
     return {
       runId: null,
+      toolRunIds: [],
       shouldContinue: false,
     };
   }
@@ -447,6 +451,7 @@ async function executeStepIteration({
   if (actionBlobs.length === 0) {
     return {
       runId,
+      toolRunIds: [],
       // If runId is null that means we unpaused the loop with no new tools (eg: they were all
       // denied) and no LLM call, so we need to continue as the agent loop is not finished.
       shouldContinue: runId === null,
@@ -459,6 +464,7 @@ async function executeStepIteration({
   if (needsApproval) {
     return {
       runId,
+      toolRunIds: [],
       shouldContinue: false,
     };
   }
@@ -482,6 +488,10 @@ async function executeStepIteration({
     )
   );
 
+  // Collect LLM runs made by the tools themselves (e.g. image generation) so
+  // they are billed like any other LLM usage of the agent message.
+  const toolRunIds = toolResults.flatMap((result) => result.runIds ?? []);
+
   // Collect all deferred events from tool executions.
   const allDeferredEvents = toolResults.flatMap(
     (result) => result.deferredEvents
@@ -496,6 +506,7 @@ async function executeStepIteration({
       // Break the loop - workflow will be restarted externally once required action is completed.
       return {
         runId,
+        toolRunIds,
         shouldContinue: false,
       };
     }
@@ -503,6 +514,7 @@ async function executeStepIteration({
 
   return {
     runId,
+    toolRunIds,
     shouldContinue: !toolResults.some((result) => result.shouldPauseAgentLoop),
   };
 }

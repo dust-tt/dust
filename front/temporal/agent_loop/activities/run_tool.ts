@@ -157,7 +157,7 @@ export async function runToolActivity(
       step: step + 1,
     });
 
-  return startActiveObservation(
+  const result = await startActiveObservation(
     `${action.toolConfiguration.mcpServerName}/${action.toolConfiguration.name}`,
     () => {
       updateActiveObservation(
@@ -184,6 +184,18 @@ export async function runToolActivity(
     },
     { asType: "tool" }
   );
+
+  // Tools may create their own LLM runs (e.g. image generation) and attach
+  // them to the action's stepContext during execution. Flow them back so the
+  // workflow accumulates them into the agent message runIds for usage
+  // tracking.
+  const refreshedAction = await AgentMCPActionResource.fetchByModelIdWithAuth(
+    auth,
+    actionId
+  );
+  const toolRunIds = refreshedAction?.stepContext.runIds ?? [];
+
+  return toolRunIds.length > 0 ? { ...result, runIds: toolRunIds } : result;
 }
 
 async function executeToolStreaming(
