@@ -31,7 +31,7 @@ interface InstanceGrantSpec {
 }
 
 interface ListForGroupsSpec {
-  groupIds: ModelId[];
+  groupModelIds: ModelId[];
   permissionType?: PermissionType;
   resourceType?: GroupPermissionResourceType;
   resourceId?: number;
@@ -130,16 +130,21 @@ export class GroupPermissionResource extends BaseResource<GroupPermissionModel> 
   // (workspaceId, resourceType, resourceId) index backs type/resource-scoped reads.
   static async listForGroups(
     auth: Authenticator,
-    { groupIds, permissionType, resourceType, resourceId }: ListForGroupsSpec
+    {
+      groupModelIds,
+      permissionType,
+      resourceType,
+      resourceId,
+    }: ListForGroupsSpec
   ): Promise<GroupPermissionResource[]> {
-    if (groupIds.length === 0) {
+    if (groupModelIds.length === 0) {
       return [];
     }
 
     const rows = await GroupPermissionModel.findAll({
       where: {
         workspaceId: auth.getNonNullableWorkspace().id,
-        groupId: groupIds,
+        groupId: groupModelIds,
         ...(permissionType !== undefined ? { permissionType } : {}),
         ...(resourceType !== undefined ? { resourceType } : {}),
         ...(resourceId !== undefined ? { resourceId } : {}),

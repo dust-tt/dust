@@ -29,7 +29,7 @@ describe("GroupPermissionResource", () => {
       });
 
       const grants = await GroupPermissionResource.listForGroups(auth, {
-        groupIds: [groupA.id],
+        groupModelIds: [groupA.id],
       });
       expect(grants).toHaveLength(1);
       expect(grants[0].permissionType).toBe("read");
@@ -48,7 +48,7 @@ describe("GroupPermissionResource", () => {
       await GroupPermissionResource.grant(auth, spec);
 
       const grants = await GroupPermissionResource.listForGroups(auth, {
-        groupIds: [groupA.id],
+        groupModelIds: [groupA.id],
       });
       expect(grants).toHaveLength(1);
     });
@@ -107,7 +107,7 @@ describe("GroupPermissionResource", () => {
       });
 
       const grants = await GroupPermissionResource.listForGroups(auth, {
-        groupIds: [groupA.id, groupB.id],
+        groupModelIds: [groupA.id, groupB.id],
         resourceType: "space",
         resourceId: 1,
       });
@@ -119,7 +119,7 @@ describe("GroupPermissionResource", () => {
 
     it("returns [] for no groups without querying", async () => {
       const grants = await GroupPermissionResource.listForGroups(auth, {
-        groupIds: [],
+        groupModelIds: [],
       });
       expect(grants).toEqual([]);
     });
@@ -148,7 +148,7 @@ describe("GroupPermissionResource", () => {
       });
 
       const grants = await GroupPermissionResource.listForGroups(auth, {
-        groupIds: [groupA.id],
+        groupModelIds: [groupA.id],
       });
       expect(grants).toHaveLength(1);
       expect(grants[0].permissionType).toBe("write");
@@ -184,7 +184,7 @@ describe("GroupPermissionResource", () => {
       expect(deleted).toBe(2);
 
       const remaining = await GroupPermissionResource.listForGroups(auth, {
-        groupIds: [groupA.id, groupB.id],
+        groupModelIds: [groupA.id, groupB.id],
       });
       expect(remaining).toHaveLength(1);
       expect(remaining[0].resourceId).toBe(100);
