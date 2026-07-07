@@ -1577,10 +1577,10 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
 
     const equippedSkillsById = new Map<string, SkillResource>();
     for (const skill of [
-      ...agentEquippedSkills,
       ...autoEquippedSkills,
-      ...podDefaultSkills,
       ...discoverableSkills,
+      ...podDefaultSkills,
+      ...agentEquippedSkills,
     ]) {
       if (!isSystemSkillForLoop(skill) && !equippedSkillsById.has(skill.sId)) {
         equippedSkillsById.set(skill.sId, skill);
