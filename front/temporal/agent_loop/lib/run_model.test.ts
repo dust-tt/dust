@@ -75,18 +75,18 @@ function makeServerSideToolConfiguration(
   name: string,
   {
     mcpServerViewId,
-    serverConfigurationId = -1,
+    serverConfigurationModelId = -1,
     eager,
   }: {
     mcpServerViewId: string;
     // Persisted id of the originating server configuration; -1 for
     // runtime-built servers (JIT, skills).
-    serverConfigurationId?: number;
+    serverConfigurationModelId?: number;
     eager?: boolean;
   }
 ): MCPToolConfigurationType {
   return {
-    id: serverConfigurationId,
+    id: serverConfigurationModelId,
     sId: `tool_${name}`,
     type: "mcp_configuration",
     name,
@@ -133,13 +133,13 @@ function makeClientSideToolConfiguration(
 
 function makeAgentServerConfiguration({
   mcpServerViewId,
-  serverConfigurationId,
+  serverConfigurationModelId,
 }: {
   mcpServerViewId: string;
-  serverConfigurationId: number;
+  serverConfigurationModelId: number;
 }): ServerSideMCPServerConfigurationType {
   return {
-    id: serverConfigurationId,
+    id: serverConfigurationModelId,
     sId: `action_${mcpServerViewId}`,
     type: "mcp_server_configuration",
     name: "server",
@@ -164,7 +164,7 @@ describe("buildBaseSpecifications", () => {
       [
         makeServerSideToolConfiguration("configured_tool", {
           mcpServerViewId: "view_configured",
-          serverConfigurationId: 100,
+          serverConfigurationModelId: 100,
         }),
         makeServerSideToolConfiguration("jit_tool", {
           mcpServerViewId: "view_jit",
@@ -175,7 +175,7 @@ describe("buildBaseSpecifications", () => {
         actions: [
           makeAgentServerConfiguration({
             mcpServerViewId: "view_configured",
-            serverConfigurationId: 100,
+            serverConfigurationModelId: 100,
           }),
         ],
       }
@@ -199,13 +199,13 @@ describe("buildBaseSpecifications", () => {
       [
         makeServerSideToolConfiguration("glossary__execute_database_query", {
           mcpServerViewId: "view_shared",
-          serverConfigurationId: 100,
+          serverConfigurationModelId: 100,
         }),
         makeServerSideToolConfiguration(
           "translations__execute_database_query",
           {
             mcpServerViewId: "view_shared",
-            serverConfigurationId: 101,
+            serverConfigurationModelId: 101,
           }
         ),
         makeServerSideToolConfiguration(
@@ -220,11 +220,11 @@ describe("buildBaseSpecifications", () => {
         actions: [
           makeAgentServerConfiguration({
             mcpServerViewId: "view_shared",
-            serverConfigurationId: 100,
+            serverConfigurationModelId: 100,
           }),
           makeAgentServerConfiguration({
             mcpServerViewId: "view_shared",
-            serverConfigurationId: 101,
+            serverConfigurationModelId: 101,
           }),
         ],
       }
@@ -251,7 +251,7 @@ describe("buildBaseSpecifications", () => {
       [
         makeServerSideToolConfiguration("configured_tool", {
           mcpServerViewId: "view_configured",
-          serverConfigurationId: 100,
+          serverConfigurationModelId: 100,
         }),
       ],
       {
@@ -259,7 +259,7 @@ describe("buildBaseSpecifications", () => {
         actions: [
           makeAgentServerConfiguration({
             mcpServerViewId: "view_configured",
-            serverConfigurationId: 100,
+            serverConfigurationModelId: 100,
           }),
         ],
       }
@@ -288,13 +288,13 @@ describe("buildBaseSpecifications", () => {
       actions: [
         makeAgentServerConfiguration({
           mcpServerViewId: "view_configured",
-          serverConfigurationId: 100,
+          serverConfigurationModelId: 100,
         }),
       ],
     };
     const configuredTool = makeServerSideToolConfiguration("configured_tool", {
       mcpServerViewId: "view_configured",
-      serverConfigurationId: 100,
+      serverConfigurationModelId: 100,
     });
 
     // Before the skill is enabled, its tools are not in the request at all.
