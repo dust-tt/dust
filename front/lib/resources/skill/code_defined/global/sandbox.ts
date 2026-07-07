@@ -386,8 +386,7 @@ export const sandboxSkill = {
   icon: "CommandLineIcon",
   // Auto-equipped for every agent unless the workspace has disabled the
   // Computer, but not enabled until the agent decides to use it.
-  getAutoEnabledOrEquippedForAgentLoop: (): "equipped" | undefined =>
-    "equipped",
+  getAutoEnabledOrEquippedForAgentLoop: () => "equipped",
   isRestricted: async (auth: Authenticator) => {
     const flags = await getFeatureFlags(auth);
 
