@@ -60,7 +60,7 @@ describe("Authenticator.hasWorkspacePermission", () => {
 
   it("returns true when one of the caller's groups holds the -1 grant", async () => {
     const group = await GroupFactory.regular(workspace, "eng");
-    await GroupPermissionResource.grantOnAllResourcesOfType(adminAuth, {
+    await GroupPermissionResource.grantTypeWide(adminAuth, {
       group,
       ...CAPABILITY,
     });
@@ -83,7 +83,7 @@ describe("Authenticator.hasWorkspacePermission", () => {
     if (!globalGroup) {
       throw new Error("global group should exist");
     }
-    await GroupPermissionResource.grantOnAllResourcesOfType(adminAuth, {
+    await GroupPermissionResource.grantTypeWide(adminAuth, {
       group: globalGroup,
       ...CAPABILITY,
     });
@@ -99,7 +99,7 @@ describe("Authenticator.hasWorkspacePermission", () => {
 
   it("matches a wildcard grant against any capability", async () => {
     const group = await GroupFactory.regular(workspace, "superadmins");
-    await GroupPermissionResource.grantOnAllResourcesOfType(adminAuth, {
+    await GroupPermissionResource.grantTypeWide(adminAuth, {
       group,
       permissionType: "*",
       resourceType: "*",
