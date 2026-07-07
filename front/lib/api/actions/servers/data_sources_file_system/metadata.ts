@@ -5,6 +5,7 @@ import {
   DataSourceFilesystemFindInputSchema,
   DataSourceFilesystemListInputSchema,
   DataSourceFilesystemLocateTreeInputSchema,
+  SearchMaxAgeSecondsInputSchema,
   SearchWithNodesInputSchema,
   TagsInputSchema,
 } from "@app/lib/actions/mcp_internal_actions/types";
@@ -22,6 +23,8 @@ export const FILESYSTEM_CAT_TOOL_NAME = "cat";
 export const FILESYSTEM_FIND_TOOL_NAME = "find";
 export const FILESYSTEM_LOCATE_IN_TREE_TOOL_NAME = "locate_in_tree";
 export const FILESYSTEM_LIST_TOOL_NAME = "list";
+export const DATA_SOURCE_SEARCH_MAX_AGE_FEATURE_FLAG =
+  "data_source_search_max_age";
 
 export const DATA_SOURCES_FILE_SYSTEM_TOOLS_METADATA = createToolsRecord({
   [FILESYSTEM_CAT_TOOL_NAME]: {
@@ -119,6 +122,66 @@ export const DATA_SOURCES_FILE_SYSTEM_TOOLS_WITH_TAGS_METADATA =
       ...DATA_SOURCES_FILE_SYSTEM_TOOLS_METADATA[FILESYSTEM_SEARCH_TOOL_NAME],
       schema: {
         ...SearchWithNodesInputSchema.shape,
+        ...TagsInputSchema.shape,
+      },
+    },
+    [FILESYSTEM_FIND_TOOL_NAME]: {
+      ...DATA_SOURCES_FILE_SYSTEM_TOOLS_METADATA[FILESYSTEM_FIND_TOOL_NAME],
+      schema: {
+        ...DataSourceFilesystemFindInputSchema.shape,
+        ...TagsInputSchema.shape,
+      },
+    },
+    [FILESYSTEM_LOCATE_IN_TREE_TOOL_NAME]:
+      DATA_SOURCES_FILE_SYSTEM_TOOLS_METADATA[
+        FILESYSTEM_LOCATE_IN_TREE_TOOL_NAME
+      ],
+    [FIND_TAGS_TOOL_NAME]: {
+      description: FIND_TAGS_BASE_DESCRIPTION,
+      schema: findTagsSchema,
+      stake: "never_ask",
+      displayLabels: {
+        running: "Finding tags",
+        done: "Find tags",
+      },
+      toolCostCategory: "advanced",
+      freeUsage: false,
+      enableAlerting: true,
+    },
+  });
+
+export const DATA_SOURCES_FILE_SYSTEM_TOOLS_WITH_MAX_AGE_METADATA =
+  createToolsRecord({
+    [FILESYSTEM_CAT_TOOL_NAME]:
+      DATA_SOURCES_FILE_SYSTEM_TOOLS_METADATA[FILESYSTEM_CAT_TOOL_NAME],
+    [FILESYSTEM_LIST_TOOL_NAME]:
+      DATA_SOURCES_FILE_SYSTEM_TOOLS_METADATA[FILESYSTEM_LIST_TOOL_NAME],
+    [FILESYSTEM_SEARCH_TOOL_NAME]: {
+      ...DATA_SOURCES_FILE_SYSTEM_TOOLS_METADATA[FILESYSTEM_SEARCH_TOOL_NAME],
+      schema: {
+        ...SearchWithNodesInputSchema.shape,
+        ...SearchMaxAgeSecondsInputSchema.shape,
+      },
+    },
+    [FILESYSTEM_FIND_TOOL_NAME]:
+      DATA_SOURCES_FILE_SYSTEM_TOOLS_METADATA[FILESYSTEM_FIND_TOOL_NAME],
+    [FILESYSTEM_LOCATE_IN_TREE_TOOL_NAME]:
+      DATA_SOURCES_FILE_SYSTEM_TOOLS_METADATA[
+        FILESYSTEM_LOCATE_IN_TREE_TOOL_NAME
+      ],
+  });
+
+export const DATA_SOURCES_FILE_SYSTEM_TOOLS_WITH_TAGS_AND_MAX_AGE_METADATA =
+  createToolsRecord({
+    [FILESYSTEM_CAT_TOOL_NAME]:
+      DATA_SOURCES_FILE_SYSTEM_TOOLS_METADATA[FILESYSTEM_CAT_TOOL_NAME],
+    [FILESYSTEM_LIST_TOOL_NAME]:
+      DATA_SOURCES_FILE_SYSTEM_TOOLS_METADATA[FILESYSTEM_LIST_TOOL_NAME],
+    [FILESYSTEM_SEARCH_TOOL_NAME]: {
+      ...DATA_SOURCES_FILE_SYSTEM_TOOLS_METADATA[FILESYSTEM_SEARCH_TOOL_NAME],
+      schema: {
+        ...SearchWithNodesInputSchema.shape,
+        ...SearchMaxAgeSecondsInputSchema.shape,
         ...TagsInputSchema.shape,
       },
     },

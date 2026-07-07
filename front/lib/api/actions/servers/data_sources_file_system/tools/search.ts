@@ -9,6 +9,7 @@ import {
   toCoreSearchArgs,
 } from "@app/lib/actions/mcp_internal_actions/tools/utils";
 import type {
+  SearchMaxAgeSecondsInputType,
   SearchWithNodesInputType,
   TagsInputType,
 } from "@app/lib/actions/mcp_internal_actions/types";
@@ -16,20 +17,18 @@ import {
   isAgentLoopRunContext,
   type ToolContextType,
 } from "@app/lib/actions/types";
+import { DATA_SOURCE_SEARCH_MAX_AGE_FEATURE_FLAG } from "@app/lib/api/actions/servers/data_sources_file_system/metadata";
+import { getDataSourceSearchTimestampGtMs } from "@app/lib/api/actions/servers/data_sources_file_system/tools/search_time_frame";
 import { getRefs } from "@app/lib/api/assistant/citations";
 import config from "@app/lib/api/config";
 import { getLlmCredentials } from "@app/lib/api/provider_credentials";
-import type { Authenticator } from "@app/lib/auth";
+import { type Authenticator, hasFeatureFlag } from "@app/lib/auth";
 import { getDisplayNameForDocument } from "@app/lib/data_sources";
 import logger from "@app/logger/logger";
 import { CoreAPI } from "@app/types/core/core_api";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { stripNullBytes } from "@app/types/shared/utils/string_utils";
-import {
-  parseTimeFrame,
-  timeFrameFromNow,
-} from "@app/types/shared/utils/time_frame";
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import assert from "assert";
@@ -42,14 +41,30 @@ export async function search(
     dataSources,
     query,
     relativeTimeFrame,
+    maxAgeSeconds,
     tagsIn,
     tagsNot,
-  }: SearchWithNodesInputType & TagsInputType,
+  }: SearchWithNodesInputType &
+    Partial<SearchMaxAgeSecondsInputType> &
+    TagsInputType,
   { auth, toolContext }: { auth: Authenticator; toolContext?: ToolContextType }
 ): Promise<Result<CallToolResult["content"], MCPError>> {
+  const timestampGtMsResult = getDataSourceSearchTimestampGtMs({
+    maxAgeSeconds,
+    relativeTimeFrame,
+    isMaxAgeEnabled:
+      maxAgeSeconds !== undefined
+        ? await hasFeatureFlag(auth, DATA_SOURCE_SEARCH_MAX_AGE_FEATURE_FLAG)
+        : false,
+  });
+
+  if (timestampGtMsResult.isErr()) {
+    return timestampGtMsResult;
+  }
+
+  const timestampGtMs = timestampGtMsResult.value;
   const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
   const credentials = await getLlmCredentials(auth);
-  const timeFrame = parseTimeFrame(relativeTimeFrame ?? "all");
 
   if (!toolContext?.runContext) {
     throw new Error(
@@ -119,7 +134,7 @@ export async function search(
             not: finalTagsNot.length > 0 ? finalTagsNot : null,
           },
           timestamp: {
-            gt: timeFrame ? timeFrameFromNow(timeFrame) : null,
+            gt: timestampGtMs,
             lt: null,
           },
         },
