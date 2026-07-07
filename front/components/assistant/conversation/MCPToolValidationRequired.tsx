@@ -63,6 +63,8 @@ const MCP_TOOL_OVERRIDES: Partial<
   },
   sandbox: {
     add_egress_domain: {
+      title: (agentName) =>
+        `Allow ${asDisplayName(agentName)} to add a domain to the Computer?`,
       detailsExpanded: true,
     },
   },

@@ -137,7 +137,7 @@ export function useUpsertWorkspaceSandboxEnvVar({
         title: data.created
           ? "Environment variable created"
           : "Environment variable replaced",
-        description: `${name} has been saved for future sandboxes.`,
+        description: `${name} has been saved for future Computers.`,
       });
       return true;
     } catch (error) {
@@ -314,21 +314,21 @@ export function useUpdateWorkspaceSandboxAgentEgressRequests({
       });
 
       if (!response.ok) {
-        throw new Error("Failed to update sandbox network setting");
+        throw new Error("Failed to update Computer network setting");
       }
 
       setIsEnabled(enabled);
       sendNotification({
         type: "success",
-        title: "Sandbox network setting updated",
+        title: "Computer network setting updated",
         description:
-          "Agent-requested sandbox domains setting has been updated.",
+          "Agent-requested Computer domains setting has been updated.",
       });
       return true;
     } catch (error) {
       sendNotification({
         type: "error",
-        title: "Failed to update sandbox network setting",
+        title: "Failed to update Computer network setting",
         description: normalizeError(error).message,
       });
       return false;
@@ -385,7 +385,7 @@ export function useUpdateWorkspaceEgressPolicy({
         type: "success",
         title: "Network policy updated",
         description:
-          "Sandbox egress policy changes will be applied by the proxy cache shortly.",
+          "Computer egress policy changes will be applied by the proxy cache shortly.",
       });
       return true;
     } catch {
