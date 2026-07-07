@@ -100,7 +100,7 @@ export function usePokeAwuUsageFromAnalytics({
   filter,
   disabled,
 }: PokeConditionalFetchProps & {
-  groupBy?: "usage_type" | "agent" | "user" | "origin";
+  groupBy?: "usage_type" | "agent" | "user" | "origin" | "api_key";
   groupByCount?: number;
   granularity?: "day" | "week" | "month";
   days?: number;
