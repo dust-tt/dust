@@ -2283,9 +2283,11 @@ export class GroupResource extends BaseResource<GroupModel> {
    * 2. Role-based: Workspace admins get read and write access
    *
    * For agent_editors and skill_editors groups, the permissions are:
-   * 1. Group-based: The group's members get read and write access
-   * 2. Role-based: Workspace admins get read and write access. All users can
+   * 1. Group-based: The group's members get full access
+   * 2. Role-based: Workspace admins get read and admin access. All users can
    *    read "agent_editors" and "skill_editors" groups.
+   *    Admin do not have write access, they can however add themselves to
+   *    groups to gain it.
    *
    * CAUTION: if / when editing, note that for role permissions, permissions are
    * NOT inherited, i.e., if you set a permission for role "user", an "admin"
@@ -2301,11 +2303,11 @@ export class GroupResource extends BaseResource<GroupModel> {
           groups: [
             {
               id: this.id,
-              permissions: ["read", "write"],
+              permissions: ["read", "write", "admin"],
             },
           ],
           roles: [
-            { role: "admin", permissions: ["read", "write", "admin"] },
+            { role: "admin", permissions: ["read", "admin"] },
             {
               role: "user",
               permissions: ["read"],
