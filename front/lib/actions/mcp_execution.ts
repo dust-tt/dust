@@ -341,6 +341,17 @@ export async function processToolResults(
               file: fileUpsertResult.value,
             };
           } else {
+            localLogger.warn(
+              {
+                workspaceId: auth.getNonNullableWorkspace().sId,
+                conversationId: conversation.sId,
+                mimeType: block.resource.mimeType ?? null,
+                toolName: toolConfiguration.name,
+                serverName: toolConfiguration.mcpServerName,
+              },
+              "MCP tool returned an unsupported file type; embedding resource as tool output."
+            );
+
             const text =
               "text" in block.resource &&
               typeof block.resource.text === "string"
