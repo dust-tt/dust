@@ -1,10 +1,11 @@
-import type { SystemSkillDefinition } from "@app/lib/resources/skill/code_defined/shared";
+import type { SystemSkillDefinition } from "@app/lib/resources/skill/code_defined/system/types";
 
 // This skill allows discovering skills from the workspace. When equipped on an
 // agent, it causes `listForAgentLoop` to include discoverable skills (custom
 // default skills + regular global skills) in the equipped skills list.
 export const discoverSkillsSkill = {
   sId: "discover_skills",
+  kind: "system",
   name: "Discover Skills",
   userFacingDescription:
     "Automatically discover and activate workspace skills as needed.",

@@ -8,7 +8,7 @@ import {
   POD_AGENTS_MD_MAX_CHARACTER_COUNT,
 } from "@app/lib/api/projects/constants";
 import { Authenticator } from "@app/lib/auth";
-import { constructProjectContext } from "@app/lib/resources/skill/code_defined/projects";
+import { constructProjectContext } from "@app/lib/resources/skill/code_defined/global/projects";
 import logger from "@app/logger/logger";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";

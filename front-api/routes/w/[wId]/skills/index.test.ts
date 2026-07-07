@@ -1,7 +1,7 @@
 import { Authenticator } from "@app/lib/auth";
 import { SkillMCPServerConfigurationModel } from "@app/lib/models/skill";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
-import { discoverToolsSkill } from "@app/lib/resources/skill/code_defined/discover_tools";
+import { discoverToolsSkill } from "@app/lib/resources/skill/code_defined/system/discover_tools";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { DataSourceViewFactory } from "@app/tests/utils/DataSourceViewFactory";

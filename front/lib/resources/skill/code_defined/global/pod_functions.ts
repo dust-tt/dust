@@ -1,11 +1,12 @@
 import { SANDBOX_FUNCTIONS_SERVER_NAME } from "@app/lib/api/actions/servers/sandbox_functions/metadata";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
-import type { GlobalSkillDefinition } from "@app/lib/resources/skill/code_defined/shared";
+import type { GlobalSkillDefinition } from "@app/lib/resources/skill/code_defined/global/types";
 import { isPodConversation } from "@app/types/assistant/conversation";
 
 export const podFunctionsSkill = {
   sId: "pod_functions",
+  kind: "global",
   name: "Pod Functions",
   userFacingDescription:
     "Author and publish reusable, schema-typed functions that run on the Pod's sandbox.",

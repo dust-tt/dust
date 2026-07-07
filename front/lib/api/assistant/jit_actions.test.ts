@@ -6,8 +6,8 @@ import {
 import { getJITServers } from "@app/lib/api/assistant/jit_actions";
 import type { Authenticator } from "@app/lib/auth";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
-import { projectsSkill } from "@app/lib/resources/skill/code_defined/projects";
-import { sandboxSkill } from "@app/lib/resources/skill/code_defined/sandbox";
+import { projectsSkill } from "@app/lib/resources/skill/code_defined/global/projects";
+import { sandboxSkill } from "@app/lib/resources/skill/code_defined/global/sandbox";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";

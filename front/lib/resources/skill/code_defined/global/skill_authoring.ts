@@ -1,4 +1,4 @@
-import type { GlobalSkillDefinition } from "@app/lib/resources/skill/code_defined/shared";
+import type { GlobalSkillDefinition } from "@app/lib/resources/skill/code_defined/global/types";
 
 const SKILL_AUTHORING_INSTRUCTIONS = `
 You can create and revise workspace Skills when the user wants to capture a repeatable workflow, playbook, or operating procedure for future reuse.
@@ -29,6 +29,7 @@ The instructions may contain special tags such as nested skill, knowledge, or to
 
 export const skillAuthoringSkill = {
   sId: "skill-authoring",
+  kind: "global",
   name: "Author Skills",
   userFacingDescription:
     "Let this agent create and refine reusable Skills for your workspace.",

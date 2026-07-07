@@ -4,12 +4,13 @@ import {
 } from "@app/lib/api/actions/servers/interactive_content/instructions";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
-import type { GlobalSkillDefinition } from "@app/lib/resources/skill/code_defined/shared";
+import type { GlobalSkillDefinition } from "@app/lib/resources/skill/code_defined/global/types";
 import type { AgentLoopExecutionData } from "@app/types/assistant/agent_run";
 import { isComputerFeatureEnabled } from "@app/types/shared/feature_flags";
 
 export const framesSkill = {
   sId: "frames",
+  kind: "global",
   name: "Create Frames",
   userFacingDescription:
     "Turn insights into interactive dashboards and presentations your team can explore, customize," +

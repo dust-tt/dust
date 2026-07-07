@@ -1,9 +1,10 @@
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
-import type { GlobalSkillDefinition } from "@app/lib/resources/skill/code_defined/shared";
+import type { GlobalSkillDefinition } from "@app/lib/resources/skill/code_defined/global/types";
 
 export const workspaceAnalyticsSkill = {
   sId: "workspace-analytics",
+  kind: "global",
   name: "Workspace Analytics",
   userFacingDescription:
     "Analyze how your workspace is being used — for example, which agents " +

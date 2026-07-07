@@ -1,0 +1,19 @@
+engine biome(1.0)
+language js
+
+pattern system_folder_global_skill_reference() {
+    or {
+        `GlobalSkillDefinition`,
+        `defineGlobalSkill`,
+    } where {
+        $filename <: r".*/front/lib/resources/skill/code_defined/system/.*"
+    }
+}
+
+system_folder_global_skill_reference() as $reference where {
+    register_diagnostic(
+        span = $reference,
+        message = "Code-defined skills in the system folder must be system skills. Move global skill definitions to code_defined/global.",
+        severity = "error"
+    )
+}

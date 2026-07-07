@@ -2,11 +2,12 @@ import { isJITMCPServerView } from "@app/lib/actions/mcp_internal_actions/utils"
 import { buildToolsetsContext } from "@app/lib/api/assistant/global_agents/configurations/dust/dust";
 import type { Authenticator } from "@app/lib/auth";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
-import type { SystemSkillDefinition } from "@app/lib/resources/skill/code_defined/shared";
+import type { SystemSkillDefinition } from "@app/lib/resources/skill/code_defined/system/types";
 import type { AgentLoopExecutionData } from "@app/types/assistant/agent_run";
 
 export const discoverToolsSkill = {
   sId: "discover_tools",
+  kind: "system",
   name: "Discover Tools",
   userFacingDescription:
     "Automatically discover and activate specialized tools as needed. Extend your agent's capabilities on-demand without manual configuration.",

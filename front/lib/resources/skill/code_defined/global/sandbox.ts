@@ -9,7 +9,7 @@ import {
 } from "@app/lib/api/sandbox/image";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
-import type { GlobalSkillDefinition } from "@app/lib/resources/skill/code_defined/shared";
+import type { GlobalSkillDefinition } from "@app/lib/resources/skill/code_defined/global/types";
 import logger from "@app/logger/logger";
 import type { AgentLoopExecutionData } from "@app/types/assistant/agent_run";
 import { isPodConversation } from "@app/types/assistant/conversation";
@@ -351,6 +351,7 @@ ${manifestYaml}
 
 export const sandboxSkill = {
   sId: "sandbox",
+  kind: "global",
   name: "Computer",
   userFacingDescription:
     "Run code, scripts, and shell commands in the conversation's Computer (a sandboxed Linux environment).",

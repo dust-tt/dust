@@ -19,6 +19,7 @@ export type MCPServerDefinition = {
 interface BaseSkillDefinition {
   readonly agentFacingDescription: string;
   readonly userFacingDescription: string;
+  readonly kind: "global" | "system";
   readonly name: string;
   readonly sId: string;
   readonly version: number;
@@ -71,19 +72,23 @@ export type SkillDefinition =
   | WithStaticInstructions<BaseSkillDefinition>
   | WithDynamicInstructions<BaseSkillDefinition>;
 
-export type GlobalSkillDefinition = SkillDefinition;
+export type GlobalSkillDefinition = SkillDefinition & {
+  readonly kind: "global";
+};
+
 // System skills have no definition of "equipped". When they are present they are directly part of the system prompt.
 export type SystemSkillDefinition = SkillDefinition & {
+  readonly kind: "system";
   isAutoEquippedForAgentLoop?: never;
 };
 
 // Helper function that enforces unique sIds.
 export function ensureUniqueSIds<T extends readonly SkillDefinition[]>(
-  skills: readonly [...T] & {
+  skills: T & {
     // For each element in the array (I = index).
-    [I in keyof T]: {
+    readonly [I in keyof T]: {
       // For each property in that element (K = property key).
-      [K in keyof T[I]]: K extends "sId"
+      readonly [K in keyof T[I]]: K extends "sId"
         ? // Only check sId properties for duplicates.
           T[I][K] extends {
             // Build object of all OTHER elements (exclude current index I).
@@ -101,7 +106,7 @@ export function ensureUniqueSIds<T extends readonly SkillDefinition[]>(
     };
   }
 ): T {
-  return skills as T;
+  return skills;
 }
 
 function matchesFilter<T>(value: T, filter: T | T[]): boolean {

@@ -98,6 +98,14 @@
       ]
     },
     {
+      "includes": [
+        "front/lib/resources/skill/code_defined/system/**/*.{js,jsx,ts,tsx}"
+      ],
+      "plugins": [
+        "./.grit/patterns/noGlobalCodeDefinedSkillsInSystemFolder.grit"
+      ]
+    },
+    {
       "includes": ["front-api/**/*.ts", "!front-api/routes/types.ts"],
       "plugins": ["./.grit/patterns/noInlineSuccessResponseBody.grit"]
     },
