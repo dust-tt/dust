@@ -28,6 +28,7 @@ import type {
   ToolDisplayLabels,
 } from "@app/lib/api/mcp";
 import type { AgentMCPActionWithOutputType } from "@app/types/actions";
+import type { SandboxFunctionMCPActionType } from "@app/types/api/sandbox_functions";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
 
@@ -255,11 +256,10 @@ export type AgentLoopToolNotificationEvent = ToolNotificationEventBase & {
 };
 
 // Tool notification emitted when running a tool within a sandbox function invocation.
-// TODO(SANDBOX_FUNCTIONS): carry the sandbox function action once SandboxFunctionMCPActionResource
-// is available.
 export type SandboxFunctionToolNotificationEvent = ToolNotificationEventBase & {
   sandboxFunctionId: string;
   invocationId: string;
+  action: SandboxFunctionMCPActionType;
 };
 
 export type ToolNotificationEvent =

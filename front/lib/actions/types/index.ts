@@ -5,6 +5,7 @@ import type {
 } from "@app/lib/actions/mcp";
 import type { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import type { SandboxFunctionInvocationResource } from "@app/lib/resources/sandbox_function_invocation_resource";
+import type { SandboxFunctionMCPActionResource } from "@app/lib/resources/sandbox_function_mcp_action_resource";
 import type {
   AgentConfigurationWithoutModelType,
   AgentModelConfigurationType,
@@ -16,7 +17,6 @@ import type {
 } from "@app/types/assistant/conversation";
 import type { ModelConfigurationType } from "@app/types/assistant/models/types";
 import type { AllSupportedFileContentType } from "@app/types/files";
-import { assertNever } from "@app/types/shared/utils/assert_never";
 import { z } from "zod";
 
 const FileAuthorizationInfoSchema = z.object({
@@ -165,6 +165,7 @@ export type AgentLoopRunContextType = {
 
 export type SandboxFunctionRunContextType = {
   contextType: "sandbox_function";
+  action: SandboxFunctionMCPActionResource;
   invocation: SandboxFunctionInvocationResource;
   toolConfiguration: LightMCPToolConfigurationType;
 };
@@ -187,26 +188,6 @@ export function isAgentLoopRunContext(
   value: AgentLoopRunContextType | SandboxFunctionRunContextType | undefined
 ): value is AgentLoopRunContextType {
   return value?.contextType === "agent_loop";
-}
-
-/**
- * Returns the MCP action resource associated with a tool run context.
- */
-export function getMCPActionFromRunContext(
-  runContext: AgentLoopRunContextType | SandboxFunctionRunContextType
-): AgentMCPActionResource {
-  switch (runContext.contextType) {
-    case "agent_loop":
-      return runContext.action;
-    case "sandbox_function":
-      // TODO(SANDBOX_FUNCTIONS): return the invocation's SandboxFunctionMCPActionResource once
-      // available.
-      throw new Error(
-        "MCP actions are not available in sandbox function run contexts yet."
-      );
-    default:
-      return assertNever(runContext);
-  }
 }
 
 export type ToolContextType =
