@@ -3167,12 +3167,16 @@ export async function listMetronomeCustomerCredits({
   creditId,
   includeContractCredits = false,
   includeBalance = false,
+  includeLedgers = false,
+  includeArchived = false,
   coveringDate,
 }: {
   metronomeCustomerId: string;
   creditId?: string;
   includeContractCredits?: boolean;
   includeBalance?: boolean;
+  includeLedgers?: boolean;
+  includeArchived?: boolean;
   coveringDate?: string;
 }): Promise<Result<Credit[], Error>> {
   try {
@@ -3183,6 +3187,8 @@ export async function listMetronomeCustomerCredits({
       ...(coveringDate ? { covering_date: coveringDate } : {}),
       include_contract_credits: includeContractCredits,
       include_balance: includeBalance,
+      ...(includeLedgers ? { include_ledgers: true } : {}),
+      ...(includeArchived ? { include_archived: true } : {}),
     })) {
       credits.push(entry);
     }

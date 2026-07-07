@@ -150,9 +150,24 @@ export class CouponRedemptionResource extends BaseResource<CouponRedemptionModel
   ): Promise<
     Array<{ redemption: CouponRedemptionResource; couponCode: string }>
   > {
+    const items = await this.listByWorkspaceAndStatuses(auth, {
+      statuses: ["active"],
+    });
+    return items.map(({ redemption, coupon }) => ({
+      redemption,
+      couponCode: coupon.code,
+    }));
+  }
+
+  static async listByWorkspaceAndStatuses(
+    auth: Authenticator,
+    { statuses }: { statuses: CouponRedemptionStatus[] }
+  ): Promise<
+    Array<{ redemption: CouponRedemptionResource; coupon: CouponResource }>
+  > {
     const workspace = auth.getNonNullableWorkspace();
     const rows = await this.model.findAll({
-      where: { workspaceId: workspace.id, status: "active" },
+      where: { workspaceId: workspace.id, status: statuses },
       include: [
         { model: CouponModel, as: "coupon", required: true },
         { model: UserModel, as: "redeemedByUser", required: false },
@@ -165,7 +180,7 @@ export class CouponRedemptionResource extends BaseResource<CouponRedemptionModel
         couponSId: CouponResource.modelIdToSId({ id: r.couponId }),
         redeemedByUserSId: r.redeemedByUser?.sId ?? null,
       }),
-      couponCode: r.coupon.code,
+      coupon: new CouponResource(CouponResource.model, r.coupon.get()),
     }));
   }
 
