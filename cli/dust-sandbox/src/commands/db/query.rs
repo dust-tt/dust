@@ -4,8 +4,9 @@ use super::{db_file_path, spawn_db_runner};
 
 /// Execute read-only SQL (from stdin) against the pod database `name`. The
 /// runner opens the database read-only with `PRAGMA query_only=ON` and returns
-/// capped rows in the stdout JSON envelope. Runs as `agent-proxied` like
-/// `function run`.
+/// rows in the stdout JSON envelope; a result crossing the inline bounds is
+/// written in full to a spill file the envelope names. Runs as `agent-proxied`
+/// like `function run`.
 pub async fn cmd_db_query(name: &str) -> Result<()> {
     let db_path = db_file_path(name)?;
 
