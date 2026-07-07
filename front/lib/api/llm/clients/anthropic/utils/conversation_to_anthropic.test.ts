@@ -41,7 +41,6 @@ const replayOnlySpec: AgentActionSpecification = {
     required: [],
     additionalProperties: true,
   },
-  eager: true,
 };
 
 describe("toTool", () => {
@@ -130,22 +129,7 @@ describe("toToolsParam", () => {
     );
   });
 
-  it("keeps a replay-only placeholder specification eager", () => {
-    const tools = toToolsParam([replayOnlySpec], undefined, {
-      toolSearchEnabled: true,
-    });
-
-    expect(tools).toHaveLength(1);
-    expect(tools[0]).toMatchObject({
-      name: "github__create_issue",
-      description: replayOnlySpec.description,
-      eager_input_streaming: true,
-      input_schema: replayOnlySpec.inputSchema,
-    });
-    expect(tools[0]).not.toHaveProperty("defer_loading");
-  });
-
-  it("does not defer a replay-only placeholder when other tools are deferred", () => {
+  it("defers a replay-only placeholder like any other non-eager tool", () => {
     const tools = toToolsParam([replayOnlySpec, coldSpec], undefined, {
       toolSearchEnabled: true,
     });
@@ -157,10 +141,7 @@ describe("toToolsParam", () => {
       name: "github__create_issue",
       input_schema: replayOnlySpec.inputSchema,
     });
-    expect(replayTool).not.toHaveProperty("defer_loading");
-
-    const deferredTool = tools.find((tool) => tool.name === coldSpec.name);
-    expect(deferredTool).toHaveProperty("defer_loading", true);
+    expect(replayTool).toHaveProperty("defer_loading", true);
   });
 });
 
