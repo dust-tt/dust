@@ -92,6 +92,13 @@ const BillingPage = withSuspense(
   () => import("@dust-tt/front/components/pages/workspace/billing/BillingPage"),
   "BillingPage"
 );
+const GovernancePage = withSuspense(
+  () =>
+    import(
+      "@dust-tt/front/components/pages/workspace/governance/GovernancePage"
+    ),
+  "GovernancePage"
+);
 
 export const adminRoutes: RouteObject[] = [
   {
@@ -101,6 +108,7 @@ export const adminRoutes: RouteObject[] = [
       { path: "members", element: <MembersPage /> },
       { path: "analytics", element: <AnalyticsPage /> },
       { path: "usage", element: <UsagePage /> },
+      { path: "governance", element: <GovernancePage /> },
     ],
   },
   {

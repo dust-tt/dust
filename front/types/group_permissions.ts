@@ -51,3 +51,35 @@ export function isGroupPermissionResourceType(
     (resourceType) => resourceType === value
   );
 }
+
+const PERMISSION_CONFIGURATION_SCOPES = [
+  "everyone",
+  "groups",
+  "disabled",
+] as const;
+
+type PermissionConfigurationScope =
+  (typeof PERMISSION_CONFIGURATION_SCOPES)[number];
+
+export const isValidPermissionConfigurationScope = (
+  scope: string
+): scope is PermissionConfigurationScope => {
+  return PERMISSION_CONFIGURATION_SCOPES.some(
+    (validScope) => validScope === scope
+  );
+};
+
+export type GovernancePermissionConfiguration =
+  | {
+      scope: Extract<PermissionConfigurationScope, "groups">;
+      groupIds: string[];
+    }
+  | {
+      scope: Exclude<PermissionConfigurationScope, "groups">;
+    };
+
+export type GovernancePermission = {
+  permissionType: PermissionType;
+  resourceType: GroupPermissionResourceType;
+  configuration: GovernancePermissionConfiguration;
+};

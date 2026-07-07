@@ -32,6 +32,7 @@ import {
   Shapes,
   Stars02,
   Terminal,
+  Toggle01Left,
   Users01,
   Zap,
 } from "@dust-tt/sparkle";
@@ -91,6 +92,7 @@ export type SubNavigationAdminId =
   | "subscription"
   | "billing"
   | "workspace"
+  | "governance"
   | "workspace_branding"
   | "model_providers"
   | "members"
@@ -108,6 +110,7 @@ export const ADMIN_ROUTE_PATTERNS: Record<SubNavigationAdminId, string[]> = {
   members: ["/w/[wId]/members"],
   identity_and_provisioning: ["/w/[wId]/identity-and-provisioning"],
   workspace: ["/w/[wId]/workspace"],
+  governance: ["/w/[wId]/governance"],
   workspace_branding: ["/w/[wId]/brand"],
   model_providers: ["/w/[wId]/model-providers"],
   analytics: ["/w/[wId]/analytics"],
@@ -210,7 +213,7 @@ export const getTopNavigationTabs = (
     ref: spaceMenuButtonRef,
   });
 
-  if (isAdmin(owner) || isOnlyBusinessAdmin(owner)) {
+  if (isBusinessAdmin(owner)) {
     nav.push({
       id: "settings",
       label: "Admin",
@@ -221,6 +224,7 @@ export const getTopNavigationTabs = (
           "/w/[wId]/members",
           "/w/[wId]/identity-and-provisioning",
           "/w/[wId]/workspace",
+          "/w/[wId]/governance",
           "/w/[wId]/branding",
           "/w/[wId]/model-providers",
           "/w/[wId]/subscription",
@@ -297,6 +301,18 @@ export const subNavigationAdmin = ({
         current: isCurrent("workspace"),
         disabled: !hasAdminRole,
       },
+      ...(featureFlags.includes("admin_governance")
+        ? [
+            {
+              id: "governance" as const,
+              label: "Governance",
+              icon: Toggle01Left,
+              href: `/w/${owner.sId}/governance`,
+              current: isCurrent("governance"),
+              disabled: !hasBusinessAdminRole,
+            },
+          ]
+        : []),
       ...(featureFlags.includes("whitelabel_frames")
         ? [
             {
