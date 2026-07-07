@@ -217,11 +217,10 @@ export async function handleBase64Upload(
     };
   }
 
+  // Images stay on FileResource so they go through the resize pipeline. Tool-generated images can
+  // be fed back to the model for vision tasks, so correct sizing matters. Outside of a conversation
+  // (sandbox function) they fall through to the plain file-system write below like any other file.
   if (resourceInfo.type === "image" && isAgentLoopRunContext(runContext)) {
-    // Images stay on FileResource so they go through the resize pipeline.
-    // Tool-generated images can be fed back to the model for vision tasks,
-    // so correct sizing matters. Outside of a conversation (sandbox function) they fall through to
-    // the plain file-system write below like any other file.
     const uploadResult: Result<FileResource, ProcessAndStoreFileError> =
       await uploadBase64ImageToFileStorage(auth, {
         base64: base64Data,
