@@ -84,8 +84,11 @@ export async function constructProjectContext(
   // Add important note for project conversations to strongly emphasize the importance of using project tools first.
   if (conversation && isPodConversation(conversation)) {
     const space = await SpaceResource.fetchById(auth, conversation.spaceId);
+    // The conversation id is intentionally omitted: the model already receives it in every user
+    // message metadata header, and keeping this block per-pod stable lets conversations in the
+    // same Pod share their prompt prefix for caching.
     instructions += `
-IMPORTANT: This conversation (id: ${conversation.sId}) is part of the Pod "${space?.name}" (id: ${space?.sId}).
+IMPORTANT: This conversation is part of the Pod "${space?.name}" (id: ${space?.sId}).
 Therefore, ALWAYS start by using the Pod tools to search for information before using company-wide tools.
 `;
 
