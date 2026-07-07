@@ -383,13 +383,13 @@ export class GroupPermissionResource extends BaseResource<GroupPermissionModel> 
     assert(globalGroup, "Workspace is missing its global group.");
 
     const grants = await this.listCapabilityGrants(auth, capability);
-    const groupIds = grants
+    const groupModelIds = grants
       .map((grant) => grant.groupId)
-      .filter((groupId) => groupId !== globalGroup.id);
-    if (groupIds.length === 0) {
+      .filter((groupModelId) => groupModelId !== globalGroup.id);
+    if (groupModelIds.length === 0) {
       return [];
     }
-    return GroupResource.fetchByModelIds(auth, groupIds);
+    return GroupResource.fetchByModelIds(auth, groupModelIds);
   }
 
   async delete(
