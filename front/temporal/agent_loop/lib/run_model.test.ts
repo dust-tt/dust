@@ -73,10 +73,20 @@ function makeConversation(
 
 function makeServerSideToolConfiguration(
   name: string,
-  { mcpServerViewId, eager }: { mcpServerViewId: string; eager?: boolean }
+  {
+    mcpServerViewId,
+    serverConfigurationModelId = -1,
+    eager,
+  }: {
+    mcpServerViewId: string;
+    // Persisted id of the originating server configuration; -1 for
+    // runtime-built servers (JIT, skills).
+    serverConfigurationModelId?: number;
+    eager?: boolean;
+  }
 ): MCPToolConfigurationType {
   return {
-    id: -1,
+    id: serverConfigurationModelId,
     sId: `tool_${name}`,
     type: "mcp_configuration",
     name,
@@ -121,11 +131,15 @@ function makeClientSideToolConfiguration(
   };
 }
 
-function makeAgentServerConfiguration(
-  mcpServerViewId: string
-): ServerSideMCPServerConfigurationType {
+function makeAgentServerConfiguration({
+  mcpServerViewId,
+  serverConfigurationModelId,
+}: {
+  mcpServerViewId: string;
+  serverConfigurationModelId: number;
+}): ServerSideMCPServerConfigurationType {
   return {
-    id: -1,
+    id: serverConfigurationModelId,
     sId: `action_${mcpServerViewId}`,
     type: "mcp_server_configuration",
     name: "server",
@@ -150,6 +164,7 @@ describe("buildBaseSpecifications", () => {
       [
         makeServerSideToolConfiguration("configured_tool", {
           mcpServerViewId: "view_configured",
+          serverConfigurationModelId: 100,
         }),
         makeServerSideToolConfiguration("jit_tool", {
           mcpServerViewId: "view_jit",
@@ -157,7 +172,12 @@ describe("buildBaseSpecifications", () => {
       ],
       {
         sId: "custom_agent",
-        actions: [makeAgentServerConfiguration("view_configured")],
+        actions: [
+          makeAgentServerConfiguration({
+            mcpServerViewId: "view_configured",
+            serverConfigurationModelId: 100,
+          }),
+        ],
       }
     );
 
@@ -169,16 +189,79 @@ describe("buildBaseSpecifications", () => {
     ).toBeUndefined();
   });
 
+  it("does not promote JIT tools that share a server view with configured actions", () => {
+    // Two configured actions can be instances of the same internal server and
+    // therefore share one server view (e.g. two query_tables actions), and the
+    // attachment-driven JIT query tables server reuses that same view. Only the
+    // configured tools, identified by their persisted configuration id, may be
+    // promoted; the JIT tool must stay deferred even though its view matches.
+    const specifications = buildBaseSpecifications(
+      [
+        makeServerSideToolConfiguration("glossary__execute_database_query", {
+          mcpServerViewId: "view_shared",
+          serverConfigurationModelId: 100,
+        }),
+        makeServerSideToolConfiguration(
+          "translations__execute_database_query",
+          {
+            mcpServerViewId: "view_shared",
+            serverConfigurationModelId: 101,
+          }
+        ),
+        makeServerSideToolConfiguration(
+          "query_conversation_tables__execute_database_query",
+          {
+            mcpServerViewId: "view_shared",
+          }
+        ),
+      ],
+      {
+        sId: "custom_agent",
+        actions: [
+          makeAgentServerConfiguration({
+            mcpServerViewId: "view_shared",
+            serverConfigurationModelId: 100,
+          }),
+          makeAgentServerConfiguration({
+            mcpServerViewId: "view_shared",
+            serverConfigurationModelId: 101,
+          }),
+        ],
+      }
+    );
+
+    expect(
+      specifications.find((s) => s.name === "glossary__execute_database_query")
+        ?.eager
+    ).toBe(true);
+    expect(
+      specifications.find(
+        (s) => s.name === "translations__execute_database_query"
+      )?.eager
+    ).toBe(true);
+    expect(
+      specifications.find(
+        (s) => s.name === "query_conversation_tables__execute_database_query"
+      )?.eager
+    ).toBeUndefined();
+  });
+
   it("does not promote configured tools of a global agent", () => {
     const specifications = buildBaseSpecifications(
       [
         makeServerSideToolConfiguration("configured_tool", {
           mcpServerViewId: "view_configured",
+          serverConfigurationModelId: 100,
         }),
       ],
       {
         sId: "dust",
-        actions: [makeAgentServerConfiguration("view_configured")],
+        actions: [
+          makeAgentServerConfiguration({
+            mcpServerViewId: "view_configured",
+            serverConfigurationModelId: 100,
+          }),
+        ],
       }
     );
 
@@ -202,10 +285,16 @@ describe("buildBaseSpecifications", () => {
   it("keeps skill tools deferred when a skill is enabled mid-conversation", () => {
     const agentConfiguration = {
       sId: "custom_agent",
-      actions: [makeAgentServerConfiguration("view_configured")],
+      actions: [
+        makeAgentServerConfiguration({
+          mcpServerViewId: "view_configured",
+          serverConfigurationModelId: 100,
+        }),
+      ],
     };
     const configuredTool = makeServerSideToolConfiguration("configured_tool", {
       mcpServerViewId: "view_configured",
+      serverConfigurationModelId: 100,
     });
 
     // Before the skill is enabled, its tools are not in the request at all.
