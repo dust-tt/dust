@@ -135,3 +135,16 @@ export function recordToolDuration(
     `status:${status}`,
   ]);
 }
+
+// Health of the pod-state pre-sleep flush: a success/failure counter. Datadog
+// monitors page on the failure count; the stable logger.error message next to
+// each failing call site carries the cause.
+export function recordPodStateHealth(
+  status: "success" | "failure",
+  ctx: MetricContext
+): void {
+  getStatsDClient().increment("sandbox.pod_state.health", 1, [
+    ...buildTags(ctx),
+    `status:${status}`,
+  ]);
+}

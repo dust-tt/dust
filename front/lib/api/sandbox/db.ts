@@ -1,5 +1,9 @@
 import { getPodStateBasePath } from "@app/lib/api/files/mount_path";
-import { traceSandboxStartupPhase } from "@app/lib/api/sandbox/instrumentation";
+import {
+  recordPodStateHealth,
+  traceSandboxStartupPhase,
+} from "@app/lib/api/sandbox/instrumentation";
+import { SandboxNotFoundError } from "@app/lib/api/sandbox/provider";
 import {
   type RootCommand,
   type RootCommandArg,
@@ -30,6 +34,11 @@ import { normalizeError } from "@app/types/shared/utils/error_utils";
  *    then start the litestream systemd unit — strictly in that order, so the
  *    watcher never manages files mid-restore or writes to an unmounted
  *    replica dir.
+ *  - Pre-sleep (`ensurePodStateHealthOnSleep`, before the provider pause):
+ *    verify the replica mount is a live FUSE mount and the daemon is active,
+ *    then `litestream sync -wait` each database so every committed WAL frame
+ *    is in GCS before the VM can be destroyed. On failure the sandbox is NOT
+ *    paused; the daemon is restarted and a failure metric is emitted.
  *  - Wake from pause needs nothing: the Firecracker snapshot preserves the
  *    daemon, its control socket, the mounts and the database files.
  */
@@ -43,14 +52,20 @@ export const POD_STATE_USER = "dust-state";
 
 const LITESTREAM_BIN = "/opt/bin/litestream";
 const LITESTREAM_UNIT_NAME = "litestream";
+// Short by necessity: unix socket paths are capped around 104 chars. Created
+// by the unit's RuntimeDirectory=litestream as dust-state; enabled by the
+// static /etc/litestream.yml baked at image build.
+const LITESTREAM_SOCKET_PATH = "/run/litestream/litestream.sock";
 
 const RUNUSER_BIN = "/usr/sbin/runuser";
 const SYSTEMCTL_BIN = "/usr/bin/systemctl";
 const SQLITE3_BIN = "/usr/bin/sqlite3";
 const FIND_BIN = "/usr/bin/find";
+const STAT_BIN = "/usr/bin/stat";
 const MV_BIN = "/usr/bin/mv";
 const RM_BIN = "/usr/bin/rm";
 const CHMOD_BIN = "/usr/bin/chmod";
+const HEAD_BIN = "/usr/bin/head";
 const TEST_BIN = "/usr/bin/test";
 
 // Database name shape. Doubles as an allowlist: enumeration outputs are
@@ -58,6 +73,19 @@ const TEST_BIN = "/usr/bin/test";
 // dirs, hostile names) is skipped.
 const POD_DATABASE_NAME_REGEX = /^[a-z][a-z0-9_]{0,63}$/;
 
+// First 15 bytes of every SQLite file ("SQLite format 3" — the trailing NUL of
+// the 16-byte magic is dropped so it survives stdout transport).
+const SQLITE_HEADER_MAGIC = "SQLite format 3";
+
+// FUSE_SUPER_MAGIC, as printed by `stat -f -c %t` (hex, no 0x prefix).
+// If you are wondering, it is a value in a enum used by statf libc to flag different filesystems (ext2,3,4, fuse etc.)
+// https://man7.org/linux/man-pages/man2/statfs.2.html
+const FUSE_STATFS_MAGIC_HEX = "65735546";
+
+// The pre-sleep sync runs inside the reaper's per-batch budget, so every exec
+// is tightly bounded.
+const SYNC_WAIT_TIMEOUT_SECONDS = 10;
+const SYNC_EXEC_TIMEOUT_MS = 15_000;
 // Cheap probes and file operations stay tightly bounded.
 const PROBE_EXEC_TIMEOUT_MS = 10_000;
 // Cold-start restore may pull a large snapshot + LTX chain through gcsfuse.
@@ -99,6 +127,11 @@ function parseFindBasenames(findOutput: string): string[] {
     .map((line) => line.trim())
     .filter((line) => line.length > 0)
     .map((line) => line.slice(line.lastIndexOf("/") + 1));
+}
+
+/** True when `stat -f -c %t` output is the FUSE filesystem magic. */
+export function isFuseStatfsMagic(statOutput: string): boolean {
+  return statOutput.trim().toLowerCase() === FUSE_STATFS_MAGIC_HEX;
 }
 
 /**
@@ -360,6 +393,299 @@ async function startLitestreamDaemon(
     return new Err(execFailure("litestream daemon start", result.value));
   }
   return new Ok(undefined);
+}
+
+/**
+ * Pre-sleep health check (reaper sleep, pauseForApproval, and best-effort
+ * before kill-requested destroys): make sure every committed transaction
+ * reached the GCS replica before the VM is allowed to pause (and later be
+ * destroyed).
+ *
+ * Databases created after cold start are the directory watcher's job (static
+ * config, discovery within seconds); this only checks that the daemon is
+ * actually active (starting it when dead, e.g. after a half-failed cold
+ * start) and then syncs each live database.
+ *
+ * On any failure the caller must NOT pause. A failure health metric +
+ * logger.error with a stable message are emitted — Datadog monitors do the
+ * paging. A `SandboxNotFoundError` from the provider is treated as success:
+ * the sandbox is already gone, there is nothing left to sync, and exec already
+ * marked the row deleted.
+ */
+export async function ensurePodStateHealthOnSleep(
+  auth: Authenticator,
+  sandbox: SandboxResource,
+  opts: {
+    /**
+     * Rewrites /tmp/token.json. The sync flushes LTX files through gcsfuse,
+     * and a sandbox can sit idle past the CAB token's ~1h lifetime (reaper
+     * backlog): without a refresh the sync would fail on every retry,
+     * forever.
+     */
+    refreshMountCredential?: () => Promise<Result<void, Error>>;
+  } = {}
+): Promise<Result<void, Error>> {
+  const ctx = { workspaceId: auth.getNonNullableWorkspace().sId };
+  const childLogger = logger.child({
+    sandboxId: sandbox.sId,
+    workspaceId: ctx.workspaceId,
+  });
+
+  // 0. Fresh GCS credential for the flush below.
+  if (opts.refreshMountCredential) {
+    const refreshResult = await opts.refreshMountCredential();
+    if (refreshResult.isErr()) {
+      if (refreshResult.error instanceof SandboxNotFoundError) {
+        return new Ok(undefined);
+      }
+      recordPodStateHealth("failure", ctx);
+      childLogger.error(
+        { err: refreshResult.error },
+        "Pod state pre-sleep: GCS credential refresh failed — not pausing"
+      );
+      return refreshResult;
+    }
+  }
+
+  // 1. Mount liveness (statfs magic): a cleanly-unmounted replica path makes
+  // litestream write to the underlying local directory and SUCCEED silently,
+  // so a passing sync would be meaningless.
+  const livenessResult = await checkReplicaMountLiveness(auth, sandbox);
+  if (livenessResult.isErr()) {
+    if (livenessResult.error instanceof SandboxNotFoundError) {
+      return new Ok(undefined);
+    }
+    recordPodStateHealth("failure", ctx);
+    childLogger.error(
+      { err: livenessResult.error },
+      "Pod state pre-sleep: replica mount is not a live FUSE mount — not pausing"
+    );
+    return livenessResult;
+  }
+
+  // 2. Managed set: enumerate live databases, dropping files that are not
+  // real SQLite databases. The dir is deliberately workload-writable, so a
+  // planted garbage `.db` must be excluded (alerted) rather than allowed to
+  // wedge the pod's lifecycle with forever-failing syncs.
+  const namesResult = await listValidLiveDatabases(auth, sandbox, ctx);
+  if (namesResult.isErr()) {
+    if (namesResult.error instanceof SandboxNotFoundError) {
+      return new Ok(undefined);
+    }
+    recordPodStateHealth("failure", ctx);
+    childLogger.error(
+      { err: namesResult.error },
+      "Pod state pre-sleep: database enumeration failed — not pausing"
+    );
+    return namesResult;
+  }
+  const names = namesResult.value;
+
+  // 3. Daemon liveness: the sync below needs the control socket, and a dead
+  // or never-started daemon (e.g. a half-failed cold start) means nothing is
+  // replicating. Start it if needed — the static directory-watcher config is
+  // baked in the image, so a plain start recovers the full managed set.
+  const daemonResult = await ensureLitestreamDaemonActive(
+    auth,
+    sandbox,
+    childLogger
+  );
+  if (daemonResult.isErr()) {
+    if (daemonResult.error instanceof SandboxNotFoundError) {
+      return new Ok(undefined);
+    }
+    recordPodStateHealth("failure", ctx);
+    childLogger.error(
+      { err: daemonResult.error },
+      "Pod state pre-sleep: litestream daemon is not active — not pausing"
+    );
+    return daemonResult;
+  }
+
+  // 4. Sync each database through the daemon control socket.
+  for (const name of names) {
+    const dbPath = `${POD_STATE_DATABASES_DIR}/${name}.db`;
+    const syncResult = await sandbox.execRoot(
+      auth,
+      rootCommand.exec(LITESTREAM_BIN, [
+        "sync",
+        "-wait",
+        "-timeout",
+        SYNC_WAIT_TIMEOUT_SECONDS,
+        "-socket",
+        LITESTREAM_SOCKET_PATH,
+        "--",
+        dbPath,
+      ]),
+      { timeoutMs: SYNC_EXEC_TIMEOUT_MS }
+    );
+
+    const failure = syncResult.isErr()
+      ? syncResult.error
+      : syncResult.value.exitCode !== 0
+        ? execFailure(`litestream sync of ${name}`, syncResult.value)
+        : null;
+
+    if (failure) {
+      if (failure instanceof SandboxNotFoundError) {
+        return new Ok(undefined);
+      }
+      recordPodStateHealth("failure", ctx);
+      childLogger.error(
+        { err: failure, database: name },
+        "Pod state pre-sleep: litestream sync failed — restarting daemon, not pausing"
+      );
+      // Best-effort recovery; the reaper retries the whole check on its next
+      // cycle (status stays `running`). The config is static (baked at image
+      // build) and the directory watcher re-discovers every live database on
+      // start, so a plain restart recovers the full managed set.
+      await sandbox.execRoot(
+        auth,
+        rootCommand.exec(SYSTEMCTL_BIN, ["restart", LITESTREAM_UNIT_NAME]),
+        { timeoutMs: PROBE_EXEC_TIMEOUT_MS }
+      );
+      return new Err(failure);
+    }
+  }
+
+  recordPodStateHealth("success", ctx);
+
+  return new Ok(undefined);
+}
+
+async function checkReplicaMountLiveness(
+  auth: Authenticator,
+  sandbox: SandboxResource
+): Promise<Result<void, Error>> {
+  // As dust-state: without allow_other the FUSE layer denies every other uid,
+  // including root. `stat -f -c %t` prints the statfs filesystem magic.
+  const result = await sandbox.execRoot(
+    auth,
+    asPodStateUser(STAT_BIN, ["-f", "-c", "%t", POD_STATE_REPLICA_MOUNT_POINT]),
+    { timeoutMs: PROBE_EXEC_TIMEOUT_MS }
+  );
+  if (result.isErr()) {
+    return result;
+  }
+  if (result.value.exitCode !== 0) {
+    return new Err(execFailure("pod state replica statfs", result.value));
+  }
+  if (!isFuseStatfsMagic(result.value.stdout)) {
+    return new Err(
+      new Error(
+        `pod state replica mount point is not a FUSE mount (statfs magic: ${result.value.stdout.trim()})`
+      )
+    );
+  }
+  return new Ok(undefined);
+}
+
+async function listLiveDatabases(
+  auth: Authenticator,
+  sandbox: SandboxResource
+): Promise<Result<string[], Error>> {
+  const result = await sandbox.execRoot(
+    auth,
+    rootCommand.exec(FIND_BIN, [
+      POD_STATE_DATABASES_DIR,
+      "-mindepth",
+      "1",
+      "-maxdepth",
+      "1",
+      "-type",
+      "f",
+      "-name",
+      "*.db",
+    ]),
+    { timeoutMs: PROBE_EXEC_TIMEOUT_MS }
+  );
+  if (result.isErr()) {
+    return result;
+  }
+  if (result.value.exitCode !== 0) {
+    return new Err(execFailure("pod state database enumeration", result.value));
+  }
+  return new Ok(parseLiveDatabaseNames(result.value.stdout));
+}
+
+/**
+ * Live databases whose file content starts with the SQLite header magic.
+ * /pod-state/databases is workload-writable by design, so enumeration output
+ * must be treated as untrusted: non-SQLite files are excluded from the
+ * managed set (with a warning log) instead of being handed to litestream,
+ * where they would fail every sync and wedge the pod's lifecycle. A valid
+ * header on a corrupt database still enters the set — its sync failure then
+ * blocks-and-alerts, which is the designed behavior for real corruption.
+ */
+async function listValidLiveDatabases(
+  auth: Authenticator,
+  sandbox: SandboxResource,
+  ctx: { workspaceId: string }
+): Promise<Result<string[], Error>> {
+  const namesResult = await listLiveDatabases(auth, sandbox);
+  if (namesResult.isErr()) {
+    return namesResult;
+  }
+
+  const valid: string[] = [];
+  for (const name of namesResult.value) {
+    const dbPath = `${POD_STATE_DATABASES_DIR}/${name}.db`;
+    const headResult = await sandbox.execRoot(
+      auth,
+      rootCommand.exec(HEAD_BIN, ["-c", "15", "--", dbPath]),
+      { timeoutMs: PROBE_EXEC_TIMEOUT_MS }
+    );
+    if (headResult.isErr()) {
+      return headResult;
+    }
+    if (
+      headResult.value.exitCode === 0 &&
+      headResult.value.stdout.startsWith(SQLITE_HEADER_MAGIC)
+    ) {
+      valid.push(name);
+    } else {
+      logger.warn(
+        {
+          sandboxId: sandbox.sId,
+          workspaceId: ctx.workspaceId,
+          database: name,
+        },
+        "Pod state: non-SQLite file in the databases dir — excluded from the managed set"
+      );
+    }
+  }
+  return new Ok(valid);
+}
+
+/**
+ * Make sure the litestream unit is running, starting it when dead. The static
+ * directory-watcher config re-discovers every live database on start, so a
+ * plain start recovers the full managed set (e.g. after a half-failed cold
+ * start that never reached the daemon-start step).
+ */
+async function ensureLitestreamDaemonActive(
+  auth: Authenticator,
+  sandbox: SandboxResource,
+  childLogger: typeof logger
+): Promise<Result<void, Error>> {
+  const activeResult = await sandbox.execRoot(
+    auth,
+    rootCommand.exec(SYSTEMCTL_BIN, [
+      "is-active",
+      "--quiet",
+      LITESTREAM_UNIT_NAME,
+    ]),
+    { timeoutMs: PROBE_EXEC_TIMEOUT_MS }
+  );
+  if (activeResult.isErr()) {
+    return activeResult;
+  }
+  if (activeResult.value.exitCode === 0) {
+    return new Ok(undefined);
+  }
+
+  childLogger.warn({}, "Pod state: litestream daemon not active — starting it");
+  return startLitestreamDaemon(auth, sandbox);
 }
 
 /**
