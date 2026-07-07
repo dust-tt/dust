@@ -1492,9 +1492,6 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
 
     const sortByName = (a: SkillResource, b: SkillResource) =>
       a.name.localeCompare(b.name);
-    const uniqueBySId = (skills: SkillResource[]) => [
-      ...new Map(skills.map((s) => [s.sId, s])).values(),
-    ];
 
     // System skills are always treated as enabled when present in the agent configuration.
     const configSystemSkills = allAgentSkills.filter((s) => s.isSystemSkill);
@@ -1556,10 +1553,11 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
 
     // System skills and contextually auto-enabled code-defined skills land in `systemSkills`.
     // They are active for the current loop without being conversation-enabled records.
-    const systemSkills = uniqueBySId([
-      ...configSystemSkills,
-      ...autoEnabledSkills,
-    ]);
+    const systemSkills = [
+      ...new Map(
+        [...configSystemSkills, ...autoEnabledSkills].map((s) => [s.sId, s])
+      ).values(),
+    ];
 
     const enabledSkills = conversationEnabledSkills
       .filter(
