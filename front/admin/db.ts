@@ -111,6 +111,7 @@ import { MembershipModel } from "@app/lib/resources/storage/models/membership";
 import { MembershipUpgradeRequestModel } from "@app/lib/resources/storage/models/membership_upgrade_requests";
 import { OnboardingTaskModel } from "@app/lib/resources/storage/models/onboarding_tasks";
 import { PluginRunModel } from "@app/lib/resources/storage/models/plugin_runs";
+import { PodEgressPolicyModel } from "@app/lib/resources/storage/models/pod_egress_policy";
 import { ProgrammaticUsageConfigurationModel } from "@app/lib/resources/storage/models/programmatic_usage_configurations";
 import { ProjectMetadataModel } from "@app/lib/resources/storage/models/project_metadata";
 import {
@@ -171,6 +172,7 @@ export function loadAllModels() {
     TagModel,
     SpaceModel,
     ProjectMetadataModel,
+    PodEgressPolicyModel,
     AppModel,
     DatasetModel,
     ProviderModel,
