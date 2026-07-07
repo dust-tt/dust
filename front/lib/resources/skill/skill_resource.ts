@@ -1550,9 +1550,6 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       : [];
 
     const systemSkillsFromAgent = allAgentSkills.filter((s) => s.isSystemSkill);
-    const systemSkillIds = new Set(
-      [...systemSkillsFromAgent, ...autoEnabledSkills].map((skill) => skill.sId)
-    );
 
     // Active baseline skills for this loop: configured system skills, plus
     // code-defined skills that this context promotes to system prompt content.
@@ -1561,6 +1558,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         [...systemSkillsFromAgent, ...autoEnabledSkills].map((s) => [s.sId, s])
       ).values(),
     ];
+    const systemSkillIds = new Set(systemSkills.map((skill) => skill.sId));
 
     // Equipped skills are the enable-able candidates shown to the model. They
     // come from the agent configuration, context auto-equipping, Pod defaults,
