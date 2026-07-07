@@ -84,7 +84,6 @@ import { SKILL_GROUP_PREFIX } from "@app/types/groups";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
-import { assertNever } from "@app/types/shared/utils/assert_never";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { removeNulls } from "@app/types/shared/utils/general";
 import type { LightWorkspaceType } from "@app/types/user";
@@ -1513,29 +1512,26 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       ...(await SystemSkillsRegistry.findAll(auth)),
       ...(await GlobalSkillsRegistry.findAll(auth)),
     ]) {
-      const autoEnabledOrEquipped = def.getAutoEnabledOrEquippedForAgentLoop?.({
-        agentConfiguration,
-        conversation,
-      });
-
-      if (!autoEnabledOrEquipped) {
-        continue;
-      }
-
-      const skillRef = {
-        globalSkillId: def.sId,
-        customSkillId: null,
-      };
-
-      switch (autoEnabledOrEquipped) {
+      switch (
+        def.getAutoEnabledOrEquippedForAgentLoop?.({
+          agentConfiguration,
+          conversation,
+        })
+      ) {
         case "enabled":
-          autoEnabledSystemSkillRefs.push(skillRef);
+          autoEnabledSystemSkillRefs.push({
+            globalSkillId: def.sId,
+            customSkillId: null,
+          });
           break;
         case "equipped":
-          autoEquippedSkillRefs.push(skillRef);
+          autoEquippedSkillRefs.push({
+            globalSkillId: def.sId,
+            customSkillId: null,
+          });
           break;
         default:
-          assertNever(autoEnabledOrEquipped);
+          break;
       }
     }
 
@@ -1608,11 +1604,11 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         .sort(sortByName),
       systemSkills: systemSkills.sort(sortByName),
       equippedSkills: [
-        ...agentEquippedSkills.sort(sortByName),
-        ...autoEquippedSkills.sort(sortByName),
-        ...podEquippedSkills.sort(sortByName),
-        ...discoveredSkills.sort(sortByName),
-      ],
+        ...agentEquippedSkills,
+        ...autoEquippedSkills,
+        ...podEquippedSkills,
+        ...discoveredSkills,
+      ].sort(sortByName),
     };
   }
 
