@@ -2422,7 +2422,10 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
   }
 
   async archive(auth: Authenticator): Promise<{ affectedCount: number }> {
-    assert(this.canAdministrate(auth), "User is not authorized to archive this skill");
+    assert(
+      this.canAdministrate(auth),
+      "User is not authorized to archive this skill"
+    );
 
     const workspace = auth.getNonNullableWorkspace();
 
@@ -2490,7 +2493,10 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
   }
 
   async restore(auth: Authenticator): Promise<{ affectedCount: number }> {
-    assert(this.canAdministrate(auth), "User is not authorized to restore this skill");
+    assert(
+      this.canAdministrate(auth),
+      "User is not authorized to restore this skill"
+    );
 
     const affectedCount = await withTransaction(async (transaction) => {
       const [count] = await this.update({ status: "active" }, transaction);
