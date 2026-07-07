@@ -449,31 +449,49 @@ const seatTypeColumn: ColumnDef<RowData, string> = {
   },
 };
 
-const consumedAwuCreditsColumn: ColumnDef<RowData, string> = {
-  id: "consumedAwuCredits" as const,
-  header: () => <span>Credits usage this month</span>,
-  accessorFn: (row) => row.consumedAwuCredits.toString(),
-  cell: (info: Info) => (
-    <div className="w-full pr-3">
-      <AwuUsageBar
-        consumed={info.row.original.consumedAwuCredits}
-        consumedFromAllowance={
-          info.row.original.consumedFromAllowanceAwuCredits
-        }
-        consumedFromPool={info.row.original.consumedFromPoolAwuCredits}
-        memberUsageLimit={info.row.original.memberUsageLimit}
-        seatBalanceAwu={info.row.original.seatBalanceAwu}
-        effectiveLimit={info.row.original.spendLimitAwuCredits ?? 0}
-        spendLimitSource={info.row.original.spendLimitSource}
-        seatType={info.row.original.seatType}
-        isTotalAllowedUsagePending={
-          info.row.original.isTotalAllowedUsagePending
-        }
-      />
-    </div>
-  ),
-  enableSorting: true,
-};
+function buildConsumedAwuCreditsColumn(
+  creditsResetAt: string | null
+): ColumnDef<RowData, string> {
+  return {
+    id: "consumedAwuCredits" as const,
+    header: () => (
+      <div className="flex flex-col">
+        <span>Credits usage this month</span>
+        {creditsResetAt && (
+          <span className="text-xs font-normal text-muted-foreground">
+            Limits reset on{" "}
+            {new Date(creditsResetAt).toLocaleDateString("en-US", {
+              month: "short",
+              day: "numeric",
+              timeZone: "UTC",
+            })}
+          </span>
+        )}
+      </div>
+    ),
+    accessorFn: (row) => row.consumedAwuCredits.toString(),
+    cell: (info: Info) => (
+      <div className="w-full pr-3">
+        <AwuUsageBar
+          consumed={info.row.original.consumedAwuCredits}
+          consumedFromAllowance={
+            info.row.original.consumedFromAllowanceAwuCredits
+          }
+          consumedFromPool={info.row.original.consumedFromPoolAwuCredits}
+          memberUsageLimit={info.row.original.memberUsageLimit}
+          seatBalanceAwu={info.row.original.seatBalanceAwu}
+          effectiveLimit={info.row.original.spendLimitAwuCredits ?? 0}
+          spendLimitSource={info.row.original.spendLimitSource}
+          seatType={info.row.original.seatType}
+          isTotalAllowedUsagePending={
+            info.row.original.isTotalAllowedUsagePending
+          }
+        />
+      </div>
+    ),
+    enableSorting: true,
+  };
+}
 
 const advancedModelsColumn: ColumnDef<RowData, string> = {
   id: "advancedModels" as const,
@@ -550,10 +568,12 @@ function buildColumns({
   enableSelection,
   showGroupsColumn,
   showAdvancedModelsColumn,
+  creditsResetAt,
 }: {
   enableSelection: boolean;
   showGroupsColumn: boolean;
   showAdvancedModelsColumn: boolean;
+  creditsResetAt: string | null;
 }): ColumnDef<RowData, string>[] {
   return [
     ...(enableSelection ? [createSelectionColumn<RowData>()] : []),
@@ -561,7 +581,10 @@ function buildColumns({
     ...(showGroupsColumn ? [groupsColumn] : []),
     ...(showAdvancedModelsColumn ? [advancedModelsColumn] : []),
     seatTypeColumn,
-    { ...consumedAwuCreditsColumn, meta: { className: "w-64" } },
+    {
+      ...buildConsumedAwuCreditsColumn(creditsResetAt),
+      meta: { className: "w-64" },
+    },
     actionsColumn,
   ];
 }
@@ -752,14 +775,29 @@ export function MembersUsageTable({
     ]
   );
 
+  // All paid seats share the workspace billing period, so the first member
+  // carrying a reset date is enough to label the column header.
+  const creditsResetAt = useMemo(
+    () =>
+      members.find((m) => m.nextCreditResetAt !== null)?.nextCreditResetAt ??
+      null,
+    [members]
+  );
+
   const columns = useMemo(
     () =>
       buildColumns({
         enableSelection,
         showGroupsColumn,
         showAdvancedModelsColumn,
+        creditsResetAt,
       }),
-    [enableSelection, showGroupsColumn, showAdvancedModelsColumn]
+    [
+      enableSelection,
+      showGroupsColumn,
+      showAdvancedModelsColumn,
+      creditsResetAt,
+    ]
   );
 
   if (isLoading) {
