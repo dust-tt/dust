@@ -20,6 +20,7 @@ import { isXaiWhitelistedModelId } from "@app/lib/api/llm/clients/xai/types";
 import type { LLM } from "@app/lib/api/llm/llm";
 import {
   BatchEndpointTransition,
+  NoopStreamTransition,
   StreamEndpointTransition,
 } from "@app/lib/api/llm/transitionLLM";
 import type { LLMParameters } from "@app/lib/api/llm/types/options";
@@ -39,7 +40,10 @@ import type {
   WorkspaceConfig,
 } from "@app/lib/llms/types/filter";
 import { sortEndpointsByPreferredRegion } from "@app/lib/llms/utils/sort_endpoints";
-import { isModelId } from "@app/lib/model_constructors/types/model_ids";
+import {
+  isModelId,
+  NOOP_MODEL_ID,
+} from "@app/lib/model_constructors/types/model_ids";
 import { GOOGLE_AI_STUDIO_API } from "@app/lib/model_constructors/types/provider_apis";
 import {
   isProviderId,
@@ -399,6 +403,12 @@ function getStreamEndpointLLM(
 
   if (!endpoint) {
     return null;
+  }
+
+  // The noop model needs a dedicated transition to preserve its static-response
+  // and simulated-credit behaviors, which the generic transition drops.
+  if (endpoint.modelId === NOOP_MODEL_ID) {
+    return new NoopStreamTransition(auth, llmParameters, endpoint);
   }
 
   const modelConfig = getModelConfigByModelId(llmParameters.modelId);
