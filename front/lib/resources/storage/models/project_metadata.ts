@@ -7,6 +7,8 @@ import { SpaceModel } from "@app/lib/resources/storage/models/spaces";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
 import type { CreationOptional, ForeignKey } from "sequelize";
 
+export type PodType = "activation";
+
 export class ProjectMetadataModel extends WorkspaceAwareModel<ProjectMetadataModel> {
   declare id: CreationOptional<number>;
   declare createdAt: CreationOptional<Date>;
@@ -24,7 +26,7 @@ export class ProjectMetadataModel extends WorkspaceAwareModel<ProjectMetadataMod
   /** sId of the agent pre-selected for new conversations in this pod. Null = @dust. */
   declare defaultAgentId: CreationOptional<string | null>;
   declare defaultSkillsIds: CreationOptional<string[] | null>;
-  declare activationPodMemberEmail: CreationOptional<string | null>;
+  declare podType: CreationOptional<PodType | null>;
 }
 
 ProjectMetadataModel.init(
@@ -76,7 +78,7 @@ ProjectMetadataModel.init(
       defaultValue: null,
       field: "defaultSkillsIds",
     },
-    activationPodMemberEmail: {
+    podType: {
       type: DataTypes.STRING,
       allowNull: true,
       defaultValue: null,
