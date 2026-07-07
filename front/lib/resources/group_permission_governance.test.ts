@@ -30,34 +30,22 @@ describe("GroupPermissionResource — governance state (reads)", () => {
     globalGroup = fetched;
   });
 
+  const stateOf = async (capability: typeof CAPABILITY) =>
+    (
+      await GroupPermissionResource.getCapabilitiesState(auth, [capability])
+    ).get(`${capability.permissionType}:${capability.resourceType}`);
+
   it("reports disabled when there is no -1 row", async () => {
-    expect(
-      await GroupPermissionResource.isCapabilityDisabled(auth, CAPABILITY)
-    ).toBe(true);
-    expect(
-      await GroupPermissionResource.isCapabilityForEverybody(auth, CAPABILITY)
-    ).toBe(false);
-    expect(
-      await GroupPermissionResource.getCapabilityGroups(auth, CAPABILITY)
-    ).toEqual([]);
+    expect(await stateOf(CAPABILITY)).toEqual({ scope: "disabled" });
   });
 
-  it("reports everybody when the global group holds the -1 row", async () => {
+  it("reports everyone when the global group holds the -1 row", async () => {
     await GroupPermissionResource.grantTypeWide(auth, {
       group: globalGroup,
       ...CAPABILITY,
     });
 
-    expect(
-      await GroupPermissionResource.isCapabilityForEverybody(auth, CAPABILITY)
-    ).toBe(true);
-    expect(
-      await GroupPermissionResource.isCapabilityDisabled(auth, CAPABILITY)
-    ).toBe(false);
-    // The global group is not surfaced as a "specific" group.
-    expect(
-      await GroupPermissionResource.getCapabilityGroups(auth, CAPABILITY)
-    ).toEqual([]);
+    expect(await stateOf(CAPABILITY)).toEqual({ scope: "everyone" });
   });
 
   it("reports the specific groups when non-global groups hold -1 rows", async () => {
@@ -66,19 +54,44 @@ describe("GroupPermissionResource — governance state (reads)", () => {
       ...CAPABILITY,
     });
 
-    expect(
-      await GroupPermissionResource.isCapabilityForEverybody(auth, CAPABILITY)
-    ).toBe(false);
-    expect(
-      await GroupPermissionResource.isCapabilityDisabled(auth, CAPABILITY)
-    ).toBe(false);
-
-    const groups = await GroupPermissionResource.getCapabilityGroups(
-      auth,
-      CAPABILITY
-    );
-    expect(new Set(groups.map((g) => g.id))).toEqual(
+    const state = await stateOf(CAPABILITY);
+    assert(state?.scope === "groups", "expected groups scope");
+    expect(new Set(state.groups.map((g) => g.id))).toEqual(
       new Set([groupA.id, groupB.id])
     );
+  });
+
+  it("resolves multiple capabilities in one call", async () => {
+    const everyoneCap = {
+      permissionType: "publish",
+      resourceType: "agent",
+    } as const;
+    const groupsCap = {
+      permissionType: "create",
+      resourceType: "skill",
+    } as const;
+    const disabledCap = {
+      permissionType: "admin",
+      resourceType: "billing",
+    } as const;
+    await GroupPermissionResource.grantTypeWide(auth, {
+      group: globalGroup,
+      ...everyoneCap,
+    });
+    await GroupPermissionResource.grantTypeWideForGroups(auth, {
+      groups: [groupA],
+      ...groupsCap,
+    });
+
+    const states = await GroupPermissionResource.getCapabilitiesState(auth, [
+      everyoneCap,
+      groupsCap,
+      disabledCap,
+    ]);
+    expect(states.get("publish:agent")).toEqual({ scope: "everyone" });
+    expect(states.get("admin:billing")).toEqual({ scope: "disabled" });
+    const groupsState = states.get("create:skill");
+    assert(groupsState?.scope === "groups", "expected groups scope");
+    expect(groupsState.groups.map((g) => g.id)).toEqual([groupA.id]);
   });
 });
