@@ -1,14 +1,14 @@
 // @vitest-environment node
 
-import { AnthropicGlobalClaudeOpusFourDotSixStream } from "@app/lib/model_constructors/stream/endpoints/anthropic_global_claude_opus_four_dot_six";
+import { AgentPlatformEuropeClaudeOpusFourDotSixStream } from "@app/lib/model_constructors/stream/endpoints/agent_platform_eu_claude_opus_four_dot_six";
 import { INPUT_CONFIGURATION_ERROR } from "@app/lib/model_constructors/test/cases";
 import { runStreamEndpointTests } from "@app/lib/model_constructors/test/runner";
 import type { StreamSetup } from "@app/lib/model_constructors/test/setup";
 
-export const AnthropicGlobalClaudeOpusFourDotSixStreamSetup: StreamSetup = {
+export const AgentPlatformEuropeClaudeOpusFourDotSixStreamSetup: StreamSetup = {
   createInstance: () =>
-    new AnthropicGlobalClaudeOpusFourDotSixStream({
-      ANTHROPIC_API_KEY: process.env.DUST_MANAGED_ANTHROPIC_API_KEY ?? "",
+    new AgentPlatformEuropeClaudeOpusFourDotSixStream({
+      AGENT_PLATFORM_PROJECT_ID: process.env.VERTEX_AI_PROJECT_ID ?? "",
     }),
   // `null` runs the case with its default checkers; a checker array overrides
   // them. Every case always runs.
@@ -65,8 +65,8 @@ export const AnthropicGlobalClaudeOpusFourDotSixStreamSetup: StreamSetup = {
   },
 };
 
-// NODE_ENV=test RUN_LLM_TEST=true npm run test -- --config lib/model_constructors/test/vite.config.js --bail 1 lib/model_constructors/test/endpoints/anthropic_claude_opus_four_dot_six.test.ts
+// NODE_ENV=test RUN_LLM_TEST=true npm run test -- --config lib/model_constructors/test/vite.config.js --bail 1 lib/model_constructors/test/endpoints/agent_platform_eu_claude_opus_four_dot_six.test.ts
 runStreamEndpointTests(
-  AnthropicGlobalClaudeOpusFourDotSixStream,
-  AnthropicGlobalClaudeOpusFourDotSixStreamSetup
+  AgentPlatformEuropeClaudeOpusFourDotSixStream,
+  AgentPlatformEuropeClaudeOpusFourDotSixStreamSetup
 );

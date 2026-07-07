@@ -1,5 +1,9 @@
 import type { DustStreamEndpointConstructor } from "@app/lib/llms/stream/dust_stream_endpoint";
 import { DustAgentPlatformEuropeClaudeHaikuFourDotFiveStream } from "@app/lib/llms/stream/endpoints/agent_platform_eu_claude_haiku_four_dot_five";
+import { DustAgentPlatformEuropeClaudeOpusFourDotEightStream } from "@app/lib/llms/stream/endpoints/agent_platform_eu_claude_opus_four_dot_eight";
+import { DustAgentPlatformEuropeClaudeOpusFourDotSevenStream } from "@app/lib/llms/stream/endpoints/agent_platform_eu_claude_opus_four_dot_seven";
+import { DustAgentPlatformEuropeClaudeOpusFourDotSixStream } from "@app/lib/llms/stream/endpoints/agent_platform_eu_claude_opus_four_dot_six";
+import { DustAgentPlatformEuropeClaudeSonnetFiveStream } from "@app/lib/llms/stream/endpoints/agent_platform_eu_claude_sonnet_five";
 import { DustAgentPlatformEuropeClaudeSonnetFourDotSixStream } from "@app/lib/llms/stream/endpoints/agent_platform_eu_claude_sonnet_four_dot_six";
 import { DustAgentPlatformEuropeGeminiThreeDotOneFlashLiteStream } from "@app/lib/llms/stream/endpoints/agent_platform_eu_gemini_3_1_flash_lite";
 import { DustAgentPlatformEuropeGeminiThreeDotFiveFlashStream } from "@app/lib/llms/stream/endpoints/agent_platform_eu_gemini_3_5_flash";
@@ -48,6 +52,14 @@ import type { StreamEndpointId } from "@app/lib/model_constructors/stream";
 export const DUST_STREAM_ENDPOINTS = {
   [DustAgentPlatformEuropeClaudeHaikuFourDotFiveStream.id]:
     DustAgentPlatformEuropeClaudeHaikuFourDotFiveStream,
+  [DustAgentPlatformEuropeClaudeOpusFourDotEightStream.id]:
+    DustAgentPlatformEuropeClaudeOpusFourDotEightStream,
+  [DustAgentPlatformEuropeClaudeOpusFourDotSevenStream.id]:
+    DustAgentPlatformEuropeClaudeOpusFourDotSevenStream,
+  [DustAgentPlatformEuropeClaudeOpusFourDotSixStream.id]:
+    DustAgentPlatformEuropeClaudeOpusFourDotSixStream,
+  [DustAgentPlatformEuropeClaudeSonnetFiveStream.id]:
+    DustAgentPlatformEuropeClaudeSonnetFiveStream,
   [DustAgentPlatformEuropeClaudeSonnetFourDotSixStream.id]:
     DustAgentPlatformEuropeClaudeSonnetFourDotSixStream,
   [DustAgentPlatformEuropeGeminiThreeDotFiveFlashStream.id]:

@@ -4,6 +4,10 @@
 // matching test file exporting its `setup`, forcing the test to be written.
 import type { StreamEndpointId } from "@app/lib/model_constructors/stream";
 import { AgentPlatformEuropeClaudeHaikuFourDotFiveStream } from "@app/lib/model_constructors/stream/endpoints/agent_platform_eu_claude_haiku_four_dot_five";
+import { AgentPlatformEuropeClaudeOpusFourDotEightStream } from "@app/lib/model_constructors/stream/endpoints/agent_platform_eu_claude_opus_four_dot_eight";
+import { AgentPlatformEuropeClaudeOpusFourDotSevenStream } from "@app/lib/model_constructors/stream/endpoints/agent_platform_eu_claude_opus_four_dot_seven";
+import { AgentPlatformEuropeClaudeOpusFourDotSixStream } from "@app/lib/model_constructors/stream/endpoints/agent_platform_eu_claude_opus_four_dot_six";
+import { AgentPlatformEuropeClaudeSonnetFiveStream } from "@app/lib/model_constructors/stream/endpoints/agent_platform_eu_claude_sonnet_five";
 import { AgentPlatformEuropeClaudeSonnetFourDotSixStream } from "@app/lib/model_constructors/stream/endpoints/agent_platform_eu_claude_sonnet_four_dot_six";
 import { AgentPlatformEuropeGeminiThreeDotOneFlashLiteStream } from "@app/lib/model_constructors/stream/endpoints/agent_platform_eu_gemini_3_1_flash_lite";
 import { AgentPlatformEuropeGeminiThreeDotFiveFlashStream } from "@app/lib/model_constructors/stream/endpoints/agent_platform_eu_gemini_3_5_flash";
@@ -42,6 +46,10 @@ import { OpenAIResponsesGlobalGptFiveDotTwoStream } from "@app/lib/model_constru
 import { OpenAIResponsesGlobalGptFiveMiniStream } from "@app/lib/model_constructors/stream/endpoints/openai_responses_global_gpt_five_mini";
 import { OpenAIResponsesGlobalGptFiveNanoStream } from "@app/lib/model_constructors/stream/endpoints/openai_responses_global_gpt_five_nano";
 import { AgentPlatformEuropeClaudeHaikuFourDotFiveStreamSetup } from "@app/lib/model_constructors/test/endpoints/agent_platform_eu_claude_haiku_four_dot_five.test";
+import { AgentPlatformEuropeClaudeOpusFourDotEightStreamSetup } from "@app/lib/model_constructors/test/endpoints/agent_platform_eu_claude_opus_four_dot_eight.test";
+import { AgentPlatformEuropeClaudeOpusFourDotSevenStreamSetup } from "@app/lib/model_constructors/test/endpoints/agent_platform_eu_claude_opus_four_dot_seven.test";
+import { AgentPlatformEuropeClaudeOpusFourDotSixStreamSetup } from "@app/lib/model_constructors/test/endpoints/agent_platform_eu_claude_opus_four_dot_six.test";
+import { AgentPlatformEuropeClaudeSonnetFiveStreamSetup } from "@app/lib/model_constructors/test/endpoints/agent_platform_eu_claude_sonnet_five.test";
 import { AgentPlatformEuropeClaudeSonnetFourDotSixStreamSetup } from "@app/lib/model_constructors/test/endpoints/agent_platform_eu_claude_sonnet_four_dot_six.test";
 import { AgentPlatformEuropeGeminiThreeDotOneFlashLiteStreamSetup } from "@app/lib/model_constructors/test/endpoints/agent_platform_eu_gemini_3_1_flash_lite.test";
 import { AgentPlatformEuropeGeminiThreeDotFiveFlashStreamSetup } from "@app/lib/model_constructors/test/endpoints/agent_platform_eu_gemini_3_5_flash.test";
@@ -84,6 +92,14 @@ import type { StreamSetup } from "@app/lib/model_constructors/test/setup";
 export const STREAM_ENDPOINT_SETUPS = {
   [AgentPlatformEuropeClaudeHaikuFourDotFiveStream.id]:
     AgentPlatformEuropeClaudeHaikuFourDotFiveStreamSetup,
+  [AgentPlatformEuropeClaudeOpusFourDotEightStream.id]:
+    AgentPlatformEuropeClaudeOpusFourDotEightStreamSetup,
+  [AgentPlatformEuropeClaudeOpusFourDotSevenStream.id]:
+    AgentPlatformEuropeClaudeOpusFourDotSevenStreamSetup,
+  [AgentPlatformEuropeClaudeOpusFourDotSixStream.id]:
+    AgentPlatformEuropeClaudeOpusFourDotSixStreamSetup,
+  [AgentPlatformEuropeClaudeSonnetFiveStream.id]:
+    AgentPlatformEuropeClaudeSonnetFiveStreamSetup,
   [AgentPlatformEuropeClaudeSonnetFourDotSixStream.id]:
     AgentPlatformEuropeClaudeSonnetFourDotSixStreamSetup,
   [AgentPlatformEuropeGeminiThreeDotFiveFlashStream.id]:

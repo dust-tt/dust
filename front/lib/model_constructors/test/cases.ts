@@ -116,7 +116,8 @@ const REASONING_CONVERSATION: BaseConversation = {
       role: "system",
       type: "text",
       content: {
-        value: "You must reason as much as you can before answering logically.",
+        value:
+          "You must reason as much as you can before answering logically. YOU MUST REASON STEP BY STEP BEFORE ANSWERING !!!",
       },
     },
   ],
@@ -125,8 +126,8 @@ const REASONING_CONVERSATION: BaseConversation = {
       role: "user",
       type: "text",
       content: {
-        value:
-          "I am 4 times the age of my son. In 20 years, I will be twice his age. How old are we?",
+        // Large novel arithmetic (can't be memorized, must carry digits):
+        value: "Compute 4871 × 3926 and show the result.",
       },
     },
   ],
