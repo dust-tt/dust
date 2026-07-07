@@ -1547,8 +1547,22 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         ...autoEnabledSkills.map((s) => s.globalSId ?? s.sId),
       ])
     );
+
+    // Equipped skills are the enable-able candidates shown to the model. Exclude anything
+    // already active as system prompt content, then add default/discoverable candidates
+    // without duplicating agent-provided ones.
+    const agentEquippedSkills = allAgentSkills.filter(
+      (s) =>
+        !s.isSystemSkill &&
+        (!s.globalSId || !autoEnabledSkillIds.has(s.globalSId))
+    );
+    const agentEquippedGlobalSkillIds = new Set(
+      removeNulls(agentEquippedSkills.map((s) => s.globalSId))
+    );
     const autoEquippedRefs = skillRefsByAutoEnabledOrEquipped.equipped.filter(
-      (ref) => !systemPromptSkillIds.has(ref.globalSkillId)
+      (ref) =>
+        !systemPromptSkillIds.has(ref.globalSkillId) &&
+        !agentEquippedGlobalSkillIds.has(ref.globalSkillId)
     );
     const autoEquippedSkills = autoEquippedRefs.length
       ? await this.fetchBySkillReferences(auth, autoEquippedRefs, {
@@ -1574,15 +1588,6 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     const enabledSkills = conversationEnabledSkills
       .filter((s) => !s.globalSId || !autoEnabledSkillIds.has(s.globalSId))
       .sort(sortByName);
-
-    // Equipped skills are the enable-able candidates shown to the model. Exclude anything
-    // already active as system prompt content, then add default/discoverable candidates
-    // without duplicating agent-provided ones.
-    const agentEquippedSkills = allAgentSkills.filter(
-      (s) =>
-        !s.isSystemSkill &&
-        (!s.globalSId || !autoEnabledSkillIds.has(s.globalSId))
-    );
 
     const agentEquippedSkillIds = new Set(
       [...agentEquippedSkills, ...autoEquippedSkills].map((s) => s.sId)
