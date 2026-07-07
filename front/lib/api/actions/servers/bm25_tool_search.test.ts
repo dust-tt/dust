@@ -3,6 +3,7 @@ import {
   type LabeledQuery,
   SERVERS,
 } from "@app/lib/api/actions/servers/bm25_tool_search_utils.test";
+import { EDIT_INTERACTIVE_CONTENT_FILE_TOOL_NAME } from "@app/lib/api/actions/servers/interactive_content/metadata";
 import { describe, expect, it } from "vitest";
 
 const QUERIES: LabeledQuery[] = [
@@ -1674,11 +1675,12 @@ const QUERIES: LabeledQuery[] = [
 
 export const fullIndexWithAllServers = buildIndex(buildDocs(SERVERS));
 
-// File-system conversations drop the deprecated file-id edit and retrieve tools from the
-// interactive_content server: updating a Frame goes through files.edit on the source plus
-// publish, and reading it through files.cat. These queries pin the routing a model relies on
-// there — an edit intent must surface files.edit near the top instead of steering to
-// create_interactive_content_file (which regenerates the whole Frame and burns tokens).
+// File-system conversations drop the deprecated file-id edit tool from the interactive_content
+// server: updating a Frame goes through files.edit on the source plus publish (retrieve stays,
+// as a fallback for Frames whose mount path hasn't been resolved). These queries pin the
+// routing a model relies on there — an edit intent must surface files.edit near the top instead
+// of steering to create_interactive_content_file (which regenerates the whole Frame and burns
+// tokens).
 const FRAME_EDIT_QUERIES: LabeledQuery[] = [
   { query: "edit the frame", expected: "files.edit", maxRank: 2 },
   { query: "edit the code of my frame", expected: "files.edit", maxRank: 2 },
@@ -1701,9 +1703,7 @@ const fileSystemConversationIndex = buildIndex(
         ? {
             ...server,
             tools: server.tools.filter(
-              (tool) =>
-                tool.name !== "edit_interactive_content_file" &&
-                tool.name !== "retrieve_interactive_content_file"
+              (tool) => tool.name !== EDIT_INTERACTIVE_CONTENT_FILE_TOOL_NAME
             ),
           }
         : server

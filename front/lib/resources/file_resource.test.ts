@@ -21,8 +21,17 @@ import {
   isUnverifiableFrameFileRefsShareError,
   sandboxFunctionContentType,
 } from "@app/types/files";
+import { Ok } from "@app/types/shared/result";
 import { Readable } from "stream";
-import { assert, beforeEach, describe, expect, it, vi } from "vitest";
+import {
+  afterEach,
+  assert,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+} from "vitest";
 
 // Mock copyContent from utils/files.ts
 vi.mock("@app/lib/utils/files", () => ({
@@ -1137,6 +1146,118 @@ describe("FileResource", () => {
 
       // Only canonical write, no mount path write.
       expect(allUploadCalls).toHaveLength(1);
+    });
+  });
+
+  describe("revert", () => {
+    // revert() reads versions and refreshes the mount entirely through the storage object
+    // returned by getPrivateUploadBucket(), so stubbing that call covers both the version
+    // listing (getSortedFileVersions) and the mount refresh (copyFile) without reaching into
+    // FileResource's private methods. Restore the default implementation afterwards: other
+    // describe blocks in this file rely on it and only clear call history, not implementations.
+    const defaultUploadBucketImpl = vi
+      .mocked(getPrivateUploadBucket)
+      .getMockImplementation();
+
+    afterEach(() => {
+      vi.mocked(getPrivateUploadBucket).mockImplementation(
+        defaultUploadBucketImpl!
+      );
+    });
+
+    function mockVersion() {
+      return {
+        copy: vi.fn().mockResolvedValue(undefined),
+        delete: vi.fn().mockResolvedValue(undefined),
+      };
+    }
+
+    function mockStorageForRevert({
+      copyFile,
+    }: {
+      copyFile: ReturnType<typeof vi.fn>;
+    }) {
+      return {
+        file: vi.fn(() => ({ delete: vi.fn().mockResolvedValue(undefined) })),
+        copyFile,
+        getSortedFileVersions: vi
+          .fn()
+          .mockResolvedValue(new Ok([mockVersion(), mockVersion()])),
+      } as unknown as ReturnType<typeof getPrivateUploadBucket>;
+    }
+
+    it("refreshes the mount copy from the restored canonical version", async () => {
+      const { authenticator: auth, workspace } = await createResourceTest({
+        role: "admin",
+      });
+
+      const frameFile = await FileFactory.create(auth, null, {
+        contentType: frameContentType,
+        fileName: "frame.html",
+        fileSize: 100,
+        status: "ready",
+        useCase: "conversation",
+        useCaseMetadata: { conversationId: "conv-revert" },
+      });
+
+      const row = await FileModel.findOne({
+        where: { id: frameFile.id, workspaceId: workspace.id },
+      });
+      assert(row?.mountFilePath, "Mount path should be set");
+
+      const copyFile = vi.fn().mockResolvedValue(undefined);
+      vi.mocked(getPrivateUploadBucket).mockImplementation(() =>
+        mockStorageForRevert({ copyFile })
+      );
+
+      const result = await frameFile.revert(auth, {
+        revertedByAgentConfigurationId: "agent-1",
+      });
+
+      expect(result.isOk()).toBe(true);
+      // The mount copy must be refreshed to the restored canonical version, so reads through
+      // the mount and the next publish see the reverted content rather than the stale mount.
+      expect(copyFile).toHaveBeenCalledWith(
+        expect.any(String),
+        row.mountFilePath
+      );
+    });
+
+    it("still succeeds when refreshing the mount copy fails", async () => {
+      const { authenticator: auth } = await createResourceTest({
+        role: "admin",
+      });
+
+      const frameFile = await FileFactory.create(auth, null, {
+        contentType: frameContentType,
+        fileName: "frame.html",
+        fileSize: 100,
+        status: "ready",
+        useCase: "conversation",
+        useCaseMetadata: { conversationId: "conv-revert-fail" },
+      });
+
+      // The restore copy succeeds (the version object's own .copy() call), but the mount
+      // refresh's copyFile() call fails. Best-effort: the revert must not fail because of it,
+      // since the canonical restore already succeeded by that point. setUseCaseMetadata
+      // (called earlier in revert(), unrelated to this fix) also refreshes the mount as a
+      // side effect, so only the call after the restore should fail.
+      let copyFileCallCount = 0;
+      const copyFile = vi.fn().mockImplementation(() => {
+        copyFileCallCount += 1;
+        return copyFileCallCount === 1
+          ? Promise.resolve(undefined)
+          : Promise.reject(new Error("simulated failure"));
+      });
+      vi.mocked(getPrivateUploadBucket).mockImplementation(() =>
+        mockStorageForRevert({ copyFile })
+      );
+
+      const result = await frameFile.revert(auth, {
+        revertedByAgentConfigurationId: "agent-1",
+      });
+
+      expect(result.isOk()).toBe(true);
     });
   });
 

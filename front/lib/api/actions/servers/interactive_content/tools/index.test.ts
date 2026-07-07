@@ -13,12 +13,15 @@ function toolContextWithUseFileSystem(
   useFileSystem: boolean | undefined
 ): ToolContextType {
   return {
-    runContext: { conversation: { metadata: { useFileSystem } } },
+    runContext: {
+      contextType: "agent_loop",
+      conversation: { metadata: { useFileSystem } },
+    },
   } as unknown as ToolContextType;
 }
 
 describe("createInteractiveContentTools", () => {
-  it("drops the file-id edit and retrieve tools when the conversation has the file system", async () => {
+  it("drops the file-id edit tool but keeps retrieve when the conversation has the file system", async () => {
     const { authenticator: auth } = await createResourceTest({});
 
     const tools = await createInteractiveContentTools(
@@ -28,7 +31,7 @@ describe("createInteractiveContentTools", () => {
     const names = tools.map((tool) => tool.name);
 
     expect(names).not.toContain(EDIT_INTERACTIVE_CONTENT_FILE_TOOL_NAME);
-    expect(names).not.toContain(RETRIEVE_INTERACTIVE_CONTENT_FILE_TOOL_NAME);
+    expect(names).toContain(RETRIEVE_INTERACTIVE_CONTENT_FILE_TOOL_NAME);
     expect(names).toContain(PUBLISH_INTERACTIVE_CONTENT_FILE_TOOL_NAME);
     expect(names).toContain(CREATE_INTERACTIVE_CONTENT_FILE_TOOL_NAME);
   });
