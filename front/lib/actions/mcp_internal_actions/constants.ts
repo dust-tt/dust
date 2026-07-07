@@ -3,7 +3,10 @@ import {
   type MCPToolStakeLevelType,
   RUN_AGENT_CALL_TOOL_TIMEOUT_MS,
 } from "@app/lib/actions/constants";
-import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_definition";
+import type {
+  InternalMCPToolType,
+  ServerMetadata,
+} from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { AGENT_MEMORY_SERVER } from "@app/lib/api/actions/servers/agent_memory/metadata";
 import {
   AGENT_ROUTER_SERVER,
@@ -1533,6 +1536,26 @@ export function getInternalMCPServerMetadata<
   const server = INTERNAL_MCP_SERVERS[name];
 
   return server.metadata;
+}
+
+/**
+ * Whether the tool may create its own LLM runs during execution and attach
+ * them to the action's stepContext.toolRunIds (e.g. image generation). Used by
+ * the tool activity to decide whether to refetch the action after execution —
+ * kept behind this flag so the common case pays no extra query.
+ */
+export function internalToolRecordsToolRuns(
+  serverName: string,
+  toolName: string
+): boolean {
+  if (!isInternalMCPServerName(serverName)) {
+    return false;
+  }
+  const metadata = getInternalMCPServerMetadata(serverName);
+  const tools: InternalMCPToolType[] = metadata.tools;
+  return tools.some(
+    (tool) => tool.name === toolName && tool.recordsToolRuns === true
+  );
 }
 
 const SENSITIVITY_LABEL_PROVIDER_BY_SERVER: Partial<

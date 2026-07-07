@@ -57,6 +57,11 @@ export interface ToolDefinition<
   displayLabels: ToolDisplayLabels;
   toolCostCategory: ToolCostCategory;
   freeUsage: boolean;
+  // When true, the tool may create its own LLM runs during execution and
+  // attach them to the action's stepContext.toolRunIds (see
+  // AgentMCPActionResource.appendToolRunIds). The tool activity only refetches
+  // the action to flow those runs back to the agent loop when this is set.
+  recordsToolRuns?: boolean;
   handler: (
     params: z.infer<z.ZodObject<TSchema>>,
     extra: ToolHandlerExtra
@@ -151,6 +156,7 @@ export type InternalMCPToolType<TName extends string = string> = Omit<
   displayLabels: ToolDisplayLabels;
   toolCostCategory: ToolCostCategory;
   freeUsage: boolean;
+  recordsToolRuns?: boolean;
 };
 
 export type ServerMetadata<

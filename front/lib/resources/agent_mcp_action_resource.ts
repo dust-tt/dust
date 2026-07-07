@@ -48,6 +48,7 @@ import { BaseResource } from "@app/lib/resources/base_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
+import { frontSequelize } from "@app/lib/resources/storage";
 import { FileModel } from "@app/lib/resources/storage/models/files";
 import { UserModel } from "@app/lib/resources/storage/models/user";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
@@ -83,7 +84,7 @@ import type {
   NonAttribute,
   Transaction,
 } from "sequelize";
-import { Op } from "sequelize";
+import { literal, Op } from "sequelize";
 import { AgentStepContentModel } from "../models/agent/agent_step_content";
 
 // Batch size for fetching output items to avoid loading too many large rows at once.
@@ -1366,12 +1367,65 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
     });
   }
 
-  async updateStepContext(
-    stepContext: StepContext
-  ): Promise<[affectedCount: number]> {
-    return this.update({
-      stepContext,
-    });
+  async updateStepContext(stepContext: StepContext): Promise<void> {
+    // `toolRunIds` is append-only and owned by the DB (see appendToolRunIds).
+    // Callers spread a possibly stale in-memory stepContext, so the stored
+    // value must win here — otherwise runs recorded mid-execution by the tool
+    // would be clobbered and never billed.
+    const { toolRunIds: _staleToolRunIds, ...sanitizedStepContext } =
+      stepContext;
+    const escapedStepContext = frontSequelize.escape(
+      JSON.stringify(sanitizedStepContext)
+    );
+
+    const [, affectedRows] = await AgentMCPActionModel.update(
+      {
+        stepContext: literal(
+          `CASE WHEN "stepContext" ? 'toolRunIds' ` +
+            `THEN jsonb_set(${escapedStepContext}::jsonb, '{toolRunIds}', "stepContext"->'toolRunIds') ` +
+            `ELSE ${escapedStepContext}::jsonb END`
+        ),
+      },
+      {
+        where: { id: this.id, workspaceId: this.workspaceId },
+        returning: true,
+      }
+    );
+
+    // Sync the in-memory instance to avoid stale data (mirrors BaseResource.update).
+    if (affectedRows[0]) {
+      Object.assign(this, affectedRows[0].get());
+    }
+  }
+
+  /**
+   * Atomically append tool-created run IDs to `stepContext.toolRunIds`.
+   *
+   * JSONB-level append so concurrent stepContext writers (the tool recording a
+   * run mid-execution vs. the agent loop machinery persisting resumeState)
+   * cannot lose entries. No dedup needed: each entry is a freshly minted trace
+   * ID (see recordImageGenerationRunUsage) — a Temporal retry mints a new run.
+   */
+  static async appendToolRunIds(
+    auth: Authenticator,
+    { actionId, runIds }: { actionId: ModelId; runIds: string[] }
+  ): Promise<void> {
+    if (runIds.length === 0) {
+      return;
+    }
+    const escapedRunIds = frontSequelize.escape(JSON.stringify(runIds));
+
+    await AgentMCPActionModel.update(
+      {
+        stepContext: literal(
+          `jsonb_set("stepContext", '{toolRunIds}', ` +
+            `COALESCE("stepContext"->'toolRunIds', '[]'::jsonb) || ${escapedRunIds}::jsonb)`
+        ),
+      },
+      {
+        where: { id: actionId, workspaceId: auth.getNonNullableWorkspace().id },
+      }
+    );
   }
 
   static async deleteByAgentMessageId(

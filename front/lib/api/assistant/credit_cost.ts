@@ -109,10 +109,27 @@ export async function computeAndStoreAgentMessageCredits(
       dustRunIds,
       runKey: computeRunKey(dustRunIds),
     });
+
+    // Tool-created runs (e.g. image generation) reach the persisted runIds
+    // only through the next model-turn event — on break paths (early exit,
+    // pause) there is none, so merge this execution's dustRunIds into the
+    // column to keep the message-level total (and any later consumer of
+    // agentMessage.runIds) complete. The Metronome events bill from
+    // dustRunIds directly; without this merge the displayed costCredits
+    // could miss runs that were billed.
+    await ConversationResource.mergeAgentMessageRunIds(auth, {
+      agentMessageModelId,
+      runIds: dustRunIds,
+    });
   }
 
   const [runUsages, actions] = await Promise.all([
-    fetchRunUsagesForAgentMessage(auth, runIds),
+    // Union with dustRunIds so the recompute is complete even if a concurrent
+    // writer raced the merge above (fetchRunUsagesForAgentMessage dedupes).
+    fetchRunUsagesForAgentMessage(auth, [
+      ...(runIds ?? []),
+      ...(dustRunIds ?? []),
+    ]),
     AgentMCPActionResource.listByAgentMessageIds(auth, [agentMessageModelId]),
   ]);
 

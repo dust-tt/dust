@@ -756,6 +756,46 @@ export class ConversationResource extends BaseResource<ConversationModel> {
   }
 
   /**
+   * Merge run IDs into the agent message's persisted `runIds`, atomically and
+   * deduplicated at the SQL level (same idiom as the event-driven merge in
+   * temporal/agent_loop/activities/common.ts). Used at finalize to restore the
+   * "runIds accumulates every run of the message" invariant for tool-created
+   * runs (e.g. image generation) that never flowed through a model-turn event
+   * on break paths (early exit, pause).
+   */
+  static async mergeAgentMessageRunIds(
+    auth: Authenticator,
+    {
+      agentMessageModelId,
+      runIds,
+    }: { agentMessageModelId: ModelId; runIds: string[] }
+  ): Promise<void> {
+    if (runIds.length === 0) {
+      return;
+    }
+    const escapedRunIds = runIds
+      .map((runId) => frontSequelize.escape(runId))
+      .join(",");
+
+    await AgentMessageModel.update(
+      {
+        runIds: fn(
+          "ARRAY",
+          literal(
+            `SELECT DISTINCT unnest(COALESCE("runIds", '{}') || ARRAY[${escapedRunIds}]::text[])`
+          )
+        ),
+      },
+      {
+        where: {
+          id: agentMessageModelId,
+          workspaceId: auth.getNonNullableWorkspace().id,
+        },
+      }
+    );
+  }
+
+  /**
    * Recursively sums the `costCredits` of every sub-agent spawned by a single
    * origin agent message (one recursive query, `maxDepth`-bounded). Only counts
    * sub-agents whose triggering user message is a `run_agent` agentic origin
@@ -3141,7 +3181,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
 
   // Return the latest run from an agent message. We accept all statuses as they all have valid
   // runIds that represent the actual latest run.
-  async getLatestAgentMessageRun(
+  async getLatestAgentMessageRuns(
     auth: Authenticator,
     {
       maxRank,
@@ -3150,7 +3190,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       maxRank?: number;
       transaction?: Transaction;
     } = {}
-  ): Promise<{ rank: number; run: RunResource } | null> {
+  ): Promise<{ rank: number; runs: RunResource[] } | null> {
     const owner = auth.getNonNullableWorkspace();
     const where: WhereOptions<MessageModel> = {
       conversationId: this.id,
@@ -3178,8 +3218,8 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       return null;
     }
 
-    // The runIds array ordering is not guaranteed to be chronological. Fetch all runs and pick
-    // the most recently created one.
+    // The runIds array ordering is not guaranteed to be chronological. Fetch all runs and sort
+    // by creation date, most recent first.
     const runs = await RunResource.listByDustRunIds(auth, {
       dustRunIds: message.agentMessage.runIds,
     });
@@ -3190,8 +3230,8 @@ export class ConversationResource extends BaseResource<ConversationModel> {
 
     return {
       rank: message.rank,
-      run: runs.reduce((latest, r) =>
-        r.createdAt > latest.createdAt ? r : latest
+      runs: [...runs].sort(
+        (a, b) => b.createdAt.getTime() - a.createdAt.getTime()
       ),
     };
   }

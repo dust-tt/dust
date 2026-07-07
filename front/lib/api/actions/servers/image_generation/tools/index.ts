@@ -66,7 +66,6 @@ export function createImageGenerationTools(
 
       const rateLimitResult = await checkImageGenerationRateLimit(
         auth,
-        workspace,
         providerId
       );
       if (rateLimitResult.isErr()) {

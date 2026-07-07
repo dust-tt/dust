@@ -22,6 +22,7 @@ import { ConversationForkResource } from "@app/lib/resources/conversation_fork_r
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
+import { RunResource } from "@app/lib/resources/run_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
@@ -101,22 +102,31 @@ async function getForkCompactionModel(
     transaction?: Transaction;
   }
 ): Promise<SupportedModel | null> {
-  const sourceMessageRun = await conversation.getLatestAgentMessageRun(auth, {
+  const sourceMessageRuns = await conversation.getLatestAgentMessageRuns(auth, {
     maxRank: sourceMessageRank,
     transaction,
   });
-  const sourceUsage =
-    sourceMessageRun?.rank === sourceMessageRank
-      ? (await sourceMessageRun.run.listRunUsages(auth))[0]
-      : null;
 
-  // Run usages may belong to image models (e.g. image generation runs), which
-  // cannot be used for compaction — fall back to the small model in that case.
-  if (sourceUsage && isModelId(sourceUsage.modelId)) {
-    return {
-      providerId: sourceUsage.providerId,
-      modelId: sourceUsage.modelId,
-    };
+  // Pick the most recent run backed by a text model: the message's runs may
+  // include tool-created image runs (e.g. image generation), which cannot be
+  // used for compaction — fall back to the small model when there is none.
+  if (sourceMessageRuns?.rank === sourceMessageRank) {
+    const usages = await RunResource.listRunUsagesForRuns(auth, {
+      runs: sourceMessageRuns.runs,
+    });
+
+    // O(runs × usages) acceptable: both are bounded by the message's step
+    // count (a handful of entries). Runs are sorted most recent first.
+    for (const run of sourceMessageRuns.runs) {
+      for (const usage of usages) {
+        if (usage.runModelId === run.id && isModelId(usage.modelId)) {
+          return {
+            providerId: usage.providerId,
+            modelId: usage.modelId,
+          };
+        }
+      }
+    }
   }
 
   const fallbackModel = getSmallWhitelistedModel(auth);

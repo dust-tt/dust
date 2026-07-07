@@ -1,4 +1,5 @@
 import { isAgentLoopToolNotificationEvent } from "@app/lib/actions/mcp";
+import { internalToolRecordsToolRuns } from "@app/lib/actions/mcp_internal_actions/constants";
 import { isSandboxChildActionInfo } from "@app/lib/actions/types";
 import { isLightClientSideMCPToolConfiguration } from "@app/lib/actions/types/guards";
 import {
@@ -188,15 +189,24 @@ export async function runToolActivity(
     { asType: "tool" }
   );
 
-  // Tools may create their own LLM runs (e.g. image generation) and attach
-  // them to the action's stepContext during execution. Flow them back so the
-  // workflow accumulates them into the agent message runIds for usage
-  // tracking.
-  const refreshedAction = await AgentMCPActionResource.fetchByModelIdWithAuth(
-    auth,
-    actionId
-  );
-  const toolRunIds = refreshedAction?.stepContext.toolRunIds ?? [];
+  // Tools flagged with `recordsToolRuns` (e.g. image generation) create their
+  // own LLM runs during execution and attach them to the action's stepContext.
+  // Flow them back so the workflow accumulates them into the agent message
+  // runIds for usage tracking. Gated on the metadata flag so the common case
+  // pays no extra action fetch.
+  let toolRunIds: string[] = [];
+  if (
+    internalToolRecordsToolRuns(
+      action.toolConfiguration.mcpServerName,
+      action.toolConfiguration.originalName
+    )
+  ) {
+    const refreshedAction = await AgentMCPActionResource.fetchByModelIdWithAuth(
+      auth,
+      actionId
+    );
+    toolRunIds = refreshedAction?.stepContext.toolRunIds ?? [];
+  }
 
   return toolRunIds.length > 0 ? { ...result, toolRunIds } : result;
 }

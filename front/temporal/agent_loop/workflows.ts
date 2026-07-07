@@ -530,6 +530,10 @@ export async function runSandboxChildToolWorkflow({
   actionModelId: number;
   step: number;
 }) {
+  // TODO(2026-07-07 IMG-BILLING): toolRunIds are intentionally dropped here —
+  // sandbox-child actions have no runIds accumulator to flow them into. If a
+  // run-recording tool (e.g. image generation) becomes reachable as a sandbox
+  // child, its runs must be merged into the parent agent message's runIds.
   const { deferredEvents } = await runToolActivity(authType, {
     actionId: actionModelId,
     runAgentArgs: agentLoopArgs,

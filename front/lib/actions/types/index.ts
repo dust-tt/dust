@@ -122,6 +122,10 @@ export type StepContext = {
   // Dust run IDs of LLM runs made by the tool itself (e.g. image generation).
   // Flowed back to the agent loop so the runs are billed like any other LLM
   // usage of the agent message.
+  // /!\ Append-only and owned by the DB: written exclusively through
+  // AgentMCPActionResource.appendToolRunIds (atomic JSONB append), and
+  // preserved by updateStepContext so stale in-memory spreads cannot clobber
+  // runs recorded mid-execution.
   toolRunIds?: string[];
 };
 

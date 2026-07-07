@@ -18,6 +18,7 @@ import logger from "@app/logger/logger";
 import { getRunExecutionsDeletionCutoffDate } from "@app/temporal/hard_delete/utils";
 import type { ImageModelIdType } from "@app/types/assistant/models/models";
 import { isImageModelId, isModelId } from "@app/types/assistant/models/models";
+import { isModelProviderId } from "@app/types/assistant/models/providers";
 import type {
   ModelIdType,
   ModelProviderIdType,
@@ -225,14 +226,17 @@ export class RunResource extends BaseResource<RunModel> {
     });
 
     return usages.flatMap((usage) => {
-      const { modelId } = usage;
-      if (!isModelId(modelId) && !isImageModelId(modelId)) {
+      const { modelId, providerId } = usage;
+      if (
+        (!isModelId(modelId) && !isImageModelId(modelId)) ||
+        !isModelProviderId(providerId)
+      ) {
         // Write paths validate model IDs (see recordTokenUsage), so this only
-        // happens for historical rows whose model has since been removed from
-        // the configs (e.g. a deleted custom model).
+        // happens for historical rows whose model or provider has since been
+        // removed from the configs (e.g. a deleted custom model).
         logger.warn(
-          { modelId, runId: usage.runId },
-          "Run usage references an unknown model ID, skipping"
+          { modelId, providerId, runId: usage.runId },
+          "Run usage references an unknown model or provider ID, skipping"
         );
         return [];
       }
@@ -244,7 +248,7 @@ export class RunResource extends BaseResource<RunModel> {
           completionTokens: usage.completionTokens,
           modelId,
           promptTokens: usage.promptTokens,
-          providerId: usage.providerId as ModelProviderIdType,
+          providerId,
           cachedTokens: usage.cachedTokens,
           cacheCreationTokens: usage.cacheCreationTokens,
           costMicroUsd: usage.costMicroUsd,

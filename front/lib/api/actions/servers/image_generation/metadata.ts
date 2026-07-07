@@ -82,6 +82,9 @@ export const IMAGE_GENERATION_TOOLS_METADATA = createToolsRecord({
     // as LLM usage (see recordImageGenerationRunUsage in helpers.ts).
     toolCostCategory: "basic",
     freeUsage: false,
+    // The tool records the image model's run and attaches it to the action's
+    // stepContext.toolRunIds — the tool activity flows it back for billing.
+    recordsToolRuns: true,
   },
 });
 

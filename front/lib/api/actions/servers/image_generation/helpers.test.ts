@@ -1,3 +1,7 @@
+import {
+  checkImageGenerationRateLimit,
+  recordImageGenerationRunUsage,
+} from "@app/lib/api/actions/servers/image_generation/helpers";
 import { Authenticator } from "@app/lib/auth";
 import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import { RunResource } from "@app/lib/resources/run_resource";
@@ -14,14 +18,12 @@ const { mockRateLimiter } = vi.hoisted(() => {
   };
 });
 
-vi.mock("@app/lib/utils/rate_limiter", () => ({
+// Partial mock: other exports of the module (e.g. getTimeframeSecondsFromLiteral)
+// are used by transitive importers and must keep their real implementation.
+vi.mock(import("@app/lib/utils/rate_limiter"), async (importOriginal) => ({
+  ...(await importOriginal()),
   rateLimiter: mockRateLimiter,
 }));
-
-import {
-  checkImageGenerationRateLimit,
-  recordImageGenerationRunUsage,
-} from "@app/lib/api/actions/servers/image_generation/helpers";
 
 describe("checkImageGenerationRateLimit", () => {
   beforeEach(() => {
@@ -33,11 +35,7 @@ describe("checkImageGenerationRateLimit", () => {
     const workspace = await WorkspaceFactory.creditPriced();
     const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
 
-    const result = await checkImageGenerationRateLimit(
-      auth,
-      workspace,
-      "openai"
-    );
+    const result = await checkImageGenerationRateLimit(auth, "openai");
 
     expect(result.isOk()).toBe(true);
     expect(mockRateLimiter).not.toHaveBeenCalled();
@@ -49,11 +47,7 @@ describe("checkImageGenerationRateLimit", () => {
     const { maxImagesPerWeek } =
       auth.getNonNullablePlan().limits.capabilities.images;
 
-    const result = await checkImageGenerationRateLimit(
-      auth,
-      workspace,
-      "openai"
-    );
+    const result = await checkImageGenerationRateLimit(auth, "openai");
 
     expect(result.isOk()).toBe(true);
     expect(mockRateLimiter).toHaveBeenCalledWith(
@@ -70,11 +64,7 @@ describe("checkImageGenerationRateLimit", () => {
     const workspace = await WorkspaceFactory.basic();
     const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
 
-    const result = await checkImageGenerationRateLimit(
-      auth,
-      workspace,
-      "openai"
-    );
+    const result = await checkImageGenerationRateLimit(auth, "openai");
 
     expect(result.isErr()).toBe(true);
     if (result.isErr()) {

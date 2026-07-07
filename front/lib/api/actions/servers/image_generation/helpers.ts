@@ -32,7 +32,6 @@ import { isCreditPricedPlan } from "@app/types/plan";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
-import type { WorkspaceType } from "@app/types/user";
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import assert from "assert";
 import { randomUUID } from "crypto";
@@ -155,7 +154,6 @@ export async function sendImageProgressNotification(
 
 export async function checkImageGenerationRateLimit(
   auth: Authenticator,
-  workspace: WorkspaceType,
   providerId: ModelProviderIdType
 ): Promise<Ok<void> | Err<MCPError>> {
   const plan = auth.getNonNullablePlan();
@@ -169,7 +167,7 @@ export async function checkImageGenerationRateLimit(
   const { maxImagesPerWeek } = plan.limits.capabilities.images;
 
   const remaining = await rateLimiter({
-    key: `${IMAGE_GENERATION_RATE_LIMITER_KEY}_${workspace.sId}`,
+    key: `${IMAGE_GENERATION_RATE_LIMITER_KEY}_${auth.getNonNullableWorkspace().sId}`,
     maxPerTimeframe: maxImagesPerWeek,
     timeframeSeconds: IMAGE_GENERATION_RATE_LIMITER_TIMEFRAME_SECONDS,
     logger,
@@ -244,16 +242,10 @@ export async function recordImageGenerationRunUsage(
   ]);
 
   if (actionId !== null) {
-    const action = await AgentMCPActionResource.fetchByModelIdWithAuth(
-      auth,
-      actionId
-    );
-    if (action) {
-      await action.updateStepContext({
-        ...action.stepContext,
-        toolRunIds: [...(action.stepContext.toolRunIds ?? []), dustRunId],
-      });
-    }
+    await AgentMCPActionResource.appendToolRunIds(auth, {
+      actionId,
+      runIds: [dustRunId],
+    });
   }
 
   return dustRunId;

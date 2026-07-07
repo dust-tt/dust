@@ -824,3 +824,75 @@ describe("warmGcsContentCache", () => {
     ).rejects.toThrow("redis down");
   });
 });
+
+describe("stepContext toolRunIds", () => {
+  async function setupAction() {
+    const { workspace, authenticator: auth } = await createResourceTest({});
+    const conversation = await ConversationFactory.create(auth, {
+      agentConfigurationId: "test-agent",
+      messagesCreatedAt: [],
+      visibility: "unlisted",
+    });
+    const { action } = await AgentMCPActionFactory.createWithAgentMessage(
+      auth,
+      { workspace, conversation }
+    );
+    return { auth, action };
+  }
+
+  it("appends across calls, preserving order", async () => {
+    const { auth, action } = await setupAction();
+
+    await AgentMCPActionResource.appendToolRunIds(auth, {
+      actionId: action.id,
+      runIds: ["llm_trace_run_1"],
+    });
+    await AgentMCPActionResource.appendToolRunIds(auth, {
+      actionId: action.id,
+      runIds: ["llm_trace_run_2"],
+    });
+
+    const refreshed = await AgentMCPActionResource.fetchByModelIdWithAuth(
+      auth,
+      action.id
+    );
+    assert(refreshed, "Action not found");
+    expect(refreshed.stepContext.toolRunIds).toEqual([
+      "llm_trace_run_1",
+      "llm_trace_run_2",
+    ]);
+  });
+
+  it("survives updateStepContext called with a stale stepContext", async () => {
+    const { auth, action } = await setupAction();
+
+    // Stale in-memory copy, as held by the tool activity machinery while the
+    // tool executes.
+    const staleStepContext = { ...action.stepContext };
+
+    // The tool records a run mid-execution.
+    await AgentMCPActionResource.appendToolRunIds(auth, {
+      actionId: action.id,
+      runIds: ["llm_trace_run_1"],
+    });
+
+    // A later write spreading the stale copy (e.g. exit_events persisting
+    // resumeState) must not clobber the appended run IDs.
+    await action.updateStepContext({
+      ...staleStepContext,
+      resumeState: { type: "test" },
+    });
+
+    const refreshed = await AgentMCPActionResource.fetchByModelIdWithAuth(
+      auth,
+      action.id
+    );
+    assert(refreshed, "Action not found");
+    expect(refreshed.stepContext.toolRunIds).toEqual(["llm_trace_run_1"]);
+    expect(refreshed.stepContext.resumeState).toEqual({ type: "test" });
+    // The rest of the stale write still lands.
+    expect(refreshed.stepContext.retrievalTopK).toBe(
+      staleStepContext.retrievalTopK
+    );
+  });
+});
