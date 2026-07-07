@@ -1,6 +1,5 @@
 import type {
   MCPErrorEvent,
-  MCPParamsEvent,
   MCPSuccessEvent,
   ToolNotificationEvent,
 } from "@app/lib/actions/mcp";
@@ -64,7 +63,6 @@ export async function* runToolWithStreaming(
 ): AsyncGenerator<
   | MCPApproveExecutionEvent
   | MCPErrorEvent
-  | MCPParamsEvent
   | MCPSuccessEvent
   | ToolNotificationEvent
   | ToolFileAuthRequiredEvent
@@ -128,8 +126,6 @@ export async function* runToolWithStreaming(
     const endDate = performance.now();
     yield await handleMCPActionError(auth, {
       action,
-      agentConfiguration,
-      agentMessage,
       status,
       errorContent: toolCallResult.content,
       executionDurationMs: endDate - startDate,
@@ -178,16 +174,9 @@ export async function* runToolWithStreaming(
   yield {
     type: "tool_success",
     created: Date.now(),
-    configurationId: agentConfiguration.sId,
-    messageId: agentMessage.sId,
-    action: {
-      ...action.toJSON(),
-      output: removeNulls(
-        [...intermediateOutputItems, ...outputItems].map(
-          hideFileFromActionOutput
-        )
-      ),
-      generatedFiles,
-    },
+    output: removeNulls(
+      [...intermediateOutputItems, ...outputItems].map(hideFileFromActionOutput)
+    ),
+    generatedFiles,
   };
 }
