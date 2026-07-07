@@ -91,6 +91,115 @@ function formatDurationMs(durationMs: number) {
     : `${durationMs}ms`;
 }
 
+interface ProviderPassthroughEntry {
+  block: unknown;
+  key: string;
+  provider: string;
+  step: number;
+}
+
+function isObjectRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function getProviderPassthroughEntries(
+  contents: PokeAgentMessageType["contents"]
+): ProviderPassthroughEntry[] {
+  return contents.flatMap(({ content, step }, contentIndex) => {
+    if (content.type !== "provider_passthrough") {
+      return [];
+    }
+
+    return [
+      {
+        block: content.value.block,
+        key: `${step}-${contentIndex}`,
+        provider: content.value.provider,
+        step,
+      },
+    ];
+  });
+}
+
+function getToolSearchResultSummary(content: unknown): string | null {
+  if (!isObjectRecord(content) || typeof content.type !== "string") {
+    return null;
+  }
+
+  if (
+    content.type === "tool_search_tool_search_result" &&
+    Array.isArray(content.tool_references)
+  ) {
+    const toolNames = content.tool_references.flatMap((toolReference) => {
+      if (
+        isObjectRecord(toolReference) &&
+        typeof toolReference.tool_name === "string"
+      ) {
+        return [toolReference.tool_name];
+      }
+
+      return [];
+    });
+
+    if (toolNames.length === 0) {
+      return "0 tools found";
+    }
+
+    return `${toolNames.length} tool${toolNames.length > 1 ? "s" : ""} found: ${toolNames.join(", ")}`;
+  }
+
+  if (
+    content.type === "tool_search_tool_result_error" &&
+    typeof content.error_code === "string"
+  ) {
+    return `error: ${content.error_code}`;
+  }
+
+  return content.type;
+}
+
+function getProviderPassthroughTitle(entry: ProviderPassthroughEntry): string {
+  const { block, provider } = entry;
+
+  if (!isObjectRecord(block) || typeof block.type !== "string") {
+    return `${provider} provider_passthrough`;
+  }
+
+  if (
+    block.type === "server_tool_use" &&
+    typeof block.name === "string" &&
+    isObjectRecord(block.input) &&
+    typeof block.input.query === "string"
+  ) {
+    return `${block.name}: ${block.input.query}`;
+  }
+
+  if (block.type === "tool_search_tool_result") {
+    const summary = getToolSearchResultSummary(block.content);
+    return summary
+      ? `tool_search_tool_result: ${summary}`
+      : "tool_search_tool_result";
+  }
+
+  return `${provider} ${block.type}`;
+}
+
+function getProviderPassthroughKind(entry: ProviderPassthroughEntry): string {
+  if (!isObjectRecord(entry.block) || typeof entry.block.type !== "string") {
+    return "passthrough";
+  }
+
+  if (entry.block.type === "server_tool_use") {
+    return "call";
+  }
+
+  if (entry.block.type === "tool_search_tool_result") {
+    return "result";
+  }
+
+  return "passthrough";
+}
+
 interface StatusBadgeProps {
   label: string;
   color: ChipColor;
@@ -129,40 +238,47 @@ interface AgentTraceLinksProps {
 
 function AgentTraceLinks({ runUrls, langfuseUiBaseUrl }: AgentTraceLinksProps) {
   return (
-    <MetadataItem label={runUrls.length > 1 ? "traces" : "trace"} mono>
-      {runUrls.map(({ runId, url, isLLM }, index) => {
-        const traceLabelSuffix = runUrls.length > 1 ? ` ${index + 1}` : "";
+    <span className="flex min-w-full flex-wrap items-center gap-x-2 gap-y-1">
+      <span className="shrink-0 text-sm text-muted-foreground">
+        {runUrls.length > 1 ? "traces" : "trace"}
+      </span>
+      <span className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-sm">
+        {runUrls.map(({ runId, url, isLLM }, index) => {
+          const traceLabelSuffix = runUrls.length > 1 ? ` ${index + 1}` : "";
 
-        return (
-          <span key={runId} className="inline-flex items-center">
-            {index > 0 && <span className="px-1 text-muted-foreground">,</span>}
-            <a
-              href={url}
-              target="_blank"
-              rel="noopener noreferrer"
-              title={runId}
-              className="font-sans text-highlight hover:underline"
+          return (
+            <span
+              key={runId}
+              className="inline-flex items-center gap-1 whitespace-nowrap"
             >
-              Poke{traceLabelSuffix}
-            </a>
-            {isLLM && langfuseUiBaseUrl && (
-              <>
-                <span className="px-1 text-muted-foreground">·</span>
-                <a
-                  href={getLangfuseTraceUrl(langfuseUiBaseUrl, runId)}
-                  title={`Open ${runId} in Langfuse`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="font-sans text-highlight hover:underline"
-                >
-                  Langfuse{traceLabelSuffix}
-                </a>
-              </>
-            )}
-          </span>
-        );
-      })}
-    </MetadataItem>
+              <a
+                href={url}
+                target="_blank"
+                rel="noopener noreferrer"
+                title={runId}
+                className="text-highlight hover:underline"
+              >
+                Poke{traceLabelSuffix}
+              </a>
+              {isLLM && langfuseUiBaseUrl && (
+                <>
+                  <span className="text-muted-foreground">·</span>
+                  <a
+                    href={getLangfuseTraceUrl(langfuseUiBaseUrl, runId)}
+                    title={`Open ${runId} in Langfuse`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-highlight hover:underline"
+                  >
+                    Langfuse{traceLabelSuffix}
+                  </a>
+                </>
+              )}
+            </span>
+          );
+        })}
+      </span>
+    </span>
   );
 }
 
@@ -328,6 +444,75 @@ function ToolActionView({ action, isExpanded, onToggle }: ToolActionViewProps) {
   );
 }
 
+interface ProviderPassthroughViewProps {
+  entry: ProviderPassthroughEntry;
+  isExpanded: boolean;
+  onToggle: () => void;
+}
+
+function ProviderPassthroughView({
+  entry,
+  isExpanded,
+  onToggle,
+}: ProviderPassthroughViewProps) {
+  const title = getProviderPassthroughTitle(entry);
+  const kind = getProviderPassthroughKind(entry);
+
+  return (
+    <div>
+      <div className="mt-2 flex w-full items-center gap-2 rounded-md border border-separator bg-muted-background px-2 py-1.5 text-left">
+        <span className="shrink-0">
+          <Button
+            variant="outline"
+            size="icon"
+            icon={
+              <ChevronDown
+                className={cn(
+                  "h-4 w-4 transition-transform",
+                  !isExpanded ? "-rotate-90" : null
+                )}
+              />
+            }
+            onClick={onToggle}
+            aria-expanded={isExpanded}
+            aria-label={
+              isExpanded
+                ? "Collapse provider passthrough details"
+                : "Expand provider passthrough details"
+            }
+          />
+        </span>
+        <span className="flex min-w-0 flex-1 items-center gap-3">
+          <span className="w-24 shrink-0 font-mono text-sm tabular-nums text-muted-foreground">
+            —
+          </span>
+          <span className="shrink-0 rounded-md border border-separator bg-background px-1.5 py-0.5 font-mono text-sm tabular-nums text-muted-foreground">
+            Step {entry.step}
+          </span>
+          <span
+            className="min-w-0 truncate text-sm font-medium text-foreground"
+            title={title}
+          >
+            {title}
+          </span>
+          <Chip
+            color={kind === "call" ? "blue" : "green"}
+            label={kind}
+            size="xs"
+          />
+        </span>
+      </div>
+      {isExpanded && (
+        <div className="ml-9 mt-2 overflow-hidden rounded-md border border-separator bg-background">
+          <CodeBlock wrapLongLines className="language-json">
+            {JSON.stringify(entry.block, null, 2)}
+          </CodeBlock>
+        </div>
+      )}
+    </div>
+  );
+}
+
 interface UserMessageViewProps {
   message: UserMessageType;
   useMarkdown: boolean;
@@ -402,6 +587,10 @@ const AgentMessageView = ({
   const [expandedActions, setExpandedActions] = useState<Set<string>>(
     new Set()
   );
+  const [
+    expandedProviderPassthroughEntries,
+    setExpandedProviderPassthroughEntries,
+  ] = useState<Set<string>>(new Set());
 
   const toggleAction = (actionId: string) => {
     setExpandedActions((prev) => {
@@ -414,6 +603,21 @@ const AgentMessageView = ({
       return next;
     });
   };
+  const toggleProviderPassthroughEntry = (entryKey: string) => {
+    setExpandedProviderPassthroughEntries((prev) => {
+      const next = new Set(prev);
+      if (next.has(entryKey)) {
+        next.delete(entryKey);
+      } else {
+        next.add(entryKey);
+      }
+      return next;
+    });
+  };
+
+  const providerPassthroughEntries = getProviderPassthroughEntries(
+    message.contents
+  );
 
   return (
     <div className="w-full">
@@ -487,6 +691,14 @@ const AgentMessageView = ({
             )}
           </div>
         </div>
+        {providerPassthroughEntries.map((entry) => (
+          <ProviderPassthroughView
+            key={entry.key}
+            entry={entry}
+            isExpanded={expandedProviderPassthroughEntries.has(entry.key)}
+            onToggle={() => toggleProviderPassthroughEntry(entry.key)}
+          />
+        ))}
         {message.actions.map((a) => {
           const isExpanded = expandedActions.has(a.sId);
           return (
@@ -908,12 +1120,12 @@ export function ConversationPage() {
             </div>
           )}
           {(pendingUserCount > 0 || createdAgentCount > 0) && (
-            <div className="flex flex-wrap items-center gap-2 rounded-md border border-border-warning bg-background px-3 py-2 text-sm text-warning">
-              <span className="text-sm font-medium text-warning">
+            <div className="flex flex-wrap items-center gap-2 rounded-md border border-separator bg-muted-background px-3 py-2 text-sm text-muted-foreground">
+              <span className="text-sm font-medium text-foreground">
                 Active messages
               </span>
               {pendingUserCount > 0 && (
-                <span className="inline-flex h-7 items-center gap-1.5 rounded-md border border-border-warning bg-muted-background px-2 text-sm text-foreground">
+                <span className="inline-flex h-7 items-center gap-1.5 rounded-md border border-separator bg-background px-2 text-sm text-foreground">
                   <span className="font-mono tabular-nums">
                     {pendingUserCount}
                   </span>
@@ -922,7 +1134,8 @@ export function ConversationPage() {
                 </span>
               )}
               {createdAgentCount > 0 && (
-                <span className="inline-flex h-7 items-center gap-1.5 rounded-md border border-border-warning bg-muted-background px-2 text-sm text-foreground">
+                <span className="inline-flex h-7 items-center gap-1.5 rounded-md border border-separator bg-background px-2 text-sm text-foreground">
+                  <Spinner size="xs" />
                   <span className="font-mono tabular-nums">
                     {createdAgentCount}
                   </span>
