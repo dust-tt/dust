@@ -3,8 +3,6 @@ import { discoverKnowledgeSkill } from "@app/lib/resources/skill/code_defined/di
 import { discoverSkillsSkill } from "@app/lib/resources/skill/code_defined/discover_skills";
 import { discoverToolsSkill } from "@app/lib/resources/skill/code_defined/discover_tools";
 import { planModeSkill } from "@app/lib/resources/skill/code_defined/plan_mode";
-import { podFunctionsSkill } from "@app/lib/resources/skill/code_defined/pod_functions";
-import { sandboxSkill } from "@app/lib/resources/skill/code_defined/sandbox";
 import {
   ensureUniqueSIds,
   filterSkillDefinitions,
@@ -18,8 +16,6 @@ const SYSTEM_SKILLS_ARRAY = ensureUniqueSIds([
   discoverSkillsSkill,
   discoverToolsSkill,
   planModeSkill,
-  podFunctionsSkill,
-  sandboxSkill,
 ] as const);
 
 // Build lookup map for direct access by sId.
