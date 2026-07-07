@@ -475,29 +475,29 @@ const DOMAINS: DomainRow[] = [
 const INITIAL_GOVERNANCE: GovernanceSetting[] = [
   {
     id: "create_agents",
-    label: "Members can create agents",
-    description: "Build new agents in the Agent Builder",
+    label: "Create agents",
+    description: "Choose who can build agents in the Agent Builder.",
     scope: "groups",
     groups: ["Design Team", "Engineering Team"],
   },
   {
     id: "publish_agents",
-    label: "Members can publish agents",
-    description: "Publish agents workspace-wide for all members to use",
+    label: "Publish agents",
+    description: "Choose who can publish agents to the whole workspace.",
     scope: "everyone",
     groups: [],
   },
   {
     id: "create_skills",
-    label: "Members can create skills",
-    description: "Build custom Skills",
+    label: "Create Skills",
+    description: "Choose who can build custom Skills.",
     scope: "everyone",
     groups: [],
   },
   {
     id: "publish_skills",
-    label: "Members can publish skills",
-    description: "Publish Skills workspace-wide for all members to use",
+    label: "Publish Skills",
+    description: "Choose who can publish Skills to the whole workspace.",
     scope: "disabled",
     groups: [],
   },
@@ -505,7 +505,7 @@ const INITIAL_GOVERNANCE: GovernanceSetting[] = [
     id: "billing_access",
     label: "Billing access",
     description:
-      "Manage billing settings, view invoices, and update payment methods.",
+      "Choose who can manage billing settings, invoices, and payment methods.",
     scope: "groups",
     groups: ["Managers"],
   },
@@ -513,7 +513,7 @@ const INITIAL_GOVERNANCE: GovernanceSetting[] = [
     id: "security_access",
     label: "Security access",
     description:
-      "Manage security by controlling user access, verifying identities, and handling provisioning.",
+      "Choose who can manage user access, identities, and provisioning.",
     scope: "groups",
     groups: ["Managers"],
   },
@@ -2084,7 +2084,7 @@ function ModelGovernanceRow({
   );
 }
 
-type FrameVisibilityLevel = "workspace_only" | "email_invite" | "public";
+type FrameVisibilityLevel = "workspace_only" | "email_invite";
 
 interface FrameVisibilitySetting {
   level: FrameVisibilityLevel;
@@ -2101,23 +2101,16 @@ const FRAME_VISIBILITY_OPTIONS: Omit<
 >[] = [
   {
     level: "workspace_only",
-    label: "Workspace members only",
-    description: "Frames can only be viewed by workspace members",
-    icon: Lock01,
+    label: "Share by public link",
+    description: "Choose who can create public links to Frames.",
+    icon: Globe01,
   },
   {
     level: "email_invite",
-    label: "Members + email invites",
+    label: "Invite people by email",
     description:
-      "Frames can be shared with workspace members or via email invite",
-    icon: Users01,
-  },
-  {
-    level: "public",
-    label: "No restrictions",
-    description:
-      "Members can share Frames publicly, with the workspace, or via email invite",
-    icon: Globe01,
+      "Choose who can share Frames by email with people outside your organization.",
+    icon: Mail01,
   },
 ];
 
@@ -2298,7 +2291,7 @@ function GovernancePage({
     <Page>
       <Page.Header
         title="Governance"
-        description="Control what members can create and publish. Use groups to grant exceptions."
+        description="Choose what members can create, publish, and share. Use groups to grant exceptions."
         icon={Toggle01Left}
       />
       <div className="s-w-full s-rounded-xl s-bg-muted-background dark:s-bg-muted-background-night s-px-4 s-py-3">
@@ -2358,10 +2351,10 @@ function GovernancePage({
           <div className="s-flex s-flex-col s-gap-1">
             <div className="s-flex s-items-center s-gap-2">
               <ActionFrame className="s-h-5 s-w-5 s-shrink-0 s-text-muted-foreground dark:s-text-muted-foreground-night" />
-              <Page.H variant="h5">Frame sharing policy</Page.H>
+              <Page.H variant="h5">Frame sharing</Page.H>
             </div>
             <Page.P variant="secondary" size="sm">
-              Control how Frames can be shared in this workspace.
+              Choose how members can share Frames outside the workspace.
             </Page.P>
           </div>
           <FrameSharingGovernanceRow
@@ -2374,7 +2367,7 @@ function GovernancePage({
         </div>
         {role === "super_admin" && (
           <div className="s-flex s-w-full s-flex-col s-gap-4">
-            <Page.SectionHeader title="Billing & Security" />
+            <Page.SectionHeader title="Billing and security" />
             <div className="s-w-full s-rounded-xl s-border s-border-border dark:s-border-border-night s-divide-y s-divide-border dark:s-divide-border-night">
               {settings
                 .filter(
