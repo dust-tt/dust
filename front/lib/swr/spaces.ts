@@ -38,7 +38,7 @@ import { MIN_SEARCH_QUERY_SIZE } from "@app/types/core/utils";
 import type { DataSourceViewType } from "@app/types/data_source_view";
 import { isString } from "@app/types/shared/utils/general";
 import type { PodType, SpaceKind, SpaceType } from "@app/types/space";
-import type { LightWorkspaceType } from "@app/types/user";
+import type { LightWorkspaceType, SpaceUserType } from "@app/types/user";
 import { useCallback, useMemo } from "react";
 import type { Fetcher, KeyedMutator } from "swr";
 
@@ -168,8 +168,19 @@ export function useSpaceInfo({
       }
     );
 
+  // A partial cache entry can lack `members`; normalize it so consumers don't
+  // crash on `members.filter`/`.length`.
+  const spaceInfo = useMemo(() => {
+    if (!data) {
+      return null;
+    }
+    return data.space.members
+      ? data.space
+      : { ...data.space, members: emptyArray<SpaceUserType>() };
+  }, [data]);
+
   return {
-    spaceInfo: data ? data.space : null,
+    spaceInfo,
     canWriteInSpace: data?.space.canWrite ?? false,
     canReadInSpace: data?.space.isMember ?? false,
     mutateSpaceInfo: mutate,
