@@ -25,6 +25,9 @@ function serializeInvoice(invoice: Stripe.Invoice): BillingInvoice {
     description: invoice.description ?? null,
     currency: invoice.currency,
     totalCents: invoice.total,
+    // `total_excluding_tax` is null when Stripe computed no tax on the
+    // invoice, in which case `total` is already tax-free.
+    totalExcludingTaxCents: invoice.total_excluding_tax ?? invoice.total,
     amountPaidCents: invoice.amount_paid,
     createdAtMs: invoice.created * 1000,
     dueDateMs: invoice.due_date ? invoice.due_date * 1000 : null,
