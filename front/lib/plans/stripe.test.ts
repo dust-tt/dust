@@ -532,7 +532,9 @@ describe("finalizeInvoice", () => {
     if (result.isOk()) {
       expect(result.value.status).toBe("open");
     }
-    expect(mockInvoices.finalizeInvoice).toHaveBeenCalledWith("in_123");
+    expect(mockInvoices.finalizeInvoice).toHaveBeenCalledWith("in_123", {
+      auto_advance: true,
+    });
   });
 
   it("should return Err on Stripe failure", async () => {
@@ -946,7 +948,9 @@ describe("cleanAndFinalizeMetronomeDraftInvoice", () => {
       unit_amount: 1965,
     });
     expect(mockInvoiceItems.del).not.toHaveBeenCalled();
-    expect(mockInvoices.finalizeInvoice).toHaveBeenCalledWith("in_test");
+    expect(mockInvoices.finalizeInvoice).toHaveBeenCalledWith("in_test", {
+      auto_advance: true,
+    });
   });
 
   it("should keep a quantity > 1 when the total divides evenly by it", async () => {
@@ -1050,7 +1054,9 @@ describe("cleanAndFinalizeMetronomeDraftInvoice", () => {
 
     expect(result.isOk()).toBe(true);
     expect(mockInvoiceItems.update).not.toHaveBeenCalled();
-    expect(mockInvoices.finalizeInvoice).toHaveBeenCalledWith("in_test");
+    expect(mockInvoices.finalizeInvoice).toHaveBeenCalledWith("in_test", {
+      auto_advance: true,
+    });
   });
 
   it("should delete negative lines without normalizing them", async () => {
