@@ -8,11 +8,16 @@ import { SandboxFunctionResource } from "@app/lib/resources/sandbox_function_res
 import { Err, Ok } from "@app/types/shared/result";
 
 export function formatSandboxFunction(fn: SandboxFunctionResource): string {
-  return [
+  const lines = [
     `${fn.slug}: ${fn.description}`,
     `input: ${JSON.stringify(fn.inputSchema)}`,
     `output: ${JSON.stringify(fn.outputSchema)}`,
-  ].join("\n");
+  ];
+  const databases = Object.keys(fn.manifests?.databases ?? {}).sort();
+  if (databases.length > 0) {
+    lines.push(`databases: ${databases.join(", ")}`);
+  }
+  return lines.join("\n");
 }
 
 export async function getHandler(

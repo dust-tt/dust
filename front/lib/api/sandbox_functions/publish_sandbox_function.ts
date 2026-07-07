@@ -11,7 +11,10 @@ import {
   computeStaleSiblings,
   diffStateAgainstSiblings,
 } from "@app/lib/api/sandbox_functions/compat";
-import { reconcileDatabaseOnSandbox } from "@app/lib/api/sandbox_functions/dsbx_db";
+import {
+  listDatabasesOnSandbox,
+  reconcileDatabaseOnSandbox,
+} from "@app/lib/api/sandbox_functions/dsbx_db";
 import { SandboxFunctionError } from "@app/lib/api/sandbox_functions/errors";
 import type { FunctionState } from "@app/lib/api/sandbox_functions/manifests";
 import type { Authenticator } from "@app/lib/auth";
@@ -42,6 +45,9 @@ export interface PublishSandboxFunctionOutcome {
   warnings: CompatWarning[];
   // Siblings whose stored manifest for a shared database now differs from this publish.
   staleSiblings: StaleSiblingNote[];
+  // Live databases no published function declares anymore (best-effort, empty on lookup
+  // failure or for publishes declaring no databases).
+  untrackedDatabases: string[];
 }
 
 /**
@@ -244,7 +250,64 @@ async function publishCriticalSection(
     sandboxFunction: storeResult.value,
     warnings: fencingDiff.warnings,
     staleSiblings: computeStaleSiblings(manifests, secondRead.siblings),
+    untrackedDatabases: await computeUntrackedDatabases(auth, {
+      space,
+      slug,
+      manifests,
+      siblings: secondRead.siblings,
+    }),
   });
+}
+
+/**
+ * Untracked-leftover note: live databases no published function declares anymore. Computed
+ * (cheaply) only on database-declaring publishes — the sandbox is already up and the publish
+ * already paid reconcile execs; one `dsbx db list` adds little. Best-effort: a listing failure
+ * never fails the publish and only skips this note.
+ */
+async function computeUntrackedDatabases(
+  auth: Authenticator,
+  {
+    space,
+    slug,
+    manifests,
+    siblings,
+  }: {
+    space: SpaceResource;
+    slug: string;
+    manifests: FunctionManifests | null;
+    siblings: SiblingManifests[];
+  }
+): Promise<string[]> {
+  if (manifests === null) {
+    return [];
+  }
+
+  const liveResult = await listDatabasesOnSandbox(auth, { space });
+  if (liveResult.isErr()) {
+    logger.warn(
+      {
+        workspaceId: auth.getNonNullableWorkspace().sId,
+        podId: space.sId,
+        slug,
+        error: liveResult.error.message,
+      },
+      "Sandbox function publish: could not list live databases for the untracked-leftover note"
+    );
+    return [];
+  }
+
+  const declared = new Set(Object.keys(manifests.databases));
+  for (const sibling of siblings) {
+    for (const database of Object.keys(sibling.manifests?.databases ?? {})) {
+      declared.add(database);
+    }
+  }
+
+  return liveResult.value
+    .map((db) => db.name)
+    .filter((name) => !declared.has(name))
+    .sort();
 }
 
 async function readPodManifests(

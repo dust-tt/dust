@@ -1,5 +1,8 @@
 import { buildSandboxFunctionOnSandbox } from "@app/lib/api/sandbox_functions/build_on_sandbox";
-import { reconcileDatabaseOnSandbox } from "@app/lib/api/sandbox_functions/dsbx_db";
+import {
+  listDatabasesOnSandbox,
+  reconcileDatabaseOnSandbox,
+} from "@app/lib/api/sandbox_functions/dsbx_db";
 import { SandboxFunctionError } from "@app/lib/api/sandbox_functions/errors";
 import type { FunctionState } from "@app/lib/api/sandbox_functions/manifests";
 import { publishSandboxFunction } from "@app/lib/api/sandbox_functions/publish_sandbox_function";
@@ -35,7 +38,11 @@ vi.mock("@app/lib/api/sandbox_functions/dsbx_db", async (importOriginal) => {
       typeof import("@app/lib/api/sandbox_functions/dsbx_db")
     >();
 
-  return { ...actual, reconcileDatabaseOnSandbox: vi.fn() };
+  return {
+    ...actual,
+    reconcileDatabaseOnSandbox: vi.fn(),
+    listDatabasesOnSandbox: vi.fn(),
+  };
 });
 
 // Mock the distributed lock to avoid a Redis dependency (established pattern, see
@@ -125,6 +132,7 @@ beforeEach(() => {
   vi.mocked(reconcileDatabaseOnSandbox).mockResolvedValue(
     new Ok({ created: false, statements: [] })
   );
+  vi.mocked(listDatabasesOnSandbox).mockResolvedValue(new Ok([]));
 });
 
 describe("publishSandboxFunction", () => {
@@ -323,11 +331,17 @@ describe("publishSandboxFunction", () => {
     expect(listed).toHaveLength(0);
   });
 
-  it("stores manifests and reconciles each declared database", async () => {
+  it("stores manifests, reconciles each declared database and flags untracked leftovers", async () => {
     const { space, auth } = await setupPod();
     const manifests = chatState(baseColumns);
     vi.mocked(buildSandboxFunctionOnSandbox).mockResolvedValue(
       new Ok({ bundleCode: "b", inputSchema, outputSchema, manifests })
+    );
+    vi.mocked(listDatabasesOnSandbox).mockResolvedValue(
+      new Ok([
+        { name: "chat", sizeBytes: 4096 },
+        { name: "old_leftover", sizeBytes: 1024 },
+      ])
     );
 
     const result = await publishSandboxFunction(auth, {
@@ -342,6 +356,8 @@ describe("publishSandboxFunction", () => {
       return;
     }
     expect(result.value.sandboxFunction.manifests).toEqual(manifests);
+    // Declared by nobody anymore -> untracked; declared "chat" is not flagged.
+    expect(result.value.untrackedDatabases).toEqual(["old_leftover"]);
 
     expect(reconcileDatabaseOnSandbox).toHaveBeenCalledTimes(1);
     expect(reconcileDatabaseOnSandbox).toHaveBeenCalledWith(auth, {
@@ -442,6 +458,43 @@ describe("publishSandboxFunction", () => {
       return;
     }
     expect(result.error.code).toBe("reconcile_blocked");
+
+    const listed = await SandboxFunctionResource.listBySpace(auth, space);
+    expect(listed).toHaveLength(0);
+  });
+
+  it("stops at the first failing database of a multi-db publish and stores nothing", async () => {
+    const { space, auth } = await setupPod();
+    const manifests = chatManifests(baseColumns);
+    manifests.databases.notes = {
+      schemaFile: "databases/notes.db.ts",
+      tables: { notes: { columns: baseColumns, indexes: {} } },
+    };
+    vi.mocked(buildSandboxFunctionOnSandbox).mockResolvedValue(
+      new Ok({ bundleCode: "b", inputSchema, outputSchema, manifests })
+    );
+    // First database reconciles, the second is refused.
+    vi.mocked(reconcileDatabaseOnSandbox)
+      .mockResolvedValueOnce(new Ok({ created: true, statements: [] }))
+      .mockResolvedValueOnce(
+        new Err(
+          new SandboxFunctionError("reconcile_blocked", "destructive change")
+        )
+      );
+
+    const result = await publishSandboxFunction(auth, {
+      space,
+      slug: "post-message",
+      description: "Post a message.",
+      path: `pod-${space.sId}/post-message.ts`,
+    });
+
+    expect(result.isErr()).toBe(true);
+    if (result.isOk()) {
+      return;
+    }
+    expect(result.error.code).toBe("reconcile_blocked");
+    expect(reconcileDatabaseOnSandbox).toHaveBeenCalledTimes(2);
 
     const listed = await SandboxFunctionResource.listBySpace(auth, space);
     expect(listed).toHaveLength(0);

@@ -37,9 +37,10 @@ export async function publishHandler(
   if (result.isErr()) {
     return new Err(toMCPError(result.error));
   }
-  const { sandboxFunction, warnings, staleSiblings } = result.value;
+  const { sandboxFunction, warnings, staleSiblings, untrackedDatabases } =
+    result.value;
 
-  return new Ok([
+  const notes: { type: "text"; text: string }[] = [
     {
       type: "text",
       text: `Published sandbox function "${sandboxFunction.slug}".`,
@@ -55,7 +56,21 @@ export async function publishHandler(
         `${note.databases.join(", ")}. It keeps working, but republish it once its code is ` +
         `aligned with the shared schema file${note.databases.length > 1 ? "s" : ""}.`,
     })),
-  ]);
+  ];
+  if (untrackedDatabases.length > 0) {
+    const plural = untrackedDatabases.length > 1;
+    notes.push({
+      type: "text",
+      text:
+        `Note — untracked database${plural ? "s" : ""} ` +
+        `${untrackedDatabases.join(", ")}: no published function declares ` +
+        `${plural ? "them" : "it"} anymore. The data stays untouched (nothing is ever ` +
+        `dropped); declare ${plural ? "them" : "it"} again from a function to keep using ` +
+        `${plural ? "them" : "it"}.`,
+    });
+  }
+
+  return new Ok(notes);
 }
 
 function toMCPError(error: SandboxFunctionError): MCPError {

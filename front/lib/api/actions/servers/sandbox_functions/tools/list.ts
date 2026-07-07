@@ -13,11 +13,17 @@ export function formatSandboxFunctionsList(
     return "No sandbox functions published in this pod.";
   }
 
-  const lines = sandboxFunctions.map((fn) => `- ${fn.slug}: ${fn.description}`);
+  const lines = sandboxFunctions.map((fn) => {
+    const databases = Object.keys(fn.manifests?.databases ?? {}).sort();
+    const databasesNote =
+      databases.length > 0 ? ` (databases: ${databases.join(", ")})` : "";
+    return `- ${fn.slug}: ${fn.description}${databasesNote}`;
+  });
 
   return (
     `Sandbox functions:\n${lines.join("\n")}\n\n` +
-    "Use the get tool with a function's slug to see its input and output schemas."
+    "Use the get tool with a function's slug to see its input and output schemas. " +
+    "Databases are the pod's shared SQLite files, declared in each function's manifest."
   );
 }
 
