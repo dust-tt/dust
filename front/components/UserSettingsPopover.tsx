@@ -16,7 +16,7 @@ import { AwuUsageBar } from "@app/components/workspace/MembersUsageTable";
 import { useFileUploaderService } from "@app/hooks/useFileUploaderService";
 import { useIsMac } from "@app/hooks/useKeyboardShortcutLabel";
 import { useSendNotification } from "@app/hooks/useNotification";
-import { useAuth, useFeatureFlags } from "@app/lib/auth/AuthContext";
+import { useAuth } from "@app/lib/auth/AuthContext";
 import { isSubmitMessageKey } from "@app/lib/keymaps";
 import { useMyUsage, useSeatPlan } from "@app/lib/swr/credits";
 import {
@@ -577,7 +577,6 @@ function CustomizationSection() {
 
 function NotificationsSection({ owner }: { owner: WorkspaceType }) {
   const { user } = useUser();
-  const { hasFeature } = useFeatureFlags();
   const sendNotification = useSendNotification();
   const sound = useSoundNotificationPreferencesForm();
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -630,18 +629,16 @@ function NotificationsSection({ owner }: { owner: WorkspaceType }) {
         </div>
       ) : (
         <>
-          {hasFeature("sound_notification") && (
-            <div className="flex flex-col gap-4">
-              <Page.SectionHeader
-                title="Inbox notifications"
-                description="Sound alerts for items that need your attention"
-              />
-              <SoundNotificationPreferences
-                control={sound.control}
-                disabled={sound.isLoading}
-              />
-            </div>
-          )}
+          <div className="flex flex-col gap-4">
+            <Page.SectionHeader
+              title="Inbox notifications"
+              description="Sound alerts for items that need your attention"
+            />
+            <SoundNotificationPreferences
+              control={sound.control}
+              disabled={sound.isLoading}
+            />
+          </div>
           {showNotificationPreferences && (
             <div className="flex flex-col gap-4">
               <Page.SectionHeader

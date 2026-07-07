@@ -311,11 +311,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
       "Workspace default agent: admins can pre-select a workspace-wide default agent for new conversations.",
     stage: "on_demand",
   },
-  sound_notification: {
-    description:
-      "Play a sound notification when an agent requires manual input (approval/decline).",
-    stage: "dust_only",
-  },
   whitelabel_frames: {
     description:
       "Whitelabel frames: customize the workspace logo, favicon and OG image shown on shared Frames.",
