@@ -364,7 +364,7 @@ function AgentActionsPanelContent({
               <Chip
                 key={skill.sId}
                 size="xs"
-                color="blue"
+                color="highlight"
                 label={skill.name}
                 icon={getSkillIcon(skill.icon)}
               />

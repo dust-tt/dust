@@ -3,6 +3,7 @@ import {
   finalizeInvoice,
   getCreditAmountFromInvoice,
   getCreditPurchaseCouponId,
+  getStripePricingData,
   getSubscriptionInvoices,
   isCreditPurchaseInvoice,
   isEnterpriseSubscription,
@@ -14,33 +15,48 @@ import {
 import type { Stripe } from "stripe";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { mockInvoices, mockCoupons, mockSubscriptions, mockInvoiceItems } =
-  vi.hoisted(() => {
-    const mockInvoices = {
-      list: vi.fn(),
-      create: vi.fn(),
-      finalizeInvoice: vi.fn(),
-      pay: vi.fn(),
-      retrieve: vi.fn(),
-      voidInvoice: vi.fn(),
-      update: vi.fn(),
-    };
+const {
+  mockInvoices,
+  mockCoupons,
+  mockSubscriptions,
+  mockInvoiceItems,
+  mockPrices,
+} = vi.hoisted(() => {
+  const mockInvoices = {
+    list: vi.fn(),
+    create: vi.fn(),
+    finalizeInvoice: vi.fn(),
+    pay: vi.fn(),
+    retrieve: vi.fn(),
+    voidInvoice: vi.fn(),
+    update: vi.fn(),
+  };
 
-    const mockInvoiceItems = {
-      create: vi.fn(),
-    };
+  const mockInvoiceItems = {
+    create: vi.fn(),
+  };
 
-    const mockCoupons = {
-      retrieve: vi.fn(),
-      create: vi.fn(),
-    };
+  const mockCoupons = {
+    retrieve: vi.fn(),
+    create: vi.fn(),
+  };
 
-    const mockSubscriptions = {
-      retrieve: vi.fn(),
-    };
+  const mockSubscriptions = {
+    retrieve: vi.fn(),
+  };
 
-    return { mockInvoices, mockCoupons, mockSubscriptions, mockInvoiceItems };
-  });
+  const mockPrices = {
+    retrieve: vi.fn(),
+  };
+
+  return {
+    mockInvoices,
+    mockCoupons,
+    mockSubscriptions,
+    mockInvoiceItems,
+    mockPrices,
+  };
+});
 
 const { MockStripeError, MockStripeInvalidRequestError } = vi.hoisted(() => {
   class MockStripeError extends Error {
@@ -73,6 +89,7 @@ vi.mock("stripe", () => {
     invoiceItems: mockInvoiceItems,
     coupons: mockCoupons,
     subscriptions: mockSubscriptions,
+    prices: mockPrices,
   };
 
   return {
@@ -777,5 +794,52 @@ describe("makeCreditsPAYGInvoice", () => {
     if (result.isErr()) {
       expect(result.error.error_type).toBe("other");
     }
+  });
+});
+
+describe("getStripePricingData", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("should return currency options for a fully configured price", async () => {
+    mockPrices.retrieve.mockResolvedValue({
+      unit_amount: 1000,
+      currency_options: {
+        usd: { unit_amount: 1000 },
+        eur: { unit_amount: 900 },
+        gbp: { unit_amount: 800 },
+      },
+    });
+
+    const result = await getStripePricingData("price_test");
+
+    expect(result).toEqual({
+      currencyOptions: {
+        usd: { unitAmount: 1000 },
+        eur: { unitAmount: 900 },
+        gbp: { unitAmount: 800 },
+      },
+    });
+  });
+
+  it("should not throw when a supported currency option is missing", async () => {
+    // Price configured with USD only; EUR and GBP have no currency option.
+    mockPrices.retrieve.mockResolvedValue({
+      unit_amount: 1000,
+      currency_options: {
+        usd: { unit_amount: 1000 },
+      },
+    });
+
+    const result = await getStripePricingData("price_test");
+
+    expect(result).toEqual({
+      currencyOptions: {
+        usd: { unitAmount: 1000 },
+        eur: { unitAmount: 0 },
+        gbp: { unitAmount: 0 },
+      },
+    });
   });
 });

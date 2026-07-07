@@ -241,7 +241,7 @@ export const TagsSelector = ({
                   : () => onRemoveTag(tag.sId)
               }
               size="xs"
-              color="golden"
+              color="info"
               label={tag.name}
             />
           ))}

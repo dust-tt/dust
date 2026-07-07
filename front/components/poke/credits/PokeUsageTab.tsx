@@ -35,7 +35,7 @@ interface PokeUsageTabProps {
   defaultAlerts: DefaultMetronomeAlerts;
 }
 
-type CreditStateChipColor = "success" | "warning" | "rose" | "info";
+type CreditStateChipColor = "success" | "warning" | "warning" | "info";
 
 // Shared color mapping for the workspace pool and programmatic credit states.
 // Both unions share the active/low/critical/depleted members; `overage` is
@@ -53,7 +53,7 @@ function creditStateChipColor(
     case "overage":
       return "info";
     case "depleted":
-      return "rose";
+      return "warning";
     default:
       assertNeverAndIgnore(state);
       return "info";
@@ -143,7 +143,7 @@ function PokeCreditConfigCard({
           <span className="text-xs text-muted-foreground">PAYG</span>
           <Chip
             size="xs"
-            color={paygEnabled ? "success" : "rose"}
+            color={paygEnabled ? "success" : "warning"}
             label={paygEnabled ? "enabled" : "disabled"}
           />
         </div>

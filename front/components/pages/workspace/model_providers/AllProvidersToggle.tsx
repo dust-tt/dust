@@ -23,7 +23,6 @@ export function AllProvidersToggle({
           Make all providers available
         </span>
         <SliderToggle
-          size="xs"
           selected={selected}
           disabled={selected}
           onClick={onSelectAll}

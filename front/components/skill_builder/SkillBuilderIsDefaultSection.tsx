@@ -41,7 +41,7 @@ export function SkillBuilderIsDefaultSection() {
   return (
     <>
       <div className="flex items-center gap-2">
-        <SliderToggle selected={isDefault} onClick={handleToggle} size="xs" />
+        <SliderToggle selected={isDefault} onClick={handleToggle} />
         <span className="text-sm text-foreground">
           Allow agents to discover this skill
         </span>

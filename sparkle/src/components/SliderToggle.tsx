@@ -3,28 +3,17 @@ import React, { type MouseEventHandler } from "react";
 
 type SliderToggleProps = {
   onClick?: MouseEventHandler<HTMLElement>;
-  size?: "xs" | "sm";
   className?: string;
   disabled?: boolean;
   selected?: boolean;
 };
 
-const baseClasses =
-  "shrink-0 rounded-full cursor-pointer transition-colors duration-300 ease-out flex items-center";
-
-const sizeClasses = {
-  xs: "h-7 w-10",
-  sm: "h-9 w-14",
-};
-
-const cusrsorSizeClasses = {
-  xs: "h-6 w-6",
-  sm: "h-8 w-8",
-};
-const cusrsorTranslateSizeClasses = {
-  xs: "translate-x-[14px]",
-  sm: "translate-x-[22px]",
-};
+const baseClasses = cn(
+  "shrink-0 h-5 w-8 rounded-full cursor-pointer flex items-center",
+  // Track color and knob slide share timing so they animate as one unit.
+  "transition-colors duration-200 ease-in-out motion-reduce:transition-none",
+  "shadow-[inset_0px_-3px_3px_0px_rgba(255,255,255,0.25),inset_0px_0.5px_2px_0px_rgba(0,0,0,0.14)]"
+);
 
 const stateClasses = {
   idle: cn("bg-slider-toggle-bg-idle", "hover:bg-highlight-300"),
@@ -41,10 +30,8 @@ export function SliderToggle({
   disabled = false,
   className = "",
   selected = false,
-  size = "xs",
 }: SliderToggleProps) {
   const combinedStateClasses = cn(
-    size ? sizeClasses[size] : "",
     selected ? stateClasses.selected : stateClasses.idle,
     disabled ? stateClasses.disabled : ""
   );
@@ -61,10 +48,10 @@ export function SliderToggle({
       <div
         id="cursor"
         className={cn(
-          "transform rounded-full bg-white drop-shadow transition-transform duration-300 ease-out",
+          "h-4 w-4 transform rounded-full bg-white drop-shadow",
+          "transition-transform duration-200 ease-in-out motion-reduce:transition-none",
           disabled && "opacity-50",
-          size && cusrsorSizeClasses[size],
-          selected ? cusrsorTranslateSizeClasses[size] : "translate-x-[2px]"
+          selected ? "translate-x-[14px]" : "translate-x-[2px]"
         )}
       />
     </div>

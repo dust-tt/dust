@@ -473,7 +473,6 @@ export function GongOptionComponent({
           action={
             <div className="relative">
               <SliderToggle
-                size="xs"
                 onClick={async () => {
                   await handleConfigUpdate(
                     GONG_TRACKERS_CONFIG_KEY,
@@ -504,7 +503,6 @@ export function GongOptionComponent({
           action={
             <div className="relative">
               <SliderToggle
-                size="xs"
                 onClick={async () => {
                   await handleConfigUpdate(
                     GONG_ACCOUNTS_CONFIG_KEY,

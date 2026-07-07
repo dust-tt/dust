@@ -304,7 +304,7 @@ export function ManageAgentsPage() {
                       key={tag.sId}
                       label={tag.name}
                       size="xs"
-                      color="golden"
+                      color="info"
                       onRemove={() =>
                         setSelectedTags(selectedTags.filter((t) => t !== tag))
                       }

@@ -228,7 +228,6 @@ export function ActionCardBlock({
           {hasCheck && (
             <CheckboxWithText
               text={checkLabel ?? DEFAULT_CHECK_LABEL}
-              size={isCompact ? "xs" : "sm"}
               checked={isChecked}
               disabled={isDisabled}
               onCheckedChange={(value) => setIsChecked(value === true)}

@@ -39,13 +39,13 @@ function getPokeItemChipColor(
 ): ComponentProps<typeof Chip>["color"] {
   switch (item.type) {
     case "Workspace":
-      return "blue";
+      return "highlight";
     case "Data Source":
-      return "golden";
+      return "info";
     case "Data Source View":
-      return "rose";
+      return "warning";
     case "Connector":
-      return "green";
+      return "success";
     case "Frame":
       return "highlight";
     default:

@@ -56,7 +56,6 @@ export function RegionalModelsOnlyToggle({
       hasSeparator={false}
       action={
         <SliderToggle
-          size="xs"
           selected={workspace.regionalModelsOnly}
           disabled={isUpdatingWorkspaceRegionalModelsOnly}
           onClick={() => {

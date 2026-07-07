@@ -429,11 +429,6 @@ export async function migrateWorkspaceToBusiness(
     migrationDate = resolved;
   }
 
-  // Legacy members carry no explicit seat type ("none"); force them all onto the
-  // matching paid seat on the new Business contract — `pro` for a monthly switch,
-  // `pro_yearly` for a yearly one.
-  const promoteNoneSeatsTo = billingPeriod === "yearly" ? "pro_yearly" : "pro";
-
   // Yearly subs are cut over mid-year at the migration date; the unused prepaid
   // time is refunded when the Stripe sub ends (see the refund marker below and
   // the `subscription.deleted` webhook). Tracked here for logging.
@@ -531,7 +526,10 @@ export async function migrateWorkspaceToBusiness(
     startingAt: migrationDate.toISOString(),
     stripeCustomerId,
     stripeCollectionMethod: "charge_automatically",
-    promoteNoneSeatsTo,
+    // Legacy members carry no explicit seat type ("none"); force them all onto the
+    // `pro` paid seat on the new Business contract — even if plan is yearly (let the
+    // user decide later if they want to continue on yearly)
+    promoteNoneSeatsTo: "pro",
     // Stamp the credit-migration marker; the `contract.start` webhook converts
     // convertible legacy credits to AWU and grants the per-member bonus THEN.
     legacyMigrationFreeAwuCreditsPerUser: FREE_MIGRATION_AWU_CREDITS_PER_USER,

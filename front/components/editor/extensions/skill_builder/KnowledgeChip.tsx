@@ -26,7 +26,7 @@ interface KnowledgeChipProps {
 }
 
 export function KnowledgeChip({
-  color = "white",
+  color = "primary",
   node,
   title,
   onRemove,
@@ -91,7 +91,7 @@ function InlineKnowledgeIcon({ node }: InlineKnowledgeIconProps) {
 }
 
 export function InlineKnowledgeChip({
-  color = "white",
+  color = "primary",
   node,
   title,
   onRemove,
@@ -134,7 +134,7 @@ export function KnowledgeErrorChip({
     <Chip
       label={title}
       icon={AlertCircle}
-      color="white"
+      color="primary"
       onRemove={onRemove}
       size="xs"
     />

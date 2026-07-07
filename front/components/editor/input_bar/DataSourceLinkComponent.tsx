@@ -8,7 +8,12 @@ export const DataSourceLinkComponent = ({ node }: { node: { attrs: any } }) => {
 
   return (
     <NodeViewWrapper className="inline-flex align-middle">
-      <AttachmentChip label={title} href={url} target="_blank" color="white" />
+      <AttachmentChip
+        label={title}
+        href={url}
+        target="_blank"
+        color="primary"
+      />
     </NodeViewWrapper>
   );
 };

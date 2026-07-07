@@ -33,6 +33,8 @@ import type {
 import type { BaseEndpointConfiguration } from "@app/lib/model_constructors/configuration";
 import type { StreamEndpointConstructor } from "@app/lib/model_constructors/stream/configuration";
 import type { StreamEndpoint } from "@app/lib/model_constructors/stream/endpoint";
+import type { NoopRequest } from "@app/lib/model_constructors/stream/endpoints/noop_global_noop";
+import { NoopGlobalNoopStream } from "@app/lib/model_constructors/stream/endpoints/noop_global_noop";
 import type {
   InputConfig,
   ToolSpecification,
@@ -43,6 +45,7 @@ import type {
   SystemTextMessage,
   ToolCallResultPart,
 } from "@app/lib/model_constructors/types/input/messages";
+import { NOOP_MODEL_ID } from "@app/lib/model_constructors/types/model_ids";
 import type {
   ErrorType,
   ModelResponseEvent,
@@ -51,6 +54,8 @@ import type {
   ToolCallEvent as NewToolCallEvent,
   NonDeltaResponseEvent,
 } from "@app/lib/model_constructors/types/output/events";
+import { NOOP_PROVIDER_ID } from "@app/lib/model_constructors/types/provider_ids";
+import type { RunUsageType } from "@app/lib/resources/run_resource";
 import type {
   AgentFunctionCallContentType,
   AgentProviderPassthroughContentType,
@@ -647,6 +652,72 @@ export class StreamEndpointTransition extends BaseTransition {
     } catch (err) {
       yield handleGenericError(err, this.metadata);
     }
+  }
+}
+
+/**
+ * Noop-specific streaming transition. The generic transition drops the two
+ * things that make the noop model useful for testing, so we handle them here:
+ *
+ * - `staticResponse` (from `metaData`, used by the sidekick/dust global agents)
+ *   is injected into the noop request; the payload alone cannot carry it.
+ * - `consume $X` records a simulated run usage with an explicit cost, which the
+ *   new router's token-based pricing cannot express. It surfaces through the
+ *   base `getSimulatedRunUsages` hook.
+ */
+export class NoopStreamTransition extends StreamEndpointTransition {
+  private readonly noopModel = new NoopGlobalNoopStream(undefined);
+  private readonly noopMetaData?: Record<string, unknown>;
+  private simulatedRunUsages: RunUsageType[] | null = null;
+
+  constructor(
+    auth: Authenticator,
+    llmParameters: LLMParameters,
+    modelConstructor: StreamEndpointConstructor
+  ) {
+    super(auth, llmParameters, modelConstructor);
+    this.noopMetaData = llmParameters.metaData;
+  }
+
+  protected override buildStreamRequestPayload(
+    streamParameters: LLMStreamParameters
+  ): NoopRequest {
+    const request = this.noopModel.buildRequestPayload(
+      this.buildPayload(streamParameters)
+    );
+
+    const staticResponse =
+      typeof this.noopMetaData?.staticResponse === "string"
+        ? this.noopMetaData.staticResponse
+        : undefined;
+
+    const command = request.lastUserMessageContent
+      .replace(/<dust_system>[\s\S]*?<\/dust_system>/g, "")
+      .trim();
+    const consumeMatch = command.match(/consume \$(\d+(?:\.\d+)?)/i);
+    if (consumeMatch) {
+      const costMicroUsd = Math.round(parseFloat(consumeMatch[1]) * 1_000_000);
+      this.simulatedRunUsages = [
+        {
+          providerId: NOOP_PROVIDER_ID,
+          modelId: NOOP_MODEL_ID,
+          promptTokens: 0,
+          completionTokens: 0,
+          cachedTokens: null,
+          costMicroUsd,
+          isBatch: false,
+        },
+      ];
+    }
+
+    return { ...request, staticResponse };
+  }
+
+  protected override getSimulatedRunUsages(): RunUsageType[] | null {
+    // Consume once so a retried stream does not double-record the cost.
+    const usages = this.simulatedRunUsages;
+    this.simulatedRunUsages = null;
+    return usages;
   }
 }
 

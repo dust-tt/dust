@@ -117,7 +117,7 @@ function PokeRecentWebhookRequestsContent({
     <div className="space-y-2">
       <div className="flex flex-wrap items-center gap-2 pt-2">
         <Chip
-          color={statusFilter === undefined ? "primary" : "white"}
+          color={statusFilter === undefined ? "primary" : "primary"}
           size="xs"
           label="All"
           className="cursor-pointer select-none"
@@ -129,7 +129,7 @@ function PokeRecentWebhookRequestsContent({
         {WEBHOOK_REQUEST_TRIGGER_STATUSES.map((s) => (
           <Chip
             key={s}
-            color={statusFilter === s ? "primary" : "white"}
+            color={statusFilter === s ? "primary" : "primary"}
             size="xs"
             label={STATUS_FILTER_LABELS[s]}
             className="cursor-pointer select-none"

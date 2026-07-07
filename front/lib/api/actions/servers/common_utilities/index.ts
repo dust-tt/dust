@@ -4,7 +4,10 @@ import {
   isAgentLoopRunContext,
   type ToolContextType,
 } from "@app/lib/actions/types";
-import { COMMON_UTILITIES_SERVER_NAME } from "@app/lib/api/actions/servers/common_utilities/metadata";
+import {
+  COMMON_UTILITIES_SERVER_NAME,
+  SET_CONVERSATION_TITLE_TOOL_NAME,
+} from "@app/lib/api/actions/servers/common_utilities/metadata";
 import { TOOLS } from "@app/lib/api/actions/servers/common_utilities/tools";
 import type { Authenticator } from "@app/lib/auth";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
@@ -21,8 +24,8 @@ function createServer(
       : null) ?? toolContext?.listToolsContext?.conversation;
 
   for (const tool of TOOLS) {
-    // Skip `set_conversation_title` if there is no conversation in tool context.
-    if (!conversation && tool.name === "set_conversation_title") {
+    // Skip the conversation-title tool if there is no conversation in tool context.
+    if (!conversation && tool.name === SET_CONVERSATION_TITLE_TOOL_NAME) {
       continue;
     }
     registerTool(auth, toolContext, server, tool, {

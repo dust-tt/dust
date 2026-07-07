@@ -321,7 +321,6 @@ export function FeedbackSelector({
                           onCheckedChange={(value) => {
                             isConversationSharedField.field.onChange(!!value);
                           }}
-                          size="xs"
                           className="mt-1"
                         />
                         <div className="flex flex-col">

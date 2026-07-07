@@ -62,7 +62,6 @@ function ScheduleEditionStatusToggle({
       <div className="flex flex-row items-center gap-2">
         <span className="w-16">{isEnabled ? "Enabled" : "Disabled"}</span>
         <SliderToggle
-          size="xs"
           disabled={!isEditor}
           selected={isEnabled}
           onClick={() => setStatus(isEnabled ? "disabled" : "enabled")}

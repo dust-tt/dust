@@ -19,6 +19,11 @@ export type AvailableSkill = {
   totalExecutions: number;
 };
 
+export type AvailableSkillById = {
+  skillId: string;
+  totalExecutions: number;
+};
+
 export type GetWorkspaceSkillsResponse = {
   skills: AvailableSkill[];
 };
@@ -213,12 +218,51 @@ export async function fetchAvailableSkills(
     result.value.aggregations?.skills_nested?.by_skill?.buckets
   );
 
-  const skills: AvailableSkill[] = skillBuckets.map((bucket) => ({
-    skillName: bucket.key,
-    totalExecutions: bucket.doc_count,
-  }));
+  return new Ok(
+    skillBuckets.map((bucket) => ({
+      skillName: bucket.key,
+      totalExecutions: bucket.doc_count,
+    }))
+  );
+}
 
-  return new Ok(skills);
+export async function fetchAvailableSkillsBySkillId(
+  baseQuery: estypes.QueryDslQueryContainer
+): Promise<Result<AvailableSkillById[], Error>> {
+  const aggs: Record<string, estypes.AggregationsAggregationContainer> = {
+    skills_nested: {
+      nested: { path: "skills_used" },
+      aggs: {
+        by_skill_id: {
+          terms: {
+            field: "skills_used.skill_id",
+            size: 100,
+            order: { _count: "desc" },
+          },
+        },
+      },
+    },
+  };
+
+  const result = await searchAnalytics<never, SkillIdListAggs>(baseQuery, {
+    aggregations: aggs,
+    size: 0,
+  });
+
+  if (result.isErr()) {
+    return new Err(new Error(result.error.message));
+  }
+
+  const skillBuckets = bucketsToArray<SkillBucket>(
+    result.value.aggregations?.skills_nested?.by_skill_id?.buckets
+  );
+
+  return new Ok(
+    skillBuckets.map((bucket) => ({
+      skillId: bucket.key,
+      totalExecutions: bucket.doc_count,
+    }))
+  );
 }
 
 export async function fetchUsedSkills(

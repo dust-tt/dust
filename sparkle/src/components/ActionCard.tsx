@@ -24,9 +24,9 @@ const actionCardDiffVariants = cva("p-3", {
 
 const DIFF_CHIP_CONFIG: Record<
   ActionCardDiffStatus,
-  { color: "green" | "warning"; icon: React.ComponentType }
+  { color: "success" | "warning"; icon: React.ComponentType }
 > = {
-  added: { color: "green", icon: Plus },
+  added: { color: "success", icon: Plus },
   removed: { color: "warning", icon: Minus },
 };
 
@@ -141,7 +141,7 @@ export const ActionCard = React.forwardRef<HTMLDivElement, ActionCardProps>(
                 {isSelected && (
                   <Chip
                     size="xs"
-                    color="green"
+                    color="success"
                     label="ADDED"
                     className={cn(FADE_TRANSITION_CLASSES, "opacity-100")}
                   />

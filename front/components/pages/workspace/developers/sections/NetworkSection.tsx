@@ -162,7 +162,6 @@ export function NetworkSection() {
             </div>
           </div>
           <SliderToggle
-            size="xs"
             selected={allowAgentEgressRequests}
             onClick={() => {
               void handleToggleAgentEgressRequests();

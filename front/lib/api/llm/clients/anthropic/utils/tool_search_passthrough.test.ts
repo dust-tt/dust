@@ -202,6 +202,34 @@ describe("stripUnreplayableToolSearchBlocks", () => {
     ]);
   });
 
+  it("keeps a pair split across assistant messages after a resumed search completed on the next turn", () => {
+    const messages = [
+      user(text("Find my meetings.")),
+      assistant(text("Searching."), search("srv_1"), toolUse("tool_1")),
+      user(toolResult("tool_1")),
+      assistant(searchResult("srv_1"), toolUse("tool_2")),
+      user(toolResult("tool_2")),
+    ];
+
+    expect(
+      stripUnreplayableToolSearchBlocks(messages, { toolSearchInRequest: true })
+    ).toBe(messages);
+  });
+
+  it("strips a result whose server_tool_use is missing from the replay", () => {
+    const messages = [
+      user(text("Find my meetings.")),
+      assistant(searchResult("srv_1"), toolUse("tool_1")),
+      user(toolResult("tool_1")),
+    ];
+
+    const sanitized = stripUnreplayableToolSearchBlocks(messages, {
+      toolSearchInRequest: true,
+    });
+
+    expect(blockTypes(sanitized[1])).toEqual(["tool_use"]);
+  });
+
   it("strips every tool search block when the request has no tool search tool", () => {
     const messages = [
       user(text("Find my meetings.")),

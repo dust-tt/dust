@@ -94,13 +94,14 @@ app.get("/", async (ctx): HandlerResult<PokeGetMemberships> => {
   const auth = ctx.get("auth");
   const owner = auth.getNonNullableWorkspace();
 
-  // Members are listed by their ACTIVE seat. Scheduled future seat changes
-  // (e.g. a member seated mid-migration whose seat flips at the pending contract
-  // start) live in separate future-dated rows — surface them separately so the
-  // table shows "current → scheduled (date)" rather than the not-yet-active seat.
+  // Members list includes revoked memberships (role "none"), each shown by
+  // their ACTIVE seat. Scheduled future seat changes (e.g. a member seated
+  // mid-migration whose seat flips at the pending contract start) live in
+  // separate future-dated rows — surface them separately so the table shows
+  // "current → scheduled (date)" rather than the not-yet-active seat.
   const [{ members }, scheduledFutureMemberships, pendingInvitations] =
     await Promise.all([
-      getMembers(auth, { activeOnly: true }),
+      getMembers(auth),
       MembershipResource.getScheduledFutureMemberships({ workspace: owner }),
       MembershipInvitationResource.getPendingInvitations(auth, {
         includeExpired: true,

@@ -105,7 +105,7 @@ export const AgentEditBar = ({
                   <DropdownMenuTagItem
                     key={t.sId}
                     label={t.name}
-                    color="golden"
+                    color="info"
                     onClick={async () => {
                       setIsLoading(true);
                       const agentIds = selectedAgents.map((a) => a.sId);

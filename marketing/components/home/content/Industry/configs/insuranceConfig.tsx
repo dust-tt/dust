@@ -23,7 +23,7 @@ export const insuranceConfig: IndustryPageConfig = {
   hero: {
     chip: {
       label: "Insurance",
-      color: "blue",
+      color: "highlight",
       icon: MedicalCross,
     },
     title: (

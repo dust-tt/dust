@@ -52,14 +52,14 @@ const DEFAULT_PAGE_SIZE = 25;
 
 const USER_CREDIT_STATE_CHIP_COLOR: Record<
   UserCreditState,
-  "success" | "warning" | "rose" | "info"
+  "success" | "warning" | "warning" | "info"
 > = {
   user_seat: "info",
   user_seat_low_balance: "warning",
   normal: "success",
   on_pool: "success",
   on_pool_low_balance: "warning",
-  capped: "rose",
+  capped: "warning",
 };
 
 // Free seats hold a per-user credit with two balance alerts: "low" (≤20%) and

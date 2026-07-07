@@ -63,7 +63,6 @@ export function BigQueryUseMetadataForDBMLView({
         action={
           <div className="relative">
             <SliderToggle
-              size="xs"
               onClick={async () => {
                 await handleSetUseMetadataForDBML(!useMetadataForDBML);
               }}

@@ -93,7 +93,7 @@ export function LLMTracePage() {
           <div className="flex flex-wrap gap-2">
             {trace.context.agentConfigurationId && (
               <Chip
-                color="rose"
+                color="warning"
                 label={`Agent: ${trace.context.agentConfigurationId}`}
                 size="sm"
                 href={`/poke/${owner.sId}/assistants/${trace.context.agentConfigurationId}`}
@@ -102,7 +102,7 @@ export function LLMTracePage() {
             )}
             {trace.context.conversationId && (
               <Chip
-                color="golden"
+                color="info"
                 label={`Conversation`}
                 size="sm"
                 href={`/poke/${owner.sId}/conversation/${trace.context.conversationId}`}
@@ -114,7 +114,7 @@ export function LLMTracePage() {
 
         <div className="flex flex-wrap gap-2">
           <Chip
-            color="blue"
+            color="highlight"
             label={`Model: ${trace.input?.modelId ?? trace.metadata.modelId}`}
             size="sm"
           />
@@ -133,7 +133,7 @@ export function LLMTracePage() {
           {trace.output?.finishReason && (
             <Chip
               color={
-                trace.output.finishReason === "error" ? "warning" : "green"
+                trace.output.finishReason === "error" ? "warning" : "success"
               }
               label={`Finish reason: ${trace.output.finishReason}`}
               size="sm"

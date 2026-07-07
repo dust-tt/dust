@@ -66,8 +66,6 @@ export const RadioGroupExample = () => {
           <RadioGroupItem
             value="option-four"
             id="option-four"
-            size="sm"
-            tooltipMessage="This is a nice tooltip message"
             label="Option Four"
           />
         </div>
@@ -75,7 +73,6 @@ export const RadioGroupExample = () => {
           <RadioGroupItem
             value="option-five"
             id="option-five"
-            size="sm"
             disabled
             label="Option Five"
           />
@@ -84,7 +81,6 @@ export const RadioGroupExample = () => {
           <RadioGroupItem
             value="option-six"
             id="option-six"
-            size="sm"
             label="Option Six"
           />
         </div>

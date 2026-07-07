@@ -296,7 +296,7 @@ export function SearchDropdownContent({
               <Chip
                 key={tag.sId}
                 label={tag.name}
-                color="golden"
+                color="info"
                 size="xs"
                 onClick={() => onTagClick(tag.sId)}
               />

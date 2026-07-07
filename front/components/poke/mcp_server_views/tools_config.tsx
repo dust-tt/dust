@@ -37,10 +37,10 @@ const STAKE_LABELS: Record<MCPToolStakeLevelType, string> = {
 };
 
 const STAKE_COLORS = {
-  high: "rose",
-  medium: "golden",
-  low: "blue",
-  never_ask: "green",
+  high: "warning",
+  medium: "info",
+  low: "highlight",
+  never_ask: "success",
 } as const satisfies Record<MCPToolStakeLevelType, string>;
 
 interface ToolConfigRow {

@@ -1328,7 +1328,6 @@ export function createSelectionColumn<TData>({
     header: ({ table }) =>
       !hideSelectAll ? (
         <Checkbox
-          size="xs"
           checked={
             table.getIsAllRowsSelected()
               ? true
@@ -1347,7 +1346,6 @@ export function createSelectionColumn<TData>({
     cell: ({ row }) => (
       <div className="flex h-full w-full items-center">
         <Checkbox
-          size="xs"
           checked={row.getIsSelected()}
           disabled={!row.getCanSelect()}
           onCheckedChange={(state) => {
@@ -1375,16 +1373,14 @@ export function createRadioSelectionColumn<TData>(): ColumnDef<TData> {
       <div className="flex h-full w-full items-center">
         <div
           className={cn(
-            radioStyles({ size: "xs" }),
+            radioStyles(),
             row.getIsSelected() && "bg-muted/50",
             !row.getCanSelect() && "cursor-not-allowed opacity-50"
           )}
           aria-checked={row.getIsSelected()}
           role="radio"
         >
-          {row.getIsSelected() && (
-            <div className={radioIndicatorStyles({ size: "xs" })} />
-          )}
+          {row.getIsSelected() && <div className={radioIndicatorStyles()} />}
         </div>
       </div>
     ),

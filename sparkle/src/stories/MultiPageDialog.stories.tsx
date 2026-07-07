@@ -972,7 +972,6 @@ export const ActionValidation: Story = {
                 <div className="mt-4">
                   <label className="copy-xs flex w-fit cursor-pointer flex-row items-center gap-2 py-2 pr-2 font-normal">
                     <Checkbox
-                      size="xs"
                       checked={neverAskAgain}
                       onCheckedChange={(check) => {
                         setNeverAskAgain(!!check);

@@ -203,7 +203,7 @@ export function PodConversationsTab({
                 {greeting}
               </h2>
               {podInfo.archivedAt && (
-                <Chip size="xs" color="rose" label="Archived" />
+                <Chip size="xs" color="warning" label="Archived" />
               )}
             </div>
             {podInfo.archivedAt ? (

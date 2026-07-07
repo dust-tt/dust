@@ -69,11 +69,11 @@ export function SkillSuggestionDetailsPage() {
 
   const stateColorMap: Record<
     SkillSuggestionState,
-    "info" | "primary" | "warning" | "rose"
+    "info" | "primary" | "warning" | "warning"
   > = {
     pending: "warning",
     approved: "primary",
-    rejected: "rose",
+    rejected: "warning",
     outdated: "info",
   };
 

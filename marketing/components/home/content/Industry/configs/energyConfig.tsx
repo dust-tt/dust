@@ -18,7 +18,7 @@ export const energyConfig: IndustryPageConfig = {
   hero: {
     chip: {
       label: "Energy & Utilities",
-      color: "green",
+      color: "success",
       icon: Stars02,
     },
     title: (

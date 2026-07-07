@@ -33,7 +33,10 @@ import {
 } from "@app/lib/api/audit/workos_audit";
 import { getStreamLLM } from "@app/lib/api/llm";
 import { ANTHROPIC_PROVIDER_ID } from "@app/lib/api/llm/clients/anthropic/types";
-import { parseAnthropicToolSearchBlock } from "@app/lib/api/llm/clients/anthropic/utils/tool_search_passthrough";
+import {
+  parseAnthropicToolSearchBlock,
+  TOOL_SEARCH_SERVER_TOOL_NAMES,
+} from "@app/lib/api/llm/clients/anthropic/utils/tool_search_passthrough";
 import type { LLMTraceContext } from "@app/lib/api/llm/traces/types";
 import {
   getByokUserFacingLLMErrorMessage,
@@ -128,6 +131,9 @@ function concatWithNewlineBoundary(
   return previous + current;
 }
 
+// TODO(2026-07-06 flav): Avoid leaking provider specifics in the agent loop. The Anthropic
+// passthrough parsing below (block shapes, server tool names) belongs behind a
+// provider-agnostic dispatch keyed on the passthrough provider id.
 function getReplayedToolNames(
   modelConversation: ModelConversationTypeMultiActions
 ): string[] {
@@ -151,6 +157,17 @@ function getReplayedToolNames(
               block.content.type === "tool_search_tool_search_result"
             ) {
               for (const ref of block.content.tool_references) {
+                // The search can match the tool search tool itself. Never
+                // synthesize a replay placeholder for it: the Anthropic client
+                // prepends the real server tool, and a placeholder would
+                // duplicate its name in the request.
+                if (
+                  TOOL_SEARCH_SERVER_TOOL_NAMES.some(
+                    (name) => name === ref.tool_name
+                  )
+                ) {
+                  continue;
+                }
                 toolNames.add(ref.tool_name);
               }
             }

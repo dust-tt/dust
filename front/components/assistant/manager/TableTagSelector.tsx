@@ -89,7 +89,7 @@ export const TableTagSelector = ({
                   >
                     <DropdownMenuTagItem
                       label={t.name}
-                      color="golden"
+                      color="info"
                       icon={isChecked ? Check : undefined}
                       onClick={async () => {
                         setIsLoading(true);

@@ -93,7 +93,6 @@ export function EditableTaskItem({ task }: EditableTaskItemProps) {
     <div className="group/task flex items-start gap-3 rounded-md p-1 transition-colors duration-200 hover:bg-muted-background">
       <div className="mt-0.5 shrink-0">
         <Checkbox
-          size="xs"
           checked={isDone}
           disabled={!canEdit}
           isMutedAfterCheck

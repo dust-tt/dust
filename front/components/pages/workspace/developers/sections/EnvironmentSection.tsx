@@ -535,7 +535,7 @@ export function EnvironmentSection() {
                           <Chip
                             key={domain}
                             size="xs"
-                            color="white"
+                            color="primary"
                             label={domain}
                           />
                         ))}
@@ -608,7 +608,6 @@ export function EnvironmentSection() {
                       </span>
                     </div>
                     <SliderToggle
-                      size="sm"
                       selected={kindField.value === "https_secret"}
                       disabled={isUpsertingWorkspaceSandboxEnvVar}
                       onClick={() => {
