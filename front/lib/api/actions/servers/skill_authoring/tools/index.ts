@@ -224,7 +224,7 @@ const handlers: ToolHandlers<typeof SKILL_AUTHORING_TOOLS_METADATA> = {
       return new Err(user.error);
     }
 
-    const resolvedFilter = filter ?? "all";
+    const resolvedFilter = filter ?? "writable";
 
     let skills;
     if (resolvedFilter === "agent_discoverable") {
