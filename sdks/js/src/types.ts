@@ -771,7 +771,6 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "use_new_llm_router"
   | "live_speech_to_text"
   | "workspace_default_agent"
-  | "sound_notification"
   | "whitelabel_frames"
   | "workday_mcp"
 >();
