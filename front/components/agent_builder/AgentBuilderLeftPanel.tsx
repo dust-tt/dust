@@ -24,6 +24,9 @@ interface AgentBuilderLeftPanelProps {
   editorGateMessage?: ReactNode;
   isTriggersLoading?: boolean;
   initialRequestedSpaceIds?: string[];
+  isEditorGateVisible: boolean;
+  isAddingSelfAsEditor: boolean;
+  onAddSelfAsEditor: () => void;
 }
 
 export function AgentBuilderLeftPanel({
@@ -34,6 +37,9 @@ export function AgentBuilderLeftPanel({
   editorGateMessage,
   isTriggersLoading,
   initialRequestedSpaceIds,
+  isEditorGateVisible,
+  isAddingSelfAsEditor,
+  onAddSelfAsEditor,
 }: AgentBuilderLeftPanelProps) {
   const { owner } = useAgentBuilderContext();
 
@@ -74,6 +80,9 @@ export function AgentBuilderLeftPanel({
           />
           <AgentBuilderSettingsBlock
             agentConfigurationId={agentConfigurationId}
+            isEditorGateVisible={isEditorGateVisible}
+            isAddingSelfAsEditor={isAddingSelfAsEditor}
+            onAddSelfAsEditor={onAddSelfAsEditor}
           />
         </div>
       </ScrollArea>

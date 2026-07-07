@@ -7,10 +7,16 @@ import { TagsSection } from "@app/components/agent_builder/settings/TagsSection"
 
 interface AgentBuilderSettingsBlockProps {
   agentConfigurationId: string | null;
+  isEditorGateVisible: boolean;
+  isAddingSelfAsEditor: boolean;
+  onAddSelfAsEditor: () => void;
 }
 
 export function AgentBuilderSettingsBlock({
   agentConfigurationId,
+  isEditorGateVisible,
+  isAddingSelfAsEditor,
+  onAddSelfAsEditor,
 }: AgentBuilderSettingsBlockProps) {
   const isCreatingNew = !agentConfigurationId;
   return (
@@ -23,7 +29,11 @@ export function AgentBuilderSettingsBlock({
           <AgentBuilderAvatarSection isCreatingNew={isCreatingNew} />
         </div>
         <AgentBuilderDescriptionSection isCreatingNew={isCreatingNew} />
-        <AccessSection />
+        <AccessSection
+          isEditorGateVisible={isEditorGateVisible}
+          isAddingSelfAsEditor={isAddingSelfAsEditor}
+          onAddSelfAsEditor={onAddSelfAsEditor}
+        />
         <TagsSection />
       </div>
     </AgentBuilderSectionContainer>

@@ -1,4 +1,3 @@
-import { BuilderEditorGateProvider } from "@app/components/shared/BuilderEditorGateContext";
 import {
   BuilderEditorGateMessage,
   BuilderEditorLoadErrorMessage,
@@ -54,7 +53,7 @@ import {
   ScrollArea,
 } from "@dust-tt/sparkle";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 
 interface SkillBuilderProps {
@@ -143,7 +142,7 @@ export default function SkillBuilder({ skill, onSaved }: SkillBuilderProps) {
 
   useNavigationLock(isDirty && !isSaving);
 
-  const handleAddSelfAsEditor = useCallback(async (): Promise<void> => {
+  const handleAddSelfAsEditor = async () => {
     if (!skill || isAddingSelfAsEditor) {
       return;
     }
@@ -154,16 +153,7 @@ export default function SkillBuilder({ skill, onSaved }: SkillBuilderProps) {
     } finally {
       setIsAddingSelfAsEditor(false);
     }
-  }, [skill, isAddingSelfAsEditor, updateSkillEditors, user.sId]);
-
-  const editorGateValue = useMemo(
-    () => ({
-      isEditorGateVisible: isAdminNonEditor,
-      isAddingSelfAsEditor,
-      onAddSelfAsEditor: handleAddSelfAsEditor,
-    }),
-    [isAdminNonEditor, isAddingSelfAsEditor, handleAddSelfAsEditor]
-  );
+  };
 
   const handleSubmit = async (data: SkillBuilderFormData) => {
     if (isEditorLocked) {
@@ -311,6 +301,11 @@ export default function SkillBuilder({ skill, onSaved }: SkillBuilderProps) {
           <SkillBuilderSettingsOrComparisonFooter
             skill={skill}
             hasSelfImprovingSkills={hasSelfImprovingSkills}
+            isEditorGateVisible={isAdminNonEditor}
+            isAddingSelfAsEditor={isAddingSelfAsEditor}
+            onAddSelfAsEditor={() => {
+              void handleAddSelfAsEditor();
+            }}
           />
         </div>
       </ScrollArea>
@@ -340,43 +335,39 @@ export default function SkillBuilder({ skill, onSaved }: SkillBuilderProps) {
   return (
     <SkillBuilderFormContext.Provider value={form}>
       <FormProvider form={form} asForm={false}>
-        <BuilderEditorGateProvider value={editorGateValue}>
-          <SkillVersionComparisonProvider>
-            <div
-              className={cn(
-                "flex h-dvh flex-row",
-                "bg-background text-foreground"
-              )}
-            >
-              {showSuggestionsPanel ? (
-                <ResizablePanelGroup
-                  id="skill-builder-layout"
-                  direction="horizontal"
-                  className="h-full w-full"
-                >
-                  <ResizablePanel defaultSize={65} minSize={40}>
+        <SkillVersionComparisonProvider>
+          <div
+            className={cn(
+              "flex h-dvh flex-row",
+              "bg-background text-foreground"
+            )}
+          >
+            {showSuggestionsPanel ? (
+              <ResizablePanelGroup
+                id="skill-builder-layout"
+                direction="horizontal"
+                className="h-full w-full"
+              >
+                <ResizablePanel defaultSize={65} minSize={40}>
+                  <div className="h-full w-full overflow-y-auto">
+                    {leftPanel}
+                  </div>
+                </ResizablePanel>
+
+                <>
+                  <ResizableHandle withHandle />
+                  <ResizablePanel defaultSize={35} minSize={20} maxSize={50}>
                     <div className="h-full w-full overflow-y-auto">
-                      {leftPanel}
+                      <SkillBuilderSuggestionsPanel disabled={isEditorLocked} />
                     </div>
                   </ResizablePanel>
-
-                  <>
-                    <ResizableHandle withHandle />
-                    <ResizablePanel defaultSize={35} minSize={20} maxSize={50}>
-                      <div className="h-full w-full overflow-y-auto">
-                        <SkillBuilderSuggestionsPanel
-                          disabled={isEditorLocked}
-                        />
-                      </div>
-                    </ResizablePanel>
-                  </>
-                </ResizablePanelGroup>
-              ) : (
-                leftPanel
-              )}
-            </div>
-          </SkillVersionComparisonProvider>
-        </BuilderEditorGateProvider>
+                </>
+              </ResizablePanelGroup>
+            ) : (
+              leftPanel
+            )}
+          </div>
+        </SkillVersionComparisonProvider>
       </FormProvider>
     </SkillBuilderFormContext.Provider>
   );
@@ -385,9 +376,15 @@ export default function SkillBuilder({ skill, onSaved }: SkillBuilderProps) {
 function SkillBuilderSettingsOrComparisonFooter({
   skill,
   hasSelfImprovingSkills,
+  isEditorGateVisible,
+  isAddingSelfAsEditor,
+  onAddSelfAsEditor,
 }: {
   skill?: SkillType;
   hasSelfImprovingSkills: boolean;
+  isEditorGateVisible: boolean;
+  isAddingSelfAsEditor: boolean;
+  onAddSelfAsEditor: () => void;
 }) {
   const { compareVersion } = useSkillVersionComparisonContext();
 
@@ -399,6 +396,9 @@ function SkillBuilderSettingsOrComparisonFooter({
     <SkillBuilderSettingsSection
       skill={skill}
       hasSelfImprovingSkills={hasSelfImprovingSkills}
+      isEditorGateVisible={isEditorGateVisible}
+      isAddingSelfAsEditor={isAddingSelfAsEditor}
+      onAddSelfAsEditor={onAddSelfAsEditor}
     />
   );
 }
