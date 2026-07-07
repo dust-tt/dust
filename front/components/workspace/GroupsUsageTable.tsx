@@ -50,13 +50,13 @@ function GroupCapCell({ group, readOnly, onSave }: GroupCapCellProps) {
   };
 
   return (
-    <div className="w-52">
+    <div className="w-60">
       <InputWithSave
         inputMode="numeric"
         pattern="[0-9]*"
         placeholder="No limit"
         value={current === null ? "" : current.toLocaleString()}
-        unit={current === null && !isEditing ? undefined : "credits"}
+        unit={current === null && !isEditing ? undefined : "credits/month"}
         normalizeValue={(value) => value.replace(/[^\d]/g, "")}
         formatValue={(value) =>
           value ? Number(value).toLocaleString() : value
@@ -149,8 +149,8 @@ export function GroupsUsageTable({ owner, readOnly }: GroupsUsageTableProps) {
   return (
     <div className="flex flex-col gap-3">
       <span className="copy-sm text-muted-foreground">
-        A group's spend limit applies to each of its members. When a member
-        belongs to several groups, the highest limit is used.
+        A group's monthly spend limit applies to each of its members. When a
+        member belongs to several groups, the highest limit is used.
       </span>
       <DataTable
         filterColumn="name"

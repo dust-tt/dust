@@ -451,7 +451,7 @@ const seatTypeColumn: ColumnDef<RowData, string> = {
 
 const consumedAwuCreditsColumn: ColumnDef<RowData, string> = {
   id: "consumedAwuCredits" as const,
-  header: () => <span>Credits usage</span>,
+  header: () => <span>Credits usage this month</span>,
   accessorFn: (row) => row.consumedAwuCredits.toString(),
   cell: (info: Info) => (
     <div className="w-full pr-3">

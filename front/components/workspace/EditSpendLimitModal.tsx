@@ -248,7 +248,7 @@ export function EditSpendLimitModal({
               <RadioGroupItem
                 value="override"
                 id="spend-limit-override"
-                label="Use custom limit"
+                label="Use custom monthly limit"
               />
 
               {kind === "override" && (
@@ -271,10 +271,10 @@ export function EditSpendLimitModal({
                       messageStatus={
                         validationMessage !== null ? "error" : undefined
                       }
-                      className="pr-16 text-right"
+                      className="pr-28 text-right"
                     />
                     <span className="copy-sm pointer-events-none absolute right-3 top-0 flex h-9 items-center text-muted-foreground">
-                      credits
+                      credits/month
                     </span>
                   </div>
                 </div>
