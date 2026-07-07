@@ -1536,16 +1536,17 @@ const QUERIES: LabeledQuery[] = [
   },
   {
     query:
-      "search recent connected data source documents about renewal pricing",
+      "semantic search connected data source documents about renewal pricing",
     expected: "data_sources_file_system.semantic_search",
   },
   {
     query:
-      "find passages in company knowledge that explain the onboarding policy",
+      "semantic search connected data source passages that explain the onboarding policy",
     expected: "data_sources_file_system.semantic_search",
   },
   {
-    query: "look for fresh docs from the last month about the SSO rollout plan",
+    query:
+      "semantic search connected data source documents updated last month about the SSO rollout plan",
     expected: "data_sources_file_system.semantic_search",
   },
   {
