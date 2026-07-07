@@ -1,8 +1,8 @@
 import type { GovernanceSetting } from "@app/components/pages/workspace/governance/GovernancePage";
 import { GroupSelector } from "@app/components/pages/workspace/governance/GroupSelector";
 import {
-  type GovernanceSettingConfiguration,
-  isValidPermissionScope,
+  type GovernancePermissionConfiguration,
+  isValidPermissionConfigurationScope,
 } from "@app/types/group_permissions";
 import type { GroupType } from "@app/types/groups";
 import { ButtonsSwitch, ButtonsSwitchList, Page } from "@dust-tt/sparkle";
@@ -11,7 +11,7 @@ import { useState } from "react";
 interface GovernanceSettingRowProps {
   governanceSetting: GovernanceSetting;
   groups: GroupType[];
-  onChange: (permission: GovernanceSettingConfiguration) => void;
+  onChange: (permission: GovernancePermissionConfiguration) => void;
 }
 
 export const GovernanceSettingRow = ({
@@ -20,7 +20,9 @@ export const GovernanceSettingRow = ({
   onChange,
 }: GovernanceSettingRowProps) => {
   const [configuration, setConfiguration] =
-    useState<GovernanceSettingConfiguration>(governanceSetting.configuration);
+    useState<GovernancePermissionConfiguration>(
+      governanceSetting.configuration
+    );
 
   const selectedGroupIds = new Set(configuration.groupIds ?? []);
   const selectedGroups = groups.filter((g) => selectedGroupIds.has(g.sId));
@@ -33,11 +35,11 @@ export const GovernanceSettingRow = ({
     scope: string;
     groupIds?: string[];
   }) => {
-    if (!isValidPermissionScope(scope)) {
+    if (!isValidPermissionConfigurationScope(scope)) {
       return;
     }
 
-    const newConfiguration: GovernanceSettingConfiguration = {
+    const newConfiguration: GovernancePermissionConfiguration = {
       scope,
       groupIds: scope === "groups" ? (groupIds ?? []) : [],
     };
@@ -68,7 +70,9 @@ export const GovernanceSettingRow = ({
         <GroupSelector
           selectedGroups={selectedGroups}
           selectableGroups={selectableGroups}
-          onPermissionChange={handlePermissionChange}
+          onSelectionChange={(groupIds) =>
+            handlePermissionChange({ scope: "groups", groupIds })
+          }
         />
       )}
     </div>

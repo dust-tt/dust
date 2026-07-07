@@ -7,7 +7,7 @@ import type { ComponentType } from "react";
 
 interface GovernanceSettingSectionProps {
   label: string;
-  icon: ComponentType<{ className?: string }>;
+  icon: ComponentType;
   governanceSettings: GovernanceSetting[];
   groups: GroupType[];
   onPermissionChange: (input: GovernancePermission) => void;

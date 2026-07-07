@@ -1,4 +1,3 @@
-import type { GovernanceSettingConfiguration } from "@app/types/group_permissions";
 import type { GroupType } from "@app/types/groups";
 import {
   Button,
@@ -15,13 +14,13 @@ import { useState } from "react";
 interface GroupSelectorProps {
   selectedGroups: GroupType[];
   selectableGroups: GroupType[];
-  onPermissionChange: (input: GovernanceSettingConfiguration) => void;
+  onSelectionChange: (groupIds: string[]) => void;
 }
 
 export const GroupSelector = ({
   selectedGroups,
   selectableGroups,
-  onPermissionChange,
+  onSelectionChange,
 }: GroupSelectorProps) => {
   const [groupSearch, setGroupSearch] = useState("");
   const filteredGroups = selectableGroups.filter((g) =>
@@ -63,10 +62,7 @@ export const GroupSelector = ({
                 />
               }
               onClick={() =>
-                onPermissionChange({
-                  scope: "groups",
-                  groupIds: [...selectedGroupIds, group.sId],
-                })
+                onSelectionChange([...selectedGroupIds, group.sId])
               }
             />
           ))}
@@ -85,10 +81,9 @@ export const GroupSelector = ({
             size="xs"
             color="highlight"
             onRemove={() =>
-              onPermissionChange({
-                scope: "groups",
-                groupIds: selectedGroupIds.filter((id) => id !== group.sId),
-              })
+              onSelectionChange(
+                selectedGroupIds.filter((id) => id !== group.sId)
+              )
             }
           />
         </span>
