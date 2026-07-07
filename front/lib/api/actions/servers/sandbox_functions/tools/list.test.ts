@@ -1,5 +1,5 @@
 import { formatSandboxFunctionsList } from "@app/lib/api/actions/servers/sandbox_functions/tools/list";
-import type { FunctionManifests } from "@app/lib/api/sandbox_functions/manifests";
+import type { FunctionStateManifest } from "@app/lib/api/sandbox_functions/manifests";
 import type { Authenticator } from "@app/lib/auth";
 import { SandboxFunctionResource } from "@app/lib/resources/sandbox_function_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
@@ -32,7 +32,7 @@ async function makeFunction(
   }: {
     slug: string;
     description: string;
-    manifests?: FunctionManifests | null;
+    manifests?: FunctionStateManifest | null;
   }
 ): Promise<SandboxFunctionResource> {
   const file = await FileFactory.create(auth, null, {

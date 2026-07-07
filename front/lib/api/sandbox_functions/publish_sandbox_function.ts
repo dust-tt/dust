@@ -275,7 +275,7 @@ async function computeUntrackedDatabases(
   }: {
     space: SpaceResource;
     slug: string;
-    manifests: FunctionManifests | null;
+    manifests: FunctionStateManifest | null;
     siblings: SiblingManifests[];
   }
 ): Promise<string[]> {
