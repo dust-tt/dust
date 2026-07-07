@@ -38,6 +38,7 @@ import {
 } from "@app/components/markdown/CiteBlock";
 import type { MCPReferenceCitation } from "@app/components/markdown/MCPReferenceCitation";
 import { getQuickReplyPlugin } from "@app/components/markdown/QuickReplyBlock";
+import { getActionCardPlugin } from "@app/components/markdown/ActionCardDirective";
 import { getToolSetupPlugin } from "@app/components/markdown/tool/tool";
 import {
   getVisualizationPlugin,
@@ -1263,6 +1264,17 @@ function AgentMessageContent({
       sup: CiteBlock,
       quickReply: getQuickReplyPlugin(onQuickReplySend, isLastMessage),
       toolSetup: getToolSetupPlugin(owner, handleToolSetupComplete),
+      action_card: getActionCardPlugin(
+        {
+          onAction: async (message) => {
+            await onQuickReplySend(message);
+          },
+          onDismiss: async (message) => {
+            await onQuickReplySend(message);
+          },
+        },
+        isLastMessage
+      ),
       ...propsAdditionalMarkdownComponents,
     }),
     [

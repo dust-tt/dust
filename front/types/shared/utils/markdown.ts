@@ -70,6 +70,18 @@ function replaceAgentSuggestions(text: string): string {
     .replaceAll(/:agent_suggestion\[\]\{([^}]*)\}/g, () => "Suggestion");
 }
 
+function replaceActionCards(text: string): string {
+  return text
+    .replaceAll(
+      /::action_card\[([^\]]*)\]\{([^}]*)\}/g,
+      (_full, label: string) => normalizeInlineLabel(label) || "Action"
+    )
+    .replaceAll(
+      /:action_card\[([^\]]*)\]\{([^}]*)\}/g,
+      (_full, label: string) => normalizeInlineLabel(label) || "Action"
+    );
+}
+
 function replaceVisualizationBlocks(text: string): string {
   return text.replaceAll(VISUALIZATION_BLOCK_REGEX, () => "Visualization\n\n");
 }
@@ -91,6 +103,7 @@ function replaceDustDirectives(text: string): string {
   out = replaceContentNodeMentions(out);
   out = replacePastedAttachments(out);
   out = replaceAgentSuggestions(out);
+  out = replaceActionCards(out);
   out = replaceMentionsWithAt(out);
   return out;
 }

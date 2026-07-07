@@ -13,6 +13,7 @@ import {
   preprocessInstructionBlocks,
 } from "@app/components/markdown/InstructionBlock";
 import { quickReplyDirective } from "@app/components/markdown/QuickReplyBlock";
+import { actionCardDirective } from "@app/components/markdown/ActionCardDirective";
 import {
   getTaskDirectiveBlock,
   taskDirective,
@@ -87,6 +88,7 @@ export const AgentMessageMarkdown = ({
       filePreviewDirective,
       toolDirective,
       quickReplyDirective,
+      actionCardDirective,
       ...additionalMarkdownPlugins,
     ];
 
