@@ -148,6 +148,14 @@ export const CARRY_ON_RENEWAL_CUSTOM_FIELD_KEY = "DUST_CARRY_ON_RENEWAL";
 
 export const CARRY_ON_RENEWAL_FOREVER_VALUE = "forever";
 
+// Custom fields stamped on AWU pool commits (admin grants via
+// `grantAwuCreditsPlugin` and self-serve top-ups via `addPaymentGatedCommitToContract`)
+// for finance reconciliation against the Stripe invoice Metronome generates.
+export const AWU_PURCHASE_ORDER_ID_CUSTOM_FIELD_KEY = "DUST_PURCHASE_ORDER_ID";
+export const AWU_AMOUNT_CUSTOM_FIELD_KEY = "DUST_AWU_AMOUNT";
+export const AWU_DISCOUNT_PERCENT_CUSTOM_FIELD_KEY =
+  "DUST_AWU_DISCOUNT_PERCENT";
+
 export const FOREVER_ENDING_BEFORE = new Date("2999-01-01T00:00:00.000Z");
 
 export function oneYearAfter(start: Date): Date {
