@@ -6,28 +6,30 @@ import type { Result } from "@app/types/shared/result";
 import { Ok } from "@app/types/shared/result";
 import { z } from "zod";
 
-const BulkSpendLimitFilterSchema = z.object({
+const BulkMemberSelectionFilterSchema = z.object({
   seatType: z.enum(MEMBERSHIP_SEAT_TYPES).optional(),
   groupId: z.string().optional(),
   search: z.string().optional(),
 });
 
-export const BulkSpendLimitSelectionSchema = z.discriminatedUnion("mode", [
+// Descriptor of a cross-page member selection in the usage members table:
+// either an explicit list of user sIds, or "all members matching the current
+// filter" minus explicit exclusions. Shared by the bulk member actions
+// (spend-limit and seat-type updates).
+export const BulkMemberSelectionSchema = z.discriminatedUnion("mode", [
   z.object({ mode: z.literal("ids"), userIds: z.array(z.string()).min(1) }),
   z.object({
     mode: z.literal("all"),
-    filter: BulkSpendLimitFilterSchema,
+    filter: BulkMemberSelectionFilterSchema,
     excludeUserIds: z.array(z.string()),
   }),
 ]);
 
-export type BulkSpendLimitSelection = z.infer<
-  typeof BulkSpendLimitSelectionSchema
->;
+export type BulkMemberSelection = z.infer<typeof BulkMemberSelectionSchema>;
 
-export async function resolveBulkSpendLimitUserIds(
+export async function resolveBulkMemberSelectionUserIds(
   auth: Authenticator,
-  selection: BulkSpendLimitSelection
+  selection: BulkMemberSelection
 ): Promise<Result<string[], Error>> {
   if (selection.mode === "ids") {
     const uniqueIds = [...new Set(selection.userIds)];

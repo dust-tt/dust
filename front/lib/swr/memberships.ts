@@ -227,7 +227,8 @@ function bulkSpendLimitUrl(workspaceId: string): string {
   return `/api/w/${workspaceId}/members/bulk-spend-limit`;
 }
 
-type BulkSpendLimitSelectionBody =
+// Cross-page member selection descriptor shared by the bulk member endpoints.
+export type BulkMemberSelectionBody =
   | { mode: "ids"; userIds: string[] }
   | {
       mode: "all";
@@ -252,7 +253,7 @@ export function useBulkSetUserSpendLimit({
       selection,
       limit,
     }: {
-      selection: BulkSpendLimitSelectionBody;
+      selection: BulkMemberSelectionBody;
       limit: { kind: "unlimited" } | { kind: "limited"; awuCredits: number };
     }): Promise<{ workflowId: string; memberCount: number } | null> => {
       const res = await clientFetch(bulkSpendLimitUrl(workspaceId), {
