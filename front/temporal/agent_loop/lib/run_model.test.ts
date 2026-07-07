@@ -1,6 +1,11 @@
+import type { MCPToolConfigurationType } from "@app/lib/actions/mcp";
+import type { ServerSideMCPServerConfigurationType } from "@app/lib/actions/mcp_schemas";
 import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
 import { ANTHROPIC_PROVIDER_ID } from "@app/lib/api/llm/clients/anthropic/types";
-import { buildSpecificationsWithReplayPlaceholders } from "@app/temporal/agent_loop/lib/run_model";
+import {
+  buildBaseSpecifications,
+  buildSpecificationsWithReplayPlaceholders,
+} from "@app/temporal/agent_loop/lib/run_model";
 import type {
   ModelConversationTypeMultiActions,
   ModelMessageTypeMultiActionsWithoutContentFragment,
@@ -65,6 +70,174 @@ function makeConversation(
 ): ModelConversationTypeMultiActions {
   return { messages };
 }
+
+function makeServerSideToolConfiguration(
+  name: string,
+  { mcpServerViewId, eager }: { mcpServerViewId: string; eager?: boolean }
+): MCPToolConfigurationType {
+  return {
+    id: -1,
+    sId: `tool_${name}`,
+    type: "mcp_configuration",
+    name,
+    description: `Description of ${name}`,
+    inputSchema: { type: "object", properties: {}, required: [] },
+    dataSources: null,
+    tables: null,
+    childAgentId: null,
+    timeFrame: null,
+    jsonSchema: null,
+    additionalConfiguration: {},
+    mcpServerViewId,
+    dustAppConfiguration: null,
+    secretName: null,
+    dustProject: null,
+    internalMCPServerId: null,
+    originalName: name,
+    mcpServerName: "server",
+    availability: "manual",
+    permission: "never_ask",
+    toolServerId: "server_id",
+    retryPolicy: "no_retry",
+    ...(eager !== undefined ? { eager } : {}),
+  };
+}
+
+function makeClientSideToolConfiguration(
+  name: string
+): MCPToolConfigurationType {
+  return {
+    id: -1,
+    sId: `tool_${name}`,
+    type: "mcp_configuration",
+    name,
+    description: `Description of ${name}`,
+    inputSchema: { type: "object", properties: {}, required: [] },
+    clientSideMcpServerId: "client_side_server_id",
+    originalName: name,
+    mcpServerName: "server",
+    permission: "never_ask",
+    toolServerId: "server_id",
+  };
+}
+
+function makeAgentServerConfiguration(
+  mcpServerViewId: string
+): ServerSideMCPServerConfigurationType {
+  return {
+    id: -1,
+    sId: `action_${mcpServerViewId}`,
+    type: "mcp_server_configuration",
+    name: "server",
+    description: null,
+    dataSources: null,
+    tables: null,
+    childAgentId: null,
+    timeFrame: null,
+    jsonSchema: null,
+    additionalConfiguration: {},
+    mcpServerViewId,
+    dustAppConfiguration: null,
+    secretName: null,
+    dustProject: null,
+    internalMCPServerId: null,
+  };
+}
+
+describe("buildBaseSpecifications", () => {
+  it("marks a custom agent's configured tools eager", () => {
+    const specifications = buildBaseSpecifications(
+      [
+        makeServerSideToolConfiguration("configured_tool", {
+          mcpServerViewId: "view_configured",
+        }),
+        makeServerSideToolConfiguration("jit_tool", {
+          mcpServerViewId: "view_jit",
+        }),
+      ],
+      {
+        sId: "custom_agent",
+        actions: [makeAgentServerConfiguration("view_configured")],
+      }
+    );
+
+    expect(specifications.find((s) => s.name === "configured_tool")?.eager).toBe(
+      true
+    );
+    expect(
+      specifications.find((s) => s.name === "jit_tool")?.eager
+    ).toBeUndefined();
+  });
+
+  it("does not promote configured tools of a global agent", () => {
+    const specifications = buildBaseSpecifications(
+      [
+        makeServerSideToolConfiguration("configured_tool", {
+          mcpServerViewId: "view_configured",
+        }),
+      ],
+      {
+        sId: "dust",
+        actions: [makeAgentServerConfiguration("view_configured")],
+      }
+    );
+
+    expect(specifications[0].eager).toBeUndefined();
+  });
+
+  it("preserves the intrinsic eager flag on non-configured tools", () => {
+    const specifications = buildBaseSpecifications(
+      [
+        makeServerSideToolConfiguration("hot_jit_tool", {
+          mcpServerViewId: "view_jit",
+          eager: true,
+        }),
+      ],
+      { sId: "custom_agent", actions: [] }
+    );
+
+    expect(specifications[0].eager).toBe(true);
+  });
+
+  it("keeps skill tools deferred when a skill is enabled mid-conversation", () => {
+    const agentConfiguration = {
+      sId: "custom_agent",
+      actions: [makeAgentServerConfiguration("view_configured")],
+    };
+    const configuredTool = makeServerSideToolConfiguration("configured_tool", {
+      mcpServerViewId: "view_configured",
+    });
+
+    // Before the skill is enabled, its tools are not in the request at all.
+    const before = buildBaseSpecifications([configuredTool], agentConfiguration);
+    expect(before.map((s) => s.name)).toEqual(["configured_tool"]);
+
+    // Once enabled, the skill's server is appended to the available actions
+    // without touching the agent's configured set: its tools must stay
+    // deferred so the cached tool prefix is not rewritten.
+    const after = buildBaseSpecifications(
+      [
+        configuredTool,
+        makeServerSideToolConfiguration("skill_tool", {
+          mcpServerViewId: "view_skill",
+        }),
+      ],
+      agentConfiguration
+    );
+
+    expect(after.find((s) => s.name === "skill_tool")?.eager).toBeUndefined();
+    expect(after.find((s) => s.name === "configured_tool")?.eager).toBe(true);
+  });
+
+  it("keeps client-side tools deferred for custom agents", () => {
+    const specifications = buildBaseSpecifications(
+      [makeClientSideToolConfiguration("client_tool")],
+      { sId: "custom_agent", actions: [] }
+    );
+
+    expect(specifications[0].eager).toBeUndefined();
+  });
+});
 
 describe("buildSpecificationsWithReplayPlaceholders", () => {
   it("does not eagerly load replayed tools that are still configured", () => {

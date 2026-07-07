@@ -1,11 +1,16 @@
 import { TOOL_NAME_SEPARATOR } from "@app/lib/actions/constants";
+import type { MCPToolConfigurationType } from "@app/lib/actions/mcp";
 import { buildToolSpecification } from "@app/lib/actions/mcp";
 import { tryListMCPTools } from "@app/lib/actions/mcp_actions";
 import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
 import { isJITMCPServerView } from "@app/lib/actions/mcp_internal_actions/utils";
 import type { StepContext } from "@app/lib/actions/types";
 import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
-import { isServerSideMCPServerConfigurationWithName } from "@app/lib/actions/types/guards";
+import {
+  isServerSideMCPServerConfiguration,
+  isServerSideMCPServerConfigurationWithName,
+  isServerSideMCPToolConfiguration,
+} from "@app/lib/actions/types/guards";
 import { computeStepContexts } from "@app/lib/actions/utils";
 import { getAdvancedModelAccessErrorForAgentConfiguration } from "@app/lib/advanced_models/access";
 import { createClientSideMCPServerConfigurations } from "@app/lib/api/actions/mcp_client_side";
@@ -72,8 +77,12 @@ import { RUN_MODEL_MAX_RETRIES } from "@app/temporal/agent_loop/config";
 import { getOutputFromLLMStream } from "@app/temporal/agent_loop/lib/get_output_from_llm";
 import { sliceConversationForAgentMessage } from "@app/temporal/agent_loop/lib/loop_utils";
 import { makeRunModelLLMError } from "@app/temporal/agent_loop/lib/run_model_errors";
-import type { AgentActionsEvent } from "@app/types/assistant/agent";
+import type {
+  AgentActionsEvent,
+  AgentConfigurationType,
+} from "@app/types/assistant/agent";
 import type { AgentLoopExecutionData } from "@app/types/assistant/agent_run";
+import { isGlobalAgentId } from "@app/types/assistant/assistant";
 import type {
   AgentMessageType,
   UserMessageOrigin,
@@ -201,6 +210,38 @@ function buildReplayOnlyToolSpecification(
       additionalProperties: true,
     },
   };
+}
+
+// A custom agent's configured tools are its identity: they stay in the eagerly
+// loaded set so the model always sees them instead of having to discover them
+// through tool search. The set is small and stable per agent version, so the
+// cached tool prefix stays byte-stable. Global agents keep the curated per-tool
+// metadata flags, and conversation, skill and JIT provided tools stay deferred
+// so mid-conversation additions append to the deferred catalog instead of
+// rewriting the prefix.
+export function buildBaseSpecifications(
+  availableActions: MCPToolConfigurationType[],
+  agentConfiguration: Pick<AgentConfigurationType, "sId" | "actions">
+): AgentActionSpecification[] {
+  const isCustomAgent = !isGlobalAgentId(agentConfiguration.sId);
+  const agentActionViewIds = new Set(
+    agentConfiguration.actions
+      .filter(isServerSideMCPServerConfiguration)
+      .map((action) => action.mcpServerViewId)
+  );
+
+  return availableActions.map((action) => {
+    const specification = buildToolSpecification(action);
+    if (
+      isCustomAgent &&
+      isServerSideMCPToolConfiguration(action) &&
+      agentActionViewIds.has(action.mcpServerViewId)
+    ) {
+      return { ...specification, eager: true };
+    }
+
+    return specification;
+  });
 }
 
 // Replayed tools keep their intrinsic `eager` flag: providers resolve deferred
@@ -528,9 +569,8 @@ export async function runModel(
   // deferred behind tool search is an Anthropic-specific policy applied in the
   // Anthropic client, gated on `toolSearchEnabled` (threaded through below).
   const toolSearchEnabled = featureFlags.includes("anthropic_tool_search");
-  const baseSpecifications: AgentActionSpecification[] = availableActions.map(
-    (a) => buildToolSpecification(a)
-  );
+  const baseSpecifications: AgentActionSpecification[] =
+    buildBaseSpecifications(availableActions, agentConfiguration);
 
   // Count the number of tokens used by the functions presented to the model.
   // This is a rough estimate of the number of tokens.
