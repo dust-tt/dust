@@ -105,12 +105,12 @@ export async function processToolNotification(
 
   // Specific handling for run_agent notifications indicating the tool has
   // started and can be resumed: the action is updated to save the resumeState.
-  if (isRunAgentQueryProgressOutput(output)) {
-    // Sandbox function actions carry no step context to persist a resume state on.
-    assert(
-      isAgentLoopRunContext(runContext),
-      "run_agent notifications require an agent loop run context."
-    );
+  // Sandbox function actions carry no step context to persist a resume state on, so this only
+  // applies to agent loop run contexts.
+  if (
+    isRunAgentQueryProgressOutput(output) &&
+    isAgentLoopRunContext(runContext)
+  ) {
     await runContext.action.updateStepContext({
       ...runContext.action.stepContext,
       resumeState: {
