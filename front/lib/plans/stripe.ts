@@ -1745,10 +1745,9 @@ async function normalizeSubCentUnitAmount(
     return;
   }
 
-  const invoiceItemId =
-    typeof line.invoice_item === "string"
-      ? line.invoice_item
-      : line.invoice_item?.id;
+  const invoiceItemId = isString(line.invoice_item)
+    ? line.invoice_item
+    : line.invoice_item?.id;
 
   if (!invoiceItemId) {
     logger.warn(
