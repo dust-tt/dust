@@ -713,7 +713,7 @@ export async function runModel(
     await publishAgentError({
       code: "model_not_available",
       message:
-        `The model you selected (${agentConfiguration.model.modelId}) ` +
+        `The model you selected (${model.modelId}) ` +
         `is not available. Please edit the agent to use another model ` +
         `(advanced settings in the Instructions panel).`,
       metadata: null,
