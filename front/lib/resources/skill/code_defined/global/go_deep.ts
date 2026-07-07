@@ -2,16 +2,15 @@ import { getDeepDiveInstructions } from "@app/lib/api/assistant/global_agents/co
 import { isDeepDiveDisabledByAdmin } from "@app/lib/api/assistant/global_agents/configurations/dust/utils";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
-import {
-  type GlobalSkillDefinition,
-  SKILL_COMPANY_DATA_SERVER_NAME,
-} from "@app/lib/resources/skill/code_defined/shared";
+import type { GlobalSkillDefinition } from "@app/lib/resources/skill/code_defined/shared";
+import { SKILL_COMPANY_DATA_SERVER_NAME } from "@app/lib/resources/skill/code_defined/shared";
 import type { AgentLoopExecutionData } from "@app/types/assistant/agent_run";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import { isComputerFeatureEnabled } from "@app/types/shared/feature_flags";
 
 export const goDeepSkill = {
   sId: "go-deep",
+  kind: "global",
   name: "Go Deep",
   userFacingDescription:
     "Enable comprehensive analysis across company data, databases, and web " +

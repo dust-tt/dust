@@ -46,6 +46,7 @@ Do NOT close to handle revisions; use \`${EDIT_PLAN_TOOL_NAME}\` to iterate inst
 
 export const planModeSkill = {
   sId: "plan_mode",
+  kind: "system",
   name: "Plan Mode",
   userFacingDescription:
     "Let agents maintain a live plan.md the user can follow as work progresses.",

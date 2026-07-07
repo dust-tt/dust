@@ -128,6 +128,7 @@ Two passes. Both required — never ship after only the structural pass.
 
 export const docxSkill = {
   sId: "docx",
+  kind: "global",
   name: "Documents",
   userFacingDescription:
     "Read, edit, and create text documents (.docx) in the sandbox.",

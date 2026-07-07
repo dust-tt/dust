@@ -1,5 +1,5 @@
 import { Authenticator } from "@app/lib/auth";
-import { sandboxSkill } from "@app/lib/resources/skill/code_defined/sandbox";
+import { sandboxSkill } from "@app/lib/resources/skill/code_defined/global/sandbox";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";

@@ -29,6 +29,7 @@ The instructions may contain special tags such as nested skill, knowledge, or to
 
 export const skillAuthoringSkill = {
   sId: "skill-authoring",
+  kind: "global",
   name: "Author Skills",
   userFacingDescription:
     "Let this agent create and refine reusable Skills for your workspace.",

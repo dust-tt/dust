@@ -4,6 +4,7 @@ import type { GlobalSkillDefinition } from "@app/lib/resources/skill/code_define
 
 export const workspaceAnalyticsSkill = {
   sId: "workspace-analytics",
+  kind: "global",
   name: "Workspace Analytics",
   userFacingDescription:
     "Analyze how your workspace is being used — for example, which agents " +

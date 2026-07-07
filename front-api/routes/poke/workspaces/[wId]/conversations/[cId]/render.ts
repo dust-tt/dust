@@ -12,7 +12,7 @@ import { renderEquippedSkillsUserMessage } from "@app/lib/api/assistant/skills_r
 import { systemPromptToText } from "@app/lib/api/llm/types/options";
 import { getLlmCredentials } from "@app/lib/api/provider_credentials";
 import { getSupportedModelConfig } from "@app/lib/llms/model_configurations";
-import { constructProjectContext } from "@app/lib/resources/skill/code_defined/projects";
+import { constructProjectContext } from "@app/lib/resources/skill/code_defined/global/projects";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
 import { tokenCountForTexts } from "@app/lib/tokenization";

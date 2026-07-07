@@ -19,6 +19,7 @@ export type MCPServerDefinition = {
 interface BaseSkillDefinition {
   readonly agentFacingDescription: string;
   readonly userFacingDescription: string;
+  readonly kind: "global" | "system";
   readonly name: string;
   readonly sId: string;
   readonly version: number;
@@ -71,9 +72,13 @@ export type SkillDefinition =
   | WithStaticInstructions<BaseSkillDefinition>
   | WithDynamicInstructions<BaseSkillDefinition>;
 
-export type GlobalSkillDefinition = SkillDefinition;
+export type GlobalSkillDefinition = SkillDefinition & {
+  readonly kind: "global";
+};
+
 // System skills have no definition of "equipped". When they are present they are directly part of the system prompt.
 export type SystemSkillDefinition = SkillDefinition & {
+  readonly kind: "system";
   isAutoEquippedForAgentLoop?: never;
 };
 

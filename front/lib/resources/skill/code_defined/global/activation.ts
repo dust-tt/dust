@@ -122,6 +122,7 @@ async function buildActivationContext(
 
 export const activationSkill = {
   sId: "activation",
+  kind: "global",
   name: "Activation",
   userFacingDescription:
     "Get a recommendation for the next best action to get more value from Dust, then execute it and make it a habit.",

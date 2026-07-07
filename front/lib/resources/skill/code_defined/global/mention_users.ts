@@ -7,6 +7,7 @@ import type { GlobalSkillDefinition } from "@app/lib/resources/skill/code_define
 
 export const mentionUsersSkill = {
   sId: "mention_users",
+  kind: "global",
   name: "Mention Users",
   userFacingDescription:
     "Allow agents to mention and notify workspace users in conversations.",

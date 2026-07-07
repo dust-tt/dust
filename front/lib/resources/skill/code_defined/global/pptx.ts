@@ -674,6 +674,7 @@ three modes.
 
 export const pptxSkill = {
   sId: "pptx",
+  kind: "global",
   name: "Slide decks",
   userFacingDescription: "Read, edit, and create slide presentations",
   agentFacingDescription:

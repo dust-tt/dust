@@ -1,8 +1,6 @@
 import { getPrefixedToolName } from "@app/lib/actions/tool_name_utils";
-import {
-  SKILL_COMPANY_DATA_SERVER_NAME,
-  type SystemSkillDefinition,
-} from "@app/lib/resources/skill/code_defined/shared";
+import type { SystemSkillDefinition } from "@app/lib/resources/skill/code_defined/shared";
+import { SKILL_COMPANY_DATA_SERVER_NAME } from "@app/lib/resources/skill/code_defined/shared";
 
 const DATA_WAREHOUSES_SERVER_NAME = "data_warehouses";
 
@@ -81,6 +79,7 @@ const DISCOVER_KNOWLEDGE_INSTRUCTIONS =
 
 export const discoverKnowledgeSkill = {
   sId: "discover_knowledge",
+  kind: "system",
   name: "Discover Knowledge",
   userFacingDescription:
     "Search across all your company documents and data warehouses to surface " +

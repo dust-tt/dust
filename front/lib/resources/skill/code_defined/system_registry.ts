@@ -1,22 +1,10 @@
 import type { Authenticator } from "@app/lib/auth";
-import { discoverKnowledgeSkill } from "@app/lib/resources/skill/code_defined/discover_knowledge";
-import { discoverSkillsSkill } from "@app/lib/resources/skill/code_defined/discover_skills";
-import { discoverToolsSkill } from "@app/lib/resources/skill/code_defined/discover_tools";
-import { planModeSkill } from "@app/lib/resources/skill/code_defined/plan_mode";
 import {
-  ensureUniqueSIds,
   filterSkillDefinitions,
   type SystemSkillDefinition,
 } from "@app/lib/resources/skill/code_defined/shared";
+import { SYSTEM_SKILLS_ARRAY } from "@app/lib/resources/skill/code_defined/system";
 import type { AllSkillConfigurationFindOptions } from "@app/lib/resources/skill/types";
-
-// Registry is a simple array.
-const SYSTEM_SKILLS_ARRAY = ensureUniqueSIds([
-  discoverKnowledgeSkill,
-  discoverSkillsSkill,
-  discoverToolsSkill,
-  planModeSkill,
-] as const);
 
 // Build lookup map for direct access by sId.
 const SYSTEM_SKILLS_BY_ID: Map<string, SystemSkillDefinition> = new Map(

@@ -351,6 +351,7 @@ ${manifestYaml}
 
 export const sandboxSkill = {
   sId: "sandbox",
+  kind: "global",
   name: "Computer",
   userFacingDescription:
     "Run code, scripts, and shell commands in the conversation's Computer (a sandboxed Linux environment).",

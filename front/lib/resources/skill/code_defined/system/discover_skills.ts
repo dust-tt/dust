@@ -5,6 +5,7 @@ import type { SystemSkillDefinition } from "@app/lib/resources/skill/code_define
 // default skills + regular global skills) in the equipped skills list.
 export const discoverSkillsSkill = {
   sId: "discover_skills",
+  kind: "system",
   name: "Discover Skills",
   userFacingDescription:
     "Automatically discover and activate workspace skills as needed.",

@@ -15,6 +15,7 @@ import {
 
 export const projectsSkill = {
   sId: "projects",
+  kind: "global",
   name: "Pods",
   userFacingDescription:
     "Allow agents to create conversations & messages in Pods, leverage Pods knowledge.",

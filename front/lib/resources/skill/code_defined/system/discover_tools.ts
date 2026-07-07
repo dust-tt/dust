@@ -7,6 +7,7 @@ import type { AgentLoopExecutionData } from "@app/types/assistant/agent_run";
 
 export const discoverToolsSkill = {
   sId: "discover_tools",
+  kind: "system",
   name: "Discover Tools",
   userFacingDescription:
     "Automatically discover and activate specialized tools as needed. Extend your agent's capabilities on-demand without manual configuration.",

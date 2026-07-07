@@ -1,4 +1,4 @@
-import { framesSkill } from "@app/lib/resources/skill/code_defined/frames";
+import { framesSkill } from "@app/lib/resources/skill/code_defined/global/frames";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { describe, expect, it } from "vitest";

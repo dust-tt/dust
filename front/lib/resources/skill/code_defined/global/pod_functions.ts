@@ -6,6 +6,7 @@ import { isPodConversation } from "@app/types/assistant/conversation";
 
 export const podFunctionsSkill = {
   sId: "pod_functions",
+  kind: "global",
   name: "Pod Functions",
   userFacingDescription:
     "Author and publish reusable, schema-typed functions that run on the Pod's sandbox.",

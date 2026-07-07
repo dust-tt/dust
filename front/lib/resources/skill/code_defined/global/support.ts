@@ -34,6 +34,7 @@ Be explicit about uncertainty. If public sources do not answer the question, say
 
 export const supportSkill = {
   sId: "support",
+  kind: "global",
   name: "Dust Support",
   userFacingDescription:
     "Get help with Dust using public docs, open-source issues, and community knowledge.",

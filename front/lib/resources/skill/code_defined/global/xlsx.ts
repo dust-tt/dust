@@ -124,6 +124,7 @@ Also verify zero formula errors. \`#REF!\`, \`#DIV/0!\`, \`#VALUE!\`, \`#N/A\`,
 
 export const xlsxSkill = {
   sId: "xlsx",
+  kind: "global",
   name: "Spreadsheets",
   userFacingDescription: "Read, edit, and create spreadsheets (.xlsx, .csv)",
   agentFacingDescription:

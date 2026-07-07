@@ -10,6 +10,7 @@ import { isComputerFeatureEnabled } from "@app/types/shared/feature_flags";
 
 export const framesSkill = {
   sId: "frames",
+  kind: "global",
   name: "Create Frames",
   userFacingDescription:
     "Turn insights into interactive dashboards and presentations your team can explore, customize," +
