@@ -394,47 +394,6 @@ async function voidProCreditPurchaseInvoiceOnFailure({
 }
 
 // ---------------------------------------------------------------------------
-// Metronome-pushed invoice force-charge (invoice.finalized)
-//
-// Metronome pushes its subscription invoices to Stripe via
-// `direct_to_billing_provider` with `charge_automatically`, but Stripe
-// occasionally finalizes them with the PaymentIntent in "incomplete" state
-// (no PM on the PI), so the auto-charge never fires. We force a charge here
-// using the customer's default PM. Stripe dunning still handles real
-// declines / SCA fallthrough.
-// ---------------------------------------------------------------------------
-
-async function forceChargeMetronomeFinalizedInvoice(
-  invoice: Stripe.Invoice,
-  stripe: Stripe
-): Promise<void> {
-  if (
-    invoice.status !== "open" ||
-    invoice.amount_due <= 0 ||
-    invoice.collection_method !== "charge_automatically" ||
-    !invoice.id
-  ) {
-    return;
-  }
-  try {
-    await stripe.invoices.pay(invoice.id);
-    logger.info(
-      { invoiceId: invoice.id, customer: invoice.customer },
-      "[Stripe Webhook] Charged Metronome subscription invoice on finalize"
-    );
-  } catch (err) {
-    logger.warn(
-      {
-        error: normalizeError(err),
-        invoiceId: invoice.id,
-        customer: invoice.customer,
-      },
-      "[Stripe Webhook] Failed to charge Metronome subscription invoice on finalize; Stripe dunning will retry"
-    );
-  }
-}
-
-// ---------------------------------------------------------------------------
 // Enterprise SEPA enablement
 // Metronome-pushed invoices carry no `payment_settings.payment_method_types`,
 // so Stripe falls back to the account-level invoice default (card only here).
@@ -889,17 +848,6 @@ export async function processStripeWebhookEvent({
       );
 
       const invoice = event.data.object as Stripe.Invoice;
-      const isMetronomeInvoice = typeof invoice.subscription !== "string";
-      const isCreditPurchase = isCreditPurchaseInvoice(invoice);
-      const isAwuPurchase = isAwuPurchaseInvoice(invoice);
-
-      // Only Metronome subscription invoices need the force-charge.
-      // Stripe-subscription invoices have their own auto-charge flow;
-      // credit-purchase, first-period, and AWU purchase invoices have
-      // their own flow too.
-      if (isMetronomeInvoice && !isCreditPurchase && !isAwuPurchase) {
-        await forceChargeMetronomeFinalizedInvoice(invoice, stripe);
-      }
 
       // Enterprise EUR invoices paid by send-invoice should offer SEPA Direct
       // Debit on the hosted invoice page. Self-gated (enterprise + EUR +
