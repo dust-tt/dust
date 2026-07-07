@@ -218,28 +218,38 @@ function findDisallowedSpecialTagChanges(
 }
 
 const handlers: ToolHandlers<typeof SKILL_AUTHORING_TOOLS_METADATA> = {
-  [LIST_SKILLS_TOOL_NAME]: async ({ cursor, limit }, { auth }) => {
+  [LIST_SKILLS_TOOL_NAME]: async ({ filter, cursor, limit }, { auth }) => {
     const user = requireInteractiveBuilder(auth);
     if (user.isErr()) {
       return new Err(user.error);
     }
 
-    const allSkills = await SkillResource.listByWorkspace(auth, {
-      status: "active",
-      onlyCustom: true,
-      withInstructions: false,
-      withTools: false,
-    });
+    const resolvedFilter = filter ?? "all";
 
-    const writable = allSkills.filter((skill) => skill.canWrite(auth));
+    let skills;
+    if (resolvedFilter === "agent_discoverable") {
+      skills = await SkillResource.listDiscoverable(auth);
+    } else {
+      const allSkills = await SkillResource.listByWorkspace(auth, {
+        status: "active",
+        onlyCustom: false,
+        withInstructions: false,
+        withTools: false,
+      });
+      skills =
+        resolvedFilter === "writable"
+          ? allSkills.filter((skill) => skill.canWrite(auth))
+          : allSkills;
+    }
+
     const pageSize = Math.min(limit ?? 20, 50);
     const offset = cursor
       ? parseInt(Buffer.from(cursor, "base64").toString(), 10)
       : 0;
-    const page = writable.slice(offset, offset + pageSize);
+    const page = skills.slice(offset, offset + pageSize);
     const nextOffset = offset + pageSize;
     const nextCursor =
-      nextOffset < writable.length
+      nextOffset < skills.length
         ? Buffer.from(String(nextOffset)).toString("base64")
         : null;
 
@@ -247,11 +257,12 @@ const handlers: ToolHandlers<typeof SKILL_AUTHORING_TOOLS_METADATA> = {
       sId: skill.sId,
       name: skill.name,
       agentFacingDescription: skill.agentFacingDescription,
+      canWrite: skill.canWrite(auth),
     }));
 
     return new Ok([
       makeJsonText({
-        total: writable.length,
+        total: skills.length,
         skills: summaries,
         nextCursor,
       }),

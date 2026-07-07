@@ -13,8 +13,14 @@ export const UPDATE_SKILL_TOOL_NAME = "update_skill" as const;
 export const SKILL_AUTHORING_TOOLS_METADATA = createToolsRecord({
   [LIST_SKILLS_TOOL_NAME]: {
     description:
-      "List active custom Skills in this workspace. Returns lightweight summaries (sId, name, agentFacingDescription) paginated. Pass the returned `nextCursor` to fetch the next page.",
+      "List active custom Skills in this workspace. Returns lightweight summaries (sId, name, agentFacingDescription, canWrite) paginated",
     schema: {
+      filter: z
+        .enum(["all", "writable", "agent_discoverable"])
+        .optional()
+        .describe(
+          "Scope of skills to return. `all` (default): every skill in the workspace. `writable`: only skills the user can edit. `agent_discoverable`: only skills the agent can invoke in this conversation."
+        ),
       cursor: z
         .string()
         .optional()
