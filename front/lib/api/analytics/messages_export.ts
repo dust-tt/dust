@@ -7,6 +7,7 @@ import { resolveServerDisplayNames } from "@app/lib/api/assistant/observability/
 import type { ElasticsearchBaseDocument } from "@app/lib/api/elasticsearch";
 import { searchAnalytics } from "@app/lib/api/elasticsearch";
 import type { Authenticator } from "@app/lib/auth";
+import type { AgentMessageAnalyticsCost } from "@app/types/assistant/analytics";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import type { WorkspaceType } from "@app/types/user";
@@ -25,6 +26,8 @@ interface AgentMessageDocument extends ElasticsearchBaseDocument {
   status: string;
   tools_used?: { server_name: string; tool_name: string }[];
   skills_used?: { skill_name: string }[];
+  // Optional: docs indexed before the cost fields shipped don't carry it.
+  cost?: AgentMessageAnalyticsCost;
 }
 
 export interface MessageExportRow {
@@ -39,6 +42,7 @@ export interface MessageExportRow {
   source: string;
   toolsUsed: string;
   skillsUsed: string;
+  credits: number;
 }
 
 export const MESSAGE_EXPORT_HEADERS: (keyof MessageExportRow)[] = [
@@ -53,6 +57,7 @@ export const MESSAGE_EXPORT_HEADERS: (keyof MessageExportRow)[] = [
   "source",
   "toolsUsed",
   "skillsUsed",
+  "credits",
 ];
 
 function joinDistinctSorted(values: (string | undefined | null)[]): string {
@@ -167,6 +172,7 @@ export async function fetchMessageExportRows({
       skillsUsed: joinDistinctSorted(
         (doc.skills_used ?? []).map((s) => s.skill_name)
       ),
+      credits: Math.round(doc.cost?.full_awu ?? 0),
     };
   });
 
