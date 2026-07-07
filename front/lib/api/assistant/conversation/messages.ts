@@ -4,7 +4,11 @@ import {
   updateConversationRequirements,
 } from "@app/lib/api/assistant/conversation/permissions";
 import { getCompletionDuration } from "@app/lib/api/assistant/messages";
-import type { Authenticator } from "@app/lib/auth";
+import {
+  requestedAgentModelFromColumns,
+  resolveModelSelection,
+} from "@app/lib/api/assistant/models";
+import { type Authenticator, getFeatureFlags } from "@app/lib/auth";
 import {
   AgentMessageModel,
   CompactionMessageModel,
@@ -35,6 +39,7 @@ import type {
 import { isPodConversation } from "@app/types/assistant/conversation";
 import type { MentionType } from "@app/types/assistant/mentions";
 import { isAgentMention } from "@app/types/assistant/mentions";
+import type { ResolvedRequestedModel } from "@app/types/assistant/models/types";
 import type { ModelId } from "@app/types/shared/model_id";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { removeNulls } from "@app/types/shared/utils/general";
@@ -263,6 +268,7 @@ export const createAgentMessages = async (
           skipToolsValidation: boolean;
           nextMessageRank: number;
           userMessage: UserMessageTypeWithoutMentions;
+          requestedModel?: ResolvedRequestedModel | null;
         };
     transaction?: Transaction;
   }
@@ -286,6 +292,15 @@ export const createAgentMessages = async (
     case "retry":
       {
         const agentConfiguration = metadata.agentMessage.configuration;
+        // Preserve the per-message model override, but re-validate it: a model
+        // enabled at first send may have since been disabled for the workspace,
+        // in which case the retry falls back to the agent's configured model.
+        const retriedModel = metadata.agentMessage.requestedModel;
+        const revalidatedModel = retriedModel
+          ? resolveModelSelection(auth, retriedModel, {
+              featureFlags: await getFeatureFlags(auth),
+            })
+          : null;
         const agentMessageRow = await AgentMessageModel.create(
           {
             status: "created",
@@ -293,6 +308,9 @@ export const createAgentMessages = async (
             agentConfigurationVersion: agentConfiguration.version,
             workspaceId: owner.id,
             skipToolsValidation: metadata.agentMessage.skipToolsValidation,
+            requestedProviderId: revalidatedModel?.providerId ?? null,
+            requestedModelId: revalidatedModel?.modelId ?? null,
+            requestedReasoningEffort: revalidatedModel?.reasoningEffort ?? null,
           },
           { transaction }
         );
@@ -453,6 +471,11 @@ export const createAgentMessages = async (
                 agentConfigurationVersion: configuration.version,
                 workspaceId: owner.id,
                 skipToolsValidation: metadata.skipToolsValidation,
+                requestedProviderId:
+                  metadata.requestedModel?.providerId ?? null,
+                requestedModelId: metadata.requestedModel?.modelId ?? null,
+                requestedReasoningEffort:
+                  metadata.requestedModel?.reasoningEffort ?? null,
               },
               { transaction }
             );
@@ -553,6 +576,7 @@ export const createAgentMessages = async (
             richMentions: [],
             reactions: [],
             costCredits: null,
+            requestedModel: requestedAgentModelFromColumns(agentMessageRow),
           };
         }
       }

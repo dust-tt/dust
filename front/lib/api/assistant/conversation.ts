@@ -27,7 +27,10 @@ import {
   batchRenderMessages,
   batchRenderUserMessagesWithoutMentions,
 } from "@app/lib/api/assistant/messages";
-import { isProviderWhitelisted } from "@app/lib/api/assistant/models";
+import {
+  isProviderWhitelisted,
+  resolveModelSelection,
+} from "@app/lib/api/assistant/models";
 import { gracefullyStopAgentLoop } from "@app/lib/api/assistant/pubsub";
 import {
   MESSAGE_RATE_LIMIT_PER_ACTOR_PER_HOUR,
@@ -156,6 +159,10 @@ import {
   isUserMention,
   toMentionType,
 } from "@app/types/assistant/mentions";
+import type {
+  ModelSelectionType,
+  ResolvedRequestedModel,
+} from "@app/types/assistant/models/types";
 import type {
   ContentFragmentContextType,
   ContentFragmentType,
@@ -552,6 +559,7 @@ export async function postUserMessage(
     skipToolsValidation,
     skipDustAutoMention,
     doNotAssociateUser,
+    modelSelection,
   }: {
     conversation: ConversationType;
     content: string;
@@ -561,6 +569,7 @@ export async function postUserMessage(
     skipToolsValidation: boolean;
     doNotAssociateUser?: boolean;
     skipDustAutoMention?: boolean;
+    modelSelection?: ModelSelectionType;
   }
 ): Promise<
   Result<
@@ -587,6 +596,14 @@ export async function postUserMessage(
   }
 
   const featureFlags = await getFeatureFlags(auth);
+
+  // Resolve the picker selection to a concrete model for this workspace. If it
+  // cannot be honored (unknown/disabled model), we leave `requestedModel` null
+  // and the agent's configured model is used.
+  const requestedModel: ResolvedRequestedModel | null = modelSelection
+    ? resolveModelSelection(auth, modelSelection, { featureFlags })
+    : null;
+
   const isPartOfPod = isPodConversation(conversation);
 
   if (isPartOfPod) {
@@ -1028,6 +1045,7 @@ export async function postUserMessage(
             skipToolsValidation,
             nextMessageRank,
             userMessage: userMessageWithoutMentions,
+            requestedModel,
           },
           transaction: t,
         });

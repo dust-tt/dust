@@ -17,6 +17,7 @@ import type {
   LightAgentConfigurationType,
 } from "./agent";
 import type { MentionType, RichMention } from "./mentions";
+import type { ResolvedRequestedModel } from "./models/types";
 
 export type MessageVisibility = "visible" | "deleted" | "pending";
 
@@ -362,6 +363,10 @@ export type AgentMessageType = BaseAgentMessageType & {
   actions: AgentMCPActionWithOutputType[];
   contents: Array<{ step: number; content: AgentContentItemType }>;
   modelInteractionDurationMs: number | null;
+  // Per-message model override from the input-bar model picker: the resolved
+  // model. Null/undefined when the agent ran its own configured model. Optional
+  // during rollout. See [BACK12].
+  requestedModel?: ResolvedRequestedModel | null;
 };
 
 export type AgentMessageTypeWithoutMentions = Omit<

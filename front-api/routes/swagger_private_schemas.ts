@@ -408,6 +408,17 @@
  *           type: number
  *           nullable: true
  *           description: Aggregated credit cost of all sub-agents (run_agent / agent_handover) spawned recursively by this message. Computed only on single-message fetches; null otherwise.
+ *         requestedModel:
+ *           type: object
+ *           nullable: true
+ *           description: Per-message model override from the input-bar model picker. Null when the agent ran its configured model.
+ *           properties:
+ *             providerId:
+ *               type: string
+ *             modelId:
+ *               type: string
+ *             reasoningEffort:
+ *               type: string
  *     PrivateLightAgentMessage:
  *       type: object
  *       description: A lighter agent message used in paginated message list responses.
