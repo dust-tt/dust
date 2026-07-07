@@ -14,6 +14,7 @@ import {
 } from "@app/lib/api/files/action_output_fs/registry";
 import { TOOL_OUTPUTS_FOLDER_NAME } from "@app/lib/api/files/mount_path";
 import type { Authenticator } from "@app/lib/auth";
+import type { SpaceResource } from "@app/lib/resources/space_resource";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import type { AllSupportedFileContentType } from "@app/types/files";
 import { Err, Ok, type Result } from "@app/types/shared/result";
@@ -109,7 +110,47 @@ export async function writeToConversationFolder(
     return new Err(new Error(fsResult.error.message));
   }
 
-  const scopedPath = `${SCOPED_PREFIX_CONVERSATION}${conversation.sId}/${fileName}`;
+  const scopedPath = conversationScopedPath({
+    conversationId: conversation.sId,
+    rel: fileName,
+  });
+  const writeResult = await fsResult.value.write(
+    scopedPath,
+    content,
+    contentType
+  );
+  if (writeResult.isErr()) {
+    return new Err(new Error(writeResult.error.message));
+  }
+
+  return new Ok(scopedPath);
+}
+
+/**
+ * Writes content to the pod (project space) root via DustFileSystem.
+ * Returns the scoped path (e.g. "pod-{spaceId}/{fileName}") on success.
+ * Use for user-facing generated files (PDFs, audio, etc.) that should be visible at the top level.
+ * Use writeToToolOutputsFolder for internal outputs the model reads back during execution.
+ */
+export async function writeToPodFolder(
+  auth: Authenticator,
+  space: SpaceResource,
+  {
+    content,
+    contentType,
+    fileName,
+  }: {
+    content: string | Buffer;
+    contentType: AllSupportedFileContentType;
+    fileName: string;
+  }
+): Promise<Result<string, Error>> {
+  const fsResult = await DustFileSystem.forPod(auth, space);
+  if (fsResult.isErr()) {
+    return new Err(new Error(fsResult.error.message));
+  }
+
+  const scopedPath = podScopedPath(space.sId, fileName);
   const writeResult = await fsResult.value.write(
     scopedPath,
     content,

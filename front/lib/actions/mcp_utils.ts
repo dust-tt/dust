@@ -20,7 +20,12 @@ import {
   makeFileAttachment,
   renderAttachmentXml,
 } from "@app/lib/api/assistant/conversation/attachments";
-import { writeToConversationFolder } from "@app/lib/api/files/action_output_fs";
+import type { ToolContextType } from "@app/lib/actions/types";
+import { isAgentLoopRunContext } from "@app/lib/actions/types";
+import {
+  writeToConversationFolder,
+  writeToPodFolder,
+} from "@app/lib/api/files/action_output_fs";
 import { makeFileName } from "@app/lib/api/files/action_output_fs/naming";
 import type { ProcessAndStoreFileError } from "@app/lib/api/files/processing";
 import { uploadBase64ImageToFileStorage } from "@app/lib/api/files/upload";
@@ -28,7 +33,6 @@ import type { Authenticator } from "@app/lib/auth";
 import { FileResource } from "@app/lib/resources/file_resource";
 import type { FileModel } from "@app/lib/resources/storage/models/files";
 import logger from "@app/logger/logger";
-import type { ConversationType } from "@app/types/assistant/conversation";
 import type {
   SupportedFileContentType,
   SupportedImageContentType,
@@ -37,10 +41,12 @@ import { isSupportedFileContentType } from "@app/types/files";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 import { hasNullUnicodeCharacter } from "@app/types/shared/utils/string_utils";
 // biome-ignore lint/plugin/enforceClientTypesInPublicApi: existing usage
 import { isSupportedImageContentType } from "@dust-tt/client";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
+import assert from "assert";
 import { basename, extname } from "path";
 
 type ResourceInfo =
@@ -170,17 +176,20 @@ export async function handleBase64Upload(
     base64Data,
     fileName,
     mimeType,
-    conversation,
+    toolContext,
   }: {
     base64Data: string;
     mimeType: string;
     fileName: string;
-    conversation: ConversationType;
+    toolContext: ToolContextType;
   }
 ): Promise<{
   content: CallToolResult["content"][number];
   file: FileResource | null;
 }> {
+  const { runContext } = toolContext;
+  assert(runContext, "handleBase64Upload requires a tool run context.");
+
   const resourceInfo = getResourceInfo(mimeType);
 
   if (!resourceInfo) {
@@ -208,17 +217,18 @@ export async function handleBase64Upload(
     };
   }
 
-  if (resourceInfo.type === "image") {
+  if (resourceInfo.type === "image" && isAgentLoopRunContext(runContext)) {
     // Images stay on FileResource so they go through the resize pipeline.
     // Tool-generated images can be fed back to the model for vision tasks,
-    // so correct sizing matters.
+    // so correct sizing matters. Outside of a conversation (sandbox function) they fall through to
+    // the plain file-system write below like any other file.
     const uploadResult: Result<FileResource, ProcessAndStoreFileError> =
       await uploadBase64ImageToFileStorage(auth, {
         base64: base64Data,
         contentType: resourceInfo.contentType,
         fileName,
         useCase: "conversation",
-        useCaseMetadata: { conversationId: conversation.sId },
+        useCaseMetadata: { conversationId: runContext.conversation.sId },
       });
 
     if (uploadResult.isErr()) {
@@ -259,11 +269,31 @@ export async function handleBase64Upload(
   const ext = extname(fileName);
   const uniqueFileName = makeFileName({ name: basename(fileName, ext), ext });
 
-  const writeResult = await writeToConversationFolder(auth, conversation, {
+  const writeArgs = {
     fileName: uniqueFileName,
     content: Buffer.from(base64Data, "base64"),
     contentType: resourceInfo.contentType,
-  });
+  };
+
+  let writeResult: Result<string, Error>;
+  switch (runContext.contextType) {
+    case "agent_loop":
+      writeResult = await writeToConversationFolder(
+        auth,
+        runContext.conversation,
+        writeArgs
+      );
+      break;
+    case "sandbox_function":
+      writeResult = await writeToPodFolder(
+        auth,
+        runContext.invocation.sandboxFunction.space,
+        writeArgs
+      );
+      break;
+    default:
+      assertNever(runContext);
+  }
 
   if (writeResult.isErr()) {
     logger.error(
