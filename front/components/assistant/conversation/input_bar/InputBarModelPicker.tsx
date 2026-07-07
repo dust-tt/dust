@@ -1,3 +1,4 @@
+import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
 import { ModelPickerContent } from "@app/components/assistant/conversation/input_bar/ModelPickerContent";
 import type {
   ModelPickerListState,
@@ -11,7 +12,6 @@ import {
   getModelWithReasoningEffortLabel,
   getSelectableReasoningEfforts,
   SUGGESTED_PINS,
-  toModelSelection,
 } from "@app/components/assistant/conversation/input_bar/modelPickerUtils";
 import { getModelProviderLogo } from "@app/components/providers/types";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
@@ -23,13 +23,12 @@ import { getProviderDisplayName } from "@app/types/assistant/models/providers";
 import type {
   ModelConfigurationType,
   ModelProviderIdType,
-  ModelSelectionType,
   ReasoningEffort,
 } from "@app/types/assistant/models/types";
 import { getAvailableReasoningEfforts } from "@app/types/assistant/models/types";
 import type { LightWorkspaceType } from "@app/types/user";
 import { Button, DropdownMenu, DropdownMenuTrigger } from "@dust-tt/sparkle";
-import { useMemo, useRef, useState } from "react";
+import { useContext, useEffect, useMemo, useRef, useState } from "react";
 
 interface InputBarModelPickerProps {
   agentModel: AgentModelConfigurationType | null;
@@ -40,7 +39,6 @@ interface InputBarModelPickerProps {
   // conversation screen where there is room below.
   side?: "top" | "bottom";
   disabled?: boolean;
-  onSelectionChange?: (modelSelection: ModelSelectionType | undefined) => void;
 }
 
 export function InputBarModelPicker({
@@ -49,7 +47,6 @@ export function InputBarModelPicker({
   buttonSize,
   side = "top",
   disabled,
-  onSelectionChange,
 }: InputBarModelPickerProps) {
   const { hasFeature } = useFeatureFlags();
   const hasModelsPicker = hasFeature("models_picker");
@@ -61,34 +58,45 @@ export function InputBarModelPicker({
 
   // The list of models is hidden while "Auto" is on.
   const [expanded, setExpanded] = useState(false);
-  const [selection, setSelection] = useState<Selection>({ kind: "auto" });
+
+  // The selection lives in InputBarContext so it persists across
+  // conversations/messages (like the selected agent) instead of resetting when
+  // the input bar remounts.
+  const { selectedModelSelection: selection, setSelectedModelSelection } =
+    useContext(InputBarContext);
 
   // On mobile there are no nested submenus: the "More models" providers expand
   // inline below their name. This tracks the single provider currently expanded.
   const [expandedProvider, setExpandedProvider] =
     useState<ModelProviderIdType | null>(null);
 
-  // Commit a selection and notify the parent so it can attach (or, for "auto",
-  // clear) the per-message model override on the next send. Called from the
-  // user-driven handlers below and from the agent-change reset. `onSelectionChange`
-  // only stashes the value in a parent ref, so calling it here — including during
-  // the render-time reset — triggers no parent re-render.
   const commitSelection = (next: Selection) => {
-    setSelection(next);
-    onSelectionChange?.(toModelSelection(next));
+    setSelectedModelSelection(next);
   };
 
-  // Reset to Auto when the agent changes: a per-message override should not leak
-  // across agents.
+  // Reset to Auto when the agent's model changes: a per-message override should
+  // not leak across agents. Done in an effect (not during render) because the
+  // selection now lives in a parent context, and updating parent state during a
+  // child's render is not allowed.
   const agentModelKey = agentModel
     ? `${agentModel.providerId}/${agentModel.modelId}`
     : null;
   const prevAgentModelKeyRef = useRef(agentModelKey);
-  if (agentModelKey !== prevAgentModelKeyRef.current) {
+  useEffect(() => {
+    const prevAgentModelKey = prevAgentModelKeyRef.current;
     prevAgentModelKeyRef.current = agentModelKey;
-    commitSelection({ kind: "auto" });
-    setExpanded(false);
-  }
+    // Only reset across two concrete, different agent models. Transitions
+    // to/from null (agent list still loading after a remount, or no agent
+    // selected) must not wipe the persisted override.
+    if (
+      prevAgentModelKey !== null &&
+      agentModelKey !== null &&
+      prevAgentModelKey !== agentModelKey
+    ) {
+      setSelectedModelSelection({ kind: "auto" });
+      setExpanded(false);
+    }
+  }, [agentModelKey, setSelectedModelSelection]);
 
   const { models, isModelsLoading } = useModels({
     owner,

@@ -2,6 +2,7 @@ import { useBlockedActionsContext } from "@app/components/assistant/conversation
 import { ContextUsageWarningBanner } from "@app/components/assistant/conversation/ContextUsageWarningBanner";
 import { useGenerationContext } from "@app/components/assistant/conversation/GenerationContextProvider";
 import { InputBar } from "@app/components/assistant/conversation/input_bar/InputBar";
+import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
 import { InputBarMessageNavigation } from "@app/components/assistant/conversation/input_bar/InputBarMessageNavigation";
 import { INPUT_BAR_COMPACT_NAV_ENTER_ANIMATION_CLASSES } from "@app/components/assistant/conversation/input_bar/inputBarCompactStyles";
 import { useInputBarCompactMode } from "@app/components/assistant/conversation/input_bar/useInputBarCompactMode";
@@ -24,6 +25,7 @@ import {
   useConversationContextUsage,
 } from "@app/hooks/conversations";
 import { CONTEXT_USAGE_PERCENT_THRESHOLDS } from "@app/hooks/conversations/useConversationContextUsage";
+import { getSupportedModelConfig } from "@app/lib/llms/model_configurations";
 import { useUnifiedAgentConfigurations } from "@app/lib/swr/assistants";
 import { useIsMobile } from "@app/lib/swr/useIsMobile";
 import { useConversationWakeUps } from "@app/lib/swr/wakeups";
@@ -44,7 +46,7 @@ import {
   useVirtuosoLocation,
   useVirtuosoMethods,
 } from "@virtuoso.dev/message-list";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useContext, useEffect, useMemo, useRef, useState } from "react";
 
 const MAX_DISTANCE_FOR_SMOOTH_SCROLL = 2048;
 const DOUBLE_ESC_WINDOW_MS = 300;
@@ -119,6 +121,42 @@ export const AgentInputBar = ({ context }: AgentInputBarProps) => {
       ?.richMentions.find(isRichAgentMention) ?? null;
 
   const draftAgent = agentBuilderContext?.draftAgent;
+
+  // On (re)load of an existing conversation, restore the model picker to the
+  // model the latest agent message ran on — mirroring how the sticky agent is
+  // re-derived from the conversation. We apply this once per conversation so we
+  // don't clobber the user's picker choice while they keep chatting.
+  const { setSelectedModelSelection } = useContext(InputBarContext);
+  const appliedModelConversationRef = useRef<string | null>(null);
+  useEffect(() => {
+    const conversationId = context.conversation?.sId ?? null;
+    if (conversationId === appliedModelConversationRef.current) {
+      return;
+    }
+    // Wait until the conversation's messages are available before deriving.
+    const lastAgentMessage = allMessages.findLast(isAgentMessageWithStreaming);
+    if (!lastAgentMessage) {
+      return;
+    }
+    appliedModelConversationRef.current = conversationId;
+
+    const { requestedModel } = lastAgentMessage;
+    const modelConfig = requestedModel
+      ? getSupportedModelConfig({
+          providerId: requestedModel.providerId,
+          modelId: requestedModel.modelId,
+        })
+      : null;
+    setSelectedModelSelection(
+      requestedModel && modelConfig
+        ? {
+            kind: "model",
+            model: modelConfig,
+            effort: requestedModel.reasoningEffort,
+          }
+        : { kind: "auto" }
+    );
+  }, [context.conversation?.sId, allMessages, setSelectedModelSelection]);
 
   const { contextUsage, contextUsagePercentage } = useConversationContextUsage({
     conversationId: context.conversation?.sId ?? "",

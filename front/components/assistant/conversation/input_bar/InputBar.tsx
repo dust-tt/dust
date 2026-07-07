@@ -13,6 +13,7 @@ import {
   INPUT_BAR_COMPACT_MORPH_TRANSITION_CLASSES,
   INPUT_BAR_COMPACT_PILL_CLASSES,
 } from "@app/components/assistant/conversation/input_bar/inputBarCompactStyles";
+import { toModelSelection } from "@app/components/assistant/conversation/input_bar/modelPickerUtils";
 import { useConversationDrafts } from "@app/components/assistant/conversation/input_bar/useConversationDrafts";
 import { PlanCard } from "@app/components/assistant/conversation/plan_mode/PlanCard";
 import {
@@ -44,7 +45,6 @@ import React, {
   useContext,
   useEffect,
   useMemo,
-  useRef,
   useState,
 } from "react";
 
@@ -119,25 +119,20 @@ export const InputBar = React.memo(function InputBar({
     DataSourceViewContentNode[]
   >([]);
 
-  // Latest model-picker selection, kept in a ref so the picker's change events
-  // don't re-render the whole input bar; read at submit time. `undefined` means
-  // no override (run the agent's configured model).
-  const modelSelectionRef = useRef<ModelSelectionType | undefined>(undefined);
-  const handleModelSelectionChange = useCallback(
-    (modelSelection: ModelSelectionType | undefined) => {
-      modelSelectionRef.current = modelSelection;
-    },
-    []
-  );
-
   const {
     getAndClearSelectedAgent,
     selectedSingleAgent,
+    selectedModelSelection,
     getAndClearPendingInputText,
     fileUploaderService,
     isLoadingGoTemplate,
     onBeforeSubmit,
   } = useContext(InputBarContext);
+
+  // The picker's selection lives in InputBarContext so it persists across
+  // messages; convert it to the API override at submit time. `undefined` means
+  // no override (run the agent's configured model).
+  const modelSelection = toModelSelection(selectedModelSelection);
 
   // We use this specific hook because this component is involved in the new conversation page.
   const { agentConfigurations } = useUnifiedAgentConfigurations({
@@ -365,7 +360,7 @@ export const InputBar = React.memo(function InputBar({
           // Only send the selectedMCPServerViewIds if we are creating a new conversation.
           // Once the conversation is created, the selectedMCPServerViewIds will be updated in the conversationTools hook.
           selectedMCPServerViews.map((sv) => sv.sId),
-          modelSelectionRef.current
+          modelSelection
         );
 
         if (r.isOk()) {
@@ -398,7 +393,7 @@ export const InputBar = React.memo(function InputBar({
           // Existing conversation: MCP server views are synced via the
           // conversationTools hook, so only the model selection is passed here.
           undefined,
-          modelSelectionRef.current
+          modelSelection
         );
 
         // Execute these operations in parallel with the submission.
@@ -538,7 +533,6 @@ export const InputBar = React.memo(function InputBar({
             onNodeUnselect={handleNodesAttachmentRemove}
             selectedMCPServerViews={selectedMCPServerViews}
             onMCPServerViewSelect={handleMCPServerViewSelect}
-            onModelSelectionChange={handleModelSelectionChange}
             onMCPServerViewDeselect={handleMCPServerViewDeselect}
             onResetMCPServerViews={handleResetMCPServerViews}
             isAgentBuilder={isAgentBuilder}

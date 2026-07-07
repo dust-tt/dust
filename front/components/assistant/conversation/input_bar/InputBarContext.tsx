@@ -1,3 +1,4 @@
+import type { Selection } from "@app/components/assistant/conversation/input_bar/modelPickerUtils";
 import { useActiveConversationId } from "@app/hooks/useActiveConversationId";
 import {
   type FileUploaderService,
@@ -44,6 +45,11 @@ export const InputBarContext = createContext<{
   setSelectedAgent: (agentMention: RichAgentMention | null) => void;
   selectedSingleAgent: RichAgentMention | null;
   setSelectedSingleAgent: (agentMention: RichAgentMention | null) => void;
+  // Persistent per-message model override (displayed in the model picker
+  // button). Like the agent selection, it lives here so it survives switching
+  // between conversations/messages rather than resetting on remount.
+  selectedModelSelection: Selection;
+  setSelectedModelSelection: (selection: Selection) => void;
   getAndClearPendingInputText: () => PendingInputText | null;
   setPendingInputText: (
     text: string | null,
@@ -70,6 +76,8 @@ export const InputBarContext = createContext<{
   setSelectedAgent: () => {},
   selectedSingleAgent: null,
   setSelectedSingleAgent: () => {},
+  selectedModelSelection: { kind: "auto" },
+  setSelectedModelSelection: () => {},
   getAndClearPendingInputText: () => null,
   setPendingInputText: () => {},
   peekPendingFirstMessage: () => null,
@@ -113,6 +121,10 @@ export function InputBarContextProvider({
   // Persistent agent selection for single-agent input mode (displayed in the agent picker button).
   const [selectedSingleAgent, setSelectedSingleAgent] =
     useState<RichAgentMention | null>(null);
+
+  // Persistent per-message model override (see type definition above).
+  const [selectedModelSelection, setSelectedModelSelection] =
+    useState<Selection>({ kind: "auto" });
 
   // Useful when a component needs to pre-fill the input bar with text.
   const [pendingInputText, setPendingInputTextState] =
@@ -197,6 +209,8 @@ export function InputBarContextProvider({
       setSelectedAgent: setSelectedAgentOuter,
       selectedSingleAgent,
       setSelectedSingleAgent,
+      selectedModelSelection,
+      setSelectedModelSelection,
       getAndClearPendingInputText,
       setPendingInputText,
       peekPendingFirstMessage,
@@ -213,6 +227,7 @@ export function InputBarContextProvider({
       getAndClearSelectedAgent,
       setSelectedAgentOuter,
       selectedSingleAgent,
+      selectedModelSelection,
       getAndClearPendingInputText,
       setPendingInputText,
       peekPendingFirstMessage,

@@ -388,6 +388,10 @@ export type LightAgentMessageType = BaseAgentMessageType & {
   citations: Record<string, CitationType>;
   generatedFiles: Omit<ActionGeneratedFileType, "snippet">[];
   activitySteps: InlineActivityStep[];
+  // Per-message model override from the input-bar model picker: the resolved
+  // model. Null/undefined when the agent ran its own configured model. Optional
+  // during rollout. See [BACK12].
+  requestedModel?: ResolvedRequestedModel | null;
 };
 
 // This type represents the agent message we can reconstruct by accumulating streaming events

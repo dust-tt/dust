@@ -65,7 +65,6 @@ import {
   isRichUserMention,
   toRichAgentMentionType,
 } from "@app/types/assistant/mentions";
-import type { ModelSelectionType } from "@app/types/assistant/models/types";
 import type { SkillWithoutInstructionsAndToolsType } from "@app/types/assistant/skill_configuration";
 import type { DataSourceViewContentNode } from "@app/types/data_source_view";
 import {
@@ -219,9 +218,6 @@ export interface InputBarContainerProps {
   onEnterKeyDown: CustomEditorProps["onEnterKeyDown"];
   onMCPServerViewDeselect: (serverView: MCPServerViewType) => void;
   onMCPServerViewSelect: (serverView: MCPServerViewType) => void;
-  onModelSelectionChange?: (
-    modelSelection: ModelSelectionType | undefined
-  ) => void;
   onNodeSelect: (node: DataSourceViewContentNode) => void;
   onNodeUnselect: (node: DataSourceViewContentNode) => void;
   onResetMCPServerViews: () => void;
@@ -271,7 +267,6 @@ const InputBarContainer = ({
   onNodeUnselect,
   attachedNodes,
   onMCPServerViewSelect,
-  onModelSelectionChange,
   onMCPServerViewDeselect,
   selectedMCPServerViews,
   onResetMCPServerViews,
@@ -1660,7 +1655,6 @@ const InputBarContainer = ({
                       isInputDisabled={disableInput}
                       onAgentRemove={() => setSelectedSingleAgent(null)}
                       onMCPServerViewSelect={onMCPServerViewSelect}
-                      onModelSelectionChange={onModelSelectionChange}
                       onNodeSelect={onNodeSelect}
                       onNodeUnselect={onNodeUnselect}
                       onSkillSelect={handleSkillSelect}

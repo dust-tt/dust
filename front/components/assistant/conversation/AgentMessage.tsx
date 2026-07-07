@@ -14,6 +14,7 @@ import type { FeedbackSelectorBaseProps } from "@app/components/assistant/conver
 import { FeedbackSelector } from "@app/components/assistant/conversation/FeedbackSelector";
 import { useAutoOpenFilesPanel } from "@app/components/assistant/conversation/files_panel/useAutoOpenFilesPanel";
 import { useGenerationContext } from "@app/components/assistant/conversation/GenerationContextProvider";
+import { getLineLabel } from "@app/components/assistant/conversation/input_bar/modelPickerUtils";
 import { useAutoOpenInteractiveContent } from "@app/components/assistant/conversation/interactive_content/useAutoOpenInteractiveContent";
 import type {
   AgentMessageStateWithControlEvent,
@@ -64,6 +65,7 @@ import { useAuth, useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { clientFetch } from "@app/lib/egress/client";
 import type { DustError } from "@app/lib/error";
 import { FILE_ID_PATTERN } from "@app/lib/files";
+import { getSupportedModelConfig } from "@app/lib/llms/model_configurations";
 import { getFilePreviewDirectivePaths } from "@app/lib/markdown/file_preview";
 import { getConversationRoute } from "@app/lib/utils/router";
 import { formatTimestring } from "@app/lib/utils/timestamps";
@@ -980,6 +982,25 @@ export function AgentMessage({
     canShowAgentConversationActions(agentConfiguration.sId);
   const isArchived = agentConfiguration.status === "archived";
 
+  // When this message ran on a per-message model override (from the input-bar
+  // model picker), surface the model next to the agent name (e.g. "with GPT 5.5
+  // High"). Null when the agent ran its own configured model.
+  const requestedModel = agentMessage.requestedModel;
+  const requestedModelConfig = requestedModel
+    ? getSupportedModelConfig({
+        providerId: requestedModel.providerId,
+        modelId: requestedModel.modelId,
+      })
+    : null;
+  const requestedModelLabel =
+    requestedModel && requestedModelConfig
+      ? getLineLabel({
+          kind: "model",
+          model: requestedModelConfig,
+          effort: requestedModel.reasoningEffort,
+        })
+      : null;
+
   const renderName = useCallback(
     () => (
       <span className="inline-flex items-center">
@@ -991,6 +1012,11 @@ export function AgentMessage({
           canMention={canMention}
           isDisabled={isArchived}
         />
+        {requestedModelLabel && (
+          <span className="ml-1 font-normal text-muted-foreground">
+            with {requestedModelLabel}
+          </span>
+        )}
         {parentAgent && (
           <Chip
             label={`handoff from @${parentAgent.name}`}
@@ -1009,6 +1035,7 @@ export function AgentMessage({
       isArchived,
       parentAgent,
       agentMessage.status,
+      requestedModelLabel,
     ]
   );
 

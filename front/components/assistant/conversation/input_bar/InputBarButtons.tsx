@@ -16,7 +16,6 @@ import type {
   RichMention,
 } from "@app/types/assistant/mentions";
 import { toRichAgentMentionType } from "@app/types/assistant/mentions";
-import type { ModelSelectionType } from "@app/types/assistant/models/types";
 import type { SkillWithoutInstructionsAndToolsType } from "@app/types/assistant/skill_configuration";
 import type { DataSourceViewContentNode } from "@app/types/data_source_view";
 import { getSupportedFileExtensions } from "@app/types/files";
@@ -56,9 +55,6 @@ interface InputBarButtonsProps {
   isInputDisabled: boolean;
   onAgentRemove: () => void;
   onMCPServerViewSelect: (serverView: MCPServerViewType) => void;
-  onModelSelectionChange?: (
-    modelSelection: ModelSelectionType | undefined
-  ) => void;
   onNodeSelect: (node: DataSourceViewContentNode) => void;
   onNodeUnselect: (node: DataSourceViewContentNode) => void;
   onSkillSelect: (skill: SkillWithoutInstructionsAndToolsType) => void;
@@ -89,7 +85,6 @@ export const InputBarButtons = React.memo(function InputBarButtons({
   isInputDisabled,
   onAgentRemove,
   onMCPServerViewSelect,
-  onModelSelectionChange,
   onNodeSelect,
   onNodeUnselect,
   onSkillSelect,
@@ -253,7 +248,6 @@ export const InputBarButtons = React.memo(function InputBarButtons({
       buttonSize={buttonSize}
       side={conversation ? "top" : "bottom"}
       disabled={isInputDisabled}
-      onSelectionChange={onModelSelectionChange}
     />
   );
 
