@@ -68,7 +68,7 @@ export const ACTIVATION_RECOMMENDATIONS_TOOLS_METADATA = createToolsRecord({
   },
   list_recommendations: {
     description:
-      "List past activation recommendations for this conversation. " +
+      "List past activation recommendations for this user. " +
       "Call before generating a new recommendation to avoid repeating suggestions " +
       "the user has already seen or dismissed.",
     schema: {},
