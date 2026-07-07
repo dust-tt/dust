@@ -54,7 +54,14 @@ export type SandboxStartupPhase =
   // the token, starts the token server, and polls it ready (was three execs).
   | "gcs.mint_token"
   | "gcs.token_server"
-  | "gcs.gcsfuse_mount";
+  | "gcs.gcsfuse_mount"
+  // Pod state bring-up (cold start only, after gcs_mount): restore replicated
+  // SQLite databases, then start the daemon (its static directory-watcher
+  // config is baked in the image).
+  | "pod_state_setup"
+  | "pod_state.enumerate"
+  | "pod_state.restore_db"
+  | "pod_state.start_daemon";
 
 // Opens a parent APM span for a startup phase. The provider.* child spans nest
 // underneath automatically, so this adds semantic grouping (and a per-phase
@@ -128,5 +135,19 @@ export function recordToolDuration(
     ...buildTags(ctx),
     `tool:${tool}`,
     `status:${status}`,
+  ]);
+}
+
+// ---------------------------------------------------------------------------
+// Pod state (litestream replication) metrics. "Alerting" for pod state means
+// Datadog monitors over these counters + the stable logger.error messages next
+// to them — a failure counter that stays at 0 is the healthy state.
+// ---------------------------------------------------------------------------
+
+// No workspace tag: the gate runs without a per-workspace failure mode — an
+// anomalous sandbox image identity is a fleet-wide code/rollout bug.
+export function recordPodStateCapabilityGateError(): void {
+  getStatsDClient().increment("sandbox.pod_state.capability_gate_error", 1, [
+    `region:${regionConfig.getCurrentRegion()}`,
   ]);
 }
