@@ -1,18 +1,17 @@
 import {
+  ActionFrame,
   AnimatedText,
   Archive,
   ArrowRight,
-  Upload01,
   Avatar,
   Button,
   ButtonsSwitch,
   ButtonsSwitchList,
-  MessageChatSquare,
-  CheckDouble,
   Check,
+  CheckDone01,
+  CheckDouble,
   Chip,
   CloudArrowLeftRight,
-  UploadCloud02,
   ContentMessage,
   ConversationListItem,
   Dialog,
@@ -21,7 +20,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  File02,
+  DotsHorizontal,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -34,18 +33,16 @@ import {
   DropdownMenuTrigger,
   EmptyCTA,
   EmptyCTAButton,
-  Folder,
-  Plus,
   File01,
-  Table,
-  ActionFrame,
+  File02,
+  Folder,
   Icon,
   Input,
-  CheckDone01,
-  ListGroup,
   List,
+  ListGroup,
   ListItemSection,
-  DotsHorizontal,
+  MessageChatSquare,
+  Plus,
   ReplySection,
   SearchInput,
   SearchInputWithPopover,
@@ -57,10 +54,13 @@ import {
   SheetTitle,
   SliderToggle,
   Stars02,
+  Table,
   Tabs,
   TabsContent,
   Trash01,
   TypingAnimation,
+  Upload01,
+  UploadCloud02,
   Users01,
   XClose,
 } from "@dust-tt/sparkle";
@@ -103,14 +103,14 @@ import type {
   User,
 } from "../data/types";
 import { getUserById } from "../data/users";
-import {
-  DATA_SOURCE_FILE_DRAG_MIME,
-  DATA_SOURCE_FILE_NAME_DRAG_MIME,
-} from "./FreeButtonSwitch";
 import { Breadcrumbs, type BreadcrumbsItem } from "./BreadcrumbsDnd";
 import { ConversationTopSection } from "./ConversationTopSection";
 import { DataTable } from "./DataTableDnd";
 import { FilePreviewPanel } from "./FilePreviewPanel";
+import {
+  DATA_SOURCE_FILE_DRAG_MIME,
+  DATA_SOURCE_FILE_NAME_DRAG_MIME,
+} from "./FreeButtonSwitch";
 import { InputBar, type InputBarTaskCommand } from "./InputBar";
 import { SuggestionBox } from "./SuggestionBox";
 import { TaskItem } from "./TaskItem";
@@ -4483,7 +4483,7 @@ export function GroupConversationView({
                 </ButtonsSwitchList>
               )}
               {tableItems.length === 0 && !isKnowledgeSearchActive ? (
-                <div className="flex w-full flex-col items-center justify-center gap-2 rounded-xl border border-border bg-muted-background p-12">
+                <div className="flex w-full flex-col items-center justify-center gap-2 rounded-xl border border bg-muted-background p-12">
                   <p className="text-center text-sm text-muted-foreground">
                     This folder is empty.
                   </p>
@@ -4629,7 +4629,7 @@ export function GroupConversationView({
 
           <div className="flex w-full flex-col gap-2">
             <h3 className="heading-lg">Visibility</h3>
-            <div className="flex items-start items-center justify-between gap-4 border-y border-border py-4">
+            <div className="flex items-start items-center justify-between gap-4 border-y border py-4">
               <div className="flex flex-col">
                 <div className="heading-sm text-foreground">
                   Opened to everyone
@@ -4690,7 +4690,7 @@ export function GroupConversationView({
             )}
           </div>
 
-          <div className="flex w-full flex-col gap-8 border-t border-border pt-8">
+          <div className="flex w-full flex-col gap-8 border-t border pt-8">
             <div className="flex w-full flex-col gap-3">
               <h3 className="heading-lg">Danger Zone</h3>
               <h4 className="heading-base">Archive</h4>

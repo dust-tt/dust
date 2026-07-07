@@ -219,9 +219,10 @@ export function InputBar({
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
       className={cn(
+        "rounded-2xl",
         variant === "default" && "bg-primary-50/70 backdrop-blur-md",
         variant === "embedded" && "bg-primary-50",
-        variant === "default" && (showFocusStyle ? "" : "border-border"),
+        variant === "default" && (showFocusStyle ? "" : "border"),
         className
       )}
     >
