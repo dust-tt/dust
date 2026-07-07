@@ -161,9 +161,9 @@ describe("buildBaseSpecifications", () => {
       }
     );
 
-    expect(specifications.find((s) => s.name === "configured_tool")?.eager).toBe(
-      true
-    );
+    expect(
+      specifications.find((s) => s.name === "configured_tool")?.eager
+    ).toBe(true);
     expect(
       specifications.find((s) => s.name === "jit_tool")?.eager
     ).toBeUndefined();
@@ -209,7 +209,10 @@ describe("buildBaseSpecifications", () => {
     });
 
     // Before the skill is enabled, its tools are not in the request at all.
-    const before = buildBaseSpecifications([configuredTool], agentConfiguration);
+    const before = buildBaseSpecifications(
+      [configuredTool],
+      agentConfiguration
+    );
     expect(before.map((s) => s.name)).toEqual(["configured_tool"]);
 
     // Once enabled, the skill's server is appended to the available actions
