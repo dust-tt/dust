@@ -946,7 +946,9 @@ export default function SwitchContractDialog({
                           />
                         </>
                       )}
-                      <Label className="text-sm">Monthly usage cap (AWU)</Label>
+                      <Label className="text-sm">
+                        Monthly usage cap (credits)
+                      </Label>
                       <InputField
                         control={form.control}
                         name="usageCapCredits"
@@ -962,7 +964,9 @@ export default function SwitchContractDialog({
                         type="number"
                         placeholder="0"
                       />
-                      <Label className="text-sm">Balance alert (AWU)</Label>
+                      <Label className="text-sm">
+                        Workspace credit pool threshold alert (credits)
+                      </Label>
                       <InputField
                         control={form.control}
                         name="balanceThresholdCredits"
@@ -971,7 +975,8 @@ export default function SwitchContractDialog({
                         placeholder="no alert"
                       />
                       <Label className="text-sm">
-                        Per-user pool access (AWU)
+                        Default per-user workspace credit pool monthly limit
+                        (credits)
                       </Label>
                       <InputField
                         control={form.control}
@@ -981,7 +986,7 @@ export default function SwitchContractDialog({
                         placeholder="no access"
                       />
                       <Label className="text-sm">
-                        Programmatic cap/mo (AWU)
+                        Programmatic monthly limit (credits)
                       </Label>
                       <InputField
                         control={form.control}

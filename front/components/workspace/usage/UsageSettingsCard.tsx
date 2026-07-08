@@ -90,7 +90,7 @@ export function UsageSettingsCard({
       <SettingsList>
         <LockedSection locked={!hasPool}>
           <SettingsList.Row
-            title="Default workspace credit pool monthly limit"
+            title="Default per-user workspace credit pool monthly limit"
             description={
               <>
                 Define the workspace credit pool credit limit for users per
