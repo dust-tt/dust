@@ -110,7 +110,7 @@ export async function editHandler(
   if (occurrences === 0) {
     return new Err(
       new MCPError(
-        `String not found in file: "${old_string}". The file may have changed since you last ` +
+        `String "${old_string}" not found in file. The file may have changed since you last ` +
           `read it: re-read it with \`${getPrefixedToolName(FILES_SERVER_NAME, FILES_CAT_ACTION_NAME)}\` ` +
           "and retry with the exact current text. Never resend the whole file content.",
         {
