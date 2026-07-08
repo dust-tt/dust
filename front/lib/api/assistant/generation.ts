@@ -26,7 +26,7 @@ import {
 } from "@app/lib/api/actions/servers/conversation_files/metadata";
 import { FILES_SERVER_NAME } from "@app/lib/api/actions/servers/files/metadata";
 import { citationMetaPrompt } from "@app/lib/api/assistant/citations";
-import { isDustLikeAgent } from "@app/lib/api/assistant/global_agents/global_agents";
+import { isDustLikeAgent } from "@app/lib/api/assistant/global_agents/prompt_context";
 import { TRUNCATED_SNIPPET_SIZE } from "@app/lib/api/files/snippet";
 import type {
   StructuredSystemPrompt,
