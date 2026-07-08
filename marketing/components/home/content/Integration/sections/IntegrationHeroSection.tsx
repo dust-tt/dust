@@ -30,7 +30,9 @@ export function IntegrationHeroSection({
 
   return (
     <FullWidthSection className="bg-white">
-      <div className="mx-auto flex max-w-3xl flex-col items-center px-6 pb-12 pt-16 text-center md:pb-16 md:pt-24">
+      {/* [&_h1]/[&_p] force center via a descendant selector: the shared H1/P
+          bake in `text-left`, which a plain `text-center` utility can't override. */}
+      <div className="mx-auto flex max-w-3xl flex-col items-center px-6 pb-12 pt-16 text-center [&_h1]:text-center [&_p]:text-center md:pb-16 md:pt-24">
         <div className="mb-6">
           <ResourceAvatar icon={IconComponent} size="lg" />
         </div>

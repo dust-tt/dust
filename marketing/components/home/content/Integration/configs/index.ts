@@ -101,7 +101,7 @@ export const integrationEnrichments: Record<string, IntegrationEnrichment> = {
         ],
       },
       {
-        icon: "ActionPencilSquareIcon",
+        icon: "ActionDocumentTextIcon",
         color: "golden",
         title: "Keep canvases up to date",
         description:
@@ -299,7 +299,7 @@ export const integrationEnrichments: Record<string, IntegrationEnrichment> = {
         ],
       },
       {
-        icon: "ActionPencilSquareIcon",
+        icon: "ActionDocumentTextIcon",
         color: "green",
         title: "Draft and update pages for you",
         description:
@@ -312,7 +312,7 @@ export const integrationEnrichments: Record<string, IntegrationEnrichment> = {
         ],
       },
       {
-        icon: "ActionDatabaseIcon",
+        icon: "ActionTableIcon",
         color: "golden",
         title: "Keep your databases in sync",
         description:
@@ -380,7 +380,7 @@ export const integrationEnrichments: Record<string, IntegrationEnrichment> = {
         toolMatches: ["list_spreadsheets", "get_spreadsheet", "get_worksheet"],
       },
       {
-        icon: "ActionPencilSquareIcon",
+        icon: "ActionDocumentTextIcon",
         color: "green",
         title: "Build and update sheets for you",
         description:
@@ -474,7 +474,7 @@ export const integrationEnrichments: Record<string, IntegrationEnrichment> = {
         toolMatches: ["list_excel_files", "get_worksheets", "read_worksheet"],
       },
       {
-        icon: "ActionPencilSquareIcon",
+        icon: "ActionDocumentTextIcon",
         color: "green",
         title: "Build and update worksheets",
         description:
@@ -843,7 +843,7 @@ export const integrationEnrichments: Record<string, IntegrationEnrichment> = {
         ],
       },
       {
-        icon: "ActionPencilSquareIcon",
+        icon: "ActionDocumentTextIcon",
         color: "green",
         title: "Move work forward, not just read it",
         description:
@@ -856,7 +856,7 @@ export const integrationEnrichments: Record<string, IntegrationEnrichment> = {
         ],
       },
       {
-        icon: "ActionDashboardIcon",
+        icon: "ActionPieChartIcon",
         color: "golden",
         title: "Keep roadmaps and projects current",
         description:
@@ -930,7 +930,7 @@ export const integrationEnrichments: Record<string, IntegrationEnrichment> = {
     },
     benefits: [
       {
-        icon: "ActionFilterIcon",
+        icon: "ActionMagnifyingGlassIcon",
         color: "blue",
         title: "Surface blockers with JQL",
         description:
@@ -1033,7 +1033,7 @@ export const integrationEnrichments: Record<string, IntegrationEnrichment> = {
         toolMatches: ["get_spaces", "get_pages", "get_page"],
       },
       {
-        icon: "ActionPencilSquareIcon",
+        icon: "ActionDocumentTextIcon",
         color: "green",
         title: "Draft and update pages for you",
         description:
@@ -1134,7 +1134,7 @@ export const integrationEnrichments: Record<string, IntegrationEnrichment> = {
         ],
       },
       {
-        icon: "ActionPencilSquareIcon",
+        icon: "ActionDocumentTextIcon",
         color: "green",
         title: "Ship code that deploys live",
         description:
@@ -1147,7 +1147,7 @@ export const integrationEnrichments: Record<string, IntegrationEnrichment> = {
         ],
       },
       {
-        icon: "ActionRocketIcon",
+        icon: "ActionLightbulbIcon",
         color: "golden",
         title: "Trigger your deployed endpoints",
         description:
@@ -1223,7 +1223,7 @@ export const integrationEnrichments: Record<string, IntegrationEnrichment> = {
         toolMatches: ["execute_read_query", "describe_object", "list_objects"],
       },
       {
-        icon: "ActionPencilSquareIcon",
+        icon: "ActionDocumentTextIcon",
         color: "green",
         title: "Keep records current automatically",
         description:
@@ -1312,7 +1312,7 @@ export const integrationEnrichments: Record<string, IntegrationEnrichment> = {
         ],
       },
       {
-        icon: "ActionPencilSquareIcon",
+        icon: "ActionDocumentTextIcon",
         color: "green",
         title: "Log deals, notes, and tasks",
         description:
@@ -1419,7 +1419,7 @@ export const integrationEnrichments: Record<string, IntegrationEnrichment> = {
         ],
       },
       {
-        icon: "ActionPencilSquareIcon",
+        icon: "ActionDocumentTextIcon",
         color: "green",
         title: "Keep records and reqs current",
         description:
@@ -1503,7 +1503,7 @@ export const integrationEnrichments: Record<string, IntegrationEnrichment> = {
         toolMatches: ["get_actions", "get_actions"],
       },
       {
-        icon: "ActionFireIcon",
+        icon: "ActionMegaphoneIcon",
         color: "golden",
         title: "Surface what is overdue and slipping",
         description:
@@ -1765,7 +1765,7 @@ export const integrationEnrichments: Record<string, IntegrationEnrichment> = {
         ],
       },
       {
-        icon: "ActionPencilSquareIcon",
+        icon: "ActionDocumentTextIcon",
         color: "green",
         title: "Draft and send replies for you",
         description:
@@ -1773,7 +1773,7 @@ export const integrationEnrichments: Record<string, IntegrationEnrichment> = {
         toolMatches: ["create_draft", "send_mail", "delete_draft"],
       },
       {
-        icon: "ActionTagIcon",
+        icon: "ActionListCheckIcon",
         color: "golden",
         title: "Keep your inbox organized",
         description:
@@ -1841,7 +1841,7 @@ export const integrationEnrichments: Record<string, IntegrationEnrichment> = {
         ],
       },
       {
-        icon: "ActionMailIcon",
+        icon: "ActionChatBubbleBottomCenterTextIcon",
         color: "green",
         title: "Send and tidy your inbox",
         description:
@@ -1854,7 +1854,7 @@ export const integrationEnrichments: Record<string, IntegrationEnrichment> = {
         ],
       },
       {
-        icon: "ActionUserGroupIcon",
+        icon: "ActionChatBubbleBottomCenterTextIcon",
         color: "violet",
         title: "Keep contacts current",
         description:
@@ -1935,7 +1935,7 @@ export const integrationEnrichments: Record<string, IntegrationEnrichment> = {
         ],
       },
       {
-        icon: "ActionCalendarIcon",
+        icon: "ActionTimeIcon",
         color: "green",
         title: "Book and reschedule on autopilot",
         description:
@@ -2024,7 +2024,7 @@ export const integrationEnrichments: Record<string, IntegrationEnrichment> = {
         ],
       },
       {
-        icon: "ActionCalendarIcon",
+        icon: "ActionTimeIcon",
         color: "green",
         title: "Book and reschedule meetings",
         description:
@@ -2123,7 +2123,7 @@ export const integrationEnrichments: Record<string, IntegrationEnrichment> = {
         ],
       },
       {
-        icon: "ActionPencilSquareIcon",
+        icon: "ActionDocumentTextIcon",
         color: "green",
         title: "Draft and update docs in place",
         description:
@@ -2218,7 +2218,7 @@ export const integrationEnrichments: Record<string, IntegrationEnrichment> = {
         ],
       },
       {
-        icon: "ActionPencilSquareIcon",
+        icon: "ActionDocumentTextIcon",
         color: "green",
         title: "Edit and file documents for you",
         description:
@@ -2313,7 +2313,7 @@ export const integrationEnrichments: Record<string, IntegrationEnrichment> = {
         toolMatches: ["search_tickets", "get_ticket", "list_ticket_fields"],
       },
       {
-        icon: "ActionPencilSquareIcon",
+        icon: "ActionDocumentTextIcon",
         color: "green",
         title: "Draft and send replies",
         description:
@@ -2321,7 +2321,7 @@ export const integrationEnrichments: Record<string, IntegrationEnrichment> = {
         toolMatches: ["draft_reply", "post_reply"],
       },
       {
-        icon: "ActionTagIcon",
+        icon: "ActionListCheckIcon",
         color: "golden",
         title: "Triage and route automatically",
         description:
@@ -2402,7 +2402,7 @@ export const integrationEnrichments: Record<string, IntegrationEnrichment> = {
         ],
       },
       {
-        icon: "ActionPencilSquareIcon",
+        icon: "ActionDocumentTextIcon",
         color: "green",
         title: "Open and progress tickets",
         description:
@@ -2415,7 +2415,7 @@ export const integrationEnrichments: Record<string, IntegrationEnrichment> = {
         ],
       },
       {
-        icon: "ActionShoppingBasketIcon",
+        icon: "ActionTableIcon",
         color: "golden",
         title: "Run the service catalog & ITSM",
         description:
@@ -2501,7 +2501,7 @@ export const integrationEnrichments: Record<string, IntegrationEnrichment> = {
         ],
       },
       {
-        icon: "ActionShakeHandsIcon",
+        icon: "ActionCloudArrowLeftRightIcon",
         color: "green",
         title: "Route and reply without leaving Front",
         description:
@@ -2514,7 +2514,7 @@ export const integrationEnrichments: Record<string, IntegrationEnrichment> = {
         ],
       },
       {
-        icon: "ActionTagIcon",
+        icon: "ActionListCheckIcon",
         color: "violet",
         title: "Keep conversations organized",
         description:
@@ -2582,7 +2582,7 @@ export const integrationEnrichments: Record<string, IntegrationEnrichment> = {
     },
     benefits: [
       {
-        icon: "ActionInboxIcon",
+        icon: "ActionChatBubbleBottomCenterTextIcon",
         color: "blue",
         title: "Trace a customer's full history",
         description:
@@ -2782,7 +2782,7 @@ export const integrationEnrichments: Record<string, IntegrationEnrichment> = {
     },
     benefits: [
       {
-        icon: "ActionDatabaseIcon",
+        icon: "ActionTableIcon",
         color: "blue",
         title: "See every SQL warehouse at once",
         description:
@@ -2944,8 +2944,11 @@ export const integrationEnrichments: Record<string, IntegrationEnrichment> = {
     relatedIntegrations: ["slack"],
   },
   youtrust: {
+    seoTitle: "Run Youtrust e-signature from Dust",
+    seoSubtitle:
+      "Draft signature requests from your templates, send them, and track which ones are still open.",
     tagline:
-      "Send documents for signature and chase what's outstanding — from one prompt",
+      "Send documents for signature and follow up on the ones that stall.",
     chatStoryline: {
       userPrompt:
         "Send our standard NDA to the three new vendors, then tell me what's still unsigned from last week.",
@@ -2957,22 +2960,22 @@ export const integrationEnrichments: Record<string, IntegrationEnrichment> = {
       ],
       completedInSeconds: 13,
       responseIntro:
-        "I found your NDA template in Youtrust, drafted and sent a request to each vendor, then pulled last week's still-open signatures.",
+        "I found your NDA template in Youtrust, drafted a request for each vendor, and sent them. Here is last week's unsigned list too.",
       responseSections: [
         {
           heading: "Sent for signature (3)",
           bullets: [
             {
               title: "Acme Corp",
-              body: "Drafted from the Mutual NDA template and sent to legal@acme.example — awaiting first open.",
+              body: "Drafted from the Mutual NDA template. Sent to legal@acme.example. Not opened yet.",
             },
             {
               title: "Globex",
-              body: "Sent to procurement@globex.example; two signers in sequence, reminders on by default.",
+              body: "Sent to procurement@globex.example. Two signers, in sequence. Reminders on.",
             },
             {
               title: "Initech",
-              body: "Sent to ops@initech.example — single signer, expires in 14 days.",
+              body: "Sent to ops@initech.example. One signer. Expires in 14 days.",
             },
           ],
         },
@@ -2981,17 +2984,17 @@ export const integrationEnrichments: Record<string, IntegrationEnrichment> = {
           bullets: [
             {
               title: "Order form #4187",
-              body: "Open 8 days. The activity feed shows the signer opened it twice but hasn't signed.",
+              body: "Open 8 days. The signer opened it twice, then stopped.",
             },
             {
               title: "Consulting agreement #4172",
-              body: "Open 11 days with no activity since it was sent — likely needs a nudge.",
+              body: "Open 11 days. No activity since you sent it.",
             },
           ],
         },
       ],
       followUpPrompt:
-        "Want me to send a reminder to the signers on the two outstanding requests?",
+        "Want me to send a reminder on the two that are still open?",
     },
     benefits: [
       {
@@ -2999,7 +3002,7 @@ export const integrationEnrichments: Record<string, IntegrationEnrichment> = {
         color: "blue",
         title: "See what's still unsigned",
         description:
-          "Ask which signature requests are pending, who is holding them up, and how long they have been open — Dust reads the request list and each request's activity feed.",
+          "Ask which requests are pending, who has them, and how long they have been open. Dust reads the request list and each activity feed.",
         toolMatches: [
           "search-signature-requests",
           "get-signature-request-activity-feed",
@@ -3010,7 +3013,7 @@ export const integrationEnrichments: Record<string, IntegrationEnrichment> = {
         color: "green",
         title: "Send from a template in one prompt",
         description:
-          "Point Dust at a Youtrust template — NDA, offer letter, order form — and it drafts the request and sends it to the right signers without leaving the conversation.",
+          "Name a Youtrust template, like an NDA or an offer letter. Dust drafts the request and sends it to the signers you name.",
         toolMatches: [
           "search-templates",
           "create-signature-request-from-template",
@@ -3020,9 +3023,9 @@ export const integrationEnrichments: Record<string, IntegrationEnrichment> = {
       {
         icon: "ActionListCheckIcon",
         color: "golden",
-        title: "Signature status recap",
+        title: "Weekly signature recap",
         description:
-          "Get a digest of what got signed, what is stalled, and what needs a nudge across all your active requests, pulled straight from the activity feeds.",
+          "Ask what got signed, what stalled, and what needs a nudge. Dust pulls it from your active requests and their activity feeds.",
         toolMatches: [
           "search-signature-requests",
           "get-signature-request-activity-feed",
@@ -3033,12 +3036,12 @@ export const integrationEnrichments: Record<string, IntegrationEnrichment> = {
       {
         question: "What can Dust agents do in Youtrust?",
         answer:
-          "Dust can search your signature requests and templates, read a request's activity feed, and create and send new signature requests from an existing template.",
+          "Search your signature requests and templates, read a request's activity feed, and create and send new requests from an existing template.",
       },
       {
         question: "How does authentication work?",
         answer:
-          "Youtrust uses OAuth 2.1 with dynamic client registration — you sign in with your Youtrust account and approve access directly from the Dust chat.",
+          "Youtrust uses OAuth 2.1 with dynamic client registration. You sign in with your Youtrust account and approve access from the Dust chat.",
       },
     ],
     relatedIntegrations: ["gmail", "google_drive", "notion"],
@@ -3193,7 +3196,7 @@ export const integrationEnrichments: Record<string, IntegrationEnrichment> = {
         ],
       },
       {
-        icon: "ActionPencilSquareIcon",
+        icon: "ActionDocumentTextIcon",
         color: "green",
         title: "Build dashboards and experiments",
         description:
@@ -3445,7 +3448,7 @@ export const integrationEnrichments: Record<string, IntegrationEnrichment> = {
         ],
       },
       {
-        icon: "ActionSparklesIcon",
+        icon: "ActionLightbulbIcon",
         color: "violet",
         title: "Generate on-brand designs from a prompt",
         description:
@@ -3520,7 +3523,7 @@ export const integrationEnrichments: Record<string, IntegrationEnrichment> = {
         toolMatches: ["search_calls", "get_call_details"],
       },
       {
-        icon: "ActionUserGroupIcon",
+        icon: "ActionChatBubbleBottomCenterTextIcon",
         color: "violet",
         title: "Coach reps on real moments",
         description:
@@ -3575,7 +3578,7 @@ export const integrationEnrichments: Record<string, IntegrationEnrichment> = {
     },
     benefits: [
       {
-        icon: "ActionFilterIcon",
+        icon: "ActionMagnifyingGlassIcon",
         color: "blue",
         title: "Pinpoint where conversions leak",
         description:
@@ -3588,7 +3591,7 @@ export const integrationEnrichments: Record<string, IntegrationEnrichment> = {
         ],
       },
       {
-        icon: "ActionFireIcon",
+        icon: "ActionMegaphoneIcon",
         color: "rose",
         title: "Find the friction killing revenue",
         description:
@@ -3680,7 +3683,7 @@ export const integrationEnrichments: Record<string, IntegrationEnrichment> = {
         ],
       },
       {
-        icon: "ActionDashboardIcon",
+        icon: "ActionPieChartIcon",
         color: "green",
         title: "Stand up dashboards and alerts",
         description:
@@ -3752,7 +3755,7 @@ export const integrationEnrichments: Record<string, IntegrationEnrichment> = {
         ],
       },
       {
-        icon: "ActionDashboardIcon",
+        icon: "ActionPieChartIcon",
         color: "golden",
         title: "Get a live health snapshot",
         description:
@@ -3828,7 +3831,7 @@ export const integrationEnrichments: Record<string, IntegrationEnrichment> = {
     },
     benefits: [
       {
-        icon: "ActionBuildingIcon",
+        icon: "ActionGlobeAltIcon",
         color: "blue",
         title: "Build target company lists from the live web",
         description:
@@ -3836,7 +3839,7 @@ export const integrationEnrichments: Record<string, IntegrationEnrichment> = {
         toolMatches: ["search_companies", "search_people"],
       },
       {
-        icon: "ActionUserGroupIcon",
+        icon: "ActionChatBubbleBottomCenterTextIcon",
         color: "violet",
         title: "Find the right people by role and background",
         description:
@@ -3844,7 +3847,7 @@ export const integrationEnrichments: Record<string, IntegrationEnrichment> = {
         toolMatches: ["search_people", "search_companies"],
       },
       {
-        icon: "ActionShakeHandsIcon",
+        icon: "ActionCloudArrowLeftRightIcon",
         color: "green",
         title: "Map decision-makers to target accounts",
         description:
@@ -3973,7 +3976,7 @@ export const integrationEnrichments: Record<string, IntegrationEnrichment> = {
     },
     benefits: [
       {
-        icon: "ActionRocketIcon",
+        icon: "ActionLightbulbIcon",
         color: "green",
         title: "Generate decks from a prompt",
         description:
@@ -3993,7 +3996,7 @@ export const integrationEnrichments: Record<string, IntegrationEnrichment> = {
         toolMatches: ["get_gammas", "read_gamma"],
       },
       {
-        icon: "ActionTagIcon",
+        icon: "ActionListCheckIcon",
         color: "violet",
         title: "Stay on-brand and organized",
         description:
@@ -4222,7 +4225,7 @@ export const integrationEnrichments: Record<string, IntegrationEnrichment> = {
         ],
       },
       {
-        icon: "ActionPencilSquareIcon",
+        icon: "ActionDocumentTextIcon",
         color: "green",
         title: "Keep knowledge current",
         description:
@@ -4471,7 +4474,7 @@ export const integrationEnrichments: Record<string, IntegrationEnrichment> = {
         ],
       },
       {
-        icon: "ActionPencilSquareIcon",
+        icon: "ActionDocumentTextIcon",
         color: "green",
         title: "Capture work the moment it surfaces",
         description:
@@ -4534,7 +4537,7 @@ export const integrationEnrichments: Record<string, IntegrationEnrichment> = {
     },
     benefits: [
       {
-        icon: "ActionCalendarIcon",
+        icon: "ActionTimeIcon",
         color: "green",
         title: "Spin up events in seconds",
         description:
@@ -4542,7 +4545,7 @@ export const integrationEnrichments: Record<string, IntegrationEnrichment> = {
         toolMatches: ["create_event", "update_event", "get_event"],
       },
       {
-        icon: "ActionMailIcon",
+        icon: "ActionChatBubbleBottomCenterTextIcon",
         color: "blue",
         title: "Fill your guest list fast",
         description:
@@ -4632,7 +4635,7 @@ export const integrationEnrichments: Record<string, IntegrationEnrichment> = {
         ],
       },
       {
-        icon: "ActionPencilSquareIcon",
+        icon: "ActionDocumentTextIcon",
         color: "green",
         title: "Build canvas content for you",
         description:
@@ -4807,7 +4810,7 @@ export const integrationEnrichments: Record<string, IntegrationEnrichment> = {
         ],
       },
       {
-        icon: "ActionPencilSquareIcon",
+        icon: "ActionDocumentTextIcon",
         color: "green",
         title: "Create and update records in flow",
         description:
@@ -5200,7 +5203,7 @@ export const integrationEnrichments: Record<string, IntegrationEnrichment> = {
         ],
       },
       {
-        icon: "ActionCardIcon",
+        icon: "ActionTableIcon",
         color: "green",
         title: "Run billing operations end to end",
         description:
@@ -5264,7 +5267,7 @@ export const integrationEnrichments: Record<string, IntegrationEnrichment> = {
     },
     benefits: [
       {
-        icon: "ActionCalendarIcon",
+        icon: "ActionTimeIcon",
         color: "green",
         title: "Book and manage time off in chat",
         description:
@@ -5289,7 +5292,7 @@ export const integrationEnrichments: Record<string, IntegrationEnrichment> = {
         ],
       },
       {
-        icon: "ActionUserGroupIcon",
+        icon: "ActionChatBubbleBottomCenterTextIcon",
         color: "golden",
         title: "Spot coverage gaps across the team",
         description:
