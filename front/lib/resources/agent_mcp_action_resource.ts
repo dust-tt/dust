@@ -16,7 +16,7 @@ import {
   getToolDisplayLabels,
   getToolNameFromFunctionCallName,
 } from "@app/lib/actions/tool_display_labels";
-import type { StepContext } from "@app/lib/actions/types";
+import type { StepContext, ToolOutputItemType } from "@app/lib/actions/types";
 import {
   isFileAuthorizationInfo,
   isSandboxChildActionInfo,
@@ -827,7 +827,7 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
       content: CallToolResult["content"][number];
       fileId?: ModelId;
     }>
-  ): Promise<AgentMCPActionOutputItemModel[]> {
+  ): Promise<Result<ToolOutputItemType[], Error>> {
     const outputItems = await AgentMCPActionOutputItemModel.bulkCreate(
       contents.map((c) => {
         const { generatedFilePath, generatedFileContentType } =
@@ -863,8 +863,7 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
     // GCS write is retried internally. If it still fails we surface the error rather than leaving
     // rows with no `contentGcsPath`. There is no acceptable degraded state.
     if (gcsResult.isErr()) {
-      // TODO(2026-05-08 FLAV) Return a result and refactor all call sites.
-      throw gcsResult.error;
+      return new Err(gcsResult.error);
     }
 
     await warmGcsContentCache(
@@ -896,7 +895,21 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
       { concurrency: CONCURRENCY_UPDATE_OUTPUT_ITEMS }
     );
 
-    return outputItems;
+    // Return the stored contents in the generic tool output item shape.
+    return new Ok(
+      removeNulls(
+        outputItems.map((item) =>
+          item.content
+            ? {
+                content: item.content,
+                fileId: item.fileId ?? null,
+                file: item.file ?? null,
+                workspaceId: item.workspaceId,
+              }
+            : null
+        )
+      )
+    );
   }
 
   static async fetchOutputItemsByActionIds(
