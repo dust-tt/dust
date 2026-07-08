@@ -377,16 +377,6 @@ export async function processToolResults(
               file: fileUpsertResult.value,
             };
           } else {
-            localLogger.info(
-              {
-                workspaceId: auth.getNonNullableWorkspace().sId,
-                mimeType: block.resource.mimeType ?? null,
-                toolName: toolConfiguration.name,
-                serverName: toolConfiguration.mcpServerName,
-              },
-              "MCP tool returned an unsupported file type; embedding resource as tool output."
-            );
-
             const text =
               "text" in block.resource &&
               typeof block.resource.text === "string"
@@ -414,6 +404,19 @@ export async function processToolResults(
                 file: null,
               };
             }
+
+            localLogger.info(
+              {
+                mimeType: block.resource.mimeType ?? null,
+                toolName: toolConfiguration.name,
+                serverName: toolConfiguration.mcpServerName,
+                blobBytes: isBlobResource(block)
+                  ? Buffer.byteLength(block.resource.blob, "utf8")
+                  : 0,
+              },
+              "MCP tool returned an embedded resource with an unsupported or missing mimeType; storing it inline in the conversation."
+            );
+
             return {
               content: {
                 type: block.type,
