@@ -1,7 +1,7 @@
 import {
-  BulkSpendLimitSelectionSchema,
-  resolveBulkSpendLimitUserIds,
-} from "@app/lib/api/users/bulk_spend_limit";
+  BulkMemberSelectionSchema,
+  resolveBulkMemberSelectionUserIds,
+} from "@app/lib/api/users/bulk_member_selection";
 import {
   MAX_USER_SPEND_LIMIT_AWU_CREDITS,
   MIN_USER_SPEND_LIMIT_AWU_CREDITS,
@@ -27,7 +27,7 @@ const LimitSchema = z.discriminatedUnion("kind", [
 ]);
 
 const BodySchema = z.object({
-  selection: BulkSpendLimitSelectionSchema,
+  selection: BulkMemberSelectionSchema,
   limit: LimitSchema,
 });
 
@@ -70,7 +70,10 @@ app.post(
 
     const { selection, limit } = ctx.req.valid("json");
 
-    const userIdsResult = await resolveBulkSpendLimitUserIds(auth, selection);
+    const userIdsResult = await resolveBulkMemberSelectionUserIds(
+      auth,
+      selection
+    );
     if (userIdsResult.isErr()) {
       return apiError(ctx, {
         status_code: 500,

@@ -56,6 +56,7 @@ import {
   useSeatPlan,
 } from "@app/lib/swr/credits";
 import { useGroups } from "@app/lib/swr/groups";
+import type { BulkMemberSelectionBody } from "@app/lib/swr/memberships";
 import {
   useBulkSetUserSpendLimit,
   useMembersUsage,
@@ -553,6 +554,23 @@ export function UsagePage() {
     setIsBulkSpendLimitOpen(true);
   }, []);
 
+  // Translate the cross-page selection into the descriptor the bulk member
+  // endpoints expect: explicit ids, or the current filter minus exclusions.
+  const buildBulkSelectionBody = useCallback((): BulkMemberSelectionBody => {
+    const descriptor = selection.descriptor();
+    return descriptor.mode === "ids"
+      ? descriptor
+      : {
+          mode: "all" as const,
+          filter: {
+            seatType: seatTypeFilter ?? undefined,
+            groupId: groupFilter ?? undefined,
+            search: searchTerm.trim() || undefined,
+          },
+          excludeUserIds: descriptor.excludeUserIds,
+        };
+  }, [selection, seatTypeFilter, groupFilter, searchTerm]);
+
   const onRemoveSeat = useCallback(
     async (member: MemberUsageType) => {
       // Free seats carry no renewing allowance to preserve, so removing one is
@@ -598,31 +616,21 @@ export function UsagePage() {
     handleApproveOnModalSaved();
   }, [handleApproveOnModalSaved, clearSelection]);
 
+  // Rows to spin while a bulk update runs — the request returns once the bulk
+  // workflow has completed. For an "all matching" selection only the current
+  // page is visible, so spin its non-excluded rows.
+  const getBulkPendingMemberIds = useCallback((): string[] => {
+    const descriptor = selection.descriptor();
+    return descriptor.mode === "ids"
+      ? descriptor.userIds
+      : pageItemIds.filter((id) => !descriptor.excludeUserIds.includes(id));
+  }, [selection, pageItemIds]);
+
   const handleBulkSpendLimitValidate = useCallback(
     async (
       limit: { kind: "unlimited" } | { kind: "limited"; awuCredits: number }
     ): Promise<boolean> => {
-      const descriptor = selection.descriptor();
-      const selectionBody =
-        descriptor.mode === "ids"
-          ? descriptor
-          : {
-              mode: "all" as const,
-              filter: {
-                seatType: seatTypeFilter ?? undefined,
-                groupId: groupFilter ?? undefined,
-                search: searchTerm.trim() || undefined,
-              },
-              excludeUserIds: descriptor.excludeUserIds,
-            };
-
-      // Spin the affected rows while the update runs — the request returns
-      // once the bulk workflow has completed. For an "all matching" selection
-      // only the current page is visible, so spin its non-excluded rows.
-      const pendingMemberIds =
-        descriptor.mode === "ids"
-          ? descriptor.userIds
-          : pageItemIds.filter((id) => !descriptor.excludeUserIds.includes(id));
+      const pendingMemberIds = getBulkPendingMemberIds();
       setTotalAllowedUsagePendingMemberIds((prev) => {
         const next = new Set(prev);
         pendingMemberIds.forEach((id) => next.add(id));
@@ -631,7 +639,7 @@ export function UsagePage() {
 
       try {
         const body = await doBulkSetSpendLimit({
-          selection: selectionBody,
+          selection: buildBulkSelectionBody(),
           limit,
         });
         if (!body) {
@@ -650,11 +658,9 @@ export function UsagePage() {
     },
     [
       selection,
-      seatTypeFilter,
-      groupFilter,
-      searchTerm,
+      buildBulkSelectionBody,
+      getBulkPendingMemberIds,
       doBulkSetSpendLimit,
-      pageItemIds,
     ]
   );
 
