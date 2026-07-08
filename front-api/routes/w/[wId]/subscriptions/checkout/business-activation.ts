@@ -23,13 +23,23 @@ app.get(
   async (ctx): HandlerResult<GetBusinessActivationResponseBody> => {
     const auth = ctx.get("auth");
 
+    // The record can be looked up by contract id or by Stripe setup session id.
+    // The polling UI uses the session id so it can poll from the first step,
+    // before the contract id exists.
     const contractId = ctx.req.query("contract_id");
-    if (!contractId) {
+    const setupSessionId = ctx.req.query("setup_session_id");
+    const identifier = contractId
+      ? { contractId }
+      : setupSessionId
+        ? { setupSessionId }
+        : null;
+    if (!identifier) {
       return apiError(ctx, {
         status_code: 400,
         api_error: {
           type: "invalid_request_error",
-          message: "Missing required query parameter: contract_id.",
+          message:
+            "Missing required query parameter: contract_id or setup_session_id.",
         },
       });
     }
@@ -40,7 +50,7 @@ app.get(
 
     const workspace = auth.getNonNullableWorkspace();
     return ctx.json(
-      await getBusinessActivationStatus(workspace, contractId, {
+      await getBusinessActivationStatus(workspace, identifier, {
         includeReceiptUrl,
       })
     );

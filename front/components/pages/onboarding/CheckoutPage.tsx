@@ -108,7 +108,8 @@ export function CheckoutPage() {
   const [phase, setPhase] = useState<CheckoutPhase>("card_capture");
   const [phaseError, setPhaseError] = useState<PhaseError | null>(null);
   const [setupSessionId, setSetupSessionId] = useState<string | null>(null);
-  // For the waiting_for_payment phase: contract id to poll.
+  // Contract id returned by the activation POST, used as a fallback key for the
+  // receipt fetch (polling itself is keyed by setup session id).
   const [pendingContractId, setPendingContractId] = useState<string | null>(
     null
   );
@@ -169,27 +170,33 @@ export function CheckoutPage() {
     }
   }, [livePreparePayment]);
 
-  // Poll checkout payment status while in waiting_for_payment phase. Status only
-  // (no receipt URL) so the poll stays fast and we transition on `succeeded`
-  // without waiting on the slow Stripe invoice-URL fetch.
+  // Poll the checkout status (by setup session id) from the confirming step
+  // onward, so the stepper advances live — including the coupon (zero-payment)
+  // flow, whose whole activation happens inside the confirming request. Status
+  // only (no receipt URL) so the poll stays fast and we transition on
+  // `succeeded` without waiting on the slow Stripe invoice-URL fetch.
+  const isActivating =
+    phase === "confirming" || phase === "waiting_for_payment";
   const { checkoutPayment } = useCheckBusinessActivation({
     workspaceId: owner.sId,
-    contractId: pendingContractId,
-    disabled: phase !== "waiting_for_payment",
-    pollIntervalMs: phase === "waiting_for_payment" ? 1500 : 0,
+    setupSessionId,
+    disabled: !isActivating,
+    pollIntervalMs: 1500,
   });
 
   // Lazily fetch the Stripe receipt URL once on the success screen, so the "View
   // receipt" button appears when ready without blocking the success transition.
   const { receiptUrl } = useCheckoutReceiptUrl({
     workspaceId: owner.sId,
-    contractId: pendingContractId,
+    contractId: checkoutPayment?.contractId ?? pendingContractId,
     disabled: phase !== "checkout_success",
   });
 
-  // React to Redis activation status.
+  // React to Redis activation status. Runs from the confirming step too: for a
+  // coupon checkout the record can reach `succeeded` before the confirming POST
+  // resolves (see handleConfirmPayment, which won't clobber this transition).
   useEffect(() => {
-    if (phase !== "waiting_for_payment" || !checkoutPayment) {
+    if (!isActivating || !checkoutPayment) {
       return;
     }
     if (checkoutPayment.status === "succeeded") {
@@ -200,7 +207,7 @@ export function CheckoutPage() {
       setPhase("error");
     }
     // pending: keep polling
-  }, [phase, checkoutPayment, mutateAuthContext]);
+  }, [isActivating, checkoutPayment, mutateAuthContext]);
 
   const {
     register: registerCoupon,
@@ -321,7 +328,10 @@ export function CheckoutPage() {
       return;
     }
     setPendingContractId(result.contractId);
-    setPhase("waiting_for_payment");
+    // Only advance to waiting_for_payment if the poll hasn't already moved us on
+    // (a coupon activation can reach succeeded/failed while this POST is still
+    // in flight). Overwriting would flicker success → waiting → success.
+    setPhase((prev) => (prev === "confirming" ? "waiting_for_payment" : prev));
   }, [setupSessionId, initiateBusinessActivation]);
 
   const handleCardCaptureComplete = useCallback(() => {
@@ -391,18 +401,20 @@ export function CheckoutPage() {
     ? CHECKOUT_STEPS_NO_PAYMENT
     : CHECKOUT_STEPS;
 
-  // Active step, driven by the phase and the polled checkout record's state:
-  // - confirming (POST provisioning the contract / writing the pending record
-  //   via setCheckoutPaymentPending): "Setting up your subscription" (step 0).
+  // Active step, driven by the polled checkout record's state (which we now poll
+  // from the confirming step onward):
+  // - record progress "activating" (markCheckoutPaymentActivating): the final
+  //   "Activating your workspace" step — checked first so it wins even while the
+  //   confirming POST is still in flight (the coupon flow activates in there).
+  // - confirming, record still pending (setCheckoutPaymentPending): "Setting up
+  //   your subscription" (step 0).
   // - waiting_for_payment, record still pending: "Processing payment" for a paid
   //   checkout; still "Setting up" for a zero-payment one (nothing to charge).
-  // - record progress "activating" (markCheckoutPaymentActivating): the final
-  //   "Activating your workspace" step, for both paths.
   const activeStepIndex =
-    phase === "confirming"
-      ? 0
-      : checkoutPayment?.progress === "activating"
-        ? checkoutSteps.length - 1
+    checkoutPayment?.progress === "activating"
+      ? checkoutSteps.length - 1
+      : phase === "confirming"
+        ? 0
         : isZeroPaymentCheckout
           ? 0
           : 1;

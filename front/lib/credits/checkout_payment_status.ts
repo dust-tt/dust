@@ -46,18 +46,34 @@ function redisKey(workspaceId: string, contractId: string): string {
   return `checkout_payment:${workspaceId}:${contractId}`;
 }
 
+// Secondary index: maps the Stripe setup session id (known to the client before
+// the contract id is) to the contract id, so the polling UI can look up the
+// record from the very first step, while the activation contract is still being
+// provisioned inside the confirming request.
+function sessionKey(workspaceId: string, setupSessionId: string): string {
+  return `checkout_payment_session:${workspaceId}:${setupSessionId}`;
+}
+
 export async function setCheckoutPaymentPending(
-  input: Omit<CheckoutPayment, "status" | "createdAtMs">
+  input: Omit<CheckoutPayment, "status" | "createdAtMs"> & {
+    setupSessionId: string;
+  }
 ): Promise<void> {
+  const { setupSessionId, ...record } = input;
   const payment: CheckoutPayment = {
-    ...input,
+    ...record,
     status: "pending",
     createdAtMs: Date.now(),
   };
   await runOnRedisCache({ origin: REDIS_ORIGIN }, async (cli) => {
     await cli.set(
-      redisKey(input.workspaceId, input.contractId),
+      redisKey(record.workspaceId, record.contractId),
       JSON.stringify(payment),
+      { EX: TTL_SECONDS }
+    );
+    await cli.set(
+      sessionKey(record.workspaceId, setupSessionId),
+      record.contractId,
       { EX: TTL_SECONDS }
     );
   });
@@ -85,6 +101,26 @@ export async function getCheckoutPaymentStatus({
     }
     return parsed.data;
   });
+}
+
+// Resolve the checkout record from a Stripe setup session id via the secondary
+// index. Returns null until the pending record (and its pointer) has been
+// written — i.e. during the very first moments of the confirming request.
+export async function getCheckoutPaymentStatusBySession({
+  workspaceId,
+  setupSessionId,
+}: {
+  workspaceId: string;
+  setupSessionId: string;
+}): Promise<CheckoutPayment | null> {
+  const contractId = await runOnRedisCache(
+    { origin: REDIS_ORIGIN },
+    async (cli) => cli.get(sessionKey(workspaceId, setupSessionId))
+  );
+  if (!contractId) {
+    return null;
+  }
+  return getCheckoutPaymentStatus({ workspaceId, contractId });
 }
 
 async function updatePayment(
