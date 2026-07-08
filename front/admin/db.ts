@@ -1,3 +1,4 @@
+import { ActivationRecommendationModel } from "@app/lib/models/activation/activation_recommendation";
 import { AgentStepContentToolExecutionModel } from "@app/lib/models/agent/actions/agent_step_content_tool_execution";
 import { ConversationMCPServerViewModel } from "@app/lib/models/agent/actions/conversation_mcp_server_view";
 import { AgentDataSourceConfigurationModel } from "@app/lib/models/agent/actions/data_sources";
@@ -45,6 +46,11 @@ import { WebhookRequestModel } from "@app/lib/models/agent/triggers/webhook_requ
 import { WebhookRequestTriggerModel } from "@app/lib/models/agent/triggers/webhook_request_trigger";
 import { WebhookSourceModel } from "@app/lib/models/agent/triggers/webhook_source";
 import { WebhookSourcesViewModel } from "@app/lib/models/agent/triggers/webhook_sources_view";
+import {
+  GroupAllowedAdvancedModel,
+  UserAllowedAdvancedModel,
+  WorkspaceAllowedAdvancedModel,
+} from "@app/lib/models/allowed_advanced_model";
 import { DustAppSecretModel } from "@app/lib/models/dust_app_secret";
 import { ExtensionConfigurationModel } from "@app/lib/models/extension";
 import { FeatureFlagModel } from "@app/lib/models/feature_flag";
@@ -93,6 +99,7 @@ import {
   SharingGrantModel,
 } from "@app/lib/resources/storage/models/files";
 import { GroupMembershipModel } from "@app/lib/resources/storage/models/group_memberships";
+import { GroupPermissionModel } from "@app/lib/resources/storage/models/group_permissions";
 import { GroupSpaceModel } from "@app/lib/resources/storage/models/group_spaces";
 import { GroupModel } from "@app/lib/resources/storage/models/groups";
 import { KeyModel } from "@app/lib/resources/storage/models/keys";
@@ -107,7 +114,6 @@ import { MembershipUpgradeRequestModel } from "@app/lib/resources/storage/models
 import { OnboardingTaskModel } from "@app/lib/resources/storage/models/onboarding_tasks";
 import { PluginRunModel } from "@app/lib/resources/storage/models/plugin_runs";
 import { ProgrammaticUsageConfigurationModel } from "@app/lib/resources/storage/models/programmatic_usage_configurations";
-import { ProjectDefaultSkillModel } from "@app/lib/resources/storage/models/project_default_skills";
 import { ProjectMetadataModel } from "@app/lib/resources/storage/models/project_metadata";
 import {
   ProjectTaskConversationModel,
@@ -124,7 +130,11 @@ import {
   SandboxModel,
   SandboxOwnerModel,
 } from "@app/lib/resources/storage/models/sandbox";
-import { SandboxFunctionModel } from "@app/lib/resources/storage/models/sandbox_function";
+import {
+  SandboxFunctionInvocationModel,
+  SandboxFunctionModel,
+} from "@app/lib/resources/storage/models/sandbox_function";
+import { SandboxFunctionMCPActionModel } from "@app/lib/resources/storage/models/sandbox_function_mcp_action";
 import { SpaceModel } from "@app/lib/resources/storage/models/spaces";
 import {
   TakeawaySourcesModel,
@@ -171,12 +181,14 @@ export function loadAllModels() {
     KeyModel,
     FileModel,
     SandboxFunctionModel,
+    SandboxFunctionInvocationModel,
     ShareableFileModel,
     AuthorizedFileAccessModel,
     SharingGrantModel,
     ExternalViewerSessionModel,
     DustAppSecretModel,
     GroupSpaceModel,
+    GroupPermissionModel,
     WebhookSourceModel,
     WebhookSourcesViewModel,
     TriggerModel,
@@ -195,6 +207,9 @@ export function loadAllModels() {
     PlanModel,
     SubscriptionModel,
     ProviderCredentialModel,
+    UserAllowedAdvancedModel,
+    GroupAllowedAdvancedModel,
+    WorkspaceAllowedAdvancedModel,
     TemplateModel,
     CreditModel,
     CouponModel,
@@ -212,6 +227,7 @@ export function loadAllModels() {
     RemoteMCPServerToolMetadataModel,
     InternalMCPServerCredentialModel,
     ConversationMCPServerViewModel,
+    SandboxFunctionMCPActionModel,
     AgentMCPServerConfigurationModel,
     AgentTablesQueryConfigurationTableModel,
     AgentDataSourceConfigurationModel,
@@ -245,7 +261,6 @@ export function loadAllModels() {
     GroupSkillModel,
     SkillReferenceModel,
     AgentSkillModel,
-    ProjectDefaultSkillModel,
     ConversationSkillModel,
     AgentMessageSkillModel,
     SkillMCPServerConfigurationModel,
@@ -272,6 +287,7 @@ export function loadAllModels() {
     WorkspaceSensitivityLabelConfigModel,
     WorkspaceSandboxEnvVarModel,
     WorkspaceSeatLimitModel,
+    ActivationRecommendationModel,
   ];
 }
 

@@ -157,7 +157,7 @@ export function ViewDataSourceTable({
                     <LinkWrapper
                       href={`https://cloud.temporal.io/namespaces/${temporalWorkspace}/${
                         isScheduleBased ? "schedules" : "workflows"
-                      }?query=connectorId%3D%22${dataSource.connectorId}%22`}
+                      }?query=%60connectorId%60%3D${dataSource.connectorId}`}
                       target="_blank"
                       className="text-sm text-highlight-400"
                     >

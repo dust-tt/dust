@@ -63,6 +63,8 @@ const MCP_TOOL_OVERRIDES: Partial<
   },
   sandbox: {
     add_egress_domain: {
+      title: (agentName) =>
+        `Allow ${asDisplayName(agentName)} to add a domain to the Computer?`,
       detailsExpanded: true,
     },
   },
@@ -294,7 +296,7 @@ export function MCPToolValidationRequired({
             defaultExpanded={toolOverride?.detailsExpanded}
           />
           {errorMessage && (
-            <div className="mt-2 text-sm font-medium text-warning-800 dark:text-warning-800-night">
+            <div className="mt-2 text-sm font-medium text-warning-800">
               {errorMessage}
             </div>
           )}
@@ -341,7 +343,7 @@ export function MCPToolValidationRequired({
           </div>
         </>
       ) : (
-        <div className="font-sm whitespace-normal break-words text-foreground dark:text-foreground-night">
+        <div className="font-sm whitespace-normal break-words text-foreground">
           Waiting for{" "}
           <span className="font-semibold">{triggeringUser?.fullName}</span> to
           confirm.

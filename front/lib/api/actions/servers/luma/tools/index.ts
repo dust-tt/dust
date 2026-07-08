@@ -5,7 +5,7 @@ import type {
   ToolHandlers,
 } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import type { AgentLoopContextType } from "@app/lib/actions/types";
+import type { ToolContextType } from "@app/lib/actions/types";
 import type { LumaClient } from "@app/lib/api/actions/servers/luma/client";
 import { getLumaClient } from "@app/lib/api/actions/servers/luma/client";
 import { LUMA_TOOLS_METADATA } from "@app/lib/api/actions/servers/luma/metadata";
@@ -33,7 +33,7 @@ async function withClient(
 
 export function createLumaTools(
   _auth: Authenticator,
-  _agentLoopContext?: AgentLoopContextType
+  _toolContext?: ToolContextType
 ) {
   const handlers: ToolHandlers<typeof LUMA_TOOLS_METADATA> = {
     get_authenticated_user: async (_params, extra: ToolHandlerExtra) => {

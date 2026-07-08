@@ -1,5 +1,6 @@
 import type {
   OutputFormat,
+  ToolChoiceInput,
   ToolSpecification,
 } from "@app/lib/model_constructors/types/input/configuration";
 import type {
@@ -16,7 +17,7 @@ import type {
 } from "@app/lib/model_constructors/types/input/messages";
 import type { ReasoningEffort } from "@app/lib/model_constructors/types/reasoning_efforts";
 import { assertNever } from "@app/types/shared/utils/assert_never";
-import { isRecord } from "@app/types/shared/utils/general";
+import { isRecord, removeNulls } from "@app/types/shared/utils/general";
 import type {
   ChatCompletionMessageParam,
   ChatCompletionTool,
@@ -164,7 +165,7 @@ function userMessageToMessage(
 function assistantMessageToMessage(
   message: BaseAssistantMessage,
   converters: OpenAICompletionsMessageConverters
-): ChatCompletionMessageParam {
+): ChatCompletionMessageParam | null {
   switch (message.type) {
     case "text":
       return converters.assistantTextMessageToMessage(message);
@@ -172,6 +173,9 @@ function assistantMessageToMessage(
       return converters.assistantReasoningMessageToMessage(message);
     case "tool_call_request":
       return converters.assistantToolCallRequestToMessage(message);
+    case "provider_passthrough":
+      // Opaque block owned by another provider. Dropped at the loop, not sent.
+      return null;
     default:
       assertNever(message);
   }
@@ -184,16 +188,18 @@ export function conversationToOpenAICompletionsMessages(
   const system = conversation.system.map((message) =>
     converters.systemMessageToMessage(message)
   );
-  const messages = conversation.messages.map((message) => {
-    switch (message.role) {
-      case "user":
-        return userMessageToMessage(message, converters);
-      case "assistant":
-        return assistantMessageToMessage(message, converters);
-      default:
-        assertNever(message);
-    }
-  });
+  const messages = removeNulls(
+    conversation.messages.map((message) => {
+      switch (message.role) {
+        case "user":
+          return userMessageToMessage(message, converters);
+        case "assistant":
+          return assistantMessageToMessage(message, converters);
+        default:
+          assertNever(message);
+      }
+    })
+  );
   return [...system, ...messages];
 }
 
@@ -226,11 +232,17 @@ export function toTool(tool: ToolSpecification): ChatCompletionTool {
 
 export function forceToolNameToToolChoice(
   tools: ToolSpecification[],
-  forceTool: string | undefined
+  { forceTool, disableToolUse }: ToolChoiceInput
 ): ChatCompletionToolChoiceOption {
-  return forceTool && tools.some((tool) => tool.name === forceTool)
-    ? { type: "function", function: { name: forceTool } }
-    : "auto";
+  if (forceTool && tools.some((tool) => tool.name === forceTool)) {
+    return { type: "function", function: { name: forceTool } };
+  }
+
+  if (disableToolUse) {
+    return "none";
+  }
+
+  return "auto";
 }
 
 // Maps our reasoning effort to the chat-completions `reasoning_effort` value, or

@@ -25,6 +25,7 @@ import { validate } from "@front-api/middlewares/validator";
 import { workspaceAuth } from "@front-api/middlewares/workspace_auth";
 import { escape } from "html-escaper";
 import { z } from "zod";
+import advancedModels from "./advanced_models";
 import analytics from "./analytics";
 import assistant from "./assistant";
 import auditLogs from "./audit-logs";
@@ -199,6 +200,10 @@ const WorkspaceAuditLogsUpdateBodySchema = z.object({
   disableAuditLogs: z.boolean(),
 });
 
+const WorkspaceSlackPersonalFooterRemovalUpdateBodySchema = z.object({
+  slackPersonalAllowFooterRemoval: z.boolean(),
+});
+
 // A null value clears the workspace-wide default agent (falls back to @dust).
 const WorkspaceDefaultAgentUpdateBodySchema = z.object({
   workspaceDefaultAgentId: z.string().nullable(),
@@ -230,6 +235,7 @@ const PostWorkspaceRequestBodySchema = z.union([
   WorkspaceSelfImprovementCapPerSkillAwuCreditsUpdateBodySchema,
   WorkspaceAuditLogsUpdateBodySchema,
   WorkspaceDefaultAgentUpdateBodySchema,
+  WorkspaceSlackPersonalFooterRemovalUpdateBodySchema,
 ]);
 
 const app = workspaceApp();
@@ -261,10 +267,7 @@ app.use(
 );
 app.route("/trial-message-usage", trialMessageUsage);
 
-app.use(
-  "/coupon/validate/*",
-  workspaceAuth({ doesNotRequireCanUseProduct: true })
-);
+app.use("/coupon/*", workspaceAuth({ doesNotRequireCanUseProduct: true }));
 app.route("/coupon", coupon);
 
 app.use("/trial/start/*", workspaceAuth({ doesNotRequireCanUseProduct: true }));
@@ -607,7 +610,7 @@ app.post(
           status_code: 403,
           api_error: {
             type: "feature_flag_not_found",
-            message: "Sandbox tools are not enabled for this workspace.",
+            message: "Computer is disabled for this workspace.",
           },
         });
       }
@@ -700,6 +703,14 @@ app.post(
         ...(owner.metadata ?? {}),
         workspaceDefaultAgentId,
       };
+    } else if ("slackPersonalAllowFooterRemoval" in body) {
+      const previousMetadata = owner.metadata ?? {};
+      const newMetadata = {
+        ...previousMetadata,
+        slackPersonalAllowFooterRemoval: body.slackPersonalAllowFooterRemoval,
+      };
+      await workspace.updateWorkspaceSettings({ metadata: newMetadata });
+      owner.metadata = newMetadata;
     } else if ("domainUpdates" in body) {
       for (const update of body.domainUpdates) {
         const updateResult = await workspace.updateDomainAutoJoinEnabled({
@@ -740,6 +751,7 @@ app.post(
 // Sub-apps using the catch-all default + the partial-subtree exception
 // targets declared above.
 app.route("/analytics", analytics);
+app.route("/advanced_models", advancedModels);
 app.route("/assistant", assistant);
 app.route("/audit-logs", auditLogs);
 app.route("/billing", billing);

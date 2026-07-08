@@ -433,6 +433,7 @@ export class RunResource extends BaseResource<RunModel> {
       completionTokens: usage.outputTokens,
       cachedTokens: usage.cachedTokens ?? null,
       cacheCreationTokens: usage.cacheCreationTokens ?? null,
+      longCacheCreationTokens: usage.longCacheCreationTokens ?? null,
       isBatch,
       inferenceRegion,
     });

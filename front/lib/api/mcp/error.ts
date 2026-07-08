@@ -3,14 +3,10 @@ import type { ToolExecutionStatus } from "@app/lib/actions/statuses";
 import { isToolExecutionStatusFinal } from "@app/lib/actions/statuses";
 import type { Authenticator } from "@app/lib/auth";
 import type { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
-import type { AgentConfigurationType } from "@app/types/assistant/agent";
-import type { AgentMessageType } from "@app/types/assistant/conversation";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 
 type HandleErrorParams = {
   action: AgentMCPActionResource;
-  agentConfiguration: AgentConfigurationType;
-  agentMessage: AgentMessageType;
   errorContent: CallToolResult["content"];
   status: ToolExecutionStatus;
   executionDurationMs: number;
@@ -21,14 +17,7 @@ type HandleErrorParams = {
  */
 export async function handleMCPActionError(
   auth: Authenticator,
-  {
-    action,
-    agentConfiguration,
-    agentMessage,
-    errorContent,
-    status,
-    executionDurationMs,
-  }: HandleErrorParams
+  { action, errorContent, status, executionDurationMs }: HandleErrorParams
 ): Promise<MCPErrorEvent | MCPSuccessEvent> {
   await action.createOutputItems(
     auth,
@@ -44,12 +33,7 @@ export async function handleMCPActionError(
   return {
     type: "tool_success",
     created: Date.now(),
-    configurationId: agentConfiguration.sId,
-    messageId: agentMessage.sId,
-    action: {
-      ...action.toJSON(),
-      output: errorContent,
-      generatedFiles: [],
-    },
+    output: errorContent,
+    generatedFiles: [],
   };
 }

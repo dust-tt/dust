@@ -48,7 +48,7 @@ export function CreateRoomDialog({
         <DialogHeader>
           <DialogTitle>Create a new room</DialogTitle>
         </DialogHeader>
-        <DialogContainer className="s-space-y-6">
+        <DialogContainer className="space-y-6">
           <Input
             label="Pod name"
             placeholder="Enter the pod name"
@@ -67,12 +67,12 @@ export function CreateRoomDialog({
             messageStatus={error ? "error" : "default"}
             autoFocus
           />
-          <div className="s-flex s-items-start s-justify-between s-gap-4">
-            <div className="s-flex s-flex-col">
-              <div className="s-text-sm s-font-semibold s-text-foreground">
+          <div className="flex items-start justify-between gap-4">
+            <div className="flex flex-col">
+              <div className="text-sm font-semibold text-foreground">
                 Opened to everyone
               </div>
-              <div className="s-text-sm s-text-muted-foreground">
+              <div className="text-sm text-muted-foreground">
                 Anyone in the workspace can find and join the room.
               </div>
             </div>

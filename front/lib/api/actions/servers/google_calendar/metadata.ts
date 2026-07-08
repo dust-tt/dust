@@ -57,10 +57,12 @@ export const GOOGLE_CALENDAR_TOOLS_METADATA = createToolsRecord({
       running: "Listing Google calendars",
       done: "List Google calendars",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   list_events: {
     description:
-      "List or search events from a Google Calendar. If 'q' is provided, performs a free-text search.",
+      "List, search, or browse the events and agenda on a Google Calendar for a given day, week, or date range. If 'q' is provided, performs a free-text search of events.",
     schema: {
       calendarId: z
         .string()
@@ -89,9 +91,12 @@ export const GOOGLE_CALENDAR_TOOLS_METADATA = createToolsRecord({
       running: "Listing Google Calendar events",
       done: "List Google Calendar events",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   get_event: {
-    description: "Get a single event from a Google Calendar by event ID.",
+    description:
+      "Get the full details of a single event from a Google Calendar by its event ID.",
     schema: {
       calendarId: z
         .string()
@@ -104,10 +109,12 @@ export const GOOGLE_CALENDAR_TOOLS_METADATA = createToolsRecord({
       running: "Retrieving Google Calendar event",
       done: "Retrieve Google Calendar event",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   create_event: {
     description:
-      "Create a new event in a Google Calendar. By default: (1) add the calling user as both organizer and attendee, (2) call check_availability to verify attendee availability beforehand, (3) call get_user_timezones first to determine attendee timezones for accurate scheduling.",
+      "Create a new event on a Google Calendar to schedule a meeting or appointment. By default: (1) add the calling user as both organizer and attendee, (2) call check_availability to verify attendee availability beforehand, (3) call get_user_timezones first to determine attendee timezones for accurate scheduling.",
     schema: {
       calendarId: z
         .string()
@@ -151,9 +158,12 @@ export const GOOGLE_CALENDAR_TOOLS_METADATA = createToolsRecord({
       running: "Creating Google Calendar event",
       done: "Create Google Calendar event",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   update_event: {
-    description: "Update an existing event in a Google Calendar.",
+    description:
+      "Update or reschedule an existing event on a Google Calendar to a new time, location, or set of attendees.",
     schema: {
       calendarId: z
         .string()
@@ -194,9 +204,11 @@ export const GOOGLE_CALENDAR_TOOLS_METADATA = createToolsRecord({
       running: "Updating Google Calendar event",
       done: "Update Google Calendar event",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   delete_event: {
-    description: "Delete an event from a Google Calendar.",
+    description: "Delete, cancel, or remove an event from a Google Calendar.",
     schema: {
       calendarId: z
         .string()
@@ -209,10 +221,12 @@ export const GOOGLE_CALENDAR_TOOLS_METADATA = createToolsRecord({
       running: "Deleting Google Calendar event",
       done: "Delete Google Calendar event",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   check_availability: {
     description:
-      "Compute combined free/busy availability across multiple participants within a date range using Google Calendar.",
+      "Find free time slots when participants are all available to meet, computing combined free/busy availability across multiple attendees within a date range using Google Calendar.",
     schema: {
       participants: z
         .array(
@@ -276,10 +290,12 @@ export const GOOGLE_CALENDAR_TOOLS_METADATA = createToolsRecord({
       running: "Checking Google Calendar availability",
       done: "Check Google Calendar availability",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   get_user_timezones: {
     description:
-      "Get timezone settings for multiple users from their Google Calendar configuration. Only works for calendars shared with you.",
+      "Get the timezone of attendees by looking up timezone settings for multiple users from their Google Calendar configuration. Only works for calendars shared with you.",
     schema: {
       emails: z
         .array(z.string())
@@ -291,6 +307,8 @@ export const GOOGLE_CALENDAR_TOOLS_METADATA = createToolsRecord({
       running: "Checking Google Calendar user timezones",
       done: "Check Google Calendar user timezones",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
 });
 
@@ -314,6 +332,8 @@ export const GOOGLE_CALENDAR_SERVER = {
     description: t.description,
     inputSchema: zodToJsonSchema(z.object(t.schema)) as JSONSchema,
     displayLabels: t.displayLabels,
+    toolCostCategory: t.toolCostCategory,
+    freeUsage: t.freeUsage,
   })),
   tools_stakes: Object.fromEntries(
     Object.values(GOOGLE_CALENDAR_TOOLS_METADATA).map((t) => [t.name, t.stake])

@@ -38,9 +38,9 @@ type CaptureActions = {
 };
 
 export const InputBarContext = createContext<{
-  animate: boolean;
+  shouldFocusInput: boolean;
   getAndClearSelectedAgent: () => RichAgentMention | null;
-  setAnimate: React.Dispatch<React.SetStateAction<boolean>>;
+  setShouldFocusInput: React.Dispatch<React.SetStateAction<boolean>>;
   setSelectedAgent: (agentMention: RichAgentMention | null) => void;
   selectedSingleAgent: RichAgentMention | null;
   setSelectedSingleAgent: (agentMention: RichAgentMention | null) => void;
@@ -61,10 +61,12 @@ export const InputBarContext = createContext<{
   setIsLoadingGoTemplate: (loading: boolean) => void;
   fileUploaderService: FileUploaderService;
   captureActions?: CaptureActions;
+  // Fired right before submit; the extension uses it to snapshot browser tab state.
+  onBeforeSubmit?: () => void;
 }>({
-  animate: false,
+  shouldFocusInput: false,
   getAndClearSelectedAgent: () => null,
-  setAnimate: () => {},
+  setShouldFocusInput: () => {},
   setSelectedAgent: () => {},
   selectedSingleAgent: null,
   setSelectedSingleAgent: () => {},
@@ -92,14 +94,16 @@ interface InputBarContextProviderProps {
   children: ReactNode;
   fileUploaderService: FileUploaderService;
   captureActions?: CaptureActions;
+  onBeforeSubmit?: () => void;
 }
 
 export function InputBarContextProvider({
   children,
   fileUploaderService,
   captureActions,
+  onBeforeSubmit,
 }: InputBarContextProviderProps) {
-  const [animate, setAnimate] = useState<boolean>(false);
+  const [shouldFocusInput, setShouldFocusInput] = useState<boolean>(false);
 
   // Useful when a component needs to set the selected agent for the input bar but do not have direct access to the input bar.
   const [selectedAgent, setSelectedAgent] = useState<RichAgentMention | null>(
@@ -148,9 +152,9 @@ export function InputBarContextProvider({
   const setSelectedAgentOuter = useCallback(
     (agentMention: RichAgentMention | null) => {
       if (agentMention) {
-        setAnimate(true);
+        setShouldFocusInput(true);
       } else {
-        setAnimate(false);
+        setShouldFocusInput(false);
       }
       setSelectedAgent(agentMention);
     },
@@ -187,8 +191,8 @@ export function InputBarContextProvider({
 
   const value = useMemo(
     () => ({
-      animate,
-      setAnimate,
+      shouldFocusInput,
+      setShouldFocusInput,
       getAndClearSelectedAgent,
       setSelectedAgent: setSelectedAgentOuter,
       selectedSingleAgent,
@@ -202,9 +206,10 @@ export function InputBarContextProvider({
       setIsLoadingGoTemplate,
       captureActions,
       fileUploaderService,
+      onBeforeSubmit,
     }),
     [
-      animate,
+      shouldFocusInput,
       getAndClearSelectedAgent,
       setSelectedAgentOuter,
       selectedSingleAgent,
@@ -216,6 +221,7 @@ export function InputBarContextProvider({
       isLoadingGoTemplate,
       captureActions,
       fileUploaderService,
+      onBeforeSubmit,
     ]
   );
 

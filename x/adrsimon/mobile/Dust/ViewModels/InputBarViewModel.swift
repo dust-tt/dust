@@ -20,6 +20,7 @@ final class InputBarViewModel: ObservableObject {
     @Published var showDocumentPicker = false
     @Published var showCapabilitiesPicker = false
     @Published var showKnowledgePicker = false
+    @Published var showVoiceInput = false
     @Published var availableCapabilities: [Capability] = []
     @Published var selectedCapabilities: [Capability] = []
     @Published var selectedKnowledgeItems: [KnowledgeItem] = []
@@ -304,16 +305,31 @@ final class InputBarViewModel: ObservableObject {
 
     // MARK: - Voice Input
 
+    /// Opens the full-screen voice experience. Recording itself starts when the view appears.
+    func presentVoiceInput() {
+        guard !speechService.isRecording, !speechService.isFinalizing else { return }
+        showVoiceInput = true
+    }
+
+    /// Starts (or resumes) live transcription. Any text already in the bar is preserved as a
+    /// prefix so resuming after a pause appends rather than overwrites.
     func startVoiceInput() {
-        guard !speechService.isRecording, !speechService.isTranscribing else { return }
+        guard !speechService.isRecording, !speechService.isFinalizing else { return }
+
+        let existing = messageText.trimmingCharacters(in: .whitespacesAndNewlines)
+        speechService.onTranscript = { [weak self] text in
+            guard let self else { return }
+            messageText = existing.isEmpty ? text : existing + " " + text
+        }
+        speechService.onError = { [weak self] message in self?.error = message }
 
         switch AVAudioApplication.shared.recordPermission {
         case .granted:
-            speechService.startRecording()
+            Task { await speechService.startRecording() }
         case .undetermined:
             Task {
                 let granted = await speechService.ensureMicPermission()
-                if granted { speechService.startRecording() }
+                if granted { await speechService.startRecording() }
             }
         default:
             speechService.error = "Microphone permission denied"
@@ -322,24 +338,12 @@ final class InputBarViewModel: ObservableObject {
 
     func stopVoiceInput() {
         speechService.stopRecording()
-        Task {
-            await speechService.transcribe()
-            if let transcriptionError = speechService.error {
-                error = transcriptionError
-            } else {
-                let transcribed = speechService.transcribedText
-                if !transcribed.isEmpty {
-                    messageText = messageText.isEmpty ? transcribed : messageText + " " + transcribed
-                }
-            }
-            speechService.transcribedText = ""
-        }
     }
 
-    func cancelVoiceInput() {
-        speechService.stopRecording()
-        speechService.cleanupRecording()
-        speechService.transcribedText = ""
+    /// Leaves the voice experience for the regular input bar, keeping whatever was transcribed.
+    func exitVoiceInput() {
+        speechService.cancel()
+        showVoiceInput = false
     }
 
     // MARK: - Private

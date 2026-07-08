@@ -150,11 +150,11 @@ function FilterSection({
   );
 
   return (
-    <div className="mb-6">
+    <div className="mb-4">
       <Collapsible defaultOpen={defaultOpen}>
         <CollapsibleTrigger label={title} variant="secondary" />
         <CollapsibleContent>
-          <div className="flex flex-col gap-2">
+          <div className="mt-2 flex flex-col gap-2.5">
             {options.map((option) => (
               <FilterCheckbox
                 key={option}
@@ -357,7 +357,7 @@ export default function CustomerStoriesListing({
           </P>
         </div>
 
-        <div className="col-span-12 mt-8 flex flex-col gap-8 lg:flex-row">
+        <div className="col-span-12 mb-16 mt-8 flex flex-col gap-8 lg:flex-row">
           <aside className="w-full shrink-0 lg:w-64">
             <div className="sticky top-24 rounded-2xl border border-gray-100 bg-white p-6">
               <div className="mb-4 flex items-center justify-between">
@@ -479,7 +479,7 @@ export default function CustomerStoriesListing({
                 </div>
 
                 {filteredStories.length > GRID_PAGE_SIZE && (
-                  <div className="mt-6 flex items-center justify-center">
+                  <div className="mt-10 flex items-center justify-center">
                     <Pagination
                       rowCount={filteredStories.length}
                       pagination={{

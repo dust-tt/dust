@@ -17,6 +17,7 @@ import {
   getAvailableInputBarSlashCommands,
   type InputBarSlashCommand,
 } from "@app/components/editor/extensions/input_bar/InputBarSlashSuggestionTypes";
+import { SKILL_NODE_TYPE } from "@app/components/editor/extensions/input_bar/SkillNode";
 import {
   isRunCommandSlashCommand,
   isSkillSlashCommand,
@@ -143,6 +144,41 @@ export const INPUT_BAR_ACTIONS = [
 
 export type InputBarAction = (typeof INPUT_BAR_ACTIONS)[number];
 
+export interface DefaultSkillReference {
+  sId: string;
+  name: string;
+  icon: string | null;
+}
+
+function readDefaultSkillEditorState(editor: Editor): {
+  skillIds: string[];
+  hasUserContent: boolean;
+} {
+  const skillIds: string[] = [];
+  let hasUserContent = false;
+  editor.state.doc.descendants((node) => {
+    if (node.type.name === SKILL_NODE_TYPE) {
+      if (typeof node.attrs.skillId === "string") {
+        skillIds.push(node.attrs.skillId);
+      }
+      return false;
+    }
+    if (node.isText) {
+      if ((node.text ?? "").trim().length > 0) {
+        hasUserContent = true;
+      }
+    } else if (node.isInline && node.type.name !== "hardBreak") {
+      hasUserContent = true;
+    }
+    return true;
+  });
+  return { skillIds, hasUserContent };
+}
+
+function sameSkillIds(a: string[], b: string[]): boolean {
+  return a.length === b.length && a.every((id, index) => id === b[index]);
+}
+
 export interface InputBarContainerProps {
   actions: InputBarAction[];
   allAgents: LightAgentConfigurationType[];
@@ -168,6 +204,9 @@ export interface InputBarContainerProps {
   } | null;
   defaultAgentId?: string | null;
   isDefaultAgentLoading?: boolean;
+  // Skills pre-inserted into a new conversation's editor, as if manually added.
+  defaultSkills?: DefaultSkillReference[];
+  isDefaultSkillsLoading?: boolean;
   isAgentBuilder?: boolean;
   isCompact?: boolean;
   onExpandInputBar?: () => void;
@@ -190,6 +229,19 @@ export interface InputBarContainerProps {
   user: UserType | null;
 }
 
+function hasActiveSelectionInEditor(
+  editorDom: HTMLElement | undefined
+): boolean {
+  const selection = window.getSelection();
+  return Boolean(
+    selection &&
+      !selection.isCollapsed &&
+      editorDom &&
+      selection.anchorNode &&
+      editorDom.contains(selection.anchorNode)
+  );
+}
+
 const InputBarContainer = ({
   allAgents,
   onEnterKeyDown,
@@ -207,6 +259,8 @@ const InputBarContainer = ({
   getDraft,
   defaultAgentId,
   isDefaultAgentLoading,
+  defaultSkills,
+  isDefaultSkillsLoading,
   isAgentBuilder = false,
   onNodeSelect,
   onNodeUnselect,
@@ -1076,9 +1130,10 @@ const InputBarContainer = ({
     isSpacesLoading,
   ]);
 
-  // When input bar animation is requested, it means the new button was clicked (removing focus from
-  // the input bar), we grab it back.
-  const { animate, captureActions } = useContext(InputBarContext);
+  // When an input bar refocus is requested (e.g. the "New" button was clicked, removing focus from
+  // the input bar), we grab focus back.
+  const { shouldFocusInput, setShouldFocusInput, captureActions } =
+    useContext(InputBarContext);
 
   const handleSingleAgentSelect = useCallback(
     (mention: RichMention) => {
@@ -1126,11 +1181,14 @@ const InputBarContainer = ({
   }, [captureActions, disableInput, fileUploaderService.isProcessingFiles]);
 
   useEffect(() => {
-    if (animate) {
+    if (shouldFocusInput) {
       // Schedule focus to avoid flushing during render lifecycle.
       queueMicrotask(() => editorService.focusEnd());
+      // Consume the flag so a later request (e.g. clicking "New" again) re-runs
+      // this effect instead of being swallowed as a no-op state update.
+      setShouldFocusInput(false);
     }
-  }, [animate, editorService]);
+  }, [shouldFocusInput, editorService, setShouldFocusInput]);
 
   // Focus the input bar when the extension panel is opened (content-script sidebar or Front iframe).
   // Not gated by disableAutoFocus: that flag prevents autofocus on mount (to avoid mobile keyboard
@@ -1284,6 +1342,71 @@ const InputBarContainer = ({
     stickyMentions,
   });
 
+  useEffect(() => {
+    if (defaultSkills === undefined) {
+      return;
+    }
+    if (conversation || isAgentBuilder) {
+      return;
+    }
+
+    if (isDefaultSkillsLoading) {
+      return;
+    }
+    if (
+      !editor ||
+      editor.isDestroyed ||
+      !editor.isEditable ||
+      !editor.isInitialized
+    ) {
+      return;
+    }
+
+    const desiredSkillIds = defaultSkills.map((skill) => skill.sId);
+
+    queueMicrotask(() => {
+      if (
+        !editor ||
+        editor.isDestroyed ||
+        !editor.isEditable ||
+        !editor.isInitialized
+      ) {
+        return;
+      }
+
+      const { skillIds, hasUserContent } = readDefaultSkillEditorState(editor);
+
+      if (hasUserContent) {
+        return;
+      }
+
+      if (sameSkillIds(skillIds, desiredSkillIds)) {
+        return;
+      }
+
+      let chain = editor.chain();
+      if (skillIds.length > 0) {
+        chain = chain.clearContent();
+      }
+      for (const skill of defaultSkills) {
+        chain = chain.insertSkillNode({
+          skillId: skill.sId,
+          skillName: skill.name,
+          skillIcon: skill.icon,
+        });
+      }
+      chain.run();
+    });
+  }, [
+    conversation,
+    defaultSkills,
+    isDefaultSkillsLoading,
+    isAgentBuilder,
+    editor,
+    editor?.isInitialized,
+    editor?.isEditable,
+  ]);
+
   const buttonSize = useMemo(() => {
     return isMobile ? "sm" : "xs";
   }, [isMobile]);
@@ -1296,13 +1419,6 @@ const InputBarContainer = ({
 
   const hideCapabilities = startsWithUserMention && !selectedSingleAgent;
 
-  // A pod can pre-select a default agent that the current member can't access
-  // (e.g. an unpublished agent). `allAgents` only contains agents the member
-  // can read, so when the configured default is missing from it, the
-  // resolution in `useHandleMentions` silently falls back to @dust. Surface a
-  // notice on the agent pill so the member understands why the pod's default
-  // isn't the one shown. (We can't distinguish "no access" from "deleted"
-  // client-side, so the copy stays neutral.)
   const isDefaultAgentUnavailable =
     !conversation &&
     !isAgentBuilder &&
@@ -1313,7 +1429,7 @@ const InputBarContainer = ({
 
   const contentEditableClasses = classNames(
     "inline-block w-full",
-    "border-0 outline-none ring-0 focus:border-0 focus:outline-none focus:ring-0",
+    "border-0 outline-hidden ring-0 focus:border-0 focus:outline-hidden focus:ring-0",
     "whitespace-pre-wrap font-normal",
     "px-3 md:pl-4 pt-3 md:pt-3.5"
   );
@@ -1386,9 +1502,7 @@ const InputBarContainer = ({
               aria-hidden
               className={cn(
                 INPUT_BAR_COMPACT_PREVIEW_CLASSES,
-                compactPreviewText
-                  ? "text-foreground dark:text-foreground-night"
-                  : "text-muted-foreground dark:text-muted-foreground-night"
+                compactPreviewText ? "text-foreground" : "text-muted-foreground"
               )}
             >
               {compactPreviewText || compactDisplayPlaceholder}
@@ -1428,6 +1542,9 @@ const InputBarContainer = ({
         )}
         aria-hidden={isCompact}
         onClick={(e) => {
+          if (hasActiveSelectionInEditor(editorRef.current?.view.dom)) {
+            return;
+          }
           // If e.target is not a child of a div with class "tiptap", then focus on the editor
           if (
             !(e.target instanceof HTMLElement && e.target.closest(".tiptap"))
@@ -1472,7 +1589,7 @@ const InputBarContainer = ({
                     size="xs"
                     label={getMcpServerViewDisplayName(msv)}
                     icon={getIcon(msv.server.icon)}
-                    className="m-0.5 hidden bg-background text-foreground dark:bg-background-night dark:text-foreground-night xs:flex"
+                    className="m-0.5 hidden bg-background text-foreground xs:flex"
                     onClick={() => setSelectedServerViewForDetails(msv)}
                     onRemove={() => {
                       onMCPServerViewDeselect(msv);
@@ -1481,7 +1598,7 @@ const InputBarContainer = ({
                   <Chip
                     size="xs"
                     icon={getIcon(msv.server.icon)}
-                    className="m-0.5 flex bg-background text-foreground dark:bg-background-night dark:text-foreground-night xs:hidden"
+                    className="m-0.5 flex bg-background text-foreground xs:hidden"
                     onClick={() => setSelectedServerViewForDetails(msv)}
                     onRemove={() => {
                       onMCPServerViewDeselect(msv);
@@ -1608,7 +1725,7 @@ const InputBarContainer = ({
                             endComponent={
                               <DropdownMenuShortcut
                                 shortcut={pageShortcut}
-                                className="text-xs text-faint dark:text-faint-night"
+                                className="text-xs text-faint"
                               />
                             }
                           />
@@ -1626,7 +1743,7 @@ const InputBarContainer = ({
                             endComponent={
                               <DropdownMenuShortcut
                                 shortcut={screenshotShortcut}
-                                className="text-xs text-faint dark:text-faint-night"
+                                className="text-xs text-faint"
                               />
                             }
                           />

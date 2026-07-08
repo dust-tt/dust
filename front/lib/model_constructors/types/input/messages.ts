@@ -1,3 +1,5 @@
+import type { ModelProviderIdType } from "@app/types/assistant/models/types";
+
 const CACHE_OPTIONS = ["short", "long"] as const;
 export type CacheOption = (typeof CACHE_OPTIONS)[number];
 
@@ -48,7 +50,10 @@ export type BaseAssistantReasoningMessage = {
   role: "assistant";
   type: "reasoning";
   content: { value: string };
+  // The original reasoning item id, used to key the replayed item.
   signature?: string;
+  // OpenAI encrypted reasoning content, resent alongside the id on replay.
+  encryptedContent?: string;
 };
 
 export type BaseAssistantToolCallRequestMessage = {
@@ -62,10 +67,22 @@ export type BaseAssistantToolCallRequestMessage = {
   signature?: string;
 };
 
+// Opaque, provider-specific block carried verbatim so the producing provider
+// can replay it. Every other consumer skips it. The block is kept opaque here.
+export type BaseAssistantProviderPassthroughMessage = {
+  role: "assistant";
+  type: "provider_passthrough";
+  content: {
+    provider: ModelProviderIdType;
+    block: unknown;
+  };
+};
+
 export type BaseAssistantMessage =
   | BaseAssistantTextMessage
   | BaseAssistantReasoningMessage
-  | BaseAssistantToolCallRequestMessage;
+  | BaseAssistantToolCallRequestMessage
+  | BaseAssistantProviderPassthroughMessage;
 
 export type BaseMessage = BaseUserMessage | BaseAssistantMessage;
 

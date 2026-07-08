@@ -36,7 +36,7 @@ import {
   provisionPaymentGatedActivationContract,
 } from "@app/lib/metronome/contracts";
 import {
-  createCouponCredit,
+  createSeatCouponCredit,
   getCreditTypeFromPackage,
 } from "@app/lib/metronome/coupons";
 import { invalidateContractCache } from "@app/lib/metronome/plan_type";
@@ -213,7 +213,7 @@ export async function createPaymentGatedBusinessActivation({
     if (!found) {
       return new Err({ type: "invalid_coupon" });
     }
-    const validation = found.validateRedemption();
+    const validation = found.validateRedemptionForContext("subscription");
     if (validation.isErr()) {
       return new Err({ type: "invalid_coupon" });
     }
@@ -457,7 +457,7 @@ export async function handleSubscriptionActivationSuccess({
       );
       if (creditTypeResult.isOk()) {
         const { creditTypeId, currency } = creditTypeResult.value;
-        const creditResult = await createCouponCredit({
+        const creditResult = await createSeatCouponCredit({
           metronomeCustomerId: workspace.metronomeCustomerId!,
           metronomeContractId: contractId,
           coupon,
@@ -471,6 +471,7 @@ export async function handleSubscriptionActivationSuccess({
         } else {
           logger.error(
             {
+              panic: true,
               workspaceId: workspace.sId,
               couponCode: checkoutPayment.couponCode,
               error: creditResult.error.message,
@@ -481,6 +482,7 @@ export async function handleSubscriptionActivationSuccess({
       } else {
         logger.error(
           {
+            panic: true,
             workspaceId: workspace.sId,
             error: creditTypeResult.error.message,
           },
@@ -495,7 +497,11 @@ export async function handleSubscriptionActivationSuccess({
     await SubscriptionResource.fetchActiveByWorkspaceModelId(workspace.id);
   if (!activeSubscription) {
     logger.error(
-      { workspaceId: workspace.sId, contractId },
+      {
+        panic: true,
+        workspaceId: workspace.sId,
+        contractId,
+      },
       "[Business Activation] No active subscription found during webhook success — cannot activate"
     );
     return;
@@ -578,6 +584,7 @@ export async function handleSubscriptionActivationSuccess({
   if (!targetUser) {
     logger.error(
       {
+        panic: true,
         workspaceId: workspace.sId,
         targetUserId: checkoutPayment.targetUserId,
       },
@@ -597,6 +604,7 @@ export async function handleSubscriptionActivationSuccess({
     if (seatResult.isErr()) {
       logger.error(
         {
+          panic: true,
           workspaceId: workspace.sId,
           targetUserId: checkoutPayment.targetUserId,
           membershipSeatType,

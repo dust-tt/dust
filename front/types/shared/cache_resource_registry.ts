@@ -43,8 +43,10 @@ export function buildCacheKeyPattern(
   return `cacheWithRedis-${resource.fnName}-${resource.resolverKeyPattern}`;
 }
 
+// Bump these versions whenever the shape or the semantics of the cached payload
+// change (e.g. a new field added).
 export const WORKSPACE_CACHE_KEY_VERSION = 2;
-export const SUBSCRIPTION_CACHE_KEY_VERSION = 1;
+export const SUBSCRIPTION_CACHE_KEY_VERSION = 2;
 
 export const CACHE_RESOURCE_REGISTRY: CacheResourceDefinition[] = [
   {

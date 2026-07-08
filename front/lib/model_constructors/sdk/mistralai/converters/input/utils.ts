@@ -1,5 +1,6 @@
 import type {
   OutputFormat,
+  ToolChoiceInput,
   ToolSpecification,
 } from "@app/lib/model_constructors/types/input/configuration";
 import type {
@@ -15,6 +16,7 @@ import type {
   SystemTextMessage,
 } from "@app/lib/model_constructors/types/input/messages";
 import { assertNever } from "@app/types/shared/utils/assert_never";
+import { removeNulls } from "@app/types/shared/utils/general";
 import type {
   ChatCompletionStreamRequest,
   ResponseFormat,
@@ -170,7 +172,7 @@ function userMessageToMessage(
 function assistantMessageToMessage(
   message: BaseAssistantMessage,
   converters: MistralMessageConverters
-): MistralMessage {
+): MistralMessage | null {
   switch (message.type) {
     case "text":
       return converters.assistantTextMessageToMessage(message);
@@ -178,6 +180,9 @@ function assistantMessageToMessage(
       return converters.assistantReasoningMessageToMessage(message);
     case "tool_call_request":
       return converters.assistantToolCallRequestToMessage(message);
+    case "provider_passthrough":
+      // Opaque block owned by another provider. Dropped at the loop, not sent.
+      return null;
     default:
       assertNever(message);
   }
@@ -190,16 +195,18 @@ export function conversationToMistralAIMessages(
   const system = conversation.system.map((message) =>
     converters.systemMessageToMessage(message)
   );
-  const messages = conversation.messages.map((message) => {
-    switch (message.role) {
-      case "user":
-        return userMessageToMessage(message, converters);
-      case "assistant":
-        return assistantMessageToMessage(message, converters);
-      default:
-        assertNever(message);
-    }
-  });
+  const messages = removeNulls(
+    conversation.messages.map((message) => {
+      switch (message.role) {
+        case "user":
+          return userMessageToMessage(message, converters);
+        case "assistant":
+          return assistantMessageToMessage(message, converters);
+        default:
+          assertNever(message);
+      }
+    })
+  );
   return [...system, ...messages];
 }
 
@@ -219,11 +226,17 @@ export function toTool(tool: ToolSpecification): Tool {
 
 export function forceToolNameToToolChoice(
   tools: ToolSpecification[],
-  forceTool: string | undefined
-): ToolChoice | "auto" {
-  return forceTool && tools.some((tool) => tool.name === forceTool)
-    ? { type: "function", function: { name: forceTool } }
-    : "auto";
+  { forceTool, disableToolUse }: ToolChoiceInput
+): ToolChoice | "auto" | "none" {
+  if (forceTool && tools.some((tool) => tool.name === forceTool)) {
+    return { type: "function", function: { name: forceTool } };
+  }
+
+  if (disableToolUse) {
+    return "none";
+  }
+
+  return "auto";
 }
 
 export function outputFormatToResponseFormat(

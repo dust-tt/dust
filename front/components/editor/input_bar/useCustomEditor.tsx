@@ -91,7 +91,7 @@ const useEditorService = (editor: Editor | null, isMobileViewport: boolean) => {
           } else {
             editor
               .chain()
-              .insertContentAt(editor.state.doc.content.size, content, {
+              .insertContentAt(editor.state.doc.content.size - 1, content, {
                 updateSelection: false,
               })
               .run();
@@ -135,9 +135,11 @@ const useEditorService = (editor: Editor | null, isMobileViewport: boolean) => {
           } else {
             editor
               .chain()
-              .insertContentAt(editor.state.doc.content.size, committedText, {
-                updateSelection: false,
-              })
+              .insertContentAt(
+                editor.state.doc.content.size - 1,
+                committedText,
+                { updateSelection: false }
+              )
               .run();
           }
         }
@@ -440,7 +442,7 @@ export const buildEditorExtensions = ({
       onFirstAgentMentionPasteRef,
       HTMLAttributes: {
         class:
-          "min-w-0 px-0 py-0 border-none outline-none focus:outline-none focus:border-none ring-0 focus:ring-0 text-highlight-500 font-semibold",
+          "min-w-0 px-0 py-0 border-none outline-hidden focus:outline-hidden focus:border-none ring-0 focus:ring-0 text-highlight-500 font-semibold",
       },
       suggestion: createMentionSuggestion({
         owner,
@@ -467,7 +469,7 @@ export const buildEditorExtensions = ({
         return placeholderOverride ?? INPUT_BAR_DEFAULT_PLACEHOLDER;
       },
       emptyNodeClass:
-        "first:before:text-gray-400 first:before:content-[attr(data-placeholder)] first:before:pointer-events-none first:before:absolute",
+        "first:before:text-muted-foreground first:before:content-[attr(data-placeholder)] first:before:pointer-events-none first:before:absolute",
     }),
     PastedAttachmentExtension.configure({
       onInlineText,
@@ -544,7 +546,7 @@ const useCustomEditor = ({
       editorProps: {
         attributes: {
           class:
-            "border-0 outline-none overflow-y-auto h-full scrollbar-hide [&_h1]:text-2xl [&_h1]:font-semibold [&_h1]:my-2 [&_a]:cursor-text",
+            "border-0 outline-hidden overflow-y-auto h-full scrollbar-hide [&_h1]:text-2xl [&_h1]:font-semibold [&_h1]:my-2 [&_a]:cursor-text",
         },
         // cleans up incoming HTML to remove all style that could mess up with our theme
         transformPastedHTML(html: string) {

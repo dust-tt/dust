@@ -1,7 +1,7 @@
 // biome-ignore lint/plugin/enforceClientTypesInPublicApi: existing usage
 import { INTERNAL_MIME_TYPES_VALUES } from "@dust-tt/client";
 import { z } from "zod";
-
+import { ModelSelectionSchema } from "../assistant/models/types";
 import type { SupportedNonImageContentType } from "../files";
 import { getSupportedNonImageMimeTypes } from "../files";
 
@@ -33,6 +33,10 @@ export const MessageBaseSchema = z.object({
     originMessageId: z.string().optional(),
     origin: UserMessageOriginSchema.optional(),
   }),
+  // Optional per-message model override from the input-bar model picker (an
+  // explicit model pick). Resolved to a concrete model server-side at send time;
+  // omitted means the agent runs its configured model.
+  modelSelection: ModelSelectionSchema.optional(),
 });
 
 export const InternalPostMessagesRequestBodySchema = MessageBaseSchema.extend({

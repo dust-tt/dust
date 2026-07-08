@@ -3,6 +3,7 @@ import type {
   MCPServerConfigurationType,
   ServerSideMCPServerConfigurationType,
 } from "@app/lib/actions/mcp";
+import { getAdvancedModelAccessErrorForAgentConfiguration } from "@app/lib/advanced_models/access";
 import { pruneSuggestionsForAgent } from "@app/lib/api/assistant/agent_suggestion_pruning";
 import { createAgentActionConfiguration } from "@app/lib/api/assistant/configuration/actions";
 import {
@@ -12,6 +13,8 @@ import {
 } from "@app/lib/api/assistant/configuration/agent";
 import { getAgentConfigurationRequirementsFromCapabilities } from "@app/lib/api/assistant/permissions";
 import type { Authenticator } from "@app/lib/auth";
+import { getFeatureFlags } from "@app/lib/auth";
+import { getSupportedModelConfig } from "@app/lib/llms/model_configurations";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { getResourceIdFromSId } from "@app/lib/resources/string_ids";
@@ -142,6 +145,29 @@ export async function createOrUpgradeAgentConfiguration({
     return new Err(
       new Error("An author must be provided when no user is authenticated.")
     );
+  }
+
+  const featureFlags = await getFeatureFlags(auth);
+  const modelConfig = getSupportedModelConfig(assistant.model);
+  if (!modelConfig) {
+    return new Err(
+      new Error(
+        `Unsupported model "${assistant.model.modelId}" for provider ` +
+          `"${assistant.model.providerId}".`
+      )
+    );
+  }
+
+  const accessError = await getAdvancedModelAccessErrorForAgentConfiguration(
+    auth,
+    {
+      agentName: assistant.name,
+      model: modelConfig,
+      featureFlags,
+    }
+  );
+  if (accessError) {
+    return new Err(new Error(accessError.message));
   }
 
   const agentConfigurationRes = await createAgentConfiguration(auth, {

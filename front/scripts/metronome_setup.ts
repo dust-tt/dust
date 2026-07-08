@@ -16,12 +16,16 @@ import { baseUniquenessKey } from "@app/lib/metronome/alerts";
 import { DEFAULT_ALERT_UNIQUENESS_KEYS } from "@app/lib/metronome/alerts/default_alerts";
 import { getMetronomeClient } from "@app/lib/metronome/client";
 import {
+  AWU_AMOUNT_CUSTOM_FIELD_KEY,
+  AWU_DISCOUNT_PERCENT_CUSTOM_FIELD_KEY,
+  AWU_PURCHASE_ORDER_ID_CUSTOM_FIELD_KEY,
   CARRY_ON_RENEWAL_CUSTOM_FIELD_KEY,
   CONTRACT_CREDIT_TYPE_CUSTOM_FIELD_KEY,
   CONTRACT_CREDIT_TYPE_POOL,
   CREDIT_TYPE_USD_ID,
   DEV_CREDIT_TYPE_AWU_ID,
   HUBSPOT_DEAL_ID_CUSTOM_FIELD_KEY,
+  LEGACY_CREDIT_MIGRATION_CUSTOM_FIELD_KEY,
   MAX_SEAT_MONTHLY_AWU_CREDITS,
   PAYMENT_GATE_TYPE_CUSTOM_FIELD_KEY,
   PER_USER_CREDIT_USER_CUSTOM_FIELD_KEY,
@@ -30,6 +34,7 @@ import {
   PROD_CREDIT_TYPE_AWU_ID,
   SEAT_TYPE_CUSTOM_FIELD_KEY,
   STRIPE_PRODUCT_ID_CUSTOM_FIELD_KEY,
+  SUBSCRIPTION_SWAP_HANDLED_INLINE_CUSTOM_FIELD_KEY,
 } from "@app/lib/metronome/constants";
 import { invalidateProductSeatTypesCache } from "@app/lib/metronome/seat_types";
 import {
@@ -302,21 +307,11 @@ function productMatches(
     return false;
   }
 
-  const expectedMetricId = desired.billable_metric_name
-    ? ids.metrics[desired.billable_metric_name]
-    : undefined;
-  if (expectedMetricId && cur.billable_metric_id !== expectedMetricId) {
-    console.log(
-      `    [diff] ${desired.name}: billable_metric_id ${cur.billable_metric_id} → ${expectedMetricId}`
-    );
-    return false;
-  }
-  if (!expectedMetricId && cur.billable_metric_id) {
-    console.log(
-      `    [diff] ${desired.name}: billable_metric_id ${cur.billable_metric_id} should be unset`
-    );
-    return false;
-  }
+  // NOTE: `billable_metric_id`, `pricing_group_key`, and
+  // `presentation_group_key` are intentionally NOT compared here — drift on
+  // any of these is reconciled in place via `reconcileProductMetricAndGroups`
+  // (no archive/recreate). Only `type` cannot be changed after creation
+  // (Metronome API constraint).
 
   const desiredQc = desired.quantity_conversion;
   const existingQc = cur.quantity_conversion;
@@ -353,21 +348,6 @@ function productMatches(
   } else if (!!desiredQr !== !!existingQr) {
     console.log(
       `    [diff] ${desired.name}: quantity_rounding presence ${!!existingQr} → ${!!desiredQr}`
-    );
-    return false;
-  }
-
-  if (!arraysEqual(cur.pricing_group_key, desired.pricing_group_key)) {
-    console.log(
-      `    [diff] ${desired.name}: pricing_group_key [${cur.pricing_group_key ?? ""}] → [${desired.pricing_group_key ?? ""}]`
-    );
-    return false;
-  }
-  if (
-    !arraysEqual(cur.presentation_group_key, desired.presentation_group_key)
-  ) {
-    console.log(
-      `    [diff] ${desired.name}: presentation_group_key [${cur.presentation_group_key ?? ""}] → [${desired.presentation_group_key ?? ""}]`
     );
     return false;
   }
@@ -444,9 +424,11 @@ async function syncProducts(): Promise<boolean> {
       if (await reconcileProductCustomFields(ex, desired)) {
         mutated = true;
       }
-      // Tags are edited in place (no recreate); tag drift doesn't affect the
-      // product seat-type cache, so it doesn't flip `mutated`.
+      // Tags, billable_metric_id, pricing_group_key, and
+      // presentation_group_key are all edited in place (no recreate); none of
+      // these affect the product seat-type cache, so they don't flip `mutated`.
       await reconcileProductTags(ex, desired);
+      await reconcileProductMetricAndGroups(ex, desired);
     } else {
       if (ex) {
         console.log(
@@ -565,6 +547,72 @@ async function reconcileProductTags(
       product_id: ex.id,
       starting_at: PRODUCT_UPDATE_STARTING_AT,
       tags: desired.tags ?? [],
+    });
+    return true;
+  }
+  return false;
+}
+
+/**
+ * Reconcile `billable_metric_id`, `pricing_group_key`, and
+ * `presentation_group_key` on an existing product via `products.update` — all
+ * editable in place per the Metronome API (only `type` requires
+ * archive/recreate), so drift on any of these alone never triggers a product
+ * recreate (and `productMatches` intentionally ignores them). Grouped into one
+ * call since a metric swap is typically paired with a group-key change (both
+ * must stay consistent with the compound group key declared on the metric).
+ *
+ * Returns true when an update was actually applied (EXECUTE + drift detected).
+ */
+async function reconcileProductMetricAndGroups(
+  ex: {
+    id: string;
+    current?: {
+      billable_metric_id?: string;
+      pricing_group_key?: string[];
+      presentation_group_key?: string[];
+    };
+  },
+  desired: ProductDef
+): Promise<boolean> {
+  const cur = ex.current;
+  const expectedMetricId = desired.billable_metric_name
+    ? ids.metrics[desired.billable_metric_name]
+    : undefined;
+  if (desired.billable_metric_name && !expectedMetricId) {
+    throw new Error(`Metric not found: ${desired.billable_metric_name}`);
+  }
+
+  const patch: {
+    billable_metric_id?: string;
+    pricing_group_key?: string[];
+    presentation_group_key?: string[];
+  } = {};
+
+  if (expectedMetricId && cur?.billable_metric_id !== expectedMetricId) {
+    patch.billable_metric_id = expectedMetricId;
+  }
+  if (!arraysEqual(cur?.pricing_group_key, desired.pricing_group_key)) {
+    patch.pricing_group_key = desired.pricing_group_key ?? [];
+  }
+  if (
+    !arraysEqual(cur?.presentation_group_key, desired.presentation_group_key)
+  ) {
+    patch.presentation_group_key = desired.presentation_group_key ?? [];
+  }
+
+  if (Object.keys(patch).length === 0) {
+    return false;
+  }
+
+  console.log(
+    `  ✎ ${EXECUTE ? "Updating" : "[DRYRUN] Would update"} ${desired.name} ${JSON.stringify(patch)}`
+  );
+  if (EXECUTE) {
+    await client.v1.contracts.products.update({
+      product_id: ex.id,
+      starting_at: PRODUCT_UPDATE_STARTING_AT,
+      ...patch,
     });
     return true;
   }
@@ -1449,7 +1497,12 @@ const CUSTOM_FIELD_KEYS: Array<{
   { entity: "contract", key: "MAU_THRESHOLD" },
   { entity: "contract", key: PLAN_CODE_CUSTOM_FIELD_KEY },
   { entity: "contract", key: PAYMENT_GATE_TYPE_CUSTOM_FIELD_KEY },
+  {
+    entity: "contract",
+    key: SUBSCRIPTION_SWAP_HANDLED_INLINE_CUSTOM_FIELD_KEY,
+  },
   { entity: "contract", key: HUBSPOT_DEAL_ID_CUSTOM_FIELD_KEY },
+  { entity: "contract", key: LEGACY_CREDIT_MIGRATION_CUSTOM_FIELD_KEY },
   // Stamped on individual contract_credit instances to identify excess
   // recurring credits ("excess") vs. workspace-pool credits ("pool"). Lets
   // the default ContractCredit-balance alerts filter on value="pool" to
@@ -1494,6 +1547,27 @@ const CUSTOM_FIELD_KEYS: Array<{
   {
     entity: "contract_credit",
     key: CARRY_ON_RENEWAL_CUSTOM_FIELD_KEY,
+  },
+  // Stamped on AWU pool commits (admin grants and self-serve top-ups) with the
+  // customer's PO number, for finance reconciliation against the Stripe
+  // invoice Metronome generates.
+  {
+    entity: "commit",
+    key: AWU_PURCHASE_ORDER_ID_CUSTOM_FIELD_KEY,
+  },
+  // Also stamped directly on the contract (e.g. from the poke switch-contract
+  // dialog) so a PO covering the whole contract doesn't require a commit.
+  {
+    entity: "contract",
+    key: AWU_PURCHASE_ORDER_ID_CUSTOM_FIELD_KEY,
+  },
+  {
+    entity: "commit",
+    key: AWU_AMOUNT_CUSTOM_FIELD_KEY,
+  },
+  {
+    entity: "commit",
+    key: AWU_DISCOUNT_PERCENT_CUSTOM_FIELD_KEY,
   },
   // Stamped on each seat-style product (Workspace / Pro / Max / Free).
   // Runtime code reads `product.custom_fields.DUST_SEAT_TYPE` (cached in

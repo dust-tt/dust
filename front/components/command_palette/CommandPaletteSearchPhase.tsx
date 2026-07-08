@@ -9,7 +9,7 @@ import { getSpaceIcon } from "@app/lib/spaces";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import type { SkillWithoutInstructionsAndToolsType } from "@app/types/assistant/skill_configuration";
 import type { PodType } from "@app/types/space";
-import { Avatar, Icon, SearchInput } from "@dust-tt/sparkle";
+import { Avatar, cn, Icon, SearchInput } from "@dust-tt/sparkle";
 import { useEffect, useMemo, useRef } from "react";
 
 export type CommandPaletteItem =
@@ -122,9 +122,17 @@ export function CommandPaletteSearchPhase({
 
   return (
     <div className="flex flex-col">
-      <div className="p-3">
+      <div className="px-1.5 py-3">
         <SearchInput
           ref={searchInputRef}
+          className={cn(
+            // Command palette: the dialog is the container, so the search input
+            // drops its border, background and focus ring. border-0 (not just
+            // transparent) removes the 1px offset so the input text lines up
+            // with the items below, which share the px-1.5 + px-3 inset.
+            "[&_input]:border-0 [&_input]:bg-transparent",
+            "[&_input]:focus-visible:ring-0"
+          )}
           name="command-palette-search"
           placeholder="Search agents, pods and skills…"
           value={searchQuery}
@@ -138,9 +146,9 @@ export function CommandPaletteSearchPhase({
           <div className="flex flex-col gap-1 p-1">
             {Array.from({ length: 9 }, (_, i) => (
               <div key={i} className="flex items-center gap-2.5 px-3 py-2.5">
-                <div className="h-6 w-6 shrink-0 animate-pulse rounded-full bg-muted-background dark:bg-muted-background-night" />
+                <div className="h-6 w-6 shrink-0 animate-pulse rounded-full bg-muted-background" />
                 <div
-                  className="h-4 animate-pulse rounded bg-muted-background dark:bg-muted-background-night"
+                  className="h-4 animate-pulse rounded bg-muted-background"
                   style={{ width: `${30 + (i % 3) * 20}%` }}
                 />
               </div>
@@ -172,17 +180,15 @@ export function CommandPaletteSearchPhase({
                 <Avatar visual={agent.pictureUrl} size="xs" />
                 <div className="flex min-w-0 items-center gap-1.5">
                   <span className="shrink-0 font-medium">@{agent.name}</span>
-                  <span className="shrink-0 text-muted-foreground dark:text-muted-foreground-night">
-                    -
-                  </span>
-                  <span className="min-w-0 truncate text-muted-foreground dark:text-muted-foreground-night">
+                  <span className="shrink-0 text-muted-foreground">-</span>
+                  <span className="min-w-0 truncate text-muted-foreground">
                     {agent.description}
                   </span>
                 </div>
               </ItemRow>
             ))}
             {hasMoreAgents && (
-              <div className="px-3 py-2 text-xs text-muted-foreground dark:text-muted-foreground-night">
+              <div className="px-3 py-2 text-xs text-muted-foreground">
                 More agents available. Type to filter.
               </div>
             )}
@@ -209,10 +215,10 @@ export function CommandPaletteSearchPhase({
                     <span className="shrink-0 font-medium">{pod.name}</span>
                     {pod.description && (
                       <>
-                        <span className="shrink-0 text-muted-foreground dark:text-muted-foreground-night">
+                        <span className="shrink-0 text-muted-foreground">
                           -
                         </span>
-                        <span className="min-w-0 truncate text-muted-foreground dark:text-muted-foreground-night">
+                        <span className="min-w-0 truncate text-muted-foreground">
                           {pod.description}
                         </span>
                       </>
@@ -222,7 +228,7 @@ export function CommandPaletteSearchPhase({
               );
             })}
             {hasMorePods && (
-              <div className="px-3 py-2 text-xs text-muted-foreground dark:text-muted-foreground-night">
+              <div className="px-3 py-2 text-xs text-muted-foreground">
                 More pods available. Type to filter.
               </div>
             )}
@@ -248,10 +254,8 @@ export function CommandPaletteSearchPhase({
                   <SkillAvatar size="xs" />
                   <div className="flex min-w-0 items-center gap-1.5">
                     <span className="shrink-0 font-medium">{skill.name}</span>
-                    <span className="shrink-0 text-muted-foreground dark:text-muted-foreground-night">
-                      -
-                    </span>
-                    <span className="min-w-0 truncate text-muted-foreground dark:text-muted-foreground-night">
+                    <span className="shrink-0 text-muted-foreground">-</span>
+                    <span className="min-w-0 truncate text-muted-foreground">
                       {skill.userFacingDescription}
                     </span>
                   </div>
@@ -259,7 +263,7 @@ export function CommandPaletteSearchPhase({
               );
             })}
             {hasMoreSkills && (
-              <div className="px-3 py-2 text-xs text-muted-foreground dark:text-muted-foreground-night">
+              <div className="px-3 py-2 text-xs text-muted-foreground">
                 More skills available. Type to filter.
               </div>
             )}

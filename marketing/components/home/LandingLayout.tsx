@@ -123,8 +123,6 @@ export default function LandingLayout({
   // you can have dark theme so we need to remove them manually
   useEffect(() => {
     document.documentElement.classList.remove("dark");
-    document.documentElement.classList.remove("s-dark");
-    document.body.classList.remove("bg-background-night");
   }, []);
 
   useEffect(() => {
@@ -161,7 +159,7 @@ export default function LandingLayout({
         <>
           <AnnouncementBanner show={showBanner} />
           <ScrollingHeader hasBanner={showBanner}>
-            <div className="flex h-full w-full items-center gap-4 px-6 xl:gap-10">
+            <div className="flex h-full w-full items-center gap-4 px-2 xs:px-6 xl:gap-10">
               <div className="hidden h-[24px] w-[96px] xl:block">
                 <PublicWebsiteLogo />
               </div>
@@ -170,7 +168,7 @@ export default function LandingLayout({
                 <PublicWebsiteLogo />
               </div>
               <MainNavigation />
-              <div className="flex flex-grow items-center justify-end gap-4">
+              <div className="flex flex-grow items-center justify-end gap-1 xs:gap-4">
                 {hasSession && (isAuthLoading || isAuthenticated) ? (
                   <OpenDustButton
                     variant="highlight"
@@ -180,7 +178,10 @@ export default function LandingLayout({
                   />
                 ) : (
                   <>
-                    <a
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      label="Sign in"
                       href={appendUTMParams(
                         `/api/workos/login?returnTo=${encodeURIComponent(postLoginReturnToUrl)}`
                       )}
@@ -188,10 +189,7 @@ export default function LandingLayout({
                         TRACKING_AREAS.NAVIGATION,
                         "sign_in"
                       )}
-                      className="hidden xl:inline-flex h-9 w-max items-center justify-center rounded-md pl-4 pr-1 py-2 text-base font-medium font-sans text-primary-700 hover:text-primary-600 active:text-primary-800 transition-colors hover:underline hover:underline-offset-4"
-                    >
-                      Sign in
-                    </a>
+                    />
                     <Button
                       variant="outline"
                       size="sm"
@@ -202,17 +200,18 @@ export default function LandingLayout({
                         openSignUpModal
                       )}
                     />
-                    <UTMButton
-                      href="/home/contact"
-                      className="hidden xs:inline-flex"
-                      variant="highlight"
-                      size="sm"
-                      label="Contact sales"
-                      onClick={withTracking(
-                        TRACKING_AREAS.NAVIGATION,
-                        "contact_sales"
-                      )}
-                    />
+                    <div className="hidden xs:inline-flex">
+                      <UTMButton
+                        href="/home/contact"
+                        variant="highlight"
+                        size="sm"
+                        label="Contact sales"
+                        onClick={withTracking(
+                          TRACKING_AREAS.NAVIGATION,
+                          "contact_sales"
+                        )}
+                      />
+                    </div>
                   </>
                 )}
               </div>

@@ -9,6 +9,7 @@ import {
   messageStartToResponseIdEvent,
   type OutputEventConverters,
   reasoningDeltaToReasoningDeltaEvent,
+  serverToolBlockToProviderPassthroughEvent,
   stopReasonToErrorEvent,
   streamErrorToErrorEvent,
   textDeltaToTextDeltaEvent,
@@ -37,6 +38,8 @@ export function WithAnthropicAIOutputConverter<
     inputJsonDeltaToToolCallDeltaEvent = inputJsonDeltaToToolCallDeltaEvent;
     accumulatedToolCallToToolCallEvent = accumulatedToolCallToToolCallEvent;
     invalidJsonToolCallToToolCallEvent = invalidJsonToolCallToToolCallEvent;
+    serverToolBlockToProviderPassthroughEvent =
+      serverToolBlockToProviderPassthroughEvent;
     messageDeltaUsageToTokenUsageEvent = messageDeltaUsageToTokenUsageEvent;
     stopReasonToErrorEvent = stopReasonToErrorEvent;
     streamErrorToErrorEvent = streamErrorToErrorEvent;

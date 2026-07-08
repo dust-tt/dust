@@ -1,5 +1,6 @@
 import type { GmailMessagePayload } from "@app/lib/api/actions/servers/gmail/helpers";
 import {
+  encodeEmailAddressHeader,
   findAttachmentData,
   findAttachmentIdByPartId,
 } from "@app/lib/api/actions/servers/gmail/helpers";
@@ -49,6 +50,44 @@ describe("findAttachmentIdByPartId", () => {
 
   it("returns null when the payload is undefined", () => {
     expect(findAttachmentIdByPartId(undefined, "1")).toBeNull();
+  });
+});
+
+describe("encodeEmailAddressHeader", () => {
+  it("RFC 2047-encodes a display name with accents, keeping the email intact", () => {
+    expect(encodeEmailAddressHeader("Amélie Doré <amelie@example.com>")).toBe(
+      "=?UTF-8?B?QW3DqWxpZSBEb3LDqQ==?= <amelie@example.com>"
+    );
+  });
+
+  it("leaves an all-ASCII named address unchanged", () => {
+    expect(encodeEmailAddressHeader("John Doe <john@example.com>")).toBe(
+      "John Doe <john@example.com>"
+    );
+  });
+
+  it("leaves a bare email address unchanged", () => {
+    expect(encodeEmailAddressHeader("john@example.com")).toBe(
+      "john@example.com"
+    );
+  });
+
+  it("strips surrounding quotes from an all-ASCII display name", () => {
+    expect(encodeEmailAddressHeader('"John Doe" <john@example.com>')).toBe(
+      "John Doe <john@example.com>"
+    );
+  });
+
+  it("encodes a quoted display name with accents", () => {
+    expect(encodeEmailAddressHeader('"Amélie Doré" <amelie@example.com>')).toBe(
+      "=?UTF-8?B?QW3DqWxpZSBEb3LDqQ==?= <amelie@example.com>"
+    );
+  });
+
+  it("keeps only the email when the display name is empty", () => {
+    expect(encodeEmailAddressHeader("<john@example.com>")).toBe(
+      "<john@example.com>"
+    );
   });
 });
 

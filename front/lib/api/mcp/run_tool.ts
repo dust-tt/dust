@@ -1,6 +1,5 @@
 import type {
   MCPErrorEvent,
-  MCPParamsEvent,
   MCPSuccessEvent,
   ToolNotificationEvent,
 } from "@app/lib/actions/mcp";
@@ -27,12 +26,7 @@ import type { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action
 import { withPeriodicHeartbeat } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import { TOOL_ACTIVITY_HEARTBEAT_TIMEOUT_MS } from "@app/temporal/agent_loop/config";
-import type { AgentConfigurationType } from "@app/types/assistant/agent";
-import type {
-  AgentMessageType,
-  ConversationType,
-  UserMessageType,
-} from "@app/types/assistant/conversation";
+import type { AgentLoopExecutionData } from "@app/types/assistant/agent_run";
 import { removeNulls } from "@app/types/shared/utils/general";
 import { heartbeat } from "@temporalio/activity";
 
@@ -53,21 +47,22 @@ export async function* runToolWithStreaming(
   {
     action,
     agentConfiguration,
+    model,
     agentMessage,
     conversation,
     userMessage,
   }: {
     action: AgentMCPActionResource;
-    agentConfiguration: AgentConfigurationType;
-    agentMessage: AgentMessageType;
-    conversation: ConversationType;
-    userMessage: UserMessageType;
+    agentConfiguration: AgentLoopExecutionData["agentConfiguration"];
+    model: AgentLoopExecutionData["model"];
+    agentMessage: AgentLoopExecutionData["agentMessage"];
+    conversation: AgentLoopExecutionData["conversation"];
+    userMessage: AgentLoopExecutionData["userMessage"];
   },
   options?: { signal?: AbortSignal }
 ): AsyncGenerator<
   | MCPApproveExecutionEvent
   | MCPErrorEvent
-  | MCPParamsEvent
   | MCPSuccessEvent
   | ToolNotificationEvent
   | ToolFileAuthRequiredEvent
@@ -89,9 +84,11 @@ export async function* runToolWithStreaming(
   });
 
   const agentLoopRunContext: AgentLoopRunContextType = {
+    contextType: "agent_loop",
+    action,
     agentConfiguration,
+    model,
     agentMessage,
-    currentAction: action.toJSON(),
     conversation,
     stepContext: action.stepContext,
     toolConfiguration,
@@ -106,14 +103,14 @@ export async function* runToolWithStreaming(
   const toolCallResult = yield* tryCallMCPTool(
     auth,
     inputs,
-    agentLoopRunContext,
+    { runContext: agentLoopRunContext },
     {
       progressToken: action.id,
       makeToolNotificationEvent: async (notification) => {
         const { event, storedItems } = await processToolNotification(
           auth,
           notification,
-          { action, agentConfiguration, conversation, agentMessage }
+          { toolContext: { runContext: agentLoopRunContext } }
         );
         intermediateOutputItems.push(...storedItems);
         return event;
@@ -129,8 +126,6 @@ export async function* runToolWithStreaming(
     const endDate = performance.now();
     yield await handleMCPActionError(auth, {
       action,
-      agentConfiguration,
-      agentMessage,
       status,
       errorContent: toolCallResult.content,
       executionDurationMs: endDate - startDate,
@@ -143,11 +138,9 @@ export async function* runToolWithStreaming(
   const { outputItems, generatedFiles } = await withPeriodicHeartbeat(
     () =>
       processToolResults(auth, {
-        action,
-        conversation,
         localLogger,
         toolCallResultContent: toolCallResult.content,
-        toolConfiguration,
+        toolContext: { runContext: agentLoopRunContext },
       }),
     {
       intervalMs: TOOL_RESULT_PROCESSING_HEARTBEAT_INTERVAL_MS,
@@ -181,16 +174,9 @@ export async function* runToolWithStreaming(
   yield {
     type: "tool_success",
     created: Date.now(),
-    configurationId: agentConfiguration.sId,
-    messageId: agentMessage.sId,
-    action: {
-      ...action.toJSON(),
-      output: removeNulls(
-        [...intermediateOutputItems, ...outputItems].map(
-          hideFileFromActionOutput
-        )
-      ),
-      generatedFiles,
-    },
+    output: removeNulls(
+      [...intermediateOutputItems, ...outputItems].map(hideFileFromActionOutput)
+    ),
+    generatedFiles,
   };
 }

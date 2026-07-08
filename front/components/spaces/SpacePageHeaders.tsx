@@ -76,9 +76,7 @@ export function SpacePageHeader({
         </div>
       </div>
       {description && (
-        <div className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-          {description}
-        </div>
+        <div className="text-sm text-muted-foreground">{description}</div>
       )}
     </div>
   );

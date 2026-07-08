@@ -18,7 +18,7 @@ import {
 import { ExternalOAuthTokenError } from "@connectors/lib/error";
 import { normalizeError } from "@connectors/types";
 import type { LoggerInterface, Result } from "@dust-tt/client";
-import { assertNever, Err, Ok } from "@dust-tt/client";
+import { assertNever, Err, Ok, removeNulls } from "@dust-tt/client";
 import type { Client } from "@microsoft/microsoft-graph-client";
 import { GraphError } from "@microsoft/microsoft-graph-client";
 import type {
@@ -593,6 +593,65 @@ export function getDriveInternalIdFromItem(item: DriveItem) {
 
 export function getSiteAPIPath(site: Site) {
   return `/sites/${site.id}`;
+}
+
+const SEARCH_DRIVE_ITEMS_PAGE_SIZE = 200;
+
+export async function searchDriveItems(
+  logger: LoggerInterface,
+  client: Client,
+  { queryString, from }: { queryString: string; from: number }
+): Promise<{ internalIds: string[]; nextFrom: number | null }> {
+  const response = await clientApiPost(logger, client, "/search/query", {
+    requests: [
+      {
+        entityTypes: ["driveItem"],
+        query: { queryString },
+        from,
+        size: SEARCH_DRIVE_ITEMS_PAGE_SIZE,
+        fields: ["id", "name", "parentReference", "webUrl", "file", "folder"],
+      },
+    ],
+  });
+
+  const container = response.value?.[0]?.hitsContainers?.[0];
+  const hits: Array<{ resource?: DriveItem }> = container?.hits ?? [];
+  const moreResultsAvailable = container?.moreResultsAvailable ?? false;
+
+  const internalIds: string[] = [];
+  for (const { resource } of hits) {
+    if (!resource?.file) {
+      continue;
+    }
+
+    try {
+      internalIds.push(getDriveItemInternalId(resource));
+    } catch (error) {
+      logger.warn(
+        { error: normalizeError(error) },
+        "[searchDriveItems] Could not build internalId, skipping"
+      );
+    }
+  }
+
+  return {
+    internalIds,
+    nextFrom: moreResultsAvailable ? from + SEARCH_DRIVE_ITEMS_PAGE_SIZE : null,
+  };
+}
+
+export async function getSensitivityLabels(
+  logger: LoggerInterface,
+  client: Client
+): Promise<string[]> {
+  const res = await clientApiGet(
+    logger,
+    client,
+    "/security/dataSecurityAndGovernance/sensitivityLabels"
+  );
+
+  const labels: Array<{ id?: string }> = res?.value ?? [];
+  return removeNulls(labels.map((label) => label.id ?? null));
 }
 
 export async function wrapMicrosoftGraphAPIWithResult<T>(

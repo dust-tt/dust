@@ -199,6 +199,9 @@ describe("DustFileSystem.forPod", () => {
     expect(mounts[0].kind).toBe("pod");
     expect(mounts[0].id).toBe(projectSpace.sId);
     expect(mounts[0].scopedPrefix).toBe(`pod-${projectSpace.sId}`);
+    expect(mounts[0].sandboxMountPoint).toBe(`/files/pod-${projectSpace.sId}`);
+    expect(mounts[0].legacyPrefix).toBeNull();
+    expect(mounts[0].legacySandboxMountPoint).toBeNull();
     expect(mounts[0].permissions.canRead).toBe(true);
   });
 });
@@ -1545,6 +1548,12 @@ describe("sanitizeFileSystemName", () => {
     const nfc = "café".normalize("NFC");
     expect(sanitizeFileSystemName(nfd)).toBe(nfc);
   });
+
+  it("replaces slashes with underscores", () => {
+    expect(sanitizeFileSystemName("q1/2024 report.pdf")).toBe(
+      "q1_2024 report.pdf"
+    );
+  });
 });
 
 describe("DustFileSystem.normalizeScopedPath strips control characters", () => {
@@ -1564,5 +1573,54 @@ describe("DustFileSystem.normalizeScopedPath strips control characters", () => {
     expect(
       DustFileSystem.normalizeScopedPath("conversation-abc/\n../../etc/passwd")
     ).toBeNull();
+  });
+});
+
+describe("DustFileSystem.toSandboxPath", () => {
+  it("resolves a scoped pod path to its absolute sandbox mount path", async () => {
+    const { workspace, user } = await createResourceTest({ role: "admin" });
+    const projectSpace = await SpaceFactory.project(workspace, user.id);
+    const auth = await Authenticator.fromUserIdAndWorkspaceId(
+      user.sId,
+      workspace.sId
+    );
+    assert(auth);
+
+    const fsResult = await DustFileSystem.forPod(auth, projectSpace);
+    assert(fsResult.isOk());
+    const fs = fsResult.value;
+
+    expect(fs.toSandboxPath(`pod-${projectSpace.sId}/greet.ts`)).toEqual(
+      new Ok(`/files/pod-${projectSpace.sId}/greet.ts`)
+    );
+    expect(fs.toSandboxPath(`pod-${projectSpace.sId}/dir/greet.ts`)).toEqual(
+      new Ok(`/files/pod-${projectSpace.sId}/dir/greet.ts`)
+    );
+  });
+
+  it("rejects traversal, foreign mounts, and bare roots", async () => {
+    const { workspace, user } = await createResourceTest({ role: "admin" });
+    const projectSpace = await SpaceFactory.project(workspace, user.id);
+    const auth = await Authenticator.fromUserIdAndWorkspaceId(
+      user.sId,
+      workspace.sId
+    );
+    assert(auth);
+
+    const fsResult = await DustFileSystem.forPod(auth, projectSpace);
+    assert(fsResult.isOk());
+    const fs = fsResult.value;
+
+    const traversal = fs.toSandboxPath(`pod-${projectSpace.sId}/../escape.ts`);
+    assert(traversal.isErr());
+    expect(traversal.error.code).toBe("invalid_path");
+
+    const foreign = fs.toSandboxPath("pod-other/greet.ts");
+    assert(foreign.isErr());
+    expect(foreign.error.code).toBe("invalid_path");
+
+    const bareRoot = fs.toSandboxPath(`pod-${projectSpace.sId}`);
+    assert(bareRoot.isErr());
+    expect(bareRoot.error.code).toBe("invalid_path");
   });
 });

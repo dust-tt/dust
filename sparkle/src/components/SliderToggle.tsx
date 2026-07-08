@@ -3,42 +3,25 @@ import React, { type MouseEventHandler } from "react";
 
 type SliderToggleProps = {
   onClick?: MouseEventHandler<HTMLElement>;
-  size?: "xs" | "sm";
   className?: string;
   disabled?: boolean;
   selected?: boolean;
 };
 
-const baseClasses =
-  "s-rounded-full s-cursor-pointer s-transition-colors s-duration-300 s-ease-out s-cursor-pointer s-flex s-items-center s-flex";
-
-const sizeClasses = {
-  xs: "s-h-7 s-w-10",
-  sm: "s-h-9 s-w-14",
-};
-
-const cusrsorSizeClasses = {
-  xs: "s-h-6 s-w-6",
-  sm: "s-h-8 s-w-8",
-};
-const cusrsorTranslateSizeClasses = {
-  xs: "s-translate-x-[14px]",
-  sm: "s-translate-x-[22px]",
-};
+const baseClasses = cn(
+  "shrink-0 h-5 w-8 rounded-full cursor-pointer flex items-center",
+  // Track color and knob slide share timing so they animate as one unit.
+  "transition-colors duration-200 ease-in-out motion-reduce:transition-none",
+  "shadow-[inset_0px_-3px_3px_0px_rgba(255,255,255,0.25),inset_0px_0.5px_2px_0px_rgba(0,0,0,0.14)]"
+);
 
 const stateClasses = {
-  idle: cn(
-    "s-bg-primary-200 dark:s-bg-primary-600",
-    "hover:s-bg-highlight-300 hover:dark:s-bg-highlight-800"
-  ),
-  selected: cn(
-    "s-bg-highlight-400 dark:s-bg-highlight-400-night",
-    "hover:s-bg-highlight-300 hover:dark:s-bg-highlight-200-night"
-  ),
+  idle: cn("bg-slider-toggle-bg-idle", "hover:bg-highlight-300"),
+  selected: cn("bg-highlight-400"),
   disabled: cn(
-    "s-bg-primary-200 dark:s-bg-primary-200-night",
-    "hover:s-bg-primary-200 dark:hover:s-bg-primary-200-night",
-    "s-cursor-not-allowed hover:s-cursor-not-allowed"
+    "bg-primary-200",
+    "hover:bg-primary-200",
+    "cursor-not-allowed hover:cursor-not-allowed"
   ),
 };
 
@@ -47,10 +30,8 @@ export function SliderToggle({
   disabled = false,
   className = "",
   selected = false,
-  size = "xs",
 }: SliderToggleProps) {
   const combinedStateClasses = cn(
-    size ? sizeClasses[size] : "",
     selected ? stateClasses.selected : stateClasses.idle,
     disabled ? stateClasses.disabled : ""
   );
@@ -67,10 +48,10 @@ export function SliderToggle({
       <div
         id="cursor"
         className={cn(
-          "s-transform s-rounded-full s-bg-background s-drop-shadow s-transition-transform s-duration-300 s-ease-out",
-          disabled && "s-opacity-50",
-          size && cusrsorSizeClasses[size],
-          selected ? cusrsorTranslateSizeClasses[size] : "s-translate-x-[2px]"
+          "h-4 w-4 transform rounded-full bg-white drop-shadow",
+          "transition-transform duration-200 ease-in-out motion-reduce:transition-none",
+          disabled && "opacity-50",
+          selected ? "translate-x-[14px]" : "translate-x-[2px]"
         )}
       />
     </div>

@@ -33,11 +33,13 @@ export const GONG_TOOLS_METADATA = createToolsRecord({
       running: "Listing calls",
       done: "List calls",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   get_call: {
     description:
-      "Retrieve detailed information about a specific call by its ID. Returns comprehensive call data including " +
-      "participants, topics discussed, key points, action items, call summary, and interaction statistics.",
+      "Retrieve the details and summary of a specific Gong call by its ID. Returns comprehensive call data including " +
+      "participants, topics discussed, key points, action items, the call summary, and interaction statistics.",
     schema: {
       callId: z
         .string()
@@ -48,6 +50,8 @@ export const GONG_TOOLS_METADATA = createToolsRecord({
       running: "Retrieving call",
       done: "Retrieve call",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   get_call_transcript: {
     description:
@@ -65,6 +69,8 @@ export const GONG_TOOLS_METADATA = createToolsRecord({
       running: "Retrieving transcript",
       done: "Retrieve transcript",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
 });
 
@@ -86,6 +92,8 @@ export const GONG_SERVER = {
     description: t.description,
     inputSchema: zodToJsonSchema(z.object(t.schema)) as JSONSchema,
     displayLabels: t.displayLabels,
+    toolCostCategory: t.toolCostCategory,
+    freeUsage: t.freeUsage,
   })),
   tools_stakes: Object.fromEntries(
     Object.values(GONG_TOOLS_METADATA).map((t) => [t.name, t.stake])

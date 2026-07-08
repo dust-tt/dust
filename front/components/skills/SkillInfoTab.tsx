@@ -108,7 +108,7 @@ export function SkillInfoTab({
   return (
     <div className="flex flex-col gap-4">
       {showDescription && skill.userFacingDescription ? (
-        <div className="text-sm text-foreground dark:text-foreground-night">
+        <div className="text-sm text-foreground">
           {skill.userFacingDescription}
         </div>
       ) : null}
@@ -117,9 +117,7 @@ export function SkillInfoTab({
 
       {skill.instructions && (
         <div className="dd-privacy-mask flex flex-col gap-4">
-          <div className="heading-lg text-foreground dark:text-foreground-night">
-            Guidelines
-          </div>
+          <div className="heading-lg text-foreground">Guidelines</div>
           <SkillInstructionsReadOnlyEditor
             content={skill.instructions}
             htmlContent={skill.instructionsHtml ?? ""}
@@ -131,9 +129,7 @@ export function SkillInfoTab({
       )}
       {knowledgeItems.length > 0 && (
         <div className="flex flex-col gap-4">
-          <div className="heading-lg text-foreground dark:text-foreground-night">
-            Knowledge
-          </div>
+          <div className="heading-lg text-foreground">Knowledge</div>
           <div className="flex flex-wrap gap-2">
             {knowledgeItems.filter(isFullKnowledgeItem).map((item) => (
               <KnowledgeChip
@@ -148,9 +144,7 @@ export function SkillInfoTab({
       )}
       {skill.fileAttachments.length > 0 && (
         <div className="flex flex-col gap-4">
-          <div className="heading-lg text-foreground dark:text-foreground-night">
-            Files
-          </div>
+          <div className="heading-lg text-foreground">Files</div>
           <div className="flex flex-wrap gap-2">
             {skill.fileAttachments.map((file) => (
               <AttachmentChip
@@ -166,9 +160,7 @@ export function SkillInfoTab({
       )}
       {showChildSkills && (
         <div className="flex flex-col gap-4">
-          <div className="heading-lg text-foreground dark:text-foreground-night">
-            Skills
-          </div>
+          <div className="heading-lg text-foreground">Skills</div>
           <div className="grid grid-cols-2 gap-2">
             {childSkills.map((childSkill) => {
               const SkillAvatar = getSkillAvatarIcon(childSkill);
@@ -192,9 +184,7 @@ export function SkillInfoTab({
       )}
       {sortedMCPServerViews.length > 0 && (
         <div className="flex flex-col gap-4">
-          <div className="heading-lg text-foreground dark:text-foreground-night">
-            Tools
-          </div>
+          <div className="heading-lg text-foreground">Tools</div>
           <div className="grid grid-cols-2 gap-2">
             {sortedMCPServerViews.map((view) => (
               <Tooltip
@@ -215,9 +205,7 @@ export function SkillInfoTab({
 
       {showDiscoverableSkills && (
         <div className="flex flex-col gap-4">
-          <div className="heading-lg text-foreground dark:text-foreground-night">
-            Discoverable Skills
-          </div>
+          <div className="heading-lg text-foreground">Discoverable Skills</div>
           {isDiscoverableLoading ? (
             <div className="flex flex-row items-center gap-2">
               <Spinner size="xs" />
@@ -247,9 +235,7 @@ export function SkillInfoTab({
 
       {shouldLoadSpaces ? (
         <div className="flex flex-col gap-4">
-          <div className="heading-lg text-foreground dark:text-foreground-night">
-            Spaces
-          </div>
+          <div className="heading-lg text-foreground">Spaces</div>
           {isSpacesLoading ? (
             <div className="flex flex-row items-center gap-2">
               <Spinner size="xs" />
@@ -258,7 +244,7 @@ export function SkillInfoTab({
             <div className="flex flex-wrap gap-2">
               {sortedSpaces.map(({ space, name, Icon }) => (
                 <Chip key={space.sId} label={name} size="sm">
-                  <Icon className="h-4 w-4 text-muted-foreground dark:text-muted-foreground-night" />
+                  <Icon className="h-4 w-4 text-muted-foreground" />
                 </Chip>
               ))}
             </div>

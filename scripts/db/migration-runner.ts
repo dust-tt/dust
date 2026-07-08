@@ -1,5 +1,5 @@
 import { execFileSync } from "child_process";
-import { existsSync } from "fs";
+import { existsSync, readFileSync } from "fs";
 import { QueryTypes } from "sequelize";
 import type { Sequelize } from "sequelize";
 import type { MigrationParams } from "umzug";
@@ -124,6 +124,27 @@ function createUmzug(
   });
 }
 
+// Dump the name and full SQL of every migration that was just applied to
+// stdout. This lets the run-migrations.sh operator copy-paste exactly what ran
+// into #engineering_papertrail.
+function printAppliedMigrationSql(applied: readonly { name: string }[]): void {
+  const sep = "=".repeat(72);
+  for (const { name } of applied) {
+    // `name` is prefixed with the phase (e.g. "pre-deploy/2024..._foo.sql"),
+    // and files live under `migrations/<phase>/`, so `migrations/<name>`
+    // resolves to the migration file relative to the component directory.
+    const filePath = `migrations/${name}`;
+    process.stdout.write(`\n${sep}\n${name}\n${sep}\n`);
+    if (existsSync(filePath)) {
+      const sql = readFileSync(filePath, "utf8");
+      process.stdout.write(sql.endsWith("\n") ? sql : `${sql}\n`);
+    } else {
+      process.stdout.write(`(migration file not found: ${filePath})\n`);
+    }
+  }
+  process.stdout.write(`${sep}\n`);
+}
+
 async function runUp(
   sequelize: Sequelize,
   getDatabaseURI: () => string,
@@ -140,6 +161,7 @@ async function runUp(
     { phase, count: applied.length, names: applied.map((m) => m.name) },
     "Migrations applied."
   );
+  printAppliedMigrationSql(applied);
 }
 
 async function runStatus(
@@ -167,6 +189,14 @@ async function runCheckPhase(
   logger: MigrationLogger,
   phase: Phase
 ): Promise<void> {
+  const dir = `migrations/${phase}`;
+  if (!existsSync(dir)) {
+    logger.error(
+      { phase, dir, cwd: process.cwd() },
+      "Migrations directory missing — refusing to pass check."
+    );
+    process.exit(1);
+  }
   const pending = await createUmzug(
     sequelize,
     getDatabaseURI,

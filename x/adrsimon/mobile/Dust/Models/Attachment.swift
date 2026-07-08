@@ -38,6 +38,10 @@ struct Attachment: Identifiable {
         contentType.hasPrefix(frameContentTypePrefix)
     }
 
+    static func isImage(_ contentType: String) -> Bool {
+        contentType.hasPrefix("image/")
+    }
+
     static func sfSymbol(for contentType: String) -> String {
         if contentType.hasPrefix(frameContentTypePrefix) { return "rectangle.on.rectangle" }
         if contentType.hasPrefix("image/") { return "photo" }

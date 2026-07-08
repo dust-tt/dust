@@ -19,7 +19,6 @@ const {
   populateDeltas,
   groupRootItemsByDriveId,
   isMicrosoftFullSyncRunning,
-  reconcileSensitivityLabelsForParent,
   launchMicrosoftFullSyncForDrive,
 } = proxyActivities<typeof activities>({
   startToCloseTimeout: "30 minutes",
@@ -35,6 +34,10 @@ const {
   fetchDeltaForRootNodesInDrive,
   processDeltaChangesFromGCS,
   cleanupDeltaGCSFile,
+  getDisallowedSensitivityLabelGuids,
+  searchFilesByLabel,
+  removeSensitivityLabelFilesActivity,
+  reconcileHiddenFilesActivity,
 } = proxyActivities<typeof activities>({
   startToCloseTimeout: "120 minutes",
   heartbeatTimeout: "5 minutes",
@@ -316,64 +319,68 @@ export async function microsoftGarbageCollectionWorkflow({
   }
 }
 
+/**
+ * Reconciles synced files against the connector's allowed sensitivity labels,
+ * catching pure label changes (no content change) that delta sync misses.
+ *
+ * Pass 1 (now excluded): for each disallowed label, ask Microsoft Search which
+ * files carry it and exclude the ones we have synced.
+ * Pass 2 (now allowed): scan our previously-excluded files and re-include any
+ * whose label was removed or changed to an allowed one.
+ *
+ * Recurs every 12 hours. Started/stopped from setConfigurationKey, so it only
+ * runs while label filtering is active.
+ */
 export async function microsoftSensitivityLabelsReconciliationWorkflow({
   connectorId,
-  startSyncTs,
-  nodeIdsToReconcile = [],
 }: {
   connectorId: ModelId;
-  startSyncTs?: number;
-  nodeIdsToReconcile?: string[];
 }) {
   await syncStarted(connectorId);
 
-  if (startSyncTs === undefined) {
-    startSyncTs = new Date().getTime();
+  const disallowedLabelGuids =
+    await getDisallowedSensitivityLabelGuids(connectorId);
+
+  for (const labelGuid of disallowedLabelGuids) {
+    let from: number | null = 0;
+    while (from !== null) {
+      const res: Awaited<ReturnType<typeof activities.searchFilesByLabel>> =
+        await searchFilesByLabel({ connectorId, labelGuid, from });
+
+      if (res.internalIds.length > 0) {
+        await removeSensitivityLabelFilesActivity({
+          connectorId,
+          internalIds: res.internalIds,
+        });
+      }
+
+      from = res.nextFrom;
+
+      if (workflowInfo().historyLength > 4000) {
+        await continueAsNew<
+          typeof microsoftSensitivityLabelsReconciliationWorkflow
+        >({ connectorId });
+      }
+    }
   }
 
-  let pendingNodeIds =
-    nodeIdsToReconcile.length === 0
-      ? await getRootNodesToSync(connectorId)
-      : nodeIdsToReconcile;
-  pendingNodeIds = uniq(pendingNodeIds);
-
-  while (pendingNodeIds.length > 0) {
-    const nodeId = pendingNodeIds.pop();
-
-    if (!nodeId) {
-      break;
-    }
-
-    let nextPageLink: string | undefined = undefined;
-
-    do {
-      const res: Awaited<
-        ReturnType<typeof activities.reconcileSensitivityLabelsForParent>
-      > = await reconcileSensitivityLabelsForParent({
-        connectorId,
-        parentInternalId: nodeId,
-        startSyncTs,
-        nextPageLink,
-      });
-
-      pendingNodeIds = uniq(pendingNodeIds.concat(res.childNodes));
-      nextPageLink = res.nextLink;
-    } while (nextPageLink);
+  let idCursor: number | null = 0;
+  while (idCursor !== null) {
+    const res: Awaited<
+      ReturnType<typeof activities.reconcileHiddenFilesActivity>
+    > = await reconcileHiddenFilesActivity({ connectorId, idCursor });
+    idCursor = res.nextCursor;
 
     if (workflowInfo().historyLength > 4000) {
       await continueAsNew<
         typeof microsoftSensitivityLabelsReconciliationWorkflow
-      >({
-        connectorId,
-        startSyncTs,
-        nodeIdsToReconcile: pendingNodeIds,
-      });
+      >({ connectorId });
     }
   }
 
   await syncSucceeded(connectorId);
 
-  await sleep("1 hour");
+  await sleep("12 hours");
   await continueAsNew<typeof microsoftSensitivityLabelsReconciliationWorkflow>({
     connectorId,
   });

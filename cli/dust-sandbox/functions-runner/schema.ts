@@ -1,6 +1,6 @@
 // Extract a single function's JSON-Schema I/O contract from its `schema` export.
 
-import { basename } from "node:path";
+import { basename, extname } from "node:path";
 import { z } from "zod";
 
 export interface FunctionSchema {
@@ -29,7 +29,7 @@ export async function getFunctionSchema(
     throw new Error("function declares no `schema` export");
   }
   return {
-    name: basename(handlerPath, ".ts"),
+    name: basename(handlerPath, extname(handlerPath)),
     description:
       typeof schema.description === "string" ? schema.description : null,
     input_schema: toJsonSchema(schema.input),

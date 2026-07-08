@@ -249,9 +249,14 @@ describe("appendThinkingStep", () => {
   it("appends a thinking step when none exists", () => {
     const steps: InlineActivityStep[] = [];
     expect(
-      appendThinkingStep(steps, "Enable the toolset", "thinking-1")
+      appendThinkingStep(steps, "Enable the toolset", "thinking-1", 0)
     ).toEqual([
-      { type: "thinking", content: "Enable the toolset", id: "thinking-1" },
+      {
+        type: "thinking",
+        content: "Enable the toolset",
+        id: "thinking-1",
+        step: 0,
+      },
     ]);
   });
 
@@ -259,18 +264,25 @@ describe("appendThinkingStep", () => {
     const steps: InlineActivityStep[] = [
       { type: "thinking", content: "Enable the toolset", id: "thinking-1" },
     ];
-    expect(appendThinkingStep(steps, "Enable the toolset", "thinking-2")).toBe(
-      steps
-    );
+    expect(
+      appendThinkingStep(steps, "Enable the toolset", "thinking-2", 0)
+    ).toBe(steps);
   });
 
   it("appends a new step when the content differs from the last thinking step", () => {
     const steps: InlineActivityStep[] = [
       { type: "thinking", content: "First attempt", id: "thinking-1" },
     ];
-    expect(appendThinkingStep(steps, "Second attempt", "thinking-2")).toEqual([
+    expect(
+      appendThinkingStep(steps, "Second attempt", "thinking-2", 1)
+    ).toEqual([
       { type: "thinking", content: "First attempt", id: "thinking-1" },
-      { type: "thinking", content: "Second attempt", id: "thinking-2" },
+      {
+        type: "thinking",
+        content: "Second attempt",
+        id: "thinking-2",
+        step: 1,
+      },
     ]);
   });
 });
@@ -457,6 +469,7 @@ describe("useAgentMessageStream", () => {
         content:
           "The user wants recent world events. Let me search the web for this.",
         id: expect.stringContaining("thinking-toolparams-"),
+        step: 0,
       },
       {
         type: "action",
@@ -465,6 +478,7 @@ describe("useAgentMessageStream", () => {
         actionId: action.sId,
         internalMCPServerName: action.internalMCPServerName,
         toolName: action.toolName ?? null,
+        step: 0,
       },
     ]);
     expect(currentMessage.chainOfThought).toBe("");
@@ -667,7 +681,7 @@ describe("useAgentMessageStream", () => {
     ]);
   });
 
-  it("discards stale tokens from prior Temporal retries at tool_params", () => {
+  it("collapses same-step Temporal retries to the final attempt", () => {
     let currentMessage = makeInitialMessageStreamState(
       makeLightAgentMessage({ content: null, chainOfThought: null })
     );
@@ -707,7 +721,8 @@ describe("useAgentMessageStream", () => {
     const action = makeStreamAction();
 
     act(() => {
-      // Retry 1: CoT → tokens → retry fails (traceId=attempt-1)
+      // Retry 1: CoT → tokens → retry fails (traceId=attempt-1). The CoT is
+      // flushed as a thinking step at the CoT→tokens transition.
       onEventCallback!(
         JSON.stringify({
           eventId: "1-0",
@@ -719,6 +734,7 @@ describe("useAgentMessageStream", () => {
             text: "I need to enable the toolset first.",
             classification: "chain_of_thought",
             traceId: "attempt-1",
+            step: 0,
           },
         })
       );
@@ -732,12 +748,13 @@ describe("useAgentMessageStream", () => {
             messageId: currentMessage.sId,
             text: "Enabling now.",
             classification: "tokens",
+            step: 0,
           },
         })
       );
-      // Retry 2: different CoT → tokens → retry fails (traceId=attempt-2)
-      // The new traceId resets both accumulators before the tokens→CoT transition
-      // fires, so "Enabling now." is never flushed as a stale content step.
+      // Retry 2: same step re-runs with a fresh traceId. The already-flushed
+      // step-0 thinking step is dropped, and stale tokens ("Enabling now.") are
+      // discarded before they can become a content step.
       onEventCallback!(
         JSON.stringify({
           eventId: "3-0",
@@ -749,6 +766,7 @@ describe("useAgentMessageStream", () => {
             text: "I should enable the Create Files toolset.",
             classification: "chain_of_thought",
             traceId: "attempt-2",
+            step: 0,
           },
         })
       );
@@ -762,10 +780,12 @@ describe("useAgentMessageStream", () => {
             messageId: currentMessage.sId,
             text: "Let me enable it.",
             classification: "tokens",
+            step: 0,
           },
         })
       );
-      // Retry 3: final CoT → tool_params succeeds (traceId=attempt-3)
+      // Retry 3: final CoT → tool_params succeeds (traceId=attempt-3). Drops the
+      // step-0 thinking step from retry 2 and rebuilds it from this attempt.
       onEventCallback!(
         JSON.stringify({
           eventId: "5-0",
@@ -777,6 +797,7 @@ describe("useAgentMessageStream", () => {
             text: "I need to enable the Create Files toolset first.",
             classification: "chain_of_thought",
             traceId: "attempt-3",
+            step: 0,
           },
         })
       );
@@ -796,24 +817,361 @@ describe("useAgentMessageStream", () => {
       );
     });
 
-    // Each retry produced different CoT, so each appears as its own thinking
-    // step. Stale tokens ("Enabling now.", "Let me enable it.") were discarded
-    // by the traceId-based reset before they could be flushed as content steps.
+    // All three attempts are the same step (Temporal retries), so only the final
+    // attempt's thinking step survives — the earlier ones are dropped instead of
+    // flooding the timeline with duplicates (the ticket-9287 bug).
     expect(currentMessage.streaming.inlineActivitySteps).toEqual([
-      {
-        type: "thinking",
-        content: "I need to enable the toolset first.",
-        id: expect.stringContaining("thinking-pre-"),
-      },
-      {
-        type: "thinking",
-        content: "I should enable the Create Files toolset.",
-        id: expect.stringContaining("thinking-pre-"),
-      },
       {
         type: "thinking",
         content: "I need to enable the Create Files toolset first.",
         id: expect.stringContaining("thinking-toolparams-"),
+        step: 0,
+      },
+    ]);
+  });
+
+  it("keeps earlier completed steps when a later step is retried", () => {
+    let currentMessage = makeInitialMessageStreamState(
+      makeLightAgentMessage({ content: null, chainOfThought: null })
+    );
+    let onEventCallback: ((event: string) => void) | null = null;
+
+    mockUseVirtuosoMethods.mockReturnValue(
+      makeVirtuosoMethodsMock(
+        (
+          updater: (message: typeof currentMessage) => typeof currentMessage
+        ) => {
+          currentMessage = updater(currentMessage);
+          return [currentMessage];
+        }
+      )
+    );
+
+    mockUseEventSource.mockImplementation(
+      (
+        _buildURL: unknown,
+        callback: (event: string) => void
+      ): { isError: null } => {
+        onEventCallback = callback;
+        return { isError: null };
+      }
+    );
+
+    renderHook(() =>
+      useAgentMessageStream({
+        agentMessage: currentMessage,
+        conversationId: "conv_123",
+        isAutoScrollEnabledRef: mockIsAutoScrollEnabledRef,
+        owner: mockOwner,
+        streamId: "stream_123",
+      })
+    );
+
+    const action0 = makeStreamAction({ id: 20, sId: "act_0" });
+
+    act(() => {
+      // Step 0: CoT → tool_params → action success. Fully committed.
+      onEventCallback!(
+        JSON.stringify({
+          eventId: "1-0",
+          data: {
+            type: "generation_tokens",
+            created: Date.now(),
+            configurationId: "agent_123",
+            messageId: currentMessage.sId,
+            text: "First I search the web.",
+            classification: "chain_of_thought",
+            traceId: "step0-trace",
+            step: 0,
+          },
+        })
+      );
+      onEventCallback!(
+        JSON.stringify({
+          eventId: "2-0",
+          data: {
+            type: "tool_params",
+            created: Date.now(),
+            configurationId: "agent_123",
+            messageId: currentMessage.sId,
+            action: action0,
+            runIds: ["llm_trace_0"],
+            step: 0,
+          },
+        })
+      );
+      onEventCallback!(
+        JSON.stringify({
+          eventId: "3-0",
+          data: {
+            type: "agent_action_success",
+            created: Date.now(),
+            configurationId: "agent_123",
+            messageId: currentMessage.sId,
+            action: { ...action0, status: "succeeded", executionDurationMs: 1 },
+            step: 0,
+          },
+        })
+      );
+      // Step 1 attempt 1: CoT flushed, then the activity retries.
+      onEventCallback!(
+        JSON.stringify({
+          eventId: "4-0",
+          data: {
+            type: "generation_tokens",
+            created: Date.now(),
+            configurationId: "agent_123",
+            messageId: currentMessage.sId,
+            text: "Stale step-1 reasoning.",
+            classification: "chain_of_thought",
+            traceId: "step1-attempt-1",
+            step: 1,
+          },
+        })
+      );
+      onEventCallback!(
+        JSON.stringify({
+          eventId: "5-0",
+          data: {
+            type: "generation_tokens",
+            created: Date.now(),
+            configurationId: "agent_123",
+            messageId: currentMessage.sId,
+            text: "writing",
+            classification: "tokens",
+            step: 1,
+          },
+        })
+      );
+      // Step 1 attempt 2: fresh traceId, same step → drop only step-1 work.
+      onEventCallback!(
+        JSON.stringify({
+          eventId: "6-0",
+          data: {
+            type: "generation_tokens",
+            created: Date.now(),
+            configurationId: "agent_123",
+            messageId: currentMessage.sId,
+            text: "Final step-1 reasoning.",
+            classification: "chain_of_thought",
+            traceId: "step1-attempt-2",
+            step: 1,
+          },
+        })
+      );
+      onEventCallback!(
+        JSON.stringify({
+          eventId: "7-0",
+          data: {
+            type: "generation_tokens",
+            created: Date.now(),
+            configurationId: "agent_123",
+            messageId: currentMessage.sId,
+            text: "done writing",
+            classification: "tokens",
+            step: 1,
+          },
+        })
+      );
+    });
+
+    // Step 0's thinking + action survive; only step 1's final attempt remains.
+    expect(currentMessage.streaming.inlineActivitySteps).toEqual([
+      {
+        type: "thinking",
+        content: "First I search the web.",
+        id: expect.stringContaining("thinking-toolparams-"),
+        step: 0,
+      },
+      {
+        type: "action",
+        label: "Search",
+        id: `action-${action0.id}`,
+        actionId: action0.sId,
+        internalMCPServerName: action0.internalMCPServerName,
+        toolName: action0.toolName ?? null,
+        step: 0,
+      },
+      {
+        type: "thinking",
+        content: "Final step-1 reasoning.",
+        id: expect.stringContaining("thinking-pre-"),
+        step: 1,
+      },
+    ]);
+  });
+
+  it("does not re-append steps when the message remounts and replays history", () => {
+    let currentMessage = makeInitialMessageStreamState(
+      makeLightAgentMessage({ content: null, chainOfThought: null })
+    );
+    let onEventCallback: ((event: string) => void) | null = null;
+
+    mockUseVirtuosoMethods.mockReturnValue(
+      makeVirtuosoMethodsMock(
+        (
+          updater: (message: typeof currentMessage) => typeof currentMessage
+        ) => {
+          currentMessage = updater(currentMessage);
+          return [currentMessage];
+        }
+      )
+    );
+    mockUseEventSource.mockImplementation(
+      (
+        _buildURL: unknown,
+        callback: (event: string) => void
+      ): { isError: null } => {
+        onEventCallback = callback;
+        return { isError: null };
+      }
+    );
+
+    const mountHook = () =>
+      renderHook(() =>
+        useAgentMessageStream({
+          agentMessage: currentMessage,
+          conversationId: "conv_123",
+          isAutoScrollEnabledRef: mockIsAutoScrollEnabledRef,
+          owner: mockOwner,
+          streamId: "stream_123",
+        })
+      );
+
+    // The history the server replays on every (re)connect: step 0 CoT → tool.
+    const history = [
+      {
+        eventId: "1-0",
+        data: {
+          type: "generation_tokens",
+          created: Date.now(),
+          configurationId: "agent_123",
+          messageId: currentMessage.sId,
+          text: "Reasoning about step 0.",
+          classification: "chain_of_thought",
+          traceId: "t0",
+          step: 0,
+        },
+      },
+      {
+        eventId: "2-0",
+        data: {
+          type: "tool_params",
+          created: Date.now(),
+          configurationId: "agent_123",
+          messageId: currentMessage.sId,
+          action: makeStreamAction({ id: 1, sId: "act_1" }),
+          runIds: [],
+          step: 0,
+        },
+      },
+    ];
+
+    const { unmount } = mountHook();
+    act(() => history.forEach((e) => onEventCallback!(JSON.stringify(e))));
+
+    const stepsAfterFirstMount =
+      currentMessage.streaming.inlineActivitySteps.length;
+    expect(stepsAfterFirstMount).toBeGreaterThan(0);
+
+    // Simulate a Virtuoso remount: unmount, mount a fresh hook instance for the
+    // same message (its steps persist in currentMessage), and replay the same
+    // history the server resends on reconnect.
+    unmount();
+    mountHook();
+    act(() => history.forEach((e) => onEventCallback!(JSON.stringify(e))));
+
+    expect(currentMessage.streaming.inlineActivitySteps.length).toBe(
+      stepsAfterFirstMount
+    );
+  });
+
+  it("commits the active CoT when tool_params arrives right after a remount", () => {
+    // Regression: after a remount the parser refs (lastClassification, ...) are
+    // reset. The replay must re-run so a live tool_params still flushes the
+    // in-progress CoT into a step instead of dropping it.
+    let currentMessage = makeInitialMessageStreamState(
+      makeLightAgentMessage({ content: null, chainOfThought: null })
+    );
+    let onEventCallback: ((event: string) => void) | null = null;
+
+    mockUseVirtuosoMethods.mockReturnValue(
+      makeVirtuosoMethodsMock(
+        (
+          updater: (message: typeof currentMessage) => typeof currentMessage
+        ) => {
+          currentMessage = updater(currentMessage);
+          return [currentMessage];
+        }
+      )
+    );
+    mockUseEventSource.mockImplementation(
+      (
+        _buildURL: unknown,
+        callback: (event: string) => void
+      ): { isError: null } => {
+        onEventCallback = callback;
+        return { isError: null };
+      }
+    );
+
+    const mountHook = () =>
+      renderHook(() =>
+        useAgentMessageStream({
+          agentMessage: currentMessage,
+          conversationId: "conv_123",
+          isAutoScrollEnabledRef: mockIsAutoScrollEnabledRef,
+          owner: mockOwner,
+          streamId: "stream_123",
+        })
+      );
+
+    const cotEvent = {
+      eventId: "1-0",
+      data: {
+        type: "generation_tokens",
+        created: Date.now(),
+        configurationId: "agent_123",
+        messageId: currentMessage.sId,
+        text: "Reasoning before the tool.",
+        classification: "chain_of_thought",
+        traceId: "t0",
+        step: 0,
+      },
+    };
+    const toolParamsEvent = {
+      eventId: "2-0",
+      data: {
+        type: "tool_params",
+        created: Date.now(),
+        configurationId: "agent_123",
+        messageId: currentMessage.sId,
+        action: makeStreamAction({ id: 1, sId: "act_1" }),
+        runIds: [],
+        step: 0,
+      },
+    };
+
+    // First mount: only the CoT arrives — it stays active, not yet flushed.
+    const { unmount } = mountHook();
+    act(() => onEventCallback!(JSON.stringify(cotEvent)));
+    expect(currentMessage.streaming.inlineActivitySteps).toHaveLength(0);
+
+    // Remount: the server replays the CoT (rebuilding parser state), then the
+    // live tool_params flushes it.
+    unmount();
+    mountHook();
+    act(() => {
+      onEventCallback!(JSON.stringify(cotEvent));
+      onEventCallback!(JSON.stringify(toolParamsEvent));
+    });
+
+    expect(currentMessage.streaming.inlineActivitySteps).toEqual([
+      {
+        type: "thinking",
+        content: "Reasoning before the tool.",
+        id: expect.stringContaining("thinking-toolparams-"),
+        step: 0,
       },
     ]);
   });
@@ -875,6 +1233,7 @@ describe("useAgentMessageStream", () => {
             text: "I need to search the web.",
             classification: "chain_of_thought",
             traceId: "attempt-1",
+            step: 0,
           },
         })
       );
@@ -891,6 +1250,7 @@ describe("useAgentMessageStream", () => {
             text: "I need to search the web.",
             classification: "chain_of_thought",
             traceId: "attempt-2",
+            step: 0,
           },
         })
       );

@@ -505,6 +505,34 @@ export class SpaceResource extends BaseResource<SpaceModel> {
     return spaces ?? [];
   }
 
+  static async dangerouslyFetchByModelIds(
+    spaceModelIds: ModelId[]
+  ): Promise<SpaceResource[]> {
+    if (spaceModelIds.length === 0) {
+      return [];
+    }
+
+    // WORKSPACE_ISOLATION_BYPASS: The sandbox reaper operates across
+    // workspaces. The ids come from workspace-scoped sandbox ownership rows.
+    const spaces = await this.model.findAll({
+      // biome-ignore lint/plugin/noUnverifiedWorkspaceBypass: WORKSPACE_ISOLATION_BYPASS verified
+      dangerouslyBypassWorkspaceIsolationSecurity: true,
+      where: {
+        id: {
+          [Op.in]: spaceModelIds,
+        },
+      },
+      include: [
+        {
+          model: GroupResource.model,
+        },
+      ],
+      includeDeleted: true,
+    });
+
+    return spaces.map(this.fromModel);
+  }
+
   static async fetchByName(
     auth: Authenticator,
     name: string,

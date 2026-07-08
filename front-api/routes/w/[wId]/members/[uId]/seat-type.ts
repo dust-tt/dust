@@ -8,7 +8,7 @@ import {
 } from "@app/types/memberships";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { workspaceApp } from "@front-api/middlewares/ctx";
-import { ensureIsAdmin } from "@front-api/middlewares/ensure_role";
+import { ensureIsBusinessAdmin } from "@front-api/middlewares/ensure_role";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import { z } from "zod";
@@ -33,7 +33,7 @@ const app = workspaceApp();
 app.patch(
   "/",
   validate("param", ParamsSchema),
-  ensureIsAdmin(),
+  ensureIsBusinessAdmin(),
   validate("json", UpdateMemberSeatTypeBodySchema),
   async (ctx) => {
     const auth = ctx.get("auth");

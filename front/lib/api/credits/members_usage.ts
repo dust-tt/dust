@@ -38,6 +38,7 @@ import {
 import type { BillingFrequency } from "@app/lib/metronome/types";
 import { isUserAwuWarned } from "@app/lib/metronome/user_block";
 import { CreditUsageConfigurationResource } from "@app/lib/resources/credit_usage_configuration_resource";
+import { GroupResource } from "@app/lib/resources/group_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import type { EffectiveSpendLimitSource } from "@app/lib/spend_limits/effective";
@@ -72,6 +73,7 @@ export type MemberUsageType = {
   name: string;
   email: string | null;
   image: string | null;
+  groups: string[];
   seatType: MembershipSeatType | null;
   // Per-user AWU allocation granted by the seat (in credits). Null when the
   // user has no seat or the seat carries no allocation.
@@ -172,6 +174,9 @@ export const MembersUsagePaginationSchema = z.object({
   // Optional seat-type filter. A base seat type (e.g. "pro") matches its
   // monthly and yearly variants; "none" matches members with no seat.
   seatType: z.enum(MEMBERSHIP_SEAT_TYPES).optional().catch(undefined),
+  // Optional group filter (group sId). Restricts the table to the active
+  // members of that group. Combined with `seatType` as an intersection.
+  groupId: z.string().optional().catch(undefined),
 });
 
 export type MembersUsagePaginationInput = z.infer<
@@ -732,6 +737,7 @@ export async function fetchRemainingCapCreditsPercentageForUser({
   userId,
   seatType,
   poolCapOverrideAwuCredits,
+  groupCapAwuCredits,
   defaultPoolCapAwuCredits,
 }: {
   metronomeCustomerId: string | null;
@@ -739,6 +745,9 @@ export async function fetchRemainingCapCreditsPercentageForUser({
   userId: string;
   seatType: MembershipSeatType | null | undefined;
   poolCapOverrideAwuCredits: number | null;
+  // Max group cap (pool-only, excluding seat allowance) across the user's
+  // groups; null when none carry a cap.
+  groupCapAwuCredits: number | null;
   defaultPoolCapAwuCredits: number;
 }): Promise<number | null> {
   const contract = metronomeCustomerId
@@ -782,8 +791,16 @@ export async function fetchRemainingCapCreditsPercentageForUser({
           : 0)
       : null;
 
+  // Max group cap (pool-only) + seat allowance, matching override/default units.
+  // Only pool-bearing seats get a group cap.
+  const groupCapTotalAwuCredits =
+    groupCapAwuCredits !== null && normalizedSeatType !== null
+      ? groupCapAwuCredits + (seatAllowanceBySeatType[normalizedSeatType] ?? 0)
+      : null;
+
   const spendLimitAwuCredits = resolveEffectiveSpendLimitAwuCredits({
     overrideAwuCredits,
+    groupCapAwuCredits: groupCapTotalAwuCredits,
     defaultAwuCredits,
   });
 
@@ -861,6 +878,17 @@ export async function getMemberUsage({
     return { member: null };
   }
 
+  const [groupNamesByUserModelId, groupCapByUserModelId] = await Promise.all([
+    GroupResource.listGroupNamesByUserModelIdInWorkspace({
+      workspace,
+      userModelIds: [userResource.id],
+    }),
+    GroupResource.listMaxPoolCapAwuCreditsByUserModelIdInWorkspace({
+      workspace,
+      userModelIds: [userResource.id],
+    }),
+  ]);
+
   const metronomeUserId =
     membership.seatType === "free" ? toFreeMetronomeUserId(userId) : userId;
   const totalConsumedCredits =
@@ -924,8 +952,19 @@ export async function getMemberUsage({
   const effectiveDefaultAwuCredits =
     membership.seatType === "free" ? effectiveAllocationAwu : defaultAwuCredits;
 
+  // Max group cap (pool-only) + seat allowance, matching override/default units.
+  // Only pool-bearing seats (pro/max/workspace) get a group cap.
+  const groupPoolCapAwuCredits =
+    groupCapByUserModelId.get(userResource.id) ?? null;
+  const groupCapAwuCredits =
+    groupPoolCapAwuCredits !== null && normalizedSeatType !== null
+      ? groupPoolCapAwuCredits +
+        (seatAllowanceBySeatType[normalizedSeatType] ?? 0)
+      : null;
+
   const spendLimitSource = resolveEffectiveSpendLimitSource({
     overrideAwuCredits,
+    groupCapAwuCredits,
     defaultAwuCredits: effectiveDefaultAwuCredits,
   });
 
@@ -935,6 +974,7 @@ export async function getMemberUsage({
       name: userResource.fullName() || userResource.name,
       email: userResource.email ?? null,
       image: userResource.imageUrl ?? null,
+      groups: groupNamesByUserModelId.get(userResource.id) ?? [],
       seatType: membership.seatType ?? null,
       memberUsageLimit:
         effectiveAllocationAwu > 0 ? effectiveAllocationAwu : null,
@@ -950,6 +990,7 @@ export async function getMemberUsage({
       scheduledSeatChangeAt: null,
       spendLimitAwuCredits: resolveEffectiveSpendLimitAwuCredits({
         overrideAwuCredits,
+        groupCapAwuCredits,
         defaultAwuCredits: effectiveDefaultAwuCredits,
       }),
       spendLimitSource,
@@ -992,6 +1033,84 @@ async function resolveSeatTypeFilterUserIds({
       // know that.
       .filter((sId): sId is string => Boolean(sId))
   );
+}
+
+// Resolve the active member user sIds of a group (by sId). Handed to
+// Elasticsearch as an allowlist, like the seat-type filter. An unknown or
+// unreadable group resolves to an empty set (empty page).
+async function resolveGroupFilterUserIds({
+  auth,
+  groupId,
+}: {
+  auth: Authenticator;
+  groupId: string;
+}): Promise<string[]> {
+  const groupRes = await GroupResource.fetchById(auth, groupId);
+  if (groupRes.isErr()) {
+    return [];
+  }
+  const members = await groupRes.value.getActiveMembers(auth);
+  return members.map((u) => u.sId);
+}
+
+async function resolveSeatAndGroupRestriction({
+  auth,
+  workspace,
+  seatType,
+  groupId,
+}: {
+  auth: Authenticator;
+  workspace: LightWorkspaceType;
+  seatType?: MembershipSeatType;
+  groupId?: string;
+}): Promise<string[] | undefined> {
+  const restrictionSets: string[][] = [];
+  if (seatType) {
+    restrictionSets.push(
+      await resolveSeatTypeFilterUserIds({ workspace, seatType })
+    );
+  }
+  if (groupId) {
+    restrictionSets.push(await resolveGroupFilterUserIds({ auth, groupId }));
+  }
+  if (restrictionSets.length === 0) {
+    return undefined;
+  }
+  const [firstSet, ...otherSets] = restrictionSets;
+  return otherSets.reduce((acc, set) => {
+    const allowed = new Set(set);
+    return acc.filter((sId) => allowed.has(sId));
+  }, firstSet);
+}
+
+export async function resolveMatchingMemberUserIds({
+  auth,
+  filter,
+}: {
+  auth: Authenticator;
+  filter: { seatType?: MembershipSeatType; groupId?: string; search?: string };
+}): Promise<Result<string[], Error>> {
+  const workspace = auth.getNonNullableWorkspace();
+  const restrictToUserIds = await resolveSeatAndGroupRestriction({
+    auth,
+    workspace,
+    seatType: filter.seatType,
+    groupId: filter.groupId,
+  });
+  if (restrictToUserIds !== undefined && restrictToUserIds.length === 0) {
+    return new Ok([]);
+  }
+  // Propagate search failures (e.g. an Elasticsearch outage) instead of masking
+  // them as an empty result. This is a write path, so the caller must be able
+  // to tell "no match" from "lookup failed".
+  const result = await UserResource.searchAllUsers(auth, {
+    searchTerm: filter.search ?? "",
+    restrictToUserIds,
+  });
+  if (result.isErr()) {
+    return result;
+  }
+  return new Ok(result.value.users.map((u) => u.sId));
 }
 
 // "name"/"email" live in the user search index, which owns sort + pagination
@@ -1099,18 +1218,18 @@ export async function getMembersUsage({
   const { metronomeCustomerId } = workspace;
   const metronomeContractId = subscription?.metronomeContractId ?? null;
 
-  // When a seat-type filter is active, resolve the matching user sIds up front
-  // and restrict the search to them so pagination and the returned `total`
-  // reflect the filtered set. No match means an empty page.
-  let restrictToUserIds: string[] | undefined;
-  if (paginationParams.seatType) {
-    restrictToUserIds = await resolveSeatTypeFilterUserIds({
-      workspace,
-      seatType: paginationParams.seatType,
-    });
-    if (restrictToUserIds.length === 0) {
-      return { members: [], total: 0 };
-    }
+  // When a seat-type and/or group filter is active, resolve the matching user
+  // sIds up front and restrict the search to their intersection, so pagination
+  // and the returned `total` reflect the filtered set. No match (in any active
+  // filter) means an empty page.
+  const restrictToUserIds = await resolveSeatAndGroupRestriction({
+    auth,
+    workspace,
+    seatType: paginationParams.seatType,
+    groupId: paginationParams.groupId,
+  });
+  if (restrictToUserIds !== undefined && restrictToUserIds.length === 0) {
+    return { members: [], total: 0 };
   }
 
   const usersResult = await resolveMembersUsagePageUsers({
@@ -1157,6 +1276,8 @@ export async function getMembersUsage({
     { freeBalanceByUserId, freeStartingByUserId },
     perUserSpendLimits,
     freeCreditAlertIdsByUserId,
+    groupNamesByUserModelId,
+    groupCapByUserModelId,
   ] = await Promise.all([
     fetchConsumedAwuCreditsByUserId({
       workspace,
@@ -1201,6 +1322,15 @@ export async function getMembersUsage({
           workspaceId: workspace.sId,
         })
       : Promise.resolve(null),
+    GroupResource.listGroupNamesByUserModelIdInWorkspace({
+      workspace,
+      userModelIds: users.map((u) => u.id),
+      groupKinds: ["provisioned"],
+    }),
+    GroupResource.listMaxPoolCapAwuCreditsByUserModelIdInWorkspace({
+      workspace,
+      userModelIds: users.map((u) => u.id),
+    }),
   ]);
   const freeCreditAlertIds =
     freeCreditAlertIdsByUserId?.isOk() === true
@@ -1298,8 +1428,19 @@ export async function getMembersUsage({
         ? effectiveAllocationAwu
         : defaultAwuCredits;
 
+    // Max group cap (pool-only, stored on the group) + seat allowance, to match
+    // the units of override/default above. Only pool-bearing seats
+    // (pro/max/workspace) get a group cap; free/none have no pool.
+    const groupPoolCapAwuCredits = groupCapByUserModelId.get(u.id) ?? null;
+    const groupCapAwuCredits =
+      groupPoolCapAwuCredits !== null && normalizedSeatType !== null
+        ? groupPoolCapAwuCredits +
+          (seatAllowanceBySeatType[normalizedSeatType] ?? 0)
+        : null;
+
     const spendLimitSource = resolveEffectiveSpendLimitSource({
       overrideAwuCredits,
+      groupCapAwuCredits,
       defaultAwuCredits: effectiveDefaultAwuCredits,
     });
     const effectiveCapAlert =
@@ -1331,6 +1472,7 @@ export async function getMembersUsage({
         name: u.fullName() || u.name,
         email: u.email ?? null,
         image: u.imageUrl ?? null,
+        groups: groupNamesByUserModelId.get(u.id) ?? [],
         seatType: membership.seatType ?? null,
         memberUsageLimit:
           effectiveAllocationAwu > 0 ? effectiveAllocationAwu : null,
@@ -1351,6 +1493,7 @@ export async function getMembersUsage({
         scheduledSeatChangeAt: scheduled?.startAt.toISOString() ?? null,
         spendLimitAwuCredits: resolveEffectiveSpendLimitAwuCredits({
           overrideAwuCredits,
+          groupCapAwuCredits,
           defaultAwuCredits: effectiveDefaultAwuCredits,
         }),
         spendLimitSource,

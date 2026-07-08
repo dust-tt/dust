@@ -196,13 +196,13 @@ function DomainVerificationTable({
         cell: ({ getValue, row }: CellContext<DomainRowData, string>) => {
           const status = getValue();
           const workspaceVerifiedDomain = row.original.workspaceVerifiedDomain;
-          let chipColor: "success" | "info" | "rose" = "info";
+          let chipColor: "success" | "info" | "warning" = "info";
           let label: string = "Pending";
           if (workspaceVerifiedDomain && status === "verified") {
             chipColor = "success";
             label = "Verified";
           } else if (status === "failed") {
-            chipColor = "rose";
+            chipColor = "warning";
             label = "Failed";
           }
 

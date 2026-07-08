@@ -67,6 +67,7 @@ app.get(
       workspace,
       subscription,
       isAdmin: true,
+      isBusinessAdmin: true,
       isBuilder: true,
       isSuperUser: true,
     });

@@ -5,6 +5,7 @@ import {
   DANGEROUSLY_UNBOUNDED_TEXT,
   DataTypes,
 } from "@app/lib/resources/storage/data_types";
+import { SpaceModel } from "@app/lib/resources/storage/models/spaces";
 import { UserModel } from "@app/lib/resources/storage/models/user";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
 import type {
@@ -46,6 +47,12 @@ export class TriggerModel extends WorkspaceAwareModel<TriggerModel> {
    */
   declare agentConfigurationId: ForeignKey<AgentConfigurationModel["sId"]>;
   declare editor: ForeignKey<UserModel["id"]>;
+
+  /**
+   * Pod (Project Space) the trigger's conversation is created in. Null means the
+   * conversation is created in the default space, matching legacy behavior.
+   */
+  declare spaceId: ForeignKey<SpaceModel["id"]> | null;
 }
 
 TriggerModel.init(
@@ -107,6 +114,10 @@ TriggerModel.init(
       type: DataTypes.STRING,
       allowNull: true,
     },
+    spaceId: {
+      type: DataTypes.BIGINT,
+      allowNull: true,
+    },
   },
   {
     modelName: "trigger",
@@ -127,6 +138,7 @@ TriggerModel.init(
     indexes: [
       { fields: ["workspaceId", "agentConfigurationId", "name"] },
       { fields: ["workspaceId", "webhookSourceViewId"] },
+      { fields: ["spaceId"], concurrently: true },
     ],
   }
 );
@@ -139,4 +151,10 @@ TriggerModel.belongsTo(WebhookSourcesViewModel, {
   foreignKey: { name: "webhookSourceViewId", allowNull: true },
   onDelete: "RESTRICT",
   onUpdate: "CASCADE",
+});
+
+TriggerModel.belongsTo(SpaceModel, {
+  as: "space",
+  foreignKey: { name: "spaceId", allowNull: true },
+  onDelete: "RESTRICT",
 });

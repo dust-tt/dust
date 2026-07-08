@@ -86,7 +86,6 @@ pub mod providers {
     pub mod noop;
     pub mod openai_compatible_helpers;
     pub mod openai_responses_api_helpers;
-    pub mod togetherai;
     pub mod xai;
 }
 pub mod http {

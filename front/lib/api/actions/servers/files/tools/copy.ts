@@ -25,9 +25,9 @@ import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 
 export async function copyHandler(
   { source, dest }: { source: string; dest: string },
-  { auth, agentLoopContext }: ToolHandlerExtra
+  { auth, toolContext }: ToolHandlerExtra
 ): Promise<ToolHandlerResult> {
-  const conversationRes = requireAgentLoopConversation({ agentLoopContext });
+  const conversationRes = requireAgentLoopConversation({ toolContext });
   if (conversationRes.isErr()) {
     return conversationRes;
   }

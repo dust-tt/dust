@@ -1,14 +1,18 @@
 import { computeIsSelfImprovementAvailable } from "@app/lib/client/self_improvement";
 import { getConversationRoute } from "@app/lib/utils/router";
 import type { AppType } from "@app/types/app";
-import { hasPermission } from "@app/types/permissions";
 import { isCreditPricedPlan, type SubscriptionType } from "@app/types/plan";
 import {
   isComputerFeatureEnabled,
   type WhitelistableFeature,
 } from "@app/types/shared/feature_flags";
 import type { WorkspaceType } from "@app/types/user";
-import { isAdmin, isBuilder, isOnlyBusinessAdmin } from "@app/types/user";
+import {
+  isAdmin,
+  isBuilder,
+  isBusinessAdmin,
+  isOnlyBusinessAdmin,
+} from "@app/types/user";
 import {
   BarChart01,
   Brackets,
@@ -28,6 +32,7 @@ import {
   Shapes,
   Stars02,
   Terminal,
+  Toggle01Left,
   Users01,
   Zap,
 } from "@dust-tt/sparkle";
@@ -87,6 +92,7 @@ export type SubNavigationAdminId =
   | "subscription"
   | "billing"
   | "workspace"
+  | "governance"
   | "workspace_branding"
   | "model_providers"
   | "members"
@@ -104,6 +110,7 @@ export const ADMIN_ROUTE_PATTERNS: Record<SubNavigationAdminId, string[]> = {
   members: ["/w/[wId]/members"],
   identity_and_provisioning: ["/w/[wId]/identity-and-provisioning"],
   workspace: ["/w/[wId]/workspace"],
+  governance: ["/w/[wId]/governance"],
   workspace_branding: ["/w/[wId]/brand"],
   model_providers: ["/w/[wId]/model-providers"],
   analytics: ["/w/[wId]/analytics"],
@@ -206,7 +213,7 @@ export const getTopNavigationTabs = (
     ref: spaceMenuButtonRef,
   });
 
-  if (isAdmin(owner) || isOnlyBusinessAdmin(owner)) {
+  if (isBusinessAdmin(owner)) {
     nav.push({
       id: "settings",
       label: "Admin",
@@ -217,6 +224,7 @@ export const getTopNavigationTabs = (
           "/w/[wId]/members",
           "/w/[wId]/identity-and-provisioning",
           "/w/[wId]/workspace",
+          "/w/[wId]/governance",
           "/w/[wId]/branding",
           "/w/[wId]/model-providers",
           "/w/[wId]/subscription",
@@ -260,10 +268,8 @@ export const subNavigationAdmin = ({
   const isCurrent = (id: SubNavigationAdminId): boolean =>
     matchesRoutePattern(currentRoute, ADMIN_ROUTE_PATTERNS[id]);
 
-  const hasWorkspaceAdminPermission = hasPermission(
-    owner.role,
-    "workspace:admin"
-  );
+  const hasAdminRole = isAdmin(owner);
+  const hasBusinessAdminRole = isBusinessAdmin(owner);
 
   nav.push({
     id: "workspace",
@@ -275,15 +281,17 @@ export const subNavigationAdmin = ({
         icon: Users01,
         href: `/w/${owner.sId}/members`,
         current: isCurrent("members"),
-        disabled: !hasPermission(owner.role, "workspace:manage_members"),
+        disabled: !hasBusinessAdminRole,
       },
       {
         id: "identity_and_provisioning",
-        label: "Identity & Provisioning",
+        label: featureFlags.includes("admin_governance")
+          ? "IT & Security"
+          : "Identity & Provisioning",
         icon: Fingerprint04,
         href: `/w/${owner.sId}/identity-and-provisioning`,
         current: isCurrent("identity_and_provisioning"),
-        disabled: !hasWorkspaceAdminPermission,
+        disabled: !hasAdminRole,
       },
       {
         id: "workspace",
@@ -291,8 +299,20 @@ export const subNavigationAdmin = ({
         icon: Building04,
         href: `/w/${owner.sId}/workspace`,
         current: isCurrent("workspace"),
-        disabled: !hasWorkspaceAdminPermission,
+        disabled: !hasAdminRole,
       },
+      ...(featureFlags.includes("admin_governance")
+        ? [
+            {
+              id: "governance" as const,
+              label: "Governance",
+              icon: Toggle01Left,
+              href: `/w/${owner.sId}/governance`,
+              current: isCurrent("governance"),
+              disabled: !hasBusinessAdminRole,
+            },
+          ]
+        : []),
       ...(featureFlags.includes("whitelabel_frames")
         ? [
             {
@@ -301,7 +321,7 @@ export const subNavigationAdmin = ({
               icon: Palette,
               href: `/w/${owner.sId}/branding`,
               current: isCurrent("workspace_branding"),
-              disabled: !hasWorkspaceAdminPermission,
+              disabled: !hasAdminRole,
             },
           ]
         : []),
@@ -314,7 +334,7 @@ export const subNavigationAdmin = ({
               icon: PieChart01,
               href: `/w/${owner.sId}/usage`,
               current: isCurrent("usage"),
-              disabled: !hasWorkspaceAdminPermission,
+              disabled: !hasBusinessAdminRole,
             },
           ]
         : []),
@@ -324,7 +344,7 @@ export const subNavigationAdmin = ({
         icon: Brain,
         href: `/w/${owner.sId}/model-providers`,
         current: isCurrent("model_providers"),
-        disabled: !hasWorkspaceAdminPermission,
+        disabled: !hasAdminRole,
       },
       {
         id: "analytics",
@@ -332,7 +352,7 @@ export const subNavigationAdmin = ({
         icon: BarChart01,
         href: `/w/${owner.sId}/analytics`,
         current: isCurrent("analytics"),
-        disabled: !hasPermission(owner.role, "workspace:view_analytics"),
+        disabled: !hasBusinessAdminRole,
       },
       isCreditPricedPlan(subscription.plan)
         ? {
@@ -341,7 +361,7 @@ export const subNavigationAdmin = ({
             icon: CreditCard01,
             href: `/w/${owner.sId}/billing`,
             current: isCurrent("billing"),
-            disabled: !hasWorkspaceAdminPermission,
+            disabled: !hasAdminRole,
           }
         : {
             id: "subscription",
@@ -349,7 +369,7 @@ export const subNavigationAdmin = ({
             icon: CreditCard01,
             href: `/w/${owner.sId}/subscription`,
             current: isCurrent("subscription"),
-            disabled: !hasWorkspaceAdminPermission,
+            disabled: !hasAdminRole,
           },
     ],
   });
@@ -364,7 +384,7 @@ export const subNavigationAdmin = ({
         icon: Lock01,
         href: `/w/${owner.sId}/developers/api-keys`,
         current: isCurrent("api_keys"),
-        disabled: !hasWorkspaceAdminPermission,
+        disabled: !hasAdminRole,
       },
       ...(isCreditPricedPlan(subscription.plan)
         ? []
@@ -375,7 +395,7 @@ export const subNavigationAdmin = ({
               icon: Zap,
               href: `/w/${owner.sId}/developers/credits-usage`,
               current: isCurrent("credits_usage"),
-              disabled: !hasWorkspaceAdminPermission,
+              disabled: !hasAdminRole,
             },
           ]),
     ],
@@ -392,7 +412,7 @@ export const subNavigationAdmin = ({
         href: `/w/${owner.sId}/developers/providers`,
         current: isCurrent("providers"),
         featureFlag: "legacy_dust_apps",
-        disabled: !hasWorkspaceAdminPermission,
+        disabled: !hasAdminRole,
       },
       {
         id: "dev_secrets",
@@ -400,7 +420,7 @@ export const subNavigationAdmin = ({
         icon: Brackets,
         href: `/w/${owner.sId}/developers/dev-secrets`,
         current: isCurrent("dev_secrets"),
-        disabled: !hasWorkspaceAdminPermission,
+        disabled: !hasAdminRole,
       },
       {
         id: "sandbox",
@@ -408,9 +428,7 @@ export const subNavigationAdmin = ({
         icon: Globe01,
         href: `/w/${owner.sId}/developers/sandbox`,
         current: isCurrent("sandbox"),
-        disabled:
-          !hasWorkspaceAdminPermission ||
-          !isComputerFeatureEnabled(featureFlags),
+        disabled: !hasAdminRole || !isComputerFeatureEnabled(featureFlags),
       },
       ...(computeIsSelfImprovementAvailable({
         owner,
@@ -424,7 +442,7 @@ export const subNavigationAdmin = ({
               icon: Stars02,
               href: `/w/${owner.sId}/developers/self-improving-skills`,
               current: isCurrent("self_improving_skills"),
-              disabled: !hasWorkspaceAdminPermission,
+              disabled: !hasAdminRole,
             },
           ]
         : []),

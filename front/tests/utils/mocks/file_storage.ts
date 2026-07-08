@@ -1,4 +1,4 @@
-import { PassThrough } from "stream";
+import { PassThrough, Readable } from "stream";
 import { vi } from "vitest";
 
 export interface WriteStreamCall {
@@ -28,6 +28,10 @@ class FileStorageMock {
   private _saveFileCalls: SaveFileCall[] = [];
   private _existsPredicate: (filePath: string) => boolean = () => true;
   private _saveShouldFail: (filePath: string) => boolean = () => false;
+  private _metadataForPath: (
+    filePath: string
+  ) => { contentType: string; size: string } | null = () => null;
+  private _contentForPath: (filePath: string) => string | null = () => null;
 
   get writeStreamCalls(): readonly WriteStreamCall[] {
     return this._writeStreamCalls;
@@ -53,11 +57,32 @@ class FileStorageMock {
     this._saveShouldFail = predicate;
   }
 
+  /**
+   * Controls what `file(path).getMetadata()` resolves to, keyed by the GCS path.
+   * Return null to fall back to the default (`text/plain`, size 0). Reset between tests
+   * via `reset()`.
+   */
+  setFileMetadata(
+    fn: (filePath: string) => { contentType: string; size: string } | null
+  ): void {
+    this._metadataForPath = fn;
+  }
+
+  /**
+   * Controls what `file(path).createReadStream()` streams, keyed by the GCS path.
+   * Return null to fall back to the default empty stream. Reset between tests via `reset()`.
+   */
+  setFileContent(fn: (filePath: string) => string | null): void {
+    this._contentForPath = fn;
+  }
+
   reset(): void {
     this._writeStreamCalls.length = 0;
     this._saveFileCalls.length = 0;
     this._existsPredicate = () => true;
     this._saveShouldFail = () => false;
+    this._metadataForPath = () => null;
+    this._contentForPath = () => null;
   }
 
   /**
@@ -84,7 +109,13 @@ class FileStorageMock {
   private createMockGCSFile(filePath?: string) {
     return {
       copy: vi.fn().mockResolvedValue(undefined),
-      createReadStream: vi.fn().mockReturnValue(new PassThrough()),
+      createReadStream: vi.fn(() => {
+        const content = this._contentForPath(filePath ?? "");
+        if (content !== null) {
+          return Readable.from([Buffer.from(content, "utf8")]);
+        }
+        return new PassThrough();
+      }),
       createWriteStream: vi
         .fn()
         .mockImplementation((opts?: { contentType?: string }) => {
@@ -99,9 +130,14 @@ class FileStorageMock {
       exists: vi.fn(() =>
         Promise.resolve([this._existsPredicate(filePath ?? "")])
       ),
-      getMetadata: vi
-        .fn()
-        .mockResolvedValue([{ contentType: "text/plain", size: "0" }]),
+      getMetadata: vi.fn(() =>
+        Promise.resolve([
+          this._metadataForPath(filePath ?? "") ?? {
+            contentType: "text/plain",
+            size: "0",
+          },
+        ])
+      ),
       getSignedUrl: vi.fn().mockResolvedValue(["https://signed-url.test"]),
       publicUrl: vi.fn().mockReturnValue("https://public-url.test"),
       save: vi

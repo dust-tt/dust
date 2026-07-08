@@ -24,7 +24,7 @@ const CandidateSearchSchema = {
 export const ASHBY_TOOLS_METADATA = createToolsRecord({
   search_candidates: {
     description:
-      "Search for candidates by name and/or email. " +
+      "Find, search, and look up candidates in Ashby by name and/or email. " +
       `Returns up to ${DEFAULT_SEARCH_LIMIT} matching candidates by default.`,
     schema: CandidateSearchSchema,
     stake: "never_ask",
@@ -32,6 +32,8 @@ export const ASHBY_TOOLS_METADATA = createToolsRecord({
       running: "Searching candidates on Ashby",
       done: "Search candidates on Ashby",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   get_report_data: {
     description: "Retrieve report data and save it as a CSV file.",
@@ -47,6 +49,8 @@ export const ASHBY_TOOLS_METADATA = createToolsRecord({
       running: "Retrieving Ashby report data",
       done: "Retrieve Ashby report data",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   get_interview_feedback: {
     description:
@@ -59,17 +63,21 @@ export const ASHBY_TOOLS_METADATA = createToolsRecord({
       running: "Retrieving interview feedback from Ashby",
       done: "Retrieve interview feedback from Ashby",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   get_candidate_notes: {
     description:
-      "Retrieve all notes for a candidate. " +
-      "This tool will search for the candidate by name or email and return all notes on their profile.",
+      "Retrieve and read all existing notes recorded on a candidate's profile in Ashby. " +
+      "Searches for the candidate by name or email and returns every note already on their profile.",
     schema: CandidateSearchSchema,
     stake: "never_ask",
     displayLabels: {
       running: "Retrieving candidate notes from Ashby",
       done: "Retrieve candidate notes from Ashby",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   list_openings: {
     description:
@@ -99,10 +107,12 @@ export const ASHBY_TOOLS_METADATA = createToolsRecord({
       running: "Listing openings from Ashby",
       done: "List openings from Ashby",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   create_candidate_note: {
     description:
-      "Create a note on a candidate's profile in Ashby. " +
+      "Create and add a new note to a candidate's profile in Ashby. " +
       "The note content can include basic HTML formatting (supported tags: h1-h6, p, b, i, u, a, ul, ol, li, code, pre).",
     schema: {
       ...CandidateSearchSchema,
@@ -115,6 +125,8 @@ export const ASHBY_TOOLS_METADATA = createToolsRecord({
       running: "Creating candidate note on Ashby",
       done: "Create candidate note on Ashby",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   [GET_REFERRAL_FORM_TOOL_NAME]: {
     description:
@@ -127,6 +139,8 @@ export const ASHBY_TOOLS_METADATA = createToolsRecord({
       running: "Retrieving referral form from Ashby",
       done: "Retrieve referral form from Ashby",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   [CREATE_REFERRAL_TOOL_NAME]: {
     description:
@@ -141,6 +155,8 @@ export const ASHBY_TOOLS_METADATA = createToolsRecord({
       running: "Creating referral on Ashby",
       done: "Create referral on Ashby",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   list_job_postings: {
     description:
@@ -171,6 +187,8 @@ export const ASHBY_TOOLS_METADATA = createToolsRecord({
       running: "Listing job postings from Ashby",
       done: "List job postings from Ashby",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   get_hire_data: {
     description:
@@ -186,6 +204,8 @@ export const ASHBY_TOOLS_METADATA = createToolsRecord({
       running: "Retrieving hire data from Ashby",
       done: "Retrieve hire data from Ashby",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   update_job_posting: {
     description:
@@ -235,6 +255,8 @@ export const ASHBY_TOOLS_METADATA = createToolsRecord({
       running: "Updating job posting on Ashby",
       done: "Update job posting on Ashby",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
 });
 
@@ -253,6 +275,8 @@ export const ASHBY_SERVER = {
     description: t.description,
     inputSchema: zodToJsonSchema(z.object(t.schema)) as JSONSchema,
     displayLabels: t.displayLabels,
+    toolCostCategory: t.toolCostCategory,
+    freeUsage: t.freeUsage,
   })),
   tools_stakes: Object.fromEntries(
     Object.values(ASHBY_TOOLS_METADATA).map((t) => [t.name, t.stake])

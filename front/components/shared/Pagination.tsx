@@ -60,7 +60,7 @@ function PaginationLink({
   return (
     <LinkWrapper
       href={buildPageUrl(page)}
-      className="flex h-7 w-7 items-center justify-center rounded-md text-xs font-medium text-muted-foreground dark:text-muted-foreground-night transition-colors hover:bg-gray-100 hover:text-foreground"
+      className="flex h-7 w-7 items-center justify-center rounded-md text-xs font-medium text-muted-foreground transition-colors hover:bg-hover hover:text-foreground"
     >
       {page}
     </LinkWrapper>
@@ -103,8 +103,8 @@ export function Pagination({
           href={canGoPrev ? buildPageUrl(currentPage - 1) : "#"}
           className={`flex h-7 w-7 items-center justify-center rounded-md transition-colors ${
             canGoPrev
-              ? "text-muted-foreground dark:text-muted-foreground-night hover:bg-gray-100 hover:text-foreground"
-              : "pointer-events-none text-gray-300"
+              ? "text-muted-foreground hover:bg-hover hover:text-foreground"
+              : "pointer-events-none text-muted-foreground"
           }`}
           aria-disabled={!canGoPrev}
           tabIndex={canGoPrev ? undefined : -1}
@@ -116,7 +116,7 @@ export function Pagination({
           pageNum === "ellipsis-start" || pageNum === "ellipsis-end" ? (
             <span
               key={pageNum}
-              className="flex h-7 w-7 items-center justify-center text-xs text-muted-foreground dark:text-muted-foreground-night"
+              className="flex h-7 w-7 items-center justify-center text-xs text-muted-foreground"
             >
               ...
             </span>
@@ -134,8 +134,8 @@ export function Pagination({
           href={canGoNext ? buildPageUrl(currentPage + 1) : "#"}
           className={`flex h-7 w-7 items-center justify-center rounded-md transition-colors ${
             canGoNext
-              ? "text-muted-foreground dark:text-muted-foreground-night hover:bg-gray-100 hover:text-foreground"
-              : "pointer-events-none text-gray-300"
+              ? "text-muted-foreground hover:bg-hover hover:text-foreground"
+              : "pointer-events-none text-muted-foreground"
           }`}
           aria-disabled={!canGoNext}
           tabIndex={canGoNext ? undefined : -1}
@@ -144,7 +144,7 @@ export function Pagination({
         </LinkWrapper>
       </div>
 
-      <span className="text-xs text-muted-foreground dark:text-muted-foreground-night">
+      <span className="text-xs text-muted-foreground">
         {startItem}-{endItem} of {rowCount}
       </span>
     </nav>

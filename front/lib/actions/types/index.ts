@@ -3,13 +3,19 @@ import type {
   LightMCPToolConfigurationType,
   MCPServerConfigurationType,
 } from "@app/lib/actions/mcp";
-import type { AgentMCPActionType } from "@app/types/actions";
-import type { AgentConfigurationType } from "@app/types/assistant/agent";
+import type { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
+import type { SandboxFunctionInvocationResource } from "@app/lib/resources/sandbox_function_invocation_resource";
+import type { SandboxFunctionMCPActionResource } from "@app/lib/resources/sandbox_function_mcp_action_resource";
+import type {
+  AgentConfigurationWithoutModelType,
+  AgentModelConfigurationType,
+} from "@app/types/assistant/agent";
 import type {
   AgentMessageType,
   ConversationType,
   UserMessageType,
 } from "@app/types/assistant/conversation";
+import type { ModelConfigurationType } from "@app/types/assistant/models/types";
 import type { AllSupportedFileContentType } from "@app/types/files";
 import { z } from "zod";
 
@@ -58,7 +64,10 @@ export const UserQuestionSchema = z.object({
     .describe("The question text. Should be clear and specific."),
   options: z
     .array(UserQuestionOptionSchema)
-    .describe("The available choices (2 to 4 options)."),
+    .describe(
+      "The available choices (typically 2 to 4 options, too many options to " +
+        "choose from can be overwhelming for the user)."
+    ),
   multiSelect: z
     .boolean()
     .describe(
@@ -143,26 +152,47 @@ export type ActionGeneratedFileType =
   | ActionGeneratedFilePathType;
 
 export type AgentLoopRunContextType = {
-  agentConfiguration: AgentConfigurationType;
+  contextType: "agent_loop";
+  action: AgentMCPActionResource;
+  agentConfiguration: AgentConfigurationWithoutModelType;
+  model: AgentModelConfigurationType & ModelConfigurationType;
   agentMessage: AgentMessageType;
-  currentAction: AgentMCPActionType;
   conversation: ConversationType;
   stepContext: StepContext;
   toolConfiguration: LightMCPToolConfigurationType;
   userMessage: UserMessageType;
 };
 
+export type SandboxFunctionRunContextType = {
+  contextType: "sandbox_function";
+  action: SandboxFunctionMCPActionResource;
+  invocation: SandboxFunctionInvocationResource;
+  toolConfiguration: LightMCPToolConfigurationType;
+};
+
 export type AgentLoopListToolsContextType = {
-  agentConfiguration: AgentConfigurationType;
+  agentConfiguration: AgentConfigurationWithoutModelType;
   agentActionConfiguration: MCPServerConfigurationType;
   clientSideActionConfigurations?: ClientSideMCPServerConfigurationType[];
   conversation: ConversationType;
   agentMessage: AgentMessageType;
 };
 
-export type AgentLoopContextType =
+export function isSandboxFunctionRunContext(
+  value: AgentLoopRunContextType | SandboxFunctionRunContextType | undefined
+): value is SandboxFunctionRunContextType {
+  return value?.contextType === "sandbox_function";
+}
+
+export function isAgentLoopRunContext(
+  value: AgentLoopRunContextType | SandboxFunctionRunContextType | undefined
+): value is AgentLoopRunContextType {
+  return value?.contextType === "agent_loop";
+}
+
+export type ToolContextType =
   | {
-      runContext: AgentLoopRunContextType;
+      runContext: AgentLoopRunContextType | SandboxFunctionRunContextType;
       listToolsContext?: never;
     }
   | {

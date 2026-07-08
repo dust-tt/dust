@@ -1,5 +1,4 @@
 import { deregisterMCPServer } from "@app/lib/api/actions/mcp/client_side_registry";
-import { clearDustDesktopClientSideMCPServerRegistration } from "@app/lib/api/actions/mcp/dust_desktop";
 import { publicApiApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
@@ -59,7 +58,6 @@ app.post(
     const { serverId } = ctx.req.valid("json");
 
     await deregisterMCPServer(auth, { serverId });
-    await clearDustDesktopClientSideMCPServerRegistration(auth, { serverId });
 
     return ctx.json({ success: true as const });
   }

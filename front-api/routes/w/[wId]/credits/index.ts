@@ -13,7 +13,9 @@ import awuPoolSummary from "./awu-pool-summary";
 import membersSeats from "./members-seats";
 import membersUsage from "./members-usage";
 import myUsage from "./my-usage";
+import myUsageAnalytics from "./my-usage-analytics";
 import purchase from "./purchase";
+import topUps from "./top-ups";
 import upgradeRequests from "./upgrade-requests";
 import usageConfiguration from "./usage-configuration";
 
@@ -24,7 +26,9 @@ app.route("/awu-pool-summary", awuPoolSummary);
 app.route("/members-seats", membersSeats);
 app.route("/members-usage", membersUsage);
 app.route("/my-usage", myUsage);
+app.route("/my-usage-analytics", myUsageAnalytics);
 app.route("/purchase", purchase);
+app.route("/top-ups", topUps);
 app.route("/upgrade-requests", upgradeRequests);
 app.route("/usage-configuration", usageConfiguration);
 

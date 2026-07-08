@@ -19,7 +19,7 @@ export const consultingConfig: IndustryPageConfig = {
   hero: {
     chip: {
       label: "Consulting Firms",
-      color: "blue",
+      color: "highlight",
       icon: BarChart01,
     },
     title: (

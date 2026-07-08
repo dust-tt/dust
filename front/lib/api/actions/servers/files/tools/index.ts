@@ -4,6 +4,7 @@ import {
   FILES_COPY_ACTION_NAME,
   FILES_CREATE_ACTION_NAME,
   FILES_DELETE_ACTION_NAME,
+  FILES_EDIT_ACTION_NAME,
   FILES_EXTRACT_TEXT_ACTION_NAME,
   FILES_GREP_ACTION_NAME,
   FILES_LIST_ACTION_NAME,
@@ -16,6 +17,7 @@ import { catHandler } from "@app/lib/api/actions/servers/files/tools/cat";
 import { copyHandler } from "@app/lib/api/actions/servers/files/tools/copy";
 import { createHandler } from "@app/lib/api/actions/servers/files/tools/create";
 import { deleteHandler } from "@app/lib/api/actions/servers/files/tools/delete";
+import { editHandler } from "@app/lib/api/actions/servers/files/tools/edit";
 import { extractTextHandler } from "@app/lib/api/actions/servers/files/tools/extract_text";
 import { grepHandler } from "@app/lib/api/actions/servers/files/tools/grep";
 import { listHandler } from "@app/lib/api/actions/servers/files/tools/list";
@@ -27,6 +29,7 @@ const HANDLERS = {
   [FILES_CAT_ACTION_NAME]: catHandler,
   [FILES_COPY_ACTION_NAME]: copyHandler,
   [FILES_CREATE_ACTION_NAME]: createHandler,
+  [FILES_EDIT_ACTION_NAME]: editHandler,
   [FILES_UPLOAD_FROM_URL_ACTION_NAME]: uploadFromUrlHandler,
   [FILES_DELETE_ACTION_NAME]: deleteHandler,
   [FILES_EXTRACT_TEXT_ACTION_NAME]: extractTextHandler,

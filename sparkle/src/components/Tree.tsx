@@ -62,10 +62,10 @@ export function Tree({
     <>
       <div
         className={cn(
-          "s-flex s-flex-col s-gap-0.5",
-          overflowVisible ? "s-overflow-visible" : "s-overflow-hidden",
+          "flex flex-col gap-0.5",
+          overflowVisible ? "overflow-visible" : "overflow-hidden",
           isBoxed &&
-            "s-rounded-xl s-border s-border-border s-bg-muted-background s-px-3 s-py-2 dark:s-border-border-night dark:s-bg-muted-background-night",
+            "rounded-xl border border-border bg-muted-background px-3 py-2",
           className
         )}
       >
@@ -73,7 +73,7 @@ export function Tree({
         {isLoading && (
           // add the spinner below modifiedChildren to keep the layout
           // thus preventing re-render in case of pagination
-          <div className={cn("s-flex s-justify-center s-py-2")}>
+          <div className={cn("flex justify-center py-2")}>
             <Spinner size="xs" />
           </div>
         )}
@@ -83,16 +83,11 @@ export function Tree({
 }
 
 const treeItemStyleClasses = {
-  base: "s-group/tree s-flex s-cursor-default s-flex-row s-items-center s-gap-2 s-h-9",
-  isNavigatableBase: "s-rounded-xl s-pl-1.5 s-pr-3 s-ease-out s-cursor-pointer",
-  isNavigatableUnselected: cn(
-    "s-bg-sidebar-foreground/0 dark:s-bg-sidebar-foreground-night/0",
-    "hover:s-bg-sidebar-foreground dark:hover:s-bg-sidebar-foreground-night"
-  ),
-  isNavigatableSelected: cn(
-    "s-font-medium",
-    "s-bg-sidebar-foreground dark:s-bg-sidebar-foreground-night"
-  ),
+  base: "group/tree flex cursor-default flex-row items-center gap-2 h-9",
+  isNavigatableBase:
+    "rounded-xl pl-1.5 pr-3 cursor-pointer transition-colors duration-150 motion-reduce:transition-none",
+  isNavigatableUnselected: cn("bg-hover/0", "hover:bg-hover"),
+  isNavigatableSelected: cn("font-medium", "bg-selected"),
 };
 
 interface TreeItemProps {
@@ -134,7 +129,7 @@ Tree.Item = React.forwardRef<
       type = "node",
       className = "",
       labelClassName = "",
-      tailwindIconTextColor = "s-text-muted-foreground dark:s-text-muted-foreground-night",
+      tailwindIconTextColor = "text-muted-foreground",
       visual,
       checkbox,
       onChevronClick,
@@ -207,7 +202,7 @@ Tree.Item = React.forwardRef<
           className={cn(
             treeItemStyleClasses.base,
             onItemClick || checkbox?.onCheckedChange || canExpand
-              ? "s-cursor-pointer"
+              ? "cursor-pointer"
               : "",
             isNavigatable ? treeItemStyleClasses.isNavigatableBase : "",
             isNavigatable
@@ -265,10 +260,8 @@ Tree.Item = React.forwardRef<
               }}
             />
           )}
-          {type === "leaf" && (
-            <div className="s-w-[24px] s-flex-shrink-0"></div>
-          )}
-          {checkbox && <Checkbox {...checkbox} size="xs" />}
+          {type === "leaf" && <div className="w-[24px] flex-shrink-0"></div>}
+          {checkbox && <Checkbox {...checkbox} />}
           <Icon visual={visual} size="sm" className={tailwindIconTextColor} />
           {isTruncated ? (
             <TooltipProvider>
@@ -277,7 +270,7 @@ Tree.Item = React.forwardRef<
                   <div
                     ref={labelRef}
                     className={cn(
-                      "s-font-medium s-truncate s-text-sm s-text-primary dark:s-text-primary-night",
+                      "font-medium truncate text-sm text-primary",
                       labelClassName
                     )}
                   >
@@ -295,7 +288,7 @@ Tree.Item = React.forwardRef<
             <div
               ref={labelRef}
               className={cn(
-                "s-font-medium s-truncate s-text-sm s-text-primary dark:s-text-primary-night",
+                "font-medium truncate text-sm text-primary",
                 labelClassName
               )}
             >
@@ -305,9 +298,9 @@ Tree.Item = React.forwardRef<
           {actions && (
             <div
               className={cn(
-                "s-flex s-grow s-gap-2",
+                "flex grow gap-2",
                 areActionsFading &&
-                  "s-transform s-opacity-0 s-duration-300 group-hover/tree:s-opacity-100"
+                  "transform opacity-0 duration-300 group-hover/tree:opacity-100"
               )}
             >
               {actions}
@@ -315,7 +308,7 @@ Tree.Item = React.forwardRef<
           )}
         </div>
         {React.Children.count(childrenToRender) > 0 && (
-          <div className="s-pl-4">{childrenToRender}</div>
+          <div className="pl-4">{childrenToRender}</div>
         )}
       </>
     );
@@ -331,9 +324,9 @@ Tree.Empty = function ({ label, onItemClick }: TreeEmptyProps) {
   return (
     <div
       className={cn(
-        "s-copy-sm s-py-1.5 s-pl-6 s-italic",
-        "s-text-muted-foreground dark:s-text-muted-foreground-night",
-        onItemClick ? "s-cursor-pointer" : ""
+        "copy-sm py-1.5 pl-6 italic",
+        "text-muted-foreground",
+        onItemClick ? "cursor-pointer" : ""
       )}
       onClick={onItemClick}
     >

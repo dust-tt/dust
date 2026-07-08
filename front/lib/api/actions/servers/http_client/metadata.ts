@@ -57,6 +57,8 @@ export const HTTP_CLIENT_TOOLS_METADATA = createToolsRecord({
       running: "Sending HTTP request",
       done: "Send HTTP request",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
 });
 
@@ -84,6 +86,8 @@ export const HTTP_CLIENT_SERVER = {
     description: t.description,
     inputSchema: zodToJsonSchema(z.object(t.schema)) as JSONSchema,
     displayLabels: t.displayLabels,
+    toolCostCategory: t.toolCostCategory,
+    freeUsage: t.freeUsage,
   })),
   tools_stakes: Object.fromEntries(
     Object.values(ALL_HTTP_CLIENT_TOOLS_METADATA).map((t) => [t.name, t.stake])

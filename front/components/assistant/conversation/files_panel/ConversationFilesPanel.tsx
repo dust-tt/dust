@@ -14,7 +14,7 @@ import { isFileAttachmentType } from "@app/lib/api/assistant/conversation/attach
 import { downloadFile } from "@app/lib/swr/files";
 import type { FileSystemFileEntry } from "@app/types/api/file_system/types";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
-import { isInteractiveContentType } from "@app/types/files";
+import { isInteractiveContentType, opensInSidePanel } from "@app/types/files";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
   Button,
@@ -71,6 +71,11 @@ export function ConversationFilesPanel({
     }) => {
       if (isInteractiveContentType(contentType)) {
         openPanel({ type: "interactive_content", fileId });
+      } else if (opensInSidePanel(contentType) && filePath) {
+        // Some formats (e.g. presentations) open in the resizable right panel
+        // like frames, rather than the cramped file preview modal. Preview
+        // relies on the path-based conversion route, so a file path is required.
+        openPanel({ type: "file_preview", filePath });
       } else {
         openFilePreview({
           fileId,
@@ -172,7 +177,7 @@ export function ConversationFilesPanel({
         <div className="flex h-panel flex-col">
           <AppLayoutTitle>
             <div className="flex h-full items-center justify-between">
-              <span className="text-sm font-semibold text-foreground dark:text-foreground-night">
+              <span className="text-sm font-semibold text-foreground">
                 Working Files
               </span>
               <Button

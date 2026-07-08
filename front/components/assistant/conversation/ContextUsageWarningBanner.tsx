@@ -30,7 +30,7 @@ export const ContextUsageWarningBanner = ({
           Conversation context is almost full
         </span>
         {isCompacting ? (
-          <span className="copy-sm shrink-0 text-muted-foreground dark:text-muted-foreground-night">
+          <span className="copy-sm shrink-0 text-muted-foreground">
             Compacting
           </span>
         ) : (

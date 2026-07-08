@@ -575,6 +575,7 @@ export interface WorkspaceMetadata {
   webSearchProvider?: WebSearchProvider;
   webBrowseProvider?: WebBrowseProvider;
   workspaceDefaultAgentId?: string;
+  slackPersonalAllowFooterRemoval?: boolean;
 }
 
 export async function updateWorkspaceMetadata(

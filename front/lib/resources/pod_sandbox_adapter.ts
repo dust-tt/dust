@@ -8,10 +8,14 @@ import {
 } from "@app/lib/resources/sandbox_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { SandboxOwnerModel } from "@app/lib/resources/storage/models/sandbox";
+import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { withTransaction } from "@app/lib/utils/sql_utils";
+import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import assert from "assert";
-import type { Transaction } from "sequelize";
+import { Op, type Transaction } from "sequelize";
+
+const SANDBOX_OWNER_LOOKUP_CONCURRENCY = 4;
 
 // Pods are project spaces, but SpaceResource cannot import SandboxResource
 // without creating an import cycle. Keep this as a thin owner adapter rather
@@ -187,5 +191,53 @@ export class PodSandboxAdapter {
       auth,
       this.toSandboxLifecycleOwner(auth, pod)
     );
+  }
+
+  static async dangerouslyFetchPodModelIdsBySandboxes(
+    sandboxes: Pick<SandboxResource, "id" | "workspaceId">[]
+  ): Promise<Map<ModelId, ModelId>> {
+    if (sandboxes.length === 0) {
+      return new Map();
+    }
+
+    const sandboxModelIdsByWorkspaceModelId = new Map<ModelId, ModelId[]>();
+    for (const sandbox of sandboxes) {
+      const sandboxModelIds =
+        sandboxModelIdsByWorkspaceModelId.get(sandbox.workspaceId) ?? [];
+      sandboxModelIds.push(sandbox.id);
+      sandboxModelIdsByWorkspaceModelId.set(
+        sandbox.workspaceId,
+        sandboxModelIds
+      );
+    }
+
+    const rows = (
+      await concurrentExecutor(
+        [...sandboxModelIdsByWorkspaceModelId.entries()],
+        async ([workspaceModelId, sandboxModelIds]) =>
+          SandboxOwnerModel.findAll({
+            where: {
+              workspaceId: workspaceModelId,
+              spaceId: {
+                [Op.ne]: null,
+              },
+              sandboxId: {
+                [Op.in]: sandboxModelIds,
+              },
+            },
+            attributes: ["sandboxId", "spaceId"],
+          }),
+        { concurrency: SANDBOX_OWNER_LOOKUP_CONCURRENCY }
+      )
+    ).flat();
+
+    const podModelIdsBySandboxModelId = new Map<ModelId, ModelId>();
+    for (const row of rows) {
+      if (row.spaceId !== null) {
+        podModelIdsBySandboxModelId.set(row.sandboxId, row.spaceId);
+      }
+    }
+
+    return podModelIdsBySandboxModelId;
   }
 }

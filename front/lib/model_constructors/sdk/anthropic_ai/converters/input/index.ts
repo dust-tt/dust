@@ -4,6 +4,7 @@ import type {
   Model,
   TextBlockParam,
 } from "@anthropic-ai/sdk/resources/messages/messages";
+import { stripUnreplayableToolSearchBlocks } from "@app/lib/api/llm/clients/anthropic/utils/tool_search_passthrough";
 import type { Client } from "@app/lib/model_constructors/client";
 import type { AnthropicInputConfig } from "@app/lib/model_constructors/providers/anthropic/inputConfig";
 import {
@@ -11,6 +12,7 @@ import {
   TOOL_SEARCH_INSTRUCTION,
 } from "@app/lib/model_constructors/sdk/anthropic_ai/converters/input/tool_search";
 import {
+  assistantProviderPassthroughMessageToBlocks,
   assistantReasoningMessageToThinkingBlocks,
   assistantTextMessageToTextBlock,
   assistantToolCallRequestToToolUseBlock,
@@ -25,6 +27,7 @@ import {
   toolSpecsToAnthropicAITools,
   userTextMessageToTextBlock,
 } from "@app/lib/model_constructors/sdk/anthropic_ai/converters/input/utils";
+import { toToolChoiceInput } from "@app/lib/model_constructors/types/input/configuration";
 import type {
   Payload,
   SystemTextMessage,
@@ -52,6 +55,8 @@ export function WithAnthropicAIInputConverter<
       assistantReasoningMessageToThinkingBlocks;
     assistantToolCallRequestToToolUseBlock =
       assistantToolCallRequestToToolUseBlock;
+    assistantProviderPassthroughMessageToBlocks =
+      assistantProviderPassthroughMessageToBlocks;
     reasoningToThinkingConfig = reasoningToThinkingConfig;
     modelIdToApiModelId = (modelId: ModelId): Model => modelId;
 
@@ -75,6 +80,7 @@ export function WithAnthropicAIInputConverter<
         temperature,
         reasoning,
         forceTool,
+        toolSearchEnabled,
         outputFormat,
       } = config;
 
@@ -89,19 +95,31 @@ export function WithAnthropicAIInputConverter<
       // Build the tools first so the prompt reflects what is actually sent: the
       // tool search instruction is appended only when the search tool is in the
       // request, as a trailing block outside the cached system prefix.
-      const anthropicTools = toolSpecsToAnthropicAITools(tools, { forceTool });
+      const anthropicTools = toolSpecsToAnthropicAITools(tools, {
+        forceTool,
+        toolSearchEnabled: toolSearchEnabled ?? false,
+      });
+
       const system = this.systemMessagesToSystemParam(conversation.system);
+
+      const renderedMessages = await this.conversationToMessages(conversation);
+      const messages = stripUnreplayableToolSearchBlocks(renderedMessages, {
+        toolSearchInRequest: includesToolSearchTool(anthropicTools),
+      });
 
       return {
         model: this.modelIdToApiModelId(this.constructor.modelId),
         max_tokens: this.constructor.maxOutputTokens,
-        messages: await this.conversationToMessages(conversation),
+        messages,
         system: includesToolSearchTool(anthropicTools)
           ? [...system, { type: "text", text: TOOL_SEARCH_INSTRUCTION }]
           : system,
         thinking: thinkingConfig.thinking,
         tools: anthropicTools,
-        tool_choice: forceToolNameToToolChoice(tools, forceTool),
+        tool_choice: forceToolNameToToolChoice(
+          tools,
+          toToolChoiceInput(config)
+        ),
         temperature,
         ...(Object.keys(outputConfig).length > 0
           ? { output_config: outputConfig }

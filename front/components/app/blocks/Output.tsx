@@ -109,15 +109,19 @@ function ValueViewer({
       {isExpandable(value) ? (
         <>
           <div className="flex flex-row items-center text-sm">
-            <div className="flex-initial cursor-pointer text-primary-500 dark:text-primary-500-night">
+            <div className="flex-initial cursor-pointer text-primary-500">
               {expanded ? (
                 <div onClick={() => setExpanded(false)}>
                   <span className="flex flex-row items-center">
                     <ChevronDownIcon className="mt-0.5 h-4 w-4" />
                     {k != null ? (
-                      <span className="mr-1 font-bold text-gray-700">{k}:</span>
+                      <span className="mr-1 font-bold text-foreground">
+                        {k}:
+                      </span>
                     ) : null}
-                    <span className="text-gray-400">{summary(value)}</span>
+                    <span className="text-muted-foreground">
+                      {summary(value)}
+                    </span>
                   </span>
                 </div>
               ) : (
@@ -125,9 +129,13 @@ function ValueViewer({
                   <span className="flex flex-row items-center">
                     <ChevronRightIcon className="mt-0.5 h-4 w-4" />
                     {k != null ? (
-                      <span className="mr-1 font-bold text-gray-700">{k}:</span>
+                      <span className="mr-1 font-bold text-foreground">
+                        {k}:
+                      </span>
                     ) : null}
-                    <span className="text-gray-400">{summary(value)}</span>
+                    <span className="text-muted-foreground">
+                      {summary(value)}
+                    </span>
                   </span>
                 </div>
               )}
@@ -144,9 +152,9 @@ function ValueViewer({
           ) : null}
         </>
       ) : (
-        <div className="ml-2 flex text-sm text-gray-600">
+        <div className="ml-2 flex text-sm text-muted-foreground">
           {k != null ? (
-            <span className="ml-2 mr-1 font-bold text-gray-700">{k}:</span>
+            <span className="ml-2 mr-1 font-bold text-foreground">{k}:</span>
           ) : null}
           <span className="whitespace-pre-wrap">
             {typeof value === "string" ? (
@@ -199,30 +207,26 @@ function Error({ error }: { error: string }) {
   return (
     <div>
       <div className="flex flex-row items-center text-sm">
-        <div className="flex-initial cursor-pointer text-primary-500 dark:text-primary-500-night">
+        <div className="flex-initial cursor-pointer text-primary-500">
           {expanded ? (
             <div onClick={() => setExpanded(false)}>
               <span className="flex flex-row items-center">
                 <ChevronDownIcon className="mt-0.5 h-4 w-4" />
-                <span className="copy-sm italic text-primary-500 dark:text-primary-500-night">
-                  error
-                </span>
+                <span className="copy-sm italic text-primary-500">error</span>
               </span>
             </div>
           ) : (
             <div onClick={() => setExpanded(true)}>
               <span className="flex flex-row items-center">
                 <ChevronRightIcon className="mt-0.5 h-4 w-4" />
-                <span className="copy-sm italic text-primary-500 dark:text-primary-500-night">
-                  error
-                </span>
+                <span className="copy-sm italic text-primary-500">error</span>
               </span>
             </div>
           )}
         </div>
       </div>
       {expanded ? (
-        <div className="dark:text-warning-night ml-4 flex text-sm text-warning">
+        <div className="ml-4 flex text-sm text-warning">
           <div className="flex-auto">{error.split(" (sandboxed.js")[0]}</div>
         </div>
       ) : null}
@@ -297,7 +301,7 @@ export function InnerLogs({ trace }: { trace: TraceType }) {
   return (
     <div className="flex flex-row">
       <div className="flex flex-initial">
-        <InformationCircleIcon className="mt-0.5 h-4 w-4 text-primary-500 dark:text-primary-500-night" />
+        <InformationCircleIcon className="mt-0.5 h-4 w-4 text-primary-500" />
       </div>
       <div className="flex flex-1 font-mono">
         <ValueViewer value={logs} topLevel={true} k={null} block={null} />
@@ -341,9 +345,7 @@ const JsonCopyLink = ({ value }: { value: string }) => {
   return (
     <div className="items-top mr-3 flex">
       {copied ? (
-        <div className="text-sm text-primary-500 dark:text-primary-500-night">
-          Copied!
-        </div>
+        <div className="text-sm text-primary-500">Copied!</div>
       ) : (
         <Button
           onClick={handleClick}
@@ -450,7 +452,7 @@ export default function Output({
         {logs ? (
           <div className="flex flex-auto flex-col">
             <div className="flex flex-row items-center text-sm">
-              <div className="flex-initial cursor-pointer text-primary-500 dark:text-primary-500-night">
+              <div className="flex-initial cursor-pointer text-primary-500">
                 <div onClick={() => setExpandedLog(!expandedLog)}>
                   <span className="flex flex-row items-center">
                     {expandedLog ? (
@@ -458,7 +460,7 @@ export default function Output({
                     ) : (
                       <ChevronRightIcon className="mt-0.5 h-4 w-4" />
                     )}
-                    <span className="text-sm text-primary-500 dark:text-primary-500-night">
+                    <span className="text-sm text-primary-500">
                       [{" "}
                       <span className="text font-bold">
                         {logs} {logs === 1 ? "log" : "logs"}
@@ -511,7 +513,7 @@ export default function Output({
         ) : null}
         <div className="flex flex-auto flex-col">
           <div className="flex flex-row items-center text-sm">
-            <div className="w-full flex-initial cursor-pointer text-primary-500 dark:text-primary-500-night">
+            <div className="w-full flex-initial cursor-pointer text-primary-500">
               <div className="flex w-full flex-row items-center justify-between">
                 <div
                   className="flex flex-row items-center"
@@ -522,7 +524,7 @@ export default function Output({
                   ) : (
                     <ChevronRightIcon className="mt-0.5 h-4 w-4" />
                   )}
-                  <span className="text-sm text-primary-500 dark:text-primary-500-night">
+                  <span className="text-sm text-primary-500">
                     [{" "}
                     <span className="font-bold text-success">
                       {successes} {successes === 1 ? "success" : "successes"}

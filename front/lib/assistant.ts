@@ -1,9 +1,5 @@
-import {
-  isCreditPricedPlanPrefix,
-  isDustCompanyPlan,
-  isEnterprisePlanPrefix,
-  isUpgraded,
-} from "@app/lib/plans/plan_codes";
+import { isUpgraded } from "@app/lib/plans/plan_codes";
+import { SUPPORTED_MODEL_CONFIGS } from "@app/types/assistant/models/models";
 import { isByokProviderId } from "@app/types/assistant/models/providers";
 import type {
   ModelConfigurationType,
@@ -13,13 +9,12 @@ import type { PlanType } from "@app/types/plan";
 import type { RegionType } from "@app/types/region";
 import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
 
-export function isPlanForAdvancedModels(plan: PlanType | null): boolean {
-  return (
-    plan !== null &&
-    (isEnterprisePlanPrefix(plan.code) ||
-      isCreditPricedPlanPrefix(plan.code) ||
-      isDustCompanyPlan(plan.code))
-  );
+export function isAdvancedModel(m: ModelConfigurationType): boolean {
+  return m.availableIfOneOf?.plansWithAdvancedModels === true;
+}
+
+export function getAdvancedModels(): ModelConfigurationType[] {
+  return SUPPORTED_MODEL_CONFIGS.filter(isAdvancedModel);
 }
 
 // Returns true if the model is available to the workspace for build.
@@ -37,7 +32,11 @@ export function isModelAvailable(
     region: RegionType;
   }
 ) {
-  if (m.largeModel && !isUpgraded(plan)) {
+  // Otherwise, we filter too early.
+  const includeAdvancedModelInPicker =
+    featureFlags.includes("models_picker") && isAdvancedModel(m);
+
+  if (m.largeModel && !isUpgraded(plan) && !includeAdvancedModelInPicker) {
     return false;
   }
 
@@ -55,7 +54,10 @@ export function isModelAvailable(
 
   const { plansWithAdvancedModels, featureFlag } = m.availableIfOneOf;
 
-  if (plansWithAdvancedModels === true && isPlanForAdvancedModels(plan)) {
+  if (
+    plansWithAdvancedModels === true &&
+    (plan?.hasAdvancedModelAccess || includeAdvancedModelInPicker)
+  ) {
     return true;
   }
 

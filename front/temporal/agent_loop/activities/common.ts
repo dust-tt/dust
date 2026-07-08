@@ -656,7 +656,7 @@ export async function finalizeCancellation(
       `Failed to get run agent data: ${runAgentDataRes.error.message}`
     );
   }
-  const { auth, agentConfiguration, agentMessage, conversation } =
+  const { auth, agentConfiguration, model, agentMessage, conversation } =
     runAgentDataRes.value;
 
   // get the last step of the agent message
@@ -665,7 +665,7 @@ export async function finalizeCancellation(
   const contentParser = new AgentMessageContentParser(
     agentConfiguration,
     agentMessage.sId,
-    getDelimitersConfiguration({ agentConfiguration })
+    getDelimitersConfiguration({ model })
   );
 
   // Flush pending tokens from the content parser, if any.
@@ -723,7 +723,7 @@ export async function finalizeInterruption(
       `Failed to get run agent data: ${runAgentDataRes.error.message}`
     );
   }
-  const { auth, agentConfiguration, agentMessage, conversation } =
+  const { auth, agentConfiguration, model, agentMessage, conversation } =
     runAgentDataRes.value;
 
   // The message may have been finalized by another path already (e.g. an orphaned activity
@@ -747,7 +747,7 @@ export async function finalizeInterruption(
   const contentParser = new AgentMessageContentParser(
     agentConfiguration,
     agentMessage.sId,
-    getDelimitersConfiguration({ agentConfiguration })
+    getDelimitersConfiguration({ model })
   );
 
   for await (const tokenEvent of contentParser.flushTokens()) {
@@ -831,5 +831,73 @@ export async function finalizeGracefulStop(
       conversationId: conversation.sId,
     },
     "Agent generation gracefully stopped"
+  );
+}
+
+const CREDITS_EXHAUSTED_ERROR_TITLE = "Workspace out of credits";
+
+export function creditsExhaustedMessage(auth: Authenticator): string {
+  return auth.isAdmin()
+    ? "Your workspace has run out of credits. Please purchase more credits to continue using Dust."
+    : "Your workspace has run out of credits. Please contact your administrator to purchase more credits.";
+}
+
+/**
+ * Credit stop: publishes the retryable `credits_exhausted` agent error
+ *
+ * TODO (Issue #8715): We will iterate on this to allow for users to continue the step after a resumable pause.
+ * Currently, this is categorized as an error which is not ideal.
+ */
+export async function finalizeCreditStop(
+  authType: AuthenticatorType,
+  agentLoopArgs: AgentLoopArgs
+): Promise<void> {
+  const runAgentDataRes = await getAgentLoopData(authType, agentLoopArgs);
+  if (runAgentDataRes.isErr()) {
+    if (isAgentLoopDataSoftDeleteError(runAgentDataRes.error)) {
+      logger.info(
+        {
+          conversationId: agentLoopArgs.conversationId,
+          agentMessageId: agentLoopArgs.agentMessageId,
+        },
+        "Message or conversation was deleted, exiting"
+      );
+      return;
+    }
+    throw new Error(
+      `Failed to get run agent data: ${runAgentDataRes.error.message}`
+    );
+  }
+  const { auth, agentConfiguration, agentMessage, conversation } =
+    runAgentDataRes.value;
+
+  const step = maxBy(agentMessage.contents, "step")?.step ?? 0;
+
+  await updateResourceAndPublishEvent(auth, {
+    event: {
+      type: "agent_error",
+      created: Date.now(),
+      configurationId: agentConfiguration.sId,
+      messageId: agentMessage.sId,
+      error: {
+        code: "credits_exhausted",
+        message: creditsExhaustedMessage(auth),
+        metadata: {
+          category: "credits_exhausted",
+          errorTitle: CREDITS_EXHAUSTED_ERROR_TITLE,
+        },
+      },
+      runIds: agentLoopArgs.dustRunIds ?? [],
+    },
+    agentMessage,
+    conversation,
+    step,
+  });
+  logger.info(
+    {
+      agentMessageId: agentMessage.sId,
+      conversationId: conversation.sId,
+    },
+    "[CreditCheck] agent loop stopped: workspace credit pool exhausted"
   );
 }

@@ -7,7 +7,7 @@ import { zodToJsonSchema } from "zod-to-json-schema";
 export const FATHOM_TOOLS_METADATA = createToolsRecord({
   list_meetings: {
     description:
-      "List Fathom video meeting recordings with optional filters for date range, team, attendee domain, recorded-by email, and CRM data. Returns summaries, action items, and metadata.",
+      "List and browse your Fathom meeting and call recordings with optional filters for date range, team, attendee domain, recorded-by email, and CRM data. Returns each Fathom recording with its summary, action items, and metadata.",
     schema: {
       cursor: z
         .string()
@@ -38,7 +38,7 @@ export const FATHOM_TOOLS_METADATA = createToolsRecord({
         .array(z.string())
         .optional()
         .describe(
-          "Filter by company domains in the calendar invitee list (exact match). Pass multiple domains to return meetings where any appear, e.g. ['acme.com', 'client.com']."
+          "Filter by company domains in the calendar invitee list (exact match), e.g. ['acme.com', 'client.com']."
         ),
       calendar_invitees_domains_type: z
         .enum(["all", "only_internal", "one_or_more_external"])
@@ -50,14 +50,12 @@ export const FATHOM_TOOLS_METADATA = createToolsRecord({
         .array(z.string().email())
         .optional()
         .describe(
-          "Filter by email addresses of users who recorded meetings. Returns meetings recorded by any of the specified users, e.g. ['ceo@acme.com', 'pm@acme.com']."
+          "Filter by email addresses of users who recorded the meeting, e.g. ['ceo@acme.com', 'pm@acme.com']."
         ),
       teams: z
         .array(z.string())
         .optional()
-        .describe(
-          "Filter by team names. Returns meetings that belong to any of the specified teams, e.g. ['Sales', 'Engineering']."
-        ),
+        .describe("Filter by team names, e.g. ['Sales', 'Engineering']."),
       include_action_items: z
         .boolean()
         .optional()
@@ -72,7 +70,7 @@ export const FATHOM_TOOLS_METADATA = createToolsRecord({
         .boolean()
         .optional()
         .describe(
-          "Fetch the AI-generated summary for each meeting via the recordings API. Most useful combined with recording_id."
+          "Fetch the AI-generated summary of each Fathom recording. Most useful combined with recording_id."
         ),
     },
     stake: "never_ask",
@@ -80,23 +78,25 @@ export const FATHOM_TOOLS_METADATA = createToolsRecord({
       running: "Listing Fathom meetings",
       done: "List Fathom meetings",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   get_transcript: {
     description:
-      "Get the full transcript of a Fathom meeting recording. Use recording_id from list_meetings. Large transcripts are saved as conversation files—use conversation_files__cat with offset/limit to read in chunks.",
+      "Get the full word-for-word transcript of a Fathom meeting. Use recording_id from list_meetings. Large transcripts are saved as conversation files—use conversation_files__cat with offset/limit to read in chunks.",
     schema: {
       recording_id: z
         .number()
         .int()
-        .describe(
-          "The numeric recording ID from list_meetings (e.g. recordingId field)."
-        ),
+        .describe("The numeric ID of the meeting to fetch the transcript for."),
     },
     stake: "never_ask",
     displayLabels: {
       running: "Getting Fathom transcript",
       done: "Get Fathom transcript",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
 });
 
@@ -118,6 +118,8 @@ export const FATHOM_SERVER = {
     description: t.description,
     inputSchema: zodToJsonSchema(z.object(t.schema)) as JSONSchema,
     displayLabels: t.displayLabels,
+    toolCostCategory: t.toolCostCategory,
+    freeUsage: t.freeUsage,
   })),
   tools_stakes: Object.fromEntries(
     Object.values(FATHOM_TOOLS_METADATA).map((t) => [t.name, t.stake])

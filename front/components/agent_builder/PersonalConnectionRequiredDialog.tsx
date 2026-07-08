@@ -199,7 +199,7 @@ export function PersonalConnectionRequiredDialog({
                       </div>
                       <div>
                         {isAlreadyConnected ? (
-                          <Chip color="green" label="Connected" />
+                          <Chip color="success" label="Connected" />
                         ) : (
                           <Button
                             icon={CloudArrowLeftRight}

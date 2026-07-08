@@ -24,6 +24,8 @@ export const SNOWFLAKE_TOOLS_METADATA = createToolsRecord({
       running: "Listing Snowflake databases",
       done: "List Snowflake databases",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   [SNOWFLAKE_LIST_SCHEMAS_TOOL_NAME]: {
     description: "List all schemas within a specified Snowflake database.",
@@ -37,6 +39,8 @@ export const SNOWFLAKE_TOOLS_METADATA = createToolsRecord({
       running: "Listing Snowflake schemas",
       done: "List Snowflake schemas",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   [SNOWFLAKE_LIST_TABLES_TOOL_NAME]: {
     description:
@@ -52,6 +56,8 @@ export const SNOWFLAKE_TOOLS_METADATA = createToolsRecord({
       running: "Listing Snowflake tables",
       done: "List Snowflake tables",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   [SNOWFLAKE_DESCRIBE_TABLE_TOOL_NAME]: {
     description:
@@ -66,6 +72,8 @@ export const SNOWFLAKE_TOOLS_METADATA = createToolsRecord({
       running: "Describing Snowflake table",
       done: "Describe Snowflake table",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   [SNOWFLAKE_DESCRIBE_SEMANTIC_VIEW_TOOL_NAME]: {
     description: `Get the structure (dimensions and metrics) of a Snowflake semantic view. Use this instead of ${SNOWFLAKE_DESCRIBE_TABLE_TOOL_NAME} when the object kind is SEMANTIC_VIEW.`,
@@ -81,6 +89,8 @@ export const SNOWFLAKE_TOOLS_METADATA = createToolsRecord({
       running: "Describing Snowflake semantic view",
       done: "Describe Snowflake semantic view",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   [SNOWFLAKE_QUERY_TOOL_NAME]: {
     description: `Execute a read-only SQL SELECT query against Snowflake to analyze data, answer questions, calculate metrics such as revenue, or retrieve rows. Write operations are not permitted. Before writing a query, use ${SNOWFLAKE_LIST_DATABASES_TOOL_NAME}, ${SNOWFLAKE_LIST_SCHEMAS_TOOL_NAME}, ${SNOWFLAKE_LIST_TABLES_TOOL_NAME}, and ${SNOWFLAKE_DESCRIBE_TABLE_TOOL_NAME} (or ${SNOWFLAKE_DESCRIBE_SEMANTIC_VIEW_TOOL_NAME} for semantic views) to explore the schema when database, schema, table, view, or column names are unknown.`,
@@ -115,6 +125,8 @@ export const SNOWFLAKE_TOOLS_METADATA = createToolsRecord({
       running: "Executing Snowflake query",
       done: "Execute Snowflake query",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
 });
 
@@ -136,6 +148,8 @@ export const SNOWFLAKE_SERVER = {
     description: t.description,
     inputSchema: zodToJsonSchema(z.object(t.schema)) as JSONSchema,
     displayLabels: t.displayLabels,
+    toolCostCategory: t.toolCostCategory,
+    freeUsage: t.freeUsage,
   })),
   tools_stakes: Object.fromEntries(
     Object.values(SNOWFLAKE_TOOLS_METADATA).map((t) => [t.name, t.stake])

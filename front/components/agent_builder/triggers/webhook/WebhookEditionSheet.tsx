@@ -1,5 +1,6 @@
 import type { AgentBuilderWebhookTriggerType } from "@app/components/agent_builder/AgentBuilderFormContext";
 import { RecentWebhookRequests } from "@app/components/agent_builder/triggers/RecentWebhookRequests";
+import { TriggerPodSelector } from "@app/components/agent_builder/triggers/TriggerPodSelector";
 import type { TriggerViewsSheetFormValues } from "@app/components/agent_builder/triggers/triggerViewsSheetFormSchema";
 import { WebhookEditionFilters } from "@app/components/agent_builder/triggers/webhook/WebhookEditionFilters";
 import type { TriggerExecutionMode } from "@app/types/assistant/triggers";
@@ -78,7 +79,6 @@ function WebhookEditionStatusToggle({
       <div className="flex flex-row items-center gap-2">
         <span className="w-16">{isEnabled ? "Enabled" : "Disabled"}</span>
         <SliderToggle
-          size="xs"
           disabled={!isEditor}
           selected={isEnabled}
           onClick={() => setStatus(isEnabled ? "disabled" : "enabled")}
@@ -157,7 +157,7 @@ function WebhookEditionEventSelector({
   return (
     <div className="flex flex-col space-y-1">
       <Label htmlFor="webhook-event">Listen for</Label>
-      <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+      <p className="text-sm text-muted-foreground">
         External event that will trigger a run of this agent.
       </p>
       <DropdownMenu>
@@ -206,7 +206,6 @@ function WebhookEditionIncludePayload({
   return (
     <div className="flex items-center gap-2">
       <Checkbox
-        size="sm"
         checked={includePayload}
         onClick={() => setIncludePayload(!includePayload)}
         disabled={!isEditor}
@@ -229,7 +228,7 @@ function WebhookEditionMessageInput({
   return (
     <div className="space-y-1">
       <Label htmlFor="webhook-prompt">Message (optional)</Label>
-      <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+      <p className="text-sm text-muted-foreground">
         Message for the agent when the trigger runs.
       </p>
       <TextArea
@@ -237,6 +236,34 @@ function WebhookEditionMessageInput({
         minRows={4}
         disabled={!isEditor}
         {...field}
+      />
+    </div>
+  );
+}
+
+interface WebhookEditionPodSelectorProps {
+  isEditor: boolean;
+  owner: LightWorkspaceType;
+}
+
+function WebhookEditionPodSelector({
+  isEditor,
+  owner,
+}: WebhookEditionPodSelectorProps) {
+  const { control } = useFormContext<TriggerViewsSheetFormValues>();
+  const { field } = useController({ control, name: "webhook.spaceId" });
+
+  return (
+    <div className="space-y-1">
+      <Label>Where to create this conversation? (optional)</Label>
+      <p className="text-sm text-muted-foreground">
+        Run this trigger's conversation inside a Pod instead.
+      </p>
+      <TriggerPodSelector
+        owner={owner}
+        value={field.value}
+        onChange={field.onChange}
+        disabled={!isEditor}
       />
     </div>
   );
@@ -317,6 +344,11 @@ export function WebhookEditionSheetContent({
         <WebhookEditionExecutionLimit
           executionMode={trigger?.executionMode ?? "fair_use"}
         />
+
+        <Separator />
+
+        <WebhookEditionPodSelector isEditor={isEditor} owner={owner} />
+
         {trigger && (
           <div className="space-y-1">
             <RecentWebhookRequests

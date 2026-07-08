@@ -251,7 +251,7 @@ export function MarkdownFilePreview({
           />
         </div>
       )}
-      <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg bg-muted-background dark:bg-muted-background-night">
+      <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg bg-muted-background">
         <div
           className={cn(
             "flex min-h-0 flex-1 flex-col p-4",

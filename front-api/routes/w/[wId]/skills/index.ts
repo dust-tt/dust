@@ -230,7 +230,7 @@ app.post(
       });
     }
 
-    const existingSkill = await SkillResource.fetchActiveByName(auth, name);
+    const existingSkill = await SkillResource.fetchByName(auth, name);
 
     if (existingSkill) {
       return apiError(ctx, {

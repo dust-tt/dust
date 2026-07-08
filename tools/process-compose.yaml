@@ -10,14 +10,12 @@
 # * process-compose (`brew install f1bonacc1/tap/process-compose`)
 # * cargo-watch     (`cargo install cargo-watch`)  -- live reload for Rust services
 #
-# The inline shell waits that mprocs.yaml used (`while [ ! -f ... ]`,
-# `until curl ...`) are now first-class `depends_on` + `readiness_probe`
-# dependencies:
-#   * sdks-js / sparkle expose a readiness probe (build output file exists).
-#   * front-api-hono, connectors and migrations depend on sdks-js being healthy.
-#   * front-spa / front-poke / marketing-site depend on sparkle being healthy.
-#   * front-workers depends on front-api-hono being healthy -- it now starts
-#     automatically, so the old "select front-workers and press r" step is gone.
+# Namespace ordering (lower = more visible in TUI):
+#   00-front    — main app: API, workers, connectors, SPAs
+#   20-core     — Rust services (core-api, sqlite-workers, oauth)
+#   40-sdk      — build watchers (sparkle, sdks-js) — readiness gates for 00-front
+#   90-optional — disabled-by-default extras
+#   99-infra    — Docker infrastructure (postgres, redis, elasticsearch, qdrant, temporal)
 
 version: "0.5"
 
@@ -41,41 +39,88 @@ processes:
       fi
       echo "OK"
 
-  # --- Rust services (cargo watch -> live reload) -------------------------
-  # `cargo watch` recompiles and reruns on source changes, streaming plain log
-  # output into the process-compose view (no TUI). CARGO_TERM_COLOR keeps output
-  # colored since cargo otherwise disables color when stdout is not a TTY.
-  core:
-    command: "cargo watch -x 'run --bin core-api'"
-    working_dir: "${DUST_DEV_ROOT}/core"
-    namespace: core
-    environment:
-      - "CARGO_TERM_COLOR=always"
+  # ---------------------------------------------------------------------------
+  # 99-infra: Docker infrastructure
+  # Each service is split so logs and readiness probes are per-container.
+  # ---------------------------------------------------------------------------
 
-  sqlite-workers:
-    command: "cargo watch -x 'run --bin sqlite-worker'"
-    working_dir: "${DUST_DEV_ROOT}/core"
-    namespace: core
-    environment:
-      - "CARGO_TERM_COLOR=always"
-      - "CORE_API=http://localhost:3001"
-      - "IS_LOCAL_DEV=1"
-      - "DATABASES_STORE_DATABASE_URI=postgresql://dev:dev@localhost:5432/dust_databases_store"
-      - "CORE_API_KEY=soupinou"
+  infra-db:
+    command: |
+      docker compose up -d db
+      docker compose logs -f db
+    working_dir: "${DUST_DEV_ROOT}"
+    namespace: 99-infra
+    readiness_probe:
+      exec:
+        command: "nc -z localhost 5432"
+      period_seconds: 3
+      failure_threshold: 120
 
-  oauth:
-    command: "cargo watch -x 'run --bin oauth'"
-    working_dir: "${DUST_DEV_ROOT}/core"
-    namespace: core
-    environment:
-      - "CARGO_TERM_COLOR=always"
-      - "RUST_BACKTRACE=1"
+  infra-redis:
+    command: |
+      docker compose up -d redis
+      docker compose logs -f redis
+    working_dir: "${DUST_DEV_ROOT}"
+    namespace: 99-infra
+    readiness_probe:
+      exec:
+        command: "nc -z localhost 6379"
+      period_seconds: 3
+      failure_threshold: 120
 
-  # --- Build watchers (readiness gates for downstream services) -----------
+  infra-elasticsearch:
+    command: |
+      docker compose up -d elasticsearch
+      docker compose logs -f elasticsearch
+    working_dir: "${DUST_DEV_ROOT}"
+    namespace: 99-infra
+    readiness_probe:
+      exec:
+        command: "nc -z localhost 9200"
+      period_seconds: 3
+      failure_threshold: 120
+
+  infra-qdrant:
+    command: |
+      docker compose up -d qdrant_primary qdrant_secondary
+      docker compose logs -f qdrant_primary qdrant_secondary
+    working_dir: "${DUST_DEV_ROOT}"
+    namespace: 99-infra
+    readiness_probe:
+      exec:
+        command: "nc -z localhost 6333"
+      period_seconds: 3
+      failure_threshold: 120
+
+  # Temporal server + search-attribute bootstrap. Runs its own postgres and
+  # elasticsearch inside the temporal-network (no host-port conflicts with the
+  # other infra services). The readiness probe verifies search attributes are
+  # registered before front-workers and connectors start.
+  infra-temporal:
+    command: |
+      docker compose up -d
+      until nc -z localhost 7233 2>/dev/null; do sleep 2; done
+      docker compose exec -T temporal-admin-tools temporal operator search-attribute create \
+        --name connectorId --type Int \
+        --name conversationId --type Text \
+        --name workspaceId --type Text 2>/dev/null || true
+      docker compose logs -f
+    working_dir: "${DUST_DEV_ROOT}/temporal"
+    namespace: 99-infra
+    readiness_probe:
+      exec:
+        command: "docker compose -f ${DUST_DEV_ROOT}/temporal/docker-compose.yml exec -T temporal-admin-tools temporal operator search-attribute list 2>/dev/null | grep -q connectorId"
+      period_seconds: 3
+      failure_threshold: 120
+
+  # ---------------------------------------------------------------------------
+  # 40-sdk: Build watchers — readiness gates for 00-front services
+  # ---------------------------------------------------------------------------
+
   sparkle:
     command: "npm run watch"
     working_dir: "${DUST_DEV_ROOT}/sparkle"
-    namespace: sdk-and-sparkle
+    namespace: 40-sdk
     readiness_probe:
       exec:
         command: "test -f ${DUST_DEV_ROOT}/sparkle/dist/cjs/index.js"
@@ -85,34 +130,104 @@ processes:
   sdks-js:
     command: "./admin/dev.sh"
     working_dir: "${DUST_DEV_ROOT}/sdks/js"
-    namespace: sdk-and-sparkle
+    namespace: 40-sdk
     readiness_probe:
       exec:
         command: "test -f ${DUST_DEV_ROOT}/sdks/js/dist/client.esm.js.map"
       period_seconds: 1
       failure_threshold: 600
 
-  # --- Application services -----------------------------------------------
+  # ---------------------------------------------------------------------------
+  # 20-core: Rust services (cargo watch → live reload)
+  # ---------------------------------------------------------------------------
+
+  core:
+    command: "cargo watch -x 'run --bin core-api'"
+    working_dir: "${DUST_DEV_ROOT}/core"
+    namespace: 20-core
+    environment:
+      - "CARGO_TERM_COLOR=always"
+    availability:
+      restart: on_failure
+      backoff_seconds: 5
+    depends_on:
+      infra-db:
+        condition: process_healthy
+      infra-redis:
+        condition: process_healthy
+      infra-elasticsearch:
+        condition: process_healthy
+      infra-qdrant:
+        condition: process_healthy
+
+  sqlite-workers:
+    command: "cargo watch -x 'run --bin sqlite-worker'"
+    working_dir: "${DUST_DEV_ROOT}/core"
+    namespace: 20-core
+    environment:
+      - "CARGO_TERM_COLOR=always"
+      - "CORE_API=http://localhost:3001"
+      - "IS_LOCAL_DEV=1"
+      - "DATABASES_STORE_DATABASE_URI=postgresql://dev:dev@localhost:5432/dust_databases_store"
+      - "CORE_API_KEY=soupinou"
+    availability:
+      restart: on_failure
+      backoff_seconds: 5
+    depends_on:
+      infra-db:
+        condition: process_healthy
+
+  oauth:
+    command: "cargo watch -x 'run --bin oauth'"
+    working_dir: "${DUST_DEV_ROOT}/core"
+    namespace: 20-core
+    environment:
+      - "CARGO_TERM_COLOR=always"
+      - "RUST_BACKTRACE=1"
+    availability:
+      restart: on_failure
+      backoff_seconds: 5
+    depends_on:
+      infra-db:
+        condition: process_healthy
+
+  # ---------------------------------------------------------------------------
+  # 00-front: Main application services
+  # ---------------------------------------------------------------------------
+
   migrations:
     command: "npm -w front run migration:apply && npm -w connectors run migration:apply"
     working_dir: "${DUST_DEV_ROOT}"
-    namespace: front
+    namespace: 00-front
     depends_on:
       sdks-js:
+        condition: process_healthy
+      infra-db:
         condition: process_healthy
 
-  front-api-hono:
+  front-api:
     command: "npm run dev"
     working_dir: "${DUST_DEV_ROOT}/front-api"
-    namespace: front
-    depends_on:
-      sdks-js:
-        condition: process_healthy
+    namespace: 00-front
     environment:
       - "NODE_ENV=development"
       # forbid-next.cjs throws if anything loads `next` at runtime, guaranteeing
       # the Hono server (not Next) serves every request.
       - "NODE_OPTIONS=--require=./forbid-next.cjs"
+    availability:
+      restart: on_failure
+      backoff_seconds: 5
+    depends_on:
+      sdks-js:
+        condition: process_healthy
+      infra-db:
+        condition: process_healthy
+      infra-redis:
+        condition: process_healthy
+      infra-elasticsearch:
+        condition: process_healthy
+      infra-qdrant:
+        condition: process_healthy
     readiness_probe:
       http_get:
         host: localhost
@@ -125,23 +240,37 @@ processes:
   front-workers:
     command: "./admin/dev_worker.sh"
     working_dir: "${DUST_DEV_ROOT}/front"
-    namespace: front
+    namespace: 00-front
+    availability:
+      restart: on_failure
+      backoff_seconds: 5
     depends_on:
-      front-api-hono:
+      front-api:
+        condition: process_healthy
+      infra-temporal:
         condition: process_healthy
 
   connectors:
     command: "./admin/dev.sh"
     working_dir: "${DUST_DEV_ROOT}/connectors"
-    namespace: front
+    namespace: 00-front
+    availability:
+      restart: on_failure
+      backoff_seconds: 5
     depends_on:
       sdks-js:
+        condition: process_healthy
+      infra-db:
+        condition: process_healthy
+      infra-redis:
+        condition: process_healthy
+      infra-temporal:
         condition: process_healthy
 
   front-spa:
     command: "npm run dev:app"
     working_dir: "${DUST_DEV_ROOT}/front-spa"
-    namespace: front
+    namespace: 00-front
     depends_on:
       sparkle:
         condition: process_healthy
@@ -151,20 +280,21 @@ processes:
   front-poke:
     command: "npm run dev:poke"
     working_dir: "${DUST_DEV_ROOT}/front-spa"
-    namespace: front
+    namespace: 00-front
     depends_on:
       sparkle:
         condition: process_healthy
       sdks-js:
         condition: process_healthy
 
-  # --- Optional services --------------------------------------------------
-  # `disabled: true` mirrors mprocs `autostart: false`: the process is listed in
-  # the TUI / REST client and can be started on demand, but does not autostart.
+  # ---------------------------------------------------------------------------
+  # 90-optional: Disabled-by-default extras (start on demand from TUI / REST)
+  # ---------------------------------------------------------------------------
+
   marketing-site:
     command: "npm run dev -- -p 3009"
     working_dir: "${DUST_DEV_ROOT}/marketing"
-    namespace: optional
+    namespace: 90-optional
     disabled: true
     depends_on:
       sparkle:
@@ -173,55 +303,81 @@ processes:
   sparkle-storybook:
     command: "npm run storybook"
     working_dir: "${DUST_DEV_ROOT}/sparkle"
-    namespace: optional
+    namespace: 90-optional
     disabled: true
 
   sparkle-playground:
     command: "npm install && npm run dev"
     working_dir: "${DUST_DEV_ROOT}/sparkle/playground"
-    namespace: optional
+    namespace: 90-optional
     disabled: true
 
   viz:
     command: "npm run dev"
     working_dir: "${DUST_DEV_ROOT}/viz"
-    namespace: optional
+    namespace: 90-optional
     disabled: true
 
-  extension:
+  extension-chrome:
     command: "npm run dev:chrome"
     working_dir: "${DUST_DEV_ROOT}/extension"
-    namespace: optional
+    namespace: 90-optional
+    disabled: true
+
+  extension-firefox:
+    command: "npm run dev:firefox"
+    working_dir: "${DUST_DEV_ROOT}/extension"
+    namespace: 90-optional
     disabled: true
 
   ngrok:
     # Doc: https://www.notion.so/dust-tt/Runbook-Local-Setup-Slack-2ad003fc529d4144bb0ee61b7fd797c9?source=copy_link#2a728599d941807fb71dccb4addc0234
     command: "ngrok start localhost-via-https"
-    namespace: optional
+    namespace: 90-optional
     disabled: true
 
   firebase-webhook-router:
     command: "docker-compose up --build"
     working_dir: "${DUST_DEV_ROOT}/firebase-functions/webhook-router"
-    namespace: optional
+    namespace: 90-optional
     disabled: true
+
+  # apache-tika: Document text extraction (PDF, Office, etc.).
+  # front-api reads its URL from TIKA_URL (set to http://localhost:9998).
+  apache-tika:
+    command: "docker compose up apache-tika"
+    working_dir: "${DUST_DEV_ROOT}"
+    namespace: 90-optional
+    disabled: true
+
+  # kibana: Elasticsearch UI. kibana_settings (one-shot password setup) is a
+  # docker-compose dependency of kibana and starts automatically.
+  # Requires infra-elasticsearch to be running first.
+  kibana:
+    command: "docker compose up kibana_settings kibana"
+    working_dir: "${DUST_DEV_ROOT}"
+    namespace: 90-optional
+    disabled: true
+    depends_on:
+      infra-elasticsearch:
+        condition: process_healthy
 
   # Gotenberg: Office/PDF document preview conversion (LibreOffice route).
   # front-api reads its URL from DOCUMENT_RENDERER_URL (set to http://localhost:3100).
   gotenberg:
     command: "docker compose --profile gotenberg up gotenberg"
     working_dir: "${DUST_DEV_ROOT}"
-    namespace: optional
+    namespace: 90-optional
     disabled: true
 
   novu:
     # Doc: https://docs.novu.co/framework/studio
     command: "npx novu@latest dev --port 3000"
-    namespace: optional
+    namespace: 90-optional
     disabled: true
 
   stripe:
     # Doc: https://www.notion.so/dust-tt/Runbook-Local-Dev-setup-720bffc7d67a447184cb957e9471380c?source=copy_link#5814f227351d4d258422e21e8de39c82/
     command: "stripe listen --forward-to localhost:3000/api/stripe/webhook"
-    namespace: optional
+    namespace: 90-optional
     disabled: true

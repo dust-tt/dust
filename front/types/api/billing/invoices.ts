@@ -7,6 +7,9 @@ export type BillingInvoice = {
   description: string | null;
   currency: string;
   totalCents: number;
+  // Optional for backward compatibility with servers deployed before the
+  // field was introduced.
+  totalExcludingTaxCents?: number;
   amountPaidCents: number;
   createdAtMs: number;
   dueDateMs: number | null;

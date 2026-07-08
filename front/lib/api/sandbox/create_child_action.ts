@@ -21,6 +21,7 @@ import { resolveSkillMCPServers } from "@app/lib/api/assistant/skill_actions";
 import { createMCPAction } from "@app/lib/api/mcp/create_mcp";
 import { pauseSandboxBashForBlockedChild } from "@app/lib/api/sandbox/sandbox_child_block";
 import type { Authenticator } from "@app/lib/auth";
+import { notifyManualActionRequired } from "@app/lib/notifications/workflows/manual-action-required";
 import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
@@ -108,7 +109,7 @@ export async function createSandboxChildAction(
   // agent-loop path (`tryListMCPTools`): when several configs share a name
   // across spaces, the model-visible name is space-prefixed, and approval keys
   // are derived from it.
-  const { servers: jitServers } = await getJITServers(auth, {
+  const jitServers = await getJITServers(auth, {
     agentConfiguration,
     conversation,
     attachments: [],
@@ -249,6 +250,13 @@ export async function createSandboxChildAction(
     });
 
     await ConversationResource.markAsActionRequired(auth, { conversation });
+
+    if (!conversation.actionRequired) {
+      notifyManualActionRequired(auth, {
+        conversationId: conversation.sId,
+        actionId: action.sId,
+      });
+    }
 
     // Hand the sandbox pause back to the caller instead of pausing here.
     // `pauseSandboxBashForBlockedChild` freezes the whole sandbox via

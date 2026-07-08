@@ -15,19 +15,19 @@ interface TriggerFilterRendererProps {
 
 interface OperationChipOptions {
   name: string;
-  color: "green" | "golden" | "warning" | "primary";
+  color: "success" | "info" | "warning" | "primary";
 }
 
 function getOperationChipOptions(
   op: LogicalOp | Operation
 ): OperationChipOptions {
-  let color: "green" | "golden" | "warning" | "primary";
+  let color: "success" | "info" | "warning" | "primary";
   switch (op) {
     case "and":
-      color = "green";
+      color = "success";
       break;
     case "or":
-      color = "golden";
+      color = "info";
       break;
     case "not":
       color = "warning";
@@ -165,7 +165,7 @@ export function TriggerFilterRenderer({ data }: TriggerFilterRendererProps) {
   }
 
   return (
-    <div className="overflow-hidden rounded-xl border border-border px-4 py-4 dark:border-border-night">
+    <div className="overflow-hidden rounded-xl border border-border px-4 py-4">
       <div className="max-w-full overflow-x-auto text-sm">
         <ExpressionNode expression={parseResult.value} />
       </div>

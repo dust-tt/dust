@@ -107,9 +107,11 @@ export function formatPriceCents(
     quarterly: "/qtr",
     annual: "/yr",
   };
-  return currency === "usd"
-    ? `${symbol}${amount}${suffixByFrequency[billingFrequency]}`
-    : `${amount}${symbol}${suffixByFrequency[billingFrequency]}`;
+  // EUR is the only currency we render with a trailing symbol (e.g. "30€");
+  // USD and GBP are prefix currencies ("$30", "£30").
+  return currency === "eur"
+    ? `${amount}${symbol}${suffixByFrequency[billingFrequency]}`
+    : `${symbol}${amount}${suffixByFrequency[billingFrequency]}`;
 }
 
 export function formatAwuCredits(info: SeatTypeInfo): string {
@@ -156,7 +158,7 @@ export function SeatCard({
   const iconBackgroundClass =
     seatType.startsWith("pro") || seatType.startsWith("max")
       ? getSeatBarClasses(seatType).track
-      : "bg-muted dark:bg-muted-night";
+      : "bg-muted";
 
   return (
     <Card
@@ -167,7 +169,7 @@ export function SeatCard({
       className="w-full flex-col items-stretch gap-2"
     >
       <div className="flex w-full items-center justify-between">
-        <div className="flex items-center gap-2">
+        <div className="flex min-w-0 basis-1/2 items-center gap-2">
           <div
             className={cn(
               "flex h-7 w-7 items-center justify-center rounded-lg",
@@ -180,14 +182,14 @@ export function SeatCard({
               className={getSeatIconColorClass(seatType)}
             />
           </div>
-          <span className="text-base font-semibold text-foreground dark:text-foreground-night">
+          <span className="text-base font-semibold text-foreground">
             {stripYearlySuffix(info.name)}
           </span>
         </div>
-        {badge}
+        <div className="flex min-w-0 basis-1/2 justify-end">{badge}</div>
       </div>
       {info.awuCredits > 0 && (
-        <div className="flex items-center gap-2 text-muted-foreground dark:text-muted-foreground-night">
+        <div className="flex items-center gap-2 text-muted-foreground">
           <span className="text-xs">{formatAwuCredits(info)}</span>
         </div>
       )}

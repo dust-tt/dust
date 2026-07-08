@@ -168,7 +168,7 @@ vi.mock("@app/lib/metronome/amounts", () => ({
 }));
 
 vi.mock("@app/lib/metronome/coupons", () => ({
-  createCouponCredit: vi.fn(),
+  createSeatCouponCredit: vi.fn(),
   getCreditTypeFromPackage: vi.fn(),
 }));
 

@@ -6,6 +6,7 @@ import type {
 import type { MessageBlockConverters } from "@app/lib/model_constructors/sdk/anthropic_ai/converters/input/utils";
 import {
   assistantMessageToContentBlocks,
+  assistantProviderPassthroughMessageToBlocks,
   assistantReasoningMessageToThinkingBlocks,
   assistantTextMessageToTextBlock,
   assistantToolCallRequestToToolUseBlock,
@@ -30,6 +31,7 @@ import type {
   ToolSpecification,
 } from "@app/lib/model_constructors/types/input/configuration";
 import type {
+  BaseAssistantProviderPassthroughMessage,
   BaseAssistantReasoningMessage,
   BaseAssistantTextMessage,
   BaseAssistantToolCallRequestMessage,
@@ -55,6 +57,7 @@ const realConverters: MessageBlockConverters = {
   assistantTextMessageToTextBlock,
   assistantReasoningMessageToThinkingBlocks,
   assistantToolCallRequestToToolUseBlock,
+  assistantProviderPassthroughMessageToBlocks,
 };
 
 // A fully stubbed converters object, so composites can be checked for pure
@@ -86,6 +89,7 @@ function makeStubConverters(): MessageBlockConverters {
           input: {},
         }) as ToolUseBlockParam
     ),
+    assistantProviderPassthroughMessageToBlocks: vi.fn(() => []),
   };
 }
 
@@ -625,6 +629,76 @@ describe("assistantMessageToContentBlocks", () => {
       { type: "tool_use", id: "stub-id", name: "stub-name", input: {} },
     ]);
   });
+
+  it("delegates provider_passthrough messages to assistantProviderPassthroughMessageToBlocks", () => {
+    const stub = makeStubConverters();
+    const message: BaseAssistantProviderPassthroughMessage = {
+      role: "assistant",
+      type: "provider_passthrough",
+      content: { provider: "anthropic", block: { type: "x" } },
+    };
+    assistantMessageToContentBlocks(message, stub);
+    expect(
+      stub.assistantProviderPassthroughMessageToBlocks
+    ).toHaveBeenCalledWith(message);
+  });
+});
+
+describe("assistantProviderPassthroughMessageToBlocks", () => {
+  const serverToolUseBlock = {
+    type: "server_tool_use",
+    id: "srvtoolu_1",
+    name: "tool_search_tool_bm25",
+    input: { query: "x" },
+  };
+  const toolSearchResultBlock = {
+    type: "tool_search_tool_result",
+    tool_use_id: "srvtoolu_1",
+    content: {
+      type: "tool_search_tool_search_result",
+      tool_references: [{ type: "tool_reference", tool_name: "slack__post" }],
+    },
+  };
+
+  it("replays an anthropic server_tool_use block verbatim", () => {
+    const message: BaseAssistantProviderPassthroughMessage = {
+      role: "assistant",
+      type: "provider_passthrough",
+      content: { provider: "anthropic", block: serverToolUseBlock },
+    };
+    expect(assistantProviderPassthroughMessageToBlocks(message)).toEqual([
+      serverToolUseBlock,
+    ]);
+  });
+
+  it("replays an anthropic tool_search_tool_result block verbatim", () => {
+    const message: BaseAssistantProviderPassthroughMessage = {
+      role: "assistant",
+      type: "provider_passthrough",
+      content: { provider: "anthropic", block: toolSearchResultBlock },
+    };
+    expect(assistantProviderPassthroughMessageToBlocks(message)).toEqual([
+      toolSearchResultBlock,
+    ]);
+  });
+
+  it("skips a block tagged for another provider", () => {
+    const message: BaseAssistantProviderPassthroughMessage = {
+      role: "assistant",
+      type: "provider_passthrough",
+      content: { provider: "openai", block: serverToolUseBlock },
+    };
+    expect(assistantProviderPassthroughMessageToBlocks(message)).toEqual([]);
+  });
+
+  it("skips an anthropic block that fails to parse", () => {
+    const message: BaseAssistantProviderPassthroughMessage = {
+      role: "assistant",
+      type: "provider_passthrough",
+      content: { provider: "anthropic", block: { type: "text", text: "no" } },
+    };
+    expect(assistantProviderPassthroughMessageToBlocks(message)).toEqual([]);
+  });
 });
 
 describe("conversationToMessages", () => {
@@ -731,7 +805,7 @@ describe("toolSpecToAnthropicAITool", () => {
         required: ["q"],
       },
     };
-    expect(toolSpecToAnthropicAITool(tool)).toEqual({
+    expect(toolSpecToAnthropicAITool(tool, false)).toEqual({
       name: "search",
       description: "Search things",
       eager_input_streaming: true,
@@ -751,7 +825,39 @@ describe("toolSpecToAnthropicAITool", () => {
     };
     // The spread places inputSchema.type after the literal, so it wins; this
     // documents the merge order rather than asserting a guarantee.
-    expect(toolSpecToAnthropicAITool(tool).input_schema.type).toBe("string");
+    expect(toolSpecToAnthropicAITool(tool, false).input_schema.type).toBe(
+      "string"
+    );
+  });
+
+  it("defers a non-eager tool when tool search is enabled", () => {
+    const tool: ToolSpecification = {
+      name: "t",
+      description: "d",
+      inputSchema: {},
+    };
+    expect(toolSpecToAnthropicAITool(tool, true).defer_loading).toBe(true);
+  });
+
+  it("keeps an eager tool in the prefix when tool search is enabled", () => {
+    const tool: ToolSpecification = {
+      name: "t",
+      description: "d",
+      inputSchema: {},
+      eager: true,
+    };
+    expect(toolSpecToAnthropicAITool(tool, true).defer_loading).toBeUndefined();
+  });
+
+  it("never defers when tool search is disabled", () => {
+    const tool: ToolSpecification = {
+      name: "t",
+      description: "d",
+      inputSchema: {},
+    };
+    expect(
+      toolSpecToAnthropicAITool(tool, false).defer_loading
+    ).toBeUndefined();
   });
 });
 
@@ -762,30 +868,40 @@ describe("forceToolNameToToolChoice", () => {
   ];
 
   it("forces the named tool when it exists", () => {
-    expect(forceToolNameToToolChoice(tools, "beta")).toEqual({
+    expect(forceToolNameToToolChoice(tools, { forceTool: "beta" })).toEqual({
       type: "tool",
       name: "beta",
     });
   });
 
   it("falls back to auto when the forced tool does not exist", () => {
-    expect(forceToolNameToToolChoice(tools, "gamma")).toEqual({
+    expect(forceToolNameToToolChoice(tools, { forceTool: "gamma" })).toEqual({
       type: "auto",
     });
   });
 
   it("falls back to auto when no tool is forced", () => {
-    expect(forceToolNameToToolChoice(tools, undefined)).toEqual({
+    expect(forceToolNameToToolChoice(tools, {})).toEqual({
       type: "auto",
     });
   });
 
   it("falls back to auto when forceTool is an empty string", () => {
-    expect(forceToolNameToToolChoice(tools, "")).toEqual({ type: "auto" });
+    expect(forceToolNameToToolChoice(tools, { forceTool: "" })).toEqual({
+      type: "auto",
+    });
   });
 
   it("falls back to auto when the tools list is empty", () => {
-    expect(forceToolNameToToolChoice([], "alpha")).toEqual({ type: "auto" });
+    expect(forceToolNameToToolChoice([], { forceTool: "alpha" })).toEqual({
+      type: "auto",
+    });
+  });
+
+  it("returns none when tool use is disabled", () => {
+    expect(forceToolNameToToolChoice(tools, { disableToolUse: true })).toEqual({
+      type: "none",
+    });
   });
 });
 
@@ -805,35 +921,35 @@ describe("reasoningToThinkingConfig", () => {
   it("enables adaptive thinking for 'xhigh'", () => {
     expect(reasoningToThinkingConfig({ effort: "xhigh" })).toEqual({
       output_config: { effort: "xhigh" },
-      thinking: { type: "adaptive" },
+      thinking: { type: "adaptive", display: "summarized" },
     });
   });
 
   it("enables adaptive thinking for 'low'", () => {
     expect(reasoningToThinkingConfig({ effort: "low" })).toEqual({
       output_config: { effort: "low" },
-      thinking: { type: "adaptive" },
+      thinking: { type: "adaptive", display: "summarized" },
     });
   });
 
   it("enables adaptive thinking for 'medium'", () => {
     expect(reasoningToThinkingConfig({ effort: "medium" })).toEqual({
       output_config: { effort: "medium" },
-      thinking: { type: "adaptive" },
+      thinking: { type: "adaptive", display: "summarized" },
     });
   });
 
   it("enables adaptive thinking for 'high'", () => {
     expect(reasoningToThinkingConfig({ effort: "high" })).toEqual({
       output_config: { effort: "high" },
-      thinking: { type: "adaptive" },
+      thinking: { type: "adaptive", display: "summarized" },
     });
   });
 
   it("maps 'maximal' effort to Anthropic's 'max'", () => {
     expect(reasoningToThinkingConfig({ effort: "maximal" })).toEqual({
       output_config: { effort: "max" },
-      thinking: { type: "adaptive" },
+      thinking: { type: "adaptive", display: "summarized" },
     });
   });
 });

@@ -1,5 +1,8 @@
 import type { ObservabilityTimeRangeType } from "@app/components/agent_builder/observability/constants";
 import { DEFAULT_PERIOD_DAYS } from "@app/components/agent_builder/observability/constants";
+import { AnalyticsExportPanel } from "@app/components/workspace/analytics/AnalyticsExportPanel";
+import type { AnalyticsFilter } from "@app/components/workspace/analytics/analyticsFilter";
+import { toggleScopeEntity } from "@app/components/workspace/analytics/analyticsFilter";
 import { WorkspaceAgentCreditsTable } from "@app/components/workspace/analytics/WorkspaceAgentCreditsTable";
 import { WorkspaceAnalyticsOverviewCards } from "@app/components/workspace/analytics/WorkspaceAnalyticsOverviewCards";
 import { WorkspaceAnalyticsTimeRangeSelector } from "@app/components/workspace/analytics/WorkspaceAnalyticsTimeRangeSelector";
@@ -60,15 +63,15 @@ const WorkspaceSkillUsageChart = safeLazy(
 );
 
 function ChartFallback() {
-  return (
-    <div className="h-64 animate-pulse rounded-lg bg-muted-background dark:bg-muted-background-night" />
-  );
+  return <div className="h-64 animate-pulse rounded-lg bg-muted-background" />;
 }
 
 export function AnalyticsPage() {
   const owner = useWorkspace();
   const [period, setPeriod] =
     useState<ObservabilityTimeRangeType>(DEFAULT_PERIOD_DAYS);
+
+  const [filter, setFilter] = useState<AnalyticsFilter>({});
 
   return (
     <Page.Vertical align="stretch" gap="xl">
@@ -95,10 +98,27 @@ export function AnalyticsPage() {
       />
       <div className="flex flex-col pb-8 gap-8">
         <SafeSuspense fallback={<ChartFallback />}>
-          <AwuUsageFromAnalyticsChart workspaceId={owner.sId} period={period} />
+          <AwuUsageFromAnalyticsChart
+            workspaceId={owner.sId}
+            period={period}
+            filter={filter}
+            onFilterChange={setFilter}
+          />
         </SafeSuspense>
-        <WorkspaceUserCreditsTable workspaceId={owner.sId} period={period} />
-        <WorkspaceAgentCreditsTable workspaceId={owner.sId} period={period} />
+        <WorkspaceUserCreditsTable
+          workspaceId={owner.sId}
+          period={period}
+          onSelectUser={(entity) =>
+            setFilter((prev) => toggleScopeEntity(prev, "user", entity))
+          }
+        />
+        <WorkspaceAgentCreditsTable
+          workspaceId={owner.sId}
+          period={period}
+          onSelectAgent={(entity) =>
+            setFilter((prev) => toggleScopeEntity(prev, "agent", entity))
+          }
+        />
         <SafeSuspense fallback={<ChartFallback />}>
           <WorkspaceUsageChart workspaceId={owner.sId} period={period} />
         </SafeSuspense>
@@ -111,6 +131,7 @@ export function AnalyticsPage() {
         <SafeSuspense fallback={<ChartFallback />}>
           <WorkspaceSkillUsageChart workspaceId={owner.sId} period={period} />
         </SafeSuspense>
+        <AnalyticsExportPanel workspaceId={owner.sId} />
       </div>
     </Page.Vertical>
   );

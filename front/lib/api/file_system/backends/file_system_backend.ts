@@ -2,6 +2,7 @@ import type { SandboxMountAdapter } from "@app/lib/api/file_system/sandbox/sandb
 import type {
   DustFileSystemError,
   FileSystemMount,
+  SandboxOnlyMount,
 } from "@app/lib/api/file_system/types";
 import type {
   FileSystemDirectoryEntry,
@@ -113,6 +114,7 @@ export interface FileSystemBackend {
    * The adapter holds all backend-specific context so callers never see storage paths.
    */
   createSandboxAdapter(
-    mounts: ReadonlyArray<FileSystemMount>
+    mounts: ReadonlyArray<FileSystemMount>,
+    sandboxOnlyMounts?: ReadonlyArray<SandboxOnlyMount>
   ): SandboxMountAdapter;
 }

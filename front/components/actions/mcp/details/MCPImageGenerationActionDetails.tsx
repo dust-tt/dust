@@ -95,7 +95,7 @@ export function MCPImageGenerationActionDetails({
         </div>
         <p
           className={cn(
-            "text-sm text-muted-foreground dark:text-muted-foreground-night",
+            "text-sm text-muted-foreground",
             displayContext === "conversation" ? "line-clamp-3" : ""
           )}
         >
@@ -167,7 +167,7 @@ export function MCPImageGenerationGroupedDetails({
                 </div>
                 <p
                   className={cn(
-                    "text-sm text-muted-foreground dark:text-muted-foreground-night",
+                    "text-sm text-muted-foreground",
                     displayContext === "conversation" ? "line-clamp-3" : ""
                   )}
                 >

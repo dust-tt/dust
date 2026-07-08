@@ -36,15 +36,17 @@ export const ZENDESK_TOOLS_METADATA = createToolsRecord({
       running: "Retrieving Zendesk ticket",
       done: "Retrieve Zendesk ticket",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   search_tickets: {
     description:
-      "Search for Zendesk tickets using query syntax. Returns matching tickets with their details. Filter by status (e.g. open, pending, solved), priority, type, assignee, tags, custom fields, dates, and text fields.",
+      "Search and find Zendesk tickets using query syntax. Returns matching tickets with their details. Filter by status (open, pending, solved), priority (low, medium, high), type, assignee, tags, dates, and text fields.",
     schema: {
       query: z
         .string()
         .describe(
-          "Zendesk search query. Supports field:value pairs (status, priority, type, assignee, tags) and custom_field_{id}:\"value\". Do not include 'type:ticket'."
+          "Zendesk search query. Supports field:value pairs for status, priority, type, assignee, or tags. Do not include 'type:ticket'."
         ),
       sortBy: z
         .enum(["updated_at", "created_at", "priority", "status", "ticket_type"])
@@ -62,10 +64,12 @@ export const ZENDESK_TOOLS_METADATA = createToolsRecord({
       running: "Searching Zendesk tickets",
       done: "Search Zendesk tickets",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   list_ticket_fields: {
     description:
-      "Lists Zendesk ticket field definitions. Both built-in fields (Subject, Priority, Status) and custom fields. With their id, title, type, and active state.",
+      "List and enumerate all Zendesk ticket field definitions — built-in fields (Subject, Priority, Status) and custom fields — with their id, title, type, and active state. Use this to discover what fields exist on a ticket.",
     schema: {
       includeInactive: z
         .boolean()
@@ -77,6 +81,8 @@ export const ZENDESK_TOOLS_METADATA = createToolsRecord({
       running: "Listing Zendesk ticket fields",
       done: "List Zendesk ticket fields",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   draft_reply: {
     description:
@@ -96,6 +102,8 @@ export const ZENDESK_TOOLS_METADATA = createToolsRecord({
       running: "Drafting reply to Zendesk",
       done: "Draft reply to Zendesk",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   post_reply: {
     description:
@@ -113,6 +121,8 @@ export const ZENDESK_TOOLS_METADATA = createToolsRecord({
       running: "Posting reply to Zendesk",
       done: "Post reply to Zendesk",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   update_ticket_tags: {
     description:
@@ -141,6 +151,8 @@ export const ZENDESK_TOOLS_METADATA = createToolsRecord({
       running: "Updating Zendesk ticket tags",
       done: "Update Zendesk ticket tags",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
 });
 
@@ -162,6 +174,8 @@ export const ZENDESK_SERVER = {
     description: t.description,
     inputSchema: zodToJsonSchema(z.object(t.schema)) as JSONSchema,
     displayLabels: t.displayLabels,
+    toolCostCategory: t.toolCostCategory,
+    freeUsage: t.freeUsage,
   })),
   tools_stakes: Object.fromEntries(
     Object.values(ZENDESK_TOOLS_METADATA).map((t) => [t.name, t.stake])

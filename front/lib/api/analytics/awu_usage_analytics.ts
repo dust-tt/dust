@@ -15,17 +15,45 @@ const TERMS_GROUP_BY_KEYS = [
   "agent",
   "user",
   "origin",
+  "api_key",
 ] as const satisfies readonly CreditBreakdownBy[];
 
 // usage_type is derived (no stored field): User vs Programmatic, split on
 // user_id. The other groupings map directly to CreditBreakdownBy.
 const ANALYTICS_GROUP_BY_KEYS = ["usage_type", ...TERMS_GROUP_BY_KEYS] as const;
 
+export const ANALYTICS_SCOPE_DIMENSIONS = TERMS_GROUP_BY_KEYS;
+export type AnalyticsScopeDimension =
+  (typeof ANALYTICS_SCOPE_DIMENSIONS)[number];
+
+export type AnalyticsScopeFilter = Partial<
+  Record<AnalyticsScopeDimension, string[]>
+>;
+
+const FilterSchema = z.record(
+  z.enum(ANALYTICS_SCOPE_DIMENSIONS),
+  z.string().array()
+);
+
 export const AwuUsageAnalyticsQuerySchema = z.object({
   groupBy: z.enum(ANALYTICS_GROUP_BY_KEYS).optional(),
   groupByCount: z.coerce.number().optional().default(5),
   granularity: z.enum(["day", "week", "month"]).optional().default("day"),
   days: z.coerce.number().int().positive().optional().default(30),
+  filter: z
+    .string()
+    .optional()
+    .transform((val) => {
+      if (!val) {
+        return undefined;
+      }
+      try {
+        return JSON.parse(val);
+      } catch {
+        return val; // Return original to trigger validation error.
+      }
+    })
+    .pipe(FilterSchema.optional()),
 });
 
 export type AwuUsageAnalyticsQuery = z.infer<
@@ -59,10 +87,16 @@ function toError(error: ElasticsearchError): AwuUsageAnalyticsError {
 
 export async function getAwuUsageFromAnalytics(
   auth: Authenticator,
-  query: AwuUsageAnalyticsQuery
+  query: AwuUsageAnalyticsQuery,
+  options: { userIds?: string[] } = {}
 ): Promise<Result<AwuUsageAnalyticsResponse, AwuUsageAnalyticsError>> {
-  const { groupBy, groupByCount, granularity, days } = query;
+  const { groupBy, groupByCount, granularity, days, filter } = query;
   const { startDate, endDate } = daysToInstantRange(days, "UTC");
+
+  const userIds = options.userIds ?? filter?.user;
+  const agentIds = filter?.agent;
+  const contextOrigin = filter?.origin;
+  const apiKeyNames = filter?.api_key;
 
   if (!groupBy) {
     const result = await fetchCreditTimeseries(auth, {
@@ -71,6 +105,10 @@ export async function getAwuUsageFromAnalytics(
       granularity,
       timezone: "UTC",
       fillWindow: true,
+      userIds,
+      agentIds,
+      contextOrigin,
+      apiKeyNames,
     });
     if (result.isErr()) {
       return new Err(toError(result.error));
@@ -95,6 +133,10 @@ export async function getAwuUsageFromAnalytics(
       granularity,
       timezone: "UTC",
       fillWindow: true,
+      userIds,
+      agentIds,
+      contextOrigin,
+      apiKeyNames,
     });
     if (result.isErr()) {
       return new Err(toError(result.error));
@@ -126,6 +168,10 @@ export async function getAwuUsageFromAnalytics(
     breakdownBy: groupBy,
     limit: groupByCount,
     fillWindow: true,
+    userIds,
+    agentIds,
+    contextOrigin,
+    apiKeyNames,
   });
   if (result.isErr()) {
     return new Err(toError(result.error));
@@ -155,4 +201,34 @@ export async function getAwuUsageFromAnalytics(
   }
 
   return new Ok({ granularity, groups: mappedGroups, points: mappedPoints });
+}
+
+export type AwuUsageCsvRow = {
+  date: string;
+  granularity: "day" | "week" | "month";
+  series: string;
+  credits: number;
+};
+
+// Flattens the timeseries response into one CSV row per (bucket, series).
+// `seriesFilter` is a comma-separated list of group keys mirroring the chart's
+// legend drilldown; when absent, every returned series is included.
+export function awuUsageToCsvRows(
+  response: AwuUsageAnalyticsResponse,
+  seriesFilter: string | undefined
+): AwuUsageCsvRow[] {
+  const { granularity, groups, points } = response;
+  const filter = seriesFilter ? new Set(seriesFilter.split(",")) : null;
+  const visibleGroups = filter
+    ? groups.filter((group) => filter.has(group.groupKey))
+    : groups;
+  return points.flatMap((point) => {
+    const date = new Date(point.timestamp).toISOString().slice(0, 10);
+    return visibleGroups.map((group) => ({
+      date,
+      granularity,
+      series: group.name,
+      credits: point.values[group.groupKey] ?? 0,
+    }));
+  });
 }

@@ -14,10 +14,13 @@ export const SKILL_MANAGEMENT_TOOLS_METADATA = createToolsRecord({
       skillName: z.string().describe("The name of the skill to enable"),
     },
     stake: "never_ask",
+    eager: true,
     displayLabels: {
       running: "Enabling skill",
       done: "Enable skill",
     },
+    toolCostCategory: "basic",
+    freeUsage: true,
   },
 });
 
@@ -41,6 +44,8 @@ export const SKILL_MANAGEMENT_SERVER = {
       z.object(SKILL_MANAGEMENT_TOOLS_METADATA[key].schema)
     ) as JSONSchema,
     displayLabels: SKILL_MANAGEMENT_TOOLS_METADATA[key].displayLabels,
+    toolCostCategory: SKILL_MANAGEMENT_TOOLS_METADATA[key].toolCostCategory,
+    freeUsage: SKILL_MANAGEMENT_TOOLS_METADATA[key].freeUsage,
   })),
   tools_stakes: Object.fromEntries(
     (

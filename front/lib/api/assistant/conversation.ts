@@ -27,7 +27,10 @@ import {
   batchRenderMessages,
   batchRenderUserMessagesWithoutMentions,
 } from "@app/lib/api/assistant/messages";
-import { isProviderWhitelisted } from "@app/lib/api/assistant/models";
+import {
+  isProviderWhitelisted,
+  resolveModelSelection,
+} from "@app/lib/api/assistant/models";
 import { gracefullyStopAgentLoop } from "@app/lib/api/assistant/pubsub";
 import {
   MESSAGE_RATE_LIMIT_PER_ACTOR_PER_HOUR,
@@ -66,6 +69,8 @@ import { isModelAvailable } from "@app/lib/assistant";
 import { Authenticator, getFeatureFlags } from "@app/lib/auth";
 import { getSupportedModelConfig } from "@app/lib/llms/model_configurations";
 import { extractFromString, serializeMention } from "@app/lib/mentions/format";
+import { isApiKeyCapped } from "@app/lib/metronome/api_key_block";
+import { isFreeOrigin } from "@app/lib/metronome/events";
 import {
   getWorkspaceCreditPoolStatus,
   getWorkspaceProgrammaticCreditStatus,
@@ -154,6 +159,10 @@ import {
   isUserMention,
   toMentionType,
 } from "@app/types/assistant/mentions";
+import type {
+  ModelSelectionType,
+  ResolvedRequestedModel,
+} from "@app/types/assistant/models/types";
 import type {
   ContentFragmentContextType,
   ContentFragmentType,
@@ -550,6 +559,7 @@ export async function postUserMessage(
     skipToolsValidation,
     skipDustAutoMention,
     doNotAssociateUser,
+    modelSelection,
   }: {
     conversation: ConversationType;
     content: string;
@@ -559,6 +569,7 @@ export async function postUserMessage(
     skipToolsValidation: boolean;
     doNotAssociateUser?: boolean;
     skipDustAutoMention?: boolean;
+    modelSelection?: ModelSelectionType;
   }
 ): Promise<
   Result<
@@ -585,6 +596,14 @@ export async function postUserMessage(
   }
 
   const featureFlags = await getFeatureFlags(auth);
+
+  // Resolve the picker selection to a concrete model for this workspace. If it
+  // cannot be honored (unknown/disabled model), we leave `requestedModel` null
+  // and the agent's configured model is used.
+  const requestedModel: ResolvedRequestedModel | null = modelSelection
+    ? resolveModelSelection(auth, modelSelection, { featureFlags })
+    : null;
+
   const isPartOfPod = isPodConversation(conversation);
 
   if (isPartOfPod) {
@@ -794,7 +813,7 @@ export async function postUserMessage(
 
     const supportedModelConfig = getSupportedModelConfig(agentConfig.model);
     if (
-      supportedModelConfig &&
+      !supportedModelConfig ||
       !isModelAvailable(supportedModelConfig, {
         featureFlags,
         plan,
@@ -807,6 +826,7 @@ export async function postUserMessage(
         api_error: {
           type: "invalid_request_error",
           message: "The model is not supported.",
+          model: agentConfig.model,
         },
       });
     }
@@ -1025,6 +1045,7 @@ export async function postUserMessage(
             skipToolsValidation,
             nextMessageRank,
             userMessage: userMessageWithoutMentions,
+            requestedModel,
           },
           transaction: t,
         });
@@ -2508,44 +2529,65 @@ async function checkMessagesLimit(
         },
       });
     }
-    if (blockedReason === "user_cap_reached") {
-      return new Err({
-        status_code: 403,
-        api_error: {
-          type: "user_cap_reached",
-          message: "You have reached your personal usage cap.",
-        },
-      });
-    }
-    if (blockedReason === "credits_exhausted") {
-      return new Err({
-        status_code: 403,
-        api_error: {
-          type: "credits_exhausted",
-          message: "Your workspace has run out of credits.",
-        },
-      });
-    }
+    // Free origins (e.g. Sidekick) produce only free, non-billable usage, so
+    // the credit-state caps and pool-balance concurrency limit don't apply — a
+    // capped user or a credit-exhausted workspace can still use them. The
+    // `no_seat` gate above is intentionally left outside this exemption since
+    // it reflects membership, not credit state.
+    if (!isFreeOrigin(context.origin)) {
+      if (blockedReason === "user_cap_reached") {
+        return new Err({
+          status_code: 403,
+          api_error: {
+            type: "user_cap_reached",
+            message: "You have reached your personal usage cap.",
+          },
+        });
+      }
+      if (blockedReason === "credits_exhausted") {
+        return new Err({
+          status_code: 403,
+          api_error: {
+            type: "credits_exhausted",
+            message: "Your workspace has run out of credits.",
+          },
+        });
+      }
 
-    // Pre-emptive concurrency limit based on pool credit state. Prevents
-    // close-to-0 attacks where many requests are sent simultaneously before
-    // Metronome debits settle.
-    const poolLimit = await checkPoolCreditConcurrencyLimit(auth);
-    if (poolLimit.isLimitReached && poolLimit.limitType) {
-      return new Err({
-        status_code: 429,
-        api_error: {
-          type: poolLimit.limitType,
-          message: getMessageLimitErrorMessage({
-            limitType: poolLimit.limitType,
-            message: poolLimit.message,
-          }),
-        },
-      });
+      // Pre-emptive concurrency limit based on pool credit state. Prevents
+      // close-to-0 attacks where many requests are sent simultaneously before
+      // Metronome debits settle.
+      const poolLimit = await checkPoolCreditConcurrencyLimit(auth);
+      if (poolLimit.isLimitReached && poolLimit.limitType) {
+        return new Err({
+          status_code: 429,
+          api_error: {
+            type: poolLimit.limitType,
+            message: getMessageLimitErrorMessage({
+              limitType: poolLimit.limitType,
+              message: poolLimit.message,
+            }),
+          },
+        });
+      }
     }
 
     // Programmatic monthly cap: block programmatic calls when the cap is reached.
     if (isProgrammaticUsage(auth, { userMessageOrigin: context.origin })) {
+      // Per-API-key credit cap: block when this key's credit state is "capped"
+      // (driven by the Metronome per-key cap alert / reconcile).
+      const key = auth.key();
+      if (key && (await isApiKeyCapped(owner.sId, key.id))) {
+        return new Err({
+          status_code: 429,
+          api_error: {
+            type: "rate_limit_error",
+            message:
+              "This API key has reached its credit spend limit. Please increase the limit in the Developers > API Keys section of the Dust dashboard.",
+          },
+        });
+      }
+
       const programmaticBlocked = await isProgrammaticApiBlocked(owner.sId);
       if (programmaticBlocked) {
         return new Err({
@@ -3187,13 +3229,10 @@ export async function updateAgentMessageWithFinalStatus(
       }
     );
 
-    const promotedUserMessages = await batchRenderUserMessagesWithoutMentions(
-      auth,
-      {
-        messages: pendingMessages,
-        transaction: t,
-      }
-    );
+    const promotedUserMessages = await batchRenderUserMessagesWithoutMentions({
+      messages: pendingMessages,
+      transaction: t,
+    });
 
     // The new agent message is triggered by the last steering message (being promoted here from
     // pending to visible). We need to use the promotedAuth of the associated user if it differs

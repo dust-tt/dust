@@ -15,8 +15,12 @@ import {
   getMetronomeCustomerStripeCustomerId,
 } from "@app/lib/metronome/client";
 import {
+  AWU_AMOUNT_CUSTOM_FIELD_KEY,
+  AWU_DISCOUNT_PERCENT_CUSTOM_FIELD_KEY,
   AWU_PRIORITY_PURCHASED_COMMIT,
   CARRY_ON_RENEWAL_CUSTOM_FIELD_KEY,
+  CONTRACT_CREDIT_TYPE_CUSTOM_FIELD_KEY,
+  CONTRACT_CREDIT_TYPE_POOL,
   CURRENCY_TO_CREDIT_TYPE_ID,
   getCreditTypeAwuId,
   getProductPrepaidCommitId,
@@ -358,6 +362,13 @@ export async function purchaseAwuCredits(
     uniquenessKey,
     customFields: {
       [CARRY_ON_RENEWAL_CUSTOM_FIELD_KEY]: floorToHourISO(accessEndingBefore),
+      [CONTRACT_CREDIT_TYPE_CUSTOM_FIELD_KEY]: CONTRACT_CREDIT_TYPE_POOL,
+      [AWU_AMOUNT_CUSTOM_FIELD_KEY]: String(amountCredits),
+      ...(discountPercent > 0
+        ? {
+            [AWU_DISCOUNT_PERCENT_CUSTOM_FIELD_KEY]: String(discountPercent),
+          }
+        : {}),
     },
     // Stamped on the Stripe invoice Metronome pushes downstream so the
     // existing eligibility check (`isAwuPurchaseInvoice`) still recognises

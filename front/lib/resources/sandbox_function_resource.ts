@@ -1,6 +1,15 @@
+import config from "@app/lib/api/config";
+import { getPodSandboxFunctionsMountPoint } from "@app/lib/api/files/mount_path";
+import {
+  generateExecId,
+  generateSandboxFunctionInvocationToken,
+} from "@app/lib/api/sandbox/access_tokens";
+import { ensurePodSandboxReady } from "@app/lib/api/sandbox/lifecycle";
+import { shellEscape } from "@app/lib/api/sandbox/shell";
 import type { Authenticator } from "@app/lib/auth";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
+import { SandboxFunctionInvocationResource } from "@app/lib/resources/sandbox_function_invocation_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { SandboxFunctionModel } from "@app/lib/resources/storage/models/sandbox_function";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
@@ -11,13 +20,41 @@ import {
   makeSId,
 } from "@app/lib/resources/string_ids";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
+import logger from "@app/logger/logger";
+import type {
+  PostSandboxFunctionInvocationRequestBody,
+  SandboxFunctionInvocationType,
+} from "@app/types/api/sandbox_functions";
+import { isValidSandboxFunctionSlug } from "@app/types/api/sandbox_functions";
 import { sandboxFunctionContentType } from "@app/types/files";
+import { isDevelopment } from "@app/types/shared/env";
 import type { ModelId } from "@app/types/shared/model_id";
 import { Err, Ok, type Result } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
+import { truncate } from "@app/types/shared/utils/string_utils";
 import assert from "assert";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
 import type { Attributes, Transaction } from "sequelize";
+
+const SANDBOX_FUNCTION_WORKING_DIRECTORY = "/home/agent";
+const SANDBOX_FUNCTION_EXEC_TIMEOUT_MS = 2 * 60 * 1000;
+const DSBX_BIN_PATH = "/opt/bin/dsbx";
+// Caps on runner output surfaced on failure: a small head for the error forwarded to the agent,
+// a larger one for the log fields.
+const SANDBOX_FUNCTION_ERROR_DETAIL_MAX_CHARS = 2_048;
+const SANDBOX_FUNCTION_ERROR_LOG_MAX_CHARS = 16_384;
+
+function dustAPIBaseUrlForSandbox(): string {
+  return isDevelopment() && config.getSandboxDevFrontHostName()
+    ? `https://${config.getSandboxDevFrontHostName()}`
+    : config.getApiBaseUrl();
+}
+
+function buildSandboxFunctionRunCommand(slug: string): string {
+  // dsbx resolves `function run <slug>` as `${DUST_FUNCTIONS_DIR}/<slug>.ts`, which is the
+  // read-only mount of the pod's published bundles.
+  return `${DSBX_BIN_PATH} function run ${shellEscape(slug)}`;
+}
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export interface SandboxFunctionResource
@@ -27,7 +64,8 @@ export interface SandboxFunctionResource
 export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> {
   static model: ModelStaticWorkspaceAware<SandboxFunctionModel> =
     SandboxFunctionModel;
-  space: SpaceResource;
+
+  readonly space: SpaceResource;
   file: FileResource;
 
   constructor(
@@ -63,17 +101,25 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
     {
       space,
       file,
+      slug,
+      description,
       inputSchema,
       outputSchema,
     }: {
       space: SpaceResource;
       file: FileResource;
+      slug: string;
+      description: string;
       inputSchema: JSONSchema;
       outputSchema: JSONSchema;
     },
     transaction?: Transaction
   ): Promise<SandboxFunctionResource> {
     assert(space.isProject(), "Sandbox functions can only belong to pods.");
+    assert(
+      isValidSandboxFunctionSlug(slug),
+      "The slug must be lowercase alphanumeric with single hyphen separators."
+    );
     assert(
       space.workspaceId === auth.getNonNullableWorkspace().id,
       "The space must belong to the authenticated workspace."
@@ -100,6 +146,8 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
         workspaceId: auth.getNonNullableWorkspace().id,
         spaceId: space.id,
         fileId: file.id,
+        slug,
+        description,
         inputSchema,
         outputSchema,
       },
@@ -107,6 +155,36 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
     );
 
     return new this(this.model, sandboxFunction.get(), space, file);
+  }
+
+  /**
+   * Re-publish: overwrite this function's bundle in place and refresh its contract. uploadContent
+   * rewrites the same file (canonical original plus its mount path <prefix>/<slug>.ts) and bumps the
+   * version, so the function's storage path stays stable across re-publishes rather than drifting to
+   * a disambiguated name. The caller checks write permission.
+   */
+  async updateContent(
+    auth: Authenticator,
+    {
+      bundleCode,
+      description,
+      inputSchema,
+      outputSchema,
+    }: {
+      bundleCode: string;
+      description: string;
+      inputSchema: JSONSchema;
+      outputSchema: JSONSchema;
+    }
+  ): Promise<Result<undefined, Error>> {
+    try {
+      await this.file.uploadContent(auth, bundleCode);
+      await this.update({ description, inputSchema, outputSchema });
+    } catch (error) {
+      return new Err(normalizeError(error));
+    }
+
+    return new Ok(undefined);
   }
 
   private static async baseFetch(
@@ -194,6 +272,47 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
     return this.baseFetch(auth, { where: { spaceId: space.id } });
   }
 
+  static async fetchBySpaceAndSlug(
+    auth: Authenticator,
+    space: SpaceResource,
+    slug: string
+  ): Promise<SandboxFunctionResource | null> {
+    if (!space.isProject()) {
+      return null;
+    }
+
+    const [sandboxFunction] = await this.baseFetch(auth, {
+      where: { spaceId: space.id, slug },
+    });
+
+    return sandboxFunction ?? null;
+  }
+
+  static async fetchByIdOrSlug(
+    auth: Authenticator,
+    functionIdOrSlug: string
+  ): Promise<SandboxFunctionResource | null> {
+    const sandboxFunction = await this.fetchById(auth, functionIdOrSlug);
+    if (sandboxFunction) {
+      return sandboxFunction;
+    }
+
+    const [podId, slug, ...rest] = functionIdOrSlug.split("/");
+    if (!podId || !slug || rest.length > 0) {
+      return null;
+    }
+    if (!isResourceSId("space", podId) || !isValidSandboxFunctionSlug(slug)) {
+      return null;
+    }
+
+    const space = await SpaceResource.fetchById(auth, podId);
+    if (!space) {
+      return null;
+    }
+
+    return this.fetchBySpaceAndSlug(auth, space, slug);
+  }
+
   static async deleteAllForSpace(
     auth: Authenticator,
     space: SpaceResource
@@ -213,11 +332,116 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
     return new Ok(sandboxFunctions.length);
   }
 
+  async invoke(
+    auth: Authenticator,
+    body: PostSandboxFunctionInvocationRequestBody
+  ): Promise<Result<SandboxFunctionInvocationType, Error>> {
+    try {
+      if (!this.space.canReadOrAdministrate(auth)) {
+        return new Err(new Error("Sandbox function space is not accessible."));
+      }
+
+      const ensureResult = await ensurePodSandboxReady(auth, this.space);
+      if (ensureResult.isErr()) {
+        return ensureResult;
+      }
+
+      const invocation = await SandboxFunctionInvocationResource.makeNew(auth, {
+        sandboxFunction: this,
+      });
+      await ensureResult.value.sandbox.updateLastActivityAt();
+
+      const execId = generateExecId();
+      const token = await generateSandboxFunctionInvocationToken(auth, {
+        sandbox: ensureResult.value.sandbox,
+        sandboxFunction: this,
+        invocationId: invocation.sId,
+        execId,
+      });
+
+      const command = buildSandboxFunctionRunCommand(this.slug);
+      const inputEnvelope = {
+        method: "POST",
+        url: `https://dust.local/sandbox-functions/${this.sId}/invocations/${invocation.sId}`,
+        headers: {
+          "content-type": "application/json",
+          "x-dust-sandbox-function-id": this.sId,
+          "x-dust-sandbox-function-invocation-id": invocation.sId,
+          ...(body.context?.frameFileId
+            ? { "x-dust-frame-file-id": body.context.frameFileId }
+            : {}),
+        },
+        ...(body.input === undefined
+          ? {}
+          : { body: JSON.stringify(body.input) }),
+        encoding: "utf8",
+      };
+
+      const execResult = await ensureResult.value.sandbox.exec(auth, command, {
+        workingDirectory: SANDBOX_FUNCTION_WORKING_DIRECTORY,
+        envVars: {
+          DUST_API_URL: `${dustAPIBaseUrlForSandbox()}/api/v1/w/${auth.getNonNullableWorkspace().sId}`,
+          DUST_FUNCTIONS_DIR: getPodSandboxFunctionsMountPoint(this.space.sId),
+          DUST_SANDBOX_TOKEN: token,
+        },
+        stdin: JSON.stringify(inputEnvelope),
+        timeoutMs: SANDBOX_FUNCTION_EXEC_TIMEOUT_MS,
+        user: "agent-proxied",
+      });
+      if (execResult.isErr()) {
+        return execResult;
+      }
+      if (execResult.value.exitCode !== 0) {
+        const { exitCode, stdout, stderr } = execResult.value;
+        logger.error(
+          {
+            workspaceId: auth.getNonNullableWorkspace().sId,
+            spaceId: this.space.sId,
+            sandboxFunctionId: this.sId,
+            slug: this.slug,
+            invocationId: invocation.sId,
+            exitCode,
+            stdout: truncate(stdout, SANDBOX_FUNCTION_ERROR_LOG_MAX_CHARS),
+            stderr: truncate(stderr, SANDBOX_FUNCTION_ERROR_LOG_MAX_CHARS),
+          },
+          "Sandbox function invocation failed"
+        );
+        // Surface the runner's stderr (stdout when empty) so the agent sees the actual cause,
+        // not just the exit code.
+        const detail = truncate(
+          stderr || stdout,
+          SANDBOX_FUNCTION_ERROR_DETAIL_MAX_CHARS
+        ).trim();
+        return new Err(
+          new Error(
+            `Sandbox function invocation failed with exit code ${exitCode}${
+              detail ? `:\n${detail}` : "."
+            }`
+          )
+        );
+      }
+
+      // Keep the invocation token valid for its short TTL. The durable version
+      // of this flow will let dsbx post invocation results back to Dust with
+      // the same token, then revoke it once results are accepted.
+      return new Ok({
+        sId: invocation.sId,
+        functionId: this.sId,
+        status: invocation.status,
+        createdAt: invocation.createdAt.toISOString(),
+      });
+    } catch (error) {
+      return new Err(normalizeError(error));
+    }
+  }
+
   async delete(auth: Authenticator): Promise<Result<undefined, Error>> {
     try {
       if (!this.space.canReadOrAdministrate(auth)) {
         return new Err(new Error("Sandbox function space is not accessible."));
       }
+
+      await SandboxFunctionInvocationResource.deleteAllForSandboxFunction(this);
 
       await this.model.destroy({
         where: {

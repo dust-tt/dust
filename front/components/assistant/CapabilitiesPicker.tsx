@@ -76,10 +76,10 @@ function CapabilitiesPickerLoading({ count = 5 }: { count?: number }) {
       {Array.from({ length: count }).map((_, i) => (
         <div key={`capabilities-picker-loading-${i}`} className="px-1 py-1">
           <div className="flex items-center gap-3 rounded-md p-2">
-            <LoadingBlock className="h-5 w-5 rounded-full dark:bg-muted-foreground-night" />
+            <LoadingBlock className="h-5 w-5 rounded-full" />
             <div className="flex min-w-0 flex-1 flex-col gap-1">
-              <LoadingBlock className="h-4 w-[80%] dark:bg-muted-foreground-night" />
-              <LoadingBlock className="h-3 w-[60%] dark:bg-muted-foreground-night" />
+              <LoadingBlock className="h-4 w-[80%]" />
+              <LoadingBlock className="h-3 w-[60%]" />
             </div>
           </div>
         </div>
@@ -107,7 +107,7 @@ function CapabilitiesPickerItemsList({
 
   if (items.length === 0) {
     return (
-      <div className="px-2 py-4 text-center text-sm text-muted-foreground dark:text-muted-foreground-night">
+      <div className="px-2 py-4 text-center text-sm text-muted-foreground">
         {emptyMessage}
       </div>
     );
@@ -118,7 +118,7 @@ function CapabilitiesPickerItemsList({
       {items.map((item) => {
         const endComponent =
           item.kind === "uninstalled_tool" ? (
-            <Chip size="xs" color="golden" label="Configure" />
+            <Chip size="xs" color="info" label="Configure" />
           ) : (
             <Button
               icon={DotsHorizontal}
@@ -351,11 +351,13 @@ export function CapabilitiesPicker({
           continue;
         }
 
+        const SkillAvatar = getSkillAvatarIcon(skill);
+
         items.push({
           kind: "skill",
           skill,
           id: `skills-picker-${skill.sId}`,
-          icon: getSkillAvatarIcon(skill),
+          icon: <SkillAvatar size="xs" />,
           label: skill.name,
           sortName: skill.name.toLowerCase(),
           description,
@@ -382,7 +384,7 @@ export function CapabilitiesPicker({
           kind: "tool",
           serverView,
           id: `capabilities-picker-${serverView.sId}`,
-          icon: () => getAvatar(serverView.server),
+          icon: getAvatar(serverView.server, "xs"),
           label,
           sortName: label.toLowerCase(),
           description,
@@ -415,7 +417,7 @@ export function CapabilitiesPicker({
           kind: "uninstalled_tool",
           server,
           id: `tools-to-install-${server.sId}`,
-          icon: () => getAvatar(server),
+          icon: getAvatar(server, "xs"),
           label,
           sortName: label.toLowerCase(),
           description,

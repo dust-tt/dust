@@ -4,6 +4,7 @@ import {
   RUN_AGENT_CALL_TOOL_TIMEOUT_MS,
 } from "@app/lib/actions/constants";
 import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_definition";
+import { ACTIVATION_RECOMMENDATIONS_SERVER } from "@app/lib/api/actions/servers/activation_recommendations/metadata";
 import { AGENT_MEMORY_SERVER } from "@app/lib/api/actions/servers/agent_memory/metadata";
 import {
   AGENT_ROUTER_SERVER,
@@ -82,6 +83,7 @@ import { SPEECH_GENERATOR_SERVER } from "@app/lib/api/actions/servers/speech_gen
 import { STATUSPAGE_SERVER } from "@app/lib/api/actions/servers/statuspage/metadata";
 import { TOOLSETS_SERVER } from "@app/lib/api/actions/servers/toolsets/metadata";
 import { UKG_READY_SERVER } from "@app/lib/api/actions/servers/ukg_ready/metadata";
+import { USER_ANALYTICS_SERVER } from "@app/lib/api/actions/servers/user_analytics/metadata";
 import { USER_MENTIONS_SERVER } from "@app/lib/api/actions/servers/user_mentions/metadata";
 import { VAL_TOWN_SERVER } from "@app/lib/api/actions/servers/val_town/metadata";
 import { VANTA_SERVER } from "@app/lib/api/actions/servers/vanta/metadata";
@@ -90,6 +92,7 @@ import {
   WEB_SEARCH_BROWSE_SERVER,
   WEB_SEARCH_BROWSE_SERVER_NAME,
 } from "@app/lib/api/actions/servers/web_search_browse/metadata";
+import { WORKDAY_SERVER } from "@app/lib/api/actions/servers/workday/metadata";
 import { WORKSPACE_ANALYTICS_SERVER } from "@app/lib/api/actions/servers/workspace_analytics/metadata";
 import { ZENDESK_SERVER } from "@app/lib/api/actions/servers/zendesk/metadata";
 import type {
@@ -150,6 +153,7 @@ export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   // Names should reflect the purpose of the server but not directly the tools it contains.
   // We'll prefix all tools with the server name to avoid conflicts.
   // It's okay to change the name of the server as we don't refer to it directly.
+  "user_analytics",
   "agent_sidekick_agent_state",
   "agent_sidekick_context",
   "agent_memory",
@@ -209,6 +213,7 @@ export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   "user_mentions",
   "val_town",
   "vanta",
+  "workday",
   "front",
   "web_search_&_browse",
   "zendesk",
@@ -226,6 +231,7 @@ export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   "wakeups",
   "plan_mode",
   "workspace_analytics",
+  "activation_recommendations",
 ] as const;
 
 export const INTERNAL_SERVERS_WITH_WEBSEARCH = [
@@ -1085,7 +1091,7 @@ export const INTERNAL_MCP_SERVERS = {
   },
   ask_user_question: {
     id: 1028,
-    availability: "auto",
+    availability: "auto_hidden_builder",
     allowMultipleInstances: false,
     isPreview: false,
     isRestricted: undefined,
@@ -1176,6 +1182,41 @@ export const INTERNAL_MCP_SERVERS = {
     tools_retry_policies: undefined,
     timeoutMs: undefined,
     metadata: EXA_SERVER,
+  },
+  workday: {
+    id: 1038,
+    availability: "manual",
+    allowMultipleInstances: true,
+    isRestricted: ({ featureFlags }) => !featureFlags.includes("workday_mcp"),
+    isPreview: true,
+    tools_arguments_requiring_approval: undefined,
+    tools_retry_policies: undefined,
+    timeoutMs: undefined,
+    metadata: WORKDAY_SERVER,
+  },
+  user_analytics: {
+    id: 1039,
+    availability: "auto_hidden_builder",
+    allowMultipleInstances: false,
+    isRestricted: ({ featureFlags }) =>
+      !featureFlags.includes("activation_skill"),
+    isPreview: false,
+    tools_arguments_requiring_approval: undefined,
+    tools_retry_policies: undefined,
+    timeoutMs: undefined,
+    metadata: USER_ANALYTICS_SERVER,
+  },
+  activation_recommendations: {
+    id: 1040,
+    availability: "auto_hidden_builder",
+    allowMultipleInstances: false,
+    isRestricted: ({ featureFlags }) =>
+      !featureFlags.includes("activation_skill"),
+    isPreview: false,
+    tools_arguments_requiring_approval: undefined,
+    tools_retry_policies: undefined,
+    timeoutMs: undefined,
+    metadata: ACTIVATION_RECOMMENDATIONS_SERVER,
   },
   // Using satisfies here instead of: type to avoid TypeScript widening the type and breaking the type inference for AutoInternalMCPServerNameType.
 } satisfies {
@@ -1284,22 +1325,6 @@ export function isAutoInternalMCPServerName(
   return (
     INTERNAL_MCP_SERVERS[name].availability === "auto" ||
     INTERNAL_MCP_SERVERS[name].availability === "auto_hidden_builder"
-  );
-}
-
-// A "hot" tool is one served by a default-attached internal MCP server (an
-// `auto` / `auto_hidden_builder` server, present from the first agent-loop step).
-// These stay non-deferred so they form a stable, cacheable tools prefix. Every
-// other tool (`manual` internal servers, remote servers, client-side tools, and
-// anything enabled mid-run via discover_tools) is cold and gets deferred behind
-// Anthropic's tool search, so it appends inline on discovery instead of mutating
-// the prefix. `mcpServerName` on a tool config is a bare string (only internal
-// server-side configs carry an internal name), so guard the name before the
-// availability lookup.
-export function isHotMCPServerName(mcpServerName: string): boolean {
-  return (
-    isInternalMCPServerName(mcpServerName) &&
-    isAutoInternalMCPServerName(mcpServerName)
   );
 }
 

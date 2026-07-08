@@ -78,6 +78,13 @@ export const deleteWorkspacePlugin = createPlugin({
           )
         );
       }
+      if (subscription.metronomeContractId !== null) {
+        return new Err(
+          new Error(
+            "Workspace has an active Metronome contract, please downgrade the contract before deleting the workspace."
+          )
+        );
+      }
 
       await deleteWorkspace(workspace);
     }

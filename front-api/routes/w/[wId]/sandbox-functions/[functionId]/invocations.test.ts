@@ -4,9 +4,23 @@ import { FileFactory } from "@app/tests/utils/FileFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { sandboxFunctionContentType } from "@app/types/files";
+import { Err, Ok } from "@app/types/shared/result";
 import { honoApp } from "@front-api/app";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
-import { describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
+vi.mock("@app/lib/api/sandbox_functions/events", async (importOriginal) => {
+  const mod =
+    await importOriginal<
+      typeof import("@app/lib/api/sandbox_functions/events")
+    >();
+  return {
+    ...mod,
+    publishSandboxFunctionInvocationEvent: vi.fn(),
+  };
+});
+
+import { publishSandboxFunctionInvocationEvent } from "@app/lib/api/sandbox_functions/events";
 
 const inputSchema: JSONSchema = {
   type: "object",
@@ -21,6 +35,14 @@ const outputSchema: JSONSchema = {
     ok: { type: "boolean" },
   },
 };
+
+beforeEach(() => {
+  vi.clearAllMocks();
+});
+
+afterEach(() => {
+  vi.restoreAllMocks();
+});
 
 async function setupSandboxFunction({
   addCallerToSpace = true,
@@ -48,6 +70,8 @@ async function setupSandboxFunction({
   const sandboxFunction = await SandboxFunctionResource.makeNew(adminAuth, {
     space,
     file,
+    slug: "run-function",
+    description: "Run the function.",
     inputSchema,
     outputSchema,
   });
@@ -71,15 +95,17 @@ async function setupSandboxFunction({
 
 function postInvocation({
   workspaceId,
-  functionId,
+  functionIdOrSlug,
   body = {},
 }: {
   workspaceId: string;
-  functionId: string;
+  functionIdOrSlug: string;
   body?: unknown;
 }) {
+  const encodedFunctionIdOrSlug = encodeURIComponent(functionIdOrSlug);
+
   return honoApp.request(
-    `/api/w/${workspaceId}/sandbox-functions/${functionId}/invocations`,
+    `/api/w/${workspaceId}/sandbox-functions/${encodedFunctionIdOrSlug}/invocations`,
     {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -88,13 +114,24 @@ function postInvocation({
   );
 }
 
-describe("POST /api/w/:wId/sandbox-functions/:functionId/invocations", () => {
-  it("creates a UUID-only invocation for a non-admin user with access to the function space", async () => {
+describe("POST /api/w/:wId/sandbox-functions/:functionIdOrSlug/invocations", () => {
+  it("creates an invocation through the sandbox function resource", async () => {
     const { workspace, sandboxFunction } = await setupSandboxFunction();
+    const createdAt = new Date().toISOString();
+    const invokeSpy = vi
+      .spyOn(SandboxFunctionResource.prototype, "invoke")
+      .mockResolvedValue(
+        new Ok({
+          sId: "test-invocation-id",
+          functionId: sandboxFunction.sId,
+          status: "created",
+          createdAt,
+        })
+      );
 
     const response = await postInvocation({
       workspaceId: workspace.sId,
-      functionId: sandboxFunction.sId,
+      functionIdOrSlug: sandboxFunction.sId,
       body: {
         input: { message: "hello" },
         context: { frameFileId: sandboxFunction.file.sId },
@@ -105,15 +142,57 @@ describe("POST /api/w/:wId/sandbox-functions/:functionId/invocations", () => {
     const body = await response.json();
     expect(body).toEqual({
       invocation: {
-        id: expect.stringMatching(
-          /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
-        ),
+        sId: "test-invocation-id",
         functionId: sandboxFunction.sId,
         status: "created",
-        createdAt: expect.any(String),
+        createdAt,
       },
     });
-    expect(Date.parse(body.invocation.createdAt)).not.toBeNaN();
+    expect(invokeSpy).toHaveBeenCalledWith(expect.anything(), {
+      input: { message: "hello" },
+      context: { frameFileId: sandboxFunction.file.sId },
+    });
+    expect(publishSandboxFunctionInvocationEvent).toHaveBeenCalledWith(
+      {
+        type: "sandbox_function_invocation_created",
+        created: Date.parse(createdAt),
+        invocation: {
+          sId: "test-invocation-id",
+          functionId: sandboxFunction.sId,
+          status: "created",
+          createdAt,
+        },
+      },
+      { invocationId: "test-invocation-id" }
+    );
+  });
+
+  it("creates an invocation by pod id and function slug", async () => {
+    const { workspace, sandboxFunction } = await setupSandboxFunction();
+    const createdAt = new Date().toISOString();
+    const invokeSpy = vi
+      .spyOn(SandboxFunctionResource.prototype, "invoke")
+      .mockResolvedValue(
+        new Ok({
+          sId: "test-invocation-id",
+          functionId: sandboxFunction.sId,
+          status: "created",
+          createdAt,
+        })
+      );
+
+    const response = await postInvocation({
+      workspaceId: workspace.sId,
+      functionIdOrSlug: `${sandboxFunction.space.sId}/${sandboxFunction.slug}`,
+      body: {
+        input: { message: "hello" },
+      },
+    });
+
+    expect(response.status).toBe(201);
+    expect(invokeSpy).toHaveBeenCalledWith(expect.anything(), {
+      input: { message: "hello" },
+    });
   });
 
   it("returns 404 when the user cannot access the function space", async () => {
@@ -123,7 +202,7 @@ describe("POST /api/w/:wId/sandbox-functions/:functionId/invocations", () => {
 
     const response = await postInvocation({
       workspaceId: workspace.sId,
-      functionId: sandboxFunction.sId,
+      functionIdOrSlug: sandboxFunction.sId,
     });
 
     expect(response.status).toBe(404);
@@ -132,15 +211,43 @@ describe("POST /api/w/:wId/sandbox-functions/:functionId/invocations", () => {
     });
   });
 
-  it("does not require the broader sandbox tools feature flag", async () => {
+  it("does not require Computer access", async () => {
     const { workspace, sandboxFunction } = await setupSandboxFunction();
+    vi.spyOn(SandboxFunctionResource.prototype, "invoke").mockResolvedValue(
+      new Ok({
+        sId: "test-invocation-id",
+        functionId: sandboxFunction.sId,
+        status: "created",
+        createdAt: new Date().toISOString(),
+      })
+    );
 
     const response = await postInvocation({
       workspaceId: workspace.sId,
-      functionId: sandboxFunction.sId,
+      functionIdOrSlug: sandboxFunction.sId,
     });
 
     expect(response.status).toBe(201);
+  });
+
+  it("returns 500 when the resource invocation fails", async () => {
+    const { workspace, sandboxFunction } = await setupSandboxFunction();
+    vi.spyOn(SandboxFunctionResource.prototype, "invoke").mockResolvedValue(
+      new Err(new Error("sandbox failed"))
+    );
+
+    const response = await postInvocation({
+      workspaceId: workspace.sId,
+      functionIdOrSlug: sandboxFunction.sId,
+    });
+
+    expect(response.status).toBe(500);
+    expect(await response.json()).toMatchObject({
+      error: {
+        type: "internal_server_error",
+        message: "Sandbox function invocation failed.",
+      },
+    });
   });
 
   it("requires sandbox functions to be enabled", async () => {
@@ -150,7 +257,7 @@ describe("POST /api/w/:wId/sandbox-functions/:functionId/invocations", () => {
 
     const response = await postInvocation({
       workspaceId: workspace.sId,
-      functionId: sandboxFunction.sId,
+      functionIdOrSlug: sandboxFunction.sId,
     });
 
     expect(response.status).toBe(403);

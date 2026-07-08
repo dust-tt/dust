@@ -15,24 +15,24 @@ interface PriceTableProps {
 }
 
 const colorTable = {
-  pink: "s-bg-brand-pink-rose",
-  amber: "s-bg-brand-sunshine-golden ",
-  sky: "s-bg-brand-sky-blue",
-  blue: "s-bg-brand-electric-blue",
-  emerald: "s-bg-brand-tea-green",
+  pink: "bg-brand-pink-rose",
+  amber: "bg-brand-sunshine-golden ",
+  sky: "bg-brand-sky-blue",
+  blue: "bg-brand-electric-blue",
+  emerald: "bg-brand-tea-green",
 };
 
 const textColorTable = {
-  pink: " s-text-brand-red-rose",
-  amber: "s-text-brand-orange-golden",
-  sky: "s-text-brand-electric-blue",
-  blue: "s-text-brand-sky-blue",
-  emerald: "s-text-brand-hunter-green",
+  pink: " text-brand-red-rose",
+  amber: "text-brand-orange-golden",
+  sky: "text-brand-electric-blue",
+  blue: "text-brand-sky-blue",
+  emerald: "text-brand-hunter-green",
 };
 
 const sizeTable = {
-  sm: "s-rounded-2xl s-p-px s-shadow-2xl",
-  xs: "s-rounded-2xl s-p-px s-shadow-xl",
+  sm: "rounded-2xl p-px shadow-2xl",
+  xs: "rounded-2xl p-px shadow-xl",
 };
 
 export function PriceTable({
@@ -62,11 +62,11 @@ export function PriceTable({
   return (
     <div
       className={cn(
-        "s-w-full",
-        "s-flex s-cursor-default s-flex-col s-border s-border-white/30",
+        "w-full",
+        "flex cursor-default flex-col border border-white/30",
         sizeTable[size],
         magnified
-          ? "s-duration-400 s-scale-95 s-transition-all s-ease-out hover:s-scale-100"
+          ? "duration-400 scale-95 transition-all ease-out hover:scale-100"
           : "",
         colorTable[color],
         className
@@ -74,23 +74,23 @@ export function PriceTable({
     >
       <div
         className={cn(
-          "s-flex s-flex-col",
-          size === "xs" ? "s-px-4 s-py-3" : "s-px-5 s-py-4"
+          "flex flex-col",
+          size === "xs" ? "px-4 py-3" : "px-5 py-4"
         )}
       >
         <div
           className={cn(
-            size === "xs" ? "s-heading-2xl" : "s-heading-3xl",
-            "s-w-full s-text-right",
-            "s-text-foreground"
+            size === "xs" ? "heading-2xl" : "heading-3xl",
+            "w-full text-right",
+            "text-foreground"
           )}
         >
           {title}
         </div>
-        <div className="-s-mt-2 s-flex s-flex-row s-items-baseline s-gap-2">
+        <div className="-mt-2 flex flex-row items-baseline gap-2">
           <span
             className={cn(
-              size === "xs" ? "s-heading-3xl" : "s-heading-4xl",
+              size === "xs" ? "heading-3xl" : "heading-4xl",
               textColorTable[color]
             )}
           >
@@ -98,8 +98,8 @@ export function PriceTable({
           </span>
           <span
             className={cn(
-              "s-text-foreground",
-              size === "xs" ? "s-heading-base" : "s-heading-lg"
+              "text-foreground",
+              size === "xs" ? "heading-base" : "heading-lg"
             )}
           >
             {priceLabel}
@@ -114,8 +114,8 @@ export function PriceTable({
           borderTopLeftRadius: "4px",
         }}
         className={cn(
-          "s-flex s-h-full s-flex-col s-overflow-hidden s-shadow-md",
-          "s-bg-background dark:s-bg-muted-background-night"
+          "flex h-full flex-col overflow-hidden shadow-md",
+          "bg-background"
         )}
       >
         {childrenWithProps}
@@ -131,9 +131,9 @@ const iconTable = {
 };
 
 const iconColorTable = {
-  check: "s-text-green-500",
-  dash: "s-text-golden-500",
-  xmark: "s-text-rose-500",
+  check: "text-green-500",
+  dash: "text-golden-500",
+  xmark: "text-rose-500",
 };
 
 interface PriceTableItemProps {
@@ -152,16 +152,13 @@ PriceTable.Item = function ({
   return (
     <div
       className={cn(
-        size === "xs"
-          ? "s-gap-2 s-p-2.5 s-text-sm"
-          : "s-gap-3 s-p-4 s-text-base",
-        "s-flex s-items-start s-border-b",
-        "s-border-border s-text-muted-foreground",
-        "dark:s-border-border-dark-night dark:s-text-muted-foreground-night",
+        size === "xs" ? "gap-2 p-2.5 text-sm" : "gap-3 p-4 text-base",
+        "flex items-start border-b",
+        "border-border text-muted-foreground",
         className
       )}
     >
-      <div className="s-pt-0.5">
+      <div className="pt-0.5">
         <Icon
           size={size}
           visual={iconTable[variant]}
@@ -170,10 +167,8 @@ PriceTable.Item = function ({
       </div>
       <div
         className={cn(
-          variant === "xmark"
-            ? "s-text-primery-600 dark:s-text-primery-600-night"
-            : "",
-          "s-overflow-hidden"
+          variant === "xmark" ? "text-primery-600" : "",
+          "overflow-hidden"
         )}
       >
         {label}
@@ -195,19 +190,15 @@ PriceTable.ActionContainer = function ({
 }: PriceTableActionContainerProps) {
   return (
     <>
-      {position === "bottom" ? <div className="s-h-full s-w-full" /> : null}
+      {position === "bottom" ? <div className="h-full w-full" /> : null}
       <div
         className={cn(
-          "s-flex s-w-full s-justify-center s-px-2",
-          size === "xs" ? "s-py-2" : "s-py-4",
-          position === "top"
-            ? "s-border-b s-border-border dark:s-border-border-dark-night"
-            : ""
+          "flex w-full justify-center px-2",
+          size === "xs" ? "py-2" : "py-4",
+          position === "top" ? "border-b border-border" : ""
         )}
       >
-        <div className="s-flex s-h-full s-flex-col s-justify-end">
-          {children}
-        </div>
+        <div className="flex h-full flex-col justify-end">{children}</div>
       </div>
     </>
   );
@@ -218,7 +209,5 @@ interface PriceTableContainerProps {
 }
 
 PriceTable.Container = function ({ children }: PriceTableContainerProps) {
-  return (
-    <div className="s-flex s-w-full s-items-stretch s-gap-3">{children}</div>
-  );
+  return <div className="flex w-full items-stretch gap-3">{children}</div>;
 };

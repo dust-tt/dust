@@ -6,7 +6,9 @@ import { zodToJsonSchema } from "zod-to-json-schema";
 
 export const GITHUB_TOOLS_METADATA = createToolsRecord({
   create_issue: {
-    description: "Create a new issue on a specified GitHub repository.",
+    description:
+      "Create or file a brand new issue (a bug report or feature request) on" +
+      " a specified GitHub repository, optionally with assignees and labels.",
     schema: {
       owner: z
         .string()
@@ -30,6 +32,8 @@ export const GITHUB_TOOLS_METADATA = createToolsRecord({
       running: "Creating GitHub issue",
       done: "Create GitHub issue",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   update_issue: {
     description:
@@ -90,6 +94,8 @@ export const GITHUB_TOOLS_METADATA = createToolsRecord({
       running: "Updating GitHub issue",
       done: "Update GitHub issue",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   get_pull_request: {
     description:
@@ -110,10 +116,12 @@ export const GITHUB_TOOLS_METADATA = createToolsRecord({
       running: "Retrieving GitHub pull request",
       done: "Retrieve GitHub pull request",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   create_pull_request_review: {
     description:
-      "Create a review on a pull request with optional line comments.",
+      "Approve, request changes on, or submit a review verdict for a pull request, with optional inline line comments.",
     schema: {
       owner: z
         .string()
@@ -156,6 +164,8 @@ export const GITHUB_TOOLS_METADATA = createToolsRecord({
       running: "Reviewing GitHub pull request",
       done: "Review GitHub pull request",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   list_organization_projects: {
     description:
@@ -172,6 +182,8 @@ export const GITHUB_TOOLS_METADATA = createToolsRecord({
       running: "Listing GitHub organization projects",
       done: "List GitHub organization projects",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   add_issue_to_project: {
     description:
@@ -210,6 +222,8 @@ export const GITHUB_TOOLS_METADATA = createToolsRecord({
       running: "Adding GitHub issue to project",
       done: "Add GitHub issue to project",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   comment_on_issue: {
     description: "Add a comment to an existing GitHub issue.",
@@ -230,10 +244,12 @@ export const GITHUB_TOOLS_METADATA = createToolsRecord({
       running: "Commenting on GitHub issue",
       done: "Comment on GitHub issue",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   list_discussion_categories: {
     description:
-      "List the discussion categories available in a GitHub repository. Use this to get the category ID required when creating a discussion.",
+      "List the available discussion categories in a GitHub repository. Use this to get the category ID required to create one.",
     schema: {
       owner: z
         .string()
@@ -255,9 +271,12 @@ export const GITHUB_TOOLS_METADATA = createToolsRecord({
       running: "Listing GitHub discussion categories",
       done: "List GitHub discussion categories",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   create_discussion: {
-    description: "Create a new discussion in a GitHub repository.",
+    description:
+      "Create and start a brand new single GitHub discussion thread under a chosen category.",
     schema: {
       owner: z
         .string()
@@ -280,6 +299,8 @@ export const GITHUB_TOOLS_METADATA = createToolsRecord({
       running: "Creating GitHub discussion",
       done: "Create GitHub discussion",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   comment_on_discussion: {
     description:
@@ -307,6 +328,8 @@ export const GITHUB_TOOLS_METADATA = createToolsRecord({
       running: "Commenting on GitHub discussion",
       done: "Comment on GitHub discussion",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   get_discussion: {
     description:
@@ -325,10 +348,12 @@ export const GITHUB_TOOLS_METADATA = createToolsRecord({
       running: "Retrieving GitHub discussion",
       done: "Retrieve GitHub discussion",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   get_discussion_comments: {
     description:
-      "Retrieve comments from a specified GitHub discussion with pagination.",
+      "Retrieve, fetch, and list the comments posted on a specified GitHub discussion, with pagination.",
     schema: {
       owner: z
         .string()
@@ -351,10 +376,12 @@ export const GITHUB_TOOLS_METADATA = createToolsRecord({
       running: "Retrieving GitHub discussion comments",
       done: "Retrieve GitHub discussion comments",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   list_discussions: {
     description:
-      "List discussions from a specified GitHub repository with optional filtering.",
+      "List discussions in a GitHub repository: browse and enumerate the repository's discussions, returning many discussions with optional filtering.",
     schema: {
       owner: z
         .string()
@@ -373,29 +400,31 @@ export const GITHUB_TOOLS_METADATA = createToolsRecord({
       sort: z
         .enum(["CREATED_AT", "UPDATED_AT"])
         .optional()
-        .describe("What to sort results by. Defaults to UPDATED_AT."),
+        .describe("Sort field. Defaults to UPDATED_AT."),
       direction: z
         .enum(["ASC", "DESC"])
         .optional()
-        .describe("The direction of the sort. Defaults to DESC."),
+        .describe("Sort direction. Defaults to DESC."),
       perPage: z
         .number()
         .min(1)
         .max(100)
         .optional()
         .describe("Results per page. Defaults to 50, max 100."),
-      after: z.string().optional().describe("The cursor to start after."),
-      before: z.string().optional().describe("The cursor to start before."),
+      after: z.string().optional().describe("Pagination cursor."),
+      before: z.string().optional().describe("Pagination cursor."),
     },
     stake: "never_ask",
     displayLabels: {
       running: "Listing GitHub discussions",
       done: "List GitHub discussions",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   get_issue: {
     description:
-      "Retrieve an issue from a specified GitHub repository including its description, comments, and labels.",
+      "Retrieve and read the full details of a single issue from a specified GitHub repository, including its description, comments, and labels.",
     schema: {
       owner: z
         .string()
@@ -410,6 +439,8 @@ export const GITHUB_TOOLS_METADATA = createToolsRecord({
       running: "Retrieving GitHub issue",
       done: "Retrieve GitHub issue",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   get_issue_custom_fields: {
     description:
@@ -434,6 +465,8 @@ export const GITHUB_TOOLS_METADATA = createToolsRecord({
       running: "Retrieving GitHub issue custom fields",
       done: "Retrieve GitHub issue custom fields",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   list_issues: {
     description:
@@ -475,23 +508,21 @@ export const GITHUB_TOOLS_METADATA = createToolsRecord({
       running: "Listing GitHub issues",
       done: "List GitHub issues",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   search_advanced: {
     description:
-      "Search issues and pull requests using GitHub's advanced search syntax with AND/OR operators and nested searches. " +
-      "Supports advanced query syntax like 'is:issue AND assignee:@me AND (label:support OR comments:>5)' or 'is:pr AND assignee:@me'. " +
-      "Use 'is:issue' to search for issues, 'is:pr' to search for pull requests, or omit to search both. " +
-      "Note that `@me` behavior depends on the connection type: " +
-      "with a personal connection, `@me` resolves to the user's GitHub account (example: `is:issue AND assignee:@me`); " +
-      "with a workspace (shared) connection, `@me` resolves to the Dust GitHub App bot, NOT the user, " +
-      "use the user's actual GitHub username instead (example: `is:issue AND assignee:username`).",
+      "Search GitHub issues and pull requests using GitHub's advanced search syntax with AND/OR operators and nested filters. " +
+      "Use 'is:issue' for issues, 'is:pr' for pull requests, or omit to search both. " +
+      "The `@me` qualifier resolves to the authenticated account on a personal connection, but on a workspace (shared) connection it resolves to the Dust GitHub App bot, so pass the GitHub username explicitly there.",
     schema: {
       query: z
         .string()
         .describe(
-          "The advanced search query string. Supports AND/OR operators and nested searches. " +
-            "Examples: 'is:issue AND assignee:username AND (label:bug OR comments:>5)', 'is:pr AND assignee:@me', or 'assignee:username' to search both. " +
-            "Note: Spaces between multiple repo/org/user filters are treated as AND operators."
+          "The advanced search query string. Supports AND/OR operators and nested filters. " +
+            "Examples: 'is:issue AND assignee:username AND (label:bug OR comments:>5)', 'is:pr AND assignee:@me'. " +
+            "Spaces between repo/org/user filters are treated as AND operators."
         ),
       first: z
         .number()
@@ -507,6 +538,8 @@ export const GITHUB_TOOLS_METADATA = createToolsRecord({
       running: "Searching GitHub issues and pull requests",
       done: "Search GitHub issues and pull requests",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   list_pull_requests: {
     description:
@@ -544,6 +577,8 @@ export const GITHUB_TOOLS_METADATA = createToolsRecord({
       running: "Listing GitHub pull requests",
       done: "List GitHub pull requests",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
 });
 
@@ -564,6 +599,8 @@ export const GITHUB_SERVER = {
     description: t.description,
     inputSchema: zodToJsonSchema(z.object(t.schema)) as JSONSchema,
     displayLabels: t.displayLabels,
+    toolCostCategory: t.toolCostCategory,
+    freeUsage: t.freeUsage,
   })),
   tools_stakes: Object.fromEntries(
     Object.values(GITHUB_TOOLS_METADATA).map((t) => [t.name, t.stake])

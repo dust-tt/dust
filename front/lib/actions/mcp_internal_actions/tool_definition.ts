@@ -1,9 +1,10 @@
 import type { MCPToolStakeLevelType } from "@app/lib/actions/constants";
 import type { MCPError } from "@app/lib/actions/mcp_errors";
-import type { AgentLoopContextType } from "@app/lib/actions/types";
+import type { ToolContextType } from "@app/lib/actions/types";
 import type {
   InternalMCPServerDefinitionType,
   MCPToolType,
+  ToolCostCategory,
   ToolDisplayLabels,
 } from "@app/lib/api/mcp";
 import type { Authenticator } from "@app/lib/auth";
@@ -21,7 +22,7 @@ export type ToolHandlerExtra = RequestHandlerExtra<
   ServerNotification
 > & {
   auth: Authenticator;
-  agentLoopContext?: AgentLoopContextType;
+  toolContext?: ToolContextType;
 };
 
 export type ToolHandlerResult = Result<CallToolResult["content"], MCPError>;
@@ -47,10 +48,15 @@ export interface ToolDefinition<
 > {
   name: TName;
   enableAlerting?: boolean;
+  // When true, the tool is kept in the cached tools prefix (loaded upfront)
+  // instead of being deferred behind tool search. Defaults to deferred.
+  eager?: boolean;
   description: string;
   schema: TSchema;
   stake: MCPToolStakeLevelType;
   displayLabels: ToolDisplayLabels;
+  toolCostCategory: ToolCostCategory;
+  freeUsage: boolean;
   handler: (
     params: z.infer<z.ZodObject<TSchema>>,
     extra: ToolHandlerExtra
@@ -67,6 +73,8 @@ interface ClientToolDefinition<
   schema: TSchema;
   stake: MCPToolStakeLevelType;
   displayLabels: ToolDisplayLabels;
+  toolCostCategory: ToolCostCategory;
+  freeUsage: boolean;
   argumentsRequiringApproval?: Array<
     Extract<keyof z.infer<z.ZodObject<TSchema>>, string>
   >;
@@ -135,12 +143,14 @@ export function buildTools<T extends Record<string, ToolMeta>>(
 }
 
 // Internal MCP server tools must have displayLabels (unlike remote servers).
-type InternalMCPToolType<TName extends string = string> = Omit<
+export type InternalMCPToolType<TName extends string = string> = Omit<
   MCPToolType,
   "name" | "displayLabels"
 > & {
   name: TName;
   displayLabels: ToolDisplayLabels;
+  toolCostCategory: ToolCostCategory;
+  freeUsage: boolean;
 };
 
 export type ServerMetadata<

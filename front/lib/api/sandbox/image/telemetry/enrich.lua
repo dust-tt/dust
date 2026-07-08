@@ -47,6 +47,7 @@ function enrich_message(tag, timestamp, record)
 
     record["sandbox_id"] = os.getenv("E2B_SANDBOX_ID")
     record["conversation_id"] = os.getenv("CONVERSATION_ID")
+    record["space_id"] = os.getenv("SPACE_ID")
     record["workspace_id"] = os.getenv("WORKSPACE_ID")
 
     record["uid"] = record["_UID"]

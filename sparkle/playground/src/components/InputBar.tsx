@@ -205,12 +205,9 @@ export function InputBar({
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
       className={cn(
-        "s-relative s-w-full s-z-10 s-transition-all s-rounded-3xl s-max-w-4xl s-border s-border-highlight-300 dark:s-border-highlight-300-night s-ring-2 s-ring-highlight-300/50 dark:s-ring-highlight-700/60",
-        variant === "default" &&
-          "s-bg-primary-50/70 dark:s-bg-primary-900/70 s-backdrop-blur-md",
-        variant === "embedded" && "s-bg-primary-50 dark:s-bg-primary-900",
-        variant === "default" &&
-          (showFocusStyle ? "" : "s-border-border dark:s-border-border-night"),
+        variant === "default" && "bg-primary-50/70 backdrop-blur-md",
+        variant === "embedded" && "bg-primary-50",
+        variant === "default" && (showFocusStyle ? "" : "border-border"),
         className
       )}
     >
@@ -220,19 +217,16 @@ export function InputBar({
           size="sm"
           variant="ghost"
           aria-label="Close"
-          className="s-absolute s-right-3 s-top-3 s-z-20"
+          className="absolute right-3 top-3 z-20"
           onClick={(event) => {
             event.stopPropagation();
             onClose();
           }}
         />
       )}
-      <div className="s-flex s-w-full s-flex-col">
+      <div className="flex w-full flex-col">
         {(visibleContextAttachments.length > 0 || droppedFiles.length > 0) && (
-          <NewCitationGrid
-            className="s-pt-2 s-px-2 s-pb-0 s-w-full"
-            justify="start"
-          >
+          <NewCitationGrid className="pt-2 px-2 pb-0 w-full" justify="start">
             {visibleContextAttachments.map((attachment) => (
               <NewCitation
                 key={attachment.id}
@@ -282,8 +276,8 @@ export function InputBar({
           variant="compact"
           topBar={
             taskCommand ? (
-              <div className="s-w-full s-p-2">
-                <div className="s-rounded-xl s-bg-highlight-50 s-border s-border-highlight-100/70 s-px-2 s-pt-1 s-pb-0 dark:s-bg-muted-background-night">
+              <div className="w-full p-2">
+                <div className="rounded-xl bg-highlight-50 border border-highlight-100/70 px-2 pt-1 pb-0">
                   <TaskItem
                     id={taskCommand.id}
                     text={taskCommand.label}
@@ -295,27 +289,27 @@ export function InputBar({
           }
           topBarClassName={
             taskCommand
-              ? "s-static s-items-stretch s-rounded-t-xl s-border-b-0 s-bg-transparent dark:s-bg-transparent"
+              ? "static items-stretch rounded-t-xl border-b-0 bg-transparent"
               : undefined
           }
           containerClassName={
             variant === "embedded"
-              ? "s-min-h-0 s-rounded-none s-border-0 s-bg-transparent focus-within:s-ring-0 focus-within:s-border-0 dark:s-bg-transparent"
+              ? "min-h-0 rounded-none border-0 bg-transparent focus-within:ring-0 focus-within:border-0"
               : undefined
           }
           showFormattingMenu
           showAskSidekickMenu={false}
-          className="placeholder:s-text-muted-foreground dark:placeholder:s-text-muted-foreground-night"
+          className="placeholder:text-muted-foreground"
         />
-        <div className="s-flex s-w-full s-gap-2 s-p-2 s-pl-4">
+        <div className="flex w-full gap-2 p-2 pl-4">
           <Button
             variant="outline"
             icon={Plus}
             size="sm"
             tooltip="Attach a document"
-            className="md:s-hidden"
+            className="md:hidden"
           />
-          <div className="s-hidden s-gap-0 md:s-flex">
+          <div className="hidden gap-0 md:flex">
             <Button
               variant="ghost-secondary"
               icon={Robot}
@@ -336,8 +330,8 @@ export function InputBar({
               tooltip="Add functionality"
             />
           </div>
-          <div className="s-grow" />
-          <div className="s-flex s-items-center s-gap-2 md:s-gap-1">
+          <div className="grow" />
+          <div className="flex items-center gap-2 md:gap-1">
             <Button
               variant="ghost-secondary"
               icon={Microphone01}
@@ -382,8 +376,8 @@ export function InputBar({
         <SheetContent size="3xl" side="right">
           <SheetHeader>
             <SheetTitle>
-              <div className="s-flex s-flex-1 s-flex-col s-w-full s-items-start s-gap-4">
-                <div className="s-flex s-items-center s-gap-2">
+              <div className="flex flex-1 flex-col w-full items-start gap-4">
+                <div className="flex items-center gap-2">
                   {selectedDroppedFile && <Icon visual={File02} size="md" />}
                   <span>
                     {selectedDroppedFile?.file.name || "Document preview"}
@@ -393,8 +387,8 @@ export function InputBar({
             </SheetTitle>
           </SheetHeader>
           <SheetContainer>
-            <div className="s-flex s-flex-col s-items-center s-justify-center s-py-16">
-              <p className="s-text-foreground dark:s-text-foreground-night">
+            <div className="flex flex-col items-center justify-center py-16">
+              <p className="text-foreground">
                 Document preview — {selectedDroppedFile?.file.type || "file"}
               </p>
             </div>

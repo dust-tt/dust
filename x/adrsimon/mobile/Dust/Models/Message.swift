@@ -77,7 +77,10 @@ struct ContentFragment: Codable, Identifiable, Hashable {
 // MARK: - Generated File (attached to AgentMessage)
 
 struct GeneratedFile: Codable, Identifiable, Hashable {
-    let fileId: String
+    // Files backed by a Dust FileResource carry a `fileId`; path-only files
+    // (oversized tool output offloaded to disk) carry `filePath` and a null `fileId`.
+    let fileId: String?
+    let filePath: String?
     let title: String
     let contentType: String
     let createdAt: Double?
@@ -85,7 +88,7 @@ struct GeneratedFile: Codable, Identifiable, Hashable {
     let hidden: Bool?
 
     var id: String {
-        fileId
+        fileId ?? filePath ?? title
     }
 
     var isVisible: Bool {
@@ -184,6 +187,8 @@ struct ToolApprovalInfo: Equatable {
     let actionId: String
     let messageId: String
     let conversationId: String
+    /// sId of the user whose turn triggered the action; only they may approve it.
+    let triggeringUserId: String?
     let toolName: String?
     let mcpServerName: String?
     let agentName: String?
@@ -202,6 +207,7 @@ struct ToolApprovalInfo: Equatable {
         actionId: String,
         messageId: String,
         conversationId: String,
+        triggeringUserId: String?,
         toolName: String?,
         mcpServerName: String?,
         agentName: String?,
@@ -212,6 +218,7 @@ struct ToolApprovalInfo: Equatable {
         self.actionId = actionId
         self.messageId = messageId
         self.conversationId = conversationId
+        self.triggeringUserId = triggeringUserId
         self.toolName = toolName
         self.mcpServerName = mcpServerName
         self.agentName = agentName
@@ -238,6 +245,7 @@ struct ToolApprovalInfo: Equatable {
             actionId: event.actionId ?? "",
             messageId: event.messageId ?? fallbackMessageId,
             conversationId: event.conversationId ?? fallbackConversationId,
+            triggeringUserId: event.userId,
             toolName: event.metadata?.toolName,
             mcpServerName: event.metadata?.mcpServerName,
             agentName: event.metadata?.agentName,
@@ -252,6 +260,7 @@ struct ToolApprovalInfo: Equatable {
             actionId: action.actionId ?? "",
             messageId: action.messageId ?? "",
             conversationId: action.conversationId ?? fallbackConversationId,
+            triggeringUserId: action.userId,
             toolName: action.metadata?.toolName,
             mcpServerName: action.metadata?.mcpServerName,
             agentName: action.metadata?.agentName,
@@ -310,12 +319,15 @@ struct UserQuestionInfo: Equatable {
     let actionId: String
     let messageId: String
     let conversationId: String
+    /// sId of the user whose turn triggered the question; only they may answer it.
+    let triggeringUserId: String?
     let question: UserQuestion
 
     init(from event: ToolAskUserQuestionEvent, fallbackMessageId: String, fallbackConversationId: String) {
         self.actionId = event.actionId ?? ""
         self.messageId = event.messageId ?? fallbackMessageId
         self.conversationId = event.conversationId ?? fallbackConversationId
+        self.triggeringUserId = event.userId
         self.question = event.question
     }
 
@@ -323,8 +335,16 @@ struct UserQuestionInfo: Equatable {
         self.actionId = action.actionId ?? ""
         self.messageId = action.messageId ?? ""
         self.conversationId = action.conversationId ?? fallbackConversationId
+        self.triggeringUserId = action.userId
         self.question = question
     }
+}
+
+/// Mirrors front's `canCurrentUserRespondToParentUserMessage`: a viewer may respond to a
+/// blocked action only when it has no associated user (API-key run) or the action was
+/// triggered by that same viewer. Prevents one teammate from approving another's tool calls.
+func canRespondToBlockedAction(triggeringUserId: String?, currentUserSId: String?) -> Bool {
+    triggeringUserId == nil || triggeringUserId == currentUserSId
 }
 
 /// Derived view projection of `Activity` overlaid with any `BlockedState`. Not stored.

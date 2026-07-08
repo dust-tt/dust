@@ -4,6 +4,7 @@ import { workspaceAuth } from "@front-api/middlewares/workspace_auth";
 import conversationEvents from "./assistant/conversations/[cId]/events";
 import messageEvents from "./assistant/conversations/[cId]/messages/[mId]/events";
 import mcpRequests from "./mcp/requests";
+import sandboxFunctionInvocationEvents from "./sandbox-functions/[functionId]/invocations/[invocationId]/events";
 
 // Mounted at /api/sse/w/:wId. SSE routes inherit the same workspace auth as
 // their non-SSE counterparts under /api/w/:wId. The leaves are mounted at their
@@ -16,5 +17,9 @@ app.use("*", workspaceAuth());
 app.route("/assistant/conversations/:cId/events", conversationEvents);
 app.route("/assistant/conversations/:cId/messages/:mId/events", messageEvents);
 app.route("/mcp/requests", mcpRequests);
+app.route(
+  "/sandbox-functions/:functionId/invocations/:invocationId/events",
+  sandboxFunctionInvocationEvents
+);
 
 export default app;

@@ -864,6 +864,9 @@ function AgentBuilderContent({
             agentConfigurationId={agentConfiguration?.sId || null}
             isTriggersLoading={isTriggersLoading}
             initialRequestedSpaceIds={agentConfiguration?.requestedSpaceIds}
+            isEditorGateVisible={isEditorGateVisible}
+            isAddingSelfAsEditor={isAddingSelfAsEditor}
+            onAddSelfAsEditor={onAddSelfAsEditor}
           />
         }
         rightPanel={

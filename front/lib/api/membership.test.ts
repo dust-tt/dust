@@ -164,4 +164,29 @@ describe("createAndTrackMembership", () => {
 
     expect(membership.seatType).toBe("pro");
   });
+
+  it("assigns none on a non-CP shadow contract despite committed paid seats", async () => {
+    setupEntitledSeats(["free", "pro"]);
+
+    const workspace = await WorkspaceFactory.metronome({
+      metronomeCustomerId: "cus_test_shadow",
+    });
+    const upsertResult = await WorkspaceSeatLimitResource.upsert({
+      workspace,
+      seatType: "pro",
+      minSeats: 3,
+      maxSeats: null,
+    });
+    expect(upsertResult.isOk()).toBe(true);
+
+    const user = await UserFactory.basic();
+    const membership = await createAndTrackMembership({
+      user,
+      workspace,
+      role: "user",
+      origin: "invited",
+    });
+
+    expect(membership.seatType).toBe("none");
+  });
 });

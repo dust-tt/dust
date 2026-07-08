@@ -11,7 +11,7 @@ import { useSearchParam } from "@extension/shared/platform";
 import { useExtensionQuickActions } from "@extension/ui/components/quick_actions/ExtensionQuickActionsProvider";
 import { useFileUploaderService } from "@extension/ui/hooks/useFileUploaderService";
 import type { ReactNode } from "react";
-import { useContext, useEffect, useState } from "react";
+import { useCallback, useContext, useEffect, useState } from "react";
 
 interface ExtensionInputBarProviderProps {
   workspace: LightWorkspaceType;
@@ -70,10 +70,15 @@ export function ExtensionInputBarProvider({
     };
   }, [platform.messaging, fileUploaderService.uploadContentTab]);
 
+  const handleBeforeSubmit = useCallback(() => {
+    void platform.messaging?.sendMessage({ type: "SNAPSHOT_TAB_STATE" });
+  }, [platform.messaging]);
+
   return (
     <InputBarContextProvider
       captureActions={captureActions}
       fileUploaderService={fileUploaderService}
+      onBeforeSubmit={handleBeforeSubmit}
     >
       <AgentQueryParamHandler workspaceId={workspace.sId} />
       {children}

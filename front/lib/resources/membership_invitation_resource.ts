@@ -102,7 +102,7 @@ export class MembershipInvitationResource extends BaseResource<MembershipInvitat
         revoked: [],
       };
     }
-    if (!auth.hasPermission("workspace:manage_members")) {
+    if (!auth.isBusinessAdmin()) {
       throw new Error(
         "You do not have permission to manage membership invitations."
       );
@@ -327,7 +327,7 @@ export class MembershipInvitationResource extends BaseResource<MembershipInvitat
     if (!owner) {
       return [];
     }
-    if (!auth.hasPermission("workspace:manage_members")) {
+    if (!auth.isBusinessAdmin()) {
       throw new Error(
         "You do not have permission to manage membership invitations."
       );

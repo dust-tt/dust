@@ -2,7 +2,6 @@ import { buildToolSpecification } from "@app/lib/actions/mcp";
 import { tryListMCPTools } from "@app/lib/actions/mcp_actions";
 import { createClientSideMCPServerConfigurations } from "@app/lib/api/actions/mcp_client_side";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
-import { getAgentConfigurationsForView } from "@app/lib/api/assistant/configuration/views";
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import { renderConversationForModel } from "@app/lib/api/assistant/conversation_rendering";
 import { constructPromptMultiActions } from "@app/lib/api/assistant/generation";
@@ -13,7 +12,7 @@ import { renderEquippedSkillsUserMessage } from "@app/lib/api/assistant/skills_r
 import { systemPromptToText } from "@app/lib/api/llm/types/options";
 import { getLlmCredentials } from "@app/lib/api/provider_credentials";
 import { getSupportedModelConfig } from "@app/lib/llms/model_configurations";
-import { constructProjectContext } from "@app/lib/resources/skill/code_defined/projects";
+import { constructProjectContext } from "@app/lib/resources/skill/code_defined/global/projects";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
 import { tokenCountForTexts } from "@app/lib/tokenization";
@@ -121,7 +120,7 @@ app.post(
     const userMessage: UserMessageType = lastUserMessage;
 
     const attachments = await listAttachments(auth, { conversation });
-    const { servers: jitServers } = await getJITServers(auth, {
+    const jitServers = await getJITServers(auth, {
       agentConfiguration,
       conversation,
       attachments,
@@ -193,16 +192,6 @@ app.post(
       fallbackPrompt += ".";
     }
 
-    const agentsList = agentConfiguration.instructions?.includes(
-      "{ASSISTANTS_LIST}"
-    )
-      ? await getAgentConfigurationsForView({
-          auth,
-          agentsGetView: auth.user() ? "list" : "all",
-          variant: "light",
-        })
-      : null;
-
     const projectContext = await constructProjectContext(auth, {
       conversation,
     });
@@ -213,15 +202,15 @@ app.post(
       userMessage,
       agentConfiguration,
       fallbackPrompt,
-      model,
+      model: {
+        ...agentConfiguration.model,
+        ...model,
+      },
       hasAvailableActions: availableActions.length > 0,
       errorContext: mcpToolsListingError,
-      agentsList,
       conversation,
       serverToolsAndInstructions,
-      enabledSkills,
       systemSkills,
-      equippedSkills,
       projectContext,
       isNewFileExplorer,
     });

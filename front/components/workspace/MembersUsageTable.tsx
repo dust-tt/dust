@@ -10,14 +10,22 @@ import {
   OVERAGE_BAR_CLASSES,
 } from "@app/components/workspace/seat_styles";
 import type { MemberUsageType } from "@app/lib/api/credits/members_usage";
+import {
+  getAdvancedModelDisplayNames,
+  resolveAdvancedModelsForUser,
+} from "@app/lib/client/advanced_models";
 import { formatCredits } from "@app/lib/client/credits";
+import type { EffectiveSpendLimitSource } from "@app/lib/spend_limits/effective";
+import type { AllowedAdvancedModelType } from "@app/types/api/advanced_models";
 import {
   type MembershipSeatType,
   SEAT_TYPE_ORDER,
   toBaseSeatType,
 } from "@app/types/memberships";
+import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import {
   Clock,
+  createSelectionColumn,
   DataTable,
   Icon,
   LoadingBlock,
@@ -29,15 +37,29 @@ import type {
   CellContext,
   ColumnDef,
   PaginationState,
+  RowSelectionState,
   SortingState,
 } from "@tanstack/react-table";
 import { useMemo } from "react";
+
+const EMPTY_USER_ALLOWED_ADVANCED_MODELS_BY_USER_ID: Record<
+  string,
+  AllowedAdvancedModelType[]
+> = {};
+const EMPTY_GROUP_ADVANCED_MODELS_BY_GROUP_ID: Record<
+  string,
+  AllowedAdvancedModelType[]
+> = {};
+const EMPTY_WORKSPACE_ALLOWED_ADVANCED_MODELS: AllowedAdvancedModelType[] = [];
+const EMPTY_GROUP_NAME_TO_ID = new Map<string, string>();
+const EMPTY_ADVANCED_MODEL_DISPLAY_NAME_BY_KEY = new Map<string, string>();
 
 type RowData = {
   sId: string;
   name: string;
   email: string | null;
   image: string | null;
+  groups: string[];
   seatType: MembershipSeatType | null;
   memberUsageLimit: number | null;
   seatBalanceAwu: number | null;
@@ -45,10 +67,13 @@ type RowData = {
   consumedFromAllowanceAwuCredits: number;
   consumedFromPoolAwuCredits: number;
   spendLimitAwuCredits: number | null;
+  spendLimitSource: EffectiveSpendLimitSource;
   scheduledSeatType: MembershipSeatType | null;
   scheduledSeatChangeAt: string | null;
   isTotalAllowedUsagePending: boolean;
   isSeatChangePending: boolean;
+  advancedModelDisplayNames: string[];
+  hasUserLevelAdvancedModelsOverride: boolean;
   menuItems: MenuItem[];
 };
 
@@ -114,13 +139,35 @@ export interface AwuUsageBarProps {
   // When provided for a free seat, the bar shows lifetime consumed/remaining
   // instead of period spend.
   seatBalanceAwu?: number | null;
-  // The fully-resolved spend cap from `spendLimitAwuCredits` (member override or
-  // workspace default, both including seat allowance). Always non-null for seated
-  // users — workspace default pool cap treats null as 0 (seat-only). Pass `?? 0`
-  // as a TypeScript guard only.
+  // The fully-resolved spend cap from `spendLimitAwuCredits` (member override,
+  // group cap or workspace default, all including seat allowance). Always
+  // non-null for seated users — workspace default pool cap treats null as 0
+  // (seat-only). Pass `?? 0` as a TypeScript guard only.
   effectiveLimit: number;
+  // Where `effectiveLimit` comes from — shown as a tooltip on the limit figure.
+  spendLimitSource: EffectiveSpendLimitSource;
   seatType: MembershipSeatType | null;
   isTotalAllowedUsagePending: boolean;
+}
+
+// Human-readable origin of the effective spend limit, or null when there is
+// nothing worth explaining (no limit configured).
+function spendLimitSourceLabel(
+  source: EffectiveSpendLimitSource
+): string | null {
+  switch (source) {
+    case "override":
+      return "Limit set specifically for this member";
+    case "group":
+      return "Limit from a group";
+    case "default":
+      return "Workspace default limit";
+    case "none":
+      return null;
+    default:
+      assertNeverAndIgnore(source);
+      return null;
+  }
 }
 
 export function AwuUsageBar({
@@ -130,11 +177,13 @@ export function AwuUsageBar({
   memberUsageLimit,
   seatBalanceAwu,
   effectiveLimit,
+  spendLimitSource,
   seatType,
   isTotalAllowedUsagePending: isPending,
 }: AwuUsageBarProps) {
   const seatColors = getSeatBarClasses(seatType);
   const allowance = memberUsageLimit ?? 0;
+  const sourceLabel = spendLimitSourceLabel(spendLimitSource);
   // For free seats: use lifetime consumed (derived from the live Metronome
   // balance) instead of period spend, so the bar reflects remaining credit.
   const isFreeWithBalance =
@@ -304,7 +353,7 @@ export function AwuUsageBar({
 
   return (
     <div className="flex w-full flex-col gap-1">
-      <div className="flex justify-between text-xs tabular-nums text-foreground dark:text-foreground-night">
+      <div className="flex justify-between text-xs tabular-nums text-foreground">
         <span>
           {isFreeWithBalance
             ? formatCredits(lifetimeConsumed! + overage)
@@ -312,14 +361,16 @@ export function AwuUsageBar({
         </span>
         {isPending ? (
           <Spinner size="xs" />
+        ) : isFreeWithBalance ? (
+          <span>{formatCredits(allowance)}</span>
+        ) : sourceLabel !== null ? (
+          <Tooltip
+            tooltipTriggerAsChild
+            label={sourceLabel}
+            trigger={<span>{formatCredits(effectiveLimit)}</span>}
+          />
         ) : (
-          <span>
-            {isFreeWithBalance
-              ? formatCredits(allowance)
-              : effectiveLimit !== null
-                ? formatCredits(effectiveLimit)
-                : "—"}
-          </span>
+          <span>{formatCredits(effectiveLimit)}</span>
         )}
       </div>
       {tooltipContent ? (
@@ -332,6 +383,26 @@ export function AwuUsageBar({
 }
 
 const nameColumn = buildMemberNameColumn<RowData>();
+
+const groupsColumn: ColumnDef<RowData, string> = {
+  id: "groups" as const,
+  header: "Groups",
+  enableSorting: false,
+  accessorFn: (row) => row.groups.join(", "),
+  cell: (info: Info) => {
+    const { groups } = info.row.original;
+    return (
+      <DataTable.CellContent>
+        <span className="text-sm text-muted-foreground">
+          {groups.length > 0 ? groups.join(", ") : "--"}
+        </span>
+      </DataTable.CellContent>
+    );
+  },
+  meta: {
+    className: "w-48",
+  },
+};
 
 const seatTypeColumn: ColumnDef<RowData, string> = {
   id: "seatType" as const,
@@ -351,7 +422,7 @@ const seatTypeColumn: ColumnDef<RowData, string> = {
     const scheduledSeatChangeAt = info.row.original.scheduledSeatChangeAt;
     return (
       <DataTable.CellContent>
-        <span className="flex items-center gap-1.5 text-sm font-semibold text-muted-foreground dark:text-muted-foreground-night">
+        <span className="flex items-center gap-1.5 text-sm font-semibold text-muted-foreground">
           <SeatTypeIcon seatType={seatType} />
           {seatType ? seatTypeDisplayName(seatType) : seatType}
           {scheduledSeatType && (
@@ -378,32 +449,106 @@ const seatTypeColumn: ColumnDef<RowData, string> = {
   },
 };
 
-const consumedAwuCreditsColumn: ColumnDef<RowData, string> = {
-  id: "consumedAwuCredits" as const,
-  header: () => <span>Credits usage</span>,
-  accessorFn: (row) => row.consumedAwuCredits.toString(),
-  cell: (info: Info) => (
-    <div className="w-full pr-3">
-      <AwuUsageBar
-        consumed={info.row.original.consumedAwuCredits}
-        consumedFromAllowance={
-          info.row.original.consumedFromAllowanceAwuCredits
-        }
-        consumedFromPool={info.row.original.consumedFromPoolAwuCredits}
-        memberUsageLimit={info.row.original.memberUsageLimit}
-        seatBalanceAwu={info.row.original.seatBalanceAwu}
-        effectiveLimit={info.row.original.spendLimitAwuCredits ?? 0}
-        seatType={info.row.original.seatType}
-        isTotalAllowedUsagePending={
-          info.row.original.isTotalAllowedUsagePending
-        }
-      />
-    </div>
-  ),
-  meta: {
-    className: "w-64",
+function buildConsumedAwuCreditsColumn(
+  creditsResetAt: string | null
+): ColumnDef<RowData, string> {
+  return {
+    id: "consumedAwuCredits" as const,
+    header: () => (
+      <div className="flex flex-col">
+        <span>Credits usage this month</span>
+        {creditsResetAt && (
+          <span className="text-xs font-normal text-muted-foreground">
+            Limits reset on{" "}
+            {new Date(creditsResetAt).toLocaleDateString("en-US", {
+              month: "short",
+              day: "numeric",
+              timeZone: "UTC",
+            })}
+          </span>
+        )}
+      </div>
+    ),
+    accessorFn: (row) => row.consumedAwuCredits.toString(),
+    cell: (info: Info) => (
+      <div className="w-full pr-3">
+        <AwuUsageBar
+          consumed={info.row.original.consumedAwuCredits}
+          consumedFromAllowance={
+            info.row.original.consumedFromAllowanceAwuCredits
+          }
+          consumedFromPool={info.row.original.consumedFromPoolAwuCredits}
+          memberUsageLimit={info.row.original.memberUsageLimit}
+          seatBalanceAwu={info.row.original.seatBalanceAwu}
+          effectiveLimit={info.row.original.spendLimitAwuCredits ?? 0}
+          spendLimitSource={info.row.original.spendLimitSource}
+          seatType={info.row.original.seatType}
+          isTotalAllowedUsagePending={
+            info.row.original.isTotalAllowedUsagePending
+          }
+        />
+      </div>
+    ),
+    enableSorting: true,
+  };
+}
+
+const advancedModelsColumn: ColumnDef<RowData, string> = {
+  id: "advancedModels" as const,
+  header: "Advanced models",
+  enableSorting: false,
+  accessorFn: (row) => row.advancedModelDisplayNames.join(", "),
+  cell: (info: Info) => {
+    const displayNames = info.row.original.advancedModelDisplayNames;
+    const customSuffix = info.row.original.hasUserLevelAdvancedModelsOverride
+      ? " (custom)"
+      : "";
+
+    if (displayNames.length === 0) {
+      return (
+        <DataTable.CellContent>
+          <span className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+            --
+          </span>
+        </DataTable.CellContent>
+      );
+    }
+
+    if (displayNames.length === 1) {
+      return (
+        <DataTable.CellContent>
+          <span className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+            {displayNames[0]}
+            {customSuffix}
+          </span>
+        </DataTable.CellContent>
+      );
+    }
+
+    return (
+      <DataTable.CellContent>
+        <Tooltip
+          label={
+            <div className="flex flex-col gap-0.5">
+              {displayNames.map((name, index) => (
+                <span key={`${name}-${index}`}>{name}</span>
+              ))}
+            </div>
+          }
+          tooltipTriggerAsChild
+          trigger={
+            <span className="cursor-default text-sm text-muted-foreground dark:text-muted-foreground-night">
+              {displayNames.length} models
+              {customSuffix}
+            </span>
+          }
+        />
+      </DataTable.CellContent>
+    );
   },
-  enableSorting: true,
+  meta: {
+    className: "w-48",
+  },
 };
 
 const actionsColumn: ColumnDef<RowData, string> = {
@@ -419,13 +564,35 @@ const actionsColumn: ColumnDef<RowData, string> = {
   },
 };
 
-function buildColumns(): ColumnDef<RowData, string>[] {
-  return [nameColumn, seatTypeColumn, consumedAwuCreditsColumn, actionsColumn];
+function buildColumns({
+  enableSelection,
+  showGroupsColumn,
+  showAdvancedModelsColumn,
+  creditsResetAt,
+}: {
+  enableSelection: boolean;
+  showGroupsColumn: boolean;
+  showAdvancedModelsColumn: boolean;
+  creditsResetAt: string | null;
+}): ColumnDef<RowData, string>[] {
+  return [
+    ...(enableSelection ? [createSelectionColumn<RowData>()] : []),
+    nameColumn,
+    ...(showGroupsColumn ? [groupsColumn] : []),
+    ...(showAdvancedModelsColumn ? [advancedModelsColumn] : []),
+    seatTypeColumn,
+    {
+      ...buildConsumedAwuCreditsColumn(creditsResetAt),
+      meta: { className: "w-64" },
+    },
+    actionsColumn,
+  ];
 }
 
 interface MembersUsageTableProps {
   members: MemberUsageType[];
   isLoading: boolean;
+  isRefreshing?: boolean;
   totalAllowedUsagePendingMemberIds: ReadonlySet<string>;
   seatChangePendingMemberIds: ReadonlySet<string>;
   isSeatBased: boolean;
@@ -434,16 +601,31 @@ interface MembersUsageTableProps {
   onChangeSeat: (member: MemberUsageType) => void;
   onRemoveSeat: (member: MemberUsageType) => void;
   onEditSpendLimit: (member: MemberUsageType) => void;
+  onEditAdvancedModels?: (member: MemberUsageType) => void;
+  showAdvancedModelsColumn?: boolean;
+  userAllowedAdvancedModelsByUserId?: Record<
+    string,
+    AllowedAdvancedModelType[]
+  >;
+  groupAdvancedModelsByGroupId?: Record<string, AllowedAdvancedModelType[]>;
+  workspaceAllowedAdvancedModels?: AllowedAdvancedModelType[];
+  groupNameToId?: Map<string, string>;
+  advancedModelDisplayNameByKey?: Map<string, string>;
   pagination: PaginationState;
   setPagination: (pagination: PaginationState) => void;
   totalRowCount: number;
   sorting: SortingState;
   setSorting: (sorting: SortingState) => void;
+  showGroupsColumn?: boolean;
+  enableSelection?: boolean;
+  rowSelection?: RowSelectionState;
+  onRowSelectionChange?: (selection: RowSelectionState) => void;
 }
 
 export function MembersUsageTable({
   members,
   isLoading,
+  isRefreshing = false,
   totalAllowedUsagePendingMemberIds,
   seatChangePendingMemberIds,
   isSeatBased,
@@ -452,97 +634,171 @@ export function MembersUsageTable({
   onChangeSeat,
   onRemoveSeat,
   onEditSpendLimit,
+  onEditAdvancedModels,
+  showAdvancedModelsColumn = false,
+  userAllowedAdvancedModelsByUserId = EMPTY_USER_ALLOWED_ADVANCED_MODELS_BY_USER_ID,
+  groupAdvancedModelsByGroupId = EMPTY_GROUP_ADVANCED_MODELS_BY_GROUP_ID,
+  workspaceAllowedAdvancedModels = EMPTY_WORKSPACE_ALLOWED_ADVANCED_MODELS,
+  groupNameToId = EMPTY_GROUP_NAME_TO_ID,
+  advancedModelDisplayNameByKey = EMPTY_ADVANCED_MODEL_DISPLAY_NAME_BY_KEY,
   pagination,
   setPagination,
   totalRowCount,
   sorting,
   setSorting,
+  showGroupsColumn = false,
+  enableSelection = false,
+  rowSelection,
+  onRowSelectionChange,
 }: MembersUsageTableProps) {
   const rows: RowData[] = useMemo(
     () =>
-      members.map((m) => ({
-        sId: m.sId,
-        name: m.name,
-        email: m.email,
-        image: m.image,
-        seatType: m.seatType,
-        memberUsageLimit: m.memberUsageLimit,
-        seatBalanceAwu: m.seatBalanceAwu,
-        consumedAwuCredits: m.consumedAwuCredits,
-        consumedFromAllowanceAwuCredits: m.consumedFromAllowanceAwuCredits,
-        consumedFromPoolAwuCredits: m.consumedFromPoolAwuCredits,
-        spendLimitAwuCredits: m.spendLimitAwuCredits,
-        scheduledSeatType: m.scheduledSeatType,
-        scheduledSeatChangeAt: m.scheduledSeatChangeAt,
-        isTotalAllowedUsagePending: totalAllowedUsagePendingMemberIds.has(
-          m.sId
-        ),
-        isSeatChangePending: seatChangePendingMemberIds.has(m.sId),
-        menuItems: [
-          ...(!m.seatType || m.seatType === "none"
-            ? [
-                {
-                  kind: "item" as const,
-                  label: "Assign seat",
-                  disabled: readOnly,
-                  onClick: () => onChangeSeat(m),
-                },
-              ]
-            : []),
-          ...(isSeatBased && m.seatType && m.seatType !== "none"
-            ? [
-                {
-                  kind: "item" as const,
-                  label: "Change seat type",
-                  disabled: readOnly,
-                  onClick: () => onChangeSeat(m),
-                },
-              ]
-            : []),
-          // Only paid, message-sending seats have a spend limit to edit. Free
-          // seats have no pool (their cap is just the fixed free allowance), and
-          // "none"/seatless members can't send anything — so the option hides.
-          ...(showSpendLimit &&
-          m.seatType &&
-          m.seatType !== "free" &&
-          m.seatType !== "none"
-            ? [
-                {
-                  kind: "item" as const,
-                  label: "Edit spend limit",
-                  disabled: readOnly,
-                  onClick: () => onEditSpendLimit(m),
-                },
-              ]
-            : []),
-          // Only members who currently hold a billable seat can have it removed.
-          ...(isSeatBased && m.seatType && m.seatType !== "none"
-            ? [
-                {
-                  kind: "item" as const,
-                  label: "Remove seat",
-                  variant: "warning" as const,
-                  disabled: readOnly,
-                  onClick: () => onRemoveSeat(m),
-                },
-              ]
-            : []),
-        ],
-      })),
+      members.map((m) => {
+        const resolvedAdvancedModels = showAdvancedModelsColumn
+          ? resolveAdvancedModelsForUser({
+              userId: m.sId,
+              groupNames: m.groups,
+              groupNameToId,
+              userAllowedAdvancedModelsByUserId,
+              groupAdvancedModelsByGroupId,
+              workspaceAllowedAdvancedModels,
+            })
+          : null;
+
+        return {
+          sId: m.sId,
+          name: m.name,
+          email: m.email,
+          image: m.image,
+          groups: m.groups,
+          seatType: m.seatType,
+          memberUsageLimit: m.memberUsageLimit,
+          seatBalanceAwu: m.seatBalanceAwu,
+          consumedAwuCredits: m.consumedAwuCredits,
+          consumedFromAllowanceAwuCredits: m.consumedFromAllowanceAwuCredits,
+          consumedFromPoolAwuCredits: m.consumedFromPoolAwuCredits,
+          spendLimitAwuCredits: m.spendLimitAwuCredits,
+          spendLimitSource: m.spendLimitSource,
+          scheduledSeatType: m.scheduledSeatType,
+          scheduledSeatChangeAt: m.scheduledSeatChangeAt,
+          isTotalAllowedUsagePending: totalAllowedUsagePendingMemberIds.has(
+            m.sId
+          ),
+          isSeatChangePending: seatChangePendingMemberIds.has(m.sId),
+          advancedModelDisplayNames: resolvedAdvancedModels
+            ? getAdvancedModelDisplayNames({
+                models: resolvedAdvancedModels.models,
+                displayNameByKey: advancedModelDisplayNameByKey,
+              })
+            : [],
+          hasUserLevelAdvancedModelsOverride:
+            resolvedAdvancedModels?.hasUserLevelOverride ?? false,
+          menuItems: [
+            ...(!m.seatType || m.seatType === "none"
+              ? [
+                  {
+                    kind: "item" as const,
+                    label: "Assign seat",
+                    disabled: readOnly,
+                    onClick: () => onChangeSeat(m),
+                  },
+                ]
+              : []),
+            ...(isSeatBased && m.seatType && m.seatType !== "none"
+              ? [
+                  {
+                    kind: "item" as const,
+                    label: "Change seat type",
+                    disabled: readOnly,
+                    onClick: () => onChangeSeat(m),
+                  },
+                ]
+              : []),
+            // Only paid, message-sending seats have a spend limit to edit. Free
+            // seats have no pool (their cap is just the fixed free allowance), and
+            // "none"/seatless members can't send anything — so the option hides.
+            ...(showSpendLimit &&
+            m.seatType &&
+            m.seatType !== "free" &&
+            m.seatType !== "none"
+              ? [
+                  {
+                    kind: "item" as const,
+                    label: "Edit spend limit",
+                    disabled: readOnly,
+                    onClick: () => onEditSpendLimit(m),
+                  },
+                ]
+              : []),
+            ...(showAdvancedModelsColumn && onEditAdvancedModels
+              ? [
+                  {
+                    kind: "item" as const,
+                    label: "Edit advanced models",
+                    disabled: readOnly,
+                    onClick: () => onEditAdvancedModels(m),
+                  },
+                ]
+              : []),
+            // Only members who currently hold a billable seat can have it removed.
+            ...(isSeatBased && m.seatType && m.seatType !== "none"
+              ? [
+                  {
+                    kind: "item" as const,
+                    label: "Remove seat",
+                    variant: "warning" as const,
+                    disabled: readOnly,
+                    onClick: () => onRemoveSeat(m),
+                  },
+                ]
+              : []),
+          ],
+        };
+      }),
     [
       members,
       totalAllowedUsagePendingMemberIds,
       seatChangePendingMemberIds,
       isSeatBased,
       showSpendLimit,
+      showAdvancedModelsColumn,
+      userAllowedAdvancedModelsByUserId,
+      groupAdvancedModelsByGroupId,
+      workspaceAllowedAdvancedModels,
+      groupNameToId,
+      advancedModelDisplayNameByKey,
       readOnly,
       onChangeSeat,
       onRemoveSeat,
       onEditSpendLimit,
+      onEditAdvancedModels,
     ]
   );
 
-  const columns = useMemo(() => buildColumns(), []);
+  // All paid seats share the workspace billing period, so the first member
+  // carrying a reset date is enough to label the column header.
+  const creditsResetAt = useMemo(
+    () =>
+      members.find((m) => m.nextCreditResetAt !== null)?.nextCreditResetAt ??
+      null,
+    [members]
+  );
+
+  const columns = useMemo(
+    () =>
+      buildColumns({
+        enableSelection,
+        showGroupsColumn,
+        showAdvancedModelsColumn,
+        creditsResetAt,
+      }),
+    [
+      enableSelection,
+      showGroupsColumn,
+      showAdvancedModelsColumn,
+      creditsResetAt,
+    ]
+  );
 
   if (isLoading) {
     return (
@@ -555,15 +811,34 @@ export function MembersUsageTable({
   }
 
   return (
-    <DataTable
-      data={rows}
-      columns={columns}
-      pagination={pagination}
-      setPagination={setPagination}
-      totalRowCount={totalRowCount}
-      sorting={sorting}
-      setSorting={setSorting}
-      isServerSideSorting
-    />
+    <div className="relative">
+      <div
+        className={
+          isRefreshing
+            ? "pointer-events-none opacity-50 transition-opacity"
+            : "transition-opacity"
+        }
+      >
+        <DataTable
+          data={rows}
+          columns={columns}
+          pagination={pagination}
+          setPagination={setPagination}
+          totalRowCount={totalRowCount}
+          sorting={sorting}
+          setSorting={setSorting}
+          isServerSideSorting
+          enableRowSelection={enableSelection}
+          rowSelection={rowSelection}
+          setRowSelection={onRowSelectionChange}
+          getRowId={(row) => row.sId}
+        />
+      </div>
+      {isRefreshing && (
+        <div className="absolute inset-x-0 top-16 flex justify-center">
+          <Spinner size="sm" />
+        </div>
+      )}
+    </div>
   );
 }

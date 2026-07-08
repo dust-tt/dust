@@ -13,7 +13,7 @@ import type {
 import type { APIErrorWithContentfulStatusCode } from "@app/types/error";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { workspaceApp } from "@front-api/middlewares/ctx";
-import { ensureIsAdmin } from "@front-api/middlewares/ensure_role";
+import { ensureIsBusinessAdmin } from "@front-api/middlewares/ensure_role";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import { z } from "zod";
@@ -66,11 +66,10 @@ function upgradeRequestErrorToApiError(
 // Mounted at /api/w/:wId/credits/upgrade-requests.
 const app = workspaceApp();
 
-// Admin-only: list pending upgrade requests for the workspace.
 /** @ignoreswagger */
 app.get(
   "/",
-  ensureIsAdmin(),
+  ensureIsBusinessAdmin(),
   async (ctx): HandlerResult<GetUpgradeRequestsResponseBody> => {
     const auth = ctx.get("auth");
     const requests = await listPendingUpgradeRequests(auth);
@@ -91,11 +90,10 @@ app.post("/", async (ctx): HandlerResult<PostUpgradeRequestResponseBody> => {
   return ctx.json({ request: result.value });
 });
 
-// Admin-only: resolve (approve/deny) a pending request.
 /** @ignoreswagger */
 app.patch(
   "/:requestId",
-  ensureIsAdmin(),
+  ensureIsBusinessAdmin(),
   validate("param", ParamsSchema),
   validate("json", ResolveBodySchema),
   async (ctx): HandlerResult<PatchUpgradeRequestResponseBody> => {

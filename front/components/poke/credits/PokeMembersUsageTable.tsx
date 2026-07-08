@@ -40,7 +40,7 @@ function MemberSortHeader({ direction, onToggle }: MemberSortHeaderProps) {
     <button
       type="button"
       onClick={onToggle}
-      className="flex items-center gap-1 hover:text-foreground dark:hover:text-foreground-night"
+      className="flex items-center gap-1 hover:text-foreground"
     >
       Member
       <Icon visual={direction === "desc" ? ArrowDown : ArrowUp} size="xs" />
@@ -52,14 +52,14 @@ const DEFAULT_PAGE_SIZE = 25;
 
 const USER_CREDIT_STATE_CHIP_COLOR: Record<
   UserCreditState,
-  "success" | "warning" | "rose" | "info"
+  "success" | "warning" | "warning" | "info"
 > = {
   user_seat: "info",
   user_seat_low_balance: "warning",
   normal: "success",
   on_pool: "success",
   on_pool_low_balance: "warning",
-  capped: "rose",
+  capped: "warning",
 };
 
 // Free seats hold a per-user credit with two balance alerts: "low" (≤20%) and
@@ -119,9 +119,7 @@ function makeColumns({
           <div className="flex flex-col">
             <span className="font-medium">{name}</span>
             {email && email !== name && (
-              <span className="text-xs text-muted-foreground dark:text-muted-foreground-night">
-                {email}
-              </span>
+              <span className="text-xs text-muted-foreground">{email}</span>
             )}
           </div>
         );
@@ -168,7 +166,7 @@ function makeColumns({
                 {sourceLabel}
               </LinkWrapper>
             ) : (
-              <span className="text-xs text-muted-foreground dark:text-muted-foreground-night">
+              <span className="text-xs text-muted-foreground">
                 {sourceLabel}
               </span>
             )}
@@ -329,8 +327,8 @@ export function PokeMembersUsageTable({ owner }: PokeMembersUsageTableProps) {
   }
 
   return (
-    <div className="flex flex-col gap-2 rounded-lg border border-border p-4 dark:border-border-night">
-      <span className="text-sm font-medium text-foreground dark:text-foreground-night">
+    <div className="flex flex-col gap-2 rounded-lg border border-border p-4">
+      <span className="text-sm font-medium text-foreground">
         Members credit states
       </span>
       <PokeDataTable

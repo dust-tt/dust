@@ -5,7 +5,7 @@ import type { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_r
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
 import logger from "@app/logger/logger";
-import type { AgentConfigurationType } from "@app/types/assistant/agent";
+import type { AgentLoopExecutionData } from "@app/types/assistant/agent_run";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 
 /**
@@ -13,7 +13,7 @@ import type { ConversationWithoutContentType } from "@app/types/assistant/conver
  */
 export async function getSkillManagementServer(
   auth: Authenticator,
-  agentConfiguration: AgentConfigurationType,
+  agentConfiguration: AgentLoopExecutionData["agentConfiguration"],
   conversation: ConversationWithoutContentType,
   autoInternalViews: Map<AutoInternalMCPServerNameType, MCPServerViewResource>
 ): Promise<ServerSideMCPServerConfigurationType | null> {

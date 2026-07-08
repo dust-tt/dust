@@ -44,13 +44,13 @@ export function AgentInfoTab({
       {agentConfiguration.tags.length > 0 && (
         <div className="flex flex-wrap gap-2">
           {agentConfiguration.tags.map((tag) => (
-            <Chip key={tag.sId} color="golden" label={tag.name} size="xs" />
+            <Chip key={tag.sId} color="info" label={tag.name} size="xs" />
           ))}
         </div>
       )}
 
       {agentConfiguration.description && (
-        <div className="text-sm text-foreground dark:text-foreground-night">
+        <div className="text-sm text-foreground">
           <Markdown
             content={agentConfiguration.description}
             forcedTextSize="text-sm"
@@ -60,13 +60,10 @@ export function AgentInfoTab({
 
       {displayInstructions && (
         <div className="dd-privacy-mask flex flex-col gap-4">
-          <div className="heading-lg text-foreground dark:text-foreground-night">
-            Instructions
-          </div>
+          <div className="heading-lg text-foreground">Instructions</div>
           <div
             className={cn(
-              "max-h-[400px] overflow-y-auto rounded-lg border border-border bg-muted-background px-3 py-2 " +
-                "dark:border-border-night dark:bg-muted-background-night"
+              "max-h-[400px] overflow-y-auto rounded-lg border border-border bg-muted-background px-3 py-2"
             )}
           >
             <ReadOnlyInstructionsEditor
@@ -95,9 +92,7 @@ export function AgentInfoTab({
 
       {model && (
         <div className="flex flex-col gap-5">
-          <div className="heading-lg text-foreground dark:text-foreground-night">
-            Model
-          </div>
+          <div className="heading-lg text-foreground">Model</div>
           <div className="flex flex-row items-center gap-2">
             <Avatar
               icon={getModelProviderLogo(model.providerId, isDark)}

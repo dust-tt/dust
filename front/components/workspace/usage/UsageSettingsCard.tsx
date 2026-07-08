@@ -1,4 +1,5 @@
 import { LockedSection } from "@app/components/workspace/usage/LockedSection";
+import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import {
   useDefaultUserSpendLimit,
   useUpdateDefaultUserSpendLimit,
@@ -28,6 +29,8 @@ export function UsageSettingsCard({
   readOnly,
   hasPool,
 }: UsageSettingsCardProps) {
+  const { hasFeature } = useFeatureFlags();
+  const isAdminGovernanceEnabled = hasFeature("admin_governance");
   const { defaultUserSpendLimit, isDefaultUserSpendLimitLoading } =
     useDefaultUserSpendLimit({ workspaceId });
   const { doUpdateDefaultUserSpendLimit } = useUpdateDefaultUserSpendLimit({
@@ -83,23 +86,22 @@ export function UsageSettingsCard({
 
   return (
     <Page.Vertical gap="sm" align="stretch">
-      <span className="heading-base text-foreground dark:text-foreground-night">
-        Spending policies
-      </span>
+      <span className="heading-base text-foreground">Spending policies</span>
       <SettingsList>
         <LockedSection locked={!hasPool}>
           <SettingsList.Row
-            title="Default workspace credit pool limit"
+            title="Default workspace credit pool monthly limit"
             description={
               <>
-                Define the workspace credit pool credit limit for users in your
-                workspace. This limit is added on top of each seat&apos;s
-                built-in allowance. Can be overridden per user in the members
-                table. <strong>Set to 0 to remove pool access.</strong>
+                Define the workspace credit pool credit limit for users per
+                month in your workspace. This limit is added on top of each
+                seat&apos;s built-in allowance. Can be overridden per user in
+                the members table.{" "}
+                <strong>Set to 0 to remove pool access.</strong>
               </>
             }
             action={
-              <div className="w-52">
+              <div className="w-60">
                 <InputWithSave
                   inputMode="numeric"
                   pattern="[0-9]*"
@@ -114,7 +116,7 @@ export function UsageSettingsCard({
                       currentDefaultLimit === 0) &&
                     !isEditingDefaultLimit
                       ? undefined
-                      : "credits"
+                      : "credits/month"
                   }
                   normalizeValue={(value) => value.replace(/[^\d]/g, "")}
                   formatValue={(value) =>
@@ -131,7 +133,7 @@ export function UsageSettingsCard({
         </LockedSection>
         <SettingsList.Row
           title="Upgrade request"
-          description="Allow members who reach their limit to request an upgrade. Workspace admins review requests on the this page."
+          description={`Allow members who reach their limit to request an upgrade. Workspace ${isAdminGovernanceEnabled ? "admins and business admins" : "admins"} review requests on the this page.`}
           action={
             <SliderToggle
               selected={usageSettings.allowUpgradeRequest}

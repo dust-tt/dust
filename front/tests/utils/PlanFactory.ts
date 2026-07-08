@@ -41,6 +41,7 @@ export class PlanFactory {
       trialPeriodDays: 0,
       canUseProduct: true,
       isByok: false,
+      hasAdvancedModelAccess: true,
       ...overrides,
     });
     return plan;

@@ -83,12 +83,10 @@ export class MistralLLM extends LLM<MistralChatStreamRequest> {
     });
   }
 
-  private buildChatCompletionRequest({
-    conversation,
-    prompt,
-    specifications,
-    forceToolCall,
-  }: LLMStreamParameters): ChatCompletionRequest {
+  private buildChatCompletionRequest(
+    streamParameters: LLMStreamParameters
+  ): ChatCompletionRequest {
+    const { conversation, prompt, specifications } = streamParameters;
     const messages = [
       {
         role: "system" as const,
@@ -105,7 +103,7 @@ export class MistralLLM extends LLM<MistralChatStreamRequest> {
         ? MISTRAL_REASONING_EFFORT_MAPPING[this.reasoningEffort]
         : undefined,
       responseFormat: toResponseFormatParam(this.responseFormat),
-      toolChoice: toToolChoiceParam(specifications, forceToolCall),
+      toolChoice: toToolChoiceParam(specifications, streamParameters),
       tools: specifications.map(toTool),
     };
   }

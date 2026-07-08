@@ -460,6 +460,81 @@ describe("promoteNoneSeatTypesForContract", () => {
       })
     ).toEqual(["pro", "workspace_yearly"]);
   });
+
+  // `forceSeatType` — legacy contract migration: force every `none` onto a paid
+  // seat, preempting committed placement.
+  it("forces every none member onto the forced seat when there is no commitment", () => {
+    expect(
+      promoteNoneSeatTypesForContract({
+        contract,
+        productSeatTypes,
+        seatTypes: ["none", "none"],
+        forceSeatType: "pro",
+      })
+    ).toEqual(["pro", "pro"]);
+  });
+
+  it("forces every none member onto the forced seat, preempting committed placement", () => {
+    const { contract: c, productSeatTypes: pt } = makeContract({
+      seats: [
+        { seatType: "pro", awu: 8000, entitled: true },
+        { seatType: "workspace_yearly", entitled: true },
+      ],
+    });
+    const seatLimits = new Map<MembershipSeatType, SeatLimit>([
+      ["workspace_yearly", { minSeats: 2, maxSeats: null }],
+    ]);
+    // Committed workspace_yearly capacity would otherwise absorb the none
+    // members, but forceSeatType preempts it → all land on pro.
+    expect(
+      promoteNoneSeatTypesForContract({
+        contract: c,
+        productSeatTypes: pt,
+        seatTypes: ["none", "none"],
+        seatLimits,
+        forceSeatType: "pro",
+      })
+    ).toEqual(["pro", "pro"]);
+  });
+
+  it("forces onto a non-promotable seat the contract bills (e.g. max)", () => {
+    const { contract: c, productSeatTypes: pt } = makeContract({
+      seats: [{ seatType: "max", awu: 40000, entitled: true }],
+    });
+    // `max` is never auto-assigned, but an explicit force onto it is honored
+    // since the contract bills it.
+    expect(
+      promoteNoneSeatTypesForContract({
+        contract: c,
+        productSeatTypes: pt,
+        seatTypes: ["none", "none"],
+        forceSeatType: "max",
+      })
+    ).toEqual(["max", "max"]);
+  });
+
+  it("does not force onto a seat type the contract does not bill", () => {
+    // `pro_yearly` is not on this monthly contract → no promotion.
+    expect(
+      promoteNoneSeatTypesForContract({
+        contract,
+        productSeatTypes,
+        seatTypes: ["none", "none"],
+        forceSeatType: "pro_yearly",
+      })
+    ).toEqual(["none", "none"]);
+  });
+
+  it("leaves non-none targets untouched when forcing", () => {
+    expect(
+      promoteNoneSeatTypesForContract({
+        contract,
+        productSeatTypes,
+        seatTypes: ["pro", "none", "free"],
+        forceSeatType: "pro",
+      })
+    ).toEqual(["pro", "pro", "free"]);
+  });
 });
 
 describe("classifySeatChange", () => {
@@ -548,6 +623,81 @@ describe("classifySeatChange", () => {
 
   it("applies an upgrade immediately (pro → max)", () => {
     expect(classify("pro", "max")).toEqual({ kind: "immediate" });
+  });
+
+  it("defers a monthly→yearly switch of the same tier (pro → pro_yearly) to the next credit renewal", () => {
+    // Same allowance, so not a downgrade — but committing to annual billing is
+    // deferred to end of period rather than applied mid-period.
+    const { contract: c, productSeatTypes: types } = makeContract({
+      seats: [
+        { seatType: "pro", awu: 100 },
+        { seatType: "pro_yearly", awu: 100, frequency: "ANNUAL" },
+      ],
+      currentBillingPeriodStartingAt: CURRENT_PERIOD,
+      nextBillingPeriodStartingAt: "2027-01-15T00:00:00Z",
+    });
+    expect(
+      classifySeatChange({
+        contract: c,
+        productSeatTypes: types,
+        now: NOW,
+        change: {
+          userId: "u1",
+          previousSeatType: "pro",
+          newSeatType: "pro_yearly",
+        },
+      })
+    ).toEqual({ kind: "deferred", at: NEXT_RENEWAL });
+  });
+
+  it("defers a monthly→yearly switch even when the target tier is higher (pro → max_yearly)", () => {
+    // A tier upgrade would normally be immediate, but the monthly→yearly
+    // billing commitment forces a deferral to end of period.
+    const { contract: c, productSeatTypes: types } = makeContract({
+      seats: [
+        { seatType: "pro", awu: 100 },
+        { seatType: "max_yearly", awu: 500, frequency: "ANNUAL" },
+      ],
+      currentBillingPeriodStartingAt: CURRENT_PERIOD,
+      nextBillingPeriodStartingAt: "2027-01-15T00:00:00Z",
+    });
+    expect(
+      classifySeatChange({
+        contract: c,
+        productSeatTypes: types,
+        now: NOW,
+        change: {
+          userId: "u1",
+          previousSeatType: "pro",
+          newSeatType: "max_yearly",
+        },
+      })
+    ).toEqual({ kind: "deferred", at: NEXT_RENEWAL });
+  });
+
+  it("applies a yearly→monthly switch immediately (pro_yearly → pro)", () => {
+    // Only monthly→yearly is deferred; the reverse keeps the default
+    // allocation-based timing (same allowance → immediate).
+    const { contract: c, productSeatTypes: types } = makeContract({
+      seats: [
+        { seatType: "pro", awu: 100 },
+        { seatType: "pro_yearly", awu: 100, frequency: "ANNUAL" },
+      ],
+      currentBillingPeriodStartingAt: CURRENT_PERIOD,
+      nextBillingPeriodStartingAt: "2027-01-15T00:00:00Z",
+    });
+    expect(
+      classifySeatChange({
+        contract: c,
+        productSeatTypes: types,
+        now: NOW,
+        change: {
+          userId: "u1",
+          previousSeatType: "pro_yearly",
+          newSeatType: "pro",
+        },
+      })
+    ).toEqual({ kind: "immediate" });
   });
 
   it("is a noop when selecting the current seat with no pending change", () => {

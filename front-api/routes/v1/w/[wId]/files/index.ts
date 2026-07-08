@@ -155,11 +155,11 @@ app.post(
     }
 
     const flags = await getFeatureFlags(auth);
-    const hasSandboxTools = isComputerFeatureEnabled(flags);
+    const hasComputerAccess = isComputerFeatureEnabled(flags);
 
     if (
       !ensureFileSize(contentType, fileSize, {
-        hasSandboxTools,
+        hasSandboxTools: hasComputerAccess,
         useCase,
       })
     ) {
@@ -182,7 +182,7 @@ app.post(
       useCaseMetadata: buildEffectiveUseCaseMetadata({
         contentType,
         fileName,
-        flags: { hasSandboxTools },
+        flags: { hasSandboxTools: hasComputerAccess },
         providedMetadata: useCaseMetadata,
         useCase,
       }),

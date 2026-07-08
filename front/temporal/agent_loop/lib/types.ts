@@ -4,12 +4,13 @@ import type { LLMErrorInfo } from "@app/lib/api/llm/types/errors";
 import type { SystemPromptSections } from "@app/lib/api/llm/types/options";
 import type { Authenticator } from "@app/lib/auth";
 import type { AgentMessageContentParser } from "@app/lib/llms/agent_message_content_parser";
-import type { AgentConfigurationType } from "@app/types/assistant/agent";
 import type {
   AgentFunctionCallContentType,
+  AgentProviderPassthroughContentType,
   AgentReasoningContentType,
   AgentTextContentType,
 } from "@app/types/assistant/agent_message_content";
+import type { AgentLoopExecutionData } from "@app/types/assistant/agent_run";
 import type {
   AgentMessageType,
   ConversationType,
@@ -30,6 +31,7 @@ export type Output = {
     | AgentTextContentType
     | AgentFunctionCallContentType
     | AgentReasoningContentType
+    | AgentProviderPassthroughContentType
   >;
 };
 
@@ -39,7 +41,12 @@ export type GetOutputRequestParams = {
     tokensUsed: number;
   }>;
   conversation: ConversationType;
-  hasConditionalJITTools: boolean;
+  // When true, the Anthropic client defers non-eager tools behind tool search.
+  // Provider-agnostic signal: clients without tool-search support ignore it.
+  toolSearchEnabled: boolean;
+  // When true, the tools are sent but the model is forbidden from calling them
+  // (tool choice "none"). Set on the last step to force the final generation.
+  disableToolUse: boolean;
   // When true, opt this step's Anthropic call into prompt-cache diagnostics and
   // thread the previous step's response id via Redis (see cache_diagnostics.ts).
   cacheDiagnosticsEnabled: boolean;
@@ -48,8 +55,8 @@ export type GetOutputRequestParams = {
   flushParserTokens: () => Promise<void>;
   contentParser: AgentMessageContentParser;
   step: number;
-  agentConfiguration: AgentConfigurationType;
-  agentMessage: AgentMessageType;
+  agentConfiguration: AgentLoopExecutionData["agentConfiguration"];
+  agentMessage: AgentLoopExecutionData["agentMessage"];
   model: ModelConfigurationType;
   activityTimeoutDeadlineMs: number;
   publishAgentError: (error: {

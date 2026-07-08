@@ -20,7 +20,7 @@ import {
   cancelWakeUpTemporalWorkflow,
   launchOrScheduleWakeUpTemporalWorkflow,
 } from "@app/temporal/triggers/wakeup_client";
-import type { AgentConfigurationType } from "@app/types/assistant/agent";
+import type { AgentLoopExecutionData } from "@app/types/assistant/agent_run";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import {
   ACTIVE_WAKE_UP_STATUSES,
@@ -203,7 +203,7 @@ export class WakeUpResource extends BaseResource<WakeUpModel> {
           reason: string;
         },
     conversation: ConversationWithoutContentType,
-    agentConfiguration: AgentConfigurationType,
+    agentConfiguration: AgentLoopExecutionData["agentConfiguration"],
     { transaction }: { transaction?: Transaction } = {}
   ): Promise<Result<WakeUpResource, Error>> {
     const { scheduleType, fireAt, cronExpression, cronTimezone, reason } = blob;
@@ -658,10 +658,17 @@ export class WakeUpResource extends BaseResource<WakeUpModel> {
     });
   }
 
-  async cleanupTemporalIfCronExpired(
+  async cleanupTemporalScheduleIfCronTerminal(
     auth: Authenticator
   ): Promise<Result<void, Error>> {
-    if (this.scheduleType !== "cron" || this.status !== "expired") {
+    // Once the wake-up reaches a terminal state (expired or cancelled) the
+    // schedule must be deleted, otherwise Temporal keeps spawning daily
+    // workflows that no-op forever. cancelTemporalWorkflow deletes the schedule
+    // for cron and is idempotent (ScheduleNotFound is treated as success).
+    if (
+      this.scheduleType !== "cron" ||
+      (this.status !== "expired" && this.status !== "cancelled")
+    ) {
       return new Ok(undefined);
     }
 
@@ -745,8 +752,6 @@ export class WakeUpResource extends BaseResource<WakeUpModel> {
     }
 
     try {
-      await ConversationResource.triggerEsIndexing(auth, conversation.sId);
-
       await publishConversationEvent(
         {
           type: "wake_up_updated",

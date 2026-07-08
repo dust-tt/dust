@@ -73,7 +73,7 @@ export function ComparisonTableSection({
         {/* Header - outside the table border */}
         <div className="grid grid-cols-[1fr,80px,80px] sm:grid-cols-[1fr,120px,120px] md:grid-cols-[1fr,140px,140px]">
           <div />
-          <div className="flex items-center justify-center rounded-tl-xl bg-gradient-to-b from-blue-500 to-blue-600 p-4">
+          <div className="flex items-center justify-center rounded-tl-xl bg-linear-to-b from-blue-500 to-blue-600 p-4">
             <Image
               src="/static/landing/logos/dust/Dust_Logo_White.svg"
               alt={dustHeader}

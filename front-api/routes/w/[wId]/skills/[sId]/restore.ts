@@ -44,7 +44,7 @@ app.post(
     }
 
     // Check for existing active skill with the same name.
-    const existingSkill = await SkillResource.fetchActiveByName(
+    const existingSkill = await SkillResource.fetchByName(
       auth,
       skillResource.name
     );

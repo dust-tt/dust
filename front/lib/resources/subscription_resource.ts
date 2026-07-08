@@ -266,9 +266,7 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
     SubscriptionResource.subscriptionCacheKeyResolver
   );
 
-  private static invalidateSubscriptionCache = async (
-    workspaceModelId: ModelId
-  ) => {
+  static invalidateSubscriptionCache = async (workspaceModelId: ModelId) => {
     logger.info(
       {
         workspaceModelId,
@@ -1278,7 +1276,7 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
           trialing: false,
           startDate: new Date(),
           endDate: null,
-          stripeSubscriptionId: this.stripeSubscriptionId,
+          stripeSubscriptionId: null,
           metronomeContractId,
         },
         renderPlanFromModel({ plan: newPlan }),

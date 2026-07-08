@@ -6,8 +6,10 @@ import { getJITServers } from "@app/lib/api/assistant/jit_actions";
 import { listAttachments } from "@app/lib/api/assistant/jit_utils";
 import { resolveSkillMCPServers } from "@app/lib/api/assistant/skill_actions";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
+import { isSandboxExecTokenPayload } from "@app/lib/api/sandbox/access_tokens";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { sandboxApp } from "@front-api/middlewares/ctx";
+import { sandboxAuth } from "@front-api/middlewares/sandbox_auth";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
 
@@ -18,10 +20,10 @@ interface GetSandboxToolsResponseType {
   serverViews: MCPServerViewType[];
 }
 
-// Mounted at /api/v1/w/:wId/sandbox/actions. sandboxAuth is applied by the
-// parent sandbox sub-app, so ctx.get("auth") and ctx.get("sandboxClaims") are
-// always available here.
+// Mounted at /api/v1/w/:wId/sandbox/actions.
 const app = sandboxApp();
+
+app.use("*", sandboxAuth({ tokenKind: "action" }));
 
 /**
  * @ignoreswagger
@@ -29,7 +31,17 @@ const app = sandboxApp();
  */
 app.get("/", async (ctx): HandlerResult<GetSandboxToolsResponseType> => {
   const auth = ctx.get("auth");
-  const { aId: agentId, cId } = ctx.get("sandboxClaims");
+  const claims = ctx.get("sandboxClaims");
+  if (!isSandboxExecTokenPayload(claims)) {
+    return apiError(ctx, {
+      status_code: 403,
+      api_error: {
+        type: "invalid_request_error",
+        message: "This sandbox token cannot access sandbox actions.",
+      },
+    });
+  }
+  const { aId: agentId, cId } = claims;
 
   // Fetch agent accessible servers.
   const agentConfig = await getAgentConfiguration(auth, {
@@ -66,7 +78,7 @@ app.get("/", async (ctx): HandlerResult<GetSandboxToolsResponseType> => {
 
   const conversation = conversationResult.value;
   const attachments = await listAttachments(auth, { conversation });
-  const { servers: jitServers } = await getJITServers(auth, {
+  const jitServers = await getJITServers(auth, {
     agentConfiguration: agentConfig,
     conversation,
     attachments,

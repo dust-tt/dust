@@ -50,7 +50,7 @@ export async function getInvitation(
   }
 ): Promise<MembershipInvitationType | null> {
   const owner = auth.workspace();
-  if (!owner || !auth.hasPermission("workspace:manage_members")) {
+  if (!owner || !auth.isBusinessAdmin()) {
     return null;
   }
 
@@ -119,7 +119,7 @@ export async function batchUnrevokeInvitations(
   transaction?: Transaction
 ) {
   const owner = auth.workspace();
-  if (!owner || !auth.hasPermission("workspace:manage_members")) {
+  if (!owner || !auth.isBusinessAdmin()) {
     throw new Error(
       "Only users that can manage members for the current workspace can see membership invitations or modify them."
     );

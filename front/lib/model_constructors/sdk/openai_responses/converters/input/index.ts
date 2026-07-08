@@ -16,6 +16,7 @@ import {
   userTextMessageToInputItem,
 } from "@app/lib/model_constructors/sdk/openai_responses/converters/input/utils";
 import type { InputConfig } from "@app/lib/model_constructors/types/input/configuration";
+import { toToolChoiceInput } from "@app/lib/model_constructors/types/input/configuration";
 import type {
   Payload,
   SystemTextMessage,
@@ -63,13 +64,7 @@ export function WithOpenAIResponsesInputConverter<
       config: InputConfig
     ): ResponseCreateParamsNonStreaming {
       const { conversation } = payload;
-      const {
-        tools = [],
-        temperature,
-        reasoning,
-        forceTool,
-        outputFormat,
-      } = config;
+      const { tools = [], temperature, reasoning, outputFormat } = config;
 
       const reasoningConfig = reasoningToOpenAIResponsesReasoning(reasoning);
 
@@ -87,7 +82,7 @@ export function WithOpenAIResponsesInputConverter<
             }
           : {}),
         tools: tools.map((tool) => toFunctionTool(tool)),
-        tool_choice: forceToolToToolChoice(tools, forceTool),
+        tool_choice: forceToolToToolChoice(tools, toToolChoiceInput(config)),
         ...(outputFormat
           ? { text: { format: outputFormatToResponseFormat(outputFormat) } }
           : {}),

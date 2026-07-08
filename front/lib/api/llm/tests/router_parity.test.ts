@@ -29,6 +29,7 @@ import {
 import { StreamEndpointTransition } from "@app/lib/api/llm/transitionLLM";
 import type { LLMParameters } from "@app/lib/api/llm/types/options";
 import { DUST_STREAM_ENDPOINTS } from "@app/lib/llms/stream";
+import { NOOP_PROVIDER_ID } from "@app/lib/model_constructors/types/provider_ids";
 import { GLOBAL } from "@app/lib/model_constructors/types/regions";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { describe, expect, it, vi } from "vitest";
@@ -133,7 +134,12 @@ async function drain(gen: AsyncGenerator<unknown>): Promise<Error | undefined> {
 // locally. Global agent-platform coverage can be added here once it exists.
 const ENDPOINTS = Object.values(DUST_STREAM_ENDPOINTS)
   .map(readEndpointInfo)
-  .filter((endpoint) => endpoint.region === GLOBAL);
+  // The noop endpoint synthesizes its stream in-process; there is no provider
+  // SDK request to compare against, so it is out of scope for router parity.
+  .filter(
+    (endpoint) =>
+      endpoint.region === GLOBAL && endpoint.providerId !== NOOP_PROVIDER_ID
+  );
 const MATRIX = buildParityMatrix();
 
 describe.skipIf(process.env.RUN_LLM_TEST !== "true")(

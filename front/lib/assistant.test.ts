@@ -2,7 +2,6 @@ import { getWhitelistedProviders } from "@app/lib/api/assistant/models";
 import { filterEnabledModels, isModelAvailable } from "@app/lib/assistant";
 import { Authenticator } from "@app/lib/auth";
 import {
-  DUST_COMPANY_PLAN_CODE,
   FREE_NO_PLAN_CODE,
   FREE_UPGRADED_PLAN_CODE,
   PRO_PLAN_SEAT_29_CODE,
@@ -29,7 +28,10 @@ function createMockModel(
 }
 
 // createMockPlan is only used by isModelAvailable tests (pure sync, no factory available).
-function createMockPlan(code: string): PlanType {
+function createMockPlan(
+  code: string,
+  { hasAdvancedModelAccess = false }: { hasAdvancedModelAccess?: boolean } = {}
+): PlanType {
   return {
     code,
     name: `Test Plan ${code}`,
@@ -79,6 +81,7 @@ function createMockPlan(code: string): PlanType {
     },
     isByok: false,
     isAuditLogsAllowed: false,
+    hasAdvancedModelAccess,
   };
 }
 
@@ -211,12 +214,14 @@ describe("isModelAvailable", () => {
     ).toBe(false);
   });
 
-  it("should return true when plansWithAdvancedModels is set and plan is an enterprise plan", () => {
+  it("should return true when plansWithAdvancedModels is set and plan has advanced model access", () => {
     const model = createMockModel({
       availableIfOneOf: { plansWithAdvancedModels: true },
       largeModel: false,
     });
-    const plan = createMockPlan(DUST_COMPANY_PLAN_CODE);
+    const plan = createMockPlan(PRO_PLAN_SEAT_29_CODE, {
+      hasAdvancedModelAccess: true,
+    });
 
     expect(
       isModelAvailable(model, {
@@ -228,12 +233,14 @@ describe("isModelAvailable", () => {
     ).toBe(true);
   });
 
-  it("should return true when plansWithAdvancedModels is set and plan has ENT_ prefix", () => {
+  it("should return false when plansWithAdvancedModels is set but plan lacks advanced model access", () => {
     const model = createMockModel({
       availableIfOneOf: { plansWithAdvancedModels: true },
       largeModel: false,
     });
-    const plan = createMockPlan("ENT_CUSTOM_PLAN");
+    const plan = createMockPlan(PRO_PLAN_SEAT_29_CODE, {
+      hasAdvancedModelAccess: false,
+    });
 
     expect(
       isModelAvailable(model, {
@@ -242,10 +249,29 @@ describe("isModelAvailable", () => {
         regionalModelsOnly: owner.regionalModelsOnly,
         region: TEST_REGION,
       })
+    ).toBe(false);
+  });
+
+  it("should return true for advanced models when models_picker is enabled without plan access", () => {
+    const model = createMockModel({
+      availableIfOneOf: { plansWithAdvancedModels: true },
+      largeModel: false,
+    });
+    const plan = createMockPlan(PRO_PLAN_SEAT_29_CODE, {
+      hasAdvancedModelAccess: false,
+    });
+
+    expect(
+      isModelAvailable(model, {
+        featureFlags: ["models_picker"],
+        plan,
+        regionalModelsOnly: owner.regionalModelsOnly,
+        region: TEST_REGION,
+      })
     ).toBe(true);
   });
 
-  it("should return true when both plansWithAdvancedModels and featureFlag are set, with enterprise plan", () => {
+  it("should return true when both plansWithAdvancedModels and featureFlag are set, with advanced model access", () => {
     const model = createMockModel({
       availableIfOneOf: {
         plansWithAdvancedModels: true,
@@ -253,7 +279,9 @@ describe("isModelAvailable", () => {
       },
       largeModel: false,
     });
-    const plan = createMockPlan(DUST_COMPANY_PLAN_CODE);
+    const plan = createMockPlan(PRO_PLAN_SEAT_29_CODE, {
+      hasAdvancedModelAccess: true,
+    });
 
     expect(
       isModelAvailable(model, {
@@ -307,6 +335,26 @@ describe("isModelAvailable", () => {
 });
 
 describe("filterEnabledModels", () => {
+  it("includes advanced models when models_picker is enabled without plan access", async () => {
+    const workspace = await WorkspaceFactory.basic();
+    const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
+    const model = createMockModel({
+      availableIfOneOf: { plansWithAdvancedModels: true },
+      largeModel: false,
+      providerId: "anthropic",
+    });
+
+    const result = filterEnabledModels([model], {
+      featureFlags: ["models_picker"],
+      plan: { ...auth.plan()!, hasAdvancedModelAccess: false },
+      regionalModelsOnly: auth.getNonNullableWorkspace().regionalModelsOnly,
+      region: TEST_REGION,
+      whitelistedProviders: getWhitelistedProviders(auth),
+    });
+
+    expect(result).toEqual([model]);
+  });
+
   it("should include model when available and provider is whitelisted", async () => {
     const workspace = await WorkspaceFactory.basic();
     const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
@@ -408,7 +456,7 @@ describe("filterEnabledModels", () => {
     const workspace = await WorkspaceFactory.basic();
     const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
     const model = createMockModel({
-      providerId: "togetherai",
+      providerId: "fireworks",
       largeModel: false,
     });
 

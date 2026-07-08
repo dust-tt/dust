@@ -1,8 +1,24 @@
 @import "./fonts.css";
 
-@tailwind base;
+/* Preflight, the Tailwind theme, and sparkle's color tokens are already emitted
+   by the unified build (front-spa/src/index.css → @dust-tt/sparkle/styles/tailwind.css,
+   which is imported alongside this file in every front-spa entry point). Pulling
+   them in here too would ship a second copy of preflight and the full color
+   palette (~22KB raw / ~3KB gzip of duplicated `:root` tokens). Reference them
+   instead: `@reference` gives this entry the theme context it needs to resolve
+   `@apply` (h-full, bg-panel-background) without emitting any bytes. */
+@reference "tailwindcss";
+@reference "@dust-tt/sparkle/styles/theme.css";
 
 @layer base {
+  /* v4 changed border-color default from gray-200 to currentColor.
+     Restore a sensible default so bare `border` keeps the expected look. */
+  *,
+  ::before,
+  ::after {
+    border-color: var(--color-border);
+  }
+
   html {
     touch-action: manipulation;
     font-feature-settings:
@@ -27,6 +43,10 @@
     --banner-height: 0px;
     --panel-height: calc(100dvh - var(--banner-height));
 
+    /* `border-darker`: legacy duplicate of `border-dark`, switches via .dark
+       below (was border.darker.{DEFAULT,night} in the old config). */
+    --color-border-darker: var(--color-stone-150);
+
     /* Chart tokens (light): exact shadcn palette */
     --chart-1: 211 100% 78%;
     --chart-2: 216 100% 58%;
@@ -36,6 +56,8 @@
   }
 
   .dark {
+    --color-border-darker: var(--color-stone-800);
+
     /* Chart tokens (dark): exact shadcn palette */
     --chart-1: 211 100% 78%;
     --chart-2: 216 100% 58%;
@@ -79,13 +101,6 @@ html:has(body.document-scroll-mode) #__next,
 body.document-scroll-mode,
 body.document-scroll-mode #root {
   @apply bg-panel-background;
-}
-
-html.dark:has(body.document-scroll-mode),
-html.dark:has(body.document-scroll-mode) #__next,
-.dark body.document-scroll-mode,
-.dark body.document-scroll-mode #root {
-  @apply bg-panel-background-night;
 }
 
 body.document-scroll-mode {
@@ -158,7 +173,12 @@ body.document-scroll-mode #root {
 }
 
 .loading-text {
-  background: linear-gradient(90deg, #999999 0%, #000000 50%, #999999 100%);
+  background: linear-gradient(
+    90deg,
+    oklch(68.3% 0 0) 0%,
+    oklch(0% 0 0) 50%,
+    oklch(68.3% 0 0) 100%
+  );
   background-size: 200% auto;
   -webkit-background-clip: text;
   background-clip: text;
@@ -231,22 +251,11 @@ body.document-scroll-mode #root {
   }
 
   .dark * {
-    scrollbar-color: theme("colors.gray.700") theme("colors.gray.900");
+    scrollbar-color: var(--color-stone-700) var(--color-stone-900);
   }
 }
 
-/* Remove this once we have migrated to tailwindcss v4 */
-.h-dvh {
-  height: 100dvh;
-}
-
-.min-h-dvh {
-  min-height: 100dvh;
-}
-
-.max-h-dvh {
-  max-height: 100dvh;
-}
+/* dvh utilities are now built-in to Tailwind v4 */
 
 /* Avoid the native focus outline border on Recharts surfaces when clicking charts. */
 .observability-chart-container svg:focus,
@@ -275,6 +284,6 @@ body.document-scroll-mode #root {
 
 /* Style first row as header (Contentful doesn't always use th elements) */
 .rich-text-table table tr:first-child td {
-  background-color: theme("colors.gray.50");
+  background-color: var(--color-stone-50);
   font-weight: 600;
 }

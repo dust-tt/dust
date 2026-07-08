@@ -675,7 +675,7 @@ function Pods() {
                     />
                   ))
                 ) : (
-                  <div className="s-flex s-h-24 s-items-center s-justify-center s-text-sm s-text-muted-foreground dark:s-text-muted-foreground-night">
+                  <div className="flex h-24 items-center justify-center text-sm text-muted-foreground">
                     No participants
                   </div>
                 )}
@@ -698,10 +698,8 @@ function Pods() {
 
   if (!user) {
     return (
-      <div className="s-flex s-h-screen s-items-center s-justify-center s-bg-background dark:s-bg-background-night">
-        <p className="s-text-foreground dark:s-text-foreground-night">
-          Loading…
-        </p>
+      <div className="flex h-screen items-center justify-center bg-background">
+        <p className="text-foreground">Loading…</p>
       </div>
     );
   }
@@ -720,7 +718,7 @@ function Pods() {
     if (p2View.kind === "profile" && user) return <ProfilePanel user={user} />;
     if (p2View.kind === "templates")
       return (
-        <div className="s-h-full s-overflow-auto">
+        <div className="h-full overflow-auto">
           <TemplateSelection
             onTemplateClick={(t) => setSelectedTemplateForBuilder(t)}
           />
@@ -781,15 +779,11 @@ function Pods() {
       );
     // welcome
     return (
-      <div className="s-flex s-h-full s-w-full s-items-center s-justify-center s-bg-background dark:s-bg-background-night">
-        <div className="s-flex s-w-full s-max-w-4xl s-flex-col s-gap-6 s-px-4 s-py-8">
-          <div className="s-heading-2xl s-text-foreground dark:s-text-foreground-night">
-            {greeting}
-          </div>
+      <div className="flex h-full w-full items-center justify-center bg-background">
+        <div className="flex w-full max-w-4xl flex-col gap-6 px-4 py-8">
+          <div className="heading-2xl text-foreground">{greeting}</div>
           <InputBar placeholder="Ask a question" />
-          <div className="s-heading-lg s-text-foreground dark:s-text-foreground-night">
-            Chat with…
-          </div>
+          <div className="heading-lg text-foreground">Chat with…</div>
         </div>
       </div>
     );
@@ -818,11 +812,11 @@ function Pods() {
       );
     if (p3View.kind === "citation")
       return (
-        <div className="s-flex s-h-full s-flex-col s-gap-3 s-p-4">
-          <p className="s-text-sm s-font-medium s-text-foreground dark:s-text-foreground-night">
+        <div className="flex h-full flex-col gap-3 p-4">
+          <p className="text-sm font-medium text-foreground">
             {p3View.citation.title}
           </p>
-          <div className="s-flex-1 s-rounded-lg s-border s-border-separator s-bg-muted-background s-p-4 s-text-sm s-text-muted-foreground dark:s-border-separator-night dark:s-bg-muted-background-night dark:s-text-muted-foreground-night">
+          <div className="flex-1 rounded-lg border border-separator bg-muted-background p-4 text-sm text-muted-foreground">
             Document preview placeholder
           </div>
         </div>
@@ -833,11 +827,9 @@ function Pods() {
   // ── P4 content ────────────────────────────────────────────────────────────
   const p4Label = p4Citation?.title ?? "Attachment";
   const p4Content = p4Citation ? (
-    <div className="s-flex s-h-full s-flex-col s-gap-3 s-p-4">
-      <p className="s-text-sm s-font-medium s-text-foreground dark:s-text-foreground-night">
-        {p4Citation.title}
-      </p>
-      <div className="s-flex-1 s-rounded-lg s-border s-border-separator s-bg-muted-background s-p-4 s-text-sm s-text-muted-foreground dark:s-border-separator-night dark:s-bg-muted-background-night dark:s-text-muted-foreground-night">
+    <div className="flex h-full flex-col gap-3 p-4">
+      <p className="text-sm font-medium text-foreground">{p4Citation.title}</p>
+      <div className="flex-1 rounded-lg border border-separator bg-muted-background p-4 text-sm text-muted-foreground">
         Document preview placeholder
       </div>
     </div>
@@ -884,7 +876,7 @@ function Pods() {
         isRounded: true as const,
       }));
     return (
-      <div className="s-flex s-items-center s-gap-2">
+      <div className="flex items-center gap-2">
         {memberAvatars.length > 0 && (
           <Avatar.Stack
             avatars={memberAvatars}
@@ -982,19 +974,19 @@ function Pods() {
 
   // ── Sidebar (Nav) content ─────────────────────────────────────────────────
   const navContent = (
-    <div className="s-flex s-min-h-0 s-flex-1 s-flex-col s-bg-muted-background dark:s-bg-muted-background-night">
+    <div className="flex min-h-0 flex-1 flex-col bg-muted-background">
       {/* ── Chat tab ── */}
       {activeTab === "chat" && (
-        <div className="s-flex s-min-h-0 s-flex-1 s-flex-col">
-          <ScrollArea className="s-flex-1">
+        <div className="flex min-h-0 flex-1 flex-col">
+          <ScrollArea className="flex-1">
             <ScrollBar orientation="vertical" size="minimal" />
-            <div className="s-flex s-gap-2 s-p-2">
+            <div className="flex gap-2 p-2">
               <SearchInput
                 name="search"
                 value={searchText}
                 onChange={setSearchText}
                 placeholder="Search"
-                className="s-flex-1"
+                className="flex-1"
               />
               <Button
                 variant="primary"
@@ -1093,7 +1085,7 @@ function Pods() {
             {inboxConversations.length > 0 && (
               <NavigationListCollapsibleSection
                 label="Inbox"
-                className="s-border-b s-border-t s-border-border dark:s-border-border-night s-bg-background/50 s-px-2 s-pb-2 dark:s-bg-background-night/50"
+                className="border-b border-t border-border bg-background/50 px-2 pb-2"
                 actionOnHover={false}
                 action={
                   <>
@@ -1161,7 +1153,7 @@ function Pods() {
               </NavigationListCollapsibleSection>
             )}
 
-            <NavigationList className="s-px-2">
+            <NavigationList className="px-2">
               {/* Pods */}
               {(filteredSpaces.length > 0 || !searchText.trim()) && (
                 <NavigationListCollapsibleSection
@@ -1505,42 +1497,40 @@ function Pods() {
       )}
 
       {activeTab === "spaces" && (
-        <div className="s-flex s-min-h-0 s-flex-1 s-flex-col">
-          <div className="s-flex s-flex-1 s-items-center s-justify-center s-text-muted-foreground dark:s-text-muted-foreground-night">
+        <div className="flex min-h-0 flex-1 flex-col">
+          <div className="flex flex-1 items-center justify-center text-muted-foreground">
             Spaces — TBD
           </div>
         </div>
       )}
       {activeTab === "admin" && (
-        <div className="s-flex s-min-h-0 s-flex-1 s-flex-col">
-          <div className="s-flex s-flex-1 s-items-center s-justify-center s-text-muted-foreground dark:s-text-muted-foreground-night">
+        <div className="flex min-h-0 flex-1 flex-col">
+          <div className="flex flex-1 items-center justify-center text-muted-foreground">
             Admin — TBD
           </div>
         </div>
       )}
 
       {/* Bottom bar */}
-      <div className="s-flex s-h-14 s-items-center s-justify-between s-gap-2 s-border-t s-border-border s-pl-1 s-pr-2 dark:s-border-border-night">
+      <div className="flex h-14 items-center justify-between gap-2 border-t border-border pl-1 pr-2">
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Card
               size="xs"
               onClick={(e) => e.preventDefault()}
-              className="s-p-1"
-              containerClassName="s-flex-1 s-min-w-0"
+              className="p-1"
+              containerClassName="flex-1 min-w-0"
             >
-              <div className="s-flex s-min-w-0 s-items-center s-gap-2 s-pr-1">
+              <div className="flex min-w-0 items-center gap-2 pr-1">
                 <Avatar
                   name={user.fullName}
                   visual={user.portrait}
                   size="sm"
                   isRounded
                 />
-                <div className="s-flex s-min-w-0 s-grow s-flex-col s-text-sm s-text-foreground dark:s-text-foreground-night">
-                  <span className="s-heading-sm s-truncate">
-                    {user.fullName}
-                  </span>
-                  <span className="-s-mt-0.5 s-truncate s-text-xs s-text-muted-foreground dark:s-text-muted-foreground-night">
+                <div className="flex min-w-0 grow flex-col text-sm text-foreground">
+                  <span className="heading-sm truncate">{user.fullName}</span>
+                  <span className="-mt-0.5 truncate text-xs text-muted-foreground">
                     ACME
                   </span>
                 </div>
@@ -1610,10 +1600,7 @@ function Pods() {
       <PanelLayout>
         <PanelLayoutNav topBarLeft={navTopBar}>
           {(onNavClose) => (
-            <div
-              className="s-flex s-min-h-0 s-flex-1 s-flex-col"
-              onClick={onNavClose}
-            >
+            <div className="flex min-h-0 flex-1 flex-col" onClick={onNavClose}>
               {navContent}
             </div>
           )}
@@ -1669,7 +1656,7 @@ function Pods() {
       >
         <DialogContent
           size="full"
-          className="s-flex s-h-full s-max-h-full s-overflow-hidden s-rounded-none s-p-0"
+          className="flex h-full max-h-full overflow-hidden rounded-none p-0"
         >
           {selectedTemplateForBuilder && (
             <AgentBuilderView

@@ -26,6 +26,9 @@ export const config = {
       ? EnvironmentConfig.getEnvVariable("DUST_EU_URL")
       : EnvironmentConfig.getEnvVariable("DUST_US_URL");
   },
+  isMainRegion(): boolean {
+    return this.getCurrentRegion() === "us-central1";
+  },
   getOtherRegionInfo(): RegionInfo {
     const currentRegion = this.getCurrentRegion();
     const otherRegion =

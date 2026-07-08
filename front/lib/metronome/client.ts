@@ -52,7 +52,10 @@ export function getMetronomeClient(): Metronome {
     if (!bearerToken) {
       throw new Error("METRONOME_API_KEY is not set");
     }
-    cachedClient = new Metronome({ bearerToken });
+    // The SDK auto-retries 429/5xx with exponential backoff (honoring
+    // `Retry-After`); raise the default (2) so bulk jobs survive sustained
+    // rate-limit pressure without hard-failing.
+    cachedClient = new Metronome({ bearerToken, maxRetries: 5 });
   }
   return cachedClient;
 }
@@ -626,6 +629,7 @@ const TIER_SORT_ORDER: Record<MetronomePackageTier, number> = {
 const CURRENCY_SORT_ORDER: Record<SupportedCurrency, number> = {
   usd: 0,
   eur: 1,
+  gbp: 2,
 };
 
 function comparePackagesForDisplay(
@@ -774,6 +778,7 @@ export async function createMetronomeContract({
   planCode,
   additionalCustomFields,
   fromContractId,
+  displayedName,
 }: {
   metronomeCustomerId: string;
   /** Mutually exclusive with `packageId`. */
@@ -781,6 +786,11 @@ export async function createMetronomeContract({
   /** Mutually exclusive with `packageAlias` */
   packageId?: string;
   uniquenessKey?: string;
+  // Displayed in the Metronome dashboard/invoices. Metronome's create endpoint
+  // rejects `name` alongside package_alias/package_id, so this is applied via
+  // a follow-up `v2.contracts.edit` (`update_contract_name`) once the
+  // contract exists. Left unset, Metronome derives it from the package.
+  displayedName?: string;
   // Must already be on an hour boundary (Metronome requirement).
   startingAt: Date;
   enableStripeBilling: boolean;
@@ -800,7 +810,7 @@ export async function createMetronomeContract({
   // webhook carries flagged non-recurring balances forward (see
   // `carryOverContractBalancesOnRenewal` / `CARRY_ON_RENEWAL_CUSTOM_FIELD_KEY`).
   fromContractId?: string;
-}): Promise<Result<{ contractId: string }, Error>> {
+}): Promise<Result<{ contractId: string; recovered: boolean }, Error>> {
   if (!packageAlias === !packageId) {
     return new Err(
       new Error(
@@ -891,6 +901,17 @@ export async function createMetronomeContract({
     return new Err(customFieldsResult.error);
   }
 
+  if (displayedName) {
+    const renameResult = await editMetronomeContract({
+      contract_id: contractId,
+      customer_id: metronomeCustomerId,
+      update_contract_name: displayedName,
+    });
+    if (renameResult.isErr()) {
+      return new Err(renameResult.error);
+    }
+  }
+
   logger.info(
     {
       metronomeCustomerId,
@@ -903,7 +924,7 @@ export async function createMetronomeContract({
       ? "[Metronome] Contract recovered"
       : "[Metronome] Contract created"
   );
-  return new Ok({ contractId });
+  return new Ok({ contractId, recovered });
 }
 
 /**
@@ -3146,12 +3167,16 @@ export async function listMetronomeCustomerCredits({
   creditId,
   includeContractCredits = false,
   includeBalance = false,
+  includeLedgers = false,
+  includeArchived = false,
   coveringDate,
 }: {
   metronomeCustomerId: string;
   creditId?: string;
   includeContractCredits?: boolean;
   includeBalance?: boolean;
+  includeLedgers?: boolean;
+  includeArchived?: boolean;
   coveringDate?: string;
 }): Promise<Result<Credit[], Error>> {
   try {
@@ -3162,6 +3187,8 @@ export async function listMetronomeCustomerCredits({
       ...(coveringDate ? { covering_date: coveringDate } : {}),
       include_contract_credits: includeContractCredits,
       include_balance: includeBalance,
+      ...(includeLedgers ? { include_ledgers: true } : {}),
+      ...(includeArchived ? { include_archived: true } : {}),
     })) {
       credits.push(entry);
     }

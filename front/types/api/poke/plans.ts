@@ -54,6 +54,7 @@ export const PlanTypeSchema = z.object({
   trialPeriodDays: z.number(),
   isByok: z.boolean(),
   isAuditLogsAllowed: z.boolean(),
+  hasAdvancedModelAccess: z.boolean(),
 });
 
 export type UpsertPokePlanResponseBody = {

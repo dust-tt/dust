@@ -52,7 +52,7 @@ import { useVirtualizer } from "@tanstack/react-virtual";
 import React, { type ReactNode, useEffect, useRef, useState } from "react";
 import { breakpoints, useWindowSize } from "./WindowUtility";
 
-const cellHeight = "s-h-12";
+const cellHeight = "h-12";
 
 declare module "@tanstack/react-table" {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -122,7 +122,7 @@ export function DataTable<TData extends TBaseData>({
   rowCountIsCapped = false,
   columns,
   className,
-  widthClassName = "s-w-full",
+  widthClassName = "w-full",
   filter,
   filterColumn,
   columnsBreakpoints = {},
@@ -221,7 +221,7 @@ export function DataTable<TData extends TBaseData>({
   }, [filter, filterColumn]);
 
   return (
-    <div className={cn("s-flex s-flex-col s-gap-2", className, widthClassName)}>
+    <div className={cn("flex flex-col gap-2", className, widthClassName)}>
       <DataTable.Root>
         <DataTable.Header>
           {table.getHeaderGroups().map((headerGroup) => (
@@ -244,17 +244,17 @@ export function DataTable<TData extends TBaseData>({
                         : undefined
                     }
                     className={cn(
-                      header.column.getCanSort() && "s-cursor-pointer"
+                      header.column.getCanSort() && "cursor-pointer"
                     )}
                   >
                     <div
                       className={cn(
-                        "s-flex s-items-center s-space-x-1 s-whitespace-nowrap",
+                        "flex items-center space-x-1 whitespace-nowrap",
                         header.column.columnDef.meta?.headerAlign === "right"
-                          ? "s-justify-end"
+                          ? "justify-end"
                           : header.column.columnDef.meta?.headerAlign ===
                               "center"
-                            ? "s-justify-center"
+                            ? "justify-center"
                             : undefined
                       )}
                     >
@@ -271,10 +271,10 @@ export function DataTable<TData extends TBaseData>({
                           }
                           size="xs"
                           className={cn(
-                            "s-ml-1",
+                            "ml-1",
                             header.column.getIsSorted()
-                              ? "s-opacity-100"
-                              : "s-opacity-0"
+                              ? "opacity-100"
+                              : "opacity-0"
                           )}
                         />
                       )}
@@ -331,7 +331,7 @@ export function DataTable<TData extends TBaseData>({
         </DataTable.Body>
       </DataTable.Root>
       {pagination && (
-        <div className="s-p-1">
+        <div className="p-1">
           <Pagination
             size="xs"
             pagination={table.getState().pagination}
@@ -363,7 +363,7 @@ export function ScrollableDataTable<TData extends TBaseData>({
   totalRowCount,
   columns,
   className,
-  widthClassName = "s-w-full",
+  widthClassName = "w-full",
   columnsBreakpoints = {},
   maxHeight,
   onLoadMore,
@@ -559,20 +559,20 @@ export function ScrollableDataTable<TData extends TBaseData>({
   return (
     <div
       className={cn(
-        "s-relative s-overflow-y-auto s-overflow-x-hidden",
+        "relative overflow-y-auto overflow-x-hidden",
         className,
         widthClassName,
         maxHeight === true
-          ? "s-flex-1"
+          ? "flex-1"
           : typeof maxHeight === "string"
             ? maxHeight
-            : "s-max-h-100"
+            : "max-h-100"
       )}
       ref={setRef}
     >
-      <div className="s-relative">
-        <DataTable.Root className="s-w-full s-table-fixed">
-          <DataTable.Header className="s-sticky s-top-0 s-z-20 s-bg-white s-shadow-sm dark:s-bg-background-night">
+      <div className="relative">
+        <DataTable.Root className="w-full table-fixed">
+          <DataTable.Header className="sticky top-0 z-20 bg-background shadow-sm">
             {table.getHeaderGroups().map((headerGroup) => (
               <DataTable.Row
                 key={headerGroup.id}
@@ -597,18 +597,18 @@ export function ScrollableDataTable<TData extends TBaseData>({
                           : undefined
                       }
                       className={cn(
-                        "s-max-w-0",
+                        "max-w-0",
                         header.column.getCanSort() &&
                           isSorting &&
-                          "s-cursor-pointer"
+                          "cursor-pointer"
                       )}
                       style={{
                         width: columnSizing[header.id],
                         minWidth: columnSizing[header.id],
                       }}
                     >
-                      <div className="s-flex s-w-full s-items-center s-space-x-1 s-whitespace-nowrap">
-                        <span className="s-truncate">
+                      <div className="flex w-full items-center space-x-1 whitespace-nowrap">
+                        <span className="truncate">
                           {flexRender(
                             header.column.columnDef.header,
                             header.getContext()
@@ -623,10 +623,10 @@ export function ScrollableDataTable<TData extends TBaseData>({
                             }
                             size="xs"
                             className={cn(
-                              "s-ml-1",
+                              "ml-1",
                               header.column.getIsSorted()
-                                ? "s-opacity-100"
-                                : "s-opacity-0"
+                                ? "opacity-100"
+                                : "opacity-0"
                             )}
                           />
                         )}
@@ -638,7 +638,7 @@ export function ScrollableDataTable<TData extends TBaseData>({
             ))}
           </DataTable.Header>
           <DataTable.Body
-            className="s-relative s-w-full"
+            className="relative w-full"
             style={{
               height: `${rowVirtualizer.getTotalSize()}px`,
             }}
@@ -665,7 +665,7 @@ export function ScrollableDataTable<TData extends TBaseData>({
                   }
                   onDoubleClick={row.original.onDoubleClick}
                   rowData={row.original}
-                  className="s-absolute s-w-full"
+                  className="absolute w-full"
                   {...(enableRowSelection && {
                     "data-selected": row.getIsSelected(),
                   })}
@@ -687,14 +687,14 @@ export function ScrollableDataTable<TData extends TBaseData>({
                         column={cell.column}
                         key={cell.id}
                         id={cell.id}
-                        className="s-max-w-0"
+                        className="max-w-0"
                         style={{
                           width: columnSizing[cell.column.id],
                           minWidth: columnSizing[cell.column.id],
                         }}
                       >
-                        <div className="s-flex s-items-center s-space-x-1">
-                          <span className="s-truncate">
+                        <div className="flex items-center space-x-1">
+                          <span className="truncate">
                             {flexRender(
                               cell.column.columnDef.cell,
                               cell.getContext()
@@ -710,24 +710,21 @@ export function ScrollableDataTable<TData extends TBaseData>({
           </DataTable.Body>
         </DataTable.Root>
         {/*sentinel div used for the intersection observer*/}
-        <div
-          ref={loadMoreRef}
-          className="s-absolute s-bottom-0 s-h-1 s-w-full"
-        />
-        <div ref={scrollSentinelRef} className="s-h-px" />
+        <div ref={loadMoreRef} className="absolute bottom-0 h-1 w-full" />
+        <div ref={scrollSentinelRef} className="h-px" />
       </div>
 
       <div
         className={cn(
-          "s-pointer-events-none s-sticky -s-bottom-px s-left-0 s-right-0 -s-mt-10 s-h-10 s-bg-gradient-to-t",
-          "s-from-white s-via-white/60 s-to-transparent s-transition-opacity s-duration-300 dark:s-from-background-night dark:s-via-background-night/60",
-          canScrollDown ? "s-opacity-100" : "s-opacity-0"
+          "pointer-events-none sticky -bottom-px left-0 right-0 -mt-10 h-10 bg-linear-to-t",
+          "from-background via-background/60 to-transparent transition-opacity duration-300",
+          canScrollDown ? "opacity-100" : "opacity-0"
         )}
       />
 
       {isLoading && (
-        <div className="s-sticky s-bottom-0 s-left-0 s-right-0 s-flex s-justify-center s-bg-white/80 s-py-2 s-backdrop-blur-sm dark:s-bg-background-night/80">
-          <div className="s-flex s-items-center s-gap-2 s-text-sm s-text-muted-foreground">
+        <div className="sticky bottom-0 left-0 right-0 flex justify-center bg-background/80 py-2 backdrop-blur-sm">
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
             <Spinner size="xs" />
             <span>Loading more data...</span>
           </div>
@@ -752,11 +749,11 @@ DataTable.Root = function DataTableRoot({
 }: DataTableRootProps) {
   return (
     <div
-      className={cn("s-@container/table", containerClassName)}
+      className={cn("@container/table", containerClassName)}
       {...containerProps}
     >
       <table
-        className={cn("s-w-full s-table-fixed s-border-collapse", className)}
+        className={cn("w-full table-fixed border-collapse", className)}
         {...props}
       >
         {children}
@@ -795,13 +792,13 @@ DataTable.Head = function Head({
   return (
     <th
       className={cn(
-        "s-heading-xs s-py-2 s-px-2 s-capitalize",
+        "heading-xs py-2 px-2 capitalize",
         column.columnDef.meta?.headerAlign === "right"
-          ? "s-text-right"
+          ? "text-right"
           : column.columnDef.meta?.headerAlign === "center"
-            ? "s-text-center"
-            : "s-text-left",
-        "s-text-foreground dark:s-text-foreground-night",
+            ? "text-center"
+            : "text-left",
+        "text-foreground",
         column.columnDef.meta?.className,
         className
       )}
@@ -866,15 +863,11 @@ DataTable.Row = function Row({
     <>
       <tr
         className={cn(
-          "s-group/dt-row s-justify-center s-transition-colors s-duration-300 s-ease-out",
-          !hideBottomBorder && [
-            "s-border-b",
-            "s-border-separator dark:s-border-separator-night",
-          ],
+          "group/dt-row justify-center transition-colors duration-300 ease-out",
+          !hideBottomBorder && ["border-b", "border-separator"],
           (onClick || onDoubleClick) &&
-            "s-cursor-pointer [&:hover:not(:has(input:hover)):not(:has(button:hover))]:s-bg-muted-background dark:[&:hover:not(:has(input:hover)):not(:has(button:hover))]:s-bg-muted-background-night",
-          props["data-selected"] &&
-            "s-bg-muted-background/50 dark:s-bg-muted-background-night/50",
+            "cursor-pointer [&:hover:not(:has(input:hover)):not(:has(button:hover))]:bg-muted-background",
+          props["data-selected"] && "bg-muted-background/50",
           widthClassName,
           className
         )}
@@ -895,7 +888,7 @@ DataTable.Row = function Row({
           <DropdownMenuPortal>
             <DropdownMenuContent
               align="start"
-              className="s-whitespace-nowrap"
+              className="whitespace-nowrap"
               style={{
                 position: "fixed",
                 left: contextMenuPosition?.x || 0,
@@ -952,10 +945,7 @@ const renderSubmenuItem = (
     <DropdownMenuSubTrigger label={item.label} disabled={item.disabled} />
     <DropdownMenuPortal>
       <DropdownMenuSubContent>
-        <ScrollArea
-          className="s-flex s-max-h-72 s-min-w-24 s-flex-col"
-          hideScrollBar
-        >
+        <ScrollArea className="flex max-h-72 min-w-24 flex-col" hideScrollBar>
           {item.items.map((subItem) => (
             <DropdownMenuItem
               key={subItem.id}
@@ -967,7 +957,7 @@ const renderSubmenuItem = (
               }}
             />
           ))}
-          <ScrollBar className="s-py-0" />
+          <ScrollBar className="py-0" />
         </ScrollArea>
       </DropdownMenuSubContent>
     </DropdownMenuPortal>
@@ -1040,10 +1030,7 @@ DataTable.MoreButton = function MoreButton({
           size="icon"
           variant="ghost-secondary"
           disabled={disabled}
-          className={cn(
-            disabled && "s-cursor-not-allowed s-opacity-50",
-            className
-          )}
+          className={cn(disabled && "cursor-not-allowed opacity-50", className)}
         />
       </DropdownMenuTrigger>
 
@@ -1071,7 +1058,7 @@ DataTable.Cell = function Cell({
     <td
       className={cn(
         cellHeight,
-        "s-truncate s-px-2",
+        "truncate px-2",
         column.columnDef.meta?.className,
         className
       )}
@@ -1115,9 +1102,9 @@ DataTable.CellContent = function CellContent({
   return (
     <div
       className={cn(
-        "s-flex s-items-center",
-        grow ? "s-flex-grow" : "",
-        disabled && "s-cursor-not-allowed s-opacity-50",
+        "flex items-center",
+        grow ? "flex-grow" : "",
+        disabled && "cursor-not-allowed opacity-50",
         className
       )}
       aria-disabled={disabled || undefined}
@@ -1129,7 +1116,7 @@ DataTable.CellContent = function CellContent({
             <Avatar
               visual={avatarUrl}
               size="xs"
-              className="s-mr-2"
+              className="mr-2"
               isRounded={roundedAvatar ?? false}
             />
           }
@@ -1140,7 +1127,7 @@ DataTable.CellContent = function CellContent({
         <Avatar
           visual={avatarUrl}
           size="xs"
-          className="s-mr-2"
+          className="mr-2"
           isRounded={roundedAvatar ?? false}
         />
       )}
@@ -1155,34 +1142,26 @@ DataTable.CellContent = function CellContent({
         <Icon
           visual={icon}
           size="sm"
-          className={cn(
-            "s-mr-2 s-text-foreground dark:s-text-foreground-night",
-            iconClassName
-          )}
+          className={cn("mr-2 text-foreground", iconClassName)}
         />
       )}
       <div
         className={cn(
-          "s-flex s-shrink s-truncate s-items-center",
-          grow ? "s-flex-grow" : ""
+          "flex shrink truncate items-center",
+          grow ? "flex-grow" : ""
         )}
       >
         <div
           className={cn(
-            grow ? "s-flex-grow" : "",
-            "s-truncate s-text-sm",
-            "s-text-foreground dark:s-text-foreground-night"
+            grow ? "flex-grow" : "",
+            "truncate text-sm",
+            "text-foreground"
           )}
         >
           {children}
         </div>
         {description && (
-          <span
-            className={cn(
-              "s-pl-2 s-text-sm",
-              "s-text-muted-foreground dark:s-text-muted-foreground-night"
-            )}
-          >
+          <span className={cn("pl-2 text-sm", "text-muted-foreground")}>
             {description}
           </span>
         )}
@@ -1228,19 +1207,19 @@ DataTable.BasicCellContent = function BasicCellContent({
             <div
               className={cn(
                 cellHeight,
-                "s-group s-flex s-items-center s-gap-2 s-text-sm",
-                "s-text-muted-foreground dark:s-text-muted-foreground-night",
-                disabled && "s-cursor-not-allowed s-opacity-50",
+                "group flex items-center gap-2 text-sm",
+                "text-muted-foreground",
+                disabled && "cursor-not-allowed opacity-50",
                 className
               )}
               aria-disabled={disabled || undefined}
               {...props}
             >
-              <span className="s-truncate">{label}</span>
+              <span className="truncate">{label}</span>
               {textToCopy && (
                 <Button
                   icon={isCopied ? ClipboardCheck : Clipboard}
-                  className="s-hidden group-hover:s-block"
+                  className="hidden group-hover:block"
                   variant="outline"
                   onClick={async (e) => {
                     e.stopPropagation();
@@ -1257,19 +1236,19 @@ DataTable.BasicCellContent = function BasicCellContent({
         <div
           className={cn(
             cellHeight,
-            "s-group s-flex s-items-center s-gap-2 s-text-sm",
-            "s-text-muted-foreground dark:s-text-muted-foreground-night",
-            disabled && "s-cursor-not-allowed s-opacity-50",
+            "group flex items-center gap-2 text-sm",
+            "text-muted-foreground",
+            disabled && "cursor-not-allowed opacity-50",
             className
           )}
           aria-disabled={disabled || undefined}
           {...props}
         >
-          <span className="s-truncate">{label}</span>
+          <span className="truncate">{label}</span>
           {textToCopy && (
             <Button
               icon={isCopied ? ClipboardCheck : Clipboard}
-              className="s-hidden group-hover:s-block"
+              className="hidden group-hover:block"
               variant="outline"
               onClick={async (e) => {
                 e.stopPropagation();
@@ -1308,8 +1287,8 @@ DataTable.CellContentWithCopy = function CellContentWithCopy({
   };
 
   return (
-    <div className={cn("s-flex s-items-center s-space-x-2", className)}>
-      <span className="s-truncate">{children}</span>
+    <div className={cn("flex items-center space-x-2", className)}>
+      <span className="truncate">{children}</span>
       <IconButton
         icon={isCopied ? ClipboardCheck : Clipboard}
         variant="outline"
@@ -1349,7 +1328,6 @@ export function createSelectionColumn<TData>({
     header: ({ table }) =>
       !hideSelectAll ? (
         <Checkbox
-          size="xs"
           checked={
             table.getIsAllRowsSelected()
               ? true
@@ -1366,9 +1344,8 @@ export function createSelectionColumn<TData>({
         />
       ) : null,
     cell: ({ row }) => (
-      <div className="s-flex s-h-full s-w-full s-items-center">
+      <div className="flex h-full w-full items-center">
         <Checkbox
-          size="xs"
           checked={row.getIsSelected()}
           disabled={!row.getCanSelect()}
           onCheckedChange={(state) => {
@@ -1381,7 +1358,7 @@ export function createSelectionColumn<TData>({
       </div>
     ),
     meta: {
-      className: "s-w-10",
+      className: "w-10",
     },
   };
 }
@@ -1393,24 +1370,22 @@ export function createRadioSelectionColumn<TData>(): ColumnDef<TData> {
     enableHiding: false,
     header: () => null,
     cell: ({ row }) => (
-      <div className="s-flex s-h-full s-w-full s-items-center">
+      <div className="flex h-full w-full items-center">
         <div
           className={cn(
-            radioStyles({ size: "xs" }),
-            row.getIsSelected() && "s-bg-muted/50 dark:s-bg-muted/50",
-            !row.getCanSelect() && "s-cursor-not-allowed s-opacity-50"
+            radioStyles(),
+            row.getIsSelected() && "bg-muted/50",
+            !row.getCanSelect() && "cursor-not-allowed opacity-50"
           )}
           aria-checked={row.getIsSelected()}
           role="radio"
         >
-          {row.getIsSelected() && (
-            <div className={radioIndicatorStyles({ size: "xs" })} />
-          )}
+          {row.getIsSelected() && <div className={radioIndicatorStyles()} />}
         </div>
       </div>
     ),
     meta: {
-      className: "s-w-10",
+      className: "w-10",
     },
   };
 }

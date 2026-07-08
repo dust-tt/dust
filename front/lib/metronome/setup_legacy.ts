@@ -11,7 +11,6 @@ import {
 } from "@app/lib/metronome/constants";
 import {
   BILLING_CYCLE_CONFIG,
-  buildSeatTierRates,
   getCreditTypeProgrammaticUsdId,
   getFreeExcessRecurringCredits,
   type MetricDef,
@@ -28,8 +27,6 @@ import {
   FREE_MONTHLY_CREDIT_NAME,
   LEGACY_BUSINESS_EUR_PACKAGE_ALIAS,
   LEGACY_BUSINESS_PACKAGE_ALIAS,
-  LEGACY_ENTERPRISE_EUR_PACKAGE_ALIAS,
-  LEGACY_ENTERPRISE_PACKAGE_ALIAS,
   LEGACY_PRO_ANNUAL_EUR_PACKAGE_ALIAS,
   LEGACY_PRO_ANNUAL_PACKAGE_ALIAS,
   LEGACY_PRO_MONTHLY_EUR_PACKAGE_ALIAS,
@@ -202,45 +199,6 @@ export function getLegacyRateCards(): RateCardDef[] {
         },
       ],
     },
-    // --- Enterprise plan: MAU-based billing + programmatic usage ---
-    // Default: MAU-1 at $45/MAU. MAU-5/MAU-10 not entitled by default but present
-    // on the rate card so they can be enabled per contract via overrides.
-    // Programmatic usage at $1 = $1 (30% markup baked into product).
-    {
-      name: "Legacy Enterprise MAU USD",
-      description:
-        "Enterprise plan. Per-MAU billing + programmatic usage at cost with 30% markup.",
-      aliases: [{ name: "legacy-enterprise" }],
-      fiat_credit_type_id: CREDIT_TYPE_USD_ID,
-      credit_type_conversions: [
-        {
-          custom_credit_type_id: getCreditTypeProgrammaticUsdId(),
-          fiat_per_custom_credit: PROGRAMMATIC_USAGE_CREDITS_IN_USD_CENTS,
-        },
-      ],
-      rates: [
-        {
-          product_name: "MAU",
-          starting_at: "2026-04-01T00:00:00.000Z",
-          entitled: true,
-          rate_type: "FLAT",
-          billing_frequency: "MONTHLY",
-          price: 4500,
-        },
-        {
-          product_name: "Programmatic Usage",
-          starting_at: "2026-04-01T00:00:00.000Z",
-          entitled: true,
-          rate_type: "FLAT",
-          price: 1,
-          credit_type_id: getCreditTypeProgrammaticUsdId(),
-        },
-        ...buildSeatTierRates({
-          prefix: "MAU",
-          creditTypeId: CREDIT_TYPE_USD_ID,
-        }),
-      ],
-    },
     // --- EUR variants: same seat prices, billed in EUR ---
     // For Eurozone/EEA/Switzerland customers.
     // Programmatic usage: same product (quantity_conversion converts cost_micro_usd to units),
@@ -342,42 +300,6 @@ export function getLegacyRateCards(): RateCardDef[] {
         },
       ],
     },
-    {
-      name: "Legacy Enterprise MAU EUR",
-      description:
-        "Enterprise plan (EUR). Per-MAU billing + programmatic usage at cost with 30% markup.",
-      aliases: [{ name: "legacy-enterprise-eur" }],
-      fiat_credit_type_id: CREDIT_TYPE_EUR_ID,
-      credit_type_conversions: [
-        {
-          custom_credit_type_id: getCreditTypeProgrammaticUsdId(),
-          fiat_per_custom_credit: PROGRAMMATIC_USAGE_CREDITS_IN_EUR,
-        },
-      ],
-      rates: [
-        {
-          product_name: "MAU",
-          starting_at: "2026-04-01T00:00:00.000Z",
-          entitled: true,
-          rate_type: "FLAT",
-          billing_frequency: "MONTHLY",
-          price: 45,
-          credit_type_id: CREDIT_TYPE_EUR_ID,
-        },
-        {
-          product_name: "Programmatic Usage",
-          starting_at: "2026-04-01T00:00:00.000Z",
-          entitled: true,
-          rate_type: "FLAT",
-          price: 1,
-          credit_type_id: getCreditTypeProgrammaticUsdId(),
-        },
-        ...buildSeatTierRates({
-          prefix: "MAU",
-          creditTypeId: CREDIT_TYPE_EUR_ID,
-        }),
-      ],
-    },
   ];
 }
 
@@ -425,21 +347,6 @@ export function getLegacyPackages(): PackageDef[] {
       ],
       ...BILLING_CYCLE_CONFIG,
     },
-    // Enterprise: MAU-based billing, no seat subscriptions.
-    {
-      name: "Legacy Enterprise USD",
-      aliases: [{ name: LEGACY_ENTERPRISE_PACKAGE_ALIAS }],
-      rate_card_name: "Legacy Enterprise MAU USD",
-      scheduled_charges_on_usage_invoices: "ALL",
-      recurring_credits: [
-        getFreeMonthlyRecurringCredits(),
-        getFreeExcessRecurringCredits(
-          getCreditTypeProgrammaticUsdId(),
-          DEFAULT_PROGRAMMATIC_USD_EXCESS_RECURRING_AMOUNT
-        ),
-      ],
-      ...BILLING_CYCLE_CONFIG,
-    },
     // EUR variants
     {
       name: "Legacy Pro EUR",
@@ -476,20 +383,6 @@ export function getLegacyPackages(): PackageDef[] {
       subscriptions: [LEGACY_SEATS.annual],
       recurring_credits: [
         getFreeAnnualRecurringCredits(),
-        getFreeExcessRecurringCredits(
-          getCreditTypeProgrammaticUsdId(),
-          DEFAULT_PROGRAMMATIC_USD_EXCESS_RECURRING_AMOUNT
-        ),
-      ],
-      ...BILLING_CYCLE_CONFIG,
-    },
-    {
-      name: "Legacy Enterprise EUR",
-      aliases: [{ name: LEGACY_ENTERPRISE_EUR_PACKAGE_ALIAS }],
-      rate_card_name: "Legacy Enterprise MAU EUR",
-      scheduled_charges_on_usage_invoices: "ALL",
-      recurring_credits: [
-        getFreeMonthlyRecurringCredits(),
         getFreeExcessRecurringCredits(
           getCreditTypeProgrammaticUsdId(),
           DEFAULT_PROGRAMMATIC_USD_EXCESS_RECURRING_AMOUNT

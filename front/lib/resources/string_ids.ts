@@ -75,6 +75,8 @@ export const RESOURCES_PREFIX = {
 
   // Sandbox functions.
   sandbox_function: "sfn",
+  sandbox_function_invocation: "sfi",
+  sandbox_function_mcp_action: "sfa",
 
   // Academy quiz attempts.
   academy_quiz_attempt: "aqz",
@@ -103,6 +105,9 @@ export const RESOURCES_PREFIX = {
 
   // User project notification preferences.
   user_project_notification_preference: "upnp",
+
+  // Activation recommendations.
+  activation_recommendation: "arc",
 } as const;
 
 export const CROSS_WORKSPACE_RESOURCES_WORKSPACE_ID: ModelId = 0;

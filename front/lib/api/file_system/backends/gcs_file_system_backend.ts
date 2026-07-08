@@ -1,7 +1,10 @@
 import type { GCSMountTarget } from "@app/lib/api/file_system/sandbox/gcs_sandbox_mount_adapter";
 import { GCSSandboxMountAdapter } from "@app/lib/api/file_system/sandbox/gcs_sandbox_mount_adapter";
 import type { SandboxMountAdapter } from "@app/lib/api/file_system/sandbox/sandbox_mount_adapter";
-import type { FileSystemMount } from "@app/lib/api/file_system/types";
+import type {
+  FileSystemMount,
+  SandboxOnlyMount,
+} from "@app/lib/api/file_system/types";
 import {
   DustFileSystemError,
   SCOPED_PREFIX_CONVERSATION,
@@ -191,6 +194,21 @@ export class GCSFileSystemBackend implements FileSystemBackend {
     const folderPlaceholders = rawFiles.filter((f) => f.name.endsWith("/"));
     const regularFiles = rawFiles.filter((f) => {
       if (f.name.endsWith("/")) {
+        return false;
+      }
+
+      // Hide files inside a hidden ("."-prefixed, non-tool-outputs) directory
+      // below the listed prefix. Listing is recursive, so the folder filter
+      // below (which only hides the dot-directory *entry*) is not enough on its
+      // own — without this, e.g. pptx/docx QA renders under .pptx_render/ /
+      // .docx_render/ would still surface. Computed relative to the listed
+      // prefix, so listing a hidden directory directly still returns its files.
+      const relDirs = f.name.slice(gcsPrefix.length).split("/").slice(0, -1);
+      if (
+        relDirs.some(
+          (seg) => seg.startsWith(".") && seg !== TOOL_OUTPUTS_FOLDER_NAME
+        )
+      ) {
         return false;
       }
 
@@ -585,15 +603,35 @@ export class GCSFileSystemBackend implements FileSystemBackend {
   }
 
   createSandboxAdapter(
-    mounts: ReadonlyArray<FileSystemMount>
+    mounts: ReadonlyArray<FileSystemMount>,
+    sandboxOnlyMounts: ReadonlyArray<SandboxOnlyMount> = []
   ): SandboxMountAdapter {
     const bucket = fileStorageConfig.getGcsPrivateUploadsBucket();
-    const targets: GCSMountTarget[] = mounts.map((mount) => ({
-      gcsPrefix: this.mountRootGCSPrefix(mount),
-      sandboxMountPoint: mount.sandboxMountPoint,
-      legacySandboxMountPoint: mount.legacySandboxMountPoint,
-    }));
+    const targets: GCSMountTarget[] = [
+      ...mounts.map((mount) => ({
+        gcsPrefix: this.mountRootGCSPrefix(mount),
+        sandboxMountPoint: mount.sandboxMountPoint,
+        legacySandboxMountPoint: mount.legacySandboxMountPoint,
+        readOnly: false,
+      })),
+      ...sandboxOnlyMounts.map((mount) => ({
+        gcsPrefix: this.sandboxOnlyMountGCSPrefix(mount),
+        sandboxMountPoint: mount.sandboxMountPoint,
+        legacySandboxMountPoint: null,
+        readOnly: mount.readOnly,
+      })),
+    ];
 
     return new GCSSandboxMountAdapter(bucket, targets);
+  }
+
+  private sandboxOnlyMountGCSPrefix(mount: SandboxOnlyMount): string {
+    switch (mount.kind) {
+      case "pod_sandbox_functions":
+        return `w/${this.workspaceId}/pods/${mount.id}/sandbox-functions`;
+
+      default:
+        assertNever(mount.kind);
+    }
   }
 }

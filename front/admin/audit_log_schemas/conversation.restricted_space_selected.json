@@ -1,0 +1,19 @@
+{
+  "action": "conversation.restricted_space_selected",
+  "targets": [
+    {
+      "type": "workspace"
+    },
+    {
+      "type": "conversation"
+    },
+    {
+      "type": "space"
+    }
+  ],
+  "metadata": {
+    "conversation_id": "string",
+    "space_id": "string",
+    "origin": "string"
+  }
+}

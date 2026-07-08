@@ -149,7 +149,8 @@ struct MainContainerView: View {
                     workspaceId: workspaceId,
                     tokenProvider: tokenProvider,
                     user: user,
-                    currentUserEmail: user.email
+                    currentUserEmail: user.email,
+                    currentUserSId: viewModel.currentUserSId
                 )
             }
 

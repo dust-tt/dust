@@ -48,12 +48,11 @@ const CLASSES = {
   remove:
     "suggestion-deletion rounded line-through bg-red-100 text-red-800 cursor-default",
   removeDimmed:
-    "suggestion-deletion rounded line-through bg-red-50 text-gray-400 cursor-default",
+    "suggestion-deletion rounded line-through bg-red-50 text-muted-foreground cursor-default",
   add: "suggestion-addition rounded bg-blue-100 text-blue-800 cursor-default",
   addDimmed:
-    "suggestion-addition rounded bg-blue-50 text-gray-400 cursor-default",
-  blockHighlightDimmed:
-    "suggestion-highlight rounded bg-gray-100 cursor-default",
+    "suggestion-addition rounded bg-blue-50 text-muted-foreground cursor-default",
+  blockHighlightDimmed: "suggestion-highlight rounded bg-muted cursor-default",
 };
 
 export function diffBlockContent(

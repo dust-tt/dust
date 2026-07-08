@@ -19,8 +19,8 @@ import fs from "fs";
 import path from "path";
 
 const DUST_BEDROCK_IMAGE_VERSION = "1.10.0";
-const DUST_BASE_IMAGE_VERSION = "0.8.37";
-const DSBX_CLI_VERSION = "0.1.26";
+const DUST_BASE_IMAGE_VERSION = "0.8.50";
+const DSBX_CLI_VERSION = "0.1.32";
 // Identity, not coverage list: agent-proxied is a specific Linux user. The
 // nftables ruleset covers SANDBOX_UNTRUSTED_UIDS as a set; reordering that
 // list must not silently change this user's UID.
@@ -28,6 +28,17 @@ const AGENT_PROXIED_UID = SANDBOX_AGENT_PROXIED_UID;
 // Built from https://github.com/openai/codex at tag rust-v0.115.0 (Apache-2.0).
 // Released via the "Release sandbox tool" GitHub Actions workflow.
 const APPLY_PATCH_VERSION = "0.1.0";
+// Modern x86_64 build (requires AVX2). Switch to the baseline variant if a
+// future sandbox CPU lacks it.
+const BUN_VERSION = "1.3.14";
+// LibreOffice "Fresh" PPA. The Ubuntu 24.04 base ships LibreOffice 24.2, whose
+// PDF layout engine places text differently from a current desktop LibreOffice
+// (26.x). Since the pptx QA reads word positions off the soffice-rendered PDF to
+// confirm text collisions, the engine version has to be pinned and reproducible
+// - and close to what authors run - or the same deck detects collisions on one
+// machine and not another. This assumes an Ubuntu base and build-time egress to
+// launchpad.net; if PPAs are blocked, install the TDF .deb bundle instead.
+const LIBREOFFICE_PPA = "ppa:libreoffice/ppa";
 const EGRESS_LOCAL_DIR = path.resolve(__dirname, "egress");
 const PROFILE_LOCAL_DIR = path.resolve(__dirname, "profile");
 const TELEMETRY_LOCAL_DIR = path.resolve(__dirname, "telemetry");
@@ -153,10 +164,14 @@ function getLocalDirContent(
     const full = path.join(dir, subdir);
     return new Map(
       fs
-        .readdirSync(full)
-        .map((filename) => [
-          filename,
-          fs.readFileSync(path.join(full, filename)),
+        .readdirSync(full, { withFileTypes: true })
+        // Only copy regular files. Running the Python tools locally drops a
+        // __pycache__/ directory in here; without this filter the build tries
+        // to readFileSync that directory and dies with EISDIR.
+        .filter((entry) => entry.isFile())
+        .map((entry) => [
+          entry.name,
+          fs.readFileSync(path.join(full, entry.name)),
         ])
     );
   };
@@ -165,7 +180,7 @@ function getLocalDirContent(
 function getAgentProxiedSetupCommand(): string {
   // setgid bit on shared dirs + default POSIX ACLs ensures files created
   // by either agent or agent-proxied are group-owned by `agent` and
-  // group-writable, regardless of the creating process's umask — avoids
+  // group-writable, regardless of the creating process's umask - avoids
   // a perms handoff footgun during the PR1→PR2 rollout window.
   return [
     "install -d -o agent -g agent -m 2775 /home/agent/.local /home/agent/.local/bin",
@@ -270,9 +285,25 @@ SHELLEOF`,
   })
   // Create profile directory and copy profile scripts
   // The other tools are installed in bedrock
+  // Bump LibreOffice past the distro's 24.2 to a current release so the
+  // soffice PDF render (which the pptx QA reads word positions from) matches a
+  // modern desktop engine.
+  .runCmd(
+    "apt-get update && apt-get install -y software-properties-common && " +
+      `add-apt-repository -y ${LIBREOFFICE_PPA} && apt-get update`,
+    { user: "root" }
+  )
+  // Metric-compatible font substitutes so soffice lays text out at the same
+  // positions as the MS fonts it stands in for - Carlito=Calibri,
+  // Caladea=Cambria, Liberation=Arial/Times/Courier - plus Noto as a broad
+  // fallback. Without these, a Calibri/Cambria deck (the PowerPoint defaults)
+  // reflows under a non-metric fallback and the QA misses real text collisions.
+  // fc-cache rebuilds the fontconfig cache so the new fonts resolve at runtime.
   .runCmd(
     "apt-get update && apt-get install -y jq pandoc imagemagick ffmpeg unzip file " +
-      "libreoffice poppler-utils qpdf",
+      "libreoffice poppler-utils qpdf " +
+      "fonts-crosextra-carlito fonts-crosextra-caladea fonts-liberation2 " +
+      "fonts-noto-core && fc-cache -f",
     { user: "root" }
   )
   .registerTool([
@@ -335,8 +366,14 @@ SHELLEOF`,
         description: "PowerPoint generation library",
         runtime: "node",
       },
+      {
+        name: "zod",
+        version: "4.4.3",
+        description: "Schema validation (sandbox function contracts)",
+        runtime: "node",
+      },
     ],
-    { installCmd: "npm install -g typescript tsx pptxgenjs@4.0.1" }
+    { installCmd: "npm install -g typescript tsx pptxgenjs@4.0.1 zod@4.4.3" }
   )
   .runCmd(
     `curl -fsSL https://github.com/dust-tt/dust/releases/download/dsbx-v${DSBX_CLI_VERSION}/dsbx-linux-x86_64 -o /tmp/dsbx && ` +
@@ -370,6 +407,20 @@ SHELLEOF`,
     returns: "Summary of applied changes (A/M/D per file)",
     runtime: "system",
     profile: "openai",
+  })
+  .runCmd(
+    `curl -fsSL https://github.com/oven-sh/bun/releases/download/bun-v${BUN_VERSION}/bun-linux-x64.zip -o /tmp/bun.zip && ` +
+      `curl -fsSL https://github.com/oven-sh/bun/releases/download/bun-v${BUN_VERSION}/SHASUMS256.txt -o /tmp/bun-checksums.txt && ` +
+      "grep 'bun-linux-x64.zip' /tmp/bun-checksums.txt | awk '{print $1 \"  /tmp/bun.zip\"}' | sha256sum -c - && " +
+      "unzip -j /tmp/bun.zip bun-linux-x64/bun -d /tmp && " +
+      "mv /tmp/bun /opt/bin/bun && " +
+      "chown root:root /opt/bin/bun && chmod 755 /opt/bin/bun",
+    { user: "root" }
+  )
+  .registerTool({
+    name: "bun",
+    description: "Fast JavaScript/TypeScript runtime and package manager",
+    runtime: "node",
   })
   .runCmd(`mkdir -p ${PROFILE_DIR}`, { user: "root" })
   // Core: compiled dust-tools binary + shared shell infra
@@ -583,22 +634,42 @@ SHELLEOF`,
   .registerTool({
     name: "pptx_inspect",
     description:
-      "Inspect .pptx structure: slides, layouts, shapes, text, charts, tables, embedded media. Use before editing a deck to map layouts and shape positions. --render rasterizes slides to JPEG via soffice + pdftoppm for visual QA",
+      "Inspect and QA .pptx structure (slides, layouts, shapes, text, charts, tables, embedded media) throughout the edit loop. Overview by default, plus modes --slide, --layouts, --text, --media, --render, --qa (post-edit boxed-render + text-readback visual gate) and --compare FILE (template-fidelity [QA: PASS/FAIL] gate). Run with --help for the full per-mode flag reference; the pptx skill covers when and how to use each.",
     usage:
-      "pptx_inspect <file> [--slide N] [--layouts] [--text] [--media] [--render] [--max-shapes N] [--offset N]",
+      "pptx_inspect <file> [--qa N[,N,...]] [--slide N[,N,...]] [--layouts] [--text] [--media] [--render] [--render-dir DIR] [--compare FILE] [--max-shapes N] [--offset N] (see --help)",
     returns:
-      "Deck overview, or one shape per line in slide view: '<id>  <kind>  <left,top WxH>  [ph=<type>]  <summary>' with paragraphs indented. Layouts/text/media views emit format-specific listings. --render prints one absolute JPEG path per slide",
+      "A per-mode text report: deck overview, or per-slide shapes with [!] blockers / [i] advisories, or layouts / text / media listings. --qa and --render publish JPEGs and print their files__cat scoped paths; --compare ends in a [QA: PASS/FAIL] verdict. See --help for field-level detail.",
+    runtime: "system",
+  })
+  // --- pptx_slides: safe slide-level structural edits ---
+  .registerTool({
+    name: "pptx_slides",
+    description:
+      "Duplicate, move, or delete .pptx slides without corrupting the package - shares image parts, deep-clones charts, rewrites relationship ids. --duplicate and --delete take a slide pattern (a single slide, a comma list, or ranges, e.g. 2,5,7-9), so do every duplicate or delete in one call rather than one slide at a time. Edit copies afterward with python-pptx",
+    usage:
+      "pptx_slides <file> (--duplicate N[,N,...] [--count K] [--after M] | --move N --to M | --delete N[,N,...])",
+    returns: "A one-line summary of the change and the deck's new slide count",
+    runtime: "system",
+  })
+  // --- pptx_slides: safe slide-level structural edits ---
+  .registerTool({
+    name: "pptx_slides",
+    description:
+      "Duplicate, move, or delete .pptx slides without corrupting the package - shares image parts, deep-clones charts, rewrites relationship ids. --duplicate and --delete take a slide pattern (a single slide, a comma list, or ranges, e.g. 2,5,7-9), so do every duplicate or delete in one call rather than one slide at a time. Edit copies afterward with python-pptx",
+    usage:
+      "pptx_slides <file> (--duplicate N[,N,...] [--count K] [--after M] | --move N --to M | --delete N[,N,...])",
+    returns: "A one-line summary of the change and the deck's new slide count",
     runtime: "system",
   })
   // --- docx_inspect: structural inspection of .docx documents ---
   .registerTool({
     name: "docx_inspect",
     description:
-      "Inspect .docx structure: sections, headings outline, paragraph and character styles with resolved typography, run formatting, tables, tracked changes, fields, embedded media. Use before editing a document to map style names so the model can apply Heading1 / Normal / Quote rather than restyling inline",
+      "Inspect .docx structure: sections, headings outline, paragraph and character styles with resolved typography, run formatting, tables, tracked changes, fields, embedded media. Use before editing a document to map style names so the model can apply Heading1 / Normal / Quote rather than restyling inline. --render rasterizes pages to JPEG, published into the conversation; the command prints each page's scoped path (a files__cat-readable image). --render-dir DIR is the base dir renders publish under, as DIR/.docx_render/<doc>/ (default /files/conversation)",
     usage:
-      "docx_inspect <file> [--styles] [--paragraphs] [--text] [--tables] [--sections] [--changes] [--fields] [--media] [--render] [--offset N] [--max N] [--page N]",
+      "docx_inspect <file> [--styles] [--paragraphs] [--text] [--tables] [--sections] [--changes] [--fields] [--media] [--render] [--render-dir DIR] [--offset N] [--max N] [--page N]",
     returns:
-      "Document overview with theme + default typography and heading outline, or one paragraph/style/section/table/change/field per line. Render mode emits one absolute jpeg path per page",
+      "Document overview with theme + default typography and heading outline, or one paragraph/style/section/table/change/field per line. Render mode publishes each page and prints its scoped path (files__cat-readable)",
     runtime: "system",
   })
   .withCapability("gcsfuse")

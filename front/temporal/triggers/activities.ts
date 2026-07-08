@@ -13,6 +13,7 @@ import {
 import { Authenticator } from "@app/lib/auth";
 import { serializeMention } from "@app/lib/mentions/format";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
+import { SpaceResource } from "@app/lib/resources/space_resource";
 import { TriggerResource } from "@app/lib/resources/trigger_resource";
 import { WakeUpResource } from "@app/lib/resources/wakeup_resource";
 import { WebhookRequestResource } from "@app/lib/resources/webhook_request_resource";
@@ -28,6 +29,7 @@ import {
 import type { TriggerType } from "@app/types/assistant/triggers";
 import type { WakeUpType } from "@app/types/assistant/wakeups";
 import type { APIErrorWithContentfulStatusCode } from "@app/types/error";
+import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
@@ -48,11 +50,24 @@ async function createConversationForAgentConfiguration({
   lastRunAt: Date | null;
   webhookRequest: WebhookRequestResource | null;
 }): Promise<Result<ConversationType, APIErrorWithContentfulStatusCode>> {
+  let spaceModelId: ModelId | null = null;
+  if (trigger.spaceId) {
+    const pod = await SpaceResource.fetchById(auth, trigger.spaceId);
+    if (pod && pod.isProject() && (pod.isOpen() || pod.isMember(auth))) {
+      spaceModelId = pod.id;
+    } else {
+      logger.warn(
+        { triggerId: trigger.sId, spaceId: trigger.spaceId },
+        "Trigger's pod is no longer accessible; falling back to default (my conversations)."
+      );
+    }
+  }
+
   const newConversation = await createConversation(auth, {
     title: null,
     visibility: "unlisted",
     triggerId: trigger.id,
-    spaceId: null,
+    spaceId: spaceModelId,
   });
 
   const baseContext = {
@@ -423,7 +438,7 @@ export async function runWakeUpActivity({
       { status: wakeUp.status, wakeUpId, workspaceId },
       "Cancelling wake-up: conversation not found."
     );
-    await wakeUp.markCancelled(auth);
+    await cancelWakeUpAndCleanupSchedule(auth, wakeUp);
     return;
   }
 
@@ -438,7 +453,7 @@ export async function runWakeUpActivity({
       },
       "Cancelling wake-up: conversation not accessible."
     );
-    await wakeUp.markCancelled(auth);
+    await cancelWakeUpAndCleanupSchedule(auth, wakeUp);
     return;
   }
 
@@ -479,7 +494,7 @@ export async function runWakeUpActivity({
         },
         "Cancelling wake-up: agent cannot be invoked."
       );
-      await wakeUp.markCancelled(auth);
+      await cancelWakeUpAndCleanupSchedule(auth, wakeUp);
       return;
     }
 
@@ -488,7 +503,7 @@ export async function runWakeUpActivity({
 
   await wakeUp.markFired(auth);
 
-  const cleanupRes = await wakeUp.cleanupTemporalIfCronExpired(auth);
+  const cleanupRes = await wakeUp.cleanupTemporalScheduleIfCronTerminal(auth);
   if (cleanupRes.isErr()) {
     logger.error(
       {
@@ -497,6 +512,29 @@ export async function runWakeUpActivity({
         error: normalizeError(cleanupRes.error),
       },
       "Failed cleaning up wake-up temporal state after fire."
+    );
+  }
+}
+
+// Marks a wake-up cancelled and, for cron wake-ups, deletes the backing
+// Temporal schedule so it stops firing. We do not use WakeUpResource.cancel
+// here: for one-shot wake-ups that would cancel the very workflow this activity
+// runs in. Deleting the cron schedule is safe from within a scheduled run.
+async function cancelWakeUpAndCleanupSchedule(
+  auth: Authenticator,
+  wakeUp: WakeUpResource
+): Promise<void> {
+  await wakeUp.markCancelled(auth);
+
+  const cleanupRes = await wakeUp.cleanupTemporalScheduleIfCronTerminal(auth);
+  if (cleanupRes.isErr()) {
+    logger.error(
+      {
+        wakeUpId: wakeUp.sId,
+        workspaceId: auth.getNonNullableWorkspace().sId,
+        error: normalizeError(cleanupRes.error),
+      },
+      "Failed deleting wake-up schedule after cancelling."
     );
   }
 }
@@ -524,4 +562,16 @@ export async function expireWakeUpActivity({
   const { auth, wakeUp } = wakeUpAndAuthRes.value;
 
   await wakeUp.markExpired(auth);
+
+  const cleanupRes = await wakeUp.cleanupTemporalScheduleIfCronTerminal(auth);
+  if (cleanupRes.isErr()) {
+    logger.error(
+      {
+        wakeUpId,
+        workspaceId,
+        error: normalizeError(cleanupRes.error),
+      },
+      "Failed deleting wake-up schedule after expiring."
+    );
+  }
 }

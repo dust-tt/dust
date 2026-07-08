@@ -143,18 +143,6 @@ export const MODEL_PROVIDER_CONFIGS: Record<string, ProviderConfig> = {
       </>
     ),
   },
-  togetherai: {
-    title: "TogetherAI",
-    fields: [{ name: "api_key", placeholder: "TogetherAI API Key" }],
-    instructions: (
-      <>
-        <p>To use TogetherAI models you must provide your API key.</p>
-        <p className="mt-2">
-          We'll never use your API key for anything other than to run your apps.
-        </p>
-      </>
-    ),
-  },
   deepseek: {
     title: "Deepseek",
     fields: [{ name: "api_key", placeholder: "Deepseek API Key" }],

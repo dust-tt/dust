@@ -1,4 +1,4 @@
-import type { AgentLoopContextType } from "@app/lib/actions/types";
+import type { ToolContextType } from "@app/lib/actions/types";
 import { isLightServerSideMCPToolConfiguration } from "@app/lib/actions/types/guards";
 import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
@@ -132,9 +132,9 @@ export interface TeamsUser {
 
 export async function getAllowedLabelsForMCPServer(
   auth: Authenticator,
-  agentLoopContext: AgentLoopContextType | undefined
+  toolContext: ToolContextType | undefined
 ): Promise<string[]> {
-  const toolConfig = agentLoopContext?.runContext?.toolConfiguration;
+  const toolConfig = toolContext?.runContext?.toolConfiguration;
   const internalMCPServerId =
     toolConfig && isLightServerSideMCPToolConfiguration(toolConfig)
       ? toolConfig.internalMCPServerId

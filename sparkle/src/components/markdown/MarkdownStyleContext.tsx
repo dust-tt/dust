@@ -8,7 +8,7 @@ interface MarkdownStyleContextType {
 }
 
 export const MarkdownStyleContext = createContext<MarkdownStyleContextType>({
-  textColor: "s-text-foreground dark:s-text-foreground-night",
+  textColor: "text-foreground",
   compactSpacing: false,
   canCopyQuotes: true,
 });

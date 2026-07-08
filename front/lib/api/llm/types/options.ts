@@ -128,16 +128,34 @@ export type LLMClientMetadata = {
 
 export type ForceToolCall = string;
 
-export interface LLMStreamParameters {
+// A forced tool call and forbidden tool use are contradictory instructions, so
+// the type makes them mutually exclusive: setting both is a compile error.
+export type ExclusiveToolChoiceParameters =
+  | {
+      /**
+       * Forces the model to use a specific tool. The tool name must match one of the tools defined
+       * in the `specifications` array.
+       */
+      forceToolCall?: ForceToolCall;
+      disableToolUse?: never;
+    }
+  | {
+      forceToolCall?: never;
+      /**
+       * Presents the tools to the model but forbids calling them (tool choice "none"). Used on the
+       * last agent step to force a final generation while keeping the request's tool definitions
+       * stable across steps.
+       */
+      disableToolUse?: boolean;
+    };
+
+interface LLMStreamParametersBase {
   conversation: ModelConversationTypeMultiActions;
-  hasConditionalJITTools?: boolean;
+  // When true, the Anthropic clients defer non-eager tools behind tool search.
+  // Other provider clients ignore it.
+  toolSearchEnabled?: boolean;
   prompt: SystemPromptInput;
   specifications: AgentActionSpecification[];
-  /**
-   * Forces the model to use a specific tool. The tool name must match one of the
-   * tools defined in the `specifications` array.
-   */
-  forceToolCall?: ForceToolCall;
   omittedThinking?: boolean;
   /**
    * Opt into Anthropic prompt-cache diagnostics (Anthropic direct only). Tri-state:
@@ -148,11 +166,18 @@ export interface LLMStreamParameters {
   previousMessageId?: string | null;
 }
 
+export type LLMStreamParameters = LLMStreamParametersBase &
+  ExclusiveToolChoiceParameters;
+
 export interface LLMStreamMetadata {
   conversationId: string;
 }
 
+// Omit the base fields only and re-intersect the tool-choice union: a plain
+// Omit over the union would flatten it and lose the mutual exclusivity of
+// `forceToolCall` and `disableToolUse`.
 export type LLMParametersWithoutConversation = Omit<
-  LLMStreamParameters,
+  LLMStreamParametersBase,
   "conversation"
->;
+> &
+  ExclusiveToolChoiceParameters;

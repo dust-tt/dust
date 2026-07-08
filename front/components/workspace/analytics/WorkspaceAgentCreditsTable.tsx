@@ -1,4 +1,5 @@
 import type { ObservabilityTimeRangeType } from "@app/components/agent_builder/observability/constants";
+import type { AnalyticsEntityFilter } from "@app/components/workspace/analytics/analyticsFilter";
 import { CreditsTableCard } from "@app/components/workspace/analytics/CreditsTableCard";
 import { CsvDownloadButton } from "@app/components/workspace/analytics/CsvDownloadButton";
 import {
@@ -102,7 +103,7 @@ const columns: ColumnDef<AgentCreditRowData>[] = [
             label={description}
             tooltipTriggerAsChild
             trigger={
-              <span className="line-clamp-2 text-sm text-muted-foreground dark:text-muted-foreground-night">
+              <span className="line-clamp-2 text-sm text-muted-foreground">
                 {description}
               </span>
             }
@@ -147,11 +148,13 @@ const columns: ColumnDef<AgentCreditRowData>[] = [
 interface WorkspaceAgentCreditsTableProps {
   workspaceId: string;
   period: ObservabilityTimeRangeType;
+  onSelectAgent?: (filter: AnalyticsEntityFilter) => void;
 }
 
 export function WorkspaceAgentCreditsTable({
   workspaceId,
   period,
+  onSelectAgent,
 }: WorkspaceAgentCreditsTableProps) {
   const { inputValue, debouncedValue, setValue } = useDebounce("", {
     delay: 300,
@@ -165,6 +168,13 @@ export function WorkspaceAgentCreditsTable({
       search: debouncedValue || undefined,
       disabled: !workspaceId,
     });
+
+  const rows: AgentCreditRowData[] = onSelectAgent
+    ? agentCredits.map((row) => ({
+        ...row,
+        onClick: () => onSelectAgent({ id: row.agentId, name: row.name }),
+      }))
+    : agentCredits;
 
   const exportParams = new URLSearchParams({
     days: period.toString(),
@@ -201,7 +211,7 @@ export function WorkspaceAgentCreditsTable({
           : "No agent activity for this selection."
       }
       columns={columns}
-      data={agentCredits}
+      data={rows}
     />
   );
 }

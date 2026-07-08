@@ -47,6 +47,8 @@ export const POD_MANAGER_TOOLS_METADATA = createToolsRecord({
       running: "Adding content node to Pod",
       done: "Add content node to Pod",
     },
+    toolCostCategory: "basic",
+    freeUsage: true,
   },
   remove_content_node: {
     description:
@@ -72,6 +74,8 @@ export const POD_MANAGER_TOOLS_METADATA = createToolsRecord({
       running: "Removing content node from Pod",
       done: "Remove content node from Pod",
     },
+    toolCostCategory: "basic",
+    freeUsage: false,
   },
   edit_information: {
     description:
@@ -106,10 +110,14 @@ export const POD_MANAGER_TOOLS_METADATA = createToolsRecord({
       running: "Editing Pod information",
       done: "Edit Pod information",
     },
+    toolCostCategory: "basic",
+    freeUsage: true,
   },
   [UPDATE_MEMBERS_TOOL_NAME]: {
     description:
-      "Add or remove Pod members and editors by user id. Requires Pod editor permissions. " +
+      "Update membership for an existing Pod: invite, add, remove, " +
+      "promote, or demote teammates as Pod members or editors by user id. " +
+      "Requires Pod editor permissions. " +
       "Editors and members are mutually exclusive: adding an editor removes them from members, " +
       "and adding a member is a no-op if the user is already an editor.",
     schema: {
@@ -132,13 +140,17 @@ export const POD_MANAGER_TOOLS_METADATA = createToolsRecord({
       running: "Updating Pod members",
       done: "Update Pod members",
     },
+    toolCostCategory: "basic",
+    freeUsage: true,
   },
   get_information: {
     description:
-      "Get information about the Pod: URL, title, description, pinned frame, and linked content nodes " +
-      "attached to the Pod context. Does NOT list Pod files. Pod files live under " +
-      `\`${SCOPED_PREFIX_POD}<id>/<rel>\` scoped paths and are discovered through the \`${FILES_SERVER_NAME}\` MCP server. ` +
-      "Pod files, metadata, and members are shared state across all conversations in this Pod.",
+      "Get metadata about the Pod: URL, title, description, pinned frame, " +
+      "and linked Company Data content-node references attached to the " +
+      "Pod context. This returns metadata only, not document bodies or " +
+      "transcript bodies. Scoped path operations live under " +
+      `\`${SCOPED_PREFIX_POD}<id>/<rel>\` paths in the ` +
+      `\`${FILES_SERVER_NAME}\` MCP server.`,
     schema: {
       dustPod: ConfigurableToolInputSchemas[
         INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_POD
@@ -153,10 +165,14 @@ export const POD_MANAGER_TOOLS_METADATA = createToolsRecord({
       running: "Getting Pod information",
       done: "Get Pod information",
     },
+    toolCostCategory: "basic",
+    freeUsage: true,
   },
   [LIST_MEMBERS_TOOL_NAME]: {
     description:
-      "List members of the Pod. Each entry includes user ID, name, email and status within the Pod.",
+      "List all people in the Pod, including members and editors. " +
+      "Each entry includes user ID, name, email, and role or status " +
+      "within the Pod.",
     schema: {
       limit: z
         .number()
@@ -186,6 +202,8 @@ export const POD_MANAGER_TOOLS_METADATA = createToolsRecord({
       running: "Listing Pod members",
       done: "List Pod members",
     },
+    toolCostCategory: "basic",
+    freeUsage: true,
   },
   list_pods: {
     description:
@@ -225,6 +243,8 @@ export const POD_MANAGER_TOOLS_METADATA = createToolsRecord({
       running: "Listing Pods",
       done: "List Pods",
     },
+    toolCostCategory: "basic",
+    freeUsage: true,
   },
   create_pod: {
     description:
@@ -258,6 +278,8 @@ export const POD_MANAGER_TOOLS_METADATA = createToolsRecord({
       running: "Creating Pod",
       done: "Create Pod",
     },
+    toolCostCategory: "basic",
+    freeUsage: false,
   },
   retrieve_recent_documents: {
     description:
@@ -275,10 +297,14 @@ export const POD_MANAGER_TOOLS_METADATA = createToolsRecord({
       running: "Retrieving recent Pod documents",
       done: "Retrieve recent Pod documents",
     },
+    toolCostCategory: "basic",
+    freeUsage: false,
   },
   [SEMANTIC_SEARCH_TOOL_NAME]: {
     description:
-      "Semantic search over a Pod using the same retrieval pipeline as company data search. Scope selects the Pod data source slice (files vs conversation transcripts vs both) plus searchable context nodes for files/all.",
+      "Find and search for information about a topic or question across " +
+      "Pod files, linked context nodes, and Pod conversation transcripts " +
+      "using semantic retrieval. Scope selects files, conversations, or both.",
     schema: {
       query: z
         .string()
@@ -312,10 +338,17 @@ export const POD_MANAGER_TOOLS_METADATA = createToolsRecord({
       running: "Searching Pod",
       done: "Search Pod",
     },
+    toolCostCategory: "basic",
+    freeUsage: true,
   },
   create_conversation: {
     description:
-      "Create a new conversation in the Pod and post a user message. Default: always pass an agentName to delegate the task to an agent running inside the Pod. Do NOT do the work yourself. If work needs to be done, delegate it via agentName. Omit agentName only when posting a simple message that requires no intellectual work (e.g. a status update, a comment, a note) or when explicitly asked to post the final output.",
+      "Create or start a new Pod conversation and post a user message. " +
+      "Default for Pod work: pass an agentName so a Pod agent handles " +
+      "the task inside the new conversation. Do NOT do the work yourself. " +
+      "Omit agentName only when posting a simple message that requires " +
+      "no intellectual work (e.g. a status update, a comment, a note) " +
+      "or when explicitly asked to post the final output.",
     schema: {
       message: z
         .string()
@@ -327,7 +360,12 @@ export const POD_MANAGER_TOOLS_METADATA = createToolsRecord({
         .string()
         .optional()
         .describe(
-          "The name of the agent to trigger in the new conversation. The tool searches matching agent configurations and uses the best match. Use this whenever the user asks for work to be done in a Pod (research, analysis, drafting, etc.). When omitted, no agent is triggered and the message is posted as a static result. Use this only to deposit a finished artifact you have already fully produced."
+          "The name of the Pod agent to trigger in the new conversation. " +
+            "The tool searches matching agent configurations and uses the " +
+            "best match. Use this whenever the user asks for work to be " +
+            "done in a Pod. When omitted, no agent is triggered and the " +
+            "message is posted as a static result. Use this only to " +
+            "deposit a finished artifact you have already fully produced."
         ),
       dustPod:
         ConfigurableToolInputSchemas[
@@ -339,6 +377,8 @@ export const POD_MANAGER_TOOLS_METADATA = createToolsRecord({
       running: "Creating conversation",
       done: "Create conversation",
     },
+    toolCostCategory: "basic",
+    freeUsage: true,
   },
   list_conversations: {
     description:
@@ -394,11 +434,20 @@ export const POD_MANAGER_TOOLS_METADATA = createToolsRecord({
       running: "Listing Pod conversations",
       done: "List conversations",
     },
+    toolCostCategory: "basic",
+    freeUsage: true,
   },
   add_message_to_conversation: {
     description:
-      "Post a user message to an existing conversation in this Pod. Default: always pass an agentName to delegate the task to an agent running inside the conversation. Do NOT do the work yourself. If work needs to be done, delegate it via agentName. Omit agentName only when posting a simple message that requires no intellectual work (e.g. a status update, a comment, a note) or when explicitly asked to post the final output." +
-      "The conversation must belong to the same Pod. If conversationId is omitted, the current agent conversation is used (when available).",
+      "Send or post a follow-up user message to an existing conversation " +
+      "in this Pod. Default for Pod work: pass an agentName so a Pod agent " +
+      "handles the task inside the conversation. Do NOT do the work " +
+      "yourself. " +
+      "Omit agentName only when posting a simple message that requires " +
+      "no intellectual work (e.g. a status update, a comment, a note) " +
+      "or when explicitly asked to post the final output. " +
+      "The conversation must belong to the same Pod. If conversationId is " +
+      "omitted, the current agent conversation is used (when available).",
     schema: {
       conversationId: z
         .string()
@@ -415,7 +464,12 @@ export const POD_MANAGER_TOOLS_METADATA = createToolsRecord({
         .string()
         .optional()
         .describe(
-          "The name of the agent to trigger in the conversation. The tool searches matching agent configurations and uses the best match. Use this whenever the user asks for work to be done in a Pod (research, analysis, drafting, etc.). When omitted, no agent is triggered and the message is posted as a static result. Use this only to deposit a finished artifact you have already fully produced."
+          "The name of the Pod agent to trigger in the conversation. " +
+            "The tool searches matching agent configurations and uses the " +
+            "best match. Use this whenever the user asks for work to be " +
+            "done in a Pod. When omitted, no agent is triggered and the " +
+            "message is posted as a static result. Use this only to " +
+            "deposit a finished artifact you have already fully produced."
         ),
       dustPod:
         ConfigurableToolInputSchemas[
@@ -427,6 +481,8 @@ export const POD_MANAGER_TOOLS_METADATA = createToolsRecord({
       running: "Adding message to conversation",
       done: "Add message to conversation",
     },
+    toolCostCategory: "basic",
+    freeUsage: true,
   },
 });
 
@@ -447,6 +503,8 @@ export const POD_MANAGER_SERVER = {
     description: t.description,
     inputSchema: zodToJsonSchema(z.object(t.schema)) as JSONSchema,
     displayLabels: t.displayLabels,
+    toolCostCategory: t.toolCostCategory,
+    freeUsage: t.freeUsage,
   })),
   tools_stakes: Object.fromEntries(
     Object.values(POD_MANAGER_TOOLS_METADATA).map((t) => [t.name, t.stake])

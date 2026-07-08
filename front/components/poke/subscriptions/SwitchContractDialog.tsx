@@ -9,10 +9,7 @@ import { amountCents } from "@app/lib/metronome/amounts";
 import { isPaygEligibleTier } from "@app/lib/metronome/types";
 import {
   CREDIT_PRICED_BUSINESS_PLAN_CODE,
-  CREDIT_PRICED_FREE_PLAN_CODE,
   isEnterprisePlanPrefix,
-  PRO_PLAN_SEAT_29_CODE,
-  PRO_PLAN_SEAT_39_CODE,
 } from "@app/lib/plans/plan_codes";
 import { useAppRouter } from "@app/lib/platform";
 import {
@@ -20,8 +17,11 @@ import {
   usePokePlans,
   usePokeStripeCustomerCurrency,
 } from "@app/lib/swr/poke";
-import assert from "@app/lib/utils/assert";
 import { usePokePluginAsyncArgs } from "@app/poke/swr/plugins";
+import {
+  BILLABLE_SEAT_TYPES,
+  isMembershipSeatType,
+} from "@app/types/memberships";
 import { isCreditPricedPlan } from "@app/types/plan";
 import { CreditUsageConfigurationSchema } from "@app/types/poke/credit_usage_configuration";
 import type { WorkspaceType } from "@app/types/user";
@@ -50,6 +50,7 @@ const SwitchContractFormSchema = z
     metronomePackageId: z.string().min(1, "Required"),
     planCode: z.string().min(1, "Required"),
     hubspotDealId: z.string().optional(),
+    purchaseOrderId: z.string().optional(),
     startingAt: z.string().optional(),
     // How the enterprise contract's start moment is resolved:
     //  - "immediately": swap at the current hour (no startingAt sent).
@@ -86,6 +87,11 @@ const SwitchContractFormSchema = z
     autoSeatUpgradeEnabled: z.boolean().default(false),
     topUpEnabled: z.boolean().default(false),
     autoInvoiceFinalizationEnabled: z.boolean().default(true),
+    // Optional seat-type override: when set, every seat-less (`none`) member is
+    // forced onto this seat on the new contract, preempting committed-seat
+    // placement. Empty string means no override (default assignment). Sent as
+    // `promoteNoneSeatsTo` on submit.
+    forceSeatType: z.string().optional(),
     // One-off initial credits (contract-level prepaid commit). Toggled on via
     // `showInitialCredits`; both fields are then required together and assembled
     // into `initialCredits` on submit.
@@ -239,6 +245,7 @@ export default function SwitchContractDialog({
       metronomePackageId: "",
       planCode: "",
       hubspotDealId: "",
+      purchaseOrderId: "",
       startingAt: "",
       startMode: "select",
       stripeCustomerId: stripeCustomerId ?? "",
@@ -253,6 +260,7 @@ export default function SwitchContractDialog({
       autoSeatUpgradeEnabled: false,
       topUpEnabled: false,
       autoInvoiceFinalizationEnabled: true,
+      forceSeatType: "",
       showInitialCredits: false,
       initialCreditsAmount: undefined,
       initialCreditsInvoiceAmount: undefined,
@@ -327,18 +335,13 @@ export default function SwitchContractDialog({
 
   // Split packages into Current vs Legacy sections (name contains "legacy",
   // case-insensitive). Each section preserves the lib-side sort order.
-  // Free-tier packages are currency-agnostic (price is 0) and surface
-  // regardless of the resolved Stripe currency.
   const packageGroups = useMemo(() => {
     const visible = metronomePackages.filter(
-      (p) => p.tier === "free" || p.currency === resolvedCurrency
+      (p) => p.currency === resolvedCurrency
     );
     const toOption = (p: (typeof visible)[number]) => ({
       value: p.id,
-      display:
-        p.tier === "free"
-          ? `${p.name} (${p.tier})`
-          : `${p.name} (${p.tier}, ${p.currency.toUpperCase()})`,
+      display: `${p.name} (${p.tier}, ${p.currency.toUpperCase()})`,
     });
     return [
       {
@@ -361,7 +364,6 @@ export default function SwitchContractDialog({
     [metronomePackages, selectedPackageId]
   );
   const selectedTier = selectedPackage?.tier ?? null;
-  const selectedName = selectedPackage?.name ?? null;
   const selectedSeats = useMemo(
     () => selectedPackage?.seats ?? [],
     [selectedPackage]
@@ -400,54 +402,39 @@ export default function SwitchContractDialog({
   }, [selectedSeats, form, resolvedCurrency]);
 
   // Clear a stale package selection when the resolved currency changes so a
-  // previously-picked package can't survive a currency switch silently. Free
-  // packages are currency-agnostic and exempt from this check.
+  // previously-picked package can't survive a currency switch silently.
   useEffect(() => {
     if (
       resolvedCurrency &&
       selectedPackage &&
-      selectedPackage.tier !== "free" &&
       selectedPackage.currency !== resolvedCurrency
     ) {
       form.setValue("metronomePackageId", "");
     }
   }, [resolvedCurrency, selectedPackage, form]);
 
-  // When the operator picks a package, derive (Pro/Business) or reset
+  // When the operator picks a package, derive (Business) or reset
   // (Enterprise) the plan code. The full list of ENT_* plans is offered for
-  // enterprise; pro/business map to a single plan code. PAYG is force-disabled
-  // for tiers that don't support it (currently: pro).
+  // enterprise; business maps to a single plan code. Both tiers use the same
+  // operator-chosen start moment.
   useEffect(() => {
-    if (selectedTier === "pro") {
-      if (isLegacyPackageName(selectedName ?? "")) {
-        form.setValue("planCode", PRO_PLAN_SEAT_29_CODE);
-      } else {
-        assert("There is no non-legacy pro plan");
-      }
-      form.setValue("startingAt", "");
-      form.setValue("startMode", "select");
-    } else if (selectedTier === "business") {
-      if (isLegacyPackageName(selectedName ?? "")) {
-        form.setValue("planCode", PRO_PLAN_SEAT_39_CODE);
-      } else {
-        form.setValue("planCode", CREDIT_PRICED_BUSINESS_PLAN_CODE);
-      }
-      form.setValue("startingAt", "");
-      form.setValue("startMode", "select");
+    if (selectedTier === "business") {
+      form.setValue("planCode", CREDIT_PRICED_BUSINESS_PLAN_CODE);
+      // Pay-as-you-go and top-up are not offered for business in this dialog.
+      form.setValue("paygEnabled", false);
+      form.setValue("topUpEnabled", false);
     } else if (selectedTier === "enterprise") {
       form.setValue("planCode", "");
+    }
+    if (selectedTier) {
       form.setValue("startingAt", defaultStartingAtUTC);
-      form.setValue("startMode", "select");
-    } else if (selectedTier === "free") {
-      form.setValue("planCode", CREDIT_PRICED_FREE_PLAN_CODE);
-      form.setValue("startingAt", "");
       form.setValue("startMode", "select");
     }
     if (selectedTier && !isPaygEligibleTier(selectedTier)) {
       form.setValue("paygEnabled", false);
       form.setValue("usageCapCredits", undefined);
     }
-  }, [selectedTier, selectedName, form, defaultStartingAtUTC]);
+  }, [selectedTier, form, defaultStartingAtUTC]);
 
   const startMode = form.watch("startMode");
   const startingAt = form.watch("startingAt");
@@ -541,6 +528,15 @@ export default function SwitchContractDialog({
           DEFAULT_PERIODS_FOR_FREQUENCY[freq]
         );
       }
+      // A commitment can't be invoiced at a $0 rate — clear a stale commitment
+      // price left over from before the rate was zeroed out.
+      if (name?.startsWith("seats.") && name.endsWith(".rate")) {
+        const seatType = name.split(".")[1];
+        const rate = value.seats?.[seatType]?.rate ?? 0;
+        if (rate <= 0) {
+          form.setValue(`seats.${seatType}.commitmentPrice`, undefined);
+        }
+      }
     });
     return unsubscribe;
   }, [form]);
@@ -549,6 +545,7 @@ export default function SwitchContractDialog({
     (values: SwitchContractFormValues) => {
       const trimmedStripe = values.stripeCustomerId.trim();
       const trimmedHubspotDealId = values.hubspotDealId?.trim();
+      const trimmedPurchaseOrderId = values.purchaseOrderId?.trim();
       const cleaned: SwitchContractBodyInput = {
         metronomePackageId: values.metronomePackageId.trim(),
         planCode: values.planCode.trim(),
@@ -556,10 +553,13 @@ export default function SwitchContractDialog({
         ...(trimmedHubspotDealId
           ? { hubspotDealId: trimmedHubspotDealId }
           : {}),
+        ...(trimmedPurchaseOrderId
+          ? { purchaseOrderId: trimmedPurchaseOrderId }
+          : {}),
       };
-      // For free-tier switches, the operator can omit the Stripe customer —
-      // the resulting Metronome contract has no Stripe billing link. The
-      // collection method only matters when a Stripe customer is wired in.
+      // The operator can omit the Stripe customer — the resulting Metronome
+      // contract has no Stripe billing link. The collection method only
+      // matters when a Stripe customer is wired in.
       if (trimmedStripe) {
         cleaned.stripeCustomerId = trimmedStripe;
         cleaned.stripeCollectionMethod = values.stripeCollectionMethod;
@@ -575,6 +575,12 @@ export default function SwitchContractDialog({
       cleaned.topUpEnabled = values.topUpEnabled;
       cleaned.autoInvoiceFinalizationEnabled =
         values.autoInvoiceFinalizationEnabled;
+      // Optional seat-type override: forces seat-less members onto this seat on
+      // the new contract. Only sent when a valid seat type is selected (empty
+      // string = no override).
+      if (values.forceSeatType && isMembershipSeatType(values.forceSeatType)) {
+        cleaned.promoteNoneSeatsTo = values.forceSeatType;
+      }
       if (values.balanceThresholdCredits !== undefined) {
         cleaned.balanceThresholdCredits = values.balanceThresholdCredits;
       }
@@ -624,17 +630,13 @@ export default function SwitchContractDialog({
           },
         };
       }
-      // Resolve the start moment for enterprise. "immediately" leaves
-      // `startingAt` unset so the server swaps at the current hour.
-      if (selectedTier === "enterprise") {
-        if (values.startMode === "retroactive_first_of_month") {
-          cleaned.startingAt = retroactiveFirstOfMonthISO;
-        } else if (values.startMode === "select" && values.startingAt) {
-          // datetime-local has no timezone — append Z to interpret as UTC.
-          cleaned.startingAt = new Date(
-            values.startingAt + ":00Z"
-          ).toISOString();
-        }
+      // Resolve the start moment. "immediately" leaves `startingAt` unset so
+      // the server swaps at the current hour.
+      if (values.startMode === "retroactive_first_of_month") {
+        cleaned.startingAt = retroactiveFirstOfMonthISO;
+      } else if (values.startMode === "select" && values.startingAt) {
+        // datetime-local has no timezone — append Z to interpret as UTC.
+        cleaned.startingAt = new Date(values.startingAt + ":00Z").toISOString();
       }
       // Seats: every seat the package knows about, each carrying its `selected`
       // state, so the server can entitle checked seats and disable unchecked
@@ -654,7 +656,7 @@ export default function SwitchContractDialog({
         const explicitPrice =
           typeof entry?.commitmentPrice === "number" &&
           Number.isFinite(entry.commitmentPrice) &&
-          entry.commitmentPrice > 0
+          entry.commitmentPrice >= 0
             ? entry.commitmentPrice
             : null;
         const commitmentPrice =
@@ -726,14 +728,7 @@ export default function SwitchContractDialog({
       };
       void submit();
     },
-    [
-      form,
-      owner.sId,
-      router,
-      selectedTier,
-      selectedSeats,
-      retroactiveFirstOfMonthISO,
-    ]
+    [form, owner.sId, router, selectedSeats, retroactiveFirstOfMonthISO]
   );
 
   return (
@@ -741,13 +736,12 @@ export default function SwitchContractDialog({
       <DialogTrigger asChild>
         <Button variant="outline" label="🔁 Switch contract" />
       </DialogTrigger>
-      <DialogContent className="bg-primary-50 dark:bg-primary-50-night sm:h-[90vh] sm:max-w-[860px]">
+      <DialogContent className="bg-primary-50 sm:h-[90vh] sm:max-w-[860px]">
         <DialogHeader>
           <DialogTitle>Switch contract for {owner.name}</DialogTitle>
           <DialogDescription>
-            Pick the Metronome package and target plan. Enterprise packages
-            require a start time at least one hour in the future; Pro and
-            Business packages swap at the current hour.
+            Pick the Metronome package and target plan. Enterprise and Business
+            packages let you choose a start time.
           </DialogDescription>
         </DialogHeader>
         {isSubmitting ? (
@@ -769,7 +763,7 @@ export default function SwitchContractDialog({
                   )}
                   <Label className="text-sm">
                     Stripe Customer ID
-                    <span className="ml-1 text-muted-foreground dark:text-muted-foreground-night">
+                    <span className="ml-1 text-muted-foreground">
                       (optional)
                     </span>
                   </Label>
@@ -781,7 +775,7 @@ export default function SwitchContractDialog({
                   />
                   <Label className="text-sm">
                     HubSpot Deal ID
-                    <span className="ml-1 text-muted-foreground dark:text-muted-foreground-night">
+                    <span className="ml-1 text-muted-foreground">
                       (optional)
                     </span>
                   </Label>
@@ -791,8 +785,20 @@ export default function SwitchContractDialog({
                     hideLabel
                     placeholder="e.g., 12345678901"
                   />
+                  <Label className="text-sm">
+                    Purchase order
+                    <span className="ml-1 text-muted-foreground">
+                      (optional)
+                    </span>
+                  </Label>
+                  <InputField
+                    control={form.control}
+                    name="purchaseOrderId"
+                    hideLabel
+                    placeholder="PO number"
+                  />
                   {isCurrencyLoading && (
-                    <div className="col-span-2 flex items-center gap-2 text-sm text-muted-foreground dark:text-muted-foreground-night">
+                    <div className="col-span-2 flex items-center gap-2 text-sm text-muted-foreground">
                       <Spinner size="sm" />
                       <span>Resolving customer currency...</span>
                     </div>
@@ -840,7 +846,7 @@ export default function SwitchContractDialog({
                       </>
                     )}
                   {isPackagesLoading && (
-                    <div className="col-span-2 flex items-center gap-2 text-sm text-muted-foreground dark:text-muted-foreground-night">
+                    <div className="col-span-2 flex items-center gap-2 text-sm text-muted-foreground">
                       <Spinner size="sm" />
                       <span>Loading Metronome packages...</span>
                     </div>
@@ -879,6 +885,11 @@ export default function SwitchContractDialog({
                         mountPortalContainer={portalContainer}
                         options={enterprisePlanOptions}
                       />
+                    </>
+                  )}
+                  {(selectedTier === "enterprise" ||
+                    selectedTier === "business") && (
+                    <>
                       <Label className="text-sm">Start</Label>
                       <SelectField
                         control={form.control}
@@ -900,7 +911,7 @@ export default function SwitchContractDialog({
                               transformValue={snapDatetimeLocalToHour}
                             />
                             {startingAtLocalLabel && (
-                              <p className="mt-1 text-xs text-muted-foreground dark:text-muted-foreground-night absolute top-2 right-2">
+                              <p className="mt-1 text-xs text-muted-foreground absolute top-2 right-2">
                                 Local: {startingAtLocalLabel}
                               </p>
                             )}
@@ -909,26 +920,22 @@ export default function SwitchContractDialog({
                       )}
                     </>
                   )}
-                  {(selectedTier === "pro" ||
-                    selectedTier === "business" ||
-                    selectedTier === "free") && (
-                    <div className="col-span-2 text-sm text-muted-foreground dark:text-muted-foreground-night">
+                  {selectedTier === "business" && (
+                    <div className="col-span-2 text-sm text-muted-foreground">
                       Target plan:{" "}
                       <span className="font-mono">
                         {form.watch("planCode")}
-                      </span>{" "}
-                      — swap at the current hour, subscription flips
-                      synchronously.
+                      </span>
                     </div>
                   )}
                 </div>
-                {selectedTier && selectedTier !== "free" && (
+                {selectedTier && (
                   <div className="border-t pt-4">
                     <Label className="mb-3 block text-sm font-medium">
                       Credit configuration
                     </Label>
                     <div className="grid grid-cols-[200px_1fr] items-center gap-x-4 gap-y-2">
-                      {paygEligible && (
+                      {paygEligible && selectedTier === "enterprise" && (
                         <>
                           <Label className="text-sm">Pay-as-you-go</Label>
                           <SliderToggle
@@ -993,13 +1000,17 @@ export default function SwitchContractDialog({
                           )
                         }
                       />
-                      <Label className="text-sm">Top-up (Enterprise)</Label>
-                      <SliderToggle
-                        selected={topUpEnabled}
-                        onClick={() =>
-                          form.setValue("topUpEnabled", !topUpEnabled)
-                        }
-                      />
+                      {selectedTier === "enterprise" && (
+                        <>
+                          <Label className="text-sm">Top-up (Enterprise)</Label>
+                          <SliderToggle
+                            selected={topUpEnabled}
+                            onClick={() =>
+                              form.setValue("topUpEnabled", !topUpEnabled)
+                            }
+                          />
+                        </>
+                      )}
                       <Label className="text-sm">
                         Auto invoice finalization
                       </Label>
@@ -1023,14 +1034,14 @@ export default function SwitchContractDialog({
                         ? `(rate & price in ${resolvedCurrency.toUpperCase()})`
                         : ""}
                     </Label>
-                    <div className="text-xs text-muted-foreground dark:text-muted-foreground-night">
+                    <div className="text-xs text-muted-foreground">
                       Checked seats are entitled on the new contract. Seats the
                       package does not entitle by default are unchecked — check
                       one to entitle it (a non-zero rate is required, except for
                       the free seat).
                     </div>
                     {/* Header row */}
-                    <div className="flex items-center gap-3 pb-1 text-xs font-medium text-muted-foreground dark:text-muted-foreground-night">
+                    <div className="flex items-center gap-3 pb-1 text-xs font-medium text-muted-foreground">
                       <div className="w-32 shrink-0" />
                       <div className="flex-1">Min seats</div>
                       <div className="flex-1">
@@ -1076,7 +1087,7 @@ export default function SwitchContractDialog({
                             <span className="font-mono text-sm">
                               {seatType}
                               {!entitled && (
-                                <span className="ml-1 text-muted-foreground dark:text-muted-foreground-night">
+                                <span className="ml-1 text-muted-foreground">
                                   *
                                 </span>
                               )}
@@ -1102,7 +1113,7 @@ export default function SwitchContractDialog({
                               disabled={!isSelected}
                             />
                             {isSelected && monthlyRate !== null && (
-                              <p className="mt-0.5 text-xs text-muted-foreground dark:text-muted-foreground-night absolute top-2 right-2">
+                              <p className="mt-0.5 text-xs text-muted-foreground absolute top-2 right-2">
                                 {monthlyRate % 1 === 0
                                   ? monthlyRate
                                   : monthlyRate.toFixed(2)}
@@ -1117,11 +1128,13 @@ export default function SwitchContractDialog({
                               hideLabel
                               type="number"
                               placeholder={
-                                defaultCommitment !== null
-                                  ? String(defaultCommitment)
-                                  : "optional"
+                                rate <= 0
+                                  ? "n/a (rate is 0)"
+                                  : defaultCommitment !== null
+                                    ? String(defaultCommitment)
+                                    : "optional"
                               }
-                              disabled={!isSelected}
+                              disabled={!isSelected || rate <= 0}
                             />
                           </div>
                           <div className="flex-1">
@@ -1156,6 +1169,31 @@ export default function SwitchContractDialog({
                         </div>
                       );
                     })}
+                    <div className="flex flex-col gap-1 border-t pt-3">
+                      <Label className="text-sm">
+                        Force seat type (optional)
+                      </Label>
+                      <div className="text-xs text-muted-foreground">
+                        Forces every seat-less ("none") member onto this seat on
+                        the new contract, preempting committed-seat placement.
+                        Leave unset for default seat assignment.
+                      </div>
+                      <div className="w-64">
+                        <SelectField
+                          control={form.control}
+                          name="forceSeatType"
+                          hideLabel
+                          mountPortalContainer={portalContainer}
+                          options={[
+                            { value: "", display: "— No override —" },
+                            ...BILLABLE_SEAT_TYPES.map((seatType) => ({
+                              value: seatType,
+                              display: seatType,
+                            })),
+                          ]}
+                        />
+                      </div>
+                    </div>
                   </div>
                 )}
                 {trimmedStripeCustomerId && resolvedCurrency && (
@@ -1239,10 +1277,7 @@ export default function SwitchContractDialog({
                   type="submit"
                   variant="warning"
                   label="Switch"
-                  disabled={
-                    !selectedTier ||
-                    (selectedTier !== "free" && !resolvedCurrency)
-                  }
+                  disabled={!selectedTier || !resolvedCurrency}
                 />
               </DialogFooter>
             </form>

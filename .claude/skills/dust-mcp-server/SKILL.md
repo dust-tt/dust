@@ -7,6 +7,20 @@ description: Step-by-step guide for creating new internal MCP server integration
 
 This runbook provides step-by-step instructions for creating new internal MCP server integrations in Dust that connect to remote platforms (e.g., Jira, HubSpot, Salesforce, etc.).
 
+## MVP Fast Path
+
+For a minimal new server (no OAuth, no external API yet — just the skeleton to register and test):
+
+1. Create `front/lib/api/actions/servers/{provider}/metadata.ts` with `createToolsRecord`
+2. Create `front/lib/api/actions/servers/{provider}/tools/index.ts` with stub handlers
+3. Create `front/lib/api/actions/servers/{provider}/index.ts` with `createServer`
+4. Register in `constants.ts` and `servers/index.ts`
+5. Add the server to `SERVERS` in `bm25_tool_search_utils.test.ts`
+6. Add at least one BM25 query case to `bm25_tool_search.test.ts`
+
+See the **BM25 Tests** section below for the test setup. This gives you a runnable skeleton
+with type-checked tool descriptions before writing any real API calls.
+
 ## Quick Reference
 
 ### File Structure
@@ -37,6 +51,8 @@ front/lib/api/actions/servers/{provider}/
 - Do not forget to add the server to `AVAILABLE_INTERNAL_MCP_SERVER_NAMES` array
 - Server IDs must be stable and unique; never change them once deployed
 - Tool stakes must be configured appropriately (`never_ask`, `low`, `medium`, `high`)
+- Tool descriptions should start with a bare infinitive/base verb like `List`, `Get`, `Search`,
+  `Create`, or `Update`
 - Always implement proper error handling with `Result` types
 - Handle OAuth token refresh automatically through the `withAuth` pattern
 
@@ -163,7 +179,56 @@ Key points:
 
 - `createToolsRecord` automatically adds the `name` property from the object key
 - tool keys become the source of truth
+- tool descriptions start with a bare infinitive/base verb such as `List`, `Get`, `Search`,
+  `Create`, `Update`, or `Retrieve`; avoid noun phrases, articles, gerunds, and third-person
+  verbs because descriptions are part of the BM25 tool-search corpus (see **BM25-Friendly
+  Descriptions** below)
 - `stake` values map to review/approval expectations
+
+### BM25-Friendly Descriptions (MCP3 rule)
+
+Tool names and descriptions both drive BM25 retrieval. **Names are the strongest signal** — they
+must be consistent and follow the `verbNoun` convention (e.g., `listWarehouses`, `getWorkbook`).
+Descriptions are the secondary signal: write each one as if answering "what user intent does this
+tool serve?"
+
+**Rules:**
+
+1. Start with a bare infinitive verb: `List`, `Get`, `Search`, `Create`, `Update`, `Send`, `Delete`
+2. Include platform-specific nouns that users mention in queries: `warehouse`, `workbook`, `ticket`, `channel`
+3. Include common synonyms inline when the platform uses an unusual term: `worksheets (sheets/tabs)`
+4. Include the platform name when it adds specificity (e.g., `Databricks workspace`, `Excel workbook`),
+   but don't lead with the full brand name or repeat it redundantly across every tool
+5. For platform-specific servers, avoid adding location qualifiers (e.g., `in OneDrive`,
+   `in SharePoint`) to every tool — BM25 treats these as content tokens, so they widen the match
+   surface and cause your tools to surface on location-based queries (e.g., a Drive search) even
+   when the user intended a different tool
+
+**Examples:**
+
+```typescript
+// BAD — noun phrase, redundant "Microsoft Excel", location noise
+description: "Microsoft Excel file listing from OneDrive and SharePoint."
+
+// BAD — gerund
+description: "Listing all SQL warehouses in Databricks."
+
+// BAD — third-person verb
+description: "Lists all SQL warehouses available in Databricks."
+
+// GOOD — bare infinitive, platform noun, no location noise
+description: "List all SQL warehouses available in the Databricks workspace."
+
+// GOOD — synonym in parentheses helps BM25 match "sheets" and "tabs"
+description: "Get a list of all worksheets (sheets/tabs) in an Excel workbook."
+
+// GOOD — verb + context + common synonyms
+description: "Search Slack channels, messages, and threads by keyword or topic."
+```
+
+**Test your descriptions:** add a BM25 query case (see next section) before merging. If your
+expected tool doesn't score > 0 in its own server-scoped index, the description is too generic
+or missing the key tokens the user will type.
 
 ### 2. Create `tools/index.ts`
 
@@ -431,11 +496,60 @@ Schema descriptions help the model supply the right parameters.
 
 Validate every external response to catch API drift and unexpected payloads early.
 
+## BM25 Tests
+
+Every new server must be added to the BM25 test corpus. This is the only automated check that
+description quality is sufficient for tool-search retrieval.
+
+### 1. Register the server in `bm25_tool_search_utils.test.ts`
+
+Add an import and a `SERVERS` entry:
+
+```typescript
+// At the top with the other imports:
+import { YOUR_PROVIDER_SERVER } from "@app/lib/api/actions/servers/your_provider/metadata";
+
+// In the SERVERS array:
+{ name: "your_provider", tools: YOUR_PROVIDER_SERVER.tools },
+```
+
+### 2. Add query cases in `bm25_tool_search.test.ts`
+
+Add entries to the `QUERIES` array. Each entry needs:
+- `query`: the natural-language phrase a user would type
+- `expected`: `"<server_name>.<tool_name>"` — the tool that must score > 0
+
+```typescript
+{ query: "list databricks warehouses", expected: "databricks.list_warehouses" },
+{ query: "what sql warehouses do I have", expected: "databricks.list_warehouses" },
+```
+
+**Tips for writing good query cases:**
+
+- Use the vocabulary users actually type, not API jargon
+- Cover at least one case per tool (two is better)
+- If a query is ambiguous (multiple servers could match), add `maxRank: N` to relax the
+  full-corpus ranking assertion
+- The single-server test (`"${query}" → ${expected} is scored in ${serverName}-only index`)
+  only checks `score > 0`, so focus on making sure the key tokens appear somewhere in the tool's
+  `description` or `inputSchema`
+
+### 3. Run the tests
+
+```bash
+npm run test -- front/lib/api/actions/servers/bm25_tool_search.test.ts
+```
+
+If a case fails with "Expected tool to have a non-zero score but it was not found", the query
+tokens don't overlap with the tool's corpus tokens. Fix the description to include the missing
+token, or rephrase the query to use a term that's actually in the description.
+
 ## Validation Checklist
 
 Before marking implementation complete:
 
 - `metadata.ts` exists and uses `createToolsRecord`
+- tool descriptions start with a bare infinitive/base verb
 - `tools/index.ts` exists and uses `ToolHandlers<typeof METADATA>`
 - `index.ts` default-exports the server factory
 - the server is in `AVAILABLE_INTERNAL_MCP_SERVER_NAMES`
@@ -446,6 +560,9 @@ Before marking implementation complete:
 - the icon is present in `PLATFORM_LOGOS` in `sparkle/src/logo/platforms/registry.ts`
 - the engineer has been told marketing needs a redeploy for the icon to appear publicly
 - feature gating is configured if needed
+- server added to `SERVERS` in `bm25_tool_search_utils.test.ts`
+- at least one query case per tool added to `bm25_tool_search.test.ts`
+- `npm run test -- front/lib/api/actions/servers/bm25_tool_search.test.ts` passes
 - `npx tsgo --noEmit` passes
 - `npm run format:changed` passes from the repo root
 - manual testing is complete

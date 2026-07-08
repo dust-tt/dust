@@ -229,7 +229,7 @@ export const EmojiDropdown = forwardRef<
                 className={
                   index === selectedIndex
                     ? "text-highlight-500"
-                    : "text-foreground dark:text-foreground-night"
+                    : "text-foreground"
                 }
                 onClick={() => {
                   selectItem(index);
@@ -246,7 +246,7 @@ export const EmojiDropdown = forwardRef<
             ))}
           </div>
         ) : (
-          <div className="flex h-12 w-full items-center justify-center text-sm text-muted-foreground dark:text-muted-foreground-night">
+          <div className="flex h-12 w-full items-center justify-center text-sm text-muted-foreground">
             No emoji found
           </div>
         )}

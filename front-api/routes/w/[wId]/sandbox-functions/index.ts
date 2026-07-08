@@ -12,6 +12,6 @@ app.use(
   })
 );
 
-app.route("/:functionId", functionId);
+app.route("/:functionIdOrSlug", functionId);
 
 export default app;

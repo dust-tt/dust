@@ -109,6 +109,8 @@ COPY --from=base-deps /app/front/package.json ./package.json
 COPY --from=base-deps /app/front/node_modules ./node_modules
 # Copy scripts directory
 COPY --from=base-deps /app/front/scripts ./scripts
+# Copy migration SQL files so the helm pre-deploy hook can run migration:check commands.
+COPY --from=base-deps /app/front/migrations ./migrations
 # Shared migration tooling lives at the repo root; front/package.json runs `node ../scripts/db/run-migrate.cjs`.
 COPY --from=base-deps /app/scripts/db /app/scripts/db
 # Copy built SDK
@@ -248,6 +250,8 @@ COPY --from=base-deps /app/scripts/db /app/scripts/db
 
 # front-api workspace (server.ts, app.ts, routes/, middleware/).
 COPY --from=front-api-build /app/front-api ./front-api
+# Copy migration SQL files (migrations live in front/ but the pre-deploy hook runs from /app/front-api).
+COPY --from=base-deps /app/front/migrations ./front-api/migrations
 
 # Sibling workspaces resolved via @app aliases or transitive imports.
 COPY --from=base-deps /app/sdks/js ./sdks/js

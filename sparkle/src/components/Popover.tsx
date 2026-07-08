@@ -50,17 +50,17 @@ const PopoverContent = React.forwardRef<
         align={align}
         sideOffset={sideOffset}
         className={cn(
-          "data-[state=open]:s-animate-in data-[state=open]:s-fade-in-0 data-[state=open]:s-zoom-in-95",
-          "data-[state=closed]:s-animate-out data-[state=closed]:s-fade-out-0 data-[state=closed]:s-zoom-out-95",
-          "data-[side=bottom]:s-slide-in-from-top-2",
-          "data-[side=left]:s-slide-in-from-right-2",
-          "data-[side=right]:s-slide-in-from-left-2",
-          "data-[side=top]:s-slide-in-from-bottom-2",
-          "s-z-50 s-rounded-xl s-border s-shadow-md s-outline-none",
-          "s-border s-border-border dark:s-border-border-night",
-          "s-bg-background dark:s-bg-background-night",
-          "s-text-primary-950 dark:s-text-primary-950-night",
-          fullWidth ? "s-grow" : "s-w-72 s-p-4",
+          "data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95",
+          "data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95",
+          "data-[side=bottom]:slide-in-from-top-2",
+          "data-[side=left]:slide-in-from-right-2",
+          "data-[side=right]:slide-in-from-left-2",
+          "data-[side=top]:slide-in-from-bottom-2",
+          "z-50 rounded-xl border shadow-md outline-hidden",
+          "border border-border",
+          "bg-overlay-background",
+          "text-primary-950",
+          fullWidth ? "grow" : "w-72 p-4",
           className
         )}
         onCloseAutoFocus={handleCloseAutoFocus}
@@ -165,7 +165,7 @@ function AnchoredPopover({
   return (
     <PopoverRoot open={open} modal={false}>
       <PopoverAnchor
-        className="s-fixed s-transition-all s-duration-300 s-ease-in-out"
+        className="fixed transition-all duration-300 ease-in-out"
         style={{
           top: position.top,
           left: position.left,
@@ -177,7 +177,7 @@ function AnchoredPopover({
         {...props}
         onOpenAutoFocus={(e) => e.preventDefault()}
         mountPortal={false}
-        className={cn(className, !anchorRef && "s-translate-y-[-50%]")}
+        className={cn(className, !anchorRef && "translate-y-[-50%]")}
       >
         {children}
       </PopoverContent>

@@ -55,14 +55,6 @@ export const modelProviders: ModelProvider[] = [
     embed: false,
   },
   {
-    providerId: "togetherai",
-    name: "TogetherAI",
-    built: true,
-    enabled: false,
-    chat: true,
-    embed: false,
-  },
-  {
     providerId: "deepseek",
     name: "Deepseek",
     built: true,
@@ -93,7 +85,6 @@ export const APP_MODEL_PROVIDER_IDS: string[] = [
   "anthropic",
   "mistral",
   "google_ai_studio",
-  "togetherai",
   "azure_openai",
   "deepseek",
   "fireworks",

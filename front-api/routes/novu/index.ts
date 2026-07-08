@@ -2,6 +2,7 @@ import { agentMessageFeedbackWorkflow } from "@app/lib/notifications/workflows/a
 import { agentSuggestionsReadyWorkflow } from "@app/lib/notifications/workflows/agent-suggestions-ready";
 import { balanceThresholdReachedWorkflow } from "@app/lib/notifications/workflows/balance-threshold-reached";
 import { conversationUnreadWorkflow } from "@app/lib/notifications/workflows/conversation-unread";
+import { manualActionRequiredWorkflow } from "@app/lib/notifications/workflows/manual-action-required";
 import { podAddedAsMemberWorkflow } from "@app/lib/notifications/workflows/pod-added-as-member";
 import { programmaticCapReachedWorkflow } from "@app/lib/notifications/workflows/programmatic-cap-reached";
 import { providerCredentialsHealthUpdatedWorkflow } from "@app/lib/notifications/workflows/provider-credential-updated";
@@ -72,6 +73,7 @@ const options: ServeHandlerOptions = {
     programmaticCapReachedWorkflow,
     upgradeRequestCreatedWorkflow,
     seatAutoUpgradedWorkflow,
+    manualActionRequiredWorkflow,
   ],
 };
 

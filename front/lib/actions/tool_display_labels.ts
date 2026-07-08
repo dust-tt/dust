@@ -1,4 +1,5 @@
 import { TOOL_NAME_SEPARATOR } from "@app/lib/actions/constants";
+import { getDataSourceFileSystemCatReadTarget } from "@app/lib/actions/data_source_file_system_read_targets";
 import {
   AVAILABLE_INTERNAL_MCP_SERVER_NAMES,
   getInternalMCPServerToolDisplayLabels,
@@ -153,11 +154,13 @@ function getDynamicToolDisplayLabels({
         };
       }
       if (toolName === "cat") {
+        const target = getDataSourceFileSystemCatReadTarget(inputs);
+
         if (isString(inputs.grep)) {
           const g = truncateQuery(inputs.grep);
           return {
-            running: `Searching for “${g}” in file`,
-            done: `Search for “${g}” in file`,
+            running: `Searching for “${g}” in ${target}`,
+            done: `Search for “${g}” in ${target}`,
           };
         }
         const offset = isNumber(inputs.offset)
@@ -169,23 +172,23 @@ function getDynamicToolDisplayLabels({
 
         if (offset && limit) {
           return {
-            running: `Reading file (next ~${limit} characters)`,
-            done: `Read file (next ~${limit} characters)`,
+            running: `Reading ${target} (next ~${limit} characters)`,
+            done: `Read ${target} (next ~${limit} characters)`,
           };
         } else if (limit) {
           return {
-            running: `Reading file (first ~${limit} characters)`,
-            done: `Read file (first ~${limit} characters)`,
+            running: `Reading ${target} (first ~${limit} characters)`,
+            done: `Read ${target} (first ~${limit} characters)`,
           };
         } else if (offset) {
           return {
-            running: `Reading file (from character ${offset})`,
-            done: `Read file (from character ${offset})`,
+            running: `Reading ${target} (from character ${offset})`,
+            done: `Read ${target} (from character ${offset})`,
           };
         }
         return {
-          running: `Reading file`,
-          done: `Read file`,
+          running: `Reading ${target}`,
+          done: `Read ${target}`,
         };
       }
       return null;
@@ -989,6 +992,33 @@ function getDynamicToolDisplayLabels({
       }
       return null;
 
+    case "hubspot":
+      if (toolName === "search_crm_objects" && isString(inputs.objectType)) {
+        const objectType = inputs.objectType;
+        const filters = inputs.filters;
+        const isByIdLookup =
+          Array.isArray(filters) &&
+          filters.some((f) => f?.propertyName === "hs_object_id");
+        if (isByIdLookup) {
+          return {
+            running: `Retrieving HubSpot ${objectType}`,
+            done: `Retrieve HubSpot ${objectType}`,
+          };
+        }
+        if (isString(inputs.query) && inputs.query.length > 0) {
+          const q = truncateQuery(inputs.query);
+          return {
+            running: `Searching HubSpot ${objectType} “${q}”`,
+            done: `Search HubSpot ${objectType} “${q}”`,
+          };
+        }
+        return {
+          running: `Searching HubSpot ${objectType}`,
+          done: `Search HubSpot ${objectType}`,
+        };
+      }
+      return null;
+
     // All other servers: no dynamic labels.
     case "agent_sidekick_agent_state":
     case "agent_sidekick_context":
@@ -1000,7 +1030,6 @@ function getDynamicToolDisplayLabels({
     case "fathom":
     case "freshservice":
     case "gong":
-    case "hubspot":
     case "include_data":
     case "luma":
     case "missing_action_catcher":

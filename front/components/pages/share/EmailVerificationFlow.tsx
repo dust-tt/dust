@@ -25,7 +25,7 @@ function VerificationLayout({
 
   return (
     <div className="flex h-dvh w-full flex-col">
-      <AppLayoutTitle className="h-12 bg-gray-50 px-4 dark:bg-gray-900">
+      <AppLayoutTitle className="h-12 bg-primary-50 px-4">
         <div className="flex h-full items-center">
           <LinkWrapper href={`${staticWebsiteUrl}/home`}>
             <DustLogo className="h-[20px] w-[80px]" />
@@ -35,12 +35,8 @@ function VerificationLayout({
       <div className="flex flex-1 items-center justify-center px-4">
         <div className="flex w-full max-w-md flex-col gap-4">
           <div className="flex flex-col gap-2">
-            <h1 className="text-2xl font-bold text-foreground dark:text-foreground-night">
-              {title}
-            </h1>
-            <p className="text-muted-foreground dark:text-muted-foreground-night text-sm">
-              {description}
-            </p>
+            <h1 className="text-2xl font-bold text-foreground">{title}</h1>
+            <p className="text-muted-foreground text-sm">{description}</p>
           </div>
           {children}
         </div>

@@ -13,22 +13,19 @@ export function formatSandboxFunctionsList(
     return "No sandbox functions published in this pod.";
   }
 
-  const lines = sandboxFunctions.map((fn) =>
-    [
-      `- ${fn.file.fileName} (${fn.sId})`,
-      `  input: ${JSON.stringify(fn.inputSchema)}`,
-      `  output: ${JSON.stringify(fn.outputSchema)}`,
-    ].join("\n")
-  );
+  const lines = sandboxFunctions.map((fn) => `- ${fn.slug}: ${fn.description}`);
 
-  return `Sandbox functions:\n${lines.join("\n")}`;
+  return (
+    `Sandbox functions:\n${lines.join("\n")}\n\n` +
+    "Use the get tool with a function's slug to see its input and output schemas."
+  );
 }
 
 export async function listHandler(
   _params: Record<string, never>,
-  { auth, agentLoopContext }: ToolHandlerExtra
+  { auth, toolContext }: ToolHandlerExtra
 ): Promise<ToolHandlerResult> {
-  const podResult = await getPod(auth, { agentLoopContext });
+  const podResult = await getPod(auth, { toolContext });
   if (podResult.isErr()) {
     return new Err(podResult.error);
   }

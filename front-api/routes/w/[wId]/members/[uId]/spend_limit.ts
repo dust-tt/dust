@@ -13,7 +13,7 @@ import type {
 import type { APIErrorWithContentfulStatusCode } from "@app/types/error";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { workspaceApp } from "@front-api/middlewares/ctx";
-import { ensureIsAdmin } from "@front-api/middlewares/ensure_role";
+import { ensureIsBusinessAdmin } from "@front-api/middlewares/ensure_role";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import { z } from "zod";
@@ -74,7 +74,7 @@ const app = workspaceApp();
 app.get(
   "/",
   validate("param", ParamsSchema),
-  ensureIsAdmin(),
+  ensureIsBusinessAdmin(),
   async (ctx): HandlerResult<GetUserSpendLimitResponseBody> => {
     const auth = ctx.get("auth");
 
@@ -102,7 +102,7 @@ app.get(
 app.put(
   "/",
   validate("param", ParamsSchema),
-  ensureIsAdmin(),
+  ensureIsBusinessAdmin(),
   validate("json", UpdateUserSpendLimitBodySchema),
   async (ctx): HandlerResult<PutUserSpendLimitResponseBody> => {
     const auth = ctx.get("auth");

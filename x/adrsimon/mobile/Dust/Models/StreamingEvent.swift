@@ -252,6 +252,8 @@ struct ToolApproveExecutionEvent: Decodable {
     let conversationId: String?
     let messageId: String?
     let actionId: String?
+    // sId of the user whose turn triggered the action. Null for API-key runs.
+    let userId: String?
     let configurationId: String?
     let stake: String?
     let metadata: ToolApprovalMetadata?
@@ -269,6 +271,7 @@ struct ToolAskUserQuestionEvent: Decodable {
     let conversationId: String?
     let messageId: String?
     let actionId: String?
+    let userId: String?
     let question: UserQuestion
 }
 
@@ -351,6 +354,8 @@ struct BlockedAction: Decodable {
     let conversationId: String?
     let messageId: String?
     let actionId: String?
+    // sId of the user whose turn triggered the action. Null for API-key runs.
+    let userId: String?
     let configurationId: String?
     let stake: String?
     let metadata: ToolApprovalMetadata?

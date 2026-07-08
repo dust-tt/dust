@@ -68,6 +68,8 @@ export const POKE_TOOLS_METADATA = createToolsRecord({
       running: "Fetching workspace metadata",
       done: "Fetched workspace metadata",
     },
+    toolCostCategory: "basic",
+    freeUsage: true,
   },
 
   [GET_WORKSPACE_PLAN_TOOL_NAME]: {
@@ -80,6 +82,8 @@ export const POKE_TOOLS_METADATA = createToolsRecord({
       running: "Fetching plan and subscription",
       done: "Fetched plan and subscription",
     },
+    toolCostCategory: "basic",
+    freeUsage: true,
   },
 
   [GET_WORKSPACE_FEATURE_FLAGS_TOOL_NAME]: {
@@ -90,6 +94,8 @@ export const POKE_TOOLS_METADATA = createToolsRecord({
       running: "Fetching feature flags",
       done: "Fetched feature flags",
     },
+    toolCostCategory: "basic",
+    freeUsage: true,
   },
 
   [GET_WORKSPACE_MEMBERS_TOOL_NAME]: {
@@ -101,6 +107,8 @@ export const POKE_TOOLS_METADATA = createToolsRecord({
       running: "Fetching workspace members",
       done: "Fetched workspace members",
     },
+    toolCostCategory: "basic",
+    freeUsage: true,
   },
 
   [GET_WORKSPACE_SPACES_TOOL_NAME]: {
@@ -112,6 +120,8 @@ export const POKE_TOOLS_METADATA = createToolsRecord({
       running: "Fetching workspace spaces",
       done: "Fetched workspace spaces",
     },
+    toolCostCategory: "basic",
+    freeUsage: true,
   },
 
   [GET_WORKSPACE_CREDITS_TOOL_NAME]: {
@@ -123,6 +133,8 @@ export const POKE_TOOLS_METADATA = createToolsRecord({
       running: "Fetching workspace credits",
       done: "Fetched workspace credits",
     },
+    toolCostCategory: "basic",
+    freeUsage: true,
   },
 
   // ── Connectors & Data Sources ────────────────────────────────────────────
@@ -136,6 +148,8 @@ export const POKE_TOOLS_METADATA = createToolsRecord({
       running: "Listing data sources",
       done: "Listed data sources",
     },
+    toolCostCategory: "basic",
+    freeUsage: true,
   },
 
   [GET_CONNECTOR_DETAILS_TOOL_NAME]: {
@@ -153,6 +167,8 @@ export const POKE_TOOLS_METADATA = createToolsRecord({
       running: "Fetching connector details",
       done: "Fetched connector details",
     },
+    toolCostCategory: "basic",
+    freeUsage: true,
   },
 
   [CHECK_NOTION_PAGE_TOOL_NAME]: {
@@ -168,6 +184,8 @@ export const POKE_TOOLS_METADATA = createToolsRecord({
       running: "Checking Notion page",
       done: "Checked Notion page",
     },
+    toolCostCategory: "basic",
+    freeUsage: true,
   },
 
   [CHECK_SLACK_CHANNEL_TOOL_NAME]: {
@@ -182,13 +200,15 @@ export const POKE_TOOLS_METADATA = createToolsRecord({
       running: "Checking Slack channel",
       done: "Checked Slack channel",
     },
+    toolCostCategory: "basic",
+    freeUsage: true,
   },
 
   // ── Conversations & Agents ───────────────────────────────────────────────
 
   [GET_CONVERSATION_DETAILS_TOOL_NAME]: {
     description:
-      "Full conversation with messages, tool calls, agent actions, and errors.",
+      "Get the full conversation with messages, tool calls, agent actions, and errors.",
     schema: {
       ...workspaceIdSchema,
       conversation_id: z.string().describe("The sId of the conversation."),
@@ -198,6 +218,8 @@ export const POKE_TOOLS_METADATA = createToolsRecord({
       running: "Fetching conversation",
       done: "Fetched conversation",
     },
+    toolCostCategory: "basic",
+    freeUsage: true,
   },
 
   [GET_MCP_SERVER_DETAILS_TOOL_NAME]: {
@@ -215,6 +237,8 @@ export const POKE_TOOLS_METADATA = createToolsRecord({
       running: "Fetching MCP server details",
       done: "Fetched MCP server details",
     },
+    toolCostCategory: "basic",
+    freeUsage: true,
   },
 
   // ── Search ───────────────────────────────────────────────────────────────
@@ -236,6 +260,8 @@ export const POKE_TOOLS_METADATA = createToolsRecord({
       running: "Searching workspaces",
       done: "Searched workspaces",
     },
+    toolCostCategory: "basic",
+    freeUsage: true,
   },
 
   // ── Users & Cross-Reference ──────────────────────────────────────────────
@@ -248,6 +274,8 @@ export const POKE_TOOLS_METADATA = createToolsRecord({
       running: "Listing groups",
       done: "Listed groups",
     },
+    toolCostCategory: "basic",
+    freeUsage: true,
   },
 
   [FIND_WORKSPACE_BY_CONNECTOR_ID_TOOL_NAME]: {
@@ -263,6 +291,8 @@ export const POKE_TOOLS_METADATA = createToolsRecord({
       running: "Looking up workspace",
       done: "Found workspace",
     },
+    toolCostCategory: "basic",
+    freeUsage: true,
   },
 
   // ── Agents & Skills ──────────────────────────────────────────────────────
@@ -294,6 +324,8 @@ export const POKE_TOOLS_METADATA = createToolsRecord({
     },
     stake: "low",
     displayLabels: { running: "Listing agents", done: "Listed agents" },
+    toolCostCategory: "basic",
+    freeUsage: true,
   },
 
   [GET_WORKSPACE_AGENT_TOOL_NAME]: {
@@ -305,6 +337,8 @@ export const POKE_TOOLS_METADATA = createToolsRecord({
     },
     stake: "low",
     displayLabels: { running: "Fetching agent", done: "Fetched agent" },
+    toolCostCategory: "basic",
+    freeUsage: true,
   },
 
   [LIST_WORKSPACE_SKILLS_TOOL_NAME]: {
@@ -334,6 +368,8 @@ export const POKE_TOOLS_METADATA = createToolsRecord({
     },
     stake: "low",
     displayLabels: { running: "Listing skills", done: "Listed skills" },
+    toolCostCategory: "basic",
+    freeUsage: true,
   },
 
   [GET_WORKSPACE_SKILL_TOOL_NAME]: {
@@ -345,6 +381,8 @@ export const POKE_TOOLS_METADATA = createToolsRecord({
     },
     stake: "low",
     displayLabels: { running: "Fetching skill", done: "Fetched skill" },
+    toolCostCategory: "basic",
+    freeUsage: true,
   },
 });
 
@@ -363,6 +401,8 @@ export const POKE_SERVER = {
     description: t.description,
     inputSchema: zodToJsonSchema(z.object(t.schema)) as JSONSchema,
     displayLabels: t.displayLabels,
+    toolCostCategory: t.toolCostCategory,
+    freeUsage: t.freeUsage,
   })),
   tools_stakes: Object.fromEntries(
     Object.values(POKE_TOOLS_METADATA).map((t) => [t.name, t.stake])

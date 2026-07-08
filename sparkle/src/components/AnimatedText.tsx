@@ -19,54 +19,21 @@ const ANIMATED_TEXT_VARIANTS = [
 type AnimatedTextVariantType = (typeof ANIMATED_TEXT_VARIANTS)[number];
 
 const animatedVariants: Record<AnimatedTextVariantType, string> = {
-  primary: cn(
-    "s-from-primary-600 s-via-primary-950 s-via-50% s-to-primary-600",
-    "dark:s-from-primary-800-night dark:s-via-primary-950-night dark:s-via-50% dark:s-to-primary-800-night"
-  ),
-  muted: cn(
-    "s-from-transparent s-via-primary-950/80 s-via-50% s-to-transparent",
-    "dark:s-from-transparent dark:s-via-primary-50/80 dark:s-via-50% dark:s-to-transparent"
-  ),
-  highlight: cn(
-    "s-from-highlight s-via-highlight-800 s-via-50% s-to-highlight",
-    "dark:s-from-highlight-night dark:s-via-highlight-800-night dark:s-via-50% dark:s-to-highlight-night"
-  ),
-  warning: cn(
-    "s-from-warning-800 s-via-warning-950 s-via-50% s-to-warning-800",
-    "dark:s-from-warning-800-night dark:s-via-warning-950-night dark:s-via-50% dark:s-to-warning-800-night"
-  ),
-  success: cn(
-    "s-from-success-800 s-via-success-950 s-via-50% s-to-success-800",
-    "dark:s-from-success-800-night dark:s-via-success-950-night dark:s-via-50% dark:s-to-success-800-night"
-  ),
-  info: cn(
-    "s-from-info-800 s-via-info-950 s-via-50% s-to-info-800",
-    "dark:s-from-info-800-night dark:s-via-info-950-night dark:s-via-50% dark:s-to-info-800-night"
-  ),
-  green: cn(
-    "s-from-emerald-800 s-via-emerald-950 s-via-50% s-to-emerald-800",
-    "dark:s-from-emerald-800-night dark:s-via-emerald-950-night dark:s-via-50% dark:s-to-emerald-800-night"
-  ),
-  blue: cn(
-    "s-from-sky-800 s-via-sky-950 s-via-50% s-to-sky-800",
-    "dark:s-from-sky-800-night dark:s-via-sky-950-night dark:s-via-50% dark:s-to-sky-800-night"
-  ),
-  rose: cn(
-    "s-from-rose-800 s-via-rose-950 s-via-50% s-to-rose-800",
-    "dark:s-from-rose-800-night dark:s-via-rose-950-night dark:s-via-50% dark:s-to-rose-800-night"
-  ),
-  golden: cn(
-    "s-from-golden-800 s-via-golden-950 s-via-50% s-to-golden-800",
-    "dark:s-from-golden-800-night dark:s-via-golden-950-night dark:s-via-50% dark:s-to-golden-800-night"
-  ),
-  white: cn(
-    "s-from-primary-800 s-via-primary-950 s-via-50% s-to-primary-800",
-    "dark:s-from-primary-800-night dark:s-via-primary-950-night dark:s-via-50% dark:s-to-primary-800-night"
-  ),
+  primary: cn("from-primary-600 via-primary-950 via-50% to-primary-600"),
+  muted: cn("from-transparent via-primary-950/80 via-50% to-transparent"),
+  highlight: cn("from-highlight via-highlight-800 via-50% to-highlight"),
+  warning: cn("from-warning-800 via-warning-950 via-50% to-warning-800"),
+  success: cn("from-success-800 via-success-950 via-50% to-success-800"),
+  info: cn("from-info-800 via-info-950 via-50% to-info-800"),
+  green: cn("from-emerald-800 via-emerald-950 via-50% to-emerald-800"),
+  blue: cn("from-sky-800 via-sky-950 via-50% to-sky-800"),
+  rose: cn("from-warning-800 via-warning-950 via-50% to-warning-800"),
+  golden: cn("from-info-800 via-info-950 via-50% to-info-800"),
+  white: cn("from-primary-800 via-primary-950 via-50% to-primary-800"),
 };
 
 const animVariants = cva(
-  "s-relative s-mx-auto s-max-w-md s-text-black/0 s-animate-shiny-text s-bg-clip-text s-bg-no-repeat [background-position:0_0] [background-size:50%_100%] s-bg-gradient-to-r",
+  "relative mx-auto max-w-md text-black/0 animate-shiny-text bg-clip-text bg-no-repeat [background-position:0_0] [background-size:50%_100%] bg-linear-to-r",
   {
     variants: {
       variant: animatedVariants,
@@ -78,20 +45,20 @@ const animVariants = cva(
 );
 
 const animatedTextVariants: Record<AnimatedTextVariantType, string> = {
-  primary: "s-text-primary-800 dark:s-text-primary-800-night",
-  muted: "s-text-muted-foreground dark:s-text-muted-foreground-night",
-  highlight: "s-text-highlight dark:s-text-highlight-night",
-  success: "s-text-success-800 dark:s-text-success-800-night",
-  info: "s-text-info-800 dark:s-text-info-800-night",
-  warning: "s-text-warning-800 dark:s-text-warning-800-night",
-  green: "s-text-emerald-800 dark:s-text-emerald-800-night",
-  blue: "s-text-sky-800 dark:s-text-sky-800-night",
-  rose: "s-text-rose-800 dark:s-text-rose-800-night",
-  golden: "s-text-golden-800 dark:s-text-rose-golden-night",
-  white: "s-text-primary-800 dark:s-text-primary-800-night",
+  primary: "text-primary-800",
+  muted: "text-muted-foreground",
+  highlight: "text-highlight",
+  success: "text-success-800",
+  info: "text-info-800",
+  warning: "text-warning-800",
+  green: "text-emerald-800",
+  blue: "text-sky-800",
+  rose: "text-warning-800",
+  golden: "text-info-800",
+  white: "text-primary-800",
 };
 
-const textVariants = cva("s-absolute s-inset-0", {
+const textVariants = cva("absolute inset-0", {
   variants: {
     variant: animatedTextVariants,
   },
@@ -112,7 +79,7 @@ export function AnimatedText({
   className,
 }: AnimatedShinyTextProps) {
   return (
-    <span className={cn("s-relative s-inline-block", className)}>
+    <span className={cn("relative inline-block", className)}>
       <span className={textVariants({ variant })}>{children}</span>
       <span className={animVariants({ variant })}>{children}</span>
     </span>

@@ -49,6 +49,9 @@ export function getRetryPolicyFromToolConfiguration(
       DEFAULT_MCP_TOOL_RETRY_POLICY;
 }
 
+export const TOOL_COST_CATEGORIES = ["basic", "advanced"] as const;
+export type ToolCostCategory = (typeof TOOL_COST_CATEGORIES)[number];
+
 // Schemas are in mcp_schemas.ts to avoid pulling zod + heavy dependencies
 // into the Temporal workflow sandbox.
 // Import schemas from "@app/lib/api/mcp_schemas" directly.
@@ -66,6 +69,10 @@ export type MCPToolType = {
   // Optional for remote MCP servers (external sources may not have this).
   // Mandatory for internal MCP servers (enforced via ServerMetadata type).
   displayLabels?: ToolDisplayLabels;
+  // When true, the tool is loaded upfront in the cached tools prefix instead of
+  // being deferred behind tool search. Absent for remote/client-side tools, which
+  // therefore default to deferred.
+  eager?: boolean;
 };
 
 export type MCPServerType = {
@@ -146,7 +153,10 @@ export type MCPServerDefinitionType = Omit<
   "tools" | "sId" | "availability" | "allowMultipleInstances"
 >;
 
-type InternalMCPServerType = MCPServerType & {
+export type InternalMCPServerDefinitionType = Omit<
+  MCPServerType,
+  "tools" | "sId" | "availability" | "allowMultipleInstances"
+> & {
   name: InternalMCPServerNameType;
   // We enforce that we pass an icon here.
   icon: InternalAllowedIconType;
@@ -156,11 +166,6 @@ type InternalMCPServerType = MCPServerType & {
   // capabilities; leave undefined for third-party integrations.
   displayedAs?: "agent" | "server";
 };
-
-export type InternalMCPServerDefinitionType = Omit<
-  InternalMCPServerType,
-  "tools" | "sId" | "availability" | "allowMultipleInstances"
->;
 
 export type MCPServerTypeWithViews = MCPServerType & {
   views: MCPServerViewType[];

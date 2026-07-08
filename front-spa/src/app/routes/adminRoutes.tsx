@@ -1,4 +1,4 @@
-import { RequirePermissionLayout } from "@spa/app/layouts/RequirePermissionLayout";
+import { RequireRoleLayout } from "@spa/app/layouts/RequireRoleLayout";
 import { withSuspense } from "@spa/app/routes/withSuspense";
 import type { RouteObject } from "react-router-dom";
 
@@ -92,20 +92,28 @@ const BillingPage = withSuspense(
   () => import("@dust-tt/front/components/pages/workspace/billing/BillingPage"),
   "BillingPage"
 );
+const GovernancePage = withSuspense(
+  () =>
+    import(
+      "@dust-tt/front/components/pages/workspace/governance/GovernancePage"
+    ),
+  "GovernancePage"
+);
 
 export const adminRoutes: RouteObject[] = [
   {
-    // People page: accessible to admins and business admins.
-    element: <RequirePermissionLayout permission="workspace:manage_members" />,
-    children: [{ path: "members", element: <MembersPage /> }],
-  },
-  {
-    element: <RequirePermissionLayout permission="workspace:view_analytics" />,
-    children: [{ path: "analytics", element: <AnalyticsPage /> }],
+    // Accessible to admins and business admins.
+    element: <RequireRoleLayout requiredRole="business_admin" />,
+    children: [
+      { path: "members", element: <MembersPage /> },
+      { path: "analytics", element: <AnalyticsPage /> },
+      { path: "usage", element: <UsagePage /> },
+      { path: "governance", element: <GovernancePage /> },
+    ],
   },
   {
     // Admin-only areas.
-    element: <RequirePermissionLayout permission="workspace:admin" />,
+    element: <RequireRoleLayout requiredRole="admin" />,
     children: [
       {
         path: "identity-and-provisioning",
@@ -114,7 +122,6 @@ export const adminRoutes: RouteObject[] = [
       { path: "model-providers", element: <ModelProvidersPage /> },
       { path: "workspace", element: <WorkspaceSettingsPage /> },
       { path: "branding", element: <WorkspaceBrandingPage /> },
-      { path: "usage", element: <UsagePage /> },
       { path: "subscription", element: <SubscriptionPage /> },
       { path: "billing", element: <BillingPage /> },
       { path: "developers/api-keys", element: <APIKeysPage /> },

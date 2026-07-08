@@ -3,10 +3,11 @@ import type { Authenticator } from "@app/lib/auth";
 import type { AllSkillConfigurationFindOptions } from "@app/lib/resources/skill/types";
 import type { ResourceSId } from "@app/lib/resources/string_ids";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
-import type { AgentConfigurationType } from "@app/types/assistant/agent";
 import type { AgentLoopExecutionData } from "@app/types/assistant/agent_run";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import { removeNulls } from "@app/types/shared/utils/general";
+
+export const SKILL_COMPANY_DATA_SERVER_NAME = "company_data";
 
 export type MCPServerDefinition = {
   name: AutoInternalMCPServerNameType;
@@ -17,6 +18,7 @@ export type MCPServerDefinition = {
 interface BaseSkillDefinition {
   readonly agentFacingDescription: string;
   readonly userFacingDescription: string;
+  readonly kind: "global" | "system";
   readonly name: string;
   readonly sId: string;
   readonly version: number;
@@ -33,14 +35,14 @@ interface BaseSkillDefinition {
   // isRestricted), without enabling it. Return true to make the skill available through
   // skill_management__enable_skill.
   readonly isAutoEquippedForAgentLoop?: (params: {
-    agentConfiguration: AgentConfigurationType;
+    agentConfiguration: AgentLoopExecutionData["agentConfiguration"];
     conversation: ConversationWithoutContentType;
   }) => boolean;
   // Optional callback to auto-enable a code-defined skill for an agent loop (subject to
   // isRestricted), without it being added to the agent configuration. Return true to enable.
   // Used for skills that are on by default for a given context (e.g. Pods in a Pod conversation).
   readonly isAutoEnabledForAgentLoop?: (params: {
-    agentConfiguration: AgentConfigurationType;
+    agentConfiguration: AgentLoopExecutionData["agentConfiguration"];
     conversation: ConversationWithoutContentType;
   }) => boolean;
   // Optional callback to hide a skill from a given agent loop (both from equipped and enabled).
@@ -69,8 +71,15 @@ export type SkillDefinition =
   | WithStaticInstructions<BaseSkillDefinition>
   | WithDynamicInstructions<BaseSkillDefinition>;
 
-export type GlobalSkillDefinition = SkillDefinition;
-export type SystemSkillDefinition = SkillDefinition;
+export type GlobalSkillDefinition = SkillDefinition & {
+  readonly kind: "global";
+};
+
+// System skills have no definition of "equipped". When they are present they are directly part of the system prompt.
+export type SystemSkillDefinition = SkillDefinition & {
+  readonly kind: "system";
+  isAutoEquippedForAgentLoop?: never;
+};
 
 // Helper function that enforces unique sIds.
 export function ensureUniqueSIds<T extends readonly SkillDefinition[]>(

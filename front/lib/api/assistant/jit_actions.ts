@@ -1,6 +1,7 @@
 import type { ServerSideMCPServerConfigurationType } from "@app/lib/actions/mcp";
 import type { AutoInternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
 import { isContentNodeAttachmentType } from "@app/lib/api/assistant/conversation/attachments";
+import { getAskUserQuestionServer } from "@app/lib/api/assistant/jit/ask_user_question";
 import { getCommonUtilitiesServer } from "@app/lib/api/assistant/jit/common_utilities";
 import {
   getConversationFilesServer,
@@ -15,11 +16,12 @@ import { isSearchableFolder } from "@app/lib/api/assistant/jit_utils";
 import type { Authenticator } from "@app/lib/auth";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import type { ConversationAttachmentType } from "@app/types/api/assistant/conversation/attachments";
-import type { AgentConfigurationType } from "@app/types/assistant/agent";
+import type { AgentLoopExecutionData } from "@app/types/assistant/agent_run";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import { removeNulls } from "@app/types/shared/utils/general";
 
 const ALWAYS_PREFETCHED_MCP_SERVERS: AutoInternalMCPServerNameType[] = [
+  "ask_user_question",
   "common_utilities",
   "files",
   "schedules_management",
@@ -36,7 +38,7 @@ async function getUnconditionalJITServers(
     conversation,
     autoInternalViews,
   }: {
-    agentConfiguration: AgentConfigurationType;
+    agentConfiguration: AgentLoopExecutionData["agentConfiguration"];
     conversation: ConversationWithoutContentType;
     autoInternalViews: Map<
       AutoInternalMCPServerNameType,
@@ -69,6 +71,13 @@ async function getUnconditionalJITServers(
   );
   servers.push(filesServer);
 
+  const askUserQuestionServer = getAskUserQuestionServer(
+    agentConfiguration,
+    conversation,
+    autoInternalViews
+  );
+  servers.push(askUserQuestionServer);
+
   return removeNulls(servers);
 }
 
@@ -83,7 +92,7 @@ async function getConditionalJITServers(
     attachments,
     autoInternalViews,
   }: {
-    agentConfiguration: AgentConfigurationType;
+    agentConfiguration: AgentLoopExecutionData["agentConfiguration"];
     conversation: ConversationWithoutContentType;
     attachments: ConversationAttachmentType[];
     autoInternalViews: Map<
@@ -149,14 +158,11 @@ export async function getJITServers(
     conversation,
     attachments,
   }: {
-    agentConfiguration: AgentConfigurationType;
+    agentConfiguration: AgentLoopExecutionData["agentConfiguration"];
     conversation: ConversationWithoutContentType;
     attachments: ConversationAttachmentType[];
   }
-): Promise<{
-  servers: ServerSideMCPServerConfigurationType[];
-  hasConditionalJITTools: boolean;
-}> {
+): Promise<ServerSideMCPServerConfigurationType[]> {
   const mcpServersToFetch = new Set<AutoInternalMCPServerNameType>(
     ALWAYS_PREFETCHED_MCP_SERVERS
   );
@@ -195,8 +201,5 @@ export async function getJITServers(
     }),
   ]);
 
-  return {
-    servers: [...baseServers, ...conditionalServers],
-    hasConditionalJITTools: conditionalServers.length > 0,
-  };
+  return [...baseServers, ...conditionalServers];
 }

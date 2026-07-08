@@ -103,6 +103,7 @@ export function usePokeCoupons() {
 
   return {
     coupons: data?.coupons ?? emptyArray(),
+    canCreateCoupon: data?.canCreateCoupon ?? false,
     isCouponsLoading: !error && !data,
     isCouponsError: error,
     mutate,

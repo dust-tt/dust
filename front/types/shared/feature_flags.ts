@@ -1,4 +1,9 @@
 export const WHITELISTABLE_FEATURES_CONFIG = {
+  allow_sso: {
+    description:
+      "Allow this workspace to configure SSO, independently of the plan's isSSOAllowed flag. Enable on demand for Business plan workspaces.",
+    stage: "on_demand",
+  },
   live_speech_to_text: {
     description:
       "Enable real-time speech-to-text in the input bar via ElevenLabs WebSocket streaming",
@@ -85,8 +90,7 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     stage: "dust_only",
   },
   disable_computer_feature: {
-    description:
-      "Disable all Computer (sandbox) features for this workspace, overriding sandbox opt-in flags",
+    description: "Disable all Computer sandbox features for this workspace",
     stage: "on_demand",
   },
   disallow_agent_creation_to_users: {
@@ -114,20 +118,12 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "Allow indexing of private Slack channels",
     stage: "on_demand",
   },
-  labs_mcp_actions_dashboard: {
-    description: "MCP actions dashboard in Labs section",
-    stage: "on_demand",
-  },
   labs_transcripts: {
     description: "Transcript feature (Labs)",
     stage: "on_demand",
   },
   openai_o1_feature: {
     description: "Access to OpenAI o1 model",
-    stage: "on_demand",
-  },
-  openai_o1_high_reasoning_feature: {
-    description: "Access to OpenAI o1 high reasoning model",
     stage: "on_demand",
   },
   openai_usage_mcp: {
@@ -167,20 +163,17 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
       "Allow legacy-contract workspaces to view the Usage page in read-only mode (analytics and member spend visible; all actions disabled).",
     stage: "on_demand",
   },
+  pricing_groups: {
+    description:
+      "Surface org groups on the Usage page: groups column, groups filter, and bulk spend-limit editing across a selection of members.",
+    stage: "on_demand",
+  },
   xai_feature: {
     description: "Access to xAI models in the agent builder",
     stage: "on_demand",
   },
   noop_model_feature: {
     description: "Access to noop model in the agent builder",
-    stage: "dust_only",
-  },
-  gemini_3_1_pro_feature: {
-    description: "Access to Gemini 3.1 Pro model in the agent builder",
-    stage: "on_demand",
-  },
-  hootl_subscriptions: {
-    description: "Subscription feature for Schedule & Triggers.",
     stage: "dust_only",
   },
   slack_enhanced_default_agent: {
@@ -215,9 +208,8 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "Databricks MCP tool",
     stage: "on_demand",
   },
-  sandbox_tools: {
-    description:
-      "Full Computer (sandbox) feature set: tools, dsbx CLI, and workspace admin configuration",
+  workday_mcp: {
+    description: "Workday MCP tool",
     stage: "on_demand",
   },
   sandbox_functions: {
@@ -231,12 +223,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
   conversations_slack_notifications: {
     description: "Enable slack notifications",
     stage: "dust_only",
-  },
-  anthropic_reasoning_token_count: {
-    description:
-      "After a response from Anthropic, make an additional API call to get the reasoning token count for better usage tracking",
-    // Not really on_demand but we want to be able to enable it for customers
-    stage: "on_demand",
   },
   reinforced_agents: {
     description:
@@ -291,39 +277,14 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
       "Enable Microsoft sensitivity labels for data classification on connectors and MCP servers",
     stage: "on_demand",
   },
-  conversation_search_indexing: {
-    description: "Enable ES indexing of conversations on mutation (write path)",
-    stage: "dust_only",
-  },
-  conversation_search_read: {
-    description:
-      "Enable ES-backed conversation listing in the sidebar (read path)",
-    stage: "dust_only",
-  },
   restricted_spaces_in_input_bar: {
     description:
       "Allow users to explicitly select restricted Spaces from the conversation input bar.",
     stage: "dust_only",
   },
-  new_file_explorer: {
-    description:
-      "Unified GCS-backed file explorer with folder hierarchy, replacing the two-tab files panel.",
-    stage: "dust_only",
-  },
-  force_us_api_url: {
-    description:
-      "Force the SPA to use the regional API subdomain (us-api/eu-api.dust.tt) " +
-      "as its backend for this workspace",
-    stage: "on_demand",
-  },
   disable_formatting_prompt: {
     description:
       "Skip injecting the OpenAI formatting meta prompt entirely (no markdown/paragraph style guidance)",
-    stage: "dust_only",
-  },
-  dust_desktop: {
-    description:
-      "Auto-attach the Dust Desktop client-side MCP server to agent runs when registered for the user.",
     stage: "dust_only",
   },
   admin_governance: {
@@ -340,29 +301,28 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
       "Per-pod default agent: pre-select an agent for new conversations started in a project (pod).",
     stage: "dust_only",
   },
+  pod_default_skills: {
+    description:
+      "Per-pod default skills: pre-insert skills into new conversations started in a pod.",
+    stage: "dust_only",
+  },
   workspace_default_agent: {
     description:
       "Workspace default agent: admins can pre-select a workspace-wide default agent for new conversations.",
     stage: "on_demand",
-  },
-  sound_notification: {
-    description:
-      "Play a sound notification when an agent requires manual input (approval/decline).",
-    stage: "dust_only",
   },
   whitelabel_frames: {
     description:
       "Whitelabel frames: customize the workspace logo, favicon and OG image shown on shared Frames.",
     stage: "on_demand",
   },
-  frame_publish: {
-    description:
-      "Publish a Frame's edited source tree into a built bundle so model and live edits become the rendered, shareable Frame.",
-    stage: "dust_only",
-  },
   models_picker: {
     description:
-      "Model picker in the conversation input bar: pick a model tier (Fast, Balanced, Powerful, Frontier) or a specific model.",
+      "Model picker in the conversation input bar: pick a specific model.",
+    stage: "dust_only",
+  },
+  activation_skill: {
+    description: "Enable the Activation skill for agentic user activation pods",
     stage: "dust_only",
   },
 } as const satisfies Record<string, FeatureFlag>;
@@ -392,10 +352,7 @@ export const DISABLE_COMPUTER_FEATURE =
 export function isComputerFeatureEnabled(
   featureFlags: WhitelistableFeature[]
 ): boolean {
-  return (
-    featureFlags.includes("sandbox_tools") &&
-    !featureFlags.includes(DISABLE_COMPUTER_FEATURE)
-  );
+  return !featureFlags.includes(DISABLE_COMPUTER_FEATURE);
 }
 
 export function isWhitelistableFeature(

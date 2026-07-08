@@ -12,9 +12,9 @@ import { Err, Ok } from "@app/types/shared/result";
 
 const handlers: ToolHandlers<typeof AGENT_SIDEKICK_AGENT_STATE_TOOLS_METADATA> =
   {
-    get_agent_info: async (_, { auth, agentLoopContext }) => {
+    get_agent_info: async (_, { auth, toolContext }) => {
       const agentConfigurationId =
-        getAgentConfigurationIdFromContext(agentLoopContext);
+        getAgentConfigurationIdFromContext(toolContext);
 
       if (!agentConfigurationId) {
         return new Err(
@@ -25,8 +25,7 @@ const handlers: ToolHandlers<typeof AGENT_SIDEKICK_AGENT_STATE_TOOLS_METADATA> =
         );
       }
 
-      const agentVersion =
-        getAgentConfigurationVersionFromContext(agentLoopContext);
+      const agentVersion = getAgentConfigurationVersionFromContext(toolContext);
 
       // Fetch the agent configuration with full details to get the actions.
       const agentConfiguration = await getAgentConfiguration(auth, {

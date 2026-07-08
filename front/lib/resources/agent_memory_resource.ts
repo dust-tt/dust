@@ -8,7 +8,7 @@ import { getResourceIdFromSId, makeSId } from "@app/lib/resources/string_ids";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { withTransaction } from "@app/lib/utils/sql_utils";
-import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
+import type { LightAgentConfigurationWithoutModelType } from "@app/types/assistant/agent";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -128,7 +128,7 @@ export class AgentMemoryResource extends BaseResource<AgentMemoryModel> {
       agentConfiguration,
       user,
     }: {
-      agentConfiguration: LightAgentConfigurationType;
+      agentConfiguration: LightAgentConfigurationWithoutModelType;
       user: UserType | null;
     },
     transaction?: Transaction
@@ -188,7 +188,7 @@ export class AgentMemoryResource extends BaseResource<AgentMemoryModel> {
       agentConfiguration,
       user,
     }: {
-      agentConfiguration: LightAgentConfigurationType;
+      agentConfiguration: LightAgentConfigurationWithoutModelType;
       user: UserType | null;
     }
   ): Promise<AgentMemoryEntry[]> {
@@ -212,7 +212,7 @@ export class AgentMemoryResource extends BaseResource<AgentMemoryModel> {
       user,
       entries,
     }: {
-      agentConfiguration: LightAgentConfigurationType;
+      agentConfiguration: LightAgentConfigurationWithoutModelType;
       user: UserType | null;
       entries: string[];
     }
@@ -278,7 +278,7 @@ export class AgentMemoryResource extends BaseResource<AgentMemoryModel> {
       user,
       indexes,
     }: {
-      agentConfiguration: LightAgentConfigurationType;
+      agentConfiguration: LightAgentConfigurationWithoutModelType;
       user: UserType | null;
       indexes: number[];
     }
@@ -317,7 +317,7 @@ export class AgentMemoryResource extends BaseResource<AgentMemoryModel> {
       user,
       edits,
     }: {
-      agentConfiguration: LightAgentConfigurationType;
+      agentConfiguration: LightAgentConfigurationWithoutModelType;
       user: UserType | null;
       edits: AgentMemoryEdit[];
     }

@@ -1,6 +1,7 @@
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import type { ToolHandlers } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
+import { isAgentLoopRunContext } from "@app/lib/actions/types";
 import {
   GET_MENTION_MARKDOWN_TOOL_NAME,
   SEARCH_AVAILABLE_USERS_TOOL_NAME,
@@ -17,7 +18,7 @@ import { DustAPI } from "@dust-tt/client";
 const handlers: ToolHandlers<typeof USER_MENTIONS_TOOLS_METADATA> = {
   [SEARCH_AVAILABLE_USERS_TOOL_NAME]: async (
     { searchTerm },
-    { auth, agentLoopContext }
+    { auth, toolContext }
   ) => {
     const user = auth.user();
     const prodCredentials = await prodAPICredentialsForOwner(
@@ -41,7 +42,9 @@ const handlers: ToolHandlers<typeof USER_MENTIONS_TOOLS_METADATA> = {
     const r = await api.getMentionsSuggestions({
       query: searchTerm,
       select: ["users"],
-      conversationId: agentLoopContext?.runContext?.conversation?.sId,
+      conversationId: isAgentLoopRunContext(toolContext?.runContext)
+        ? toolContext.runContext.conversation.sId
+        : undefined,
     });
 
     if (r.isErr()) {

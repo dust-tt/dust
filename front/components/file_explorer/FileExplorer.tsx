@@ -52,6 +52,7 @@ interface FileExplorerProps {
     parentRelativePath: string
   ) => Promise<Result<void, Error>>;
   onOpenInteractive?: (entry: FileEntryWithId) => void;
+  onOpenInPanel?: (entry: FileEntry) => boolean;
   onRename?: (entry: FileEntry | FolderEntry) => void;
   owner?: LightWorkspaceType;
   getExtraFileMenuItems?: (
@@ -77,6 +78,7 @@ export function FileExplorer({
   onFileDownload,
   onMoveFile,
   onOpenInteractive,
+  onOpenInPanel,
   onRename,
   owner,
   getExtraFileMenuItems,
@@ -244,6 +246,9 @@ export function FileExplorer({
       entry.fileId
     ) {
       onOpenInteractive({ ...entry, fileId: entry.fileId });
+      return;
+    }
+    if (onOpenInPanel?.(entry)) {
       return;
     }
     setPreviewFile(entry);

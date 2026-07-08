@@ -7,6 +7,7 @@ import type { LightWorkspaceType } from "@app/types/user";
 import {
   Avatar,
   Button,
+  Check,
   DotsHorizontal,
   DropdownMenu,
   DropdownMenuContent,
@@ -14,7 +15,9 @@ import {
   DropdownMenuSearchbar,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
+  Icon,
   Robot,
+  X,
 } from "@dust-tt/sparkle";
 import { useState } from "react";
 
@@ -32,6 +35,8 @@ interface AgentPickerProps {
   disabled?: boolean;
   mountPortal?: boolean;
   onOpenChange?: (open: boolean) => void;
+  selectedAgentId?: string | null;
+  onDeselect?: () => void;
 }
 
 export function AgentPicker({
@@ -47,13 +52,17 @@ export function AgentPicker({
   isLoading = false,
   disabled = false,
   onOpenChange,
+  selectedAgentId,
+  onDeselect,
 }: AgentPickerProps) {
   const clientType = useClientType();
   const isMobile = useIsMobile();
   const [searchText, setSearchText] = useState("");
   const [isOpen, setIsOpen] = useState(false);
 
-  const searchedAgents = filterAndSortAgents(agents, searchText);
+  const searchedAgents = filterAndSortAgents(agents, searchText, {
+    selectedAgentId,
+  });
 
   return (
     <DropdownMenu
@@ -67,19 +76,22 @@ export function AgentPicker({
       }}
     >
       <DropdownMenuTrigger asChild>
-        {/* eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing */}
-        {pickerButton ? (
-          pickerButton
-        ) : (
-          <Button
-            icon={Robot}
-            variant="ghost-secondary"
-            isSelect={showDropdownArrow}
-            size={size}
-            tooltip="Pick an agent"
-            disabled={disabled || isLoading}
-          />
-        )}
+        {/* Stable anchor across pickerButton swaps: prevents a top-left flash on close. */}
+        <div className="inline-flex">
+          {/* eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing */}
+          {pickerButton ? (
+            pickerButton
+          ) : (
+            <Button
+              icon={Robot}
+              variant="ghost-secondary"
+              isSelect={showDropdownArrow}
+              size={size}
+              tooltip="Pick an agent"
+              disabled={disabled || isLoading}
+            />
+          )}
+        </div>
       </DropdownMenuTrigger>
       <DropdownMenuContent
         className="h-96 w-80"
@@ -111,38 +123,68 @@ export function AgentPicker({
         }
       >
         {searchedAgents.length > 0 ? (
-          searchedAgents.map((c) => (
-            <DropdownMenuItem
-              key={`agent-picker-${c.sId}`}
-              icon={() => <Avatar size="xs" visual={c.pictureUrl} />}
-              label={c.name}
-              truncateText
-              className="group py-1 notranslate"
-              endComponent={
-                onAgentDetailsClick && clientType !== "extension" ? (
-                  <Button
-                    icon={DotsHorizontal}
-                    variant="outline"
-                    size="mini"
-                    className="opacity-0 group-hover:opacity-100"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      e.preventDefault();
-                      onAgentDetailsClick(c.sId);
-                      setIsOpen(false);
-                    }}
-                  />
-                ) : undefined
-              }
-              onClick={() => {
-                onItemClick(c);
-                setSearchText("");
-                setIsOpen(false);
-              }}
-            />
-          ))
+          searchedAgents.map((c) => {
+            const isSelected = c.sId === selectedAgentId;
+            return (
+              <DropdownMenuItem
+                key={`agent-picker-${c.sId}`}
+                icon={() => <Avatar size="xs" visual={c.pictureUrl} />}
+                label={c.name}
+                truncateText
+                className={`group py-1 notranslate ${
+                  isSelected ? "bg-primary-100" : ""
+                }`}
+                endComponent={
+                  <div className="flex items-center gap-1">
+                    {isSelected && (
+                      // Show a tick by default; on hover swap it for an X to
+                      // signal that clicking will deselect the agent.
+                      <>
+                        <Icon
+                          visual={Check}
+                          size="sm"
+                          className="group-hover:hidden"
+                        />
+                        <Icon
+                          visual={X}
+                          size="sm"
+                          className="hidden group-hover:block"
+                        />
+                      </>
+                    )}
+                    {onAgentDetailsClick && clientType !== "extension" ? (
+                      <Button
+                        icon={DotsHorizontal}
+                        variant="outline"
+                        size="mini"
+                        className="opacity-0 group-hover:opacity-100"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          e.preventDefault();
+                          onAgentDetailsClick(c.sId);
+                          setIsOpen(false);
+                        }}
+                      />
+                    ) : undefined}
+                  </div>
+                }
+                onClick={() => {
+                  // Clicking the selected agent deselects it; keep the picker
+                  // open so a different agent can be chosen right away.
+                  if (isSelected) {
+                    onDeselect?.();
+                    return;
+                  }
+                  onItemClick(c);
+                  setSearchText("");
+                  setIsOpen(false);
+                }}
+                onSelect={isSelected ? (e) => e.preventDefault() : undefined}
+              />
+            );
+          })
         ) : (
-          <div className="flex items-center justify-center py-4 text-sm text-muted-foreground dark:text-muted-foreground-night">
+          <div className="flex items-center justify-center py-4 text-sm text-muted-foreground">
             No results found
           </div>
         )}

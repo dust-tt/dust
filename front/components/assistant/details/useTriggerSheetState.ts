@@ -178,6 +178,7 @@ export function useTriggerSheetState({
             naturalLanguageDescription: triggerData.naturalLanguageDescription,
             configuration: triggerData.configuration,
             status: triggerData.status,
+            spaceId: triggerData.spaceId,
           };
 
           if (triggerData.sId) {
@@ -214,6 +215,7 @@ export function useTriggerSheetState({
             executionPerDayLimitOverride:
               triggerData.executionPerDayLimitOverride ?? 0,
             status: triggerData.status,
+            spaceId: triggerData.spaceId,
           };
 
           if (triggerData.sId) {

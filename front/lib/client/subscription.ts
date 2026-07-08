@@ -50,13 +50,6 @@ export function useIsMetronomeCheckout(): boolean {
   return computeIsMetronomeCheckout({ featureFlags, killSwitches });
 }
 
-export function formatPriceWithCurrency(
-  price: number,
-  currency: SupportedCurrency
-): string {
-  return currency === "usd" ? `$${price}` : `${price}€`;
-}
-
 /**
  * Hook that resolves the user's billing currency from IP geolocation.
  *
@@ -90,7 +83,7 @@ export function useUserBillingCurrency(): SupportedCurrency {
  */
 export function usePriceWithCurrency(price: number): string {
   const currency = useUserBillingCurrency();
-  return formatPriceWithCurrency(price, currency);
+  return getPriceAsString({ currency, priceInCents: price * 100 });
 }
 
 export interface BillingCycle {
@@ -183,6 +176,8 @@ export const getPriceAsString = ({
       return `$${price}`;
     case "eur":
       return `${price}€`;
+    case "gbp":
+      return `£${price}`;
     default:
       return `${price}${currency}`;
   }

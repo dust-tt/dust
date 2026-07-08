@@ -5,7 +5,10 @@ import type {
   ToolHandlers,
 } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import type { AgentLoopContextType } from "@app/lib/actions/types";
+import {
+  isAgentLoopRunContext,
+  type ToolContextType,
+} from "@app/lib/actions/types";
 import { buildInteractiveContentFileNotification } from "@app/lib/api/actions/servers/interactive_content/helpers";
 import { INTERACTIVE_CONTENT_TOOLS_METADATA } from "@app/lib/api/actions/servers/interactive_content/metadata";
 import { fetchTemplateContent } from "@app/lib/api/actions/servers/interactive_content/template_utils";
@@ -24,40 +27,41 @@ import { screenshotInteractiveContentFile } from "@app/lib/api/files/screenshot"
 import { createMountFrameSourceReader } from "@app/lib/api/viz/build_frame_bundle";
 import { publishFrame } from "@app/lib/api/viz/publish_frame";
 import type { Authenticator } from "@app/lib/auth";
-import { getFeatureFlags } from "@app/lib/auth";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
+import assert from "assert";
 
 export async function createInteractiveContentTools(
   auth: Authenticator,
-  agentLoopContext?: AgentLoopContextType
+  toolContext?: ToolContextType
 ): Promise<ToolDefinition[]> {
   const handlers: ToolHandlers<typeof INTERACTIVE_CONTENT_TOOLS_METADATA> = {
     create_interactive_content_file: async (
       { file_name, mime_type, mode, source, description },
       { sendNotification, _meta }
     ) => {
-      const { runContext } = agentLoopContext ?? {};
+      // TODO: enable create and publish to be conversation agnostic for both templates (local) and
+      //       createClientExecutablefile direclty on pod DFS so that we can re-enable this server
+      //       when run without conversation context.
+      assert(
+        isAgentLoopRunContext(toolContext?.runContext),
+        "AgentLoopRunContext expected"
+      );
 
-      if (!runContext) {
-        return new Err(
-          new MCPError(
-            "Agent loop context is required to use template nodes.",
-            { tracked: false }
-          )
-        );
-      }
-
-      const { conversation, agentConfiguration } = runContext;
+      const { conversation, agentConfiguration } = toolContext.runContext;
 
       let fileContent: string;
 
       if (mode === "template") {
-        const templateResult = await fetchTemplateContent(auth, runContext, {
-          templateRef: source,
-        });
+        const templateResult = await fetchTemplateContent(
+          auth,
+          toolContext.runContext,
+          {
+            templateRef: source,
+          }
+        );
 
         if (templateResult.isErr()) {
           return templateResult;
@@ -124,7 +128,11 @@ export async function createInteractiveContentTools(
       { file_id, old_string, new_string, expected_replacements },
       { sendNotification, _meta }
     ) => {
-      const { agentConfiguration } = agentLoopContext?.runContext ?? {};
+      const { agentConfiguration } = isAgentLoopRunContext(
+        toolContext?.runContext
+      )
+        ? toolContext?.runContext
+        : {};
 
       const result = await editClientExecutableFile(auth, {
         fileId: file_id,
@@ -183,17 +191,17 @@ export async function createInteractiveContentTools(
       { file_id },
       { sendNotification, _meta }
     ) => {
-      if (!agentLoopContext?.runContext) {
+      if (!isAgentLoopRunContext(toolContext?.runContext)) {
         throw new Error(
           "Could not access Agent Loop Context from revert Interactive Content file tool."
         );
       }
 
-      const { agentConfiguration } = agentLoopContext.runContext;
+      const { agentConfiguration } = toolContext.runContext;
 
       const result = await revertClientExecutableFileChanges(auth, {
         fileId: file_id,
-        revertedByAgentConfigurationId: agentConfiguration.sId,
+        revertedByAgentConfigurationId: agentConfiguration?.sId,
       });
 
       if (result.isErr()) {
@@ -232,7 +240,11 @@ export async function createInteractiveContentTools(
       { file_id, new_file_name },
       { sendNotification, _meta }
     ) => {
-      const { agentConfiguration } = agentLoopContext?.runContext ?? {};
+      const { agentConfiguration } = isAgentLoopRunContext(
+        toolContext?.runContext
+      )
+        ? toolContext?.runContext
+        : {};
 
       const result = await renameClientExecutableFile(auth, {
         fileId: file_id,
@@ -360,7 +372,11 @@ export async function createInteractiveContentTools(
       { file_id, path },
       { sendNotification, _meta }
     ) => {
-      const { agentConfiguration } = agentLoopContext?.runContext ?? {};
+      const { agentConfiguration } = isAgentLoopRunContext(
+        toolContext?.runContext
+      )
+        ? toolContext?.runContext
+        : {};
 
       const file = await FileResource.fetchById(auth, file_id);
       if (!file) {
@@ -424,15 +440,5 @@ export async function createInteractiveContentTools(
     },
   };
 
-  const tools = buildTools(INTERACTIVE_CONTENT_TOOLS_METADATA, handlers);
-
-  // Publishing a Frame's edited source tree into the rendered bundle is gated behind frame_publish.
-  const flags = await getFeatureFlags(auth);
-  if (flags.includes("frame_publish")) {
-    return tools;
-  }
-
-  return tools.filter(
-    (tool) => tool.name !== "publish_interactive_content_file"
-  );
+  return buildTools(INTERACTIVE_CONTENT_TOOLS_METADATA, handlers);
 }

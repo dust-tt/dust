@@ -9,6 +9,8 @@ export const GPT_5_MINI_MODEL_ID = "gpt-5-mini" as const;
 export const GPT_5_NANO_MODEL_ID = "gpt-5-nano" as const;
 
 export const CLAUDE_SONNET_4_6_MODEL_ID = "claude-sonnet-4-6" as const;
+export const CLAUDE_SONNET_5_MODEL_ID = "claude-sonnet-5" as const;
+export const CLAUDE_FABLE_5_MODEL_ID = "claude-fable-5" as const;
 export const CLAUDE_OPUS_4_6_MODEL_ID = "claude-opus-4-6" as const;
 export const CLAUDE_OPUS_4_7_MODEL_ID = "claude-opus-4-7" as const;
 export const CLAUDE_OPUS_4_8_MODEL_ID = "claude-opus-4-8" as const;
@@ -39,9 +41,9 @@ export const FIREWORKS_GLM_5_MODEL_ID =
 export const FIREWORKS_GLM_5P2_MODEL_ID =
   "accounts/fireworks/models/glm-5p2" as const;
 
-// TogetherAI-served models keep their full TogetherAI model path as the id.
-export const TOGETHERAI_LLAMA_3_3_70B_INSTRUCT_TURBO_MODEL_ID =
-  "meta-llama/Llama-3.3-70B-Instruct-Turbo" as const;
+// Dummy model used for local/dev testing (static replies, simulated credit
+// consumption). Served by the in-process noop endpoint, not an external API.
+export const NOOP_MODEL_ID = "noop" as const;
 
 // Include a few examples for now
 export const MODEL_IDS = [
@@ -55,6 +57,8 @@ export const MODEL_IDS = [
   GPT_5_MINI_MODEL_ID,
   GPT_5_NANO_MODEL_ID,
   CLAUDE_SONNET_4_6_MODEL_ID,
+  CLAUDE_SONNET_5_MODEL_ID,
+  CLAUDE_FABLE_5_MODEL_ID,
   CLAUDE_OPUS_4_6_MODEL_ID,
   CLAUDE_OPUS_4_7_MODEL_ID,
   CLAUDE_OPUS_4_8_MODEL_ID,
@@ -73,7 +77,7 @@ export const MODEL_IDS = [
   FIREWORKS_MINIMAX_M2P5_MODEL_ID,
   FIREWORKS_GLM_5_MODEL_ID,
   FIREWORKS_GLM_5P2_MODEL_ID,
-  TOGETHERAI_LLAMA_3_3_70B_INSTRUCT_TURBO_MODEL_ID,
+  NOOP_MODEL_ID,
 ] as const;
 
 export type ModelId = (typeof MODEL_IDS)[number];
@@ -83,9 +87,11 @@ export function isModelId(value: string): value is ModelId {
 }
 
 export const ORDERED_LARGE_MODEL_IDS = [
+  CLAUDE_FABLE_5_MODEL_ID,
   CLAUDE_OPUS_4_8_MODEL_ID,
   CLAUDE_OPUS_4_7_MODEL_ID,
   CLAUDE_OPUS_4_6_MODEL_ID,
+  CLAUDE_SONNET_5_MODEL_ID,
   CLAUDE_SONNET_4_6_MODEL_ID,
   GPT_5_5_MODEL_ID,
   GPT_5_4_MODEL_ID,

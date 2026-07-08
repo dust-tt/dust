@@ -1,4 +1,3 @@
-import type { Permission } from "@app/types/permissions";
 import type {
   PublicApiCtx,
   WorkspaceAwareCtx,
@@ -14,6 +13,9 @@ import { createMiddleware } from "hono/factory";
 
 export const ENSURE_IS_ADMIN_ERROR_MESSAGE =
   "Only admin users can perform this action.";
+
+export const ENSURE_IS_BUSINESS_ADMIN_ERROR_MESSAGE =
+  "Only business admin users can perform this action.";
 
 export const ENSURE_IS_BUILDER_ERROR_MESSAGE =
   "Only builder users can perform this action.";
@@ -35,16 +37,16 @@ export const ensureIsAdmin = () =>
     await next();
   });
 
-export const ensureHasPermission = (permission: Permission) =>
+export const ensureIsBusinessAdmin = () =>
   createMiddleware<WorkspaceAwareCtx>(async (ctx, next) => {
     const auth = ctx.get("auth");
 
-    if (!auth.hasPermission(permission)) {
+    if (!auth.isBusinessAdmin()) {
       return apiError(ctx, {
         status_code: 403,
         api_error: {
           type: "workspace_auth_error",
-          message: "You do not have permission to perform this action.",
+          message: ENSURE_IS_BUSINESS_ADMIN_ERROR_MESSAGE,
         },
       });
     }

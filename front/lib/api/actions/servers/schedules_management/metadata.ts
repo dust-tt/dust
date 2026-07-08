@@ -38,6 +38,8 @@ export const SCHEDULES_MANAGEMENT_TOOLS_METADATA = createToolsRecord({
       running: "Creating schedule",
       done: "Create schedule",
     },
+    toolCostCategory: "basic",
+    freeUsage: false,
   },
   list_schedules: {
     description:
@@ -48,6 +50,8 @@ export const SCHEDULES_MANAGEMENT_TOOLS_METADATA = createToolsRecord({
       running: "Listing schedules",
       done: "List schedules",
     },
+    toolCostCategory: "basic",
+    freeUsage: true,
   },
   disable_schedule: {
     description: "Disable a schedule.",
@@ -61,6 +65,8 @@ export const SCHEDULES_MANAGEMENT_TOOLS_METADATA = createToolsRecord({
       running: "Disabling schedule",
       done: "Disable schedule",
     },
+    toolCostCategory: "basic",
+    freeUsage: true,
   },
 });
 
@@ -87,6 +93,8 @@ export const SCHEDULES_MANAGEMENT_SERVER = {
       z.object(SCHEDULES_MANAGEMENT_TOOLS_METADATA[key].schema)
     ) as JSONSchema,
     displayLabels: SCHEDULES_MANAGEMENT_TOOLS_METADATA[key].displayLabels,
+    toolCostCategory: SCHEDULES_MANAGEMENT_TOOLS_METADATA[key].toolCostCategory,
+    freeUsage: SCHEDULES_MANAGEMENT_TOOLS_METADATA[key].freeUsage,
   })),
   tools_stakes: Object.fromEntries(
     (

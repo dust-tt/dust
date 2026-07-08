@@ -81,22 +81,26 @@ const passThroughSchema = {
 // Tools metadata
 export const PRIMITIVE_TYPES_DEBUGGER_TOOLS_METADATA = createToolsRecord({
   tool_without_user_config: {
-    description: "This tool is used to test the tool without user config.",
+    description: "Test the tool without user config.",
     schema: toolWithoutUserConfigSchema,
     stake: "high",
     displayLabels: {
       running: "Running debug tool",
       done: "Run debug tool",
     },
+    toolCostCategory: "basic",
+    freeUsage: true,
   },
   pass_through: {
-    description: "Super useful tool that should be used at all times.",
+    description: "Pass through inputs for primitive type debugging.",
     schema: passThroughSchema,
     stake: "high",
     displayLabels: {
       running: "Passing through",
       done: "Pass through",
     },
+    toolCostCategory: "basic",
+    freeUsage: true,
   },
 });
 
@@ -116,6 +120,8 @@ export const PRIMITIVE_TYPES_DEBUGGER_SERVER = {
     description: t.description,
     inputSchema: zodToJsonSchema(z.object(t.schema)) as JSONSchema,
     displayLabels: t.displayLabels,
+    toolCostCategory: t.toolCostCategory,
+    freeUsage: t.freeUsage,
   })),
   tools_stakes: Object.fromEntries(
     Object.values(PRIMITIVE_TYPES_DEBUGGER_TOOLS_METADATA).map((t) => [

@@ -67,9 +67,7 @@ function getFileCitationCardTooltipLabel({
   return (
     <div className="flex flex-col gap-0.5">
       <div>{tooltipLabel}</div>
-      <div className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-        {description}
-      </div>
+      <div className="text-sm text-muted-foreground">{description}</div>
     </div>
   );
 }
@@ -127,7 +125,7 @@ export function FileCitationCard(props: FileCitationCardProps) {
     const chipProps = {
       children: chipContent,
       className: "inline-flex max-w-48 align-middle",
-      color: "white" as const,
+      color: "primary" as const,
       isBusy: isLoading,
       onRemove,
       size: "xs" as const,

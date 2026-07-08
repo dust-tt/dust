@@ -1,7 +1,7 @@
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import type { ToolHandlers } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import type { AgentLoopContextType } from "@app/lib/actions/types";
+import type { ToolContextType } from "@app/lib/actions/types";
 import {
   getValTownClient,
   isValTownError,
@@ -18,11 +18,11 @@ const API_KEY_NOT_CONFIGURED_ERROR =
 
 export function createValTownTools(
   auth: Authenticator,
-  agentLoopContext?: AgentLoopContextType
+  toolContext?: ToolContextType
 ) {
   const handlers: ToolHandlers<typeof VAL_TOWN_TOOLS_METADATA> = {
     create_val: async ({ name, privacy, description, orgId }) => {
-      const client = await getValTownClient(auth, agentLoopContext);
+      const client = await getValTownClient(auth, toolContext);
       if (!client) {
         return new Err(
           new MCPError(API_KEY_NOT_CONFIGURED_ERROR, { tracked: false })
@@ -64,7 +64,7 @@ export function createValTownTools(
     },
 
     get_val: async ({ valId }) => {
-      const client = await getValTownClient(auth, agentLoopContext);
+      const client = await getValTownClient(auth, toolContext);
       if (!client) {
         return new Err(
           new MCPError(API_KEY_NOT_CONFIGURED_ERROR, { tracked: false })
@@ -108,7 +108,7 @@ export function createValTownTools(
       user_id,
       list_only_user_vals = true,
     }) => {
-      const client = await getValTownClient(auth, agentLoopContext);
+      const client = await getValTownClient(auth, toolContext);
       if (!client) {
         return new Err(
           new MCPError(API_KEY_NOT_CONFIGURED_ERROR, { tracked: false })
@@ -165,7 +165,7 @@ export function createValTownTools(
     },
 
     search_vals: async ({ query, limit = 20, cursor, privacy }) => {
-      const client = await getValTownClient(auth, agentLoopContext);
+      const client = await getValTownClient(auth, toolContext);
       if (!client) {
         return new Err(
           new MCPError(API_KEY_NOT_CONFIGURED_ERROR, { tracked: false })
@@ -222,7 +222,7 @@ export function createValTownTools(
     },
 
     list_val_files: async ({ valId, path = "", limit, offset }) => {
-      const client = await getValTownClient(auth, agentLoopContext);
+      const client = await getValTownClient(auth, toolContext);
       if (!client) {
         return new Err(
           new MCPError(API_KEY_NOT_CONFIGURED_ERROR, { tracked: false })
@@ -285,7 +285,7 @@ export function createValTownTools(
     },
 
     get_file_content: async ({ valId, filePath }) => {
-      const client = await getValTownClient(auth, agentLoopContext);
+      const client = await getValTownClient(auth, toolContext);
       if (!client) {
         return new Err(
           new MCPError(API_KEY_NOT_CONFIGURED_ERROR, { tracked: false })
@@ -317,7 +317,7 @@ export function createValTownTools(
     },
 
     delete_file: async ({ valId, filePath }) => {
-      const client = await getValTownClient(auth, agentLoopContext);
+      const client = await getValTownClient(auth, toolContext);
       if (!client) {
         return new Err(
           new MCPError(API_KEY_NOT_CONFIGURED_ERROR, { tracked: false })
@@ -344,7 +344,7 @@ export function createValTownTools(
     },
 
     update_file_content: async ({ valId, filePath, content }) => {
-      const client = await getValTownClient(auth, agentLoopContext);
+      const client = await getValTownClient(auth, toolContext);
       if (!client) {
         return new Err(
           new MCPError(API_KEY_NOT_CONFIGURED_ERROR, { tracked: false })
@@ -380,7 +380,7 @@ export function createValTownTools(
       type,
       parent_path,
     }) => {
-      const client = await getValTownClient(auth, agentLoopContext);
+      const client = await getValTownClient(auth, toolContext);
       if (!client) {
         return new Err(
           new MCPError(API_KEY_NOT_CONFIGURED_ERROR, { tracked: false })
@@ -412,7 +412,7 @@ export function createValTownTools(
     },
 
     create_file: async ({ valId, filePath }) => {
-      const client = await getValTownClient(auth, agentLoopContext);
+      const client = await getValTownClient(auth, toolContext);
       if (!client) {
         return new Err(
           new MCPError(API_KEY_NOT_CONFIGURED_ERROR, { tracked: false })
@@ -440,7 +440,7 @@ export function createValTownTools(
     },
 
     call_http_endpoint: async ({ valId, filePath, body, method = "POST" }) => {
-      const client = await getValTownClient(auth, agentLoopContext);
+      const client = await getValTownClient(auth, toolContext);
       if (!client) {
         return new Err(
           new MCPError(API_KEY_NOT_CONFIGURED_ERROR, { tracked: false })

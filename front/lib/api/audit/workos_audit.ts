@@ -34,6 +34,7 @@ export const AUDIT_ACTIONS = [
   // Authentication & Admin.
   "user.login_failed",
   "user.identity_merged",
+  "user.advanced_model_access_updated",
   "user.relocated",
   // API Keys & Secrets.
   "api_key.created",
@@ -47,6 +48,8 @@ export const AUDIT_ACTIONS = [
   "member.bulk_invited",
   "member.bulk_revoked",
   "member.spend_limit_updated",
+  "group.advanced_model_access_updated",
+  "group.spend_limit_updated",
   "membership.upgrade_request_created",
   "membership.upgrade_request_resolved",
   "membership.seat_auto_upgraded",
@@ -83,6 +86,7 @@ export const AUDIT_ACTIONS = [
   "sandbox_env_var.updated",
   // Workspace settings.
   "workspace.audit_logs_updated",
+  "workspace.advanced_model_access_updated",
   "workspace.default_user_spend_limit_updated",
   "workspace.programmatic_usage_limit_updated",
   "workspace_branding.asset_promoted",
@@ -125,6 +129,7 @@ export const AUDIT_ACTIONS = [
   "space.permissions_updated",
   // Conversations.
   "conversation.accessed",
+  "conversation.restricted_space_selected",
   // Data Sources.
   "datasource.created",
   "datasource.updated",

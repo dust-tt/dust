@@ -16,17 +16,19 @@ export const JIRA_TOOLS_METADATA = createToolsRecord({
   // Read operations
   get_issue_read_fields: {
     description:
-      "Lists the field keys, ids, and names that can be requested when reading an issue.",
+      "List the field keys, ids, and names that can be requested when reading an issue.",
     schema: {},
     stake: "never_ask",
     displayLabels: {
       running: "Listing Jira issue fields",
       done: "List Jira issue fields",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   get_issue: {
     description:
-      "Looks up and retrieves a single Jira issue (ticket) by its key (e.g., 'PROJ-123'). Returns a minimal set of fields by default. Pass the fields parameter to request others.",
+      "Look up and retrieve a single Jira issue (ticket) by its key (e.g., 'PROJ-123'). Returns a minimal set of fields by default. Pass the fields parameter to request others.",
     schema: {
       issueKey: z.string().describe("The JIRA issue key (e.g., 'PROJ-123')"),
       fields: z
@@ -41,18 +43,22 @@ export const JIRA_TOOLS_METADATA = createToolsRecord({
       running: "Retrieving Jira issue",
       done: "Retrieve Jira issue",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   get_projects: {
-    description: "Retrieves all Jira projects (the full list).",
+    description: "List Jira projects available in the workspace.",
     schema: {},
     stake: "never_ask",
     displayLabels: {
       running: "Listing Jira projects",
       done: "List Jira projects",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   get_project: {
-    description: "Retrieves a single Jira project by its key (e.g., 'PROJ').",
+    description: "Retrieve one Jira project by project key (e.g., 'PROJ').",
     schema: {
       projectKey: z.string().describe("The JIRA project key (e.g., 'PROJ')"),
     },
@@ -61,10 +67,12 @@ export const JIRA_TOOLS_METADATA = createToolsRecord({
       running: "Retrieving Jira project",
       done: "Retrieve Jira project",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   get_project_versions: {
     description:
-      "Retrieves all versions (releases) for a JIRA project. Useful for getting release reports and understanding which versions are available for filtering issues.",
+      "Retrieve all versions (releases) for a JIRA project. Useful for getting release reports and understanding which versions are available for filtering issues.",
     schema: {
       projectKey: z.string().describe("The JIRA project key (e.g., 'PROJ')"),
     },
@@ -73,10 +81,12 @@ export const JIRA_TOOLS_METADATA = createToolsRecord({
       running: "Retrieving Jira project versions",
       done: "Retrieve Jira project versions",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   get_transitions: {
     description:
-      "Lists which status changes a Jira issue is currently allowed to make.",
+      "List which status changes a Jira issue is currently allowed to make.",
     schema: {
       issueKey: z.string().describe("The JIRA issue key (e.g., 'PROJ-123')"),
     },
@@ -85,6 +95,8 @@ export const JIRA_TOOLS_METADATA = createToolsRecord({
       running: "Retrieving Jira transitions",
       done: "Retrieve Jira transitions",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   get_issues: {
     description:
@@ -107,6 +119,8 @@ export const JIRA_TOOLS_METADATA = createToolsRecord({
       running: "Searching Jira issues",
       done: "Search Jira issues",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   get_issues_using_jql: {
     description:
@@ -137,9 +151,11 @@ export const JIRA_TOOLS_METADATA = createToolsRecord({
       running: "Searching Jira issues with JQL",
       done: "Search Jira issues with JQL",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   get_issue_types: {
-    description: "Retrieves available issue types for a JIRA project.",
+    description: "Retrieve available issue types for a JIRA project.",
     schema: {
       projectKey: z.string().describe("The JIRA project key (e.g., 'PROJ')"),
     },
@@ -148,10 +164,12 @@ export const JIRA_TOOLS_METADATA = createToolsRecord({
       running: "Retrieving Jira issue types",
       done: "Retrieve Jira issue types",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   get_issue_create_fields: {
     description:
-      "Lists the field metadata (names and ids) on the screens used to create or update an issue, for a given project and issue type. Use it to discover valid field names beforehand.",
+      "List field metadata (names and ids) for a given Jira project and issue type. Use it to discover valid field names before creating or updating issues.",
     schema: {
       projectKey: z.string().describe("The JIRA project key (e.g., 'PROJ')"),
       issueTypeId: z
@@ -163,29 +181,35 @@ export const JIRA_TOOLS_METADATA = createToolsRecord({
       running: "Retrieving Jira create fields",
       done: "Retrieve Jira create fields",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   get_connection_info: {
     description:
-      "Gets comprehensive connection information including user details, cloud ID, and site URL for the currently authenticated JIRA instance. This tool is used when the user is referring about themselves. Also use it to authenticate when another tool reports that no access token was found.",
+      "Get comprehensive connection information including user details, cloud ID, and site URL for the currently authenticated JIRA instance. This tool is used when the user is referring about themselves. Also use it to authenticate when another tool reports that no access token was found.",
     schema: {},
     stake: "never_ask",
     displayLabels: {
       running: "Retrieving Jira connection info",
       done: "Retrieve Jira connection info",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   get_issue_link_types: {
     description:
-      "Retrieves all available issue link types that can be used when creating issue links.",
+      "Retrieve all available issue link types that can be used when creating issue links.",
     schema: {},
     stake: "never_ask",
     displayLabels: {
       running: "Retrieving Jira link types",
       done: "Retrieve Jira link types",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   get_users: {
-    description: "Search for Jira users by email address or display name.",
+    description: "Find or search Jira users by email address or display name.",
     schema: {
       emailAddress: z
         .string()
@@ -216,6 +240,8 @@ export const JIRA_TOOLS_METADATA = createToolsRecord({
       running: "Searching Jira users",
       done: "Search Jira users",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   get_attachments: {
     description:
@@ -228,6 +254,8 @@ export const JIRA_TOOLS_METADATA = createToolsRecord({
       running: "Retrieving Jira attachments",
       done: "Retrieve Jira attachments",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   read_attachment: {
     description:
@@ -241,12 +269,14 @@ export const JIRA_TOOLS_METADATA = createToolsRecord({
       running: "Reading attachment from Jira",
       done: "Read attachment from Jira",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
 
   // Write operations
   create_comment: {
     description:
-      "Adds a comment or note to an existing Jira issue. Accepts plain text or rich ADF formatting.",
+      "Leave a comment or note on an existing Jira issue. Accepts plain text or rich ADF formatting.",
     schema: {
       issueKey: z.string().describe("The JIRA issue key (e.g., 'PROJ-123')"),
       comment: z
@@ -268,10 +298,12 @@ export const JIRA_TOOLS_METADATA = createToolsRecord({
       running: "Adding comment on Jira",
       done: "Add comment on Jira",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   transition_issue: {
     description:
-      "Moves or changes a Jira issue (ticket) to a different status (e.g. to In Progress or Done). Performs a workflow transition.",
+      "Move or change a Jira issue (ticket) to a different status (e.g. to In Progress or Done). Performs a workflow transition.",
     schema: {
       issueKey: z.string().describe("The JIRA issue key (e.g., 'PROJ-123')"),
       transitionId: z.string().describe("The ID of the transition to perform"),
@@ -281,10 +313,12 @@ export const JIRA_TOOLS_METADATA = createToolsRecord({
       running: "Transitioning Jira issue",
       done: "Transition Jira issue",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   create_issue: {
     description:
-      "Creates a new Jira issue, or ticket, in a project. Use it to log a bug, raise a request, or open a task or story. Description fields accept plain text or rich ADF. Required fields vary by project and issue type.",
+      "Create a new Jira issue, or ticket, in a project. Use it to log a bug, raise a request, or open a task or story. Description fields accept plain text or rich ADF. Required fields vary by project and issue type.",
     schema: {
       issueData: JiraCreateIssueRequestSchema.describe(
         "The description of the issue"
@@ -295,10 +329,12 @@ export const JIRA_TOOLS_METADATA = createToolsRecord({
       running: "Creating Jira issue",
       done: "Create Jira issue",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   update_issue: {
     description:
-      "Updates or changes field values on an existing Jira issue, such as its summary, description, priority, or assignee. Description accepts plain text or rich ADF. Issue links and attachments are not changed here.",
+      "Update or change field values on an existing Jira issue, such as its summary, description, priority, or assignee. Description accepts plain text or rich ADF. Issue links and attachments are not changed here.",
     schema: {
       issueKey: z.string().describe("The JIRA issue key (e.g., 'PROJ-123')"),
       updateData: JiraCreateIssueRequestSchema.partial().describe(
@@ -310,10 +346,12 @@ export const JIRA_TOOLS_METADATA = createToolsRecord({
       running: "Updating Jira issue",
       done: "Update Jira issue",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   create_issue_link: {
     description:
-      "Links or marks two Jira issues as related, with a relationship type such as blocks, relates to, or duplicates.",
+      "Link or mark two Jira issues as related, with a relationship type such as blocks, relates to, or duplicates.",
     schema: {
       linkData: JiraCreateIssueLinkRequestSchema.describe(
         "Link configuration including type and issues to link"
@@ -324,9 +362,11 @@ export const JIRA_TOOLS_METADATA = createToolsRecord({
       running: "Creating Jira issue link",
       done: "Create Jira issue link",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   delete_issue_link: {
-    description: "Deletes an existing link between JIRA issues.",
+    description: "Delete an existing link between JIRA issues.",
     schema: {
       linkId: z.string().describe("The ID of the issue link to delete"),
     },
@@ -335,6 +375,8 @@ export const JIRA_TOOLS_METADATA = createToolsRecord({
       running: "Deleting Jira issue link",
       done: "Delete Jira issue link",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   upload_attachment: {
     description:
@@ -375,6 +417,8 @@ export const JIRA_TOOLS_METADATA = createToolsRecord({
       running: "Uploading attachment to Jira",
       done: "Upload attachment to Jira",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
 });
 
@@ -395,6 +439,8 @@ export const JIRA_SERVER = {
     description: t.description,
     inputSchema: zodToJsonSchema(z.object(t.schema)) as JSONSchema,
     displayLabels: t.displayLabels,
+    toolCostCategory: t.toolCostCategory,
+    freeUsage: t.freeUsage,
   })),
   tools_stakes: Object.fromEntries(
     Object.values(JIRA_TOOLS_METADATA).map((t) => [t.name, t.stake])

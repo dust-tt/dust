@@ -47,7 +47,7 @@ export const SuggestedTaskItem = memo(function SuggestedTaskItem({
   return (
     <div className="group/suggestion-item flex items-start gap-3 py-1 pl-6">
       <div className="mt-1 shrink-0">
-        <Checkbox size="xs" checked={false} disabled />
+        <Checkbox checked={false} disabled />
       </div>
       <div className="flex min-w-0 flex-1 flex-col gap-0.5">
         <div className="relative min-w-0 text-left">
@@ -62,7 +62,7 @@ export const SuggestedTaskItem = memo(function SuggestedTaskItem({
           <TaskMetadataTooltip task={task} agentNameById={agentNameById}>
             <div
               className={cn(
-                "min-h-6 w-full min-w-0 break-words text-pretty text-base leading-6 text-foreground dark:text-foreground-night",
+                "min-h-6 w-full min-w-0 break-words text-pretty text-base leading-6 text-foreground",
                 typing.isAnimating && "absolute inset-0"
               )}
             >
@@ -81,7 +81,7 @@ export const SuggestedTaskItem = memo(function SuggestedTaskItem({
           </TaskMetadataTooltip>
         </div>
         {!typing.isAnimating && (
-          <p className="min-w-0 text-pretty text-xs leading-relaxed text-muted-foreground dark:text-muted-foreground-night">
+          <p className="min-w-0 text-pretty text-xs leading-relaxed text-muted-foreground">
             {rationaleText}
           </p>
         )}

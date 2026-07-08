@@ -12,7 +12,7 @@ const ResizablePanelGroup: React.FC<ResizablePanelGroupProps> = ({
 }) => (
   <ResizablePrimitive.PanelGroup
     className={cn(
-      "s-flex s-h-full s-w-full data-[panel-group-direction=vertical]:s-flex-col",
+      "flex h-full w-full data-[panel-group-direction=vertical]:flex-col",
       className
     )}
     {...props}
@@ -30,19 +30,19 @@ const ResizableHandle = ({
 }) => (
   <ResizablePrimitive.PanelResizeHandle
     className={cn(
-      "s-relative s-flex s-w-px s-items-center s-justify-center",
-      "after:s-absolute after:s-inset-y-0 after:s-left-1/2 after:s-w-1 after:s--translate-x-1/2",
-      "focus-visible:s-outline-none focus-visible:s-ring-1",
-      "focus-visible:s-ring-ring dark:focus-visible:s-ring-ring-night",
-      "focus-visible:s-ring-offset-1 data-[panel-group-direction=vertical]:s-h-px",
-      "data-[panel-group-direction=vertical]:s-w-full",
-      "data-[panel-group-direction=vertical]:after:s-left-0",
-      "data-[panel-group-direction=vertical]:after:s-h-1",
-      "data-[panel-group-direction=vertical]:after:s-w-full",
-      "data-[panel-group-direction=vertical]:after:s--translate-y-1/2",
-      "data-[panel-group-direction=vertical]:after:s-translate-x-0",
-      "[&[data-panel-group-direction=vertical]>div]:s-rotate-90",
-      "s-bg-gray-100 dark:s-bg-border-night",
+      "relative flex w-px items-center justify-center",
+      "after:absolute after:inset-y-0 after:left-1/2 after:w-1 after:-translate-x-1/2",
+      "focus-visible:outline-hidden focus-visible:ring-1",
+      "focus-visible:ring-ring",
+      "focus-visible:ring-offset-1 data-[panel-group-direction=vertical]:h-px",
+      "data-[panel-group-direction=vertical]:w-full",
+      "data-[panel-group-direction=vertical]:after:left-0",
+      "data-[panel-group-direction=vertical]:after:h-1",
+      "data-[panel-group-direction=vertical]:after:w-full",
+      "data-[panel-group-direction=vertical]:after:-translate-y-1/2",
+      "data-[panel-group-direction=vertical]:after:translate-x-0",
+      "[&[data-panel-group-direction=vertical]>div]:rotate-90",
+      "bg-primary-100",
       className
     )}
     {...props}
@@ -50,11 +50,11 @@ const ResizableHandle = ({
     {withHandle && (
       <div
         className={cn(
-          "s-absolute s-flex s-h-6 s-w-2 s-items-center s-justify-center s-rounded-2xl",
-          "s-border s-border-gray-100 s-bg-background dark:s-bg-background-night"
+          "absolute flex h-6 w-2 items-center justify-center rounded-2xl",
+          "border border-border bg-background"
         )}
       >
-        <div className="s-w-px" />
+        <div className="w-px" />
       </div>
     )}
   </ResizablePrimitive.PanelResizeHandle>

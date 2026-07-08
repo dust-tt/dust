@@ -1,6 +1,7 @@
 import { renderAgentMessageContentView } from "@app/lib/api/assistant/activity_steps";
 import { getLightAgentMessageFromAgentMessage } from "@app/lib/api/assistant/citations";
 import { getAgentConfigurations } from "@app/lib/api/assistant/configuration/agent";
+import { requestedAgentModelFromColumns } from "@app/lib/api/assistant/models";
 import { getMessagesReactions } from "@app/lib/api/assistant/reaction";
 import type { Authenticator } from "@app/lib/auth";
 import {
@@ -267,6 +268,12 @@ async function batchRenderUserMessages(
       ? await getAgentConfigurations(auth, {
           agentIds: agentConfigurationIds,
           variant: "extra_light",
+          // Skip permission filtering: we are rendering the mentions of a
+          // conversation the user already has access to. We want to keep
+          // displaying the agents that were mentioned historically even if the
+          // user has since lost access to the space that hosts them, otherwise
+          // those past messages would render without their agent metadata.
+          dangerouslySkipPermissionFiltering: true,
         })
       : [];
   const reactionsByMessageId = await getMessagesReactions(auth, {
@@ -308,13 +315,13 @@ type RenderedAgentMessage = AgentMessageType | LightAgentMessageType;
  * Render user messages without mentions or reactions.
  * No DB calls beyond the provided transaction — safe to use inside an advisory lock.
  */
-export async function batchRenderUserMessagesWithoutMentions(
-  auth: Authenticator,
-  {
-    messages,
-    transaction,
-  }: { messages: MessageModel[]; transaction: Transaction }
-): Promise<UserMessageTypeWithoutMentions[]> {
+export async function batchRenderUserMessagesWithoutMentions({
+  messages,
+  transaction,
+}: {
+  messages: MessageModel[];
+  transaction: Transaction;
+}): Promise<UserMessageTypeWithoutMentions[]> {
   const userMessages = messages.filter(
     (m) => m.userMessage !== null && m.userMessage !== undefined
   );
@@ -397,6 +404,13 @@ export async function batchRenderAgentMessages<V extends RenderMessageVariant>(
         ? getAgentConfigurations(auth, {
             agentIds: [...agentConfigurationIds],
             variant: "extra_light",
+            // Skip permission filtering: we are rendering the agents that
+            // produced (or were mentioned in) messages of a conversation the
+            // user already has access to. We want to keep displaying these
+            // agents even if the user has since lost access to the space that
+            // hosts them, otherwise those past messages would render without
+            // their agent metadata.
+            dangerouslySkipPermissionFiltering: true,
           })
         : [],
   ];
@@ -810,6 +824,7 @@ async function renderSingleAgentMessage(
     // Aggregated only when rendering a single agent message (see
     // batchRenderAgentMessages), so it is `null` for bulk conversation rendering.
     subAgentCostCredits,
+    requestedModel: requestedAgentModelFromColumns(agentMessage),
   } satisfies AgentMessageType;
 
   if (viewType === "full") {

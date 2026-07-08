@@ -190,10 +190,10 @@ export function SkillBuilderAgentFacingDescriptionSection() {
     <section className="space-y-4">
       <div className="flex items-start justify-between gap-2">
         <div className="space-y-1">
-          <h3 className="heading-lg font-semibold text-foreground dark:text-foreground-night">
+          <h3 className="heading-lg font-semibold text-foreground">
             {SKILL_INVOCATION_LABEL}
           </h3>
-          <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+          <p className="text-sm text-muted-foreground">
             Tell the agent when it should use this skill.
           </p>
         </div>
@@ -213,7 +213,7 @@ export function SkillBuilderAgentFacingDescriptionSection() {
           <SkillDescriptionEditorContent editor={editor} />
 
           {descriptionFieldState.error && (
-            <div className="dark:text-warning-night ml-2 text-xs text-warning">
+            <div className="ml-2 text-xs text-warning">
               {descriptionFieldState.error.message}
             </div>
           )}

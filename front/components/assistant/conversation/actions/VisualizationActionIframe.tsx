@@ -1,7 +1,14 @@
 import { useVisualizationRetry } from "@app/hooks/conversations";
 import { useSendNotification } from "@app/hooks/useNotification";
-import { clientFetch } from "@app/lib/egress/client";
+import { clientEventSource, clientFetch } from "@app/lib/egress/client";
+import { getErrorFromResponse } from "@app/lib/swr/swr";
 import datadogLogger from "@app/logger/datadogLogger";
+import type {
+  PostSandboxFunctionInvocationRequestBody,
+  PostSandboxFunctionInvocationResponseBody,
+  SandboxFunctionInvocationEvent,
+  SandboxFunctionInvocationType,
+} from "@app/types/api/sandbox_functions";
 import type {
   CommandResultMap,
   EditTextFn,
@@ -9,7 +16,12 @@ import type {
   VisualizationRPCRequest,
 } from "@app/types/assistant/visualization";
 import { isVisualizationRPCRequest } from "@app/types/assistant/visualization";
-import { assertNever } from "@app/types/shared/utils/assert_never";
+import { Err, Ok, type Result } from "@app/types/shared/result";
+import {
+  assertNever,
+  assertNeverAndIgnore,
+} from "@app/types/shared/utils/assert_never";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
 import {
   AlertCircle,
   Button,
@@ -78,16 +90,114 @@ const getExtensionFromBlob = (blob: Blob): string => {
   return mimeToExt[blob.type] || "txt"; // Default to 'txt' if mime type is unknown.
 };
 
+const SANDBOX_FUNCTION_INVOCATION_RESULT_TIMEOUT_MS = 5 * 60 * 1000;
+
+async function waitForSandboxFunctionInvocationResult({
+  functionId,
+  invocationId,
+  workspaceId,
+}: {
+  functionId: string;
+  invocationId: string;
+  workspaceId: string;
+}): Promise<CommandResultMap["callFunction"]> {
+  let source: Awaited<ReturnType<typeof clientEventSource>>;
+  try {
+    source = await clientEventSource(
+      `/api/sse/w/${workspaceId}/sandbox-functions/${functionId}/invocations/${invocationId}/events`
+    );
+  } catch (error) {
+    return {
+      result: null,
+      error:
+        "Failed to listen to function invocation events: " +
+        normalizeError(error).message,
+    };
+  }
+
+  return new Promise((resolve) => {
+    let isDone = false;
+    let timeoutId: ReturnType<typeof setTimeout> | undefined;
+
+    const finish = (response: CommandResultMap["callFunction"]) => {
+      if (isDone) {
+        return;
+      }
+
+      isDone = true;
+      if (timeoutId !== undefined) {
+        clearTimeout(timeoutId);
+      }
+      source.close();
+      resolve(response);
+    };
+
+    timeoutId = setTimeout(() => {
+      finish({
+        result: null,
+        error: "Timed out waiting for function invocation result.",
+      });
+    }, SANDBOX_FUNCTION_INVOCATION_RESULT_TIMEOUT_MS);
+
+    source.onmessage = (event) => {
+      if (event.data === "done") {
+        finish({
+          result: null,
+          error: "Function invocation stream ended before a result.",
+        });
+        return;
+      }
+
+      try {
+        const eventPayload: {
+          data: SandboxFunctionInvocationEvent;
+        } = JSON.parse(event.data);
+
+        switch (eventPayload.data.type) {
+          case "sandbox_function_invocation_created":
+            // NO-OP
+            break;
+          case "sandbox_function_invocation_result":
+            finish({ result: eventPayload.data.result });
+            break;
+          default:
+            assertNeverAndIgnore(eventPayload.data);
+        }
+      } catch (error) {
+        finish({
+          result: null,
+          error:
+            "Failed to parse function invocation event: " +
+            normalizeError(error).message,
+        });
+      }
+    };
+
+    source.onerror = () => {
+      finish({
+        result: null,
+        error: "Failed to listen to function invocation events.",
+      });
+    };
+  });
+}
+
 // Custom hook to encapsulate the logic for handling visualization messages.
 function useVisualizationDataHandler({
+  createSandboxFunctionInvocation,
   getFileBlob,
   onEditText,
+  workspaceId,
   setCodeDrawerOpened,
   setContentHeight,
   setErrorMessage,
   visualization,
   vizIframeRef,
 }: {
+  createSandboxFunctionInvocation: (
+    functionIdOrSlug: string,
+    input?: unknown
+  ) => Promise<Result<SandboxFunctionInvocationType, Error>>;
   getFileBlob: (fileId: string) => Promise<Blob | null>;
   onEditText?: EditTextFn;
   setCodeDrawerOpened: (v: SetStateAction<boolean>) => void;
@@ -95,6 +205,7 @@ function useVisualizationDataHandler({
   setErrorMessage: (v: SetStateAction<string | null>) => void;
   visualization: Visualization;
   vizIframeRef: React.MutableRefObject<HTMLIFrameElement | null>;
+  workspaceId: string;
 }) {
   const sendNotification = useSendNotification();
   const { code } = visualization;
@@ -151,6 +262,35 @@ function useVisualizationDataHandler({
       }
 
       switch (data.command) {
+        case "callFunction": {
+          const invocationRes = await createSandboxFunctionInvocation(
+            data.params.functionIdOrSlug,
+            data.params.input
+          );
+
+          if (invocationRes.isErr()) {
+            sendResponseToIframe(
+              data,
+              {
+                result: null,
+                error:
+                  "Failed to call function: " + invocationRes.error.message,
+              },
+              event.source
+            );
+            break;
+          }
+
+          const result = await waitForSandboxFunctionInvocationResult({
+            workspaceId,
+            functionId: invocationRes.value.functionId,
+            invocationId: invocationRes.value.sId,
+          });
+
+          sendResponseToIframe(data, result, event.source);
+          break;
+        }
+
         case "getFile":
           const fileBlob = await getFileBlob(data.params.fileId);
 
@@ -215,6 +355,7 @@ function useVisualizationDataHandler({
     return () => window.removeEventListener("message", listener);
   }, [
     code,
+    createSandboxFunctionInvocation,
     downloadFileFromBlob,
     getFileBlob,
     onEditText,
@@ -224,6 +365,7 @@ function useVisualizationDataHandler({
     visualization.identifier,
     vizIframeRef,
     sendNotification,
+    workspaceId,
   ]);
 }
 
@@ -260,6 +402,7 @@ export function CodeDrawer({
 interface VisualizationActionIframeProps {
   agentConfigurationId: string | null;
   conversationId: string | null;
+  frameFileId?: string;
   isEditable?: boolean;
   isInDrawer?: boolean;
   isPublic?: boolean;
@@ -301,6 +444,7 @@ export const VisualizationActionIframe = forwardRef<
   const {
     agentConfigurationId,
     conversationId,
+    frameFileId,
     isEditable = false,
     isInDrawer = false,
     isPublic = false,
@@ -352,7 +496,53 @@ export const VisualizationActionIframe = forwardRef<
     [workspaceId, conversationId, spaceId]
   );
 
+  const createSandboxFunctionInvocation = useCallback(
+    async (
+      functionIdOrSlug: string,
+      input?: unknown
+    ): Promise<Result<SandboxFunctionInvocationType, Error>> => {
+      try {
+        if (isPublic) {
+          throw new Error(
+            "Sandbox functions are not supported in shared frames."
+          );
+        }
+
+        const body: PostSandboxFunctionInvocationRequestBody = {
+          input,
+          context: frameFileId ? { frameFileId } : undefined,
+        };
+
+        const encodedFunctionIdOrSlug = encodeURIComponent(functionIdOrSlug);
+        const response = await clientFetch(
+          `/api/w/${workspaceId}/sandbox-functions/${encodedFunctionIdOrSlug}/invocations`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify(body),
+          }
+        );
+
+        if (!response.ok) {
+          const error = await getErrorFromResponse(response);
+          throw new Error(error.message);
+        }
+
+        const result: PostSandboxFunctionInvocationResponseBody =
+          await response.json();
+
+        return new Ok(result.invocation);
+      } catch (error) {
+        return new Err(normalizeError(error));
+      }
+    },
+    [frameFileId, isPublic, workspaceId]
+  );
+
   useVisualizationDataHandler({
+    createSandboxFunctionInvocation,
     getFileBlob,
     onEditText,
     setCodeDrawerOpened,
@@ -360,6 +550,7 @@ export const VisualizationActionIframe = forwardRef<
     setErrorMessage,
     visualization,
     vizIframeRef,
+    workspaceId,
   });
 
   const { code, complete: codeFullyGenerated } = visualization;
@@ -489,7 +680,7 @@ export const VisualizationActionIframe = forwardRef<
                     </div>
 
                     {errorMessage && (
-                      <div className="mb-4 rounded-md bg-warning-50 p-3 text-xs text-warning-900 dark:bg-warning-50-night dark:text-warning-900-night">
+                      <div className="mb-4 rounded-md bg-warning-50 p-3 text-xs text-warning-900">
                         {errorMessage}
                       </div>
                     )}
@@ -512,11 +703,11 @@ export const VisualizationActionIframe = forwardRef<
                     <div className="flex flex-col items-center gap-2 text-center">
                       <div className="flex flex-col items-center gap-2">
                         <AlertCircle className="h-8 w-8" />
-                        <p className="heading-xl leading-7 text-foreground dark:text-foreground-night">
+                        <p className="heading-xl leading-7 text-foreground">
                           Visualization Error
                         </p>
                       </div>
-                      <p className="copy-sm leading-tight text-muted-foreground dark:text-muted-foreground-night">
+                      <p className="copy-sm leading-tight text-muted-foreground">
                         This visualization encountered an error and cannot be
                         displayed.
                         <br /> Please contact the creator of this visualization
@@ -531,7 +722,7 @@ export const VisualizationActionIframe = forwardRef<
         </div>
       </div>
       {showSpinner && (
-        <div className="absolute inset-0 flex items-center justify-center bg-panel-background dark:bg-panel-background-night">
+        <div className="absolute inset-0 flex items-center justify-center bg-panel-background">
           <Spinner size="xl" variant="color" />
         </div>
       )}

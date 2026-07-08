@@ -96,7 +96,7 @@ function getColumns(
           <DataTable.CellContent>
             <div className="flex flex-row items-center gap-2 py-3">
               <SkillAvatar />
-              <div className="heading-sm overflow-hidden truncate text-foreground dark:text-foreground-night">
+              <div className="heading-sm overflow-hidden truncate text-foreground">
                 {info.row.original.name}
               </div>
             </div>
@@ -140,7 +140,6 @@ function getColumns(
         return (
           <DataTable.CellContent>
             <SliderToggle
-              size="xs"
               selected={selected}
               disabled={isEnabledUpdating || isLocked}
               onClick={onToggleEnabled}
@@ -192,7 +191,6 @@ function getColumns(
         return (
           <DataTable.CellContent>
             <SliderToggle
-              size="xs"
               selected={selected}
               disabled={isLockUpdating}
               onClick={onToggleLock}
@@ -472,9 +470,7 @@ export function SelfImprovingSkillsListSection({
           <Spinner />
         </div>
       ) : rows.length === 0 ? (
-        <div className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-          No active skills.
-        </div>
+        <div className="text-sm text-muted-foreground">No active skills.</div>
       ) : (
         <DataTable
           data={rows}

@@ -21,7 +21,7 @@ const NavTabPillList = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <TabsPrimitive.List
     ref={ref}
-    className={cn("s-flex s-items-center s-gap-1.5", className)}
+    className={cn("flex items-center gap-1.5", className)}
     {...props}
   />
 ));
@@ -52,18 +52,17 @@ const NavTabPillTrigger = React.forwardRef<
     ref
   ) => {
     const triggerClassName = cn(
-      "s-group s-flex s-h-8 s-items-center s-justify-center s-whitespace-nowrap s-rounded-lg s-pl-2 group-data-[state=active]:s-pl-2.5 [&:not([data-state=active])]:s-pr-2 s-text-sm",
-      "s-text-muted-foreground dark:s-text-muted-foreground-night",
-      "hover:s-bg-sidebar-foreground dark:hover:s-bg-sidebar-foreground-night",
-      "s-font-medium",
-      "s-bg-transparent",
-      "data-[state=active]:s-bg-sidebar-foreground data-[state=active]:s-text-foreground",
-      "dark:data-[state=active]:s-bg-sidebar-foreground-night dark:data-[state=active]:s-text-foreground-night",
-      "focus-visible:s-outline-none focus-visible:s-ring-2 focus-visible:s-ring-ring focus-visible:s-ring-offset-2",
-      "disabled:s-pointer-events-none disabled:s-opacity-100",
-      "data-[state=active]:s-overflow-hidden data-[state=active]:s-shrink",
-      "s-transition-[padding] s-duration-200 motion-reduce:s-transition-none",
-      "s-touch-hitbox",
+      "group flex h-8 items-center justify-center whitespace-nowrap rounded-lg pl-2 group-data-[state=active]:pl-2.5 [&:not([data-state=active])]:pr-2 text-sm",
+      "text-muted-foreground",
+      "hover:bg-hover",
+      "font-medium",
+      "bg-transparent",
+      "data-[state=active]:bg-selected data-[state=active]:text-foreground",
+      "focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+      "disabled:pointer-events-none disabled:opacity-100",
+      "data-[state=active]:overflow-hidden data-[state=active]:shrink",
+      "transition-[padding,background-color,color] duration-200 motion-reduce:transition-none",
+      "touch-hitbox",
       className
     );
 
@@ -71,11 +70,11 @@ const NavTabPillTrigger = React.forwardRef<
       <TooltipProvider>
         <TooltipRoot disableHoverableContent>
           <TooltipTrigger asChild>
-            <span className="s-flex s-items-center s-justify-center group-data-[state=active]:s-pointer-events-none">
+            <span className="flex items-center justify-center group-data-[state=active]:pointer-events-none">
               <Icon visual={icon} size="sm" />
             </span>
           </TooltipTrigger>
-          <TooltipContent className="group-data-[state=active]:s-hidden">
+          <TooltipContent className="group-data-[state=active]:hidden">
             {children}
           </TooltipContent>
         </TooltipRoot>
@@ -89,17 +88,17 @@ const NavTabPillTrigger = React.forwardRef<
         {iconElement}
         <div
           className={cn(
-            "s-relative s-grid s-grid-cols-[0fr] s-transition-[grid-template-columns] s-duration-200 group-data-[state=active]:s-grid-cols-[1fr] s-overflow-hidden motion-reduce:s-transition-none"
+            "relative grid grid-cols-[0fr] transition-[grid-template-columns] duration-200 group-data-[state=active]:grid-cols-[1fr] overflow-hidden motion-reduce:transition-none"
           )}
         >
           <span
-            className="s-overflow-hidden s-min-w-0"
+            className="overflow-hidden min-w-0"
             style={{
               maskImage:
                 "linear-gradient(to right, black calc(100% - 8px), transparent)",
             }}
           >
-            <span className="group-data-[state=active]:s-pl-1.5 group-data-[state=active]:s-opacity-1 group-data-[state=inactive]:s-opacity-0 group-data-[state=active]:s-pr-2.5 s-whitespace-nowrap">
+            <span className="group-data-[state=active]:pl-1.5 group-data-[state=active]:opacity-100 group-data-[state=inactive]:opacity-0 group-data-[state=active]:pr-2.5 whitespace-nowrap">
               {children}
             </span>
           </span>
@@ -139,7 +138,7 @@ const NavTabPillContent = React.forwardRef<
   <TabsPrimitive.Content
     ref={ref}
     className={cn(
-      "focus-visible:s-outline-none focus-visible:s-ring-2 focus-visible:s-ring-ring focus-visible:s-ring-offset-2",
+      "focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
       className
     )}
     {...props}

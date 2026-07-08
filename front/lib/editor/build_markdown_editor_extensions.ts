@@ -65,8 +65,7 @@ export function buildMarkdownEditorExtensions({
       blockquote: false,
       horizontalRule: {
         HTMLAttributes: {
-          class:
-            "my-4 border-0 border-t border-border dark:border-border-night",
+          class: "my-4 border-0 border-t border-border",
         },
       },
       strike: false,
@@ -116,7 +115,7 @@ export function buildMarkdownEditorExtensions({
       Placeholder.configure({
         placeholder,
         emptyNodeClass:
-          "first:before:text-gray-400 dark:first:before:text-gray-500 first:before:italic first:before:content-[attr(data-placeholder)] first:before:pointer-events-none first:before:absolute",
+          "first:before:text-muted-foreground dark:first:before:text-muted-foreground first:before:italic first:before:content-[attr(data-placeholder)] first:before:pointer-events-none first:before:absolute",
       })
     );
   }

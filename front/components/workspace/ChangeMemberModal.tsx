@@ -4,13 +4,12 @@ import { useSendNotification } from "@app/hooks/useNotification";
 import type { SearchMembersAdminResponseBody } from "@app/lib/api/workspace";
 import { handleMembersRoleChange } from "@app/lib/client/members";
 import { useProvisioningStatus } from "@app/lib/swr/workos";
-import { hasPermission } from "@app/types/permissions";
 import type {
   ActiveRoleType,
   LightWorkspaceType,
   UserTypeWithWorkspace,
 } from "@app/types/user";
-import { isActiveRoleType } from "@app/types/user";
+import { isActiveRoleType, isAdmin } from "@app/types/user";
 import {
   Avatar,
   Button,
@@ -63,10 +62,8 @@ export function ChangeMemberModal({
     );
   };
 
-  // Revoking an admin requires the manage_admin_role permission
-  const canRevokeMember =
-    role !== "admin" ||
-    hasPermission(workspace.role, "workspace:manage_admin_role");
+  // Revoking an admin requires to be an admin
+  const canRevokeMember = role !== "admin" || isAdmin(workspace);
 
   const handleSave = async () => {
     if (!selectedRole) {
@@ -100,7 +97,7 @@ export function ChangeMemberModal({
               <SheetTitle>{member.fullName || "Unreachable"}</SheetTitle>
             </SheetHeader>
             <SheetContainer>
-              <div className="flex flex-col gap-6 text-sm text-muted-foreground dark:text-muted-foreground-night">
+              <div className="flex flex-col gap-6 text-sm text-muted-foreground">
                 <div className="flex items-center gap-4">
                   <Avatar
                     size="lg"
@@ -109,7 +106,7 @@ export function ChangeMemberModal({
                     isRounded
                   />
                   <div className="flex grow flex-col">
-                    <div className="heading-base text-foreground dark:text-foreground-night">
+                    <div className="heading-base text-foreground">
                       {member.fullName}
                     </div>
                     <div className="font-normal">{member.email}</div>
@@ -118,9 +115,7 @@ export function ChangeMemberModal({
 
                 <div className="flex flex-col gap-2">
                   <div className="flex items-center gap-2">
-                    <div className="heading-base text-foreground dark:text-foreground-night">
-                      Role:
-                    </div>
+                    <div className="heading-base text-foreground">Role:</div>
                     <RoleDropDown
                       // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
                       selectedRole={selectedRole || role}

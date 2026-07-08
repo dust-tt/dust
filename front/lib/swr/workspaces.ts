@@ -1,10 +1,9 @@
 import { DEFAULT_PERIOD_DAYS } from "@app/components/agent_builder/observability/constants";
 import { useSendNotification } from "@app/hooks/useNotification";
 import type {
-  AwuUsageGroupByType,
-  GetAwuUsageResponse,
-} from "@app/lib/api/analytics/awu_usage";
-import type { AwuUsageAnalyticsResponse } from "@app/lib/api/analytics/awu_usage_analytics";
+  AnalyticsScopeFilter,
+  AwuUsageAnalyticsResponse,
+} from "@app/lib/api/analytics/awu_usage_analytics";
 import type {
   GetWorkspaceProgrammaticCostResponse,
   GroupByType,
@@ -55,6 +54,7 @@ import type {
 import type { GetBillingInfoResponseBody } from "@app/types/api/billing/info";
 import type { GetBillingInvoicesResponseBody } from "@app/types/api/billing/invoices";
 import type { GetPreparePaymentResponseBody } from "@app/types/api/checkout/prepare_payment";
+import type { GetWorkspaceCouponsResponseBody } from "@app/types/api/coupons";
 import type { GetMetronomeContractResponseBody } from "@app/types/api/credits/metronome_contract";
 import type { GetPendingInvitationsLookupResponseBody } from "@app/types/api/invitation";
 import type {
@@ -599,70 +599,24 @@ export function useWorkspaceProgrammaticCost({
   };
 }
 
-export function useAwuUsage({
-  workspaceId,
-  groupBy,
-  groupByCount,
-  selectedPeriod,
-  billingCycleStartDay,
-  windowSize,
-  disabled,
-}: {
-  workspaceId: string;
-  groupBy?: AwuUsageGroupByType;
-  groupByCount?: number;
-  selectedPeriod?: string;
-  billingCycleStartDay: number;
-  windowSize?: "HOUR" | "DAY";
-  disabled?: boolean;
-}) {
-  const { fetcher } = useFetcher();
-  const fetcherFn: Fetcher<GetAwuUsageResponse> = fetcher;
-
-  const queryParams = new URLSearchParams();
-  queryParams.set("billingCycleStartDay", billingCycleStartDay.toString());
-  if (selectedPeriod) {
-    queryParams.set("selectedPeriod", selectedPeriod);
-  }
-  if (groupBy) {
-    queryParams.set("groupBy", groupBy);
-  }
-  if (groupByCount !== undefined) {
-    queryParams.set("groupByCount", groupByCount.toString());
-  }
-  if (windowSize) {
-    queryParams.set("windowSize", windowSize);
-  }
-  const queryString = queryParams.toString();
-  const key = `/api/w/${workspaceId}/analytics/awu-usage?${queryString}`;
-
-  const { data, error, isValidating } = useSWRWithDefaults(
-    disabled ? null : key,
-    fetcherFn
-  );
-
-  return {
-    awuUsageData: data,
-    isAwuUsageLoading: !error && !data && !disabled,
-    isAwuUsageError: error,
-    isAwuUsageValidating: isValidating,
-  };
-}
-
 export function useAwuUsageFromAnalytics({
   workspaceId,
   groupBy,
   groupByCount,
   granularity,
   days,
+  filter,
   disabled,
+  urlPrefix,
 }: {
   workspaceId: string;
-  groupBy?: "usage_type" | "agent" | "user" | "origin";
+  groupBy?: "usage_type" | "agent" | "user" | "origin" | "api_key";
   groupByCount?: number;
   granularity?: "day" | "week" | "month";
   days?: number;
+  filter?: AnalyticsScopeFilter;
   disabled?: boolean;
+  urlPrefix?: string;
 }) {
   const { fetcher } = useFetcher();
   const fetcherFn: Fetcher<AwuUsageAnalyticsResponse> = fetcher;
@@ -680,8 +634,13 @@ export function useAwuUsageFromAnalytics({
   if (days !== undefined) {
     queryParams.set("days", days.toString());
   }
+  if (filter && Object.keys(filter).length > 0) {
+    queryParams.set("filter", JSON.stringify(filter));
+  }
   const queryString = queryParams.toString();
-  const key = `/api/w/${workspaceId}/analytics/awu-usage-analytics?${queryString}`;
+  const prefix =
+    urlPrefix ?? `/api/w/${workspaceId}/analytics/awu-usage-analytics`;
+  const key = `${prefix}?${queryString}`;
 
   const { data, error, isValidating } = useSWRWithDefaults(
     disabled ? null : key,
@@ -1398,16 +1357,44 @@ export function usePreparePayment({
   };
 }
 
+export function useWorkspaceCoupons({
+  workspaceId,
+  disabled,
+}: {
+  workspaceId: string;
+  disabled?: boolean;
+}) {
+  const { fetcher } = useFetcher();
+  const couponsFetcher: Fetcher<GetWorkspaceCouponsResponseBody> = fetcher;
+
+  const { data, error, mutate } = useSWRWithDefaults(
+    `/api/w/${workspaceId}/coupon/redemptions`,
+    couponsFetcher,
+    {
+      disabled,
+      revalidateOnFocus: false,
+    }
+  );
+
+  return {
+    coupons: data?.coupons ?? emptyArray(),
+    isCouponsLoading: !error && !data && !disabled,
+    isCouponsError: error,
+    mutateCoupons: mutate,
+  };
+}
+
 export function useValidateCoupon({ workspaceId }: { workspaceId: string }) {
   const validateCoupon = useCallback(
     async (
-      code: string
+      code: string,
+      context: "subscription" | "credits"
     ): Promise<
       | { ok: true; coupon: GetCouponValidateResponseBody["coupon"] }
       | { ok: false; message: string }
     > => {
       const res = await clientFetch(
-        `/api/w/${workspaceId}/coupon/validate?code=${encodeURIComponent(code)}`
+        `/api/w/${workspaceId}/coupon/validate?code=${encodeURIComponent(code)}&context=${encodeURIComponent(context)}`
       );
       if (!res.ok) {
         const body = await res.json().catch(() => null);

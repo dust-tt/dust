@@ -4,6 +4,7 @@ import {
   computeCreditAlertThresholdKey,
   decreaseProgrammaticCredits,
   isProgrammaticUsage,
+  trackProgrammaticCost,
 } from "@app/lib/api/programmatic_usage/tracking";
 import { Authenticator } from "@app/lib/auth";
 import { CreditResource } from "@app/lib/resources/credit_resource";
@@ -548,6 +549,39 @@ describe("decreaseProgrammaticCredits", () => {
       expect(refreshedPaygEarlier.consumedAmountMicroUsd).toBe(500_000);
       expect(refreshedPaygLater.consumedAmountMicroUsd).toBe(0);
     });
+  });
+});
+
+describe("trackProgrammaticCost", () => {
+  async function makeAuth(workspace: WorkspaceType): Promise<Authenticator> {
+    const user = await UserFactory.basic();
+    await MembershipFactory.associate(workspace, user, { role: "admin" });
+    await GroupFactory.defaults(workspace);
+    return Authenticator.fromUserIdAndWorkspaceId(user.sId, workspace.sId);
+  }
+
+  it("skips tracking for credit-priced (Metronome-billed) subscriptions", async () => {
+    const workspace = await WorkspaceFactory.creditPriced();
+    const auth = await makeAuth(workspace);
+
+    const result = await trackProgrammaticCost(auth, {
+      dustRunIds: [],
+      userMessageOrigin: "api",
+    });
+
+    expect(result).toBeUndefined();
+  });
+
+  it("tracks cost for non-Metronome subscriptions", async () => {
+    const workspace = await WorkspaceFactory.basic();
+    const auth = await makeAuth(workspace);
+
+    const result = await trackProgrammaticCost(auth, {
+      dustRunIds: [],
+      userMessageOrigin: "api",
+    });
+
+    expect(result).toEqual({ runsCostMicroUsd: 0 });
   });
 });
 

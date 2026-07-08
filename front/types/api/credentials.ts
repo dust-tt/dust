@@ -59,9 +59,6 @@ export const credentialsFromProviders = (
       case "google_ai_studio":
         credentials["GOOGLE_AI_STUDIO_API_KEY"] = config.api_key;
         break;
-      case "togetherai":
-        credentials["TOGETHERAI_API_KEY"] = config.api_key;
-        break;
       case "deepseek":
         credentials["DEEPSEEK_API_KEY"] = config.api_key;
         break;

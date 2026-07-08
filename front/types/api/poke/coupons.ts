@@ -4,6 +4,7 @@ import type { CouponRedemptionType, CouponType } from "@app/types/coupon";
 
 export type GetPokeCouponsResponseBody = {
   coupons: CouponType[];
+  canCreateCoupon: boolean;
 };
 
 export type CreatePokeCouponResponseBody = {

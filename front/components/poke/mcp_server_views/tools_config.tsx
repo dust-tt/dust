@@ -37,10 +37,10 @@ const STAKE_LABELS: Record<MCPToolStakeLevelType, string> = {
 };
 
 const STAKE_COLORS = {
-  high: "rose",
-  medium: "golden",
-  low: "blue",
-  never_ask: "green",
+  high: "warning",
+  medium: "info",
+  low: "highlight",
+  never_ask: "success",
 } as const satisfies Record<MCPToolStakeLevelType, string>;
 
 interface ToolConfigRow {
@@ -116,16 +116,16 @@ function ToolDetailsSheet({ tool, onClose }: ToolDetailsSheetProps) {
             <SheetContainer>
               <div className="flex flex-col gap-4">
                 <div>
-                  <span className="font-medium text-foreground dark:text-foreground-night">
+                  <span className="font-medium text-foreground">
                     Description
                   </span>
-                  <p className="py-2 text-sm text-muted-foreground dark:text-muted-foreground-night">
+                  <p className="py-2 text-sm text-muted-foreground">
                     {tool.description || "No description."}
                   </p>
                 </div>
                 <div>
                   <div className="flex items-center justify-between gap-2">
-                    <span className="font-medium text-foreground dark:text-foreground-night">
+                    <span className="font-medium text-foreground">
                       Input schema
                     </span>
                     {schemaString && (
@@ -149,7 +149,7 @@ function ToolDetailsSheet({ tool, onClose }: ToolDetailsSheetProps) {
                         {schemaString}
                       </CodeBlock>
                     ) : (
-                      <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+                      <p className="text-sm text-muted-foreground">
                         No input schema.
                       </p>
                     )}
@@ -203,7 +203,7 @@ export function ToolsConfigTable({ mcpServerView }: ToolsConfigTableProps) {
     <div className="border-material-200 my-4 flex flex-grow flex-col rounded-lg border p-4">
       <h2 className="text-md pb-4 font-bold">Tools configuration</h2>
       {rows.length === 0 ? (
-        <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+        <p className="text-sm text-muted-foreground">
           This server exposes no tools.
         </p>
       ) : (
@@ -222,25 +222,40 @@ export function ToolsConfigTable({ mcpServerView }: ToolsConfigTableProps) {
                 onClick={() => setSelectedToolName(row.name)}
               >
                 <PokeTableCell>
-                  <div className="flex items-center gap-2">
-                    <span
-                      className={cn(
-                        "font-medium",
-                        !row.enabled &&
-                          "text-muted-foreground line-through dark:text-muted-foreground-night"
+                  <div className="flex flex-col gap-1">
+                    <div className="flex items-center gap-2">
+                      <span
+                        className={cn(
+                          "font-medium",
+                          !row.enabled && "text-muted-foreground line-through"
+                        )}
+                      >
+                        {asDisplayName(row.name)}
+                      </span>
+                      {!row.enabled && (
+                        <Chip
+                          size="xs"
+                          color="warning"
+                          label="Disabled by admin"
+                        />
                       )}
-                    >
-                      {asDisplayName(row.name)}
-                    </span>
-                    {!row.enabled && (
-                      <Chip
-                        size="xs"
-                        color="warning"
-                        label="Disabled by admin"
-                      />
-                    )}
-                    {row.stakeOverridden && (
-                      <Chip size="xs" color="warning" label="Edited by admin" />
+                      {row.stakeOverridden && (
+                        <Chip
+                          size="xs"
+                          color="warning"
+                          label="Edited by admin"
+                        />
+                      )}
+                    </div>
+                    {row.description && (
+                      <span
+                        className={cn(
+                          "text-sm text-muted-foreground",
+                          !row.enabled && "line-through"
+                        )}
+                      >
+                        {row.description}
+                      </span>
                     )}
                   </div>
                 </PokeTableCell>

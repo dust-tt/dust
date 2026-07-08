@@ -74,12 +74,12 @@ interface PanelTopBarProps {
 
 export function PanelTopBar({ left, right }: PanelTopBarProps) {
   return (
-    <header className="s-flex s-h-[52px] s-flex-none s-items-center s-justify-between s-gap-2 s-overflow-hidden s-whitespace-nowrap s-border-b s-border-separator s-px-3 dark:s-border-separator-night">
-      <div className="s-flex s-min-w-0 s-flex-1 s-items-center s-gap-1 s-overflow-hidden">
+    <header className="flex h-[52px] flex-none items-center justify-between gap-2 overflow-hidden whitespace-nowrap border-b border-separator px-3">
+      <div className="flex min-w-0 flex-1 items-center gap-1 overflow-hidden">
         {left}
       </div>
       {right && (
-        <div className="s-flex s-flex-none s-items-center s-gap-1">{right}</div>
+        <div className="flex flex-none items-center gap-1">{right}</div>
       )}
     </header>
   );
@@ -97,16 +97,15 @@ function ResizeHandle({
   return (
     <div
       className={[
-        "s-group s-relative s-z-[5] s-flex s-w-[6px] s-flex-none s-cursor-col-resize s-items-stretch -s-mx-[3px] s-transition-opacity s-duration-200",
-        visible ? "s-opacity-100" : "s-pointer-events-none s-opacity-0",
+        "group relative z-[5] flex w-[6px] flex-none cursor-col-resize items-stretch -mx-[3px] transition-opacity duration-200",
+        visible ? "opacity-100" : "pointer-events-none opacity-0",
       ].join(" ")}
       onPointerDown={visible ? onPointerDown : undefined}
     >
       <div
         className={[
-          "s-mx-auto s-w-px s-bg-separator s-transition-all s-duration-[120ms] dark:s-bg-separator-night",
           visible
-            ? "group-hover:s-w-[2px] group-hover:[background:var(--panel-resize-focus-border)] group-active:s-w-[2px] group-active:[background:var(--panel-resize-focus-border)]"
+            ? "group-hover:w-[2px] group-hover:[background:var(--panel-resize-focus-border)] group-active:w-[2px] group-active:[background:var(--panel-resize-focus-border)]"
             : "",
         ].join(" ")}
       />
@@ -316,16 +315,12 @@ export function PanelLayout({ children }: PanelLayoutProps) {
     return (
       <section
         className={[
-          "s-relative s-flex s-h-full s-min-w-0 s-flex-none s-flex-col s-overflow-hidden",
-          isNav
-            ? "s-bg-muted-background dark:s-bg-muted-background-night"
-            : "s-bg-white dark:s-bg-structure-0-night",
-          hidden
-            ? ""
-            : "s-border-r s-border-separator dark:s-border-separator-night",
+          "relative flex h-full min-w-0 flex-none flex-col overflow-hidden",
+          isNav ? "bg-muted-background" : "bg-white",
+          hidden ? "" : "border-r border-separator",
           dragging
             ? ""
-            : "s-transition-[width] s-duration-[260ms] s-ease-[cubic-bezier(.4,0,.2,1)]",
+            : "transition-[width] duration-[260ms] ease-[cubic-bezier(.4,0,.2,1)]",
         ].join(" ")}
         style={{ width }}
         {...(hidden ? { inert: "" } : {})} // inert not in React's HTMLAttributes yet
@@ -333,11 +328,11 @@ export function PanelLayout({ children }: PanelLayoutProps) {
         {topBar}
         <div
           className={[
-            "s-relative s-flex s-min-h-0 s-flex-1 s-flex-col s-overflow-hidden",
+            "relative flex min-h-0 flex-1 flex-col overflow-hidden",
             !content
               ? isNav
-                ? "s-bg-[repeating-linear-gradient(45deg,transparent_0,transparent_11px,rgba(0,0,0,0.06)_11px,rgba(0,0,0,0.06)_12px)]"
-                : "s-bg-[repeating-linear-gradient(45deg,transparent_0,transparent_11px,rgba(0,0,0,0.04)_11px,rgba(0,0,0,0.04)_12px)]"
+                ? "bg-[repeating-linear-gradient(45deg,transparent_0,transparent_11px,rgba(0,0,0,0.06)_11px,rgba(0,0,0,0.06)_12px)]"
+                : "bg-[repeating-linear-gradient(45deg,transparent_0,transparent_11px,rgba(0,0,0,0.04)_11px,rgba(0,0,0,0.04)_12px)]"
               : "",
           ].join(" ")}
         >
@@ -370,17 +365,17 @@ export function PanelLayout({ children }: PanelLayoutProps) {
   return (
     <div
       ref={stageRef}
-      className="s-relative s-flex s-w-full s-h-[100vh] s-overflow-hidden"
+      className="relative flex w-full h-[100vh] overflow-hidden"
     >
       <style>{`
         :root {
           --panel-resize-focus-border: linear-gradient(to bottom, ${customColors.gray[100]}, ${customColors.blue[400]}, ${customColors.gray[100]});
         }
-        .s-dark {
+        .dark {
           --panel-resize-focus-border: linear-gradient(to bottom, ${customColors.gray[900]}, ${customColors.blue[600]}, ${customColors.gray[900]});
         }
       `}</style>
-      <div className="s-relative s-flex s-h-full s-min-w-0 s-flex-1 s-overflow-hidden">
+      <div className="relative flex h-full min-w-0 flex-1 overflow-hidden">
         {/* ── Nav panel (P1) ── */}
         {navChild &&
           panelShell(
@@ -533,10 +528,10 @@ export function PanelLayout({ children }: PanelLayoutProps) {
         {/* ── Scrim ── */}
         <div
           className={[
-            "s-absolute s-inset-0 s-z-40 s-bg-black/20 s-transition-opacity s-duration-200",
+            "absolute inset-0 z-40 bg-black/20 transition-opacity duration-200",
             showNavOverlay && !isPeek
-              ? "s-pointer-events-auto s-opacity-100"
-              : "s-pointer-events-none s-opacity-0",
+              ? "pointer-events-auto opacity-100"
+              : "pointer-events-none opacity-0",
           ].join(" ")}
           onClick={() => setNavOverlay(false)}
         />
@@ -545,16 +540,14 @@ export function PanelLayout({ children }: PanelLayoutProps) {
         {!isMobile && (
           <div
             className={[
-              "s-absolute s-bottom-0 s-left-0 s-top-0 s-z-50 s-flex s-flex-col",
-              "s-bg-muted-background dark:s-bg-muted-background-night",
-              "s-border-r s-border-separator dark:s-border-separator-night",
-              "s-transition-[transform,opacity] s-duration-[220ms] s-ease-[cubic-bezier(.4,0,.2,1)]",
+              "absolute bottom-0 left-0 top-0 z-50 flex flex-col",
+              "transition-[transform,opacity] duration-[220ms] ease-[cubic-bezier(.4,0,.2,1)]",
               showNavOverlay
-                ? "s-translate-x-0 s-opacity-100 s-pointer-events-auto"
-                : "-s-translate-x-full s-opacity-0 s-pointer-events-none",
+                ? "translate-x-0 opacity-100 pointer-events-auto"
+                : "-translate-x-full opacity-0 pointer-events-none",
               isPeek
-                ? "s-shadow-[4px_0_16px_rgba(0,0,0,0.08)]"
-                : "s-shadow-[8px_0_24px_rgba(0,0,0,0.10)]",
+                ? "shadow-[4px_0_16px_rgba(0,0,0,0.08)]"
+                : "shadow-[8px_0_24px_rgba(0,0,0,0.10)]",
             ].join(" ")}
             style={{ width: navW }}
             aria-hidden={!showNavOverlay}
@@ -581,7 +574,7 @@ export function PanelLayout({ children }: PanelLayoutProps) {
                 </>
               }
             />
-            <div className="s-flex-1 s-bg-[repeating-linear-gradient(45deg,transparent_0,transparent_11px,rgba(0,0,0,0.06)_11px,rgba(0,0,0,0.06)_12px)]">
+            <div className="flex-1 bg-[repeating-linear-gradient(45deg,transparent_0,transparent_11px,rgba(0,0,0,0.06)_11px,rgba(0,0,0,0.06)_12px)]">
               {resolvedNavChildren}
             </div>
           </div>
@@ -590,7 +583,7 @@ export function PanelLayout({ children }: PanelLayoutProps) {
         {/* ── Edge peek trigger (desktop only) ── */}
         {!isMobile && navHidden && !navOverlay && (
           <div
-            className="s-absolute s-bottom-0 s-left-0 s-top-0 s-z-[35] s-w-2 s-cursor-pointer"
+            className="absolute bottom-0 left-0 top-0 z-[35] w-2 cursor-pointer"
             onMouseEnter={() => setNavPeek(true)}
             onMouseLeave={() => setNavPeek(false)}
           />

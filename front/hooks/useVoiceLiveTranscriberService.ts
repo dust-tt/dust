@@ -50,6 +50,13 @@ registerProcessor('pcm-processor', PCMProcessor);
 `;
 
 function createPCMWorkletURL(): string {
+  // Chrome extensions block blob: URLs in script-src CSP. Use the pre-bundled static file instead.
+  if (
+    typeof chrome !== "undefined" &&
+    typeof chrome.runtime?.getURL === "function"
+  ) {
+    return chrome.runtime.getURL("pcm-processor.js");
+  }
   const blob = new Blob([PCM_WORKLET_CODE], { type: "application/javascript" });
   return URL.createObjectURL(blob);
 }
@@ -239,7 +246,7 @@ export function useVoiceLiveTranscriberService({
       const workletNode = new AudioWorkletNode(audioContext, "pcm-processor");
       workletNode.port.onmessage = (event: MessageEvent<ArrayBuffer>) => {
         const b64 = arrayBufferToBase64(event.data);
-        if (!isShuttingDownRef.current || scribeRef.current.isConnected) {
+        if (!isShuttingDownRef.current && scribeRef.current.isConnected) {
           scribeRef.current.sendAudio(b64, { sampleRate: SAMPLE_RATE_HZ });
         }
       };

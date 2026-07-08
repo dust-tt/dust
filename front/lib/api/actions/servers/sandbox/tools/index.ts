@@ -7,8 +7,11 @@ import type {
 } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { isToolExecutionStatusBlocked } from "@app/lib/actions/statuses";
-import type { AgentLoopContextType } from "@app/lib/actions/types";
-import { isSandboxResumeState } from "@app/lib/actions/types";
+import type { ToolContextType } from "@app/lib/actions/types";
+import {
+  isAgentLoopRunContext,
+  isSandboxResumeState,
+} from "@app/lib/actions/types";
 import {
   SANDBOX_DEFAULT_COMMAND_TIMEOUT_MS,
   SANDBOX_EXEC_TIMEOUT_BUFFER_MS,
@@ -40,7 +43,7 @@ import {
   wrapCommandWithCapture,
 } from "@app/lib/api/sandbox/image/profile";
 import { recordToolDuration } from "@app/lib/api/sandbox/instrumentation";
-import { ensureSandboxReady } from "@app/lib/api/sandbox/lifecycle";
+import { ensureConversationSandboxReady } from "@app/lib/api/sandbox/lifecycle";
 import type { ExecResult } from "@app/lib/api/sandbox/provider";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
@@ -52,6 +55,7 @@ import { isDevelopment } from "@app/types/shared/env";
 import { isComputerFeatureEnabled } from "@app/types/shared/feature_flags";
 import { Err, Ok, type Result } from "@app/types/shared/result";
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
+import assert from "assert";
 import { z } from "zod";
 
 const DEFAULT_WORKING_DIRECTORY = "/home/agent";
@@ -222,13 +226,14 @@ function isSandboxAgentEgressRequestsAllowed(auth: Authenticator): boolean {
 
 export async function createSandboxTools(
   auth: Authenticator,
-  _agentLoopContext?: AgentLoopContextType
+  _toolContext?: ToolContextType
 ): Promise<ToolDefinition[]> {
   const handlers: ToolHandlers<typeof SANDBOX_TOOLS_METADATA> = {
     bash: runSandboxBashTool,
-    describe_toolset: async ({ format }, { auth, agentLoopContext }) => {
-      const providerId =
-        agentLoopContext?.runContext?.agentConfiguration.model.providerId;
+    describe_toolset: async ({ format }, { auth, toolContext }) => {
+      const providerId = isAgentLoopRunContext(toolContext?.runContext)
+        ? toolContext.runContext.model.providerId
+        : null;
       if (!providerId) {
         return new Err(new MCPError("Missing model provider ID"));
       }
@@ -240,8 +245,8 @@ export async function createSandboxTools(
 
   const tools = buildTools(SANDBOX_TOOLS_METADATA, handlers);
 
-  // The add_egress_domain tool requires both sandbox tools and the
-  // per-workspace setting that admins toggle on top of them.
+  // The add_egress_domain tool requires Computer access and the
+  // per-workspace setting that admins toggle on top of it.
   const flags = await getFeatureFlags(auth);
   if (
     isComputerFeatureEnabled(flags) &&
@@ -285,7 +290,7 @@ export async function runSandboxBashTool(
     timeoutMs?: number;
     workingDirectory?: string;
   },
-  { auth, agentLoopContext }: ToolHandlerExtra
+  { auth, toolContext }: ToolHandlerExtra
 ): Promise<
   Result<
     Array<
@@ -298,15 +303,18 @@ export async function runSandboxBashTool(
     MCPError
   >
 > {
-  const runContext = agentLoopContext?.runContext;
-  if (!runContext) {
-    return new Err(new MCPError("No conversation context available."));
-  }
+  assert(
+    isAgentLoopRunContext(toolContext?.runContext),
+    "AgentLoopRunContext expected"
+  );
+
+  const runContext = toolContext?.runContext;
   const {
     conversation,
     agentConfiguration,
+    model,
     agentMessage,
-    currentAction: sandboxAction,
+    action: sandboxAction,
     stepContext,
   } = runContext;
 
@@ -320,7 +328,7 @@ export async function runSandboxBashTool(
     : null;
   const isResumeMode = resumeExecId !== null;
 
-  const ensureResult = await ensureSandboxReady(auth, conversation);
+  const ensureResult = await ensureConversationSandboxReady(auth, conversation);
   if (ensureResult.isErr()) {
     return new Err(new MCPError(ensureResult.error.message));
   }
@@ -359,13 +367,13 @@ export async function runSandboxBashTool(
     // Token must outlive the longest plausible pause/resume cycle. Redis
     // revocation list bounds the real lifetime.
     expiryMs: DEFAULT_EXEC_TIMEOUT_MS,
-    sandboxAction,
+    sandboxAction: sandboxAction.toJSON(),
   });
 
   const metricsCtx = { workspaceId: auth.getNonNullableWorkspace().sId };
   const startMs = performance.now();
 
-  const providerId = agentConfiguration.model.providerId;
+  const providerId = model.providerId;
   const commandTimeoutMs = timeoutMs ?? SANDBOX_DEFAULT_COMMAND_TIMEOUT_MS;
   const timeoutSec = Math.ceil(commandTimeoutMs / 1000);
   // Give the provider a slightly longer timeout than the in-container one, so
@@ -482,11 +490,15 @@ export async function runSandboxBashTool(
 
 export async function addEgressDomainTool(
   { domain, reason }: { domain: string; reason: string },
-  { auth, agentLoopContext }: ToolHandlerExtra
+  { auth, toolContext }: ToolHandlerExtra
 ): Promise<Result<Array<{ type: "text"; text: string }>, MCPError>> {
-  // Defense-in-depth: createSandboxTools already filters this tool out when the
-  // sandbox tools flag is off, so this metadata-only check is enough
-  // to reject any caller that bypasses tool-list filtering.
+  assert(
+    isAgentLoopRunContext(toolContext?.runContext),
+    "AgentLoopRunContext expected"
+  );
+  // Defense-in-depth: createSandboxTools already filters this tool out when
+  // the workspace setting is off, so this metadata-only check is enough to
+  // reject any caller that bypasses tool-list filtering.
   if (!isSandboxAgentEgressRequestsAllowed(auth)) {
     return new Err(
       new MCPError(
@@ -495,12 +507,10 @@ export async function addEgressDomainTool(
     );
   }
 
-  const conversation = agentLoopContext?.runContext?.conversation;
-  if (!conversation) {
-    return new Err(new MCPError("No conversation context available."));
-  }
-
-  const ensureResult = await ensureSandboxReady(auth, conversation);
+  const ensureResult = await ensureConversationSandboxReady(
+    auth,
+    toolContext.runContext.conversation
+  );
   if (ensureResult.isErr()) {
     return new Err(new MCPError(ensureResult.error.message));
   }

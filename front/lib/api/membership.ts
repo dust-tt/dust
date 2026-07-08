@@ -22,7 +22,10 @@ import {
   classifySeatChange,
   hasContractSeatSubscription,
 } from "@app/lib/metronome/seats";
-import { isFreePlan } from "@app/lib/plans/plan_codes";
+import {
+  isCreditPricedPlanPrefix,
+  isFreePlan,
+} from "@app/lib/plans/plan_codes";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
@@ -92,10 +95,20 @@ async function resolveSeatTypeForNewMembership(
   if (!workspace.metronomeCustomerId) {
     return "none";
   }
+  // The new member's active seat is always resolved against the workspace's
+  // ACTIVE contract — the plan billing them right now. A pending contract switch
+  // (e.g. a legacy→Business migration in its window) does NOT change this: the
+  // member takes the current contract's seat now, and is separately scheduled
+  // onto the pending contract at its start by the seat sync (see
+  // `syncMetronomeSeatCountForWorkspace`).
   const subscription = await SubscriptionResource.fetchActiveByWorkspaceModelId(
     workspace.id
   );
   if (!subscription?.metronomeContractId) {
+    return "none";
+  }
+
+  if (!isCreditPricedPlanPrefix(subscription.getPlan().code)) {
     return "none";
   }
   const contract = await getActiveContract(workspace.sId);

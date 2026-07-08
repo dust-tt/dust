@@ -57,7 +57,7 @@ export function BaseFormFieldSection<
             {title && (
               <h3
                 className={cn(
-                  "heading-base font-semibold text-foreground dark:text-foreground-night",
+                  "heading-base font-semibold text-foreground",
                   titleClassName
                 )}
               >
@@ -65,9 +65,7 @@ export function BaseFormFieldSection<
               </h3>
             )}
             {description && (
-              <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-                {description}
-              </p>
+              <p className="text-sm text-muted-foreground">{description}</p>
             )}
           </div>
           {headerActions && (
@@ -92,9 +90,7 @@ export function BaseFormFieldSection<
           fieldState,
         })}
         {helpText && (
-          <p className="text-xs text-muted-foreground dark:text-muted-foreground-night">
-            {helpText}
-          </p>
+          <p className="text-xs text-muted-foreground">{helpText}</p>
         )}
       </div>
     </div>

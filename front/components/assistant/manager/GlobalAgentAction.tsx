@@ -38,7 +38,6 @@ export function GlobalAgentAction({
     return (
       <>
         <SliderToggle
-          size="xs"
           onClick={(e) => {
             e.stopPropagation();
             void handleToggleAgentStatus(agent);

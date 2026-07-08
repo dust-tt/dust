@@ -6,6 +6,7 @@ import type useCustomEditor from "@app/components/editor/input_bar/useCustomEdit
 import type { FileUploaderService } from "@app/hooks/useFileUploaderService";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import { useAppRouter } from "@app/lib/platform";
+import { useIsMobile } from "@app/lib/swr/useIsMobile";
 import { setQueryParam } from "@app/lib/utils/router";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
@@ -28,7 +29,6 @@ import {
   InfoCircle,
   Robot,
   Tooltip,
-  XClose,
 } from "@dust-tt/sparkle";
 import React from "react";
 
@@ -97,6 +97,7 @@ export const InputBarButtons = React.memo(function InputBarButtons({
   onAttachmentsPickerOpenChange,
 }: InputBarButtonsProps) {
   const router = useAppRouter();
+  const isMobile = useIsMobile();
   // Current space is taken from the conversation (if already set) or from the space prop (if provided).
   const spaceId = conversation?.spaceId ?? space?.sId ?? undefined;
 
@@ -120,6 +121,8 @@ export const InputBarButtons = React.memo(function InputBarButtons({
         handleSingleAgentSelect(toRichAgentMentionType(c));
       }}
       agents={allAgents}
+      selectedAgentId={selectedAgent?.id}
+      onDeselect={onAgentRemove}
       showDropdownArrow={false}
       side={conversation ? "top" : "bottom"}
       showFooterButtons={
@@ -134,22 +137,24 @@ export const InputBarButtons = React.memo(function InputBarButtons({
             aria-label={`Selected agent: ${selectedAgent.label}`}
             aria-disabled={isInputDisabled}
             className={cn(
-              "inline-flex box-border items-center rounded-lg h-7 heading-xs px-2 gap-1.5 bg-muted-background border-border dark:bg-muted-background-night dark:border-border-night text-primary-900 dark:text-primary-900-night transition-colors duration-200",
+              "inline-flex box-border items-center rounded-lg h-7 heading-xs px-2 gap-1.5 bg-muted-background border-border text-primary-900 transition-colors duration-200",
               isInputDisabled
                 ? "opacity-50 pointer-events-none"
-                : "cursor-pointer hover:bg-hover dark:hover:bg-hover-night"
+                : "cursor-pointer hover:bg-hover"
             )}
           >
             <Avatar size="xxs" visual={selectedAgent.pictureUrl} />
-            <span className="grow truncate notranslate">
-              {selectedAgent.label}
-            </span>
+            {!isMobile && (
+              <span className="grow truncate notranslate">
+                {selectedAgent.label}
+              </span>
+            )}
             {isDefaultAgentUnavailable && (
               <Tooltip
                 tooltipTriggerAsChild
                 trigger={
                   <span
-                    className="flex items-center text-warning dark:text-warning-night"
+                    className="flex items-center text-warning"
                     onPointerDown={(e) => {
                       e.preventDefault();
                       e.stopPropagation();
@@ -165,22 +170,6 @@ export const InputBarButtons = React.memo(function InputBarButtons({
                 label={defaultAgentUnavailableLabel}
               />
             )}
-            <button
-              type="button"
-              aria-label="Remove agent"
-              className="p-0.5 text-faint dark:text-faint-night hover:text-foreground transition-colors duration-200"
-              onPointerDown={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-              }}
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                onAgentRemove();
-              }}
-            >
-              <XClose className="h-3 w-3" />
-            </button>
           </div>
         ) : (
           <Button
@@ -189,9 +178,7 @@ export const InputBarButtons = React.memo(function InputBarButtons({
             icon={Robot}
             label="Agent"
             disabled={isInputDisabled}
-            className={cn(
-              disableAgentSelector && "bg-gray-150 dark:bg-gray-800"
-            )}
+            className={cn(disableAgentSelector && "bg-primary-150")}
           />
         )
       }
@@ -247,6 +234,7 @@ export const InputBarButtons = React.memo(function InputBarButtons({
         />
       </>
     );
+
   return (
     <>
       {agentButton}

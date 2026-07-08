@@ -8,12 +8,12 @@ import { cn } from "@sparkle/lib/utils";
 import React, { memo } from "react";
 
 const headingSpacing: Record<number, string> = {
-  1: "s-pb-2 s-pt-4",
-  2: "s-pb-2 s-pt-4",
-  3: "s-pb-2 s-pt-4",
-  4: "s-pb-1.5 s-pt-3",
-  5: "s-pb-1 s-pt-2.5",
-  6: "s-pb-1 s-pt-2.5",
+  1: "pb-2 pt-4",
+  2: "pb-2 pt-4",
+  3: "pb-2 pt-4",
+  4: "pb-1.5 pt-3",
+  5: "pb-1 pt-2.5",
+  6: "pb-1 pt-2.5",
 };
 
 interface HeadingBlockProps {

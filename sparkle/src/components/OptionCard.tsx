@@ -42,12 +42,10 @@ export function OptionCard({
     <Card
       variant={variant}
       className={cn(
-        "s-w-full s-items-center s-gap-2 s-rounded-2xl s-text-left s-transition-colors",
-        !disabled && "s-cursor-pointer",
-        disabled && "s-pointer-events-none s-opacity-60",
-        !selected &&
-          !disableHover &&
-          "hover:s-bg-muted-background/60 dark:hover:s-bg-muted-background-night/60",
+        "w-full items-center gap-2 rounded-2xl text-left transition-colors",
+        !disabled && "cursor-pointer",
+        disabled && "pointer-events-none opacity-60",
+        !selected && !disableHover && "hover:bg-muted-background/60",
         className
       )}
       onClick={disabled ? undefined : onClick}
@@ -62,17 +60,13 @@ export function OptionCard({
           value={counterValue}
           size="sm"
           variant="ghost"
-          className="s-shrink-0 s-bg-border-dark dark:s-bg-border-dark-night"
+          className="shrink-0 bg-border-dark"
         />
       )}
-      <div className="s-flex s-min-w-0 s-flex-1 s-flex-col">
-        <span className="s-text-sm s-font-medium s-text-foreground dark:s-text-foreground-night">
-          {label}
-        </span>
+      <div className="flex min-w-0 flex-1 flex-col">
+        <span className="text-sm font-medium text-foreground">{label}</span>
         {description && (
-          <span className="s-text-xs s-text-muted-foreground dark:s-text-muted-foreground-night">
-            {description}
-          </span>
+          <span className="text-xs text-muted-foreground">{description}</span>
         )}
       </div>
     </Card>

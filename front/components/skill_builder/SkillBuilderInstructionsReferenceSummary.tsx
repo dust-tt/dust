@@ -77,7 +77,7 @@ function renderReferenceSummaryItem({
           key={`${item.kind}:${item.id}`}
           label={item.title}
           icon={{ visual: File02 }}
-          color="white"
+          color="primary"
           size="xs"
           className="text-xs"
           onClick={() => onReferenceClick(item)}
@@ -89,7 +89,7 @@ function renderReferenceSummaryItem({
           key={`${item.kind}:${item.id}`}
           label={item.title}
           icon={getSkillIcon(item.icon)}
-          color="white"
+          color="primary"
           size="xs"
           onClick={() => onReferenceClick(item)}
         />
@@ -100,7 +100,7 @@ function renderReferenceSummaryItem({
           key={`${item.kind}:${item.id}`}
           title={item.title}
           toolIcon={item.icon}
-          color="white"
+          color="primary"
           onClick={() => onReferenceClick(item)}
         />
       );
@@ -211,19 +211,16 @@ export function SkillBuilderInstructionsReferenceSummary({
       ref={containerRef}
       className={cn(
         "absolute inset-x-0 bottom-0 z-10 max-h-40 overflow-y-auto rounded-b-xl border-x border-b bg-background px-3 pb-3 pt-3",
-        "dark:bg-background-night",
+        "",
         hasError
           ? [
               "border-border-warning/30 group-focus-within:border-border-warning",
-              "dark:border-border-warning-night/60 dark:group-focus-within:border-border-warning-night",
+              "",
             ]
-          : [
-              "border-border group-focus-within:border-highlight-300",
-              "dark:border-border-night dark:group-focus-within:border-highlight-300-night",
-            ]
+          : ["border-border group-focus-within:border-highlight-300", ""]
       )}
     >
-      <div className="mb-2 text-sm font-medium text-foreground dark:text-foreground-night">
+      <div className="mb-2 text-sm font-medium text-foreground">
         Capabilities and knowledge
       </div>
       <div className="flex flex-wrap gap-2">

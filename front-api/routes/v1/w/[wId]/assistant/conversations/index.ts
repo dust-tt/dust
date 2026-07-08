@@ -19,6 +19,7 @@ import {
   addBackwardCompatibleConversationWithoutContentFields,
   normalizeConversationVisibility,
 } from "@app/lib/api/v1/backward_compatibility";
+import { isApiKeyCapped } from "@app/lib/metronome/api_key_block";
 import {
   isApiBlocked,
   isProgrammaticApiBlocked,
@@ -27,7 +28,6 @@ import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
-import logger from "@app/logger/logger";
 import {
   isContentFragmentInput,
   isContentFragmentInputWithContentNode,
@@ -144,18 +144,6 @@ app.post(
       spaceId,
     } = ctx.req.valid("json");
 
-    // Extremely temporary debug.
-    if (auth.getNonNullableWorkspace().sId === "ba367d3014") {
-      logger.info(
-        {
-          message: "conversations/index",
-          body: ctx.req.valid("json"),
-          rawBody: await ctx.req.text(),
-        },
-        "conversations/index"
-      );
-    }
-
     const origin = message?.context.origin ?? "api";
 
     if (message) {
@@ -189,6 +177,19 @@ app.post(
                 type: "rate_limit_error",
                 message:
                   "Your workspace has reached its programmatic monthly spending cap.",
+              },
+            });
+          }
+          // Per-API-key credit cap: block when this key's credit state is
+          // "capped" (driven by the Metronome per-key cap alert / reconcile).
+          const key = auth.key();
+          if (key && (await isApiKeyCapped(workspace.sId, key.id))) {
+            return apiError(ctx, {
+              status_code: 429,
+              api_error: {
+                type: "rate_limit_error",
+                message:
+                  "This API key has reached its credit spend limit. Please increase the limit in the Developers > API Keys section of the Dust dashboard.",
               },
             });
           }

@@ -1,6 +1,9 @@
 import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/utils";
 import { registerTool } from "@app/lib/actions/mcp_internal_actions/wrappers";
-import type { AgentLoopContextType } from "@app/lib/actions/types";
+import {
+  isAgentLoopRunContext,
+  type ToolContextType,
+} from "@app/lib/actions/types";
 import { CONVERSATION_FILES_SERVER_NAME } from "@app/lib/api/actions/servers/conversation_files/metadata";
 import {
   TOOLS,
@@ -11,17 +14,18 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 
 async function createServer(
   auth: Authenticator,
-  agentLoopContext?: AgentLoopContextType
+  toolContext?: ToolContextType
 ): Promise<McpServer> {
   const server = makeInternalMCPServer("conversation_files");
 
   const conversation =
-    agentLoopContext?.runContext?.conversation ??
-    agentLoopContext?.listToolsContext?.conversation;
+    (isAgentLoopRunContext(toolContext?.runContext)
+      ? toolContext.runContext.conversation
+      : null) ?? toolContext?.listToolsContext?.conversation;
   const useFileSystem = conversation?.metadata?.useFileSystem === true;
 
   for (const tool of useFileSystem ? TOOLS_WITH_FILESYSTEM : TOOLS) {
-    registerTool(auth, agentLoopContext, server, tool, {
+    registerTool(auth, toolContext, server, tool, {
       monitoringName: CONVERSATION_FILES_SERVER_NAME,
     });
   }

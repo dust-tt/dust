@@ -52,10 +52,10 @@ export type AgentActionSpecification = {
   name: string;
   description: string;
   inputSchema: JSONSchema;
-  // When true, this tool is deferred: providers that support tool search (e.g.
-  // Anthropic) keep its schema out of the cached prefix and load it on demand.
-  // Providers without that capability ignore the hint and send the tool eagerly.
-  deferLoading?: boolean;
+  // Whether this tool is loaded upfront in the cached prefix. Intrinsic,
+  // provider-agnostic property. Anthropic defers non-eager tools behind tool
+  // search when it is enabled. Other providers ignore it and send every tool.
+  eager?: boolean;
 };
 
 export function dustAppRunInputsToInputSchema(

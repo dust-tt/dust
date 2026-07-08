@@ -82,6 +82,15 @@ prompt,judge_prompt
 "Explain photosynthesis","Should mention plants, sunlight, CO2, oxygen."
 ```
 
+Optional `files` column attaches files to the prompt (comma-separated, resolved
+relative to the CSV dir). Uploaded via `uploadFile` + `contentFragments` in
+`dust-client.ts`:
+
+```csv
+prompt,judge_prompt,files
+"Summarize this report.","Covers key findings.","./reports/q3.pdf"
+```
+
 ## Project Structure
 
 ```

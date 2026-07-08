@@ -5,7 +5,7 @@ import { INPUT_CONFIGURATION_ERROR } from "@app/lib/model_constructors/test/case
 import { runStreamEndpointTests } from "@app/lib/model_constructors/test/runner";
 import type { StreamSetup } from "@app/lib/model_constructors/test/setup";
 
-const setup: StreamSetup = {
+export const OpenAIResponsesGlobalGptFiveMiniStreamSetup: StreamSetup = {
   createInstance: () =>
     new OpenAIResponsesGlobalGptFiveMiniStream({
       OPENAI_API_KEY: process.env.DUST_MANAGED_OPENAI_API_KEY ?? "",
@@ -68,4 +68,7 @@ const setup: StreamSetup = {
 };
 
 // NODE_ENV=test RUN_LLM_TEST=true npm run test -- --config lib/model_constructors/test/vite.config.js --bail 1 lib/model_constructors/test/endpoints/openai_responses_global_gpt_five_mini.test.ts
-runStreamEndpointTests(OpenAIResponsesGlobalGptFiveMiniStream, setup);
+runStreamEndpointTests(
+  OpenAIResponsesGlobalGptFiveMiniStream,
+  OpenAIResponsesGlobalGptFiveMiniStreamSetup
+);

@@ -1,10 +1,11 @@
 import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
 import { ADVANCED_SEARCH_SWITCH } from "@app/lib/actions/mcp_internal_actions/constants";
-import type { AgentLoopContextType } from "@app/lib/actions/types";
+import type { ToolContextType } from "@app/lib/actions/types";
 import {
   isLightServerSideMCPToolConfiguration,
   isServerSideMCPServerConfiguration,
 } from "@app/lib/actions/types/guards";
+import { default as activationRecommendationsServer } from "@app/lib/api/actions/servers/activation_recommendations";
 import { default as agentMemoryServer } from "@app/lib/api/actions/servers/agent_memory";
 import { default as agentRouterServer } from "@app/lib/api/actions/servers/agent_router";
 import { default as agentSidekickAgentStateServer } from "@app/lib/api/actions/servers/agent_sidekick_agent_state";
@@ -74,11 +75,13 @@ import { default as speechGenerator } from "@app/lib/api/actions/servers/speech_
 import { default as statuspageServer } from "@app/lib/api/actions/servers/statuspage";
 import { default as toolsetsServer } from "@app/lib/api/actions/servers/toolsets";
 import { default as ukgReadyServer } from "@app/lib/api/actions/servers/ukg_ready";
+import { default as userAnalyticsServer } from "@app/lib/api/actions/servers/user_analytics";
 import { default as userMentionsServer } from "@app/lib/api/actions/servers/user_mentions";
 import { default as valtownServer } from "@app/lib/api/actions/servers/val_town";
 import { default as vantaServer } from "@app/lib/api/actions/servers/vanta";
 import { default as wakeupsServer } from "@app/lib/api/actions/servers/wakeups";
 import { default as webSearchBrowseServer } from "@app/lib/api/actions/servers/web_search_browse";
+import { default as workdayServer } from "@app/lib/api/actions/servers/workday";
 import { default as workspaceAnalyticsServer } from "@app/lib/api/actions/servers/workspace_analytics";
 import { default as zendeskServer } from "@app/lib/api/actions/servers/zendesk";
 import type { Authenticator } from "@app/lib/auth";
@@ -89,21 +92,21 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
  * Check if we are in advanced search mode,
  * relying on a magic value stored in the additionalConfiguration.
  */
-function isAdvancedSearchMode(agentLoopContext?: AgentLoopContextType) {
+function isAdvancedSearchMode(toolContext?: ToolContextType) {
   return (
-    (agentLoopContext?.runContext &&
+    (toolContext?.runContext &&
       isLightServerSideMCPToolConfiguration(
-        agentLoopContext.runContext.toolConfiguration
+        toolContext.runContext.toolConfiguration
       ) &&
-      agentLoopContext.runContext.toolConfiguration.additionalConfiguration[
+      toolContext.runContext.toolConfiguration.additionalConfiguration[
         ADVANCED_SEARCH_SWITCH
         // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       ] === true) ||
-    (agentLoopContext?.listToolsContext &&
+    (toolContext?.listToolsContext &&
       isServerSideMCPServerConfiguration(
-        agentLoopContext.listToolsContext.agentActionConfiguration
+        toolContext.listToolsContext.agentActionConfiguration
       ) &&
-      agentLoopContext.listToolsContext.agentActionConfiguration
+      toolContext.listToolsContext.agentActionConfiguration
         .additionalConfiguration[ADVANCED_SEARCH_SWITCH] === true)
   );
 }
@@ -117,165 +120,171 @@ export async function getInternalMCPServer(
     internalMCPServerName: InternalMCPServerNameType;
     mcpServerId: string;
   },
-  agentLoopContext?: AgentLoopContextType
+  toolContext?: ToolContextType
 ): Promise<McpServer> {
   switch (internalMCPServerName) {
     case "github":
-      return githubServer(auth, agentLoopContext);
+      return githubServer(auth, toolContext);
     case "ashby":
-      return ashbyServer(auth, agentLoopContext);
+      return ashbyServer(auth, toolContext);
     case "clari_copilot":
-      return clariCopilotServer(auth, agentLoopContext);
+      return clariCopilotServer(auth, toolContext);
     case "hubspot":
-      return hubspotServer(auth, agentLoopContext);
+      return hubspotServer(auth, toolContext);
     case "image_generation":
-      return imageGenerationServer(auth, agentLoopContext);
+      return imageGenerationServer(auth, toolContext);
     case "speech_generator":
-      return speechGenerator(auth, agentLoopContext);
+      return speechGenerator(auth, toolContext);
     case "sound_studio":
-      return soundStudio(auth, agentLoopContext);
+      return soundStudio(auth, toolContext);
     case "file_generation":
-      return fileGenerationServer(auth, agentLoopContext);
+      return fileGenerationServer(auth, toolContext);
     case "interactive_content":
-      return interactiveContentServer(auth, agentLoopContext);
+      return interactiveContentServer(auth, toolContext);
     case "query_tables_v2":
-      return tablesQueryServerV2(auth, agentLoopContext);
+      return tablesQueryServerV2(auth, toolContext);
     case "primitive_types_debugger":
-      return primitiveTypesDebuggerServer(auth, agentLoopContext);
+      return primitiveTypesDebuggerServer(auth, toolContext);
     case "jit_testing":
-      return jitTestingServer(auth, agentLoopContext);
+      return jitTestingServer(auth, toolContext);
     case "common_utilities":
-      return commonUtilitiesServer(auth, agentLoopContext);
+      return commonUtilitiesServer(auth, toolContext);
     case "web_search_&_browse":
-      return webSearchBrowseServer(auth, agentLoopContext);
+      return webSearchBrowseServer(auth, toolContext);
     case "search":
       // If we are in advanced search mode, we use the data_sources_file_system server instead.
-      if (isAdvancedSearchMode(agentLoopContext)) {
-        return dataSourcesFileSystemServer(auth, agentLoopContext);
+      if (isAdvancedSearchMode(toolContext)) {
+        return dataSourcesFileSystemServer(auth, toolContext);
       }
-      return searchServer(auth, agentLoopContext);
+      return searchServer(auth, toolContext);
     case "missing_action_catcher":
-      return missingActionCatcherServer(auth, agentLoopContext);
+      return missingActionCatcherServer(auth, toolContext);
     case "notion":
-      return notionServer(auth, agentLoopContext);
+      return notionServer(auth, toolContext);
     case "openai_usage":
-      return openaiUsageServer(auth, agentLoopContext);
+      return openaiUsageServer(auth, toolContext);
     case "include_data":
-      return includeDataServer(auth, agentLoopContext);
+      return includeDataServer(auth, toolContext);
     case "run_agent":
-      return runAgentServer(auth, agentLoopContext);
+      return runAgentServer(auth, toolContext);
     case "run_dust_app":
-      return dustAppServer(auth, agentLoopContext);
+      return dustAppServer(auth, toolContext);
     case "agent_router":
-      return agentRouterServer(auth, agentLoopContext);
+      return agentRouterServer(auth, toolContext);
     case "extract_data":
-      return extractDataServer(auth, agentLoopContext);
+      return extractDataServer(auth, toolContext);
     case "salesforce":
-      return salesforceServer(auth, agentLoopContext);
+      return salesforceServer(auth, toolContext);
     case "salesloft":
-      return salesloftServer(auth, agentLoopContext);
+      return salesloftServer(auth, toolContext);
     case "slab":
-      return slabServer(auth, agentLoopContext);
+      return slabServer(auth, toolContext);
     case "snowflake":
-      return snowflakeServer(auth, agentLoopContext);
+      return snowflakeServer(auth, toolContext);
     case "gmail":
-      return gmailServer(auth, agentLoopContext);
+      return gmailServer(auth, toolContext);
     case "gong":
-      return gongServer(auth, agentLoopContext);
+      return gongServer(auth, toolContext);
     case "google_calendar":
-      return calendarServer(auth, agentLoopContext);
+      return calendarServer(auth, toolContext);
     case "google_drive":
-      return driveServer(auth, agentLoopContext);
+      return driveServer(auth, toolContext);
     case "google_sheets":
-      return sheetsServer(auth, agentLoopContext);
+      return sheetsServer(auth, toolContext);
     case "data_sources_file_system":
-      return dataSourcesFileSystemServer(auth, agentLoopContext);
+      return dataSourcesFileSystemServer(auth, toolContext);
     case "conversation_files":
-      return conversationFilesServer(auth, agentLoopContext);
+      return conversationFilesServer(auth, toolContext);
     case "files":
-      return filesServer(auth, agentLoopContext);
+      return filesServer(auth, toolContext);
     case "databricks":
-      return databricksServer(auth, agentLoopContext);
+      return databricksServer(auth, toolContext);
     case "jira":
-      return jiraServer(auth, agentLoopContext);
+      return jiraServer(auth, toolContext);
     case "luma":
-      return lumaServer(auth, agentLoopContext);
+      return lumaServer(auth, toolContext);
     case "microsoft_drive":
-      return microsoftDriveServer(auth, agentLoopContext);
+      return microsoftDriveServer(auth, toolContext);
     case "microsoft_excel":
-      return microsoftExcelServer(auth, agentLoopContext);
+      return microsoftExcelServer(auth, toolContext);
     case "microsoft_teams":
-      return microsoftTeamsServer(auth, agentLoopContext);
+      return microsoftTeamsServer(auth, toolContext);
     case "monday":
-      return mondayServer(auth, agentLoopContext);
+      return mondayServer(auth, toolContext);
     case "slack":
-      return slackServer(auth, mcpServerId, agentLoopContext);
+      return slackServer(auth, mcpServerId, toolContext);
     case "slack_bot":
-      return slackBotServer(auth, mcpServerId, agentLoopContext);
+      return slackBotServer(auth, mcpServerId, toolContext);
     case "agent_memory":
-      return agentMemoryServer(auth, agentLoopContext);
+      return agentMemoryServer(auth, toolContext);
     case "confluence":
-      return confluenceServer(auth, agentLoopContext);
+      return confluenceServer(auth, toolContext);
     case "outlook":
-      return outlookMailServer(auth, agentLoopContext);
+      return outlookMailServer(auth, toolContext);
     case "outlook_calendar":
-      return outlookCalendarServer(auth, agentLoopContext);
+      return outlookCalendarServer(auth, toolContext);
     case "agent_sidekick_agent_state":
-      return agentSidekickAgentStateServer(auth, agentLoopContext);
+      return agentSidekickAgentStateServer(auth, toolContext);
     case "agent_sidekick_context":
-      return agentSidekickContextServer(auth, agentLoopContext);
+      return agentSidekickContextServer(auth, toolContext);
     case "exa_people_and_company":
-      return exaServer(auth, agentLoopContext);
+      return exaServer(auth, toolContext);
     case "fathom":
-      return fathomServer(auth, agentLoopContext);
+      return fathomServer(auth, toolContext);
     case "freshservice":
-      return freshserviceServer(auth, agentLoopContext);
+      return freshserviceServer(auth, toolContext);
     case "data_warehouses":
-      return dataWarehousesServer(auth, agentLoopContext);
+      return dataWarehousesServer(auth, toolContext);
     case "toolsets":
-      return toolsetsServer(auth, agentLoopContext);
+      return toolsetsServer(auth, toolContext);
     case "val_town":
-      return valtownServer(auth, agentLoopContext);
+      return valtownServer(auth, toolContext);
     case "vanta":
-      return vantaServer(auth, agentLoopContext);
+      return vantaServer(auth, toolContext);
     case "http_client":
-      return httpClientServer(auth, agentLoopContext);
+      return httpClientServer(auth, toolContext);
     case "front":
-      return frontServer(auth, agentLoopContext);
+      return frontServer(auth, toolContext);
     case "zendesk":
-      return zendeskServer(auth, agentLoopContext);
+      return zendeskServer(auth, toolContext);
     case "workspace_analytics":
-      return workspaceAnalyticsServer(auth, agentLoopContext);
+      return workspaceAnalyticsServer(auth, toolContext);
     case "skill_management":
-      return skillManagementServer(auth, agentLoopContext);
+      return skillManagementServer(auth, toolContext);
     case "skill_authoring":
-      return skillAuthoringServer(auth, agentLoopContext);
+      return skillAuthoringServer(auth, toolContext);
     case "schedules_management":
-      return schedulesManagementServer(auth, agentLoopContext);
+      return schedulesManagementServer(auth, toolContext);
     case "productboard":
-      return productboardServer(auth, agentLoopContext);
+      return productboardServer(auth, toolContext);
     case "pod_manager":
-      return podManagerServer(auth, agentLoopContext);
+      return podManagerServer(auth, toolContext);
     case "pod_tasks":
-      return podTasksServer(auth, agentLoopContext);
+      return podTasksServer(auth, toolContext);
     case "poke":
-      return pokeServer(auth, agentLoopContext);
+      return pokeServer(auth, toolContext);
     case "ask_user_question":
-      return askUserQuestionServer(auth, agentLoopContext);
+      return askUserQuestionServer(auth, toolContext);
     case "ukg_ready":
-      return ukgReadyServer(auth, agentLoopContext);
+      return ukgReadyServer(auth, toolContext);
     case "user_mentions":
-      return userMentionsServer(auth, agentLoopContext);
+      return userMentionsServer(auth, toolContext);
     case "statuspage":
-      return statuspageServer(auth, agentLoopContext);
+      return statuspageServer(auth, toolContext);
     case "sandbox":
-      return sandboxServer(auth, agentLoopContext);
+      return sandboxServer(auth, toolContext);
     case "sandbox_functions":
-      return sandboxFunctionsServer(auth, agentLoopContext);
+      return sandboxFunctionsServer(auth, toolContext);
     case "wakeups":
-      return wakeupsServer(auth, agentLoopContext);
+      return wakeupsServer(auth, toolContext);
     case "plan_mode":
-      return planModeServer(auth, agentLoopContext);
+      return planModeServer(auth, toolContext);
+    case "workday":
+      return workdayServer(auth, toolContext);
+    case "user_analytics":
+      return userAnalyticsServer(auth, toolContext);
+    case "activation_recommendations":
+      return activationRecommendationsServer(auth, toolContext);
     default:
       assertNever(internalMCPServerName);
   }

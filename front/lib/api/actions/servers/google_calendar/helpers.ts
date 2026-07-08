@@ -1,4 +1,7 @@
-import type { AgentLoopContextType } from "@app/lib/actions/types";
+import {
+  isAgentLoopRunContext,
+  type ToolContextType,
+} from "@app/lib/actions/types";
 import type { AuthInfo } from "@modelcontextprotocol/sdk/server/auth/types.js";
 import { google } from "googleapis";
 import { DateTime, Interval } from "luxon";
@@ -138,34 +141,70 @@ export async function getCalendarClient(authInfo?: AuthInfo) {
   });
 }
 
-export function getUserTimezone(
-  agentLoopContext?: AgentLoopContextType
+function isValidTimeZone(timezone: string): boolean {
+  try {
+    new Intl.DateTimeFormat("en-US", { timeZone: timezone });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export function normalizeTimezone(
+  timezone: string | null | undefined
 ): string | null {
-  const content = agentLoopContext?.runContext?.conversation?.content;
-  if (!content) {
+  if (!timezone) {
     return null;
   }
 
-  for (let i = content.length - 1; i >= 0; i--) {
-    const contentBlock = content[i];
-    if (Array.isArray(contentBlock)) {
-      const userMessage = contentBlock.find(
-        (msg) =>
-          msg.type === "user_message" &&
-          "context" in msg &&
-          msg.context &&
-          "timezone" in msg.context
-      );
-      if (
-        userMessage &&
-        "context" in userMessage &&
-        userMessage.context &&
-        "timezone" in userMessage.context
-      ) {
-        return userMessage.context.timezone;
+  if (isValidTimeZone(timezone)) {
+    return timezone;
+  }
+
+  const offsetMatch = timezone
+    .trim()
+    .match(/^(?:GMT|UTC)\s*([+-])(\d{1,2})(?::?(\d{2}))?$/i);
+  if (offsetMatch) {
+    const [, sign, hours, minutes = "00"] = offsetMatch;
+    const candidate = `${sign}${hours.padStart(2, "0")}:${minutes}`;
+    if (isValidTimeZone(candidate)) {
+      return candidate;
+    }
+  }
+
+  return null;
+}
+
+export function getUserTimezone(toolContext?: ToolContextType): string | null {
+  if (isAgentLoopRunContext(toolContext?.runContext)) {
+    const content = toolContext?.runContext?.conversation?.content;
+    if (!content) {
+      return null;
+    }
+
+    for (let i = content.length - 1; i >= 0; i--) {
+      const contentBlock = content[i];
+      if (Array.isArray(contentBlock)) {
+        const userMessage = contentBlock.find(
+          (msg) =>
+            msg.type === "user_message" &&
+            "context" in msg &&
+            msg.context &&
+            "timezone" in msg.context
+        );
+        if (
+          userMessage &&
+          "context" in userMessage &&
+          userMessage.context &&
+          "timezone" in userMessage.context
+        ) {
+          return normalizeTimezone(userMessage.context.timezone);
+        }
       }
     }
   }
+
+  // TODO(spolu): extract user timezone from sandbox function once available
 
   return null;
 }
@@ -198,6 +237,18 @@ function formatTime(date: Date, timezone?: string): string {
     minute: "2-digit",
     timeZone: timezone,
   });
+}
+
+function formatTimedEventDateTime(dateTime: string, timeZone?: string): string {
+  const date = new Date(dateTime);
+  const normalizedZone = normalizeTimezone(timeZone);
+
+  if (timeZone && !normalizedZone) {
+    return dateTime;
+  }
+
+  const zone = normalizedZone ?? undefined;
+  return `${formatDate(date, zone)} at ${formatTime(date, zone)}`;
 }
 
 export function enrichEventWithDayOfWeek(
@@ -256,12 +307,12 @@ export function formatEventAsText(event: EnrichedGoogleCalendarEvent): string {
         lines.push(`Date: ${start.eventDayOfWeek}, ${start.date}`);
       } else {
         if (start.dateTime) {
-          const startDate = new Date(start.dateTime);
-          const timezone = start.timeZone ?? undefined;
-          const timeStr = formatTime(startDate, timezone);
-          const dateStr = formatDate(startDate, timezone);
+          const formatted = formatTimedEventDateTime(
+            start.dateTime,
+            start.timeZone
+          );
           lines.push(
-            `Start: ${start.eventDayOfWeek}, ${dateStr} at ${timeStr}${start.timeZone ? ` (${start.timeZone})` : ""}`
+            `Start: ${start.eventDayOfWeek}, ${formatted}${start.timeZone ? ` (${start.timeZone})` : ""}`
           );
         }
       }
@@ -279,12 +330,12 @@ export function formatEventAsText(event: EnrichedGoogleCalendarEvent): string {
         lines.push(`End: ${end.eventDayOfWeek}, ${end.date}`);
       } else {
         if (end.dateTime) {
-          const endDate = new Date(end.dateTime);
-          const timezone = end.timeZone ?? undefined;
-          const timeStr = formatTime(endDate, timezone);
-          const dateStr = formatDate(endDate, timezone);
+          const formatted = formatTimedEventDateTime(
+            end.dateTime,
+            end.timeZone
+          );
           lines.push(
-            `End: ${end.eventDayOfWeek}, ${dateStr} at ${timeStr}${end.timeZone ? ` (${end.timeZone})` : ""}`
+            `End: ${end.eventDayOfWeek}, ${formatted}${end.timeZone ? ` (${end.timeZone})` : ""}`
           );
         }
       }

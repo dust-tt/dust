@@ -10,23 +10,37 @@ const hot: ToolSpecification = {
   name: "hot",
   description: "A hot tool.",
   inputSchema: { type: "object", properties: {} },
+  eager: true,
 };
 
 const cold: ToolSpecification = {
   name: "cold",
   description: "A cold tool.",
   inputSchema: { type: "object", properties: {} },
-  deferLoading: true,
 };
 
 // The new client appends the tool search instruction iff the search tool is in
 // the request. The predicate reads the converted tools, so it stays in lockstep
 // with toolSpecsToAnthropicAITools, including the force-call edge case.
 describe("includesToolSearchTool", () => {
-  it("is false when nothing is deferred", () => {
+  it("is false when every tool is eager", () => {
     expect(
       includesToolSearchTool(
-        toolSpecsToAnthropicAITools([hot], { forceTool: undefined })
+        toolSpecsToAnthropicAITools([hot], {
+          forceTool: undefined,
+          toolSearchEnabled: true,
+        })
+      )
+    ).toBe(false);
+  });
+
+  it("is false when tool search is disabled", () => {
+    expect(
+      includesToolSearchTool(
+        toolSpecsToAnthropicAITools([hot, cold], {
+          forceTool: undefined,
+          toolSearchEnabled: false,
+        })
       )
     ).toBe(false);
   });
@@ -34,15 +48,21 @@ describe("includesToolSearchTool", () => {
   it("is true when a deferred tool prepends the search tool", () => {
     expect(
       includesToolSearchTool(
-        toolSpecsToAnthropicAITools([hot, cold], { forceTool: undefined })
+        toolSpecsToAnthropicAITools([hot, cold], {
+          forceTool: undefined,
+          toolSearchEnabled: true,
+        })
       )
     ).toBe(true);
   });
 
-  it("is false when the only deferred tool is force-called", () => {
+  it("is false when the only deferrable tool is force-called", () => {
     expect(
       includesToolSearchTool(
-        toolSpecsToAnthropicAITools([cold], { forceTool: "cold" })
+        toolSpecsToAnthropicAITools([cold], {
+          forceTool: "cold",
+          toolSearchEnabled: true,
+        })
       )
     ).toBe(false);
   });

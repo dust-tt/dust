@@ -57,6 +57,8 @@ export const emptyToolCallLLMEvents: LLMEvent[] = [
       reasoningTokens: 0,
       cachedTokens: 0,
       cacheCreationTokens: 0,
+      longCacheCreationTokens: 0,
+      shortCacheCreationTokens: 0,
       totalTokens: 120,
       uncachedInputTokens: 100,
     },

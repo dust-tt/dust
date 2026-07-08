@@ -7,6 +7,8 @@ import {
   maybeNotifyAdminsBalanceThresholdReached,
 } from "@app/lib/api/credits/balance_threshold_alert";
 import {
+  dispatchApiKeyCapReached,
+  dispatchApiKeyCapResolved,
   dispatchCreditsAdded,
   dispatchLowBalance,
   dispatchPaygCapReached,
@@ -21,6 +23,7 @@ import {
   dispatchSeatBalanceResolved,
   syncPoolCreditStateFromBalance,
 } from "@app/lib/api/metronome/credit_state_dispatcher";
+import { applyLegacyCreditMigrationAtActivation } from "@app/lib/api/metronome/legacy_credit_migration";
 import { reconcileWorkspaceUserCreditStates } from "@app/lib/api/metronome/reconcile_credit_state";
 import { restoreWorkspaceAfterSubscription } from "@app/lib/api/subscription";
 import { ensureWorkOSOrganizationForPaidPlan } from "@app/lib/api/workos/organization";
@@ -62,12 +65,15 @@ import {
   fromFreeMetronomeUserId,
   getCreditTypeAwuId,
   getProductExcessCreditsId,
+  LEGACY_CREDIT_MIGRATION_CUSTOM_FIELD_KEY,
   PAYMENT_GATE_TYPE_CUSTOM_FIELD_KEY,
   PAYMENT_GATE_TYPE_SUBSCRIPTION_ACTIVATION,
   PLAN_CODE_CUSTOM_FIELD_KEY,
+  SUBSCRIPTION_SWAP_HANDLED_INLINE_CUSTOM_FIELD_KEY,
   USAGE_TYPE_GROUP_KEY,
   USAGE_TYPE_PROGRAMMATIC,
 } from "@app/lib/metronome/constants";
+import { API_KEY_NAME_GROUP_KEY } from "@app/lib/metronome/per_api_key_usage";
 import { invalidateContractCache } from "@app/lib/metronome/plan_type";
 import type { ProgrammaticCreditEvent } from "@app/lib/metronome/programmatic_credit_state_machine";
 import { carryOverContractBalancesOnRenewal } from "@app/lib/metronome/renewal_carry_over";
@@ -78,11 +84,16 @@ import type { MetronomeWebhookEvent } from "@app/lib/metronome/webhook_events";
 import { PlanModel } from "@app/lib/models/plan";
 import { notifyUserAwuCapReached } from "@app/lib/notifications/workflows/user-awu-cap-reached";
 import { CreditUsageConfigurationResource } from "@app/lib/resources/credit_usage_configuration_resource";
+import { GroupResource } from "@app/lib/resources/group_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { ProgrammaticUsageConfigurationResource } from "@app/lib/resources/programmatic_usage_configuration_resource";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import type { WorkspaceResource } from "@app/lib/resources/workspace_resource";
+import {
+  resolveEffectiveSpendLimitAwuCredits,
+  resolveEffectiveSpendLimitSource,
+} from "@app/lib/spend_limits/effective";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
 import { launchReconcileWorkspaceUserCreditStatesWorkflow } from "@app/temporal/metronome_events_queue/client";
@@ -621,12 +632,29 @@ async function handlePerUserSpendThresholdEvent({
     await CreditUsageConfigurationResource.fetchByWorkspaceModelId(
       workspace.id
     );
+  // Max group cap (pool-only) across the user's groups; null when none carry a
+  // cap. Priority: per-user override > max group cap > workspace default (shared
+  // ladder).
+  const groupCapAwuCredits =
+    (
+      await GroupResource.listMaxPoolCapAwuCreditsByUserModelIdInWorkspace({
+        workspace: lightWorkspace,
+        userModelIds: [membership.userId],
+      })
+    ).get(membership.userId) ?? null;
+  const defaultPoolCapAwuCredits =
+    creditUsageConfig?.defaultPoolCapAwuCredits ?? 0;
   const poolCap =
-    membership.poolCapOverrideAwuCredits ??
-    creditUsageConfig?.defaultPoolCapAwuCredits ??
-    0;
-  const capSource =
-    membership.poolCapOverrideAwuCredits !== null ? "override" : "default";
+    resolveEffectiveSpendLimitAwuCredits({
+      overrideAwuCredits: membership.poolCapOverrideAwuCredits,
+      groupCapAwuCredits,
+      defaultAwuCredits: defaultPoolCapAwuCredits,
+    }) ?? defaultPoolCapAwuCredits;
+  const capSource = resolveEffectiveSpendLimitSource({
+    overrideAwuCredits: membership.poolCapOverrideAwuCredits,
+    groupCapAwuCredits,
+    defaultAwuCredits: defaultPoolCapAwuCredits,
+  });
 
   let seatAllowance = 0;
   try {
@@ -751,6 +779,50 @@ async function handlePerUserSpendThresholdEvent({
   return new Ok(undefined);
 }
 
+// If the started contract was stamped for the legacy → Business migration,
+// convert the workspace's convertible legacy credits to AWU and grant the
+// per-user free bonus — computed now, so the amounts reflect the workspace's
+// state at activation. Shared by both `contract.start` swap paths (pending row
+// activation and immediate swap). Best-effort: failures are logged, never throw.
+async function applyStampedLegacyCreditMigration({
+  auth,
+  workspace,
+  contract,
+  metronomeCustomerId,
+  metronomeContractId,
+}: {
+  auth: Authenticator;
+  workspace: WorkspaceResource;
+  contract: {
+    custom_fields?: Record<string, string> | null;
+    starting_at: string;
+  };
+  metronomeCustomerId: string;
+  metronomeContractId: string;
+}): Promise<void> {
+  const stamped =
+    contract.custom_fields?.[LEGACY_CREDIT_MIGRATION_CUSTOM_FIELD_KEY];
+  if (stamped === undefined) {
+    return;
+  }
+  const freeAwuCreditsPerUser = Number.parseInt(stamped, 10);
+  if (!Number.isFinite(freeAwuCreditsPerUser)) {
+    logger.error(
+      { metronomeContractId, workspaceId: workspace.sId, stamped },
+      "[Metronome Webhook] contract.start: invalid legacy credit migration custom field, skipping credit migration"
+    );
+    return;
+  }
+  await applyLegacyCreditMigrationAtActivation({
+    auth,
+    workspace: renderLightWorkspaceType({ workspace }),
+    metronomeCustomerId,
+    metronomeContractId,
+    startingAt: new Date(contract.starting_at),
+    freeAwuCreditsPerUser,
+  });
+}
+
 export async function processMetronomeWebhook({
   event,
   workspace,
@@ -774,6 +846,13 @@ export async function processMetronomeWebhook({
       const isPerUser = userIdGroup !== undefined;
       const userId = userIdGroup?.value;
 
+      // Per-API-key cap: scoped via an `api_key_name` group value (no user_id,
+      // no usage_type). Presence of the key, not its value, decides routing.
+      const apiKeyNameGroup = event.properties.group_values?.find(
+        (g) => g.key === API_KEY_NAME_GROUP_KEY
+      );
+      const apiKeyName = apiKeyNameGroup?.value;
+
       if (isPerUser) {
         if (!userId) {
           logger.warn(
@@ -789,6 +868,29 @@ export async function processMetronomeWebhook({
         });
         if (handleResult.isErr()) {
           return handleResult;
+        }
+      } else if (apiKeyNameGroup !== undefined) {
+        if (!apiKeyName) {
+          logger.warn(
+            { eventId: event.id, workspaceId: workspace.sId },
+            "[Metronome Webhook] spend_threshold_reached: per-API-key alert with no api_key_name value, skipping"
+          );
+          break;
+        }
+        const dispatchResult = await dispatchApiKeyCapReached({
+          workspace,
+          keyName: apiKeyName,
+        });
+        if (dispatchResult.isErr()) {
+          logger.error(
+            {
+              eventId: event.id,
+              workspaceId: workspace.sId,
+              keyName: apiKeyName,
+              err: dispatchResult.error,
+            },
+            "[Metronome Webhook] spend_threshold_reached: dispatchApiKeyCapReached failed"
+          );
         }
       } else if (isProgrammaticMonthlyCap(event)) {
         // Programmatic monthly cap alerts. Three alerts exist per workspace
@@ -862,6 +964,11 @@ export async function processMetronomeWebhook({
       const isPerUser = userIdGroup !== undefined;
       const userId = userIdGroup?.value;
 
+      const apiKeyNameGroup = event.properties.group_values?.find(
+        (g) => g.key === API_KEY_NAME_GROUP_KEY
+      );
+      const apiKeyName = apiKeyNameGroup?.value;
+
       if (isPerUser) {
         if (!userId) {
           logger.warn(
@@ -877,6 +984,31 @@ export async function processMetronomeWebhook({
         });
         if (handleResult.isErr()) {
           return handleResult;
+        }
+      } else if (apiKeyNameGroup !== undefined) {
+        if (!apiKeyName) {
+          logger.warn(
+            { eventId: event.id, workspaceId: workspace.sId },
+            "[Metronome Webhook] spend_threshold_resolved: per-API-key alert with no api_key_name value, skipping"
+          );
+          break;
+        }
+        // Billing-cycle renewal resets current_spend to 0, firing this for
+        // every previously-capped key — transition it back to on_pool.
+        const dispatchResult = await dispatchApiKeyCapResolved({
+          workspace,
+          keyName: apiKeyName,
+        });
+        if (dispatchResult.isErr()) {
+          logger.error(
+            {
+              eventId: event.id,
+              workspaceId: workspace.sId,
+              keyName: apiKeyName,
+              err: dispatchResult.error,
+            },
+            "[Metronome Webhook] spend_threshold_resolved: dispatchApiKeyCapResolved failed"
+          );
         }
       } else if (isProgrammaticMonthlyCap(event)) {
         await dispatchProgrammaticCapReset({ workspace });
@@ -1277,11 +1409,7 @@ export async function processMetronomeWebhook({
 
     case "credit.segment.start":
     case "credit.edit": {
-      const {
-        customer_id: metronomeCustomerId,
-        contract_id: contractId,
-        credit_id: creditId,
-      } = event;
+      const { customer_id: metronomeCustomerId, credit_id: creditId } = event;
 
       const creditResult = await getMetronomeCredit({
         metronomeCustomerId,
@@ -1320,25 +1448,10 @@ export async function processMetronomeWebhook({
         }
       }
 
-      if (event.type === "credit.segment.start") {
-        // Special case: only a contract-bound managed free credit drives the
-        // free monthly/yearly credit grant. Customer-level credits with no
-        // parent contract can't be the managed free credit, so stop here.
-        if (!contractId) {
-          break;
-        }
-
-        const grantResult = await handleFreeCreditSegmentGrant({
-          workspace,
-          metronomeCustomerId,
-          contractId,
-          creditId,
-          segmentId: event.segment_id,
-        });
-        if (grantResult.isErr()) {
-          return grantResult;
-        }
-      }
+      // The free monthly/yearly credit grant is now driven by the Stripe
+      // `customer.subscription.updated` webhook (see
+      // `grantFreeCreditsForSubscription`), which creates the DB credit and
+      // syncs the amount back into Metronome. We no longer grant it here.
       break;
     }
 
@@ -1471,6 +1584,22 @@ export async function processMetronomeWebhook({
         break;
       }
 
+      // The calling code that provisioned this contract already created the
+      // workspace's DB subscription row synchronously (e.g.
+      // provisionCreditPricedFreePlan) to avoid racing with this webhook's
+      // own swap logic below — skip it entirely.
+      if (
+        contractResult.value.custom_fields?.[
+          SUBSCRIPTION_SWAP_HANDLED_INLINE_CUSTOM_FIELD_KEY
+        ]
+      ) {
+        logger.info(
+          { contractId, workspaceId: workspace.sId },
+          "[Metronome Webhook] contract.start: subscription swap handled inline by caller, skipping"
+        );
+        break;
+      }
+
       const targetPlan = await PlanModel.findOne({
         where: { code: targetPlanCode },
       });
@@ -1521,6 +1650,14 @@ export async function processMetronomeWebhook({
           workspace.sId
         );
         await restoreWorkspaceAfterSubscription(auth);
+
+        await applyStampedLegacyCreditMigration({
+          auth,
+          workspace,
+          contract: contractResult.value,
+          metronomeCustomerId: customerId,
+          metronomeContractId: contractId,
+        });
         await ensureWorkOSOrganizationForPaidPlan({
           workspace: renderLightWorkspaceType({ workspace }),
           planCode: targetPlan.code,
@@ -1543,21 +1680,26 @@ export async function processMetronomeWebhook({
         break;
       }
 
-      // Legacy fallback: no pending row was staged. Only swap when the
-      // workspace is Metronome-only billed, or not billed at all. Shadow
-      // billed subscriptions (Stripe + Metronome) follow Stripe's signal,
-      // and pure Stripe subs have no Metronome contract at all.
-      if (
-        !activeSubscription.isMetronomeOnlyBilled &&
-        activeSubscription.isBilled
-      ) {
+      // No pending row was staged (e.g. an immediate switch). Swap the active
+      // subscription onto the new contract regardless of its current billing
+      // rail — switchContract is used this way routinely. The ONLY contract we
+      // must NOT swap onto is a shadow contract: a Metronome contract that runs
+      // in parallel to a Stripe subscription with no billing-provider delivery
+      // (Stripe owns billing). That is a property of the contract itself — it has
+      // no `customer_billing_provider_configuration` — and only applies while the
+      // workspace is still Stripe-billed (so free / Metronome-only contracts,
+      // which also lack a delivery config, are not mistaken for shadows).
+      const startedContractIsShadow =
+        !contractResult.value.customer_billing_provider_configuration &&
+        !!activeSubscription.stripeSubscriptionId;
+      if (startedContractIsShadow) {
         logger.info(
           {
             contractId,
             targetPlanCode,
             workspaceId: workspace.sId,
           },
-          "[Metronome Webhook] contract.start: subscription is not Metronome-only billed, leaving subscription alone"
+          "[Metronome Webhook] contract.start: shadow contract started, leaving subscription alone (Stripe drives billing)"
         );
         break;
       }
@@ -1575,6 +1717,15 @@ export async function processMetronomeWebhook({
       // triggers. Idempotent — safe to call regardless of prior state.
       const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
       await restoreWorkspaceAfterSubscription(auth);
+
+      await applyStampedLegacyCreditMigration({
+        auth,
+        workspace,
+        contract: contractResult.value,
+        metronomeCustomerId: customerId,
+        metronomeContractId: contractId,
+      });
+
       emitSubscriptionChangedAuditEvent({
         auth,
         planCode: targetPlan.code,

@@ -408,6 +408,17 @@
  *           type: number
  *           nullable: true
  *           description: Aggregated credit cost of all sub-agents (run_agent / agent_handover) spawned recursively by this message. Computed only on single-message fetches; null otherwise.
+ *         requestedModel:
+ *           type: object
+ *           nullable: true
+ *           description: Per-message model override from the input-bar model picker. Null when the agent ran its configured model.
+ *           properties:
+ *             providerId:
+ *               type: string
+ *             modelId:
+ *               type: string
+ *             reasoningEffort:
+ *               type: string
  *     PrivateLightAgentMessage:
  *       type: object
  *       description: A lighter agent message used in paginated message list responses.
@@ -1382,6 +1393,52 @@
  *         userId:
  *           type: string
  *           description: sId of the user who owns the wake-up.
+ *     PrivateSandboxFunctionInvocationEvent:
+ *       type: object
+ *       description: Server-Sent Event for sandbox function invocation streaming. Discriminated on the `type` field.
+ *       discriminator:
+ *         propertyName: type
+ *       oneOf:
+ *         - $ref: '#/components/schemas/PrivateSandboxFunctionInvocationCreatedEvent'
+ *         - $ref: '#/components/schemas/PrivateSandboxFunctionInvocationResultEvent'
+ *     PrivateSandboxFunctionInvocationCreatedEvent:
+ *       type: object
+ *       required: [type, created, invocation]
+ *       properties:
+ *         type:
+ *           type: string
+ *           enum: [sandbox_function_invocation_created]
+ *         created:
+ *           type: integer
+ *         invocation:
+ *           type: object
+ *           required: [sId, functionId, status, createdAt]
+ *           properties:
+ *             sId:
+ *               type: string
+ *             functionId:
+ *               type: string
+ *             status:
+ *               type: string
+ *               enum: [created]
+ *             createdAt:
+ *               type: string
+ *               format: date-time
+ *     PrivateSandboxFunctionInvocationResultEvent:
+ *       type: object
+ *       required: [type, created, invocationId, functionId, result]
+ *       properties:
+ *         type:
+ *           type: string
+ *           enum: [sandbox_function_invocation_result]
+ *         created:
+ *           type: integer
+ *         invocationId:
+ *           type: string
+ *         functionId:
+ *           type: string
+ *         result:
+ *           description: Result returned by the sandbox function.
  *     PrivateAgentMessageEvent:
  *       type: object
  *       description: Server-Sent Event for agent message streaming. Discriminated on the `type` field. Each event also includes a `step` integer.

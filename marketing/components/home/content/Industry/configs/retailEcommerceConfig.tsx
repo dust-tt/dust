@@ -23,7 +23,7 @@ export const retailEcommerceConfig: IndustryPageConfig = {
   hero: {
     chip: {
       label: "Retail & e-Commerce",
-      color: "green",
+      color: "success",
       icon: ActionStore,
     },
     title: (

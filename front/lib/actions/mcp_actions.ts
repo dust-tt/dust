@@ -65,9 +65,11 @@ import {
   shouldRetryToolInterruption,
 } from "@app/lib/actions/tool_interruptions";
 import { tryGetPrefixedToolName } from "@app/lib/actions/tool_name_utils";
-import type {
-  AgentLoopListToolsContextType,
-  AgentLoopRunContextType,
+import {
+  type AgentLoopListToolsContextType,
+  isAgentLoopRunContext,
+  isSandboxFunctionRunContext,
+  type ToolContextType,
 } from "@app/lib/actions/types";
 import {
   isClientSideMCPToolConfiguration,
@@ -238,6 +240,7 @@ export function makeServerSideMCPToolConfigurations(
     dustProject: config.dustProject,
     ...(tool.timeoutMs && { timeoutMs: tool.timeoutMs }),
     ...(tool.displayLabels && { displayLabels: tool.displayLabels }),
+    ...(tool.eager && { eager: true }),
     argumentsRequiringApproval: toolsArgumentsRequiringApproval?.[tool.name],
   }));
 }
@@ -270,6 +273,7 @@ function makeClientSideMCPToolConfigurations(
     argumentsRequiringApproval: tool.argumentsRequiringApproval,
     displayLabels: tool.displayLabels,
     ...(tool.timeoutMs && { timeoutMs: tool.timeoutMs }),
+    ...(tool.eager && { eager: true }),
   }));
 }
 
@@ -341,7 +345,7 @@ export async function runToolCallWithDetachedSignal<T>(
 export async function* tryCallMCPTool(
   auth: Authenticator,
   inputs: Record<string, unknown> | undefined,
-  agentLoopRunContext: AgentLoopRunContextType,
+  toolContext: ToolContextType,
   {
     progressToken,
     makeToolNotificationEvent,
@@ -354,7 +358,7 @@ export async function* tryCallMCPTool(
     signal?: AbortSignal;
   }
 ): AsyncGenerator<ToolNotificationEvent, CallToolResult> {
-  const { toolConfiguration } = agentLoopRunContext;
+  const { toolConfiguration } = toolContext.runContext || {};
 
   if (!isMCPToolConfiguration(toolConfiguration)) {
     return {
@@ -368,16 +372,25 @@ export async function* tryCallMCPTool(
     };
   }
 
-  const conversationId = agentLoopRunContext.conversation.sId;
-  const messageId = agentLoopRunContext.agentMessage.sId;
   const workspaceId = auth.getNonNullableWorkspace().sId;
-  const toolLogContext = {
-    conversationId,
-    messageId,
+
+  const toolLogContext: Record<string, unknown> = {
     toolName: toolConfiguration.originalName,
     toolConfigurationId: toolConfiguration.sId,
     workspaceId,
   };
+
+  if (isAgentLoopRunContext(toolContext.runContext)) {
+    const conversationId = toolContext.runContext.conversation.sId;
+    const messageId = toolContext.runContext.agentMessage.sId;
+    toolLogContext["conversationId"] = conversationId;
+    toolLogContext["messageId"] = messageId;
+  }
+  if (isSandboxFunctionRunContext(toolContext.runContext)) {
+    toolLogContext["functionId"] =
+      toolContext.runContext.invocation.sandboxFunction.sId;
+    toolLogContext["invocationId"] = toolContext.runContext.invocation.sId;
+  }
 
   let mcpClient;
   try {
@@ -385,7 +398,7 @@ export async function* tryCallMCPTool(
       const connResult = await connectServerSideMCP(
         auth,
         toolConfiguration,
-        agentLoopRunContext
+        toolContext
       );
       if (connResult.isErr()) {
         switch (connResult.error.type) {
@@ -427,13 +440,27 @@ export async function* tryCallMCPTool(
       }
       mcpClient = connResult.value;
     } else {
+      if (!isAgentLoopRunContext(toolContext.runContext)) {
+        return {
+          isError: true,
+          content: [
+            {
+              type: "text",
+              text: "Client side MCP servers require an agent loop context.",
+            },
+          ],
+        };
+      }
+
+      const { conversation, agentMessage } = toolContext.runContext;
+
       const connectionParams = makeClientSideMCPConnectionParams(
         toolConfiguration,
-        { conversationId, messageId }
+        { conversationId: conversation.sId, messageId: agentMessage.sId }
       );
       const connectionResult = await connectToMCPServer(auth, {
         params: connectionParams,
-        agentLoopContext: { runContext: agentLoopRunContext },
+        toolContext,
       });
       if (connectionResult.isErr()) {
         if (
@@ -639,13 +666,7 @@ export async function* tryCallMCPTool(
     }
 
     logger.error(
-      {
-        conversationId,
-        error,
-        messageId,
-        toolName: toolConfiguration.originalName,
-        workspaceId: auth.getNonNullableWorkspace().sId,
-      },
+      { error, ...toolLogContext },
       "Exception calling MCP tool in tryCallMCPTool()"
     );
 
@@ -740,7 +761,7 @@ type ServerSideMCPConnectionError =
 async function connectServerSideMCP(
   auth: Authenticator,
   toolConfiguration: ServerSideMCPToolConfigurationType,
-  agentLoopRunContext: AgentLoopRunContextType
+  toolContext: ToolContextType
 ): Promise<Result<Client, ServerSideMCPConnectionError>> {
   const mcpServerView = await MCPServerViewResource.fetchById(
     auth,
@@ -753,7 +774,7 @@ async function connectServerSideMCP(
   const connectionParams = makeServerSideMCPConnectionParams(mcpServerView);
   const connectionResult = await connectToMCPServer(auth, {
     params: connectionParams,
-    agentLoopContext: { runContext: agentLoopRunContext },
+    toolContext,
   });
 
   if (connectionResult.isErr()) {
@@ -1368,7 +1389,7 @@ async function listMCPServerToolsAndServerInstructions(
     // Connect to the MCP server.
     const r = await connectToMCPServer(auth, {
       params: connectionParams,
-      agentLoopContext: { listToolsContext: agentLoopListToolsContext },
+      toolContext: { listToolsContext: agentLoopListToolsContext },
     });
     if (r.isErr()) {
       // When the workspace connection is broken (admin token revoked/expired) or hit the rate limit,

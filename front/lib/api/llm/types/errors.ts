@@ -237,7 +237,6 @@ const USERFACING_CLIENT_ID: Record<ModelProviderIdType, string> = {
   anthropic: "Anthropic",
   openai: "OpenAI",
   mistral: "Mistral",
-  togetherai: "TogetherAI",
   deepseek: "Deepseek",
   fireworks: "Fireworks",
   xai: "xAI",

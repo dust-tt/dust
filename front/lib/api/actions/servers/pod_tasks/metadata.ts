@@ -56,6 +56,8 @@ export const POD_TASKS_TOOLS_METADATA = createToolsRecord({
       running: "Listing tasks",
       done: "List tasks",
     },
+    toolCostCategory: "basic",
+    freeUsage: true,
   },
   [CREATE_TASKS_TOOL_NAME]: {
     description:
@@ -66,6 +68,8 @@ export const POD_TASKS_TOOLS_METADATA = createToolsRecord({
       running: "Creating tasks",
       done: "Create tasks",
     },
+    toolCostCategory: "basic",
+    freeUsage: true,
   },
   [UPDATE_TASKS_TOOL_NAME]: {
     description: "Update one or more existing tasks at once in the Pod.",
@@ -75,6 +79,8 @@ export const POD_TASKS_TOOLS_METADATA = createToolsRecord({
       running: "Updating tasks",
       done: "Update tasks",
     },
+    toolCostCategory: "basic",
+    freeUsage: true,
   },
   [START_TASK_AGENT_TOOL_NAME]: {
     description:
@@ -108,6 +114,8 @@ export const POD_TASKS_TOOLS_METADATA = createToolsRecord({
       running: "Starting task work",
       done: "Start task work",
     },
+    toolCostCategory: "basic",
+    freeUsage: false,
   },
 });
 
@@ -126,6 +134,8 @@ export const POD_TASKS_SERVER = {
     description: t.description,
     inputSchema: zodToJsonSchema(z.object(t.schema)) as JSONSchema,
     displayLabels: t.displayLabels,
+    toolCostCategory: t.toolCostCategory,
+    freeUsage: t.freeUsage,
   })),
   tools_stakes: Object.fromEntries(
     Object.values(POD_TASKS_TOOLS_METADATA).map((t) => [t.name, t.stake])

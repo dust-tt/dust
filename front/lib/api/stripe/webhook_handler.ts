@@ -13,6 +13,7 @@ import {
   startCreditFromProOneOffInvoice,
   voidFailedProCreditPurchaseInvoice,
 } from "@app/lib/credits/committed";
+import { grantFreeCreditsForSubscription } from "@app/lib/credits/free";
 import {
   allocatePAYGCreditsOnCycleRenewal,
   invoiceEnterprisePAYGCredits,
@@ -46,6 +47,7 @@ import {
   isEnterpriseSubscription,
   isMetronomePushedInvoice,
   isSubscriptionActivationInvoice,
+  refundYearlyMigrationProration,
 } from "@app/lib/plans/stripe";
 import { CreditResource } from "@app/lib/resources/credit_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
@@ -387,47 +389,6 @@ async function voidProCreditPurchaseInvoiceOnFailure({
     logger.warn(
       { invoiceId: invoice.id, workspaceId },
       "[Stripe Webhook] Voided Pro credit purchase invoice after 3 failures"
-    );
-  }
-}
-
-// ---------------------------------------------------------------------------
-// Metronome-pushed invoice force-charge (invoice.finalized)
-//
-// Metronome pushes its subscription invoices to Stripe via
-// `direct_to_billing_provider` with `charge_automatically`, but Stripe
-// occasionally finalizes them with the PaymentIntent in "incomplete" state
-// (no PM on the PI), so the auto-charge never fires. We force a charge here
-// using the customer's default PM. Stripe dunning still handles real
-// declines / SCA fallthrough.
-// ---------------------------------------------------------------------------
-
-async function forceChargeMetronomeFinalizedInvoice(
-  invoice: Stripe.Invoice,
-  stripe: Stripe
-): Promise<void> {
-  if (
-    invoice.status !== "open" ||
-    invoice.amount_due <= 0 ||
-    invoice.collection_method !== "charge_automatically" ||
-    !invoice.id
-  ) {
-    return;
-  }
-  try {
-    await stripe.invoices.pay(invoice.id);
-    logger.info(
-      { invoiceId: invoice.id, customer: invoice.customer },
-      "[Stripe Webhook] Charged Metronome subscription invoice on finalize"
-    );
-  } catch (err) {
-    logger.warn(
-      {
-        error: normalizeError(err),
-        invoiceId: invoice.id,
-        customer: invoice.customer,
-      },
-      "[Stripe Webhook] Failed to charge Metronome subscription invoice on finalize; Stripe dunning will retry"
     );
   }
 }
@@ -887,17 +848,6 @@ export async function processStripeWebhookEvent({
       );
 
       const invoice = event.data.object as Stripe.Invoice;
-      const isMetronomeInvoice = typeof invoice.subscription !== "string";
-      const isCreditPurchase = isCreditPurchaseInvoice(invoice);
-      const isAwuPurchase = isAwuPurchaseInvoice(invoice);
-
-      // Only Metronome subscription invoices need the force-charge.
-      // Stripe-subscription invoices have their own auto-charge flow;
-      // credit-purchase, first-period, and AWU purchase invoices have
-      // their own flow too.
-      if (isMetronomeInvoice && !isCreditPurchase && !isAwuPurchase) {
-        await forceChargeMetronomeFinalizedInvoice(invoice, stripe);
-      }
 
       // Enterprise EUR invoices paid by send-invoice should offer SEPA Direct
       // Debit on the hosted invoice page. Self-gated (enterprise + EUR +
@@ -1137,6 +1087,37 @@ export async function processStripeWebhookEvent({
         );
       }
 
+      const createdSubscription = await SubscriptionResource.fetchByStripeId(
+        stripeSubscriptionCreated.id
+      );
+      if (createdSubscription) {
+        const workspace = await WorkspaceResource.fetchByModelId(
+          createdSubscription.workspaceId
+        );
+        assert(
+          workspace !== null,
+          "Workspace not found for subscription in customer.subscription.created."
+        );
+        const auth = await Authenticator.internalAdminForWorkspace(
+          workspace.sId
+        );
+
+        const freeCreditsResult = await grantFreeCreditsForSubscription({
+          auth,
+          stripeSubscription: stripeSubscriptionCreated,
+        });
+        if (freeCreditsResult.isErr()) {
+          logger.error(
+            {
+              error: freeCreditsResult.error,
+              subscriptionId: stripeSubscriptionCreated.id,
+              workspaceId: workspace.sId,
+            },
+            "[Stripe Webhook] Error granting free credits on subscription created"
+          );
+        }
+      }
+
       break;
     }
 
@@ -1189,6 +1170,21 @@ export async function processStripeWebhookEvent({
         const auth = await Authenticator.internalAdminForWorkspace(
           workspace.sId
         );
+
+        const freeCreditsResult = await grantFreeCreditsForSubscription({
+          auth,
+          stripeSubscription,
+        });
+        if (freeCreditsResult.isErr()) {
+          logger.error(
+            {
+              error: freeCreditsResult.error,
+              subscriptionId: stripeSubscription.id,
+              workspaceId: workspace.sId,
+            },
+            "[Stripe Webhook] Error granting free credits"
+          );
+        }
 
         if (subscriptionCycleChanged) {
           const paygEnabled = await isPAYGEnabled(auth);
@@ -1474,6 +1470,23 @@ export async function processStripeWebhookEvent({
           `[Stripe Webhook] Received customer.subscription.deleted with unknown status = ${stripeSubscription.status}. Expected status = canceled.`
         );
         return new Ok(undefined);
+      }
+
+      // If this yearly subscription was cut over early by the legacy → Business
+      // migration, refund the unused prepaid days. Best-effort — a refund
+      // failure must not fail the webhook (it can be reconciled manually).
+      const migrationRefund = await refundYearlyMigrationProration({
+        stripeSubscription,
+      });
+      if (migrationRefund.isErr()) {
+        logger.error(
+          {
+            event,
+            stripeSubscriptionId: stripeSubscription.id,
+            err: migrationRefund.error.message,
+          },
+          "[Stripe Webhook] Yearly migration prorated refund failed"
+        );
       }
 
       const matchingSubscription = await SubscriptionResource.fetchByStripeId(

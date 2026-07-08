@@ -75,7 +75,9 @@ export const TagSearchInput = ({
             <Spinner variant="dark" size="md" />
           </div>
         ) : (
-          <div className="p-2 text-sm text-gray-500">No results found</div>
+          <div className="p-2 text-sm text-muted-foreground">
+            No results found
+          </div>
         )}
       </SearchDropdownMenu>
       <div className="flex flex-wrap gap-2">

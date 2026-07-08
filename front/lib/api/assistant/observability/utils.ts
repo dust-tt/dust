@@ -35,6 +35,38 @@ export function daysToInstantRange(
   };
 }
 
+// Sentinel group key for messages sent without an API key (no `api_key_name`
+// on the document). Used both as the terms-agg `missing` bucket key and as a
+// filterable id, so grouping by API key still sums to the total consumption.
+export const NOT_API_GROUP_KEY = "__not_api__";
+export const NOT_API_GROUP_NAME = "Not API";
+
+// api_key_name is only set on API-key authenticated messages. The sentinel
+// selects everything else (missing field), so a mixed selection becomes a
+// disjunction of the two.
+function apiKeyNamesFilter(
+  apiKeyNames: string[] | undefined
+): estypes.QueryDslQueryContainer[] {
+  if (!apiKeyNames || apiKeyNames.length === 0) {
+    return [];
+  }
+  const names = apiKeyNames.filter((name) => name !== NOT_API_GROUP_KEY);
+  const clauses: estypes.QueryDslQueryContainer[] = [
+    ...termFilter("api_key_name", names),
+    ...(apiKeyNames.includes(NOT_API_GROUP_KEY)
+      ? [
+          {
+            bool: { must_not: [{ exists: { field: "api_key_name" } }] },
+          },
+        ]
+      : []),
+  ];
+  if (clauses.length <= 1) {
+    return clauses;
+  }
+  return [{ bool: { should: clauses, minimum_should_match: 1 } }];
+}
+
 function termFilter(
   field: string,
   value: string | string[] | undefined
@@ -60,6 +92,7 @@ export function buildAgentAnalyticsBaseQuery({
   agentId,
   agentIds,
   userIds,
+  apiKeyNames,
   contextOrigin,
   days,
   startDate,
@@ -69,6 +102,7 @@ export function buildAgentAnalyticsBaseQuery({
 }: {
   workspaceId: string;
   userIds?: string[];
+  apiKeyNames?: string[];
   contextOrigin?: string | string[];
   days?: number;
   startDate?: string;
@@ -84,6 +118,7 @@ export function buildAgentAnalyticsBaseQuery({
     ...(agentId ? [{ term: { agent_id: agentId } }] : []),
     ...termFilter("agent_id", agentIds),
     ...termFilter("user_id", userIds),
+    ...apiKeyNamesFilter(apiKeyNames),
     ...contextOriginFilter(contextOrigin),
   ];
 
@@ -126,6 +161,7 @@ export function buildCreditsScopeQuery(
     contextOrigin,
     agentIds,
     userIds,
+    apiKeyNames,
     extraFilters = [],
     extraMustNot = [],
   }: {
@@ -134,6 +170,7 @@ export function buildCreditsScopeQuery(
     contextOrigin?: string | string[];
     agentIds?: string[];
     userIds?: string[];
+    apiKeyNames?: string[];
     extraFilters?: estypes.QueryDslQueryContainer[];
     extraMustNot?: estypes.QueryDslQueryContainer[];
   }
@@ -145,6 +182,7 @@ export function buildCreditsScopeQuery(
     contextOrigin,
     agentIds,
     userIds,
+    apiKeyNames,
   });
   return {
     bool: {

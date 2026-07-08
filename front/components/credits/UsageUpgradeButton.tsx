@@ -1,3 +1,4 @@
+import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { useRequestUpgrade } from "@app/lib/swr/upgrade_requests";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
@@ -18,8 +19,8 @@ interface UsageUpgradeButtonProps {
   owner: LightWorkspaceType;
   hasPendingUpgradeRequest: boolean;
   variant?: UsageUpgradeButtonVariant;
-  isAdmin?: boolean;
-  onAdminNavigate?: () => void;
+  isBusinessAdmin?: boolean;
+  onBusinessAdminNavigate?: () => void;
 }
 
 // Member-initiated upgrade-request CTA. Opens a confirmation dialog and posts
@@ -29,9 +30,11 @@ export function UsageUpgradeButton({
   owner,
   hasPendingUpgradeRequest,
   variant = "link",
-  isAdmin = false,
-  onAdminNavigate,
+  isBusinessAdmin = false,
+  onBusinessAdminNavigate,
 }: UsageUpgradeButtonProps) {
+  const { hasFeature } = useFeatureFlags();
+  const isAdminGovernanceEnabled = hasFeature("admin_governance");
   const { doRequestUpgrade } = useRequestUpgrade({ workspaceId: owner.sId });
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -53,7 +56,7 @@ export function UsageUpgradeButton({
   }
 
   function renderTrigger() {
-    if (isAdmin) {
+    if (isBusinessAdmin) {
       const usageHref = `/w/${owner.sId}/usage`;
 
       if (variant === "button") {
@@ -63,7 +66,7 @@ export function UsageUpgradeButton({
             size="xs"
             label="Go to workspace usage"
             href={usageHref}
-            onClick={onAdminNavigate}
+            onClick={onBusinessAdminNavigate}
           />
         );
       }
@@ -73,7 +76,7 @@ export function UsageUpgradeButton({
           variant="primary"
           className="copy-sm underline underline-offset-2"
           href={usageHref}
-          onClick={onAdminNavigate}
+          onClick={onBusinessAdminNavigate}
         >
           Go to workspace usage
         </Hoverable>
@@ -94,9 +97,7 @@ export function UsageUpgradeButton({
 
     if (alreadyRequested) {
       return (
-        <span className="copy-sm text-muted-foreground dark:text-muted-foreground-night">
-          Request sent
-        </span>
+        <span className="copy-sm text-muted-foreground">Request sent</span>
       );
     }
 
@@ -123,9 +124,13 @@ export function UsageUpgradeButton({
             <DialogTitle>Request a usage limit upgrade</DialogTitle>
           </DialogHeader>
           <DialogContainer>
-            <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-              Your workspace admins will be notified that you'd like your usage
-              limit increased. They'll review your request and get back to you.
+            <p className="text-sm text-muted-foreground">
+              Your workspace{" "}
+              {isAdminGovernanceEnabled
+                ? "admins and business admins"
+                : "admins"}{" "}
+              will be notified that you'd like your usage limit increased.
+              They'll review your request and get back to you.
             </p>
           </DialogContainer>
           <DialogFooter

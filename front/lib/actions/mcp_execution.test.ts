@@ -12,14 +12,15 @@ import {
   processToolResults,
 } from "@app/lib/actions/mcp_execution";
 import type { DataSourceNodeContentType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
+import type { ToolContextType } from "@app/lib/actions/types";
 import { TOOL_OUTPUTS_FOLDER_NAME } from "@app/lib/api/files/mount_path";
 import { Authenticator } from "@app/lib/auth";
+import { getSupportedModelConfig } from "@app/lib/llms/model_configurations";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
 import logger from "@app/logger/logger";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
-import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { GroupFactory } from "@app/tests/utils/GroupFactory";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { fileStorageMock } from "@app/tests/utils/mocks/file_storage";
@@ -39,7 +40,11 @@ vi.mock("@app/lib/api/files/processing", async (importOriginal) => {
   };
 });
 
-async function setupTest() {
+async function setupTest({
+  mcpServerName = "test_server",
+}: {
+  mcpServerName?: string;
+} = {}) {
   const user = await UserFactory.basic();
   const workspace = await WorkspaceFactory.basic();
   await MembershipFactory.associate(workspace, user, { role: "admin" });
@@ -65,7 +70,7 @@ async function setupTest() {
     type: "mcp_configuration",
     name: "test_tool",
     originalName: "test_tool",
-    mcpServerName: "test_server",
+    mcpServerName,
     dataSources: null,
     tables: null,
     childAgentId: null,
@@ -83,15 +88,48 @@ async function setupTest() {
     retryPolicy: "no_retry",
   };
 
-  const { action } = await ConversationFactory.createAgentMessage(auth, {
-    workspace,
-    conversation,
-    agentConfig,
-    mcpAction: { toolConfiguration },
-  });
+  const { action, agentMessage } = await ConversationFactory.createAgentMessage(
+    auth,
+    {
+      workspace,
+      conversation,
+      agentConfig,
+      mcpAction: { toolConfiguration },
+    }
+  );
   assert(action, "MCP action should be created");
 
-  return { auth, conversation, action, toolConfiguration };
+  // The agent message above is created with rank 0, use rank 1 for the user message.
+  const { userMessage } = await ConversationFactory.createUserMessage({
+    auth,
+    workspace,
+    conversation,
+    content: "Test message",
+    rank: 1,
+  });
+
+  const { model: agentModel, ...agentConfiguration } = agentConfig;
+  const modelConfig = getSupportedModelConfig(agentModel);
+  assert(modelConfig, "Supported model config should exist");
+
+  const toolContext: ToolContextType = {
+    runContext: {
+      contextType: "agent_loop",
+      agentConfiguration,
+      model: {
+        ...agentModel,
+        ...modelConfig,
+      },
+      agentMessage,
+      action,
+      conversation,
+      stepContext: action.stepContext,
+      toolConfiguration,
+      userMessage,
+    },
+  };
+
+  return { auth, conversation, action, toolContext };
 }
 
 async function setupAuth() {
@@ -215,17 +253,15 @@ describe("getAugmentedInputs", () => {
 
 describe("processToolResults", () => {
   it("should store snippet in DB when text exceeds FILE_OFFLOAD_TEXT_SIZE_BYTES", async () => {
-    const { auth, conversation, action, toolConfiguration } = await setupTest();
+    const { auth, toolContext } = await setupTest();
 
     // Generate text that exceeds FILE_OFFLOAD_TEXT_SIZE_BYTES (20KB).
     const largeText = "x".repeat(FILE_OFFLOAD_TEXT_SIZE_BYTES + 1);
 
     const { outputItems, generatedFiles } = await processToolResults(auth, {
-      action,
-      conversation,
       localLogger: logger.child({ test: true }),
+      toolContext,
       toolCallResultContent: [{ type: "text", text: largeText }],
-      toolConfiguration,
     });
 
     expect(outputItems).toHaveLength(1);
@@ -245,22 +281,20 @@ describe("processToolResults", () => {
   });
 
   it("should store snippet for large resource text", async () => {
-    const { auth, conversation, action, toolConfiguration } = await setupTest();
+    const { auth, toolContext } = await setupTest();
 
     // Generate resource text that exceeds FILE_OFFLOAD_TEXT_SIZE_BYTES (20KB).
     const largeResourceText = "y".repeat(FILE_OFFLOAD_TEXT_SIZE_BYTES + 1);
 
     const { outputItems, generatedFiles } = await processToolResults(auth, {
-      action,
-      conversation,
       localLogger: logger.child({ test: true }),
+      toolContext,
       toolCallResultContent: [
         {
           type: "resource",
           resource: { uri: "file://test.txt", text: largeResourceText },
         },
       ],
-      toolConfiguration,
     });
 
     expect(outputItems).toHaveLength(1);
@@ -279,16 +313,14 @@ describe("processToolResults", () => {
   });
 
   it("should keep small text content as-is", async () => {
-    const { auth, conversation, action, toolConfiguration } = await setupTest();
+    const { auth, toolContext } = await setupTest();
 
     const smallText = "hello world";
 
     const { outputItems } = await processToolResults(auth, {
-      action,
-      conversation,
       localLogger: logger.child({ test: true }),
+      toolContext,
       toolCallResultContent: [{ type: "text", text: smallText }],
-      toolConfiguration,
     });
 
     expect(outputItems).toHaveLength(1);
@@ -301,19 +333,16 @@ describe("processToolResults", () => {
   });
 
   it("should keep large sandbox text content as-is", async () => {
-    const { auth, conversation, action, toolConfiguration } = await setupTest();
+    const { auth, toolContext } = await setupTest({
+      mcpServerName: "sandbox",
+    });
 
     const largeText = "x".repeat(FILE_OFFLOAD_TEXT_SIZE_BYTES + 1);
 
     const { outputItems } = await processToolResults(auth, {
-      action,
-      conversation,
       localLogger: logger.child({ test: true }),
+      toolContext,
       toolCallResultContent: [{ type: "text", text: largeText }],
-      toolConfiguration: {
-        ...toolConfiguration,
-        mcpServerName: "sandbox",
-      },
     });
 
     expect(outputItems).toHaveLength(1);
@@ -326,21 +355,19 @@ describe("processToolResults", () => {
   });
 
   it("should keep small resource text as-is", async () => {
-    const { auth, conversation, action, toolConfiguration } = await setupTest();
+    const { auth, toolContext } = await setupTest();
 
     const smallText = "small resource text";
 
     const { outputItems } = await processToolResults(auth, {
-      action,
-      conversation,
       localLogger: logger.child({ test: true }),
+      toolContext,
       toolCallResultContent: [
         {
           type: "resource",
           resource: { uri: "file://small.txt", text: smallText },
         },
       ],
-      toolConfiguration,
     });
 
     expect(outputItems).toHaveLength(1);
@@ -353,8 +380,7 @@ describe("processToolResults", () => {
   });
 
   it(`should persist DATA_SOURCE_NODE_CONTENT block to ${TOOL_OUTPUTS_FOLDER_NAME}/`, async () => {
-    const { auth, conversation, action, toolConfiguration } = await setupTest();
-    await FeatureFlagFactory.basic(auth, "sandbox_tools");
+    const { auth, toolContext } = await setupTest();
 
     fileStorageMock.reset();
 
@@ -376,16 +402,14 @@ describe("processToolResults", () => {
     };
 
     await processToolResults(auth, {
-      action,
-      conversation,
       localLogger: logger.child({ test: true }),
+      toolContext,
       toolCallResultContent: [
         {
           type: "resource",
           resource: dataSourceNodeResult,
         },
       ],
-      toolConfiguration,
     });
 
     const toolOutputWrite = fileStorageMock.saveFileCalls.find((call) =>
@@ -401,19 +425,16 @@ describe("processToolResults", () => {
   });
 
   it(`should persist large plain text block to ${TOOL_OUTPUTS_FOLDER_NAME}/ as .txt`, async () => {
-    const { auth, conversation, action, toolConfiguration } = await setupTest();
-    await FeatureFlagFactory.basic(auth, "sandbox_tools");
+    const { auth, toolContext } = await setupTest();
 
     fileStorageMock.reset();
 
     const largeText = "hello world ".repeat(FILE_OFFLOAD_TEXT_SIZE_BYTES);
 
     await processToolResults(auth, {
-      action,
-      conversation,
       localLogger: logger.child({ test: true }),
+      toolContext,
       toolCallResultContent: [{ type: "text", text: largeText }],
-      toolConfiguration,
     });
 
     const toolOutputWrite = fileStorageMock.saveFileCalls.find((call) =>
@@ -427,8 +448,7 @@ describe("processToolResults", () => {
   });
 
   it(`should persist large JSON text block to ${TOOL_OUTPUTS_FOLDER_NAME}/ as .json`, async () => {
-    const { auth, conversation, action, toolConfiguration } = await setupTest();
-    await FeatureFlagFactory.basic(auth, "sandbox_tools");
+    const { auth, toolContext } = await setupTest();
 
     fileStorageMock.reset();
 
@@ -437,11 +457,9 @@ describe("processToolResults", () => {
     });
 
     await processToolResults(auth, {
-      action,
-      conversation,
       localLogger: logger.child({ test: true }),
+      toolContext,
       toolCallResultContent: [{ type: "text", text: largeJson }],
-      toolConfiguration,
     });
 
     const toolOutputWrite = fileStorageMock.saveFileCalls.find((call) =>

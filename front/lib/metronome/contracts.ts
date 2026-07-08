@@ -200,6 +200,7 @@ export async function provisionMetronomeContract({
   additionalCustomFields,
   enableSeatSync = true,
   fromContractId,
+  displayedName,
 }: {
   metronomeCustomerId: string;
   workspace: LightWorkspaceType;
@@ -212,7 +213,10 @@ export async function provisionMetronomeContract({
   additionalCustomFields?: Record<string, string>;
   enableSeatSync?: boolean;
   fromContractId?: string;
-}): Promise<Result<{ metronomeContractId: string }, Error>> {
+  displayedName?: string;
+}): Promise<
+  Result<{ metronomeContractId: string; recovered: boolean }, Error>
+> {
   const alignedStart = new Date(
     swapAt === "current-hour"
       ? floorToHourISO(startingAt)
@@ -240,11 +244,12 @@ export async function provisionMetronomeContract({
     planCode,
     additionalCustomFields,
     fromContractId,
+    displayedName,
   });
   if (contractResult.isErr()) {
     return new Err(contractResult.error);
   }
-  const { contractId: metronomeContractId } = contractResult.value;
+  const { contractId: metronomeContractId, recovered } = contractResult.value;
 
   const contractsResult = await listMetronomeContracts(metronomeCustomerId);
   if (contractsResult.isErr()) {
@@ -332,7 +337,7 @@ export async function provisionMetronomeContract({
   // credit_state_dispatcher would create a cycle through auth →
   // subscription_resource → contracts.
 
-  return new Ok({ metronomeContractId });
+  return new Ok({ metronomeContractId, recovered });
 }
 
 /**
@@ -516,9 +521,28 @@ async function fetchBillingPeriodRecordForWorkspace(
   if (!ids) {
     return null;
   }
-  const periodResult = await fetchMetronomeCurrentBillingPeriod(ids);
+  let periodResult = await fetchMetronomeCurrentBillingPeriod(ids);
   if (periodResult.isErr()) {
-    throw periodResult.error;
+    // The DB-resolved "active" contract can be momentarily stale right after
+    // a contract switch: the new contract is already live on Metronome, but
+    // the subscription row isn't swapped onto it until later in the
+    // `contract.start` webhook handler. If the (still DB-active) old
+    // contract has since ended, ask Metronome directly which contract
+    // actually covers today instead of failing outright.
+    const coveringResult = await listMetronomeContracts(
+      ids.metronomeCustomerId,
+      { coveringDate: new Date() }
+    );
+    const coveringContract = coveringResult.isOk()
+      ? coveringResult.value.find((c) => billingPeriodFromContract(c).isOk())
+      : undefined;
+    if (!coveringContract) {
+      throw periodResult.error;
+    }
+    periodResult = billingPeriodFromContract(coveringContract);
+    if (periodResult.isErr()) {
+      throw periodResult.error;
+    }
   }
   if (!periodResult.value) {
     return null;

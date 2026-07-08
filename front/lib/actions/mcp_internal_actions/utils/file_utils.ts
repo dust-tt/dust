@@ -1,4 +1,7 @@
-import type { AgentLoopContextType } from "@app/lib/actions/types";
+import {
+  isAgentLoopRunContext,
+  type ToolContextType,
+} from "@app/lib/actions/types";
 import { resolveFile } from "@app/lib/api/actions/servers/files/tools/utils";
 import {
   conversationAttachmentId,
@@ -20,6 +23,7 @@ import { isAgentMessageType } from "@app/types/assistant/conversation";
 import { isContentFragmentType } from "@app/types/content_fragment";
 import type { Result } from "@dust-tt/client";
 import { Err, Ok } from "@dust-tt/client";
+import assert from "assert";
 import { PassThrough } from "stream";
 
 export function sanitizeFilename(filename: string): string {
@@ -49,7 +53,7 @@ export type ConversationFileRef = {
 export async function resolveConversationFileRef(
   auth: Authenticator,
   fileId: string,
-  agentLoopContext: AgentLoopContextType | undefined
+  toolContext: ToolContextType | undefined
 ): Promise<Result<ConversationFileRef, string>> {
   // Canonical scoped paths (conversation-{id}/..., pod-{id}/...) produced by the new
   // DustFileSystem layer. Resolved directly — no conversation context needed.
@@ -100,13 +104,14 @@ export async function resolveConversationFileRef(
     });
   }
 
-  if (!agentLoopContext?.runContext) {
-    return new Err("No conversation context available");
-  }
+  assert(
+    isAgentLoopRunContext(toolContext?.runContext),
+    "AgentLoopRunContext expected"
+  );
 
   const parsed = parseScopedFilePath(fileId);
   if (parsed) {
-    const conversation = agentLoopContext.runContext.conversation;
+    const conversation = toolContext.runContext.conversation;
     const resolvedRes = await resolveFile(auth, conversation, fileId);
     if (resolvedRes.isErr()) {
       return new Err(resolvedRes.error.message);
@@ -121,7 +126,7 @@ export async function resolveConversationFileRef(
     });
   }
 
-  const conversation = agentLoopContext.runContext.conversation;
+  const conversation = toolContext.runContext.conversation;
   const fileResource = await FileResource.fetchById(auth, fileId);
   if (!fileResource) {
     return new Err(`File resource not found for fileId ${fileId}`);
@@ -156,7 +161,7 @@ export async function resolveConversationFileRef(
 export async function getFileFromConversationAttachment(
   auth: Authenticator,
   fileId: string,
-  agentLoopContext: AgentLoopContextType
+  toolContext: ToolContextType
 ): Promise<
   Result<
     {
@@ -167,9 +172,10 @@ export async function getFileFromConversationAttachment(
     string
   >
 > {
-  if (!agentLoopContext?.runContext) {
-    return new Err("No conversation context available");
-  }
+  assert(
+    isAgentLoopRunContext(toolContext?.runContext),
+    "AgentLoopRunContext expected"
+  );
 
   // Canonical scoped paths (conversation-{id}/..., pod-{id}/...) — resolve via DustFileSystem.
   if (isCanonicalScopedPath(fileId)) {
@@ -211,7 +217,7 @@ export async function getFileFromConversationAttachment(
   // Scoped paths resolve through mount path.
   const parsed = parseScopedFilePath(fileId);
   if (parsed) {
-    const conversation = agentLoopContext.runContext.conversation;
+    const conversation = toolContext.runContext.conversation;
     const resolvedRes = await resolveFile(auth, conversation, fileId);
     if (resolvedRes.isErr()) {
       return new Err(resolvedRes.error.message);
@@ -231,7 +237,7 @@ export async function getFileFromConversationAttachment(
   }
 
   // Legacy fileId path: scan the conversation to find the attachment.
-  const conversation = agentLoopContext.runContext.conversation;
+  const conversation = toolContext.runContext.conversation;
   let attachment: ConversationAttachmentType | null = null;
 
   for (const versions of conversation.content) {

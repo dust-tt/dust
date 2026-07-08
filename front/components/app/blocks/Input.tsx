@@ -127,7 +127,7 @@ export default function Input({
         <div className="w-full">
           <div>
             {!((!block.config || !block.config.dataset) && readOnly) ? (
-              <div className="flex flex-row items-center space-x-2 text-sm font-medium leading-8 text-gray-700">
+              <div className="flex flex-row items-center space-x-2 text-sm font-medium leading-8 text-foreground">
                 <Label>Dataset</Label>
                 <DatasetPicker
                   owner={owner}

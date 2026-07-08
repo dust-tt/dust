@@ -1,4 +1,5 @@
 import type { EndpointMetadata } from "@app/lib/model_constructors/types/endpoint_metadata";
+import type { ModelProviderIdType } from "@app/types/assistant/models/types";
 
 export type ResponseIdContent = { responseId: string };
 
@@ -60,6 +61,18 @@ export type ReasoningContent = { value: string };
 export interface ReasoningEvent {
   type: "reasoning";
   content: ReasoningContent;
+  metadata: EndpointMetadata;
+}
+
+// Opaque provider-specific block (e.g. an Anthropic server-tool block) captured
+// for verbatim replay. The block stays opaque to the generic pipeline.
+export type ProviderPassthroughContent = {
+  provider: ModelProviderIdType;
+  block: unknown;
+};
+export interface ProviderPassthroughEvent {
+  type: "provider_passthrough";
+  content: ProviderPassthroughContent;
   metadata: EndpointMetadata;
 }
 
@@ -126,6 +139,7 @@ export type ModelResponseEvent =
   | ToolCallStartedEvent
   | ToolCallDeltaEvent
   | ToolCallEvent
+  | ProviderPassthroughEvent
   | TokenUsageEvent
   | SuccessEvent
   | ErrorEvent;

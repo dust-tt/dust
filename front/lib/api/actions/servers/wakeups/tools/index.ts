@@ -1,7 +1,10 @@
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import type { ToolHandlers } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import type { AgentLoopContextType } from "@app/lib/actions/types";
+import {
+  isAgentLoopRunContext,
+  type ToolContextType,
+} from "@app/lib/actions/types";
 import { WAKEUPS_TOOLS_METADATA } from "@app/lib/api/actions/servers/wakeups/metadata";
 import type { Authenticator } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
@@ -10,6 +13,7 @@ import { isUserMessageType } from "@app/types/assistant/conversation";
 import { isActiveWakeUp, type WakeUpType } from "@app/types/assistant/wakeups";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
+import assert from "assert";
 
 // Per-conversation guardrails. Enforced at tool-call time so the agent gets a clear error instead
 // of silently over-scheduling.
@@ -88,10 +92,12 @@ function parseWhen(when: string):
   return null;
 }
 
-function getUserTimezone(
-  agentLoopContext?: AgentLoopContextType
-): string | null {
-  const content = agentLoopContext?.runContext?.conversation?.content;
+function getUserTimezone(toolContext?: ToolContextType): string | null {
+  if (!isAgentLoopRunContext(toolContext?.runContext)) {
+    return null;
+  }
+
+  const content = toolContext?.runContext?.conversation?.content;
   if (!content) {
     return null;
   }
@@ -121,20 +127,17 @@ function renderWakeUp(wakeUp: WakeUpType): string {
 
 export function createWakeupsTools(
   auth: Authenticator,
-  agentLoopContext?: AgentLoopContextType
+  toolContext?: ToolContextType
 ) {
   const handlers: ToolHandlers<typeof WAKEUPS_TOOLS_METADATA> = {
     schedule_wakeup: async ({ when, reason, timezone }) => {
-      if (!agentLoopContext?.runContext) {
-        return new Err(
-          new MCPError(
-            "Wake-ups can only be scheduled from within a conversation."
-          )
-        );
-      }
+      assert(
+        isAgentLoopRunContext(toolContext?.runContext),
+        "AgentLoopRunContext expected"
+      );
 
       const { conversation: runConversation, agentConfiguration } =
-        agentLoopContext.runContext;
+        toolContext.runContext;
 
       const parsed = parseWhen(when);
       if (!parsed) {
@@ -167,7 +170,7 @@ export function createWakeupsTools(
 
       let cronTimezone: string | null = null;
       if (parsed.kind === "cron") {
-        cronTimezone = timezone ?? getUserTimezone(agentLoopContext);
+        cronTimezone = timezone ?? getUserTimezone(toolContext);
         if (!cronTimezone) {
           return new Err(
             new MCPError(
@@ -248,15 +251,12 @@ export function createWakeupsTools(
     },
 
     list_wakeups: async () => {
-      if (!agentLoopContext?.runContext) {
-        return new Err(
-          new MCPError(
-            "Wake-ups can only be listed from within a conversation."
-          )
-        );
-      }
+      assert(
+        isAgentLoopRunContext(toolContext?.runContext),
+        "AgentLoopRunContext expected"
+      );
 
-      const { conversation } = agentLoopContext.runContext;
+      const { conversation } = toolContext.runContext;
 
       const wakeUps = await WakeUpResource.listByConversation(
         auth,
@@ -284,15 +284,12 @@ export function createWakeupsTools(
     },
 
     cancel_wakeup: async ({ wakeUpId }) => {
-      if (!agentLoopContext?.runContext) {
-        return new Err(
-          new MCPError(
-            "Wake-ups can only be cancelled from within a conversation."
-          )
-        );
-      }
+      assert(
+        isAgentLoopRunContext(toolContext?.runContext),
+        "AgentLoopRunContext expected"
+      );
 
-      const { conversation } = agentLoopContext.runContext;
+      const { conversation } = toolContext.runContext;
 
       const wakeUp = await WakeUpResource.fetchById(auth, wakeUpId);
       if (!wakeUp) {

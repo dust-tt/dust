@@ -1,6 +1,9 @@
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import { getFileFromConversationAttachment } from "@app/lib/actions/mcp_internal_actions/utils/file_utils";
-import type { AgentLoopContextType } from "@app/lib/actions/types";
+import {
+  isAgentLoopRunContext,
+  type ToolContextType,
+} from "@app/lib/actions/types";
 import {
   formatSlackMessageForLLM,
   renderFormattedMessage,
@@ -749,7 +752,7 @@ export async function executeListPublicChannels(
 
 export async function executePostMessage(
   auth: Authenticator,
-  agentLoopContext: AgentLoopContextType,
+  toolContext: ToolContextType,
   {
     accessToken,
     to,
@@ -758,6 +761,7 @@ export async function executePostMessage(
     fileId,
     unfurlLinks,
     unfurlMedia,
+    showSentByFooter,
   }: {
     accessToken: string;
     to: string | string[];
@@ -766,6 +770,7 @@ export async function executePostMessage(
     fileId: string | undefined;
     unfurlLinks: boolean | undefined;
     unfurlMedia: boolean | undefined;
+    showSentByFooter?: boolean;
   }
 ) {
   const slackClient = await getSlackClient(accessToken);
@@ -788,13 +793,20 @@ export async function executePostMessage(
 
   const originalMessage = message;
 
-  const agentUrl = getConversationRoute(
-    auth.getNonNullableWorkspace().sId,
-    "new",
-    `agentDetails=${agentLoopContext.runContext?.agentConfiguration.sId}`,
-    config.getAppUrl()
-  );
-  message = `${slackifyMarkdown(originalMessage)}\n_Sent via <${agentUrl}|${agentLoopContext.runContext?.agentConfiguration.name} Agent> on Dust_`;
+  if (
+    showSentByFooter !== false &&
+    isAgentLoopRunContext(toolContext.runContext)
+  ) {
+    const agentUrl = getConversationRoute(
+      auth.getNonNullableWorkspace().sId,
+      "new",
+      `agentDetails=${toolContext.runContext?.agentConfiguration.sId}`,
+      config.getAppUrl()
+    );
+    message = `${slackifyMarkdown(originalMessage)}\n_Sent via <${agentUrl}|${toolContext.runContext?.agentConfiguration.name} Agent> on Dust_`;
+  } else {
+    message = slackifyMarkdown(originalMessage);
+  }
 
   if (!(await hasSlackScope(accessToken, "files:write"))) {
     fileId = undefined;
@@ -805,7 +817,7 @@ export async function executePostMessage(
     const fileResult = await getFileFromConversationAttachment(
       auth,
       fileId,
-      agentLoopContext
+      toolContext
     );
     if (fileResult.isErr()) {
       return new Err(
@@ -915,7 +927,7 @@ export async function executeUpdateMessage({
 
 export async function executeScheduleMessage(
   auth: Authenticator,
-  agentLoopContext: AgentLoopContextType,
+  toolContext: ToolContextType,
   {
     accessToken,
     to,
@@ -924,6 +936,7 @@ export async function executeScheduleMessage(
     threadTs,
     unfurlLinks,
     unfurlMedia,
+    showSentByFooter,
   }: {
     accessToken: string;
     to: string;
@@ -932,18 +945,26 @@ export async function executeScheduleMessage(
     threadTs: string | undefined;
     unfurlLinks: boolean | undefined;
     unfurlMedia: boolean | undefined;
+    showSentByFooter?: boolean;
   }
 ) {
   const slackClient = await getSlackClient(accessToken);
   const originalMessage = message;
 
-  const agentUrl = getConversationRoute(
-    auth.getNonNullableWorkspace().sId,
-    "new",
-    `agentDetails=${agentLoopContext.runContext?.agentConfiguration.sId}`,
-    config.getAppUrl()
-  );
-  message = `${slackifyMarkdown(originalMessage)}\n_Sent via <${agentUrl}|${agentLoopContext.runContext?.agentConfiguration.name} Agent> on Dust_`;
+  if (
+    showSentByFooter !== false &&
+    isAgentLoopRunContext(toolContext.runContext)
+  ) {
+    const agentUrl = getConversationRoute(
+      auth.getNonNullableWorkspace().sId,
+      "new",
+      `agentDetails=${toolContext.runContext?.agentConfiguration.sId}`,
+      config.getAppUrl()
+    );
+    message = `${slackifyMarkdown(originalMessage)}\n_Sent via <${agentUrl}|${toolContext.runContext?.agentConfiguration.name} Agent> on Dust_`;
+  } else {
+    message = slackifyMarkdown(originalMessage);
+  }
 
   // Convert post_at to Unix timestamp in seconds.
   let timestampSeconds: number;

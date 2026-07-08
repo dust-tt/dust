@@ -40,6 +40,7 @@ export type EditingPlanType = {
   isSCIMAllowed: boolean;
   isByok: boolean;
   isAuditLogsAllowed: boolean;
+  hasAdvancedModelAccess: boolean;
   maxImagesPerWeek: string | number;
   maxMessages: string | number;
   maxMessagesTimeframe: string;
@@ -71,6 +72,7 @@ export const fromPlanType = (plan: PlanType): EditingPlanType => {
     isSCIMAllowed: plan.limits.users.isSCIMAllowed,
     isByok: plan.isByok,
     isAuditLogsAllowed: plan.isAuditLogsAllowed,
+    hasAdvancedModelAccess: plan.hasAdvancedModelAccess,
     maxMessages: plan.limits.assistant.maxMessages,
     maxMessagesTimeframe: plan.limits.assistant.maxMessagesTimeframe,
     maxAwuCredits: plan.limits.assistant.maxAwuCredits,
@@ -153,6 +155,7 @@ export const toPlanType = (editingPlan: EditingPlanType): PlanType => {
     trialPeriodDays: parseMaybeNumber(editingPlan.trialPeriodDays),
     isByok: editingPlan.isByok,
     isAuditLogsAllowed: editingPlan.isAuditLogsAllowed,
+    hasAdvancedModelAccess: editingPlan.hasAdvancedModelAccess,
   };
 };
 
@@ -175,6 +178,7 @@ const getEmptyPlan = (): EditingPlanType => ({
   isSCIMAllowed: false,
   isByok: false,
   isAuditLogsAllowed: false,
+  hasAdvancedModelAccess: false,
   maxImagesPerWeek: "",
   maxMessages: "",
   maxMessagesTimeframe: "day",
@@ -369,6 +373,11 @@ export const PLAN_FIELDS = {
     width: "tiny",
     title: "Audit",
   },
+  hasAdvancedModelAccess: {
+    type: "boolean",
+    width: "tiny",
+    title: "Adv. Models",
+  },
   maxVaults: {
     type: "number",
     width: "small",
@@ -417,10 +426,7 @@ export const Field: React.FC<FieldProps> = ({
     if (typeof x === "string") {
       if (!x) {
         strValue = "NULL";
-        classes = classNames(
-          classes,
-          "italic text-muted-foreground dark:text-muted-foreground-night"
-        );
+        classes = classNames(classes, "italic text-muted-foreground");
       }
     }
     if (typeof x === "number") {

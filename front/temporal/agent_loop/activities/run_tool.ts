@@ -1,3 +1,4 @@
+import { isAgentLoopToolNotificationEvent } from "@app/lib/actions/mcp";
 import { isSandboxChildActionInfo } from "@app/lib/actions/types";
 import { isLightClientSideMCPToolConfiguration } from "@app/lib/actions/types/guards";
 import {
@@ -7,6 +8,7 @@ import {
 import { runToolWithStreaming } from "@app/lib/api/mcp/run_tool";
 import type { AuthenticatorType } from "@app/lib/auth";
 import { Authenticator } from "@app/lib/auth";
+import { notifyManualActionRequired } from "@app/lib/notifications/workflows/manual-action-required";
 import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import { AgentStepContentResource } from "@app/lib/resources/agent_step_content_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
@@ -138,6 +140,7 @@ export async function runToolActivity(
 
   const {
     agentConfiguration,
+    model,
     conversation: originalConversation,
     agentMessage: originalAgentMessage,
     userMessage,
@@ -173,6 +176,7 @@ export async function runToolActivity(
       return executeToolStreaming(auth, {
         action,
         agentConfiguration,
+        model,
         agentMessage,
         conversation,
         deferredEvents,
@@ -190,6 +194,7 @@ async function executeToolStreaming(
   {
     action,
     agentConfiguration,
+    model,
     agentMessage,
     conversation,
     deferredEvents,
@@ -199,6 +204,7 @@ async function executeToolStreaming(
   }: {
     action: AgentMCPActionResource;
     agentConfiguration: AgentLoopExecutionData["agentConfiguration"];
+    model: AgentLoopExecutionData["model"];
     agentMessage: AgentLoopExecutionData["agentMessage"];
     conversation: AgentLoopExecutionData["conversation"];
     deferredEvents: ToolExecutionResult["deferredEvents"];
@@ -227,6 +233,7 @@ async function executeToolStreaming(
     {
       action,
       agentConfiguration,
+      model,
       agentMessage,
       conversation,
       userMessage,
@@ -396,6 +403,13 @@ async function executeToolStreaming(
           conversation,
         });
 
+        if (!conversation.actionRequired) {
+          notifyManualActionRequired(auth, {
+            conversationId: conversation.sId,
+            actionId: action.sId,
+          });
+        }
+
         return { deferredEvents };
 
       case "tool_success":
@@ -448,15 +462,28 @@ async function executeToolStreaming(
             created: event.created,
             configurationId: agentConfiguration.sId,
             messageId: agentMessage.sId,
-            action: event.action,
+            // The generic tool runner event only carries the processed output; the agent loop
+            // action payload is rebuilt from the action resource, which reflects the final status
+            // (updated in place during execution).
+            action: {
+              ...action.toJSON(),
+              output: event.output,
+              generatedFiles: event.generatedFiles,
+            },
           },
           agentMessage,
           conversation,
           step,
         });
         break;
-      case "tool_params":
+
       case "tool_notification":
+        // Tools executed from the agent loop activity always run with an agent loop context, so
+        // sandbox function notification events cannot surface here.
+        assert(
+          isAgentLoopToolNotificationEvent(event),
+          "Unexpected sandbox function tool notification in the agent loop."
+        );
         await handleNonDeferredEvents(auth, {
           event,
           agentMessage,

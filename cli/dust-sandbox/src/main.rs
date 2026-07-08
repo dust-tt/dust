@@ -72,6 +72,11 @@ async fn run() -> anyhow::Result<()> {
             commands::function::FunctionCommand::Get { name } => {
                 commands::cmd_function_get(&name).await?
             }
+            commands::function::FunctionCommand::Build {
+                src,
+                out_bundle,
+                out_schema,
+            } => commands::cmd_function_build(&src, &out_bundle, &out_schema).await?,
         },
         Commands::Tools {
             json,
@@ -179,6 +184,34 @@ mod tests {
             Commands::Function { command } => match command {
                 commands::function::FunctionCommand::Get { name } => assert_eq!(name, "greet"),
                 _ => panic!("expected get"),
+            },
+            _ => panic!("expected function"),
+        }
+    }
+
+    #[test]
+    fn function_build_parses() {
+        let cli = Cli::try_parse_from([
+            "dsbx",
+            "function",
+            "build",
+            "/files/pod-x/greet.ts",
+            "/tmp/out/greet.ts",
+            "/tmp/out/greet.schema.json",
+        ])
+        .expect("parse");
+        match cli.command {
+            Commands::Function { command } => match command {
+                commands::function::FunctionCommand::Build {
+                    src,
+                    out_bundle,
+                    out_schema,
+                } => {
+                    assert_eq!(src, "/files/pod-x/greet.ts");
+                    assert_eq!(out_bundle, "/tmp/out/greet.ts");
+                    assert_eq!(out_schema, "/tmp/out/greet.schema.json");
+                }
+                _ => panic!("expected build"),
             },
             _ => panic!("expected function"),
         }

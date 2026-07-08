@@ -1,19 +1,24 @@
 import type {
   ImageBlockParam,
   MessageParam,
+  ServerToolUseBlockParam,
   TextBlockParam,
   ThinkingBlockParam,
   Tool,
   ToolResultBlockParam,
+  ToolSearchToolResultBlockParam,
   ToolUseBlockParam,
 } from "@anthropic-ai/sdk/resources/messages/messages.mjs";
 import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
+import { ANTHROPIC_PROVIDER_ID } from "@app/lib/api/llm/clients/anthropic/types";
+import { parseAnthropicToolSearchBlock } from "@app/lib/api/llm/clients/anthropic/utils/tool_search_passthrough";
 import { extractEncryptedContentFromMetadata } from "@app/lib/api/llm/utils";
 import { parseToolArguments } from "@app/lib/api/llm/utils/tool_arguments";
 import { TOOL_SEARCH_TOOL } from "@app/lib/model_constructors/sdk/anthropic_ai/converters/input/tool_search";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import type {
   AgentFunctionCallContentType,
+  AgentProviderPassthroughContentType,
   AgentReasoningContentType,
   AgentTextContentType,
 } from "@app/types/assistant/agent_message_content";
@@ -30,6 +35,8 @@ import { isString } from "@app/types/shared/utils/general";
 import { trustedFetchImageBase64 } from "@app/types/shared/utils/image_utils";
 import assert from "assert";
 import compact from "lodash/compact";
+
+const ENABLE_SKILL_FUNCTION_CALL_NAME = "skill_management__enable_skill";
 
 const ACCEPTED_MEDIA_TYPES = [
   "image/jpeg",
@@ -103,13 +110,16 @@ function assistantContentToParam(
   content:
     | AgentTextContentType
     | AgentReasoningContentType
-    | AgentFunctionCallContentType,
+    | AgentFunctionCallContentType
+    | AgentProviderPassthroughContentType,
   omittedThinking: boolean
 ):
   | TextBlockParam
   | ImageBlockParam
   | ThinkingBlockParam
   | ToolUseBlockParam
+  | ServerToolUseBlockParam
+  | ToolSearchToolResultBlockParam
   | undefined {
   switch (content.type) {
     case "text_content":
@@ -137,6 +147,17 @@ function assistantContentToParam(
         name: content.value.name,
         input: parseToolArguments(content.value.arguments, content.value.name),
       };
+    }
+    case "provider_passthrough": {
+      // Replay the provider's own tool-search blocks verbatim so interleaved
+      // thinking signatures stay valid. When thinking is omitted there are no
+      // signatures to protect, so drop the server blocks too rather than send
+      // them orphaned from the thinking they were emitted with. Also skip blocks
+      // tagged for another provider or that fail to parse.
+      if (omittedThinking || content.value.provider !== ANTHROPIC_PROVIDER_ID) {
+        return undefined;
+      }
+      return parseAnthropicToolSearchBlock(content.value.block) ?? undefined;
     }
   }
 }
@@ -219,6 +240,76 @@ function assistantMessage(
   };
 }
 
+export function detectAnthropicToolSearchEnableSkillConflict(
+  messages: ModelMessageTypeMultiActionsWithoutContentFragment[]
+): boolean {
+  let pendingServerToolUseId: string | null = null;
+  let pendingEnableSkillFunctionCallId: string | null = null;
+  let enableSkillResultSeen = false;
+
+  for (const message of messages) {
+    if (message.role === "assistant") {
+      let serverToolUseId: string | null = null;
+      let enableSkillFunctionCallId: string | null = null;
+
+      for (const content of message.contents) {
+        if (
+          content.type === "function_call" &&
+          content.value.name === ENABLE_SKILL_FUNCTION_CALL_NAME
+        ) {
+          enableSkillFunctionCallId = content.value.id;
+          continue;
+        }
+
+        if (
+          content.type !== "provider_passthrough" ||
+          content.value.provider !== ANTHROPIC_PROVIDER_ID
+        ) {
+          continue;
+        }
+
+        const block = parseAnthropicToolSearchBlock(content.value.block);
+        if (block?.type === "server_tool_use") {
+          serverToolUseId = block.id;
+        } else if (
+          block?.type === "tool_search_tool_result" &&
+          block.tool_use_id === pendingServerToolUseId
+        ) {
+          pendingServerToolUseId = null;
+          pendingEnableSkillFunctionCallId = null;
+          enableSkillResultSeen = false;
+        }
+      }
+
+      if (serverToolUseId && enableSkillFunctionCallId) {
+        pendingServerToolUseId = serverToolUseId;
+        pendingEnableSkillFunctionCallId = enableSkillFunctionCallId;
+        enableSkillResultSeen = false;
+      }
+      continue;
+    }
+
+    if (
+      message.role === "function" &&
+      message.name === ENABLE_SKILL_FUNCTION_CALL_NAME &&
+      message.function_call_id === pendingEnableSkillFunctionCallId
+    ) {
+      enableSkillResultSeen = true;
+      continue;
+    }
+
+    if (
+      pendingServerToolUseId &&
+      enableSkillResultSeen &&
+      (message.role === "user" || message.role === "compaction")
+    ) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
 export async function toMessage(
   message: ModelMessageTypeMultiActionsWithoutContentFragment,
   {
@@ -260,7 +351,10 @@ export async function toMessage(
   }
 }
 
-export function toTool(tool: AgentActionSpecification): Tool {
+export function toTool(
+  tool: AgentActionSpecification,
+  { toolSearchEnabled }: { toolSearchEnabled: boolean }
+): Tool {
   return {
     name: tool.name,
     description: tool.description,
@@ -271,25 +365,26 @@ export function toTool(tool: AgentActionSpecification): Tool {
     // See https://platform.claude.com/docs/en/agents-and-tools/tool-use/fine-grained-tool-streaming#handling-invalid-json-in-tool-responses
     eager_input_streaming: true,
     input_schema: { ...tool.inputSchema, type: "object" },
-    // Deferred (cold) tools are kept out of the cached prefix and loaded on
-    // demand via the tool search tool. Only set when true so non-deferred tools
-    // serialize identically to before (stable prefix bytes).
-    ...(tool.deferLoading ? { defer_loading: true } : {}),
+    // Defer non-eager tools behind tool search when it is enabled: their schema
+    // is kept out of the cached prefix and loaded on demand. Eager tools (and
+    // every tool when tool search is off) stay in the prefix. Only set when true
+    // so non-deferred tools serialize identically (stable prefix bytes).
+    ...(toolSearchEnabled && !tool.eager ? { defer_loading: true } : {}),
   };
 }
 
-// Builds the Anthropic `tools` array from the agent's tool specifications.
-// Cold specs carry `deferLoading`, which toTool maps to `defer_loading`. When
-// any tool is deferred, the tool search tool is prepended so the model can
-// discover those tools on demand; otherwise the array is identical to before.
-// A force-called tool is never deferred, since the model cannot be forced to
-// call a tool it would first have to discover via search.
+// Builds the Anthropic `tools` array from the agent's tool specifications. When
+// tool search is enabled, non-eager specs are deferred and the tool search tool
+// is prepended so the model can discover them on demand. Otherwise the array is
+// identical to before. A force-called tool is never deferred, since the model
+// cannot be forced to call a tool it would first have to discover via search.
 export function toToolsParam(
   specifications: AgentActionSpecification[],
-  forceToolCall: string | undefined
+  forceToolCall: string | undefined,
+  { toolSearchEnabled }: { toolSearchEnabled: boolean }
 ) {
   const tools = specifications.map((spec) => {
-    const tool = toTool(spec);
+    const tool = toTool(spec, { toolSearchEnabled });
     if (tool.defer_loading && spec.name === forceToolCall) {
       return { ...tool, defer_loading: false };
     }

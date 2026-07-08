@@ -301,6 +301,11 @@ export default function SkillBuilder({ skill, onSaved }: SkillBuilderProps) {
           <SkillBuilderSettingsOrComparisonFooter
             skill={skill}
             hasSelfImprovingSkills={hasSelfImprovingSkills}
+            isEditorGateVisible={isAdminNonEditor}
+            isAddingSelfAsEditor={isAddingSelfAsEditor}
+            onAddSelfAsEditor={() => {
+              void handleAddSelfAsEditor();
+            }}
           />
         </div>
       </ScrollArea>
@@ -334,8 +339,7 @@ export default function SkillBuilder({ skill, onSaved }: SkillBuilderProps) {
           <div
             className={cn(
               "flex h-dvh flex-row",
-              "bg-background text-foreground",
-              "dark:bg-background-night dark:text-foreground-night"
+              "bg-background text-foreground"
             )}
           >
             {showSuggestionsPanel ? (
@@ -372,9 +376,15 @@ export default function SkillBuilder({ skill, onSaved }: SkillBuilderProps) {
 function SkillBuilderSettingsOrComparisonFooter({
   skill,
   hasSelfImprovingSkills,
+  isEditorGateVisible,
+  isAddingSelfAsEditor,
+  onAddSelfAsEditor,
 }: {
   skill?: SkillType;
   hasSelfImprovingSkills: boolean;
+  isEditorGateVisible: boolean;
+  isAddingSelfAsEditor: boolean;
+  onAddSelfAsEditor: () => void;
 }) {
   const { compareVersion } = useSkillVersionComparisonContext();
 
@@ -386,6 +396,9 @@ function SkillBuilderSettingsOrComparisonFooter({
     <SkillBuilderSettingsSection
       skill={skill}
       hasSelfImprovingSkills={hasSelfImprovingSkills}
+      isEditorGateVisible={isEditorGateVisible}
+      isAddingSelfAsEditor={isAddingSelfAsEditor}
+      onAddSelfAsEditor={onAddSelfAsEditor}
     />
   );
 }

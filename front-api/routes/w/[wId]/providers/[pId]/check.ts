@@ -253,22 +253,6 @@ app.post(
         return ctx.json({ ok: true });
       }
 
-      case "togetherai": {
-        // eslint-disable-next-line no-restricted-globals
-        const tModelsRes = await fetch("https://api.together.xyz/v1/models", {
-          method: "GET",
-          headers: {
-            Authorization: `Bearer ${config.api_key}`,
-          },
-        });
-        if (!tModelsRes.ok) {
-          const err = await tModelsRes.json();
-          return ctx.json({ ok: false, error: err.error.message }, 400);
-        }
-        await tModelsRes.json();
-        return ctx.json({ ok: true });
-      }
-
       case "deepseek": {
         // eslint-disable-next-line no-restricted-globals
         const testDeepseek = await fetch(`https://api.deepseek.com/models`, {

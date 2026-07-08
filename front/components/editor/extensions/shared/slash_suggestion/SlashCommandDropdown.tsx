@@ -48,9 +48,7 @@ function SlashCommandDropdownLoadingState({ message }: { message: string }) {
   return (
     <div className="flex h-14 items-center justify-center">
       <Spinner size="sm" />
-      <span className="ml-2 text-sm text-gray-500 dark:text-gray-500-night">
-        {message}
-      </span>
+      <span className="ml-2 text-sm text-muted-foreground">{message}</span>
     </div>
   );
 }
@@ -303,7 +301,7 @@ export const SlashCommandDropdown = forwardRef<
           scrollHighlightedItemIntoView
         >
           {header ? (
-            <div className="px-3 py-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground dark:text-muted-foreground-night">
+            <div className="px-3 py-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
               {header}
             </div>
           ) : null}
@@ -311,7 +309,7 @@ export const SlashCommandDropdown = forwardRef<
             <div
               className={cn(
                 SLASH_COMMAND_DROPDOWN_LIST_CLASS_NAME,
-                "flex items-center justify-center px-2 py-4 text-center text-sm text-muted-foreground dark:text-muted-foreground-night"
+                "flex items-center justify-center px-2 py-4 text-center text-sm text-muted-foreground"
               )}
             >
               {emptyMessage}
@@ -332,9 +330,9 @@ export const SlashCommandDropdown = forwardRef<
                   }}
                   onPointerLeave={(event) => event.preventDefault()}
                   className={cn(
-                    "text-muted-foreground dark:text-muted-foreground-night [&_span]:text-xs",
+                    "text-muted-foreground [&_span]:text-xs",
                     selectedIndex === 0 &&
-                      "bg-muted-background dark:bg-muted-night [transition-duration:0ms]"
+                      "bg-muted-background [transition-duration:0ms]"
                   )}
                 />
               ) : null}
@@ -378,7 +376,7 @@ export const SlashCommandDropdown = forwardRef<
                         className={cn(
                           "group",
                           index === selectedIndex &&
-                            "bg-muted-background dark:bg-muted-night [transition-duration:0ms]"
+                            "bg-muted-background [transition-duration:0ms]"
                         )}
                       />
                     );
@@ -428,7 +426,7 @@ export const SlashCommandDropdown = forwardRef<
                 isLoading ? (
                   <SlashCommandDropdownLoadingState message={loadingMessage} />
                 ) : (
-                  <div className="flex h-14 items-center justify-center px-2 text-center text-sm text-muted-foreground dark:text-muted-foreground-night">
+                  <div className="flex h-14 items-center justify-center px-2 text-center text-sm text-muted-foreground">
                     {emptyMessage}
                   </div>
                 )
@@ -470,7 +468,7 @@ export const SlashCommandDropdown = forwardRef<
                       className={cn(
                         "group",
                         entryIndex === selectedIndex &&
-                          "bg-muted-background dark:bg-muted-night [transition-duration:0ms]"
+                          "bg-muted-background [transition-duration:0ms]"
                       )}
                     />
                   );

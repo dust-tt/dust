@@ -1,7 +1,6 @@
 import { uploadFileToConversationDataSource } from "@app/lib/actions/action_file_helpers";
 import { FILE_OFFLOAD_SNIPPET_LENGTH } from "@app/lib/actions/action_output_limits";
 import type {
-  LightMCPToolConfigurationType,
   MCPToolConfigurationType,
   ToolNotificationEvent,
 } from "@app/lib/actions/mcp";
@@ -16,20 +15,18 @@ import {
   isToolGeneratedFilePath,
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { handleBase64Upload } from "@app/lib/actions/mcp_utils";
-import type { ActionGeneratedFileType } from "@app/lib/actions/types";
+import type {
+  ActionGeneratedFileType,
+  ToolContextType,
+} from "@app/lib/actions/types";
+import { isAgentLoopRunContext } from "@app/lib/actions/types";
 import { isInternalServerSideMCPToolConfiguration } from "@app/lib/actions/types/guards";
 import { persistToolOutput } from "@app/lib/api/files/action_output_fs";
 import { processAndStoreFromUrl } from "@app/lib/api/files/upload";
 import type { Authenticator } from "@app/lib/auth";
 import type { AgentMCPActionOutputItemModel } from "@app/lib/models/agent/actions/mcp";
-import type { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
-import type { AgentConfigurationType } from "@app/types/assistant/agent";
-import type {
-  AgentMessageType,
-  ConversationType,
-} from "@app/types/assistant/conversation";
 import type {
   FileUseCase,
   FileUseCaseMetadata,
@@ -46,6 +43,7 @@ import {
   toWellFormed,
 } from "@app/types/shared/utils/string_utils";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
+import assert from "assert";
 import { extname } from "path";
 import type { Logger } from "pino";
 
@@ -75,27 +73,30 @@ export async function processToolNotification(
   auth: Authenticator,
   notification: MCPProgressNotificationType,
   {
-    action,
-    agentConfiguration,
-    conversation,
-    agentMessage,
+    toolContext,
   }: {
-    action: AgentMCPActionResource;
-    agentConfiguration: AgentConfigurationType;
-    conversation: ConversationType;
-    agentMessage: AgentMessageType;
+    toolContext: ToolContextType;
   }
 ): Promise<{
   event: ToolNotificationEvent;
   storedItems: AgentMCPActionOutputItemModel[];
 }> {
+  const { runContext } = toolContext;
+  assert(runContext, "processToolNotification requires a tool run context.");
+
   const output = notification.params._meta.data.output;
 
   let storedItems: AgentMCPActionOutputItemModel[] = [];
 
   // Handle store_resource notifications by creating output items immediately (fire-and-forget GCS).
   if (isStoreResourceProgressOutput(output)) {
-    storedItems = await action.createOutputItems(
+    // TODO(SANDBOX_FUNCTIONS): persist sandbox function outputs (writeOutput) when running in a
+    // sandbox function run context.
+    assert(
+      isAgentLoopRunContext(runContext),
+      "store_resource notifications require an agent loop run context."
+    );
+    storedItems = await runContext.action.createOutputItems(
       auth,
       output.contents.map((content) => ({
         content: sanitizeStringsDeep(content),
@@ -105,9 +106,14 @@ export async function processToolNotification(
 
   // Specific handling for run_agent notifications indicating the tool has
   // started and can be resumed: the action is updated to save the resumeState.
-  if (isRunAgentQueryProgressOutput(output)) {
-    await action.updateStepContext({
-      ...action.stepContext,
+  // Sandbox function actions carry no step context to persist a resume state on, so this only
+  // applies to agent loop run contexts.
+  if (
+    isRunAgentQueryProgressOutput(output) &&
+    isAgentLoopRunContext(runContext)
+  ) {
+    await runContext.action.updateStepContext({
+      ...runContext.action.stepContext,
       resumeState: {
         userMessageId: output.userMessageId,
         conversationId: output.conversationId,
@@ -115,23 +121,41 @@ export async function processToolNotification(
     });
   }
 
-  // Regular notifications, we yield them as is with the type "tool_notification".
-  return {
-    event: {
-      type: "tool_notification",
-      created: Date.now(),
-      configurationId: agentConfiguration.sId,
-      conversationId: conversation.sId,
-      messageId: agentMessage.sId,
-      action: {
-        ...action.toJSON(),
-        output: null,
-        generatedFiles: [],
-      },
-      notification: notification.params,
-    },
-    storedItems,
-  };
+  // Regular notifications, we yield them as is with the type "tool_notification", scoped to the
+  // run context they were emitted from.
+  switch (runContext.contextType) {
+    case "agent_loop":
+      return {
+        event: {
+          type: "tool_notification",
+          created: Date.now(),
+          configurationId: runContext.agentConfiguration.sId,
+          conversationId: runContext.conversation.sId,
+          messageId: runContext.agentMessage.sId,
+          action: {
+            ...runContext.action.toJSON(),
+            output: null,
+            generatedFiles: [],
+          },
+          notification: notification.params,
+        },
+        storedItems,
+      };
+    case "sandbox_function":
+      return {
+        event: {
+          type: "tool_notification",
+          created: Date.now(),
+          sandboxFunctionId: runContext.invocation.sandboxFunction.sId,
+          invocationId: runContext.invocation.sId,
+          action: runContext.action.toJSON(),
+          notification: notification.params,
+        },
+        storedItems,
+      };
+    default:
+      return assertNever(runContext);
+  }
 }
 
 /**
@@ -141,26 +165,21 @@ export async function processToolNotification(
 export async function processToolResults(
   auth: Authenticator,
   {
-    action,
-    conversation,
     localLogger,
     toolCallResultContent,
-    toolConfiguration,
+    toolContext,
   }: {
-    action: AgentMCPActionResource;
-    conversation: ConversationType;
     localLogger: Logger;
     toolCallResultContent: CallToolResult["content"];
-    toolConfiguration: LightMCPToolConfigurationType;
+    toolContext: ToolContextType;
   }
 ): Promise<{
   outputItems: AgentMCPActionOutputItemModel[];
   generatedFiles: ActionGeneratedFileType[];
 }> {
-  const fileUseCase: FileUseCase = "conversation";
-  const fileUseCaseMetadata: FileUseCaseMetadata = {
-    conversationId: conversation.sId,
-  };
+  const { runContext } = toolContext;
+  assert(runContext, "processToolResults requires a tool run context.");
+  const { toolConfiguration } = runContext;
 
   const timestamp = Date.now();
   const cleanContent: {
@@ -169,7 +188,7 @@ export async function processToolResults(
   }[] = await concurrentExecutor(
     toolCallResultContent,
     async (block, idx) => {
-      const res = await persistToolOutput(auth, conversation, block, {
+      const res = await persistToolOutput(auth, toolContext, block, {
         toolName: toolConfiguration.name,
         serverName: toolConfiguration.mcpServerName,
       });
@@ -221,7 +240,7 @@ export async function processToolResults(
             base64Data: block.data,
             mimeType: block.mimeType,
             fileName,
-            conversation,
+            toolContext,
           });
         }
 
@@ -251,10 +270,15 @@ export async function processToolResults(
               auth,
               block.resource.fileId
             );
+            const conversation = isAgentLoopRunContext(runContext)
+              ? runContext.conversation
+              : null;
+
             // We need to create the conversation data source in case the file comes from a subagent
             // who uploaded it to its own conversation but not the main agent's.
             // Skip for project_context files — they are already indexed via their own data source.
-            if (file && file.useCase !== "project_context") {
+            // Skip outside of a conversation — there is no conversation data source to upsert to.
+            if (file && file.useCase !== "project_context" && conversation) {
               // Files uploaded by client-side tools (e.g. the Chrome extension) may not have a
               // conversationId in their metadata since the tool doesn't know it at upload time.
               // Patch it here so the JIT data source creation works correctly.
@@ -297,13 +321,34 @@ export async function processToolResults(
                 base64Data: block.resource.blob,
                 mimeType: block.resource.mimeType,
                 fileName,
-                conversation,
+                toolContext,
               });
             }
 
             const fileName = isResourceWithName(block.resource)
               ? block.resource.name
               : (block.resource.uri.split("/").pop() ?? "generated-file");
+
+            // Files land on the conversation in an agent loop, on the pod's shared project
+            // context in a sandbox function invocation.
+            let fileUseCase: FileUseCase;
+            let fileUseCaseMetadata: FileUseCaseMetadata;
+            switch (runContext.contextType) {
+              case "agent_loop":
+                fileUseCase = "conversation";
+                fileUseCaseMetadata = {
+                  conversationId: runContext.conversation.sId,
+                };
+                break;
+              case "sandbox_function":
+                fileUseCase = "project_context";
+                fileUseCaseMetadata = {
+                  spaceId: runContext.invocation.sandboxFunction.space.sId,
+                };
+                break;
+              default:
+                assertNever(runContext);
+            }
 
             const fileUpsertResult = await processAndStoreFromUrl(auth, {
               url: block.resource.uri,
@@ -332,6 +377,16 @@ export async function processToolResults(
               file: fileUpsertResult.value,
             };
           } else {
+            localLogger.info(
+              {
+                workspaceId: auth.getNonNullableWorkspace().sId,
+                mimeType: block.resource.mimeType ?? null,
+                toolName: toolConfiguration.name,
+                serverName: toolConfiguration.mcpServerName,
+              },
+              "MCP tool returned an unsupported file type; embedding resource as tool output."
+            );
+
             const text =
               "text" in block.resource &&
               typeof block.resource.text === "string"
@@ -387,7 +442,13 @@ export async function processToolResults(
     }
   );
 
-  const outputItems = await action.createOutputItems(
+  // TODO(SANDBOX_FUNCTIONS): persist sandbox function outputs (writeOutput) when running in a
+  // sandbox function run context.
+  assert(
+    isAgentLoopRunContext(runContext),
+    "processToolResults requires an agent loop run context to store output items."
+  );
+  const outputItems = await runContext.action.createOutputItems(
     auth,
     cleanContent.map((c) => ({
       content: sanitizeStringsDeep(c.content),

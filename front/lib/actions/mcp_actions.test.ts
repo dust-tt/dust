@@ -8,6 +8,7 @@ import type {
 import {
   getToolExtraFields,
   listToolsForServerSideMCPServer,
+  makeServerSideMCPToolConfigurations,
   postProcessMCPToolResult,
   runToolCallWithDetachedSignal,
   tryCallMCPTool,
@@ -21,11 +22,14 @@ import type { DataSourcesToolConfigurationType } from "@app/lib/actions/mcp_inte
 import type { MCPConnectionParams } from "@app/lib/actions/mcp_metadata";
 import { connectToMCPServer } from "@app/lib/actions/mcp_metadata";
 import type { AgentLoopRunContextType } from "@app/lib/actions/types";
+import type { ServerSideMCPToolTypeWithStakeAndRetryPolicy } from "@app/lib/api/mcp";
 import { Authenticator } from "@app/lib/auth";
+import { getSupportedModelConfig } from "@app/lib/llms/model_configurations";
 import {
   AgentMessageModel,
   MessageModel,
 } from "@app/lib/models/agent/conversation";
+import type { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import { InternalMCPServerInMemoryResource } from "@app/lib/resources/internal_mcp_server_in_memory_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { RemoteMCPServerToolMetadataResource } from "@app/lib/resources/remote_mcp_server_tool_metadata_resource";
@@ -92,14 +96,14 @@ vi.mock(
       withToolResultProcessing: spy,
       registerTool: (
         auth: Parameters<typeof actual.registerTool>[0],
-        agentLoopContext: Parameters<typeof actual.registerTool>[1],
+        toolContext: Parameters<typeof actual.registerTool>[1],
         server: Parameters<typeof actual.registerTool>[2],
         tool: Parameters<typeof actual.registerTool>[3],
         opts: Parameters<typeof actual.registerTool>[4]
       ) => {
         actual.registerTool(
           auth,
-          agentLoopContext,
+          toolContext,
           server,
           {
             ...tool,
@@ -138,8 +142,7 @@ vi.mock("@app/lib/api/actions/servers/search/tools", async () => {
       mockSearchFunction({
         ...(params as object),
         auth: (extra as { auth?: unknown }).auth,
-        agentLoopContext: (extra as { agentLoopContext?: unknown })
-          .agentLoopContext,
+        toolContext: (extra as { toolContext?: unknown }).toolContext,
       }),
   };
   const handlersWithTags = {
@@ -706,9 +709,20 @@ describe("tryCallMCPTool", () => {
       generatedFiles: [],
     };
 
+    const { model: agentModel, ...agentConfiguration } = agentConfig;
+    const modelConfig = getSupportedModelConfig(agentModel);
+    if (!modelConfig) {
+      throw new Error("Supported model config should exist");
+    }
+
     // Create agent loop run context
     const agentLoopRunContext: AgentLoopRunContextType = {
-      agentConfiguration: agentConfig,
+      contextType: "agent_loop",
+      agentConfiguration,
+      model: {
+        ...agentModel,
+        ...modelConfig,
+      },
       agentMessage,
       conversation,
       stepContext: {
@@ -718,7 +732,8 @@ describe("tryCallMCPTool", () => {
         resumeState: null,
         websearchResultCount: 0,
       },
-      currentAction: mockAction,
+      // The action resource is never read by tryCallMCPTool; a plain mock is enough here.
+      action: mockAction as unknown as AgentMCPActionResource,
       toolConfiguration,
       userMessage,
     };
@@ -731,7 +746,7 @@ describe("tryCallMCPTool", () => {
         relativeTimeFrame: "all",
         dataSources: [],
       },
-      agentLoopRunContext,
+      { runContext: agentLoopRunContext },
       {
         progressToken: agentMessage.agentMessageId as number,
         makeToolNotificationEvent: async () => ({
@@ -987,5 +1002,73 @@ describe("runToolCallWithDetachedSignal", () => {
     );
 
     expect(seen).toBe(false);
+  });
+});
+
+describe("makeServerSideMCPToolConfigurations eager flag", () => {
+  const config: ServerSideMCPServerConfigurationType = {
+    id: -1,
+    sId: generateRandomModelSId(),
+    type: "mcp_server_configuration",
+    name: "dummy_name",
+    description: "dummy_description",
+    dataSources: null,
+    tables: null,
+    childAgentId: null,
+    timeFrame: null,
+    jsonSchema: null,
+    additionalConfiguration: {},
+    mcpServerViewId: "mcpServerId",
+    dustAppConfiguration: null,
+    internalMCPServerId: "internalMCPServerId",
+    secretName: null,
+    dustProject: null,
+  };
+
+  function makeTool(
+    name: string,
+    eager?: boolean
+  ): ServerSideMCPToolTypeWithStakeAndRetryPolicy {
+    return {
+      name,
+      description: `${name} description`,
+      inputSchema: { type: "object", properties: {} },
+      availability: "auto",
+      stakeLevel: "never_ask",
+      toolServerId: "toolServerId",
+      retryPolicy: "no_retry",
+      ...(eager ? { eager: true } : {}),
+    };
+  }
+
+  it("carries eager onto the tool configuration when set", () => {
+    const [tool] = makeServerSideMCPToolConfigurations(config, [
+      makeTool("eager_tool", true),
+    ]);
+
+    expect(tool.eager).toBe(true);
+  });
+
+  it("omits eager when the tool does not opt in", () => {
+    const [tool] = makeServerSideMCPToolConfigurations(config, [
+      makeTool("plain_tool"),
+    ]);
+
+    expect(tool.eager).toBeUndefined();
+  });
+
+  it("defers exactly the non-eager tools under the Anthropic client rule", () => {
+    // Mirrors the Anthropic client: defer_loading = toolSearchEnabled && !eager.
+    const tools = makeServerSideMCPToolConfigurations(config, [
+      makeTool("eager_tool", true),
+      makeTool("plain_tool"),
+    ]);
+
+    const toolSearchEnabled = true;
+    const deferred = tools
+      .filter((t) => toolSearchEnabled && !t.eager)
+      .map((t) => t.name);
+
+    expect(deferred).toEqual(["plain_tool"]);
   });
 });

@@ -1,7 +1,10 @@
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import type { ToolHandlers } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import type { AgentLoopContextType } from "@app/lib/actions/types";
+import {
+  isAgentLoopRunContext,
+  type ToolContextType,
+} from "@app/lib/actions/types";
 import { SnowflakeClient } from "@app/lib/api/actions/servers/snowflake/client";
 import {
   MAX_QUERY_ROWS,
@@ -22,9 +25,9 @@ const CONNECTION_ERROR = new MCPError(
 
 interface SnowflakeQueryTagMetadata {
   workspace_id: string;
-  agent_id: string;
-  agent_name: string;
-  conversation_id: string;
+  agent_id: string | null;
+  agent_name: string | null;
+  conversation_id: string | null;
   user_id: string | null;
   user_email: string | null;
 }
@@ -32,22 +35,27 @@ interface SnowflakeQueryTagMetadata {
 // Builds Snowflake query tag for agent-level usage tracking.
 // Enables customers to track query costs per agent in QUERY_HISTORY.
 function buildQueryTagMetadata(
-  agentLoopContext?: AgentLoopContextType,
+  toolContext?: ToolContextType,
   auth?: Authenticator
 ): string | undefined {
-  if (!agentLoopContext?.runContext || !auth) {
+  if (!toolContext?.runContext || !auth) {
     return undefined;
   }
 
-  const { agentConfiguration, conversation } = agentLoopContext.runContext;
+  const { agentConfiguration, conversation } = isAgentLoopRunContext(
+    toolContext.runContext
+  )
+    ? toolContext.runContext
+    : {};
+
   const workspace = auth.getNonNullableWorkspace();
   const user = auth.user();
 
   const metadata: SnowflakeQueryTagMetadata = {
     workspace_id: workspace.sId,
-    agent_id: agentConfiguration.sId,
-    agent_name: agentConfiguration.name,
-    conversation_id: conversation.sId,
+    agent_id: agentConfiguration?.sId ?? null,
+    agent_name: agentConfiguration?.name ?? null,
+    conversation_id: conversation?.sId ?? null,
     user_id: user?.sId ?? null,
     user_email: user?.email ?? null,
   };
@@ -63,10 +71,10 @@ async function getClientFromAuthInfo(
       }
     | null
     | undefined,
-  agentLoopContext?: AgentLoopContextType,
+  toolContext?: ToolContextType,
   auth?: Authenticator
 ): Promise<Result<SnowflakeClient, MCPError>> {
-  const queryTagMetadata = buildQueryTagMetadata(agentLoopContext, auth);
+  const queryTagMetadata = buildQueryTagMetadata(toolContext, auth);
 
   const account = authInfo?.extra?.snowflake_account;
   const warehouse = authInfo?.extra?.snowflake_warehouse;
@@ -127,12 +135,8 @@ async function getClientFromAuthInfo(
 }
 
 const handlers: ToolHandlers<typeof SNOWFLAKE_TOOLS_METADATA> = {
-  list_databases: async (_params, { authInfo, agentLoopContext, auth }) => {
-    const clientRes = await getClientFromAuthInfo(
-      authInfo,
-      agentLoopContext,
-      auth
-    );
+  list_databases: async (_params, { authInfo, toolContext, auth }) => {
+    const clientRes = await getClientFromAuthInfo(authInfo, toolContext, auth);
     if (clientRes.isErr()) {
       return clientRes;
     }
@@ -155,12 +159,8 @@ const handlers: ToolHandlers<typeof SNOWFLAKE_TOOLS_METADATA> = {
     ]);
   },
 
-  list_schemas: async ({ database }, { authInfo, agentLoopContext, auth }) => {
-    const clientRes = await getClientFromAuthInfo(
-      authInfo,
-      agentLoopContext,
-      auth
-    );
+  list_schemas: async ({ database }, { authInfo, toolContext, auth }) => {
+    const clientRes = await getClientFromAuthInfo(authInfo, toolContext, auth);
     if (clientRes.isErr()) {
       return clientRes;
     }
@@ -185,13 +185,9 @@ const handlers: ToolHandlers<typeof SNOWFLAKE_TOOLS_METADATA> = {
 
   list_tables: async (
     { database, schema },
-    { authInfo, agentLoopContext, auth }
+    { authInfo, toolContext, auth }
   ) => {
-    const clientRes = await getClientFromAuthInfo(
-      authInfo,
-      agentLoopContext,
-      auth
-    );
+    const clientRes = await getClientFromAuthInfo(authInfo, toolContext, auth);
     if (clientRes.isErr()) {
       return clientRes;
     }
@@ -216,13 +212,9 @@ const handlers: ToolHandlers<typeof SNOWFLAKE_TOOLS_METADATA> = {
 
   describe_table: async (
     { database, schema, table },
-    { authInfo, agentLoopContext, auth }
+    { authInfo, toolContext, auth }
   ) => {
-    const clientRes = await getClientFromAuthInfo(
-      authInfo,
-      agentLoopContext,
-      auth
-    );
+    const clientRes = await getClientFromAuthInfo(authInfo, toolContext, auth);
     if (clientRes.isErr()) {
       return clientRes;
     }
@@ -256,13 +248,9 @@ const handlers: ToolHandlers<typeof SNOWFLAKE_TOOLS_METADATA> = {
 
   describe_semantic_view: async (
     { database, schema, semantic_view },
-    { authInfo, agentLoopContext, auth }
+    { authInfo, toolContext, auth }
   ) => {
-    const clientRes = await getClientFromAuthInfo(
-      authInfo,
-      agentLoopContext,
-      auth
-    );
+    const clientRes = await getClientFromAuthInfo(authInfo, toolContext, auth);
     if (clientRes.isErr()) {
       return clientRes;
     }
@@ -295,13 +283,9 @@ const handlers: ToolHandlers<typeof SNOWFLAKE_TOOLS_METADATA> = {
 
   query: async (
     { sql, database, schema, warehouse, max_rows },
-    { authInfo, agentLoopContext, auth }
+    { authInfo, toolContext, auth }
   ) => {
-    const clientRes = await getClientFromAuthInfo(
-      authInfo,
-      agentLoopContext,
-      auth
-    );
+    const clientRes = await getClientFromAuthInfo(authInfo, toolContext, auth);
     if (clientRes.isErr()) {
       return clientRes;
     }

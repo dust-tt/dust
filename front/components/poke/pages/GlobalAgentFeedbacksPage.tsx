@@ -38,7 +38,7 @@ function makeColumns(): ColumnDef<GlobalAgentFeedbackItem>[] {
         const { thumbDirection } = row.original;
         return (
           <Chip
-            color={thumbDirection === "up" ? "green" : "rose"}
+            color={thumbDirection === "up" ? "success" : "warning"}
             size="xs"
             label={thumbDirection === "up" ? "up" : "down"}
           />
@@ -56,7 +56,7 @@ function makeColumns(): ColumnDef<GlobalAgentFeedbackItem>[] {
           <div>
             <div>{feedback.userName ?? "Unknown"}</div>
             {feedback.userEmail && (
-              <div className="text-xs text-gray-500 dark:text-muted-foreground-night">
+              <div className="text-xs text-primary-500">
                 {feedback.userEmail}
               </div>
             )}
@@ -73,7 +73,7 @@ function makeColumns(): ColumnDef<GlobalAgentFeedbackItem>[] {
         const feedback = row.original;
         return (
           <LinkWrapper href={`/poke/${feedback.workspaceId}`}>
-            <span className="text-blue-600 hover:underline dark:text-blue-400">
+            <span className="text-highlight-600 hover:underline">
               {feedback.workspaceName}
             </span>
           </LinkWrapper>
@@ -103,9 +103,7 @@ function makeColumns(): ColumnDef<GlobalAgentFeedbackItem>[] {
             <LinkWrapper
               href={`/poke/${feedback.workspaceId}/conversation/${feedback.conversationId}`}
             >
-              <span className="text-blue-600 hover:underline dark:text-blue-400">
-                View
-              </span>
+              <span className="text-highlight-600 hover:underline">View</span>
             </LinkWrapper>
           );
         }
@@ -150,16 +148,16 @@ export function GlobalAgentFeedbacksPage() {
     <main className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
       <div className="py-8">
         <div className="mb-6">
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-foreground-night">
+          <h1 className="text-2xl font-bold text-primary-900">
             Global Agent Feedback
           </h1>
-          <p className="mt-1 text-sm text-gray-600 dark:text-muted-foreground-night">
+          <p className="mt-1 text-sm text-primary-600">
             User feedback on global agents across all workspaces.
           </p>
         </div>
 
         <div className="mb-4 flex items-center gap-4">
-          <label className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
+          <label className="flex items-center gap-2 text-sm text-primary-700">
             <input
               type="checkbox"
               checked={includeEmpty}
@@ -186,7 +184,7 @@ export function GlobalAgentFeedbacksPage() {
                 onClick={handlePrevPage}
                 disabled={pages.length === 0}
               />
-              <span className="text-sm text-gray-500 dark:text-muted-foreground-night">
+              <span className="text-sm text-primary-500">
                 Batch {pages.length + 1}
                 {hasMore ? " (more available)" : " (last)"}
               </span>

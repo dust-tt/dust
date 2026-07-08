@@ -8,6 +8,7 @@ import type { MCPServerViewType } from "@app/lib/api/mcp";
 import { getSkillAvatarIcon } from "@app/lib/skill";
 import { compareForFuzzySort, subFilter } from "@app/lib/utils";
 import type { SkillWithoutInstructionsAndToolsType } from "@app/types/assistant/skill_configuration";
+import React from "react";
 
 export const SELECT_SKILL_SLASH_COMMAND_ACTION = "select-skill";
 export const SELECT_TOOL_SLASH_COMMAND_ACTION = "select-tool";
@@ -147,7 +148,7 @@ export function getSkillSlashCommandItem(
     },
     description: skill.userFacingDescription,
     hasDetails: true,
-    icon: getSkillAvatarIcon(skill),
+    icon: () => React.createElement(getSkillAvatarIcon(skill)),
     id: skill.sId,
     label: skill.name,
   };

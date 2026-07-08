@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const {
   mockEnsureSandboxActive,
+  mockEnsurePodSandboxActive,
   mockEnsureSandboxEgressOnExec,
   mockGetSandboxImage,
   mockLoggerError,
@@ -10,6 +11,7 @@ const {
   mockLoggerWarn,
   mockLoggerChild,
   mockForConversation,
+  mockForPod,
   mockSetupSandboxMount,
   mockRefreshSandboxMount,
   mockPrepareSandboxEgressBeforeMount,
@@ -19,6 +21,7 @@ const {
   const mockRefreshSandboxMount = vi.fn();
   return {
     mockEnsureSandboxActive: vi.fn(),
+    mockEnsurePodSandboxActive: vi.fn(),
     mockEnsureSandboxEgressOnExec: vi.fn(),
     mockGetSandboxImage: vi.fn(),
     mockLoggerError: vi.fn(),
@@ -26,6 +29,7 @@ const {
     mockLoggerWarn: vi.fn(),
     mockLoggerChild: vi.fn(),
     mockForConversation: vi.fn(),
+    mockForPod: vi.fn(),
     mockSetupSandboxMount,
     mockRefreshSandboxMount,
     mockPrepareSandboxEgressBeforeMount: vi.fn(),
@@ -41,6 +45,7 @@ vi.mock("@app/lib/api/sandbox/egress", () => ({
 vi.mock("@app/lib/api/file_system/dust_file_system", () => ({
   DustFileSystem: {
     forConversation: mockForConversation,
+    forPod: mockForPod,
   },
 }));
 
@@ -58,6 +63,12 @@ vi.mock("@app/lib/resources/conversation_sandbox_adapter", () => ({
   },
 }));
 
+vi.mock("@app/lib/resources/pod_sandbox_adapter", () => ({
+  PodSandboxAdapter: {
+    ensureSandboxActive: mockEnsurePodSandboxActive,
+  },
+}));
+
 vi.mock("@app/logger/logger", () => {
   const logger = {
     error: mockLoggerError,
@@ -69,7 +80,10 @@ vi.mock("@app/logger/logger", () => {
   return { default: logger };
 });
 
-import { ensureSandboxReady } from "./lifecycle";
+import {
+  ensureConversationSandboxReady,
+  ensurePodSandboxReady,
+} from "./lifecycle";
 
 function createDeferred<T>() {
   let resolvePromise: ((value: T | PromiseLike<T>) => void) | undefined;
@@ -84,9 +98,18 @@ function createDeferred<T>() {
   return { promise, resolve: resolvePromise };
 }
 
-describe("ensureSandboxReady", () => {
+describe("ensureConversationSandboxReady", () => {
   const auth = { getNonNullableWorkspace: () => ({ sId: "workspace-id" }) };
   const conversation = { sId: "conversation-id" };
+  const conversationOwner = {
+    kind: "conversation",
+    conversationId: conversation.sId,
+  };
+  const pod = { sId: "space-id" };
+  const podOwner = {
+    kind: "pod",
+    spaceId: pod.sId,
+  };
   const image = { name: "dust-base" };
   const sandbox = { providerId: "provider-id", sId: "sandbox-id" };
   const mockFs = {
@@ -100,11 +123,15 @@ describe("ensureSandboxReady", () => {
     mockEnsureSandboxActive.mockResolvedValue(
       new Ok({ freshlyCreated: false, sandbox, wokeFromSleep: false })
     );
+    mockEnsurePodSandboxActive.mockResolvedValue(
+      new Ok({ freshlyCreated: false, sandbox, wokeFromSleep: false })
+    );
     mockPrepareSandboxEgressBeforeMount.mockResolvedValue(new Ok(undefined));
     mockEnsureSandboxEgressOnExec.mockResolvedValue(new Ok(undefined));
     mockGetSandboxImage.mockReturnValue(new Ok(image));
     mockStartTelemetry.mockResolvedValue(new Ok(undefined));
     mockForConversation.mockResolvedValue(new Ok(mockFs));
+    mockForPod.mockResolvedValue(new Ok(mockFs));
     mockSetupSandboxMount.mockResolvedValue(new Ok(undefined));
     mockRefreshSandboxMount.mockResolvedValue(new Ok(undefined));
   });
@@ -114,7 +141,7 @@ describe("ensureSandboxReady", () => {
       new Ok({ freshlyCreated: true, sandbox, wokeFromSleep: false })
     );
 
-    const result = await ensureSandboxReady(
+    const result = await ensureConversationSandboxReady(
       auth as never,
       conversation as never
     );
@@ -123,12 +150,19 @@ describe("ensureSandboxReady", () => {
     expect(mockPrepareSandboxEgressBeforeMount).toHaveBeenCalledTimes(1);
     expect(mockPrepareSandboxEgressBeforeMount).toHaveBeenCalledWith(
       auth,
-      sandbox
+      sandbox,
+      { runtimeOwner: conversationOwner }
+    );
+    expect(mockStartTelemetry).toHaveBeenCalledWith(
+      auth,
+      sandbox,
+      conversationOwner
     );
     expect(mockForConversation).toHaveBeenCalledWith(auth, conversation);
     expect(mockSetupSandboxMount).toHaveBeenCalledWith(sandbox, image);
     expect(mockRefreshSandboxMount).not.toHaveBeenCalled();
     expect(mockEnsureSandboxEgressOnExec).toHaveBeenCalledWith(auth, sandbox, {
+      runtimeOwner: conversationOwner,
       wokeFromSleep: false,
     });
 
@@ -148,7 +182,7 @@ describe("ensureSandboxReady", () => {
       return prepResult.promise;
     });
 
-    const resultPromise = ensureSandboxReady(
+    const resultPromise = ensureConversationSandboxReady(
       auth as never,
       conversation as never
     );
@@ -173,7 +207,7 @@ describe("ensureSandboxReady", () => {
       new Ok({ freshlyCreated: false, sandbox, wokeFromSleep: true })
     );
 
-    const result = await ensureSandboxReady(
+    const result = await ensureConversationSandboxReady(
       auth as never,
       conversation as never
     );
@@ -184,12 +218,13 @@ describe("ensureSandboxReady", () => {
     expect(mockForConversation).toHaveBeenCalledWith(auth, conversation);
     expect(mockRefreshSandboxMount).toHaveBeenCalledWith(sandbox, image);
     expect(mockEnsureSandboxEgressOnExec).toHaveBeenCalledWith(auth, sandbox, {
+      runtimeOwner: conversationOwner,
       wokeFromSleep: true,
     });
   });
 
   it("refreshes the GCS token for already-running sandboxes", async () => {
-    const result = await ensureSandboxReady(
+    const result = await ensureConversationSandboxReady(
       auth as never,
       conversation as never
     );
@@ -204,11 +239,46 @@ describe("ensureSandboxReady", () => {
     );
   });
 
+  it("uses pod owner plumbing and pod filesystem mounts for pod sandboxes", async () => {
+    mockEnsurePodSandboxActive.mockResolvedValue(
+      new Ok({ freshlyCreated: true, sandbox, wokeFromSleep: false })
+    );
+
+    const result = await ensurePodSandboxReady(auth as never, pod as never);
+
+    expect(result.isOk()).toBe(true);
+    expect(mockEnsurePodSandboxActive).toHaveBeenCalledWith(auth, pod);
+    expect(mockEnsureSandboxActive).not.toHaveBeenCalled();
+    // The pod's published bundles are mounted read-only under a pod-scoped path.
+    expect(mockForPod).toHaveBeenCalledWith(auth, pod, {
+      sandboxOnlyMounts: [
+        {
+          kind: "pod_sandbox_functions",
+          id: pod.sId,
+          sandboxMountPoint: `/sandbox-functions/pods/${pod.sId}`,
+          readOnly: true,
+        },
+      ],
+    });
+    expect(mockForConversation).not.toHaveBeenCalled();
+    expect(mockPrepareSandboxEgressBeforeMount).toHaveBeenCalledWith(
+      auth,
+      sandbox,
+      { runtimeOwner: podOwner }
+    );
+    expect(mockStartTelemetry).toHaveBeenCalledWith(auth, sandbox, podOwner);
+    expect(mockSetupSandboxMount).toHaveBeenCalledWith(sandbox, image);
+    expect(mockEnsureSandboxEgressOnExec).toHaveBeenCalledWith(auth, sandbox, {
+      runtimeOwner: podOwner,
+      wokeFromSleep: false,
+    });
+  });
+
   it("short-circuits when the sandbox image lookup fails", async () => {
     const imageError = new Error("image unavailable");
     mockGetSandboxImage.mockReturnValue(new Err(imageError));
 
-    const result = await ensureSandboxReady(
+    const result = await ensureConversationSandboxReady(
       auth as never,
       conversation as never
     );
@@ -229,7 +299,7 @@ describe("ensureSandboxReady", () => {
       new Err(new Error("ensure failed"))
     );
 
-    const result = await ensureSandboxReady(
+    const result = await ensureConversationSandboxReady(
       auth as never,
       conversation as never
     );
@@ -246,7 +316,7 @@ describe("ensureSandboxReady", () => {
     );
     mockPrepareSandboxEgressBeforeMount.mockResolvedValue(new Err(setupError));
 
-    const result = await ensureSandboxReady(
+    const result = await ensureConversationSandboxReady(
       auth as never,
       conversation as never
     );
@@ -267,7 +337,7 @@ describe("ensureSandboxReady", () => {
     mockPrepareSandboxEgressBeforeMount.mockResolvedValue(new Err(setupError));
     mockSetupSandboxMount.mockResolvedValue(new Err(new Error("mount failed")));
 
-    const result = await ensureSandboxReady(
+    const result = await ensureConversationSandboxReady(
       auth as never,
       conversation as never
     );
@@ -286,7 +356,7 @@ describe("ensureSandboxReady", () => {
     );
     mockSetupSandboxMount.mockResolvedValue(new Err(new Error("mount failed")));
 
-    const result = await ensureSandboxReady(
+    const result = await ensureConversationSandboxReady(
       auth as never,
       conversation as never
     );
@@ -303,7 +373,7 @@ describe("ensureSandboxReady", () => {
       new Err(new Error("space not found"))
     );
 
-    const result = await ensureSandboxReady(
+    const result = await ensureConversationSandboxReady(
       auth as never,
       conversation as never
     );
@@ -318,7 +388,7 @@ describe("ensureSandboxReady", () => {
       new Err(new Error("refresh failed"))
     );
 
-    const result = await ensureSandboxReady(
+    const result = await ensureConversationSandboxReady(
       auth as never,
       conversation as never
     );
@@ -332,7 +402,7 @@ describe("ensureSandboxReady", () => {
       new Err(new Error("ensure-egress failed"))
     );
 
-    const result = await ensureSandboxReady(
+    const result = await ensureConversationSandboxReady(
       auth as never,
       conversation as never
     );

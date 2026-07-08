@@ -69,7 +69,7 @@ beforeEach(() => {
 
 describe("/api/w/[wId]/members/[uId]/spend_limit", () => {
   describe("auth", () => {
-    it("returns 403 when caller is not an admin", async () => {
+    it("returns 403 when caller is a user", async () => {
       const { workspace, user } = await createPrivateApiMockRequest({
         method: "GET",
         role: "user",
@@ -81,6 +81,42 @@ describe("/api/w/[wId]/members/[uId]/spend_limit", () => {
 
       expect(response.status).toBe(403);
       expect((await response.json()).error.type).toBe("workspace_auth_error");
+    });
+
+    it("allows a business admin to read and set the spend limit", async () => {
+      const workspace = await makeMetronomeWorkspaceWithCustomer();
+      const targetUser = await UserFactory.basic();
+      await MembershipFactory.associate(workspace, targetUser, {
+        role: "user",
+      });
+
+      await createPrivateApiMockRequest({
+        method: "PUT",
+        role: "business_admin",
+        workspace,
+      });
+
+      const putResponse = await honoApp.request(
+        spendLimitUrl(workspace.sId, targetUser.sId),
+        {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ kind: "limited", awuCredits: 1500 }),
+        }
+      );
+      expect(putResponse.status).toBe(200);
+      expect(await putResponse.json()).toEqual({
+        limit: { kind: "limited", awuCredits: 1500 },
+      });
+
+      const getResponse = await honoApp.request(
+        spendLimitUrl(workspace.sId, targetUser.sId)
+      );
+      expect(getResponse.status).toBe(200);
+      expect(await getResponse.json()).toEqual({
+        kind: "limited",
+        awuCredits: 1500,
+      });
     });
 
     it("returns 403 when workspace is not on Metronome billing", async () => {

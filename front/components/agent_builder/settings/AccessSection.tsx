@@ -4,6 +4,7 @@ import { useDataSourceViewsContext } from "@app/components/agent_builder/DataSou
 import { SlackSettingsSheet } from "@app/components/agent_builder/settings/SlackSettingsSheet";
 import { SettingSectionContainer } from "@app/components/agent_builder/shared/SettingSectionContainer";
 import { ManageUsersPanel } from "@app/components/assistant/conversation/space/ManageUsersPanel";
+import { BecomeEditorButton } from "@app/components/shared/BecomeEditorButton";
 import { getPublishingRestrictionForOwner } from "@app/lib/api/assistant/publishing_restrictions";
 import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { isBuilder } from "@app/types/user";
@@ -22,7 +23,17 @@ import {
 import React, { useState } from "react";
 import { useController } from "react-hook-form";
 
-export function AccessSection() {
+interface AccessSectionProps {
+  isEditorGateVisible: boolean;
+  isAddingSelfAsEditor: boolean;
+  onAddSelfAsEditor: () => void;
+}
+
+export function AccessSection({
+  isEditorGateVisible,
+  isAddingSelfAsEditor,
+  onAddSelfAsEditor,
+}: AccessSectionProps) {
   const { field: scope } = useController<
     AgentBuilderFormData,
     "agentSettings.scope"
@@ -71,22 +82,31 @@ export function AccessSection() {
   return (
     <SettingSectionContainer title="Editors & Access">
       <div className="mt-2 flex w-full flex-row flex-wrap items-center gap-2">
-        <Button
-          variant="outline"
-          size="sm"
-          icon={Users01}
-          label="Editors"
-          onClick={() => setIsEditorsOpen(true)}
-          type="button"
-        />
-        <ManageUsersPanel
-          isOpen={isEditorsOpen}
-          setIsOpen={setIsEditorsOpen}
-          owner={owner}
-          mode="editors-only"
-          editors={editors || []}
-          onEditorsChange={onChangeEditors}
-        />
+        {isEditorGateVisible ? (
+          <BecomeEditorButton
+            isLoading={isAddingSelfAsEditor}
+            onClick={onAddSelfAsEditor}
+          />
+        ) : (
+          <>
+            <Button
+              variant="outline"
+              size="sm"
+              icon={Users01}
+              label="Editors"
+              onClick={() => setIsEditorsOpen(true)}
+              type="button"
+            />
+            <ManageUsersPanel
+              isOpen={isEditorsOpen}
+              setIsOpen={setIsEditorsOpen}
+              owner={owner}
+              mode="editors-only"
+              editors={editors || []}
+              onEditorsChange={onChangeEditors}
+            />
+          </>
+        )}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button

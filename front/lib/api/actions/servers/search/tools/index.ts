@@ -8,7 +8,11 @@ import {
   applyNodeIdsFilterToCoreSearchArgs,
   getCoreSearchArgs,
 } from "@app/lib/actions/mcp_internal_actions/tools/utils";
-import type { AgentLoopContextType, StepContext } from "@app/lib/actions/types";
+import {
+  isAgentLoopRunContext,
+  type ToolContextType,
+} from "@app/lib/actions/types";
+import { AGENT_LESS_DEFAULT_RETRIEVAL_TOP_K } from "@app/lib/api/actions/servers/data_sources_file_system/tools/search";
 import {
   SEARCH_TOOL_METADATA_WITH_TAGS,
   SEARCH_TOOL_NAME,
@@ -43,8 +47,7 @@ export async function searchFunction(
     nodeIds,
     tagsIn,
     tagsNot,
-    agentLoopContext,
-    stepContext,
+    toolContext,
   }: {
     query: string;
     relativeTimeFrame: string;
@@ -53,8 +56,7 @@ export async function searchFunction(
     nodeIds?: string[];
     tagsIn?: string[];
     tagsNot?: string[];
-    agentLoopContext?: AgentLoopContextType;
-    stepContext?: StepContext;
+    toolContext?: ToolContextType;
   }
 ): Promise<Result<CallToolResult["content"], MCPError>> {
   const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
@@ -62,14 +64,11 @@ export async function searchFunction(
   const credentials = await getLlmCredentials(auth);
   const timeFrame = parseTimeFrame(relativeTimeFrame);
 
-  if (!agentLoopContext?.runContext?.stepContext && !stepContext) {
-    throw new Error(
-      "agentLoopRunContext.stepContext or stepContext is required where the tool is called."
-    );
-  }
-
-  const { retrievalTopK, citationsOffset } =
-    agentLoopContext?.runContext?.stepContext ?? stepContext!;
+  const { retrievalTopK, citationsOffset } = isAgentLoopRunContext(
+    toolContext?.runContext
+  )
+    ? toolContext.runContext.stepContext
+    : { retrievalTopK: AGENT_LESS_DEFAULT_RETRIEVAL_TOP_K, citationsOffset: 0 };
 
   // Get the core search args for each data source, fail if any of them are invalid.
   const coreSearchArgsResults = await getCoreSearchArgs(auth, dataSources);
@@ -196,11 +195,11 @@ export async function searchFunction(
 }
 
 const handlers: ToolHandlers<typeof SEARCH_TOOLS_METADATA> = {
-  [SEARCH_TOOL_NAME]: (params, { auth, agentLoopContext }) =>
+  [SEARCH_TOOL_NAME]: (params, { auth, toolContext }) =>
     searchFunction(auth, {
       ...params,
       relativeTimeFrame: params.relativeTimeFrame ?? "all",
-      agentLoopContext,
+      toolContext,
     }),
 };
 

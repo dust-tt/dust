@@ -1,5 +1,13 @@
 import { AgentDetailsDropdownMenu } from "@app/components/assistant/details/AgentDetailsButtonBar";
+import {
+  TRACKING_ACTIONS,
+  TRACKING_AREAS,
+  type TrackingAction,
+  type TrackingExtra,
+  trackEvent,
+} from "@app/lib/tracking";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
+import { isGlobalAgentId } from "@app/types/assistant/assistant";
 import type { TagType } from "@app/types/tag";
 import type { WorkspaceType } from "@app/types/user";
 import {
@@ -85,14 +93,53 @@ type AgentGridProps = {
   handleAssistantClick: (agent: LightAgentConfigurationType) => void;
   handleMoreClick: (agentId: string) => void;
   owner: WorkspaceType;
+  trackAgentBrowserEvents?: boolean;
   canGetMore?: boolean;
 };
+
+export function trackAgentBrowserEvent({
+  enabled,
+  object,
+  action = TRACKING_ACTIONS.CLICK,
+  extra,
+}: {
+  enabled?: boolean;
+  object: string;
+  action?: TrackingAction;
+  extra?: TrackingExtra;
+}) {
+  if (!enabled) {
+    return;
+  }
+
+  trackEvent({
+    area: TRACKING_AREAS.ASSISTANT,
+    object: `agent_browser_${object}`,
+    action,
+    extra,
+  });
+}
+
+function getAgentTrackingExtra(
+  agent: LightAgentConfigurationType
+): TrackingExtra {
+  return {
+    agent_id: agent.sId,
+    agent_scope: agent.scope,
+    is_global_agent: isGlobalAgentId(agent.sId),
+    is_favorite: agent.userFavorite,
+    can_edit: agent.canEdit,
+    tag_count: agent.tags.length,
+    has_template: agent.templateId !== null,
+  };
+}
 
 export const AgentGrid = ({
   agentConfigurations,
   handleAssistantClick,
   handleMoreClick,
   owner,
+  trackAgentBrowserEvents,
   canGetMore = true,
 }: AgentGridProps) => {
   // Context menu state
@@ -157,7 +204,18 @@ export const AgentGrid = ({
               pictureUrl={agent.pictureUrl}
               subtitle={agent.lastAuthors?.join(", ") ?? ""}
               description={agent.description}
-              onClick={() => handleAssistantClick(agent)}
+              onClick={() => {
+                trackAgentBrowserEvent({
+                  enabled: trackAgentBrowserEvents,
+                  object: "agent",
+                  action: TRACKING_ACTIONS.SELECT,
+                  extra: {
+                    source: "grid",
+                    ...getAgentTrackingExtra(agent),
+                  },
+                });
+                handleAssistantClick(agent);
+              }}
               onContextMenu={(e) => {
                 e.preventDefault();
                 setContextMenuAgent(agent);
@@ -169,6 +227,15 @@ export const AgentGrid = ({
                   <AssistantCardMore
                     onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
                       e.stopPropagation();
+                      trackAgentBrowserEvent({
+                        enabled: trackAgentBrowserEvents,
+                        object: "agent_details",
+                        action: TRACKING_ACTIONS.OPEN,
+                        extra: {
+                          source: "grid",
+                          ...getAgentTrackingExtra(agent),
+                        },
+                      });
                       handleMoreClick(agent.sId);
                     }}
                   />
@@ -198,6 +265,7 @@ type SearchDropdownContentProps = {
   onTagClick: (tagSId: string) => void;
   onAgentClick: (agent: LightAgentConfigurationType) => void;
   onAgentMoreClick?: (agentId: string) => void;
+  trackAgentBrowserEvents?: boolean;
 };
 
 export function SearchDropdownContent({
@@ -207,6 +275,7 @@ export function SearchDropdownContent({
   onTagClick,
   onAgentClick,
   onAgentMoreClick,
+  trackAgentBrowserEvents,
 }: SearchDropdownContentProps) {
   if (filteredTags.length === 0 && filteredAgents.length === 0) {
     return isLoading ? (
@@ -214,7 +283,7 @@ export function SearchDropdownContent({
         <Spinner size="md" />
       </div>
     ) : (
-      <div className="p-2 text-sm text-gray-500">No results found</div>
+      <div className="p-2 text-sm text-muted-foreground">No results found</div>
     );
   }
   return (
@@ -227,7 +296,7 @@ export function SearchDropdownContent({
               <Chip
                 key={tag.sId}
                 label={tag.name}
-                color="golden"
+                color="info"
                 size="xs"
                 onClick={() => onTagClick(tag.sId)}
               />
@@ -240,7 +309,18 @@ export function SearchDropdownContent({
         <DropdownMenuItem
           className="notranslate"
           key={agent.sId}
-          onClick={() => onAgentClick(agent)}
+          onClick={() => {
+            trackAgentBrowserEvent({
+              enabled: trackAgentBrowserEvents,
+              object: "agent",
+              action: TRACKING_ACTIONS.SELECT,
+              extra: {
+                source: "search_dropdown",
+                ...getAgentTrackingExtra(agent),
+              },
+            });
+            onAgentClick(agent);
+          }}
           truncateText
           label={agent.name}
           description={agent.description}
@@ -253,6 +333,15 @@ export function SearchDropdownContent({
                 icon={DotsHorizontal}
                 onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
                   e.stopPropagation();
+                  trackAgentBrowserEvent({
+                    enabled: trackAgentBrowserEvents,
+                    object: "agent_details",
+                    action: TRACKING_ACTIONS.OPEN,
+                    extra: {
+                      source: "search_dropdown",
+                      ...getAgentTrackingExtra(agent),
+                    },
+                  });
                   onAgentMoreClick(agent.sId);
                 }}
               />
@@ -299,6 +388,7 @@ type AllTabContentProps = {
   setDisplayedAssistantId: (id: string) => void;
   owner: WorkspaceType;
   showTagHeadings: boolean;
+  trackAgentBrowserEvents?: boolean;
   canGetMore?: boolean;
 };
 
@@ -312,6 +402,7 @@ export function AllTabContent({
   setDisplayedAssistantId,
   owner,
   showTagHeadings,
+  trackAgentBrowserEvents,
   canGetMore = true,
 }: AllTabContentProps) {
   return (
@@ -360,6 +451,7 @@ export function AllTabContent({
                 handleAssistantClick={handleAgentClick}
                 handleMoreClick={setDisplayedAssistantId}
                 owner={owner}
+                trackAgentBrowserEvents={trackAgentBrowserEvents}
                 canGetMore={canGetMore}
               />
             </React.Fragment>
@@ -378,6 +470,7 @@ export function AgentBrowserSearchDropdown({
   onTagClick,
   onAgentClick,
   onAgentMoreClick,
+  trackAgentBrowserEvents,
 }: {
   assistantSearch: string;
   setAssistantSearch: (v: string) => void;
@@ -387,6 +480,7 @@ export function AgentBrowserSearchDropdown({
   onTagClick: (tagSId: string) => void;
   onAgentClick: (agent: LightAgentConfigurationType) => void;
   onAgentMoreClick?: (agentId: string) => void;
+  trackAgentBrowserEvents?: boolean;
 }) {
   return (
     <SearchDropdownMenu
@@ -400,6 +494,7 @@ export function AgentBrowserSearchDropdown({
         onTagClick={onTagClick}
         onAgentClick={onAgentClick}
         onAgentMoreClick={onAgentMoreClick}
+        trackAgentBrowserEvents={trackAgentBrowserEvents}
       />
     </SearchDropdownMenu>
   );

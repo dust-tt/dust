@@ -145,7 +145,7 @@ function buildSkillInstructionsEditableExtensions({
     Placeholder.configure({
       placeholder: "What does this skill do? How should it behave?",
       emptyNodeClass:
-        "first:before:text-gray-400 first:before:italic first:before:content-[attr(data-placeholder)] first:before:pointer-events-none first:before:absolute",
+        "first:before:text-muted-foreground first:before:italic first:before:content-[attr(data-placeholder)] first:before:pointer-events-none first:before:absolute",
     }),
     CharacterCount.configure({
       limit: INSTRUCTIONS_MAXIMUM_CHARACTER_COUNT,
@@ -293,8 +293,7 @@ export function useSkillInstructionsEditor({
 
 const readOnlyStyles = cn(
   "min-h-60 w-full min-w-0 rounded-xl border p-3",
-  "border-border bg-muted-background",
-  "dark:border-border-night dark:bg-muted-background-night"
+  "border-border bg-muted-background"
 );
 
 interface SkillInstructionsEditorContentProps {

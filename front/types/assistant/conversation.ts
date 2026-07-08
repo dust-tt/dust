@@ -17,6 +17,7 @@ import type {
   LightAgentConfigurationType,
 } from "./agent";
 import type { MentionType, RichMention } from "./mentions";
+import type { ResolvedRequestedModel } from "./models/types";
 
 export type MessageVisibility = "visible" | "deleted" | "pending";
 
@@ -124,6 +125,14 @@ export type UserMessageOrigin =
   // a branch can be created before any user-visible message exists.
   | "branch_anchor";
 
+export const HIDDEN_MESSAGE_ORIGINS: UserMessageOrigin[] = [
+  "onboarding_conversation",
+  "project_kickoff",
+  "reinforced_skill_notification",
+  "branch_anchor",
+  "wakeup",
+];
+
 /**
  * @swaggerschema Context (swagger_schemas.ts), PrivateUserMessageContext (swagger_private_schemas.ts)
  */
@@ -209,13 +218,7 @@ export function isUserMessageTypeWithContentFragments(
 }
 
 export function isHiddenMessageOrigin(origin: UserMessageOrigin): boolean {
-  return (
-    origin === "onboarding_conversation" ||
-    origin === "project_kickoff" ||
-    origin === "reinforced_skill_notification" ||
-    origin === "branch_anchor" ||
-    origin === "wakeup"
-  );
+  return HIDDEN_MESSAGE_ORIGINS.includes(origin);
 }
 
 export function isVisibleMessage(m: LightMessageType): boolean {
@@ -325,9 +328,14 @@ export type BaseAgentMessageType = {
   subAgentCostCredits?: number | null;
 };
 
+// `step` is the agent-loop step a given activity step was produced in. It lets
+// the streaming client discard the steps it built for a step that Temporal
+// re-ran (activity retry re-emits the step's events with a fresh traceId),
+// rebuilding it instead of appending duplicates. Optional: absent on the
+// server-rendered terminal view, which is already canonical.
 export type InlineActivityStep =
-  | { type: "thinking"; content: string; id: string }
-  | { type: "content"; content: string; id: string }
+  | { type: "thinking"; content: string; id: string; step?: number }
+  | { type: "content"; content: string; id: string; step?: number }
   | {
       type: "action";
       label: string;
@@ -335,6 +343,7 @@ export type InlineActivityStep =
       actionId: string;
       internalMCPServerName: InternalMCPServerNameType | null;
       toolName: string | null;
+      step?: number;
     };
 
 export type ParsedContentItem =
@@ -354,6 +363,10 @@ export type AgentMessageType = BaseAgentMessageType & {
   actions: AgentMCPActionWithOutputType[];
   contents: Array<{ step: number; content: AgentContentItemType }>;
   modelInteractionDurationMs: number | null;
+  // Per-message model override from the input-bar model picker: the resolved
+  // model. Null/undefined when the agent ran its own configured model. Optional
+  // during rollout. See [BACK12].
+  requestedModel?: ResolvedRequestedModel | null;
 };
 
 export type AgentMessageTypeWithoutMentions = Omit<
