@@ -150,11 +150,11 @@ describe("SandboxFunctionMCPActionResource", () => {
     }
 
     const content = [{ type: "text" as const, text: "4" }];
-    const writeResult = await action.createOutputItems(
+    const outputRes = await action.createOutputItems(
       authenticator,
       content.map((c) => ({ content: c }))
     );
-    expect(writeResult.isOk()).toBe(true);
+    expect(outputRes.isOk()).toBe(true);
     expect(action.outputGcsPath).toContain(action.sId);
 
     const readBack = await action.readOutput();

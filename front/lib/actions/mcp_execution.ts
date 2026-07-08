@@ -90,16 +90,16 @@ export async function processToolNotification(
 
   // Handle store_resource notifications by creating output items immediately (fire-and-forget GCS).
   if (isStoreResourceProgressOutput(output)) {
-    const createResult = await runContext.action.createOutputItems(
+    const outputRes = await runContext.action.createOutputItems(
       auth,
       output.contents.map((content) => ({
         content: sanitizeStringsDeep(content),
       }))
     );
-    if (createResult.isErr()) {
-      throw createResult.error;
+    if (outputRes.isErr()) {
+      throw outputRes.error;
     }
-    outputItems = createResult.value;
+    outputItems = outputRes.value;
   }
 
   // Specific handling for run_agent notifications indicating the tool has
@@ -474,7 +474,7 @@ export async function processToolResults(
 
   // Persist the processed contents on the run context's action: per-item rows for agent loop
   // actions, a single output object for sandbox function actions.
-  const persistResult = await runContext.action.createOutputItems(
+  const outputRes = await runContext.action.createOutputItems(
     auth,
     cleanContent.map((c) => ({
       content: sanitizeStringsDeep(c.content),
@@ -483,11 +483,11 @@ export async function processToolResults(
   );
 
   // Surfaced as an exception: there is no acceptable degraded state for unpersisted tool outputs.
-  if (persistResult.isErr()) {
-    throw persistResult.error;
+  if (outputRes.isErr()) {
+    throw outputRes.error;
   }
 
-  return { outputItems: persistResult.value, generatedFiles };
+  return { outputItems: outputRes.value, generatedFiles };
 }
 
 /**

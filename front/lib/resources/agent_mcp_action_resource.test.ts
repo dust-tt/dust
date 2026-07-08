@@ -420,14 +420,14 @@ describe("Output items with GCS storage", () => {
 
     expect(action).toBeDefined();
 
-    const createResult = await action!.createOutputItems(
+    const outputRes = await action!.createOutputItems(
       auth,
       contents.map((c) => ({ content: c }))
     );
-    if (createResult.isErr()) {
-      throw createResult.error;
+    if (outputRes.isErr()) {
+      throw outputRes.error;
     }
-    const outputItems = createResult.value;
+    const outputItems = outputRes.value;
 
     // createOutputItems returns the generic content view; fetch the created rows for assertions
     // on persistence-side fields.
