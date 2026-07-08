@@ -121,11 +121,9 @@ export function recordStateDuration(
 export function recordToolDuration(
   tool: string,
   durationMs: number,
-  ctx: MetricContext,
   status: "success" | "error" = "success"
 ): void {
   getStatsDClient().distribution("sandbox.tools.duration", durationMs, [
-    ...buildTags(ctx),
     `tool:${tool}`,
     `status:${status}`,
   ]);

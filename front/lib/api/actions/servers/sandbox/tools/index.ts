@@ -370,7 +370,6 @@ export async function runSandboxBashTool(
     sandboxAction: sandboxAction.toJSON(),
   });
 
-  const metricsCtx = { workspaceId: auth.getNonNullableWorkspace().sId };
   const startMs = performance.now();
 
   const providerId = model.providerId;
@@ -419,7 +418,6 @@ export async function runSandboxBashTool(
     recordToolDuration(
       "bash",
       durationMs,
-      metricsCtx,
       execResult.isOk() ? "success" : "error"
     );
   }
