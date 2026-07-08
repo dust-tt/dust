@@ -12,13 +12,11 @@ import { cn } from "@sparkle/lib/utils";
 import { cva, type VariantProps } from "class-variance-authority";
 import * as React from "react";
 
-// Redesigned button, added alongside the existing Button (which is unchanged).
-// Sizes use a 24/32/40px scale. In dark mode, primary and outline swap (each
-// renders the other's light design): both are built from the `primary` token
-// ramp, which flips on its own under `.dark`, so the swap needs no `dark:`
-// code. Every other variant's colors come from semantic tokens that flip too;
-// only the translucent hover/active overlays carry explicit `dark:` values
-// (a white tint can't flip through a token).
+// Redesigned button alongside the existing Button (unchanged). Sizes: 24/32/40px.
+// Dark-mode strategy per variant:
+//   - primary/outline: explicit dark: gradient overrides (primary goes lighter, outline darker)
+//   - highlight/warning: explicit dark: overrides to preserve hue (token ramp would flip to wrong shade)
+//   - ghost variants: semantic tokens auto-flip, no dark: needed
 
 export const NEW_BUTTON_VARIANTS = [
   "primary",
@@ -36,20 +34,12 @@ export type NewButtonVariantType = (typeof NEW_BUTTON_VARIANTS)[number];
 export const NEW_BUTTON_SIZES = ["xs", "sm", "md"] as const;
 export type NewButtonSizeType = (typeof NEW_BUTTON_SIZES)[number];
 
-// The shadow shared by every raised button: a 0.5px hairline outline, an
-// ambient drop, and a faint inset top-highlight. Both tinted layers reference
-// flipping tokens so the whole shadow inverts in dark mode with no `dark:`:
-//   - hairline -> `border-dark` (light gray in light, dark slate in dark), the
-//     exact per-mode tint the primary/outline swap needs.
-//   - ambient drop -> `foreground` (dark in light => a normal drop shadow;
-//     light in dark => a soft glow), which is how elevation reads on a dark
-//     canvas (Emil: alpha-white edges glow, dark drop shadows go muddy).
-// The inset highlight stays white: a top catch-light that works in both modes.
+// Inset white catch-light + hairline via border-dark + ambient drop via foreground.
+// All three auto-invert in dark mode via flipping tokens except the white highlight (intentional).
 const RAISED_SHADOW =
   "shadow-[inset_0_0_1px_0_rgba(255,255,255,0.08),0_0_0.5px_0_var(--color-border-dark),0_1px_1.5px_0_color-mix(in_oklch,var(--color-foreground)_10%,transparent)]";
 
-// Hover/active overlay for the raised variants. Per-variant (not in the base)
-// so ghost variants leave the ::after pseudo free for consumers (e.g. Tabs).
+// Per-variant (not base) so ghost variants keep ::after free for consumers (e.g. Tabs).
 const OVERLAY = cn(
   "after:pointer-events-none after:absolute after:inset-0 after:rounded-[inherit]",
   "after:transition-colors disabled:after:hidden"
@@ -62,20 +52,14 @@ const newButtonVariants = cva(
     "transition-[color,background-color,border-color,transform] duration-100 ease-out",
     "motion-reduce:transition-none",
     "focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-0",
-    // Disabled = per-variant faint tints (below), matching Figma, plus no shadow.
-    // Gated on data-disabled so a loading button (which also carries the disabled
-    // attr) keeps its full-strength active look. The interaction guards below stay
-    // on :disabled so they cover loading too. NOTE: the tints come from ramp
-    // positions that flip in dark mode — pending designer sign-off on dark.
+    // data-disabled is set only when truly disabled (not loading), so loading buttons
+    // keep their full-color active look while :disabled guards block interaction for both.
     "data-[disabled]:shadow-none",
     "disabled:cursor-not-allowed disabled:focus-visible:ring-0"
   ),
   {
     variants: {
       variant: {
-        // Built from the flipping `primary` ramp: dark gradient + light text in
-        // light mode, light gradient + dark text in dark mode. That auto-swap
-        // is the whole primary/outline relationship — no `dark:` needed.
         primary: cn(
           OVERLAY,
           "bg-linear-to-b from-primary-700 to-primary-800",
@@ -83,43 +67,46 @@ const newButtonVariants = cva(
           "text-primary-50",
           RAISED_SHADOW,
           "data-[disabled]:from-primary-300 data-[disabled]:to-primary-400",
-          // Light: dark button -> white overlay (size-based, below). Dark: light
-          // button -> a faint dark overlay instead.
+          "dark:data-[disabled]:opacity-50",
+          // Dark: light button surface → darken on hover instead of lighten.
           "dark:hover:after:bg-black/[0.04] dark:active:after:bg-black/[0.04]"
         ),
         highlight: cn(
           OVERLAY,
           "bg-linear-to-b from-highlight-400 to-highlight-500",
+          "dark:from-highlight-600 dark:to-highlight-500",
           "text-white",
           RAISED_SHADOW,
-          "data-[disabled]:from-highlight-200 data-[disabled]:to-highlight-300"
+          "data-[disabled]:from-highlight-200 data-[disabled]:to-highlight-300",
+          // Dark disabled: lock gradient (prevent ramp flip) then fade with opacity.
+          "dark:data-[disabled]:from-highlight-600 dark:data-[disabled]:to-highlight-500",
+          "dark:data-[disabled]:opacity-50"
         ),
         warning: cn(
           OVERLAY,
           "bg-linear-to-b from-warning-400 to-warning-500",
+          "dark:from-warning-600 dark:to-warning-500",
           "text-white",
           RAISED_SHADOW,
-          "data-[disabled]:from-warning-200 data-[disabled]:to-warning-300"
+          "data-[disabled]:from-warning-200 data-[disabled]:to-warning-300",
+          // Dark disabled: lock gradient (prevent ramp flip) then fade with opacity.
+          "dark:data-[disabled]:from-warning-600 dark:data-[disabled]:to-warning-500",
+          "dark:data-[disabled]:opacity-50"
         ),
-        // The mirror of primary: light gradient + muted text in light mode,
-        // dark gradient + light text in dark mode, via the same flipping ramp.
         outline: cn(
           OVERLAY,
+          // overflow-hidden + after:rounded-none clips the hover overlay flush to the border-radius.
           "overflow-hidden after:rounded-none",
           "border border-border-dark dark:border-primary-200",
           "bg-linear-to-b from-primary-50 to-primary-100",
-          // Dark: dark warm gradient (stone-900 → stone-800)
           "dark:from-primary-150 dark:to-primary-200",
-          "text-muted-foreground",
-          // Dark: near-white text (stone-100)
-          "dark:text-primary-900",
+          "text-muted-foreground dark:text-primary-900",
           RAISED_SHADOW,
-          // Dark: override drop shadow — spec uses rgba(0,0,0,0.06) drop, not a glow
+          // Dark: a real drop shadow (not a glow) since the button surface is dark.
           "dark:shadow-[inset_0_0_1px_0_rgba(255,255,255,0.08),0_0_0.5px_0_var(--color-border-dark),0_0.5px_1px_0_rgba(0,0,0,0.06)]",
-          // Light: light button -> faint dark overlay. Dark: dark button ->
-          // white overlay (size-based, below).
           "hover:after:bg-black/[0.02] active:after:bg-black/[0.02]",
-          "data-[disabled]:text-faint"
+          "data-[disabled]:text-faint",
+          "dark:data-[disabled]:opacity-50"
         ),
         ghost: cn(
           "text-foreground",
@@ -166,11 +153,8 @@ const newButtonVariants = cva(
       { size: "xs", isIconOnly: true, className: "w-6 px-0" },
       { size: "sm", isIconOnly: true, className: "w-8 px-0" },
       { size: "md", isIconOnly: true, className: "w-10 px-0" },
-      // White overlay on solid variants: large buttons get a stronger tint
-      // (Figma uses white/0.2 at Large, white/0.1 at Small/Medium). Hover and
-      // active share the same value — only the press scale differentiates them.
-      // For primary (which is light in dark mode) the dark-mode override in the
-      // variant wins on specificity, so this only applies in light mode there.
+      // Solid raised variants: larger buttons get a stronger white overlay (Figma spec).
+      // dark:hover on primary is overridden per-variant to darken instead of lighten.
       {
         variant: ["primary", "highlight", "warning"],
         size: ["xs", "sm"],
@@ -181,7 +165,7 @@ const newButtonVariants = cva(
         size: "md",
         className: "hover:after:bg-white/20 active:after:bg-white/20",
       },
-      // Outline dark mode: subtle 2% white overlay on hover/active.
+      // Outline dark: white overlay (dark surface needs lighten, not darken).
       {
         variant: "outline",
         size: ["xs", "sm", "md"],
