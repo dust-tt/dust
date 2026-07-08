@@ -5,7 +5,10 @@ import type { AuthenticatorType } from "@app/lib/auth";
 import { Authenticator } from "@app/lib/auth";
 import { SandboxFunctionMCPActionResource } from "@app/lib/resources/sandbox_function_mcp_action_resource";
 import { SandboxFunctionResource } from "@app/lib/resources/sandbox_function_resource";
-import { withPeriodicHeartbeat } from "@app/lib/utils/async_utils";
+import {
+  drainAsyncGenerator,
+  withPeriodicHeartbeat,
+} from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import { TOOL_RESULT_PROCESSING_HEARTBEAT_INTERVAL_MS } from "@app/temporal/agent_loop/config";
 import type { ModelId } from "@app/types/shared/model_id";
@@ -57,26 +60,27 @@ export async function runSandboxFunctionToolActivity(
     toolConfiguration: action.toolConfiguration,
   };
 
-  const startTime = performance.now();
+  const startTimeMs = performance.now();
 
-  // Drain the generator: without `makeToolNotificationEvent`, progress notifications are consumed
-  // but never yielded — there is no conversation surface to stream them to.
-  const generator = tryCallMCPTool(
-    auth,
-    action.inputs,
-    { runContext },
-    { progressToken: action.id }
+  // There is no invocation event stream yet, so we pass no `makeToolNotificationEvent`: the
+  // generator yields nothing and we drain it for the tool result (its return value).
+  // TODO(2026-07-08 SANDBOX_FUNCTIONS): post progress notifications to the invocation event
+  // stream once it exists, instead of dropping them.
+  const toolCallResult = await drainAsyncGenerator(
+    tryCallMCPTool(
+      auth,
+      action.inputs,
+      { runContext },
+      {
+        progressToken: action.id,
+      }
+    )
   );
-  let iteratorResult = await generator.next();
-  while (!iteratorResult.done) {
-    iteratorResult = await generator.next();
-  }
-  const toolCallResult = iteratorResult.value;
 
-  // Persist the output — a tool error's content included, the poll endpoint returns it alongside
-  // the errored status — through the same result processing as the agent loop (writes the full
-  // content array to the action's single GCS output object). Result processing can take minutes
-  // when handling files, so heartbeat while it runs.
+  // Persist the output through the same result processing as the agent loop: the full content
+  // array goes to the action's single GCS output object. Error content is persisted too, the
+  // poll endpoint returns it alongside the errored status. Processing can take minutes when
+  // handling files, so heartbeat while it runs.
   try {
     await withPeriodicHeartbeat(
       () =>
@@ -94,22 +98,21 @@ export async function runSandboxFunctionToolActivity(
       }
     );
   } catch (err) {
-    // The poll contract requires a terminal status: a persistence failure (GCS retries
-    // exhausted) must surface as an errored action, not an action stuck `running`. Catching our
-    // own throw here is temporary — `processToolResults` throws because `createOutputItems`
-    // does (see the TODO(2026-05-08 FLAV) in agent_mcp_action_resource.ts to Result-ify it and
-    // its call sites); this catch goes away with that refactor.
+    // `processToolResults` throws when output cannot be persisted (no acceptable degraded
+    // state). The agent loop lets that abort the step; here there is no step to abort, so catch
+    // it and mark the action errored, otherwise it would stay `running` and the poll never
+    // reaches a terminal status.
     localLogger.error(
       { err: normalizeError(err) },
       "Failed to persist sandbox function tool output, marking action as errored"
     );
     await action.markAsErrored({
-      executionDurationMs: Math.round(performance.now() - startTime),
+      executionDurationMs: Math.round(performance.now() - startTimeMs),
     });
     return;
   }
 
-  const executionDurationMs = Math.round(performance.now() - startTime);
+  const executionDurationMs = Math.round(performance.now() - startTimeMs);
 
   if (toolCallResult.isError) {
     await action.markAsErrored({ executionDurationMs });

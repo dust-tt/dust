@@ -523,8 +523,9 @@ describe("processToolResults", () => {
       toolCallResultContent,
     });
 
-    // No per-block output items outside of a conversation.
-    expect(outputItems).toHaveLength(0);
+    // Sandbox actions persist the whole content array as a single GCS object, but
+    // createOutputItems still returns the generic per-content items.
+    expect(outputItems).toHaveLength(2);
     expect(generatedFiles).toHaveLength(0);
 
     // The full content array lands in one GCS object, recorded on the action row.
