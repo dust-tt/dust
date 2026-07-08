@@ -15,8 +15,10 @@ export type MCPServerDefinition = {
   serverNameOverride?: string;
 };
 
+type SkillAgentLoopState = "enabled" | "equipped";
+
 interface BaseSkillDefinition<
-  T extends "enabled" | "equipped" = "enabled" | "equipped",
+  T extends SkillAgentLoopState = SkillAgentLoopState,
 > {
   readonly agentFacingDescription: string;
   readonly userFacingDescription: string;
@@ -63,7 +65,7 @@ type WithDynamicInstructions<T extends BaseSkillDefinition> = T & {
 };
 
 export type SkillDefinition<
-  T extends "enabled" | "equipped" = "enabled" | "equipped",
+  T extends SkillAgentLoopState = SkillAgentLoopState,
 > =
   | WithStaticInstructions<BaseSkillDefinition<T>>
   | WithDynamicInstructions<BaseSkillDefinition<T>>;
