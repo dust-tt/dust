@@ -147,7 +147,9 @@ function SeatMoveSection({
   return (
     <div className="flex flex-col gap-2">
       <p className="text-sm font-semibold text-foreground">{title}</p>
-      <div className="grid grid-cols-[max-content_max-content_max-content_1fr] items-center gap-x-2 gap-y-1.5 text-sm text-foreground">
+      {/* The count column is max-content (shared across rows) with its
+          content left-aligned, so the × of ×1 / ×12 line up. */}
+      <div className="grid grid-cols-[max-content_max-content_1fr_max-content] items-center gap-x-2 gap-y-1.5 text-sm text-foreground">
         {moves.map((move) => (
           <Fragment key={move.fromSeatType}>
             <div className="flex items-center gap-1.5">
@@ -173,7 +175,7 @@ function SeatMoveSection({
               />
               <span>{targetLabel}</span>
             </div>
-            <span className="justify-self-end font-medium text-muted-foreground">
+            <span className="font-medium text-muted-foreground">
               ×{move.count.toLocaleString("en-US")}
             </span>
           </Fragment>
