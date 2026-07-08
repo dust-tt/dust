@@ -2411,7 +2411,7 @@ function GovernancePage({
     <Page>
       <Page.Header
         title="Workspace & Governance"
-        description="Define policies that control what members can do in your workspace."
+        description="Configure access, policies, and integrations for your workspace."
         icon={Toggle01Left}
       />
       {/* Workspace Name */}
