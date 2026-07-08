@@ -391,20 +391,21 @@ export function CheckoutPage() {
     ? CHECKOUT_STEPS_NO_PAYMENT
     : CHECKOUT_STEPS;
 
-  // Progress step shown during the confirming / waiting_for_payment phases.
-  // - Paid checkout: waiting_for_payment starts on "Processing payment" (step 1)
-  //   and advances to "Activating your workspace" (step 2) once the payment
-  //   webhook reports activation has begun (surfaced through the polled record).
-  // - Zero-payment (coupon) checkout: activation runs inside the confirming
-  //   request, so we show the "Activating your workspace" step (the last of the
-  //   two-step list) throughout instead of a payment step that never happens.
-  const activeStepIndex = isZeroPaymentCheckout
-    ? checkoutSteps.length - 1
-    : phase === "confirming"
+  // Active step, driven by the phase and the polled checkout record's state:
+  // - confirming (POST provisioning the contract / writing the pending record
+  //   via setCheckoutPaymentPending): "Setting up your subscription" (step 0).
+  // - waiting_for_payment, record still pending: "Processing payment" for a paid
+  //   checkout; still "Setting up" for a zero-payment one (nothing to charge).
+  // - record progress "activating" (markCheckoutPaymentActivating): the final
+  //   "Activating your workspace" step, for both paths.
+  const activeStepIndex =
+    phase === "confirming"
       ? 0
       : checkoutPayment?.progress === "activating"
-        ? 2
-        : 1;
+        ? checkoutSteps.length - 1
+        : isZeroPaymentCheckout
+          ? 0
+          : 1;
 
   const showActualTax = preparePayment !== null;
 
