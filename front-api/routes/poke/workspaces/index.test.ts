@@ -1,3 +1,4 @@
+import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
@@ -143,6 +144,47 @@ describe("GET /api/poke/workspaces — plan type filter", () => {
       search: encodeURIComponent("Quibble Enterprise Corp Two"),
       limit: "20",
       planType: "enterprise",
+    });
+
+    expect(response.status).toBe(200);
+    const { workspaces } = await response.json();
+    expect(
+      workspaces.some((w: { sId: string }) => w.sId === workspace.sId)
+    ).toBe(false);
+  });
+
+  it("returns a workspace with no active subscription when filtering by planType=free", async () => {
+    const workspace = await createNamedWorkspace("Quibble No Sub Corp", () =>
+      WorkspaceFactory.basic()
+    );
+    await SubscriptionResource.endActiveSubscription(workspace);
+    await createPrivateApiMockRequest({ isSuperUser: true, workspace });
+
+    const response = await fetchWorkspaces({
+      search: encodeURIComponent("Quibble No Sub Corp"),
+      limit: "20",
+      planType: "free",
+    });
+
+    expect(response.status).toBe(200);
+    const { workspaces } = await response.json();
+    expect(
+      workspaces.some((w: { sId: string }) => w.sId === workspace.sId)
+    ).toBe(true);
+  });
+
+  it("excludes a workspace with no active subscription when filtering by planType=legacy_pro", async () => {
+    const workspace = await createNamedWorkspace(
+      "Quibble No Sub Corp Two",
+      () => WorkspaceFactory.basic()
+    );
+    await SubscriptionResource.endActiveSubscription(workspace);
+    await createPrivateApiMockRequest({ isSuperUser: true, workspace });
+
+    const response = await fetchWorkspaces({
+      search: encodeURIComponent("Quibble No Sub Corp Two"),
+      limit: "20",
+      planType: "legacy_pro",
     });
 
     expect(response.status).toBe(200);
