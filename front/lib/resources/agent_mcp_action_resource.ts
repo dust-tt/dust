@@ -720,21 +720,21 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
 
   /**
    * A message should never have blocked actions from more than one step, and resume paths rely
-   * on that to resume the agent loop from a single, unambiguous step. When `force` is false this
-   * enforces the invariant and throws on a violation, surfacing the bug. `force` (used by the
-   * unstick-conversation poke plugin) skips the check so a genuinely stuck conversation can still
-   * be finalized.
+   * on that to resume the agent loop from a single, unambiguous step. By default this enforces the
+   * invariant and throws on a violation, surfacing the bug. `dangerouslyBypassSameStepCheck` (used
+   * by the unstick-conversation poke plugin) skips the check so a genuinely stuck conversation can
+   * still be finalized.
    */
   static async listBlockedActionsForAgentMessage(
     auth: Authenticator,
     {
       agentMessageId,
       transaction,
-      force = false,
+      dangerouslyBypassSameStepCheck = false,
     }: {
       agentMessageId: ModelId;
       transaction?: Transaction;
-      force?: boolean;
+      dangerouslyBypassSameStepCheck?: boolean;
     }
   ): Promise<AgentMCPActionResource[]> {
     const actions = await this.baseFetch(
@@ -754,7 +754,7 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
       return [];
     }
 
-    if (!force) {
+    if (!dangerouslyBypassSameStepCheck) {
       const steps = actions.map((a) => a.stepContent.step);
       const uniqueSteps = [...new Set(steps)];
       assert(
@@ -773,22 +773,26 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
    * approval that already transitioned the action is not clobbered. Returns the actions
    * actually denied, with their pre-deny resources.
    *
-   * `force` is forwarded to listBlockedActionsForAgentMessage: leave it false to enforce the
-   * single-step invariant; the unstick-conversation poke plugin passes true to finalize an
-   * anomalous, genuinely stuck conversation instead of throwing.
+   * `dangerouslyBypassSameStepCheck` is forwarded to listBlockedActionsForAgentMessage: leave it
+   * false to enforce the single-step invariant; the unstick-conversation poke plugin passes true to
+   * finalize an anomalous, genuinely stuck conversation instead of throwing.
    */
   static async denyBlockedActionsForAgentMessage(
     auth: Authenticator,
     {
       agentMessageId,
       transaction,
-      force = false,
-    }: { agentMessageId: ModelId; transaction: Transaction; force?: boolean }
+      dangerouslyBypassSameStepCheck = false,
+    }: {
+      agentMessageId: ModelId;
+      transaction: Transaction;
+      dangerouslyBypassSameStepCheck?: boolean;
+    }
   ): Promise<AgentMCPActionResource[]> {
     const blockedActions = await this.listBlockedActionsForAgentMessage(auth, {
       agentMessageId,
       transaction,
-      force,
+      dangerouslyBypassSameStepCheck,
     });
 
     if (blockedActions.length === 0) {

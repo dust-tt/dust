@@ -90,7 +90,7 @@ export const unstickConversationPlugin = createPlugin({
       status: "failed",
       // Force finalization so we can rescue conversations stuck in an anomalous state (e.g. blocked
       // actions spanning multiple steps) that would otherwise make finalization throw.
-      force: true,
+      dangerouslyBypassSameStepCheck: true,
       error: {
         code: "unstuck_by_admin",
         message:

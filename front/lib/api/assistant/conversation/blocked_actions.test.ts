@@ -322,7 +322,7 @@ describe("blocked actions resolution", () => {
         conversation,
         agentMessage,
         status: "failed",
-        force: true,
+        dangerouslyBypassSameStepCheck: true,
       });
 
       const reloadedStep1 = await AgentMCPActionResource.fetchById(
@@ -338,7 +338,7 @@ describe("blocked actions resolution", () => {
       expect(await getActionRequired()).toBe(false);
     });
 
-    it("throws on multi-step blocked actions without force (invariant enforced)", async () => {
+    it("throws on multi-step blocked actions by default (invariant enforced)", async () => {
       const { agentMessage } = await setupMultiStepBlockedMessage();
 
       await expect(
