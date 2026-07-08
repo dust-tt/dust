@@ -8,6 +8,7 @@ import {
   CP_PRO_SEAT_COST_YEARLY,
   getPriceAsString,
   useIsMetronomeCheckout,
+  useRedirectAwayFromCheckoutIfAlreadyPaid,
   useUserBillingCurrency,
 } from "@app/lib/client/subscription";
 import { useAppRouter, useSearchParam } from "@app/lib/platform";
@@ -100,6 +101,8 @@ export function CheckoutPage() {
   const seatType = useSeatTypeParam();
   const targetUserId = useSearchParam("targetUserId");
   const { mutateAuthContext } = useAuthContext({ workspaceId: owner.sId });
+  const shouldRedirectAwayFromCheckout =
+    useRedirectAwayFromCheckoutIfAlreadyPaid();
 
   // Determine if CP checkout is enabled.
   const isMetronomeCheckout = useIsMetronomeCheckout();
@@ -396,6 +399,10 @@ export function CheckoutPage() {
   const planDisplayName = seatType === "pro" ? "Pro seat" : "Max seat";
 
   if (!isInitialized) {
+    return null;
+  }
+
+  if (shouldRedirectAwayFromCheckout) {
     return null;
   }
 

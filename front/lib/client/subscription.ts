@@ -1,9 +1,13 @@
-import { useFeatureFlags } from "@app/lib/auth/AuthContext";
+import { useAuth, useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { getBillingCurrencyForCountry } from "@app/lib/plans/billing_currency";
+import { isFreePlan } from "@app/lib/plans/plan_codes";
+import { useAppRouter } from "@app/lib/platform";
 import type { KillSwitchType } from "@app/lib/poke/types";
 import { useGeolocation } from "@app/lib/swr/geo";
 import type { SupportedCurrency } from "@app/types/currency";
+import { isSubscriptionMetronomeBilled } from "@app/types/plan";
 import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
+import { useEffect, useState } from "react";
 import { useKillSwitches } from "../swr/kill";
 
 // If mention the price of the PRO plan in a few different places in the code base,
@@ -182,3 +186,39 @@ export const getPriceAsString = ({
       return `${price}${currency}`;
   }
 };
+
+/**
+ * Guards onboarding/checkout pages (select-subscription, subscribe,
+ * trial-ended, checkout) against workspaces that already have a paid plan —
+ * reachable via stale links or back navigation after the workspace already
+ * upgraded. Admins are sent to the subscription management page, other
+ * members to the workspace home since they cannot access billing.
+ *
+ * The check is captured once at mount rather than kept reactive: on
+ * `CheckoutPage`, a successful payment flips the workspace's subscription
+ * to paid (via `mutateAuthContext`) right before showing its own success
+ * screen, and that update must not be mistaken for "already paid" and
+ * redirect the user away from the success screen the payment just unlocked.
+ *
+ * Returns true while the redirect is in flight, so callers can render `null`
+ * instead of the checkout UI for that render.
+ */
+export function useRedirectAwayFromCheckoutIfAlreadyPaid(): boolean {
+  const { workspace, isAdmin, subscription } = useAuth();
+  const router = useAppRouter();
+
+  const [wasAlreadyOnPaidPlan] = useState(
+    () => !isFreePlan(subscription.plan.code)
+  );
+
+  useEffect(() => {
+    if (wasAlreadyOnPaidPlan) {
+      const adminTarget = isSubscriptionMetronomeBilled(subscription)
+        ? `/w/${workspace.sId}/billing`
+        : `/w/${workspace.sId}/subscription`;
+      void router.replace(isAdmin ? adminTarget : `/w/${workspace.sId}`);
+    }
+  }, [wasAlreadyOnPaidPlan, isAdmin, subscription, workspace.sId, router]);
+
+  return wasAlreadyOnPaidPlan;
+}

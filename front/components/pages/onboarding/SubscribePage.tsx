@@ -7,7 +7,10 @@ import { ProPlansTable } from "@app/components/plans/ProPlansTable";
 import { UserMenu } from "@app/components/UserMenu";
 import WorkspacePicker from "@app/components/WorkspacePicker";
 import { useAuth } from "@app/lib/auth/AuthContext";
-import { useIsMetronomeCheckout } from "@app/lib/client/subscription";
+import {
+  useIsMetronomeCheckout,
+  useRedirectAwayFromCheckoutIfAlreadyPaid,
+} from "@app/lib/client/subscription";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { isFreeTrialPhonePlan, isOldFreePlan } from "@app/lib/plans/plan_codes";
 import { useAppRouter } from "@app/lib/platform";
@@ -29,6 +32,8 @@ function CPSubscribePage() {
   const { user } = useUser();
   const { shouldRedirect, redirectUrl, isSubscriptionStatusLoading } =
     useSubscriptionStatus({ workspaceId: workspace.sId });
+  const shouldRedirectAwayFromCheckout =
+    useRedirectAwayFromCheckoutIfAlreadyPaid();
 
   const [billingPeriod, setBillingPeriod] =
     React.useState<BillingPeriod>("monthly");
@@ -58,6 +63,10 @@ function CPSubscribePage() {
         <Spinner />
       </div>
     );
+  }
+
+  if (shouldRedirectAwayFromCheckout) {
+    return null;
   }
 
   if (!isAdmin) {
@@ -154,6 +163,8 @@ function LegacySubscribePage() {
   // Check if we need to redirect to trial-ended page.
   const { shouldRedirect, redirectUrl, isSubscriptionStatusLoading } =
     useSubscriptionStatus({ workspaceId: workspace.sId });
+  const shouldRedirectAwayFromCheckout =
+    useRedirectAwayFromCheckoutIfAlreadyPaid();
 
   useEffect(() => {
     if (shouldRedirect && redirectUrl) {
@@ -168,6 +179,10 @@ function LegacySubscribePage() {
         <Spinner />
       </div>
     );
+  }
+
+  if (shouldRedirectAwayFromCheckout) {
+    return null;
   }
 
   // We treat user as being in free trial if they don't have any non free subs,
