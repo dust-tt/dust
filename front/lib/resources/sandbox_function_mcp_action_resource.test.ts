@@ -150,7 +150,10 @@ describe("SandboxFunctionMCPActionResource", () => {
     }
 
     const content = [{ type: "text" as const, text: "4" }];
-    const writeResult = await action.writeOutput(authenticator, content);
+    const writeResult = await action.createOutputItems(
+      authenticator,
+      content.map((c) => ({ content: c }))
+    );
     expect(writeResult.isOk()).toBe(true);
     expect(action.outputGcsPath).toContain(action.sId);
 
@@ -179,7 +182,9 @@ describe("SandboxFunctionMCPActionResource", () => {
       invocation,
       mcpServerView,
     });
-    await action.writeOutput(authenticator, [{ type: "text", text: "4" }]);
+    await action.createOutputItems(authenticator, [
+      { content: { type: "text", text: "4" } },
+    ]);
     expect(gcsStore.size).toBe(1);
 
     // The action FKs the invocation with RESTRICT: deletion must not throw.
@@ -202,7 +207,9 @@ describe("SandboxFunctionMCPActionResource", () => {
       invocation,
       mcpServerView,
     });
-    await action.writeOutput(authenticator, [{ type: "text", text: "4" }]);
+    await action.createOutputItems(authenticator, [
+      { content: { type: "text", text: "4" } },
+    ]);
 
     const deleteResult = await sandboxFunction.delete(authenticator);
     expect(deleteResult.isOk()).toBe(true);
@@ -222,7 +229,9 @@ describe("SandboxFunctionMCPActionResource", () => {
       invocation,
       mcpServerView,
     });
-    await action.writeOutput(authenticator, [{ type: "text", text: "4" }]);
+    await action.createOutputItems(authenticator, [
+      { content: { type: "text", text: "4" } },
+    ]);
     expect(gcsStore.size).toBe(1);
 
     // GCS deletion is deferred to afterCommit: on rollback, neither the rows nor the objects go.
@@ -248,7 +257,9 @@ describe("SandboxFunctionMCPActionResource", () => {
       invocation,
       mcpServerView,
     });
-    await action.writeOutput(authenticator, [{ type: "text", text: "4" }]);
+    await action.createOutputItems(authenticator, [
+      { content: { type: "text", text: "4" } },
+    ]);
     expect(gcsStore.size).toBe(1);
 
     // The action FKs the view with RESTRICT: hard-deleting the view (e.g. sharing a server to

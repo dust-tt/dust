@@ -827,7 +827,7 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
       content: CallToolResult["content"][number];
       fileId?: ModelId;
     }>
-  ): Promise<CallToolResult["content"]> {
+  ): Promise<Result<CallToolResult["content"], Error>> {
     const outputItems = await AgentMCPActionOutputItemModel.bulkCreate(
       contents.map((c) => {
         const { generatedFilePath, generatedFileContentType } =
@@ -863,8 +863,7 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
     // GCS write is retried internally. If it still fails we surface the error rather than leaving
     // rows with no `contentGcsPath`. There is no acceptable degraded state.
     if (gcsResult.isErr()) {
-      // TODO(2026-05-08 FLAV) Return a result and refactor all call sites.
-      throw gcsResult.error;
+      return new Err(gcsResult.error);
     }
 
     await warmGcsContentCache(
@@ -898,14 +897,16 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
 
     // Return the model-facing view of the stored contents: file-backed contents are rewritten to
     // hide the original file from the model.
-    return removeNulls(
-      outputItems.map((item) =>
-        hideFileFromActionOutput({
-          content: item.content,
-          fileId: item.fileId ?? null,
-          file: null,
-          workspaceId: this.workspaceId,
-        })
+    return new Ok(
+      removeNulls(
+        outputItems.map((item) =>
+          hideFileFromActionOutput({
+            content: item.content,
+            fileId: item.fileId ?? null,
+            file: null,
+            workspaceId: this.workspaceId,
+          })
+        )
       )
     );
   }

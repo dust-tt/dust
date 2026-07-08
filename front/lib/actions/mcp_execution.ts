@@ -89,18 +89,22 @@ export async function processToolNotification(
 
   // Handle store_resource notifications by creating output items immediately (fire-and-forget GCS).
   if (isStoreResourceProgressOutput(output)) {
-    // TODO(SANDBOX_FUNCTIONS): persist sandbox function outputs (writeOutput) when running in a
+    // TODO(SANDBOX_FUNCTIONS): persist sandbox function outputs (createOutputItems) when running in a
     // sandbox function run context.
     assert(
       isAgentLoopRunContext(runContext),
       "store_resource notifications require an agent loop run context."
     );
-    outputItems = await runContext.action.createOutputItems(
+    const createResult = await runContext.action.createOutputItems(
       auth,
       output.contents.map((content) => ({
         content: sanitizeStringsDeep(content),
       }))
     );
+    if (createResult.isErr()) {
+      throw createResult.error;
+    }
+    outputItems = createResult.value;
   }
 
   // Specific handling for run_agent notifications indicating the tool has
@@ -473,34 +477,24 @@ export async function processToolResults(
     })
   );
 
+  const contents = cleanContent.map((c) => ({
+    content: sanitizeStringsDeep(c.content),
+    fileId: c.file?.id,
+  }));
+
   // Persist the processed contents on the run context's action: per-item rows for agent loop
   // actions, a single output object for sandbox function actions.
-  switch (runContext.contextType) {
-    case "agent_loop": {
-      const outputItems = await runContext.action.createOutputItems(
-        auth,
-        cleanContent.map((c) => ({
-          content: sanitizeStringsDeep(c.content),
-          fileId: c.file?.id,
-        }))
-      );
-      return { outputItems, generatedFiles };
-    }
-    case "sandbox_function": {
-      const writeResult = await runContext.action.writeOutput(
-        auth,
-        cleanContent.map((c) => sanitizeStringsDeep(c.content))
-      );
-      // Surfaced as an exception like the agent loop path: there is no acceptable degraded state
-      // for unpersisted tool outputs.
-      if (writeResult.isErr()) {
-        throw writeResult.error;
-      }
-      return { outputItems: writeResult.value, generatedFiles };
-    }
-    default:
-      return assertNever(runContext);
+  const persistResult = await runContext.action.createOutputItems(
+    auth,
+    contents
+  );
+
+  // Surfaced as an exception: there is no acceptable degraded state for unpersisted tool outputs.
+  if (persistResult.isErr()) {
+    throw persistResult.error;
   }
+
+  return { outputItems: persistResult.value, generatedFiles };
 }
 
 /**

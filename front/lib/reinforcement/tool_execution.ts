@@ -234,9 +234,12 @@ export async function storeTerminalToolCallResults(
       mcpServerViewId,
     });
 
-    await action.createOutputItems(auth, [
+    const successCreateResult = await action.createOutputItems(auth, [
       { content: { type: "text", text: message } },
     ]);
+    if (successCreateResult.isErr()) {
+      throw successCreateResult.error;
+    }
     await action.markAsSucceeded({ executionDurationMs: 0 });
   }
 
@@ -254,9 +257,12 @@ export async function storeTerminalToolCallResults(
       mcpServerViewId,
     });
 
-    await action.createOutputItems(auth, [
+    const errorCreateResult = await action.createOutputItems(auth, [
       { content: { type: "text", text: errorMessage } },
     ]);
+    if (errorCreateResult.isErr()) {
+      throw errorCreateResult.error;
+    }
 
     await action.markAsErrored({ executionDurationMs: 0 });
   }

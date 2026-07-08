@@ -1,4 +1,5 @@
 import type { LightMCPToolConfigurationType } from "@app/lib/actions/mcp";
+import { hideFileFromActionOutput } from "@app/lib/actions/mcp_utils";
 import type { Authenticator } from "@app/lib/auth";
 import { getPrivateUploadBucket } from "@app/lib/file_storage";
 import {
@@ -176,15 +177,32 @@ export class SandboxFunctionMCPActionResource extends BaseResource<SandboxFuncti
   }
 
   // Writes the full content array to a single GCS object and records its path on the row. Written
-  // exactly once, at tool completion. Returns the written contents, the generic tool output shape
-  // shared with AgentMCPActionResource.createOutputItems.
-  async writeOutput(
+  // exactly once, at tool completion. Stores and returns the model-facing view of the contents
+  // (file-backed contents are rewritten to hide the original file), the generic tool output shape
+  // shared with AgentMCPActionResource.createOutputItems. Unlike agent MCP action output items,
+  // the hiding is applied at write time: the single output object carries no per-item fileId to
+  // apply it at read time.
+  async createOutputItems(
     auth: Authenticator,
-    content: CallToolResult["content"]
+    contents: Array<{
+      content: CallToolResult["content"][number];
+      fileId?: ModelId;
+    }>
   ): Promise<Result<CallToolResult["content"], Error>> {
     const gcsPath = this.outputGcsPathFor(auth);
     const file = getPrivateUploadBucket().file(gcsPath);
-    const json = JSON.stringify(content);
+
+    const hiddenContents = removeNulls(
+      contents.map((c) =>
+        hideFileFromActionOutput({
+          content: c.content,
+          fileId: c.fileId ?? null,
+          file: null,
+          workspaceId: this.workspaceId,
+        })
+      )
+    );
+    const json = JSON.stringify(hiddenContents);
 
     const writeResult = await withRetry(() =>
       file.save(Buffer.from(json, "utf-8"), {
@@ -225,7 +243,7 @@ export class SandboxFunctionMCPActionResource extends BaseResource<SandboxFuncti
       return new Err(normalizeError(err));
     }
 
-    return new Ok(content);
+    return new Ok(hiddenContents);
   }
 
   async readOutput(): Promise<Result<CallToolResult["content"] | null, Error>> {
