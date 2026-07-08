@@ -1,8 +1,10 @@
+/// <reference types="chrome" />
 import { useSendNotification } from "@app/hooks/useNotification";
-import { requestMicrophone } from "@app/hooks/useVoiceTranscriberService";
+
 import {
   hasWebkitAudioContext,
   quackingVoiceTranscriptService,
+  requestMicrophone,
   SAMPLE_RATE_HZ,
   startLevelMeteringInterval,
   useElapsedSeconds,
