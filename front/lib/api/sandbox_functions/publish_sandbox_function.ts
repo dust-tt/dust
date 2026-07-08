@@ -4,16 +4,16 @@ import { buildSandboxFunctionOnSandbox } from "@app/lib/api/sandbox_functions/bu
 import type {
   CompatBlock,
   CompatWarning,
-  SiblingManifests,
+  SiblingState,
   StaleSiblingNote,
 } from "@app/lib/api/sandbox_functions/compat";
 import {
   computeStaleSiblings,
-  diffManifestsAgainstSiblings,
+  diffStateAgainstSiblings,
 } from "@app/lib/api/sandbox_functions/compat";
 import { reconcileDatabaseOnSandbox } from "@app/lib/api/sandbox_functions/dsbx_db";
 import { SandboxFunctionError } from "@app/lib/api/sandbox_functions/errors";
-import type { FunctionStateManifest } from "@app/lib/api/sandbox_functions/manifests";
+import type { FunctionState } from "@app/lib/api/sandbox_functions/manifests";
 import type { Authenticator } from "@app/lib/auth";
 import { executeWithLock } from "@app/lib/lock";
 import { FileResource } from "@app/lib/resources/file_resource";
@@ -150,16 +150,16 @@ async function publishCriticalSection(
     bundleCode: string;
     inputSchema: JSONSchema;
     outputSchema: JSONSchema;
-    manifests: FunctionStateManifest | null;
+    manifests: FunctionState | null;
   }
 ): Promise<Result<PublishSandboxFunctionOutcome, SandboxFunctionError>> {
   const sectionStartMs = Date.now();
 
   // Compat gate against the current Postgres state (one query for all sibling manifests).
   const firstRead = await readPodManifests(auth, space, slug);
-  const diff = diffManifestsAgainstSiblings({
-    newManifests: manifests,
-    previousManifests: firstRead.previousManifests,
+  const diff = diffStateAgainstSiblings({
+    newState: manifests,
+    previousState: firstRead.previousState,
     siblings: firstRead.siblings,
   });
   if (diff.blocks.length > 0) {
@@ -192,9 +192,9 @@ async function publishCriticalSection(
   // GCS bundle upload cannot move out of the section: re-publish overwrites the live bundle in
   // place, so uploading before the gates pass would corrupt the published function on a block.
   const secondRead = await readPodManifests(auth, space, slug);
-  const fencingDiff = diffManifestsAgainstSiblings({
-    newManifests: manifests,
-    previousManifests: secondRead.previousManifests,
+  const fencingDiff = diffStateAgainstSiblings({
+    newState: manifests,
+    previousState: secondRead.previousState,
     siblings: secondRead.siblings,
   });
   if (fencingDiff.blocks.length > 0) {
@@ -253,8 +253,8 @@ async function readPodManifests(
   slug: string
 ): Promise<{
   existing: SandboxFunctionResource | null;
-  previousManifests: FunctionStateManifest | null;
-  siblings: SiblingManifests[];
+  previousState: FunctionState | null;
+  siblings: SiblingState[];
 }> {
   // One query: manifests live on the sandbox_functions rows themselves (GEN14).
   const functions = await SandboxFunctionResource.listBySpace(auth, space);
@@ -262,10 +262,10 @@ async function readPodManifests(
 
   return {
     existing,
-    previousManifests: existing?.manifests ?? null,
+    previousState: existing?.manifests ?? null,
     siblings: functions
       .filter((fn) => fn.slug !== slug)
-      .map((fn) => ({ slug: fn.slug, manifests: fn.manifests ?? null })),
+      .map((fn) => ({ slug: fn.slug, state: fn.manifests ?? null })),
   };
 }
 
@@ -276,7 +276,7 @@ interface PublishStoreArgs {
   bundleCode: string;
   inputSchema: JSONSchema;
   outputSchema: JSONSchema;
-  manifests: FunctionStateManifest | null;
+  manifests: FunctionState | null;
   existing: SandboxFunctionResource | null;
 }
 

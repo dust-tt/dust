@@ -1,7 +1,7 @@
 import { buildSandboxFunctionOnSandbox } from "@app/lib/api/sandbox_functions/build_on_sandbox";
 import { reconcileDatabaseOnSandbox } from "@app/lib/api/sandbox_functions/dsbx_db";
 import { SandboxFunctionError } from "@app/lib/api/sandbox_functions/errors";
-import type { FunctionStateManifest } from "@app/lib/api/sandbox_functions/manifests";
+import type { FunctionState } from "@app/lib/api/sandbox_functions/manifests";
 import { publishSandboxFunction } from "@app/lib/api/sandbox_functions/publish_sandbox_function";
 import { Authenticator } from "@app/lib/auth";
 import { SandboxFunctionResource } from "@app/lib/resources/sandbox_function_resource";
@@ -58,7 +58,7 @@ const outputSchema: JSONSchema = {
   required: ["greeting"],
 };
 
-function chatManifests(
+function chatState(
   columns: Record<
     string,
     {
@@ -70,7 +70,7 @@ function chatManifests(
       autoIncrement: boolean;
     }
   >
-): FunctionStateManifest {
+): FunctionState {
   return {
     version: 1,
     databases: {
@@ -325,7 +325,7 @@ describe("publishSandboxFunction", () => {
 
   it("stores manifests and reconciles each declared database", async () => {
     const { space, auth } = await setupPod();
-    const manifests = chatManifests(baseColumns);
+    const manifests = chatState(baseColumns);
     vi.mocked(buildSandboxFunctionOnSandbox).mockResolvedValue(
       new Ok({ bundleCode: "b", inputSchema, outputSchema, manifests })
     );
@@ -361,7 +361,7 @@ describe("publishSandboxFunction", () => {
         bundleCode: "sib",
         inputSchema,
         outputSchema,
-        manifests: chatManifests(baseColumns),
+        manifests: chatState(baseColumns),
       })
     );
     const sibling = await publishSandboxFunction(auth, {
@@ -380,7 +380,7 @@ describe("publishSandboxFunction", () => {
         bundleCode: "new",
         inputSchema,
         outputSchema,
-        manifests: chatManifests({
+        manifests: chatState({
           ...withoutBody,
           content: {
             type: "text",
@@ -421,7 +421,7 @@ describe("publishSandboxFunction", () => {
         bundleCode: "b",
         inputSchema,
         outputSchema,
-        manifests: chatManifests(baseColumns),
+        manifests: chatState(baseColumns),
       })
     );
     vi.mocked(reconcileDatabaseOnSandbox).mockResolvedValue(
@@ -455,7 +455,7 @@ describe("publishSandboxFunction", () => {
         bundleCode: "sib",
         inputSchema,
         outputSchema,
-        manifests: chatManifests({
+        manifests: chatState({
           ...baseColumns,
           created_at: {
             type: "integer",
@@ -483,7 +483,7 @@ describe("publishSandboxFunction", () => {
         bundleCode: "new",
         inputSchema,
         outputSchema,
-        manifests: chatManifests({
+        manifests: chatState({
           ...baseColumns,
           created_at: {
             type: "integer",
