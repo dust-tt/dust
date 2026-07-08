@@ -1,6 +1,8 @@
 import type { ToolHandlerExtra } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import type { ToolContextType } from "@app/lib/actions/types";
+import { CREATE_CONTENT_MAX_BYTES } from "@app/lib/api/actions/servers/files/metadata";
 import { editHandler } from "@app/lib/api/actions/servers/files/tools/edit";
+import { FRAME_SOURCE_MAX_BYTES } from "@app/lib/api/actions/servers/interactive_content/metadata";
 import { createConversation } from "@app/lib/api/assistant/conversation";
 import { Authenticator } from "@app/lib/auth";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
@@ -233,7 +235,7 @@ describe("editHandler", () => {
     const { auth, conversation } = await setupProjectConversation();
     fileStorageMock.setFileMetadata(() => ({
       contentType: "text/plain",
-      size: String(51 * 1024),
+      size: String(CREATE_CONTENT_MAX_BYTES + 1),
     }));
 
     const result = await editHandler(
@@ -255,9 +257,9 @@ describe("editHandler", () => {
   it("edits a Frame source file well over the generic 50 KB limit", async () => {
     const { auth, conversation } = await setupProjectConversation();
     // A Frame template can legitimately exceed the generic files-server cap.
-    const padding = "// padding\n".repeat(6000); // ~66 KB
+    const padding = "x".repeat(CREATE_CONTENT_MAX_BYTES + 1);
     mockStoredFile(
-      `${padding}export default function App() { return <h1>Old</h1>; }\n`,
+      `// ${padding}\nexport default function App() { return <h1>Old</h1>; }\n`,
       frameContentType
     );
 
@@ -280,7 +282,7 @@ describe("editHandler", () => {
     const { auth, conversation } = await setupProjectConversation();
     fileStorageMock.setFileMetadata(() => ({
       contentType: frameContentType,
-      size: String(2 * 1024 * 1024),
+      size: String(FRAME_SOURCE_MAX_BYTES + 1),
     }));
 
     const result = await editHandler(

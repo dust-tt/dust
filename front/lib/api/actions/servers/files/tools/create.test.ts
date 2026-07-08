@@ -1,5 +1,6 @@
 import type { ToolHandlerExtra } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import type { ToolContextType } from "@app/lib/actions/types";
+import { CREATE_CONTENT_MAX_BYTES } from "@app/lib/api/actions/servers/files/metadata";
 import { createHandler } from "@app/lib/api/actions/servers/files/tools/create";
 import { createConversation } from "@app/lib/api/assistant/conversation";
 import { Authenticator } from "@app/lib/auth";
@@ -113,7 +114,7 @@ describe("createHandler", () => {
       contentType: "application/vnd.dust.frame",
       size: "100",
     }));
-    const content = "// padding\n".repeat(6000); // ~66 KB
+    const content = "x".repeat(CREATE_CONTENT_MAX_BYTES + 1);
 
     const result = await createHandler(
       {
