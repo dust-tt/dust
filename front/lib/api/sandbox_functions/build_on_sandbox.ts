@@ -4,8 +4,8 @@ import { ensurePodSandboxReady } from "@app/lib/api/sandbox/lifecycle";
 import { shellEscape } from "@app/lib/api/sandbox/shell";
 import type { SandboxFunctionErrorCode } from "@app/lib/api/sandbox_functions/errors";
 import { SandboxFunctionError } from "@app/lib/api/sandbox_functions/errors";
-import type { FunctionStateManifest } from "@app/lib/api/sandbox_functions/manifests";
-import { functionStateManifestSchema } from "@app/lib/api/sandbox_functions/manifests";
+import type { FunctionState } from "@app/lib/api/sandbox_functions/manifests";
+import { functionStateSchema } from "@app/lib/api/sandbox_functions/manifests";
 import type { Authenticator } from "@app/lib/auth";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import type { Result } from "@app/types/shared/result";
@@ -14,7 +14,7 @@ import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { z } from "zod";
 
-import type { ManifestErrorKind } from "../../../../cli/dust-sandbox/functions-runner/manifest_types";
+import type { DatabaseSchemaErrorKind } from "../../../../cli/dust-sandbox/functions-runner/types/db";
 
 const DSBX_BIN_PATH = "/opt/bin/dsbx";
 // Non-mounted scratch root, so a build never writes into the pod files mount.
@@ -25,8 +25,8 @@ export interface SandboxFunctionBuildResult {
   bundleCode: string;
   inputSchema: JSONSchema;
   outputSchema: JSONSchema;
-  // Per-database manifests (manifest.v1); null when the function declares no databases.
-  manifests: FunctionStateManifest | null;
+  // Per-database shapes (wire version 1); null when the function declares no databases.
+  manifests: FunctionState | null;
 }
 
 // dsbx writes the bundle and schema to files (sandbox stdout can be truncated) and prints only
@@ -51,15 +51,15 @@ const functionSchemaFileSchema = z.object({
   description: z.string().nullable(),
   input_schema: jsonSchemaValue.nullable(),
   output_schema: jsonSchemaValue.nullable(),
-  databases: functionStateManifestSchema.optional(),
+  databases: functionStateSchema.optional(),
 });
 
-// Manifest rejections (manifest.v1 typed build errors) map to the model-correctable
+// Database schema rejections (typed build errors) map to the model-correctable
 // invalid_contract: the model fixes them by editing its `schema.databases` declaration or
-// the database schema file. Keyed by the runner's ManifestErrorKind so a renamed or added
+// the database schema file. Keyed by the runner's DatabaseSchemaErrorKind so a renamed or added
 // kind fails the typecheck here instead of silently degrading to internal.
-const MANIFEST_ERROR_CODES: Record<
-  ManifestErrorKind,
+const DATABASE_SCHEMA_ERROR_CODES: Record<
+  DatabaseSchemaErrorKind,
   SandboxFunctionErrorCode
 > = {
   databases_declaration_invalid: "invalid_contract",
@@ -67,15 +67,20 @@ const MANIFEST_ERROR_CODES: Record<
   database_schema_invalid: "invalid_contract",
 };
 
-function isManifestErrorKind(kind: string): kind is ManifestErrorKind {
+function isDatabaseSchemaErrorKind(
+  kind: string
+): kind is DatabaseSchemaErrorKind {
   // hasOwnProperty, not `in`: the envelope kind is sandbox-influenced, and `in` would match
   // Object.prototype keys like "constructor".
-  return Object.prototype.hasOwnProperty.call(MANIFEST_ERROR_CODES, kind);
+  return Object.prototype.hasOwnProperty.call(
+    DATABASE_SCHEMA_ERROR_CODES,
+    kind
+  );
 }
 
 function mapBuildErrorKind(kind: string): SandboxFunctionErrorCode {
-  if (isManifestErrorKind(kind)) {
-    return MANIFEST_ERROR_CODES[kind];
+  if (isDatabaseSchemaErrorKind(kind)) {
+    return DATABASE_SCHEMA_ERROR_CODES[kind];
   }
   switch (kind) {
     case "build_failed":
