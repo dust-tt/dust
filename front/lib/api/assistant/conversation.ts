@@ -598,9 +598,9 @@ export async function postUserMessage(
   const featureFlags = await getFeatureFlags(auth);
 
   // Resolve the picker selection to a concrete model for this workspace. If it
-  // cannot be honored (unknown/disabled model), we leave `requestedModel` null
+  // cannot be honored (unknown/disabled model), we leave `resolvedModel` null
   // and the agent's configured model is used.
-  const requestedModel: ResolvedRequestedModel | null = modelSelection
+  const resolvedModel: ResolvedRequestedModel | null = modelSelection
     ? resolveModelSelection(auth, modelSelection, { featureFlags })
     : null;
 
@@ -1045,7 +1045,7 @@ export async function postUserMessage(
             skipToolsValidation,
             nextMessageRank,
             userMessage: userMessageWithoutMentions,
-            requestedModel,
+            resolvedModel,
           },
           transaction: t,
         });

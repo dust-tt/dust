@@ -5,7 +5,7 @@ import {
 } from "@app/lib/api/assistant/conversation/permissions";
 import { getCompletionDuration } from "@app/lib/api/assistant/messages";
 import {
-  requestedAgentModelFromColumns,
+  resolvedModelFromAgentMessageRow,
   resolveModelSelection,
 } from "@app/lib/api/assistant/models";
 import { type Authenticator, getFeatureFlags } from "@app/lib/auth";
@@ -268,7 +268,7 @@ export const createAgentMessages = async (
           skipToolsValidation: boolean;
           nextMessageRank: number;
           userMessage: UserMessageTypeWithoutMentions;
-          requestedModel?: ResolvedRequestedModel | null;
+          resolvedModel?: ResolvedRequestedModel | null;
         };
     transaction?: Transaction;
   }
@@ -308,9 +308,10 @@ export const createAgentMessages = async (
             agentConfigurationVersion: agentConfiguration.version,
             workspaceId: owner.id,
             skipToolsValidation: metadata.agentMessage.skipToolsValidation,
-            requestedProviderId: revalidatedModel?.providerId ?? null,
-            requestedModelId: revalidatedModel?.modelId ?? null,
-            requestedReasoningEffort: revalidatedModel?.reasoningEffort ?? null,
+            resolvedProviderId: revalidatedModel?.providerId ?? null,
+            resolvedModelId: revalidatedModel?.modelId ?? null,
+            resolvedReasoningEffort: revalidatedModel?.reasoningEffort ?? null,
+            modelResolutionMethod: "auto", // TODO(models_picker): carry over the method from the original message
           },
           { transaction }
         );
@@ -471,11 +472,11 @@ export const createAgentMessages = async (
                 agentConfigurationVersion: configuration.version,
                 workspaceId: owner.id,
                 skipToolsValidation: metadata.skipToolsValidation,
-                requestedProviderId:
-                  metadata.requestedModel?.providerId ?? null,
-                requestedModelId: metadata.requestedModel?.modelId ?? null,
-                requestedReasoningEffort:
-                  metadata.requestedModel?.reasoningEffort ?? null,
+                resolvedProviderId: metadata.resolvedModel?.providerId ?? null,
+                resolvedModelId: metadata.resolvedModel?.modelId ?? null,
+                resolvedReasoningEffort:
+                  metadata.resolvedModel?.reasoningEffort ?? null,
+                modelResolutionMethod: "auto", // TODO(models_picker): carry over the method from the original message
               },
               { transaction }
             );
@@ -576,7 +577,7 @@ export const createAgentMessages = async (
             richMentions: [],
             reactions: [],
             costCredits: null,
-            requestedModel: requestedAgentModelFromColumns(agentMessageRow),
+            requestedModel: resolvedModelFromAgentMessageRow(agentMessageRow),
           };
         }
       }
