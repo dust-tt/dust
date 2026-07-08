@@ -465,7 +465,7 @@ describe("publishSandboxFunction", () => {
 
   it("stops at the first failing database of a multi-db publish and stores nothing", async () => {
     const { space, auth } = await setupPod();
-    const manifests = chatManifests(baseColumns);
+    const manifests = chatState(baseColumns);
     manifests.databases.notes = {
       schemaFile: "databases/notes.db.ts",
       tables: { notes: { columns: baseColumns, indexes: {} } },

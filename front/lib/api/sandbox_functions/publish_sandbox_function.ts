@@ -162,7 +162,7 @@ async function publishCriticalSection(
   const sectionStartMs = Date.now();
 
   // Compat gate against the current Postgres state (one query for all sibling manifests).
-  const firstRead = await readPodManifests(auth, space, slug);
+  const firstRead = await readPodState(auth, space, slug);
   const diff = diffStateAgainstSiblings({
     newState: manifests,
     previousState: firstRead.previousState,
@@ -197,7 +197,7 @@ async function publishCriticalSection(
   // re-read the sibling manifests and re-run the (pure) diff immediately before storing. The
   // GCS bundle upload cannot move out of the section: re-publish overwrites the live bundle in
   // place, so uploading before the gates pass would corrupt the published function on a block.
-  const secondRead = await readPodManifests(auth, space, slug);
+  const secondRead = await readPodState(auth, space, slug);
   const fencingDiff = diffStateAgainstSiblings({
     newState: manifests,
     previousState: secondRead.previousState,
@@ -275,8 +275,8 @@ async function computeUntrackedDatabases(
   }: {
     space: SpaceResource;
     slug: string;
-    manifests: FunctionStateManifest | null;
-    siblings: SiblingManifests[];
+    manifests: FunctionState | null;
+    siblings: SiblingState[];
   }
 ): Promise<string[]> {
   if (manifests === null) {
@@ -299,7 +299,7 @@ async function computeUntrackedDatabases(
 
   const declared = new Set(Object.keys(manifests.databases));
   for (const sibling of siblings) {
-    for (const database of Object.keys(sibling.manifests?.databases ?? {})) {
+    for (const database of Object.keys(sibling.state?.databases ?? {})) {
       declared.add(database);
     }
   }
@@ -310,7 +310,7 @@ async function computeUntrackedDatabases(
     .sort();
 }
 
-async function readPodManifests(
+async function readPodState(
   auth: Authenticator,
   space: SpaceResource,
   slug: string
