@@ -1944,6 +1944,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
         where: {
           spaceId: { [Op.in]: spaceIds },
           visibility: { [Op.eq]: "unlisted" },
+          depth: { [Op.eq]: 0 }, // Only fetch root conversations
         },
       }
     );
@@ -2120,6 +2121,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     const whereClause: WhereOptions<InferAttributes<ConversationModel>> = {
       ...filterWhere,
       spaceId: spaceModelId,
+      depth: { [Op.eq]: 0 }, // Only fetch root conversations
       ...(restrictToConversationModelIds && {
         id: { [Op.in]: restrictToConversationModelIds },
       }),

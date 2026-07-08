@@ -3182,6 +3182,43 @@ describe("listSpaceUnreadConversationsForUser", () => {
     expect(spaceConversationIds).toContain(conversationIds[0]); // space conversation should be included
     expect(spaceConversationIds).not.toContain(privateConvo.sId); // private conversation should be filtered out
   });
+
+  it("should exclude sub-conversations (depth > 0) from unread lists", async () => {
+    const subConversation = await ConversationFactory.create(adminAuth, {
+      agentConfigurationId: agents[0].sId,
+      messagesCreatedAt: [dateFromDaysAgo(1)],
+      spaceId: spaceModelIds[0],
+    });
+    await ConversationModel.update(
+      { depth: 1 },
+      {
+        where: {
+          workspaceId: workspace.id,
+          sId: subConversation.sId,
+        },
+      }
+    );
+
+    await ConversationResource.upsertParticipation(userAuth, {
+      conversation: subConversation,
+      action: "posted",
+      user: userAuth.getNonNullableUser().toJSON(),
+      lastReadAt: null,
+    });
+
+    const userConversations =
+      await ConversationResource.listSpaceUnreadConversationsAndActivityForUser(
+        userAuth,
+        spaceModelIds
+      );
+
+    const allConversationIds = [
+      ...userConversations.unreadConversations,
+      ...userConversations.nonParticipantUnreadConversations,
+    ].map((c) => c.sId);
+    expect(allConversationIds).toContain(conversationIds[0]);
+    expect(allConversationIds).not.toContain(subConversation.sId);
+  });
 });
 
 describe("Space Handling", () => {
@@ -6436,6 +6473,32 @@ describe("ConversationResource.listConversationsInSpacePaginated", () => {
     expect(result.conversations).toHaveLength(2);
     expect(result.hasMore).toBe(true);
     expect(result.lastValue).not.toBeNull();
+  });
+
+  it("should exclude sub-conversations (depth > 0) from the list", async () => {
+    const rootConversation = await createConvoWithUpdatedAt(1);
+    const subConversation = await createConvoWithUpdatedAt(0);
+    await ConversationModel.update(
+      { depth: 1 },
+      {
+        where: {
+          workspaceId: workspace.id,
+          sId: subConversation.sId,
+        },
+      }
+    );
+
+    const result = await ConversationResource.listConversationsInSpacePaginated(
+      adminAuth,
+      {
+        spaceId: space.sId,
+        pagination: { limit: 10 },
+      }
+    );
+
+    const conversationIds = result.conversations.map((c) => c.sId);
+    expect(conversationIds).toContain(rootConversation.sId);
+    expect(conversationIds).not.toContain(subConversation.sId);
   });
 
   it("should return hasMore: false when no more results", async () => {
