@@ -1,5 +1,6 @@
 export { USED_MODEL_CONFIGS } from "@app/components/providers/model_configs";
 
+import { DustAvatarIcon } from "@app/components/providers/DustAvatarIcon";
 import type { SUPPORTED_MODEL_CONFIGS } from "@app/types/assistant/models/models";
 import {
   AnthropicLogo,
@@ -49,7 +50,7 @@ const MODEL_PROVIDER_LOGOS: ModelProviderLogos = {
     light: DustLogo,
   },
   auto: {
-    light: DustLogo,
+    light: DustAvatarIcon,
   },
 };
 

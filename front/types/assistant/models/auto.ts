@@ -4,7 +4,7 @@ export const AUTO_MODEL_ID = "auto" as const;
 export const AUTO_MODEL_CONFIG: ModelConfigurationType = {
   providerId: AUTO_MODEL_ID,
   modelId: AUTO_MODEL_ID,
-  displayName: "Auto",
+  displayName: "Auto: Dust handles model selection",
   description: "Let's Dust select the best model for the task.",
   shortDescription: "Select the best model for the task.",
 

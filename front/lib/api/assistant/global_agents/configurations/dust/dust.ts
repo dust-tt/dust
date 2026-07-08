@@ -48,6 +48,7 @@ import {
   CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG,
   CLAUDE_SONNET_5_DEFAULT_MODEL_CONFIG,
 } from "@app/types/assistant/models/anthropic";
+import { AUTO_MODEL_CONFIG } from "@app/types/assistant/models/auto";
 import { CUSTOM_MODEL_CONFIGS } from "@app/types/assistant/models/custom_models.generated";
 import {
   FIREWORKS_DEEPSEEK_V4_PRO_MODEL_CONFIG,
@@ -462,13 +463,13 @@ export function _getDustGlobalAgent(
   auth: Authenticator,
   args: DustLikeGlobalAgentArgs
 ): AgentConfigurationType | null {
+  // Default @dust to the "auto" model so Dust picks the best model per message.
+  // When "auto" isn't available for the workspace (no models_picker), the builder
+  // falls back to a whitelisted model.
   return _getDustLikeGlobalAgent(auth, args, {
     agentId: GLOBAL_AGENTS_SID.DUST,
     name: "dust",
-    preferredModelConfiguration: args.preferGpt55DefaultModel
-      ? GPT_5_5_MODEL_CONFIG
-      : CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG,
-    preferredReasoningEffort: "medium",
+    preferredModelConfiguration: AUTO_MODEL_CONFIG,
   });
 }
 
