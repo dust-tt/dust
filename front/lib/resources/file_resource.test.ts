@@ -13,6 +13,8 @@ import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { FileFactory } from "@app/tests/utils/FileFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
+import type { MockFileVersion } from "@app/tests/utils/mocks/file_storage";
+import { fileStorageMock } from "@app/tests/utils/mocks/file_storage";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
@@ -21,17 +23,8 @@ import {
   isUnverifiableFrameFileRefsShareError,
   sandboxFunctionContentType,
 } from "@app/types/files";
-import { Ok } from "@app/types/shared/result";
 import { Readable } from "stream";
-import {
-  afterEach,
-  assert,
-  beforeEach,
-  describe,
-  expect,
-  it,
-  vi,
-} from "vitest";
+import { assert, beforeEach, describe, expect, it, vi } from "vitest";
 
 // Mock copyContent from utils/files.ts
 vi.mock("@app/lib/utils/files", () => ({
@@ -1150,40 +1143,15 @@ describe("FileResource", () => {
   });
 
   describe("revert", () => {
-    // revert() reads versions and refreshes the mount entirely through the storage object
-    // returned by getPrivateUploadBucket(), so stubbing that call covers both the version
-    // listing (getSortedFileVersions) and the mount refresh (copyFile) without reaching into
-    // FileResource's private methods. Restore the default implementation afterwards: other
-    // describe blocks in this file rely on it and only clear call history, not implementations.
-    const defaultUploadBucketImpl = vi
-      .mocked(getPrivateUploadBucket)
-      .getMockImplementation();
-
-    afterEach(() => {
-      vi.mocked(getPrivateUploadBucket).mockImplementation(
-        defaultUploadBucketImpl!
-      );
-    });
-
-    function mockVersion() {
+    // revert() reads versions and refreshes the mount entirely through getPrivateUploadBucket(),
+    // which fileStorageMock already stubs globally (see tests/utils/mocks/file_storage.ts).
+    // setSortedFileVersions/setCopyFileFails drive it without reaching into FileResource's
+    // private methods; fileStorageMock.reset() (global beforeEach) clears both between tests.
+    function mockVersion(): MockFileVersion {
       return {
         copy: vi.fn().mockResolvedValue(undefined),
         delete: vi.fn().mockResolvedValue(undefined),
       };
-    }
-
-    function mockStorageForRevert({
-      copyFile,
-    }: {
-      copyFile: ReturnType<typeof vi.fn>;
-    }) {
-      return {
-        file: vi.fn(() => ({ delete: vi.fn().mockResolvedValue(undefined) })),
-        copyFile,
-        getSortedFileVersions: vi
-          .fn()
-          .mockResolvedValue(new Ok([mockVersion(), mockVersion()])),
-      } as unknown as ReturnType<typeof getPrivateUploadBucket>;
     }
 
     it("refreshes the mount copy from the restored canonical version", async () => {
@@ -1205,22 +1173,28 @@ describe("FileResource", () => {
       });
       assert(row?.mountFilePath, "Mount path should be set");
 
-      const copyFile = vi.fn().mockResolvedValue(undefined);
-      vi.mocked(getPrivateUploadBucket).mockImplementation(() =>
-        mockStorageForRevert({ copyFile })
-      );
+      fileStorageMock.setSortedFileVersions(() => [
+        mockVersion(),
+        mockVersion(),
+      ]);
 
       const result = await frameFile.revert(auth, {
         revertedByAgentConfigurationId: "agent-1",
       });
 
       expect(result.isOk()).toBe(true);
+
+      const allCopyFileCalls = vi
+        .mocked(getPrivateUploadBucket)
+        .mock.results.flatMap((r) =>
+          r.type === "return" ? vi.mocked(r.value.copyFile).mock.calls : []
+        );
+
       // The mount copy must be refreshed to the restored canonical version, so reads through
       // the mount and the next publish see the reverted content rather than the stale mount.
-      expect(copyFile).toHaveBeenCalledWith(
-        expect.any(String),
-        row.mountFilePath
-      );
+      expect(
+        allCopyFileCalls.some((call) => call[1] === row.mountFilePath)
+      ).toBe(true);
     });
 
     it("still succeeds when refreshing the mount copy fails", async () => {
@@ -1237,21 +1211,21 @@ describe("FileResource", () => {
         useCaseMetadata: { conversationId: "conv-revert-fail" },
       });
 
+      fileStorageMock.setSortedFileVersions(() => [
+        mockVersion(),
+        mockVersion(),
+      ]);
+
       // The restore copy succeeds (the version object's own .copy() call), but the mount
       // refresh's copyFile() call fails. Best-effort: the revert must not fail because of it,
       // since the canonical restore already succeeded by that point. setUseCaseMetadata
       // (called earlier in revert(), unrelated to this fix) also refreshes the mount as a
       // side effect, so only the call after the restore should fail.
       let copyFileCallCount = 0;
-      const copyFile = vi.fn().mockImplementation(() => {
+      fileStorageMock.setCopyFileFails(() => {
         copyFileCallCount += 1;
-        return copyFileCallCount === 1
-          ? Promise.resolve(undefined)
-          : Promise.reject(new Error("simulated failure"));
+        return copyFileCallCount > 1;
       });
-      vi.mocked(getPrivateUploadBucket).mockImplementation(() =>
-        mockStorageForRevert({ copyFile })
-      );
 
       const result = await frameFile.revert(auth, {
         revertedByAgentConfigurationId: "agent-1",
