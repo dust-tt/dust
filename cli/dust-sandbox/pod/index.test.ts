@@ -7,7 +7,6 @@ import { join } from "node:path";
 import { blob, integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
 
 import {
-  DEFAULT_POD_DATABASE_MAX_SIZE_BYTES,
   db,
   POD_DATABASE_BUSY_TIMEOUT_MS,
   POD_DATABASE_MAX_SIZE_BYTES_ENV,
@@ -19,6 +18,9 @@ import {
   PodDatabaseNotDeclaredError,
   PodDatabasesUnavailableError,
 } from "./index.ts";
+
+// The production quota front passes per exec.
+const ONE_GIB_BYTES = 1024 * 1024 * 1024;
 
 const messages = sqliteTable("messages", {
   id: integer("id").primaryKey({ autoIncrement: true }),
@@ -58,7 +60,8 @@ let originalSpaceId: string | undefined;
 beforeEach(() => {
   databasesDir = mkdtempSync(join(tmpdir(), "dust-pod-test-"));
   process.env[POD_DATABASES_DIR_ENV] = databasesDir;
-  delete process.env[POD_DATABASE_MAX_SIZE_BYTES_ENV];
+  // Both env vars are required and normally set by front through dsbx.
+  process.env[POD_DATABASE_MAX_SIZE_BYTES_ENV] = String(ONE_GIB_BYTES);
   // Pod sandboxes carry SPACE_ID as a sandbox-global env var.
   originalSpaceId = process.env[POD_SPACE_ID_ENV];
   process.env[POD_SPACE_ID_ENV] = "spc_test_pod";
@@ -242,7 +245,7 @@ describe("pragmas", () => {
     const pageSize = pragma<{ page_size: number }>("PRAGMA page_size");
     expect(pageSize).not.toBeNull();
     const expectedPages = Math.floor(
-      DEFAULT_POD_DATABASE_MAX_SIZE_BYTES / (pageSize?.page_size ?? 0)
+      ONE_GIB_BYTES / (pageSize?.page_size ?? 0)
     );
     expect(
       pragma<{ max_page_count: number }>("PRAGMA max_page_count")
@@ -250,7 +253,7 @@ describe("pragmas", () => {
     ).toBe(expectedPages);
   });
 
-  test("the quota env override drives max_page_count", () => {
+  test("the quota env var drives max_page_count", () => {
     const name = uniqueName("quota");
     createDatabaseFile(name);
     process.env[POD_DATABASE_MAX_SIZE_BYTES_ENV] = "20480"; // 5 pages of 4096.
@@ -263,13 +266,10 @@ describe("pragmas", () => {
     ).toBe(5);
   });
 
-  test("the quota env override cannot raise the quota above the default", () => {
+  test("quotas above 1 GiB are honored, not clamped", () => {
     const name = uniqueName("quota");
     createDatabaseFile(name);
-    // The env var is workload-settable: a value above the default is clamped.
-    process.env[POD_DATABASE_MAX_SIZE_BYTES_ENV] = String(
-      DEFAULT_POD_DATABASE_MAX_SIZE_BYTES * 2
-    );
+    process.env[POD_DATABASE_MAX_SIZE_BYTES_ENV] = String(2 * ONE_GIB_BYTES);
 
     const client = db(name).$client;
     const pageSize = client
@@ -280,11 +280,30 @@ describe("pragmas", () => {
       client
         .query<{ max_page_count: number }, []>("PRAGMA max_page_count")
         .get()?.max_page_count
-    ).toBe(
-      Math.floor(
-        DEFAULT_POD_DATABASE_MAX_SIZE_BYTES / (pageSize?.page_size ?? 0)
-      )
+    ).toBe(Math.floor((2 * ONE_GIB_BYTES) / (pageSize?.page_size ?? 0)));
+  });
+
+  test("throws when the quota env var is absent", () => {
+    // No default lives here: front owns the quota and passes it through dsbx.
+    const name = uniqueName("quota");
+    createDatabaseFile(name);
+    delete process.env[POD_DATABASE_MAX_SIZE_BYTES_ENV];
+    expect(() => db(name)).toThrow(PodDatabaseError);
+    expect(() => db(name)).toThrow(
+      /DUST_POD_DATABASE_MAX_SIZE_BYTES is not set/
     );
+  });
+
+  test("throws when the quota env var is not a positive integer", () => {
+    const name = uniqueName("quota");
+    createDatabaseFile(name);
+    // Canonical decimal digits only: Number() alone would accept "1e3",
+    // "0x10" or " 42 ".
+    const invalid = ["0", "-1", "1.5", "abc", "1e100", "1e3", "0x10", " 42 "];
+    for (const raw of invalid) {
+      process.env[POD_DATABASE_MAX_SIZE_BYTES_ENV] = raw;
+      expect(() => db(name)).toThrow(/not a positive integer byte count/);
+    }
   });
 });
 

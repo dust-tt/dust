@@ -18,13 +18,11 @@ import { drizzle } from "drizzle-orm/bun-sqlite";
  *   databases is fixed at publish time. Total pod-state footprint is the
  *   number of declared databases times the per-database cap; bounding the
  *   count is the publish pipeline's job.
- * - Each database is capped at {@link DEFAULT_POD_DATABASE_MAX_SIZE_BYTES}
- *   (1 GiB) via `PRAGMA max_page_count`. Writes past the cap fail with
+ * - Each database is capped via `PRAGMA max_page_count` at the byte quota
+ *   front chooses and passes per exec (1 GiB in production — see
+ *   {@link POD_DATABASE_MAX_SIZE_BYTES_ENV}). Writes past the cap fail with
  *   {@link PodDatabaseFullError}; the database stays readable and rows can
  *   still be deleted, so the agent recovers in place by reclaiming space.
- * - The cap override env var is clamped down-only, since it is readable and
- *   writable by the workload itself (see
- *   {@link POD_DATABASE_MAX_SIZE_BYTES_ENV}).
  * - The WAL is not counted by `max_page_count`: Litestream owns checkpointing
  *   and truncates the WAL as frames are replicated (see `applyPragmas`).
  *
@@ -51,15 +49,15 @@ export const POD_DATABASES_DIR_ENV = "DUST_POD_DATABASES_DIR";
 export const POD_SPACE_ID_ENV = "SPACE_ID";
 
 /**
- * Optional env override for the per-database size quota, in bytes. Clamped to
- * the default: this env var lives in the (untrusted) workload's own process,
- * so it can only LOWER the quota (a test/ops seam), never raise it.
+ * Env var carrying the per-database size quota in bytes, required. Like the
+ * databases directory, the value is owned by front (1 GiB in production) and
+ * passed per-exec through dsbx — no copy of the number lives below front.
+ * It lives in the (untrusted) workload's own process, so workload code can
+ * rewrite it — acceptable because the cap is not a security boundary (see
+ * the module doc).
  */
 export const POD_DATABASE_MAX_SIZE_BYTES_ENV =
   "DUST_POD_DATABASE_MAX_SIZE_BYTES";
-
-/** Per-database size quota default: 1 GiB, enforced via `PRAGMA max_page_count`. */
-export const DEFAULT_POD_DATABASE_MAX_SIZE_BYTES = 1024 * 1024 * 1024;
 
 /** How long a connection waits on a locked database before failing. */
 export const POD_DATABASE_BUSY_TIMEOUT_MS = 5000;
@@ -247,14 +245,22 @@ function podDatabasesDir(): string {
 function podDatabaseMaxSizeBytes(): number {
   const raw = process.env[POD_DATABASE_MAX_SIZE_BYTES_ENV];
   if (raw === undefined || raw.length === 0) {
-    return DEFAULT_POD_DATABASE_MAX_SIZE_BYTES;
+    throw new PodDatabaseError(
+      `${POD_DATABASE_MAX_SIZE_BYTES_ENV} is not set: the per-database size ` +
+        `quota is chosen by front and passed through dsbx function run, so ` +
+        `db() only works in functions launched that way.`
+    );
   }
-  const parsed = Number(raw);
+  // Decimal digits only: Number() alone would also accept "1e3" or "0x10".
+  const parsed = /^[0-9]+$/.test(raw) ? Number(raw) : Number.NaN;
   if (!Number.isSafeInteger(parsed) || parsed <= 0) {
-    return DEFAULT_POD_DATABASE_MAX_SIZE_BYTES;
+    // No default to fall back to; failing loudly beats masking a broken quota.
+    throw new PodDatabaseError(
+      `${POD_DATABASE_MAX_SIZE_BYTES_ENV} is not a positive integer byte ` +
+        `count: ${JSON.stringify(raw)}.`
+    );
   }
-  // Clamp: the override is workload-settable, so it can only lower the quota.
-  return Math.min(parsed, DEFAULT_POD_DATABASE_MAX_SIZE_BYTES);
+  return parsed;
 }
 
 /**
@@ -305,8 +311,9 @@ const instances = new Map<string, PodDatabase>();
  * @throws PodDatabaseInvalidNameError when `name` does not match the contract.
  * @throws PodDatabasesUnavailableError when SPACE_ID is absent — this sandbox
  *   is not pod-owned (conversation sandboxes have no pod databases).
- * @throws PodDatabaseError when DUST_POD_DATABASES_DIR is absent — db() only
- *   works in functions launched by `dsbx function run`.
+ * @throws PodDatabaseError when DUST_POD_DATABASES_DIR or
+ *   DUST_POD_DATABASE_MAX_SIZE_BYTES is absent or invalid — db() only works
+ *   in functions launched by `dsbx function run`.
  * @throws PodDatabaseNotDeclaredError when no database file exists — databases
  *   are created by the first publish that declares them.
  * @throws PodDatabaseFullError (from queries) when the database hits its quota.
