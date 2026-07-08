@@ -21,6 +21,7 @@ import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
+import { WakeUpFactory } from "@app/tests/utils/WakeUpFactory";
 import { Ok } from "@app/types/shared/result";
 import { describe, expect, it, vi } from "vitest";
 
@@ -352,32 +353,20 @@ describe("archiveAgentConfiguration and restoreAgentConfiguration", () => {
       messagesCreatedAt: [new Date()],
     });
 
-    const wakeUpResult = await WakeUpResource.makeNew(
+    const wakeUp = await WakeUpFactory.cron(
       authenticator,
-      {
-        scheduleType: "cron",
-        fireAt: null,
-        cronExpression: "0 7 * * *",
-        cronTimezone: "Europe/Paris",
-        reason: "Daily wake-up",
-      },
       conversation,
-      agent
+      agent,
+      {
+        reason: "Daily wake-up",
+      }
     );
-    if (wakeUpResult.isErr()) {
-      throw new Error(
-        `Failed to create test wake-up: ${wakeUpResult.error.message}`
-      );
-    }
 
     const archived = await archiveAgentConfiguration(authenticator, agent.sId);
     expect(archived).toBe(true);
 
     expect(cancelSpy).toHaveBeenCalled();
-    const refetched = await WakeUpResource.fetchById(
-      authenticator,
-      wakeUpResult.value.sId
-    );
+    const refetched = await WakeUpResource.fetchById(authenticator, wakeUp.sId);
     expect(refetched?.status).toBe("cancelled");
 
     launchSpy.mockRestore();
@@ -400,28 +389,19 @@ describe("archiveAgentConfiguration and restoreAgentConfiguration", () => {
       messagesCreatedAt: [new Date()],
     });
 
-    const wakeUpResult = await WakeUpResource.makeNew(
+    const wakeUp = await WakeUpFactory.cron(
       authenticator,
-      {
-        scheduleType: "cron",
-        fireAt: null,
-        cronExpression: "0 7 * * *",
-        cronTimezone: "Europe/Paris",
-        reason: "Daily wake-up",
-      },
       conversation,
-      agent
+      agent,
+      {
+        reason: "Daily wake-up",
+      }
     );
-    if (wakeUpResult.isErr()) {
-      throw new Error(
-        `Failed to create test wake-up: ${wakeUpResult.error.message}`
-      );
-    }
 
     // Drive the wake-up to a terminal state via a DB-only cancel (markCancelled
     // does not touch Temporal), simulating a cron schedule that leaked when the
     // wake-up became terminal.
-    await wakeUpResult.value.markCancelled(authenticator);
+    await wakeUp.markCancelled(authenticator);
 
     // Only count the Temporal calls made by archiving.
     cancelSpy.mockClear();
