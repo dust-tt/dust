@@ -59,6 +59,10 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool billing info ac
       "freeUsage": true,
       "toolCostCategory": "basic",
     },
+    "describe_skill": {
+      "freeUsage": true,
+      "toolCostCategory": "basic",
+    },
     "get_agent_feedback": {
       "freeUsage": true,
       "toolCostCategory": "basic",
