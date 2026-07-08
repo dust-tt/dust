@@ -295,9 +295,8 @@ describe("blocked actions resolution", () => {
     });
 
     it("denies blocked actions spanning several steps (force-unlock)", async () => {
-      // Anomalous stuck conversation: the same agent message has blocked actions on more than one
-      // step, which violates the single-step invariant. Finalizing it (as the unstick-conversation
-      // poke plugin does) must still deny them all instead of throwing.
+      // Multi-step blocked actions violate the single-step invariant; finalizing (as the
+      // unstick-conversation plugin does) must still deny them all instead of throwing.
       const { agentMessage, action: step1Action } =
         await AgentMCPActionFactory.createWithAgentMessage(auth, {
           workspace,

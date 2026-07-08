@@ -718,12 +718,9 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
     });
   }
 
-  // Fetches every blocked action of an agent message, across all steps. Normally an agent message
-  // only ever has blocked actions from a single step (the loop pauses on the first blocking step),
-  // but anomalies can leave blocked actions spanning several steps (e.g. a sandbox bash issuing
-  // parallel `dust call` children that each block independently). Resume paths must NOT use this
-  // helper: use listBlockedActionsForAgentMessage, which enforces the single-step invariant they
-  // rely on. Terminal deny paths use this one so they can mop up anomalous multi-step state.
+  // Does not enforce the single-step invariant: resume paths must use
+  // listBlockedActionsForAgentMessage instead. Only terminal deny paths, which mop up whatever is
+  // blocked, should use this.
   private static async fetchBlockedActionsForAgentMessage(
     auth: Authenticator,
     {
@@ -761,8 +758,7 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
       return [];
     }
 
-    // Assert all blocked actions have the same step. Resume paths (retry, sandbox child relaunch)
-    // rely on this to resume the agent loop from a single, unambiguous step.
+    // Resume paths rely on this to resume the agent loop from a single, unambiguous step.
     const steps = actions.map((a) => a.stepContent.step);
     const uniqueSteps = [...new Set(steps)];
     assert(
@@ -780,10 +776,8 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
    * approval that already transitioned the action is not clobbered. Returns the actions
    * actually denied, with their pre-deny resources.
    *
-   * Denies blocked actions across ALL steps (unlike the resume paths, this is a terminal
-   * cleanup): the message is being finalized, so any blocked action left behind — even one from
-   * an anomalous multi-step state — must be denied. This is what lets the unstick-conversation
-   * poke plugin force-unlock conversations that violate the single-step invariant.
+   * Denies across all steps, not just one: the message is being finalized, so this must also
+   * clear anomalous multi-step state that would otherwise leave the conversation stuck.
    */
   static async denyBlockedActionsForAgentMessage(
     auth: Authenticator,
@@ -801,10 +795,8 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
       return [];
     }
 
-    // The agent loop should pause on the first blocking step, so a message should never have
-    // blocked actions from more than one step. We still deny them all here (this is a terminal
-    // cleanup), but log the anomaly so we can hunt the root cause — a follow-up PR will fix the
-    // origin of the broken single-step invariant.
+    // Multi-step blocked actions violate the single-step invariant; we still deny them all, but
+    // log so we can hunt the origin.
     const uniqueSteps = new Set(blockedActions.map((a) => a.stepContent.step));
     if (uniqueSteps.size > 1) {
       logger.warn(
