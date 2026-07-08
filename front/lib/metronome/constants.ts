@@ -33,9 +33,9 @@ const DEV_PRODUCT_SEAT_SUBSCRIPTION_COMMIT =
 // Metrics
 const PROD_METRIC_LLM_PROVIDER_COST_PROGRAMMATIC =
   "3ad68bfb-7a59-49ad-b29e-54700fa0e6fa";
-const PROD_METRIC_TOOL_INVOCATIONS = "5905f2d8-bb38-4593-9bfe-e71c48f6fe3b";
-const PROD_METRIC_LLM_PROVIDER_COST_AWU =
-  "162e09b0-a40b-4b09-b7b1-97bb057e901e";
+const PROD_METRIC_TOOL_INVOCATIONS_V2 = "f32cc30e-c52f-4dc0-bde0-cef343bdc6d3";
+const PROD_METRIC_LLM_PROVIDER_COST_AWU_V2 =
+  "ffb1ecce-6c2b-4f16-add1-5da81baec0a7";
 
 // Products
 const PROD_PRODUCT_PROGRAMMATIC_USAGE = "cb21a6da-9790-4ab4-bb2d-0a82d5fdf4f3";
@@ -259,11 +259,11 @@ export const getMetricLlmProviderCostProgrammaticId = () =>
     PROD_METRIC_LLM_PROVIDER_COST_PROGRAMMATIC
   );
 export const getMetricToolInvocationsId = () =>
-  devOrProd(DEV_METRIC_TOOL_INVOCATIONS_V2, PROD_METRIC_TOOL_INVOCATIONS);
+  devOrProd(DEV_METRIC_TOOL_INVOCATIONS_V2, PROD_METRIC_TOOL_INVOCATIONS_V2);
 export const getMetricLlmProviderCostAwuId = () =>
   devOrProd(
     DEV_METRIC_LLM_PROVIDER_COST_AWU_V2,
-    PROD_METRIC_LLM_PROVIDER_COST_AWU
+    PROD_METRIC_LLM_PROVIDER_COST_AWU_V2
   );
 
 // Products
