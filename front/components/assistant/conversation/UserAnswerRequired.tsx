@@ -296,6 +296,7 @@ export function UserAnswerRequired({
               counterValue={index + 1}
               selected={answerDraft.selectedOptions.includes(index)}
               disableHover={isKeyboardNavigating}
+              selectionIndicator={question.multiSelect ? "checkbox" : "radio"}
               onFocusCapture={() => activateOption(index)}
               onMouseEnter={() => activateOption(index)}
               className={cn(
