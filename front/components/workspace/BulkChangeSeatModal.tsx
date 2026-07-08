@@ -15,8 +15,8 @@ import type {
   SeatPlanResponseBody,
   SeatTypeInfo,
 } from "@app/lib/api/credits/seat_plan";
+import { formatCurrencyAmountCents } from "@app/lib/metronome/amounts";
 import type { BulkSeatChangePreviewBody } from "@app/lib/swr/memberships";
-import { CURRENCY_SYMBOLS } from "@app/types/currency";
 import type { MembershipSeatType, PaidSeatType } from "@app/types/memberships";
 import { isMembershipSeatType, isPaidSeatType } from "@app/types/memberships";
 import {
@@ -183,7 +183,10 @@ function SeatMoveSection({
         <p className="text-sm text-muted-foreground">
           This will {deltaMonthlyCents > 0 ? "add" : "remove"} an estimated{" "}
           <span className="font-semibold text-foreground">
-            {formatAmountCents(Math.abs(deltaMonthlyCents), preview.currency)}
+            {formatCurrencyAmountCents({
+              amountCents: Math.abs(deltaMonthlyCents),
+              currency: preview.currency,
+            })}
           </span>{" "}
           {deltaMonthlyCents > 0 ? "to" : "from"} your monthly invoice.
         </p>
@@ -260,8 +263,6 @@ function formatBillingPeriodDate(iso: string): string {
   });
 }
 
-// Amount without the "/mo" suffix (the sentence already says "monthly
-// invoice"), e.g. "$80" or "80€".
 // Price badge of a seat card in the pick step; annual seats show the
 // monthly-equivalent price.
 function getBadge(info: SeatTypeInfo): React.ReactNode {
@@ -279,23 +280,68 @@ function getBadge(info: SeatTypeInfo): React.ReactNode {
   );
 }
 
-function formatAmountCents(
-  cents: number,
-  currency: BulkSeatChangePreviewBody["currency"]
-): string {
-  const symbol = CURRENCY_SYMBOLS[currency];
-  const amount = (cents / 100).toFixed(2).replace(/\.00$/, "");
-  return currency === "eur" ? `${amount}${symbol}` : `${symbol}${amount}`;
+interface BulkChangeSeatModalHeaderProps {
+  // Selected members visible on the current page, for the avatar row.
+  selectedMembers: MemberUsageType[];
+  memberCount: number;
+  step: BulkChangeSeatStep;
 }
 
-function BulkChangeSeatForm({
-  onClose,
-  memberCount,
+function BulkChangeSeatModalHeader({
   selectedMembers,
+  memberCount,
+  step,
+}: BulkChangeSeatModalHeaderProps) {
+  return (
+    <DialogHeader>
+      <div className="flex flex-col gap-2">
+        {selectedMembers.length > 0 && (
+          <div className="flex flex-row items-center gap-2">
+            <Avatar.Stack
+              avatars={selectedMembers
+                .slice(0, MAX_HEADER_AVATARS)
+                .map((member) => ({
+                  name: member.name,
+                  visual: member.image ?? undefined,
+                  isRounded: true,
+                }))}
+              nbVisibleItems={MAX_HEADER_AVATARS}
+              size="md"
+            />
+            {memberCount > MAX_HEADER_AVATARS && (
+              <span className="flex h-8 min-w-8 items-center justify-center rounded-full bg-highlight-100 px-2 text-sm font-medium text-highlight-600">
+                {memberCount}
+              </span>
+            )}
+          </div>
+        )}
+        <div className="flex flex-col gap-1">
+          <DialogTitle>
+            Change seat for {memberCount.toLocaleString("en-US")} members
+          </DialogTitle>
+          <p className="text-sm text-muted-foreground">
+            {step === "pick"
+              ? "Choose a new seat to continue"
+              : "Review the changes before applying"}
+          </p>
+        </div>
+      </div>
+    </DialogHeader>
+  );
+}
+
+interface BulkChangeSeatModalPickSeatDialogContentProps {
+  seatPlans: SeatPlanResponseBody;
+  selectedSeat: PaidSeatType | null;
+  onSelectSeat: (seatType: PaidSeatType) => void;
+}
+
+// Pick step: the per-frequency seat cards with the monthly/yearly switch.
+function BulkChangeSeatModalPickSeatDialogContent({
   seatPlans,
-  onFetchPreview,
-  onValidate,
-}: BulkChangeSeatFormProps) {
+  selectedSeat,
+  onSelectSeat,
+}: BulkChangeSeatModalPickSeatDialogContentProps) {
   // "free" seats are one-shot starter seats and can never be assigned from
   // this modal; "none" (seat removal) has its own dedicated action.
   const seatTypes = sortSeatTypes(
@@ -305,9 +351,120 @@ function BulkChangeSeatForm({
   const seatTypesByFrequency = groupSeatTypesByFrequency(seatTypes, seatPlans);
   const availableFrequencies = getAvailableFrequencies(seatTypesByFrequency);
 
+  // Default the tab to the selected seat's frequency so coming Back from the
+  // preview step reopens on the tab holding the selection.
+  const initialFrequency = selectedSeat
+    ? (seatPlans[selectedSeat]?.billingFrequency ?? null)
+    : null;
   const [activeFrequency, setActiveFrequency] = useState<SeatBillingFrequency>(
-    availableFrequencies[0] ?? "monthly"
+    initialFrequency ?? availableFrequencies[0] ?? "monthly"
   );
+
+  return (
+    <div className="flex flex-col gap-3">
+      {availableFrequencies.length > 1 && (
+        <div className="mb-1 self-start">
+          <BillingPeriodSwitch
+            defaultValue={activeFrequency === "annual" ? "yearly" : "monthly"}
+            onValueChange={(period) =>
+              setActiveFrequency(period === "yearly" ? "annual" : "monthly")
+            }
+          />
+        </div>
+      )}
+
+      {seatTypesByFrequency[activeFrequency].map((seatType) => {
+        const info = seatPlans[seatType];
+        if (!info || !isPaidSeatType(seatType)) {
+          return null;
+        }
+        return (
+          <SeatCard
+            key={seatType}
+            seatType={seatType}
+            info={info}
+            isSelected={selectedSeat === seatType}
+            badge={getBadge(info)}
+            onClick={() => onSelectSeat(seatType)}
+          />
+        );
+      })}
+    </div>
+  );
+}
+
+interface BulkChangeSeatModalPreviewDialogContentProps {
+  preview: BulkSeatChangePreviewBody;
+  seatPlans: SeatPlanResponseBody;
+}
+
+// Confirm step: the immediate / next-billing-period move sections, the
+// unchanged-members note and the per-seat-type summary table.
+function BulkChangeSeatModalPreviewDialogContent({
+  preview,
+  seatPlans,
+}: BulkChangeSeatModalPreviewDialogContentProps) {
+  const immediateMoves = preview.moves.filter((m) => m.kind === "immediate");
+  const deferredMoves = preview.moves.filter((m) => m.kind === "deferred");
+  const unchangedCount = preview.moves
+    .filter((m) => m.kind === "unchanged")
+    .reduce((sum, m) => sum + m.count, 0);
+  const seatTotals = preview.seatTotals ?? [];
+  const hasAnyChange = immediateMoves.length > 0 || deferredMoves.length > 0;
+
+  return (
+    <div className="flex flex-col gap-4">
+      {immediateMoves.length > 0 && (
+        <SeatMoveSection
+          title="Immediate changes"
+          moves={immediateMoves}
+          deltaMonthlyCents={preview.immediateDeltaMonthlyCents}
+          preview={preview}
+          seatPlans={seatPlans}
+        />
+      )}
+      {deferredMoves.length > 0 && (
+        <SeatMoveSection
+          title={
+            preview.nextBillingPeriodAt
+              ? `Changes on next billing period (${formatBillingPeriodDate(preview.nextBillingPeriodAt)})`
+              : "Changes on next billing period"
+          }
+          moves={deferredMoves}
+          deltaMonthlyCents={preview.deferredDeltaMonthlyCents}
+          preview={preview}
+          seatPlans={seatPlans}
+        />
+      )}
+      {unchangedCount > 0 && (
+        <p className="text-sm text-muted-foreground">
+          {unchangedCount.toLocaleString("en-US")}{" "}
+          {unchangedCount === 1 ? "member is" : "members are"} already on{" "}
+          {seatMoveLabel(
+            preview.targetSeatType,
+            preview.targetSeatName,
+            seatPlans
+          )}{" "}
+          and won&apos;t change.
+        </p>
+      )}
+      {seatTotals.length > 0 && hasAnyChange && (
+        <SeatSummarySection seatTotals={seatTotals} seatPlans={seatPlans} />
+      )}
+    </div>
+  );
+}
+
+type BulkChangeSeatStep = "pick" | "confirm";
+
+function BulkChangeSeatForm({
+  onClose,
+  memberCount,
+  selectedMembers,
+  seatPlans,
+  onFetchPreview,
+  onValidate,
+}: BulkChangeSeatFormProps) {
   const [selectedSeat, setSelectedSeat] = useState<PaidSeatType | null>(null);
   const [preview, setPreview] = useState<BulkSeatChangePreviewBody | null>(
     null
@@ -315,7 +472,7 @@ function BulkChangeSeatForm({
   const [isLoadingPreview, setIsLoadingPreview] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
-  const step: "pick" | "confirm" = preview === null ? "pick" : "confirm";
+  const step: BulkChangeSeatStep = preview === null ? "pick" : "confirm";
 
   async function handleNext() {
     if (!selectedSeat) {
@@ -351,132 +508,26 @@ function BulkChangeSeatForm({
     }
   }
 
-  const displayedMemberCount = preview?.memberCount ?? memberCount;
-  const immediateMoves =
-    preview?.moves.filter((m) => m.kind === "immediate") ?? [];
-  const deferredMoves =
-    preview?.moves.filter((m) => m.kind === "deferred") ?? [];
-  const unchangedCount = (preview?.moves ?? [])
-    .filter((m) => m.kind === "unchanged")
-    .reduce((sum, m) => sum + m.count, 0);
-  const seatTotals = preview?.seatTotals ?? [];
-  const hasAnyChange = immediateMoves.length > 0 || deferredMoves.length > 0;
-
   return (
     <>
-      <DialogHeader>
-        <div className="flex flex-col gap-2">
-          {selectedMembers.length > 0 && (
-            <div className="flex flex-row items-center gap-2">
-              <Avatar.Stack
-                avatars={selectedMembers
-                  .slice(0, MAX_HEADER_AVATARS)
-                  .map((member) => ({
-                    name: member.name,
-                    visual: member.image ?? undefined,
-                    isRounded: true,
-                  }))}
-                nbVisibleItems={MAX_HEADER_AVATARS}
-                size="md"
-              />
-              {displayedMemberCount > MAX_HEADER_AVATARS && (
-                <span className="flex h-8 min-w-8 items-center justify-center rounded-full bg-highlight-100 px-2 text-sm font-medium text-highlight-600">
-                  {displayedMemberCount}
-                </span>
-              )}
-            </div>
-          )}
-          <div className="flex flex-col gap-1">
-            <DialogTitle>
-              Change seat for {displayedMemberCount.toLocaleString("en-US")}{" "}
-              members
-            </DialogTitle>
-            <p className="text-sm text-muted-foreground">
-              {step === "pick"
-                ? "Choose a new seat to continue"
-                : "Review the changes before applying"}
-            </p>
-          </div>
-        </div>
-      </DialogHeader>
+      <BulkChangeSeatModalHeader
+        selectedMembers={selectedMembers}
+        memberCount={preview?.memberCount ?? memberCount}
+        step={step}
+      />
       <DialogContainer>
         {step === "pick" ? (
-          <div className="flex flex-col gap-3">
-            {availableFrequencies.length > 1 && (
-              <div className="mb-1 self-start">
-                <BillingPeriodSwitch
-                  defaultValue="monthly"
-                  onValueChange={(period) =>
-                    setActiveFrequency(
-                      period === "yearly" ? "annual" : "monthly"
-                    )
-                  }
-                />
-              </div>
-            )}
-
-            {seatTypesByFrequency[activeFrequency].map((seatType) => {
-              const info = seatPlans[seatType];
-              if (!info || !isPaidSeatType(seatType)) {
-                return null;
-              }
-              return (
-                <SeatCard
-                  key={seatType}
-                  seatType={seatType}
-                  info={info}
-                  isSelected={selectedSeat === seatType}
-                  badge={getBadge(info)}
-                  onClick={() => setSelectedSeat(seatType)}
-                />
-              );
-            })}
-          </div>
+          <BulkChangeSeatModalPickSeatDialogContent
+            seatPlans={seatPlans}
+            selectedSeat={selectedSeat}
+            onSelectSeat={setSelectedSeat}
+          />
         ) : (
           preview && (
-            <div className="flex flex-col gap-4">
-              {immediateMoves.length > 0 && (
-                <SeatMoveSection
-                  title="Immediate changes"
-                  moves={immediateMoves}
-                  deltaMonthlyCents={preview.immediateDeltaMonthlyCents}
-                  preview={preview}
-                  seatPlans={seatPlans}
-                />
-              )}
-              {deferredMoves.length > 0 && (
-                <SeatMoveSection
-                  title={
-                    preview.nextBillingPeriodAt
-                      ? `Changes on next billing period (${formatBillingPeriodDate(preview.nextBillingPeriodAt)})`
-                      : "Changes on next billing period"
-                  }
-                  moves={deferredMoves}
-                  deltaMonthlyCents={preview.deferredDeltaMonthlyCents}
-                  preview={preview}
-                  seatPlans={seatPlans}
-                />
-              )}
-              {unchangedCount > 0 && (
-                <p className="text-sm text-muted-foreground">
-                  {unchangedCount.toLocaleString("en-US")}{" "}
-                  {unchangedCount === 1 ? "member is" : "members are"} already
-                  on{" "}
-                  {seatMoveLabel(
-                    preview.targetSeatType,
-                    preview.targetSeatName,
-                    seatPlans
-                  )}{" "}
-                  and won&apos;t change.
-                </p>
-              )}
-              {seatTotals.length > 0 && hasAnyChange && (
-                <SeatSummarySection
-                  seatTotals={seatTotals}
-                  seatPlans={seatPlans}
-                />
-              )}
-            </div>
+            <BulkChangeSeatModalPreviewDialogContent
+              preview={preview}
+              seatPlans={seatPlans}
+            />
           )
         )}
       </DialogContainer>
