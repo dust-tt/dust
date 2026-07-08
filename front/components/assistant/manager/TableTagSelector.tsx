@@ -52,14 +52,14 @@ export const TableTagSelector = ({
             size="xs"
             label="Add tags"
             isSelect
-            className="invisible text-muted-foreground group-hover:visible dark:text-muted-foreground-night"
+            className="invisible text-muted-foreground group-hover:visible"
           />
         ) : (
           <Button
             variant="ghost"
             icon={ChevronDown}
             size="xmini"
-            className="invisible text-muted-foreground group-hover:visible dark:text-muted-foreground-night"
+            className="invisible text-muted-foreground group-hover:visible"
           />
         )}
       </DropdownMenuTrigger>
@@ -71,7 +71,7 @@ export const TableTagSelector = ({
         <DropdownMenuSeparator />
         <DropdownMenuTagList>
           {tags.length === 0 ? (
-            <div className="px-2 py-2 text-center text-sm text-muted-foreground dark:text-muted-foreground-night">
+            <div className="px-2 py-2 text-center text-sm text-muted-foreground">
               No tags available
             </div>
           ) : (
@@ -89,7 +89,7 @@ export const TableTagSelector = ({
                   >
                     <DropdownMenuTagItem
                       label={t.name}
-                      color="golden"
+                      color="info"
                       icon={isChecked ? Check : undefined}
                       onClick={async () => {
                         setIsLoading(true);

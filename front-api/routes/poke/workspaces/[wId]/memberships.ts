@@ -4,8 +4,10 @@ import type {
 } from "@app/lib/api/poke/memberships";
 import { getMembers } from "@app/lib/api/workspace";
 import { MembershipInvitationResource } from "@app/lib/resources/membership_invitation_resource";
+import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { getMembershipInvitationUrl } from "@app/lib/utils/invitation_token";
+import type { MembershipSeatType } from "@app/types/memberships";
 import { pokeApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
@@ -92,15 +94,46 @@ app.get("/", async (ctx): HandlerResult<PokeGetMemberships> => {
   const auth = ctx.get("auth");
   const owner = auth.getNonNullableWorkspace();
 
-  const [{ members }, pendingInvitations] = await Promise.all([
-    getMembers(auth),
-    MembershipInvitationResource.getPendingInvitations(auth, {
-      includeExpired: true,
-    }),
-  ]);
+  // Members list includes revoked memberships (role "none"), each shown by
+  // their ACTIVE seat. Scheduled future seat changes (e.g. a member seated
+  // mid-migration whose seat flips at the pending contract start) live in
+  // separate future-dated rows — surface them separately so the table shows
+  // "current → scheduled (date)" rather than the not-yet-active seat.
+  const [{ members }, scheduledFutureMemberships, pendingInvitations] =
+    await Promise.all([
+      getMembers(auth),
+      MembershipResource.getScheduledFutureMemberships({ workspace: owner }),
+      MembershipInvitationResource.getPendingInvitations(auth, {
+        includeExpired: true,
+      }),
+    ]);
+
+  // Keep the soonest scheduled change per member.
+  const scheduledByUserId = new Map<
+    string,
+    { seatType: MembershipSeatType; at: number }
+  >();
+  for (const m of scheduledFutureMemberships) {
+    const userId = m.user?.sId;
+    if (!userId) {
+      continue;
+    }
+    const at = m.startAt.getTime();
+    const existing = scheduledByUserId.get(userId);
+    if (!existing || at < existing.at) {
+      scheduledByUserId.set(userId, { seatType: m.seatType, at });
+    }
+  }
 
   return ctx.json({
-    members,
+    members: members.map((m) => {
+      const scheduled = scheduledByUserId.get(m.sId);
+      return {
+        ...m,
+        scheduledSeatType: scheduled?.seatType ?? null,
+        scheduledSeatChangeAt: scheduled?.at ?? null,
+      };
+    }),
     pendingInvitations: pendingInvitations.map((invite) => {
       const i = invite.toJSON();
       return {

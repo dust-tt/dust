@@ -6,9 +6,11 @@ import { SubscriptionEndBanner } from "@app/components/navigation/TrialBanner";
 import { useAppLayout } from "@app/components/sparkle/AppLayoutContext";
 import { AppLayoutTitle } from "@app/components/sparkle/AppLayoutTitle";
 import { useAppKeyboardShortcuts } from "@app/hooks/useAppKeyboardShortcuts";
+import { useDocumentScrollMode } from "@app/hooks/useDocumentScrollMode";
 import { useDocumentTitle } from "@app/hooks/useDocumentTitle";
 import { useHashParam } from "@app/hooks/useHashParams";
 import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
+import { MOBILE_DOCUMENT_SCROLL_CLASSES } from "@app/lib/documentScrollLayoutClasses";
 import { useIsMobile } from "@app/lib/swr/useIsMobile";
 import { FULL_SCREEN_HASH_PARAM } from "@app/types/conversation_side_panel";
 import { isAdmin } from "@app/types/user";
@@ -46,17 +48,13 @@ function AppContentInnerWrapper({
   children,
 }: AppContentInnerWrapperProps) {
   if (isMobile) {
-    return (
-      <div className="bg-panel-background dark:bg-panel-background-night">
-        {children}
-      </div>
-    );
+    return children;
   }
 
   return (
     <div
       className={cn(
-        "my-2 mr-2 rounded-xl flex-1 bg-panel-background dark:bg-panel-background-night border border-border dark:border-border-night overflow-hidden h-panel",
+        "my-2 mr-2 rounded-xl flex-1 bg-panel-background border border-border overflow-hidden h-panel",
         !isNavigationBarOpen && !isFullScreen && "ml-5",
         isFullScreen && "ml-2"
       )}
@@ -95,14 +93,28 @@ export function AppContentLayout({ children }: AppContentLayoutProps) {
   const { isNavigationBarOpen, setIsNavigationBarOpen } =
     useDesktopNavigation();
 
+  useDocumentScrollMode(isMobile);
+
   return (
-    <div className="flex h-dvh flex-col">
+    <div
+      className={cn(
+        "flex flex-col",
+        isMobile ? MOBILE_DOCUMENT_SCROLL_CLASSES.contentRoot : "h-dvh"
+      )}
+    >
       <SubscriptionEndBanner
         isAdmin={isAdmin(owner)}
         owner={owner}
         subscription={subscription}
       />
-      <div className="flex min-h-0 flex-1 flex-row">
+      <div
+        className={cn(
+          "flex flex-row",
+          isMobile
+            ? MOBILE_DOCUMENT_SCROLL_CLASSES.contentRow
+            : "min-h-0 flex-1"
+        )}
+      >
         <Navigation
           hideSidebar={hideSidebar}
           isNavigationBarOpen={isNavigationBarOpen}
@@ -116,9 +128,10 @@ export function AppContentLayout({ children }: AppContentLayoutProps) {
         />
         <div
           className={cn(
-            "relative flex h-full w-full flex-1 flex-col overflow-x-hidden",
-            "bg-app-background text-foreground",
-            "dark:bg-app-background-night dark:text-foreground-night"
+            "relative flex w-full flex-1 flex-col text-foreground",
+            isMobile
+              ? MOBILE_DOCUMENT_SCROLL_CLASSES.contentMain
+              : "h-full overflow-x-hidden bg-app-background"
           )}
         >
           <AppContentInnerWrapper
@@ -129,19 +142,29 @@ export function AppContentLayout({ children }: AppContentLayoutProps) {
             {/* Temporary measure to preserve title existence on smaller screens.
              * Page has no title, prepend empty AppLayoutTitle. */}
             {!hasTitleBar && (
-              <div className="flex min-h-0 flex-1 flex-col h-panel overflow-y-auto">
+              <div
+                className={cn(
+                  "flex flex-1 flex-col",
+                  isMobile
+                    ? MOBILE_DOCUMENT_SCROLL_CLASSES.contentArea
+                    : "min-h-0 h-panel overflow-y-auto"
+                )}
+              >
                 <AppLayoutTitle />
                 {contentWidth ? (
                   <div
                     className={cn(
-                      "flex h-full w-full flex-col items-center overflow-y-auto",
+                      "flex w-full flex-col items-center",
+                      isMobile
+                        ? MOBILE_DOCUMENT_SCROLL_CLASSES.contentArea
+                        : "h-full overflow-y-auto",
                       contentWidth === "centered" ? "pt-4" : "pt-8",
                       contentClassName
                     )}
                   >
                     <div
                       className={cn(
-                        "flex w-full grow flex-col px-4 sm:px-8",
+                        "flex w-full grow flex-col px-4 md:px-8",
                         contentWidth === "centered" && "max-w-4xl"
                       )}
                     >
@@ -154,13 +177,23 @@ export function AppContentLayout({ children }: AppContentLayoutProps) {
               </div>
             )}
             {hasTitleBar && (
-              <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
+              <div
+                className={cn(
+                  "flex flex-1 flex-col",
+                  isMobile
+                    ? MOBILE_DOCUMENT_SCROLL_CLASSES.contentArea
+                    : "min-h-0 overflow-y-auto"
+                )}
+              >
                 {contentWidth ? (
                   <>
                     {title}
                     <div
                       className={cn(
-                        "flex w-full flex-col items-center overflow-y-auto",
+                        "flex w-full flex-col items-center",
+                        isMobile
+                          ? MOBILE_DOCUMENT_SCROLL_CLASSES.contentArea
+                          : "overflow-y-auto",
                         contentWidth === "centered"
                           ? cn(
                               title ? "h-[calc(100vh-3.5rem)]" : "h-full",
@@ -172,7 +205,7 @@ export function AppContentLayout({ children }: AppContentLayoutProps) {
                     >
                       <div
                         className={cn(
-                          "flex w-full grow flex-col px-4 sm:px-8",
+                          "flex w-full grow flex-col px-4 md:px-8",
                           contentWidth === "centered" && "max-w-4xl"
                         )}
                       >

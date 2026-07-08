@@ -1,11 +1,4 @@
 import type {
-  GetAppsResponseBody,
-  GetOrPostAppResponseBody,
-} from "@app/lib/api/apps";
-import type { GetDustAppSecretsResponseBody } from "@app/lib/api/dust_app_secrets";
-import type { GetKeysResponseBody } from "@app/lib/api/keys";
-import type { GetProvidersResponseBody } from "@app/lib/api/providers";
-import type {
   GetRunBlockResponseBody,
   GetRunResponseBody,
   GetRunStatusResponseBody,
@@ -15,6 +8,13 @@ import type {
 import { clientFetch } from "@app/lib/egress/client";
 import { emptyArray, useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import logger from "@app/logger/logger";
+import type {
+  GetAppsResponseBody,
+  GetOrPostAppResponseBody,
+} from "@app/types/api/apps";
+import type { GetDustAppSecretsResponseBody } from "@app/types/api/dust_app_secrets";
+import type { GetKeysResponseBody } from "@app/types/api/keys";
+import type { GetProvidersResponseBody } from "@app/types/api/providers";
 import type { AppType } from "@app/types/app";
 import type { RunRunType } from "@app/types/run";
 import { normalizeError } from "@app/types/shared/utils/error_utils";

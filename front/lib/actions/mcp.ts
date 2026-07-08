@@ -18,6 +18,7 @@ import { hideInternalConfiguration } from "@app/lib/actions/mcp_internal_actions
 import type { ProgressNotificationContentType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import type { AuthorizationInfo } from "@app/lib/actions/mcp_metadata_extraction";
 import type {
+  ActionGeneratedFileType,
   FileAuthorizationInfo,
   UserQuestion,
 } from "@app/lib/actions/types";
@@ -28,7 +29,9 @@ import type {
   ToolDisplayLabels,
 } from "@app/lib/api/mcp";
 import type { AgentMCPActionWithOutputType } from "@app/types/actions";
+import type { SandboxFunctionMCPActionType } from "@app/types/api/sandbox_functions";
 import { assertNever } from "@app/types/shared/utils/assert_never";
+import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
 
 export type ActionApprovalStateType =
@@ -66,6 +69,9 @@ export type ServerSideMCPToolType = Omit<
   // When present, the user must approve the specific (agent, tool, argument values) combination.
   argumentsRequiringApproval?: string[];
   displayLabels?: ToolDisplayLabels;
+  // When true, the tool is loaded upfront in the cached tools prefix instead of
+  // being deferred behind tool search.
+  eager?: boolean;
 };
 
 export type ClientSideMCPToolType = Omit<
@@ -81,6 +87,9 @@ export type ClientSideMCPToolType = Omit<
   // When present, the user must approve the specific (agent, tool, argument values) combination.
   argumentsRequiringApproval?: string[];
   displayLabels?: ToolDisplayLabels;
+  // When true, the tool is loaded upfront in the cached tools prefix instead of
+  // being deferred behind tool search.
+  eager?: boolean;
 };
 
 type WithToolNameMetadata<
@@ -204,7 +213,9 @@ export function getMCPApprovalStateFromUserApprovalState(
   }
 }
 
-export type MCPParamsEvent = {
+// Emitted by the agent loop once tool arguments have been generated and the action created.
+// Published on the conversation message channel, hence the conversation-scoped identifiers.
+export type AgentLoopToolParamsEvent = {
   type: "tool_params";
   created: number;
   configurationId: string;
@@ -213,12 +224,13 @@ export type MCPParamsEvent = {
   runIds?: string[];
 };
 
+// Emitted by the tool runner when the tool execution completed. Generic across run contexts: it
+// carries the processed output only, consumers scope it to their own run context.
 export type MCPSuccessEvent = {
   type: "tool_success";
   created: number;
-  configurationId: string;
-  messageId: string;
-  action: AgentMCPActionWithOutputType;
+  output: CallToolResult["content"];
+  generatedFiles: ActionGeneratedFileType[];
 };
 
 export type MCPErrorEvent = {
@@ -233,20 +245,43 @@ export type MCPErrorEvent = {
   };
 };
 
-export type ToolNotificationEvent = {
+type ToolNotificationEventBase = {
   type: "tool_notification";
   created: number;
+  notification: ProgressNotificationContentType;
+};
+
+// Tool notification emitted when running a tool within an agent loop. Published on the
+// conversation message channel, hence the conversation-scoped identifiers.
+export type AgentLoopToolNotificationEvent = ToolNotificationEventBase & {
   configurationId: string;
   conversationId: string;
   messageId: string;
   action: AgentMCPActionWithOutputType;
-  notification: ProgressNotificationContentType;
 };
 
+// Tool notification emitted when running a tool within a sandbox function invocation.
+export type SandboxFunctionToolNotificationEvent = ToolNotificationEventBase & {
+  sandboxFunctionId: string;
+  invocationId: string;
+  action: SandboxFunctionMCPActionType;
+};
+
+export type ToolNotificationEvent =
+  | AgentLoopToolNotificationEvent
+  | SandboxFunctionToolNotificationEvent;
+
+export function isAgentLoopToolNotificationEvent(
+  event: ToolNotificationEvent
+): event is AgentLoopToolNotificationEvent {
+  return "messageId" in event;
+}
+
+// AgentActionRunningEvents are events related action execution within an agent loop.
 export type AgentActionRunningEvents =
-  | MCPParamsEvent
+  | AgentLoopToolParamsEvent
   | MCPApproveExecutionEvent
-  | ToolNotificationEvent;
+  | AgentLoopToolNotificationEvent;
 
 const MAX_DESCRIPTION_LENGTH = 1024;
 
@@ -254,8 +289,7 @@ const MAX_DESCRIPTION_LENGTH = 1024;
  * Builds a tool specification for the given MCP action configuration.
  */
 export function buildToolSpecification(
-  actionConfiguration: MCPToolConfigurationType,
-  { deferLoading }: { deferLoading?: boolean } = {}
+  actionConfiguration: MCPToolConfigurationType
 ): AgentActionSpecification {
   // Internal tools: hide required tool-input configuration from the model.
   // External/client tools: black-box — pass the schema through as-is.
@@ -270,7 +304,7 @@ export function buildToolSpecification(
     description:
       actionConfiguration.description?.slice(0, MAX_DESCRIPTION_LENGTH) ?? "",
     inputSchema,
-    ...(deferLoading ? { deferLoading: true } : {}),
+    ...(actionConfiguration.eager ? { eager: true } : {}),
   };
 }
 

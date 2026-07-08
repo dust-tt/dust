@@ -12,7 +12,7 @@ import type { Authenticator } from "@app/lib/auth";
 import { KillSwitchResource } from "@app/lib/resources/kill_switch_resource";
 import { TagResource } from "@app/lib/resources/tags_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
-import type { PostOrPatchAgentConfigurationRequestBody } from "@app/types/api/internal/agent_configuration";
+import type { PostOrPatchAgentConfigurationRequestBody } from "@app/types/api/agent_configuration";
 import type { AgentConfigurationType } from "@app/types/assistant/agent";
 import type { APIErrorWithContentfulStatusCode } from "@app/types/error";
 import type { ModelId } from "@app/types/shared/model_id";

@@ -1,3 +1,7 @@
+import {
+  BuilderEditorGateMessage,
+  BuilderEditorLoadErrorMessage,
+} from "@app/components/shared/BuilderEditorGateMessage";
 import { SkillBuilderAgentFacingDescriptionSection } from "@app/components/skill_builder/SkillBuilderAgentFacingDescriptionSection";
 import { useSkillBuilderContext } from "@app/components/skill_builder/SkillBuilderContext";
 import { SkillBuilderFilesSection } from "@app/components/skill_builder/SkillBuilderFilesSection";
@@ -27,12 +31,15 @@ import { useSendNotification } from "@app/hooks/useNotification";
 import { useSkillSuggestions } from "@app/hooks/useSkillSuggestions";
 import { useIsSelfImprovementAvailable } from "@app/lib/client/self_improvement";
 import { useAppRouter } from "@app/lib/platform";
-import { getSkillIcon } from "@app/lib/skill";
 import { useSkillHistory } from "@app/lib/swr/skill_configurations";
-import { useSkillEditors } from "@app/lib/swr/skill_editors";
+import {
+  useSkillEditors,
+  useUpdateSkillEditors,
+} from "@app/lib/swr/skill_editors";
 import { useIsMobile } from "@app/lib/swr/useIsMobile";
 import { getConversationRoute } from "@app/lib/utils/router";
 import type { SkillType } from "@app/types/assistant/skill_configuration";
+import { isAdmin } from "@app/types/user";
 import {
   BarFooter,
   BarHeader,
@@ -51,22 +58,23 @@ import { useForm } from "react-hook-form";
 
 interface SkillBuilderProps {
   skill?: SkillType;
-  extendedSkill?: SkillType;
   onSaved: () => void;
 }
 
-export default function SkillBuilder({
-  skill,
-  extendedSkill,
-  onSaved,
-}: SkillBuilderProps) {
+export default function SkillBuilder({ skill, onSaved }: SkillBuilderProps) {
   const { owner, user } = useSkillBuilderContext();
   const router = useAppRouter();
   const sendNotification = useSendNotification();
   const [isSaving, setIsSaving] = useState(false);
+  const [isAddingSelfAsEditor, setIsAddingSelfAsEditor] = useState(false);
   const isMobile = useIsMobile();
 
-  const { editors } = useSkillEditors({
+  const { editors, isEditorsError, isEditorsLoading, mutateEditors } =
+    useSkillEditors({
+      owner,
+      skillId: skill?.sId ?? null,
+    });
+  const updateSkillEditors = useUpdateSkillEditors({
     owner,
     skillId: skill?.sId ?? null,
   });
@@ -96,9 +104,8 @@ export default function SkillBuilder({
 
     return getDefaultSkillFormData({
       user,
-      extendedSkillId: extendedSkill?.sId ?? null,
     });
-  }, [skill, user, extendedSkill]);
+  }, [skill, user]);
 
   const form = useForm<SkillBuilderFormData>({
     resolver: zodResolver(skillBuilderFormSchema),
@@ -122,9 +129,37 @@ export default function SkillBuilder({
   const isCreatingNew = !skill;
   const { isDirty } = form.formState;
 
+  const isAdminExistingSkill = !!skill && isAdmin(owner);
+  const isCurrentUserEditor = editors.some((editor) => editor.sId === user.sId);
+  const isAdminNonEditor =
+    isAdminExistingSkill &&
+    !isEditorsLoading &&
+    !isEditorsError &&
+    !isCurrentUserEditor;
+  const isEditorLocked =
+    isAdminExistingSkill &&
+    (isEditorsLoading || isEditorsError || !isCurrentUserEditor);
+
   useNavigationLock(isDirty && !isSaving);
 
+  const handleAddSelfAsEditor = async () => {
+    if (!skill || isAddingSelfAsEditor) {
+      return;
+    }
+
+    setIsAddingSelfAsEditor(true);
+    try {
+      await updateSkillEditors({ addEditorIds: [user.sId] });
+    } finally {
+      setIsAddingSelfAsEditor(false);
+    }
+  };
+
   const handleSubmit = async (data: SkillBuilderFormData) => {
+    if (isEditorLocked) {
+      return;
+    }
+
     setIsSaving(true);
 
     const result = await submitSkillBuilderForm({
@@ -173,6 +208,33 @@ export default function SkillBuilder({
   };
 
   const handleSave = () => {
+    if (isEditorLocked) {
+      if (isEditorsError) {
+        sendNotification({
+          title: "Unable to verify editor access",
+          description: "Retry loading editors before saving changes.",
+          type: "error",
+        });
+        return;
+      }
+
+      if (isEditorsLoading) {
+        sendNotification({
+          title: "Verifying editor access",
+          description: "Wait until skill editors finish loading before saving.",
+          type: "error",
+        });
+        return;
+      }
+
+      sendNotification({
+        title: "Cannot save skill",
+        description: "Only skill editors can save changes.",
+        type: "error",
+      });
+      return;
+    }
+
     void form.handleSubmit(handleSubmit)();
   };
 
@@ -202,17 +264,22 @@ export default function SkillBuilder({
 
       <ScrollArea className="flex-1">
         <div className="mx-auto space-y-10 p-8 2xl:max-w-5xl">
-          {extendedSkill && (
-            <ContentMessage
-              title={`Built on ${extendedSkill.name}`}
-              variant="highlight"
-              icon={getSkillIcon(extendedSkill.icon)}
-              size="lg"
-            >
-              A customized version of {extendedSkill.name} with your own
-              guidelines and capabilities.
-            </ContentMessage>
-          )}
+          {isAdminExistingSkill && isEditorsError ? (
+            <BuilderEditorLoadErrorMessage
+              builderType="skill"
+              onRetry={() => {
+                void mutateEditors();
+              }}
+            />
+          ) : isAdminNonEditor ? (
+            <BuilderEditorGateMessage
+              builderType="skill"
+              isLoading={isAddingSelfAsEditor}
+              onAddSelfAsEditor={() => {
+                void handleAddSelfAsEditor();
+              }}
+            />
+          ) : null}
           {skill?.status === "suggested" && (
             <ContentMessage
               title="This is a generated skill suggestion"
@@ -230,10 +297,15 @@ export default function SkillBuilder({
           <SkillBuilderRequestedSpacesSection
             initialRequestedSpaceIds={skill?.requestedSpaceIds}
           />
-          <SkillBuilderFilesSection />
+          <SkillBuilderFilesSection disableUpload={isEditorLocked} />
           <SkillBuilderSettingsOrComparisonFooter
             skill={skill}
             hasSelfImprovingSkills={hasSelfImprovingSkills}
+            isEditorGateVisible={isAdminNonEditor}
+            isAddingSelfAsEditor={isAddingSelfAsEditor}
+            onAddSelfAsEditor={() => {
+              void handleAddSelfAsEditor();
+            }}
           />
         </div>
       </ScrollArea>
@@ -267,8 +339,7 @@ export default function SkillBuilder({
           <div
             className={cn(
               "flex h-dvh flex-row",
-              "bg-background text-foreground",
-              "dark:bg-background-night dark:text-foreground-night"
+              "bg-background text-foreground"
             )}
           >
             {showSuggestionsPanel ? (
@@ -287,7 +358,7 @@ export default function SkillBuilder({
                   <ResizableHandle withHandle />
                   <ResizablePanel defaultSize={35} minSize={20} maxSize={50}>
                     <div className="h-full w-full overflow-y-auto">
-                      <SkillBuilderSuggestionsPanel />
+                      <SkillBuilderSuggestionsPanel disabled={isEditorLocked} />
                     </div>
                   </ResizablePanel>
                 </>
@@ -305,9 +376,15 @@ export default function SkillBuilder({
 function SkillBuilderSettingsOrComparisonFooter({
   skill,
   hasSelfImprovingSkills,
+  isEditorGateVisible,
+  isAddingSelfAsEditor,
+  onAddSelfAsEditor,
 }: {
   skill?: SkillType;
   hasSelfImprovingSkills: boolean;
+  isEditorGateVisible: boolean;
+  isAddingSelfAsEditor: boolean;
+  onAddSelfAsEditor: () => void;
 }) {
   const { compareVersion } = useSkillVersionComparisonContext();
 
@@ -319,6 +396,9 @@ function SkillBuilderSettingsOrComparisonFooter({
     <SkillBuilderSettingsSection
       skill={skill}
       hasSelfImprovingSkills={hasSelfImprovingSkills}
+      isEditorGateVisible={isEditorGateVisible}
+      isAddingSelfAsEditor={isAddingSelfAsEditor}
+      onAddSelfAsEditor={onAddSelfAsEditor}
     />
   );
 }

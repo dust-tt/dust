@@ -2,12 +2,18 @@ import { computeAgentMessageCredits } from "@app/lib/api/assistant/credit_cost";
 import {
   awuFromMicroUsd,
   intelligenceAwuFromRunUsages,
+  intelligenceAwuFromRunUsagesGroupedByRunKey,
   toolAwuFromActions,
 } from "@app/lib/metronome/events";
 import type { RunUsageType } from "@app/lib/resources/run_resource";
+import type { UserMessageOrigin } from "@app/types/assistant/conversation";
 import { describe, expect, it } from "vitest";
 
-function usage(overrides: Partial<RunUsageType>): RunUsageType {
+const TEST_CONTEXT_ORIGIN: UserMessageOrigin = "api";
+
+function usage(
+  overrides: Partial<RunUsageType & { runKey: string | null }>
+): RunUsageType & { runKey: string | null } {
   return {
     completionTokens: 0,
     promptTokens: 0,
@@ -17,6 +23,7 @@ function usage(overrides: Partial<RunUsageType>): RunUsageType {
     modelId: "gpt-4o",
     providerId: "openai",
     isBatch: false,
+    runKey: null,
     ...overrides,
   };
 }
@@ -36,50 +43,117 @@ describe("awuFromMicroUsd", () => {
 
 describe("intelligenceAwuFromRunUsages", () => {
   it("groups by model and ceils per group before summing", () => {
-    const sameModel = intelligenceAwuFromRunUsages([
-      usage({ costMicroUsd: 5000, modelId: "gpt-4o", providerId: "openai" }),
-      usage({ costMicroUsd: 5000, modelId: "gpt-4o", providerId: "openai" }),
-    ]);
+    const sameModel = intelligenceAwuFromRunUsages(
+      [
+        usage({ costMicroUsd: 5000, modelId: "gpt-4o", providerId: "openai" }),
+        usage({ costMicroUsd: 5000, modelId: "gpt-4o", providerId: "openai" }),
+      ],
+      TEST_CONTEXT_ORIGIN
+    );
     expect(sameModel).toBe(2);
 
-    const twoModels = intelligenceAwuFromRunUsages([
-      usage({ costMicroUsd: 5000, modelId: "gpt-4o", providerId: "openai" }),
-      usage({
-        costMicroUsd: 5000,
-        modelId: "claude-opus-4-8",
-        providerId: "anthropic",
-      }),
-    ]);
+    const twoModels = intelligenceAwuFromRunUsages(
+      [
+        usage({ costMicroUsd: 5000, modelId: "gpt-4o", providerId: "openai" }),
+        usage({
+          costMicroUsd: 5000,
+          modelId: "claude-opus-4-8",
+          providerId: "anthropic",
+        }),
+      ],
+      TEST_CONTEXT_ORIGIN
+    );
     // ceil(5000/8500)=1 per model -> 2.
     expect(twoModels).toBe(2);
   });
 
   it("returns 0 for no usages", () => {
-    expect(intelligenceAwuFromRunUsages([])).toBe(0);
+    expect(intelligenceAwuFromRunUsages([], TEST_CONTEXT_ORIGIN)).toBe(0);
+  });
+});
+
+describe("intelligenceAwuFromRunUsagesGroupedByRunKey", () => {
+  it("ceils per runKey (execution) so it matches additive Metronome events on interrupt/resume", () => {
+    // Ceiling over the union (the old behavior) would undercount: ceil(10000/8500)=2
+    // here it happens to match, so use an uneven split to prove the difference.
+    const credits = intelligenceAwuFromRunUsagesGroupedByRunKey(
+      [
+        usage({ costMicroUsd: 9000, runKey: "exec1" }), // ceil -> 2
+        usage({ costMicroUsd: 1000, runKey: "exec2" }), // ceil -> 1
+      ],
+      TEST_CONTEXT_ORIGIN
+    );
+    expect(credits).toBe(3);
+  });
+
+  it("still ceils per (provider, model) within a single execution", () => {
+    const credits = intelligenceAwuFromRunUsagesGroupedByRunKey(
+      [
+        usage({ costMicroUsd: 5000, modelId: "gpt-4o", runKey: "exec1" }),
+        usage({
+          costMicroUsd: 5000,
+          modelId: "claude-opus-4-8",
+          providerId: "anthropic",
+          runKey: "exec1",
+        }),
+      ],
+      TEST_CONTEXT_ORIGIN
+    );
+    // Same execution, two models: ceil(5000)=1 per model -> 2.
+    expect(credits).toBe(2);
+  });
+
+  it("folds untagged (null runKey) usages into a single legacy group", () => {
+    const credits = intelligenceAwuFromRunUsagesGroupedByRunKey(
+      [
+        usage({ costMicroUsd: 9000, runKey: null }),
+        usage({ costMicroUsd: 1000, runKey: null }),
+      ],
+      TEST_CONTEXT_ORIGIN
+    );
+    // Both summed before ceiling: ceil(10000/8500) = 2.
+    expect(credits).toBe(2);
   });
 });
 
 describe("toolAwuFromActions", () => {
   it("charges 1 credit for basic and 3 for advanced tools", () => {
     expect(
-      toolAwuFromActions([
-        { internalMCPServerName: "web_search_&_browse" }, // basic = 1
-        { internalMCPServerName: "search" }, // advanced = 3
-      ])
+      toolAwuFromActions(
+        [
+          {
+            toolName: "websearch",
+            internalMCPServerName: "web_search_&_browse",
+          }, // basic = 1
+          { toolName: "semantic_search", internalMCPServerName: "search" }, // advanced = 3
+        ],
+        TEST_CONTEXT_ORIGIN
+      )
     ).toBe(4);
   });
 
   it("treats unknown / external servers as advanced (3)", () => {
-    expect(toolAwuFromActions([{ internalMCPServerName: null }])).toBe(3);
+    expect(
+      toolAwuFromActions(
+        [{ toolName: "custom_tool", internalMCPServerName: null }],
+        TEST_CONTEXT_ORIGIN
+      )
+    ).toBe(3);
   });
 
   it("does not charge for free tools (priced at 0 in the rate card)", () => {
-    // agent_memory is in FREE_TOOL_SERVERS — billed free, so contributes 0.
+    // agent_memory has toolCategory "basic" + freeUsage true — contributes 0.
     expect(
-      toolAwuFromActions([{ internalMCPServerName: "agent_memory" }])
+      toolAwuFromActions(
+        [{ toolName: "retrieve", internalMCPServerName: "agent_memory" }],
+        TEST_CONTEXT_ORIGIN
+      )
     ).toBe(0);
     expect(
-      toolAwuFromActions([{ internalMCPServerName: "agent_memory" }])
+      toolAwuFromActions(
+        [{ toolName: "record_entries", internalMCPServerName: "agent_memory" }],
+        TEST_CONTEXT_ORIGIN
+      )
     ).toBe(0);
   });
 });
@@ -88,7 +162,14 @@ describe("computeAgentMessageCredits", () => {
   it("sums intelligence and tool credits", () => {
     const credits = computeAgentMessageCredits({
       runUsages: [usage({ costMicroUsd: 8500 })], // 1 intelligence credit
-      actions: [{ internalMCPServerName: "search", status: "succeeded" }], // 3 tool credits
+      actions: [
+        {
+          toolName: "semantic_search",
+          internalMCPServerName: "search",
+          status: "succeeded",
+        },
+      ], // 3 tool credits
+      contextOrigin: TEST_CONTEXT_ORIGIN,
     });
     expect(credits).toBe(4);
   });
@@ -96,22 +177,39 @@ describe("computeAgentMessageCredits", () => {
   it("ignores non-final actions", () => {
     const credits = computeAgentMessageCredits({
       runUsages: [],
-      actions: [{ internalMCPServerName: "search", status: "running" }],
+      actions: [
+        {
+          toolName: "semantic_search",
+          internalMCPServerName: "search",
+          status: "running",
+        },
+      ],
+      contextOrigin: TEST_CONTEXT_ORIGIN,
     });
     expect(credits).toBeNull();
   });
 
   it("returns null when there is no billable usage", () => {
     expect(
-      computeAgentMessageCredits({ runUsages: [], actions: [] })
+      computeAgentMessageCredits({
+        runUsages: [],
+        actions: [],
+        contextOrigin: TEST_CONTEXT_ORIGIN,
+      })
     ).toBeNull();
   });
 
   it("costs 0 for free-origin usage (e.g. agent_sidekick), LLM and tools alike", () => {
     const credits = computeAgentMessageCredits({
       runUsages: [usage({ costMicroUsd: 8500 })], // would be 1 intelligence credit
-      actions: [{ internalMCPServerName: "search", status: "succeeded" }], // would be 3 tool credits
-      isFreeUsage: true,
+      actions: [
+        {
+          toolName: "semantic_search",
+          internalMCPServerName: "search",
+          status: "succeeded",
+        },
+      ], // would be 3 tool credits
+      contextOrigin: "agent_sidekick",
     });
     expect(credits).toBe(0);
   });
@@ -121,7 +219,7 @@ describe("computeAgentMessageCredits", () => {
       computeAgentMessageCredits({
         runUsages: [],
         actions: [],
-        isFreeUsage: true,
+        contextOrigin: "agent_sidekick",
       })
     ).toBeNull();
   });

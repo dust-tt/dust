@@ -1,6 +1,13 @@
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import { getFileFromConversationAttachment } from "@app/lib/actions/mcp_internal_actions/utils/file_utils";
-import type { AgentLoopContextType } from "@app/lib/actions/types";
+import {
+  isAgentLoopRunContext,
+  type ToolContextType,
+} from "@app/lib/actions/types";
+import {
+  formatSlackMessageForLLM,
+  renderFormattedMessage,
+} from "@app/lib/api/actions/servers/slack/message_formatter";
 import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
 import { removeDiacritics } from "@app/lib/utils";
@@ -745,7 +752,7 @@ export async function executeListPublicChannels(
 
 export async function executePostMessage(
   auth: Authenticator,
-  agentLoopContext: AgentLoopContextType,
+  toolContext: ToolContextType,
   {
     accessToken,
     to,
@@ -754,6 +761,7 @@ export async function executePostMessage(
     fileId,
     unfurlLinks,
     unfurlMedia,
+    showSentByFooter,
   }: {
     accessToken: string;
     to: string | string[];
@@ -762,6 +770,7 @@ export async function executePostMessage(
     fileId: string | undefined;
     unfurlLinks: boolean | undefined;
     unfurlMedia: boolean | undefined;
+    showSentByFooter?: boolean;
   }
 ) {
   const slackClient = await getSlackClient(accessToken);
@@ -784,13 +793,20 @@ export async function executePostMessage(
 
   const originalMessage = message;
 
-  const agentUrl = getConversationRoute(
-    auth.getNonNullableWorkspace().sId,
-    "new",
-    `agentDetails=${agentLoopContext.runContext?.agentConfiguration.sId}`,
-    config.getAppUrl()
-  );
-  message = `${slackifyMarkdown(originalMessage)}\n_Sent via <${agentUrl}|${agentLoopContext.runContext?.agentConfiguration.name} Agent> on Dust_`;
+  if (
+    showSentByFooter !== false &&
+    isAgentLoopRunContext(toolContext.runContext)
+  ) {
+    const agentUrl = getConversationRoute(
+      auth.getNonNullableWorkspace().sId,
+      "new",
+      `agentDetails=${toolContext.runContext?.agentConfiguration.sId}`,
+      config.getAppUrl()
+    );
+    message = `${slackifyMarkdown(originalMessage)}\n_Sent via <${agentUrl}|${toolContext.runContext?.agentConfiguration.name} Agent> on Dust_`;
+  } else {
+    message = slackifyMarkdown(originalMessage);
+  }
 
   if (!(await hasSlackScope(accessToken, "files:write"))) {
     fileId = undefined;
@@ -801,7 +817,7 @@ export async function executePostMessage(
     const fileResult = await getFileFromConversationAttachment(
       auth,
       fileId,
-      agentLoopContext
+      toolContext
     );
     if (fileResult.isErr()) {
       return new Err(
@@ -911,7 +927,7 @@ export async function executeUpdateMessage({
 
 export async function executeScheduleMessage(
   auth: Authenticator,
-  agentLoopContext: AgentLoopContextType,
+  toolContext: ToolContextType,
   {
     accessToken,
     to,
@@ -920,6 +936,7 @@ export async function executeScheduleMessage(
     threadTs,
     unfurlLinks,
     unfurlMedia,
+    showSentByFooter,
   }: {
     accessToken: string;
     to: string;
@@ -928,18 +945,26 @@ export async function executeScheduleMessage(
     threadTs: string | undefined;
     unfurlLinks: boolean | undefined;
     unfurlMedia: boolean | undefined;
+    showSentByFooter?: boolean;
   }
 ) {
   const slackClient = await getSlackClient(accessToken);
   const originalMessage = message;
 
-  const agentUrl = getConversationRoute(
-    auth.getNonNullableWorkspace().sId,
-    "new",
-    `agentDetails=${agentLoopContext.runContext?.agentConfiguration.sId}`,
-    config.getAppUrl()
-  );
-  message = `${slackifyMarkdown(originalMessage)}\n_Sent via <${agentUrl}|${agentLoopContext.runContext?.agentConfiguration.name} Agent> on Dust_`;
+  if (
+    showSentByFooter !== false &&
+    isAgentLoopRunContext(toolContext.runContext)
+  ) {
+    const agentUrl = getConversationRoute(
+      auth.getNonNullableWorkspace().sId,
+      "new",
+      `agentDetails=${toolContext.runContext?.agentConfiguration.sId}`,
+      config.getAppUrl()
+    );
+    message = `${slackifyMarkdown(originalMessage)}\n_Sent via <${agentUrl}|${toolContext.runContext?.agentConfiguration.name} Agent> on Dust_`;
+  } else {
+    message = slackifyMarkdown(originalMessage);
+  }
 
   // Convert post_at to Unix timestamp in seconds.
   let timestampSeconds: number;
@@ -1661,15 +1686,19 @@ export async function executeReadThreadMessages({
 
   const formattedOutput = {
     parent_message: {
-      text: parentMessage?.text ?? "",
-      blocks: parentMessage?.blocks,
+      // Rendered text reconstructs content from blocks/attachments when the top-level
+      // `text` is empty (common for app/bot alerts). `raw_text` keeps the original.
+      text: parentMessage
+        ? renderFormattedMessage(formatSlackMessageForLLM(parentMessage))
+        : "",
+      raw_text: parentMessage?.text ?? "",
       user: parentMessage?.user ?? "",
       ts: parentMessage?.ts ?? "",
       reply_count: parentMessage?.reply_count ?? 0,
     },
     thread_replies: threadReplies.map((msg) => ({
-      text: msg.text ?? "",
-      blocks: msg.blocks,
+      text: renderFormattedMessage(formatSlackMessageForLLM(msg)),
+      raw_text: msg.text ?? "",
       user: msg.user ?? "",
       ts: msg.ts ?? "",
     })),

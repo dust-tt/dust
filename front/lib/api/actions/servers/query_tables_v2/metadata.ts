@@ -32,8 +32,8 @@ const tableUrisSchema = z
 export const QUERY_TABLES_V2_TOOLS_METADATA = createToolsRecord({
   [LIST_TABLES_TOOL_NAME]: {
     description:
-      "List all tables available to this agent. Returns lightweight table metadata and URIs. " +
-      "Call this first to discover tables, then pass selected URIs to get_database_schema.",
+      "List and discover the agent-configured structured data tables, datasets, and table URIs available to this agent. " +
+      "Returns lightweight table metadata and URIs. Call this first to find available agent tables, then pass selected URIs to get_database_schema.",
     schema: {
       tables:
         ConfigurableToolInputSchemas[INTERNAL_MIME_TYPES.TOOL_INPUT.TABLE],
@@ -44,12 +44,13 @@ export const QUERY_TABLES_V2_TOOLS_METADATA = createToolsRecord({
       running: "Listing available tables",
       done: "List available tables",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   [GET_DATABASE_SCHEMA_TOOL_NAME]: {
     description:
-      "Retrieves the database schema for a subset of tables. You MUST call list_tables first to discover " +
-      "available tables, then call this tool with the URIs of the tables you need before attempting to query. " +
-      "This tool provides essential information about table columns, types, and relationships needed to write accurate SQL queries.",
+      "Inspect the schema and structure for selected agent-configured tables before SQL. Use this to answer which columns, fields, column names, sample rows, and relationships exist in tables selected from list_tables. " +
+      "You MUST call list_tables first, then call this tool with the URIs of the tables you need before running SQL.",
     schema: {
       tableUris: tableUrisSchema,
     },
@@ -59,12 +60,14 @@ export const QUERY_TABLES_V2_TOOLS_METADATA = createToolsRecord({
       running: "Getting database schema",
       done: "Get database schema",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   [EXECUTE_DATABASE_QUERY_TOOL_NAME]: {
     description:
-      "Executes a query on the database. You MUST call get_database_schema for the tables involved in your query " +
-      "at least once before attempting to execute a query. The query must respect the guidelines and schema " +
-      "provided by the get_database_schema tool.",
+      "Run and execute SQL against selected agent-configured structured data tables to analyze, aggregate, filter, join, or export result rows. " +
+      "Before using this tool, the agent should have already called get_database_schema for every involved table URI and should use that inspected table structure to write the SQL. " +
+      "The SQL query must respect the guidelines and schema returned by get_database_schema.",
     schema: {
       tables:
         ConfigurableToolInputSchemas[INTERNAL_MIME_TYPES.TOOL_INPUT.TABLE],
@@ -72,12 +75,12 @@ export const QUERY_TABLES_V2_TOOLS_METADATA = createToolsRecord({
         .string()
         .describe(
           "The reason this query is being run and what it achieves, in a few words. Use infinitive verbs (e.g. " +
-            '"Analyze revenue trends", "Identify top customers").'
+            '"Analyze trends", "Identify top customers").'
         ),
       query: z
         .string()
         .describe(
-          "The query to execute. Must respect the guidelines provided by the `get_database_schema` tool."
+          "The SQL query to execute. Must respect the guidelines provided by the schema inspection tool."
         ),
       fileName: z
         .string()
@@ -89,6 +92,8 @@ export const QUERY_TABLES_V2_TOOLS_METADATA = createToolsRecord({
       running: "Executing database query",
       done: "Execute database query",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
 });
 
@@ -102,13 +107,14 @@ export const QUERY_TABLES_V2_SERVER = {
     icon: "ActionTableIcon",
     authorization: null,
     documentationUrl: null,
-    instructions: null,
   },
   tools: Object.values(QUERY_TABLES_V2_TOOLS_METADATA).map((t) => ({
     name: t.name,
     description: t.description,
     inputSchema: zodToJsonSchema(z.object(t.schema)) as JSONSchema,
     displayLabels: t.displayLabels,
+    toolCostCategory: t.toolCostCategory,
+    freeUsage: t.freeUsage,
   })),
   tools_stakes: Object.fromEntries(
     Object.values(QUERY_TABLES_V2_TOOLS_METADATA).map((t) => [t.name, t.stake])

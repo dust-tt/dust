@@ -1,26 +1,39 @@
 import { AgentPicker } from "@app/components/assistant/AgentPicker";
 import { ConfirmContext } from "@app/components/Confirm";
+import { MarkdownFileEditor } from "@app/components/editor/MarkdownFileEditor";
 import { DeletePodDialog } from "@app/components/pod/settings/DeletePodDialog";
 import { PodMembersTable } from "@app/components/pod/settings/PodMembersTable";
 import { PodSettingsOptionLabel } from "@app/components/pod/settings/PodSettingsOptionLabel";
 import { SuggestedTasksGenerationTile } from "@app/components/pod/settings/SuggestedTasksGenerationTile";
 import { usePodConversationsSummary } from "@app/hooks/conversations";
 import { useArchivePod } from "@app/hooks/useArchivePod";
-import type { RichSpaceType } from "@app/lib/api/spaces";
+import {
+  getPodAgentsMdScopedPath,
+  POD_AGENTS_MD_FILENAME,
+  POD_AGENTS_MD_MAX_CHARACTER_COUNT,
+} from "@app/lib/api/projects/constants";
 import { useFeatureFlags } from "@app/lib/auth/AuthContext";
+import { getSkillAvatarIcon } from "@app/lib/skill";
 import { useUnifiedAgentConfigurations } from "@app/lib/swr/assistants";
 import {
   useCheckPodName,
   usePodMetadata,
   useUpdatePodMetadata,
 } from "@app/lib/swr/pods";
+import { useSkills } from "@app/lib/swr/skill_configurations";
 import { useSpaceInfo, useUpdateSpace } from "@app/lib/swr/spaces";
 import { formatTimestampToFriendlyDate } from "@app/lib/utils";
 import { areOpenPodsAllowed } from "@app/lib/workspace_policies";
-import type { PatchPodMetadataBodyType } from "@app/types/api/internal/spaces";
-import { PatchPodMetadataBodySchema } from "@app/types/api/internal/spaces";
+import type {
+  PatchPodMetadataBodyType,
+  RichSpaceType,
+} from "@app/types/api/spaces";
+import { PatchPodMetadataBodySchema } from "@app/types/api/spaces";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
-import type { LightWorkspaceType } from "@app/types/user";
+import {
+  type LightWorkspaceType,
+  resolveDefaultAgentId,
+} from "@app/types/user";
 import {
   Archive,
   Avatar,
@@ -28,20 +41,28 @@ import {
   ChevronDown,
   ContentMessage,
   cn,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSearchbar,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
   Globe01,
   Icon,
   InfoCircle,
   Input,
   ScrollArea,
   SearchInput,
+  ShapesPlus,
   SliderToggle,
   TextArea,
   Tooltip,
   Upload01,
   Users01,
+  XCircle,
 } from "@dust-tt/sparkle";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useCallback, useContext, useEffect, useState } from "react";
+import { useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 
 interface PodSettingsTabProps {
@@ -52,6 +73,11 @@ interface PodSettingsTabProps {
 
 const OPEN_POD_DISABLED_TOOLTIP =
   "Open Pods are disabled by your workspace admin.";
+
+const DEFAULT_PILL_BASE_CLASSNAME =
+  "inline-flex box-border w-fit items-center rounded-xl h-9 px-3 gap-2 border border-border bg-background text-sm text-primary transition-colors duration-200";
+const DEFAULT_PILL_INTERACTIVE_CLASSNAME =
+  "cursor-pointer hover:bg-primary-100 hover:border-primary-150";
 
 export function PodSettingsTab({
   owner,
@@ -69,7 +95,10 @@ export function PodSettingsTab({
 
   const confirm = useContext(ConfirmContext);
   const { hasFeature } = useFeatureFlags();
-  const isDefaultAgentEnabled = hasFeature("pod_default_agent");
+  const hasWorkspaceDefaultAgentFeature = hasFeature("workspace_default_agent");
+  const isDefaultAgentEnabled =
+    hasFeature("pod_default_agent") || hasWorkspaceDefaultAgentFeature;
+  const isDefaultSkillsEnabled = hasFeature("pod_default_skills");
 
   const { podMetadata, isPodMetadataLoading } = usePodMetadata({
     workspaceId: owner.sId,
@@ -89,12 +118,22 @@ export function PodSettingsTab({
     });
   const dustAgent =
     agentConfigurations.find((a) => a.sId === GLOBAL_AGENTS_SID.DUST) ?? null;
-  // Fall back to @dust when the pod's configured default agent isn't available
-  // to the current user (e.g. unpublished/deleted). This is the agent shown in
-  // the input bar and pod settings.
+  // When the pod has no default set, new conversations inherit the workspace
+  // default agent, else then @dust.
+  const isInheritingWorkspaceDefault =
+    hasWorkspaceDefaultAgentFeature && !podMetadata?.defaultAgentId;
+  const resolvedDefaultAgentId = resolveDefaultAgentId({
+    owner,
+    podDefaultAgentId: podMetadata?.defaultAgentId,
+    hasWorkspaceDefaultAgentFeature,
+    hasPodDefaultAgentFeature: hasFeature("pod_default_agent"),
+  });
+  // Fall back to @dust when the default agent isn't available to the
+  // current user (e.g. unpublished/deleted). This is the agent shown in the
+  // input bar and pod settings.
   const displayedDefaultAgent =
-    (podMetadata?.defaultAgentId &&
-      agentConfigurations.find((a) => a.sId === podMetadata.defaultAgentId)) ||
+    (resolvedDefaultAgentId &&
+      agentConfigurations.find((a) => a.sId === resolvedDefaultAgentId)) ||
     dustAgent;
   // The configured default may be an agent the current user can't access (e.g.
   // an unpublished agent). `agentConfigurations` only contains viewable agents,
@@ -128,30 +167,112 @@ export function PodSettingsTab({
     [confirm, doUpdateMetadata]
   );
 
+  // Default skills for new conversations started in this pod. Stored on pod
+  // metadata and pre-inserted into the input bar of every new conversation
+  // by `useHandleMentions`, as if manually added.
+  const { skills } = useSkills({
+    owner,
+    status: "active",
+    globalSpaceOnly: true,
+    disabled: !isDefaultSkillsEnabled,
+  });
+  const [skillSearchText, setSkillSearchText] = useState("");
+  const [isSkillPickerOpen, setIsSkillPickerOpen] = useState(false);
+
+  const defaultSkillIds = useMemo(
+    () => podMetadata?.defaultSkillIds ?? [],
+    [podMetadata]
+  );
+  const selectedDefaultSkillIdSet = new Set(defaultSkillIds);
+  // Resolve the stored ids to skills the current user can see. Ids that no longer resolve
+  // (archived / out of scope) are not rendered; saving the current
+  // selection then drops them.
+  const skillBySId = new Map(skills.map((skill) => [skill.sId, skill]));
+  const selectedDefaultSkills = defaultSkillIds.flatMap((skillId) => {
+    const skill = skillBySId.get(skillId);
+    return skill ? [skill] : [];
+  });
+  const normalizedSkillSearch = skillSearchText.trim().toLowerCase();
+  const addableSkills = skills
+    .filter(
+      (skill) =>
+        !selectedDefaultSkillIdSet.has(skill.sId) &&
+        (normalizedSkillSearch.length === 0 ||
+          skill.name.toLowerCase().includes(normalizedSkillSearch) ||
+          (skill.userFacingDescription ?? "")
+            .toLowerCase()
+            .includes(normalizedSkillSearch))
+    )
+    .sort((a, b) => a.name.localeCompare(b.name));
+
+  const addDefaultSkill = useCallback(
+    async (skillId: string) => {
+      await doUpdateMetadata({
+        defaultSkillIds: [...defaultSkillIds, skillId],
+      });
+    },
+    [doUpdateMetadata, defaultSkillIds]
+  );
+
+  const removeDefaultSkill = useCallback(
+    async (skillId: string) => {
+      await doUpdateMetadata({
+        defaultSkillIds: defaultSkillIds.filter((id) => id !== skillId),
+      });
+    },
+    [doUpdateMetadata, defaultSkillIds]
+  );
+
+  // Memoized so the (memoized) DropdownMenuContent doesn't re-render on every
+  // parent render from a fresh JSX prop. Only changes when the search text does.
+  const skillPickerDropdownHeaders = useMemo(
+    () => (
+      <>
+        <DropdownMenuSearchbar
+          name="search-default-skills"
+          placeholder="Search skills"
+          value={skillSearchText}
+          onChange={setSkillSearchText}
+        />
+        <DropdownMenuSeparator />
+      </>
+    ),
+    [skillSearchText]
+  );
+
   // Trigger pill for the default agent, mirroring the conversations input bar:
   const renderDefaultAgentPill = (interactive: boolean) => (
     <div
       role="button"
       tabIndex={interactive ? 0 : -1}
-      aria-label={`Default agent: ${displayedDefaultAgent?.name ?? "Dust"}`}
+      aria-label={
+        isInheritingWorkspaceDefault
+          ? `Default agent: ${displayedDefaultAgent?.name ?? "Dust"} (workspace default)`
+          : `Default agent: ${displayedDefaultAgent?.name ?? "Dust"}`
+      }
       aria-disabled={!interactive}
       className={cn(
-        "inline-flex box-border w-fit items-center rounded-xl h-9 px-3 gap-2 border border-border dark:border-border-night bg-background dark:bg-background-night text-sm text-primary dark:text-primary-night transition-colors duration-200",
+        DEFAULT_PILL_BASE_CLASSNAME,
         interactive
-          ? "cursor-pointer hover:bg-primary-100 hover:border-primary-150 dark:hover:bg-primary-900 dark:hover:border-border-night"
+          ? DEFAULT_PILL_INTERACTIVE_CLASSNAME
           : "opacity-50 pointer-events-none"
       )}
     >
       <Avatar size="xs" visual={displayedDefaultAgent?.pictureUrl} />
       <span className="grow truncate notranslate">
         {displayedDefaultAgent?.name ?? "Dust"}
+        {isInheritingWorkspaceDefault && (
+          <span className="ml-1 text-muted-foreground">
+            · Workspace default
+          </span>
+        )}
       </span>
       {isDefaultAgentUnavailable && (
         <Tooltip
           tooltipTriggerAsChild
           trigger={
             <span
-              className="flex items-center text-warning dark:text-warning-night"
+              className="flex items-center text-warning"
               onPointerDown={(e) => {
                 e.preventDefault();
                 e.stopPropagation();
@@ -168,11 +289,7 @@ export function PodSettingsTab({
         />
       )}
       {interactive && (
-        <Icon
-          visual={ChevronDown}
-          size="xs"
-          className="-mr-1 text-faint dark:text-faint-night"
-        />
+        <Icon visual={ChevronDown} size="xs" className="-mr-1 text-faint" />
       )}
     </div>
   );
@@ -193,6 +310,7 @@ export function PodSettingsTab({
     podMetadata?.description ?? ""
   );
   const [isEditingDescription, setIsEditingDescription] = useState(false);
+  const [isSavingDescription, setIsSavingDescription] = useState(false);
 
   const form = useForm<PatchPodMetadataBodyType>({
     resolver: zodResolver(PatchPodMetadataBodySchema),
@@ -256,8 +374,13 @@ export function PodSettingsTab({
   };
 
   const onSaveDescription = async () => {
-    await doUpdateMetadata({ description: podDescription });
-    setIsEditingDescription(false);
+    setIsSavingDescription(true);
+    try {
+      await doUpdateMetadata({ description: podDescription });
+      setIsEditingDescription(false);
+    } finally {
+      setIsSavingDescription(false);
+    }
   };
 
   const { archivePod, unarchivePod } = useArchivePod({
@@ -384,11 +507,13 @@ export function PodSettingsTab({
                 <Button
                   label="Save"
                   variant="highlight"
-                  onClick={onSaveDescription}
+                  isLoading={isSavingDescription}
+                  onClick={() => void onSaveDescription()}
                 />
                 <Button
                   label="Cancel"
                   variant="outline"
+                  disabled={isSavingDescription}
                   onClick={() => {
                     setPodDescription(podMetadata?.description ?? "");
                     setIsEditingDescription(false);
@@ -399,24 +524,160 @@ export function PodSettingsTab({
           </div>
         </div>
 
+        <div className="flex w-full flex-col gap-2">
+          <div className="heading-lg">Instructions for Agents</div>
+          <div className="text-sm text-muted-foreground">
+            Seen by all agents in this Pod, stored as{" "}
+            <span className="font-medium">{POD_AGENTS_MD_FILENAME}</span> in the
+            Pod's files.
+          </div>
+          <div className="flex w-full min-w-0 flex-col gap-2">
+            <MarkdownFileEditor
+              owner={owner}
+              filePath={getPodAgentsMdScopedPath(pod.sId)}
+              emptyWhenNotFound
+              readOnly={!isPodEditor}
+              placeholder="Enter instructions for agents"
+              maxCharacterCount={POD_AGENTS_MD_MAX_CHARACTER_COUNT}
+            />
+          </div>
+        </div>
+
         {isDefaultAgentEnabled && (
           <div className="flex w-full flex-col gap-2">
             <div className="heading-lg">Default agent</div>
-            <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+            <p className="text-sm text-muted-foreground">
               The agent pre-selected when anyone starts a new conversation in
-              this Pod.
+              this Pod.{" "}
+              {hasWorkspaceDefaultAgentFeature &&
+                "When unset, it inherits the Workspace default agent."}
             </p>
             <div className="flex items-center gap-2">
               {isPodEditor ? (
-                <AgentPicker
-                  owner={owner}
-                  agents={agentConfigurations}
-                  showFooterButtons={false}
-                  onItemClick={(agent) => saveDefaultAgent(agent.sId)}
-                  pickerButton={renderDefaultAgentPill(true)}
-                />
+                <>
+                  <AgentPicker
+                    owner={owner}
+                    agents={agentConfigurations}
+                    showFooterButtons={false}
+                    onItemClick={(agent) => saveDefaultAgent(agent.sId)}
+                    pickerButton={renderDefaultAgentPill(true)}
+                  />
+                  {/* Clearing the pod default reverts to inheriting the
+                      workspace default. Only shown when the workspace-default
+                      feature is on and an explicit pod default is set. */}
+                  {hasWorkspaceDefaultAgentFeature &&
+                    podMetadata?.defaultAgentId && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        icon={XCircle}
+                        tooltip="Reset to workspace default"
+                        onClick={() => void saveDefaultAgent(null)}
+                      />
+                    )}
+                </>
               ) : (
                 renderDefaultAgentPill(false)
+              )}
+            </div>
+          </div>
+        )}
+
+        {isDefaultSkillsEnabled && (
+          <div className="flex w-full flex-col gap-2">
+            <div className="heading-lg">Default Skills</div>
+            <p className="text-sm text-muted-foregroundt">
+              The skills pre-selected when anyone starts a new conversation in
+              this Pod. Members can still edit the skills in each conversation.
+            </p>
+            <div className="flex flex-wrap items-center gap-2">
+              {/* Selected skills, each rendered as a pill matching conversation styling.
+               Editors get an inline remove control. */}
+              {selectedDefaultSkills.map((skill) => (
+                <div
+                  key={skill.sId}
+                  aria-label={`Default skill: ${skill.name}`}
+                  className={cn(
+                    DEFAULT_PILL_BASE_CLASSNAME,
+                    !isPodEditor && "opacity-50"
+                  )}
+                >
+                  <Avatar size="xs" icon={getSkillAvatarIcon(skill)} />
+                  <span className="grow truncate notranslate">
+                    {skill.name}
+                  </span>
+                  {isPodEditor && (
+                    <button
+                      type="button"
+                      aria-label={`Remove ${skill.name}`}
+                      className="-mr-1 flex items-center text-faint hover:text-primary"
+                      onClick={() => void removeDefaultSkill(skill.sId)}
+                    >
+                      <Icon visual={XCircle} size="xs" />
+                    </button>
+                  )}
+                </div>
+              ))}
+              {isPodEditor && (
+                <DropdownMenu
+                  open={isSkillPickerOpen}
+                  onOpenChange={(open) => {
+                    setIsSkillPickerOpen(open);
+                    if (open) {
+                      setSkillSearchText("");
+                    }
+                  }}
+                >
+                  <DropdownMenuTrigger asChild>
+                    <button
+                      type="button"
+                      aria-label="Add a default skill"
+                      className={cn(
+                        DEFAULT_PILL_BASE_CLASSNAME,
+                        DEFAULT_PILL_INTERACTIVE_CLASSNAME
+                      )}
+                    >
+                      <Icon visual={ShapesPlus} size="xs" />
+                      <span className="grow truncate">Add skill</span>
+                      <Icon
+                        visual={ChevronDown}
+                        size="xs"
+                        className="-mr-1 text-faint"
+                      />
+                    </button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent
+                    className="w-80"
+                    align="start"
+                    dropdownHeaders={skillPickerDropdownHeaders}
+                  >
+                    {addableSkills.length === 0 ? (
+                      <div className="px-2 py-4 text-center text-sm text-muted-foreground">
+                        {normalizedSkillSearch.length > 0
+                          ? "No skills found"
+                          : "No more skills to add"}
+                      </div>
+                    ) : (
+                      addableSkills.map((skill) => (
+                        <DropdownMenuItem
+                          key={skill.sId}
+                          icon={getSkillAvatarIcon(skill)}
+                          label={skill.name}
+                          description={skill.userFacingDescription ?? undefined}
+                          truncateText
+                          onClick={() => {
+                            void addDefaultSkill(skill.sId);
+                          }}
+                        />
+                      ))
+                    )}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              )}
+              {!isPodEditor && selectedDefaultSkills.length === 0 && (
+                <p className="text-sm text-muted-foreground">
+                  No default skills configured.
+                </p>
               )}
             </div>
           </div>
@@ -437,7 +698,6 @@ export function PodSettingsTab({
                     trigger={
                       <div>
                         <SliderToggle
-                          size="xs"
                           selected={isOpen}
                           onClick={handleVisibilityToggle}
                           disabled
@@ -447,7 +707,6 @@ export function PodSettingsTab({
                   />
                 ) : (
                   <SliderToggle
-                    size="xs"
                     selected={isOpen}
                     onClick={handleVisibilityToggle}
                     disabled={isVisibilityToggleDisabled}
@@ -497,12 +756,12 @@ export function PodSettingsTab({
         </div>
 
         {isPodEditor && (
-          <div className="flex w-full flex-col gap-3 border-t border-border pt-8 dark:border-border-night">
+          <div className="flex w-full flex-col gap-3 border-t border-border pt-8">
             <h3 className="heading-lg">Danger Zone</h3>
             <h4 className="heading-base">Archive</h4>
             {podMetadata?.archivedAt ? (
               <div className="flex flex-col gap-3">
-                <p className="text-sm text-foreground dark:text-foreground-night">
+                <p className="text-sm text-foreground">
                   Archived on{" "}
                   <span className="font-medium">
                     {formatTimestampToFriendlyDate(
@@ -522,7 +781,7 @@ export function PodSettingsTab({
               </div>
             ) : (
               <>
-                <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+                <p className="text-sm text-muted-foreground">
                   This Pod will be removed from the sidebar. Its data stays
                   intact and can still be used as a data source.
                 </p>
@@ -536,7 +795,7 @@ export function PodSettingsTab({
               </>
             )}
             <h4 className="heading-base">Delete</h4>
-            <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+            <p className="text-sm text-muted-foreground">
               This permanently removes all content—conversations, folders,
               websites, and data sources. Agents using this Pod's tools will be
               impacted. This cannot be undone.

@@ -106,7 +106,7 @@ function DurationLabel({ durationMs, isRunning, size }: DurationLabelProps) {
   return (
     <span
       className={cn(
-        "text-muted-foreground dark:text-muted-foreground-night",
+        "shrink-0 text-muted-foreground",
         size === "xs" ? "text-xs" : "text-sm"
       )}
     >
@@ -139,12 +139,17 @@ export function ActionDetailsWrapper({
       <div className="flex w-full flex-col gap-y-2">
         <div
           className={cn(
-            "text-foreground dark:text-foreground-night",
-            "flex flex-grow flex-row items-center gap-x-2"
+            "text-foreground",
+            "flex min-w-0 flex-grow flex-row items-center gap-x-2"
           )}
         >
-          <Icon visual={visual} size="xs" />
-          <span className="heading-sm font-medium">{actionName}</span>
+          <Icon visual={visual} size="xs" className="shrink-0" />
+          <span
+            className="heading-sm min-w-0 flex-1 truncate font-medium"
+            title={actionName}
+          >
+            {actionName}
+          </span>
           {hasDuration && (
             <DurationLabel
               durationMs={displayedDurationMs}
@@ -168,12 +173,17 @@ export function ActionDetailsWrapper({
     <>
       <div
         className={cn(
-          "text-foreground dark:text-foreground-night",
-          "flex flex-row items-center gap-x-2"
+          "text-foreground",
+          "flex min-w-0 flex-row items-center gap-x-2"
         )}
       >
-        <Icon visual={visual} />
-        <span className="heading-base">{actionName}</span>
+        <Icon visual={visual} className="shrink-0" />
+        <span
+          className="heading-base min-w-0 flex-1 truncate"
+          title={actionName}
+        >
+          {actionName}
+        </span>
         {hasDuration && (
           <DurationLabel
             durationMs={displayedDurationMs}
@@ -181,7 +191,6 @@ export function ActionDetailsWrapper({
             size="sm"
           />
         )}
-        <span className="flex-grow"></span>
         {headerAction}
       </div>
       {children}

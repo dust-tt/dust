@@ -8,7 +8,7 @@ import {
 } from "@app/types/memberships";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { workspaceApp } from "@front-api/middlewares/ctx";
-import { ensureIsAdmin } from "@front-api/middlewares/ensure_role";
+import { ensureIsBusinessAdmin } from "@front-api/middlewares/ensure_role";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import { z } from "zod";
@@ -33,7 +33,7 @@ const app = workspaceApp();
 app.patch(
   "/",
   validate("param", ParamsSchema),
-  ensureIsAdmin(),
+  ensureIsBusinessAdmin(),
   validate("json", UpdateMemberSeatTypeBodySchema),
   async (ctx) => {
     const auth = ctx.get("auth");
@@ -91,6 +91,15 @@ app.patch(
               type: "invalid_request_error",
               message:
                 "The free seat is reserved for first-time members and cannot be assigned again.",
+            },
+          });
+        case "paid_seat_not_allowed_on_free_plan":
+          return apiError(ctx, {
+            status_code: 400,
+            api_error: {
+              type: "invalid_request_error",
+              message:
+                "A paid seat cannot be assigned while the workspace is on a free plan. Upgrade the workspace first.",
             },
           });
         case "seat_limit_reached":

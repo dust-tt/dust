@@ -1,6 +1,10 @@
 import { MIME_TYPES_TO_EXPORT } from "@connectors/connectors/google_drive/temporal/mime_types";
-import { getDriveClient } from "@connectors/connectors/google_drive/temporal/utils";
+import {
+  getDriveClient,
+  isFileTooLargeToDownloadError,
+} from "@connectors/connectors/google_drive/temporal/utils";
 import type { CoreAPIDataSourceDocumentSection } from "@connectors/lib/data_sources";
+import { MAX_FILE_SIZE_TO_DOWNLOAD } from "@connectors/lib/data_sources";
 import type { Logger } from "@connectors/logger/logger";
 import type { GoogleDriveObjectType } from "@connectors/types";
 import { Context } from "@temporalio/activity";
@@ -27,10 +31,18 @@ export async function handleGoogleDriveExport(
 
   for (;;) {
     try {
-      const res = await drive.files.export({
-        fileId: file.id,
-        mimeType: MIME_TYPES_TO_EXPORT[file.mimeType],
-      });
+      const res = await drive.files.export(
+        {
+          fileId: file.id,
+          mimeType: MIME_TYPES_TO_EXPORT[file.mimeType],
+        },
+        {
+          // Google-native docs report no size in their metadata, so the pre-download guard cannot
+          // catch them. Cap the export so a huge document is aborted mid-stream instead of being
+          // fully buffered in memory (a source of OOMs).
+          maxContentLength: MAX_FILE_SIZE_TO_DOWNLOAD,
+        }
+      );
       if (res.status !== 200) {
         localLogger.error({}, "Error exporting Google document");
         throw new Error(
@@ -145,6 +157,11 @@ export async function handleGoogleDriveExport(
             continue;
           }
         }
+      }
+
+      if (isFileTooLargeToDownloadError(e)) {
+        localLogger.info("Google document too large to be exported, skipping.");
+        return { content: null };
       }
 
       localLogger.error({ error: e }, "Error exporting Google document");

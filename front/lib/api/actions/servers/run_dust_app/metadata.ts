@@ -25,6 +25,8 @@ export const RUN_DUST_APP_TOOLS_METADATA = createToolsRecord({
       running: "Running Dust app",
       done: "Run Dust app",
     },
+    toolCostCategory: "basic",
+    freeUsage: false,
   },
 });
 
@@ -36,13 +38,14 @@ export const RUN_DUST_APP_SERVER = {
     icon: "CommandLineIcon" as const,
     authorization: null,
     documentationUrl: null,
-    instructions: null,
   },
   tools: Object.values(RUN_DUST_APP_TOOLS_METADATA).map((t) => ({
     name: t.name,
     description: t.description,
     inputSchema: zodToJsonSchema(z.object(t.schema)) as JSONSchema,
     displayLabels: t.displayLabels,
+    toolCostCategory: t.toolCostCategory,
+    freeUsage: t.freeUsage,
   })),
   tools_stakes: Object.fromEntries(
     Object.values(RUN_DUST_APP_TOOLS_METADATA).map((t) => [t.name, t.stake])

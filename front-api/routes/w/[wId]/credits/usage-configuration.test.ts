@@ -7,7 +7,7 @@ function usageConfigurationUrl(wId: string) {
 }
 
 describe("/api/w/[wId]/credits/usage-configuration", () => {
-  it("GET returns 403 when caller is not an admin", async () => {
+  it("GET returns 403 when caller is a user", async () => {
     const { workspace } = await createPrivateApiMockRequest({
       method: "GET",
       role: "user",
@@ -15,6 +15,40 @@ describe("/api/w/[wId]/credits/usage-configuration", () => {
 
     const response = await honoApp.request(
       usageConfigurationUrl(workspace.sId)
+    );
+
+    expect(response.status).toBe(403);
+    expect((await response.json()).error.type).toBe("workspace_auth_error");
+  });
+
+  it("GET allows a business admin to read the configuration", async () => {
+    const { workspace } = await createPrivateApiMockRequest({
+      method: "GET",
+      role: "business_admin",
+    });
+
+    const response = await honoApp.request(
+      usageConfigurationUrl(workspace.sId)
+    );
+
+    expect(response.status).toBe(200);
+    const { configuration } = await response.json();
+    expect(configuration.allowMemberUpgradeRequests).toBe(true);
+  });
+
+  it("PATCH returns 403 for a business admin (admin-only write)", async () => {
+    const { workspace } = await createPrivateApiMockRequest({
+      method: "PATCH",
+      role: "business_admin",
+    });
+
+    const response = await honoApp.request(
+      usageConfigurationUrl(workspace.sId),
+      {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ allowMemberUpgradeRequests: false }),
+      }
     );
 
     expect(response.status).toBe(403);
@@ -36,6 +70,9 @@ describe("/api/w/[wId]/credits/usage-configuration", () => {
     expect(configuration.allowMemberUpgradeRequests).toBe(true);
     expect(configuration.upgradeRequestEmailEnabled).toBe(true);
     expect(configuration.autoSeatUpgradeEnabled).toBe(false);
+    // The default mock workspace is on a free (non-Metronome) plan, so
+    // auto-upgrade is not available — the UI disables the toggle.
+    expect(configuration.autoSeatUpgradeAvailable).toBe(false);
   });
 
   it("PATCH persists the upgrade-request toggles and GET reflects them", async () => {

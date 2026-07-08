@@ -15,10 +15,6 @@ import {
   usePodConversationsSummary,
 } from "@app/hooks/conversations";
 import { useTaskDiffAnimations } from "@app/hooks/useTaskDiffAnimations";
-import type {
-  BulkActionsBody,
-  GetPodTasksResponseBody,
-} from "@app/lib/api/projects/tasks";
 import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { clientFetch } from "@app/lib/egress/client";
 import { useAppRouter } from "@app/lib/platform";
@@ -35,6 +31,10 @@ import {
 } from "@app/lib/swr/pods";
 import { useSpaceInfo } from "@app/lib/swr/spaces";
 import { getConversationRoute } from "@app/lib/utils/router";
+import type {
+  BulkActionsBody,
+  GetPodTasksResponseBody,
+} from "@app/types/api/projects/tasks";
 import { compareAgentsForSort } from "@app/types/assistant/assistant";
 import {
   POD_TASK_UNASSIGNED_GROUP_KEY,
@@ -42,6 +42,7 @@ import {
   type PodTaskStatus,
   type PodTaskType,
 } from "@app/types/project_task";
+import { resolveDefaultAgentId } from "@app/types/user";
 import { useCallback, useContext, useEffect, useMemo, useState } from "react";
 
 export function usePodTasksPanelState({
@@ -107,10 +108,16 @@ export function usePodTasksPanelState({
   }, [agentConfigurations]);
 
   const { hasFeature } = useFeatureFlags();
-  const { podMetadata } = usePodMetadata({ workspaceId: owner.sId, podId });
-  const defaultAgentId = hasFeature("pod_default_agent")
-    ? (podMetadata?.defaultAgentId ?? null)
-    : null;
+  const { podMetadata } = usePodMetadata({
+    workspaceId: owner.sId,
+    podId,
+  });
+  const defaultAgentId = resolveDefaultAgentId({
+    owner,
+    podDefaultAgentId: podMetadata?.defaultAgentId,
+    hasWorkspaceDefaultAgentFeature: hasFeature("workspace_default_agent"),
+    hasPodDefaultAgentFeature: hasFeature("pod_default_agent"),
+  });
 
   const podMembers = useMemo(() => {
     const members = spaceInfo?.members ?? [];

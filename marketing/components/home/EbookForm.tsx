@@ -113,7 +113,18 @@ function MarketingConsentCheckbox() {
   );
 }
 
-export function EbookForm() {
+interface EbookFormProps {
+  // Title shown in the "thank you" confirmation copy.
+  ebookTitle?: string;
+  // Key forwarded to the download endpoint to select which PDF to serve.
+  // Omitting it falls back to the default (The AI Enterprise Playbook).
+  downloadEbookKey?: string;
+}
+
+export function EbookForm({
+  ebookTitle = "The AI Enterprise Playbook",
+  downloadEbookKey,
+}: EbookFormProps) {
   const { downloadToken, submitError, handleSubmit } = useEbookFormSubmit();
   const { geoData, isGeoDataLoading } = useGeolocation();
 
@@ -152,14 +163,17 @@ export function EbookForm() {
           Thank you! Your ebook is ready.
         </h3>
         <p className="text-muted-foreground">
-          Click the button below to download your copy of The AI Enterprise
-          Playbook.
+          Click the button below to download your copy of {ebookTitle}.
         </p>
         <Button
           label="Download Ebook"
           variant="primary"
           size="md"
-          href={`/m/api/home/ebook/download?token=${encodeURIComponent(downloadToken)}`}
+          href={`/m/api/home/ebook/download?token=${encodeURIComponent(downloadToken)}${
+            downloadEbookKey
+              ? `&ebook=${encodeURIComponent(downloadEbookKey)}`
+              : ""
+          }`}
           target="_blank"
         />
       </div>

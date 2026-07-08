@@ -112,6 +112,7 @@ async function seedProgrammaticUsage(
       message_id: messageId,
       skills_used: [],
       status: "succeeded",
+      is_free_seat: false,
       timestamp: timestamp.toISOString(),
       tokens: {
         prompt: randomInt(TOKEN_PROMPT_RANGE.min, TOKEN_PROMPT_RANGE.max),

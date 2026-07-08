@@ -1,17 +1,14 @@
 import type { DataSourcesToolConfigurationType } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import { getCoreSearchArgs } from "@app/lib/actions/mcp_internal_actions/tools/utils";
+import type { ToolContextType } from "@app/lib/actions/types";
 import { constructPromptMultiActions } from "@app/lib/api/assistant/generation";
 import type { CoreDataSourceSearchCriteria } from "@app/lib/api/assistant/process_data_sources";
 import { writeToToolOutputsFolder } from "@app/lib/api/files/action_output_fs";
 import { makeFileName } from "@app/lib/api/files/action_output_fs/naming";
 import { systemPromptToText } from "@app/lib/api/llm/types/options";
 import type { Authenticator } from "@app/lib/auth";
-import { getSupportedModelConfig } from "@app/lib/llms/model_configurations";
-import type { AgentConfigurationType } from "@app/types/assistant/agent";
-import type {
-  ConversationType,
-  UserMessageType,
-} from "@app/types/assistant/conversation";
+import type { AgentLoopExecutionData } from "@app/types/assistant/agent_run";
+import type { UserMessageType } from "@app/types/assistant/conversation";
 import { isUserMessageType } from "@app/types/assistant/conversation";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -86,11 +83,13 @@ export async function getCoreDataSourceSearchCriterias(
 export async function getPromptForProcessDustApp({
   auth,
   agentConfiguration,
+  model,
   conversation,
 }: {
   auth: Authenticator;
-  agentConfiguration: AgentConfigurationType;
-  conversation: ConversationType;
+  agentConfiguration: AgentLoopExecutionData["agentConfiguration"];
+  model: AgentLoopExecutionData["model"];
+  conversation: AgentLoopExecutionData["conversation"];
 }) {
   // Grab user message.
   const userMessagesFiltered = conversation.content.filter((m) =>
@@ -104,13 +103,6 @@ export async function getPromptForProcessDustApp({
   const userMessage: UserMessageType =
     lastUserMessageTuple[0] as UserMessageType;
 
-  const model = getSupportedModelConfig(agentConfiguration.model);
-  if (!model) {
-    throw new Error(
-      `Model config not found for ${agentConfiguration.model.modelId}`
-    );
-  }
-
   return systemPromptToText(
     constructPromptMultiActions(auth, {
       userMessage,
@@ -120,9 +112,6 @@ export async function getPromptForProcessDustApp({
       model,
       hasAvailableActions: false,
       systemSkills: [],
-      enabledSkills: [],
-      equippedSkills: [],
-      agentsList: null,
       conversation,
     })
   );
@@ -133,14 +122,14 @@ const EXTRACT_RESULT_SNIPPET_MAX_LENGTH = 1000;
 
 export async function generateProcessToolOutput({
   auth,
-  conversation,
+  toolContext,
   outputs,
   jsonSchema,
   timeFrame,
   objective,
 }: {
   auth: Authenticator;
-  conversation: ConversationType;
+  toolContext: ToolContextType;
   outputs: ProcessActionOutputsType | null;
   jsonSchema: JSONSchema;
   timeFrame: TimeFrame | null;
@@ -161,7 +150,7 @@ export async function generateProcessToolOutput({
   const fileName = makeFileName({ name: stem, ext: ".json" });
   const content = JSON.stringify(outputs?.data ?? [], null, 2);
 
-  const writeResult = await writeToToolOutputsFolder(auth, conversation, {
+  const writeResult = await writeToToolOutputsFolder(auth, toolContext, {
     fileName,
     content,
     contentType: "application/json",

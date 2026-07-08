@@ -1,4 +1,4 @@
-import type { GetProvidersCheckResponseBody } from "@app/lib/api/provider_credentials";
+import type { GetProvidersCheckResponseBody } from "@app/types/api/provider_credentials";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { ensureIsBuilder } from "@front-api/middlewares/ensure_role";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
@@ -250,22 +250,6 @@ app.post(
           return ctx.json({ ok: false, error: err.error?.message }, 400);
         }
         await rGoogleAIStudio.json();
-        return ctx.json({ ok: true });
-      }
-
-      case "togetherai": {
-        // eslint-disable-next-line no-restricted-globals
-        const tModelsRes = await fetch("https://api.together.xyz/v1/models", {
-          method: "GET",
-          headers: {
-            Authorization: `Bearer ${config.api_key}`,
-          },
-        });
-        if (!tModelsRes.ok) {
-          const err = await tModelsRes.json();
-          return ctx.json({ ok: false, error: err.error.message }, 400);
-        }
-        await tModelsRes.json();
         return ctx.json({ ok: true });
       }
 

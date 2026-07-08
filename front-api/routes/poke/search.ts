@@ -1,5 +1,5 @@
-import type { GetPokeSearchItemsResponseBody } from "@app/lib/api/poke/search";
 import { searchPokeResources } from "@app/lib/poke/search";
+import type { GetPokeSearchItemsResponseBody } from "@app/types/api/poke/search";
 import { isString } from "@app/types/shared/utils/general";
 import { pokeApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";

@@ -20,27 +20,26 @@ const DEFAULT_COLLAPSIBLE_LABEL = "Details";
 export type ActionCardState = "active" | "disabled" | "accepted" | "rejected";
 export type ActionCardBlockSize = "compact" | "default";
 
-const resolvedTitleClass =
-  "s-italic s-font-normal s-text-muted-foreground dark:s-text-muted-foreground-night s-mr-2";
+const resolvedTitleClass = "italic font-normal text-muted-foreground mr-2";
 
 const titleVariants = cva("", {
   variants: {
     size: {
-      compact: "s-heading-sm",
-      default: "s-heading-base",
+      compact: "heading-sm",
+      default: "heading-base",
     },
     status: {
-      active: "s-text-foreground dark:s-text-foreground-night",
-      disabled: "s-text-faint dark:s-text-faint-night",
+      active: "text-foreground",
+      disabled: "text-faint",
       accepted: resolvedTitleClass,
       rejected: resolvedTitleClass,
     },
   },
   compoundVariants: [
-    { status: "accepted", size: "compact", className: "s-text-sm" },
-    { status: "accepted", size: "default", className: "s-text-base" },
-    { status: "rejected", size: "compact", className: "s-text-sm" },
-    { status: "rejected", size: "default", className: "s-text-base" },
+    { status: "accepted", size: "compact", className: "text-sm" },
+    { status: "accepted", size: "default", className: "text-base" },
+    { status: "rejected", size: "compact", className: "text-sm" },
+    { status: "rejected", size: "default", className: "text-base" },
   ],
   defaultVariants: { size: "default", status: "active" },
 });
@@ -48,14 +47,14 @@ const titleVariants = cva("", {
 const descriptionVariants = cva("", {
   variants: {
     size: {
-      compact: "s-text-sm",
-      default: "s-text-base",
+      compact: "text-sm",
+      default: "text-base",
     },
     status: {
-      active: "s-text-muted-foreground dark:s-text-muted-foreground-night",
-      disabled: "s-text-faint dark:s-text-faint-night",
-      accepted: "s-text-faint dark:s-text-faint-night",
-      rejected: "s-text-faint dark:s-text-faint-night",
+      active: "text-muted-foreground",
+      disabled: "text-faint",
+      accepted: "text-faint",
+      rejected: "text-faint",
     },
   },
   defaultVariants: { size: "default", status: "active" },
@@ -153,7 +152,7 @@ export function ActionCardBlock({
   };
 
   const defaultActionButtons = (
-    <div className="s-flex s-flex-wrap s-justify-end s-gap-2">
+    <div className="flex flex-wrap justify-end gap-2">
       <Button
         variant="outline"
         size={elementSize}
@@ -183,21 +182,19 @@ export function ActionCardBlock({
       variant="primary"
       size={isCompact ? "sm" : "md"}
       disabled={isDisabled}
-      containerClassName={
-        isResolved ? "s-max-w-lg s-w-fit" : "s-max-w-lg s-w-full"
-      }
-      className={cn("s-flex-col", isCompact ? "s-gap-2" : "s-gap-3")}
+      containerClassName={isResolved ? "max-w-lg w-fit" : "max-w-lg w-full"}
+      className={cn("flex-col", isCompact ? "gap-2" : "gap-3")}
     >
       {showHeader && (
-        <div className="s-flex s-min-h-6 s-flex-wrap s-items-center s-justify-between s-gap-2">
-          <div className="s-flex s-min-w-0 s-items-center s-gap-2">
+        <div className="flex min-h-6 flex-wrap items-center justify-between gap-2">
+          <div className="flex min-w-0 items-center gap-2">
             {resolvedVisual}
             {resolvedTitle && (
               <div className={titleClasses}>{resolvedTitle}</div>
             )}
           </div>
           {showActionsInHeader && (
-            <div className="s-ml-auto s-shrink-0">{actionButtons}</div>
+            <div className="ml-auto shrink-0">{actionButtons}</div>
           )}
         </div>
       )}
@@ -209,12 +206,12 @@ export function ActionCardBlock({
       {collapsibleContent && (
         <Collapsible>
           <CollapsibleTrigger
-            className="s-mb-1"
+            className="mb-1"
             label={collapsibleLabel ?? DEFAULT_COLLAPSIBLE_LABEL}
             variant="secondary"
           />
           <CollapsibleContent
-            className={isCompact ? "s-heading-xs" : "s-heading-sm"}
+            className={isCompact ? "heading-xs" : "heading-sm"}
           >
             {collapsibleContent}
           </CollapsibleContent>
@@ -224,14 +221,13 @@ export function ActionCardBlock({
       {showActionsInFooter && (
         <div
           className={cn(
-            "s-flex s-flex-wrap s-gap-2",
-            hasCheck ? "s-justify-between" : "s-justify-end"
+            "flex flex-wrap gap-2",
+            hasCheck ? "justify-between" : "justify-end"
           )}
         >
           {hasCheck && (
             <CheckboxWithText
               text={checkLabel ?? DEFAULT_CHECK_LABEL}
-              size={isCompact ? "xs" : "sm"}
               checked={isChecked}
               disabled={isDisabled}
               onCheckedChange={(value) => setIsChecked(value === true)}
@@ -248,8 +244,8 @@ export function ActionCardBlock({
       label={tooltipLabel}
       tooltipTriggerAsChild
       trigger={
-        <span className="s-inline-block s-w-fit">
-          <span className="s-pointer-events-none">{card}</span>
+        <span className="inline-block w-fit">
+          <span className="pointer-events-none">{card}</span>
         </span>
       }
     />

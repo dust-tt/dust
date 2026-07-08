@@ -82,7 +82,7 @@ const NewCitation = React.forwardRef<HTMLDivElement, NewCitationProps>(
       <img
         src={imgSrc}
         alt={label}
-        className="s-absolute s-inset-0 s-h-full s-w-full s-rounded-[inherit] s-object-cover"
+        className="absolute inset-0 h-full w-full rounded-[inherit] object-cover"
       />
     ) : null;
 
@@ -91,9 +91,9 @@ const NewCitation = React.forwardRef<HTMLDivElement, NewCitationProps>(
     if (isInline) {
       // sm: single row [icons] Label
       content = (
-        <div className="s-flex s-items-center s-gap-2">
+        <div className="flex items-center gap-2">
           {resolvedVisual}
-          <div className="s-flex-1 s-truncate s-text-sm">{label}</div>
+          <div className="flex-1 truncate text-sm">{label}</div>
         </div>
       );
     } else {
@@ -101,15 +101,14 @@ const NewCitation = React.forwardRef<HTMLDivElement, NewCitationProps>(
       content = (
         <>
           {
-            <div className="s-flex s-w-fit s-items-center s-gap-2">
+            <div className="flex w-fit items-center gap-2">
               {resolvedVisual}
             </div>
           }
           {
             <div
               className={cn(
-                "s-line-clamp-1 s-overflow-hidden s-text-ellipsis s-break-all",
-                "s-text-foreground dark:s-text-foreground-night"
+                "line-clamp-1 overflow-hidden text-ellipsis break-all"
               )}
             >
               {label}
@@ -124,10 +123,9 @@ const NewCitation = React.forwardRef<HTMLDivElement, NewCitationProps>(
     const hoverCover = imgSrc ? (
       <div
         className={cn(
-          "s-absolute s-inset-0 s-rounded-[inherit]",
-          "s-opacity-0 s-transition-opacity group-hover/card:s-opacity-100",
-          "s-bg-white/80 s-backdrop-blur-sm",
-          "dark:s-bg-black/80"
+          "absolute inset-0 rounded-[inherit]",
+          "opacity-0 transition-opacity group-hover/card:opacity-100",
+          "bg-white/80 backdrop-blur-sm"
         )}
       />
     ) : null;
@@ -152,11 +150,11 @@ const NewCitation = React.forwardRef<HTMLDivElement, NewCitationProps>(
             />
           ) : undefined
         }
-        containerClassName={cn("s-flex-none", imgSrc ? "s-w-28" : "s-w-40")}
+        containerClassName={cn("flex-none", imgSrc ? "w-28" : "w-40")}
         className={cn(
-          "s-relative s-flex s-gap-1 s-flex-col s-overflow-hidden s-text-sm",
-          size === "lg" ? "s-pt-10" : "",
-          isClickable && "s-cursor-pointer",
+          "relative flex gap-1 flex-col overflow-hidden text-sm",
+          size === "lg" ? "pt-10" : "",
+          isClickable && "cursor-pointer",
           className
         )}
         {...props}
@@ -165,9 +163,9 @@ const NewCitation = React.forwardRef<HTMLDivElement, NewCitationProps>(
         {hoverCover}
         <div
           className={cn(
-            "s-relative s-flex s-flex-col s-gap-1",
+            "relative flex flex-col gap-1",
             imgSrc &&
-              "s-opacity-0 s-transition-opacity group-hover/card:s-opacity-100"
+              "opacity-0 transition-opacity group-hover/card:opacity-100"
           )}
         >
           {content}
@@ -195,8 +193,8 @@ const NewCitationGrid = React.forwardRef<HTMLDivElement, NewCitationGridProps>(
       <div
         ref={ref}
         className={cn(
-          "s-flex s-flex-wrap s-gap-0.5",
-          justify === "end" && "s-justify-end",
+          "flex flex-wrap gap-0.5",
+          justify === "end" && "justify-end",
           className
         )}
         {...props}

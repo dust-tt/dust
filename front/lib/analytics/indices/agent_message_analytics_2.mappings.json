@@ -24,11 +24,20 @@
     "context_origin": {
       "type": "keyword"
     },
+    "auth_method": {
+      "type": "keyword"
+    },
+    "api_key_name": {
+      "type": "keyword"
+    },
     "timestamp": {
       "type": "date"
     },
     "status": {
       "type": "keyword"
+    },
+    "is_free_seat": {
+      "type": "boolean"
     },
     "latency_ms": {
       "type": "integer"

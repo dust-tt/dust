@@ -43,6 +43,8 @@ export const SOUND_STUDIO_TOOLS_METADATA = createToolsRecord({
       running: "Generating sound effect",
       done: "Generate sound effect",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
 });
 
@@ -54,13 +56,14 @@ export const SOUND_STUDIO_SERVER = {
     authorization: null,
     icon: "ActionNoiseIcon",
     documentationUrl: null,
-    instructions: null,
   },
   tools: Object.values(SOUND_STUDIO_TOOLS_METADATA).map((t) => ({
     name: t.name,
     description: t.description,
     inputSchema: zodToJsonSchema(z.object(t.schema)) as JSONSchema,
     displayLabels: t.displayLabels,
+    toolCostCategory: t.toolCostCategory,
+    freeUsage: t.freeUsage,
   })),
   tools_stakes: Object.fromEntries(
     Object.values(SOUND_STUDIO_TOOLS_METADATA).map((t) => [t.name, t.stake])

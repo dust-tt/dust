@@ -12,6 +12,8 @@ interface ReconcileCreditStateButtonProps {
   target: ReconcileCreditStateTarget;
   // Required when target is "user".
   userId?: string;
+  // Required when target is "api_key".
+  keyName?: string;
   label?: string;
   // Called after a successful reconcile so callers can refresh their data.
   onReconciled?: () => void;
@@ -21,6 +23,7 @@ export function ReconcileCreditStateButton({
   owner,
   target,
   userId,
+  keyName,
   label = "Reconcile",
   onReconciled,
 }: ReconcileCreditStateButtonProps) {
@@ -38,10 +41,14 @@ export function ReconcileCreditStateButton({
 
   const handleClick = async () => {
     setIsRunning(true);
+    // The plugin's arg schema requires every string arg to be present (the
+    // `dependsOn` conditions only drive rendering, not validation), so send the
+    // conditional userId/keyName as empty strings when they don't apply.
     const result = await doRunPlugin({
       target: [target],
       mode: ["execute"],
       userId: userId ?? "",
+      keyName: keyName ?? "",
     });
     setIsRunning(false);
 

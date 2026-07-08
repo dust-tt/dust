@@ -42,13 +42,15 @@ const SKIP_LOGGER_PATHS = new Set([
   "/api/kill",
 ]);
 
+type RouteConcurrencyState = {
+  activeRequests: number;
+  inFlightPeaks: Set<{ peak: number }>;
+};
+
 // In-flight request tracking, used to report (per request) the peak number of
-// requests processed concurrently during its lifetime. `activeRequests` is the
-// live count; each in-flight request holds a mutable `peak` that we raise
-// whenever a newly arrived request pushes concurrency higher than what that
-// request has seen so far.
-let activeRequests = 0;
-const inFlightPeaks = new Set<{ peak: number }>();
+// requests processed concurrently for the same method + route during its
+// lifetime. Each route bucket is process-local.
+const routeConcurrencyStates = new Map<string, RouteConcurrencyState>();
 
 export const requestLogger = createMiddleware<RequestLoggerEnv>(
   async (c, next) => {
@@ -69,26 +71,42 @@ export const requestLogger = createMiddleware<RequestLoggerEnv>(
       url: c.req.path,
     };
 
+    // `routePath(c)` defaults to the current middleware route (`/*` here).
+    // `-1` points at the leaf handler route selected by Hono, which is already
+    // known before `next()` runs.
+    const concurrencyRoute = routePath(c, -1) || c.req.path;
+    const concurrencyKey = `${c.req.method} ${concurrencyRoute}`;
+    const routeConcurrencyState = routeConcurrencyStates.get(
+      concurrencyKey
+    ) ?? {
+      activeRequests: 0,
+      inFlightPeaks: new Set<{ peak: number }>(),
+    };
+    routeConcurrencyStates.set(concurrencyKey, routeConcurrencyState);
+
     // Register this request as in-flight and raise the peak of every other
-    // in-flight request to the new concurrency level. The set size equals the
-    // current concurrency (bounded by the in-flight requests handled by a
-    // single pod, typically well under a hundred), so this loop stays cheap.
-    activeRequests += 1;
-    const peakRef = { peak: activeRequests };
-    for (const ref of inFlightPeaks) {
-      if (activeRequests > ref.peak) {
-        ref.peak = activeRequests;
+    // in-flight request on the same method + route to the new concurrency
+    // level. The set size is bounded by that route's in-flight requests on one
+    // pod, so this loop stays cheap.
+    routeConcurrencyState.activeRequests += 1;
+    const peakRef = { peak: routeConcurrencyState.activeRequests };
+    for (const ref of routeConcurrencyState.inFlightPeaks) {
+      if (routeConcurrencyState.activeRequests > ref.peak) {
+        ref.peak = routeConcurrencyState.activeRequests;
       }
     }
-    inFlightPeaks.add(peakRef);
+    routeConcurrencyState.inFlightPeaks.add(peakRef);
 
     const startMs = performance.now();
     await runWithRequestContext(reqCtx, async () => {
       try {
         await next();
       } finally {
-        inFlightPeaks.delete(peakRef);
-        activeRequests -= 1;
+        routeConcurrencyState.inFlightPeaks.delete(peakRef);
+        routeConcurrencyState.activeRequests -= 1;
+        if (routeConcurrencyState.activeRequests === 0) {
+          routeConcurrencyStates.delete(concurrencyKey);
+        }
 
         const _routePath = routePath(c);
         if (_routePath) {

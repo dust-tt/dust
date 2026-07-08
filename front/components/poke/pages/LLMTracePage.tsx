@@ -64,10 +64,10 @@ export function LLMTracePage() {
   if (isLLMTraceError || !trace) {
     return (
       <div className="flex h-64 flex-col items-center justify-center">
-        <div className="text-lg font-medium text-warning dark:text-warning-night">
+        <div className="text-lg font-medium text-warning">
           Failed to load LLM trace
         </div>
-        <div className="mt-2 text-sm text-muted-foreground dark:text-muted-foreground-night">
+        <div className="mt-2 text-sm text-muted-foreground">
           The trace may not exist or there was an error fetching it from GCS.
         </div>
       </div>
@@ -82,7 +82,7 @@ export function LLMTracePage() {
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-bold">LLM Trace</h1>
-            <div className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+            <div className="text-sm text-muted-foreground">
               Run ID: <code className="text-xs">{runId}</code>
             </div>
           </div>
@@ -93,7 +93,7 @@ export function LLMTracePage() {
           <div className="flex flex-wrap gap-2">
             {trace.context.agentConfigurationId && (
               <Chip
-                color="rose"
+                color="warning"
                 label={`Agent: ${trace.context.agentConfigurationId}`}
                 size="sm"
                 href={`/poke/${owner.sId}/assistants/${trace.context.agentConfigurationId}`}
@@ -102,7 +102,7 @@ export function LLMTracePage() {
             )}
             {trace.context.conversationId && (
               <Chip
-                color="golden"
+                color="info"
                 label={`Conversation`}
                 size="sm"
                 href={`/poke/${owner.sId}/conversation/${trace.context.conversationId}`}
@@ -114,7 +114,7 @@ export function LLMTracePage() {
 
         <div className="flex flex-wrap gap-2">
           <Chip
-            color="blue"
+            color="highlight"
             label={`Model: ${trace.input?.modelId ?? trace.metadata.modelId}`}
             size="sm"
           />
@@ -133,7 +133,7 @@ export function LLMTracePage() {
           {trace.output?.finishReason && (
             <Chip
               color={
-                trace.output.finishReason === "error" ? "warning" : "green"
+                trace.output.finishReason === "error" ? "warning" : "success"
               }
               label={`Finish reason: ${trace.output.finishReason}`}
               size="sm"
@@ -152,19 +152,15 @@ export function LLMTracePage() {
         </div>
 
         {trace.error && (
-          <div className="rounded-lg border border-red-300 bg-red-50 p-4 dark:border-red-800 dark:bg-red-950">
+          <div className="rounded-lg border border-warning-300 bg-warning-50 p-4">
             <div className="mb-2 flex items-center gap-2">
-              <span className="font-semibold text-red-800 dark:text-red-200">
-                Error
-              </span>
+              <span className="font-semibold text-warning-800">Error</span>
               {trace.error.partialCompletion && (
                 <Chip color="warning" label="Partial completion" size="xs" />
               )}
             </div>
-            <p className="text-sm text-warning dark:text-warning-night">
-              {trace.error.message}
-            </p>
-            <p className="mt-1 text-xs text-red-600 dark:text-red-400">
+            <p className="text-sm text-warning">{trace.error.message}</p>
+            <p className="mt-1 text-xs text-warning-600">
               Timestamp: {formatTimestamp(trace.error.timestamp)}
               {trace.error.providerRunId && (
                 <span className="ml-4">

@@ -3,6 +3,7 @@ import { Readable } from "node:stream";
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import type { ToolHandlers } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
+import { resolveConversationFileRef } from "@app/lib/actions/mcp_internal_actions/utils/file_utils";
 import {
   getContentTypeFromOutputFormat,
   isBinaryFormat,
@@ -12,13 +13,12 @@ import {
   FILE_GENERATION_TOOLS_METADATA,
   OUTPUT_FORMATS,
 } from "@app/lib/api/actions/servers/file_generation/metadata";
-import { FileResource } from "@app/lib/resources/file_resource";
+import config from "@app/lib/api/config";
 import { getResourceNameAndIdFromSId } from "@app/lib/resources/string_ids";
 import { cacheWithRedis } from "@app/lib/utils/cache";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { validateUrl } from "@app/types/shared/utils/url_utils";
-import type { UploadResult } from "convertapi";
 import ConvertAPI from "convertapi";
 import { marked } from "marked";
 
@@ -54,46 +54,34 @@ const handlers: ToolHandlers<typeof FILE_GENERATION_TOOLS_METADATA> = {
   },
 
   convert_file_format: async (
-    { file_name, file_id_or_url, source_format, output_format },
-    { auth }
+    { file_id_or_url, source_format, output_format },
+    { auth, toolContext }
   ) => {
-    if (!process.env.CONVERTAPI_API_KEY) {
-      return new Err(new MCPError("Missing environment variable."));
-    }
-
+    const convertAPIKey = config.getConvertAPIKey();
     const contentType = getContentTypeFromOutputFormat(output_format);
 
-    const convertapi = new ConvertAPI(process.env.CONVERTAPI_API_KEY);
-    let url: string | UploadResult = file_id_or_url;
+    const convertapi = new ConvertAPI(convertAPIKey);
+    let url = file_id_or_url;
 
+    // When the input is not a URL it references a conversation file: either a
+    // legacy `fil_` id or a canonical scoped path (e.g. `conversation-{id}/x.csv`)
+    // as returned by generate_file for text outputs. Resolve it to a signed URL
+    // that ConvertAPI can fetch.
     if (!validateUrl(file_id_or_url).valid) {
-      const r = getResourceNameAndIdFromSId(file_id_or_url);
-
-      if (r && r.resourceName === "file") {
-        const { resourceModelId } = r;
-
-        const file = await FileResource.fetchByModelIdWithAuth(
-          auth,
-          resourceModelId
-        );
-        if (!file) {
-          return new Err(
-            new MCPError(`File not found: ${file_id_or_url}`, {
-              tracked: false,
-            })
-          );
-        }
-
-        url = await convertapi.upload(
-          file.getReadStream({ auth, version: "original" }),
-          `${file_name}.${source_format}`
-        );
-      } else {
-        url = await convertapi.upload(
-          Readable.from(file_id_or_url),
-          `${file_name}.${source_format}`
+      const refResult = await resolveConversationFileRef(
+        auth,
+        file_id_or_url,
+        toolContext
+      );
+      if (refResult.isErr()) {
+        return new Err(
+          new MCPError(`File not found: ${file_id_or_url}`, {
+            tracked: false,
+          })
         );
       }
+
+      url = await refResult.value.getSignedUrl();
     }
 
     try {
@@ -134,10 +122,7 @@ const handlers: ToolHandlers<typeof FILE_GENERATION_TOOLS_METADATA> = {
     file_content,
     source_format = "text",
   }) => {
-    if (!process.env.CONVERTAPI_API_KEY) {
-      return new Err(new MCPError("Missing environment variable."));
-    }
-
+    const convertAPIKey = config.getConvertAPIKey();
     const fileNameWithoutExtension = basename(file_name);
     // Remove the leading dot from the extension.
     const extension = extname(file_name).replace(/^\./, "");
@@ -157,7 +142,7 @@ const handlers: ToolHandlers<typeof FILE_GENERATION_TOOLS_METADATA> = {
       !validateUrl(file_content).valid &&
       !getResourceNameAndIdFromSId(file_content)
     ) {
-      const convertapi = new ConvertAPI(process.env.CONVERTAPI_API_KEY);
+      const convertapi = new ConvertAPI(convertAPIKey);
 
       try {
         let htmlContent: string;

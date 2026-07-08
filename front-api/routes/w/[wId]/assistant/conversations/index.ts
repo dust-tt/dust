@@ -5,10 +5,6 @@ import {
   postUserMessage,
 } from "@app/lib/api/assistant/conversation";
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
-import type {
-  GetConversationsResponseBody,
-  PostConversationsResponseBody,
-} from "@app/lib/api/assistant/conversation/types";
 import { getPaginationParams } from "@app/lib/api/pagination";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
@@ -16,7 +12,11 @@ import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { extractUniqueSkillIds } from "@app/lib/skills/format";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
-import { InternalPostConversationsRequestBodySchema } from "@app/types/api/internal/assistant";
+import { InternalPostConversationsRequestBodySchema } from "@app/types/api/assistant";
+import type {
+  GetConversationsResponseBody,
+  PostConversationsResponseBody,
+} from "@app/types/api/assistant/conversation/types";
 import type { UserMessageType } from "@app/types/assistant/conversation";
 import { ConversationError } from "@app/types/assistant/conversation";
 import type { ContentFragmentType } from "@app/types/content_fragment";
@@ -204,14 +204,11 @@ app.get("/", async (ctx): HandlerResult<GetConversationsResponseBody> => {
   const pagination = paginationRes.value;
 
   const result =
-    await ConversationResource.listPrivateConversationsForUserPaginatedFromES(
-      auth,
-      {
-        limit: pagination.limit,
-        lastValue: pagination.lastValue,
-        orderDirection: pagination.orderDirection,
-      }
-    );
+    await ConversationResource.listPrivateConversationsForUserPaginated(auth, {
+      limit: pagination.limit,
+      lastValue: pagination.lastValue,
+      orderDirection: pagination.orderDirection,
+    });
 
   return ctx.json({
     conversations: result.conversations,
@@ -406,6 +403,7 @@ app.post(
           clientSideMCPServerIds: message.context.clientSideMCPServerIds ?? [],
         },
         skipToolsValidation: skipToolsValidation ?? false,
+        modelSelection: message.modelSelection,
       });
       if (messageRes.isErr()) {
         return apiError(ctx, messageRes.error);

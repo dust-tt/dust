@@ -6,7 +6,10 @@ import {
   getAgentDataSourceConfigurations,
   makeCoreSearchNodesFilters,
 } from "@app/lib/actions/mcp_internal_actions/tools/utils";
-import type { AgentLoopContextType } from "@app/lib/actions/types";
+import {
+  isAgentLoopRunContext,
+  type ToolContextType,
+} from "@app/lib/actions/types";
 import { getRefs } from "@app/lib/api/assistant/citations";
 import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
@@ -14,6 +17,50 @@ import logger from "@app/logger/logger";
 import { CoreAPI } from "@app/types/core/core_api";
 import { Err, Ok } from "@app/types/shared/result";
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
+
+// Above this size we nudge the model to use `grep` rather than reading the whole
+// document linearly page by page, which can quickly exhaust the context window.
+const LARGE_DOCUMENT_CHARS = 50_000;
+
+// Builds a footer appended to the returned text so the model knows the total
+// document size and whether more content remains, instead of blindly looping on
+// `offset`. `grep` is applied by Core after offset/limit slicing, so the window
+// is computed from offset/limit/total rather than from the (possibly filtered)
+// returned text length.
+function makeCatFooter({
+  totalCharacters,
+  offset,
+  limit,
+}: {
+  totalCharacters: number;
+  offset: number | null;
+  limit: number | null;
+}): string {
+  const effectiveOffset = offset ?? 0;
+  const sliceEnd =
+    limit !== null
+      ? Math.min(effectiveOffset + limit, totalCharacters)
+      : totalCharacters;
+  const charsRemaining = Math.max(0, totalCharacters - sliceEnd);
+
+  if (charsRemaining > 0) {
+    const grepHint =
+      totalCharacters >= LARGE_DOCUMENT_CHARS
+        ? " This document is large. Prefer `grep` to extract specific content instead of reading it all page by page."
+        : "";
+    return (
+      `\n\n[Showing characters ${effectiveOffset}-${sliceEnd} of ${totalCharacters}.` +
+      `${grepHint} Use offset=${sliceEnd} to continue reading.]`
+    );
+  }
+
+  // Whole document returned in a single unbounded call: no footer needed.
+  if (effectiveOffset === 0 && limit === null) {
+    return "";
+  }
+
+  return `\n\n[End of document reached (${totalCharacters} characters total).]`;
+}
 
 export async function cat(
   {
@@ -29,12 +76,9 @@ export async function cat(
     limit?: number;
     grep?: string;
   },
-  {
-    auth,
-    agentLoopContext,
-  }: { auth: Authenticator; agentLoopContext?: AgentLoopContextType }
+  { auth, toolContext }: { auth: Authenticator; toolContext?: ToolContextType }
 ) {
-  if (!agentLoopContext?.runContext) {
+  if (!toolContext?.runContext) {
     return new Err(new MCPError("No conversation context available"));
   }
 
@@ -125,7 +169,9 @@ export async function cat(
     );
   }
 
-  const { citationsOffset } = agentLoopContext.runContext.stepContext;
+  const { citationsOffset } = isAgentLoopRunContext(toolContext.runContext)
+    ? toolContext.runContext.stepContext
+    : { citationsOffset: 0 };
 
   if (citationsOffset >= getRefs().length) {
     return new Err(
@@ -135,13 +181,19 @@ export async function cat(
 
   const ref = getRefs()[citationsOffset];
 
+  const footer = makeCatFooter({
+    totalCharacters: readResult.value.total_characters,
+    offset: readResult.value.offset,
+    limit: readResult.value.limit,
+  });
+
   return new Ok([
     {
       type: "resource" as const,
       resource: {
         mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.DATA_SOURCE_NODE_CONTENT,
         uri: node.source_url ?? "",
-        text: readResult.value.text,
+        text: readResult.value.text + footer,
         metadata: renderNode(node, dataSourceIdToConnectorMap),
         ref: ref,
       },

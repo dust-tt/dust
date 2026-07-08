@@ -1,5 +1,6 @@
 import { actionSchema } from "@app/components/shared/tools_picker/types";
 import {
+  AGENT_FACING_DESCRIPTION_MAX_LENGTH,
   SKILL_REINFORCEMENT_MODES,
   SkillWithoutInstructionsAndToolsSchema,
 } from "@app/types/assistant/skill_configuration";
@@ -7,8 +8,6 @@ import { editorUserSchema } from "@app/types/editors";
 import { createContext } from "react";
 import type { UseFormReturn } from "react-hook-form";
 import { z } from "zod";
-
-const AGENT_FACING_DESCRIPTION_MAX_LENGTH = 750;
 
 export const attachedKnowledgeSchema = z.object({
   dataSourceViewId: z.string(),
@@ -56,13 +55,11 @@ export const skillBuilderFormSchema = z.object({
   editors: z.array(editorUserSchema),
   tools: z.array(actionSchema),
   icon: z.string().nullable(),
-  extendedSkillId: z.string().nullable(),
   isDefault: z.boolean(),
   reinforcement: z.enum(SKILL_REINFORCEMENT_MODES),
   fileAttachments: z.array(fileAttachmentSchema),
   attachedKnowledge: z.array(attachedKnowledgeSchema).optional(),
   referencedSkills: z.array(referencedSkillSchema),
-  referencedSkillIds: z.array(z.string()),
   additionalSpaces: z.array(z.string()),
 });
 

@@ -112,6 +112,7 @@ ConversationModel.init(
       {
         fields: ["workspaceId", "spaceId"],
       },
+      { fields: ["spaceId"], concurrently: true },
       {
         fields: ["workspaceId", "createdAt"],
         name: "conversations_workspace_id_created_at_idx",
@@ -432,6 +433,10 @@ UserMessageModel.belongsTo(KeyModel, {
   onDelete: "RESTRICT",
 });
 
+const MODEL_RESOLUTION_METHODS = ["agent", "user", "auto"] as const;
+
+type ModelResolutionMethod = (typeof MODEL_RESOLUTION_METHODS)[number];
+
 export class AgentMessageModel extends WorkspaceAwareModel<AgentMessageModel> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
@@ -457,6 +462,13 @@ export class AgentMessageModel extends WorkspaceAwareModel<AgentMessageModel> {
   declare completedAt: Date | null;
   declare prunedContext: boolean | null;
   declare costCredits: number | null;
+
+  // The concrete provider/model/effort triplet used by the message when
+  // running the agent. Legacy: null when the message runs the agent's configured model.
+  declare resolvedProviderId: string | null;
+  declare resolvedModelId: string | null;
+  declare resolvedReasoningEffort: string | null;
+  declare modelResolutionMethod: ModelResolutionMethod | null;
 }
 
 AgentMessageModel.init(
@@ -546,6 +558,29 @@ AgentMessageModel.init(
       type: DataTypes.INTEGER,
       allowNull: true,
       defaultValue: null,
+    },
+    resolvedProviderId: {
+      type: DataTypes.STRING,
+      allowNull: true,
+      defaultValue: null,
+    },
+    resolvedModelId: {
+      type: DataTypes.STRING,
+      allowNull: true,
+      defaultValue: null,
+    },
+    resolvedReasoningEffort: {
+      type: DataTypes.STRING,
+      allowNull: true,
+      defaultValue: null,
+    },
+    modelResolutionMethod: {
+      type: DataTypes.STRING,
+      allowNull: true,
+      defaultValue: null,
+      validate: {
+        isIn: [MODEL_RESOLUTION_METHODS],
+      },
     },
   },
   {

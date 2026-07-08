@@ -51,6 +51,8 @@ export const OUTLOOK_TOOLS_METADATA = createToolsRecord({
       running: "Fetching messages",
       done: "Fetch messages",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   list_folders: {
     description:
@@ -76,10 +78,69 @@ export const OUTLOOK_TOOLS_METADATA = createToolsRecord({
       running: "Listing folders",
       done: "List folders",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
+  },
+  list_attachments: {
+    description:
+      "List attachments on an Outlook message, returning metadata only (id, name, contentType, size, isInline). Use this first to see what attachments exist, then call get_attachment for each one you want to retrieve. Inline attachments (embedded images, signatures) are excluded by default.",
+    schema: {
+      messageId: z
+        .string()
+        .describe("The ID of the message (from get_messages)"),
+      includeInline: z
+        .boolean()
+        .optional()
+        .describe(
+          "Include inline attachments such as embedded images and signatures. Defaults to false."
+        ),
+      sharedMailboxAddress: z
+        .string()
+        .optional()
+        .describe(
+          "The email address of the shared mailbox to access (e.g. 'support@company.com'). " +
+            "Leave empty to access your own mailbox. " +
+            "Note: the shared mailbox address must be known in advance — there is no API to auto-discover it."
+        ),
+    },
+    stake: "never_ask",
+    displayLabels: {
+      running: "Listing attachments",
+      done: "List attachments",
+    },
+    toolCostCategory: "advanced",
+    freeUsage: false,
+  },
+  get_attachment: {
+    description:
+      "Retrieve a single attachment from an Outlook message by its attachment ID. Works for any file size — for large attachments (>4MB) where the list call returns no inline content, this tool fetches via a dedicated download endpoint. Call list_attachments first to get attachment IDs.",
+    schema: {
+      messageId: z
+        .string()
+        .describe("The ID of the message (from get_messages)"),
+      attachmentId: z
+        .string()
+        .describe("The ID of the attachment (from list_attachments)"),
+      sharedMailboxAddress: z
+        .string()
+        .optional()
+        .describe(
+          "The email address of the shared mailbox to access (e.g. 'support@company.com'). " +
+            "Leave empty to access your own mailbox. " +
+            "Note: the shared mailbox address must be known in advance — there is no API to auto-discover it."
+        ),
+    },
+    stake: "never_ask",
+    displayLabels: {
+      running: "Downloading attachment",
+      done: "Download attachment",
+    },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   get_attachments: {
     description:
-      "Get all attachments from an Outlook message. Lists attachments and downloads their content, making them available in the conversation.",
+      "Get all attachments from an Outlook message at once. For better control over large attachments, prefer list_attachments followed by individual get_attachment calls instead.",
     schema: {
       messageId: z
         .string()
@@ -100,6 +161,8 @@ export const OUTLOOK_TOOLS_METADATA = createToolsRecord({
       running: "Getting Outlook attachments",
       done: "Get Outlook attachments",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   get_drafts: {
     description:
@@ -133,6 +196,8 @@ export const OUTLOOK_TOOLS_METADATA = createToolsRecord({
       running: "Fetching drafts",
       done: "Fetch drafts",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   create_draft: {
     description: `Create a new email draft in Outlook, or a reply draft to an existing message.
@@ -212,6 +277,8 @@ export const OUTLOOK_TOOLS_METADATA = createToolsRecord({
       running: "Creating draft",
       done: "Create draft",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   delete_draft: {
     description: "Delete a draft email from Outlook.",
@@ -231,6 +298,8 @@ export const OUTLOOK_TOOLS_METADATA = createToolsRecord({
       running: "Deleting draft",
       done: "Delete draft",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   send_mail: {
     description: `Send an email directly via Outlook.
@@ -310,6 +379,8 @@ export const OUTLOOK_TOOLS_METADATA = createToolsRecord({
       running: "Sending email",
       done: "Send email",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   move_messages: {
     description:
@@ -339,6 +410,8 @@ export const OUTLOOK_TOOLS_METADATA = createToolsRecord({
       running: "Moving messages",
       done: "Move messages",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   get_message_body: {
     description:
@@ -379,6 +452,8 @@ export const OUTLOOK_TOOLS_METADATA = createToolsRecord({
       running: "Fetching message body",
       done: "Fetch message body",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   get_contacts: {
     description:
@@ -410,6 +485,8 @@ export const OUTLOOK_TOOLS_METADATA = createToolsRecord({
       running: "Fetching contacts",
       done: "Fetch contacts",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   create_contact: {
     description: "Create a new contact in Outlook.",
@@ -442,6 +519,8 @@ export const OUTLOOK_TOOLS_METADATA = createToolsRecord({
       running: "Creating contact",
       done: "Create contact",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   update_contact: {
     description: "Update an existing contact in Outlook.",
@@ -478,6 +557,8 @@ export const OUTLOOK_TOOLS_METADATA = createToolsRecord({
       running: "Updating contact",
       done: "Update contact",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
 });
 
@@ -485,7 +566,8 @@ export const OUTLOOK_MAIL_SERVER = {
   serverInfo: {
     name: "outlook",
     version: "1.0.0",
-    description: "Read emails, manage drafts and contacts.",
+    description:
+      "Read and send Outlook emails (Microsoft 365): manage inbox messages, drafts, mail folders, contacts, and shared mailboxes.",
     authorization: {
       provider: "microsoft_tools",
       supported_use_cases: ["personal_actions", "platform_actions"],
@@ -544,13 +626,14 @@ export const OUTLOOK_MAIL_SERVER = {
     },
     icon: "MicrosoftOutlookLogo",
     documentationUrl: "https://docs.dust.tt/docs/outlook-tool-setup",
-    instructions: null,
   },
   tools: Object.values(OUTLOOK_TOOLS_METADATA).map((t) => ({
     name: t.name,
     description: t.description,
     inputSchema: zodToJsonSchema(z.object(t.schema)) as JSONSchema,
     displayLabels: t.displayLabels,
+    toolCostCategory: t.toolCostCategory,
+    freeUsage: t.freeUsage,
   })),
   tools_stakes: Object.fromEntries(
     Object.values(OUTLOOK_TOOLS_METADATA).map((t) => [t.name, t.stake])

@@ -20,6 +20,7 @@ import type {
 import { normalizePrompt } from "@app/lib/api/llm/types/options";
 import {
   extractEncryptedContentFromMetadata,
+  parseReasoningMetadata,
   parseResponseFormatSchema,
 } from "@app/lib/api/llm/utils";
 import type { Authenticator } from "@app/lib/auth";
@@ -32,6 +33,8 @@ import type {
 import type { BaseEndpointConfiguration } from "@app/lib/model_constructors/configuration";
 import type { StreamEndpointConstructor } from "@app/lib/model_constructors/stream/configuration";
 import type { StreamEndpoint } from "@app/lib/model_constructors/stream/endpoint";
+import type { NoopRequest } from "@app/lib/model_constructors/stream/endpoints/noop_global_noop";
+import { NoopGlobalNoopStream } from "@app/lib/model_constructors/stream/endpoints/noop_global_noop";
 import type {
   InputConfig,
   ToolSpecification,
@@ -42,6 +45,7 @@ import type {
   SystemTextMessage,
   ToolCallResultPart,
 } from "@app/lib/model_constructors/types/input/messages";
+import { NOOP_MODEL_ID } from "@app/lib/model_constructors/types/model_ids";
 import type {
   ErrorType,
   ModelResponseEvent,
@@ -50,27 +54,36 @@ import type {
   ToolCallEvent as NewToolCallEvent,
   NonDeltaResponseEvent,
 } from "@app/lib/model_constructors/types/output/events";
+import { NOOP_PROVIDER_ID } from "@app/lib/model_constructors/types/provider_ids";
+import type { RunUsageType } from "@app/lib/resources/run_resource";
 import type {
   AgentFunctionCallContentType,
+  AgentProviderPassthroughContentType,
   AgentReasoningContentType,
   AgentTextContentType,
 } from "@app/types/assistant/agent_message_content";
 import type { ModelMessageTypeMultiActionsWithoutContentFragment } from "@app/types/assistant/generation";
 import type { ReasoningEffort } from "@app/types/assistant/models/types";
 import { assertNever } from "@app/types/shared/utils/assert_never";
+import { isString } from "@app/types/shared/utils/general";
 
 /**
- * Maps old reasoning effort values to the new model's effort values.
+ * Maps a reasoning effort to the model constructor's effort values.
  */
 function mapReasoningEffort(
-  effort: ReasoningEffort | null
+  effort: ReasoningEffort | null,
+  useNativeLightReasoning: boolean
 ): "none" | "low" | "medium" | "high" | "maximal" {
   switch (effort) {
     case null:
     case "none":
       return "none";
     case "light":
-      return "low";
+      // Models without native light reasoning rely on the chain-of-thought meta
+      // prompt instead of native thinking. Enabling native thinking while that
+      // meta prompt is injected makes the <thinking>/<response> tags leak, so
+      // keep thinking disabled for them.
+      return useNativeLightReasoning ? "low" : "none";
     case "medium":
       return "medium";
     case "high":
@@ -83,7 +96,7 @@ function mapReasoningEffort(
 /**
  * Converts an old-system message to new BaseMessage(s).
  */
-function toBaseMessages(
+export function toBaseMessages(
   message: ModelMessageTypeMultiActionsWithoutContentFragment
 ): BaseMessage[] {
   switch (message.role) {
@@ -131,6 +144,7 @@ function toBaseMessages(
             | AgentTextContentType
             | AgentReasoningContentType
             | AgentFunctionCallContentType
+            | AgentProviderPassthroughContentType
         ): BaseMessage[] => {
           switch (c.type) {
             case "text_content":
@@ -141,20 +155,39 @@ function toBaseMessages(
                   content: { value: c.value },
                 },
               ];
-            case "reasoning":
+            case "reasoning": {
               if (!c.value.reasoning) {
                 return [];
               }
+              // OpenAI Responses stores a short reasoning item `id` (kept in
+              // `signature`) separately from the long `encrypted_content`. Every
+              // other provider stores its thinking signature under
+              // `encrypted_content`, which we carry directly in `signature`.
+              if (c.value.provider !== "openai") {
+                return [
+                  {
+                    role: "assistant",
+                    type: "reasoning",
+                    content: { value: c.value.reasoning },
+                    signature: extractEncryptedContentFromMetadata(
+                      c.value.metadata
+                    ),
+                  },
+                ];
+              }
+              const { id, encryptedContent } = parseReasoningMetadata(
+                c.value.metadata
+              );
               return [
                 {
                   role: "assistant",
                   type: "reasoning",
                   content: { value: c.value.reasoning },
-                  signature: extractEncryptedContentFromMetadata(
-                    c.value.metadata
-                  ),
+                  signature: id,
+                  encryptedContent,
                 },
               ];
+            }
             case "function_call":
               return [
                 {
@@ -166,6 +199,17 @@ function toBaseMessages(
                     arguments: c.value.arguments,
                   },
                   signature: c.value.metadata?.thoughtSignature,
+                },
+              ];
+            case "provider_passthrough":
+              return [
+                {
+                  role: "assistant",
+                  type: "provider_passthrough",
+                  content: {
+                    provider: c.value.provider,
+                    block: c.value.block,
+                  },
                 },
               ];
             default:
@@ -184,6 +228,23 @@ function toBaseMessages(
     default:
       assertNever(message);
   }
+}
+
+// The new router nests reasoning replay state under `metadata.content`: OpenAI
+// uses `id` + `encryptedContent`, Anthropic/Gemini use `signature`. Persist it in
+// the legacy top-level shape (`id` / `encrypted_content`) the replay path reads,
+// matching what the old router writes.
+export function reasoningContentToLegacyMetadata(
+  content: Record<string, unknown> | undefined
+): { id?: string; encrypted_content?: string } {
+  const id = isString(content?.id) ? content.id : undefined;
+  const encryptedContent = content?.encryptedContent ?? content?.signature;
+  return {
+    ...(id ? { id } : {}),
+    ...(isString(encryptedContent)
+      ? { encrypted_content: encryptedContent }
+      : {}),
+  };
 }
 
 /**
@@ -206,9 +267,7 @@ function convertAggregatedItem(
         content: { text: item.content.value },
         metadata: {
           ...metadata,
-          ...(typeof item.metadata.content?.signature === "string"
-            ? { encrypted_content: item.metadata.content.signature }
-            : {}),
+          ...reasoningContentToLegacyMetadata(item.metadata.content),
         },
       };
     case "tool_call":
@@ -277,7 +336,7 @@ function mapErrorType(errorType: ErrorType): {
 /**
  * Converts a single new model event to its old LLM event equivalent.
  */
-function convertToOldEvent(
+export function convertToOldEvent(
   event: ModelResponseEvent,
   metadata: LLMClientMetadata
 ): LLMEvent {
@@ -316,9 +375,7 @@ function convertToOldEvent(
         content: { text: event.content.value },
         metadata: {
           ...metadata,
-          ...(typeof event.metadata.content?.signature === "string"
-            ? { encrypted_content: event.metadata.content.signature }
-            : {}),
+          ...reasoningContentToLegacyMetadata(event.metadata.content),
         },
       };
 
@@ -361,8 +418,12 @@ function convertToOldEvent(
         shortCacheCreated,
         reasoning,
       } = event.content;
-      const totalCacheCreated =
-        cacheCreated > 0 ? cacheCreated : longCacheCreated + shortCacheCreated;
+      // `cacheCreated` is only set when the provider reports a flat total with
+      // no per-duration breakdown. Otherwise the split lives in long/short.
+      const hasDurationBreakdown = cacheCreated === 0;
+      const totalCacheCreated = hasDurationBreakdown
+        ? longCacheCreated + shortCacheCreated
+        : cacheCreated;
       const inputTokens = standardInput + cacheHit + totalCacheCreated;
       return {
         type: "token_usage",
@@ -372,7 +433,13 @@ function convertToOldEvent(
           reasoningTokens: reasoning,
           totalTokens: inputTokens + standardOutput + reasoning,
           cachedTokens: cacheHit,
-          cacheCreationTokens: cacheCreated,
+          cacheCreationTokens: totalCacheCreated,
+          ...(hasDurationBreakdown
+            ? {
+                longCacheCreationTokens: longCacheCreated,
+                shortCacheCreationTokens: shortCacheCreated,
+              }
+            : {}),
           uncachedInputTokens: standardInput,
         },
         metadata,
@@ -402,6 +469,13 @@ function convertToOldEvent(
         metadata,
       };
     }
+
+    case "provider_passthrough":
+      return {
+        type: "provider_passthrough",
+        content: event.content,
+        metadata,
+      };
 
     case "error": {
       const { type: errorType, isRetryable } = mapErrorType(event.content.type);
@@ -457,7 +531,7 @@ abstract class BaseTransition extends LLM {
   // Builds the provider-agnostic conversation payload (system + messages) shared
   // by both the streaming and batch surfaces.
   protected buildPayload(streamParameters: LLMStreamParameters): Payload {
-    const { conversation, hasConditionalJITTools, prompt } = streamParameters;
+    const { conversation, prompt } = streamParameters;
 
     const baseMessages = conversation.messages.flatMap(toBaseMessages);
 
@@ -481,11 +555,15 @@ abstract class BaseTransition extends LLM {
 
     const instructionsText = instructions.map((s) => s.content).join("\n");
     if (instructionsText) {
+      // The instructions tier only carries content that is stable per agent
+      // version and workspace settings (the tool directives and server listing,
+      // which vary with conversation state, live in the shared-context tier),
+      // so it always takes the long TTL.
       system.push({
         role: "system",
         type: "text",
         content: { value: instructionsText },
-        cache: hasConditionalJITTools ? "short" : "long",
+        cache: "long",
       });
     }
 
@@ -517,13 +595,21 @@ abstract class BaseTransition extends LLM {
     streamParameters: LLMStreamParameters,
     configSchema: BaseEndpointConfiguration["configSchema"]
   ): InputConfig {
-    const { specifications, forceToolCall } = streamParameters;
+    const { specifications, forceToolCall, disableToolUse, toolSearchEnabled } =
+      streamParameters;
 
     return configSchema.parse({
       tools: specifications as ToolSpecification[],
       temperature: this.temperature ?? undefined,
-      reasoning: { effort: mapReasoningEffort(this.reasoningEffort) },
+      reasoning: {
+        effort: mapReasoningEffort(
+          this.reasoningEffort,
+          this.modelConfig.useNativeLightReasoning ?? false
+        ),
+      },
       forceTool: forceToolCall,
+      disableToolUse,
+      toolSearchEnabled,
       outputFormat: parseResponseFormatSchema(
         this.responseFormat,
         this.metadata.clientId
@@ -570,6 +656,72 @@ export class StreamEndpointTransition extends BaseTransition {
     } catch (err) {
       yield handleGenericError(err, this.metadata);
     }
+  }
+}
+
+/**
+ * Noop-specific streaming transition. The generic transition drops the two
+ * things that make the noop model useful for testing, so we handle them here:
+ *
+ * - `staticResponse` (from `metaData`, used by the sidekick/dust global agents)
+ *   is injected into the noop request; the payload alone cannot carry it.
+ * - `consume $X` records a simulated run usage with an explicit cost, which the
+ *   new router's token-based pricing cannot express. It surfaces through the
+ *   base `getSimulatedRunUsages` hook.
+ */
+export class NoopStreamTransition extends StreamEndpointTransition {
+  private readonly noopModel = new NoopGlobalNoopStream(undefined);
+  private readonly noopMetaData?: Record<string, unknown>;
+  private simulatedRunUsages: RunUsageType[] | null = null;
+
+  constructor(
+    auth: Authenticator,
+    llmParameters: LLMParameters,
+    modelConstructor: StreamEndpointConstructor
+  ) {
+    super(auth, llmParameters, modelConstructor);
+    this.noopMetaData = llmParameters.metaData;
+  }
+
+  protected override buildStreamRequestPayload(
+    streamParameters: LLMStreamParameters
+  ): NoopRequest {
+    const request = this.noopModel.buildRequestPayload(
+      this.buildPayload(streamParameters)
+    );
+
+    const staticResponse =
+      typeof this.noopMetaData?.staticResponse === "string"
+        ? this.noopMetaData.staticResponse
+        : undefined;
+
+    const command = request.lastUserMessageContent
+      .replace(/<dust_system>[\s\S]*?<\/dust_system>/g, "")
+      .trim();
+    const consumeMatch = command.match(/consume \$(\d+(?:\.\d+)?)/i);
+    if (consumeMatch) {
+      const costMicroUsd = Math.round(parseFloat(consumeMatch[1]) * 1_000_000);
+      this.simulatedRunUsages = [
+        {
+          providerId: NOOP_PROVIDER_ID,
+          modelId: NOOP_MODEL_ID,
+          promptTokens: 0,
+          completionTokens: 0,
+          cachedTokens: null,
+          costMicroUsd,
+          isBatch: false,
+        },
+      ];
+    }
+
+    return { ...request, staticResponse };
+  }
+
+  protected override getSimulatedRunUsages(): RunUsageType[] | null {
+    // Consume once so a retried stream does not double-record the cost.
+    const usages = this.simulatedRunUsages;
+    this.simulatedRunUsages = null;
+    return usages;
   }
 }
 

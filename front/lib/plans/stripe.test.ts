@@ -1,8 +1,10 @@
 import {
+  cleanAndFinalizeMetronomeDraftInvoice,
   createCreditPurchaseCoupon,
   finalizeInvoice,
   getCreditAmountFromInvoice,
   getCreditPurchaseCouponId,
+  getStripePricingData,
   getSubscriptionInvoices,
   isCreditPurchaseInvoice,
   isEnterpriseSubscription,
@@ -14,33 +16,51 @@ import {
 import type { Stripe } from "stripe";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { mockInvoices, mockCoupons, mockSubscriptions, mockInvoiceItems } =
-  vi.hoisted(() => {
-    const mockInvoices = {
-      list: vi.fn(),
-      create: vi.fn(),
-      finalizeInvoice: vi.fn(),
-      pay: vi.fn(),
-      retrieve: vi.fn(),
-      voidInvoice: vi.fn(),
-      update: vi.fn(),
-    };
+const {
+  mockInvoices,
+  mockCoupons,
+  mockSubscriptions,
+  mockInvoiceItems,
+  mockPrices,
+} = vi.hoisted(() => {
+  const mockInvoices = {
+    list: vi.fn(),
+    create: vi.fn(),
+    finalizeInvoice: vi.fn(),
+    pay: vi.fn(),
+    retrieve: vi.fn(),
+    voidInvoice: vi.fn(),
+    update: vi.fn(),
+    listLineItems: vi.fn(),
+  };
 
-    const mockInvoiceItems = {
-      create: vi.fn(),
-    };
+  const mockInvoiceItems = {
+    create: vi.fn(),
+    del: vi.fn(),
+    update: vi.fn(),
+  };
 
-    const mockCoupons = {
-      retrieve: vi.fn(),
-      create: vi.fn(),
-    };
+  const mockCoupons = {
+    retrieve: vi.fn(),
+    create: vi.fn(),
+  };
 
-    const mockSubscriptions = {
-      retrieve: vi.fn(),
-    };
+  const mockSubscriptions = {
+    retrieve: vi.fn(),
+  };
 
-    return { mockInvoices, mockCoupons, mockSubscriptions, mockInvoiceItems };
-  });
+  const mockPrices = {
+    retrieve: vi.fn(),
+  };
+
+  return {
+    mockInvoices,
+    mockCoupons,
+    mockSubscriptions,
+    mockInvoiceItems,
+    mockPrices,
+  };
+});
 
 const { MockStripeError, MockStripeInvalidRequestError } = vi.hoisted(() => {
   class MockStripeError extends Error {
@@ -73,6 +93,7 @@ vi.mock("stripe", () => {
     invoiceItems: mockInvoiceItems,
     coupons: mockCoupons,
     subscriptions: mockSubscriptions,
+    prices: mockPrices,
   };
 
   return {
@@ -89,6 +110,16 @@ vi.mock("stripe", () => {
     ),
   };
 });
+
+vi.mock("@app/lib/resources/workspace_resource", () => ({
+  WorkspaceResource: { fetchById: vi.fn(async () => null) },
+}));
+
+vi.mock("@app/lib/resources/credit_usage_configuration_resource", () => ({
+  CreditUsageConfigurationResource: {
+    fetchByWorkspaceModelId: vi.fn(async () => null),
+  },
+}));
 
 const NOV_2024_START_SECONDS = 1730419200; // 2024-11-01
 const DEC_2024_START_SECONDS = 1733011200; // 2024-12-01
@@ -501,7 +532,9 @@ describe("finalizeInvoice", () => {
     if (result.isOk()) {
       expect(result.value.status).toBe("open");
     }
-    expect(mockInvoices.finalizeInvoice).toHaveBeenCalledWith("in_123");
+    expect(mockInvoices.finalizeInvoice).toHaveBeenCalledWith("in_123", {
+      auto_advance: true,
+    });
   });
 
   it("should return Err on Stripe failure", async () => {
@@ -777,5 +810,279 @@ describe("makeCreditsPAYGInvoice", () => {
     if (result.isErr()) {
       expect(result.error.error_type).toBe("other");
     }
+  });
+});
+
+describe("getStripePricingData", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("should return currency options for a fully configured price", async () => {
+    mockPrices.retrieve.mockResolvedValue({
+      unit_amount: 1000,
+      currency_options: {
+        usd: { unit_amount: 1000 },
+        eur: { unit_amount: 900 },
+        gbp: { unit_amount: 800 },
+      },
+    });
+
+    const result = await getStripePricingData("price_test");
+
+    expect(result).toEqual({
+      currencyOptions: {
+        usd: { unitAmount: 1000 },
+        eur: { unitAmount: 900 },
+        gbp: { unitAmount: 800 },
+      },
+    });
+  });
+
+  it("should not throw when a supported currency option is missing", async () => {
+    // Price configured with USD only; EUR and GBP have no currency option.
+    mockPrices.retrieve.mockResolvedValue({
+      unit_amount: 1000,
+      currency_options: {
+        usd: { unit_amount: 1000 },
+      },
+    });
+
+    const result = await getStripePricingData("price_test");
+
+    expect(result).toEqual({
+      currencyOptions: {
+        usd: { unitAmount: 1000 },
+        eur: { unitAmount: 0 },
+        gbp: { unitAmount: 0 },
+      },
+    });
+  });
+});
+
+describe("cleanAndFinalizeMetronomeDraftInvoice", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  function makeMetronomeLine({
+    id,
+    amountCents,
+    quantity = 1,
+    unitAmountDecimalCents = null,
+    currency = "eur",
+    description = "Pro Seat",
+  }: {
+    id: string;
+    amountCents: number;
+    quantity?: number;
+    unitAmountDecimalCents?: string | null;
+    currency?: string;
+    description?: string;
+  }): Stripe.InvoiceLineItem {
+    return {
+      id,
+      amount: amountCents,
+      quantity,
+      currency,
+      description,
+      invoice_item: `ii_${id}`,
+      price:
+        unitAmountDecimalCents !== null
+          ? { unit_amount_decimal: unitAmountDecimalCents }
+          : null,
+    } as unknown as Stripe.InvoiceLineItem;
+  }
+
+  function setupMetronomeDraftInvoice({
+    lines,
+    totalCents,
+  }: {
+    lines: Stripe.InvoiceLineItem[];
+    totalCents: number;
+  }) {
+    const invoice = makeInvoice({
+      metadata: { metronome_customer_id: "mc_1" },
+      total: totalCents,
+      currency: "eur",
+    });
+    mockInvoices.retrieve.mockResolvedValue(invoice);
+    mockInvoices.update.mockResolvedValue(invoice);
+    mockInvoices.finalizeInvoice.mockResolvedValue({
+      ...invoice,
+      status: "open",
+    });
+    mockInvoices.listLineItems.mockReturnValue(
+      (async function* () {
+        yield* lines;
+      })()
+    );
+    mockInvoiceItems.del.mockResolvedValue({});
+    mockInvoiceItems.update.mockResolvedValue({});
+  }
+
+  it("should normalize a sub-cent unit price, keeping quantity when the total divides evenly", async () => {
+    setupMetronomeDraftInvoice({
+      lines: [
+        makeMetronomeLine({
+          id: "l1",
+          amountCents: 1965,
+          quantity: 1,
+          unitAmountDecimalCents: "1964.516129032258",
+        }),
+      ],
+      totalCents: 1965,
+    });
+
+    const result = await cleanAndFinalizeMetronomeDraftInvoice({
+      invoiceId: "in_test",
+      workspaceId: "w_test",
+    });
+
+    expect(result.isOk()).toBe(true);
+    if (result.isOk()) {
+      expect(result.value.outcome).toBe("cleaned");
+    }
+    expect(mockInvoiceItems.update).toHaveBeenCalledWith("ii_l1", {
+      quantity: 1,
+      unit_amount: 1965,
+    });
+    expect(mockInvoiceItems.del).not.toHaveBeenCalled();
+    expect(mockInvoices.finalizeInvoice).toHaveBeenCalledWith("in_test", {
+      auto_advance: true,
+    });
+  });
+
+  it("should keep a quantity > 1 when the total divides evenly by it", async () => {
+    setupMetronomeDraftInvoice({
+      lines: [
+        makeMetronomeLine({
+          id: "l1",
+          amountCents: 3930,
+          quantity: 2,
+          unitAmountDecimalCents: "1964.9",
+        }),
+      ],
+      totalCents: 3930,
+    });
+
+    const result = await cleanAndFinalizeMetronomeDraftInvoice({
+      invoiceId: "in_test",
+      workspaceId: "w_test",
+    });
+
+    expect(result.isOk()).toBe(true);
+    expect(mockInvoiceItems.update).toHaveBeenCalledWith("ii_l1", {
+      quantity: 2,
+      unit_amount: 1965,
+    });
+  });
+
+  it("should keep the quantity and use the fewest sub-cent decimals when the total does not divide evenly", async () => {
+    setupMetronomeDraftInvoice({
+      lines: [
+        makeMetronomeLine({
+          id: "l1",
+          amountCents: 5894,
+          quantity: 3,
+          unitAmountDecimalCents: "1964.666666666667",
+        }),
+      ],
+      totalCents: 5894,
+    });
+
+    const result = await cleanAndFinalizeMetronomeDraftInvoice({
+      invoiceId: "in_test",
+      workspaceId: "w_test",
+    });
+
+    expect(result.isOk()).toBe(true);
+    // 1964.7 cents × 3 = 5894.1 cents, which rounds back to the exact total.
+    expect(mockInvoiceItems.update).toHaveBeenCalledWith("ii_l1", {
+      quantity: 3,
+      unit_amount_decimal: "1964.7",
+    });
+  });
+
+  it("should keep adding decimals until the total reconstructs exactly, even for large quantities", async () => {
+    setupMetronomeDraftInvoice({
+      lines: [
+        makeMetronomeLine({
+          id: "l1",
+          amountCents: 1001,
+          quantity: 1000,
+          unitAmountDecimalCents: "1.001000000000",
+        }),
+      ],
+      totalCents: 1001,
+    });
+
+    const result = await cleanAndFinalizeMetronomeDraftInvoice({
+      invoiceId: "in_test",
+      workspaceId: "w_test",
+    });
+
+    expect(result.isOk()).toBe(true);
+    // 1 and 2 decimals round the total to 1000 cents; 3 decimals are exact.
+    expect(mockInvoiceItems.update).toHaveBeenCalledWith("ii_l1", {
+      quantity: 1000,
+      unit_amount_decimal: "1.001",
+    });
+  });
+
+  it("should leave whole-cent unit prices and price-less lines untouched", async () => {
+    setupMetronomeDraftInvoice({
+      lines: [
+        makeMetronomeLine({
+          id: "l1",
+          amountCents: 1900,
+          unitAmountDecimalCents: "1900",
+        }),
+        makeMetronomeLine({
+          id: "l2",
+          amountCents: 500,
+          unitAmountDecimalCents: null,
+        }),
+      ],
+      totalCents: 2400,
+    });
+
+    const result = await cleanAndFinalizeMetronomeDraftInvoice({
+      invoiceId: "in_test",
+      workspaceId: "w_test",
+    });
+
+    expect(result.isOk()).toBe(true);
+    expect(mockInvoiceItems.update).not.toHaveBeenCalled();
+    expect(mockInvoices.finalizeInvoice).toHaveBeenCalledWith("in_test", {
+      auto_advance: true,
+    });
+  });
+
+  it("should delete negative lines without normalizing them", async () => {
+    setupMetronomeDraftInvoice({
+      lines: [
+        makeMetronomeLine({
+          id: "l1",
+          amountCents: -1965,
+          unitAmountDecimalCents: "-1964.516129032258",
+        }),
+        makeMetronomeLine({
+          id: "l2",
+          amountCents: 1900,
+          unitAmountDecimalCents: "1900",
+        }),
+      ],
+      totalCents: 1900,
+    });
+
+    const result = await cleanAndFinalizeMetronomeDraftInvoice({
+      invoiceId: "in_test",
+      workspaceId: "w_test",
+    });
+
+    expect(result.isOk()).toBe(true);
+    expect(mockInvoiceItems.del).toHaveBeenCalledWith("ii_l1");
+    expect(mockInvoiceItems.update).not.toHaveBeenCalled();
   });
 });

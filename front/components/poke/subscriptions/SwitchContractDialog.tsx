@@ -9,10 +9,7 @@ import { amountCents } from "@app/lib/metronome/amounts";
 import { isPaygEligibleTier } from "@app/lib/metronome/types";
 import {
   CREDIT_PRICED_BUSINESS_PLAN_CODE,
-  CREDIT_PRICED_FREE_PLAN_CODE,
   isEnterprisePlanPrefix,
-  PRO_PLAN_SEAT_29_CODE,
-  PRO_PLAN_SEAT_39_CODE,
 } from "@app/lib/plans/plan_codes";
 import { useAppRouter } from "@app/lib/platform";
 import {
@@ -20,8 +17,13 @@ import {
   usePokePlans,
   usePokeStripeCustomerCurrency,
 } from "@app/lib/swr/poke";
-import assert from "@app/lib/utils/assert";
+import { usePokePluginAsyncArgs } from "@app/poke/swr/plugins";
+import {
+  BILLABLE_SEAT_TYPES,
+  isMembershipSeatType,
+} from "@app/types/memberships";
 import { isCreditPricedPlan } from "@app/types/plan";
+import { CreditUsageConfigurationSchema } from "@app/types/poke/credit_usage_configuration";
 import type { WorkspaceType } from "@app/types/user";
 import {
   Button,
@@ -39,7 +41,7 @@ import {
   Spinner,
 } from "@dust-tt/sparkle";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 
@@ -48,6 +50,7 @@ const SwitchContractFormSchema = z
     metronomePackageId: z.string().min(1, "Required"),
     planCode: z.string().min(1, "Required"),
     hubspotDealId: z.string().optional(),
+    purchaseOrderId: z.string().optional(),
     startingAt: z.string().optional(),
     // How the enterprise contract's start moment is resolved:
     //  - "immediately": swap at the current hour (no startingAt sent).
@@ -70,12 +73,25 @@ const SwitchContractFormSchema = z
       .min(0, "Net payment terms must be ≥ 0")
       .max(365, "Net payment terms must be ≤ 365")
       .optional(),
+    // Credit usage configuration.
     paygEnabled: z.boolean().default(false),
     usageCapCredits: z
       .number()
       .int("Usage cap must be an integer number of credits")
       .min(1, "Usage cap must be at least 1 credit")
       .optional(),
+    defaultDiscountPercent: z.number().int().min(0).max(100).default(0),
+    balanceThresholdCredits: z.number().int().min(0).optional(),
+    defaultPoolCapCredits: z.number().int().min(0).optional(),
+    programmaticMonthlyCapCredits: z.number().int().min(0).optional(),
+    autoSeatUpgradeEnabled: z.boolean().default(false),
+    topUpEnabled: z.boolean().default(false),
+    autoInvoiceFinalizationEnabled: z.boolean().default(true),
+    // Optional seat-type override: when set, every seat-less (`none`) member is
+    // forced onto this seat on the new contract, preempting committed-seat
+    // placement. Empty string means no override (default assignment). Sent as
+    // `promoteNoneSeatsTo` on submit.
+    forceSeatType: z.string().optional(),
     // One-off initial credits (contract-level prepaid commit). Toggled on via
     // `showInitialCredits`; both fields are then required together and assembled
     // into `initialCredits` on submit.
@@ -165,6 +181,14 @@ function snapDatetimeLocalToHour(value: string): string {
 
 const isLegacyPackageName = (name: string) => /\blegacy\b/i.test(name);
 
+const DEFAULT_PERIODS_FOR_FREQUENCY: Record<string, number | undefined> = {
+  monthly: 12,
+  quarterly: 4,
+  semi_annually: 2,
+  annually: 1,
+  one_time: undefined,
+};
+
 interface SwitchContractDialogProps {
   owner: WorkspaceType;
   stripeCustomerId: string | null;
@@ -195,19 +219,18 @@ export default function SwitchContractDialog({
   } = usePokeMetronomePackages({ disabled: !open });
   const router = useAppRouter();
 
-  // Default datetime seeded into the enterprise startingAt field: the next
-  // local hour boundary (≥1h from now). The operator may freely change it to
-  // any moment, including the past — there is no enforced minimum.
-  const defaultStartingAtLocal = useMemo(() => {
-    const d = new Date(Date.now() + 60 * 60 * 1000);
-    if (d.getMinutes() > 0 || d.getSeconds() > 0 || d.getMilliseconds() > 0) {
-      d.setHours(d.getHours() + 1);
-    }
-    d.setMinutes(0, 0, 0);
+  // Default datetime seeded into the enterprise startingAt field: midnight UTC
+  // of the day after today. The operator may freely change it to any moment,
+  // including the past — there is no enforced minimum.
+  const defaultStartingAtUTC = useMemo(() => {
+    const now = new Date();
+    const d = new Date(
+      Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1)
+    );
     const pad = (n: number) => String(n).padStart(2, "0");
     return (
-      `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}` +
-      `T${pad(d.getHours())}:00`
+      `${d.getUTCFullYear()}-${pad(d.getUTCMonth() + 1)}-${pad(d.getUTCDate())}` +
+      `T00:00`
     );
   }, []);
 
@@ -222,6 +245,7 @@ export default function SwitchContractDialog({
       metronomePackageId: "",
       planCode: "",
       hubspotDealId: "",
+      purchaseOrderId: "",
       startingAt: "",
       startMode: "select",
       stripeCustomerId: stripeCustomerId ?? "",
@@ -229,6 +253,14 @@ export default function SwitchContractDialog({
       netPaymentTermsDays: undefined,
       paygEnabled: false,
       usageCapCredits: undefined,
+      defaultDiscountPercent: 0,
+      balanceThresholdCredits: undefined,
+      defaultPoolCapCredits: undefined,
+      programmaticMonthlyCapCredits: undefined,
+      autoSeatUpgradeEnabled: false,
+      topUpEnabled: false,
+      autoInvoiceFinalizationEnabled: true,
+      forceSeatType: "",
       showInitialCredits: false,
       initialCreditsAmount: undefined,
       initialCreditsInvoiceAmount: undefined,
@@ -249,20 +281,67 @@ export default function SwitchContractDialog({
     disabled: !open,
   });
 
+  // Fetch the existing credit config so we pre-populate form fields with
+  // current values rather than schema defaults, avoiding accidental overwrites.
+  const { asyncArgs: existingCreditConfig } = usePokePluginAsyncArgs({
+    pluginId: "manage-credit-usage-configuration",
+    pluginResourceTarget: {
+      resourceType: "workspaces",
+      resourceId: owner.sId,
+      workspace: owner,
+    },
+    disabled: !open,
+  });
+  const creditConfigAppliedRef = useRef(false);
+  useEffect(() => {
+    if (!open) {
+      creditConfigAppliedRef.current = false;
+      return;
+    }
+    if (!existingCreditConfig || creditConfigAppliedRef.current) {
+      return;
+    }
+    creditConfigAppliedRef.current = true;
+    const parsed =
+      CreditUsageConfigurationSchema.safeParse(existingCreditConfig);
+    if (!parsed.success) {
+      return;
+    }
+    const d = parsed.data;
+    // The plugin uses 0 for "no cap/limit"; the form uses undefined.
+    const orUndefined = (n: number) => (n > 0 ? n : undefined);
+    form.setValue("defaultDiscountPercent", d.defaultDiscountPercent);
+    form.setValue("paygEnabled", d.paygEnabled);
+    form.setValue("usageCapCredits", orUndefined(d.usageCapCredits));
+    form.setValue(
+      "balanceThresholdCredits",
+      orUndefined(d.balanceThresholdCredits)
+    );
+    form.setValue(
+      "defaultPoolCapCredits",
+      orUndefined(d.defaultPoolCapCredits)
+    );
+    form.setValue(
+      "programmaticMonthlyCapCredits",
+      orUndefined(d.programmaticMonthlyCapCredits)
+    );
+    form.setValue("autoSeatUpgradeEnabled", d.autoSeatUpgradeEnabled);
+    form.setValue("topUpEnabled", d.topUpEnabled);
+    form.setValue(
+      "autoInvoiceFinalizationEnabled",
+      d.autoInvoiceFinalizationEnabled
+    );
+  }, [open, existingCreditConfig, form]);
+
   // Split packages into Current vs Legacy sections (name contains "legacy",
   // case-insensitive). Each section preserves the lib-side sort order.
-  // Free-tier packages are currency-agnostic (price is 0) and surface
-  // regardless of the resolved Stripe currency.
   const packageGroups = useMemo(() => {
     const visible = metronomePackages.filter(
-      (p) => p.tier === "free" || p.currency === resolvedCurrency
+      (p) => p.currency === resolvedCurrency
     );
     const toOption = (p: (typeof visible)[number]) => ({
       value: p.id,
-      display:
-        p.tier === "free"
-          ? `${p.name} (${p.tier})`
-          : `${p.name} (${p.tier}, ${p.currency.toUpperCase()})`,
+      display: `${p.name} (${p.tier}, ${p.currency.toUpperCase()})`,
     });
     return [
       {
@@ -285,7 +364,6 @@ export default function SwitchContractDialog({
     [metronomePackages, selectedPackageId]
   );
   const selectedTier = selectedPackage?.tier ?? null;
-  const selectedName = selectedPackage?.name ?? null;
   const selectedSeats = useMemo(
     () => selectedPackage?.seats ?? [],
     [selectedPackage]
@@ -324,56 +402,55 @@ export default function SwitchContractDialog({
   }, [selectedSeats, form, resolvedCurrency]);
 
   // Clear a stale package selection when the resolved currency changes so a
-  // previously-picked package can't survive a currency switch silently. Free
-  // packages are currency-agnostic and exempt from this check.
+  // previously-picked package can't survive a currency switch silently.
   useEffect(() => {
     if (
       resolvedCurrency &&
       selectedPackage &&
-      selectedPackage.tier !== "free" &&
       selectedPackage.currency !== resolvedCurrency
     ) {
       form.setValue("metronomePackageId", "");
     }
   }, [resolvedCurrency, selectedPackage, form]);
 
-  // When the operator picks a package, derive (Pro/Business) or reset
+  // When the operator picks a package, derive (Business) or reset
   // (Enterprise) the plan code. The full list of ENT_* plans is offered for
-  // enterprise; pro/business map to a single plan code. PAYG is force-disabled
-  // for tiers that don't support it (currently: pro).
+  // enterprise; business maps to a single plan code. Both tiers use the same
+  // operator-chosen start moment.
   useEffect(() => {
-    if (selectedTier === "pro") {
-      if (isLegacyPackageName(selectedName ?? "")) {
-        form.setValue("planCode", PRO_PLAN_SEAT_29_CODE);
-      } else {
-        assert("There is no non-legacy pro plan");
-      }
-      form.setValue("startingAt", "");
-      form.setValue("startMode", "select");
-    } else if (selectedTier === "business") {
-      if (isLegacyPackageName(selectedName ?? "")) {
-        form.setValue("planCode", PRO_PLAN_SEAT_39_CODE);
-      } else {
-        form.setValue("planCode", CREDIT_PRICED_BUSINESS_PLAN_CODE);
-      }
-      form.setValue("startingAt", "");
-      form.setValue("startMode", "select");
+    if (selectedTier === "business") {
+      form.setValue("planCode", CREDIT_PRICED_BUSINESS_PLAN_CODE);
+      // Pay-as-you-go and top-up are not offered for business in this dialog.
+      form.setValue("paygEnabled", false);
+      form.setValue("topUpEnabled", false);
     } else if (selectedTier === "enterprise") {
       form.setValue("planCode", "");
-      form.setValue("startingAt", defaultStartingAtLocal);
-      form.setValue("startMode", "select");
-    } else if (selectedTier === "free") {
-      form.setValue("planCode", CREDIT_PRICED_FREE_PLAN_CODE);
-      form.setValue("startingAt", "");
+    }
+    if (selectedTier) {
+      form.setValue("startingAt", defaultStartingAtUTC);
       form.setValue("startMode", "select");
     }
     if (selectedTier && !isPaygEligibleTier(selectedTier)) {
       form.setValue("paygEnabled", false);
       form.setValue("usageCapCredits", undefined);
     }
-  }, [selectedTier, selectedName, form, defaultStartingAtLocal]);
+  }, [selectedTier, form, defaultStartingAtUTC]);
 
   const startMode = form.watch("startMode");
+  const startingAt = form.watch("startingAt");
+  const startingAtLocalLabel = useMemo(() => {
+    if (!startingAt) {
+      return null;
+    }
+    const d = new Date(startingAt + ":00Z");
+    if (isNaN(d.getTime())) {
+      return null;
+    }
+    return d.toLocaleString(undefined, {
+      dateStyle: "medium",
+      timeStyle: "short",
+    });
+  }, [startingAt]);
 
   // 1st of the current month at 00:00 UTC — the "retroactive" anchor. Computed
   // as an ISO string sent verbatim to the server (no datetime-local conversion).
@@ -418,16 +495,57 @@ export default function SwitchContractDialog({
   const paygEnabled = form.watch("paygEnabled");
   const paygEligible =
     selectedTier !== null && isPaygEligibleTier(selectedTier);
+  const autoSeatUpgradeEnabled = form.watch("autoSeatUpgradeEnabled");
+  const topUpEnabled = form.watch("topUpEnabled");
+  const autoInvoiceFinalizationEnabled = form.watch(
+    "autoInvoiceFinalizationEnabled"
+  );
 
   const showInitialCredits = form.watch("showInitialCredits");
   const initialCreditsFrequency = form.watch("initialCreditsFrequency");
+
   const stripeCollectionMethod = form.watch("stripeCollectionMethod");
   const watchedSeats = form.watch("seats");
+
+  // When any payment frequency field changes, pre-fill its sibling periods
+  // field with the canonical default. Uses form.watch(callback) — the only
+  // reliable way to know exactly which field changed (via the `name` argument).
+  useEffect(() => {
+    const { unsubscribe } = form.watch((value, { name }) => {
+      if (name === "initialCreditsFrequency") {
+        form.setValue(
+          "initialCreditsPeriods",
+          DEFAULT_PERIODS_FOR_FREQUENCY[
+            value.initialCreditsFrequency ?? "one_time"
+          ]
+        );
+      }
+      if (name?.startsWith("seats.") && name.endsWith(".paymentFrequency")) {
+        const seatType = name.split(".")[1];
+        const freq = value.seats?.[seatType]?.paymentFrequency ?? "one_time";
+        form.setValue(
+          `seats.${seatType}.paymentPeriods`,
+          DEFAULT_PERIODS_FOR_FREQUENCY[freq]
+        );
+      }
+      // A commitment can't be invoiced at a $0 rate — clear a stale commitment
+      // price left over from before the rate was zeroed out.
+      if (name?.startsWith("seats.") && name.endsWith(".rate")) {
+        const seatType = name.split(".")[1];
+        const rate = value.seats?.[seatType]?.rate ?? 0;
+        if (rate <= 0) {
+          form.setValue(`seats.${seatType}.commitmentPrice`, undefined);
+        }
+      }
+    });
+    return unsubscribe;
+  }, [form]);
 
   const onSubmit = useCallback(
     (values: SwitchContractFormValues) => {
       const trimmedStripe = values.stripeCustomerId.trim();
       const trimmedHubspotDealId = values.hubspotDealId?.trim();
+      const trimmedPurchaseOrderId = values.purchaseOrderId?.trim();
       const cleaned: SwitchContractBodyInput = {
         metronomePackageId: values.metronomePackageId.trim(),
         planCode: values.planCode.trim(),
@@ -435,10 +553,13 @@ export default function SwitchContractDialog({
         ...(trimmedHubspotDealId
           ? { hubspotDealId: trimmedHubspotDealId }
           : {}),
+        ...(trimmedPurchaseOrderId
+          ? { purchaseOrderId: trimmedPurchaseOrderId }
+          : {}),
       };
-      // For free-tier switches, the operator can omit the Stripe customer —
-      // the resulting Metronome contract has no Stripe billing link. The
-      // collection method only matters when a Stripe customer is wired in.
+      // The operator can omit the Stripe customer — the resulting Metronome
+      // contract has no Stripe billing link. The collection method only
+      // matters when a Stripe customer is wired in.
       if (trimmedStripe) {
         cleaned.stripeCustomerId = trimmedStripe;
         cleaned.stripeCollectionMethod = values.stripeCollectionMethod;
@@ -448,6 +569,27 @@ export default function SwitchContractDialog({
       }
       if (values.usageCapCredits !== undefined) {
         cleaned.usageCapCredits = values.usageCapCredits;
+      }
+      cleaned.defaultDiscountPercent = values.defaultDiscountPercent;
+      cleaned.autoSeatUpgradeEnabled = values.autoSeatUpgradeEnabled;
+      cleaned.topUpEnabled = values.topUpEnabled;
+      cleaned.autoInvoiceFinalizationEnabled =
+        values.autoInvoiceFinalizationEnabled;
+      // Optional seat-type override: forces seat-less members onto this seat on
+      // the new contract. Only sent when a valid seat type is selected (empty
+      // string = no override).
+      if (values.forceSeatType && isMembershipSeatType(values.forceSeatType)) {
+        cleaned.promoteNoneSeatsTo = values.forceSeatType;
+      }
+      if (values.balanceThresholdCredits !== undefined) {
+        cleaned.balanceThresholdCredits = values.balanceThresholdCredits;
+      }
+      if (values.defaultPoolCapCredits !== undefined) {
+        cleaned.defaultPoolCapCredits = values.defaultPoolCapCredits;
+      }
+      if (values.programmaticMonthlyCapCredits !== undefined) {
+        cleaned.programmaticMonthlyCapCredits =
+          values.programmaticMonthlyCapCredits;
       }
       // Initial credits: only sent when the operator toggled the section on.
       // Both the credit amount and the invoice amount are then required, and a
@@ -488,16 +630,13 @@ export default function SwitchContractDialog({
           },
         };
       }
-      // Resolve the start moment for enterprise. "immediately" leaves
-      // `startingAt` unset so the server swaps at the current hour.
-      if (selectedTier === "enterprise") {
-        if (values.startMode === "retroactive_first_of_month") {
-          cleaned.startingAt = retroactiveFirstOfMonthISO;
-        } else if (values.startMode === "select" && values.startingAt) {
-          // datetime-local strings have no timezone — convert to ISO so the
-          // server's Date.parse is unambiguous.
-          cleaned.startingAt = new Date(values.startingAt).toISOString();
-        }
+      // Resolve the start moment. "immediately" leaves `startingAt` unset so
+      // the server swaps at the current hour.
+      if (values.startMode === "retroactive_first_of_month") {
+        cleaned.startingAt = retroactiveFirstOfMonthISO;
+      } else if (values.startMode === "select" && values.startingAt) {
+        // datetime-local has no timezone — append Z to interpret as UTC.
+        cleaned.startingAt = new Date(values.startingAt + ":00Z").toISOString();
       }
       // Seats: every seat the package knows about, each carrying its `selected`
       // state, so the server can entitle checked seats and disable unchecked
@@ -512,12 +651,17 @@ export default function SwitchContractDialog({
           ? (entry?.minSeats ?? 0)
           : 0;
         const rate = Number.isFinite(entry?.rate) ? (entry?.rate ?? 0) : 0;
-        const commitmentPrice =
+        // If the operator left commitment price blank, default to minSeats * rate
+        // (the list value of the committed seats).
+        const explicitPrice =
           typeof entry?.commitmentPrice === "number" &&
           Number.isFinite(entry.commitmentPrice) &&
-          entry.commitmentPrice > 0
+          entry.commitmentPrice >= 0
             ? entry.commitmentPrice
-            : undefined;
+            : null;
+        const commitmentPrice =
+          explicitPrice ??
+          (minSeats > 0 && rate > 0 ? minSeats * rate : undefined);
         const paymentFrequency = entry?.paymentFrequency ?? "one_time";
         const paymentPeriods = entry?.paymentPeriods;
         if (selected && !entitled && seatType !== "free" && !(rate > 0)) {
@@ -584,14 +728,7 @@ export default function SwitchContractDialog({
       };
       void submit();
     },
-    [
-      form,
-      owner.sId,
-      router,
-      selectedTier,
-      selectedSeats,
-      retroactiveFirstOfMonthISO,
-    ]
+    [form, owner.sId, router, selectedSeats, retroactiveFirstOfMonthISO]
   );
 
   return (
@@ -599,13 +736,12 @@ export default function SwitchContractDialog({
       <DialogTrigger asChild>
         <Button variant="outline" label="🔁 Switch contract" />
       </DialogTrigger>
-      <DialogContent className="bg-primary-50 dark:bg-primary-50-night sm:h-[90vh] sm:max-w-[860px]">
+      <DialogContent className="bg-primary-50 sm:h-[90vh] sm:max-w-[860px]">
         <DialogHeader>
           <DialogTitle>Switch contract for {owner.name}</DialogTitle>
           <DialogDescription>
-            Pick the Metronome package and target plan. Enterprise packages
-            require a start time at least one hour in the future; Pro and
-            Business packages swap at the current hour.
+            Pick the Metronome package and target plan. Enterprise and Business
+            packages let you choose a start time.
           </DialogDescription>
         </DialogHeader>
         {isSubmitting ? (
@@ -620,143 +756,279 @@ export default function SwitchContractDialog({
               onSubmit={form.handleSubmit(onSubmit)}
               style={{ display: "contents" }}
             >
-              <DialogContainer className="space-y-4">
-                {error && <div className="text-warning">{error}</div>}
-                <InputField
-                  control={form.control}
-                  name="stripeCustomerId"
-                  title="Stripe Customer Id (optional for free plans)"
-                  placeholder="cus_1234567890"
-                />
-                <InputField
-                  control={form.control}
-                  name="hubspotDealId"
-                  title="HubSpot Deal Id (optional)"
-                  placeholder="e.g., 12345678901"
-                />
-                {isCurrencyLoading && (
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground dark:text-muted-foreground-night">
-                    <Spinner size="sm" />
-                    <span>Resolving customer currency...</span>
-                  </div>
-                )}
-                {currencyError && (
-                  <div className="text-warning text-sm">
-                    Failed to resolve currency from Stripe customer:{" "}
-                    {currencyError.message}
-                  </div>
-                )}
-                {trimmedStripeCustomerId && (
-                  <SelectField
+              <DialogContainer>
+                <div className="grid grid-cols-[200px_1fr] items-center gap-x-4 gap-y-2">
+                  {error && (
+                    <div className="col-span-2 text-warning">{error}</div>
+                  )}
+                  <Label className="text-sm">
+                    Stripe Customer ID
+                    <span className="ml-1 text-muted-foreground">
+                      (optional)
+                    </span>
+                  </Label>
+                  <InputField
                     control={form.control}
-                    name="stripeCollectionMethod"
-                    title="Stripe Collection Method"
-                    mountPortalContainer={portalContainer}
-                    options={[
-                      {
-                        value: "charge_automatically",
-                        display: "Charge automatically (card on file)",
-                      },
-                      {
-                        value: "send_invoice",
-                        display: "Send invoice (manual payment)",
-                      },
-                    ]}
+                    name="stripeCustomerId"
+                    hideLabel
+                    placeholder="cus_1234567890"
                   />
-                )}
-                {trimmedStripeCustomerId &&
-                  stripeCollectionMethod === "send_invoice" && (
-                    <InputField
-                      control={form.control}
-                      name="netPaymentTermsDays"
-                      title="Net Payment Terms (days — e.g. 30 for Net 30)"
-                      type="number"
-                      placeholder="Leave empty for the Metronome account default"
-                    />
+                  <Label className="text-sm">
+                    HubSpot Deal ID
+                    <span className="ml-1 text-muted-foreground">
+                      (optional)
+                    </span>
+                  </Label>
+                  <InputField
+                    control={form.control}
+                    name="hubspotDealId"
+                    hideLabel
+                    placeholder="e.g., 12345678901"
+                  />
+                  <Label className="text-sm">
+                    Purchase order
+                    <span className="ml-1 text-muted-foreground">
+                      (optional)
+                    </span>
+                  </Label>
+                  <InputField
+                    control={form.control}
+                    name="purchaseOrderId"
+                    hideLabel
+                    placeholder="PO number"
+                  />
+                  {isCurrencyLoading && (
+                    <div className="col-span-2 flex items-center gap-2 text-sm text-muted-foreground">
+                      <Spinner size="sm" />
+                      <span>Resolving customer currency...</span>
+                    </div>
                   )}
-                {isPackagesLoading && (
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground dark:text-muted-foreground-night">
-                    <Spinner size="sm" />
-                    <span>Loading Metronome packages...</span>
-                  </div>
-                )}
-                {!isPackagesLoading && packagesError && (
-                  <div className="text-warning text-sm">
-                    Failed to load Metronome packages: {packagesError.message}
-                  </div>
-                )}
-                {!isPackagesLoading &&
-                  !packagesError &&
-                  !isCurrencyLoading &&
-                  (resolvedCurrency || !trimmedStripeCustomerId) && (
-                    <SelectField
-                      control={form.control}
-                      name="metronomePackageId"
-                      title={
-                        resolvedCurrency
-                          ? `Metronome Package (${resolvedCurrency.toUpperCase()})`
-                          : "Metronome Package (free only — no Stripe customer)"
-                      }
-                      mountPortalContainer={portalContainer}
-                      groups={packageGroups}
-                    />
+                  {currencyError && (
+                    <div className="col-span-2 text-sm text-warning">
+                      Failed to resolve currency from Stripe customer:{" "}
+                      {currencyError.message}
+                    </div>
                   )}
-                {selectedTier === "enterprise" && (
-                  <>
-                    <SelectField
-                      control={form.control}
-                      name="planCode"
-                      title="Enterprise Plan"
-                      mountPortalContainer={portalContainer}
-                      options={enterprisePlanOptions}
-                    />
-                    <SelectField
-                      control={form.control}
-                      name="startMode"
-                      title="Start"
-                      mountPortalContainer={portalContainer}
-                      options={startModeOptions}
-                    />
-                    {startMode === "select" && (
+                  {trimmedStripeCustomerId && (
+                    <>
+                      <Label className="text-sm">Collection method</Label>
+                      <SelectField
+                        control={form.control}
+                        name="stripeCollectionMethod"
+                        hideLabel
+                        mountPortalContainer={portalContainer}
+                        options={[
+                          {
+                            value: "charge_automatically",
+                            display: "Charge automatically (card on file)",
+                          },
+                          {
+                            value: "send_invoice",
+                            display: "Send invoice (manual payment)",
+                          },
+                        ]}
+                      />
+                    </>
+                  )}
+                  {trimmedStripeCustomerId &&
+                    stripeCollectionMethod === "send_invoice" && (
+                      <>
+                        <Label className="text-sm">
+                          Net payment terms (days)
+                        </Label>
+                        <InputField
+                          control={form.control}
+                          name="netPaymentTermsDays"
+                          hideLabel
+                          type="number"
+                          placeholder="Metronome account default"
+                        />
+                      </>
+                    )}
+                  {isPackagesLoading && (
+                    <div className="col-span-2 flex items-center gap-2 text-sm text-muted-foreground">
+                      <Spinner size="sm" />
+                      <span>Loading Metronome packages...</span>
+                    </div>
+                  )}
+                  {!isPackagesLoading && packagesError && (
+                    <div className="col-span-2 text-sm text-warning">
+                      Failed to load Metronome packages: {packagesError.message}
+                    </div>
+                  )}
+                  {!isPackagesLoading &&
+                    !packagesError &&
+                    !isCurrencyLoading &&
+                    (resolvedCurrency || !trimmedStripeCustomerId) && (
+                      <>
+                        <Label className="text-sm">
+                          Package
+                          {resolvedCurrency &&
+                            ` (${resolvedCurrency.toUpperCase()})`}
+                        </Label>
+                        <SelectField
+                          control={form.control}
+                          name="metronomePackageId"
+                          hideLabel
+                          mountPortalContainer={portalContainer}
+                          groups={packageGroups}
+                        />
+                      </>
+                    )}
+                  {selectedTier === "enterprise" && (
+                    <>
+                      <Label className="text-sm">Enterprise plan</Label>
+                      <SelectField
+                        control={form.control}
+                        name="planCode"
+                        hideLabel
+                        mountPortalContainer={portalContainer}
+                        options={enterprisePlanOptions}
+                      />
+                    </>
+                  )}
+                  {(selectedTier === "enterprise" ||
+                    selectedTier === "business") && (
+                    <>
+                      <Label className="text-sm">Start</Label>
+                      <SelectField
+                        control={form.control}
+                        name="startMode"
+                        hideLabel
+                        mountPortalContainer={portalContainer}
+                        options={startModeOptions}
+                      />
+                      {startMode === "select" && (
+                        <>
+                          <Label className="text-sm">Starts at (UTC)</Label>
+                          <div className="relative">
+                            <InputField
+                              control={form.control}
+                              name="startingAt"
+                              hideLabel
+                              type="datetime-local"
+                              step={3600}
+                              transformValue={snapDatetimeLocalToHour}
+                            />
+                            {startingAtLocalLabel && (
+                              <p className="mt-1 text-xs text-muted-foreground absolute top-2 right-2">
+                                Local: {startingAtLocalLabel}
+                              </p>
+                            )}
+                          </div>
+                        </>
+                      )}
+                    </>
+                  )}
+                  {selectedTier === "business" && (
+                    <div className="col-span-2 text-sm text-muted-foreground">
+                      Target plan:{" "}
+                      <span className="font-mono">
+                        {form.watch("planCode")}
+                      </span>
+                    </div>
+                  )}
+                </div>
+                {selectedTier && (
+                  <div className="border-t pt-4">
+                    <Label className="mb-3 block text-sm font-medium">
+                      Credit configuration
+                    </Label>
+                    <div className="grid grid-cols-[200px_1fr] items-center gap-x-4 gap-y-2">
+                      {paygEligible && selectedTier === "enterprise" && (
+                        <>
+                          <Label className="text-sm">Pay-as-you-go</Label>
+                          <SliderToggle
+                            selected={paygEnabled}
+                            onClick={() =>
+                              form.setValue("paygEnabled", !paygEnabled)
+                            }
+                          />
+                        </>
+                      )}
+                      <Label className="text-sm">
+                        Monthly usage cap (credits)
+                      </Label>
                       <InputField
                         control={form.control}
-                        name="startingAt"
-                        title="Starts At (local time, on the hour — past allowed)"
-                        type="datetime-local"
-                        step={3600}
-                        transformValue={snapDatetimeLocalToHour}
+                        name="usageCapCredits"
+                        hideLabel
+                        type="number"
+                        placeholder="no cap"
                       />
-                    )}
-                  </>
-                )}
-                {(selectedTier === "pro" ||
-                  selectedTier === "business" ||
-                  selectedTier === "free") && (
-                  <div className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-                    Target plan:{" "}
-                    <span className="font-mono">{form.watch("planCode")}</span>{" "}
-                    — swap at the current hour, subscription flips
-                    synchronously.
-                  </div>
-                )}
-                {paygEligible && (
-                  <div className="space-y-4 border-t pt-4">
-                    <div className="flex items-center gap-2">
+                      <Label className="text-sm">Default discount (%)</Label>
+                      <InputField
+                        control={form.control}
+                        name="defaultDiscountPercent"
+                        hideLabel
+                        type="number"
+                        placeholder="0"
+                      />
+                      <Label className="text-sm">
+                        Workspace credit pool threshold alert (credits)
+                      </Label>
+                      <InputField
+                        control={form.control}
+                        name="balanceThresholdCredits"
+                        hideLabel
+                        type="number"
+                        placeholder="no alert"
+                      />
+                      <Label className="text-sm">
+                        Default per-user workspace credit pool monthly limit
+                        (credits)
+                      </Label>
+                      <InputField
+                        control={form.control}
+                        name="defaultPoolCapCredits"
+                        hideLabel
+                        type="number"
+                        placeholder="no access"
+                      />
+                      <Label className="text-sm">
+                        Programmatic monthly limit (credits)
+                      </Label>
+                      <InputField
+                        control={form.control}
+                        name="programmaticMonthlyCapCredits"
+                        hideLabel
+                        type="number"
+                        placeholder="no cap"
+                      />
+                      <Label className="text-sm">Auto-upgrade seats</Label>
                       <SliderToggle
-                        selected={paygEnabled}
+                        selected={autoSeatUpgradeEnabled}
                         onClick={() =>
-                          form.setValue("paygEnabled", !paygEnabled)
+                          form.setValue(
+                            "autoSeatUpgradeEnabled",
+                            !autoSeatUpgradeEnabled
+                          )
                         }
                       />
-                      <Label className="text-sm">Pay-as-you-go</Label>
+                      {selectedTier === "enterprise" && (
+                        <>
+                          <Label className="text-sm">Top-up (Enterprise)</Label>
+                          <SliderToggle
+                            selected={topUpEnabled}
+                            onClick={() =>
+                              form.setValue("topUpEnabled", !topUpEnabled)
+                            }
+                          />
+                        </>
+                      )}
+                      <Label className="text-sm">
+                        Auto invoice finalization
+                      </Label>
+                      <SliderToggle
+                        selected={autoInvoiceFinalizationEnabled}
+                        onClick={() =>
+                          form.setValue(
+                            "autoInvoiceFinalizationEnabled",
+                            !autoInvoiceFinalizationEnabled
+                          )
+                        }
+                      />
                     </div>
-                    <InputField
-                      control={form.control}
-                      name="usageCapCredits"
-                      title="Usage Cap (AWU credits, optional)"
-                      type="number"
-                      placeholder="e.g., 100000 — leave empty for no alert"
-                    />
                   </div>
                 )}
                 {selectedSeats.length > 0 && (
@@ -767,14 +1039,14 @@ export default function SwitchContractDialog({
                         ? `(rate & price in ${resolvedCurrency.toUpperCase()})`
                         : ""}
                     </Label>
-                    <div className="text-xs text-muted-foreground dark:text-muted-foreground-night">
+                    <div className="text-xs text-muted-foreground">
                       Checked seats are entitled on the new contract. Seats the
                       package does not entitle by default are unchecked — check
                       one to entitle it (a non-zero rate is required, except for
                       the free seat).
                     </div>
                     {/* Header row */}
-                    <div className="flex items-center gap-3 pb-1 text-xs font-medium text-muted-foreground dark:text-muted-foreground-night">
+                    <div className="flex items-center gap-3 pb-1 text-xs font-medium text-muted-foreground">
                       <div className="w-32 shrink-0" />
                       <div className="flex-1">Min seats</div>
                       <div className="flex-1">
@@ -798,6 +1070,13 @@ export default function SwitchContractDialog({
                       const seatPaymentFrequency =
                         watchedSeats?.[seatType]?.paymentFrequency ??
                         "one_time";
+                      const minSeats = watchedSeats?.[seatType]?.minSeats ?? 0;
+                      const rate = watchedSeats?.[seatType]?.rate ?? 0;
+                      const isAnnualSeat = seatType.endsWith("_yearly");
+                      const defaultCommitment =
+                        minSeats > 0 && rate > 0 ? minSeats * rate : null;
+                      const monthlyRate =
+                        isAnnualSeat && rate > 0 ? rate / 12 : null;
                       return (
                         <div key={seatType} className="flex items-center gap-3">
                           <div className="flex w-32 shrink-0 items-center gap-2">
@@ -813,7 +1092,7 @@ export default function SwitchContractDialog({
                             <span className="font-mono text-sm">
                               {seatType}
                               {!entitled && (
-                                <span className="ml-1 text-muted-foreground dark:text-muted-foreground-night">
+                                <span className="ml-1 text-muted-foreground">
                                   *
                                 </span>
                               )}
@@ -829,7 +1108,7 @@ export default function SwitchContractDialog({
                               disabled={!isSelected}
                             />
                           </div>
-                          <div className="flex-1">
+                          <div className="flex-1 relative">
                             <InputField
                               control={form.control}
                               name={`seats.${seatType}.rate`}
@@ -838,6 +1117,14 @@ export default function SwitchContractDialog({
                               placeholder="0"
                               disabled={!isSelected}
                             />
+                            {isSelected && monthlyRate !== null && (
+                              <p className="mt-0.5 text-xs text-muted-foreground absolute top-2 right-2">
+                                {monthlyRate % 1 === 0
+                                  ? monthlyRate
+                                  : monthlyRate.toFixed(2)}
+                                /mo
+                              </p>
+                            )}
                           </div>
                           <div className="flex-1">
                             <InputField
@@ -845,8 +1132,14 @@ export default function SwitchContractDialog({
                               name={`seats.${seatType}.commitmentPrice`}
                               hideLabel
                               type="number"
-                              placeholder="optional"
-                              disabled={!isSelected}
+                              placeholder={
+                                rate <= 0
+                                  ? "n/a (rate is 0)"
+                                  : defaultCommitment !== null
+                                    ? String(defaultCommitment)
+                                    : "optional"
+                              }
+                              disabled={!isSelected || rate <= 0}
                             />
                           </div>
                           <div className="flex-1">
@@ -881,11 +1174,39 @@ export default function SwitchContractDialog({
                         </div>
                       );
                     })}
+                    <div className="flex flex-col gap-1 border-t pt-3">
+                      <Label className="text-sm">
+                        Force seat type (optional)
+                      </Label>
+                      <div className="text-xs text-muted-foreground">
+                        Forces every seat-less ("none") member onto this seat on
+                        the new contract, preempting committed-seat placement.
+                        Leave unset for default seat assignment.
+                      </div>
+                      <div className="w-64">
+                        <SelectField
+                          control={form.control}
+                          name="forceSeatType"
+                          hideLabel
+                          mountPortalContainer={portalContainer}
+                          options={[
+                            { value: "", display: "— No override —" },
+                            ...BILLABLE_SEAT_TYPES.map((seatType) => ({
+                              value: seatType,
+                              display: seatType,
+                            })),
+                          ]}
+                        />
+                      </div>
+                    </div>
                   </div>
                 )}
                 {trimmedStripeCustomerId && resolvedCurrency && (
-                  <div className="space-y-4 border-t pt-4">
-                    <div className="flex items-center gap-2">
+                  <div className="border-t pt-4">
+                    <div className="grid grid-cols-[200px_1fr] items-center gap-x-4 gap-y-2">
+                      <Label className="text-sm font-medium">
+                        Initial credits (prepaid commit)
+                      </Label>
                       <SliderToggle
                         selected={showInitialCredits}
                         onClick={() =>
@@ -895,65 +1216,64 @@ export default function SwitchContractDialog({
                           )
                         }
                       />
-                      <Label className="text-sm">
-                        Initial credits (prepaid commit)
-                      </Label>
-                    </div>
-                    {showInitialCredits && (
-                      <>
-                        <InputField
-                          control={form.control}
-                          name="initialCreditsAmount"
-                          title="Initial Credits (AWU credits)"
-                          type="number"
-                          placeholder="e.g., 100000"
-                        />
-                        <InputField
-                          control={form.control}
-                          name="initialCreditsInvoiceAmount"
-                          title={`Total Amount to Invoice (${resolvedCurrency.toUpperCase()})`}
-                          type="number"
-                          placeholder="e.g., 5000 — total billed to the customer"
-                        />
-                        <SelectField
-                          control={form.control}
-                          name="initialCreditsFrequency"
-                          title="Payment schedule"
-                          mountPortalContainer={portalContainer}
-                          options={[
-                            {
-                              value: "one_time",
-                              display: "One-time (single invoice)",
-                            },
-                            {
-                              value: "monthly",
-                              display: "Monthly",
-                            },
-                            {
-                              value: "quarterly",
-                              display: "Quarterly (every 3 months)",
-                            },
-                            {
-                              value: "semi_annually",
-                              display: "Semi-annually (every 6 months)",
-                            },
-                            {
-                              value: "annually",
-                              display: "Annually",
-                            },
-                          ]}
-                        />
-                        {initialCreditsFrequency !== "one_time" && (
+                      {showInitialCredits && (
+                        <>
+                          <Label className="text-sm">Credits (AWU)</Label>
                           <InputField
                             control={form.control}
-                            name="initialCreditsPeriods"
-                            title="Number of periods"
+                            name="initialCreditsAmount"
+                            hideLabel
                             type="number"
-                            placeholder="e.g., 4 for 4 quarterly installments"
+                            placeholder="e.g., 100000"
                           />
-                        )}
-                      </>
-                    )}
+                          <Label className="text-sm">
+                            Invoice ({resolvedCurrency.toUpperCase()})
+                          </Label>
+                          <InputField
+                            control={form.control}
+                            name="initialCreditsInvoiceAmount"
+                            hideLabel
+                            type="number"
+                            placeholder="e.g., 5000"
+                          />
+                          <Label className="text-sm">Payment schedule</Label>
+                          <SelectField
+                            control={form.control}
+                            name="initialCreditsFrequency"
+                            hideLabel
+                            mountPortalContainer={portalContainer}
+                            options={[
+                              {
+                                value: "one_time",
+                                display: "One-time",
+                              },
+                              { value: "monthly", display: "Monthly" },
+                              {
+                                value: "quarterly",
+                                display: "Quarterly",
+                              },
+                              {
+                                value: "semi_annually",
+                                display: "Semi-annually",
+                              },
+                              { value: "annually", display: "Annually" },
+                            ]}
+                          />
+                          {initialCreditsFrequency !== "one_time" && (
+                            <>
+                              <Label className="text-sm">Periods</Label>
+                              <InputField
+                                control={form.control}
+                                name="initialCreditsPeriods"
+                                hideLabel
+                                type="number"
+                                placeholder="e.g., 4"
+                              />
+                            </>
+                          )}
+                        </>
+                      )}
+                    </div>
                   </div>
                 )}
               </DialogContainer>
@@ -962,10 +1282,7 @@ export default function SwitchContractDialog({
                   type="submit"
                   variant="warning"
                   label="Switch"
-                  disabled={
-                    !selectedTier ||
-                    (selectedTier !== "free" && !resolvedCurrency)
-                  }
+                  disabled={!selectedTier || !resolvedCurrency}
                 />
               </DialogFooter>
             </form>

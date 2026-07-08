@@ -2,7 +2,7 @@ import { BLOCK_ID_ATTRIBUTE } from "@app/components/editor/extensions/instructio
 import { INSTRUCTIONS_ROOT_NODE_NAME } from "@app/components/editor/extensions/instructions/InstructionsRootExtension";
 import { INSTRUCTIONS_ROOT_TARGET_BLOCK_ID } from "@app/types/suggestions/agent_suggestion";
 import { Extension } from "@tiptap/core";
-import type { Node as PMNode, Schema } from "@tiptap/pm/model";
+import type { Node as PMNode, Schema, Slice } from "@tiptap/pm/model";
 import {
   DOMSerializer,
   Fragment,
@@ -48,12 +48,11 @@ const CLASSES = {
   remove:
     "suggestion-deletion rounded line-through bg-red-100 text-red-800 cursor-default",
   removeDimmed:
-    "suggestion-deletion rounded line-through bg-red-50 text-gray-400 cursor-default",
+    "suggestion-deletion rounded line-through bg-red-50 text-muted-foreground cursor-default",
   add: "suggestion-addition rounded bg-blue-100 text-blue-800 cursor-default",
   addDimmed:
-    "suggestion-addition rounded bg-blue-50 text-gray-400 cursor-default",
-  blockHighlightDimmed:
-    "suggestion-highlight rounded bg-gray-100 cursor-default",
+    "suggestion-addition rounded bg-blue-50 text-muted-foreground cursor-default",
+  blockHighlightDimmed: "suggestion-highlight rounded bg-muted cursor-default",
 };
 
 export function diffBlockContent(
@@ -173,6 +172,42 @@ function findBlockByBlockId(
   return result;
 }
 
+// Returns the content to render in an addition widget for an inserted slice.
+// Diff ranges include nested block boundaries, so a slice can wrap an
+// inline-level change in its containing block(s). When the change stays within
+// one text block, the slice is open on both ends and forms a single block chain
+// — drill down to the inline content so it renders inline rather than as a
+// phantom <p>/<li>. A genuine new block comes through closed (open depth 0) or
+// as multiple children, so it keeps its structure. Each level peeled reduces the
+// open depth by one (an open boundary always cuts through a non-leaf node, so
+// firstChild is safe to descend into).
+function inlineContentForInsertion(slice: Slice): Fragment {
+  let { content } = slice;
+  let { openStart, openEnd } = slice;
+
+  while (
+    openStart > 0 &&
+    openEnd > 0 &&
+    content.childCount === 1 &&
+    !content.firstChild!.isInline
+  ) {
+    content = content.firstChild!.content;
+    openStart -= 1;
+    openEnd -= 1;
+  }
+
+  // Drop empty leading blocks so an inserted blank line or empty list item
+  // doesn't render as extra blank widgets. `textContent` (not content.size)
+  // catches empty wrappers like listItem > paragraph(), whose size is non-zero.
+  // The childCount guard keeps the node when the whole insertion is one empty
+  // block, so a single inserted blank line still shows one widget.
+  while (content.childCount > 1 && content.firstChild!.textContent === "") {
+    content = content.cut(content.firstChild!.nodeSize);
+  }
+
+  return content;
+}
+
 // Create inline diff decorations for a single block (deletion + addition widgets).
 function buildBlockDecorations({
   applyBlockHighlight,
@@ -221,7 +256,6 @@ function buildBlockDecorations({
     }
 
     if (change.fromB !== change.toB) {
-      const insertedSlice = newNode.content.cut(change.fromB, change.toB);
       const isCrossType = oldNode.type !== newNode.type;
       // When old block is a different type, place the addition after it so the new content doesn't render inside the old block's container.
       const widgetPos = isCrossType
@@ -247,7 +281,10 @@ function buildBlockDecorations({
               const blockEl = serializer.serializeNode(newNode, {});
               span.appendChild(blockEl);
             } else {
-              serializer.serializeFragment(insertedSlice, {}, span);
+              const insertedContent = inlineContentForInsertion(
+                newNode.slice(change.fromB, change.toB)
+              );
+              serializer.serializeFragment(insertedContent, {}, span);
             }
 
             // Apply styling to all child elements to ensure visibility in nested structures (e.g., list items)

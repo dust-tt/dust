@@ -10,10 +10,8 @@ import {
   requireAgentLoopConversation,
   scopedPathsFromArgs,
 } from "@app/lib/api/actions/servers/files/tools/agent_loop_fs";
-import {
-  frameFileCreateRejectedError,
-  frameFileEditRejectedError,
-} from "@app/lib/api/actions/servers/files/tools/utils";
+import { frameSourceUpdatedNotice } from "@app/lib/api/actions/servers/files/tools/utils";
+import { getFilePreviewDirectiveInstruction } from "@app/lib/markdown/file_preview";
 import {
   isAllSupportedFileContentType,
   isInteractiveContentType,
@@ -28,9 +26,9 @@ export async function createHandler(
     content,
     content_type,
   }: { path: string; content: string; content_type: string },
-  { auth, agentLoopContext }: ToolHandlerExtra
+  { auth, toolContext }: ToolHandlerExtra
 ): Promise<ToolHandlerResult> {
-  const conversationRes = requireAgentLoopConversation({ agentLoopContext });
+  const conversationRes = requireAgentLoopConversation({ toolContext });
   if (conversationRes.isErr()) {
     return conversationRes;
   }
@@ -56,23 +54,23 @@ export async function createHandler(
 
   const dustFs = fsResult.value;
 
-  const incomingMimeType = stripMimeParameters(content_type);
-  if (isInteractiveContentType(incomingMimeType)) {
-    return new Err(frameFileCreateRejectedError());
-  }
-
   // Check existence before writing so we can report "Created" vs "Updated".
   const statResult = await dustFs.stat(path);
   const exists = statResult.isOk() && statResult.value !== null;
 
+  let isFrameSourceOverwrite = false;
+  let writeContentType = content_type;
+
   if (statResult.isOk() && statResult.value !== null) {
     const existingMimeType = stripMimeParameters(statResult.value.contentType);
     if (isInteractiveContentType(existingMimeType)) {
-      return new Err(frameFileEditRejectedError());
+      isFrameSourceOverwrite = true;
+      // Keep the frame content type on the mount so the file stays recognized as a Frame.
+      writeContentType = statResult.value.contentType;
     }
   }
 
-  const writeResult = await dustFs.write(path, contentBuffer, content_type);
+  const writeResult = await dustFs.write(path, contentBuffer, writeContentType);
   if (writeResult.isErr()) {
     const err = writeResult.error;
     switch (err.code) {
@@ -96,13 +94,28 @@ export async function createHandler(
   const sizeKb = Math.ceil(contentBuffer.byteLength / 1024);
   const verb = exists ? "Updated" : "Created";
 
+  if (isFrameSourceOverwrite) {
+    return new Ok([
+      {
+        type: "text",
+        text: `Updated \`${path}\` (${sizeKb} KB). ${frameSourceUpdatedNotice()}`,
+      },
+    ]);
+  }
+
   const items: Array<
     | { type: "text"; text: string }
     | { type: "resource"; resource: ToolGeneratedFilePathType }
   > = [
     {
       type: "text",
-      text: `${verb} \`${path}\` (${content_type}, ${sizeKb} KB). The user is presented with an attachment to download the file, do not attempt to generate a link to it.`,
+      text:
+        `${verb} \`${path}\` (${content_type}, ${sizeKb} KB). ` +
+        getFilePreviewDirectiveInstruction({
+          contentType: content_type,
+          path,
+          title: fileName,
+        }),
     },
   ];
 

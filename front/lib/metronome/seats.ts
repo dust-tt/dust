@@ -54,7 +54,11 @@ import {
 } from "@app/lib/utils/cache";
 import logger from "@app/logger/logger";
 import type { MembershipSeatType } from "@app/types/memberships";
-import { isMembershipSeatType, SEAT_TYPE_ORDER } from "@app/types/memberships";
+import {
+  isMembershipSeatType,
+  isPaidSeatType,
+  SEAT_TYPE_ORDER,
+} from "@app/types/memberships";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
@@ -158,10 +162,14 @@ export type SeatChangeOutcome =
  * Branches:
  * - Same seat as current: `cancelled` if a pending future change exists,
  *   else `noop`.
- * - `free` → `none`: `noop`. A `free` seat is a one-shot tier that cannot be
- *   downgraded to no seat.
- * - New allocation ≥ previous: `immediate` (the user gains/keeps access
- *   right away).
+ * - `free` → `none`: `immediate`. A `free` seat carries no renewing, already-paid
+ *   allowance to preserve, so removing it takes effect right away.
+ * - Monthly → yearly switch (a monthly paid seat moving to a yearly cadence,
+ *   e.g. `pro` → `pro_yearly` or `pro` → `max_yearly`): `deferred`, even when
+ *   the target tier is higher. Committing to annual billing takes effect at
+ *   the end of the current period, never mid-period.
+ * - New allocation ≥ previous (and not the monthly→yearly case above):
+ *   `immediate` (the user gains/keeps access right away).
  * - New allocation < previous: `deferred` to the next time the previous
  *   seat's AWU allowance renews, so the user keeps the richer access through
  *   the allowance they already paid for. Returns `undefined` when no renewal
@@ -186,11 +194,13 @@ export function classifySeatChange({
     return pendingScheduledChange ? { kind: "cancelled" } : { kind: "noop" };
   }
 
-  // `free` is a one-shot tier that can't be given back: downgrading a free
-  // seat to no seat is not allowed, so treat it as a no-op (the caller leaves
-  // the membership untouched).
+  // `free` → `none`: remove the seat immediately. A free seat carries a
+  // one-shot allocation with no renewing, already-paid allowance to preserve,
+  // so there's nothing to defer to — the member drops to no seat right away.
+  // (The `free` tier is one-shot: once removed it can't be re-granted, which
+  // `updateMembershipSeatAndTrack` enforces separately.)
   if (previousSeatType === "free" && newSeatType === "none") {
-    return { kind: "noop" };
+    return { kind: "immediate" };
   }
 
   const previousAllocation = getAwuAllocationForSeatType(
@@ -203,24 +213,37 @@ export function classifySeatChange({
     newSeatType,
     productSeatTypes
   );
-  // Keep or gain allowance — takes effect right away. This also covers
-  // removing a seat that carried no allowance (e.g. workspace seats:
-  // 0 >= 0): there's nothing already paid for to preserve, so the removal
-  // is immediate.
-  if (newAllocation >= previousAllocation) {
+  // A monthly→yearly switch commits the seat to annual billing. That
+  // commitment must never take effect mid-period — even when the target tier
+  // is higher (which the allocation comparison below would otherwise apply
+  // immediately) — so it is deferred to the end of the current period, exactly
+  // like a downgrade. Only a monthly paid seat can switch to yearly; adding a
+  // yearly seat from `free`/`none` is a fresh subscription and stays immediate.
+  const isMonthlyToYearlySwitch =
+    isPaidSeatType(previousSeatType) &&
+    !previousSeatType.endsWith("_yearly") &&
+    newSeatType.endsWith("_yearly");
+
+  // Keep or gain allowance — takes effect right away, unless it is the
+  // monthly→yearly commitment above. This also covers removing a seat that
+  // carried no allowance (e.g. workspace seats: 0 >= 0): there's nothing
+  // already paid for to preserve, so the removal is immediate.
+  if (newAllocation >= previousAllocation && !isMonthlyToYearlySwitch) {
     return { kind: "immediate" };
   }
 
-  // Losing allowance (downgrade, or removal of a seat that had allowance) —
-  // defer until the previous seat's AWU allowance next renews, so the user
-  // keeps the richer allowance they've already paid for until it would have
-  // refreshed anyway. The renewal cadence is the credit's `recurrence_frequency`
-  // (MONTHLY in new pricing, even for annually-billed seats — see
-  // `getNextSeatCreditRenewalDate`), which is independent of the billing period.
+  // Deferred: either losing allowance (downgrade, or removal of a seat that had
+  // allowance) or a monthly→yearly switch. Defer until the previous seat's AWU
+  // allowance next renews, so the user keeps the allowance they've already paid
+  // for until it would have refreshed anyway. The renewal cadence is the
+  // credit's `recurrence_frequency` (MONTHLY in new pricing, even for
+  // annually-billed seats — see `getNextSeatCreditRenewalDate`), which is
+  // independent of the billing period.
   //
-  // Defensive: a downgrade is always from a credit-bearing seat (`free` →
+  // Defensive: the previous seat is credit-bearing in the common case (`free` →
   // `none` is handled above as a no-op), but if the credit's recurrence can't
-  // be resolved, fall back to the next billing-period start rather than
+  // be resolved (e.g. a zero-allowance `workspace` seat switching to
+  // `workspace_yearly`), fall back to the next billing-period start rather than
   // failing the change.
   const creditRenewalAt = getNextSeatCreditRenewalDate({
     contract,
@@ -310,6 +333,102 @@ export function resolveRemappedSeatType(
   return "none";
 }
 
+const PROMOTABLE_SEAT_TYPES: ReadonlySet<MembershipSeatType> = new Set([
+  "pro",
+  "pro_yearly",
+  "workspace",
+  "workspace_yearly",
+]);
+
+/**
+ * Promote `none` seat types onto paid seats the contract bills.
+ *
+ * `forceSeatType` (used by a legacy contract migration) preempts the committed
+ * placement entirely: when set — and the contract bills it — EVERY `none` member
+ * is moved straight onto it. This is how a migration puts all seat-less members
+ * on a paid seat (e.g. `pro`), regardless of any committed allocation the
+ * contract might have.
+ *
+ * Without `forceSeatType`, `none` members are placed into committed paid seats
+ * (`minSeats > 0`) with spare capacity, in ascending tier order — a committed
+ * seat is billed whether or not it is assigned, so filling it adds no cost. This
+ * committed promotion is all-or-nothing: if a `none` member can't be placed, no
+ * member is promoted (the input is returned unchanged), so we never bill a
+ * partial set.
+ */
+export function promoteNoneSeatTypesForContract({
+  contract,
+  productSeatTypes,
+  seatTypes,
+  seatLimits,
+  forceSeatType,
+}: {
+  contract: CachedContract;
+  productSeatTypes: Map<string, MembershipSeatType>;
+  seatTypes: MembershipSeatType[];
+  seatLimits?: Map<MembershipSeatType, SeatLimit>;
+  // Seat type to force every `none` member onto, preempting the committed-seat
+  // placement below. Used by the legacy→Business migration to put `workspace`/
+  // `none` members on `pro`. Ignored unless the contract bills it.
+  forceSeatType?: MembershipSeatType;
+}): MembershipSeatType[] {
+  const onContract = new Set(
+    getSeatSubscriptionsFromContract(contract, productSeatTypes).keys()
+  );
+
+  // A forced seat preempts committed placement: move every `none` straight onto
+  // it, provided the contract bills it.
+  if (forceSeatType && onContract.has(forceSeatType)) {
+    return seatTypes.map((seatType) =>
+      seatType === "none" ? forceSeatType : seatType
+    );
+  }
+
+  const committedPaidSeatTypes = [...onContract]
+    .filter(
+      (seatType) =>
+        PROMOTABLE_SEAT_TYPES.has(seatType) &&
+        (seatLimits?.get(seatType)?.minSeats ?? 0) > 0
+    )
+    .sort(
+      (a, b) => SEAT_TYPE_ORDER[a] - SEAT_TYPE_ORDER[b] || a.localeCompare(b)
+    );
+
+  const assignedBySeatType = new Map<MembershipSeatType, number>();
+  for (const seatType of seatTypes) {
+    if (seatType !== "none") {
+      assignedBySeatType.set(
+        seatType,
+        (assignedBySeatType.get(seatType) ?? 0) + 1
+      );
+    }
+  }
+  const remainingBySeatType = new Map<MembershipSeatType, number>();
+  for (const seatType of committedPaidSeatTypes) {
+    const minSeats = seatLimits?.get(seatType)?.minSeats ?? 0;
+    remainingBySeatType.set(
+      seatType,
+      Math.max(0, minSeats - (assignedBySeatType.get(seatType) ?? 0))
+    );
+  }
+
+  const result = [...seatTypes];
+  for (let i = 0; i < result.length; i++) {
+    if (result[i] !== "none") {
+      continue;
+    }
+    const target = committedPaidSeatTypes.find(
+      (seatType) => (remainingBySeatType.get(seatType) ?? 0) > 0
+    );
+    if (!target) {
+      return [...seatTypes];
+    }
+    remainingBySeatType.set(target, (remainingBySeatType.get(target) ?? 0) - 1);
+    result[i] = target;
+  }
+  return result;
+}
+
 /**
  * Remap existing memberships' seat types to the seat types billed by
  * `contract`, so that after a contract switch no membership ends up on a seat
@@ -325,6 +444,17 @@ export function resolveRemappedSeatType(
  *    and a future row flips at `startingAt`, which the seat sync picks up as a
  *    future segment on the new contract.
  *
+ * Members landing on `none` are then promoted into any committed paid seat the
+ * new contract still has spare capacity for (see
+ * `promoteNoneSeatTypesForContract`): a committed seat is billed whether or not
+ * it is assigned, so filling it with an otherwise seat-less member adds no cost.
+ *
+ * When `promoteNoneSeatType` is set, every member that would otherwise stay on
+ * `none` is instead forced onto that seat type (provided the new contract bills
+ * it) — this preempts the committed-spare promotion above. It is how a legacy
+ * contract migration puts every member on a paid seat (e.g. `pro` for a monthly
+ * switch, `pro_yearly` for a yearly one).
+ *
  * No-op for memberships already on a covered seat type. A membership with no
  * resolvable `UserResource` is logged and skipped; a DB error while applying a
  * change throws (internal error → 500), so the operator knows the remap was
@@ -337,6 +467,7 @@ export async function remapMembershipSeatTypesForContract({
   swapAt,
   startingAt,
   contract,
+  promoteNoneSeatType,
 }: {
   metronomeCustomerId: string;
   contractId: string;
@@ -344,6 +475,10 @@ export async function remapMembershipSeatTypesForContract({
   swapAt: "current-hour" | "next-hour";
   startingAt: Date;
   contract?: CachedContract;
+  // Seat type that every `none` member is forced onto, preempting the
+  // committed-spare promotion (see `promoteNoneSeatTypesForContract`). Used by
+  // the legacy→Business migration to force `workspace`/`none` members onto `pro`.
+  promoteNoneSeatType?: MembershipSeatType;
 }): Promise<Result<undefined, Error>> {
   let resolvedContract: CachedContract;
   if (contract) {
@@ -418,7 +553,7 @@ export async function remapMembershipSeatTypesForContract({
   const applyImmediately =
     swapAt === "current-hour" || startingAt.getTime() <= Date.now();
 
-  for (const membership of memberships) {
+  const remapTargets = memberships.flatMap((membership) => {
     const user = userByModelId.get(membership.userId);
     if (!user) {
       logger.warn(
@@ -429,15 +564,35 @@ export async function remapMembershipSeatTypesForContract({
         },
         "[Metronome][remap] No UserResource for membership — skipping"
       );
-      continue;
+      return [];
     }
+    return [
+      {
+        membership,
+        user,
+        baseTarget: resolveRemappedSeatType(
+          membership.seatType,
+          resolvedContract,
+          productSeatTypes,
+          { seatLimits }
+        ),
+      },
+    ];
+  });
 
-    const target = resolveRemappedSeatType(
-      membership.seatType,
-      resolvedContract,
-      productSeatTypes,
-      { seatLimits }
-    );
+  const promotedTargets = promoteNoneSeatTypesForContract({
+    contract: resolvedContract,
+    productSeatTypes,
+    seatTypes: remapTargets.map((t) => t.baseTarget),
+    seatLimits,
+    forceSeatType: promoteNoneSeatType,
+  });
+
+  for (const [
+    index,
+    { membership, user, baseTarget },
+  ] of remapTargets.entries()) {
+    const target = promotedTargets[index];
     if (target === membership.seatType) {
       logger.info(
         {
@@ -458,6 +613,7 @@ export async function remapMembershipSeatTypesForContract({
         userId: user.sId,
         previousSeatType: membership.seatType,
         newSeatType: target,
+        promotedFromNone: baseTarget === "none" && target !== "none",
         mode: applyImmediately ? "immediate" : "scheduled",
         scheduledAt: applyImmediately ? null : startingAt.toISOString(),
       },
@@ -1173,6 +1329,7 @@ export async function syncSeatCount({
   planCode,
   startingAt,
   contract,
+  assumeEmptySeats,
 }: {
   metronomeCustomerId: string;
   contractId: string;
@@ -1183,6 +1340,10 @@ export async function syncSeatCount({
   // segments always use their own `startAt` regardless of this value.
   startingAt?: string;
   contract?: CachedContract;
+  // Skip the per-subscription seat-state reads and treat every segment as
+  // empty. Only safe for a freshly provisioned contract (no prior assignments)
+  // — passed by switchContract when the contract was newly created.
+  assumeEmptySeats?: boolean;
 }): Promise<Result<undefined, Error>> {
   let didMutateSeatData = false;
 
@@ -1199,6 +1360,10 @@ export async function syncSeatCount({
         return new Err(fetched.error);
       }
       resolvedContract = fetched.value;
+    }
+
+    if (!(await hasContractSeatSubscription(resolvedContract))) {
+      return new Ok(undefined);
     }
 
     const productSeatTypes = await getProductSeatTypes();
@@ -1234,13 +1399,20 @@ export async function syncSeatCount({
         WorkspaceSeatLimitResource.fetchByWorkspace({ workspace }),
       ]);
 
+    // TODO(pricing): Remove this + planCode param once we have no more shadow legacy contracts
     const legacy = !isCreditPricedPlanPrefix(planCode);
 
     // userSId → current seat type (the seat they are on right now).
+    //
+    // Only count memberships that are active in the same sense as the Stripe
+    // seat count (`getMembersCountForWorkspace({ activeOnly: true })`): the seat
+    // window is open AND `firstUsedAt` is set. This excludes provisioned members
+    // who have never used the workspace, so Metronome and Stripe bill the same
+    // set of seats.
     const currentSeatByUserSId = new Map<string, MembershipSeatType>();
     for (const m of activeMemberships) {
       const userSId = m.user?.sId;
-      if (userSId) {
+      if (userSId && m.firstUsedAt !== null) {
         currentSeatByUserSId.set(userSId, m.seatType);
       }
     }
@@ -1253,7 +1425,12 @@ export async function syncSeatCount({
     const scheduledChanges: ScheduledChange[] = [];
     for (const m of futureMemberships) {
       const userSId = m.user?.sId;
-      if (userSId) {
+      // Same `firstUsedAt` filter as the current-seat map above: a scheduled
+      // change carries the current row's `firstUsedAt` (see `scheduleSeatChange`),
+      // so provisioned-but-never-used members (SCIM on enterprise contracts) are
+      // scheduled by contract switches / migrations yet must stay uncounted, just
+      // like Stripe. Without this the future segment would re-introduce them.
+      if (userSId && m.firstUsedAt !== null) {
         scheduledChanges.push({
           userSId,
           newSeatType: m.seatType,
@@ -1337,9 +1514,7 @@ export async function syncSeatCount({
         const userSeatType = seatTypeAt(userSId, tMs);
         // On legacy contracts, "none" members are Platform Seat members that
         // predate the seat system — count them alongside explicit "workspace" seats.
-        const match =
-          userSeatType === subSeatType ||
-          (legacy && subSeatType === "workspace" && userSeatType === "none");
+        const match = userSeatType === subSeatType || legacy;
         if (match) {
           sIds.push(userSId);
         }
@@ -1435,6 +1610,7 @@ export async function syncSeatCount({
             startingAt: segmentStartingAt,
             coveringDate,
             workspaceId: workspace.sId,
+            assumeEmptySeats,
           });
           if (result.isErr()) {
             return new Err(result.error);
@@ -1557,6 +1733,7 @@ async function reconcileSeatBasedSegment({
   startingAt,
   coveringDate,
   workspaceId,
+  assumeEmptySeats,
 }: {
   metronomeCustomerId: string;
   contractId: string;
@@ -1567,18 +1744,30 @@ async function reconcileSeatBasedSegment({
   startingAt?: string;
   coveringDate?: Date;
   workspaceId: string;
+  // Skip the Metronome seat-state read and treat the segment as empty. Only
+  // safe for a freshly provisioned contract (no prior assignments at any
+  // timestamp) — set by switchContract when the contract was newly created
+  // (not recovered).
+  assumeEmptySeats?: boolean;
 }): Promise<Result<boolean, Error>> {
-  const currentResult = await getMetronomeSubscriptionSeatState({
-    metronomeCustomerId,
-    contractId,
-    subscriptionId,
-    coveringDate,
-  });
-  if (currentResult.isErr()) {
-    return new Err(currentResult.error);
+  let assignedSeatIds: string[];
+  let currentUnassigned: number;
+  if (assumeEmptySeats) {
+    assignedSeatIds = [];
+    currentUnassigned = 0;
+  } else {
+    const currentResult = await getMetronomeSubscriptionSeatState({
+      metronomeCustomerId,
+      contractId,
+      subscriptionId,
+      coveringDate,
+    });
+    if (currentResult.isErr()) {
+      return new Err(currentResult.error);
+    }
+    assignedSeatIds = currentResult.value.assignedSeatIds;
+    currentUnassigned = currentResult.value.unassignedSeats;
   }
-  const { assignedSeatIds, unassignedSeats: currentUnassigned } =
-    currentResult.value;
 
   // `maxSeats` is deliberately not enforced here: it caps new assignments
   // (`seat_limit_reached` upstream), never the synced state. Every member who

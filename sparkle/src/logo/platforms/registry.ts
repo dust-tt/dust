@@ -90,7 +90,6 @@ import StatuspageLogo from "./Statuspage";
 import StripeLogo from "./Stripe";
 import SupabaseLogo from "./Supabase";
 import TableLogo from "./Table";
-import TogetheraiLogo from "./Togetherai";
 import UkgLogo from "./Ukg";
 import ValTownLogo from "./ValTown";
 import VantaLogo from "./Vanta";
@@ -197,7 +196,6 @@ export const PLATFORM_LOGOS = {
   StripeLogo,
   SupabaseLogo,
   TableLogo,
-  TogetheraiLogo,
   UkgLogo,
   ValTownLogo,
   VantaLogo,

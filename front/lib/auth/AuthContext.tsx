@@ -26,6 +26,7 @@ export interface AuthContextValue {
   workspace: LightWorkspaceType;
   subscription: SubscriptionType;
   isAdmin: boolean;
+  isBusinessAdmin: boolean;
   isBuilder: boolean;
   featureFlags: WhitelistableFeature[];
   vizUrl: string;

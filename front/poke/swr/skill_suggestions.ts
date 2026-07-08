@@ -1,6 +1,6 @@
-import type { PokeListSkillSuggestions } from "@app/lib/api/poke/skills";
 import { emptyArray, useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type { PokeConditionalFetchProps } from "@app/poke/swr/types";
+import type { PokeListSkillSuggestions } from "@app/types/api/poke/skills";
 import type { Fetcher } from "swr";
 
 export interface PokeSkillSuggestionsFetchProps

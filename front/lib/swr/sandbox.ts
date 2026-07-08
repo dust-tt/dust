@@ -1,12 +1,4 @@
 import { useSendNotification } from "@app/hooks/useNotification";
-import type {
-  GetWorkspaceEgressPolicyResponseBody,
-  PutWorkspaceEgressPolicyResponseBody,
-} from "@app/lib/api/sandbox/egress_policy";
-import type {
-  GetWorkspaceSandboxEnvVarsResponseBody,
-  PostWorkspaceSandboxEnvVarsResponseBody,
-} from "@app/lib/api/sandbox/env_vars";
 import { clientFetch } from "@app/lib/egress/client";
 import type { PatchWorkspaceSandboxEnvVarResponseBody } from "@app/lib/resources/workspace_sandbox_env_var_resource";
 import {
@@ -15,6 +7,14 @@ import {
   useFetcher,
   useSWRWithDefaults,
 } from "@app/lib/swr/swr";
+import type {
+  GetWorkspaceEgressPolicyResponseBody,
+  PutWorkspaceEgressPolicyResponseBody,
+} from "@app/types/api/sandbox/egress_policy";
+import type {
+  GetWorkspaceSandboxEnvVarsResponseBody,
+  PostWorkspaceSandboxEnvVarsResponseBody,
+} from "@app/types/api/sandbox/env_vars";
 import type { EgressPolicy } from "@app/types/sandbox/egress_policy";
 import { EMPTY_EGRESS_POLICY } from "@app/types/sandbox/egress_policy";
 import type {
@@ -137,7 +137,7 @@ export function useUpsertWorkspaceSandboxEnvVar({
         title: data.created
           ? "Environment variable created"
           : "Environment variable replaced",
-        description: `${name} has been saved for future sandboxes.`,
+        description: `${name} has been saved for future Computers.`,
       });
       return true;
     } catch (error) {
@@ -314,21 +314,21 @@ export function useUpdateWorkspaceSandboxAgentEgressRequests({
       });
 
       if (!response.ok) {
-        throw new Error("Failed to update sandbox network setting");
+        throw new Error("Failed to update Computer network setting");
       }
 
       setIsEnabled(enabled);
       sendNotification({
         type: "success",
-        title: "Sandbox network setting updated",
+        title: "Computer network setting updated",
         description:
-          "Agent-requested sandbox domains setting has been updated.",
+          "Agent-requested Computer domains setting has been updated.",
       });
       return true;
     } catch (error) {
       sendNotification({
         type: "error",
-        title: "Failed to update sandbox network setting",
+        title: "Failed to update Computer network setting",
         description: normalizeError(error).message,
       });
       return false;
@@ -385,7 +385,7 @@ export function useUpdateWorkspaceEgressPolicy({
         type: "success",
         title: "Network policy updated",
         description:
-          "Sandbox egress policy changes will be applied by the proxy cache shortly.",
+          "Computer egress policy changes will be applied by the proxy cache shortly.",
       });
       return true;
     } catch {

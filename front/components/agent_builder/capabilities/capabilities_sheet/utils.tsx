@@ -191,17 +191,13 @@ export function useCapabilitiesPageAndFooter({
 
     case "info":
       if (sheetState.kind === "skill") {
-        const title = sheetState.capability.relations.extendedSkill?.name
-          ? `${sheetState.capability.name} (extends ${sheetState.capability.relations.extendedSkill.name})`
-          : sheetState.capability.name;
-
         const handleClose = sheetState.hasPreviousPage
           ? () => onStateChange({ state: "selection" })
           : onClose;
 
         return {
           page: {
-            title,
+            title: sheetState.capability.name,
             description: sheetState.capability.userFacingDescription,
             id: sheetState.state,
             icon: getSkillIcon(sheetState.capability.icon),
@@ -245,7 +241,7 @@ export function useCapabilitiesPageAndFooter({
             content: mcpServerView ? (
               <MCPServerInfoPage infoMCPServerView={mcpServerView} />
             ) : (
-              <div className="p-4 text-muted-foreground dark:text-muted-foreground-night">
+              <div className="p-4 text-muted-foreground">
                 Tool information not available.
               </div>
             ),

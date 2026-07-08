@@ -18,6 +18,7 @@ import {
   streamLLMEvents,
 } from "@app/lib/api/llm/clients/anthropic/utils/anthropic_to_events";
 import {
+  detectAnthropicToolSearchEnableSkillConflict,
   toMessage,
   toToolsParam,
 } from "@app/lib/api/llm/clients/anthropic/utils/conversation_to_anthropic";
@@ -26,6 +27,7 @@ import {
   handleInvalidToolJsonAnthropicError,
   isAnthropicErrorUnableToParseToolParam,
 } from "@app/lib/api/llm/clients/anthropic/utils/errors";
+import { stripUnreplayableToolSearchBlocks } from "@app/lib/api/llm/clients/anthropic/utils/tool_search_passthrough";
 import {
   getInferenceClient,
   getModel,
@@ -41,7 +43,12 @@ import type {
 } from "@app/lib/api/llm/types/options";
 import { normalizePrompt } from "@app/lib/api/llm/types/options";
 import type { Authenticator } from "@app/lib/auth";
+import {
+  includesToolSearchTool,
+  TOOL_SEARCH_INSTRUCTION,
+} from "@app/lib/model_constructors/sdk/anthropic_ai/converters/input/tool_search";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
+import logger from "@app/logger/logger";
 import type { ReasoningEffort } from "@app/types/assistant/models/types";
 import { getMinimumReasoningEffort } from "@app/types/assistant/models/types";
 import assert from "assert";
@@ -95,29 +102,38 @@ type AnthropicStreamPayload = BetaMessageStreamParams & {
  *
  * /!\ Do not add breakpoints here without auditing total usage across the request.
  */
-function buildSystemBlocks(
+export function buildSystemBlocks(
   { instructions, sharedContext, ephemeralContext }: StructuredSystemPrompt,
-  { hasConditionalJITTools }: { hasConditionalJITTools?: boolean }
+  {
+    includeToolSearchInstruction,
+  }: {
+    includeToolSearchInstruction?: boolean;
+  }
 ) {
   const instructionsText = instructions.map((s) => s.content).join("\n");
-  const sharedText = sharedContext.map((s) => s.content).join("\n");
+  // The tool search instruction stays in the shared 5min tier rather than the
+  // long-lived instructions tier: its presence is derived per request from
+  // whether the search tool is actually sent, so it is not guaranteed to be
+  // byte-stable across the lifetime of the 1h block.
+  const sharedText = [
+    sharedContext.map((s) => s.content).join("\n"),
+    ...(includeToolSearchInstruction ? [TOOL_SEARCH_INSTRUCTION] : []),
+  ]
+    .filter(Boolean)
+    .join("\n");
   const ephemeralText = ephemeralContext.map((s) => s.content).join("\n");
 
   const system: Anthropic.Beta.Messages.BetaTextBlockParam[] = [];
 
   if (instructionsText) {
-    // If we have conditional JIT tools, we expect more variability in the instructions, so we keep
-    // the default ephemeral cache. Otherwise, we can set a longer TTL to maximize cache hits.
-    //
-    // TODO: the tool directives and available-servers overview (the main source of JIT-driven
-    // variability in this block) now live in the shared-context block instead, so this downgrade
-    // should eventually be removable in favor of always using the 1h TTL, once we validate that no
-    // other conditional-JIT content remains in the instructions block.
-    const ttl: "1h" | undefined = hasConditionalJITTools ? undefined : "1h";
+    // The instructions tier only carries content that is stable per agent
+    // version and workspace settings (the tool directives and server listing,
+    // which vary with conversation state, live in the shared-context tier),
+    // so it always takes the 1h TTL.
     system.push({
       type: "text",
       text: instructionsText,
-      cache_control: { type: "ephemeral", ttl },
+      cache_control: { type: "ephemeral", ttl: "1h" },
     });
   }
 
@@ -175,13 +191,28 @@ export class AnthropicLLM extends LLM<BetaMessageStreamParams> {
     });
   }
 
-  private async buildBaseRequestPayload({
-    conversation,
-    hasConditionalJITTools,
-    prompt,
-    specifications,
-    forceToolCall,
-  }: LLMStreamParameters): Promise<MessageCreateParamsNonStreaming> {
+  private async buildBaseRequestPayload(
+    streamParameters: LLMStreamParameters
+  ): Promise<MessageCreateParamsNonStreaming> {
+    const {
+      conversation,
+      toolSearchEnabled,
+      prompt,
+      specifications,
+      forceToolCall,
+    } = streamParameters;
+
+    if (detectAnthropicToolSearchEnableSkillConflict(conversation.messages)) {
+      logger.warn(
+        {
+          ...this.metadata,
+          toolSearchEnabled,
+          messageCount: conversation.messages.length,
+        },
+        "[tool-search] Anthropic request contains unresolved tool search after enable_skill"
+      );
+    }
+
     const messages = await concurrentExecutor(
       conversation.messages,
       (msg, index) =>
@@ -219,19 +250,43 @@ export class AnthropicLLM extends LLM<BetaMessageStreamParams> {
             this.modelConfig.useNativeLightReasoning
           );
 
+    // Build the tools once so the system prompt can be derived from what is
+    // actually sent: the tool search instruction is added only when the search
+    // tool is present in this request.
+    const tools = toToolsParam(specifications, forceToolCall, {
+      toolSearchEnabled: toolSearchEnabled ?? false,
+    });
+
+    // TODO(tool-search): remove this rollout log once the eager set is validated.
+    if (toolSearchEnabled) {
+      logger.info(
+        {
+          eagerTools: tools
+            .filter((t) => !("defer_loading" in t && t.defer_loading))
+            .map((t) => t.name),
+          deferredToolCount: tools.filter(
+            (t) => "defer_loading" in t && t.defer_loading
+          ).length,
+        },
+        "[tool-search] Anthropic eager tools"
+      );
+    }
+
     const system = buildSystemBlocks(normalizePrompt(prompt), {
-      hasConditionalJITTools,
+      includeToolSearchInstruction: includesToolSearchTool(tools),
     });
 
     return {
       model: this.modelId,
       ...thinkingConfig,
       system,
-      messages,
+      messages: stripUnreplayableToolSearchBlocks(messages, {
+        toolSearchInRequest: includesToolSearchTool(tools),
+      }),
       temperature: this.temperature ?? undefined,
-      tools: toToolsParam(specifications, forceToolCall),
+      tools,
       max_tokens: this.modelConfig.generationTokensCount,
-      tool_choice: toToolChoiceParam(specifications, forceToolCall),
+      tool_choice: toToolChoiceParam(specifications, streamParameters),
     };
   }
 

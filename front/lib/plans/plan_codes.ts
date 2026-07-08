@@ -12,8 +12,18 @@ export const PRO_PLAN_SEAT_29_CODE = "PRO_PLAN_SEAT_29";
 export const PRO_PLAN_LARGE_FILES_CODE = "PRO_PLAN_LARGE_FILES";
 export const PRO_PLAN_SEAT_39_CODE = "PRO_PLAN_SEAT_39";
 
+// Legacy pro plans (kept for the legacy Pro → Business migration).
+export const PRO_PLAN_LARGE_FILES_10SPACES_CODE =
+  "PRO_PLAN_LARGE_FILES_10SPACES";
+export const PRO_PLAN_PLUS_SEAT_29_CODE = "PRO_PLAN_PLUS_SEAT_29";
+
 // Credit-priced plans:
 export const CREDIT_PRICED_BUSINESS_PLAN_CODE = "CP_BUSINESS_PLAN";
+// Business variant whose limits are permissive enough to fit any legacy PRO_*
+// plan — used to migrate legacy Pro workspaces that exceed the standard Business
+// plan limits (seats, spaces, data sources) without downgrading their limits.
+export const CREDIT_PRICED_BUSINESS_LEGACY_LARGE_PLAN_CODE =
+  "CP_BUSINESS_LEGACY_LARGE_PLAN";
 export const CREDIT_PRICED_FREE_PLAN_CODE = "CP_FREE_PLAN";
 export const CREDIT_PRICED_ENTERPRISE_DEFAULT_PLAN_CODE = "CP_ENT_DEFAULT_PLAN";
 export const CREDIT_PRICED_DUST_COMPANY_PLAN_CODE = "CP_DUST_COMPANY";
@@ -56,7 +66,8 @@ export const isFriendsAndFamilyPlan = (planCode: string) =>
   planCode === "FREE_FRIENDSAMILY";
 
 export const isCreditPricedBusinessPlan = (planCode: string) =>
-  planCode === CREDIT_PRICED_BUSINESS_PLAN_CODE;
+  planCode === CREDIT_PRICED_BUSINESS_PLAN_CODE ||
+  planCode === CREDIT_PRICED_BUSINESS_LEGACY_LARGE_PLAN_CODE;
 
 export const isCreditPricedFreePlan = (planCode: string) =>
   planCode === CREDIT_PRICED_FREE_PLAN_CODE;
@@ -78,27 +89,60 @@ export const isFreeTrialPhonePlan = (planCode: string) =>
 export const isOldFreePlan = (planCode: string) =>
   planCode === FREE_TEST_PLAN_CODE;
 
-// Sort priority for plan-code buckets. Lower number sorts first.
-// Used by the poke workspaces list to surface enterprise / pro tenants
-// ahead of free / old-free ones when the result set is over the requested
-// limit.
-export const getPlanCodeSortPriority = (planCode: string): number => {
-  if (isEnterprisePlanPrefix(planCode)) {
-    return 1;
+// Plan-type filter buckets exposed on the poke workspaces list, split by
+// literal plan-code prefix rather than by the semantic `isXxx` helpers above:
+// - enterprise: CP_ENT_*          (current, credit-priced enterprise)
+// - legacy_enterprise: ENT_*      (legacy, pre-credit-priced enterprise)
+// - legacy_pro: PRO_*             (legacy pro plans, incl. the "business" seat tier)
+// - business: CP_BUSINESS_*       (current, credit-priced business)
+// - free: FREE_*                  (all free-tier plans, incl. old-free), except F&F below
+// - friends_and_family: FREE_FRIENDSAMILY
+// - dust: DUST_* / CP_DUST_*      (Dust's own company workspace)
+export const POKE_PLAN_TYPE_FILTERS = [
+  "enterprise",
+  "business",
+  "legacy_enterprise",
+  "legacy_pro",
+  "free",
+  "friends_and_family",
+  "dust",
+] as const;
+
+export type PokePlanTypeFilter = (typeof POKE_PLAN_TYPE_FILTERS)[number];
+
+export function isPokePlanTypeFilter(
+  value: string
+): value is PokePlanTypeFilter {
+  return POKE_PLAN_TYPE_FILTERS.some((filter) => filter === value);
+}
+
+// Classifies a plan code into a poke plan-type filter bucket, or null if it
+// doesn't match any of them.
+export const getPokePlanTypeFilter = (
+  planCode: string
+): PokePlanTypeFilter | null => {
+  if (planCode.startsWith("CP_ENT_")) {
+    return "enterprise";
+  }
+  if (planCode.startsWith("ENT_")) {
+    return "legacy_enterprise";
+  }
+  if (planCode.startsWith("PRO_")) {
+    return "legacy_pro";
+  }
+  if (planCode.startsWith("CP_BUSINESS_")) {
+    return "business";
   }
   if (isFriendsAndFamilyPlan(planCode)) {
-    return 2;
+    return "friends_and_family";
   }
-  if (isProPlanPrefix(planCode)) {
-    return 3;
+  if (planCode.startsWith("FREE_")) {
+    return "free";
   }
-  if (isFreePlan(planCode)) {
-    return 4;
+  if (planCode.startsWith("DUST_") || planCode.startsWith("CP_DUST_")) {
+    return "dust";
   }
-  if (isOldFreePlan(planCode)) {
-    return 5;
-  }
-  return 6;
+  return null;
 };
 
 export function isProPlan(plan?: PlanType) {
@@ -132,6 +176,13 @@ export const isUpgraded = (plan: PlanType | null): boolean => {
   }
   return ![FREE_TEST_PLAN_CODE, FREE_NO_PLAN_CODE].includes(plan.code);
 };
+
+export function isEnterpriseOrDust(plan: PlanType | null): boolean {
+  return (
+    plan !== null &&
+    (isEnterprisePlanPrefix(plan.code) || isDustCompanyPlan(plan.code))
+  );
+}
 
 export const isWhitelistedBusinessPlan = (owner?: WorkspaceType) => {
   if (!owner) {

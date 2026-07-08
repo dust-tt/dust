@@ -171,6 +171,23 @@ export function isSeatBased(
   }
 }
 
+export function isPaidSeatType(seatType: MembershipSeatType): boolean {
+  switch (seatType) {
+    case "workspace":
+    case "workspace_yearly":
+    case "pro":
+    case "pro_yearly":
+    case "max":
+    case "max_yearly":
+      return true;
+    case "none":
+    case "free":
+      return false;
+    default:
+      return assertNever(seatType);
+  }
+}
+
 // Per-user credit state on a membership. Models where a user sits in the
 // personal-credits → workspace-pool → cap progression. Only the per-user
 // dimension lives here; the workspace-level pool state lives separately on

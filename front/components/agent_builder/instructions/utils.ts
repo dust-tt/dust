@@ -23,12 +23,14 @@ export function isBestPerformingModel(modelId: ModelIdType): boolean {
   return BEST_PERFORMING_MODELS_ID.includes(modelId);
 }
 
-export function categorizeModels(models: ModelConfigurationType[]): {
-  bestPerformingModelConfigs: ModelConfigurationType[];
-  otherModelConfigs: ModelConfigurationType[];
+export function categorizeModels<T extends ModelConfigurationType>(
+  models: T[]
+): {
+  bestPerformingModelConfigs: T[];
+  otherModelConfigs: T[];
 } {
-  const bestPerformingModelConfigs: ModelConfigurationType[] = [];
-  const otherModelConfigs: ModelConfigurationType[] = [];
+  const bestPerformingModelConfigs: T[] = [];
+  const otherModelConfigs: T[] = [];
 
   for (const modelConfig of models) {
     if (isBestPerformingModel(modelConfig.modelId)) {
@@ -41,25 +43,29 @@ export function categorizeModels(models: ModelConfigurationType[]): {
   return { bestPerformingModelConfigs, otherModelConfigs };
 }
 
-export function getModelKey(modelConfig: ModelConfigurationType): string {
+export function getModelKey(
+  modelConfig: Pick<ModelConfigurationType, "modelId">
+): ModelIdType {
   return modelConfig.modelId;
 }
 
 // Enhanced categorization for new UI structure
-export interface ModelCategories {
-  bestGeneralModels: ModelConfigurationType[];
+export interface ModelCategories<
+  T extends ModelConfigurationType = ModelConfigurationType,
+> {
+  bestGeneralModels: T[];
   providerGroups: Map<
     ModelProviderIdType,
     {
-      recent: ModelConfigurationType[];
-      older: ModelConfigurationType[];
+      recent: T[];
+      older: T[];
     }
   >;
 }
 
-export function getModelsCategorization(
-  models: ModelConfigurationType[]
-): ModelCategories {
+export function getModelsCategorization<T extends ModelConfigurationType>(
+  models: T[]
+): ModelCategories<T> {
   // Use existing categorization to separate best performing models
   const { bestPerformingModelConfigs, otherModelConfigs } =
     categorizeModels(models);
@@ -68,8 +74,8 @@ export function getModelsCategorization(
   const providerGroups = new Map<
     ModelProviderIdType,
     {
-      recent: ModelConfigurationType[];
-      older: ModelConfigurationType[];
+      recent: T[];
+      older: T[];
     }
   >();
 

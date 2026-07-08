@@ -94,17 +94,15 @@ export function ChartsTooltip({
     return (
       <div
         role="tooltip"
-        className="flex max-h-60 min-w-32 flex-col overflow-hidden rounded-lg border border-border/50 bg-background px-2.5 py-1.5 text-xs shadow-xl dark:border-border-night/50 dark:bg-background-night"
+        className="flex max-h-60 min-w-32 flex-col overflow-hidden rounded-lg border border-border/50 bg-background px-2.5 py-1.5 text-xs shadow-xl"
       >
         {barLabel && (
-          <div className="mb-1 text-muted-foreground dark:text-muted-foreground-night">
-            {barLabel}
-          </div>
+          <div className="mb-1 text-muted-foreground">{barLabel}</div>
         )}
         <div className="mb-2 flex items-center gap-2">
           <LegendDot className={colorClassName} />
           <Label>{toolName}</Label>
-          <span className="ml-1 text-muted-foreground dark:text-muted-foreground-night">
+          <span className="ml-1 text-muted-foreground">
             ({percentOfTotal}%)
           </span>
         </div>
@@ -112,15 +110,11 @@ export function ChartsTooltip({
           <div className="space-y-1.5">
             {breakdownRows.map((b) => (
               <div key={b.label} className="flex items-center gap-2">
-                <span className="text-muted-foreground dark:text-muted-foreground-night">
-                  {b.label}
-                </span>
-                <span className="ml-auto font-mono font-medium tabular-nums text-foreground dark:text-foreground-night">
+                <span className="text-muted-foreground">{b.label}</span>
+                <span className="ml-auto font-mono font-medium tabular-nums text-foreground">
                   {b.value.toLocaleString()}
                 </span>
-                <span className="text-muted-foreground dark:text-muted-foreground-night">
-                  ({b.percent}%)
-                </span>
+                <span className="text-muted-foreground">({b.percent}%)</span>
               </div>
             ))}
           </div>
@@ -132,26 +126,18 @@ export function ChartsTooltip({
   return (
     <div
       role="tooltip"
-      className="flex max-h-60 min-w-32 flex-col overflow-hidden rounded-lg border border-border/50 bg-background px-2.5 py-1.5 text-xs shadow-xl dark:border-border-night/50 dark:bg-background-night"
+      className="flex max-h-60 min-w-32 flex-col overflow-hidden rounded-lg border border-border/50 bg-background px-2.5 py-1.5 text-xs shadow-xl"
     >
-      {barLabel && (
-        <div className="mb-1 text-muted-foreground dark:text-muted-foreground-night">
-          {barLabel}
-        </div>
-      )}
+      {barLabel && <div className="mb-1 text-muted-foreground">{barLabel}</div>}
       <div className="mb-1.5 flex items-center gap-2">
         <LegendDot className={colorClassName} />
         <Label>{toolName}</Label>
-        <span className="ml-1 text-muted-foreground dark:text-muted-foreground-night">
-          ({percentOfTotal}%)
-        </span>
+        <span className="ml-1 text-muted-foreground">({percentOfTotal}%)</span>
       </div>
       <div className="flex-1 overflow-y-auto pr-1">
         <div className="flex items-center gap-2">
-          <span className="text-muted-foreground dark:text-muted-foreground-night">
-            {toolName}
-          </span>
-          <span className="ml-auto font-mono font-medium tabular-nums text-foreground dark:text-foreground-night">
+          <span className="text-muted-foreground">{toolName}</span>
+          <span className="ml-auto font-mono font-medium tabular-nums text-foreground">
             {data.count.toLocaleString()}
           </span>
         </div>

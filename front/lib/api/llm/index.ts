@@ -20,6 +20,7 @@ import { isXaiWhitelistedModelId } from "@app/lib/api/llm/clients/xai/types";
 import type { LLM } from "@app/lib/api/llm/llm";
 import {
   BatchEndpointTransition,
+  NoopStreamTransition,
   StreamEndpointTransition,
 } from "@app/lib/api/llm/transitionLLM";
 import type { LLMParameters } from "@app/lib/api/llm/types/options";
@@ -27,7 +28,6 @@ import {
   config as multiRegionsConfig,
   config as regionConfig,
 } from "@app/lib/api/regions/config";
-import { isEnterpriseOrDust } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
 import { getBatchEndpoints } from "@app/lib/llms/batch";
@@ -40,7 +40,11 @@ import type {
   WorkspaceConfig,
 } from "@app/lib/llms/types/filter";
 import { sortEndpointsByPreferredRegion } from "@app/lib/llms/utils/sort_endpoints";
-import { isModelId } from "@app/lib/model_constructors/types/model_ids";
+import {
+  isModelId,
+  NOOP_MODEL_ID,
+} from "@app/lib/model_constructors/types/model_ids";
+import { GOOGLE_AI_STUDIO_API } from "@app/lib/model_constructors/types/provider_apis";
 import {
   isProviderId,
   type ProviderId,
@@ -50,7 +54,10 @@ import {
   GLOBAL,
   type Region,
 } from "@app/lib/model_constructors/types/regions";
-import { isCreditPricedPlanPrefix } from "@app/lib/plans/plan_codes";
+import {
+  isCreditPricedPlanPrefix,
+  isEnterpriseOrDust,
+} from "@app/lib/plans/plan_codes";
 import logger from "@app/logger/logger";
 import { BYOK_MODEL_PROVIDER_IDS } from "@app/types/assistant/models/providers";
 import type { ModelIdType } from "@app/types/assistant/models/types";
@@ -194,7 +201,16 @@ export async function getLegacyLLM(
       featureFlags.includes("use_vertex_for_supported_models"));
 
   if (isAnthropicWhitelistedModelId(modelId)) {
-    const useEapKey = getModelConfigByModelId(modelId)?.useEapKey ?? false;
+    const modelConfig = getModelConfigByModelId(modelId);
+    const useEapKey = modelConfig?.useEapKey ?? false;
+
+    // Vertex serves models from regional deployments, so only route to Vertex
+    // when the model actually has quota in the current region. A model that is
+    // not regionally available (e.g. Sonnet 5 in europe-west1) must fall back to
+    // the direct Anthropic API rather than hit a non-existent regional endpoint.
+    const regionallyAvailable =
+      modelConfig?.regionalAvailability[regionConfig.getCurrentRegion()] ===
+      true;
 
     // EAP models must hit the Anthropic API directly with the EAP key. Vertex
     // authenticates via GCP project creds and ignores ANTHROPIC_API_KEY, so
@@ -202,7 +218,8 @@ export async function getLegacyLLM(
     const useVertex =
       !useEapKey &&
       useVertexPrerequisite &&
-      isAnthropicVertexWhitelistedModelId(modelId);
+      isAnthropicVertexWhitelistedModelId(modelId) &&
+      regionallyAvailable;
 
     const anthropicCredentials = useEapKey
       ? withEapAnthropicKey(modelId, credentials)
@@ -245,12 +262,16 @@ export async function getStreamLLM(
   );
 
   if (featureFlags.includes("use_new_llm_router") && streamEndpointLLM) {
-    logger.info(
-      { modelId: llmParameters.modelId },
-      `Sending request to ${llmParameters.modelId} with new router`
-    );
     return streamEndpointLLM;
   }
+
+  logger.info(
+    {
+      modelId: llmParameters.modelId,
+      workspaceId: auth.getNonNullableWorkspace().sId,
+    },
+    `Falling back to the old router for ${llmParameters.modelId}`
+  );
 
   const legacyLLM = await getLegacyLLM(auth, llmParameters);
 
@@ -302,19 +323,20 @@ function getProviderIdFilter(auth: Authenticator): ValueFilter<ProviderId> {
   const byok = auth.getNonNullablePlan().isByok;
   const providerIds = byok
     ? intersection(whitelistedProviderIds, BYOK_MODEL_PROVIDER_IDS)
-    : whitelistedProviderIds.filter(
-        // We route all non-byok gemini requests to agent platform
-        (providerId) => providerId !== "google_ai_studio"
-      );
+    : whitelistedProviderIds;
 
   return { in: providerIds };
 }
 
 // Temporary helper while we have both systems
 export function getWorkspaceFilter(auth: Authenticator): Where<EndpointConfig> {
+  const byok = auth.getNonNullablePlan().isByok;
+
   return {
     providerId: getProviderIdFilter(auth),
     region: getRegionFilter(auth),
+    // We route all non-byok gemini requests to agent platform.
+    ...(byok ? {} : { not: { api: { eq: GOOGLE_AI_STUDIO_API } } }),
   };
 }
 
@@ -383,7 +405,22 @@ function getStreamEndpointLLM(
     return null;
   }
 
-  return new StreamEndpointTransition(auth, llmParameters, endpoint);
+  // The noop model needs a dedicated transition to preserve its static-response
+  // and simulated-credit behaviors, which the generic transition drops.
+  if (endpoint.modelId === NOOP_MODEL_ID) {
+    return new NoopStreamTransition(auth, llmParameters, endpoint);
+  }
+
+  const modelConfig = getModelConfigByModelId(llmParameters.modelId);
+  const credentials = modelConfig?.useEapKey
+    ? withEapAnthropicKey(llmParameters.modelId, llmParameters.credentials)
+    : llmParameters.credentials;
+
+  return new StreamEndpointTransition(
+    auth,
+    { ...llmParameters, credentials },
+    endpoint
+  );
 }
 
 export async function getBatchEndpointLLM(
@@ -402,5 +439,14 @@ export async function getBatchEndpointLLM(
     return null;
   }
 
-  return new BatchEndpointTransition(auth, llmParameters, endpoint);
+  const modelConfig = getModelConfigByModelId(llmParameters.modelId);
+  const credentials = modelConfig?.useEapKey
+    ? withEapAnthropicKey(llmParameters.modelId, llmParameters.credentials)
+    : llmParameters.credentials;
+
+  return new BatchEndpointTransition(
+    auth,
+    { ...llmParameters, credentials },
+    endpoint
+  );
 }

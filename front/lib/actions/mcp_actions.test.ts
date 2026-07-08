@@ -8,22 +8,28 @@ import type {
 import {
   getToolExtraFields,
   listToolsForServerSideMCPServer,
+  makeServerSideMCPToolConfigurations,
   postProcessMCPToolResult,
+  runToolCallWithDetachedSignal,
   tryCallMCPTool,
 } from "@app/lib/actions/mcp_actions";
 import {
   autoInternalMCPServerNameToSId,
   internalMCPServerNameToSId,
 } from "@app/lib/actions/mcp_helper";
+import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
 import type { DataSourcesToolConfigurationType } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import type { MCPConnectionParams } from "@app/lib/actions/mcp_metadata";
 import { connectToMCPServer } from "@app/lib/actions/mcp_metadata";
 import type { AgentLoopRunContextType } from "@app/lib/actions/types";
+import type { ServerSideMCPToolTypeWithStakeAndRetryPolicy } from "@app/lib/api/mcp";
 import { Authenticator } from "@app/lib/auth";
+import { getSupportedModelConfig } from "@app/lib/llms/model_configurations";
 import {
   AgentMessageModel,
   MessageModel,
 } from "@app/lib/models/agent/conversation";
+import type { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import { InternalMCPServerInMemoryResource } from "@app/lib/resources/internal_mcp_server_in_memory_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { RemoteMCPServerToolMetadataResource } from "@app/lib/resources/remote_mcp_server_tool_metadata_resource";
@@ -36,8 +42,12 @@ import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
 import type { AgentMCPActionWithOutputType } from "@app/types/actions";
-import type { AgentMessageType } from "@app/types/assistant/conversation";
+import type {
+  AgentMessageType,
+  UserMessageType,
+} from "@app/types/assistant/conversation";
 import { Ok } from "@app/types/shared/result";
+import type { WorkspaceType } from "@app/types/user";
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import type { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { assert, describe, expect, it, vi } from "vitest";
@@ -86,14 +96,14 @@ vi.mock(
       withToolResultProcessing: spy,
       registerTool: (
         auth: Parameters<typeof actual.registerTool>[0],
-        agentLoopContext: Parameters<typeof actual.registerTool>[1],
+        toolContext: Parameters<typeof actual.registerTool>[1],
         server: Parameters<typeof actual.registerTool>[2],
         tool: Parameters<typeof actual.registerTool>[3],
         opts: Parameters<typeof actual.registerTool>[4]
       ) => {
         actual.registerTool(
           auth,
-          agentLoopContext,
+          toolContext,
           server,
           {
             ...tool,
@@ -132,8 +142,7 @@ vi.mock("@app/lib/api/actions/servers/search/tools", async () => {
       mockSearchFunction({
         ...(params as object),
         auth: (extra as { auth?: unknown }).auth,
-        agentLoopContext: (extra as { agentLoopContext?: unknown })
-          .agentLoopContext,
+        toolContext: (extra as { toolContext?: unknown }).toolContext,
       }),
   };
   const handlersWithTags = {
@@ -159,9 +168,14 @@ vi.mock("@app/lib/api/actions/servers/search/tools", async () => {
 });
 
 // Sets up test environment with workspace, auth, MCP server, client connection, and configuration.
-async function setupTest() {
+async function setupTest(
+  options: {
+    workspace?: WorkspaceType;
+    serverName?: InternalMCPServerNameType;
+  } = {}
+) {
   const user = await UserFactory.basic();
-  const workspace = await WorkspaceFactory.basic();
+  const workspace = options.workspace ?? (await WorkspaceFactory.basic());
   // Membership need to be set before auth.
   await MembershipFactory.associate(workspace, user, {
     role: "admin",
@@ -179,7 +193,7 @@ async function setupTest() {
   const internalMCPServer = await InternalMCPServerInMemoryResource.makeNew(
     auth,
     {
-      name: "google_calendar",
+      name: options.serverName ?? "google_calendar",
       useCase: null,
     }
   );
@@ -228,6 +242,53 @@ async function setupTest() {
 }
 
 describe("MCP Actions", () => {
+  it.each([
+    {
+      planType: "credit-priced",
+      createWorkspace: () => WorkspaceFactory.creditPriced(),
+      expectedStake: "low",
+    },
+    {
+      planType: "legacy",
+      createWorkspace: () => WorkspaceFactory.basic(),
+      expectedStake: "high",
+    },
+  ])("sets schedule_wakeup to $expectedStake stake for $planType plans", async ({
+    createWorkspace,
+    expectedStake,
+  }) => {
+    const workspace = await createWorkspace();
+    const { auth, connectionParams, mcpClient, config } = await setupTest({
+      workspace,
+      serverName: "wakeups",
+    });
+
+    const toolsResult = await listToolsForServerSideMCPServer(
+      auth,
+      connectionParams,
+      mcpClient,
+      config
+    );
+
+    assert(toolsResult.isOk());
+    expect(toolsResult.value).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          name: "schedule_wakeup",
+          permission: expectedStake,
+        }),
+        expect.objectContaining({
+          name: "list_wakeups",
+          permission: "never_ask",
+        }),
+        expect.objectContaining({
+          name: "cancel_wakeup",
+          permission: "never_ask",
+        }),
+      ])
+    );
+  });
+
   it("should filter disabled tools and store metadata settings", async () => {
     const { auth, mcpServerId, connectionParams, mcpClient, config } =
       await setupTest();
@@ -572,6 +633,29 @@ describe("tryCallMCPTool", () => {
       richMentions: [],
       costCredits: null,
     };
+    const userMessage: UserMessageType = {
+      id: -1,
+      created: Date.now(),
+      type: "user_message",
+      sId: generateRandomModelSId(),
+      visibility: "visible",
+      version: 0,
+      rank: 0,
+      branchId: null,
+      user: null,
+      mentions: [],
+      richMentions: [],
+      content: "test query",
+      context: {
+        username: "test",
+        fullName: null,
+        email: null,
+        profilePictureUrl: null,
+        timezone: "UTC",
+        origin: "web",
+      },
+      reactions: [],
+    };
 
     // Create tool configuration
     const toolConfiguration: LightServerSideMCPToolConfigurationType = {
@@ -625,9 +709,20 @@ describe("tryCallMCPTool", () => {
       generatedFiles: [],
     };
 
+    const { model: agentModel, ...agentConfiguration } = agentConfig;
+    const modelConfig = getSupportedModelConfig(agentModel);
+    if (!modelConfig) {
+      throw new Error("Supported model config should exist");
+    }
+
     // Create agent loop run context
     const agentLoopRunContext: AgentLoopRunContextType = {
-      agentConfiguration: agentConfig,
+      contextType: "agent_loop",
+      agentConfiguration,
+      model: {
+        ...agentModel,
+        ...modelConfig,
+      },
       agentMessage,
       conversation,
       stepContext: {
@@ -637,8 +732,10 @@ describe("tryCallMCPTool", () => {
         resumeState: null,
         websearchResultCount: 0,
       },
-      currentAction: mockAction,
+      // The action resource is never read by tryCallMCPTool; a plain mock is enough here.
+      action: mockAction as unknown as AgentMCPActionResource,
       toolConfiguration,
+      userMessage,
     };
 
     // Call tryCallMCPTool
@@ -649,7 +746,7 @@ describe("tryCallMCPTool", () => {
         relativeTimeFrame: "all",
         dataSources: [],
       },
-      agentLoopRunContext,
+      { runContext: agentLoopRunContext },
       {
         progressToken: agentMessage.agentMessageId as number,
         makeToolNotificationEvent: async () => ({
@@ -796,5 +893,182 @@ describe("postProcessMCPToolResult - structuredContent", () => {
     );
 
     expect(result.content).toHaveLength(0);
+  });
+});
+
+// Counts active "abort" listeners on a signal by spying on add/remove. We can't
+// read the listener list directly, so we track the delta ourselves.
+function trackAbortListeners(signal: AbortSignal): { count: () => number } {
+  let count = 0;
+  const add = signal.addEventListener.bind(signal);
+  const remove = signal.removeEventListener.bind(signal);
+  vi.spyOn(signal, "addEventListener").mockImplementation((type, ...rest) => {
+    if (type === "abort") {
+      count += 1;
+    }
+    return add(type, ...rest);
+  });
+  vi.spyOn(signal, "removeEventListener").mockImplementation(
+    (type, ...rest) => {
+      if (type === "abort") {
+        count -= 1;
+      }
+      return remove(type, ...rest);
+    }
+  );
+  return { count: () => count };
+}
+
+describe("runToolCallWithDetachedSignal", () => {
+  it("leaves no listener on the source after the call resolves", async () => {
+    const source = new AbortController().signal;
+    const tracker = trackAbortListeners(source);
+
+    const result = await runToolCallWithDetachedSignal(
+      source,
+      async () => "ok"
+    );
+
+    expect(result).toBe("ok");
+    expect(tracker.count()).toBe(0);
+  });
+
+  it("leaves no listener on the source after the call rejects", async () => {
+    const source = new AbortController().signal;
+    const tracker = trackAbortListeners(source);
+
+    await expect(
+      runToolCallWithDetachedSignal(source, async () => {
+        throw new Error("boom");
+      })
+    ).rejects.toThrow("boom");
+
+    expect(tracker.count()).toBe(0);
+  });
+
+  it("does not retain a listener even if the SDK leaks one on its signal", async () => {
+    // Simulates the MCP SDK: the callee attaches an abort listener it never
+    // removes. The leak must land on the throwaway signal, not on `source`.
+    const source = new AbortController().signal;
+    const tracker = trackAbortListeners(source);
+
+    await runToolCallWithDetachedSignal(source, async (signal) => {
+      signal.addEventListener("abort", () => {});
+    });
+
+    expect(tracker.count()).toBe(0);
+  });
+
+  it("forwards aborts from the source to the throwaway signal", async () => {
+    const controller = new AbortController();
+
+    let inner: AbortSignal | undefined;
+    const pending = runToolCallWithDetachedSignal(
+      controller.signal,
+      async (signal) => {
+        inner = signal;
+        return new Promise<void>((resolve) => {
+          signal.addEventListener("abort", () => resolve());
+        });
+      }
+    );
+
+    controller.abort(new Error("cancelled"));
+    await pending;
+
+    expect(inner?.aborted).toBe(true);
+    expect((inner?.reason as Error)?.message).toBe("cancelled");
+  });
+
+  it("propagates an already-aborted source immediately", async () => {
+    const controller = new AbortController();
+    controller.abort(new Error("already gone"));
+
+    const seen = await runToolCallWithDetachedSignal(
+      controller.signal,
+      async (signal) => signal.aborted
+    );
+
+    expect(seen).toBe(true);
+  });
+
+  it("runs without a source signal", async () => {
+    const seen = await runToolCallWithDetachedSignal(
+      undefined,
+      async (signal) => {
+        expect(signal).toBeInstanceOf(AbortSignal);
+        return signal.aborted;
+      }
+    );
+
+    expect(seen).toBe(false);
+  });
+});
+
+describe("makeServerSideMCPToolConfigurations eager flag", () => {
+  const config: ServerSideMCPServerConfigurationType = {
+    id: -1,
+    sId: generateRandomModelSId(),
+    type: "mcp_server_configuration",
+    name: "dummy_name",
+    description: "dummy_description",
+    dataSources: null,
+    tables: null,
+    childAgentId: null,
+    timeFrame: null,
+    jsonSchema: null,
+    additionalConfiguration: {},
+    mcpServerViewId: "mcpServerId",
+    dustAppConfiguration: null,
+    internalMCPServerId: "internalMCPServerId",
+    secretName: null,
+    dustProject: null,
+  };
+
+  function makeTool(
+    name: string,
+    eager?: boolean
+  ): ServerSideMCPToolTypeWithStakeAndRetryPolicy {
+    return {
+      name,
+      description: `${name} description`,
+      inputSchema: { type: "object", properties: {} },
+      availability: "auto",
+      stakeLevel: "never_ask",
+      toolServerId: "toolServerId",
+      retryPolicy: "no_retry",
+      ...(eager ? { eager: true } : {}),
+    };
+  }
+
+  it("carries eager onto the tool configuration when set", () => {
+    const [tool] = makeServerSideMCPToolConfigurations(config, [
+      makeTool("eager_tool", true),
+    ]);
+
+    expect(tool.eager).toBe(true);
+  });
+
+  it("omits eager when the tool does not opt in", () => {
+    const [tool] = makeServerSideMCPToolConfigurations(config, [
+      makeTool("plain_tool"),
+    ]);
+
+    expect(tool.eager).toBeUndefined();
+  });
+
+  it("defers exactly the non-eager tools under the Anthropic client rule", () => {
+    // Mirrors the Anthropic client: defer_loading = toolSearchEnabled && !eager.
+    const tools = makeServerSideMCPToolConfigurations(config, [
+      makeTool("eager_tool", true),
+      makeTool("plain_tool"),
+    ]);
+
+    const toolSearchEnabled = true;
+    const deferred = tools
+      .filter((t) => toolSearchEnabled && !t.eager)
+      .map((t) => t.name);
+
+    expect(deferred).toEqual(["plain_tool"]);
   });
 });

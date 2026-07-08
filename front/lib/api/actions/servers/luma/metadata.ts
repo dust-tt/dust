@@ -20,10 +20,12 @@ export const LUMA_TOOLS_METADATA = createToolsRecord({
       running: "Getting Luma account info",
       done: "Get Luma account info",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   get_event: {
     description:
-      "Get detailed information about a specific Luma event by its ID.",
+      "Get the full details of a specific Luma event by its event ID.",
     schema: {
       event_api_id: z.string().describe("The API ID of the event to retrieve."),
     },
@@ -32,6 +34,8 @@ export const LUMA_TOOLS_METADATA = createToolsRecord({
       running: "Getting Luma event",
       done: "Get Luma event",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   list_events: {
     description:
@@ -52,6 +56,8 @@ export const LUMA_TOOLS_METADATA = createToolsRecord({
       running: "Listing Luma events",
       done: "List Luma events",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   create_event: {
     description:
@@ -98,11 +104,14 @@ export const LUMA_TOOLS_METADATA = createToolsRecord({
       running: "Creating Luma event",
       done: "Create Luma event",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   update_event: {
     description:
-      "Update an existing Luma event. " +
-      "Only the fields you provide will be updated. " +
+      "Update an existing Luma event: edit or reschedule its name, start time, " +
+      "capacity, or visibility. " +
+      "Only the fields you provide will be changed. " +
       "Set suppress_notifications to true to avoid emailing guests about minor changes.",
     schema: {
       event_api_id: z.string().describe("The API ID of the event to update."),
@@ -148,6 +157,8 @@ export const LUMA_TOOLS_METADATA = createToolsRecord({
       running: "Updating Luma event",
       done: "Update Luma event",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   list_guests: {
     description:
@@ -188,9 +199,12 @@ export const LUMA_TOOLS_METADATA = createToolsRecord({
       running: "Listing Luma guests",
       done: "List Luma guests",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   get_guest: {
-    description: "Get detailed information about a specific guest of an event.",
+    description:
+      "Get the registration record of a single guest who signed up for a Luma event.",
     schema: {
       event_api_id: z.string().describe("The API ID of the event."),
       guest_api_id: z.string().describe("The API ID of the guest."),
@@ -200,12 +214,13 @@ export const LUMA_TOOLS_METADATA = createToolsRecord({
       running: "Getting Luma guest",
       done: "Get Luma guest",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   update_guest_status: {
     description:
-      "Update the approval status of a single guest. " +
-      "Can approve or decline a guest. " +
-      "Use should_refund when declining guests with paid tickets.",
+      "Approve or decline a single guest on a Luma event, including pending guests. " +
+      "Use should_refund when declining guests who paid for registration.",
     schema: {
       event_api_id: z.string().describe("The API ID of the event."),
       guest_api_id_or_email: z
@@ -218,7 +233,7 @@ export const LUMA_TOOLS_METADATA = createToolsRecord({
         .boolean()
         .optional()
         .describe(
-          "Whether to refund the guest when declining (for paid tickets)."
+          "Whether to refund the guest when declining (for paid registrations)."
         ),
     },
     stake: "medium",
@@ -226,6 +241,8 @@ export const LUMA_TOOLS_METADATA = createToolsRecord({
       running: "Updating Luma guest status",
       done: "Update Luma guest status",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   add_guests: {
     description:
@@ -249,6 +266,8 @@ export const LUMA_TOOLS_METADATA = createToolsRecord({
       running: "Adding Luma guests",
       done: "Add Luma guests",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   send_invites: {
     description:
@@ -267,12 +286,14 @@ export const LUMA_TOOLS_METADATA = createToolsRecord({
       running: "Sending Luma invites",
       done: "Send Luma invites",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   search_guests: {
     description:
-      "Search for a guest by name or email across all registrations of an event. " +
+      "Find a specific attendee by name or email across all registrations of a Luma event. " +
       "Fetches all guests internally and filters by the query string (case-insensitive partial match). " +
-      "Use this when you need to find a specific person. May take a moment for large events.",
+      "Use this to locate one person. May take a moment for large events.",
     schema: {
       event_api_id: z
         .string()
@@ -288,6 +309,8 @@ export const LUMA_TOOLS_METADATA = createToolsRecord({
       running: "Searching Luma guests",
       done: "Search Luma guests",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   get_event_insights: {
     description:
@@ -305,6 +328,8 @@ export const LUMA_TOOLS_METADATA = createToolsRecord({
       running: "Getting Luma event insights",
       done: "Get Luma event insights",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
 });
 
@@ -316,13 +341,14 @@ export const LUMA_SERVER = {
     authorization: null,
     icon: "LumaLogo",
     documentationUrl: null,
-    instructions: null,
   },
   tools: Object.values(LUMA_TOOLS_METADATA).map((t) => ({
     name: t.name,
     description: t.description,
     inputSchema: zodToJsonSchema(z.object(t.schema)) as JSONSchema,
     displayLabels: t.displayLabels,
+    toolCostCategory: t.toolCostCategory,
+    freeUsage: t.freeUsage,
   })),
   tools_stakes: Object.fromEntries(
     Object.values(LUMA_TOOLS_METADATA).map((t) => [t.name, t.stake])

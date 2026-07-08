@@ -101,7 +101,11 @@ export async function readFrameFileContent(
   const workspace = renderLightWorkspaceType({
     workspace: auth.getNonNullableWorkspace(),
   });
-  const readStream = frameFile.getSharedReadStream(workspace, "original");
+  // Read what actually renders: a published frame's bundle (processed), else the source.
+  const readStream = frameFile.getSharedReadStream(
+    workspace,
+    frameFile.getRenderableVersion()
+  );
   const bufferResult = await streamToBuffer(readStream);
   if (bufferResult.isErr()) {
     return null;

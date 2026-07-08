@@ -1,13 +1,13 @@
 import { metronomeBalanceToDisplayData } from "@app/lib/api/credits/metronome_balances";
-import type {
-  PokeListCreditsResponseBody,
-  PokeUnifiedCreditRow,
-} from "@app/lib/api/poke/credits";
 import { listMetronomeBalances } from "@app/lib/metronome/client";
 import { getCreditTypeProgrammaticUsdId } from "@app/lib/metronome/constants";
 import { isMetronomeExcessCredit } from "@app/lib/metronome/types";
 import { CreditResource } from "@app/lib/resources/credit_resource";
 import logger from "@app/logger/logger";
+import type {
+  PokeListCreditsResponseBody,
+  PokeUnifiedCreditRow,
+} from "@app/types/api/poke/credits";
 import type { CreditDisplayData } from "@app/types/credits";
 import { pokeApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";

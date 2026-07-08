@@ -36,8 +36,8 @@ const STATUS_CHIP_CONFIG: Record<
   CheckSummaryStatus,
   { color: ComponentProps<typeof Chip>["color"]; label: string }
 > = {
-  ok: { color: "green", label: "OK" },
-  alert: { color: "rose", label: "Alert" },
+  ok: { color: "success", label: "OK" },
+  alert: { color: "warning", label: "Alert" },
   "no-data": { color: "info", label: "No Data" },
 };
 
@@ -45,18 +45,16 @@ const HISTORY_STATUS_CHIP_CONFIG: Record<
   CheckHistoryRun["status"],
   { color: ComponentProps<typeof Chip>["color"]; label: string }
 > = {
-  success: { color: "green", label: "Success" },
-  failure: { color: "rose", label: "Failed" },
+  success: { color: "success", label: "Success" },
+  failure: { color: "warning", label: "Failed" },
   skipped: { color: "info", label: "Skipped" },
-  running: { color: "blue", label: "Running" },
+  running: { color: "highlight", label: "Running" },
 };
 
 const STATUS_CARD_CLASSES: Record<CheckSummaryStatus, string> = {
-  alert:
-    "border-red-200 bg-red-50 dark:border-warning-500 dark:bg-warning-900/20",
-  ok: "border-green-200 bg-green-50 dark:border-success-500 dark:bg-success-900/20",
-  "no-data":
-    "border-gray-200 bg-gray-50 dark:border-gray-700 dark:bg-muted-background-night",
+  alert: "border-warning-200 bg-warning-50",
+  ok: "border-success-200 bg-success-50",
+  "no-data": "border-primary-200 bg-primary-50",
 };
 
 interface StatusChipProps {
@@ -148,15 +146,13 @@ function ActionLinksList({ payload, links, checkName }: ActionLinksListProps) {
   const renderActionLink = (link: ActionLink, item?: CheckFailurePayload) => (
     <div className="flex items-center gap-2">
       {link.url === "#" ? (
-        <span className="text-sm text-gray-500 dark:text-muted-foreground-night">
-          {link.label}
-        </span>
+        <span className="text-sm text-primary-500">{link.label}</span>
       ) : (
         <LinkWrapper
           href={link.url}
           target="_blank"
           rel="noopener noreferrer"
-          className="text-sm text-blue-600 hover:underline dark:text-blue-400"
+          className="text-sm text-highlight-600 hover:underline"
         >
           {link.label}
         </LinkWrapper>
@@ -214,9 +210,7 @@ function ActionLinksList({ payload, links, checkName }: ActionLinksListProps) {
 
             return (
               <div key={errorMsg} className="space-y-1">
-                <p className="text-sm text-gray-500 dark:text-muted-foreground-night">
-                  {errorMsg}:
-                </p>
+                <p className="text-sm text-primary-500">{errorMsg}:</p>
                 <div className="ml-4 space-y-1">
                   {itemsToRender.map(({ item, link }, idx) => (
                     <div key={idx}>{renderActionLink(link, item)}</div>
@@ -294,12 +288,10 @@ function HistoryRunRow({ run, checkName }: HistoryRunRowProps) {
   const rowContent = (
     <>
       <div className="flex flex-1 items-center gap-2">
-        <span className="text-sm font-medium text-gray-600 dark:text-muted-foreground-night">
+        <span className="text-sm font-medium text-primary-600">
           {timestamp.toLocaleDateString()} {timestamp.toLocaleTimeString()}
         </span>
-        <span className="text-xs text-gray-400 dark:text-gray-500">
-          ({run.workflowType})
-        </span>
+        <span className="text-xs text-primary-400">({run.workflowType})</span>
       </div>
       <HistoryStatusChip status={run.status} />
     </>
@@ -308,9 +300,7 @@ function HistoryRunRow({ run, checkName }: HistoryRunRowProps) {
   const detailsContent = (
     <div className="ml-6 mt-2 space-y-2">
       {run.errorMessage && (
-        <p className="text-sm text-red-600 dark:text-red-400">
-          {run.errorMessage}
-        </p>
+        <p className="text-sm text-warning-600">{run.errorMessage}</p>
       )}
       <ActionLinksList
         payload={run.payload}
@@ -319,10 +309,10 @@ function HistoryRunRow({ run, checkName }: HistoryRunRowProps) {
       />
       {run.payload !== null && (
         <details className="mt-2">
-          <summary className="cursor-pointer text-sm text-gray-500 dark:text-muted-foreground-night">
+          <summary className="cursor-pointer text-sm text-primary-500">
             Raw payload
           </summary>
-          <pre className="mt-1 max-h-96 overflow-auto whitespace-pre-wrap break-words rounded bg-gray-100 p-2 text-xs dark:bg-gray-800">
+          <pre className="mt-1 max-h-96 overflow-auto whitespace-pre-wrap break-words rounded bg-primary-100 p-2 text-xs">
             {JSON.stringify(run.payload, null, 2)}
           </pre>
         </details>
@@ -358,11 +348,7 @@ function PastRunsSection({ checkName }: PastRunsSectionProps) {
   }
 
   if (runs.length === 0) {
-    return (
-      <p className="text-sm text-gray-500 dark:text-muted-foreground-night">
-        No past runs found.
-      </p>
-    );
+    return <p className="text-sm text-primary-500">No past runs found.</p>;
   }
 
   return (
@@ -400,7 +386,7 @@ function ProductionCheckCard({
         <div className="break-all font-mono text-sm font-medium">
           {check.name}
         </div>
-        <div className="text-xs text-gray-500 dark:text-muted-foreground-night">
+        <div className="text-xs text-primary-500">
           {lastRunDate
             ? `Last run: ${lastRunDate.toLocaleDateString()} ${lastRunDate.toLocaleTimeString()}`
             : "Never run"}
@@ -423,13 +409,13 @@ function ProductionCheckCard({
   );
 
   const detailsContent = (
-    <div className="mt-4 space-y-4 border-t border-gray-200 pt-4 dark:border-gray-700">
+    <div className="mt-4 space-y-4 border-t border-primary-200 pt-4">
       <div className="flex items-center gap-2">
         <LinkWrapper
           href={getDatadogLogsUrl(check.name)}
           target="_blank"
           rel="noopener noreferrer"
-          className="text-sm text-purple-600 hover:underline dark:text-purple-400"
+          className="text-sm text-highlight-600 hover:underline"
         >
           View logs in Datadog →
         </LinkWrapper>
@@ -437,8 +423,8 @@ function ProductionCheckCard({
 
       {check.status === "alert" &&
         (Array.isArray(check.lastRun?.payload) || links.length > 0) && (
-          <div className="rounded-md bg-white p-3 dark:bg-background-night">
-            <h4 className="mb-2 text-sm font-medium text-red-800 dark:text-red-400">
+          <div className="rounded-md bg-background p-3">
+            <h4 className="mb-2 text-sm font-medium text-warning-800">
               Action Items
             </h4>
             <ActionLinksList
@@ -453,21 +439,17 @@ function ProductionCheckCard({
         check.lastRun?.errorMessage &&
         !Array.isArray(check.lastRun?.payload) &&
         links.length === 0 && (
-          <div className="rounded-md bg-white p-3 dark:bg-background-night">
-            <h4 className="mb-2 text-sm font-medium text-red-800 dark:text-red-400">
-              Error
-            </h4>
-            <p className="text-sm text-red-600 dark:text-red-400">
+          <div className="rounded-md bg-background p-3">
+            <h4 className="mb-2 text-sm font-medium text-warning-800">Error</h4>
+            <p className="text-sm text-warning-600">
               {check.lastRun.errorMessage}
             </p>
           </div>
         )}
 
       <div>
-        <h4 className="mb-2 text-sm font-medium text-gray-700 dark:text-muted-foreground-night">
-          Past Runs
-        </h4>
-        <div className="rounded-md bg-white p-3 dark:bg-background-night">
+        <h4 className="mb-2 text-sm font-medium text-primary-700">Past Runs</h4>
+        <div className="rounded-md bg-background p-3">
           <PastRunsSection checkName={check.name} />
         </div>
       </div>
@@ -505,11 +487,11 @@ export function ProductionChecksPage() {
       <div className="py-8">
         <div className="mb-8 flex items-center justify-between gap-x-2">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-foreground-night">
+            <h1 className="text-2xl font-bold text-primary-900">
               Production Checks
             </h1>
             {!isProductionChecksLoading && (
-              <p className="mt-1 text-sm text-gray-600 dark:text-muted-foreground-night">
+              <p className="mt-1 text-sm text-primary-600">
                 {alertCount > 0
                   ? `${alertCount} check${pluralize(alertCount)} need${conjugate(alertCount)} attention`
                   : "All checks passing"}

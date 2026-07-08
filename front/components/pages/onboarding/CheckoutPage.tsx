@@ -251,27 +251,12 @@ export function CheckoutPage() {
   // Force light mode — Stripe embedded checkout does not support dark mode.
   useEffect(() => {
     const htmlEl = document.documentElement;
-    const bodyEl = document.body;
     const hadDark = htmlEl.classList.contains("dark");
-    // biome-ignore lint/plugin/noSparkleClassInFront: s-dark is needed for Sparkle dark mode
-    const hadSDark = htmlEl.classList.contains("s-dark");
-    const hadNight = bodyEl.classList.contains("bg-background-night");
-
     htmlEl.classList.remove("dark");
-    // biome-ignore lint/plugin/noSparkleClassInFront: s-dark is needed for Sparkle dark mode
-    htmlEl.classList.remove("s-dark");
-    bodyEl.classList.remove("bg-background-night");
 
     return () => {
       if (hadDark) {
         htmlEl.classList.add("dark");
-      }
-      if (hadSDark) {
-        // biome-ignore lint/plugin/noSparkleClassInFront: s-dark is needed for Sparkle dark mode
-        htmlEl.classList.add("s-dark");
-      }
-      if (hadNight) {
-        bodyEl.classList.add("bg-background-night");
       }
     };
   }, []);
@@ -372,7 +357,7 @@ export function CheckoutPage() {
   };
 
   const handleApplyCoupon = handleCouponSubmit(async ({ couponCode }) => {
-    const result = await validateCoupon(couponCode.trim());
+    const result = await validateCoupon(couponCode.trim(), "subscription");
     if (!result.ok) {
       setCouponError("couponCode", { message: result.message });
       return;
@@ -440,7 +425,7 @@ export function CheckoutPage() {
   return (
     <main className="flex h-screen overflow-hidden">
       {/* Left pane: order summary + coupon */}
-      <div className="flex w-1/2 flex-col gap-14 overflow-y-auto bg-gray-50 p-24">
+      <div className="flex w-1/2 flex-col gap-14 overflow-y-auto bg-muted-background p-24">
         <div>
           <Icon visual={DustLogoSquare} size="lg" />
         </div>
@@ -450,7 +435,7 @@ export function CheckoutPage() {
             <h1 className="text-5xl font-semibold text-foreground">
               {planDisplayName}
             </h1>
-            <span className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+            <span className="text-sm text-muted-foreground">
               {billingPeriod === "yearly"
                 ? "billed annually"
                 : "billed monthly"}
@@ -459,9 +444,7 @@ export function CheckoutPage() {
 
           <div className="flex flex-col text-sm">
             <div className="flex justify-between">
-              <span className="text-muted-foreground dark:text-muted-foreground-night">
-                Price per seat
-              </span>
+              <span className="text-muted-foreground">Price per seat</span>
               <span>
                 {getPriceAsString({
                   currency,
@@ -472,9 +455,7 @@ export function CheckoutPage() {
               </span>
             </div>
             <div className="mt-3 flex justify-between">
-              <span className="text-muted-foreground dark:text-muted-foreground-night">
-                Number of seats
-              </span>
+              <span className="text-muted-foreground">Number of seats</span>
               <span>
                 {showActualTax ? preparePayment.seatCount : seatCountForSummary}
               </span>
@@ -555,7 +536,7 @@ export function CheckoutPage() {
                       })}
                     </span>
                   </div>
-                  <p className="text-xs text-muted-foreground dark:text-muted-foreground-night">
+                  <p className="text-xs text-muted-foreground">
                     {getPriceAsString({
                       currency,
                       priceInCents: appliedCoupon.amount * 100,
@@ -608,7 +589,7 @@ export function CheckoutPage() {
                     })}
                   </span>
                 </div>
-                <p className="mt-2 text-xs text-muted-foreground dark:text-muted-foreground-night">
+                <p className="mt-2 text-xs text-muted-foreground">
                   Your country selection determines the applicable taxes and
                   billing currency.
                 </p>
@@ -785,7 +766,7 @@ function RightPane({
                 <h2 className="text-2xl font-semibold text-foreground">
                   Select payment method
                 </h2>
-                <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+                <p className="text-sm text-muted-foreground">
                   Your available payment method is shown below
                 </p>
               </div>
@@ -819,9 +800,7 @@ function RightPane({
       return (
         <div className="flex flex-col items-center gap-4">
           <Spinner size="lg" />
-          <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-            Processing payment…
-          </p>
+          <p className="text-sm text-muted-foreground">Processing payment…</p>
         </div>
       );
 
@@ -829,9 +808,7 @@ function RightPane({
       return (
         <div className="flex flex-col items-center gap-4">
           <Spinner size="lg" />
-          <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-            Processing payment…
-          </p>
+          <p className="text-sm text-muted-foreground">Processing payment…</p>
         </div>
       );
 

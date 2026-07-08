@@ -7,7 +7,10 @@ import type {
 } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { makePersonalAuthenticationError } from "@app/lib/actions/mcp_internal_actions/utils";
-import type { AgentLoopContextType } from "@app/lib/actions/types";
+import {
+  isAgentLoopRunContext,
+  type ToolContextType,
+} from "@app/lib/actions/types";
 import { SLACK_SEARCH_ACTION_NUM_RESULTS } from "@app/lib/actions/utils";
 import {
   executeArchiveChannel,
@@ -29,6 +32,10 @@ import {
   resolveUserDisplayName,
   SLACK_THREAD_LISTING_LIMIT,
 } from "@app/lib/api/actions/servers/slack/helpers";
+import {
+  formatSlackMessageForLLM,
+  renderFormattedMessage,
+} from "@app/lib/api/actions/servers/slack/message_formatter";
 import { SLACK_PERSONAL_TOOLS_METADATA } from "@app/lib/api/actions/servers/slack_personal/metadata";
 import { getRefs } from "@app/lib/api/assistant/citations";
 import type { Authenticator } from "@app/lib/auth";
@@ -363,8 +370,11 @@ export interface SlackPersonalToolsResult {
 export function createSlackPersonalTools(
   auth: Authenticator,
   mcpServerId: string,
-  agentLoopContext?: AgentLoopContextType
+  toolContext?: ToolContextType
 ): SlackPersonalToolsResult {
+  const allowFooterRemoval =
+    auth.workspace()?.metadata?.slackPersonalAllowFooterRemoval ?? false;
+
   const handlers: ToolHandlers<typeof SLACK_PERSONAL_TOOLS_METADATA> = {
     search_messages: async (
       {
@@ -377,7 +387,7 @@ export function createSlackPersonalTools(
       },
       { authInfo }
     ) => {
-      if (!agentLoopContext?.runContext) {
+      if (!toolContext?.runContext) {
         return new Err(
           new MCPError("Unreachable: missing agentLoopRunContext.")
         );
@@ -439,7 +449,11 @@ export function createSlackPersonalTools(
           ]);
         }
 
-        const { citationsOffset } = agentLoopContext.runContext.stepContext;
+        const { citationsOffset } = isAgentLoopRunContext(
+          toolContext.runContext
+        )
+          ? toolContext.runContext.stepContext
+          : { citationsOffset: 0 };
 
         const refs = getRefs().slice(
           citationsOffset,
@@ -485,7 +499,7 @@ export function createSlackPersonalTools(
       },
       { authInfo }
     ) => {
-      if (!agentLoopContext?.runContext) {
+      if (!toolContext?.runContext) {
         return new Err(
           new MCPError("Unreachable: missing agentLoopRunContext.")
         );
@@ -515,7 +529,11 @@ export function createSlackPersonalTools(
           ]);
         }
 
-        const { citationsOffset } = agentLoopContext.runContext.stepContext;
+        const { citationsOffset } = isAgentLoopRunContext(
+          toolContext.runContext
+        )
+          ? toolContext.runContext.stepContext
+          : { citationsOffset: 0 };
 
         const refs = getRefs().slice(
           citationsOffset,
@@ -551,7 +569,15 @@ export function createSlackPersonalTools(
     },
 
     post_message: async (
-      { to, message, threadTs, fileId, unfurlLinks, unfurlMedia },
+      {
+        to,
+        message,
+        threadTs,
+        fileId,
+        unfurlLinks,
+        unfurlMedia,
+        show_sent_by_footer,
+      },
       { authInfo }
     ) => {
       const accessToken = authInfo?.token;
@@ -559,14 +585,14 @@ export function createSlackPersonalTools(
         return new Err(new MCPError("Access token not found"));
       }
 
-      if (!agentLoopContext?.runContext) {
+      if (!toolContext?.runContext) {
         return new Err(
           new MCPError("Unreachable: missing agentLoopRunContext.")
         );
       }
 
       try {
-        return await executePostMessage(auth, agentLoopContext, {
+        return await executePostMessage(auth, toolContext, {
           to,
           message,
           threadTs,
@@ -574,6 +600,7 @@ export function createSlackPersonalTools(
           unfurlLinks,
           unfurlMedia,
           accessToken,
+          showSentByFooter: show_sent_by_footer ?? true,
         });
       } catch (error) {
         const authError = handleSlackAuthError(error);
@@ -587,7 +614,15 @@ export function createSlackPersonalTools(
     },
 
     schedule_message: async (
-      { to, message, post_at, threadTs, unfurlLinks, unfurlMedia },
+      {
+        to,
+        message,
+        post_at,
+        threadTs,
+        unfurlLinks,
+        unfurlMedia,
+        show_sent_by_footer,
+      },
       { authInfo }
     ) => {
       const accessToken = authInfo?.token;
@@ -595,14 +630,14 @@ export function createSlackPersonalTools(
         return new Err(new MCPError("Access token not found"));
       }
 
-      if (!agentLoopContext?.runContext) {
+      if (!toolContext?.runContext) {
         return new Err(
           new MCPError("Unreachable: missing agentLoopRunContext.")
         );
       }
 
       try {
-        return await executeScheduleMessage(auth, agentLoopContext, {
+        return await executeScheduleMessage(auth, toolContext, {
           to,
           message,
           post_at,
@@ -610,6 +645,7 @@ export function createSlackPersonalTools(
           unfurlLinks,
           unfurlMedia,
           accessToken,
+          showSentByFooter: show_sent_by_footer ?? true,
         });
       } catch (error) {
         const authError = handleSlackAuthError(error);
@@ -686,7 +722,7 @@ export function createSlackPersonalTools(
     },
 
     list_messages: async ({ channel, relativeTimeFrame }, { authInfo }) => {
-      if (!agentLoopContext?.runContext) {
+      if (!toolContext?.runContext) {
         return new Err(
           new MCPError("Unreachable: missing agentLoopRunContext.")
         );
@@ -778,9 +814,11 @@ export function createSlackPersonalTools(
         accessToken,
       });
 
-      const { citationsOffset } = agentLoopContext.runContext.stepContext;
+      const { citationsOffset } = isAgentLoopRunContext(toolContext.runContext)
+        ? toolContext.runContext.stepContext
+        : { citationsOffset: 0 };
 
-      const refs = getRefs().slice(
+      let refs = getRefs().slice(
         citationsOffset,
         citationsOffset + SLACK_SEARCH_ACTION_NUM_RESULTS
       );
@@ -795,15 +833,21 @@ export function createSlackPersonalTools(
               })
             : null;
           return {
-            ...match,
+            ts: match.ts,
+            reply_count: match.reply_count,
             authorName: authorName ?? "Unknown",
+            // Reconstruct readable text from blocks/attachments: app/bot messages
+            // (Datadog, Zendesk, ...) often have an empty `text` and put content in
+            // `blocks[]`, which would otherwise render as empty for the agent.
+            renderedText: renderFormattedMessage(
+              formatSlackMessageForLLM(match)
+            ),
           };
         })
       );
-
       const searchResults = buildSearchResults<{
         permalink?: string;
-        text?: string;
+        renderedText: string;
         ts?: string;
         authorName: string;
         reply_count?: number;
@@ -814,10 +858,10 @@ export function createSlackPersonalTools(
           const prefix = hasReplies
             ? `[Thread: ${match.ts}]`
             : `[Message: ${match.ts}]`;
-          return `${prefix} From ${match.authorName} in ${displayName}: ${match.text ?? ""}`;
+          return `${prefix} From ${match.authorName} in ${displayName}: ${match.renderedText}`;
         },
         id: (match) => match.ts ?? "",
-        content: (match) => match.text ?? "",
+        content: (match) => match.renderedText,
       });
 
       return new Ok(
@@ -997,7 +1041,21 @@ export function createSlackPersonalTools(
     },
   };
 
-  const tools = buildTools(SLACK_PERSONAL_TOOLS_METADATA, handlers);
+  const rawTools = buildTools(SLACK_PERSONAL_TOOLS_METADATA, handlers);
+
+  // When footer removal is not allowed, strip show_sent_by_footer from the schema so
+  // the LLM never sees the parameter — the handler already enforces true server-side.
+  const tools = allowFooterRemoval
+    ? rawTools
+    : rawTools.map((tool) => {
+        if (tool.name === "post_message" || tool.name === "schedule_message") {
+          // eslint-disable-next-line @typescript-eslint/no-unused-vars
+          const { show_sent_by_footer: _stripped, ...schemaWithoutFooter } =
+            tool.schema;
+          return { ...tool, schema: schemaWithoutFooter };
+        }
+        return tool;
+      });
 
   const searchMessagesTool = tools.find((t) => t.name === "search_messages")!;
   const semanticSearchMessagesTool = tools.find(

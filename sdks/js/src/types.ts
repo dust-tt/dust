@@ -19,7 +19,6 @@ const ModelProviderIdSchema = FlexibleEnumSchema<
   | "anthropic"
   | "mistral"
   | "google_ai_studio"
-  | "togetherai"
   | "deepseek"
   | "fireworks"
   | "xai"
@@ -64,6 +63,7 @@ export type KnownModelLLMId =
   | "claude-opus-4-8"
   | "claude-fable-5"
   | "claude-sonnet-4-6"
+  | "claude-sonnet-5"
   | "mistral-large-latest"
   | "mistral-medium"
   | "mistral-medium-3-5"
@@ -78,11 +78,6 @@ export type KnownModelLLMId =
   | "gemini-3.1-pro-preview"
   | "gemini-3-flash-preview"
   | "gemini-3.5-flash"
-  | "meta-llama/Llama-3.3-70B-Instruct-Turbo" // togetherai
-  | "Qwen/Qwen2.5-Coder-32B-Instruct" // togetherai
-  | "Qwen/QwQ-32B-Preview" // togetherai
-  | "Qwen/Qwen2-72B-Instruct" // togetherai
-  | "deepseek-ai/DeepSeek-V3" // togetherai
   | "deepseek-chat" // deepseek api
   | "accounts/fireworks/models/deepseek-v3p2" // fireworks
   | "accounts/fireworks/models/deepseek-v4-pro" // fireworks
@@ -306,11 +301,15 @@ const FrameContentTypeSchema = z.literal("application/vnd.dust.frame");
 const FrameSlideshowContentTypeSchema = z.literal(
   "application/vnd.dust.frame.slideshow"
 );
+const SandboxFunctionContentTypeSchema = z.literal(
+  "application/vnd.dust.sandbox.function"
+);
 
 const ActionGeneratedFileContentTypeSchema = z.union([
   SupportedFileContentFragmentTypeSchema,
   FrameContentTypeSchema,
   FrameSlideshowContentTypeSchema,
+  SandboxFunctionContentTypeSchema,
 ]);
 
 export function isSupportedFileContentType(
@@ -695,10 +694,9 @@ export type RetrievalDocumentPublicType = z.infer<
 >;
 
 const WhitelistableFeaturesSchema = FlexibleEnumSchema<
+  | "activation_skill"
   | "advanced_notion_management"
-  | "agent_builder_copilot"
-  | "agent_builder_copilot_builders"
-  | "agent_builder_shrink_wrap"
+  | "allow_sso"
   | "custom_model_feature"
   | "anthropic_vertex_fallback"
   | "anthropic_cache_diagnostics"
@@ -711,28 +709,22 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "deepseek_feature"
   | "dev_mcp_actions"
   | "exa_people_and_company"
+  | "disable_computer_feature"
   | "disable_formatting_prompt"
   | "disable_run_logs"
   | "disallow_agent_creation_to_users"
   | "discord_bot"
   | "dummy_feature_for_flag_testing"
-  | "dust_academy"
   | "dust_agent_gpt_5_5_default"
-  | "dust_desktop"
   | "dust_internal_global_agents"
-  | "dust_no_spa"
-  | "dust_spa"
   | "fireworks_new_model_feature"
-  | "gemini_3_1_pro_feature"
   | "google_sheets_tool"
-  | "gpt_image_2_feature"
-  | "hootl_subscriptions"
   | "http_client_tool"
-  | "imgproxy_image_resize"
   | "index_private_slack_channel"
   | "labs_mcp_actions_dashboard"
   | "labs_transcripts"
   | "legacy_dust_apps"
+  | "models_picker"
   | "netsuite_mcp"
   | "noop_model_feature"
   | "notion_private_integration"
@@ -743,45 +735,39 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "power_bi_mcp"
   | "reinforced_agents"
   | "self_improvement_beta_tester"
-  | "metronome_billing"
+  | "legacy_billing"
   | "plan_mode"
   | "pod_default_agent"
+  | "pod_default_skills"
   | "poke_mcp"
   | "restrict_agents_publishing"
   | "restrict_agents_publishing_to_admins"
+  | "restricted_spaces_in_input_bar"
   | "salesforce_synced_queries"
   | "salesforce_tool"
-  | "sandbox_dsbx_tools"
-  | "sandbox_tools"
-  | "sandbox_workspace_admin"
+  | "sandbox_functions"
   | "self_created_slack_app_connector_rollout"
   | "show_debug_tools"
-  | "slack_bot_mcp"
   | "slack_enhanced_default_agent"
   | "slack_message_splitting"
-  | "slideshow"
-  | "skills_as_user_messages"
   | "run_tools_from_prompt"
   | "usage_data_api"
   | "usage_page_read_only"
-  | "new_analytics_page"
+  | "pricing_groups"
   | "workspace_analytics"
   | "xai_feature"
   | "conversations_slack_notifications"
-  | "anthropic_reasoning_token_count"
   | "collapsible_messages"
   | "use_dust_keys"
   | "browser_extension_mcp_tools"
   | "sensitivity_labels"
-  | "conversation_search_indexing"
-  | "conversation_search_read"
-  | "new_file_explorer"
   | "use_vertex_for_supported_models"
-  | "metronome_billing_usage_page"
   | "admin_governance"
   | "use_new_llm_router"
   | "live_speech_to_text"
-  | "force_us_api_url"
+  | "workspace_default_agent"
+  | "whitelabel_frames"
+  | "workday_mcp"
 >();
 
 export type WhitelistableFeature = z.infer<typeof WhitelistableFeaturesSchema>;
@@ -1569,6 +1555,7 @@ const ToolAskUserQuestionEventSchema = ToolExecutionMetadataSchema.extend({
   configurationId: z.string(),
   conversationId: z.string(),
   created: z.number(),
+  isLastBlockingEventForStep: z.boolean().optional(),
   messageId: z.string(),
   question: UserQuestionItemSchema,
 });
@@ -3382,6 +3369,7 @@ const InternalAllowedIconSchema = FlexibleEnumSchema<
   | "UkgLogo"
   | "ValTownLogo"
   | "VantaLogo"
+  | "YoutrustLogo"
   | "ZendeskLogo"
 >();
 

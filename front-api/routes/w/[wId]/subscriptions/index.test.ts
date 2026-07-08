@@ -124,28 +124,20 @@ describe("POST /api/w/:wId/subscriptions", () => {
     expect(response.status).toBe(400);
   });
 
-  it("returns embedded clientSecret when metronome_billing flag overrides the kill switch", async () => {
-    const { workspace, user, auth } = await createPrivateApiMockRequest({
+  it("returns hosted checkoutUrl when legacy_billing flag is set even without the kill switch", async () => {
+    const { workspace, auth } = await createPrivateApiMockRequest({
       method: "POST",
       role: "admin",
     });
 
-    await KillSwitchResource.enableKillSwitch(
-      "global_disable_metronome_billing"
-    );
-    await FeatureFlagFactory.basic(auth, "metronome_billing");
+    await FeatureFlagFactory.basic(auth, "legacy_billing");
 
-    const response = await post(workspace, {
-      billingPeriod: "monthly",
-      seatType: "pro",
-      targetUserId: user.sId,
-    });
+    const response = await post(workspace, { billingPeriod: "monthly" });
 
     expect(response.status).toBe(200);
     const data = await response.json();
-    expect(data.mode).toEqual("embedded");
-    expect(data.clientSecret).toEqual(TEST_CLIENT_SECRET);
-    expect(data.sessionId).toEqual(TEST_SESSION_ID);
+    expect(data.mode).toEqual("hosted");
+    expect(data.checkoutUrl).toEqual(TEST_CHECKOUT_URL);
   });
 
   it("returns 403 when user is not admin", async () => {

@@ -118,6 +118,8 @@ export const AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA = createToolsRecord({
       running: "Listing available models",
       done: "List available models",
     },
+    toolCostCategory: "basic",
+    freeUsage: true,
   },
   get_available_skills: {
     description:
@@ -128,6 +130,8 @@ export const AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA = createToolsRecord({
       running: "Listing available skills",
       done: "List available skills",
     },
+    toolCostCategory: "basic",
+    freeUsage: true,
   },
   get_available_tools: {
     description:
@@ -138,6 +142,8 @@ export const AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA = createToolsRecord({
       running: "Listing available tools",
       done: "List available tools",
     },
+    toolCostCategory: "basic",
+    freeUsage: true,
   },
   [DESCRIBE_MCP_TOOL_NAME]: {
     description:
@@ -150,6 +156,8 @@ export const AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA = createToolsRecord({
       running: "Describing MCP server",
       done: "Describe MCP server",
     },
+    toolCostCategory: "basic",
+    freeUsage: true,
   },
   get_available_agents: {
     description:
@@ -172,6 +180,8 @@ export const AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA = createToolsRecord({
       running: "Listing available agents",
       done: "List available agents",
     },
+    toolCostCategory: "basic",
+    freeUsage: true,
   },
   inspect_available_agent: {
     description:
@@ -184,6 +194,8 @@ export const AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA = createToolsRecord({
       running: "Inspecting agent",
       done: "Inspect agent",
     },
+    toolCostCategory: "basic",
+    freeUsage: true,
   },
   get_agent_feedback: {
     description: "Get user feedback for the agent.",
@@ -213,6 +225,8 @@ export const AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA = createToolsRecord({
       running: "Listing agent feedback",
       done: "List agent feedback",
     },
+    toolCostCategory: "basic",
+    freeUsage: true,
   },
   get_agent_insights: {
     description:
@@ -230,6 +244,8 @@ export const AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA = createToolsRecord({
       running: "Listing agent insights",
       done: "List agent insights",
     },
+    toolCostCategory: "basic",
+    freeUsage: true,
   },
   // Suggestion tools
   suggest_prompt_edits: {
@@ -253,6 +269,8 @@ export const AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA = createToolsRecord({
       running: "Suggesting prompt edits",
       done: "Suggest prompt edits",
     },
+    toolCostCategory: "basic",
+    freeUsage: true,
   },
   suggest_tools: {
     description:
@@ -280,6 +298,8 @@ export const AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA = createToolsRecord({
       running: "Suggesting tools",
       done: "Suggest tools",
     },
+    toolCostCategory: "basic",
+    freeUsage: true,
   },
   suggest_sub_agent: {
     description:
@@ -306,6 +326,8 @@ export const AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA = createToolsRecord({
       running: "Suggesting sub-agent",
       done: "Suggest sub-agent",
     },
+    toolCostCategory: "basic",
+    freeUsage: true,
   },
   suggest_skills: {
     description:
@@ -332,6 +354,8 @@ export const AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA = createToolsRecord({
       running: "Suggesting skills",
       done: "Suggest skills",
     },
+    toolCostCategory: "basic",
+    freeUsage: true,
   },
   suggest_model: {
     description:
@@ -350,6 +374,8 @@ export const AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA = createToolsRecord({
       running: "Suggesting model",
       done: "Suggest model",
     },
+    toolCostCategory: "basic",
+    freeUsage: true,
   },
   search_knowledge: {
     description:
@@ -385,6 +411,8 @@ export const AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA = createToolsRecord({
       running: "Searching knowledge sources",
       done: "Search knowledge sources",
     },
+    toolCostCategory: "basic",
+    freeUsage: true,
   },
   suggest_knowledge: {
     description:
@@ -407,6 +435,8 @@ export const AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA = createToolsRecord({
       running: "Suggesting knowledge",
       done: "Suggest knowledge",
     },
+    toolCostCategory: "basic",
+    freeUsage: true,
   },
   list_suggestions: {
     description:
@@ -439,6 +469,8 @@ export const AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA = createToolsRecord({
       running: "Listing suggestions",
       done: "List suggestions",
     },
+    toolCostCategory: "basic",
+    freeUsage: true,
   },
   update_suggestions_state: {
     description:
@@ -464,6 +496,8 @@ export const AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA = createToolsRecord({
       running: "Updating suggestion state",
       done: "Update suggestion state",
     },
+    toolCostCategory: "basic",
+    freeUsage: true,
   },
   search_agent_templates: {
     description:
@@ -488,6 +522,8 @@ export const AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA = createToolsRecord({
       running: "Searching templates",
       done: "Search templates",
     },
+    toolCostCategory: "basic",
+    freeUsage: true,
   },
   get_agent_template: {
     description:
@@ -502,6 +538,8 @@ export const AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA = createToolsRecord({
       running: "Fetching template",
       done: "Fetch template",
     },
+    toolCostCategory: "basic",
+    freeUsage: true,
   },
   inspect_conversation: {
     description:
@@ -526,6 +564,8 @@ export const AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA = createToolsRecord({
       running: "Inspecting conversation",
       done: "Inspect conversation",
     },
+    toolCostCategory: "basic",
+    freeUsage: true,
   },
   inspect_message: {
     description:
@@ -541,6 +581,8 @@ export const AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA = createToolsRecord({
       running: "Inspecting message",
       done: "Inspect message",
     },
+    toolCostCategory: "basic",
+    freeUsage: true,
   },
 });
 
@@ -553,13 +595,14 @@ export const AGENT_SIDEKICK_CONTEXT_SERVER = {
     authorization: null,
     icon: "ActionRobotIcon",
     documentationUrl: null,
-    instructions: null,
   },
   tools: Object.values(AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA).map((t) => ({
     name: t.name,
     description: t.description,
     inputSchema: zodToJsonSchema(z.object(t.schema)) as JSONSchema,
     displayLabels: t.displayLabels,
+    toolCostCategory: t.toolCostCategory,
+    freeUsage: t.freeUsage,
   })),
   tools_stakes: Object.fromEntries(
     Object.values(AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA).map((t) => [

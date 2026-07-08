@@ -1,7 +1,11 @@
-import type { GetPokeWorkspacesResponseBody } from "@app/lib/api/poke/workspaces";
 import { PlanModel, SubscriptionModel } from "@app/lib/models/plan";
 import { FREE_NO_PLAN_DATA } from "@app/lib/plans/free_plans";
-import { getPlanCodeSortPriority } from "@app/lib/plans/plan_codes";
+import type { PokePlanTypeFilter } from "@app/lib/plans/plan_codes";
+import {
+  getPokePlanTypeFilter,
+  isPokePlanTypeFilter,
+  POKE_PLAN_TYPE_FILTERS,
+} from "@app/lib/plans/plan_codes";
 import { renderSubscriptionFromModels } from "@app/lib/plans/renderers";
 import { tryParsePhoneNumber } from "@app/lib/plans/trial/phone";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
@@ -13,6 +17,7 @@ import { WorkspaceVerificationAttemptResource } from "@app/lib/resources/workspa
 import { isDomain, isEmailValid } from "@app/lib/utils";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
+import type { GetPokeWorkspacesResponseBody } from "@app/types/api/poke/workspaces";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { pokeApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
@@ -25,7 +30,7 @@ import wId from "./[wId]";
 export type {
   GetPokeWorkspacesResponseBody,
   PokeWorkspaceType,
-} from "@app/lib/api/poke/workspaces";
+} from "@app/types/api/poke/workspaces";
 
 // Note: the parent poke/index.ts already applies pokeAuth (super-user gate).
 // This sub-router handles the workspace LIST endpoint (GET /) and mounts the
@@ -39,6 +44,8 @@ app.get("/", async (ctx): HandlerResult<GetPokeWorkspacesResponseBody> => {
   const upgradedQuery = ctx.req.query("upgraded");
   const searchQuery = ctx.req.query("search");
   const limitQuery = ctx.req.query("limit");
+  const offsetQuery = ctx.req.query("offset");
+  const planTypeQuery = ctx.req.query("planType");
 
   let listUpgraded: boolean | undefined;
   if (upgradedQuery !== undefined) {
@@ -55,7 +62,20 @@ app.get("/", async (ctx): HandlerResult<GetPokeWorkspacesResponseBody> => {
     listUpgraded = upgradedQuery === "true";
   }
 
-  let originalLimit = 0;
+  let planTypeFilter: PokePlanTypeFilter | undefined;
+  if (planTypeQuery !== undefined) {
+    if (!isPokePlanTypeFilter(planTypeQuery)) {
+      return apiError(ctx, {
+        status_code: 400,
+        api_error: {
+          type: "invalid_request_error",
+          message: `The request query is invalid, expects { planType: one of ${POKE_PLAN_TYPE_FILTERS.join(", ")} }.`,
+        },
+      });
+    }
+    planTypeFilter = planTypeQuery;
+  }
+
   let limit = 0;
   if (limitQuery !== undefined) {
     if (!/^\d+$/.test(limitQuery)) {
@@ -67,8 +87,21 @@ app.get("/", async (ctx): HandlerResult<GetPokeWorkspacesResponseBody> => {
         },
       });
     }
-    originalLimit = parseInt(limitQuery, 10);
-    limit = originalLimit;
+    limit = parseInt(limitQuery, 10);
+  }
+
+  let offset = 0;
+  if (offsetQuery !== undefined) {
+    if (!/^\d+$/.test(offsetQuery)) {
+      return apiError(ctx, {
+        status_code: 400,
+        api_error: {
+          type: "invalid_request_error",
+          message: "The request query is invalid, expects { offset: number }.",
+        },
+      });
+    }
+    offset = parseInt(offsetQuery, 10);
   }
 
   const searchTerm = searchQuery
@@ -165,13 +198,22 @@ app.get("/", async (ctx): HandlerResult<GetPokeWorkspacesResponseBody> => {
         ],
       });
     }
-
-    // In case of search, we increase the limit for the sql query to 100
-    // because we'll sort manually (until a better solution is found).
-    // Note from seb: I tried ordering directly in the query but I stumbled
-    // into sequelize behaviors that I don't understand.
-    limit = 100;
   }
+
+  // Plan-type filtering happens in JS below (a workspace's plan type can
+  // depend on there being no active subscription at all, which SQL can't
+  // express against this over-fetched set), so we can't rely on SQL
+  // LIMIT/OFFSET to select the right page in that case: we over-fetch a
+  // wide candidate set from offset 0, filter it in JS, then slice out the
+  // requested page ourselves. Otherwise (plain pagination, no plan-type
+  // filter) we paginate directly in SQL. Either way we fetch one extra row
+  // past the requested page so we can tell whether a next page exists
+  // without a second query.
+  const needsOverFetch = planTypeFilter !== undefined;
+  const fetchLimit = needsOverFetch
+    ? Math.max(100, offset + limit + 1)
+    : limit + 1;
+  const fetchOffset = needsOverFetch ? 0 : offset;
 
   const where: FindOptions<WorkspaceModel>["where"] = conditions.length
     ? { [Op.and]: conditions }
@@ -179,7 +221,8 @@ app.get("/", async (ctx): HandlerResult<GetPokeWorkspacesResponseBody> => {
 
   const workspaces = await WorkspaceModel.findAll({
     where,
-    limit,
+    limit: fetchLimit,
+    offset: fetchOffset,
     include: [
       {
         model: SubscriptionModel,
@@ -192,21 +235,19 @@ app.get("/", async (ctx): HandlerResult<GetPokeWorkspacesResponseBody> => {
     order,
   });
 
-  // If limit was bumped above originalLimit, sort by plan priority
-  // (enterprise first, then pro, then free / old-free) and trim back.
   let displayed = workspaces;
-  if (limit > originalLimit) {
-    const sorted = [...workspaces].sort((a, b) => {
-      const planAPriority = getPlanCodeSortPriority(
-        a.subscriptions?.[0]?.plan?.code || ""
-      );
-      const planBPriority = getPlanCodeSortPriority(
-        b.subscriptions?.[0]?.plan?.code || ""
-      );
-      return planAPriority - planBPriority;
+  if (planTypeFilter) {
+    displayed = displayed.filter((workspace) => {
+      const planCode = workspace.subscriptions[0]
+        ? workspace.subscriptions[0].plan.code
+        : FREE_NO_PLAN_DATA.code;
+      return getPokePlanTypeFilter(planCode) === planTypeFilter;
     });
-    displayed = sorted.slice(0, originalLimit);
   }
+
+  const pageStart = needsOverFetch ? offset : 0;
+  const hasMore = displayed.length > pageStart + limit;
+  displayed = displayed.slice(pageStart, pageStart + limit);
 
   const lightWorkspaces = displayed.map((workspace) =>
     renderLightWorkspaceType({ workspace, role: "admin" })
@@ -230,6 +271,7 @@ app.get("/", async (ctx): HandlerResult<GetPokeWorkspacesResponseBody> => {
       }),
       membersCount: membersCountByWorkspaceId[workspace.sId] ?? 0,
     })),
+    hasMore,
   });
 });
 

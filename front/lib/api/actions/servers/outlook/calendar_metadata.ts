@@ -14,6 +14,8 @@ export const OUTLOOK_CALENDAR_TOOLS_METADATA = createToolsRecord({
       running: "Getting user timezone from Outlook",
       done: "Get user timezone from Outlook",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   list_calendars: {
     description: "List all calendars accessible by the user in Outlook.",
@@ -38,6 +40,8 @@ export const OUTLOOK_CALENDAR_TOOLS_METADATA = createToolsRecord({
       running: "Listing calendars",
       done: "List calendars",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   list_events: {
     description:
@@ -83,6 +87,8 @@ export const OUTLOOK_CALENDAR_TOOLS_METADATA = createToolsRecord({
       running: "Listing events",
       done: "List events",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   get_event: {
     description: "Get a single event from an Outlook Calendar by event ID.",
@@ -106,6 +112,8 @@ export const OUTLOOK_CALENDAR_TOOLS_METADATA = createToolsRecord({
       running: "Retrieving event",
       done: "Retrieve event",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   create_event: {
     description:
@@ -170,6 +178,8 @@ export const OUTLOOK_CALENDAR_TOOLS_METADATA = createToolsRecord({
       running: "Creating event",
       done: "Create event",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   update_event: {
     description:
@@ -220,6 +230,8 @@ export const OUTLOOK_CALENDAR_TOOLS_METADATA = createToolsRecord({
       running: "Updating event",
       done: "Update event",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   delete_event: {
     description: "Delete an event from an Outlook Calendar.",
@@ -243,6 +255,8 @@ export const OUTLOOK_CALENDAR_TOOLS_METADATA = createToolsRecord({
       running: "Deleting event",
       done: "Delete event",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   check_availability: {
     description:
@@ -277,11 +291,13 @@ export const OUTLOOK_CALENDAR_TOOLS_METADATA = createToolsRecord({
       running: "Checking availability",
       done: "Check availability",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   check_self_availability: {
     description:
-      "Check if the current user is available during a specific time period by analyzing " +
-      "their calendar events. An event is considered blocking if its showAs status is 'busy', " +
+      "Check if the authenticated user is available during a specific time slot in Outlook Calendar. " +
+      "An event is considered blocking if its showAs status is 'busy', " +
       "'tentative', 'oof' (out of office), or 'workingElsewhere'.",
     schema: {
       calendarId: z
@@ -312,6 +328,8 @@ export const OUTLOOK_CALENDAR_TOOLS_METADATA = createToolsRecord({
       running: "Checking self availability",
       done: "Check self availability",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
 });
 
@@ -319,7 +337,8 @@ export const OUTLOOK_CALENDAR_SERVER = {
   serverInfo: {
     name: "outlook_calendar",
     version: "1.0.0",
-    description: "Tools for managing Outlook calendars and events.",
+    description:
+      "Manage Outlook Calendar (Microsoft 365): list calendars, create and update meeting events, check free/busy availability.",
     authorization: {
       provider: "microsoft_tools",
       supported_use_cases: ["personal_actions"],
@@ -361,13 +380,14 @@ export const OUTLOOK_CALENDAR_SERVER = {
     },
     icon: "MicrosoftOutlookLogo",
     documentationUrl: "https://docs.dust.tt/docs/outlook-tool-setup",
-    instructions: null,
   },
   tools: Object.values(OUTLOOK_CALENDAR_TOOLS_METADATA).map((t) => ({
     name: t.name,
     description: t.description,
     inputSchema: zodToJsonSchema(z.object(t.schema)) as JSONSchema,
     displayLabels: t.displayLabels,
+    toolCostCategory: t.toolCostCategory,
+    freeUsage: t.freeUsage,
   })),
   tools_stakes: Object.fromEntries(
     Object.values(OUTLOOK_CALENDAR_TOOLS_METADATA).map((t) => [t.name, t.stake])

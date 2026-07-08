@@ -1,5 +1,5 @@
-import type { GetTrialMessageUsageResponseType } from "@app/lib/api/assistant/rate_limits";
 import { useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
+import type { GetTrialMessageUsageResponseType } from "@app/types/api/assistant/rate_limits";
 import type { Fetcher } from "swr";
 
 export function useTrialMessageUsage({

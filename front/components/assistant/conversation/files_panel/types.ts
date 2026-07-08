@@ -2,7 +2,7 @@ import type { FilePanelCategory } from "@app/components/file_explorer/types";
 import type {
   AttachmentCreator,
   GetConversationAttachmentsResponseBody,
-} from "@app/lib/api/assistant/conversation/attachments";
+} from "@app/types/api/assistant/conversation/attachments";
 
 export type ConversationAttachmentItem =
   GetConversationAttachmentsResponseBody["attachments"][number];

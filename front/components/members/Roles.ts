@@ -12,12 +12,12 @@ export function displayRole(role: RoleType): string {
 
 export const ROLES_DATA: Record<
   ActiveRoleType,
-  { description: string; color: "rose" | "golden" | "green" | "primary" }
+  { description: string; color: "warning" | "info" | "success" | "primary" }
 > = {
   admin: {
     description:
       "Can use and create agents, manage settings, members, spaces, connections, and tools.",
-    color: "rose",
+    color: "warning",
   },
   business_admin: {
     description: "Business administrator.",
@@ -26,10 +26,10 @@ export const ROLES_DATA: Record<
   builder: {
     description:
       "Can use, create agents and manage folders, websites and dust apps in the company space.",
-    color: "golden",
+    color: "info",
   },
   user: {
     description: "Can use and create agents in conversations.",
-    color: "green",
+    color: "success",
   },
 };

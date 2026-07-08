@@ -23,6 +23,7 @@ import {
 import { AgentMemoryResource } from "@app/lib/resources/agent_memory_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
+import { GroupPermissionResource } from "@app/lib/resources/group_permission_resource";
 import { KeyResource } from "@app/lib/resources/key_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { MembershipUpgradeRequestResource } from "@app/lib/resources/membership_upgrade_request_resource";
@@ -129,6 +130,7 @@ export async function scrubWorkspaceData({
   const auth = await Authenticator.internalAdminForWorkspace(workspaceId, {
     dangerouslyRequestAllGroups: true,
   });
+  await deleteGroupPermissions(auth);
   await deleteAllConversations(auth);
   await deleteTakeaways(auth);
   await deleteKeys(auth);
@@ -184,6 +186,10 @@ export async function pauseAllTriggers({
       "Failed to disable workspace triggers during scrub"
     );
   }
+}
+
+async function deleteGroupPermissions(auth: Authenticator) {
+  await GroupPermissionResource.deleteAllForWorkspace(auth);
 }
 
 async function deleteTakeaways(auth: Authenticator) {

@@ -1,7 +1,5 @@
-import {
-  getRegisteredImages,
-  type SandboxKillImagesResponseBody,
-} from "@app/lib/api/sandbox/image";
+import { getRegisteredImages } from "@app/lib/api/sandbox/image";
+import type { SandboxKillImagesResponseBody } from "@app/types/api/sandbox/image";
 import { pokeApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 

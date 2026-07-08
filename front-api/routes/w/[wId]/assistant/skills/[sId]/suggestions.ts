@@ -1,14 +1,14 @@
-import type {
-  GetSkillSuggestionsResponseBody,
-  PatchSkillSuggestionResponseBody,
-} from "@app/lib/api/assistant/skills/suggestions";
-import {
-  GetSkillSuggestionsQuerySchema,
-  PatchSkillSuggestionRequestBodySchema,
-} from "@app/lib/api/assistant/skills/suggestions";
 import { postSkillSuggestionStatusUpdate } from "@app/lib/reinforcement/aggregate_suggestions";
 import { hasReinforcementEnabled } from "@app/lib/reinforcement/workspace_check";
 import { SkillSuggestionResource } from "@app/lib/resources/skill_suggestion_resource";
+import type {
+  GetSkillSuggestionsResponseBody,
+  PatchSkillSuggestionResponseBody,
+} from "@app/types/api/assistant/skills/suggestions";
+import {
+  GetSkillSuggestionsQuerySchema,
+  PatchSkillSuggestionRequestBodySchema,
+} from "@app/types/api/assistant/skills/suggestions";
 import type { SkillSuggestionType } from "@app/types/suggestions/skill_suggestion";
 import { skillApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";

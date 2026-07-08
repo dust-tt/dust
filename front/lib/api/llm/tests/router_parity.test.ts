@@ -29,6 +29,7 @@ import {
 import { StreamEndpointTransition } from "@app/lib/api/llm/transitionLLM";
 import type { LLMParameters } from "@app/lib/api/llm/types/options";
 import { DUST_STREAM_ENDPOINTS } from "@app/lib/llms/stream";
+import { NOOP_PROVIDER_ID } from "@app/lib/model_constructors/types/provider_ids";
 import { GLOBAL } from "@app/lib/model_constructors/types/regions";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { describe, expect, it, vi } from "vitest";
@@ -44,6 +45,7 @@ const kit = vi.hoisted(() => {
     anthropic: { ga: [] as unknown[], beta: [] as unknown[] },
     google: [] as unknown[],
     openai: [] as unknown[],
+    openai_chat: [] as unknown[],
   });
   const state = { captures: freshCaptures() };
   const makeClient = () =>
@@ -74,14 +76,22 @@ const kit = vi.hoisted(() => {
         },
       };
     };
-  // Both the legacy and new OpenAI routers call `client.responses.create`, so
-  // one bucket records both; the adapter splits them by call order.
+  // The default client serves both `responses.create` (OpenAI Responses) and
+  // `chat.completions.create` (Fireworks); one bucket per surface.
   const makeOpenAIClient = () =>
     class {
       responses = {
         create: (input: unknown) => {
           state.captures.openai.push(input);
           return emptyStream();
+        },
+      };
+      chat = {
+        completions: {
+          create: (input: unknown) => {
+            state.captures.openai_chat.push(input);
+            return emptyStream();
+          },
         },
       };
     };
@@ -124,7 +134,12 @@ async function drain(gen: AsyncGenerator<unknown>): Promise<Error | undefined> {
 // locally. Global agent-platform coverage can be added here once it exists.
 const ENDPOINTS = Object.values(DUST_STREAM_ENDPOINTS)
   .map(readEndpointInfo)
-  .filter((endpoint) => endpoint.region === GLOBAL);
+  // The noop endpoint synthesizes its stream in-process; there is no provider
+  // SDK request to compare against, so it is out of scope for router parity.
+  .filter(
+    (endpoint) =>
+      endpoint.region === GLOBAL && endpoint.providerId !== NOOP_PROVIDER_ID
+  );
 const MATRIX = buildParityMatrix();
 
 describe.skipIf(process.env.RUN_LLM_TEST !== "true")(

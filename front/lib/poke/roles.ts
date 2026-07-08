@@ -4,7 +4,13 @@ import { isDevelopment } from "@app/types/shared/env";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { z } from "zod";
 
-const PokeRoleSchema = z.enum(["billing", "engineering", "support"]);
+const PokeRoleSchema = z.enum([
+  "admin",
+  "billing",
+  "engineering",
+  "support",
+  "talent",
+]);
 
 export type PokeRole = z.infer<typeof PokeRoleSchema>;
 

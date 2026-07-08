@@ -1,14 +1,12 @@
+import { handleMembershipInvitations } from "@app/lib/api/invitation";
+import { MembershipInvitationResource } from "@app/lib/resources/membership_invitation_resource";
 import type {
   GetWorkspaceInvitationsResponseBody,
   PostInvitationResponseBody,
-} from "@app/lib/api/invitation";
-import {
-  handleMembershipInvitations,
-  PostInvitationRequestBodySchema,
-} from "@app/lib/api/invitation";
-import { MembershipInvitationResource } from "@app/lib/resources/membership_invitation_resource";
+} from "@app/types/api/invitation";
+import { PostInvitationRequestBodySchema } from "@app/types/api/invitation";
 import { workspaceApp } from "@front-api/middlewares/ctx";
-import { ensureHasPermission } from "@front-api/middlewares/ensure_role";
+import { ensureIsBusinessAdmin } from "@front-api/middlewares/ensure_role";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 
@@ -17,7 +15,7 @@ import invitationById from "./[iId]";
 // Mounted under /api/w/:wId/invitations.
 const app = workspaceApp();
 
-app.use("*", ensureHasPermission("workspace:manage_members"));
+app.use("*", ensureIsBusinessAdmin());
 
 /** @ignoreswagger */
 app.get(
@@ -57,17 +55,14 @@ app.post(
 
     const invitationRequests = ctx.req.valid("json");
 
-    // Escalation guard: inviting a member as admin requires the
-    // manage_admin_role permission, so business admins cannot invite new admins.
-    if (
-      invitationRequests.some((r) => r.role === "admin") &&
-      !auth.hasPermission("workspace:manage_admin_role")
-    ) {
+    // Escalation guard: inviting a member as admin requires
+    // to be an admin
+    if (invitationRequests.some((r) => r.role === "admin") && !auth.isAdmin()) {
       return apiError(ctx, {
         status_code: 403,
         api_error: {
           type: "workspace_auth_error",
-          message: "You do not have permission to invite members.",
+          message: "You do not have permission to invite admins.",
         },
       });
     }

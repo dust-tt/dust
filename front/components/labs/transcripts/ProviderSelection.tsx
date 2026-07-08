@@ -2,10 +2,7 @@ import { useSendNotification } from "@app/hooks/useNotification";
 import type { GetLabsTranscriptsConfigurationResponseBody } from "@app/lib/api/labs/transcripts";
 import { useRegionContext } from "@app/lib/auth/RegionContext";
 import { clientFetch } from "@app/lib/egress/client";
-import {
-  useLabsTranscriptsDefaultConfiguration,
-  useLabsTranscriptsIsConnectorConnected,
-} from "@app/lib/swr/labs";
+import { useLabsTranscriptsIsConnectorConnected } from "@app/lib/swr/labs";
 import datadogLogger from "@app/logger/datadogLogger";
 import type {
   LabsTranscriptsConfigurationType,
@@ -19,7 +16,6 @@ import type { KeyedMutator } from "swr";
 
 import { GongConnection } from "./providers/GongConnection";
 import { GoogleDriveConnection } from "./providers/GoogleDriveConnection";
-import { ModjoConnection } from "./providers/ModjoConnection";
 
 interface ProviderSelectionProps {
   transcriptsConfiguration: LabsTranscriptsConfigurationType | null;
@@ -38,7 +34,6 @@ export function ProviderSelection({
 }: ProviderSelectionProps) {
   const sendNotification = useSendNotification();
   const regionContext = useRegionContext();
-  const [apiKey, setApiKey] = useState("");
   const [selectedProvider, setSelectedProvider] =
     useState<LabsTranscriptsProviderType | null>(
       transcriptsConfiguration?.provider ?? null
@@ -48,12 +43,6 @@ export function ProviderSelection({
     useLabsTranscriptsIsConnectorConnected({
       owner,
       provider: "gong",
-    });
-
-  const { defaultConfiguration: defaultModjoConfiguration } =
-    useLabsTranscriptsDefaultConfiguration({
-      owner,
-      provider: "modjo",
     });
 
   const saveOAuthConnection = useCallback(
@@ -130,27 +119,6 @@ export function ProviderSelection({
     await saveOAuthConnection(cRes.value.connection_id, "google_drive");
   }, [owner, sendNotification, saveOAuthConnection, regionContext.regionInfo]);
 
-  const saveApiConnection = useCallback(
-    async (apiKey: string, provider: string) => {
-      const response = await clientFetch(
-        `/api/w/${owner.sId}/labs/transcripts`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            apiKey,
-            provider,
-          }),
-        }
-      );
-
-      return response;
-    },
-    [owner.sId]
-  );
-
   const saveConnectorConnection = useCallback(
     async (provider: string) => {
       const response = await clientFetch(
@@ -218,66 +186,6 @@ export function ProviderSelection({
     owner.sId,
   ]);
 
-  const handleConnectModjoTranscriptsSource = useCallback(
-    async ({
-      credentialId,
-      defaultModjoConfiguration,
-    }: {
-      credentialId: string | null;
-      defaultModjoConfiguration: LabsTranscriptsConfigurationType | null;
-    }) => {
-      try {
-        if (defaultModjoConfiguration) {
-          if (
-            defaultModjoConfiguration.provider !== "modjo" ||
-            !defaultModjoConfiguration.credentialId
-          ) {
-            sendNotification({
-              type: "error",
-              title: "Failed to connect Modjo",
-              description:
-                "Your workspace is already connected to another provider by default.",
-            });
-            return;
-          }
-
-          await saveApiConnection(
-            defaultModjoConfiguration.credentialId,
-            defaultModjoConfiguration.provider
-          );
-        } else {
-          if (!credentialId) {
-            sendNotification({
-              type: "error",
-              title: "Modjo API key is required",
-              description: "Please enter your Modjo API key.",
-            });
-            return;
-          }
-          await saveApiConnection(credentialId, "modjo");
-        }
-
-        sendNotification({
-          type: "success",
-          title: "Modjo connected",
-          description:
-            "Your transcripts provider has been connected successfully.",
-        });
-
-        await mutateTranscriptsConfiguration();
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
-        // biome-ignore lint/correctness/noUnusedVariables: ignored using `--suppress`
-      } catch (error) {
-        sendNotification({
-          type: "error",
-          title: "Failed to connect Modjo",
-          description: "Could not connect to Modjo. Please try again.",
-        });
-      }
-    },
-    [sendNotification, saveApiConnection, mutateTranscriptsConfiguration]
-  );
-
   const renderProviderConnection = () => {
     switch (selectedProvider) {
       case "google_drive":
@@ -297,17 +205,6 @@ export function ProviderSelection({
             onConnect={handleConnectGongTranscriptsSource}
           />
         );
-      case "modjo":
-        return (
-          <ModjoConnection
-            transcriptsConfiguration={transcriptsConfiguration}
-            setIsDeleteProviderDialogOpened={setIsDeleteProviderDialogOpened}
-            defaultModjoConfiguration={defaultModjoConfiguration}
-            apiKey={apiKey}
-            setApiKey={setApiKey}
-            onConnect={handleConnectModjoTranscriptsSource}
-          />
-        );
       default:
         return null;
     }
@@ -319,10 +216,10 @@ export function ProviderSelection({
       {!transcriptsConfiguration && (
         <Page.Layout direction="horizontal" gap="xl">
           <div
-            className={`cursor-pointer rounded-md border bg-white p-4 hover:border-gray-400 dark:bg-white ${
+            className={`cursor-pointer rounded-md border bg-white p-4 hover:border-border-dark ${
               selectedProvider == "google_drive"
-                ? "border-gray-400"
-                : "border-gray-200"
+                ? "border-border-dark"
+                : "border-border"
             }`}
             onClick={() => setSelectedProvider("google_drive")}
           >
@@ -332,26 +229,15 @@ export function ProviderSelection({
             />
           </div>
           <div
-            className={`cursor-pointer rounded-md border bg-white p-4 hover:border-gray-400 dark:bg-white ${
-              selectedProvider == "gong" ? "border-gray-400" : "border-gray-200"
+            className={`cursor-pointer rounded-md border bg-white p-4 hover:border-border-dark ${
+              selectedProvider == "gong"
+                ? "border-border-dark"
+                : "border-border"
             }`}
             onClick={() => setSelectedProvider("gong")}
           >
             <img
               src="/static/labs/transcripts/gong.jpeg"
-              style={{ maxHeight: "35px" }}
-            />
-          </div>
-          <div
-            className={`cursor-pointer rounded-md border bg-white p-4 hover:border-gray-400 dark:bg-white ${
-              selectedProvider == "modjo"
-                ? "border-gray-400"
-                : "border-gray-200"
-            }`}
-            onClick={() => setSelectedProvider("modjo")}
-          >
-            <img
-              src="/static/labs/transcripts/modjo.png"
               style={{ maxHeight: "35px" }}
             />
           </div>

@@ -31,6 +31,10 @@ export const toolSpecificationSchema = z.object({
   name: z.string(),
   description: z.string(),
   inputSchema: z.record(z.unknown()),
+  // Whether this tool is loaded upfront in the cached prefix. Intrinsic,
+  // provider-agnostic property. Anthropic defers non-eager tools when tool
+  // search is enabled. Other providers ignore it.
+  eager: z.boolean().optional(),
 });
 export type ToolSpecification = z.infer<typeof toolSpecificationSchema>;
 
@@ -39,7 +43,30 @@ export const inputConfigSchema = z.object({
   reasoning: reasoningSchema.optional(),
   tools: z.array(toolSpecificationSchema).optional(),
   forceTool: z.string().optional(),
+  // When true, the tools are sent but the model is forbidden from calling them
+  // (tool choice "none"). Used to force a final generation while keeping the
+  // request's tool definitions stable across steps. Mutually exclusive with `forceTool`.
+  disableToolUse: z.boolean().optional(),
+  // When true, the Anthropic client defers non-eager tools behind tool search.
+  // Other provider clients ignore it.
+  toolSearchEnabled: z.boolean().optional(),
   outputFormat: outputFormatSchema.optional(),
   cacheKey: z.string().optional(),
 });
 export type InputConfig = z.infer<typeof inputConfigSchema>;
+
+// A forced tool and forbidden tool use are contradictory instructions, so the
+// type makes them mutually exclusive: setting both is a compile error.
+export type ToolChoiceInput =
+  | { forceTool?: string; disableToolUse?: never }
+  | { forceTool?: never; disableToolUse?: boolean };
+
+// Narrows the flat config fields back into the exclusive union. The zod schema cannot carry the
+// union (the provider schemas compose it with .extend), and exclusivity is already guaranteed
+// upstream on the stream parameters.
+export function toToolChoiceInput({
+  forceTool,
+  disableToolUse,
+}: Pick<InputConfig, "forceTool" | "disableToolUse">): ToolChoiceInput {
+  return forceTool !== undefined ? { forceTool } : { disableToolUse };
+}

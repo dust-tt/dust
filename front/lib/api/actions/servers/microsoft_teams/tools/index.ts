@@ -1,6 +1,7 @@
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import type { ToolHandlers } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
+import { isAgentLoopRunContext } from "@app/lib/actions/types";
 import type {
   TeamsChannel,
   TeamsChat,
@@ -16,13 +17,18 @@ import {
   renderMeetings,
   renderUsers,
 } from "@app/lib/api/actions/servers/microsoft_teams/microsoft_teams_rendering";
+import {
+  MAX_MESSAGES_TO_SCAN,
+  MAX_NUMBER_OF_MESSAGES,
+  MESSAGES_PAGE_SIZE,
+  shouldContinuePagination,
+} from "@app/lib/api/actions/servers/microsoft_teams/tools/pagination";
 import config from "@app/lib/api/config";
 import { getConversationRoute } from "@app/lib/utils/router";
+import logger from "@app/logger/logger";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import sanitizeHtml from "sanitize-html";
-
-const MAX_NUMBER_OF_MESSAGES = 200;
 
 const handlers: ToolHandlers<typeof MICROSOFT_TEAMS_TOOLS_METADATA> = {
   search_messages_content: async ({ query }, { authInfo }) => {
@@ -233,25 +239,33 @@ const handlers: ToolHandlers<typeof MICROSOFT_TEAMS_TOOLS_METADATA> = {
       const fromDateTime = fromDate ? new Date(fromDate) : null;
       const toDateTime = toDate ? new Date(toDate) : new Date();
 
-      // Filter function to check if message is in date range
+      // Reject malformed dates up front. Otherwise `new Date("garbage")` yields
+      // an Invalid Date, every comparison silently returns false, and the tool
+      // returns an empty result with no indication of why.
+      if (fromDateTime && isNaN(fromDateTime.getTime())) {
+        return new Err(
+          new MCPError(
+            `Invalid fromDate: "${fromDate}". Expected an ISO 8601 date.`
+          )
+        );
+      }
+      if (toDate && isNaN(toDateTime.getTime())) {
+        return new Err(
+          new MCPError(
+            `Invalid toDate: "${toDate}". Expected an ISO 8601 date.`
+          )
+        );
+      }
+
+      // Range on createdDateTime, not lastModifiedDateTime: a message sent
+      // in-range but edited/reacted-to later (which bumps lastModifiedDateTime)
+      // must still count, and one sent outside the range must not be pulled in
+      // by a later edit.
       const isMessageInDateRange = (message: TeamsMessage): boolean => {
-        const messageDate = new Date(message.lastModifiedDateTime);
+        const messageDate = new Date(message.createdDateTime);
         const afterFromDate = !fromDateTime || messageDate >= fromDateTime;
         const beforeToDate = messageDate <= toDateTime;
         return afterFromDate && beforeToDate;
-      };
-
-      // Process messages and update shouldContinue flag
-      const processMessages = (messages: TeamsMessage[]): boolean => {
-        const messagesInDateRange = messages.filter(isMessageInDateRange);
-        allMessages.push(...messagesInDateRange);
-        return (
-          // if the last message in the current page is in the date range, we should continue
-          messagesInDateRange
-            .map((message) => message.id)
-            .includes(messages[messages.length - 1].id) &&
-          allMessages.length < MAX_NUMBER_OF_MESSAGES
-        );
       };
 
       const messagesSuffix = messageId ? `/${messageId}/replies` : "";
@@ -259,27 +273,110 @@ const handlers: ToolHandlers<typeof MICROSOFT_TEAMS_TOOLS_METADATA> = {
         ? `/chats/${chatId}/messages${messagesSuffix}`
         : `/teams/${teamId}/channels/${channelId}/messages${messagesSuffix}`;
 
-      // First page
-      let response = await client.api(baseEndpoint).top(50).get();
+      let request = client.api(baseEndpoint).top(MESSAGES_PAGE_SIZE);
+
+      // Only the chat messages listing supports $orderby/$filter; order it by
+      // createdDateTime so the page order matches the field we range on.
+      // Channels and the replies endpoint keep Graph's default
+      // lastModifiedDateTime order. The stop condition keys off whichever it is
+      // — see shouldContinuePagination.
+      const isChatListing = Boolean(chatId) && !messageId;
+      const orderingField = isChatListing
+        ? "createdDateTime"
+        : "lastModifiedDateTime";
+
+      if (isChatListing) {
+        request = request.orderby(`${orderingField} desc`);
+
+        // Push the upper bound server-side so Graph skips messages newer than
+        // toDate instead of us fetching and discarding them. createdDateTime
+        // only supports `lt` (no `gt`), so the lower bound stays client-side.
+        // +1ms keeps the exclusive server filter a superset of the inclusive
+        // client filter; $filter needs $orderby on the same property (above).
+        if (toDate) {
+          const toBound = new Date(toDateTime.getTime() + 1);
+          request = request.filter(
+            `${orderingField} lt ${toBound.toISOString()}`
+          );
+        }
+      }
+
+      // Accumulate in-range messages, then defer the keep-paging decision.
+      const processMessages = (
+        messages: TeamsMessage[] | undefined
+      ): boolean => {
+        if (messages && messages.length > 0) {
+          allMessages.push(...messages.filter(isMessageInDateRange));
+        }
+        return shouldContinuePagination({
+          pageMessages: messages,
+          fromDateTime,
+          collectedCount: allMessages.length,
+          orderingField,
+        });
+      };
+
+      let response = await request.get();
+      let scannedCount = response.value?.length ?? 0;
 
       let shouldContinue = processMessages(response.value);
 
-      // Follow pagination links until no more pages or date threshold reached
       nextLink = response["@odata.nextLink"];
-      while (nextLink && shouldContinue) {
+      while (
+        nextLink &&
+        shouldContinue &&
+        scannedCount < MAX_MESSAGES_TO_SCAN
+      ) {
         response = await client.api(nextLink).get();
+        scannedCount += response.value?.length ?? 0;
         shouldContinue = processMessages(response.value);
         nextLink = response["@odata.nextLink"];
       }
 
+      // More pages were available and still in range when we stopped: truncated
+      // by the backstop, not the data. (Reaching fromDate or the message limit
+      // clears shouldContinue, so neither trips this.)
+      const truncatedByScanLimit =
+        !!nextLink && shouldContinue && scannedCount >= MAX_MESSAGES_TO_SCAN;
+      if (truncatedByScanLimit) {
+        logger.warn(
+          {
+            endpoint: baseEndpoint,
+            scannedCount,
+            collected: allMessages.length,
+          },
+          "[microsoft_teams.list_messages] Hit MAX_MESSAGES_TO_SCAN; results may be truncated."
+        );
+      }
+
+      const matchedCount = allMessages.length;
       const limitedMessages = allMessages.slice(0, MAX_NUMBER_OF_MESSAGES);
 
-      return new Ok([
+      const content = [
         {
           type: "text" as const,
           text: JSON.stringify(limitedMessages, null, 2),
         },
-      ]);
+      ];
+      // Tell the caller when results are incomplete so an agent can narrow the
+      // range rather than treat partial history as complete.
+      if (truncatedByScanLimit) {
+        content.push({
+          type: "text" as const,
+          text:
+            `Note: stopped after scanning ${scannedCount} messages before reaching the start of the requested date range, so older messages in the range may be missing. ` +
+            `Narrow the date range (a smaller fromDate-toDate window) to retrieve the rest.`,
+        });
+      } else if (matchedCount > MAX_NUMBER_OF_MESSAGES) {
+        content.push({
+          type: "text" as const,
+          text:
+            `Note: more than ${MAX_NUMBER_OF_MESSAGES} messages match the requested range; showing ${MAX_NUMBER_OF_MESSAGES} of them. ` +
+            `Narrow the date range to retrieve the rest.`,
+        });
+      }
+
+      return new Ok(content);
     } catch (err) {
       return new Err(
         new MCPError(normalizeError(err).message || "Failed to list threads")
@@ -298,7 +395,7 @@ const handlers: ToolHandlers<typeof MICROSOFT_TEAMS_TOOLS_METADATA> = {
       parentMessageId,
       mentions,
     },
-    { auth, authInfo, agentLoopContext }
+    { auth, authInfo, toolContext }
   ) => {
     const client = await getGraphClient(authInfo);
     if (!client) {
@@ -433,14 +530,15 @@ const handlers: ToolHandlers<typeof MICROSOFT_TEAMS_TOOLS_METADATA> = {
 
       // Add footer with link to Dust conversation if agent context is available
       let finalContent = messageContent;
-      if (agentLoopContext?.runContext?.agentConfiguration) {
+
+      if (isAgentLoopRunContext(toolContext?.runContext)) {
         const agentUrl = getConversationRoute(
           auth.getNonNullableWorkspace().sId,
           "new",
-          `agentDetails=${agentLoopContext.runContext.agentConfiguration.sId}`,
+          `agentDetails=${toolContext.runContext.agentConfiguration.sId}`,
           config.getAppUrl()
         );
-        const agentName = agentLoopContext.runContext.agentConfiguration.name;
+        const agentName = toolContext.runContext.agentConfiguration.name;
         const footerMessage = `<em>Sent via <a href="${agentUrl}">${agentName} Agent</a> on Dust</em>`;
         finalContent = `${messageContent}<br/><br/>${footerMessage}`;
       }

@@ -9,6 +9,7 @@ import { WebhookRequestModel } from "@app/lib/models/agent/triggers/webhook_requ
 import { WebhookRequestTriggerModel } from "@app/lib/models/agent/triggers/webhook_request_trigger";
 import { WebhookSourcesViewModel } from "@app/lib/models/agent/triggers/webhook_sources_view";
 import { BaseResource } from "@app/lib/resources/base_resource";
+import { SpaceResource } from "@app/lib/resources/space_resource";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import { getResourceIdFromSId, makeSId } from "@app/lib/resources/string_ids";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
@@ -41,6 +42,25 @@ import type {
   Transaction,
 } from "sequelize";
 import { Op } from "sequelize";
+
+// A trigger's Pod may be any open Pod in the workspace, or a restricted Pod the
+// caller is a member of. This is intentionally broader than the member-only check
+// used by the conversations/create MCP tool.
+export async function resolveTriggerSpaceId(
+  auth: Authenticator,
+  spaceId: string | null | undefined
+): Promise<Result<ModelId | null, string>> {
+  if (!spaceId) {
+    return new Ok(null);
+  }
+
+  const pod = await SpaceResource.fetchById(auth, spaceId);
+  if (!pod || !pod.isProject() || !pod.canRead(auth)) {
+    return new Err("Pod not found or not accessible.");
+  }
+
+  return new Ok(pod.id);
+}
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
@@ -208,8 +228,7 @@ export class TriggerResource extends BaseResource<TriggerModel> {
     user: UserResource | UserType
   ) {
     assert(
-      auth.hasPermission("workspace:manage_members") ||
-        auth.user()?.id === user.id,
+      auth.isBusinessAdmin() || auth.user()?.id === user.id,
       "Triggers can only be listed by admins or by their editor."
     );
 
@@ -483,6 +502,28 @@ export class TriggerResource extends BaseResource<TriggerModel> {
     return new Ok(undefined);
   }
 
+  /**
+   * Detaches all triggers from a Pod (space) by nulling out their `spaceId`.
+   * Used when a space is scrubbed: the FK is `onDelete: "RESTRICT"`, so
+   * references must be cleared before the space is hard-deleted. Triggers keep
+   * running and fall back to the default (my conversations) target — see
+   * `temporal/triggers/activities.ts`.
+   */
+  static async detachAllFromSpace(
+    auth: Authenticator,
+    spaceModelId: ModelId
+  ): Promise<void> {
+    await this.model.update(
+      { spaceId: null },
+      {
+        where: {
+          workspaceId: auth.getNonNullableWorkspace().id,
+          spaceId: spaceModelId,
+        },
+      }
+    );
+  }
+
   static async disableAllForWorkspace(
     auth: Authenticator,
     targetStatus: Exclude<TriggerStatus, "enabled">
@@ -492,23 +533,25 @@ export class TriggerResource extends BaseResource<TriggerModel> {
       return new Ok(undefined);
     }
 
-    // Only disable enabled triggers
-    const enabledTriggers = triggers.filter((t) => t.status === "enabled");
-    if (enabledTriggers.length === 0) {
-      return new Ok(undefined);
-    }
-
-    const disabledTriggersResult = await concurrentExecutor(
-      enabledTriggers,
-      async (trigger) => trigger.disable(auth, targetStatus),
+    // Enabled triggers get the full disable (status flip + schedule removal).
+    // Triggers already in a non-enabled status keep their status but still have
+    // their Temporal schedule reconciled: a prior run may have flipped the
+    // status yet failed to remove the schedule (the error is logged and
+    // swallowed), leaving an orphaned schedule that keeps firing.
+    // removeTemporalWorkflow is idempotent, so this is a no-op once the schedule
+    // is gone.
+    const results = await concurrentExecutor(
+      triggers,
+      async (trigger) =>
+        trigger.status === "enabled"
+          ? trigger.disable(auth, targetStatus)
+          : trigger.removeTemporalWorkflow(auth),
       {
         concurrency: 10,
       }
     );
 
-    const failuresCount = disabledTriggersResult.filter((res) =>
-      res.isErr()
-    ).length;
+    const failuresCount = results.filter((res) => res.isErr()).length;
 
     if (failuresCount > 0) {
       return new Err(new Error(`Failed to disable ${failuresCount} triggers`));
@@ -713,47 +756,49 @@ export class TriggerResource extends BaseResource<TriggerModel> {
     auth: Authenticator,
     targetStatus: Exclude<TriggerStatus, "enabled"> = "disabled"
   ): Promise<Result<undefined, Error>> {
-    if (this.status === targetStatus) {
-      return new Ok(undefined);
+    // Even when the status is already the target, we still reconcile the
+    // Temporal workflow below: a previous disable may have flipped the status
+    // but failed (or been interrupted) before removing the schedule, leaving an
+    // orphaned schedule that keeps firing. removeTemporalWorkflow is idempotent.
+    if (this.status !== targetStatus) {
+      const previousStatus = this.status;
+
+      try {
+        await this.update({ status: targetStatus });
+      } catch (error) {
+        return new Err(normalizeError(error));
+      }
+
+      logger.info(
+        {
+          triggerId: this.sId,
+          triggerName: this.name,
+          triggerKind: this.kind,
+          previousStatus,
+          newStatus: targetStatus,
+          workspaceId: auth.getNonNullableWorkspace().sId,
+          agentConfigurationId: this.agentConfigurationId,
+          editorId: this.editor,
+        },
+        `Trigger status changed: ${targetStatus}`
+      );
+
+      void emitAuditLogEvent({
+        auth,
+        action: "trigger.disabled",
+        targets: [
+          buildAuditLogTarget("workspace", auth.getNonNullableWorkspace()),
+          buildAuditLogTarget("trigger", {
+            sId: this.sId,
+            name: this.name,
+          }),
+        ],
+        metadata: {
+          trigger_type: this.kind,
+          agent_id: this.agentConfigurationId,
+        },
+      });
     }
-
-    const previousStatus = this.status;
-
-    try {
-      await this.update({ status: targetStatus });
-    } catch (error) {
-      return new Err(normalizeError(error));
-    }
-
-    logger.info(
-      {
-        triggerId: this.sId,
-        triggerName: this.name,
-        triggerKind: this.kind,
-        previousStatus,
-        newStatus: targetStatus,
-        workspaceId: auth.getNonNullableWorkspace().sId,
-        agentConfigurationId: this.agentConfigurationId,
-        editorId: this.editor,
-      },
-      `Trigger status changed: ${targetStatus}`
-    );
-
-    void emitAuditLogEvent({
-      auth,
-      action: "trigger.disabled",
-      targets: [
-        buildAuditLogTarget("workspace", auth.getNonNullableWorkspace()),
-        buildAuditLogTarget("trigger", {
-          sId: this.sId,
-          name: this.name,
-        }),
-      ],
-      metadata: {
-        trigger_type: this.kind,
-        agent_id: this.agentConfigurationId,
-      },
-    });
 
     // Remove the temporal workflow
     const r = await this.removeTemporalWorkflow(auth);
@@ -772,21 +817,24 @@ export class TriggerResource extends BaseResource<TriggerModel> {
     const workspace = auth.getNonNullableWorkspace();
 
     const toUpdate = triggers.filter((t) => t.status !== targetStatus);
-    if (toUpdate.length === 0) {
-      return new Ok(undefined);
+    if (toUpdate.length > 0) {
+      await this.model.update(
+        { status: targetStatus },
+        {
+          where: {
+            id: { [Op.in]: toUpdate.map((t) => t.id) },
+            workspaceId: workspace.id,
+          },
+        }
+      );
     }
 
-    await this.model.update(
-      { status: targetStatus },
-      {
-        where: {
-          id: { [Op.in]: toUpdate.map((t) => t.id) },
-          workspaceId: workspace.id,
-        },
-      }
-    );
-
-    for (const trigger of toUpdate) {
+    // Reconcile the Temporal schedule for every trigger, including those already
+    // at the target status: a prior run may have flipped the status but failed
+    // to remove the schedule (the error is logged and swallowed below), leaving
+    // an orphaned schedule that keeps firing. removeTemporalWorkflow is
+    // idempotent, so this is a no-op once the schedule is gone.
+    for (const trigger of triggers) {
       const r = await trigger.removeTemporalWorkflow(auth);
       if (r.isErr()) {
         logger.error(
@@ -855,6 +903,12 @@ export class TriggerResource extends BaseResource<TriggerModel> {
       naturalLanguageDescription: this.naturalLanguageDescription,
       createdAt: this.createdAt.getTime(),
       origin: this.origin,
+      spaceId: this.spaceId
+        ? SpaceResource.modelIdToSId({
+            id: this.spaceId,
+            workspaceId: this.workspaceId,
+          })
+        : null,
     };
 
     if (this.kind === "webhook") {

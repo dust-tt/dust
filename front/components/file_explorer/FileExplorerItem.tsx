@@ -12,12 +12,13 @@ import type {
 } from "@app/components/file_explorer/types";
 import {
   getCategoryFromContentType,
+  getFileExplorerSearchResultTitle,
   getSingularFileCategoryLabelForContentType,
 } from "@app/components/file_explorer/utils";
 import { cn } from "@app/components/poke/shadcn/lib/utils";
-import type { FileSystemFileEntry } from "@app/lib/api/file_system/types";
 import { getConnectorProviderLogoWithFallback } from "@app/lib/connector_providers_ui";
 import { getFileTypeIcon } from "@app/lib/file_icon_utils";
+import type { FileSystemFileEntry } from "@app/types/api/file_system/types";
 import {
   Button,
   CloudArrowLeftRight,
@@ -152,7 +153,7 @@ export function FileExplorerItem(props: FileExplorerItemProps) {
         trigger={
           <span
             className={cn(
-              "text-sm truncate text-foreground dark:text-foreground-night leading-5",
+              "text-sm truncate text-foreground leading-5",
               "justify-start",
               titleClassName
             )}
@@ -163,7 +164,7 @@ export function FileExplorerItem(props: FileExplorerItemProps) {
       />
       <span
         className={cn(
-          "font-normal text-xs text-muted-foreground dark:text-muted-foreground-night leading-4",
+          "font-normal text-xs text-muted-foreground leading-4",
           "justify-start"
         )}
       >
@@ -178,8 +179,7 @@ export function FileExplorerItem(props: FileExplorerItemProps) {
         className={cn(
           "flex cursor-pointer items-center gap-4 rounded-xl px-3 py-2",
           containerClassName,
-          surfaceClassName ??
-            "hover:bg-muted-background dark:hover:bg-muted-background-night"
+          surfaceClassName ?? "hover:bg-muted-background"
         )}
         onClick={onOpen}
       >
@@ -198,8 +198,7 @@ export function FileExplorerItem(props: FileExplorerItemProps) {
         className={cn(
           "flex h-24 cursor-pointer items-center justify-center overflow-hidden rounded-xl",
           containerClassName,
-          surfaceClassName ??
-            "bg-muted-background hover:brightness-95 dark:bg-muted-background-night",
+          surfaceClassName ?? "bg-muted-background hover:brightness-95",
           props.kind === "icon" && "p-4"
         )}
         onClick={onOpen}
@@ -312,6 +311,8 @@ export function FileExplorerFolderCard({
 export interface FileExplorerFileCardProps {
   draggable?: boolean;
   entry: FileEntry;
+  /** When set, title shows path relative to this folder (search mode). */
+  searchFolderPath?: string;
   viewMode: ViewMode;
   onOpen: (entry: FileEntry) => void;
   onDownload: (entry: FileEntry) => Promise<void>;
@@ -358,12 +359,17 @@ function FileExplorerDraggableWrapper({
 export function FileExplorerFileCard({
   draggable: draggableProp = false,
   entry,
+  searchFolderPath,
   viewMode,
   onOpen,
   onDownload,
   extraMenuItems,
 }: FileExplorerFileCardProps) {
   const subtitle = getFileSubtitle(entry, viewMode);
+  const title =
+    searchFolderPath !== undefined
+      ? getFileExplorerSearchResultTitle(entry, searchFolderPath)
+      : entry.fileName;
 
   const handleDragStart = (e: React.DragEvent) => {
     if (e.target instanceof HTMLElement && e.target.closest("button")) {
@@ -384,7 +390,7 @@ export function FileExplorerFileCard({
         kind="thumbnail"
         thumbnailSrc={entry.thumbnailUrl}
         viewMode={viewMode}
-        title={entry.fileName}
+        title={title}
         subtitle={subtitle}
         containerClassName={dragContainerClassName}
         onOpen={() => onOpen(entry)}
@@ -396,7 +402,7 @@ export function FileExplorerFileCard({
         kind="icon"
         visual={getFileTypeIcon(entry.contentType, entry.fileName)}
         viewMode={viewMode}
-        title={entry.fileName}
+        title={title}
         subtitle={subtitle}
         containerClassName={dragContainerClassName}
         onOpen={() => onOpen(entry)}
@@ -450,12 +456,8 @@ export function ContentNodeCard({
 export function FileExplorerEmptyState() {
   return (
     <div className="flex flex-1 flex-col items-center justify-center gap-3">
-      <Icon
-        visual={FolderOpen}
-        size="lg"
-        className="text-muted-foreground dark:text-muted-foreground-night"
-      />
-      <p className="copy-base text-center text-muted-foreground dark:text-muted-foreground-night">
+      <Icon visual={FolderOpen} size="lg" className="text-muted-foreground" />
+      <p className="copy-base text-center text-muted-foreground">
         Nothing to see here
       </p>
     </div>

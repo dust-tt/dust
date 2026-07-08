@@ -50,6 +50,11 @@ const HS_CONTENT_FIELDS = new Set([
   "hs_task_priority",
   "hs_timestamp",
   "hs_engagement_type",
+  "hs_pipeline",
+  "hs_pipeline_stage",
+  "hs_ticket_priority",
+  "hs_ticket_category",
+  "hs_resolution",
 ]);
 
 export function formatHubSpotObject(
@@ -80,6 +85,8 @@ export function formatHubSpotObject(
       case "deals":
         // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
         return object.properties.dealname || "Unnamed Deal";
+      case "tickets":
+        return object.properties.subject ?? "Unnamed Ticket";
 
       default:
         return (

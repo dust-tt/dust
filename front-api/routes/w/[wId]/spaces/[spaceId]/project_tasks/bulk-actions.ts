@@ -1,5 +1,5 @@
-import { BulkActionsBodySchema } from "@app/lib/api/projects/tasks";
 import { ProjectTaskResource } from "@app/lib/resources/project_task_resource";
+import { BulkActionsBodySchema } from "@app/types/api/projects/tasks";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { apiError } from "@front-api/middlewares/utils";

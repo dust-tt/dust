@@ -6,6 +6,7 @@ import { OpenProjectsPolicy } from "@app/components/workspace/settings/OpenProje
 import { PrivateConversationUrlsToggle } from "@app/components/workspace/settings/PrivateConversationUrlsToggle";
 import { ProjectKnowledgePolicy } from "@app/components/workspace/settings/ProjectKnowledgePolicy";
 import { RestrictAgentsPublishingCapability } from "@app/components/workspace/settings/RestrictAgentsPublishingCapability";
+import { SlackPersonalFooterRemovalToggle } from "@app/components/workspace/settings/SlackPersonalFooterRemovalToggle";
 import { VoiceTranscriptionToggle } from "@app/components/workspace/settings/VoiceTranscriptionToggle";
 import { useAuth, useFeatureFlags } from "@app/lib/auth/AuthContext";
 import type { WorkspaceType } from "@app/types/user";
@@ -29,7 +30,7 @@ export function CapabilitiesSection({
     <Page.Vertical align="stretch" gap="md">
       <Page.H variant="h4">Capabilities</Page.H>
       <ContextItem.List>
-        <div className="h-full border-b border-border dark:border-border-night" />
+        <div className="h-full border-b border-border" />
         <InteractiveContentSharingToggle owner={owner} />
         {!subscription.plan.isByok && (
           <VoiceTranscriptionToggle owner={owner} />
@@ -38,6 +39,7 @@ export function CapabilitiesSection({
         <ProjectKnowledgePolicy owner={owner} />
         <EmailAgentsToggle owner={owner} />
         <PrivateConversationUrlsToggle owner={owner} />
+        <SlackPersonalFooterRemovalToggle owner={owner} />
         <DustMcpServerSettingsItem owner={owner} />
         {hasAuditLogsAccess && <AuditLogsToggle owner={owner} />}
         {publishingRestrictionMessage && (

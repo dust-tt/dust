@@ -1,0 +1,3 @@
+node_modules/
+# Generated bundle — built via `bun run build` (the image vendor step bundles index.ts itself).
+dist/

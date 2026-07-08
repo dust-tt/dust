@@ -12,6 +12,7 @@ import {
   ScrollArea,
   XClose,
 } from "@dust-tt/sparkle";
+import type { ReactNode } from "react";
 // biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
 import React from "react";
 
@@ -20,8 +21,12 @@ interface AgentBuilderLeftPanelProps {
   onCancel: () => void;
   agentConfigurationId: string | null;
   saveButtonProps?: ButtonProps;
+  editorGateMessage?: ReactNode;
   isTriggersLoading?: boolean;
   initialRequestedSpaceIds?: string[];
+  isEditorGateVisible: boolean;
+  isAddingSelfAsEditor: boolean;
+  onAddSelfAsEditor: () => void;
 }
 
 export function AgentBuilderLeftPanel({
@@ -29,8 +34,12 @@ export function AgentBuilderLeftPanel({
   onCancel,
   agentConfigurationId,
   saveButtonProps,
+  editorGateMessage,
   isTriggersLoading,
   initialRequestedSpaceIds,
+  isEditorGateVisible,
+  isAddingSelfAsEditor,
+  onAddSelfAsEditor,
 }: AgentBuilderLeftPanelProps) {
   const { owner } = useAgentBuilderContext();
 
@@ -54,6 +63,7 @@ export function AgentBuilderLeftPanel({
       />
       <ScrollArea className="flex-1">
         <div className="mx-auto space-y-10 p-8 2xl:max-w-5xl">
+          {editorGateMessage}
           <AgentBuilderInstructionsBlock
             agentConfigurationId={agentConfigurationId}
           />
@@ -70,6 +80,9 @@ export function AgentBuilderLeftPanel({
           />
           <AgentBuilderSettingsBlock
             agentConfigurationId={agentConfigurationId}
+            isEditorGateVisible={isEditorGateVisible}
+            isAddingSelfAsEditor={isAddingSelfAsEditor}
+            onAddSelfAsEditor={onAddSelfAsEditor}
           />
         </div>
       </ScrollArea>

@@ -200,6 +200,16 @@ export const AgentConfigurationSchema = LightAgentConfigurationSchema.extend({
 
 export type AgentConfigurationType = z.infer<typeof AgentConfigurationSchema>;
 
+export type AgentConfigurationWithoutModelType = Omit<
+  AgentConfigurationType,
+  "model"
+>;
+
+export type LightAgentConfigurationWithoutModelType = Omit<
+  LightAgentConfigurationType,
+  "model"
+>;
+
 export interface TemplateAgentConfigurationType {
   name: string;
   pictureUrl: string;
@@ -256,6 +266,7 @@ export const AgentErrorCategories = [
   "stream_error",
   "unknown_error",
   "invalid_response_format_configuration",
+  "credits_exhausted",
 ] as const;
 
 export type AgentErrorCategory = (typeof AgentErrorCategories)[number];

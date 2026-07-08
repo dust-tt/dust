@@ -164,6 +164,11 @@ export const SUPPORTED_MODEL_CONFIGS: ReadonlyArray<ModelConfig> = [
     providerId: "anthropic",
   },
   {
+    modelId: "claude-sonnet-5",
+    displayName: "Claude Sonnet 5",
+    providerId: "anthropic",
+  },
+  {
     modelId: "claude-3-opus-20240229",
     displayName: "Claude 3 Opus",
     providerId: "anthropic",
@@ -267,31 +272,6 @@ export const SUPPORTED_MODEL_CONFIGS: ReadonlyArray<ModelConfig> = [
     modelId: "gemini-3.5-flash",
     displayName: "Gemini 3.5 Flash",
     providerId: "google_ai_studio",
-  },
-  {
-    modelId: "meta-llama/Llama-3.3-70B-Instruct-Turbo",
-    displayName: "Llama 3.3 70B Instruct Turbo",
-    providerId: "togetherai",
-  },
-  {
-    modelId: "Qwen/Qwen2.5-Coder-32B-Instruct",
-    displayName: "Qwen 2.5 Coder 32B Instruct",
-    providerId: "togetherai",
-  },
-  {
-    modelId: "Qwen/QwQ-32B-Preview",
-    displayName: "Qwen QwQ 32B Preview",
-    providerId: "togetherai",
-  },
-  {
-    modelId: "Qwen/Qwen2-72B-Instruct",
-    displayName: "Qwen 72B Instruct",
-    providerId: "togetherai",
-  },
-  {
-    modelId: "deepseek-ai/DeepSeek-V3",
-    displayName: "DeepSeek V3 (TogetherAI)",
-    providerId: "togetherai",
   },
   {
     modelId: "deepseek-chat",

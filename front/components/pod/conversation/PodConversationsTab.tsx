@@ -11,21 +11,23 @@ import { usePodUnreadConversationIds } from "@app/hooks/conversations";
 import type { PodConversationListFilter } from "@app/hooks/conversations/usePodConversations";
 import { useMarkAllConversationsAsRead } from "@app/hooks/useMarkAllConversationsAsRead";
 import { useSearchPodConversations } from "@app/hooks/useSearchPodConversations";
-import type { GetSpaceResponseBody } from "@app/lib/api/spaces";
 import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { getRandomGreetingForName } from "@app/lib/client/greetings";
 import { useAppRouter } from "@app/lib/platform";
-import { usePodMetadata } from "@app/lib/swr/pods";
+import { usePodDefaultSkills, usePodMetadata } from "@app/lib/swr/pods";
 import { getConversationRoute } from "@app/lib/utils/router";
-import type {
-  ConversationWithoutContentType,
-  LightConversationType,
-} from "@app/types/assistant/conversation";
+import type { PodConversationListItemType } from "@app/types/api/assistant/conversation/spaces";
+import type { GetSpaceResponseBody } from "@app/types/api/spaces";
+import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import { getConversationDisplayTitle } from "@app/types/assistant/conversation";
 import type { RichMention } from "@app/types/assistant/mentions";
 import type { ContentFragmentsType } from "@app/types/content_fragment";
 import type { Result } from "@app/types/shared/result";
-import type { UserType, WorkspaceType } from "@app/types/user";
+import {
+  resolveDefaultAgentId,
+  type UserType,
+  type WorkspaceType,
+} from "@app/types/user";
 import {
   Button,
   ButtonsSwitch,
@@ -54,7 +56,7 @@ type GroupLabel =
 interface PodConversationsTabProps {
   owner: WorkspaceType;
   user: UserType;
-  conversations: LightConversationType[];
+  conversations: PodConversationListItemType[];
   isConversationsLoading: boolean;
   hasMore: boolean;
   loadMore: () => void;
@@ -107,6 +109,20 @@ export function PodConversationsTab({
     podId: podInfo.sId,
   });
 
+  // Unless a pod default is explicitly set, fall back to the workspace-wide default
+  // agent. The final fallback to @dust happens in `useHandleMentions`.
+  const defaultAgentId = resolveDefaultAgentId({
+    owner,
+    podDefaultAgentId: podMetadata?.defaultAgentId,
+    hasWorkspaceDefaultAgentFeature: hasFeature("workspace_default_agent"),
+    hasPodDefaultAgentFeature: hasFeature("pod_default_agent"),
+  });
+
+  const { defaultSkills, isDefaultSkillsLoading } = usePodDefaultSkills({
+    owner,
+    podId: podInfo.sId,
+  });
+
   const [isSearchPopoverOpen, setIsSearchPopoverOpen] = useState(false);
 
   const noConversationsForFilterMessage = useMemo(() => {
@@ -133,13 +149,13 @@ export function PodConversationsTab({
     initialSearchText: "",
   });
 
-  const conversationsByDate: Record<GroupLabel, LightConversationType[]> =
+  const conversationsByDate: Record<GroupLabel, PodConversationListItemType[]> =
     useMemo(() => {
       return conversations.length
         ? (getGroupConversationsByDate({
             conversations,
             titleFilter: "",
-          }) as Record<GroupLabel, LightConversationType[]>)
+          }) as Record<GroupLabel, PodConversationListItemType[]>)
         : ({} as Record<GroupLabel, typeof conversations>);
     }, [conversations]);
 
@@ -180,19 +196,18 @@ export function PodConversationsTab({
             <div className="flex items-center gap-2">
               <h2
                 className={cn(
-                  "heading-2xl text-foreground dark:text-foreground-night",
-                  podInfo.archivedAt &&
-                    "text-muted-foreground dark:text-muted-foreground-night"
+                  "heading-2xl text-foreground",
+                  podInfo.archivedAt && "text-muted-foreground"
                 )}
               >
                 {greeting}
               </h2>
               {podInfo.archivedAt && (
-                <Chip size="xs" color="rose" label="Archived" />
+                <Chip size="xs" color="warning" label="Archived" />
               )}
             </div>
             {podInfo.archivedAt ? (
-              <div className="mx-auto flex flex-col w-full py-4 sm:max-w-conversation">
+              <div className="mx-auto flex w-full flex-col py-4 md:max-w-conversation">
                 <EmptyCTA
                   message="This Pod is archived and no longer appears in your sidebar. You can still search for it and view past conversations, but you cannot start new ones."
                   action={null}
@@ -207,12 +222,10 @@ export function PodConversationsTab({
                 space={podInfo}
                 disableAutoFocus={false}
                 placeholder={`Get work done in ${podInfo.name}`}
-                defaultAgentId={
-                  hasFeature("pod_default_agent")
-                    ? (podMetadata?.defaultAgentId ?? null)
-                    : null
-                }
+                defaultAgentId={defaultAgentId}
                 isDefaultAgentLoading={isPodMetadataLoading}
+                defaultSkills={defaultSkills}
+                isDefaultSkillsLoading={isDefaultSkillsLoading}
               />
             ) : (
               <PodJoinCTA
@@ -270,18 +283,18 @@ export function PodConversationsTab({
                         return (
                           <div
                             className={cn(
-                              "cursor-pointer px-3 py-2 hover:bg-gray-50 dark:hover:bg-gray-800",
-                              selected && "bg-gray-100 dark:bg-gray-700"
+                              "cursor-pointer px-3 py-2 hover:bg-primary-50",
+                              selected && "bg-primary-100"
                             )}
                             onClick={() => navigateToConversation(conversation)}
                           >
                             <div className="flex items-center justify-between gap-2">
                               <div className="min-w-0 flex-1 truncate">
-                                <div className="text-sm font-medium text-foreground dark:text-foreground-night">
+                                <div className="text-sm font-medium text-foreground">
                                   {conversationLabel}
                                 </div>
                               </div>
-                              <div className="shrink-0 text-xs text-muted-foreground dark:text-muted-foreground-night">
+                              <div className="shrink-0 text-xs text-muted-foreground">
                                 {time}
                               </div>
                             </div>
@@ -364,7 +377,7 @@ export function PodConversationsTab({
                               .toSorted((a, b) => b.updated - a.updated)
                               .map((conversation) => (
                                 <PodConversationListItem
-                                  key={conversation.sId}
+                                  key={conversation.id}
                                   conversation={conversation}
                                   owner={owner}
                                 />

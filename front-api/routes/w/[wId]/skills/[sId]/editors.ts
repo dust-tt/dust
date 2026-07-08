@@ -1,11 +1,11 @@
-import type {
-  PatchSkillEditorsRequestBody,
-  SkillEditorsResponseBody,
-} from "@app/lib/api/skills/editors";
-import { PatchSkillEditorsRequestBodySchema } from "@app/lib/api/skills/editors";
 import type { GroupResource } from "@app/lib/resources/group_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
+import type {
+  PatchSkillEditorsRequestBody,
+  SkillEditorsResponseBody,
+} from "@app/types/api/skills/editors";
+import { PatchSkillEditorsRequestBodySchema } from "@app/types/api/skills/editors";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { toLightUser } from "@app/types/user";
 import { workspaceApp } from "@front-api/middlewares/ctx";

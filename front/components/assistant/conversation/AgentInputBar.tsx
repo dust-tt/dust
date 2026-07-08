@@ -384,7 +384,7 @@ export const AgentInputBar = ({ context }: AgentInputBarProps) => {
     context.projectSpaceName
   ) {
     return (
-      <div className="relative z-20 mx-auto flex w-full flex-col pt-4 pb-6 sm:w-full sm:max-w-conversation">
+      <div className="relative z-20 mx-auto flex w-full flex-col pt-4 pb-6 md:max-w-conversation">
         <PodJoinCTA
           owner={context.owner}
           podId={context.projectId}
@@ -461,7 +461,7 @@ export const AgentInputBar = ({ context }: AgentInputBarProps) => {
 
   if (context.projectId && context.isProjectArchived) {
     return (
-      <div className="mx-auto flex flex-col w-full py-4 sm:max-w-conversation">
+      <div className="mx-auto flex w-full flex-col py-4 md:max-w-conversation">
         <EmptyCTA
           message="This conversation belongs to an archived Pod. No new messages can be sent."
           action={null}
@@ -473,7 +473,7 @@ export const AgentInputBar = ({ context }: AgentInputBarProps) => {
   return (
     <div
       className={classNames(
-        "relative z-20 mx-auto flex w-full flex-col pt-4 pb-6 sm:w-full sm:max-w-conversation"
+        "relative z-20 mx-auto flex w-full flex-col pt-4 pb-6 md:max-w-conversation"
       )}
     >
       <div className="flex w-full justify-center gap-2">

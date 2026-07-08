@@ -18,7 +18,7 @@ import {
   updateCrawlerCrawlFrequency,
 } from "@connectors/connectors/webcrawler/temporal/client";
 import { zendesk } from "@connectors/connectors/zendesk/lib/cli";
-import { getTemporalClient } from "@connectors/lib/temporal";
+import { getTemporalClient, terminateWorkflow } from "@connectors/lib/temporal";
 import { default as topLogger } from "@connectors/logger/logger";
 import { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
 import type {
@@ -30,6 +30,7 @@ import type {
   ConnectorsCommandType,
   TemporalCheckQueueResponseType,
   TemporalCommandType,
+  TemporalStopWorkflowResponseType,
   TemporalUnprocessedWorkflowsResponseType,
   WebcrawlerCommandType,
 } from "@connectors/types";
@@ -89,33 +90,6 @@ export async function runCommand(adminCommand: AdminCommandType) {
     default:
       assertNever(adminCommand);
   }
-}
-
-export async function getConnectorOrThrow({
-  workspaceId,
-  dataSourceId,
-}: {
-  workspaceId: string | undefined;
-  dataSourceId: string | undefined;
-}): Promise<ConnectorModel> {
-  if (!workspaceId) {
-    throw new Error("Missing workspace ID (wId)");
-  }
-  if (!dataSourceId) {
-    throw new Error("Missing dataSource ID (dsId)");
-  }
-  const connector = await ConnectorModel.findOne({
-    where: {
-      workspaceId,
-      dataSourceId: dataSourceId,
-    },
-  });
-  if (!connector) {
-    throw new Error(
-      `No connector found for ${dataSourceId} workspace with ID ${workspaceId}`
-    );
-  }
-  return connector;
 }
 
 export async function throwOnError<T>(p: Promise<Result<T, Error>>) {
@@ -486,6 +460,7 @@ export const temporal = async ({
 }: TemporalCommandType): Promise<
   | AdminSuccessResponseType
   | TemporalCheckQueueResponseType
+  | TemporalStopWorkflowResponseType
   | TemporalUnprocessedWorkflowsResponseType
 > => {
   const logger = topLogger.child({ majorCommand: "temporal", command, args });
@@ -543,6 +518,18 @@ export const temporal = async ({
           .filter((q) => q.pollers === 0)
           .map((q) => q.queue),
       };
+    }
+
+    case "stop-workflow": {
+      const { workflowId, reason } = args;
+      if (!workflowId) {
+        throw new Error("Missing --workflowId argument");
+      }
+      const terminated = await terminateWorkflow(
+        workflowId,
+        reason ?? "Terminated via CLI"
+      );
+      return { workflowId, terminated };
     }
   }
 };

@@ -356,8 +356,6 @@ export class ProductboardClient {
     statusNames?: string[];
     ownerIds?: string[];
     ownerEmails?: string[];
-    timeframeStartDate?: string;
-    timeframeEndDate?: string;
     fields?: "all" | "default";
     pageCursor?: string;
   }): Promise<
@@ -372,27 +370,20 @@ export class ProductboardClient {
     }
 
     const filterData: Record<string, unknown> = {
-      type: filters.type,
+      type: [filters.type],
     };
 
     if (filters.ids !== undefined && filters.ids.length > 0) {
       filterData.id = filters.ids;
     }
 
+    // Field-level filters: name, archived, status, owner all live under filter.fields
     const fieldFilters: Record<string, unknown> = {};
     if (filters.name !== undefined) {
       fieldFilters.name = filters.name;
     }
     if (filters.archived !== undefined) {
       fieldFilters.archived = filters.archived;
-    }
-    if (Object.keys(fieldFilters).length > 0) {
-      filterData.fields = fieldFilters;
-    }
-
-    const relationshipFilters: Record<string, unknown> = {};
-    if (filters.parentId !== undefined) {
-      relationshipFilters.parent = { id: filters.parentId };
     }
     if (
       (filters.statusIds !== undefined && filters.statusIds.length > 0) ||
@@ -405,7 +396,7 @@ export class ProductboardClient {
       if (filters.statusNames) {
         statuses.push(...filters.statusNames.map((name) => ({ name })));
       }
-      relationshipFilters.statuses = statuses;
+      fieldFilters.status = statuses;
     }
     if (
       (filters.ownerIds !== undefined && filters.ownerIds.length > 0) ||
@@ -418,24 +409,19 @@ export class ProductboardClient {
       if (filters.ownerEmails) {
         owners.push(...filters.ownerEmails.map((email) => ({ email })));
       }
-      relationshipFilters.owners = owners;
+      fieldFilters.owner = owners;
+    }
+    if (Object.keys(fieldFilters).length > 0) {
+      filterData.fields = fieldFilters;
+    }
+
+    // Relationship filters: only parent (as array) and customer are supported
+    const relationshipFilters: Record<string, unknown> = {};
+    if (filters.parentId !== undefined) {
+      relationshipFilters.parent = [{ id: filters.parentId }];
     }
     if (Object.keys(relationshipFilters).length > 0) {
       filterData.relationships = relationshipFilters;
-    }
-
-    if (
-      filters.timeframeStartDate !== undefined ||
-      filters.timeframeEndDate !== undefined
-    ) {
-      const timeframe: { startDate?: string; endDate?: string } = {};
-      if (filters.timeframeStartDate !== undefined) {
-        timeframe.startDate = filters.timeframeStartDate;
-      }
-      if (filters.timeframeEndDate !== undefined) {
-        timeframe.endDate = filters.timeframeEndDate;
-      }
-      filterData.timeframe = timeframe;
     }
 
     const bodyData: Record<string, unknown> = {

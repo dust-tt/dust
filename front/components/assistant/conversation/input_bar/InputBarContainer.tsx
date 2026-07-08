@@ -13,10 +13,23 @@ import {
 } from "@app/components/assistant/conversation/input_bar/pasted_utils";
 import { ToolBarContent } from "@app/components/assistant/conversation/input_bar/toolbar/ToolbarContent";
 import { useInputBarOverlayTracker } from "@app/components/assistant/conversation/input_bar/useInputBarOverlayTracker";
-import type {
-  InputBarSlashCommand,
-  InputBarSlashSuggestionCapability,
+import {
+  getAvailableInputBarSlashCommands,
+  type InputBarSlashCommand,
 } from "@app/components/editor/extensions/input_bar/InputBarSlashSuggestionTypes";
+import { SKILL_NODE_TYPE } from "@app/components/editor/extensions/input_bar/SkillNode";
+import {
+  isRunCommandSlashCommand,
+  isSkillSlashCommand,
+  isToolSlashCommand,
+  RUN_COMMAND_SLASH_COMMAND_ACTION,
+  type RunCommandSlashCommand,
+  SELECT_SKILL_SLASH_COMMAND_ACTION,
+  SELECT_TOOL_SLASH_COMMAND_ACTION,
+  type SkillSlashCommand,
+  type ToolSlashCommand,
+} from "@app/components/editor/extensions/shared/SlashCommandCapabilitiesItems";
+import type { SlashCommand } from "@app/components/editor/extensions/shared/slash_suggestion/SlashCommandDropdown";
 import type { CustomEditorProps } from "@app/components/editor/input_bar/useCustomEditor";
 import useCustomEditor from "@app/components/editor/input_bar/useCustomEditor";
 import useHandleMentions from "@app/components/editor/input_bar/useHandleMentions";
@@ -52,6 +65,7 @@ import {
   isRichUserMention,
   toRichAgentMentionType,
 } from "@app/types/assistant/mentions";
+import type { ModelSelectionType } from "@app/types/assistant/models/types";
 import type { SkillWithoutInstructionsAndToolsType } from "@app/types/assistant/skill_configuration";
 import type { DataSourceViewContentNode } from "@app/types/data_source_view";
 import {
@@ -97,6 +111,26 @@ import React, {
 } from "react";
 import { InputBarContext } from "./InputBarContext";
 
+type KnownSlashCommand =
+  | RunCommandSlashCommand<InputBarSlashCommand>
+  | SkillSlashCommand
+  | ToolSlashCommand;
+
+function narrowToKnownSlashCommand(
+  item: SlashCommand
+): KnownSlashCommand | null {
+  if (isRunCommandSlashCommand<InputBarSlashCommand>(item)) {
+    return item;
+  }
+  if (isSkillSlashCommand(item)) {
+    return item;
+  }
+  if (isToolSlashCommand(item)) {
+    return item;
+  }
+  return null;
+}
+
 const COLLAPSE_TRANSITION = "200ms cubic-bezier(0.34, 1.15, 0.64, 1)";
 
 export const INPUT_BAR_ACTIONS = [
@@ -104,12 +138,48 @@ export const INPUT_BAR_ACTIONS = [
   "attachment",
   "agents-list",
   "agents-list-with-actions",
+  "model-picker",
   "turn-into-agent",
   "voice",
   "fullscreen",
 ] as const;
 
 export type InputBarAction = (typeof INPUT_BAR_ACTIONS)[number];
+
+export interface DefaultSkillReference {
+  sId: string;
+  name: string;
+  icon: string | null;
+}
+
+function readDefaultSkillEditorState(editor: Editor): {
+  skillIds: string[];
+  hasUserContent: boolean;
+} {
+  const skillIds: string[] = [];
+  let hasUserContent = false;
+  editor.state.doc.descendants((node) => {
+    if (node.type.name === SKILL_NODE_TYPE) {
+      if (typeof node.attrs.skillId === "string") {
+        skillIds.push(node.attrs.skillId);
+      }
+      return false;
+    }
+    if (node.isText) {
+      if ((node.text ?? "").trim().length > 0) {
+        hasUserContent = true;
+      }
+    } else if (node.isInline && node.type.name !== "hardBreak") {
+      hasUserContent = true;
+    }
+    return true;
+  });
+  return { skillIds, hasUserContent };
+}
+
+function sameSkillIds(a: string[], b: string[]): boolean {
+  return a.length === b.length && a.every((id, index) => id === b[index]);
+}
 
 export interface InputBarContainerProps {
   actions: InputBarAction[];
@@ -136,6 +206,9 @@ export interface InputBarContainerProps {
   } | null;
   defaultAgentId?: string | null;
   isDefaultAgentLoading?: boolean;
+  // Skills pre-inserted into a new conversation's editor, as if manually added.
+  defaultSkills?: DefaultSkillReference[];
+  isDefaultSkillsLoading?: boolean;
   isAgentBuilder?: boolean;
   isCompact?: boolean;
   onExpandInputBar?: () => void;
@@ -146,6 +219,9 @@ export interface InputBarContainerProps {
   onEnterKeyDown: CustomEditorProps["onEnterKeyDown"];
   onMCPServerViewDeselect: (serverView: MCPServerViewType) => void;
   onMCPServerViewSelect: (serverView: MCPServerViewType) => void;
+  onModelSelectionChange?: (
+    modelSelection: ModelSelectionType | undefined
+  ) => void;
   onNodeSelect: (node: DataSourceViewContentNode) => void;
   onNodeUnselect: (node: DataSourceViewContentNode) => void;
   onResetMCPServerViews: () => void;
@@ -156,6 +232,19 @@ export interface InputBarContainerProps {
   selectedMCPServerViews: MCPServerViewType[];
   stickyMentions?: RichMention[];
   user: UserType | null;
+}
+
+function hasActiveSelectionInEditor(
+  editorDom: HTMLElement | undefined
+): boolean {
+  const selection = window.getSelection();
+  return Boolean(
+    selection &&
+      !selection.isCollapsed &&
+      editorDom &&
+      selection.anchorNode &&
+      editorDom.contains(selection.anchorNode)
+  );
 }
 
 const InputBarContainer = ({
@@ -175,11 +264,14 @@ const InputBarContainer = ({
   getDraft,
   defaultAgentId,
   isDefaultAgentLoading,
+  defaultSkills,
+  isDefaultSkillsLoading,
   isAgentBuilder = false,
   onNodeSelect,
   onNodeUnselect,
   attachedNodes,
   onMCPServerViewSelect,
+  onModelSelectionChange,
   onMCPServerViewDeselect,
   selectedMCPServerViews,
   onResetMCPServerViews,
@@ -281,12 +373,22 @@ const InputBarContainer = ({
   // conversation may only be created after the first message; the ref keeps it current.
   const conversationIdRef = useRef<string | null>(conversation?.sId ?? null);
   conversationIdRef.current = conversation?.sId ?? null;
-  const onSelectRef = useRef<
-    ((capability: InputBarSlashSuggestionCapability) => void) | undefined
-  >(undefined);
-  const onDetailsRef = useRef<
-    ((capability: InputBarSlashSuggestionCapability) => void) | undefined
-  >(undefined);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const slashCommandsRef = useRef<InputBarSlashCommand[]>([]);
+  slashCommandsRef.current = getAvailableInputBarSlashCommands({
+    hasAttachment: actions.includes("attachment"),
+    hasConversation: Boolean(conversation?.sId),
+  });
+  const onSelectRef = useRef<((item: SlashCommand) => void) | undefined>(
+    undefined
+  );
+  const onDetailsRef = useRef<((item: SlashCommand) => void) | undefined>(
+    undefined
+  );
+  const onNodeSelectRef = useRef(onNodeSelect);
+  onNodeSelectRef.current = onNodeSelect;
+  const includeAttachKnowledgeRef = useRef(actions.includes("attachment"));
+  includeAttachKnowledgeRef.current = actions.includes("attachment");
   const [selectedSkillIdForDetails, setSelectedSkillIdForDetails] = useState<
     string | null
   >(null);
@@ -495,7 +597,7 @@ const InputBarContainer = ({
     sId: skillId,
     name: skillName,
     icon: skillIcon,
-  }: SkillWithoutInstructionsAndToolsType) => {
+  }: Pick<SkillWithoutInstructionsAndToolsType, "sId" | "name" | "icon">) => {
     editorRef.current
       ?.chain()
       .focus()
@@ -509,6 +611,11 @@ const InputBarContainer = ({
 
   const handleSlashCommandSelect = (command: InputBarSlashCommand) => {
     switch (command.id) {
+      case "upload-file":
+        if (!fileUploaderService.isProcessingFiles) {
+          fileInputRef.current?.click();
+        }
+        break;
       case "compact":
         if (isCompacting) {
           break;
@@ -536,42 +643,54 @@ const InputBarContainer = ({
     }
   };
 
-  onSelectRef.current = (capability: InputBarSlashSuggestionCapability) => {
-    switch (capability.kind) {
-      case "command":
-        handleSlashCommandSelect(capability.command);
+  onSelectRef.current = (rawItem: SlashCommand) => {
+    const item = narrowToKnownSlashCommand(rawItem);
+    if (!item) {
+      return;
+    }
+
+    switch (item.action) {
+      case RUN_COMMAND_SLASH_COMMAND_ACTION:
+        handleSlashCommandSelect(item.data.command);
         break;
-      case "skill":
-        handleSkillSelect(capability.skill);
+      case SELECT_SKILL_SLASH_COMMAND_ACTION:
+        handleSkillSelect(item.data.skill);
         break;
-      case "tool":
-        onMCPServerViewSelect(capability.serverView);
+      case SELECT_TOOL_SLASH_COMMAND_ACTION:
+        onMCPServerViewSelect(item.data.tool.view);
         break;
       default:
-        assertNeverAndIgnore(capability);
+        assertNeverAndIgnore(item);
     }
 
     queueMicrotask(() => editorRef.current?.commands.focus());
   };
 
-  onDetailsRef.current = (capability: InputBarSlashSuggestionCapability) => {
-    switch (capability.kind) {
-      case "command":
+  onDetailsRef.current = (rawItem: SlashCommand) => {
+    const item = narrowToKnownSlashCommand(rawItem);
+    if (!item) {
+      return;
+    }
+
+    switch (item.action) {
+      case RUN_COMMAND_SLASH_COMMAND_ACTION:
         // Static commands have no details sheet.
         break;
-      case "skill":
-        setSelectedSkillIdForDetails(capability.skill.sId);
+      case SELECT_SKILL_SLASH_COMMAND_ACTION:
+        setSelectedSkillIdForDetails(item.data.skill.sId);
         break;
-      case "tool":
-        setSelectedServerViewForDetails(capability.serverView);
+      case SELECT_TOOL_SLASH_COMMAND_ACTION:
+        setSelectedServerViewForDetails(item.data.tool.view);
         break;
       default:
-        assertNeverAndIgnore(capability);
+        assertNeverAndIgnore(item);
     }
   };
 
   // Current space is taken from the conversation (if already set) or from the space prop (if provided).
   const spaceId = conversation?.spaceId ?? space?.sId ?? undefined;
+  const spaceIdRef = useRef<string | null | undefined>(spaceId);
+  spaceIdRef.current = spaceId;
 
   const { editor, editorService } = useCustomEditor({
     onEnterKeyDown: onEnterKeyDownWithShake,
@@ -591,6 +710,11 @@ const InputBarContainer = ({
       onDetailsRef,
       onSkillDetails: setSelectedSkillIdForDetails,
       selectedMCPServerViewIdsRef,
+      slashCommandsRef,
+      includeAttachKnowledgeRef,
+      attachedNodesRef,
+      onNodeSelectRef,
+      spaceIdRef,
     },
     placeholderOverride: disableInput ? submitBlockMessage : placeholder,
     onSuggestionActiveChangeRef,
@@ -1012,9 +1136,10 @@ const InputBarContainer = ({
     isSpacesLoading,
   ]);
 
-  // When input bar animation is requested, it means the new button was clicked (removing focus from
-  // the input bar), we grab it back.
-  const { animate, captureActions } = useContext(InputBarContext);
+  // When an input bar refocus is requested (e.g. the "New" button was clicked, removing focus from
+  // the input bar), we grab focus back.
+  const { shouldFocusInput, setShouldFocusInput, captureActions } =
+    useContext(InputBarContext);
 
   const handleSingleAgentSelect = useCallback(
     (mention: RichMention) => {
@@ -1062,11 +1187,14 @@ const InputBarContainer = ({
   }, [captureActions, disableInput, fileUploaderService.isProcessingFiles]);
 
   useEffect(() => {
-    if (animate) {
+    if (shouldFocusInput) {
       // Schedule focus to avoid flushing during render lifecycle.
       queueMicrotask(() => editorService.focusEnd());
+      // Consume the flag so a later request (e.g. clicking "New" again) re-runs
+      // this effect instead of being swallowed as a no-op state update.
+      setShouldFocusInput(false);
     }
-  }, [animate, editorService]);
+  }, [shouldFocusInput, editorService, setShouldFocusInput]);
 
   // Focus the input bar when the extension panel is opened (content-script sidebar or Front iframe).
   // Not gated by disableAutoFocus: that flag prevents autofocus on mount (to avoid mobile keyboard
@@ -1220,11 +1348,74 @@ const InputBarContainer = ({
     stickyMentions,
   });
 
+  useEffect(() => {
+    if (defaultSkills === undefined) {
+      return;
+    }
+    if (conversation || isAgentBuilder) {
+      return;
+    }
+
+    if (isDefaultSkillsLoading) {
+      return;
+    }
+    if (
+      !editor ||
+      editor.isDestroyed ||
+      !editor.isEditable ||
+      !editor.isInitialized
+    ) {
+      return;
+    }
+
+    const desiredSkillIds = defaultSkills.map((skill) => skill.sId);
+
+    queueMicrotask(() => {
+      if (
+        !editor ||
+        editor.isDestroyed ||
+        !editor.isEditable ||
+        !editor.isInitialized
+      ) {
+        return;
+      }
+
+      const { skillIds, hasUserContent } = readDefaultSkillEditorState(editor);
+
+      if (hasUserContent) {
+        return;
+      }
+
+      if (sameSkillIds(skillIds, desiredSkillIds)) {
+        return;
+      }
+
+      let chain = editor.chain();
+      if (skillIds.length > 0) {
+        chain = chain.clearContent();
+      }
+      for (const skill of defaultSkills) {
+        chain = chain.insertSkillNode({
+          skillId: skill.sId,
+          skillName: skill.name,
+          skillIcon: skill.icon,
+        });
+      }
+      chain.run();
+    });
+  }, [
+    conversation,
+    defaultSkills,
+    isDefaultSkillsLoading,
+    isAgentBuilder,
+    editor,
+    editor?.isInitialized,
+    editor?.isEditable,
+  ]);
+
   const buttonSize = useMemo(() => {
     return isMobile ? "sm" : "xs";
   }, [isMobile]);
-
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const isSubmitDisabled =
     (isEmpty && !canSubmitEmpty) ||
@@ -1234,13 +1425,6 @@ const InputBarContainer = ({
 
   const hideCapabilities = startsWithUserMention && !selectedSingleAgent;
 
-  // A pod can pre-select a default agent that the current member can't access
-  // (e.g. an unpublished agent). `allAgents` only contains agents the member
-  // can read, so when the configured default is missing from it, the
-  // resolution in `useHandleMentions` silently falls back to @dust. Surface a
-  // notice on the agent pill so the member understands why the pod's default
-  // isn't the one shown. (We can't distinguish "no access" from "deleted"
-  // client-side, so the copy stays neutral.)
   const isDefaultAgentUnavailable =
     !conversation &&
     !isAgentBuilder &&
@@ -1251,9 +1435,9 @@ const InputBarContainer = ({
 
   const contentEditableClasses = classNames(
     "inline-block w-full",
-    "border-0 outline-none ring-0 focus:border-0 focus:outline-none focus:ring-0",
+    "border-0 outline-hidden ring-0 focus:border-0 focus:outline-hidden focus:ring-0",
     "whitespace-pre-wrap font-normal",
-    "px-3 sm:pl-4 pt-3 sm:pt-3.5"
+    "px-3 md:pl-4 pt-3 md:pt-3.5"
   );
 
   const isRecording = activeVoiceService.status === "recording";
@@ -1316,7 +1500,7 @@ const InputBarContainer = ({
           className={cn(
             INPUT_BAR_COMPACT_PILL_INNER_CLASSES,
             INPUT_BAR_COMPACT_CONTENT_ENTER_ANIMATION_CLASSES,
-            "relative min-w-0 w-full gap-1 px-1 sm:pt-0"
+            "relative min-w-0 w-full gap-1 px-1 md:pt-0"
           )}
         >
           {!isVoiceActive && (
@@ -1324,9 +1508,7 @@ const InputBarContainer = ({
               aria-hidden
               className={cn(
                 INPUT_BAR_COMPACT_PREVIEW_CLASSES,
-                compactPreviewText
-                  ? "text-foreground dark:text-foreground-night"
-                  : "text-faint dark:text-faint-night"
+                compactPreviewText ? "text-foreground" : "text-muted-foreground"
               )}
             >
               {compactPreviewText || compactDisplayPlaceholder}
@@ -1348,7 +1530,7 @@ const InputBarContainer = ({
                   elapsedSeconds={activeVoiceService.elapsedSeconds}
                   onRecordStart={activeVoiceService.startRecording}
                   onRecordStop={activeVoiceService.stopRecording}
-                  size="xs"
+                  size="sm"
                   compact
                   showStopLabel={false}
                   disabled={disableInput}
@@ -1360,12 +1542,15 @@ const InputBarContainer = ({
       <div
         id="InputBarContainer"
         className={cn(
-          "relative flex flex-1 cursor-text flex-row transition-opacity duration-200 sm:pt-0",
+          "relative flex flex-1 cursor-text flex-row transition-opacity duration-200 md:pt-0",
           isCompact &&
             "pointer-events-none absolute h-0 w-0 overflow-hidden opacity-0"
         )}
         aria-hidden={isCompact}
         onClick={(e) => {
+          if (hasActiveSelectionInEditor(editorRef.current?.view.dom)) {
+            return;
+          }
           // If e.target is not a child of a div with class "tiptap", then focus on the editor
           if (
             !(e.target instanceof HTMLElement && e.target.closest(".tiptap"))
@@ -1375,6 +1560,32 @@ const InputBarContainer = ({
         }}
       >
         <div className="flex w-0 flex-grow flex-col">
+          {!isRecording && editor && (
+            <div
+              className={cn("relative flex px-0 pt-1", !isMobile && "hidden")}
+            >
+              <Button
+                variant="ghost-secondary"
+                icon={Type01}
+                size={buttonSize}
+                onClick={() => setIsToolbarOpen(!isToolbarOpen)}
+              />
+              <Toolbar
+                variant="overlay"
+                className={cn(
+                  isToolbarOpen
+                    ? "pointer-events-auto w-full"
+                    : "pointer-events-none hidden"
+                )}
+                onClose={(e: React.MouseEvent<HTMLButtonElement>) => {
+                  e.stopPropagation();
+                  setIsToolbarOpen(false);
+                }}
+              >
+                <ToolBarContent editor={editor} />
+              </Toolbar>
+            </div>
+          )}
           <div className="relative">
             <EditorContent
               editor={editor}
@@ -1382,7 +1593,7 @@ const InputBarContainer = ({
                 contentEditableClasses,
                 "scrollbar-hide",
                 "overflow-y-auto",
-                "max-h-[40vh] min-h-14 sm:min-h-16"
+                "max-h-[40vh] min-h-14 md:min-h-16"
               )}
             />
           </div>
@@ -1397,7 +1608,7 @@ const InputBarContainer = ({
             )}
           </BubbleMenu>
           <div
-            className={cn("flex w-full flex-col", "py-1.5 sm:pb-2")}
+            className={cn("flex w-full flex-col", "py-1.5 md:pb-2")}
             style={{
               transition: `padding ${COLLAPSE_TRANSITION}`,
             }}
@@ -1410,7 +1621,7 @@ const InputBarContainer = ({
                     size="xs"
                     label={getMcpServerViewDisplayName(msv)}
                     icon={getIcon(msv.server.icon)}
-                    className="m-0.5 hidden bg-background text-foreground dark:bg-background-night dark:text-foreground-night xs:flex"
+                    className="m-0.5 hidden bg-background text-foreground xs:flex"
                     onClick={() => setSelectedServerViewForDetails(msv)}
                     onRemove={() => {
                       onMCPServerViewDeselect(msv);
@@ -1419,7 +1630,7 @@ const InputBarContainer = ({
                   <Chip
                     size="xs"
                     icon={getIcon(msv.server.icon)}
-                    className="m-0.5 flex bg-background text-foreground dark:bg-background-night dark:text-foreground-night xs:hidden"
+                    className="m-0.5 flex bg-background text-foreground xs:hidden"
                     onClick={() => setSelectedServerViewForDetails(msv)}
                     onRemove={() => {
                       onMCPServerViewDeselect(msv);
@@ -1428,39 +1639,10 @@ const InputBarContainer = ({
                 </React.Fragment>
               ))}
             </div>
-            <div className="relative flex w-full items-center justify-between">
-              {!isRecording && editor && (
-                <Toolbar
-                  variant="overlay"
-                  className={cn(
-                    isToolbarOpen
-                      ? "pointer-events-auto w-full"
-                      : "pointer-events-none hidden w-[120px]",
-                    !isMobile && "hidden"
-                  )}
-                  onClose={(e: React.MouseEvent<HTMLButtonElement>) => {
-                    e.stopPropagation();
-                    setIsToolbarOpen(false);
-                  }}
-                >
-                  <ToolBarContent editor={editor} />
-                </Toolbar>
-              )}
-              <div
-                className={cn(
-                  "flex w-full items-center px-2",
-                  isToolbarOpen && "opacity-0"
-                )}
-              >
+            <div className="relative flex min-h-8 w-full items-center justify-between">
+              <div className={cn("flex w-full items-center px-2")}>
                 {!isRecording && (
                   <div className="flex items-center">
-                    <Button
-                      variant="ghost-secondary"
-                      icon={Type01}
-                      size={buttonSize}
-                      className={cn("flex", !isMobile && "hidden")}
-                      onClick={() => setIsToolbarOpen(!isToolbarOpen)}
-                    />
                     <InputBarButtons
                       actions={actions}
                       allAgents={allAgents}
@@ -1478,6 +1660,7 @@ const InputBarContainer = ({
                       isInputDisabled={disableInput}
                       onAgentRemove={() => setSelectedSingleAgent(null)}
                       onMCPServerViewSelect={onMCPServerViewSelect}
+                      onModelSelectionChange={onModelSelectionChange}
                       onNodeSelect={onNodeSelect}
                       onNodeUnselect={onNodeUnselect}
                       onSkillSelect={handleSkillSelect}
@@ -1546,7 +1729,7 @@ const InputBarContainer = ({
                             endComponent={
                               <DropdownMenuShortcut
                                 shortcut={pageShortcut}
-                                className="text-xs text-faint dark:text-faint-night"
+                                className="text-xs text-faint"
                               />
                             }
                           />
@@ -1564,7 +1747,7 @@ const InputBarContainer = ({
                             endComponent={
                               <DropdownMenuShortcut
                                 shortcut={screenshotShortcut}
-                                className="text-xs text-faint dark:text-faint-night"
+                                className="text-xs text-faint"
                               />
                             }
                           />

@@ -223,10 +223,6 @@ export function getCreditTypeProgrammaticUsdId(): string {
     : PROD_CREDIT_TYPE_PROG_USD_ID;
 }
 
-// Number of pricing tiers for any tiered seat-style product (MAU, future).
-// Tier products and rates are derived from the prefix.
-const SEAT_TIER_COUNT = 6;
-
 export const getOverageAwuRate = (currency: SupportedCurrency) => {
   return metronomeAmount(AWU_PRICE_PER_CREDIT[currency] * 100, currency) * 2;
 };
@@ -277,43 +273,6 @@ export const BILLING_CYCLE_CONFIG_FIRST_OF_MONTH = {
     day: "FIRST_OF_MONTH" as const,
   },
 };
-
-// "MAU Tier 1", …, "MAU Tier 6".
-function buildSeatTierProductNames(prefix: string): string[] {
-  return Array.from(
-    { length: SEAT_TIER_COUNT },
-    (_, i) => `${prefix} Tier ${i + 1}`
-  );
-}
-
-// SUBSCRIPTION product entries to inject into PRODUCTS for a tiered seat family.
-function buildSeatTierProducts(prefix: string): ProductDef[] {
-  return buildSeatTierProductNames(prefix).map(
-    (name): ProductDef => ({ name, type: "SUBSCRIPTION" })
-  );
-}
-
-// Default rate entries for a tiered seat family on a rate card. Not entitled
-// by default — enabled per contract via overrides with per-tier pricing.
-export function buildSeatTierRates({
-  prefix,
-  creditTypeId,
-}: {
-  prefix: string;
-  creditTypeId: string;
-}): RateDef[] {
-  return buildSeatTierProductNames(prefix).map(
-    (name): RateDef => ({
-      product_name: name,
-      starting_at: "2026-04-01T00:00:00.000Z",
-      entitled: false,
-      rate_type: "FLAT",
-      billing_frequency: "MONTHLY",
-      price: 0,
-      credit_type_id: creditTypeId,
-    })
-  );
-}
 
 export const PRODUCTS: ProductDef[] = [
   // --- Legacy usage product (USD, 30% markup baked into quantity_conversion) ---
@@ -406,16 +365,6 @@ export const PRODUCTS: ProductDef[] = [
     custom_fields: { [SEAT_TYPE_CUSTOM_FIELD_KEY]: "free" },
     tags: [SEAT_TAG, MONTHLY_TAG],
   },
-  // MAU product — single subscription for simple (non-tiered) enterprise contracts.
-  // Used when no MAU_TIERS custom field is set on the contract.
-  { name: "MAU", type: "SUBSCRIPTION" },
-  // Tiered seat products — one per pricing tier for contracts with graduated
-  // pricing. Not entitled by default; enabled per contract via overrides.
-  // Quantity managed by the MAU/seat sync flow based on the contract's tier
-  // custom field.
-  ...buildSeatTierProducts("MAU"),
-  // MAU Commit — appears as a line item on invoices for the monthly minimum charge.
-  { name: "MAU Commit", type: "FIXED" },
   // FIXED products for credit grants — separate products for distinct invoice line items.
   {
     name: "Free Credits",

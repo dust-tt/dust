@@ -78,6 +78,41 @@ export type LightWorkspaceType = {
   groups?: string[];
 };
 
+export function getWorkspaceDefaultAgentId(
+  owner: LightWorkspaceType
+): string | null {
+  const value = owner.metadata?.workspaceDefaultAgentId;
+  return typeof value === "string" ? value : null;
+}
+
+/**
+ * The default agent that should be pre-selected for new conversations.
+ * A pod-level default agent takes precedence over the workspace-level default agent.
+ *
+ * Returns the resolved agent sId, or `null` when no default applies (callers then
+ * fall back to @dust). ).
+ */
+export function resolveDefaultAgentId({
+  owner,
+  podDefaultAgentId,
+  hasWorkspaceDefaultAgentFeature,
+  hasPodDefaultAgentFeature,
+}: {
+  owner: LightWorkspaceType;
+  podDefaultAgentId: string | null | undefined;
+  hasWorkspaceDefaultAgentFeature: boolean;
+  hasPodDefaultAgentFeature: boolean;
+}): string | null {
+  const workspaceDefaultAgentId = hasWorkspaceDefaultAgentFeature
+    ? getWorkspaceDefaultAgentId(owner)
+    : null;
+  const resolvedPodDefaultAgentId =
+    hasPodDefaultAgentFeature || hasWorkspaceDefaultAgentFeature
+      ? (podDefaultAgentId ?? null)
+      : null;
+  return resolvedPodDefaultAgentId ?? workspaceDefaultAgentId;
+}
+
 export type WorkspaceType = LightWorkspaceType & {
   ssoEnforced?: boolean;
 };
@@ -214,9 +249,28 @@ export function isAdmin(
   }
 }
 
+export function isBusinessAdmin(
+  owner: WorkspaceType | null
+): owner is WorkspaceType & { role: "business_admin" | "admin" } {
+  if (!owner) {
+    return false;
+  }
+  switch (owner.role) {
+    case "admin":
+    case "business_admin":
+      return true;
+    case "builder":
+    case "user":
+    case "none":
+      return false;
+    default:
+      assertNever(owner.role);
+  }
+}
+
 export function isBuilder(
   owner: WorkspaceType | null
-): owner is WorkspaceType & { role: "builder" | "admin" } {
+): owner is WorkspaceType & { role: "builder" | "business_admin" | "admin" } {
   if (!owner) {
     return false;
   }
@@ -233,9 +287,9 @@ export function isBuilder(
   }
 }
 
-export function isUser(
-  owner: WorkspaceType | null
-): owner is WorkspaceType & { role: "user" | "builder" | "admin" } {
+export function isUser(owner: WorkspaceType | null): owner is WorkspaceType & {
+  role: "user" | "builder" | "business_admin" | "admin";
+} {
   if (!owner) {
     return false;
   }

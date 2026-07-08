@@ -34,44 +34,44 @@ const tags = Array.from({ length: 50 }).map(
 
 export const ScrollAreaExample: Story = {
   render: () => (
-    <div className="s-flex s-flex-row s-gap-6 s-bg-muted s-p-8">
-      <div className="s-h-[400px]">
-        <ScrollArea className="s-h-full s-w-[200px] s-border-b s-border-t s-border-border s-bg-white">
-          <h4 className="s-mb-4 s-text-sm s-font-medium s-leading-none">
+    <div className="flex flex-row gap-6 bg-muted p-8">
+      <div className="h-[400px]">
+        <ScrollArea className="h-full w-[200px] border-b border-t border-border bg-white">
+          <h4 className="mb-4 text-sm font-medium leading-none">
             Mini ScrollBar
           </h4>
           {tags.map((tag) => (
             <React.Fragment key={tag}>
-              <div className="s-text-sm">{tag}</div>
-              <Separator className="s-my-2" />
+              <div className="text-sm">{tag}</div>
+              <Separator className="my-2" />
             </React.Fragment>
           ))}
           <ScrollBar orientation="vertical" />
         </ScrollArea>
       </div>
-      <div className="s-h-[400px]">
-        <ScrollArea className="s-h-full s-w-[200px] s-border-b s-border-t s-border-border s-bg-white">
-          <h4 className="s-mb-4 s-text-sm s-font-medium s-leading-none">
+      <div className="h-[400px]">
+        <ScrollArea className="h-full w-[200px] border-b border-t border-border bg-white">
+          <h4 className="mb-4 text-sm font-medium leading-none">
             Classic ScrollBar
           </h4>
           {tags.map((tag) => (
             <React.Fragment key={tag}>
-              <div className="s-text-sm">{tag}</div>
-              <Separator className="s-my-2" />
+              <div className="text-sm">{tag}</div>
+              <Separator className="my-2" />
             </React.Fragment>
           ))}
           <ScrollBar orientation="vertical" size="classic" />
         </ScrollArea>
       </div>
-      <div className="s-h-[400px]">
-        <ScrollArea className="s-h-full s-w-[200px] s-border-b s-border-t s-border-border s-bg-white">
-          <h4 className="s-mb-4 s-text-sm s-font-medium s-leading-none">
+      <div className="h-[400px]">
+        <ScrollArea className="h-full w-[200px] border-b border-t border-border bg-white">
+          <h4 className="mb-4 text-sm font-medium leading-none">
             Minimal ScrollBar
           </h4>
           {tags.map((tag) => (
             <React.Fragment key={tag}>
-              <div className="s-text-sm">{tag}</div>
-              <Separator className="s-my-2" />
+              <div className="text-sm">{tag}</div>
+              <Separator className="my-2" />
             </React.Fragment>
           ))}
           <ScrollBar orientation="vertical" size="minimal" />
@@ -102,22 +102,22 @@ const works: Artwork[] = [
 ];
 export const ScrollAreaHorizontalDemo: Story = {
   render: () => (
-    <ScrollArea className="s-w-96 s-whitespace-nowrap s-rounded-md s-border">
-      <div className="s-flex s-w-max s-space-x-4 s-p-4">
+    <ScrollArea className="w-96 whitespace-nowrap rounded-md border">
+      <div className="flex w-max space-x-4 p-4">
         {works.map((artwork) => (
-          <figure key={artwork.artist} className="s-shrink-0">
-            <div className="s-overflow-hidden s-rounded-md">
+          <figure key={artwork.artist} className="shrink-0">
+            <div className="overflow-hidden rounded-md">
               <img
                 src={artwork.art}
                 alt={`Photo by ${artwork.artist}`}
-                className="s-aspect-[3/4] s-h-fit s-w-fit s-object-cover"
+                className="aspect-[3/4] h-fit w-fit object-cover"
                 width={300}
                 height={400}
               />
             </div>
-            <figcaption className="s-pt-2 s-text-xs s-text-muted-foreground">
+            <figcaption className="pt-2 text-xs text-muted-foreground">
               Photo by{" "}
-              <span className="s-font-semibold s-text-foreground">
+              <span className="font-semibold text-foreground">
                 {artwork.artist}
               </span>
             </figcaption>
@@ -132,11 +132,11 @@ export const ScrollAreaHorizontalDemo: Story = {
 export const ScrollWithActiveState: Story = {
   render: () => {
     return (
-      <div className="s-flex s-flex-col s-gap-4">
-        <ScrollArea className="s-h-[200px] s-w-[350px] s-rounded-xl s-border s-bg-white">
+      <div className="flex flex-col gap-4">
+        <ScrollArea className="h-[200px] w-[350px] rounded-xl border bg-white">
           <div>
             {Array.from({ length: 20 }).map((_, i) => (
-              <div key={i} className="s-px-4 s-py-2 s-text-sm">
+              <div key={i} className="px-4 py-2 text-sm">
                 Item {i + 1}
               </div>
             ))}
@@ -150,35 +150,35 @@ export const ScrollWithActiveState: Story = {
 
 export const ScrollAreaHideScrollbar: Story = {
   render: () => (
-    <div className="s-flex s-flex-row s-gap-6 s-bg-muted s-p-8">
-      <div className="s-h-[400px]">
+    <div className="flex flex-row gap-6 bg-muted p-8">
+      <div className="h-[400px]">
         <ScrollArea
-          className="s-h-full s-w-[200px] s-border-b s-border-t s-border-border s-bg-white"
+          className="h-full w-[200px] border-b border-t border-border bg-white"
           hideScrollBar
         >
-          <h4 className="s-mb-4 s-text-sm s-font-medium s-leading-none">
+          <h4 className="mb-4 text-sm font-medium leading-none">
             Mini ScrollBar
           </h4>
           {tags.map((tag) => (
             <React.Fragment key={tag}>
-              <div className="s-text-sm">{tag}</div>
-              <Separator className="s-my-2" />
+              <div className="text-sm">{tag}</div>
+              <Separator className="my-2" />
             </React.Fragment>
           ))}
         </ScrollArea>
       </div>
-      <div className="s-h-[400px]">
+      <div className="h-[400px]">
         <ScrollArea
-          className="s-h-full s-w-[200px] s-border-b s-border-t s-border-border s-bg-white"
+          className="h-full w-[200px] border-b border-t border-border bg-white"
           hideScrollBar
         >
-          <h4 className="s-mb-4 s-text-sm s-font-medium s-leading-none">
+          <h4 className="mb-4 text-sm font-medium leading-none">
             Classic ScrollBar
           </h4>
           {tags.map((tag) => (
             <React.Fragment key={tag}>
-              <div className="s-text-sm">{tag}</div>
-              <Separator className="s-my-2" />
+              <div className="text-sm">{tag}</div>
+              <Separator className="my-2" />
             </React.Fragment>
           ))}
         </ScrollArea>

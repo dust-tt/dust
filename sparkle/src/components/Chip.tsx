@@ -19,83 +19,30 @@ export const CHIP_COLORS = [
   "warning",
   "info",
   "highlight",
-  "green",
-  "blue",
-  "rose",
-  "golden",
-  "white",
 ] as const;
 
 type ChipColorType = (typeof CHIP_COLORS)[number];
 
-const chipVariants = cva("s-inline-flex s-box-border s-items-center", {
+const chipVariants = cva("inline-flex box-border items-center", {
   variants: {
     size: {
-      mini: "s-rounded-md s-min-h-5 s-text-xs s-font-medium s-px-1.5 s-py-1 s-gap-0.5",
-      xs: "s-rounded-lg s-min-h-7 s-heading-xs s-px-3 s-gap-1",
-      sm: "s-rounded-xl s-min-h-9 s-heading-sm s-px-4 s-gap-1.5",
+      mini: "rounded-lg min-h-5 text-xs font-medium px-1.5 gap-1",
+      xs: "rounded-[9px] min-h-6 heading-xs px-[9px] gap-1",
+      sm: "rounded-xl min-h-8 heading-sm px-3 gap-1.5",
     },
+    // Semantic scales (primary/highlight/info/warning) auto-flip in the `.dark`
+    // block, so they need no dark variants. `primary` resolves to stone (Figma
+    // Badge Grey) via the token layer. `success` is overridden to the emerald
+    // palette to match the Figma Badge Green, so it carries dark variants.
     color: {
-      primary: cn(
-        "s-bg-muted-background s-border-border",
-        "s-text-primary-900",
-        "dark:s-bg-muted-background-night dark:s-border-border-night",
-        "dark:s-text-primary-900-night"
-      ),
-      highlight: cn(
-        "s-bg-highlight-100 s-border-highlight-200",
-        "s-text-highlight-900",
-        "dark:s-bg-highlight-100-night dark:s-border-highlight-200-night",
-        "dark:s-text-highlight-900-night"
-      ),
+      primary: cn("bg-primary-50 text-primary-700"),
       success: cn(
-        "s-bg-success-100 s-border-success-200",
-        "s-text-success-900",
-        "dark:s-bg-success-100-night dark:s-border-success-200-night",
-        "dark:s-text-success-900-night"
+        "bg-emerald-50 text-emerald-700",
+        "dark:bg-emerald-950 dark:text-emerald-300"
       ),
-      info: cn(
-        "s-bg-info-100 s-border-info-200",
-        "s-text-info-900",
-        "dark:s-bg-info-100-night dark:s-border-info-200-night",
-        "dark:s-text-info-900-night"
-      ),
-      warning: cn(
-        "s-bg-warning-100 s-border-warning-200",
-        "s-text-warning-900",
-        "dark:s-bg-warning-100-night dark:s-border-warning-200-night",
-        "dark:s-text-warning-900-night"
-      ),
-      green: cn(
-        "s-bg-green-100 s-border-green-200",
-        "s-text-green-900",
-        "dark:s-bg-green-100-night dark:s-border-green-200-night",
-        "dark:s-text-green-900-night"
-      ),
-      blue: cn(
-        "s-bg-blue-100 s-border-blue-200",
-        "s-text-blue-900",
-        "dark:s-bg-blue-100-night dark:s-border-blue-200-night",
-        "dark:s-text-blue-900-night"
-      ),
-      rose: cn(
-        "s-bg-rose-100 s-border-rose-200",
-        "s-text-rose-900",
-        "dark:s-bg-rose-100-night dark:s-border-rose-200-night",
-        "dark:s-text-rose-900-night"
-      ),
-      golden: cn(
-        "s-bg-golden-100 s-border-golden-200",
-        "s-text-golden-900",
-        "dark:s-bg-golden-100-night dark:s-border-golden-200-night",
-        "dark:s-text-golden-900-night"
-      ),
-      white: cn(
-        "s-border s-bg-white s-border-border",
-        "s-text-primary-900",
-        "dark:s-bg-background-night dark:s-border-border-night",
-        "dark:s-text-primary-900-night"
-      ),
+      warning: cn("bg-warning-50 text-warning-700"),
+      info: cn("bg-info-50 text-info-700"),
+      highlight: cn("bg-highlight-50 text-highlight-700"),
     },
   },
   defaultVariants: {
@@ -106,45 +53,19 @@ const chipVariants = cva("s-inline-flex s-box-border s-items-center", {
 
 const closeIconVariants: Record<ChipColorType, string> = {
   primary: cn(
-    "s-text-primary-700 hover:s-text-primary-500 active:s-text-primary-950",
-    "dark:s-text-primary-700-night dark:hover:s-text-primary-500-night dark:active:s-text-primary-950-night"
+    "text-primary-700 hover:text-primary-900 active:text-primary-950"
   ),
   highlight: cn(
-    "s-text-highlight-900 hover:s-text-highlight-700 active:s-text-highlight-950",
-    "dark:s-text-highlight-900-night dark:hover:s-text-highlight-700-night dark:active:s-text-highlight-950-night"
+    "text-highlight-700 hover:text-highlight-900 active:text-highlight-950"
   ),
   success: cn(
-    "s-text-success-900 hover:s-text-success-700 active:s-text-success-950",
-    "dark:s-text-success-900-night dark:hover:s-text-success-700-night dark:active:s-text-success-950-night"
+    "text-emerald-700 hover:text-emerald-900 active:text-emerald-950",
+    "dark:text-emerald-300 dark:hover:text-emerald-100 dark:active:text-emerald-50"
   ),
   warning: cn(
-    "s-text-warning-900 hover:s-text-warning-700 active:s-text-warning-950",
-    "dark:s-text-warning-900-night dark:hover:s-text-warning-700-night dark:active:s-text-warning-950-night"
+    "text-warning-700 hover:text-warning-900 active:text-warning-950"
   ),
-  info: cn(
-    "s-text-info-900 hover:s-text-info-700 active:s-text-info-950",
-    "dark:s-text-info-900-night dark:hover:s-text-info-700-night dark:active:s-text-info-950-night"
-  ),
-  green: cn(
-    "s-text-green-900 hover:s-text-green-700 active:s-text-green-950",
-    "dark:s-text-green-900-night dark:hover:s-text-green-700-night dark:active:s-text-green-950-night"
-  ),
-  blue: cn(
-    "s-text-blue-900 hover:s-text-blue-700 active:s-text-blue-950",
-    "dark:s-text-blue-900-night dark:hover:s-text-blue-700-night dark:active:s-text-blue-950-night"
-  ),
-  rose: cn(
-    "s-text-rose-900 hover:s-text-rose-700 active:s-text-rose-950",
-    "dark:s-text-rose-900-night dark:hover:s-text-rose-700-night dark:active:s-text-rose-950-night"
-  ),
-  golden: cn(
-    "s-text-golden-900 hover:s-text-golden-700 active:s-text-golden-950",
-    "dark:s-text-golden-900-night dark:hover:s-text-golden-700-night dark:active:s-text-golden-950-night"
-  ),
-  white: cn(
-    "s-text-primary-700 hover:s-text-primary-500 active:s-text-primary-950",
-    "dark:s-text-primary-700-night dark:hover:s-text-primary-500-night dark:active:s-text-primary-950-night"
-  ),
+  info: cn("text-info-700 hover:text-info-900 active:text-info-950"),
 };
 
 interface ChipInternalButtonProps {
@@ -163,9 +84,9 @@ const ChipButton = React.forwardRef<HTMLButtonElement, ChipInternalButtonProps>(
       onClick={onClick}
       aria-label={ariaLabel}
       className={cn(
-        "s-rounded-md s-p-0.5",
-        "s-transition-colors s-duration-200",
-        "focus-visible:s-outline-none focus-visible:s-ring-2 focus-visible:s-ring-ring",
+        "rounded-md p-0.5",
+        "transition-colors duration-200 motion-reduce:transition-none",
+        "focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring",
         className
       )}
     >
@@ -226,7 +147,7 @@ const Chip = React.forwardRef<HTMLDivElement, ChipProps>(
         className={cn(
           chipVariants({ size, color }),
           className,
-          onClick && "s-cursor-pointer"
+          onClick && "cursor-pointer"
         )}
         aria-label={label}
         ref={ref}
@@ -251,9 +172,7 @@ const Chip = React.forwardRef<HTMLDivElement, ChipProps>(
           />
         )}
         {label && (
-          <span
-            className={cn("s-grow s-truncate", onClick && "s-cursor-pointer")}
-          >
+          <span className={cn("grow truncate", onClick && "cursor-pointer")}>
             {isBusy ? (
               <AnimatedText variant={color}>{label}</AnimatedText>
             ) : (
@@ -265,7 +184,7 @@ const Chip = React.forwardRef<HTMLDivElement, ChipProps>(
           <ChipButton
             icon={XClose}
             size={size === "sm" ? "sm" : "xs"}
-            className={cn("-s-mr-1", closeIconVariants[color || "primary"])}
+            className={cn("-mr-1", closeIconVariants[color || "primary"])}
             aria-label="Remove"
             onClick={(e) => {
               e.preventDefault();

@@ -15,24 +15,20 @@ const PokeProgrammaticCostChart = safeLazy(() =>
   )
 );
 
-const PokeMetronomeUsageChart = safeLazy(() =>
-  import("@app/components/poke/credits/PokeMetronomeUsageChart").then(
-    (mod) => ({
-      default: mod.PokeMetronomeUsageChart,
-    })
+const PokeAwuUsageFromAnalyticsChart = safeLazy(() =>
+  import("@app/components/poke/credits/PokeAwuUsageFromAnalyticsChart").then(
+    (mod) => ({ default: mod.PokeAwuUsageFromAnalyticsChart })
   )
 );
 
 function PokeChartFallback() {
-  return (
-    <div className="h-96 animate-pulse rounded-lg bg-muted-background dark:bg-muted-background-night" />
-  );
+  return <div className="h-96 animate-pulse rounded-lg bg-muted-background" />;
 }
 
 import { PokeDataTable } from "@app/components/poke/shadcn/ui/data_table";
-import type { PokeUnifiedCreditRow } from "@app/lib/api/poke/credits";
 import type { PokeCreditsData } from "@app/poke/swr/credits";
 import { usePokeCredits } from "@app/poke/swr/credits";
+import type { PokeUnifiedCreditRow } from "@app/types/api/poke/credits";
 import type { SubscriptionType } from "@app/types/plan";
 import type { WorkspaceType } from "@app/types/user";
 
@@ -100,11 +96,11 @@ export function CreditsDataTable({
         {(data) => (
           <div className="space-y-4">
             {data.excessCreditsLast30DaysMicroUsd > ONE_DOLLAR_MICRO_USD && (
-              <div className="rounded-md border border-warning-200 bg-warning-50 p-3 dark:border-warning-200-night dark:bg-warning-50-night">
+              <div className="rounded-md border border-warning-200 bg-warning-50 p-3">
                 <Tooltip
                   label="Excess credits are created when programmatic usage exceeds available credits. This tracks over-consumption that needs to be billed."
                   trigger={
-                    <p className="cursor-help text-sm font-medium text-warning-800 dark:text-warning-800-night">
+                    <p className="cursor-help text-sm font-medium text-warning-800">
                       Excess credits (last 30 days):{" "}
                       {formatMicroUsdToUsd(
                         data.excessCreditsLast30DaysMicroUsd
@@ -135,7 +131,7 @@ export function CreditsDataTable({
             />
           </Suspense>
           <Suspense fallback={<PokeChartFallback />}>
-            <PokeMetronomeUsageChart
+            <PokeAwuUsageFromAnalyticsChart
               owner={owner}
               billingCycleStartDay={billingCycleStartDay}
             />

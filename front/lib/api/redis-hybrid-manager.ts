@@ -363,6 +363,7 @@ class RedisHybridManager {
 
           if (historyHasMore) {
             // Force the client to re-subscribe with the latest event id it had in order to get more events from history.
+            // SSE routes use writeDoneSentinel so the stream ends with "done" and clients reconnect immediately.
             callback("close");
           }
         }

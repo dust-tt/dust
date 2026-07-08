@@ -8,7 +8,8 @@ export const GMAIL_TOOL_NAME = "gmail" as const;
 
 export const GMAIL_TOOLS_METADATA = createToolsRecord({
   get_drafts: {
-    description: "Get all drafts from Gmail.",
+    description:
+      "Get and list saved, unsent email drafts from Gmail. Returns existing drafts only.",
     schema: {
       q: z
         .string()
@@ -26,6 +27,8 @@ export const GMAIL_TOOLS_METADATA = createToolsRecord({
       running: "Getting Gmail drafts",
       done: "Get Gmail drafts",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   create_draft: {
     description: `Create a new email draft in Gmail, or a reply draft to an existing message.
@@ -88,6 +91,8 @@ export const GMAIL_TOOLS_METADATA = createToolsRecord({
       running: "Creating Gmail draft",
       done: "Create Gmail draft",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   delete_draft: {
     description: "Delete a draft email from Gmail.",
@@ -101,6 +106,8 @@ export const GMAIL_TOOLS_METADATA = createToolsRecord({
       running: "Deleting Gmail draft",
       done: "Delete Gmail draft",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   get_messages: {
     description:
@@ -134,10 +141,12 @@ export const GMAIL_TOOLS_METADATA = createToolsRecord({
       running: "Getting Gmail messages",
       done: "Get Gmail messages",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   get_attachment: {
     description:
-      "Get the content of a specific attachment from a Gmail message. The attachment will be uploaded and made available in the conversation.",
+      "Download an attached file from a Gmail email message. Fetches the content of a specific attachment, which is then uploaded and made available in the conversation.",
     schema: {
       messageId: z
         .string()
@@ -171,6 +180,8 @@ export const GMAIL_TOOLS_METADATA = createToolsRecord({
       running: "Getting Gmail attachment",
       done: "Get Gmail attachment",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   get_labels: {
     description:
@@ -181,9 +192,11 @@ export const GMAIL_TOOLS_METADATA = createToolsRecord({
       running: "Getting Gmail labels",
       done: "Get Gmail labels",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   set_message_labels: {
-    description: `Modify the labels of a message. System label IDs can be used directly (INBOX, SPAM, TRASH, UNREAD, STARRED, IMPORTANT, ...). User labels should be retrieved first via get_labels to get their IDs.`,
+    description: `Modify the labels on a Gmail message to mark it read or unread, star it, archive it, or move it into or out of the inbox. Adds and removes label IDs on the message. System label IDs can be used directly (INBOX, SPAM, TRASH, UNREAD, STARRED, IMPORTANT, ...). User labels should be retrieved first via get_labels to get their IDs.`,
     schema: {
       messageId: z.string().describe("The ID of the message to modify."),
       addLabelIds: z.array(z.string()).optional().describe("Label IDs to add."),
@@ -197,6 +210,8 @@ export const GMAIL_TOOLS_METADATA = createToolsRecord({
       running: "Modifying Gmail message labels",
       done: "Modify Gmail message labels",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   send_mail: {
     description: `Send an email directly via Gmail.
@@ -260,6 +275,8 @@ export const GMAIL_TOOLS_METADATA = createToolsRecord({
       running: "Sending Gmail email",
       done: "Send Gmail email",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   get_thread: {
     description: "Get all messages in a Gmail thread/conversation.",
@@ -275,6 +292,8 @@ export const GMAIL_TOOLS_METADATA = createToolsRecord({
       running: "Getting Gmail thread",
       done: "Get Gmail thread",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
 });
 
@@ -282,7 +301,8 @@ export const GMAIL_SERVER = {
   serverInfo: {
     name: "gmail",
     version: "1.0.0",
-    description: "Access messages and email drafts.",
+    description:
+      "Read and send Gmail emails: manage inbox messages, threads, drafts, labels, and attachments.",
     authorization: {
       provider: "google_drive",
       supported_use_cases: ["personal_actions", "platform_actions"],
@@ -291,13 +311,14 @@ export const GMAIL_SERVER = {
     },
     icon: "GmailLogo",
     documentationUrl: "https://docs.dust.tt/docs/gmail",
-    instructions: null,
   },
   tools: Object.values(GMAIL_TOOLS_METADATA).map((t) => ({
     name: t.name,
     description: t.description,
     inputSchema: zodToJsonSchema(z.object(t.schema)) as JSONSchema,
     displayLabels: t.displayLabels,
+    toolCostCategory: t.toolCostCategory,
+    freeUsage: t.freeUsage,
   })),
   tools_stakes: Object.fromEntries(
     Object.values(GMAIL_TOOLS_METADATA).map((t) => [t.name, t.stake])

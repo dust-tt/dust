@@ -3,17 +3,8 @@ import { ProjectMetadataResource } from "@app/lib/resources/project_metadata_res
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { removeDiacritics } from "@app/lib/utils";
 import logger from "@app/logger/logger";
+import type { SearchProjectsResponseBody } from "@app/types/api/projects/list";
 import type { PodType, SpaceType } from "@app/types/space";
-
-export type SpacesLookupResponseBody = {
-  spaces: PodType[];
-};
-
-export type SearchProjectsResponseBody = {
-  spaces: Array<PodType & { isMember: boolean }>;
-  hasMore: boolean;
-  lastValue: string | null;
-};
 
 export type ListPodsAccess = "member" | "open";
 
@@ -145,7 +136,7 @@ export async function listPodsForScope(
       },
     });
 
-    const metadatas = await ProjectMetadataResource.fetchBySpaceIds(
+    const metadatas = await ProjectMetadataResource.fetchBySpaceModelIds(
       auth,
       page.spaces.map((space) => space.id)
     );
@@ -186,7 +177,7 @@ export async function listNonArchivedMemberSpacesWithMetadata(
   metadataMap: Map<number, ProjectMetadataResource>;
 }> {
   const memberSpaces = await SpaceResource.listWorkspaceSpacesAsMember(auth);
-  const metadatas = await ProjectMetadataResource.fetchBySpaceIds(
+  const metadatas = await ProjectMetadataResource.fetchBySpaceModelIds(
     auth,
     memberSpaces.map((s) => s.id)
   );
@@ -209,7 +200,7 @@ export async function enrichProjectsWithMetadata(
 
   const spaceIds = spaces.map((s) => s.id);
 
-  const metadatas = await ProjectMetadataResource.fetchBySpaceIds(
+  const metadatas = await ProjectMetadataResource.fetchBySpaceModelIds(
     auth,
     spaceIds
   );
@@ -242,7 +233,7 @@ export async function listAllProjectsWithAdminMetadata(
 ): Promise<ProjectWithAdminMetadata[]> {
   const projectSpaces = await SpaceResource.listProjectSpaces(auth);
 
-  const metadatas = await ProjectMetadataResource.fetchBySpaceIds(
+  const metadatas = await ProjectMetadataResource.fetchBySpaceModelIds(
     auth,
     projectSpaces.map((s) => s.id)
   );

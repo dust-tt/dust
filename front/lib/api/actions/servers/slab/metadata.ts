@@ -47,6 +47,8 @@ export const SLAB_TOOLS_METADATA = createToolsRecord({
       running: "Searching Slab posts",
       done: "Search Slab posts",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   get_post_contents: {
     description:
@@ -77,16 +79,20 @@ export const SLAB_TOOLS_METADATA = createToolsRecord({
       running: "Retrieving Slab post contents",
       done: "Get Slab post contents",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   get_topics: {
     description:
-      "Retrieve all topics for navigation and organization understanding.",
+      "Retrieve all Slab topics for navigation and organization understanding.",
     schema: {},
     stake: "never_ask",
     displayLabels: {
       running: "Retrieving Slab topics",
       done: "Get Slab topics",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   get_post_metadata: {
     description:
@@ -99,6 +105,8 @@ export const SLAB_TOOLS_METADATA = createToolsRecord({
       running: "Retrieving Slab post metadata",
       done: "Get Slab post metadata",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
 });
 
@@ -110,13 +118,14 @@ export const SLAB_SERVER = {
     authorization: null,
     icon: "SlabLogo",
     documentationUrl: "https://docs.dust.tt/docs/slab-mcp",
-    instructions: null,
   },
   tools: Object.values(SLAB_TOOLS_METADATA).map((t) => ({
     name: t.name,
     description: t.description,
     inputSchema: zodToJsonSchema(z.object(t.schema)) as JSONSchema,
     displayLabels: t.displayLabels,
+    toolCostCategory: t.toolCostCategory,
+    freeUsage: t.freeUsage,
   })),
   tools_stakes: Object.fromEntries(
     Object.values(SLAB_TOOLS_METADATA).map((t) => [t.name, t.stake])

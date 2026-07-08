@@ -27,7 +27,7 @@ function buildTags(ctx: MetricContext): string[] {
 // Naming: coarse phases are snake_case (`provider_ensure`, `gcs_mount`);
 // sub-steps are `<area>.step` (`gcs.gcsfuse_mount`) so they group by prefix.
 export type SandboxStartupPhase =
-  // Coarse phases (one per ensureSandboxReady step).
+  // Coarse phases (one per sandbox readiness step).
   | "total"
   | "provider_ensure"
   | "egress_prep"
@@ -76,13 +76,13 @@ export function traceSandboxStartupPhase<T>(
 }
 
 // The single net-new aggregate metric: the headline "0 -> first command" wall
-// time for one ensureSandboxReady, split cold (fresh create path) vs warm
+// time for one sandbox readiness run, split cold (fresh create path) vs warm
 // (wake/reuse). This is NOT covered by sandbox.tools.duration, whose timer
 // starts only once setup is already done and times the user command alone.
 //
 // Intentionally NOT tagged by workspace_id: the cold/warm split per region is
 // what matters for latency, and workspace_id would multiply cardinality on a
-// per-ensureSandboxReady distribution. Per-workspace drill-down stays available
+// per-readiness-run distribution. Per-workspace drill-down stays available
 // via APM traces.
 export function recordSandboxStartupTotal(
   durationMs: number,
@@ -121,11 +121,9 @@ export function recordStateDuration(
 export function recordToolDuration(
   tool: string,
   durationMs: number,
-  ctx: MetricContext,
   status: "success" | "error" = "success"
 ): void {
   getStatsDClient().distribution("sandbox.tools.duration", durationMs, [
-    ...buildTags(ctx),
     `tool:${tool}`,
     `status:${status}`,
   ]);

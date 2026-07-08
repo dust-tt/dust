@@ -6,7 +6,15 @@ import { createReadStream } from "fs";
 import type { NextApiRequest, NextApiResponse } from "next";
 import path from "path";
 
-const EBOOK_FILENAME = "Dust_AI_Enterprise_Playbook.pdf";
+// Maps the `ebook` query param to the gated PDF filename. Defaults to the AI
+// Enterprise Playbook when the param is absent (backward compatible with the
+// original /landing/ebook form which sends no `ebook` param).
+const EBOOK_FILENAMES: Record<string, string> = {
+  "ai-enterprise-playbook": "Dust_AI_Enterprise_Playbook.pdf",
+  "ai-first-gtm-playbook": "Dust_AI_First_GTM_Playbook.pdf",
+};
+
+const DEFAULT_EBOOK_KEY = "ai-enterprise-playbook";
 
 function isValidToken(token: string): boolean {
   const parts = token.split(".");
@@ -35,18 +43,24 @@ export default function handler(req: NextApiRequest, res: NextApiResponse) {
     return res.status(405).json({ error: "Method not allowed" });
   }
 
-  const { token } = req.query;
+  const { token, ebook } = req.query;
 
   if (typeof token !== "string" || !isValidToken(token)) {
     return res.redirect(302, "/landing/ebook");
   }
 
-  const filePath = path.join(process.cwd(), "assets", "gated", EBOOK_FILENAME);
+  const ebookKey =
+    typeof ebook === "string" && ebook in EBOOK_FILENAMES
+      ? ebook
+      : DEFAULT_EBOOK_KEY;
+  const ebookFilename = EBOOK_FILENAMES[ebookKey];
+
+  const filePath = path.join(process.cwd(), "assets", "gated", ebookFilename);
 
   res.setHeader("Content-Type", "application/pdf");
   res.setHeader(
     "Content-Disposition",
-    `attachment; filename="${EBOOK_FILENAME}"`
+    `attachment; filename="${ebookFilename}"`
   );
 
   const stream = createReadStream(filePath);

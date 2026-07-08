@@ -3,11 +3,13 @@
 import { getAuditLogContext } from "@app/lib/api/audit/workos_audit";
 import {
   type DefaultUserSpendLimitError,
-  type GetDefaultUserSpendLimitResponseBody,
   getDefaultUserSpendLimit,
-  type PutDefaultUserSpendLimitResponseBody,
   setDefaultUserSpendLimit,
 } from "@app/lib/api/workspace/default_user_spend_limit";
+import type {
+  GetDefaultUserSpendLimitResponseBody,
+  PutDefaultUserSpendLimitResponseBody,
+} from "@app/types/api/workspace/default_user_spend_limit";
 import {
   MAX_DEFAULT_USER_SPEND_LIMIT_AWU_CREDITS,
   MIN_DEFAULT_USER_SPEND_LIMIT_AWU_CREDITS,

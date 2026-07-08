@@ -574,6 +574,8 @@ export interface WorkspaceMetadata {
   selfImprovementCapPerSkillAwuCredits?: number;
   webSearchProvider?: WebSearchProvider;
   webBrowseProvider?: WebBrowseProvider;
+  workspaceDefaultAgentId?: string;
+  slackPersonalAllowFooterRemoval?: boolean;
 }
 
 export async function updateWorkspaceMetadata(

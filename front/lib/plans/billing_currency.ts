@@ -2,6 +2,7 @@ import {
   isSupportedCurrency,
   type SupportedCurrency,
 } from "@app/types/currency";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 import type Stripe from "stripe";
 
 /**
@@ -77,26 +78,38 @@ export function getBillingCurrencyForCountry(
 }
 
 /**
- * Map from a base (USD) Metronome package alias to its EUR variant.
- * Returns the original alias if no EUR variant exists or currency is USD.
+ * Map from a base (USD) Metronome package alias to its variant for the given
+ * billing currency. Returns the original alias if no variant exists for that
+ * currency (or currency is USD).
  */
 export function resolvePackageAliasForCurrency(
   baseAlias: string,
   currency: SupportedCurrency
 ): string {
-  if (currency === "usd") {
-    return baseAlias;
+  switch (currency) {
+    case "usd":
+      return baseAlias;
+    case "eur": {
+      const eurAliases: Record<string, string> = {
+        "legacy-pro-monthly": "legacy-pro-monthly-eur",
+        "legacy-business": "legacy-business-eur",
+        "legacy-pro-annual": "legacy-pro-annual-eur",
+        "legacy-enterprise": "legacy-enterprise-eur",
+        "business-usd": "business-eur",
+      };
+      return eurAliases[baseAlias] ?? baseAlias;
+    }
+    case "gbp": {
+      // Only the new Business package has a GBP variant; legacy packages are
+      // USD/EUR only, so they fall back to the base (USD) alias.
+      const gbpAliases: Record<string, string> = {
+        "business-usd": "business-gbp",
+      };
+      return gbpAliases[baseAlias] ?? baseAlias;
+    }
+    default:
+      return assertNever(currency);
   }
-
-  const eurAliases: Record<string, string> = {
-    "legacy-pro-monthly": "legacy-pro-monthly-eur",
-    "legacy-business": "legacy-business-eur",
-    "legacy-pro-annual": "legacy-pro-annual-eur",
-    "legacy-enterprise": "legacy-enterprise-eur",
-    "business-usd": "business-eur",
-  };
-
-  return eurAliases[baseAlias] ?? baseAlias;
 }
 
 type StripeSubscriptionCurrencySource = Pick<Stripe.Subscription, "currency">;

@@ -1,16 +1,23 @@
-import type { PostMessagesResponseBody } from "@app/lib/api/assistant/messages";
 import { useClientType } from "@app/lib/context/clientType";
 import { clientFetch } from "@app/lib/egress/client";
+import { concurrentExecutor } from "@app/lib/utils/async_utils";
+import type { PostMessagesResponseBody } from "@app/types/api/assistant/messages";
 import type {
   ClientMessageOrigin,
   SubmitMessageError,
 } from "@app/types/assistant/conversation";
 import type { MentionType } from "@app/types/assistant/mentions";
+import type { ModelSelectionType } from "@app/types/assistant/models/types";
 import type { ContentFragmentsType } from "@app/types/content_fragment";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import type { UserType, WorkspaceType } from "@app/types/user";
 import { useCallback } from "react";
+
+// Bounded concurrency for content fragment POSTs: each grabs a per-conversation advisory lock
+// (getConversationRankVersionLock) that serializes inserts, so posting them unbounded races the
+// lock and times out (SequelizeDatabaseError).
+const CONTENT_FRAGMENT_POST_CONCURRENCY = 8;
 
 export function useSubmitMessage({
   owner,
@@ -31,6 +38,7 @@ export function useSubmitMessage({
       clientSideMCPServerIds?: string[];
       origin?: ClientMessageOrigin;
       skipToolsValidation?: boolean;
+      modelSelection?: ModelSelectionType;
     }): Promise<Result<PostMessagesResponseBody, SubmitMessageError>> => {
       if (!conversationId) {
         return new Err({
@@ -47,6 +55,7 @@ export function useSubmitMessage({
         clientSideMCPServerIds,
         origin: messageOrigin,
         skipToolsValidation,
+        modelSelection,
       } = messageData;
       const origin = messageOrigin ?? contextOrigin;
 
@@ -55,8 +64,27 @@ export function useSubmitMessage({
         contentFragments.uploaded.length > 0 ||
         contentFragments.contentNodes.length > 0
       ) {
-        const contentFragmentsRes = await Promise.all([
-          ...contentFragments.uploaded.map((contentFragment) => {
+        const timezone =
+          Intl.DateTimeFormat().resolvedOptions().timeZone || "Etc/UTC";
+
+        const contentFragmentBodies = [
+          ...contentFragments.uploaded.map((cf) => ({
+            title: cf.title,
+            fileId: cf.fileId,
+            url: cf.url,
+            context: { timezone, profilePictureUrl: user.image },
+          })),
+          ...contentFragments.contentNodes.map((cf) => ({
+            title: cf.title,
+            nodeId: cf.internalId,
+            nodeDataSourceViewId: cf.dataSourceView.sId,
+            context: { timezone, profilePictureUrl: user.image },
+          })),
+        ];
+
+        const contentFragmentsRes = await concurrentExecutor(
+          contentFragmentBodies,
+          async (body) => {
             return clientFetch(
               `/api/w/${owner.sId}/assistant/conversations/${conversationId}/content_fragment`,
               {
@@ -64,43 +92,12 @@ export function useSubmitMessage({
                 headers: {
                   "Content-Type": "application/json",
                 },
-                body: JSON.stringify({
-                  title: contentFragment.title,
-                  fileId: contentFragment.fileId,
-                  url: contentFragment.url,
-                  context: {
-                    timezone:
-                      Intl.DateTimeFormat().resolvedOptions().timeZone ||
-                      "Etc/UTC",
-                    profilePictureUrl: user.image,
-                  },
-                }),
+                body: JSON.stringify(body),
               }
             );
-          }),
-          ...contentFragments.contentNodes.map((contentFragment) => {
-            return clientFetch(
-              `/api/w/${owner.sId}/assistant/conversations/${conversationId}/content_fragment`,
-              {
-                method: "POST",
-                headers: {
-                  "Content-Type": "application/json",
-                },
-                body: JSON.stringify({
-                  title: contentFragment.title,
-                  nodeId: contentFragment.internalId,
-                  nodeDataSourceViewId: contentFragment.dataSourceView.sId,
-                  context: {
-                    timezone:
-                      Intl.DateTimeFormat().resolvedOptions().timeZone ||
-                      "Etc/UTC",
-                    profilePictureUrl: user.image,
-                  },
-                }),
-              }
-            );
-          }),
-        ]);
+          },
+          { concurrency: CONTENT_FRAGMENT_POST_CONCURRENCY }
+        );
 
         for (const mcfRes of contentFragmentsRes) {
           if (!mcfRes.ok) {
@@ -135,6 +132,7 @@ export function useSubmitMessage({
             },
             mentions,
             skipToolsValidation,
+            modelSelection,
           }),
         }
       );

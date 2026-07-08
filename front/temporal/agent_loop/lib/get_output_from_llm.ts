@@ -238,7 +238,8 @@ export async function getOutputFromLLMStream(
   {
     modelConversationRes,
     conversation,
-    hasConditionalJITTools,
+    toolSearchEnabled,
+    disableToolUse,
     cacheDiagnosticsEnabled,
     specifications,
     flushParserTokens,
@@ -288,7 +289,8 @@ export async function getOutputFromLLMStream(
   const events = llm.stream(
     {
       conversation: modelConversationRes.value.modelConversation,
-      hasConditionalJITTools,
+      toolSearchEnabled,
+      disableToolUse,
       prompt,
       specifications,
       previousMessageId,
@@ -454,6 +456,18 @@ export async function getOutputFromLLMStream(
           });
 
           nativeChainOfThought += "\n\n";
+          continue;
+        }
+        case "provider_passthrough": {
+          // Opaque provider block stored in stream order so the producing
+          // provider can replay it verbatim.
+          contents.push({
+            type: "provider_passthrough",
+            value: {
+              provider: event.content.provider,
+              block: event.content.block,
+            },
+          });
           continue;
         }
         default:

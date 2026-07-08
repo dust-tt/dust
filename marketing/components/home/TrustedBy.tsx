@@ -4,7 +4,7 @@ import { cn } from "@marketing/components/poke/shadcn/lib/utils";
 import { isEUCountry } from "@marketing/lib/geo/eu-detection";
 import { useGeolocation } from "@marketing/lib/swr/geo";
 import { TRACKING_AREAS, trackEvent } from "@marketing/lib/tracking";
-import { appendUTMParams } from "@marketing/lib/utils/utm";
+import { useSignUpModal } from "@marketing/hooks/useSignUpModal";
 import { Button } from "@dust-tt/sparkle";
 import Image from "next/image";
 import Link from "next/link";
@@ -207,6 +207,7 @@ export default function TrustedBy({
   size = "default",
   showTitle = true,
 }: TrustedByProps) {
+  const { openSignUpModal } = useSignUpModal();
   const { geoData } = useGeolocation();
   const searchParams = useSearchParams();
   const [mounted, setMounted] = useState(false);
@@ -319,11 +320,7 @@ export default function TrustedBy({
         size="md"
         label="Join them"
         className="mt-8"
-        onClick={() => {
-          window.location.href = appendUTMParams(
-            "/api/workos/login?screenHint=sign-up"
-          );
-        }}
+        onClick={openSignUpModal}
       />
     </div>
   );

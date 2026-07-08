@@ -26,7 +26,8 @@
       "!!extension/packages",
       "!!**/package-lock.json",
       "!!**/__snapshots__",
-      "!!**/.git"
+      "!!**/.git",
+      "!!cli/dust-sandbox/functions-runner/runner.js"
     ]
   },
   "formatter": {
@@ -54,7 +55,9 @@
       "front-spa/**",
       "front/**",
       "front-api/**",
-      "marketing/**"
+      "marketing/**",
+      "cli/dust-sandbox/functions-runner/**",
+      "cli/dust-sandbox/pod/**"
     ],
     "rules": {
       "preset": "none",
@@ -146,13 +149,6 @@
         "./.grit/patterns/nextjsPageComponentNaming.grit",
         "./.grit/patterns/nextjsNoDataFetchingInGetssp.grit"
       ]
-    },
-    {
-      "includes": [
-        "front/lib/actions/mcp_internal_actions/**/*.{js,jsx,ts,tsx}",
-        "front/lib/api/actions/servers/**/*.{js,jsx,ts,tsx}"
-      ],
-      "plugins": ["./.grit/patterns/noMcpServerInstructions.grit"]
     },
     {
       "includes": ["front-api/routes/**/*.ts"],
@@ -258,7 +254,9 @@
       "connectors/**",
       "front-spa/**",
       "front/**",
-      "front-api/**"
+      "front-api/**",
+      "cli/dust-sandbox/functions-runner/**",
+      "cli/dust-sandbox/pod/**"
     ],
     "enabled": true,
     "actions": {

@@ -1,10 +1,86 @@
+import { getAuditLogContext } from "@app/lib/api/audit/workos_audit";
 import { processMetronomeWebhook } from "@app/lib/api/metronome/process_webhook";
 import { reconcileWorkspaceUserCreditStates } from "@app/lib/api/metronome/reconcile_credit_state";
+import { setUserSpendLimit } from "@app/lib/api/users/spend_limit";
+import { Authenticator } from "@app/lib/auth";
 import type { MetronomeWebhookEvent } from "@app/lib/metronome/webhook_events";
 import { cleanAndFinalizeMetronomeDraftInvoice } from "@app/lib/plans/stripe";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
+import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
+import logger from "@app/logger/logger";
+import type { UserSpendLimit } from "@app/types/api/users/spend_limit";
+
+const SET_SPEND_LIMIT_CONCURRENCY = 1;
+
+export type SetSpendLimitChunkResult = {
+  succeeded: number;
+  failures: { userId: string; message: string }[];
+};
+
+// Apply a per-user spend limit to a chunk of members. Permanent failures (e.g.
+// a member revoked between selection and run) are recorded; transient Metronome
+// failures throw so Temporal retries the chunk (setUserSpendLimit is idempotent,
+// so re-running already-applied members is a no-op).
+export async function setSpendLimitForUsersActivity({
+  workspaceId,
+  actorUserId,
+  userIds,
+  limit,
+}: {
+  workspaceId: string;
+  actorUserId: string;
+  userIds: string[];
+  limit: UserSpendLimit;
+}): Promise<SetSpendLimitChunkResult> {
+  const auth = await Authenticator.fromUserIdAndWorkspaceId(
+    actorUserId,
+    workspaceId
+  );
+  const auditContext = getAuditLogContext(auth);
+
+  const failures: { userId: string; message: string }[] = [];
+  const transientFailures: { userId: string; message: string }[] = [];
+  let succeeded = 0;
+
+  await concurrentExecutor(
+    userIds,
+    async (userId) => {
+      const result = await setUserSpendLimit(auth, {
+        userId,
+        limit,
+        auditContext,
+      });
+      if (result.isOk()) {
+        succeeded++;
+        return;
+      }
+      const failure = { userId, message: result.error.message };
+      if (result.error.type === "metronome_error") {
+        transientFailures.push(failure);
+      } else {
+        failures.push(failure);
+      }
+      logger.error(
+        { workspaceId, userId, err: result.error },
+        "[BulkSpendLimit] Failed to set spend limit for member"
+      );
+    },
+    { concurrency: SET_SPEND_LIMIT_CONCURRENCY }
+  );
+
+  // Throw after the executor so every member is attempted and permanent failures
+  // are still recorded on the final (exhausted) attempt.
+  if (transientFailures.length > 0) {
+    throw new Error(
+      `[BulkSpendLimit] ${transientFailures.length} transient failure(s) setting spend limit; retrying. ` +
+        `First: ${transientFailures[0].userId}: ${transientFailures[0].message}`
+    );
+  }
+
+  return { succeeded, failures };
+}
 
 /**
  * Temporal wrapper around `processMetronomeWebhook`. The handler has already
@@ -94,5 +170,6 @@ export async function reconcileWorkspaceUserCreditStatesActivity({
     workspace: renderLightWorkspaceType({ workspace }),
     metronomeCustomerId: workspace.metronomeCustomerId,
     metronomeContractId: subscription.metronomeContractId,
+    planCode: subscription.getPlan().code,
   });
 }

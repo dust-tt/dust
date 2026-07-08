@@ -1,12 +1,10 @@
 import { ToolChip } from "@app/components/editor/extensions/skill_builder/ToolChip";
 import { useMCPServerViewsContext } from "@app/components/shared/tools_picker/MCPServerViewsContext";
 import type { BuilderAction } from "@app/components/shared/tools_picker/types";
-import type {
-  AttachedKnowledgeFormData,
-  ReferencedSkillFormData,
-} from "@app/components/skill_builder/SkillBuilderFormContext";
+import type { AttachedKnowledgeFormData } from "@app/components/skill_builder/SkillBuilderFormContext";
 import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
 import { getSkillIcon } from "@app/lib/skill";
+import { extractSkillReferenceTags } from "@app/lib/skills/format";
 import { extractToolTags } from "@app/lib/tools/format";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { AttachmentChip, Chip, cn, File02 } from "@dust-tt/sparkle";
@@ -19,7 +17,6 @@ interface SkillBuilderInstructionsReferenceSummaryProps {
   hasError: boolean;
   instructions: string;
   onReferenceClick: (target: ReferenceSummaryItem) => void;
-  referencedSkills: ReferencedSkillFormData[];
   tools: BuilderAction[];
 }
 
@@ -80,7 +77,7 @@ function renderReferenceSummaryItem({
           key={`${item.kind}:${item.id}`}
           label={item.title}
           icon={{ visual: File02 }}
-          color="white"
+          color="primary"
           size="xs"
           className="text-xs"
           onClick={() => onReferenceClick(item)}
@@ -92,7 +89,7 @@ function renderReferenceSummaryItem({
           key={`${item.kind}:${item.id}`}
           label={item.title}
           icon={getSkillIcon(item.icon)}
-          color="white"
+          color="primary"
           size="xs"
           onClick={() => onReferenceClick(item)}
         />
@@ -103,7 +100,7 @@ function renderReferenceSummaryItem({
           key={`${item.kind}:${item.id}`}
           title={item.title}
           toolIcon={item.icon}
-          color="white"
+          color="primary"
           onClick={() => onReferenceClick(item)}
         />
       );
@@ -118,7 +115,6 @@ export function SkillBuilderInstructionsReferenceSummary({
   hasError,
   instructions,
   onReferenceClick,
-  referencedSkills,
   tools,
 }: SkillBuilderInstructionsReferenceSummaryProps) {
   const { mcpServerViews, isMCPServerViewsLoading } =
@@ -135,16 +131,19 @@ export function SkillBuilderInstructionsReferenceSummary({
     [attachedKnowledge]
   );
 
+  // Derived from the instructions (like inline tool references below) so the
+  // chips stay in sync when the content is replaced without editor updates,
+  // e.g. when restoring a previous version.
   const skillReferences = useMemo(
     () =>
       dedupeById(
-        referencedSkills.map((skill) => ({
+        extractSkillReferenceTags(instructions).map((skill) => ({
           icon: skill.icon,
           id: skill.id,
           title: skill.name,
         }))
       ),
-    [referencedSkills]
+    [instructions]
   );
 
   const inlineToolReferences = useMemo(
@@ -212,19 +211,16 @@ export function SkillBuilderInstructionsReferenceSummary({
       ref={containerRef}
       className={cn(
         "absolute inset-x-0 bottom-0 z-10 max-h-40 overflow-y-auto rounded-b-xl border-x border-b bg-background px-3 pb-3 pt-3",
-        "dark:bg-background-night",
+        "",
         hasError
           ? [
               "border-border-warning/30 group-focus-within:border-border-warning",
-              "dark:border-border-warning-night/60 dark:group-focus-within:border-border-warning-night",
+              "",
             ]
-          : [
-              "border-border group-focus-within:border-highlight-300",
-              "dark:border-border-night dark:group-focus-within:border-highlight-300-night",
-            ]
+          : ["border-border group-focus-within:border-highlight-300", ""]
       )}
     >
-      <div className="mb-2 text-sm font-medium text-foreground dark:text-foreground-night">
+      <div className="mb-2 text-sm font-medium text-foreground">
         Capabilities and knowledge
       </div>
       <div className="flex flex-wrap gap-2">

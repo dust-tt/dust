@@ -52,8 +52,8 @@ export const ListItemExample = () => (
         subElement={
           <>
             Added by: Edouard Wautier
-            <span className="s-h-3 s-w-0.5 s-bg-primary-500" />
-            <div className="s-flex s-items-center s-gap-1">
+            <span className="h-3 w-0.5 bg-primary-500" />
+            <div className="flex items-center gap-1">
               Used by: 3
               <Icon visual={Robot} size="xs" />
             </div>
@@ -61,8 +61,8 @@ export const ListItemExample = () => (
         }
         visual={<Icon visual={Folder} size="md" />}
       >
-        <div className="s-py-2">
-          <Chip size="xs" label="Last Sync ~7 days ago" color="green" />
+        <div className="py-2">
+          <Chip size="xs" label="Last Sync ~7 days ago" color="success" />
         </div>
         <ContextItem.Description description="Lats, pricing, history of contacts, contact message" />
       </ContextItem>
@@ -94,7 +94,7 @@ export const ListItemExample = () => (
         visual={<ContextItem.Visual visual={SlackLogo} />}
         hoverAction
         action={
-          <div className="s-flex s-gap-1">
+          <div className="flex gap-1">
             <Button icon={Trash01} variant="warning" label="Remove" />
             <Button variant="outline" label="Edit" size="sm" icon={Edit04} />
           </div>
@@ -105,11 +105,11 @@ export const ListItemExample = () => (
       <ContextItem
         title="Github"
         subElement={<>By: Stan</>}
-        action={<SliderToggle size="xs" />}
+        action={<SliderToggle />}
         visual={<ContextItem.Visual visual={GithubLogo} />}
       >
         <>
-          <div className="s-py-2">
+          <div className="py-2">
             <Chip label="Syncing…" color="info" size="sm" isBusy />
           </div>
           <ContextItem.Description description="Teamspaces “General” and “Public”, pages “Engineering”, “Team Life”, “Marketing”, “Brand”, “Getting Started at Dust”, “Brand”, “Design”, “Product Decisions”, “Hiring”, “Man" />
@@ -117,12 +117,9 @@ export const ListItemExample = () => (
       </ContextItem>
       <ContextItem
         title="@Gpt4"
-        action={<SliderToggle size="xs" />}
+        action={<SliderToggle />}
         visual={
-          <Avatar
-            visual="https://dust.tt/static/systemavatar/gpt4_avatar_full.png"
-            size="sm"
-          />
+          <Avatar visual="https://dust.tt/static/systemavatar/gpt4_avatar_full.png" />
         }
       >
         <ContextItem.Description description="Lats, pricing, history of contacts, contact message" />

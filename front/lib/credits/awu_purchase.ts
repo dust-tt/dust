@@ -11,20 +11,25 @@ import {
 } from "@app/lib/credits/awu_purchase_status";
 import {
   addPaymentGatedCommitToContract,
+  floorToHourISO,
   getMetronomeCustomerStripeCustomerId,
 } from "@app/lib/metronome/client";
 import {
+  AWU_AMOUNT_CUSTOM_FIELD_KEY,
+  AWU_DISCOUNT_PERCENT_CUSTOM_FIELD_KEY,
   AWU_PRIORITY_PURCHASED_COMMIT,
   CARRY_ON_RENEWAL_CUSTOM_FIELD_KEY,
-  CARRY_ON_RENEWAL_FOREVER_VALUE,
+  CONTRACT_CREDIT_TYPE_CUSTOM_FIELD_KEY,
+  CONTRACT_CREDIT_TYPE_POOL,
   CURRENCY_TO_CREDIT_TYPE_ID,
-  FOREVER_ENDING_BEFORE,
   getCreditTypeAwuId,
   getProductPrepaidCommitId,
+  oneYearAfter,
 } from "@app/lib/metronome/constants";
 import { USAGE_TAG } from "@app/lib/metronome/setup_common";
 import { isEnterprisePlanPrefix } from "@app/lib/plans/plan_codes";
 import { getStripeClient } from "@app/lib/plans/stripe";
+import { CreditUsageConfigurationResource } from "@app/lib/resources/credit_usage_configuration_resource";
 import logger from "@app/logger/logger";
 import type { SupportedCurrency } from "@app/types/currency";
 import {
@@ -129,7 +134,11 @@ async function checkAwuPurchaseEligibility(
   }
 
   if (isEnterprisePlanPrefix(subscription.plan.code)) {
-    return new Err({ code: "enterprise_plan" });
+    const config =
+      await CreditUsageConfigurationResource.fetchByWorkspaceId(auth);
+    if (!config?.topUpEnabled) {
+      return new Err({ code: "enterprise_plan" });
+    }
   }
 
   const stripeCustomerResult =
@@ -330,6 +339,8 @@ export async function purchaseAwuCredits(
     amountCredits,
   });
 
+  const accessEndingBefore = oneYearAfter(now);
+
   const editResult = await addPaymentGatedCommitToContract({
     metronomeCustomerId,
     metronomeContractId,
@@ -337,7 +348,7 @@ export async function purchaseAwuCredits(
     accessAmount: amountCredits,
     accessCreditTypeId: getCreditTypeAwuId(),
     accessStartingAt: now,
-    accessEndingBefore: FOREVER_ENDING_BEFORE,
+    accessEndingBefore,
     invoiceUnitPrice,
     invoiceQuantity: 1,
     invoiceCreditTypeId: CURRENCY_TO_CREDIT_TYPE_ID[currency],
@@ -350,7 +361,14 @@ export async function purchaseAwuCredits(
         : `Credit top-up: ${amountCredits.toLocaleString()} credits`,
     uniquenessKey,
     customFields: {
-      [CARRY_ON_RENEWAL_CUSTOM_FIELD_KEY]: CARRY_ON_RENEWAL_FOREVER_VALUE,
+      [CARRY_ON_RENEWAL_CUSTOM_FIELD_KEY]: floorToHourISO(accessEndingBefore),
+      [CONTRACT_CREDIT_TYPE_CUSTOM_FIELD_KEY]: CONTRACT_CREDIT_TYPE_POOL,
+      [AWU_AMOUNT_CUSTOM_FIELD_KEY]: String(amountCredits),
+      ...(discountPercent > 0
+        ? {
+            [AWU_DISCOUNT_PERCENT_CUSTOM_FIELD_KEY]: String(discountPercent),
+          }
+        : {}),
     },
     // Stamped on the Stripe invoice Metronome pushes downstream so the
     // existing eligibility check (`isAwuPurchaseInvoice`) still recognises

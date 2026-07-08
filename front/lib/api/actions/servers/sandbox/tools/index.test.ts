@@ -97,7 +97,7 @@ vi.mock("@app/lib/api/sandbox/instrumentation", () => ({
 }));
 
 vi.mock("@app/lib/api/sandbox/lifecycle", () => ({
-  ensureSandboxReady: mockEnsureSandboxReady,
+  ensureConversationSandboxReady: mockEnsureSandboxReady,
 }));
 
 vi.mock("@app/lib/resources/workspace_sandbox_env_var_resource", () => ({
@@ -134,7 +134,7 @@ describe("createSandboxTools", () => {
     expect(tools.map((tool) => tool.name)).not.toContain("add_egress_domain");
   });
 
-  it("includes add_egress_domain when both flag and metadata are set", async () => {
+  it("includes add_egress_domain when Computer and metadata are enabled", async () => {
     const { workspace, user } = await createResourceTest({});
     await WorkspaceResource.updateMetadata(workspace.id, {
       sandboxAllowAgentEgressRequests: true,
@@ -143,18 +143,30 @@ describe("createSandboxTools", () => {
       user.sId,
       workspace.sId
     );
-    await FeatureFlagFactory.basic(auth, "sandbox_workspace_admin");
 
     const tools = await createSandboxTools(auth);
 
     expect(tools.map((tool) => tool.name)).toContain("add_egress_domain");
   });
 
-  it("omits add_egress_domain when flag is off, even if metadata is set", async () => {
+  it("omits add_egress_domain when Computer is disabled", async () => {
     const { workspace, user } = await createResourceTest({});
     await WorkspaceResource.updateMetadata(workspace.id, {
       sandboxAllowAgentEgressRequests: true,
     });
+    const auth = await Authenticator.fromUserIdAndWorkspaceId(
+      user.sId,
+      workspace.sId
+    );
+    await FeatureFlagFactory.basic(auth, "disable_computer_feature");
+
+    const tools = await createSandboxTools(auth);
+
+    expect(tools.map((tool) => tool.name)).not.toContain("add_egress_domain");
+  });
+
+  it("omits add_egress_domain when metadata is off", async () => {
+    const { workspace, user } = await createResourceTest({});
     const auth = await Authenticator.fromUserIdAndWorkspaceId(
       user.sId,
       workspace.sId
@@ -170,23 +182,6 @@ describe("buildDescribeToolsetOutput", () => {
   it("mirrors dsbx manifest filtering", async () => {
     const { authenticator: auth } = await createResourceTest({});
 
-    await FeatureFlagFactory.basic(auth, "sandbox_tools");
-
-    const hiddenResult = await buildDescribeToolsetOutput(
-      auth,
-      "openai",
-      "yaml"
-    );
-    expect(hiddenResult.isOk()).toBe(true);
-
-    if (hiddenResult.isErr()) {
-      throw hiddenResult.error;
-    }
-
-    expect(hiddenResult.value[0].text).not.toContain("name: dsbx");
-
-    await FeatureFlagFactory.basic(auth, "sandbox_dsbx_tools");
-
     const visibleResult = await buildDescribeToolsetOutput(
       auth,
       "openai",
@@ -199,6 +194,21 @@ describe("buildDescribeToolsetOutput", () => {
     }
 
     expect(visibleResult.value[0].text).toContain("name: dsbx");
+  });
+
+  it("hides dsbx manifest entry when Computer is disabled", async () => {
+    const { authenticator: auth } = await createResourceTest({});
+
+    await FeatureFlagFactory.basic(auth, "disable_computer_feature");
+
+    const result = await buildDescribeToolsetOutput(auth, "openai", "yaml");
+    expect(result.isOk()).toBe(true);
+
+    if (result.isErr()) {
+      throw result.error;
+    }
+
+    expect(result.value[0].text).not.toContain("name: dsbx");
   });
 });
 
@@ -224,15 +234,19 @@ describe("runSandboxBashTool", () => {
           sId: "workspace-id",
         }),
       },
-      agentLoopContext: {
+      toolContext: {
         runContext: {
+          contextType: "agent_loop",
           agentConfiguration: {
-            model: { providerId: "openai" },
             sId: "agent-id",
           },
+          model: { providerId: "openai" },
           agentMessage: { sId: "message-id", agentMessageId: 1 },
           conversation: { sId: "conversation-id" },
-          currentAction: { sId: "sandbox-action-id" },
+          action: {
+            sId: "sandbox-action-id",
+            toJSON: () => ({ sId: "sandbox-action-id" }),
+          },
           stepContext: {
             citationsCount: 0,
             citationsOffset: 0,
@@ -660,15 +674,19 @@ describe("runSandboxBashTool", () => {
   describe("resume mode", () => {
     function resumeStepContext(execId: string) {
       return {
-        agentLoopContext: {
+        toolContext: {
           runContext: {
+            contextType: "agent_loop",
             agentConfiguration: {
-              model: { providerId: "openai" },
               sId: "agent-id",
             },
+            model: { providerId: "openai" },
             agentMessage: { sId: "message-id", agentMessageId: 1 },
             conversation: { sId: "conversation-id" },
-            currentAction: { sId: "sandbox-action-id" },
+            action: {
+              sId: "sandbox-action-id",
+              toJSON: () => ({ sId: "sandbox-action-id" }),
+            },
             stepContext: {
               citationsCount: 0,
               citationsOffset: 0,
@@ -771,8 +789,9 @@ describe("addEgressDomainTool", () => {
           },
         }),
       },
-      agentLoopContext: {
+      toolContext: {
         runContext: {
+          contextType: "agent_loop",
           conversation: { sId: "conversation-id" },
         },
       },
@@ -909,28 +928,6 @@ describe("addEgressDomainTool", () => {
     expect(result.isErr()).toBe(true);
     expect(mockAddSandboxPolicyDomain).not.toHaveBeenCalled();
     expect(mockEmitAuditLogEvent).not.toHaveBeenCalled();
-  });
-
-  it("returns an error without conversation context", async () => {
-    const result = await addEgressDomainTool(
-      {
-        domain: "example.org",
-        reason: "Retry a blocked request.",
-      },
-      {
-        auth: {
-          getNonNullableWorkspace: () => ({
-            name: "Workspace",
-            sId: "workspace-id",
-          }),
-        },
-        agentLoopContext: undefined,
-        signal: new AbortController().signal,
-      } as never
-    );
-
-    expect(result.isErr()).toBe(true);
-    expect(mockEnsureSandboxReady).not.toHaveBeenCalled();
   });
 
   it("returns an error when no active sandbox is available", async () => {

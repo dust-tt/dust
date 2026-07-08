@@ -63,9 +63,9 @@ app.get(
       query
     );
 
-    // Callers without member-management permission receive only minimal
+    // Non business admin callers receive only minimal
     // essential user data (LightUserType).
-    if (auth.hasPermission("workspace:manage_members")) {
+    if (auth.isBusinessAdmin()) {
       return ctx.json({ members, total });
     }
 

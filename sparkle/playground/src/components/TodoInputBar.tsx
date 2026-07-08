@@ -156,20 +156,17 @@ export function TodoInputBar({
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
       className={cn(
-        "s-relative s-w-full s-z-10",
-        "s-rounded-3xl s-border s-bg-primary-50/70 dark:s-bg-primary-900/70 s-backdrop-blur-md s-transition-all",
+        "relative w-full z-10",
+        "rounded-3xl border bg-primary-50/70 backdrop-blur-md transition-all",
         showFocusStyle
-          ? "s-border-highlight-300 dark:s-border-highlight-300-night s-ring-2 s-ring-highlight-300/50 dark:s-ring-highlight-700/60"
-          : "s-border-border dark:s-border-border-night",
+          ? "border-highlight-300 ring-2 ring-highlight-300/50"
+          : "border-border",
         className
       )}
     >
-      <div className="s-flex s-w-full s-flex-col">
+      <div className="flex w-full flex-col">
         {droppedFiles.length > 0 && (
-          <NewCitationGrid
-            className="s-pt-2 s-px-2 s-pb-0 s-w-full"
-            justify="start"
-          >
+          <NewCitationGrid className="pt-2 px-2 pb-0 w-full" justify="start">
             {droppedFiles.map(({ id, file, objectUrl }) => (
               <NewCitation
                 key={id}
@@ -192,8 +189,8 @@ export function TodoInputBar({
             ))}
           </NewCitationGrid>
         )}
-        <div className="s-flex s-w-full s-items-end s-gap-2 s-pr-2 s-pb-2">
-          <div className="s-min-w-0 s-flex-1">
+        <div className="flex w-full items-end gap-2 pr-2 pb-2">
+          <div className="min-w-0 flex-1">
             <RichTextArea
               ref={richTextAreaRef}
               placeholder={placeholder}
@@ -202,10 +199,10 @@ export function TodoInputBar({
               variant="compact"
               showFormattingMenu
               showAskSidekickMenu={false}
-              className="placeholder:s-text-muted-foreground dark:placeholder:s-text-muted-foreground-night"
+              className="placeholder:text-muted-foreground"
             />
           </div>
-          <div className="s-flex s-items-center s-gap-2 md:s-gap-1">
+          <div className="flex items-center gap-2 md:gap-1">
             <Button
               variant="ghost-secondary"
               icon={Attachment01}
@@ -254,8 +251,8 @@ export function TodoInputBar({
         <SheetContent size="3xl" side="right">
           <SheetHeader>
             <SheetTitle>
-              <div className="s-flex s-flex-1 s-flex-col s-w-full s-items-start s-gap-4">
-                <div className="s-flex s-items-center s-gap-2">
+              <div className="flex flex-1 flex-col w-full items-start gap-4">
+                <div className="flex items-center gap-2">
                   {selectedDroppedFile && <Icon visual={File02} size="md" />}
                   <span>
                     {selectedDroppedFile?.file.name || "Document preview"}
@@ -265,8 +262,8 @@ export function TodoInputBar({
             </SheetTitle>
           </SheetHeader>
           <SheetContainer>
-            <div className="s-flex s-flex-col s-items-center s-justify-center s-py-16">
-              <p className="s-text-foreground dark:s-text-foreground-night">
+            <div className="flex flex-col items-center justify-center py-16">
+              <p className="text-foreground">
                 Document preview — {selectedDroppedFile?.file.type || "file"}
               </p>
             </div>

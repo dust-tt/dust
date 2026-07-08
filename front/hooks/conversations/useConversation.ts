@@ -1,5 +1,5 @@
-import type { GetConversationResponseBody } from "@app/lib/api/assistant/conversation/types";
 import { useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
+import type { GetConversationResponseBody } from "@app/types/api/assistant/conversation/types";
 import type {
   ConversationError,
   ConversationWithoutContentType,

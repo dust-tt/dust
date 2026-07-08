@@ -16,7 +16,7 @@ import type {
 } from "@app/types/assistant/agent";
 import type { ModelId } from "@app/types/shared/model_id";
 
-function getModelForAgentConfiguration(
+export function getModelForAgentConfiguration(
   agent: AgentConfigurationModel
 ): AgentModelConfigurationType {
   const model: AgentModelConfigurationType = {

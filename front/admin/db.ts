@@ -1,3 +1,4 @@
+import { ActivationRecommendationModel } from "@app/lib/models/activation/activation_recommendation";
 import { AgentStepContentToolExecutionModel } from "@app/lib/models/agent/actions/agent_step_content_tool_execution";
 import { ConversationMCPServerViewModel } from "@app/lib/models/agent/actions/conversation_mcp_server_view";
 import { AgentDataSourceConfigurationModel } from "@app/lib/models/agent/actions/data_sources";
@@ -37,6 +38,7 @@ import {
 } from "@app/lib/models/agent/conversation";
 import { ConversationBranchModel } from "@app/lib/models/agent/conversation_branch";
 import { ConversationForkModel } from "@app/lib/models/agent/conversation_fork";
+import { ConversationSelectedSpaceModel } from "@app/lib/models/agent/conversation_selected_space";
 import { GroupAgentModel } from "@app/lib/models/agent/group_agent";
 import { TagAgentModel } from "@app/lib/models/agent/tag_agent";
 import { TriggerModel } from "@app/lib/models/agent/triggers/triggers";
@@ -44,6 +46,11 @@ import { WebhookRequestModel } from "@app/lib/models/agent/triggers/webhook_requ
 import { WebhookRequestTriggerModel } from "@app/lib/models/agent/triggers/webhook_request_trigger";
 import { WebhookSourceModel } from "@app/lib/models/agent/triggers/webhook_source";
 import { WebhookSourcesViewModel } from "@app/lib/models/agent/triggers/webhook_sources_view";
+import {
+  GroupAllowedAdvancedModel,
+  UserAllowedAdvancedModel,
+  WorkspaceAllowedAdvancedModel,
+} from "@app/lib/models/allowed_advanced_model";
 import { DustAppSecretModel } from "@app/lib/models/dust_app_secret";
 import { ExtensionConfigurationModel } from "@app/lib/models/extension";
 import { FeatureFlagModel } from "@app/lib/models/feature_flag";
@@ -92,6 +99,7 @@ import {
   SharingGrantModel,
 } from "@app/lib/resources/storage/models/files";
 import { GroupMembershipModel } from "@app/lib/resources/storage/models/group_memberships";
+import { GroupPermissionModel } from "@app/lib/resources/storage/models/group_permissions";
 import { GroupSpaceModel } from "@app/lib/resources/storage/models/group_spaces";
 import { GroupModel } from "@app/lib/resources/storage/models/groups";
 import { KeyModel } from "@app/lib/resources/storage/models/keys";
@@ -118,7 +126,15 @@ import {
   RunModel,
   RunUsageModel,
 } from "@app/lib/resources/storage/models/runs";
-import { SandboxModel } from "@app/lib/resources/storage/models/sandbox";
+import {
+  SandboxModel,
+  SandboxOwnerModel,
+} from "@app/lib/resources/storage/models/sandbox";
+import {
+  SandboxFunctionInvocationModel,
+  SandboxFunctionModel,
+} from "@app/lib/resources/storage/models/sandbox_function";
+import { SandboxFunctionMCPActionModel } from "@app/lib/resources/storage/models/sandbox_function_mcp_action";
 import { SpaceModel } from "@app/lib/resources/storage/models/spaces";
 import {
   TakeawaySourcesModel,
@@ -138,8 +154,7 @@ import { WorkspaceHasDomainModel } from "@app/lib/resources/storage/models/works
 import { WorkspaceSandboxEnvVarModel } from "@app/lib/resources/storage/models/workspace_sandbox_env_var";
 import { WorkspaceSeatLimitModel } from "@app/lib/resources/storage/models/workspace_seat_limit";
 import { WorkspaceVerificationAttemptModel } from "@app/lib/resources/storage/models/workspace_verification_attempt";
-import logger from "@app/logger/logger";
-import { sendInitDbMessage } from "@app/types/shared/deployment";
+import { isDevelopment, isTest } from "@app/types/shared/env";
 
 /**
  * Loads all Sequelize models, useful for some tests
@@ -165,18 +180,22 @@ export function loadAllModels() {
     CloneModel,
     KeyModel,
     FileModel,
+    SandboxFunctionModel,
+    SandboxFunctionInvocationModel,
     ShareableFileModel,
     AuthorizedFileAccessModel,
     SharingGrantModel,
     ExternalViewerSessionModel,
     DustAppSecretModel,
     GroupSpaceModel,
+    GroupPermissionModel,
     WebhookSourceModel,
     WebhookSourcesViewModel,
     TriggerModel,
     WebhookRequestModel,
     WebhookRequestTriggerModel,
     ConversationModel,
+    ConversationSelectedSpaceModel,
     ConversationParticipantModel,
     UserConversationReadsModel,
     WakeUpModel,
@@ -188,6 +207,9 @@ export function loadAllModels() {
     PlanModel,
     SubscriptionModel,
     ProviderCredentialModel,
+    UserAllowedAdvancedModel,
+    GroupAllowedAdvancedModel,
+    WorkspaceAllowedAdvancedModel,
     TemplateModel,
     CreditModel,
     CouponModel,
@@ -205,6 +227,7 @@ export function loadAllModels() {
     RemoteMCPServerToolMetadataModel,
     InternalMCPServerCredentialModel,
     ConversationMCPServerViewModel,
+    SandboxFunctionMCPActionModel,
     AgentMCPServerConfigurationModel,
     AgentTablesQueryConfigurationTableModel,
     AgentDataSourceConfigurationModel,
@@ -249,6 +272,7 @@ export function loadAllModels() {
     AcademyQuizAttemptModel,
     AcademyChapterVisitModel,
     SandboxModel,
+    SandboxOwnerModel,
     ConversationBranchModel,
     ConversationForkModel,
     ProjectTaskModel,
@@ -263,14 +287,16 @@ export function loadAllModels() {
     WorkspaceSensitivityLabelConfigModel,
     WorkspaceSandboxEnvVarModel,
     WorkspaceSeatLimitModel,
+    ActivationRecommendationModel,
   ];
 }
 
 async function main() {
-  await sendInitDbMessage({
-    service: "front",
-    logger: logger,
-  });
+  if (!isDevelopment() && !isTest()) {
+    throw new Error(
+      "This script should only be run in development or test mode"
+    );
+  }
 
   for (const model of loadAllModels()) {
     await model.sync({ alter: true });

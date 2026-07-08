@@ -200,6 +200,7 @@ vi.mock("@app/lib/temporal", () => ({
     schedule: {
       getHandle: vi.fn().mockReturnValue({
         update: vi.fn(),
+        delete: vi.fn(),
       }),
     },
   }),
@@ -216,10 +217,6 @@ vi.mock("@app/temporal/es_indexation/client", async (importOriginal) => {
   return {
     ...mod,
     launchIndexUserSearchWorkflow: vi.fn(async () => {
-      const { Ok } = await import("@app/types/shared/result");
-      return new Ok(undefined);
-    }),
-    launchIndexConversationEsWorkflow: vi.fn(async () => {
       const { Ok } = await import("@app/types/shared/result");
       return new Ok(undefined);
     }),

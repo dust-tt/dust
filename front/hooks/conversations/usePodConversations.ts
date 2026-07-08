@@ -1,15 +1,15 @@
-import type {
-  GetBySpacesSummaryResponseBody,
-  GetSpaceConversationsResponseBody,
-  GetSpaceUnreadConversationsResponseBody,
-} from "@app/lib/api/assistant/conversation/spaces";
 import {
   emptyArray,
   useFetcher,
   useSWRInfiniteWithDefaults,
   useSWRWithDefaults,
 } from "@app/lib/swr/swr";
-import type { LightConversationType } from "@app/types/assistant/conversation";
+import type {
+  GetBySpacesSummaryResponseBody,
+  GetSpaceConversationsResponseBody,
+  GetSpaceUnreadConversationsResponseBody,
+  PodConversationListItemType,
+} from "@app/types/api/assistant/conversation/spaces";
 import { useCallback, useMemo } from "react";
 import type { Fetcher } from "swr";
 
@@ -97,7 +97,7 @@ export function usePodConversations({
 
   const conversations = useMemo(() => {
     if (!data) {
-      return emptyArray<LightConversationType>();
+      return emptyArray<PodConversationListItemType>();
     }
     return data.flatMap((page) => page.conversations);
   }, [data]);

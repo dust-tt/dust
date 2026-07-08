@@ -10,6 +10,7 @@ import {
   scopedPathsFromArgs,
 } from "@app/lib/api/actions/servers/files/tools/agent_loop_fs";
 import { moveCanonicalFile } from "@app/lib/api/files/file_system_ops";
+import { getFilePreviewDirectiveInstruction } from "@app/lib/markdown/file_preview";
 import {
   isAllSupportedFileContentType,
   stripMimeParameters,
@@ -19,9 +20,9 @@ import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 
 export async function moveHandler(
   { source, dest }: { source: string; dest: string },
-  { auth, agentLoopContext }: ToolHandlerExtra
+  { auth, toolContext }: ToolHandlerExtra
 ): Promise<ToolHandlerResult> {
-  const conversationRes = requireAgentLoopConversation({ agentLoopContext });
+  const conversationRes = requireAgentLoopConversation({ toolContext });
   if (conversationRes.isErr()) {
     return conversationRes;
   }
@@ -101,7 +102,13 @@ export async function moveHandler(
   > = [
     {
       type: "text",
-      text: `Moved \`${source}\` to \`${dest}\`. The user is presented with an attachment to download the file, do not attempt to generate a link to it.`,
+      text:
+        `Moved \`${source}\` to \`${dest}\`. ` +
+        getFilePreviewDirectiveInstruction({
+          contentType: mimeType,
+          path: dest,
+          title: dest.split("/").pop() ?? dest,
+        }),
     },
   ];
 

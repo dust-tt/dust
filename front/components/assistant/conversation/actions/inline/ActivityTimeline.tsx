@@ -53,7 +53,7 @@ export function ActivityTimeline({
   return (
     <div className="flex flex-col text-sm">
       <button
-        className="self-start text-muted-foreground dark:text-muted-foreground-night hover:text-foreground dark:hover:text-foreground-night transition-colors duration-200 flex gap-1 items-center"
+        className="self-start text-muted-foreground hover:text-foreground transition-colors duration-200 flex gap-1 items-center"
         onClick={toggleCollapse}
       >
         {headerLabel}
@@ -99,7 +99,7 @@ export function ActivityTimeline({
                 case "action": {
                   const row = (
                     <TimelineRow icon={getActionStepIcon(step)} isLast={isLast}>
-                      <span className="text-muted-foreground dark:text-muted-foreground-night flex items-center gap-1">
+                      <span className="text-muted-foreground flex items-center gap-1">
                         {step.label}
                         <Icon
                           size="xs"
@@ -145,7 +145,7 @@ export function ActivityTimeline({
                 index === runningToolRows.length - 1 && !showTrailingSpinner;
               const rowEl = (
                 <TimelineRow spinner isLast={isLast}>
-                  <span className="text-muted-foreground dark:text-muted-foreground-night flex items-center gap-1">
+                  <span className="text-muted-foreground flex items-center gap-1">
                     {row.label}
                     <Icon
                       size="xs"
@@ -175,7 +175,7 @@ export function ActivityTimeline({
 
             {terminalRow && (
               <TimelineRow icon={terminalRow.icon} isLast>
-                <span className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+                <span className="text-sm text-muted-foreground">
                   {terminalRow.label}
                 </span>
               </TimelineRow>

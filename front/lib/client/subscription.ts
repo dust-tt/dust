@@ -25,8 +25,8 @@ export const CP_MAX_SEAT_COST_YEARLY = 120;
  * Client-side mirror of the server-side `isMetronomeBillingEnabled` gate: the
  * credit-priced checkout flow follows Metronome billing, which is enabled by
  * default for all workspaces. The `global_disable_metronome_billing` kill
- * switch turns it off globally; the `metronome_billing` feature flag
- * re-enables it for individual workspaces.
+ * switch turns it off globally; the `legacy_billing` feature flag forces it
+ * off for individual workspaces.
  *
  * Prefer the `useIsMetronomeCheckout` hook; this helper is for components that
  * render outside the auth context provider (e.g. the SPA workspace layout).
@@ -39,7 +39,7 @@ export function computeIsMetronomeCheckout({
   killSwitches: KillSwitchType[] | null | undefined;
 }): boolean {
   return (
-    featureFlags.includes("metronome_billing") ||
+    !featureFlags.includes("legacy_billing") &&
     !killSwitches?.includes("global_disable_metronome_billing")
   );
 }
@@ -50,19 +50,12 @@ export function useIsMetronomeCheckout(): boolean {
   return computeIsMetronomeCheckout({ featureFlags, killSwitches });
 }
 
-export function formatPriceWithCurrency(
-  price: number,
-  currency: SupportedCurrency
-): string {
-  return currency === "usd" ? `$${price}` : `${price}€`;
-}
-
 /**
  * Hook that resolves the user's billing currency from IP geolocation.
  *
- * When the workspace has the metronome_billing feature flag:
+ * When Metronome billing is enabled:
  *   EU/EEA/CH → EUR, rest of world → USD.
- * Without the flag (Stripe billing, or no workspace):
+ * With legacy billing (Stripe billing, or no workspace):
  *   US → USD, rest of world → EUR (matches Stripe adaptive pricing).
  *
  * Falls back to Stripe behaviour while loading or on error.
@@ -72,7 +65,7 @@ export function useUserBillingCurrency(): SupportedCurrency {
   const { hasFeature } = useFeatureFlags();
   const { killSwitches } = useKillSwitches();
   const isMetronomeBillingEnabled =
-    hasFeature("metronome_billing") ||
+    !hasFeature("legacy_billing") &&
     !killSwitches?.includes("global_disable_metronome_billing");
 
   if (geoData?.countryCode) {
@@ -90,7 +83,7 @@ export function useUserBillingCurrency(): SupportedCurrency {
  */
 export function usePriceWithCurrency(price: number): string {
   const currency = useUserBillingCurrency();
-  return formatPriceWithCurrency(price, currency);
+  return getPriceAsString({ currency, priceInCents: price * 100 });
 }
 
 export interface BillingCycle {
@@ -183,6 +176,8 @@ export const getPriceAsString = ({
       return `$${price}`;
     case "eur":
       return `${price}€`;
+    case "gbp":
+      return `£${price}`;
     default:
       return `${price}${currency}`;
   }

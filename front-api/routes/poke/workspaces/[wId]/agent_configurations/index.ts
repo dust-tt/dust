@@ -3,7 +3,7 @@ import { getAuthors } from "@app/lib/api/assistant/editors";
 import type {
   PokeAgentConfigurationType,
   PokeGetAgentConfigurationsResponseBody,
-} from "@app/lib/api/poke/agent_configurations";
+} from "@app/types/api/poke/agent_configurations";
 import { pokeApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";

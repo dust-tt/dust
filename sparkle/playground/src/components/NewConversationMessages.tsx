@@ -129,12 +129,12 @@ export const NewConversationContainer = React.forwardRef<
     <div
       ref={ref}
       className={cn(
-        "s-flex s-w-full s-flex-col s-items-center s-@container/conversation",
+        "flex w-full flex-col items-center @container/conversation",
         className
       )}
       {...props}
     >
-      <div className="s-flex s-w-full s-max-w-4xl s-flex-col s-gap-4 s-px-4">
+      <div className="flex w-full max-w-4xl flex-col gap-4 px-4">
         {children}
       </div>
     </div>
@@ -153,14 +153,7 @@ export const NewConversationSectionHeading = React.forwardRef<
   NewConversationSectionHeadingProps
 >(({ label, children, className, ...props }, ref) => {
   return (
-    <div
-      ref={ref}
-      className={cn(
-        "s-flex s-w-full s-justify-center s-items-center s-gap-3 s-heading-sm s-text-faint dark:s-text-faint-night",
-        className
-      )}
-      {...props}
-    >
+    <div ref={ref} className={cn(className)} {...props}>
       {label ?? children}
     </div>
   );
@@ -191,11 +184,11 @@ export const NewConversationActiveIndicator = React.forwardRef<
   return (
     <div
       ref={ref}
-      className={cn("s-flex s-items-center s-gap-2 s-pl-2", className)}
+      className={cn("flex items-center gap-2 pl-2", className)}
       {...props}
     >
       <Avatar {...resolvedAvatar} />
-      <AnimatedText className="s-text-xs s-font-semibold">
+      <AnimatedText className="text-xs font-semibold">
         {resolvedName} is {action}
       </AnimatedText>
     </div>
@@ -204,11 +197,11 @@ export const NewConversationActiveIndicator = React.forwardRef<
 
 NewConversationActiveIndicator.displayName = "NewConversationActiveIndicator";
 
-const messageGroupVariants = cva("s-flex s-w-full s-flex-col s-gap-1", {
+const messageGroupVariants = cva("flex w-full flex-col gap-1", {
   variants: {
     align: {
-      start: "s-items-start",
-      end: "s-items-end",
+      start: "items-start",
+      end: "items-end",
     },
   },
   defaultVariants: {
@@ -324,23 +317,21 @@ export const NewConversationMessageGroupHeader = React.forwardRef<
     return (
       <div
         ref={ref}
-        className={cn("s-flex s-w-full s-items-center s-gap-2", className)}
+        className={cn("flex w-full items-center gap-2", className)}
         {...props}
       >
         {!isLocutor && <Avatar {...resolvedAvatar} />}
         <div
           className={cn(
-            "s-inline-flex s-flex-1 s-items-center s-gap-0.5",
-            isLocutor ? "s-justify-end" : "s-justify-between"
+            "inline-flex flex-1 items-center gap-0.5",
+            isLocutor ? "justify-end" : "justify-between"
           )}
         >
-          <div className="s-inline-flex s-items-baseline s-gap-2 s-text-foreground dark:s-text-foreground-night">
-            <span className="s-heading-sm">
+          <div className="inline-flex items-baseline gap-2 text-foreground">
+            <span className="heading-sm">
               {isLocutor ? "Me" : renderName(name)}
             </span>
-            <span className="s-text-xs s-text-muted-foreground dark:s-text-muted-foreground-night">
-              {timestamp}
-            </span>
+            <span className="text-xs text-muted-foreground">{timestamp}</span>
             {infoChip && infoChip}
           </div>
           {completionStatus ? (
@@ -383,14 +374,12 @@ export const MessageReaction = ({
   );
 };
 
-const messageVariants = cva("s-flex s-max-w-full", {
+const messageVariants = cva("flex max-w-full", {
   variants: {
     type: {
-      interlocutor:
-        "s-rounded-3xl s-bg-muted-background dark:s-bg-muted-background-night s-px-4 s-gap-2 s-w-fit",
-      locutor:
-        "s-rounded-3xl s-bg-muted-background dark:s-bg-muted-background-night s-px-4 s-gap-2 s-w-fit",
-      agent: "s-flex-1 s-px-4",
+      interlocutor: "rounded-3xl bg-muted-background px-4 gap-2 w-fit",
+      locutor: "rounded-3xl bg-muted-background px-4 gap-2 w-fit",
+      agent: "flex-1 px-4",
     },
   },
   defaultVariants: {
@@ -636,8 +625,8 @@ export const NewConversationUserMessage = React.forwardRef<
       actionsButtons ? (
         <div
           className={cn(
-            "s-flex s-gap-1 s-items-end s-opacity-0 s-transition-opacity",
-            visible && "group-hover/new-conversation-message:s-opacity-100"
+            "flex gap-1 items-end opacity-0 transition-opacity",
+            visible && "group-hover/new-conversation-message:opacity-100"
           )}
         >
           {actionsButtons}
@@ -649,13 +638,13 @@ export const NewConversationUserMessage = React.forwardRef<
         <div
           ref={ref}
           className={cn(
-            "s-group/new-conversation-message s-flex s-flex-col s-w-full",
-            resolvedType === "locutor" ? "s-items-end" : "s-items-start"
+            "group/new-conversation-message flex flex-col w-full",
+            resolvedType === "locutor" ? "items-end" : "items-start"
           )}
         >
           {citations && citations.length > 0 && (
             <NewCitationGrid
-              className="s-pb-1 s-w-full"
+              className="pb-1 w-full"
               justify={resolvedType === "locutor" ? "end" : "start"}
             >
               {citations.map((c) =>
@@ -663,26 +652,21 @@ export const NewConversationUserMessage = React.forwardRef<
               )}
             </NewCitationGrid>
           )}
-          <div className={cn("s-flex s-gap-1", isEditing && "s-w-full")}>
+          <div className={cn("flex gap-1", isEditing && "w-full")}>
             {resolvedType === "locutor" && actionsContent(!hasBottomBar)}
-            <div
-              className={cn(
-                "s-flex s-flex-col s-gap-1",
-                isEditing && "s-w-full"
-              )}
-            >
+            <div className={cn("flex flex-col gap-1", isEditing && "w-full")}>
               <div
                 ref={messageContainerSizeRef}
                 className={cn(
                   messageVariants({ type: resolvedType, className }),
-                  userCollapsible && "s-flex-col",
+                  userCollapsible && "flex-col",
                   isEditing &&
-                    "s-w-full s-mt-3 s-flex-col s-border s-border-highlight-300 dark:s-border-highlight-300-night s-ring-2 s-ring-highlight-300/50 dark:s-ring-highlight-700/60"
+                    "w-full mt-3 flex-col border border-highlight-300 ring-2 ring-highlight-300/50"
                 )}
                 {...props}
               >
                 {isEditing ? (
-                  <div className="s-py-3">
+                  <div className="py-3">
                     <textarea
                       ref={textareaRef}
                       value={editValue}
@@ -698,7 +682,7 @@ export const NewConversationUserMessage = React.forwardRef<
                           handleEditSave();
                         }
                       }}
-                      className="s-w-full s-resize-none s-bg-transparent s-text-base s-text-foreground dark:s-text-foreground-night s-outline-none s-border-none s-p-0 focus:s-outline-none focus:s-ring-0"
+                      className="w-full resize-none bg-transparent text-base text-foreground outline-hidden border-none p-0 focus:outline-hidden focus:ring-0"
                       rows={1}
                     />
                   </div>
@@ -706,7 +690,7 @@ export const NewConversationUserMessage = React.forwardRef<
                   <div
                     ref={containerRef}
                     className={cn(
-                      shouldAutoCollapse && isCollapsible && "s-relative"
+                      shouldAutoCollapse && isCollapsible && "relative"
                     )}
                     style={
                       shouldAutoCollapse && isCollapsible
@@ -731,10 +715,10 @@ export const NewConversationUserMessage = React.forwardRef<
                     {shouldAutoCollapse && isCollapsible && (
                       <div
                         className={cn(
-                          "s-pointer-events-none s-absolute s-bottom-0 s-left-0 s-right-0 s-h-12 s-bg-gradient-to-b s-from-transparent s-transition-opacity",
+                          "pointer-events-none absolute bottom-0 left-0 right-0 h-12 bg-linear-to-b from-transparent transition-opacity",
                           isExpanded
-                            ? "s-opacity-0"
-                            : "s-to-muted-background dark:s-to-muted-background-night s-opacity-80"
+                            ? "opacity-0"
+                            : "to-muted-background opacity-80"
                         )}
                       />
                     )}
@@ -742,7 +726,7 @@ export const NewConversationUserMessage = React.forwardRef<
                 )}
               </div>
               {isEditing ? (
-                <div className="s-flex s-justify-end s-gap-2 s-px-3 s-mb-3 s-mt-1">
+                <div className="flex justify-end gap-2 px-3 mb-3 mt-1">
                   <Button
                     size="sm"
                     variant="outline"
@@ -758,7 +742,7 @@ export const NewConversationUserMessage = React.forwardRef<
                 </div>
               ) : (
                 hasBottomBar && (
-                  <div className="s-flex s-flex-wrap s-items-center s-gap-1 s-px-3">
+                  <div className="flex flex-wrap items-center gap-1 px-3">
                     {userCollapsible && (
                       <Button
                         size="xs"
@@ -850,10 +834,10 @@ export const NewConversationAgentMessage = React.forwardRef<
         <div
           ref={ref}
           className={cn(
-            "s-group/new-conversation-message s-flex s-flex-col s-w-full s-items-start"
+            "group/new-conversation-message flex flex-col w-full items-start"
           )}
         >
-          <div className="s-flex s-gap-1 s-w-full">
+          <div className="flex gap-1 w-full">
             <div
               ref={messageContainerSizeRef}
               className={cn(messageVariants({ type: "agent", className }))}
@@ -862,7 +846,7 @@ export const NewConversationAgentMessage = React.forwardRef<
               <div
                 ref={containerRef}
                 className={cn(
-                  shouldAutoCollapse && isCollapsible && "s-relative"
+                  shouldAutoCollapse && isCollapsible && "relative"
                 )}
                 style={
                   shouldAutoCollapse && isCollapsible
@@ -885,7 +869,7 @@ export const NewConversationAgentMessage = React.forwardRef<
             </div>
           </div>
           {((shouldAutoCollapse && isCollapsible) || !hideActions) && (
-            <div className="s-relative s-flex s-items-center s-pt-2 s-gap-1 s-w-full s-px-3">
+            <div className="relative flex items-center pt-2 gap-1 w-full px-3">
               {shouldAutoCollapse && isCollapsible && (
                 <>
                   <Button
@@ -898,16 +882,13 @@ export const NewConversationAgentMessage = React.forwardRef<
                   />
                   <div
                     className={cn(
-                      "s-pointer-events-none s-absolute s-bottom-full s-border-b s-border-border dark:s-border-border-night s-left-0 s-right-0 s-h-8 s-bg-gradient-to-b s-from-transparent s-transition-opacity",
-                      isExpanded
-                        ? "s-opacity-0"
-                        : "s-to-background/80 dark:s-to-background-night/80 s-opacity-100"
+                      isExpanded ? "opacity-0" : "to-background/80 opacity-100"
                     )}
                   />
                 </>
               )}
               {!hideActions && (
-                <div className="s-flex s-items-center s-gap-1 s-opacity-0 s-transition-opacity group-hover/new-conversation-message:s-opacity-100">
+                <div className="flex items-center gap-1 opacity-0 transition-opacity group-hover/new-conversation-message:opacity-100">
                   <ButtonGroup removeGaps>
                     <Button
                       icon={ThumbsUp}
@@ -993,15 +974,10 @@ export const NewConversationMessageContent = React.forwardRef<
     return (
       <div
         ref={ref}
-        className={cn(
-          "s-flex s-min-w-0 s-flex-1 s-flex-col s-gap-1 s-py-3",
-          className
-        )}
+        className={cn("flex min-w-0 flex-1 flex-col gap-1 py-3", className)}
         {...props}
       >
-        <div className="s-text-base s-text-foreground dark:s-text-foreground-night">
-          {children}
-        </div>
+        <div className="text-base text-foreground">{children}</div>
         {citations && citations.length > 0 && (
           <NewCitationGrid>{citations}</NewCitationGrid>
         )}
@@ -1058,12 +1034,12 @@ export const NewConversationPendingValidationBlock = React.forwardRef<
       <div
         ref={ref}
         className={cn(
-          "s-flex s-relative s-w-full s-flex-col s-gap-3 s-pt-3 s-pb-2 s-border-t-2 s-border-highlight-100",
+          "flex relative w-full flex-col gap-3 pt-3 pb-2 border-t-2 border-highlight-100",
           className
         )}
         {...props}
       >
-        <div className="s-flex s-w-full s-flex-col s-gap-1 s-pl-12">
+        <div className="flex w-full flex-col gap-1 pl-12">
           <messageGroupTypeContext.Provider value={LOCUTOR_GROUP_CONTEXT}>
             <NewConversationUserMessage
               hideActions
@@ -1074,7 +1050,7 @@ export const NewConversationPendingValidationBlock = React.forwardRef<
             </NewConversationUserMessage>
           </messageGroupTypeContext.Provider>
         </div>
-        <div className="s-flex s-w-full s-flex-col s-gap-1">
+        <div className="flex w-full flex-col gap-1">
           <messageGroupTypeContext.Provider value={AGENT_GROUP_CONTEXT}>
             <NewConversationMessageGroupHeader
               groupType="agent"
@@ -1095,8 +1071,8 @@ export const NewConversationPendingValidationBlock = React.forwardRef<
           </messageGroupTypeContext.Provider>
         </div>
         {!hideActions && (
-          <div className="s-flex s-items-center s-gap-2 s-p-2 s-pl-3 s-rounded-b-2xl s-border-t-2 s-border-border s-border-highlight-100 s-bg-highlight-50">
-            <span className="s-flex-1 s-text-sm s-text-foreground dark:s-text-muted-foreground-night">
+          <div className="flex items-center gap-2 p-2 pl-3 rounded-b-2xl border-t-2 border-border border-highlight-100 bg-highlight-50">
+            <span className="flex-1 text-sm text-foreground">
               This agent has access to sensitive data. Do you want to post this
               message in this shared conversation?
             </span>

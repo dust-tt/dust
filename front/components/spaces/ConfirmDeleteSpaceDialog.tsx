@@ -1,5 +1,5 @@
-import type { SpaceCategoryInfo } from "@app/lib/api/spaces";
 import { getSpaceName } from "@app/lib/spaces";
+import type { SpaceCategoryInfo } from "@app/types/api/spaces";
 import type { SpaceType } from "@app/types/space";
 import {
   Button,
@@ -75,7 +75,7 @@ export function ConfirmDeleteSpaceDialog({
                 />
               )}
               <div>
-                <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+                <p className="text-sm text-muted-foreground">
                   Are you sure you want to permanently delete space {spaceName}?
                   This action cannot be undone.
                 </p>

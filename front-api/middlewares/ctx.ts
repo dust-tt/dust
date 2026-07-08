@@ -1,4 +1,4 @@
-import type { SandboxExecTokenPayload } from "@app/lib/api/sandbox/access_tokens";
+import type { SandboxTokenPayload } from "@app/lib/api/sandbox/access_tokens";
 import type { Authenticator } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
 import type { PokeRole } from "@app/lib/poke/roles";
@@ -33,12 +33,12 @@ export type PublicApiCtx = {
   };
 };
 
-// Sandbox action callback endpoints. Authenticated by `sandboxAuth`, which
-// also exposes the verified token claims so handlers don't re-verify the token.
+// Sandbox callback endpoints. Authenticated by `sandboxAuth`, which also
+// exposes the verified token claims so handlers don't re-verify the token.
 export type SandboxCtx = {
   Variables: {
     auth: Authenticator;
-    sandboxClaims: SandboxExecTokenPayload;
+    sandboxClaims: SandboxTokenPayload;
   };
 };
 

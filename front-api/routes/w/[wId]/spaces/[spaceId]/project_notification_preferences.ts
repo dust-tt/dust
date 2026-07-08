@@ -1,9 +1,9 @@
+import { UserProjectPreferencesResource } from "@app/lib/resources/user_project_preferences_resource";
 import type {
   GetUserPodNotificationPreferenceResponseBody,
   PatchUserPodNotificationPreferenceResponseBody,
-} from "@app/lib/api/projects/preferences";
-import { PatchUserPodNotificationPreferenceBodySchema } from "@app/lib/api/projects/preferences";
-import { UserProjectPreferencesResource } from "@app/lib/resources/user_project_preferences_resource";
+} from "@app/types/api/projects/preferences";
+import { PatchUserPodNotificationPreferenceBodySchema } from "@app/types/api/projects/preferences";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";

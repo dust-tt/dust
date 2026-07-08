@@ -24,10 +24,9 @@ import {
 } from "@app/lib/metronome/client";
 import {
   CARRY_ON_RENEWAL_CUSTOM_FIELD_KEY,
-  CARRY_ON_RENEWAL_FOREVER_VALUE,
   CURRENCY_TO_CREDIT_TYPE_ID,
-  FOREVER_ENDING_BEFORE,
   getProductSeatSubscriptionCommitId,
+  oneYearAfter,
   PAYMENT_GATE_TYPE_CUSTOM_FIELD_KEY,
   PAYMENT_GATE_TYPE_SUBSCRIPTION_ACTIVATION,
   SEAT_PRIORITY_SUBSCRIPTION_COMMIT,
@@ -37,7 +36,7 @@ import {
   provisionPaymentGatedActivationContract,
 } from "@app/lib/metronome/contracts";
 import {
-  createCouponCredit,
+  createSeatCouponCredit,
   getCreditTypeFromPackage,
 } from "@app/lib/metronome/coupons";
 import { invalidateContractCache } from "@app/lib/metronome/plan_type";
@@ -214,7 +213,7 @@ export async function createPaymentGatedBusinessActivation({
     if (!found) {
       return new Err({ type: "invalid_coupon" });
     }
-    const validation = found.validateRedemption();
+    const validation = found.validateRedemptionForContext("subscription");
     if (validation.isErr()) {
       return new Err({ type: "invalid_coupon" });
     }
@@ -276,8 +275,17 @@ export async function createPaymentGatedBusinessActivation({
 
   // Step 6: zero-amount fast path — no invoice to create, activate immediately.
   if (effectiveAmountCents === 0) {
+    // We need to retrieve an up-to-date workspace object here
+    // before calling handleSubscriptionActivationSuccess
+    const freshWorkspace = await WorkspaceResource.fetchById(workspace.sId);
+    if (!freshWorkspace) {
+      return new Err({
+        type: "metronome_error",
+        message: "Workspace not found during zero-amount activation",
+      });
+    }
     await handleSubscriptionActivationSuccess({
-      workspace,
+      workspace: freshWorkspace,
       contractId: metronomeContractId,
       invoiceId: "free-activation",
     });
@@ -300,6 +308,8 @@ export async function createPaymentGatedBusinessActivation({
   const fiatCreditTypeId = CURRENCY_TO_CREDIT_TYPE_ID[currency];
   const amountNative = metronomeAmount(effectiveAmountCents, currency);
 
+  const accessEndingBefore = oneYearAfter(now);
+
   const commitResult = await addPaymentGatedCommitToContract({
     metronomeCustomerId,
     metronomeContractId,
@@ -307,7 +317,7 @@ export async function createPaymentGatedBusinessActivation({
     accessAmount: amountNative,
     accessCreditTypeId: fiatCreditTypeId,
     accessStartingAt: now,
-    accessEndingBefore: FOREVER_ENDING_BEFORE,
+    accessEndingBefore,
     invoiceUnitPrice: amountNative,
     invoiceQuantity: 1,
     invoiceCreditTypeId: fiatCreditTypeId,
@@ -317,7 +327,7 @@ export async function createPaymentGatedBusinessActivation({
     name: `Business subscription activation (${seatType} ${billingPeriod})`,
     uniquenessKey,
     customFields: {
-      [CARRY_ON_RENEWAL_CUSTOM_FIELD_KEY]: CARRY_ON_RENEWAL_FOREVER_VALUE,
+      [CARRY_ON_RENEWAL_CUSTOM_FIELD_KEY]: floorToHourISO(accessEndingBefore),
     },
     stripeInvoiceMetadata: {
       subscription_activation: "true",
@@ -456,7 +466,7 @@ export async function handleSubscriptionActivationSuccess({
       );
       if (creditTypeResult.isOk()) {
         const { creditTypeId, currency } = creditTypeResult.value;
-        const creditResult = await createCouponCredit({
+        const creditResult = await createSeatCouponCredit({
           metronomeCustomerId: workspace.metronomeCustomerId!,
           metronomeContractId: contractId,
           coupon,
@@ -470,6 +480,7 @@ export async function handleSubscriptionActivationSuccess({
         } else {
           logger.error(
             {
+              panic: true,
               workspaceId: workspace.sId,
               couponCode: checkoutPayment.couponCode,
               error: creditResult.error.message,
@@ -480,6 +491,7 @@ export async function handleSubscriptionActivationSuccess({
       } else {
         logger.error(
           {
+            panic: true,
             workspaceId: workspace.sId,
             error: creditTypeResult.error.message,
           },
@@ -494,7 +506,11 @@ export async function handleSubscriptionActivationSuccess({
     await SubscriptionResource.fetchActiveByWorkspaceModelId(workspace.id);
   if (!activeSubscription) {
     logger.error(
-      { workspaceId: workspace.sId, contractId },
+      {
+        panic: true,
+        workspaceId: workspace.sId,
+        contractId,
+      },
       "[Business Activation] No active subscription found during webhook success — cannot activate"
     );
     return;
@@ -577,6 +593,7 @@ export async function handleSubscriptionActivationSuccess({
   if (!targetUser) {
     logger.error(
       {
+        panic: true,
         workspaceId: workspace.sId,
         targetUserId: checkoutPayment.targetUserId,
       },
@@ -596,6 +613,7 @@ export async function handleSubscriptionActivationSuccess({
     if (seatResult.isErr()) {
       logger.error(
         {
+          panic: true,
           workspaceId: workspace.sId,
           targetUserId: checkoutPayment.targetUserId,
           membershipSeatType,

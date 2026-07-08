@@ -234,6 +234,21 @@ const handlers: ToolHandlers<typeof WORKSPACE_ANALYTICS_TOOLS_METADATA> = {
       ]);
     }
 
+    if (!agent.canRead) {
+      return new Ok([
+        {
+          type: "text" as const,
+          text:
+            `Agent ${agent.name} [${agent.sId}]\n` +
+            `- Description: (private agent - not available)\n` +
+            `- Scope: ${agent.scope}\n` +
+            `- Model: ${agent.model.providerId}/${agent.model.modelId}\n\n` +
+            "Instructions, skills, and tools are not available for private " +
+            "agents you do not have access to.",
+        },
+      ]);
+    }
+
     const toolNames = agent.actions.map((action) => action.name).join(", ");
     const skillNames = (agent.skills ?? []).join(", ");
 

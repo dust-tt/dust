@@ -20,8 +20,9 @@ import { AgentStepContentResource } from "@app/lib/resources/agent_step_content_
 import { ContentFragmentResource } from "@app/lib/resources/content_fragment_resource";
 import { ConversationForkResource } from "@app/lib/resources/conversation_fork_resource";
 import type { ConversationResource } from "@app/lib/resources/conversation_resource";
+import { ConversationSandboxAdapter } from "@app/lib/resources/conversation_sandbox_adapter";
+import { ConversationSelectedSpaceResource } from "@app/lib/resources/conversation_selected_space_resource";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
-import { SandboxResource } from "@app/lib/resources/sandbox_resource";
 import {
   ProjectTaskConversationModel,
   ProjectTaskSourceModel,
@@ -187,6 +188,9 @@ export async function destroyConversation(
   await ConversationForkResource.deleteForConversationModelId(auth, {
     conversationModelId: conversation.id,
   });
+  await ConversationSelectedSpaceResource.deleteForConversation(auth, {
+    conversation,
+  });
 
   // Clean up all branches attached to this conversation before deleting messages.
   await ConversationBranchModel.destroy({
@@ -308,7 +312,7 @@ export async function destroyConversation(
     where: { workspaceId: owner.id, sourceId: conversation.sId },
   });
 
-  await SandboxResource.deleteByConversation(auth, conversation);
+  await ConversationSandboxAdapter.deleteSandbox(auth, conversation);
 
   // TODO(2026-03-09 SANDBOX): Implement proper file deletion.
   // FileResource records associated with this conversation (via

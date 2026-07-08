@@ -1,10 +1,11 @@
-import type { GetPokeSearchItemsResponseBody } from "@app/lib/api/poke/search";
+import { clientFetch } from "@app/lib/egress/client";
+import type { PokePlanTypeFilter } from "@app/lib/plans/plan_codes";
+import { emptyArray, useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
+import type { GetPokeSearchItemsResponseBody } from "@app/types/api/poke/search";
 import type {
   GetPokeWorkspacesResponseBody,
   PokeWorkspaceType,
-} from "@app/lib/api/poke/workspaces";
-import { clientFetch } from "@app/lib/egress/client";
-import { emptyArray, useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
+} from "@app/types/api/poke/workspaces";
 import type { PokeItemBase } from "@app/types/poke";
 import type { RegionType } from "@app/types/region";
 import { SUPPORTED_REGIONS } from "@app/types/region";
@@ -156,13 +157,20 @@ export function usePokeWorkspacesAllRegions({
   disabled,
   search,
   upgraded,
+  planType,
+  region,
   limit,
+  offset,
   regionUrls,
 }: {
   disabled?: boolean;
   search?: string;
   upgraded?: boolean;
+  planType?: PokePlanTypeFilter;
+  // Restrict fetching to a single region instead of merging all of them.
+  region?: RegionType;
   limit?: number;
+  offset?: number;
   regionUrls: Record<RegionType, string> | null;
 }) {
   const [workspaces, setWorkspaces] = useState<PokeWorkspaceWithRegion[]>(
@@ -170,12 +178,14 @@ export function usePokeWorkspacesAllRegions({
   );
   const [isLoading, setIsLoading] = useState(false);
   const [isError, setIsError] = useState(false);
+  const [hasMore, setHasMore] = useState(false);
 
   useEffect(() => {
     if (disabled || !regionUrls) {
       setWorkspaces(emptyArray());
       setIsLoading(false);
       setIsError(false);
+      setHasMore(false);
       return;
     }
 
@@ -191,37 +201,51 @@ export function usePokeWorkspacesAllRegions({
     if (upgraded !== undefined) {
       queryParams.set("upgraded", String(upgraded));
     }
+    if (planType !== undefined) {
+      queryParams.set("planType", planType);
+    }
     if (limit !== undefined) {
       queryParams.set("limit", String(limit));
     }
+    if (offset !== undefined) {
+      queryParams.set("offset", String(offset));
+    }
+
+    const regionsToFetch = region ? [region] : getUniqueRegions(regionUrls);
 
     const run = async () => {
       try {
-        const regionPromises = getUniqueRegions(regionUrls).map(
-          async (region) => {
-            const baseUrl = regionUrls[region];
-            const url = `${baseUrl}/api/poke/workspaces?${queryParams.toString()}`;
+        const regionPromises = regionsToFetch.map(async (fetchedRegion) => {
+          const baseUrl = regionUrls[fetchedRegion];
+          const url = `${baseUrl}/api/poke/workspaces?${queryParams.toString()}`;
 
-            const response = await clientFetch(url, {
-              credentials: "include",
-              signal: abortController.signal,
-            });
-            if (!response.ok) {
-              throw new Error(`Failed to fetch from ${region}`);
-            }
-
-            const data: GetPokeWorkspacesResponseBody = await response.json();
-            return data.workspaces.map((ws) => ({ ...ws, region }));
+          const response = await clientFetch(url, {
+            credentials: "include",
+            signal: abortController.signal,
+          });
+          if (!response.ok) {
+            throw new Error(`Failed to fetch from ${fetchedRegion}`);
           }
-        );
+
+          const data: GetPokeWorkspacesResponseBody = await response.json();
+          return {
+            workspaces: data.workspaces.map((ws) => ({
+              ...ws,
+              region: fetchedRegion,
+            })),
+            hasMore: data.hasMore,
+          };
+        });
 
         const settledResults = await Promise.allSettled(regionPromises);
         const allWorkspaces: PokeWorkspaceWithRegion[] = [];
         let hasErrors = false;
+        let anyHasMore = false;
 
         for (const result of settledResults) {
           if (result.status === "fulfilled") {
-            allWorkspaces.push(...result.value);
+            allWorkspaces.push(...result.value.workspaces);
+            anyHasMore = anyHasMore || result.value.hasMore;
           } else {
             hasErrors = true;
           }
@@ -231,6 +255,7 @@ export function usePokeWorkspacesAllRegions({
           setWorkspaces(allWorkspaces);
           setIsError(hasErrors);
           setIsLoading(false);
+          setHasMore(anyHasMore);
         }
       } catch {
         if (!abortController.signal.aborted) {
@@ -245,11 +270,12 @@ export function usePokeWorkspacesAllRegions({
     return () => {
       abortController.abort();
     };
-  }, [disabled, search, upgraded, limit, regionUrls]);
+  }, [disabled, search, upgraded, planType, region, limit, offset, regionUrls]);
 
   return {
     workspaces,
     isWorkspacesLoading: !disabled && isLoading,
     isWorkspacesError: isError,
+    hasMoreWorkspaces: hasMore,
   };
 }

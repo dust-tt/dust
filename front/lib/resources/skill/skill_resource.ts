@@ -35,6 +35,7 @@ import {
   createResourcePermissionsFromSpacesWithMap,
   createSpaceIdToGroupsMap,
 } from "@app/lib/resources/permission_utils";
+import { ProjectMetadataResource } from "@app/lib/resources/project_metadata_resource";
 import { GlobalSkillsRegistry } from "@app/lib/resources/skill/code_defined/global_registry";
 import type { SkillDefinition } from "@app/lib/resources/skill/code_defined/shared";
 import { SystemSkillsRegistry } from "@app/lib/resources/skill/code_defined/system_registry";
@@ -60,7 +61,7 @@ import { formatTimestampToFriendlyDate } from "@app/lib/utils";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { withTransaction } from "@app/lib/utils/sql_utils";
 import type {
-  AgentConfigurationType,
+  AgentConfigurationWithoutModelType,
   LightAgentConfigurationType,
 } from "@app/types/assistant/agent";
 import type { AgentLoopExecutionData } from "@app/types/assistant/agent_run";
@@ -69,6 +70,7 @@ import type {
   ConversationType,
   ConversationWithoutContentType,
 } from "@app/types/assistant/conversation";
+import { isPodConversation } from "@app/types/assistant/conversation";
 import type {
   SkillReinforcementMode,
   SkillSourceMetadata,
@@ -122,6 +124,8 @@ type SkillResourceConstructorOptions =
       // For global skills, there is no editor group.
       dataSourceConfigurations: SkillDataSourceConfigurationModel[];
       editorGroup?: undefined;
+      // When true, the global skill's instructions are exposed to the front-end.
+      exposeInstructions?: boolean;
       fileAttachments: FileResource[];
       globalSId: string;
       mcpServerConfigurations: SkillMCPServerConfiguration[];
@@ -130,6 +134,8 @@ type SkillResourceConstructorOptions =
   | {
       dataSourceConfigurations: SkillDataSourceConfigurationModel[];
       editorGroup?: GroupResource;
+      // Custom skills always expose their own instructions; this flag is unused.
+      exposeInstructions?: undefined;
       fileAttachments: FileResource[];
       globalSId?: undefined;
       mcpServerConfigurations: SkillMCPServerConfiguration[];
@@ -228,6 +234,9 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
   readonly version: number | null = null;
 
   private readonly globalSId: string | null;
+  // Only meaningful for global skills: whether their instructions may be
+  // serialized to the front-end. Custom skills always expose their own.
+  private readonly exposeInstructions: boolean;
 
   private _mcpServerConfigurations: SkillMCPServerConfiguration[];
 
@@ -236,6 +245,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     blob: Attributes<SkillConfigurationModel>,
     {
       dataSourceConfigurations,
+      exposeInstructions,
       fileAttachments,
       globalSId,
       mcpServerConfigurations,
@@ -247,6 +257,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
 
     this.dataSourceConfigurations = dataSourceConfigurations;
     this.editorGroup = editorGroup ?? null;
+    this.exposeInstructions = exposeInstructions ?? false;
     this.fileAttachments = fileAttachments ?? [];
     this.globalSId = globalSId ?? null;
     this._mcpServerConfigurations = mcpServerConfigurations;
@@ -367,11 +378,6 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         this.globalSId
       )
     );
-  }
-
-  get isExtendable(): boolean {
-    // System skills are baseline capabilities: they are not meant to be extended.
-    return this.globalSId !== null && !this.isSystemSkill;
   }
 
   static async makeNew(
@@ -853,7 +859,11 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
 
   static async fetchByIds(
     auth: Authenticator,
-    sIds: string[]
+    sIds: string[],
+    {
+      agentLoopData,
+      onlyActive = false,
+    }: { agentLoopData?: AgentLoopExecutionData; onlyActive?: boolean } = {}
   ): Promise<SkillResource[]> {
     if (sIds.length === 0) {
       return [];
@@ -878,27 +888,34 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       { customSkillIds: [], globalSkillIds: [] }
     );
 
-    // When fetching by specific IDs, return skills regardless of status.
-    return this.baseFetch(auth, {
-      where: {
-        id: customSkillIds,
-        sId: globalSkillIds,
-        status: ["active", "archived", "suggested"],
+    return this.baseFetch(
+      auth,
+      {
+        where: {
+          id: customSkillIds,
+          sId: globalSkillIds,
+          status: onlyActive ? ["active"] : ["active", "archived", "suggested"],
+        },
       },
-    });
+      { agentLoopData }
+    );
   }
 
-  static async fetchActiveByName(
+  static async fetchByName(
     auth: Authenticator,
-    name: string
+    name: string,
+    { agentLoopData }: { agentLoopData?: AgentLoopExecutionData } = {}
   ): Promise<SkillResource | null> {
-    const resources = await this.baseFetch(auth, {
-      where: {
-        name,
-        status: "active",
+    const resources = await this.baseFetch(
+      auth,
+      {
+        where: {
+          name,
+        },
+        limit: 1,
       },
-      limit: 1,
-    });
+      { agentLoopData }
+    );
 
     if (resources.length === 0) {
       return null;
@@ -1061,7 +1078,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
 
   static async listByAgentConfiguration(
     auth: Authenticator,
-    agentConfiguration: AgentConfigurationType,
+    agentConfiguration: AgentLoopExecutionData["agentConfiguration"],
     { agentLoopData }: { agentLoopData?: AgentLoopExecutionData } = {}
   ): Promise<SkillResource[]> {
     const refs = await this.getSkillReferencesForAgent(
@@ -1084,9 +1101,12 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
    */
   static async listByAgentConfigurations(
     auth: Authenticator,
-    agentConfigurations: AgentConfigurationType[]
+    agentConfigurations: AgentLoopExecutionData["agentConfiguration"][]
   ): Promise<
-    { agentConfiguration: AgentConfigurationType; skill: SkillResource }[]
+    {
+      agentConfiguration: AgentLoopExecutionData["agentConfiguration"];
+      skill: SkillResource;
+    }[]
   > {
     assert(
       agentConfigurations.every((c) => !isGlobalAgentId(c.sId)),
@@ -1158,7 +1178,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
    */
   static async getSkillReferencesForAgent(
     auth: Authenticator,
-    agentConfiguration: AgentConfigurationType
+    agentConfiguration: AgentLoopExecutionData["agentConfiguration"]
   ): Promise<
     {
       customSkillId: ModelId | null;
@@ -1254,13 +1274,24 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
   /**
    * List discoverable skills: custom default skills + regular global skills.
    */
-  static async listDiscoverable(auth: Authenticator): Promise<SkillResource[]> {
-    return this.baseFetch(auth, {
-      where: {
-        status: "active",
-        isDefault: true,
+  static async listDiscoverable(
+    auth: Authenticator,
+    {
+      agentLoopData,
+    }: {
+      agentLoopData?: AgentLoopExecutionData;
+    } = {}
+  ): Promise<SkillResource[]> {
+    return this.baseFetch(
+      auth,
+      {
+        where: {
+          status: "active",
+          isDefault: true,
+        },
       },
-    });
+      { agentLoopData }
+    );
   }
 
   /**
@@ -1356,25 +1387,28 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     auth: Authenticator,
     {
       conversation,
+      agentConfiguration,
       agentLoopData,
       transaction,
     }: {
       conversation: ConversationWithoutContentType;
+      agentConfiguration?: AgentConfigurationWithoutModelType;
       agentLoopData?: AgentLoopExecutionData;
       transaction?: Transaction;
     }
   ): Promise<SkillResource[]> {
-    const { agentConfiguration } = agentLoopData ?? {};
+    const resolvedAgentConfiguration =
+      agentConfiguration ?? agentLoopData?.agentConfiguration;
     const workspace = auth.getNonNullableWorkspace();
 
     const conversationSkills = await ConversationSkillModel.findAll({
       where: {
         workspaceId: workspace.id,
         conversationId: conversation.id,
-        ...(agentConfiguration
+        ...(resolvedAgentConfiguration
           ? {
               [Op.or]: [
-                { agentConfigurationId: agentConfiguration.sId },
+                { agentConfigurationId: resolvedAgentConfiguration.sId },
                 { agentConfigurationId: null },
               ],
             }
@@ -1389,21 +1423,42 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     });
   }
 
-  /**
-   * List skills for the agent loop, returning system skills, (extended) enabled skills,
-   * and equipped skills.
-   */
+  static async listPodDefaultSkillsForConversation(
+    auth: Authenticator,
+    {
+      conversation,
+      agentLoopData,
+    }: {
+      conversation: ConversationWithoutContentType;
+      agentLoopData?: AgentLoopExecutionData;
+    }
+  ): Promise<SkillResource[]> {
+    if (!isPodConversation(conversation)) {
+      return [];
+    }
+
+    const [projectMetadata] = await ProjectMetadataResource.fetchBySpaceIds(
+      auth,
+      [conversation.spaceId]
+    );
+
+    return this.fetchByIds(auth, projectMetadata?.defaultSkillIds ?? [], {
+      agentLoopData,
+      onlyActive: true,
+    });
+  }
+
   static async listForAgentLoop(
     auth: Authenticator,
     params:
       | AgentLoopExecutionData
       | Pick<AgentLoopExecutionData, "agentConfiguration" | "conversation">
       | {
-          agentConfiguration: AgentConfigurationType;
+          agentConfiguration: AgentConfigurationWithoutModelType;
           conversation: ConversationWithoutContentType;
         }
   ): Promise<{
-    enabledSkills: (SkillResource & { extendedSkill: SkillResource | null })[];
+    enabledSkills: SkillResource[];
     systemSkills: SkillResource[];
     equippedSkills: SkillResource[];
   }> {
@@ -1415,9 +1470,16 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       auth,
       {
         conversation,
+        agentConfiguration,
         agentLoopData,
       }
     );
+
+    const podDefaultSkills = await this.listPodDefaultSkillsForConversation(
+      auth,
+      { conversation, agentLoopData }
+    );
+
     const allAgentSkills = await this.listByAgentConfiguration(
       auth,
       agentConfiguration,
@@ -1426,7 +1488,9 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
 
     let discoverableSkills: SkillResource[] = [];
     if (allAgentSkills.some((s) => s.globalSId === "discover_skills")) {
-      discoverableSkills = await this.listDiscoverable(auth);
+      discoverableSkills = await this.listDiscoverable(auth, {
+        agentLoopData,
+      });
     }
 
     const sortByName = (a: SkillResource, b: SkillResource) =>
@@ -1438,30 +1502,29 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     // Code-defined skills can opt into being auto-equipped or auto-enabled for the agent loop
     // without being added to the agent configuration. `findAll` already drops restricted skills,
     // so a flag-gated skill only shows up once its feature flag is on.
-    const enabledGlobalSkillIds = new Set(
-      removeNulls([
-        ...configSystemSkills.map((s) => s.globalSId),
-        ...conversationEnabledSkills.map((s) => s.globalSId),
-      ])
-    );
     const codeDefinedDefs = [
       ...(await SystemSkillsRegistry.findAll(auth)),
       ...(await GlobalSkillsRegistry.findAll(auth)),
     ];
-    const autoEnabledRefs = codeDefinedDefs
-      .filter(
-        (def) =>
-          def.isAutoEnabledForAgentLoop?.({
-            agentConfiguration,
-            conversation,
-          }) && !enabledGlobalSkillIds.has(def.sId)
-      )
-      .map((def) => ({ globalSkillId: def.sId, customSkillId: null }));
+
+    const autoEnabledDefs = codeDefinedDefs.filter((def) =>
+      def.isAutoEnabledForAgentLoop?.({
+        agentConfiguration,
+        conversation,
+      })
+    );
+    const autoEnabledRefs = autoEnabledDefs.map((def) => ({
+      globalSkillId: def.sId,
+      customSkillId: null,
+    }));
     const autoEnabledSkills = autoEnabledRefs.length
       ? await this.fetchBySkillReferences(auth, autoEnabledRefs, {
           agentLoopData,
         })
       : [];
+    const autoEnabledGlobalSkillIds = new Set(
+      autoEnabledSkills.map((s) => s.sId)
+    );
 
     const equippedGlobalSkillIds = new Set(
       removeNulls([
@@ -1487,69 +1550,57 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         })
       : [];
 
-    // System skills land in `systemSkills` (always enabled); auto-enabled global skills join
-    // the conversation-enabled skills.
+    // Active baseline skills for this loop: configured system skills, plus code-defined
+    // skills that this context promotes to always-on system prompt content.
     const systemSkills = [
-      ...configSystemSkills,
-      ...autoEnabledSkills.filter((s) => s.isSystemSkill),
+      ...new Map(
+        [...configSystemSkills, ...autoEnabledSkills].map((s) => [s.sId, s])
+      ).values(),
     ];
 
-    const enabledSkills = [
-      ...conversationEnabledSkills,
-      ...autoEnabledSkills.filter((s) => !s.isSystemSkill),
-    ].sort(sortByName);
+    // Conversation-enabled skills are rendered after an enable_skill action. If the same
+    // code-defined skill is auto-enabled for this loop, systemSkills owns it instead.
+    const enabledSkills = conversationEnabledSkills
+      .filter(
+        (s) => !s.globalSId || !autoEnabledGlobalSkillIds.has(s.globalSId)
+      )
+      .sort(sortByName);
 
-    const augmentedEnabledSkills = await this.augmentSkillsWithExtendedSkills(
-      auth,
-      enabledSkills
+    // Equipped skills are the enable-able candidates shown to the model. Exclude anything
+    // already active as system prompt content, then add default/discoverable candidates
+    // without duplicating agent-provided ones.
+    const agentEquippedSkills = allAgentSkills.filter(
+      (s) =>
+        !s.isSystemSkill &&
+        (!s.globalSId || !autoEnabledGlobalSkillIds.has(s.globalSId))
     );
-
-    // Compute the equipped skills: all non-system agent skills, auto-equipped skills,
-    // plus discoverable skills that are not already equipped. Keep this list stable
-    // even after a skill is enabled.
-    const agentEquippedSkills = allAgentSkills.filter((s) => !s.isSystemSkill);
 
     const agentEquippedSkillIds = new Set(
       [...agentEquippedSkills, ...autoEquippedSkills].map((s) => s.sId)
     );
-    const discoveredSkills = discoverableSkills.filter(
+    const podEquippedSkills = podDefaultSkills.filter(
       (s) => !agentEquippedSkillIds.has(s.sId)
+    );
+    const equippedSkillIds = new Set([
+      ...agentEquippedSkillIds,
+      ...podEquippedSkills.map((s) => s.sId),
+    ]);
+    const discoveredSkills = discoverableSkills.filter(
+      (s) => !equippedSkillIds.has(s.sId)
     );
 
     const equippedSkills = removeNulls([
       ...agentEquippedSkills.sort(sortByName),
       ...autoEquippedSkills.sort(sortByName),
+      ...podEquippedSkills.sort(sortByName),
       ...discoveredSkills.sort(sortByName),
     ]);
 
     return {
-      enabledSkills: augmentedEnabledSkills,
+      enabledSkills,
       systemSkills: systemSkills.sort(sortByName),
       equippedSkills,
     };
-  }
-
-  private static async augmentSkillsWithExtendedSkills(
-    auth: Authenticator,
-    skills: SkillResource[]
-  ): Promise<(SkillResource & { extendedSkill: SkillResource | null })[]> {
-    const extendedSkillIds = removeNulls(
-      uniq(skills.map((skill) => skill.extendedSkillId))
-    );
-    const extendedSkills = await this.fetchByIds(auth, extendedSkillIds);
-
-    // Create a map for a quick lookup of extended skills.
-    const extendedSkillsMap = new Map(
-      extendedSkills.map((skill) => [skill.sId, skill])
-    );
-
-    return skills.map((skill) =>
-      Object.assign(skill, {
-        extendedSkill: skill.extendedSkillId
-          ? (extendedSkillsMap.get(skill.extendedSkillId) ?? null)
-          : null,
-      })
-    );
   }
 
   async upsertToConversation(
@@ -1716,7 +1767,6 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         updatedAt: new Date(),
         workspaceId,
         icon: def.icon,
-        extendedSkillId: null,
         source: null,
         sourceMetadata: null,
         isDefault: !SystemSkillsRegistry.isSystemSkill(def.sId),
@@ -1729,6 +1779,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       {
         // Global skills do not have data source configurations.
         dataSourceConfigurations: [],
+        exposeInstructions: def.exposeInstructions,
         globalSId: def.sId,
         mcpServerConfigurations,
         fileAttachments: [],
@@ -1988,7 +2039,6 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
           instructionsHtml: versionModel.instructionsHtml,
           icon: versionModel.icon,
           requestedSpaceIds: versionModel.requestedSpaceIds,
-          extendedSkillId: versionModel.extendedSkillId,
           source: versionModel.source,
           sourceMetadata: versionModel.sourceMetadata,
           isDefault: versionModel.isDefault,
@@ -2021,22 +2071,49 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     return this.editorGroup?.getActiveMembers(auth) ?? null;
   }
 
+  async upsertEditors(
+    auth: Authenticator,
+    users: UserResource[]
+  ): Promise<Result<void, Error>> {
+    if (users.length === 0) {
+      return new Ok(undefined);
+    }
+
+    if (!this.canWrite(auth)) {
+      return new Err(
+        new Error("User is not authorized to update skill editors.")
+      );
+    }
+
+    if (!this.editorGroup) {
+      return new Err(new Error("The skill does not have an editors group."));
+    }
+
+    const existingEditors = await this.listEditors(auth);
+    const existingEditorIds = new Set(existingEditors?.map((u) => u.id) ?? []);
+    const usersToAdd = users.filter((u) => !existingEditorIds.has(u.id));
+
+    if (usersToAdd.length === 0) {
+      return new Ok(undefined);
+    }
+
+    const addResult = await this.editorGroup.dangerouslyAddMembers(auth, {
+      users: usersToAdd.map((u) => u.toJSON()),
+    });
+    if (addResult.isErr()) {
+      return new Err(new Error(addResult.error.message));
+    }
+
+    return new Ok(undefined);
+  }
+
   private async upsertCurrentUserAsEditor(auth: Authenticator): Promise<void> {
     const user = auth.user();
-    if (!this.editorGroup || !user) {
+    if (!user) {
       return;
     }
 
-    if (!this.editorGroup.canWrite(auth)) {
-      return;
-    }
-
-    const isMember = await this.editorGroup.isMember(user);
-    if (!isMember) {
-      await this.editorGroup.dangerouslyAddMember(auth, {
-        user: user.toJSON(),
-      });
-    }
+    await this.upsertEditors(auth, [user]);
   }
 
   async fetchEditedByUser(auth: Authenticator): Promise<UserResource | null> {
@@ -2509,14 +2586,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
           agentFacingDescription,
           userFacingDescription,
           instructions,
-          ...(instructionsHtml !== undefined
-            ? {
-                instructionsHtml:
-                  instructionsHtml !== undefined
-                    ? instructionsHtml
-                    : this.instructionsHtml,
-              }
-            : {}),
+          ...(instructionsHtml !== undefined ? { instructionsHtml } : {}),
           icon,
           requestedSpaceIds,
           editedBy,
@@ -3115,7 +3185,12 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
           transaction,
         });
 
-        // Delete the GroupSkillModel entry and the associated editor group.
+        await ProjectMetadataResource.removeSkillFromAllDefaultSkills(
+          auth,
+          this.sId,
+          transaction
+        );
+
         await GroupSkillModel.destroy({
           where: whereWorkspaceIdAndSkillId,
           transaction,
@@ -3233,7 +3308,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       agentConfiguration,
       conversation,
     }: {
-      agentConfiguration: AgentConfigurationType;
+      agentConfiguration: AgentLoopExecutionData["agentConfiguration"];
       conversation: ConversationType;
     }
   ): Promise<{ wasAlreadyEnabled: boolean }> {
@@ -3366,7 +3441,10 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       ],
       where: {
         workspaceId: workspace.id,
-        customSkillId: { [Op.in]: [...skillsById.keys()] },
+        customSkillId: {
+          [Op.ne]: null,
+          [Op.in]: [...skillsById.keys()],
+        },
       },
     });
 
@@ -3608,6 +3686,16 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       })
     );
 
+    // Code-defined (global) skills hide their instructions from the front-end by
+    // default; a skill opts in via `exposeInstructions` in its definition (e.g.
+    // docs/pptx/xlsx) so builders can read and build on top of it. System skills
+    // and the rest stay opaque. Custom skills always expose their own
+    // instructions. The list endpoints strip instructions/tools regardless, and
+    // the public v1 API only returns custom skills, so this only surfaces on the
+    // single-skill detail fetch.
+    const hideInstructions =
+      this.globalSId !== null && !this.exposeInstructions;
+
     return {
       id: this.id,
       sId: this.sId,
@@ -3618,9 +3706,8 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       name: this.name,
       agentFacingDescription: this.agentFacingDescription,
       userFacingDescription: this.userFacingDescription,
-      // We don't want to expose global skills instructions to the front-end.
-      instructions: this.globalSId ? null : this.instructions,
-      instructionsHtml: this.globalSId ? null : this.instructionsHtml,
+      instructions: hideInstructions ? null : this.instructions,
+      instructionsHtml: hideInstructions ? null : this.instructionsHtml,
       requestedSpaceIds,
       icon: this.icon ?? null,
       reinforcement: this.reinforcement,
@@ -3653,9 +3740,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         fileName: file.fileName,
       })),
       canWrite: this.canWrite(auth),
-      isExtendable: this.isExtendable,
       isDefault: this.isDefault,
-      extendedSkillId: this.extendedSkillId,
     };
   }
 

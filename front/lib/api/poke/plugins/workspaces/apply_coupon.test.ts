@@ -2,7 +2,7 @@ import { applyCouponPlugin } from "@app/lib/api/poke/plugins/workspaces/apply_co
 import { revokeCouponPlugin } from "@app/lib/api/poke/plugins/workspaces/revoke_coupon";
 import { Authenticator } from "@app/lib/auth";
 import { CREDIT_TYPE_USD_ID } from "@app/lib/metronome/constants";
-import { redeemCoupon } from "@app/lib/metronome/coupons";
+import { redeemSeatCoupon } from "@app/lib/metronome/coupons";
 import { CouponRedemptionResource } from "@app/lib/resources/coupon_redemption_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { CouponFactory } from "@app/tests/utils/CouponFactory";
@@ -134,6 +134,7 @@ describe("applyCouponPlugin.execute", () => {
     if (result.isOk()) {
       expect(result.value.display).toBe("text");
       expect(result.value.value).toContain(coupon.code);
+      expect(result.value.value).toContain("seat discount");
     }
 
     const redemptions = await CouponRedemptionResource.listAllByCoupon(coupon);
@@ -143,6 +144,53 @@ describe("applyCouponPlugin.execute", () => {
     expect(mockEmitAuditLogEvent).toHaveBeenCalledWith(
       expect.objectContaining({ action: "coupon.redeemed" })
     );
+  });
+
+  it("applies a valid credit_pool_top_up coupon → active redemption, type shown in output, audit event emitted", async () => {
+    const { auth } = await makeWorkspaceWithMetronome();
+    const coupon = await CouponFactory.create({
+      discountType: "credit_pool_top_up",
+      amount: 5000,
+    });
+    mockCreateMetronomeCredit.mockResolvedValue(new Ok({ id: "awu-credit-1" }));
+
+    const result = await applyCouponPlugin.execute(auth, null, {
+      couponCode: coupon.code,
+      confirm: true,
+    });
+
+    expect(result.isOk()).toBe(true);
+    if (result.isOk()) {
+      expect(result.value.display).toBe("text");
+      expect(result.value.value).toContain(coupon.code);
+      expect(result.value.value).toContain("usage credit top-up");
+    }
+
+    const redemptions = await CouponRedemptionResource.listAllByCoupon(coupon);
+    expect(redemptions).toHaveLength(1);
+    expect(redemptions[0].status).toBe("active");
+
+    expect(mockEmitAuditLogEvent).toHaveBeenCalledWith(
+      expect.objectContaining({ action: "coupon.redeemed" })
+    );
+  });
+
+  it("returns Err with workspace_not_on_metronome message for credit_pool_top_up coupon when no Metronome customer ID", async () => {
+    const { auth } = await makeWorkspaceNoMetronome();
+    const coupon = await CouponFactory.create({
+      discountType: "credit_pool_top_up",
+      amount: 5000,
+    });
+
+    const result = await applyCouponPlugin.execute(auth, null, {
+      couponCode: coupon.code,
+      confirm: true,
+    });
+
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error.message).toMatch(/not provisioned on Metronome/i);
+    }
   });
 
   it("returns Err when coupon code is not found", async () => {
@@ -195,7 +243,7 @@ describe("revokeCouponPlugin.execute", () => {
     const { auth } = await makeWorkspaceWithMetronome();
     const coupon = await CouponFactory.create();
 
-    const redeemResult = await redeemCoupon(auth, { coupon });
+    const redeemResult = await redeemSeatCoupon(auth, { coupon });
     expect(redeemResult.isOk()).toBe(true);
     if (!redeemResult.isOk()) {
       return;
@@ -241,7 +289,7 @@ describe("revokeCouponPlugin.execute", () => {
     const { auth: authB } = await makeWorkspaceWithMetronome();
     const coupon = await CouponFactory.create();
 
-    const redeemResult = await redeemCoupon(authA, { coupon });
+    const redeemResult = await redeemSeatCoupon(authA, { coupon });
     expect(redeemResult.isOk()).toBe(true);
     if (!redeemResult.isOk()) {
       return;
@@ -261,7 +309,7 @@ describe("revokeCouponPlugin.execute", () => {
     const { auth } = await makeWorkspaceWithMetronome();
     const coupon = await CouponFactory.create();
 
-    const redeemResult = await redeemCoupon(auth, { coupon });
+    const redeemResult = await redeemSeatCoupon(auth, { coupon });
     expect(redeemResult.isOk()).toBe(true);
     if (!redeemResult.isOk()) {
       return;
@@ -288,7 +336,7 @@ describe("revokeCouponPlugin.execute", () => {
     const { auth } = await makeWorkspaceWithMetronome();
     const coupon = await CouponFactory.create();
 
-    const redeemResult = await redeemCoupon(auth, { coupon });
+    const redeemResult = await redeemSeatCoupon(auth, { coupon });
     expect(redeemResult.isOk()).toBe(true);
     if (!redeemResult.isOk()) {
       return;

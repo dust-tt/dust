@@ -1,12 +1,9 @@
-import type { DataSourceContentNode } from "@app/lib/api/search";
-import {
-  handleSearch,
-  SearchRequestBody,
-  type SearchResult,
-} from "@app/lib/api/search";
+import { handleSearch, type SearchResult } from "@app/lib/api/search";
 import { streamToolFiles } from "@app/lib/search/tools/search";
 import type { ToolSearchResult } from "@app/lib/search/tools/types";
 import logger from "@app/logger/logger";
+import type { DataSourceContentNode } from "@app/types/api/search";
+import { SearchRequestBody } from "@app/types/api/search";
 import type { SearchWarningCode } from "@app/types/core/core_api";
 import { isString } from "@app/types/shared/utils/general";
 import { workspaceApp } from "@front-api/middlewares/ctx";

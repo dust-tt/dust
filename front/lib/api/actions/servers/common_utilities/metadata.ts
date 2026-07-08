@@ -5,6 +5,8 @@ import { z } from "zod";
 import { zodToJsonSchema } from "zod-to-json-schema";
 
 export const COMMON_UTILITIES_SERVER_NAME = "common_utilities" as const;
+export const SET_CONVERSATION_TITLE_TOOL_NAME =
+  "set_conversation_title" as const;
 
 const RANDOM_INTEGER_DEFAULT_MAX = 1_000_000;
 const MAX_WAIT_DURATION_MS = 3 * 60 * 1_000;
@@ -12,7 +14,7 @@ const MAX_WAIT_DURATION_MS = 3 * 60 * 1_000;
 export const COMMON_UTILITIES_TOOLS_METADATA = createToolsRecord({
   generate_random_number: {
     description:
-      "Generate a random positive number between 1 and the provided maximum (inclusive).",
+      "Generate a random integer (whole number) between 1 and the provided maximum (inclusive). Pick a random number in a range.",
     schema: {
       max: z
         .number()
@@ -28,6 +30,8 @@ export const COMMON_UTILITIES_TOOLS_METADATA = createToolsRecord({
       running: "Generating random number",
       done: "Generate random number",
     },
+    toolCostCategory: "basic",
+    freeUsage: true,
   },
   generate_random_float: {
     description:
@@ -38,6 +42,8 @@ export const COMMON_UTILITIES_TOOLS_METADATA = createToolsRecord({
       running: "Generating random float",
       done: "Generate random float",
     },
+    toolCostCategory: "basic",
+    freeUsage: true,
   },
   wait: {
     description: `Pause execution for the provided number of milliseconds (maximum ${MAX_WAIT_DURATION_MS}).`,
@@ -57,6 +63,8 @@ export const COMMON_UTILITIES_TOOLS_METADATA = createToolsRecord({
       running: "Waiting",
       done: "Wait",
     },
+    toolCostCategory: "basic",
+    freeUsage: true,
   },
   get_current_time: {
     description:
@@ -76,19 +84,26 @@ export const COMMON_UTILITIES_TOOLS_METADATA = createToolsRecord({
       running: "Getting current time",
       done: "Get current time",
     },
+    toolCostCategory: "basic",
+    freeUsage: true,
   },
   math_operation: {
-    description: "Perform mathematical operations.",
+    description:
+      "Calculate the result of a math expression: arithmetic, percentages, and other mathematical operations.",
     schema: {
-      expression: z.string().describe("The expression to evaluate. "),
+      expression: z
+        .string()
+        .describe("The math expression to evaluate, e.g. 15 percent of 240."),
     },
     stake: "never_ask",
     displayLabels: {
       running: "Calculating",
       done: "Calculate",
     },
+    toolCostCategory: "basic",
+    freeUsage: true,
   },
-  set_conversation_title: {
+  [SET_CONVERSATION_TITLE_TOOL_NAME]: {
     description:
       "Update the title of the current conversation. Use this to give the conversation a descriptive name that summarizes its topic.",
     schema: {
@@ -102,6 +117,8 @@ export const COMMON_UTILITIES_TOOLS_METADATA = createToolsRecord({
       running: "Setting conversation title",
       done: "Set conversation title",
     },
+    toolCostCategory: "basic",
+    freeUsage: true,
   },
 });
 
@@ -113,13 +130,14 @@ export const COMMON_UTILITIES_SERVER = {
     icon: "ActionAtomIcon",
     authorization: null,
     documentationUrl: null,
-    instructions: null,
   },
   tools: Object.values(COMMON_UTILITIES_TOOLS_METADATA).map((t) => ({
     name: t.name,
     description: t.description,
     inputSchema: zodToJsonSchema(z.object(t.schema)) as JSONSchema,
     displayLabels: t.displayLabels,
+    toolCostCategory: t.toolCostCategory,
+    freeUsage: t.freeUsage,
   })),
   tools_stakes: Object.fromEntries(
     Object.values(COMMON_UTILITIES_TOOLS_METADATA).map((t) => [t.name, t.stake])

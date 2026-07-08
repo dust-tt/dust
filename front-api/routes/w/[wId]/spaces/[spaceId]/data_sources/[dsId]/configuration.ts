@@ -1,10 +1,10 @@
 import config from "@app/lib/api/config";
+import { isWebsite } from "@app/lib/data_sources";
+import logger from "@app/logger/logger";
 import type {
   GetDataSourceConfigurationResponseBody,
   PatchDataSourceConfigurationResponseBody,
-} from "@app/lib/api/data_sources";
-import { isWebsite } from "@app/lib/data_sources";
-import logger from "@app/logger/logger";
+} from "@app/types/api/data_sources";
 import {
   ConnectorsAPI,
   UpdateConnectorConfigurationTypeSchema,

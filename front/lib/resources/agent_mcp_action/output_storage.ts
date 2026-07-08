@@ -11,7 +11,7 @@ import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 
-const MCP_OUTPUT_ITEMS_PREFIX = "mcp_output_items";
+export const MCP_OUTPUT_ITEMS_PREFIX = "mcp_output_items";
 const GCS_CONCURRENCY = 4;
 
 export const GCS_CONTENT_CACHE_TTL_MS = 15 * 60 * 1000;

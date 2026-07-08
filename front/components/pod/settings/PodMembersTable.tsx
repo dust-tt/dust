@@ -202,7 +202,7 @@ export function PodMembersTable({
           return (
             <DataTable.CellContent>
               {info.row.original.isEditor && (
-                <Chip color="green" size="xs" label="Editor" />
+                <Chip color="success" size="xs" label="Editor" />
               )}
             </DataTable.CellContent>
           );

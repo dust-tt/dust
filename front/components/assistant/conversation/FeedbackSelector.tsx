@@ -191,11 +191,7 @@ export function FeedbackSelector({
         onClick={handleButtonClick}
         icon={MagicWand02}
         label={buttonLabel}
-        className={
-          feedback
-            ? ""
-            : "text-muted-foreground dark:text-muted-foreground-night"
-        }
+        className={feedback ? "" : "text-muted-foreground"}
       />
 
       <Dialog
@@ -219,7 +215,7 @@ export function FeedbackSelector({
             ) : (
               <div className="flex flex-col gap-4 pt-2">
                 <div>
-                  <p className="mb-3 text-sm font-semibold text-foreground dark:text-foreground-night">
+                  <p className="mb-3 text-sm font-semibold text-foreground">
                     Was this answer helpful?
                   </p>
                   <div className="flex gap-2">
@@ -325,7 +321,6 @@ export function FeedbackSelector({
                           onCheckedChange={(value) => {
                             isConversationSharedField.field.onChange(!!value);
                           }}
-                          size="xs"
                           className="mt-1"
                         />
                         <div className="flex flex-col">
@@ -334,7 +329,7 @@ export function FeedbackSelector({
                               ? "Share conversation with the Dust team"
                               : "Share conversation with the agent’s editors"}
                           </Label>
-                          <span className="text-xs text-muted-foreground dark:text-muted-foreground-night">
+                          <span className="text-xs text-muted-foreground">
                             {isGlobalAgent
                               ? `Helps the Dust team improve @${agentName}`
                               : "Helps editors improve the agent"}

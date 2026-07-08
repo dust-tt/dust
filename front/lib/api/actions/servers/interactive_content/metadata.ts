@@ -28,15 +28,17 @@ export const GET_INTERACTIVE_CONTENT_FILE_SHARE_URL_TOOL_NAME =
   "get_interactive_content_file_share_url";
 export const EXPORT_INTERACTIVE_CONTENT_FILE_TOOL_NAME =
   "export_interactive_content_file";
+export const PUBLISH_INTERACTIVE_CONTENT_FILE_TOOL_NAME =
+  "publish_interactive_content_file";
 
 export const INTERACTIVE_CONTENT_TOOLS_METADATA = createToolsRecord({
   [CREATE_INTERACTIVE_CONTENT_FILE_TOOL_NAME]: {
     description:
-      "Create a new Interactive Content file that users can execute or interact with. Use this for " +
-      "content that provides functionality beyond static viewing. Validation (Tailwind, TypeScript) " +
-      "is non-blocking: the file is saved even with warnings, which you should fix immediately using " +
-      "targeted edits. Supports two creation modes: template-based (fetch content from existing node) " +
-      "or inline (provide content directly).",
+      "Create a new Frame: interactive content such as a dashboard, data visualization, or slideshow " +
+      "presentation that users can run and interact with, beyond static viewing. Choose 'template' " +
+      "mode to base it on an existing knowledge node, or 'inline' mode to provide the content " +
+      "directly. Validation (Tailwind, TypeScript) is non-blocking: the file is saved even with " +
+      "warnings, which you should fix immediately.",
     schema: {
       file_name: z
         .string()
@@ -87,23 +89,19 @@ export const INTERACTIVE_CONTENT_TOOLS_METADATA = createToolsRecord({
       running: "Creating new Frame",
       done: "Create new Frame",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   [EDIT_INTERACTIVE_CONTENT_FILE_TOOL_NAME]: {
     description:
-      "Modifies content within an Interactive Content file by substituting specified text segments. " +
-      "Each edit creates a new version of the Interactive Content file. " +
-      "Performs single substitution by default, or multiple substitutions when " +
-      "`expected_replacements` is defined. This function demands comprehensive contextual " +
-      "information surrounding the target modification to ensure accurate targeting. " +
-      `Use the ${RETRIEVE_INTERACTIVE_CONTENT_FILE_TOOL_NAME} tool to review the file's ` +
-      "existing content prior to executing any text substitution. Requirements: " +
-      "1. `old_string` MUST contain the precise literal content for substitution " +
-      "(preserving all spacing, formatting, line breaks). " +
-      "2. `new_string` MUST contain the exact replacement content maintaining proper syntax. " +
-      "3. Include minimum 3 lines of surrounding context BEFORE and AFTER the target " +
-      "content for unique identification. " +
-      "**Critical:** Multiple matches or inexact matches will cause failure. " +
-      "Validation (Tailwind, TypeScript) is non-blocking: warnings are returned but the edit succeeds.",
+      "Edit an existing Frame: change its code, for example to fix a chart, adjust colors, or " +
+      "update text and layout. Replaces a specified text segment with new text; each edit creates " +
+      "a new version. " +
+      `Use the ${RETRIEVE_INTERACTIVE_CONTENT_FILE_TOOL_NAME} tool first to read the current text ` +
+      "to replace. `old_string` must match the existing text exactly (including all spacing, " +
+      "formatting, and line breaks), with at least 3 lines of surrounding context before and after " +
+      "so the match is unique; `new_string` is the exact replacement. Inexact or multiple matches " +
+      "fail unless `expected_replacements` is set. Validation (Tailwind, TypeScript) is non-blocking.",
     schema: {
       description: z
         .string()
@@ -145,10 +143,12 @@ export const INTERACTIVE_CONTENT_TOOLS_METADATA = createToolsRecord({
       running: "Updating Frame",
       done: "Update Frame",
     },
+    toolCostCategory: "basic",
+    freeUsage: false,
   },
   [REVERT_INTERACTIVE_CONTENT_FILE_TOOL_NAME]: {
     description:
-      "Resets an Interactive Content file to its previous version. " +
+      "Revert a Frame to its previous version. " +
       "Each revert goes back one version in the file's history. ",
     schema: {
       file_id: z
@@ -163,10 +163,12 @@ export const INTERACTIVE_CONTENT_TOOLS_METADATA = createToolsRecord({
       running: "Reverting changes on Frame",
       done: "Revert changes on Frame",
     },
+    toolCostCategory: "basic",
+    freeUsage: false,
   },
   [RENAME_INTERACTIVE_CONTENT_FILE_TOOL_NAME]: {
     description:
-      "Rename an Interactive Content file. Use this to change the file name while keeping the content unchanged.",
+      "Rename a Frame. Use this to change the file name of a Frame while keeping its content unchanged.",
     schema: {
       file_id: z
         .string()
@@ -185,12 +187,14 @@ export const INTERACTIVE_CONTENT_TOOLS_METADATA = createToolsRecord({
       running: "Renaming Frame",
       done: "Rename Frame",
     },
+    toolCostCategory: "basic",
+    freeUsage: true,
   },
   [RETRIEVE_INTERACTIVE_CONTENT_FILE_TOOL_NAME]: {
     description:
-      "Retrieve the current content of an existing Interactive Content file by its file ID. " +
-      "Use this to read back the content of Interactive Content files you have previously created " +
-      `or updated. Use this tool before calling ${EDIT_INTERACTIVE_CONTENT_FILE_TOOL_NAME} to ` +
+      "Read back the current content of an existing Frame by its file ID. " +
+      "Use this to inspect a Frame you have previously created " +
+      `or edited. Use this tool before calling ${EDIT_INTERACTIVE_CONTENT_FILE_TOOL_NAME} to ` +
       "understand the current file state and identify the exact text to replace.",
     schema: {
       file_id: z
@@ -205,10 +209,12 @@ export const INTERACTIVE_CONTENT_TOOLS_METADATA = createToolsRecord({
       running: "Reading Frame content",
       done: "Read Frame content",
     },
+    toolCostCategory: "basic",
+    freeUsage: false,
   },
   [GET_INTERACTIVE_CONTENT_FILE_SHARE_URL_TOOL_NAME]: {
     description:
-      "Get the share URL for an Interactive Content file. Returns the share URL if the file is " +
+      "Get the share URL (share link) for a Frame. Returns the share URL if the Frame is " +
       "currently shared.",
     schema: {
       file_id: z
@@ -223,10 +229,12 @@ export const INTERACTIVE_CONTENT_TOOLS_METADATA = createToolsRecord({
       running: "Getting share URL",
       done: "Get share URL",
     },
+    toolCostCategory: "basic",
+    freeUsage: true,
   },
   [EXPORT_INTERACTIVE_CONTENT_FILE_TOOL_NAME]: {
     description:
-      "Export an Interactive Content file as a PNG screenshot or PDF document. " +
+      "Export a Frame as a PNG screenshot or PDF document. " +
       "PNG returns a visual snapshot of the rendered frame. " +
       "PDF renders the frame with optional orientation (portrait/landscape for regular frames, " +
       "landscape by default for slideshows).",
@@ -255,6 +263,46 @@ export const INTERACTIVE_CONTENT_TOOLS_METADATA = createToolsRecord({
       running: "Exporting Frame",
       done: "Export Frame",
     },
+    toolCostCategory: "basic",
+    freeUsage: false,
+  },
+  [PUBLISH_INTERACTIVE_CONTENT_FILE_TOOL_NAME]: {
+    description:
+      "Publish a Frame from its source files in the Computer. A Frame you created is already " +
+      "mounted in the Computer at `/files/conversation-<conversationId>/<filename>`, so edit it " +
+      "there in place rather than copying it elsewhere, then call this to build it into the live " +
+      "Frame. It resolves the Frame's dependency tree from the given directory (inlining relative " +
+      "imports), validates TypeScript and JSX, then updates the canonical Frame so viewers and " +
+      "shares see the new version. A syntax error blocks publishing and is reported back so you " +
+      "can fix it. Tailwind warnings are returned but do not block. Pass the `file_id` of the " +
+      "Frame and `path` set to `conversation-<conversationId>`, the directory that holds the file.",
+    schema: {
+      file_id: z
+        .string()
+        .describe(
+          "The ID of the Frame to publish (e.g. 'fil_abc123'), the canonical Frame you created " +
+            "or previously edited via the Frames tools."
+        ),
+      path: z
+        .string()
+        .describe(
+          "Scoped path of the directory holding the Frame's source files, normally the " +
+            "conversation root `conversation-<conversationId>` (the directory that holds the " +
+            "file, not a subdirectory). This directory is the bundling root: the entry is the " +
+            "Frame's file name within it, and only relative imports resolving to files under " +
+            "this root are bundled. Keep every source file under this root. Anything that " +
+            "reaches outside it, whether `../` above the root or another scoped path such as " +
+            "`pod-<id>/...`, is not bundled and will not resolve at render."
+        ),
+    },
+    enableAlerting: true,
+    stake: "never_ask",
+    displayLabels: {
+      running: "Publishing Frame",
+      done: "Publish Frame",
+    },
+    toolCostCategory: "basic",
+    freeUsage: false,
   },
 });
 
@@ -267,13 +315,14 @@ export const INTERACTIVE_CONTENT_SERVER = {
     authorization: null,
     icon: "ActionFrameIcon",
     documentationUrl: null,
-    instructions: null,
   },
   tools: Object.values(INTERACTIVE_CONTENT_TOOLS_METADATA).map((t) => ({
     name: t.name,
     description: t.description,
     inputSchema: zodToJsonSchema(z.object(t.schema)) as JSONSchema,
     displayLabels: t.displayLabels,
+    toolCostCategory: t.toolCostCategory,
+    freeUsage: t.freeUsage,
   })),
   tools_stakes: Object.fromEntries(
     Object.values(INTERACTIVE_CONTENT_TOOLS_METADATA).map((t) => [

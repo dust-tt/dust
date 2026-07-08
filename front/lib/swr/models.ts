@@ -1,20 +1,27 @@
-import type { GetEnabledModelsResponseType } from "@app/lib/api/assistant/models";
 import { emptyArray, useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
+import type { GetEnabledModelsResponseType } from "@app/types/api/assistant/models";
 import type { LightWorkspaceType } from "@app/types/user";
 import type { Fetcher } from "swr";
 
-export function useModels({ owner }: { owner: LightWorkspaceType }) {
+export function useModels({
+  owner,
+  disabled,
+}: {
+  owner: LightWorkspaceType;
+  disabled?: boolean;
+}) {
   const { fetcher } = useFetcher();
   const modelsFetcher: Fetcher<GetEnabledModelsResponseType> = fetcher;
 
   const { data, error } = useSWRWithDefaults(
     `/api/w/${owner.sId}/models`,
-    modelsFetcher
+    modelsFetcher,
+    { disabled }
   );
 
   return {
     models: data?.models ?? emptyArray(),
-    isModelsLoading: !error && !data,
+    isModelsLoading: !error && !data && !disabled,
     isModelsError: !!error,
   };
 }

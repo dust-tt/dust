@@ -5,7 +5,7 @@ import { INPUT_CONFIGURATION_ERROR } from "@app/lib/model_constructors/test/case
 import { runStreamEndpointTests } from "@app/lib/model_constructors/test/runner";
 import type { StreamSetup } from "@app/lib/model_constructors/test/setup";
 
-const setup: StreamSetup = {
+export const AnthropicGlobalClaudeHaikuFourDotFiveStreamSetup: StreamSetup = {
   createInstance: () =>
     new AnthropicGlobalClaudeHaikuFourDotFiveStream({
       ANTHROPIC_API_KEY: process.env.DUST_MANAGED_ANTHROPIC_API_KEY ?? "",
@@ -66,4 +66,7 @@ const setup: StreamSetup = {
 };
 
 // NODE_ENV=test RUN_LLM_TEST=true npm run test -- --config lib/model_constructors/test/vite.config.js --bail 1 lib/model_constructors/test/endpoints/anthropic_claude_haiku_four_dot_five.test.ts
-runStreamEndpointTests(AnthropicGlobalClaudeHaikuFourDotFiveStream, setup);
+runStreamEndpointTests(
+  AnthropicGlobalClaudeHaikuFourDotFiveStream,
+  AnthropicGlobalClaudeHaikuFourDotFiveStreamSetup
+);

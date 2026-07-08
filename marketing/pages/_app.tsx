@@ -1,8 +1,7 @@
-// Tailwind base globals
+// Tailwind base globals (preflight/theme/tokens/keyframes; emits no utilities).
 import "@marketing/styles/global.css";
-// Use sparkle styles, override local globals
-import "@dust-tt/sparkle/dist/sparkle.css";
-// Local tailwind components override sparkle styles
+// Single unified Tailwind build: scans marketing + sparkle/src in one pass.
+// Replaces the old precompiled `@dust-tt/sparkle/dist/sparkle.css` concat.
 import "@marketing/styles/components.css";
 
 import type { NextPage } from "next";
@@ -28,8 +27,10 @@ const PostHogTracker = dynamic(
     ),
   { ssr: false }
 );
+import { RegionSelectionModal } from "@marketing/components/RegionSelectionModal";
 import { NextLinkWrapper } from "@marketing/components/platform/NextLinkWrapper";
 import { FetcherProvider } from "@marketing/components/swr/FetcherContext";
+import { SignUpModalProvider } from "@marketing/hooks/useSignUpModal";
 import { fetcher, fetcherWithBody } from "@marketing/lib/swr/fetcher";
 import { initDatadogLogs } from "@marketing/logger/datadogLogger";
 import { SparkleContext } from "@dust-tt/sparkle";
@@ -124,7 +125,10 @@ export default function App({ Component, pageProps }: AppPropsWithLayout) {
     <FetcherProvider fetcher={fetcher} fetcherWithBody={fetcherWithBody}>
       <PostHogTracker>
         <SparkleContext.Provider value={sparkleContextValue}>
-          {getLayout(<Component {...pageProps} />, pageProps)}
+          <SignUpModalProvider>
+            {getLayout(<Component {...pageProps} />, pageProps)}
+            <RegionSelectionModal />
+          </SignUpModalProvider>
         </SparkleContext.Provider>
       </PostHogTracker>
     </FetcherProvider>

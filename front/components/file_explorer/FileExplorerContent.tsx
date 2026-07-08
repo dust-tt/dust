@@ -35,6 +35,8 @@ interface FileExplorerContentProps {
   onMoveFileDrop?: (scopedFilePath: string, parentRelativePath: string) => void;
   onNodeOpen: (entry: ContentNodeEntry) => void;
   getFileMenuItems?: (entry: FileExplorerEntry) => FileExplorerMenuAction[];
+  /** When set, file cards show paths relative to this folder (search mode). */
+  searchFolderPath?: string;
 }
 
 export function FileExplorerContent({
@@ -51,6 +53,7 @@ export function FileExplorerContent({
   onMoveFileDrop,
   onNodeOpen,
   getFileMenuItems,
+  searchFolderPath,
 }: FileExplorerContentProps) {
   const items = sortedNodes.map((node) => {
     if (node.isDirectory) {
@@ -98,6 +101,7 @@ export function FileExplorerContent({
             key={`file:${entry.path}`}
             draggable={fileDragEnabled && isFileExplorerMovableFile(entry)}
             entry={entry}
+            searchFolderPath={searchFolderPath}
             viewMode={viewMode}
             onOpen={onFileOpen}
             onDownload={onFileDownload}

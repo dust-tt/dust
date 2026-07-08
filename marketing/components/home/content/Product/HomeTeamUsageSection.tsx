@@ -484,7 +484,7 @@ export function HomeTeamUsageSection() {
             <HomeEyebrow label="How every team uses Dust" />
           </HomeReveal>
           <HomeReveal delay={80}>
-            <H2 className="max-w-[760px] text-balance text-center font-semibold leading-[1.08] tracking-[-0.03em] text-foreground">
+            <H2 className="max-w-[760px] text-balance text-center! font-semibold leading-[1.08] tracking-[-0.03em] text-foreground">
               One platform, every team, compounding value
             </H2>
           </HomeReveal>

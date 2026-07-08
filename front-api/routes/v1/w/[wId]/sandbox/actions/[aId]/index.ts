@@ -1,5 +1,6 @@
 import { isToolExecutionStatusFinal } from "@app/lib/actions/statuses";
 import { isSandboxChildActionInfo } from "@app/lib/actions/types";
+import { isSandboxExecTokenPayload } from "@app/lib/api/sandbox/access_tokens";
 import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import type { AgentMCPActionWithOutputType } from "@app/types/actions";
 import { assertNever } from "@app/types/shared/utils/assert_never";
@@ -32,9 +33,7 @@ export type FetchConversationMessageActionResponse =
   | CallToolPendingResponse
   | CallToolRejectedResponse;
 
-// Mounted at /api/v1/w/:wId/sandbox/actions/:aId. sandboxAuth is applied by
-// the parent sandbox sub-app, so ctx.get("auth") and ctx.get("sandboxClaims")
-// are always available here.
+// Mounted at /api/v1/w/:wId/sandbox/actions/:aId.
 const app = sandboxApp();
 
 /**
@@ -47,6 +46,15 @@ app.get(
   async (ctx): HandlerResult<FetchConversationMessageActionResponse> => {
     const auth = ctx.get("auth");
     const claims = ctx.get("sandboxClaims");
+    if (!isSandboxExecTokenPayload(claims)) {
+      return apiError(ctx, {
+        status_code: 403,
+        api_error: {
+          type: "invalid_request_error",
+          message: "This sandbox token cannot access sandbox actions.",
+        },
+      });
+    }
 
     const { aId } = ctx.req.valid("param");
 

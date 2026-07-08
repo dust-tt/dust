@@ -1,4 +1,3 @@
-import { ExtendedSkillBadge } from "@app/components/skills/ExtendedSkillBadge";
 import { RestoreSkillDialog } from "@app/components/skills/RestoreSkillDialog";
 import { SkillDetailsButtonBar } from "@app/components/skills/SkillDetailsButtonBar";
 import { SkillEditorsTab } from "@app/components/skills/SkillEditorsTab";
@@ -168,15 +167,10 @@ const DescriptionSection = ({
 
       {/* Title and edit info */}
       <div className="flex flex-col items-center gap-1">
-        <h2 className="text-xl font-semibold text-foreground dark:text-foreground-night">
-          {skill.name}
-        </h2>
-        {skill.relations.extendedSkill && (
-          <ExtendedSkillBadge extendedSkill={skill.relations.extendedSkill} />
-        )}
+        <h2 className="text-xl font-semibold text-foreground">{skill.name}</h2>
 
         {editedDate && (
-          <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+          <p className="text-sm text-muted-foreground">
             Last edited: {editedDate}
             {editedByUser && ` by ${editedByUser.fullName}`}
           </p>

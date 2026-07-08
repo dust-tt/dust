@@ -3,11 +3,12 @@ import { getDataSources } from "@app/lib/api/data_sources";
 import { updateMembershipSeatAndTrack } from "@app/lib/api/membership";
 import type { Authenticator } from "@app/lib/auth";
 import { hasFeatureFlag } from "@app/lib/auth";
-import { floorToHourISO } from "@app/lib/metronome/client";
+import { SUBSCRIPTION_SWAP_HANDLED_INLINE_CUSTOM_FIELD_KEY } from "@app/lib/metronome/constants";
 import {
   ensureMetronomeCustomerForWorkspace,
   provisionMetronomeContract,
 } from "@app/lib/metronome/contracts";
+import { invalidateContractCache } from "@app/lib/metronome/plan_type";
 import { BUSINESS_USD_PACKAGE_ALIAS } from "@app/lib/metronome/types";
 import { PlanModel } from "@app/lib/models/plan";
 import {
@@ -18,46 +19,24 @@ import { CREDIT_PRICED_FREE_PLAN_CODE } from "@app/lib/plans/plan_codes";
 import { KillSwitchResource } from "@app/lib/resources/kill_switch_resource";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { TriggerResource } from "@app/lib/resources/trigger_resource";
+import type { UserResource } from "@app/lib/resources/user_resource";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
 import { terminateScheduleWorkspaceScrubWorkflow } from "@app/temporal/scrub_workspace/client";
 import { ConnectorsAPI } from "@app/types/connectors/connectors_api";
-import type { CheckoutUrlResult, SubscriptionType } from "@app/types/plan";
 import { removeNulls } from "@app/types/shared/utils/general";
-import { z } from "zod";
-
-export const PatchSubscriptionRequestBody = z.object({
-  action: z.enum(["cancel_free_trial", "pay_now", "upgrade_to_business"]),
-});
-
-type CheckoutStatus =
-  | { status: "success" }
-  | { status: "error"; message: string }
-  | { status: "pending" };
-
-export type GetCheckoutStatusResponseBody = CheckoutStatus;
-
-export type PostSubscriptionResponseBody = CheckoutUrlResult;
-
-export type GetSubscriptionsResponseBody = {
-  subscriptions: SubscriptionType[];
-};
-
-export type GetSubscriptionTrialInfoResponseBody = {
-  trialDaysRemaining: number | null;
-};
 
 // Metronome billing is enabled by default for all workspaces. The
 // `global_disable_metronome_billing` kill switch turns it off globally; the
-// `metronome_billing` feature flag re-enables it for individual workspaces.
+// `legacy_billing` feature flag forces it off for individual workspaces.
 export async function isMetronomeBillingEnabled(
   auth: Authenticator
 ): Promise<boolean> {
-  const [hasFlag, killed] = await Promise.all([
-    hasFeatureFlag(auth, "metronome_billing"),
+  const [hasLegacyFlag, killed] = await Promise.all([
+    hasFeatureFlag(auth, "legacy_billing"),
     KillSwitchResource.isKillSwitchEnabled("global_disable_metronome_billing"),
   ]);
-  return hasFlag || !killed;
+  return !hasLegacyFlag && !killed;
 }
 
 /**
@@ -71,13 +50,13 @@ export async function isMetronomeBillingEnabled(
  * - Unpauses all connectors (including webcrawler connectors)
  * - Re-enables all triggers that point to non-archived agents
  */
-export async function activateCreditPricedFreePlan(
+async function provisionCreditPricedFreePlan(
   auth: Authenticator,
-  countryCode?: string
+  { user, countryCode }: { user?: UserResource; countryCode?: string }
 ): Promise<void> {
   const owner = auth.getNonNullableWorkspace();
   const lightWorkspace = renderLightWorkspaceType({ workspace: owner });
-  const now = new Date(floorToHourISO(new Date()));
+  const now = new Date();
 
   const currency = getBillingCurrencyForCountry(countryCode ?? "US", true);
   const packageAlias = resolvePackageAliasForCurrency(
@@ -90,6 +69,16 @@ export async function activateCreditPricedFreePlan(
     "Activating credit-priced free plan"
   );
 
+  const plan = await PlanModel.findOne({
+    where: { code: CREDIT_PRICED_FREE_PLAN_CODE },
+  });
+  if (!plan) {
+    throw new Error(
+      `Plan row for ${CREDIT_PRICED_FREE_PLAN_CODE} not found in DB. ` +
+        `Seed it in production before enabling Metronome billing.`
+    );
+  }
+
   const customerResult = await ensureMetronomeCustomerForWorkspace({
     workspace: lightWorkspace,
   });
@@ -100,17 +89,18 @@ export async function activateCreditPricedFreePlan(
   }
   const { metronomeCustomerId } = customerResult.value;
 
-  const user = auth.getNonNullableUser();
-  const seatResult = await updateMembershipSeatAndTrack({
-    user,
-    workspace: lightWorkspace,
-    newSeatType: "free",
-    author: "no-author",
-  });
-  if (seatResult.isErr()) {
-    throw new Error(
-      `Failed to update user to free seat: ${seatResult.error.type}`
-    );
+  if (user) {
+    const seatResult = await updateMembershipSeatAndTrack({
+      user,
+      workspace: lightWorkspace,
+      newSeatType: "free",
+      author: "no-author",
+    });
+    if (seatResult.isErr()) {
+      throw new Error(
+        `Failed to update user to free seat: ${seatResult.error.type}`
+      );
+    }
   }
 
   const contractResult = await provisionMetronomeContract({
@@ -124,6 +114,14 @@ export async function activateCreditPricedFreePlan(
     swapAt: "current-hour",
     enableStripeBilling: false,
     planCode: CREDIT_PRICED_FREE_PLAN_CODE,
+    displayedName: `Free Business ${currency.toUpperCase()}`,
+    // We create the subscription row ourselves right below via
+    // `createSubscriptionFromCheckout`. Stamp the contract so the
+    // contract.start webhook skips its own subscription swap instead of
+    // racing with this synchronous write (see the custom field's doc comment).
+    additionalCustomFields: {
+      [SUBSCRIPTION_SWAP_HANDLED_INLINE_CUSTOM_FIELD_KEY]: "true",
+    },
   });
   if (contractResult.isErr()) {
     throw new Error(
@@ -131,16 +129,6 @@ export async function activateCreditPricedFreePlan(
     );
   }
   const { metronomeContractId } = contractResult.value;
-
-  const plan = await PlanModel.findOne({
-    where: { code: CREDIT_PRICED_FREE_PLAN_CODE },
-  });
-  if (!plan) {
-    throw new Error(
-      `Plan row for ${CREDIT_PRICED_FREE_PLAN_CODE} not found in DB. ` +
-        `Seed it in production before enabling Metronome billing.`
-    );
-  }
 
   const subscriptionResult =
     await SubscriptionResource.createSubscriptionFromCheckout({
@@ -155,7 +143,30 @@ export async function activateCreditPricedFreePlan(
     );
   }
 
+  await invalidateContractCache(owner.sId);
   await restoreWorkspaceAfterSubscription(auth);
+}
+
+// Called during normal user signup (/trial/start). Provisions the Metronome
+// contract and assigns a "free" seat to the workspace creator.
+export async function activateCreditPricedFreePlan(
+  auth: Authenticator,
+  countryCode?: string
+): Promise<void> {
+  await provisionCreditPricedFreePlan(auth, {
+    user: auth.getNonNullableUser(),
+    countryCode,
+  });
+}
+
+// Called during workspace creation via the Poke plugin. No user is present yet
+// (the workspace was just created and no member has joined), so seat assignment
+// is skipped. Invited users receive a seat type through the membership flow.
+export async function activateCreditPricedFreePlanForWorkspace(
+  auth: Authenticator,
+  countryCode?: string
+): Promise<void> {
+  await provisionCreditPricedFreePlan(auth, { countryCode });
 }
 
 export async function restoreWorkspaceAfterSubscription(auth: Authenticator) {

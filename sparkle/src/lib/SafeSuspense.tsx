@@ -67,10 +67,10 @@ export function SafeSuspense({ children, fallback }: SafeSuspenseProps) {
   return (
     <ChunkLoadErrorBoundary
       fallback={
-        <div className="s-relative">
+        <div className="relative">
           {fallback}
-          <div className="s-absolute s-inset-0 s-flex s-items-center s-justify-center">
-            <p className="s-text-sm s-text-muted-foreground">
+          <div className="absolute inset-0 flex items-center justify-center">
+            <p className="text-sm text-muted-foreground">
               Failed to load. Please reload the page.
             </p>
           </div>

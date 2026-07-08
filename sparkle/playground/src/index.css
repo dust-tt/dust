@@ -1,6 +1,47 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+/* Single unified Tailwind build for the sparkle playground.
+ *
+ * Replaces the old `@import "tailwindcss"` + `@config "../tailwind.config.cjs"`
+ * (prefix `s`) bridge. The playground aliases `@dust-tt/sparkle` to sparkle's
+ * source (`../src`), so it consumes unprefixed sparkle components directly; a
+ * single Tailwind pass that imports sparkle's source entry (which scans
+ * `sparkle/src`) plus scans the playground's own sources emits one correctly
+ * ordered `@layer utilities` — no cross-stylesheet collision. */
+
+/* Sparkle's full CSS entry: `@import "tailwindcss"` (preflight + theme +
+   utilities + layer order), tokens (color values), theme.css, sparkle-theme.css,
+   allotment.css, the @tailwindcss/forms|scrollbar-hide|animate plugins, sparkle's
+   base/components/utilities layers, and the sparkle/src source scan. */
+@import "../../src/styles/tailwind.css";
+
+/* Container query variants must be inlined — @tailwindcss/postcss does not
+   resolve @custom-variant from @import'ed files. Keep in sync with sparkle's
+   tailwind.css (canonical copy). */
+@custom-variant @xxxs (@container (width >= 16rem));
+@custom-variant @xxs (@container (width >= 24rem));
+@custom-variant @xs (@container (width >= 32rem));
+@custom-variant @sm (@container (width >= 40rem));
+@custom-variant @md (@container (width >= 48rem));
+@custom-variant @lg (@container (width >= 64rem));
+@custom-variant @xl (@container (width >= 80rem));
+@custom-variant @xxxs-conversation (@container conversation (width >= 16rem));
+@custom-variant @xxs-conversation (@container conversation (width >= 24rem));
+@custom-variant @xs-conversation (@container conversation (width >= 32rem));
+@custom-variant @sm-conversation (@container conversation (width >= 40rem));
+@custom-variant @md-conversation (@container conversation (width >= 48rem));
+@custom-variant @lg-conversation (@container conversation (width >= 64rem));
+@custom-variant @xl-conversation (@container conversation (width >= 80rem));
+@custom-variant @xxxs-table (@container table (width >= 16rem));
+@custom-variant @xxs-table (@container table (width >= 24rem));
+@custom-variant @xs-table (@container table (width >= 32rem));
+@custom-variant @sm-table (@container table (width >= 40rem));
+@custom-variant @md-table (@container table (width >= 48rem));
+@custom-variant @lg-table (@container table (width >= 64rem));
+@custom-variant @xl-table (@container table (width >= 80rem));
+
+/* Scan the playground's own demo sources. `@source` here resolves relative to
+   this file (sparkle/playground/src); sparkle/src is scanned by the imported
+   sparkle entry. */
+@source "./**/*.{ts,tsx}";
 
 @layer base {
   html {
@@ -21,7 +62,7 @@
     }
   }
   .sparkle-richtextarea p.is-editor-empty:first-child::before {
-    @apply s-italic s-text-muted-foreground;
+    @apply italic text-muted-foreground;
     content: attr(data-placeholder);
     float: left;
     height: 0;

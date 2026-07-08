@@ -2,7 +2,6 @@ import { validateMCPServerAccess } from "@app/lib/api/actions/mcp/client_side_re
 import { isSidekickConversation } from "@app/lib/api/actions/servers/helpers";
 import { postUserMessage } from "@app/lib/api/assistant/conversation";
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
-import type { PostMessagesResponseBody } from "@app/lib/api/assistant/messages";
 import { fetchConversationMessages } from "@app/lib/api/assistant/messages";
 import { getPaginationParams } from "@app/lib/api/pagination";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
@@ -11,7 +10,8 @@ import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { extractUniqueSkillIds } from "@app/lib/skills/format";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { getStatsDClient } from "@app/lib/utils/statsd";
-import { InternalPostMessagesRequestBodySchema } from "@app/types/api/internal/assistant";
+import { InternalPostMessagesRequestBodySchema } from "@app/types/api/assistant";
+import type { PostMessagesResponseBody } from "@app/types/api/assistant/messages";
 import type {
   LegacyLightMessageType,
   LightMessageType,
@@ -152,6 +152,17 @@ const app = workspaceApp();
  *                       type: string
  *               skipToolsValidation:
  *                 type: boolean
+ *               modelSelection:
+ *                 type: object
+ *                 description: Optional per-message model override from the input-bar model picker (an explicit model pick).
+ *                 required: [providerId, modelId]
+ *                 properties:
+ *                   providerId:
+ *                     type: string
+ *                   modelId:
+ *                     type: string
+ *                   reasoningEffort:
+ *                     type: string
  *     responses:
  *       200:
  *         description: Successfully posted message
@@ -253,7 +264,7 @@ app.post(
     const user = auth.getNonNullableUser();
     const { cId: conversationId } = ctx.req.valid("param");
 
-    const { content, context, mentions, skipToolsValidation } =
+    const { content, context, mentions, skipToolsValidation, modelSelection } =
       ctx.req.valid("json");
 
     if (context.clientSideMCPServerIds) {
@@ -384,6 +395,7 @@ app.post(
         clientSideMCPServerIds: context.clientSideMCPServerIds ?? [],
       },
       skipToolsValidation: skipToolsValidation ?? false,
+      modelSelection,
     });
 
     if (messageRes.isErr()) {

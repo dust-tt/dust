@@ -1,4 +1,5 @@
 import { removeDiacritics, subFilter } from "@app/lib/utils";
+import type { PodConversationListItemType } from "@app/types/api/assistant/conversation/spaces";
 import type {
   AgentMessageType,
   CompactionMessageType,
@@ -16,7 +17,6 @@ import {
 import type { ContentFragmentType } from "@app/types/content_fragment";
 import { truncate } from "@app/types/shared/utils/string_utils";
 import moment from "moment";
-
 import type { VirtuosoMessage } from "./types";
 
 const MAX_SOURCE_CONVERSATION_TITLE_LENGTH = 50;
@@ -91,7 +91,7 @@ export function getGroupConversationsByUnreadAndActionRequired(
 }
 
 export function getGroupConversationsByDate<
-  T extends ConversationListItemType,
+  T extends ConversationListItemType | PodConversationListItemType,
 >({ conversations, titleFilter }: { conversations: T[]; titleFilter: string }) {
   const today = moment().startOf("day");
   const yesterday = moment().subtract(1, "days").startOf("day");

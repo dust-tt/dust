@@ -8,23 +8,24 @@ export const MICROSOFT_EXCEL_SERVER_NAME = "microsoft_excel" as const;
 
 export const MICROSOFT_EXCEL_TOOLS_METADATA = createToolsRecord({
   list_excel_files: {
-    description: "List Excel files (.xlsx, .xlsm) from SharePoint or OneDrive.",
+    description:
+      "List and find Excel files (.xlsx, .xlsm) accessible in your organization.",
     schema: {
       query: z
         .string()
-        .describe(
-          "Search query to find relevant files and content in OneDrive and SharePoint."
-        ),
+        .describe("Search query to filter Excel files by name or content."),
     },
     stake: "never_ask",
     displayLabels: {
       running: "Listing Microsoft Excel files",
       done: "List Microsoft Excel files",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   get_worksheets: {
     description:
-      "Get a list of all worksheets (sheets/tabs) in an Excel workbook stored in SharePoint.",
+      "Get a list of all worksheets (sheets/tabs) in an Excel workbook.",
     schema: {
       itemId: z
         .string()
@@ -47,10 +48,12 @@ export const MICROSOFT_EXCEL_TOOLS_METADATA = createToolsRecord({
       running: "Getting Excel worksheets",
       done: "Get Excel worksheets",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   read_worksheet: {
     description:
-      "Read data from a specific range or entire worksheet in an Excel file stored in SharePoint.",
+      "Read cell values from an Excel worksheet. Returns data as CSV. Reads the used range by default; use the range parameter to read a specific subset.",
     schema: {
       itemId: z.string().describe("The ID of the Excel file to read from."),
       driveId: z
@@ -72,7 +75,7 @@ export const MICROSOFT_EXCEL_TOOLS_METADATA = createToolsRecord({
         .string()
         .optional()
         .describe(
-          "Optional cell range in A1 notation (e.g., 'A1:D10'). If not provided, reads the used range."
+          "Cell range in A1 notation (e.g., 'A1:D10'). If omitted, reads the entire used range. Maximum 100,000 cells — if the worksheet exceeds this limit, a range must be specified."
         ),
     },
     stake: "never_ask",
@@ -80,10 +83,11 @@ export const MICROSOFT_EXCEL_TOOLS_METADATA = createToolsRecord({
       running: "Reading Excel worksheet",
       done: "Read Excel worksheet",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   write_worksheet: {
-    description:
-      "Write data to a specific range in an Excel worksheet stored in SharePoint.",
+    description: "Write data to a specific range in an Excel worksheet.",
     schema: {
       itemId: z.string().describe("The ID of the Excel file to write to."),
       driveId: z
@@ -119,10 +123,11 @@ export const MICROSOFT_EXCEL_TOOLS_METADATA = createToolsRecord({
       running: "Writing to Excel worksheet",
       done: "Write to Excel worksheet",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   create_worksheet: {
-    description:
-      "Create a new worksheet (sheet/tab) in an Excel workbook stored in SharePoint.",
+    description: "Create a new worksheet (sheet/tab) in an Excel workbook.",
     schema: {
       itemId: z
         .string()
@@ -148,10 +153,11 @@ export const MICROSOFT_EXCEL_TOOLS_METADATA = createToolsRecord({
       running: "Creating Excel worksheet",
       done: "Create Excel worksheet",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   clear_range: {
-    description:
-      "Clear data from a specific range in an Excel worksheet stored in SharePoint.",
+    description: "Clear data from a specific range in an Excel worksheet.",
     schema: {
       itemId: z
         .string()
@@ -186,6 +192,8 @@ export const MICROSOFT_EXCEL_TOOLS_METADATA = createToolsRecord({
       running: "Clearing Excel range",
       done: "Clear Excel range",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
 });
 
@@ -235,13 +243,14 @@ export const MICROSOFT_EXCEL_SERVER = {
       ],
     },
     documentationUrl: null,
-    instructions: null,
   },
   tools: Object.values(MICROSOFT_EXCEL_TOOLS_METADATA).map((t) => ({
     name: t.name,
     description: t.description,
     inputSchema: zodToJsonSchema(z.object(t.schema)) as JSONSchema,
     displayLabels: t.displayLabels,
+    toolCostCategory: t.toolCostCategory,
+    freeUsage: t.freeUsage,
   })),
   tools_stakes: Object.fromEntries(
     Object.values(MICROSOFT_EXCEL_TOOLS_METADATA).map((t) => [t.name, t.stake])

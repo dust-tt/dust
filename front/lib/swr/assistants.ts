@@ -1,13 +1,9 @@
 import { DEFAULT_PERIOD_DAYS } from "@app/components/agent_builder/observability/constants";
 import { useSendNotification } from "@app/hooks/useNotification";
-import type { GetAgentUsageResponseBody } from "@app/lib/api/assistant/agent_usage";
-import type { GetSlackChannelsLinkedWithAgentResponseBody } from "@app/lib/api/assistant/builder/slack/channels_linked_with_agent";
-import type { GetAgentConfigurationsResponseBody } from "@app/lib/api/assistant/configuration";
 import type {
   AgentMessageFeedbackType,
   AgentMessageFeedbackWithMetadataType,
 } from "@app/lib/api/assistant/feedback";
-import type { GetAgentMcpConfigurationsResponseBody } from "@app/lib/api/assistant/mcp_configurations";
 import type { GetContextOriginResponse } from "@app/lib/api/assistant/observability/context_origin";
 import type { GetDatasourceRetrievalResponse } from "@app/lib/api/assistant/observability/datasource_retrieval";
 import type { GetDatasourceRetrievalDocumentsResponse } from "@app/lib/api/assistant/observability/datasource_retrieval_documents";
@@ -17,9 +13,7 @@ import type {
   GetLatencyResponse,
   GetUsageMetricsResponse,
 } from "@app/lib/api/assistant/observability/messages_metrics";
-import type { GetAgentOverviewResponseBody } from "@app/lib/api/assistant/observability/overview";
 import type { GetSkillExecutionResponse } from "@app/lib/api/assistant/observability/skill_execution";
-import type { GetAgentSummaryResponseBody } from "@app/lib/api/assistant/observability/summary";
 import type { GetToolExecutionResponse } from "@app/lib/api/assistant/observability/tool_execution";
 import type {
   GetToolLatencyResponse,
@@ -28,8 +22,6 @@ import type {
 } from "@app/lib/api/assistant/observability/tool_latency";
 import type { GetToolStepIndexResponse } from "@app/lib/api/assistant/observability/tool_step_index";
 import type { GetVersionMarkersResponse } from "@app/lib/api/assistant/observability/version_markers";
-import type { PostAgentUserFavoriteRequestBody } from "@app/lib/api/assistant/user_relation";
-import type { GetMemberResponseBody } from "@app/lib/api/user";
 import { clientFetch } from "@app/lib/egress/client";
 import type {
   FetchAgentTemplateResponse,
@@ -43,6 +35,14 @@ import {
   useSWRWithDefaults,
 } from "@app/lib/swr/swr";
 import { BROWSER_TIMEZONE } from "@app/lib/swr/workspaces";
+import type { GetAgentUsageResponseBody } from "@app/types/api/assistant/agent_usage";
+import type { GetSlackChannelsLinkedWithAgentResponseBody } from "@app/types/api/assistant/builder/slack/channels_linked_with_agent";
+import type { GetAgentConfigurationsResponseBody } from "@app/types/api/assistant/configuration";
+import type { GetAgentMcpConfigurationsResponseBody } from "@app/types/api/assistant/mcp_configurations";
+import type { GetAgentOverviewResponseBody } from "@app/types/api/assistant/observability/overview";
+import type { GetAgentSummaryResponseBody } from "@app/types/api/assistant/observability/summary";
+import type { PostAgentUserFavoriteRequestBody } from "@app/types/api/assistant/user_relation";
+import type { GetMemberResponseBody } from "@app/types/api/user";
 import type {
   AgentConfigurationType,
   AgentsGetViewType,

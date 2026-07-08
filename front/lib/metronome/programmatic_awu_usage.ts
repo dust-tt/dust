@@ -10,10 +10,10 @@ import {
   USAGE_TYPE_GROUP_KEY,
   USAGE_TYPE_PROGRAMMATIC,
 } from "@app/lib/metronome/constants";
-import { getMetronomeCurrentBillingPeriod } from "@app/lib/metronome/contracts";
+import { getCachedMetronomeCurrentBillingPeriod } from "@app/lib/metronome/contracts";
 import {
-  isToolCategory,
-  TOOL_CATEGORY_AWU_WEIGHTS,
+  isToolCostCategory,
+  TOOL_COST_CATEGORY_AWU_WEIGHTS,
 } from "@app/lib/metronome/events";
 import { CreditUsageConfigurationResource } from "@app/lib/resources/credit_usage_configuration_resource";
 import logger from "@app/logger/logger";
@@ -54,8 +54,8 @@ export async function getRemainingProgrammaticUsageFromMetronome(
   }
 
   const programmaticSpendRes = await fetchProgrammaticAwuSpend({
+    workspaceId: workspace.sId,
     metronomeCustomerId,
-    metronomeContractId,
   });
   if (programmaticSpendRes.isErr()) {
     logger.warn(
@@ -94,16 +94,14 @@ export async function getRemainingProgrammaticUsageFromMetronome(
  * risk of being capped server-side.
  */
 export async function fetchProgrammaticAwuSpend({
+  workspaceId,
   metronomeCustomerId,
-  metronomeContractId,
 }: {
+  workspaceId: string;
   metronomeCustomerId: string;
-  metronomeContractId: string;
 }): Promise<Result<number | null, Error>> {
-  const periodResult = await getMetronomeCurrentBillingPeriod({
-    metronomeCustomerId,
-    metronomeContractId,
-  });
+  const periodResult =
+    await getCachedMetronomeCurrentBillingPeriod(workspaceId);
   if (periodResult.isErr()) {
     return new Err(periodResult.error);
   }
@@ -167,11 +165,11 @@ export async function fetchProgrammaticAwuSpend({
       entry.group?.[USAGE_TYPE_GROUP_KEY] !== USAGE_TYPE_PROGRAMMATIC ||
       new Date(entry.startingOn).getTime() < cycleStartMs ||
       !category ||
-      !isToolCategory(category)
+      !isToolCostCategory(category)
     ) {
       continue;
     }
-    spentAwuCredits += entry.value * TOOL_CATEGORY_AWU_WEIGHTS[category];
+    spentAwuCredits += entry.value * TOOL_COST_CATEGORY_AWU_WEIGHTS[category];
   }
 
   return new Ok(spentAwuCredits);

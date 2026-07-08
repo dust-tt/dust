@@ -15,12 +15,12 @@ import type {
   ContentFragmentInputWithContentNode,
   ContentFragmentInputWithFileIdType,
   ContentFragmentInputWithInlinedContent,
-} from "@app/types/api/internal/assistant";
+} from "@app/types/api/assistant";
 import {
   isContentFragmentInputWithContentNode,
   isContentFragmentInputWithFileId,
   isSupportedContentNodeFragmentContentType,
-} from "@app/types/api/internal/assistant";
+} from "@app/types/api/assistant";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import type {
   ContentNodeType,

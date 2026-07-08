@@ -16,12 +16,8 @@ import { listAttachments } from "@app/lib/api/assistant/jit_utils";
 import type { Authenticator } from "@app/lib/auth";
 import { serializeMention } from "@app/lib/mentions/format";
 import logger from "@app/logger/logger";
-import type { AgentConfigurationType } from "@app/types/assistant/agent";
-import type {
-  AgentMessageType,
-  ConversationType,
-  UserMessageOrigin,
-} from "@app/types/assistant/conversation";
+import type { AgentLoopExecutionData } from "@app/types/assistant/agent_run";
+import type { UserMessageOrigin } from "@app/types/assistant/conversation";
 import { isUserMessageType } from "@app/types/assistant/conversation";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -64,9 +60,9 @@ export async function getOrCreateConversation(
   }: {
     childAgentBlob: ChildAgentBlob;
     childAgentId: string;
-    mainAgent: AgentConfigurationType;
-    originMessage: AgentMessageType;
-    mainConversation: ConversationType;
+    mainAgent: AgentLoopExecutionData["agentConfiguration"];
+    originMessage: AgentLoopExecutionData["agentMessage"];
+    mainConversation: AgentLoopExecutionData["conversation"];
     query: string;
     toolsetsToAdd: string[] | null;
     fileOrContentFragmentIds: string[] | null;
@@ -253,6 +249,7 @@ export async function getOrCreateConversation(
     title: `run_agent ${mainAgent.name} > ${childAgentBlob.name}`,
     visibility: "unlisted",
     depth: mainConversation.depth + 1,
+    spaceId: mainConversation.spaceId ?? undefined,
     message: {
       content: `${serializeMention({ name: childAgentBlob.name, sId: childAgentId })} ${queryWithFilePaths}`,
       mentions: [{ configurationId: childAgentId }],

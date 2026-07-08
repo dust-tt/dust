@@ -1,5 +1,3 @@
-import type { AwuPoolSummaryResponseBody } from "@app/lib/api/credits/awu_pool_summary";
-import type { GetMembersSeatsResponseBody } from "@app/lib/api/credits/members_seats";
 import type { GetMemberUsageResponseBody } from "@app/lib/api/credits/members_usage";
 import type { GetCreditPurchaseInfoResponseBody } from "@app/lib/api/credits/purchase";
 import type { SeatPlanResponseBody } from "@app/lib/api/credits/seat_plan";
@@ -7,6 +5,9 @@ import type { GetAwuPurchaseInfoResponseBody } from "@app/lib/credits/awu_purcha
 import type { GetAwuPurchaseStatusResponseBody } from "@app/lib/credits/awu_purchase_status";
 import { clientFetch } from "@app/lib/egress/client";
 import { emptyArray, useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
+import type { AwuPoolSummaryResponseBody } from "@app/types/api/credits/awu_pool_summary";
+import type { GetMembersSeatsResponseBody } from "@app/types/api/credits/members_seats";
+import type { GetAwuTopUpsHistoryResponseBody } from "@app/types/api/credits/top_ups_history";
 import type {
   GetCreditsResponseBody,
   PendingCreditData,
@@ -57,35 +58,27 @@ function resetPostPurchaseRefreshCount(workspaceId: string): void {
 
 export function useCredits({
   workspaceId,
-  metronomeCustomerId,
   disabled,
 }: {
   workspaceId: string;
-  metronomeCustomerId?: string | null;
   disabled?: boolean;
 }) {
   const { fetcher } = useFetcher();
   const creditsFetcher: Fetcher<GetCreditsResponseBody> = fetcher;
 
-  const endpoint = metronomeCustomerId
-    ? `/api/w/${workspaceId}/credits/metronome-balances`
-    : `/api/w/${workspaceId}/credits`;
-
   const { data, error, mutate, isValidating } = useSWRWithDefaults(
-    endpoint,
+    `/api/w/${workspaceId}/credits`,
     creditsFetcher,
     {
       disabled,
-      refreshInterval: metronomeCustomerId
-        ? undefined
-        : () => {
-            const count = getPostPurchaseRefreshCount(workspaceId);
-            if (count < 5) {
-              incrementPostPurchaseRefreshCount(workspaceId);
-              return 5000;
-            }
-            return 0;
-          },
+      refreshInterval: () => {
+        const count = getPostPurchaseRefreshCount(workspaceId);
+        if (count < 5) {
+          incrementPostPurchaseRefreshCount(workspaceId);
+          return 5000;
+        }
+        return 0;
+      },
     }
   );
 
@@ -266,6 +259,30 @@ export function useAwuPoolSummary({
   };
 }
 
+export function useAwuTopUpsHistory({
+  workspaceId,
+  disabled,
+}: {
+  workspaceId: string;
+  disabled?: boolean;
+}) {
+  const { fetcher } = useFetcher();
+  const topUpsFetcher: Fetcher<GetAwuTopUpsHistoryResponseBody> = fetcher;
+
+  const { data, error, mutate } = useSWRWithDefaults(
+    `/api/w/${workspaceId}/credits/top-ups`,
+    topUpsFetcher,
+    { disabled }
+  );
+
+  return {
+    topUps: data?.topUps ?? emptyArray(),
+    isTopUpsHistoryLoading: !error && !data && !disabled,
+    isTopUpsHistoryError: error,
+    mutateTopUpsHistory: mutate,
+  };
+}
+
 // Polls the latest AWU purchase attempt status for a workspace. The dialog
 // drives `disabled` off its own "processing" state so we only poll while a
 // purchase is in flight.
@@ -326,6 +343,58 @@ export function useAwuPurchaseInfo({
     isAwuPurchaseInfoError: error,
     mutateAwuPurchaseInfo: mutate,
   };
+}
+
+export type RedeemPoolTopupCouponOutcome =
+  | { status: "success" }
+  | { status: "error"; message: string };
+
+// Redeems a "credits" coupon (the "Use coupon" Top-Up tab). Grants free AWU
+// credits synchronously — no payment involved. Refreshes the pool summary on
+// success.
+export function useRedeemPoolTopupCoupon({
+  workspaceId,
+}: {
+  workspaceId: string;
+}) {
+  const { mutateAwuPoolSummary } = useAwuPoolSummary({
+    workspaceId,
+    disabled: true,
+  });
+
+  const redeemPoolTopupCoupon = useCallback(
+    async (code: string): Promise<RedeemPoolTopupCouponOutcome> => {
+      try {
+        const response = await clientFetch(
+          `/api/w/${workspaceId}/coupon/redeem`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ code }),
+          }
+        );
+
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => null);
+          const message =
+            errorData?.error?.message ?? "Failed to redeem coupon.";
+          return { status: "error", message };
+        }
+
+        resetAwuPostPurchaseRefreshCount(workspaceId);
+        void mutateAwuPoolSummary();
+
+        return { status: "success" };
+      } catch (err) {
+        const message =
+          err instanceof Error ? err.message : "Failed to redeem coupon.";
+        return { status: "error", message };
+      }
+    },
+    [workspaceId, mutateAwuPoolSummary]
+  );
+
+  return { redeemPoolTopupCoupon };
 }
 
 export function useMyUsage({

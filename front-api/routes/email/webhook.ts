@@ -211,6 +211,12 @@ app.post("/", async (ctx): HandlerResult<PostResponseBody> => {
       }
 
       const { user, workspace } = userRes.value;
+      const errorLogContext = {
+        userId: user.sId,
+        userEmail: user.email,
+        workspaceId: workspace.sId,
+        workspaceName: workspace.name,
+      };
 
       const targetEmails = [
         ...(email.envelope.to ?? []),
@@ -219,12 +225,16 @@ app.post("/", async (ctx): HandlerResult<PostResponseBody> => {
       ].filter((e) => e.endsWith(`@${ASSISTANT_EMAIL_SUBDOMAIN}`));
 
       if (targetEmails.length === 0) {
-        await replyToError(email, {
-          type: "invalid_email_error",
-          message:
-            `Failed to match any valid agent email. ` +
-            `Expected agent email format: {ASSISTANT_NAME}@${ASSISTANT_EMAIL_SUBDOMAIN}.`,
-        });
+        await replyToError(
+          email,
+          {
+            type: "invalid_email_error",
+            message:
+              `Failed to match any valid agent email. ` +
+              `Expected agent email format: {ASSISTANT_NAME}@${ASSISTANT_EMAIL_SUBDOMAIN}.`,
+          },
+          errorLogContext
+        );
         return;
       }
 
@@ -234,18 +244,26 @@ app.post("/", async (ctx): HandlerResult<PostResponseBody> => {
       );
 
       if (workspace.metadata?.allowEmailAgents !== true) {
-        await replyToError(email, {
-          type: "invalid_email_error",
-          message:
-            "Email interactions with agents are not enabled for your workspace.",
-        });
+        await replyToError(
+          email,
+          {
+            type: "invalid_email_error",
+            message:
+              "Email interactions with agents are not enabled for your workspace.",
+          },
+          errorLogContext
+        );
         return;
       }
 
       const emailBlacklistedAgentIdsRes =
         getEmailBlacklistedAgentIds(workspace);
       if (emailBlacklistedAgentIdsRes.isErr()) {
-        await replyToError(email, emailBlacklistedAgentIdsRes.error);
+        await replyToError(
+          email,
+          emailBlacklistedAgentIdsRes.error,
+          errorLogContext
+        );
         return;
       }
 
@@ -265,7 +283,7 @@ app.post("/", async (ctx): HandlerResult<PostResponseBody> => {
           targetEmail,
         });
         if (matchResult.isErr()) {
-          await replyToError(email, matchResult.error);
+          await replyToError(email, matchResult.error, errorLogContext);
           continue;
         }
         agentConfigurations.push(matchResult.value.agentConfiguration);
@@ -281,7 +299,7 @@ app.post("/", async (ctx): HandlerResult<PostResponseBody> => {
       });
 
       if (triggerRes.isErr()) {
-        await replyToError(email, triggerRes.error);
+        await replyToError(email, triggerRes.error, errorLogContext);
         return;
       }
 

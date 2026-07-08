@@ -240,7 +240,6 @@ The following skills are available for use with the skill_management__enable_ski
       name: "commit",
       instructions: "Create a git commit with a descriptive message.",
     });
-    const enabledSkill = SkillFactory.withExtendedSkill(commitSkill);
     const model = getSupportedModelConfig(agentConfig.model);
     assert(model, "Expected a supported model configuration.");
 
@@ -312,7 +311,7 @@ The following skills are available for use with the skill_management__enable_ski
     } satisfies AgentMessageType;
 
     const steps = await getSteps(authenticator, {
-      enabledSkillById: new Map([[enabledSkill.sId, enabledSkill]]),
+      enabledSkillById: new Map([[commitSkill.sId, commitSkill]]),
       model,
       message,
       workspaceId: "workspace_123",

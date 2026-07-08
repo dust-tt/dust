@@ -16,15 +16,22 @@ export const CONVERSATION_LIST_CONTENT_NODES_AND_TABLES_ACTION_NAME =
 export const CONVERSATION_CAT_FILE_ACTION_NAME = "cat";
 export const CONVERSATION_SEARCH_FILES_ACTION_NAME = "semantic_search";
 
+const CONVERSATION_LIST_FILES_TOOL_NAME = getPrefixedToolName(
+  CONVERSATION_FILES_SERVER_NAME,
+  CONVERSATION_LIST_FILES_ACTION_NAME
+);
+
 const CAT_FILE_TOOL = {
   description:
-    "Read the contents of a large file from conversation attachments with offset/limit and optional grep filtering (named after the 'cat' unix tool). " +
-    "Use this when files are too large to read in full, or when you need to search for specific patterns within a file.",
+    "Read the contents of an attached conversation file by fileId, with " +
+    "offset/limit and optional grep filtering. Useful for files too large " +
+    "to read in full, or for searching specific patterns within a file.",
   schema: {
     fileId: z
       .string()
       .describe(
-        `The fileId of the attachment to read, as returned by \`${getPrefixedToolName(CONVERSATION_FILES_SERVER_NAME, CONVERSATION_LIST_FILES_ACTION_NAME)}\``
+        "The fileId of the conversation attachment to retrieve and read, as " +
+          `returned by \`${CONVERSATION_LIST_FILES_TOOL_NAME}\``
       ),
     offset: z
       .number()
@@ -53,30 +60,45 @@ const CAT_FILE_TOOL = {
     running: "Reading file from conversation",
     done: "Read file from conversation",
   },
+  toolCostCategory: "advanced" as const,
+  freeUsage: false,
 };
 
 export const CONVERSATION_FILES_TOOLS_METADATA = createToolsRecord({
   [CONVERSATION_LIST_FILES_ACTION_NAME]: {
-    description: "List all files attached to the conversation.",
+    description:
+      "List all files attached to the current conversation, including " +
+      "available conversation file attachments, fileIds, titles, and " +
+      "attachment flags.",
     schema: {},
     stake: "never_ask",
     displayLabels: {
       running: "Listing files in conversation",
       done: "List files in conversation",
     },
+    toolCostCategory: "basic",
+    freeUsage: true,
   },
   [CONVERSATION_CAT_FILE_ACTION_NAME]: CAT_FILE_TOOL,
   [CONVERSATION_SEARCH_FILES_ACTION_NAME]: {
     description:
-      "Perform a semantic search within the files and content nodes attached to the conversation.",
+      "Search conversation files and content nodes semantically to find " +
+      "relevant passages by meaning-based topic, concept, or terms.",
     schema: {
-      query: z.string().describe("The query to search for."),
+      query: z
+        .string()
+        .describe(
+          "The natural-language topic, concept, or terms to search for " +
+            "conversation files and content nodes."
+        ),
     },
     stake: "never_ask",
     displayLabels: {
       running: "Searching files in conversation",
       done: "Search files in conversation",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
 });
 
@@ -88,8 +110,9 @@ export const CONVERSATION_FILES_TOOLS_METADATA_WITH_FILESYSTEM =
   createToolsRecord({
     [CONVERSATION_LIST_CONTENT_NODES_AND_TABLES_ACTION_NAME]: {
       description:
-        "List content nodes (e.g. Notion pages, Slack threads) and queryable tables attached " +
-        "to the conversation. Regular files attached to the conversation are not listed here; " +
+        "List content-node references (for example Notion pages and Slack " +
+        "threads) and queryable tables available " +
+        "in the current conversation. Regular files are not listed here; " +
         `they are accessible via the \`${FILES_SERVER_NAME}\` MCP server.`,
       schema: {},
       stake: "never_ask",
@@ -97,6 +120,8 @@ export const CONVERSATION_FILES_TOOLS_METADATA_WITH_FILESYSTEM =
         running: "Listing conversation attachments",
         done: "List conversation attachments",
       },
+      toolCostCategory: "basic",
+      freeUsage: true,
     },
     [CONVERSATION_CAT_FILE_ACTION_NAME]: CAT_FILE_TOOL,
   });
@@ -113,17 +138,20 @@ export const CONVERSATION_FILES_SERVER = {
   serverInfo: {
     name: CONVERSATION_FILES_SERVER_NAME,
     version: "1.0.0",
-    description: "List, read and search files in the conversation.",
+    description:
+      "List, read, and semantically search files and content nodes attached " +
+      "to the conversation.",
     icon: "ActionDocumentTextIcon",
     authorization: null,
     documentationUrl: null,
-    instructions: null,
   },
   tools: ALL_CONVERSATION_FILES_TOOLS.map((t) => ({
     name: t.name,
     description: t.description,
     inputSchema: zodToJsonSchema(z.object(t.schema)) as JSONSchema,
     displayLabels: t.displayLabels,
+    toolCostCategory: t.toolCostCategory,
+    freeUsage: t.freeUsage,
   })),
   tools_stakes: Object.fromEntries(
     ALL_CONVERSATION_FILES_TOOLS.map((t) => [t.name, t.stake])

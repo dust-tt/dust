@@ -5,6 +5,7 @@ import { FileResource } from "@app/lib/resources/file_resource";
 import { rateLimiter } from "@app/lib/utils/rate_limiter";
 import logger from "@app/logger/logger";
 import { ensureFileSize, isSupportedFileContentType } from "@app/types/files";
+import { isComputerFeatureEnabled } from "@app/types/shared/feature_flags";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
@@ -191,11 +192,11 @@ app.post("/", validate("json", FileUploadUrlRequestSchema), async (ctx) => {
   }
 
   const flags = await getFeatureFlags(auth);
-  const hasSandboxTools = flags.includes("sandbox_tools");
+  const hasComputerAccess = isComputerFeatureEnabled(flags);
 
   if (
     !ensureFileSize(contentType, fileSize, {
-      hasSandboxTools,
+      hasSandboxTools: hasComputerAccess,
       useCase,
     })
   ) {
@@ -218,7 +219,7 @@ app.post("/", validate("json", FileUploadUrlRequestSchema), async (ctx) => {
     useCaseMetadata: buildEffectiveUseCaseMetadata({
       contentType,
       fileName,
-      flags: { hasSandboxTools },
+      flags: { hasSandboxTools: hasComputerAccess },
       providedMetadata: useCaseMetadata,
       useCase,
     }),

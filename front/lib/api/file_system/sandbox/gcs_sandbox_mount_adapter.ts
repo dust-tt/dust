@@ -34,6 +34,8 @@ export type GCSMountTarget = {
    * so that old hardcoded paths (`/files/conversation`, `/files/pod`) keep working.
    */
   legacySandboxMountPoint: string | null;
+  /** When set, the mount uses `-o ro` and a read-only-scoped token (see buildAccessBoundaryRules). */
+  readOnly: boolean;
 };
 
 /**
@@ -77,8 +79,14 @@ export class GCSSandboxMountAdapter implements SandboxMountAdapter {
       prefixes,
     });
 
-    // 1. Mint a CAB-scoped token covering every prefix.
-    const tokenResult = await mintDownscopedGcsToken({ bucket, prefixes });
+    // 1. Mint a CAB-scoped token covering every prefix, read-only where the target is.
+    const tokenResult = await mintDownscopedGcsToken({
+      bucket,
+      prefixes: targets.map((t) => ({
+        prefix: t.gcsPrefix,
+        readOnly: t.readOnly,
+      })),
+    });
     if (tokenResult.isErr()) {
       childLogger.error(
         { err: tokenResult.error },
@@ -138,6 +146,7 @@ export class GCSSandboxMountAdapter implements SandboxMountAdapter {
             bucket,
             prefix: target.gcsPrefix,
             mountPoint: target.sandboxMountPoint,
+            readOnly: target.readOnly,
           }),
           { timeoutMs: MOUNT_TIMEOUT_MS }
         );
@@ -212,10 +221,12 @@ export class GCSSandboxMountAdapter implements SandboxMountAdapter {
       return new Ok(undefined);
     }
 
-    const prefixes = this.targets.map((t) => t.gcsPrefix);
     const tokenResult = await mintDownscopedGcsToken({
       bucket: this.bucket,
-      prefixes,
+      prefixes: this.targets.map((t) => ({
+        prefix: t.gcsPrefix,
+        readOnly: t.readOnly,
+      })),
     });
     if (tokenResult.isErr()) {
       return tokenResult;
@@ -233,7 +244,7 @@ export class GCSSandboxMountAdapter implements SandboxMountAdapter {
       {
         sandboxId: sandbox.sId,
         workspaceId: auth.getNonNullableWorkspace().sId,
-        prefixes,
+        prefixes: this.targets.map((t) => t.gcsPrefix),
       },
       "GCS sandbox mount: credential refreshed"
     );
@@ -245,7 +256,7 @@ export class GCSSandboxMountAdapter implements SandboxMountAdapter {
   getAccessBoundaryRules() {
     return buildAccessBoundaryRules(
       this.bucket,
-      this.targets.map((t) => t.gcsPrefix)
+      this.targets.map((t) => ({ prefix: t.gcsPrefix, readOnly: t.readOnly }))
     );
   }
 }
@@ -254,11 +265,21 @@ function buildMountCommand({
   bucket,
   prefix,
   mountPoint,
+  readOnly,
 }: {
   bucket: string;
   prefix: string;
   mountPoint: string;
+  readOnly: boolean;
 }): RootCommand {
+  // allow_other lets the unprivileged sandbox user read the root-mounted fs. `ro` is only
+  // defense-in-depth: the real write protection is the read-only token scope (see
+  // buildAccessBoundaryRules), not this flag.
+  const mountOptions = ["allow_other"];
+  if (readOnly) {
+    mountOptions.push("ro");
+  }
+
   const flags = [
     "--token-url",
     TOKEN_SERVER_URL,
@@ -268,7 +289,7 @@ function buildMountCommand({
     prefix,
     "--implicit-dirs",
     "-o",
-    "allow_other",
+    mountOptions.join(","),
     "--file-mode=666",
     "--dir-mode=777",
     "--kernel-list-cache-ttl-secs=60",

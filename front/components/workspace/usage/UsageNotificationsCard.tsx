@@ -1,3 +1,4 @@
+import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import {
   useUpdateUsageNotifications,
   useUsageNotifications,
@@ -19,6 +20,8 @@ export function UsageNotificationsCard({
   workspaceId,
   readOnly,
 }: UsageNotificationsCardProps) {
+  const { hasFeature } = useFeatureFlags();
+  const isAdminGovernanceEnabled = hasFeature("admin_governance");
   const { usageNotifications, isUsageNotificationsLoading } =
     useUsageNotifications({ workspaceId });
   const { doUpdateUsageNotifications } = useUpdateUsageNotifications({
@@ -63,16 +66,14 @@ export function UsageNotificationsCard({
   return (
     <Page.Vertical gap="sm" align="stretch">
       <div className="flex flex-col gap-0.5">
-        <span className="heading-base text-foreground dark:text-foreground-night">
-          Notifications
-        </span>
+        <span className="heading-base text-foreground">Notifications</span>
         <Page.P variant="secondary">
           Customize when and how you receive usage based notification
         </Page.P>
       </div>
       <SettingsList>
         <SettingsList.Row
-          title="Workspace credit pool threshold"
+          title="Workspace credit pool threshold alert"
           description={
             <>
               Email all workspace admins when your remaining workspace credit
@@ -110,7 +111,9 @@ export function UsageNotificationsCard({
         />
         <SettingsList.Row
           title="Upgrade request emails"
-          description="Email all workspace admins when a member requests a spend-limit upgrade."
+          description={`Email all workspace ${
+            isAdminGovernanceEnabled ? "admins and business admins" : "admins"
+          } when a member requests a spend-limit upgrade.`}
           action={
             <SliderToggle
               selected={usageNotifications.upgradeRequestEmail}

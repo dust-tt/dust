@@ -113,6 +113,62 @@ describe("GCSFileSystemBackend.list", () => {
     expect(paths).not.toContain(`conversation-${CONV_ID}/photo.processed.jpg`);
   });
 
+  it("hides files inside a hidden (dot-prefixed) directory, except .tool_outputs", async () => {
+    const prefix = `w/${WORKSPACE_ID}/conversations/${CONV_ID}/files/`;
+    getAllFilesByPrefixMock.mockResolvedValue({
+      files: [
+        gcsFile({
+          name: `${prefix}report.pdf`,
+          contentType: "application/pdf",
+        }),
+        gcsFile({
+          name: `${prefix}.pptx_render/deck/slide-001-boxes.jpg`,
+          contentType: "image/jpeg",
+        }),
+        gcsFile({
+          name: `${prefix}.tool_outputs/1700000000000_note.md`,
+          contentType: "text/markdown",
+        }),
+      ],
+      pageFetchCount: 1,
+    });
+
+    const result = await makeBackend().list(`conversation-${CONV_ID}/`);
+    assert(result.isOk());
+    const paths = result.value.filter((e) => !e.isDirectory).map((e) => e.path);
+    expect(paths).toContain(`conversation-${CONV_ID}/report.pdf`);
+    // .tool_outputs stays visible (the one exempt hidden dir).
+    expect(paths).toContain(
+      `conversation-${CONV_ID}/.tool_outputs/1700000000000_note.md`
+    );
+    // QA renders under a hidden dir are not surfaced to the user.
+    expect(paths).not.toContain(
+      `conversation-${CONV_ID}/.pptx_render/deck/slide-001-boxes.jpg`
+    );
+  });
+
+  it("shows hidden-directory contents when that directory is listed directly", async () => {
+    const prefix = `w/${WORKSPACE_ID}/conversations/${CONV_ID}/files/.pptx_render/deck/`;
+    getAllFilesByPrefixMock.mockResolvedValue({
+      files: [
+        gcsFile({
+          name: `${prefix}slide-001-boxes.jpg`,
+          contentType: "image/jpeg",
+        }),
+      ],
+      pageFetchCount: 1,
+    });
+
+    const result = await makeBackend().list(
+      `conversation-${CONV_ID}/.pptx_render/deck/`
+    );
+    assert(result.isOk());
+    const paths = result.value.filter((e) => !e.isDirectory).map((e) => e.path);
+    expect(paths).toContain(
+      `conversation-${CONV_ID}/.pptx_render/deck/slide-001-boxes.jpg`
+    );
+  });
+
   it("includes .processed. siblings when includeProcessed is true", async () => {
     const prefix = `w/${WORKSPACE_ID}/conversations/${CONV_ID}/files/`;
     getAllFilesByPrefixMock.mockResolvedValue({

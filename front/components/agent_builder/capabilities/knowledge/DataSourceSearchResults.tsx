@@ -13,13 +13,13 @@ import {
   pathToString,
   removeNodeFromTree,
 } from "@app/components/data_source_view/context/utils";
-import type { DataSourceContentNode } from "@app/lib/api/search";
 import {
   getLocationForDataSourceViewContentNode,
   getVisualForDataSourceViewContentNode,
 } from "@app/lib/content_nodes";
 import { getDisplayTitleForDataSourceViewContentNode } from "@app/lib/providers/content_nodes_display";
 import { isDataSourceViewCategoryWithoutApps } from "@app/types/api/public/spaces";
+import type { DataSourceContentNode } from "@app/types/api/search";
 import type { DataSourceViewContentNode } from "@app/types/data_source_view";
 // biome-ignore lint/plugin/enforceClientTypesInPublicApi: existing usage
 import { DATA_SOURCE_MIME_TYPE } from "@dust-tt/client";
@@ -255,11 +255,11 @@ export function DataSourceSearchResults({
   if (!error && !isLoading && searchResults.length === 0) {
     return (
       <div className="flex w-full flex-col gap-2">
-        <div className="text-end text-sm text-muted-foreground dark:text-muted-foreground-night">
+        <div className="text-end text-sm text-muted-foreground">
           0 results found
         </div>
         <div className="flex items-center justify-center p-8 text-center">
-          <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+          <p className="text-sm text-muted-foreground">
             No matching results found. Try different search terms.
           </p>
         </div>
@@ -270,7 +270,7 @@ export function DataSourceSearchResults({
   return (
     <>
       {error ? (
-        <div className="text-end text-sm text-muted-foreground dark:text-muted-foreground-night">
+        <div className="text-end text-sm text-muted-foreground">
           Error searching results.
         </div>
       ) : (

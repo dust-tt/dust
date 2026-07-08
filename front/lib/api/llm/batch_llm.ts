@@ -41,8 +41,10 @@ import { assertNever } from "@app/types/shared/utils/assert_never";
 import { removeNulls } from "@app/types/shared/utils/general";
 import type { Transaction } from "sequelize";
 
-export interface LlmConversationOptions
-  extends LLMParametersWithoutConversation {
+// Type alias (not an interface) because LLMParametersWithoutConversation
+// contains the mutually exclusive tool-choice union, which interfaces cannot
+// extend.
+export type LlmConversationOptions = LLMParametersWithoutConversation & {
   newMessages: ModelMessageTypeMultiActionsWithoutContentFragment[];
   existingConversationId?: string;
   enabledSkills?: EnabledSkill[];
@@ -52,7 +54,7 @@ export interface LlmConversationOptions
   metadata?: ConversationMetadata;
   userContextUsername?: string;
   userContextOrigin: UserMessageOrigin;
-}
+};
 
 /**
  * Create (or reuse) a conversation and store the new user messages.
@@ -499,6 +501,10 @@ function eventToStoredStepContent(
     case "token_usage":
     case "tool_call_started":
     case "tool_call_delta":
+    // Provider passthrough blocks are only persisted on the streaming path.
+    // Anthropic tool search runs streaming-only, so the batch path never needs
+    // to round-trip them; drop here as nothing is stored from batch results.
+    case "provider_passthrough":
       return null;
     default:
       assertNever(event);

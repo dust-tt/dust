@@ -1,6 +1,6 @@
-import type { GetAgentMessageSkillsResponseBody } from "@app/lib/api/assistant/messages";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
+import type { GetAgentMessageSkillsResponseBody } from "@app/types/api/assistant/messages";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";

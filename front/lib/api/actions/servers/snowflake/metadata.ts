@@ -6,8 +6,16 @@ import { zodToJsonSchema } from "zod-to-json-schema";
 
 export const MAX_QUERY_ROWS = 1000;
 
+export const SNOWFLAKE_LIST_DATABASES_TOOL_NAME = "list_databases" as const;
+export const SNOWFLAKE_LIST_SCHEMAS_TOOL_NAME = "list_schemas" as const;
+export const SNOWFLAKE_LIST_TABLES_TOOL_NAME = "list_tables" as const;
+export const SNOWFLAKE_DESCRIBE_TABLE_TOOL_NAME = "describe_table" as const;
+export const SNOWFLAKE_DESCRIBE_SEMANTIC_VIEW_TOOL_NAME =
+  "describe_semantic_view" as const;
+export const SNOWFLAKE_QUERY_TOOL_NAME = "query" as const;
+
 export const SNOWFLAKE_TOOLS_METADATA = createToolsRecord({
-  list_databases: {
+  [SNOWFLAKE_LIST_DATABASES_TOOL_NAME]: {
     description:
       "List all databases accessible to the authenticated Snowflake user.",
     schema: {},
@@ -16,8 +24,10 @@ export const SNOWFLAKE_TOOLS_METADATA = createToolsRecord({
       running: "Listing Snowflake databases",
       done: "List Snowflake databases",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
-  list_schemas: {
+  [SNOWFLAKE_LIST_SCHEMAS_TOOL_NAME]: {
     description: "List all schemas within a specified Snowflake database.",
     schema: {
       database: z
@@ -29,8 +39,10 @@ export const SNOWFLAKE_TOOLS_METADATA = createToolsRecord({
       running: "Listing Snowflake schemas",
       done: "List Snowflake schemas",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
-  list_tables: {
+  [SNOWFLAKE_LIST_TABLES_TOOL_NAME]: {
     description:
       "List all tables, views, and semantic views within a specified Snowflake schema.",
     schema: {
@@ -44,8 +56,10 @@ export const SNOWFLAKE_TOOLS_METADATA = createToolsRecord({
       running: "Listing Snowflake tables",
       done: "List Snowflake tables",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
-  describe_table: {
+  [SNOWFLAKE_DESCRIBE_TABLE_TOOL_NAME]: {
     description:
       "Get the schema (column names, types, and constraints) of a Snowflake table.",
     schema: {
@@ -58,10 +72,11 @@ export const SNOWFLAKE_TOOLS_METADATA = createToolsRecord({
       running: "Describing Snowflake table",
       done: "Describe Snowflake table",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
-  describe_semantic_view: {
-    description:
-      "Get the structure (dimensions and metrics) of a Snowflake semantic view. Use this instead of describe_table when the object kind is SEMANTIC_VIEW.",
+  [SNOWFLAKE_DESCRIBE_SEMANTIC_VIEW_TOOL_NAME]: {
+    description: `Get the structure (dimensions and metrics) of a Snowflake semantic view. Use this instead of ${SNOWFLAKE_DESCRIBE_TABLE_TOOL_NAME} when the object kind is SEMANTIC_VIEW.`,
     schema: {
       database: z.string().describe("The name of the database."),
       schema: z.string().describe("The name of the schema."),
@@ -74,10 +89,11 @@ export const SNOWFLAKE_TOOLS_METADATA = createToolsRecord({
       running: "Describing Snowflake semantic view",
       done: "Describe Snowflake semantic view",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
-  query: {
-    description:
-      "Execute a read-only SQL query against Snowflake. Write operations are not allowed. Use the dedicated tools for listing databases, schemas, tables, and describing table structure.",
+  [SNOWFLAKE_QUERY_TOOL_NAME]: {
+    description: `Execute a read-only SQL SELECT query against Snowflake to analyze data, answer questions, calculate metrics such as revenue, or retrieve rows. Write operations are not permitted. Before writing a query, use ${SNOWFLAKE_LIST_DATABASES_TOOL_NAME}, ${SNOWFLAKE_LIST_SCHEMAS_TOOL_NAME}, ${SNOWFLAKE_LIST_TABLES_TOOL_NAME}, and ${SNOWFLAKE_DESCRIBE_TABLE_TOOL_NAME} (or ${SNOWFLAKE_DESCRIBE_SEMANTIC_VIEW_TOOL_NAME} for semantic views) to explore the schema when database, schema, table, view, or column names are unknown.`,
     schema: {
       sql: z
         .string()
@@ -109,11 +125,12 @@ export const SNOWFLAKE_TOOLS_METADATA = createToolsRecord({
       running: "Executing Snowflake query",
       done: "Execute Snowflake query",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
 });
 
 export const SNOWFLAKE_SERVER = {
-  // biome-ignore lint/plugin/noMcpServerInstructions: existing usage
   serverInfo: {
     name: "snowflake",
     version: "1.0.0",
@@ -125,14 +142,14 @@ export const SNOWFLAKE_SERVER = {
     },
     icon: "SnowflakeLogo",
     documentationUrl: "https://docs.dust.tt/docs/snowflake-tool",
-    instructions:
-      "Use list_databases, list_schemas, list_tables, and describe_table (or describe_semantic_view for semantic views) to explore the schema before writing queries. Only SELECT queries are allowed.",
   },
   tools: Object.values(SNOWFLAKE_TOOLS_METADATA).map((t) => ({
     name: t.name,
     description: t.description,
     inputSchema: zodToJsonSchema(z.object(t.schema)) as JSONSchema,
     displayLabels: t.displayLabels,
+    toolCostCategory: t.toolCostCategory,
+    freeUsage: t.freeUsage,
   })),
   tools_stakes: Object.fromEntries(
     Object.values(SNOWFLAKE_TOOLS_METADATA).map((t) => [t.name, t.stake])

@@ -89,7 +89,7 @@ export type PlanType = {
   trialPeriodDays: number;
   isByok: boolean;
   isAuditLogsAllowed: boolean;
-  isBrandedFramesAllowed: boolean;
+  hasAdvancedModelAccess: boolean;
 };
 
 export type SubscriptionType = {
@@ -155,6 +155,7 @@ export type SubscriptionPerSeatPricing = {
   seatCurrency: string;
   billingPeriod: BillingPeriod;
   quantity: number;
+  currentPeriodEndMs: number | null;
 };
 
 export const EnterpriseUpgradeFormSchema = z.object({

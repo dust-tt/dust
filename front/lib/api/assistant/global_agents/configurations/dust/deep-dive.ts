@@ -21,7 +21,7 @@ import {
 import { dummyModelConfiguration } from "@app/lib/api/assistant/global_agents/utils";
 import {
   getLargeWhitelistedModel,
-  isProviderWhitelisted,
+  selectEnabledModel,
 } from "@app/lib/api/assistant/models";
 import type { Authenticator } from "@app/lib/auth";
 import type { GlobalAgentSettingsModel } from "@app/lib/models/agent/agent";
@@ -43,6 +43,7 @@ import {
   type ModelProviderIdType,
   type ReasoningEffort,
 } from "@app/types/assistant/models/types";
+import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
 
 const MAX_CONCURRENT_SUB_AGENT_TASKS = 6;
 
@@ -290,7 +291,6 @@ Do not use the interactive_content tool for markdown documents. Only use it for 
 Markdown documents can be written directly in the response, they will be properly rendered by the client.
 
 Heavily bias against using the interactive_content tool for what could be written directly as Markdown in the conversation (unless explicitly requested by the user).
-Never use the slideshow tool unless explicitly requested by the user.
 </output_guidelines>`;
 
 export function getDeepDiveInstructions({
@@ -347,12 +347,14 @@ These instructions are NOT your own instructions, but you may use them to unders
 function getModelConfig(
   auth: Authenticator,
   {
+    featureFlags,
     reasoning = true,
     excludeProviders = new Set<ModelProviderIdType>(),
   }: {
+    featureFlags: WhitelistableFeature[];
     reasoning?: boolean;
     excludeProviders?: ReadonlySet<ModelProviderIdType>;
-  } = {}
+  }
 ): {
   modelConfiguration: ModelConfigurationType;
   reasoningEffort: ReasoningEffort;
@@ -362,18 +364,17 @@ function getModelConfig(
     GPT_5_5_MODEL_CONFIG,
   ];
 
-  for (const model of candidates) {
-    if (
-      !excludeProviders.has(model.providerId) &&
-      isProviderWhitelisted(auth, model.providerId)
-    ) {
-      return {
-        modelConfiguration: model,
-        reasoningEffort: reasoning
-          ? "light"
-          : getMinimumReasoningEffort(model.supportedReasoningEfforts),
-      };
-    }
+  const model = selectEnabledModel(auth, candidates, {
+    featureFlags,
+    excludeProviders,
+  });
+  if (model) {
+    return {
+      modelConfiguration: model,
+      reasoningEffort: reasoning
+        ? "light"
+        : getMinimumReasoningEffort(model.supportedReasoningEfforts),
+    };
   }
 
   // Otherwise we use whatever the default large model is, using the default reasoning effort.
@@ -389,14 +390,17 @@ function getModelConfig(
 
 function getMaxReasoningModelConfig(
   auth: Authenticator,
+  featureFlags: WhitelistableFeature[],
   excludeProviders: ReadonlySet<ModelProviderIdType> = new Set()
 ): {
   modelConfiguration: ModelConfigurationType;
   reasoningEffort: ReasoningEffort;
 } | null {
   if (
-    !excludeProviders.has("openai") &&
-    isProviderWhitelisted(auth, "openai")
+    selectEnabledModel(auth, [GPT_5_5_MODEL_CONFIG], {
+      featureFlags,
+      excludeProviders,
+    })
   ) {
     return {
       modelConfiguration: GPT_5_5_MODEL_CONFIG,
@@ -404,15 +408,17 @@ function getMaxReasoningModelConfig(
     };
   }
   if (
-    !excludeProviders.has("anthropic") &&
-    isProviderWhitelisted(auth, "anthropic")
+    selectEnabledModel(auth, [CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG], {
+      featureFlags,
+      excludeProviders,
+    })
   ) {
     return {
       modelConfiguration: CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG,
       reasoningEffort: "high",
     };
   }
-  return getModelConfig(auth, { excludeProviders });
+  return getModelConfig(auth, { featureFlags, excludeProviders });
 }
 
 export function _getDeepDiveGlobalAgent(
@@ -423,25 +429,26 @@ export function _getDeepDiveGlobalAgent(
     mcpServerViews,
     hasSandbox,
     excludeProviders,
+    featureFlags,
   }: {
     settings: GlobalAgentSettingsModel | null;
     preFetchedDataSources: PrefetchedDataSourcesType | null;
     mcpServerViews: MCPServerViewsForGlobalAgentsMap;
     hasSandbox?: boolean;
     excludeProviders: ReadonlySet<ModelProviderIdType>;
+    featureFlags: WhitelistableFeature[];
   }
 ): AgentConfigurationType | null {
-  const {
-    run_agent: runAgentMCPServerView,
-    ask_user_question: askUserQuestionMCPServerView,
-  } = mcpServerViews;
+  const { run_agent: runAgentMCPServerView } = mcpServerViews;
   const pictureUrl = DUST_AVATAR_URL;
-  const modelConfig = getModelConfig(auth, { excludeProviders });
+  const modelConfig = getModelConfig(auth, { featureFlags, excludeProviders });
 
   const enterpriseModelConfig =
-    !excludeProviders.has("anthropic") &&
     shouldUseOpus(auth) &&
-    isProviderWhitelisted(auth, "anthropic")
+    selectEnabledModel(auth, [CLAUDE_OPUS_4_8_DEFAULT_MODEL_CONFIG], {
+      featureFlags,
+      excludeProviders,
+    })
       ? {
           modelConfiguration: CLAUDE_OPUS_4_8_DEFAULT_MODEL_CONFIG,
           reasoningEffort: modelConfig?.reasoningEffort ?? ("medium" as const),
@@ -567,27 +574,6 @@ export function _getDeepDiveGlobalAgent(
     });
   }
 
-  if (askUserQuestionMCPServerView) {
-    actions.push({
-      id: -1,
-      sId: GLOBAL_AGENTS_SID.DEEP_DIVE + "-ask-user-question",
-      type: "mcp_server_configuration",
-      name: "ask_user_question",
-      description: "Ask the user a question with multiple-choice options.",
-      mcpServerViewId: askUserQuestionMCPServerView.sId,
-      internalMCPServerId: askUserQuestionMCPServerView.internalMCPServerId,
-      dataSources: null,
-      tables: null,
-      childAgentId: null,
-      additionalConfiguration: {},
-      timeFrame: null,
-      dustAppConfiguration: null,
-      jsonSchema: null,
-      secretName: null,
-      dustProject: null,
-    });
-  }
-
   // Fix the action ids.
   actions.forEach((action, i) => {
     action.id = -i;
@@ -601,9 +587,9 @@ export function _getDeepDiveGlobalAgent(
     ...deepAgent,
     status,
     actions,
-    // The "sandbox" (Computer) skill is auto-equipped for all agents when the
-    // `sandbox_tools` feature flag is on (see SkillResource.listForAgentLoop),
-    // so it no longer needs to be listed here.
+    // The "sandbox" (Computer) skill is auto-equipped for all agents unless
+    // the workspace has disabled Computer, so it no longer needs to be listed
+    // here.
     skills: ["frames", "discover_skills", "skill-authoring"],
     maxStepsPerRun: MAX_STEPS_USE_PER_RUN_LIMIT,
   };
@@ -616,11 +602,13 @@ export function _getDustTaskGlobalAgent(
     preFetchedDataSources,
     mcpServerViews,
     excludeProviders,
+    featureFlags,
   }: {
     settings: GlobalAgentSettingsModel | null;
     preFetchedDataSources: PrefetchedDataSourcesType | null;
     mcpServerViews: MCPServerViewsForGlobalAgentsMap;
     excludeProviders: ReadonlySet<ModelProviderIdType>;
+    featureFlags: WhitelistableFeature[];
   }
 ): AgentConfigurationType | null {
   const name = "dust-task";
@@ -655,6 +643,7 @@ export function _getDustTaskGlobalAgent(
   };
 
   const modelConfig = getModelConfig(auth, {
+    featureFlags,
     reasoning: false,
     excludeProviders,
   });
@@ -735,9 +724,11 @@ export function _getPlanningAgent(
   {
     settings,
     excludeProviders,
+    featureFlags,
   }: {
     settings: GlobalAgentSettingsModel | null;
     excludeProviders: ReadonlySet<ModelProviderIdType>;
+    featureFlags: WhitelistableFeature[];
   }
 ): AgentConfigurationType | null {
   const name = "dust-planning";
@@ -771,7 +762,11 @@ export function _getPlanningAgent(
     canEdit: false,
   };
 
-  const modelConfig = getMaxReasoningModelConfig(auth, excludeProviders);
+  const modelConfig = getMaxReasoningModelConfig(
+    auth,
+    featureFlags,
+    excludeProviders
+  );
   if (!modelConfig || settings?.status === "disabled_by_admin") {
     return {
       ...planningAgent,

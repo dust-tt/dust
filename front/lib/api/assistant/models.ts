@@ -1,40 +1,46 @@
 import { config as regionConfig } from "@app/lib/api/regions/config";
 import { isModelEnabled } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
+import type { AgentMessageModel } from "@app/lib/models/agent/conversation";
 import { isByokTransitioningPlan } from "@app/lib/plans/plan_codes";
 import {
   CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG,
   CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG,
 } from "@app/types/assistant/models/anthropic";
 import {
-  GEMINI_2_5_FLASH_MODEL_CONFIG,
-  GEMINI_3_FLASH_MODEL_CONFIG,
-  GEMINI_3_PRO_MODEL_CONFIG,
+  GEMINI_3_1_PRO_MODEL_CONFIG,
+  GEMINI_3_5_FLASH_MODEL_CONFIG,
 } from "@app/types/assistant/models/google_ai_studio";
 import {
   MISTRAL_MEDIUM_3_5_MODEL_CONFIG,
   MISTRAL_SMALL_MODEL_CONFIG,
 } from "@app/types/assistant/models/mistral";
 import {
+  isModelId,
+  SUPPORTED_MODEL_CONFIGS,
+} from "@app/types/assistant/models/models";
+import {
   GPT_5_5_MODEL_CONFIG,
   GPT_5_MINI_MODEL_CONFIG,
 } from "@app/types/assistant/models/openai";
 import {
   BYOK_MODEL_PROVIDER_IDS,
+  isModelProviderId,
   MODEL_PROVIDER_IDS,
 } from "@app/types/assistant/models/providers";
+import { isReasoningEffort } from "@app/types/assistant/models/reasoning";
 import type {
   ModelConfigurationType,
   ModelProviderIdType,
+  ModelSelectionType,
+  ReasoningEffort,
+  ResolvedRequestedModel,
 } from "@app/types/assistant/models/types";
 import {
   GROK_4_1_FAST_NON_REASONING_MODEL_CONFIG,
   GROK_4_MODEL_CONFIG,
 } from "@app/types/assistant/models/xai";
-
-export type GetEnabledModelsResponseType = {
-  models: ModelConfigurationType[];
-};
+import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
 
 export function getWhitelistedProviders(
   auth: Authenticator
@@ -102,9 +108,39 @@ function getModelEnablementContextWithoutFeatureFlag(
   };
 }
 
+// Returns the first candidate model that is enabled for the workspace. This is
+// the canonical way to pick a model from a preference-ordered list: it runs the
+// exact same isModelEnabled predicate (provider whitelist plus plan, region and
+// feature-flag availability) that is enforced when a message is posted, so the
+// chosen model can never be rejected later as "not supported". It falls through
+// to the next candidate instead.
+//
+// The workspace feature flags must be passed in: selection happens in
+// synchronous global-agent builders where they are not otherwise in scope, and
+// using the real flags here is what keeps this check identical to the one
+// enforced at message time rather than a second, divergent check.
+export function selectEnabledModel(
+  auth: Authenticator,
+  candidates: ModelConfigurationType[],
+  {
+    featureFlags,
+    excludeProviders = new Set(),
+  }: {
+    featureFlags: WhitelistableFeature[];
+    excludeProviders?: ReadonlySet<ModelProviderIdType>;
+  }
+): ModelConfigurationType | null {
+  const context = {
+    ...getModelEnablementContextWithoutFeatureFlag(auth, excludeProviders),
+    featureFlags,
+  };
+
+  return candidates.find((m) => isModelEnabled(m, context)) ?? null;
+}
+
 const ORDERED_FAST_MODEL_CONFIGS: ModelConfigurationType[] = [
   MISTRAL_SMALL_MODEL_CONFIG,
-  GEMINI_2_5_FLASH_MODEL_CONFIG,
+  GEMINI_3_5_FLASH_MODEL_CONFIG,
 ];
 
 export function getFastestWhitelistedModel(
@@ -141,7 +177,7 @@ export function getLargeWhitelistedModel(
 const ORDERED_SMALL_MODEL_CONFIGS: ModelConfigurationType[] = [
   GPT_5_MINI_MODEL_CONFIG,
   CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG,
-  GEMINI_3_FLASH_MODEL_CONFIG,
+  GEMINI_3_5_FLASH_MODEL_CONFIG,
   MISTRAL_SMALL_MODEL_CONFIG,
   GROK_4_1_FAST_NON_REASONING_MODEL_CONFIG,
 ];
@@ -157,7 +193,7 @@ function _getSmallWhitelistedModel(
 const ORDERED_LARGE_MODEL_CONFIGS: ModelConfigurationType[] = [
   CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG,
   GPT_5_5_MODEL_CONFIG,
-  GEMINI_3_PRO_MODEL_CONFIG,
+  GEMINI_3_1_PRO_MODEL_CONFIG,
   MISTRAL_MEDIUM_3_5_MODEL_CONFIG,
   GROK_4_MODEL_CONFIG,
 ];
@@ -172,4 +208,96 @@ function _getLargeWhitelistedModel(
         isModelEnabled(m, context) && (!hasBatch || m.supportsBatchProcessing)
     ) ?? null
   );
+}
+
+// ---------------------------------------------------------------------------
+// Per-message model picker.
+//
+// A picker selection is an explicit provider/model pick. It is validated against
+// the workspace's enabled models via the same isModelEnabled predicate enforced
+// everywhere else, so the resolved model can never be rejected later. Most picks
+// use the model's own defaultReasoningEffort; the pick may pin an explicit one.
+// ---------------------------------------------------------------------------
+
+function toResolvedModel(
+  config: ModelConfigurationType,
+  reasoningEffort?: ReasoningEffort
+): ResolvedRequestedModel {
+  return {
+    providerId: config.providerId,
+    modelId: config.modelId,
+    reasoningEffort: reasoningEffort ?? config.defaultReasoningEffort,
+  };
+}
+
+// Resolves a raw picker selection to a concrete model, or null when it cannot be
+// honored for this workspace (unknown or disabled model), in which case the
+// caller falls back to the agent's configured model.
+export function resolveModelSelection(
+  auth: Authenticator,
+  selection: ModelSelectionType,
+  { featureFlags }: { featureFlags: WhitelistableFeature[] }
+): ResolvedRequestedModel | null {
+  const config = SUPPORTED_MODEL_CONFIGS.find(
+    (m) =>
+      m.providerId === selection.providerId && m.modelId === selection.modelId
+  );
+  if (!config) {
+    return null;
+  }
+  const enabled = selectEnabledModel(auth, [config], { featureFlags });
+  if (!enabled) {
+    return null;
+  }
+  // Honor an explicit effort only if the model supports it; otherwise fall back
+  // to its default (raw API clients can send an unsupported effort).
+  const effort =
+    selection.reasoningEffort &&
+    enabled.supportedReasoningEfforts[selection.reasoningEffort]
+      ? selection.reasoningEffort
+      : undefined;
+  return toResolvedModel(enabled, effort);
+}
+
+// Drops agent model settings the picked override can't honor: a structured-output
+// responseFormat inherited onto a model with `supportsResponseFormat: false` makes
+// the run error or silently ignore the schema.
+export function reconcileModelSettings<T extends { responseFormat?: string }>(
+  requested: ResolvedRequestedModel,
+  settings: T
+): T {
+  const config = SUPPORTED_MODEL_CONFIGS.find(
+    (m) =>
+      m.providerId === requested.providerId && m.modelId === requested.modelId
+  );
+  if (config?.supportsResponseFormat) {
+    return settings;
+  }
+  return { ...settings, responseFormat: undefined };
+}
+
+// Rebuilds a `ResolvedRequestedModel` from the raw agent-message columns, or null
+// when no override was stored (or the stored values fail validation). Values are
+// written by the resolver above, so validation is defensive.
+export function resolvedModelFromAgentMessageRow(
+  row: AgentMessageModel
+): ResolvedRequestedModel | null {
+  const { resolvedProviderId, resolvedModelId, resolvedReasoningEffort } = row;
+
+  if (
+    !resolvedProviderId ||
+    !resolvedModelId ||
+    !resolvedReasoningEffort ||
+    !isModelProviderId(resolvedProviderId) ||
+    !isModelId(resolvedModelId) ||
+    !isReasoningEffort(resolvedReasoningEffort)
+  ) {
+    return null;
+  }
+
+  return {
+    providerId: resolvedProviderId,
+    modelId: resolvedModelId,
+    reasoningEffort: resolvedReasoningEffort,
+  };
 }

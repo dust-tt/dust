@@ -1,6 +1,6 @@
-import type { GetConversationAttachmentsResponseBody } from "@app/lib/api/assistant/conversation/attachments";
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import { listAttachments } from "@app/lib/api/assistant/jit_utils";
+import type { GetConversationAttachmentsResponseBody } from "@app/types/api/assistant/conversation/attachments";
 import { apiErrorForConversation } from "@front-api/lib/api/assistant/conversation/helper";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";

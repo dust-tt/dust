@@ -18,10 +18,8 @@ import config from "@app/lib/api/config";
 import type { FileSystemBackend } from "@app/lib/api/file_system/backends/file_system_backend";
 import { GCSFileSystemBackend } from "@app/lib/api/file_system/backends/gcs_file_system_backend";
 import type {
-  FileSystemDirectoryEntry,
-  FileSystemEntry,
-  FileSystemFileEntry,
   FileSystemMount,
+  SandboxOnlyMount,
 } from "@app/lib/api/file_system/types";
 import {
   DustFileSystemError,
@@ -37,6 +35,11 @@ import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import type { SandboxResource } from "@app/lib/resources/sandbox_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import logger from "@app/logger/logger";
+import type {
+  FileSystemDirectoryEntry,
+  FileSystemEntry,
+  FileSystemFileEntry,
+} from "@app/types/api/file_system/types";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import { isPodConversation } from "@app/types/assistant/conversation";
 import { isSupportedImageContentType } from "@app/types/files";
@@ -45,19 +48,23 @@ import { assertNever } from "@app/types/shared/utils/assert_never";
 import * as path from "path";
 import type { Readable } from "stream";
 
-export type {
-  FileSystemEntry,
-  FileSystemMount,
-} from "@app/lib/api/file_system/types";
+export type { FileSystemMount } from "@app/lib/api/file_system/types";
 export { DustFileSystemError } from "@app/lib/api/file_system/types";
+export type { FileSystemEntry } from "@app/types/api/file_system/types";
 
 // eslint-disable-next-line no-control-regex
 const CONTROL_CHAR_RE = /[\x00-\x1F\x7F-\x9F]/g;
 
-// Strip control characters, trim whitespace, and NFC-normalize. macOS uploads commonly arrive
-// in NFD; NFC normalization keeps paths stable when consumers echo them back.
+// Strip control characters, replace path separators, trim whitespace, and NFC-normalize.
+// macOS uploads commonly arrive in NFD; NFC normalization keeps paths stable when consumers
+// echo them back. "/" is replaced with "_" since it would otherwise be interpreted as a path
+// separator when the name is used as a path segment.
 export function sanitizeFileSystemName(name: string): string {
-  return name.replace(CONTROL_CHAR_RE, "").trim().normalize("NFC");
+  return name
+    .replace(CONTROL_CHAR_RE, "")
+    .replace(/\//g, "_")
+    .trim()
+    .normalize("NFC");
 }
 
 type ParsedScopedPrefix =
@@ -106,15 +113,16 @@ function createConversationMount(
 
 function createPodMount(
   auth: Authenticator,
-  space: SpaceResource
+  space: SpaceResource,
+  { includeLegacy }: { includeLegacy: boolean }
 ): FileSystemMount {
   return {
     kind: "pod",
     id: space.sId,
     scopedPrefix: `${SCOPED_PREFIX_POD}${space.sId}`,
     sandboxMountPoint: `/files/${SCOPED_PREFIX_POD}${space.sId}`,
-    legacyPrefix: LEGACY_PREFIX_PROJECT,
-    legacySandboxMountPoint: `/files/pod`,
+    legacyPrefix: includeLegacy ? LEGACY_PREFIX_PROJECT : null,
+    legacySandboxMountPoint: includeLegacy ? `/files/pod` : null,
     permissions: {
       canRead: space.canRead(auth),
       canWrite: space.canWrite(auth),
@@ -182,7 +190,8 @@ export class DustFileSystem {
   private constructor(
     private readonly auth: Authenticator,
     private readonly mounts: ReadonlyArray<FileSystemMount>,
-    private readonly backend: FileSystemBackend
+    private readonly backend: FileSystemBackend,
+    private readonly sandboxOnlyMounts: ReadonlyArray<SandboxOnlyMount> = []
   ) {}
 
   // --------------------------------------------------------------------------
@@ -225,7 +234,7 @@ export class DustFileSystem {
       for (const spaceId of uniqueSpaceIds) {
         const space = spaceById.get(spaceId);
         if (space) {
-          mounts.push(createPodMount(auth, space));
+          mounts.push(createPodMount(auth, space, { includeLegacy: true }));
         }
       }
     }
@@ -257,7 +266,9 @@ export class DustFileSystem {
    */
   static async forPod(
     auth: Authenticator,
-    space: SpaceResource
+    space: SpaceResource,
+    // Decided by the caller that owns that concern (the file system only passes them to setup).
+    { sandboxOnlyMounts = [] }: { sandboxOnlyMounts?: SandboxOnlyMount[] } = {}
   ): Promise<Result<DustFileSystem, DustFileSystemError>> {
     if (!space.canRead(auth)) {
       return new Err(
@@ -269,14 +280,16 @@ export class DustFileSystem {
     }
 
     const owner = auth.getNonNullableWorkspace();
-    const mount = createPodMount(auth, space);
+    const mount = createPodMount(auth, space, { includeLegacy: false });
 
     const backend = new GCSFileSystemBackend(
       owner.sId,
       fileStorageConfig.getGcsPrivateUploadsBucket()
     );
 
-    return new Ok(new DustFileSystem(auth, [mount], backend));
+    return new Ok(
+      new DustFileSystem(auth, [mount], backend, sandboxOnlyMounts)
+    );
   }
 
   /**
@@ -355,7 +368,7 @@ export class DustFileSystem {
           );
         }
 
-        mounts.push(createPodMount(auth, space));
+        mounts.push(createPodMount(auth, space, { includeLegacy: false }));
       }
     }
 
@@ -954,12 +967,42 @@ export class DustFileSystem {
     return null;
   }
 
+  /**
+   * Translate a canonical scoped path to its absolute path inside a mounted sandbox (the mount's
+   * gcsfuse mount point), e.g. `pod-{pId}/greet.ts` -> `/files/pod-{pId}/greet.ts`.
+   *
+   * Applies the same traversal, mount-membership, and read-permission checks as `read`. Returns
+   * `Err("invalid_path")` for a bare mount root (no file component).
+   */
+  toSandboxPath(scopedPath: string): Result<string, DustFileSystemError> {
+    const resolved = this.requireReadMount(scopedPath);
+    if (resolved.isErr()) {
+      return resolved;
+    }
+
+    const { mount, path: normalized } = resolved.value;
+    if (normalized === mount.scopedPrefix) {
+      return new Err(
+        new DustFileSystemError(
+          "invalid_path",
+          `Path has no file component: ${scopedPath}`
+        )
+      );
+    }
+
+    const rel = normalized.slice(mount.scopedPrefix.length + 1);
+    return new Ok(`${mount.sandboxMountPoint}/${rel}`);
+  }
+
   /** No-ops when the sandbox image does not support the required capability. */
   async setupSandboxMount(
     sandbox: SandboxResource,
     image: SandboxImage
   ): Promise<Result<void, Error>> {
-    const adapter = this.backend.createSandboxAdapter(this.mounts);
+    const adapter = this.backend.createSandboxAdapter(
+      this.mounts,
+      this.sandboxOnlyMounts
+    );
     return adapter.setup(this.auth, sandbox, image);
   }
 
@@ -968,7 +1011,10 @@ export class DustFileSystem {
     sandbox: SandboxResource,
     image: SandboxImage
   ): Promise<Result<void, Error>> {
-    const adapter = this.backend.createSandboxAdapter(this.mounts);
+    const adapter = this.backend.createSandboxAdapter(
+      this.mounts,
+      this.sandboxOnlyMounts
+    );
     return adapter.refreshCredential(this.auth, sandbox, image);
   }
 }

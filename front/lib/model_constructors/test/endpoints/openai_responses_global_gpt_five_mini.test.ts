@@ -5,7 +5,7 @@ import { INPUT_CONFIGURATION_ERROR } from "@app/lib/model_constructors/test/case
 import { runStreamEndpointTests } from "@app/lib/model_constructors/test/runner";
 import type { StreamSetup } from "@app/lib/model_constructors/test/setup";
 
-const setup: StreamSetup = {
+export const OpenAIResponsesGlobalGptFiveMiniStreamSetup: StreamSetup = {
   createInstance: () =>
     new OpenAIResponsesGlobalGptFiveMiniStream({
       OPENAI_API_KEY: process.env.DUST_MANAGED_OPENAI_API_KEY ?? "",
@@ -13,12 +13,13 @@ const setup: StreamSetup = {
   // `null` runs the case with its default checkers; a checker array overrides
   // them. Every case always runs.
   tests: {
-    // gpt-5-mini rejects reasoning "none" (unlike gpt-5.5) and the universal
-    // "maximal" (mapped to the unsupported "xhigh"); both are input config errors.
-    "simple/no-tools/t-default/r-none": [INPUT_CONFIGURATION_ERROR],
-    "simple/no-tools/t-0/r-none": [INPUT_CONFIGURATION_ERROR],
-    "simple/no-tools/t-0.1/r-none": [INPUT_CONFIGURATION_ERROR],
-    "simple/no-tools/t-1/r-none": [INPUT_CONFIGURATION_ERROR],
+    // gpt-5-mini maps reasoning "none" to "minimal", so it runs normally. The
+    // universal "maximal" (mapped to the unsupported "xhigh") remains an input
+    // config error.
+    "simple/no-tools/t-default/r-none": null,
+    "simple/no-tools/t-0/r-none": null,
+    "simple/no-tools/t-0.1/r-none": null,
+    "simple/no-tools/t-1/r-none": null,
     "simple/no-tools/t-default/r-maximal": [INPUT_CONFIGURATION_ERROR],
     "simple/no-tools/t-0/r-maximal": [INPUT_CONFIGURATION_ERROR],
     "simple/no-tools/t-0.1/r-maximal": [INPUT_CONFIGURATION_ERROR],
@@ -51,13 +52,13 @@ const setup: StreamSetup = {
 
     "calc/calc/t-default/r-default/force-tool-default": null,
     "calc/calc/t-default/r-default/force-tool": null,
-    // Reasoning "none" is unsupported, so the forced tool call is an input error.
-    "calc/calc/t-default/r-none/force-tool": [INPUT_CONFIGURATION_ERROR],
+    // Reasoning "none" maps to "minimal", so the forced tool call runs normally.
+    "calc/calc/t-default/r-none/force-tool": null,
 
-    "reasoning/no-tools/t-default/r-none": [INPUT_CONFIGURATION_ERROR],
+    "reasoning/no-tools/t-default/r-none": null,
     "reasoning/no-tools/t-default/r-low": null,
 
-    "output-format/json-schema/t-default/r-none": [INPUT_CONFIGURATION_ERROR],
+    "output-format/json-schema/t-default/r-none": null,
     "output-format/json-schema/t-default/r-high": null,
 
     "following/no-tools/t-default/r-default": null,
@@ -67,4 +68,7 @@ const setup: StreamSetup = {
 };
 
 // NODE_ENV=test RUN_LLM_TEST=true npm run test -- --config lib/model_constructors/test/vite.config.js --bail 1 lib/model_constructors/test/endpoints/openai_responses_global_gpt_five_mini.test.ts
-runStreamEndpointTests(OpenAIResponsesGlobalGptFiveMiniStream, setup);
+runStreamEndpointTests(
+  OpenAIResponsesGlobalGptFiveMiniStream,
+  OpenAIResponsesGlobalGptFiveMiniStreamSetup
+);

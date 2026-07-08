@@ -40,7 +40,7 @@ export const BINARY_FORMATS: OutputFormatType[] = [
 export const FILE_GENERATION_TOOLS_METADATA = createToolsRecord({
   get_supported_source_formats_for_output_format: {
     description:
-      "Get a list of source formats supported for a target output format.",
+      "List which input source formats can be converted into a given target output format.",
     schema: {
       output_format: z.enum(OUTPUT_FORMATS).describe("The format to check."),
     },
@@ -49,9 +49,12 @@ export const FILE_GENERATION_TOOLS_METADATA = createToolsRecord({
       running: "Listing supported formats",
       done: "List supported formats",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   convert_file_format: {
-    description: "Converts a file from one format to another.",
+    description:
+      "Convert an existing conversation file into another format, for example turn a document into a PDF.",
     schema: {
       file_name: z
         .string()
@@ -77,9 +80,12 @@ export const FILE_GENERATION_TOOLS_METADATA = createToolsRecord({
       running: "Converting file",
       done: "Convert file",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   generate_file: {
-    description: "Generate a file with some content.",
+    description:
+      "Generate a new file by writing provided text or content out as a document.",
     schema: {
       file_name: z
         .string()
@@ -105,6 +111,8 @@ export const FILE_GENERATION_TOOLS_METADATA = createToolsRecord({
       running: "Generating file",
       done: "Generate file",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
 });
 
@@ -116,13 +124,14 @@ export const FILE_GENERATION_SERVER = {
     authorization: null,
     icon: "ActionDocumentTextIcon" as const,
     documentationUrl: null,
-    instructions: null,
   },
   tools: Object.values(FILE_GENERATION_TOOLS_METADATA).map((t) => ({
     name: t.name,
     description: t.description,
     inputSchema: zodToJsonSchema(z.object(t.schema)) as JSONSchema,
     displayLabels: t.displayLabels,
+    toolCostCategory: t.toolCostCategory,
+    freeUsage: t.freeUsage,
   })),
   tools_stakes: Object.fromEntries(
     Object.values(FILE_GENERATION_TOOLS_METADATA).map((t) => [t.name, t.stake])

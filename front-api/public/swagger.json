@@ -258,7 +258,7 @@
             "in": "query",
             "name": "table",
             "required": true,
-            "description": "The analytics table to export:\n- \"usage_metrics\": Messages, conversations, and active users over time.\n- \"active_users\": Daily, weekly, and monthly active user counts.\n- \"source\": Message volume by context origin (web, slack, etc.).\n- \"agents\": Top agents by message count.\n- \"users\": Top users by message count.\n- \"skills\": Skill metadata catalog.\n- \"skill_usage\": Skill executions and unique users over time.\n- \"tool_usage\": Tool executions and unique users over time.\n- \"messages\": Detailed message-level logs.\n- \"feedback\": Detailed message-level feedback (thumbs, content, conversation URL).\n",
+            "description": "The analytics table to export:\n- \"usage_metrics\": Messages, conversations, and active users over time.\n- \"active_users\": Daily, weekly, and monthly active user counts.\n- \"source\": Message volume by context origin (web, slack, etc.).\n- \"agents\": Top agents by message count, including credits.\n- \"users\": Top users by message count, including credits.\n- \"skills\": Skill metadata catalog.\n- \"skill_usage\": Skill executions and unique users over time.\n- \"tool_usage\": Tool executions and unique users over time.\n- \"messages\": Detailed message-level logs, including comma-separated lists of tools (as \"server__tool\") and skills used per message, and the cost in credits of each message.\n- \"feedback\": Detailed message-level feedback (thumbs, content, conversation URL).\n",
             "schema": {
               "type": "string",
               "enum": [
@@ -3511,6 +3511,14 @@
                       "override"
                     ],
                     "description": "Conflict handling strategy. Defaults to error."
+                  },
+                  "editors": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "format": "email"
+                    },
+                    "description": "Optional editor email addresses to add to imported or updated skills. Editors must be active workspace builders. Existing skills keep their current editors."
                   }
                 }
               }
@@ -6025,7 +6033,7 @@
       "get": {
         "summary": "Get workspace usage data",
         "deprecated": true,
-        "description": "Deprecated: this endpoint will be removed after 2026-07-01.\nUse GET /api/v1/w/{wId}/analytics/export instead.\n\nGet usage data for the workspace identified by {wId} in CSV or JSON format.\n",
+        "description": "Deprecated: this endpoint will be removed after 2026-07-22.\nUse GET /api/v1/w/{wId}/analytics/export instead.\n\nGet usage data for the workspace identified by {wId} in CSV or JSON format.\n",
         "tags": [
           "Workspace"
         ],
@@ -7672,6 +7680,25 @@
                   },
                   "skipToolsValidation": {
                     "type": "boolean"
+                  },
+                  "modelSelection": {
+                    "type": "object",
+                    "description": "Optional per-message model override from the input-bar model picker (an explicit model pick).",
+                    "required": [
+                      "providerId",
+                      "modelId"
+                    ],
+                    "properties": {
+                      "providerId": {
+                        "type": "string"
+                      },
+                      "modelId": {
+                        "type": "string"
+                      },
+                      "reasoningEffort": {
+                        "type": "string"
+                      }
+                    }
                   }
                 }
               }
@@ -8662,6 +8689,64 @@
           },
           "429": {
             "description": "Rate limit exceeded"
+          }
+        }
+      }
+    },
+    "/api/w/{wId}/sandbox-functions/{functionId}/invocations/{invocationId}/events": {
+      "get": {
+        "summary": "Stream sandbox function invocation events",
+        "description": "Stream real-time events for a sandbox function invocation using Server-Sent Events (SSE). This endpoint is redirected to /api/sse/ for SSE traffic routing.",
+        "tags": [
+          "Private Events"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "wId",
+            "required": true,
+            "description": "ID of the workspace",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "functionId",
+            "required": true,
+            "description": "ID of the sandbox function",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "invocationId",
+            "required": true,
+            "description": "ID of the sandbox function invocation",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "SSE event stream. Each event is sent as `data: {json}\\n\\n`.\nEvents are discriminated by the `type` field.\n",
+            "content": {
+              "text/event-stream": {
+                "schema": {
+                  "$ref": "#/components/schemas/PrivateSandboxFunctionInvocationEvent"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
           }
         }
       }
@@ -10462,12 +10547,28 @@
           "costCredits": {
             "type": "integer",
             "nullable": true,
-            "description": "Cost of producing this agent message, in AWU credits (intelligence + tool credits). Null when no billable usage is attributed to the message."
+            "description": "Cost of producing this agent message, in credits (intelligence + tool credits). Null when no billable usage is attributed to the message."
           },
           "subAgentCostCredits": {
             "type": "number",
             "nullable": true,
-            "description": "Aggregated AWU credit cost of all sub-agents (run_agent / agent_handover) spawned recursively by this message. Computed only on single-message fetches; null otherwise."
+            "description": "Aggregated credit cost of all sub-agents (run_agent / agent_handover) spawned recursively by this message. Computed only on single-message fetches; null otherwise."
+          },
+          "requestedModel": {
+            "type": "object",
+            "nullable": true,
+            "description": "Per-message model override from the input-bar model picker. Null when the agent ran its configured model.",
+            "properties": {
+              "providerId": {
+                "type": "string"
+              },
+              "modelId": {
+                "type": "string"
+              },
+              "reasoningEffort": {
+                "type": "string"
+              }
+            }
           }
         }
       },
@@ -10613,12 +10714,12 @@
           "costCredits": {
             "type": "integer",
             "nullable": true,
-            "description": "Cost of producing this agent message, in AWU credits (intelligence + tool credits). Null when no billable usage is attributed to the message."
+            "description": "Cost of producing this agent message, in credits (intelligence + tool credits). Null when no billable usage is attributed to the message."
           },
           "subAgentCostCredits": {
             "type": "number",
             "nullable": true,
-            "description": "Aggregated AWU credit cost of all sub-agents (run_agent / agent_handover) spawned recursively by this message. Computed only on single-message fetches; null otherwise."
+            "description": "Aggregated credit cost of all sub-agents (run_agent / agent_handover) spawned recursively by this message. Computed only on single-message fetches; null otherwise."
           },
           "activitySteps": {
             "type": "array",
@@ -12044,6 +12145,97 @@
           "userId": {
             "type": "string",
             "description": "sId of the user who owns the wake-up."
+          }
+        }
+      },
+      "PrivateSandboxFunctionInvocationEvent": {
+        "type": "object",
+        "description": "Server-Sent Event for sandbox function invocation streaming. Discriminated on the `type` field.",
+        "discriminator": {
+          "propertyName": "type"
+        },
+        "oneOf": [
+          {
+            "$ref": "#/components/schemas/PrivateSandboxFunctionInvocationCreatedEvent"
+          },
+          {
+            "$ref": "#/components/schemas/PrivateSandboxFunctionInvocationResultEvent"
+          }
+        ]
+      },
+      "PrivateSandboxFunctionInvocationCreatedEvent": {
+        "type": "object",
+        "required": [
+          "type",
+          "created",
+          "invocation"
+        ],
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "sandbox_function_invocation_created"
+            ]
+          },
+          "created": {
+            "type": "integer"
+          },
+          "invocation": {
+            "type": "object",
+            "required": [
+              "sId",
+              "functionId",
+              "status",
+              "createdAt"
+            ],
+            "properties": {
+              "sId": {
+                "type": "string"
+              },
+              "functionId": {
+                "type": "string"
+              },
+              "status": {
+                "type": "string",
+                "enum": [
+                  "created"
+                ]
+              },
+              "createdAt": {
+                "type": "string",
+                "format": "date-time"
+              }
+            }
+          }
+        }
+      },
+      "PrivateSandboxFunctionInvocationResultEvent": {
+        "type": "object",
+        "required": [
+          "type",
+          "created",
+          "invocationId",
+          "functionId",
+          "result"
+        ],
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "sandbox_function_invocation_result"
+            ]
+          },
+          "created": {
+            "type": "integer"
+          },
+          "invocationId": {
+            "type": "string"
+          },
+          "functionId": {
+            "type": "string"
+          },
+          "result": {
+            "description": "Result returned by the sandbox function."
           }
         }
       },
@@ -13776,18 +13968,9 @@
             "type": "boolean",
             "description": "Whether the authenticated actor can edit the skill"
           },
-          "isExtendable": {
-            "type": "boolean",
-            "description": "Whether this skill can be extended by another skill"
-          },
           "isDefault": {
             "type": "boolean",
             "description": "Whether this skill is enabled by default"
-          },
-          "extendedSkillId": {
-            "type": "string",
-            "nullable": true,
-            "description": "Identifier of the extended skill, when applicable"
           },
           "instructions": {
             "type": "string",

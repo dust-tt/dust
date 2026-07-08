@@ -3,8 +3,8 @@ import {
   emitAuditLogEvent,
   getAuditLogContext,
 } from "@app/lib/api/audit/workos_audit";
-import type { PostKeysResponseBody } from "@app/lib/api/keys";
 import { KeyResource } from "@app/lib/resources/key_resource";
+import type { PostKeysResponseBody } from "@app/types/api/keys";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { ensureIsAdmin } from "@front-api/middlewares/ensure_role";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";

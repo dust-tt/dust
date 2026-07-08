@@ -1,5 +1,5 @@
-import type { GetNotionWebhookConfigResponseBody } from "@app/lib/api/data_sources/managed_notion";
 import { clientFetch } from "@app/lib/egress/client";
+import type { GetNotionWebhookConfigResponseBody } from "@app/types/api/data_sources/managed_notion";
 import type { DataSourceType } from "@app/types/data_source";
 import type { LightWorkspaceType } from "@app/types/user";
 import type { NotificationType } from "@dust-tt/sparkle";
@@ -162,7 +162,7 @@ export function SetupNotionPrivateIntegrationModal({
             <>
               <div>
                 <Page.SectionHeader title="Integration Token" />
-                <p className="mb-4 mt-2 text-sm text-muted-foreground dark:text-muted-foreground-night">
+                <p className="mb-4 mt-2 text-sm text-muted-foreground">
                   Paste your Notion integration token below.
                 </p>
                 <Input
@@ -190,7 +190,7 @@ export function SetupNotionPrivateIntegrationModal({
                 <>
                   <div>
                     <Page.SectionHeader title="Webhook URL" />
-                    <p className="mb-4 mt-2 text-sm text-muted-foreground dark:text-muted-foreground-night">
+                    <p className="mb-4 mt-2 text-sm text-muted-foreground">
                       Use this URL to set up Notion webhooks.
                     </p>
                     <div className="relative w-full">
@@ -225,7 +225,7 @@ export function SetupNotionPrivateIntegrationModal({
 
                   <div>
                     <Page.SectionHeader title="Verification Token" />
-                    <p className="mb-4 mt-2 text-sm text-muted-foreground dark:text-muted-foreground-night">
+                    <p className="mb-4 mt-2 text-sm text-muted-foreground">
                       {webhookConfig.verificationToken
                         ? "Use this token to verify your webhook in Notion."
                         : "Set the webhook URL in your Notion integration and come back here to get the token."}

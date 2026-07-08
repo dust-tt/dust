@@ -1,10 +1,10 @@
 import { VisualizationActionIframe } from "@app/components/assistant/conversation/actions/VisualizationActionIframe";
 import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
+import { ConversationSidePanelHeader } from "@app/components/assistant/conversation/ConversationSidePanelHeader";
 import { DEFAULT_RIGHT_PANEL_SIZE } from "@app/components/assistant/conversation/constant";
 import { CenteredState } from "@app/components/assistant/conversation/interactive_content/CenteredState";
 import { ExportContentDropdown } from "@app/components/assistant/conversation/interactive_content/ExportContentDropdown";
 import { ShareFrameSheet } from "@app/components/assistant/conversation/interactive_content/frame/ShareFrameSheet";
-import { InteractiveContentHeader } from "@app/components/assistant/conversation/interactive_content/InteractiveContentHeader";
 import { ConfirmContext } from "@app/components/Confirm";
 import { useDesktopNavigation } from "@app/components/navigation/DesktopNavigationContext";
 import { PinPodBannerButton } from "@app/components/pod/files/PinPodBannerButton";
@@ -154,18 +154,24 @@ export function FrameRenderer({
       newText,
       oldText,
       targetFileId,
+      source,
     }: {
       newText: string;
       oldText: string;
       targetFileId?: string;
+      source?: string;
     }) => {
       try {
+        // Location-based edits address the published entry Frame (the clicked bundle); the source
+        // path inside `source` resolves within its build root. Legacy context edits route to the
+        // nested target file.
+        const editFileId = source ? fileId : (targetFileId ?? fileId);
         const response = await clientFetch(
-          `/api/w/${owner.sId}/files/${targetFileId ?? fileId}/edit-text`,
+          `/api/w/${owner.sId}/files/${editFileId}/edit-text`,
           {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ oldText, newText }),
+            body: JSON.stringify({ oldText, newText, source }),
           }
         );
 
@@ -344,7 +350,7 @@ export function FrameRenderer({
   if (error) {
     return (
       <div className="flex h-panel flex-col">
-        <InteractiveContentHeader onClose={onClosePanel} />
+        <ConversationSidePanelHeader onClose={onClosePanel} />
         <CenteredState>
           <p className="text-warning-500">
             Error loading file: {error.message}
@@ -356,7 +362,7 @@ export function FrameRenderer({
 
   return (
     <div className="flex h-panel flex-col">
-      <InteractiveContentHeader onClose={onClosePanel}>
+      <ConversationSidePanelHeader onClose={onClosePanel}>
         <div className="flex w-full items-center justify-between">
           <Button
             icon={showCode ? Eye : Terminal}
@@ -410,7 +416,7 @@ export function FrameRenderer({
             )}
           </div>
         </div>
-      </InteractiveContentHeader>
+      </ConversationSidePanelHeader>
 
       <div className="flex-1 overflow-hidden">
         {isLoading ? (
@@ -436,6 +442,7 @@ export function FrameRenderer({
                 identifier: `viz-${fileId}`,
               }}
               key={`viz-${fileId}`}
+              frameFileId={fileId}
               conversationId={conversation?.sId ?? null}
               isEditable={true}
               spaceId={frameSpaceId ?? undefined}
@@ -486,7 +493,7 @@ function PreviewActionButtons({
 }: PreviewActionButtonsProps) {
   const clientType = useClientType();
   return (
-    <div className="fixed bottom-5 right-5 flex flex-col gap-1 rounded-lg bg-white p-1 shadow-md dark:bg-gray-900">
+    <div className="fixed bottom-5 right-5 flex flex-col gap-1 rounded-lg bg-background p-1 shadow-md">
       {clientType !== "extension" && (
         <Tooltip
           label={`${isFullScreen ? "Exit" : "Go to"} full screen mode`}

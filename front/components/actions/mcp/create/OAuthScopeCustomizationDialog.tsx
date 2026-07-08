@@ -70,7 +70,7 @@ export function OAuthScopeCustomizationDialog({
           <DialogTitle>Customize OAuth scopes</DialogTitle>
         </DialogHeader>
         <DialogContainer>
-          <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+          <p className="text-sm text-muted-foreground">
             Select which permissions to request. Required scopes cannot be
             removed.
           </p>
@@ -119,17 +119,17 @@ export function OAuthScopeCustomizationDialog({
                   />
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2">
-                      <span className="text-sm font-medium text-foreground dark:text-foreground-night">
+                      <span className="text-sm font-medium text-foreground">
                         {entry.label}
                       </span>
                       {entry.badge && (
-                        <span className="text-xs text-muted-foreground dark:text-muted-foreground-night">
+                        <span className="text-xs text-muted-foreground">
                           {entry.badge}
                         </span>
                       )}
                     </div>
                     {entry.description && (
-                      <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+                      <p className="text-sm text-muted-foreground">
                         {entry.description}
                       </p>
                     )}

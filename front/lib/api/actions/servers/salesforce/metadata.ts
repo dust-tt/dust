@@ -1,4 +1,3 @@
-import { SALESFORCE_SERVER_INSTRUCTIONS } from "@app/lib/actions/mcp_internal_actions/instructions";
 import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { createToolsRecord } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
@@ -7,7 +6,14 @@ import { zodToJsonSchema } from "zod-to-json-schema";
 
 export const SALESFORCE_TOOLS_METADATA = createToolsRecord({
   execute_read_query: {
-    description: "Execute a read query on Salesforce",
+    description:
+      "Run a read-only SOQL query on Salesforce to retrieve or discover data. It never writes. " +
+      "Use this for SOQL SELECT queries that search, filter, count, or retrieve Salesforce records, such as querying Salesforce Accounts by Industry. " +
+      "The usual flow is list_objects to find an object name, then describe_object to learn its exact fields and relationships, then this tool. " +
+      "Custom objects and fields end in `__c` and custom relationships end in `__r`. " +
+      "Use dot notation for child-to-parent (e.g. SELECT Account.Name FROM Contact) and a subquery for parent-to-child (e.g. SELECT Name, (SELECT LastName FROM Contacts) FROM Account). " +
+      "To list fields inline instead of calling describe_object, use FIELDS(ALL) for all fields, FIELDS(CUSTOM) for custom fields, or FIELDS(STANDARD) for standard fields (e.g. SELECT FIELDS(ALL) FROM Account LIMIT 1); FIELDS() requires a LIMIT of at most 200. " +
+      'A "No such column" or "Didn\'t understand relationship" error usually means the name is wrong, so confirm it with describe_object. If errors persist after that, the field, object, or relationship may not exist or the connected user may lack permissions.',
     schema: {
       query: z.string().describe("The SOQL read query to execute"),
     },
@@ -16,9 +22,13 @@ export const SALESFORCE_TOOLS_METADATA = createToolsRecord({
       running: "Executing Salesforce query",
       done: "Execute Salesforce query",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   list_objects: {
-    description: "List the objects in Salesforce: standard and custom objects",
+    description:
+      "List Salesforce objects (standard, custom, or all). Use it to find an object's exact API name before describing or querying it. " +
+      "Use this to discover which objects exist and to see object labels before creating or updating records.",
     schema: {
       filter: z
         .enum(["all", "standard", "custom"])
@@ -31,9 +41,15 @@ export const SALESFORCE_TOOLS_METADATA = createToolsRecord({
       running: "Listing Salesforce objects",
       done: "List Salesforce objects",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   describe_object: {
-    description: "Describe an object in Salesforce",
+    description:
+      "Get detailed metadata for a Salesforce object from its API name (e.g. Account, Lead, MyCustomObject__c): fields with names, labels, types, and other properties; child relationship names for subqueries; record types; and other object-level properties. " +
+      "This is the reliable way to confirm field and relationship names before an execute_read_query. " +
+      "Use this when asking what fields exist on an object, or to discover picklist values and " +
+      "required/createable/updateable flags before querying or writing records.",
     schema: {
       objectName: z.string().describe("The name of the object to describe"),
     },
@@ -42,9 +58,13 @@ export const SALESFORCE_TOOLS_METADATA = createToolsRecord({
       running: "Describing Salesforce object",
       done: "Describe Salesforce object",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   create_object: {
-    description: "Create one or more records in Salesforce",
+    description:
+      "Create one or more records in Salesforce. " +
+      "Use this to insert or add new records for an object such as Account, Contact, Lead, Opportunity, or a custom object; not to update existing records.",
     schema: {
       objectName: z
         .string()
@@ -66,9 +86,13 @@ export const SALESFORCE_TOOLS_METADATA = createToolsRecord({
       running: "Creating Salesforce records",
       done: "Create Salesforce records",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   update_object: {
-    description: "Update one or more records in Salesforce",
+    description:
+      "Update one or more records in Salesforce. " +
+      "Use this to edit or modify existing records by Id for an object such as Account, Contact, Lead, Opportunity, or a custom object; not to create new records.",
     schema: {
       objectName: z
         .string()
@@ -96,9 +120,13 @@ export const SALESFORCE_TOOLS_METADATA = createToolsRecord({
       running: "Updating Salesforce records",
       done: "Update Salesforce records",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   list_attachments: {
-    description: "List all attachments and files for a Salesforce record.",
+    description:
+      "List all attachments and files for a Salesforce record. " +
+      "Use this to find attachment IDs, file IDs, filenames, and metadata before reading or downloading a PDF, document, image, or uploaded file.",
     schema: {
       recordId: z.string().describe("The Salesforce record ID"),
     },
@@ -107,10 +135,13 @@ export const SALESFORCE_TOOLS_METADATA = createToolsRecord({
       running: "Listing attachments on Salesforce",
       done: "List attachments on Salesforce",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   read_attachment: {
     description:
-      "Read content from any attachment or file on a Salesforce record.",
+      "Read content from any attachment or file on a Salesforce record. " +
+      "Use this after list_attachments when you know the attachment ID or file ID and need to read or download its text or binary file.",
     schema: {
       recordId: z.string().describe("The Salesforce record ID"),
       attachmentId: z
@@ -122,11 +153,12 @@ export const SALESFORCE_TOOLS_METADATA = createToolsRecord({
       running: "Reading attachment from Salesforce",
       done: "Read attachment from Salesforce",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
 });
 
 export const SALESFORCE_SERVER = {
-  // biome-ignore lint/plugin/noMcpServerInstructions: existing usage
   serverInfo: {
     name: "salesforce",
     version: "1.0.0",
@@ -137,13 +169,14 @@ export const SALESFORCE_SERVER = {
     },
     icon: "SalesforceLogo",
     documentationUrl: "https://docs.dust.tt/docs/salesforce",
-    instructions: SALESFORCE_SERVER_INSTRUCTIONS,
   },
   tools: Object.values(SALESFORCE_TOOLS_METADATA).map((t) => ({
     name: t.name,
     description: t.description,
     inputSchema: zodToJsonSchema(z.object(t.schema)) as JSONSchema,
     displayLabels: t.displayLabels,
+    toolCostCategory: t.toolCostCategory,
+    freeUsage: t.freeUsage,
   })),
   tools_stakes: Object.fromEntries(
     Object.values(SALESFORCE_TOOLS_METADATA).map((t) => [t.name, t.stake])

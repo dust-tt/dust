@@ -55,7 +55,7 @@ describe("handleFileAccessError", () => {
   const createMockExtra = (toolServerId?: string): ToolHandlerExtra =>
     ({
       authInfo: undefined,
-      agentLoopContext: toolServerId
+      toolContext: toolServerId
         ? {
             runContext: {
               toolConfiguration: {
@@ -249,11 +249,11 @@ describe("get_file_content", () => {
   const XLSX_MIMETYPE =
     "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
 
-  // Partial stub: the get_file_content handler only reads authInfo and
-  // agentLoopContext. Same pattern as the other MCP tool tests (files/tools).
+  // Partial stub: the get_file_content handler only reads authInfo and toolContext.
+  // Same pattern as the other MCP tool tests (files/tools).
   const extra = {
     authInfo: undefined,
-    agentLoopContext: undefined,
+    toolContext: undefined,
   } as unknown as ToolHandlerExtra;
 
   function isTextBlock(

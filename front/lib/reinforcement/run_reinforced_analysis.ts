@@ -31,6 +31,7 @@ import type { ConversationResource } from "@app/lib/resources/conversation_resou
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { SkillSuggestionResource } from "@app/lib/resources/skill_suggestion_resource";
 import logger from "@app/logger/logger";
+import { AGENT_FACING_DESCRIPTION_MAX_LENGTH } from "@app/types/assistant/skill_configuration";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { isString } from "@app/types/shared/utils/general";
@@ -476,6 +477,20 @@ async function createSkillSuggestionsFromToolCall({
           type: "error",
           errorMessage:
             "edit_skill requires at least one instruction edit or description edit.",
+        };
+      }
+
+      if (
+        hasAgentFacingDescriptionEdit &&
+        parsed.data.agentFacingDescriptionEdit.content.length >
+          AGENT_FACING_DESCRIPTION_MAX_LENGTH
+      ) {
+        return {
+          type: "error",
+          errorMessage:
+            `The suggested agent-facing description is too long ` +
+            `(${parsed.data.agentFacingDescriptionEdit.content.length} characters). ` +
+            `It must be ${AGENT_FACING_DESCRIPTION_MAX_LENGTH} characters or less.`,
         };
       }
 

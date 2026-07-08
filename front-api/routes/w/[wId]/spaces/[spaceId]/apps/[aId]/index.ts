@@ -1,6 +1,6 @@
-import type { GetOrPostAppResponseBody } from "@app/lib/api/apps";
 import { softDeleteApp } from "@app/lib/api/apps";
 import { AppResource } from "@app/lib/resources/app_resource";
+import type { GetOrPostAppResponseBody } from "@app/types/api/apps";
 import { APP_NAME_REGEXP } from "@app/types/app";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";

@@ -20,13 +20,13 @@ export type ToolbarVariant = "inline" | "overlay";
 
 type ToolbarButtonSize = NonNullable<ButtonProps["size"]>;
 
-const toolbarRootVariants = cva("s-inline-flex s-items-center", {
+const toolbarRootVariants = cva("inline-flex items-center", {
   variants: {
     variant: {
       overlay:
-        "s-absolute s-left-0 s-top-0 s-z-10 s-justify-start s-gap-3 s-overflow-hidden s-rounded-xl s-bg-primary-50 s-py-1 s-pl-3 s-duration-700 s-ease-in-out dark:s-bg-muted-background-night",
+        "absolute left-0 top-0 z-10 justify-start gap-3 overflow-hidden rounded-xl bg-primary-50 py-1 pl-3 duration-700 ease-in-out",
       inline:
-        "s-gap-1 s-border-b s-border-t s-border-border s-bg-background s-p-1 dark:s-border-border-night/50 dark:s-bg-background-night sm:s-rounded-2xl sm:s-border sm:s-border-border/50 sm:s-shadow-md",
+        "gap-1 border-b border-t border-border bg-background p-1 sm:rounded-2xl sm:border sm:border-border/50 sm:shadow-md",
     },
   },
   defaultVariants: {
@@ -37,12 +37,11 @@ const toolbarRootVariants = cva("s-inline-flex s-items-center", {
 const toolbarContentVariants = cva("", {
   variants: {
     variant: {
-      overlay:
-        "s-flex s-h-full s-w-max s-flex-row s-items-center s-gap-3 s-px-3",
-      inline: "s-inline-flex s-items-center s-gap-1",
+      overlay: "flex h-full w-max flex-row items-center gap-3 px-3",
+      inline: "inline-flex items-center gap-1",
     },
     scrollable: {
-      true: "s-overflow-x-scroll",
+      true: "overflow-x-scroll",
       false: "",
     },
   },
@@ -52,10 +51,10 @@ const toolbarContentVariants = cva("", {
   },
 });
 
-const toolbarScrollAreaVariants = cva("s-h-full s-w-full", {
+const toolbarScrollAreaVariants = cva("h-full w-full", {
   variants: {
     variant: {
-      overlay: "s-border-l s-border-border dark:s-border-border-night/50",
+      overlay: "border-l border-border",
       inline: "",
     },
   },
@@ -96,16 +95,24 @@ function Toolbar({
   } = closeButtonProps ?? {};
   const closeButtonSize: ToolbarButtonSize = closeButtonSizeProp ?? "mini";
 
-  const rootClassName = toolbarRootVariants({ variant, className });
-  const contentBaseClassName = toolbarContentVariants({
-    variant,
-    scrollable: isScrollable,
-    className: contentClassName,
-  });
-  const scrollAreaClassNames = toolbarScrollAreaVariants({
-    variant,
-    className: scrollAreaClassName,
-  });
+  // Wrap cva output in cn() so tailwind-merge collapses conflicting utilities
+  // (e.g. a consumer passing `hidden` overrides the base `inline-flex`). Matches
+  // Button.tsx's `cn(buttonVariants({ ... }))` pattern. Without it both classes
+  // survive and Tailwind's source order decides — `inline-flex` would win.
+  const rootClassName = cn(toolbarRootVariants({ variant, className }));
+  const contentBaseClassName = cn(
+    toolbarContentVariants({
+      variant,
+      scrollable: isScrollable,
+      className: contentClassName,
+    })
+  );
+  const scrollAreaClassNames = cn(
+    toolbarScrollAreaVariants({
+      variant,
+      className: scrollAreaClassName,
+    })
+  );
 
   function renderCloseButton(): JSX.Element | null {
     if (!onClose) {
@@ -168,7 +175,7 @@ function ToolbarContent({ groups, separatorClassName }: ToolbarContentProps) {
           {groupIndex < groups.length - 1 && (
             <Separator
               orientation="vertical"
-              className={cn("s-my-1", separatorClassName)}
+              className={cn("my-1", separatorClassName)}
             />
           )}
         </React.Fragment>

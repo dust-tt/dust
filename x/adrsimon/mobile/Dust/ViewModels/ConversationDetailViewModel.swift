@@ -78,6 +78,14 @@ final class ConversationDetailViewModel: ObservableObject {
         turn?.snapshot.completedSteps ?? []
     }
 
+    /// The agent used in the conversation's latest agent message, so the input bar can target it.
+    var currentAgentId: String? {
+        for message in messages.reversed() {
+            if case let .agent(agentMsg) = message { return agentMsg.configuration.sId }
+        }
+        return nil
+    }
+
     /// Overlays the streaming message with its live snapshot until finalize commits it.
     func renderMessage(_ message: ConversationMessage) -> ConversationMessage {
         guard case let .agent(agent) = message,
@@ -161,7 +169,16 @@ final class ConversationDetailViewModel: ObservableObject {
     // MARK: - Mark as Read
 
     private func markAsRead() {
-        guard conversation.unread else { return }
+        // `actionRequired` conversations also surface in the unread inbox; the server's
+        // read:true path self-heals a stale actionRequired flag, so mark those too.
+        guard conversation.unread || conversation.actionRequired else { return }
+
+        // Optimistically clear the list's unread indicator right away.
+        NotificationCenter.default.post(
+            name: .conversationDidMarkRead,
+            object: nil,
+            userInfo: [ConversationReadNotification.conversationIdKey: conversation.sId]
+        )
 
         markAsReadTask = Task { [weak self] in
             guard let self else { return }

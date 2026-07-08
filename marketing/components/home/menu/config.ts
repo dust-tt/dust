@@ -75,7 +75,7 @@ const LegalMenuConfig: MenuConfig = {
     },
     {
       title: "Trust Center",
-      href: "https://app.vanta.com/dust.tt/trust/f3ytzxpay31bwsiyuqjto",
+      href: "https://trust.dust.com",
       isExternal: true,
     },
     {
@@ -263,7 +263,7 @@ const ExploreMenuConfig: MenuConfig = {
       isExternal: true,
     },
     {
-      title: "Webinars",
+      title: "Online Events",
       href: "https://app.getcontrast.io/dust",
       isExternal: true,
     },
@@ -494,7 +494,7 @@ export const menuConfig: DocsConfig = {
         },
         {
           title: "Trust Center",
-          href: "https://app.vanta.com/dust.tt/trust/f3ytzxpay31bwsiyuqjto",
+          href: "https://trust.dust.com",
           isExternal: true,
         },
         {

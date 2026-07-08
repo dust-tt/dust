@@ -24,6 +24,7 @@ import {
 } from "@app/components/poke/subscriptions/table";
 import { TriggerDataTable } from "@app/components/poke/triggers/table";
 import { WebhookSourceDataTable } from "@app/components/poke/webhook_sources/table";
+import { WorkspaceMetadataTab } from "@app/components/poke/workspace/MetadataTab";
 import { WorkspaceInfoTable } from "@app/components/poke/workspace/table";
 import { useWorkspace } from "@app/lib/auth/AuthContext";
 import { useSubmitFunction } from "@app/lib/client/utils";
@@ -141,6 +142,7 @@ export function WorkspacePage() {
     defaultAlerts,
     programmaticCreditState,
     programmaticWarningReached,
+    seatPlan,
     stripeSubscription,
     stripeCustomerId,
     subscriptions,
@@ -252,6 +254,7 @@ export function WorkspacePage() {
                   programmaticUsageConfig={programmaticUsageConfig}
                   hasMetronomeBillingFeature={hasMetronomeFeature}
                   stripeCustomerId={stripeCustomerId}
+                  seatPlan={seatPlan}
                 />
               </TabsContent>
               <TabsContent value="planlimitations">
@@ -275,6 +278,7 @@ export function WorkspacePage() {
             className="min-h-[1024px] w-full"
           >
             <TabsList>
+              <TabsTrigger value="metadata" label="Metadata" />
               <TabsTrigger value="agents" label="Agents" />
               <TabsTrigger value="apps" label="Apps" />
               <TabsTrigger value="datasources" label="Data Sources" />
@@ -293,6 +297,9 @@ export function WorkspacePage() {
               <TabsTrigger value="analytics" label="Analytics" />
             </TabsList>
 
+            <TabsContent value="metadata">
+              <WorkspaceMetadataTab owner={owner} />
+            </TabsContent>
             <TabsContent value="datasources">
               <DataSourceDataTable owner={owner} loadOnInit />
             </TabsContent>

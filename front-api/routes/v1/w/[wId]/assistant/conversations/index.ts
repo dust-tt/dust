@@ -19,6 +19,7 @@ import {
   addBackwardCompatibleConversationWithoutContentFields,
   normalizeConversationVisibility,
 } from "@app/lib/api/v1/backward_compatibility";
+import { isApiKeyCapped } from "@app/lib/metronome/api_key_block";
 import {
   isApiBlocked,
   isProgrammaticApiBlocked,
@@ -32,7 +33,7 @@ import {
   isContentFragmentInputWithContentNode,
   isContentFragmentInputWithFileId,
   isContentFragmentInputWithInlinedContent,
-} from "@app/types/api/internal/assistant";
+} from "@app/types/api/assistant";
 import type {
   AgenticMessageData,
   UserMessageContext,
@@ -40,7 +41,10 @@ import type {
 } from "@app/types/assistant/conversation";
 import { ConversationError } from "@app/types/assistant/conversation";
 import type { ContentFragmentType } from "@app/types/content_fragment";
-import { isInteractiveContentType } from "@app/types/files";
+import {
+  isInteractiveContentType,
+  isSandboxFunctionContentType,
+} from "@app/types/files";
 import { isCreditPricedPlan } from "@app/types/plan";
 import { isEmptyString } from "@app/types/shared/utils/general";
 import {
@@ -53,7 +57,6 @@ import { publicApiApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
-
 import conversation from "./[cId]";
 
 // Mounted at /api/v1/w/:wId/assistant/conversations.
@@ -174,6 +177,19 @@ app.post(
                 type: "rate_limit_error",
                 message:
                   "Your workspace has reached its programmatic monthly spending cap.",
+              },
+            });
+          }
+          // Per-API-key credit cap: block when this key's credit state is
+          // "capped" (driven by the Metronome per-key cap alert / reconcile).
+          const key = auth.key();
+          if (key && (await isApiKeyCapped(workspace.sId, key.id))) {
+            return apiError(ctx, {
+              status_code: 429,
+              api_error: {
+                type: "rate_limit_error",
+                message:
+                  "This API key has reached its credit spend limit. Please increase the limit in the Developers > API Keys section of the Dust dashboard.",
               },
             });
           }
@@ -518,7 +534,8 @@ app.post(
       message: newMessage ?? undefined,
       contentFragment:
         !newContentFragment ||
-        isInteractiveContentType(newContentFragment.contentType)
+        isInteractiveContentType(newContentFragment.contentType) ||
+        isSandboxFunctionContentType(newContentFragment.contentType)
           ? undefined
           : {
               ...newContentFragment,

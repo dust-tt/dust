@@ -1,10 +1,10 @@
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import activeUsers from "./active-users";
 import activeUsersExport from "./active-users-export";
+import agentCredits from "./agent-credits";
 import agentsExport from "./agents-export";
-import awuUsage from "./awu-usage";
 import awuUsageAnalytics from "./awu-usage-analytics";
-import metronomeUsage from "./metronome-usage";
+import exportTableRoute from "./export";
 import overview from "./overview";
 import programmaticCost from "./programmatic-cost";
 import programmaticCostExport from "./programmatic-cost-export";
@@ -20,6 +20,7 @@ import topAgents from "./top-agents";
 import topUsers from "./top-users";
 import usageMetrics from "./usage-metrics";
 import usageMetricsExport from "./usage-metrics-export";
+import userCredits from "./user-credits";
 import usersExport from "./users-export";
 
 // Mounted at /api/w/:wId/analytics. workspaceAuth is applied by the parent
@@ -28,10 +29,10 @@ const app = workspaceApp();
 
 app.route("/active-users-export", activeUsersExport);
 app.route("/active-users", activeUsers);
+app.route("/agent-credits", agentCredits);
 app.route("/agents-export", agentsExport);
-app.route("/awu-usage", awuUsage);
 app.route("/awu-usage-analytics", awuUsageAnalytics);
-app.route("/metronome-usage", metronomeUsage);
+app.route("/export", exportTableRoute);
 app.route("/overview", overview);
 app.route("/programmatic-cost-export", programmaticCostExport);
 app.route("/programmatic-cost", programmaticCost);
@@ -47,6 +48,7 @@ app.route("/top-agents", topAgents);
 app.route("/top-users", topUsers);
 app.route("/usage-metrics-export", usageMetricsExport);
 app.route("/usage-metrics", usageMetrics);
+app.route("/user-credits", userCredits);
 app.route("/users-export", usersExport);
 
 export default app;

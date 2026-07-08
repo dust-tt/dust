@@ -8,12 +8,9 @@ import { isDevelopment } from "@app/types/shared/env";
 // Metrics
 const DEV_METRIC_LLM_PROVIDER_COST_PROGRAMMATIC =
   "e02846b3-956c-48bc-9fd1-162061aed624";
-const DEV_METRIC_TOOL_INVOCATIONS = "1d18c447-ac86-4f68-be6a-d72e05291d46";
-const DEV_METRIC_LLM_PROVIDER_COST_AWU = "98a768d3-e3dd-423b-a97e-5ee348dc55b8";
-const DEV_METRIC_TOOL_INVOCATIONS_NON_FREE =
-  "85ec107d-5d69-40fe-ae72-914c39659d75";
-const DEV_METRIC_LLM_PROVIDER_COST_AWU_NON_FREE =
-  "933c7ee3-fd2d-40a6-8c4e-f6a93045a273";
+const DEV_METRIC_TOOL_INVOCATIONS_V2 = "ac310e71-f9a3-40b1-ba7c-82d781287e7d";
+const DEV_METRIC_LLM_PROVIDER_COST_AWU_V2 =
+  "5a94e956-cd7f-4e31-8720-194c76ebba44";
 
 // Products
 const DEV_PRODUCT_PROGRAMMATIC_USAGE = "daaf92ec-d0a7-444d-972e-a2d48c7edd0c";
@@ -23,14 +20,6 @@ const DEV_PRODUCT_WORKSPACE_SEAT = "e1532e1d-4964-4656-b6db-070fafafc44c";
 const DEV_PRODUCT_PRO_SEAT = "db03586f-9e8d-4978-9a62-f51193182be3";
 const DEV_PRODUCT_MAX_SEAT = "51b4ea2f-c4ed-4903-aba6-486d0bf61ac0";
 const DEV_PRODUCT_FREE_SEAT = "e3302b51-66af-40ad-ac0e-544fc38ccfa9";
-const DEV_PRODUCT_MAU = "43db7690-939d-4a70-b4a4-b8ade43431f9";
-const DEV_PRODUCT_MAU_TIER_1 = "efe2988a-4f84-4857-a716-0185c28f3e92";
-const DEV_PRODUCT_MAU_TIER_2 = "a3ca48b5-8187-43ec-a692-eb45bb3f932e";
-const DEV_PRODUCT_MAU_TIER_3 = "291e1da9-dc34-485c-af82-0b4ceb55ad38";
-const DEV_PRODUCT_MAU_TIER_4 = "259e1c57-db52-4c58-aa13-c720f6894456";
-const DEV_PRODUCT_MAU_TIER_5 = "05c1195a-a482-4101-a060-7579ba704936";
-const DEV_PRODUCT_MAU_TIER_6 = "d617ee64-c74a-4a25-88ab-8be1bb6c780a";
-const DEV_PRODUCT_MAU_COMMIT = "ababd7de-376d-41c6-a7da-40088af94433";
 const DEV_PRODUCT_FREE_CREDITS = "04f41dd1-ba27-42e3-93d5-6121712a4b67";
 const DEV_PRODUCT_EXCESS_CREDITS = "7e74d48b-44be-4e9c-9543-7136e6da8d96";
 const DEV_PRODUCT_PREPAID_COMMIT = "5f4331b7-4bf6-488b-9a0c-51bd139ac91c";
@@ -47,10 +36,6 @@ const PROD_METRIC_LLM_PROVIDER_COST_PROGRAMMATIC =
 const PROD_METRIC_TOOL_INVOCATIONS = "5905f2d8-bb38-4593-9bfe-e71c48f6fe3b";
 const PROD_METRIC_LLM_PROVIDER_COST_AWU =
   "162e09b0-a40b-4b09-b7b1-97bb057e901e";
-const PROD_METRIC_TOOL_INVOCATIONS_NON_FREE =
-  "6ac97dd2-42a8-44b4-8b5e-9c1157baa349";
-const PROD_METRIC_LLM_PROVIDER_COST_AWU_NON_FREE =
-  "cba95808-1063-4324-a09c-9f5b104674fd";
 
 // Products
 const PROD_PRODUCT_PROGRAMMATIC_USAGE = "cb21a6da-9790-4ab4-bb2d-0a82d5fdf4f3";
@@ -60,14 +45,6 @@ const PROD_PRODUCT_WORKSPACE_SEAT = "5c2e2986-1305-4406-96a2-2296e66b5a25";
 const PROD_PRODUCT_PRO_SEAT = "19934ee2-fcf4-40a2-a57a-24f75b0c2b22";
 const PROD_PRODUCT_MAX_SEAT = "8a92cf6a-8e0b-416c-9b46-9c715eff0c89";
 const PROD_PRODUCT_FREE_SEAT = "198511a4-2b27-44b3-b1d1-9839ae6c2b23";
-const PROD_PRODUCT_MAU = "7715e34d-3ec3-475e-b0eb-3d04578a958b";
-const PROD_PRODUCT_MAU_TIER_1 = "d35bf462-98a8-4d3b-8e01-876c7bf6fc57";
-const PROD_PRODUCT_MAU_TIER_2 = "829f5d32-d2ae-4a3a-bb64-0e2630857abc";
-const PROD_PRODUCT_MAU_TIER_3 = "b6e53edc-0d60-43b3-8398-25ce277b276f";
-const PROD_PRODUCT_MAU_TIER_4 = "c6a30c0b-e4e9-4433-a7fa-380dd80da245";
-const PROD_PRODUCT_MAU_TIER_5 = "d4298ee0-7cb6-4bb2-9e3a-a26c19b93b22";
-const PROD_PRODUCT_MAU_TIER_6 = "fea4cf80-90ee-499d-85d1-4c9ea8a48224";
-const PROD_PRODUCT_MAU_COMMIT = "3f6f42d2-149a-4d9c-bbd1-5add7e7ee5c2";
 const PROD_PRODUCT_FREE_CREDITS = "7379999c-5492-4e68-968f-345a26f6da63";
 const PROD_PRODUCT_EXCESS_CREDITS = "26f0023b-e123-4154-a82d-104451fba068";
 const PROD_PRODUCT_PREPAID_COMMIT = "1408c9fc-dea1-4269-bd6d-1bc0aa1f1218";
@@ -78,9 +55,10 @@ const PROD_PRODUCT_SEAT_SUBSCRIPTION_COMMIT =
 
 // --- Credit type IDs (stable across envs unless noted) ---
 
-// USD and EUR are the same in sandbox and production.
+// USD, EUR and GBP are the same in sandbox and production.
 export const CREDIT_TYPE_USD_ID = "2714e483-4ff1-48e4-9e25-ac732e8f24f2";
 export const CREDIT_TYPE_EUR_ID = "58f0be15-cc47-4220-bdaf-072ab0e44f96";
+export const CREDIT_TYPE_GBP_ID = "0f99b795-a801-4653-ad4b-b99922be625d";
 
 export const PLAN_CODE_CUSTOM_FIELD_KEY = "DUST_PLAN_CODE";
 
@@ -90,6 +68,17 @@ export const PLAN_CODE_CUSTOM_FIELD_KEY = "DUST_PLAN_CODE";
 export const PAYMENT_GATE_TYPE_CUSTOM_FIELD_KEY = "DUST_PAYMENT_GATE_TYPE";
 export const PAYMENT_GATE_TYPE_SUBSCRIPTION_ACTIVATION =
   "subscription_activation";
+
+// Custom field stamped on contracts whose corresponding DB subscription row
+// is created synchronously by the calling code right after provisioning the
+// contract (e.g. `provisionCreditPricedFreePlan`), instead of relying on this
+// webhook to do it. Without this, the synchronous write and contract.start's
+// own subscription-swap logic can both read the workspace's active
+// subscription concurrently and each end it + insert a new active row,
+// leaving the workspace with two active subscriptions. The contract.start
+// webhook checks this field and skips its subscription swap entirely when set.
+export const SUBSCRIPTION_SWAP_HANDLED_INLINE_CUSTOM_FIELD_KEY =
+  "DUST_SUBSCRIPTION_SWAP_INLINE";
 
 // Custom field stamped on every seat-style product (Workspace / Pro / Max /
 // Free / future seat tiers). Value is the membership seat type ("workspace"
@@ -139,12 +128,14 @@ export type ContractCreditType =
 // the balance left at the transition from their expiration ledger entry, and
 // re-grants it on the successor contract (see `carryOverContractBalancesOnRenewal`).
 //
-// The field VALUE is either `CARRY_ON_RENEWAL_FOREVER_VALUE` (the entry never
-// expires and carries indefinitely) or an ISO timestamp (a finite expiry).
-// Metronome clamps a commit's live access window to the contract end when a
-// RENEWAL ends the source, so by the time the webhook runs the original expiry
-// is gone — we stamp it here so it survives. The carried grant re-stamps the
-// same value, preserving the policy across any number of renewals.
+// The field VALUE is an ISO timestamp (the entry's absolute expiry, one year
+// after its start — see `oneYearAfter`). Legacy entries may instead carry
+// `CARRY_ON_RENEWAL_FOREVER_VALUE` (never expires); the carry-over reader treats
+// any non-date value as forever. Metronome clamps a commit's live access window
+// to the contract end when a RENEWAL ends the source, so by the time the webhook
+// runs the original expiry is gone — we stamp it here so it survives. The
+// carried grant re-stamps the same value, preserving the expiry across any
+// number of renewals.
 //
 // This replaces Metronome's `rollover_fraction`: a rolled-over commit becomes a
 // "rollover" commit, and Metronome consumes rollover commits before all prepaid
@@ -157,7 +148,21 @@ export const CARRY_ON_RENEWAL_CUSTOM_FIELD_KEY = "DUST_CARRY_ON_RENEWAL";
 
 export const CARRY_ON_RENEWAL_FOREVER_VALUE = "forever";
 
+// Custom fields stamped on AWU pool commits (admin grants via
+// `grantAwuCreditsPlugin` and self-serve top-ups via `addPaymentGatedCommitToContract`)
+// for finance reconciliation against the Stripe invoice Metronome generates.
+export const AWU_PURCHASE_ORDER_ID_CUSTOM_FIELD_KEY = "DUST_PURCHASE_ORDER_ID";
+export const AWU_AMOUNT_CUSTOM_FIELD_KEY = "DUST_AWU_AMOUNT";
+export const AWU_DISCOUNT_PERCENT_CUSTOM_FIELD_KEY =
+  "DUST_AWU_DISCOUNT_PERCENT";
+
 export const FOREVER_ENDING_BEFORE = new Date("2999-01-01T00:00:00.000Z");
+
+export function oneYearAfter(start: Date): Date {
+  const end = new Date(start);
+  end.setUTCFullYear(end.getUTCFullYear() + 1);
+  return end;
+}
 
 // Custom field stamped on a per-user (free) seat credit, carrying the seat's
 // user sId. Metronome alerts can filter on custom fields but not on a credit's
@@ -203,6 +208,15 @@ export const USAGE_TYPE_FREE = "free";
 // Must be registered in Metronome before it can be stamped.
 export const HUBSPOT_DEAL_ID_CUSTOM_FIELD_KEY = "HUBSPOT_DEAL_ID";
 
+// Custom field key stamped on a (future-dated) contract by the legacy → Business
+// migration. Its presence tells the `contract.start` webhook to, at activation
+// time, convert the workspace's remaining convertible legacy credits to AWU and
+// grant the per-user free AWU bonus. The value is the free AWU granted per
+// workspace member (a stringified integer). Must be registered in Metronome
+// before it can be stamped.
+export const LEGACY_CREDIT_MIGRATION_CUSTOM_FIELD_KEY =
+  "DUST_LEGACY_CREDIT_MIGRATION";
+
 // Suffix appended to the annual variant of each seat product name in
 // Metronome (e.g. "Pro Seat (Yearly)"). Used by the setup script when
 // declaring products and by the UI to strip the suffix from displayed seat
@@ -223,6 +237,7 @@ export const PROD_CREDIT_TYPE_PROG_USD_ID =
 export const CURRENCY_TO_CREDIT_TYPE_ID: Record<string, string> = {
   usd: CREDIT_TYPE_USD_ID,
   eur: CREDIT_TYPE_EUR_ID,
+  gbp: CREDIT_TYPE_GBP_ID,
 };
 
 // --- Accessors ---
@@ -244,21 +259,11 @@ export const getMetricLlmProviderCostProgrammaticId = () =>
     PROD_METRIC_LLM_PROVIDER_COST_PROGRAMMATIC
   );
 export const getMetricToolInvocationsId = () =>
-  devOrProd(DEV_METRIC_TOOL_INVOCATIONS, PROD_METRIC_TOOL_INVOCATIONS);
+  devOrProd(DEV_METRIC_TOOL_INVOCATIONS_V2, PROD_METRIC_TOOL_INVOCATIONS);
 export const getMetricLlmProviderCostAwuId = () =>
   devOrProd(
-    DEV_METRIC_LLM_PROVIDER_COST_AWU,
+    DEV_METRIC_LLM_PROVIDER_COST_AWU_V2,
     PROD_METRIC_LLM_PROVIDER_COST_AWU
-  );
-export const getMetricToolInvocationsNonFreeId = () =>
-  devOrProd(
-    DEV_METRIC_TOOL_INVOCATIONS_NON_FREE,
-    PROD_METRIC_TOOL_INVOCATIONS_NON_FREE
-  );
-export const getMetricLlmProviderCostAwuNonFreeId = () =>
-  devOrProd(
-    DEV_METRIC_LLM_PROVIDER_COST_AWU_NON_FREE,
-    PROD_METRIC_LLM_PROVIDER_COST_AWU_NON_FREE
   );
 
 // Products
@@ -276,10 +281,6 @@ export const getProductMaxSeatId = () =>
   devOrProd(DEV_PRODUCT_MAX_SEAT, PROD_PRODUCT_MAX_SEAT);
 export const getProductFreeSeatId = () =>
   devOrProd(DEV_PRODUCT_FREE_SEAT, PROD_PRODUCT_FREE_SEAT);
-export const getProductMauId = () =>
-  devOrProd(DEV_PRODUCT_MAU, PROD_PRODUCT_MAU);
-export const getProductMauCommitId = () =>
-  devOrProd(DEV_PRODUCT_MAU_COMMIT, PROD_PRODUCT_MAU_COMMIT);
 export const getProductFreeCreditId = () =>
   devOrProd(DEV_PRODUCT_FREE_CREDITS, PROD_PRODUCT_FREE_CREDITS);
 export const getProductExcessCreditsId = () =>
@@ -322,22 +323,10 @@ export const PRO_SEAT_MONTHLY_AWU_CREDITS = 8000;
 export const MAX_SEAT_MONTHLY_AWU_CREDITS = 40000;
 
 // Seat commit/credit priorities
-export const SEAT_PRIORITY_SUBSCRIPTION_COMMIT = 300;
+export const SEAT_PRIORITY_SUBSCRIPTION_COMMIT = 200;
 export const SEAT_PRIORITY_COUPON_CREDIT = 300;
 
 // 80% threshold for near-limit warnings: applies to both cap consumption
 // (consumed ≥ 80% of effectiveCapAwuCredits) and seat depletion (≤ 20%
 // remaining = 80% used).
 export const NEAR_LIMIT_FRACTION = 0.8;
-
-// tier product accessors — ordered array for indexed access.
-export const MAX_MAU_TIERS = 6;
-
-export const getProductMauTierIds = (): string[] => [
-  devOrProd(DEV_PRODUCT_MAU_TIER_1, PROD_PRODUCT_MAU_TIER_1),
-  devOrProd(DEV_PRODUCT_MAU_TIER_2, PROD_PRODUCT_MAU_TIER_2),
-  devOrProd(DEV_PRODUCT_MAU_TIER_3, PROD_PRODUCT_MAU_TIER_3),
-  devOrProd(DEV_PRODUCT_MAU_TIER_4, PROD_PRODUCT_MAU_TIER_4),
-  devOrProd(DEV_PRODUCT_MAU_TIER_5, PROD_PRODUCT_MAU_TIER_5),
-  devOrProd(DEV_PRODUCT_MAU_TIER_6, PROD_PRODUCT_MAU_TIER_6),
-];

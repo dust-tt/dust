@@ -26,7 +26,7 @@ const MAX_ATTACHMENT_SIZE_BYTES = 3 * 1024 * 1024; // 3MB — Graph API inline a
 async function fetchAttachment(
   auth: ToolHandlerExtra["auth"],
   attachmentFilePath: string | undefined,
-  agentLoopContext: ToolHandlerExtra["agentLoopContext"]
+  toolContext: ToolHandlerExtra["toolContext"]
 ): Promise<
   | Ok<{ buffer: Buffer; filename: string; contentType: string } | null>
   | Err<MCPError>
@@ -35,14 +35,14 @@ async function fetchAttachment(
     return new Ok(null);
   }
 
-  if (!agentLoopContext) {
+  if (!toolContext) {
     return new Err(new MCPError("No agent context available"));
   }
 
   const fileResult = await getFileFromConversationAttachment(
     auth,
     attachmentFilePath,
-    agentLoopContext
+    toolContext
   );
 
   if (fileResult.isErr()) {
@@ -218,15 +218,15 @@ interface OutlookContact {
   officeLocation?: string;
 }
 
-interface OutlookFileAttachment {
-  "@odata.type": string;
-  id: string;
-  name: string;
-  contentType: string;
-  size: number;
-  isInline?: boolean;
-  contentBytes?: string; // Standard base64-encoded content
-}
+const OutlookFileAttachmentSchema = z.object({
+  "@odata.type": z.string(),
+  id: z.string(),
+  name: z.string(),
+  contentType: z.string(),
+  size: z.number(),
+  isInline: z.boolean().optional(),
+  contentBytes: z.string().optional(),
+});
 
 const OutlookFolderSchema = z.object({
   id: z.string(),
@@ -814,7 +814,7 @@ function validateMailParams({
 const handlers: ToolHandlers<typeof OUTLOOK_TOOLS_METADATA> = {
   get_messages: async (
     { search, folderName, top = 10, skip = 0, select, sharedMailboxAddress },
-    { authInfo, auth, agentLoopContext }
+    { authInfo, auth, toolContext }
   ) => {
     const accessToken = authInfo?.token;
     if (!accessToken) {
@@ -841,10 +841,7 @@ const handlers: ToolHandlers<typeof OUTLOOK_TOOLS_METADATA> = {
       folderId = resolved.folderId;
     }
 
-    const allowedLabels = await getAllowedLabelsForMCPServer(
-      auth,
-      agentLoopContext
-    );
+    const allowedLabels = await getAllowedLabelsForMCPServer(auth, toolContext);
 
     if (allowedLabels.length > 0) {
       // Two parallel requests:
@@ -1095,6 +1092,183 @@ const handlers: ToolHandlers<typeof OUTLOOK_TOOLS_METADATA> = {
     ]);
   },
 
+  list_attachments: async (
+    { messageId, includeInline, sharedMailboxAddress },
+    { authInfo }
+  ) => {
+    const accessToken = authInfo?.token;
+    if (!accessToken) {
+      return new Err(new MCPError("Authentication required"));
+    }
+
+    const basePath = getMailboxBasePath(sharedMailboxAddress);
+    const encodedMessageId = encodeURIComponent(messageId);
+
+    const response = await fetchFromOutlook(
+      `${basePath}/messages/${encodedMessageId}/attachments?$select=id,name,contentType,size,isInline`,
+      accessToken,
+      { method: "GET" }
+    );
+
+    if (!response.ok) {
+      const errorText = await getErrorText(response);
+      if (response.status === 404) {
+        return new Err(
+          new MCPError(`Message not found: ${messageId}`, { tracked: false })
+        );
+      }
+      return new Err(
+        new MCPError(
+          `Failed to list attachments: ${response.status} ${response.statusText} - ${errorText}`
+        )
+      );
+    }
+
+    const result = await response.json();
+    const parsedAttachments = z
+      .array(OutlookFileAttachmentSchema)
+      .safeParse(result.value ?? []);
+    if (!parsedAttachments.success) {
+      return new Err(
+        new MCPError("Unexpected attachments response from Outlook")
+      );
+    }
+    const allAttachments = parsedAttachments.data;
+
+    const fileAttachments = allAttachments
+      .filter((a) => a["@odata.type"] === "#microsoft.graph.fileAttachment")
+      .filter((a) => includeInline || !a.isInline);
+
+    return new Ok([
+      {
+        type: "text" as const,
+        text: JSON.stringify(
+          {
+            count: fileAttachments.length,
+            attachments: fileAttachments.map((a) => ({
+              id: a.id,
+              name: a.name,
+              contentType: a.contentType,
+              size: a.size,
+              isInline: a.isInline ?? false,
+            })),
+          },
+          null,
+          2
+        ),
+      },
+    ]);
+  },
+
+  get_attachment: async (
+    { messageId, attachmentId, sharedMailboxAddress },
+    { authInfo }
+  ) => {
+    const accessToken = authInfo?.token;
+    if (!accessToken) {
+      return new Err(new MCPError("Authentication required"));
+    }
+
+    const basePath = getMailboxBasePath(sharedMailboxAddress);
+    const encodedMessageId = encodeURIComponent(messageId);
+    const encodedAttachmentId = encodeURIComponent(attachmentId);
+
+    // Fetch attachment metadata (includes contentBytes for files ≤4MB).
+    const metaResponse = await fetchFromOutlook(
+      `${basePath}/messages/${encodedMessageId}/attachments/${encodedAttachmentId}`,
+      accessToken,
+      { method: "GET" }
+    );
+
+    if (!metaResponse.ok) {
+      const errorText = await getErrorText(metaResponse);
+      if (metaResponse.status === 404) {
+        return new Err(
+          new MCPError(`Attachment not found: ${attachmentId}`, {
+            tracked: false,
+          })
+        );
+      }
+      return new Err(
+        new MCPError(
+          `Failed to get attachment: ${metaResponse.status} ${metaResponse.statusText} - ${errorText}`
+        )
+      );
+    }
+
+    const parsedAttachment = OutlookFileAttachmentSchema.safeParse(
+      await metaResponse.json()
+    );
+    if (!parsedAttachment.success) {
+      return new Err(
+        new MCPError("Unexpected attachment response from Outlook")
+      );
+    }
+    const attachment = parsedAttachment.data;
+
+    if (attachment["@odata.type"] !== "#microsoft.graph.fileAttachment") {
+      return new Err(
+        new MCPError(
+          `Attachment ${attachmentId} is not a file attachment (type: ${attachment["@odata.type"]})`
+        )
+      );
+    }
+
+    const filename = attachment.name || "unnamed";
+    const mimeType = attachment.contentType || "application/octet-stream";
+    let buffer: Buffer;
+
+    if (attachment.contentBytes) {
+      buffer = Buffer.from(attachment.contentBytes, "base64");
+    } else {
+      // Large attachment (>4MB) — Graph API omits contentBytes; download via $value.
+      const valueResponse = await fetchFromOutlook(
+        `${basePath}/messages/${encodedMessageId}/attachments/${encodedAttachmentId}/$value`,
+        accessToken,
+        { method: "GET" }
+      );
+
+      if (!valueResponse.ok) {
+        const errorText = await getErrorText(valueResponse);
+        return new Err(
+          new MCPError(
+            `Failed to download attachment content: ${valueResponse.status} ${valueResponse.statusText} - ${errorText}`
+          )
+        );
+      }
+
+      const arrayBuffer = await valueResponse.arrayBuffer();
+      buffer = Buffer.from(arrayBuffer);
+    }
+
+    const result = await processAttachment({
+      mimeType,
+      filename,
+      extractText: async () => extractTextFromBuffer(buffer, mimeType),
+      downloadContent: async () => new Ok(buffer),
+    });
+
+    if (result.isErr()) {
+      return result;
+    }
+
+    // Add a resource block so the file can be referenced by other tools (e.g. upload to OneDrive).
+    const hasResource = result.value.some((c) => c.type === "resource");
+    if (!hasResource) {
+      result.value.push({
+        type: "resource" as const,
+        resource: {
+          blob: buffer.toString("base64"),
+          _meta: { text: `Attachment: ${sanitizeFilename(filename)}` },
+          mimeType,
+          uri: sanitizeFilename(filename),
+        },
+      });
+    }
+
+    return new Ok(result.value);
+  },
+
   get_attachments: async (
     { messageId, sharedMailboxAddress },
     { authInfo }
@@ -1129,7 +1303,15 @@ const handlers: ToolHandlers<typeof OUTLOOK_TOOLS_METADATA> = {
     }
 
     const listResult = await listResponse.json();
-    const attachments = (listResult.value ?? []) as OutlookFileAttachment[];
+    const parsedList = z
+      .array(OutlookFileAttachmentSchema)
+      .safeParse(listResult.value ?? []);
+    if (!parsedList.success) {
+      return new Err(
+        new MCPError("Unexpected attachments response from Outlook")
+      );
+    }
+    const attachments = parsedList.data;
 
     // Filter to file attachments only (skip itemAttachment, referenceAttachment)
     const fileAttachments = attachments.filter(
@@ -1300,7 +1482,7 @@ const handlers: ToolHandlers<typeof OUTLOOK_TOOLS_METADATA> = {
       sharedMailboxAddress,
       attachmentFilePath,
     },
-    { authInfo, auth, agentLoopContext }
+    { authInfo, auth, toolContext }
   ) => {
     const accessToken = authInfo?.token;
     if (!accessToken) {
@@ -1310,7 +1492,7 @@ const handlers: ToolHandlers<typeof OUTLOOK_TOOLS_METADATA> = {
     const attachmentResult = await fetchAttachment(
       auth,
       attachmentFilePath,
-      agentLoopContext
+      toolContext
     );
     if (attachmentResult.isErr()) {
       return attachmentResult;
@@ -1414,7 +1596,7 @@ const handlers: ToolHandlers<typeof OUTLOOK_TOOLS_METADATA> = {
       replyAll = false,
       attachmentFilePath,
     },
-    { authInfo, auth, agentLoopContext }
+    { authInfo, auth, toolContext }
   ) => {
     const accessToken = authInfo?.token;
     if (!accessToken) {
@@ -1434,7 +1616,7 @@ const handlers: ToolHandlers<typeof OUTLOOK_TOOLS_METADATA> = {
     const attachmentResult = await fetchAttachment(
       auth,
       attachmentFilePath,
-      agentLoopContext
+      toolContext
     );
     if (attachmentResult.isErr()) {
       return attachmentResult;

@@ -30,6 +30,15 @@ export const RunPage = () => {
         return;
       }
 
+      // When agentId is provided, navigate to a new conversation page with the
+      // agent pre-selected in the input bar via the ?agent= query param.
+      if (params.agentId && workspace) {
+        await navigate(
+          `/w/${workspace.sId}/conversation/new?agent=${params.agentId}`
+        );
+        return;
+      }
+
       const files = await fileUploaderService.uploadContentTab({
         includeContent: params.includeContent,
         includeCapture: params.includeCapture,

@@ -21,6 +21,7 @@ import {
   buildReplyBody,
   createThreadingHeaders,
   decodeMessageBody,
+  encodeEmailAddressHeader,
   encodeMessageForGmail,
   encodeSubject,
   extractAttachments,
@@ -93,10 +94,14 @@ function buildAndEncodeEmail(params: {
   let messageLines: string[];
 
   const commonLines = [
-    `To: ${params.to.join(", ")}`,
-    params.from ? `From: ${params.from}` : null,
-    params.cc?.length ? `Cc: ${params.cc.join(", ")}` : null,
-    params.bcc?.length ? `Bcc: ${params.bcc.join(", ")}` : null,
+    `To: ${params.to.map(encodeEmailAddressHeader).join(", ")}`,
+    params.from ? `From: ${encodeEmailAddressHeader(params.from)}` : null,
+    params.cc?.length
+      ? `Cc: ${params.cc.map(encodeEmailAddressHeader).join(", ")}`
+      : null,
+    params.bcc?.length
+      ? `Bcc: ${params.bcc.map(encodeEmailAddressHeader).join(", ")}`
+      : null,
     `Subject: ${encodedSubject}`,
   ].filter((line): line is string => line !== null);
 
@@ -204,11 +209,7 @@ async function buildReplyContext(params: {
   const headers = originalMessage.payload?.headers || [];
   const originalFrom = getHeaderValue(headers, "From");
   const originalDate = getHeaderValue(headers, "Date");
-  const rawBody = decodeMessageBody(originalMessage.payload);
-  const originalBody = unescape(rawBody)
-    .replace(/<[^>]*>/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
+  const decodedBody = decodeMessageBody(originalMessage.payload);
   const originalCc = getHeaderValue(headers, "Cc");
   const originalBcc = getHeaderValue(headers, "Bcc");
   const originalSubject = getHeaderValue(headers, "Subject") ?? null;
@@ -224,7 +225,8 @@ async function buildReplyContext(params: {
   const fullBody = buildReplyBody(
     params.body,
     "text/html",
-    originalBody,
+    decodedBody?.body ?? "",
+    decodedBody?.mimeType ?? "text/plain",
     originalDate,
     originalFrom
   );
@@ -258,7 +260,7 @@ async function buildReplyContext(params: {
 async function fetchAttachment(
   auth: ToolHandlerExtra["auth"],
   attachmentFilePath: string | undefined,
-  agentLoopContext: ToolHandlerExtra["agentLoopContext"]
+  toolContext: ToolHandlerExtra["toolContext"]
 ): Promise<
   | Ok<{ buffer: Buffer; filename: string; contentType: string } | null>
   | Err<MCPError>
@@ -267,14 +269,14 @@ async function fetchAttachment(
     return new Ok(null);
   }
 
-  if (!agentLoopContext) {
+  if (!toolContext) {
     return new Err(new MCPError("No agent context available"));
   }
 
   const fileResult = await getFileFromConversationAttachment(
     auth,
     attachmentFilePath,
-    agentLoopContext
+    toolContext
   );
 
   if (fileResult.isErr()) {
@@ -368,7 +370,7 @@ const handlers: ToolHandlers<typeof GMAIL_TOOLS_METADATA> = {
       replyToMessageId,
       attachmentFilePath,
     },
-    { authInfo, auth, agentLoopContext }
+    { authInfo, auth, toolContext }
   ) => {
     const accessToken = authInfo?.token;
     if (!accessToken) {
@@ -402,7 +404,7 @@ const handlers: ToolHandlers<typeof GMAIL_TOOLS_METADATA> = {
     const attachmentResult = await fetchAttachment(
       auth,
       attachmentFilePath,
-      agentLoopContext
+      toolContext
     );
     if (attachmentResult.isErr()) {
       return attachmentResult;
@@ -623,7 +625,7 @@ const handlers: ToolHandlers<typeof GMAIL_TOOLS_METADATA> = {
         const date = getHeaderValue(headers, "Date");
         const subject = getHeaderValue(headers, "Subject");
         const body = unescape(
-          decodeMessageBody(message.payload)
+          (decodeMessageBody(message.payload)?.body ?? "")
             .replace(/<[^>]*>/g, " ")
             .replace(/\s+/g, " ")
             .trim()
@@ -779,7 +781,7 @@ const handlers: ToolHandlers<typeof GMAIL_TOOLS_METADATA> = {
         const date = getHeaderValue(headers, "Date");
 
         // Decode the full email body
-        const body = decodeMessageBody(messageData.payload);
+        const body = decodeMessageBody(messageData.payload)?.body ?? "";
 
         // Extract attachment metadata
         const attachments = includeAttachments
@@ -981,7 +983,7 @@ const handlers: ToolHandlers<typeof GMAIL_TOOLS_METADATA> = {
       replyToMessageId,
       attachmentFilePath,
     },
-    { authInfo, auth, agentLoopContext }
+    { authInfo, auth, toolContext }
   ) => {
     const accessToken = authInfo?.token;
     if (!accessToken) {
@@ -1014,7 +1016,7 @@ const handlers: ToolHandlers<typeof GMAIL_TOOLS_METADATA> = {
     const attachmentResult = await fetchAttachment(
       auth,
       attachmentFilePath,
-      agentLoopContext
+      toolContext
     );
     if (attachmentResult.isErr()) {
       return attachmentResult;

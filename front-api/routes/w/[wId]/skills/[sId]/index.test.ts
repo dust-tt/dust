@@ -141,6 +141,38 @@ describe("GET /api/w/:wId/skills/:sId", () => {
     expect(data.skill.name).toBe("Test Skill");
   });
 
+  it("should hide instructions for a code-defined skill that has not opted in", async () => {
+    // Code-defined skills hide their prompt from the front-end by default; only
+    // skills that set exposeInstructions (e.g. docs/pptx/xlsx) surface it. Frames
+    // is intentionally kept opaque.
+    const { workspace } = await setupTest({ requestUserRole: "admin" });
+
+    const response = await getSkill(workspace, "frames");
+
+    expect(response.status).toBe(200);
+    const data = await response.json();
+    expect(data.skill.sId).toBe("frames");
+    expect(data.skill.instructions).toBeNull();
+    expect(data.skill.instructionsHtml).toBeNull();
+  });
+
+  it("should expose instructions for an opted-in code-defined skill", async () => {
+    // pptx sets exposeInstructions: true, so its prompt is surfaced on the detail
+    // fetch as plain markdown (instructionsHtml stays null).
+    const { workspace } = await setupTest({
+      requestUserRole: "admin",
+    });
+
+    const response = await getSkill(workspace, "pptx");
+
+    expect(response.status).toBe(200);
+    const data = await response.json();
+    expect(data.skill.sId).toBe("pptx");
+    expect(typeof data.skill.instructions).toBe("string");
+    expect(data.skill.instructions.length).toBeGreaterThan(0);
+    expect(data.skill.instructionsHtml).toBeNull();
+  });
+
   it("should return child skills", async () => {
     const { workspace, skill, skillOwnerAuth } = await setupTest({
       requestUserRole: "admin",

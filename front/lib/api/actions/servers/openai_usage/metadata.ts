@@ -74,6 +74,8 @@ export const OPENAI_USAGE_TOOLS_METADATA = createToolsRecord({
       running: "Getting completions usage",
       done: "Get completions usage",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   get_organization_costs: {
     description:
@@ -120,6 +122,8 @@ export const OPENAI_USAGE_TOOLS_METADATA = createToolsRecord({
       running: "Getting organization costs",
       done: "Get organization costs",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
 });
 
@@ -127,17 +131,19 @@ export const OPENAI_USAGE_SERVER = {
   serverInfo: {
     name: "openai_usage",
     version: "1.0.0",
-    description: "Track API consumption and costs.",
+    description:
+      "Track OpenAI API consumption (token usage, model requests) and organization costs by project, API key, user, and model.",
     authorization: null,
     icon: "OpenaiLogo",
     documentationUrl: null,
-    instructions: null,
   },
   tools: Object.values(OPENAI_USAGE_TOOLS_METADATA).map((t) => ({
     name: t.name,
     description: t.description,
     inputSchema: zodToJsonSchema(z.object(t.schema)) as JSONSchema,
     displayLabels: t.displayLabels,
+    toolCostCategory: t.toolCostCategory,
+    freeUsage: t.freeUsage,
   })),
   tools_stakes: Object.fromEntries(
     Object.values(OPENAI_USAGE_TOOLS_METADATA).map((t) => [t.name, t.stake])

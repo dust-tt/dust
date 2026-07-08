@@ -20,10 +20,13 @@
     "migration:check": "node ../scripts/db/run-migrate.cjs --command check --execute",
     "migration:check:pre-deploy": "node ../scripts/db/run-migrate.cjs --command check-pre-deploy --execute",
     "migration:check:post-deploy": "node ../scripts/db/run-migrate.cjs --command check-post-deploy --execute",
+    "migration:mark:pre-deploy": "node ../scripts/db/run-migrate.cjs --command mark-pre-deploy --execute",
+    "migration:mark:post-deploy": "node ../scripts/db/run-migrate.cjs --command mark-post-deploy --execute",
     "tsgo": "tsgo"
   },
   "dependencies": {
-    "@anthropic-ai/sdk": "^0.100.1",
+    "@anthropic-ai/sdk": "^0.104.2",
+    "@novu/framework": "^2.11.1",
     "umzug": "3.8.3",
     "@hono/mcp": "^0.3.0",
     "@hono/node-server": "^1.19.10",

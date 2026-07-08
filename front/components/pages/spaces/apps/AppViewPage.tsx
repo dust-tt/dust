@@ -456,8 +456,8 @@ export function AppViewPage() {
         />
 
         {spec.length == 0 ? (
-          <div className="mx-auto mt-8 text-sm text-gray-400">
-            <p className="">Welcome to your new Dust app.</p>
+          <div className="mx-auto mt-8 text-sm text-muted-foreground">
+            <p>Welcome to your new Dust app.</p>
             <p className="mt-4">To get started, add your first block or:</p>
             <p className="mt-4">
               <Button

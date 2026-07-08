@@ -1,7 +1,10 @@
 import {
+  getInternalMCPServerMetadata,
   type InternalMCPServerNameType,
   isInternalMCPServerName,
 } from "@app/lib/actions/mcp_internal_actions/constants";
+import type { InternalMCPToolType } from "@app/lib/actions/mcp_internal_actions/tool_definition";
+import { TOOL_COST_CATEGORIES, type ToolCostCategory } from "@app/lib/api/mcp";
 import type { RunUsageType } from "@app/lib/resources/run_resource";
 import type { UserMessageOrigin } from "@app/types/assistant/conversation";
 import { createHash } from "crypto";
@@ -47,123 +50,44 @@ function truncatePropertyValue(value: string): string {
 }
 
 // ---------------------------------------------------------------------------
-// Tool category mapping
+// Tool category and billing info
 // ---------------------------------------------------------------------------
-// Basic: 1 AWU
-// Advanced: 3 AWU
-export const TOOL_CATEGORIES = ["basic", "advanced"] as const;
+// basic: 1 AWU, advanced: 3 AWU; freeUsage overrides to 0 AWU regardless of category
 
-export type ToolCategory = (typeof TOOL_CATEGORIES)[number];
+// Re-export from mcp so consumers can import from one place.
+export { TOOL_COST_CATEGORIES, type ToolCostCategory } from "@app/lib/api/mcp";
 
 // AWU price per tool invocation by category (1 AWU = $0.01). Canonical source
 // for both the Tool Usage rate-card prices (scripts/metronome_setup.ts) and the
 // runtime per-user AWU spend computation (per_user_usage.ts) — keep both in
 // sync by importing from here rather than redefining.
-export const TOOL_CATEGORY_AWU_WEIGHTS: Record<ToolCategory, number> = {
-  basic: 1,
-  advanced: 3,
-};
+export const TOOL_COST_CATEGORY_AWU_WEIGHTS: Record<ToolCostCategory, number> =
+  {
+    basic: 1,
+    advanced: 3,
+  };
 
-export function isToolCategory(value: string): value is ToolCategory {
-  return value in TOOL_CATEGORY_AWU_WEIGHTS;
+export function isToolCostCategory(value: string): value is ToolCostCategory {
+  return TOOL_COST_CATEGORIES.includes(value as ToolCostCategory);
 }
 
-// Exhaustive map — TypeScript will error if a new internal MCP server is added
-// without being categorized here.
-const TOOL_CATEGORY_MAP: Record<InternalMCPServerNameType, ToolCategory> = {
-  // Basic (1 AWU) — web search, orchestration, platform utilities.
-  "web_search_&_browse": "basic",
-  run_agent: "basic",
-  agent_router: "basic",
-  agent_sidekick_agent_state: "basic",
-  agent_sidekick_context: "basic",
-  agent_memory: "basic",
-  run_dust_app: "basic",
-  common_utilities: "basic",
-  toolsets: "basic",
-  user_mentions: "basic",
-  missing_action_catcher: "basic",
-  primitive_types_debugger: "basic",
-  jit_testing: "basic",
-  skill_authoring: "basic",
-  skill_management: "basic",
-  schedules_management: "basic",
-  pod_manager: "basic",
-  pod_tasks: "basic",
-  poke: "basic",
-  ask_user_question: "basic",
-  wakeups: "basic",
-  plan_mode: "basic",
-
-  // Advanced (3 AWU) — retrieval, MCP read/write, data warehouse, generation, sandbox
-  search: "advanced",
-  query_tables_v2: "advanced",
-  data_warehouses: "advanced",
-  data_sources_file_system: "advanced",
-  include_data: "advanced",
-  conversation_files: "advanced",
-  files: "advanced",
-  extract_data: "advanced",
-  http_client: "advanced",
-  sandbox: "advanced",
-  file_generation: "advanced",
-  image_generation: "advanced",
-  sound_studio: "advanced",
-  speech_generator: "advanced",
-  slideshow: "advanced",
-  interactive_content: "advanced",
-  confluence: "advanced",
-  databricks: "advanced",
-  exa_people_and_company: "advanced",
-  fathom: "advanced",
-  freshservice: "advanced",
-  github: "advanced",
-  gmail: "advanced",
-  google_calendar: "advanced",
-  google_drive: "advanced",
-  google_sheets: "advanced",
-  hubspot: "advanced",
-  jira: "advanced",
-  luma: "advanced",
-  microsoft_drive: "advanced",
-  microsoft_excel: "advanced",
-  microsoft_teams: "advanced",
-  monday: "advanced",
-  notion: "advanced",
-  openai_usage: "advanced",
-  workspace_analytics: "advanced",
-  outlook_calendar: "advanced",
-  outlook: "advanced",
-  productboard: "advanced",
-  salesforce: "advanced",
-  salesloft: "advanced",
-  slab: "advanced",
-  slack: "advanced",
-  slack_bot: "advanced",
-  snowflake: "advanced",
-  statuspage: "advanced",
-  ukg_ready: "advanced",
-  val_town: "advanced",
-  vanta: "advanced",
-  front: "advanced",
-  gong: "advanced",
-  zendesk: "advanced",
-  ashby: "advanced",
-  clari_copilot: "advanced",
-};
-
-export function getToolCategory(
-  internalMCPServerName: string | null
-): ToolCategory {
-  if (
-    !internalMCPServerName ||
-    !isInternalMCPServerName(internalMCPServerName)
-  ) {
-    // External MCP servers (user-configured remote servers) fall into advanced
-    // as "Custom MCP call".
-    return "advanced";
+export function getToolBillingInfo(
+  serverName: string | null,
+  toolName: string
+): { toolCostCategory: ToolCostCategory; freeUsage: boolean } {
+  if (!serverName || !isInternalMCPServerName(serverName)) {
+    // External MCP servers (user-configured remote servers) are always advanced.
+    return { toolCostCategory: "advanced", freeUsage: false };
   }
-  return TOOL_CATEGORY_MAP[internalMCPServerName];
+  const metadata = getInternalMCPServerMetadata(serverName);
+  const tool = (metadata.tools as InternalMCPToolType[]).find(
+    (t) => t.name === toolName
+  );
+  // Unknown tool on a known internal server — default to advanced, not free.
+  if (!tool) {
+    return { toolCostCategory: "advanced", freeUsage: false };
+  }
+  return { toolCostCategory: tool.toolCostCategory, freeUsage: tool.freeUsage };
 }
 
 // ---------------------------------------------------------------------------
@@ -172,26 +96,20 @@ export function getToolCategory(
 
 // Origins whose entire conversation is free (platform-assistive, not
 // user-requested output).
-export const FREE_ORIGINS: ReadonlySet<string> = new Set<string>([
-  "agent_sidekick",
-]);
+export const FREE_ORIGINS: ReadonlySet<UserMessageOrigin> =
+  new Set<UserMessageOrigin>(["agent_sidekick"]);
 
-// Internal MCP servers whose tool invocations are always free regardless of
-// the message-level usage type (platform plumbing, not user output).
-const FREE_TOOL_SERVERS: ReadonlySet<string> = new Set<string>([
-  "agent_router",
-  "common_utilities",
-  "toolsets",
-  "agent_memory",
-]);
+export function isFreeOrigin(origin: UserMessageOrigin | null): boolean {
+  if (origin == null) {
+    return false;
+  }
 
-export function isFreeOrigin(origin: string): boolean {
   return FREE_ORIGINS.has(origin);
 }
 
 export function getUsageType(
   isProgrammaticUsage: boolean,
-  origin: string
+  origin: UserMessageOrigin
 ): UsageType {
   if (isFreeOrigin(origin)) {
     return USAGE_TYPE_FREE;
@@ -199,25 +117,28 @@ export function getUsageType(
   return isProgrammaticUsage ? USAGE_TYPE_PROGRAMMATIC : USAGE_TYPE_USER;
 }
 
-// A tool invocation is always free (priced at 0 in the rate card) when its
-// internal MCP server is platform plumbing — see FREE_TOOL_SERVERS.
-export function isFreeToolServer(
-  internalMCPServerName: string | null
-): boolean {
-  return (
-    internalMCPServerName !== null &&
-    FREE_TOOL_SERVERS.has(internalMCPServerName)
-  );
-}
-
 function getToolUsageType(
   baseUsageType: UsageType,
-  internalMCPServerName: string | null
+  freeUsage: boolean
 ): UsageType {
-  if (isFreeToolServer(internalMCPServerName)) {
-    return USAGE_TYPE_FREE;
-  }
-  return baseUsageType;
+  return freeUsage ? USAGE_TYPE_FREE : baseUsageType;
+}
+
+// ---------------------------------------------------------------------------
+// Run key
+// ---------------------------------------------------------------------------
+
+// Identifies a single agent-loop execution by the set of dustRunIds it
+// produced. Same runIds → same key (so Metronome deduplicates retries and the
+// credit-cost recompute groups runs the same way); a new execution
+// (interrupt/resume) has different runIds → different key → additive billing.
+// The credit-cost flow ceils intelligence cost per key, exactly matching the
+// per-execution Metronome events.
+export function computeRunKey(dustRunIds: string[]): string {
+  return createHash("sha256")
+    .update([...dustRunIds].sort().join(","))
+    .digest("hex")
+    .slice(0, 8);
 }
 
 // ---------------------------------------------------------------------------
@@ -235,12 +156,21 @@ export function awuFromMicroUsd(microUsd: number): number {
   return Math.ceil(microUsd / 0.85 / 10_000);
 }
 
-// Intelligence (AI compute) credits for a set of run usages. Usages are
-// grouped by (providerId, modelId) and converted per group before summing —
-// this mirrors `buildLlmUsageEvents` so the total equals the billed amount.
+// Intelligence (AI compute) credits for a *single execution's* run usages.
+// Usages are grouped by (providerId, modelId) and converted per group before
+// summing — this mirrors the per-execution `buildLlmUsageEvents` event so the
+// total equals the billed amount for that execution. To get the message-level
+// total across interrupt/resume executions, use
+// `intelligenceAwuFromRunUsagesGroupedByRunKey` (which ceils per execution),
+// not this directly over the union of all runs.
 export function intelligenceAwuFromRunUsages(
-  runUsages: RunUsageType[]
+  runUsages: RunUsageType[],
+  contextOrigin: UserMessageOrigin | null
 ): number {
+  if (isFreeOrigin(contextOrigin)) {
+    return 0;
+  }
+
   const costByModel = new Map<string, number>();
   for (const usage of runUsages) {
     // Need this grouping to rightfully apply the Math.ceil in awuFromMicroUsd
@@ -255,24 +185,74 @@ export function intelligenceAwuFromRunUsages(
   return total;
 }
 
+// Synthetic group for run usages whose run has no runKey yet (legacy rows, or
+// non-agent-loop runs). They are summed together so behavior matches the old
+// single-ceil computation for them.
+const LEGACY_RUN_KEY = "__legacy__";
+
+// Intelligence credits for an agent message, ceiling per agent-loop execution
+// (runKey) to exactly match the per-execution Metronome events. Metronome emits
+// one additive event per execution (interrupt/resume → new runKey → new event),
+// each ceiling per (providerId, modelId). Ceiling over the union of executions
+// instead would undercount (`ceil(a) + ceil(b) >= ceil(a + b)`), so we group by
+// runKey first, ceil each group via `intelligenceAwuFromRunUsages`, then sum.
+export function intelligenceAwuFromRunUsagesGroupedByRunKey(
+  runUsages: (RunUsageType & { runKey: string | null })[],
+  contextOrigin: UserMessageOrigin | null
+): number {
+  if (isFreeOrigin(contextOrigin)) {
+    return 0;
+  }
+
+  const byRunKey = new Map<string, RunUsageType[]>();
+  for (const usage of runUsages) {
+    const key = usage.runKey ?? LEGACY_RUN_KEY;
+    const group = byRunKey.get(key) ?? [];
+    group.push(usage);
+    byRunKey.set(key, group);
+  }
+
+  let total = 0;
+  for (const group of byRunKey.values()) {
+    total += intelligenceAwuFromRunUsages(group, contextOrigin);
+  }
+  return total;
+}
+
 // Tool (platform action) credits for a set of executed actions. Each action
-// costs a fixed number of credits depending on its category (basic = 1,
-// advanced = 3), except free tools (FREE_TOOL_SERVERS, e.g. agent_memory) which
-// are priced at 0 in the rate card and therefore contribute nothing. Callers
-// should pass only final-status actions (matching the usage_queue extraction)
-// so this equals the billed amount.
+// costs a fixed number of credits depending on its credit cost category
+// (free = 0, basic = 1, advanced = 3). Callers should pass only final-status
+// actions (matching the usage_queue extraction) so this equals the billed amount.
 export function toolAwuFromActions(
-  actions: { internalMCPServerName: string | null }[]
+  actions: {
+    internalMCPServerName: InternalMCPServerNameType | null;
+    toolName: string;
+  }[],
+  contextOrigin: UserMessageOrigin | null
 ): number {
   return actions.reduce((total, action) => {
-    if (isFreeToolServer(action.internalMCPServerName)) {
-      return total;
-    }
-    return (
-      total +
-      TOOL_CATEGORY_AWU_WEIGHTS[getToolCategory(action.internalMCPServerName)]
-    );
+    return total + toolAwuFromAction(action, contextOrigin);
   }, 0);
+}
+
+export function toolAwuFromAction(
+  action: {
+    toolName: string;
+    internalMCPServerName: InternalMCPServerNameType | null;
+  },
+  contextOrigin: UserMessageOrigin | null
+): number {
+  if (isFreeOrigin(contextOrigin)) {
+    return 0;
+  }
+  const { toolCostCategory, freeUsage } = getToolBillingInfo(
+    action.internalMCPServerName,
+    action.toolName
+  );
+  if (freeUsage) {
+    return 0;
+  }
+  return TOOL_COST_CATEGORY_AWU_WEIGHTS[toolCostCategory];
 }
 
 // ---------------------------------------------------------------------------
@@ -482,10 +462,11 @@ export function buildToolUseEvents({
   }
 
   return [...groups.values()].map(({ action, count, totalDurationMs }) => {
-    const effectiveUsageType = getToolUsageType(
-      usageType,
-      action.internalMCPServerName
+    const { toolCostCategory, freeUsage } = getToolBillingInfo(
+      action.internalMCPServerName,
+      action.toolName
     );
+    const effectiveUsageType = getToolUsageType(usageType, freeUsage);
     return {
       transaction_id: truncateTransactionId(
         `tool3-${workspaceId}-${conversationId}-${agentMessageId}-${runKey}-${action.toolName}-${action.mcpServerId ?? ""}-${action.status}`
@@ -512,7 +493,7 @@ export function buildToolUseEvents({
         internal_mcp_server_name: truncatePropertyValue(
           action.internalMCPServerName ?? ""
         ),
-        tool_category: getToolCategory(action.internalMCPServerName),
+        tool_category: toolCostCategory,
         // Constant grouping key — used as presentation_group_key in Metronome to
         // aggregate all tool categories into a single "Tool Usage" invoice line.
         tool_group: "tools",

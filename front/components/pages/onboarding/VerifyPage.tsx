@@ -27,7 +27,7 @@ import type React from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { Country } from "react-phone-number-input";
 
-type Step = "captcha" | "phone" | "code" | "done";
+type Step = "captcha" | "phone" | "code" | "start-trial" | "done";
 
 export function VerifyPage() {
   const { workspace } = useAuth();
@@ -169,11 +169,45 @@ export function VerifyPage() {
       return;
     }
 
+    const data = await response.json();
+    if (data.status === "already_verified") {
+      setStep("start-trial");
+      return;
+    }
+
     lastAutoSubmittedCodeRef.current = null;
     setCode(Array(CODE_LENGTH).fill(""));
     setResendCooldown(RESEND_COOLDOWN_SECONDS);
     setStep("code");
   };
+
+  const activateTrial = useCallback(async () => {
+    const trialResponse = await clientFetch(
+      `/api/w/${workspace.sId}/trial/start`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+      }
+    );
+
+    if (!trialResponse.ok) {
+      const data = await trialResponse.json();
+      setPhoneError(data.api_error?.message ?? "Failed to start trial");
+      return;
+    }
+
+    // Revalidate the auth context so the SPA picks up the new subscription
+    // (canUseProduct is now true) and doesn't redirect back to /trial.
+    await mutateAuthContext();
+
+    // With the credit-priced checkout flow we show a welcome screen before
+    // entering the workspace instead of redirecting there directly.
+    if (isMetronomeCheckout) {
+      setStep("done");
+    } else {
+      goToWorkspace();
+    }
+  }, [workspace.sId, mutateAuthContext, isMetronomeCheckout, goToWorkspace]);
 
   const verifyCode = useCallback(
     async (fullCode: string) => {
@@ -202,44 +236,14 @@ export function VerifyPage() {
           return;
         }
 
-        const trialResponse = await clientFetch(
-          `/api/w/${workspace.sId}/trial/start`,
-          {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-          }
-        );
-
-        if (!trialResponse.ok) {
-          const data = await trialResponse.json();
-          setPhoneError(data.api_error?.message ?? "Failed to start trial");
-          return;
-        }
-
-        // Revalidate the auth context so the SPA picks up the new subscription
-        // (canUseProduct is now true) and doesn't redirect back to /trial.
-        await mutateAuthContext();
-
-        // With the credit-priced checkout flow we show a welcome screen before
-        // entering the workspace instead of redirecting there directly.
-        if (isMetronomeCheckout) {
-          setStep("done");
-        } else {
-          goToWorkspace();
-        }
+        await activateTrial();
       } catch {
         setPhoneError("Network error. Please try again.");
       } finally {
         setIsLoading(false);
       }
     },
-    [
-      phoneNumber,
-      workspace.sId,
-      mutateAuthContext,
-      isMetronomeCheckout,
-      goToWorkspace,
-    ]
+    [phoneNumber, workspace.sId, activateTrial]
   );
 
   const handleVerifyCode = useCallback(() => {
@@ -361,6 +365,24 @@ export function VerifyPage() {
           onStartBuilding={goToWorkspace}
         />
       );
+    case "start-trial":
+      return (
+        <StartTrialStep
+          error={phoneError}
+          isLoading={isLoading}
+          onActivate={async () => {
+            setIsLoading(true);
+            setPhoneError(null);
+            try {
+              await activateTrial();
+            } catch {
+              setPhoneError("Network error. Please try again.");
+            } finally {
+              setIsLoading(false);
+            }
+          }}
+        />
+      );
     case "captcha":
       return (
         <CaptchaStep
@@ -447,10 +469,10 @@ function PhoneInputStep({
           <Page.Vertical sizing="grow" gap="lg">
             {isMetronome ? (
               <div className="flex flex-col gap-2">
-                <h1 className="text-2xl font-bold text-foreground dark:text-foreground-night">
+                <h1 className="text-2xl font-bold text-foreground">
                   Verify your phone
                 </h1>
-                <p className="text-muted-foreground dark:text-muted-foreground-night">
+                <p className="text-muted-foreground">
                   We verify your number once to keep free credits fair. We won't
                   text you otherwise.
                 </p>
@@ -461,7 +483,7 @@ function PhoneInputStep({
                   title="Phone number"
                   icon={() => <DustLogoSquare className="-ml-11 h-10 w-32" />}
                 />
-                <p className="-mt-4 text-muted-foreground dark:text-muted-foreground-night">
+                <p className="-mt-4 text-muted-foreground">
                   To start your free trial, we need to verify your account with
                   an SMS code. <br />
                   Your number will only be used for this verification.
@@ -534,12 +556,12 @@ function CodeVerificationStep({
         <Page.Horizontal>
           <Page.Vertical sizing="grow" gap="lg">
             <div className="flex flex-col gap-2">
-              <h1 className="text-2xl font-bold text-foreground dark:text-foreground-night">
+              <h1 className="text-2xl font-bold text-foreground">
                 Enter verification code
               </h1>
-              <p className="text-muted-foreground dark:text-muted-foreground-night">
+              <p className="text-muted-foreground">
                 A verification code has been sent to{" "}
-                <span className="font-medium text-foreground dark:text-foreground-night">
+                <span className="font-medium text-foreground">
                   {maskedPhone}
                 </span>
               </p>
@@ -617,7 +639,7 @@ function CaptchaStep({
               title="Verify you're human"
               icon={() => <DustLogoSquare className="-ml-11 h-10 w-32" />}
             />
-            <p className="-mt-4 text-muted-foreground dark:text-muted-foreground-night">
+            <p className="-mt-4 text-muted-foreground">
               A quick check before we send your verification code.
             </p>
 
@@ -632,6 +654,40 @@ function CaptchaStep({
               />
               <p className="min-h-5 text-sm text-red-500">{error}</p>
             </div>
+          </Page.Vertical>
+        </Page.Horizontal>
+      </div>
+    </Page>
+  );
+}
+
+interface StartTrialStepProps {
+  error: string | null;
+  isLoading: boolean;
+  onActivate: () => void;
+}
+
+function StartTrialStep({ error, isLoading, onActivate }: StartTrialStepProps) {
+  return (
+    <Page>
+      <div className="flex h-full flex-col justify-center">
+        <Page.Horizontal>
+          <Page.Vertical sizing="grow" gap="lg">
+            <div className="flex flex-col gap-2">
+              <h1 className="text-2xl font-bold text-foreground">
+                Your phone number has already been verified.
+              </h1>
+              <p className="text-muted-foreground">
+                Click below to activate your free subscription.
+              </p>
+            </div>
+            <p className="min-h-5 text-sm text-red-500">{error}</p>
+            <Button
+              onClick={onActivate}
+              variant="primary"
+              label={isLoading ? "Activating..." : "Activate trial"}
+              disabled={isLoading}
+            />
           </Page.Vertical>
         </Page.Horizontal>
       </div>
@@ -654,12 +710,12 @@ function WelcomeStep({ credits, onStartBuilding }: WelcomeStepProps) {
             size="lg"
             className="text-highlight-500"
           />
-          <h1 className="text-4xl font-bold text-foreground dark:text-foreground-night">
+          <h1 className="text-4xl font-bold text-foreground">
             You're in. Welcome to Dust.
           </h1>
-          <p className="text-lg text-muted-foreground dark:text-muted-foreground-night">
+          <p className="text-lg text-muted-foreground">
             You've got{" "}
-            <span className="font-bold text-foreground dark:text-foreground-night">
+            <span className="font-bold text-foreground">
               {credits.toLocaleString()} credits
             </span>{" "}
             to explore, they never expire, so take your time. Let's put them to

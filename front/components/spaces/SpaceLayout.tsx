@@ -100,7 +100,7 @@ export function SpaceLayout({ children }: SpaceLayoutProps) {
               !canReadInSpace && space.kind !== "system" && (
                 <div>
                   <Chip
-                    color="rose"
+                    color="warning"
                     label="You are not a member of this space."
                     size="sm"
                     icon={InfoCircle}

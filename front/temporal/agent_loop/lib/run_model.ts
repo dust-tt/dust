@@ -1,25 +1,24 @@
 import { TOOL_NAME_SEPARATOR } from "@app/lib/actions/constants";
+import type { MCPToolConfigurationType } from "@app/lib/actions/mcp";
 import { buildToolSpecification } from "@app/lib/actions/mcp";
 import { tryListMCPTools } from "@app/lib/actions/mcp_actions";
 import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
-import { isHotMCPServerName } from "@app/lib/actions/mcp_internal_actions/constants";
 import { isJITMCPServerView } from "@app/lib/actions/mcp_internal_actions/utils";
 import type { StepContext } from "@app/lib/actions/types";
 import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
-import { isServerSideMCPServerConfigurationWithName } from "@app/lib/actions/types/guards";
+import {
+  isServerSideMCPServerConfiguration,
+  isServerSideMCPServerConfigurationWithName,
+  isServerSideMCPToolConfiguration,
+} from "@app/lib/actions/types/guards";
 import { computeStepContexts } from "@app/lib/actions/utils";
-import { getActiveDustDesktopClientSideMCPServerId } from "@app/lib/api/actions/mcp/dust_desktop";
+import { getAdvancedModelAccessErrorForAgentConfiguration } from "@app/lib/advanced_models/access";
 import { createClientSideMCPServerConfigurations } from "@app/lib/api/actions/mcp_client_side";
-import { getAgentConfigurationsForView } from "@app/lib/api/assistant/configuration/views";
 import { renderConversationForModel } from "@app/lib/api/assistant/conversation_rendering";
 import { categorizeConversationRenderErrorMessage } from "@app/lib/api/assistant/errors";
 import { constructPromptMultiActions } from "@app/lib/api/assistant/generation";
+import { buildToolsetsContext } from "@app/lib/api/assistant/global_agents/configurations/dust/dust";
 import {
-  buildMemoriesContext,
-  buildToolsetsContext,
-} from "@app/lib/api/assistant/global_agents/configurations/dust/dust";
-import {
-  globalAgentInjectsMemory,
   globalAgentInjectsToolsets,
   globalAgentInjectsUserContext,
   globalAgentInjectsWorkspaceContext,
@@ -38,6 +37,11 @@ import {
   emitAuditLogEventDirect,
 } from "@app/lib/api/audit/workos_audit";
 import { getStreamLLM } from "@app/lib/api/llm";
+import { ANTHROPIC_PROVIDER_ID } from "@app/lib/api/llm/clients/anthropic/types";
+import {
+  parseAnthropicToolSearchBlock,
+  TOOL_SEARCH_SERVER_TOOL_NAMES,
+} from "@app/lib/api/llm/clients/anthropic/utils/tool_search_passthrough";
 import type { LLMTraceContext } from "@app/lib/api/llm/traces/types";
 import {
   getByokUserFacingLLMErrorMessage,
@@ -53,13 +57,11 @@ import {
   AgentMessageContentParser,
   getDelimitersConfiguration,
 } from "@app/lib/llms/agent_message_content_parser";
-import { getSupportedModelConfig } from "@app/lib/llms/model_configurations";
-import { AgentMemoryResource } from "@app/lib/resources/agent_memory_resource";
 import { AgentStepContentResource } from "@app/lib/resources/agent_step_content_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { ProviderCredentialResource } from "@app/lib/resources/provider_credential_resource";
-import { constructProjectContext } from "@app/lib/resources/skill/code_defined/projects";
+import { constructProjectContext } from "@app/lib/resources/skill/code_defined/global/projects";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
@@ -74,14 +76,22 @@ import { RUN_MODEL_MAX_RETRIES } from "@app/temporal/agent_loop/config";
 import { getOutputFromLLMStream } from "@app/temporal/agent_loop/lib/get_output_from_llm";
 import { sliceConversationForAgentMessage } from "@app/temporal/agent_loop/lib/loop_utils";
 import { makeRunModelLLMError } from "@app/temporal/agent_loop/lib/run_model_errors";
-import type { AgentActionsEvent } from "@app/types/assistant/agent";
+import type {
+  AgentActionsEvent,
+  AgentConfigurationType,
+} from "@app/types/assistant/agent";
 import type { AgentLoopExecutionData } from "@app/types/assistant/agent_run";
+import { isGlobalAgentId } from "@app/types/assistant/assistant";
 import type {
   AgentMessageType,
   UserMessageOrigin,
 } from "@app/types/assistant/conversation";
-import { isTextContent } from "@app/types/assistant/generation";
+import {
+  isTextContent,
+  type ModelConversationTypeMultiActions,
+} from "@app/types/assistant/generation";
 import { isByokProviderId } from "@app/types/assistant/models/providers";
+import { isComputerFeatureEnabled } from "@app/types/shared/feature_flags";
 import type { ModelId } from "@app/types/shared/model_id";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { removeNulls } from "@app/types/shared/utils/general";
@@ -89,11 +99,26 @@ import { startActiveObservation } from "@langfuse/tracing";
 import { Context, heartbeat } from "@temporalio/activity";
 import assert from "assert";
 
-const ASK_USER_QUESTION_ALLOWED_ORIGINS: UserMessageOrigin[] = [
-  "web",
-  "slack",
-  "extension",
-  "agent_sidekick",
+const ASK_USER_QUESTION_BLOCKED_ORIGINS: readonly UserMessageOrigin[] = [
+  "api",
+  "cli",
+  "cli_programmatic",
+  "email",
+  "excel",
+  "gsheet",
+  "make",
+  "n8n",
+  "powerpoint",
+  "raycast",
+  "slack_workflow",
+  "teams",
+  "transcript",
+  "zapier",
+  "zendesk",
+  "onboarding_conversation",
+  "reinforced_skill_notification",
+  "reinforcement",
+  "branch_anchor",
 ];
 
 // Concatenate two content strings, ensuring at least one whitespace character
@@ -112,6 +137,145 @@ function concatWithNewlineBoundary(
     return previous + "\n" + current;
   }
   return previous + current;
+}
+
+// TODO(2026-07-06 flav): Avoid leaking provider specifics in the agent loop. The Anthropic
+// passthrough parsing below (block shapes, server tool names) belongs behind a
+// provider-agnostic dispatch keyed on the passthrough provider id.
+function getReplayedToolNames(
+  modelConversation: ModelConversationTypeMultiActions
+): string[] {
+  const toolNames = new Set<string>();
+
+  for (const message of modelConversation.messages) {
+    switch (message.role) {
+      case "assistant":
+        for (const content of message.contents) {
+          if (content.type === "function_call") {
+            toolNames.add(content.value.name);
+          }
+          if (
+            content.type === "provider_passthrough" &&
+            content.value.provider === ANTHROPIC_PROVIDER_ID
+          ) {
+            const block = parseAnthropicToolSearchBlock(content.value.block);
+
+            if (
+              block?.type === "tool_search_tool_result" &&
+              block.content.type === "tool_search_tool_search_result"
+            ) {
+              for (const ref of block.content.tool_references) {
+                // The search can match the tool search tool itself. Never
+                // synthesize a replay placeholder for it: the Anthropic client
+                // prepends the real server tool, and a placeholder would
+                // duplicate its name in the request.
+                if (
+                  TOOL_SEARCH_SERVER_TOOL_NAMES.some(
+                    (name) => name === ref.tool_name
+                  )
+                ) {
+                  continue;
+                }
+                toolNames.add(ref.tool_name);
+              }
+            }
+          }
+        }
+        break;
+      case "function":
+      case "compaction":
+      case "user":
+        break;
+      default:
+        assertNever(message);
+    }
+  }
+
+  return [...toolNames];
+}
+
+function buildReplayOnlyToolSpecification(
+  name: string
+): AgentActionSpecification {
+  return {
+    name,
+    description:
+      "Replay-only placeholder for a historical tool call. " +
+      "This tool is not available for new calls.",
+    inputSchema: {
+      type: "object",
+      properties: {},
+      required: [],
+      additionalProperties: true,
+    },
+  };
+}
+
+// A custom agent's configured tools are its identity: they stay in the eagerly
+// loaded set so the model always sees them instead of having to discover them
+// through tool search. The set is small and stable per agent version, so the
+// cached tool prefix stays byte-stable. Global agents keep the curated per-tool
+// metadata flags, and conversation, skill and JIT provided tools stay deferred
+// so mid-conversation additions append to the deferred catalog instead of
+// rewriting the prefix.
+export function buildBaseSpecifications(
+  availableActions: MCPToolConfigurationType[],
+  agentConfiguration: Pick<AgentConfigurationType, "sId" | "actions">
+): AgentActionSpecification[] {
+  const isCustomAgent = !isGlobalAgentId(agentConfiguration.sId);
+  // Tools are matched to configured actions through the configuration's
+  // persisted id, not the server view id: several configurations of the same
+  // internal server share one view (e.g. two query_tables actions), and
+  // runtime-built JIT and skill servers reuse those views too with a synthetic
+  // id of -1. Matching on the view id would wrongly promote JIT tools that
+  // appear mid-conversation, rewriting the cached tool prefix.
+  const agentActionModelIds = new Set(
+    agentConfiguration.actions
+      .filter(isServerSideMCPServerConfiguration)
+      .map((action) => action.id)
+      .filter((id) => id !== -1)
+  );
+
+  return availableActions.map((action) => {
+    const specification = buildToolSpecification(action);
+    if (
+      isCustomAgent &&
+      isServerSideMCPToolConfiguration(action) &&
+      agentActionModelIds.has(action.id)
+    ) {
+      return { ...specification, eager: true };
+    }
+
+    return specification;
+  });
+}
+
+// Replayed tools keep their intrinsic `eager` flag: providers resolve deferred
+// tools from the replayed history, and promoting them would invalidate the
+// cached tool prefix. We only append placeholders for replayed tools that are
+// no longer configured, since every tool referenced in history must have a
+// definition.
+export function buildSpecificationsWithReplayPlaceholders(
+  baseSpecifications: AgentActionSpecification[],
+  modelConversation: ModelConversationTypeMultiActions
+): {
+  specifications: AgentActionSpecification[];
+  missingReplayedToolNames: string[];
+} {
+  const currentToolNames = new Set(baseSpecifications.map((spec) => spec.name));
+  const missingReplayedToolNames = getReplayedToolNames(
+    modelConversation
+  ).filter((name) => !currentToolNames.has(name));
+
+  return {
+    specifications: [
+      ...baseSpecifications,
+      ...missingReplayedToolNames.map((name) =>
+        buildReplayOnlyToolSpecification(name)
+      ),
+    ],
+    missingReplayedToolNames,
+  };
 }
 
 // This method is used by the multi-actions execution loop to pick the next action to execute and
@@ -170,7 +334,7 @@ export async function runModel(
 
   localLogger.info("Starting multi-action loop iteration");
 
-  const model = getSupportedModelConfig(agentConfiguration.model);
+  const model = runAgentData.model;
 
   async function publishAgentError(
     error: {
@@ -217,46 +381,40 @@ export async function runModel(
     }
   }
 
-  if (!model) {
-    await publishAgentError({
-      code: "model_does_not_support_multi_actions",
-      message:
-        `The model you selected (${agentConfiguration.model.modelId}) ` +
-        `does not support multi-actions.`,
-      metadata: null,
-    });
-    return null;
+  const featureFlags = await getFeatureFlags(auth);
+
+  if (step === 0) {
+    const accessError = await getAdvancedModelAccessErrorForAgentConfiguration(
+      auth,
+      {
+        agentName: agentConfiguration.name,
+        model,
+        featureFlags,
+      }
+    );
+    if (accessError) {
+      await publishAgentError(accessError);
+      return null;
+    }
   }
 
   const {
     enabledSkills,
     systemSkills,
     equippedSkills,
-    hasConditionalJITTools,
     mcpActions,
     mcpToolsListingError,
   } = await startActiveObservation("resolve-tools", async () => {
     const attachments = await listAttachments(auth, { conversation });
-    const { servers: jitServers, hasConditionalJITTools } = await getJITServers(
-      auth,
-      {
-        agentConfiguration,
-        conversation,
-        attachments,
-      }
-    );
+    const jitServers = await getJITServers(auth, {
+      agentConfiguration,
+      conversation,
+      attachments,
+    });
 
     const clientSideMCPServerIds = [
       ...(userMessage.context.clientSideMCPServerIds ?? []),
     ];
-    const dustDesktopServerId =
-      await getActiveDustDesktopClientSideMCPServerId(auth);
-    if (
-      dustDesktopServerId &&
-      !clientSideMCPServerIds.includes(dustDesktopServerId)
-    ) {
-      clientSideMCPServerIds.push(dustDesktopServerId);
-    }
 
     const clientSideMCPActionConfigurations =
       await createClientSideMCPServerConfigurations(
@@ -289,7 +447,6 @@ export async function runModel(
     );
 
     return {
-      hasConditionalJITTools,
       enabledSkills,
       equippedSkills,
       systemSkills,
@@ -307,52 +464,32 @@ export async function runModel(
     );
   }
 
-  // Filter out ask_user_question for origins that don't support interactive questions.
-  const filteredMcpActions = !ASK_USER_QUESTION_ALLOWED_ORIGINS.includes(
-    userMessage.context.origin
-  )
-    ? mcpActions.filter((s) => s.serverName !== "ask_user_question")
-    : mcpActions;
+  // Filter out ask_user_question when no human is available to answer: origins with no
+  // interactive reply surface, or sub-agent runs (conversation depth > 0) where the
+  // "user" is the parent agent rather than a human.
+  const supportsInteractiveQuestions =
+    !ASK_USER_QUESTION_BLOCKED_ORIGINS.includes(userMessage.context.origin) &&
+    conversation.depth === 0;
+
+  const filteredMcpActions = supportsInteractiveQuestions
+    ? mcpActions
+    : mcpActions.filter((s) => s.serverName !== "ask_user_question");
 
   const isLastStep = step === agentConfiguration.maxStepsPerRun;
 
-  // If we are on the last step, we don't show any action.
-  // This will force the agent to run the generation.
-  const availableActions = isLastStep
-    ? []
-    : filteredMcpActions.flatMap((s) => s.tools);
+  // On the last step we force the agent to run the generation: the tools are
+  // still sent, so the request keeps the same shape as previous steps (stable
+  // tool definitions preserve prompt caching and keep tool references in the
+  // replayed history resolvable), but the model is forbidden from calling them
+  // (tool choice "none").
+  const disableToolUse = isLastStep;
+  const availableActions = filteredMcpActions.flatMap((s) => s.tools);
 
   let fallbackPrompt = "You are a conversational agent";
   if (agentConfiguration.actions.length || availableActions.length > 0) {
     fallbackPrompt += " with access to tool use.";
   } else {
     fallbackPrompt += ".";
-  }
-
-  const agentsList = agentConfiguration.instructions?.includes(
-    "{ASSISTANTS_LIST}"
-  )
-    ? await getAgentConfigurationsForView({
-        auth,
-        agentsGetView: auth.user() ? "list" : "all",
-        variant: "light",
-      })
-    : null;
-
-  let memoriesContext: string | undefined;
-  const hasAgentMemoryAction = agentConfiguration.actions.some((action) =>
-    isServerSideMCPServerConfigurationWithName(action, "agent_memory")
-  );
-  if (
-    globalAgentInjectsMemory(agentConfiguration.sId) &&
-    hasAgentMemoryAction &&
-    auth.user()
-  ) {
-    const memories =
-      await AgentMemoryResource.findByAgentConfigurationIdAndUser(auth, {
-        agentConfigurationId: agentConfiguration.sId,
-      });
-    memoriesContext = buildMemoriesContext(memories);
   }
 
   let toolsetsContext: string | undefined;
@@ -391,8 +528,7 @@ export async function runModel(
   });
 
   const isNewFileExplorer = conversation.metadata?.useFileSystem === true;
-  const featureFlags = await getFeatureFlags(auth);
-  const hasSandboxTools = featureFlags.includes("sandbox_tools");
+  const hasSandboxTools = isComputerFeatureEnabled(featureFlags);
   const disableFormattingPrompt = featureFlags.includes(
     "disable_formatting_prompt"
   );
@@ -404,13 +540,9 @@ export async function runModel(
     model,
     hasAvailableActions: availableActions.length > 0,
     errorContext: mcpToolsListingError,
-    agentsList,
     conversation,
     serverToolsAndInstructions: filteredMcpActions,
     systemSkills,
-    enabledSkills,
-    equippedSkills,
-    memoriesContext,
     toolsetsContext,
     userContext,
     workspaceContext,
@@ -423,22 +555,17 @@ export async function runModel(
     renderEquippedSkillsUserMessage(equippedSkills),
   ]);
 
-  // Hot (default-attached) tools stay non-deferred so they form a stable,
-  // cacheable tools prefix. Cold tools are deferred behind Anthropic's tool
-  // search (when the flag is on) so mid-run additions append inline on discovery
-  // instead of mutating the prefix and busting the cache.
+  // Specs carry the intrinsic `eager` property only. Whether a non-eager tool is
+  // deferred behind tool search is an Anthropic-specific policy applied in the
+  // Anthropic client, gated on `toolSearchEnabled` (threaded through below).
   const toolSearchEnabled = featureFlags.includes("anthropic_tool_search");
-  const specifications: AgentActionSpecification[] = [];
-  for (const a of availableActions) {
-    const deferLoading =
-      toolSearchEnabled && !isHotMCPServerName(a.mcpServerName);
-    specifications.push(buildToolSpecification(a, { deferLoading }));
-  }
+  const baseSpecifications: AgentActionSpecification[] =
+    buildBaseSpecifications(availableActions, agentConfiguration);
 
   // Count the number of tokens used by the functions presented to the model.
   // This is a rough estimate of the number of tokens.
   const tools = JSON.stringify(
-    specifications.map((s) => ({
+    baseSpecifications.map((s) => ({
       name: s.name,
       description: s.description,
       inputSchema: s.inputSchema,
@@ -489,6 +616,19 @@ export async function runModel(
     return null;
   }
 
+  const { specifications, missingReplayedToolNames } =
+    buildSpecificationsWithReplayPlaceholders(
+      baseSpecifications,
+      modelConversationRes.value.modelConversation
+    );
+
+  if (missingReplayedToolNames.length > 0) {
+    localLogger.info(
+      { missingReplayedToolNames },
+      "Replayed tools missing from current specifications"
+    );
+  }
+
   // Temporarily adding this to check if we can consider contents property only in llms
   const unexpectedMessage =
     modelConversationRes.value.modelConversation.messages.find(
@@ -527,7 +667,7 @@ export async function runModel(
   const contentParser = new AgentMessageContentParser(
     agentConfiguration,
     agentMessage.sId,
-    getDelimitersConfiguration({ agentConfiguration })
+    getDelimitersConfiguration({ model })
   );
 
   const traceContext: LLMTraceContext = {
@@ -545,10 +685,10 @@ export async function runModel(
   const llm = await getStreamLLM(auth, {
     credentials,
     modelId: model.modelId,
-    temperature: agentConfiguration.model.temperature,
-    reasoningEffort: agentConfiguration.model.reasoningEffort,
-    responseFormat: agentConfiguration.model.responseFormat,
-    metaData: agentConfiguration.model.metaData,
+    temperature: model.temperature,
+    reasoningEffort: model.reasoningEffort,
+    responseFormat: model.responseFormat,
+    metaData: model.metaData,
     context: traceContext,
     omittedThinking: agentConfiguration.omittedThinking,
     // Custom trace input: show only the last user message instead of full conversation.
@@ -566,15 +706,18 @@ export async function runModel(
       !output.toolCalls?.length && output.content ? output.content : undefined,
   });
 
-  // Should not happen
+  // The model is listed as supported but no client (legacy or new router) can
+  // serve it. Surface an agent error instead of returning silently, which would
+  // leave the message pending and the UI stuck on "Thinking…" indefinitely.
   if (llm === null) {
-    localLogger.error(
-      {
-        conversationId: conversation.sId,
-        workspaceId: conversation.owner.sId,
-      },
-      "LLM is null in runModel, cannot proceed."
-    );
+    await publishAgentError({
+      code: "model_not_available",
+      message:
+        `The model you selected (${model.modelId}) ` +
+        `is not available. Please edit the agent to use another model ` +
+        `(advanced settings in the Instructions panel).`,
+      metadata: null,
+    });
 
     return null;
   }
@@ -598,10 +741,7 @@ export async function runModel(
     "[LLM stream] Starting (agent loop)"
   );
 
-  if (
-    modelConversationRes.value.prunedContext === true &&
-    !agentMessage.prunedContext
-  ) {
+  if (modelConversationRes.value.prunedContext && !agentMessage.prunedContext) {
     await updateAgentMessageDBAndMemory(auth, {
       agentMessage,
       update: {
@@ -628,7 +768,8 @@ export async function runModel(
   const getOutputFromActionResponse = await getOutputFromLLMStream(auth, {
     modelConversationRes,
     conversation,
-    hasConditionalJITTools,
+    toolSearchEnabled,
+    disableToolUse,
     cacheDiagnosticsEnabled: featureFlags.includes(
       "anthropic_cache_diagnostics"
     ),
@@ -1027,7 +1168,7 @@ export async function runModel(
   agentMessage.contents.push(...newContents);
 
   const stepContexts = computeStepContexts({
-    agentConfiguration,
+    model,
     stepActions: actions.map((a) => a.action),
     citationsRefsOffset,
   });

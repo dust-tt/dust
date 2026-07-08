@@ -97,12 +97,8 @@ function BrandingAssetUploader({
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-col gap-1">
-        <p className="heading-lg text-foreground dark:text-foreground-night">
-          {title}
-        </p>
-        <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-          {description}
-        </p>
+        <p className="heading-lg text-foreground">{title}</p>
+        <p className="text-sm text-muted-foreground">{description}</p>
       </div>
 
       <input
@@ -187,7 +183,7 @@ export function BrandingSection({ owner }: BrandingSectionProps) {
       <BrandingAssetUploader
         asset="favicon"
         currentVersion={branding?.assets.favicon?.version ?? null}
-        description="A compact version of your logo. Used as the favicon when someone opens a branded Frame. Must be square (1:1 ratio)."
+        description="A compact version of your logo. Used as the favicon when someone opens a whitelabel Frame. Must be square (1:1 ratio)."
         onSaved={handleSaved}
         owner={owner}
         title="Icon"

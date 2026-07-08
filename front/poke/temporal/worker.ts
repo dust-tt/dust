@@ -21,6 +21,7 @@ export async function runPokeWorker() {
     }),
     activities,
     taskQueue: "poke-queue",
+    maxConcurrentActivityTaskExecutions: 5,
     maxCachedWorkflows: TEMPORAL_MAXED_CACHED_WORKFLOWS,
     connection,
     namespace,

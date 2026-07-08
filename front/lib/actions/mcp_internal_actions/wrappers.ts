@@ -3,7 +3,10 @@ import type {
   ToolDefinition,
   ToolHandlerResult,
 } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import type { AgentLoopContextType } from "@app/lib/actions/types";
+import {
+  isAgentLoopRunContext,
+  type ToolContextType,
+} from "@app/lib/actions/types";
 import type { Authenticator } from "@app/lib/auth";
 import { getStatsDClient } from "@app/lib/utils/statsd";
 import logger from "@app/logger/logger";
@@ -11,6 +14,7 @@ import logger from "@app/logger/logger";
 import type { Result } from "@app/types/shared/result";
 import { Ok } from "@app/types/shared/result";
 import { errorToString } from "@app/types/shared/utils/error_utils";
+import { truncate } from "@app/types/shared/utils/string_utils";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { RequestHandlerExtra } from "@modelcontextprotocol/sdk/shared/protocol.js";
 import type {
@@ -19,9 +23,11 @@ import type {
   ServerRequest,
 } from "@modelcontextprotocol/sdk/types.js";
 
+const MAX_LOGGED_ERROR_MESSAGE_LENGTH = 200;
+
 export function registerTool(
   auth: Authenticator,
-  agentLoopContext: AgentLoopContextType | undefined,
+  toolContext: ToolContextType | undefined,
   server: McpServer,
   tool: ToolDefinition,
   { monitoringName }: { monitoringName: string }
@@ -35,6 +41,7 @@ export function registerTool(
         dust: {
           stake: tool.stake,
           displayLabels: tool.displayLabels,
+          eager: tool.eager,
         },
       },
     },
@@ -42,12 +49,12 @@ export function registerTool(
       auth,
       {
         toolNameForMonitoring: monitoringName,
-        agentLoopContext,
+        toolContext,
         enableAlerting: tool.enableAlerting,
       },
       (params, extra) =>
         withToolResultProcessing(
-          tool.handler(params, { ...extra, agentLoopContext, auth })
+          tool.handler(params, { ...extra, toolContext, auth })
         )
     )
   );
@@ -102,11 +109,11 @@ function withToolLogging<T>(
   auth: Authenticator,
   {
     toolNameForMonitoring,
-    agentLoopContext,
+    toolContext,
     enableAlerting = false,
   }: {
     toolNameForMonitoring: string;
-    agentLoopContext: AgentLoopContextType | undefined;
+    toolContext: ToolContextType | undefined;
     enableAlerting?: boolean;
   },
   toolCallback: (
@@ -135,21 +142,23 @@ function withToolLogging<T>(
     };
 
     // Adding agent loop context if available.
-    if (agentLoopContext?.runContext) {
-      const {
-        agentConfiguration,
-        toolConfiguration,
-        conversation,
-        agentMessage,
-      } = agentLoopContext.runContext;
-      loggerArgs = {
-        ...loggerArgs,
-        actionConfigurationId: toolConfiguration.sId,
-        agentConfigurationId: agentConfiguration.sId,
-        agentConfigurationVersion: agentConfiguration.version,
-        agentMessageId: agentMessage.sId,
-        conversationId: conversation.sId,
-      };
+    if (toolContext?.runContext) {
+      if (isAgentLoopRunContext(toolContext.runContext)) {
+        const {
+          agentConfiguration,
+          toolConfiguration,
+          conversation,
+          agentMessage,
+        } = toolContext.runContext;
+        loggerArgs = {
+          ...loggerArgs,
+          actionConfigurationId: toolConfiguration.sId,
+          agentConfigurationId: agentConfiguration.sId,
+          agentConfigurationVersion: agentConfiguration.version,
+          agentMessageId: agentMessage.sId,
+          conversationId: conversation.sId,
+        };
+      }
     }
 
     logger.info(loggerArgs, "Tool execution start");
@@ -177,7 +186,16 @@ function withToolLogging<T>(
       const logContext = {
         ...loggerArgs,
         duration: elapsed,
-        error: result.error,
+        error: {
+          message: truncate(
+            result.error.message,
+            MAX_LOGGED_ERROR_MESSAGE_LENGTH
+          ),
+          code: result.error.code,
+          cause: result.error.cause
+            ? errorToString(result.error.cause)
+            : undefined,
+        },
       };
       if (result.error.tracked) {
         logger.error(logContext, "Tool execution error");

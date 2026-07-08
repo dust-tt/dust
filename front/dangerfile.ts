@@ -354,11 +354,39 @@ function checkSandboxImageLabel() {
 }
 
 /**
+ * Warn about changes to any Temporal workflow or activity file.
+ *
+ * Workflow code must stay deterministic: Temporal replays workflow history on
+ * every resume, so changing control flow, renaming or reordering activities, or
+ * altering activity signatures can cause non-deterministic errors that crash
+ * in-flight workflows. Activities referenced by running workflows must also keep
+ * their names until those workflows have drained.
+ */
+function warnTemporalWorkflowChanges(files: string[]) {
+  warn(
+    `Temporal workflow/activity files have been modified:
+${files.map((f) => `    - \`${f}\``).join("\n")}
+
+    **IMPORTANT**: Renaming activity functions can cause non-deterministic errors in Temporal workflows.
+
+    Running workflows may still reference the old activity names, which will cause failures when they try to execute.
+
+    Best practices:
+    - **DO NOT** rename existing activity functions
+    - **DO** create new activities with new names if you need different behavior
+    - **DO** use activity versioning patterns if you must change activity signatures
+    - **DO** ensure all running workflows complete before removing old activities
+
+    If you're only adding new activities or fixing bugs within existing ones, this warning can be ignored.`
+  );
+}
+
+/**
  * Triggers related checks based on modified files
  */
 function warnTriggersWorkflowChanges() {
   warn(
-    `Files in \`front/temporal/agent_schedules/\` have been modified.
+    `Files in \`front/temporal/triggers/\` have been modified.
     Be careful modifying workflows/activities signatures.
     This may break running schedules. If so, soft reset them from prodbox.`
   );
@@ -616,11 +644,29 @@ async function checkDiffFiles() {
     await checkSparkleVersionConsistency();
   }
 
-  // Triggers workflow files
-  const modifiedWorkflowFiles = diffFiles.filter((path) => {
-    return path.startsWith("front/temporal/agent_schedules/");
+  // Temporal workflow/activity files — changes risk non-deterministic errors
+  // in running workflows on replay, plus activity rename/signature breakage.
+  // Test files don't run in workflows, so they're excluded.
+  const modifiedTemporalFiles = diffFiles.filter((path) => {
+    if (path.endsWith(".test.ts")) {
+      return false;
+    }
+    return (
+      /^front\/temporal\/.+\/workflows\.ts$/.test(path) ||
+      /^front\/temporal\/.+\/activities\.ts$/.test(path) ||
+      /^front\/temporal\/.+\/activities\/.+\.ts$/.test(path)
+    );
   });
-  if (modifiedWorkflowFiles.length > 0) {
+  if (modifiedTemporalFiles.length > 0) {
+    warnTemporalWorkflowChanges(modifiedTemporalFiles);
+  }
+
+  // Triggers (agent schedules) workflow files — carry specific soft-reset
+  // guidance on top of the generic determinism warning above.
+  const modifiedTriggersFiles = diffFiles.filter((path) => {
+    return path.startsWith("front/temporal/triggers/");
+  });
+  if (modifiedTriggersFiles.length > 0) {
     warnTriggersWorkflowChanges();
   }
 
@@ -657,6 +703,7 @@ async function checkDiffFiles() {
     "front/lib/models/agent/conversation_branch.ts",
     "front/lib/models/agent/conversation_fork.ts",
     "front/lib/models/agent/conversation.ts",
+    "front/lib/models/feature_flag.ts",
     "front/lib/models/plan.ts",
     "front/lib/models/provider_credential.ts",
     "front/lib/resources/storage/models/group_memberships.ts",

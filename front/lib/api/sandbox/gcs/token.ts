@@ -22,6 +22,11 @@ export interface DownscopedGcsToken {
   expiresInSeconds: number;
 }
 
+export interface GcsTokenPrefix {
+  prefix: string;
+  readOnly: boolean;
+}
+
 interface StsTokenResponse {
   access_token: string;
   expires_in: number;
@@ -69,7 +74,7 @@ async function exchangeToken({
   sourceToken,
 }: {
   bucket: string;
-  prefixes: string[];
+  prefixes: GcsTokenPrefix[];
   sourceToken: string;
 }): Promise<Result<StsTokenResponse, Error>> {
   try {
@@ -107,7 +112,7 @@ export async function mintDownscopedGcsToken({
   prefixes,
 }: {
   bucket: string;
-  prefixes: string[];
+  prefixes: GcsTokenPrefix[];
 }): Promise<Result<DownscopedGcsToken, Error>> {
   if (prefixes.length === 0) {
     return new Err(new Error("mintDownscopedGcsToken requires >= 1 prefix."));
@@ -158,15 +163,20 @@ function getStorageMountRole(): string {
  *     be started with --enable-hns=false to avoid the GetStorageLayout call (which requires
  *     unrestricted objects.list and would bypass this condition).
  *
- *  3. objectUser with resource.name condition — one rule per prefix. Read/write scoped to prefix.
+ *  3. objectUser (read/write) or objectViewer (read-only) with a resource.name condition, one rule
+ *     per prefix. A read-only prefix gets no object create/delete, so a workload that extracts the
+ *     loopback-served token (gcsfuse fetches it over http) still cannot write there.
  *
  * Total rule count is `1 + 2 * prefixes.length`. CAB allows up to 10 rules, so we support up to 4
- * concurrent prefixes (today we use at most 2: conversation + project).
+ * concurrent prefixes.
  */
-export function buildAccessBoundaryRules(bucket: string, prefixes: string[]) {
+export function buildAccessBoundaryRules(
+  bucket: string,
+  prefixes: GcsTokenPrefix[]
+) {
   const bucketResource = `//storage.googleapis.com/projects/_/buckets/${bucket}`;
 
-  const perPrefixRules = prefixes.flatMap((prefix) => [
+  const perPrefixRules = prefixes.flatMap(({ prefix, readOnly }) => [
     {
       availablePermissions: ["inRole:roles/storage.legacyBucketReader"],
       availableResource: bucketResource,
@@ -175,7 +185,11 @@ export function buildAccessBoundaryRules(bucket: string, prefixes: string[]) {
       },
     },
     {
-      availablePermissions: ["inRole:roles/storage.objectUser"],
+      availablePermissions: [
+        readOnly
+          ? "inRole:roles/storage.objectViewer"
+          : "inRole:roles/storage.objectUser",
+      ],
       availableResource: bucketResource,
       availabilityCondition: {
         expression: `resource.name.startsWith('projects/_/buckets/${bucket}/objects/${prefix}/')`,

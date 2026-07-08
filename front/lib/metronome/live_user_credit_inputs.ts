@@ -21,8 +21,15 @@ import {
 import { fetchPerUserAwuUsage } from "@app/lib/metronome/per_user_usage";
 import { getSeatAllowancesByNormalizedSeatType } from "@app/lib/metronome/seat_types";
 import type { MetronomeSeatBalance } from "@app/lib/metronome/types";
+import {
+  resolveEffectiveSpendLimitAwuCredits,
+  resolveEffectiveSpendLimitSource,
+} from "@app/lib/spend_limits/effective";
 import type { MembershipSeatType } from "@app/types/memberships";
-import { normalizeToPoolLimitSeatType } from "@app/types/memberships";
+import {
+  isSeatBased,
+  normalizeToPoolLimitSeatType,
+} from "@app/types/memberships";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
@@ -51,7 +58,7 @@ export type LiveUserCreditInputs = {
   // Effective per-user cap = poolCap + seatAllowance. Null for seat types with
   // no pool access (free, none).
   effectiveCapAwuCredits: number | null;
-  capSource: "override" | "default" | "none";
+  capSource: "override" | "group" | "default" | "none";
   consumedAwuCredits: number | null;
 };
 
@@ -77,6 +84,7 @@ export async function fetchLiveUserCreditInputs({
   userId,
   seatType,
   poolCapOverrideAwuCredits,
+  groupCapAwuCredits,
   defaultPoolCapAwuCredits,
   metronomeCustomerId,
   metronomeContractId,
@@ -85,6 +93,9 @@ export async function fetchLiveUserCreditInputs({
   userId: string;
   seatType: MembershipSeatType | null;
   poolCapOverrideAwuCredits: number | null;
+  // Max group cap (pool-only, excluding seat allowance) across the user's
+  // groups; null when none carry a cap.
+  groupCapAwuCredits: number | null;
   defaultPoolCapAwuCredits: number;
   metronomeCustomerId: string;
   metronomeContractId: string | null;
@@ -111,10 +122,11 @@ export async function fetchLiveUserCreditInputs({
       seatBalanceAwu = credit.balanceAwu;
       seatStartingBalanceAwu = credit.startingBalanceAwu;
     }
-  } else if (metronomeContractId) {
+  } else if (isSeatBased(seatType) && metronomeContractId) {
     const seatBalancesResult = await listMetronomeSeatBalances({
       metronomeCustomerId,
       metronomeContractId,
+      seatId: userId,
     });
     if (seatBalancesResult.isErr()) {
       return new Err(
@@ -138,9 +150,20 @@ export async function fetchLiveUserCreditInputs({
   let consumedAwuCredits: number | null = null;
 
   if (normalizedSeatType) {
+    // Priority: per-user override > max group cap > workspace default (shared
+    // ladder). The `?? defaultPoolCapAwuCredits` is unreachable — the default is
+    // always a number here — but keeps the type non-null for the arithmetic.
     const poolCapAwuCredits =
-      poolCapOverrideAwuCredits ?? defaultPoolCapAwuCredits;
-    capSource = poolCapOverrideAwuCredits !== null ? "override" : "default";
+      resolveEffectiveSpendLimitAwuCredits({
+        overrideAwuCredits: poolCapOverrideAwuCredits,
+        groupCapAwuCredits,
+        defaultAwuCredits: defaultPoolCapAwuCredits,
+      }) ?? defaultPoolCapAwuCredits;
+    capSource = resolveEffectiveSpendLimitSource({
+      overrideAwuCredits: poolCapOverrideAwuCredits,
+      groupCapAwuCredits,
+      defaultAwuCredits: defaultPoolCapAwuCredits,
+    });
 
     let seatAllowance = 0;
     try {
@@ -158,8 +181,8 @@ export async function fetchLiveUserCreditInputs({
 
     if (metronomeContractId) {
       const usageResult = await fetchPerUserAwuUsage({
+        workspaceId,
         metronomeCustomerId,
-        metronomeContractId,
         userIds: [userId],
       });
       if (usageResult.isErr()) {

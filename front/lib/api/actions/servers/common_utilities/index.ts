@@ -1,19 +1,34 @@
 import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/utils";
 import { registerTool } from "@app/lib/actions/mcp_internal_actions/wrappers";
-import type { AgentLoopContextType } from "@app/lib/actions/types";
-import { COMMON_UTILITIES_SERVER_NAME } from "@app/lib/api/actions/servers/common_utilities/metadata";
+import {
+  isAgentLoopRunContext,
+  type ToolContextType,
+} from "@app/lib/actions/types";
+import {
+  COMMON_UTILITIES_SERVER_NAME,
+  SET_CONVERSATION_TITLE_TOOL_NAME,
+} from "@app/lib/api/actions/servers/common_utilities/metadata";
 import { TOOLS } from "@app/lib/api/actions/servers/common_utilities/tools";
 import type { Authenticator } from "@app/lib/auth";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 
 function createServer(
   auth: Authenticator,
-  agentLoopContext?: AgentLoopContextType
+  toolContext?: ToolContextType
 ): McpServer {
   const server = makeInternalMCPServer(COMMON_UTILITIES_SERVER_NAME);
 
+  const conversation =
+    (isAgentLoopRunContext(toolContext?.runContext)
+      ? toolContext.runContext.conversation
+      : null) ?? toolContext?.listToolsContext?.conversation;
+
   for (const tool of TOOLS) {
-    registerTool(auth, agentLoopContext, server, tool, {
+    // Skip the conversation-title tool if there is no conversation in tool context.
+    if (!conversation && tool.name === SET_CONVERSATION_TITLE_TOOL_NAME) {
+      continue;
+    }
+    registerTool(auth, toolContext, server, tool, {
       monitoringName: COMMON_UTILITIES_SERVER_NAME,
     });
   }

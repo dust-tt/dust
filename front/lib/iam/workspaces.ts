@@ -1,8 +1,14 @@
+import { seedWorkspaceCapabilities } from "@app/lib/api/permissions/governance_seeding";
+import { activateCreditPricedFreePlanForWorkspace } from "@app/lib/api/subscription";
 import { getOrCreateWorkOSOrganization } from "@app/lib/api/workos/organization";
 import { Authenticator } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
 import { PlanModel } from "@app/lib/models/plan";
-import { isFreePlan, isUpgraded } from "@app/lib/plans/plan_codes";
+import {
+  isCreditPricedFreePlan,
+  isFreePlan,
+  isUpgraded,
+} from "@app/lib/plans/plan_codes";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
@@ -91,24 +97,31 @@ export async function createWorkspaceInternal({
     globalGroup,
   });
 
+  // Seed default governance capability state (no-op until Phase 2 capabilities register seeders).
+  await seedWorkspaceCapabilities(auth);
+
   // Ensure all auto MCP server views are created for the workspace
   await MCPServerViewResource.ensureAllAutoToolsAreCreated(auth);
 
   if (planCode) {
-    const newSubscription =
-      await SubscriptionResource.internalSubscribeWorkspaceToFreePlan({
-        workspaceId: workspace.sId,
-        planCode,
-        endDate,
-      });
+    if (isCreditPricedFreePlan(planCode)) {
+      await activateCreditPricedFreePlanForWorkspace(auth);
+    } else {
+      const newSubscription =
+        await SubscriptionResource.internalSubscribeWorkspaceToFreePlan({
+          workspaceId: workspace.sId,
+          planCode,
+          endDate,
+        });
 
-    if (isUpgraded(newSubscription.getPlan())) {
-      const orgRes = await getOrCreateWorkOSOrganization(lightWorkspace);
-      if (orgRes.isErr()) {
-        logger.error(
-          { error: orgRes.error, workspaceId: workspace.sId },
-          "Failed to create WorkOS organization during workspace creation"
-        );
+      if (isUpgraded(newSubscription.getPlan())) {
+        const orgRes = await getOrCreateWorkOSOrganization(lightWorkspace);
+        if (orgRes.isErr()) {
+          logger.error(
+            { error: orgRes.error, workspaceId: workspace.sId },
+            "Failed to create WorkOS organization during workspace creation"
+          );
+        }
       }
     }
   }

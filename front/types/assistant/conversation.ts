@@ -9,6 +9,7 @@ import type { ContentFragmentType } from "../content_fragment";
 import type { AllSupportedWithDustSpecificFileContentType } from "../files";
 import type { ModelId } from "../shared/model_id";
 import { assertNeverAndIgnore } from "../shared/utils/assert_never";
+import type { SpaceType } from "../space";
 import type { UserType, WorkspaceType } from "../user";
 import type {
   AgentConfigurationStatus,
@@ -16,6 +17,7 @@ import type {
   LightAgentConfigurationType,
 } from "./agent";
 import type { MentionType, RichMention } from "./mentions";
+import type { ResolvedRequestedModel } from "./models/types";
 
 export type MessageVisibility = "visible" | "deleted" | "pending";
 
@@ -123,6 +125,14 @@ export type UserMessageOrigin =
   // a branch can be created before any user-visible message exists.
   | "branch_anchor";
 
+export const HIDDEN_MESSAGE_ORIGINS: UserMessageOrigin[] = [
+  "onboarding_conversation",
+  "project_kickoff",
+  "reinforced_skill_notification",
+  "branch_anchor",
+  "wakeup",
+];
+
 /**
  * @swaggerschema Context (swagger_schemas.ts), PrivateUserMessageContext (swagger_private_schemas.ts)
  */
@@ -208,13 +218,7 @@ export function isUserMessageTypeWithContentFragments(
 }
 
 export function isHiddenMessageOrigin(origin: UserMessageOrigin): boolean {
-  return (
-    origin === "onboarding_conversation" ||
-    origin === "project_kickoff" ||
-    origin === "reinforced_skill_notification" ||
-    origin === "branch_anchor" ||
-    origin === "wakeup"
-  );
+  return HIDDEN_MESSAGE_ORIGINS.includes(origin);
 }
 
 export function isVisibleMessage(m: LightMessageType): boolean {
@@ -324,9 +328,14 @@ export type BaseAgentMessageType = {
   subAgentCostCredits?: number | null;
 };
 
+// `step` is the agent-loop step a given activity step was produced in. It lets
+// the streaming client discard the steps it built for a step that Temporal
+// re-ran (activity retry re-emits the step's events with a fresh traceId),
+// rebuilding it instead of appending duplicates. Optional: absent on the
+// server-rendered terminal view, which is already canonical.
 export type InlineActivityStep =
-  | { type: "thinking"; content: string; id: string }
-  | { type: "content"; content: string; id: string }
+  | { type: "thinking"; content: string; id: string; step?: number }
+  | { type: "content"; content: string; id: string; step?: number }
   | {
       type: "action";
       label: string;
@@ -334,6 +343,7 @@ export type InlineActivityStep =
       actionId: string;
       internalMCPServerName: InternalMCPServerNameType | null;
       toolName: string | null;
+      step?: number;
     };
 
 export type ParsedContentItem =
@@ -353,6 +363,10 @@ export type AgentMessageType = BaseAgentMessageType & {
   actions: AgentMCPActionWithOutputType[];
   contents: Array<{ step: number; content: AgentContentItemType }>;
   modelInteractionDurationMs: number | null;
+  // Per-message model override from the input-bar model picker: the resolved
+  // model. Null/undefined when the agent ran its own configured model. Optional
+  // during rollout. See [BACK12].
+  requestedModel?: ResolvedRequestedModel | null;
 };
 
 export type AgentMessageTypeWithoutMentions = Omit<
@@ -566,6 +580,18 @@ export type ConversationWithoutContentType = ConversationListItemType & {
   forkingData?: ConversationForkingDataType;
 };
 
+export type SelectableConversationSpaceType = SpaceType & {
+  selected: boolean;
+};
+
+export type ConversationSelectedSpacesResponse = {
+  selectedSpaces: SelectableConversationSpaceType[];
+  effectiveAcl: {
+    spaceIds: string[];
+    viewerMustHaveAll: true;
+  };
+};
+
 type ConversationDisplayTitleInput = Pick<
   ConversationWithoutContentType,
   "created" | "title" | "forkingData"
@@ -759,17 +785,14 @@ export type ConversationTitleEvent = {
   title: string;
 };
 
-// Event sent when the conversation's plan.md is created, edited, approved, or closed. Carries
-// only metadata (id, version, status flags) — the UI refetches the full file contents via the
-// plan_mode GET endpoint on receipt.
+// Event sent when the conversation's plan.md is created, edited, or closed. A refetch signal: the
+// UI re-reads the plan content via the plan_mode GET endpoint on receipt. `isClosed` lets the UI
+// close the plan panel.
 export type PlanUpdatedEvent = {
   type: "plan_updated";
   created: number;
   conversationId: string;
-  planFileId: string;
-  version: number;
   isClosed: boolean;
-  hasApproval: boolean;
 };
 
 // Event sent when a wake-up in the conversation is created or changes status. Thin payload: the

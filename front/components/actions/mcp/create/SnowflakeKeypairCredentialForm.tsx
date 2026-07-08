@@ -1,8 +1,8 @@
 import type { StaticCredentialFormHandle } from "@app/components/actions/mcp/MCPServerAuthConnection";
 import { useSendNotification } from "@app/hooks/useNotification";
-import type { PostCredentialsResponseBody } from "@app/lib/api/oauth";
 import { clientFetch } from "@app/lib/egress/client";
 import datadogLogger from "@app/logger/datadogLogger";
+import type { PostCredentialsResponseBody } from "@app/types/api/oauth";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import { isAPIErrorResponse } from "@app/types/error";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
@@ -187,8 +187,8 @@ export const SnowflakeKeypairCredentialForm = forwardRef<
   }));
 
   return (
-    <div className="w-full space-y-5 text-foreground dark:text-foreground-night">
-      <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+    <div className="w-full space-y-5 text-foreground">
+      <p className="text-sm text-muted-foreground">
         Enter credentials for a Snowflake service user configured for key-pair
         authentication.
       </p>
@@ -228,7 +228,7 @@ export const SnowflakeKeypairCredentialForm = forwardRef<
           rows={8}
         />
         {form.formState.errors.privateKey?.message && (
-          <p className="text-sm text-red-600 dark:text-red-400">
+          <p className="text-sm text-warning-600">
             {form.formState.errors.privateKey.message}
           </p>
         )}

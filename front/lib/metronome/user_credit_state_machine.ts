@@ -266,15 +266,17 @@ export async function setUserCreditStateReconciled(
   invalidateCacheAfterCommit(transaction, () =>
     setUserCreditState(ctx.workspaceId, ctx.userId, targetState)
   );
-  logger.info(
-    {
-      workspaceId: ctx.workspaceId,
-      userId: ctx.userId,
-      fromState: rawState,
-      toState: targetState,
-      wasStateChanged: rawState !== targetState,
-    },
-    "[UserCreditStateMachine] State reconciled"
-  );
+  const wasStateChanged = rawState !== targetState;
+  if (wasStateChanged) {
+    logger.info(
+      {
+        workspaceId: ctx.workspaceId,
+        userId: ctx.userId,
+        fromState: rawState,
+        toState: targetState,
+      },
+      "[UserCreditStateMachine] State reconciled"
+    );
+  }
   return targetState;
 }

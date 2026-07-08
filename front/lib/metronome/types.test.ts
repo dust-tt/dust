@@ -49,11 +49,19 @@ describe("classifyMetronomePackageCurrencyByName", () => {
     );
   });
 
-  it("is case-insensitive", () => {
-    expect(classifyMetronomePackageCurrencyByName("BUSINESS eur")).toBe("eur");
+  it("returns gbp when the name contains a pound marker", () => {
+    expect(classifyMetronomePackageCurrencyByName("Business GBP")).toBe("gbp");
+    expect(classifyMetronomePackageCurrencyByName("Enterprise sterling")).toBe(
+      "gbp"
+    );
   });
 
-  it("defaults to usd when no euro marker is present", () => {
+  it("is case-insensitive", () => {
+    expect(classifyMetronomePackageCurrencyByName("BUSINESS eur")).toBe("eur");
+    expect(classifyMetronomePackageCurrencyByName("business gbp")).toBe("gbp");
+  });
+
+  it("defaults to usd when no euro or pound marker is present", () => {
     expect(classifyMetronomePackageCurrencyByName("Legacy Pro Monthly")).toBe(
       "usd"
     );

@@ -20,6 +20,7 @@ import {
 import {
   getServerTypeAndIdFromSId,
   isMcpTimeoutError,
+  NO_OP_MCP_JSON_SCHEMA_VALIDATOR,
 } from "@app/lib/actions/mcp_helper";
 import { connectToInternalMCPServer } from "@app/lib/actions/mcp_internal_actions";
 import {
@@ -31,7 +32,7 @@ import {
   MCPOAuthProvider,
   MCPOAuthProviderError,
 } from "@app/lib/actions/mcp_oauth_provider";
-import type { AgentLoopContextType } from "@app/lib/actions/types";
+import type { ToolContextType } from "@app/lib/actions/types";
 import { ClientSideRedisMCPTransport } from "@app/lib/api/actions/mcp_client_side";
 import type {
   MCPServerType,
@@ -355,19 +356,22 @@ export async function connectToMCPServer(
   auth: Authenticator,
   {
     params,
-    agentLoopContext,
+    toolContext,
   }: {
     params: MCPConnectionParams;
-    agentLoopContext?: AgentLoopContextType;
+    toolContext?: ToolContextType;
   }
 ): Promise<
   Result<Client, Error | MCPServerPersonalAuthenticationRequiredError>
 > {
   // This is where we route the MCP client to the right server.
-  const mcpClient = new Client({
-    name: "dust-mcp-client",
-    version: "1.0.0",
-  });
+  const mcpClient = new Client(
+    {
+      name: "dust-mcp-client",
+      version: "1.0.0",
+    },
+    { jsonSchemaValidator: NO_OP_MCP_JSON_SCHEMA_VALIDATOR }
+  );
   const connectionType = params.type;
   switch (connectionType) {
     case "mcpServerId": {
@@ -382,13 +386,13 @@ export async function connectToMCPServer(
             params.mcpServerId,
             server,
             auth,
-            agentLoopContext
+            toolContext
           );
 
           await mcpClient.connect(client);
 
           // For internal servers, to avoid any unnecessary work, we only try to fetch the token if we are trying to run a tool.
-          if (agentLoopContext?.runContext) {
+          if (toolContext?.runContext) {
             const bearerTokenCredentials =
               await InternalMCPServerInMemoryResource.fetchDecryptedCredentials(
                 auth,
@@ -561,7 +565,7 @@ export async function connectToMCPServer(
             mcpServerId: params.mcpServerId,
             oAuthUseCase: params.oAuthUseCase,
             remoteMCPServer,
-            isToolExecution: !!agentLoopContext?.runContext,
+            isToolExecution: !!toolContext?.runContext,
           });
           if (tokenRes.isErr()) {
             return tokenRes;
@@ -792,6 +796,7 @@ export type DustToolMeta = {
   displayLabels?: ToolDisplayLabels;
   argumentsRequiringApproval?: string[];
   timeoutMs?: number;
+  eager?: boolean;
 };
 
 function isValidStake(value: unknown): value is MCPToolStakeLevelType {
@@ -842,6 +847,9 @@ export function getDustToolMeta(
   if (isValidTimeout(dust.timeoutMs)) {
     result.timeoutMs = dust.timeoutMs;
   }
+  if (typeof dust.eager === "boolean") {
+    result.eager = dust.eager;
+  }
 
   return Object.keys(result).length > 0 ? result : undefined;
 }
@@ -858,6 +866,7 @@ export function extractMetadataFromTools(tools: Tool[]): MCPToolType[] {
       ...(dustMeta?.displayLabels
         ? { displayLabels: dustMeta.displayLabels }
         : {}),
+      ...(dustMeta?.eager ? { eager: true } : {}),
     };
   });
 }

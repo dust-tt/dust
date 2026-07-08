@@ -13,9 +13,11 @@ import { useConversations } from "@app/hooks/conversations";
 import { useActiveConversationId } from "@app/hooks/useActiveConversationId";
 import { useCreateConversationWithMessage } from "@app/hooks/useCreateConversationWithMessage";
 import { useSendNotification } from "@app/hooks/useNotification";
+import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { getRandomGreetingForName } from "@app/lib/client/greetings";
 import type { DustError } from "@app/lib/error";
 import { useAppRouter } from "@app/lib/platform";
+import { useIsMobile } from "@app/lib/swr/useIsMobile";
 import { useWorkspaceUsageStatus } from "@app/lib/swr/user";
 import { classNames } from "@app/lib/utils";
 import { getConversationRoute } from "@app/lib/utils/router";
@@ -28,13 +30,14 @@ import {
   toMentionType,
   toRichAgentMentionType,
 } from "@app/types/assistant/mentions";
+import type { ModelSelectionType } from "@app/types/assistant/models/types";
 import type { ContentFragmentsType } from "@app/types/content_fragment";
 import type { SubscriptionType } from "@app/types/plan";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import type { UserType, WorkspaceType } from "@app/types/user";
-import { isAdmin } from "@app/types/user";
+import { getWorkspaceDefaultAgentId, isAdmin } from "@app/types/user";
 import {
   Button,
   Card,
@@ -82,6 +85,11 @@ export function ConversationContainerVirtuoso({
 
   const sendNotification = useSendNotification();
 
+  const { hasFeature } = useFeatureFlags();
+  const workspaceDefaultAgentId = hasFeature("workspace_default_agent")
+    ? getWorkspaceDefaultAgentId(owner)
+    : null;
+
   const { mutateConversations } = useConversations({
     workspaceId: owner.sId,
     options: { disabled: true },
@@ -125,7 +133,8 @@ export function ConversationContainerVirtuoso({
       input: string,
       mentions: RichMention[],
       contentFragments: ContentFragmentsType,
-      selectedMCPServerViewIds?: string[]
+      selectedMCPServerViewIds?: string[],
+      modelSelection?: ModelSelectionType
     ): Promise<Result<undefined, DustError>> => {
       if (isSubmitting) {
         return new Err({
@@ -175,6 +184,7 @@ export function ConversationContainerVirtuoso({
           clientSideMCPServerIds,
           selectedMCPServerViewIds,
           richMentions: mentions,
+          modelSelection,
         },
         // Navigate as soon as the conversation exists; the first message is posted
         // in the background by useCreateConversationWithMessage. Background-post
@@ -232,6 +242,7 @@ export function ConversationContainerVirtuoso({
   }, [user]);
 
   const { startConversationRef } = useWelcomeTourGuide();
+  const isMobile = useIsMobile();
 
   // Forces a full remount of ConversationViewer (Virtuoso list, messages, InputBar)
   // when switching conversations.
@@ -265,7 +276,7 @@ export function ConversationContainerVirtuoso({
             className={classNames(
               "sticky bottom-0 z-20 flex max-h-dvh w-full",
               "pb-2",
-              "sm:w-full sm:max-w-conversation sm:pb-4"
+              "md:w-full md:max-w-conversation md:pb-4"
             )}
           >
             <InputBar
@@ -274,6 +285,7 @@ export function ConversationContainerVirtuoso({
               onSubmit={handleConversationCreation}
               draftKey="home-new-conversation"
               disableAutoFocus={false}
+              defaultAgentId={workspaceDefaultAgentId}
             />
           </div>
 
@@ -285,8 +297,8 @@ export function ConversationContainerVirtuoso({
                 containerClassName="w-full group"
               >
                 <div className="flex w-full flex-col gap-2 text-sm">
-                  <div className="flex w-full items-center gap-2 font-semibold text-highlight-600 dark:text-highlight-400">
-                    <Lightbulb04 className="text-highlight-600 dark:text-highlight-400 h-5 w-5" />
+                  <div className="flex w-full items-center gap-2 font-semibold text-highlight-600">
+                    <Lightbulb04 className="text-highlight-600 h-5 w-5" />
                     <div className="w-full">{suggestion.title}</div>
                     <div className="opacity-0 transition-opacity group-hover:opacity-100">
                       <Button
@@ -295,11 +307,11 @@ export function ConversationContainerVirtuoso({
                         icon={XClose}
                         tooltip="Dismiss"
                         onClick={() => onDismissSuggestion?.(suggestion.id)}
-                        className="text-highlight-600 dark:text-highlight-400"
+                        className="text-highlight-600"
                       />
                     </div>
                   </div>
-                  <div className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+                  <div className="text-sm text-muted-foreground">
                     {suggestion.description}
                   </div>
                 </div>
@@ -330,6 +342,8 @@ export function ConversationContainerVirtuoso({
   // when there is no active conversation
   return activeConversationId ? (
     body
+  ) : isMobile ? (
+    <div className="px-4">{body}</div>
   ) : (
     <ScrollArea className="px-4 md:px-8">{body}</ScrollArea>
   );

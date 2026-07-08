@@ -176,7 +176,7 @@ export function SkillDetailsPage() {
                     Agents ({agentsUsage.count})
                   </h3>
                   {agentsUsage.agents.length === 0 ? (
-                    <p className="text-muted-foreground dark:text-muted-foreground-night text-sm">
+                    <p className="text-muted-foreground text-sm">
                       No agents use this skill.
                     </p>
                   ) : (
@@ -199,7 +199,7 @@ export function SkillDetailsPage() {
                     Skills ({usedBySkills.length})
                   </h3>
                   {usedBySkills.length === 0 ? (
-                    <p className="text-muted-foreground dark:text-muted-foreground-night text-sm">
+                    <p className="text-muted-foreground text-sm">
                       No skills use this skill.
                     </p>
                   ) : (
@@ -243,7 +243,7 @@ export function SkillDetailsPage() {
                   <Spinner />
                 </div>
               ) : versions.length === 0 ? (
-                <p className="text-muted-foreground dark:text-muted-foreground-night py-4 text-sm">
+                <p className="text-muted-foreground py-4 text-sm">
                   No previous versions.
                 </p>
               ) : (
@@ -255,7 +255,7 @@ export function SkillDetailsPage() {
                     >
                       <div className="mb-2 flex items-center gap-2">
                         <span className="font-bold">v{version.version}</span>
-                        <span className="text-foreground dark:text-foreground-night">
+                        <span className="text-foreground">
                           {version.createdAt
                             ? formatTimestampToFriendlyDate(version.createdAt)
                             : "N/A"}

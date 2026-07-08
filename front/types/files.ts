@@ -35,14 +35,6 @@ export type FileUseCase =
   // Workspace branding: logo/favicon uploaded by workspace admins.
   | "workspace_branding";
 
-// Audit trail for a plan-mode approval. Recorded on `plan.md.useCaseMetadata` when the user
-// approves a `request_plan_approval` call.
-export type PlanModeApproval = {
-  approvedAt: string; // ISO timestamp.
-  approvedByUserId: string; // sId of the approving user.
-  fileVersion: number; // FileModel.version at the moment of approval.
-};
-
 export type FileUseCaseMetadata = {
   conversationId?: string;
   skillId?: string;
@@ -59,15 +51,12 @@ export type FileUseCaseMetadata = {
   // only the original blob exists. Stamped together for sandbox-mounted raw delimited files.
   skipDataSourceIndexing?: boolean;
   skipFileProcessing?: boolean;
-  // Plan mode. `isPlanFile: true` marks a file as agent-owned (user can't directly mutate).
-  // `planModeLastApproval` is set when the agent's `request_plan_approval` is approved.
-  // `isPlanClosed: true` marks the plan as retired — hidden from UI and ignored by the skill.
-  // Active plans omit `isPlanClosed` (only closed plans have it set).
-  isPlanFile?: boolean;
-  planModeLastApproval?: PlanModeApproval | null;
-  isPlanClosed?: boolean;
   // Which branding asset this file was uploaded for (workspace_branding use case only).
   asset?: string;
+  // Root scoped path of a published Frame's source tree in the mount (interactive content
+  // only). Set when the frame has been published: its presence means a built bundle exists
+  // (stored as the processed version) and records where to re-read sources on republish.
+  frameBundleRootPath?: string;
 };
 
 export function isConversationFileUseCase(
@@ -293,6 +282,11 @@ export const MAX_FILE_SIZES_DEFAULT: Record<FileFormatCategory, number> = {
   audio: 100 * 1024 * 1024, // 100 MB, audio files can be large, ex transcript of meetings
 };
 
+export const MAX_FILE_SIZES = MAX_FILE_SIZES_DEFAULT;
+
+// Conversations: large delimited files (CSV/XLSX) are mounted into the sandbox and read as-is by
+// the agent's code rather than loaded into its context, so they can be much larger than regular
+// uploads.
 export const MAX_FILE_SIZES_LARGE_DELIMITED: Record<
   FileFormatCategory,
   number
@@ -301,7 +295,49 @@ export const MAX_FILE_SIZES_LARGE_DELIMITED: Record<
   delimited: 350 * 1024 * 1024,
 };
 
-export const MAX_FILE_SIZES = MAX_FILE_SIZES_DEFAULT;
+// Skill attachments: tabular files (CSV/XLSX -> delimited) AND documents (PDF/DOCX/PPTX -> data)
+// are mounted into the sandbox and read as-is, so both categories can be much larger than regular
+// uploads.
+export const MAX_FILE_SIZES_LARGE_SKILL: Record<FileFormatCategory, number> = {
+  ...MAX_FILE_SIZES_DEFAULT,
+  delimited: 350 * 1024 * 1024,
+  data: 350 * 1024 * 1024,
+};
+
+// Whether an upload is stored as a raw sandbox file: kept as-is with no upload-time processing
+// (no Tika extraction / image resize) and not indexed. Always requires sandbox tools.
+//  - conversation: large delimited files are served raw to the sandbox instead of indexed as tables;
+//  - skill_attachment: delimited tables and data documents (PDF/DOCX/PPTX) are mounted raw.
+export function allowsSandboxRawUpload({
+  category,
+  hasSandboxTools,
+  useCase,
+}: {
+  category: FileFormatCategory;
+  hasSandboxTools: boolean;
+  useCase: FileUseCase;
+}): boolean {
+  if (!hasSandboxTools) {
+    return false;
+  }
+
+  switch (useCase) {
+    case "conversation":
+      return category === "delimited";
+    case "skill_attachment":
+      return category === "delimited" || category === "data";
+    case "avatar":
+    case "tool_output":
+    case "upsert_document":
+    case "folders_document":
+    case "upsert_table":
+    case "project_context":
+    case "workspace_branding":
+      return false;
+    default:
+      assertNever(useCase);
+  }
+}
 
 export function resolveMaxFileSizes({
   hasSandboxTools,
@@ -310,9 +346,26 @@ export function resolveMaxFileSizes({
   hasSandboxTools: boolean;
   useCase: FileUseCase;
 }): Record<FileFormatCategory, number> {
-  const eligible = hasSandboxTools && useCase === "conversation";
+  if (!hasSandboxTools) {
+    return MAX_FILE_SIZES_DEFAULT;
+  }
 
-  return eligible ? MAX_FILE_SIZES_LARGE_DELIMITED : MAX_FILE_SIZES_DEFAULT;
+  switch (useCase) {
+    case "conversation":
+      return MAX_FILE_SIZES_LARGE_DELIMITED;
+    case "skill_attachment":
+      return MAX_FILE_SIZES_LARGE_SKILL;
+    case "avatar":
+    case "tool_output":
+    case "upsert_document":
+    case "folders_document":
+    case "upsert_table":
+    case "project_context":
+    case "workspace_branding":
+      return MAX_FILE_SIZES_DEFAULT;
+    default:
+      return assertNever(useCase);
+  }
 }
 
 export function fileSizeToHumanReadable(size: number, decimals = 0) {
@@ -391,6 +444,14 @@ type FileFormat = {
    * - Any file type that could contain executable code
    */
   isSafeToDisplay: boolean;
+  /**
+   * When true, this format opens in the resizable conversation side panel
+   * (like frames) rather than the cramped file preview modal. This is the
+   * source of truth for the open-in-side-panel behavior per content type.
+   * Note: the side panel preview relies on the path-based conversion route, so
+   * a file path is still required at the call site.
+   */
+  opensInSidePanel?: boolean;
   // When set, restricts which upload use cases expose this format in their file picker.
   // Possible values: conversation, avatar, tool_output, skill_attachment, upsert_document,
   // folders_document, upsert_table, project_context. Omit to allow in all contexts.
@@ -453,7 +514,6 @@ export const FILE_FORMATS = {
     exts: [".json"],
     isSafeToDisplay: true,
   },
-
   // Data.
   "text/plain": {
     cat: "data",
@@ -492,11 +552,13 @@ export const FILE_FORMATS = {
     cat: "data",
     exts: [".ppt", ".pptx"],
     isSafeToDisplay: true,
+    opensInSidePanel: true,
   },
   "application/vnd.openxmlformats-officedocument.presentationml.presentation": {
     cat: "data",
     exts: [".ppt", ".pptx"],
     isSafeToDisplay: true,
+    opensInSidePanel: true,
   },
   "application/pdf": { cat: "data", exts: [".pdf"], isSafeToDisplay: true },
   "application/vnd.google-apps.document": {
@@ -648,6 +710,8 @@ export type SupportedFileContentType = keyof typeof FILE_FORMATS;
 
 export const frameContentType = "application/vnd.dust.frame";
 export const frameSlideshowContentType = "application/vnd.dust.frame.slideshow";
+export const sandboxFunctionContentType =
+  "application/vnd.dust.sandbox.function";
 
 // Interactive Content MIME types for specialized use cases (not exposed via APIs).
 export const INTERACTIVE_CONTENT_FILE_FORMATS = {
@@ -670,13 +734,26 @@ export const INTERACTIVE_CONTENT_FILE_FORMATS = {
 export type InteractiveContentFileContentType =
   keyof typeof INTERACTIVE_CONTENT_FILE_FORMATS;
 
+export const SANDBOX_FUNCTION_FILE_FORMATS = {
+  [sandboxFunctionContentType]: {
+    cat: "code",
+    exts: [".ts"],
+    isSafeToDisplay: false,
+  },
+} as const satisfies Record<string, FileFormat>;
+
+export type SandboxFunctionFileContentType =
+  keyof typeof SANDBOX_FUNCTION_FILE_FORMATS;
+
 export const ALL_FILE_FORMATS = {
   ...INTERACTIVE_CONTENT_FILE_FORMATS,
+  ...SANDBOX_FUNCTION_FILE_FORMATS,
   ...FILE_FORMATS,
 };
-// Union type for all supported content types (public + Interactive Content).
+// Union type for all supported content types.
 export type AllSupportedFileContentType =
   | InteractiveContentFileContentType
+  | SandboxFunctionFileContentType
   | SupportedFileContentType;
 
 export type AllSupportedWithDustSpecificFileContentType =
@@ -737,11 +814,20 @@ export function isInteractiveContentType(
   ];
 }
 
+export function isSandboxFunctionContentType(
+  contentType: string
+): contentType is SandboxFunctionFileContentType {
+  return !!SANDBOX_FUNCTION_FILE_FORMATS[
+    contentType as SandboxFunctionFileContentType
+  ];
+}
+
 export function isAllSupportedFileContentType(
   contentType: string
 ): contentType is AllSupportedFileContentType {
   return (
     isInteractiveContentType(contentType) ||
+    isSandboxFunctionContentType(contentType) ||
     isSupportedFileContentType(contentType)
   );
 }
@@ -958,6 +1044,10 @@ export function isPdfContentType(contentType: string): boolean {
 
 export function isMarkdownContentType(contentType: string): boolean {
   return contentType === "text/markdown";
+}
+
+export function opensInSidePanel(contentType: string): boolean {
+  return getFileFormat(contentType)?.opensInSidePanel ?? false;
 }
 
 /**

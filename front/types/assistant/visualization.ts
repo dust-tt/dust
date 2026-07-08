@@ -16,6 +16,13 @@ const GetFileParamsSchema = z.object({
 
 type GetFileParams = z.infer<typeof GetFileParamsSchema>;
 
+const CallFunctionParamsSchema = z.object({
+  functionIdOrSlug: z.string(),
+  input: z.unknown().optional(),
+});
+
+type CallFunctionParams = z.infer<typeof CallFunctionParamsSchema>;
+
 const SetContentHeightParamsSchema = z.object({
   height: z.number(),
 });
@@ -43,6 +50,11 @@ type SetErrorMessageParams = z.infer<typeof SetErrorMessageParamsSchema>;
 const GetFileRequestSchema = VisualizationRPCRequestBaseSchema.extend({
   command: z.literal("getFile"),
   params: GetFileParamsSchema,
+});
+
+const CallFunctionRequestSchema = VisualizationRPCRequestBaseSchema.extend({
+  command: z.literal("callFunction"),
+  params: CallFunctionParamsSchema,
 });
 
 const GetCodeToExecuteRequestSchema = VisualizationRPCRequestBaseSchema.extend({
@@ -74,6 +86,10 @@ const EditTextParamsSchema = z.object({
   newText: z.string(),
   oldText: z.string(),
   targetFileId: z.string().optional(),
+  // When set, the edit is routed back to the source by location: the value is the clicked
+  // element's `data-source` ("<relPath>:<line>:<col>") from a published (bundled) Frame, and
+  // oldText/newText are the visible (trimmed) text. Absent for legacy context-match edits.
+  source: z.string().optional(),
 });
 
 type EditTextParams = z.infer<typeof EditTextParamsSchema>;
@@ -88,6 +104,7 @@ const EditTextRequestSchema = VisualizationRPCRequestBaseSchema.extend({
 });
 
 const VisualizationRPCRequestSchema = z.union([
+  CallFunctionRequestSchema,
   GetFileRequestSchema,
   GetCodeToExecuteRequestSchema,
   SetContentHeightRequestSchema,
@@ -105,6 +122,7 @@ export type VisualizationRPCCommand = VisualizationRPCRequest["command"];
 
 // Define a mapped type for backward compatibility.
 export type VisualizationRPCRequestMap = {
+  callFunction: CallFunctionParams;
   getFile: GetFileParams;
   getCodeToExecute: null;
   setContentHeight: SetContentHeightParams;
@@ -116,6 +134,7 @@ export type VisualizationRPCRequestMap = {
 
 // Command results.
 export interface CommandResultMap {
+  callFunction: { result: unknown; error?: string };
   getCodeToExecute: { code: string };
   getFile: { fileBlob: Blob | null };
   downloadFileRequest: { blob: Blob; filename?: string };

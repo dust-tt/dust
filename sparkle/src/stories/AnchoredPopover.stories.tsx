@@ -43,9 +43,9 @@ export const MultipleAnchors: StoryObj<typeof AnchoredPopover> = {
     };
 
     return (
-      <div className="s-flex s-h-[400px] s-w-[600px] s-items-center s-justify-center s-gap-8">
-        <div className="s-relative s-flex s-h-48 s-w-48 s-flex-col s-items-center s-justify-center">
-          <div className="s-absolute s-left-1/2 s-top-0 s--translate-x-1/2">
+      <div className="flex h-[400px] w-[600px] items-center justify-center gap-8">
+        <div className="relative flex h-48 w-48 flex-col items-center justify-center">
+          <div className="absolute left-1/2 top-0 -translate-x-1/2">
             <Button
               ref={topRef}
               label="Top"
@@ -53,7 +53,7 @@ export const MultipleAnchors: StoryObj<typeof AnchoredPopover> = {
               size="sm"
             />
           </div>
-          <div className="s-absolute s-right-0 s-top-1/2 s--translate-y-1/2">
+          <div className="absolute right-0 top-1/2 -translate-y-1/2">
             <Button
               ref={rightRef}
               label="Right"
@@ -61,7 +61,7 @@ export const MultipleAnchors: StoryObj<typeof AnchoredPopover> = {
               size="sm"
             />
           </div>
-          <div className="s-absolute s-bottom-0 s-left-1/2 s--translate-x-1/2">
+          <div className="absolute bottom-0 left-1/2 -translate-x-1/2">
             <Button
               ref={bottomRef}
               label="Bottom"
@@ -69,7 +69,7 @@ export const MultipleAnchors: StoryObj<typeof AnchoredPopover> = {
               size="sm"
             />
           </div>
-          <div className="s-absolute s-left-0 s-top-1/2 s--translate-y-1/2">
+          <div className="absolute left-0 top-1/2 -translate-y-1/2">
             <Button
               ref={leftRef}
               label="Left"
@@ -92,9 +92,9 @@ export const MultipleAnchors: StoryObj<typeof AnchoredPopover> = {
             }
             align="center"
             sideOffset={4}
-            className="s-w-40 s-p-4"
+            className="w-40 p-4"
           >
-            <div className="s-text-sm">
+            <div className="text-sm">
               This popover is anchored to the{" "}
               {activeRef === topRef
                 ? "top"

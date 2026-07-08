@@ -20,6 +20,25 @@ procs:
       echo "OK"
     autostart: true
 
+  docker-infra:
+    cwd: "<CONFIG_DIR>/.."
+    shell: |
+      docker compose up -d db redis qdrant_primary qdrant_secondary elasticsearch
+      docker compose logs -f db redis qdrant_primary qdrant_secondary elasticsearch
+    autostart: false
+
+  temporal-infra:
+    cwd: "<CONFIG_DIR>/../temporal"
+    shell: |
+      docker compose up -d
+      until nc -z localhost 7233 2>/dev/null; do sleep 2; done
+      docker compose exec -T temporal-admin-tools temporal operator search-attribute create \
+        --name connectorId --type Int \
+        --name conversationId --type Text \
+        --name workspaceId --type Text 2>/dev/null || true
+      docker compose logs -f
+    autostart: false
+
   core:
     cwd: "<CONFIG_DIR>/../core"
     shell: "bacon core-api"
@@ -141,10 +160,16 @@ procs:
       npm run dev
     autostart: false
 
-  extension:
+  extension-chrome:
     cwd: "<CONFIG_DIR>/../extension"
     shell: |
       npm run dev:chrome
+    autostart: false
+
+  extension-firefox:
+    cwd: "<CONFIG_DIR>/../extension"
+    shell: |
+      npm run dev:firefox
     autostart: false
 
   ngrok:
@@ -155,6 +180,25 @@ procs:
   firebase-webhook-router:
     cwd: "<CONFIG_DIR>/../firebase-functions/webhook-router"
     shell: "docker-compose up --build"
+    autostart: false
+
+  # apache-tika: Document text extraction. TIKA_URL=http://localhost:9998.
+  apache-tika:
+    cwd: "<CONFIG_DIR>/.."
+    shell: "docker compose up apache-tika"
+    autostart: false
+
+  # kibana: Elasticsearch UI. kibana_settings runs first as a docker-compose dep.
+  kibana:
+    cwd: "<CONFIG_DIR>/.."
+    shell: "docker compose up kibana_settings kibana"
+    autostart: false
+
+  # Gotenberg: Office/PDF document preview conversion (LibreOffice route).
+  # front-api reads its URL from DOCUMENT_RENDERER_URL (set to http://localhost:3100).
+  gotenberg:
+    cwd: "<CONFIG_DIR>/.."
+    shell: "docker compose --profile gotenberg up gotenberg"
     autostart: false
 
   novu:

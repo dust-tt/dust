@@ -1,5 +1,5 @@
-import type { GetProvidersCheckResponseBody } from "@app/lib/api/provider_credentials";
 import { clientFetch } from "@app/lib/egress/client";
+import type { GetProvidersCheckResponseBody } from "@app/types/api/provider_credentials";
 import type { WorkspaceType } from "@app/types/user";
 
 import type { useProviders } from "./swr/apps";
@@ -55,14 +55,6 @@ export const modelProviders: ModelProvider[] = [
     embed: false,
   },
   {
-    providerId: "togetherai",
-    name: "TogetherAI",
-    built: true,
-    enabled: false,
-    chat: true,
-    embed: false,
-  },
-  {
     providerId: "deepseek",
     name: "Deepseek",
     built: true,
@@ -93,7 +85,6 @@ export const APP_MODEL_PROVIDER_IDS: string[] = [
   "anthropic",
   "mistral",
   "google_ai_studio",
-  "togetherai",
   "azure_openai",
   "deepseek",
   "fireworks",

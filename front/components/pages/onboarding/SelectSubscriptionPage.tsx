@@ -49,10 +49,10 @@ export function SelectSubscriptionPage() {
       />
       <div className="flex min-h-screen flex-col items-center justify-center gap-8 px-4 py-16">
         <div className="flex flex-col items-center gap-2 text-center">
-          <h1 className="text-4xl font-bold text-foreground dark:text-foreground-night">
+          <h1 className="text-4xl font-bold text-foreground">
             Choose how you want to start
           </h1>
-          <p className="text-lg text-muted-foreground dark:text-muted-foreground-night">
+          <p className="text-lg text-muted-foreground">
             Free to begin. Upgrade anytime.
           </p>
         </div>
@@ -66,7 +66,7 @@ export function SelectSubscriptionPage() {
 
           {/* Paid plans share a subtle wrapper to group them visually next to
               the Free plan. */}
-          <div className="flex flex-[2] flex-col gap-3 rounded-3xl border border-border bg-muted-background p-3 dark:border-border-night dark:bg-muted-background-night sm:flex-row">
+          <div className="flex flex-[2] flex-col gap-3 rounded-3xl border border-border bg-muted-background p-3 sm:flex-row">
             <PaidPlanCards
               billingPeriod={billingPeriod}
               onSubscribe={(seatType) => void handleSubscribe(seatType)}

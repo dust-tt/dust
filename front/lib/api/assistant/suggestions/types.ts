@@ -1,7 +1,7 @@
 import type {
   BuilderEmojiSuggestionsType,
   BuilderTextSuggestionsType,
-} from "@app/types/api/internal/assistant";
+} from "@app/types/api/assistant";
 
 export type SuggestionResults = {
   status: "ok";

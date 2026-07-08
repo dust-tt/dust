@@ -15,6 +15,7 @@ import {
   CONTRACT_CREDIT_TYPE_POOL,
   getCreditTypeAwuId,
   PLAN_CODE_CUSTOM_FIELD_KEY,
+  SUBSCRIPTION_SWAP_HANDLED_INLINE_CUSTOM_FIELD_KEY,
 } from "@app/lib/metronome/constants";
 import { setUserNearLimit } from "@app/lib/metronome/user_block";
 import type { MetronomeWebhookEvent } from "@app/lib/metronome/webhook_events";
@@ -253,6 +254,39 @@ describe("processMetronomeWebhook — contract.start", () => {
         starting_at: new Date().toISOString(),
         custom_fields: {
           [PLAN_CODE_CUSTOM_FIELD_KEY]: ENT_PLAN_CODE,
+        },
+      } as never)
+    );
+
+    const result = await processMetronomeWebhook({
+      event: event as never,
+      workspace,
+    });
+    expect(result.isOk()).toBe(true);
+
+    const refreshed = await WorkspaceResource.fetchById(workspace.sId);
+    const sub = await SubscriptionResource.fetchActiveByWorkspaceModelId(
+      refreshed!.id
+    );
+    expect(sub!.metronomeContractId).toBe(OLD_CONTRACT_ID);
+    expect(restoreWorkspaceAfterSubscription).not.toHaveBeenCalled();
+  });
+
+  it("does nothing when the contract carries SUBSCRIPTION_SWAP_HANDLED_INLINE", async () => {
+    // The caller (e.g. provisionCreditPricedFreePlan) already created the
+    // active subscription synchronously — the webhook must not also swap it,
+    // which would race with that write and leave two active subscriptions.
+    await PlanFactory.enterprise(ENT_PLAN_CODE);
+    const workspace = await setupMetronomeWorkspace(OLD_CONTRACT_ID);
+    const event = contractEvent("contract.start", NEW_CONTRACT_ID);
+    vi.mocked(getMetronomeContractById).mockResolvedValue(
+      new Ok({
+        id: NEW_CONTRACT_ID,
+        customer_id: METRONOME_CUSTOMER_ID,
+        starting_at: new Date().toISOString(),
+        custom_fields: {
+          [PLAN_CODE_CUSTOM_FIELD_KEY]: ENT_PLAN_CODE,
+          [SUBSCRIPTION_SWAP_HANDLED_INLINE_CUSTOM_FIELD_KEY]: "true",
         },
       } as never)
     );

@@ -1,6 +1,6 @@
 [package]
 name = "dust-sandbox"
-version = "0.1.26"
+version = "0.1.32"
 edition = "2021"
 
 [[bin]]
@@ -21,6 +21,7 @@ httparse = "1"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls-native-roots"] }
+rustix = { version = "1", features = ["process"] }
 rustls = { version = "0.23", features = ["ring"] }
 rustls-native-certs = "0.8"
 rcgen = { version = "0.13", default-features = false, features = ["pem", "ring", "x509-parser"] }
@@ -31,5 +32,7 @@ tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
 x509-parser = "0.16"
 
 [dev-dependencies]
-tempfile = "=3.20.0"
 tokio = { version = "1", features = ["test-util"] }
+
+[dependencies.tempfile]
+version = "=3.20.0"

@@ -10,7 +10,10 @@ import {
 } from "@app/lib/resources/storage/models/user";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { SearchUsersOrderBy } from "@app/lib/user_search/search";
-import { searchUsers } from "@app/lib/user_search/search";
+import {
+  searchAllUsers as searchAllUserDocuments,
+  searchUsers as searchUserDocuments,
+} from "@app/lib/user_search/search";
 import {
   cacheWithRedis,
   invalidateCacheAfterCommit,
@@ -32,6 +35,7 @@ import type {
 } from "@app/types/user";
 import type { UserSearchDocument } from "@app/types/user_search/user_search";
 import { escape } from "html-escaper";
+import chunk from "lodash/chunk";
 import fromPairs from "lodash/fromPairs";
 import sortBy from "lodash/sortBy";
 import type {
@@ -62,6 +66,7 @@ export interface DeleteUserApprovalsResponseBody {
 const USER_METADATA_COMMA_SEPARATOR = ",";
 const USER_METADATA_COMMA_REPLACEMENT = "DUST_COMMA";
 const TOOLS_VALIDATION_WILDCARD = "*";
+const USER_SEARCH_DB_BATCH_SIZE = 1000;
 
 type CachedUserData = {
   id: ModelId;
@@ -362,62 +367,44 @@ export class UserResource extends BaseResource<UserModel> {
     return users.map((user) => new UserResource(UserModel, user.get()));
   }
 
-  static async searchUsers(
-    auth: Authenticator,
-    {
-      searchTerm,
-      offset,
-      limit,
-      orderBy,
-      restrictToUserIds,
-    }: {
-      searchTerm: string;
-      offset: number;
-      limit: number;
-      orderBy?: SearchUsersOrderBy;
-      restrictToUserIds?: string[];
-    }
-  ): Promise<Result<{ users: UserResource[]; total: number }, Error>> {
-    const owner = auth.getNonNullableWorkspace();
-
-    // Search users in Elasticsearch
-    const searchResult = await searchUsers({
-      owner,
-      searchTerm,
-      offset,
-      limit,
-      orderBy,
-      userIds: restrictToUserIds,
-    });
-    if (searchResult.isErr()) {
-      return searchResult;
-    }
-
-    const { users: userDocs, total } = searchResult.value;
+  private static async hydrateSearchUsers({
+    owner,
+    userDocs,
+    total,
+  }: {
+    owner: LightWorkspaceType;
+    userDocs: UserSearchDocument[];
+    total: number;
+  }): Promise<Result<{ users: UserResource[]; total: number }, Error>> {
     const userIds = userDocs.map((doc) => doc.user_id);
 
     if (userIds.length === 0) {
-      return new Ok({ users: [], total: 0 });
+      return new Ok({ users: [], total });
     }
 
-    // Note that UserResource has stored sIds, not generated ones.
-    const users = await UserModel.findAll({
-      where: {
-        sId: { [Op.in]: userIds },
-      },
-      include: [
-        {
-          model: MembershipModel,
-          as: "memberships",
-          required: true, // INNER JOIN
-          where: {
-            workspaceId: owner.id,
-            startAt: { [Op.lte]: new Date() },
-            endAt: { [Op.or]: [{ [Op.eq]: null }, { [Op.gte]: new Date() }] },
-          },
+    const now = new Date();
+    const users: UserModel[] = [];
+    for (const userIdBatch of chunk(userIds, USER_SEARCH_DB_BATCH_SIZE)) {
+      // Note that UserResource has stored sIds, not generated ones.
+      const batchUsers = await UserModel.findAll({
+        where: {
+          sId: { [Op.in]: userIdBatch },
         },
-      ],
-    });
+        include: [
+          {
+            model: MembershipModel,
+            as: "memberships",
+            required: true, // INNER JOIN
+            where: {
+              workspaceId: owner.id,
+              startAt: { [Op.lte]: now },
+              endAt: { [Op.or]: [{ [Op.eq]: null }, { [Op.gte]: now }] },
+            },
+          },
+        ],
+      });
+      users.push(...batchUsers);
+    }
 
     // Check if we found fewer users than expected (means some were revoked)
     if (users.length < userIds.length) {
@@ -442,19 +429,84 @@ export class UserResource extends BaseResource<UserModel> {
       );
     }
 
-    // Create a map to maintain the order from Elasticsearch results
+    // Create a map to maintain the order from Elasticsearch results.
     const userResourceMap = new Map<string, UserResource>();
     users.forEach((u) => {
       const userBlob = u.get();
       userResourceMap.set(u.sId, new UserResource(UserModel, userBlob));
     });
 
-    // Return users in the order from Elasticsearch results
+    // Return users in the order from Elasticsearch results.
     const orderedUsers = userIds
       .map((sId) => userResourceMap.get(sId))
       .filter((user): user is UserResource => user !== undefined);
 
     return new Ok({ users: orderedUsers, total });
+  }
+
+  static async searchUsers(
+    auth: Authenticator,
+    {
+      searchTerm,
+      offset,
+      limit,
+      orderBy,
+      restrictToUserIds,
+    }: {
+      searchTerm: string;
+      offset: number;
+      limit: number;
+      orderBy?: SearchUsersOrderBy;
+      restrictToUserIds?: string[];
+    }
+  ): Promise<Result<{ users: UserResource[]; total: number }, Error>> {
+    const owner = auth.getNonNullableWorkspace();
+
+    const searchResult = await searchUserDocuments({
+      owner,
+      searchTerm,
+      offset,
+      limit,
+      orderBy,
+      userIds: restrictToUserIds,
+    });
+    if (searchResult.isErr()) {
+      return searchResult;
+    }
+
+    return this.hydrateSearchUsers({
+      owner,
+      userDocs: searchResult.value.users,
+      total: searchResult.value.total,
+    });
+  }
+
+  static async searchAllUsers(
+    auth: Authenticator,
+    {
+      searchTerm,
+      restrictToUserIds,
+    }: {
+      searchTerm: string;
+      restrictToUserIds?: string[];
+    }
+  ): Promise<Result<{ users: UserResource[]; total: number }, Error>> {
+    const owner = auth.getNonNullableWorkspace();
+
+    const searchResult = await searchAllUserDocuments({
+      owner,
+      searchTerm,
+      userIds: restrictToUserIds,
+    });
+    if (searchResult.isErr()) {
+      return searchResult;
+    }
+
+    return this.hydrateSearchUsers({
+      owner,
+      userDocs: searchResult.value.users,
+      total: searchResult.value.total,
+    });
   }
 
   async updateName(firstName: string, lastName: string | null) {

@@ -1,6 +1,6 @@
 import { useSendNotification } from "@app/hooks/useNotification";
-import type { CreatePokeCouponResponseBody } from "@app/lib/api/poke/coupons";
 import { clientFetch } from "@app/lib/egress/client";
+import type { CreatePokeCouponResponseBody } from "@app/types/api/poke/coupons";
 import type { CouponDiscountType } from "@app/types/coupon";
 import { CreateCouponBodySchema } from "@app/types/coupon";
 import { isString } from "@app/types/shared/utils/general";
@@ -138,7 +138,7 @@ export function CreateCouponForm({
   }
 
   return (
-    <div className="rounded-lg border bg-muted/40 p-6 dark:bg-muted-night/40">
+    <div className="rounded-lg border bg-muted/40 p-6">
       <div className="mb-4 flex items-center justify-between">
         <h2 className="text-lg font-semibold">Create coupon</h2>
         <Button icon={XClose} variant="ghost" size="sm" onClick={onCancel} />
@@ -179,19 +179,30 @@ export function CreateCouponForm({
               set("discountType", value as CouponDiscountType)
             }
           >
-            <RadioGroupItem value="seat" label="Seat" />
+            <RadioGroupItem value="seat" label="Seat (subscription discount)" />
+            <RadioGroupItem
+              value="credit_pool_top_up"
+              label="Credit pool top-up (bonus AWU)"
+            />
           </RadioGroup>
         </div>
 
         <div className="flex flex-col gap-1">
           <label className="text-sm font-medium">
-            Amount <span className="text-red-500">*</span>
+            {form.discountType === "credit_pool_top_up"
+              ? "Bonus AWU credits"
+              : "Amount (currency units, e.g. $)"}{" "}
+            <span className="text-red-500">*</span>
           </label>
           <Input
             type="number"
             value={form.amount}
             onChange={(e) => set("amount", e.target.value)}
-            placeholder="e.g. 50"
+            placeholder={
+              form.discountType === "credit_pool_top_up"
+                ? "e.g. 5000"
+                : "e.g. 50"
+            }
             min={0.5}
             step={0.5}
           />

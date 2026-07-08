@@ -30,7 +30,7 @@ async function createMemberRequest(workspace: WorkspaceType) {
 
 describe("/api/w/[wId]/credits/upgrade-requests", () => {
   describe("auth", () => {
-    it("GET returns 403 when caller is not an admin", async () => {
+    it("GET returns 403 when caller is a user", async () => {
       const workspace = await creditPricedWorkspace();
       await createPrivateApiMockRequest({
         method: "GET",
@@ -42,6 +42,36 @@ describe("/api/w/[wId]/credits/upgrade-requests", () => {
 
       expect(response.status).toBe(403);
       expect((await response.json()).error.type).toBe("workspace_auth_error");
+    });
+
+    it("allows a business admin to list and resolve requests", async () => {
+      const workspace = await creditPricedWorkspace();
+      const { user: member } = await createMemberRequest(workspace);
+
+      await createPrivateApiMockRequest({
+        method: "GET",
+        role: "business_admin",
+        workspace,
+      });
+
+      const listResponse = await honoApp.request(
+        upgradeRequestsUrl(workspace.sId)
+      );
+      expect(listResponse.status).toBe(200);
+      const { requests } = await listResponse.json();
+      expect(requests).toHaveLength(1);
+      expect(requests[0].requester.sId).toBe(member.sId);
+
+      const patchResponse = await honoApp.request(
+        `${upgradeRequestsUrl(workspace.sId)}/${requests[0].sId}`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ status: "approved" }),
+        }
+      );
+      expect(patchResponse.status).toBe(200);
+      expect((await patchResponse.json()).request.status).toBe("approved");
     });
   });
 
@@ -154,7 +184,7 @@ describe("/api/w/[wId]/credits/upgrade-requests", () => {
       expect(response.status).toBe(404);
     });
 
-    it("PATCH returns 403 when caller is not an admin", async () => {
+    it("PATCH returns 403 when caller is a user", async () => {
       const workspace = await creditPricedWorkspace();
       await createPrivateApiMockRequest({
         method: "GET",

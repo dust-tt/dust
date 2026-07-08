@@ -1,9 +1,3 @@
-import type {
-  DeleteSkillResponseBody,
-  GetSkillResponseBody,
-  GetSkillWithRelationsResponseBody,
-  PatchSkillResponseBody,
-} from "@app/lib/api/skills";
 import { AttachedKnowledgeSchema } from "@app/lib/api/skills/schemas";
 import {
   getReferencedSkillSpaceModelIds,
@@ -16,6 +10,12 @@ import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resour
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { isResourceSId } from "@app/lib/resources/string_ids";
 import logger from "@app/logger/logger";
+import type {
+  DeleteSkillResponseBody,
+  GetSkillResponseBody,
+  GetSkillWithRelationsResponseBody,
+  PatchSkillResponseBody,
+} from "@app/types/api/skills";
 import type { SkillWithRelationsType } from "@app/types/assistant/skill_configuration";
 import type { APIErrorResponse } from "@app/types/error";
 import type { ModelId } from "@app/types/shared/model_id";
@@ -118,9 +118,6 @@ app.get(
       const usage = await skill.fetchUsage(auth);
       const editors = await skill.listEditors(auth);
       const editedByUser = await skill.fetchEditedByUser(auth);
-      const extendedSkill = serializedSkill.extendedSkillId
-        ? await SkillResource.fetchById(auth, serializedSkill.extendedSkillId)
-        : null;
       const childSkills = await skill.fetchChildSkills(auth);
       const usedBySkills =
         (await SkillResource.batchFetchUsedBySkills(auth, [skill])).get(
@@ -137,7 +134,6 @@ app.get(
           },
           editors: editors ? editors.map((e) => e.toJSON()) : null,
           editedByUser: editedByUser ? editedByUser.toJSON() : null,
-          extendedSkill: extendedSkill ? extendedSkill.toJSON(auth) : null,
           childSkills: childSkills.map((childSkill) => {
             const {
               instructions,
@@ -197,7 +193,7 @@ app.patch(
     }
 
     // Check for existing active skill with the same name (excluding current skill).
-    const existingSkill = await SkillResource.fetchActiveByName(auth, name);
+    const existingSkill = await SkillResource.fetchByName(auth, name);
 
     if (existingSkill && existingSkill.id !== skill.id) {
       return apiError(ctx, {

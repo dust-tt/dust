@@ -50,29 +50,23 @@ export type FileSystemMount = {
   };
 };
 
-type FileSystemEntryBase = {
-  fileName: string;
-  /** Full scoped path, e.g. `conversation-{cId}/folder/report.pdf`. Always canonical. */
-  path: string;
-  sizeBytes: number;
-  lastModifiedMs: number;
-};
+/**
+ * A mount that exists only inside the sandbox filesystem and is never exposed through the
+ * scoped-path API (the agent's file tools never see it). Used for prefixes the sandbox must read
+ * but that are not an agent-visible namespace, e.g. published sandbox-function bundles.
+ */
+export type SandboxOnlyMountKind = "pod_sandbox_functions";
 
-export type FileSystemDirectoryEntry = FileSystemEntryBase & {
-  isDirectory: true;
-};
+export type SandboxOnlyMount = {
+  kind: SandboxOnlyMountKind;
 
-export type FileSystemFileEntry = FileSystemEntryBase & {
-  isDirectory: false;
-  contentType: string;
-  /** sId of the corresponding FileResource record, or null when none exists. */
-  fileId: string | null;
-  thumbnailUrl: string | null;
-  /** Present when the caller requested signed URLs. */
-  signedDownloadUrl?: string | null;
-};
+  /** sId of the pod this mount belongs to. */
+  id: string;
 
-export type FileSystemEntry = FileSystemDirectoryEntry | FileSystemFileEntry;
+  sandboxMountPoint: string;
+
+  readOnly: boolean;
+};
 
 export type DustFileSystemErrorCode =
   | "unauthorized"
@@ -117,11 +111,3 @@ export function conversationScopedPath({
 export function podScopedPath(spaceId: string, rel: string): string {
   return `${SCOPED_PREFIX_POD}${spaceId}/${rel}`;
 }
-
-export type GetSpaceFilesResponseBody = {
-  files: FileSystemEntry[];
-};
-
-export type PostSpaceFolderResponseBody = {
-  folder: FileSystemDirectoryEntry;
-};

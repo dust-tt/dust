@@ -3,13 +3,12 @@ import { listMetronomeDraftInvoices } from "@app/lib/metronome/client";
 import {
   CREDIT_TYPE_EUR_ID,
   CREDIT_TYPE_USD_ID,
-  getProductMauId,
-  getProductMauTierIds,
   getProductWorkspaceSeatId,
 } from "@app/lib/metronome/constants";
 import type {
   GetMetronomeInvoiceLinesResponseBody,
   GetMetronomeInvoiceResponseBody,
+  MetronomeInvoiceLineItem,
   MetronomeInvoiceSummary,
 } from "@app/lib/metronome/invoice";
 import type { SupportedCurrency } from "@app/types/currency";
@@ -62,6 +61,48 @@ async function findCurrentInvoice(
   return new Ok(invoice);
 }
 
+// When a credit partially covers a charge, Metronome splits the charge line
+// into a covered portion (fractional quantity, carrying
+// applied_commit_or_credit) and the uncovered remainder. Similarly, a single
+// coupon applied to several products yields one applied-credit line per
+// product. Merge those splits back so the invoice reads as one line per
+// charge and one line per coupon/credit.
+function mergeLineItems(
+  lineItems: MetronomeInvoiceLineItem[]
+): MetronomeInvoiceLineItem[] {
+  const merged: MetronomeInvoiceLineItem[] = [];
+  const indexByKey = new Map<string, number>();
+  for (const item of lineItems) {
+    // Lines merge only when everything but the quantity/total matches (for
+    // applied-credit lines, unit price and quantity are always null, so this
+    // amounts to merging by coupon/credit name and period).
+    const key = JSON.stringify([
+      item.name,
+      item.type,
+      item.unitPriceCents,
+      item.isProrated,
+      item.periodStartMs,
+      item.periodEndMs,
+    ]);
+    const index = indexByKey.get(key);
+    if (index === undefined) {
+      indexByKey.set(key, merged.length);
+      merged.push(item);
+      continue;
+    }
+    const existing = merged[index];
+    merged[index] = {
+      ...existing,
+      quantity:
+        existing.quantity !== null && item.quantity !== null
+          ? existing.quantity + item.quantity
+          : null,
+      totalCents: existing.totalCents + item.totalCents,
+    };
+  }
+  return merged;
+}
+
 // Mounted at /api/w/:wId/metronome/invoice.
 const app = workspaceApp();
 
@@ -110,52 +151,16 @@ app.get(
     }
 
     const seatProductId = getProductWorkspaceSeatId();
-    const simpleMauProductId = getProductMauId();
-    const tierProductIds = getProductMauTierIds();
-    const tierProductIdToIndex = new Map<string, number>(
-      tierProductIds.map((id, idx) => [id, idx])
-    );
 
-    const mauProductIds = new Set<string>([
-      simpleMauProductId,
-      ...tierProductIds,
-    ]);
-
-    let mau: number | null = null;
     let seatUnitPriceCents: number | null = null;
-    let mauUnitPriceCents: number | null = null;
-    const mauTierUnitPricesCents: Array<number | null> = tierProductIds.map(
-      () => null
-    );
-    let tieredMauSeenOnInvoice = false;
 
     for (const item of invoice.line_items) {
       const productId = item.product_id;
-      if (!productId) {
+      if (!productId || typeof item.unit_price !== "number") {
         continue;
       }
-
-      if (mauProductIds.has(productId) && typeof item.quantity === "number") {
-        mau = (mau ?? 0) + item.quantity;
-      }
-
-      if (typeof item.unit_price !== "number") {
-        continue;
-      }
-
       if (productId === seatProductId) {
         seatUnitPriceCents = amountCents(item.unit_price, currency);
-      } else if (productId === simpleMauProductId) {
-        mauUnitPriceCents = amountCents(item.unit_price, currency);
-      } else {
-        const tierIndex = tierProductIdToIndex.get(productId);
-        if (tierIndex !== undefined) {
-          mauTierUnitPricesCents[tierIndex] = amountCents(
-            item.unit_price,
-            currency
-          );
-          tieredMauSeenOnInvoice = true;
-        }
       }
     }
 
@@ -171,12 +176,7 @@ app.get(
       currentPeriodStartMs,
       currentPeriodEndMs,
       estimatedAmountCents: amountCents(invoice.total, currency),
-      mau,
       seatUnitPriceCents,
-      mauUnitPriceCents,
-      mauTierUnitPricesCents: tieredMauSeenOnInvoice
-        ? mauTierUnitPricesCents
-        : null,
     };
 
     return ctx.json({ invoice: summary });
@@ -224,13 +224,15 @@ app.get(
 
     const currency = creditTypeIdToCurrency(invoice.credit_type.id);
 
-    const lineItems = invoice.line_items
+    const mappedLineItems = invoice.line_items
       .filter((item) => {
         const itemCurrency = creditTypeIdToCurrency(item.credit_type.id);
         return !!currency && !!itemCurrency && itemCurrency === currency;
       })
-      .filter((item) => item.total >= 0.01)
-      .filter((item) => !item.applied_commit_or_credit)
+      // Keep negative lines: applied commits/credits (coupons, free credits,
+      // commitments) explain why the invoice total is lower than the sum of
+      // the charge lines. Only drop sub-cent noise.
+      .filter((item) => Math.abs(item.total) >= 0.01)
       .map((item) => {
         const itemCurrency = creditTypeIdToCurrency(item.credit_type.id);
         return {
@@ -244,10 +246,18 @@ app.get(
           totalCents: itemCurrency
             ? amountCents(item.total, itemCurrency)
             : item.total,
+          isProrated: item.is_prorated ?? false,
+          periodStartMs: item.starting_at
+            ? new Date(item.starting_at).getTime()
+            : null,
+          // Exclusive end of the period covered by the line item.
+          periodEndMs: item.ending_before
+            ? new Date(item.ending_before).getTime()
+            : null,
         };
       });
 
-    return ctx.json({ currency, lineItems, items: invoice.line_items });
+    return ctx.json({ currency, lineItems: mergeLineItems(mappedLineItems) });
   }
 );
 

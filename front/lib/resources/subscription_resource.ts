@@ -2,16 +2,15 @@ import { sendProactiveTrialCancelledEmail } from "@app/lib/api/email";
 import { getOrCreateWorkOSOrganization } from "@app/lib/api/workos/organization";
 import { getWorkspaceInfos } from "@app/lib/api/workspace";
 import type { Authenticator } from "@app/lib/auth";
-import { DustError } from "@app/lib/error";
+import type { DustError } from "@app/lib/error";
 import { scheduleMetronomeContractEnd } from "@app/lib/metronome/client";
 import {
   ensureMetronomeCustomerForWorkspace,
   provisionMetronomeContract,
-  provisionShadowEnterpriseMetronomeContract,
   resolveCurrencyForExistingMetronomeCustomer,
-  syncContractQuantities,
 } from "@app/lib/metronome/contracts";
 import { invalidateContractCache } from "@app/lib/metronome/plan_type";
+import { syncSeatCount } from "@app/lib/metronome/seats";
 import { LEGACY_BUSINESS_PACKAGE_ALIAS } from "@app/lib/metronome/types";
 import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { ConversationModel } from "@app/lib/models/agent/conversation";
@@ -206,22 +205,10 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
           t
         );
 
-      if (activeSubscription?.planId === plan.id) {
-        return new Err(
-          new DustError(
-            "subscription_already_exists",
-            `Active subscription already exists for plan ${plan.code}.`
-          )
-        );
-      }
-
-      if (activeSubscription?.isBilled) {
-        return new Err(
-          new DustError(
-            "subscription_already_exists",
-            "Active paid subscription already exists."
-          )
-        );
+      // Make sure subscription switch has not been called yet
+      // Can happen if metronome contract.start webhook is triggered first.
+      if (activeSubscription?.metronomeContractId === metronomeContractId) {
+        return new Ok(undefined);
       }
 
       await activeSubscription?.markAsEnded("ended", t);
@@ -279,9 +266,7 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
     SubscriptionResource.subscriptionCacheKeyResolver
   );
 
-  private static invalidateSubscriptionCache = async (
-    workspaceModelId: ModelId
-  ) => {
+  static invalidateSubscriptionCache = async (workspaceModelId: ModelId) => {
     logger.info(
       {
         workspaceModelId,
@@ -903,7 +888,6 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
   static async pokeUpgradeWorkspaceToEnterprise(
     auth: Authenticator,
     enterpriseDetails: EnterpriseUpgradeFormType,
-    stripeSubscription: Stripe.Subscription | null,
     metronome?: {
       metronomeCustomerId: string;
       metronomeContractId: string;
@@ -947,13 +931,13 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
         metronome.metronomeContractId
       );
 
-      const syncResult = await syncContractQuantities(
-        metronome.metronomeCustomerId,
-        metronome.metronomeContractId,
-        renderLightWorkspaceType({ workspace: workspaceResource }),
-        metronome.startingAt,
-        plan.code
-      );
+      const syncResult = await syncSeatCount({
+        metronomeCustomerId: metronome.metronomeCustomerId,
+        contractId: metronome.metronomeContractId,
+        workspace: renderLightWorkspaceType({ workspace: workspaceResource }),
+        startingAt: metronome.startingAt,
+        planCode: plan.code,
+      });
 
       if (syncResult.isErr()) {
         logger.error(
@@ -964,37 +948,6 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
           "Failed to sync initial seat/MAU quantities on Metronome contract"
         );
       }
-    } else if (stripeSubscription) {
-      const metronomeResult = await provisionShadowEnterpriseMetronomeContract({
-        workspace: renderLightWorkspaceType({ workspace: workspaceResource }),
-        stripeSubscription,
-        planCode: plan.code,
-      });
-
-      if (metronomeResult.isErr()) {
-        logger.error(
-          {
-            workspaceId: owner.sId,
-            error: metronomeResult.error.message,
-          },
-          "Failed to provision Metronome contract for enterprise upgrade"
-        );
-        return;
-      }
-
-      const { metronomeCustomerId, metronomeContractId } =
-        metronomeResult.value;
-
-      if (!workspaceResource.metronomeCustomerId) {
-        await WorkspaceResource.updateMetronomeCustomerId(
-          workspaceResource.id,
-          metronomeCustomerId
-        );
-      }
-      await SubscriptionResource.updateMetronomeContractId(
-        newSubscription.id,
-        metronomeContractId
-      );
     }
   }
 
@@ -1261,6 +1214,7 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
     await this.model.destroy({
       where: {
         id: this.id,
+        workspaceId: this.workspaceId,
       },
       transaction,
     });
@@ -1322,7 +1276,7 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
           trialing: false,
           startDate: new Date(),
           endDate: null,
-          stripeSubscriptionId: this.stripeSubscriptionId,
+          stripeSubscriptionId: null,
           metronomeContractId,
         },
         renderPlanFromModel({ plan: newPlan }),
@@ -1432,6 +1386,7 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
       seatCurrency: currency,
       billingPeriod: recurring.interval === "year" ? "yearly" : "monthly",
       quantity: item.quantity,
+      currentPeriodEndMs: stripeSubscription.current_period_end * 1000,
     };
   }
 

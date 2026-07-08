@@ -1,12 +1,12 @@
 import { makeColumnsForAssistants } from "@app/components/poke/assistants/columns";
 import { PokeDataTableConditionalFetch } from "@app/components/poke/PokeConditionalDataTables";
 import { PokeDataTable } from "@app/components/poke/shadcn/ui/data_table";
-import type { PokeAgentConfigurationType } from "@app/lib/api/poke/agent_configurations";
 import { clientFetch } from "@app/lib/egress/client";
 import type { AppRouter } from "@app/lib/platform";
 import { useAppRouter } from "@app/lib/platform";
 import { getErrorFromResponse } from "@app/lib/swr/swr";
 import { usePokeAgentConfigurations } from "@app/poke/swr/agent_configurations";
+import type { PokeAgentConfigurationType } from "@app/types/api/poke/agent_configurations";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import type { LightWorkspaceType } from "@app/types/user";
 import {

@@ -6,6 +6,9 @@ import {
 import { SpaceModel } from "@app/lib/resources/storage/models/spaces";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
 import type { CreationOptional, ForeignKey } from "sequelize";
+import { Op } from "sequelize";
+
+export type ProvisioningSource = "activation";
 
 export class ProjectMetadataModel extends WorkspaceAwareModel<ProjectMetadataModel> {
   declare id: CreationOptional<number>;
@@ -23,6 +26,8 @@ export class ProjectMetadataModel extends WorkspaceAwareModel<ProjectMetadataMod
   declare pinnedFramePath: CreationOptional<string | null>;
   /** sId of the agent pre-selected for new conversations in this pod. Null = @dust. */
   declare defaultAgentId: CreationOptional<string | null>;
+  declare defaultSkillsIds: CreationOptional<string[] | null>;
+  declare provisioningSource: CreationOptional<ProvisioningSource | null>;
 }
 
 ProjectMetadataModel.init(
@@ -68,6 +73,17 @@ ProjectMetadataModel.init(
       defaultValue: null,
       field: "defaultAgentSId",
     },
+    defaultSkillsIds: {
+      type: DataTypes.ARRAY(DataTypes.STRING),
+      allowNull: true,
+      defaultValue: null,
+      field: "defaultSkillsIds",
+    },
+    provisioningSource: {
+      type: DataTypes.STRING,
+      allowNull: true,
+      defaultValue: null,
+    },
   },
   {
     modelName: "project_metadata",
@@ -75,6 +91,11 @@ ProjectMetadataModel.init(
     indexes: [
       { unique: true, fields: ["spaceId"], concurrently: true },
       { fields: ["workspaceId"], concurrently: true },
+      {
+        fields: ["provisioningSource"],
+        where: { provisioningSource: { [Op.ne]: null } },
+        concurrently: true,
+      },
     ],
   }
 );

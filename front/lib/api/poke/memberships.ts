@@ -1,9 +1,23 @@
 import type { MembershipInvitationTypeWithLink } from "@app/types/membership_invitation";
+import type { MembershipSeatType } from "@app/types/memberships";
 import type { UserTypeWithWorkspaces } from "@app/types/user";
 import { z } from "zod";
 
+/**
+ * A workspace member as shown in the Poke members table. `seatType` is the
+ * member's ACTIVE seat right now; when a future seat change is scheduled (e.g. a
+ * member seated mid-migration whose seat flips at the pending contract start),
+ * `scheduledSeatType` / `scheduledSeatChangeAt` describe that upcoming change so
+ * the table can show "current → scheduled (date)" instead of surfacing the
+ * not-yet-active seat as the current one.
+ */
+export type PokeWorkspaceMember = UserTypeWithWorkspaces & {
+  scheduledSeatType?: MembershipSeatType | null;
+  scheduledSeatChangeAt?: number | null;
+};
+
 export type PokeGetMemberships = {
-  members: UserTypeWithWorkspaces[];
+  members: PokeWorkspaceMember[];
   pendingInvitations: MembershipInvitationTypeWithLink[];
 };
 

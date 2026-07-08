@@ -36,6 +36,7 @@ import {
   getInternalMCPServerNameAndWorkspaceId,
   getInternalMCPServerToolStakes,
   INTERNAL_MCP_SERVERS,
+  resolveInternalMCPServerToolStakeLevel,
 } from "@app/lib/actions/mcp_internal_actions/constants";
 import { findMatchingSubSchemas } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import type { MCPProgressNotificationType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
@@ -64,9 +65,11 @@ import {
   shouldRetryToolInterruption,
 } from "@app/lib/actions/tool_interruptions";
 import { tryGetPrefixedToolName } from "@app/lib/actions/tool_name_utils";
-import type {
-  AgentLoopListToolsContextType,
-  AgentLoopRunContextType,
+import {
+  type AgentLoopListToolsContextType,
+  isAgentLoopRunContext,
+  isSandboxFunctionRunContext,
+  type ToolContextType,
 } from "@app/lib/actions/types";
 import {
   isClientSideMCPToolConfiguration,
@@ -237,6 +240,7 @@ export function makeServerSideMCPToolConfigurations(
     dustProject: config.dustProject,
     ...(tool.timeoutMs && { timeoutMs: tool.timeoutMs }),
     ...(tool.displayLabels && { displayLabels: tool.displayLabels }),
+    ...(tool.eager && { eager: true }),
     argumentsRequiringApproval: toolsArgumentsRequiringApproval?.[tool.name],
   }));
 }
@@ -269,6 +273,7 @@ function makeClientSideMCPToolConfigurations(
     argumentsRequiringApproval: tool.argumentsRequiringApproval,
     displayLabels: tool.displayLabels,
     ...(tool.timeoutMs && { timeoutMs: tool.timeoutMs }),
+    ...(tool.eager && { eager: true }),
   }));
 }
 
@@ -292,6 +297,46 @@ function generateRemoteContentMetadata(content: CallToolResult["content"]): {
 }
 
 /**
+ * Runs `callTool` with a throwaway per-call signal so `compositeSignal` retains
+ * nothing once the call settles.
+ *
+ * The MCP SDK (v1.x) adds an `abort` listener to the signal we pass and never
+ * removes it. Since `compositeSignal` is pod-lifetime (composed with the shutdown
+ * signal in `temporal/agent_loop/activities/run_tool.ts`), that listener would pin
+ * every tool result until the pod dies.
+ *
+ * We bridge aborts onto a fresh controller and detach the bridge in `finally`, so
+ * the SDK's dangling listener hangs off a collectable per-call signal instead.
+ * We can remove this once we upgrade to v2 when it's stable.
+ */
+export async function runToolCallWithDetachedSignal<T>(
+  compositeSignal: AbortSignal | undefined,
+  callTool: (signal: AbortSignal) => Promise<T>
+): Promise<T> {
+  const perToolCallController = new AbortController();
+
+  if (!compositeSignal) {
+    return callTool(perToolCallController.signal);
+  }
+
+  if (compositeSignal.aborted) {
+    // Even if it's already aborted we still make a tool call
+    // so it runs its normal abort path (which rejects the call) rather
+    // than us inventing a separate error.
+    perToolCallController.abort(compositeSignal.reason);
+    return callTool(perToolCallController.signal);
+  }
+
+  const onAbort = () => perToolCallController.abort(compositeSignal.reason);
+  compositeSignal.addEventListener("abort", onAbort, { once: true });
+  try {
+    return await callTool(perToolCallController.signal);
+  } finally {
+    compositeSignal.removeEventListener("abort", onAbort);
+  }
+}
+
+/**
  * Try to call an MCP tool.
  *
  * May fail when connecting to remote/client-side servers.
@@ -300,7 +345,7 @@ function generateRemoteContentMetadata(content: CallToolResult["content"]): {
 export async function* tryCallMCPTool(
   auth: Authenticator,
   inputs: Record<string, unknown> | undefined,
-  agentLoopRunContext: AgentLoopRunContextType,
+  toolContext: ToolContextType,
   {
     progressToken,
     makeToolNotificationEvent,
@@ -313,7 +358,7 @@ export async function* tryCallMCPTool(
     signal?: AbortSignal;
   }
 ): AsyncGenerator<ToolNotificationEvent, CallToolResult> {
-  const { toolConfiguration } = agentLoopRunContext;
+  const { toolConfiguration } = toolContext.runContext || {};
 
   if (!isMCPToolConfiguration(toolConfiguration)) {
     return {
@@ -327,16 +372,25 @@ export async function* tryCallMCPTool(
     };
   }
 
-  const conversationId = agentLoopRunContext.conversation.sId;
-  const messageId = agentLoopRunContext.agentMessage.sId;
   const workspaceId = auth.getNonNullableWorkspace().sId;
-  const toolLogContext = {
-    conversationId,
-    messageId,
+
+  const toolLogContext: Record<string, unknown> = {
     toolName: toolConfiguration.originalName,
     toolConfigurationId: toolConfiguration.sId,
     workspaceId,
   };
+
+  if (isAgentLoopRunContext(toolContext.runContext)) {
+    const conversationId = toolContext.runContext.conversation.sId;
+    const messageId = toolContext.runContext.agentMessage.sId;
+    toolLogContext["conversationId"] = conversationId;
+    toolLogContext["messageId"] = messageId;
+  }
+  if (isSandboxFunctionRunContext(toolContext.runContext)) {
+    toolLogContext["functionId"] =
+      toolContext.runContext.invocation.sandboxFunction.sId;
+    toolLogContext["invocationId"] = toolContext.runContext.invocation.sId;
+  }
 
   let mcpClient;
   try {
@@ -344,7 +398,7 @@ export async function* tryCallMCPTool(
       const connResult = await connectServerSideMCP(
         auth,
         toolConfiguration,
-        agentLoopRunContext
+        toolContext
       );
       if (connResult.isErr()) {
         switch (connResult.error.type) {
@@ -386,13 +440,27 @@ export async function* tryCallMCPTool(
       }
       mcpClient = connResult.value;
     } else {
+      if (!isAgentLoopRunContext(toolContext.runContext)) {
+        return {
+          isError: true,
+          content: [
+            {
+              type: "text",
+              text: "Client side MCP servers require an agent loop context.",
+            },
+          ],
+        };
+      }
+
+      const { conversation, agentMessage } = toolContext.runContext;
+
       const connectionParams = makeClientSideMCPConnectionParams(
         toolConfiguration,
-        { conversationId, messageId }
+        { conversationId: conversation.sId, messageId: agentMessage.sId }
       );
       const connectionResult = await connectToMCPServer(auth, {
         params: connectionParams,
-        agentLoopContext: { runContext: agentLoopRunContext },
+        toolContext,
       });
       if (connectionResult.isErr()) {
         if (
@@ -457,21 +525,27 @@ export async function* tryCallMCPTool(
       "mcp.tool.call",
       { resource: toolConfiguration.originalName },
       async () =>
-        client.callTool(
-          {
-            name: toolConfiguration.originalName,
-            arguments: inputs,
-            _meta: {
-              ...toolConfiguration.meta,
-              progressToken,
+        // Hand the SDK a throwaway per-call signal instead of `abortSignal`.
+        // The SDK attaches an `abort` listener it never removes; `abortSignal`
+        // is composed with the pod-lifetime shutdown signal, so that listener
+        // would pin the tool result until the pod dies.
+        runToolCallWithDetachedSignal(abortSignal, (signal) =>
+          client.callTool(
+            {
+              name: toolConfiguration.originalName,
+              arguments: inputs,
+              _meta: {
+                ...toolConfiguration.meta,
+                progressToken,
+              },
             },
-          },
-          CallToolResultSchema,
-          {
-            timeout:
-              toolConfiguration.timeoutMs ?? DEFAULT_MCP_REQUEST_TIMEOUT_MS,
-            signal: abortSignal,
-          }
+            CallToolResultSchema,
+            {
+              timeout:
+                toolConfiguration.timeoutMs ?? DEFAULT_MCP_REQUEST_TIMEOUT_MS,
+              signal,
+            }
+          )
         )
     );
 
@@ -592,13 +666,7 @@ export async function* tryCallMCPTool(
     }
 
     logger.error(
-      {
-        conversationId,
-        error,
-        messageId,
-        toolName: toolConfiguration.originalName,
-        workspaceId: auth.getNonNullableWorkspace().sId,
-      },
+      { error, ...toolLogContext },
       "Exception calling MCP tool in tryCallMCPTool()"
     );
 
@@ -693,7 +761,7 @@ type ServerSideMCPConnectionError =
 async function connectServerSideMCP(
   auth: Authenticator,
   toolConfiguration: ServerSideMCPToolConfigurationType,
-  agentLoopRunContext: AgentLoopRunContextType
+  toolContext: ToolContextType
 ): Promise<Result<Client, ServerSideMCPConnectionError>> {
   const mcpServerView = await MCPServerViewResource.fetchById(
     auth,
@@ -706,7 +774,7 @@ async function connectServerSideMCP(
   const connectionParams = makeServerSideMCPConnectionParams(mcpServerView);
   const connectionResult = await connectToMCPServer(auth, {
     params: connectionParams,
-    agentLoopContext: { runContext: agentLoopRunContext },
+    toolContext,
   });
 
   if (connectionResult.isErr()) {
@@ -1262,26 +1330,41 @@ export async function buildToolConfigurationsFromRawTools(
   } = r.value;
 
   const availability = getAvailabilityOfInternalMCPServerById(mcpServerId);
+  const serverNameResult = getInternalMCPServerNameAndWorkspaceId(mcpServerId);
+  const internalServerName = serverNameResult.isOk()
+    ? serverNameResult.value.name
+    : null;
 
   const toolsWithStakesRetryPoliciesAndTimeout = allToolsRaw
     .filter(({ name }) => !(toolsEnabled[name] === false)) // Include tools that are enabled (true) or not explicitly disabled (undefined).
-    .map((tool) => ({
-      ...tool,
-      stakeLevel:
+    .map((tool) => {
+      const configuredStakeLevel =
         toolsStakes[tool.name] ||
         (availability === "manual"
           ? FALLBACK_MCP_TOOL_STAKE_LEVEL
-          : FALLBACK_INTERNAL_AUTO_SERVERS_TOOL_STAKE_LEVEL),
-      availability,
-      toolServerId: mcpServerId,
-      ...(serverTimeoutMs && { timeoutMs: serverTimeoutMs }),
-      retryPolicy:
-        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-        toolsRetryPolicies?.[tool.name] ||
-        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-        toolsRetryPolicies?.["default"] ||
-        DEFAULT_MCP_TOOL_RETRY_POLICY,
-    }));
+          : FALLBACK_INTERNAL_AUTO_SERVERS_TOOL_STAKE_LEVEL);
+      const stakeLevel = internalServerName
+        ? resolveInternalMCPServerToolStakeLevel(internalServerName, {
+            toolName: tool.name,
+            plan: auth.plan(),
+            configuredStakeLevel,
+          })
+        : configuredStakeLevel;
+
+      return {
+        ...tool,
+        stakeLevel,
+        availability,
+        toolServerId: mcpServerId,
+        ...(serverTimeoutMs && { timeoutMs: serverTimeoutMs }),
+        retryPolicy:
+          // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+          toolsRetryPolicies?.[tool.name] ||
+          // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+          toolsRetryPolicies?.["default"] ||
+          DEFAULT_MCP_TOOL_RETRY_POLICY,
+      };
+    });
 
   const serverSideToolConfigs = makeServerSideMCPToolConfigurations(
     config,
@@ -1306,7 +1389,7 @@ async function listMCPServerToolsAndServerInstructions(
     // Connect to the MCP server.
     const r = await connectToMCPServer(auth, {
       params: connectionParams,
-      agentLoopContext: { listToolsContext: agentLoopListToolsContext },
+      toolContext: { listToolsContext: agentLoopListToolsContext },
     });
     if (r.isErr()) {
       // When the workspace connection is broken (admin token revoked/expired) or hit the rate limit,

@@ -4,8 +4,11 @@ import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import {
   isContentFragmentInput,
   isContentFragmentInputWithInlinedContent,
-} from "@app/types/api/internal/assistant";
-import { isInteractiveContentType } from "@app/types/files";
+} from "@app/types/api/assistant";
+import {
+  isInteractiveContentType,
+  isSandboxFunctionContentType,
+} from "@app/types/files";
 import {
   type PostContentFragmentResponseType,
   PublicPostContentFragmentRequestBodySchema,
@@ -154,7 +157,8 @@ app.post(
 
     const publicContentFragment =
       !contentFragmentRes.value ||
-      isInteractiveContentType(contentFragmentRes.value.contentType)
+      isInteractiveContentType(contentFragmentRes.value.contentType) ||
+      isSandboxFunctionContentType(contentFragmentRes.value.contentType)
         ? undefined
         : {
             ...contentFragmentRes.value,

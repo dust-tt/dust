@@ -1,9 +1,9 @@
-import { WithMistralInputConverter } from "@app/lib/model_constructors/providers/mistral/converters/input";
-import { rawOutputToEvents } from "@app/lib/model_constructors/providers/mistral/converters/output/utils";
 import {
   type MistralInputConfig,
   mistralConfigSchema,
 } from "@app/lib/model_constructors/providers/mistral/inputConfig";
+import { WithMistralAIInputConverter } from "@app/lib/model_constructors/sdk/mistralai/converters/input";
+import { rawOutputToEvents } from "@app/lib/model_constructors/sdk/mistralai/converters/output/utils";
 import { StreamEndpoint } from "@app/lib/model_constructors/stream/endpoint";
 import type { Credentials } from "@app/lib/model_constructors/types/credentials";
 import type { ModelResponseEvent } from "@app/lib/model_constructors/types/output/events";
@@ -15,7 +15,7 @@ import type {
   CompletionEvent,
 } from "@mistralai/mistralai/models/components";
 
-export abstract class MistralStream extends WithMistralInputConverter(
+export abstract class MistralStream extends WithMistralAIInputConverter(
   StreamEndpoint<
     ChatCompletionStreamRequest,
     CompletionEvent,

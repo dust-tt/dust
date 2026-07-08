@@ -221,7 +221,7 @@ describe("matchesWhere", () => {
       region: ["eu", "global"],
       providerId: ["anthropic"],
       modelId: ["claude-sonnet-4-6"],
-      providerApi: ["anthropic", "agent-platform"],
+      api: ["anthropic", "agent-platform"],
     };
 
     it("matches provider and region membership", () => {
@@ -240,14 +240,14 @@ describe("matchesWhere", () => {
       expect(
         matchesWhere(description, {
           providerId: { contains: "anthropic" },
-          providerApi: { containsAll: ["anthropic", "agent-platform"] },
+          api: { containsAll: ["anthropic", "agent-platform"] },
           region: { containsAny: ["eu"] },
         })
       ).toBe(true);
       expect(
         matchesWhere(description, {
           providerId: { contains: "anthropic" },
-          providerApi: { contains: "openai-responses" },
+          api: { contains: "openai-responses" },
         })
       ).toBe(false);
     });

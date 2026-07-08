@@ -1,6 +1,6 @@
 import { useSendNotification } from "@app/hooks/useNotification";
-import type { PatchMetronomeContractRequestBody } from "@app/lib/api/credits/metronome_contract";
 import { clientFetch } from "@app/lib/egress/client";
+import type { PatchMetronomeContractRequestBody } from "@app/types/api/credits/metronome_contract";
 import { useCallback, useState } from "react";
 import type { z } from "zod";
 

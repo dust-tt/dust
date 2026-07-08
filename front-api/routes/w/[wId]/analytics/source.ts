@@ -3,7 +3,7 @@ import type { GetWorkspaceContextOriginResponse } from "@app/lib/api/assistant/o
 import { fetchContextOriginBreakdown } from "@app/lib/api/assistant/observability/context_origin";
 import { buildAgentAnalyticsBaseQuery } from "@app/lib/api/assistant/observability/utils";
 import { workspaceApp } from "@front-api/middlewares/ctx";
-import { ensureHasPermission } from "@front-api/middlewares/ensure_role";
+import { ensureIsBusinessAdmin } from "@front-api/middlewares/ensure_role";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import { z } from "zod";
@@ -19,7 +19,7 @@ const app = workspaceApp();
 /** @ignoreswagger */
 app.get(
   "/",
-  ensureHasPermission("workspace:view_analytics"),
+  ensureIsBusinessAdmin(),
   validate("query", QuerySchema),
   async (ctx) => {
     const auth = ctx.get("auth");

@@ -1,9 +1,9 @@
 import { useSendNotification } from "@app/hooks/useNotification";
-import type { PostAppResponseBody } from "@app/lib/api/apps";
 import { clientFetch } from "@app/lib/egress/client";
 import { useAppRouter } from "@app/lib/platform";
 import { useApps } from "@app/lib/swr/apps";
 import { MODELS_STRING_MAX_LENGTH } from "@app/lib/utils";
+import type { PostAppResponseBody } from "@app/types/api/apps";
 import { APP_NAME_REGEXP } from "@app/types/app";
 import type { APIError } from "@app/types/error";
 import type { SpaceType } from "@app/types/space";
@@ -132,7 +132,7 @@ export const SpaceCreateAppModal = ({
                 message={nameError}
                 messageStatus="error"
               />
-              <p className="mt-1 flex items-center gap-1 text-sm text-gray-500">
+              <p className="mt-1 flex items-center gap-1 text-sm text-muted-foreground">
                 <AlertCircle /> Must be unique and only use alphanumeric, - or _
                 characters.
               </p>

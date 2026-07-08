@@ -1,14 +1,7 @@
 import type { AllPlugins } from "@app/lib/api/poke/types";
-import type {
-  PluginRunType,
-  SupportedResourceType,
-} from "@app/types/poke/plugins";
+import type { SupportedResourceType } from "@app/types/poke/plugins";
 
 import * as allPlugins from "./plugins";
-
-export interface PokeListPluginRunsResponseBody {
-  pluginRuns: PluginRunType[];
-}
 
 class PluginManager {
   private plugins: Map<string, AllPlugins> = new Map();

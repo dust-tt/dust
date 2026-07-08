@@ -11,7 +11,9 @@ import {
   isMauContract,
   type SeatAwuCreditsPeriod,
 } from "@app/lib/metronome/seat_types";
+import { isCreditPricedPlanPrefix } from "@app/lib/plans/plan_codes";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
+import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { WorkspaceSeatLimitResource } from "@app/lib/resources/workspace_seat_limit_resource";
 import logger from "@app/logger/logger";
 import type { SupportedCurrency } from "@app/types/currency";
@@ -89,6 +91,16 @@ export async function getSeatPlan(
 
   if (!contract || !contract.rate_card_id) {
     return new Err(new SeatPlanError("not_configured"));
+  }
+
+  // Non-CP plans (legacy shadow contracts) don't use per-seat billing in the
+  // invite flow — return empty so the UI skips the seat selector and invites
+  // always use "none", consistent with SCIM/auto-join.
+  const subscription = await SubscriptionResource.fetchActiveByWorkspaceModelId(
+    workspace.id
+  );
+  if (!subscription || !isCreditPricedPlanPrefix(subscription.getPlan().code)) {
+    return new Ok({});
   }
 
   const creditTypeResult = await getCreditTypeFromContract(contract);

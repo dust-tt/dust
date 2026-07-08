@@ -9,13 +9,13 @@ export const GOOGLE_SHEETS_TOOL_NAME = "google_sheets" as const;
 export const GOOGLE_SHEETS_TOOLS_METADATA = createToolsRecord({
   list_spreadsheets: {
     description:
-      "List Google Sheets spreadsheets accessible by the user from both personal drive and shared drives. Supports pagination and search.",
+      "Search for and list your Google Sheets spreadsheets by name, across your personal and shared drives, to find a spreadsheet when you do not know its ID.",
     schema: {
       nameFilter: z
         .string()
         .optional()
         .describe(
-          "The text to search for in file names. Uses Google Drive's 'contains' operator which is case-insensitive and performs prefix matching only. For example, searching 'hello' will match 'HelloWorld' but not 'WorldHello'."
+          "Text to search for in spreadsheet names (case-insensitive prefix match)."
         ),
       pageToken: z.string().optional().describe("Page token for pagination."),
       pageSize: z
@@ -28,6 +28,8 @@ export const GOOGLE_SHEETS_TOOLS_METADATA = createToolsRecord({
       running: "Listing Google Sheets spreadsheets",
       done: "List Google Sheets spreadsheets",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   get_spreadsheet: {
     description:
@@ -42,10 +44,12 @@ export const GOOGLE_SHEETS_TOOLS_METADATA = createToolsRecord({
       running: "Getting Google Sheets spreadsheet",
       done: "Get Google Sheets spreadsheet",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   get_worksheet: {
     description:
-      "Get data from a specific worksheet in a Google Sheets spreadsheet.",
+      "Read the cell values from a range in a Google Sheets worksheet (tab), returning the data found in the given A1 range.",
     schema: {
       spreadsheetId: z.string().describe("The ID of the spreadsheet."),
       range: z
@@ -67,6 +71,8 @@ export const GOOGLE_SHEETS_TOOLS_METADATA = createToolsRecord({
       running: "Getting Google Sheets worksheet",
       done: "Get Google Sheets worksheet",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   update_cells: {
     description: "Update cells in a Google Sheets spreadsheet.",
@@ -94,6 +100,8 @@ export const GOOGLE_SHEETS_TOOLS_METADATA = createToolsRecord({
       running: "Updating Google Sheets cells",
       done: "Update Google Sheets cells",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   append_data: {
     description: "Append data to a Google Sheets spreadsheet.",
@@ -125,6 +133,8 @@ export const GOOGLE_SHEETS_TOOLS_METADATA = createToolsRecord({
       running: "Appending data to Google Sheets",
       done: "Append data to Google Sheets",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   clear_range: {
     description: "Clear values from a range in a Google Sheets spreadsheet.",
@@ -141,6 +151,8 @@ export const GOOGLE_SHEETS_TOOLS_METADATA = createToolsRecord({
       running: "Clearing Google Sheets range",
       done: "Clear Google Sheets range",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   create_spreadsheet: {
     description: "Create a new Google Sheets spreadsheet.",
@@ -158,6 +170,8 @@ export const GOOGLE_SHEETS_TOOLS_METADATA = createToolsRecord({
       running: "Creating Google Sheets spreadsheet",
       done: "Create Google Sheets spreadsheet",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   add_worksheet: {
     description:
@@ -179,6 +193,8 @@ export const GOOGLE_SHEETS_TOOLS_METADATA = createToolsRecord({
       running: "Adding Google Sheets worksheet",
       done: "Add Google Sheets worksheet",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   delete_worksheet: {
     description: "Delete a worksheet from a Google Sheets spreadsheet.",
@@ -191,9 +207,12 @@ export const GOOGLE_SHEETS_TOOLS_METADATA = createToolsRecord({
       running: "Deleting Google Sheets worksheet",
       done: "Delete Google Sheets worksheet",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   format_cells: {
-    description: "Apply formatting to cells in a Google Sheets spreadsheet.",
+    description:
+      "Apply formatting to a range of cells in a Google Sheets worksheet, such as bold or italic text, font size, background color, and horizontal alignment.",
     schema: {
       spreadsheetId: z.string().describe("The ID of the spreadsheet."),
       sheetId: z.number().describe("The ID of the worksheet to format."),
@@ -233,10 +252,12 @@ export const GOOGLE_SHEETS_TOOLS_METADATA = createToolsRecord({
       running: "Formatting Google Sheets cells",
       done: "Format Google Sheets cells",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   copy_sheet: {
     description:
-      "Copy a sheet from one Google Sheets spreadsheet to another spreadsheet.",
+      "Copy a worksheet (tab) from one Google Sheets spreadsheet into another.",
     schema: {
       sourceSpreadsheetId: z
         .string()
@@ -257,6 +278,8 @@ export const GOOGLE_SHEETS_TOOLS_METADATA = createToolsRecord({
       running: "Copying Google Sheets sheet",
       done: "Copy Google Sheets sheet",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   rename_worksheet: {
     description: "Rename a worksheet in a Google Sheets spreadsheet.",
@@ -270,6 +293,8 @@ export const GOOGLE_SHEETS_TOOLS_METADATA = createToolsRecord({
       running: "Renaming Google Sheets worksheet",
       done: "Rename Google Sheets worksheet",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   move_worksheet: {
     description:
@@ -289,6 +314,8 @@ export const GOOGLE_SHEETS_TOOLS_METADATA = createToolsRecord({
       running: "Moving Google Sheets worksheet",
       done: "Move Google Sheets worksheet",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
 });
 
@@ -305,13 +332,14 @@ export const GOOGLE_SHEETS_SERVER = {
     },
     icon: "GoogleSpreadsheetLogo",
     documentationUrl: "https://docs.dust.tt/docs/google-sheets",
-    instructions: null,
   },
   tools: Object.values(GOOGLE_SHEETS_TOOLS_METADATA).map((t) => ({
     name: t.name,
     description: t.description,
     inputSchema: zodToJsonSchema(z.object(t.schema)) as JSONSchema,
     displayLabels: t.displayLabels,
+    toolCostCategory: t.toolCostCategory,
+    freeUsage: t.freeUsage,
   })),
   tools_stakes: Object.fromEntries(
     Object.values(GOOGLE_SHEETS_TOOLS_METADATA).map((t) => [t.name, t.stake])

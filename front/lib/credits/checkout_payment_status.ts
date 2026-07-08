@@ -4,6 +4,7 @@ import {
 } from "@app/lib/api/checkout/types";
 import { runOnRedisCache } from "@app/lib/api/redis";
 import logger from "@app/logger/logger";
+import { SUPPORTED_CURRENCIES } from "@app/types/currency";
 import { z } from "zod";
 
 const REDIS_ORIGIN = "checkout_payment_status";
@@ -19,7 +20,7 @@ export const CheckoutPaymentSchema = z.object({
   targetUserId: z.string(),
   seatType: CheckoutSeatTypeSchema,
   billingPeriod: CheckoutBillingPeriodSchema,
-  currency: z.enum(["usd", "eur"]),
+  currency: z.enum(SUPPORTED_CURRENCIES),
   initialAmountCents: z.number(),
   metronomePackageAlias: z.string(),
   planCode: z.string(),

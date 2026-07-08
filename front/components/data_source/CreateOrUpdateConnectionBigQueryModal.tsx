@@ -1,11 +1,11 @@
 // Okay to use public API types because it's front/connectors communication.
 
 import { useTheme } from "@app/components/sparkle/ThemeContext";
-import type { PostCredentialsBody } from "@app/lib/api/oauth";
 import type { ConnectorProviderConfiguration } from "@app/lib/connector_providers";
 import { CONNECTOR_UI_CONFIGURATIONS } from "@app/lib/connector_providers_ui";
 import { clientFetch } from "@app/lib/egress/client";
 import { useBigQueryLocations } from "@app/lib/swr/bigquery";
+import type { PostCredentialsBody } from "@app/types/api/oauth";
 import type {
   ConnectorProvider,
   ConnectorType,
@@ -380,7 +380,7 @@ export function CreateOrUpdateConnectionBigQueryModal({
                             <>
                               This location contains {tables.length} tables that
                               can be connected :{" "}
-                              <span className="text-xs text-gray-500">
+                              <span className="text-xs text-muted-foreground">
                                 {tables.join(", ")}
                               </span>
                             </>

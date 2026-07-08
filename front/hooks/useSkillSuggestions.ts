@@ -1,10 +1,4 @@
 import { useSendNotification } from "@app/hooks/useNotification";
-import type {
-  GetSkillSuggestionsQuery,
-  GetSkillSuggestionsResponseBody,
-  PatchSkillSuggestionRequestBody,
-  PatchSkillSuggestionResponseBody,
-} from "@app/lib/api/assistant/skills/suggestions";
 import { clientFetch } from "@app/lib/egress/client";
 import {
   emptyArray,
@@ -12,6 +6,12 @@ import {
   useFetcher,
   useSWRWithDefaults,
 } from "@app/lib/swr/swr";
+import type {
+  GetSkillSuggestionsQuery,
+  GetSkillSuggestionsResponseBody,
+  PatchSkillSuggestionRequestBody,
+  PatchSkillSuggestionResponseBody,
+} from "@app/types/api/assistant/skills/suggestions";
 import { useCallback } from "react";
 import type { Fetcher } from "swr";
 

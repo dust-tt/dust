@@ -1,5 +1,8 @@
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
-import { generateSandboxExecToken } from "@app/lib/api/sandbox/access_tokens";
+import {
+  generateSandboxExecToken,
+  generateSandboxFunctionInvocationToken,
+} from "@app/lib/api/sandbox/access_tokens";
 import { Authenticator } from "@app/lib/auth";
 import { InternalMCPServerInMemoryResource } from "@app/lib/resources/internal_mcp_server_in_memory_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
@@ -16,11 +19,9 @@ import type { AgentMCPActionType } from "@app/types/actions";
 process.env.DUST_SANDBOX_JWT_SECRET ??= "test-sandbox-jwt-secret";
 
 export async function createSandboxTokenTestContext({
-  enableSandboxTools = false,
-  enableDsbxTools = false,
+  disableComputerFeature = false,
 }: {
-  enableSandboxTools?: boolean;
-  enableDsbxTools?: boolean;
+  disableComputerFeature?: boolean;
 } = {}) {
   const user = await UserFactory.basic();
   const workspace = await WorkspaceFactory.basic();
@@ -32,11 +33,8 @@ export async function createSandboxTokenTestContext({
   );
   const { globalSpace } = await SpaceFactory.defaults(auth);
 
-  if (enableSandboxTools) {
-    await FeatureFlagFactory.basic(auth, "sandbox_tools");
-  }
-  if (enableDsbxTools) {
-    await FeatureFlagFactory.basic(auth, "sandbox_dsbx_tools");
+  if (disableComputerFeature) {
+    await FeatureFlagFactory.basic(auth, "disable_computer_feature");
   }
 
   const agentConfig = await AgentConfigurationFactory.createTestAgent(auth, {
@@ -106,6 +104,30 @@ export async function createSandboxTokenTestContext({
     conversation,
     sandbox,
     agentMessage,
+    token,
+  };
+}
+
+export async function createSandboxFunctionInvocationTokenTestContext({
+  disableComputerFeature = false,
+}: {
+  disableComputerFeature?: boolean;
+} = {}) {
+  const context = await createSandboxTokenTestContext({
+    disableComputerFeature,
+  });
+  const token = await generateSandboxFunctionInvocationToken(context.auth, {
+    sandbox: context.sandbox,
+    sandboxFunction: {
+      sId: "sfn_test",
+      space: { sId: context.globalSpace.sId },
+    },
+    invocationId: `test-invocation-${context.sandbox.sId}`,
+    execId: `test-function-exec-${context.sandbox.sId}`,
+  });
+
+  return {
+    ...context,
     token,
   };
 }

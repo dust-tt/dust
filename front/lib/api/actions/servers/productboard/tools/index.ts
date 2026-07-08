@@ -224,8 +224,6 @@ export function createProductboardTools(): ToolDefinition[] {
         status_names,
         owner_ids,
         owner_emails,
-        timeframe_start_date,
-        timeframe_end_date,
         fields,
         page_cursor,
       },
@@ -252,8 +250,6 @@ export function createProductboardTools(): ToolDefinition[] {
         statusNames: status_names,
         ownerIds: owner_ids,
         ownerEmails: owner_emails,
-        timeframeStartDate: timeframe_start_date,
-        timeframeEndDate: timeframe_end_date,
         fields,
         pageCursor: page_cursor,
       });

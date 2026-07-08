@@ -1,6 +1,6 @@
-import type { PokeListDataSources } from "@app/lib/api/poke/data_sources";
 import { emptyArray, useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type { PokeConditionalFetchProps } from "@app/poke/swr/types";
+import type { PokeListDataSources } from "@app/types/api/poke/data_sources";
 import type { Fetcher } from "swr";
 
 export function usePokeDataSources({

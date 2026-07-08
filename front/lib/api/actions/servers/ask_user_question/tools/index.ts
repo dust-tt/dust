@@ -1,6 +1,9 @@
 import type { ToolHandlers } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import { isUserQuestionResumeState } from "@app/lib/actions/types";
+import {
+  isAgentLoopRunContext,
+  isUserQuestionResumeState,
+} from "@app/lib/actions/types";
 import {
   formatUserQuestionAnswer,
   getUserQuestionSelections,
@@ -9,13 +12,19 @@ import {
 import { ASK_USER_QUESTION_TOOLS_METADATA } from "@app/lib/api/actions/servers/ask_user_question/metadata";
 import { Ok } from "@app/types/shared/result";
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
+import assert from "assert";
 
 const handlers: ToolHandlers<typeof ASK_USER_QUESTION_TOOLS_METADATA> = {
   ask_user_question: async (
     { question, options, multiSelect },
-    { agentLoopContext }
+    { toolContext }
   ) => {
-    const resumeState = agentLoopContext?.runContext?.stepContext?.resumeState;
+    assert(
+      isAgentLoopRunContext(toolContext?.runContext),
+      "AgentLoopRunContext expected"
+    );
+
+    const resumeState = toolContext?.runContext?.stepContext?.resumeState;
     if (isUserQuestionResumeState(resumeState) && resumeState.answer) {
       const { answer } = resumeState;
       const selections = getUserQuestionSelections(

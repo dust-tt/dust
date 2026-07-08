@@ -5,9 +5,9 @@ import {
   OPENAI_MODEL_CONFIGS,
 } from "@app/lib/api/llm/clients/openai/types";
 import type { XaiWhitelistedModelId } from "@app/lib/api/llm/clients/xai/types";
+import type { ExclusiveToolChoiceParameters } from "@app/lib/api/llm/types/options";
 import {
-  extractEncryptedContentFromMetadata,
-  extractIdFromMetadata,
+  parseReasoningMetadata,
   parseResponseFormatSchema,
 } from "@app/lib/api/llm/utils";
 import { config } from "@app/lib/api/regions/config";
@@ -87,8 +87,7 @@ function toAssistantInputItem(
       }
 
       const reasoning = content.value.reasoning;
-      const id = extractIdFromMetadata(content.value.metadata);
-      const encryptedContent = extractEncryptedContentFromMetadata(
+      const { id, encryptedContent } = parseReasoningMetadata(
         content.value.metadata
       );
       return {
@@ -104,6 +103,9 @@ function toAssistantInputItem(
         type: "message",
         content: content.value.message,
       };
+    case "provider_passthrough":
+      // Opaque block owned by another provider. Skip.
+      return null;
     default:
       assertNever(content);
   }
@@ -214,14 +216,20 @@ export function toReasoning(
 
 export function toToolOption(
   specifications: AgentActionSpecification[],
-  forceToolCall: string | undefined
-): ToolChoiceFunction | undefined {
-  return forceToolCall && specifications.some((s) => s.name === forceToolCall)
-    ? {
-        type: "function" as const,
-        name: forceToolCall,
-      }
-    : undefined;
+  { forceToolCall, disableToolUse }: ExclusiveToolChoiceParameters
+): ToolChoiceFunction | "none" | undefined {
+  if (forceToolCall && specifications.some((s) => s.name === forceToolCall)) {
+    return {
+      type: "function",
+      name: forceToolCall,
+    };
+  }
+
+  if (disableToolUse) {
+    return "none";
+  }
+
+  return undefined;
 }
 
 export function toResponseFormat(

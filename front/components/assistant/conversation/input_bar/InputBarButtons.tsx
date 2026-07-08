@@ -2,10 +2,12 @@ import { AgentPicker } from "@app/components/assistant/AgentPicker";
 import { CapabilitiesPicker } from "@app/components/assistant/CapabilitiesPicker";
 import { InputBarAttachmentsPicker } from "@app/components/assistant/conversation/input_bar/InputBarAttachmentsPicker";
 import type { InputBarAction } from "@app/components/assistant/conversation/input_bar/InputBarContainer";
+import { InputBarModelPicker } from "@app/components/assistant/conversation/input_bar/InputBarModelPicker";
 import type useCustomEditor from "@app/components/editor/input_bar/useCustomEditor";
 import type { FileUploaderService } from "@app/hooks/useFileUploaderService";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import { useAppRouter } from "@app/lib/platform";
+import { useIsMobile } from "@app/lib/swr/useIsMobile";
 import { setQueryParam } from "@app/lib/utils/router";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
@@ -14,10 +16,12 @@ import type {
   RichMention,
 } from "@app/types/assistant/mentions";
 import { toRichAgentMentionType } from "@app/types/assistant/mentions";
+import type { ModelSelectionType } from "@app/types/assistant/models/types";
 import type { SkillWithoutInstructionsAndToolsType } from "@app/types/assistant/skill_configuration";
 import type { DataSourceViewContentNode } from "@app/types/data_source_view";
 import { getSupportedFileExtensions } from "@app/types/files";
 import type { SpaceType } from "@app/types/space";
+import { isProjectType } from "@app/types/space";
 import type { UserType, WorkspaceType } from "@app/types/user";
 import {
   Avatar,
@@ -27,7 +31,6 @@ import {
   InfoCircle,
   Robot,
   Tooltip,
-  XClose,
 } from "@dust-tt/sparkle";
 import React from "react";
 
@@ -53,6 +56,9 @@ interface InputBarButtonsProps {
   isInputDisabled: boolean;
   onAgentRemove: () => void;
   onMCPServerViewSelect: (serverView: MCPServerViewType) => void;
+  onModelSelectionChange?: (
+    modelSelection: ModelSelectionType | undefined
+  ) => void;
   onNodeSelect: (node: DataSourceViewContentNode) => void;
   onNodeUnselect: (node: DataSourceViewContentNode) => void;
   onSkillSelect: (skill: SkillWithoutInstructionsAndToolsType) => void;
@@ -83,6 +89,7 @@ export const InputBarButtons = React.memo(function InputBarButtons({
   isInputDisabled,
   onAgentRemove,
   onMCPServerViewSelect,
+  onModelSelectionChange,
   onNodeSelect,
   onNodeUnselect,
   onSkillSelect,
@@ -96,8 +103,14 @@ export const InputBarButtons = React.memo(function InputBarButtons({
   onAttachmentsPickerOpenChange,
 }: InputBarButtonsProps) {
   const router = useAppRouter();
+  const isMobile = useIsMobile();
   // Current space is taken from the conversation (if already set) or from the space prop (if provided).
   const spaceId = conversation?.spaceId ?? space?.sId ?? undefined;
+
+  const isPod = space ? isProjectType(space) : false;
+  const defaultAgentUnavailableLabel = isPod
+    ? "This Pod's default agent isn't available to you, so @dust is used instead. Discuss with your Pod editors if you think this is an error."
+    : "This conversation's default agent isn't available to you, so @dust is used instead. Discuss with your Workspace admin if you think this is an error.";
 
   const handleAgentDetailsClick = (agentId: string) => {
     setQueryParam(router, "agentDetails", agentId);
@@ -114,6 +127,8 @@ export const InputBarButtons = React.memo(function InputBarButtons({
         handleSingleAgentSelect(toRichAgentMentionType(c));
       }}
       agents={allAgents}
+      selectedAgentId={selectedAgent?.id}
+      onDeselect={onAgentRemove}
       showDropdownArrow={false}
       side={conversation ? "top" : "bottom"}
       showFooterButtons={
@@ -128,22 +143,24 @@ export const InputBarButtons = React.memo(function InputBarButtons({
             aria-label={`Selected agent: ${selectedAgent.label}`}
             aria-disabled={isInputDisabled}
             className={cn(
-              "inline-flex box-border items-center rounded-lg h-7 heading-xs px-2 gap-1.5 bg-muted-background border-border dark:bg-muted-background-night dark:border-border-night text-primary-900 dark:text-primary-900-night transition-colors duration-200",
+              "inline-flex box-border items-center rounded-lg h-7 heading-xs px-2 gap-1.5 bg-muted-background border-border text-primary-900 transition-colors duration-200",
               isInputDisabled
                 ? "opacity-50 pointer-events-none"
-                : "cursor-pointer hover:bg-hover dark:hover:bg-hover-night"
+                : "cursor-pointer hover:bg-hover"
             )}
           >
             <Avatar size="xxs" visual={selectedAgent.pictureUrl} />
-            <span className="grow truncate notranslate">
-              {selectedAgent.label}
-            </span>
+            {!isMobile && (
+              <span className="grow truncate notranslate">
+                {selectedAgent.label}
+              </span>
+            )}
             {isDefaultAgentUnavailable && (
               <Tooltip
                 tooltipTriggerAsChild
                 trigger={
                   <span
-                    className="flex items-center text-warning dark:text-warning-night"
+                    className="flex items-center text-warning"
                     onPointerDown={(e) => {
                       e.preventDefault();
                       e.stopPropagation();
@@ -156,25 +173,9 @@ export const InputBarButtons = React.memo(function InputBarButtons({
                     <Icon visual={InfoCircle} size="xs" />
                   </span>
                 }
-                label="This Pod's default agent isn't available to you, so @dust is used instead. Discuss with your Pod editors if you think this is an error."
+                label={defaultAgentUnavailableLabel}
               />
             )}
-            <button
-              type="button"
-              aria-label="Remove agent"
-              className="p-0.5 text-faint dark:text-faint-night hover:text-foreground transition-colors duration-200"
-              onPointerDown={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-              }}
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                onAgentRemove();
-              }}
-            >
-              <XClose className="h-3 w-3" />
-            </button>
           </div>
         ) : (
           <Button
@@ -183,9 +184,7 @@ export const InputBarButtons = React.memo(function InputBarButtons({
             icon={Robot}
             label="Agent"
             disabled={isInputDisabled}
-            className={cn(
-              disableAgentSelector && "bg-gray-150 dark:bg-gray-800"
-            )}
+            className={cn(disableAgentSelector && "bg-primary-150")}
           />
         )
       }
@@ -241,9 +240,27 @@ export const InputBarButtons = React.memo(function InputBarButtons({
         />
       </>
     );
+
+  const selectedAgentModel =
+    (selectedAgent &&
+      allAgents.find((a) => a.sId === selectedAgent.id)?.model) ??
+    null;
+
+  const modelPickerButton = actions.includes("model-picker") && (
+    <InputBarModelPicker
+      agentModel={selectedAgentModel}
+      owner={owner}
+      buttonSize={buttonSize}
+      side={conversation ? "top" : "bottom"}
+      disabled={isInputDisabled}
+      onSelectionChange={onModelSelectionChange}
+    />
+  );
+
   return (
     <>
       {agentButton}
+      {modelPickerButton}
       {!hideCapabilities && toolsButton}
       {attachmentButton}
     </>

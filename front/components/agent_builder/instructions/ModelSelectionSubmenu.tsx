@@ -8,8 +8,8 @@ import { RegionalFlag } from "@app/components/shared/RegionalFlag";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { useAuth, useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { useRegionContext } from "@app/lib/auth/RegionContext";
+import type { EnabledModelConfigurationType } from "@app/types/api/assistant/models";
 import { getProviderDisplayName } from "@app/types/assistant/models/providers";
-import type { ModelConfigurationType } from "@app/types/assistant/models/types";
 import type { RegionType } from "@app/types/region";
 import {
   DropdownMenuLabel,
@@ -24,19 +24,24 @@ import type React from "react";
 import { useController } from "react-hook-form";
 
 interface ModelSelectionSubmenuProps {
-  models: ModelConfigurationType[];
+  models: EnabledModelConfigurationType[];
 }
 
+const NOT_SELECTABLE_MODEL_DESCRIPTION =
+  "Not enabled for you. Choose another model to save.";
+
 interface ModelRadioItemProps {
-  modelConfig: ModelConfigurationType;
+  modelConfig: EnabledModelConfigurationType;
   isDark: boolean;
-  onModelSelection: (modelConfig: ModelConfigurationType) => void;
+  isSelected: boolean;
+  onModelSelection: (modelConfig: EnabledModelConfigurationType) => void;
   regionalComponent?: React.ReactNode | null;
 }
 
 function ModelRadioItem({
   modelConfig,
   isDark,
+  isSelected,
   onModelSelection,
   regionalComponent,
 }: ModelRadioItemProps) {
@@ -44,9 +49,16 @@ function ModelRadioItem({
     <DropdownMenuRadioItem
       value={modelConfig.modelId}
       icon={getModelProviderLogo(modelConfig.providerId, isDark)}
-      description={modelConfig.shortDescription}
+      description={
+        !modelConfig.isSelectable && isSelected
+          ? NOT_SELECTABLE_MODEL_DESCRIPTION
+          : modelConfig.shortDescription
+      }
       label={modelConfig.displayName}
-      onClick={() => onModelSelection(modelConfig)}
+      disabled={!modelConfig.isSelectable}
+      onClick={() => {
+        onModelSelection(modelConfig);
+      }}
       endComponent={regionalComponent}
     />
   );
@@ -90,14 +102,23 @@ export function ModelSelectionSubmenu({ models }: ModelSelectionSubmenuProps) {
   const currentModelKey = modelField.value.modelId;
 
   const selectedModel = models.find(
-    (model) => model.modelId === currentModelKey
+    (model) =>
+      model.modelId === modelField.value.modelId &&
+      model.providerId === modelField.value.providerId
   );
 
   const isSelectedModelNotInBest =
     selectedModel &&
     !bestGeneralModels.some((model) => model.modelId === selectedModel.modelId);
 
-  const handleModelSelection = (modelConfig: ModelConfigurationType) => {
+  const showSelectedModelSection =
+    selectedModel && (!selectedModel.isSelectable || isSelectedModelNotInBest);
+
+  const handleModelSelection = (modelConfig: EnabledModelConfigurationType) => {
+    if (!modelConfig.isSelectable) {
+      return;
+    }
+
     modelField.onChange({
       modelId: modelConfig.modelId,
       providerId: modelConfig.providerId,
@@ -106,12 +127,16 @@ export function ModelSelectionSubmenu({ models }: ModelSelectionSubmenuProps) {
     reasoningEffortField.onChange(modelConfig.defaultReasoningEffort);
   };
 
+  const isModelSelected = (modelConfig: EnabledModelConfigurationType) =>
+    modelConfig.modelId === modelField.value.modelId &&
+    modelConfig.providerId === modelField.value.providerId;
+
   return (
     <DropdownMenuSub>
       <DropdownMenuSubTrigger label="Model selection" />
       <DropdownMenuPortal>
         <DropdownMenuSubContent className="w-80">
-          {isSelectedModelNotInBest && selectedModel && (
+          {showSelectedModelSection && selectedModel && (
             <>
               <DropdownMenuLabel label="Selected model" />
               <DropdownMenuRadioGroup value={currentModelKey}>
@@ -119,6 +144,7 @@ export function ModelSelectionSubmenu({ models }: ModelSelectionSubmenuProps) {
                   key={getModelKey(selectedModel)}
                   modelConfig={selectedModel}
                   isDark={isDark}
+                  isSelected={true}
                   onModelSelection={handleModelSelection}
                   regionalComponent={
                     selectedModel.regionalAvailability[regionInfo.name]
@@ -137,6 +163,7 @@ export function ModelSelectionSubmenu({ models }: ModelSelectionSubmenuProps) {
                 key={getModelKey(modelConfig)}
                 modelConfig={modelConfig}
                 isDark={isDark}
+                isSelected={isModelSelected(modelConfig)}
                 onModelSelection={handleModelSelection}
                 regionalComponent={
                   modelConfig.regionalAvailability[regionInfo.name]
@@ -167,6 +194,7 @@ export function ModelSelectionSubmenu({ models }: ModelSelectionSubmenuProps) {
                               key={getModelKey(modelConfig)}
                               modelConfig={modelConfig}
                               isDark={isDark}
+                              isSelected={isModelSelected(modelConfig)}
                               onModelSelection={handleModelSelection}
                               regionalComponent={
                                 modelConfig.regionalAvailability[
@@ -193,6 +221,7 @@ export function ModelSelectionSubmenu({ models }: ModelSelectionSubmenuProps) {
                               key={getModelKey(modelConfig)}
                               modelConfig={modelConfig}
                               isDark={isDark}
+                              isSelected={isModelSelected(modelConfig)}
                               onModelSelection={handleModelSelection}
                               regionalComponent={
                                 modelConfig.regionalAvailability[

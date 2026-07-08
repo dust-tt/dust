@@ -1,9 +1,9 @@
 import {
   getManagedDataSourcePermissions,
-  ManagedPermissionsQuerySchema,
   type ManagedPermissionsResponse,
 } from "@app/lib/api/data_sources/managed_permissions";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
+import { ManagedPermissionsQuerySchema } from "@app/types/api/data_sources/managed_permissions";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { pokeApp } from "@front-api/middlewares/ctx";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";

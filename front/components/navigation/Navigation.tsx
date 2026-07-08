@@ -1,3 +1,4 @@
+import { INPUT_BAR_COMPACT_SURFACE_CLASSES } from "@app/components/assistant/conversation/input_bar/inputBarCompactStyles";
 import type { SidebarNavigation } from "@app/components/navigation/config";
 import {
   NavigationSidebar,
@@ -21,6 +22,13 @@ import {
 import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
 import type React from "react";
 import { useContext } from "react";
+
+const MOBILE_NAV_MENU_BUTTON_CLASSES = cn(
+  INPUT_BAR_COMPACT_SURFACE_CLASSES,
+  "transition-none",
+  "hover:border-transparent hover:bg-hover hover:backdrop-blur-none",
+  "active:border-transparent active:bg-primary-300 active:backdrop-blur-none"
+);
 
 interface NavigationProps {
   hideSidebar: boolean;
@@ -57,29 +65,28 @@ export function Navigation({
     <div
       className={cn(
         "flex shrink-0 overflow-x-hidden",
-        "text-primary dark:text-primary-night",
-        "bg-app-background dark:bg-app-background"
+        "text-primary",
+        "bg-app-background"
       )}
     >
       {isMobile ? (
         <Sheet open={sidebarOpen} onOpenChange={setSidebarOpen}>
-          <div className="fixed left-0 top-0 z-40 flex h-12 shrink-0 items-center gap-x-4 px-2">
+          <div className="fixed left-0 top-0 z-40 flex shrink-0 items-center px-2 pt-2">
             <SheetTrigger asChild>
               <Button
                 variant="ghost"
                 icon={Menu01}
+                className={MOBILE_NAV_MENU_BUTTON_CLASSES}
                 onClick={() => setSidebarOpen(true)}
+                aria-label="Open navigation"
               />
             </SheetTrigger>
           </div>
           <SheetContent
             side="left"
-            className="flex w-full max-w-xs flex-1 bg-app-background dark:bg-app-background-night"
+            className="flex w-full max-w-xs flex-1 bg-app-background"
           >
-            <SheetHeader
-              className="bg-app-background dark:bg-app-background-night p-0"
-              hideButton={true}
-            >
+            <SheetHeader className="bg-app-background p-0" hideButton={true}>
               <VisuallyHidden>
                 <SheetTitle className="hidden" />
               </VisuallyHidden>
@@ -103,7 +110,7 @@ export function Navigation({
               isNavigationBarOpen ? "w-80" : "w-0"
             )}
           >
-            <div className="flex-1 bg-app-background dark:bg-app-background-night inset-y-0 z-0 flex w-80 flex-col">
+            <div className="flex-1 bg-app-background inset-y-0 z-0 flex w-80 flex-col">
               <NavigationSidebar
                 owner={owner}
                 subscription={subscription}

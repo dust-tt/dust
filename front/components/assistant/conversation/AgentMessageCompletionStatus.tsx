@@ -15,14 +15,14 @@ export const AgentMessageCompletionStatus = ({
   agentMessage: LightAgentMessageType | LightAgentMessageWithActionsType;
   onClick?: () => void;
 }) => {
-  const { openPanel, data } = useConversationSidePanelContext();
+  const { togglePanel, data } = useConversationSidePanelContext();
 
   const handleClick = () => {
     if (onClick) {
       onClick();
       return;
     }
-    openPanel({
+    togglePanel({
       type: "actions",
       messageId: agentMessage.sId,
     });
@@ -59,9 +59,9 @@ export const AgentMessageCompletionStatus = ({
     <div
       className={cn(
         "flex cursor-pointer items-center gap-1 text-xs",
-        "text-muted-foreground dark:text-muted-foreground-night",
-        "hover:text-foreground dark:hover:text-foreground-night",
-        isOpened && "text-foreground dark:text-foreground-night"
+        "text-muted-foreground",
+        "hover:text-foreground",
+        isOpened && "text-foreground"
       )}
       onClick={handleClick}
     >

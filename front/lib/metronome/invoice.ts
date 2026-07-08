@@ -7,22 +7,26 @@ export type MetronomeInvoiceSummary = {
   currentPeriodStartMs: number;
   currentPeriodEndMs: number;
   estimatedAmountCents: number;
-  mau: number | null;
   /** Pro: effective per-seat unit price from the seat line item. */
   seatUnitPriceCents: number | null;
-  /** Enterprise simple MAU: effective unit price from the MAU line item. */
-  mauUnitPriceCents: number | null;
-  /**
-   * Enterprise tiered MAU: effective per-tier unit prices, indexed by tier
-   * position (same order as getProductMauTierIds()). `null` at a position
-   * means that tier is not present on this contract / not charged this period.
-   */
-  mauTierUnitPricesCents: Array<number | null> | null;
 };
 
 export type GetMetronomeInvoiceResponseBody = {
   invoice: MetronomeInvoiceSummary | null;
 };
+
+/**
+ * Metronome line item type for an applied commit or credit (coupon, free
+ * credits, commitment): a negative line that offsets the charge lines above
+ * it and explains a discounted invoice total.
+ */
+export const APPLIED_COMMIT_OR_CREDIT_LINE_TYPE = "applied_commit_or_credit";
+
+export function isAppliedCreditLineItem(
+  item: MetronomeInvoiceLineItem
+): boolean {
+  return item.type === APPLIED_COMMIT_OR_CREDIT_LINE_TYPE;
+}
 
 export type MetronomeInvoiceLineItem = {
   name: string;
@@ -30,6 +34,12 @@ export type MetronomeInvoiceLineItem = {
   quantity: number | null;
   unitPriceCents: number | null;
   totalCents: number;
+  /** Whether the line item is prorated (partial billing period). */
+  isProrated?: boolean;
+  /** Start of the period covered by the line item. */
+  periodStartMs?: number | null;
+  /** Exclusive end of the period covered by the line item. */
+  periodEndMs?: number | null;
 };
 
 export type GetMetronomeInvoiceLinesResponseBody = {

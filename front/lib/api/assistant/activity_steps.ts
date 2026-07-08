@@ -103,6 +103,7 @@ export async function renderAgentMessageContentView(
           type: "thinking",
           content: reasoning,
           id: `reasoning-${c.step}-${index}`,
+          step: c.step,
         });
       }
       continue;
@@ -123,6 +124,7 @@ export async function renderAgentMessageContentView(
           type: "thinking",
           content: parsedContent.chainOfThought,
           id: `cot-${c.step}-${index}`,
+          step: c.step,
         });
       }
 
@@ -133,6 +135,7 @@ export async function renderAgentMessageContentView(
           type: "content",
           content: parsedContent.content,
           id: `content-${c.step}-${index}`,
+          step: c.step,
         });
       }
       continue;
@@ -150,6 +153,7 @@ export async function renderAgentMessageContentView(
           actionId: matchingAction.sId,
           internalMCPServerName: matchingAction.internalMCPServerName,
           toolName: matchingAction.toolName ?? null,
+          step: c.step,
         });
       }
     }

@@ -1,11 +1,11 @@
 import config from "@app/lib/api/config";
-import type { GetShareFrameMetadataResponseBody } from "@app/lib/api/files/share";
 import { config as regionConfig } from "@app/lib/api/regions/config";
 import { lookupShareToken } from "@app/lib/api/regions/lookup";
 import { getWorkspaceBrandingPublicUrls } from "@app/lib/api/workspace_branding";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import logger from "@app/logger/logger";
+import type { GetShareFrameMetadataResponseBody } from "@app/types/api/files/share";
 import { isInteractiveContentType } from "@app/types/files";
 import { createHono } from "@front-api/lib/hono";
 import type { HandlerResult } from "@front-api/middlewares/utils";

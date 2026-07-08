@@ -72,6 +72,44 @@ export function getPodFilesBasePath({
 }
 
 /**
+ * Dedicated prefix for published sandbox function bundles, separate from the R/W pod files prefix.
+ * `front` is the sole writer here, via the GCS API. The invocation path later mounts this prefix
+ * read-only into sandboxes as DUST_FUNCTIONS_DIR, so a function can be executed but never
+ * overwritten by a sandbox.
+ */
+export function getPodSandboxFunctionsBasePath({
+  workspaceId,
+  podId,
+}: {
+  workspaceId: string;
+  podId: string;
+}): string {
+  return `${getBaseMountPathForWorkspace({ workspaceId })}pods/${podId}/sandbox-functions/`;
+}
+
+/**
+ * Absolute in-sandbox path the pod's published bundles are mounted at. Pod-scoped like the
+ * `/files/pod-<id>` files mount, so one sandbox could carry several pods' functions without
+ * collision.
+ */
+export function getPodSandboxFunctionsMountPoint(podId: string): string {
+  return `/sandbox-functions/pods/${podId}`;
+}
+
+/**
+ * Absolute in-sandbox path of the pod's live SQLite databases (`{name}.db` files opened by
+ * `@dust/pod`'s `db()`). Local disk, not a gcsfuse mount — Litestream replicates it to GCS.
+ * Front is the only layer that hardcodes this location (the paths-env.v1 contract): it is
+ * passed per exec to `dsbx function run` as `DUST_POD_DATABASES_DIR`, dsbx forwards it to
+ * the bun child, and `@dust/pod` reads the env var — neither carries a fallback copy.
+ *
+ * TODO(pod-state): Track 1's parallel stack defines the same contract value as
+ * `POD_STATE_DATABASES_DIR` in `front/lib/api/sandbox/pod_state.ts` (litestream config /
+ * restore side). Dedup into a single constant once both stacks are merged.
+ */
+export const POD_SANDBOX_DATABASES_DIR = "/pod-state/databases";
+
+/**
  * Given a mount file path like "w/.../files/report.pdf",
  * returns "w/.../files/report.processed.pdf".
  * For files without extension: "w/.../files/Makefile" -> "w/.../files/Makefile.processed".

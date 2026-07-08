@@ -16,24 +16,34 @@ export const WEB_SEARCH_BROWSE_ACTION_DESCRIPTION =
 export const WEB_SEARCH_BROWSE_TOOLS_METADATA = createToolsRecord({
   websearch: {
     description:
-      "A tool that performs a Google web search based on a string query.",
+      "Search Google for web results, news, and current online information. " +
+      "Look up any topic on the internet using a search query.",
     schema: WebsearchInputSchema.shape,
     stake: "never_ask",
     enableAlerting: true,
+    eager: true,
     displayLabels: {
       running: "Searching the web",
       done: "Web search",
     },
+    toolCostCategory: "basic",
+    freeUsage: false,
   },
   webbrowser: {
-    description: `A tool to browse websites, you can provide a list of up to ${MAX_BROWSE_URLS} urls to browse all at once.`,
+    description:
+      `Fetch and read the content of web pages and webpages from given URLs. ` +
+      `Open and browse websites to extract text, or take a viewport or ` +
+      `full-page screenshot. Accepts up to ${MAX_BROWSE_URLS} URLs at once.`,
     schema: WebbrowseInputSchema.shape,
     stake: "never_ask",
     enableAlerting: true,
+    eager: true,
     displayLabels: {
       running: "Browsing web page",
       done: "Browse web page",
     },
+    toolCostCategory: "basic",
+    freeUsage: false,
   },
 });
 
@@ -45,13 +55,14 @@ export const WEB_SEARCH_BROWSE_SERVER = {
     authorization: null,
     icon: "ActionGlobeAltIcon" as const,
     documentationUrl: null,
-    instructions: null,
   },
   tools: Object.values(WEB_SEARCH_BROWSE_TOOLS_METADATA).map((t) => ({
     name: t.name,
     description: t.description,
     inputSchema: zodToJsonSchema(z.object(t.schema)) as JSONSchema,
     displayLabels: t.displayLabels,
+    toolCostCategory: t.toolCostCategory,
+    freeUsage: t.freeUsage,
   })),
   tools_stakes: Object.fromEntries(
     Object.values(WEB_SEARCH_BROWSE_TOOLS_METADATA).map((t) => [

@@ -20,6 +20,8 @@ export const SKILL_AUTHORING_TOOLS_METADATA = createToolsRecord({
       running: "Listing skills",
       done: "List skills",
     },
+    toolCostCategory: "basic",
+    freeUsage: true,
   },
   [GET_SKILL_TOOL_NAME]: {
     description:
@@ -32,6 +34,8 @@ export const SKILL_AUTHORING_TOOLS_METADATA = createToolsRecord({
       running: "Getting skill",
       done: "Get skill",
     },
+    toolCostCategory: "basic",
+    freeUsage: true,
   },
   [CREATE_SKILL_TOOL_NAME]: {
     description:
@@ -53,12 +57,21 @@ export const SKILL_AUTHORING_TOOLS_METADATA = createToolsRecord({
         .string()
         .optional()
         .describe("Optional icon name; auto-suggested if omitted."),
+      bypassSimilarSkillCheck: z
+        .boolean()
+        .optional()
+        .describe(
+          "Bypass the similar skill check and create the skill anyway. Set to true " +
+            "only after the user explicitly confirms they want a separate skill."
+        ),
     },
     stake: "high",
     displayLabels: {
       running: "Creating skill",
       done: "Create skill",
     },
+    toolCostCategory: "basic",
+    freeUsage: true,
   },
   [UPDATE_SKILL_TOOL_NAME]: {
     description:
@@ -122,6 +135,8 @@ export const SKILL_AUTHORING_TOOLS_METADATA = createToolsRecord({
       running: "Updating skill",
       done: "Update skill",
     },
+    toolCostCategory: "basic",
+    freeUsage: true,
   },
 });
 
@@ -133,13 +148,14 @@ export const SKILL_AUTHORING_SERVER = {
     authorization: null,
     icon: "ActionListCheckIcon",
     documentationUrl: null,
-    instructions: null,
   },
   tools: Object.values(SKILL_AUTHORING_TOOLS_METADATA).map((t) => ({
     name: t.name,
     description: t.description,
     inputSchema: zodToJsonSchema(z.object(t.schema)) as JSONSchema,
     displayLabels: t.displayLabels,
+    toolCostCategory: t.toolCostCategory,
+    freeUsage: t.freeUsage,
   })),
   tools_stakes: Object.fromEntries(
     Object.values(SKILL_AUTHORING_TOOLS_METADATA).map((t) => [t.name, t.stake])

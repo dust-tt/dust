@@ -1,10 +1,12 @@
+import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
 import type { ToolExecutionStatus } from "@app/lib/actions/statuses";
 import { isToolExecutionStatusFinal } from "@app/lib/actions/statuses";
+import { getToolNameFromFunctionCallName } from "@app/lib/actions/tool_display_labels";
 import { makeFairUseAwuCreditsRateLimitKeyForUser } from "@app/lib/api/assistant/rate_limits";
 import type { Authenticator } from "@app/lib/auth";
 import {
-  intelligenceAwuFromRunUsages,
-  isFreeOrigin,
+  computeRunKey,
+  intelligenceAwuFromRunUsagesGroupedByRunKey,
   toolAwuFromActions,
 } from "@app/lib/metronome/events";
 import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
@@ -16,21 +18,25 @@ import {
   rateLimiter,
 } from "@app/lib/utils/rate_limiter";
 import logger from "@app/logger/logger";
-import { AGENT_MESSAGE_STATUSES_TO_TRACK } from "@app/types/assistant/conversation";
+import {
+  AGENT_MESSAGE_STATUSES_TO_TRACK,
+  type UserMessageOrigin,
+} from "@app/types/assistant/conversation";
 
 interface CreditActionMinimalInput {
-  internalMCPServerName: string | null;
+  toolName: string;
+  internalMCPServerName: InternalMCPServerNameType | null;
   status: ToolExecutionStatus;
 }
 
 export function computeAgentMessageCredits({
   runUsages,
   actions,
-  isFreeUsage = false,
+  contextOrigin,
 }: {
-  runUsages: RunUsageType[];
+  runUsages: (RunUsageType & { runKey: string | null })[];
   actions: CreditActionMinimalInput[];
-  isFreeUsage?: boolean;
+  contextOrigin: UserMessageOrigin | null;
 }): number | null {
   const finalActions = actions.filter((a) =>
     isToolExecutionStatusFinal(a.status)
@@ -40,12 +46,12 @@ export function computeAgentMessageCredits({
     return null;
   }
 
-  if (isFreeUsage) {
-    return 0;
-  }
-
+  // Intelligence cost is ceiled per agent-loop execution (runKey) to match the
+  // per-execution Metronome events. Tool cost has no ceiling (fixed 1/3 per
+  // action), so it is grouping-invariant and stays message-level.
   return (
-    intelligenceAwuFromRunUsages(runUsages) + toolAwuFromActions(finalActions)
+    intelligenceAwuFromRunUsagesGroupedByRunKey(runUsages, contextOrigin) +
+    toolAwuFromActions(finalActions, contextOrigin)
   );
 }
 
@@ -61,10 +67,18 @@ export function computeAgentMessageCredits({
  * Computes from the message's full accumulated runIds + all final-status actions (the message-level
  * total), so re-runs (interrupt/resume) overwrite the stored value with the complete cost. Only
  * persists for statuses we track for billing, matching the Metronome gate.
+ *
+ * Before recomputing, this execution's runs are tagged with their runKey (from `dustRunIds`) so the
+ * intelligence cost is ceiled per agent-loop execution — exactly matching the per-execution
+ * Metronome events. Tagging is idempotent (same runIds → same runKey), so it stays overwrite-safe
+ * across Temporal retries.
  */
 export async function computeAndStoreAgentMessageCredits(
   auth: Authenticator,
-  { agentMessageId }: { agentMessageId: string }
+  {
+    agentMessageId,
+    dustRunIds,
+  }: { agentMessageId: string; dustRunIds?: string[] }
 ): Promise<number | null> {
   const creditContext =
     await ConversationResource.fetchAgentMessageCreditContext(auth, {
@@ -86,6 +100,17 @@ export async function computeAndStoreAgentMessageCredits(
     return null;
   }
 
+  // Tag this execution's runs with their runKey before recomputing, so the
+  // recompute (which reads the message's full accumulated runIds) ceils each
+  // execution's intelligence cost independently. Prior executions tagged their
+  // own runs in their own finalize.
+  if (dustRunIds && dustRunIds.length > 0) {
+    await RunResource.setRunKeyForDustRunIds(auth, {
+      dustRunIds,
+      runKey: computeRunKey(dustRunIds),
+    });
+  }
+
   const [runUsages, actions] = await Promise.all([
     fetchRunUsagesForAgentMessage(auth, runIds),
     AgentMCPActionResource.listByAgentMessageIds(auth, [agentMessageModelId]),
@@ -94,12 +119,11 @@ export async function computeAndStoreAgentMessageCredits(
   const costCredits = computeAgentMessageCredits({
     runUsages,
     actions: actions.map((action) => ({
+      toolName: getToolNameFromFunctionCallName(action.functionCallName),
       internalMCPServerName: action.metadata.internalMCPServerName,
       status: action.status,
     })),
-    isFreeUsage:
-      triggeringUserMessageOrigin !== null &&
-      isFreeOrigin(triggeringUserMessageOrigin),
+    contextOrigin: triggeringUserMessageOrigin,
   });
 
   await ConversationResource.updateAgentMessageCostCredits(auth, {
@@ -140,7 +164,7 @@ export async function computeAndStoreAgentMessageCredits(
 async function fetchRunUsagesForAgentMessage(
   auth: Authenticator,
   runIds: string[] | null
-): Promise<RunUsageType[]> {
+): Promise<(RunUsageType & { runKey: string | null })[]> {
   const dustRunIds = [...new Set(runIds ?? [])];
   if (dustRunIds.length === 0) {
     return [];

@@ -6,7 +6,7 @@ import { isEligibleForAutoSeatUpgrade } from "@app/lib/api/credits/auto_seat_upg
 import type { AuditLogContext } from "@app/lib/api/workos/organization";
 import { getMembers } from "@app/lib/api/workspace";
 import type { Authenticator } from "@app/lib/auth";
-import { notifyAdminsUpgradeRequested } from "@app/lib/notifications/workflows/upgrade-request-created";
+import { notifyUpgradeRequested } from "@app/lib/notifications/workflows/upgrade-request-created";
 import { isCreditPricedPlanPrefix } from "@app/lib/plans/plan_codes";
 import { CreditUsageConfigurationResource } from "@app/lib/resources/credit_usage_configuration_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
@@ -51,7 +51,7 @@ async function isUpgradeRequestEmailEnabled(
   return config?.upgradeRequestEmailEnabled ?? true;
 }
 
-async function notifyAdminsOfUpgradeRequest(
+async function notifyBusinessAdminsAndAdminsOfUpgradeRequest(
   auth: Authenticator,
   { request }: { request: MembershipUpgradeRequestResource }
 ): Promise<void> {
@@ -62,14 +62,14 @@ async function notifyAdminsOfUpgradeRequest(
     }
 
     const workspace = auth.getNonNullableWorkspace();
-    const { members: admins } = await getMembers(auth, {
-      roles: ["admin"],
+    const { members: usersToNotify } = await getMembers(auth, {
+      roles: ["admin", "business_admin"],
       activeOnly: true,
     });
 
     const requester = request.requester;
-    notifyAdminsUpgradeRequested({
-      admins: admins.map((admin) => ({
+    notifyUpgradeRequested({
+      users: usersToNotify.map((admin) => ({
         sId: admin.sId,
         email: admin.email,
         firstName: admin.firstName,
@@ -88,18 +88,6 @@ async function notifyAdminsOfUpgradeRequest(
     );
   }
 }
-
-export type GetUpgradeRequestsResponseBody = {
-  requests: MembershipUpgradeRequestType[];
-};
-
-export type PostUpgradeRequestResponseBody = {
-  request: MembershipUpgradeRequestType;
-};
-
-export type PatchUpgradeRequestResponseBody = {
-  request: MembershipUpgradeRequestType;
-};
 
 // Member-initiated: create (or return the already-pending) upgrade request for
 // the current user. Gated on the workspace being credit-priced and the member
@@ -176,7 +164,7 @@ export async function createUpgradeRequest(
     metadata: { request_sid: request.sId },
   });
 
-  void notifyAdminsOfUpgradeRequest(auth, { request });
+  void notifyBusinessAdminsAndAdminsOfUpgradeRequest(auth, { request });
 
   return new Ok(request.toJSON());
 }
@@ -210,7 +198,7 @@ export async function getUpgradeRequestAvailabilityForUser(
     };
   }
 
-  if (auth.isAdmin()) {
+  if (auth.isBusinessAdmin()) {
     return unavailable;
   }
 

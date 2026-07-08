@@ -2,11 +2,7 @@ import { getAgentConfigurations } from "@app/lib/api/assistant/configuration/age
 import type { Authenticator } from "@app/lib/auth";
 import type { AgentMCPActionModel } from "@app/lib/models/agent/actions/mcp";
 import { AgentStepContentModel } from "@app/lib/models/agent/agent_step_content";
-import {
-  AgentMessageModel,
-  ConversationModel,
-  MessageModel,
-} from "@app/lib/models/agent/conversation";
+import { AgentMessageModel } from "@app/lib/models/agent/conversation";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { ModelStaticWorkspaceAware } from "@app/lib/resources/storage/wrappers/workspace_models";
@@ -14,7 +10,6 @@ import { makeSId } from "@app/lib/resources/string_ids";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { withTransaction } from "@app/lib/utils/sql_utils";
 import logger from "@app/logger/logger";
-import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import type {
   AgentFunctionCallContentType,
   AgentStepContentType,
@@ -26,13 +21,7 @@ import { Err, Ok } from "@app/types/shared/result";
 import assert from "assert";
 import chunk from "lodash/chunk";
 import groupBy from "lodash/groupBy";
-import type {
-  Attributes,
-  CreationAttributes,
-  IncludeOptions,
-  Transaction,
-  WhereOptions,
-} from "sequelize";
+import type { Attributes, CreationAttributes, Transaction } from "sequelize";
 import { Op, Sequelize } from "sequelize";
 
 export const FETCH_BY_AGENT_MESSAGES_CHUNK_SIZE = 512;
@@ -237,115 +226,6 @@ export class AgentStepContentResource extends BaseResource<AgentStepContentModel
     return contents.map(
       (content) => new AgentStepContentResource(this.model, content.get())
     );
-  }
-
-  static async listFunctionCallsForAgent(
-    auth: Authenticator,
-    {
-      agentConfiguration,
-      limit,
-      cursor,
-    }: {
-      agentConfiguration: LightAgentConfigurationType;
-      limit: number;
-      cursor?: Date;
-    }
-  ): Promise<{
-    data: {
-      stepContent: AgentStepContentResource;
-      conversationId: string;
-      messageId: string;
-    }[];
-    totalCount: number;
-    nextCursor: string | null;
-  }> {
-    const owner = auth.getNonNullableWorkspace();
-
-    const whereClause: WhereOptions<AgentStepContentModel> = {
-      workspaceId: owner.id,
-      type: "function_call",
-    };
-
-    if (cursor) {
-      whereClause.createdAt = {
-        [Op.lt]: cursor,
-      };
-    }
-
-    const includeClause: IncludeOptions[] = [
-      {
-        model: AgentMessageModel,
-        as: "agentMessage",
-        required: true,
-        where: {
-          agentConfigurationId: agentConfiguration.sId,
-        },
-        include: [
-          {
-            model: MessageModel,
-            as: "message",
-            required: true,
-            include: [
-              {
-                model: ConversationModel,
-                as: "conversation",
-                required: true,
-                where: {
-                  visibility: { [Op.ne]: "deleted" },
-                },
-              },
-            ],
-          },
-        ],
-      },
-    ];
-
-    const [totalCount, stepContents] = await Promise.all([
-      this.model.count({
-        include: includeClause,
-        where: whereClause,
-        distinct: true,
-      }),
-      this.model.findAll({
-        include: includeClause,
-        where: whereClause,
-        limit: limit + 1,
-      }),
-    ]);
-
-    const sortedStepContents = stepContents.toSorted(
-      (a, b) => b.createdAt.getTime() - a.createdAt.getTime()
-    );
-
-    const hasMore = sortedStepContents.length > limit;
-    const actualStepContents = hasMore
-      ? sortedStepContents.slice(0, limit)
-      : sortedStepContents;
-
-    const nextCursor = hasMore
-      ? actualStepContents[
-          actualStepContents.length - 1
-        ].createdAt.toISOString()
-      : null;
-
-    const data = actualStepContents.map((stepContent) => {
-      assert(
-        stepContent.agentMessage?.message?.conversation,
-        "Missing required relations"
-      );
-
-      return {
-        stepContent: new this(this.model, stepContent.get()),
-        conversationId: stepContent.agentMessage.message.conversation.sId,
-        messageId: stepContent.agentMessage.message.sId,
-      };
-    });
-
-    return {
-      data,
-      totalCount,
-      nextCursor,
-    };
   }
 
   isFunctionCallContent(): this is AgentStepContentResource & {

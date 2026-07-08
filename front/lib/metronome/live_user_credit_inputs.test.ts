@@ -62,6 +62,7 @@ describe("fetchLiveUserCreditInputs", () => {
       userId: USER_ID,
       seatType: "max",
       poolCapOverrideAwuCredits: null,
+      groupCapAwuCredits: null,
       defaultPoolCapAwuCredits: 0,
       metronomeCustomerId: CUSTOMER_ID,
       metronomeContractId: CONTRACT_ID,
@@ -94,6 +95,7 @@ describe("fetchLiveUserCreditInputs", () => {
       // Pool-only override from the membership; no contract resolves for
       // "ws_test" so the seat allowance is 0 and the total cap equals it.
       poolCapOverrideAwuCredits: 50000,
+      groupCapAwuCredits: null,
       defaultPoolCapAwuCredits: 0,
       metronomeCustomerId: CUSTOMER_ID,
       metronomeContractId: CONTRACT_ID,
@@ -108,6 +110,55 @@ describe("fetchLiveUserCreditInputs", () => {
     }
   });
 
+  it("uses the group cap when there is no override, ranking above the default", async () => {
+    mockListMetronomeSeatBalances.mockResolvedValue(
+      new Ok(seatBalance(0, 40000))
+    );
+
+    const result = await fetchLiveUserCreditInputs({
+      workspaceId: "ws_test",
+      userId: USER_ID,
+      seatType: "max",
+      poolCapOverrideAwuCredits: null,
+      // No override → the group cap wins over the workspace default. No contract
+      // resolves for "ws_test" so the seat allowance is 0 and the total cap
+      // equals the group cap.
+      groupCapAwuCredits: 30000,
+      defaultPoolCapAwuCredits: 10000,
+      metronomeCustomerId: CUSTOMER_ID,
+      metronomeContractId: CONTRACT_ID,
+    });
+
+    expect(result.isOk()).toBe(true);
+    if (result.isOk()) {
+      expect(result.value.effectiveCapAwuCredits).toBe(30000);
+      expect(result.value.capSource).toBe("group");
+    }
+  });
+
+  it("prefers the per-user override over the group cap", async () => {
+    mockListMetronomeSeatBalances.mockResolvedValue(
+      new Ok(seatBalance(0, 40000))
+    );
+
+    const result = await fetchLiveUserCreditInputs({
+      workspaceId: "ws_test",
+      userId: USER_ID,
+      seatType: "max",
+      poolCapOverrideAwuCredits: 50000,
+      groupCapAwuCredits: 30000,
+      defaultPoolCapAwuCredits: 10000,
+      metronomeCustomerId: CUSTOMER_ID,
+      metronomeContractId: CONTRACT_ID,
+    });
+
+    expect(result.isOk()).toBe(true);
+    if (result.isOk()) {
+      expect(result.value.effectiveCapAwuCredits).toBe(50000);
+      expect(result.value.capSource).toBe("override");
+    }
+  });
+
   it("surfaces an Err when the live seat-balance read fails", async () => {
     mockListMetronomeSeatBalances.mockResolvedValue(
       new Err(new Error("metronome down"))
@@ -118,6 +169,7 @@ describe("fetchLiveUserCreditInputs", () => {
       userId: USER_ID,
       seatType: "max",
       poolCapOverrideAwuCredits: null,
+      groupCapAwuCredits: null,
       defaultPoolCapAwuCredits: 0,
       metronomeCustomerId: CUSTOMER_ID,
       metronomeContractId: CONTRACT_ID,

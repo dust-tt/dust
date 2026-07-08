@@ -6,7 +6,8 @@ import { zodToJsonSchema } from "zod-to-json-schema";
 
 export const SCHEDULES_MANAGEMENT_TOOLS_METADATA = createToolsRecord({
   create_schedule: {
-    description: "Create a schedule that runs this agent at specified times.",
+    description:
+      "Create a schedule that runs this agent at specified times. Schedules are user-specific: each user can only view and manage their own schedules. When the schedule triggers, it runs this agent with the specified prompt. Limit: 20 schedule creations per user per day.",
     schema: {
       name: z
         .string()
@@ -37,15 +38,20 @@ export const SCHEDULES_MANAGEMENT_TOOLS_METADATA = createToolsRecord({
       running: "Creating schedule",
       done: "Create schedule",
     },
+    toolCostCategory: "basic",
+    freeUsage: false,
   },
   list_schedules: {
-    description: "List all schedules created for this agent.",
+    description:
+      "List all schedules created for this agent and for the current user.",
     schema: {},
     stake: "never_ask",
     displayLabels: {
       running: "Listing schedules",
       done: "List schedules",
     },
+    toolCostCategory: "basic",
+    freeUsage: true,
   },
   disable_schedule: {
     description: "Disable a schedule.",
@@ -59,6 +65,8 @@ export const SCHEDULES_MANAGEMENT_TOOLS_METADATA = createToolsRecord({
       running: "Disabling schedule",
       done: "Disable schedule",
     },
+    toolCostCategory: "basic",
+    freeUsage: true,
   },
 });
 
@@ -66,7 +74,6 @@ type SchedulesManagementToolKey =
   keyof typeof SCHEDULES_MANAGEMENT_TOOLS_METADATA;
 
 export const SCHEDULES_MANAGEMENT_SERVER = {
-  // biome-ignore lint/plugin/noMcpServerInstructions: existing usage
   serverInfo: {
     name: "schedules_management" as const,
     version: "1.0.0",
@@ -74,10 +81,6 @@ export const SCHEDULES_MANAGEMENT_SERVER = {
     authorization: null,
     icon: "ActionTimeIcon" as const,
     documentationUrl: null,
-    instructions:
-      "Schedules are user-specific: each user can only view and manage their own schedules. " +
-      "When a schedule triggers, it runs this agent with the specified prompt. " +
-      "Limit: 20 schedule creations per user per day.",
   },
   tools: (
     Object.keys(
@@ -90,6 +93,8 @@ export const SCHEDULES_MANAGEMENT_SERVER = {
       z.object(SCHEDULES_MANAGEMENT_TOOLS_METADATA[key].schema)
     ) as JSONSchema,
     displayLabels: SCHEDULES_MANAGEMENT_TOOLS_METADATA[key].displayLabels,
+    toolCostCategory: SCHEDULES_MANAGEMENT_TOOLS_METADATA[key].toolCostCategory,
+    freeUsage: SCHEDULES_MANAGEMENT_TOOLS_METADATA[key].freeUsage,
   })),
   tools_stakes: Object.fromEntries(
     (

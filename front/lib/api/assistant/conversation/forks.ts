@@ -1,7 +1,5 @@
 import { postNewContentFragment } from "@app/lib/api/assistant/conversation";
 import {
-  type ContentNodeAttachmentType,
-  type FileAttachmentType,
   isContentNodeAttachmentType,
   isFileAttachmentType,
 } from "@app/lib/api/assistant/conversation/attachments";
@@ -33,7 +31,11 @@ import { launchConversationForkWorkflow } from "@app/temporal/conversation_fork_
 import type {
   ContentFragmentInputWithContentNode,
   ContentFragmentInputWithFileIdType,
-} from "@app/types/api/internal/assistant";
+} from "@app/types/api/assistant";
+import type {
+  ContentNodeAttachmentType,
+  FileAttachmentType,
+} from "@app/types/api/assistant/conversation/attachments";
 import type { CompactionAttachmentIdReplacements } from "@app/types/assistant/compaction";
 import type {
   ConversationType,
@@ -54,12 +56,6 @@ export type CreateConversationForkErrorCode =
   | "internal_error"
   | "invalid_request_error"
   | "unauthorized";
-
-export type PostConversationForkResponseBody = {
-  conversationId: string;
-  parentConversationTitle: string | null;
-  spaceId: string | null;
-};
 
 type CarriedAttachment = {
   carriedAttachment:
@@ -699,11 +695,6 @@ export async function createConversationFork(
   if (childConversationId.isErr()) {
     return childConversationId;
   }
-
-  await ConversationResource.triggerEsIndexing(
-    auth,
-    childConversationId.value.childConversationId
-  );
 
   const launchForkWorkflowResult = await launchConversationForkWorkflow({
     workspaceId: auth.getNonNullableWorkspace().sId,

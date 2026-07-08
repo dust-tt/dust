@@ -1,4 +1,3 @@
-import type { ConversationAttachmentType } from "@app/lib/api/assistant/conversation/attachments";
 import {
   getAttachmentFromContentFragment,
   isContentNodeAttachmentType,
@@ -6,7 +5,6 @@ import {
 import { getContentFragmentBlob } from "@app/lib/api/assistant/conversation/content_fragment";
 import { getContentNodesForDataSourceView } from "@app/lib/api/data_source_view";
 import { DustFileSystem } from "@app/lib/api/file_system";
-import type { FileSystemDirectoryEntry } from "@app/lib/api/file_system/types";
 import {
   DustFileSystemError,
   podScopedPath,
@@ -36,7 +34,9 @@ import { FileResource } from "@app/lib/resources/file_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { ContentFragmentModel } from "@app/lib/resources/storage/models/content_fragment";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
-import type { ContentFragmentInputWithContentNode } from "@app/types/api/internal/assistant";
+import type { ContentFragmentInputWithContentNode } from "@app/types/api/assistant";
+import type { ConversationAttachmentType } from "@app/types/api/assistant/conversation/attachments";
+import type { FileSystemDirectoryEntry } from "@app/types/api/file_system/types";
 import type { ContentNodeType } from "@app/types/core/content_node";
 import type { ConnectorProvider } from "@app/types/data_source";
 import type { Result } from "@app/types/shared/result";

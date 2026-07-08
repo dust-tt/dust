@@ -4,10 +4,7 @@ import {
   getProgrammaticUsageLimit,
   syncProgrammaticUsageLimit,
 } from "@app/lib/api/credits/programmatic_usage_limit";
-import {
-  getUsageConfiguration,
-  updateUsageConfiguration,
-} from "@app/lib/api/credits/usage_configuration";
+import { updateUsageConfiguration } from "@app/lib/api/credits/usage_configuration";
 import { createPlugin } from "@app/lib/api/poke/types";
 import {
   getDefaultUserSpendLimit,
@@ -15,49 +12,21 @@ import {
 } from "@app/lib/api/workspace/default_user_spend_limit";
 import { MAX_AWU_DISCOUNT_PERCENT } from "@app/lib/credits/awu_purchase_constants";
 import { CreditUsageConfigurationResource } from "@app/lib/resources/credit_usage_configuration_resource";
+import {
+  DEFAULT_AUTO_INVOICE_FINALIZATION_ENABLED,
+  DEFAULT_AUTO_SEAT_UPGRADE_ENABLED,
+  DEFAULT_TOP_UP_ENABLED,
+} from "@app/lib/resources/storage/models/credit_usage_configurations";
 import { isCreditPricedPlan } from "@app/types/plan";
+import {
+  CreditUsageConfigurationSchema,
+  MAX_AWU_USAGE_CAP_CREDITS,
+} from "@app/types/poke/credit_usage_configuration";
 import { Err, Ok } from "@app/types/shared/result";
-import { z } from "zod";
 
-export const MAX_AWU_USAGE_CAP_CREDITS = 2_000_000;
+export { MAX_AWU_USAGE_CAP_CREDITS } from "@app/types/poke/credit_usage_configuration";
+
 const POKE_AUDIT_CONTEXT = { location: "poke" };
-
-const CreditUsageConfigurationSchema = z.object({
-  defaultDiscountPercent: z
-    .number()
-    .min(0, "Discount percentage must be at least 0")
-    .max(
-      MAX_AWU_DISCOUNT_PERCENT,
-      `Discount cannot exceed ${MAX_AWU_DISCOUNT_PERCENT}% for AWU credit purchases`
-    )
-    .default(0),
-  paygEnabled: z.boolean(),
-  usageCapCredits: z
-    .number()
-    .int("AWU usage cap must be an integer number of credits")
-    .min(0, "AWU usage cap must be non-negative")
-    .max(
-      MAX_AWU_USAGE_CAP_CREDITS,
-      `AWU usage cap cannot exceed ${MAX_AWU_USAGE_CAP_CREDITS.toLocaleString()} credits`
-    )
-    .default(0),
-  balanceThresholdCredits: z
-    .number()
-    .int("Balance threshold must be an integer number of credits")
-    .min(0, "Balance threshold must be non-negative")
-    .default(0),
-  defaultPoolCapCredits: z
-    .number()
-    .int("Default pool cap must be an integer number of credits")
-    .min(0, "Default pool cap must be non-negative")
-    .default(0),
-  programmaticMonthlyCapCredits: z
-    .number()
-    .int("Programmatic monthly cap must be an integer number of credits")
-    .min(0, "Programmatic monthly cap must be non-negative")
-    .default(0),
-  autoSeatUpgradeEnabled: z.boolean().default(false),
-});
 
 export const manageCreditUsageConfigurationPlugin = createPlugin({
   manifest: {
@@ -72,14 +41,14 @@ export const manageCreditUsageConfigurationPlugin = createPlugin({
       defaultDiscountPercent: {
         type: "number",
         variant: "text",
-        label: "Default Discount (%)",
+        label: "Default discount (%)",
         description: `Discount applied to AWU credit purchases (0-${MAX_AWU_DISCOUNT_PERCENT}%).`,
         async: true,
       },
       paygEnabled: {
         type: "boolean",
         variant: "toggle",
-        label: "PAYG Enabled",
+        label: "Pay-as-you-go",
         description:
           "Enable Pay-as-you-go for this workspace (Metronome-billed workspaces only).",
         async: true,
@@ -87,40 +56,56 @@ export const manageCreditUsageConfigurationPlugin = createPlugin({
       usageCapCredits: {
         type: "number",
         variant: "text",
-        label: "Workspace Credit Pool Monthly Usage Cap (credits)",
+        label: "Monthly usage cap (credits)",
         description: `Workspace-level monthly spend cap for the Metronome spend-threshold alert. Set to 0 to disable. Range: 0-${MAX_AWU_USAGE_CAP_CREDITS.toLocaleString()}.`,
         async: true,
       },
       balanceThresholdCredits: {
         type: "number",
         variant: "text",
-        label: "Workspace Credit Pool Balance Threshold Alert (credits)",
+        label: "Workspace credit pool threshold alert (credits)",
         description:
-          "Email admins when the workspace pool balance drops below this amount. Set to 0 to disable.",
+          "Email all workspace admins when the workspace credit pool balance drops below this amount. Set to 0 to disable.",
         async: true,
       },
       defaultPoolCapCredits: {
         type: "number",
         variant: "text",
-        label: "Default Per-User Pool Limit (credits)",
+        label: "Default per-user workspace credit pool monthly limit (credits)",
         description:
-          "Default pool credit limit added on top of each seat's allowance. Set to 0 to prevent pool usage.",
+          "Default per-user workspace credit pool monthly limit added on top of each seat's built-in allowance. Can be overridden per user in the members table. Set to 0 to remove pool access.",
         async: true,
       },
       programmaticMonthlyCapCredits: {
         type: "number",
         variant: "text",
-        label: "Programmatic Monthly Cap (credits)",
+        label: "Programmatic monthly limit (credits)",
         description:
-          "Monthly cap on programmatic (API) AWU usage. Set to 0 to disable.",
+          "Maximum credits allowed for programmatic usage per month. Set to 0 to block all programmatic access.",
         async: true,
       },
       autoSeatUpgradeEnabled: {
         type: "boolean",
         variant: "toggle",
-        label: "Auto-Upgrade Seats",
+        label: "Auto-upgrade seats",
         description:
-          "Automatically upgrade members to the next seat tier when they hit their credit limit.",
+          "When a member reaches their credit limit, automatically move them to the next seat tier available in the plan instead of blocking them. This may increase the workspace's subscription cost.",
+        async: true,
+      },
+      topUpEnabled: {
+        type: "boolean",
+        variant: "toggle",
+        label: "Top-up (Enterprise)",
+        description:
+          "Show the 'Top up' button on the Usage page for enterprise-plan workspaces.",
+        async: true,
+      },
+      autoInvoiceFinalizationEnabled: {
+        type: "boolean",
+        variant: "toggle",
+        label: "Auto invoice finalization",
+        description:
+          "Automatically finalize Metronome-pushed Stripe draft invoices. Disable to leave invoices as cleaned drafts for manual review.",
         async: true,
       },
     },
@@ -136,12 +121,10 @@ export const manageCreditUsageConfigurationPlugin = createPlugin({
     const config =
       await CreditUsageConfigurationResource.fetchByWorkspaceId(auth);
 
-    const [defaultPoolLimit, programmaticLimit, usageConfig] =
-      await Promise.all([
-        getDefaultUserSpendLimit(auth),
-        getProgrammaticUsageLimit(auth),
-        getUsageConfiguration(auth),
-      ]);
+    const [defaultPoolLimit, programmaticLimit] = await Promise.all([
+      getDefaultUserSpendLimit(auth),
+      getProgrammaticUsageLimit(auth),
+    ]);
 
     return new Ok({
       defaultDiscountPercent: config?.defaultDiscountPercent ?? 0,
@@ -154,7 +137,12 @@ export const manageCreditUsageConfigurationPlugin = createPlugin({
       programmaticMonthlyCapCredits: programmaticLimit.isOk()
         ? (programmaticLimit.value ?? 0)
         : 0,
-      autoSeatUpgradeEnabled: usageConfig.autoSeatUpgradeEnabled,
+      autoSeatUpgradeEnabled:
+        config?.autoSeatUpgradeEnabled ?? DEFAULT_AUTO_SEAT_UPGRADE_ENABLED,
+      topUpEnabled: config?.topUpEnabled ?? DEFAULT_TOP_UP_ENABLED,
+      autoInvoiceFinalizationEnabled:
+        config?.autoInvoiceFinalizationEnabled ??
+        DEFAULT_AUTO_INVOICE_FINALIZATION_ENABLED,
     });
   },
 
@@ -187,19 +175,42 @@ export const manageCreditUsageConfigurationPlugin = createPlugin({
       defaultPoolCapCredits,
       programmaticMonthlyCapCredits,
       autoSeatUpgradeEnabled,
+      topUpEnabled,
+      autoInvoiceFinalizationEnabled,
     } = parseResult.data;
 
     const resolvedUsageCapCredits =
       usageCapCredits > 0 ? usageCapCredits : null;
+    const resolvedBalanceThresholdCredits =
+      balanceThresholdCredits > 0 ? balanceThresholdCredits : null;
+    const resolvedProgrammaticMonthlyCapCredits =
+      programmaticMonthlyCapCredits > 0 ? programmaticMonthlyCapCredits : null;
 
-    // 1. Core config (discount, PAYG, workspace usage cap).
-    const existingConfig =
-      await CreditUsageConfigurationResource.fetchByWorkspaceId(auth);
+    // Fetch current state upfront so each sync step can be skipped when its
+    // inputs haven't changed (avoids triggering seat reconciliation for every
+    // save regardless of what actually changed).
+    const [existingConfig, currentPoolLimit, currentProgrammaticLimit] =
+      await Promise.all([
+        CreditUsageConfigurationResource.fetchByWorkspaceId(auth),
+        getDefaultUserSpendLimit(auth),
+        getProgrammaticUsageLimit(auth),
+      ]);
+
+    const currentPoolCapCredits = currentPoolLimit.isOk()
+      ? (currentPoolLimit.value.awuCredits ?? 0)
+      : 0;
+    const currentProgrammaticCapCredits = currentProgrammaticLimit.isOk()
+      ? (currentProgrammaticLimit.value ?? 0)
+      : 0;
+
+    // 1. Core config (discount, PAYG, workspace usage cap, static flags).
     if (existingConfig) {
       const updateResult = await existingConfig.updateConfiguration(auth, {
         defaultDiscountPercent,
         paygEnabled,
         usageCapCredits: resolvedUsageCapCredits,
+        topUpEnabled,
+        autoInvoiceFinalizationEnabled,
       });
       if (updateResult.isErr()) {
         return updateResult;
@@ -211,6 +222,8 @@ export const manageCreditUsageConfigurationPlugin = createPlugin({
           defaultDiscountPercent,
           paygEnabled,
           usageCapCredits: resolvedUsageCapCredits,
+          topUpEnabled,
+          autoInvoiceFinalizationEnabled,
         }
       );
       if (createResult.isErr()) {
@@ -218,53 +231,72 @@ export const manageCreditUsageConfigurationPlugin = createPlugin({
       }
     }
 
-    const paygResult = await syncCreditBasedPayg({
-      auth,
-      paygEnabled,
-      usageCapCredits: resolvedUsageCapCredits,
-    });
-    if (paygResult.isErr()) {
-      return paygResult;
+    // Only sync PAYG when paygEnabled or usageCapCredits changed.
+    const paygChanged =
+      paygEnabled !== (existingConfig?.paygEnabled ?? false) ||
+      resolvedUsageCapCredits !== (existingConfig?.usageCapCredits ?? null);
+    if (paygChanged) {
+      const paygResult = await syncCreditBasedPayg({
+        auth,
+        paygEnabled,
+        usageCapCredits: resolvedUsageCapCredits,
+      });
+      if (paygResult.isErr()) {
+        return paygResult;
+      }
     }
 
-    // 2. Balance threshold alert.
-    const balanceResult = await syncMetronomeBalanceThresholdAlert({
-      auth,
-      balanceThresholdCredits:
-        balanceThresholdCredits > 0 ? balanceThresholdCredits : null,
-    });
-    if (balanceResult.isErr()) {
-      return new Err(balanceResult.error);
+    // 2. Balance threshold alert — only sync when the threshold changed.
+    const balanceChanged =
+      resolvedBalanceThresholdCredits !==
+      (existingConfig?.balanceThresholdAwuCredits ?? null);
+    if (balanceChanged) {
+      const balanceResult = await syncMetronomeBalanceThresholdAlert({
+        auth,
+        balanceThresholdCredits: resolvedBalanceThresholdCredits,
+      });
+      if (balanceResult.isErr()) {
+        return new Err(balanceResult.error);
+      }
     }
 
-    // 3. Default per-user pool limit.
-    const poolResult = await setDefaultUserSpendLimit(auth, {
-      awuCredits: defaultPoolCapCredits,
-      auditContext: POKE_AUDIT_CONTEXT,
-    });
-    if (poolResult.isErr()) {
-      return new Err(poolResult.error);
+    // 3. Default per-user pool limit — only sync when the cap changed.
+    if (defaultPoolCapCredits !== currentPoolCapCredits) {
+      const poolResult = await setDefaultUserSpendLimit(auth, {
+        awuCredits: defaultPoolCapCredits,
+        auditContext: POKE_AUDIT_CONTEXT,
+      });
+      if (poolResult.isErr()) {
+        return new Err(poolResult.error);
+      }
     }
 
-    // 4. Programmatic monthly cap.
-    const programmaticResult = await syncProgrammaticUsageLimit({
-      auth,
-      monthlyCapCredits:
-        programmaticMonthlyCapCredits > 0
-          ? programmaticMonthlyCapCredits
-          : null,
-      auditContext: POKE_AUDIT_CONTEXT,
-    });
-    if (programmaticResult.isErr()) {
-      return new Err(programmaticResult.error);
+    // 4. Programmatic monthly cap — only sync when the cap changed.
+    if (
+      resolvedProgrammaticMonthlyCapCredits !== currentProgrammaticCapCredits
+    ) {
+      const programmaticResult = await syncProgrammaticUsageLimit({
+        auth,
+        monthlyCapCredits: resolvedProgrammaticMonthlyCapCredits,
+        auditContext: POKE_AUDIT_CONTEXT,
+      });
+      if (programmaticResult.isErr()) {
+        return new Err(programmaticResult.error);
+      }
     }
 
-    // 5. Auto-upgrade seats toggle.
-    const toggleResult = await updateUsageConfiguration(auth, {
-      autoSeatUpgradeEnabled,
-    });
-    if (toggleResult.isErr()) {
-      return new Err(toggleResult.error);
+    // 5. Auto-upgrade seats toggle — only update when changed.
+    const autoSeatUpgradeChanged =
+      autoSeatUpgradeEnabled !==
+      (existingConfig?.autoSeatUpgradeEnabled ??
+        DEFAULT_AUTO_SEAT_UPGRADE_ENABLED);
+    if (autoSeatUpgradeChanged) {
+      const toggleResult = await updateUsageConfiguration(auth, {
+        autoSeatUpgradeEnabled,
+      });
+      if (toggleResult.isErr()) {
+        return new Err(toggleResult.error);
+      }
     }
 
     return new Ok({
@@ -278,6 +310,8 @@ export const manageCreditUsageConfigurationPlugin = createPlugin({
         `Pool limit: ${defaultPoolCapCredits.toLocaleString()} credits`,
         `Programmatic cap: ${programmaticMonthlyCapCredits > 0 ? `${programmaticMonthlyCapCredits.toLocaleString()} credits/month` : "disabled"}`,
         `Auto-upgrade: ${autoSeatUpgradeEnabled ? "on" : "off"}`,
+        `Top-up (enterprise): ${topUpEnabled ? "on" : "off"}`,
+        `Auto invoice finalization: ${autoInvoiceFinalizationEnabled ? "on" : "off"}`,
       ].join(". "),
     });
   },

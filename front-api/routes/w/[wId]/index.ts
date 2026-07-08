@@ -1,3 +1,4 @@
+import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { listActiveAgentsUsingNonRegionalModels } from "@app/lib/api/assistant/workspace_capabilities";
 import {
   buildAuditLogTarget,
@@ -6,13 +7,17 @@ import {
 } from "@app/lib/api/audit/workos_audit";
 import { validateDustMcpServerAllowedRedirectUris } from "@app/lib/api/mcp_server/dust_mcp_server_settings";
 import type { GetWorkspaceResponseBody } from "@app/lib/api/workspace";
-import { renameWorkspace } from "@app/lib/api/workspace";
-import { hasFeatureFlag } from "@app/lib/auth";
+import {
+  renameWorkspace,
+  updateWorkspaceMetadata,
+} from "@app/lib/api/workspace";
+import { getFeatureFlags, hasFeatureFlag } from "@app/lib/auth";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import logger from "@app/logger/logger";
 import { EmbeddingProviderSchema } from "@app/types/assistant/models/embedding";
 import { ModelProviderIdSchema } from "@app/types/assistant/models/providers";
+import { isComputerFeatureEnabled } from "@app/types/shared/feature_flags";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { ensureIsAdmin } from "@front-api/middlewares/ensure_role";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
@@ -20,6 +25,7 @@ import { validate } from "@front-api/middlewares/validator";
 import { workspaceAuth } from "@front-api/middlewares/workspace_auth";
 import { escape } from "html-escaper";
 import { z } from "zod";
+import advancedModels from "./advanced_models";
 import analytics from "./analytics";
 import assistant from "./assistant";
 import auditLogs from "./audit-logs";
@@ -59,6 +65,7 @@ import providerCredential from "./provider_credentials/[providerId]";
 import providers from "./providers";
 import provisioningStatus from "./provisioning-status";
 import sandbox from "./sandbox";
+import sandboxFunctions from "./sandbox-functions";
 import search from "./search";
 import searchToolsUpload from "./search/tools/upload";
 import seats from "./seats";
@@ -193,6 +200,15 @@ const WorkspaceAuditLogsUpdateBodySchema = z.object({
   disableAuditLogs: z.boolean(),
 });
 
+const WorkspaceSlackPersonalFooterRemovalUpdateBodySchema = z.object({
+  slackPersonalAllowFooterRemoval: z.boolean(),
+});
+
+// A null value clears the workspace-wide default agent (falls back to @dust).
+const WorkspaceDefaultAgentUpdateBodySchema = z.object({
+  workspaceDefaultAgentId: z.string().nullable(),
+});
+
 const PostWorkspaceRequestBodySchema = z.union([
   WorkspaceAllowedDomainUpdateBodySchema,
   WorkspaceBatchDomainUpdateBodySchema,
@@ -218,6 +234,8 @@ const PostWorkspaceRequestBodySchema = z.union([
   WorkspaceReinforcementCapAwuCreditsUpdateBodySchema,
   WorkspaceSelfImprovementCapPerSkillAwuCreditsUpdateBodySchema,
   WorkspaceAuditLogsUpdateBodySchema,
+  WorkspaceDefaultAgentUpdateBodySchema,
+  WorkspaceSlackPersonalFooterRemovalUpdateBodySchema,
 ]);
 
 const app = workspaceApp();
@@ -249,10 +267,7 @@ app.use(
 );
 app.route("/trial-message-usage", trialMessageUsage);
 
-app.use(
-  "/coupon/validate/*",
-  workspaceAuth({ doesNotRequireCanUseProduct: true })
-);
+app.use("/coupon/*", workspaceAuth({ doesNotRequireCanUseProduct: true }));
 app.route("/coupon", coupon);
 
 app.use("/trial/start/*", workspaceAuth({ doesNotRequireCanUseProduct: true }));
@@ -589,13 +604,13 @@ app.post(
       await workspace.updateWorkspaceSettings({ metadata: newMetadata });
       owner.metadata = newMetadata;
     } else if ("sandboxAllowAgentEgressRequests" in body) {
-      if (!(await hasFeatureFlag(auth, "sandbox_workspace_admin"))) {
+      const featureFlags = await getFeatureFlags(auth);
+      if (!isComputerFeatureEnabled(featureFlags)) {
         return apiError(ctx, {
           status_code: 403,
           api_error: {
             type: "feature_flag_not_found",
-            message:
-              "Sandbox workspace admin configuration is not enabled for this workspace.",
+            message: "Computer is disabled for this workspace.",
           },
         });
       }
@@ -641,6 +656,61 @@ app.post(
           enabled: String(!body.disableAuditLogs),
         },
       });
+    } else if ("workspaceDefaultAgentId" in body) {
+      if (!(await hasFeatureFlag(auth, "workspace_default_agent"))) {
+        return apiError(ctx, {
+          status_code: 403,
+          api_error: {
+            type: "feature_flag_not_found",
+            message:
+              "The workspace default agent feature is not enabled for this workspace.",
+          },
+        });
+      }
+
+      // Validate the default agent exists and is usable (handles both global
+      // agents and workspace agents). A null value clears the default (@dust).
+      if (body.workspaceDefaultAgentId) {
+        const agent = await getAgentConfiguration(auth, {
+          agentId: body.workspaceDefaultAgentId,
+          variant: "extra_light",
+        });
+        if (!agent || agent.status !== "active") {
+          return apiError(ctx, {
+            status_code: 400,
+            api_error: {
+              type: "invalid_request_error",
+              message: `Agent "${body.workspaceDefaultAgentId}" was not found or is not usable by the authenticated user.`,
+            },
+          });
+        }
+      }
+
+      const workspaceDefaultAgentId = body.workspaceDefaultAgentId ?? undefined;
+      const updateRes = await updateWorkspaceMetadata(owner, {
+        workspaceDefaultAgentId,
+      });
+      if (updateRes.isErr()) {
+        return apiError(ctx, {
+          status_code: 500,
+          api_error: {
+            type: "internal_server_error",
+            message: updateRes.error.message,
+          },
+        });
+      }
+      owner.metadata = {
+        ...(owner.metadata ?? {}),
+        workspaceDefaultAgentId,
+      };
+    } else if ("slackPersonalAllowFooterRemoval" in body) {
+      const previousMetadata = owner.metadata ?? {};
+      const newMetadata = {
+        ...previousMetadata,
+        slackPersonalAllowFooterRemoval: body.slackPersonalAllowFooterRemoval,
+      };
+      await workspace.updateWorkspaceSettings({ metadata: newMetadata });
+      owner.metadata = newMetadata;
     } else if ("domainUpdates" in body) {
       for (const update of body.domainUpdates) {
         const updateResult = await workspace.updateDomainAutoJoinEnabled({
@@ -681,6 +751,7 @@ app.post(
 // Sub-apps using the catch-all default + the partial-subtree exception
 // targets declared above.
 app.route("/analytics", analytics);
+app.route("/advanced_models", advancedModels);
 app.route("/assistant", assistant);
 app.route("/audit-logs", auditLogs);
 app.route("/billing", billing);
@@ -720,6 +791,7 @@ app.route("/provider_credentials", providerCredentials);
 app.route("/providers", providers);
 app.route("/provisioning-status", provisioningStatus);
 app.route("/sandbox", sandbox);
+app.route("/sandbox-functions", sandboxFunctions);
 app.route("/search", search);
 app.route("/search/tools/upload", searchToolsUpload);
 app.route("/seats", seats);

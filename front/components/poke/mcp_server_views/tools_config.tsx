@@ -11,8 +11,23 @@ import {
 import type { MCPToolStakeLevelType } from "@app/lib/actions/constants";
 import type { PokeMCPServerViewType } from "@app/types/poke";
 import { asDisplayName } from "@app/types/shared/utils/string_utils";
-import { Chip } from "@dust-tt/sparkle";
-import { useMemo } from "react";
+import {
+  Button,
+  Chip,
+  Clipboard,
+  ClipboardCheck,
+  CodeBlock,
+  Sheet,
+  SheetContainer,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+  useCopyToClipboard,
+} from "@dust-tt/sparkle";
+import { useMemo, useState } from "react";
+
+type ToolType = PokeMCPServerViewType["server"]["tools"][number];
 
 const STAKE_LABELS: Record<MCPToolStakeLevelType, string> = {
   high: "High",
@@ -22,15 +37,16 @@ const STAKE_LABELS: Record<MCPToolStakeLevelType, string> = {
 };
 
 const STAKE_COLORS = {
-  high: "rose",
-  medium: "golden",
-  low: "blue",
-  never_ask: "green",
+  high: "warning",
+  medium: "info",
+  low: "highlight",
+  never_ask: "success",
 } as const satisfies Record<MCPToolStakeLevelType, string>;
 
 interface ToolConfigRow {
   name: string;
   description: string;
+  inputSchema: ToolType["inputSchema"];
   enabled: boolean;
   permission: MCPToolStakeLevelType;
   defaultPermission: MCPToolStakeLevelType;
@@ -53,11 +69,108 @@ function StakeChip({ permission, className }: StakeChipProps) {
   );
 }
 
+interface ToolDetailsSheetProps {
+  tool: ToolConfigRow | null;
+  onClose: () => void;
+}
+
+function ToolDetailsSheet({ tool, onClose }: ToolDetailsSheetProps) {
+  const [isCopied, copyToClipboard] = useCopyToClipboard();
+
+  const schemaString = tool?.inputSchema
+    ? JSON.stringify(tool.inputSchema, null, 2)
+    : null;
+
+  return (
+    <Sheet
+      open={tool !== null}
+      onOpenChange={(open) => {
+        if (!open) {
+          onClose();
+        }
+      }}
+    >
+      <SheetContent size="lg">
+        {tool && (
+          <>
+            <SheetHeader>
+              <SheetTitle>{asDisplayName(tool.name)}</SheetTitle>
+              <SheetDescription>
+                <span className="flex items-center gap-1.5">
+                  {!tool.enabled && (
+                    <Chip size="xs" color="warning" label="Disabled by admin" />
+                  )}
+                  {tool.stakeOverridden && (
+                    <>
+                      <StakeChip
+                        permission={tool.defaultPermission}
+                        className="line-through opacity-60"
+                      />
+                      →
+                    </>
+                  )}
+                  <StakeChip permission={tool.permission} />
+                </span>
+              </SheetDescription>
+            </SheetHeader>
+            <SheetContainer>
+              <div className="flex flex-col gap-4">
+                <div>
+                  <span className="font-medium text-foreground">
+                    Description
+                  </span>
+                  <p className="py-2 text-sm text-muted-foreground">
+                    {tool.description || "No description."}
+                  </p>
+                </div>
+                <div>
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="font-medium text-foreground">
+                      Input schema
+                    </span>
+                    {schemaString && (
+                      <Button
+                        variant="outline"
+                        size="xs"
+                        icon={isCopied ? ClipboardCheck : Clipboard}
+                        label={isCopied ? "Copied!" : "Copy"}
+                        onClick={() => {
+                          void copyToClipboard(schemaString);
+                        }}
+                      />
+                    )}
+                  </div>
+                  <div className="py-2">
+                    {schemaString ? (
+                      <CodeBlock
+                        className="language-json max-h-96 overflow-y-auto"
+                        wrapLongLines={true}
+                      >
+                        {schemaString}
+                      </CodeBlock>
+                    ) : (
+                      <p className="text-sm text-muted-foreground">
+                        No input schema.
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </SheetContainer>
+          </>
+        )}
+      </SheetContent>
+    </Sheet>
+  );
+}
+
 interface ToolsConfigTableProps {
   mcpServerView: PokeMCPServerViewType;
 }
 
 export function ToolsConfigTable({ mcpServerView }: ToolsConfigTableProps) {
+  const [selectedToolName, setSelectedToolName] = useState<string | null>(null);
+
   const rows = useMemo<ToolConfigRow[]>(() => {
     const overridesByName = new Map(
       (mcpServerView.toolsMetadata ?? []).map((m) => [m.toolName, m])
@@ -74,6 +187,7 @@ export function ToolsConfigTable({ mcpServerView }: ToolsConfigTableProps) {
       return {
         name: tool.name,
         description: tool.description,
+        inputSchema: tool.inputSchema,
         enabled: override?.enabled ?? true,
         permission,
         defaultPermission,
@@ -82,11 +196,14 @@ export function ToolsConfigTable({ mcpServerView }: ToolsConfigTableProps) {
     });
   }, [mcpServerView.server, mcpServerView.toolsMetadata]);
 
+  const selectedTool =
+    rows.find((row) => row.name === selectedToolName) ?? null;
+
   return (
     <div className="border-material-200 my-4 flex flex-grow flex-col rounded-lg border p-4">
       <h2 className="text-md pb-4 font-bold">Tools configuration</h2>
       {rows.length === 0 ? (
-        <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+        <p className="text-sm text-muted-foreground">
           This server exposes no tools.
         </p>
       ) : (
@@ -99,15 +216,18 @@ export function ToolsConfigTable({ mcpServerView }: ToolsConfigTableProps) {
           </PokeTableHeader>
           <PokeTableBody>
             {rows.map((row) => (
-              <PokeTableRow key={row.name}>
+              <PokeTableRow
+                key={row.name}
+                className="cursor-pointer"
+                onClick={() => setSelectedToolName(row.name)}
+              >
                 <PokeTableCell>
                   <div className="flex flex-col gap-1">
                     <div className="flex items-center gap-2">
                       <span
                         className={cn(
                           "font-medium",
-                          !row.enabled &&
-                            "text-muted-foreground line-through dark:text-muted-foreground-night"
+                          !row.enabled && "text-muted-foreground line-through"
                         )}
                       >
                         {asDisplayName(row.name)}
@@ -130,7 +250,7 @@ export function ToolsConfigTable({ mcpServerView }: ToolsConfigTableProps) {
                     {row.description && (
                       <span
                         className={cn(
-                          "text-sm text-muted-foreground dark:text-muted-foreground-night",
+                          "text-sm text-muted-foreground",
                           !row.enabled && "line-through"
                         )}
                       >
@@ -166,6 +286,10 @@ export function ToolsConfigTable({ mcpServerView }: ToolsConfigTableProps) {
           </PokeTableBody>
         </PokeTable>
       )}
+      <ToolDetailsSheet
+        tool={selectedTool}
+        onClose={() => setSelectedToolName(null)}
+      />
     </div>
   );
 }

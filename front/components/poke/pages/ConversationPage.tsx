@@ -2,7 +2,6 @@ import { PluginList } from "@app/components/poke/plugins/PluginList";
 import { useWorkspace } from "@app/lib/auth/AuthContext";
 import { clientFetch } from "@app/lib/egress/client";
 import { useRequiredPathParam } from "@app/lib/platform";
-import { classNames } from "@app/lib/utils";
 import { usePokeConversation } from "@app/poke/swr";
 import { usePokeAgentConfigurations } from "@app/poke/swr/agent_configurations";
 import { usePokeConversationConfig } from "@app/poke/swr/conversation_config";
@@ -29,6 +28,7 @@ import {
   ClipboardCheck,
   CodeBlock,
   ConversationMessage,
+  cn,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -42,37 +42,476 @@ import {
   XClose,
 } from "@dust-tt/sparkle";
 import { CodeBracketIcon, DocumentTextIcon } from "@heroicons/react/24/outline";
-import { useEffect, useState } from "react";
+import {
+  type ComponentProps,
+  type ReactNode,
+  useEffect,
+  useState,
+} from "react";
 
-const USER_VISIBILITY: Record<string, { label: string; classes: string }> = {
-  visible: { label: "sent", classes: "bg-green-100 text-green-800" },
-  pending: { label: "queued", classes: "bg-amber-100 text-amber-800" },
-  deleted: { label: "deleted", classes: "bg-red-100 text-red-800" },
+type ChipColor = NonNullable<ComponentProps<typeof Chip>["color"]>;
+
+const USER_VISIBILITY: Record<string, { label: string; color: ChipColor }> = {
+  visible: { label: "sent", color: "success" },
+  pending: { label: "queued", color: "warning" },
+  deleted: { label: "deleted", color: "warning" },
 };
 
 const AGENT_STATUS: Record<
   AgentMessageStatus,
-  { label: string; classes: string }
+  { label: string; color: ChipColor }
 > = {
-  created: { label: "generating", classes: "bg-amber-100 text-amber-800" },
-  succeeded: { label: "succeeded", classes: "bg-green-100 text-green-800" },
-  failed: { label: "failed", classes: "bg-red-100 text-red-800" },
-  cancelled: { label: "cancelled", classes: "bg-gray-100 text-gray-700" },
-  interrupted: { label: "cancelled", classes: "bg-gray-100 text-gray-700" },
+  created: { label: "generating", color: "warning" },
+  succeeded: { label: "succeeded", color: "success" },
+  failed: { label: "failed", color: "warning" },
+  cancelled: { label: "cancelled", color: "primary" },
+  interrupted: { label: "cancelled", color: "primary" },
   gracefully_stopped: {
     label: "stopped",
-    classes: "bg-gray-100 text-gray-700",
+    color: "primary",
   },
 };
 
 const COMPACTION_STATUS: Record<
   CompactionMessageStatus,
-  { label: string; classes: string }
+  { label: string; color: ChipColor }
 > = {
-  created: { label: "generating", classes: "bg-amber-100 text-amber-800" },
-  succeeded: { label: "succeeded", classes: "bg-green-100 text-green-800" },
-  failed: { label: "failed", classes: "bg-red-100 text-red-800" },
+  created: { label: "generating", color: "warning" },
+  succeeded: { label: "succeeded", color: "success" },
+  failed: { label: "failed", color: "warning" },
 };
+
+function getLangfuseTraceUrl(langfuseUiBaseUrl: string, runId: string) {
+  return `${langfuseUiBaseUrl}/traces?filter=metadata%3BstringObject%3BdustTraceId%3B%3D%3B${encodeURIComponent(runId)}`;
+}
+
+function formatDurationMs(durationMs: number) {
+  return durationMs >= 1000
+    ? `${(durationMs / 1000).toFixed(1)}s`
+    : `${durationMs}ms`;
+}
+
+interface ProviderPassthroughEntry {
+  block: unknown;
+  key: string;
+  provider: string;
+  step: number;
+}
+
+function isObjectRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function getProviderPassthroughEntries(
+  contents: PokeAgentMessageType["contents"]
+): ProviderPassthroughEntry[] {
+  return contents.flatMap(({ content, step }, contentIndex) => {
+    if (content.type !== "provider_passthrough") {
+      return [];
+    }
+
+    return [
+      {
+        block: content.value.block,
+        key: `${step}-${contentIndex}`,
+        provider: content.value.provider,
+        step,
+      },
+    ];
+  });
+}
+
+function getToolSearchResultSummary(content: unknown): string | null {
+  if (!isObjectRecord(content) || typeof content.type !== "string") {
+    return null;
+  }
+
+  if (
+    content.type === "tool_search_tool_search_result" &&
+    Array.isArray(content.tool_references)
+  ) {
+    const toolNames = content.tool_references.flatMap((toolReference) => {
+      if (
+        isObjectRecord(toolReference) &&
+        typeof toolReference.tool_name === "string"
+      ) {
+        return [toolReference.tool_name];
+      }
+
+      return [];
+    });
+
+    if (toolNames.length === 0) {
+      return "0 tools found";
+    }
+
+    return `${toolNames.length} tool${toolNames.length > 1 ? "s" : ""} found: ${toolNames.join(", ")}`;
+  }
+
+  if (
+    content.type === "tool_search_tool_result_error" &&
+    typeof content.error_code === "string"
+  ) {
+    return `error: ${content.error_code}`;
+  }
+
+  return content.type;
+}
+
+function getProviderPassthroughTitle(entry: ProviderPassthroughEntry): string {
+  const { block, provider } = entry;
+
+  if (!isObjectRecord(block) || typeof block.type !== "string") {
+    return `${provider} provider_passthrough`;
+  }
+
+  if (
+    block.type === "server_tool_use" &&
+    typeof block.name === "string" &&
+    isObjectRecord(block.input) &&
+    typeof block.input.query === "string"
+  ) {
+    return `${block.name}: ${block.input.query}`;
+  }
+
+  if (block.type === "tool_search_tool_result") {
+    const summary = getToolSearchResultSummary(block.content);
+    return summary
+      ? `tool_search_tool_result: ${summary}`
+      : "tool_search_tool_result";
+  }
+
+  return `${provider} ${block.type}`;
+}
+
+function getProviderPassthroughKind(entry: ProviderPassthroughEntry): string {
+  if (!isObjectRecord(entry.block) || typeof entry.block.type !== "string") {
+    return "passthrough";
+  }
+
+  if (entry.block.type === "server_tool_use") {
+    return "call";
+  }
+
+  if (entry.block.type === "tool_search_tool_result") {
+    return "result";
+  }
+
+  return "passthrough";
+}
+
+interface StatusBadgeProps {
+  label: string;
+  color: ChipColor;
+}
+
+function StatusBadge({ label, color }: StatusBadgeProps) {
+  return <Chip color={color} label={label} size="xs" />;
+}
+
+interface MetadataItemProps {
+  label: string;
+  children: ReactNode;
+  mono?: boolean;
+}
+
+function MetadataItem({ label, children, mono }: MetadataItemProps) {
+  return (
+    <span className="inline-flex min-w-0 items-center gap-1.5">
+      <span className="shrink-0 text-sm text-muted-foreground">{label}</span>
+      <span
+        className={cn(
+          "min-w-0 truncate text-sm text-foreground",
+          mono ? "font-mono tabular-nums" : null
+        )}
+      >
+        {children}
+      </span>
+    </span>
+  );
+}
+
+interface AgentTraceLinksProps {
+  runUrls: NonNullable<PokeAgentMessageType["runUrls"]>;
+  langfuseUiBaseUrl: string | null;
+}
+
+function AgentTraceLinks({ runUrls, langfuseUiBaseUrl }: AgentTraceLinksProps) {
+  return (
+    <span className="flex min-w-full flex-wrap items-center gap-x-2 gap-y-1">
+      <span className="shrink-0 text-sm text-muted-foreground">
+        {runUrls.length > 1 ? "traces" : "trace"}
+      </span>
+      <span className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-sm">
+        {runUrls.map(({ runId, url, isLLM }, index) => {
+          const traceLabelSuffix = runUrls.length > 1 ? ` ${index + 1}` : "";
+
+          return (
+            <span
+              key={runId}
+              className="inline-flex items-center gap-1 whitespace-nowrap"
+            >
+              <a
+                href={url}
+                target="_blank"
+                rel="noopener noreferrer"
+                title={runId}
+                className="text-highlight hover:underline"
+              >
+                Poke{traceLabelSuffix}
+              </a>
+              {isLLM && langfuseUiBaseUrl && (
+                <>
+                  <span className="text-muted-foreground">·</span>
+                  <a
+                    href={getLangfuseTraceUrl(langfuseUiBaseUrl, runId)}
+                    title={`Open ${runId} in Langfuse`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-highlight hover:underline"
+                  >
+                    Langfuse{traceLabelSuffix}
+                  </a>
+                </>
+              )}
+            </span>
+          );
+        })}
+      </span>
+    </span>
+  );
+}
+
+function getActionLabel(action: PokeAgentMessageType["actions"][number]) {
+  return action.displayLabels?.done ?? action.functionCallName;
+}
+
+function getActionStatus(
+  status: PokeAgentMessageType["actions"][number]["status"]
+): null | {
+  color: ChipColor;
+  label: string;
+} {
+  switch (status) {
+    case "succeeded":
+      return null;
+    case "errored":
+      return { label: "error", color: "warning" };
+    case "denied":
+      return { label: "denied", color: "primary" };
+    case "running":
+      return { label: "running", color: "highlight" };
+    case "ready_allowed_explicitly":
+    case "ready_allowed_implicitly":
+      return { label: "ready", color: "primary" };
+    case "blocked_authentication_required":
+    case "blocked_child_action_input_required":
+    case "blocked_file_authorization_required":
+    case "blocked_user_answer_required":
+    case "blocked_validation_required":
+      return { label: "blocked", color: "warning" };
+    default:
+      assertNeverAndIgnore(status);
+      return { label: status, color: "primary" };
+  }
+}
+
+interface ToolActionViewProps {
+  action: PokeAgentMessageType["actions"][number];
+  isExpanded: boolean;
+  onToggle: () => void;
+}
+
+function ToolActionContent({
+  action,
+  isExpanded,
+  onToggle,
+}: ToolActionViewProps) {
+  const actionStatus = getActionStatus(action.status);
+  const ActionIcon = action.status === "errored" ? XClose : Check;
+  const actionLabel = getActionLabel(action);
+  const duration =
+    "executionDurationMs" in action &&
+    typeof action.executionDurationMs === "number"
+      ? formatDurationMs(action.executionDurationMs)
+      : "—";
+
+  return (
+    <>
+      <span className="shrink-0">
+        {action.mcpIO ? (
+          <Button
+            variant="outline"
+            size="icon"
+            icon={
+              <ChevronDown
+                className={cn(
+                  "h-4 w-4 transition-transform",
+                  !isExpanded ? "-rotate-90" : null
+                )}
+              />
+            }
+            onClick={onToggle}
+            aria-expanded={isExpanded}
+            aria-label={
+              isExpanded ? "Collapse tool details" : "Expand tool details"
+            }
+          />
+        ) : (
+          <span className="flex h-7 w-7 items-center justify-center rounded-md border border-separator bg-background">
+            <ActionIcon className="h-4 w-4 text-muted-foreground" />
+          </span>
+        )}
+      </span>
+      <span className="flex min-w-0 flex-1 items-center gap-3">
+        <span className="w-24 shrink-0 font-mono text-sm tabular-nums text-muted-foreground">
+          {action.created ? new Date(action.created).toLocaleTimeString() : "—"}
+        </span>
+        <span className="shrink-0 rounded-md border border-separator bg-background px-1.5 py-0.5 font-mono text-sm tabular-nums text-muted-foreground">
+          Step {action.step}
+        </span>
+        <span
+          className="min-w-0 truncate text-sm font-medium text-foreground"
+          title={
+            actionLabel === action.functionCallName
+              ? action.functionCallName
+              : `${actionLabel} (${action.functionCallName})`
+          }
+        >
+          {actionLabel}
+        </span>
+        {actionStatus && (
+          <Chip
+            color={actionStatus.color}
+            label={actionStatus.label}
+            size="xs"
+          />
+        )}
+      </span>
+      <span className="w-16 shrink-0 text-right font-mono text-sm tabular-nums text-muted-foreground">
+        {duration}
+      </span>
+      <span className="w-8 shrink-0 text-right">
+        {action.runId && (
+          <a
+            href={`/w/${action.appWorkspaceId}/spaces/${action.appSpaceId}/apps/${action.appId}/runs/${action.runId}`}
+            title={action.runId}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-sm text-highlight hover:underline"
+          >
+            Run
+          </a>
+        )}
+      </span>
+    </>
+  );
+}
+
+function ToolActionView({ action, isExpanded, onToggle }: ToolActionViewProps) {
+  return (
+    <div>
+      <div
+        className={cn(
+          "mt-2 flex w-full items-center gap-2 rounded-md border border-separator bg-muted-background px-2 py-1.5 text-left",
+          action.status === "errored"
+            ? "border-border-warning bg-background"
+            : null
+        )}
+      >
+        <ToolActionContent
+          action={action}
+          isExpanded={isExpanded}
+          onToggle={onToggle}
+        />
+      </div>
+      {action.mcpIO && isExpanded && (
+        <div className="ml-9 mt-2 overflow-hidden rounded-md border border-separator bg-background">
+          <CodeBlock wrapLongLines className="language-json">
+            {JSON.stringify(
+              {
+                params: action.mcpIO.params,
+                output: action.mcpIO.output,
+                generatedFiles: action.mcpIO.generatedFiles,
+              },
+              undefined,
+              2
+            )}
+          </CodeBlock>
+        </div>
+      )}
+    </div>
+  );
+}
+
+interface ProviderPassthroughViewProps {
+  entry: ProviderPassthroughEntry;
+  isExpanded: boolean;
+  onToggle: () => void;
+}
+
+function ProviderPassthroughView({
+  entry,
+  isExpanded,
+  onToggle,
+}: ProviderPassthroughViewProps) {
+  const title = getProviderPassthroughTitle(entry);
+  const kind = getProviderPassthroughKind(entry);
+
+  return (
+    <div>
+      <div className="mt-2 flex w-full items-center gap-2 rounded-md border border-separator bg-muted-background px-2 py-1.5 text-left">
+        <span className="shrink-0">
+          <Button
+            variant="outline"
+            size="icon"
+            icon={
+              <ChevronDown
+                className={cn(
+                  "h-4 w-4 transition-transform",
+                  !isExpanded ? "-rotate-90" : null
+                )}
+              />
+            }
+            onClick={onToggle}
+            aria-expanded={isExpanded}
+            aria-label={
+              isExpanded
+                ? "Collapse provider passthrough details"
+                : "Expand provider passthrough details"
+            }
+          />
+        </span>
+        <span className="flex min-w-0 flex-1 items-center gap-3">
+          <span className="w-24 shrink-0 font-mono text-sm tabular-nums text-muted-foreground">
+            —
+          </span>
+          <span className="shrink-0 rounded-md border border-separator bg-background px-1.5 py-0.5 font-mono text-sm tabular-nums text-muted-foreground">
+            Step {entry.step}
+          </span>
+          <span
+            className="min-w-0 truncate text-sm font-medium text-foreground"
+            title={title}
+          >
+            {title}
+          </span>
+          <Chip
+            color={kind === "call" ? "highlight" : "success"}
+            label={kind}
+            size="xs"
+          />
+        </span>
+      </div>
+      {isExpanded && (
+        <div className="ml-9 mt-2 overflow-hidden rounded-md border border-separator bg-background">
+          <CodeBlock wrapLongLines className="language-json">
+            {JSON.stringify(entry.block, null, 2)}
+          </CodeBlock>
+        </div>
+      )}
+    </div>
+  );
+}
 
 interface UserMessageViewProps {
   message: UserMessageType;
@@ -94,7 +533,7 @@ const UserMessageView = ({ message, useMarkdown }: UserMessageViewProps) => {
           {hasDustSystemTag && !isExpanded ? (
             <button
               onClick={() => setIsExpanded(true)}
-              className="flex cursor-pointer items-center gap-1 text-sm italic text-muted-foreground hover:text-foreground dark:text-muted-foreground-night dark:hover:text-foreground-night"
+              className="flex cursor-pointer items-center gap-1 text-sm italic text-muted-foreground hover:text-foreground"
             >
               <ChevronDown className="h-4 w-4" />
               <span>Hidden System Message (click to expand)</span>
@@ -104,7 +543,7 @@ const UserMessageView = ({ message, useMarkdown }: UserMessageViewProps) => {
               {hasDustSystemTag && (
                 <button
                   onClick={() => setIsExpanded(false)}
-                  className="mb-2 flex cursor-pointer items-center gap-1 text-sm italic text-muted-foreground hover:text-foreground dark:text-muted-foreground-night dark:hover:text-foreground-night"
+                  className="mb-2 flex cursor-pointer items-center gap-1 text-sm italic text-muted-foreground hover:text-foreground"
                 >
                   <XClose className="h-4 w-4" />
                   <span>Hide System Message</span>
@@ -117,16 +556,14 @@ const UserMessageView = ({ message, useMarkdown }: UserMessageViewProps) => {
               )}
             </>
           )}
-          <div className="mt-2 flex items-center gap-2 text-sm text-muted-foreground dark:text-muted-foreground-night">
+          <div className="mt-2 flex items-center gap-2 text-sm text-muted-foreground">
             <span>date: {new Date(message.created).toLocaleString()}</span>
-            <span
-              className={classNames(
-                "rounded-sm px-1 py-0.5 text-xs",
-                USER_VISIBILITY[message.visibility]?.classes
-              )}
-            >
-              {USER_VISIBILITY[message.visibility]?.label}
-            </span>
+            <StatusBadge
+              label={
+                USER_VISIBILITY[message.visibility]?.label ?? message.visibility
+              }
+              color={USER_VISIBILITY[message.visibility]?.color ?? "primary"}
+            />
           </div>
         </ConversationMessage>
       </div>
@@ -147,21 +584,40 @@ const AgentMessageView = ({
   owner,
   langfuseUiBaseUrl,
 }: AgentMessageViewProps) => {
-  const [expandedActions, setExpandedActions] = useState<Set<number>>(
+  const [expandedActions, setExpandedActions] = useState<Set<string>>(
     new Set()
   );
+  const [
+    expandedProviderPassthroughEntries,
+    setExpandedProviderPassthroughEntries,
+  ] = useState<Set<string>>(new Set());
 
-  const toggleAction = (index: number) => {
+  const toggleAction = (actionId: string) => {
     setExpandedActions((prev) => {
       const next = new Set(prev);
-      if (next.has(index)) {
-        next.delete(index);
+      if (next.has(actionId)) {
+        next.delete(actionId);
       } else {
-        next.add(index);
+        next.add(actionId);
       }
       return next;
     });
   };
+  const toggleProviderPassthroughEntry = (entryKey: string) => {
+    setExpandedProviderPassthroughEntries((prev) => {
+      const next = new Set(prev);
+      if (next.has(entryKey)) {
+        next.delete(entryKey);
+      } else {
+        next.add(entryKey);
+      }
+      return next;
+    });
+  };
+
+  const providerPassthroughEntries = getProviderPassthroughEntries(
+    message.contents
+  );
 
   return (
     <div className="w-full">
@@ -174,7 +630,7 @@ const AgentMessageView = ({
             <LinkWrapper
               href={`/poke/${owner.sId}/assistants/${message.configuration.sId}`}
               target="_blank"
-              className="text-highlight-500"
+              className="text-highlight"
             >
               ({message.configuration.sId})
             </LinkWrapper>
@@ -189,134 +645,69 @@ const AgentMessageView = ({
             <div className="whitespace-pre-wrap">{message.content}</div>
           ))}
         {message.error && (
-          <div className="text-warning">{message.error.message}</div>
+          <div className="my-3 rounded-md border border-border-warning bg-background px-3 py-2 text-sm font-medium text-warning">
+            {message.error.message}
+          </div>
         )}
-        <div className="mt-2 text-sm text-muted-foreground dark:text-muted-foreground-night">
-          <span
-            className={classNames(
-              "mr-1 rounded-sm px-1 py-0.5 text-xs",
-              AGENT_STATUS[message.status]?.classes ??
-                "bg-gray-100 text-gray-700"
-            )}
-          >
-            {AGENT_STATUS[message.status]?.label ?? message.status}
-          </span>
-          date: {new Date(message.created).toLocaleString()} • message version :{" "}
-          {message.version} • message sId : {message.sId} {" • "} agent sId :
-          <LinkWrapper
-            href={`/poke/${owner.sId}/assistants/${message.configuration.sId}`}
-            target="_blank"
-            className="text-highlight-500"
-          >
-            {message.configuration.sId}
-          </LinkWrapper>
-          {message.runUrls && (
-            <>
-              {" • "}
-              agent logs :{" "}
-              {message.runUrls.map(({ runId, url, isLLM }, i) => (
-                <span
-                  key={`runId-${i}`}
-                  className="inline-flex items-center space-x-1"
-                >
-                  <a href={url} target="_blank" className="text-highlight-500">
-                    {runId.substring(0, 16)}
-                  </a>
-                  {isLLM && (
-                    <>
-                      <span className="rounded-sm bg-blue-100 px-1 py-0.5 text-xs text-blue-800">
-                        LLM
-                      </span>
-                      {langfuseUiBaseUrl && (
-                        <a
-                          href={`${langfuseUiBaseUrl}/traces?filter=metadata%3BstringObject%3BdustTraceId%3B%3D%3B${runId}`}
-                          target="_blank"
-                          className="text-highlight-500"
-                          title="View in Langfuse"
-                        >
-                          [LF]
-                        </a>
-                      )}
-                    </>
-                  )}{" "}
-                </span>
-              ))}
-            </>
-          )}
-          {message.modelInteractionDurationMs != null && (
-            <>
-              {" • "}LLM:{" "}
-              {(message.modelInteractionDurationMs / 1000).toFixed(1)}s
-            </>
-          )}
-          {message.completionDurationMs != null && (
-            <>
-              {" • "}total: {(message.completionDurationMs / 1000).toFixed(1)}s
-            </>
-          )}
-        </div>
-        {message.actions.map((a, i) => {
-          const isExpanded = expandedActions.has(i);
-          return (
-            <div key={`action-${i}`} className="mt-1">
-              <div
-                className={classNames(
-                  "flex items-center pl-2 text-sm text-muted-foreground dark:text-muted-foreground-night"
-                )}
+        <div className="mt-3 rounded-md border border-separator bg-muted-background px-3 py-2">
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+            <StatusBadge
+              label={AGENT_STATUS[message.status]?.label ?? message.status}
+              color={AGENT_STATUS[message.status]?.color ?? "primary"}
+            />
+            <MetadataItem label="date" mono>
+              {new Date(message.created).toLocaleString()}
+            </MetadataItem>
+            <MetadataItem label="version" mono>
+              {message.version}
+            </MetadataItem>
+            <MetadataItem label="message" mono>
+              {message.sId}
+            </MetadataItem>
+            <MetadataItem label="agent">
+              <LinkWrapper
+                href={`/poke/${owner.sId}/assistants/${message.configuration.sId}`}
+                target="_blank"
+                className="font-mono text-highlight hover:underline"
               >
-                {a.mcpIO && (
-                  <Button
-                    variant={a.mcpIO?.isError ? "warning" : "primary"}
-                    size="xs"
-                    icon={
-                      isExpanded
-                        ? ChevronDown
-                        : a.mcpIO?.isError
-                          ? XClose
-                          : Check
-                    }
-                    className="mr-2"
-                    onClick={() => toggleAction(i)}
-                  />
-                )}
-                {a.created && <>{new Date(a.created).toLocaleTimeString()}: </>}
-                step {a.step}: <b className="px-1">{a.functionCallName}()</b>
-                {"executionDurationMs" in a &&
-                  typeof a.executionDurationMs === "number" && (
-                    <span className="ml-1 text-xs">
-                      ({(a.executionDurationMs / 1000).toFixed(1)}s)
-                    </span>
-                  )}
-                {a.runId && (
-                  <>
-                    log:{" "}
-                    <a
-                      key={`runId-${i}`}
-                      href={`/w/${a.appWorkspaceId}/spaces/${a.appSpaceId}/apps/${a.appId}/runs/${a.runId}`}
-                      target="_blank"
-                      className="text-highlight-500"
-                    >
-                      {a.runId.substring(0, 8)}{" "}
-                    </a>
-                  </>
-                )}
-              </div>
-              {a.mcpIO && isExpanded && (
-                <div className="ml-8 mt-2">
-                  <CodeBlock wrapLongLines className="language-json">
-                    {JSON.stringify(
-                      {
-                        params: a.mcpIO.params,
-                        output: a.mcpIO.output,
-                        generatedFiles: a.mcpIO.generatedFiles,
-                      },
-                      undefined,
-                      2
-                    ) ?? ""}
-                  </CodeBlock>
-                </div>
-              )}
-            </div>
+                {message.configuration.sId}
+              </LinkWrapper>
+            </MetadataItem>
+            {message.modelInteractionDurationMs != null && (
+              <MetadataItem label="LLM" mono>
+                {formatDurationMs(message.modelInteractionDurationMs)}
+              </MetadataItem>
+            )}
+            {message.completionDurationMs != null && (
+              <MetadataItem label="total" mono>
+                {formatDurationMs(message.completionDurationMs)}
+              </MetadataItem>
+            )}
+            {message.runUrls && message.runUrls.length > 0 && (
+              <AgentTraceLinks
+                runUrls={message.runUrls}
+                langfuseUiBaseUrl={langfuseUiBaseUrl}
+              />
+            )}
+          </div>
+        </div>
+        {providerPassthroughEntries.map((entry) => (
+          <ProviderPassthroughView
+            key={entry.key}
+            entry={entry}
+            isExpanded={expandedProviderPassthroughEntries.has(entry.key)}
+            onToggle={() => toggleProviderPassthroughEntry(entry.key)}
+          />
+        ))}
+        {message.actions.map((a) => {
+          const isExpanded = expandedActions.has(a.sId);
+          return (
+            <ToolActionView
+              key={a.sId}
+              action={a}
+              isExpanded={isExpanded}
+              onToggle={() => toggleAction(a.sId)}
+            />
           );
         })}
       </ConversationMessage>
@@ -332,19 +723,19 @@ const ContentFragmentView = ({ message }: ContentFragmentViewProps) => {
   return (
     <div className="w-full text-sm">
       <div className="font-bold">[content_fragment] {message.title}</div>
-      <div className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+      <div className="text-sm text-muted-foreground">
         date : {new Date(message.created).toLocaleString()} {" • "}
         version :{message.version} {" • "}
         textBytes :{isFileContentFragment(message) ? message.textBytes : "N/A"}
       </div>
-      <div className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+      <div className="text-sm text-muted-foreground">
         textBytes={isFileContentFragment(message) ? message.textBytes : "N/A"}
       </div>
       {message.sourceUrl && (
         <a
           href={message.sourceUrl ?? ""}
           target="_blank"
-          className="text-highlight-500"
+          className="text-highlight"
         >
           [sourceUrl]
         </a>
@@ -352,7 +743,7 @@ const ContentFragmentView = ({ message }: ContentFragmentViewProps) => {
       <a
         href={isFileContentFragment(message) ? (message.textUrl ?? "") : ""}
         target="_blank"
-        className="text-highlight-500"
+        className="text-highlight"
       >
         [textUrl]
       </a>
@@ -368,16 +759,11 @@ const CompactionMessageView = ({ message }: CompactionMessageViewProps) => {
   return (
     <div className="w-full text-sm">
       <div className="font-bold">[compaction]</div>
-      <div className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-        <span
-          className={classNames(
-            "mr-1 rounded-sm px-1 py-0.5 text-xs",
-            COMPACTION_STATUS[message.status]?.classes ??
-              "bg-gray-100 text-gray-700"
-          )}
-        >
-          {COMPACTION_STATUS[message.status]?.label ?? message.status}
-        </span>
+      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+        <StatusBadge
+          label={COMPACTION_STATUS[message.status]?.label ?? message.status}
+          color={COMPACTION_STATUS[message.status]?.color ?? "primary"}
+        />
         date : {new Date(message.created).toLocaleString()} {" • "}
         version :{message.version}
       </div>
@@ -541,13 +927,10 @@ export function ConversationPage() {
 
   return (
     conversation && (
-      <div className="max-w-4xl">
+      <div className="max-w-6xl">
         <h3 className="text-xl font-bold">
           Conversation in workspace{" "}
-          <LinkWrapper
-            href={`/poke/${owner.sId}`}
-            className="text-highlight-500"
-          >
+          <LinkWrapper href={`/poke/${owner.sId}`} className="text-highlight">
             {owner.name}
           </LinkWrapper>
           {pod && (
@@ -556,7 +939,7 @@ export function ConversationPage() {
               in pod{" "}
               <LinkWrapper
                 href={`/poke/${owner.sId}/spaces/${pod.sId}`}
-                className="text-highlight-500"
+                className="text-highlight"
               >
                 {pod.name}
               </LinkWrapper>
@@ -684,7 +1067,7 @@ export function ConversationPage() {
                 <div className="flex flex-col space-y-2">
                   <div className="flex items-center space-x-2">
                     <Chip
-                      color="blue"
+                      color="highlight"
                       label={`Tokens used: ${renderResult.tokensUsed}`}
                       size="xs"
                     />
@@ -699,7 +1082,7 @@ export function ConversationPage() {
                       size="xs"
                     />
                     <Chip
-                      color="green"
+                      color="success"
                       label={`Tools tokens: ${renderResult.toolsTokenCountApprox}`}
                       size="xs"
                     />
@@ -737,18 +1120,28 @@ export function ConversationPage() {
             </div>
           )}
           {(pendingUserCount > 0 || createdAgentCount > 0) && (
-            <div className="flex flex-col gap-1 rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+            <div className="flex flex-wrap items-center gap-2 rounded-md border border-separator bg-muted-background px-3 py-2 text-sm text-muted-foreground">
+              <span className="text-sm font-medium text-foreground">
+                Active messages
+              </span>
               {pendingUserCount > 0 && (
-                <div>
-                  ⏳ {pendingUserCount} user message
+                <span className="inline-flex h-7 items-center gap-1.5 rounded-md border border-separator bg-background px-2 text-sm text-foreground">
+                  <span className="font-mono tabular-nums">
+                    {pendingUserCount}
+                  </span>
+                  user message
                   {pendingUserCount > 1 ? "s" : ""} queued
-                </div>
+                </span>
               )}
               {createdAgentCount > 0 && (
-                <div>
-                  🔄 {createdAgentCount} agent message
+                <span className="inline-flex h-7 items-center gap-1.5 rounded-md border border-separator bg-background px-2 text-sm text-foreground">
+                  <Spinner size="xs" />
+                  <span className="font-mono tabular-nums">
+                    {createdAgentCount}
+                  </span>
+                  agent message
                   {createdAgentCount > 1 ? "s" : ""} generating
-                </div>
+                </span>
               )}
             </div>
           )}

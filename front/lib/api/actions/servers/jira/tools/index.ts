@@ -862,7 +862,7 @@ const handlers: ToolHandlers<typeof JIRA_TOOLS_METADATA> = {
 
   upload_attachment: async (
     { issueKey, attachment },
-    { auth, authInfo, agentLoopContext }
+    { auth, authInfo, toolContext }
   ) => {
     return withAuth({
       action: async (baseUrl, _resourceInfo, accessToken) => {
@@ -873,7 +873,7 @@ const handlers: ToolHandlers<typeof JIRA_TOOLS_METADATA> = {
         };
 
         if (attachment.type === "conversation_file") {
-          if (!agentLoopContext) {
+          if (!toolContext) {
             return new Err(
               new MCPError(
                 "Conversation context required for conversation file attachments"
@@ -884,7 +884,7 @@ const handlers: ToolHandlers<typeof JIRA_TOOLS_METADATA> = {
           const fileResult = await getFileFromConversationAttachment(
             auth,
             attachment.fileId,
-            agentLoopContext
+            toolContext
           );
 
           if (fileResult.isErr()) {

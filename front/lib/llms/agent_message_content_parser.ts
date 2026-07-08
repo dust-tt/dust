@@ -1,13 +1,16 @@
 import { getSupportedModelConfig } from "@app/lib/llms/model_configurations";
 import assert from "@app/lib/utils/assert";
-import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
+import type {
+  AgentModelConfigurationType,
+  LightAgentConfigurationType,
+  LightAgentConfigurationWithoutModelType,
+} from "@app/types/assistant/agent";
 import {
   CHAIN_OF_THOUGHT_DELIMITERS_CONFIGURATION,
   DEEPSEEK_CHAIN_OF_THOUGHT_DELIMITERS_CONFIGURATION,
 } from "@app/types/assistant/chain_of_thought_meta_prompt";
 import type { GenerationTokensEvent } from "@app/types/assistant/generation";
 import { DEEPSEEK_CHAT_MODEL_ID } from "@app/types/assistant/models/deepseek";
-import { TOGETHERAI_DEEPSEEK_V3_MODEL_ID } from "@app/types/assistant/models/togetherai";
 import type { ModelIdType } from "@app/types/assistant/models/types";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import escapeRegExp from "lodash/escapeRegExp";
@@ -54,7 +57,7 @@ export class AgentMessageContentParser {
   >;
 
   constructor(
-    private agentConfiguration: LightAgentConfigurationType,
+    private agentConfiguration: LightAgentConfigurationWithoutModelType,
     private messageId: string,
     delimitersConfiguration: DelimitersConfiguration
   ) {
@@ -278,24 +281,24 @@ export class AgentMessageContentParser {
   }
 }
 
-const DEEPSEEK_MODELS: ModelIdType[] = [
-  TOGETHERAI_DEEPSEEK_V3_MODEL_ID,
-  DEEPSEEK_CHAT_MODEL_ID,
-];
+const DEEPSEEK_MODELS: ModelIdType[] = [DEEPSEEK_CHAT_MODEL_ID];
 
 export function getDelimitersConfiguration({
-  agentConfiguration,
+  model,
 }: {
-  agentConfiguration: LightAgentConfigurationType;
+  model: AgentModelConfigurationType;
 }): DelimitersConfiguration {
-  const model = getSupportedModelConfig(agentConfiguration.model);
-  assert(model, "Model configuration not found in getDelimitersConfiguration");
+  const supportedModel = getSupportedModelConfig(model);
+  assert(
+    supportedModel,
+    "Model configuration not found in getDelimitersConfiguration"
+  );
 
   if (DEEPSEEK_MODELS.includes(model.modelId)) {
     return DEEPSEEK_CHAIN_OF_THOUGHT_DELIMITERS_CONFIGURATION;
   }
   const reasoningEffort =
-    agentConfiguration.model.reasoningEffort ?? model.defaultReasoningEffort;
+    model.reasoningEffort ?? supportedModel.defaultReasoningEffort;
   if (reasoningEffort !== "light") {
     return {
       delimiters: [],

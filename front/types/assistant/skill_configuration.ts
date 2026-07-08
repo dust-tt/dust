@@ -9,6 +9,9 @@ export type SkillStatus = (typeof SKILL_STATUSES)[number];
 export const SKILL_REINFORCEMENT_MODES = ["auto", "on", "off"] as const;
 export type SkillReinforcementMode = (typeof SKILL_REINFORCEMENT_MODES)[number];
 
+// Maximum length (in characters) of a skill's agent-facing description.
+export const AGENT_FACING_DESCRIPTION_MAX_LENGTH = 750;
+
 export const SKILL_VIEWS = ["full", "summary"] as const;
 export type SkillViewType = (typeof SKILL_VIEWS)[number];
 
@@ -55,9 +58,7 @@ export const SkillWithoutInstructionsAndToolsSchema = z.object({
     })
   ),
   canWrite: z.boolean(),
-  isExtendable: z.boolean(),
   isDefault: z.boolean(),
-  extendedSkillId: z.string().nullable(),
 });
 
 export type SkillWithoutInstructionsAndToolsType = z.infer<
@@ -86,7 +87,6 @@ export type SkillRelations = {
   usage: SkillUsageType;
   editors: UserType[] | null;
   editedByUser: UserType | null;
-  extendedSkill: SkillType | null;
   childSkills: SkillWithoutInstructionsAndToolsType[];
 };
 

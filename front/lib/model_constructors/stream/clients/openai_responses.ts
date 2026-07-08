@@ -1,7 +1,7 @@
-import { WithOpenAIResponsesInputConverter } from "@app/lib/model_constructors/providers/openai/converters/input";
-import { WithOpenAIResponsesOutputConverter } from "@app/lib/model_constructors/providers/openai/converters/output";
-import { rawOutputToEvents } from "@app/lib/model_constructors/providers/openai/converters/output/utils";
 import { OPENAI_SUPPORTED_REASONING_EFFORTS } from "@app/lib/model_constructors/providers/openai/reasoning_efforts";
+import { WithOpenAIResponsesInputConverter } from "@app/lib/model_constructors/sdk/openai_responses/converters/input";
+import { WithOpenAIResponsesOutputConverter } from "@app/lib/model_constructors/sdk/openai_responses/converters/output";
+import { rawOutputToEvents } from "@app/lib/model_constructors/sdk/openai_responses/converters/output/utils";
 import { StreamEndpoint } from "@app/lib/model_constructors/stream/endpoint";
 import type { Credentials } from "@app/lib/model_constructors/types/credentials";
 import { inputConfigSchema } from "@app/lib/model_constructors/types/input/configuration";
@@ -36,14 +36,23 @@ export abstract class OpenAIResponsesStream extends WithOpenAIResponsesInputConv
 
   static readonly configSchema: z.ZodType<OpenAIInputConfig> = configSchema;
 
-  private readonly client: OpenAI;
+  protected abstract readonly baseUrl: string;
 
-  constructor({ OPENAI_API_KEY, OPENAI_BASE_URL }: Credentials) {
+  private readonly apiKey: string | undefined;
+  private _client: OpenAI | undefined;
+
+  constructor({ OPENAI_API_KEY }: Credentials) {
     super();
-    this.client = new OpenAI({
-      apiKey: OPENAI_API_KEY,
-      baseURL: OPENAI_BASE_URL,
+    this.apiKey = OPENAI_API_KEY;
+  }
+
+  // Lazy: `baseUrl` is an abstract field, only set after subclass initializers run.
+  private get client(): OpenAI {
+    this._client ??= new OpenAI({
+      apiKey: this.apiKey,
+      baseURL: this.baseUrl,
     });
+    return this._client;
   }
 
   async *streamRaw(

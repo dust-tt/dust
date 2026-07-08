@@ -26,6 +26,7 @@ import { isEmailValid } from "@app/lib/utils";
 import {
   isMembershipSeatType,
   type MembershipSeatType,
+  toBaseSeatType,
 } from "@app/types/memberships";
 import type { SubscriptionPerSeatPricing } from "@app/types/plan";
 import { assertNever } from "@app/types/shared/utils/assert_never";
@@ -93,21 +94,27 @@ function seatBadge(
   info: SeatTypeInfo
 ): ReactNode {
   if (seatType === "free") {
-    return (
-      <span className="text-xs text-foreground dark:text-foreground-night">
-        Free if eligible
-      </span>
-    );
+    return <span className="text-xs text-foreground">Free if eligible</span>;
   }
-  const openCount = includedSeatsOpen(info);
   const price = formatPriceCents(
     info.priceCents,
     info.currency,
     info.billingFrequency
   );
+  if (toBaseSeatType(seatType) === "workspace") {
+    return (
+      <span className="text-xs text-foreground">
+        {price} · User can spend credits from the workspace pool.
+      </span>
+    );
+  }
+  const openCount = includedSeatsOpen(info);
   return (
-    <span className="text-xs text-foreground dark:text-foreground-night">
-      {price} · {openCount} included seat{pluralize(openCount)} open
+    <span className="text-xs text-foreground">
+      {price} ·{" "}
+      {openCount > 0
+        ? `${openCount} included seat${pluralize(openCount)} open`
+        : "Plan included seats used. You can still invite new users."}
     </span>
   );
 }
@@ -369,7 +376,7 @@ export function InviteEmailButtonWithModal({
         <DialogHeader>
           <div className="flex flex-col gap-1">
             <DialogTitle>Invite new users</DialogTitle>
-            <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+            <p className="text-sm text-muted-foreground">
               Choose a new plan to continue
             </p>
           </div>
@@ -377,7 +384,7 @@ export function InviteEmailButtonWithModal({
         <DialogContainer>
           <div className="flex flex-col gap-6 text-sm">
             <div className="flex flex-col gap-2">
-              <div className="heading-base text-foreground dark:text-foreground-night">
+              <div className="heading-base text-foreground">
                 Email addresses
               </div>
               <TextArea
@@ -396,7 +403,7 @@ export function InviteEmailButtonWithModal({
                   onChange={setInvitationRole}
                 />
               </div>
-              <div className="text-muted-foreground dark:text-muted-foreground-night">
+              <div className="text-muted-foreground">
                 {ROLES_DATA[invitationRole]["description"]}
               </div>
             </div>
@@ -413,7 +420,7 @@ export function InviteEmailButtonWithModal({
                     />
                   </div>
                 )}
-                <div className="flex flex-col gap-2">
+                <div className="flex max-h-64 flex-col gap-2 overflow-y-auto pr-1">
                   {seatTypesByFrequency[activeFrequency].map((seatType) => {
                     const info = seatPlans[seatType];
                     if (!info) {

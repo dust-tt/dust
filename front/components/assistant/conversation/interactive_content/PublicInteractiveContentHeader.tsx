@@ -37,7 +37,7 @@ export function PublicInteractiveContentHeader({
 }: PublicInteractiveContentHeaderProps) {
   const staticWebsiteUrl = config.getStaticWebsiteUrl();
   return (
-    <AppLayoutTitle className="h-12 bg-gray-50 px-4 @container dark:bg-gray-900">
+    <AppLayoutTitle className="h-12 bg-primary-50 px-4 @container">
       <div className="flex h-full min-w-0 max-w-full items-center">
         <div className="grow-1 flex shrink-0 basis-12 items-center md:basis-60">
           {logoUrl ? (
@@ -59,7 +59,7 @@ export function PublicInteractiveContentHeader({
           <span
             className={cn(
               "min-w-0 truncate text-sm font-normal",
-              "text-primary dark:text-primary-night"
+              "text-primary"
             )}
           >
             {title}

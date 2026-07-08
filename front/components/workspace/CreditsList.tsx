@@ -33,10 +33,10 @@ const TYPE_LABELS: Record<CreditType, string> = {
 // Chip colors for credit types
 export const TYPE_COLORS: Record<
   CreditType,
-  "green" | "blue" | "primary" | "warning"
+  "success" | "highlight" | "primary" | "warning"
 > = {
-  free: "green",
-  committed: "blue",
+  free: "success",
+  committed: "highlight",
   payg: "primary",
   excess: "warning",
 };

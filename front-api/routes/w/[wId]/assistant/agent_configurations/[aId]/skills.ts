@@ -1,6 +1,6 @@
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
-import type { GetAgentSkillsResponseBody } from "@app/lib/api/assistant/configuration/skills";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
+import type { GetAgentSkillsResponseBody } from "@app/types/api/assistant/configuration/skills";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";

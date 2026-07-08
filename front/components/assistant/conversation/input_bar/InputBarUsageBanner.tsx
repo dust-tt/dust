@@ -9,7 +9,7 @@ interface InputBarUsageBannerProps {
 }
 
 export function InputBarUsageBanner({ owner }: InputBarUsageBannerProps) {
-  const { isAdmin } = useAuth();
+  const { isBusinessAdmin } = useAuth();
   const {
     userNearCreditLimit,
     canRequestUpgrade,
@@ -20,18 +20,18 @@ export function InputBarUsageBanner({ owner }: InputBarUsageBannerProps) {
     owner,
   });
 
-  const showUpgradeCta = !willAutoUpgrade && (canRequestUpgrade || isAdmin);
+  const showUpgradeCta =
+    !willAutoUpgrade && (canRequestUpgrade || isBusinessAdmin);
 
   if (userBlockedReason === "no_seat") {
     return (
       <div
         className={cn(
           "mb-2 flex w-full items-center gap-2 rounded-2xl border px-4 py-3",
-          "border-warning-200 bg-warning-100",
-          "dark:border-warning-200-night dark:bg-warning-100-night"
+          "border-warning-200 bg-warning-100"
         )}
       >
-        <span className="copy-sm grow truncate text-warning-900 dark:text-warning-900-night">
+        <span className="copy-sm grow truncate text-warning-900">
           You don&apos;t have a seat in this workspace.
         </span>
         {showUpgradeCta && (
@@ -39,7 +39,7 @@ export function InputBarUsageBanner({ owner }: InputBarUsageBannerProps) {
             <UsageUpgradeButton
               owner={owner}
               hasPendingUpgradeRequest={hasPendingUpgradeRequest}
-              isAdmin={isAdmin}
+              isBusinessAdmin={isBusinessAdmin}
             />
           </div>
         )}
@@ -67,16 +67,13 @@ export function InputBarUsageBanner({ owner }: InputBarUsageBannerProps) {
     <div
       className={cn(
         "mb-2 flex w-full items-center gap-2 rounded-2xl border px-4 py-3",
-        "border-border-dark/50 bg-background",
-        "dark:border-border-dark-night/30 dark:bg-background-night"
+        "border-border-dark/50 bg-background"
       )}
     >
       <span
         className={cn(
           "copy-sm grow truncate",
-          isBlocked && !willAutoUpgrade
-            ? "text-warning-500 dark:text-warning-500-night"
-            : "text-foreground dark:text-foreground-night"
+          isBlocked && !willAutoUpgrade ? "text-warning-500" : "text-foreground"
         )}
       >
         {message}
@@ -86,7 +83,7 @@ export function InputBarUsageBanner({ owner }: InputBarUsageBannerProps) {
           <UsageUpgradeButton
             owner={owner}
             hasPendingUpgradeRequest={hasPendingUpgradeRequest}
-            isAdmin={isAdmin}
+            isBusinessAdmin={isBusinessAdmin}
           />
         </div>
       )}

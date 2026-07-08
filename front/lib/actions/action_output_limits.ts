@@ -5,6 +5,7 @@ import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 // snippet + file reference.
 export const FILE_OFFLOAD_TEXT_SIZE_BYTES = 20 * 1024; // 20KB.
 export const FILE_OFFLOAD_IMAGE_SIZE_BYTES = 2 * 1024 * 1024; // 2MB.
+export const FILE_OFFLOAD_FILE_SIZE_BYTES = 20 * 1024 * 1024; // 20MB for non-image file uploads.
 
 export const FILE_OFFLOAD_SNIPPET_LENGTH = 8_000; // Approximately 2K tokens.
 
@@ -12,7 +13,9 @@ export const FILE_OFFLOAD_SNIPPET_LENGTH = 8_000; // Approximately 2K tokens.
 // When any content block exceeds these sizes, the entire tool result is rejected.
 export const REMOTE_MAX_TEXT_SIZE_BYTES = 2 * 1024 * 1024; // 2MB.
 export const REMOTE_MAX_IMAGE_SIZE_BYTES = 2 * 1024 * 1024; // 2MB.
-export const REMOTE_MAX_RESOURCE_SIZE_BYTES = FILE_OFFLOAD_TEXT_SIZE_BYTES;
+// Resource-with-text blocks above FILE_OFFLOAD_TEXT_SIZE_BYTES are offloaded to a file in
+// processToolResults, so this hard limit only needs to guard against absurd payloads.
+export const REMOTE_MAX_RESOURCE_SIZE_BYTES = 20 * 1024 * 1024; // 20MB.
 // Hard limit on the entire array of tool outputs.
 export const REMOTE_MAX_TOOL_RESULT_SIZE_BYTES = 50 * 1024 * 1024; // 50MB.
 

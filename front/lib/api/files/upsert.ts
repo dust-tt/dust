@@ -27,6 +27,7 @@ import type {
 } from "@app/types/files";
 import {
   isInteractiveContentType,
+  isSandboxFunctionContentType,
   isSupportedAudioContentType,
   isSupportedFontContentType,
   isSupportedImageContentType,
@@ -457,7 +458,10 @@ const getProcessingFunction = ({
   }
 
   // Interactive Content files should not be processed.
-  if (isInteractiveContentType(contentType)) {
+  if (
+    isInteractiveContentType(contentType) ||
+    isSandboxFunctionContentType(contentType)
+  ) {
     return undefined;
   }
 

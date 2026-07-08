@@ -52,5 +52,6 @@ export async function streamConversationEventsForRoute(
         signal,
       }),
     transform: (event) => opts.transformEvent(auth, event),
+    writeDoneSentinel: true,
   });
 }

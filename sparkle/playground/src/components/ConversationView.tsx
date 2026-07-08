@@ -494,11 +494,8 @@ export function ConversationView({
 
     if (message.attachments && message.attachments.length > 0) {
       blocks.push(
-        <div
-          key={`${message.id}-attachments`}
-          className="s-flex s-flex-col s-gap-2"
-        >
-          <div className="s-flex s-flex-wrap s-gap-2">
+        <div key={`${message.id}-attachments`} className="flex flex-col gap-2">
+          <div className="flex flex-wrap gap-2">
             {message.attachments.map((attachment) => (
               <AttachmentChip
                 key={attachment.id}
@@ -513,10 +510,7 @@ export function ConversationView({
 
     if (message.actionCards && message.actionCards.length > 0) {
       blocks.push(
-        <div
-          key={`${message.id}-action-cards`}
-          className="s-flex s-flex-col s-gap-3"
-        >
+        <div key={`${message.id}-action-cards`} className="flex flex-col gap-3">
           {message.actionCards.map((card) => {
             const state = actionCardStates.get(card.id) ?? "active";
             return (
@@ -558,7 +552,7 @@ export function ConversationView({
         blocks.push(
           <div
             key={`${message.id}-task-suggestion-boxes`}
-            className="s-flex s-flex-col s-gap-3"
+            className="flex flex-col gap-3"
           >
             {visibleBoxes.map((box) => {
               const visibleItems = box.items.filter(
@@ -633,7 +627,7 @@ export function ConversationView({
       return blocks[0];
     }
 
-    return <div className="s-flex s-flex-col s-gap-2">{blocks}</div>;
+    return <div className="flex flex-col gap-2">{blocks}</div>;
   };
 
   const conversationBlocks: React.ReactNode[] = [];
@@ -649,7 +643,7 @@ export function ConversationView({
     const groupKey = `${currentGroup.id}-${currentGroupMessages[0].id}`;
     const infoChip =
       currentGroup.infoChip?.icon === "bolt" ? (
-        <span className="s-translate-y-0.5 s-text-muted-foreground dark:s-text-muted-foreground-night">
+        <span className="translate-y-0.5 text-muted-foreground">
           <Icon size="xs" visual={Zap} />
         </span>
       ) : undefined;
@@ -659,7 +653,7 @@ export function ConversationView({
     );
     const completionStatus =
       currentGroup.completionStatus && !groupHasDeletedMessage ? (
-        <span className="s-text-xs s-text-muted-foreground dark:s-text-muted-foreground-night">
+        <span className="text-xs text-muted-foreground">
           {currentGroup.completionStatus}
         </span>
       ) : undefined;
@@ -711,7 +705,7 @@ export function ConversationView({
           ));
 
           const messageContent = isDeleted ? (
-            <span className="s-text-sm s-text-muted-foreground dark:s-text-muted-foreground-night s-italic">
+            <span className="text-sm text-muted-foreground italic">
               Message deleted
             </span>
           ) : (
@@ -868,7 +862,7 @@ export function ConversationView({
             name: agent?.name ?? agentMsg.group.name,
             timestamp: agentMsg.group.timestamp,
             completionStatus: agentMsg.group.completionStatus ? (
-              <span className="s-text-xs s-text-muted-foreground dark:s-text-muted-foreground-night">
+              <span className="text-xs text-muted-foreground">
                 {agentMsg.group.completionStatus}
               </span>
             ) : undefined,
@@ -894,7 +888,7 @@ export function ConversationView({
       : undefined;
 
   return (
-    <div className="s-flex s-h-full s-w-full s-flex-col s-overflow-hidden">
+    <div className="flex h-full w-full flex-col overflow-hidden">
       <Dialog
         open={isRenameDialogOpen}
         onOpenChange={(open: boolean) => {
@@ -936,21 +930,21 @@ export function ConversationView({
       </Dialog>
 
       {/* Messages container - scrollable */}
-      <div className="s-relative s-flex s-flex-1 s-flex-col s-overflow-hidden">
+      <div className="relative flex flex-1 flex-col overflow-hidden">
         <div
           ref={scrollContainerRef}
-          className="s-flex s-min-h-0 s-flex-1 s-flex-col s-overflow-y-auto"
+          className="flex min-h-0 flex-1 flex-col overflow-y-auto"
         >
           <NewConversationContainer>
-            <div ref={messagesEndRef} className="s-h-12 s-shrink-0" />
+            <div ref={messagesEndRef} className="h-12 shrink-0" />
             {conversationBlocks}
-            <div ref={messagesEndRef} className="s-h-32 s-shrink-0" />
+            <div ref={messagesEndRef} className="h-32 shrink-0" />
           </NewConversationContainer>
         </div>
-        <div className="s-pointer-events-none s-absolute s-bottom-4 s-left-0 s-right-0 s-flex s-justify-center">
-          <div className="s-pointer-events-auto s-w-full s-max-w-4xl s-px-4">
+        <div className="pointer-events-none absolute bottom-4 left-0 right-0 flex justify-center">
+          <div className="pointer-events-auto w-full max-w-4xl px-4">
             <InputBar
-              className="s-shadow-xl"
+              className="shadow-xl"
               onSend={validationDisplayMode === "sheet" ? onSend : undefined}
             />
           </div>
@@ -986,8 +980,8 @@ export function ConversationView({
         <SheetContent size="3xl" side="right">
           <SheetHeader>
             <SheetTitle>
-              <div className="s-flex s-flex-1 s-flex-col s-w-full s-items-start s-gap-4">
-                <div className="s-flex s-items-center s-gap-2">
+              <div className="flex flex-1 flex-col w-full items-start gap-4">
+                <div className="flex items-center gap-2">
                   {selectedCitation && (
                     <Icon
                       visual={getCitationIcon(selectedCitation.icon)}
@@ -996,7 +990,7 @@ export function ConversationView({
                   )}
                   <span>{selectedCitation?.title || "Document View"}</span>
                 </div>
-                <div className="s-flex s-w-full s-items-center s-gap-2">
+                <div className="flex w-full items-center gap-2">
                   <ButtonsSwitchList
                     defaultValue="preview"
                     size="xs"
@@ -1012,8 +1006,8 @@ export function ConversationView({
                       label="Extracted information"
                     />
                   </ButtonsSwitchList>
-                  <div className="s-flex-1" />
-                  <div className="s-flex s-items-center s-gap-2">
+                  <div className="flex-1" />
+                  <div className="flex items-center gap-2">
                     <Button
                       variant="outline"
                       size="icon-xs"
@@ -1032,8 +1026,8 @@ export function ConversationView({
             </SheetTitle>
           </SheetHeader>
           <SheetContainer>
-            <div className="s-flex s-flex-col s-items-center s-justify-center s-py-16">
-              <p className="s-text-foreground dark:s-text-foreground-night">
+            <div className="flex flex-col items-center justify-center py-16">
+              <p className="text-foreground">
                 {documentView === "preview"
                   ? "Document Preview"
                   : "Extracted information"}
@@ -1062,7 +1056,7 @@ export function ConversationView({
               </SheetDescription>
             </SheetHeader>
             <SheetContainer>
-              <div className="s-flex s-flex-col s-gap-4">
+              <div className="flex flex-col gap-4">
                 <NewConversationMessageGroup
                   type="locutor"
                   timestamp={pendingValidationBlock.userMessage.group.timestamp}
@@ -1126,7 +1120,7 @@ export function ConversationView({
                   completionStatus={
                     pendingValidationBlock.agentMessage.group
                       .completionStatus ? (
-                      <span className="s-text-xs s-text-muted-foreground dark:s-text-muted-foreground-night">
+                      <span className="text-xs text-muted-foreground">
                         {
                           pendingValidationBlock.agentMessage.group
                             .completionStatus

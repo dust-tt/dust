@@ -7,11 +7,11 @@ import type {
   FileAuthorizationInfo,
 } from "@app/lib/actions/mcp";
 import { canCurrentUserRespondToParentUserMessage } from "@app/lib/api/assistant/conversation/can_current_user_respond";
-import type { PickerTokenResponseType } from "@app/lib/api/google_drive";
 import { useAuth } from "@app/lib/auth/AuthContext";
 import { useRegionContext } from "@app/lib/auth/RegionContext";
 import { useClientType } from "@app/lib/context/clientType";
 import { clientFetch } from "@app/lib/egress/client";
+import type { PickerTokenResponseType } from "@app/types/api/google_drive";
 import type { LightWorkspaceType, UserType } from "@app/types/user";
 import {
   Button,
@@ -198,7 +198,7 @@ export function GoogleDriveFileAuthorizationRequired({
     >
       {canCurrentUserRespond ? (
         <>
-          <div className="font-sm whitespace-normal break-words text-foreground dark:text-foreground-night">
+          <div className="font-sm whitespace-normal break-words text-foreground">
             {isAuthorized ? (
               ` your file is now accessible. Continuing...`
             ) : isExtension ? (
@@ -253,7 +253,7 @@ export function GoogleDriveFileAuthorizationRequired({
           )}
         </>
       ) : (
-        <div className="font-sm whitespace-normal break-words text-foreground dark:text-foreground-night">
+        <div className="font-sm whitespace-normal break-words text-foreground">
           {triggeringUser?.fullName} needs to authorize a file.
           <br />
           <span className="font-semibold">Waiting for them to continue...</span>

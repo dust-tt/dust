@@ -25,8 +25,7 @@ interface UserAnswerRequiredProps {
   };
   triggeringUser: UserType | null;
   owner: LightWorkspaceType;
-  conversationId: string;
-  messageId: string;
+  retryHandler: () => Promise<void>;
 }
 
 function isPrintableKey(e: KeyboardEvent<HTMLDivElement>) {
@@ -47,8 +46,7 @@ export function UserAnswerRequired({
   blockedAction,
   triggeringUser,
   owner,
-  conversationId,
-  messageId,
+  retryHandler,
 }: UserAnswerRequiredProps) {
   const { user } = useAuth();
   const { removeCompletedAction } = useBlockedActionsContext();
@@ -93,14 +91,20 @@ export function UserAnswerRequired({
     { isSkip = false }: { isSkip?: boolean } = {}
   ) {
     setIsSkipPending(isSkip);
+    // Submit against the action's own conversation/message: for a sub-agent
+    // question these are the child's ids (the action lives in the child
+    // conversation). For a direct question they equal the current conversation.
     const result = await answerQuestion({
-      conversationId,
-      messageId,
+      conversationId: blockedAction.conversationId,
+      messageId: blockedAction.messageId,
       actionId: blockedAction.actionId,
       answer,
     });
 
     if (result.success) {
+      // Resume the agent run. For a sub-agent question this also relaunches the
+      // blocked parent run (the child retry is a no-op once the answer is in).
+      await retryHandler();
       removeCompletedAction(blockedAction.actionId);
     }
 
@@ -252,7 +256,7 @@ export function UserAnswerRequired({
 
   if (!canCurrentUserRespond) {
     return (
-      <div className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+      <div className="text-sm text-muted-foreground">
         Waiting for&nbsp;
         <span className="font-semibold">
           {triggeringUser?.fullName ?? "another user"}
@@ -270,12 +274,12 @@ export function UserAnswerRequired({
       onKeyDown={handleContainerKeyDown}
       onMouseMove={() => setIsKeyboardNavigating(false)}
       className={cn(
-        "flex flex-col gap-4 rounded-2xl border border-dark bg-background p-5 outline-none",
-        "dark:border-dark-night dark:bg-background-night",
+        "flex flex-col gap-4 rounded-2xl border border-dark bg-background p-5 outline-hidden",
+        "",
         isKeyboardNavigating && "cursor-none"
       )}
     >
-      <div className="text-base font-medium leading-tight text-foreground dark:text-foreground-night">
+      <div className="text-base font-medium leading-tight text-foreground">
         {question.question}
       </div>
       {isAnswerSubmitting ? (
@@ -298,7 +302,7 @@ export function UserAnswerRequired({
                 activeOptionIndex === index &&
                   !isCustomResponseActive &&
                   !answerDraft.selectedOptions.includes(index) &&
-                  "bg-primary-100 dark:bg-primary-100-night",
+                  "bg-primary-100",
                 isKeyboardNavigating && "cursor-none"
               )}
               onClick={() => handleOptionClick(index)}
@@ -310,11 +314,10 @@ export function UserAnswerRequired({
             className={cn(
               "w-full items-center gap-2 transition-colors",
               isCustomResponseActive
-                ? "bg-primary-100 dark:bg-primary-100-night"
+                ? "bg-primary-100"
                 : [
-                    "bg-background dark:bg-background-night ",
-                    !isKeyboardNavigating &&
-                      "hover:bg-primary-100 dark:hover:bg-primary-100-night",
+                    "bg-background",
+                    !isKeyboardNavigating && "hover:bg-primary-100",
                   ]
             )}
           >
@@ -322,7 +325,7 @@ export function UserAnswerRequired({
               value={question.options.length + 1}
               size="sm"
               variant="ghost"
-              className="shrink-0 bg-border-darker dark:bg-border-darker-night"
+              className="shrink-0 bg-border-darker"
             />
             <Input
               ref={customResponseInputRef}
@@ -331,9 +334,9 @@ export function UserAnswerRequired({
               className={cn(
                 "h-auto w-full rounded-none border-transparent bg-transparent",
                 "px-0 py-0 text-sm shadow-none",
-                "dark:border-transparent dark:bg-transparent",
+                "",
                 "focus-visible:border-transparent focus-visible:ring-0",
-                "dark:focus-visible:border-transparent dark:focus-visible:ring-0",
+                "",
                 isKeyboardNavigating && "cursor-none"
               )}
               placeholder="Type something else"
@@ -352,7 +355,7 @@ export function UserAnswerRequired({
         </div>
       )}
       {errorMessage && (
-        <div className="text-sm font-medium text-warning-800 dark:text-warning-800-night">
+        <div className="text-sm font-medium text-warning-800">
           {errorMessage}
         </div>
       )}

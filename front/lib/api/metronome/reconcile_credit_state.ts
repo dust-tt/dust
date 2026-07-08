@@ -1,7 +1,10 @@
-import { getWorkspacePoolAwuBalance } from "@app/lib/api/metronome/credit_state_dispatcher";
 import type { Authenticator } from "@app/lib/auth";
 import { isPAYGEnabled } from "@app/lib/credits/credit_payg";
 import { WARNING_BALANCE_RATIO } from "@app/lib/metronome/alerts/programmatic_cap";
+import {
+  expectedApiKeyCreditStateFromUsage,
+  setApiKeyCreditStateReconciled,
+} from "@app/lib/metronome/api_key_credit_state_machine";
 import {
   listCustomerPerUserCreditBalances,
   listMetronomeSeatBalances,
@@ -11,7 +14,9 @@ import {
   awuSeatBalanceForUser,
   fetchLiveUserCreditInputs,
 } from "@app/lib/metronome/live_user_credit_inputs";
+import { fetchPerApiKeyAwuUsage } from "@app/lib/metronome/per_api_key_usage";
 import { fetchPerUserAwuUsage } from "@app/lib/metronome/per_user_usage";
+import { getWorkspacePoolAwuBalance } from "@app/lib/metronome/pool_balance";
 import { fetchProgrammaticAwuSpend } from "@app/lib/metronome/programmatic_awu_usage";
 import {
   expectedProgrammaticCreditStateFromUsage,
@@ -28,16 +33,21 @@ import {
   expectedPoolCreditStateFromBalance,
   setWorkspacePoolCreditStateReconciled,
 } from "@app/lib/metronome/workspace_credit_state_machine";
+import { isCreditPricedPlanPrefix } from "@app/lib/plans/plan_codes";
 import { CreditUsageConfigurationResource } from "@app/lib/resources/credit_usage_configuration_resource";
+import { GroupResource } from "@app/lib/resources/group_resource";
+import { KeyResource } from "@app/lib/resources/key_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import type { WorkspaceResource } from "@app/lib/resources/workspace_resource";
+import { resolveEffectiveSpendLimitAwuCredits } from "@app/lib/spend_limits/effective";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
 import type {
   WorkspacePoolCreditState,
   WorkspaceProgrammaticCreditState,
 } from "@app/types/credits";
+import type { ApiKeyCreditState } from "@app/types/key";
 import type {
   MembershipSeatType,
   NormalizedPoolLimitSeatType,
@@ -58,6 +68,7 @@ export const RECONCILE_CREDIT_STATE_TARGETS = [
   "pool",
   "programmatic",
   "user",
+  "api_key",
 ] as const;
 
 export type ReconcileCreditStateTarget =
@@ -105,14 +116,23 @@ type UserReconcileReport = {
   seatBalanceAwu: number | null;
   seatStartingBalanceAwu: number | null;
   effectiveCapAwuCredits: number | null;
-  capSource: "override" | "default" | "none";
+  capSource: "override" | "group" | "default" | "none";
   consumedAwuCredits: number | null;
+};
+
+// Names aren't unique, so reconciling a key name covers every active key
+// sharing it (each reconciled per its own cap, matching the webhook/backfill).
+type ApiKeyTargetReconcileReport = {
+  target: "api_key";
+  keyName: string;
+  keys: ApiKeyReconcileReport[];
 };
 
 export type ReconcileCreditStateReport =
   | PoolReconcileReport
   | ProgrammaticReconcileReport
-  | UserReconcileReport;
+  | UserReconcileReport
+  | ApiKeyTargetReconcileReport;
 
 // Treat the legacy "normal" alias as its canonical "on_pool" value when
 // comparing the persisted state with the expected one (see USER_CREDIT_STATES).
@@ -136,6 +156,7 @@ export async function reconcileCreditState({
   metronomeCustomerId,
   target,
   userId,
+  keyName,
   execute,
 }: {
   auth: Authenticator;
@@ -143,6 +164,7 @@ export async function reconcileCreditState({
   metronomeCustomerId: string;
   target: ReconcileCreditStateTarget;
   userId: string | null;
+  keyName: string | null;
   execute: boolean;
 }): Promise<Result<ReconcileCreditStateReport, Error>> {
   switch (target) {
@@ -168,6 +190,39 @@ export async function reconcileCreditState({
         userId,
         execute,
       });
+    case "api_key": {
+      if (!keyName) {
+        return new Err(
+          new Error("A key name is required to reconcile the per-key state.")
+        );
+      }
+      const metronomeContractId =
+        auth.subscription()?.metronomeContractId ?? null;
+      const keys = await KeyResource.listActiveByWorkspaceAndName(
+        renderLightWorkspaceType({ workspace }),
+        keyName
+      );
+      if (keys.length === 0) {
+        return new Err(
+          new Error(`No active API key named '${keyName}' in this workspace.`)
+        );
+      }
+      const reports: ApiKeyReconcileReport[] = [];
+      for (const key of keys) {
+        const result = await reconcileApiKey({
+          workspaceId: workspace.sId,
+          metronomeCustomerId,
+          metronomeContractId,
+          key,
+          execute,
+        });
+        if (result.isErr()) {
+          return new Err(result.error);
+        }
+        reports.push(result.value);
+      }
+      return new Ok({ target: "api_key", keyName, keys: reports });
+    }
     default:
       return assertNever(target);
   }
@@ -238,33 +293,48 @@ export async function reconcileProgrammatic({
   const config = await CreditUsageConfigurationResource.fetchByWorkspaceModelId(
     workspace.id
   );
-  const monthlyCapCredits = config?.programmaticMonthlyCapAwuCredits ?? 0;
+  // Distinguish "no cap configured" (null) from an explicit hard cap of 0:
+  // null means programmatic usage is unrestricted at the cap level, whereas 0
+  // is an explicit block. Collapsing both to 0 would wrongly deplete workspaces
+  // that never set a programmatic cap.
+  const monthlyCapCredits = config?.programmaticMonthlyCapAwuCredits ?? null;
 
   const previousState = workspace.programmaticCreditState;
 
-  // Cap of 0/null → always depleted; no spend to read.
-  if (monthlyCapCredits === 0 || !metronomeContractId) {
+  // States that don't require reading live spend:
+  //  - explicit hard cap of 0 → always depleted (programmatic API blocked).
+  //  - no cap configured (null), or no contract to meter spend against →
+  //    programmatic usage is unrestricted at the cap level; stay "active" and
+  //    let the pool gate (isApiBlocked) decide. This keeps PAYG programmatic
+  //    usage running when the pool is in overage and no programmatic cap is set.
+  if (
+    monthlyCapCredits === null ||
+    monthlyCapCredits === 0 ||
+    !metronomeContractId
+  ) {
+    const expectedState: WorkspaceProgrammaticCreditState =
+      monthlyCapCredits === 0 ? "depleted" : "active";
     if (execute) {
-      await setProgrammaticCreditStateReconciled(workspace, "depleted");
+      await setProgrammaticCreditStateReconciled(workspace, expectedState);
       void clearWorkspaceProgrammaticWarningReached(workspace.sId);
     }
     const newState = workspace.programmaticCreditState;
     return new Ok({
       target: "programmatic",
       previousState,
-      expectedState: "depleted",
+      expectedState,
       newState,
-      wasInvalid: previousState !== "depleted",
+      wasInvalid: previousState !== expectedState,
       corrected: previousState !== newState,
       executed: execute,
-      monthlyCapCredits,
+      monthlyCapCredits: monthlyCapCredits ?? 0,
       spentAwuCredits: null,
     });
   }
 
   const spendResult = await fetchProgrammaticAwuSpend({
+    workspaceId: workspace.sId,
     metronomeCustomerId,
-    metronomeContractId,
   });
   if (spendResult.isErr()) {
     return new Err(
@@ -341,6 +411,14 @@ export async function reconcileUser({
   const creditUsageConfig =
     await CreditUsageConfigurationResource.fetchByWorkspaceId(auth);
 
+  const groupCapAwuCredits =
+    (
+      await GroupResource.listMaxPoolCapAwuCreditsByUserModelIdInWorkspace({
+        workspace: lightWorkspace,
+        userModelIds: [membership.userId],
+      })
+    ).get(membership.userId) ?? null;
+
   const liveResult = await fetchLiveUserCreditInputs({
     workspaceId: workspace.sId,
     userId,
@@ -348,6 +426,7 @@ export async function reconcileUser({
     // Pool-only values persisted in the DB; the live-inputs helper adds the
     // seat allowance back to get the total threshold.
     poolCapOverrideAwuCredits: membership.poolCapOverrideAwuCredits,
+    groupCapAwuCredits,
     defaultPoolCapAwuCredits: creditUsageConfig?.defaultPoolCapAwuCredits ?? 0,
     metronomeCustomerId,
     metronomeContractId,
@@ -423,11 +502,16 @@ export async function reconcileWorkspaceUserCreditStates({
   workspace,
   metronomeCustomerId,
   metronomeContractId,
+  planCode,
 }: {
   workspace: LightWorkspaceType;
   metronomeCustomerId: string;
   metronomeContractId: string;
+  planCode: string;
 }): Promise<void> {
+  if (!isCreditPricedPlanPrefix(planCode)) {
+    return;
+  }
   const workspaceId = workspace.sId;
 
   // These return our `Result` type: handle their errors with early returns
@@ -496,8 +580,8 @@ export async function reconcileWorkspaceUserCreditStates({
     .map((m) => m.user?.sId)
     .filter((sId): sId is string => sId !== undefined);
   const usageResult = await fetchPerUserAwuUsage({
+    workspaceId,
     metronomeCustomerId,
-    metronomeContractId,
     userIds: memberUserIds,
   });
   if (usageResult.isErr()) {
@@ -508,6 +592,14 @@ export async function reconcileWorkspaceUserCreditStates({
     return;
   }
   const usageByUser = usageResult.value;
+
+  // Max group cap (pool-only) per member, fetched once to avoid an N+1. Users
+  // with no capped group are absent (they fall back to the workspace default).
+  const groupCapByUserModelId =
+    await GroupResource.listMaxPoolCapAwuCreditsByUserModelIdInWorkspace({
+      workspace,
+      userModelIds: memberships.map((m) => m.userId),
+    });
 
   // One UPDATE per drifting membership. Bounded by the workspace's seat count
   // and gated on the `continue` above, so steady-state writes are ~zero; even
@@ -525,9 +617,18 @@ export async function reconcileWorkspaceUserCreditStates({
     // Cap + usage only apply to pool-limit seat types (pro/max/workspace),
     // matching fetchLiveUserCreditInputs. Free/none seats have no pool access —
     // their effective cap is null and near-limit uses the seat-balance path.
+    // Priority: per-user override > max group cap > workspace default (shared
+    // ladder).
+    const groupCapAwuCredits =
+      groupCapByUserModelId.get(membership.userId) ?? null;
+    const poolCapAwuCredits =
+      resolveEffectiveSpendLimitAwuCredits({
+        overrideAwuCredits: membership.poolCapOverrideAwuCredits,
+        groupCapAwuCredits,
+        defaultAwuCredits: defaultPoolCapAwuCredits,
+      }) ?? defaultPoolCapAwuCredits;
     const effectiveCapAwuCredits = normalizedSeatType
-      ? (membership.poolCapOverrideAwuCredits ?? defaultPoolCapAwuCredits) +
-        (seatAllowances[normalizedSeatType] ?? 0)
+      ? poolCapAwuCredits + (seatAllowances[normalizedSeatType] ?? 0)
       : null;
     // Seat balance comes from `listMetronomeSeatBalances` for pro/max; free
     // seats read their per-user credit balance instead (not a seat balance).
@@ -572,6 +673,160 @@ export async function reconcileWorkspaceUserCreditStates({
       logger.error(
         { workspaceId, userId, err: normalizeError(err) },
         "[ReconcileCreditState] Failed to reconcile a user's credit state"
+      );
+    }
+  }
+}
+
+type ApiKeyReconcileReport = {
+  keyName: string;
+  previousState: ApiKeyCreditState;
+  expectedState: ApiKeyCreditState;
+  newState: ApiKeyCreditState;
+  corrected: boolean;
+  executed: boolean;
+  capAwuCredits: number | null;
+  spentAwuCredits: number | null;
+};
+
+/**
+ * Reconcile a single API key's credit state from live Metronome usage vs. its
+ * configured per-key cap. Used by the set-cap flow so raising/clearing a cap
+ * un-caps the key immediately instead of waiting for the next alert webhook.
+ *
+ * No cap (or no contract) → `on_pool` (no usage read). Otherwise reads the
+ * key's current-period AWU spend and compares it with the cap.
+ */
+export async function reconcileApiKey({
+  workspaceId,
+  metronomeCustomerId,
+  metronomeContractId,
+  key,
+  execute,
+}: {
+  workspaceId: string;
+  metronomeCustomerId: string;
+  metronomeContractId: string | null;
+  key: KeyResource;
+  execute: boolean;
+}): Promise<Result<ApiKeyReconcileReport, Error>> {
+  const previousState = key.creditState;
+  const capAwuCredits = key.monthlyCapAwuCredits;
+
+  let spentAwuCredits: number | null = null;
+  let expectedState: ApiKeyCreditState;
+  if (capAwuCredits === null || !metronomeContractId) {
+    expectedState = "on_pool";
+  } else {
+    const usageResult = await fetchPerApiKeyAwuUsage({
+      workspaceId,
+      metronomeCustomerId,
+      keyNames: [key.name],
+    });
+    if (usageResult.isErr()) {
+      return new Err(usageResult.error);
+    }
+    spentAwuCredits = usageResult.value.get(key.name) ?? 0;
+    expectedState = expectedApiKeyCreditStateFromUsage({
+      spentAwuCredits,
+      capAwuCredits,
+    });
+  }
+
+  let newState = previousState;
+  if (execute) {
+    newState = await setApiKeyCreditStateReconciled(key, expectedState, {
+      workspaceId,
+      keyModelId: key.id,
+    });
+  }
+
+  return new Ok({
+    keyName: key.name,
+    previousState,
+    expectedState,
+    newState,
+    corrected: previousState !== newState,
+    executed: execute,
+    capAwuCredits,
+    spentAwuCredits,
+  });
+}
+
+/**
+ * Reconcile every active, non-system API key's credit state for a workspace
+ * from live Metronome usage. Used by the backfill/repair flow. Capped keys are
+ * compared against their per-key spend; uncapped keys are reset to `on_pool`
+ * (clearing any stale `capped`). Never throws — logs and returns on failure.
+ */
+export async function reconcileWorkspaceApiKeyCreditStates({
+  workspace,
+  metronomeCustomerId,
+  metronomeContractId,
+  planCode,
+}: {
+  workspace: LightWorkspaceType;
+  metronomeCustomerId: string;
+  metronomeContractId: string | null;
+  planCode: string;
+}): Promise<void> {
+  if (!isCreditPricedPlanPrefix(planCode)) {
+    return;
+  }
+  const workspaceId = workspace.sId;
+
+  let keys: KeyResource[];
+  try {
+    keys = await KeyResource.listNonSystemKeysByWorkspace(workspace);
+  } catch (err) {
+    logger.error(
+      { workspaceId, err: normalizeError(err) },
+      "[ReconcileCreditState] Failed to load API keys"
+    );
+    return;
+  }
+  const activeKeys = keys.filter((key) => key.isActive);
+  const cappedKeyNames = activeKeys
+    .filter((key) => key.monthlyCapAwuCredits !== null)
+    .map((key) => key.name);
+
+  // Usage scoped to capped keys only (an unfiltered query is capped
+  // server-side and omits groups). Uncapped keys need no usage to reset.
+  let usageByKey = new Map<string, number>();
+  if (cappedKeyNames.length > 0 && metronomeContractId) {
+    const usageResult = await fetchPerApiKeyAwuUsage({
+      workspaceId,
+      metronomeCustomerId,
+      keyNames: cappedKeyNames,
+    });
+    if (usageResult.isErr()) {
+      logger.error(
+        { workspaceId, err: usageResult.error },
+        "[ReconcileCreditState] Failed to load per-API-key usage"
+      );
+      return;
+    }
+    usageByKey = usageResult.value;
+  }
+
+  for (const key of activeKeys) {
+    const capAwuCredits = key.monthlyCapAwuCredits;
+    const expectedState: ApiKeyCreditState =
+      capAwuCredits === null || !metronomeContractId
+        ? "on_pool"
+        : expectedApiKeyCreditStateFromUsage({
+            spentAwuCredits: usageByKey.get(key.name) ?? 0,
+            capAwuCredits,
+          });
+    try {
+      await setApiKeyCreditStateReconciled(key, expectedState, {
+        workspaceId,
+        keyModelId: key.id,
+      });
+    } catch (err) {
+      logger.error(
+        { workspaceId, keyName: key.name, err: normalizeError(err) },
+        "[ReconcileCreditState] Failed to reconcile an API key's credit state"
       );
     }
   }

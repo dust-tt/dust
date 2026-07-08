@@ -101,23 +101,23 @@ export const ThinkingChip: Story = {
 
 export const RemovableChip: Story = {
   render: () => (
-    <div className="s-space-x-2">
+    <div className="space-x-2">
       <Chip
         size="mini"
-        color="golden"
+        color="info"
         label="Remove me"
         href="https://notion.so"
         onRemove={() => alert("Removed")}
       />
       <Chip
         size="xs"
-        color="golden"
+        color="info"
         label="Remove me"
         onRemove={() => alert("Removed")}
       />
       <Chip
         size="sm"
-        color="golden"
+        color="info"
         label="Remove me"
         onRemove={() => alert("Removed")}
       />
@@ -127,87 +127,25 @@ export const RemovableChip: Story = {
 
 export const AllColors: Story = {
   render: () => (
-    <div className="s-flex s-flex-col s-gap-4">
-      <div className="s-flex s-flex-wrap s-gap-2">
-        <Chip size="xs" color="primary" label="Primary" />
-        <Chip size="xs" color="primary" label="Primary" />
+    <div className="flex flex-col gap-4">
+      <div className="flex flex-wrap gap-2">
         <Chip size="sm" color="primary" label="Primary" />
-      </div>
-      <div className="s-flex s-flex-wrap s-gap-2">
-        <Chip size="sm" color="primary" label="Primary" />
-        <Chip size="sm" color="highlight" label="Highlight" />
         <Chip size="sm" color="success" label="Success" />
         <Chip size="sm" color="warning" label="Warning" />
         <Chip size="sm" color="info" label="Info" />
-        <Chip size="sm" color="green" label="Green" />
-        <Chip size="sm" color="blue" label="Blue" />
-        <Chip size="sm" color="rose" label="Rose" />
-        <Chip size="sm" color="golden" label="Golden" />
+        <Chip size="sm" color="highlight" label="Highlight" />
       </div>
-      <div className="s-flex s-flex-wrap s-gap-2">
-        <Chip
-          size="sm"
-          color="primary"
-          label="Primary"
-          onClick={() => alert("Clicked")}
-          onRemove={() => alert("Removed")}
-        />
-        <Chip
-          size="sm"
-          color="highlight"
-          label="Highlight"
-          onClick={() => alert("Clicked")}
-          onRemove={() => alert("Removed")}
-        />
-        <Chip
-          size="sm"
-          color="success"
-          label="Success"
-          onClick={() => alert("Clicked")}
-          onRemove={() => alert("Removed")}
-        />
-        <Chip
-          size="sm"
-          color="warning"
-          label="Warning"
-          onClick={() => alert("Clicked")}
-          onRemove={() => alert("Removed")}
-        />
-        <Chip
-          size="sm"
-          color="info"
-          label="Info"
-          onClick={() => alert("Clicked")}
-          onRemove={() => alert("Removed")}
-        />
-        <Chip
-          size="sm"
-          color="green"
-          label="Green"
-          onClick={() => alert("Clicked")}
-          onRemove={() => alert("Removed")}
-        />
-        <Chip
-          size="sm"
-          color="blue"
-          label="Blue"
-          onClick={() => alert("Clicked")}
-          onRemove={() => alert("Removed")}
-        />
-        <Chip
-          size="sm"
-          color="rose"
-          label="Rose"
-          onClick={() => alert("Clicked")}
-          onRemove={() => alert("Removed")}
-        />
-        <Chip
-          size="sm"
-          color="golden"
-          label="Golden"
-          onClick={() => alert("Clicked")}
-          onRemove={() => alert("Removed")}
-        />
+      <div className="flex flex-wrap gap-2">
+        {CHIP_COLORS.map((color) => (
+          <Chip
+            key={color}
+            size="sm"
+            color={color}
+            label={color}
+            onClick={() => alert("Clicked")}
+            onRemove={() => alert("Removed")}
+          />
+        ))}
       </div>
     </div>
   ),

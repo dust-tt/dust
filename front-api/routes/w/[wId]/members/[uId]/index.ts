@@ -7,15 +7,15 @@ import {
   revokeAndTrackMembership,
   updateMembershipRoleAndTrack,
 } from "@app/lib/api/membership";
-import type {
-  GetMemberResponseBody,
-  PostMemberResponseBody,
-} from "@app/lib/api/user";
 import { getUserForWorkspace } from "@app/lib/api/user";
 import { getFeatureFlags } from "@app/lib/auth";
 import { showDebugTools } from "@app/lib/development";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import logger from "@app/logger/logger";
+import type {
+  GetMemberResponseBody,
+  PostMemberResponseBody,
+} from "@app/types/api/user";
 import { isMembershipRoleType } from "@app/types/memberships";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { workspaceApp } from "@front-api/middlewares/ctx";
@@ -105,16 +105,13 @@ app.post(
     const featureFlags = await getFeatureFlags(auth);
     const body = ctx.req.valid("json");
 
-    const canManageMembers = auth.hasPermission("workspace:manage_members");
-    const canManageAdmins = auth.hasPermission("workspace:manage_admin_role");
-
     // Allow Dust Super User to force role for testing
     const allowForSuperUserTesting =
       showDebugTools(featureFlags) &&
       auth.isDustSuperUser() &&
       body.force === "true";
 
-    if (!canManageMembers && !allowForSuperUserTesting) {
+    if (!auth.isBusinessAdmin() && !allowForSuperUserTesting) {
       return apiError(ctx, {
         status_code: 403,
         api_error: {
@@ -148,7 +145,7 @@ app.post(
 
     if (
       (targetIsAdmin || assigningAdmin) &&
-      !canManageAdmins &&
+      !auth.isAdmin() &&
       !allowForSuperUserTesting
     ) {
       return apiError(ctx, {

@@ -1,7 +1,7 @@
 import { usePodConversationsSummary } from "@app/hooks/conversations/usePodConversations";
-import type { PatchConversationsRequestBody } from "@app/lib/api/assistant/conversation/types";
 import { clientFetch } from "@app/lib/egress/client";
 import logger from "@app/logger/logger";
+import type { PatchConversationsRequestBody } from "@app/types/api/assistant/conversation/types";
 import type {
   ConversationListItemType,
   ConversationWithoutContentType,

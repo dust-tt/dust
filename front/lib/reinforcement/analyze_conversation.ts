@@ -6,7 +6,10 @@ import { buildReinforcedSkillsLLMParams } from "@app/lib/reinforcement/run_reinf
 import { SKILL_INSTRUCTION_HTML_EDIT_PROMPT } from "@app/lib/reinforcement/skill_instruction_edit_prompt";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import logger from "@app/logger/logger";
-import type { SkillType } from "@app/types/assistant/skill_configuration";
+import {
+  AGENT_FACING_DESCRIPTION_MAX_LENGTH,
+  type SkillType,
+} from "@app/types/assistant/skill_configuration";
 
 const ASSEMBLY_ORDER = [
   "primary_goal",
@@ -31,7 +34,7 @@ You MUST follow <analysis_workflow>. These steps are entirely focused on suggest
 
 Users will not see your response. The user will ONLY see the content of the edit_skill tool calls.
 
-In most conversations, the correct outcome is no configuration change. This means the conversastion did not surface a clear, high-value gap in the skill configuration.
+In most conversations, the correct outcome is no configuration change. This means the conversation did not surface a clear, high-value gap in the skill configuration.
 Propose configuration changes only when <analysis_workflow> yields concrete evidence. If you are unsure, do not call edit_skill.
 
 ## Exploration tools (optional — use these if you need more context)
@@ -66,9 +69,9 @@ A key consideration is that conversations can be user-specific, but skills share
 Step 4: For each skill improvement identified in Step 3, formulate a suggestion.
 ALWAYS ensure that the suggestion is inline with the skill's purpose and instructions. Skills SHOULD be single purpose and not be overloaded with multiple responsibilities.
 Consider the following improvements to a skill:
-- Review instructions to determine if the skill is meeting the user intent and properly utilizing its inline tool references: <instructions_guidance>.
+- Review instructions to determine if the skill is meeting the user intent and properly using its inline tool references: <instructions_guidance>.
 - If the skill references or requires external actions or knowledge, inline <tool> or <knowledge> references may need to be added or removed from its instructions. See <tools_guidance>.
-- If the conversation reveals that the agent enabled the skill in the wrong situation, or failed to enable it when it should have, the agent-facing description may need to be improved. See <agent_facing_description_guidance>.
+- If the conversation reveals that the agent enabled the skill in the wrong situation or failed to enable it when it should have, the agent-facing description may need to be improved. See <agent_facing_description_guidance>.
 All improvements that should be treated as a single atomic unit should be grouped together in a single suggestion.
 NEVER group things that are not related to each other.
 
@@ -121,6 +124,7 @@ Suggest editing it only when the conversation surfaces clear evidence of a routi
 
 When suggesting a description edit:
 - Provide the FULL replacement text in \`agentFacingDescriptionEdit.content\` — it overwrites the existing description.
+- Max description size is ${AGENT_FACING_DESCRIPTION_MAX_LENGTH} characters.
 - Preserve the skill's actual purpose. Sharpen the trigger conditions; do not redefine the skill.
 - Keep it focused on routing signals (when to use, what scenarios). Do not duplicate the instructions.
 - Use the same language as the existing description.`,

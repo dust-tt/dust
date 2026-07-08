@@ -6,6 +6,7 @@ import {
 } from "@app/lib/metronome/client";
 import {
   CREDIT_TYPE_EUR_ID,
+  CREDIT_TYPE_GBP_ID,
   CREDIT_TYPE_USD_ID,
   getCreditTypeAwuId,
 } from "@app/lib/metronome/constants";
@@ -14,6 +15,7 @@ import {
   getProductSeatTypes,
   getSeatTypesByProductIdFromContract,
 } from "@app/lib/metronome/seat_types";
+import type { AwuPoolSummaryResponseBody } from "@app/types/api/credits/awu_pool_summary";
 import type { SupportedCurrency } from "@app/types/currency";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -28,23 +30,11 @@ function creditTypeIdToCurrency(
   if (creditTypeId === CREDIT_TYPE_EUR_ID) {
     return "eur";
   }
+  if (creditTypeId === CREDIT_TYPE_GBP_ID) {
+    return "gbp";
+  }
   return null;
 }
-
-export type AwuPoolSummaryResponseBody = {
-  totalRemainingCredits: number;
-  totalActiveCredits: number;
-  /**
-   * PAYG overage consumed so far this billing period — credits charged on
-   * top of the workspace pool. `null` when the workspace is not on PAYG or
-   * no overage has been incurred this period.
-   */
-  overageCredits: number | null;
-  /** Fiat cost of `overageCredits`, in cents. `null` when `overageCredits` is null. */
-  overageAmountCents: number | null;
-  /** Invoice currency — needed to format `overageAmountCents`. */
-  overageCurrency: SupportedCurrency | null;
-};
 
 export class AwuPoolSummaryError extends Error {
   constructor(

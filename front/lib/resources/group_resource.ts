@@ -28,6 +28,7 @@ import type {
 import type { GroupKind, GroupType } from "@app/types/groups";
 import {
   AGENT_GROUP_PREFIX,
+  CAP_ELIGIBLE_GROUP_KINDS,
   GROUP_KINDS,
   isAgentEditorGroupKind,
   isSkillEditorGroupKind,
@@ -75,6 +76,7 @@ type CachedGroup = {
   kind: GroupKind;
   workspaceId: ModelId;
   workOSGroupId: string | null;
+  poolCapAwuCredits: number | null;
   createdAt: number;
   updatedAt: number;
 };
@@ -129,6 +131,7 @@ export class GroupResource extends BaseResource<GroupModel> {
       kind: g.kind,
       workspaceId: g.workspaceId,
       workOSGroupId: g.workOSGroupId,
+      poolCapAwuCredits: g.poolCapAwuCredits,
       createdAt: g.createdAt.getTime(),
       updatedAt: g.updatedAt.getTime(),
     }));
@@ -168,6 +171,7 @@ export class GroupResource extends BaseResource<GroupModel> {
       kind: data.kind,
       workspaceId: data.workspaceId,
       workOSGroupId: data.workOSGroupId,
+      poolCapAwuCredits: data.poolCapAwuCredits,
       createdAt: new Date(data.createdAt),
       updatedAt: new Date(data.updatedAt),
     });
@@ -1183,6 +1187,122 @@ export class GroupResource extends BaseResource<GroupModel> {
     return groups.map((group) => new this(GroupModel, group.get()));
   }
 
+  static async listGroupNamesByUserModelIdInWorkspace({
+    workspace,
+    userModelIds,
+    groupKinds = ["regular", "provisioned"],
+  }: {
+    workspace: LightWorkspaceType;
+    userModelIds: ModelId[];
+    groupKinds?: Exclude<GroupKind, "system">[];
+  }): Promise<Map<ModelId, string[]>> {
+    const result = new Map<ModelId, string[]>();
+    if (userModelIds.length === 0) {
+      return result;
+    }
+
+    const now = new Date();
+    const memberships = await GroupMembershipModel.findAll({
+      where: {
+        workspaceId: workspace.id,
+        userId: userModelIds,
+        status: "active",
+        startAt: { [Op.lte]: now },
+        [Op.or]: [{ endAt: null }, { endAt: { [Op.gt]: now } }],
+      },
+    });
+    if (memberships.length === 0) {
+      return result;
+    }
+
+    const groupModelIds = [...new Set(memberships.map((m) => m.groupId))];
+    const groups = await GroupModel.findAll({
+      where: {
+        id: groupModelIds,
+        workspaceId: workspace.id,
+        kind: groupKinds,
+      },
+    });
+    const nameByGroupId = new Map(groups.map((g) => [g.id, g.name]));
+
+    for (const m of memberships) {
+      const name = nameByGroupId.get(m.groupId);
+      if (!name) {
+        continue;
+      }
+      const existing = result.get(m.userId);
+      if (existing) {
+        existing.push(name);
+      } else {
+        result.set(m.userId, [name]);
+      }
+    }
+
+    for (const names of result.values()) {
+      names.sort((a, b) => a.localeCompare(b));
+    }
+
+    return result;
+  }
+
+  // For each user, the highest per-group pool cap (excluding seat allowance)
+  // among the cap-eligible (provisioned) groups they belong to. Users with no
+  // capped group are absent from the map (the caller falls back to the workspace
+  // default). Used to resolve the "max(group caps)" term of a user's effective
+  // spend limit.
+  static async listMaxPoolCapAwuCreditsByUserModelIdInWorkspace({
+    workspace,
+    userModelIds,
+  }: {
+    workspace: LightWorkspaceType;
+    userModelIds: ModelId[];
+  }): Promise<Map<ModelId, number>> {
+    const result = new Map<ModelId, number>();
+    if (userModelIds.length === 0) {
+      return result;
+    }
+
+    const now = new Date();
+    const memberships = await GroupMembershipModel.findAll({
+      where: {
+        workspaceId: workspace.id,
+        userId: userModelIds,
+        status: "active",
+        startAt: { [Op.lte]: now },
+        [Op.or]: [{ endAt: null }, { endAt: { [Op.gt]: now } }],
+      },
+    });
+    if (memberships.length === 0) {
+      return result;
+    }
+
+    const groupModelIds = [...new Set(memberships.map((m) => m.groupId))];
+    const groups = await GroupModel.findAll({
+      where: {
+        id: groupModelIds,
+        workspaceId: workspace.id,
+        kind: [...CAP_ELIGIBLE_GROUP_KINDS],
+        poolCapAwuCredits: { [Op.ne]: null },
+      },
+    });
+    const capByGroupId = new Map(
+      groups.map((g) => [g.id, g.poolCapAwuCredits])
+    );
+
+    for (const m of memberships) {
+      const cap = capByGroupId.get(m.groupId);
+      if (cap === undefined || cap === null) {
+        continue;
+      }
+      const existing = result.get(m.userId);
+      if (existing === undefined || cap > existing) {
+        result.set(m.userId, cap);
+      }
+    }
+
+    return result;
+  }
+
   static async getMemberCountsForGroups(
     auth: Authenticator,
     groups: GroupResource[]
@@ -2050,6 +2170,20 @@ export class GroupResource extends BaseResource<GroupModel> {
     return new Ok(undefined);
   }
 
+  // Per-group usage spend limit (excluding seat allowance), applied per member.
+  // Pass null to clear the cap.
+  async updatePoolCap(
+    auth: Authenticator,
+    poolCapAwuCredits: number | null
+  ): Promise<Result<undefined, Error>> {
+    if (!auth.canAdministrate(this.requestedPermissions())) {
+      return new Err(new Error("Only admins can update group spend limits."));
+    }
+
+    await this.update({ poolCapAwuCredits });
+    return new Ok(undefined);
+  }
+
   // Deletion
 
   async delete(
@@ -2322,6 +2456,7 @@ export class GroupResource extends BaseResource<GroupModel> {
       workspaceId: this.workspaceId,
       kind: this.kind,
       memberCount: 0, // Default value, use toJSONWithMemberCount for actual count
+      poolCapAwuCredits: this.poolCapAwuCredits,
     };
   }
 
@@ -2334,6 +2469,7 @@ export class GroupResource extends BaseResource<GroupModel> {
       workspaceId: this.workspaceId,
       kind: this.kind,
       memberCount,
+      poolCapAwuCredits: this.poolCapAwuCredits,
     };
   }
 }

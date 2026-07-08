@@ -23,7 +23,7 @@ export const financialServicesConfig: IndustryPageConfig = {
   hero: {
     chip: {
       label: "Financial Services",
-      color: "golden",
+      color: "info",
       icon: Bank,
     },
     title: (

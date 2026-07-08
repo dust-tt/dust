@@ -1,4 +1,3 @@
-import { FRESHSERVICE_SERVER_INSTRUCTIONS } from "@app/lib/actions/mcp_internal_actions/instructions";
 import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { createToolsRecord } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { FreshserviceTicketSchema } from "@app/lib/api/actions/servers/freshservice/types";
@@ -22,7 +21,7 @@ export const FRESHSERVICE_TOOLS_METADATA = createToolsRecord({
   // Ticket operations
   list_tickets: {
     description:
-      "Lists tickets with optional filtering and pagination. By default returns minimal fields (id, subject, status) for performance.",
+      "List or show Freshservice tickets, with optional filtering (e.g. by status, requester, or update time) and pagination. Returns minimal fields (id, subject, status) by default for performance.",
     schema: {
       filter: z
         .object({
@@ -55,44 +54,46 @@ export const FRESHSERVICE_TOOLS_METADATA = createToolsRecord({
       running: "Listing Freshservice tickets",
       done: "List Freshservice tickets",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   get_ticket: {
     description:
-      "Gets detailed information about a specific ticket. By default returns essential fields for performance, but you can specify specific fields.",
+      "Get Freshservice ticket details by ID. Returns essential fields by default; pass the fields parameter to request more.",
     schema: {
       ticket_id: z.number().describe("The ID of the ticket"),
       fields: z
         .array(FreshserviceTicketSchema.keyof())
         .optional()
-        .describe(
-          "Optional list of fields to include. Defaults to essential fields (id, subject, description_text, priority, status, requester_id, responder_id, department_id, group_id, type, created_at, updated_at, due_by) for performance."
-        ),
+        .describe("Optional fields to include. Defaults to essential fields."),
       include: z
         .array(z.enum(ALLOWED_TICKET_INCLUDES))
         .optional()
-        .describe(
-          "Additional information to include (e.g., conversations, requester, stats, problem, assets, changes, related_tickets, onboarding_context, offboarding_context)."
-        ),
+        .describe("Additional related data to include."),
     },
     stake: "never_ask",
     displayLabels: {
       running: "Getting Freshservice ticket",
       done: "Get Freshservice ticket",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   get_ticket_read_fields: {
     description:
-      "Lists available Freshservice ticket field ids for use in the get_ticket.fields parameter (read-time).",
+      "List the field ids available when reading a Freshservice ticket. Use only to discover field names.",
     schema: {},
     stake: "never_ask",
     displayLabels: {
       running: "Getting Freshservice ticket read fields",
       done: "Get Freshservice ticket read fields",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   get_ticket_write_fields: {
     description:
-      "Lists all available ticket fields including standard and custom fields. Use this to discover what fields are available for use in create_ticket, update_ticket, and other operations.",
+      "List all Freshservice ticket fields (standard and custom) available when creating or updating a ticket. Use only to discover field names.",
     schema: {
       search: z
         .string()
@@ -104,10 +105,12 @@ export const FRESHSERVICE_TOOLS_METADATA = createToolsRecord({
       running: "Getting Freshservice ticket write fields",
       done: "Get Freshservice ticket write fields",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   create_ticket: {
     description:
-      "Creates a new ticket in Freshservice. You MUST call get_ticket_write_fields first to get required fields, then provide all required field values in the custom_fields parameter.",
+      "Create a new Freshservice ticket. For example to log an incident, submit an IT support request, or report a problem. Required fields vary by ticket type. Pass them in custom_fields.",
     schema: {
       email: z.string().describe("Requester email address"),
       subject: z.string().describe("Ticket subject"),
@@ -132,9 +135,11 @@ export const FRESHSERVICE_TOOLS_METADATA = createToolsRecord({
       running: "Creating Freshservice ticket",
       done: "Create Freshservice ticket",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   update_ticket: {
-    description: "Updates an existing ticket in Freshservice",
+    description: "Update an existing Freshservice ticket.",
     schema: {
       ticket_id: z.string().describe("Ticket ID to update"),
       subject: z.string().optional().describe("Updated ticket subject"),
@@ -158,9 +163,12 @@ export const FRESHSERVICE_TOOLS_METADATA = createToolsRecord({
       running: "Updating Freshservice ticket",
       done: "Update Freshservice ticket",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   add_ticket_note: {
-    description: "Adds a note to an existing ticket",
+    description:
+      "Add a private or public note to an existing Freshservice ticket.",
     schema: {
       ticket_id: z.number().describe("The ID of the ticket"),
       body: z.string().describe("Content of the note in HTML format"),
@@ -175,9 +183,12 @@ export const FRESHSERVICE_TOOLS_METADATA = createToolsRecord({
       running: "Adding note to Freshservice ticket",
       done: "Add note to Freshservice ticket",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   add_ticket_reply: {
-    description: "Adds a reply to a ticket conversation",
+    description:
+      "Reply to the requester in a Freshservice ticket conversation.",
     schema: {
       ticket_id: z.number().describe("The ID of the ticket"),
       body: z.string().describe("Content of the note in HTML format"),
@@ -187,11 +198,29 @@ export const FRESHSERVICE_TOOLS_METADATA = createToolsRecord({
       running: "Adding reply to Freshservice ticket",
       done: "Add reply to Freshservice ticket",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
+  },
+
+  // Service request items
+  list_ticket_requested_items: {
+    description:
+      "List the service request items nested under a Service Request ticket. Returns each item's metadata along with its custom fields. Use this after get_ticket when the ticket is a Service Request and you need values from custom fields on the nested items.",
+    schema: {
+      ticket_id: z.number().describe("The ID of the ticket"),
+    },
+    stake: "never_ask",
+    displayLabels: {
+      running: "Listing Freshservice ticket requested items",
+      done: "List Freshservice ticket requested items",
+    },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
 
   // Ticket tasks
   list_ticket_tasks: {
-    description: "Lists all tasks associated with a ticket",
+    description: "List all tasks associated with a ticket",
     schema: {
       ticket_id: z.number().describe("The ID of the ticket"),
     },
@@ -200,9 +229,11 @@ export const FRESHSERVICE_TOOLS_METADATA = createToolsRecord({
       running: "Listing Freshservice ticket tasks",
       done: "List Freshservice ticket tasks",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   get_ticket_task: {
-    description: "Gets detailed information about a specific task on a ticket",
+    description: "Get detailed information about a specific task on a ticket",
     schema: {
       ticket_id: z.number().describe("The ID of the ticket"),
       task_id: z.number().describe("The ID of the task"),
@@ -212,10 +243,12 @@ export const FRESHSERVICE_TOOLS_METADATA = createToolsRecord({
       running: "Getting Freshservice ticket task",
       done: "Get Freshservice ticket task",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   create_ticket_task: {
     description:
-      "Creates a new task on a ticket. Tasks help break down complex tickets into manageable subtasks.",
+      "Add a new task or subtask to a Freshservice ticket, to break the ticket into smaller pieces of work.",
     schema: {
       ticket_id: z.number().describe("The ID of the ticket"),
       title: z.string().describe("Task title"),
@@ -223,29 +256,25 @@ export const FRESHSERVICE_TOOLS_METADATA = createToolsRecord({
       status: z
         .enum(["1", "2", "3"])
         .optional()
-        .describe("Status: 1=Open, 2=In Progress, 3=Completed"),
-      due_date: z.string().optional().describe("Due date in ISO 8601 format"),
+        .describe("1=Open, 2=In Progress, 3=Completed"),
+      due_date: z.string().optional().describe("Due date (ISO 8601)."),
       notify_before: z
         .number()
         .optional()
-        .describe("Number of hours before due date to send notification"),
-      agent_id: z
-        .number()
-        .optional()
-        .describe("Agent ID to assign the task to"),
-      group_id: z
-        .number()
-        .optional()
-        .describe("Group ID to assign the task to"),
+        .describe("Hours before the due date to notify."),
+      agent_id: z.number().optional().describe("Agent to assign the task to."),
+      group_id: z.number().optional().describe("Group to assign the task to."),
     },
     stake: "low",
     displayLabels: {
       running: "Creating Freshservice ticket task",
       done: "Create Freshservice ticket task",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   update_ticket_task: {
-    description: "Updates an existing task on a ticket",
+    description: "Update an existing task on a ticket",
     schema: {
       ticket_id: z.number().describe("The ID of the ticket"),
       task_id: z.number().describe("The ID of the task to update"),
@@ -277,9 +306,11 @@ export const FRESHSERVICE_TOOLS_METADATA = createToolsRecord({
       running: "Updating Freshservice ticket task",
       done: "Update Freshservice ticket task",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   delete_ticket_task: {
-    description: "Deletes a task from a ticket",
+    description: "Delete a task from a ticket",
     schema: {
       ticket_id: z.number().describe("The ID of the ticket"),
       task_id: z.number().describe("The ID of the task to delete"),
@@ -289,11 +320,13 @@ export const FRESHSERVICE_TOOLS_METADATA = createToolsRecord({
       running: "Deleting Freshservice ticket task",
       done: "Delete Freshservice ticket task",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
 
   // Ticket approvals
   get_ticket_approval: {
-    description: "Gets detailed information about a specific ticket approval",
+    description: "Get detailed information about a specific ticket approval",
     schema: {
       ticket_id: z.number().describe("The ID of the ticket"),
       approval_id: z.number().describe("The ID of the approval to retrieve"),
@@ -303,9 +336,11 @@ export const FRESHSERVICE_TOOLS_METADATA = createToolsRecord({
       running: "Getting Freshservice ticket approval",
       done: "Get Freshservice ticket approval",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   list_ticket_approvals: {
-    description: "Lists all approvals for a specific ticket",
+    description: "List all approvals for a specific ticket",
     schema: {
       ticket_id: z.number().describe("The ID of the ticket"),
     },
@@ -314,10 +349,12 @@ export const FRESHSERVICE_TOOLS_METADATA = createToolsRecord({
       running: "Listing Freshservice ticket approvals",
       done: "List Freshservice ticket approvals",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   request_service_approval: {
     description:
-      "Requests approval for a ticket. This creates an approval request that needs to be approved before the ticket can be fulfilled. Only works on tickets that have approval workflow configured.",
+      "Request approval for a ticket. This creates an approval request that needs to be approved before the ticket can be fulfilled. Only works on tickets that have approval workflow configured.",
     schema: {
       ticket_id: z.number().describe("The ID of the ticket"),
       approver_id: z
@@ -340,11 +377,13 @@ export const FRESHSERVICE_TOOLS_METADATA = createToolsRecord({
       running: "Requesting Freshservice approval",
       done: "Request Freshservice approval",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
 
   // Departments, Products, On-call schedules
   list_departments: {
-    description: "Lists all departments in Freshservice",
+    description: "List all departments in Freshservice",
     schema: {
       page: z.number().optional().default(1),
       per_page: z.number().optional().default(30),
@@ -354,9 +393,11 @@ export const FRESHSERVICE_TOOLS_METADATA = createToolsRecord({
       running: "Listing Freshservice departments",
       done: "List Freshservice departments",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   list_products: {
-    description: "Lists all products in Freshservice",
+    description: "List all products in Freshservice",
     schema: {
       page: z.number().optional().default(1),
       per_page: z.number().optional().default(30),
@@ -366,9 +407,11 @@ export const FRESHSERVICE_TOOLS_METADATA = createToolsRecord({
       running: "Listing Freshservice products",
       done: "List Freshservice products",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   list_oncall_schedules: {
-    description: "Lists on-call schedules",
+    description: "List on-call schedules",
     schema: {
       page: z.number().optional().default(1),
       per_page: z.number().optional().default(30),
@@ -378,12 +421,14 @@ export const FRESHSERVICE_TOOLS_METADATA = createToolsRecord({
       running: "Listing Freshservice on-call schedules",
       done: "List Freshservice on-call schedules",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
 
   // Service catalog
   list_service_categories: {
     description:
-      "Lists service catalog categories. Use this first to get category IDs for filtering service items.",
+      "List service catalog categories. Use this first to get category IDs for filtering service items.",
     schema: {
       page: z.number().optional().default(1),
       per_page: z.number().optional().default(30),
@@ -393,10 +438,12 @@ export const FRESHSERVICE_TOOLS_METADATA = createToolsRecord({
       running: "Listing Freshservice service categories",
       done: "List Freshservice service categories",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   list_service_items: {
     description:
-      "Lists service catalog items. To filter by category: 1) Use list_service_categories to get category IDs, 2) Use the category_id parameter here.",
+      "List service catalog items. To filter by category: 1) Use list_service_categories to get category IDs, 2) Use the category_id parameter here.",
     schema: {
       category_id: z
         .number()
@@ -412,10 +459,12 @@ export const FRESHSERVICE_TOOLS_METADATA = createToolsRecord({
       running: "Listing Freshservice service items",
       done: "List Freshservice service items",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   search_service_items: {
     description:
-      "Searches for service items from the service catalog for a given search term. Only use this when specifically searching for items by keyword.",
+      "Search for service items from the service catalog for a given search term. Only use this when specifically searching for items by keyword.",
     schema: {
       search_term: z
         .string()
@@ -443,10 +492,12 @@ export const FRESHSERVICE_TOOLS_METADATA = createToolsRecord({
       running: "Searching Freshservice service items",
       done: "Search Freshservice service items",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   get_service_item: {
     description:
-      "Gets detailed information about a specific service catalog item including fields and pricing",
+      "Get detailed information about a specific service catalog item including fields and pricing",
     schema: {
       display_id: z
         .number()
@@ -457,10 +508,12 @@ export const FRESHSERVICE_TOOLS_METADATA = createToolsRecord({
       running: "Getting Freshservice service item",
       done: "Get Freshservice service item",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   get_service_item_fields: {
     description:
-      "Gets the field configuration for a service catalog item. You must call this before request_service_item to get required fields. Returns required_fields and hidden_required_fields that must be provided.",
+      "Get the field configuration for a service catalog item. You must call this before request_service_item to get required fields. Returns required_fields and hidden_required_fields that must be provided.",
     schema: {
       display_id: z
         .number()
@@ -471,10 +524,12 @@ export const FRESHSERVICE_TOOLS_METADATA = createToolsRecord({
       running: "Getting Freshservice service item fields",
       done: "Get Freshservice service item fields",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   request_service_item: {
     description:
-      "Creates a service request for a catalog item. This creates a new ticket. You MUST call get_service_item_fields first to get required fields, then provide all required field values in the fields parameter.",
+      "Create a service request for a catalog item. This creates a new ticket. You MUST call get_service_item_fields first to get required fields, then provide all required field values in the fields parameter.",
     schema: {
       display_id: z
         .number()
@@ -501,12 +556,14 @@ export const FRESHSERVICE_TOOLS_METADATA = createToolsRecord({
       running: "Requesting Freshservice service item",
       done: "Request Freshservice service item",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
 
   // Solutions (Knowledge Base)
   list_solution_categories: {
     description:
-      "Lists solution categories. These are used to organize solution folders, which are mandatory for ticket listing.",
+      "List solution categories. These are used to organize solution folders, which are mandatory for ticket listing.",
     schema: {
       page: z.number().optional().default(1),
       per_page: z.number().optional().default(30),
@@ -516,10 +573,12 @@ export const FRESHSERVICE_TOOLS_METADATA = createToolsRecord({
       running: "Listing Freshservice solution categories",
       done: "List Freshservice solution categories",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   list_solution_folders: {
     description:
-      "Lists solution folders within categories. Solution folders are mandatory for ticket listing. Use list_solution_categories first to get category IDs, then filter folders by category_id.",
+      "List solution folders within categories. Solution folders are mandatory for ticket listing. Use list_solution_categories first to get category IDs, then filter folders by category_id.",
     schema: {
       category_id: z.number().optional().describe("Filter by category ID"),
       page: z.number().optional().default(1),
@@ -530,10 +589,12 @@ export const FRESHSERVICE_TOOLS_METADATA = createToolsRecord({
       running: "Listing Freshservice solution folders",
       done: "List Freshservice solution folders",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   list_solution_articles: {
     description:
-      "Lists solution articles within a specific folder (returns metadata only, use get_solution_article for full content). To get folder_id: 1) Use list_solution_categories to get category IDs, 2) Use list_solution_folders with category_id to get folder IDs, 3) Use the folder_id here.",
+      "List the Freshservice knowledge base articles (solution articles) in a folder. Returns metadata only. Fetch an article by id for its full content.",
     schema: {
       folder_id: z
         .number()
@@ -552,10 +613,12 @@ export const FRESHSERVICE_TOOLS_METADATA = createToolsRecord({
       running: "Listing Freshservice solution articles",
       done: "List Freshservice solution articles",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   get_solution_article: {
     description:
-      "Gets detailed information about a specific solution article including its full content",
+      "Get a Freshservice knowledge base article (also called a solution article), including its full content.",
     schema: {
       article_id: z.number().describe("The ID of the solution article"),
     },
@@ -564,10 +627,12 @@ export const FRESHSERVICE_TOOLS_METADATA = createToolsRecord({
       running: "Getting Freshservice solution article",
       done: "Get Freshservice solution article",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   create_solution_article: {
     description:
-      "Creates a new solution article in a specific folder. To get folder_id: 1) Use list_solution_categories to get category IDs, 2) Use list_solution_folders with category_id to get folder IDs, 3) Use the folder_id here.",
+      "Create a new solution article in a specific folder. To get folder_id: 1) Use list_solution_categories to get category IDs, 2) Use list_solution_folders with category_id to get folder IDs, 3) Use the folder_id here.",
     schema: {
       title: z.string().describe("Article title"),
       description: z.string().describe("Article content"),
@@ -587,11 +652,14 @@ export const FRESHSERVICE_TOOLS_METADATA = createToolsRecord({
       running: "Creating Freshservice solution article",
       done: "Create Freshservice solution article",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
 
   // Requesters
   list_requesters: {
-    description: "Lists requesters",
+    description:
+      "List Freshservice requesters: the person or people who submitted a ticket (the end users who report issues). Filter by email, phone, or mobile.",
     schema: {
       email: z.string().optional().describe("Filter by email"),
       mobile: z.string().optional().describe("Filter by mobile"),
@@ -604,9 +672,11 @@ export const FRESHSERVICE_TOOLS_METADATA = createToolsRecord({
       running: "Listing Freshservice requesters",
       done: "List Freshservice requesters",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   get_requester: {
-    description: "Gets detailed information about a specific requester",
+    description: "Get detailed information about a specific requester",
     schema: {
       requester_id: z.number().describe("The ID of the requester"),
     },
@@ -615,11 +685,13 @@ export const FRESHSERVICE_TOOLS_METADATA = createToolsRecord({
       running: "Getting Freshservice requester",
       done: "Get Freshservice requester",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
 
   // Purchase Orders
   list_purchase_orders: {
-    description: "Lists purchase orders",
+    description: "List purchase orders",
     schema: {
       page: z.number().optional().default(1),
       per_page: z.number().optional().default(30),
@@ -629,22 +701,26 @@ export const FRESHSERVICE_TOOLS_METADATA = createToolsRecord({
       running: "Listing Freshservice purchase orders",
       done: "List Freshservice purchase orders",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
 
   // SLA Policies
   list_sla_policies: {
-    description: "Lists SLA policies",
+    description: "List SLA policies",
     schema: {},
     stake: "never_ask",
     displayLabels: {
       running: "Listing Freshservice SLA policies",
       done: "List Freshservice SLA policies",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
 
   // Canned responses
   list_canned_responses: {
-    description: "Lists all canned responses available in Freshservice",
+    description: "List all canned responses available in Freshservice",
     schema: {
       search: z
         .string()
@@ -664,9 +740,11 @@ export const FRESHSERVICE_TOOLS_METADATA = createToolsRecord({
       running: "Listing Freshservice canned responses",
       done: "List Freshservice canned responses",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   get_canned_response: {
-    description: "Gets detailed information about a specific canned response",
+    description: "Get detailed information about a specific canned response",
     schema: {
       response_id: z.number().describe("The ID of the canned response"),
     },
@@ -675,28 +753,31 @@ export const FRESHSERVICE_TOOLS_METADATA = createToolsRecord({
       running: "Getting Freshservice canned response",
       done: "Get Freshservice canned response",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
 });
 
 export const FRESHSERVICE_SERVER = {
-  // biome-ignore lint/plugin/noMcpServerInstructions: existing usage
   serverInfo: {
     name: "freshservice",
     version: "1.0.0",
-    description: "Connect to tickets, schedules and service catalog.",
+    description:
+      "Manage Freshservice IT service desk tickets, service requests, knowledge base articles, and service catalog items. An ITSM (IT Service Management) helpdesk platform.",
     authorization: {
       provider: "freshservice" as const,
       supported_use_cases: ["platform_actions", "personal_actions"] as const,
     },
     icon: "FreshserviceLogo",
     documentationUrl: "https://docs.dust.tt/docs/freshservice",
-    instructions: FRESHSERVICE_SERVER_INSTRUCTIONS,
   },
   tools: Object.values(FRESHSERVICE_TOOLS_METADATA).map((t) => ({
     name: t.name,
     description: t.description,
     inputSchema: zodToJsonSchema(z.object(t.schema)) as JSONSchema,
     displayLabels: t.displayLabels,
+    toolCostCategory: t.toolCostCategory,
+    freeUsage: t.freeUsage,
   })),
   tools_stakes: Object.fromEntries(
     Object.values(FRESHSERVICE_TOOLS_METADATA).map((t) => [t.name, t.stake])

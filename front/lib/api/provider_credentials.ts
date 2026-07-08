@@ -15,10 +15,6 @@ import { EnvironmentConfig } from "@app/types/shared/utils/config";
 import assert from "assert";
 import type { z } from "zod";
 
-export type GetProvidersCheckResponseBody =
-  | { ok: true }
-  | { ok: false; error: string };
-
 // Fraction of requests that use BYOK credentials during the transition period.
 const BYOK_TRANSITION_BYOK_KEYS_RATIO = 1; // 100%
 
@@ -67,7 +63,6 @@ export async function getLlmCredentials(
     MISTRAL_API_KEY: env("DUST_MANAGED_MISTRAL_API_KEY"),
     TEXTSYNTH_API_KEY: env("DUST_MANAGED_TEXTSYNTH_API_KEY"),
     GOOGLE_AI_STUDIO_API_KEY: env("DUST_MANAGED_GOOGLE_AI_STUDIO_API_KEY"),
-    TOGETHERAI_API_KEY: env("DUST_MANAGED_TOGETHERAI_API_KEY"),
     DEEPSEEK_API_KEY: env("DUST_MANAGED_DEEPSEEK_API_KEY"),
     FIREWORKS_API_KEY: env("DUST_MANAGED_FIREWORKS_API_KEY"),
     XAI_API_KEY: env("DUST_MANAGED_XAI_API_KEY"),

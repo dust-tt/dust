@@ -8,7 +8,6 @@ import {
   ContentMessage,
   InfoCircle,
   ReverseLeft,
-  ShapesPlus,
 } from "@dust-tt/sparkle";
 import { useState } from "react";
 import { useFormContext } from "react-hook-form";
@@ -22,9 +21,6 @@ export function SkillBuilderInstructionsSection() {
   const { setValue, watch } = useFormContext<SkillBuilderFormData>();
   const { compareVersion, exitDiffMode } = useSkillVersionComparisonContext();
   const [addKnowledge, setAddKnowledge] = useState<(() => void) | null>(null);
-  const [openCapabilities, setOpenCapabilities] = useState<(() => void) | null>(
-    null
-  );
 
   const currentInstructions = watch(INSTRUCTIONS_FIELD_NAME);
   const instructionsDiffer =
@@ -51,10 +47,10 @@ export function SkillBuilderInstructionsSection() {
     <section className="flex flex-col gap-3">
       <div className="flex flex-col items-start justify-between gap-2 sm:flex-row">
         <div className="space-y-1">
-          <h3 className="heading-lg font-semibold text-foreground dark:text-foreground-night">
+          <h3 className="heading-lg font-semibold text-foreground">
             {SKILL_INSTRUCTIONS_LABEL}
           </h3>
-          <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+          <p className="text-sm text-muted-foreground">
             Provide the guidelines the skill should follow when it runs. Type
             "/" to attach knowledge, tools, or another skill.
           </p>
@@ -78,15 +74,6 @@ export function SkillBuilderInstructionsSection() {
               disabled={!addKnowledge}
             />
           )}
-          {!compareVersion && (
-            <Button
-              variant="primary"
-              label="Attach capabilities"
-              icon={ShapesPlus}
-              onClick={openCapabilities ?? undefined}
-              disabled={!openCapabilities}
-            />
-          )}
         </div>
       </div>
       {(currentInstructions?.length ?? 0) >
@@ -103,7 +90,6 @@ export function SkillBuilderInstructionsSection() {
       )}
       <SkillBuilderInstructionsEditor
         onAddKnowledge={(fn) => setAddKnowledge(() => fn)}
-        onOpenCapabilities={(fn) => setOpenCapabilities(() => fn)}
       />
     </section>
   );

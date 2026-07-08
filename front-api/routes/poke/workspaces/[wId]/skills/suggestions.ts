@@ -64,7 +64,6 @@ app.post(
         agentFacingDescription,
         instructions,
         icon: skillIcon,
-        extendedSkillId: null,
         isDefault: false,
       },
       {

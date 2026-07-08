@@ -2,6 +2,7 @@ import { MCPError } from "@app/lib/actions/mcp_errors";
 import type { ToolHandlers } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { getAgentDataSourceConfigurations } from "@app/lib/actions/mcp_internal_actions/tools/utils";
+import { isAgentLoopRunContext } from "@app/lib/actions/types";
 import {
   getAvailableWarehouses,
   getWarehouseNodes,
@@ -21,12 +22,16 @@ import logger from "@app/logger/logger";
 import { CoreAPI } from "@app/types/core/core_api";
 import { Err, Ok } from "@app/types/shared/result";
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
+import assert from "assert";
 
 const DEFAULT_LIMIT = 50;
 const MAX_LIMIT = 100;
 
 const handlers: ToolHandlers<typeof DATA_WAREHOUSES_TOOLS_METADATA> = {
   list: async ({ nodeId, limit, nextPageCursor, dataSources }, { auth }) => {
+    const effectiveNodeId = !!nodeId ? nodeId : null;
+    const effectiveCursor = !!nextPageCursor ? nextPageCursor : undefined;
+
     // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     const effectiveLimit = Math.min(limit || DEFAULT_LIMIT, MAX_LIMIT);
 
@@ -46,15 +51,15 @@ const handlers: ToolHandlers<typeof DATA_WAREHOUSES_TOOLS_METADATA> = {
     const agentDataSourceConfigurations = dataSourceConfigurationsResult.value;
 
     const result =
-      nodeId === null
+      effectiveNodeId === null
         ? await getAvailableWarehouses(auth, agentDataSourceConfigurations, {
             limit: effectiveLimit,
-            nextPageCursor,
+            nextPageCursor: effectiveCursor,
           })
         : await getWarehouseNodes(auth, agentDataSourceConfigurations, {
-            nodeId,
+            nodeId: effectiveNodeId,
             limit: effectiveLimit,
-            nextPageCursor,
+            nextPageCursor: effectiveCursor,
           });
 
     if (result.isErr()) {
@@ -67,7 +72,7 @@ const handlers: ToolHandlers<typeof DATA_WAREHOUSES_TOOLS_METADATA> = {
       {
         type: "resource" as const,
         resource: makeBrowseResource({
-          nodeId,
+          nodeId: effectiveNodeId,
           nodes,
           nextPageCursor: newCursor,
           resultCount: dataSources.length,
@@ -80,6 +85,9 @@ const handlers: ToolHandlers<typeof DATA_WAREHOUSES_TOOLS_METADATA> = {
     { query, rootNodeId, limit, nextPageCursor, dataSources },
     { auth }
   ) => {
+    const effectiveRootNodeId = !!rootNodeId ? rootNodeId : null;
+    const effectiveCursor = !!nextPageCursor ? nextPageCursor : undefined;
+
     // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     const effectiveLimit = Math.min(limit || DEFAULT_LIMIT, MAX_LIMIT);
 
@@ -102,10 +110,10 @@ const handlers: ToolHandlers<typeof DATA_WAREHOUSES_TOOLS_METADATA> = {
       auth,
       agentDataSourceConfigurations,
       {
-        nodeId: rootNodeId ?? null,
+        nodeId: effectiveRootNodeId,
         query,
         limit: effectiveLimit,
-        nextPageCursor,
+        nextPageCursor: effectiveCursor,
       }
     );
 
@@ -119,7 +127,7 @@ const handlers: ToolHandlers<typeof DATA_WAREHOUSES_TOOLS_METADATA> = {
       {
         type: "resource" as const,
         resource: makeBrowseResource({
-          nodeId: rootNodeId ?? null,
+          nodeId: effectiveRootNodeId,
           nodes,
           nextPageCursor: newCursor,
           resultCount: dataSources.length,
@@ -197,15 +205,15 @@ const handlers: ToolHandlers<typeof DATA_WAREHOUSES_TOOLS_METADATA> = {
 
   query: async (
     { dataSources, tableIds, query, fileName },
-    { auth, agentLoopContext }
+    { auth, toolContext }
   ) => {
-    if (!agentLoopContext?.runContext) {
-      return new Err(
-        new MCPError("Missing agentLoopContext for file generation")
-      );
-    }
+    // TODO(spolu): move query CSV output to DFS
+    assert(
+      isAgentLoopRunContext(toolContext?.runContext),
+      "AgentLoopRunContext expected"
+    );
 
-    const agentLoopRunContext = agentLoopContext.runContext;
+    const agentLoopRunContext = toolContext.runContext;
 
     const dataSourceConfigurationsResult =
       await getAgentDataSourceConfigurations(

@@ -48,7 +48,7 @@ export function PanelAgentStep({
               animationDurationSeconds={0.3}
               delimiter=" "
               forcedTextSize="text-sm"
-              textColor="text-muted-foreground dark:text-muted-foreground-night"
+              textColor="text-muted-foreground"
               isLastMessage={false}
             />
           </ContentMessage>
@@ -64,7 +64,7 @@ export function PanelAgentStep({
                 <Markdown
                   content={entry.content}
                   forcedTextSize="text-sm"
-                  textColor="text-muted-foreground dark:text-muted-foreground-night"
+                  textColor="text-muted-foreground"
                   isLastMessage={false}
                 />
               </ContentMessage>

@@ -26,13 +26,6 @@ type CreateSkillOverrides = Partial<{
 }>;
 
 export class SkillFactory {
-  static withExtendedSkill(
-    skill: SkillResource,
-    extendedSkill: SkillResource | null = null
-  ): SkillResource & { extendedSkill: SkillResource | null } {
-    return Object.assign(Object.create(skill), { extendedSkill });
-  }
-
   static async create(
     auth: Authenticator,
     overrides: CreateSkillOverrides = {}

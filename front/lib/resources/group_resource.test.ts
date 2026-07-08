@@ -158,6 +158,57 @@ describe("GroupResource", () => {
     });
   });
 
+  describe("listGroupNamesByUserModelIdInWorkspace", () => {
+    it("returns regular + provisioned group names per user, sorted, excluding global", async () => {
+      const user2 = await UserFactory.basic();
+      await MembershipFactory.associate(workspace, user2, { role: "user" });
+      const user3 = await UserFactory.basic();
+      await MembershipFactory.associate(workspace, user3, { role: "user" });
+
+      const sales = await GroupResource.makeNew({
+        name: "Sales",
+        workspaceId: workspace.id,
+        kind: "regular",
+      });
+      await sales.dangerouslyAddMembers(authenticator, {
+        users: [user.toJSON()],
+      });
+      // Provisioned groups are synced from WorkOS; members are seeded directly.
+      await GroupResource.makeNew(
+        {
+          name: "Engineering",
+          workspaceId: workspace.id,
+          kind: "provisioned",
+          workOSGroupId: "fake-eng-group",
+        },
+        { memberIds: [user.id, user2.id] }
+      );
+
+      const result = await GroupResource.listGroupNamesByUserModelIdInWorkspace(
+        {
+          workspace,
+          userModelIds: [user.id, user2.id, user3.id],
+        }
+      );
+
+      // user is implicitly in the global group, which must be excluded.
+      expect(result.get(user.id)).toEqual(["Engineering", "Sales"]);
+      expect(result.get(user2.id)).toEqual(["Engineering"]);
+      expect(result.has(user3.id)).toBe(false);
+    });
+
+    it("returns an empty map when no user ids are given", async () => {
+      const result = await GroupResource.listGroupNamesByUserModelIdInWorkspace(
+        {
+          workspace,
+          userModelIds: [],
+        }
+      );
+
+      expect(result.size).toBe(0);
+    });
+  });
+
   describe("dangerouslyListUserGroupsForAuth caching", () => {
     it("returns groups for authenticated user", async () => {
       const regularGroup = await GroupResource.makeNew({
@@ -568,6 +619,107 @@ describe("GroupResource", () => {
         await transaction.rollback();
         throw err;
       }
+    });
+  });
+
+  describe("updatePoolCap", () => {
+    it("persists a cap and clears it with null", async () => {
+      const regularGroup = await GroupResource.makeNew({
+        name: "Pool Cap Group",
+        workspaceId: workspace.id,
+        kind: "regular",
+      });
+      expect(regularGroup.poolCapAwuCredits).toBeNull();
+
+      const setResult = await regularGroup.updatePoolCap(authenticator, 5000);
+      expect(setResult.isOk()).toBe(true);
+
+      const afterSet = await GroupResource.fetchById(
+        authenticator,
+        regularGroup.sId
+      );
+      if (afterSet.isErr()) {
+        throw afterSet.error;
+      }
+      expect(afterSet.value.poolCapAwuCredits).toBe(5000);
+
+      const clearResult = await regularGroup.updatePoolCap(authenticator, null);
+      expect(clearResult.isOk()).toBe(true);
+
+      const afterClear = await GroupResource.fetchById(
+        authenticator,
+        regularGroup.sId
+      );
+      if (afterClear.isErr()) {
+        throw afterClear.error;
+      }
+      expect(afterClear.value.poolCapAwuCredits).toBeNull();
+    });
+  });
+
+  describe("listMaxPoolCapAwuCreditsByUserModelIdInWorkspace", () => {
+    it("returns the highest cap across a user's provisioned groups, ignoring uncapped and non-provisioned groups", async () => {
+      const user2 = await UserFactory.basic();
+      await MembershipFactory.associate(workspace, user2, { role: "user" });
+
+      // Provisioned groups are synced from WorkOS; members are seeded directly.
+      const capped500 = await GroupResource.makeNew(
+        {
+          name: "Capped 500",
+          workspaceId: workspace.id,
+          kind: "provisioned",
+          workOSGroupId: "fake-capped-500",
+        },
+        { memberIds: [user.id] }
+      );
+      await capped500.updatePoolCap(authenticator, 500);
+
+      const capped800 = await GroupResource.makeNew(
+        {
+          name: "Capped 800",
+          workspaceId: workspace.id,
+          kind: "provisioned",
+          workOSGroupId: "fake-capped-800",
+        },
+        { memberIds: [user.id] }
+      );
+      await capped800.updatePoolCap(authenticator, 800);
+
+      // Uncapped group: user2 belongs only here, so they have no group cap.
+      await GroupResource.makeNew(
+        {
+          name: "Uncapped",
+          workspaceId: workspace.id,
+          kind: "provisioned",
+          workOSGroupId: "fake-uncapped",
+        },
+        { memberIds: [user.id, user2.id] }
+      );
+
+      // Regular (Space-backed) groups are not cap-eligible: even with a higher
+      // cap, they must not contribute to any member's group cap.
+      const regularGroup = await GroupResource.makeNew(
+        {
+          name: "Regular capped",
+          workspaceId: workspace.id,
+          kind: "regular",
+        },
+        { memberIds: [user.id, user2.id] }
+      );
+      await regularGroup.updatePoolCap(authenticator, 10_000);
+
+      const result =
+        await GroupResource.listMaxPoolCapAwuCreditsByUserModelIdInWorkspace({
+          workspace,
+          userModelIds: [user.id, user2.id],
+        });
+
+      // user is in both capped provisioned groups → the highest cap wins; the
+      // regular group's higher cap is ignored.
+      expect(result.get(user.id)).toBe(800);
+      // user2 is only in uncapped/non-eligible groups → absent (falls back to
+      // the workspace default).
+      expect(result.has(user2.id)).toBe(false);
     });
   });
 

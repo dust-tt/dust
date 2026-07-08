@@ -4,14 +4,30 @@ import {
 } from "@app/lib/api/assistant/conversation/permissions";
 import { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
+import {
+  AgentMessageModel,
+  MessageModel,
+  UserMessageModel,
+} from "@app/lib/models/agent/conversation";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
+import { UserResource } from "@app/lib/resources/user_resource";
 import { withTransaction } from "@app/lib/utils/sql_utils";
+import type { PodConversationListItemType } from "@app/types/api/assistant/conversation/spaces";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
-import { isPodConversation } from "@app/types/assistant/conversation";
+import {
+  getConversationDisplayTitle,
+  HIDDEN_MESSAGE_ORIGINS,
+  isPodConversation,
+} from "@app/types/assistant/conversation";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
-import type { Transaction } from "sequelize";
+import { removeNulls } from "@app/types/shared/utils/general";
+import uniq from "lodash/uniq";
+import uniqBy from "lodash/uniqBy";
+import type { Transaction, WhereOptions } from "sequelize";
+import { Op } from "sequelize";
+import { getAgentConfigurations } from "../assistant/configuration/agent";
 
 export async function moveConversationToProject(
   auth: Authenticator,
@@ -237,4 +253,185 @@ export async function moveConversationOutOfProject(
   }
 
   return new Ok(undefined);
+}
+
+export async function toPodConversationListItem(
+  auth: Authenticator,
+  { conversations }: { conversations: ConversationResource[] }
+): Promise<PodConversationListItemType[]> {
+  if (conversations.length === 0) {
+    return [];
+  }
+  const where: WhereOptions<MessageModel> = {
+    workspaceId: auth.getNonNullableWorkspace().id,
+    conversationId: {
+      [Op.in]: conversations.map((conv) => conv.id),
+    },
+    visibility: "visible",
+    branchId: null,
+    [Op.or]: [
+      {
+        userMessageId: {
+          [Op.not]: null,
+        },
+        "$userMessage.userContextOrigin$": {
+          [Op.notIn]: HIDDEN_MESSAGE_ORIGINS,
+        },
+      },
+      {
+        agentMessageId: {
+          [Op.not]: null,
+        },
+        "$agentMessage.status$": {
+          [Op.eq]: "succeeded",
+        },
+      },
+    ],
+  };
+
+  const rawMessages = await MessageModel.findAll({
+    where,
+    include: [
+      {
+        model: UserMessageModel,
+        as: "userMessage",
+        required: false,
+        attributes: [
+          "id",
+          "userId",
+          "content",
+          "userContextFullName",
+          "userContextProfilePictureUrl",
+        ],
+      },
+      {
+        model: AgentMessageModel,
+        as: "agentMessage",
+        required: false,
+        attributes: ["id", "completedAt", "agentConfigurationId"],
+      },
+    ],
+    attributes: ["id", "conversationId", "rank", "version", "updatedAt"],
+    // Latest version first within each rank so we can keep one row per rank below.
+    order: [
+      ["rank", "ASC"],
+      ["version", "DESC"],
+    ],
+  });
+
+  // Messages can have multiple versions at the same rank (e.g. agent retries).
+  // Keep only the latest version per (conversationId, rank); same pattern as
+  // reaction_update.ts and branches.ts.
+  const latestMessages: MessageModel[] = [];
+  const seenRankByConversationId = new Map<number, Set<number>>();
+  for (const message of rawMessages) {
+    const seenRanks =
+      seenRankByConversationId.get(message.conversationId) ?? new Set<number>();
+    if (seenRanks.has(message.rank)) {
+      continue;
+    }
+    seenRanks.add(message.rank);
+    seenRankByConversationId.set(message.conversationId, seenRanks);
+    latestMessages.push(message);
+  }
+
+  const rawMessagesByConversationId = latestMessages.reduce(
+    (acc, message) => {
+      acc[message.conversationId] = [
+        ...(acc[message.conversationId] || []),
+        message,
+      ];
+      return acc;
+    },
+    {} as Record<number, MessageModel[]>
+  );
+
+  const [users, agents] = await Promise.all([
+    UserResource.fetchByModelIds(
+      uniq(
+        removeNulls(
+          latestMessages.map((message) => message.userMessage?.userId)
+        )
+      )
+    ),
+    getAgentConfigurations(auth, {
+      agentIds: uniq(
+        removeNulls(
+          latestMessages.map(
+            (message) => message.agentMessage?.agentConfigurationId
+          )
+        )
+      ),
+      variant: "extra_light",
+      // We already checked the permissions for the space conversations.
+      // We need to skip the permission filtering as we don't want to filter agents that might be using restricted spaces now.
+      dangerouslySkipPermissionFiltering: true,
+    }),
+  ]);
+
+  return removeNulls(
+    conversations.map((conv) => {
+      const convJSON = conv.toJSON();
+      const firstUserMessage = rawMessagesByConversationId[conv.id]?.find(
+        (message) => !!message.userMessage
+      );
+      const avatars = removeNulls(
+        (rawMessagesByConversationId[conv.id] ?? []).map((message) => {
+          if (message.userMessage) {
+            const user = users.find(
+              (user) => user.id === message.userMessage!.userId
+            );
+            return user
+              ? {
+                  name:
+                    user.fullName() ??
+                    message.userMessage?.userContextFullName ??
+                    "",
+                  visual:
+                    user.imageUrl ??
+                    message.userMessage?.userContextProfilePictureUrl ??
+                    "",
+                  isRounded: true,
+                }
+              : {
+                  name: message.userMessage?.userContextFullName ?? "",
+                  visual:
+                    message.userMessage?.userContextProfilePictureUrl ?? "",
+                  isRounded: false,
+                };
+          }
+
+          const agent = agents.find(
+            (agent) => agent.sId === message.agentMessage?.agentConfigurationId
+          );
+          return agent
+            ? {
+                name: agent.name ?? "",
+                visual: agent.pictureUrl ?? "",
+                isRounded: false,
+              }
+            : null;
+        })
+      );
+
+      return {
+        id: conv.sId,
+        title: getConversationDisplayTitle(convJSON),
+        created: conv.createdAt.getTime(),
+        updated: conv.updatedAt.getTime(),
+        replyCount: (rawMessagesByConversationId[conv.id]?.length ?? 1) - 1,
+        unreadMessageCount:
+          rawMessagesByConversationId[conv.id]?.filter(
+            (message) =>
+              (message.agentMessage?.completedAt?.getTime() ??
+                message.updatedAt.getTime()) >
+              (convJSON.lastReadMs ?? Date.now())
+          ).length ?? 0,
+        description: firstUserMessage?.userMessage?.content ?? "",
+        creator: avatars[0],
+        avatars: uniqBy(avatars.slice(1).reverse(), "name"),
+        isRunningAgentLoop: conv.isRunningAgentLoop,
+      };
+    })
+  );
 }

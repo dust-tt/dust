@@ -1,21 +1,16 @@
 import type {
-  AwuUsageGroupByType,
-  GetAwuUsageResponse,
-} from "@app/lib/api/analytics/awu_usage";
-import type {
-  GetMetronomeUsageResponse,
-  MetronomeUsageGroupByType,
-} from "@app/lib/api/analytics/metronome_usage";
+  AnalyticsScopeFilter,
+  AwuUsageAnalyticsResponse,
+} from "@app/lib/api/analytics/awu_usage_analytics";
 import type {
   GetWorkspaceProgrammaticCostResponse,
   GroupByType,
 } from "@app/lib/api/analytics/programmatic_cost";
-import type { WindowSize } from "@app/lib/api/analytics/time_utils";
-import type { AwuPoolSummaryResponseBody } from "@app/lib/api/credits/awu_pool_summary";
 import type { GetMembersUsageResponseBody } from "@app/lib/api/credits/members_usage";
-import type { PokeListCreditsResponseBody } from "@app/lib/api/poke/credits";
 import { emptyArray, useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type { PokeConditionalFetchProps } from "@app/poke/swr/types";
+import type { AwuPoolSummaryResponseBody } from "@app/types/api/credits/awu_pool_summary";
+import type { PokeListCreditsResponseBody } from "@app/types/api/poke/credits";
 import type { Fetcher } from "swr";
 
 export type PokeCreditsData = {
@@ -96,93 +91,42 @@ export function usePokeProgrammaticCost({
   };
 }
 
-export function usePokeMetronomeUsage({
+export function usePokeAwuUsageFromAnalytics({
   owner,
   groupBy,
   groupByCount,
-  selectedPeriod,
-  billingCycleStartDay,
-  windowSize,
+  granularity,
+  days,
+  filter,
   disabled,
 }: PokeConditionalFetchProps & {
-  groupBy?: MetronomeUsageGroupByType;
+  groupBy?: "usage_type" | "agent" | "user" | "origin" | "api_key";
   groupByCount?: number;
-  selectedPeriod?: string;
-  billingCycleStartDay: number;
-  windowSize?: WindowSize;
+  granularity?: "day" | "week" | "month";
+  days?: number;
+  filter?: AnalyticsScopeFilter;
 }) {
   const { fetcher } = useFetcher();
-  const fetcherFn: Fetcher<GetMetronomeUsageResponse> = fetcher;
+  const fetcherFn: Fetcher<AwuUsageAnalyticsResponse> = fetcher;
 
   const queryParams = new URLSearchParams();
-  queryParams.set("billingCycleStartDay", billingCycleStartDay.toString());
-  if (selectedPeriod) {
-    queryParams.set("selectedPeriod", selectedPeriod);
-  }
   if (groupBy) {
     queryParams.set("groupBy", groupBy);
   }
   if (groupByCount !== undefined) {
     queryParams.set("groupByCount", groupByCount.toString());
   }
-  if (windowSize) {
-    queryParams.set("windowSize", windowSize);
+  if (granularity) {
+    queryParams.set("granularity", granularity);
+  }
+  if (days !== undefined) {
+    queryParams.set("days", days.toString());
+  }
+  if (filter && Object.keys(filter).length > 0) {
+    queryParams.set("filter", JSON.stringify(filter));
   }
   const queryString = queryParams.toString();
-  const key = `/api/poke/workspaces/${owner.sId}/analytics/metronome-usage?${queryString}`;
-
-  const { data, error, isValidating } = useSWRWithDefaults(
-    disabled ? null : key,
-    fetcherFn
-  );
-
-  return {
-    metronomeUsageData: data,
-    isMetronomeUsageLoading: !error && !data && !disabled,
-    isMetronomeUsageError: error,
-    isMetronomeUsageValidating: isValidating,
-  };
-}
-
-export function usePokeAwuUsage({
-  owner,
-  groupBy,
-  groupByCount,
-  selectedPeriod,
-  billingCycleStartDay,
-  windowSize,
-  includeFreeUsage,
-  disabled,
-}: PokeConditionalFetchProps & {
-  groupBy?: AwuUsageGroupByType;
-  groupByCount?: number;
-  selectedPeriod?: string;
-  billingCycleStartDay: number;
-  windowSize?: WindowSize;
-  includeFreeUsage?: boolean;
-}) {
-  const { fetcher } = useFetcher();
-  const fetcherFn: Fetcher<GetAwuUsageResponse> = fetcher;
-
-  const queryParams = new URLSearchParams();
-  queryParams.set("billingCycleStartDay", billingCycleStartDay.toString());
-  if (selectedPeriod) {
-    queryParams.set("selectedPeriod", selectedPeriod);
-  }
-  if (groupBy) {
-    queryParams.set("groupBy", groupBy);
-  }
-  if (groupByCount !== undefined) {
-    queryParams.set("groupByCount", groupByCount.toString());
-  }
-  if (windowSize) {
-    queryParams.set("windowSize", windowSize);
-  }
-  if (includeFreeUsage) {
-    queryParams.set("includeFreeUsage", "true");
-  }
-  const queryString = queryParams.toString();
-  const key = `/api/poke/workspaces/${owner.sId}/analytics/awu-usage?${queryString}`;
+  const key = `/api/poke/workspaces/${owner.sId}/analytics/awu-usage-analytics?${queryString}`;
 
   const { data, error, isValidating } = useSWRWithDefaults(
     disabled ? null : key,

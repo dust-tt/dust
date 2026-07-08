@@ -7,7 +7,7 @@ import {
 import type { Authenticator } from "@app/lib/auth";
 import type { ModelConversationTypeMultiActions } from "@app/types/assistant/generation";
 import { CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG } from "@app/types/assistant/models/anthropic";
-import { GEMINI_2_5_FLASH_MODEL_CONFIG } from "@app/types/assistant/models/google_ai_studio";
+import { GEMINI_3_5_FLASH_MODEL_CONFIG } from "@app/types/assistant/models/google_ai_studio";
 import type { ModelConfigurationType } from "@app/types/assistant/models/types";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -104,8 +104,10 @@ function getFastModelConfigForSummarization(
   if (providers.has("anthropic")) {
     return CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG;
   }
+
   if (providers.has("google_ai_studio")) {
-    return GEMINI_2_5_FLASH_MODEL_CONFIG;
+    return GEMINI_3_5_FLASH_MODEL_CONFIG;
   }
+
   return getSmallWhitelistedModel(auth);
 }

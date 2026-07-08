@@ -7,7 +7,7 @@ const defaultErrorMessageClassName = "text-base text-primary-100";
 function getErrorMessage(domain: string | null, reason: string | null) {
   const headerNode = (
     <Page.Header
-      title={<span className="text-white">We couldn't log you in.</span>}
+      title={<span className="text-primary-50">We couldn't log you in.</span>}
     />
   );
 
@@ -61,7 +61,7 @@ function getErrorMessage(domain: string | null, reason: string | null) {
         <>
           <Page.Header
             title={
-              <span className="text-white">
+              <span className="text-primary-50">
                 Keep an eye
                 <br />
                 on your inbox!

@@ -7,19 +7,18 @@ import {
   usePatchSkillSuggestions,
   useSkillSuggestions,
 } from "@app/hooks/useSkillSuggestions";
-import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import type { SkillSuggestionType } from "@app/types/suggestions/skill_suggestion";
-import {
-  Chip,
-  ContentMessage,
-  Lightbulb04,
-  ScrollArea,
-  Spinner,
-} from "@dust-tt/sparkle";
+import { Lightbulb04, ScrollArea, Spinner } from "@dust-tt/sparkle";
 import { useCallback } from "react";
 import { useFormContext } from "react-hook-form";
 
-export function SkillBuilderSuggestionsPanel() {
+interface SkillBuilderSuggestionsPanelProps {
+  disabled?: boolean;
+}
+
+export function SkillBuilderSuggestionsPanel({
+  disabled = false,
+}: SkillBuilderSuggestionsPanelProps) {
   const {
     owner,
     skillId,
@@ -27,8 +26,6 @@ export function SkillBuilderSuggestionsPanel() {
     setSelectedSuggestionId,
     acceptInstructionEdits,
   } = useSkillBuilderContext();
-  const { hasFeature } = useFeatureFlags();
-  const isBetaTester = hasFeature("self_improvement_beta_tester");
   const { getValues, setValue } = useFormContext<SkillBuilderFormData>();
 
   const getSkillInstructionsHtml = useCallback(
@@ -102,6 +99,10 @@ export function SkillBuilderSuggestionsPanel() {
 
   const handleAccept = useCallback(
     async (suggestion: SkillSuggestionType) => {
+      if (disabled) {
+        return;
+      }
+
       const result = await patchSuggestions([suggestion.sId], "approved");
       if (result) {
         acceptInstructionEdits?.(suggestion.sId);
@@ -118,18 +119,23 @@ export function SkillBuilderSuggestionsPanel() {
       applyToolEdits,
       applyAgentFacingDescriptionEdit,
       setSelectedSuggestionId,
+      disabled,
     ]
   );
 
   const handleDecline = useCallback(
     async (suggestion: SkillSuggestionType) => {
+      if (disabled) {
+        return;
+      }
+
       const result = await patchSuggestions([suggestion.sId], "rejected");
       if (result) {
         setSelectedSuggestionId(null);
         await mutateSuggestions();
       }
     },
-    [patchSuggestions, mutateSuggestions, setSelectedSuggestionId]
+    [patchSuggestions, mutateSuggestions, setSelectedSuggestionId, disabled]
   );
 
   const handleSelect = useCallback(
@@ -144,19 +150,10 @@ export function SkillBuilderSuggestionsPanel() {
   return (
     <div className="flex h-full flex-col">
       <div className="flex flex-col gap-1 px-4 pb-3 pt-4">
-        <div className="flex items-center gap-2">
-          <h2 className="heading-lg font-semibold text-foreground dark:text-foreground-night">
-            Suggestions
-          </h2>
-          {isBetaTester && <Chip size="xs" color="golden" label="Beta" />}
-        </div>
-        {isBetaTester && (
-          <ContentMessage variant="info" size="lg">
-            Skill suggestions are currently in beta testing. We are very
-            interested in your feedback to improve the feature.
-          </ContentMessage>
-        )}
-        <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+        <h2 className="heading-lg font-semibold text-foreground">
+          Suggestions
+        </h2>
+        <p className="text-sm text-muted-foreground">
           Dust continuously analyses conversations using this skill to suggest
           improvements.
         </p>
@@ -170,8 +167,8 @@ export function SkillBuilderSuggestionsPanel() {
             </div>
           ) : suggestions.length === 0 ? (
             <div className="flex flex-col items-center gap-3 py-12 text-center">
-              <Lightbulb04 className="text-muted-foreground dark:text-muted-foreground-night" />
-              <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+              <Lightbulb04 className="text-muted-foreground" />
+              <p className="text-sm text-muted-foreground">
                 No pending suggestions.
               </p>
             </div>
@@ -189,6 +186,7 @@ export function SkillBuilderSuggestionsPanel() {
                 isSelected={selectedSuggestionId === suggestion.sId}
                 onSelect={() => handleSelect(suggestion.sId)}
                 workspaceId={owner.sId}
+                disabled={disabled}
               />
             ))
           )}

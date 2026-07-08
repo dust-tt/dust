@@ -7,7 +7,7 @@ import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
 import { describe, expect, it } from "vitest";
 
 describe("toggleFeatureFlagPlugin.execute", () => {
-  it("ensures sandbox MCP server views when enabling sandbox_tools", async () => {
+  it("ensures auto MCP server views when enabling a feature flag", async () => {
     const workspace = await WorkspaceFactory.basic();
     const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
     await SpaceFactory.defaults(auth);
@@ -15,7 +15,7 @@ describe("toggleFeatureFlagPlugin.execute", () => {
     await MCPServerViewResource.ensureAllAutoToolsAreCreated(auth);
 
     const sandboxMCPServerId = autoInternalMCPServerNameToSId({
-      name: "sandbox",
+      name: "sandbox_functions",
       workspaceId: workspace.id,
     });
 
@@ -33,7 +33,7 @@ describe("toggleFeatureFlagPlugin.execute", () => {
     ).resolves.toBeNull();
 
     const enableResult = await toggleFeatureFlagPlugin.execute(auth, null, {
-      features: ["sandbox_tools"],
+      features: ["sandbox_functions"],
     });
 
     expect(enableResult.isOk()).toBe(true);
@@ -63,7 +63,7 @@ describe("toggleFeatureFlagPlugin.execute", () => {
     }
 
     const reenableResult = await toggleFeatureFlagPlugin.execute(auth, null, {
-      features: ["sandbox_tools"],
+      features: ["sandbox_functions"],
     });
     expect(reenableResult.isOk()).toBe(true);
     if (!reenableResult.isOk()) {

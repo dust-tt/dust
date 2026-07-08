@@ -1,6 +1,5 @@
 import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
 import { useSendNotification } from "@app/hooks/useNotification";
-import type { PostConversationsResponseBody } from "@app/lib/api/assistant/conversation/types";
 import { useClientType } from "@app/lib/context/clientType";
 import { clientFetch } from "@app/lib/egress/client";
 import { useFetcher } from "@app/lib/swr/swr";
@@ -9,11 +8,12 @@ import logger from "@app/logger/logger";
 import type {
   InternalPostConversationsRequestBodySchema,
   SupportedContentNodeContentType,
-} from "@app/types/api/internal/assistant";
+} from "@app/types/api/assistant";
 import {
   isSupportedContentNodeFragmentContentType,
   PostConversationsResponseBodySchema,
-} from "@app/types/api/internal/assistant";
+} from "@app/types/api/assistant";
+import type { PostConversationsResponseBody } from "@app/types/api/assistant/conversation/types";
 import type {
   ClientMessageOrigin,
   ConversationMetadata,
@@ -22,6 +22,7 @@ import type {
   SubmitMessageError,
 } from "@app/types/assistant/conversation";
 import type { MentionType, RichMention } from "@app/types/assistant/mentions";
+import type { ModelSelectionType } from "@app/types/assistant/models/types";
 import type { ContentFragmentsType } from "@app/types/content_fragment";
 import { isAPIErrorResponse } from "@app/types/error";
 import type { Result } from "@app/types/shared/result";
@@ -64,6 +65,8 @@ export function useCreateConversationWithMessage({
         // Rich mentions used to render optimistic placeholder messages when the
         // first message is deferred and posted from `ConversationViewer`.
         richMentions?: RichMention[];
+        // Optional per-message model override from the input-bar model picker.
+        modelSelection?: ModelSelectionType;
       };
       visibility?: ConversationVisibility;
       title?: string;
@@ -96,6 +99,7 @@ export function useCreateConversationWithMessage({
         selectedMCPServerViewIds,
         origin: messageOrigin,
         richMentions,
+        modelSelection,
       } = messageData;
       const origin = messageOrigin ?? contextOrigin;
 
@@ -145,6 +149,7 @@ export function useCreateConversationWithMessage({
             origin,
             skipToolsValidation,
             profilePictureUrl: user.image,
+            modelSelection,
             onError:
               onError ??
               ((err) => {
@@ -180,6 +185,7 @@ export function useCreateConversationWithMessage({
             origin,
           },
           mentions,
+          modelSelection,
         },
         contentFragments: [
           ...contentFragments.uploaded.map((cf) => ({
@@ -257,6 +263,7 @@ async function postFirstMessageInBackground({
   origin,
   skipToolsValidation,
   profilePictureUrl,
+  modelSelection,
   onError,
 }: {
   workspaceId: string;
@@ -269,6 +276,7 @@ async function postFirstMessageInBackground({
   origin: ClientMessageOrigin;
   skipToolsValidation: boolean;
   profilePictureUrl: string | null;
+  modelSelection?: ModelSelectionType;
   onError?: (err: SubmitMessageError) => void;
 }): Promise<void> {
   const timezone =
@@ -343,6 +351,7 @@ async function postFirstMessageInBackground({
           },
           mentions,
           skipToolsValidation,
+          modelSelection,
         }),
       }
     );

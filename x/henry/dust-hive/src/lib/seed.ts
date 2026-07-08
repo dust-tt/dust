@@ -8,9 +8,9 @@
 // This file only handles sId generation and parameter passing.
 
 import { buildPostgresUri, loadEnvVars } from "./env-utils";
-import type { Environment } from "./environment";
+import { type Environment, getEnvironmentWorktreeDir } from "./environment";
 import { logger } from "./logger";
-import { getEnvFilePath, getWorktreeDir, SEED_USER_PATH } from "./paths";
+import { getEnvFilePath, SEED_USER_PATH } from "./paths";
 import { buildShell, shellQuote } from "./shell";
 
 // Keep in sync with front/scripts/seed/* (workspace created by dust-hive seed SQL).
@@ -193,7 +193,7 @@ export async function runSqlSeed(env: Environment): Promise<boolean> {
   const username = config.username ?? config.email.split("@")[0];
 
   // Read the SQL file from front (single source of truth)
-  const worktreePath = getWorktreeDir(env.name, env.metadata.repoRoot);
+  const worktreePath = getEnvironmentWorktreeDir(env.metadata);
   const sqlPath = `${worktreePath}/front/lib/dev/dust_hive_seed.sql`;
   const sqlFile = Bun.file(sqlPath);
   if (!(await sqlFile.exists())) {

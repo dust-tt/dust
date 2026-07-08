@@ -1,5 +1,5 @@
 import { requireEnvironment } from "../lib/commands";
-import { getWorktreeDir } from "../lib/paths";
+import { getEnvironmentWorktreeDir } from "../lib/environment";
 import { Ok, type Result } from "../lib/result";
 
 export async function cdCommand(nameArg: string | undefined): Promise<Result<void>> {
@@ -7,7 +7,7 @@ export async function cdCommand(nameArg: string | undefined): Promise<Result<voi
   if (!envResult.ok) return envResult;
 
   const env = envResult.value;
-  const worktreePath = getWorktreeDir(env.name, env.metadata.repoRoot);
+  const worktreePath = getEnvironmentWorktreeDir(env.metadata);
 
   // When called via the `dh cd` shell wrapper, DUST_HIVE_CD_FILE is set.
   // Write the path to that file so the wrapper can cd without capturing stdout

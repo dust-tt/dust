@@ -45,6 +45,179 @@ describe("getToolDisplayLabels", () => {
       done: "List issues on Linear",
     });
   });
+
+  it("infers data source file reads from GitHub issue node IDs", () => {
+    expect(
+      getToolDisplayLabels({
+        internalMCPServerName: "data_sources_file_system",
+        toolName: "cat",
+        inputs: {
+          nodeId: "github-issue-693580871-9196",
+        },
+      })
+    ).toEqual({
+      running: "Reading GitHub issue #9196",
+      done: "Read GitHub issue #9196",
+    });
+  });
+
+  it("keeps pagination details when the data source file target is inferred", () => {
+    expect(
+      getToolDisplayLabels({
+        internalMCPServerName: "data_sources_file_system",
+        toolName: "cat",
+        inputs: {
+          nodeId: "github-issue-693580871-9196",
+          limit: 100,
+        },
+      })
+    ).toEqual({
+      running: "Reading GitHub issue #9196 (first ~100 characters)",
+      done: "Read GitHub issue #9196 (first ~100 characters)",
+    });
+  });
+
+  it("uses inferred data source file targets for grep labels", () => {
+    expect(
+      getToolDisplayLabels({
+        internalMCPServerName: "data_sources_file_system",
+        toolName: "cat",
+        inputs: {
+          nodeId: "zendesk-ticket-12-34-567",
+          grep: "timeout",
+        },
+      })
+    ).toEqual({
+      running: "Searching for “timeout” in Zendesk ticket #567",
+      done: "Search for “timeout” in Zendesk ticket #567",
+    });
+
+    expect(
+      getToolDisplayLabels({
+        internalMCPServerName: "data_sources_file_system",
+        toolName: "cat",
+        inputs: {
+          nodeId: "zendesk-article-12-34-987654321",
+        },
+      })
+    ).toEqual({
+      running: "Reading Zendesk article #987654321",
+      done: "Read Zendesk article #987654321",
+    });
+  });
+
+  it.each([
+    ["gdrive-abc123", "Google Drive file"],
+    ["gdrive-sharedWithMe", "Google Drive shared with me"],
+    ["notion-unknown", "Notion orphaned resources"],
+    ["project-context-folder", "Dust project context"],
+    ["intercom-teams-12", "Intercom conversations"],
+    ["intercom-team-12-team_abc", "Intercom team"],
+    ["zendesk-brand-12-34", "Zendesk brand"],
+    ["microsoft-anything-opaque", "Microsoft content"],
+    ["gong-transcript-folder-12", "Gong transcripts"],
+    ["dpd_1234567890abcdef", "Dust project folder"],
+  ])("uses provider labels for data source file node ID %s", (nodeId, target) => {
+    expect(
+      getToolDisplayLabels({
+        internalMCPServerName: "data_sources_file_system",
+        toolName: "cat",
+        inputs: {
+          nodeId,
+        },
+      })
+    ).toEqual({
+      running: `Reading ${target}`,
+      done: `Read ${target}`,
+    });
+  });
+
+  it("does not show opaque IDs in data source file labels", () => {
+    expect(
+      getToolDisplayLabels({
+        internalMCPServerName: "data_sources_file_system",
+        toolName: "cat",
+        inputs: {
+          nodeId: "slack-channel-C05V0P20A72",
+        },
+      })
+    ).toEqual({
+      running: "Reading Slack channel",
+      done: "Read Slack channel",
+    });
+
+    expect(
+      getToolDisplayLabels({
+        internalMCPServerName: "data_sources_file_system",
+        toolName: "cat",
+        inputs: {
+          nodeId: "salesforce-synced-query-document-12-34-001ABC",
+        },
+      })
+    ).toEqual({
+      running: "Reading Salesforce record",
+      done: "Read Salesforce record",
+    });
+  });
+
+  it("keeps generic data source file labels for unrecognized node IDs", () => {
+    expect(
+      getToolDisplayLabels({
+        internalMCPServerName: "data_sources_file_system",
+        toolName: "cat",
+        inputs: {
+          nodeId: "unknown-node",
+        },
+      })
+    ).toEqual({
+      running: "Reading file",
+      done: "Read file",
+    });
+  });
+
+  it("labels a HubSpot search by object type", () => {
+    expect(
+      getToolDisplayLabels({
+        internalMCPServerName: "hubspot",
+        toolName: "search_crm_objects",
+        inputs: { objectType: "companies" },
+      })
+    ).toEqual({
+      running: "Searching HubSpot companies",
+      done: "Search HubSpot companies",
+    });
+  });
+
+  it("labels a HubSpot id lookup as a retrieval", () => {
+    expect(
+      getToolDisplayLabels({
+        internalMCPServerName: "hubspot",
+        toolName: "search_crm_objects",
+        inputs: {
+          objectType: "contacts",
+          filters: [
+            { propertyName: "hs_object_id", operator: "EQ", value: "1" },
+          ],
+        },
+      })
+    ).toEqual({
+      running: "Retrieving HubSpot contacts",
+      done: "Retrieve HubSpot contacts",
+    });
+  });
+
+  it("includes the free-text query in a HubSpot search label", () => {
+    expect(
+      getToolDisplayLabels({
+        internalMCPServerName: "hubspot",
+        toolName: "search_crm_objects",
+        inputs: { objectType: "deals", query: "acme renewal" },
+      })
+    ).toEqual({
+      running: "Searching HubSpot deals “acme renewal”",
+      done: "Search HubSpot deals “acme renewal”",
+    });
+  });
 });
 
 describe("getStaticToolDisplayLabelsFromFunctionCallName", () => {

@@ -18,16 +18,11 @@ import type { PatchDataSourceViewType } from "@app/types/api/public/spaces";
 import type { ContentNodesViewType } from "@app/types/connectors/content_nodes";
 import { ContentNodesViewTypeCodec } from "@app/types/connectors/content_nodes";
 import type { CoreAPIContentNode } from "@app/types/core/content_node";
-import type {
-  CoreAPIDatasourceViewFilter,
-  SearchWarningCode,
-} from "@app/types/core/core_api";
+import type { CoreAPIDatasourceViewFilter } from "@app/types/core/core_api";
 import { CoreAPI } from "@app/types/core/core_api";
-import type { CoreAPIDocument } from "@app/types/core/data_source";
-import type { AgentsUsageType, ConnectorType } from "@app/types/data_source";
+import type { AgentsUsageType } from "@app/types/data_source";
 import type {
   DataSourceViewContentNode,
-  DataSourceViewsWithDetails,
   DataSourceViewType,
 } from "@app/types/data_source_view";
 import type { Result } from "@app/types/shared/result";
@@ -372,36 +367,8 @@ export async function listDataSourceViewsWithUsage(
   );
 }
 
-// Contract types for the data source view API endpoints. These are the
-// request/response body shapes used by the data source view API routes
-// under `front-api/routes/.../data_source_views/*`.
-
-export type GetDataSourceViewsResponseBody = {
-  dataSourceViews: DataSourceViewType[];
-};
-
-export type GetSpaceDataSourceViewsResponseBody<
-  IncludeDetails extends boolean = boolean,
-> = {
-  dataSourceViews: IncludeDetails extends true
-    ? DataSourceViewsWithDetails[]
-    : DataSourceViewType[];
-};
-
-export type PostSpaceDataSourceViewsResponseBody = {
-  dataSourceView: DataSourceViewType;
-};
-
-export type GetDataSourceViewResponseBody = {
-  dataSourceView: DataSourceViewType;
-  connector: ConnectorType | null;
-};
-
-export type PatchDataSourceViewResponseBody = {
-  dataSourceView: DataSourceViewType;
-  connector: ConnectorType | null;
-};
-
+// Request schema for the content-nodes endpoints. Kept in lib because it
+// references SortingParamsCodec from `@app/lib/api/pagination`.
 export const GetContentNodesOrChildrenRequestBody = z.object({
   internalIds: z.array(z.string().nullable()).optional(),
   parentId: z.string().optional(),
@@ -417,19 +384,4 @@ export type GetDataSourceViewContentNodes = {
   total: number;
   totalIsAccurate: boolean;
   nextPageCursor: string | null;
-};
-
-export type GetDataSourceViewDocumentResponseBody = {
-  document: CoreAPIDocument;
-};
-
-export type ListTablesResponseBody = {
-  tables: DataSourceViewContentNode[];
-  nextPageCursor: string | null;
-};
-
-export type SearchTablesResponseBody = {
-  tables: DataSourceViewContentNode[];
-  nextPageCursor: string | null;
-  warningCode: SearchWarningCode | null;
 };

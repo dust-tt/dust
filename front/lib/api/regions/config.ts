@@ -7,11 +7,6 @@ export const REGION_TIMEZONES: Record<RegionType, string> = {
   "us-central1": "America/New_York",
 };
 
-export type GetRegionResponseType = {
-  region: RegionType;
-  regionUrls: Record<RegionType, string>;
-};
-
 export const config = {
   getCurrentRegion: (): RegionType => {
     return EnvironmentConfig.getEnvVariable("REGION") as RegionType;
@@ -30,6 +25,9 @@ export const config = {
     return region === "europe-west1"
       ? EnvironmentConfig.getEnvVariable("DUST_EU_URL")
       : EnvironmentConfig.getEnvVariable("DUST_US_URL");
+  },
+  isMainRegion(): boolean {
+    return this.getCurrentRegion() === "us-central1";
   },
   getOtherRegionInfo(): RegionInfo {
     const currentRegion = this.getCurrentRegion();

@@ -35,7 +35,7 @@ const MOBILE_FORKED_TITLE_TRUNCATE_LENGTH = 35;
 export function ConversationTitle({ owner }: { owner: WorkspaceType }) {
   const activeConversationId = useActiveConversationId();
   const { user } = useAuth();
-  const { openPanel } = useConversationSidePanelContext();
+  const { togglePanel } = useConversationSidePanelContext();
   const { conversation } = useConversation({
     conversationId: activeConversationId,
     workspaceId: owner.sId,
@@ -131,7 +131,7 @@ export function ConversationTitle({ owner }: { owner: WorkspaceType }) {
   return (
     <AppLayoutTitle>
       <div
-        className="grid h-full min-w-0 max-w-full grid-cols-[1fr,auto] items-center gap-3"
+        className="grid h-full min-w-0 max-w-full grid-cols-[1fr_auto] items-center gap-3"
         onContextMenu={handleRightClick}
       >
         <div
@@ -174,7 +174,7 @@ export function ConversationTitle({ owner }: { owner: WorkspaceType }) {
             label={isMobile ? undefined : "Files"}
             icon={Folder}
             variant="ghost"
-            onClick={() => openPanel({ type: "files" })}
+            onClick={() => togglePanel({ type: "files" })}
           />
           <ConversationMenu
             activeConversationId={activeConversationId}

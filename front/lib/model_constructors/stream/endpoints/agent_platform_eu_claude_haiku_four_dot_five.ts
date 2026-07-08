@@ -1,9 +1,9 @@
 import { WithAnthropicClaudeHaikuFourDotFiveConfig } from "@app/lib/model_constructors/providers/anthropic/models/claude_haiku_four_dot_five";
-import { AgentPlatformStream } from "@app/lib/model_constructors/stream/clients/agent_platform";
+import { AnthropicAgentPlatformStream } from "@app/lib/model_constructors/stream/clients/anthropic_agent_platform";
 import type { StreamEndpointConstructor } from "@app/lib/model_constructors/stream/configuration";
 
 export class AgentPlatformEuropeClaudeHaikuFourDotFiveStream extends WithAnthropicClaudeHaikuFourDotFiveConfig(
-  AgentPlatformStream
+  AnthropicAgentPlatformStream
 ) {
   // Vertex regional/multi-region endpoints add a 10% premium over global.
   // https://platform.claude.com/docs/en/about-claude/pricing

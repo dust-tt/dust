@@ -2151,6 +2151,48 @@ export const DEFAULT_REMOTE_MCP_SERVERS: DefaultRemoteMCPServerConfig[] = [
     },
   },
   {
+    id: 10028,
+    name: "Youtrust",
+    description:
+      "Youtrust tools for e-signature — search signature requests and templates, create draft requests from templates, and send them to signers.",
+    url: "https://api.yousign.app/mcp",
+    icon: "YoutrustLogo",
+    documentationUrl:
+      "https://help.yousign.app/en/articles/673715-connect-youtrust-to-your-ai-agent",
+    connectionInstructions:
+      "Youtrust uses OAuth 2.1 with dynamic client registration. You will be prompted to sign in with your Youtrust account in a browser window to authorize access.",
+    authMethod: "oauth-dynamic",
+    toolStakes: {
+      "search-signature-requests": "never_ask",
+      "get-signature-request-activity-feed": "never_ask",
+      "search-templates": "never_ask",
+      "create-signature-request-from-template": "low",
+      "send-signature-request": "high",
+    },
+    toolDisplayLabels: {
+      "search-signature-requests": {
+        running: "Searching signature requests on Youtrust",
+        done: "Searched signature requests on Youtrust",
+      },
+      "get-signature-request-activity-feed": {
+        running: "Fetching activity feed on Youtrust",
+        done: "Fetched activity feed on Youtrust",
+      },
+      "search-templates": {
+        running: "Searching templates on Youtrust",
+        done: "Searched templates on Youtrust",
+      },
+      "create-signature-request-from-template": {
+        running: "Creating signature request draft on Youtrust",
+        done: "Created signature request draft on Youtrust",
+      },
+      "send-signature-request": {
+        running: "Sending signature request on Youtrust",
+        done: "Sent signature request on Youtrust",
+      },
+    },
+  },
+  {
     id: 10027,
     name: "Adomik",
     description:

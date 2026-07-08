@@ -3,12 +3,12 @@ import {
   CONVERSATION_FILES_SERVER_NAME,
   CONVERSATION_LIST_FILES_ACTION_NAME,
 } from "@app/lib/api/actions/servers/conversation_files/metadata";
-import type { ConversationAttachmentType } from "@app/lib/api/assistant/conversation/attachments";
 import { getJITServers } from "@app/lib/api/assistant/jit_actions";
 import type { Authenticator } from "@app/lib/auth";
+import { getSupportedModelConfig } from "@app/lib/llms/model_configurations";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
-import { projectsSkill } from "@app/lib/resources/skill/code_defined/projects";
-import { sandboxSkill } from "@app/lib/resources/skill/code_defined/sandbox";
+import { projectsSkill } from "@app/lib/resources/skill/code_defined/global/projects";
+import { sandboxSkill } from "@app/lib/resources/skill/code_defined/global/sandbox";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
@@ -18,6 +18,7 @@ import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { FileFactory } from "@app/tests/utils/FileFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { SkillFactory } from "@app/tests/utils/SkillFactory";
+import type { ConversationAttachmentType } from "@app/types/api/assistant/conversation/attachments";
 import type { AgentConfigurationType } from "@app/types/assistant/agent";
 import type { ConversationType } from "@app/types/assistant/conversation";
 import type { WorkspaceType } from "@app/types/user";
@@ -57,7 +58,7 @@ describe("getJITServers", () => {
 
   describe("basic MCP servers", () => {
     it("should return common_utilities MCP server when no attachments", async () => {
-      const { servers: jitServers } = await getJITServers(auth, {
+      const jitServers = await getJITServers(auth, {
         agentConfiguration: agentConfig,
         conversation,
         attachments: [],
@@ -70,6 +71,22 @@ describe("getJITServers", () => {
       expect(commonUtilitiesServer).toBeDefined();
       expect(commonUtilitiesServer?.type).toBe("mcp_server_configuration");
       expect(commonUtilitiesServer?.mcpServerViewId).toBeDefined();
+    });
+
+    it("should always return the ask_user_question MCP server", async () => {
+      const jitServers = await getJITServers(auth, {
+        agentConfiguration: agentConfig,
+        conversation,
+        attachments: [],
+      });
+
+      const askUserQuestionServer = jitServers.find(
+        (server) => server.name === "ask_user_question"
+      );
+
+      expect(askUserQuestionServer).toBeDefined();
+      expect(askUserQuestionServer?.type).toBe("mcp_server_configuration");
+      expect(askUserQuestionServer?.mcpServerViewId).toBeDefined();
     });
 
     it("should include conversation_files server when attachments exist", async () => {
@@ -101,7 +118,7 @@ describe("getJITServers", () => {
         },
       ];
 
-      const { servers: jitServers } = await getJITServers(auth, {
+      const jitServers = await getJITServers(auth, {
         agentConfiguration: agentConfig,
         conversation,
         attachments,
@@ -132,7 +149,7 @@ describe("getJITServers", () => {
         agentConfigurationId: agentConfig.id,
       });
 
-      const { servers: jitServers } = await getJITServers(auth, {
+      const jitServers = await getJITServers(auth, {
         agentConfiguration: agentConfig,
         conversation,
         attachments: [],
@@ -161,7 +178,7 @@ describe("getJITServers", () => {
       it("should not include skill_management server when agent has no skills", async () => {
         await MCPServerViewResource.ensureAllAutoToolsAreCreated(auth);
 
-        const { servers: jitServers } = await getJITServers(auth, {
+        const jitServers = await getJITServers(auth, {
           agentConfiguration: agentConfig,
           conversation,
           attachments: [],
@@ -180,7 +197,7 @@ describe("getJITServers", () => {
           globalSkillId: "discover_tools",
           agentConfigurationId: agentConfig.id,
         });
-        const { servers: jitServers } = await getJITServers(auth, {
+        const jitServers = await getJITServers(auth, {
           agentConfiguration: agentConfig,
           conversation,
           attachments: [],
@@ -219,6 +236,48 @@ describe("getJITServers", () => {
       expect(equippedSkills.map((s) => s.sId)).toContain(customSkill.sId);
       expect(equippedSkills.map((s) => s.sId)).not.toContain("discover_tools");
     });
+    it("filters discoverable skills disabled for the current agent loop", async () => {
+      await SkillFactory.linkGlobalSkillToAgent(auth, {
+        globalSkillId: "discover_skills",
+        agentConfigurationId: agentConfig.id,
+      });
+
+      const { userMessage } = await ConversationFactory.createUserMessage({
+        auth,
+        workspace,
+        conversation,
+        content: "Tell someone about this.",
+        origin: "slack",
+        rank: -1,
+      });
+      const { agentMessage } = await ConversationFactory.createAgentMessage(
+        auth,
+        {
+          workspace,
+          conversation,
+          agentConfig,
+        }
+      );
+
+      const { model: agentModel, ...agentConfiguration } = agentConfig;
+      const modelConfig = getSupportedModelConfig(agentModel);
+      if (!modelConfig) {
+        throw new Error("Supported model config should exist");
+      }
+
+      const { equippedSkills } = await SkillResource.listForAgentLoop(auth, {
+        agentConfiguration,
+        model: {
+          ...agentModel,
+          ...modelConfig,
+        },
+        agentMessage,
+        conversation,
+        userMessage,
+      });
+
+      expect(equippedSkills.some((s) => s.sId === "mention_users")).toBe(false);
+    });
   });
 
   describe("projects feature", () => {
@@ -237,7 +296,7 @@ describe("getJITServers", () => {
         spaceId: conversationsSpace.sId,
       };
 
-      const { servers: jitServers } = await getJITServers(auth, {
+      const jitServers = await getJITServers(auth, {
         agentConfiguration: agentConfig,
         conversation: conversationWithSpace,
         attachments: [],
@@ -248,7 +307,7 @@ describe("getJITServers", () => {
       ).toBeUndefined();
     });
 
-    it("should enable projects skill in listForAgentLoop when feature flag is enabled and conversation is in a project", async () => {
+    it("auto-enables projects as a system skill when conversation is in a project", async () => {
       await MCPServerViewResource.ensureAllAutoToolsAreCreated(auth);
 
       const conversationInProject = {
@@ -256,12 +315,16 @@ describe("getJITServers", () => {
         spaceId: conversationsSpace.sId,
       };
 
-      const { enabledSkills } = await SkillResource.listForAgentLoop(auth, {
-        agentConfiguration: agentConfig,
-        conversation: conversationInProject,
-      });
+      const { enabledSkills, systemSkills, equippedSkills } =
+        await SkillResource.listForAgentLoop(auth, {
+          agentConfiguration: agentConfig,
+          conversation: conversationInProject,
+        });
 
-      const projectsSkill = enabledSkills.find((s) => s.sId === "projects");
+      expect(enabledSkills.some((s) => s.sId === "projects")).toBe(false);
+      expect(equippedSkills.some((s) => s.sId === "projects")).toBe(false);
+
+      const projectsSkill = systemSkills.find((s) => s.sId === "projects");
       expect(projectsSkill).toBeDefined();
       const viewNames = projectsSkill?.mcpServerConfigurations.map((c) => {
         const json = c.view.toJSON();
@@ -270,13 +333,15 @@ describe("getJITServers", () => {
       expect(viewNames).toContain("pod_manager");
     });
 
-    it("should not enable projects skill in listForAgentLoop when conversation is not in a project", async () => {
-      const { enabledSkills } = await SkillResource.listForAgentLoop(auth, {
-        agentConfiguration: agentConfig,
-        conversation,
-      });
+    it("should not auto-enable projects skill when conversation is not in a project", async () => {
+      const { enabledSkills, systemSkills } =
+        await SkillResource.listForAgentLoop(auth, {
+          agentConfiguration: agentConfig,
+          conversation,
+        });
 
       expect(enabledSkills.some((s) => s.sId === "projects")).toBe(false);
+      expect(systemSkills.some((s) => s.sId === "projects")).toBe(false);
     });
 
     it("auto-equips the projects skill for any agent", async () => {
@@ -294,7 +359,7 @@ describe("getJITServers", () => {
     it("includes skill_management so agents can enable the projects skill", async () => {
       await MCPServerViewResource.ensureAllAutoToolsAreCreated(auth);
 
-      const { servers: jitServers } = await getJITServers(auth, {
+      const jitServers = await getJITServers(auth, {
         agentConfiguration: agentConfig,
         conversation,
         attachments: [],
@@ -307,8 +372,7 @@ describe("getJITServers", () => {
   });
 
   describe("sandbox (Computer) availability", () => {
-    it("auto-equips the sandbox skill for any agent when sandbox_tools is on", async () => {
-      await FeatureFlagFactory.basic(auth, "sandbox_tools");
+    it("auto-equips the sandbox skill for any agent when Computer is enabled", async () => {
       await MCPServerViewResource.ensureAllAutoToolsAreCreated(auth);
 
       // The test agent does not list the sandbox skill in its configuration.
@@ -325,7 +389,9 @@ describe("getJITServers", () => {
       expect(computerSkill?.instructions).toBe("");
     });
 
-    it("does not equip or enable the sandbox skill when sandbox_tools is off", async () => {
+    it("does not equip or enable the sandbox skill when Computer is disabled", async () => {
+      await FeatureFlagFactory.basic(auth, "disable_computer_feature");
+
       const { enabledSkills, systemSkills, equippedSkills } =
         await SkillResource.listForAgentLoop(auth, {
           agentConfiguration: agentConfig,
@@ -338,7 +404,6 @@ describe("getJITServers", () => {
     });
 
     it("keeps the sandbox skill available for nested sub-agent conversations", async () => {
-      await FeatureFlagFactory.basic(auth, "sandbox_tools");
       await MCPServerViewResource.ensureAllAutoToolsAreCreated(auth);
 
       // run_agent sub-agents run in a child conversation (depth > 0); they get
@@ -354,10 +419,9 @@ describe("getJITServers", () => {
     });
 
     it("includes skill_management so agents can enable the sandbox skill", async () => {
-      await FeatureFlagFactory.basic(auth, "sandbox_tools");
       await MCPServerViewResource.ensureAllAutoToolsAreCreated(auth);
 
-      const { servers: jitServers } = await getJITServers(auth, {
+      const jitServers = await getJITServers(auth, {
         agentConfiguration: agentConfig,
         conversation,
         attachments: [],
@@ -380,7 +444,7 @@ describe("getJITServers", () => {
         workspace.id
       );
 
-      const { servers: jitServers } = await getJITServers(auth, {
+      const jitServers = await getJITServers(auth, {
         agentConfiguration: agentConfig,
         conversation,
         attachments: [],
@@ -398,7 +462,7 @@ describe("getJITServers", () => {
     });
 
     it("should not include schedules_management server for non-onboarding conversations", async () => {
-      const { servers: jitServers } = await getJITServers(auth, {
+      const jitServers = await getJITServers(auth, {
         agentConfiguration: agentConfig,
         conversation,
         attachments: [],
@@ -442,7 +506,7 @@ describe("getJITServers", () => {
         },
       ];
 
-      const { servers: jitServers } = await getJITServers(auth, {
+      const jitServers = await getJITServers(auth, {
         agentConfiguration: agentConfig,
         conversation,
         attachments,
@@ -498,7 +562,7 @@ describe("getJITServers", () => {
         },
       ];
 
-      const { servers: jitServers } = await getJITServers(auth, {
+      const jitServers = await getJITServers(auth, {
         agentConfiguration: agentConfig,
         conversation,
         attachments,
@@ -550,7 +614,7 @@ describe("getJITServers", () => {
         },
       ];
 
-      const { servers: jitServers } = await getJITServers(auth, {
+      const jitServers = await getJITServers(auth, {
         agentConfiguration: agentConfig,
         conversation,
         attachments,
@@ -593,7 +657,7 @@ describe("getJITServers", () => {
         },
       ];
 
-      const { servers: jitServers } = await getJITServers(auth, {
+      const jitServers = await getJITServers(auth, {
         agentConfiguration: agentConfig,
         conversation,
         attachments,
@@ -639,7 +703,7 @@ describe("getJITServers", () => {
         },
       ];
 
-      const { servers: jitServers } = await getJITServers(auth, {
+      const jitServers = await getJITServers(auth, {
         agentConfiguration: agentConfig,
         conversation,
         attachments,
@@ -693,7 +757,7 @@ describe("getJITServers", () => {
         },
       ];
 
-      const { servers: jitServers } = await getJITServers(auth, {
+      const jitServers = await getJITServers(auth, {
         agentConfiguration: agentConfig,
         conversation,
         attachments,
@@ -714,7 +778,7 @@ describe("getJITServers", () => {
 
   describe("server structure", () => {
     it("should return servers with correct structure", async () => {
-      const { servers: jitServers } = await getJITServers(auth, {
+      const jitServers = await getJITServers(auth, {
         agentConfiguration: agentConfig,
         conversation,
         attachments: [],
@@ -775,7 +839,7 @@ describe("getJITServers", () => {
         },
       ];
 
-      const { servers: jitServers } = await getJITServers(auth, {
+      const jitServers = await getJITServers(auth, {
         agentConfiguration: agentConfig,
         conversation,
         attachments,

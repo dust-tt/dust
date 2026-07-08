@@ -74,7 +74,7 @@ export function CompetitiveHeroSection({
           {/* Value props box — shown only when valueProps provided (no animationWidget) */}
           {valueProps && valueProps.length > 0 && (
             <div className="mt-4 w-full max-w-2xl">
-              <div className="rounded-2xl bg-gradient-to-br from-blue-500 to-blue-600 p-6 text-white shadow-lg">
+              <div className="rounded-2xl bg-linear-to-br from-blue-500 to-blue-600 p-6 text-white shadow-lg">
                 <p className="mb-4 text-sm font-semibold uppercase tracking-wide text-blue-100">
                   {valuePropTitle}
                 </p>

@@ -10,6 +10,7 @@ import {
   scopedPathsFromArgs,
 } from "@app/lib/api/actions/servers/files/tools/agent_loop_fs";
 import { uploadFileFromUrlToFileSystem } from "@app/lib/api/file_system/upload_from_url";
+import { getFilePreviewDirectiveInstruction } from "@app/lib/markdown/file_preview";
 import { isAllSupportedFileContentType } from "@app/types/files";
 import { Err, Ok } from "@app/types/shared/result";
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
@@ -20,9 +21,9 @@ export async function uploadFromUrlHandler(
     url,
     content_type,
   }: { path: string; url: string; content_type?: string },
-  { auth, agentLoopContext }: ToolHandlerExtra
+  { auth, toolContext }: ToolHandlerExtra
 ): Promise<ToolHandlerResult> {
-  const conversationRes = requireAgentLoopConversation({ agentLoopContext });
+  const conversationRes = requireAgentLoopConversation({ toolContext });
   if (conversationRes.isErr()) {
     return conversationRes;
   }
@@ -59,7 +60,13 @@ export async function uploadFromUrlHandler(
   > = [
     {
       type: "text",
-      text: `${verb} \`${path}\` from URL (${contentType}, ${sizeKb} KB). The user is presented with an attachment to download the file, do not attempt to generate a link to it.`,
+      text:
+        `${verb} \`${path}\` from URL (${contentType}, ${sizeKb} KB). ` +
+        getFilePreviewDirectiveInstruction({
+          contentType,
+          path,
+          title: fileName,
+        }),
     },
   ];
 

@@ -171,7 +171,7 @@ export default function LLM({
     >
       <div className="mx-4 flex w-full flex-col">
         <div className="flex flex-col xl:flex-row xl:space-x-2">
-          <div className="mr-2 flex flex-initial flex-row items-center space-x-1 text-sm font-medium leading-8 text-gray-700">
+          <div className="mr-2 flex flex-initial flex-row items-center space-x-1 text-sm font-medium leading-8 text-foreground">
             <Label>Model</Label>
             <ModelPicker
               owner={owner}
@@ -188,7 +188,7 @@ export default function LLM({
               chatOnly={false}
             />
           </div>
-          <div className="flex flex-initial flex-row items-center space-x-1 text-sm font-medium leading-8 text-gray-700">
+          <div className="flex flex-initial flex-row items-center space-x-1 text-sm font-medium leading-8 text-foreground">
             <Label>Temperature</Label>
             <div className="flex flex-initial font-normal">
               <Input
@@ -199,7 +199,7 @@ export default function LLM({
               />
             </div>
           </div>
-          <div className="flex flex-initial flex-row items-center space-x-1 text-sm font-medium leading-8 text-gray-700">
+          <div className="flex flex-initial flex-row items-center space-x-1 text-sm font-medium leading-8 text-foreground">
             <div className="flex flex-initial">max tokens:</div>
             <div className="flex flex-initial font-normal">
               <Input
@@ -211,7 +211,7 @@ export default function LLM({
               />
             </div>
           </div>
-          <div className="flex flex-initial flex-row items-center space-x-1 text-sm font-medium leading-8 text-gray-700">
+          <div className="flex flex-initial flex-row items-center space-x-1 text-sm font-medium leading-8 text-foreground">
             <Label>Stop</Label>
             <div className="flex w-full font-normal">
               <div
@@ -265,7 +265,7 @@ export default function LLM({
           </div>
         </div>
 
-        <div className="flex flex-col text-sm font-medium leading-8 text-gray-500">
+        <div className="flex flex-col text-sm font-medium leading-8 text-muted-foreground">
           {advancedExpanded ? (
             <div
               onClick={() => setAdvancedExpanded(false)}
@@ -289,7 +289,7 @@ export default function LLM({
           )}
           {advancedExpanded ? (
             <div className="flex flex-col xl:flex-row xl:space-x-2">
-              <div className="flex flex-initial flex-row items-center space-x-1 text-sm font-medium leading-8 text-gray-700">
+              <div className="flex flex-initial flex-row items-center space-x-1 text-sm font-medium leading-8 text-foreground">
                 <div className="flex flex-initial">frequency_penalty:</div>
                 <div className="flex flex-initial font-normal">
                   <Input
@@ -303,7 +303,7 @@ export default function LLM({
                   />
                 </div>
               </div>
-              <div className="flex flex-initial flex-row items-center space-x-1 text-sm font-medium leading-8 text-gray-700">
+              <div className="flex flex-initial flex-row items-center space-x-1 text-sm font-medium leading-8 text-foreground">
                 <div className="flex flex-initial">presence_penalty:</div>
                 <div className="flex flex-initial font-normal">
                   <Input
@@ -317,7 +317,7 @@ export default function LLM({
                   />
                 </div>
               </div>
-              <div className="flex flex-initial flex-row items-center space-x-1 text-sm font-medium leading-8 text-gray-700">
+              <div className="flex flex-initial flex-row items-center space-x-1 text-sm font-medium leading-8 text-foreground">
                 <div className="flex flex-initial">top_p:</div>
                 <div className="flex flex-initial font-normal">
                   <Input
@@ -329,7 +329,7 @@ export default function LLM({
                   />
                 </div>
               </div>
-              <div className="flex flex-initial flex-row items-center space-x-1 text-sm font-medium leading-8 text-gray-700">
+              <div className="flex flex-initial flex-row items-center space-x-1 text-sm font-medium leading-8 text-foreground">
                 <div className="flex flex-initial">top_logprobs:</div>
                 <div className="flex flex-initial font-normal">
                   <Input
@@ -346,7 +346,7 @@ export default function LLM({
         </div>
 
         {fewShotPresent ? (
-          <div className="flex flex-col text-sm font-medium leading-8 text-gray-500">
+          <div className="flex flex-col text-sm font-medium leading-8 text-muted-foreground">
             {fewShotExpanded ? (
               <div
                 onClick={() => setFewShotExpanded(false)}
@@ -370,7 +370,7 @@ export default function LLM({
             )}
             {fewShotExpanded ? (
               <div className="ml-6 flex flex-col">
-                <div className="flex flex-col space-y-1 text-sm font-medium leading-8 text-gray-700">
+                <div className="flex flex-col space-y-1 text-sm font-medium leading-8 text-foreground">
                   <div className="flex flex-initial items-center">
                     introduction:
                   </div>
@@ -381,7 +381,7 @@ export default function LLM({
                         "block w-full resize-none rounded-md bg-muted-background px-1 py-1 font-mono text-[13px] font-normal",
                         readOnly
                           ? "border-white ring-0 focus:border-white focus:ring-0"
-                          : "border-white focus:border-gray-300 focus:ring-0"
+                          : "border-white focus:border-border-dark focus:ring-0"
                       )}
                       readOnly={readOnly}
                       value={block.spec.few_shot_preprompt}
@@ -392,7 +392,7 @@ export default function LLM({
                   </div>
                 </div>
 
-                <div className="flex flex-col space-y-1 text-sm font-medium leading-8 text-gray-700">
+                <div className="flex flex-col space-y-1 text-sm font-medium leading-8 text-foreground">
                   <div className="flex flex-initial items-center">
                     examples:
                   </div>
@@ -403,7 +403,7 @@ export default function LLM({
                         "block w-full resize-none rounded-md bg-muted-background px-1 py-1 font-mono text-[13px] font-normal",
                         readOnly
                           ? "border-white ring-0 focus:border-white focus:ring-0"
-                          : "border-white focus:border-gray-300 focus:ring-0"
+                          : "border-white focus:border-border-dark focus:ring-0"
                       )}
                       readOnly={readOnly}
                       value={block.spec.few_shot_prompt}
@@ -414,7 +414,7 @@ export default function LLM({
                   </div>
                 </div>
 
-                <div className="flex flex-initial flex-row items-center space-x-1 text-sm font-medium leading-8 text-gray-700">
+                <div className="flex flex-initial flex-row items-center space-x-1 text-sm font-medium leading-8 text-foreground">
                   <div className="flex flex-initial">count:</div>
                   <div className="flex flex-initial font-normal">
                     <Input
@@ -431,7 +431,7 @@ export default function LLM({
           </div>
         ) : null}
 
-        <div className="flex flex-col space-y-1 text-sm font-medium leading-8 text-gray-700">
+        <div className="flex flex-col space-y-1 text-sm font-medium leading-8 text-foreground">
           <div className="flex flex-initial items-center">prompt:</div>
           <div className="flex w-full font-normal">
             <div className="w-full leading-5">
@@ -444,7 +444,7 @@ export default function LLM({
                 onChange={(e) => handlePromptChange(e.target.value)}
                 padding={3}
                 minHeight={80}
-                className="rounded-lg bg-muted-background dark:bg-muted-background-night"
+                className="rounded-lg bg-muted-background"
                 style={{
                   fontSize: 13,
                   fontFamily:

@@ -56,7 +56,6 @@ export function RegionalModelsOnlyToggle({
       hasSeparator={false}
       action={
         <SliderToggle
-          size="xs"
           selected={workspace.regionalModelsOnly}
           disabled={isUpdatingWorkspaceRegionalModelsOnly}
           onClick={() => {
@@ -68,7 +67,7 @@ export function RegionalModelsOnlyToggle({
       }
     >
       <ContextItem.Description>
-        <span className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+        <span className="text-sm text-muted-foreground">
           {config.description}
         </span>
       </ContextItem.Description>

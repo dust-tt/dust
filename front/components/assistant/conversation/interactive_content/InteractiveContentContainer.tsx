@@ -1,7 +1,7 @@
 import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
+import { ConversationSidePanelHeader } from "@app/components/assistant/conversation/ConversationSidePanelHeader";
 import { CenteredState } from "@app/components/assistant/conversation/interactive_content/CenteredState";
 import { FrameRenderer } from "@app/components/assistant/conversation/interactive_content/FrameRenderer";
-import { InteractiveContentHeader } from "@app/components/assistant/conversation/interactive_content/InteractiveContentHeader";
 import { UnsupportedContentRenderer } from "@app/components/assistant/conversation/interactive_content/UnsupportedContentRenderer";
 import { useFileMetadata } from "@app/lib/swr/files";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
@@ -44,7 +44,7 @@ export function InteractiveContentContainer({
     if (isFileMetadataLoading) {
       return (
         <div className="flex h-full flex-col">
-          <InteractiveContentHeader onClose={closePanel} />
+          <ConversationSidePanelHeader onClose={closePanel} />
           <CenteredState>
             <Spinner size="sm" />
             <span>Loading frame...</span>
@@ -56,7 +56,7 @@ export function InteractiveContentContainer({
     if (isFileMetadataError || !fileMetadata) {
       return (
         <div className="flex h-full flex-col">
-          <InteractiveContentHeader onClose={closePanel} />
+          <ConversationSidePanelHeader onClose={closePanel} />
           <CenteredState>
             <p className="text-warning-500">Error loading file metadata</p>
           </CenteredState>
@@ -102,7 +102,7 @@ export function InteractiveContentContainer({
 
   return (
     <div className="flex h-full w-full">
-      <div className="flex-1 overflow-hidden bg-gray-50 dark:bg-gray-900">
+      <div className="flex-1 overflow-hidden bg-primary-50">
         {renderContent()}
       </div>
     </div>

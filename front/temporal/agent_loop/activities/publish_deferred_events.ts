@@ -83,6 +83,7 @@ export async function publishDeferredEventsActivity(
       case "tool_ask_user_question":
         eventToPublish = {
           ...event,
+          isLastBlockingEventForStep: isLastEvent,
           metadata: {
             ...event.metadata,
             // Override the message id to root the event to the right channel.

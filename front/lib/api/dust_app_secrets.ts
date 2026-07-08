@@ -4,14 +4,6 @@ import type { DustAppSecretType } from "@app/types/dust_app_secret";
 import { decrypt } from "@app/types/shared/utils/encryption";
 import { redactString } from "@app/types/shared/utils/string_utils";
 
-export type GetDustAppSecretsResponseBody = {
-  secrets: DustAppSecretType[];
-};
-
-export type PostDustAppSecretsResponseBody = {
-  secret: DustAppSecretType;
-};
-
 export async function getDustAppSecrets(
   auth: Authenticator,
   clear = false

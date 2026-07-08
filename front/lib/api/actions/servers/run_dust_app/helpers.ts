@@ -11,14 +11,16 @@ import type {
   ToolGeneratedFilePathType,
   ToolGeneratedFileType,
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
-import type { AgentLoopRunContextType } from "@app/lib/actions/types";
+import type {
+  AgentLoopRunContextType,
+  ToolContextType,
+} from "@app/lib/actions/types";
 import { renderConversationForModel } from "@app/lib/api/assistant/conversation_rendering";
 import { getDatasetSchema } from "@app/lib/api/datasets";
 import { writeToToolOutputsFolder } from "@app/lib/api/files/action_output_fs";
 import { makeFileName } from "@app/lib/api/files/action_output_fs/naming";
 import type { Authenticator } from "@app/lib/auth";
 import { extractConfig } from "@app/lib/config";
-import { getSupportedModelConfig } from "@app/lib/llms/model_configurations";
 import { AppResource } from "@app/lib/resources/app_resource";
 import logger from "@app/logger/logger";
 import type { BlockRunConfig, SpecificationBlockType } from "@app/types/app";
@@ -157,6 +159,7 @@ export async function prepareAppContext(
 
 export async function processDustFileOutput(
   auth: Authenticator,
+  toolContext: ToolContextType,
   sanitizedOutput: DustFileOutput,
   conversation: ConversationWithoutContentType,
   appName: string
@@ -253,7 +256,7 @@ export async function processDustFileOutput(
       fileName = makeFileName({ name: appName, ext: ".txt" });
     }
 
-    const result = await writeToToolOutputsFolder(auth, conversation, {
+    const result = await writeToToolOutputsFolder(auth, toolContext, {
       fileName,
       content: fileContent,
       contentType,
@@ -289,11 +292,9 @@ export async function prepareParamsWithHistory(
   if (
     schema?.some((s) => s.key === DUST_CONVERSATION_HISTORY_MAGIC_INPUT_KEY)
   ) {
-    const model = getSupportedModelConfig(
-      agentLoopRunContext.agentConfiguration.model
-    );
+    const model = agentLoopRunContext.model;
 
-    if (model) {
+    if (agentLoopRunContext.model) {
       const allowedTokenCount = model.contextSize - MIN_GENERATION_TOKENS;
 
       const convoRes = await renderConversationForModel(auth, {

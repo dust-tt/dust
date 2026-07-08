@@ -1,24 +1,108 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "./allotment.css";
+@import "tailwindcss";
+@import "./tokens.css";
+
+/* CSS-first theme (replaces the old tailwind-preset.js + @config bridge). */
+@import "./theme.css";
+@import "./sparkle-theme.css";
+
+/* v4-native replacement for tailwindcss-animate (a v3-only plugin). The old
+   plugin's animationTranslate DEFAULT of 100% is not honored under v4, which
+   collapsed bare slide utilities (e.g. slide-in-from-right) to 0.25rem and
+   broke Sheet/Dialog enter/exit animations. */
+@import "tw-animate-css";
+
+@plugin "@tailwindcss/forms";
+@plugin "tailwind-scrollbar-hide";
+
+@source "../../src/**/*.{ts,tsx}";
+
+/* Container query variants must be inlined — @tailwindcss/postcss does not
+   resolve @custom-variant from @import'ed files, so every CSS entry point must
+   inline its own copy. This is the canonical copy; keep these in sync when
+   changing variants: front-spa/src/index.css, marketing/styles/components.css,
+   extension/ui/css/components.css, sparkle/playground/src/index.css. */
+@custom-variant @xxxs (@container (width >= 16rem));
+@custom-variant @xxs (@container (width >= 24rem));
+@custom-variant @xs (@container (width >= 32rem));
+@custom-variant @sm (@container (width >= 40rem));
+@custom-variant @md (@container (width >= 48rem));
+@custom-variant @lg (@container (width >= 64rem));
+@custom-variant @xl (@container (width >= 80rem));
+@custom-variant @xxxs-conversation (@container conversation (width >= 16rem));
+@custom-variant @xxs-conversation (@container conversation (width >= 24rem));
+@custom-variant @xs-conversation (@container conversation (width >= 32rem));
+@custom-variant @sm-conversation (@container conversation (width >= 40rem));
+@custom-variant @md-conversation (@container conversation (width >= 48rem));
+@custom-variant @lg-conversation (@container conversation (width >= 64rem));
+@custom-variant @xl-conversation (@container conversation (width >= 80rem));
+@custom-variant @xxxs-table (@container table (width >= 16rem));
+@custom-variant @xxs-table (@container table (width >= 24rem));
+@custom-variant @xs-table (@container table (width >= 32rem));
+@custom-variant @sm-table (@container table (width >= 40rem));
+@custom-variant @md-table (@container table (width >= 48rem));
+@custom-variant @lg-table (@container table (width >= 64rem));
+@custom-variant @xl-table (@container table (width >= 80rem));
+
+/* Safelist: avatar color combos */
+@source inline("bg-gray-100 bg-gray-200 bg-gray-300 bg-gray-400 bg-gray-500 bg-gray-600 bg-gray-700 bg-gray-800 bg-gray-900 bg-blue-100 bg-blue-200 bg-blue-300 bg-blue-400 bg-blue-500 bg-blue-600 bg-blue-700 bg-blue-800 bg-blue-900 bg-violet-100 bg-violet-200 bg-violet-300 bg-violet-400 bg-violet-500 bg-violet-600 bg-violet-700 bg-violet-800 bg-violet-900 bg-pink-100 bg-pink-200 bg-pink-300 bg-pink-400 bg-pink-500 bg-pink-600 bg-pink-700 bg-pink-800 bg-pink-900 bg-red-100 bg-red-200 bg-red-300 bg-red-400 bg-red-500 bg-red-600 bg-red-700 bg-red-800 bg-red-900 bg-orange-100 bg-orange-200 bg-orange-300 bg-orange-400 bg-orange-500 bg-orange-600 bg-orange-700 bg-orange-800 bg-orange-900 bg-golden-100 bg-golden-200 bg-golden-300 bg-golden-400 bg-golden-500 bg-golden-600 bg-golden-700 bg-golden-800 bg-golden-900 bg-lime-100 bg-lime-200 bg-lime-300 bg-lime-400 bg-lime-500 bg-lime-600 bg-lime-700 bg-lime-800 bg-lime-900 bg-emerald-100 bg-emerald-200 bg-emerald-300 bg-emerald-400 bg-emerald-500 bg-emerald-600 bg-emerald-700 bg-emerald-800 bg-emerald-900");
+/* Safelist: container query grid classes */
+@source inline("@xxs:grid-cols-2 @sm:grid-cols-3 @lg:grid-cols-4 @xl:grid-cols-5");
+/* Safelist: grid rows + typography classes */
+@source inline("grid-rows-2 grid-rows-3 grid-rows-4 grid-rows-5 label-xs label-sm label-base copy-xs copy-sm copy-base copy-lg copy-xl heading-base heading-lg heading-xl heading-2xl heading-3xl heading-4xl heading-5xl heading-6xl heading-7xl heading-8xl heading-9xl heading-mono-lg heading-mono-xl heading-mono-2xl heading-mono-3xl heading-mono-4xl heading-mono-5xl heading-mono-6xl heading-mono-7xl heading-mono-8xl heading-mono-9xl");
+
+@layer base {
+  *,
+  ::before,
+  ::after {
+    border-color: var(--color-border);
+  }
+
+  /* v4 Preflight no longer sets cursor: pointer on buttons (matches the
+     native browser default). Restore the v3 behavior so interactive
+     buttons keep the pointer cursor — but disabled buttons keep the
+     normal cursor. */
+  button:not(:disabled):not([aria-disabled="true"]),
+  [role="button"]:not(:disabled):not([aria-disabled="true"]) {
+    cursor: pointer;
+  }
+
+  html {
+    touch-action: manipulation;
+    font-feature-settings:
+      "rlig" 1,
+      "calt" 0;
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    font-synthesis: none;
+  }
+
+  @supports (font-synthesis-weight: none) {
+    html {
+      font-synthesis: initial;
+      font-synthesis-weight: none;
+    }
+  }
+}
 
 @keyframes bgblink {
   0%,
   100% {
-    @apply s-bg-background;
+    background-color: var(--color-background);
   }
 
   50% {
-    @apply s-bg-purple-100;
+    background-color: var(--color-purple-100);
   }
 }
 
 @layer components {
-  .s-touch-hitbox {
+  .touch-hitbox {
     position: relative;
   }
 
-  .s-touch-hitbox::before {
+  .touch-hitbox::before {
     content: "";
     position: absolute;
     display: block;
@@ -34,8 +118,102 @@
 }
 
 @layer utilities {
-  .s-scrollarea-viewport > div {
+  /* Surface elevation: progressively stronger drop shadows so each raised
+     surface lifts off the one below it. Light mode uses soft outer shadows;
+     dark mode adds faint inset highlight lines. In the utilities layer (and
+     via .dark specificity in dark mode) so they override shadow-* utilities
+     on the same element. Ladder: panel < overlay < modal. */
+
+  .bg-panel-background {
+    box-shadow: 0 1px 1px -0.5px rgba(0, 0, 0, 0.06),
+    0 0 0 1px rgba(0, 0, 0, 0.06);
+  }
+
+  .bg-overlay-background {
+    box-shadow: 0 3px 3px -1.5px rgba(0, 0, 0, 0.06),
+    0 1px 1px -0.5px rgba(0, 0, 0, 0.06),
+    0 0 0 1px rgba(0, 0, 0, 0.06);
+  }
+  
+  .bg-modal-background {
+    box-shadow: 0 6px 6px -3px rgba(0, 0, 0, 0.06),
+     0 3px 3px -1.5px rgba(0, 0, 0, 0.06),
+     0 1px 1px -0.5px rgba(0, 0, 0, 0.06),
+     0 0 0 1px rgba(0, 0, 0, 0.06);
+  }   
+
+  .dark .bg-panel-background {
+    box-shadow:
+      0 1px 1px -0.5px rgba(0, 0, 0, 0.18),
+      0 0 0 1px rgba(255, 255, 255, 0.02) inset,
+      0 1px 0 0 rgba(255, 255, 255, 0.01) inset;
+  }
+
+  .dark .bg-overlay-background {
+    box-shadow:
+      0 3px 3px -1.5px rgba(0, 0, 0, 0.18),
+      0 1px 1px -0.5px rgba(0, 0, 0, 0.18),
+      0 0 0 1px rgba(0, 0, 0, 0.12),
+      0 0 0 1px rgba(255, 255, 255, 0.02) inset,
+      0 1px 0 0 rgba(255, 255, 255, 0.02) inset;
+  }
+
+  .dark .bg-modal-background {
+    box-shadow:
+      0 6px 6px -3px rgba(0, 0, 0, 0.18),
+      0 3px 3px -1.5px rgba(0, 0, 0, 0.18),
+      0 1px 1px -0.5px rgba(0, 0, 0, 0.18),
+      0 0 0 1px rgba(0, 0, 0, 0.14),
+      0 0 0 1px rgba(255, 255, 255, 0.04) inset,
+      0 1px 0 0 rgba(255, 255, 255, 0.02) inset;
+  }
+
+  /* A surface nested inside the same surface (e.g. a sticky dialog/dropdown
+     header reusing its parent's background color) must not re-cast the
+     elevation shadow — that draws a stray line under the header. Applies to
+     both themes: it out-specifies the light rules, and ties with the .dark
+     rules where source order (keep this block after them) breaks the tie.
+     A genuinely different floating layer (e.g. a dropdown inside a dialog)
+     keeps its own shadow. */
+  .bg-panel-background .bg-panel-background,
+  .bg-overlay-background .bg-overlay-background,
+  .bg-modal-background .bg-modal-background {
+    box-shadow: none;
+  }
+
+  .scrollarea-viewport > div {
+    /* Radix ScrollArea sets `display: table` inline on the viewport child;
+       only !important overrides that third-party inline style. */
     display: block !important;
     min-height: 100%;
+  }
+
+  .checkerboard {
+    background-image:
+      linear-gradient(
+        45deg,
+        var(--tw-checker-color) 25%,
+        transparent 25%,
+        transparent 75%,
+        var(--tw-checker-color) 75%
+      ),
+      linear-gradient(
+        45deg,
+        var(--tw-checker-color) 25%,
+        transparent 25%,
+        transparent 75%,
+        var(--tw-checker-color) 75%
+      );
+    background-size: 40px 40px;
+    background-position:
+      0 0,
+      20px 20px;
+    background-color: var(--color-white);
+    --tw-checker-color: var(--color-gray-50);
+  }
+
+  .dark .checkerboard {
+    background-color: var(--color-black);
+    --tw-checker-color: var(--color-slate-950);
   }
 }

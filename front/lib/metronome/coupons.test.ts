@@ -4,11 +4,12 @@ import {
   CREDIT_TYPE_USD_ID,
 } from "@app/lib/metronome/constants";
 import {
-  createCouponCredit,
+  createSeatCouponCredit,
   endCouponCredit,
   getCreditTypeFromContract,
   getCreditTypeFromPackage,
-  redeemCoupon,
+  redeemPoolTopupCoupon,
+  redeemSeatCoupon,
   revokeCouponRedemption,
 } from "@app/lib/metronome/coupons";
 import { SEAT_TAG } from "@app/lib/metronome/setup_common";
@@ -46,6 +47,7 @@ function unwrapErr<T>(result: Result<T, Error>): Error {
 
 const {
   mockCreateMetronomeCredit,
+  mockAddCreditToContract,
   mockUpdateMetronomeCreditEndDate,
   mockGetActiveContract,
   mockEmitAuditLogEvent,
@@ -53,6 +55,7 @@ const {
   mockListMetronomePackages,
 } = vi.hoisted(() => ({
   mockCreateMetronomeCredit: vi.fn(),
+  mockAddCreditToContract: vi.fn(),
   mockUpdateMetronomeCreditEndDate: vi.fn(),
   mockGetActiveContract: vi.fn().mockResolvedValue(null),
   mockEmitAuditLogEvent: vi.fn().mockResolvedValue(undefined),
@@ -66,6 +69,7 @@ vi.mock("@app/lib/metronome/client", async () => {
   >("@app/lib/metronome/client");
   return {
     ...actual,
+    addCreditToContract: mockAddCreditToContract,
     createMetronomeCredit: mockCreateMetronomeCredit,
     getMetronomeRateCardById: mockGetMetronomeRateCardById,
     listMetronomePackages: mockListMetronomePackages,
@@ -192,14 +196,21 @@ async function makeWorkspaceWithUserAuthNoMetronome() {
 
 beforeEach(() => {
   mockCreateMetronomeCredit.mockReset();
+  mockAddCreditToContract.mockReset();
   mockUpdateMetronomeCreditEndDate.mockReset();
   mockGetActiveContract.mockReset();
   mockEmitAuditLogEvent.mockReset();
   mockGetMetronomeRateCardById.mockReset();
   mockListMetronomePackages.mockReset();
   mockCreateMetronomeCredit.mockResolvedValue(new Ok({ id: "credit-id-1" }));
+  mockAddCreditToContract.mockResolvedValue(
+    new Ok({ creditId: "contract-credit-1" })
+  );
   mockUpdateMetronomeCreditEndDate.mockResolvedValue(new Ok(undefined));
-  mockGetActiveContract.mockResolvedValue({ rate_card_id: "rate-card-1" });
+  mockGetActiveContract.mockResolvedValue({
+    id: "contract-1",
+    rate_card_id: "rate-card-1",
+  });
   mockEmitAuditLogEvent.mockResolvedValue(undefined);
   mockGetMetronomeRateCardById.mockResolvedValue(
     new Ok(makeRateCard(CREDIT_TYPE_USD_ID))
@@ -332,14 +343,14 @@ describe("getCreditTypeFromPackage", () => {
 });
 
 // ---------------------------------------------------------------------------
-// createCouponCredit
+// createSeatCouponCredit
 // ---------------------------------------------------------------------------
 
-describe("createCouponCredit", () => {
+describe("createSeatCouponCredit", () => {
   it("creates 1 credit spanning 1 month for a once coupon (durationMonths = null)", async () => {
     const coupon = makeCoupon({ durationMonths: null });
 
-    const result = await createCouponCredit({
+    const result = await createSeatCouponCredit({
       metronomeCustomerId: "cust-1",
       coupon,
       redemptionId: REDEMPTION_ID,
@@ -365,7 +376,7 @@ describe("createCouponCredit", () => {
   it("passes EUR amount as whole units (no ×100 ratio) for EUR credit type", async () => {
     const coupon = makeCoupon({ amount: 10, durationMonths: null });
 
-    await createCouponCredit({
+    await createSeatCouponCredit({
       metronomeCustomerId: "cust-1",
       coupon,
       redemptionId: REDEMPTION_ID,
@@ -385,7 +396,7 @@ describe("createCouponCredit", () => {
   it("uses correct date boundaries for a 3-month repeating coupon", async () => {
     const coupon = makeCoupon({ durationMonths: 3 });
 
-    await createCouponCredit({
+    await createSeatCouponCredit({
       metronomeCustomerId: "cust-1",
       coupon,
       redemptionId: REDEMPTION_ID,
@@ -406,7 +417,7 @@ describe("createCouponCredit", () => {
   it("uses correct 1-month date boundaries for a once coupon (durationMonths = null)", async () => {
     const coupon = makeCoupon({ durationMonths: null });
 
-    await createCouponCredit({
+    await createSeatCouponCredit({
       metronomeCustomerId: "cust-1",
       coupon,
       redemptionId: REDEMPTION_ID,
@@ -430,7 +441,7 @@ describe("createCouponCredit", () => {
 
     const coupon = makeCoupon({ durationMonths: 2 });
 
-    const result = await createCouponCredit({
+    const result = await createSeatCouponCredit({
       metronomeCustomerId: "cust-1",
       coupon,
       redemptionId: REDEMPTION_ID,
@@ -449,7 +460,7 @@ describe("createCouponCredit", () => {
 
     const coupon = makeCoupon({ durationMonths: 3 });
 
-    const result = await createCouponCredit({
+    const result = await createSeatCouponCredit({
       metronomeCustomerId: "cust-1",
       coupon,
       redemptionId: REDEMPTION_ID,
@@ -536,16 +547,18 @@ describe("endCouponCredit", () => {
 });
 
 // ---------------------------------------------------------------------------
-// redeemCoupon
+// redeemSeatCoupon
 // ---------------------------------------------------------------------------
 
-describe("redeemCoupon", () => {
+describe("redeemSeatCoupon", () => {
   it("happy path: seat/once coupon → active redemption, 1 credit ID, count incremented, audit emitted", async () => {
     const { auth } = await makeWorkspaceWithUserAuth();
     const coupon = await CouponFactory.create({ durationMonths: null });
-    mockCreateMetronomeCredit.mockResolvedValue(new Ok({ id: "credit-abc" }));
+    mockAddCreditToContract.mockResolvedValue(
+      new Ok({ creditId: "credit-abc" })
+    );
 
-    const result = await redeemCoupon(auth, { coupon });
+    const result = await redeemSeatCoupon(auth, { coupon });
 
     expect(result.isOk()).toBe(true);
     if (!result.isOk()) {
@@ -555,6 +568,12 @@ describe("redeemCoupon", () => {
     const redemption = result.value;
     expect(redemption.status).toBe("active");
     expect(redemption.metronomeCreditIds).toEqual(["credit-abc"]);
+
+    // Attached to the active contract, not the customer.
+    expect(mockAddCreditToContract).toHaveBeenCalledWith(
+      expect.objectContaining({ metronomeContractId: "contract-1" })
+    );
+    expect(mockCreateMetronomeCredit).not.toHaveBeenCalled();
 
     const updated = await CouponResourceClass.fetchByCouponId(coupon.sId);
     expect(updated?.redemptionCount).toBe(1);
@@ -570,7 +589,7 @@ describe("redeemCoupon", () => {
     const coupon = await CouponFactory.create();
     mockGetActiveContract.mockResolvedValueOnce(null);
 
-    const result = await redeemCoupon(auth, { coupon });
+    const result = await redeemSeatCoupon(auth, { coupon });
 
     expect(result.isErr()).toBe(true);
     expect(mockCreateMetronomeCredit).not.toHaveBeenCalled();
@@ -580,7 +599,7 @@ describe("redeemCoupon", () => {
     const { auth } = await makeWorkspaceWithUserAuthNoMetronome();
     const coupon = await CouponFactory.create();
 
-    const result = await redeemCoupon(auth, { coupon });
+    const result = await redeemSeatCoupon(auth, { coupon });
 
     expect(result.isErr()).toBe(true);
     if (!result.isErr()) {
@@ -595,7 +614,7 @@ describe("redeemCoupon", () => {
       expirationDate: new Date(Date.now() - 1000),
     });
 
-    const result = await redeemCoupon(auth, { coupon });
+    const result = await redeemSeatCoupon(auth, { coupon });
 
     expect(result.isErr()).toBe(true);
     if (!result.isErr()) {
@@ -614,7 +633,7 @@ describe("redeemCoupon", () => {
       redemptionCount: 2,
     });
 
-    const result = await redeemCoupon(auth, { coupon });
+    const result = await redeemSeatCoupon(auth, { coupon });
 
     expect(result.isErr()).toBe(true);
     if (!result.isErr()) {
@@ -631,12 +650,12 @@ describe("redeemCoupon", () => {
     const coupon = await CouponFactory.create();
     mockCreateMetronomeCredit.mockResolvedValue(new Ok({ id: "credit-xyz" }));
 
-    const first = await redeemCoupon(auth, { coupon });
+    const first = await redeemSeatCoupon(auth, { coupon });
     expect(first.isOk()).toBe(true);
 
     // The partial unique index on (couponId, workspaceId) WHERE status IN ('pending','active')
     // blocks a second pending/active row for the same workspace+coupon.
-    const second = await redeemCoupon(auth, { coupon });
+    const second = await redeemSeatCoupon(auth, { coupon });
     expect(second.isErr()).toBe(true);
   });
 
@@ -653,7 +672,7 @@ describe("redeemCoupon", () => {
     );
     mockCreateMetronomeCredit.mockResolvedValue(new Ok({ id: "credit-eur" }));
 
-    const result = await redeemCoupon(auth, {
+    const result = await redeemSeatCoupon(auth, {
       coupon,
       metronomePackageAlias: "pro-monthly",
     });
@@ -673,7 +692,7 @@ describe("redeemCoupon", () => {
     const coupon = await CouponFactory.create();
     mockListMetronomePackages.mockResolvedValueOnce(new Ok([]));
 
-    const result = await redeemCoupon(auth, {
+    const result = await redeemSeatCoupon(auth, {
       coupon,
       metronomePackageAlias: "nonexistent-alias",
     });
@@ -686,11 +705,11 @@ describe("redeemCoupon", () => {
   it("Metronome failure → status failed, redemptionCount decremented, same workspace can retry", async () => {
     const { auth } = await makeWorkspaceWithUserAuth();
     const coupon = await CouponFactory.create();
-    mockCreateMetronomeCredit.mockResolvedValue(
+    mockAddCreditToContract.mockResolvedValue(
       new Err(new Error("metronome down"))
     );
 
-    const failResult = await redeemCoupon(auth, { coupon });
+    const failResult = await redeemSeatCoupon(auth, { coupon });
     expect(failResult.isErr()).toBe(true);
 
     const redemptions = await CouponRedemptionResource.listAllByCoupon(coupon);
@@ -701,8 +720,10 @@ describe("redeemCoupon", () => {
     expect(updatedCoupon?.redemptionCount).toBe(0);
 
     // Retry succeeds — failed status does not trigger the unique index.
-    mockCreateMetronomeCredit.mockResolvedValue(new Ok({ id: "credit-retry" }));
-    const retryResult = await redeemCoupon(auth, { coupon });
+    mockAddCreditToContract.mockResolvedValue(
+      new Ok({ creditId: "credit-retry" })
+    );
+    const retryResult = await redeemSeatCoupon(auth, { coupon });
     expect(retryResult.isOk()).toBe(true);
   });
 });
@@ -715,11 +736,11 @@ describe("revokeCouponRedemption", () => {
   it("calls endCouponCredit with stored credit IDs, sets status revoked, emits audit event", async () => {
     const { auth } = await makeWorkspaceWithUserAuth();
     const coupon = await CouponFactory.create();
-    mockCreateMetronomeCredit.mockResolvedValue(
-      new Ok({ id: "credit-to-revoke" })
+    mockAddCreditToContract.mockResolvedValue(
+      new Ok({ creditId: "credit-to-revoke" })
     );
 
-    const redeemResult = await redeemCoupon(auth, { coupon });
+    const redeemResult = await redeemSeatCoupon(auth, { coupon });
     expect(redeemResult.isOk()).toBe(true);
     if (!redeemResult.isOk()) {
       return;
@@ -748,9 +769,11 @@ describe("revokeCouponRedemption", () => {
   it("endCouponCredit failure → returns Err, redemption status unchanged", async () => {
     const { auth } = await makeWorkspaceWithUserAuth();
     const coupon = await CouponFactory.create();
-    mockCreateMetronomeCredit.mockResolvedValue(new Ok({ id: "credit-fail" }));
+    mockAddCreditToContract.mockResolvedValue(
+      new Ok({ creditId: "credit-fail" })
+    );
 
-    const redeemResult = await redeemCoupon(auth, { coupon });
+    const redeemResult = await redeemSeatCoupon(auth, { coupon });
     expect(redeemResult.isOk()).toBe(true);
     if (!redeemResult.isOk()) {
       return;
@@ -765,5 +788,147 @@ describe("revokeCouponRedemption", () => {
 
     expect(revokeResult.isErr()).toBe(true);
     expect(redemption.status).toBe("active");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// redeemPoolTopupCoupon
+// ---------------------------------------------------------------------------
+
+describe("redeemPoolTopupCoupon", () => {
+  it("happy path: grants AWU credit on the active contract, active redemption, count incremented, audit emitted", async () => {
+    const { auth } = await makeWorkspaceWithUserAuth();
+    const coupon = await CouponFactory.create({
+      discountType: "credit_pool_top_up",
+      amount: 5000,
+    });
+    mockAddCreditToContract.mockResolvedValue(
+      new Ok({ creditId: "awu-credit-1" })
+    );
+
+    const result = await redeemPoolTopupCoupon(auth, { coupon });
+
+    expect(result.isOk()).toBe(true);
+    if (!result.isOk()) {
+      return;
+    }
+    expect(result.value.status).toBe("active");
+    expect(result.value.metronomeCreditIds).toEqual(["awu-credit-1"]);
+
+    // Granted directly as AWU credits (no currency conversion), attached to
+    // the active contract.
+    expect(mockAddCreditToContract).toHaveBeenCalledWith(
+      expect.objectContaining({
+        amount: 5000,
+        metronomeContractId: "contract-1",
+        uniquenessKey: expect.stringMatching(/^coupon-credits-.*-0$/),
+      })
+    );
+    expect(mockCreateMetronomeCredit).not.toHaveBeenCalled();
+
+    const updated = await CouponResourceClass.fetchByCouponId(coupon.sId);
+    expect(updated?.redemptionCount).toBe(1);
+    expect(mockEmitAuditLogEvent).toHaveBeenCalledWith(
+      expect.objectContaining({ action: "coupon.redeemed" })
+    );
+  });
+
+  it("no active contract → falls back to a customer-level credit", async () => {
+    const { auth } = await makeWorkspaceWithUserAuth();
+    const coupon = await CouponFactory.create({
+      discountType: "credit_pool_top_up",
+      amount: 5000,
+    });
+    mockGetActiveContract.mockResolvedValueOnce(null);
+    mockCreateMetronomeCredit.mockResolvedValue(new Ok({ id: "awu-credit-1" }));
+
+    const result = await redeemPoolTopupCoupon(auth, { coupon });
+
+    expect(result.isOk()).toBe(true);
+    if (!result.isOk()) {
+      return;
+    }
+    expect(result.value.metronomeCreditIds).toEqual(["awu-credit-1"]);
+    expect(mockCreateMetronomeCredit).toHaveBeenCalledWith(
+      expect.objectContaining({
+        amount: 5000,
+        idempotencyKey: expect.stringMatching(/^coupon-credits-.*-0$/),
+      })
+    );
+    expect(mockAddCreditToContract).not.toHaveBeenCalled();
+  });
+
+  it("rejects a seat coupon with wrong_coupon_type, no credit created", async () => {
+    const { auth } = await makeWorkspaceWithUserAuth();
+    const coupon = await CouponFactory.create({ discountType: "seat" });
+
+    const result = await redeemPoolTopupCoupon(auth, { coupon });
+
+    expect(result.isErr()).toBe(true);
+    if (!result.isErr()) {
+      return;
+    }
+    expect(result.error).toMatchObject({
+      code: "coupon_validation_failed",
+      reason: expect.objectContaining({ code: "wrong_coupon_type" }),
+    });
+    expect(mockCreateMetronomeCredit).not.toHaveBeenCalled();
+  });
+
+  it("workspace without metronomeCustomerId → workspace_not_on_metronome", async () => {
+    const { auth } = await makeWorkspaceWithUserAuthNoMetronome();
+    const coupon = await CouponFactory.create({
+      discountType: "credit_pool_top_up",
+    });
+
+    const result = await redeemPoolTopupCoupon(auth, { coupon });
+
+    expect(result.isErr()).toBe(true);
+    if (!result.isErr()) {
+      return;
+    }
+    expect(result.error).toMatchObject({ code: "workspace_not_on_metronome" });
+  });
+
+  it("Metronome failure → redemption rolled back to failed, count decremented", async () => {
+    const { auth } = await makeWorkspaceWithUserAuth();
+    const coupon = await CouponFactory.create({
+      discountType: "credit_pool_top_up",
+    });
+    mockAddCreditToContract.mockResolvedValue(
+      new Err(new Error("metronome down"))
+    );
+
+    const result = await redeemPoolTopupCoupon(auth, { coupon });
+    expect(result.isErr()).toBe(true);
+
+    const redemptions = await CouponRedemptionResource.listAllByCoupon(coupon);
+    expect(redemptions).toHaveLength(1);
+    expect(redemptions[0].status).toBe("failed");
+    const updated = await CouponResourceClass.fetchByCouponId(coupon.sId);
+    expect(updated?.redemptionCount).toBe(0);
+  });
+
+  it("re-redeeming an active credits coupon for the same workspace → Err", async () => {
+    const { auth } = await makeWorkspaceWithUserAuth();
+    const coupon = await CouponFactory.create({
+      discountType: "credit_pool_top_up",
+    });
+    mockAddCreditToContract.mockResolvedValue(
+      new Ok({ creditId: "awu-credit-2" })
+    );
+
+    const first = await redeemPoolTopupCoupon(auth, { coupon });
+    expect(first.isOk()).toBe(true);
+
+    const second = await redeemPoolTopupCoupon(auth, { coupon });
+    expect(second.isErr()).toBe(true);
+    if (!second.isErr()) {
+      return;
+    }
+    expect(second.error).toMatchObject({
+      code: "coupon_validation_failed",
+      reason: expect.objectContaining({ code: "already_redeemed" }),
+    });
   });
 });

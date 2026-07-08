@@ -11,7 +11,7 @@ function seatTypeUrl(wId: string, uId: string) {
 
 describe("PATCH /api/w/:wId/members/:uId/seat-type", () => {
   describe("auth", () => {
-    it("returns 403 when caller is not an admin", async () => {
+    it("returns 403 when caller is a user", async () => {
       const { workspace, user } = await createPrivateApiMockRequest({
         method: "PATCH",
         role: "user",
@@ -123,6 +123,32 @@ describe("PATCH /api/w/:wId/members/:uId/seat-type", () => {
       expect((await response.json()).seatType).toBe("pro");
     });
 
+    it("returns 200 when a business admin upgrades another member to pro", async () => {
+      const workspace = await WorkspaceFactory.metronome();
+      await createPrivateApiMockRequest({
+        method: "PATCH",
+        role: "business_admin",
+        workspace,
+      });
+
+      const targetUser = await UserFactory.basic();
+      await MembershipFactory.associate(workspace, targetUser, {
+        role: "user",
+      });
+
+      const response = await honoApp.request(
+        seatTypeUrl(workspace.sId, targetUser.sId),
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ seatType: "pro" }),
+        }
+      );
+
+      expect(response.status).toBe(200);
+      expect((await response.json()).seatType).toBe("pro");
+    });
+
     it("returns 200 when admin upgrades their own seat to max", async () => {
       const workspace = await WorkspaceFactory.metronome();
       const { user } = await createPrivateApiMockRequest({
@@ -142,6 +168,33 @@ describe("PATCH /api/w/:wId/members/:uId/seat-type", () => {
 
       expect(response.status).toBe(200);
       expect((await response.json()).seatType).toBe("max");
+    });
+
+    it("returns 400 when assigning a paid seat while on a free plan", async () => {
+      const workspace = await WorkspaceFactory.creditPricedFree();
+      await createPrivateApiMockRequest({
+        method: "PATCH",
+        role: "admin",
+        workspace,
+      });
+
+      const targetUser = await UserFactory.basic();
+      await MembershipFactory.associate(workspace, targetUser, {
+        role: "user",
+        seatType: "none",
+      });
+
+      const response = await honoApp.request(
+        seatTypeUrl(workspace.sId, targetUser.sId),
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ seatType: "pro" }),
+        }
+      );
+
+      expect(response.status).toBe(400);
+      expect((await response.json()).error.type).toBe("invalid_request_error");
     });
 
     it("returns 200 when downgrading from max to pro", async () => {

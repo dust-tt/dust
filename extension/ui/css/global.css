@@ -1,13 +1,43 @@
-@tailwind base;
 @import "./fonts.css";
+
+/* Preflight, the Tailwind theme, and sparkle's theme are already emitted by the
+   unified build (components.css → @dust-tt/sparkle/styles/tailwind.css, imported
+   alongside this file in each platform's main.tsx). Pulling them in here too
+   would ship a second copy of preflight and the default-theme :root block.
+   Reference them instead: `@reference` gives this entry the theme context it
+   needs without emitting any bytes. */
+@reference "tailwindcss";
+@reference "@dust-tt/sparkle/styles/theme.css";
 
 /* Custom scrollbar styles */
 @layer base {
+  :root {
+    --banner-height: 0px;
+    --panel-height: calc(100dvh - var(--banner-height));
+
+    /* `border-darker`: legacy duplicate of `border-dark`, switches via .dark
+       below (was border.darker.{DEFAULT,night} in the old config). Mapped to a
+       `border-darker` utility via @theme inline in front's theme-extras.css. */
+    --color-border-darker: var(--color-gray-150);
+  }
+
+  .dark {
+    --color-border-darker: var(--color-gray-800);
+  }
+
+  /* v4 changed border-color default from gray-200 to currentColor.
+     Restore a sensible default so bare `border` keeps the expected look. */
+  *,
+  ::before,
+  ::after {
+    border-color: var(--color-border);
+  }
+
   * {
     scrollbar-width: thin;
   }
 
   .dark * {
-    scrollbar-color: theme("colors.gray.700") theme("colors.gray.900");
+    scrollbar-color: var(--color-gray-700) var(--color-gray-900);
   }
 }

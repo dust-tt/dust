@@ -58,7 +58,7 @@ export function SkillNodeComponent({
       <Chip
         label={skillName}
         icon={getSkillIcon(skillIcon)}
-        color="white"
+        color="primary"
         onClick={handleClick}
         onRemove={onRemove}
         size="xs"

@@ -27,16 +27,6 @@ import { Err, Ok } from "@app/types/shared/result";
 import { removeNulls } from "@app/types/shared/utils/general";
 import type { Octokit } from "@octokit/core";
 import path from "path";
-import { z } from "zod";
-
-export const ImportSkillsRequestBodySchema = z.object({
-  repoUrl: z.string(),
-  names: z.array(z.string()),
-});
-
-export type ImportSkillsRequestBody = z.infer<
-  typeof ImportSkillsRequestBodySchema
->;
 
 export type ImportSkillsResponseBody = {
   imported: SkillType[];
@@ -204,7 +194,6 @@ export async function importSkillsFromGitHub(
           instructionsHtml: convertMarkdownToBlockHtml(skill.instructions),
           editedBy: user.id,
           requestedSpaceIds: [],
-          extendedSkillId: null,
           icon,
           source: "github",
           sourceMetadata: {

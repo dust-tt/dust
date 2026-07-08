@@ -40,13 +40,6 @@ export function isProgrammaticUsage(
   auth: Authenticator,
   { userMessageOrigin }: { userMessageOrigin: UserMessageOrigin }
 ): boolean {
-  // TODO(PPUL): this is a temporary fix to allow zendesk to not be tracked as
-  // programmatic usage, despite it relying on a custom API key. This should be
-  // removed once we have a proper solution for zendesk.
-  if (userMessageOrigin === "zendesk") {
-    return false;
-  }
-
   if (
     auth.authMethod() === "api_key" ||
     USAGE_ORIGINS_CLASSIFICATION[userMessageOrigin] === "programmatic"
@@ -86,7 +79,10 @@ export async function checkProgrammaticUsageLimits(
     );
   }
 
-  // Then check per-key cap (not applicable to credit-priced/Metronome plans).
+  // Then check per-key cap (legacy plans only — ES usage tally). Credit-priced
+  // plans enforce the per-key credit cap in the message gate (conversation.ts /
+  // the front-api conversations route), where the credit-priced branch lives;
+  // this function is only reached on the legacy branch.
   const plan = auth.subscription()?.plan;
   if (!plan || !isCreditPricedPlan(plan)) {
     const keyCapReached = await hasKeyReachedUsageCap(auth);

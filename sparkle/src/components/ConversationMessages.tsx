@@ -7,23 +7,23 @@ import React from "react";
 type ConversationMessageType = "user" | "agent";
 type MessageType = "me" | "user" | "agent";
 
-const wrapperVariants = cva("s-flex s-flex-col s-@container @xs:s-flex-row", {
+const wrapperVariants = cva("flex flex-col @container @xs:flex-row", {
   variants: {
     messageType: {
-      agent: "s-pr-0",
-      me: "s-pl-9",
-      user: "s-pr-9",
+      agent: "pr-0",
+      me: "pl-9",
+      user: "pr-9",
     },
   },
   defaultVariants: {
     messageType: "agent",
   },
 });
-const messageVariants = cva("s-flex s-rounded-2xl s-max-w-full", {
+const messageVariants = cva("flex rounded-2xl max-w-full", {
   variants: {
     type: {
-      user: "s-gap-2 s-w-fit",
-      agent: "s-w-full s-gap-3 s-flex-col",
+      user: "gap-2 w-fit",
+      agent: "w-full gap-3 flex-col",
     },
   },
   defaultVariants: {
@@ -61,37 +61,50 @@ interface ConversationMessageContentProps
   type: ConversationMessageType;
   infoChip?: React.ReactNode;
   reversed?: boolean;
+  showContent?: boolean;
 }
 
 export const ConversationMessageContent = React.forwardRef<
   HTMLDivElement,
   ConversationMessageContentProps
->(({ children, citations, className, type, reversed, ...props }, ref) => {
-  return (
-    <>
-      {type === "user" && citations && citations.length > 0 && (
-        <CitationGrid reversed={reversed}>{citations}</CitationGrid>
-      )}
-      <div
-        ref={ref}
-        className={cn(
-          "s-flex s-min-w-0 s-flex-col s-gap-1",
-          type === "user" &&
-            "s-rounded-2xl s-bg-muted-background dark:s-bg-muted-background-night s-px-4 s-py-3",
-          className
+>(
+  (
+    {
+      children,
+      citations,
+      className,
+      type,
+      reversed,
+      showContent = true,
+      ...props
+    },
+    ref
+  ) => {
+    return (
+      <>
+        {type === "user" && citations && citations.length > 0 && (
+          <CitationGrid reversed={reversed}>{citations}</CitationGrid>
         )}
-        {...props}
-      >
-        <div className="s-text-base s-text-foreground dark:s-text-foreground-night">
-          {children}
-        </div>
-        {type === "agent" && citations && citations.length > 0 && (
-          <CitationGrid>{citations}</CitationGrid>
+        {showContent && (
+          <div
+            ref={ref}
+            className={cn(
+              "flex min-w-0 flex-col gap-1",
+              type === "user" && "rounded-2xl bg-muted-background px-4 py-3",
+              className
+            )}
+            {...props}
+          >
+            <div className="text-base text-foreground">{children}</div>
+            {type === "agent" && citations && citations.length > 0 && (
+              <CitationGrid>{citations}</CitationGrid>
+            )}
+          </div>
         )}
-      </div>
-    </>
-  );
-});
+      </>
+    );
+  }
+);
 
 ConversationMessageContent.displayName = "ConversationMessageContent";
 
@@ -115,7 +128,7 @@ export const ConversationMessageAvatar = React.forwardRef<
     return (
       <div
         ref={ref}
-        className={cn("conversation:s-p-0 s-flex s-gap-2", className)}
+        className={cn("conversation:p-0 flex gap-2", className)}
         {...props}
       >
         <Avatar
@@ -162,23 +175,19 @@ export const ConversationMessageTitle = React.forwardRef<
       <div
         ref={ref}
         className={cn(
-          "s-inline-flex s-flex-1 s-items-center s-justify-between s-gap-0.5",
+          "inline-flex flex-1 items-center justify-between gap-0.5",
           className
         )}
         {...props}
       >
-        <div className="s-inline-flex s-items-baseline s-gap-2 s-text-foreground dark:s-text-foreground-night">
-          <span className="s-text-sm s-font-medium">{renderName(name)}</span>
-          <span className="s-text-xs s-text-muted-foreground dark:s-text-muted-foreground-night">
-            {timestamp}
-          </span>
+        <div className="inline-flex items-baseline gap-2 text-foreground">
+          <span className="text-sm font-medium">{renderName(name)}</span>
+          <span className="text-xs text-muted-foreground">{timestamp}</span>
           {infoChip && (
-            <div className="s-inline-flex s-self-[anchor-center]">
-              {infoChip}
-            </div>
+            <div className="inline-flex self-[anchor-center]">{infoChip}</div>
           )}
         </div>
-        <div className="s-ml-1 s-inline-flex s-items-center">
+        <div className="ml-1 inline-flex items-center">
           {completionStatus ?? null}
         </div>
       </div>

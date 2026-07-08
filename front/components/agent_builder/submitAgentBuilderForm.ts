@@ -8,10 +8,6 @@ import {
   getTableIdForContentNode,
 } from "@app/components/agent_builder/shared/tables";
 import type { AdditionalConfigurationInBuilderType } from "@app/components/shared/tools_picker/types";
-import type {
-  PatchTriggersRequestBody,
-  PostTriggersRequestBody,
-} from "@app/lib/api/assistant/configuration/triggers";
 import type { TableDataSourceConfiguration } from "@app/lib/api/assistant/configuration/types";
 import type {
   GetContentNodesOrChildrenRequestBodyType,
@@ -30,7 +26,11 @@ import datadogLogger from "@app/logger/datadogLogger";
 import type {
   DataSourcesConfigurationsCodecType,
   PostOrPatchAgentConfigurationRequestBody,
-} from "@app/types/api/internal/agent_configuration";
+} from "@app/types/api/agent_configuration";
+import type {
+  PatchTriggersRequestBody,
+  PostTriggersRequestBody,
+} from "@app/types/api/assistant/configuration/triggers";
 import type {
   AgentConfigurationType,
   LightAgentConfigurationType,
@@ -224,6 +224,7 @@ function serializeTrigger(
         kind: trigger.kind,
         executionPerDayLimitOverride: trigger.executionPerDayLimitOverride,
         webhookSourceViewId: trigger.webhookSourceViewId,
+        spaceId: trigger.spaceId ?? null,
       };
     }
     case "schedule":
@@ -234,6 +235,7 @@ function serializeTrigger(
         naturalLanguageDescription: trigger.naturalLanguageDescription,
         configuration: trigger.configuration,
         kind: trigger.kind,
+        spaceId: trigger.spaceId ?? null,
       };
     default:
       assertNever(trigger);

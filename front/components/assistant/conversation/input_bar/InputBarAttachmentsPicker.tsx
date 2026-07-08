@@ -602,7 +602,9 @@ export const InputBarAttachmentsPicker = ({
         </DropdownMenuSubTrigger>
       )}
       <ContentWrapper
-        className="h-80 w-80 xs:h-96 xs:w-96"
+        // Radix ScrollArea wraps content in a content-height `display:table` div. Force it to fill
+        // the viewport so the empty-state's `h-full` centering resolves against the full height.
+        className="h-80 w-80 xs:h-96 xs:w-96 [&_[data-radix-scroll-area-viewport]>div]:h-full"
         collisionPadding={15}
         onEscapeKeyDown={() => setIsOpen(false)}
         {...(type === "subdropdown"
@@ -671,10 +673,10 @@ export const InputBarAttachmentsPicker = ({
 
               {availableSources.length === 0 && showLoader && (
                 <LoadingBlock
-                  // LoadingBlock defaults to dark:bg-muted-background-night, same as the menu
+                  // LoadingBlock defaults to, same as the menu
                   // surface, so skeletons read as invisible; match menu row hover contrast.
-                  // biome-ignore lint/plugin/noCssImportant: legacy [GEN12] — needs cleanup
-                  className="h-7 w-20 bg-muted-background dark:!bg-muted-night p-2 mt-2"
+
+                  className="h-7 w-20 bg-muted-background p-2 mt-2"
                 />
               )}
             </div>
@@ -686,10 +688,10 @@ export const InputBarAttachmentsPicker = ({
                   (_, i) => (
                     <LoadingBlock
                       key={i}
-                      // LoadingBlock defaults to dark:bg-muted-background-night, same as the menu
+                      // LoadingBlock defaults to, same as the menu
                       // surface, so skeletons read as invisible; match menu row hover contrast.
-                      // biome-ignore lint/plugin/noCssImportant: legacy [GEN12] — needs cleanup
-                      className="h-11 w-full bg-muted-background dark:border-border-night dark:!bg-muted-night"
+
+                      className="h-11 w-full bg-muted-background"
                     />
                   )
                 )}
@@ -785,7 +787,7 @@ export const InputBarAttachmentsPicker = ({
               </>
             )}
             {availableSources.length === 0 && !showLoader && (
-              <div className="flex items-center justify-center py-4 text-sm text-muted-foreground dark:text-muted-foreground-night">
+              <div className="flex items-center justify-center py-4 text-sm text-muted-foreground">
                 No results found
               </div>
             )}

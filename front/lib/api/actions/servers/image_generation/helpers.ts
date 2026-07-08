@@ -4,7 +4,10 @@ import type {
   ToolGeneratedFileType,
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { resolveConversationFileRef } from "@app/lib/actions/mcp_internal_actions/utils/file_utils";
-import type { AgentLoopContextType } from "@app/lib/actions/types";
+import {
+  isAgentLoopRunContext,
+  type ToolContextType,
+} from "@app/lib/actions/types";
 import { computeTokensCostForUsageInMicroUsd } from "@app/lib/api/assistant/token_pricing";
 import { uploadBase64ImageToFileStorage } from "@app/lib/api/files/upload";
 import type { ReferenceImageFile } from "@app/lib/api/llm/imageGeneration";
@@ -26,6 +29,7 @@ import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import type { WorkspaceType } from "@app/types/user";
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
+import assert from "assert";
 
 export type ImageGenerationErrorCode =
   | "api_error"
@@ -200,13 +204,17 @@ export function trackTokenUsage({
 
 export async function uploadAndFormatImageResponse(
   auth: Authenticator,
-  agentLoopContext: AgentLoopContextType | undefined,
+  toolContext: ToolContextType | undefined,
   images: Base64ImageData[],
   fileName: string
 ): Promise<
   Result<Array<{ type: "resource"; resource: ToolGeneratedFileType }>, MCPError>
 > {
-  if (!agentLoopContext?.runContext) {
+  assert(
+    isAgentLoopRunContext(toolContext?.runContext),
+    "AgentLoopRunContext expected"
+  );
+  if (!toolContext?.runContext) {
     return new Err(
       new MCPError("No conversation context available for file upload", {
         tracked: false,
@@ -214,7 +222,7 @@ export async function uploadAndFormatImageResponse(
     );
   }
 
-  const conversationId = agentLoopContext.runContext.conversation.sId;
+  const conversationId = toolContext.runContext.conversation.sId;
   const baseFileName = stripFileExtension(fileName);
 
   const resources: Array<{
@@ -278,13 +286,13 @@ async function processSingleImageFile(
     maxImageSize,
     supportedContentTypes,
     providerId,
-    agentLoopContext,
+    toolContext,
   }: {
     imageFileId: string;
     maxImageSize: number;
     supportedContentTypes: string[];
     providerId: ModelProviderIdType;
-    agentLoopContext: AgentLoopContextType | undefined;
+    toolContext: ToolContextType | undefined;
   }
 ): Promise<Ok<ReferenceImageFile> | Err<MCPError>> {
   const workspace = auth.getNonNullableWorkspace();
@@ -292,7 +300,7 @@ async function processSingleImageFile(
   const refResult = await resolveConversationFileRef(
     auth,
     imageFileId,
-    agentLoopContext
+    toolContext
   );
   if (refResult.isErr()) {
     return new Err(
@@ -347,17 +355,17 @@ export async function processImageFileIds(
   auth: Authenticator,
   {
     imageFileIds,
-    agentLoopContext,
+    toolContext,
     supportedContentTypes,
     providerId,
   }: {
     imageFileIds: string[];
-    agentLoopContext: AgentLoopContextType | undefined;
+    toolContext: ToolContextType | undefined;
     supportedContentTypes: string[];
     providerId: ModelProviderIdType;
   }
 ): Promise<Ok<ReferenceImageFile[]> | Err<MCPError>> {
-  if (!agentLoopContext?.runContext) {
+  if (!toolContext?.runContext) {
     return new Err(
       new MCPError("No conversation context available for file access", {
         tracked: false,
@@ -375,7 +383,7 @@ export async function processImageFileIds(
         maxImageSize,
         supportedContentTypes,
         providerId,
-        agentLoopContext,
+        toolContext,
       }),
     { concurrency: 8 }
   );
