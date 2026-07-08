@@ -3111,11 +3111,16 @@ export async function updateAgentMessageWithFinalStatus(
     agentMessage,
     status,
     error,
+    force = false,
   }: {
     conversation: ConversationWithoutContentType;
     agentMessage: AgentMessageType;
     status: Exclude<AgentMessageStatus, "created">;
     error?: ToolErrorEvent["error"];
+    // Force finalization even if the message is in an anomalous state (e.g. blocked actions
+    // spanning multiple steps). Used by the unstick-conversation poke plugin to rescue genuinely
+    // stuck conversations. Leave false everywhere else so invariant violations surface as errors.
+    force?: boolean;
   }
 ): Promise<{
   completedTs: number;
@@ -3185,6 +3190,7 @@ export async function updateAgentMessageWithFinalStatus(
       ? await AgentMCPActionResource.denyBlockedActionsForAgentMessage(auth, {
           agentMessageId: agentMessage.agentMessageId,
           transaction: t,
+          force,
         })
       : [];
 

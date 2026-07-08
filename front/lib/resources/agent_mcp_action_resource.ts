@@ -718,17 +718,14 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
     });
   }
 
-  // Does not enforce the single-step invariant: resume paths must use
-  // listBlockedActionsForAgentMessage instead. Only terminal deny paths, which mop up whatever is
-  // blocked, should use this.
-  private static async fetchBlockedActionsForAgentMessage(
+  static async listBlockedActionsForAgentMessage(
     auth: Authenticator,
     {
       agentMessageId,
       transaction,
     }: { agentMessageId: ModelId; transaction?: Transaction }
   ): Promise<AgentMCPActionResource[]> {
-    return this.baseFetch(
+    const actions = await this.baseFetch(
       auth,
       {
         where: {
@@ -740,19 +737,6 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
       },
       transaction
     );
-  }
-
-  static async listBlockedActionsForAgentMessage(
-    auth: Authenticator,
-    {
-      agentMessageId,
-      transaction,
-    }: { agentMessageId: ModelId; transaction?: Transaction }
-  ): Promise<AgentMCPActionResource[]> {
-    const actions = await this.fetchBlockedActionsForAgentMessage(auth, {
-      agentMessageId,
-      transaction,
-    });
 
     if (actions.length === 0) {
       return [];
@@ -769,35 +753,30 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
     return actions;
   }
 
-  /**
-   * Denies all still-blocked actions of an agent message. Must run inside the same
-   * transaction as the message's terminal status update so that "message terminal" and
-   * "blocked actions denied" commit atomically. Guarded on blocked statuses so a concurrent
-   * approval that already transitioned the action is not clobbered. Returns the actions
-   * actually denied, with their pre-deny resources.
-   *
-   * Denies across all steps, not just one: the message is being finalized, so this must also
-   * clear anomalous multi-step state that would otherwise leave the conversation stuck.
-   */
-  static async denyBlockedActionsForAgentMessage(
+  // Like listBlockedActionsForAgentMessage but skips the single-step invariant check, so a
+  // conversation stuck in an anomalous multi-step blocked state can still be finalized. Logs the
+  // anomaly to surface the origin. Only the force-finalize path should use this.
+  private static async forceListBlockedActionsForAgentMessage(
     auth: Authenticator,
     {
       agentMessageId,
       transaction,
-    }: { agentMessageId: ModelId; transaction: Transaction }
+    }: { agentMessageId: ModelId; transaction?: Transaction }
   ): Promise<AgentMCPActionResource[]> {
-    const blockedActions = await this.fetchBlockedActionsForAgentMessage(auth, {
-      agentMessageId,
-      transaction,
-    });
+    const actions = await this.baseFetch(
+      auth,
+      {
+        where: {
+          agentMessageId,
+          status: {
+            [Op.in]: TOOL_EXECUTION_BLOCKED_STATUSES,
+          },
+        },
+      },
+      transaction
+    );
 
-    if (blockedActions.length === 0) {
-      return [];
-    }
-
-    // Multi-step blocked actions violate the single-step invariant; we still deny them all, but
-    // log so we can hunt the origin.
-    const uniqueSteps = new Set(blockedActions.map((a) => a.stepContent.step));
+    const uniqueSteps = new Set(actions.map((a) => a.stepContent.step));
     if (uniqueSteps.size > 1) {
       logger.warn(
         {
@@ -805,8 +784,45 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
           steps: [...uniqueSteps],
           workspaceId: auth.getNonNullableWorkspace().sId,
         },
-        "Denying blocked actions spanning multiple steps — single-step invariant violated"
+        "Force-denying blocked actions spanning multiple steps — single-step invariant violated"
       );
+    }
+
+    return actions;
+  }
+
+  /**
+   * Denies all still-blocked actions of an agent message. Must run inside the same
+   * transaction as the message's terminal status update so that "message terminal" and
+   * "blocked actions denied" commit atomically. Guarded on blocked statuses so a concurrent
+   * approval that already transitioned the action is not clobbered. Returns the actions
+   * actually denied, with their pre-deny resources.
+   *
+   * A message should never have blocked actions from more than one step. When `force` is false
+   * this method enforces that invariant and throws on a violation, surfacing the bug. `force`
+   * (used by the unstick-conversation poke plugin) skips the check so an anomalous, genuinely
+   * stuck conversation can still be finalized instead of throwing.
+   */
+  static async denyBlockedActionsForAgentMessage(
+    auth: Authenticator,
+    {
+      agentMessageId,
+      transaction,
+      force = false,
+    }: { agentMessageId: ModelId; transaction: Transaction; force?: boolean }
+  ): Promise<AgentMCPActionResource[]> {
+    const blockedActions = force
+      ? await this.forceListBlockedActionsForAgentMessage(auth, {
+          agentMessageId,
+          transaction,
+        })
+      : await this.listBlockedActionsForAgentMessage(auth, {
+          agentMessageId,
+          transaction,
+        });
+
+    if (blockedActions.length === 0) {
+      return [];
     }
 
     const [, affectedRows] = await AgentMCPActionModel.update(

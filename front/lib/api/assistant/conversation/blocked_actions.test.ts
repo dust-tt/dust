@@ -294,9 +294,7 @@ describe("blocked actions resolution", () => {
       );
     });
 
-    it("denies blocked actions spanning several steps (force-unlock)", async () => {
-      // Multi-step blocked actions violate the single-step invariant; finalizing (as the
-      // unstick-conversation plugin does) must still deny them all instead of throwing.
+    async function setupMultiStepBlockedMessage() {
       const { agentMessage, action: step1Action } =
         await AgentMCPActionFactory.createWithAgentMessage(auth, {
           workspace,
@@ -311,10 +309,20 @@ describe("blocked actions resolution", () => {
 
       await ConversationResource.markAsActionRequired(auth, { conversation });
 
+      return { agentMessage, step1Action, step3Action };
+    }
+
+    it("force-denies blocked actions spanning several steps (unstick)", async () => {
+      // Anomalous multi-step blocked state: force finalization (as the unstick-conversation plugin
+      // does) must deny them all instead of throwing.
+      const { agentMessage, step1Action, step3Action } =
+        await setupMultiStepBlockedMessage();
+
       await updateAgentMessageWithFinalStatus(auth, {
         conversation,
         agentMessage,
         status: "failed",
+        force: true,
       });
 
       const reloadedStep1 = await AgentMCPActionResource.fetchById(
@@ -328,6 +336,18 @@ describe("blocked actions resolution", () => {
       expect(reloadedStep1?.status).toBe("denied");
       expect(reloadedStep3?.status).toBe("denied");
       expect(await getActionRequired()).toBe(false);
+    });
+
+    it("throws on multi-step blocked actions without force (invariant enforced)", async () => {
+      const { agentMessage } = await setupMultiStepBlockedMessage();
+
+      await expect(
+        updateAgentMessageWithFinalStatus(auth, {
+          conversation,
+          agentMessage,
+          status: "failed",
+        })
+      ).rejects.toThrow("All blocked actions must be from the same step");
     });
 
     it("commits the deny with the terminal status update", async () => {
