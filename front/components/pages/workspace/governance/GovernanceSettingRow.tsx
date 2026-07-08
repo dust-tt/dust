@@ -4,6 +4,7 @@ import {
   type GovernancePermissionConfiguration,
   type GroupPermissionResourceType,
   isValidPermissionConfigurationScope,
+  type PermissionConfigurationScope,
   type PermissionType,
 } from "@app/types/group_permissions";
 import type { GroupType } from "@app/types/groups";
@@ -66,6 +67,15 @@ const GOVERNANCE_SETTING_METADATA: Partial<
     isGroupsOnly: true,
   },
 };
+
+const PERMISSION_SCOPE_OPTIONS: {
+  value: PermissionConfigurationScope;
+  label: string;
+}[] = [
+  { value: "everyone", label: "Everyone" },
+  { value: "groups", label: "Groups" },
+  { value: "admins_only", label: "Admins only" },
+];
 
 function getGovernancePermissionMetadata(
   permissions: GovernancePermission
@@ -161,9 +171,9 @@ export const GovernanceSettingRow = ({
             defaultValue={configuration.scope}
             onValueChange={(value) => handlePermissionChange({ scope: value })}
           >
-            <ButtonsSwitch value="everyone" label="Everyone" />
-            <ButtonsSwitch value="groups" label="Groups" />
-            <ButtonsSwitch value="disabled" label="Disabled" />
+            {PERMISSION_SCOPE_OPTIONS.map(({ value, label }) => (
+              <ButtonsSwitch key={value} value={value} label={label} />
+            ))}
           </ButtonsSwitchList>
         )}
       </div>

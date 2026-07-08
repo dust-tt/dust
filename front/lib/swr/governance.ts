@@ -25,22 +25,22 @@ const TEST_GOVERNANCE_PERMISSIONS: GovernancePermission[] = [
   {
     permissionType: "invite",
     resourceType: "frame",
-    configuration: { scope: "disabled" },
+    configuration: { scope: "admins_only" },
   },
   {
     permissionType: "publish",
     resourceType: "frame",
-    configuration: { scope: "disabled" },
+    configuration: { scope: "admins_only" },
   },
   {
     permissionType: "admin",
     resourceType: "billing",
-    configuration: { scope: "disabled" },
+    configuration: { scope: "admins_only" },
   },
   {
     permissionType: "admin",
     resourceType: "identity",
-    configuration: { scope: "disabled" },
+    configuration: { scope: "admins_only" },
   },
 ];
 

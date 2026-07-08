@@ -1,4 +1,7 @@
 import { GovernanceSettingSection } from "@app/components/pages/workspace/governance/GovernanceSettingSection";
+import { AuditLogsToggle } from "@app/components/workspace/settings/AuditLogsToggle";
+import { InteractiveContentSharing } from "@app/components/workspace/settings/InteractiveContentSharingToggle";
+import { useFrameSharingToggle } from "@app/hooks/useFrameSharingToggle";
 import {
   useAuth,
   useFeatureFlags,
@@ -9,14 +12,20 @@ import { useGroups } from "@app/lib/swr/groups";
 import type {
   GovernancePermission,
   GroupPermissionResourceType,
+  PermissionType,
 } from "@app/types/group_permissions";
-import type { LightWorkspaceType } from "@app/types/user";
+import type {
+  LightWorkspaceType,
+  WorkspaceSharingPolicy,
+} from "@app/types/user";
 import {
   ActionFrame,
+  Icon,
   Lock01,
   Page,
   PuzzlePiece01,
   Robot,
+  ShapesPlus,
   Toggle01Left,
 } from "@dust-tt/sparkle";
 import groupBy from "lodash/groupBy";
@@ -26,6 +35,26 @@ function useUpdateGovernancePermission(owner: LightWorkspaceType) {
   return (input: GovernancePermission) => {
     return true;
   };
+}
+
+// Frame governance permissions are only relevant when the workspace sharing policy actually
+// enables the underlying capability: email invites require external email sharing, and public
+// links require unrestricted sharing.
+function isFrameCapabilityEnabled(
+  permissionType: PermissionType,
+  sharingPolicy: WorkspaceSharingPolicy
+): boolean {
+  switch (permissionType) {
+    case "invite":
+      return (
+        sharingPolicy === "workspace_and_emails" ||
+        sharingPolicy === "all_scopes"
+      );
+    case "publish":
+      return sharingPolicy === "all_scopes";
+    default:
+      return true;
+  }
 }
 
 export const GovernancePage = () => {
@@ -42,6 +71,9 @@ export const GovernancePage = () => {
     useGovernancePermissions(owner);
   const onPermissionChange = useUpdateGovernancePermission(owner);
 
+  const { sharingPolicy, doUpdateSharingPolicy, isChanging } =
+    useFrameSharingToggle({ owner });
+
   const isLoading = isGroupsLoading || isGovernancePermissionsLoading;
 
   const governancePermissionsMap: Partial<
@@ -50,6 +82,11 @@ export const GovernancePage = () => {
 
   const billingPermissions = governancePermissionsMap.billing ?? [];
   const identityPermissions = governancePermissionsMap.identity ?? [];
+
+  const framePermissions = (governancePermissionsMap.frame ?? []).filter(
+    (permission) =>
+      isFrameCapabilityEnabled(permission.permissionType, sharingPolicy)
+  );
 
   const sections: {
     label: string;
@@ -66,11 +103,15 @@ export const GovernancePage = () => {
       icon: PuzzlePiece01,
       governancePermissions: governancePermissionsMap.skill ?? [],
     },
-    {
-      label: "Frame sharing",
-      icon: ActionFrame,
-      governancePermissions: governancePermissionsMap.frame ?? [],
-    },
+    ...(framePermissions.length > 0
+      ? [
+          {
+            label: "Frame sharing",
+            icon: ActionFrame,
+            governancePermissions: framePermissions,
+          },
+        ]
+      : []),
     ...(isAdmin
       ? [
           {
@@ -115,6 +156,22 @@ export const GovernancePage = () => {
             onPermissionChange={onPermissionChange}
           />
         ))}
+        {isAdmin && (
+          <>
+            <div className="flex items-center gap-2">
+              <Icon visual={ShapesPlus} className="text-muted-foreground" />
+              <Page.H variant="h5">Capabilities</Page.H>
+            </div>
+            <div className="w-full rounded-xl border border-border">
+              <InteractiveContentSharing
+                sharingPolicy={sharingPolicy}
+                doUpdateSharingPolicy={doUpdateSharingPolicy}
+                isChanging={isChanging}
+              />
+              <AuditLogsToggle owner={owner} />
+            </div>
+          </>
+        )}
       </div>
     </Page>
   );
