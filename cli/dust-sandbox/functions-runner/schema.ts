@@ -2,17 +2,17 @@
 
 import { basename, extname } from "node:path";
 import { z } from "zod";
-import type { FunctionStateManifest } from "./manifest.ts";
+import type { FunctionState } from "./types/db.ts";
 
 export interface FunctionSchema {
   name: string;
   description: string | null;
   input_schema: Record<string, unknown> | null;
   output_schema: Record<string, unknown> | null;
-  // Per-database manifests (manifest.v1) — set by `build` when the function declares
+  // Per-database shapes (wire version 1) — set by `build` when the function declares
   // `schema.databases`; absent otherwise. `function get` never sets it: bundles carry no
-  // schema files, manifests live in Postgres after publish.
-  databases?: FunctionStateManifest;
+  // schema files, the shapes live in Postgres after publish.
+  databases?: FunctionState;
 }
 
 export function toJsonSchema(value: unknown): Record<string, unknown> | null {
