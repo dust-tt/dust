@@ -16,17 +16,23 @@ import type { ToolContextType } from "@app/lib/actions/types";
 import { TOOL_OUTPUTS_FOLDER_NAME } from "@app/lib/api/files/mount_path";
 import { Authenticator } from "@app/lib/auth";
 import { getSupportedModelConfig } from "@app/lib/llms/model_configurations";
+import { InternalMCPServerInMemoryResource } from "@app/lib/resources/internal_mcp_server_in_memory_resource";
+import { SandboxFunctionMCPActionResource } from "@app/lib/resources/sandbox_function_mcp_action_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
 import logger from "@app/logger/logger";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { GroupFactory } from "@app/tests/utils/GroupFactory";
+import { MCPServerViewFactory } from "@app/tests/utils/MCPServerViewFactory";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { fileStorageMock } from "@app/tests/utils/mocks/file_storage";
+import { SandboxFunctionMCPActionFactory } from "@app/tests/utils/SandboxFunctionMCPActionFactory";
+import { createPersistedSandboxFunctionInvocationTokenTestContext } from "@app/tests/utils/SandboxTokenFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
+import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { assert, describe, expect, it, vi } from "vitest";
 
@@ -469,5 +475,99 @@ describe("processToolResults", () => {
     expect(toolOutputWrite?.filePath).toMatch(
       new RegExp(`${TOOL_OUTPUTS_FOLDER_NAME}/\\d+_test_tool\\.json$`)
     );
+  });
+
+  async function setupSandboxFunctionTest() {
+    const { auth, workspace, invocation, globalSpace } =
+      await createPersistedSandboxFunctionInvocationTokenTestContext();
+    const server = await InternalMCPServerInMemoryResource.makeNew(auth, {
+      name: "common_utilities",
+      useCase: null,
+    });
+    const view = await MCPServerViewFactory.create(
+      workspace,
+      server.id,
+      globalSpace
+    );
+    const action = await SandboxFunctionMCPActionFactory.create(auth, {
+      invocation,
+      mcpServerView: view,
+    });
+
+    fileStorageMock.reset();
+
+    const toolContext: ToolContextType = {
+      runContext: {
+        contextType: "sandbox_function",
+        action,
+        invocation,
+        toolConfiguration: action.toolConfiguration,
+      },
+    };
+
+    return { auth, workspace, action, toolContext };
+  }
+
+  it("should write the full content array to a single GCS object in a sandbox function run context", async () => {
+    const { auth, workspace, action, toolContext } =
+      await setupSandboxFunctionTest();
+
+    const toolCallResultContent: CallToolResult["content"] = [
+      { type: "text", text: "first block" },
+      { type: "text", text: "second block" },
+    ];
+
+    const { outputItems, generatedFiles } = await processToolResults(auth, {
+      localLogger: logger.child({ test: true }),
+      toolContext,
+      toolCallResultContent,
+    });
+
+    // Sandbox actions persist the whole content array as a single GCS object, but
+    // createOutputItems still returns the generic per-content items.
+    expect(outputItems).toHaveLength(2);
+    expect(generatedFiles).toHaveLength(0);
+
+    // The full content array lands in one GCS object, recorded on the action row.
+    const outputWrite = fileStorageMock.saveFileCalls.find((call) =>
+      call.filePath.endsWith(`mcp_output_items/${action.sId}/output.json`)
+    );
+    expect(outputWrite).toBeDefined();
+    expect(JSON.parse(outputWrite?.content.toString() ?? "")).toEqual(
+      toolCallResultContent
+    );
+
+    const refetched =
+      await SandboxFunctionMCPActionResource.fetchByModelIdWithAuth(
+        auth,
+        action.id
+      );
+    expect(refetched?.outputGcsPath).toBe(
+      `w/${workspace.sId}/mcp_output_items/${action.sId}/output.json`
+    );
+  });
+
+  it("should throw and leave the action without an output path when the sandbox output write fails", async () => {
+    const { auth, action, toolContext } = await setupSandboxFunctionTest();
+
+    fileStorageMock.setFileSaveFails((filePath) =>
+      filePath.endsWith(`mcp_output_items/${action.sId}/output.json`)
+    );
+
+    await expect(
+      processToolResults(auth, {
+        localLogger: logger.child({ test: true }),
+        toolContext,
+        toolCallResultContent: [{ type: "text", text: "some output" }],
+      })
+    ).rejects.toThrow();
+
+    // No acceptable degraded state: the row must not point at an object that was never written.
+    const refetched =
+      await SandboxFunctionMCPActionResource.fetchByModelIdWithAuth(
+        auth,
+        action.id
+      );
+    expect(refetched?.outputGcsPath).toBeNull();
   });
 });

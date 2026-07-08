@@ -13,8 +13,12 @@ import type { Authenticator } from "@app/lib/auth";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { SandboxFunctionInvocationResource } from "@app/lib/resources/sandbox_function_invocation_resource";
+import type { SandboxFunctionMCPActionResource } from "@app/lib/resources/sandbox_function_mcp_action_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
-import { SandboxFunctionModel } from "@app/lib/resources/storage/models/sandbox_function";
+import {
+  SandboxFunctionInvocationModel,
+  SandboxFunctionModel,
+} from "@app/lib/resources/storage/models/sandbox_function";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { ModelStaticWorkspaceAware } from "@app/lib/resources/storage/wrappers/workspace_models";
 import {
@@ -262,6 +266,42 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
     });
 
     return sandboxFunction ?? null;
+  }
+
+  // Lives here rather than on SandboxFunctionMCPActionResource: that resource can only type-import
+  // the invocation resource (the invocation resource value-imports it for cascade deletion), so it
+  // cannot construct an invocation. Takes the action rather than its FK id so callers don't thread
+  // a ModelId around.
+  static async fetchInvocationForAction(
+    auth: Authenticator,
+    action: SandboxFunctionMCPActionResource
+  ): Promise<SandboxFunctionInvocationResource | null> {
+    const invocation = await SandboxFunctionInvocationModel.findOne({
+      where: {
+        id: action.sandboxFunctionInvocationId,
+        workspaceId: auth.getNonNullableWorkspace().id,
+      },
+    });
+    if (!invocation) {
+      return null;
+    }
+
+    const sandboxFunction = await this.fetchById(
+      auth,
+      this.modelIdToSId({
+        id: invocation.sandboxFunctionId,
+        workspaceId: invocation.workspaceId,
+      })
+    );
+    if (!sandboxFunction) {
+      return null;
+    }
+
+    return new SandboxFunctionInvocationResource(
+      SandboxFunctionInvocationModel,
+      invocation.get(),
+      { sandboxFunction }
+    );
   }
 
   static async listBySpace(

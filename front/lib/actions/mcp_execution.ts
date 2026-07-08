@@ -157,7 +157,9 @@ export async function processToolNotification(
 }
 
 /**
- * Processes tool results, handles file uploads, and creates output items.
+ * Processes tool results, handles file uploads, and persists the output: one output item per
+ * content block in an agent loop, a single GCS object holding the full content array for a
+ * sandbox function invocation.
  * Returns the processed content and generated files.
  */
 export async function processToolResults(

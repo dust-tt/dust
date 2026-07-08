@@ -5,16 +5,20 @@ import {
 } from "@app/lib/api/sandbox/access_tokens";
 import { Authenticator } from "@app/lib/auth";
 import { InternalMCPServerInMemoryResource } from "@app/lib/resources/internal_mcp_server_in_memory_resource";
+import { SandboxFunctionInvocationResource } from "@app/lib/resources/sandbox_function_invocation_resource";
+import { SandboxFunctionResource } from "@app/lib/resources/sandbox_function_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
+import { FileFactory } from "@app/tests/utils/FileFactory";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { SandboxFactory } from "@app/tests/utils/SandboxFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
 import type { AgentMCPActionType } from "@app/types/actions";
+import { sandboxFunctionContentType } from "@app/types/files";
 
 process.env.DUST_SANDBOX_JWT_SECRET ??= "test-sandbox-jwt-secret";
 
@@ -128,6 +132,60 @@ export async function createSandboxFunctionInvocationTokenTestContext({
 
   return {
     ...context,
+    token,
+  };
+}
+
+// Same as above but with a real sandbox function and invocation persisted, for flows that fetch
+// them back (calling MCP tools from a function invocation).
+export async function createPersistedSandboxFunctionInvocationTokenTestContext() {
+  const context = await createSandboxTokenTestContext();
+  const { auth, workspace } = context;
+
+  const podSpace = await SpaceFactory.project(workspace);
+  const file = await FileFactory.create(auth, null, {
+    contentType: sandboxFunctionContentType,
+    fileName: "greet.ts",
+    fileSize: 100,
+    status: "created",
+    useCase: "project_context",
+    useCaseMetadata: { spaceId: podSpace.sId },
+  });
+  const sandboxFunction = await SandboxFunctionResource.makeNew(auth, {
+    space: podSpace,
+    file,
+    slug: "greet",
+    description: "Greet someone.",
+    inputSchema: {
+      type: "object",
+      properties: { message: { type: "string" } },
+      required: ["message"],
+    },
+    outputSchema: {
+      type: "object",
+      properties: { greeting: { type: "string" } },
+      required: ["greeting"],
+    },
+  });
+  const invocation = await SandboxFunctionInvocationResource.makeNew(auth, {
+    sandboxFunction,
+  });
+
+  const token = await generateSandboxFunctionInvocationToken(auth, {
+    sandbox: context.sandbox,
+    sandboxFunction: {
+      sId: sandboxFunction.sId,
+      space: { sId: podSpace.sId },
+    },
+    invocationId: invocation.sId,
+    execId: `test-function-exec-${context.sandbox.sId}`,
+  });
+
+  return {
+    ...context,
+    podSpace,
+    sandboxFunction,
+    invocation,
     token,
   };
 }
