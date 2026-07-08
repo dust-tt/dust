@@ -1,4 +1,7 @@
-import { withModelSelectability } from "@app/lib/advanced_models/enabled_models";
+import {
+  getDefaultModelFromEnabledModels,
+  withModelSelectability,
+} from "@app/lib/advanced_models/enabled_models";
 import { Authenticator } from "@app/lib/auth";
 import { AdvancedModelResource } from "@app/lib/resources/advanced_model_resource";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
@@ -7,9 +10,12 @@ import { UserFactory } from "@app/tests/utils/UserFactory";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
 import {
   CLAUDE_OPUS_4_6_MODEL_ID,
+  CLAUDE_OPUS_4_8_DEFAULT_MODEL_CONFIG,
+  CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG,
   CLAUDE_SONNET_4_6_MODEL_ID,
 } from "@app/types/assistant/models/anthropic";
 import { SUPPORTED_MODEL_CONFIGS } from "@app/types/assistant/models/models";
+import { GPT_5_5_MODEL_CONFIG } from "@app/types/assistant/models/openai";
 import { describe, expect, it } from "vitest";
 
 const opusModel = SUPPORTED_MODEL_CONFIGS.find(
@@ -110,5 +116,39 @@ describe("withModelSelectability", () => {
 
     expect(getModelSelectability(result, opusModel.modelId)).toBe(true);
     expect(getModelSelectability(result, sonnetModel.modelId)).toBe(true);
+  });
+});
+
+describe("getDefaultModelFromEnabledModels", () => {
+  it("picks the first selectable model in the preferred order", () => {
+    const defaultModel = getDefaultModelFromEnabledModels([
+      { ...GPT_5_5_MODEL_CONFIG, isSelectable: true },
+      { ...CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG, isSelectable: true },
+    ]);
+
+    expect(defaultModel.modelId).toBe(
+      CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG.modelId
+    );
+    expect(defaultModel.isSelectable).toBe(true);
+  });
+
+  it("skips models that are not selectable", () => {
+    const defaultModel = getDefaultModelFromEnabledModels([
+      { ...CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG, isSelectable: false },
+      { ...GPT_5_5_MODEL_CONFIG, isSelectable: true },
+    ]);
+
+    expect(defaultModel.modelId).toBe(GPT_5_5_MODEL_CONFIG.modelId);
+  });
+
+  it("falls back to the hardcoded default when no selectable models exist", () => {
+    const defaultModel = getDefaultModelFromEnabledModels([
+      { ...CLAUDE_OPUS_4_8_DEFAULT_MODEL_CONFIG, isSelectable: false },
+    ]);
+
+    expect(defaultModel.modelId).toBe(
+      CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG.modelId
+    );
+    expect(defaultModel.isSelectable).toBe(true);
   });
 });

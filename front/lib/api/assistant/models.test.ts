@@ -1,5 +1,6 @@
 import {
   getWhitelistedProviders,
+  pickPreferredLargeModel,
   resolveModel,
   selectEnabledModel,
 } from "@app/lib/api/assistant/models";
@@ -15,6 +16,7 @@ import {
 import { GPT_5_5_MODEL_CONFIG } from "@app/types/assistant/models/openai";
 import { MODEL_PROVIDER_IDS } from "@app/types/assistant/models/providers";
 import type {
+  ModelConfigurationType,
   ModelIdType,
   ModelProviderIdType,
 } from "@app/types/assistant/models/types";
@@ -333,6 +335,34 @@ describe("resolveModel", () => {
 
     expect(resolvedModel.reasoningEffort).toBe(
       CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG.defaultReasoningEffort
+    );
+  });
+});
+
+describe("pickPreferredLargeModel", () => {
+  it("picks the first model in the preferred order", () => {
+    const selected = pickPreferredLargeModel([
+      GPT_5_5_MODEL_CONFIG,
+      CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG,
+    ]);
+
+    expect(selected.modelId).toBe(
+      CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG.modelId
+    );
+  });
+
+  it("falls back to any large model when no preferred model is available", () => {
+    const selected = pickPreferredLargeModel([GPT_5_5_MODEL_CONFIG]);
+
+    expect(selected.modelId).toBe(GPT_5_5_MODEL_CONFIG.modelId);
+  });
+
+  it("falls back to the hardcoded default when no models are available", () => {
+    const models: ModelConfigurationType[] = [];
+    const selected = pickPreferredLargeModel(models);
+
+    expect(selected.modelId).toBe(
+      CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG.modelId
     );
   });
 });

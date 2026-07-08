@@ -196,7 +196,7 @@ function _getSmallWhitelistedModel(
   );
 }
 
-const ORDERED_LARGE_MODEL_CONFIGS: ModelConfigurationType[] = [
+export const PREFERRED_LARGE_MODEL_CONFIGS: ModelConfigurationType[] = [
   CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG,
   GPT_5_5_MODEL_CONFIG,
   GEMINI_3_1_PRO_MODEL_CONFIG,
@@ -204,12 +204,29 @@ const ORDERED_LARGE_MODEL_CONFIGS: ModelConfigurationType[] = [
   GROK_4_MODEL_CONFIG,
 ];
 
+export function pickPreferredLargeModel<
+  T extends Pick<ModelConfigurationType, "modelId" | "largeModel">,
+>(models: T[]): T {
+  for (const preferred of PREFERRED_LARGE_MODEL_CONFIGS) {
+    const match = models.find((m) => m.modelId === preferred.modelId);
+    if (match) {
+      return match;
+    }
+  }
+
+  return (
+    models.find((m) => m.largeModel) ??
+    models[0] ??
+    CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG
+  );
+}
+
 function _getLargeWhitelistedModel(
   context: ModelEnablementContext,
   { forBatch: hasBatch }: { forBatch?: boolean } = {}
 ): ModelConfigurationType | null {
   return (
-    ORDERED_LARGE_MODEL_CONFIGS.find(
+    PREFERRED_LARGE_MODEL_CONFIGS.find(
       (m) =>
         isModelEnabled(m, context) && (!hasBatch || m.supportsBatchProcessing)
     ) ?? null
@@ -273,13 +290,13 @@ export function resolveModel(
 
   const enabled = selectEnabledModel(
     auth,
-    removeNulls([userConfig, agentConfig, ...ORDERED_LARGE_MODEL_CONFIGS]),
+    removeNulls([userConfig, agentConfig, ...PREFERRED_LARGE_MODEL_CONFIGS]),
     {
       featureFlags,
     }
   );
 
-  // Should never happen as we should at least fallback to our selection of ORDERED_LARGE_MODEL_CONFIGS.
+  // Should never happen as we should at least fallback to our selection of PREFERRED_LARGE_MODEL_CONFIGS.
   assert(enabled, "No enabled model found");
 
   // Honor an explicit effort only if the model supports it; otherwise fall back
