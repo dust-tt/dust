@@ -14,10 +14,6 @@ import type { MCPApproveExecutionEvent } from "@dust-tt/client";
 import { assertNever, isAgentPauseOutputResourceType } from "@dust-tt/client";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 
-type MCPActionOutputItemWithContent = {
-  content: CallToolResult["content"][number];
-};
-
 /**
  * Server-only utility for processing exit/pause events from MCP tool outputs.
  *
@@ -32,7 +28,7 @@ export async function getExitOrPauseEvents(
     agentMessage,
     conversation,
   }: {
-    outputItems: MCPActionOutputItemWithContent[];
+    outputItems: CallToolResult["content"];
     action: AgentMCPActionResource;
     agentConfiguration: AgentLoopExecutionData["agentConfiguration"];
     agentMessage: AgentLoopExecutionData["agentMessage"];
@@ -48,9 +44,9 @@ export async function getExitOrPauseEvents(
     | ToolPausedEvent
   )[]
 > {
-  const exitOutputItem = outputItems
-    .map((item) => item.content)
-    .find(isAgentPauseOutputResourceType)?.resource;
+  const exitOutputItem = outputItems.find(
+    isAgentPauseOutputResourceType
+  )?.resource;
 
   if (exitOutputItem) {
     switch (exitOutputItem.type) {

@@ -24,7 +24,6 @@ import { isInternalServerSideMCPToolConfiguration } from "@app/lib/actions/types
 import { persistToolOutput } from "@app/lib/api/files/action_output_fs";
 import { processAndStoreFromUrl } from "@app/lib/api/files/upload";
 import type { Authenticator } from "@app/lib/auth";
-import type { AgentMCPActionOutputItemModel } from "@app/lib/models/agent/actions/mcp";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import type {
@@ -79,14 +78,14 @@ export async function processToolNotification(
   }
 ): Promise<{
   event: ToolNotificationEvent;
-  storedItems: AgentMCPActionOutputItemModel[];
+  storedItems: CallToolResult["content"];
 }> {
   const { runContext } = toolContext;
   assert(runContext, "processToolNotification requires a tool run context.");
 
   const output = notification.params._meta.data.output;
 
-  let storedItems: AgentMCPActionOutputItemModel[] = [];
+  let storedItems: CallToolResult["content"] = [];
 
   // Handle store_resource notifications by creating output items immediately (fire-and-forget GCS).
   if (isStoreResourceProgressOutput(output)) {
@@ -174,7 +173,7 @@ export async function processToolResults(
     toolContext: ToolContextType;
   }
 ): Promise<{
-  outputItems: AgentMCPActionOutputItemModel[];
+  outputItems: CallToolResult["content"];
   generatedFiles: ActionGeneratedFileType[];
 }> {
   const { runContext } = toolContext;
@@ -442,20 +441,6 @@ export async function processToolResults(
     }
   );
 
-  // TODO(SANDBOX_FUNCTIONS): persist sandbox function outputs (writeOutput) when running in a
-  // sandbox function run context.
-  assert(
-    isAgentLoopRunContext(runContext),
-    "processToolResults requires an agent loop run context to store output items."
-  );
-  const outputItems = await runContext.action.createOutputItems(
-    auth,
-    cleanContent.map((c) => ({
-      content: sanitizeStringsDeep(c.content),
-      fileId: c.file?.id,
-    }))
-  );
-
   const generatedFiles: ActionGeneratedFileType[] = removeNulls(
     cleanContent.map((c) => {
       if (c.file) {
@@ -488,7 +473,34 @@ export async function processToolResults(
     })
   );
 
-  return { outputItems, generatedFiles };
+  // Persist the processed contents on the run context's action: per-item rows for agent loop
+  // actions, a single output object for sandbox function actions.
+  switch (runContext.contextType) {
+    case "agent_loop": {
+      const outputItems = await runContext.action.createOutputItems(
+        auth,
+        cleanContent.map((c) => ({
+          content: sanitizeStringsDeep(c.content),
+          fileId: c.file?.id,
+        }))
+      );
+      return { outputItems, generatedFiles };
+    }
+    case "sandbox_function": {
+      const writeResult = await runContext.action.writeOutput(
+        auth,
+        cleanContent.map((c) => sanitizeStringsDeep(c.content))
+      );
+      // Surfaced as an exception like the agent loop path: there is no acceptable degraded state
+      // for unpersisted tool outputs.
+      if (writeResult.isErr()) {
+        throw writeResult.error;
+      }
+      return { outputItems: writeResult.value, generatedFiles };
+    }
+    default:
+      return assertNever(runContext);
+  }
 }
 
 /**

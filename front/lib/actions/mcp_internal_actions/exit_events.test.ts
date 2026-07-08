@@ -18,9 +18,7 @@ describe("getExitOrPauseEvents", () => {
     });
 
     const events = await getExitOrPauseEvents({} as Authenticator, {
-      outputItems: output.content.map((content) => ({
-        content,
-      })),
+      outputItems: output.content,
       action: {} as AgentMCPActionResource,
       agentConfiguration: {
         sId: "agent-configuration-id",

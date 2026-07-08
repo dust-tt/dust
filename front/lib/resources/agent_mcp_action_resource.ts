@@ -827,7 +827,7 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
       content: CallToolResult["content"][number];
       fileId?: ModelId;
     }>
-  ): Promise<AgentMCPActionOutputItemModel[]> {
+  ): Promise<CallToolResult["content"]> {
     const outputItems = await AgentMCPActionOutputItemModel.bulkCreate(
       contents.map((c) => {
         const { generatedFilePath, generatedFileContentType } =
@@ -896,7 +896,18 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
       { concurrency: CONCURRENCY_UPDATE_OUTPUT_ITEMS }
     );
 
-    return outputItems;
+    // Return the model-facing view of the stored contents: file-backed contents are rewritten to
+    // hide the original file from the model.
+    return removeNulls(
+      outputItems.map((item) =>
+        hideFileFromActionOutput({
+          content: item.content,
+          fileId: item.fileId ?? null,
+          file: null,
+          workspaceId: this.workspaceId,
+        })
+      )
+    );
   }
 
   static async fetchOutputItemsByActionIds(

@@ -176,11 +176,12 @@ export class SandboxFunctionMCPActionResource extends BaseResource<SandboxFuncti
   }
 
   // Writes the full content array to a single GCS object and records its path on the row. Written
-  // exactly once, at tool completion.
+  // exactly once, at tool completion. Returns the written contents, the generic tool output shape
+  // shared with AgentMCPActionResource.createOutputItems.
   async writeOutput(
     auth: Authenticator,
     content: CallToolResult["content"]
-  ): Promise<Result<undefined, Error>> {
+  ): Promise<Result<CallToolResult["content"], Error>> {
     const gcsPath = this.outputGcsPathFor(auth);
     const file = getPrivateUploadBucket().file(gcsPath);
     const json = JSON.stringify(content);
@@ -224,7 +225,7 @@ export class SandboxFunctionMCPActionResource extends BaseResource<SandboxFuncti
       return new Err(normalizeError(err));
     }
 
-    return new Ok(undefined);
+    return new Ok(content);
   }
 
   async readOutput(): Promise<Result<CallToolResult["content"] | null, Error>> {
