@@ -25,6 +25,7 @@ import {
   revertClientExecutableFileChanges,
 } from "@app/lib/api/files/client_executable";
 import { formatValidationWarningsForLLM } from "@app/lib/api/files/content_validation";
+import { splitFrameEntryScopedPath } from "@app/lib/api/files/mount_path";
 import { exportInteractiveContentFileAsPdf } from "@app/lib/api/files/pdf_export";
 import { screenshotInteractiveContentFile } from "@app/lib/api/files/screenshot";
 import { createMountFrameSourceReader } from "@app/lib/api/viz/build_frame_bundle";
@@ -397,8 +398,15 @@ export async function createInteractiveContentTools(
         );
       }
 
-      // Resolve the Computer mount that holds the Frame's source files.
-      const fsResult = await DustFileSystem.fromScopedPath(auth, path);
+      const splitResult = splitFrameEntryScopedPath(path);
+      if (splitResult.isErr()) {
+        return new Err(
+          new MCPError(splitResult.error.message, { tracked: false })
+        );
+      }
+      const { root, entryRelPath } = splitResult.value;
+
+      const fsResult = await DustFileSystem.fromScopedPath(auth, root);
       if (fsResult.isErr()) {
         return new Err(
           new MCPError(fsResult.error.message, { tracked: false })
@@ -407,8 +415,9 @@ export async function createInteractiveContentTools(
 
       const result = await publishFrame(auth, {
         file,
-        reader: createMountFrameSourceReader(fsResult.value, path),
-        rootScopedPath: path,
+        reader: createMountFrameSourceReader(fsResult.value, root),
+        entryRelPath,
+        rootScopedPath: root,
         publishedByAgentConfigurationId: agentConfiguration?.sId,
       });
       if (result.isErr()) {

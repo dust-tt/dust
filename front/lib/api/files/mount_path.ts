@@ -618,6 +618,28 @@ export function disambiguateFileName(file: FileResource): string {
 }
 
 /**
+ * Split a scoped path to a Frame's entry source file into its bundling root and the entry's path
+ * relative to that root, e.g. "conversation-abc/dashboards/Sales.tsx" splits into
+ * "conversation-abc/dashboards" and "Sales.tsx". Callers pass the entry's full current path
+ * rather than a directory (see `frameEntryRelPath` on `FileUseCaseMetadata` for why).
+ */
+export function splitFrameEntryScopedPath(
+  scopedPath: string
+): Result<{ root: string; entryRelPath: string }, Error> {
+  const trimmed = scopedPath.replace(/\/+$/, "");
+  const root = path.posix.dirname(trimmed);
+  if (root === "." || root === "/") {
+    return new Err(
+      new Error(
+        `Path must include the entry file's directory, e.g. 'conversation-<id>/<filename>': got '${scopedPath}'.`
+      )
+    );
+  }
+
+  return new Ok({ root, entryRelPath: path.posix.basename(trimmed) });
+}
+
+/**
  * Validate a single folder segment name (no path separators).
  */
 export function validateMountFolderName(
