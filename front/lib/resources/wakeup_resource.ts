@@ -503,20 +503,21 @@ export class WakeUpResource extends BaseResource<WakeUpModel> {
       );
     }
 
-    return this.cancelForCascade(auth, { transaction });
+    return this.forceCancel(auth, { transaction });
   }
 
   /**
-   * Ensures a wake-up leaves no live Temporal footprint as part of a
-   * system-initiated cascade (agent archive / hard-delete), without the
-   * owner/admin permission check, since the agent it targets is going away.
+   * System-initiated counterpart of cancel(): guarantees the wake-up leaves no
+   * live Temporal footprint, WITHOUT the owner/admin permission check that
+   * cancel() runs. Used when the agent a wake-up targets is going away (archive
+   * / hard-delete), so ownership no longer matters.
    *
    * - If still scheduled: cancels it (deletes the cron schedule / cancels the
    *   pending one-shot workflow) and marks the row cancelled.
    * - If already terminal: reconciles a cron schedule that may have been left
    *   orphaned by a prior failed cleanup (no-op for one-shots / non-cron).
    */
-  async cancelForCascade(
+  async forceCancel(
     auth: Authenticator,
     { transaction }: { transaction?: Transaction } = {}
   ): Promise<Result<void, Error>> {

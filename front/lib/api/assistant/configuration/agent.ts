@@ -1329,7 +1329,7 @@ async function cancelWakeUpsForAgent(
   await concurrentExecutor(
     wakeUps,
     async (wakeUp) => {
-      const cancelResult = await wakeUp.cancelForCascade(auth);
+      const cancelResult = await wakeUp.forceCancel(auth);
       if (cancelResult.isErr()) {
         logger.error(
           {
