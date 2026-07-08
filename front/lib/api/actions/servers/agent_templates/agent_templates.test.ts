@@ -1,5 +1,5 @@
 import { getSuggestedTemplatesForQuery } from "@app/lib/api/assistant/template_suggestion";
-import { Authenticator } from "@app/lib/auth";
+import type { Authenticator } from "@app/lib/auth";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { TemplateFactory } from "@app/tests/utils/TemplateFactory";
 import { Err, Ok } from "@app/types/shared/result";

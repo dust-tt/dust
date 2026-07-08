@@ -23,7 +23,6 @@ import type {
   AgentMessageType,
   ConversationType,
 } from "@app/types/assistant/conversation";
-import { Err, Ok } from "@app/types/shared/result";
 import type { LightWorkspaceType } from "@app/types/user";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -2039,7 +2038,6 @@ describe("agent_sidekick_context tools", () => {
       }
     });
   });
-
 
   describe("inspect_conversation", () => {
     it("returns conversation with user and agent messages", async () => {
