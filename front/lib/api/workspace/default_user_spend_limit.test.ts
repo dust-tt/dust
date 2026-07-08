@@ -204,7 +204,7 @@ describe("setDefaultUserSpendLimit", () => {
     );
   });
 
-  it("records previous_awu_credits as 'unset' when no default existed", async () => {
+  it("records previous_awu_credits as '0' when no default existed", async () => {
     const workspace = await WorkspaceFactory.metronome({
       metronomeCustomerId: METRONOME_CUSTOMER_ID,
     });
@@ -218,7 +218,7 @@ describe("setDefaultUserSpendLimit", () => {
     expect(workosAudit.emitAuditLogEvent).toHaveBeenCalledWith(
       expect.objectContaining({
         metadata: {
-          previous_awu_credits: "unset",
+          previous_awu_credits: "0",
           new_awu_credits: "1000",
         },
       })
