@@ -472,16 +472,14 @@ export async function processToolResults(
     })
   );
 
-  const contents = cleanContent.map((c) => ({
-    content: sanitizeStringsDeep(c.content),
-    fileId: c.file?.id,
-  }));
-
   // Persist the processed contents on the run context's action: per-item rows for agent loop
   // actions, a single output object for sandbox function actions.
   const persistResult = await runContext.action.createOutputItems(
     auth,
-    contents
+    cleanContent.map((c) => ({
+      content: sanitizeStringsDeep(c.content),
+      fileId: c.file?.id,
+    }))
   );
 
   // Surfaced as an exception: there is no acceptable degraded state for unpersisted tool outputs.
