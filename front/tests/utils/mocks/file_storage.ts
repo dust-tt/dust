@@ -1,3 +1,4 @@
+import { Ok } from "@app/types/shared/result";
 import { PassThrough, Readable } from "stream";
 import { vi } from "vitest";
 
@@ -10,6 +11,13 @@ export interface SaveFileCall {
   filePath: string;
   content: Buffer | string;
   contentType: string | undefined;
+}
+
+// Minimal duck-typed stand-in for the GCS `File` objects `getSortedFileVersions` resolves to.
+// Callers (e.g. FileResource.revert()) only ever call `.copy(dest)` and `.delete()` on them.
+export interface MockFileVersion {
+  copy: (dest: unknown) => Promise<void>;
+  delete: () => Promise<void>;
 }
 
 /**
@@ -32,6 +40,10 @@ class FileStorageMock {
     filePath: string
   ) => { contentType: string; size: string } | null = () => null;
   private _contentForPath: (filePath: string) => string | null = () => null;
+  private _sortedFileVersions: (filePath: string) => MockFileVersion[] | null =
+    () => null;
+  private _copyFileShouldFail: (src: string, dest: string) => boolean = () =>
+    false;
 
   get writeStreamCalls(): readonly WriteStreamCall[] {
     return this._writeStreamCalls;
@@ -76,6 +88,25 @@ class FileStorageMock {
     this._contentForPath = fn;
   }
 
+  /**
+   * Controls what `bucket.getSortedFileVersions({ filePath })` resolves to (newest first),
+   * keyed by the file path. Return null (the default) to resolve an empty list, matching "no
+   * previous version available". Reset between tests via `reset()`.
+   */
+  setSortedFileVersions(
+    fn: (filePath: string) => MockFileVersion[] | null
+  ): void {
+    this._sortedFileVersions = fn;
+  }
+
+  /**
+   * Makes `bucket.copyFile(src, dest)` reject for (src, dest) pairs matching the predicate.
+   * Defaults to never failing. Reset between tests via `reset()`.
+   */
+  setCopyFileFails(predicate: (src: string, dest: string) => boolean): void {
+    this._copyFileShouldFail = predicate;
+  }
+
   reset(): void {
     this._writeStreamCalls.length = 0;
     this._saveFileCalls.length = 0;
@@ -83,6 +114,8 @@ class FileStorageMock {
     this._saveShouldFail = () => false;
     this._metadataForPath = () => null;
     this._contentForPath = () => null;
+    this._sortedFileVersions = () => null;
+    this._copyFileShouldFail = () => false;
   }
 
   /**
@@ -186,9 +219,19 @@ class FileStorageMock {
         .mockResolvedValue(undefined),
       fetchFileContent: vi.fn().mockResolvedValue("mock content"),
       fetchFileBuffer: vi.fn().mockResolvedValue(new Uint8Array()),
-      copyFile: vi.fn().mockResolvedValue(undefined),
+      copyFile: vi.fn((src: string, dest: string) => {
+        if (this._copyFileShouldFail(src, dest)) {
+          return Promise.reject(
+            new Error(`Simulated GCS copy failure: ${src} -> ${dest}`)
+          );
+        }
+        return Promise.resolve(undefined);
+      }),
       delete: vi.fn().mockResolvedValue(undefined),
       deleteFiles: vi.fn().mockResolvedValue(undefined),
+      getSortedFileVersions: vi.fn(({ filePath }: { filePath: string }) =>
+        Promise.resolve(new Ok(this._sortedFileVersions(filePath) ?? []))
+      ),
     };
   }
 }

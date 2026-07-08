@@ -31,6 +31,14 @@ export const EXPORT_INTERACTIVE_CONTENT_FILE_TOOL_NAME =
 export const PUBLISH_INTERACTIVE_CONTENT_FILE_TOOL_NAME =
   "publish_interactive_content_file";
 
+// Shared rationale for why an existing Frame must be edited in place rather than recreated.
+// Interpolated verbatim wherever this constraint is taught (this server's create tool, the
+// files server's create/edit tools, the Frames skill instructions) so the "why" stays a single
+// source of truth instead of independently drifting prose in each place.
+export const FRAME_RECREATE_WASTE_RATIONALE =
+  "a replacement Frame loses the original's identity and share URL and wastes tokens " +
+  "regenerating content that did not change";
+
 export const INTERACTIVE_CONTENT_TOOLS_METADATA = createToolsRecord({
   [CREATE_INTERACTIVE_CONTENT_FILE_TOOL_NAME]: {
     description:
@@ -38,7 +46,9 @@ export const INTERACTIVE_CONTENT_TOOLS_METADATA = createToolsRecord({
       "presentation that users can run and interact with, beyond static viewing. Choose 'template' " +
       "mode to base it on an existing knowledge node, or 'inline' mode to provide the content " +
       "directly. Validation (Tailwind, TypeScript) is non-blocking: the file is saved even with " +
-      "warnings, which you should fix immediately.",
+      "warnings, which you should fix immediately. Only for a Frame that does not already " +
+      "exist: to alter a Frame the conversation already has, go through its source file (see " +
+      "the Frames skill instructions) rather than creating a replacement.",
     schema: {
       file_name: z
         .string()
@@ -96,7 +106,7 @@ export const INTERACTIVE_CONTENT_TOOLS_METADATA = createToolsRecord({
     description:
       "Edit an existing Frame: change its code, for example to fix a chart, adjust colors, or " +
       "update text and layout. Replaces a specified text segment with new text; each edit creates " +
-      "a new version. " +
+      "a new version of the Frame. " +
       `Use the ${RETRIEVE_INTERACTIVE_CONTENT_FILE_TOOL_NAME} tool first to read the current text ` +
       "to replace. `old_string` must match the existing text exactly (including all spacing, " +
       "formatting, and line breaks), with at least 3 lines of surrounding context before and after " +
@@ -193,9 +203,8 @@ export const INTERACTIVE_CONTENT_TOOLS_METADATA = createToolsRecord({
   [RETRIEVE_INTERACTIVE_CONTENT_FILE_TOOL_NAME]: {
     description:
       "Read back the current content of an existing Frame by its file ID. " +
-      "Use this to inspect a Frame you have previously created " +
-      `or edited. Use this tool before calling ${EDIT_INTERACTIVE_CONTENT_FILE_TOOL_NAME} to ` +
-      "understand the current file state and identify the exact text to replace.",
+      "Use this to inspect a Frame you have previously created or edited, and to identify " +
+      "the exact text to replace before an edit.",
     schema: {
       file_id: z
         .string()
@@ -268,10 +277,12 @@ export const INTERACTIVE_CONTENT_TOOLS_METADATA = createToolsRecord({
   },
   [PUBLISH_INTERACTIVE_CONTENT_FILE_TOOL_NAME]: {
     description:
-      "Publish a Frame from its source files in the Computer. A Frame you created is already " +
-      "mounted in the Computer at `/files/conversation-<conversationId>/<filename>`, so edit it " +
-      "there in place rather than copying it elsewhere, then call this to build it into the live " +
-      "Frame. It resolves the Frame's dependency tree from the given directory (inlining relative " +
+      "Publish a Frame from its source files, applying source edits to the live rendered Frame. " +
+      "A Frame's source lives on the conversation file system at " +
+      "`conversation-<conversationId>/<filename>` (mounted in the Computer at " +
+      "`/files/conversation-<conversationId>/<filename>` when the Computer is available), so " +
+      "edit it in place rather than copying it elsewhere, then call this to build it into the " +
+      "live Frame. It resolves the Frame's dependency tree from the given directory (inlining relative " +
       "imports), validates TypeScript and JSX, then updates the canonical Frame so viewers and " +
       "shares see the new version. A syntax error blocks publishing and is reported back so you " +
       "can fix it. Tailwind warnings are returned but do not block. Pass the `file_id` of the " +
