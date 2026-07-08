@@ -6,6 +6,6 @@ POST /front.agent_message_analytics_2/_update_by_query
     }
   },
   "script": {
-    "source": """ctx._source.remove("api_key_name")"""
+    "source": "ctx._source.remove('api_key_name')"
   }
 }
