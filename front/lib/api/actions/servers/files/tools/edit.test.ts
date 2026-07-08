@@ -168,11 +168,12 @@ describe("editHandler", () => {
   it("returns Err when old_string is not found", async () => {
     const { auth, conversation } = await setupProjectConversation();
     mockStoredFile("some content\n", "text/plain");
+    const oldString = "absent";
 
     const result = await editHandler(
       {
         path: `conversation-${conversation.sId}/notes.txt`,
-        old_string: "absent",
+        old_string: oldString,
         new_string: "b",
       },
       makeExtra(auth, conversation)
@@ -180,7 +181,7 @@ describe("editHandler", () => {
 
     expect(result.isErr()).toBe(true);
     if (result.isErr()) {
-      expect(result.error.message).toContain("String not found");
+      expect(result.error.message).toContain(`String "${oldString}" not found`);
     }
     expect(fileStorageMock.saveFileCalls).toHaveLength(0);
   });
