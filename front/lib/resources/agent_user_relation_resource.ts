@@ -2,6 +2,7 @@ import type { Authenticator } from "@app/lib/auth";
 import { AgentUserRelationModel } from "@app/lib/models/agent/agent";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import type { ModelStaticWorkspaceAware } from "@app/lib/resources/storage/wrappers/workspace_models";
+import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Ok } from "@app/types/shared/result";
 import type { Attributes, Transaction } from "sequelize";
@@ -26,6 +27,22 @@ export class AgentUserRelationResource extends BaseResource<AgentUserRelationMod
         agentConfiguration: agentId,
         workspaceId: auth.getNonNullableWorkspace().id,
       },
+    });
+  }
+
+  static async deleteForAgents(
+    agentIds: string[],
+    {
+      workspaceId,
+      transaction,
+    }: { workspaceId: ModelId; transaction?: Transaction }
+  ): Promise<void> {
+    await this.model.destroy({
+      where: {
+        agentConfiguration: agentIds,
+        workspaceId,
+      },
+      transaction,
     });
   }
 

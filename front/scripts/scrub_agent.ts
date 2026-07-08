@@ -1,8 +1,12 @@
 import {
+  cleanupAgentScopedResourcesForHardDeletion,
   listsAgentConfigurationVersions,
   unsafeHardDeleteAgentConfiguration,
 } from "@app/lib/api/assistant/configuration/agent";
 import { Authenticator } from "@app/lib/auth";
+import { AgentUserRelationResource } from "@app/lib/resources/agent_user_relation_resource";
+import { TriggerResource } from "@app/lib/resources/trigger_resource";
+import { WakeUpResource } from "@app/lib/resources/wakeup_resource";
 import { makeScript } from "@app/scripts/helpers";
 
 makeScript(
@@ -63,6 +67,49 @@ makeScript(
         versionCount: versions.length,
       },
       "Hard-deleting all versions of the agent."
+    );
+
+    await cleanupAgentScopedResourcesForHardDeletion(auth, agentId);
+
+    const remainingTriggers = await TriggerResource.listByAgentConfigurationId(
+      auth,
+      agentId
+    );
+    const remainingWakeUps = await WakeUpResource.listByAgentConfigurationId(
+      auth,
+      agentId
+    );
+    const remainingFavoriteCount =
+      await AgentUserRelationResource.countForAgent(auth, agentId);
+
+    if (
+      remainingTriggers.length > 0 ||
+      remainingWakeUps.length > 0 ||
+      remainingFavoriteCount > 0
+    ) {
+      logger.error(
+        {
+          workspaceId,
+          agentId,
+          remainingTriggerIds: remainingTriggers.map((t) => t.sId),
+          remainingWakeUps: remainingWakeUps.map((w) => ({
+            sId: w.sId,
+            status: w.status,
+            scheduleType: w.scheduleType,
+          })),
+          remainingFavoriteCount,
+        },
+        "Agent scoped cleanup incomplete; aborting hard-delete of agent versions. " +
+          "Resolve the underlying Temporal failure and rerun."
+      );
+      throw new Error(
+        `Agent scoped cleanup incomplete for ${agentId}; aborted before deleting versions.`
+      );
+    }
+
+    logger.info(
+      { workspaceId, agentId },
+      "Agent triggers, wake-ups and favorites fully cleaned up."
     );
 
     for (const version of versions) {
