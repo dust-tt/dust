@@ -1,4 +1,5 @@
 import { isAgentLoopToolNotificationEvent } from "@app/lib/actions/mcp";
+import type { ToolContextType } from "@app/lib/actions/types";
 import { isSandboxChildActionInfo } from "@app/lib/actions/types";
 import { isLightClientSideMCPToolConfiguration } from "@app/lib/actions/types/guards";
 import {
@@ -228,19 +229,24 @@ async function executeToolStreaming(
     ? updateResourceAndPublishEvent
     : () => {};
 
-  const eventStream = runToolWithStreaming(
-    auth,
-    {
+  const toolContext: ToolContextType = {
+    runContext: {
+      contextType: "agent_loop",
       action,
       agentConfiguration,
       model,
       agentMessage,
       conversation,
+      stepContext: action.stepContext,
+      toolConfiguration: action.toolConfiguration,
       userMessage,
     },
-    {
-      signal: abortSignal,
-    }
+  };
+
+  const eventStream = runToolWithStreaming(
+    auth,
+    { toolContext },
+    { signal: abortSignal }
   );
 
   for await (const event of eventStream) {
@@ -378,6 +384,13 @@ async function executeToolStreaming(
       case "tool_file_auth_required":
       case "tool_approve_execution":
       case "tool_ask_user_question":
+        // The agent loop activity always runs tools with an agent loop context, so sandbox
+        // function scoped events cannot surface here.
+        assert(
+          "conversationId" in event,
+          "Unexpected sandbox function tool event in the agent loop."
+        );
+
         updateActiveObservation(
           {
             output: { status: event.type },

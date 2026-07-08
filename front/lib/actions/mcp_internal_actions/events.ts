@@ -5,15 +5,12 @@ import type {
 import type { UserQuestion } from "@app/lib/actions/types";
 import type { OAuthProvider } from "@app/types/oauth/lib";
 
-export interface ToolExecution<
+interface ToolExecutionBase<
   T extends MCPValidationMetadataType = MCPValidationMetadataType,
 > {
-  conversationId: string;
-  messageId: string;
   actionId: string;
   // User might be undefined if the run was initiated through the public API using an API key.
   userId?: string;
-  configurationId: string;
   created: number;
 
   stake?: MCPToolStakeLevelType;
@@ -28,6 +25,24 @@ export interface ToolExecution<
   approvalArgsLabel?: string;
 }
 
+// Tool execution scoped to an agent loop run: carries the conversation-scoped identifiers used on
+// the conversation message channel.
+export interface AgentLoopToolExecution<
+  T extends MCPValidationMetadataType = MCPValidationMetadataType,
+> extends ToolExecutionBase<T> {
+  conversationId: string;
+  messageId: string;
+  configurationId: string;
+}
+
+// Tool execution scoped to a sandbox function invocation.
+export interface SandboxFunctionToolExecution<
+  T extends MCPValidationMetadataType = MCPValidationMetadataType,
+> extends ToolExecutionBase<T> {
+  sandboxFunctionId: string;
+  invocationId: string;
+}
+
 type ToolPersonalAuthError = {
   mcpServerId: string;
   provider: OAuthProvider;
@@ -36,18 +51,28 @@ type ToolPersonalAuthError = {
   message: string;
 };
 
+type ToolAuthMetadataType = MCPValidationMetadataType & {
+  mcpServerId: string;
+  mcpServerDisplayName: string;
+};
+
 // Event sent when personal authentication is required for a tool call.
 // This is a non-terminal event that pauses the workflow until authentication is completed.
-export interface ToolPersonalAuthRequiredEvent
-  extends ToolExecution<
-    MCPValidationMetadataType & {
-      mcpServerId: string;
-      mcpServerDisplayName: string;
-    }
-  > {
+export interface AgentLoopToolPersonalAuthRequiredEvent
+  extends AgentLoopToolExecution<ToolAuthMetadataType> {
   type: "tool_personal_auth_required";
   authError: ToolPersonalAuthError;
 }
+
+export interface SandboxFunctionToolPersonalAuthRequiredEvent
+  extends SandboxFunctionToolExecution<ToolAuthMetadataType> {
+  type: "tool_personal_auth_required";
+  authError: ToolPersonalAuthError;
+}
+
+export type ToolPersonalAuthRequiredEvent =
+  | AgentLoopToolPersonalAuthRequiredEvent
+  | SandboxFunctionToolPersonalAuthRequiredEvent;
 
 type ToolFileAuthError = {
   fileId: string;
@@ -60,36 +85,64 @@ type ToolFileAuthError = {
 
 // Pauses agent execution to prompt user for file access consent (e.g., Google Drive).
 // Non-terminal because the tool can resume once the user authorizes the file.
-export interface ToolFileAuthRequiredEvent
-  extends ToolExecution<
-    MCPValidationMetadataType & {
-      mcpServerId: string;
-      mcpServerDisplayName: string;
-    }
-  > {
+export interface AgentLoopToolFileAuthRequiredEvent
+  extends AgentLoopToolExecution<ToolAuthMetadataType> {
   type: "tool_file_auth_required";
   fileAuthError: ToolFileAuthError;
 }
 
-export interface MCPApproveExecutionEvent extends ToolExecution {
+export interface SandboxFunctionToolFileAuthRequiredEvent
+  extends SandboxFunctionToolExecution<ToolAuthMetadataType> {
+  type: "tool_file_auth_required";
+  fileAuthError: ToolFileAuthError;
+}
+
+export type ToolFileAuthRequiredEvent =
+  | AgentLoopToolFileAuthRequiredEvent
+  | SandboxFunctionToolFileAuthRequiredEvent;
+
+export interface MCPApproveExecutionEvent extends AgentLoopToolExecution {
   type: "tool_approve_execution";
 }
 
-export interface ToolAskUserQuestionEvent extends ToolExecution {
+export interface AgentLoopToolAskUserQuestionEvent
+  extends AgentLoopToolExecution {
   type: "tool_ask_user_question";
   question: UserQuestion;
 }
 
-export type ToolEarlyExitEvent = {
+export interface SandboxFunctionToolAskUserQuestionEvent
+  extends SandboxFunctionToolExecution {
+  type: "tool_ask_user_question";
+  question: UserQuestion;
+}
+
+export type ToolAskUserQuestionEvent =
+  | AgentLoopToolAskUserQuestionEvent
+  | SandboxFunctionToolAskUserQuestionEvent;
+
+type ToolEarlyExitEventBase = {
   type: "tool_early_exit";
   created: number;
-  configurationId: string;
-  messageId: string;
-  conversationId: string;
   text: string;
   isError: boolean;
   reason?: "deploy_interruption" | "user_cancellation" | "none";
 };
+
+export type AgentLoopToolEarlyExitEvent = ToolEarlyExitEventBase & {
+  configurationId: string;
+  messageId: string;
+  conversationId: string;
+};
+
+export type SandboxFunctionToolEarlyExitEvent = ToolEarlyExitEventBase & {
+  sandboxFunctionId: string;
+  invocationId: string;
+};
+
+export type ToolEarlyExitEvent =
+  | AgentLoopToolEarlyExitEvent
+  | SandboxFunctionToolEarlyExitEvent;
 
 /**
  * Internal signal emitted by `getExitOrPauseEvents` whenever it processes a
@@ -105,11 +158,23 @@ export type ToolEarlyExitEvent = {
  * (to skip `markAsSucceeded`) and `executeToolStreaming` (to set
  * `shouldPauseAgentLoop`).
  */
-export type ToolPausedEvent = {
+type ToolPausedEventBase = {
   type: "tool_paused";
   created: number;
+  actionId: string;
+};
+
+export type AgentLoopToolPausedEvent = ToolPausedEventBase & {
   configurationId: string;
   messageId: string;
   conversationId: string;
-  actionId: string;
 };
+
+export type SandboxFunctionToolPausedEvent = ToolPausedEventBase & {
+  sandboxFunctionId: string;
+  invocationId: string;
+};
+
+export type ToolPausedEvent =
+  | AgentLoopToolPausedEvent
+  | SandboxFunctionToolPausedEvent;

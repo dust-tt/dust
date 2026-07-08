@@ -8,9 +8,9 @@ import type {
   MCPServerAvailability,
 } from "@app/lib/actions/mcp_internal_actions/constants";
 import type {
+  AgentLoopToolExecution,
   MCPApproveExecutionEvent,
   ToolAskUserQuestionEvent,
-  ToolExecution,
   ToolFileAuthRequiredEvent,
   ToolPersonalAuthRequiredEvent,
 } from "@app/lib/actions/mcp_internal_actions/events";
@@ -162,7 +162,7 @@ export type LightMCPToolConfigurationType =
 
 export type { FileAuthorizationInfo };
 
-export type BlockedToolExecution = ToolExecution &
+export type BlockedToolExecution = AgentLoopToolExecution &
   (
     | {
         status: "blocked_validation_required";
