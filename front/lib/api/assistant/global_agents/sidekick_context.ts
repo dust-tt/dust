@@ -1,4 +1,5 @@
 import { AGENT_SIDEKICK_CONTEXT_TOOL_NAME } from "@app/lib/api/actions/servers/agent_sidekick_context/metadata";
+import { AGENT_TEMPLATES_SERVER_NAME } from "@app/lib/api/actions/servers/agent_templates/metadata";
 import type {
   AvailableSkill,
   AvailableTool,
@@ -27,6 +28,7 @@ interface SidekickUserMetadata {
 export interface SidekickContext {
   mcpServerViews: {
     context: MCPServerViewResource;
+    templates: MCPServerViewResource | null;
   } | null;
 }
 
@@ -261,12 +263,17 @@ export async function buildSidekickContext(
     return null;
   }
 
-  const context =
-    await MCPServerViewResource.getMCPServerViewForAutoInternalTool(
+  const [context, templates] = await Promise.all([
+    MCPServerViewResource.getMCPServerViewForAutoInternalTool(
       auth,
       AGENT_SIDEKICK_CONTEXT_TOOL_NAME
-    );
+    ),
+    MCPServerViewResource.getMCPServerViewForAutoInternalTool(
+      auth,
+      AGENT_TEMPLATES_SERVER_NAME
+    ),
+  ]);
   return {
-    mcpServerViews: context ? { context } : null,
+    mcpServerViews: context ? { context, templates } : null,
   };
 }

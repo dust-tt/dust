@@ -1,6 +1,5 @@
 import { USED_MODEL_CONFIGS } from "@app/components/providers/model_configs";
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
-import { getSuggestedTemplatesForQuery } from "@app/lib/api/assistant/template_suggestion";
 import { Authenticator } from "@app/lib/auth";
 import { AgentMessageFeedbackResource } from "@app/lib/resources/agent_message_feedback_resource";
 import { AgentSuggestionResource } from "@app/lib/resources/agent_suggestion_resource";
@@ -18,14 +17,12 @@ import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { RemoteMCPServerFactory } from "@app/tests/utils/RemoteMCPServerFactory";
 import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
-import { TemplateFactory } from "@app/tests/utils/TemplateFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import type { AgentConfigurationType } from "@app/types/assistant/agent";
 import type {
   AgentMessageType,
   ConversationType,
 } from "@app/types/assistant/conversation";
-import { Err, Ok } from "@app/types/shared/result";
 import type { LightWorkspaceType } from "@app/types/user";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -40,11 +37,6 @@ vi.mock("@app/lib/api/assistant/feedback", () => ({
   getAgentFeedbacks: vi.fn(),
 }));
 
-// Mock template suggestion for query-based search.
-vi.mock("@app/lib/api/assistant/template_suggestion", () => ({
-  getSuggestedTemplatesForQuery: vi.fn(),
-}));
-
 // Mock the helper that extracts agent configuration ID from context.
 vi.mock("@app/lib/api/actions/servers/agent_sidekick_helpers", () => ({
   getAgentConfigurationIdFromContext: vi.fn(),
@@ -53,17 +45,14 @@ vi.mock("@app/lib/api/actions/servers/agent_sidekick_helpers", () => ({
 // Reset only file-local mocks between tests.
 // Avoid vi.resetAllMocks() as it resets global mocks like the Redis mock from vite.setup.ts.
 beforeEach(async () => {
-  const [overview, feedback, templateSuggestion, sidekickHelpers] =
-    await Promise.all([
-      import("@app/lib/api/assistant/observability/overview"),
-      import("@app/lib/api/assistant/feedback"),
-      import("@app/lib/api/assistant/template_suggestion"),
-      import("@app/lib/api/actions/servers/agent_sidekick_helpers"),
-    ]);
+  const [overview, feedback, sidekickHelpers] = await Promise.all([
+    import("@app/lib/api/assistant/observability/overview"),
+    import("@app/lib/api/assistant/feedback"),
+    import("@app/lib/api/actions/servers/agent_sidekick_helpers"),
+  ]);
 
   vi.mocked(overview.fetchAgentOverview).mockReset();
   vi.mocked(feedback.getAgentFeedbacks).mockReset();
-  vi.mocked(templateSuggestion.getSuggestedTemplatesForQuery).mockReset();
   vi.mocked(sidekickHelpers.getAgentConfigurationIdFromContext).mockReset();
 });
 
@@ -2046,267 +2035,6 @@ describe("agent_sidekick_context tools", () => {
           expect(parsed.results[1].success).toBe(true);
           expect(parsed.results[1].suggestionId).toBe(suggestion2.sId);
         }
-      }
-    });
-  });
-
-  describe("search_agent_templates", () => {
-    it("returns at most 10 published templates when no jobType", async () => {
-      const { authenticator } = await createResourceTest({ role: "admin" });
-
-      // Create 12 published templates.
-      for (let i = 0; i < 12; i++) {
-        await TemplateFactory.published();
-      }
-      // Draft should not appear.
-      await TemplateFactory.draft();
-
-      const tool = getToolByName("search_agent_templates");
-      const result = await tool.handler({}, createTestExtra(authenticator));
-
-      expect(result.isOk()).toBe(true);
-      if (result.isOk()) {
-        const content = result.value[0];
-        expect(content.type).toBe("text");
-        if (content.type === "text") {
-          expect(content.text).toMatch(/Found 10 template\(s\):/);
-          expect((content.text.match(/## Template/g) ?? []).length).toBe(10);
-        }
-      }
-    });
-
-    it("filters templates by jobType tags", async () => {
-      const { authenticator } = await createResourceTest({ role: "admin" });
-
-      const salesTemplate = await TemplateFactory.published();
-      await salesTemplate.updateAttributes({ tags: ["SALES"] });
-
-      const engineeringTemplate = await TemplateFactory.published();
-      await engineeringTemplate.updateAttributes({ tags: ["ENGINEERING"] });
-
-      const tool = getToolByName("search_agent_templates");
-      const result = await tool.handler(
-        { jobType: "sales" },
-        createTestExtra(authenticator)
-      );
-
-      expect(result.isOk()).toBe(true);
-      if (result.isOk()) {
-        const content = result.value[0];
-        expect(content.type).toBe("text");
-        if (content.type === "text") {
-          expect(content.text).toContain(`sId: ${salesTemplate.sId}`);
-          expect(content.text).not.toContain(engineeringTemplate.sId);
-        }
-      }
-    });
-
-    it("returns at most 10 templates for unknown jobType", async () => {
-      const { authenticator } = await createResourceTest({ role: "admin" });
-
-      // Create 12 published templates.
-      for (let i = 0; i < 12; i++) {
-        await TemplateFactory.published();
-      }
-
-      const tool = getToolByName("search_agent_templates");
-      const result = await tool.handler(
-        { jobType: "unknown_type" },
-        createTestExtra(authenticator)
-      );
-
-      expect(result.isOk()).toBe(true);
-      if (result.isOk()) {
-        const content = result.value[0];
-        expect(content.type).toBe("text");
-        if (content.type === "text") {
-          // Unknown jobType -> empty matchingTags -> limited to 10.
-          expect(content.text).toMatch(/Found 10 template\(s\):/);
-        }
-      }
-    });
-
-    it("returns expected fields per template", async () => {
-      const { authenticator } = await createResourceTest({ role: "admin" });
-
-      const template = await TemplateFactory.published();
-      await template.updateAttributes({
-        tags: ["SALES"],
-        sidekickInstructions: "Test sidekick instructions",
-      });
-
-      const tool = getToolByName("search_agent_templates");
-      const result = await tool.handler(
-        { jobType: "sales" },
-        createTestExtra(authenticator)
-      );
-
-      expect(result.isOk()).toBe(true);
-      if (result.isOk()) {
-        const content = result.value[0];
-        expect(content.type).toBe("text");
-        if (content.type === "text") {
-          expect(content.text).toContain(`sId: ${template.sId}`);
-          expect(content.text).toContain(`handle: ${template.handle}`);
-          expect(content.text).toContain(
-            (template.userFacingDescription ?? "").trim()
-          );
-          expect(content.text).toContain(
-            (template.agentFacingDescription ?? "").trim()
-          );
-          expect(content.text).toContain("Test sidekick instructions");
-          expect(content.text).toContain("tags: SALES");
-        }
-      }
-    });
-
-    it("uses LLM-based fuzzy matching when query is provided", async () => {
-      const { authenticator } = await createResourceTest({ role: "admin" });
-
-      const template1 = await TemplateFactory.published();
-      await TemplateFactory.published();
-
-      vi.mocked(getSuggestedTemplatesForQuery).mockResolvedValueOnce(
-        new Ok([template1])
-      );
-
-      const tool = getToolByName("search_agent_templates");
-      const result = await tool.handler(
-        { query: "help me draft sales emails" },
-        createTestExtra(authenticator)
-      );
-
-      expect(result.isOk()).toBe(true);
-      if (result.isOk()) {
-        const content = result.value[0];
-        expect(content.type).toBe("text");
-        if (content.type === "text") {
-          expect(content.text).toMatch(/Found 1 template\(s\):/);
-          expect(content.text).toContain(`sId: ${template1.sId}`);
-        }
-      }
-
-      expect(getSuggestedTemplatesForQuery).toHaveBeenCalledOnce();
-    });
-
-    it("returns error when query-based search fails", async () => {
-      const { authenticator } = await createResourceTest({ role: "admin" });
-
-      await TemplateFactory.published();
-
-      vi.mocked(getSuggestedTemplatesForQuery).mockResolvedValueOnce(
-        new Err(new Error("LLM call failed"))
-      );
-
-      const tool = getToolByName("search_agent_templates");
-      const result = await tool.handler(
-        { query: "something" },
-        createTestExtra(authenticator)
-      );
-
-      expect(result.isErr()).toBe(true);
-      if (result.isErr()) {
-        expect(result.error.message).toContain("LLM call failed");
-      }
-    });
-
-    it("combines jobType tag filtering with query-based search", async () => {
-      const { authenticator } = await createResourceTest({ role: "admin" });
-
-      const salesTemplate = await TemplateFactory.published();
-      await salesTemplate.updateAttributes({ tags: ["SALES"] });
-
-      const engineeringTemplate = await TemplateFactory.published();
-      await engineeringTemplate.updateAttributes({ tags: ["ENGINEERING"] });
-
-      vi.mocked(getSuggestedTemplatesForQuery).mockResolvedValueOnce(
-        new Ok([salesTemplate])
-      );
-
-      const tool = getToolByName("search_agent_templates");
-      const result = await tool.handler(
-        { jobType: "sales", query: "sales email drafter" },
-        createTestExtra(authenticator)
-      );
-
-      expect(result.isOk()).toBe(true);
-      // Query branch was used with tag-filtered candidates.
-      expect(getSuggestedTemplatesForQuery).toHaveBeenCalledOnce();
-      const callArgs = vi.mocked(getSuggestedTemplatesForQuery).mock.calls[0];
-      const passedTemplates = callArgs[1].templates;
-      const passedIds = passedTemplates.map((t) => t.sId);
-      expect(passedIds).toContain(salesTemplate.sId);
-      expect(passedIds).not.toContain(engineeringTemplate.sId);
-    });
-  });
-
-  describe("get_agent_template", () => {
-    it("returns template with sidekickInstructions", async () => {
-      const { authenticator } = await createResourceTest({ role: "admin" });
-
-      // Create a template with sidekickInstructions.
-      const template = await TemplateFactory.published();
-      await template.updateAttributes({
-        sidekickInstructions: "Test sidekick instructions for this template",
-      });
-
-      const tool = getToolByName("get_agent_template");
-      const result = await tool.handler(
-        { templateId: template.sId },
-        createTestExtra(authenticator)
-      );
-
-      expect(result.isOk()).toBe(true);
-      if (result.isOk()) {
-        const content = result.value[0];
-        expect(content.type).toBe("text");
-        if (content.type === "text") {
-          expect(content.text).toContain(`sId: ${template.sId}`);
-          expect(content.text).toContain(`handle: ${template.handle}`);
-          expect(content.text).toContain(
-            "Test sidekick instructions for this template"
-          );
-        }
-      }
-    });
-
-    it("returns null sidekickInstructions when not set", async () => {
-      const { authenticator } = await createResourceTest({ role: "admin" });
-
-      // Create a template without sidekickInstructions.
-      const template = await TemplateFactory.published();
-      await template.updateAttributes({ sidekickInstructions: null });
-
-      const tool = getToolByName("get_agent_template");
-      const result = await tool.handler(
-        { templateId: template.sId },
-        createTestExtra(authenticator)
-      );
-
-      expect(result.isOk()).toBe(true);
-      if (result.isOk()) {
-        const content = result.value[0];
-        expect(content.type).toBe("text");
-        if (content.type === "text") {
-          expect(content.text).toContain(`sId: ${template.sId}`);
-          expect(content.text).not.toContain("sidekickInstructions:");
-        }
-      }
-    });
-
-    it("returns error for non-existent template", async () => {
-      const { authenticator } = await createResourceTest({ role: "admin" });
-
-      const tool = getToolByName("get_agent_template");
-      const result = await tool.handler(
-        { templateId: "non-existent-template-id" },
-        createTestExtra(authenticator)
-      );
-
-      expect(result.isErr()).toBe(true);
-      if (result.isErr()) {
-        expect(result.error.message).toContain("Template not found");
-        expect(result.error.message).toContain("non-existent-template-id");
       }
     });
   });

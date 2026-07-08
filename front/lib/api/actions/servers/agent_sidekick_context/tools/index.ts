@@ -33,10 +33,6 @@ import {
 import { fetchAgentOverview } from "@app/lib/api/assistant/observability/overview";
 import { buildAgentAnalyticsBaseQuery } from "@app/lib/api/assistant/observability/utils";
 import {
-  formatTemplatesAsText,
-  getTemplatesForSidekick,
-} from "@app/lib/api/assistant/sidekick_templates";
-import {
   describeMcpServer,
   getAvailableModelsForWorkspace,
   listAvailableSkills,
@@ -57,7 +53,6 @@ import { DataSourceViewResource } from "@app/lib/resources/data_source_view_reso
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
-import { TemplateResource } from "@app/lib/resources/template_resource";
 import logger from "@app/logger/logger";
 import type { DataSourceViewCategory } from "@app/types/api/public/spaces";
 import type {
@@ -75,7 +70,6 @@ import { isModelProviderId } from "@app/types/assistant/models/providers";
 import type { ContentFragmentType } from "@app/types/content_fragment";
 import { isContentFragmentType } from "@app/types/content_fragment";
 import { CoreAPI } from "@app/types/core/core_api";
-import { isJobType } from "@app/types/job_type";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
@@ -1787,43 +1781,6 @@ const handlers: ToolHandlers<typeof AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA> = {
       {
         type: "text" as const,
         text: JSON.stringify({ results }, null, 2),
-      },
-    ]);
-  },
-
-  search_agent_templates: async ({ jobType, query }, { auth }) => {
-    const res = await getTemplatesForSidekick({
-      auth,
-      jobType: jobType && isJobType(jobType) ? jobType : undefined,
-      query,
-      limit: 10,
-    });
-    if (res.isErr()) {
-      return new Err(new MCPError(res.error.message, { tracked: false }));
-    }
-    return new Ok([
-      {
-        type: "text" as const,
-        text: formatTemplatesAsText(res.value),
-      },
-    ]);
-  },
-
-  get_agent_template: async ({ templateId }, _extra) => {
-    const template = await TemplateResource.fetchByExternalId(templateId);
-
-    if (!template) {
-      return new Err(
-        new MCPError(`Template not found: ${templateId}`, {
-          tracked: false,
-        })
-      );
-    }
-
-    return new Ok([
-      {
-        type: "text" as const,
-        text: formatTemplatesAsText([template]),
       },
     ]);
   },
