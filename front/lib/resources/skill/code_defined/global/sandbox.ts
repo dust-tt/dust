@@ -1,4 +1,4 @@
-import { isDustLikeAgent } from "@app/lib/api/assistant/global_agents/global_agents";
+import { isDustLikeAgent } from "@app/lib/api/assistant/global_agents/prompt_context";
 import { TOOL_OUTPUTS_FOLDER_NAME } from "@app/lib/api/files/mount_path";
 import { readWorkspacePolicy } from "@app/lib/api/sandbox/egress_policy";
 import {

@@ -22,7 +22,7 @@ import {
   globalAgentInjectsToolsets,
   globalAgentInjectsUserContext,
   globalAgentInjectsWorkspaceContext,
-} from "@app/lib/api/assistant/global_agents/global_agents";
+} from "@app/lib/api/assistant/global_agents/prompt_context";
 import {
   buildUserContext,
   buildWorkspaceContext,
