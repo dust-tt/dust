@@ -294,6 +294,43 @@ describe("blocked actions resolution", () => {
       );
     });
 
+    it("denies blocked actions spanning several steps (force-unlock)", async () => {
+      // Anomalous stuck conversation: the same agent message has blocked actions on more than one
+      // step, which violates the single-step invariant. Finalizing it (as the unstick-conversation
+      // poke plugin does) must still deny them all instead of throwing.
+      const { agentMessage, action: step1Action } =
+        await AgentMCPActionFactory.createWithAgentMessage(auth, {
+          workspace,
+          conversation,
+        });
+      const { action: step3Action } = await AgentMCPActionFactory.create(auth, {
+        workspace,
+        conversationModelId: conversation.id,
+        agentMessageModelId: agentMessage.agentMessageId,
+        step: 3,
+      });
+
+      await ConversationResource.markAsActionRequired(auth, { conversation });
+
+      await updateAgentMessageWithFinalStatus(auth, {
+        conversation,
+        agentMessage,
+        status: "failed",
+      });
+
+      const reloadedStep1 = await AgentMCPActionResource.fetchById(
+        auth,
+        step1Action.sId
+      );
+      const reloadedStep3 = await AgentMCPActionResource.fetchById(
+        auth,
+        step3Action.sId
+      );
+      expect(reloadedStep1?.status).toBe("denied");
+      expect(reloadedStep3?.status).toBe("denied");
+      expect(await getActionRequired()).toBe(false);
+    });
+
     it("commits the deny with the terminal status update", async () => {
       const { agentMessage } =
         await AgentMCPActionFactory.createWithAgentMessage(auth, {

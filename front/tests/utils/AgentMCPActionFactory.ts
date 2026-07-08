@@ -32,11 +32,13 @@ export class AgentMCPActionFactory {
       conversationModelId,
       agentMessageModelId,
       status = "blocked_validation_required",
+      step = 1,
     }: {
       workspace: WorkspaceType;
       conversationModelId: ModelId;
       agentMessageModelId: ModelId;
       status?: ToolExecutionStatus;
+      step?: number;
     }
   ): Promise<{
     action: AgentMCPActionResource;
@@ -47,7 +49,7 @@ export class AgentMCPActionFactory {
     const stepContent = await AgentStepContentModel.create({
       workspaceId: workspace.id,
       agentMessageId: agentMessageModelId,
-      step: 1,
+      step,
       index: currentIndex,
       version: 0,
       type: "function_call",
