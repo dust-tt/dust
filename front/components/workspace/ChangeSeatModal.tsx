@@ -22,6 +22,7 @@ import { useAppRouter } from "@app/lib/platform";
 import { useUpdateMemberSeatType } from "@app/lib/swr/memberships";
 import {
   isMembershipSeatType,
+  isPaidSeatType,
   type MembershipSeatType,
 } from "@app/types/memberships";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
@@ -243,21 +244,29 @@ export function ChangeSeatModal({
     }
   }
 
-  // Mirrors the backend `classifySeatTransition` rule
-  // (lib/metronome/seat_types.ts): a transition is deferred when the target
-  // seat has strictly lower AWU allocation than the current one — the user
-  // keeps the richer access through the period they already paid for.
-  // Identical seats are never deferred (they're a no-op).
+  // Mirrors the backend `classifySeatChange` rule (lib/metronome/seats.ts):
+  // a transition is deferred either when the target seat has strictly lower
+  // AWU allocation than the current one — the user keeps the richer access
+  // through the period they already paid for — or when it commits a monthly
+  // paid seat to yearly billing, which never takes effect mid-period even
+  // when the target tier is higher. Identical seats are never deferred
+  // (they're a no-op).
   const currentAwuCredits = currentSeatType
     ? (seatPlans[currentSeatType]?.awuCredits ?? 0)
     : 0;
   const selectedAwuCredits = selectedSeat
     ? (seatPlans[selectedSeat]?.awuCredits ?? 0)
     : 0;
+  const isMonthlyToYearlySwitch =
+    !!currentSeatType &&
+    !!selectedSeat &&
+    isPaidSeatType(currentSeatType) &&
+    !currentSeatType.endsWith("_yearly") &&
+    selectedSeat.endsWith("_yearly");
   const isDeferredChange =
     !!selectedSeat &&
     selectedSeat !== currentSeatType &&
-    selectedAwuCredits < currentAwuCredits;
+    (selectedAwuCredits < currentAwuCredits || isMonthlyToYearlySwitch);
 
   const displayedFirstName =
     displayedMember?.name?.trim().split(/\s+/)[0] ?? null;
