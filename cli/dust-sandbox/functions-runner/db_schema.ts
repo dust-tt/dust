@@ -14,14 +14,14 @@
 //
 // Column modes (timestamp/json/boolean/...) are a drizzle-level concept that SQLite does not
 // store — they are NOT regenerated here; they live in the published functions' stored
-// manifests.
+// shapes.
 
 import type { LiveColumn, LiveTable } from "./db_common.ts";
 import { introspectLiveTables, openReadonly } from "./db_common.ts";
 
 const GENERATED_HEADER = `// Generated from the live database by \`dsbx db schema\`.
 // Column modes (e.g. { mode: "timestamp" | "json" | "boolean" }) are not stored in SQLite,
-// so none appear here; the pod's published functions carry them in their stored manifests.
+// so none appear here; the pod's published functions carry them in their stored function state.
 `;
 
 export function generateSchemaFileText(dbPath: string): string {
