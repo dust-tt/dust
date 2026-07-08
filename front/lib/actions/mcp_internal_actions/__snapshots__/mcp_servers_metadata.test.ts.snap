@@ -71,10 +71,6 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool billing info ac
       "freeUsage": true,
       "toolCostCategory": "basic",
     },
-    "get_agent_template": {
-      "freeUsage": true,
-      "toolCostCategory": "basic",
-    },
     "get_available_agents": {
       "freeUsage": true,
       "toolCostCategory": "basic",
@@ -107,10 +103,6 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool billing info ac
       "freeUsage": true,
       "toolCostCategory": "basic",
     },
-    "search_agent_templates": {
-      "freeUsage": true,
-      "toolCostCategory": "basic",
-    },
     "search_knowledge": {
       "freeUsage": true,
       "toolCostCategory": "basic",
@@ -140,6 +132,16 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool billing info ac
       "toolCostCategory": "basic",
     },
     "update_suggestions_state": {
+      "freeUsage": true,
+      "toolCostCategory": "basic",
+    },
+  },
+  "agent_templates": {
+    "get_agent_template": {
+      "freeUsage": true,
+      "toolCostCategory": "basic",
+    },
+    "search_agent_templates": {
       "freeUsage": true,
       "toolCostCategory": "basic",
     },
@@ -2532,7 +2534,6 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool stakes across a
     "describe_skill": "never_ask",
     "get_agent_feedback": "never_ask",
     "get_agent_insights": "never_ask",
-    "get_agent_template": "never_ask",
     "get_available_agents": "never_ask",
     "get_available_models": "never_ask",
     "get_available_skills": "never_ask",
@@ -2541,7 +2542,6 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool stakes across a
     "inspect_conversation": "never_ask",
     "inspect_message": "never_ask",
     "list_suggestions": "never_ask",
-    "search_agent_templates": "never_ask",
     "search_knowledge": "never_ask",
     "suggest_knowledge": "never_ask",
     "suggest_model": "never_ask",
@@ -2550,6 +2550,10 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool stakes across a
     "suggest_sub_agent": "never_ask",
     "suggest_tools": "never_ask",
     "update_suggestions_state": "never_ask",
+  },
+  "agent_templates": {
+    "get_agent_template": "never_ask",
+    "search_agent_templates": "never_ask",
   },
   "ashby": {
     "create_candidate_note": "high",
