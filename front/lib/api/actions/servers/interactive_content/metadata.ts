@@ -31,6 +31,14 @@ export const EXPORT_INTERACTIVE_CONTENT_FILE_TOOL_NAME =
 export const PUBLISH_INTERACTIVE_CONTENT_FILE_TOOL_NAME =
   "publish_interactive_content_file";
 
+// Shared rationale for why an existing Frame must be edited in place rather than recreated.
+// Interpolated verbatim wherever this constraint is taught (this server's create tool, the
+// files server's create/edit tools, the Frames skill instructions) so the "why" stays a single
+// source of truth instead of independently drifting prose in each place.
+export const FRAME_RECREATE_WASTE_RATIONALE =
+  "a replacement Frame loses the original's identity and share URL and wastes tokens " +
+  "regenerating content that did not change";
+
 export const INTERACTIVE_CONTENT_TOOLS_METADATA = createToolsRecord({
   [CREATE_INTERACTIVE_CONTENT_FILE_TOOL_NAME]: {
     description:

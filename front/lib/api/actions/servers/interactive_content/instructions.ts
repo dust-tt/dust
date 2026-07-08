@@ -19,6 +19,7 @@ import {
 import {
   CREATE_INTERACTIVE_CONTENT_FILE_TOOL_NAME,
   EDIT_INTERACTIVE_CONTENT_FILE_TOOL_NAME,
+  FRAME_RECREATE_WASTE_RATIONALE,
   PUBLISH_INTERACTIVE_CONTENT_FILE_TOOL_NAME,
   RENAME_INTERACTIVE_CONTENT_FILE_TOOL_NAME,
   RETRIEVE_INTERACTIVE_CONTENT_FILE_TOOL_NAME,
@@ -80,7 +81,7 @@ Publishing rebuilds the Frame from its source so viewers and shares see the new 
 const CREATE_VS_UPDATE_SECTION = `\
 ### Creating vs. Updating
 
-Create a Frame only when the content does not exist yet. When the user asks for changes to a Frame that already exists in the conversation (fixing a bug, updating data, changing colors, text, charts, or layout, adding a section), update that Frame in place following "Updating Existing Files" below. Never create a new Frame, and never resend the full source, to change an existing one: a replacement Frame loses the original's identity and share URL and wastes tokens regenerating content that did not change, while targeted edits are cheap.
+Create a Frame only when the content does not exist yet. When the user asks for changes to a Frame that already exists in the conversation (fixing a bug, updating data, changing colors, text, charts, or layout, adding a section), update that Frame in place following "Updating Existing Files" below. Never create a new Frame, and never resend the full source, to change an existing one: ${FRAME_RECREATE_WASTE_RATIONALE}, while targeted edits are cheap.
 `;
 
 // Computer-first variant, used when the Computer is available. The Frame's source is mounted in
@@ -172,7 +173,7 @@ How it works:
 - Reference existing content by its ID (found in <knowledge id="..."> tags from company data searches)
 - Pass that ID to the source parameter
 - Content is fetched server-side without consuming context tokens
-- You can then customize it (see Updating Existing Files below)
+- You can then customize it with targeted edits
 Example:
 \`\`\`
 // After finding code with <knowledge id="template_node_id">
