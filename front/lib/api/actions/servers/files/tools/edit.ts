@@ -81,7 +81,9 @@ export async function editHandler(
     );
   }
 
-  const maxBytes = isFrameSource ? FRAME_SOURCE_MAX_BYTES : CREATE_CONTENT_MAX_BYTES;
+  const maxBytes = isFrameSource
+    ? FRAME_SOURCE_MAX_BYTES
+    : CREATE_CONTENT_MAX_BYTES;
   if (sizeBytes > maxBytes) {
     return new Err(
       new MCPError(
@@ -135,10 +137,9 @@ export async function editHandler(
   const updatedBuffer = Buffer.from(updatedContent, "utf8");
   if (updatedBuffer.byteLength > maxBytes) {
     return new Err(
-      new MCPError(
-        `Edited content exceeds the ${maxBytes / 1024} KB limit.`,
-        { tracked: false }
-      )
+      new MCPError(`Edited content exceeds the ${maxBytes / 1024} KB limit.`, {
+        tracked: false,
+      })
     );
   }
 
