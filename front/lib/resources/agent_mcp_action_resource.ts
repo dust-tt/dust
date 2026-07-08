@@ -722,8 +722,8 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
    * A message should never have blocked actions from more than one step, and resume paths rely
    * on that to resume the agent loop from a single, unambiguous step. When `force` is false this
    * enforces the invariant and throws on a violation, surfacing the bug. `force` (used by the
-   * unstick-conversation poke plugin) logs the anomaly instead of throwing, so a genuinely stuck
-   * conversation can still be finalized.
+   * unstick-conversation poke plugin) skips the check so a genuinely stuck conversation can still
+   * be finalized.
    */
   static async listBlockedActionsForAgentMessage(
     auth: Authenticator,
@@ -754,22 +754,12 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
       return [];
     }
 
-    const steps = actions.map((a) => a.stepContent.step);
-    const uniqueSteps = [...new Set(steps)];
-    if (uniqueSteps.length > 1) {
-      if (!force) {
-        assert(
-          false,
-          `All blocked actions must be from the same step, got ${steps.join(", ")}`
-        );
-      }
-      logger.warn(
-        {
-          agentMessageId,
-          steps: uniqueSteps,
-          workspaceId: auth.getNonNullableWorkspace().sId,
-        },
-        "Force-denying blocked actions spanning multiple steps — single-step invariant violated"
+    if (!force) {
+      const steps = actions.map((a) => a.stepContent.step);
+      const uniqueSteps = [...new Set(steps)];
+      assert(
+        uniqueSteps.length === 1,
+        `All blocked actions must be from the same step, got ${steps.join(", ")}`
       );
     }
 
