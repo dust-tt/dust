@@ -1146,7 +1146,7 @@ describe("FileResource", () => {
     // revert() reads versions and refreshes the mount entirely through getPrivateUploadBucket(),
     // which fileStorageMock already stubs globally (see tests/utils/mocks/file_storage.ts).
     // setSortedFileVersions/setCopyFileFails drive it without reaching into FileResource's
-    // private methods; fileStorageMock.reset() (global beforeEach) clears both between tests.
+    // private methods. fileStorageMock.reset() (global beforeEach) clears both between tests.
     function mockVersion(): MockFileVersion {
       return {
         copy: vi.fn().mockResolvedValue(undefined),

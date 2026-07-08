@@ -106,7 +106,7 @@ export const INTERACTIVE_CONTENT_TOOLS_METADATA = createToolsRecord({
     description:
       "Edit an existing Frame: change its code, for example to fix a chart, adjust colors, or " +
       "update text and layout. Replaces a specified text segment with new text; each edit creates " +
-      "a new version. " +
+      "a new version of the Frame. " +
       `Use the ${RETRIEVE_INTERACTIVE_CONTENT_FILE_TOOL_NAME} tool first to read the current text ` +
       "to replace. `old_string` must match the existing text exactly (including all spacing, " +
       "formatting, and line breaks), with at least 3 lines of surrounding context before and after " +

@@ -13,8 +13,8 @@ export interface SaveFileCall {
   contentType: string | undefined;
 }
 
-// Minimal duck-typed stand-in for the GCS `File` objects `getSortedFileVersions` resolves to;
-// callers (e.g. FileResource.revert()) only ever call `.copy(dest)` and `.delete()` on them.
+// Minimal duck-typed stand-in for the GCS `File` objects `getSortedFileVersions` resolves to.
+// Callers (e.g. FileResource.revert()) only ever call `.copy(dest)` and `.delete()` on them.
 export interface MockFileVersion {
   copy: (dest: unknown) => Promise<void>;
   delete: () => Promise<void>;

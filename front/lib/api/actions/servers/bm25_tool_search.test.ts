@@ -758,10 +758,6 @@ const QUERIES: LabeledQuery[] = [
   {
     query: "edit the code of my frame",
     expected: "interactive_content.edit_interactive_content_file",
-    // "edit" collides with several tools in this all-tools index (pod_manager.edit_information,
-    // files.edit, agent_memory.edit_entries). This tool is deprecated (kept only for
-    // conversations without the file system), so a low rank is acceptable.
-    maxRank: 5,
   },
   {
     query: "change the chart colors in my dashboard",
@@ -1673,13 +1669,6 @@ const QUERIES: LabeledQuery[] = [
 
 export const fullIndexWithAllServers = buildIndex(buildDocs(SERVERS));
 
-// A file-system conversation drops the deprecated file-id edit tool from the interactive_content
-// server, but there is no BM25 coverage here for routing an edit intent to files.edit instead of
-// create_interactive_content_file: files.edit is loaded eagerly (`eager: true` in
-// files/metadata.ts), so Anthropic's server-side tool search never operates over it at all
-// (defer_loading is only set on non-eager tools) — it is simply always present in the tools
-// array, regardless of any query or ranking. A BM25 assertion on its rank would test a scenario
-// that cannot occur at runtime.
 describe("BM25 tool-search retrieval (single-server index)", () => {
   for (const { query, expected } of QUERIES) {
     const serverName = expected.split(".")[0];
