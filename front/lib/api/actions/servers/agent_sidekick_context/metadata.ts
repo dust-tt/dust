@@ -516,48 +516,6 @@ export const AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "basic",
     freeUsage: true,
   },
-  search_agent_templates: {
-    description:
-      "Search published agent templates. Use jobType for tag-based filtering or query for semantic search. " +
-      "Returns full template details including sidekickInstructions.",
-    schema: {
-      jobType: z
-        .string()
-        .optional()
-        .describe(
-          "User's job type to filter templates by relevant tags (e.g. 'sales', 'engineering', 'legal'). If omitted, returns all published templates."
-        ),
-      query: z
-        .string()
-        .optional()
-        .describe(
-          "Free-text query to semantically search templates. Use when the user describes a specific use case not covered by jobType tags."
-        ),
-    },
-    stake: "never_ask",
-    displayLabels: {
-      running: "Searching templates",
-      done: "Search templates",
-    },
-    toolCostCategory: "basic",
-    freeUsage: true,
-  },
-  get_agent_template: {
-    description:
-      "Fetch template-specific guidance for the current agent. " +
-      "Use this tool when the agent was created from a template to retrieve specialized sidekickInstructions that define how you should assist with this agent type. " +
-      "These instructions may contain domain-specific rules, preferred approaches, or constraints you should follow.",
-    schema: {
-      templateId: z.string().describe("The sId of the template to retrieve"),
-    },
-    stake: "never_ask",
-    displayLabels: {
-      running: "Fetching template",
-      done: "Fetch template",
-    },
-    toolCostCategory: "basic",
-    freeUsage: true,
-  },
   inspect_conversation: {
     description:
       "Inspect a conversation to get its shape and summary. Returns the conversation title, " +

@@ -24,7 +24,9 @@ import {
   useConversationContextUsage,
 } from "@app/hooks/conversations";
 import { CONTEXT_USAGE_PERCENT_THRESHOLDS } from "@app/hooks/conversations/useConversationContextUsage";
-import { useUnifiedAgentConfigurations } from "@app/lib/swr/assistants";
+import {
+  useAccessibleAgentIds,
+} from "@app/lib/swr/assistants";
 import { useIsMobile } from "@app/lib/swr/useIsMobile";
 import { useConversationWakeUps } from "@app/lib/swr/wakeups";
 import { classNames } from "@app/lib/utils";
@@ -77,13 +79,9 @@ export const AgentInputBar = ({ context }: AgentInputBarProps) => {
   const agentBuilderContext = context.agentBuilderContext;
 
   const isMobile = useIsMobile();
-  const { agentConfigurations } = useUnifiedAgentConfigurations({
+  const accessibleAgentIds = useAccessibleAgentIds({
     workspaceId: context.owner.sId,
   });
-  const accessibleAgentIds = useMemo(
-    () => new Set(agentConfigurations.map((a) => a.sId)),
-    [agentConfigurations]
-  );
   const methods = useVirtuosoMethods<VirtuosoMessage>();
   const { bottomOffset, listOffset, visibleListHeight } = useVirtuosoLocation();
   const {

@@ -66,6 +66,8 @@ import { clientFetch } from "@app/lib/egress/client";
 import type { DustError } from "@app/lib/error";
 import { FILE_ID_PATTERN } from "@app/lib/files";
 import { getFilePreviewDirectivePaths } from "@app/lib/markdown/file_preview";
+import { extractFromString } from "@app/lib/mentions/format";
+import { useUnifiedAgentConfigurations } from "@app/lib/swr/assistants";
 import { getConversationRoute } from "@app/lib/utils/router";
 import { formatTimestring } from "@app/lib/utils/timestamps";
 import datadogLogger from "@app/logger/datadogLogger";
@@ -79,6 +81,10 @@ import { isLightAgentMessageType } from "@app/types/assistant/conversation";
 import type {
   RichAgentMention,
   RichMention,
+} from "@app/types/assistant/mentions";
+import {
+  isAgentMention,
+  toRichAgentMentionType,
 } from "@app/types/assistant/mentions";
 import type { ContentFragmentsType } from "@app/types/content_fragment";
 import {
@@ -316,6 +322,10 @@ export function AgentMessage({
     VirtuosoMessage,
     VirtuosoMessageListContext
   >();
+
+  const { agentConfigurations } = useUnifiedAgentConfigurations({
+    workspaceId: owner.sId,
+  });
 
   const isTriggeredByCurrentUser = useMemo(
     () => triggeringUser?.sId === user.sId,
@@ -952,13 +962,25 @@ export function AgentMessage({
 
   const handleQuickReply = useCallback(
     async (reply: string) => {
-      const mention: RichAgentMention = {
-        id: agentMessage.configuration.sId,
-        type: "agent",
-        label: agentMessage.configuration.name,
-        pictureUrl: agentMessage.configuration.pictureUrl ?? "",
-        description: "",
-      };
+      const parsedMention = extractFromString(reply).find(isAgentMention);
+      const matchedAgent = parsedMention
+        ? agentConfigurations.find(
+            (a) => a.sId === parsedMention.configurationId
+          )
+        : undefined;
+      const currentAgent = agentConfigurations.find(
+        (a) => a.sId === agentMessage.configuration.sId
+      );
+      const resolvedConfig = matchedAgent ?? currentAgent;
+      const mention: RichAgentMention = resolvedConfig
+        ? toRichAgentMentionType(resolvedConfig)
+        : {
+            id: agentMessage.configuration.sId,
+            type: "agent",
+            label: agentMessage.configuration.name,
+            pictureUrl: agentMessage.configuration.pictureUrl,
+            description: "",
+          };
 
       const result = await handleSubmit(reply, [mention], {
         uploaded: [],
@@ -973,7 +995,12 @@ export function AgentMessage({
         });
       }
     },
-    [agentMessage.configuration, handleSubmit, sendNotification]
+    [
+      agentConfigurations,
+      agentMessage.configuration,
+      handleSubmit,
+      sendNotification,
+    ]
   );
 
   const canMention =

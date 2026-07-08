@@ -12,6 +12,7 @@ import {
 } from "@app/lib/api/actions/servers/agent_router/metadata";
 import { AGENT_SIDEKICK_AGENT_STATE_SERVER } from "@app/lib/api/actions/servers/agent_sidekick_agent_state/metadata";
 import { AGENT_SIDEKICK_CONTEXT_SERVER } from "@app/lib/api/actions/servers/agent_sidekick_context/metadata";
+import { AGENT_TEMPLATES_SERVER } from "@app/lib/api/actions/servers/agent_templates/metadata";
 import { ASHBY_SERVER } from "@app/lib/api/actions/servers/ashby/metadata";
 import { ASK_USER_QUESTION_SERVER } from "@app/lib/api/actions/servers/ask_user_question/metadata";
 import { CLARI_COPILOT_SERVER } from "@app/lib/api/actions/servers/clari_copilot/metadata";
@@ -156,6 +157,7 @@ export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   "user_analytics",
   "agent_sidekick_agent_state",
   "agent_sidekick_context",
+  "agent_templates",
   "agent_memory",
   "agent_router",
   ASHBY_SERVER_NAME,
@@ -1217,6 +1219,17 @@ export const INTERNAL_MCP_SERVERS = {
     tools_retry_policies: undefined,
     timeoutMs: undefined,
     metadata: ACTIVATION_RECOMMENDATIONS_SERVER,
+  },
+  agent_templates: {
+    id: 1041,
+    availability: "auto_hidden_builder",
+    allowMultipleInstances: false,
+    isPreview: false,
+    isRestricted: undefined,
+    tools_arguments_requiring_approval: undefined,
+    tools_retry_policies: undefined,
+    timeoutMs: undefined,
+    metadata: AGENT_TEMPLATES_SERVER,
   },
   // Using satisfies here instead of: type to avoid TypeScript widening the type and breaking the type inference for AutoInternalMCPServerNameType.
 } satisfies {
