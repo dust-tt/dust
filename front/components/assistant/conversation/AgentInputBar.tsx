@@ -24,9 +24,7 @@ import {
   useConversationContextUsage,
 } from "@app/hooks/conversations";
 import { CONTEXT_USAGE_PERCENT_THRESHOLDS } from "@app/hooks/conversations/useConversationContextUsage";
-import {
-  useAccessibleAgentIds,
-} from "@app/lib/swr/assistants";
+import { useAccessibleAgentIds } from "@app/lib/swr/assistants";
 import { useIsMobile } from "@app/lib/swr/useIsMobile";
 import { useConversationWakeUps } from "@app/lib/swr/wakeups";
 import { classNames } from "@app/lib/utils";

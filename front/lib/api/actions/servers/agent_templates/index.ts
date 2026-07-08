@@ -29,7 +29,9 @@ const handlers: ToolHandlers<typeof AGENT_TEMPLATES_TOOLS_METADATA> = {
     if (res.isErr()) {
       return new Err(new MCPError(res.error.message, { tracked: false }));
     }
-    return new Ok([{ type: "text" as const, text: formatTemplatesAsText(res.value) }]);
+    return new Ok([
+      { type: "text" as const, text: formatTemplatesAsText(res.value) },
+    ]);
   },
 
   get_agent_template: async ({ templateId }) => {
@@ -39,13 +41,18 @@ const handlers: ToolHandlers<typeof AGENT_TEMPLATES_TOOLS_METADATA> = {
         new MCPError(`Template not found: ${templateId}`, { tracked: false })
       );
     }
-    return new Ok([{ type: "text" as const, text: formatTemplatesAsText([template]) }]);
+    return new Ok([
+      { type: "text" as const, text: formatTemplatesAsText([template]) },
+    ]);
   },
 };
 
 const TOOLS = buildTools(AGENT_TEMPLATES_TOOLS_METADATA, handlers);
 
-function createServer(auth: Authenticator, toolContext?: ToolContextType): McpServer {
+function createServer(
+  auth: Authenticator,
+  toolContext?: ToolContextType
+): McpServer {
   const server = makeInternalMCPServer(AGENT_TEMPLATES_SERVER_NAME);
   for (const tool of TOOLS) {
     registerTool(auth, toolContext, server, tool, {

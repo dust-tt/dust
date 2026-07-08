@@ -240,7 +240,9 @@ export function useAccessibleAgentIds({
 }: {
   workspaceId: string;
 }): Set<string> {
-  const { agentConfigurations } = useUnifiedAgentConfigurations({ workspaceId });
+  const { agentConfigurations } = useUnifiedAgentConfigurations({
+    workspaceId,
+  });
   return useMemo(
     () => new Set(agentConfigurations.map((a) => a.sId)),
     [agentConfigurations]
