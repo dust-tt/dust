@@ -123,7 +123,7 @@ describe("getDefaultUserSpendLimit", () => {
     }
   });
 
-  it("falls back to the plan-tier default when no workspace default is configured (pro plan → 0)", async () => {
+  it("returns 0 when no workspace default is configured (no plan-tier fallback, no unlimited)", async () => {
     const workspace = await WorkspaceFactory.metronome({
       metronomeCustomerId: METRONOME_CUSTOMER_ID,
     });

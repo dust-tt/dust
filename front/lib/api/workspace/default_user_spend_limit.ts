@@ -78,11 +78,7 @@ export async function getDefaultUserSpendLimit(
 
   const config =
     await CreditUsageConfigurationResource.fetchByWorkspaceId(auth);
-  if (!config || config.defaultPoolCapAwuCredits === null) {
-    return new Ok({ awuCredits: 0 });
-  }
-
-  return new Ok({ awuCredits: config.defaultPoolCapAwuCredits });
+  return new Ok({ awuCredits: config?.defaultPoolCapAwuCredits ?? 0 });
 }
 
 /**
@@ -255,7 +251,7 @@ export async function setDefaultUserSpendLimit(
   // The config row is created lazily, so upsert it.
   const existingConfig =
     await CreditUsageConfigurationResource.fetchByWorkspaceId(auth);
-  const previousAwuCredits = existingConfig?.defaultPoolCapAwuCredits ?? null;
+  const previousAwuCredits = existingConfig?.defaultPoolCapAwuCredits ?? 0;
 
   if (existingConfig) {
     await existingConfig.updateConfiguration(auth, {
@@ -309,8 +305,7 @@ export async function setDefaultUserSpendLimit(
     targets: [buildAuditLogTarget("workspace", workspace)],
     context: auditContext,
     metadata: {
-      previous_awu_credits:
-        previousAwuCredits !== null ? String(previousAwuCredits) : "unset",
+      previous_awu_credits: String(previousAwuCredits),
       new_awu_credits: String(poolAwuCredits),
     },
   });

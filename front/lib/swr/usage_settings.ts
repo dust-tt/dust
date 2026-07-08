@@ -22,7 +22,7 @@ import { mutate } from "swr";
 import { z } from "zod";
 
 const GetDefaultUserSpendLimitResponseSchema = z.object({
-  awuCredits: z.number().int().nullable(),
+  awuCredits: z.number().int(),
 });
 
 const PutDefaultUserSpendLimitResponseSchema = z.object({
