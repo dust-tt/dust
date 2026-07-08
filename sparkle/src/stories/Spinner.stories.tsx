@@ -80,14 +80,14 @@ export const Large: Story = {
 export const Display: Story = {
   name: "Display (xl / 2xl)",
   render: () => (
-    <div className="s-flex s-items-end s-gap-12">
-      <div className="s-flex s-flex-col s-items-center s-gap-3">
+    <div className="flex items-end gap-12">
+      <div className="flex flex-col items-center gap-3">
         <Spinner size="xl" variant="mono" />
-        <span className="s-text-xs s-text-muted-foreground">xl — 128px</span>
+        <span className="text-xs text-muted-foreground">xl — 128px</span>
       </div>
-      <div className="s-flex s-flex-col s-items-center s-gap-3">
+      <div className="flex flex-col items-center gap-3">
         <Spinner size="2xl" variant="mono" />
-        <span className="s-text-xs s-text-muted-foreground">2xl — 192px</span>
+        <span className="text-xs text-muted-foreground">2xl — 192px</span>
       </div>
     </div>
   ),
@@ -102,23 +102,23 @@ export const MonoVariant: Story = {
 export const ShapesVariant: Story = {
   name: "Shapes type (morphing)",
   render: () => (
-    <div className="s-flex s-flex-col s-gap-6">
-      <div className="s-flex s-items-end s-gap-6">
+    <div className="flex flex-col gap-6">
+      <div className="flex items-end gap-6">
         {(["xs", "sm", "md", "lg", "xl"] as const).map((size) => (
-          <div key={size} className="s-flex s-flex-col s-items-center s-gap-2">
+          <div key={size} className="flex flex-col items-center gap-2">
             <Spinner size={size} type="shapes" variant="mono" />
-            <span className="s-text-xs s-text-muted-foreground">{size}</span>
+            <span className="text-xs text-muted-foreground">{size}</span>
           </div>
         ))}
       </div>
-      <div className="s-flex s-items-center s-gap-6 s-rounded-xl s-bg-slate-900 s-p-6">
-        <div className="s-flex s-flex-col s-items-center s-gap-2">
+      <div className="flex items-center gap-6 rounded-xl bg-slate-900 p-6">
+        <div className="flex flex-col items-center gap-2">
           <Spinner size="lg" type="shapes" variant="light" />
-          <span className="s-text-xs s-text-slate-400">light</span>
+          <span className="text-xs text-slate-400">light</span>
         </div>
-        <div className="s-flex s-flex-col s-items-center s-gap-2">
+        <div className="flex flex-col items-center gap-2">
           <Spinner size="lg" type="shapes" variant="rose300" />
-          <span className="s-text-xs s-text-slate-400">rose300</span>
+          <span className="text-xs text-slate-400">rose300</span>
         </div>
       </div>
     </div>
@@ -128,18 +128,18 @@ export const ShapesVariant: Story = {
 export const OnDark: Story = {
   name: "On dark background",
   render: () => (
-    <div className="s-flex s-items-center s-gap-6 s-rounded-xl s-bg-slate-900 s-p-8">
-      <div className="s-flex s-flex-col s-items-center s-gap-2">
+    <div className="flex items-center gap-6 rounded-xl bg-slate-900 p-8">
+      <div className="flex flex-col items-center gap-2">
         <Spinner size="md" variant="light" />
-        <span className="s-text-xs s-text-slate-400">light</span>
+        <span className="text-xs text-slate-400">light</span>
       </div>
-      <div className="s-flex s-flex-col s-items-center s-gap-2">
+      <div className="flex flex-col items-center gap-2">
         <Spinner size="md" variant="revert" />
-        <span className="s-text-xs s-text-slate-400">revert</span>
+        <span className="text-xs text-slate-400">revert</span>
       </div>
-      <div className="s-flex s-flex-col s-items-center s-gap-2">
+      <div className="flex flex-col items-center gap-2">
         <Spinner size="md" variant="rose300" />
-        <span className="s-text-xs s-text-slate-400">rose300</span>
+        <span className="text-xs text-slate-400">rose300</span>
       </div>
     </div>
   ),
@@ -150,16 +150,16 @@ export const OnDark: Story = {
 export const InlineWithText: Story = {
   name: "Inline with text",
   render: () => (
-    <div className="s-flex s-flex-col s-gap-4">
-      <div className="s-flex s-items-center s-gap-2 s-text-sm s-text-foreground">
+    <div className="flex flex-col gap-4">
+      <div className="flex items-center gap-2 text-sm text-foreground">
         <Spinner size="xs" variant="mono" />
         <span>Saving changes…</span>
       </div>
-      <div className="s-flex s-items-center s-gap-2 s-text-sm s-text-foreground">
+      <div className="flex items-center gap-2 text-sm text-foreground">
         <Spinner size="sm" variant="mono" />
         <span>Loading messages…</span>
       </div>
-      <div className="s-flex s-items-center s-gap-2 s-text-sm s-text-muted-foreground">
+      <div className="flex items-center gap-2 text-sm text-muted-foreground">
         <Spinner size="xs" variant="dark" />
         <span>Syncing data…</span>
       </div>
@@ -170,10 +170,10 @@ export const InlineWithText: Story = {
 export const CardLoading: Story = {
   name: "Card / section loading",
   render: () => (
-    <div className="s-flex s-h-48 s-w-80 s-items-center s-justify-center s-rounded-xl s-border s-border-border s-bg-background">
-      <div className="s-flex s-flex-col s-items-center s-gap-3">
+    <div className="flex h-48 w-80 items-center justify-center rounded-xl border border-border bg-background">
+      <div className="flex flex-col items-center gap-3">
         <Spinner size="lg" variant="mono" />
-        <span className="s-text-sm s-text-muted-foreground">
+        <span className="text-sm text-muted-foreground">
           Loading content…
         </span>
       </div>
@@ -184,10 +184,10 @@ export const CardLoading: Story = {
 export const PageLoading: Story = {
   name: "Full-page loading",
   render: () => (
-    <div className="s-flex s-h-96 s-w-full s-items-center s-justify-center s-rounded-xl s-bg-background">
-      <div className="s-flex s-flex-col s-items-center s-gap-4">
+    <div className="flex h-96 w-full items-center justify-center rounded-xl bg-background">
+      <div className="flex flex-col items-center gap-4">
         <Spinner size="xl" variant="mono" />
-        <span className="s-text-base s-text-muted-foreground">
+        <span className="text-base text-muted-foreground">
           Loading workspace…
         </span>
       </div>
@@ -198,16 +198,16 @@ export const PageLoading: Story = {
 export const ModalLoading: Story = {
   name: "Modal / overlay loading",
   render: () => (
-    <div className="s-relative s-flex s-h-64 s-w-80 s-items-center s-justify-center s-overflow-hidden s-rounded-xl s-border s-border-border">
-      <div className="s-absolute s-inset-0 s-flex s-flex-col s-gap-3 s-p-4 s-opacity-30">
+    <div className="relative flex h-64 w-80 items-center justify-center overflow-hidden rounded-xl border border-border">
+      <div className="absolute inset-0 flex flex-col gap-3 p-4 opacity-30">
         {[1, 2, 3].map((i) => (
           <div
             key={i}
-            className="s-h-4 s-w-full s-rounded s-bg-muted-background"
+            className="h-4 w-full rounded bg-muted-background"
           />
         ))}
       </div>
-      <div className="s-absolute s-inset-0 s-flex s-items-center s-justify-center s-bg-background/80 s-backdrop-blur-sm">
+      <div className="absolute inset-0 flex items-center justify-center bg-background/80 backdrop-blur-sm">
         <Spinner size="lg" variant="mono" />
       </div>
     </div>
@@ -228,22 +228,22 @@ export const SpinnerExample: Story = {
       { type: "shapes", variant: "rose300" },
     ] as const;
     return (
-      <div className="s-flex s-flex-col s-gap-8">
+      <div className="flex flex-col gap-8">
         {sizes.map((size) => (
-          <div key={size} className="s-flex s-flex-col s-gap-3">
-            <div className="s-heading-base s-text-foreground dark:s-text-white">
+          <div key={size} className="flex flex-col gap-3">
+            <div className="heading-base text-foreground dark:text-white">
               Size = {size.toUpperCase()}
             </div>
-            <div className="s-flex s-flex-wrap s-items-center s-gap-8">
+            <div className="flex flex-wrap items-center gap-8">
               {combos.map(({ type, variant }) => (
                 <div
                   key={`${type}-${variant}`}
-                  className="s-flex s-flex-col s-items-center s-gap-2"
+                  className="flex flex-col items-center gap-2"
                 >
-                  <div className="s-flex s-items-center s-justify-center s-p-4">
+                  <div className="flex items-center justify-center p-4">
                     <Spinner size={size} type={type} variant={variant} />
                   </div>
-                  <span className="s-text-xs s-text-muted-foreground">
+                  <span className="text-xs text-muted-foreground">
                     {type}/{variant}
                   </span>
                 </div>

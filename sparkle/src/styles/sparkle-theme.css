@@ -121,3 +121,81 @@
     opacity: 0;
   }
 }
+
+/* ─── Spinner ────────────────────────────────────────────────────────────────
+ * Styles for the <Spinner> component. The square path in the 0%/100% frame of
+ * `sss-morph` must stay in sync with the SQ constant in `components/Spinner.tsx`
+ * (the component renders SQ as the static, initial / reduced-motion shape). */
+
+/* Worm spinner */
+@keyframes ssp-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@keyframes ssp-dash {
+  0% {
+    stroke-dasharray: 2 98;
+    stroke-dashoffset: 0;
+  }
+  50% {
+    stroke-dasharray: 70 30;
+    stroke-dashoffset: -48;
+  }
+  100% {
+    stroke-dasharray: 2 98;
+    stroke-dashoffset: -100;
+  }
+}
+.ssp-g {
+  animation: ssp-spin 2.2s linear infinite;
+  transform-origin: 12px 12px;
+}
+.ssp-arc {
+  animation: ssp-dash 2.2s ease-in-out infinite;
+}
+
+/* mono/revert track color, flipped by theme via a class on the SVG. The arc is
+ * primary-muted in both themes, so only the track needs a variable. */
+.ssp-mono {
+  --ssp-track: var(--color-border-dark);
+}
+.ssp-revert {
+  --ssp-track: var(--color-stone-700);
+}
+.dark .ssp-revert {
+  --ssp-track: var(--color-stone-150);
+}
+
+/* Shapes spinner: single path morphing square → circle → triangle → square. */
+@keyframes sss-morph {
+  0%,
+  15% {
+    d: path("M 12,3 C 21,3 21,3 21,12 C 21,21 21,21 12,21 C 3,21 3,21 3,12 C 3,3 3,3 12,3 Z");
+    animation-timing-function: ease-in-out;
+  }
+  33%,
+  48% {
+    d: path("M 12,3 C 16.97,3 21,7.03 21,12 C 21,16.97 16.97,21 12,21 C 7.03,21 3,16.97 3,12 C 3,7.03 7.03,3 12,3 Z");
+    animation-timing-function: ease-in-out;
+  }
+  67%,
+  82% {
+    d: path("M 12,3 C 14.6,7.5 17.19,12 19.79,16.5 C 17.2,16.5 14.6,16.5 12,16.5 C 9.4,16.5 6.6,16.5 4.21,16.5 C 6.8,12 9.4,7.5 12,3 Z");
+    animation-timing-function: ease-in-out;
+  }
+  100% {
+    d: path("M 12,3 C 21,3 21,3 21,12 C 21,21 21,21 12,21 C 3,21 3,21 3,12 C 3,3 3,3 12,3 Z");
+  }
+}
+.sss-p {
+  animation: sss-morph 2.6s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ssp-g,
+  .ssp-arc,
+  .sss-p {
+    animation: none;
+  }
+}
