@@ -1,3 +1,4 @@
+import { seedWorkspaceCapabilities } from "@app/lib/api/permissions/governance_seeding";
 import { activateCreditPricedFreePlanForWorkspace } from "@app/lib/api/subscription";
 import { getOrCreateWorkOSOrganization } from "@app/lib/api/workos/organization";
 import { Authenticator } from "@app/lib/auth";
@@ -95,6 +96,9 @@ export async function createWorkspaceInternal({
     systemGroup,
     globalGroup,
   });
+
+  // Seed default governance capability state (no-op until Phase 2 capabilities register seeders).
+  await seedWorkspaceCapabilities(auth);
 
   // Ensure all auto MCP server views are created for the workspace
   await MCPServerViewResource.ensureAllAutoToolsAreCreated(auth);
