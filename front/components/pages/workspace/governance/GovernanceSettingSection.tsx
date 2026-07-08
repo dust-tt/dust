@@ -6,7 +6,6 @@ import type { ComponentType } from "react";
 
 interface GovernanceSettingSectionProps {
   label: string;
-  description?: string;
   icon: ComponentType;
   governancePermissions: GovernancePermission[];
   groups: GroupType[];
@@ -15,7 +14,6 @@ interface GovernanceSettingSectionProps {
 
 export const GovernanceSettingSection = ({
   label,
-  description,
   icon,
   governancePermissions,
   groups,
@@ -28,11 +26,6 @@ export const GovernanceSettingSection = ({
           <Icon visual={icon} className="text-muted-foreground" />
           <Page.H variant="h5">{label}</Page.H>
         </div>
-        {!!description && (
-          <Page.P variant="secondary" size="sm">
-            {description}
-          </Page.P>
-        )}
       </div>
       <div className="w-full rounded-xl border border-border">
         {governancePermissions.map((governancePermission, idx) => (

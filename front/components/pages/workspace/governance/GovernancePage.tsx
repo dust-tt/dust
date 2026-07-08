@@ -53,7 +53,6 @@ export const GovernancePage = () => {
 
   const sections: {
     label: string;
-    description?: string;
     icon: ComponentType;
     governancePermissions: GovernancePermission[];
   }[] = [
@@ -69,7 +68,6 @@ export const GovernancePage = () => {
     },
     {
       label: "Frame sharing",
-      description: "Choose how members can share frames outside the workspace.",
       icon: ActionFrame,
       governancePermissions: governancePermissionsMap.frame ?? [],
     },
@@ -103,7 +101,7 @@ export const GovernancePage = () => {
     <Page>
       <Page.Header
         title="Governance"
-        description="Control what members can access, create, publish and share."
+        description="Manage what members can do in your workspace."
         icon={Toggle01Left}
       />
       <div className="flex w-full flex-col gap-8">
@@ -111,7 +109,6 @@ export const GovernancePage = () => {
           <GovernanceSettingSection
             key={section.label}
             label={section.label}
-            description={section.description}
             icon={section.icon}
             governancePermissions={section.governancePermissions}
             groups={groups}

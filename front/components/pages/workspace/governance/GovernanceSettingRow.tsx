@@ -30,39 +30,39 @@ const GOVERNANCE_SETTING_METADATA: Partial<
 > = {
   "create:agent": {
     label: "Create agents",
-    description: "Choose who can build agents in the Agent Builder.",
+    description: "Controls who can build agents in the Agent Builder.",
   },
   "publish:agent": {
     label: "Publish agents",
-    description: "Choose who can publish agents to the whole workspace.",
+    description: "Controls who can publish agents to the whole workspace.",
   },
   "create:skill": {
     label: "Create skills",
-    description: "Choose who can build custom skills.",
+    description: "Controls who can build custom skills.",
   },
   "publish:skill": {
     label: "Publish skills",
-    description: "Choose who can publish Skills to the whole workspace.",
+    description: "Controls who can publish skills to the whole workspace.",
   },
   "invite:frame": {
     label: "Invite people by email",
     description:
-      "Choose who can share frames by email with people outside your organization.",
+      "Controls who can share frames by email with people outside your organization.",
   },
   "publish:frame": {
     label: "Share by public link",
-    description: "Choose who can create public links to frames.",
+    description: "Controls who can create public links to frames.",
   },
   "admin:billing": {
     label: "Billing access",
     description:
-      "Choose who can manage billing settings, invoices, and payment methods.",
+      "Controls who can manage billing settings, invoices, and payment methods.",
     isGroupsOnly: true,
   },
   "admin:identity": {
     label: "Security access",
     description:
-      "Choose who can manage user access, identities, and provisioning.",
+      "Controls who can manage user access, identities, and provisioning.",
     isGroupsOnly: true,
   },
 };
