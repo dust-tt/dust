@@ -1801,6 +1801,11 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
   }
 
   canAdministrate(auth: Authenticator): boolean {
+    // API keys with at least builder role can administrate any skill.
+    if (auth.isKey() && auth.isBuilder()) {
+      return true;
+    }
+
     if (!this.editorGroup) {
       return false;
     }
