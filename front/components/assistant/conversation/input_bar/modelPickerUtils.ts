@@ -77,7 +77,7 @@ export interface ProviderGroup {
   models: { model: ModelConfigurationType; efforts: ReasoningEffort[] }[];
 }
 
-export type Selection =
+export type ModelSelection =
   | { kind: "auto" }
   | { kind: "model"; model: ModelConfigurationType; effort: ReasoningEffort };
 
@@ -112,7 +112,9 @@ export function getModelWithReasoningEffortKey(
   return `${providerId}/${modelId}/${effort}`;
 }
 
-export function getModelWithReasoningEffortLabel(selection: Selection): string {
+export function getModelWithReasoningEffortLabel(
+  selection: ModelSelection
+): string {
   if (selection.kind === "auto") {
     return "Auto";
   }
@@ -126,8 +128,8 @@ export function getModelWithReasoningEffortLabel(selection: Selection): string {
 }
 
 // Converts the picker's local selection into the API model selection
-export function toModelSelection(
-  selection: Selection
+export function convertModelSelection(
+  selection: ModelSelection
 ): ModelSelectionType | undefined {
   switch (selection.kind) {
     case "auto":

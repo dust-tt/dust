@@ -2,9 +2,9 @@ import { InputBarContext } from "@app/components/assistant/conversation/input_ba
 import { ModelPickerContent } from "@app/components/assistant/conversation/input_bar/ModelPickerContent";
 import type {
   ModelPickerListState,
+  ModelSelection,
   ModelWithReasoningEffort,
   ProviderGroup,
-  Selection,
   SuggestedModelWithReasoningEffort,
 } from "@app/components/assistant/conversation/input_bar/modelPickerUtils";
 import {
@@ -18,7 +18,6 @@ import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { useModels } from "@app/lib/swr/models";
 import { useIsMobile } from "@app/lib/swr/useIsMobile";
-import type { AgentModelConfigurationType } from "@app/types/assistant/agent";
 import { getProviderDisplayName } from "@app/types/assistant/models/providers";
 import type {
   ModelConfigurationType,
@@ -28,10 +27,9 @@ import type {
 import { getAvailableReasoningEfforts } from "@app/types/assistant/models/types";
 import type { LightWorkspaceType } from "@app/types/user";
 import { Button, DropdownMenu, DropdownMenuTrigger } from "@dust-tt/sparkle";
-import { useContext, useEffect, useMemo, useRef, useState } from "react";
+import { useContext, useMemo, useState } from "react";
 
 interface InputBarModelPickerProps {
-  agentModel: AgentModelConfigurationType | null;
   owner: LightWorkspaceType;
   buttonSize: "xs" | "sm";
   // Which side the dropdown opens toward. Mirrors the agent picker: "top" in an
@@ -42,7 +40,6 @@ interface InputBarModelPickerProps {
 }
 
 export function InputBarModelPicker({
-  agentModel,
   owner,
   buttonSize,
   side = "top",
@@ -70,33 +67,9 @@ export function InputBarModelPicker({
   const [expandedProvider, setExpandedProvider] =
     useState<ModelProviderIdType | null>(null);
 
-  const commitSelection = (next: Selection) => {
+  const commitSelection = (next: ModelSelection) => {
     setSelectedModelSelection(next);
   };
-
-  // Reset to Auto when the agent's model changes: a per-message override should
-  // not leak across agents. Done in an effect (not during render) because the
-  // selection now lives in a parent context, and updating parent state during a
-  // child's render is not allowed.
-  const agentModelKey = agentModel
-    ? `${agentModel.providerId}/${agentModel.modelId}`
-    : null;
-  const prevAgentModelKeyRef = useRef(agentModelKey);
-  useEffect(() => {
-    const prevAgentModelKey = prevAgentModelKeyRef.current;
-    prevAgentModelKeyRef.current = agentModelKey;
-    // Only reset across two concrete, different agent models. Transitions
-    // to/from null (agent list still loading after a remount, or no agent
-    // selected) must not wipe the persisted override.
-    if (
-      prevAgentModelKey !== null &&
-      agentModelKey !== null &&
-      prevAgentModelKey !== agentModelKey
-    ) {
-      setSelectedModelSelection({ kind: "auto" });
-      setExpanded(false);
-    }
-  }, [agentModelKey, setSelectedModelSelection]);
 
   const { models, isModelsLoading } = useModels({
     owner,

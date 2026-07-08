@@ -14,7 +14,7 @@ import type { FeedbackSelectorBaseProps } from "@app/components/assistant/conver
 import { FeedbackSelector } from "@app/components/assistant/conversation/FeedbackSelector";
 import { useAutoOpenFilesPanel } from "@app/components/assistant/conversation/files_panel/useAutoOpenFilesPanel";
 import { useGenerationContext } from "@app/components/assistant/conversation/GenerationContextProvider";
-import { getLineLabel } from "@app/components/assistant/conversation/input_bar/modelPickerUtils";
+import { getModelWithReasoningEffortLabel } from "@app/components/assistant/conversation/input_bar/modelPickerUtils";
 import { useAutoOpenInteractiveContent } from "@app/components/assistant/conversation/interactive_content/useAutoOpenInteractiveContent";
 import type {
   AgentMessageStateWithControlEvent,
@@ -994,7 +994,7 @@ export function AgentMessage({
     : null;
   const requestedModelLabel =
     requestedModel && requestedModelConfig
-      ? getLineLabel({
+      ? getModelWithReasoningEffortLabel({
           kind: "model",
           model: requestedModelConfig,
           effort: requestedModel.reasoningEffort,

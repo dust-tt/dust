@@ -236,14 +236,8 @@ export const InputBarButtons = React.memo(function InputBarButtons({
       </>
     );
 
-  const selectedAgentModel =
-    (selectedAgent &&
-      allAgents.find((a) => a.sId === selectedAgent.id)?.model) ??
-    null;
-
   const modelPickerButton = actions.includes("model-picker") && (
     <InputBarModelPicker
-      agentModel={selectedAgentModel}
       owner={owner}
       buttonSize={buttonSize}
       side={conversation ? "top" : "bottom"}

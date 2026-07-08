@@ -13,7 +13,7 @@ import {
   INPUT_BAR_COMPACT_MORPH_TRANSITION_CLASSES,
   INPUT_BAR_COMPACT_PILL_CLASSES,
 } from "@app/components/assistant/conversation/input_bar/inputBarCompactStyles";
-import { toModelSelection } from "@app/components/assistant/conversation/input_bar/modelPickerUtils";
+import { convertModelSelection } from "@app/components/assistant/conversation/input_bar/modelPickerUtils";
 import { useConversationDrafts } from "@app/components/assistant/conversation/input_bar/useConversationDrafts";
 import { PlanCard } from "@app/components/assistant/conversation/plan_mode/PlanCard";
 import {
@@ -129,10 +129,7 @@ export const InputBar = React.memo(function InputBar({
     onBeforeSubmit,
   } = useContext(InputBarContext);
 
-  // The picker's selection lives in InputBarContext so it persists across
-  // messages; convert it to the API override at submit time. `undefined` means
-  // no override (run the agent's configured model).
-  const modelSelection = toModelSelection(selectedModelSelection);
+  const modelSelection = convertModelSelection(selectedModelSelection);
 
   // We use this specific hook because this component is involved in the new conversation page.
   const { agentConfigurations } = useUnifiedAgentConfigurations({

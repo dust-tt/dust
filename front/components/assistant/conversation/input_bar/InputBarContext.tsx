@@ -1,4 +1,4 @@
-import type { Selection } from "@app/components/assistant/conversation/input_bar/modelPickerUtils";
+import type { ModelSelection } from "@app/components/assistant/conversation/input_bar/modelPickerUtils";
 import { useActiveConversationId } from "@app/hooks/useActiveConversationId";
 import {
   type FileUploaderService,
@@ -45,11 +45,8 @@ export const InputBarContext = createContext<{
   setSelectedAgent: (agentMention: RichAgentMention | null) => void;
   selectedSingleAgent: RichAgentMention | null;
   setSelectedSingleAgent: (agentMention: RichAgentMention | null) => void;
-  // Persistent per-message model override (displayed in the model picker
-  // button). Like the agent selection, it lives here so it survives switching
-  // between conversations/messages rather than resetting on remount.
-  selectedModelSelection: Selection;
-  setSelectedModelSelection: (selection: Selection) => void;
+  selectedModelSelection: ModelSelection;
+  setSelectedModelSelection: (modelSelection: ModelSelection) => void;
   getAndClearPendingInputText: () => PendingInputText | null;
   setPendingInputText: (
     text: string | null,
@@ -124,7 +121,7 @@ export function InputBarContextProvider({
 
   // Persistent per-message model override (see type definition above).
   const [selectedModelSelection, setSelectedModelSelection] =
-    useState<Selection>({ kind: "auto" });
+    useState<ModelSelection>({ kind: "auto" });
 
   // Useful when a component needs to pre-fill the input bar with text.
   const [pendingInputText, setPendingInputTextState] =
