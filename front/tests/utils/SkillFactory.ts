@@ -45,7 +45,7 @@ export class SkillFactory {
     const attachedKnowledge = overrides.attachedKnowledge ?? [];
     const mcpServerViews = overrides.mcpServerViews ?? [];
 
-    return SkillResource.makeNew(
+    const skill = await SkillResource.makeNew(
       auth,
       {
         editedBy,
@@ -65,6 +65,10 @@ export class SkillFactory {
         attachedKnowledge,
       }
     );
+
+    await auth.refresh();
+
+    return skill;
   }
 
   static serializeSkillReferenceTag(
