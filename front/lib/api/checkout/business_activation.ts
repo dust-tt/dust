@@ -275,8 +275,17 @@ export async function createPaymentGatedBusinessActivation({
 
   // Step 6: zero-amount fast path — no invoice to create, activate immediately.
   if (effectiveAmountCents === 0) {
+    // We need to retrieve an up-to-date workspace object here
+    // before calling handleSubscriptionActivationSuccess
+    const freshWorkspace = await WorkspaceResource.fetchById(workspace.sId);
+    if (!freshWorkspace) {
+      return new Err({
+        type: "metronome_error",
+        message: "Workspace not found during zero-amount activation",
+      });
+    }
     await handleSubscriptionActivationSuccess({
-      workspace,
+      workspace: freshWorkspace,
       contractId: metronomeContractId,
       invoiceId: "free-activation",
     });
