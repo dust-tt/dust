@@ -202,9 +202,11 @@ export const INTERACTIVE_CONTENT_TOOLS_METADATA = createToolsRecord({
   },
   [RETRIEVE_INTERACTIVE_CONTENT_FILE_TOOL_NAME]: {
     description:
-      "Read back the current content of an existing Frame by its file ID. " +
-      "Use this to inspect a Frame you have previously created or edited, and to identify " +
-      "the exact text to replace before an edit.",
+      "Read back the content of an existing Frame by its file ID. Returns the rendered " +
+      "Frame's current version: edits made to a mounted Frame source file are NOT reflected " +
+      "here until the Frame is published. Use this to identify the exact text to replace " +
+      `before an edit with ${EDIT_INTERACTIVE_CONTENT_FILE_TOOL_NAME}. When updating a Frame ` +
+      "through its source file, read the source file with the file system tools instead.",
     schema: {
       file_id: z
         .string()
