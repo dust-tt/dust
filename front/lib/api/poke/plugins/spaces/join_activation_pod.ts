@@ -32,7 +32,8 @@ const joinActivationPodLogger = logger.child({
 // Instruction the Dust agent receives to start the activation conversation.
 // Hidden to the user.
 const ACTIVATION_CONVERSATION_INITIAL_MESSAGE =
-  "Welcome me to my new Pod and recommend the next best action to get more value from Dust.";
+  "Welcome me to my new Pod and recommend the next best action to get more value from Dust." +
+  " Also, pin a frame to the Pod that recommends skills, features, use cases, etc for me to eplore";
 
 // Pod is named after the first user in the list. If there are multiple users
 // with the same full name, named the pod after the first user's email.
