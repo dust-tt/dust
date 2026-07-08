@@ -25,7 +25,7 @@ import fs from "fs";
 import path from "path";
 
 const DUST_BEDROCK_IMAGE_VERSION = "1.10.0";
-const DUST_BASE_IMAGE_VERSION = "0.8.51";
+const DUST_BASE_IMAGE_VERSION = "0.8.52";
 const DSBX_CLI_VERSION = "0.1.32";
 // Identity, not coverage list: agent-proxied is a specific Linux user. The
 // nftables ruleset covers SANDBOX_UNTRUSTED_UIDS as a set; reordering that
@@ -304,15 +304,44 @@ const DUST_BASE_IMAGE = SandboxImage.fromDocker(
   .runCmd(getLocalAccountPrivilegeHardeningCommand(), { user: "root" })
   .runCmd(getAgentProxiedSetupCommand(), { user: "root" })
   .runCmd(getSshHardeningCommand(), { user: "root" })
-  // Create simple netcat-based token server script.
+  // Create the token server script. Threaded on purpose: gcsfuse fetches the
+  // token on EVERY GCS request (--reuse-token-from-url=false), and a
+  // single-connection nc loop drops concurrent fetches (connection reset →
+  // gcsfuse retry backoff), starving call-dense consumers like the pod-state
+  // litestream restore.
   .runCmd("mkdir -p /home/agent/.bin", { user: "root" })
   // TODO(2026-03-06 SANDBOX): .copy is broken, use file once fixed.
   .runCmd(
     `tee /home/agent/.bin/token-server.sh > /dev/null << 'SHELLEOF'
 #!/bin/bash
-while true; do
-  (echo -ne "HTTP/1.1 200 OK\\r\\nContent-Type: application/json\\r\\nContent-Length: $(stat -c %s /tmp/token.json 2>/dev/null || echo 0)\\r\\n\\r\\n"; cat /tmp/token.json 2>/dev/null) | nc -l -p 9876 -q 1
-done
+exec python3 - << 'PYEOF'
+import http.server
+import socketserver
+
+
+class Handler(http.server.BaseHTTPRequestHandler):
+    def do_GET(self):
+        try:
+            body = open("/tmp/token.json", "rb").read()
+        except OSError:
+            body = b"{}"
+        self.send_response(200)
+        self.send_header("Content-Type", "application/json")
+        self.send_header("Content-Length", str(len(body)))
+        self.end_headers()
+        self.wfile.write(body)
+
+    def log_message(self, *args):
+        pass
+
+
+class Server(socketserver.ThreadingMixIn, http.server.HTTPServer):
+    daemon_threads = True
+    allow_reuse_address = True
+
+
+Server(("127.0.0.1", 9876), Handler).serve_forever()
+PYEOF
 SHELLEOF`,
     { user: "root" }
   )
@@ -342,7 +371,7 @@ SHELLEOF`,
   // fc-cache rebuilds the fontconfig cache so the new fonts resolve at runtime.
   .runCmd(
     "apt-get update && apt-get install -y jq pandoc imagemagick ffmpeg unzip file " +
-      "libreoffice poppler-utils qpdf " +
+      "sqlite3 libreoffice poppler-utils qpdf " +
       "fonts-crosextra-carlito fonts-crosextra-caladea fonts-liberation2 " +
       "fonts-noto-core && fc-cache -f",
     { user: "root" }

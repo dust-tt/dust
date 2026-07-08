@@ -96,7 +96,7 @@ describe("sandbox image registry", () => {
   test("pins the current dust-base image tag", () => {
     expect(getDustBaseImage().imageId).toEqual({
       imageName: "dust-base",
-      tag: "0.8.51",
+      tag: "0.8.52",
     });
   });
 
@@ -404,6 +404,8 @@ describe("sandbox image registry", () => {
       "ExecStart=/opt/bin/litestream replicate -config /etc/litestream.yml"
     );
     expect(litestreamUnit).toContain("Restart=always");
+    // fluent-bit's journal grep filter forwards on this identifier.
+    expect(litestreamUnit).toContain("SyslogIdentifier=litestream");
     expect(litestreamUnit).toContain("RuntimeDirectory=litestream");
     expect(litestreamUnit).toContain("NoNewPrivileges=yes");
     expect(litestreamUnit).toContain("ProtectSystem=strict");
@@ -430,6 +432,10 @@ describe("sandbox image registry", () => {
       copyOperations,
       "/etc/litestream.yml"
     );
+
+    // JSON logs so fluent-bit's json parser structures the journal entries.
+    expect(litestreamConfig).toContain("logging:");
+    expect(litestreamConfig).toContain("type: json");
 
     // Control socket for the pre-sleep `litestream sync -wait`.
     expect(litestreamConfig).toContain("socket:");
