@@ -106,9 +106,9 @@ describe("/api/w/[wId]/usage_settings/programmatic_usage_limit", () => {
       expect(await response.json()).toEqual({ monthlyCapCredits: 1000 });
     });
 
-    it("returns null when no cap is configured", async () => {
+    it("returns 0 when programmatic access is blocked", async () => {
       vi.mocked(businessLayer.getProgrammaticUsageLimit).mockResolvedValueOnce(
-        new Ok(null)
+        new Ok(0)
       );
 
       const workspace = await makeMetronomeWorkspace();
@@ -120,7 +120,7 @@ describe("/api/w/[wId]/usage_settings/programmatic_usage_limit", () => {
       const response = await getRequest(workspace.sId);
 
       expect(response.status).toBe(200);
-      expect(await response.json()).toEqual({ monthlyCapCredits: null });
+      expect(await response.json()).toEqual({ monthlyCapCredits: 0 });
     });
 
     it("returns 500 on business layer error", async () => {
@@ -163,11 +163,7 @@ describe("/api/w/[wId]/usage_settings/programmatic_usage_limit", () => {
       );
     });
 
-    it("clears the cap when null is passed", async () => {
-      vi.mocked(businessLayer.syncProgrammaticUsageLimit).mockResolvedValueOnce(
-        new Ok(undefined)
-      );
-
+    it("rejects null (no cap is not allowed)", async () => {
       const workspace = await makeMetronomeWorkspace();
       await createPrivateApiMockRequest({
         role: "admin",
@@ -178,11 +174,8 @@ describe("/api/w/[wId]/usage_settings/programmatic_usage_limit", () => {
         monthlyCapCredits: null,
       });
 
-      expect(response.status).toBe(200);
-      expect(await response.json()).toEqual({ monthlyCapCredits: null });
-      expect(businessLayer.syncProgrammaticUsageLimit).toHaveBeenCalledWith(
-        expect.objectContaining({ monthlyCapCredits: null })
-      );
+      expect(response.status).toBe(400);
+      expect(businessLayer.syncProgrammaticUsageLimit).not.toHaveBeenCalled();
     });
 
     it("returns 400 when monthlyCapCredits is missing", async () => {

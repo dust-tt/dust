@@ -2595,7 +2595,7 @@ async function checkMessagesLimit(
           api_error: {
             type: "rate_limit_error",
             message:
-              "Your workspace has reached its programmatic monthly spending cap. Please contact support to increase it.",
+              "Your workspace has reached its programmatic monthly spending cap. An admin can raise the cap in the workspace's usage settings.",
           },
         });
       }

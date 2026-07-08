@@ -293,41 +293,29 @@ export async function reconcileProgrammatic({
   const config = await CreditUsageConfigurationResource.fetchByWorkspaceModelId(
     workspace.id
   );
-  // Distinguish "no cap configured" (null) from an explicit hard cap of 0:
-  // null means programmatic usage is unrestricted at the cap level, whereas 0
-  // is an explicit block. Collapsing both to 0 would wrongly deplete workspaces
-  // that never set a programmatic cap.
-  const monthlyCapCredits = config?.programmaticMonthlyCapAwuCredits ?? null;
+  // The cap is non-nullable and defaults to 0; a workspace with no config row
+  // reads as 0 (no programmatic access).
+  const monthlyCapCredits = config?.programmaticMonthlyCapAwuCredits ?? 0;
 
   const previousState = workspace.programmaticCreditState;
 
-  // States that don't require reading live spend:
-  //  - explicit hard cap of 0 → always depleted (programmatic API blocked).
-  //  - no cap configured (null), or no contract to meter spend against →
-  //    programmatic usage is unrestricted at the cap level; stay "active" and
-  //    let the pool gate (isApiBlocked) decide. This keeps PAYG programmatic
-  //    usage running when the pool is in overage and no programmatic cap is set.
-  if (
-    monthlyCapCredits === null ||
-    monthlyCapCredits === 0 ||
-    !metronomeContractId
-  ) {
-    const expectedState: WorkspaceProgrammaticCreditState =
-      monthlyCapCredits === 0 ? "depleted" : "active";
+  // Cap of 0 → always depleted (no programmatic access); no spend to read. Same
+  // when there is no contract to meter spend against.
+  if (monthlyCapCredits === 0 || !metronomeContractId) {
     if (execute) {
-      await setProgrammaticCreditStateReconciled(workspace, expectedState);
+      await setProgrammaticCreditStateReconciled(workspace, "depleted");
       void clearWorkspaceProgrammaticWarningReached(workspace.sId);
     }
     const newState = workspace.programmaticCreditState;
     return new Ok({
       target: "programmatic",
       previousState,
-      expectedState,
+      expectedState: "depleted",
       newState,
-      wasInvalid: previousState !== expectedState,
+      wasInvalid: previousState !== "depleted",
       corrected: previousState !== newState,
       executed: execute,
-      monthlyCapCredits: monthlyCapCredits ?? 0,
+      monthlyCapCredits,
       spentAwuCredits: null,
     });
   }
