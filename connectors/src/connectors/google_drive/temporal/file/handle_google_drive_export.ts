@@ -160,10 +160,7 @@ export async function handleGoogleDriveExport(
       }
 
       if (isFileTooLargeToDownloadError(e)) {
-        localLogger.info(
-          {},
-          "Google document too large to be exported, skipping."
-        );
+        localLogger.info("Google document too large to be exported, skipping.");
         return { content: null };
       }
 
