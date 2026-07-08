@@ -1282,9 +1282,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
   }
 
   private getSpaceManualMemberGroup(): GroupResource {
-    const regularGroups = this.groups.filter(
-      (group) => group.kind === "regular"
-    );
+    const regularGroups = this.groups.filter((group) => group.isRegular());
     assert(
       regularGroups.length === 1,
       `Expected exactly one regular group for the space, but found ${regularGroups.length}.`
@@ -1626,7 +1624,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
     allGroupMemberships: GroupMembershipModel[];
   }> {
     const groupsToProcess = this.groups.filter((g) => {
-      return g.kind === "regular" || g.kind === "space_editors";
+      return g.isRegular() || g.kind === "space_editors";
     });
 
     // Fetch all group memberships to get the startAt date (will be the joinedAt date returned for each member)

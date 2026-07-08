@@ -221,7 +221,7 @@ export abstract class GroupSpaceBaseResource extends BaseResource<GroupSpaceMode
           id: this.groupId,
           workspaceId: auth.getNonNullableWorkspace().id,
           // Delete the corresponding group if it's regular or space_editors (system, global, provisioned groups should not be deleted)
-          kind: ["regular", "space_editors"],
+          kind: ["regular", "regular_auto", "space_editors"],
         },
         transaction,
       });

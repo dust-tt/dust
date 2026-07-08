@@ -637,6 +637,7 @@ export class GroupResource extends BaseResource<GroupModel> {
     groupKinds = [
       "global",
       "regular",
+      "regular_auto",
       "space_editors",
       "system",
       "provisioned",
@@ -1025,7 +1026,13 @@ export class GroupResource extends BaseResource<GroupModel> {
     options: { groupKinds?: GroupKind[] } = {}
   ): Promise<GroupResource[]> {
     const {
-      groupKinds = ["global", "regular", "space_editors", "provisioned"],
+      groupKinds = [
+        "global",
+        "regular",
+        "regular_auto",
+        "space_editors",
+        "provisioned",
+      ],
     } = options;
     const groups = await this.baseFetch(auth, {
       where: {
@@ -1190,7 +1197,7 @@ export class GroupResource extends BaseResource<GroupModel> {
   static async listGroupNamesByUserModelIdInWorkspace({
     workspace,
     userModelIds,
-    groupKinds = ["regular", "provisioned"],
+    groupKinds = ["regular", "regular_auto", "provisioned"],
   }: {
     workspace: LightWorkspaceType;
     userModelIds: ModelId[];
@@ -1510,7 +1517,7 @@ export class GroupResource extends BaseResource<GroupModel> {
     >
   > {
     assert(
-      this.kind === "regular" ||
+      this.isRegular() ||
         this.kind === "space_editors" ||
         this.kind === "agent_editors" ||
         this.kind === "skill_editors" ||
@@ -1554,10 +1561,11 @@ export class GroupResource extends BaseResource<GroupModel> {
       );
     }
 
-    // Users can only be added to regular, space_editors, agent_editors, skill_editors or provisioned groups.
+    // Users can only be added to regular, regular_auto, space_editors, agent_editors, skill_editors or provisioned groups.
     if (
       ![
         "regular",
+        "regular_auto",
         "space_editors",
         "agent_editors",
         "skill_editors",
@@ -1687,7 +1695,7 @@ export class GroupResource extends BaseResource<GroupModel> {
     >
   > {
     assert(
-      this.kind === "regular" ||
+      this.isRegular() ||
         this.kind === "space_editors" ||
         this.kind === "agent_editors" ||
         this.kind === "skill_editors" ||
@@ -1725,10 +1733,11 @@ export class GroupResource extends BaseResource<GroupModel> {
       );
     }
 
-    // Users can only be removed from regular, space_editors, agent_editors, skill_editors or provisioned groups.
+    // Users can only be removed from regular, regular_auto, space_editors, agent_editors, skill_editors or provisioned groups.
     if (
       ![
         "regular",
+        "regular_auto",
         "space_editors",
         "agent_editors",
         "skill_editors",
@@ -1838,7 +1847,7 @@ export class GroupResource extends BaseResource<GroupModel> {
     const user = auth.getNonNullableUser();
     const workspace = auth.getNonNullableWorkspace();
 
-    if (this.kind !== "regular" && this.kind !== "space_editors") {
+    if (!this.isRegular() && this.kind !== "space_editors") {
       return new Err(
         new DustError(
           "system_or_global_group",
@@ -2366,7 +2375,7 @@ export class GroupResource extends BaseResource<GroupModel> {
   }
 
   isRegular(): boolean {
-    return this.kind === "regular";
+    return this.kind === "regular" || this.kind === "regular_auto";
   }
 
   isSpaceEditor(): boolean {
