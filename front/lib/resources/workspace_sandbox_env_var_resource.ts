@@ -160,7 +160,9 @@ export class WorkspaceSandboxEnvVarResource extends BaseResource<WorkspaceSandbo
   // goes through `promoteToHttpsSecret`. For an existing https_secret row,
   // callers may pass `allowedDomains` alongside the new value to rotate both
   // in one call; this emits both `sandbox_env_var.updated` and
-  // `sandbox_env_var.allowed_domains_updated`.
+  // `sandbox_env_var.allowed_domains_updated`. With `createOnly`, an existing
+  // row is rejected before any write — the update branch must never run for
+  // create-only callers.
   static async upsert(
     auth: Authenticator,
     {
@@ -169,12 +171,14 @@ export class WorkspaceSandboxEnvVarResource extends BaseResource<WorkspaceSandbo
       kind = "config",
       allowedDomains,
       context,
+      createOnly = false,
     }: {
       name: string;
       value: string;
       kind?: WorkspaceSandboxEnvVarKind;
       allowedDomains?: string[] | null;
       context?: AuditLogContext;
+      createOnly?: boolean;
     }
   ): Promise<
     Result<
@@ -215,6 +219,12 @@ export class WorkspaceSandboxEnvVarResource extends BaseResource<WorkspaceSandbo
     let allowedDomainsChanged = false;
     let previousAllowedDomains: string[] | null = null;
     if (existing) {
+      if (createOnly) {
+        return new Err(
+          new Error("Sandbox environment variable already exists.")
+        );
+      }
+
       if (existing.kind !== kind) {
         return new Err(
           new Error(
@@ -359,8 +369,8 @@ export class WorkspaceSandboxEnvVarResource extends BaseResource<WorkspaceSandbo
   }
 
   // Create-only entry point for callers that must not replace an existing
-  // value. Implementation defers to upsert() and rejects when the row already
-  // existed — relies on the unique index to catch concurrent creates.
+  // value: upsert's createOnly rejects an existing row before any write.
+  // Relies on the unique index to catch concurrent creates.
   static async makeNew(
     auth: Authenticator,
     {
@@ -383,13 +393,10 @@ export class WorkspaceSandboxEnvVarResource extends BaseResource<WorkspaceSandbo
       kind,
       allowedDomains,
       context,
+      createOnly: true,
     });
     if (result.isErr()) {
       return result;
-    }
-
-    if (!result.value.created) {
-      return new Err(new Error("Sandbox environment variable already exists."));
     }
 
     return new Ok(result.value.resource);

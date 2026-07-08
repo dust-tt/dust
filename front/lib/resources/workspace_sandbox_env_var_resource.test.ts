@@ -313,4 +313,29 @@ describe("WorkspaceSandboxEnvVarResource", () => {
       expect(result.isErr()).toBe(true);
     }
   });
+
+  it("does not overwrite the existing value when makeNew hits a duplicate name", async () => {
+    const { authenticator } = await createResourceTest({ role: "admin" });
+
+    const first = await WorkspaceSandboxEnvVarResource.makeNew(authenticator, {
+      name: "API_TOKEN",
+      value: "initial-value",
+    });
+    expect(first.isOk()).toBe(true);
+
+    const second = await WorkspaceSandboxEnvVarResource.makeNew(authenticator, {
+      name: "API_TOKEN",
+      value: "other-value",
+    });
+    expect(second.isErr()).toBe(true);
+
+    // The failed create must not have touched the existing row's value.
+    const envResult =
+      await WorkspaceSandboxEnvVarResource.loadEnv(authenticator);
+    expect(envResult.isOk()).toBe(true);
+    if (envResult.isErr()) {
+      throw envResult.error;
+    }
+    expect(envResult.value).toEqual({ DST_API_TOKEN: "initial-value" });
+  });
 });

@@ -182,7 +182,8 @@ export class PodSandboxEnvVarResource extends BaseResource<PodSandboxEnvVarModel
   // Rejects kind transitions: the one-way config -> https_secret promotion
   // goes through `promoteToHttpsSecret`. For an existing https_secret row,
   // callers may pass `allowedDomains` alongside the new value to rotate both
-  // in one call.
+  // in one call. With `createOnly`, an existing row is rejected before any
+  // write — the update branch must never run for create-only callers.
   static async upsert(
     auth: Authenticator,
     pod: SpaceResource,
@@ -191,11 +192,13 @@ export class PodSandboxEnvVarResource extends BaseResource<PodSandboxEnvVarModel
       value,
       kind = "config",
       allowedDomains,
+      createOnly = false,
     }: {
       name: string;
       value: string;
       kind?: WorkspaceSandboxEnvVarKind;
       allowedDomains?: string[] | null;
+      createOnly?: boolean;
     }
   ): Promise<
     Result<{ resource: PodSandboxEnvVarResource; created: boolean }, Error>
@@ -232,6 +235,12 @@ export class PodSandboxEnvVarResource extends BaseResource<PodSandboxEnvVarModel
     let row: PodSandboxEnvVarModel;
     let created: boolean;
     if (existing) {
+      if (createOnly) {
+        return new Err(
+          new Error("Pod sandbox environment variable already exists.")
+        );
+      }
+
       if (existing.kind !== kind) {
         return new Err(
           new Error(
@@ -316,9 +325,8 @@ export class PodSandboxEnvVarResource extends BaseResource<PodSandboxEnvVarModel
   }
 
   // Create-only entry point for callers that must not replace an existing
-  // value. Implementation defers to upsert() and rejects when the row already
-  // existed — relies on the unique (spaceId, name) index to catch concurrent
-  // creates.
+  // value: upsert's createOnly rejects an existing row before any write.
+  // Relies on the unique (spaceId, name) index to catch concurrent creates.
   static async makeNew(
     auth: Authenticator,
     pod: SpaceResource,
@@ -339,15 +347,10 @@ export class PodSandboxEnvVarResource extends BaseResource<PodSandboxEnvVarModel
       value,
       kind,
       allowedDomains,
+      createOnly: true,
     });
     if (result.isErr()) {
       return result;
-    }
-
-    if (!result.value.created) {
-      return new Err(
-        new Error("Pod sandbox environment variable already exists.")
-      );
     }
 
     return new Ok(result.value.resource);

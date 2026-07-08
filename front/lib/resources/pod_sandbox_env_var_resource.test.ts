@@ -1,43 +1,56 @@
+import { buildPodEgressSecretEntries } from "@app/lib/api/sandbox/egress_secrets";
 import { PodSandboxEnvVarResource } from "@app/lib/resources/pod_sandbox_env_var_resource";
 import { PodSandboxEnvVarModel } from "@app/lib/resources/storage/models/pod_sandbox_env_var";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { describe, expect, it } from "vitest";
 
+// Common setup: a pod with one config var and one https secret.
+async function setupPodWithVars() {
+  const { authenticator, workspace, user } = await createResourceTest({
+    role: "admin",
+  });
+  const pod = await SpaceFactory.project(workspace, user.id);
+
+  const configResult = await PodSandboxEnvVarResource.makeNew(
+    authenticator,
+    pod,
+    {
+      name: "CONFIG_TOKEN",
+      value: "config-value",
+    }
+  );
+  if (configResult.isErr()) {
+    throw configResult.error;
+  }
+
+  const secretResult = await PodSandboxEnvVarResource.makeNew(
+    authenticator,
+    pod,
+    {
+      name: "API_TOKEN",
+      kind: "https_secret",
+      value: "api-secret",
+      allowedDomains: ["api.example.com"],
+    }
+  );
+  if (secretResult.isErr()) {
+    throw secretResult.error;
+  }
+
+  return {
+    authenticator,
+    workspace,
+    user,
+    pod,
+    configVar: configResult.value,
+    secretVar: secretResult.value,
+  };
+}
+
 describe("PodSandboxEnvVarResource", () => {
-  it("creates, lists and deletes pod env vars", async () => {
-    const { authenticator, workspace, user } = await createResourceTest({
-      role: "admin",
-    });
-    const pod = await SpaceFactory.project(workspace, user.id);
-
-    const configResult = await PodSandboxEnvVarResource.makeNew(
-      authenticator,
-      pod,
-      {
-        name: "CONFIG_TOKEN",
-        value: "config-value",
-      }
-    );
-    expect(configResult.isOk()).toBe(true);
-    if (configResult.isErr()) {
-      throw configResult.error;
-    }
-
-    const secretResult = await PodSandboxEnvVarResource.makeNew(
-      authenticator,
-      pod,
-      {
-        name: "API_TOKEN",
-        kind: "https_secret",
-        value: "api-secret",
-        allowedDomains: ["api.example.com"],
-      }
-    );
-    expect(secretResult.isOk()).toBe(true);
-    if (secretResult.isErr()) {
-      throw secretResult.error;
-    }
+  it("lists pod env vars with user metadata and without values", async () => {
+    const { authenticator, pod, user } = await setupPodWithVars();
 
     const listed = await PodSandboxEnvVarResource.listForPod(
       authenticator,
@@ -65,14 +78,22 @@ describe("PodSandboxEnvVarResource", () => {
     expect(
       JSON.stringify(listed.map((envVar) => envVar.toJSON()))
     ).not.toContain("api-secret");
+  });
+
+  it("fetches a pod env var by sId", async () => {
+    const { authenticator, secretVar } = await setupPodWithVars();
 
     const fetched = await PodSandboxEnvVarResource.fetchById(
       authenticator,
-      secretResult.value.sId
+      secretVar.sId
     );
     expect(fetched?.name).toBe("API_TOKEN");
+  });
 
-    const deleteResult = await secretResult.value.delete(authenticator);
+  it("deletes a pod env var", async () => {
+    const { authenticator, pod, secretVar } = await setupPodWithVars();
+
+    const deleteResult = await secretVar.delete(authenticator);
     expect(deleteResult.isOk()).toBe(true);
 
     const listedAfterDelete = await PodSandboxEnvVarResource.listForPod(
@@ -175,6 +196,18 @@ describe("PodSandboxEnvVarResource", () => {
       value: "other-value",
     });
     expect(second.isErr()).toBe(true);
+
+    // The failed create must not have touched the existing row's value.
+    const envResult = await PodSandboxEnvVarResource.loadEnv(
+      authenticator,
+      pod,
+      { kind: "pod", spaceId: pod.sId }
+    );
+    expect(envResult.isOk()).toBe(true);
+    if (envResult.isErr()) {
+      throw envResult.error;
+    }
+    expect(envResult.value).toEqual({ DST_CONFIG_TOKEN: "config-value" });
   });
 
   it("scopes rows to their pod", async () => {
@@ -385,14 +418,25 @@ describe("PodSandboxEnvVarResource", () => {
     );
     expect(fetched?.allowedDomains).toEqual(["other.example.com"]);
 
-    // The rotated value decrypts under the pod scope key.
-    const entriesEnv =
-      await PodSandboxEnvVarResource.loadHttpsSecretPlaceholderEnv(
-        authenticator,
-        pod,
-        { kind: "pod", spaceId: pod.sId }
-      );
-    expect(entriesEnv.isOk()).toBe(true);
+    // The rotated value decrypts under the pod scope key — assert through
+    // the real consumer, not just the placeholder env (which never touches
+    // the ciphertext).
+    const entriesResult = await buildPodEgressSecretEntries(
+      authenticator,
+      pod,
+      { kind: "pod", spaceId: pod.sId }
+    );
+    expect(entriesResult.isOk()).toBe(true);
+    if (entriesResult.isErr()) {
+      throw entriesResult.error;
+    }
+    expect(entriesResult.value).toEqual([
+      expect.objectContaining({
+        name: "API_TOKEN",
+        value: "rotated-secret",
+        allowedDomains: ["other.example.com"],
+      }),
+    ]);
 
     // Mutating through a mismatched pod must trip the ownership assert
     // before any re-encryption happens.
