@@ -106,10 +106,16 @@ const newButtonVariants = cva(
         outline: cn(
           OVERLAY,
           "overflow-hidden after:rounded-none",
-          "border border-border-dark",
+          "border border-border-dark dark:border-primary-200",
           "bg-linear-to-b from-primary-50 to-primary-100",
+          // Dark: dark warm gradient (stone-900 → stone-800)
+          "dark:from-primary-150 dark:to-primary-200",
           "text-muted-foreground",
+          // Dark: near-white text (stone-100)
+          "dark:text-primary-900",
           RAISED_SHADOW,
+          // Dark: override drop shadow — spec uses rgba(0,0,0,0.06) drop, not a glow
+          "dark:shadow-[inset_0_0_1px_0_rgba(255,255,255,0.08),0_0_0.5px_0_var(--color-border-dark),0_0.5px_1px_0_rgba(0,0,0,0.06)]",
           // Light: light button -> faint dark overlay. Dark: dark button ->
           // white overlay (size-based, below).
           "hover:after:bg-black/[0.02] active:after:bg-black/[0.02]",
@@ -175,17 +181,12 @@ const newButtonVariants = cva(
         size: "md",
         className: "hover:after:bg-white/20 active:after:bg-white/20",
       },
-      // Outline renders as a dark solid in dark mode, so it gets the same
-      // size-based white overlay there (its light-mode overlay is in the variant).
+      // Outline dark mode: subtle 2% white overlay on hover/active.
       {
         variant: "outline",
-        size: ["xs", "sm"],
-        className: "dark:hover:after:bg-white/10 dark:active:after:bg-white/10",
-      },
-      {
-        variant: "outline",
-        size: "md",
-        className: "dark:hover:after:bg-white/20 dark:active:after:bg-white/20",
+        size: ["xs", "sm", "md"],
+        className:
+          "dark:hover:after:bg-white/[0.02] dark:active:after:bg-white/[0.02]",
       },
     ],
     defaultVariants: {
