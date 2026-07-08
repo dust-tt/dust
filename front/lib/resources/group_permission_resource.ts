@@ -1,7 +1,7 @@
 import type { Authenticator } from "@app/lib/auth";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { assertValidGrant } from "@app/lib/resources/group_permission_registry";
-import { GroupResource } from "@app/lib/resources/group_resource";
+import type { GroupResource } from "@app/lib/resources/group_resource";
 import { GroupPermissionModel } from "@app/lib/resources/storage/models/group_permissions";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type {
@@ -12,10 +12,8 @@ import { WHOLE_TYPE_RESOURCE_ID } from "@app/types/group_permissions";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Ok } from "@app/types/shared/result";
-import { removeNulls } from "@app/types/shared/utils/general";
 import assert from "assert";
 import type { Attributes, ModelStatic, Transaction } from "sequelize";
-import { Op } from "sequelize";
 
 /**
  * All writes to `group_permissions` go through this resource — never a raw model write elsewhere.
@@ -37,26 +35,6 @@ interface TypeWideGrantSpec {
   permissionType: PermissionType;
   resourceType: GroupPermissionResourceType;
   transaction?: Transaction;
-}
-
-interface CapabilitySpec {
-  permissionType: PermissionType;
-  resourceType: GroupPermissionResourceType;
-}
-
-// The state of a governance capability. "everyone" and "disabled" carry no groups; "groups" lists
-// the specific (non-global) groups it is granted to. Scope values match the governance page's
-// PermissionConfigurationScope.
-export type CapabilityState =
-  | { scope: "disabled" }
-  | { scope: "everyone" }
-  | { scope: "groups"; groups: GroupResource[] };
-
-function capabilityKey({
-  permissionType,
-  resourceType,
-}: CapabilitySpec): string {
-  return `${permissionType}:${resourceType}`;
 }
 
 interface ListForGroupsSpec {
@@ -332,90 +310,6 @@ export class GroupPermissionResource extends BaseResource<GroupPermissionModel> 
       })),
       { ignoreDuplicates: true, transaction }
     );
-  }
-
-  // ---------------------------------------------------------------------------
-  // Governance-toggle state (read side).
-  //
-  // A capability is a (permissionType, resourceType) pair whose grants live on the type-wide (-1)
-  // rows. Each is in one of three mutually-exclusive states, by convention:
-  //   - no -1 row                              => disabled
-  //   - a -1 row for the workspace global group => everyone
-  //   - -1 rows for specific groups            => those groups only (additive)
-  // The write side (which keeps the states exclusive) lands in a follow-up.
-  // ---------------------------------------------------------------------------
-
-  // Resolve the state of each requested capability in a single query (plus one batched group
-  // fetch), keyed by `${permissionType}:${resourceType}`. Backs the governance page, which needs
-  // every capability at once; per-capability helpers (disabled / everyone / groups) can derive
-  // from the returned state.
-  static async getCapabilitiesState(
-    auth: Authenticator,
-    capabilities: CapabilitySpec[]
-  ): Promise<Map<string, CapabilityState>> {
-    const result = new Map<string, CapabilityState>();
-    if (capabilities.length === 0) {
-      return result;
-    }
-
-    // Reject invalid capability pairs (e.g. write/billing) — programmer errors, fail fast.
-    for (const capability of capabilities) {
-      assertValidGrant({ ...capability, resourceId: WHOLE_TYPE_RESOURCE_ID });
-    }
-
-    const workspaceId = auth.getNonNullableWorkspace().id;
-    const globalGroup =
-      await GroupResource.internalFetchWorkspaceGlobalGroup(workspaceId);
-    assert(globalGroup, "Workspace is missing its global group.");
-
-    // One query: every type-wide (-1) row for the requested capabilities.
-    const rows = await GroupPermissionModel.findAll({
-      where: {
-        workspaceId,
-        resourceId: WHOLE_TYPE_RESOURCE_ID,
-        [Op.or]: capabilities.map(({ permissionType, resourceType }) => ({
-          permissionType,
-          resourceType,
-        })),
-      },
-    });
-
-    // One batched fetch for every non-global group referenced across all capabilities.
-    const groupModelIds = [
-      ...new Set(
-        rows
-          .map((row) => row.groupId)
-          .filter((groupModelId) => groupModelId !== globalGroup.id)
-      ),
-    ];
-    const groups = groupModelIds.length
-      ? await GroupResource.fetchByModelIds(auth, groupModelIds)
-      : [];
-    const groupByModelId = new Map(groups.map((group) => [group.id, group]));
-
-    for (const capability of capabilities) {
-      const capabilityRows = rows.filter(
-        (row) =>
-          row.permissionType === capability.permissionType &&
-          row.resourceType === capability.resourceType
-      );
-      const key = capabilityKey(capability);
-
-      if (capabilityRows.length === 0) {
-        result.set(key, { scope: "disabled" });
-      } else if (capabilityRows.some((row) => row.groupId === globalGroup.id)) {
-        result.set(key, { scope: "everyone" });
-      } else {
-        result.set(key, {
-          scope: "groups",
-          groups: removeNulls(
-            capabilityRows.map((row) => groupByModelId.get(row.groupId))
-          ),
-        });
-      }
-    }
-
-    return result;
   }
 
   async delete(
