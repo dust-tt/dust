@@ -13,6 +13,7 @@ import type { Authenticator } from "@app/lib/auth";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { SandboxFunctionInvocationResource } from "@app/lib/resources/sandbox_function_invocation_resource";
+import type { SandboxFunctionMCPActionResource } from "@app/lib/resources/sandbox_function_mcp_action_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import {
   SandboxFunctionInvocationModel,
@@ -267,16 +268,17 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
     return sandboxFunction ?? null;
   }
 
-  // Lives here rather than on SandboxFunctionInvocationResource: the invocation resource is
-  // constructed with its function, and importing this resource from there would close an import
-  // cycle (this file already imports the invocation resource for deletion).
-  static async fetchInvocationByModelIdWithAuth(
+  // Lives here rather than on SandboxFunctionMCPActionResource: that resource can only type-import
+  // the invocation resource (the invocation resource value-imports it for cascade deletion), so it
+  // cannot construct an invocation. Takes the action rather than its FK id so callers don't thread
+  // a ModelId around.
+  static async fetchInvocationForAction(
     auth: Authenticator,
-    id: ModelId
+    action: SandboxFunctionMCPActionResource
   ): Promise<SandboxFunctionInvocationResource | null> {
     const invocation = await SandboxFunctionInvocationModel.findOne({
       where: {
-        id,
+        id: action.sandboxFunctionInvocationId,
         workspaceId: auth.getNonNullableWorkspace().id,
       },
     });

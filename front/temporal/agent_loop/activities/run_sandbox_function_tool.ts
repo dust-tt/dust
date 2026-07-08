@@ -1,5 +1,8 @@
 import { tryCallMCPTool } from "@app/lib/actions/mcp_actions";
-import { processToolResults } from "@app/lib/actions/mcp_execution";
+import {
+  processToolNotification,
+  processToolResults,
+} from "@app/lib/actions/mcp_execution";
 import type { SandboxFunctionRunContextType } from "@app/lib/actions/types";
 import type { AuthenticatorType } from "@app/lib/auth";
 import { Authenticator } from "@app/lib/auth";
@@ -33,11 +36,10 @@ export async function runSandboxFunctionToolActivity(
     return;
   }
 
-  const invocation =
-    await SandboxFunctionResource.fetchInvocationByModelIdWithAuth(
-      auth,
-      action.sandboxFunctionInvocationId
-    );
+  const invocation = await SandboxFunctionResource.fetchInvocationForAction(
+    auth,
+    action
+  );
   if (!invocation) {
     await action.markAsErrored({ executionDurationMs: 0 });
     logger.error(
@@ -62,10 +64,11 @@ export async function runSandboxFunctionToolActivity(
 
   const startTimeMs = performance.now();
 
-  // There is no invocation event stream yet, so we pass no `makeToolNotificationEvent`: the
-  // generator yields nothing and we drain it for the tool result (its return value).
-  // TODO(2026-07-08 SANDBOX_FUNCTIONS): post progress notifications to the invocation event
-  // stream once it exists, instead of dropping them.
+  // `processToolNotification` persists `store_resource` progress output on the action. The event
+  // it returns has no stream to reach yet (there is no invocation event stream), so we drain the
+  // generator for the tool result (its return value) and discard the events.
+  // TODO(2026-07-08 SANDBOX_FUNCTIONS): forward these events to the invocation event stream once
+  // it exists (e.g. viz progress).
   const toolCallResult = await drainAsyncGenerator(
     tryCallMCPTool(
       auth,
@@ -73,6 +76,12 @@ export async function runSandboxFunctionToolActivity(
       { runContext },
       {
         progressToken: action.id,
+        makeToolNotificationEvent: async (notification) => {
+          const { event } = await processToolNotification(auth, notification, {
+            toolContext: { runContext },
+          });
+          return event;
+        },
       }
     )
   );

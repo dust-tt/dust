@@ -352,11 +352,7 @@ export async function* tryCallMCPTool(
     signal,
   }: {
     progressToken: ModelId;
-    // Optional: callers without a conversation surface (sandbox function invocations) skip it,
-    // and progress notifications are consumed but not yielded. Without a callback,
-    // `store_resource` notification contents are NOT persisted (persistence happens in the
-    // callback via `processToolNotification`). Acceptable while only `run_agent` emits them.
-    makeToolNotificationEvent?: (
+    makeToolNotificationEvent: (
       notification: MCPProgressNotificationType
     ) => Promise<ToolNotificationEvent>;
     signal?: AbortSignal;
@@ -597,9 +593,7 @@ export async function* tryCallMCPTool(
           break;
         }
         notificationPromise = notificationStream.next();
-        if (makeToolNotificationEvent) {
-          yield makeToolNotificationEvent(iteratorResult.value);
-        }
+        yield makeToolNotificationEvent(iteratorResult.value);
       }
     }
 
