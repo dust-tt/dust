@@ -715,6 +715,7 @@
                   },
                   "toolset": {
                     "type": "array",
+                    "description": "Replaces the full set of tools on the agent. Any tool not present in this array is removed, so send the complete desired toolset. Each entry resolves an MCP server by name (see configuration.mcp_server_name). Entries that cannot be resolved are not applied and are returned in the skippedActions field of the response rather than causing the whole request to fail.",
                     "items": {
                       "type": "object",
                       "properties": {
@@ -731,7 +732,13 @@
                           ]
                         },
                         "configuration": {
-                          "type": "object"
+                          "type": "object",
+                          "properties": {
+                            "mcp_server_name": {
+                              "type": "string",
+                              "description": "Name of the MCP server to attach. Both built-in (internal) tools and remote MCP servers are supported. A remote MCP server must first be shared to a space (global or a regular space the caller can access); it is matched by its display name, which must be unambiguous within the workspace."
+                            }
+                          }
                         }
                       }
                     }
@@ -759,6 +766,7 @@
                     },
                     "skippedActions": {
                       "type": "array",
+                      "description": "Toolset entries that could not be applied (e.g. the referenced MCP server was not found, is not shared to an accessible space, or the name was ambiguous). The request still succeeds; inspect this list to confirm every intended tool was attached.",
                       "items": {
                         "type": "object",
                         "properties": {

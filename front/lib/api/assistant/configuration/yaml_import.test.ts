@@ -196,12 +196,158 @@ describe("patchAgentConfigurationFromJSON", () => {
     expect(result.value.skippedActions).toEqual([
       {
         name: "Missing MCP server",
-        reason: "Invalid internal MCP server name: missing_server",
+        reason: "MCP server not found: missing_server",
       },
     ]);
     expect(result.value.agentConfiguration.actions).toHaveLength(0);
     expect(result.value.agentConfiguration.requestedSpaceIds).not.toContain(
       space.sId
     );
+  });
+
+  it("should attach a remote MCP server referenced by name when patching toolset", async () => {
+    const { authenticator, globalGroup } = await createResourceTest({
+      role: "admin",
+    });
+    const { agent, space } = await createPatchableAgent({
+      auth: authenticator,
+      globalGroup,
+    });
+
+    const result = await patchAgentConfigurationFromJSON(
+      authenticator,
+      agent.sId,
+      {
+        toolset: [
+          {
+            name: "Remote tool",
+            description: "A remote MCP server attached by name",
+            type: "MCP",
+            configuration: {
+              mcp_server_name: "YAML Import Test Server",
+            },
+          },
+        ],
+        spaces: [
+          {
+            space_id: space.sId,
+            name: space.name,
+          },
+        ],
+      }
+    );
+
+    expect(result.isOk()).toBe(true);
+    if (result.isErr()) {
+      throw new Error(result.error.api_error.message);
+    }
+
+    expect(result.value.skippedActions).toEqual([]);
+    expect(result.value.agentConfiguration.actions).toHaveLength(1);
+    expect(result.value.agentConfiguration.requestedSpaceIds).toContain(
+      space.sId
+    );
+  });
+
+  it("should skip a remote MCP server that is only present in the system space", async () => {
+    const { authenticator, globalGroup } = await createResourceTest({
+      role: "admin",
+    });
+    const { agent } = await createPatchableAgent({
+      auth: authenticator,
+      globalGroup,
+    });
+
+    const workspace = authenticator.getNonNullableWorkspace();
+    // Never shared to a space, so only its system-space view exists — not attachable.
+    await RemoteMCPServerFactory.create(workspace, {
+      name: "System Only Server",
+    });
+
+    const result = await patchAgentConfigurationFromJSON(
+      authenticator,
+      agent.sId,
+      {
+        toolset: [
+          {
+            name: "Unshared remote tool",
+            description: "Should be skipped",
+            type: "MCP",
+            configuration: {
+              mcp_server_name: "System Only Server",
+            },
+          },
+        ],
+      }
+    );
+
+    expect(result.isOk()).toBe(true);
+    if (result.isErr()) {
+      throw new Error(result.error.api_error.message);
+    }
+
+    expect(result.value.skippedActions).toEqual([
+      {
+        name: "Unshared remote tool",
+        reason: "MCP server not found: System Only Server",
+      },
+    ]);
+    expect(result.value.agentConfiguration.actions).toHaveLength(0);
+  });
+
+  it("should skip a remote MCP server name that resolves to several servers", async () => {
+    const { authenticator, globalGroup } = await createResourceTest({
+      role: "admin",
+    });
+    const { agent, space } = await createPatchableAgent({
+      auth: authenticator,
+      globalGroup,
+    });
+
+    const workspace = authenticator.getNonNullableWorkspace();
+    // Two distinct remote servers sharing a display name, both shared to an accessible space.
+    for (let i = 0; i < 2; i++) {
+      const server = await RemoteMCPServerFactory.create(workspace, {
+        name: "Duplicate Server",
+      });
+      await MCPServerViewFactory.create(workspace, server.sId, space);
+    }
+
+    const result = await patchAgentConfigurationFromJSON(
+      authenticator,
+      agent.sId,
+      {
+        toolset: [
+          {
+            name: "Ambiguous remote tool",
+            description: "Should be skipped",
+            type: "MCP",
+            configuration: {
+              mcp_server_name: "Duplicate Server",
+            },
+          },
+        ],
+        spaces: [
+          {
+            space_id: space.sId,
+            name: space.name,
+          },
+        ],
+      }
+    );
+
+    expect(result.isOk()).toBe(true);
+    if (result.isErr()) {
+      throw new Error(result.error.api_error.message);
+    }
+
+    expect(result.value.skippedActions).toEqual([
+      {
+        name: "Ambiguous remote tool",
+        reason:
+          'Multiple MCP servers named "Duplicate Server" found; cannot resolve unambiguously.',
+      },
+    ]);
+    expect(result.value.agentConfiguration.actions).toHaveLength(0);
   });
 });
