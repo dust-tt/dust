@@ -1,5 +1,5 @@
-import type { FunctionStateManifest } from "@app/lib/api/sandbox_functions/manifests";
-import { functionStateManifestSchema } from "@app/lib/api/sandbox_functions/manifests";
+import type { FunctionState } from "@app/lib/api/sandbox_functions/manifests";
+import { functionStateSchema } from "@app/lib/api/sandbox_functions/manifests";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { DataTypes } from "@app/lib/resources/storage/data_types";
 import { FileModel } from "@app/lib/resources/storage/models/files";
@@ -33,12 +33,12 @@ function validateSandboxFunctionSlug(value: unknown): void {
   }
 }
 
-function validateSandboxFunctionStateManifest(value: unknown): void {
+function validateSandboxFunctionState(value: unknown): void {
   // Null means the function declares no databases (custom validators also run on null).
   if (value === null) {
     return;
   }
-  const validationResult = functionStateManifestSchema.safeParse(value);
+  const validationResult = functionStateSchema.safeParse(value);
   if (!validationResult.success) {
     throw new Error(
       `Invalid function manifests: ${validationResult.error.message}`
@@ -58,7 +58,7 @@ export class SandboxFunctionModel extends WorkspaceAwareModel<SandboxFunctionMod
   declare outputSchema: JSONSchema;
   // Per-database manifests (manifest.v1), stored verbatim at publish; null when the function
   // declares no databases.
-  declare manifests: FunctionStateManifest | null;
+  declare manifests: FunctionState | null;
 
   declare space: NonAttribute<SpaceModel>;
   declare file: NonAttribute<FileModel>;
@@ -123,7 +123,7 @@ SandboxFunctionModel.init(
       type: DataTypes.JSONB,
       allowNull: true,
       validate: {
-        isValidManifests: validateSandboxFunctionStateManifest,
+        isValidManifests: validateSandboxFunctionState,
       },
     },
   },
