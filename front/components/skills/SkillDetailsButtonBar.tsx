@@ -43,15 +43,13 @@ export function SkillDetailsButtonBar({
         }}
       />
       <div className="flex flex-row items-center gap-2 px-1.5">
-        {skill.canWrite && (
-          <Button
-            size="sm"
-            tooltip="Edit skill"
-            href={getSkillBuilderRoute(owner.sId, skill.sId)}
-            variant="outline"
-            icon={Edit04}
-          />
-        )}
+        <Button
+          size="sm"
+          tooltip="Edit skill"
+          href={getSkillBuilderRoute(owner.sId, skill.sId)}
+          variant="outline"
+          icon={Edit04}
+        />
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button icon={DotsHorizontal} size="sm" variant="ghost" />
