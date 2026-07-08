@@ -1,10 +1,14 @@
 import { Card, type CardVariantType } from "@sparkle/components/Card";
-import { Checkbox } from "@sparkle/components/Checkbox";
+import {
+  checkboxIndicatorStyles,
+  checkboxStyles,
+} from "@sparkle/components/Checkbox";
 import { Counter } from "@sparkle/components/Counter";
 import {
   radioIndicatorStyles,
   radioStyles,
 } from "@sparkle/components/RadioGroup";
+import { Check } from "@sparkle/icons/v2-stroke";
 import { cn } from "@sparkle/lib/utils";
 import React from "react";
 
@@ -87,14 +91,16 @@ export function OptionCard({
         </div>
       )}
       {selectionIndicator === "checkbox" && (
-        <Checkbox
+        <div
           aria-hidden="true"
-          checked={selected}
-          disabled={disabled}
-          tabIndex={-1}
-          className="pointer-events-none shrink-0"
-          onCheckedChange={() => {}}
-        />
+          className={cn(checkboxStyles(), "pointer-events-none shrink-0")}
+        >
+          {selected && (
+            <div className={checkboxIndicatorStyles()}>
+              <Check className="h-3 w-3 text-background" />
+            </div>
+          )}
+        </div>
       )}
     </Card>
   );
