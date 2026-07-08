@@ -9,6 +9,7 @@ import { createSpaceAndGroup } from "@app/lib/api/spaces";
 import { Authenticator } from "@app/lib/auth";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { ProjectMetadataResource } from "@app/lib/resources/project_metadata_resource";
+import { activationSkill } from "@app/lib/resources/skill/code_defined/global/activation";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
@@ -22,12 +23,19 @@ const joinActivationPodLogger = logger.child({
   activity: "join-activation-pod",
 });
 
-function activationPodNameForUser(
-  firstName: string,
-  lastName: string | null
+// Pod is named after the first user in the list. If there are multiple users
+// with the same full name, named the pod after the first user's email.
+function activationPodNameForCreator(
+  creator: UserResource,
+  otherUsers: UserResource[]
 ): string {
-  const fullName = [firstName, lastName].filter(Boolean).join(" ");
-  return `${fullName}${ACTIVATION_POD_NAME_PREFIX}`;
+  const creatorFullName = creator.fullName();
+  const hasNameCollision = otherUsers.some(
+    (otherUser) => otherUser.fullName() === creatorFullName
+  );
+
+  const label = hasNameCollision ? creator.email : creatorFullName;
+  return `${label}${ACTIVATION_POD_NAME_PREFIX}`;
 }
 
 function parseUserIds(rawUserIds: string): string[] {
@@ -55,15 +63,13 @@ async function markPodAsActivation(
   return new Ok(undefined);
 }
 
-// Select the pod's default skills.
 async function setPodDefaultSkills(
   auth: Authenticator,
   pod: SpaceResource,
   selectedSkillIds: string[]
 ): Promise<Result<{ skillNames: string[] }, Error>> {
-  if (selectedSkillIds.length === 0) {
-    return new Ok({ skillNames: [] });
-  }
+  // Always include the activation skill, deduped against the selection.
+  const skillIds = [...new Set([activationSkill.sId, ...selectedSkillIds])];
 
   let metadata = await ProjectMetadataResource.fetchBySpace(auth, pod);
   if (!metadata) {
@@ -72,7 +78,7 @@ async function setPodDefaultSkills(
     });
   }
 
-  const skills = await SkillResource.fetchByIds(auth, selectedSkillIds, {
+  const skills = await SkillResource.fetchByIds(auth, skillIds, {
     onlyActive: true,
   });
   await metadata.setDefaultSkills(auth, skills);
@@ -236,10 +242,7 @@ export const joinActivationPodPlugin = createPlugin({
     }
 
     const [creator, ...otherUsers] = users;
-    const podName = activationPodNameForUser(
-      creator.firstName,
-      creator.lastName
-    );
+    const podName = activationPodNameForCreator(creator, otherUsers);
     const podLink = (space: SpaceResource) =>
       `/poke/${workspace.sId}/spaces/${space.sId}`;
 
