@@ -114,3 +114,25 @@ pub async fn batch_tokenize_async(
 
     Ok(r)
 }
+
+// Counts tokens per text without materializing the token strings. `batch_tokenize_async` clones an
+// owned String per token for the whole batch at once, which blows up memory (and OOMs) when only
+// counts are needed; encoding to token ids and taking the length keeps peak memory tiny.
+pub async fn batch_count_async(
+    ssp: Arc<RwLock<SentencePieceProcessor>>,
+    texts: Vec<String>,
+) -> Result<Vec<usize>> {
+    let r = tokio::task::spawn_blocking(move || {
+        texts
+            .par_iter()
+            .map(|text| {
+                let guard = ssp.read();
+                guard.encode(text).map(|p| p.len())
+            })
+            .collect::<Result<Vec<usize>, SentencePieceError>>()
+            .map_err(|e| anyhow::anyhow!(e))
+    })
+    .await??;
+
+    Ok(r)
+}
