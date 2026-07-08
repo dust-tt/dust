@@ -477,7 +477,7 @@ describe("processToolResults", () => {
     );
   });
 
-  it("should write the full content array to a single GCS object in a sandbox function run context", async () => {
+  async function setupSandboxFunctionTest() {
     const { auth, workspace, invocation, globalSpace } =
       await createPersistedSandboxFunctionInvocationTokenTestContext();
     const server = await InternalMCPServerInMemoryResource.makeNew(auth, {
@@ -496,6 +496,22 @@ describe("processToolResults", () => {
 
     fileStorageMock.reset();
 
+    const toolContext: ToolContextType = {
+      runContext: {
+        contextType: "sandbox_function",
+        action,
+        invocation,
+        toolConfiguration: action.toolConfiguration,
+      },
+    };
+
+    return { auth, workspace, action, toolContext };
+  }
+
+  it("should write the full content array to a single GCS object in a sandbox function run context", async () => {
+    const { auth, workspace, action, toolContext } =
+      await setupSandboxFunctionTest();
+
     const toolCallResultContent: CallToolResult["content"] = [
       { type: "text", text: "first block" },
       { type: "text", text: "second block" },
@@ -503,14 +519,7 @@ describe("processToolResults", () => {
 
     const { outputItems, generatedFiles } = await processToolResults(auth, {
       localLogger: logger.child({ test: true }),
-      toolContext: {
-        runContext: {
-          contextType: "sandbox_function",
-          action,
-          invocation,
-          toolConfiguration: action.toolConfiguration,
-        },
-      },
+      toolContext,
       toolCallResultContent,
     });
 
@@ -535,5 +544,29 @@ describe("processToolResults", () => {
     expect(refetched?.outputGcsPath).toBe(
       `w/${workspace.sId}/mcp_output_items/${action.sId}/output.json`
     );
+  });
+
+  it("should throw and leave the action without an output path when the sandbox output write fails", async () => {
+    const { auth, action, toolContext } = await setupSandboxFunctionTest();
+
+    fileStorageMock.setFileSaveFails((filePath) =>
+      filePath.endsWith(`mcp_output_items/${action.sId}/output.json`)
+    );
+
+    await expect(
+      processToolResults(auth, {
+        localLogger: logger.child({ test: true }),
+        toolContext,
+        toolCallResultContent: [{ type: "text", text: "some output" }],
+      })
+    ).rejects.toThrow();
+
+    // No acceptable degraded state: the row must not point at an object that was never written.
+    const refetched =
+      await SandboxFunctionMCPActionResource.fetchByModelIdWithAuth(
+        auth,
+        action.id
+      );
+    expect(refetched?.outputGcsPath).toBeNull();
   });
 });

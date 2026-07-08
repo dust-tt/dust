@@ -353,7 +353,11 @@ export async function* tryCallMCPTool(
   }: {
     progressToken: ModelId;
     // Optional: callers without a conversation surface (sandbox function invocations) have no
-    // notification event to build — progress notifications are consumed but not yielded.
+    // notification event to build — progress notifications are consumed but not yielded. Note
+    // that this drops more than UI events: `store_resource` notification contents are persisted
+    // by the caller-provided callback (via `processToolNotification`), so without a callback they
+    // are NOT persisted. Acceptable while no tool callable in these modes emits them (only
+    // `run_agent` does today).
     makeToolNotificationEvent?: (
       notification: MCPProgressNotificationType
     ) => Promise<ToolNotificationEvent>;

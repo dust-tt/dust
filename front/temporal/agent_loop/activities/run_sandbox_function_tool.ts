@@ -7,15 +7,10 @@ import { SandboxFunctionMCPActionResource } from "@app/lib/resources/sandbox_fun
 import { SandboxFunctionResource } from "@app/lib/resources/sandbox_function_resource";
 import { withPeriodicHeartbeat } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
-import { TOOL_ACTIVITY_HEARTBEAT_TIMEOUT_MS } from "@app/temporal/agent_loop/config";
+import { TOOL_RESULT_PROCESSING_HEARTBEAT_INTERVAL_MS } from "@app/temporal/agent_loop/config";
 import type { ModelId } from "@app/types/shared/model_id";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { heartbeat } from "@temporalio/activity";
-
-const TOOL_RESULT_PROCESSING_HEARTBEAT_TIMEOUT_MARGIN_MS = 5 * 1000;
-const TOOL_RESULT_PROCESSING_HEARTBEAT_INTERVAL_MS =
-  TOOL_ACTIVITY_HEARTBEAT_TIMEOUT_MS -
-  TOOL_RESULT_PROCESSING_HEARTBEAT_TIMEOUT_MARGIN_MS;
 
 export async function runSandboxFunctionToolActivity(
   authType: AuthenticatorType,
@@ -100,7 +95,10 @@ export async function runSandboxFunctionToolActivity(
     );
   } catch (err) {
     // The poll contract requires a terminal status: a persistence failure (GCS retries
-    // exhausted) must surface as an errored action, not an action stuck `running`.
+    // exhausted) must surface as an errored action, not an action stuck `running`. Catching our
+    // own throw here is temporary — `processToolResults` throws because `createOutputItems`
+    // does (see the TODO(2026-05-08 FLAV) in agent_mcp_action_resource.ts to Result-ify it and
+    // its call sites); this catch goes away with that refactor.
     localLogger.error(
       { err: normalizeError(err) },
       "Failed to persist sandbox function tool output, marking action as errored"
