@@ -302,7 +302,7 @@ export const INTERACTIVE_CONTENT_TOOLS_METADATA = createToolsRecord({
             "`conversation-<conversationId>/<filename>`, or `pod-<id>/<filename>` for a Frame " +
             "stored in a project's shared space. If the file was renamed, use its current " +
             "name, listing the directory first if unsure. This path's directory becomes the " +
-            "bundling root for relative imports."
+            "bundling root."
         ),
     },
     enableAlerting: true,
