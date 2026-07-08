@@ -54,7 +54,6 @@ import { isString } from "@app/types/shared/utils/general";
 import type { LightWorkspaceType, WorkspaceType } from "@app/types/user";
 import {
   Avatar,
-  Button,
   CloudArrowLeftRight,
   Collapsible,
   CollapsibleContent,
@@ -70,6 +69,7 @@ import {
   Hoverable,
   Icon,
   Lock01,
+  NewButton,
   type NotificationType,
   Page,
   Sheet,
@@ -495,7 +495,7 @@ function UpdateConnectionOAuthModal({
         <div className="flex items-center justify-center">
           <Dialog>
             <DialogTrigger>
-              <Button
+              <NewButton
                 label="Edit Permissions"
                 icon={Lock01}
                 variant="warning"
@@ -668,7 +668,7 @@ function DataSourceDeletionModal({
           <div className="flex items-center justify-center">
             <Dialog>
               <DialogTrigger>
-                <Button
+                <NewButton
                   label="Delete Connection"
                   icon={Lock01}
                   variant="warning"
@@ -982,7 +982,7 @@ export function ConnectorPermissionsModal({
   return (
     <>
       {onManageButtonClick && (
-        <Button
+        <NewButton
           size="sm"
           label={`Manage ${getDisplayNameForDataSource(dataSource)}`}
           icon={CloudArrowLeftRight}
@@ -1012,7 +1012,7 @@ export function ConnectorPermissionsModal({
                 <div className="flex flex-row justify-end gap-2 py-1">
                   {(isOAuthProvider(connector.type) ||
                     isRemoteDatabase(dataSource)) && (
-                    <Button
+                    <NewButton
                       label={
                         !isRemoteDatabase(dataSource)
                           ? "Edit permissions"
@@ -1028,14 +1028,14 @@ export function ConnectorPermissionsModal({
                   )}
                   {dataSource.connectorProvider === "notion" &&
                     featureFlags.includes("notion_private_integration") && (
-                      <Button
+                      <NewButton
                         label="Setup Private Integration"
                         variant="outline"
                         icon={Lock01}
                         onClick={() => setModalToShow("private_integration")}
                       />
                     )}
-                  <Button
+                  <NewButton
                     label="Delete connection"
                     variant="warning"
                     icon={Trash01}

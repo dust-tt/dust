@@ -1,7 +1,6 @@
 import { useSubscriptionContext } from "@app/components/workspace/billing/SubscriptionContext";
 import { TRACKING_AREAS, withTracking } from "@app/lib/tracking";
 import {
-  Button,
   ContentMessage,
   Dialog,
   DialogContainer,
@@ -10,6 +9,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  NewButton,
   Spinner,
 } from "@dust-tt/sparkle";
 
@@ -202,7 +202,7 @@ export function SubscriptionActionButtons() {
       <CancelMetronomeSubscriptionDialog />
       <ReactivateMetronomeSubscriptionDialog />
       {canReactivateSubscription ? (
-        <Button
+        <NewButton
           label="Resume subscription"
           size="sm"
           variant="highlight"
@@ -216,7 +216,7 @@ export function SubscriptionActionButtons() {
           )}
         />
       ) : canCancelSubscription ? (
-        <Button
+        <NewButton
           label="Cancel subscription"
           size="sm"
           variant="outline"

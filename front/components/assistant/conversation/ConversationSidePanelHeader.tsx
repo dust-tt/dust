@@ -1,5 +1,5 @@
 import { AppLayoutTitle } from "@app/components/sparkle/AppLayoutTitle";
-import { Button, XClose } from "@dust-tt/sparkle";
+import { NewButton, XClose } from "@dust-tt/sparkle";
 import type React from "react";
 
 interface ConversationSidePanelHeaderProps {
@@ -16,7 +16,7 @@ export function ConversationSidePanelHeader({
       <div className="flex h-full items-center">
         {children}
         {onClose && (
-          <Button
+          <NewButton
             variant="ghost"
             onClick={onClose}
             icon={XClose}

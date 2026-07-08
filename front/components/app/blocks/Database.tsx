@@ -12,7 +12,7 @@ import type {
 } from "@app/types/app";
 import type { BlockType, RunType } from "@app/types/run";
 import type { WorkspaceType } from "@app/types/user";
-import { Button, Label, Plus, XClose } from "@dust-tt/sparkle";
+import { Label, NewButton, Plus, XClose } from "@dust-tt/sparkle";
 import last from "lodash/last";
 import { useCallback, useEffect } from "react";
 import Block from "./Block";
@@ -146,7 +146,7 @@ export function TablesManager({
             )}
             {!readOnly && block.config.tables?.length > 1 && (
               <div>
-                <Button
+                <NewButton
                   onClick={() => removeTable(index)}
                   className={classNames(
                     "text-muted-foreground",
@@ -163,7 +163,7 @@ export function TablesManager({
       ))}
 
       <div>
-        <Button
+        <NewButton
           type="button"
           onClick={addNewTable}
           className="mt-2"

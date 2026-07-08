@@ -1,7 +1,7 @@
 import config from "@app/lib/api/config";
 import { classNames } from "@app/lib/utils";
 import type { PendingInvitationOption } from "@app/types/membership_invitation";
-import { Button, DataTable, Label } from "@dust-tt/sparkle";
+import { DataTable, Label, NewButton } from "@dust-tt/sparkle";
 import type { ColumnDef } from "@tanstack/react-table";
 import type { MouseEvent } from "react";
 import { useMemo } from "react";
@@ -95,7 +95,7 @@ export function PendingInvitationsTable({
         header: "",
         cell: ({ row }) => (
           <DataTable.CellContent className="w-full justify-end">
-            <Button
+            <NewButton
               size="xs"
               variant={row.original.isExpired ? "outline" : "primary"}
               label={row.original.isExpired ? "Expired" : "Join"}

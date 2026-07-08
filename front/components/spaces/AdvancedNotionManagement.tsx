@@ -4,12 +4,12 @@ import { GetPostNotionSyncResponseBodySchema } from "@app/types/api/spaces";
 import type { DataSourceType } from "@app/types/data_source";
 import type { WorkspaceType } from "@app/types/user";
 import {
-  Button,
   CheckCircle,
   DataTable,
   type DropdownMenu,
   Icon,
   Input,
+  NewButton,
   type NotificationType,
   RefreshCw02,
   TextArea,
@@ -327,7 +327,7 @@ export function AdvancedNotionManagement({
             className="w-full"
           />
           <div className="mt-2">
-            <Button
+            <NewButton
               label="Check Status"
               variant="primary"
               onClick={checkUrlStatus}
@@ -426,13 +426,13 @@ export function AdvancedNotionManagement({
         showErrorLabel={!!error}
       />
       <div className="flex justify-end gap-2 border-t pt-4">
-        <Button
+        <NewButton
           label="Sync URL(s)"
           variant="primary"
           onClick={() => syncURLs("sync")}
           disabled={syncing}
         />
-        <Button
+        <NewButton
           label="Delete URL(s)"
           variant="primary"
           onClick={() => syncURLs("delete")}

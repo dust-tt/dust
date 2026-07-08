@@ -7,10 +7,10 @@ import { TAILWIND_BACKGROUND_COLORS } from "@app/types/assistant/avatar";
 import {
   Avatar,
   avatarUtils,
-  Button,
   ColorPicker,
   EmojiPicker,
   FaceSmile,
+  NewButton,
   Paint,
   PopoverContent,
   PopoverRoot,
@@ -81,7 +81,11 @@ const AgentBuilderEmojiPicker = React.forwardRef<
       <div className="flex flex-row gap-2">
         <PopoverRoot>
           <PopoverTrigger asChild>
-            <Button variant="outline" icon={FaceSmile} label="Pick an Emoji" />
+            <NewButton
+              variant="outline"
+              icon={FaceSmile}
+              label="Pick an Emoji"
+            />
           </PopoverTrigger>
           <PopoverContent fullWidth>
             <EmojiPicker
@@ -102,7 +106,7 @@ const AgentBuilderEmojiPicker = React.forwardRef<
 
         <PopoverRoot>
           <PopoverTrigger asChild>
-            <Button variant="outline" icon={Paint} label="Pick a color" />
+            <NewButton variant="outline" icon={Paint} label="Pick a color" />
           </PopoverTrigger>
           <PopoverContent mountPortal={false} className="w-fit">
             <ColorPicker

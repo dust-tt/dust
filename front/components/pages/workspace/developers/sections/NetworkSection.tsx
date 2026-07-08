@@ -11,7 +11,6 @@ import {
 import { normalizeEgressPolicyDomain } from "@app/types/sandbox/egress_policy";
 import { isComputerFeatureEnabled } from "@app/types/shared/feature_flags";
 import {
-  Button,
   ContentMessage,
   Dialog,
   DialogContainer,
@@ -21,6 +20,7 @@ import {
   DialogTitle,
   InfoCircle,
   Input,
+  NewButton,
   Page,
   Plus,
   SliderToggle,
@@ -194,7 +194,7 @@ export function NetworkSection() {
               disabled={isUpdatingWorkspaceEgressPolicy}
             />
           </div>
-          <Button
+          <NewButton
             type="submit"
             label="Add domain"
             icon={Plus}
@@ -218,9 +218,9 @@ export function NetworkSection() {
                 >
                   {domain}
                 </pre>
-                <Button
+                <NewButton
                   variant="warning"
-                  size="mini"
+                  size="xs"
                   icon={Trash01}
                   tooltip={`Remove ${domain}`}
                   disabled={isUpdatingWorkspaceEgressPolicy}

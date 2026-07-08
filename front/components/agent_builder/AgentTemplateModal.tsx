@@ -2,9 +2,9 @@ import { useAssistantTemplate } from "@app/lib/swr/assistants";
 import type { WorkspaceType } from "@app/types/user";
 import {
   Avatar,
-  Button,
   LinkWrapper,
   Markdown,
+  NewButton,
   Page,
   ReadOnlyTextArea,
   Sheet,
@@ -58,7 +58,7 @@ export function AgentTemplateModal({
                   <LinkWrapper
                     href={`/w/${owner.sId}/builder/agents/new?templateId=${assistantTemplate.sId}`}
                   >
-                    <Button
+                    <NewButton
                       label="Use this template"
                       variant="primary"
                       data-gtm-label="useTemplateButton"

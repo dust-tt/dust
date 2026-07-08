@@ -7,8 +7,8 @@ import { useProvisioningStatus } from "@app/lib/swr/workos";
 import type { MembershipInvitationType } from "@app/types/membership_invitation";
 import type { ActiveRoleType, WorkspaceType } from "@app/types/user";
 import {
-  Button,
   Mail01,
+  NewButton,
   Page,
   Sheet,
   SheetContainer,
@@ -115,7 +115,7 @@ export function EditInvitationModal({
               </div>
 
               <div className="flex items-center gap-2">
-                <Button
+                <NewButton
                   variant="primary"
                   label="Send invitation again"
                   icon={Mail01}
@@ -129,7 +129,7 @@ export function EditInvitationModal({
                     });
                   }}
                 />
-                <Button
+                <NewButton
                   variant="warning"
                   label="Revoke invitation"
                   icon={XClose}

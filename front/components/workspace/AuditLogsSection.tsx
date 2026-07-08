@@ -1,7 +1,7 @@
 import type { AuditLogsPortal } from "@app/lib/api/audit/workos_audit";
 import { useOpenAuditLogsPortal } from "@app/lib/swr/workos";
 import type { LightWorkspaceType } from "@app/types/user";
-import { Button, File04, Page } from "@dust-tt/sparkle";
+import { File04, NewButton, Page } from "@dust-tt/sparkle";
 import { useState } from "react";
 
 import { WorkspaceSection } from "./WorkspaceSection";
@@ -35,14 +35,14 @@ export function AuditLogsSection({ owner }: AuditLogsSectionProps) {
           </Page.P>
         </div>
         <div className="flex justify-end gap-2">
-          <Button
+          <NewButton
             label="View Logs"
             size="sm"
             variant="outline"
             disabled={loadingPortal !== null}
             onClick={() => void handleClick("view_logs")}
           />
-          <Button
+          <NewButton
             label="Configure Export"
             size="sm"
             variant="outline"

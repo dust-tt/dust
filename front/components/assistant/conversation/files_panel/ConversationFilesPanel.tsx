@@ -17,7 +17,7 @@ import type { ConversationWithoutContentType } from "@app/types/assistant/conver
 import { isInteractiveContentType, opensInSidePanel } from "@app/types/files";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
-  Button,
+  NewButton,
   Tabs,
   TabsContent,
   TabsList,
@@ -180,7 +180,7 @@ export function ConversationFilesPanel({
               <span className="text-sm font-semibold text-foreground">
                 Working Files
               </span>
-              <Button
+              <NewButton
                 variant="ghost"
                 size="sm"
                 onClick={closePanel}
@@ -210,7 +210,7 @@ export function ConversationFilesPanel({
               </TabsList>
               <div className="flex items-center gap-2">
                 {sandboxStatus && <SandboxStatusChip status={sandboxStatus} />}
-                <Button
+                <NewButton
                   variant="ghost"
                   size="sm"
                   onClick={closePanel}

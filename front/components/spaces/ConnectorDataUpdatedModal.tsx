@@ -1,9 +1,9 @@
 import { REMOTE_DATABASE_CONNECTOR_PROVIDERS } from "@app/lib/connector_providers";
 import type { ConnectorProvider } from "@app/types/data_source";
 import {
-  Button,
   ContentMessage,
   Hoverable,
+  NewButton,
   Sheet,
   SheetContainer,
   SheetContent,
@@ -78,7 +78,7 @@ export const ConnectorDataUpdatedModal = ({
             for more information.
           </p>
           <div className="flex w-full justify-end">
-            <Button label="Ok" onClick={() => onClose()} />
+            <NewButton label="Ok" onClick={() => onClose()} />
           </div>
         </SheetContainer>
       </SheetContent>

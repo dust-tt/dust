@@ -7,11 +7,11 @@ import type { ProviderCredentialType } from "@app/types/provider_credential";
 import { PRETTIFIED_PROVIDER_NAMES } from "@app/types/provider_selection";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
-  Button,
   ContentMessage,
   ContextItem,
   Icon,
   InfoCircle,
+  NewButton,
 } from "@dust-tt/sparkle";
 import { useState } from "react";
 
@@ -36,13 +36,13 @@ function ProviderConfigurationActions({
 
   return (
     <div className="flex items-center gap-2">
-      <Button
+      <NewButton
         label={configureLabel}
         variant="outline"
         onClick={openConfigurationSheet}
       />
       {apiKey && (
-        <Button
+        <NewButton
           label="Remove"
           variant="warning"
           onClick={openRemoveKeyDialog}

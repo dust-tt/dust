@@ -6,9 +6,9 @@ import {
 import {
   ArrowDown,
   ArrowUp,
-  Button,
   cn,
   IconButton,
+  NewButton,
   Stop,
   Zap,
 } from "@dust-tt/sparkle";
@@ -54,10 +54,10 @@ export function InputBarMessageNavigation({
   ) => {
     if (variant === "compact") {
       return (
-        <Button
+        <NewButton
           variant="ghost-secondary"
           icon={icon}
-          size="mini"
+          size="xs"
           onClick={onClick}
           disabled={disabled}
           aria-label={ariaLabel}
@@ -79,22 +79,22 @@ export function InputBarMessageNavigation({
 
   const stopButton =
     variant === "compact" && isStopActionPending ? (
-      <Button
+      <NewButton
         variant={stopButtonVariant}
         label={stopButtonLabel}
         onClick={onStopClick}
         disabled
-        size={variant === "compact" ? "mini" : "xs"}
+        size="xs"
       />
     ) : (
-      <Button
+      <NewButton
         variant={stopButtonVariant}
         label={variant === "compact" ? undefined : stopButtonLabel}
         icon={stopIcon}
         aria-label={variant === "compact" ? stopButtonLabel : undefined}
         onClick={onStopClick}
         disabled={pendingAction !== null}
-        size={variant === "compact" ? "mini" : "xs"}
+        size="xs"
       />
     );
 

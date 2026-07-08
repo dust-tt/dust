@@ -6,9 +6,9 @@ import { getSkillBuilderRoute } from "@app/lib/utils/router";
 import type { SkillWithoutInstructionsAndToolsWithRelationsType } from "@app/types/assistant/skill_configuration";
 import type { LightWorkspaceType, UserType } from "@app/types/user";
 import {
-  Button,
   Card,
   CardActionButton,
+  NewButton,
   Plus,
   Stars02,
   XClose,
@@ -83,7 +83,7 @@ function SuggestedSkillCard({
             </p>
           </div>
           <div>
-            <Button
+            <NewButton
               size="xs"
               variant="outline"
               icon={Plus}

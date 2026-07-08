@@ -1,5 +1,5 @@
 import type { FileExplorerFilter } from "@app/components/file_explorer/types";
-import { Button } from "@dust-tt/sparkle";
+import { NewButton } from "@dust-tt/sparkle";
 import { useMemo } from "react";
 
 const FILTER_CHIPS: {
@@ -47,7 +47,7 @@ export function FileExplorerFilters({
       {orderedChips.map(({ value, label }) => {
         const count = value === "all" ? undefined : counts[value];
         return (
-          <Button
+          <NewButton
             key={value}
             size="xs"
             variant={active === value ? "primary" : "outline"}

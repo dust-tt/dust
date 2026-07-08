@@ -4,12 +4,12 @@ import type { PodType } from "@app/types/space";
 import { isProjectType } from "@app/types/space";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
-  Button,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSearchbar,
   DropdownMenuTrigger,
+  NewButton,
 } from "@dust-tt/sparkle";
 import { useCallback, useMemo, useState } from "react";
 
@@ -72,7 +72,7 @@ export function TriggerPodSelector({
     <div className="inline-flex">
       <DropdownMenu open={searchOpen} onOpenChange={setSearchOpen}>
         <DropdownMenuTrigger asChild>
-          <Button
+          <NewButton
             label={selectedPod?.name ?? "My conversations (default)"}
             icon={selectedPod ? getSpaceIcon(selectedPod) : undefined}
             variant="outline"

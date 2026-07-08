@@ -7,12 +7,12 @@ import type { MembershipInvitationType } from "@app/types/membership_invitation"
 import type { WorkspaceType } from "@app/types/user";
 import {
   Avatar,
-  Button,
   ChevronRight,
   Chip,
   cn,
   DataTable,
   Mail01,
+  NewButton,
   Page,
 } from "@dust-tt/sparkle";
 import type { CellContext } from "@tanstack/react-table";
@@ -73,7 +73,7 @@ export function InvitationsList({
               {isExpired && (
                 <>
                   <span className="text-red-500">(expired)</span>
-                  <Button
+                  <NewButton
                     size="xs"
                     variant="outline"
                     icon={Mail01}

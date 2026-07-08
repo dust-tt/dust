@@ -13,7 +13,7 @@ import type { FileSystemFileEntry } from "@app/types/api/file_system/types";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import { contentTypeFromFileName } from "@app/types/files";
 import type { LightWorkspaceType } from "@app/types/user";
-import { Button, Download01, Icon } from "@dust-tt/sparkle";
+import { Download01, Icon, NewButton } from "@dust-tt/sparkle";
 
 interface FilePreviewPanelProps {
   conversation: ConversationWithoutContentType;
@@ -95,7 +95,7 @@ export function FilePreviewPanel({
           <span className="line-clamp-1 text-sm font-medium">{fileName}</span>
         </div>
         <div className="ml-2 flex items-center gap-1">
-          <Button
+          <NewButton
             variant="ghost"
             size="sm"
             icon={Download01}

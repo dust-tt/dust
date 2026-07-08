@@ -32,12 +32,12 @@ import { DocumentViewRawContentKey } from "@app/types/sheets";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
   Brackets,
-  Button,
   Chip,
   Folder,
   IconButton,
   Label,
   LinkExternal01,
+  NewButton,
   PopoverContent,
   PopoverRoot,
   PopoverTrigger,
@@ -463,7 +463,7 @@ function RetrievalActionTagsFilterPopover({
   return (
     <PopoverRoot modal={true}>
       <PopoverTrigger asChild>
-        <Button
+        <NewButton
           variant="outline"
           size="xs"
           label="Filters"

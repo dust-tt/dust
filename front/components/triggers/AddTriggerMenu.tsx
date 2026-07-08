@@ -7,11 +7,11 @@ import { isWebhookProvider } from "@app/types/triggers/webhooks";
 import { CLIENT_SIDE_WEBHOOK_PRESETS } from "@app/types/triggers/webhooks_client_side";
 import type { WorkspaceType } from "@app/types/user";
 import {
-  Button,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  NewButton,
   Plus,
 } from "@dust-tt/sparkle";
 
@@ -28,7 +28,7 @@ export const AddTriggerMenu = ({
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button
+        <NewButton
           label="Add Source"
           variant="primary"
           icon={Plus}

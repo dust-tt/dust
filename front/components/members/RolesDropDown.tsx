@@ -3,13 +3,13 @@ import { useFeatureFlags, useWorkspace } from "@app/lib/auth/AuthContext";
 import type { ActiveRoleType } from "@app/types/user";
 import { ACTIVE_ROLES, isAdmin } from "@app/types/user";
 import {
-  Button,
   ChevronDown,
   Chip,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  NewButton,
 } from "@dust-tt/sparkle";
 
 interface RoleDropDownProps {
@@ -69,7 +69,7 @@ export function RoleDropDown({
           >
             {displayRole(selectedRole)}
           </Chip>
-          <Button icon={ChevronDown} size="sm" variant="ghost" />
+          <NewButton icon={ChevronDown} size="sm" variant="ghost" />
         </div>
       </DropdownMenuTrigger>
       <DropdownMenuContent>

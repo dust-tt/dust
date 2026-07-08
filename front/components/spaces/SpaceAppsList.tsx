@@ -11,7 +11,13 @@ import type { AppType } from "@app/types/app";
 import { isString } from "@app/types/shared/utils/general";
 import type { SpaceType } from "@app/types/space";
 import type { LightWorkspaceType } from "@app/types/user";
-import { Button, DataTable, Plus, Spinner, Terminal } from "@dust-tt/sparkle";
+import {
+  DataTable,
+  NewButton,
+  Plus,
+  Spinner,
+  Terminal,
+} from "@dust-tt/sparkle";
 import type { CellContext, ColumnDef } from "@tanstack/react-table";
 import sortBy from "lodash/sortBy";
 import type { ParsedUrlQuery } from "querystring";
@@ -132,7 +138,7 @@ export const SpaceAppsList = ({
   const actionButtons = (
     <>
       {isBuilder && (
-        <Button
+        <NewButton
           label="New App"
           variant="primary"
           icon={Plus}
@@ -150,7 +156,7 @@ export const SpaceAppsList = ({
       {!isEmpty && portalToHeader(actionButtons)}
       {isEmpty ? (
         <div className="flex h-36 w-full items-center justify-center gap-2 rounded-lg bg-muted-background">
-          <Button
+          <NewButton
             label="Create App"
             disabled={!isBuilder}
             onClick={() => {

@@ -10,7 +10,6 @@ import { CLIENT_SIDE_WEBHOOK_PRESETS } from "@app/types/triggers/webhooks_client
 import type { LightWorkspaceType } from "@app/types/user";
 import {
   ActionIcons,
-  Button,
   Chip,
   Clipboard,
   cn,
@@ -20,6 +19,7 @@ import {
   IconPicker,
   Input,
   Label,
+  NewButton,
   Page,
   PopoverContent,
   PopoverRoot,
@@ -132,7 +132,7 @@ export function WebhookSourceDetailsInfo({
             {!provider && (
               <PopoverRoot open={isPopoverOpen}>
                 <PopoverTrigger asChild>
-                  <Button
+                  <NewButton
                     variant="outline"
                     size="sm"
                     icon={IconComponent}

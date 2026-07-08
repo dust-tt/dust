@@ -9,7 +9,7 @@ import {
   useWriteFileContentByPath,
 } from "@app/lib/swr/files";
 import type { LightWorkspaceType } from "@app/types/user";
-import { Button, ContentMessage, Spinner } from "@dust-tt/sparkle";
+import { ContentMessage, NewButton, Spinner } from "@dust-tt/sparkle";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 export interface MarkdownFileEditorProps
@@ -208,13 +208,13 @@ export function MarkdownFileEditor({
       />
       {canPersist && isDirty && (
         <div className="flex gap-2">
-          <Button
+          <NewButton
             label="Save"
             variant="highlight"
             isLoading={isSaving}
             onClick={() => void handleSave()}
           />
-          <Button
+          <NewButton
             label="Cancel"
             variant="outline"
             disabled={isSaving}

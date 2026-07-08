@@ -1,6 +1,6 @@
 import { useAuth } from "@app/lib/auth/AuthContext";
 import type { MessageReactionType } from "@app/types/assistant/conversation";
-import { Button, Tooltip } from "@dust-tt/sparkle";
+import { NewButton, Tooltip } from "@dust-tt/sparkle";
 
 import { ReactionPill } from "./ReactionPill";
 
@@ -61,9 +61,9 @@ export function MessageReactions({
           }
           side="top"
           trigger={
-            <Button
+            <NewButton
               label={`+${hiddenReactions.length}`}
-              size="xmini"
+              size="xs"
               variant="outline"
               aria-label="More reactions"
             />

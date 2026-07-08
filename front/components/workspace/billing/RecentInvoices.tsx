@@ -2,7 +2,7 @@ import { getPriceAsString } from "@app/lib/client/subscription";
 import { useRecentBillingInvoices } from "@app/lib/swr/workspaces";
 import { formatTimestampToFriendlyDate } from "@app/lib/utils";
 import type { BillingInvoice } from "@app/types/api/billing/invoices";
-import { Button, Spinner } from "@dust-tt/sparkle";
+import { NewButton, Spinner } from "@dust-tt/sparkle";
 import { useSubscriptionContext } from "./SubscriptionContext";
 
 function getInvoiceLabel(invoice: BillingInvoice): string {
@@ -26,7 +26,7 @@ export function RecentInvoices() {
       <div className="flex items-center justify-between gap-3">
         <h2 className="text-xl font-semibold text-foreground">Invoices</h2>
         {billingInvoices.length > 0 && (
-          <Button
+          <NewButton
             label="See all"
             variant="ghost"
             size="sm"
@@ -68,7 +68,7 @@ export function RecentInvoices() {
                     })}
                   </div>
                   <div className="md:justify-self-end">
-                    <Button
+                    <NewButton
                       label="See invoice"
                       variant="ghost"
                       size="sm"

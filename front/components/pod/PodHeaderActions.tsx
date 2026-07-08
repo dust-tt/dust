@@ -9,13 +9,13 @@ import type {
 } from "@app/types/user";
 import {
   Avatar,
-  Button,
   DotsHorizontal,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
   DropdownTooltipTrigger,
+  NewButton,
   XClose,
 } from "@dust-tt/sparkle";
 import { useCallback } from "react";
@@ -83,7 +83,7 @@ export function PodHeaderActions({
         {isMember && (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button
+              <NewButton
                 icon={DotsHorizontal}
                 variant="ghost"
                 size="sm"

@@ -13,7 +13,6 @@ import { removeNulls } from "@app/types/shared/utils/general";
 import type { SpaceType } from "@app/types/space";
 import type { WorkspaceType } from "@app/types/user";
 import {
-  Button,
   CloudArrowLeftRight,
   cn,
   DataTable,
@@ -22,6 +21,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
   Globe01,
+  NewButton,
   Plus,
   Settings01,
   Spinner,
@@ -146,7 +146,7 @@ export const SpaceCategoriesList = ({
   const actionButtons = (
     <>
       {isAdmin && onButtonClick && space.kind === "regular" && (
-        <Button
+        <NewButton
           label="Space settings"
           icon={Settings01}
           onClick={onButtonClick}
@@ -155,7 +155,7 @@ export const SpaceCategoriesList = ({
       )}
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button label="Add data" icon={Plus} />
+          <NewButton label="Add data" icon={Plus} />
         </DropdownMenuTrigger>
         <DropdownMenuContent>
           <DropdownMenuItem

@@ -1,7 +1,7 @@
 import { useAuth, useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { useAppRouter } from "@app/lib/platform";
 import { useKillSwitches } from "@app/lib/swr/kill";
-import { Button, Check, DustLogoSquare, Icon, Page } from "@dust-tt/sparkle";
+import { Check, DustLogoSquare, Icon, NewButton, Page } from "@dust-tt/sparkle";
 // biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
 import React from "react";
 
@@ -70,12 +70,12 @@ export function TrialPage() {
               </ul>
 
               <div className="flex flex-row gap-3">
-                <Button
+                <NewButton
                   onClick={startFreePlan}
                   variant="primary"
                   label="Start for free"
                 />
-                <Button
+                <NewButton
                   onClick={skip}
                   variant="outline"
                   label="Subscribe now"
@@ -109,12 +109,16 @@ export function TrialPage() {
               ))}
             </ul>
             <div className="flex flex-row gap-3">
-              <Button
+              <NewButton
                 onClick={startFreePlan}
                 variant="primary"
                 label="Start free trial"
               />
-              <Button onClick={skip} variant="outline" label="Subscribe now" />
+              <NewButton
+                onClick={skip}
+                variant="outline"
+                label="Subscribe now"
+              />
             </div>
           </Page.Vertical>
         </Page.Horizontal>

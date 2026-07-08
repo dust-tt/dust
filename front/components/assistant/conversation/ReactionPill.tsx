@@ -1,4 +1,4 @@
-import { Button, cn, Tooltip } from "@dust-tt/sparkle";
+import { cn, NewButton, Tooltip } from "@dust-tt/sparkle";
 
 interface ReactionPillProps {
   emoji: string;
@@ -35,9 +35,9 @@ export function ReactionPill({
       side="top"
       tooltipTriggerAsChild
       trigger={
-        <Button
+        <NewButton
           label={`${emoji} ${count}`}
-          size="xmini"
+          size="xs"
           variant="outline"
           onClick={onClick}
           className={cn(

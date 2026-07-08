@@ -6,13 +6,13 @@ import { useApps } from "@app/lib/swr/apps";
 import type { AppType, DustAppRunConfigurationType } from "@app/types/app";
 import type { SpaceType } from "@app/types/space";
 import {
-  Button,
   Card,
   DataTable,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  NewButton,
   SearchInput,
   Spinner,
   Terminal,
@@ -173,7 +173,7 @@ export function DustAppSection() {
           <span className="text-sm font-medium text-foreground">Space:</span>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button
+              <NewButton
                 size="xs"
                 variant="outline"
                 isSelect
@@ -210,7 +210,7 @@ export function DustAppSection() {
                 </div>
               </div>
               <div className="ml-4 self-start">
-                <Button
+                <NewButton
                   variant="outline"
                   size="sm"
                   icon={PencilIcon}

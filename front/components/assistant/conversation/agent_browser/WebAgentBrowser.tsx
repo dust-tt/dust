@@ -7,12 +7,12 @@ import { TRACKING_AREAS, withTracking } from "@app/lib/tracking";
 import { getAgentBuilderRoute, setQueryParam } from "@app/lib/utils/router";
 import { isBuilder } from "@app/types/user";
 import {
-  Button,
   ContactsRobot,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  NewButton,
   ScrollArea,
   ScrollBar,
   Spinner,
@@ -110,7 +110,7 @@ export function WebAgentBrowser({
               <ManageDropdownMenu owner={owner} />
             ) : (
               !isRestrictedFromAgentCreation && (
-                <Button
+                <NewButton
                   href={getAgentBuilderRoute(owner.sId, "manage")}
                   variant="primary"
                   icon={ContactsRobot}
@@ -145,7 +145,7 @@ export function WebAgentBrowser({
               <div className="ml-auto"></div>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button
+                  <NewButton
                     isSelect
                     variant="outline"
                     label={sortTypeLabel}

@@ -2,7 +2,7 @@ import { AppLayoutTitle } from "@app/components/sparkle/AppLayoutTitle";
 import config from "@app/lib/api/config";
 import { LinkWrapper } from "@app/lib/platform";
 import { useSendOtpVerification, useVerifyOtpCode } from "@app/lib/swr/share";
-import { Button, DustLogo, Input, Label } from "@dust-tt/sparkle";
+import { DustLogo, Input, Label, NewButton } from "@dust-tt/sparkle";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { usePostHog } from "posthog-js/react";
 import type { ReactNode } from "react";
@@ -112,7 +112,7 @@ function EmailStepForm({ onCodeSent, shareToken }: EmailStepFormProps) {
           />
         </div>
         <div className="flex justify-end">
-          <Button
+          <NewButton
             variant="primary"
             label="Send code"
             type="submit"
@@ -206,13 +206,13 @@ function CodeStepForm({ email, onVerified, shareToken }: CodeStepFormProps) {
           />
         </div>
         <div className="flex items-center justify-between">
-          <Button
+          <NewButton
             variant="outline"
             label={resent ? "Code sent!" : "Resend code"}
             onClick={handleResend}
             disabled={isSubmitting || isResending}
           />
-          <Button
+          <NewButton
             variant="primary"
             label="Verify"
             type="submit"

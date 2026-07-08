@@ -5,10 +5,10 @@ import { usePendingInvitations } from "@app/lib/swr/workspaces";
 import type { RegionType } from "@app/types/region";
 import {
   BarHeader,
-  Button,
   cn,
   DustLogoSquare,
   Icon,
+  NewButton,
   Page,
   Spinner,
 } from "@dust-tt/sparkle";
@@ -79,7 +79,7 @@ export function InviteChoosePage() {
                         Role: {invitation.initialRole}
                       </span>
                     </div>
-                    <Button
+                    <NewButton
                       label="Join"
                       variant="primary"
                       size="sm"

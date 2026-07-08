@@ -16,7 +16,6 @@ import {
 } from "@app/types/oauth/lib";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
-  Button,
   Card,
   cn,
   DropdownMenu,
@@ -28,6 +27,7 @@ import {
   Icon,
   Input,
   Label,
+  NewButton,
   Planet,
   Tooltip,
   User01,
@@ -261,7 +261,7 @@ export function MCPServerAuthConnection({
 
       {canCustomizeScopes && (
         <div className="w-full">
-          <Button
+          <NewButton
             variant="outline"
             size="sm"
             label={
@@ -359,7 +359,7 @@ function OAuthCredentialFields({
               <div>
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button
+                    <NewButton
                       variant="outline"
                       isSelect
                       label={

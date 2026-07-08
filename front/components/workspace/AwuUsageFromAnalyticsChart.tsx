@@ -28,12 +28,12 @@ import { formatCredits, formatCreditsCompact } from "@app/lib/client/credits";
 import { useAwuUsageFromAnalytics } from "@app/lib/swr/workspaces";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import {
-  Button,
   Chip,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  NewButton,
 } from "@dust-tt/sparkle";
 import { useCallback, useMemo, useState } from "react";
 import { Bar, BarChart, CartesianGrid, Tooltip, XAxis, YAxis } from "recharts";
@@ -235,7 +235,7 @@ function UsageChartControls({
           ))
         )}
       {hasDrilldown && (
-        <Button
+        <NewButton
           label="Clear filters"
           size="xs"
           variant="ghost"
@@ -244,7 +244,7 @@ function UsageChartControls({
       )}
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button
+          <NewButton
             label={
               GRANULARITY_OPTIONS.find((o) => o.value === granularity)?.label ??
               "Daily"
@@ -266,7 +266,7 @@ function UsageChartControls({
       </DropdownMenu>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button
+          <NewButton
             label={
               groupByOptions.find((o) => o.value === groupBy)?.label ?? "Total"
             }
@@ -288,7 +288,7 @@ function UsageChartControls({
       {groupBy && (
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button
+            <NewButton
               label={`Top ${groupByCount}`}
               size="xs"
               variant="outline"

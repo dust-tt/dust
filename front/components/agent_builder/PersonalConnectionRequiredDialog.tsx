@@ -13,7 +13,6 @@ import {
 import { getOverridablePersonalAuthInputs } from "@app/types/oauth/lib";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
-  Button,
   Chip,
   CloudArrowLeftRight,
   ContentMessage,
@@ -27,6 +26,7 @@ import {
   Hoverable,
   Icon,
   Lock01,
+  NewButton,
 } from "@dust-tt/sparkle";
 // biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
 import React, { useCallback, useEffect, useMemo, useState } from "react";
@@ -201,7 +201,7 @@ export function PersonalConnectionRequiredDialog({
                         {isAlreadyConnected ? (
                           <Chip color="success" label="Connected" />
                         ) : (
-                          <Button
+                          <NewButton
                             icon={CloudArrowLeftRight}
                             size="xs"
                             variant="outline"

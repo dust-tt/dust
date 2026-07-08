@@ -92,7 +92,6 @@ import type {
   WorkspaceType,
 } from "@app/types/user";
 import {
-  Button,
   ButtonGroup,
   ButtonGroupDropdown,
   Chip,
@@ -113,6 +112,7 @@ import {
   InfoCircle,
   InteractiveImageGrid,
   Link01,
+  NewButton,
   RefreshCw02,
   Stop,
   Tooltip,
@@ -663,7 +663,7 @@ export function AgentMessage({
   // Show stop agent button only when streaming with multiple agents
   if (hasMultiAgents && shouldStream) {
     alwaysVisibleButtons.push(
-      <Button
+      <NewButton
         key="stop-msg-button"
         label="Stop agent"
         variant="ghost-secondary"
@@ -891,7 +891,7 @@ export function AgentMessage({
 
     hoverButtons.push(
       <ButtonGroup key="split-button-group">
-        <Button
+        <NewButton
           tooltip={isCopied ? "Copied!" : "Copy to clipboard"}
           variant="outline"
           size="xs"
@@ -908,7 +908,7 @@ export function AgentMessage({
           }}
         >
           <DropdownMenuTrigger asChild>
-            <Button
+            <NewButton
               variant="outline"
               size="xs"
               icon={DotsHorizontal}
@@ -1453,7 +1453,7 @@ function AgentMessageContent({
             <div>
               <ButtonGroupDropdown
                 trigger={
-                  <Button
+                  <NewButton
                     variant="outline"
                     size="xs"
                     icon={DotsHorizontal}

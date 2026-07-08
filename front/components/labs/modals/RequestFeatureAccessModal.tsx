@@ -2,7 +2,7 @@ import { useSendNotification } from "@app/hooks/useNotification";
 import { sendRequestFeatureAccessEmail } from "@app/lib/email";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
-  Button,
+  NewButton,
   Plus,
   Sheet,
   SheetContainer,
@@ -63,7 +63,7 @@ export function RequestFeatureAccessModal({
   return (
     <Sheet>
       <SheetTrigger asChild>
-        <Button label="Request" icon={Plus} />
+        <NewButton label="Request" icon={Plus} />
       </SheetTrigger>
       <SheetContent size="lg">
         <SheetHeader>

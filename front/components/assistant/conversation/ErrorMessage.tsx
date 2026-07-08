@@ -3,9 +3,9 @@ import { useSubmitFunction } from "@app/lib/client/utils";
 import type { GenericErrorContent } from "@app/types/assistant/agent";
 import { isAgentErrorCategory } from "@app/types/assistant/agent";
 import {
-  Button,
   ContentMessage,
   InfoCircle,
+  NewButton,
   RefreshCw02,
 } from "@dust-tt/sparkle";
 
@@ -54,7 +54,7 @@ export function ErrorMessage({ error, retryHandler }: ErrorMessageProps) {
         )}
       </div>
       <div className="flex flex-col gap-2 pt-3 sm:flex-row">
-        <Button
+        <NewButton
           variant="outline"
           size="xs"
           icon={RefreshCw02}

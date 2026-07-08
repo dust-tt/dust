@@ -13,7 +13,6 @@ import type {
 import type { LightWorkspaceType } from "@app/types/user";
 import {
   AlertCircle,
-  Button,
   Checkbox,
   ContentMessage,
   DropdownMenu,
@@ -24,6 +23,7 @@ import {
   Input,
   Label,
   LinkWrapper,
+  NewButton,
   Separator,
   SliderToggle,
   TextArea,
@@ -162,7 +162,7 @@ function WebhookEditionEventSelector({
       </p>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button
+          <NewButton
             id="webhook-event"
             variant="outline"
             isSelect

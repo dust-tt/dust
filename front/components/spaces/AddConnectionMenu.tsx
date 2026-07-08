@@ -40,7 +40,6 @@ import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import type { SpaceType } from "@app/types/space";
 import type { LightWorkspaceType, WorkspaceType } from "@app/types/user";
 import {
-  Button,
   CloudArrowLeftRight,
   Dialog,
   DialogContainer,
@@ -53,6 +52,7 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  NewButton,
 } from "@dust-tt/sparkle";
 import { useCallback, useState } from "react";
 
@@ -537,7 +537,7 @@ export const AddConnectionMenu = ({
 
         <DropdownMenu modal={false}>
           <DropdownMenuTrigger asChild>
-            <Button
+            <NewButton
               label="Add Connections"
               variant="primary"
               icon={CloudArrowLeftRight}

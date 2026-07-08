@@ -14,11 +14,11 @@ import { clientFetch } from "@app/lib/egress/client";
 import type { PickerTokenResponseType } from "@app/types/api/google_drive";
 import type { LightWorkspaceType, UserType } from "@app/types/user";
 import {
-  Button,
   CheckCircle,
   ContentMessage,
   File04,
   LinkExternal01,
+  NewButton,
   XClose,
 } from "@dust-tt/sparkle";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -212,7 +212,7 @@ export function GoogleDriveFileAuthorizationRequired({
           </div>
           {!isAuthorized && (
             <div className="mt-3 flex flex-col justify-end gap-3 sm:flex-row">
-              <Button
+              <NewButton
                 variant="outline"
                 size="xs"
                 label="Skip"
@@ -221,7 +221,7 @@ export function GoogleDriveFileAuthorizationRequired({
                 onClick={() => void handleSkip()}
               />
               {isExtension ? (
-                <Button
+                <NewButton
                   label="Open in Web App"
                   variant="highlight"
                   size="xs"
@@ -229,7 +229,7 @@ export function GoogleDriveFileAuthorizationRequired({
                   onClick={handleOpenInWebApp}
                 />
               ) : (
-                <Button
+                <NewButton
                   label={isButtonLoading ? "Loading..." : "Open File Picker"}
                   variant="highlight"
                   size="xs"

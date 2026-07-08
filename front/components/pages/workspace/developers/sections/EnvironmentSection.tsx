@@ -26,7 +26,6 @@ import {
 import { isComputerFeatureEnabled } from "@app/types/shared/feature_flags";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import {
-  Button,
   Chip,
   ContentMessage,
   Dialog,
@@ -43,6 +42,7 @@ import {
   ListGroup,
   ListItem,
   Lock01,
+  NewButton,
   Page,
   Plus,
   SliderToggle,
@@ -486,7 +486,7 @@ export function EnvironmentSection() {
         </ContentMessage>
 
         <div className="flex justify-end">
-          <Button
+          <NewButton
             label="Add variable"
             icon={Plus}
             onClick={openAddDialog}
@@ -542,9 +542,9 @@ export function EnvironmentSection() {
                     </div>
                   </div>
                   <div className="flex shrink-0 items-center gap-2">
-                    <Button
+                    <NewButton
                       variant="outline"
-                      size="mini"
+                      size="xs"
                       icon={envVar.kind === "config" ? Lock01 : Globe01}
                       tooltip={
                         envVar.kind === "config"
@@ -554,17 +554,17 @@ export function EnvironmentSection() {
                       disabled={isAnyMutationPending}
                       onClick={() => openConfigureDomainsDialog(envVar)}
                     />
-                    <Button
+                    <NewButton
                       variant="outline"
-                      size="mini"
+                      size="xs"
                       icon={Edit04}
                       tooltip={`Replace value of ${envVar.name}`}
                       disabled={isAnyMutationPending}
                       onClick={() => openReplaceDialog(envVar)}
                     />
-                    <Button
+                    <NewButton
                       variant="warning"
-                      size="mini"
+                      size="xs"
                       icon={Trash01}
                       tooltip={`Delete ${envVar.name}`}
                       disabled={isAnyMutationPending}

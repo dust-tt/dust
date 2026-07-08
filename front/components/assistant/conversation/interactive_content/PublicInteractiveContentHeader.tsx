@@ -4,10 +4,10 @@ import { LinkWrapper } from "@app/lib/platform";
 import { TRACKING_AREAS, withTracking } from "@app/lib/tracking";
 import type { UserTypeWithWorkspaces } from "@app/types/user";
 import {
-  Button,
   cn,
   DustLogo,
   MessageCircle01,
+  NewButton,
   Rocket02,
   SpaceClosed,
 } from "@dust-tt/sparkle";
@@ -68,7 +68,7 @@ export function PublicInteractiveContentHeader({
 
         <div className="grow-1 flex basis-12 justify-end md:basis-60">
           {!user && showSignUpCta && (
-            <Button
+            <NewButton
               label="Try it yourself"
               href={`${staticWebsiteUrl}/?${UTM_PARAM}`}
               variant="outline"
@@ -78,7 +78,7 @@ export function PublicInteractiveContentHeader({
             />
           )}
           {user && conversationUrl && (
-            <Button
+            <NewButton
               label="Go to conversation"
               href={conversationUrl}
               variant="outline"
@@ -87,7 +87,7 @@ export function PublicInteractiveContentHeader({
             />
           )}
           {user && projectUrl && (
-            <Button
+            <NewButton
               label="Go to Pod"
               href={projectUrl}
               variant="outline"

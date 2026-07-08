@@ -16,10 +16,10 @@ import type { WorkspaceType } from "@app/types/user";
 import { isConnectorsAPIError } from "@dust-tt/client";
 import {
   BookOpen01,
-  Button,
   Chip,
   Icon,
   Input,
+  NewButton,
   Page,
   RadioGroup,
   RadioGroupItem,
@@ -313,7 +313,7 @@ export function CreateOrUpdateConnectionSnowflakeModal({
         <SheetContainer>
           <div className="flex flex-col gap-6">
             <div className="flex flex-col gap-4">
-              <Button
+              <NewButton
                 label="Read our guide"
                 size="sm"
                 href={connectorUIConfiguration.guideLink ?? ""}

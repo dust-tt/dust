@@ -6,11 +6,11 @@ import { useTagsUsage } from "@app/lib/swr/tags";
 import type { TagTypeWithUsage } from "@app/types/tag";
 import type { WorkspaceType } from "@app/types/user";
 import {
-  Button,
   Chip,
   DataTable,
   Edit04,
   EmptyCTA,
+  NewButton,
   Plus,
   Sheet,
   SheetContainer,
@@ -53,7 +53,7 @@ const SuggestTagsButton = ({ owner }: { owner: WorkspaceType }) => {
 
   return (
     <>
-      <Button
+      <NewButton
         label="Suggest tags"
         icon={Stars02}
         onClick={() => setOpen(true)}
@@ -75,7 +75,7 @@ const NewTagButton = ({
 
   return (
     <>
-      <Button
+      <NewButton
         label={empty ? "Add tag manually" : "New tag"}
         icon={Plus}
         onClick={() => setOpen(true)}

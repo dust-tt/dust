@@ -8,13 +8,13 @@ import { pluralize } from "@app/types/shared/utils/string_utils";
 import type { WorkspaceType } from "@app/types/user";
 import type { WorkspaceDomain } from "@app/types/workspace";
 import {
-  Button,
   Dialog,
   DialogContainer,
   DialogContent,
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  NewButton,
   Page,
 } from "@dust-tt/sparkle";
 import type { Organization } from "@workos-inc/node";
@@ -182,7 +182,7 @@ export function AutoJoinToggle({
           </div>
           <div className="flex justify-end">
             {isMultiDomain ? (
-              <Button
+              <NewButton
                 label={
                   isAnyDomainAutoJoinEnabled ? "Configure" : "Enable Auto-join"
                 }
@@ -209,7 +209,7 @@ export function AutoJoinToggle({
                 }}
               />
             ) : domainAutoJoinEnabled ? (
-              <Button
+              <NewButton
                 label="De-activate Auto-join"
                 size="sm"
                 variant="outline"
@@ -228,7 +228,7 @@ export function AutoJoinToggle({
                 }}
               />
             ) : (
-              <Button
+              <NewButton
                 label="Activate Auto-join"
                 size="sm"
                 variant="primary"

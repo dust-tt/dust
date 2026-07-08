@@ -9,7 +9,6 @@ import { removeNulls } from "@app/types/shared/utils/general";
 import { pluralize } from "@app/types/shared/utils/string_utils";
 import {
   Avatar,
-  Button,
   ChevronDown,
   DropdownMenu,
   DropdownMenuContent,
@@ -17,6 +16,7 @@ import {
   DropdownMenuSearchbar,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
+  NewButton,
   PuzzlePiece01,
   Robot,
 } from "@dust-tt/sparkle";
@@ -130,7 +130,7 @@ export function UsedByButton({
 
   if (totalCount === 0) {
     return (
-      <Button
+      <NewButton
         icon={
           <UsedByButtonIcon agentCount={0} skillCount={0} showChevron={false} />
         }
@@ -206,7 +206,7 @@ export function UsedByButton({
       }}
     >
       <DropdownMenuTrigger asChild>
-        <Button
+        <NewButton
           icon={
             <UsedByButtonIcon
               agentCount={agentCount}

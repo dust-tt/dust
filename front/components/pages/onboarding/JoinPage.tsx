@@ -4,11 +4,11 @@ import { useRequiredPathParam, useSearchParam } from "@app/lib/platform";
 import { useJoinData } from "@app/lib/swr/workspaces";
 import {
   AlertCircle,
-  Button,
   DustLogoSquare,
   Hoverable,
   Icon,
   LogIn01,
+  NewButton,
   Page,
   Spinner,
 } from "@dust-tt/sparkle";
@@ -69,7 +69,7 @@ export function JoinPage() {
                 {errorMessage}
               </p>
             </div>
-            <Button
+            <NewButton
               variant="outline"
               label="Retry"
               onClick={() => void mutateJoinData()}
@@ -130,7 +130,7 @@ export function JoinPage() {
         </div>
 
         <div className="flex flex-col items-center justify-center gap-4">
-          <Button
+          <NewButton
             variant="primary"
             size="sm"
             label={userExists ? "Sign in" : "Sign up"}

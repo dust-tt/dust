@@ -14,12 +14,12 @@ import {
   AssistantCard,
   AssistantCardMore,
   Avatar,
-  Button,
   CardGrid,
   Chip,
   DotsHorizontal,
   DropdownMenuItem,
   DropdownMenuLabel,
+  NewButton,
   SearchDropdownMenu,
   Spinner,
 } from "@dust-tt/sparkle";
@@ -327,7 +327,7 @@ export function SearchDropdownContent({
           icon={() => <Avatar size="sm" visual={agent.pictureUrl} />}
           endComponent={
             onAgentMoreClick ? (
-              <Button
+              <NewButton
                 variant="ghost"
                 size="xs"
                 icon={DotsHorizontal}
@@ -411,7 +411,7 @@ export function AllTabContent({
         {!noTagsDefined && (
           <>
             {uniqueTags.map((tag) => (
-              <Button
+              <NewButton
                 size="xs"
                 variant={selectedTag === tag.sId ? "primary" : "outline"}
                 key={tag.sId}

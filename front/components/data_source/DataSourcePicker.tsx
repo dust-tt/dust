@@ -4,9 +4,9 @@ import type { DataSourceViewType } from "@app/types/data_source_view";
 import type { SpaceType } from "@app/types/space";
 import type { WorkspaceType } from "@app/types/user";
 import {
-  Button,
   Hoverable,
   LinkWrapper,
+  NewButton,
   PopoverContent,
   PopoverRoot,
   PopoverTrigger,
@@ -154,7 +154,7 @@ export default function DataSourcePicker({
                   <ChevronDownIcon className="mt-0.5 h-4 w-4 hover:text-muted-foreground" />
                 </div>
               ) : spaceDataSourceViews && spaceDataSourceViews.length > 0 ? (
-                <Button
+                <NewButton
                   variant="outline"
                   label="Select DataSource"
                   isSelect

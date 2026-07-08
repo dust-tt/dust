@@ -9,7 +9,7 @@ import { useAppRouter, useRequiredPathParam } from "@app/lib/platform";
 import { useApp } from "@app/lib/swr/apps";
 import { useDatasets } from "@app/lib/swr/datasets";
 import type { DatasetSchema, DatasetType } from "@app/types/dataset";
-import { Button, Spinner } from "@dust-tt/sparkle";
+import { NewButton, Spinner } from "@dust-tt/sparkle";
 import { useEffect, useState } from "react";
 
 export function NewDatasetPage() {
@@ -133,7 +133,7 @@ export function NewDatasetPage() {
           />
 
           <div className="flex py-6">
-            <Button
+            <NewButton
               label="Create"
               variant="primary"
               disabled={disable || loading}

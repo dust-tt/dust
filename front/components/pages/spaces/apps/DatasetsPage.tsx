@@ -10,7 +10,7 @@ import {
 import { useApp } from "@app/lib/swr/apps";
 import { useDatasets } from "@app/lib/swr/datasets";
 import { classNames } from "@app/lib/utils";
-import { Button, Chip, Plus, Spinner, Trash01 } from "@dust-tt/sparkle";
+import { Chip, NewButton, Plus, Spinner, Trash01 } from "@dust-tt/sparkle";
 import { useContext } from "react";
 
 export function DatasetsPage() {
@@ -81,7 +81,7 @@ export function DatasetsPage() {
       <div className="flex flex-1">
         <div className="mb-4 flex flex-auto flex-col gap-y-4">
           <div className="flex flex-row items-center justify-between">
-            <Button
+            <NewButton
               disabled={readOnly}
               variant="primary"
               label="New Dataset"

@@ -9,13 +9,13 @@ import type {
 import type { BlockType, RunType } from "@app/types/run";
 import type { WorkspaceType } from "@app/types/user";
 import {
-  Button,
   Checkbox,
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
   Input,
   Label,
+  NewButton,
 } from "@dust-tt/sparkle";
 
 import Block from "./Block";
@@ -148,7 +148,7 @@ export default function Browser({
             <Label>URL (with scheme)</Label>
             {!isProvidersLoading && !browserlessAPIProvider && !readOnly && (
               <div className="px-2">
-                <Button
+                <NewButton
                   href={`/w/${owner.sId}/developers/providers`}
                   variant="warning"
                   label={

@@ -4,7 +4,7 @@ import { useWorkspaceDefaultAgent } from "@app/hooks/useWorkspaceDefaultAgent";
 import { useUnifiedAgentConfigurations } from "@app/lib/swr/assistants";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import type { WorkspaceType } from "@app/types/user";
-import { Avatar, Button, ContextItem, Robot } from "@dust-tt/sparkle";
+import { Avatar, ContextItem, NewButton, Robot } from "@dust-tt/sparkle";
 import { useContext } from "react";
 
 const ROBOT_VISUAL = <Robot className="h-6 w-6" />;
@@ -71,7 +71,7 @@ export function WorkspaceDefaultAgentPicker({
           showFooterButtons={false}
           onItemClick={(agent) => void saveDefaultAgent(agent.sId)}
           pickerButton={
-            <Button
+            <NewButton
               variant="outline"
               size="sm"
               isSelect

@@ -21,7 +21,6 @@ import type {
 } from "@app/types/user";
 import {
   Avatar,
-  Button,
   Clipboard,
   ClipboardCheck,
   ContentMessage,
@@ -36,6 +35,7 @@ import {
   Label,
   Lock01,
   MessageChatSquare,
+  NewButton,
   ScrollArea,
   Sheet,
   SheetContainer,
@@ -232,7 +232,7 @@ export function ShareFrameSheet({
   return (
     <>
       <AwaitableDialog />
-      <Button
+      <NewButton
         variant="ghost"
         label={isMobile ? undefined : "Share"}
         tooltip={isMobile ? "Share" : undefined}
@@ -252,7 +252,7 @@ export function ShareFrameSheet({
           <SheetHeader>
             <div className="flex items-center justify-between pr-10">
               <SheetTitle>Share this frame</SheetTitle>
-              <Button
+              <NewButton
                 variant="ghost"
                 size="sm"
                 icon={isCopied ? ClipboardCheck : Clipboard}
@@ -365,7 +365,7 @@ export function ShareFrameSheet({
                             }
                           />
                         </div>
-                        <Button
+                        <NewButton
                           variant="primary"
                           label="Invite"
                           type="submit"

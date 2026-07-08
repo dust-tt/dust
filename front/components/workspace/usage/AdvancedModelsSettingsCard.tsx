@@ -8,7 +8,7 @@ import {
   useWorkspaceAllowedAdvancedModels,
 } from "@app/lib/swr/advanced_models";
 import type { LightWorkspaceType } from "@app/types/user";
-import { Button, Page, SettingsList, Spinner } from "@dust-tt/sparkle";
+import { NewButton, Page, SettingsList, Spinner } from "@dust-tt/sparkle";
 
 interface AdvancedModelsSettingsCardProps {
   owner: LightWorkspaceType;
@@ -53,7 +53,7 @@ export function AdvancedModelsSettingsCard({
             isLoading ? (
               <Spinner size="xs" />
             ) : (
-              <Button
+              <NewButton
                 label="Edit advanced models"
                 variant="outline"
                 size="sm"

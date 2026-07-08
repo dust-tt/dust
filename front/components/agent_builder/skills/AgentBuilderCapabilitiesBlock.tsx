@@ -31,10 +31,10 @@ import type { TemplateActionPreset } from "@app/types/assistant/templates";
 import {
   ActionCard,
   BookOpen01,
-  Button,
   CardGrid,
   EmptyCTA,
   Hoverable,
+  NewButton,
   ShapesPlus,
   Spinner,
 } from "@dust-tt/sparkle";
@@ -74,14 +74,14 @@ function ActionButtons({
 }: ActionButtonsProps) {
   return (
     <div className="flex items-center gap-2">
-      <Button
+      <NewButton
         type="button"
         onClick={onClickCapability}
         label="Add capabilities"
         icon={ShapesPlus}
         variant="primary"
       />
-      <Button
+      <NewButton
         type="button"
         onClick={onClickKnowledge}
         label="Add knowledge"

@@ -8,11 +8,11 @@ import type {
   BillingPaymentMethod,
 } from "@app/types/api/billing/info";
 import {
-  Button,
   Hash01,
   Icon,
   Mail01,
   MarkerPin01,
+  NewButton,
   Spinner,
   User01,
 } from "@dust-tt/sparkle";
@@ -103,7 +103,7 @@ export function BillingInformation() {
 
         {addressRows.length > 0 ? (
           <>
-            <Button
+            <NewButton
               label="Change"
               variant="ghost"
               size="sm"
@@ -145,7 +145,7 @@ export function BillingInformation() {
           </div>
         </div>
         {paymentMethod && (
-          <Button
+          <NewButton
             label="Change"
             variant="ghost"
             size="sm"

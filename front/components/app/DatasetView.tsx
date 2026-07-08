@@ -17,10 +17,10 @@ import type {
   DatasetViewType,
 } from "@app/types/dataset";
 import {
-  Button,
   Download01,
   Input,
   Label,
+  NewButton,
   Plus,
   PlusCircle,
   Upload01,
@@ -613,8 +613,8 @@ export default function DatasetView({
                           <div className="flex space-x-1 px-1">
                             {datasetKeys.length > 1 ? (
                               <>
-                                <Button
-                                  size="icon"
+                                <NewButton
+                                  size="sm"
                                   variant="ghost"
                                   className="text-muted-foreground"
                                   icon={XCircle}
@@ -624,8 +624,8 @@ export default function DatasetView({
                                   }}
                                 />
 
-                                <Button
-                                  size="icon"
+                                <NewButton
+                                  size="sm"
                                   variant="ghost"
                                   className="text-muted-foreground"
                                   icon={PlusCircle}
@@ -648,7 +648,7 @@ export default function DatasetView({
                       ) : (
                         <div className="inline-flex px-1" role="group">
                           {DATASET_DATA_TYPES.map((type) => (
-                            <Button
+                            <NewButton
                               key={type}
                               type="button"
                               label={type == "json" ? "JSON" : type}
@@ -792,18 +792,18 @@ export default function DatasetView({
                     {!readOnly ? (
                       <div className="flex items-center justify-end gap-1 p-1 text-xs">
                         {datasetData.length > 1 ? (
-                          <Button
+                          <NewButton
                             icon={XCircle}
-                            size="icon"
+                            size="sm"
                             variant="ghost"
                             onClick={() => {
                               handleDeleteEntry(i);
                             }}
                           />
                         ) : null}
-                        <Button
+                        <NewButton
                           icon={PlusCircle}
-                          size="icon"
+                          size="sm"
                           variant="ghost"
                           onClick={() => {
                             handleNewEntry(i);
@@ -818,7 +818,7 @@ export default function DatasetView({
             {viewType == "full" && (
               <div className="mt-6 flex flex-row">
                 {!readOnly ? (
-                  <Button
+                  <NewButton
                     variant="outline"
                     onClick={() => {
                       handleNewEntry(datasetData.length - 1);
@@ -829,7 +829,7 @@ export default function DatasetView({
                 ) : null}
                 <div className="flex-1"></div>
                 <div className="ml-2 flex-initial">
-                  <Button
+                  <NewButton
                     variant="ghost"
                     onClick={() => {
                       const dataStr =
@@ -866,7 +866,7 @@ export default function DatasetView({
                     }}
                   />
                   {!readOnly ? (
-                    <Button
+                    <NewButton
                       variant="ghost"
                       onClick={() => {
                         if (fileInputRef.current) {

@@ -5,7 +5,6 @@ import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
   Avatar,
-  Button,
   ButtonGroup,
   ButtonGroupDropdown,
   Check,
@@ -17,6 +16,7 @@ import {
   DropdownMenuTrigger,
   Icon,
   InfoCircle,
+  NewButton,
   Play,
   Robot,
   TextArea,
@@ -76,8 +76,6 @@ export function PodTaskStartWorkingDropdown({
   onOpenChange,
   onStart,
   triggerClassName,
-  /** Default `xs`. Use `icon-xs` for a compact icon-only trigger (e.g. inline in metadata). */
-  triggerSize = "xs",
 }: {
   owner: LightWorkspaceType;
   taskId: string;
@@ -178,9 +176,9 @@ export function PodTaskStartWorkingDropdown({
 
   if (isFirstOnboardingTask && !disabled) {
     return (
-      <Button
+      <NewButton
         icon={Play}
-        size={triggerSize}
+        size="xs"
         variant="outline"
         className={triggerClassName}
         isLoading={isStarting}
@@ -197,9 +195,7 @@ export function PodTaskStartWorkingDropdown({
       label={
         disabledReason ?? "Can't start work on this task in this state yet."
       }
-      trigger={
-        <Button icon={Play} size={triggerSize} variant="outline" disabled />
-      }
+      trigger={<NewButton icon={Play} size="xs" variant="outline" disabled />}
     />
   ) : (
     <DropdownMenu
@@ -208,9 +204,9 @@ export function PodTaskStartWorkingDropdown({
       onOpenChange={handleStartMenuOpenChange}
     >
       <DropdownMenuTrigger asChild>
-        <Button
+        <NewButton
           icon={Play}
-          size={triggerSize}
+          size="xs"
           variant="outline"
           className={triggerClassName}
           isLoading={isStarting}
@@ -297,7 +293,7 @@ export function PodTaskStartWorkingDropdown({
               />
             </div>
             <ButtonGroup className="shrink-0">
-              <Button
+              <NewButton
                 label="Start working"
                 variant="outline"
                 size="sm"
@@ -311,7 +307,7 @@ export function PodTaskStartWorkingDropdown({
                 align="end"
                 items={startRedirectMenuItems}
                 trigger={
-                  <Button
+                  <NewButton
                     variant="outline"
                     size="sm"
                     icon={ChevronDown}

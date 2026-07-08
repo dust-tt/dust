@@ -6,7 +6,6 @@ import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { isString } from "@app/types/shared/utils/general";
 import type { WorkspaceType } from "@app/types/user";
 import {
-  Button,
   ContentMessage,
   ContextItem,
   DropdownMenu,
@@ -16,6 +15,7 @@ import {
   DropdownTooltipTrigger,
   GongLogo,
   Input,
+  NewButton,
   SliderToggle,
 } from "@dust-tt/sparkle";
 import { useEffect, useMemo, useState } from "react";
@@ -164,7 +164,7 @@ function PermissionProfileSelector({
         <div className="flex flex-row space-x-3">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button
+              <NewButton
                 variant="outline"
                 size="sm"
                 label={
@@ -211,7 +211,7 @@ function PermissionProfileSelector({
               })}
             </DropdownMenuContent>
           </DropdownMenu>
-          <Button
+          <NewButton
             variant="primary"
             size="sm"
             onClick={handleSave}
@@ -393,7 +393,7 @@ export function GongOptionComponent({
                 disabled={readOnly || !isAdmin || loading}
                 className="w-64"
               />
-              <Button
+              <NewButton
                 variant="primary"
                 size="sm"
                 onClick={async () => {
@@ -441,7 +441,7 @@ export function GongOptionComponent({
                 disabled={readOnly || !isAdmin || loading}
                 className="w-32"
               />
-              <Button
+              <NewButton
                 variant="primary"
                 size="sm"
                 onClick={() =>

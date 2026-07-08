@@ -2,7 +2,6 @@ import { filterModelProviders, getProviderLLMModels } from "@app/lib/providers";
 import { useProviders } from "@app/lib/swr/apps";
 import type { WorkspaceType } from "@app/types/user";
 import {
-  Button,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -11,6 +10,7 @@ import {
   DropdownMenuSubContent,
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
+  NewButton,
 } from "@dust-tt/sparkle";
 import { useCallback, useState } from "react";
 
@@ -82,7 +82,7 @@ export default function ModelPicker({
       !(model.provider_id && model.provider_id.length > 0) &&
       !readOnly ? (
         isAdmin ? (
-          <Button
+          <NewButton
             href={`/w/${owner.sId}/developers/providers`}
             label={isProvidersLoading ? "Loading..." : "Setup provider"}
             size="xs"
@@ -109,7 +109,7 @@ export default function ModelPicker({
       ) : (
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button
+            <NewButton
               isSelect
               variant="outline"
               label={

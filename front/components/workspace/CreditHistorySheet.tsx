@@ -5,9 +5,9 @@ import {
 import type { CreditDisplayData } from "@app/types/credits";
 import { CREDIT_TYPE_SORT_ORDER } from "@app/types/credits";
 import {
-  Button,
   DataTable,
   LinkWrapper,
+  NewButton,
   Sheet,
   SheetContainer,
   SheetContent,
@@ -59,7 +59,7 @@ export function CreditHistorySheet({
 
   return (
     <>
-      <Button
+      <NewButton
         label="Past credits"
         variant="outline"
         size="xs"

@@ -6,10 +6,10 @@ import type { ContentNode } from "@app/types/connectors/connectors_api";
 import type { APIError } from "@app/types/error";
 import {
   Brackets,
-  Button,
   CheckDone01,
   IconButton,
   LinkExternal01,
+  NewButton,
   type NotificationType,
   SearchInput,
   Spinner,
@@ -307,7 +307,7 @@ function ContentNodeTreeChildren({
               <div className="mr-8 flex grow flex-row justify-between gap-2">
                 {additionalActions && additionalActions(n)}
                 {n.sourceUrl && (
-                  <Button
+                  <NewButton
                     href={n.sourceUrl}
                     icon={LinkExternal01}
                     size="xs"
@@ -368,7 +368,7 @@ function ContentNodeTreeChildren({
               />
             </div>
 
-            <Button
+            <NewButton
               icon={CheckDone01}
               label={selectAllClicked ? "Unselect All" : "Select All"}
               size="sm"

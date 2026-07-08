@@ -1,7 +1,7 @@
 import Custom404 from "@dust-tt/front/components/pages/Custom404";
 import type { APIErrorResponse } from "@dust-tt/front/types/error";
 import { isAPIErrorResponse } from "@dust-tt/front/types/error";
-import { AlertCircle, Button, Icon } from "@dust-tt/sparkle";
+import { AlertCircle, Icon, NewButton } from "@dust-tt/sparkle";
 
 interface AuthErrorPageProps {
   error: APIErrorResponse | Error;
@@ -24,7 +24,7 @@ export function AuthErrorPage({ error }: AuthErrorPageProps) {
             </p>
           </div>
           <div>
-            <Button
+            <NewButton
               variant="outline"
               label="Try again"
               onClick={() => window.location.reload()}
@@ -47,7 +47,7 @@ export function AuthErrorPage({ error }: AuthErrorPageProps) {
           </p>
         </div>
         <div>
-          <Button
+          <NewButton
             variant="outline"
             label="Try again"
             onClick={() => window.location.reload()}

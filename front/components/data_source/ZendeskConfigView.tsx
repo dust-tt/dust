@@ -10,9 +10,9 @@ import { useConnectorConfig } from "@app/lib/swr/connectors";
 import type { DataSourceType } from "@app/types/data_source";
 import type { WorkspaceType } from "@app/types/user";
 import {
-  Button,
   ContextItem,
   Input,
+  NewButton,
   SliderToggle,
   ZendeskLogo,
   ZendeskWhiteLogo,
@@ -214,7 +214,7 @@ export function ZendeskConfigView({
                 }
                 className="w-24"
               />
-              <Button
+              <NewButton
                 size="sm"
                 onClick={handleRetentionPeriodSave}
                 disabled={

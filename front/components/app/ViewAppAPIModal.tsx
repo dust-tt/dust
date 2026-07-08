@@ -8,10 +8,10 @@ import type { RunConfig, RunType } from "@app/types/run";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { WorkspaceType } from "@app/types/user";
 import {
-  Button,
   Clipboard,
   Cube01,
   Hoverable,
+  NewButton,
   Page,
   Sheet,
   SheetContainer,
@@ -93,7 +93,7 @@ export function ViewAppAPIModal({
   return (
     <Sheet>
       <SheetTrigger>
-        <Button
+        <NewButton
           icon={Cube01}
           tooltip={
             disabled
@@ -151,7 +151,7 @@ export function ViewAppAPIModal({
               <div className="flex w-full flex-row items-end">
                 <div className="flex-grow"></div>
                 <div className="flex">
-                  <Button
+                  <NewButton
                     variant="outline"
                     onClick={() => handleCopyClick("run")}
                     label={copyRunButtonText}

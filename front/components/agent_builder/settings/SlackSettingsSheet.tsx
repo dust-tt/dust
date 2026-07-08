@@ -6,11 +6,11 @@ import type { DataSourceType } from "@app/types/data_source";
 import type { WorkspaceType } from "@app/types/user";
 import { isAdmin } from "@app/types/user";
 import {
-  Button,
   Checkbox,
   ContentMessage,
   Icon,
   LinkExternal01,
+  NewButton,
   SearchInput,
   Sheet,
   SheetContainer,
@@ -172,7 +172,7 @@ function SlackChannelsList({
                 </div>
                 {channel.sourceUrl && (
                   <div className="opacity-0 transition-opacity group-hover:opacity-100">
-                    <Button
+                    <NewButton
                       href={channel.sourceUrl}
                       icon={LinkExternal01}
                       size="xs"

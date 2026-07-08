@@ -13,13 +13,13 @@ import type { PlanType } from "@app/types/plan";
 import type { LightWorkspaceType } from "@app/types/user";
 import type { WorkspaceDomain } from "@app/types/workspace";
 import {
-  Button,
   Chip,
   DataTable,
   EmptyCTA,
   Globe01,
   IconButton,
   LoadingBlock,
+  NewButton,
   Page,
   Plus,
   Separator,
@@ -113,7 +113,7 @@ function DomainVerification({
       ) : domains.length === 0 ? (
         <EmptyCTA
           action={
-            <Button
+            <NewButton
               label="Add Domain"
               variant="primary"
               icon={Plus}
@@ -244,7 +244,7 @@ function DomainVerificationTable({
       <DataTable className="pt-6" columns={columns} data={data} />
       {addDomainLink && (
         <div>
-          <Button
+          <NewButton
             label="Add Domain"
             variant="primary"
             href={addDomainLink}

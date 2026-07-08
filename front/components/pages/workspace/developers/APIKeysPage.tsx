@@ -15,7 +15,7 @@ import type { KeyType } from "@app/types/key";
 import { isCreditPricedPlan } from "@app/types/plan";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { WorkspaceType } from "@app/types/user";
-import { BookOpen01, Button, Lock01, Page, Spinner } from "@dust-tt/sparkle";
+import { BookOpen01, Lock01, NewButton, Page, Spinner } from "@dust-tt/sparkle";
 import get from "lodash/get";
 import { useMemo, useState } from "react";
 import { useSWRConfig } from "swr";
@@ -189,7 +189,7 @@ export function APIKeys({ owner }: APIKeysProps) {
       />
       <Page.Horizontal align="stretch">
         <div className="w-full" />
-        <Button
+        <NewButton
           label="Read the API reference"
           size="sm"
           variant="outline"

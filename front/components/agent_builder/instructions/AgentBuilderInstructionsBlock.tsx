@@ -7,8 +7,8 @@ import { AgentInstructionsHistory } from "@app/components/agent_builder/instruct
 import { useAgentConfigurationHistory } from "@app/lib/swr/assistants";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import {
-  Button,
   Label,
+  NewButton,
   RefreshCw02,
   Separator,
   XClose,
@@ -67,7 +67,7 @@ export function AgentBuilderInstructionsBlock({
             </Label>
           )}
           <div className="flex gap-2">
-            <Button
+            <NewButton
               icon={XClose}
               variant="outline"
               size="sm"
@@ -77,7 +77,7 @@ export function AgentBuilderInstructionsBlock({
               }}
               label="Leave comparison mode"
             />
-            <Button
+            <NewButton
               variant="warning"
               size="sm"
               icon={RefreshCw02}

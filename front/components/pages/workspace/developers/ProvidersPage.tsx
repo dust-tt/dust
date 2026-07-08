@@ -12,7 +12,7 @@ import {
 import { useProviders } from "@app/lib/swr/apps";
 import { redactString } from "@app/types/shared/utils/string_utils";
 import type { WorkspaceType } from "@app/types/user";
-import { Button, Chip, Container, cn, Page, Shapes } from "@dust-tt/sparkle";
+import { Chip, Container, cn, NewButton, Page, Shapes } from "@dust-tt/sparkle";
 import { useState } from "react";
 
 interface ProvidersProps {
@@ -180,7 +180,7 @@ function ProviderListItem({
             </div>
           )}
         </div>
-        <Button
+        <NewButton
           variant={isEnabled ? "primary" : "outline"}
           label={isEnabled ? "Edit" : "Set up"}
           onClick={onAction}

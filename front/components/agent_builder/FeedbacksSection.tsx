@@ -12,7 +12,6 @@ import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
   Avatar,
-  Button,
   Card,
   CardActionButton,
   cn,
@@ -25,6 +24,7 @@ import {
   Hoverable,
   Icon,
   LinkExternal01,
+  NewButton,
   Spinner,
   ThumbsDown,
   ThumbsUp,
@@ -165,7 +165,7 @@ export const FeedbacksSection = ({
       headerAction={
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button
+            <NewButton
               label={feedbackFilter === "unseen" ? "Unseen" : "All"}
               isSelect
               variant="outline"

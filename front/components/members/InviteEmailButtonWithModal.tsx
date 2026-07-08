@@ -33,7 +33,6 @@ import { assertNever } from "@app/types/shared/utils/assert_never";
 import { pluralize } from "@app/types/shared/utils/string_utils";
 import type { ActiveRoleType, WorkspaceType } from "@app/types/user";
 import {
-  Button,
   ContentMessage,
   Dialog,
   DialogContainer,
@@ -43,6 +42,7 @@ import {
   DialogTitle,
   DialogTrigger,
   InfoCircle,
+  NewButton,
   Plus,
   TextArea,
 } from "@dust-tt/sparkle";
@@ -364,7 +364,7 @@ export function InviteEmailButtonWithModal({
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button
+        <NewButton
           icon={Plus}
           label="Invite members"
           variant="primary"

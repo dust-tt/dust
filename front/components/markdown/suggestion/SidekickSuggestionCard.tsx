@@ -38,11 +38,11 @@ import type { ActionCardState } from "@dust-tt/sparkle";
 import {
   ActionCardBlock,
   Avatar,
-  Button,
   DiffBlock,
   Eye,
   Folder,
   LoadingBlock,
+  NewButton,
 } from "@dust-tt/sparkle";
 import { EditorContent, useEditor } from "@tiptap/react";
 import { memo, useMemo } from "react";
@@ -121,7 +121,7 @@ const InstructionsSuggestionCard = memo(
         <DiffBlock
           actions={
             isPending ? (
-              <Button
+              <NewButton
                 variant="outline"
                 size="xs"
                 icon={Eye}

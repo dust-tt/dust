@@ -6,11 +6,11 @@ import { useSendNotification } from "@app/hooks/useNotification";
 import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { isComputerFeatureEnabled } from "@app/types/shared/feature_flags";
 import {
-  Button,
   ContextItem,
   cn,
   EmptyCTA,
   File02,
+  NewButton,
   Plus,
   ReverseLeft,
   Spinner,
@@ -172,7 +172,7 @@ export function SkillBuilderFilesSection({
   );
 
   const headerActions = !isDiffMode && hasFileAttachments && (
-    <Button
+    <NewButton
       type="button"
       onClick={onUploadClick}
       label="Upload files"
@@ -194,7 +194,7 @@ export function SkillBuilderFilesSection({
         </div>
         <div className="flex items-center gap-2">
           {filesDiffer && (
-            <Button
+            <NewButton
               variant="outline"
               size="sm"
               icon={ReverseLeft}
@@ -224,7 +224,7 @@ export function SkillBuilderFilesSection({
         ) : (
           <EmptyCTA
             action={
-              <Button
+              <NewButton
                 type="button"
                 onClick={onUploadClick}
                 label="Upload files"
@@ -262,7 +262,7 @@ export function SkillBuilderFilesSection({
                     hoverAction={!isDiffMode}
                     action={
                       !isDiffMode ? (
-                        <Button
+                        <NewButton
                           type="button"
                           variant="ghost"
                           icon={XClose}

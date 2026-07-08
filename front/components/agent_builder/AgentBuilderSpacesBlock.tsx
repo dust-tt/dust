@@ -9,7 +9,7 @@ import { useMCPServerViewsContext } from "@app/components/shared/tools_picker/MC
 import { useSpaceProjectsLookup } from "@app/lib/swr/spaces";
 import { removeNulls } from "@app/types/shared/utils/general";
 import type { SpaceType } from "@app/types/space";
-import { Button, ContentMessage, Planet } from "@dust-tt/sparkle";
+import { ContentMessage, NewButton, Planet } from "@dust-tt/sparkle";
 import { useMemo, useState } from "react";
 import { useFormContext, useWatch } from "react-hook-form";
 
@@ -176,7 +176,7 @@ export function AgentBuilderSpacesBlock({
             Set what knowledge and capabilities the agent can access.
           </p>
         </div>
-        <Button
+        <NewButton
           label="Manage"
           icon={Planet}
           variant="outline"

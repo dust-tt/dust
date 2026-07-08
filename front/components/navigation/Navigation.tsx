@@ -10,9 +10,9 @@ import { classNames } from "@app/lib/utils";
 import type { SubscriptionType } from "@app/types/plan";
 import type { WorkspaceType } from "@app/types/user";
 import {
-  Button,
   cn,
   Menu01,
+  NewButton,
   Sheet,
   SheetContent,
   SheetHeader,
@@ -73,7 +73,7 @@ export function Navigation({
         <Sheet open={sidebarOpen} onOpenChange={setSidebarOpen}>
           <div className="fixed left-0 top-0 z-40 flex shrink-0 items-center px-2 pt-2">
             <SheetTrigger asChild>
-              <Button
+              <NewButton
                 variant="ghost"
                 icon={Menu01}
                 className={MOBILE_NAV_MENU_BUTTON_CLASSES}

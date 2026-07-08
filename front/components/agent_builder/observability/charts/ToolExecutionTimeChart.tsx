@@ -14,7 +14,6 @@ import { ChartTooltipCard } from "@app/components/charts/ChartTooltip";
 import { useSelectableSeries } from "@app/components/charts/useSelectableSeries";
 import type { ToolLatencyView } from "@app/lib/api/assistant/observability/tool_latency";
 import {
-  Button,
   ButtonsSwitch,
   ButtonsSwitchList,
   cn,
@@ -23,6 +22,7 @@ import {
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuTrigger,
+  NewButton,
 } from "@dust-tt/sparkle";
 import { useEffect, useState } from "react";
 import { Bar, BarChart, CartesianGrid, Tooltip, XAxis, YAxis } from "recharts";
@@ -236,7 +236,7 @@ export function ToolExecutionTimeChart({
           {view === "tool" && (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button
+                <NewButton
                   label={selectedServerLabel}
                   size="xs"
                   variant="outline"

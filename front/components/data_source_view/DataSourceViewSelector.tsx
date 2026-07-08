@@ -45,11 +45,11 @@ import { defaultSelectionConfiguration } from "@app/types/data_source_view";
 import type { SpaceType } from "@app/types/space";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
-  Button,
   CheckDone01,
   CloudArrowLeftRight,
   Folder,
   Globe01,
+  NewButton,
   ScrollArea,
   SearchInput,
   SheetViewportProvider,
@@ -828,7 +828,7 @@ export function DataSourceViewSelector({
         }
         actions={
           !isRootSelectable && (
-            <Button
+            <NewButton
               variant="ghost"
               size="xs"
               disabled={selectAll.isLoading}

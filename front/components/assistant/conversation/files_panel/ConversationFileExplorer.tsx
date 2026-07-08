@@ -16,7 +16,7 @@ import {
 } from "@app/types/assistant/conversation";
 import { opensInSidePanel } from "@app/types/files";
 import type { LightWorkspaceType } from "@app/types/user";
-import { Button, XClose } from "@dust-tt/sparkle";
+import { NewButton, XClose } from "@dust-tt/sparkle";
 import { useCallback, useMemo } from "react";
 
 const POD_CONVERSATION_SCOPE_ROOTS = ["conversation", "pod"] as const;
@@ -91,7 +91,7 @@ export function ConversationFileExplorer({
           <span className="text-sm text-foreground">
             {isPod ? "Files" : "Conversation Files"}
           </span>
-          <Button
+          <NewButton
             variant="ghost"
             size="sm"
             icon={XClose}

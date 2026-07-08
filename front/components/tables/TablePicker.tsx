@@ -13,7 +13,7 @@ import type { DataSourceViewContentNode } from "@app/types/data_source_view";
 import type { SpaceType } from "@app/types/space";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
-  Button,
+  NewButton,
   PopoverContent,
   PopoverRoot,
   PopoverTrigger,
@@ -160,7 +160,7 @@ export default function TablePicker({
                   <ChevronDownIcon className="mt-0.5 h-4 w-4 hover:text-muted-foreground" />
                 </div>
               ) : allTablesMap.size > 0 ? (
-                <Button
+                <NewButton
                   variant="outline"
                   label="Select Table"
                   isSelect

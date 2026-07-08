@@ -4,9 +4,9 @@ import { useSkillVersionComparisonContext } from "@app/components/skill_builder/
 import { SKILL_INSTRUCTIONS_LABEL } from "@app/lib/skills/labels";
 import {
   BookOpen01,
-  Button,
   ContentMessage,
   InfoCircle,
+  NewButton,
   ReverseLeft,
 } from "@dust-tt/sparkle";
 import { useState } from "react";
@@ -57,7 +57,7 @@ export function SkillBuilderInstructionsSection() {
         </div>
         <div className="flex items-center gap-2">
           {instructionsDiffer && (
-            <Button
+            <NewButton
               variant="outline"
               size="sm"
               icon={ReverseLeft}
@@ -66,7 +66,7 @@ export function SkillBuilderInstructionsSection() {
             />
           )}
           {!compareVersion && (
-            <Button
+            <NewButton
               variant="outline"
               label="Attach knowledge"
               icon={BookOpen01}

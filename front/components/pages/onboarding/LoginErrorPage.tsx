@@ -1,6 +1,12 @@
 import config from "@app/lib/api/config";
 import { LinkWrapper, useSearchParam } from "@app/lib/platform";
-import { Button, DustLogoSquare, Icon, LogIn01, Page } from "@dust-tt/sparkle";
+import {
+  DustLogoSquare,
+  Icon,
+  LogIn01,
+  NewButton,
+  Page,
+} from "@dust-tt/sparkle";
 
 const defaultErrorMessageClassName = "text-base text-primary-100";
 
@@ -79,7 +85,7 @@ function getErrorMessage(domain: string | null, reason: string | null) {
             Check your spam folder.
           </p>
 
-          <Button
+          <NewButton
             variant="outline"
             size="sm"
             label="Sign in"
@@ -164,7 +170,7 @@ export function LoginErrorPage() {
               {errorMessage}
             </div>
             <LinkWrapper href="/">
-              <Button variant="primary" label="Back to homepage" size="sm" />
+              <NewButton variant="primary" label="Back to homepage" size="sm" />
             </LinkWrapper>
           </div>
         </div>

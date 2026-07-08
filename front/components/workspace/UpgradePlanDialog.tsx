@@ -1,10 +1,10 @@
 import { useAppRouter } from "@app/lib/platform";
 import {
-  Button,
   Dialog,
   DialogContent,
   DialogFooter,
   DialogHeader,
+  NewButton,
 } from "@dust-tt/sparkle";
 
 interface UpgradePlanDialogProps {
@@ -30,8 +30,8 @@ export function UpgradePlanDialog({
         <DialogHeader>{title}</DialogHeader>
         {description}
         <DialogFooter>
-          <Button variant="outline" label="Cancel" onClick={onClose} />
-          <Button
+          <NewButton variant="outline" label="Cancel" onClick={onClose} />
+          <NewButton
             label="Check Dust plans"
             onClick={() => {
               void router.push(`/w/${workspaceId}/subscription`);

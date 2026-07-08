@@ -14,11 +14,11 @@ import type {
 } from "@app/types/triggers/webhooks_source_preset";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
-  Button,
   ContentMessage,
   ContentMessageInline,
   Label,
   LinkWrapper,
+  NewButton,
   Spinner,
   TextArea,
 } from "@dust-tt/sparkle";
@@ -236,7 +236,7 @@ export function WebhookEditionFilters({
       <div className="py-2">{filterGenerationResult}</div>
 
       {webhookSourceView && (
-        <Button
+        <NewButton
           label="Compute stats"
           size="sm"
           variant="outline"

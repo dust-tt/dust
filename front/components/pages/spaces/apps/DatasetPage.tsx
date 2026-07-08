@@ -9,7 +9,7 @@ import { useAppRouter, useRequiredPathParam } from "@app/lib/platform";
 import { useApp } from "@app/lib/swr/apps";
 import { useDataset } from "@app/lib/swr/datasets";
 import type { DatasetSchema, DatasetType } from "@app/types/dataset";
-import { Button, Spinner } from "@dust-tt/sparkle";
+import { NewButton, Spinner } from "@dust-tt/sparkle";
 import { useEffect, useState } from "react";
 
 export function DatasetPage() {
@@ -155,7 +155,7 @@ export function DatasetPage() {
             {readOnly ? null : (
               <div className="flex flex-row pt-6">
                 <div className="flex-initial">
-                  <Button
+                  <NewButton
                     disabled={disable || loading}
                     onClick={() => handleSubmit()}
                     label="Update"

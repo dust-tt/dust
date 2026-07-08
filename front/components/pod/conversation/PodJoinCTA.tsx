@@ -1,6 +1,6 @@
 import { useJoinPod } from "@app/lib/swr/pods";
 import type { LightWorkspaceType } from "@app/types/user";
-import { Button, EmptyCTA } from "@dust-tt/sparkle";
+import { EmptyCTA, NewButton } from "@dust-tt/sparkle";
 import { useState } from "react";
 
 interface PodJoinCTAProps {
@@ -34,7 +34,7 @@ export function PodJoinCTA({
     : "Join this Pod to participate in conversations.";
 
   const action = isRestricted ? null : (
-    <Button
+    <NewButton
       label={isJoining ? "Joining..." : `Join the ${podName} Pod`}
       variant="highlight"
       onClick={handleJoin}

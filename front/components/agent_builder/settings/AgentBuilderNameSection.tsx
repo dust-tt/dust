@@ -5,12 +5,12 @@ import { getNameSuggestions } from "@app/components/agent_builder/settings/utils
 import { BaseFormFieldSection } from "@app/components/shared/BaseFormFieldSection";
 import { useSendNotification } from "@app/hooks/useNotification";
 import {
-  Button,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
   Input,
+  NewButton,
   Spinner,
   Stars02,
 } from "@dust-tt/sparkle";
@@ -163,7 +163,7 @@ export function AgentBuilderNameSection({
             }}
           >
             <DropdownMenuTrigger asChild>
-              <Button
+              <NewButton
                 icon={isGenerating ? () => <Spinner size="xs" /> : Stars02}
                 variant="outline"
                 size="xs"

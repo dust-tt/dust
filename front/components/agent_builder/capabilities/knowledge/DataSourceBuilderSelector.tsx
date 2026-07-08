@@ -31,9 +31,9 @@ import { MIN_SEARCH_QUERY_SIZE } from "@app/types/core/utils";
 import {
   Breadcrumbs,
   type BreadcrumbsItem,
-  Button,
   CloudArrowLeftRight,
   cn,
+  NewButton,
   SearchInput,
   Separator,
 } from "@dust-tt/sparkle";
@@ -301,7 +301,7 @@ export const DataSourceBuilderSelector = ({
             Connect data sources or ask your admin to set them up
           </div>
           <div>
-            <Button
+            <NewButton
               icon={CloudArrowLeftRight}
               label="Connect data"
               variant="primary"
@@ -335,7 +335,7 @@ export const DataSourceBuilderSelector = ({
                 Searching in:
               </span>
               <div className="flex space-x-3 overflow-hidden rounded-md">
-                <Button
+                <NewButton
                   onClick={() => setSearchScope("node")}
                   variant={searchScope === "node" ? "outline" : "ghost"}
                   label={
@@ -351,7 +351,7 @@ export const DataSourceBuilderSelector = ({
                   )}
                 />
                 <Separator orientation="vertical" />
-                <Button
+                <NewButton
                   onClick={() => setSearchScope("space")}
                   variant={searchScope === "space" ? "outline" : "ghost"}
                   label={`All ${currentSpace?.name}`}

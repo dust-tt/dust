@@ -38,7 +38,6 @@ import type {
 } from "@app/types/plan";
 import { isSubscriptionMetronomeBilled } from "@app/types/plan";
 import {
-  Button,
   Chip,
   ContentMessage,
   CreditCard01,
@@ -49,6 +48,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  NewButton,
   Page,
   Spinner,
 } from "@dust-tt/sparkle";
@@ -723,7 +723,7 @@ export function SubscriptionPage() {
                   <Page.Horizontal gap="sm">
                     <Chip size="sm" color={chipColor} label={planLabel} />
                     {canCancelSubscription && (
-                      <Button
+                      <NewButton
                         label="Cancel subscription"
                         variant="outline"
                         disabled={isCancellingMigration}
@@ -733,7 +733,7 @@ export function SubscriptionPage() {
                       />
                     )}
                     {canResumeMigration && (
-                      <Button
+                      <NewButton
                         label="Resume subscription"
                         variant="primary"
                         disabled={isResumingMigration}
@@ -749,7 +749,7 @@ export function SubscriptionPage() {
             {perSeatPricing && subscription.trialing && (
               <Page.Vertical>
                 <Page.Horizontal gap="sm">
-                  <Button
+                  <NewButton
                     onClick={withTracking(
                       TRACKING_AREAS.AUTH,
                       "subscription_skip_trial",
@@ -759,7 +759,7 @@ export function SubscriptionPage() {
                     )}
                     label="End trial & get full access"
                   />
-                  <Button
+                  <NewButton
                     label="Cancel subscription"
                     variant="ghost"
                     onClick={withTracking(
@@ -813,7 +813,7 @@ export function SubscriptionPage() {
                   </>
                 )}
                 <div className="my-5">
-                  <Button
+                  <NewButton
                     icon={CreditCard01}
                     label="Your billing dashboard on Stripe"
                     variant="ghost"
@@ -836,7 +836,7 @@ export function SubscriptionPage() {
                   with additional features.
                 </Page.P>
                 <div>
-                  <Button
+                  <NewButton
                     label="Upgrade to Enterprise seat-based plan"
                     variant="primary"
                     disabled={isProcessing}

@@ -18,7 +18,6 @@ import type { PlanType } from "@app/types/plan";
 import { slugify } from "@app/types/shared/utils/string_utils";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
-  Button,
   Dialog,
   DialogContainer,
   DialogContent,
@@ -26,6 +25,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  NewButton,
   Spinner,
 } from "@dust-tt/sparkle";
 import type { ChangeEvent } from "react";
@@ -340,11 +340,11 @@ export const MultipleFilesUpload = ({
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <Button
+            <NewButton
               label="Cancel"
               onClick={() => handleDuplicateConfirmation(false)}
             />
-            <Button
+            <NewButton
               variant="primary"
               label="Replace"
               onClick={() => handleDuplicateConfirmation(true)}

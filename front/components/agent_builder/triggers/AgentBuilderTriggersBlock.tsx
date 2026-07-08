@@ -13,13 +13,13 @@ import { useWebhookSourceViewsFromSpaces } from "@app/lib/swr/webhook_source";
 import type { WebhookSourceViewType } from "@app/types/triggers/webhooks";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
-  Button,
   CardGrid,
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
   EmptyCTA,
   Hoverable,
+  NewButton,
   Spinner,
   Zap,
 } from "@dust-tt/sparkle";
@@ -226,7 +226,7 @@ export function AgentBuilderTriggersBlock({
       }
       headerActions={
         allTriggers.length > 0 && (
-          <Button
+          <NewButton
             label="Add triggers"
             type="button"
             icon={Zap}
@@ -243,7 +243,7 @@ export function AgentBuilderTriggersBlock({
         ) : allTriggers.length === 0 ? (
           <EmptyCTA
             action={
-              <Button
+              <NewButton
                 label="Add triggers"
                 type="button"
                 icon={Zap}

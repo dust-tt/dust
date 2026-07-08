@@ -7,7 +7,6 @@ import {
 } from "@app/types/triggers/webhooks";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
-  Button,
   ChevronDown,
   Collapsible,
   CollapsibleContent,
@@ -21,6 +20,7 @@ import {
   Input,
   Label,
   ListSelect,
+  NewButton,
   SliderToggle,
   TextArea,
   XClose,
@@ -147,7 +147,7 @@ export function CreateWebhookSourceFormContent({
                 <div>
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                      <Button
+                      <NewButton
                         label={dropDownLabel}
                         variant="outline"
                         icon={ChevronDown}
@@ -155,7 +155,7 @@ export function CreateWebhookSourceFormContent({
                     </DropdownMenuTrigger>
                     <DropdownMenuContent className="w-72" align="start">
                       <div className="flex gap-2 p-2">
-                        <Button
+                        <NewButton
                           label="Select all"
                           icon={ListSelect}
                           variant="primary"
@@ -163,7 +163,7 @@ export function CreateWebhookSourceFormContent({
                           onClick={handleSelectAll}
                           disabled={allSelected}
                         />
-                        <Button
+                        <NewButton
                           label="Unselect all"
                           icon={XClose}
                           variant="primary"
@@ -299,7 +299,7 @@ export function CreateWebhookSourceFormContent({
                     render={({ field }) => (
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                          <Button
+                          <NewButton
                             label={field.value}
                             variant="outline"
                             // biome-ignore lint/plugin/noCssImportant: legacy [GEN12] — needs cleanup

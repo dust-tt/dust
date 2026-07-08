@@ -8,13 +8,13 @@ import { getPublishingRestrictionForOwner } from "@app/lib/api/assistant/publish
 import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { isBuilder } from "@app/types/user";
 import {
-  Button,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
   Eye,
   EyeOff,
+  NewButton,
   SlackLogo,
   Users01,
 } from "@dust-tt/sparkle";
@@ -71,7 +71,7 @@ export function AccessSection() {
   return (
     <SettingSectionContainer title="Editors & Access">
       <div className="mt-2 flex w-full flex-row flex-wrap items-center gap-2">
-        <Button
+        <NewButton
           variant="outline"
           size="sm"
           icon={Users01}
@@ -89,7 +89,7 @@ export function AccessSection() {
         />
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button
+            <NewButton
               variant="outline"
               size="sm"
               icon={getDisplayIcon()}
@@ -120,7 +120,7 @@ export function AccessSection() {
 
         {scope.value === "visible" && slackDataSource && isBuilder(owner) && (
           <>
-            <Button
+            <NewButton
               variant="outline"
               label="Slack preferences"
               icon={SlackLogo}

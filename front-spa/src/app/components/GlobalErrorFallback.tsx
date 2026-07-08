@@ -1,4 +1,4 @@
-import { AlertCircle, Button, Icon } from "@dust-tt/sparkle";
+import { AlertCircle, Icon, NewButton } from "@dust-tt/sparkle";
 
 export function GlobalErrorFallback() {
   return (
@@ -12,7 +12,7 @@ export function GlobalErrorFallback() {
           </p>
         </div>
         <div>
-          <Button
+          <NewButton
             variant="outline"
             label="Try again"
             onClick={() => window.location.reload()}

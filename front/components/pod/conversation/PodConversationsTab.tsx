@@ -29,7 +29,6 @@ import {
   type WorkspaceType,
 } from "@app/types/user";
 import {
-  Button,
   ButtonsSwitch,
   ButtonsSwitchList,
   Chip,
@@ -38,6 +37,7 @@ import {
   ListGroup,
   ListItemSection,
   LoadingBlock,
+  NewButton,
   SearchInputWithPopover,
   Spinner,
 } from "@dust-tt/sparkle";
@@ -332,7 +332,7 @@ export function PodConversationsTab({
                       />
                     </ButtonsSwitchList>
                   )}
-                  <Button
+                  <NewButton
                     size="xs"
                     variant="outline"
                     label="Mark all as read"

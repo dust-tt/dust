@@ -20,10 +20,10 @@ import { getConversationRoute } from "@app/lib/utils/router";
 import type { PodTaskType } from "@app/types/project_task";
 import {
   AnimatedText,
-  Button,
   Checkbox,
   cn,
   MessageChatSquare,
+  NewButton,
   Tooltip,
   TypingAnimation,
 } from "@dust-tt/sparkle";
@@ -190,7 +190,7 @@ export function EditableTaskItem({ task }: EditableTaskItemProps) {
               label="Open task conversation"
               trigger={
                 <div className="relative shrink-0">
-                  <Button
+                  <NewButton
                     icon={MessageChatSquare}
                     size="xs"
                     variant="outline"

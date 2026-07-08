@@ -7,11 +7,11 @@ import {
 import type { GroupType } from "@app/types/groups";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
-  Button,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  NewButton,
 } from "@dust-tt/sparkle";
 import { useContext, useMemo } from "react";
 
@@ -124,7 +124,7 @@ export function RestrictedAccessBody({
         <div className="flex flex-row items-center justify-between">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button
+              <NewButton
                 variant="outline"
                 isSelect
                 label={

@@ -1,8 +1,8 @@
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import {
-  Button,
   ContextItem,
   Input,
+  NewButton,
   Tabs,
   TabsList,
   TabsTrigger,
@@ -139,7 +139,7 @@ export function ZendeskTagFilters({
                 />
               </div>
               <div className="flex items-center justify-end gap-2">
-                <Button
+                <NewButton
                   size="sm"
                   onClick={handleSave}
                   disabled={
@@ -147,7 +147,7 @@ export function ZendeskTagFilters({
                   }
                   label="Add"
                 />
-                <Button
+                <NewButton
                   size="sm"
                   variant="outline"
                   onClick={handleCancel}
@@ -165,7 +165,7 @@ export function ZendeskTagFilters({
           <div className="mb-4 flex items-start justify-between gap-4">
             <p>{description}</p>
             {!isEditing && (
-              <Button
+              <NewButton
                 size="sm"
                 onClick={handleEdit}
                 disabled={readOnly || !isAdmin || loading}

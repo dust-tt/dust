@@ -18,7 +18,7 @@ import {
   isTemplateTagCodeArray,
   TEMPLATES_TAGS_CONFIG,
 } from "@app/types/assistant/templates";
-import { Button, Page, SearchInput } from "@dust-tt/sparkle";
+import { NewButton, Page, SearchInput } from "@dust-tt/sparkle";
 import type { ReactNode } from "react";
 import { useMemo, useState } from "react";
 
@@ -109,7 +109,7 @@ export function CreateAgentPage() {
             />
             <div className="flex flex-row flex-wrap gap-2">
               {availableTags.map((tagName) => (
-                <Button
+                <NewButton
                   label={templateTagsMapping[tagName].label}
                   variant={
                     selectedTags.includes(tagName) ? "primary" : "outline"

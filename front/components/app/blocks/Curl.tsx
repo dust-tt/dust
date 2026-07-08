@@ -11,13 +11,13 @@ import type {
 import type { BlockType, RunType } from "@app/types/run";
 import type { WorkspaceType } from "@app/types/user";
 import {
-  Button,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
   Input,
   Label,
+  NewButton,
 } from "@dust-tt/sparkle";
 import { useEffect } from "react";
 
@@ -126,7 +126,7 @@ export default function Curl({
           <div className="copy-sm flex flex-row items-center space-x-1">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button
+                <NewButton
                   isSelect
                   variant="outline"
                   disabled={readOnly}
@@ -151,7 +151,7 @@ export default function Curl({
           <div className="copy-sm flex w-full flex-1 flex-row items-center gap-2 font-semibold">
             <div className="flex flex-1 font-normal">
               <div className="flex flex-1 gap-2">
-                <Button
+                <NewButton
                   variant="outline"
                   size="sm"
                   disabled={readOnly}

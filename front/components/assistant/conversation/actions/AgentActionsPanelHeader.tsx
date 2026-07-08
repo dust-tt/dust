@@ -1,5 +1,5 @@
 import { AppLayoutTitle } from "@app/components/sparkle/AppLayoutTitle";
-import { Button, cn } from "@dust-tt/sparkle";
+import { cn, NewButton } from "@dust-tt/sparkle";
 import type React from "react";
 
 interface AgentActionsPanelHeaderProps {
@@ -35,7 +35,7 @@ export function AgentActionsPanelHeader({
         <div className="flex shrink-0 items-center gap-2">
           {children}
           {onClose && (
-            <Button
+            <NewButton
               variant="ghost"
               size="sm"
               onClick={onClose}

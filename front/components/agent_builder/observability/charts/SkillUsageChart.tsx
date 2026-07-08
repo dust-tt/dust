@@ -16,7 +16,6 @@ import { RoundedBarShape } from "@app/components/charts/ChartShapes";
 import { ChartTooltipCard } from "@app/components/charts/ChartTooltip";
 import { useSelectableSeries } from "@app/components/charts/useSelectableSeries";
 import {
-  Button,
   ButtonsSwitch,
   ButtonsSwitchList,
   cn,
@@ -25,6 +24,7 @@ import {
   DropdownMenuContent,
   DropdownMenuLabel,
   DropdownMenuTrigger,
+  NewButton,
 } from "@dust-tt/sparkle";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
@@ -215,7 +215,7 @@ export function SkillUsageChart({
   const skillSelector = (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button
+        <NewButton
           label={getSkillSelectorLabel(selectedSkills)}
           size="xs"
           variant="outline"

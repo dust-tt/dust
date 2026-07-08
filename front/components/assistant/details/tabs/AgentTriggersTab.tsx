@@ -11,7 +11,6 @@ import type { WorkspaceType } from "@app/types/user";
 import {
   ActionCard,
   Bell01,
-  Button,
   CardGrid,
   Clock,
   Dialog,
@@ -21,6 +20,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  NewButton,
   Plus,
   Spinner,
 } from "@dust-tt/sparkle";
@@ -119,7 +119,7 @@ export function AgentTriggersTab({
     <>
       <div className="flex items-center justify-between">
         <h3 className="text-sm font-semibold">My triggers</h3>
-        <Button
+        <NewButton
           label="Add trigger"
           icon={Plus}
           variant="outline"

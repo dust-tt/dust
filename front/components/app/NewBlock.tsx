@@ -2,12 +2,12 @@ import { classNames } from "@app/lib/utils";
 import type { SpecificationType } from "@app/types/app";
 import type { BlockType } from "@app/types/run";
 import {
-  Button,
   cn,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  NewButton,
   Plus,
 } from "@dust-tt/sparkle";
 
@@ -126,14 +126,14 @@ export default function NewBlock({
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         {small ? (
-          <Button
+          <NewButton
             icon={Plus}
             disabled={disabled}
             variant="ghost-secondary"
-            size="icon"
+            size="sm"
           />
         ) : (
-          <Button
+          <NewButton
             variant="ghost-secondary"
             label="Add Block"
             icon={Plus}

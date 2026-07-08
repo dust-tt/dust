@@ -1,5 +1,5 @@
 import { WebCrawlerHeaderRedactedValue } from "@app/types/connectors/webcrawler";
-import { Button, Input, XClose } from "@dust-tt/sparkle";
+import { Input, NewButton, XClose } from "@dust-tt/sparkle";
 import { useFieldArray, useFormContext } from "react-hook-form";
 
 type FormWithCustomHeaders = {
@@ -52,7 +52,7 @@ export function MCPServerHeaders() {
                 </div>
               </div>
               {!isPredefined && (
-                <Button
+                <NewButton
                   variant="outline"
                   icon={XClose}
                   onClick={() => remove(index)}
@@ -62,7 +62,7 @@ export function MCPServerHeaders() {
           );
         })}
       </div>
-      <Button
+      <NewButton
         className="mt-4"
         variant="outline"
         label="Add Header"

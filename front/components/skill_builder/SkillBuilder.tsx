@@ -43,10 +43,10 @@ import { isAdmin } from "@app/types/user";
 import {
   BarFooter,
   BarHeader,
-  Button,
   ContentMessage,
   cn,
   InfoCircle,
+  NewButton,
   ResizableHandle,
   ResizablePanel,
   ResizablePanelGroup,
@@ -308,7 +308,7 @@ export default function SkillBuilder({ skill, onSaved }: SkillBuilderProps) {
         variant="default"
         className="mx-4 justify-between"
         leftActions={
-          <Button
+          <NewButton
             variant="outline"
             label="Cancel"
             onClick={handleCancel}
@@ -316,7 +316,7 @@ export default function SkillBuilder({ skill, onSaved }: SkillBuilderProps) {
           />
         }
         rightActions={
-          <Button
+          <NewButton
             variant="highlight"
             label={isSaving ? "Saving..." : "Save"}
             onClick={handleSave}

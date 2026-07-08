@@ -19,7 +19,7 @@ import {
 import { TRACKING_AREAS, withTracking } from "@app/lib/tracking";
 import type { BillingPeriod } from "@app/types/plan";
 import { isDevelopment } from "@app/types/shared/env";
-import { BarHeader, Button, Lock01, Page, Spinner } from "@dust-tt/sparkle";
+import { BarHeader, Lock01, NewButton, Page, Spinner } from "@dust-tt/sparkle";
 import { CreditCardIcon } from "@heroicons/react/20/solid";
 import React, { useEffect } from "react";
 
@@ -295,7 +295,7 @@ function LegacySubscribePage() {
                   </>
                 )}
 
-                <Button
+                <NewButton
                   variant="primary"
                   label={
                     !noPreviousSubscription

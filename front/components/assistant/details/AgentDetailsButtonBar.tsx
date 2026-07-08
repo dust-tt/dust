@@ -17,7 +17,6 @@ import type { WorkspaceType } from "@app/types/user";
 import { isAdmin } from "@app/types/user";
 import {
   Brackets,
-  Button,
   Clipboard,
   DotsHorizontal,
   DropdownMenu,
@@ -27,6 +26,7 @@ import {
   Edit04,
   File02,
   MessagePlusCircle,
+  NewButton,
   Spinner,
   Star01,
   StarFilled,
@@ -79,7 +79,7 @@ export function AgentDetailsButtonBar({
 
   return (
     <div className="flex flex-row items-center gap-2 px-1.5">
-      <Button
+      <NewButton
         icon={agentIsFavorite ? StarFilled : Star01}
         tooltip={agentIsFavorite ? "Remove from favorites" : "Add to favorites"}
         size="sm"
@@ -89,7 +89,7 @@ export function AgentDetailsButtonBar({
       />
 
       {canShowAgentConversationActions(agentConfiguration.sId) && (
-        <Button
+        <NewButton
           icon={MessagePlusCircle}
           size="sm"
           variant="outline"
@@ -99,7 +99,7 @@ export function AgentDetailsButtonBar({
       )}
 
       {agentConfiguration.scope !== "global" && (
-        <Button
+        <NewButton
           size="sm"
           tooltip="Edit agent"
           href={
@@ -318,7 +318,7 @@ export function AgentDetailsDropdownMenu({
       ) : showTrigger ? (
         <DropdownMenu modal={false}>
           <DropdownMenuTrigger asChild>
-            <Button icon={DotsHorizontal} size="sm" variant="outline" />
+            <NewButton icon={DotsHorizontal} size="sm" variant="outline" />
           </DropdownMenuTrigger>
           <DropdownMenuContent>{menuItems}</DropdownMenuContent>
         </DropdownMenu>

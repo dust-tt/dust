@@ -4,7 +4,6 @@ import { useIsMobile } from "@app/lib/swr/useIsMobile";
 import type { LightWorkspaceType } from "@app/types/user";
 import { datadogLogs } from "@datadog/browser-logs";
 import {
-  Button,
   Download01,
   DropdownMenu,
   DropdownMenuContent,
@@ -13,6 +12,7 @@ import {
   DropdownMenuSubContent,
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
+  NewButton,
 } from "@dust-tt/sparkle";
 import type React from "react";
 import { useState } from "react";
@@ -72,7 +72,7 @@ export function ExportContentDropdown({
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button
+        <NewButton
           icon={Download01}
           isSelect
           label={isMobile ? undefined : exportLabel}

@@ -37,7 +37,6 @@ import {
 import {
   Archive,
   Avatar,
-  Button,
   ChevronDown,
   ContentMessage,
   cn,
@@ -51,6 +50,7 @@ import {
   Icon,
   InfoCircle,
   Input,
+  NewButton,
   ScrollArea,
   SearchInput,
   ShapesPlus,
@@ -457,13 +457,13 @@ export function PodSettingsTab({
             />
             {isEditingName && (
               <>
-                <Button
+                <NewButton
                   label="Save"
                   variant="highlight"
                   onClick={onSaveName}
                   disabled={nameNotAvailable || isCheckingName}
                 />
-                <Button
+                <NewButton
                   label="Cancel"
                   variant="outline"
                   onClick={() => {
@@ -504,13 +504,13 @@ export function PodSettingsTab({
             />
             {isEditingDescription && (
               <div className="flex gap-2">
-                <Button
+                <NewButton
                   label="Save"
                   variant="highlight"
                   isLoading={isSavingDescription}
                   onClick={() => void onSaveDescription()}
                 />
-                <Button
+                <NewButton
                   label="Cancel"
                   variant="outline"
                   disabled={isSavingDescription}
@@ -567,7 +567,7 @@ export function PodSettingsTab({
                       feature is on and an explicit pod default is set. */}
                   {hasWorkspaceDefaultAgentFeature &&
                     podMetadata?.defaultAgentId && (
-                      <Button
+                      <NewButton
                         variant="ghost"
                         size="sm"
                         icon={XCircle}
@@ -725,7 +725,7 @@ export function PodSettingsTab({
           <div className="flex items-center gap-2">
             <h3 className="heading-lg flex-1">Members</h3>
             {isPodEditor && onOpenMembersPanel && (
-              <Button
+              <NewButton
                 label="Manage"
                 variant="outline"
                 icon={Users01}
@@ -771,7 +771,7 @@ export function PodSettingsTab({
                   </span>
                   .
                 </p>
-                <Button
+                <NewButton
                   icon={Upload01}
                   variant="outline"
                   label="Unarchive"
@@ -785,9 +785,9 @@ export function PodSettingsTab({
                   This Pod will be removed from the sidebar. Its data stays
                   intact and can still be used as a data source.
                 </p>
-                <Button
+                <NewButton
                   icon={Archive}
-                  variant="warning-secondary"
+                  variant="warning-ghost"
                   label="Archive"
                   onClick={handleArchiveToggle}
                   className="w-fit"

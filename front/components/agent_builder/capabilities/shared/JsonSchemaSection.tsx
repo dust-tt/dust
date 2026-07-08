@@ -3,7 +3,7 @@ import { ConfigurationSectionContainer } from "@app/components/agent_builder/cap
 import { useSendNotification } from "@app/hooks/useNotification";
 import { validateConfiguredJsonSchema } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import { clientFetch } from "@app/lib/egress/client";
-import { Button, Stars02, TextArea } from "@dust-tt/sparkle";
+import { NewButton, Stars02, TextArea } from "@dust-tt/sparkle";
 import { useState } from "react";
 import { useController, useFormContext } from "react-hook-form";
 
@@ -114,7 +114,7 @@ export function JsonSchemaSection({
       description="Optionally, provide a schema for the data to be extracted. If you do not specify a schema, the tool will determine the schema based on the conversation context."
       error={fieldState.error?.message}
     >
-      <Button
+      <NewButton
         tooltip="Automatically re-generate the extraction schema based on Instructions"
         label="Re-generate from Instructions"
         variant="primary"

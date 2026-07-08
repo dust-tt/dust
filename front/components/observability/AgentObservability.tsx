@@ -8,10 +8,10 @@ import {
 } from "@app/lib/swr/assistants";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
-  Button,
   CardGrid,
   ContentMessage,
   LoadingBlock,
+  NewButton,
   SafeSuspense,
   Spinner,
   safeLazy,
@@ -157,7 +157,7 @@ export function AgentObservability({
                       We couldn&apos;t generate a summary for this time range.
                     </span>
                     <div>
-                      <Button
+                      <NewButton
                         label="Try again"
                         size="xs"
                         variant="outline"

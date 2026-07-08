@@ -8,8 +8,8 @@ import {
 import type { LightWorkspaceType } from "@app/types/user";
 import {
   Avatar,
-  Button,
   EmptyCTA,
+  NewButton,
   Spinner,
   Upload01,
   XClose,
@@ -126,7 +126,7 @@ function BrandingAssetUploader({
             size="lg"
             className={asset === "logo" ? "w-24" : undefined}
           />
-          <Button
+          <NewButton
             disabled={busy}
             icon={XClose}
             label="Remove"
@@ -146,7 +146,7 @@ function BrandingAssetUploader({
             busy ? (
               <Spinner size="md" />
             ) : (
-              <Button
+              <NewButton
                 icon={Upload01}
                 label="Upload"
                 onClick={() => fileInputRef.current?.click()}

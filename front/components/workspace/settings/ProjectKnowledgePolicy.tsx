@@ -2,7 +2,6 @@ import { useProjectKnowledgePolicy } from "@app/hooks/useProjectKnowledgePolicy"
 import type { WorkspaceType } from "@app/types/user";
 import {
   BookOpen01,
-  Button,
   ContextItem,
   DropdownMenu,
   DropdownMenuContent,
@@ -10,6 +9,7 @@ import {
   DropdownMenuRadioItem,
   DropdownMenuTrigger,
   Lock01,
+  NewButton,
 } from "@dust-tt/sparkle";
 
 const PROJECT_KNOWLEDGE_POLICIES = [
@@ -51,7 +51,7 @@ export function ProjectKnowledgePolicy({ owner }: { owner: WorkspaceType }) {
       action={
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button
+            <NewButton
               variant="outline"
               size="sm"
               isSelect

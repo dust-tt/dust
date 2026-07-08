@@ -3,10 +3,10 @@ import { isAPIErrorResponse } from "@app/types/error";
 import { safeParseJSON } from "@app/types/shared/utils/json_utils";
 import {
   AlertCircle,
-  Button,
   Icon,
   LinkWrapper,
   LogIn01,
+  NewButton,
 } from "@dust-tt/sparkle";
 import type { ComponentType } from "react";
 
@@ -86,7 +86,7 @@ export function ErrorDisplay({ icon, message, title }: ErrorDisplayProps) {
         )}
       </p>
       <LinkWrapper href="/">
-        <Button variant="outline" label="Back to homepage" icon={LogIn01} />
+        <NewButton variant="outline" label="Back to homepage" icon={LogIn01} />
       </LinkWrapper>
     </div>
   );

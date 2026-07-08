@@ -5,7 +5,6 @@ import type { TagType } from "@app/types/tag";
 import type { WorkspaceType } from "@app/types/user";
 import { isBuilder } from "@app/types/user";
 import {
-  Button,
   Check,
   ChevronDown,
   DropdownMenu,
@@ -15,6 +14,7 @@ import {
   DropdownMenuTagItem,
   DropdownMenuTagList,
   DropdownMenuTrigger,
+  NewButton,
   Spinner,
 } from "@dust-tt/sparkle";
 import { useState } from "react";
@@ -47,7 +47,7 @@ export const TableTagSelector = ({
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         {agentTags.length === 0 ? (
-          <Button
+          <NewButton
             variant="ghost"
             size="xs"
             label="Add tags"
@@ -55,10 +55,10 @@ export const TableTagSelector = ({
             className="invisible text-muted-foreground group-hover:visible"
           />
         ) : (
-          <Button
+          <NewButton
             variant="ghost"
             icon={ChevronDown}
-            size="xmini"
+            size="xs"
             className="invisible text-muted-foreground group-hover:visible"
           />
         )}

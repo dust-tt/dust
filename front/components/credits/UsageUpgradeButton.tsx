@@ -2,7 +2,6 @@ import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { useRequestUpgrade } from "@app/lib/swr/upgrade_requests";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
-  Button,
   Dialog,
   DialogContainer,
   DialogContent,
@@ -10,6 +9,7 @@ import {
   DialogHeader,
   DialogTitle,
   Hoverable,
+  NewButton,
 } from "@dust-tt/sparkle";
 import { useState } from "react";
 
@@ -61,7 +61,7 @@ export function UsageUpgradeButton({
 
       if (variant === "button") {
         return (
-          <Button
+          <NewButton
             variant="primary"
             size="xs"
             label="Go to workspace usage"
@@ -85,7 +85,7 @@ export function UsageUpgradeButton({
 
     if (variant === "button") {
       return (
-        <Button
+        <NewButton
           variant="primary"
           size="xs"
           label={alreadyRequested ? "Requested" : "Request for upgrade"}

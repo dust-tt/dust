@@ -8,7 +8,7 @@ import type { ButtonProps } from "@dust-tt/sparkle";
 import {
   BarFooter,
   BarHeader,
-  Button,
+  NewButton,
   ScrollArea,
   XClose,
 } from "@dust-tt/sparkle";
@@ -47,7 +47,7 @@ export function AgentBuilderLeftPanel({
         className="mx-4"
         title={title}
         rightActions={
-          <Button
+          <NewButton
             icon={XClose}
             onClick={handleCancel}
             variant="ghost"
@@ -81,7 +81,7 @@ export function AgentBuilderLeftPanel({
         variant="default"
         className="mx-4 justify-between"
         leftActions={
-          <Button
+          <NewButton
             variant="outline"
             label="Cancel"
             onClick={handleCancel}

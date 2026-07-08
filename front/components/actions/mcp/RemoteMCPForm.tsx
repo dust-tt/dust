@@ -8,7 +8,6 @@ import {
   ActionIcons,
   AlertCircle,
   BookOpen01,
-  Button,
   CloudArrowLeftRight,
   Collapsible,
   CollapsibleContent,
@@ -17,6 +16,7 @@ import {
   IconPicker,
   Input,
   Label,
+  NewButton,
   PopoverContent,
   PopoverRoot,
   PopoverTrigger,
@@ -83,7 +83,7 @@ export function RemoteMCPForm({ owner, mcpServer }: RemoteMCPFormProps) {
               placeholder="https://example.com/api/mcp"
             />
           </div>
-          <Button
+          <NewButton
             label={isSynchronizing ? "Syncing..." : "Sync"}
             isLoading={isSynchronizing}
             icon={CloudArrowLeftRight}
@@ -109,7 +109,7 @@ export function RemoteMCPForm({ owner, mcpServer }: RemoteMCPFormProps) {
             return (
               <PopoverRoot open={isPopoverOpen}>
                 <PopoverTrigger asChild>
-                  <Button
+                  <NewButton
                     variant="outline"
                     size="sm"
                     icon={IconComponent}

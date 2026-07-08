@@ -2,7 +2,6 @@ import { FeedbackSelectorPopoverContent } from "@app/components/assistant/conver
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
-  Button,
   Checkbox,
   Dialog,
   DialogContainer,
@@ -12,6 +11,7 @@ import {
   DialogTitle,
   Label,
   MagicWand02,
+  NewButton,
   Spinner,
   TextArea,
   ThumbsDown,
@@ -184,7 +184,7 @@ export function FeedbackSelector({
 
   return (
     <div className="flex items-center">
-      <Button
+      <NewButton
         variant={feedback ? "primary" : "outline"}
         size="xs"
         disabled={isSubmittingThumb}
@@ -219,14 +219,14 @@ export function FeedbackSelector({
                     Was this answer helpful?
                   </p>
                   <div className="flex gap-2">
-                    <Button
+                    <NewButton
                       label="Yes, helpful"
                       icon={ThumbsUp}
                       size="sm"
                       variant={thumbDirection === "up" ? "primary" : "outline"}
                       onClick={() => handleThumbSelect("up")}
                     />
-                    <Button
+                    <NewButton
                       label="Needs work"
                       icon={ThumbsDown}
                       size="sm"
@@ -267,7 +267,7 @@ export function FeedbackSelector({
                             <div className="overflow-hidden">
                               <div className="mb-3 flex flex-wrap gap-2">
                                 {FEEDBACK_PREDEFINED_ANSWERS.map((answer) => (
-                                  <Button
+                                  <NewButton
                                     key={answer}
                                     label={answer}
                                     size="xs"

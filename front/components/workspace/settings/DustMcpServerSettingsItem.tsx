@@ -4,8 +4,8 @@ import { getMcpResourceServerUrlForClient } from "@app/lib/api/mcp_server/urls";
 import { useAuth } from "@app/lib/auth/AuthContext";
 import type { WorkspaceType } from "@app/types/user";
 import {
-  Button,
   ContextItem,
+  NewButton,
   Server01,
   Settings01,
   SliderToggle,
@@ -56,7 +56,7 @@ export function DustMcpServerSettingsItem({
         action={
           <div className="flex shrink-0 items-center gap-2">
             {isEnabled && (
-              <Button
+              <NewButton
                 label="Manage"
                 size="xs"
                 variant="outline"

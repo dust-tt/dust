@@ -4,12 +4,12 @@ import { isImportableSkillStatus } from "@app/lib/skill_detection";
 import { useDetectSkillsFromFiles } from "@app/lib/swr/skill_configurations";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
-  Button,
   ContentMessage,
   cn,
   DropzoneOverlay,
   Hoverable,
   InfoCircle,
+  NewButton,
   Plus,
   Spinner,
 } from "@dust-tt/sparkle";
@@ -181,7 +181,7 @@ function SkillFileDropzone({
             multiple
             onChange={onFileInputChange}
           />
-          <Button
+          <NewButton
             label="Upload files"
             icon={Plus}
             variant="primary"

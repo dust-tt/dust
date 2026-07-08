@@ -13,7 +13,6 @@ import type { GroupType } from "@app/types/groups";
 import { GLOBAL_SPACE_NAME } from "@app/types/groups";
 import type { ModelId } from "@app/types/shared/model_id";
 import {
-  Button,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -21,6 +20,7 @@ import {
   DropdownMenuTrigger,
   Input,
   Label,
+  NewButton,
   Plus,
   RadioGroup,
   RadioGroupItem,
@@ -151,7 +151,7 @@ export const NewAPIKeyDialog = ({
   return (
     <Sheet open={isOpen} onOpenChange={setIsOpen}>
       <SheetTrigger asChild>
-        <Button
+        <NewButton
           label="Create API Key"
           icon={Plus}
           disabled={isGenerating || isRevoking}
@@ -183,7 +183,7 @@ export const NewAPIKeyDialog = ({
                 <div>
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                      <Button
+                      <NewButton
                         variant="outline"
                         label="Add Spaces"
                         size="sm"
@@ -236,7 +236,7 @@ export const NewAPIKeyDialog = ({
                   </DropdownMenu>
                 </div>
                 <div className="flex flex-wrap gap-1">
-                  <Button
+                  <NewButton
                     label={GLOBAL_SPACE_NAME}
                     size="xs"
                     variant="outline"
@@ -248,7 +248,7 @@ export const NewAPIKeyDialog = ({
                       return null;
                     }
                     return (
-                      <Button
+                      <NewButton
                         key={gId}
                         label={prettifyGroupName(group)}
                         icon={XClose}

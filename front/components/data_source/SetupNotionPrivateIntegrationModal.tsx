@@ -4,7 +4,6 @@ import type { DataSourceType } from "@app/types/data_source";
 import type { LightWorkspaceType } from "@app/types/user";
 import type { NotificationType } from "@dust-tt/sparkle";
 import {
-  Button,
   Clipboard,
   ClipboardCheck,
   Dialog,
@@ -13,6 +12,7 @@ import {
   DialogHeader,
   DialogTitle,
   Input,
+  NewButton,
   Page,
   Spinner,
   useCopyToClipboard,
@@ -208,7 +208,7 @@ export function SetupNotionPrivateIntegrationModal({
                         className="pr-12"
                       />
                       <div className="absolute inset-y-0 right-0 flex items-center pr-2">
-                        <Button
+                        <NewButton
                           icon={isCopiedWebhookUrl ? ClipboardCheck : Clipboard}
                           onClick={() =>
                             copyWebhookUrl(webhookConfig.webhookUrl)
@@ -246,7 +246,7 @@ export function SetupNotionPrivateIntegrationModal({
                           className="pr-12"
                         />
                         <div className="absolute inset-y-0 right-0 flex items-center pr-2">
-                          <Button
+                          <NewButton
                             icon={isCopiedToken ? ClipboardCheck : Clipboard}
                             onClick={() =>
                               copyToken(webhookConfig.verificationToken!)

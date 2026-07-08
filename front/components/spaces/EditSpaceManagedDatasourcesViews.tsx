@@ -22,7 +22,6 @@ import { removeNulls } from "@app/types/shared/utils/general";
 import type { SpaceType } from "@app/types/space";
 import type { WorkspaceType } from "@app/types/user";
 import {
-  Button,
   ContentMessage,
   Dialog,
   DialogContainer,
@@ -31,6 +30,7 @@ import {
   DialogHeader,
   DialogTitle,
   InfoCircle,
+  NewButton,
   Plus,
   Tooltip,
 } from "@dust-tt/sparkle";
@@ -338,7 +338,7 @@ export function EditSpaceManagedDataSourcesViews({
   }
 
   const addToSpaceButton = (
-    <Button
+    <NewButton
       label={
         dataSourceView
           ? `Add data from ${getDisplayNameForDataSource(dataSourceView.dataSource)}`

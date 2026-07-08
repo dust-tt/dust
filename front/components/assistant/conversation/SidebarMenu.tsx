@@ -65,7 +65,6 @@ import {
   ArrowRight,
   Avatar,
   Brackets,
-  Button,
   Checkbox,
   CheckDone01,
   Chip,
@@ -95,6 +94,7 @@ import {
   NavigationListItem,
   NavigationListItemAction,
   NavigationListLabel,
+  NewButton,
   Plus,
   Robot,
   ScrollArea,
@@ -283,7 +283,7 @@ function SearchResults({
           onOpenChange={setPodsSectionOpen}
           action={
             <>
-              <Button
+              <NewButton
                 size="xs"
                 icon={Plus}
                 label="New"
@@ -319,7 +319,7 @@ function SearchResults({
               ))}
               {hasMorePods && (
                 <div className="flex justify-center py-2">
-                  <Button
+                  <NewButton
                     variant="ghost-secondary"
                     size="xs"
                     label={isLoadingMorePods ? "Loading..." : "Show more"}
@@ -340,8 +340,8 @@ function SearchResults({
             <>
               <DropdownMenu modal={false}>
                 <DropdownMenuTrigger asChild>
-                  <Button
-                    size="xmini"
+                  <NewButton
+                    size="xs"
                     icon={DotsHorizontal}
                     variant="ghost"
                     aria-label="Conversations options"
@@ -389,7 +389,7 @@ function SearchResults({
           )}
           {hasMorePrivateConversations && (
             <div className="flex justify-center py-2">
-              <Button
+              <NewButton
                 variant="ghost-secondary"
                 size="xs"
                 label={
@@ -777,7 +777,7 @@ export function AgentSidebarMenu({
           action={
             <>
               {nonStarredSummary.length > 0 && (
-                <Button
+                <NewButton
                   size="xs"
                   icon={Plus}
                   label="New"
@@ -910,7 +910,7 @@ export function AgentSidebarMenu({
                 <div className="flex gap-2">
                   <DropdownMenu modal={false}>
                     <DropdownMenuTrigger asChild>
-                      <Button
+                      <NewButton
                         variant="outline"
                         label="Move to Pod"
                         icon={ArrowRight}
@@ -947,7 +947,7 @@ export function AgentSidebarMenu({
                       )}
                     </DropdownMenuContent>
                   </DropdownMenu>
-                  <Button
+                  <NewButton
                     variant={
                       selectedConversations.length === 0 ? "outline" : "warning"
                     }
@@ -956,7 +956,7 @@ export function AgentSidebarMenu({
                     onClick={() => setShowDeleteDialog("selection")}
                   />
                 </div>
-                <Button
+                <NewButton
                   variant="ghost"
                   icon={XClose}
                   onClick={toggleMultiSelect}
@@ -971,7 +971,7 @@ export function AgentSidebarMenu({
                   />
                 </div>
                 <div className="flex gap-2">
-                  <Button
+                  <NewButton
                     label="New"
                     href={getConversationRoute(owner.sId)}
                     icon={MessagePlusCircle}
@@ -982,7 +982,7 @@ export function AgentSidebarMenu({
                   {!hideActions && (
                     <DropdownMenu modal={false}>
                       <DropdownMenuTrigger asChild>
-                        <Button
+                        <NewButton
                           size="sm"
                           icon={DotsHorizontal}
                           variant="outline"
@@ -1251,13 +1251,12 @@ function UnreadConversationsSection({
       className="bg-background rounded-xl border border-border p-1 mx-sidebar-side-spacing"
       action={
         shouldShowMarkAllAsReadButton ? (
-          <Button
-            size="xmini"
+          <NewButton
+            size="xs"
             variant="ghost-secondary"
             label="Mark as read"
             onClick={() => onMarkAllAsRead(conversations.map((c) => c.sId))}
             isLoading={isMarkingAllAsRead}
-            hasLighterFont
             className="hover:bg-hover active:bg-selected"
           />
         ) : null
@@ -1630,8 +1629,8 @@ function NavigationListWithInbox({
               <>
                 <DropdownMenu modal={false}>
                   <DropdownMenuTrigger asChild>
-                    <Button
-                      size="xmini"
+                    <NewButton
+                      size="xs"
                       icon={DotsHorizontal}
                       variant="ghost"
                       aria-label="Conversations options"

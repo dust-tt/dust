@@ -1,10 +1,10 @@
 "use client";
 
 import { appendUTMParams } from "@app/lib/utils/utm";
-import type { RegularButtonProps } from "@dust-tt/sparkle";
-import { Button } from "@dust-tt/sparkle";
+import type { NewButtonProps } from "@dust-tt/sparkle";
+import { NewButton } from "@dust-tt/sparkle";
 
-interface UTMButtonProps extends Omit<RegularButtonProps, "href"> {
+interface UTMButtonProps extends Omit<NewButtonProps, "href"> {
   href?: string;
 }
 
@@ -14,7 +14,7 @@ const UTMButton = ({ href, ...props }: UTMButtonProps) => {
       ? appendUTMParams(href)
       : href;
 
-  return <Button href={finalHref} {...props} />;
+  return <NewButton href={finalHref} {...props} />;
 };
 
 export default UTMButton;
