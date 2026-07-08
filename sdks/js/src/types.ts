@@ -719,6 +719,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "dust_internal_global_agents"
   | "fireworks_new_model_feature"
   | "google_sheets_tool"
+  | "group_permissions_shadow"
   | "http_client_tool"
   | "index_private_slack_channel"
   | "labs_mcp_actions_dashboard"
