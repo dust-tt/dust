@@ -2,8 +2,10 @@ import type { Authenticator } from "@app/lib/auth";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { assertValidGrant } from "@app/lib/resources/group_permission_registry";
 import { GroupResource } from "@app/lib/resources/group_resource";
+import { frontSequelize } from "@app/lib/resources/storage";
 import { GroupPermissionModel } from "@app/lib/resources/storage/models/group_permissions";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
+import { withTransaction } from "@app/lib/utils/sql_utils";
 import type {
   GroupPermissionResourceType,
   PermissionType,
@@ -416,6 +418,99 @@ export class GroupPermissionResource extends BaseResource<GroupPermissionModel> 
     }
 
     return result;
+  }
+
+  // ---------------------------------------------------------------------------
+  // Governance-toggle state (write side).
+  //
+  // The three states are mutually exclusive, so each transition first clears every -1 row for the
+  // capability, then writes the new state — atomically, in a transaction.
+  // ---------------------------------------------------------------------------
+
+  // Remove every -1 row for the capability => disabled.
+  static async disable(
+    auth: Authenticator,
+    { permissionType, resourceType }: CapabilitySpec,
+    { transaction }: { transaction?: Transaction } = {}
+  ): Promise<void> {
+    await GroupPermissionModel.destroy({
+      where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
+        permissionType,
+        resourceType,
+        resourceId: WHOLE_TYPE_RESOURCE_ID,
+      },
+      transaction,
+    });
+  }
+
+  // Serialize concurrent transitions for the same capability. Without this, two transactions can
+  // each clear the -1 rows and then insert, leaving both the everybody row and specific-group rows
+  // (overgranting). The transaction-scoped advisory lock releases on commit/rollback.
+  private static async getCapabilityLock(
+    auth: Authenticator,
+    { permissionType, resourceType }: CapabilitySpec,
+    transaction: Transaction
+  ): Promise<void> {
+    const key = `group_permissions:${auth.getNonNullableWorkspace().id}:${resourceType}:${permissionType}`;
+    // biome-ignore lint/plugin/noRawSql: advisory lock requires raw SQL
+    await frontSequelize.query("SELECT pg_advisory_xact_lock(hashtext(:key))", {
+      replacements: { key },
+      transaction,
+    });
+  }
+
+  // Grant the capability to the whole workspace (the global group), clearing any specific-group rows.
+  static async setForEverybody(
+    auth: Authenticator,
+    capability: CapabilitySpec,
+    { transaction }: { transaction?: Transaction } = {}
+  ): Promise<void> {
+    const globalGroup = await GroupResource.internalFetchWorkspaceGlobalGroup(
+      auth.getNonNullableWorkspace().id
+    );
+    assert(globalGroup, "Workspace is missing its global group.");
+
+    await withTransaction(async (t) => {
+      await this.getCapabilityLock(auth, capability, t);
+      await this.disable(auth, capability, { transaction: t });
+      await this.grantTypeWide(auth, {
+        group: globalGroup,
+        ...capability,
+        transaction: t,
+      });
+    }, transaction);
+  }
+
+  // Grant the capability to exactly `groups`, clearing the everybody row and any other specific
+  // rows. System and global groups are rejected: system is internal, and "everybody" goes through
+  // setForEverybody so the states stay unambiguous.
+  static async setGroups(
+    auth: Authenticator,
+    capability: CapabilitySpec,
+    groups: GroupResource[],
+    { transaction }: { transaction?: Transaction } = {}
+  ): Promise<void> {
+    for (const group of groups) {
+      assert(
+        !group.isSystem(),
+        "Cannot grant a governance capability to the system group."
+      );
+      assert(
+        !group.isGlobal(),
+        "Use setForEverybody to grant a capability to the whole workspace."
+      );
+    }
+
+    await withTransaction(async (t) => {
+      await this.getCapabilityLock(auth, capability, t);
+      await this.disable(auth, capability, { transaction: t });
+      await this.grantTypeWideForGroups(auth, {
+        groups,
+        ...capability,
+        transaction: t,
+      });
+    }, transaction);
   }
 
   async delete(

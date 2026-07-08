@@ -2,8 +2,10 @@ import { Authenticator } from "@app/lib/auth";
 import { GroupPermissionResource } from "@app/lib/resources/group_permission_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { GroupFactory } from "@app/tests/utils/GroupFactory";
+import { getNamespace } from "@app/tests/utils/test_cls";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
 import assert from "assert";
+import type { Transaction } from "sequelize";
 import { beforeEach, describe, expect, it } from "vitest";
 
 // A concrete capability used across the governance-state tests.
@@ -93,5 +95,95 @@ describe("GroupPermissionResource — governance state (reads)", () => {
     const groupsState = states.get("create:skill");
     assert(groupsState?.scope === "groups", "expected groups scope");
     expect(groupsState.groups.map((g) => g.id)).toEqual([groupA.id]);
+  });
+
+  describe("transitions", () => {
+    // The test harness wraps each test in an (uncommitted) CLS transaction, so the multi-step
+    // transitions must run inside it to see the groups created above. Production callers pass no
+    // transaction and the methods open their own.
+    let transaction: Transaction | undefined;
+    beforeEach(() => {
+      transaction = getNamespace("test-namespace")?.get("transaction");
+    });
+
+    it("setForEverybody clears specific groups (mutual exclusivity)", async () => {
+      await GroupPermissionResource.setGroups(auth, CAPABILITY, [groupA], {
+        transaction,
+      });
+      await GroupPermissionResource.setForEverybody(auth, CAPABILITY, {
+        transaction,
+      });
+
+      expect(await stateOf(CAPABILITY)).toEqual({ scope: "everyone" });
+    });
+
+    it("setGroups clears the everybody row (mutual exclusivity)", async () => {
+      await GroupPermissionResource.setForEverybody(auth, CAPABILITY, {
+        transaction,
+      });
+      await GroupPermissionResource.setGroups(
+        auth,
+        CAPABILITY,
+        [groupA, groupB],
+        { transaction }
+      );
+
+      const state = await stateOf(CAPABILITY);
+      assert(state?.scope === "groups", "expected groups scope");
+      expect(new Set(state.groups.map((g) => g.id))).toEqual(
+        new Set([groupA.id, groupB.id])
+      );
+    });
+
+    it("setGroups replaces the previous set of groups", async () => {
+      await GroupPermissionResource.setGroups(
+        auth,
+        CAPABILITY,
+        [groupA, groupB],
+        { transaction }
+      );
+      await GroupPermissionResource.setGroups(auth, CAPABILITY, [groupB], {
+        transaction,
+      });
+
+      const state = await stateOf(CAPABILITY);
+      assert(state?.scope === "groups", "expected groups scope");
+      expect(state.groups.map((g) => g.id)).toEqual([groupB.id]);
+    });
+
+    it("disable removes all -1 rows", async () => {
+      await GroupPermissionResource.setForEverybody(auth, CAPABILITY, {
+        transaction,
+      });
+      await GroupPermissionResource.disable(auth, CAPABILITY, { transaction });
+
+      expect(await stateOf(CAPABILITY)).toEqual({ scope: "disabled" });
+    });
+
+    it("setGroups([]) disables the capability", async () => {
+      await GroupPermissionResource.setForEverybody(auth, CAPABILITY, {
+        transaction,
+      });
+      await GroupPermissionResource.setGroups(auth, CAPABILITY, [], {
+        transaction,
+      });
+
+      expect(await stateOf(CAPABILITY)).toEqual({ scope: "disabled" });
+    });
+
+    it("setGroups rejects the system group", async () => {
+      const systemGroup = await GroupResource.internalFetchWorkspaceSystemGroup(
+        workspace.id
+      );
+      await expect(
+        GroupPermissionResource.setGroups(auth, CAPABILITY, [systemGroup])
+      ).rejects.toThrow(/system group/);
+    });
+
+    it("setGroups rejects the global group", async () => {
+      await expect(
+        GroupPermissionResource.setGroups(auth, CAPABILITY, [globalGroup])
+      ).rejects.toThrow(/setForEverybody/);
+    });
   });
 });
