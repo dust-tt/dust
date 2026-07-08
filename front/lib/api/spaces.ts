@@ -39,7 +39,7 @@ import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import assert from "assert";
 import uniq from "lodash/uniq";
-import { Op } from "sequelize";
+import { Op, UniqueConstraintError } from "sequelize";
 
 export async function softDeleteSpaceAndLaunchScrubWorkflow(
   auth: Authenticator,
@@ -522,14 +522,27 @@ export async function createSpaceAndGroup(
       );
     }
 
-    const membersGroup = await GroupResource.makeNew(
-      {
-        name: `${spaceKind === "project" ? PROJECT_GROUP_PREFIX : SPACE_GROUP_PREFIX} ${name}`,
-        workspaceId: owner.id,
-        kind: "regular",
-      },
-      { transaction: t }
-    );
+    let membersGroup: GroupResource;
+    try {
+      membersGroup = await GroupResource.makeNew(
+        {
+          name: `${spaceKind === "project" ? PROJECT_GROUP_PREFIX : SPACE_GROUP_PREFIX} ${name}`,
+          workspaceId: owner.id,
+          kind: "regular",
+        },
+        { transaction: t }
+      );
+    } catch (err) {
+      if (err instanceof UniqueConstraintError) {
+        return new Err(
+          new DustError(
+            "space_already_exists",
+            "This pod name is already used."
+          )
+        );
+      }
+      throw err;
+    }
 
     let globalGroup: GroupResource | null = null;
     if (!isRestricted) {
