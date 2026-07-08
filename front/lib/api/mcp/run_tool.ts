@@ -105,12 +105,12 @@ export async function* runToolWithStreaming(
     {
       progressToken: action.id,
       makeToolNotificationEvent: async (notification) => {
-        const { event, storedItems } = await processToolNotification(
+        const { event, outputItems } = await processToolNotification(
           auth,
           notification,
           { toolContext: { runContext: agentLoopRunContext } }
         );
-        intermediateOutputItems.push(...storedItems);
+        intermediateOutputItems.push(...outputItems);
         return event;
       },
       signal,

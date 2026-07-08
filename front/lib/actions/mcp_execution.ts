@@ -78,14 +78,14 @@ export async function processToolNotification(
   }
 ): Promise<{
   event: ToolNotificationEvent;
-  storedItems: CallToolResult["content"];
+  outputItems: CallToolResult["content"];
 }> {
   const { runContext } = toolContext;
   assert(runContext, "processToolNotification requires a tool run context.");
 
   const output = notification.params._meta.data.output;
 
-  let storedItems: CallToolResult["content"] = [];
+  let outputItems: CallToolResult["content"] = [];
 
   // Handle store_resource notifications by creating output items immediately (fire-and-forget GCS).
   if (isStoreResourceProgressOutput(output)) {
@@ -95,7 +95,7 @@ export async function processToolNotification(
       isAgentLoopRunContext(runContext),
       "store_resource notifications require an agent loop run context."
     );
-    storedItems = await runContext.action.createOutputItems(
+    outputItems = await runContext.action.createOutputItems(
       auth,
       output.contents.map((content) => ({
         content: sanitizeStringsDeep(content),
@@ -138,7 +138,7 @@ export async function processToolNotification(
           },
           notification: notification.params,
         },
-        storedItems,
+        outputItems,
       };
     case "sandbox_function":
       return {
@@ -150,7 +150,7 @@ export async function processToolNotification(
           action: runContext.action.toJSON(),
           notification: notification.params,
         },
-        storedItems,
+        outputItems,
       };
     default:
       return assertNever(runContext);
