@@ -190,7 +190,7 @@ const DescriptionSection = ({
             size="sm"
           >
             It is no longer active and cannot be used.
-            {skill.canWrite && (
+            {skill.canAdministrate && (
               <div className="mt-2">
                 <Button
                   variant="outline"
