@@ -1025,16 +1025,137 @@ const baseEnrichments: Record<string, IntegrationEnrichment> = {
     ],
     relatedIntegrations: ["slack"],
   },
+
+  // ===== E-SIGNATURE =====
+  // Youtrust (e-signature). Finalized, hand-authored content lives here in the
+  // curated base — NOT in the regenerable tailored_enrichments.ts — so it is not
+  // overwritten when that draft is regenerated for other listings.
+  youtrust: {
+    tagline:
+      "Send documents for signature and chase what's outstanding — from one prompt",
+    chatStoryline: {
+      userPrompt:
+        "Send our standard NDA to the three new vendors, then tell me what's still unsigned from last week.",
+      toolCalls: [
+        "search-templates",
+        "create-signature-request-from-template",
+        "send-signature-request",
+        "search-signature-requests",
+      ],
+      completedInSeconds: 13,
+      responseIntro:
+        "I found your NDA template in Youtrust, drafted and sent a request to each vendor, then pulled last week's still-open signatures.",
+      responseSections: [
+        {
+          heading: "Sent for signature (3)",
+          bullets: [
+            {
+              title: "Acme Corp",
+              body: "Drafted from the Mutual NDA template and sent to legal@acme.example — awaiting first open.",
+            },
+            {
+              title: "Globex",
+              body: "Sent to procurement@globex.example; two signers in sequence, reminders on by default.",
+            },
+            {
+              title: "Initech",
+              body: "Sent to ops@initech.example — single signer, expires in 14 days.",
+            },
+          ],
+        },
+        {
+          heading: "Still awaiting signature (2)",
+          bullets: [
+            {
+              title: "Order form #4187",
+              body: "Open 8 days. The activity feed shows the signer opened it twice but hasn't signed.",
+            },
+            {
+              title: "Consulting agreement #4172",
+              body: "Open 11 days with no activity since it was sent — likely needs a nudge.",
+            },
+          ],
+        },
+      ],
+      followUpPrompt:
+        "Want me to send a reminder to the signers on the two outstanding requests?",
+    },
+    benefits: [
+      {
+        icon: "ActionMagnifyingGlassIcon",
+        color: "blue",
+        title: "See what's still unsigned",
+        description:
+          "Ask which signature requests are pending, who is holding them up, and how long they have been open — Dust reads the request list and each request's activity feed.",
+        toolMatches: [
+          "search-signature-requests",
+          "get-signature-request-activity-feed",
+        ],
+      },
+      {
+        icon: "ActionDocumentTextIcon",
+        color: "green",
+        title: "Send from a template in one prompt",
+        description:
+          "Point Dust at a Youtrust template — NDA, offer letter, order form — and it drafts the request and sends it to the right signers without leaving the conversation.",
+        toolMatches: [
+          "search-templates",
+          "create-signature-request-from-template",
+          "send-signature-request",
+        ],
+      },
+      {
+        icon: "ActionListCheckIcon",
+        color: "golden",
+        title: "Signature status recap",
+        description:
+          "Get a digest of what got signed, what is stalled, and what needs a nudge across all your active requests, pulled straight from the activity feeds.",
+        toolMatches: [
+          "search-signature-requests",
+          "get-signature-request-activity-feed",
+        ],
+      },
+    ],
+    faq: [
+      {
+        question: "What can Dust agents do in Youtrust?",
+        answer:
+          "Dust can search your signature requests and templates, read a request's activity feed, and create and send new signature requests from an existing template.",
+      },
+      {
+        question: "How does authentication work?",
+        answer:
+          "Youtrust uses OAuth 2.1 with dynamic client registration — you sign in with your Youtrust account and approve access directly from the Dust chat.",
+      },
+    ],
+    relatedIntegrations: ["gmail", "google_drive", "notion"],
+  },
 };
 
 // Merge the tool-grounded chat storylines + benefit cards over the base copy.
-// When a listing ships tailored `benefits`, its legacy `useCases` is cleared so
-// the new BenefitsSection renders (IntegrationTemplate suppresses benefits while
-// useCases is present).
+//
+// Precedence: a base entry that already carries a `chatStoryline` or `benefits`
+// is treated as FINALIZED/curated — it is the source of truth and the
+// regenerable `tailored_enrichments.ts` draft never overrides it. This is how a
+// hand-reviewed listing (e.g. Youtrust) survives future wholesale regenerations
+// of the tailored draft: move its content into baseEnrichments and it is locked.
+//
+// For not-yet-curated listings, the tailored draft is applied over the base
+// copy. When it ships `benefits`, the legacy `useCases` is dropped so the new
+// BenefitsSection renders (the template suppresses benefits while useCases is
+// present). We omit the key entirely rather than setting it to `undefined` —
+// getStaticProps cannot serialize `undefined`, only `null` or an absent key.
 function buildIntegrationEnrichments(): Record<string, IntegrationEnrichment> {
   const merged: Record<string, IntegrationEnrichment> = { ...baseEnrichments };
   for (const [slug, tailored] of Object.entries(tailoredEnrichments)) {
     const base = merged[slug] ?? {};
+    const baseIsCurated =
+      base.chatStoryline !== undefined ||
+      (base.benefits !== undefined && base.benefits.length > 0);
+    if (baseIsCurated) {
+      // Keep the curated base entry as-is; ignore the tailored draft.
+      continue;
+    }
     if (tailored.benefits !== undefined && tailored.benefits.length > 0) {
       // Tailored benefits supersede legacy useCases. Omit the key entirely
       // rather than setting it to `undefined` — getStaticProps cannot

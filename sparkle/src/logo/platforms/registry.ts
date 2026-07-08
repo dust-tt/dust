@@ -94,6 +94,7 @@ import UkgLogo from "./Ukg";
 import ValTownLogo from "./ValTown";
 import VantaLogo from "./Vanta";
 import VideoLogo from "./Video";
+import YoutrustLogo from "./Youtrust";
 import ZapierLogo from "./Zapier";
 import ZendeskLogo from "./Zendesk";
 import ZendeskWhiteLogo from "./ZendeskWhite";
@@ -200,6 +201,7 @@ export const PLATFORM_LOGOS = {
   ValTownLogo,
   VantaLogo,
   VideoLogo,
+  YoutrustLogo,
   ZapierLogo,
   ZendeskLogo,
   ZendeskWhiteLogo,
