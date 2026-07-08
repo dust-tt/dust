@@ -109,7 +109,7 @@ import {
   ZendeskLogo,
 } from "@dust-tt/sparkle/logo/platforms";
 import type { ColumnDef } from "@tanstack/react-table";
-import { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 
 // ─── Global animation styles ──────────────────────────────────────────────────
 
@@ -1850,6 +1850,7 @@ function GovernanceRow({
   groups,
   onCreateGroup,
   groupsOnly = false,
+  disabledLabel = "Disabled",
 }: {
   setting: GovernanceSetting;
   canEdit: boolean;
@@ -1857,6 +1858,7 @@ function GovernanceRow({
   groups: GroupRow[];
   onCreateGroup: () => void;
   groupsOnly?: boolean;
+  disabledLabel?: string;
 }) {
   const [groupSearch, setGroupSearch] = useState("");
   const filteredGroups = groups.filter(
@@ -1886,7 +1888,7 @@ function GovernanceRow({
           >
             <ButtonsSwitch value="everyone" label="Everyone" />
             <ButtonsSwitch value="groups" label="Groups" />
-            <ButtonsSwitch value="disabled" label="Disabled" />
+            <ButtonsSwitch value="disabled" label={disabledLabel} />
           </ButtonsSwitchList>
         )}
       </div>
@@ -2287,11 +2289,29 @@ function GovernancePage({
   const canEdit = role === "super_admin" || role === "admin";
   const update = (updated: GovernanceSetting) =>
     setSettings(settings.map((s) => (s.id === updated.id ? updated : s)));
+  const [podAccess, setPodAccess] = useState<
+    "restricted_only" | "restricted_and_open"
+  >("restricted_and_open");
   const [podFiles, setPodFiles] = useState<
     "manual_allowed" | "manual_disabled"
   >("manual_allowed");
   const [privateUrls, setPrivateUrls] = useState(true);
   const [mcpServer, setMcpServer] = useState(false);
+  const [workspaceCapabilities, setWorkspaceCapabilities] = useState<
+    Record<string, boolean>
+  >(Object.fromEntries(WORKSPACE_CAPABILITIES.map((c) => [c.id, true])));
+  const [integrations, setIntegrations] =
+    useState<IntegrationRow[]>(INITIAL_INTEGRATIONS);
+  const [subSettings, setSubSettings] = useState<Record<string, boolean>>({
+    slack_footer: true,
+  });
+  const podAccessOptions = [
+    { value: "restricted_only" as const, label: "Restricted Pods only" },
+    {
+      value: "restricted_and_open" as const,
+      label: "Restricted and open Pods",
+    },
+  ];
   const podFilesOptions = [
     { value: "manual_allowed" as const, label: "Manual updates allowed" },
     { value: "manual_disabled" as const, label: "Manual updates disabled" },
@@ -2299,7 +2319,7 @@ function GovernancePage({
   return (
     <Page>
       <Page.Header
-        title="Governance"
+        title="Workspace Governance"
         description="Manage what members can do in your workspace."
         icon={Toggle01Left}
       />
@@ -2332,6 +2352,7 @@ function GovernancePage({
                   onChange={update}
                   groups={groups}
                   onCreateGroup={onCreateGroup}
+                  disabledLabel="Admins only"
                 />
               ))}
           </div>
@@ -2352,6 +2373,7 @@ function GovernancePage({
                   onChange={update}
                   groups={groups}
                   onCreateGroup={onCreateGroup}
+                  disabledLabel="Admins only"
                 />
               ))}
           </div>
@@ -2394,13 +2416,50 @@ function GovernancePage({
             </div>
           </div>
         )}
-        {/* Capabilities */}
+        {/* Pods */}
         <div className="s-flex s-w-full s-flex-col s-gap-4">
           <div className="s-flex s-items-center s-gap-2">
-            <ShapesPlus className="s-h-5 s-w-5 s-shrink-0 s-text-muted-foreground dark:s-text-muted-foreground-night" />
-            <Page.H variant="h5">Capabilities</Page.H>
+            <IntersectDust className="s-h-5 s-w-5 s-shrink-0 s-text-muted-foreground dark:s-text-muted-foreground-night" />
+            <Page.H variant="h5">Pods</Page.H>
           </div>
           <div className="s-w-full s-rounded-xl s-border s-border-border dark:s-border-border-night s-divide-y s-divide-border dark:s-divide-border-night">
+            <div className="s-flex s-items-center s-justify-between s-gap-4 s-px-4 s-py-3">
+              <div className="s-flex s-items-center s-gap-3">
+                <IntersectDust className="s-h-4 s-w-4 s-shrink-0 s-text-muted-foreground dark:s-text-muted-foreground-night" />
+                <div className="s-flex s-flex-col s-gap-0.5">
+                  <span className="s-text-sm s-font-semibold s-text-foreground dark:s-text-foreground-night">
+                    Pod access policy
+                  </span>
+                  <span className="s-text-sm s-text-muted-foreground dark:s-text-muted-foreground-night">
+                    Control whether Pods can be restricted only or restricted
+                    and open.
+                  </span>
+                </div>
+              </div>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    icon={IntersectDust}
+                    label={
+                      podAccessOptions.find((o) => o.value === podAccess)!.label
+                    }
+                    isSelect
+                    disabled={!canEdit}
+                  />
+                </DropdownMenuTrigger>
+                <DropdownMenuContent>
+                  {podAccessOptions.map((o) => (
+                    <DropdownMenuItem
+                      key={o.value}
+                      label={o.label}
+                      onClick={() => setPodAccess(o.value)}
+                    />
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
             <div className="s-flex s-items-center s-justify-between s-gap-4 s-px-4 s-py-3">
               <div className="s-flex s-items-center s-gap-3">
                 <Folder className="s-h-4 s-w-4 s-shrink-0 s-text-muted-foreground dark:s-text-muted-foreground-night" />
@@ -2437,6 +2496,53 @@ function GovernancePage({
                 </DropdownMenuContent>
               </DropdownMenu>
             </div>
+          </div>
+        </div>
+        {/* Capabilities */}
+        <div className="s-flex s-w-full s-flex-col s-gap-4">
+          <div className="s-flex s-items-center s-gap-2">
+            <ShapesPlus className="s-h-5 s-w-5 s-shrink-0 s-text-muted-foreground dark:s-text-muted-foreground-night" />
+            <Page.H variant="h5">Capabilities</Page.H>
+          </div>
+          <div className="s-w-full s-rounded-xl s-border s-border-border dark:s-border-border-night s-divide-y s-divide-border dark:s-divide-border-night">
+            {WORKSPACE_CAPABILITIES.filter(
+              (cap) => cap.id !== "audit_logs" || role === "super_admin"
+            ).map((cap) => {
+              const Icon = cap.icon;
+              return (
+                <div
+                  key={cap.id}
+                  className="s-flex s-items-center s-justify-between s-gap-4 s-px-4 s-py-3"
+                >
+                  <div className="s-flex s-items-center s-gap-3">
+                    <Icon className="s-h-4 s-w-4 s-shrink-0 s-text-muted-foreground dark:s-text-muted-foreground-night" />
+                    <div className="s-flex s-flex-col s-gap-0.5">
+                      <div className="s-flex s-items-center s-gap-2">
+                        <span className="s-text-sm s-font-semibold s-text-foreground dark:s-text-foreground-night">
+                          {cap.label}
+                        </span>
+                        {"beta" in cap && cap.beta && (
+                          <Chip label="Beta" size="xs" color="warning" />
+                        )}
+                      </div>
+                      <span className="s-text-sm s-text-muted-foreground dark:s-text-muted-foreground-night">
+                        {cap.description}
+                      </span>
+                    </div>
+                  </div>
+                  <SliderToggle
+                    selected={workspaceCapabilities[cap.id]}
+                    onClick={() =>
+                      canEdit &&
+                      setWorkspaceCapabilities((prev) => ({
+                        ...prev,
+                        [cap.id]: !prev[cap.id],
+                      }))
+                    }
+                  />
+                </div>
+              );
+            })}
             <div className="s-flex s-items-center s-justify-between s-gap-4 s-px-4 s-py-3">
               <div className="s-flex s-items-center s-gap-3">
                 <Lock01 className="s-h-4 s-w-4 s-shrink-0 s-text-muted-foreground dark:s-text-muted-foreground-night" />
@@ -2484,31 +2590,111 @@ function GovernancePage({
             </div>
           </div>
         </div>
-        {/* Audit */}
+        {/* Integrations */}
         <div className="s-flex s-w-full s-flex-col s-gap-4">
           <div className="s-flex s-items-center s-gap-2">
-            <LayerSingle className="s-h-5 s-w-5 s-shrink-0 s-text-muted-foreground dark:s-text-muted-foreground-night" />
-            <Page.H variant="h5">Audit</Page.H>
+            <CloudArrowLeftRight className="s-h-5 s-w-5 s-shrink-0 s-text-muted-foreground dark:s-text-muted-foreground-night" />
+            <Page.H variant="h5">Integrations</Page.H>
           </div>
-          <div className="s-w-full s-rounded-xl s-bg-muted-background dark:s-bg-muted-background-night s-flex s-items-center s-justify-between s-gap-4 s-px-4 s-py-4">
-            <div className="s-flex s-items-center s-gap-3">
-              <LayerSingle className="s-h-4 s-w-4 s-shrink-0 s-text-muted-foreground dark:s-text-muted-foreground-night" />
-              <div className="s-flex s-flex-col s-gap-0.5">
-                <span className="s-text-sm s-font-semibold s-text-foreground dark:s-text-foreground-night">
-                  Audit Logs
-                </span>
-                <span className="s-text-sm s-text-muted-foreground dark:s-text-muted-foreground-night">
-                  View workspace activity logs or configure export to your
-                  security information and event management (SIEM) system.
-                </span>
-              </div>
-            </div>
-            <div className="s-flex s-shrink-0 s-gap-2">
-              <Button variant="outline" size="sm" label="View Logs" />
-              <Button variant="outline" size="sm" label="Configure Export" />
-            </div>
+          <div className="s-w-full s-rounded-xl s-border s-border-border dark:s-border-border-night s-divide-y s-divide-border dark:s-divide-border-night">
+            {integrations.map((integration) => (
+              <React.Fragment key={integration.id}>
+                <div className="s-flex s-items-center s-justify-between s-gap-4 s-px-4 s-py-3">
+                  <div className="s-flex s-items-center s-gap-3">
+                    <integration.Logo className="s-h-5 s-w-5 s-shrink-0" />
+                    <div className="s-flex s-flex-col s-gap-0.5">
+                      <span className="s-text-sm s-font-semibold s-text-foreground dark:s-text-foreground-night">
+                        {integration.label}
+                      </span>
+                      <span className="s-text-sm s-text-muted-foreground dark:s-text-muted-foreground-night">
+                        {integration.description}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="s-flex s-shrink-0 s-items-center s-gap-2">
+                    {integration.connected && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        label="Reconnect"
+                        disabled={!canEdit}
+                      />
+                    )}
+                    <SliderToggle
+                      selected={integration.enabled}
+                      onClick={() =>
+                        canEdit &&
+                        setIntegrations((prev) =>
+                          prev.map((i) =>
+                            i.id === integration.id
+                              ? { ...i, enabled: !i.enabled }
+                              : i
+                          )
+                        )
+                      }
+                    />
+                  </div>
+                </div>
+                {integration.enabled &&
+                  integration.subSettings?.map((sub) => (
+                    <div
+                      key={sub.id}
+                      className="s-flex s-items-center s-justify-between s-gap-4 s-px-4 s-py-3 s-pl-12 s-bg-muted-background dark:s-bg-muted-background-night"
+                    >
+                      <div className="s-flex s-items-center s-gap-3">
+                        <integration.Logo className="s-h-4 s-w-4 s-shrink-0 s-text-muted-foreground dark:s-text-muted-foreground-night" />
+                        <div className="s-flex s-flex-col s-gap-0.5">
+                          <span className="s-text-sm s-font-semibold s-text-foreground dark:s-text-foreground-night">
+                            {sub.label}
+                          </span>
+                          <span className="s-text-sm s-text-muted-foreground dark:s-text-muted-foreground-night">
+                            {sub.description}
+                          </span>
+                        </div>
+                      </div>
+                      <SliderToggle
+                        selected={subSettings[sub.id] ?? true}
+                        onClick={() =>
+                          canEdit &&
+                          setSubSettings((prev) => ({
+                            ...prev,
+                            [sub.id]: !prev[sub.id],
+                          }))
+                        }
+                      />
+                    </div>
+                  ))}
+              </React.Fragment>
+            ))}
           </div>
         </div>
+        {/* Audit — only shown when audit_logs capability is enabled */}
+        {workspaceCapabilities["audit_logs"] && (
+          <div className="s-flex s-w-full s-flex-col s-gap-4">
+            <div className="s-flex s-items-center s-gap-2">
+              <LayerSingle className="s-h-5 s-w-5 s-shrink-0 s-text-muted-foreground dark:s-text-muted-foreground-night" />
+              <Page.H variant="h5">Audit</Page.H>
+            </div>
+            <div className="s-w-full s-rounded-xl s-bg-muted-background dark:s-bg-muted-background-night s-flex s-items-center s-justify-between s-gap-4 s-px-4 s-py-4">
+              <div className="s-flex s-items-center s-gap-3">
+                <LayerSingle className="s-h-4 s-w-4 s-shrink-0 s-text-muted-foreground dark:s-text-muted-foreground-night" />
+                <div className="s-flex s-flex-col s-gap-0.5">
+                  <span className="s-text-sm s-font-semibold s-text-foreground dark:s-text-foreground-night">
+                    Audit Logs
+                  </span>
+                  <span className="s-text-sm s-text-muted-foreground dark:s-text-muted-foreground-night">
+                    View workspace activity logs or configure export to your
+                    security information and event management (SIEM) system.
+                  </span>
+                </div>
+              </div>
+              <div className="s-flex s-shrink-0 s-gap-2">
+                <Button variant="outline" size="sm" label="View Logs" />
+                <Button variant="outline" size="sm" label="Configure Export" />
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </Page>
   );
@@ -3615,6 +3801,7 @@ interface IntegrationRow {
   Logo: React.ComponentType<{ className?: string }>;
   connected: boolean;
   enabled: boolean;
+  subSettings?: { id: string; label: string; description: string }[];
 }
 
 const WORKSPACE_CAPABILITIES = [
@@ -3632,6 +3819,13 @@ const WORKSPACE_CAPABILITIES = [
       "Allow workspace members to email agents at AGENT_NAME@dust.team",
     beta: true,
   },
+  {
+    id: "audit_logs",
+    icon: LayerSingle,
+    label: "Audit Logs",
+    description:
+      "Emit audit events to WorkOS and expose the audit logs section in workspace access. Turning this off stops emission and hides the section.",
+  },
 ] as const;
 
 const INITIAL_INTEGRATIONS: IntegrationRow[] = [
@@ -3642,6 +3836,14 @@ const INITIAL_INTEGRATIONS: IntegrationRow[] = [
     Logo: SlackLogo,
     connected: true,
     enabled: true,
+    subSettings: [
+      {
+        id: "slack_footer",
+        label: '"Sent via Agent" Slack footer',
+        description:
+          "Let agents remove the attribution footer on Slack messages posted with user credentials",
+      },
+    ],
   },
   {
     id: "teams",
@@ -3665,28 +3867,12 @@ function WorkspaceSettingsPage({ role }: { role: Role }) {
   const canEdit = role === "super_admin";
   const [workspaceName, setWorkspaceName] = useState("Dust");
   const [editingName, setEditingName] = useState(false);
-  const [podAccess, setPodAccess] = useState<PodAccessPolicy>(
-    "restricted_and_open"
-  );
-  const [capabilities, setCapabilities] = useState<Record<string, boolean>>(
-    Object.fromEntries(WORKSPACE_CAPABILITIES.map((c) => [c.id, true]))
-  );
-  const [integrations, setIntegrations] =
-    useState<IntegrationRow[]>(INITIAL_INTEGRATIONS);
-
-  const podAccessOptions = [
-    { value: "restricted_only" as const, label: "Restricted Pods only" },
-    {
-      value: "restricted_and_open" as const,
-      label: "Restricted and open Pods",
-    },
-  ];
 
   return (
     <Page>
       <Page.Header
         title="Workspace Settings"
-        description="Configure your workspace preferences and integrations."
+        description="Manage your workspace identity."
         icon={Tool01}
       />
 
@@ -3734,146 +3920,6 @@ function WorkspaceSettingsPage({ role }: { role: Role }) {
           </div>
         )}
       </div>
-
-      {/* Capabilities */}
-      <Page.Vertical gap="sm">
-        <Page.H variant="h5">Capabilities</Page.H>
-        <div className="s-w-full s-rounded-xl s-border s-border-border dark:s-border-border-night s-divide-y s-divide-border dark:s-divide-border-night">
-          {/* Pod access policy */}
-          <div className="s-flex s-items-center s-justify-between s-gap-4 s-px-4 s-py-3">
-            <div className="s-flex s-items-center s-gap-3">
-              <IntersectDust className="s-h-4 s-w-4 s-shrink-0 s-text-muted-foreground dark:s-text-muted-foreground-night" />
-              <div className="s-flex s-items-baseline s-gap-2">
-                <span className="s-text-sm s-font-semibold s-text-foreground dark:s-text-foreground-night">
-                  Pod access policy
-                </span>
-                <span className="s-text-sm s-text-muted-foreground dark:s-text-muted-foreground-night">
-                  Control whether Pods can be restricted only or restricted and
-                  open.
-                </span>
-              </div>
-            </div>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  icon={IntersectDust}
-                  label={
-                    podAccessOptions.find((o) => o.value === podAccess)!.label
-                  }
-                  isSelect
-                  disabled={!canEdit}
-                />
-              </DropdownMenuTrigger>
-              <DropdownMenuContent>
-                {podAccessOptions.map((o) => (
-                  <DropdownMenuItem
-                    key={o.value}
-                    label={o.label}
-                    onClick={() => setPodAccess(o.value)}
-                  />
-                ))}
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
-
-          {/* Toggle capabilities */}
-          {WORKSPACE_CAPABILITIES.map((cap) => {
-            const Icon = cap.icon;
-            return (
-              <div
-                key={cap.id}
-                className="s-flex s-items-center s-justify-between s-gap-4 s-px-4 s-py-3"
-              >
-                <div className="s-flex s-items-center s-gap-3">
-                  <Icon className="s-h-4 s-w-4 s-shrink-0 s-text-muted-foreground dark:s-text-muted-foreground-night" />
-                  <div className="s-flex s-items-baseline s-gap-2">
-                    <span className="s-text-sm s-font-semibold s-text-foreground dark:s-text-foreground-night">
-                      {cap.label}
-                    </span>
-                    {"beta" in cap && cap.beta && (
-                      <Chip label="Beta" size="xs" color="warning" />
-                    )}
-                    <span className="s-text-sm s-text-muted-foreground dark:s-text-muted-foreground-night">
-                      {cap.description}
-                    </span>
-                  </div>
-                </div>
-                <div className="s-flex s-shrink-0 s-items-center s-gap-2">
-                  {"hasManage" in cap && cap.hasManage && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      icon={Settings01}
-                      label="Manage"
-                      disabled={!canEdit}
-                    />
-                  )}
-                  <SliderToggle
-                    selected={capabilities[cap.id]}
-                    onClick={() =>
-                      canEdit &&
-                      setCapabilities((prev) => ({
-                        ...prev,
-                        [cap.id]: !prev[cap.id],
-                      }))
-                    }
-                  />
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </Page.Vertical>
-
-      {/* Integrations */}
-      <Page.Vertical gap="sm">
-        <Page.H variant="h5">Integrations</Page.H>
-        <div className="s-w-full s-rounded-xl s-border s-border-border dark:s-border-border-night s-divide-y s-divide-border dark:s-divide-border-night">
-          {integrations.map((integration) => (
-            <div
-              key={integration.id}
-              className="s-flex s-items-center s-justify-between s-gap-4 s-px-4 s-py-3"
-            >
-              <div className="s-flex s-items-center s-gap-3">
-                <integration.Logo className="s-h-5 s-w-5 s-shrink-0" />
-                <div className="s-flex s-items-baseline s-gap-2">
-                  <span className="s-text-sm s-font-semibold s-text-foreground dark:s-text-foreground-night">
-                    {integration.label}
-                  </span>
-                  <span className="s-text-sm s-text-muted-foreground dark:s-text-muted-foreground-night">
-                    {integration.description}
-                  </span>
-                </div>
-              </div>
-              <div className="s-flex s-shrink-0 s-items-center s-gap-2">
-                {integration.connected && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    label="Reconnect"
-                    disabled={!canEdit}
-                  />
-                )}
-                <SliderToggle
-                  selected={integration.enabled}
-                  onClick={() =>
-                    canEdit &&
-                    setIntegrations((prev) =>
-                      prev.map((i) =>
-                        i.id === integration.id
-                          ? { ...i, enabled: !i.enabled }
-                          : i
-                      )
-                    )
-                  }
-                />
-              </div>
-            </div>
-          ))}
-        </div>
-      </Page.Vertical>
     </Page>
   );
 }
@@ -5742,7 +5788,7 @@ const NAV_SECTIONS: { title: string; items: NavSpec[] }[] = [
       { id: "people", label: "People", icon: Users01 },
       { id: "identity", label: "Identity & provisioning", icon: Fingerprint04 },
       { id: "workspace", label: "Workspace Settings", icon: Tool01 },
-      { id: "capabilities", label: "Governance", icon: Toggle01Left },
+      { id: "capabilities", label: "Workspace Governance", icon: Toggle01Left },
       { id: "model_providers", label: "Model Providers", icon: Brain },
       { id: "usage", label: "Usage", icon: PieChart01 },
       { id: "analytics", label: "Analytics", icon: BarChart01 },
