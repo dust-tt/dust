@@ -11,18 +11,15 @@
 // `{ ok: true }` / `{ ok: false, error }` envelope.
 
 import { dirname } from "node:path";
-import {
-  extractManifests,
-  type ManifestErrorKind,
-  readDeclaredDatabases,
-} from "./manifest.ts";
+import { extractFunctionState, readDeclaredDatabases } from "./db.ts";
 import { getFunctionSchema } from "./schema.ts";
+import type { DatabaseSchemaErrorKind } from "./types/db.ts";
 
 export type BuildErrorKind =
   | "bad_args"
   | "build_failed"
   | "schema_extraction_failed"
-  | ManifestErrorKind;
+  | DatabaseSchemaErrorKind;
 
 export type BuildResult =
   | { ok: true }
@@ -77,19 +74,25 @@ export async function build(
     };
   }
 
-  // 3. Extract per-database manifests (manifest.v1) when the function declares databases.
-  //    Schema files resolve relative to the SOURCE directory: the bundle has already inlined
-  //    its own copy of them.
+  // 3. Extract the per-database shapes when the function declares databases. Schema files
+  //    resolve relative to the SOURCE directory: the bundle has already inlined its own copy
+  //    of them.
   const declared = await readDeclaredDatabases(outBundlePath);
-  if (!declared.ok) {
-    return declared;
+  if (declared.isErr()) {
+    return {
+      ok: false,
+      error: { kind: declared.error.kind, message: declared.error.message },
+    };
   }
   if (declared.value.length > 0) {
-    const manifests = await extractManifests(dirname(srcPath), declared.value);
-    if (!manifests.ok) {
-      return manifests;
+    const state = await extractFunctionState(dirname(srcPath), declared.value);
+    if (state.isErr()) {
+      return {
+        ok: false,
+        error: { kind: state.error.kind, message: state.error.message },
+      };
     }
-    schema.databases = manifests.value;
+    schema.databases = state.value;
   }
 
   await Bun.write(outSchemaPath, JSON.stringify(schema));

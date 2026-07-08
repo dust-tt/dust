@@ -1,4 +1,4 @@
-// manifest.v1 shape: the single authored definition of per-database manifests.
+// Pod database shape (wire `version: 1`): the single authored definition.
 //
 // This file must stay dependency-free (no imports): front type-imports it
 // (front/lib/api/sandbox_functions/manifests.ts) and asserts its zod mirror infers exactly
@@ -8,25 +8,20 @@
 
 export const DB_NAME_REGEX = /^[a-z][a-z0-9_]{0,63}$/;
 
-// Model-authored names become plain-object keys in manifests (runner + front + JSONB);
-// these keys would collide with Object.prototype machinery.
+// Model-authored names become plain-object keys everywhere the shape travels (runner +
+// front + JSONB); these keys would collide with Object.prototype machinery.
 export const RESERVED_OBJECT_KEYS = new Set([
   "__proto__",
   "constructor",
   "prototype",
 ]);
 
-export type ManifestErrorKind =
+export type DatabaseSchemaErrorKind =
   | "databases_declaration_invalid"
   | "database_schema_unresolvable"
   | "database_schema_invalid";
 
-export interface ManifestError {
-  kind: ManifestErrorKind;
-  message: string;
-}
-
-export interface ManifestColumn {
+export interface DatabaseColumn {
   type: string;
   mode: string | null;
   notNull: boolean;
@@ -35,22 +30,22 @@ export interface ManifestColumn {
   autoIncrement: boolean;
 }
 
-export interface ManifestIndex {
+export interface DatabaseIndex {
   unique: boolean;
   columns: string[];
 }
 
-export interface ManifestTable {
-  columns: Record<string, ManifestColumn>;
-  indexes: Record<string, ManifestIndex>;
+export interface DatabaseTable {
+  columns: Record<string, DatabaseColumn>;
+  indexes: Record<string, DatabaseIndex>;
 }
 
-export interface DatabaseManifest {
+export interface DatabaseSchema {
   schemaFile: string;
-  tables: Record<string, ManifestTable>;
+  tables: Record<string, DatabaseTable>;
 }
 
-export interface FunctionStateManifest {
+export interface FunctionState {
   version: 1;
-  databases: Record<string, DatabaseManifest>;
+  databases: Record<string, DatabaseSchema>;
 }
