@@ -95,3 +95,18 @@ jobs:
         # so its bun:test suite is the only coverage of protocol/invoke/schema/runner.
         working-directory: cli/dust-sandbox/functions-runner
         run: bun test
+
+      - name: Test pod package
+        # @dust/pod ships into the sandbox image as a bun bundle; its bun:test
+        # suite is the only coverage of db()'s open/pragma/quota/error logic.
+        working-directory: cli/dust-sandbox/pod
+        run: |
+          bun install --frozen-lockfile
+          bun test
+
+      - name: Build pod package bundle
+        # Mirrors the sandbox-image vendor step (bun build index.ts --bundle
+        # --target=bun --packages=external) so bundle regressions surface here
+        # instead of at image build time.
+        working-directory: cli/dust-sandbox/pod
+        run: bun run build
