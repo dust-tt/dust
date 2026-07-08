@@ -11,7 +11,7 @@ export class GroupFactory {
   static async regular(workspace: WorkspaceType, name: string) {
     return GroupResource.makeNew({
       name,
-      kind: "regular",
+      kind: "regular_auto",
       workspaceId: workspace.id,
     });
   }
