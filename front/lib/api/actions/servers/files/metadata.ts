@@ -374,6 +374,9 @@ const EDIT_TOOL = {
       ),
   },
   stake: "never_ask" as const,
+  // Eager: kept in the cached prefix instead of behind tool search, so it never competes with
+  // other tools' descriptions for retrieval rank on an edit-intent query.
+  eager: true,
   displayLabels: {
     running: "Editing file",
     done: "Edited file",
