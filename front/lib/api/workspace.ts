@@ -562,6 +562,7 @@ export interface WorkspaceMetadata {
   dustMcpServerAcceptAllRedirectUris?: boolean;
   dustMcpServerAllowedRedirectUris?: string[];
   disableAuditLogs?: boolean;
+  disableWorkspaceAnalytics?: boolean;
   isBusiness?: boolean;
   phoneCountry?: string;
   sandboxAllowAgentEgressRequests?: boolean;

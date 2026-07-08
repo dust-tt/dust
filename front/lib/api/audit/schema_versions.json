@@ -96,6 +96,7 @@
   "wake_up.expired": 1,
   "wake_up.fired": 1,
   "workspace.advanced_model_access_updated": 1,
+  "workspace.analytics_updated": 1,
   "workspace.audit_logs_updated": 1,
   "workspace.default_user_spend_limit_updated": 1,
   "workspace.deleted": 2,

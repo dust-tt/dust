@@ -1158,13 +1158,13 @@ export const INTERNAL_MCP_SERVERS = {
   },
   workspace_analytics: {
     id: 1035,
-    // Gated by the workspace_analytics feature flag (off by default) and hidden
-    // from the builder tool-picker; the skill wires it by name. Data access is
-    // enforced per-tool via auth.isAdmin().
+    // Available to all workspaces unless the admin opts out, and hidden from the
+    // builder tool-picker; the skill wires it by name. Data access is enforced
+    // per-tool via auth.isAdmin().
     availability: "auto_hidden_builder",
     allowMultipleInstances: false,
-    isRestricted: ({ featureFlags }) =>
-      !featureFlags.includes("workspace_analytics"),
+    isRestricted: ({ isWorkspaceAnalyticsEnabled }) =>
+      !isWorkspaceAnalyticsEnabled,
     isPreview: false,
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
@@ -1227,6 +1227,7 @@ type IsRestrictedCallback = (params: {
   plan: PlanType;
   featureFlags: WhitelistableFeature[];
   isDeepDiveDisabled: boolean;
+  isWorkspaceAnalyticsEnabled: boolean;
 }) => boolean;
 
 type RuntimeToolStakeLevelCallbackParams = {
