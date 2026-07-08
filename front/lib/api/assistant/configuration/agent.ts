@@ -1,4 +1,5 @@
 import type { ServerSideMCPServerConfigurationType } from "@app/lib/actions/mcp";
+import { getModelsForAuth } from "@app/lib/advanced_models/enabled_models";
 import {
   WEB_SEARCH_BROWSE_ACTION_DESCRIPTION,
   WEB_SEARCH_BROWSE_SERVER_NAME,
@@ -75,7 +76,6 @@ import {
   GLOBAL_AGENTS_SID,
   isGlobalAgentId,
 } from "@app/types/assistant/assistant";
-import { CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG } from "@app/types/assistant/models/anthropic";
 import { validateResponseFormat } from "@app/types/assistant/models/utils";
 import { CoreAPI } from "@app/types/core/core_api";
 import type { ModelId } from "@app/types/shared/model_id";
@@ -113,6 +113,7 @@ export async function createPendingAgentConfiguration(
   const user = auth.getNonNullableUser();
 
   const sId = generateRandomModelSId();
+  const { defaultModel } = await getModelsForAuth(auth);
 
   await withTransaction(async (t) => {
     const agent = await AgentConfigurationModel.create(
@@ -124,11 +125,10 @@ export async function createPendingAgentConfiguration(
         name: PENDING_AGENT_PLACEHOLDER_NAME,
         description: PENDING_AGENT_PLACEHOLDER_DESCRIPTION,
         instructions: null,
-        providerId: CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG.providerId,
-        modelId: CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG.modelId,
+        providerId: defaultModel.providerId,
+        modelId: defaultModel.modelId,
         temperature: 0.7,
-        reasoningEffort:
-          CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG.defaultReasoningEffort,
+        reasoningEffort: defaultModel.defaultReasoningEffort,
         maxStepsPerRun: 8,
         reinforcement: "auto",
         pictureUrl: PENDING_AGENT_PLACEHOLDER_PICTURE_URL,

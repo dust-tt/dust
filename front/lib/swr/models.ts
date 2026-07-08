@@ -21,6 +21,7 @@ export function useModels({
 
   return {
     models: data?.models ?? emptyArray(),
+    defaultModel: data?.defaultModel ?? null,
     isModelsLoading: !error && !data && !disabled,
     isModelsError: !!error,
   };

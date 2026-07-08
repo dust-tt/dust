@@ -1,4 +1,6 @@
 import { advancedModelKey } from "@app/lib/advanced_models/resolve_allowed";
+import { pickPreferredLargeModel } from "@app/lib/api/assistant/models";
+import { getAvailableModelsForWorkspace } from "@app/lib/api/assistant/workspace_capabilities";
 import { isAdvancedModel } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
@@ -34,4 +36,32 @@ export async function withModelSelectability(
       !isAdvancedModel(model) ||
       allowedAdvancedModelKeys.has(advancedModelKey(model)),
   }));
+}
+
+export async function getEnabledModelsForAuth(
+  auth: Authenticator
+): Promise<EnabledModelConfigurationType[]> {
+  const availableModels = await getAvailableModelsForWorkspace(auth);
+  return withModelSelectability(auth, { models: availableModels });
+}
+
+export function getDefaultModelFromEnabledModels(
+  models: EnabledModelConfigurationType[]
+): EnabledModelConfigurationType {
+  const selectableModels = models.filter((m) => m.isSelectable);
+  return {
+    ...pickPreferredLargeModel(selectableModels),
+    isSelectable: true,
+  };
+}
+
+export async function getModelsForAuth(auth: Authenticator): Promise<{
+  models: EnabledModelConfigurationType[];
+  defaultModel: EnabledModelConfigurationType;
+}> {
+  const models = await getEnabledModelsForAuth(auth);
+  return {
+    models,
+    defaultModel: getDefaultModelFromEnabledModels(models),
+  };
 }
