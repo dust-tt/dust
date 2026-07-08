@@ -3,10 +3,6 @@ import { randomBytes } from "node:crypto";
 import { renderEgressSecretPlaceholder } from "@app/lib/api/sandbox/env_vars";
 import type { SandboxRuntimeOwner } from "@app/lib/api/sandbox/owner";
 import { rootCommand } from "@app/lib/api/sandbox/root_command";
-import {
-  buildSecretSourceFromRow,
-  resolveSecretValue,
-} from "@app/lib/api/sandbox/secret_source";
 import type { Authenticator } from "@app/lib/auth";
 import { PodSandboxEnvVarResource } from "@app/lib/resources/pod_sandbox_env_var_resource";
 import type { SandboxResource } from "@app/lib/resources/sandbox_resource";
@@ -14,6 +10,8 @@ import { SpaceResource } from "@app/lib/resources/space_resource";
 import { WorkspaceSandboxEnvVarResource } from "@app/lib/resources/workspace_sandbox_env_var_resource";
 import { Err, Ok, type Result } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
+import { decrypt } from "@app/types/shared/utils/encryption";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
 
 export const EGRESS_SECRETS_PATH = "/run/dust/egress-secrets.json";
 
@@ -52,18 +50,19 @@ export async function buildEgressSecretFileEntries(
       );
     }
 
-    // Workspace rows predate secret sources and are all dust-managed.
-    const valueResult = await resolveSecretValue(
-      { kind: "dust-managed" },
-      {
-        encryptedValue: resource.encryptedValue,
-        encryptionKey: owner.sId,
-      }
-    );
-    if (valueResult.isErr()) {
+    let value: string;
+    try {
+      value = decrypt({
+        encrypted: resource.encryptedValue,
+        key: owner.sId,
+        useCase: "developer_secret",
+      });
+    } catch (error) {
       return new Err(
         new Error(
-          `Failed to resolve sandbox HTTPS secret ${resource.envName}: ${valueResult.error.message}`
+          `Failed to decrypt sandbox HTTPS secret ${resource.envName}: ${
+            normalizeError(error).message
+          }`
         )
       );
     }
@@ -71,7 +70,7 @@ export async function buildEgressSecretFileEntries(
     entries.push({
       name: resource.name,
       placeholder: renderEgressSecretPlaceholder(resource.placeholderNonce),
-      value: valueResult.value,
+      value,
       allowedDomains: Array.from(resource.allowedDomains),
     });
   }
@@ -81,11 +80,13 @@ export async function buildEgressSecretFileEntries(
 
 export async function buildPodEgressSecretEntries(
   auth: Authenticator,
-  pod: SpaceResource
+  pod: SpaceResource,
+  runtimeOwner: SandboxRuntimeOwner
 ): Promise<Result<EgressSecretFileEntry[], Error>> {
   const resources = await PodSandboxEnvVarResource.listHttpsSecretsForEgress(
     auth,
-    pod
+    pod,
+    runtimeOwner
   );
 
   const entries: EgressSecretFileEntry[] = [];
@@ -105,25 +106,35 @@ export async function buildPodEgressSecretEntries(
       );
     }
 
-    const sourceResult = buildSecretSourceFromRow({
-      secretSourceKind: resource.secretSourceKind,
-    });
-    if (sourceResult.isErr()) {
+    if (resource.secretSourceKind !== "dust-managed") {
       return new Err(
         new Error(
-          `Failed to resolve pod sandbox HTTPS secret ${resource.envName}: ${sourceResult.error.message}`
+          `Secret source '${resource.secretSourceKind}' is not yet implemented for pod HTTPS secret ${resource.envName}.`
         )
       );
     }
 
-    const valueResult = await resolveSecretValue(sourceResult.value, {
-      encryptedValue: resource.encryptedValue,
-      encryptionKey: pod.sId,
-    });
-    if (valueResult.isErr()) {
+    if (resource.encryptedValue === null) {
       return new Err(
         new Error(
-          `Failed to resolve pod sandbox HTTPS secret ${resource.envName}: ${valueResult.error.message}`
+          `Pod HTTPS secret sandbox environment variable ${resource.envName} has no encrypted value.`
+        )
+      );
+    }
+
+    let value: string;
+    try {
+      value = decrypt({
+        encrypted: resource.encryptedValue,
+        key: pod.sId,
+        useCase: "developer_secret",
+      });
+    } catch (error) {
+      return new Err(
+        new Error(
+          `Failed to decrypt pod sandbox HTTPS secret ${resource.envName}: ${
+            normalizeError(error).message
+          }`
         )
       );
     }
@@ -131,7 +142,7 @@ export async function buildPodEgressSecretEntries(
     entries.push({
       name: resource.name,
       placeholder: renderEgressSecretPlaceholder(resource.placeholderNonce),
-      value: valueResult.value,
+      value,
       allowedDomains: Array.from(resource.allowedDomains),
     });
   }
@@ -182,7 +193,11 @@ export async function buildEgressSecretFileEntriesForOwner(
         );
       }
 
-      const podEntriesResult = await buildPodEgressSecretEntries(auth, pod);
+      const podEntriesResult = await buildPodEgressSecretEntries(
+        auth,
+        pod,
+        runtimeOwner
+      );
       if (podEntriesResult.isErr()) {
         return podEntriesResult;
       }

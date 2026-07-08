@@ -49,6 +49,8 @@ describe("PodSandboxEnvVarResource", () => {
         kind: "https_secret",
         allowedDomains: ["api.example.com"],
         secretSourceKind: "dust-managed",
+        createdByName: user.name,
+        lastUpdatedByName: user.name,
       }),
       expect.objectContaining({
         name: "DST_CONFIG_TOKEN",
@@ -56,6 +58,8 @@ describe("PodSandboxEnvVarResource", () => {
         placeholderNonce: null,
         allowedDomains: null,
         secretSourceKind: "dust-managed",
+        createdByName: user.name,
+        lastUpdatedByName: user.name,
       }),
     ]);
     expect(
@@ -106,7 +110,8 @@ describe("PodSandboxEnvVarResource", () => {
 
     const envResult = await PodSandboxEnvVarResource.loadEnv(
       authenticator,
-      pod
+      pod,
+      { kind: "pod", spaceId: pod.sId }
     );
     expect(envResult.isOk()).toBe(true);
     if (envResult.isErr()) {
@@ -141,7 +146,8 @@ describe("PodSandboxEnvVarResource", () => {
     const envResult =
       await PodSandboxEnvVarResource.loadHttpsSecretPlaceholderEnv(
         authenticator,
-        pod
+        pod,
+        { kind: "pod", spaceId: pod.sId }
       );
     expect(envResult.isOk()).toBe(true);
     if (envResult.isErr()) {
@@ -206,5 +212,195 @@ describe("PodSandboxEnvVarResource", () => {
     await expect(
       PodSandboxEnvVarResource.listForPod(authenticator, globalSpace)
     ).rejects.toThrow("Only pod spaces can have sandbox environment variables");
+  });
+
+  it("rejects loads for sandboxes not owned by the pod", async () => {
+    const { authenticator, workspace, user } = await createResourceTest({
+      role: "admin",
+    });
+    const podA = await SpaceFactory.project(workspace, user.id);
+    const podB = await SpaceFactory.project(workspace, user.id);
+
+    await expect(
+      PodSandboxEnvVarResource.loadEnv(authenticator, podA, {
+        kind: "pod",
+        spaceId: podB.sId,
+      })
+    ).rejects.toThrow(
+      "Pod env vars can only be loaded for pod-owned sandboxes"
+    );
+
+    await expect(
+      PodSandboxEnvVarResource.loadHttpsSecretPlaceholderEnv(
+        authenticator,
+        podA,
+        { kind: "conversation", conversationId: "conversation-test" }
+      )
+    ).rejects.toThrow(
+      "Pod env vars can only be loaded for pod-owned sandboxes"
+    );
+  });
+
+  it("upserts: updates the value in place and rejects kind transitions", async () => {
+    const { authenticator, workspace, user } = await createResourceTest({
+      role: "admin",
+    });
+    const pod = await SpaceFactory.project(workspace, user.id);
+
+    const createResult = await PodSandboxEnvVarResource.upsert(
+      authenticator,
+      pod,
+      {
+        name: "CONFIG_TOKEN",
+        value: "config-value",
+      }
+    );
+    expect(createResult.isOk()).toBe(true);
+    if (createResult.isErr()) {
+      throw createResult.error;
+    }
+    expect(createResult.value.created).toBe(true);
+
+    const updateResult = await PodSandboxEnvVarResource.upsert(
+      authenticator,
+      pod,
+      {
+        name: "CONFIG_TOKEN",
+        value: "rotated-value",
+      }
+    );
+    expect(updateResult.isOk()).toBe(true);
+    if (updateResult.isErr()) {
+      throw updateResult.error;
+    }
+    expect(updateResult.value.created).toBe(false);
+
+    const envResult = await PodSandboxEnvVarResource.loadEnv(
+      authenticator,
+      pod,
+      { kind: "pod", spaceId: pod.sId }
+    );
+    expect(envResult.isOk()).toBe(true);
+    if (envResult.isErr()) {
+      throw envResult.error;
+    }
+    expect(envResult.value).toEqual({ DST_CONFIG_TOKEN: "rotated-value" });
+
+    const kindTransitionResult = await PodSandboxEnvVarResource.upsert(
+      authenticator,
+      pod,
+      {
+        name: "CONFIG_TOKEN",
+        kind: "https_secret",
+        value: "secret-value",
+        allowedDomains: ["api.example.com"],
+      }
+    );
+    expect(kindTransitionResult.isErr()).toBe(true);
+  });
+
+  it("promotes a config var to an https secret", async () => {
+    const { authenticator, workspace, user } = await createResourceTest({
+      role: "admin",
+    });
+    const pod = await SpaceFactory.project(workspace, user.id);
+
+    const createResult = await PodSandboxEnvVarResource.makeNew(
+      authenticator,
+      pod,
+      {
+        name: "API_TOKEN",
+        value: "api-secret",
+      }
+    );
+    expect(createResult.isOk()).toBe(true);
+    if (createResult.isErr()) {
+      throw createResult.error;
+    }
+
+    const promoteResult = await createResult.value.promoteToHttpsSecret(
+      authenticator,
+      pod,
+      { allowedDomains: ["api.example.com"] }
+    );
+    expect(promoteResult.isOk()).toBe(true);
+    if (promoteResult.isErr()) {
+      throw promoteResult.error;
+    }
+
+    const fetched = await PodSandboxEnvVarResource.fetchById(
+      authenticator,
+      createResult.value.sId
+    );
+    expect(fetched?.kind).toBe("https_secret");
+    expect(fetched?.placeholderNonce).not.toBeNull();
+    expect(fetched?.allowedDomains).toEqual(["api.example.com"]);
+
+    // A second promotion must reject: the row is no longer config.
+    const rePromoteResult = await fetched?.promoteToHttpsSecret(
+      authenticator,
+      pod,
+      { allowedDomains: ["api.example.com"] }
+    );
+    expect(rePromoteResult?.isErr()).toBe(true);
+  });
+
+  it("updates the value and allowed domains through the instance methods", async () => {
+    const { authenticator, workspace, user } = await createResourceTest({
+      role: "admin",
+    });
+    const pod = await SpaceFactory.project(workspace, user.id);
+
+    const createResult = await PodSandboxEnvVarResource.makeNew(
+      authenticator,
+      pod,
+      {
+        name: "API_TOKEN",
+        kind: "https_secret",
+        value: "api-secret",
+        allowedDomains: ["api.example.com"],
+      }
+    );
+    expect(createResult.isOk()).toBe(true);
+    if (createResult.isErr()) {
+      throw createResult.error;
+    }
+    const resource = createResult.value;
+
+    const updateValueResult = await resource.updateValue(authenticator, pod, {
+      value: "rotated-secret",
+    });
+    expect(updateValueResult.isOk()).toBe(true);
+
+    const updateDomainsResult = await resource.updateAllowedDomains(
+      authenticator,
+      pod,
+      { allowedDomains: ["other.example.com"] }
+    );
+    expect(updateDomainsResult.isOk()).toBe(true);
+
+    const fetched = await PodSandboxEnvVarResource.fetchById(
+      authenticator,
+      resource.sId
+    );
+    expect(fetched?.allowedDomains).toEqual(["other.example.com"]);
+
+    // The rotated value decrypts under the pod scope key.
+    const entriesEnv =
+      await PodSandboxEnvVarResource.loadHttpsSecretPlaceholderEnv(
+        authenticator,
+        pod,
+        { kind: "pod", spaceId: pod.sId }
+      );
+    expect(entriesEnv.isOk()).toBe(true);
+
+    // Mutating through a mismatched pod must trip the ownership assert
+    // before any re-encryption happens.
+    const otherPod = await SpaceFactory.project(workspace, user.id);
+    await expect(
+      resource.updateValue(authenticator, otherPod, { value: "nope" })
+    ).rejects.toThrow(
+      "Pod sandbox environment variable does not belong to this pod"
+    );
   });
 });

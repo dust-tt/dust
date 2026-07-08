@@ -3,6 +3,7 @@ import {
   emitAuditLogEvent,
 } from "@app/lib/api/audit/workos_audit";
 import {
+  areAllowedDomainsEqual,
   MAX_VARS_PER_WORKSPACE,
   normalizeAllowedDomainsForKind,
   renderEgressSecretPlaceholder,
@@ -57,28 +58,6 @@ function formatAllowedDomainsForAudit(
   allowedDomains: string[] | null | undefined
 ): string {
   return JSON.stringify(allowedDomains ?? []);
-}
-
-// Domains are compared as sets so reordering the same domains does not
-// trigger an `allowed_domains_updated` audit emission.
-function areAllowedDomainsEqual(
-  left: string[] | null | undefined,
-  right: string[] | null | undefined
-): boolean {
-  const leftSet = new Set(left ?? []);
-  const rightSet = new Set(right ?? []);
-
-  if (leftSet.size !== rightSet.size) {
-    return false;
-  }
-
-  for (const domain of leftSet) {
-    if (!rightSet.has(domain)) {
-      return false;
-    }
-  }
-
-  return true;
 }
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging

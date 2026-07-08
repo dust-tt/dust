@@ -1,6 +1,7 @@
 import { DustFileSystem } from "@app/lib/api/file_system/dust_file_system";
 import { ensurePodStateHealthOnSleep } from "@app/lib/api/sandbox/db";
 import { getSandboxImage } from "@app/lib/api/sandbox/image";
+import type { SandboxRuntimeOwner } from "@app/lib/api/sandbox/owner";
 import { podSandboxOnlyMounts } from "@app/lib/api/sandbox/pod_mounts";
 import type { Authenticator } from "@app/lib/auth";
 import { PodSandboxEnvVarResource } from "@app/lib/resources/pod_sandbox_env_var_resource";
@@ -160,12 +161,22 @@ export class PodSandboxAdapter {
     // vars are injected in cleartext; HTTPS secrets as their DSEC
     // placeholders (dsbx swaps them on the wire). Fail closed: a var we
     // cannot resolve aborts activation rather than booting without it.
-    const podEnvResult = await PodSandboxEnvVarResource.loadEnv(auth, pod);
+    const runtimeOwner: SandboxRuntimeOwner = { kind: "pod", spaceId: pod.sId };
+
+    const podEnvResult = await PodSandboxEnvVarResource.loadEnv(
+      auth,
+      pod,
+      runtimeOwner
+    );
     if (podEnvResult.isErr()) {
       return podEnvResult;
     }
     const podPlaceholderEnvResult =
-      await PodSandboxEnvVarResource.loadHttpsSecretPlaceholderEnv(auth, pod);
+      await PodSandboxEnvVarResource.loadHttpsSecretPlaceholderEnv(
+        auth,
+        pod,
+        runtimeOwner
+      );
     if (podPlaceholderEnvResult.isErr()) {
       return podPlaceholderEnvResult;
     }

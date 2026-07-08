@@ -94,6 +94,29 @@ export function envVarPrefixForKind(kind: WorkspaceSandboxEnvVarKind): string {
   return ENV_VAR_PREFIX_BY_KIND[kind];
 }
 
+// Domains are compared as sets so reordering the same domains does not count
+// as a change (e.g. does not trigger an `allowed_domains_updated` audit
+// emission or a no-op row update).
+export function areAllowedDomainsEqual(
+  left: string[] | null | undefined,
+  right: string[] | null | undefined
+): boolean {
+  const leftSet = new Set(left ?? []);
+  const rightSet = new Set(right ?? []);
+
+  if (leftSet.size !== rightSet.size) {
+    return false;
+  }
+
+  for (const domain of leftSet) {
+    if (!rightSet.has(domain)) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
 export type NormalizedAllowedDomains = string[] | null | undefined;
 
 // Validates the allowedDomains input against the row kind: config rows must

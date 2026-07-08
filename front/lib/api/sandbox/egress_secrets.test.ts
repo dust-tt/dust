@@ -259,7 +259,14 @@ describe("egress secrets file", () => {
       throw secretResult.error;
     }
 
-    const entriesResult = await buildPodEgressSecretEntries(authenticator, pod);
+    const entriesResult = await buildPodEgressSecretEntries(
+      authenticator,
+      pod,
+      {
+        kind: "pod",
+        spaceId: pod.sId,
+      }
+    );
     expect(entriesResult.isOk()).toBe(true);
     if (entriesResult.isErr()) {
       throw entriesResult.error;
@@ -308,7 +315,14 @@ describe("egress secrets file", () => {
       }
     );
 
-    const entriesResult = await buildPodEgressSecretEntries(authenticator, pod);
+    const entriesResult = await buildPodEgressSecretEntries(
+      authenticator,
+      pod,
+      {
+        kind: "pod",
+        spaceId: pod.sId,
+      }
+    );
     expect(entriesResult.isErr()).toBe(true);
     if (entriesResult.isOk()) {
       throw new Error("Expected an error.");

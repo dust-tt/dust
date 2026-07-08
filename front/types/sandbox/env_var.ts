@@ -27,4 +27,6 @@ export type PodSandboxEnvVarType = {
   secretSourceKind: string;
   createdAt: number;
   updatedAt: number;
+  createdByName: string | null;
+  lastUpdatedByName: string | null;
 };
