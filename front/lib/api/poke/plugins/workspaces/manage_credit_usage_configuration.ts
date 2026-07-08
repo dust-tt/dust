@@ -41,14 +41,14 @@ export const manageCreditUsageConfigurationPlugin = createPlugin({
       defaultDiscountPercent: {
         type: "number",
         variant: "text",
-        label: "Default Discount (%)",
+        label: "Default discount (%)",
         description: `Discount applied to AWU credit purchases (0-${MAX_AWU_DISCOUNT_PERCENT}%).`,
         async: true,
       },
       paygEnabled: {
         type: "boolean",
         variant: "toggle",
-        label: "PAYG Enabled",
+        label: "Pay-as-you-go",
         description:
           "Enable Pay-as-you-go for this workspace (Metronome-billed workspaces only).",
         async: true,
@@ -56,46 +56,46 @@ export const manageCreditUsageConfigurationPlugin = createPlugin({
       usageCapCredits: {
         type: "number",
         variant: "text",
-        label: "Workspace Credit Pool Monthly Usage Cap (credits)",
+        label: "Monthly usage cap (credits)",
         description: `Workspace-level monthly spend cap for the Metronome spend-threshold alert. Set to 0 to disable. Range: 0-${MAX_AWU_USAGE_CAP_CREDITS.toLocaleString()}.`,
         async: true,
       },
       balanceThresholdCredits: {
         type: "number",
         variant: "text",
-        label: "Workspace Credit Pool Balance Threshold Alert (credits)",
+        label: "Workspace credit pool threshold alert (credits)",
         description:
-          "Email admins when the workspace pool balance drops below this amount. Set to 0 to disable.",
+          "Email all workspace admins when the workspace credit pool balance drops below this amount. Set to 0 to disable.",
         async: true,
       },
       defaultPoolCapCredits: {
         type: "number",
         variant: "text",
-        label: "Default Per-User Pool Access (credits)",
+        label: "Default per-user workspace credit pool monthly limit (credits)",
         description:
-          "Default pool credit limit added on top of each seat's allowance. Set to 0 to prevent pool usage.",
+          "Default per-user workspace credit pool monthly limit added on top of each seat's built-in allowance. Can be overridden per user in the members table. Set to 0 to remove pool access.",
         async: true,
       },
       programmaticMonthlyCapCredits: {
         type: "number",
         variant: "text",
-        label: "Programmatic Monthly Cap (credits)",
+        label: "Programmatic monthly limit (credits)",
         description:
-          "Monthly cap on programmatic (API) AWU usage. Set to 0 to disable.",
+          "Maximum credits allowed for programmatic usage per month. Set to 0 to block all programmatic access.",
         async: true,
       },
       autoSeatUpgradeEnabled: {
         type: "boolean",
         variant: "toggle",
-        label: "Auto-Upgrade Seats",
+        label: "Auto-upgrade seats",
         description:
-          "Automatically upgrade members to the next seat tier when they hit their credit limit.",
+          "When a member reaches their credit limit, automatically move them to the next seat tier available in the plan instead of blocking them. This may increase the workspace's subscription cost.",
         async: true,
       },
       topUpEnabled: {
         type: "boolean",
         variant: "toggle",
-        label: "Top-Up Enabled (Enterprise)",
+        label: "Top-up (Enterprise)",
         description:
           "Show the 'Top up' button on the Usage page for enterprise-plan workspaces.",
         async: true,
@@ -103,7 +103,7 @@ export const manageCreditUsageConfigurationPlugin = createPlugin({
       autoInvoiceFinalizationEnabled: {
         type: "boolean",
         variant: "toggle",
-        label: "Auto Invoice Finalization",
+        label: "Auto invoice finalization",
         description:
           "Automatically finalize Metronome-pushed Stripe draft invoices. Disable to leave invoices as cleaned drafts for manual review.",
         async: true,
