@@ -9,23 +9,10 @@ import {
 export function getDataSourceSearchTimestampGtMs({
   documentTimeFrame,
   relativeTimeFrame,
-  isDocumentTimeFrameEnabled,
 }: {
   documentTimeFrame?: string;
   relativeTimeFrame?: string;
-  isDocumentTimeFrameEnabled: boolean;
 }): Result<number | null, MCPError> {
-  if (documentTimeFrame !== undefined && !isDocumentTimeFrameEnabled) {
-    return new Err(
-      new MCPError(
-        "The `documentTimeFrame` parameter is not enabled for this workspace.",
-        {
-          tracked: false,
-        }
-      )
-    );
-  }
-
   if (documentTimeFrame !== undefined) {
     const timeFrame = parseTimeFrame(documentTimeFrame);
     if (!timeFrame) {

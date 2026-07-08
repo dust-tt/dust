@@ -17,12 +17,11 @@ import {
   isAgentLoopRunContext,
   type ToolContextType,
 } from "@app/lib/actions/types";
-import { DATA_SOURCE_SEARCH_DOCUMENT_TIME_FRAME_FEATURE_FLAG } from "@app/lib/api/actions/servers/data_sources_file_system/metadata";
 import { getDataSourceSearchTimestampGtMs } from "@app/lib/api/actions/servers/data_sources_file_system/tools/search_time_frame";
 import { getRefs } from "@app/lib/api/assistant/citations";
 import config from "@app/lib/api/config";
 import { getLlmCredentials } from "@app/lib/api/provider_credentials";
-import { type Authenticator, hasFeatureFlag } from "@app/lib/auth";
+import type { Authenticator } from "@app/lib/auth";
 import { getDisplayNameForDocument } from "@app/lib/data_sources";
 import logger from "@app/logger/logger";
 import { CoreAPI } from "@app/types/core/core_api";
@@ -52,13 +51,6 @@ export async function search(
   const timestampGtMsResult = getDataSourceSearchTimestampGtMs({
     documentTimeFrame,
     relativeTimeFrame,
-    isDocumentTimeFrameEnabled:
-      documentTimeFrame !== undefined
-        ? await hasFeatureFlag(
-            auth,
-            DATA_SOURCE_SEARCH_DOCUMENT_TIME_FRAME_FEATURE_FLAG
-          )
-        : false,
   });
 
   if (timestampGtMsResult.isErr()) {

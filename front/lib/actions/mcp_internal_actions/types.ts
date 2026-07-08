@@ -51,12 +51,11 @@ export type SearchWithNodesInputType = z.infer<
 export const SearchDocumentTimeFrameInputSchema = z.object({
   documentTimeFrame: z
     .string()
-    .regex(/^\d+[hdwmy]$/)
     .describe(
       "Optional relative time frame used to restrict semantic search to recently updated documents. " +
-        "Use this only when the user asks for recent or fresh information. " +
+        "Leave this unset by default. Only set it when the user request or conversation provides a specific time range that is known to be relevant. " +
         "Examples: `1d` for the last day, `7d` for the last 7 days, `4w` for the last 4 weeks, `6m` for the last 6 months. " +
-        "Leave it unset when older documents may still be relevant."
+        "Do not set it just because newer documents might be better or the user asks generally for recent information without a specific duration."
     )
     .optional(),
 });

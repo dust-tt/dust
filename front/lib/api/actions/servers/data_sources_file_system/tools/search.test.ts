@@ -6,26 +6,24 @@ describe("getDataSourceSearchTimestampGtMs", () => {
     vi.useRealTimers();
   });
 
-  it("rejects documentTimeFrame when the feature flag is disabled", () => {
+  it("rejects invalid documentTimeFrame values", () => {
     const result = getDataSourceSearchTimestampGtMs({
-      documentTimeFrame: "7d",
-      isDocumentTimeFrameEnabled: false,
+      documentTimeFrame: "last week",
     });
 
     expect(result.isErr()).toBe(true);
     if (result.isErr()) {
-      expect(result.error.message).toContain("not enabled");
+      expect(result.error.message).toContain("Invalid `documentTimeFrame`");
     }
   });
 
-  it("uses documentTimeFrame over relativeTimeFrame when enabled", () => {
+  it("uses documentTimeFrame over relativeTimeFrame", () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-07-07T12:00:00.000Z"));
 
     const result = getDataSourceSearchTimestampGtMs({
       documentTimeFrame: "7d",
       relativeTimeFrame: "2y",
-      isDocumentTimeFrameEnabled: true,
     });
 
     expect(result.isOk()).toBe(true);
@@ -40,7 +38,6 @@ describe("getDataSourceSearchTimestampGtMs", () => {
 
     const result = getDataSourceSearchTimestampGtMs({
       relativeTimeFrame: "4w",
-      isDocumentTimeFrameEnabled: false,
     });
 
     expect(result.isOk()).toBe(true);

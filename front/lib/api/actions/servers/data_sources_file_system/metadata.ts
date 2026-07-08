@@ -23,8 +23,6 @@ export const FILESYSTEM_CAT_TOOL_NAME = "cat";
 export const FILESYSTEM_FIND_TOOL_NAME = "find";
 export const FILESYSTEM_LOCATE_IN_TREE_TOOL_NAME = "locate_in_tree";
 export const FILESYSTEM_LIST_TOOL_NAME = "list";
-export const DATA_SOURCE_SEARCH_DOCUMENT_TIME_FRAME_FEATURE_FLAG =
-  "data_source_search_document_time_frame";
 
 export const DATA_SOURCES_FILE_SYSTEM_TOOLS_METADATA = createToolsRecord({
   [FILESYSTEM_CAT_TOOL_NAME]: {
@@ -66,7 +64,10 @@ export const DATA_SOURCES_FILE_SYSTEM_TOOLS_METADATA = createToolsRecord({
       "Use to find relevant passages, answer questions, look up knowledge, or retrieve content from " +
       "connected data sources. Searches all children of the designated nodeIds. " +
       `Prefer this over '${FILESYSTEM_FIND_TOOL_NAME}' when you know what you're looking for conceptually but not the exact document title.`,
-    schema: SearchWithNodesInputSchema.shape,
+    schema: {
+      ...SearchWithNodesInputSchema.shape,
+      ...SearchDocumentTimeFrameInputSchema.shape,
+    },
     stake: "never_ask",
     eager: true,
     displayLabels: {
@@ -113,65 +114,6 @@ export const DATA_SOURCES_FILE_SYSTEM_TOOLS_METADATA = createToolsRecord({
 
 // Tool metadata with tags support for search and find tools
 export const DATA_SOURCES_FILE_SYSTEM_TOOLS_WITH_TAGS_METADATA =
-  createToolsRecord({
-    [FILESYSTEM_CAT_TOOL_NAME]:
-      DATA_SOURCES_FILE_SYSTEM_TOOLS_METADATA[FILESYSTEM_CAT_TOOL_NAME],
-    [FILESYSTEM_LIST_TOOL_NAME]:
-      DATA_SOURCES_FILE_SYSTEM_TOOLS_METADATA[FILESYSTEM_LIST_TOOL_NAME],
-    [FILESYSTEM_SEARCH_TOOL_NAME]: {
-      ...DATA_SOURCES_FILE_SYSTEM_TOOLS_METADATA[FILESYSTEM_SEARCH_TOOL_NAME],
-      schema: {
-        ...SearchWithNodesInputSchema.shape,
-        ...TagsInputSchema.shape,
-      },
-    },
-    [FILESYSTEM_FIND_TOOL_NAME]: {
-      ...DATA_SOURCES_FILE_SYSTEM_TOOLS_METADATA[FILESYSTEM_FIND_TOOL_NAME],
-      schema: {
-        ...DataSourceFilesystemFindInputSchema.shape,
-        ...TagsInputSchema.shape,
-      },
-    },
-    [FILESYSTEM_LOCATE_IN_TREE_TOOL_NAME]:
-      DATA_SOURCES_FILE_SYSTEM_TOOLS_METADATA[
-        FILESYSTEM_LOCATE_IN_TREE_TOOL_NAME
-      ],
-    [FIND_TAGS_TOOL_NAME]: {
-      description: FIND_TAGS_BASE_DESCRIPTION,
-      schema: findTagsSchema,
-      stake: "never_ask",
-      displayLabels: {
-        running: "Finding tags",
-        done: "Find tags",
-      },
-      toolCostCategory: "advanced",
-      freeUsage: false,
-      enableAlerting: true,
-    },
-  });
-
-export const DATA_SOURCES_FILE_SYSTEM_TOOLS_WITH_DOCUMENT_TIME_FRAME_METADATA =
-  createToolsRecord({
-    [FILESYSTEM_CAT_TOOL_NAME]:
-      DATA_SOURCES_FILE_SYSTEM_TOOLS_METADATA[FILESYSTEM_CAT_TOOL_NAME],
-    [FILESYSTEM_LIST_TOOL_NAME]:
-      DATA_SOURCES_FILE_SYSTEM_TOOLS_METADATA[FILESYSTEM_LIST_TOOL_NAME],
-    [FILESYSTEM_SEARCH_TOOL_NAME]: {
-      ...DATA_SOURCES_FILE_SYSTEM_TOOLS_METADATA[FILESYSTEM_SEARCH_TOOL_NAME],
-      schema: {
-        ...SearchWithNodesInputSchema.shape,
-        ...SearchDocumentTimeFrameInputSchema.shape,
-      },
-    },
-    [FILESYSTEM_FIND_TOOL_NAME]:
-      DATA_SOURCES_FILE_SYSTEM_TOOLS_METADATA[FILESYSTEM_FIND_TOOL_NAME],
-    [FILESYSTEM_LOCATE_IN_TREE_TOOL_NAME]:
-      DATA_SOURCES_FILE_SYSTEM_TOOLS_METADATA[
-        FILESYSTEM_LOCATE_IN_TREE_TOOL_NAME
-      ],
-  });
-
-export const DATA_SOURCES_FILE_SYSTEM_TOOLS_WITH_TAGS_AND_DOCUMENT_TIME_FRAME_METADATA =
   createToolsRecord({
     [FILESYSTEM_CAT_TOOL_NAME]:
       DATA_SOURCES_FILE_SYSTEM_TOOLS_METADATA[FILESYSTEM_CAT_TOOL_NAME],

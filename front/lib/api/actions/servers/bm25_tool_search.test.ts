@@ -1531,7 +1531,7 @@ const QUERIES: LabeledQuery[] = [
   },
   {
     query:
-      "semantically search connected data sources for content about a topic",
+      "semantic search connected data source documents for content about a topic",
     expected: "data_sources_file_system.semantic_search",
   },
   {
