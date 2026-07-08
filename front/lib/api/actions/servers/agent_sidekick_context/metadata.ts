@@ -173,6 +173,8 @@ export const AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA = createToolsRecord({
       running: "Describing skill",
       done: "Describe skill",
     },
+    toolCostCategory: "basic",
+    freeUsage: true,
   },
   get_available_agents: {
     description:
