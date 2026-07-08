@@ -136,3 +136,29 @@ pub async fn batch_count_async(
 
     Ok(r)
 }
+
+#[cfg(test)]
+mod tests {
+    use crate::providers::sentencepiece::sentencepiece::batch_count_async;
+    use crate::providers::sentencepiece::sentencepiece::batch_tokenize_async;
+    use crate::providers::sentencepiece::sentencepiece::mistral_instruct_tokenizer_240216_model_v2_base_singleton;
+
+    #[tokio::test]
+    async fn batch_count_matches_tokenize_test() {
+        let spp = mistral_instruct_tokenizer_240216_model_v2_base_singleton();
+        let texts = vec![
+            "Un petit Soupinou".to_string(),
+            "Soupinou 🤗".to_string(),
+            "This is a test         with a lot of spaces".to_string(),
+            "".to_string(),
+        ];
+
+        let tokenized = batch_tokenize_async(spp.clone(), texts.clone())
+            .await
+            .unwrap();
+        let counts = batch_count_async(spp, texts).await.unwrap();
+
+        let expected: Vec<usize> = tokenized.iter().map(|tokens| tokens.len()).collect();
+        assert_eq!(counts, expected);
+    }
+}
