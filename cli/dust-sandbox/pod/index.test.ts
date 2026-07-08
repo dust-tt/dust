@@ -154,6 +154,15 @@ describe("must-exist open", () => {
     expect(() => db(name)).toThrow(PodDatabaseError);
     expect(() => db(name)).toThrow(/DUST_POD_DATABASES_DIR is not set/);
   });
+
+  test("an empty databases dir env var is treated as absent", () => {
+    // dsbx passes env through verbatim; empty means the same broken launch
+    // context as unset, and this is the one layer that normalizes it.
+    process.env[POD_DATABASES_DIR_ENV] = "";
+    const name = uniqueName("nodir");
+    expect(() => db(name)).toThrow(PodDatabaseError);
+    expect(() => db(name)).toThrow(/DUST_POD_DATABASES_DIR is not set/);
+  });
 });
 
 describe("queries through drizzle", () => {

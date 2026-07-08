@@ -67,7 +67,12 @@ export const POD_DATABASE_BUSY_TIMEOUT_MS = 5000;
 /** Valid database names (also the manifest/publish contract). */
 export const POD_DATABASE_NAME_REGEX = /^[a-z][a-z0-9_]{0,63}$/;
 
-export class PodDatabaseError extends Error {}
+export class PodDatabaseError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "PodDatabaseError";
+  }
+}
 
 export class PodDatabaseInvalidNameError extends PodDatabaseError {
   constructor(name: string) {
