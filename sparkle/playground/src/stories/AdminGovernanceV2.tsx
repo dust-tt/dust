@@ -22,6 +22,8 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
   DropdownMenuSearchbar,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
@@ -669,7 +671,7 @@ const INITIAL_CONNECTIONS: Omit<ConnectionRow, "onClick">[] = [
 
 const ROLE_LABELS: Record<Role, string> = {
   super_admin: "Super Admin",
-  admin: "Business Admin",
+  admin: "Manager",
   security_admin: "Security Admin",
   billing_admin: "Billing Admin",
 };
@@ -710,7 +712,7 @@ const ROLE_DISPLAY: Record<
   }
 > = {
   super_admin: { label: "Super Admin", color: "green" },
-  admin: { label: "Business Admin", color: "green" },
+  admin: { label: "Manager", color: "green" },
   security_admin: { label: "Security Admin", color: "warning" },
   billing_admin: { label: "Billing Admin", color: "highlight" },
   member: { label: "Member", color: "blue" },
@@ -1127,7 +1129,7 @@ function PeoplePage({
     const invitedRole: MemberRole =
       inviteRole === "Super Admin"
         ? "super_admin"
-        : inviteRole === "Business Admin"
+        : inviteRole === "Manager"
           ? "admin"
           : inviteRole === "Security Admin"
             ? "security_admin"
@@ -1309,7 +1311,7 @@ function PeoplePage({
                 {(
                   [
                     "Super Admin",
-                    "Business Admin",
+                    "Manager",
                     "Security Admin",
                     "Billing Admin",
                     "Member",
@@ -1645,7 +1647,7 @@ function PeoplePage({
         </Dialog>
       )}
 
-      {/* Seat upgrade confirmation (Business Admin only) */}
+      {/* Seat upgrade confirmation (Manager only) */}
       <Dialog
         open={!!confirmSeatUpgrade}
         onOpenChange={(open) => {
@@ -1743,7 +1745,7 @@ function IdentityPage({ role }: { role: Role }) {
   return (
     <Page>
       <Page.Header
-        title="Identity & provisioning"
+        title="IT & Security"
         description="Verify your domain, manage team members and their permissions."
         icon={Fingerprint04}
       />
@@ -2116,18 +2118,33 @@ const FRAME_VISIBILITY_OPTIONS: Omit<
   },
 ];
 
+type FrameSharingAccess = "no_restrictions" | "members_email" | "members_only";
+
 function FrameSharingGovernanceRow({
   settings,
   canEdit,
   onChange,
   groups,
   onCreateGroup,
+  disabledLabel = "Disabled",
+  access,
+  onAccessChange,
+  accessOptions,
 }: {
   settings: FrameVisibilitySetting[];
   canEdit: boolean;
   onChange: (updated: FrameVisibilitySetting[]) => void;
   groups: GroupRow[];
   onCreateGroup: () => void;
+  disabledLabel?: string;
+  access: FrameSharingAccess;
+  onAccessChange: (v: FrameSharingAccess) => void;
+  accessOptions: {
+    value: FrameSharingAccess;
+    label: string;
+    description: string;
+    icon: React.ComponentType<{ className?: string }>;
+  }[];
 }) {
   const [searchByLevel, setSearchByLevel] = useState<
     Partial<Record<FrameVisibilityLevel, string>>
@@ -2136,9 +2153,53 @@ function FrameSharingGovernanceRow({
   const update = (updated: FrameVisibilitySetting) =>
     onChange(settings.map((s) => (s.level === updated.level ? updated : s)));
 
+  const visibleSettings = settings.filter((s) => {
+    if (access === "members_only") return false;
+    if (access === "members_email") return s.level === "email_invite";
+    return true;
+  });
+
   return (
     <div className="s-w-full s-rounded-xl s-border s-border-border dark:s-border-border-night s-divide-y s-divide-border dark:s-divide-border-night">
-      {settings.map((s) => {
+      <div className="s-flex s-items-center s-justify-between s-gap-4 s-px-4 s-py-3">
+        <div className="s-flex s-flex-col s-gap-0.5">
+          <span className="s-heading-base s-text-foreground dark:s-text-foreground-night">
+            Who can access Frames
+          </span>
+          <span className="s-text-sm s-text-muted-foreground dark:s-text-muted-foreground-night">
+            Control the level of access for Frames in this workspace.
+          </span>
+        </div>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              variant="outline"
+              size="sm"
+              icon={accessOptions.find((o) => o.value === access)!.icon}
+              label={accessOptions.find((o) => o.value === access)!.label}
+              isSelect
+              disabled={!canEdit}
+            />
+          </DropdownMenuTrigger>
+          <DropdownMenuContent>
+            <DropdownMenuRadioGroup
+              value={access}
+              onValueChange={(v) => onAccessChange(v as FrameSharingAccess)}
+            >
+              {accessOptions.map((o) => (
+                <DropdownMenuRadioItem
+                  key={o.value}
+                  value={o.value}
+                  label={o.label}
+                  description={o.description}
+                  icon={o.icon}
+                />
+              ))}
+            </DropdownMenuRadioGroup>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
+      {visibleSettings.map((s) => {
         const Icon = s.icon;
         const search = searchByLevel[s.level] ?? "";
         const filteredGroups = groups.filter(
@@ -2153,10 +2214,7 @@ function FrameSharingGovernanceRow({
           >
             <div className="s-flex s-w-full s-items-center s-justify-between s-gap-4">
               <Page.Vertical gap="xs" sizing="grow">
-                <div className="s-flex s-items-center s-gap-2">
-                  <Icon className="s-h-4 s-w-4 s-shrink-0 s-text-muted-foreground dark:s-text-muted-foreground-night" />
-                  <Page.H variant="h6">{s.label}</Page.H>
-                </div>
+                <Page.H variant="h6">{s.label}</Page.H>
                 <Page.P variant="secondary" size="sm">
                   {s.description}
                 </Page.P>
@@ -2172,7 +2230,7 @@ function FrameSharingGovernanceRow({
               >
                 <ButtonsSwitch value="everyone" label="Everyone" />
                 <ButtonsSwitch value="groups" label="Groups" />
-                <ButtonsSwitch value="disabled" label="Disabled" />
+                <ButtonsSwitch value="disabled" label={disabledLabel} />
               </ButtonsSwitchList>
             </div>
             {s.scope === "groups" && (
@@ -2316,6 +2374,31 @@ function GovernancePage({
     { value: "manual_allowed" as const, label: "Manual updates allowed" },
     { value: "manual_disabled" as const, label: "Manual updates disabled" },
   ];
+  const [frameSharingAccess, setFrameSharingAccess] = useState<
+    "no_restrictions" | "members_email" | "members_only"
+  >("no_restrictions");
+  const frameSharingAccessOptions = [
+    {
+      value: "members_only" as const,
+      label: "Workspace members only",
+      description: "Frames can only be viewed by workspace members",
+      icon: Lock01,
+    },
+    {
+      value: "members_email" as const,
+      label: "Members + email invites",
+      description:
+        "Frames can be shared with workspace members or via email invite",
+      icon: Users01,
+    },
+    {
+      value: "no_restrictions" as const,
+      label: "No restrictions",
+      description:
+        "Members can share Frames publicly, with the workspace, or via email invite",
+      icon: Globe01,
+    },
+  ];
   return (
     <Page>
       <Page.Header
@@ -2389,6 +2472,10 @@ function GovernancePage({
             onChange={setFrameSharing}
             groups={groups}
             onCreateGroup={onCreateGroup}
+            disabledLabel="Admins only"
+            access={frameSharingAccess}
+            onAccessChange={setFrameSharingAccess}
+            accessOptions={frameSharingAccessOptions}
           />
         </div>
         {role === "super_admin" && (
@@ -2506,7 +2593,7 @@ function GovernancePage({
           </div>
           <div className="s-w-full s-rounded-xl s-border s-border-border dark:s-border-border-night s-divide-y s-divide-border dark:s-divide-border-night">
             {WORKSPACE_CAPABILITIES.filter(
-              (cap) => cap.id !== "audit_logs" || role === "super_admin"
+              (cap) => cap.id !== "audit_logs"
             ).map((cap) => {
               const Icon = cap.icon;
               return (
@@ -2588,6 +2675,30 @@ function GovernancePage({
                 />
               </div>
             </div>
+            <div className="s-flex s-items-center s-justify-between s-gap-4 s-px-4 s-py-3">
+              <div className="s-flex s-items-center s-gap-3">
+                <SlackLogo className="s-h-4 s-w-4 s-shrink-0" />
+                <div className="s-flex s-flex-col s-gap-0.5">
+                  <span className="s-text-sm s-font-semibold s-text-foreground dark:s-text-foreground-night">
+                    "Sent via Agent" Slack footer
+                  </span>
+                  <span className="s-text-sm s-text-muted-foreground dark:s-text-muted-foreground-night">
+                    Let agents remove the attribution footer on Slack messages
+                    posted with user credentials
+                  </span>
+                </div>
+              </div>
+              <SliderToggle
+                selected={subSettings["slack_footer"]}
+                onClick={() =>
+                  canEdit &&
+                  setSubSettings((prev) => ({
+                    ...prev,
+                    slack_footer: !prev["slack_footer"],
+                  }))
+                }
+              />
+            </div>
           </div>
         </div>
         {/* Integrations */}
@@ -2598,87 +2709,59 @@ function GovernancePage({
           </div>
           <div className="s-w-full s-rounded-xl s-border s-border-border dark:s-border-border-night s-divide-y s-divide-border dark:s-divide-border-night">
             {integrations.map((integration) => (
-              <React.Fragment key={integration.id}>
-                <div className="s-flex s-items-center s-justify-between s-gap-4 s-px-4 s-py-3">
-                  <div className="s-flex s-items-center s-gap-3">
-                    <integration.Logo className="s-h-5 s-w-5 s-shrink-0" />
-                    <div className="s-flex s-flex-col s-gap-0.5">
-                      <span className="s-text-sm s-font-semibold s-text-foreground dark:s-text-foreground-night">
-                        {integration.label}
-                      </span>
-                      <span className="s-text-sm s-text-muted-foreground dark:s-text-muted-foreground-night">
-                        {integration.description}
-                      </span>
-                    </div>
-                  </div>
-                  <div className="s-flex s-shrink-0 s-items-center s-gap-2">
-                    {integration.connected && (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        label="Reconnect"
-                        disabled={!canEdit}
-                      />
-                    )}
-                    <SliderToggle
-                      selected={integration.enabled}
-                      onClick={() =>
-                        canEdit &&
-                        setIntegrations((prev) =>
-                          prev.map((i) =>
-                            i.id === integration.id
-                              ? { ...i, enabled: !i.enabled }
-                              : i
-                          )
-                        )
-                      }
-                    />
+              <div
+                key={integration.id}
+                className="s-flex s-items-center s-justify-between s-gap-4 s-px-4 s-py-3"
+              >
+                <div className="s-flex s-items-center s-gap-3">
+                  <integration.Logo className="s-h-5 s-w-5 s-shrink-0" />
+                  <div className="s-flex s-flex-col s-gap-0.5">
+                    <span className="s-text-sm s-font-semibold s-text-foreground dark:s-text-foreground-night">
+                      {integration.label}
+                    </span>
+                    <span className="s-text-sm s-text-muted-foreground dark:s-text-muted-foreground-night">
+                      {integration.description}
+                    </span>
                   </div>
                 </div>
-                {integration.enabled &&
-                  integration.subSettings?.map((sub) => (
-                    <div
-                      key={sub.id}
-                      className="s-flex s-items-center s-justify-between s-gap-4 s-px-4 s-py-3 s-pl-12 s-bg-muted-background dark:s-bg-muted-background-night"
-                    >
-                      <div className="s-flex s-items-center s-gap-3">
-                        <integration.Logo className="s-h-4 s-w-4 s-shrink-0 s-text-muted-foreground dark:s-text-muted-foreground-night" />
-                        <div className="s-flex s-flex-col s-gap-0.5">
-                          <span className="s-text-sm s-font-semibold s-text-foreground dark:s-text-foreground-night">
-                            {sub.label}
-                          </span>
-                          <span className="s-text-sm s-text-muted-foreground dark:s-text-muted-foreground-night">
-                            {sub.description}
-                          </span>
-                        </div>
-                      </div>
-                      <SliderToggle
-                        selected={subSettings[sub.id] ?? true}
-                        onClick={() =>
-                          canEdit &&
-                          setSubSettings((prev) => ({
-                            ...prev,
-                            [sub.id]: !prev[sub.id],
-                          }))
-                        }
-                      />
-                    </div>
-                  ))}
-              </React.Fragment>
+                <div className="s-flex s-shrink-0 s-items-center s-gap-2">
+                  {integration.connected && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      label="Reconnect"
+                      disabled={!canEdit}
+                    />
+                  )}
+                  <SliderToggle
+                    selected={integration.enabled}
+                    onClick={() =>
+                      canEdit &&
+                      setIntegrations((prev) =>
+                        prev.map((i) =>
+                          i.id === integration.id
+                            ? { ...i, enabled: !i.enabled }
+                            : i
+                        )
+                      )
+                    }
+                  />
+                </div>
+              </div>
             ))}
           </div>
         </div>
-        {/* Audit — only shown when audit_logs capability is enabled */}
-        {workspaceCapabilities["audit_logs"] && (
-          <div className="s-flex s-w-full s-flex-col s-gap-4">
-            <div className="s-flex s-items-center s-gap-2">
-              <LayerSingle className="s-h-5 s-w-5 s-shrink-0 s-text-muted-foreground dark:s-text-muted-foreground-night" />
-              <Page.H variant="h5">Audit</Page.H>
-            </div>
-            <div className="s-w-full s-rounded-xl s-bg-muted-background dark:s-bg-muted-background-night s-flex s-items-center s-justify-between s-gap-4 s-px-4 s-py-4">
-              <div className="s-flex s-items-center s-gap-3">
-                <LayerSingle className="s-h-4 s-w-4 s-shrink-0 s-text-muted-foreground dark:s-text-muted-foreground-night" />
-                <div className="s-flex s-flex-col s-gap-0.5">
+        {/* Audit */}
+        <div className="s-flex s-w-full s-flex-col s-gap-4">
+          <div className="s-flex s-items-center s-gap-2">
+            <LayerSingle className="s-h-5 s-w-5 s-shrink-0 s-text-muted-foreground dark:s-text-muted-foreground-night" />
+            <Page.H variant="h5">Audit</Page.H>
+          </div>
+          <div className="s-w-full s-rounded-xl s-border s-border-border dark:s-border-border-night">
+            <div className="s-flex s-items-start s-justify-between s-gap-4 s-px-4 s-py-3">
+              <div className="s-flex s-items-start s-gap-3">
+                <LayerSingle className="s-mt-0.5 s-h-4 s-w-4 s-shrink-0 s-text-muted-foreground dark:s-text-muted-foreground-night" />
+                <div className="s-flex s-flex-col s-gap-1.5">
                   <span className="s-text-sm s-font-semibold s-text-foreground dark:s-text-foreground-night">
                     Audit Logs
                   </span>
@@ -2686,15 +2769,31 @@ function GovernancePage({
                     View workspace activity logs or configure export to your
                     security information and event management (SIEM) system.
                   </span>
+                  {workspaceCapabilities["audit_logs"] && (
+                    <div className="s-flex s-gap-2">
+                      <Button variant="outline" size="sm" label="View Logs" />
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        label="Configure Export"
+                      />
+                    </div>
+                  )}
                 </div>
               </div>
-              <div className="s-flex s-shrink-0 s-gap-2">
-                <Button variant="outline" size="sm" label="View Logs" />
-                <Button variant="outline" size="sm" label="Configure Export" />
-              </div>
+              <SliderToggle
+                selected={workspaceCapabilities["audit_logs"]}
+                onClick={() =>
+                  canEdit &&
+                  setWorkspaceCapabilities((prev) => ({
+                    ...prev,
+                    audit_logs: !prev["audit_logs"],
+                  }))
+                }
+              />
             </div>
           </div>
-        )}
+        </div>
       </div>
     </Page>
   );
@@ -2956,7 +3055,7 @@ function UsagePage({
     const invitedRole: MemberRole =
       inviteRole === "Super Admin"
         ? "super_admin"
-        : inviteRole === "Business Admin"
+        : inviteRole === "Manager"
           ? "admin"
           : inviteRole === "Security Admin"
             ? "security_admin"
@@ -3194,7 +3293,7 @@ function UsagePage({
                 {(
                   [
                     "Super Admin",
-                    "Business Admin",
+                    "Manager",
                     "Security Admin",
                     "Billing Admin",
                     "Member",
@@ -3801,7 +3900,6 @@ interface IntegrationRow {
   Logo: React.ComponentType<{ className?: string }>;
   connected: boolean;
   enabled: boolean;
-  subSettings?: { id: string; label: string; description: string }[];
 }
 
 const WORKSPACE_CAPABILITIES = [
@@ -3836,14 +3934,6 @@ const INITIAL_INTEGRATIONS: IntegrationRow[] = [
     Logo: SlackLogo,
     connected: true,
     enabled: true,
-    subSettings: [
-      {
-        id: "slack_footer",
-        label: '"Sent via Agent" Slack footer',
-        description:
-          "Let agents remove the attribution footer on Slack messages posted with user credentials",
-      },
-    ],
   },
   {
     id: "teams",
@@ -4758,8 +4848,8 @@ function ManageConnectionSheet({
           {role === "super_admin" && (
             <Page.Vertical gap="sm">
               <Page.SectionHeader
-                title="Delegate to Business Admins"
-                description="Business Admins selected here can edit this connection's settings and select which data is synced."
+                title="Delegate to Managers"
+                description="Managers selected here can edit this connection's settings and select which data is synced."
               />
               <SearchInput
                 name="delegate-search"
@@ -4770,7 +4860,7 @@ function ManageConnectionSheet({
               />
               {filteredAdmins.length === 0 ? (
                 <p className="s-text-sm s-text-muted-foreground dark:s-text-muted-foreground-night s-py-2">
-                  No business admins found
+                  No managers found
                 </p>
               ) : (
                 <ListGroup className="s-w-full">
@@ -5469,7 +5559,7 @@ function ToolsPage({ role }: { role: Role }) {
                   disabled={!canAddMcp}
                   tooltip={
                     !canAddMcp
-                      ? "Only Super Admins and Business Admins can add MCP servers."
+                      ? "Only Super Admins and Managers can add MCP servers."
                       : undefined
                   }
                 />
@@ -5786,7 +5876,7 @@ const NAV_SECTIONS: { title: string; items: NavSpec[] }[] = [
     title: "Workspace",
     items: [
       { id: "people", label: "People", icon: Users01 },
-      { id: "identity", label: "Identity & provisioning", icon: Fingerprint04 },
+      { id: "identity", label: "IT & Security", icon: Fingerprint04 },
       { id: "workspace", label: "Workspace Settings", icon: Tool01 },
       { id: "capabilities", label: "Workspace Governance", icon: Toggle01Left },
       { id: "model_providers", label: "Model Providers", icon: Brain },
