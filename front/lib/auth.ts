@@ -26,6 +26,7 @@ import {
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { ProviderCredentialResource } from "@app/lib/resources/provider_credential_resource";
 import { GroupSpaceModel } from "@app/lib/resources/storage/models/group_spaces";
+import { SpaceModel } from "@app/lib/resources/storage/models/spaces";
 import {
   getResourceIdFromSId,
   isResourceSId,
@@ -714,6 +715,18 @@ export class Authenticator {
     }
 
     const allowedSpaceIds = new Set<ModelId>([podSpaceModelId]);
+
+    // Auto internal MCP server views live in the global space: without it, a function invocation
+    // cannot list or call any tool. Group membership still applies (the groups below are
+    // intersected with the token's base groups).
+    const globalSpace = await SpaceModel.findOne({
+      attributes: ["id"],
+      where: { workspaceId, kind: "global" },
+    });
+    if (globalSpace) {
+      allowedSpaceIds.add(globalSpace.id);
+    }
+
     if (claims.cId) {
       const requestedSpaceIds =
         await this.fetchRequestedSpaceIdsForSandboxTokenAuth({
