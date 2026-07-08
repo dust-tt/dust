@@ -1277,20 +1277,20 @@ export function useCheckBusinessActivation({
 // (only enabled once the checkout has succeeded).
 export function useCheckoutReceiptUrl({
   workspaceId,
-  contractId,
+  setupSessionId,
   disabled,
 }: {
   workspaceId: string;
-  contractId: string | null;
+  setupSessionId: string | null;
   disabled?: boolean;
 }) {
   const { fetcher } = useFetcher();
   const statusFetcher: Fetcher<GetBusinessActivationResponseBody> = fetcher;
 
   const url =
-    disabled || !contractId
+    disabled || !setupSessionId
       ? null
-      : `/api/w/${workspaceId}/subscriptions/checkout/business-activation?contract_id=${contractId}&receipt=true`;
+      : `/api/w/${workspaceId}/subscriptions/checkout/business-activation?setup_session_id=${setupSessionId}&receipt=true`;
 
   const { data } = useSWRWithDefaults(url, statusFetcher, {
     revalidateOnFocus: false,

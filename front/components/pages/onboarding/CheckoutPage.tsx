@@ -108,11 +108,6 @@ export function CheckoutPage() {
   const [phase, setPhase] = useState<CheckoutPhase>("card_capture");
   const [phaseError, setPhaseError] = useState<PhaseError | null>(null);
   const [setupSessionId, setSetupSessionId] = useState<string | null>(null);
-  // Contract id returned by the activation POST, used as a fallback key for the
-  // receipt fetch (polling itself is keyed by setup session id).
-  const [pendingContractId, setPendingContractId] = useState<string | null>(
-    null
-  );
   // Prevents initSession from firing before URL params have been read on mount.
   const [isInitialized, setIsInitialized] = useState(false);
 
@@ -188,7 +183,7 @@ export function CheckoutPage() {
   // receipt" button appears when ready without blocking the success transition.
   const { receiptUrl } = useCheckoutReceiptUrl({
     workspaceId: owner.sId,
-    contractId: checkoutPayment?.contractId ?? pendingContractId,
+    setupSessionId,
     disabled: phase !== "checkout_success",
   });
 
@@ -327,7 +322,6 @@ export function CheckoutPage() {
       setPhase("error");
       return;
     }
-    setPendingContractId(result.contractId);
     // Only advance to waiting_for_payment if the poll hasn't already moved us on
     // (a coupon activation can reach succeeded/failed while this POST is still
     // in flight). Overwriting would flicker success → waiting → success.
@@ -345,7 +339,6 @@ export function CheckoutPage() {
     setPhaseError(null);
     setAppliedCoupon(null);
     setPreparePayment(null);
-    setPendingContractId(null);
     pendingCouponForRestartRef.current = undefined;
     resetCoupon();
     confirmCalledRef.current = false;
@@ -359,7 +352,6 @@ export function CheckoutPage() {
     setClientSecret(null);
     setSetupSessionId(null);
     setPhaseError(null);
-    setPendingContractId(null);
     pendingCouponForRestartRef.current = appliedCoupon?.code;
     confirmCalledRef.current = false;
     setPreparePayment(null);
