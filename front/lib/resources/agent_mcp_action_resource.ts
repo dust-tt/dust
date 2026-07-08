@@ -718,12 +718,24 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
     });
   }
 
+  /**
+   * A message should never have blocked actions from more than one step, and resume paths rely
+   * on that to resume the agent loop from a single, unambiguous step. When `force` is false this
+   * enforces the invariant and throws on a violation, surfacing the bug. `force` (used by the
+   * unstick-conversation poke plugin) logs the anomaly instead of throwing, so a genuinely stuck
+   * conversation can still be finalized.
+   */
   static async listBlockedActionsForAgentMessage(
     auth: Authenticator,
     {
       agentMessageId,
       transaction,
-    }: { agentMessageId: ModelId; transaction?: Transaction }
+      force = false,
+    }: {
+      agentMessageId: ModelId;
+      transaction?: Transaction;
+      force?: boolean;
+    }
   ): Promise<AgentMCPActionResource[]> {
     const actions = await this.baseFetch(
       auth,
@@ -742,46 +754,19 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
       return [];
     }
 
-    // Resume paths rely on this to resume the agent loop from a single, unambiguous step.
     const steps = actions.map((a) => a.stepContent.step);
     const uniqueSteps = [...new Set(steps)];
-    assert(
-      uniqueSteps.length === 1,
-      `All blocked actions must be from the same step, got ${steps.join(", ")}`
-    );
-
-    return actions;
-  }
-
-  // Like listBlockedActionsForAgentMessage but skips the single-step invariant check, so a
-  // conversation stuck in an anomalous multi-step blocked state can still be finalized. Logs the
-  // anomaly to surface the origin. Only the force-finalize path should use this.
-  private static async forceListBlockedActionsForAgentMessage(
-    auth: Authenticator,
-    {
-      agentMessageId,
-      transaction,
-    }: { agentMessageId: ModelId; transaction?: Transaction }
-  ): Promise<AgentMCPActionResource[]> {
-    const actions = await this.baseFetch(
-      auth,
-      {
-        where: {
-          agentMessageId,
-          status: {
-            [Op.in]: TOOL_EXECUTION_BLOCKED_STATUSES,
-          },
-        },
-      },
-      transaction
-    );
-
-    const uniqueSteps = new Set(actions.map((a) => a.stepContent.step));
-    if (uniqueSteps.size > 1) {
+    if (uniqueSteps.length > 1) {
+      if (!force) {
+        assert(
+          false,
+          `All blocked actions must be from the same step, got ${steps.join(", ")}`
+        );
+      }
       logger.warn(
         {
           agentMessageId,
-          steps: [...uniqueSteps],
+          steps: uniqueSteps,
           workspaceId: auth.getNonNullableWorkspace().sId,
         },
         "Force-denying blocked actions spanning multiple steps — single-step invariant violated"
@@ -798,10 +783,9 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
    * approval that already transitioned the action is not clobbered. Returns the actions
    * actually denied, with their pre-deny resources.
    *
-   * A message should never have blocked actions from more than one step. When `force` is false
-   * this method enforces that invariant and throws on a violation, surfacing the bug. `force`
-   * (used by the unstick-conversation poke plugin) skips the check so an anomalous, genuinely
-   * stuck conversation can still be finalized instead of throwing.
+   * `force` is forwarded to listBlockedActionsForAgentMessage: leave it false to enforce the
+   * single-step invariant; the unstick-conversation poke plugin passes true to finalize an
+   * anomalous, genuinely stuck conversation instead of throwing.
    */
   static async denyBlockedActionsForAgentMessage(
     auth: Authenticator,
@@ -811,15 +795,11 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
       force = false,
     }: { agentMessageId: ModelId; transaction: Transaction; force?: boolean }
   ): Promise<AgentMCPActionResource[]> {
-    const blockedActions = force
-      ? await this.forceListBlockedActionsForAgentMessage(auth, {
-          agentMessageId,
-          transaction,
-        })
-      : await this.listBlockedActionsForAgentMessage(auth, {
-          agentMessageId,
-          transaction,
-        });
+    const blockedActions = await this.listBlockedActionsForAgentMessage(auth, {
+      agentMessageId,
+      transaction,
+      force,
+    });
 
     if (blockedActions.length === 0) {
       return [];
