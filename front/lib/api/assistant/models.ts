@@ -1,8 +1,12 @@
 import { config as regionConfig } from "@app/lib/api/regions/config";
 import { isModelEnabled } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
-import type { AgentMessageModel } from "@app/lib/models/agent/conversation";
+import type {
+  ModelResolutionMethodType,
+  UserMessageModel,
+} from "@app/lib/models/agent/conversation";
 import { isByokTransitioningPlan } from "@app/lib/plans/plan_codes";
+import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import {
   CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG,
   CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG,
@@ -41,6 +45,8 @@ import {
   GROK_4_MODEL_CONFIG,
 } from "@app/types/assistant/models/xai";
 import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
+import { removeNulls } from "@app/types/shared/utils/general";
+import assert from "assert";
 
 export function getWhitelistedProviders(
   auth: Authenticator
@@ -230,74 +236,115 @@ function toResolvedModel(
   };
 }
 
-// Resolves a raw picker selection to a concrete model, or null when it cannot be
-// honored for this workspace (unknown or disabled model), in which case the
-// caller falls back to the agent's configured model.
-export function resolveModelSelection(
+// Resolves the model for an agent message according to these rules:
+// 1. Pick the user's selection
+// 2. If the user did not select a model, pick the agent's configured model
+// 3. Finally fallback to the a supported model by the workspace.
+export function resolveModel(
   auth: Authenticator,
-  selection: ModelSelectionType,
-  { featureFlags }: { featureFlags: WhitelistableFeature[] }
-): ResolvedRequestedModel | null {
-  const config = SUPPORTED_MODEL_CONFIGS.find(
+  {
+    selection,
+    configuration,
+    featureFlags,
+  }: {
+    selection?: ModelSelectionType;
+    configuration: LightAgentConfigurationType;
+    featureFlags: WhitelistableFeature[];
+  }
+): {
+  resolvedModel: ResolvedRequestedModel;
+  modelResolutionMethod: ModelResolutionMethodType;
+} {
+  const userConfig = selection
+    ? SUPPORTED_MODEL_CONFIGS.find(
+        (m) =>
+          m.providerId === selection.providerId &&
+          m.modelId === selection.modelId
+      )
+    : null;
+
+  const agentConfig = SUPPORTED_MODEL_CONFIGS.find(
     (m) =>
-      m.providerId === selection.providerId && m.modelId === selection.modelId
+      m.providerId === configuration.model.providerId &&
+      m.modelId === configuration.model.modelId
   );
-  if (!config) {
-    return null;
-  }
-  const enabled = selectEnabledModel(auth, [config], { featureFlags });
-  if (!enabled) {
-    return null;
-  }
+
+  //TODO(models_picker): handle auto model selection.
+
+  const enabled = selectEnabledModel(
+    auth,
+    removeNulls([userConfig, agentConfig, ...ORDERED_LARGE_MODEL_CONFIGS]),
+    {
+      featureFlags,
+    }
+  );
+
+  // Should never happen as we should at least fallback to our selection of ORDERED_LARGE_MODEL_CONFIGS.
+  assert(enabled, "No enabled model found");
+
   // Honor an explicit effort only if the model supports it; otherwise fall back
   // to its default (raw API clients can send an unsupported effort).
   const effort =
-    selection.reasoningEffort &&
+    selection?.reasoningEffort &&
     enabled.supportedReasoningEfforts[selection.reasoningEffort]
       ? selection.reasoningEffort
-      : undefined;
-  return toResolvedModel(enabled, effort);
+      : enabled.defaultReasoningEffort;
+
+  return {
+    resolvedModel: toResolvedModel(enabled, effort),
+    modelResolutionMethod: selection ? "user" : "agent",
+  };
 }
 
-// Drops agent model settings the picked override can't honor: a structured-output
-// responseFormat inherited onto a model with `supportsResponseFormat: false` makes
-// the run error or silently ignore the schema.
-export function reconcileModelSettings<T extends { responseFormat?: string }>(
-  requested: ResolvedRequestedModel,
-  settings: T
-): T {
-  const config = SUPPORTED_MODEL_CONFIGS.find(
-    (m) =>
-      m.providerId === requested.providerId && m.modelId === requested.modelId
+function isResolvedModel(m: {
+  providerId: string | null;
+  modelId: string | null;
+  reasoningEffort: string | null;
+}): m is ResolvedRequestedModel {
+  return (
+    m.providerId !== null &&
+    m.modelId !== null &&
+    m.reasoningEffort !== null &&
+    isModelProviderId(m.providerId) &&
+    isModelId(m.modelId) &&
+    isReasoningEffort(m.reasoningEffort as ReasoningEffort)
   );
-  if (config?.supportsResponseFormat) {
-    return settings;
-  }
-  return { ...settings, responseFormat: undefined };
 }
 
-// Rebuilds a `ResolvedRequestedModel` from the raw agent-message columns, or null
-// when no override was stored (or the stored values fail validation). Values are
-// written by the resolver above, so validation is defensive.
-export function resolvedModelFromAgentMessageRow(
-  row: AgentMessageModel
+export function resolvedModelFromUserMessageRow(
+  row: UserMessageModel
 ): ResolvedRequestedModel | null {
-  const { resolvedProviderId, resolvedModelId, resolvedReasoningEffort } = row;
-
-  if (
-    !resolvedProviderId ||
-    !resolvedModelId ||
-    !resolvedReasoningEffort ||
-    !isModelProviderId(resolvedProviderId) ||
-    !isModelId(resolvedModelId) ||
-    !isReasoningEffort(resolvedReasoningEffort)
-  ) {
+  const { requestedProviderId, requestedModelId, requestedReasoningEffort } =
+    row;
+  const resolvedModel = {
+    providerId: requestedProviderId,
+    modelId: requestedModelId,
+    reasoningEffort: requestedReasoningEffort,
+  };
+  if (!isResolvedModel(resolvedModel)) {
     return null;
   }
 
-  return {
+  return resolvedModel;
+}
+
+// Rebuilds a `ResolvedRequestedModel` from the raw agent|user-message columns, or null
+// when no override was stored (or the stored values fail validation). Values are
+// written by the resolver above, so validation is defensive.
+export function resolvedModelFromAgentMessageRow(row: {
+  resolvedProviderId: string | null;
+  resolvedModelId: string | null;
+  resolvedReasoningEffort: string | null;
+}): ResolvedRequestedModel | null {
+  const { resolvedProviderId, resolvedModelId, resolvedReasoningEffort } = row;
+  const resolvedModel = {
     providerId: resolvedProviderId,
     modelId: resolvedModelId,
     reasoningEffort: resolvedReasoningEffort,
   };
+  if (!isResolvedModel(resolvedModel)) {
+    return null;
+  }
+
+  return resolvedModel;
 }

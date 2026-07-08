@@ -17,7 +17,10 @@ import type {
   LightAgentConfigurationType,
 } from "./agent";
 import type { MentionType, RichMention } from "./mentions";
-import type { ResolvedRequestedModel } from "./models/types";
+import type {
+  ModelSelectionType,
+  ResolvedRequestedModel,
+} from "./models/types";
 
 export type MessageVisibility = "visible" | "deleted" | "pending";
 
@@ -194,6 +197,8 @@ export type UserMessageType = {
   context: UserMessageContext;
   agenticMessageData?: AgenticMessageData;
   reactions: MessageReactionType[];
+  // Model's triplet requested by the user manually when running the agent. Null when the user did not request a specific model.
+  requestedModel: ModelSelectionType | null;
 };
 
 export type UserMessageTypeWithoutMentions = Omit<
@@ -363,10 +368,8 @@ export type AgentMessageType = BaseAgentMessageType & {
   actions: AgentMCPActionWithOutputType[];
   contents: Array<{ step: number; content: AgentContentItemType }>;
   modelInteractionDurationMs: number | null;
-  // Per-message model override from the input-bar model picker: the resolved
-  // model. Null/undefined when the agent ran its own configured model. Optional
-  // during rollout. See [BACK12].
-  requestedModel?: ResolvedRequestedModel | null;
+  // Model's triplet used to generate the message. Legacy: null, the agent ran its own configured model.
+  resolvedModel: ResolvedRequestedModel | null;
 };
 
 export type AgentMessageTypeWithoutMentions = Omit<

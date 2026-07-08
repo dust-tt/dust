@@ -54,6 +54,7 @@ export function createPlaceholderUserMessage({
       origin: "web",
     },
     reactions: [],
+    requestedModel: null, // TODO(models_picker): add the requested model
     contentFragments: [
       ...(contentFragments?.uploaded ?? []).map(
         (cf) =>

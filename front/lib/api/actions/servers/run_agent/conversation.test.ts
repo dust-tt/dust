@@ -41,6 +41,7 @@ function buildRunAgentFixtures({ spaceId }: { spaceId: string | null }): {
       origin: "web",
     },
     reactions: [],
+    requestedModel: null,
   };
 
   const originMessage = {
@@ -75,6 +76,7 @@ function buildRunAgentFixtures({ spaceId }: { spaceId: string | null }): {
     branchId: null,
     richMentions: [],
     costCredits: null,
+    requestedModel: null,
   } as unknown as AgentMessageType;
 
   const mainAgent = {

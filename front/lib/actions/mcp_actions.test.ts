@@ -632,6 +632,7 @@ describe("tryCallMCPTool", () => {
       branchId: messageRow.getBranchId(),
       richMentions: [],
       costCredits: null,
+      resolvedModel: null,
     };
     const userMessage: UserMessageType = {
       id: -1,
@@ -655,6 +656,7 @@ describe("tryCallMCPTool", () => {
         origin: "web",
       },
       reactions: [],
+      requestedModel: null,
     };
 
     // Create tool configuration

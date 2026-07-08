@@ -292,6 +292,12 @@ export class UserMessageModel extends WorkspaceAwareModel<UserMessageModel> {
   declare agenticMessageType: "run_agent" | "agent_handover" | null;
   declare agenticOriginMessageId: string | null;
 
+  // The concrete provider/model/effort triplet requested by the user when
+  // running the agent. null when the user did not request a specific model.
+  declare requestedProviderId: string | null;
+  declare requestedModelId: string | null;
+  declare requestedReasoningEffort: string | null;
+
   declare userContextLastTriggerRunAt: Date | null;
   declare userContextApiKeyId: ForeignKey<KeyModel["id"]> | null;
   declare userContextAuthMethod: string | null;
@@ -378,6 +384,21 @@ UserMessageModel.init(
       type: DataTypes.STRING(32),
       allowNull: true,
     },
+    requestedProviderId: {
+      type: DataTypes.STRING,
+      allowNull: true,
+      defaultValue: null,
+    },
+    requestedModelId: {
+      type: DataTypes.STRING,
+      allowNull: true,
+      defaultValue: null,
+    },
+    requestedReasoningEffort: {
+      type: DataTypes.STRING,
+      allowNull: true,
+      defaultValue: null,
+    },
   },
   {
     modelName: "user_message",
@@ -435,7 +456,8 @@ UserMessageModel.belongsTo(KeyModel, {
 
 const MODEL_RESOLUTION_METHODS = ["agent", "user", "auto"] as const;
 
-type ModelResolutionMethod = (typeof MODEL_RESOLUTION_METHODS)[number];
+export type ModelResolutionMethodType =
+  (typeof MODEL_RESOLUTION_METHODS)[number];
 
 export class AgentMessageModel extends WorkspaceAwareModel<AgentMessageModel> {
   declare createdAt: CreationOptional<Date>;
@@ -468,7 +490,7 @@ export class AgentMessageModel extends WorkspaceAwareModel<AgentMessageModel> {
   declare resolvedProviderId: string | null;
   declare resolvedModelId: string | null;
   declare resolvedReasoningEffort: string | null;
-  declare modelResolutionMethod: ModelResolutionMethod | null;
+  declare modelResolutionMethod: ModelResolutionMethodType | null;
 }
 
 AgentMessageModel.init(

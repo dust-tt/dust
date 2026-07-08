@@ -1672,6 +1672,7 @@ describe("createUserMessage", () => {
           user: userJson,
           rank,
           context,
+          requestedModel: null,
         },
         transaction,
       });
@@ -1727,6 +1728,7 @@ describe("createUserMessage", () => {
           user: null, // User should be attributed from email
           rank,
           context,
+          requestedModel: null,
         },
         transaction,
       });
@@ -1792,6 +1794,7 @@ describe("createUserMessage", () => {
           rank,
           context,
           agenticMessageData,
+          requestedModel: null,
         },
         transaction,
       });
@@ -1837,6 +1840,7 @@ describe("createUserMessage", () => {
           rank,
           context,
           agenticMessageData,
+          requestedModel: null,
         },
         transaction,
       });
@@ -1877,6 +1881,7 @@ describe("createUserMessage", () => {
             profilePictureUrl: userJson.image,
             origin: "web",
           },
+          requestedModel: null,
         },
         transaction,
       });
@@ -1963,6 +1968,7 @@ describe("createUserMessage", () => {
             origin: "web",
           },
           agenticMessageData,
+          requestedModel: null,
         },
         transaction,
       });
@@ -2022,6 +2028,7 @@ describe("createUserMessage", () => {
           user: userJson,
           rank: 0,
           context: originalContext,
+          requestedModel: null,
         },
         transaction,
       });
@@ -2093,6 +2100,7 @@ describe("createUserMessage", () => {
             profilePictureUrl: userJson.image,
             origin: "web",
           },
+          requestedModel: null,
         },
         transaction,
       });
@@ -2185,6 +2193,7 @@ describe("createUserMessage", () => {
             profilePictureUrl: null,
             origin: "web",
           },
+          requestedModel: null,
         },
         transaction,
       });
@@ -2240,6 +2249,7 @@ describe("createUserMessage", () => {
             profilePictureUrl: userJson.image,
             origin: "web",
           },
+          requestedModel: null,
         },
         transaction,
       });
@@ -2297,6 +2307,7 @@ describe("createUserMessage", () => {
           user: userJson,
           rank,
           context,
+          requestedModel: null,
         },
         transaction,
       });
@@ -2344,6 +2355,7 @@ describe("createUserMessage", () => {
           user: userJson,
           rank,
           context,
+          requestedModel: null,
         },
         transaction,
       });
@@ -2384,6 +2396,7 @@ describe("createUserMessage", () => {
           user: userJson,
           rank: 0,
           context,
+          requestedModel: null,
         },
         transaction,
       });
@@ -2398,6 +2411,7 @@ describe("createUserMessage", () => {
           user: userJson,
           rank: 1,
           context,
+          requestedModel: null,
         },
         transaction,
       });
@@ -2431,6 +2445,7 @@ describe("createUserMessage", () => {
           user: null,
           rank,
           context,
+          requestedModel: null,
         },
         transaction,
       });
