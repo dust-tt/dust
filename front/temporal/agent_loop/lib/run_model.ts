@@ -539,7 +539,6 @@ export async function runModel(
     fallbackPrompt,
     model,
     hasAvailableActions: availableActions.length > 0,
-    errorContext: mcpToolsListingError,
     conversation,
     serverToolsAndInstructions: filteredMcpActions,
     systemSkills,
