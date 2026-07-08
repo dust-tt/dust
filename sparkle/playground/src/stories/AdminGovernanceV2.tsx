@@ -35,6 +35,8 @@ import {
   Key01,
   Label,
   LayerSingle,
+  ListGroup,
+  ListItem,
   LayersThree01,
   LayersTwo01,
   Lock01,
@@ -203,7 +205,7 @@ type AdminPage =
   // Security
   | "identity"
   // Workspace
-  | "workspace"
+  | "model_providers"
   | "analytics"
   // Developer
   | "api_keys"
@@ -683,7 +685,6 @@ const ROLE_ACCESS: Record<Role, AdminPage[]> = {
     "capabilities",
     "model_providers",
     "identity",
-    "workspace",
     "analytics",
     "api_keys",
     "programmatic",
@@ -2350,6 +2351,8 @@ function GovernancePage({
 }) {
   const canEdit = role === "super_admin" || role === "admin";
   const canEditAudit = role === "super_admin";
+  const [workspaceName, setWorkspaceName] = useState("Dust");
+  const [editingName, setEditingName] = useState(false);
   const update = (updated: GovernanceSetting) =>
     setSettings(settings.map((s) => (s.id === updated.id ? updated : s)));
   const [podAccess, setPodAccess] = useState<
@@ -2407,10 +2410,54 @@ function GovernancePage({
   return (
     <Page>
       <Page.Header
-        title="Workspace Governance"
-        description="Manage what members can do in your workspace."
+        title="Workspace & Governance"
+        description="Define policies that control what members can do in your workspace."
         icon={Toggle01Left}
       />
+      {/* Workspace Name */}
+      <div className="s-flex s-w-full s-flex-col s-gap-2">
+        <div className="s-flex s-items-center s-justify-between">
+          <div className="s-flex s-flex-col s-gap-0.5">
+            <Page.H variant="h5">Workspace Name</Page.H>
+            {!editingName && (
+              <Page.P variant="secondary" size="sm">
+                {workspaceName}
+              </Page.P>
+            )}
+          </div>
+          {canEditAudit && !editingName && (
+            <Button
+              variant="outline"
+              size="sm"
+              icon={Pencil01}
+              label="Edit"
+              onClick={() => setEditingName(true)}
+            />
+          )}
+        </div>
+        {editingName && (
+          <div className="s-flex s-items-center s-gap-2">
+            <Input
+              name="workspace-name"
+              value={workspaceName}
+              onChange={(e) => setWorkspaceName(e.target.value)}
+              placeholder="Workspace name"
+            />
+            <Button
+              variant="primary"
+              size="sm"
+              label="Save"
+              onClick={() => setEditingName(false)}
+            />
+            <Button
+              variant="outline"
+              size="sm"
+              label="Cancel"
+              onClick={() => setEditingName(false)}
+            />
+          </div>
+        )}
+      </div>
       <div className="s-w-full s-rounded-xl s-bg-muted-background dark:s-bg-muted-background-night s-px-4 s-py-3">
         <Page.P variant="secondary" size="sm">
           Groups assigned here are managed in{" "}
@@ -2597,7 +2644,7 @@ function GovernancePage({
         <div className="s-flex s-w-full s-flex-col s-gap-4">
           <div className="s-flex s-items-center s-gap-2">
             <ShapesPlus className="s-h-5 s-w-5 s-shrink-0 s-text-muted-foreground dark:s-text-muted-foreground-night" />
-            <Page.H variant="h5">Capabilities</Page.H>
+            <Page.H variant="h5">Feature policies</Page.H>
           </div>
           <div className="s-w-full s-rounded-xl s-border s-border-border dark:s-border-border-night s-divide-y s-divide-border dark:s-divide-border-night">
             {WORKSPACE_CAPABILITIES.filter(
@@ -2646,8 +2693,8 @@ function GovernancePage({
                     Private conversation URLs by default
                   </span>
                   <span className="s-text-sm s-text-muted-foreground dark:s-text-muted-foreground-night">
-                    Restrict conversation URL access to participants only by
-                    default.
+                    Enforce private conversation URLs by default, limiting
+                    access to participants only.
                   </span>
                 </div>
               </div>
@@ -2664,8 +2711,8 @@ function GovernancePage({
                     MCP server
                   </span>
                   <span className="s-text-sm s-text-muted-foreground dark:s-text-muted-foreground-night">
-                    Allow external MCP clients to connect to this workspace via
-                    https://dust.tt/mcp
+                    Control whether external MCP clients can connect to this
+                    workspace.
                   </span>
                 </div>
               </div>
@@ -2691,8 +2738,8 @@ function GovernancePage({
                     "Sent via Agent" Slack footer
                   </span>
                   <span className="s-text-sm s-text-muted-foreground dark:s-text-muted-foreground-night">
-                    Let agents remove the attribution footer on Slack messages
-                    posted with user credentials
+                    Control whether agents can suppress the attribution footer
+                    on Slack messages posted with user credentials.
                   </span>
                 </div>
               </div>
@@ -2713,7 +2760,7 @@ function GovernancePage({
         <div className="s-flex s-w-full s-flex-col s-gap-4">
           <div className="s-flex s-items-center s-gap-2">
             <CloudArrowLeftRight className="s-h-5 s-w-5 s-shrink-0 s-text-muted-foreground dark:s-text-muted-foreground-night" />
-            <Page.H variant="h5">Integrations</Page.H>
+            <Page.H variant="h5">Messaging app policies</Page.H>
           </div>
           <div className="s-w-full s-rounded-xl s-border s-border-border dark:s-border-border-night s-divide-y s-divide-border dark:s-divide-border-night">
             {integrations.map((integration) => (
@@ -3917,14 +3964,15 @@ const WORKSPACE_CAPABILITIES = [
     id: "voice_transcription",
     icon: Microphone01,
     label: "Voice transcription",
-    description: "Allow voice transcription in Dust conversations",
+    description:
+      "Control whether workspace members can use voice transcription in conversations.",
   },
   {
     id: "email_agents",
     icon: Mail01,
     label: "Email agents",
     description:
-      "Allow workspace members to email agents at AGENT_NAME@dust.team",
+      "Control whether members can reach agents by email at AGENT_NAME@dust.team.",
     beta: true,
   },
   {
@@ -3940,7 +3988,7 @@ const INITIAL_INTEGRATIONS: IntegrationRow[] = [
   {
     id: "slack",
     label: "Slack Bot",
-    description: "Use Dust Agents in Slack with the Dust Slack app",
+    description: "Control whether the Dust Bot can be used in Slack.",
     Logo: SlackLogo,
     connected: true,
     enabled: true,
@@ -3948,7 +3996,7 @@ const INITIAL_INTEGRATIONS: IntegrationRow[] = [
   {
     id: "teams",
     label: "Microsoft Teams Bot",
-    description: "Use Dust Agents in Teams with the Microsoft Teams Bot",
+    description: "Control whether the Dust Bot can be used in Microsoft Teams.",
     Logo: MicrosoftTeamsLogo,
     connected: false,
     enabled: false,
@@ -3956,73 +4004,12 @@ const INITIAL_INTEGRATIONS: IntegrationRow[] = [
   {
     id: "discord",
     label: "Discord Bot",
-    description: "Use Dust Agents in Discord with the Dust Discord Bot",
+    description: "Control whether the Dust Bot can be used in Discord.",
     Logo: DiscordLogo,
     connected: true,
     enabled: true,
   },
 ];
-
-function WorkspaceSettingsPage({ role }: { role: Role }) {
-  const canEdit = role === "super_admin";
-  const [workspaceName, setWorkspaceName] = useState("Dust");
-  const [editingName, setEditingName] = useState(false);
-
-  return (
-    <Page>
-      <Page.Header
-        title="Workspace Settings"
-        description="Manage your workspace identity."
-        icon={Tool01}
-      />
-
-      {/* Workspace Name */}
-      <div className="s-flex s-w-full s-flex-col s-gap-2">
-        <div className="s-flex s-items-center s-justify-between">
-          <div className="s-flex s-flex-col s-gap-0.5">
-            <Page.H variant="h5">Workspace Name</Page.H>
-            {!editingName && (
-              <Page.P variant="secondary" size="sm">
-                {workspaceName}
-              </Page.P>
-            )}
-          </div>
-          {canEdit && !editingName && (
-            <Button
-              variant="outline"
-              size="sm"
-              icon={Pencil01}
-              label="Edit"
-              onClick={() => setEditingName(true)}
-            />
-          )}
-        </div>
-        {editingName && (
-          <div className="s-flex s-items-center s-gap-2">
-            <Input
-              name="workspace-name"
-              value={workspaceName}
-              onChange={setWorkspaceName}
-              placeholder="Workspace name"
-            />
-            <Button
-              variant="primary"
-              size="sm"
-              label="Save"
-              onClick={() => setEditingName(false)}
-            />
-            <Button
-              variant="outline"
-              size="sm"
-              label="Cancel"
-              onClick={() => setEditingName(false)}
-            />
-          </div>
-        )}
-      </div>
-    </Page>
-  );
-}
 
 // ─── Placeholder Page ─────────────────────────────────────────────────────────
 
@@ -5887,8 +5874,11 @@ const NAV_SECTIONS: { title: string; items: NavSpec[] }[] = [
     items: [
       { id: "people", label: "People", icon: Users01 },
       { id: "identity", label: "IT & Security", icon: Fingerprint04 },
-      { id: "workspace", label: "Workspace Settings", icon: Tool01 },
-      { id: "capabilities", label: "Workspace Governance", icon: Toggle01Left },
+      {
+        id: "capabilities",
+        label: "Workspace & Governance",
+        icon: Toggle01Left,
+      },
       { id: "model_providers", label: "Model Providers", icon: Brain },
       { id: "usage", label: "Usage", icon: PieChart01 },
       { id: "analytics", label: "Analytics", icon: BarChart01 },
@@ -6232,8 +6222,6 @@ export default function AdminGovernanceV2() {
           <BillingPage />
         ) : effectivePage === "usage" ? (
           <UsagePage role={role} members={members} setMembers={setMembers} />
-        ) : effectivePage === "workspace" ? (
-          <WorkspaceSettingsPage role={role} />
         ) : effectivePage === "api_keys" ? (
           <PlaceholderPage
             title="API Keys"
