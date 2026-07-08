@@ -184,40 +184,43 @@ function wrapStatement<T extends object>(
  * through `prepare` (which `query()` and `transaction()` also go through).
  */
 class PodSqliteDatabase extends Database {
-  readonly #dbName: string;
-  readonly #maxSizeBytes: number;
+  private readonly dbName: string;
+  private readonly maxSizeBytes: number;
 
   constructor(path: string, dbName: string, maxSizeBytes: number) {
     // readwrite without create: opening a missing file throws SQLITE_CANTOPEN
     // instead of minting an empty database (verified against bun 1.3.14).
     super(path, { readwrite: true });
-    this.#dbName = dbName;
-    this.#maxSizeBytes = maxSizeBytes;
+    this.dbName = dbName;
+    this.maxSizeBytes = maxSizeBytes;
   }
 
-  run<ParamsType extends SQLQueryBindings[]>(
+  override run<ParamsType extends SQLQueryBindings[]>(
     sql: string,
     ...bindings: ParamsType[]
   ): Changes {
     try {
       return super.run(sql, ...bindings);
     } catch (err) {
-      throw translateSqliteError(err, this.#dbName, this.#maxSizeBytes);
+      throw translateSqliteError(err, this.dbName, this.maxSizeBytes);
     }
   }
 
-  exec<ParamsType extends SQLQueryBindings[]>(
+  override exec<ParamsType extends SQLQueryBindings[]>(
     sql: string,
     ...bindings: ParamsType[]
   ): Changes {
     try {
       return super.exec(sql, ...bindings);
     } catch (err) {
-      throw translateSqliteError(err, this.#dbName, this.#maxSizeBytes);
+      throw translateSqliteError(err, this.dbName, this.maxSizeBytes);
     }
   }
 
-  prepare<ReturnType, ParamsType extends SQLQueryBindings | SQLQueryBindings[]>(
+  override prepare<
+    ReturnType,
+    ParamsType extends SQLQueryBindings | SQLQueryBindings[],
+  >(
     sql: string,
     params?: ParamsType
     // The `any[]` conditional mirrors bun:sqlite's own Database.prepare signature.
@@ -226,7 +229,7 @@ class PodSqliteDatabase extends Database {
     ParamsType extends any[] ? ParamsType : [ParamsType]
   > {
     const stmt = super.prepare<ReturnType, ParamsType>(sql, params);
-    return wrapStatement(stmt, this.#dbName, this.#maxSizeBytes);
+    return wrapStatement(stmt, this.dbName, this.maxSizeBytes);
   }
 }
 

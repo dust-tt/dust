@@ -5,6 +5,7 @@
   "description": "Runtime library for code running in a Dust pod sandbox.",
   "type": "module",
   "main": "index.ts",
+  "exports": { ".": "./index.ts" },
   "scripts": {
     "test": "bun test",
     "build": "bun build index.ts --bundle --target=bun --packages=external --outfile dist/index.js"
