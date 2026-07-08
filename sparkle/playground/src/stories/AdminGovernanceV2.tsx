@@ -2130,6 +2130,7 @@ function FrameSharingGovernanceRow({
   access,
   onAccessChange,
   accessOptions,
+  showSelector = true,
 }: {
   settings: FrameVisibilitySetting[];
   canEdit: boolean;
@@ -2145,6 +2146,7 @@ function FrameSharingGovernanceRow({
     description: string;
     icon: React.ComponentType<{ className?: string }>;
   }[];
+  showSelector?: boolean;
 }) {
   const [searchByLevel, setSearchByLevel] = useState<
     Partial<Record<FrameVisibilityLevel, string>>
@@ -2161,44 +2163,46 @@ function FrameSharingGovernanceRow({
 
   return (
     <div className="s-w-full s-rounded-xl s-border s-border-border dark:s-border-border-night s-divide-y s-divide-border dark:s-divide-border-night">
-      <div className="s-flex s-items-center s-justify-between s-gap-4 s-px-4 s-py-3">
-        <div className="s-flex s-flex-col s-gap-0.5">
-          <span className="s-heading-base s-text-foreground dark:s-text-foreground-night">
-            Who can access Frames
-          </span>
-          <span className="s-text-sm s-text-muted-foreground dark:s-text-muted-foreground-night">
-            Control the level of access for Frames in this workspace.
-          </span>
+      {showSelector && (
+        <div className="s-flex s-items-center s-justify-between s-gap-4 s-px-4 s-py-3">
+          <div className="s-flex s-flex-col s-gap-0.5">
+            <span className="s-heading-base s-text-foreground dark:s-text-foreground-night">
+              Who can access Frames
+            </span>
+            <span className="s-text-sm s-text-muted-foreground dark:s-text-muted-foreground-night">
+              Control the level of access for Frames in this workspace.
+            </span>
+          </div>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="outline"
+                size="sm"
+                icon={accessOptions.find((o) => o.value === access)!.icon}
+                label={accessOptions.find((o) => o.value === access)!.label}
+                isSelect
+                disabled={!canEdit}
+              />
+            </DropdownMenuTrigger>
+            <DropdownMenuContent>
+              <DropdownMenuRadioGroup
+                value={access}
+                onValueChange={(v) => onAccessChange(v as FrameSharingAccess)}
+              >
+                {accessOptions.map((o) => (
+                  <DropdownMenuRadioItem
+                    key={o.value}
+                    value={o.value}
+                    label={o.label}
+                    description={o.description}
+                    icon={o.icon}
+                  />
+                ))}
+              </DropdownMenuRadioGroup>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button
-              variant="outline"
-              size="sm"
-              icon={accessOptions.find((o) => o.value === access)!.icon}
-              label={accessOptions.find((o) => o.value === access)!.label}
-              isSelect
-              disabled={!canEdit}
-            />
-          </DropdownMenuTrigger>
-          <DropdownMenuContent>
-            <DropdownMenuRadioGroup
-              value={access}
-              onValueChange={(v) => onAccessChange(v as FrameSharingAccess)}
-            >
-              {accessOptions.map((o) => (
-                <DropdownMenuRadioItem
-                  key={o.value}
-                  value={o.value}
-                  label={o.label}
-                  description={o.description}
-                  icon={o.icon}
-                />
-              ))}
-            </DropdownMenuRadioGroup>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </div>
+      )}
       {visibleSettings.map((s) => {
         const Icon = s.icon;
         const search = searchByLevel[s.level] ?? "";
@@ -2345,6 +2349,7 @@ function GovernancePage({
   setFrameSharing: (s: FrameVisibilitySetting[]) => void;
 }) {
   const canEdit = role === "super_admin" || role === "admin";
+  const canEditAudit = role === "super_admin";
   const update = (updated: GovernanceSetting) =>
     setSettings(settings.map((s) => (s.id === updated.id ? updated : s)));
   const [podAccess, setPodAccess] = useState<
@@ -2461,23 +2466,26 @@ function GovernancePage({
               ))}
           </div>
         </div>
-        <div className="s-flex s-w-full s-flex-col s-gap-4">
-          <div className="s-flex s-items-center s-gap-2">
-            <ActionFrame className="s-h-5 s-w-5 s-shrink-0 s-text-muted-foreground dark:s-text-muted-foreground-night" />
-            <Page.H variant="h5">Frame sharing</Page.H>
+        {!(role === "admin" && frameSharingAccess === "members_only") && (
+          <div className="s-flex s-w-full s-flex-col s-gap-4">
+            <div className="s-flex s-items-center s-gap-2">
+              <ActionFrame className="s-h-5 s-w-5 s-shrink-0 s-text-muted-foreground dark:s-text-muted-foreground-night" />
+              <Page.H variant="h5">Frame sharing</Page.H>
+            </div>
+            <FrameSharingGovernanceRow
+              settings={frameSharing}
+              canEdit={canEdit}
+              onChange={setFrameSharing}
+              groups={groups}
+              onCreateGroup={onCreateGroup}
+              disabledLabel="Admins only"
+              access={frameSharingAccess}
+              onAccessChange={setFrameSharingAccess}
+              accessOptions={frameSharingAccessOptions}
+              showSelector={role === "super_admin"}
+            />
           </div>
-          <FrameSharingGovernanceRow
-            settings={frameSharing}
-            canEdit={canEdit}
-            onChange={setFrameSharing}
-            groups={groups}
-            onCreateGroup={onCreateGroup}
-            disabledLabel="Admins only"
-            access={frameSharingAccess}
-            onAccessChange={setFrameSharingAccess}
-            accessOptions={frameSharingAccessOptions}
-          />
-        </div>
+        )}
         {role === "super_admin" && (
           <div className="s-flex s-w-full s-flex-col s-gap-4">
             <div className="s-flex s-items-center s-gap-2">
@@ -2751,49 +2759,51 @@ function GovernancePage({
             ))}
           </div>
         </div>
-        {/* Audit */}
-        <div className="s-flex s-w-full s-flex-col s-gap-4">
-          <div className="s-flex s-items-center s-gap-2">
-            <LayerSingle className="s-h-5 s-w-5 s-shrink-0 s-text-muted-foreground dark:s-text-muted-foreground-night" />
-            <Page.H variant="h5">Audit</Page.H>
-          </div>
-          <div className="s-w-full s-rounded-xl s-border s-border-border dark:s-border-border-night">
-            <div className="s-flex s-items-start s-justify-between s-gap-4 s-px-4 s-py-3">
-              <div className="s-flex s-items-start s-gap-3">
-                <LayerSingle className="s-mt-0.5 s-h-4 s-w-4 s-shrink-0 s-text-muted-foreground dark:s-text-muted-foreground-night" />
-                <div className="s-flex s-flex-col s-gap-1.5">
-                  <span className="s-text-sm s-font-semibold s-text-foreground dark:s-text-foreground-night">
-                    Audit Logs
-                  </span>
-                  <span className="s-text-sm s-text-muted-foreground dark:s-text-muted-foreground-night">
-                    View workspace activity logs or configure export to your
-                    security information and event management (SIEM) system.
-                  </span>
-                  {workspaceCapabilities["audit_logs"] && (
-                    <div className="s-flex s-gap-2">
-                      <Button variant="outline" size="sm" label="View Logs" />
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        label="Configure Export"
-                      />
-                    </div>
-                  )}
+        {/* Audit — super_admin only */}
+        {canEditAudit && (
+          <div className="s-flex s-w-full s-flex-col s-gap-4">
+            <div className="s-flex s-items-center s-gap-2">
+              <LayerSingle className="s-h-5 s-w-5 s-shrink-0 s-text-muted-foreground dark:s-text-muted-foreground-night" />
+              <Page.H variant="h5">Audit</Page.H>
+            </div>
+            <div className="s-w-full s-rounded-xl s-border s-border-border dark:s-border-border-night">
+              <div className="s-flex s-items-start s-justify-between s-gap-4 s-px-4 s-py-3">
+                <div className="s-flex s-items-start s-gap-3">
+                  <LayerSingle className="s-mt-0.5 s-h-4 s-w-4 s-shrink-0 s-text-muted-foreground dark:s-text-muted-foreground-night" />
+                  <div className="s-flex s-flex-col s-gap-1.5">
+                    <span className="s-text-sm s-font-semibold s-text-foreground dark:s-text-foreground-night">
+                      Audit Logs
+                    </span>
+                    <span className="s-text-sm s-text-muted-foreground dark:s-text-muted-foreground-night">
+                      View workspace activity logs or configure export to your
+                      security information and event management (SIEM) system.
+                    </span>
+                    {workspaceCapabilities["audit_logs"] && (
+                      <div className="s-flex s-gap-2">
+                        <Button variant="outline" size="sm" label="View Logs" />
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          label="Configure Export"
+                        />
+                      </div>
+                    )}
+                  </div>
                 </div>
+                <SliderToggle
+                  selected={workspaceCapabilities["audit_logs"]}
+                  onClick={() =>
+                    canEditAudit &&
+                    setWorkspaceCapabilities((prev) => ({
+                      ...prev,
+                      audit_logs: !prev["audit_logs"],
+                    }))
+                  }
+                />
               </div>
-              <SliderToggle
-                selected={workspaceCapabilities["audit_logs"]}
-                onClick={() =>
-                  canEdit &&
-                  setWorkspaceCapabilities((prev) => ({
-                    ...prev,
-                    audit_logs: !prev["audit_logs"],
-                  }))
-                }
-              />
             </div>
           </div>
-        </div>
+        )}
       </div>
     </Page>
   );
