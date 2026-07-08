@@ -340,6 +340,9 @@ mod tests {
     use super::*;
 
     use std::sync::Mutex;
+    // The environment is process-global and `cargo test` runs tests on
+    // parallel threads within one process: any test that reads or mutates env
+    // vars must hold this lock for the whole window where it relies on them.
     static ENV_LOCK: Mutex<()> = Mutex::new(());
 
     #[test]
@@ -434,9 +437,14 @@ mod tests {
             .is_ok()
     }
 
-    /// Function fixture whose schema description echoes the pod databases dir
-    /// the bun child sees. `zod` resolves via NODE_PATH (set by the tests to
-    /// the functions-runner package's node_modules).
+    /// Function fixture that turns the bun child's environment into an
+    /// observable output: its schema `description` is a template literal, so
+    /// it is evaluated *inside whichever bun process imports the module*, and
+    /// the schema text that comes back records what DUST_POD_DATABASES_DIR
+    /// looked like in that child — `unset` when absent. Asserting on the
+    /// schema output is therefore asserting on the child's env, from outside.
+    /// `zod` resolves via NODE_PATH (set by the tests to the functions-runner
+    /// package's node_modules).
     const ENV_PROBE_FIXTURE: &str = r#"import { z } from "zod";
 export const schema = {
   description: `pod-databases-dir=${process.env.DUST_POD_DATABASES_DIR ?? "unset"}`,
@@ -453,6 +461,13 @@ export default {
     const RUNNER_NODE_MODULES: &str =
         concat!(env!("CARGO_MANIFEST_DIR"), "/functions-runner/node_modules");
 
+    /// End-to-end pin of the env contract's dsbx hop, through the production
+    /// `dsbx function get` path: a var present in dsbx's process env (front
+    /// sets it per exec) must reach the untrusted bun child, where
+    /// `@dust/pod`'s `db()` reads it. spawn_function has no forwarding code —
+    /// the var travels by plain inheritance — so this test is what fails if
+    /// anyone scrubs the child env later (env_clear, a runuser flag): cargo
+    /// runs bun nowhere else.
     #[tokio::test]
     // The spawned bun child inherits process-global env, so the env lock must
     // span the spawn awaits; contending tests just block on the mutex (each
@@ -469,6 +484,11 @@ export default {
         let original_node_path = std::env::var_os("NODE_PATH");
         let original_pod_dir = std::env::var_os(POD_DATABASES_DIR_ENV);
 
+        // Stage the probe where resolve_existing() will find it, so
+        // `spawn_function("get", "envprobe", ...)` runs the real runner
+        // against it. `get` prints the probe's schema to stdout — which is
+        // where the child's view of the env comes back out (see
+        // ENV_PROBE_FIXTURE).
         let dir = tempfile::tempdir().expect("tempdir");
         std::fs::write(dir.path().join("envprobe.ts"), ENV_PROBE_FIXTURE).expect("fixture");
         std::env::set_var(FUNCTIONS_DIR_ENV, dir.path());
@@ -506,6 +526,11 @@ export default {
         restore_env(POD_DATABASES_DIR_ENV, original_pod_dir);
     }
 
+    /// Same pin for the `dsbx function build` path: schema extraction imports
+    /// the just-built bundle in a bun child (running its top-level code), so
+    /// a function calling `db()` at top level must see the same env at build
+    /// time as at run time. Here the probe's env recording comes back through
+    /// the extracted schema file rather than stdout.
     #[tokio::test]
     // See function_get_bun_child_inherits_pod_databases_dir: the env lock
     // intentionally spans the spawn await.
