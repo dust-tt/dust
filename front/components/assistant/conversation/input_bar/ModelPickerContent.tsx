@@ -1,52 +1,28 @@
-import { ModelPickerLineItem } from "@app/components/assistant/conversation/input_bar/ModelPickerLineItem";
-import { ModelPickerProviderSection } from "@app/components/assistant/conversation/input_bar/ModelPickerProviderSection";
+import { ModelPickerList } from "@app/components/assistant/conversation/input_bar/ModelPickerList";
 import { ModelPickerRowTooltip } from "@app/components/assistant/conversation/input_bar/ModelPickerRowTooltip";
 import type {
+  ModelPickerListState,
   ModelWithReasoningEffort,
-  ProviderGroup,
-  SuggestedModelWithReasoningEffort,
 } from "@app/components/assistant/conversation/input_bar/modelPickerUtils";
-import {
-  AUTO_TOOLTIP,
-  getModelWithReasoningEffortKey,
-} from "@app/components/assistant/conversation/input_bar/modelPickerUtils";
-import { getModelProviderLogo } from "@app/components/providers/types";
-import { getProviderDisplayName } from "@app/types/assistant/models/providers";
+import { AUTO_TOOLTIP } from "@app/components/assistant/conversation/input_bar/modelPickerUtils";
+import { useIsMobile } from "@app/lib/swr/useIsMobile";
 import type { ModelProviderIdType } from "@app/types/assistant/models/types";
 import {
-  ChevronDown,
-  ChevronRight,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuRadioGroup,
   DropdownMenuSearchbar,
-  DropdownMenuSeparator,
-  DropdownMenuSub,
-  DropdownMenuSubContent,
-  DropdownMenuSubTrigger,
-  Icon,
   SliderToggle,
-  Spinner,
 } from "@dust-tt/sparkle";
-import { Fragment } from "react";
 
 interface ModelPickerContentProps {
   side: "top" | "bottom";
   search: string;
   onSearchChange: (value: string) => void;
-  isModelsLoading: boolean;
-  isSearching: boolean;
-  hasResults: boolean;
-  filteredAll: ModelWithReasoningEffort[];
-  suggestedModelsWithEfforts: SuggestedModelWithReasoningEffort[];
-  moreByProvider: ProviderGroup[];
+  listState: ModelPickerListState;
+  // The Auto row: null hides it entirely (e.g. while searching), otherwise
+  // `isOn` drives the toggle state.
+  auto: { isOn: boolean } | null;
   selectedKey?: string;
-  isMobile: boolean;
-  isDark: boolean;
-  showAuto: boolean;
-  isAutoOn: boolean;
-  showList: boolean;
   onToggleAuto: () => void;
   onSelectModel: (modelWithEffort: ModelWithReasoningEffort) => void;
   // On mobile the "More models" providers expand inline; this tracks the single
@@ -59,23 +35,16 @@ export function ModelPickerContent({
   side,
   search,
   onSearchChange,
-  isModelsLoading,
-  isSearching,
-  hasResults,
-  filteredAll,
-  suggestedModelsWithEfforts,
-  moreByProvider,
+  listState,
+  auto,
   selectedKey,
-  isMobile,
-  isDark,
-  showAuto,
-  isAutoOn,
-  showList,
   onToggleAuto,
   onSelectModel,
   expandedProvider,
   onToggleProvider,
 }: ModelPickerContentProps) {
+  const isMobile = useIsMobile();
+
   return (
     <DropdownMenuContent className="w-72" align="start" side={side}>
       <div className="sticky top-0 z-10 bg-overlay-background pb-1">
@@ -88,123 +57,24 @@ export function ModelPickerContent({
         />
       </div>
 
-      {showAuto && (
+      {auto && (
         <ModelPickerRowTooltip description={AUTO_TOOLTIP} isMobile={isMobile}>
           <DropdownMenuItem
             label="Auto"
-            endComponent={<SliderToggle selected={isAutoOn} />}
+            endComponent={<SliderToggle selected={auto.isOn} />}
             onClick={onToggleAuto}
             onSelect={(e) => e.preventDefault()}
           />
         </ModelPickerRowTooltip>
       )}
 
-      {showList &&
-        (isModelsLoading ? (
-          <div className="flex h-20 items-center justify-center">
-            <Spinner size="sm" />
-          </div>
-        ) : !hasResults ? (
-          <div className="flex items-center justify-center py-4 text-sm text-muted-foreground dark:text-muted-foreground-night">
-            No models found
-          </div>
-        ) : isSearching ? (
-          <>
-            <DropdownMenuSeparator />
-            <DropdownMenuRadioGroup value={selectedKey}>
-              {filteredAll.map((modelWithEffort) => (
-                <ModelPickerLineItem
-                  key={getModelWithReasoningEffortKey(
-                    modelWithEffort.model.providerId,
-                    modelWithEffort.model.modelId,
-                    modelWithEffort.effort
-                  )}
-                  modelWithEffort={modelWithEffort}
-                  isMobile={isMobile}
-                  onSelect={onSelectModel}
-                />
-              ))}
-            </DropdownMenuRadioGroup>
-          </>
-        ) : (
-          <>
-            {suggestedModelsWithEfforts.length > 0 && (
-              <>
-                <DropdownMenuSeparator />
-                <DropdownMenuLabel label="Suggested" />
-                <DropdownMenuRadioGroup value={selectedKey}>
-                  {suggestedModelsWithEfforts.map((modelWithEffort) => (
-                    <ModelPickerLineItem
-                      key={getModelWithReasoningEffortKey(
-                        modelWithEffort.model.providerId,
-                        modelWithEffort.model.modelId,
-                        modelWithEffort.effort
-                      )}
-                      modelWithEffort={modelWithEffort}
-                      isMobile={isMobile}
-                      onSelect={onSelectModel}
-                      recommendation={modelWithEffort.recommendation}
-                    />
-                  ))}
-                </DropdownMenuRadioGroup>
-              </>
-            )}
-            {moreByProvider.length > 0 && (
-              <>
-                <DropdownMenuSeparator />
-                <DropdownMenuLabel label="More models" />
-                {moreByProvider.map((provider) =>
-                  isMobile ? (
-                    // On mobile the provider expands inline below its name
-                    // instead of opening a nested submenu (which is awkward to
-                    // reach on touch).
-                    <Fragment key={provider.providerId}>
-                      <DropdownMenuItem
-                        label={getProviderDisplayName(provider.providerId)}
-                        icon={getModelProviderLogo(provider.providerId, isDark)}
-                        endComponent={
-                          <Icon
-                            visual={
-                              expandedProvider === provider.providerId
-                                ? ChevronDown
-                                : ChevronRight
-                            }
-                            size="xs"
-                          />
-                        }
-                        onClick={() => onToggleProvider(provider.providerId)}
-                        onSelect={(e) => e.preventDefault()}
-                      />
-                      {expandedProvider === provider.providerId && (
-                        <ModelPickerProviderSection
-                          provider={provider}
-                          selectedKey={selectedKey}
-                          isMobile={isMobile}
-                          onSelect={onSelectModel}
-                        />
-                      )}
-                    </Fragment>
-                  ) : (
-                    <DropdownMenuSub key={provider.providerId}>
-                      <DropdownMenuSubTrigger
-                        label={getProviderDisplayName(provider.providerId)}
-                        icon={getModelProviderLogo(provider.providerId, isDark)}
-                      />
-                      <DropdownMenuSubContent>
-                        <ModelPickerProviderSection
-                          provider={provider}
-                          selectedKey={selectedKey}
-                          isMobile={isMobile}
-                          onSelect={onSelectModel}
-                        />
-                      </DropdownMenuSubContent>
-                    </DropdownMenuSub>
-                  )
-                )}
-              </>
-            )}
-          </>
-        ))}
+      <ModelPickerList
+        listState={listState}
+        selectedKey={selectedKey}
+        onSelectModel={onSelectModel}
+        expandedProvider={expandedProvider}
+        onToggleProvider={onToggleProvider}
+      />
     </DropdownMenuContent>
   );
 }

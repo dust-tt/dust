@@ -81,6 +81,21 @@ export type Selection =
   | { kind: "auto" }
   | { kind: "model"; model: ModelConfigurationType; effort: ReasoningEffort };
 
+// The list body is a small state machine: hidden while Auto is on, then a
+// loading / empty / search-results / browse view depending on the models
+// query and the search input. Modeling it as a single discriminated union
+// keeps the picker's props flat instead of a fistful of correlated booleans.
+export type ModelPickerListState =
+  | { kind: "hidden" }
+  | { kind: "loading" }
+  | { kind: "empty" }
+  | { kind: "search"; models: ModelWithReasoningEffort[] }
+  | {
+      kind: "browse";
+      suggested: SuggestedModelWithReasoningEffort[];
+      moreByProvider: ProviderGroup[];
+    };
+
 export function getSelectableReasoningEfforts(
   model: ModelConfigurationType
 ): ReasoningEffort[] {

@@ -1,5 +1,6 @@
 import { ModelPickerContent } from "@app/components/assistant/conversation/input_bar/ModelPickerContent";
 import type {
+  ModelPickerListState,
   ModelWithReasoningEffort,
   ProviderGroup,
   Selection,
@@ -197,6 +198,29 @@ export function InputBarModelPicker({
   const showAuto = !isSearching;
   const showList = expanded || isSearching || selection.kind === "model";
 
+  const hasResults = isSearching
+    ? filteredAll.length > 0
+    : suggestedModelsWithEfforts.length > 0 || moreByProvider.length > 0;
+
+  // Collapse the correlated list booleans + data arrays into a single state so
+  // the picker content receives one flat, exhaustively-typed prop.
+  let listState: ModelPickerListState = {
+    kind: "browse",
+    suggested: suggestedModelsWithEfforts,
+    moreByProvider,
+  };
+  if (!showList) {
+    listState = { kind: "hidden" };
+  } else if (isModelsLoading) {
+    listState = { kind: "loading" };
+  } else if (!hasResults) {
+    listState = { kind: "empty" };
+  } else if (isSearching) {
+    listState = { kind: "search", models: filteredAll };
+  }
+
+  const auto = showAuto ? { isOn: isAutoOn } : null;
+
   const label = isMobile
     ? "Model"
     : `Model: ${getModelWithReasoningEffortLabel(selection)}`;
@@ -214,10 +238,6 @@ export function InputBarModelPicker({
       setExpanded(false);
     }
   };
-
-  const hasResults = isSearching
-    ? filteredAll.length > 0
-    : suggestedModelsWithEfforts.length > 0 || moreByProvider.length > 0;
 
   if (!hasModelsPicker) {
     return null;
@@ -249,18 +269,9 @@ export function InputBarModelPicker({
         side={side}
         search={search}
         onSearchChange={setSearch}
-        isModelsLoading={isModelsLoading}
-        isSearching={isSearching}
-        hasResults={hasResults}
-        filteredAll={filteredAll}
-        suggestedModelsWithEfforts={suggestedModelsWithEfforts}
-        moreByProvider={moreByProvider}
+        listState={listState}
+        auto={auto}
         selectedKey={selectedKey}
-        isMobile={isMobile}
-        isDark={isDark}
-        showAuto={showAuto}
-        isAutoOn={isAutoOn}
-        showList={showList}
         onToggleAuto={toggleAuto}
         onSelectModel={(modelWithEffort: ModelWithReasoningEffort) =>
           commitSelection({
