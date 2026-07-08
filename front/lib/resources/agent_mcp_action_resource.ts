@@ -896,8 +896,18 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
       { concurrency: CONCURRENCY_UPDATE_OUTPUT_ITEMS }
     );
 
-    // Return the stored contents in the generic tool output shape.
-    return removeNulls(outputItems.map((item) => item.content));
+    // Return the model-facing view of the stored contents: file-backed contents are rewritten to
+    // hide the original file from the model.
+    return removeNulls(
+      outputItems.map((item) =>
+        hideFileFromActionOutput({
+          content: item.content,
+          fileId: item.fileId ?? null,
+          file: null,
+          workspaceId: this.workspaceId,
+        })
+      )
+    );
   }
 
   static async fetchOutputItemsByActionIds(

@@ -14,10 +14,7 @@ import {
   isToolGeneratedFile,
   isToolGeneratedFilePath,
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
-import {
-  handleBase64Upload,
-  hideFileFromActionOutput,
-} from "@app/lib/actions/mcp_utils";
+import { handleBase64Upload } from "@app/lib/actions/mcp_utils";
 import type {
   ActionGeneratedFileType,
   ToolContextType,
@@ -480,24 +477,12 @@ export async function processToolResults(
   // actions, a single output object for sandbox function actions.
   switch (runContext.contextType) {
     case "agent_loop": {
-      const contents = cleanContent.map((c) => ({
-        content: sanitizeStringsDeep(c.content),
-        fileId: c.file?.id,
-      }));
-
-      await runContext.action.createOutputItems(auth, contents);
-
-      // Model-facing view of the stored contents: file-backed contents are rewritten to hide the
-      // original file from the model.
-      const outputItems = removeNulls(
-        contents.map(({ content, fileId }) =>
-          hideFileFromActionOutput({
-            content,
-            fileId: fileId ?? null,
-            file: null,
-            workspaceId: auth.getNonNullableWorkspace().id,
-          })
-        )
+      const outputItems = await runContext.action.createOutputItems(
+        auth,
+        cleanContent.map((c) => ({
+          content: sanitizeStringsDeep(c.content),
+          fileId: c.file?.id,
+        }))
       );
       return { outputItems, generatedFiles };
     }
