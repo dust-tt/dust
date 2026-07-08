@@ -1,32 +1,32 @@
 import { ModelPickerRowTooltip } from "@app/components/assistant/conversation/input_bar/ModelPickerRowTooltip";
-import type { ModelLine } from "@app/components/assistant/conversation/input_bar/modelPickerUtils";
+import type { ModelWithReasoningEffort } from "@app/components/assistant/conversation/input_bar/modelPickerUtils";
 import {
-  getLineKey,
+  getModelWithReasoningEffortKey,
   REASONING_EFFORT_INFO,
 } from "@app/components/assistant/conversation/input_bar/modelPickerUtils";
 import { Chip, DropdownMenuRadioItem } from "@dust-tt/sparkle";
 import capitalize from "lodash/capitalize";
 
 interface ModelPickerLineItemProps {
-  line: ModelLine;
+  modelWithEffort: ModelWithReasoningEffort;
   isMobile: boolean;
-  onSelect: (line: ModelLine) => void;
+  onSelect: (modelWithEffort: ModelWithReasoningEffort) => void;
   recommendation?: string;
 }
 
 // A single selectable model/effort row, wrapped in its hover tooltip.
 export function ModelPickerLineItem({
-  line,
+  modelWithEffort,
   isMobile,
   onSelect,
   recommendation,
 }: ModelPickerLineItemProps) {
-  const key = getLineKey(
-    line.model.providerId,
-    line.model.modelId,
-    line.effort
+  const key = getModelWithReasoningEffortKey(
+    modelWithEffort.model.providerId,
+    modelWithEffort.model.modelId,
+    modelWithEffort.effort
   );
-  const info = REASONING_EFFORT_INFO[line.effort];
+  const info = REASONING_EFFORT_INFO[modelWithEffort.effort];
 
   return (
     <ModelPickerRowTooltip
@@ -36,10 +36,10 @@ export function ModelPickerLineItem({
         <div className="flex flex-col gap-3 text-sm">
           <div>
             <div className="font-medium text-foreground dark:text-foreground-night">
-              {line.model.displayName}
+              {modelWithEffort.model.displayName}
             </div>
             <div className="text-muted-foreground dark:text-muted-foreground-night">
-              {line.model.shortDescription}
+              {modelWithEffort.model.shortDescription}
             </div>
           </div>
           <div className="text-muted-foreground dark:text-muted-foreground-night">
@@ -48,11 +48,16 @@ export function ModelPickerLineItem({
         </div>
       }
     >
-      <DropdownMenuRadioItem value={key} onClick={() => onSelect(line)}>
+      <DropdownMenuRadioItem
+        value={key}
+        onClick={() => onSelect(modelWithEffort)}
+      >
         <span className="flex grow items-center gap-2">
-          <span className="line-clamp-1">{line.model.displayName}</span>
-          {line.effort !== "none" && (
-            <Chip size="mini" label={capitalize(line.effort)} />
+          <span className="line-clamp-1">
+            {modelWithEffort.model.displayName}
+          </span>
+          {modelWithEffort.effort !== "none" && (
+            <Chip size="mini" label={capitalize(modelWithEffort.effort)} />
           )}
         </span>
       </DropdownMenuRadioItem>

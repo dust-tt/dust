@@ -2,13 +2,13 @@ import { ModelPickerLineItem } from "@app/components/assistant/conversation/inpu
 import { ModelPickerProviderSection } from "@app/components/assistant/conversation/input_bar/ModelPickerProviderSection";
 import { ModelPickerRowTooltip } from "@app/components/assistant/conversation/input_bar/ModelPickerRowTooltip";
 import type {
-  ModelLine,
+  ModelWithReasoningEffort,
   ProviderGroup,
-  SuggestedLine,
+  SuggestedModelWithReasoningEffort,
 } from "@app/components/assistant/conversation/input_bar/modelPickerUtils";
 import {
   AUTO_TOOLTIP,
-  getLineKey,
+  getModelWithReasoningEffortKey,
 } from "@app/components/assistant/conversation/input_bar/modelPickerUtils";
 import { getModelProviderLogo } from "@app/components/providers/types";
 import { getProviderDisplayName } from "@app/types/assistant/models/providers";
@@ -38,8 +38,8 @@ interface ModelPickerContentProps {
   isModelsLoading: boolean;
   isSearching: boolean;
   hasResults: boolean;
-  filteredAll: ModelLine[];
-  suggestedLines: SuggestedLine[];
+  filteredAll: ModelWithReasoningEffort[];
+  suggestedModelsWithEfforts: SuggestedModelWithReasoningEffort[];
   moreByProvider: ProviderGroup[];
   selectedKey?: string;
   isMobile: boolean;
@@ -48,7 +48,7 @@ interface ModelPickerContentProps {
   isAutoOn: boolean;
   showList: boolean;
   onToggleAuto: () => void;
-  onSelectLine: (line: ModelLine) => void;
+  onSelectModel: (modelWithEffort: ModelWithReasoningEffort) => void;
   // On mobile the "More models" providers expand inline; this tracks the single
   // provider currently expanded.
   expandedProvider: ModelProviderIdType | null;
@@ -63,7 +63,7 @@ export function ModelPickerContent({
   isSearching,
   hasResults,
   filteredAll,
-  suggestedLines,
+  suggestedModelsWithEfforts,
   moreByProvider,
   selectedKey,
   isMobile,
@@ -72,7 +72,7 @@ export function ModelPickerContent({
   isAutoOn,
   showList,
   onToggleAuto,
-  onSelectLine,
+  onSelectModel,
   expandedProvider,
   onToggleProvider,
 }: ModelPickerContentProps) {
@@ -92,7 +92,7 @@ export function ModelPickerContent({
         <ModelPickerRowTooltip description={AUTO_TOOLTIP} isMobile={isMobile}>
           <DropdownMenuItem
             label="Auto"
-            endComponent={<SliderToggle size="xs" selected={isAutoOn} />}
+            endComponent={<SliderToggle selected={isAutoOn} />}
             onClick={onToggleAuto}
             onSelect={(e) => e.preventDefault()}
           />
@@ -112,38 +112,38 @@ export function ModelPickerContent({
           <>
             <DropdownMenuSeparator />
             <DropdownMenuRadioGroup value={selectedKey}>
-              {filteredAll.map((line) => (
+              {filteredAll.map((modelWithEffort) => (
                 <ModelPickerLineItem
-                  key={getLineKey(
-                    line.model.providerId,
-                    line.model.modelId,
-                    line.effort
+                  key={getModelWithReasoningEffortKey(
+                    modelWithEffort.model.providerId,
+                    modelWithEffort.model.modelId,
+                    modelWithEffort.effort
                   )}
-                  line={line}
+                  modelWithEffort={modelWithEffort}
                   isMobile={isMobile}
-                  onSelect={onSelectLine}
+                  onSelect={onSelectModel}
                 />
               ))}
             </DropdownMenuRadioGroup>
           </>
         ) : (
           <>
-            {suggestedLines.length > 0 && (
+            {suggestedModelsWithEfforts.length > 0 && (
               <>
                 <DropdownMenuSeparator />
                 <DropdownMenuLabel label="Suggested" />
                 <DropdownMenuRadioGroup value={selectedKey}>
-                  {suggestedLines.map((line) => (
+                  {suggestedModelsWithEfforts.map((modelWithEffort) => (
                     <ModelPickerLineItem
-                      key={getLineKey(
-                        line.model.providerId,
-                        line.model.modelId,
-                        line.effort
+                      key={getModelWithReasoningEffortKey(
+                        modelWithEffort.model.providerId,
+                        modelWithEffort.model.modelId,
+                        modelWithEffort.effort
                       )}
-                      line={line}
+                      modelWithEffort={modelWithEffort}
                       isMobile={isMobile}
-                      onSelect={onSelectLine}
-                      recommendation={line.recommendation}
+                      onSelect={onSelectModel}
+                      recommendation={modelWithEffort.recommendation}
                     />
                   ))}
                 </DropdownMenuRadioGroup>
@@ -180,7 +180,7 @@ export function ModelPickerContent({
                           provider={provider}
                           selectedKey={selectedKey}
                           isMobile={isMobile}
-                          onSelect={onSelectLine}
+                          onSelect={onSelectModel}
                         />
                       )}
                     </Fragment>
@@ -195,7 +195,7 @@ export function ModelPickerContent({
                           provider={provider}
                           selectedKey={selectedKey}
                           isMobile={isMobile}
-                          onSelect={onSelectLine}
+                          onSelect={onSelectModel}
                         />
                       </DropdownMenuSubContent>
                     </DropdownMenuSub>

@@ -1,13 +1,13 @@
 import { ModelPickerContent } from "@app/components/assistant/conversation/input_bar/ModelPickerContent";
 import type {
-  ModelLine,
+  ModelWithReasoningEffort,
   ProviderGroup,
   Selection,
-  SuggestedLine,
+  SuggestedModelWithReasoningEffort,
 } from "@app/components/assistant/conversation/input_bar/modelPickerUtils";
 import {
-  getLineKey,
-  getLineLabel,
+  getModelWithReasoningEffortKey,
+  getModelWithReasoningEffortLabel,
   getSelectableReasoningEfforts,
   SUGGESTED_PINS,
   toModelSelection,
@@ -94,7 +94,7 @@ export function InputBarModelPicker({
     disabled: !hasModelsPicker,
   });
 
-  const allLines = useMemo<ModelLine[]>(
+  const allModelsWithEfforts = useMemo<ModelWithReasoningEffort[]>(
     () =>
       models.flatMap((model) =>
         getSelectableReasoningEfforts(model).map((effort) => ({
@@ -107,7 +107,9 @@ export function InputBarModelPicker({
 
   // Resolve the pinned combos against the workspace's actual models (skipping any
   // the workspace doesn't have or that don't support the pinned effort).
-  const suggestedLines = useMemo<SuggestedLine[]>(
+  const suggestedModelsWithEfforts = useMemo<
+    SuggestedModelWithReasoningEffort[]
+  >(
     () =>
       SUGGESTED_PINS.flatMap((pin) => {
         const model = models.find(
@@ -137,46 +139,52 @@ export function InputBarModelPicker({
       ModelProviderIdType,
       Map<string, { model: ModelConfigurationType; efforts: ReasoningEffort[] }>
     >();
-    for (const line of allLines) {
-      const providerId = line.model.providerId;
+    for (const modelWithEffort of allModelsWithEfforts) {
+      const providerId = modelWithEffort.model.providerId;
       let modelsMap = providers.get(providerId);
       if (!modelsMap) {
         modelsMap = new Map();
         providers.set(providerId, modelsMap);
       }
-      let entry = modelsMap.get(line.model.modelId);
+      let entry = modelsMap.get(modelWithEffort.model.modelId);
       if (!entry) {
-        entry = { model: line.model, efforts: [] };
-        modelsMap.set(line.model.modelId, entry);
+        entry = { model: modelWithEffort.model, efforts: [] };
+        modelsMap.set(modelWithEffort.model.modelId, entry);
       }
-      entry.efforts.push(line.effort);
+      entry.efforts.push(modelWithEffort.effort);
     }
     return Array.from(providers.entries()).map(([providerId, modelsMap]) => ({
       providerId,
       models: Array.from(modelsMap.values()),
     }));
-  }, [allLines]);
+  }, [allModelsWithEfforts]);
 
   const isSearching = search.trim() !== "";
 
   // While searching we show a single flat list over every model/effort.
-  const filteredAll = useMemo<ModelLine[]>(() => {
+  const filteredAll = useMemo<ModelWithReasoningEffort[]>(() => {
     const q = search.trim().toLowerCase();
     if (!q) {
-      return allLines;
+      return allModelsWithEfforts;
     }
-    return allLines.filter(
-      (l) =>
-        getLineLabel({ model: l.model, effort: l.effort, kind: "model" })
+    return allModelsWithEfforts.filter(
+      (modelWithEffort) =>
+        getModelWithReasoningEffortLabel({
+          model: modelWithEffort.model,
+          effort: modelWithEffort.effort,
+          kind: "model",
+        })
           .toLowerCase()
           .includes(q) ||
-        getProviderDisplayName(l.model.providerId).toLowerCase().includes(q)
+        getProviderDisplayName(modelWithEffort.model.providerId)
+          .toLowerCase()
+          .includes(q)
     );
-  }, [allLines, search]);
+  }, [allModelsWithEfforts, search]);
 
   const selectedKey =
     selection.kind === "model"
-      ? getLineKey(
+      ? getModelWithReasoningEffortKey(
           selection.model.providerId,
           selection.model.modelId,
           selection.effort
@@ -189,7 +197,9 @@ export function InputBarModelPicker({
   const showAuto = !isSearching;
   const showList = expanded || isSearching || selection.kind === "model";
 
-  const label = isMobile ? "Model" : `Model: ${getLineLabel(selection)}`;
+  const label = isMobile
+    ? "Model"
+    : `Model: ${getModelWithReasoningEffortLabel(selection)}`;
 
   const buttonIcon =
     isMobile && selection.kind === "model"
@@ -207,7 +217,7 @@ export function InputBarModelPicker({
 
   const hasResults = isSearching
     ? filteredAll.length > 0
-    : suggestedLines.length > 0 || moreByProvider.length > 0;
+    : suggestedModelsWithEfforts.length > 0 || moreByProvider.length > 0;
 
   if (!hasModelsPicker) {
     return null;
@@ -243,7 +253,7 @@ export function InputBarModelPicker({
         isSearching={isSearching}
         hasResults={hasResults}
         filteredAll={filteredAll}
-        suggestedLines={suggestedLines}
+        suggestedModelsWithEfforts={suggestedModelsWithEfforts}
         moreByProvider={moreByProvider}
         selectedKey={selectedKey}
         isMobile={isMobile}
@@ -252,11 +262,11 @@ export function InputBarModelPicker({
         isAutoOn={isAutoOn}
         showList={showList}
         onToggleAuto={toggleAuto}
-        onSelectLine={(line: ModelLine) =>
+        onSelectModel={(modelWithEffort: ModelWithReasoningEffort) =>
           commitSelection({
             kind: "model",
-            model: line.model,
-            effort: line.effort,
+            model: modelWithEffort.model,
+            effort: modelWithEffort.effort,
           })
         }
         expandedProvider={expandedProvider}

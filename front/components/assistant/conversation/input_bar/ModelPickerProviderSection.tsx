@@ -1,9 +1,9 @@
 import { ModelPickerLineItem } from "@app/components/assistant/conversation/input_bar/ModelPickerLineItem";
 import type {
-  ModelLine,
+  ModelWithReasoningEffort,
   ProviderGroup,
 } from "@app/components/assistant/conversation/input_bar/modelPickerUtils";
-import { getLineKey } from "@app/components/assistant/conversation/input_bar/modelPickerUtils";
+import { getModelWithReasoningEffortKey } from "@app/components/assistant/conversation/input_bar/modelPickerUtils";
 import {
   DropdownMenuLabel,
   DropdownMenuRadioGroup,
@@ -15,7 +15,7 @@ interface ModelPickerProviderSectionProps {
   provider: ProviderGroup;
   selectedKey?: string;
   isMobile: boolean;
-  onSelect: (line: ModelLine) => void;
+  onSelect: (modelWithEffort: ModelWithReasoningEffort) => void;
 }
 
 // The per-model sections (one label + its effort lines) shown for a provider.
@@ -35,15 +35,15 @@ export function ModelPickerProviderSection({
           <DropdownMenuLabel label={entry.model.displayName} />
           <DropdownMenuRadioGroup value={selectedKey}>
             {entry.efforts.map((effort) => {
-              const line = { model: entry.model, effort };
+              const modelWithEffort = { model: entry.model, effort };
               return (
                 <ModelPickerLineItem
-                  key={getLineKey(
+                  key={getModelWithReasoningEffortKey(
                     entry.model.providerId,
                     entry.model.modelId,
                     effort
                   )}
-                  line={line}
+                  modelWithEffort={modelWithEffort}
                   isMobile={isMobile}
                   onSelect={onSelect}
                 />

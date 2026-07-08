@@ -62,12 +62,13 @@ export const REASONING_EFFORT_INFO: Record<
   },
 };
 
-export interface ModelLine {
+export interface ModelWithReasoningEffort {
   model: ModelConfigurationType;
   effort: ReasoningEffort;
 }
 
-export interface SuggestedLine extends ModelLine {
+export interface SuggestedModelWithReasoningEffort
+  extends ModelWithReasoningEffort {
   recommendation: string;
 }
 
@@ -88,7 +89,7 @@ export function getSelectableReasoningEfforts(
   return withReasoning.length > 0 ? withReasoning : efforts;
 }
 
-export function getLineKey(
+export function getModelWithReasoningEffortKey(
   providerId: string,
   modelId: string,
   effort: ReasoningEffort
@@ -96,7 +97,7 @@ export function getLineKey(
   return `${providerId}/${modelId}/${effort}`;
 }
 
-export function getLineLabel(selection: Selection): string {
+export function getModelWithReasoningEffortLabel(selection: Selection): string {
   if (selection.kind === "auto") {
     return "Auto";
   }
