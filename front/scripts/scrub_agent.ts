@@ -4,7 +4,7 @@ import {
   unsafeHardDeleteAgentConfiguration,
 } from "@app/lib/api/assistant/configuration/agent";
 import { Authenticator } from "@app/lib/auth";
-import { AgentUserRelationModel } from "@app/lib/models/agent/agent";
+import { AgentUserRelationResource } from "@app/lib/resources/agent_user_relation_resource";
 import { TriggerResource } from "@app/lib/resources/trigger_resource";
 import { WakeUpResource } from "@app/lib/resources/wakeup_resource";
 import { makeScript } from "@app/scripts/helpers";
@@ -81,22 +81,21 @@ makeScript(
     // re-run this script, so if any scoped row survived (its Temporal cleanup
     // failed and it was kept for retry) we abort and leave the agent intact so a
     // rerun can finish the job once the underlying issue is resolved.
-    const [remainingTriggers, remainingWakeUps, remainingFavorites] =
-      await Promise.all([
-        TriggerResource.listByAgentConfigurationId(auth, agentId),
-        WakeUpResource.listByAgentConfigurationId(auth, agentId),
-        AgentUserRelationModel.findAll({
-          where: {
-            agentConfiguration: agentId,
-            workspaceId: auth.getNonNullableWorkspace().id,
-          },
-        }),
-      ]);
+    const remainingTriggers = await TriggerResource.listByAgentConfigurationId(
+      auth,
+      agentId
+    );
+    const remainingWakeUps = await WakeUpResource.listByAgentConfigurationId(
+      auth,
+      agentId
+    );
+    const remainingFavoriteCount =
+      await AgentUserRelationResource.countForAgent(auth, agentId);
 
     if (
       remainingTriggers.length > 0 ||
       remainingWakeUps.length > 0 ||
-      remainingFavorites.length > 0
+      remainingFavoriteCount > 0
     ) {
       logger.error(
         {
@@ -108,7 +107,7 @@ makeScript(
             status: w.status,
             scheduleType: w.scheduleType,
           })),
-          remainingFavoriteCount: remainingFavorites.length,
+          remainingFavoriteCount,
         },
         "Agent scoped cleanup incomplete; aborting hard-delete of agent versions. " +
           "Resolve the underlying Temporal failure and rerun."

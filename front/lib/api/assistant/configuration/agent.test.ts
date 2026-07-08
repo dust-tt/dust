@@ -9,11 +9,9 @@ import {
 } from "@app/lib/api/assistant/configuration/agent";
 import { setAgentUserFavorite } from "@app/lib/api/assistant/user_relation";
 import { Authenticator } from "@app/lib/auth";
-import {
-  AgentConfigurationModel,
-  AgentUserRelationModel,
-} from "@app/lib/models/agent/agent";
+import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { AgentSuggestionResource } from "@app/lib/resources/agent_suggestion_resource";
+import { AgentUserRelationResource } from "@app/lib/resources/agent_user_relation_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { GroupMembershipModel } from "@app/lib/resources/storage/models/group_memberships";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
@@ -521,13 +519,9 @@ describe("cleanupAgentScopedResourcesForHardDeletion", () => {
     );
     expect(remainingWakeUps).toHaveLength(0);
 
-    const remainingFavorites = await AgentUserRelationModel.findAll({
-      where: {
-        agentConfiguration: agent.sId,
-        workspaceId: workspace.id,
-      },
-    });
-    expect(remainingFavorites).toHaveLength(0);
+    const remainingFavoriteCount =
+      await AgentUserRelationResource.countForAgent(authenticator, agent.sId);
+    expect(remainingFavoriteCount).toBe(0);
 
     expect(mockDeleteSchedule).toHaveBeenCalled();
     expect(cancelSpy).toHaveBeenCalled();

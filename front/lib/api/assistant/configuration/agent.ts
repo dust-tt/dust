@@ -40,6 +40,7 @@ import { AgentSkillModel } from "@app/lib/models/agent/agent_skill";
 import { AgentSuggestionModel } from "@app/lib/models/agent/agent_suggestion";
 import { GroupAgentModel } from "@app/lib/models/agent/group_agent";
 import { TagAgentModel } from "@app/lib/models/agent/tag_agent";
+import { AgentUserRelationResource } from "@app/lib/resources/agent_user_relation_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
@@ -1632,12 +1633,7 @@ export async function cleanupAgentScopedResourcesForHardDeletion(
     }
   }
 
-  await AgentUserRelationModel.destroy({
-    where: {
-      agentConfiguration: agentConfigurationId,
-      workspaceId: workspace.id,
-    },
-  });
+  await AgentUserRelationResource.deleteForAgent(auth, agentConfigurationId);
 }
 
 // Should only be called when we need to clean up the agent configuration
