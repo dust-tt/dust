@@ -63,6 +63,7 @@ export const SANDBOX_TOOLS_METADATA = createToolsRecord({
         ),
     },
     stake: "never_ask",
+    eager: true,
     displayLabels: {
       running: "Executing command",
       done: "Execute command in the Computer",
