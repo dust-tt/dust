@@ -1,3 +1,4 @@
+import { ConnectWorkspaceGitHubMessage } from "@app/components/skills/import/ConnectWorkspaceGitHubMessage";
 import { DetectedSkillsList } from "@app/components/skills/import/DetectedSkillsList";
 import type { RepositoryImportFormValues } from "@app/components/skills/import/formSchema";
 import {
@@ -6,7 +7,8 @@ import {
 } from "@app/lib/skill_detection";
 import { useDetectSkillsFromRepo } from "@app/lib/swr/skill_configurations";
 import type { LightWorkspaceType } from "@app/types/user";
-import { Input } from "@dust-tt/sparkle";
+import { isAdmin } from "@app/types/user";
+import { ContentMessage, InfoCircle, Input } from "@dust-tt/sparkle";
 import { useEffect } from "react";
 import { useController, useFormContext } from "react-hook-form";
 
@@ -28,8 +30,13 @@ export function ImportFromRepositoryTab({
   const { control, setValue } = useFormContext<RepositoryImportFormValues>();
   const { field: repoUrlField } = useController({ name: "repoUrl", control });
 
-  const { detectedSkills, isDetecting, detectError, triggerDetect } =
-    useDetectSkillsFromRepo({ owner });
+  const {
+    detectedSkills,
+    isDetecting,
+    detectError,
+    repositoryNotFound,
+    triggerDetect,
+  } = useDetectSkillsFromRepo({ owner });
 
   // Re-sync selected skills when detection completes or when this tab becomes active.
   // detectedSkills come from an async hook, so values don't exist at form init time.
@@ -70,12 +77,32 @@ export function ImportFromRepositoryTab({
         onBlur={repoUrlField.onBlur}
         placeholder="https://github.com/owner/repo"
         disabled={isImporting}
+        className="bg-muted-background"
       />
-      <DetectedSkillsList
-        detectedSkills={detectedSkills}
-        isDetecting={isDetecting}
-        detectError={detectError}
-      />
+      {repositoryNotFound ? (
+        isAdmin(owner) ? (
+          <ConnectWorkspaceGitHubMessage
+            owner={owner}
+            onConnected={() => triggerDetect(repoUrlField.value)}
+          />
+        ) : (
+          <ContentMessage
+            variant="warning"
+            size="lg"
+            icon={InfoCircle}
+            title="Repository not found"
+          >
+            Check the URL. For private repos, ask an admin to connect a GitHub
+            account with access.
+          </ContentMessage>
+        )
+      ) : (
+        <DetectedSkillsList
+          detectedSkills={detectedSkills}
+          isDetecting={isDetecting}
+          detectError={detectError}
+        />
+      )}
     </div>
   );
 }

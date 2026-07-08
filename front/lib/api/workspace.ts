@@ -545,6 +545,10 @@ export function isWebBrowseProvider(
 
 export interface WorkspaceMetadata {
   maintenance?: "relocation" | "relocation-done";
+  skillImportGithubConnection?: {
+    connectionId: string;
+    connectedBy: string;
+  };
   killSwitched?: WorkspaceKillSwitchValue;
   allowContentCreationFileSharing?: boolean;
   allowEmailAgents?: boolean;
