@@ -79,6 +79,7 @@ const newButtonVariants = cva(
         primary: cn(
           OVERLAY,
           "bg-linear-to-b from-primary-700 to-primary-800",
+          "dark:from-primary-800 dark:to-primary-900",
           "text-primary-50",
           RAISED_SHADOW,
           "data-[disabled]:from-primary-300 data-[disabled]:to-primary-400",
@@ -104,6 +105,7 @@ const newButtonVariants = cva(
         // dark gradient + light text in dark mode, via the same flipping ramp.
         outline: cn(
           OVERLAY,
+          "overflow-hidden after:rounded-none",
           "border border-border-dark",
           "bg-linear-to-b from-primary-50 to-primary-100",
           "text-muted-foreground",
@@ -373,7 +375,7 @@ const NewButton = React.forwardRef<HTMLButtonElement, NewButtonProps>(
             variant,
             size,
             isIconOnly,
-            press: !isMenuTrigger,
+            press: !isMenuTrigger && !isLoading,
           }),
           isPulsing && "animate-ring-pulse-soft",
           className
