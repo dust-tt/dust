@@ -114,6 +114,22 @@ export class ProjectMetadataResource extends BaseResource<ProjectMetadataModel> 
     );
   }
 
+  static async fetchActivationPods(
+    auth: Authenticator
+  ): Promise<ProjectMetadataResource[]> {
+    const models = await ProjectMetadataModel.findAll({
+      where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
+        provisioningSource: "activation" satisfies ProvisioningSource,
+        archivedAt: null,
+      },
+    });
+
+    return models.map((model) =>
+      ProjectMetadataResource.fromModel(model, model.spaceId)
+    );
+  }
+
   static async removeSkillFromAllDefaultSkills(
     auth: Authenticator,
     skillId: string,
