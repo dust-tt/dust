@@ -445,7 +445,7 @@ describe("Output items with GCS storage", () => {
     ]);
 
     expect(outputItems).toHaveLength(1);
-    expect(outputItems[0]).toEqual({
+    expect(outputItems[0].content).toEqual({
       type: "text",
       text: "Hello from GCS",
     });

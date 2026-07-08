@@ -17,7 +17,11 @@ import type {
   ToolPersonalAuthRequiredEvent,
 } from "@app/lib/actions/mcp_internal_actions/events";
 import { getExitOrPauseEvents } from "@app/lib/actions/mcp_internal_actions/exit_events";
-import type { AgentLoopRunContextType } from "@app/lib/actions/types";
+import { hideFileFromActionOutput } from "@app/lib/actions/mcp_utils";
+import type {
+  AgentLoopRunContextType,
+  ToolOutputItemType,
+} from "@app/lib/actions/types";
 import { handleMCPActionError } from "@app/lib/api/mcp/error";
 import type { Authenticator } from "@app/lib/auth";
 import type { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
@@ -25,7 +29,7 @@ import { withPeriodicHeartbeat } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import { TOOL_ACTIVITY_HEARTBEAT_TIMEOUT_MS } from "@app/temporal/agent_loop/config";
 import type { AgentLoopExecutionData } from "@app/types/assistant/agent_run";
-import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
+import { removeNulls } from "@app/types/shared/utils/general";
 import { heartbeat } from "@temporalio/activity";
 
 const TOOL_RESULT_PROCESSING_HEARTBEAT_TIMEOUT_MARGIN_MS = 5 * 1000;
@@ -96,7 +100,7 @@ export async function* runToolWithStreaming(
   await action.updateStatus("running");
   const startDate = performance.now();
 
-  const intermediateOutputItems: CallToolResult["content"] = [];
+  const intermediateOutputItems: ToolOutputItemType[] = [];
 
   const toolCallResult = yield* tryCallMCPTool(
     auth,
@@ -172,7 +176,9 @@ export async function* runToolWithStreaming(
   yield {
     type: "tool_success",
     created: Date.now(),
-    output: [...intermediateOutputItems, ...outputItems],
+    output: removeNulls(
+      [...intermediateOutputItems, ...outputItems].map(hideFileFromActionOutput)
+    ),
     generatedFiles,
   };
 }

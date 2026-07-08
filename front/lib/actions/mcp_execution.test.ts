@@ -265,7 +265,7 @@ describe("processToolResults", () => {
     });
 
     expect(outputItems).toHaveLength(1);
-    const stored = outputItems[0];
+    const stored = outputItems[0].content;
 
     // The large text block should be converted to a resource with a truncated snippet.
     expect(stored.type).toBe("resource");
@@ -298,7 +298,7 @@ describe("processToolResults", () => {
     });
 
     expect(outputItems).toHaveLength(1);
-    const stored = outputItems[0];
+    const stored = outputItems[0].content;
 
     expect(stored.type).toBe("resource");
     if (stored.type === "resource" && "text" in stored.resource) {
@@ -324,7 +324,7 @@ describe("processToolResults", () => {
     });
 
     expect(outputItems).toHaveLength(1);
-    const stored = outputItems[0];
+    const stored = outputItems[0].content;
 
     expect(stored.type).toBe("text");
     if (stored.type === "text") {
@@ -346,7 +346,7 @@ describe("processToolResults", () => {
     });
 
     expect(outputItems).toHaveLength(1);
-    const stored = outputItems[0];
+    const stored = outputItems[0].content;
 
     expect(stored.type).toBe("text");
     if (stored.type === "text") {
@@ -371,7 +371,7 @@ describe("processToolResults", () => {
     });
 
     expect(outputItems).toHaveLength(1);
-    const stored = outputItems[0];
+    const stored = outputItems[0].content;
 
     expect(stored.type).toBe("resource");
     if (stored.type === "resource" && "text" in stored.resource) {

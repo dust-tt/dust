@@ -18,6 +18,7 @@ import { handleBase64Upload } from "@app/lib/actions/mcp_utils";
 import type {
   ActionGeneratedFileType,
   ToolContextType,
+  ToolOutputItemType,
 } from "@app/lib/actions/types";
 import { isAgentLoopRunContext } from "@app/lib/actions/types";
 import { isInternalServerSideMCPToolConfiguration } from "@app/lib/actions/types/guards";
@@ -78,14 +79,14 @@ export async function processToolNotification(
   }
 ): Promise<{
   event: ToolNotificationEvent;
-  outputItems: CallToolResult["content"];
+  outputItems: ToolOutputItemType[];
 }> {
   const { runContext } = toolContext;
   assert(runContext, "processToolNotification requires a tool run context.");
 
   const output = notification.params._meta.data.output;
 
-  let outputItems: CallToolResult["content"] = [];
+  let outputItems: ToolOutputItemType[] = [];
 
   // Handle store_resource notifications by creating output items immediately (fire-and-forget GCS).
   if (isStoreResourceProgressOutput(output)) {
@@ -171,7 +172,7 @@ export async function processToolResults(
     toolContext: ToolContextType;
   }
 ): Promise<{
-  outputItems: CallToolResult["content"];
+  outputItems: ToolOutputItemType[];
   generatedFiles: ActionGeneratedFileType[];
 }> {
   const { runContext } = toolContext;

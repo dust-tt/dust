@@ -6,6 +6,7 @@ import type {
 import type { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import type { SandboxFunctionInvocationResource } from "@app/lib/resources/sandbox_function_invocation_resource";
 import type { SandboxFunctionMCPActionResource } from "@app/lib/resources/sandbox_function_mcp_action_resource";
+import type { FileModel } from "@app/lib/resources/storage/models/files";
 import type {
   AgentConfigurationWithoutModelType,
   AgentModelConfigurationType,
@@ -17,6 +18,8 @@ import type {
 } from "@app/types/assistant/conversation";
 import type { ModelConfigurationType } from "@app/types/assistant/models/types";
 import type { AllSupportedFileContentType } from "@app/types/files";
+import type { ModelId } from "@app/types/shared/model_id";
+import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
 
 const FileAuthorizationInfoSchema = z.object({
@@ -150,6 +153,16 @@ export type ActionGeneratedFilePathType = ActionGeneratedFileBase & {
 export type ActionGeneratedFileType =
   | ActionGeneratedDBFileType
   | ActionGeneratedFilePathType;
+
+// A persisted tool output item in the generic shape returned by both AgentMCPActionResource and
+// SandboxFunctionMCPActionResource createOutputItems: the stored content plus the file linkage
+// required to render the model-facing view (hideFileFromActionOutput).
+export type ToolOutputItemType = {
+  content: CallToolResult["content"][number];
+  fileId: ModelId | null;
+  file: FileModel | null;
+  workspaceId: ModelId;
+};
 
 export type AgentLoopRunContextType = {
   contextType: "agent_loop";

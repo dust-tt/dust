@@ -1,5 +1,5 @@
 import type { LightMCPToolConfigurationType } from "@app/lib/actions/mcp";
-import { hideFileFromActionOutput } from "@app/lib/actions/mcp_utils";
+import type { ToolOutputItemType } from "@app/lib/actions/types";
 import type { Authenticator } from "@app/lib/auth";
 import { getPrivateUploadBucket } from "@app/lib/file_storage";
 import {
@@ -177,32 +177,18 @@ export class SandboxFunctionMCPActionResource extends BaseResource<SandboxFuncti
   }
 
   // Writes the full content array to a single GCS object and records its path on the row. Written
-  // exactly once, at tool completion. Stores and returns the model-facing view of the contents
-  // (file-backed contents are rewritten to hide the original file), the generic tool output shape
-  // shared with AgentMCPActionResource.createOutputItems. Unlike agent MCP action output items,
-  // the hiding is applied at write time: the single output object carries no per-item fileId to
-  // apply it at read time.
+  // exactly once, at tool completion. Returns the stored contents in the generic tool output item
+  // shape shared with AgentMCPActionResource.createOutputItems.
   async createOutputItems(
     auth: Authenticator,
     contents: Array<{
       content: CallToolResult["content"][number];
       fileId?: ModelId;
     }>
-  ): Promise<Result<CallToolResult["content"], Error>> {
+  ): Promise<Result<ToolOutputItemType[], Error>> {
     const gcsPath = this.outputGcsPathFor(auth);
     const file = getPrivateUploadBucket().file(gcsPath);
-
-    const hiddenContents = removeNulls(
-      contents.map((c) =>
-        hideFileFromActionOutput({
-          content: c.content,
-          fileId: c.fileId ?? null,
-          file: null,
-          workspaceId: this.workspaceId,
-        })
-      )
-    );
-    const json = JSON.stringify(hiddenContents);
+    const json = JSON.stringify(contents.map((c) => c.content));
 
     const writeResult = await withRetry(() =>
       file.save(Buffer.from(json, "utf-8"), {
@@ -243,7 +229,14 @@ export class SandboxFunctionMCPActionResource extends BaseResource<SandboxFuncti
       return new Err(normalizeError(err));
     }
 
-    return new Ok(hiddenContents);
+    return new Ok(
+      contents.map((c) => ({
+        content: c.content,
+        fileId: c.fileId ?? null,
+        file: null,
+        workspaceId: this.workspaceId,
+      }))
+    );
   }
 
   async readOutput(): Promise<Result<CallToolResult["content"] | null, Error>> {

@@ -16,7 +16,7 @@ import {
   getToolDisplayLabels,
   getToolNameFromFunctionCallName,
 } from "@app/lib/actions/tool_display_labels";
-import type { StepContext } from "@app/lib/actions/types";
+import type { StepContext, ToolOutputItemType } from "@app/lib/actions/types";
 import {
   isFileAuthorizationInfo,
   isSandboxChildActionInfo,
@@ -827,7 +827,7 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
       content: CallToolResult["content"][number];
       fileId?: ModelId;
     }>
-  ): Promise<Result<CallToolResult["content"], Error>> {
+  ): Promise<Result<ToolOutputItemType[], Error>> {
     const outputItems = await AgentMCPActionOutputItemModel.bulkCreate(
       contents.map((c) => {
         const { generatedFilePath, generatedFileContentType } =
@@ -895,17 +895,18 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
       { concurrency: CONCURRENCY_UPDATE_OUTPUT_ITEMS }
     );
 
-    // Return the model-facing view of the stored contents: file-backed contents are rewritten to
-    // hide the original file from the model.
+    // Return the stored contents in the generic tool output item shape.
     return new Ok(
       removeNulls(
         outputItems.map((item) =>
-          hideFileFromActionOutput({
-            content: item.content,
-            fileId: item.fileId ?? null,
-            file: null,
-            workspaceId: this.workspaceId,
-          })
+          item.content
+            ? {
+                content: item.content,
+                fileId: item.fileId ?? null,
+                file: item.file ?? null,
+                workspaceId: item.workspaceId,
+              }
+            : null
         )
       )
     );
