@@ -13,12 +13,17 @@ import { GroupResource } from "@app/lib/resources/group_resource";
 import { GroupMembershipModel } from "@app/lib/resources/storage/models/group_memberships";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
 import { TriggerResource } from "@app/lib/resources/trigger_resource";
+import { WakeUpResource } from "@app/lib/resources/wakeup_resource";
+import * as wakeUpClient from "@app/temporal/triggers/wakeup_client";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { AgentSuggestionFactory } from "@app/tests/utils/AgentSuggestionFactory";
+import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
-import { describe, expect, it } from "vitest";
+import { WakeUpFactory } from "@app/tests/utils/WakeUpFactory";
+import { Ok } from "@app/types/shared/result";
+import { describe, expect, it, vi } from "vitest";
 
 describe("createAgentConfiguration with pending agent", () => {
   it("converts pending agent to active when agentConfigurationId points to a pending agent", async () => {
@@ -330,6 +335,86 @@ describe("archiveAgentConfiguration and restoreAgentConfiguration", () => {
         "Agent configuration is not archived"
       );
     }
+  });
+
+  it("cancels scheduled wake-ups when archiving", async () => {
+    const launchSpy = vi
+      .spyOn(wakeUpClient, "launchOrScheduleWakeUpTemporalWorkflow")
+      .mockResolvedValue(new Ok(undefined));
+    const cancelSpy = vi
+      .spyOn(wakeUpClient, "cancelWakeUpTemporalWorkflow")
+      .mockResolvedValue(new Ok(undefined));
+
+    const { authenticator } = await createResourceTest({ role: "admin" });
+    const agent =
+      await AgentConfigurationFactory.createTestAgent(authenticator);
+    const conversation = await ConversationFactory.create(authenticator, {
+      agentConfigurationId: agent.sId,
+      messagesCreatedAt: [new Date()],
+    });
+
+    const wakeUp = await WakeUpFactory.cron(
+      authenticator,
+      conversation,
+      agent,
+      {
+        reason: "Daily wake-up",
+      }
+    );
+
+    const archived = await archiveAgentConfiguration(authenticator, agent.sId);
+    expect(archived).toBe(true);
+
+    expect(cancelSpy).toHaveBeenCalled();
+    const refetched = await WakeUpResource.fetchById(authenticator, wakeUp.sId);
+    expect(refetched?.status).toBe("cancelled");
+
+    launchSpy.mockRestore();
+    cancelSpy.mockRestore();
+  });
+
+  it("reconciles the leaked schedule of a terminal cron wake-up when archiving", async () => {
+    const launchSpy = vi
+      .spyOn(wakeUpClient, "launchOrScheduleWakeUpTemporalWorkflow")
+      .mockResolvedValue(new Ok(undefined));
+    const cancelSpy = vi
+      .spyOn(wakeUpClient, "cancelWakeUpTemporalWorkflow")
+      .mockResolvedValue(new Ok(undefined));
+
+    const { authenticator } = await createResourceTest({ role: "admin" });
+    const agent =
+      await AgentConfigurationFactory.createTestAgent(authenticator);
+    const conversation = await ConversationFactory.create(authenticator, {
+      agentConfigurationId: agent.sId,
+      messagesCreatedAt: [new Date()],
+    });
+
+    const wakeUp = await WakeUpFactory.cron(
+      authenticator,
+      conversation,
+      agent,
+      {
+        reason: "Daily wake-up",
+      }
+    );
+
+    // Drive the wake-up to a terminal state via a DB-only cancel (markCancelled
+    // does not touch Temporal), simulating a cron schedule that leaked when the
+    // wake-up became terminal.
+    await wakeUp.markCancelled(authenticator);
+
+    // Only count the Temporal calls made by archiving.
+    cancelSpy.mockClear();
+
+    const archived = await archiveAgentConfiguration(authenticator, agent.sId);
+    expect(archived).toBe(true);
+
+    // Archive must reconcile the leaked schedule even though the row is already
+    // terminal (it used to skip non-scheduled wake-ups entirely).
+    expect(cancelSpy).toHaveBeenCalled();
+
+    launchSpy.mockRestore();
+    cancelSpy.mockRestore();
   });
 });
 

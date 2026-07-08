@@ -55,6 +55,8 @@ import { TagResource } from "@app/lib/resources/tags_resource";
 import { TemplateResource } from "@app/lib/resources/template_resource";
 import { TriggerResource } from "@app/lib/resources/trigger_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
+import { WakeUpResource } from "@app/lib/resources/wakeup_resource";
+import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { withTransaction } from "@app/lib/utils/sql_utils";
 import logger from "@app/logger/logger";
 import { tracer } from "@app/logger/tracer";
@@ -1311,6 +1313,39 @@ export async function createGenericAgentConfiguration(
   return new Ok({ agentConfiguration, subAgentConfiguration });
 }
 
+// Cancels every still-scheduled wake-up targeting the given agent, deleting the
+// backing Temporal schedule (cron) or pending workflow (one-shot). Errors are
+// logged but do not abort the caller.
+async function cancelWakeUpsForAgent(
+  auth: Authenticator,
+  agentConfigurationId: string
+): Promise<void> {
+  const workspace = auth.getNonNullableWorkspace();
+  const wakeUps = await WakeUpResource.listByAgentConfigurationId(
+    auth,
+    agentConfigurationId
+  );
+
+  await concurrentExecutor(
+    wakeUps,
+    async (wakeUp) => {
+      const cancelResult = await wakeUp.forceCancel(auth);
+      if (cancelResult.isErr()) {
+        logger.error(
+          {
+            workspaceId: workspace.sId,
+            agentConfigurationId,
+            wakeUpId: wakeUp.sId,
+            error: cancelResult.error,
+          },
+          `Failed to cancel wake-up ${wakeUp.sId} for agent ${agentConfigurationId}`
+        );
+      }
+    },
+    { concurrency: 5 }
+  );
+}
+
 export async function archiveAgentConfiguration(
   auth: Authenticator,
   agentConfigurationId: string
@@ -1348,6 +1383,8 @@ export async function archiveAgentConfiguration(
       );
     }
   }
+
+  await cancelWakeUpsForAgent(auth, agentConfigurationId);
 
   const updated = await AgentConfigurationModel.update(
     { status: "archived" },
