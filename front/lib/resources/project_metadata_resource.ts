@@ -2,7 +2,10 @@ import type { Authenticator } from "@app/lib/auth";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import type { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
-import { ProjectMetadataModel } from "@app/lib/resources/storage/models/project_metadata";
+import {
+  ProjectMetadataModel,
+  type ProvisioningSource,
+} from "@app/lib/resources/storage/models/project_metadata";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import { getResourceIdFromSId, makeSId } from "@app/lib/resources/string_ids";
 import type { PodMetadataType } from "@app/types/project_metadata";
@@ -216,14 +219,18 @@ export class ProjectMetadataResource extends BaseResource<ProjectMetadataModel> 
     await this.update({ pinnedFramePath }, transaction);
   }
 
-  // Persists the pod's default agent sId. The caller is responsible for validating that the
-  // agent exists and is usable in the workspace (global or workspace agent) — see the PATCH
-  // project_metadata route, which uses getAgentConfiguration() for that.
   async updateDefaultAgentId(
     defaultAgentId: string | null,
     transaction?: Transaction
   ) {
     await this.update({ defaultAgentId }, transaction);
+  }
+
+  async updateProvisioningSource(
+    provisioningSource: ProvisioningSource | null,
+    transaction?: Transaction
+  ) {
+    await this.update({ provisioningSource }, transaction);
   }
 
   async setDefaultSkills(
