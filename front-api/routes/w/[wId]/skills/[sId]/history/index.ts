@@ -27,7 +27,7 @@ app.get(
     // Check that user has access to this skill.
     const skill = await SkillResource.fetchById(auth, sId);
 
-    if (!skill || !skill.canWrite(auth)) {
+    if (!skill) {
       return apiError(ctx, {
         status_code: 404,
         api_error: {
