@@ -2,7 +2,13 @@ import { useWorkspaceAnalyticsToggle } from "@app/hooks/useWorkspaceAnalyticsTog
 import type { WorkspaceType } from "@app/types/user";
 import { BarChart01, ContextItem, SliderToggle } from "@dust-tt/sparkle";
 
-export function WorkspaceAnalyticsToggle({ owner }: { owner: WorkspaceType }) {
+interface WorkspaceAnalyticsToggleProps {
+  owner: WorkspaceType;
+}
+
+export function WorkspaceAnalyticsToggle({
+  owner,
+}: WorkspaceAnalyticsToggleProps) {
   const { isEnabled, isChanging, doToggleWorkspaceAnalytics } =
     useWorkspaceAnalyticsToggle({ owner });
 
