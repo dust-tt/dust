@@ -58,7 +58,7 @@ describe("resolveSkillMCPServers", () => {
       conversation,
     });
 
-    const { error, serverToolsAndInstructions } = await tryListMCPTools(
+    const serverToolsAndInstructions = await tryListMCPTools(
       authenticator,
       {
         agentConfiguration,
@@ -71,7 +71,6 @@ describe("resolveSkillMCPServers", () => {
         skillServers,
       }
     );
-    expect(error).toBeUndefined();
 
     const serverNames = serverToolsAndInstructions.map(
       ({ serverName }) => serverName

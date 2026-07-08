@@ -171,7 +171,7 @@ app.post(
       costCredits: null,
     };
 
-    const { serverToolsAndInstructions } = await tryListMCPTools(
+    const serverToolsAndInstructions = await tryListMCPTools(
       auth,
       {
         agentConfiguration,
