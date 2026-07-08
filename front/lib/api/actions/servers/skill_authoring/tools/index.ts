@@ -218,35 +218,54 @@ function findDisallowedSpecialTagChanges(
 }
 
 const handlers: ToolHandlers<typeof SKILL_AUTHORING_TOOLS_METADATA> = {
-  [LIST_SKILLS_TOOL_NAME]: async (_params, { auth }) => {
+  [LIST_SKILLS_TOOL_NAME]: async ({ filter, cursor, limit }, { auth }) => {
     const user = requireInteractiveBuilder(auth);
     if (user.isErr()) {
       return new Err(user.error);
     }
 
-    const skills = await SkillResource.listByWorkspace(auth, {
-      status: "active",
-      onlyCustom: true,
-      withInstructions: false,
-      withTools: false,
-    });
+    const resolvedFilter = filter ?? "writable";
 
-    const summaries = skills
-      .filter((skill) => skill.canWrite(auth))
-      .map((skill) => ({
-        sId: skill.sId,
-        name: skill.name,
-        agentFacingDescription: skill.agentFacingDescription,
-        userFacingDescription: skill.userFacingDescription,
-        icon: skill.icon,
-      }));
+    let skills;
+    if (resolvedFilter === "agent_discoverable") {
+      skills = await SkillResource.listDiscoverable(auth);
+    } else {
+      const allSkills = await SkillResource.listByWorkspace(auth, {
+        status: "active",
+        onlyCustom: false,
+        withInstructions: false,
+        withTools: false,
+      });
+      skills =
+        resolvedFilter === "writable"
+          ? allSkills.filter((skill) => skill.canWrite(auth))
+          : allSkills;
+    }
+
+    const pageSize = Math.min(limit ?? 20, 50);
+    const offset = cursor
+      ? parseInt(Buffer.from(cursor, "base64").toString(), 10)
+      : 0;
+    const page = skills.slice(offset, offset + pageSize);
+    const nextOffset = offset + pageSize;
+    const nextCursor =
+      nextOffset < skills.length
+        ? Buffer.from(String(nextOffset)).toString("base64")
+        : null;
+
+    const summaries = page.map((skill) => ({
+      sId: skill.sId,
+      name: skill.name,
+      agentFacingDescription: skill.agentFacingDescription,
+      canWrite: skill.canWrite(auth),
+    }));
 
     return new Ok([
-      {
-        type: "text" as const,
-        text: `Found ${summaries.length} active custom skill${summaries.length === 1 ? "" : "s"}.`,
-      },
-      makeJsonText({ skills: summaries }),
+      makeJsonText({
+        total: skills.length,
+        skills: summaries,
+        nextCursor,
+      }),
     ]);
   },
 
