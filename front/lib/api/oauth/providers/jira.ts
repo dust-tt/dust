@@ -99,9 +99,20 @@ export class JiraOAuthProvider implements BaseOAuthStrategyProvider {
           connectionId: oauthConnectionIdRes.value,
         });
         if (connectionRes.isErr()) {
-          throw new Error(
-            "Failed to get connection metadata: " + connectionRes.error.message
+          // The workspace-level connection referenced by the MCP server may no
+          // longer exist (e.g. after a workspace relocation where Jira was not
+          // reconnected). `jira_cloud_url` is optional, so instead of failing
+          // the setup we fall back to dynamic resolution by omitting it.
+          logger.warn(
+            {
+              workspaceId: auth.getNonNullableWorkspace().sId,
+              mcpServerId: mcp_server_id,
+              error: connectionRes.error,
+            },
+            "Jira OAuth: could not read workspace connection metadata, " +
+              "falling back to dynamic cloud URL resolution"
           );
+          return restConfig;
         }
         const connection = connectionRes.value.connection;
 
