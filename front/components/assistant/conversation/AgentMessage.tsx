@@ -32,6 +32,7 @@ import {
   useCreditCostMenuItem,
 } from "@app/components/assistant/conversation/useCreditCostMenuItem";
 import { ConfirmContext } from "@app/components/Confirm";
+import { getActionCardPlugin } from "@app/components/markdown/ActionCardDirective";
 import {
   CitationsContext,
   CiteBlock,
@@ -1263,6 +1264,7 @@ function AgentMessageContent({
       sup: CiteBlock,
       quickReply: getQuickReplyPlugin(onQuickReplySend, isLastMessage),
       toolSetup: getToolSetupPlugin(owner, handleToolSetupComplete),
+      action_card: getActionCardPlugin(onQuickReplySend, isLastMessage),
       ...propsAdditionalMarkdownComponents,
     }),
     [
