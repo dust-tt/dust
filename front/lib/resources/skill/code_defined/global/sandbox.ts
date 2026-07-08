@@ -1,3 +1,4 @@
+import { isDustLikeAgent } from "@app/lib/api/assistant/global_agents/global_agents";
 import { TOOL_OUTPUTS_FOLDER_NAME } from "@app/lib/api/files/mount_path";
 import { readWorkspacePolicy } from "@app/lib/api/sandbox/egress_policy";
 import {
@@ -16,7 +17,6 @@ import { isPodConversation } from "@app/types/assistant/conversation";
 import type { ModelProviderIdType } from "@app/types/assistant/models/types";
 import { isComputerFeatureEnabled } from "@app/types/shared/feature_flags";
 import { Ok } from "@app/types/shared/result";
-import {isDustLikeAgent} from "@app/lib/api/assistant/global_agents/global_agents";
 
 function buildSandboxInstructionProse({
   hasDsbxTools,
@@ -390,7 +390,8 @@ export const sandboxSkill = {
   // increase significantly the number of tool searches ran overall.
   // Auto-equipped for every other agent unless the workspace has disabled the
   // Computer, but not enabled until the agent decides to use it.
-  getAutoEnabledOrEquippedForAgentLoop: ({agentConfiguration}) => isDustLikeAgent(agentConfiguration.sId) ? "enabled" : "equipped",
+  getAutoEnabledOrEquippedForAgentLoop: ({ agentConfiguration }) =>
+    isDustLikeAgent(agentConfiguration.sId) ? "enabled" : "equipped",
   isRestricted: async (auth: Authenticator) => {
     const flags = await getFeatureFlags(auth);
 
