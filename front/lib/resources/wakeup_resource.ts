@@ -338,6 +338,23 @@ export class WakeUpResource extends BaseResource<WakeUpModel> {
     });
   }
 
+  static async listByAgentConfigurationId(
+    auth: Authenticator,
+    agentConfigurationId: string,
+    { status }: { status?: WakeUpStatus | WakeUpStatus[] } = {}
+  ): Promise<WakeUpResource[]> {
+    return this.baseFetch(auth, {
+      where: {
+        agentConfigurationId,
+        ...(status !== undefined ? { status } : {}),
+      },
+      order: [
+        ["createdAt", "ASC"],
+        ["id", "ASC"],
+      ],
+    });
+  }
+
   /**
    * Checks whether the caller can post or edit user messages in a conversation that has active
    * wake-ups. Rejects when any active (scheduled) wake-up is owned by a user other than the current
@@ -486,8 +503,28 @@ export class WakeUpResource extends BaseResource<WakeUpModel> {
       );
     }
 
+    return this.cancelForCascade(auth, { transaction });
+  }
+
+  /**
+   * Ensures a wake-up leaves no live Temporal footprint as part of a
+   * system-initiated cascade (agent archive / hard-delete), without the
+   * owner/admin permission check, since the agent it targets is going away.
+   *
+   * - If still scheduled: cancels it (deletes the cron schedule / cancels the
+   *   pending one-shot workflow) and marks the row cancelled.
+   * - If already terminal: reconciles a cron schedule that may have been left
+   *   orphaned by a prior failed cleanup (no-op for one-shots / non-cron).
+   */
+  async cancelForCascade(
+    auth: Authenticator,
+    { transaction }: { transaction?: Transaction } = {}
+  ): Promise<Result<void, Error>> {
     if (this.status !== "scheduled") {
-      return new Ok(undefined);
+      // Already terminal: no row change is needed, but a cron schedule may still
+      // be orphaned from a prior failed cleanup: we reconcile it. No-op for
+      // one-shots and non-cron wake-ups.
+      return this.cleanupTemporalScheduleIfCronTerminal(auth);
     }
 
     const temporalResult = await this.cancelTemporalWorkflow(auth);

@@ -114,6 +114,11 @@ WakeUpModel.init(
         name: "wake_ups_workspace_id_status_idx",
         concurrently: true,
       },
+      {
+        fields: ["workspaceId", "agentConfigurationId"],
+        name: "wake_ups_workspace_id_agent_configuration_id_idx",
+        concurrently: true,
+      },
     ],
   }
 );
