@@ -89,12 +89,6 @@ export async function processToolNotification(
 
   // Handle store_resource notifications by creating output items immediately (fire-and-forget GCS).
   if (isStoreResourceProgressOutput(output)) {
-    // TODO(SANDBOX_FUNCTIONS): persist sandbox function outputs (createOutputItems) when running in a
-    // sandbox function run context.
-    assert(
-      isAgentLoopRunContext(runContext),
-      "store_resource notifications require an agent loop run context."
-    );
     const createResult = await runContext.action.createOutputItems(
       auth,
       output.contents.map((content) => ({
