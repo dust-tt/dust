@@ -52,6 +52,7 @@ export function mockUserMessage(
     },
     reactions: [],
     contentFragments: [],
+    requestedModel: null,
   };
 }
 
