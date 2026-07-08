@@ -1,12 +1,15 @@
 import type { ToolHandlerExtra } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import type { ToolContextType } from "@app/lib/actions/types";
+import { CREATE_CONTENT_MAX_BYTES } from "@app/lib/api/actions/servers/files/metadata";
 import { editHandler } from "@app/lib/api/actions/servers/files/tools/edit";
+import { FRAME_SOURCE_MAX_BYTES } from "@app/lib/api/actions/servers/interactive_content/metadata";
 import { createConversation } from "@app/lib/api/assistant/conversation";
 import { Authenticator } from "@app/lib/auth";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { fileStorageMock } from "@app/tests/utils/mocks/file_storage";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import type { ConversationType } from "@app/types/assistant/conversation";
+import { frameContentType } from "@app/types/files";
 import assert from "assert";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -232,12 +235,59 @@ describe("editHandler", () => {
     const { auth, conversation } = await setupProjectConversation();
     fileStorageMock.setFileMetadata(() => ({
       contentType: "text/plain",
-      size: String(51 * 1024),
+      size: String(CREATE_CONTENT_MAX_BYTES + 1),
     }));
 
     const result = await editHandler(
       {
         path: `conversation-${conversation.sId}/big.txt`,
+        old_string: "a",
+        new_string: "b",
+      },
+      makeExtra(auth, conversation)
+    );
+
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error.message).toContain("KB limit");
+    }
+    expect(fileStorageMock.saveFileCalls).toHaveLength(0);
+  });
+
+  it("edits a Frame source file well over the generic 50 KB limit", async () => {
+    const { auth, conversation } = await setupProjectConversation();
+    // A Frame template can legitimately exceed the generic files-server cap.
+    const padding = "x".repeat(CREATE_CONTENT_MAX_BYTES + 1);
+    mockStoredFile(
+      `// ${padding}\nexport default function App() { return <h1>Old</h1>; }\n`,
+      frameContentType
+    );
+
+    const result = await editHandler(
+      {
+        path: `conversation-${conversation.sId}/App.tsx`,
+        old_string: "Old",
+        new_string: "New",
+      },
+      makeExtra(auth, conversation)
+    );
+
+    assert(result.isOk());
+    expect(fileStorageMock.saveFileCalls[0].content.toString("utf8")).toContain(
+      "New"
+    );
+  });
+
+  it("returns Err when a Frame source file exceeds its own, larger size limit", async () => {
+    const { auth, conversation } = await setupProjectConversation();
+    fileStorageMock.setFileMetadata(() => ({
+      contentType: frameContentType,
+      size: String(FRAME_SOURCE_MAX_BYTES + 1),
+    }));
+
+    const result = await editHandler(
+      {
+        path: `conversation-${conversation.sId}/App.tsx`,
         old_string: "a",
         new_string: "b",
       },

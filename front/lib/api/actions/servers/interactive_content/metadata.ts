@@ -12,7 +12,8 @@ import { zodToJsonSchema } from "zod-to-json-schema";
 
 export const INTERACTIVE_CONTENT_SERVER_NAME = "interactive_content" as const;
 
-const MAX_FILE_SIZE_BYTES = 1 * 1024 * 1024; // 1MB
+// Frame sources can legitimately be large, e.g. a server-fetched template.
+export const FRAME_SOURCE_MAX_BYTES = 1 * 1024 * 1024; // 1MB
 
 export const CREATE_INTERACTIVE_CONTENT_FILE_TOOL_NAME =
   "create_interactive_content_file";
@@ -75,7 +76,7 @@ export const INTERACTIVE_CONTENT_TOOLS_METADATA = createToolsRecord({
         ),
       source: z
         .string()
-        .max(MAX_FILE_SIZE_BYTES)
+        .max(FRAME_SOURCE_MAX_BYTES)
         .describe(
           "When mode='template': a reference to an existing document to use as a template. " +
             "Accepts either a knowledge base node ID or a scoped file system path " +
