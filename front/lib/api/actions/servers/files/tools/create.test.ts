@@ -106,4 +106,25 @@ describe("createHandler", () => {
       "application/vnd.dust.frame"
     );
   });
+
+  it("overwrites an existing frame file well over the generic 50 KB limit", async () => {
+    const { auth, conversation } = await setupProjectConversation();
+    fileStorageMock.setFileMetadata(() => ({
+      contentType: "application/vnd.dust.frame",
+      size: "100",
+    }));
+    const content = "// padding\n".repeat(6000); // ~66 KB
+
+    const result = await createHandler(
+      {
+        path: `conversation-${conversation.sId}/interactive.tsx`,
+        content,
+        content_type: "text/plain",
+      },
+      makeExtra(auth, conversation)
+    );
+
+    assert(result.isOk());
+    expect(fileStorageMock.saveFileCalls).toHaveLength(1);
+  });
 });
