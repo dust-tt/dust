@@ -378,12 +378,29 @@ export function CheckoutPage() {
     setIsSessionRefreshing(false);
   });
 
+  // When a coupon fully covers the cost there is nothing to charge: the backend
+  // skips the payment-gated commit and activates directly, so we drop the
+  // "Processing payment" step and go straight to "Activating your workspace".
+  // Detected from the prepared total (available during confirming) or, once
+  // polling, from the server-computed amount on the checkout record.
+  const isZeroPaymentCheckout =
+    preparePayment?.totalCents === 0 ||
+    checkoutPayment?.initialAmountCents === 0;
+
+  const checkoutSteps = isZeroPaymentCheckout
+    ? CHECKOUT_STEPS_NO_PAYMENT
+    : CHECKOUT_STEPS;
+
   // Progress step shown during the confirming / waiting_for_payment phases.
-  // waiting_for_payment starts on "Processing payment" (step 1) and advances to
-  // "Activating your workspace" (step 2) once the webhook reports activation has
-  // begun (surfaced through the polled checkout payment record).
-  const activeStepIndex =
-    phase === "confirming"
+  // - Paid checkout: waiting_for_payment starts on "Processing payment" (step 1)
+  //   and advances to "Activating your workspace" (step 2) once the payment
+  //   webhook reports activation has begun (surfaced through the polled record).
+  // - Zero-payment (coupon) checkout: activation runs inside the confirming
+  //   request, so we show the "Activating your workspace" step (the last of the
+  //   two-step list) throughout instead of a payment step that never happens.
+  const activeStepIndex = isZeroPaymentCheckout
+    ? checkoutSteps.length - 1
+    : phase === "confirming"
       ? 0
       : checkoutPayment?.progress === "activating"
         ? 2
@@ -639,6 +656,7 @@ export function CheckoutPage() {
         <RightPane
           phase={phase}
           phaseError={phaseError}
+          checkoutSteps={checkoutSteps}
           activeStepIndex={activeStepIndex}
           clientSecret={clientSecret}
           isCreating={isCreating}
@@ -711,6 +729,7 @@ function CheckoutSuccessPage({
 interface RightPaneProps {
   phase: CheckoutPhase;
   phaseError: PhaseError | null;
+  checkoutSteps: readonly string[];
   activeStepIndex: number;
   clientSecret: string | null;
   isCreating: boolean;
@@ -728,6 +747,7 @@ interface RightPaneProps {
 function RightPane({
   phase,
   phaseError,
+  checkoutSteps,
   activeStepIndex,
   clientSecret,
   isCreating,
@@ -825,7 +845,12 @@ function RightPane({
 
     case "confirming":
     case "waiting_for_payment":
-      return <CheckoutProgress activeStepIndex={activeStepIndex} />;
+      return (
+        <CheckoutProgress
+          steps={checkoutSteps}
+          activeStepIndex={activeStepIndex}
+        />
+      );
 
     case "checkout_success":
       return null;
@@ -905,14 +930,22 @@ const CHECKOUT_STEPS = [
   "Activating your workspace",
 ] as const;
 
+// Zero-payment (coupon covers the full cost): no charge happens, so the
+// "Processing payment" step is dropped.
+const CHECKOUT_STEPS_NO_PAYMENT = [
+  "Setting up your subscription",
+  "Activating your workspace",
+] as const;
+
 interface CheckoutProgressProps {
+  steps: readonly string[];
   activeStepIndex: number;
 }
 
-function CheckoutProgress({ activeStepIndex }: CheckoutProgressProps) {
+function CheckoutProgress({ steps, activeStepIndex }: CheckoutProgressProps) {
   return (
     <div className="flex flex-col gap-4">
-      {CHECKOUT_STEPS.map((label, index) => {
+      {steps.map((label, index) => {
         const isDone = index < activeStepIndex;
         const isActive = index === activeStepIndex;
         return (
