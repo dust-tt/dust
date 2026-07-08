@@ -1,5 +1,5 @@
 // `dsbx db reconcile` runner backend: bring a live pod database in line with its drizzle schema
-// file, applying ADDITIVE DDL only (manifest.v1 reconcile contract).
+// file, applying ADDITIVE DDL only.
 //
 // `reconcile` orchestrates one numbered helper per step:
 //   1. Validate the schema file with the same rejections as `function build` (FK/CHECK/...).
@@ -19,11 +19,8 @@ import { basename, dirname } from "node:path";
 import { is } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/bun-sqlite";
 import { SQLiteTable } from "drizzle-orm/sqlite-core";
+import { type DatabaseSchema, extractDatabaseSchema } from "./db.ts";
 import { DbCommandError, introspectLiveTables } from "./db_common.ts";
-import {
-  type DatabaseManifest,
-  extractDatabaseManifestFromFile,
-} from "./manifest.ts";
 
 export interface ReconcileSuccess {
   ok: true;
@@ -35,8 +32,8 @@ export async function reconcile(
   dbPath: string,
   schemaPath: string
 ): Promise<ReconcileSuccess> {
-  // 1. The manifest also gives us the desired shape for the destructive pre-check.
-  const manifest = await validateSchemaFile(dbPath, schemaPath);
+  // 1. Validation also gives us the desired shape for the destructive pre-check.
+  const desired = await validateSchemaFile(dbPath, schemaPath);
 
   // The schema module's table exports feed drizzle-kit directly; validation above already
   // proved the module imports. Dynamic import is required: schemaPath is a caller-provided
@@ -49,7 +46,7 @@ export async function reconcile(
   let succeeded = false;
   try {
     // 3.
-    assertNoDestructiveChanges(sqlite, manifest);
+    assertNoDestructiveChanges(sqlite, desired);
     // 4.
     const statements = await planStatements(sqlite, schemaModule);
     // 5.
@@ -72,25 +69,21 @@ export async function reconcile(
 }
 
 // 1. Validate the schema file: same FK/CHECK/UNIQUE-constraint/composite-PK/empty rejections
-//    as build time (shared extractor); manifest error kinds map onto db command error kinds.
+//    as build time (shared extractor); schema error kinds map onto db command error kinds.
 async function validateSchemaFile(
   dbPath: string,
   schemaPath: string
-): Promise<DatabaseManifest> {
+): Promise<DatabaseSchema> {
   const dbName = basename(dbPath, ".db");
-  const manifestResult = await extractDatabaseManifestFromFile(
-    dbName,
-    schemaPath,
-    schemaPath
-  );
-  if (!manifestResult.ok) {
+  const extracted = await extractDatabaseSchema(dbName, schemaPath, schemaPath);
+  if (extracted.isErr()) {
     const kind =
-      manifestResult.error.kind === "database_schema_unresolvable"
+      extracted.error.kind === "database_schema_unresolvable"
         ? "schema_unresolvable"
         : "schema_invalid";
-    throw new DbCommandError(kind, manifestResult.error.message);
+    throw new DbCommandError(kind, extracted.error.message);
   }
-  return manifestResult.value;
+  return extracted.value;
 }
 
 // 2. Open the live database read-write, creating it on first claim.
@@ -114,11 +107,11 @@ function openLiveDatabase(dbPath: string, created: boolean): Database {
 // 3. Destructive pre-check: everything live must still exist in the desired schema.
 function assertNoDestructiveChanges(
   sqlite: Database,
-  manifest: DatabaseManifest
+  desired: DatabaseSchema
 ): void {
   const destructive: string[] = [];
   for (const liveTable of introspectLiveTables(sqlite)) {
-    const desiredTable = manifest.tables[liveTable.name];
+    const desiredTable = desired.tables[liveTable.name];
     if (desiredTable === undefined) {
       destructive.push(`table "${liveTable.name}" would be dropped`);
       continue;
@@ -179,7 +172,7 @@ async function planStatements(
 
 // 5. Classify: additive statements only, or nothing is applied.
 //
-// Allowed (manifest.v1): CREATE TABLE, ALTER TABLE ... ADD [COLUMN], CREATE [UNIQUE] INDEX,
+// Allowed: CREATE TABLE, ALTER TABLE ... ADD [COLUMN], CREATE [UNIQUE] INDEX,
 // DROP INDEX. Note drizzle-kit push emits `ALTER TABLE x ADD y` without the COLUMN keyword.
 // Everything else (DROP TABLE/COLUMN, RENAME, INSERT of a table recreate-and-copy, ...) is
 // rejected.
