@@ -14,7 +14,10 @@ import { BaseResource } from "@app/lib/resources/base_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { SandboxFunctionInvocationResource } from "@app/lib/resources/sandbox_function_invocation_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
-import { SandboxFunctionModel } from "@app/lib/resources/storage/models/sandbox_function";
+import {
+  SandboxFunctionInvocationModel,
+  SandboxFunctionModel,
+} from "@app/lib/resources/storage/models/sandbox_function";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { ModelStaticWorkspaceAware } from "@app/lib/resources/storage/wrappers/workspace_models";
 import {
@@ -262,6 +265,41 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
     });
 
     return sandboxFunction ?? null;
+  }
+
+  // Lives here rather than on SandboxFunctionInvocationResource: the invocation resource is
+  // constructed with its function, and importing this resource from there would close an import
+  // cycle (this file already imports the invocation resource for deletion).
+  static async fetchInvocationByModelIdWithAuth(
+    auth: Authenticator,
+    id: ModelId
+  ): Promise<SandboxFunctionInvocationResource | null> {
+    const invocation = await SandboxFunctionInvocationModel.findOne({
+      where: {
+        id,
+        workspaceId: auth.getNonNullableWorkspace().id,
+      },
+    });
+    if (!invocation) {
+      return null;
+    }
+
+    const sandboxFunction = await this.fetchById(
+      auth,
+      this.modelIdToSId({
+        id: invocation.sandboxFunctionId,
+        workspaceId: invocation.workspaceId,
+      })
+    );
+    if (!sandboxFunction) {
+      return null;
+    }
+
+    return new SandboxFunctionInvocationResource(
+      SandboxFunctionInvocationModel,
+      invocation.get(),
+      { sandboxFunction }
+    );
   }
 
   static async listBySpace(

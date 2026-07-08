@@ -352,7 +352,9 @@ export async function* tryCallMCPTool(
     signal,
   }: {
     progressToken: ModelId;
-    makeToolNotificationEvent: (
+    // Optional: callers without a conversation surface (sandbox function invocations) have no
+    // notification event to build — progress notifications are consumed but not yielded.
+    makeToolNotificationEvent?: (
       notification: MCPProgressNotificationType
     ) => Promise<ToolNotificationEvent>;
     signal?: AbortSignal;
@@ -593,7 +595,9 @@ export async function* tryCallMCPTool(
           break;
         }
         notificationPromise = notificationStream.next();
-        yield makeToolNotificationEvent(iteratorResult.value);
+        if (makeToolNotificationEvent) {
+          yield makeToolNotificationEvent(iteratorResult.value);
+        }
       }
     }
 
