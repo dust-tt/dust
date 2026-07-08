@@ -1,25 +1,25 @@
 import type {
-  FunctionStateManifest,
-  ManifestColumn,
+  DatabaseColumn,
+  FunctionState,
 } from "@app/lib/api/sandbox_functions/manifests";
 import isEqual from "lodash/isEqual";
 
-// Pure manifest compatibility diff (manifest.v1 compat semantics): the new manifests of the
-// function being published are compared against the stored manifests of every other function
+// Pure function state compatibility diff: the new state of the
+// function being published is compared against the stored state of every other function
 // of the same pod declaring the same database ("siblings"), plus the publishing function's own
-// previous manifests for the additive-but-breaking check.
+// previous state for the additive-but-breaking check.
 //
-// - BLOCK (structural): a sibling references something the new manifests remove or change
+// - BLOCK (structural): a sibling references something the new state removes or changes
 //   (table missing; column missing; type/notNull/primaryKey/autoIncrement differ).
 // - BLOCK (additive-but-breaking): a new NOT NULL column without default on a table that
-//   already exists in any sibling manifest or in this function's own previous manifests.
+//   already exists in any sibling state or in this function's own previous state.
 // - WARN (mode drift): same column, same type, different mode.
-// - WARN (unique tightening): new unique index on a table present in a sibling manifest.
+// - WARN (unique tightening): new unique index on a table present in a sibling state.
 // - Indexes never block; hasDefault changes never block.
 
-export interface SiblingManifests {
+export interface SiblingState {
   slug: string;
-  manifests: FunctionStateManifest | null;
+  state: FunctionState | null;
 }
 
 export interface CompatBlock {
@@ -57,16 +57,16 @@ interface BlockAccumulatorEntry {
   reason: string;
 }
 
-export function diffManifestsAgainstSiblings({
-  newManifests,
-  previousManifests,
+export function diffStateAgainstSiblings({
+  newState,
+  previousState,
   siblings,
 }: {
-  newManifests: FunctionStateManifest | null;
-  previousManifests: FunctionStateManifest | null;
-  siblings: SiblingManifests[];
+  newState: FunctionState | null;
+  previousState: FunctionState | null;
+  siblings: SiblingState[];
 }): CompatDiff {
-  if (newManifests === null) {
+  if (newState === null) {
     // A function declaring no databases cannot break siblings: its bundle opens nothing, and
     // no DDL runs. (Tables it used to declare stay live; reconcile never drops.)
     return { blocks: [], warnings: [] };
@@ -111,9 +111,9 @@ export function diffManifestsAgainstSiblings({
     }
   };
 
-  for (const [database, newDb] of Object.entries(newManifests.databases)) {
+  for (const [database, newDb] of Object.entries(newState.databases)) {
     for (const sibling of siblings) {
-      const siblingDb = sibling.manifests?.databases[database];
+      const siblingDb = sibling.state?.databases[database];
       if (siblingDb === undefined) {
         continue;
       }
@@ -202,7 +202,7 @@ export function diffManifestsAgainstSiblings({
           addBlock,
         });
 
-        // Unique tightening: a unique index the sibling's manifest does not carry.
+        // Unique tightening: a unique index the sibling's state does not carry.
         for (const [indexName, index] of Object.entries(newTable.indexes)) {
           if (!index.unique) {
             continue;
@@ -227,9 +227,9 @@ export function diffManifestsAgainstSiblings({
       }
     }
 
-    // Own previous manifests participate in the additive-but-breaking check only: live rows
+    // Own previous state participates in the additive-but-breaking check only: live rows
     // predate the new column, so NOT NULL without default breaks even without siblings.
-    const previousDb = previousManifests?.databases[database];
+    const previousDb = previousState?.databases[database];
     if (previousDb !== undefined) {
       for (const [tableName, previousTable] of Object.entries(
         previousDb.tables
@@ -303,8 +303,8 @@ function addNotNullAdditionBlocks({
 }: {
   database: string;
   tableName: string;
-  newColumns: Record<string, ManifestColumn>;
-  existingColumns: Record<string, ManifestColumn>;
+  newColumns: Record<string, DatabaseColumn>;
+  existingColumns: Record<string, DatabaseColumn>;
   affectedSlug: string;
   addBlock: (
     entry: { database: string; table: string; column: string; reason: string },
@@ -331,8 +331,8 @@ function addNotNullAdditionBlocks({
 }
 
 function describeStructuralChange(
-  siblingColumn: ManifestColumn,
-  newColumn: ManifestColumn
+  siblingColumn: DatabaseColumn,
+  newColumn: DatabaseColumn
 ): string | null {
   if (newColumn.type !== siblingColumn.type) {
     return `type ${siblingColumn.type} -> ${newColumn.type}`;
@@ -354,26 +354,26 @@ function formatMode(mode: string | null): string {
 }
 
 /**
- * After a compatible publish: siblings whose stored manifest for a shared database differs from
+ * After a compatible publish: siblings whose stored state for a shared database differs from
  * the newly stored one. Their bundles keep working (the diff said so), but their embedded schema
  * files are stale until republished.
  */
 export function computeStaleSiblings(
-  newManifests: FunctionStateManifest | null,
-  siblings: SiblingManifests[]
+  newState: FunctionState | null,
+  siblings: SiblingState[]
 ): StaleSiblingNote[] {
-  if (newManifests === null) {
+  if (newState === null) {
     return [];
   }
 
   const notes: StaleSiblingNote[] = [];
   for (const sibling of siblings) {
-    if (sibling.manifests === null || sibling.manifests === undefined) {
+    if (sibling.state === null || sibling.state === undefined) {
       continue;
     }
     const staleDatabases: string[] = [];
-    for (const [database, newDb] of Object.entries(newManifests.databases)) {
-      const siblingDb = sibling.manifests.databases[database];
+    for (const [database, newDb] of Object.entries(newState.databases)) {
+      const siblingDb = sibling.state.databases[database];
       if (siblingDb !== undefined && !isEqual(siblingDb, newDb)) {
         staleDatabases.push(database);
       }

@@ -1,20 +1,20 @@
 import type {
   CompatDiff,
-  SiblingManifests,
+  SiblingState,
 } from "@app/lib/api/sandbox_functions/compat";
 import {
   computeStaleSiblings,
-  diffManifestsAgainstSiblings,
+  diffStateAgainstSiblings,
 } from "@app/lib/api/sandbox_functions/compat";
 import type {
-  FunctionStateManifest,
-  ManifestColumn,
-  ManifestIndex,
-  ManifestTable,
+  DatabaseColumn,
+  DatabaseIndex,
+  DatabaseTable,
+  FunctionState,
 } from "@app/lib/api/sandbox_functions/manifests";
 import { describe, expect, it } from "vitest";
 
-function col(overrides: Partial<ManifestColumn> = {}): ManifestColumn {
+function col(overrides: Partial<DatabaseColumn> = {}): DatabaseColumn {
   return {
     type: "text",
     mode: null,
@@ -26,7 +26,7 @@ function col(overrides: Partial<ManifestColumn> = {}): ManifestColumn {
   };
 }
 
-function idCol(): ManifestColumn {
+function idCol(): DatabaseColumn {
   return col({
     type: "integer",
     notNull: true,
@@ -37,15 +37,15 @@ function idCol(): ManifestColumn {
 }
 
 function table(
-  columns: Record<string, ManifestColumn>,
-  indexes: Record<string, ManifestIndex> = {}
-): ManifestTable {
+  columns: Record<string, DatabaseColumn>,
+  indexes: Record<string, DatabaseIndex> = {}
+): DatabaseTable {
   return { columns, indexes };
 }
 
-function manifests(
-  tablesByDb: Record<string, Record<string, ManifestTable>>
-): FunctionStateManifest {
+function state(
+  tablesByDb: Record<string, Record<string, DatabaseTable>>
+): FunctionState {
   return {
     version: 1,
     databases: Object.fromEntries(
@@ -58,8 +58,8 @@ function manifests(
 }
 
 // The design's canonical chat example: messages(id, body, created_at).
-function chatMessagesManifests(): FunctionStateManifest {
-  return manifests({
+function chatMessagesState(): FunctionState {
+  return state({
     chat: {
       messages: table({
         id: idCol(),
@@ -71,43 +71,43 @@ function chatMessagesManifests(): FunctionStateManifest {
 }
 
 function diff({
-  newManifests,
-  previousManifests = null,
+  newState,
+  previousState = null,
   siblings = [],
 }: {
-  newManifests: FunctionStateManifest | null;
-  previousManifests?: FunctionStateManifest | null;
-  siblings?: SiblingManifests[];
+  newState: FunctionState | null;
+  previousState?: FunctionState | null;
+  siblings?: SiblingState[];
 }): CompatDiff {
-  return diffManifestsAgainstSiblings({
-    newManifests,
-    previousManifests,
+  return diffStateAgainstSiblings({
+    newState,
+    previousState,
     siblings,
   });
 }
 
-describe("diffManifestsAgainstSiblings", () => {
+describe("diffStateAgainstSiblings", () => {
   it("is empty for a function declaring no databases", () => {
     const result = diff({
-      newManifests: null,
-      siblings: [{ slug: "other", manifests: chatMessagesManifests() }],
+      newState: null,
+      siblings: [{ slug: "other", state: chatMessagesState() }],
     });
     expect(result).toEqual({ blocks: [], warnings: [] });
   });
 
   it("is empty on a first publish with no siblings, even with NOT NULL columns", () => {
-    const result = diff({ newManifests: chatMessagesManifests() });
+    const result = diff({ newState: chatMessagesState() });
     expect(result).toEqual({ blocks: [], warnings: [] });
   });
 
-  it("ignores siblings without manifests or declaring other databases", () => {
+  it("ignores siblings without state or declaring other databases", () => {
     const result = diff({
-      newManifests: chatMessagesManifests(),
+      newState: chatMessagesState(),
       siblings: [
-        { slug: "no-db", manifests: null },
+        { slug: "no-db", state: null },
         {
           slug: "other-db",
-          manifests: manifests({
+          state: state({
             analytics: { events: table({ id: idCol() }) },
           }),
         },
@@ -118,7 +118,7 @@ describe("diffManifestsAgainstSiblings", () => {
 
   it("blocks the design's rename example: body -> content removes a referenced column", () => {
     // `content` is added nullable (the additive way); the block is purely about `body`.
-    const renamed = manifests({
+    const renamed = state({
       chat: {
         messages: table({
           id: idCol(),
@@ -133,8 +133,8 @@ describe("diffManifestsAgainstSiblings", () => {
     });
 
     const result = diff({
-      newManifests: renamed,
-      siblings: [{ slug: "list-messages", manifests: chatMessagesManifests() }],
+      newState: renamed,
+      siblings: [{ slug: "list-messages", state: chatMessagesState() }],
     });
 
     expect(result.blocks).toHaveLength(1);
@@ -151,8 +151,8 @@ describe("diffManifestsAgainstSiblings", () => {
 
   it("blocks removing a table a sibling references", () => {
     const result = diff({
-      newManifests: manifests({ chat: { other: table({ id: idCol() }) } }),
-      siblings: [{ slug: "list-messages", manifests: chatMessagesManifests() }],
+      newState: state({ chat: { other: table({ id: idCol() }) } }),
+      siblings: [{ slug: "list-messages", state: chatMessagesState() }],
     });
 
     expect(
@@ -166,15 +166,15 @@ describe("diffManifestsAgainstSiblings", () => {
   });
 
   it("blocks a type change on a referenced column", () => {
-    const changed = chatMessagesManifests();
+    const changed = chatMessagesState();
     changed.databases.chat.tables.messages.columns.body = col({
       type: "integer",
       notNull: true,
     });
 
     const result = diff({
-      newManifests: changed,
-      siblings: [{ slug: "post-message", manifests: chatMessagesManifests() }],
+      newState: changed,
+      siblings: [{ slug: "post-message", state: chatMessagesState() }],
     });
 
     expect(result.blocks).toHaveLength(1);
@@ -182,34 +182,34 @@ describe("diffManifestsAgainstSiblings", () => {
   });
 
   it("blocks notNull changes in both directions", () => {
-    const relaxed = chatMessagesManifests();
+    const relaxed = chatMessagesState();
     relaxed.databases.chat.tables.messages.columns.body = col({
       notNull: false,
     });
     const relaxedDiff = diff({
-      newManifests: relaxed,
-      siblings: [{ slug: "sib", manifests: chatMessagesManifests() }],
+      newState: relaxed,
+      siblings: [{ slug: "sib", state: chatMessagesState() }],
     });
     expect(relaxedDiff.blocks).toHaveLength(1);
     expect(relaxedDiff.blocks[0]?.reason).toContain("removes NOT NULL");
 
-    const tightened = chatMessagesManifests();
+    const tightened = chatMessagesState();
     tightened.databases.chat.tables.messages.columns.created_at = col({
       type: "integer",
       mode: "timestamp",
       notNull: false,
     });
-    const base = chatMessagesManifests();
+    const base = chatMessagesState();
     const tightenedDiff = diff({
-      newManifests: base,
-      siblings: [{ slug: "sib", manifests: tightened }],
+      newState: base,
+      siblings: [{ slug: "sib", state: tightened }],
     });
     expect(tightenedDiff.blocks).toHaveLength(1);
     expect(tightenedDiff.blocks[0]?.reason).toContain("adds NOT NULL");
   });
 
   it("blocks primaryKey and autoIncrement changes", () => {
-    const noAutoIncrement = chatMessagesManifests();
+    const noAutoIncrement = chatMessagesState();
     noAutoIncrement.databases.chat.tables.messages.columns.id = col({
       type: "integer",
       notNull: true,
@@ -218,13 +218,13 @@ describe("diffManifestsAgainstSiblings", () => {
       autoIncrement: false,
     });
     const autoIncrementDiff = diff({
-      newManifests: noAutoIncrement,
-      siblings: [{ slug: "sib", manifests: chatMessagesManifests() }],
+      newState: noAutoIncrement,
+      siblings: [{ slug: "sib", state: chatMessagesState() }],
     });
     expect(autoIncrementDiff.blocks).toHaveLength(1);
     expect(autoIncrementDiff.blocks[0]?.reason).toContain("autoincrement");
 
-    const noPk = chatMessagesManifests();
+    const noPk = chatMessagesState();
     noPk.databases.chat.tables.messages.columns.id = col({
       type: "integer",
       notNull: true,
@@ -233,8 +233,8 @@ describe("diffManifestsAgainstSiblings", () => {
       autoIncrement: false,
     });
     const pkDiff = diff({
-      newManifests: noPk,
-      siblings: [{ slug: "sib", manifests: chatMessagesManifests() }],
+      newState: noPk,
+      siblings: [{ slug: "sib", state: chatMessagesState() }],
     });
     // The pk flip is reported (autoIncrement differs too; primary key wins the description).
     expect(pkDiff.blocks).toHaveLength(1);
@@ -242,14 +242,14 @@ describe("diffManifestsAgainstSiblings", () => {
   });
 
   it("blocks the design's NOT NULL addition example (no default, existing table)", () => {
-    const withChannel = chatMessagesManifests();
+    const withChannel = chatMessagesState();
     withChannel.databases.chat.tables.messages.columns.channel = col({
       notNull: true,
     });
 
     const result = diff({
-      newManifests: withChannel,
-      siblings: [{ slug: "list-messages", manifests: chatMessagesManifests() }],
+      newState: withChannel,
+      siblings: [{ slug: "list-messages", state: chatMessagesState() }],
     });
 
     expect(result.blocks).toHaveLength(1);
@@ -263,7 +263,7 @@ describe("diffManifestsAgainstSiblings", () => {
   });
 
   it("allows a NOT NULL addition with a default, and a nullable addition", () => {
-    const withDefault = chatMessagesManifests();
+    const withDefault = chatMessagesState();
     withDefault.databases.chat.tables.messages.columns.channel = col({
       notNull: true,
       hasDefault: true,
@@ -271,21 +271,21 @@ describe("diffManifestsAgainstSiblings", () => {
     withDefault.databases.chat.tables.messages.columns.topic = col({});
 
     const result = diff({
-      newManifests: withDefault,
-      siblings: [{ slug: "sib", manifests: chatMessagesManifests() }],
+      newState: withDefault,
+      siblings: [{ slug: "sib", state: chatMessagesState() }],
     });
     expect(result.blocks).toEqual([]);
   });
 
-  it("blocks a NOT NULL addition against the function's own previous manifests", () => {
-    const withChannel = chatMessagesManifests();
+  it("blocks a NOT NULL addition against the function's own previous state", () => {
+    const withChannel = chatMessagesState();
     withChannel.databases.chat.tables.messages.columns.channel = col({
       notNull: true,
     });
 
     const result = diff({
-      newManifests: withChannel,
-      previousManifests: chatMessagesManifests(),
+      newState: withChannel,
+      previousState: chatMessagesState(),
     });
 
     expect(result.blocks).toHaveLength(1);
@@ -295,16 +295,16 @@ describe("diffManifestsAgainstSiblings", () => {
   });
 
   it("does not block a NOT NULL column on a brand-new table", () => {
-    const withNewTable = chatMessagesManifests();
+    const withNewTable = chatMessagesState();
     withNewTable.databases.chat.tables.reactions = table({
       id: idCol(),
       emoji: col({ notNull: true }),
     });
 
     const result = diff({
-      newManifests: withNewTable,
-      previousManifests: chatMessagesManifests(),
-      siblings: [{ slug: "sib", manifests: chatMessagesManifests() }],
+      newState: withNewTable,
+      previousState: chatMessagesState(),
+      siblings: [{ slug: "sib", state: chatMessagesState() }],
     });
     expect(result.blocks).toEqual([]);
   });
@@ -312,17 +312,17 @@ describe("diffManifestsAgainstSiblings", () => {
   it("warns on the design's mode-drift example instead of blocking", () => {
     // report-activity declares created_at as plain integer (no mode); the siblings declare
     // integer mode=timestamp. Same storage type -> warning, publish proceeds.
-    const noMode = chatMessagesManifests();
+    const noMode = chatMessagesState();
     noMode.databases.chat.tables.messages.columns.created_at = col({
       type: "integer",
       notNull: true,
     });
 
     const result = diff({
-      newManifests: noMode,
+      newState: noMode,
       siblings: [
-        { slug: "post-message", manifests: chatMessagesManifests() },
-        { slug: "list-messages", manifests: chatMessagesManifests() },
+        { slug: "post-message", state: chatMessagesState() },
+        { slug: "list-messages", state: chatMessagesState() },
       ],
     });
 
@@ -342,15 +342,15 @@ describe("diffManifestsAgainstSiblings", () => {
   });
 
   it("warns on unique tightening for a table a sibling uses", () => {
-    const withUnique = chatMessagesManifests();
+    const withUnique = chatMessagesState();
     withUnique.databases.chat.tables.messages = table(
       withUnique.databases.chat.tables.messages.columns,
       { messages_body_idx: { unique: true, columns: ["body"] } }
     );
 
     const result = diff({
-      newManifests: withUnique,
-      siblings: [{ slug: "post-message", manifests: chatMessagesManifests() }],
+      newState: withUnique,
+      siblings: [{ slug: "post-message", state: chatMessagesState() }],
     });
 
     expect(result.blocks).toEqual([]);
@@ -363,21 +363,21 @@ describe("diffManifestsAgainstSiblings", () => {
   });
 
   it("does not warn when the sibling already carries the same unique index", () => {
-    const withUnique = chatMessagesManifests();
+    const withUnique = chatMessagesState();
     withUnique.databases.chat.tables.messages = table(
       withUnique.databases.chat.tables.messages.columns,
       { messages_body_idx: { unique: true, columns: ["body"] } }
     );
 
     const result = diff({
-      newManifests: withUnique,
-      siblings: [{ slug: "sib", manifests: withUnique }],
+      newState: withUnique,
+      siblings: [{ slug: "sib", state: withUnique }],
     });
     expect(result.warnings).toEqual([]);
   });
 
   it("never blocks on indexes or hasDefault changes", () => {
-    const changed = chatMessagesManifests();
+    const changed = chatMessagesState();
     // New non-unique index + hasDefault flip on body.
     changed.databases.chat.tables.messages = table(
       {
@@ -388,15 +388,15 @@ describe("diffManifestsAgainstSiblings", () => {
     );
 
     const result = diff({
-      newManifests: changed,
-      siblings: [{ slug: "sib", manifests: chatMessagesManifests() }],
+      newState: changed,
+      siblings: [{ slug: "sib", state: chatMessagesState() }],
     });
     expect(result.blocks).toEqual([]);
     expect(result.warnings).toEqual([]);
   });
 
   it("merges the affected functions of one breaking change across siblings", () => {
-    const renamed = manifests({
+    const renamed = state({
       chat: {
         messages: table({
           id: idCol(),
@@ -411,10 +411,10 @@ describe("diffManifestsAgainstSiblings", () => {
     });
 
     const result = diff({
-      newManifests: renamed,
+      newState: renamed,
       siblings: [
-        { slug: "list-messages", manifests: chatMessagesManifests() },
-        { slug: "post-message", manifests: chatMessagesManifests() },
+        { slug: "list-messages", state: chatMessagesState() },
+        { slug: "post-message", state: chatMessagesState() },
       ],
     });
 
@@ -428,16 +428,16 @@ describe("diffManifestsAgainstSiblings", () => {
 
 describe("computeStaleSiblings", () => {
   it("flags siblings whose stored manifest for a shared database differs", () => {
-    const evolved = chatMessagesManifests();
+    const evolved = chatMessagesState();
     evolved.databases.chat.tables.messages.columns.topic = col({});
 
     const notes = computeStaleSiblings(evolved, [
-      { slug: "list-messages", manifests: chatMessagesManifests() },
-      { slug: "up-to-date", manifests: evolved },
-      { slug: "no-db", manifests: null },
+      { slug: "list-messages", state: chatMessagesState() },
+      { slug: "up-to-date", state: evolved },
+      { slug: "no-db", state: null },
       {
         slug: "other-db",
-        manifests: manifests({ analytics: { events: table({ id: idCol() }) } }),
+        state: state({ analytics: { events: table({ id: idCol() }) } }),
       },
     ]);
 
@@ -446,9 +446,7 @@ describe("computeStaleSiblings", () => {
 
   it("is empty when the publish declares no databases", () => {
     expect(
-      computeStaleSiblings(null, [
-        { slug: "sib", manifests: chatMessagesManifests() },
-      ])
+      computeStaleSiblings(null, [{ slug: "sib", state: chatMessagesState() }])
     ).toEqual([]);
   });
 });
