@@ -904,7 +904,6 @@ pub async fn data_sources_documents_update_parents(
 pub struct DataSourcesDocumentsVersionsListQuery {
     offset: usize,
     limit: usize,
-    latest_hash: Option<String>, // Hash of the latest version to retrieve.
     view_filter: Option<String>, // Parsed as JSON.
 }
 
@@ -942,7 +941,6 @@ pub async fn data_sources_documents_versions_list(
                 Some(filter) => Some(filter.postprocess_for_data_source(&data_source_id)),
                 None => None,
             },
-            &query.latest_hash,
             true,
         )
         .await
@@ -1284,7 +1282,6 @@ pub async fn data_sources_documents_list(
 /// Retrieve document from a data source.
 #[derive(serde::Deserialize)]
 pub struct DataSourcesDocumentsRetrieveQuery {
-    version_hash: Option<String>,
     view_filter: Option<String>, // Parsed as JSON.
 }
 
@@ -1337,7 +1334,6 @@ pub async fn data_sources_documents_retrieve(
                         None => None,
                     },
                     true,
-                    &query.version_hash,
                 )
                 .await
             {
@@ -1379,7 +1375,6 @@ pub struct DataSourcesDocumentsRetrieveTextQuery {
     offset: Option<usize>,
     limit: Option<usize>,
     grep: Option<String>,
-    version_hash: Option<String>,
     view_filter: Option<String>, // Parsed as JSON.
 }
 
@@ -1391,7 +1386,6 @@ pub async fn data_sources_documents_retrieve_text(
     // Call the existing retrieve function
     let now = utils::now();
     let retrieve_query = DataSourcesDocumentsRetrieveQuery {
-        version_hash: query.version_hash,
         view_filter: query.view_filter,
     };
 
