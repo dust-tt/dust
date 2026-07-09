@@ -2,11 +2,11 @@ import { describe, expect, test } from "bun:test";
 import { join } from "node:path";
 import {
   type DatabaseSchemaError,
-  type DatabaseSchemaErrorKind,
   extractFunctionState,
   readDeclaredDatabases,
 } from "./db.ts";
 import type { Result } from "./result.ts";
+import type { DatabaseSchemaErrorKind } from "./types/db.ts";
 
 const fixturesDir = join(import.meta.dir, "fixtures");
 const fx = (n: string) => join(fixturesDir, n);
