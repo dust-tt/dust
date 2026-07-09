@@ -329,13 +329,6 @@ export const PEOPLE: Record<string, TeamMember> = {
     linkedIn: "https://www.linkedin.com/in/margheritazama/",
     github: "https://github.com/margherita-ops",
   },
-  apinon: {
-    name: "Alexandre Pinon",
-    title: "Software Engineer",
-    image: "https://avatars.githubusercontent.com/u/71273869?s=88&v=4",
-    linkedIn: "https://www.linkedin.com/in/alexandre-pinon-60b5a71b7/",
-    github: "https://github.com/alexandre-pinon",
-  },
   jdfiquet: {
     name: "Jean-David Fiquet",
     title: "Software Engineer",
@@ -391,6 +384,13 @@ export const PEOPLE: Record<string, TeamMember> = {
     image: "https://ca.slack-edge.com/T050RH73H9P-U0A2T982L2V-bc6d5d8f965d-512",
     linkedIn: "https://www.linkedin.com/in/matthieumourey/",
     github: "https://github.com/matthieu-mourey",
+  },
+  karen: {
+    name: "Karen Chalco",
+    title: "Content Marketer",
+    image: "https://ca.slack-edge.com/T050RH73H9P-U0A2CABLJBG-508e4bb95d25-512",
+    linkedIn: "https://www.linkedin.com/in/karenchalco",
+    github: "https://github.com/karenc382",
   },
   josh: {
     name: "Josh Cohen",
@@ -628,7 +628,7 @@ export const PEOPLE: Record<string, TeamMember> = {
     title: "Solution Engineer",
     image: "https://ca.slack-edge.com/T050RH73H9P-U0BFGTB6405-159b10f1b9e8-512",
     linkedIn: "https://www.linkedin.com/in/marc-arnal-b413a6ba",
-    github: "",
+    github: "https://github.com/A-Marc",
   },
   sandrinevaillancourt: {
     name: "Sandrine Vaillancourt",
