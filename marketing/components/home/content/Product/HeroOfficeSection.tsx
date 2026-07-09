@@ -166,7 +166,12 @@ export function HeroOfficeSection({
                   variant="highlight"
                   size="md"
                   label={content.primaryCtaLabel}
-                  onClick={withTracking(TRACKING_AREAS.HOME, "hero_book_demo")}
+                  onClick={withTracking(
+                    TRACKING_AREAS.HOME,
+                    "hero_book_demo",
+                    undefined,
+                    { hero_variant: variant }
+                  )}
                 />
               </Link>
               <Button
@@ -176,7 +181,8 @@ export function HeroOfficeSection({
                 onClick={withTracking(
                   TRACKING_AREAS.HOME,
                   "hero_start_free",
-                  openSignUpModal
+                  openSignUpModal,
+                  { hero_variant: variant }
                 )}
               />
             </div>

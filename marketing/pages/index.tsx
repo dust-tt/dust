@@ -12,6 +12,7 @@ import {
   isHeroVariantKey,
   toHeroVariant,
 } from "@marketing/lib/experiments/hero_experiment";
+import { buildHeroVariantServerCookieString } from "@marketing/lib/experiments/hero_variant_cookie";
 import type { NewsItem } from "@marketing/lib/homepage_news";
 import { fetchHomepageNews } from "@marketing/lib/homepage_news";
 import {
@@ -124,11 +125,11 @@ export const getServerSideProps: GetServerSideProps<HomeProps> = async (
   // and set it on the response — otherwise the flag would be evaluated against a
   // throwaway id and diverge from the client, reintroducing the flash we set out
   // to avoid.
+  const cookiesToSet: string[] = [];
   let distinctId = readAnonymousIdFromCookies(cookieHeader);
   if (!distinctId) {
     distinctId = uuidv4();
-    context.res.setHeader(
-      "Set-Cookie",
+    cookiesToSet.push(
       buildDustAidServerCookieString(distinctId, context.req.headers.host)
     );
   }
@@ -158,6 +159,18 @@ export const getServerSideProps: GetServerSideProps<HomeProps> = async (
         featureFlags: { [HERO_EXPERIMENT_FLAG_KEY]: requestedValue },
       };
     }
+  }
+
+  // Persist the resolved variant in a shared `.dust.tt` cookie so the two
+  // off-homepage conversion endpoints (the contact form and, after the WorkOS
+  // sign-up redirect chain, `front`'s onboarding) can attribute their
+  // completion back to the variant the visitor actually saw. Set on every
+  // homepage SSR, including control, so both arms are attributable.
+  cookiesToSet.push(
+    buildHeroVariantServerCookieString(heroVariant, context.req.headers.host)
+  );
+  if (cookiesToSet.length > 0) {
+    context.res.setHeader("Set-Cookie", cookiesToSet);
   }
 
   return {

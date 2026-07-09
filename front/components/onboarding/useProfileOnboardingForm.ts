@@ -10,7 +10,8 @@ import { useAuth } from "@app/lib/auth/AuthContext";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { useCompleteUserOnboarding, usePatchUser } from "@app/lib/swr/user";
 import { useWelcomeData } from "@app/lib/swr/workspaces";
-import { TRACKING_AREAS, withTracking } from "@app/lib/tracking";
+import { readHeroVariantFromDocumentCookie } from "@app/lib/experiments/hero_variant_cookie";
+import { TRACKING_AREAS, trackEvent, withTracking } from "@app/lib/tracking";
 import { getStoredUTMParams } from "@app/lib/utils/utm";
 import type { FavoritePlatform } from "@app/types/favorite_platforms";
 import { useEffect, useMemo, useState } from "react";
@@ -91,6 +92,19 @@ export function useProfileOnboardingForm({
         fbclid: utmParams.fbclid ?? null,
         msclkid: utmParams.msclkid ?? null,
         li_fat_id: utmParams.li_fat_id ?? null,
+      });
+
+      // Fire a PostHog goal event for the sign-up completion so the homepage
+      // hero A/B experiment has a terminal conversion metric for the "Try for
+      // free" arm. When the visitor came through the experiment, tag it with the
+      // variant carried in the shared `_dust_hv` cookie; PostHog also attributes
+      // it at the person level via the shared `_dust_aid` identity.
+      const heroVariant = readHeroVariantFromDocumentCookie();
+      trackEvent({
+        area: TRACKING_AREAS.AUTH,
+        object: "signup",
+        action: "completed",
+        extra: heroVariant ? { hero_variant: heroVariant } : undefined,
       });
     }
 

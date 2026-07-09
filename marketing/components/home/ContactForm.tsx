@@ -11,6 +11,7 @@ import {
   HEADQUARTERS_REGION_OPTIONS,
   LANGUAGE_OPTIONS,
 } from "@marketing/lib/api/hubspot/contactFormSchema";
+import { readHeroVariantFromDocumentCookie } from "@marketing/lib/experiments/hero_variant_cookie";
 import { clientFetch } from "@marketing/lib/egress/client";
 import { useGeolocation } from "@marketing/lib/swr/geo";
 import { TRACKING_AREAS, trackEvent } from "@marketing/lib/tracking";
@@ -90,11 +91,16 @@ function useContactFormSubmit() {
         return;
       }
 
-      // Track successful submission
+      // Track successful submission. When the visitor reached the contact form
+      // from the homepage hero A/B test, tag the completion with the variant
+      // (carried in the shared `_dust_hv` cookie) so the demo funnel is
+      // comparable across arms.
+      const heroVariant = readHeroVariantFromDocumentCookie();
       trackEvent({
         area: TRACKING_AREAS.CONTACT,
         object: "contact_form",
         action: "submit_success",
+        extra: heroVariant ? { hero_variant: heroVariant } : undefined,
       });
 
       // Push GTM event with qualification status, form details, and tracking params
