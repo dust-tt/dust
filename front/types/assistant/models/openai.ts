@@ -479,7 +479,7 @@ export const GPT_5_6_TERRA_MODEL_CONFIG: ModelConfigurationType = {
   largeModel: true,
   description:
     "OpenAI's GPT 5.6 Terra model, a balanced option for everyday reasoning, coding, and agentic tasks (1M context).",
-  shortDescription: "OpenAI's balanced model.",
+  shortDescription: "OpenAI's latest balanced model.",
   isLegacy: false,
   isLatest: true,
   generationTokensCount: 128_000,
