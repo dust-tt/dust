@@ -63,7 +63,8 @@ const newButtonVariants = cva(
         primary: cn(
           OVERLAY,
           "bg-linear-to-b from-primary-700 to-primary-800",
-          "dark:from-primary-800 dark:to-primary-900",
+          "dark:from-stone-50 dark:to-stone-150",
+          "dark:border dark:border-border-dark",
           "text-primary-50",
           RAISED_SHADOW,
           "data-[disabled]:from-primary-300 data-[disabled]:to-primary-400",
@@ -74,7 +75,7 @@ const newButtonVariants = cva(
         highlight: cn(
           OVERLAY,
           "bg-linear-to-b from-highlight-400 to-highlight-500",
-          "dark:from-highlight-600 dark:to-highlight-500",
+          "dark:from-blue-500 dark:to-blue-600",
           "text-white",
           RAISED_SHADOW,
           "data-[disabled]:from-highlight-200 data-[disabled]:to-highlight-300",
@@ -85,7 +86,7 @@ const newButtonVariants = cva(
         warning: cn(
           OVERLAY,
           "bg-linear-to-b from-warning-400 to-warning-500",
-          "dark:from-warning-600 dark:to-warning-500",
+          "dark:from-red-500 dark:to-red-600",
           "text-white",
           RAISED_SHADOW,
           "data-[disabled]:from-warning-200 data-[disabled]:to-warning-300",
@@ -97,9 +98,9 @@ const newButtonVariants = cva(
           OVERLAY,
           // overflow-hidden + after:rounded-none clips the hover overlay flush to the border-radius.
           "overflow-hidden after:rounded-none",
-          "border border-border-dark dark:border-stone-800",
+          "border border-border-dark dark:border-stone-750",
           "bg-linear-to-b from-primary-50 to-primary-100",
-          "dark:from-stone-800 dark:to-stone-900",
+          "dark:from-stone-775 dark:to-stone-775",
           "text-muted-foreground dark:text-primary-900",
           RAISED_SHADOW,
           // Dark: a real drop shadow (not a glow) since the button surface is dark.
