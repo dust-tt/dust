@@ -676,6 +676,7 @@ export default function AgentBuilder({
             setIsCreatedDialogOpen={setIsCreatedDialogOpen}
             isNewAgent={!!duplicateAgentId || !agentConfiguration}
             isDuplicate={!!duplicateAgentId}
+            hasUnsavedChanges={isDirty}
             templateInfo={
               assistantTemplate
                 ? {
@@ -725,6 +726,7 @@ interface AgentBuilderContentProps {
   isDuplicate: boolean;
   templateInfo?: TemplateInfo;
   conversationId?: string;
+  hasUnsavedChanges: boolean;
 }
 
 function AgentBuilderContent({
@@ -749,6 +751,7 @@ function AgentBuilderContent({
   isDuplicate,
   templateInfo,
   conversationId,
+  hasUnsavedChanges,
 }: AgentBuilderContentProps) {
   const { owner } = useAgentBuilderContext();
   const confirm = useContext(ConfirmContext);
@@ -867,6 +870,7 @@ function AgentBuilderContent({
             isEditorGateVisible={isEditorGateVisible}
             isAddingSelfAsEditor={isAddingSelfAsEditor}
             onAddSelfAsEditor={onAddSelfAsEditor}
+            hasUnsavedChanges={hasUnsavedChanges}
           />
         }
         rightPanel={

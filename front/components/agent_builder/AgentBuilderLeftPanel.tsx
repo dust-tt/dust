@@ -27,6 +27,7 @@ interface AgentBuilderLeftPanelProps {
   isEditorGateVisible: boolean;
   isAddingSelfAsEditor: boolean;
   onAddSelfAsEditor: () => void;
+  hasUnsavedChanges: boolean;
 }
 
 export function AgentBuilderLeftPanel({
@@ -40,6 +41,7 @@ export function AgentBuilderLeftPanel({
   isEditorGateVisible,
   isAddingSelfAsEditor,
   onAddSelfAsEditor,
+  hasUnsavedChanges,
 }: AgentBuilderLeftPanelProps) {
   const { owner } = useAgentBuilderContext();
 
@@ -52,12 +54,14 @@ export function AgentBuilderLeftPanel({
         variant="default"
         title={title}
         rightActions={
-          <Button
-            icon={XClose}
-            onClick={handleCancel}
-            variant="ghost"
-            type="button"
-          />
+          hasUnsavedChanges ? undefined : (
+            <Button
+              icon={XClose}
+              onClick={handleCancel}
+              variant="ghost"
+              type="button"
+            />
+          )
         }
       />
       <ScrollArea className="flex-1">
@@ -85,24 +89,26 @@ export function AgentBuilderLeftPanel({
           />
         </div>
       </ScrollArea>
-      <BarFooter
-        variant="default"
-        className="justify-between"
-        leftActions={
-          <Button
-            variant="outline"
-            label="Cancel"
-            onClick={handleCancel}
-            type="button"
-          />
-        }
-        rightActions={
-          <BarFooter.ButtonBar
-            variant="validate"
-            saveButtonProps={saveButtonProps}
-          />
-        }
-      />
+      {hasUnsavedChanges && (
+        <BarFooter
+          variant="default"
+          className="justify-between"
+          leftActions={
+            <Button
+              variant="outline"
+              label="Cancel"
+              onClick={handleCancel}
+              type="button"
+            />
+          }
+          rightActions={
+            <BarFooter.ButtonBar
+              variant="validate"
+              saveButtonProps={saveButtonProps}
+            />
+          }
+        />
+      )}
     </div>
   );
 }
