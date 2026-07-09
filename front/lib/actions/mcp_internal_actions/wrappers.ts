@@ -5,6 +5,7 @@ import type {
 } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import {
   isAgentLoopRunContext,
+  isSandboxFunctionRunContext,
   type ToolContextType,
   type ToolRunContextType,
 } from "@app/lib/actions/types";
@@ -148,7 +149,7 @@ function withToolLogging<T>(
       toolName: toolNameForMonitoring,
     };
 
-    // Adding agent loop context if available.
+    // Adding run context identifiers if available.
     if (runContext) {
       if (isAgentLoopRunContext(runContext)) {
         const {
@@ -164,6 +165,14 @@ function withToolLogging<T>(
           agentConfigurationVersion: agentConfiguration.version,
           agentMessageId: agentMessage.sId,
           conversationId: conversation.sId,
+        };
+      } else if (isSandboxFunctionRunContext(runContext)) {
+        const { invocation, toolConfiguration } = runContext;
+        loggerArgs = {
+          ...loggerArgs,
+          actionConfigurationId: toolConfiguration.sId,
+          sandboxFunctionId: invocation.sandboxFunction.sId,
+          invocationId: invocation.sId,
         };
       }
     }
