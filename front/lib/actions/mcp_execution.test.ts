@@ -478,8 +478,14 @@ describe("processToolResults", () => {
   });
 
   async function setupSandboxFunctionTest() {
-    const { auth, workspace, invocation, globalSpace, podSpace } =
-      await createPersistedSandboxFunctionInvocationTokenTestContext();
+    const {
+      auth,
+      workspace,
+      invocation,
+      globalSpace,
+      podSpace,
+      sandboxFunction,
+    } = await createPersistedSandboxFunctionInvocationTokenTestContext();
     const server = await InternalMCPServerInMemoryResource.makeNew(auth, {
       name: "common_utilities",
       useCase: null,
@@ -505,11 +511,18 @@ describe("processToolResults", () => {
       },
     };
 
-    return { auth, workspace, action, invocation, podSpace, toolContext };
+    return {
+      auth,
+      workspace,
+      action,
+      podSpace,
+      sandboxFunction,
+      toolContext,
+    };
   }
 
-  it(`should offload registered resource blocks to ${TOOL_OUTPUTS_FOLDER_NAME}/{invocationId}/ in a sandbox function run context`, async () => {
-    const { auth, workspace, invocation, podSpace, toolContext } =
+  it(`should offload registered resource blocks to ${TOOL_OUTPUTS_FOLDER_NAME}/{slug}/ in a sandbox function run context`, async () => {
+    const { auth, workspace, podSpace, sandboxFunction, toolContext } =
       await setupSandboxFunctionTest();
 
     const dataSourceNodeResult: DataSourceNodeContentType = {
@@ -544,11 +557,11 @@ describe("processToolResults", () => {
       call.filePath.includes(`${TOOL_OUTPUTS_FOLDER_NAME}/`)
     );
     expect(toolOutputWrite).toBeDefined();
-    // Pod tool outputs are scoped by invocation so concurrent or successive invocations of the
-    // same pod cannot mix their outputs.
+    // Pod tool outputs are scoped by function slug so functions of the same pod cannot mix
+    // their outputs.
     expect(toolOutputWrite?.filePath).toMatch(
       new RegExp(
-        `w/${workspace.sId}/pods/${podSpace.sId}/files/${TOOL_OUTPUTS_FOLDER_NAME}/${invocation.sId}/\\d+_function_notion_page\\.md$`
+        `w/${workspace.sId}/pods/${podSpace.sId}/files/${TOOL_OUTPUTS_FOLDER_NAME}/${sandboxFunction.slug}/\\d+_function_notion_page\\.md$`
       )
     );
   });
