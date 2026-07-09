@@ -127,7 +127,7 @@ describe("setGroupSpendLimit", () => {
     if (reloaded.isErr()) {
       throw reloaded.error;
     }
-    expect(reloaded.value.poolCapAwuCredits).toBe(25_000);
+    expect(await reloaded.value.getPoolCapAwuCredits()).toBe(25_000);
 
     // Metronome threshold = 8_000 (seat) + 25_000 (group) = 33_000.
     expect(
@@ -172,7 +172,7 @@ describe("setGroupSpendLimit", () => {
     if (reloaded.isErr()) {
       throw reloaded.error;
     }
-    expect(reloaded.value.poolCapAwuCredits).toBeNull();
+    expect(await reloaded.value.getPoolCapAwuCredits()).toBeNull();
 
     expect(
       groupCapAlert.clearMetronomeGroupCapAlertForSeatType

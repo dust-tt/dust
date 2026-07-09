@@ -16,7 +16,10 @@ import groupDetail from "./[groupId]";
 import spendLimit from "./[groupId]/spend_limit";
 
 export type GetGroupsResponseBody = {
-  groups: (GroupType & { memberCount: number })[];
+  groups: (GroupType & {
+    memberCount: number;
+    poolCapAwuCredits: number | null;
+  })[];
 };
 
 const GetGroupsQuerySchema = z.object({
@@ -49,10 +52,15 @@ app.get(
       auth,
       groups
     );
+    const poolCaps = await GroupResource.getPoolCapAwuCreditsForGroups(
+      auth,
+      groups
+    );
 
     const groupsWithMemberCount = groups.map((group) => ({
       ...group.toJSON(),
       memberCount: memberCounts.get(group.id) ?? 0,
+      poolCapAwuCredits: poolCaps.get(group.id) ?? null,
     }));
 
     return ctx.json({ groups: groupsWithMemberCount });

@@ -629,7 +629,7 @@ describe("GroupResource", () => {
         workspaceId: workspace.id,
         kind: "regular_auto",
       });
-      expect(regularGroup.poolCapAwuCredits).toBeNull();
+      expect(await regularGroup.getPoolCapAwuCredits()).toBeNull();
 
       const setResult = await regularGroup.updatePoolCap(authenticator, 5000);
       expect(setResult.isOk()).toBe(true);
@@ -641,7 +641,7 @@ describe("GroupResource", () => {
       if (afterSet.isErr()) {
         throw afterSet.error;
       }
-      expect(afterSet.value.poolCapAwuCredits).toBe(5000);
+      expect(await afterSet.value.getPoolCapAwuCredits()).toBe(5000);
 
       const clearResult = await regularGroup.updatePoolCap(authenticator, null);
       expect(clearResult.isOk()).toBe(true);
@@ -653,7 +653,58 @@ describe("GroupResource", () => {
       if (afterClear.isErr()) {
         throw afterClear.error;
       }
-      expect(afterClear.value.poolCapAwuCredits).toBeNull();
+      expect(await afterClear.value.getPoolCapAwuCredits()).toBeNull();
+    });
+  });
+
+  describe("getPoolCapAwuCredits", () => {
+    it("returns the group's cap and null when the group carries none", async () => {
+      const cappedGroup = await GroupResource.makeNew({
+        name: "Capped Group",
+        workspaceId: workspace.id,
+        kind: "regular_auto",
+      });
+      await cappedGroup.updatePoolCap(authenticator, 1234);
+
+      const uncappedGroup = await GroupResource.makeNew({
+        name: "Uncapped Group",
+        workspaceId: workspace.id,
+        kind: "regular_auto",
+      });
+
+      expect(await cappedGroup.getPoolCapAwuCredits()).toBe(1234);
+      expect(await uncappedGroup.getPoolCapAwuCredits()).toBeNull();
+    });
+  });
+
+  describe("getPoolCapAwuCreditsForGroups", () => {
+    it("returns a map of caps for the capped groups only", async () => {
+      const cappedGroup = await GroupResource.makeNew({
+        name: "Batch Capped Group",
+        workspaceId: workspace.id,
+        kind: "regular_auto",
+      });
+      await cappedGroup.updatePoolCap(authenticator, 700);
+
+      const uncappedGroup = await GroupResource.makeNew({
+        name: "Batch Uncapped Group",
+        workspaceId: workspace.id,
+        kind: "regular_auto",
+      });
+
+      const caps = await GroupResource.getPoolCapAwuCreditsForGroups(
+        authenticator,
+        [cappedGroup, uncappedGroup]
+      );
+
+      expect(caps.get(cappedGroup.id)).toBe(700);
+      expect(caps.has(uncappedGroup.id)).toBe(false);
+
+      const emptyCaps = await GroupResource.getPoolCapAwuCreditsForGroups(
+        authenticator,
+        []
+      );
+      expect(emptyCaps.size).toBe(0);
     });
   });
 

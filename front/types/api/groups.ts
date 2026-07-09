@@ -1,5 +1,5 @@
 import type { GroupType } from "@app/types/groups";
 
 export type GetGroupsResponseBody = {
-  groups: GroupType[];
+  groups: (GroupType & { poolCapAwuCredits: number | null })[];
 };
