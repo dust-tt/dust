@@ -35,11 +35,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 
 interface InputBarModelPickerProps {
   agentModel: AgentModelConfigurationType | null;
-  // Identity of the agent the user is addressing. The manual override resets
-  // when this changes (keyed on identity, not the agent's model).
   agentId: string | null;
-  // Model the current user's previous message in this conversation ran on, used
-  // to derive the picker's default. Null in a new conversation.
   lastRequestedModel: ModelSelectionType | null;
   owner: LightWorkspaceType;
   buttonSize: "xs" | "sm";
@@ -72,9 +68,6 @@ export function InputBarModelPicker({
   // The list of models is hidden while "Auto" is on.
   const [expanded, setExpanded] = useState(false);
 
-  // The picker's only state: the user's manual override. Everything shown is
-  // `userOverride ?? <derived default>`. `null` means the user hasn't touched
-  // the picker, so the derived default is shown (and sent).
   const [userOverride, setUserOverride] = useState<UserModelSelection | null>(
     null
   );
@@ -88,11 +81,7 @@ export function InputBarModelPicker({
     setUserOverride(next);
   };
 
-  // Clear the manual override when the user switches which agent they address:
-  // an override should not leak across agents. Keyed on the agent's identity,
-  // not its model, so switching between two agents that share a model still
-  // resets. The initial null -> resolved-agent transition is a no-op (the
-  // override is already empty), so it never clobbers the derived default.
+  // Clear the manual override when the user switches which agent they address
   const prevAgentIdRef = useRef(agentId);
   if (agentId !== prevAgentIdRef.current) {
     prevAgentIdRef.current = agentId;

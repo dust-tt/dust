@@ -66,8 +66,6 @@ interface InputBarProps {
   stickyMentions?: RichMention[];
   defaultAgentId?: string | null;
   isDefaultAgentLoading?: boolean;
-  // Model the current user's previous message ran on, used to derive the model
-  // picker's default. Null in a new conversation.
   lastRequestedModel?: ModelSelectionType | null;
   defaultSkills?: InputBarContainerProps["defaultSkills"];
   isDefaultSkillsLoading?: boolean;

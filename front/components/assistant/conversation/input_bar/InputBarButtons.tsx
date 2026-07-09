@@ -54,8 +54,6 @@ interface InputBarButtonsProps {
   // When true, disables every picker (tools, attachment) in addition to the
   // agent selector which is muted via `disableAgentSelector`.
   isInputDisabled: boolean;
-  // Model the current user's previous message ran on, used to derive the model
-  // picker's default. Null in a new conversation.
   lastRequestedModel: ModelSelectionType | null;
   onAgentRemove: () => void;
   onMCPServerViewSelect: (serverView: MCPServerViewType) => void;
