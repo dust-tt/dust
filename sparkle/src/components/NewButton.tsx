@@ -18,7 +18,7 @@ import * as React from "react";
 //   - highlight/warning: explicit dark: overrides to preserve hue (token ramp would flip to wrong shade)
 //   - ghost variants: semantic tokens auto-flip, no dark: needed
 
-export const NEW_BUTTON_VARIANTS = [
+export const BUTTON_VARIANTS = [
   "primary",
   "highlight",
   "outline",
@@ -29,10 +29,10 @@ export const NEW_BUTTON_VARIANTS = [
   "warning-ghost",
 ] as const;
 
-export type NewButtonVariantType = (typeof NEW_BUTTON_VARIANTS)[number];
+export type ButtonVariantType = (typeof BUTTON_VARIANTS)[number];
 
-export const NEW_BUTTON_SIZES = ["xs", "sm", "md"] as const;
-export type NewButtonSizeType = (typeof NEW_BUTTON_SIZES)[number];
+export const BUTTON_SIZES = ["xs", "sm", "md"] as const;
+export type ButtonSizeType = (typeof BUTTON_SIZES)[number];
 
 // Inset white catch-light + hairline via border-dark + ambient drop via foreground.
 // All three auto-invert in dark mode via flipping tokens except the white highlight (intentional).
@@ -45,7 +45,7 @@ const OVERLAY = cn(
   "after:transition-colors disabled:after:hidden"
 );
 
-const newButtonVariants = cva(
+const buttonVariants = cva(
   cn(
     "relative isolate inline-flex shrink-0 select-none items-center justify-center whitespace-nowrap",
     // `transform` stays in the transition list for the `press` scale.
@@ -185,7 +185,7 @@ const newButtonVariants = cva(
 );
 
 // Labels and icons carry a subtle shadow on raised (non-ghost) variants.
-const RAISED_VARIANTS: NewButtonVariantType[] = [
+const RAISED_VARIANTS: ButtonVariantType[] = [
   "primary",
   "highlight",
   "warning",
@@ -194,19 +194,19 @@ const RAISED_VARIANTS: NewButtonVariantType[] = [
 const TEXT_SHADOW = "[text-shadow:0_1px_1.5px_rgba(0,0,0,0.08)]";
 const ICON_SHADOW = "drop-shadow-[0px_1px_0.75px_rgba(0,0,0,0.08)]";
 
-const ICON_SIZE_MAP: Record<NewButtonSizeType, "xs" | "sm"> = {
+const ICON_SIZE_MAP: Record<ButtonSizeType, "xs" | "sm"> = {
   xs: "xs",
   sm: "xs",
   md: "sm",
 };
 
-const COUNTER_SIZE_MAP: Record<NewButtonSizeType, "xs" | "sm"> = {
+const COUNTER_SIZE_MAP: Record<ButtonSizeType, "xs" | "sm"> = {
   xs: "xs",
   sm: "xs",
   md: "sm",
 };
 
-const chevronVariantMap: Record<NewButtonVariantType, string> = {
+const chevronVariantMap: Record<ButtonVariantType, string> = {
   // primary swaps to a light button in dark mode, so its chevron tracks the
   // flipping text token rather than a fixed white.
   primary: "text-primary-50/60",
@@ -223,7 +223,7 @@ const chevronVariantMap: Record<NewButtonVariantType, string> = {
 // dark-mode swap: `revert` = light spinner on light theme, `mono` = the
 // inverse). Keeps the spinner the same color as the label.
 const spinnerVariantMap: Record<
-  NewButtonVariantType,
+  ButtonVariantType,
   React.ComponentProps<typeof Spinner>["variant"]
 > = {
   primary: "revert",
@@ -236,22 +236,20 @@ const spinnerVariantMap: Record<
   "warning-ghost": "red500",
 };
 
-export type NewButtonIconType = React.ComponentType | React.ReactElement;
+export type ButtonIconType = React.ComponentType | React.ReactElement;
 
-function isReactElement(
-  visual: NewButtonIconType
-): visual is React.ReactElement {
+function isReactElement(visual: ButtonIconType): visual is React.ReactElement {
   return React.isValidElement(visual);
 }
 
-export interface NewButtonProps
+export interface ButtonProps
   extends Omit<React.ButtonHTMLAttributes<HTMLButtonElement>, "size">,
     Omit<LinkWrapperProps, "children" | "className">,
-    Pick<VariantProps<typeof newButtonVariants>, "variant"> {
-  size?: NewButtonSizeType;
+    Pick<VariantProps<typeof buttonVariants>, "variant"> {
+  size?: ButtonSizeType;
   label?: string;
-  icon?: NewButtonIconType;
-  iconRight?: NewButtonIconType;
+  icon?: ButtonIconType;
+  iconRight?: ButtonIconType;
   isSelect?: boolean;
   isLoading?: boolean;
   isCounter?: boolean;
@@ -261,7 +259,7 @@ export interface NewButtonProps
   tooltipShortcut?: string;
 }
 
-const NewButton = React.forwardRef<HTMLButtonElement, NewButtonProps>(
+const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
   (
     {
       label,
@@ -297,7 +295,7 @@ const NewButton = React.forwardRef<HTMLButtonElement, NewButtonProps>(
     const hasTextShadow = variant != null && RAISED_VARIANTS.includes(variant);
     const iconShadow = hasTextShadow ? ICON_SHADOW : "";
 
-    const renderIcon = (visual: NewButtonIconType, extraClass = "") => {
+    const renderIcon = (visual: ButtonIconType, extraClass = "") => {
       if (isReactElement(visual)) {
         return <span className={cn("shrink-0", extraClass)}>{visual}</span>;
       }
@@ -358,7 +356,7 @@ const NewButton = React.forwardRef<HTMLButtonElement, NewButtonProps>(
       <Comp
         ref={ref}
         className={cn(
-          newButtonVariants({
+          buttonVariants({
             variant,
             size,
             isIconOnly,
@@ -410,6 +408,6 @@ const NewButton = React.forwardRef<HTMLButtonElement, NewButtonProps>(
   }
 );
 
-NewButton.displayName = "NewButton";
+Button.displayName = "Button";
 
-export { NewButton, newButtonVariants };
+export { Button, buttonVariants };

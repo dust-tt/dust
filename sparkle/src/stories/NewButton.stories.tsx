@@ -2,15 +2,15 @@ import type { Meta, StoryObj } from "@storybook/react";
 import React from "react";
 
 import {
-  NEW_BUTTON_SIZES,
-  NEW_BUTTON_VARIANTS,
-  type NewButtonSizeType,
-  type NewButtonVariantType,
+  BUTTON_SIZES,
+  BUTTON_VARIANTS,
+  type ButtonSizeType,
+  type ButtonVariantType,
 } from "@sparkle/components/NewButton";
 
 import {
   ArrowRight,
-  NewButton,
+  Button as NewButton,
   Plus,
   Robot,
   Separator,
@@ -44,12 +44,12 @@ const meta = {
   argTypes: {
     variant: {
       description: "The visual style variant of the button",
-      options: NEW_BUTTON_VARIANTS,
+      options: BUTTON_VARIANTS,
       control: { type: "select" },
     },
     size: {
       description: "The size of the button",
-      options: NEW_BUTTON_SIZES,
+      options: BUTTON_SIZES,
       control: { type: "select" },
     },
     icon: {
@@ -116,8 +116,8 @@ function VariantRow({
   variant,
   size,
 }: {
-  variant: NewButtonVariantType;
-  size: NewButtonSizeType;
+  variant: ButtonVariantType;
+  size: ButtonSizeType;
 }) {
   return (
     <div className="flex items-center gap-3">
@@ -152,11 +152,11 @@ function ColumnLegend() {
   );
 }
 
-function VariantGrid({ size = "md" }: { size?: NewButtonSizeType }) {
+function VariantGrid({ size = "md" }: { size?: ButtonSizeType }) {
   return (
     <div className="flex flex-col gap-3">
       <ColumnLegend />
-      {NEW_BUTTON_VARIANTS.map((variant) => (
+      {BUTTON_VARIANTS.map((variant) => (
         <VariantRow key={variant} variant={variant} size={size} />
       ))}
     </div>
@@ -239,7 +239,7 @@ export const Overview: Story = {
 export const Sizes: Story = {
   render: () => (
     <div className="flex flex-col gap-6">
-      {NEW_BUTTON_SIZES.map((size) => (
+      {BUTTON_SIZES.map((size) => (
         <div key={size} className="flex flex-col gap-3">
           <Separator />
           <h3 className={labelClass}>{size.toUpperCase()}</h3>

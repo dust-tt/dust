@@ -1,4 +1,7 @@
-import { Button, type RegularButtonProps } from "@sparkle/components/Button";
+import {
+  LegacyButton,
+  type LegacyRegularButtonProps,
+} from "@sparkle/components/Button";
 import { cn } from "@sparkle/lib/utils";
 import * as React from "react";
 
@@ -32,7 +35,7 @@ const EmptyCTA = React.forwardRef<HTMLDivElement, EmptyCTAProps>(
 
 EmptyCTA.displayName = "EmptyCTA";
 
-interface EmptyCTAButtonProps extends RegularButtonProps {
+interface EmptyCTAButtonProps extends LegacyRegularButtonProps {
   icon: React.ComponentType;
   label: string;
   onClick?: React.MouseEventHandler<HTMLButtonElement>;
@@ -43,7 +46,7 @@ const EmptyCTAButton: React.FC<EmptyCTAButtonProps> = ({
   label,
   variant = "highlight",
   ...props
-}) => <Button icon={icon} label={label} variant={variant} {...props} />;
+}) => <LegacyButton icon={icon} label={label} variant={variant} {...props} />;
 
 EmptyCTAButton.displayName = "EmptyCTAButton";
 

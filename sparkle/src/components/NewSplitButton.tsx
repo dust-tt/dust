@@ -1,4 +1,7 @@
-import { NewButton, type NewButtonProps } from "@sparkle/components/NewButton";
+import {
+  Button as NewButton,
+  type ButtonProps as NewButtonProps,
+} from "@sparkle/components/NewButton";
 import { cn } from "@sparkle/lib/utils";
 import React from "react";
 

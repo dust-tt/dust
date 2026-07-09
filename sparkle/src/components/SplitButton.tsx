@@ -1,9 +1,12 @@
-import type { ButtonProps } from "@sparkle/components/Button";
-import { Button, type ButtonVariantType } from "@sparkle/components/Button";
+import type { LegacyButtonProps } from "@sparkle/components/Button";
+import {
+  LegacyButton,
+  type LegacyButtonVariantType,
+} from "@sparkle/components/Button";
 import { cn } from "@sparkle/lib";
 import React from "react";
 
-const flexSeparatorVariants: Record<ButtonVariantType, string> = {
+const flexSeparatorVariants: Record<LegacyButtonVariantType, string> = {
   primary: "bg-background/50",
   highlight: "bg-background/50",
   "highlight-secondary": "bg-separator",
@@ -14,9 +17,9 @@ const flexSeparatorVariants: Record<ButtonVariantType, string> = {
   "ghost-secondary": "bg-separator",
 };
 
-export interface FlexSplitButtonProps extends Omit<ButtonProps, "size"> {
+export interface FlexSplitButtonProps extends Omit<LegacyButtonProps, "size"> {
   containerClassName?: string;
-  splitAction: React.ReactElement<React.ComponentProps<typeof Button>>;
+  splitAction: React.ReactElement<React.ComponentProps<typeof LegacyButton>>;
 }
 
 const FlexSplitButton = React.forwardRef<
@@ -45,7 +48,7 @@ const FlexSplitButton = React.forwardRef<
 
     return (
       <div className={cn("relative inline-block", containerClassName)}>
-        <Button
+        <LegacyButton
           ref={ref}
           variant={variant}
           size="sm"

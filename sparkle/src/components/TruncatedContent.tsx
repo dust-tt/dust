@@ -1,4 +1,4 @@
-import { Button } from "@sparkle/components/Button";
+import { LegacyButton } from "@sparkle/components/Button";
 import { ChevronDown, ChevronUp } from "@sparkle/icons/v2-stroke";
 import { cn } from "@sparkle/lib/utils";
 import { cva } from "class-variance-authority";
@@ -85,7 +85,7 @@ export function TruncatedContent({
       {(shouldShowToggle || footer) && (
         <div className={cn("flex items-center", shouldShowToggle && "gap-3")}>
           {shouldShowToggle && (
-            <Button
+            <LegacyButton
               variant={variant === "light" ? "ghost-secondary" : "outline"}
               size="xs"
               label={isCollapsed ? expandLabel : collapseLabel}

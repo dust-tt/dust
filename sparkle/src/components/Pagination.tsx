@@ -2,7 +2,7 @@ import { ChevronLeft, ChevronRight } from "@sparkle/icons/v2-stroke";
 import { cn } from "@sparkle/lib/utils";
 import type { PaginationState } from "@tanstack/react-table";
 import React, { useCallback } from "react";
-import { Button } from "./Button";
+import { LegacyButton } from "./Button";
 
 type Size = "sm" | "xs";
 
@@ -76,7 +76,7 @@ export function Pagination({
           showPageButtons ? "gap-0" : "gap-2"
         )}
       >
-        <Button
+        <LegacyButton
           variant="outline"
           size="xs"
           disabled={!canPreviousPage}
@@ -94,7 +94,7 @@ export function Pagination({
           {pageButtons}
         </div>
 
-        <Button
+        <LegacyButton
           variant="outline"
           size="xs"
           disabled={!canNextPage}

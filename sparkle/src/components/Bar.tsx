@@ -8,7 +8,7 @@ import {
 import { cn } from "@sparkle/lib/utils";
 import { cva, type VariantProps } from "class-variance-authority";
 import React from "react";
-import { Button, type ButtonProps } from "./Button";
+import { LegacyButton, type LegacyButtonProps } from "./Button";
 
 const barVariants = cva("flex flex-row items-center gap-3 px-4", {
   variants: {
@@ -111,8 +111,8 @@ type BarButtonBarBackProps = {
 
 type BarButtonBarValidateProps = {
   variant: "validate";
-  cancelButtonProps?: ButtonProps;
-  saveButtonProps?: ButtonProps;
+  cancelButtonProps?: LegacyButtonProps;
+  saveButtonProps?: LegacyButtonProps;
 };
 
 type BarButtonBarConversationProps = {
@@ -131,7 +131,7 @@ Bar.ButtonBar = function (props: BarButtonBarProps) {
   switch (props.variant) {
     case "back":
       return (
-        <Button
+        <LegacyButton
           size="sm"
           icon={ChevronLeft}
           variant="ghost"
@@ -141,7 +141,7 @@ Bar.ButtonBar = function (props: BarButtonBarProps) {
       );
     case "close":
       return (
-        <Button
+        <LegacyButton
           size="sm"
           icon={XClose}
           variant="ghost"
@@ -152,21 +152,23 @@ Bar.ButtonBar = function (props: BarButtonBarProps) {
     case "validate":
       return (
         <>
-          {props.cancelButtonProps && <Button {...props.cancelButtonProps} />}
-          {props.saveButtonProps && <Button {...props.saveButtonProps} />}
+          {props.cancelButtonProps && (
+            <LegacyButton {...props.cancelButtonProps} />
+          )}
+          {props.saveButtonProps && <LegacyButton {...props.saveButtonProps} />}
         </>
       );
     case "conversation":
       return (
         <>
-          <Button
+          <LegacyButton
             size="sm"
             icon={Trash01}
             tooltip="Delete"
             variant="ghost"
             onClick={props.onDelete}
           />
-          <Button
+          <LegacyButton
             size="sm"
             label="Share"
             icon={Upload01}
