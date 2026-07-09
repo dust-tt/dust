@@ -157,7 +157,6 @@ export function UsagePage() {
   // invite, seat changes, spend limits, settings) is disabled.
   const isReadOnly = !isCreditPriced && hasFeature("usage_page_read_only");
   const canViewUsage = isCreditPriced || isReadOnly;
-  const pricingGroupsEnabled = hasFeature("pricing_groups");
   const [searchTerm, setSearchTerm] = useState("");
   const [seatTypeFilter, setSeatTypeFilter] = useState<
     MembershipSeatType | "none" | null
@@ -470,7 +469,6 @@ export function UsagePage() {
   const { groups } = useGroups({
     owner,
     kinds: [...CAP_ELIGIBLE_GROUP_KINDS],
-    disabled: !pricingGroupsEnabled && !modelsPickerEnabled,
   });
   const selectedGroupName =
     groups.find((g) => g.sId === groupFilter)?.name ?? null;
@@ -889,7 +887,7 @@ export function UsagePage() {
     </DropdownMenu>
   );
 
-  const groupsFilterDropdown = pricingGroupsEnabled && groups.length > 0 && (
+  const groupsFilterDropdown = groups.length > 0 && (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button
@@ -941,8 +939,8 @@ export function UsagePage() {
       totalRowCount={totalMembersUsage}
       sorting={sorting}
       setSorting={handleSetSorting}
-      showGroupsColumn={pricingGroupsEnabled && groups.length > 0}
-      enableSelection={pricingGroupsEnabled && !isReadOnly}
+      showGroupsColumn={groups.length > 0}
+      enableSelection={!isReadOnly}
       rowSelection={selection.rowSelection}
       onRowSelectionChange={selection.onRowSelectionChange}
     />
@@ -1078,9 +1076,7 @@ export function UsagePage() {
         <Tabs defaultValue="members">
           <TabsList className="mb-4">
             <TabsTrigger value="members" label="Members" />
-            {isWorkspaceAdmin && pricingGroupsEnabled && (
-              <TabsTrigger value="groups" label="Groups" />
-            )}
+            {isWorkspaceAdmin && <TabsTrigger value="groups" label="Groups" />}
             {isWorkspaceAdmin && isCreditPriced && (
               <TabsTrigger value="top-ups" label="Top-ups history" />
             )}
@@ -1151,7 +1147,7 @@ export function UsagePage() {
             </Page.Vertical>
           </TabsContent>
 
-          {isWorkspaceAdmin && pricingGroupsEnabled && (
+          {isWorkspaceAdmin && (
             <TabsContent value="groups">
               <GroupsUsageTable owner={owner} readOnly={isReadOnly} />
             </TabsContent>

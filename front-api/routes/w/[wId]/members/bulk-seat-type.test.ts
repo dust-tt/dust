@@ -2,7 +2,6 @@ import type { BulkSeatChangePreview } from "@app/lib/api/credits/bulk_seat_chang
 import { computeBulkSeatChangePreview } from "@app/lib/api/credits/bulk_seat_change";
 import { UserResource } from "@app/lib/resources/user_resource";
 import * as bulkClient from "@app/temporal/bulk_seat_change/client";
-import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
@@ -102,12 +101,11 @@ describe("POST /api/w/[wId]/members/bulk-seat-type", () => {
 
   it("allows a business admin to launch the workflow", async () => {
     const workspace = await makeMetronomeWorkspace();
-    const { auth } = await createPrivateApiMockRequest({
+    await createPrivateApiMockRequest({
       method: "POST",
       role: "business_admin",
       workspace,
     });
-    await FeatureFlagFactory.basic(auth, "pricing_groups");
 
     const member = await UserFactory.basic();
     vi.mocked(UserResource.searchAllUsers).mockResolvedValue(
@@ -133,32 +131,13 @@ describe("POST /api/w/[wId]/members/bulk-seat-type", () => {
     );
   });
 
-  it("returns 403 when the pricing_groups flag is off", async () => {
+  it("returns 400 when the target seat type is not a paid seat", async () => {
     const workspace = await makeMetronomeWorkspace();
     await createPrivateApiMockRequest({
       method: "POST",
       role: "admin",
       workspace,
     });
-
-    const response = await post(workspace.sId, {
-      selection: { mode: "ids", userIds: ["u1"] },
-      seatType: "max",
-    });
-
-    expect(response.status).toBe(403);
-    expect((await response.json()).error.type).toBe("feature_flag_not_found");
-    expect(bulkClient.runBulkChangeSeatTypeWorkflow).not.toHaveBeenCalled();
-  });
-
-  it("returns 400 when the target seat type is not a paid seat", async () => {
-    const workspace = await makeMetronomeWorkspace();
-    const { auth } = await createPrivateApiMockRequest({
-      method: "POST",
-      role: "admin",
-      workspace,
-    });
-    await FeatureFlagFactory.basic(auth, "pricing_groups");
 
     for (const seatType of ["free", "none"]) {
       const response = await post(workspace.sId, {
@@ -172,12 +151,11 @@ describe("POST /api/w/[wId]/members/bulk-seat-type", () => {
 
   it("returns 400 when no submitted ids are active members", async () => {
     const workspace = await makeMetronomeWorkspace();
-    const { auth } = await createPrivateApiMockRequest({
+    await createPrivateApiMockRequest({
       method: "POST",
       role: "admin",
       workspace,
     });
-    await FeatureFlagFactory.basic(auth, "pricing_groups");
 
     const response = await post(workspace.sId, {
       selection: { mode: "ids", userIds: ["stale1", "stale2"] },
@@ -193,12 +171,11 @@ describe("POST /api/w/[wId]/members/bulk-seat-type", () => {
 describe("POST /api/w/[wId]/members/bulk-seat-type/preview", () => {
   it("returns the computed preview for a business admin", async () => {
     const workspace = await makeMetronomeWorkspace();
-    const { auth } = await createPrivateApiMockRequest({
+    await createPrivateApiMockRequest({
       method: "POST",
       role: "business_admin",
       workspace,
     });
-    await FeatureFlagFactory.basic(auth, "pricing_groups");
 
     const member = await UserFactory.basic();
     vi.mocked(UserResource.searchAllUsers).mockResolvedValue(
