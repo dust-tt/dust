@@ -10,8 +10,6 @@
 // (sandbox results can be truncated). stdout only carries a small
 // `{ ok: true }` / `{ ok: false, error }` envelope.
 
-import { dirname } from "node:path";
-import { readDeclaredDatabases, validateDeclaredDatabases } from "./db.ts";
 import { getFunctionSchema } from "./schema.ts";
 import type { DatabaseSchemaErrorKind } from "./types/db.ts";
 
@@ -72,31 +70,6 @@ export async function build(
       ok: false,
       error: { kind: "schema_extraction_failed", message: errorMessage(e) },
     };
-  }
-
-  // 3. Validate the declared databases' schema files when the function declares any —
-  //    nothing about databases travels in the schema file: the declaration lives in the
-  //    bundle's own `schema` export and the shapes live in the schema files and the live
-  //    database. Schema files resolve relative to the SOURCE directory: the bundle has
-  //    already inlined its own copy of them.
-  const declared = await readDeclaredDatabases(outBundlePath);
-  if (declared.isErr()) {
-    return {
-      ok: false,
-      error: { kind: declared.error.kind, message: declared.error.message },
-    };
-  }
-  if (declared.value.length > 0) {
-    const validated = await validateDeclaredDatabases(
-      dirname(srcPath),
-      declared.value
-    );
-    if (validated.isErr()) {
-      return {
-        ok: false,
-        error: { kind: validated.error.kind, message: validated.error.message },
-      };
-    }
   }
 
   await Bun.write(outSchemaPath, JSON.stringify(schema));

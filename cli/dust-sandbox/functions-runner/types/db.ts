@@ -28,7 +28,6 @@ export const RESERVED_TABLE_PREFIXES = [
 ];
 
 export type DatabaseSchemaErrorKind =
-  | "databases_declaration_invalid"
   | "database_schema_unresolvable"
   | "database_schema_invalid";
 

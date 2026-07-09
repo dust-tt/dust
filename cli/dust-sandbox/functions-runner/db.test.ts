@@ -1,16 +1,10 @@
 import { describe, expect, test } from "bun:test";
 import { join } from "node:path";
-import {
-  type DatabaseSchemaError,
-  extractDatabaseSchema,
-  readDeclaredDatabases,
-  validateDeclaredDatabases,
-} from "./db.ts";
+import { type DatabaseSchemaError, extractDatabaseSchema } from "./db.ts";
 import type { Result } from "./result.ts";
 import type { DatabaseSchemaErrorKind } from "./types/db.ts";
 
 const fixturesDir = join(import.meta.dir, "fixtures");
-const fx = (n: string) => join(fixturesDir, n);
 
 function expectDbError(
   result: Result<unknown, DatabaseSchemaError>,
@@ -31,45 +25,18 @@ function unwrap<T>(result: Result<T, DatabaseSchemaError>): T {
   return result.value;
 }
 
-describe("readDeclaredDatabases", () => {
-  test("returns [] when the function declares no databases", async () => {
-    expect(unwrap(await readDeclaredDatabases(fx("greet.ts")))).toEqual([]);
-  });
+// One schema file at a time, exactly as `dsbx db reconcile` validates it.
+function extractFixture(name: string) {
+  return extractDatabaseSchema(
+    name,
+    join("databases", `${name}.db.ts`),
+    join(fixturesDir, "databases", `${name}.db.ts`)
+  );
+}
 
-  test("returns the declared names", async () => {
-    expect(unwrap(await readDeclaredDatabases(fx("db-chat.ts")))).toEqual([
-      "chat",
-    ]);
-  });
-
-  test("rejects a non-array declaration", async () => {
-    expectDbError(
-      await readDeclaredDatabases(fx("db-badtype.ts")),
-      "databases_declaration_invalid",
-      /expected array/
-    );
-  });
-
-  test("rejects names violating the name contract", async () => {
-    expectDbError(
-      await readDeclaredDatabases(fx("db-badname.ts")),
-      "databases_declaration_invalid",
-      /must match/
-    );
-  });
-
-  test("rejects duplicate names", async () => {
-    expectDbError(
-      await readDeclaredDatabases(fx("db-dupe.ts")),
-      "databases_declaration_invalid",
-      /duplicate/
-    );
-  });
-});
-
-describe("declared database validation", () => {
+describe("database schema validation (reconcile's gate)", () => {
   test("accepts the chat fixture", async () => {
-    unwrap(await validateDeclaredDatabases(fixturesDir, ["chat"]));
+    unwrap(await extractFixture("chat"));
   });
 
   // The extracted shape stays runner-internal (validation + reconcile's destructive
@@ -146,7 +113,7 @@ describe("declared database validation", () => {
 
   test("rejects inline foreign keys", async () => {
     expectDbError(
-      await validateDeclaredDatabases(fixturesDir, ["fk"]),
+      await extractFixture("fk"),
       "database_schema_invalid",
       /foreign keys .* not allowed/
     );
@@ -154,7 +121,7 @@ describe("declared database validation", () => {
 
   test("rejects table-level foreign keys", async () => {
     expectDbError(
-      await validateDeclaredDatabases(fixturesDir, ["fk_table"]),
+      await extractFixture("fk_table"),
       "database_schema_invalid",
       /foreign keys .* not allowed/
     );
@@ -162,7 +129,7 @@ describe("declared database validation", () => {
 
   test("rejects CHECK constraints", async () => {
     expectDbError(
-      await validateDeclaredDatabases(fixturesDir, ["checked"]),
+      await extractFixture("checked"),
       "database_schema_invalid",
       /CHECK constraints are not allowed/
     );
@@ -170,7 +137,7 @@ describe("declared database validation", () => {
 
   test("rejects a column-level .unique() constraint", async () => {
     expectDbError(
-      await validateDeclaredDatabases(fixturesDir, ["unique_column"]),
+      await extractFixture("unique_column"),
       "database_schema_invalid",
       /use uniqueIndex\(\) instead/
     );
@@ -178,7 +145,7 @@ describe("declared database validation", () => {
 
   test("rejects a table-level unique() constraint", async () => {
     expectDbError(
-      await validateDeclaredDatabases(fixturesDir, ["unique_table"]),
+      await extractFixture("unique_table"),
       "database_schema_invalid",
       /use uniqueIndex\(\) instead/
     );
@@ -186,7 +153,7 @@ describe("declared database validation", () => {
 
   test("rejects a schema file exporting no tables", async () => {
     expectDbError(
-      await validateDeclaredDatabases(fixturesDir, ["empty"]),
+      await extractFixture("empty"),
       "database_schema_invalid",
       /exports no tables/
     );
@@ -194,7 +161,7 @@ describe("declared database validation", () => {
 
   test("rejects a missing schema file", async () => {
     expectDbError(
-      await validateDeclaredDatabases(fixturesDir, ["nosuchdb"]),
+      await extractFixture("nosuchdb"),
       "database_schema_unresolvable",
       /schema file not found/
     );
@@ -202,7 +169,7 @@ describe("declared database validation", () => {
 
   test("rejects a table name with a reserved prefix", async () => {
     expectDbError(
-      await validateDeclaredDatabases(fixturesDir, ["reserved_prefix"]),
+      await extractFixture("reserved_prefix"),
       "database_schema_invalid",
       /reserved prefix/
     );
@@ -210,7 +177,7 @@ describe("declared database validation", () => {
 
   test("rejects a column named after an Object.prototype key", async () => {
     expectDbError(
-      await validateDeclaredDatabases(fixturesDir, ["proto_column"]),
+      await extractFixture("proto_column"),
       "database_schema_invalid",
       /"__proto__" is reserved/
     );

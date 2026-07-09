@@ -1,10 +1,11 @@
-// Pod database schema extraction for `dsbx function build`.
+// Pod database schema validation for `dsbx db reconcile`.
 //
-// A function declares the pod databases it opens in `schema.databases: string[]`. Each declared
-// database must have a drizzle schema file at `databases/{db}.db.ts` relative to the function
-// source file's directory. This module imports those schema files, collects their exported
-// tables, validates the pod database rules (one named check per rule), and maps the tables to
-// DatabaseSchemas via drizzle's `getTableConfig`. Failures come back as Err, never thrown.
+// A pod database is defined by a drizzle schema file (`databases/{db}.db.ts`, next to the
+// function sources). This module imports such a file, collects its exported tables, validates
+// the pod database rules (one named check per rule), and maps the tables to DatabaseSchemas
+// via drizzle's `getTableConfig`. Build and publish never validate databases — the rules are
+// enforced where the agent acts, by the reconcile tool. Failures come back as Err, never
+// thrown.
 //
 // Cross-module-instance note: the schema file resolves its own `drizzle-orm` copy (NODE_PATH
 // global in the sandbox), while this runner ships an inlined copy. Table detection therefore
@@ -12,7 +13,6 @@
 // on foreign column instances go through loose zod schemas.
 
 import { existsSync } from "node:fs";
-import { join, resolve } from "node:path";
 import { is } from "drizzle-orm";
 import { getTableConfig, SQLiteTable } from "drizzle-orm/sqlite-core";
 import { z } from "zod";
@@ -23,7 +23,6 @@ import {
   type DatabaseSchema,
   type DatabaseSchemaErrorKind,
   type DatabaseTable,
-  DB_NAME_REGEX,
   RESERVED_OBJECT_KEYS,
   RESERVED_TABLE_PREFIXES,
 } from "./types/db.ts";
@@ -44,27 +43,9 @@ function err(
   return new Err(new DatabaseSchemaError(kind, message));
 }
 
-// `schema.databases`: unique names matching the database name contract. The regex rejects
-// `__proto__` (leading underscore) but matches `constructor`/`prototype`, and database names
-// become plain-object keys in the runner and front — reject the reserved keys explicitly.
-const declaredDatabasesSchema = z
-  .array(
-    z
-      .string()
-      .regex(DB_NAME_REGEX, `must match ${DB_NAME_REGEX}`)
-      .refine((name) => !RESERVED_OBJECT_KEYS.has(name), {
-        message: "is a reserved name",
-      })
-  )
-  .refine((names) => new Set(names).size === names.length, {
-    message: "contains duplicate names",
-  });
-
-// Loose views over model-authored module exports and foreign drizzle instances: zod narrows
-// the fields we read instead of casts (the instances come from the schema file's own
-// drizzle-orm copy, so no class from ours matches them).
-const schemaExportSchema = z.looseObject({ databases: z.unknown() });
-
+// Loose views over foreign drizzle instances: zod narrows the fields we read instead of
+// casts (the instances come from the schema file's own drizzle-orm copy, so no class from
+// ours matches them).
 const columnPropsSchema = z.looseObject({
   mode: z.string().optional(),
   columnType: z.string().optional(),
@@ -74,54 +55,6 @@ const columnPropsSchema = z.looseObject({
 });
 
 const indexedColumnSchema = z.looseObject({ name: z.string().optional() });
-
-// Reads and validates the `databases` declaration off an already-importable handler module.
-// Returns [] when the function declares none.
-export async function readDeclaredDatabases(
-  handlerPath: string
-): Promise<Result<string[], DatabaseSchemaError>> {
-  // Unguarded on purpose: the caller must have imported handlerPath successfully already
-  // (build.ts runs getFunctionSchema first), so this import hits the module cache.
-  const mod = await import(handlerPath);
-  const schemaExport: unknown = Reflect.get(mod, "schema");
-  const parsedExport = schemaExportSchema.safeParse(schemaExport);
-  const declared: unknown = parsedExport.success
-    ? parsedExport.data.databases
-    : undefined;
-  if (declared === undefined) {
-    return new Ok([]);
-  }
-  const parsed = declaredDatabasesSchema.safeParse(declared);
-  if (!parsed.success) {
-    return err(
-      "databases_declaration_invalid",
-      `\`schema.databases\`: ${z.prettifyError(parsed.error)}`
-    );
-  }
-  return new Ok(parsed.data);
-}
-
-// Validates every declared database's schema file (the canonical `databases/{db}.db.ts`
-// relative to the function source directory) with the full rule set, so a bad schema fails
-// the build with a model-correctable error. The extracted shapes stay runner-internal:
-// nothing stores them — reconcile re-extracts from the schema file it is given.
-export async function validateDeclaredDatabases(
-  srcDir: string,
-  dbNames: string[]
-): Promise<Result<undefined, DatabaseSchemaError>> {
-  for (const name of dbNames) {
-    const schemaFile = join("databases", `${name}.db.ts`);
-    const database = await extractDatabaseSchema(
-      name,
-      schemaFile,
-      resolve(srcDir, schemaFile)
-    );
-    if (database.isErr()) {
-      return database;
-    }
-  }
-  return new Ok(undefined);
-}
 
 // Extracts (and rule-checks) the DatabaseSchema of one drizzle schema file. Also used by
 // `dsbx db reconcile` as its schema-file validation step.
