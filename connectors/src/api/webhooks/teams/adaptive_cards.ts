@@ -402,7 +402,7 @@ export function createBasicToolApprovalAdaptiveCard(data: {
         items: [
           {
             type: "TextBlock",
-            text: `Agent is requesting permission to use tool **${data.toolName}**`,
+            text: `The agent is requesting permission to use tool **${data.toolName}**`,
             wrap: true,
             spacing: "Small",
           },

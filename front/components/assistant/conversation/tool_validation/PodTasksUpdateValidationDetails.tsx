@@ -374,7 +374,7 @@ export function PodTasksUpdateValidationDetails({
   return (
     <div className="flex flex-col gap-3 pt-2">
       <p className="text-sm text-muted-foreground">
-        Agent wants to update{" "}
+        The agent wants to update{" "}
         <span className="font-medium text-foreground">{taskCount}</span> task
         {taskCount === 1 ? "" : "s"} in{" "}
         <span className="font-medium text-foreground">

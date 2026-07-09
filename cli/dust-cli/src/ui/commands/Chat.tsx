@@ -2052,7 +2052,7 @@ const CliChat: FC<CliChatProps> = ({
                   : inlineSelector.mode === "approval" &&
                       pendingApproval &&
                       pendingApproval.type === "tool_approve_execution"
-                    ? `Tool Approval Required: agent wants to use ${pendingApproval.metadata.toolName}, what do you want to do? `
+                    ? `Tool Approval Required: the agent wants to use ${pendingApproval.metadata.toolName}, what do you want to do? `
                     : inlineSelector.mode === "diff" && pendingDiffApproval
                       ? `Changes Preview: ${pendingDiffApproval.filePath} `
                       : mentionPrefix

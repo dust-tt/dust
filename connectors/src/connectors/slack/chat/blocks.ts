@@ -447,7 +447,7 @@ export function makeToolValidationBlock({
       type: "section",
       text: {
         type: "mrkdwn",
-        text: `Agent is requesting permission to use tool \`${toolName}\``,
+        text: `The agent is requesting permission to use tool \`${toolName}\``,
       },
     },
     {
@@ -501,7 +501,7 @@ export function makeToolAuthenticationBlock({
       type: "section",
       text: {
         type: "mrkdwn",
-        text: `Agent requires personal authentication for \`${serverName}\``,
+        text: `The agent requires personal authentication for \`${serverName}\``,
       },
     },
     {
@@ -609,7 +609,7 @@ export function makeToolFileAuthorizationBlock({
       type: "section",
       text: {
         type: "mrkdwn",
-        text: `Agent requires file authorization for \`${fileName}\``,
+        text: `The agent requires file authorization for \`${fileName}\``,
       },
     },
     {
