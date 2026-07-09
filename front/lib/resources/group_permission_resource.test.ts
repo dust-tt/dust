@@ -16,8 +16,8 @@ describe("GroupPermissionResource", () => {
   beforeEach(async () => {
     workspace = await WorkspaceFactory.basic();
     await GroupFactory.defaults(workspace);
-    groupA = await GroupFactory.regular(workspace, "A");
-    groupB = await GroupFactory.regular(workspace, "B");
+    groupA = await GroupFactory.regularAuto(workspace, "A");
+    groupB = await GroupFactory.regularAuto(workspace, "B");
     auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
   });
 
@@ -80,7 +80,10 @@ describe("GroupPermissionResource", () => {
     it("rejects a group from another workspace", async () => {
       const otherWorkspace = await WorkspaceFactory.basic();
       await GroupFactory.defaults(otherWorkspace);
-      const otherGroup = await GroupFactory.regular(otherWorkspace, "other");
+      const otherGroup = await GroupFactory.regularAuto(
+        otherWorkspace,
+        "other"
+      );
 
       await expect(
         GroupPermissionResource.grant(auth, {

@@ -216,7 +216,7 @@ describe("AdvancedModelResource admin management", () => {
 
   it("should add, list, and remove group allowed advanced models", async () => {
     const workspace = await WorkspaceFactory.basic();
-    const group = await GroupFactory.regular(
+    const group = await GroupFactory.regularAuto(
       workspace,
       "Advanced models group"
     );
@@ -344,7 +344,7 @@ describe("AdvancedModelResource.resolveAllowedAdvancedModels", () => {
     const workspace = await WorkspaceFactory.basic();
     const user = await UserFactory.basic();
     await MembershipFactory.associate(workspace, user, { role: "user" });
-    const group = await GroupFactory.regular(workspace, "Engineering");
+    const group = await GroupFactory.regularAuto(workspace, "Engineering");
     const adminAuth = await Authenticator.internalAdminForWorkspace(
       workspace.sId
     );
@@ -381,7 +381,7 @@ describe("AdvancedModelResource.resolveAllowedAdvancedModels", () => {
     const workspace = await WorkspaceFactory.basic();
     const user = await UserFactory.basic();
     await MembershipFactory.associate(workspace, user, { role: "user" });
-    const group = await GroupFactory.regular(workspace, "Engineering");
+    const group = await GroupFactory.regularAuto(workspace, "Engineering");
     const adminAuth = await Authenticator.internalAdminForWorkspace(
       workspace.sId
     );
@@ -454,8 +454,11 @@ describe("AdvancedModelResource.resolveAllowedAdvancedModels", () => {
     const workspace = await WorkspaceFactory.basic();
     const user = await UserFactory.basic();
     await MembershipFactory.associate(workspace, user, { role: "user" });
-    const memberGroup = await GroupFactory.regular(workspace, "Member group");
-    const otherGroup = await GroupFactory.regular(workspace, "Other group");
+    const memberGroup = await GroupFactory.regularAuto(
+      workspace,
+      "Member group"
+    );
+    const otherGroup = await GroupFactory.regularAuto(workspace, "Other group");
     const adminAuth = await Authenticator.internalAdminForWorkspace(
       workspace.sId
     );

@@ -8,7 +8,7 @@ export class GroupFactory {
     return GroupResource.makeDefaultsForWorkspace(workspace);
   }
 
-  static async regular(workspace: WorkspaceType, name: string) {
+  static async regularAuto(workspace: WorkspaceType, name: string) {
     return GroupResource.makeNew({
       name,
       kind: "regular_auto",
