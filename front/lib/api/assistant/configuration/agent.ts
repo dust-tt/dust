@@ -1582,25 +1582,30 @@ export async function cleanupAgentScopedResourcesForHardDeletion(
     auth,
     agentConfigurationId
   );
-  for (const trigger of triggers) {
-    const deleteResult = await trigger.delete(auth);
-    if (deleteResult.isErr()) {
-      logger.error(
-        {
-          workspaceId: workspace.sId,
-          agentConfigurationId,
-          triggerId: trigger.sId,
-          error: deleteResult.error,
-        },
-        `Failed to delete trigger ${trigger.sId} while hard-deleting agent ${agentConfigurationId}`
-      );
-    }
-  }
+  await concurrentExecutor(
+    triggers,
+    async (trigger) => {
+      const deleteResult = await trigger.delete(auth);
+      if (deleteResult.isErr()) {
+        logger.error(
+          {
+            workspaceId: workspace.sId,
+            agentConfigurationId,
+            triggerId: trigger.sId,
+            error: deleteResult.error,
+          },
+          `Failed to delete trigger ${trigger.sId} while hard-deleting agent ${agentConfigurationId}`
+        );
+      }
+    },
+    { concurrency: 4 }
+  );
 
   const wakeUps = await WakeUpResource.listByAgentConfigurationId(
     auth,
     agentConfigurationId
   );
+  const deletableWakeUpIds: ModelId[] = [];
   for (const wakeUp of wakeUps) {
     const cleanupResult = await wakeUp.forceCancel(auth);
     if (cleanupResult.isErr()) {
@@ -1615,20 +1620,9 @@ export async function cleanupAgentScopedResourcesForHardDeletion(
       );
       continue;
     }
-
-    const deleteResult = await wakeUp.delete(auth);
-    if (deleteResult.isErr()) {
-      logger.error(
-        {
-          workspaceId: workspace.sId,
-          agentConfigurationId,
-          wakeUpId: wakeUp.sId,
-          error: deleteResult.error,
-        },
-        `Failed to delete wake-up ${wakeUp.sId} while hard-deleting agent ${agentConfigurationId}`
-      );
-    }
+    deletableWakeUpIds.push(wakeUp.id);
   }
+  await WakeUpResource.deleteByModelIds(auth, deletableWakeUpIds);
 
   await AgentUserRelationResource.deleteForAgent(auth, agentConfigurationId);
 }
