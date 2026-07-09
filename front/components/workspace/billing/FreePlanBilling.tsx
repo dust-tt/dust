@@ -1,5 +1,6 @@
 import { FreePlanSeatsSection } from "@app/components/workspace/billing/FreePlanSeatsSection";
 import { FreePlanUpgradeSection } from "@app/components/workspace/billing/FreePlanUpgradeSection";
+import { SubscriptionActionButtons } from "@app/components/workspace/billing/SubscriptionActionButtons";
 import { SubscriptionStatusChip } from "@app/components/workspace/billing/SubscriptionStatusChip";
 import type { SubscriptionType } from "@app/types/plan";
 import type { LightWorkspaceType } from "@app/types/user";
@@ -13,11 +14,14 @@ interface FreePlanBillingProps {
 export function FreePlanBilling({ owner, subscription }: FreePlanBillingProps) {
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex items-center gap-2">
-        <span className="text-base font-semibold text-foreground">
-          Business
-        </span>
-        <SubscriptionStatusChip />
+      <div className="flex items-center justify-between gap-4">
+        <div className="flex items-center gap-2">
+          <span className="text-base font-semibold text-foreground">
+            Business
+          </span>
+          <SubscriptionStatusChip />
+        </div>
+        <SubscriptionActionButtons />
       </div>
       <FreePlanSeatsSection owner={owner} subscription={subscription} />
       <FreePlanUpgradeSection
