@@ -78,6 +78,13 @@ interface UserGrantSpec {
   transaction?: Transaction;
 }
 
+interface EverybodyGrantSpec {
+  permissionType: PermissionType;
+  resourceType: GroupPermissionResourceType;
+  resourceId: number;
+  transaction?: Transaction;
+}
+
 function autoGroupName({
   permissionType,
   resourceType,
@@ -119,6 +126,8 @@ export class GroupPermissionResource extends BaseResource<GroupPermissionModel> 
 
   // Grant an instance-level permission (a specific resource). Idempotent: the unique index dedupes,
   // so granting twice is a no-op. Type-wide grants (resourceId = -1) go through dedicated methods.
+  // TODO(admin-governance): Decide whether system group should be rejected here (and in
+  // revoke) or left to callers; align with setGroups / setForEverybody conventions.
   static async grant(
     auth: Authenticator,
     {
@@ -306,8 +315,58 @@ export class GroupPermissionResource extends BaseResource<GroupPermissionModel> 
     }, transaction);
   }
 
+  // Grant an instance-level permission to the whole workspace via the global group. Idempotent.
+  // Distinct from setForEverybody, which grants a type-wide (-1) governance capability.
+  static async grantToEverybody(
+    auth: Authenticator,
+    {
+      permissionType,
+      resourceType,
+      resourceId,
+      transaction,
+    }: EverybodyGrantSpec
+  ): Promise<void> {
+    const globalGroup = await GroupResource.internalFetchWorkspaceGlobalGroup(
+      auth.getNonNullableWorkspace().id
+    );
+    assert(globalGroup, "Workspace is missing its global group.");
+
+    await this.grant(auth, {
+      group: globalGroup,
+      permissionType,
+      resourceType,
+      resourceId,
+      transaction,
+    });
+  }
+
+  // Revoke an instance-level permission from the whole workspace (the global group). No-op if absent.
+  static async revokeFromEverybody(
+    auth: Authenticator,
+    {
+      permissionType,
+      resourceType,
+      resourceId,
+      transaction,
+    }: EverybodyGrantSpec
+  ): Promise<void> {
+    const globalGroup = await GroupResource.internalFetchWorkspaceGlobalGroup(
+      auth.getNonNullableWorkspace().id
+    );
+    assert(globalGroup, "Workspace is missing its global group.");
+
+    await this.revoke(auth, {
+      group: globalGroup,
+      permissionType,
+      resourceType,
+      resourceId,
+      transaction,
+    });
+  }
+
   // Revoke a single instance-level grant. No-op if absent. Type-wide (-1) grants are removed via
   // revokeTypeWide, mirroring the instance-only contract of grant().
+  // TODO(admin-governance): See grant() — same open question on system/global group restrictions.
   static async revoke(
     auth: Authenticator,
     {
