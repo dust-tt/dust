@@ -567,6 +567,45 @@ export function assertRootInvokedHelpersSafe(output: string): void {
   }
 }
 
+const POD_STATE_DIR_EXPECTATIONS = [
+  { path: "/pod-state", owner: "root:root", mode: "755" },
+  { path: "/pod-state/databases", owner: "dust-state:agent", mode: "2770" },
+  { path: "/pod-state/replica", owner: "dust-state:dust-state", mode: "700" },
+] as const;
+
+export function assertPodStateDirsSafe(output: string): void {
+  const lineByPath = new Map<string, string>();
+  for (const line of output.split("\n")) {
+    if (!line.startsWith("POD_STATE_DIR=")) {
+      continue;
+    }
+    const [path] = line.replace("POD_STATE_DIR=", "").split(/\s+/, 1);
+    if (path) {
+      lineByPath.set(path, line);
+    }
+  }
+
+  for (const expectation of POD_STATE_DIR_EXPECTATIONS) {
+    const line = lineByPath.get(expectation.path);
+    if (!line) {
+      throw new Error(
+        `missing pod-state directory audit for ${expectation.path}:\n${output}`
+      );
+    }
+
+    const fields = line.replace("POD_STATE_DIR=", "").split(/\s+/);
+    const owner = fields[1];
+    const mode = fields[2];
+
+    if (owner !== expectation.owner || mode !== expectation.mode) {
+      throw new Error(
+        `pod-state directory ${expectation.path} must be ${expectation.owner} ` +
+          `mode ${expectation.mode}:\n${line}`
+      );
+    }
+  }
+}
+
 export function assertRootPathSafe(output: string): void {
   const rootPathLines = output
     .split("\n")
@@ -654,6 +693,12 @@ for path in ${SANDBOX_ROOT_INVOKED_HELPERS.map((path) => shellQuote(path)).join(
     stat -c '%n %U:%G %a %A' "$path"
   fi
 done
+echo "--- pod-state-dirs ---"
+for dir in ${POD_STATE_DIR_EXPECTATIONS.map((expectation) =>
+      shellQuote(expectation.path)
+    ).join(" ")}; do
+  stat -c 'POD_STATE_DIR=%n %U:%G %a %A' "$dir"
+done
 echo "--- root-path ---"
 printf 'ROOT_EXEC_PATH=%s\n' "$PATH"
 /bin/bash --noprofile --norc -c 'source /etc/profile; printf "ROOT_LOGIN_PATH=%s\n" "$PATH"'
@@ -669,6 +714,7 @@ printf 'ROOT_EXEC_PATH=%s\n' "$PATH"
   assertStaticRootConsumedDirsSafe(output);
   assertSystemdUnitPathsSafe(output);
   assertRootInvokedHelpersSafe(output);
+  assertPodStateDirsSafe(output);
   assertRootPathSafe(output);
 }
 
@@ -843,6 +889,63 @@ fi
   }
 }
 
+async function checkPodStateWorkloadAccess(
+  provider: E2BSandboxProvider,
+  providerId: string
+): Promise<void> {
+  // The live databases dir must be read-write for the workload user (function
+  // code opens SQLite files there), exercising the setgid + default-ACL
+  // inheritance like the /files smoke test does.
+  const databasesAccess = await runBashScript(
+    provider,
+    providerId,
+    `
+set -euo pipefail
+test -d /pod-state/databases
+proof=$(mktemp /pod-state/databases/dust-security-smoke-XXXXXX)
+printf 'db-ok' > "$proof"
+test "$(cat "$proof")" = "db-ok"
+rm -f "$proof"
+`,
+    { user: AGENT_PROXIED_USER }
+  );
+  assertCommandSucceeded(
+    "pod-state databases workload access",
+    databasesAccess
+  );
+
+  // The replica dir (gcsfuse mount point for the litestream file replica),
+  // the litestream binary, and the litestream unit must all be untouchable by
+  // uid 1003. This sandbox has no gcsfuse mount, so the replica probe covers
+  // the underlying 0700 directory; the mounted case is additionally protected
+  // by mounting without allow_other.
+  const denials = await runBashScript(
+    provider,
+    providerId,
+    `
+set -euo pipefail
+if ls /pod-state/replica >/dev/null 2>&1; then
+  echo "CRITICAL: workload user can list /pod-state/replica"
+  exit 1
+fi
+if touch /pod-state/replica/dust-security-proof 2>/dev/null; then
+  echo "CRITICAL: workload user can write /pod-state/replica"
+  exit 1
+fi
+if [ -w /opt/bin/litestream ]; then
+  echo "CRITICAL: workload user can write /opt/bin/litestream"
+  exit 1
+fi
+if printf '' >> /etc/systemd/system/litestream.service 2>/dev/null; then
+  echo "CRITICAL: workload user can write the litestream systemd unit"
+  exit 1
+fi
+`,
+    { user: AGENT_PROXIED_USER }
+  );
+  assertCommandSucceeded("pod-state workload denial probes", denials);
+}
+
 function assertSshAndDnsHardening(output: string): void {
   if (!output.includes("SSH_PORT_22_LISTENING=0")) {
     throw new Error(`sshd appears to be listening on port 22:\n${output}`);
@@ -950,6 +1053,7 @@ async function checkImage(image: SandboxImage): Promise<void> {
     await checkSshAndDnsHardening(provider, providerId);
     await checkRootExecPathHijack(provider, providerId);
     await checkSystemdUnitSearchPathShadow(provider, providerId);
+    await checkPodStateWorkloadAccess(provider, providerId);
 
     logger.info(
       { imageId, providerId },
