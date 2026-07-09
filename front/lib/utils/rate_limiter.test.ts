@@ -33,6 +33,7 @@ type RateLimiterModule = typeof import("@app/lib/utils/rate_limiter");
 
 let closeRedisClients: RedisModule["closeRedisClients"];
 let runOnRedis: RedisModule["runOnRedis"];
+let addRateLimiterCount: RateLimiterModule["addRateLimiterCount"];
 let expireRateLimiterKey: RateLimiterModule["expireRateLimiterKey"];
 let getRateLimiterCount: RateLimiterModule["getRateLimiterCount"];
 let rateLimiter: RateLimiterModule["rateLimiter"];
@@ -50,6 +51,7 @@ describe("rateLimiter", () => {
 
     closeRedisClients = redisModule.closeRedisClients;
     runOnRedis = redisModule.runOnRedis;
+    addRateLimiterCount = rateLimiterModule.addRateLimiterCount;
     expireRateLimiterKey = rateLimiterModule.expireRateLimiterKey;
     getRateLimiterCount = rateLimiterModule.getRateLimiterCount;
     RATE_LIMITER_PREFIX = rateLimiterModule.RATE_LIMITER_PREFIX;
@@ -213,6 +215,80 @@ describe("rateLimiter", () => {
     expect(count.isOk()).toBe(true);
     if (count.isOk()) {
       expect(count.value).toBe(1);
+    }
+  });
+});
+
+describe("addRateLimiterCount", () => {
+  beforeAll(async () => {
+    const redisModule = await import("@app/lib/api/redis");
+    const rateLimiterModule = await import("@app/lib/utils/rate_limiter");
+
+    closeRedisClients = redisModule.closeRedisClients;
+    addRateLimiterCount = rateLimiterModule.addRateLimiterCount;
+    expireRateLimiterKey = rateLimiterModule.expireRateLimiterKey;
+    getRateLimiterCount = rateLimiterModule.getRateLimiterCount;
+  });
+
+  afterEach(async () => {
+    await Promise.all(
+      [...keysToExpire].map((key) => expireRateLimiterKey({ key }))
+    );
+    keysToExpire.clear();
+  });
+
+  afterAll(async () => {
+    await closeRedisClients();
+  });
+
+  it("records the full amount even when it overshoots what a limit-guarded write would allow", async () => {
+    const key = `test:${crypto.randomUUID()}`;
+    await expireTestKey(key);
+
+    // Reproduces the fair-use AWU bug: count is already at 9/10, and the message that just ran
+    // cost 2 credits. A limit-guarded `rateLimiter` write would silently drop this because
+    // 9 + 2 > 10; `addRateLimiterCount` must persist all of it regardless.
+    await addRateLimiterCount({
+      key,
+      timeframeSeconds: 60,
+      incrementBy: 9,
+      logger,
+    });
+    await addRateLimiterCount({
+      key,
+      timeframeSeconds: 60,
+      incrementBy: 2,
+      logger,
+    });
+
+    const count = await getRateLimiterCount({
+      key,
+      timeframeSeconds: 60,
+    });
+    expect(count.isOk()).toBe(true);
+    if (count.isOk()) {
+      expect(count.value).toBe(11);
+    }
+  });
+
+  it("is counted correctly by getRateLimiterCount alongside plain rateLimiter writes", async () => {
+    const key = `test:${crypto.randomUUID()}`;
+    await expireTestKey(key);
+
+    await addRateLimiterCount({
+      key,
+      timeframeSeconds: 60,
+      incrementBy: 3,
+      logger,
+    });
+
+    const count = await getRateLimiterCount({
+      key,
+      timeframeSeconds: 60,
+    });
+    expect(count.isOk()).toBe(true);
+    if (count.isOk()) {
+      expect(count.value).toBe(3);
     }
   });
 });

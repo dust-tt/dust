@@ -14,8 +14,8 @@ import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import type { RunUsageType } from "@app/lib/resources/run_resource";
 import { RunResource } from "@app/lib/resources/run_resource";
 import {
+  addRateLimiterCount,
   getTimeframeSecondsFromLiteral,
-  rateLimiter,
 } from "@app/lib/utils/rate_limiter";
 import logger from "@app/logger/logger";
 import {
@@ -141,15 +141,17 @@ export async function computeAndStoreAgentMessageCredits(
     costCredits > 0 &&
     assistantLimits.maxAwuCredits !== -1
   ) {
-    // We use rateLimiter infrastructure to enforce the fair use but ignore failure here since
-    // this is run post message execution. The next agent loop will be stopped if we dropped to 0.
-    await rateLimiter({
+    // Always record the credit cost unconditionally. The limit guard lives in
+    // isMessagesLimitReached (pre-message), which reads the count via getRateLimiterCount and
+    // blocks the next message once the total reaches maxAwuCredits. Using rateLimiter here was
+    // incorrect: its Lua script silently drops the write when count + costCredits > limit,
+    // causing the counter to stall below the limit and never trigger enforcement.
+    await addRateLimiterCount({
       key: makeFairUseAwuCreditsRateLimitKeyForUser(
         auth.getNonNullableWorkspace(),
         user.toJSON(),
         assistantLimits.maxAwuCreditsTimeframe
       ),
-      maxPerTimeframe: assistantLimits.maxAwuCredits,
       timeframeSeconds: getTimeframeSecondsFromLiteral(
         assistantLimits.maxAwuCreditsTimeframe
       ),
