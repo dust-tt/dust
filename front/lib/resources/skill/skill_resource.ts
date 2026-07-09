@@ -1804,6 +1804,19 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     return this.editorGroup.canWrite(auth);
   }
 
+  canAdministrate(auth: Authenticator): boolean {
+    // API keys with at least builder role can administrate any skill.
+    if (auth.isKey() && auth.isBuilder()) {
+      return true;
+    }
+
+    if (!this.editorGroup) {
+      return false;
+    }
+
+    return this.editorGroup.canAdministrate(auth);
+  }
+
   private async listActiveAgents(
     auth: Authenticator
   ): Promise<AgentConfigurationModel[]> {
@@ -2083,7 +2096,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       return new Ok(undefined);
     }
 
-    if (!this.canWrite(auth)) {
+    if (!this.canAdministrate(auth)) {
       return new Err(
         new Error("User is not authorized to update skill editors.")
       );
@@ -2418,7 +2431,10 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
   }
 
   async archive(auth: Authenticator): Promise<{ affectedCount: number }> {
-    assert(this.canWrite(auth), "User is not authorized to archive this skill");
+    assert(
+      this.canAdministrate(auth),
+      "User is not authorized to archive this skill"
+    );
 
     const workspace = auth.getNonNullableWorkspace();
 
@@ -2486,7 +2502,10 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
   }
 
   async restore(auth: Authenticator): Promise<{ affectedCount: number }> {
-    assert(this.canWrite(auth), "User is not authorized to restore this skill");
+    assert(
+      this.canAdministrate(auth),
+      "User is not authorized to restore this skill"
+    );
 
     const affectedCount = await withTransaction(async (transaction) => {
       const [count] = await this.update({ status: "active" }, transaction);
@@ -3139,7 +3158,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
   async delete(auth: Authenticator): Promise<Result<number, Error>> {
     try {
       assert(
-        this.canWrite(auth),
+        this.canAdministrate(auth),
         "User does not have permission to delete this skill."
       );
 
@@ -3744,6 +3763,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         fileName: file.fileName,
       })),
       canWrite: this.canWrite(auth),
+      canAdministrate: this.canAdministrate(auth),
       isDefault: this.isDefault,
     };
   }

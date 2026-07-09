@@ -33,12 +33,12 @@ app.post(
       });
     }
 
-    if (!skillResource.canWrite(auth)) {
+    if (!skillResource.canAdministrate(auth)) {
       return apiError(ctx, {
         status_code: 403,
         api_error: {
           type: "app_auth_error",
-          message: "Only editors can restore this skill.",
+          message: "Only admins and editors can restore this skill.",
         },
       });
     }

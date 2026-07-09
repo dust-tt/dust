@@ -1,4 +1,5 @@
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
+import { Authenticator } from "@app/lib/auth";
 import { getSupportedModelConfig } from "@app/lib/llms/model_configurations";
 import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { SkillDataSourceConfigurationModel } from "@app/lib/models/skill";
@@ -17,6 +18,7 @@ import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { DataSourceViewFactory } from "@app/tests/utils/DataSourceViewFactory";
 import { GroupSpaceFactory } from "@app/tests/utils/GroupSpaceFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
+import { KeyFactory } from "@app/tests/utils/KeyFactory";
 import { MCPServerViewFactory } from "@app/tests/utils/MCPServerViewFactory";
 import { RemoteMCPServerFactory } from "@app/tests/utils/RemoteMCPServerFactory";
 import { SkillFactory } from "@app/tests/utils/SkillFactory";
@@ -39,6 +41,27 @@ describe("SkillResource", () => {
       await config.destroy();
     }
     createdConfigurations.length = 0;
+  });
+
+  describe("permissions", () => {
+    it("allows builder API keys to administrate skills", async () => {
+      const skill = await SkillFactory.create(testContext.authenticator);
+      const builderKey = await KeyFactory.regular(testContext.globalGroup);
+      const readOnlyKey = await KeyFactory.readOnly(testContext.globalGroup);
+
+      const builderAuth = (
+        await Authenticator.fromKey(builderKey, testContext.workspace.sId)
+      ).workspaceAuth;
+      const readOnlyAuth = (
+        await Authenticator.fromKey(readOnlyKey, testContext.workspace.sId)
+      ).workspaceAuth;
+
+      expect(skill.canWrite(builderAuth)).toBe(true);
+      expect(skill.canAdministrate(builderAuth)).toBe(true);
+
+      expect(skill.canWrite(readOnlyAuth)).toBe(false);
+      expect(skill.canAdministrate(readOnlyAuth)).toBe(false);
+    });
   });
 
   // Helper function to create real SkillDataSourceConfigurationModel instances
