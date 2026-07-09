@@ -10,7 +10,7 @@ import {
 
 import {
   ArrowRight,
-  Button as NewButton,
+  NewButton,
   Plus,
   Robot,
   Separator,

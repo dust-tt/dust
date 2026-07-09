@@ -3,7 +3,7 @@ import React from "react";
 
 import { ArrowUp, ChevronDown } from "@sparkle/icons/v2-stroke";
 
-import { Button, NewFlexSplitButton } from "../index_with_tw_base";
+import { NewButton as Button, NewFlexSplitButton } from "../index_with_tw_base";
 
 const meta: Meta<React.ComponentProps<typeof NewFlexSplitButton>> = {
   title: "Actions/NewSplitButton",
