@@ -1,3 +1,4 @@
+import { isDustLikeAgent } from "@app/lib/api/assistant/global_agents/global_agents";
 import {
   getPreviousMessageId,
   setPreviousMessageId,
@@ -517,6 +518,7 @@ export async function getOutputFromLLMStream(
             logger.info(
               {
                 ...logContext,
+                agentConfigurationId: agentConfiguration.sId,
                 modelInteractionId,
                 previousMessageId,
                 cacheMissReasonType: cacheMissReason.type,
@@ -527,6 +529,7 @@ export async function getOutputFromLLMStream(
             const reasonTags = [
               `model_id:${model.modelId}`,
               `reason:${cacheMissReason.type}`,
+              `is_dust_like_agent:${isDustLikeAgent(agentConfiguration.sId)}`,
             ];
             // Count: how often each reason occurs.
             getStatsDClient().increment(
