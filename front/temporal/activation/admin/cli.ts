@@ -6,13 +6,13 @@ const cliLogger = logger.child({ component: "activation.orchestrator.cli" });
 
 function usage() {
   cliLogger.info(`Usage:
-  run --workspace <sId> [--dry-run] [--execute] [--user <userId>]
+  run --workspace <sId> [--dry-run] [--execute] [--user <sId>]
 
 Options:
   --workspace <sId>    Workspace sId to run against (required)
   --dry-run            Print the nudge plan, touch nothing (default)
   --execute            Fire real nudges
-  --user <userId>     Restrict to a single user (model id)`);
+  --user <sId>         Restrict to a single user (sId)`);
 }
 
 const main = async () => {
@@ -36,21 +36,20 @@ const main = async () => {
     process.exit(1);
   }
 
-  const userModelIdFilter: number | null =
-    argv["user"] != null ? parseInt(argv["user"], 10) : null;
+  const userId: string | null = argv["user"] ?? null;
   const dryRun = !argv["execute"];
 
-  cliLogger.info({ workspaceId, userModelIdFilter, dryRun }, "starting run");
+  cliLogger.info({ workspaceId, userId, dryRun }, "starting run");
 
   const { eligible, skipped } = await determineEligibleActivationUsers({
     workspaceId,
-    userModelIdFilter,
+    userId,
   });
 
   cliLogger.info(
     {
       workspaceId,
-      userModelIdFilter,
+      userId,
       eligibleCount: eligible.length,
       skippedCount: skipped.length,
     },
@@ -59,13 +58,13 @@ const main = async () => {
 
   for (const plan of eligible) {
     cliLogger.info(
-      { userModelId: plan.targetUserModelId, podId: plan.podId },
+      { userId: plan.targetUserId, podId: plan.podId },
       "User eligible for nudge"
     );
   }
   for (const s of skipped) {
     cliLogger.info(
-      { userModelId: s.userModelId, podId: s.podId },
+      { userId: s.userId, podId: s.podId },
       "User skipped for nudge"
     );
   }
