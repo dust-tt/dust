@@ -31,6 +31,23 @@ export type DatabaseSchemaErrorKind =
   | "database_schema_unresolvable"
   | "database_schema_invalid";
 
+// Wire kinds of the `dsbx db` command error envelopes (db_common.ts's DbCommandError).
+// Front type-imports this union to classify model-correctable kinds.
+export type DbErrorKind =
+  | "bad_args"
+  | "database_not_found"
+  | "schema_unresolvable"
+  | "schema_invalid"
+  | "destructive_change"
+  | "disallowed_statement"
+  | "plan_failed"
+  | "apply_failed"
+  | "empty_sql"
+  | "query_failed"
+  // Unexpected non-DbCommandError failures (infrastructure, bugs) — front must NOT treat
+  // these as model-correctable.
+  | "internal";
+
 export interface DatabaseColumn {
   type: string;
   mode: string | null;
