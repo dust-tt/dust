@@ -1808,7 +1808,7 @@ export async function updateAgentPermissions(
     const transactionResult = await withTransaction(async (t) => {
       if (usersToAdd.length > 0) {
         // Check authorization for agent_editors groups (allowing members and admins)
-        if (!editorGroupRes.value.canWrite(auth)) {
+        if (!editorGroupRes.value.canAdministrate(auth)) {
           return new Err(
             new DustError(
               "unauthorized",
@@ -1827,7 +1827,7 @@ export async function updateAgentPermissions(
 
       if (usersToRemove.length > 0) {
         // Check authorization for agent_editors groups (allowing members and admins)
-        if (!editorGroupRes.value.canWrite(auth)) {
+        if (!editorGroupRes.value.canAdministrate(auth)) {
           return new Err(
             new DustError(
               "unauthorized",
