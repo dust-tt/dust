@@ -1,5 +1,5 @@
-import { getAgentConfigurationsForView } from "@app/lib/api/assistant/configuration/views";
 import { Authenticator } from "@app/lib/auth";
+import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { makeScript } from "@app/scripts/helpers";
 
 const WORKSPACE_ID = "vigqnm0JoT";
@@ -12,11 +12,17 @@ const WORKSPACE_ID = "vigqnm0JoT";
  */
 makeScript({}, async (_args, logger) => {
   const auth = await Authenticator.internalAdminForWorkspace(WORKSPACE_ID);
+  const workspace = auth.getNonNullableWorkspace();
 
-  const agents = await getAgentConfigurationsForView({
-    auth,
-    agentsGetView: "admin_internal",
-    variant: "full",
+  const agents = await AgentConfigurationModel.findAll({
+    where: {
+      workspaceId: workspace.id,
+      status: "active",
+    },
+    order: [
+      ["name", "ASC"],
+      ["version", "DESC"],
+    ],
   });
 
   logger.info(
@@ -28,9 +34,10 @@ makeScript({}, async (_args, logger) => {
     logger.info(
       {
         sId: agent.sId,
+        workspaceId: agent.workspaceId,
         name: agent.name,
-        providerId: agent.model.providerId,
-        modelId: agent.model.modelId,
+        providerId: agent.providerId,
+        modelId: agent.modelId,
         description: agent.description,
         instructions: agent.instructions,
       },
