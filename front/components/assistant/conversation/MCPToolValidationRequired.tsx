@@ -263,7 +263,7 @@ export function MCPToolValidationRequired({
         }
         return JSON.stringify(value);
       });
-    return `Always allow @agent to ${asDisplayName(blockedAction.metadata.toolName)} ${
+    return `Always allow agent to ${asDisplayName(blockedAction.metadata.toolName)} ${
       argValues.length > 0
         ? ` for the following parameters: ${argValues.join(", ")}`
         : ""
