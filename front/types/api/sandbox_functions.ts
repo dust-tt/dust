@@ -1,3 +1,4 @@
+import type { SandboxFunctionMCPApproveExecutionEvent } from "@app/lib/actions/mcp_internal_actions/events";
 import type { ToolExecutionBaseStatus } from "@app/lib/actions/statuses";
 
 export const SANDBOX_FUNCTION_INVOCATION_STATUSES = ["created"] as const;
@@ -47,7 +48,8 @@ export type SandboxFunctionInvocationResultEvent = {
 
 export type SandboxFunctionInvocationEvent =
   | SandboxFunctionInvocationCreatedEvent
-  | SandboxFunctionInvocationResultEvent;
+  | SandboxFunctionInvocationResultEvent
+  | SandboxFunctionMCPApproveExecutionEvent;
 
 export type PostSandboxFunctionInvocationRequestBody = {
   input?: unknown;

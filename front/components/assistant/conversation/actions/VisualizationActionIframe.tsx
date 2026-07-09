@@ -160,6 +160,10 @@ async function waitForSandboxFunctionInvocationResult({
           case "sandbox_function_invocation_result":
             finish({ result: eventPayload.data.result });
             break;
+          case "tool_approve_execution":
+            // TODO(SANDBOX_FUNCTIONS): surface a tool approval flow to the user and post the
+            // validation back; not emitted by the tool execution activity yet.
+            break;
           default:
             assertNeverAndIgnore(eventPayload.data);
         }

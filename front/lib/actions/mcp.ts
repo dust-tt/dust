@@ -8,6 +8,7 @@ import type {
   MCPServerAvailability,
 } from "@app/lib/actions/mcp_internal_actions/constants";
 import type {
+  AgentLoopMCPApproveExecutionEvent,
   AgentLoopToolExecution,
   MCPApproveExecutionEvent,
   ToolAskUserQuestionEvent,
@@ -280,7 +281,7 @@ export function isAgentLoopToolNotificationEvent(
 // AgentActionRunningEvents are events related action execution within an agent loop.
 export type AgentActionRunningEvents =
   | AgentLoopToolParamsEvent
-  | MCPApproveExecutionEvent
+  | AgentLoopMCPApproveExecutionEvent
   | AgentLoopToolNotificationEvent;
 
 const MAX_DESCRIPTION_LENGTH = 1024;

@@ -109,9 +109,19 @@ export type ToolFileAuthRequiredEvent =
   | AgentLoopToolFileAuthRequiredEvent
   | SandboxFunctionToolFileAuthRequiredEvent;
 
-export interface MCPApproveExecutionEvent extends AgentLoopToolExecution {
+export interface AgentLoopMCPApproveExecutionEvent
+  extends AgentLoopToolExecution {
   type: "tool_approve_execution";
 }
+
+export interface SandboxFunctionMCPApproveExecutionEvent
+  extends SandboxFunctionToolExecution {
+  type: "tool_approve_execution";
+}
+
+export type MCPApproveExecutionEvent =
+  | AgentLoopMCPApproveExecutionEvent
+  | SandboxFunctionMCPApproveExecutionEvent;
 
 export interface AgentLoopToolAskUserQuestionEvent
   extends AgentLoopToolExecution {
