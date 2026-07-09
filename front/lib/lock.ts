@@ -1,6 +1,20 @@
 import { getRedisStreamClient, type RedisClientType } from "@app/lib/api/redis";
 import tracer from "@app/logger/tracer";
 
+// TTL of the lock key: it is not renewed, so a section that runs longer than this holds no
+// lock anymore. Exported so callers can build their own guards against that window.
+export const LOCK_TTL_MS = 5000;
+
+// Thrown by executeWithLock when the lock could not be acquired within timeoutMs. Callers
+// can catch this specifically (a retryable contention signal) without swallowing other
+// failures such as a Redis outage.
+export class LockAcquisitionTimeoutError extends Error {
+  constructor(lockName: string) {
+    super(`Lock acquisition timed out for ${lockName}`);
+    this.name = "LockAcquisitionTimeoutError";
+  }
+}
+
 // Distributed lock implementation using Redis
 // Returns the lock value if the lock is acquired, that can be used to unlock, otherwise undefined.
 export async function distributedLock(
@@ -9,12 +23,11 @@ export async function distributedLock(
 ): Promise<string | undefined> {
   const lockKey = `lock:${key}`;
   const lockValue = `${Date.now()}-${Math.random()}`;
-  const lockTimeout = 5000; // 5 seconds timeout
 
   // Try to acquire the lock using SET with NX and PX options
   const result = await redisCli.set(lockKey, lockValue, {
     NX: true,
-    PX: lockTimeout,
+    PX: LOCK_TTL_MS,
   });
 
   if (result !== "OK") {
@@ -86,7 +99,7 @@ export const executeWithLock = async <T>(
     : await acquire();
 
   if (!lockValue) {
-    throw new Error(`Lock acquisition timed out for ${lockName}`);
+    throw new LockAcquisitionTimeoutError(lockName);
   }
 
   try {
