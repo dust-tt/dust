@@ -971,7 +971,7 @@ export function createProjectManagerTools(
         if (dataSources.length === 0) {
           return new Err(
             new MCPError(
-              "No Pod data source or Pod context nodes available to retrieve from.",
+              "No Pod data source or Pod content nodes available to retrieve from.",
               { tracked: false }
             )
           );

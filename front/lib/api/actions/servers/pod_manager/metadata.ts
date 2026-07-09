@@ -283,7 +283,9 @@ export const POD_MANAGER_TOOLS_METADATA = createToolsRecord({
   },
   retrieve_recent_documents: {
     description:
-      "Fetch the most recent documents from this Pod's knowledge data source and from any content nodes linked in the Pod context, in reverse chronological order up to the retrieval limit. Respects optional time window. Optionally restrict to subtrees using nodeIds.",
+      "Fetch the most recent documents from this Pod's knowledge data source and from any content nodes linked in the " +
+      "Pod context, in reverse chronological order up to the retrieval limit. Respects optional time window. " +
+      "Optionally restrict to subtrees using nodeIds.",
     schema: {
       timeFrame: IncludeInputSchema.shape.timeFrame,
       nodeIds: SearchWithNodesInputSchema.shape.nodeIds,
@@ -302,9 +304,10 @@ export const POD_MANAGER_TOOLS_METADATA = createToolsRecord({
   },
   [SEMANTIC_SEARCH_TOOL_NAME]: {
     description:
-      "Find and search for information about a topic or question across " +
-      "Pod files, linked context nodes, and Pod conversation transcripts " +
-      "using semantic retrieval. Scope selects files, conversations, or both.",
+      "Find and search for information about a topic or question across Pod " +
+      "files, content nodes attached to the Pod, and Pod conversation " +
+      "transcripts using semantic retrieval. The searchScope parameter " +
+      "allows selecting files, conversations, or both.",
     schema: {
       query: z
         .string()
