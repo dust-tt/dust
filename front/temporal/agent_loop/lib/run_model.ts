@@ -22,7 +22,6 @@ import {
   globalAgentInjectsToolsets,
   globalAgentInjectsUserContext,
   globalAgentInjectsWorkspaceContext,
-  isDustLikeAgent,
 } from "@app/lib/api/assistant/global_agents/global_agents";
 import {
   buildUserContext,
@@ -774,7 +773,6 @@ export async function runModel(
     cacheDiagnosticsEnabled: featureFlags.includes(
       "anthropic_cache_diagnostics"
     ),
-    isDustLikeAgent: isDustLikeAgent(agentConfiguration.sId),
     userMessage,
     specifications,
     flushParserTokens,
