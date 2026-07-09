@@ -98,9 +98,9 @@ const newButtonVariants = cva(
           OVERLAY,
           // overflow-hidden + after:rounded-none clips the hover overlay flush to the border-radius.
           "overflow-hidden after:rounded-none",
-          "border border-border-dark dark:border-stone-750",
+          "border border-border-dark dark:border-stone-775",
           "bg-linear-to-b from-primary-50 to-primary-100",
-          "dark:from-stone-775 dark:to-stone-775",
+          "dark:from-stone-800 dark:to-stone-800",
           "text-muted-foreground dark:text-primary-900",
           RAISED_SHADOW,
           // Dark: a real drop shadow (not a glow) since the button surface is dark.
