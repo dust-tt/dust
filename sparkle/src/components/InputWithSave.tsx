@@ -1,4 +1,4 @@
-import { LegacyButton } from "@sparkle/components/Button";
+import { Button } from "@sparkle/components/Button";
 import { cn } from "@sparkle/lib/utils";
 import React, {
   forwardRef,
@@ -148,7 +148,7 @@ export const InputWithSave = forwardRef<HTMLInputElement, InputWithSaveProps>(
         />
         {unit && <span className="shrink-0 text-muted-foreground">{unit}</span>}
         {showSaveButton && (
-          <LegacyButton
+          <Button
             label="Save"
             variant="highlight"
             size="xs"

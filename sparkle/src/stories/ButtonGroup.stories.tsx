@@ -9,7 +9,7 @@ import {
 
 import {
   RefreshCw02,
-  LegacyButton as Button,
+  Button,
   ButtonGroup,
   ButtonGroupDropdown,
   ChevronDown,

@@ -3,7 +3,7 @@ import React from "react";
 
 import {
   Bold01,
-  LegacyButton as Button,
+  Button,
   CodeSquare01,
   Code01,
   Heading01,

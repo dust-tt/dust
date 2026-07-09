@@ -1,5 +1,5 @@
 import { Avatar } from "@sparkle/components/Avatar";
-import { Button, LegacyButton } from "@sparkle/components/Button";
+import { Button } from "@sparkle/components/Button";
 import { Checkbox } from "@sparkle/components/Checkbox";
 import {
   DropdownMenu,
@@ -1025,7 +1025,7 @@ DataTable.MoreButton = function MoreButton({
         }}
         asChild
       >
-        <LegacyButton
+        <Button
           icon={DotsHorizontal}
           size="icon"
           variant="ghost-secondary"
@@ -1217,7 +1217,7 @@ DataTable.BasicCellContent = function BasicCellContent({
             >
               <span className="truncate">{label}</span>
               {textToCopy && (
-                <LegacyButton
+                <Button
                   icon={isCopied ? ClipboardCheck : Clipboard}
                   className="hidden group-hover:block"
                   variant="outline"

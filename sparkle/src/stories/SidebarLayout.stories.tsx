@@ -2,7 +2,7 @@ import type { Meta } from "@storybook/react";
 import React, { useRef, useState } from "react";
 
 import {
-  LegacyButton as Button,
+  Button,
   Card,
   NavigationList,
   NavigationListItem,

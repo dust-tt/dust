@@ -1,7 +1,4 @@
-import {
-  LegacyButton,
-  type LegacyButtonProps,
-} from "@sparkle/components/Button";
+import { Button, type ButtonProps } from "@sparkle/components/Button";
 import {
   Dialog,
   DialogContainer,
@@ -21,7 +18,7 @@ import React from "react";
 
 export type ToolbarVariant = "inline" | "overlay";
 
-type ToolbarButtonSize = NonNullable<LegacyButtonProps["size"]>;
+type ToolbarButtonSize = NonNullable<ButtonProps["size"]>;
 
 const toolbarRootVariants = cva("inline-flex items-center", {
   variants: {
@@ -74,7 +71,7 @@ export interface ToolbarProps {
   scrollAreaClassName?: string;
   scroll?: boolean;
   onClose?: (e: React.MouseEvent<HTMLButtonElement>) => void;
-  closeButtonProps?: Omit<LegacyButtonProps, "icon" | "onClick" | "label">;
+  closeButtonProps?: Omit<ButtonProps, "icon" | "onClick" | "label">;
   startSlot?: React.ReactNode;
 }
 
@@ -130,10 +127,10 @@ function Toolbar({
     };
 
     if (closeButtonSize === "mini") {
-      return <LegacyButton size="icon" {...buttonProps} />;
+      return <Button size="icon" {...buttonProps} />;
     }
 
-    return <LegacyButton size={closeButtonSize} {...buttonProps} />;
+    return <Button size={closeButtonSize} {...buttonProps} />;
   }
 
   const closeButton = renderCloseButton();
@@ -210,7 +207,7 @@ function ToolbarIcon({
 
   if (size === "mini") {
     return (
-      <LegacyButton
+      <Button
         tooltip={tooltip}
         icon={icon}
         onClick={handleClick}
@@ -221,7 +218,7 @@ function ToolbarIcon({
   }
 
   return (
-    <LegacyButton
+    <Button
       tooltip={tooltip}
       icon={icon}
       onClick={handleClick}

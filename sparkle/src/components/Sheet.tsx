@@ -1,6 +1,6 @@
 import * as SheetPrimitive from "@radix-ui/react-dialog";
 import { FocusScope } from "@radix-ui/react-focus-scope";
-import { LegacyButton } from "@sparkle/components/Button";
+import { Button } from "@sparkle/components/Button";
 import { Icon } from "@sparkle/components/Icon";
 import { ScrollArea } from "@sparkle/components/ScrollArea";
 import { SheetViewportProvider } from "@sparkle/components/SheetViewportContext";
@@ -195,7 +195,7 @@ const SheetHeader = ({
   >
     {children}
     <SheetClose asChild className="absolute right-3 top-4">
-      {!hideButton && <LegacyButton icon={XClose} variant="ghost" size="sm" />}
+      {!hideButton && <Button icon={XClose} variant="ghost" size="sm" />}
     </SheetClose>
   </div>
 );
@@ -264,9 +264,9 @@ const SheetContainer = ({
 SheetContainer.displayName = "SheetContainer";
 
 interface SheetFooterProps extends React.HTMLAttributes<HTMLDivElement> {
-  leftButtonProps?: React.ComponentProps<typeof LegacyButton>;
-  rightButtonProps?: React.ComponentProps<typeof LegacyButton>;
-  rightEndButtonProps?: React.ComponentProps<typeof LegacyButton>;
+  leftButtonProps?: React.ComponentProps<typeof Button>;
+  rightButtonProps?: React.ComponentProps<typeof Button>;
+  rightEndButtonProps?: React.ComponentProps<typeof Button>;
   sheetCloseClassName?: string;
 }
 
@@ -292,27 +292,27 @@ const SheetFooter = ({
       <div className="flex flex-row gap-2 border-t border-border p-3">
         {leftButtonProps &&
           (leftButtonProps.disabled ? (
-            <LegacyButton {...leftButtonProps} />
+            <Button {...leftButtonProps} />
           ) : (
             <SheetClose className={sheetCloseClassName} asChild>
-              <LegacyButton {...leftButtonProps} />
+              <Button {...leftButtonProps} />
             </SheetClose>
           ))}
         <div className="flex-grow" />
         {rightButtonProps &&
           (rightButtonProps.disabled ? (
-            <LegacyButton data-sheet-save="true" {...rightButtonProps} />
+            <Button data-sheet-save="true" {...rightButtonProps} />
           ) : (
             <SheetClose className={sheetCloseClassName} asChild>
-              <LegacyButton data-sheet-save="true" {...rightButtonProps} />
+              <Button data-sheet-save="true" {...rightButtonProps} />
             </SheetClose>
           ))}
         {rightEndButtonProps &&
           (rightEndButtonProps.disabled ? (
-            <LegacyButton {...rightEndButtonProps} />
+            <Button {...rightEndButtonProps} />
           ) : (
             <SheetClose className={sheetCloseClassName} asChild>
-              <LegacyButton {...rightEndButtonProps} />
+              <Button {...rightEndButtonProps} />
             </SheetClose>
           ))}
       </div>

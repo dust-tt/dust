@@ -1,6 +1,6 @@
 import * as DropdownMenuPrimitive from "@radix-ui/react-dropdown-menu";
 import * as TooltipPrimitive from "@radix-ui/react-tooltip";
-import { LegacyButton } from "@sparkle/components/Button";
+import { Button } from "@sparkle/components/Button";
 import { Chip } from "@sparkle/components/Chip";
 import { Icon } from "@sparkle/components/Icon";
 import {
@@ -976,7 +976,7 @@ const DropdownMenuFiltersInner = <T extends string>(
         const isSelected = multiSelectionValues.includes(filter.value);
 
         return (
-          <LegacyButton
+          <Button
             key={filter.value}
             size="xs"
             variant={isSelected ? "primary" : "outline"}

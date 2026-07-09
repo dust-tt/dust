@@ -1,5 +1,5 @@
 import { Avatar } from "@sparkle/components/Avatar";
-import { LegacyButton } from "@sparkle/components/Button";
+import { Button } from "@sparkle/components/Button";
 import {
   Dialog,
   DialogClose,
@@ -37,9 +37,9 @@ const MultiPageDialogClose = DialogClose;
 interface MultiPageDialogFooterProps
   extends React.HTMLAttributes<HTMLDivElement> {
   addTopSeparator: boolean;
-  leftButton?: React.ComponentProps<typeof LegacyButton>;
-  centerButton?: React.ComponentProps<typeof LegacyButton>;
-  rightButton?: React.ComponentProps<typeof LegacyButton>;
+  leftButton?: React.ComponentProps<typeof Button>;
+  centerButton?: React.ComponentProps<typeof Button>;
+  rightButton?: React.ComponentProps<typeof Button>;
 }
 
 const MultiPageDialogFooter = ({
@@ -58,10 +58,10 @@ const MultiPageDialogFooter = ({
     >
       {children}
       <div className="flex flex-row justify-between">
-        <div>{leftButton && <LegacyButton {...leftButton} />}</div>
+        <div>{leftButton && <Button {...leftButton} />}</div>
         <div className="flex gap-2">
-          {centerButton && <LegacyButton {...centerButton} />}
-          {rightButton && <LegacyButton {...rightButton} />}
+          {centerButton && <Button {...centerButton} />}
+          {rightButton && <Button {...rightButton} />}
         </div>
       </div>
     </div>
@@ -92,9 +92,9 @@ interface MultiPageDialogProps {
   showHeaderNavigation?: boolean;
   className?: string;
   disableNext?: boolean;
-  leftButton?: React.ComponentProps<typeof LegacyButton>;
-  centerButton?: React.ComponentProps<typeof LegacyButton>;
-  rightButton?: React.ComponentProps<typeof LegacyButton>;
+  leftButton?: React.ComponentProps<typeof Button>;
+  centerButton?: React.ComponentProps<typeof Button>;
+  rightButton?: React.ComponentProps<typeof Button>;
   footerContent?: React.ReactNode;
   addFooterSeparator?: boolean;
   hideCloseButton?: boolean;
@@ -198,7 +198,7 @@ const MultiPageDialogContent = React.forwardRef<
               <div className="flex items-center gap-3">
                 {showNavigation && showHeaderNavigation && (
                   <div className="flex items-center gap-1">
-                    <LegacyButton
+                    <Button
                       icon={ChevronLeft}
                       variant="ghost"
                       size="sm"
@@ -210,7 +210,7 @@ const MultiPageDialogContent = React.forwardRef<
                           : undefined
                       }
                     />
-                    <LegacyButton
+                    <Button
                       icon={ChevronRight}
                       variant="ghost"
                       size="sm"

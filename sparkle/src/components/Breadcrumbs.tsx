@@ -1,8 +1,8 @@
 import {
-  LEGACY_ICON_SIZE_MAP,
-  LegacyButton,
-  type LegacyButtonVariantType,
-  type LegacyRegularButtonSize,
+  Button,
+  type ButtonVariantType,
+  ICON_SIZE_MAP,
+  type RegularButtonSize,
 } from "@sparkle/components/Button";
 import {
   DropdownMenu,
@@ -90,7 +90,7 @@ interface BreadcrumbItemRendererProps {
   isLast: boolean;
   itemsHidden?: BreadcrumbsItem[];
   size?: "xs" | "sm";
-  buttonVariant?: LegacyButtonVariantType;
+  buttonVariant?: ButtonVariantType;
   hasLighterFont?: boolean;
   truncateLengthMiddle?: number;
   truncateLengthEnd?: number;
@@ -110,7 +110,7 @@ function BreadcrumbItemRenderer({
     return (
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <LegacyButton
+          <Button
             variant={buttonVariant}
             label={ELLIPSIS_STRING}
             icon={item.icon}
@@ -150,7 +150,7 @@ function BreadcrumbItemRenderer({
 
   if (isLinkItem(item)) {
     return (
-      <LegacyButton
+      <Button
         href={item.href}
         icon={item.icon}
         variant={buttonVariant ?? (isLast ? "ghost" : "ghost-secondary")}
@@ -164,7 +164,7 @@ function BreadcrumbItemRenderer({
 
   if (isButtonItem(item)) {
     return (
-      <LegacyButton
+      <Button
         onClick={item.onClick}
         icon={item.icon}
         variant={buttonVariant ?? (isLast ? "ghost" : "ghost-secondary")}
@@ -181,7 +181,7 @@ function BreadcrumbItemRenderer({
       <div className="shrink0 label-sm inline-flex h-9 items-center gap-2 border border-transparent px-3">
         <Icon
           visual={item.icon}
-          size={LEGACY_ICON_SIZE_MAP[size]}
+          size={ICON_SIZE_MAP[size]}
           className={cn("-mx-0.5")}
         />
         <div className={textClassName}>{item.label}</div>
@@ -196,7 +196,7 @@ interface BreadcrumbProps {
   items: BreadcrumbsItem[];
   className?: string;
   size?: "xs" | "sm";
-  buttonVariant?: LegacyButtonVariantType;
+  buttonVariant?: ButtonVariantType;
   hasLighterFont?: boolean;
   truncateLengthMiddle?: number;
   truncateLengthEnd?: number;
@@ -303,8 +303,8 @@ export function BreadcrumbItem({ children, className }: BreadcrumbItemProps) {
 interface BreadcrumbButtonProps {
   label: string;
   onClick?: () => void;
-  variant?: LegacyButtonVariantType;
-  size?: LegacyRegularButtonSize;
+  variant?: ButtonVariantType;
+  size?: RegularButtonSize;
   icon?: ComponentType<{ className?: string }>;
 }
 
@@ -316,7 +316,7 @@ export function BreadcrumbButton({
   icon,
 }: BreadcrumbButtonProps) {
   return (
-    <LegacyButton
+    <Button
       label={label}
       onClick={onClick}
       variant={variant}

@@ -1,4 +1,4 @@
-import { LegacyButton } from "@sparkle/components/Button";
+import { Button } from "@sparkle/components/Button";
 import { Card, type CardProps } from "@sparkle/components/Card";
 import { ImagePreview } from "@sparkle/components/ImagePreview";
 import { Spinner } from "@sparkle/components/Spinner";
@@ -182,7 +182,7 @@ interface CitationCloseProps
 const CitationClose = React.forwardRef<HTMLButtonElement, CitationCloseProps>(
   ({ className, onClick, ...props }, ref) => {
     return (
-      <LegacyButton
+      <Button
         ref={ref}
         variant="ghost"
         size="icon"

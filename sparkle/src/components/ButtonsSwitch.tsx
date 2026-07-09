@@ -1,10 +1,10 @@
-import { LegacyButton } from "@sparkle/components/Button";
+import { Button } from "@sparkle/components/Button";
 import { cn } from "@sparkle/lib/utils";
 import { cva, type VariantProps } from "class-variance-authority";
 import * as React from "react";
 
 type ButtonSize = Extract<
-  React.ComponentProps<typeof LegacyButton>["size"],
+  React.ComponentProps<typeof Button>["size"],
   "xs" | "sm" | "md"
 >;
 
@@ -115,10 +115,10 @@ export const ButtonsSwitchList = React.forwardRef<
 ButtonsSwitchList.displayName = "ButtonsSwitchList";
 
 interface ButtonsSwitchProps
-  extends Omit<React.ComponentProps<typeof LegacyButton>, "size" | "variant"> {
+  extends Omit<React.ComponentProps<typeof Button>, "size" | "variant"> {
   value: string;
   label?: string;
-  icon?: React.ComponentProps<typeof LegacyButton>["icon"];
+  icon?: React.ComponentProps<typeof Button>["icon"];
 }
 
 export const ButtonsSwitch = React.forwardRef<
@@ -144,7 +144,7 @@ export const ButtonsSwitch = React.forwardRef<
   };
 
   return (
-    <LegacyButton
+    <Button
       ref={ref}
       role="tab"
       aria-selected={isActive}

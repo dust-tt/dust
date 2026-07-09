@@ -1,4 +1,4 @@
-import { LegacyButton } from "@sparkle/components/Button";
+import { Button } from "@sparkle/components/Button";
 import { Icon } from "@sparkle/components/Icon";
 import { Spinner } from "@sparkle/components/Spinner";
 import {
@@ -247,7 +247,7 @@ Tree.Item = React.forwardRef<
           }
         >
           {type === "node" && (
-            <LegacyButton
+            <Button
               icon={isExpanded ? ChevronDown : ChevronRight}
               size="xmini"
               variant="ghost-secondary"

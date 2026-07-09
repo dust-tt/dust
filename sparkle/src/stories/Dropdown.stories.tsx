@@ -48,7 +48,7 @@ import {
   Upload01,
   Attachment01,
   Avatar,
-  LegacyButton as Button,
+  Button,
   MessagePlusCircle,
   Chip,
   DownloadCloud01,

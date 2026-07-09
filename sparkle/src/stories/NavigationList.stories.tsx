@@ -3,7 +3,7 @@ import React, { useEffect, useState } from "react";
 
 import {
   Avatar,
-  LegacyButton as Button,
+  Button,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,

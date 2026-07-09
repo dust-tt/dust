@@ -1,5 +1,5 @@
 import * as TabsPrimitive from "@radix-ui/react-tabs";
-import { LegacyButton } from "@sparkle/components/Button";
+import { Button } from "@sparkle/components/Button";
 import type { LinkWrapperProps } from "@sparkle/components/LinkWrapper";
 import { ScrollArea, ScrollBar } from "@sparkle/components/ScrollArea";
 import { cn } from "@sparkle/lib/utils";
@@ -66,7 +66,7 @@ const TabsTrigger = React.forwardRef<
   React.ComponentPropsWithoutRef<typeof TabsPrimitive.Trigger> &
     Partial<
       Pick<
-        React.ComponentProps<typeof LegacyButton>,
+        React.ComponentProps<typeof Button>,
         "label" | "tooltip" | "icon" | "isCounter" | "counterValue" | "variant"
       >
     > & {
@@ -100,7 +100,7 @@ const TabsTrigger = React.forwardRef<
         asChild
         {...props}
       >
-        <LegacyButton
+        <Button
           variant={variant}
           size="sm"
           label={label}

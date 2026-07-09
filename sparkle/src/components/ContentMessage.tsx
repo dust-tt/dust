@@ -1,7 +1,4 @@
-import {
-  LegacyButton,
-  type LegacyButtonProps,
-} from "@sparkle/components/Button";
+import { Button, type ButtonProps } from "@sparkle/components/Button";
 import { Icon } from "@sparkle/components/Icon";
 import { cn } from "@sparkle/lib/utils";
 import { cva } from "class-variance-authority";
@@ -173,13 +170,9 @@ function ContentMessage({
   );
 }
 
-function ContentMessageAction(props: LegacyButtonProps) {
+function ContentMessageAction(props: ButtonProps) {
   return (
-    <LegacyButton
-      size="xs"
-      className={cn("shrink-0", props.className)}
-      {...props}
-    />
+    <Button size="xs" className={cn("shrink-0", props.className)} {...props} />
   );
 }
 

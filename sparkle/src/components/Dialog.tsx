@@ -1,9 +1,6 @@
 import * as DialogPrimitive from "@radix-ui/react-dialog";
 import { FocusScope } from "@radix-ui/react-focus-scope";
-import {
-  LegacyButton,
-  type LegacyButtonProps,
-} from "@sparkle/components/Button";
+import { Button, type ButtonProps } from "@sparkle/components/Button";
 import { ScrollArea } from "@sparkle/components/ScrollArea";
 import { Separator } from "@sparkle/components/Separator";
 import { XClose } from "@sparkle/icons/v2-stroke";
@@ -160,8 +157,8 @@ const DialogContent = React.forwardRef<
 DialogContent.displayName = DialogPrimitive.Content.displayName;
 
 interface NewDialogHeaderProps extends React.HTMLAttributes<HTMLDivElement> {
-  buttonSize?: LegacyButtonProps["size"];
-  buttonVariant?: LegacyButtonProps["variant"];
+  buttonSize?: ButtonProps["size"];
+  buttonVariant?: ButtonProps["variant"];
   hideButton?: boolean;
 }
 
@@ -183,7 +180,7 @@ const DialogHeader = ({
     {children}
     {!hideButton && (
       <DialogClose asChild className="absolute right-3 top-3">
-        <LegacyButton icon={XClose} variant={buttonVariant} size={buttonSize} />
+        <Button icon={XClose} variant={buttonVariant} size={buttonSize} />
       </DialogClose>
     )}
   </div>
@@ -230,8 +227,8 @@ const DialogContainer = ({
 DialogContainer.displayName = "DialogContainer";
 
 interface DialogFooterProps extends React.HTMLAttributes<HTMLDivElement> {
-  leftButtonProps?: React.ComponentProps<typeof LegacyButton>;
-  rightButtonProps?: React.ComponentProps<typeof LegacyButton>;
+  leftButtonProps?: React.ComponentProps<typeof Button>;
+  rightButtonProps?: React.ComponentProps<typeof Button>;
   dialogCloseClassName?: string;
 }
 
@@ -253,18 +250,18 @@ const DialogFooter = ({
     >
       {leftButtonProps &&
         (leftButtonProps.disabled ? (
-          <LegacyButton {...leftButtonProps} />
+          <Button {...leftButtonProps} />
         ) : (
           <DialogClose className={dialogCloseClassName} asChild>
-            <LegacyButton {...leftButtonProps} />
+            <Button {...leftButtonProps} />
           </DialogClose>
         ))}
       {rightButtonProps &&
         (rightButtonProps.disabled ? (
-          <LegacyButton {...rightButtonProps} />
+          <Button {...rightButtonProps} />
         ) : (
           <DialogClose className={dialogCloseClassName} asChild>
-            <LegacyButton {...rightButtonProps} />
+            <Button {...rightButtonProps} />
           </DialogClose>
         ))}
       {children}

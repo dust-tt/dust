@@ -1,6 +1,6 @@
 import type * as ScrollAreaPrimitive from "@radix-ui/react-scroll-area";
 import { AnimatedText } from "@sparkle/components/AnimatedText";
-import { LegacyButton as Button } from "@sparkle/components/Button";
+import { Button } from "@sparkle/components/Button";
 import {
   Collapsible,
   CollapsibleContent,

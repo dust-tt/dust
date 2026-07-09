@@ -1,4 +1,4 @@
-import { LegacyButton } from "@sparkle/components/Button";
+import { Button } from "@sparkle/components/Button";
 import { ImageGenerationPlaceholder } from "@sparkle/components/ImageGenerationPlaceholder";
 import { ImageWrapper } from "@sparkle/components/ImageWrapper";
 import {
@@ -197,7 +197,7 @@ const ImagePreview = React.forwardRef<HTMLDivElement, ImagePreviewProps>(
                 )}
               >
                 {onClose && (
-                  <LegacyButton
+                  <Button
                     variant="ghost"
                     size="mini"
                     icon={XClose}
@@ -206,7 +206,7 @@ const ImagePreview = React.forwardRef<HTMLDivElement, ImagePreviewProps>(
                   />
                 )}
                 {!onClose && downloadUrl && (
-                  <LegacyButton
+                  <Button
                     variant="ghost"
                     size="mini"
                     icon={Download01}
