@@ -10,7 +10,7 @@ import { DbCommandError } from "./common.ts";
 import {
   QUERY_INLINE_PAYLOAD_CAP_BYTES,
   QUERY_INLINE_ROW_CAP,
-  queryReadonly,
+  runQuery,
 } from "./query.ts";
 import { reconcile } from "./reconcile.ts";
 import { generateSchemaFileText } from "./schema.ts";
@@ -313,7 +313,7 @@ describe("db query", () => {
     await withDir(async (dir) => {
       const dbPath = await seeded(dir);
       const result = unwrap(
-        queryReadonly(dbPath, "SELECT handle FROM users ORDER BY handle")
+        runQuery(dbPath, "SELECT handle FROM users ORDER BY handle")
       );
       expect(result.columns).toEqual(["handle"]);
       expect(result.rows).toEqual([{ handle: "alice" }, { handle: "bob" }]);
@@ -337,7 +337,7 @@ describe("db query", () => {
       db.close();
 
       const result = unwrap(
-        queryReadonly(dbPath, "SELECT label FROM notes ORDER BY id")
+        runQuery(dbPath, "SELECT label FROM notes ORDER BY id")
       );
       expect(result.rows.length).toBe(QUERY_INLINE_ROW_CAP);
       expect(result.row_count).toBe(QUERY_INLINE_ROW_CAP + 1);
@@ -358,23 +358,83 @@ describe("db query", () => {
     });
   });
 
-  test("rejects writes (read-only + query_only)", async () => {
+  test("runs DML and reports the affected rows", async () => {
     await withDir(async (dir) => {
       const dbPath = await seeded(dir);
+
+      const insert = unwrap(
+        runQuery(
+          dbPath,
+          "INSERT INTO users (handle, created_at) VALUES ('eve', 3)"
+        )
+      );
+      expect(insert.changes).toBe(1);
+      expect(insert.rows).toEqual([]);
+      expect(insert.row_count).toBe(0);
+
+      const update = unwrap(
+        runQuery(
+          dbPath,
+          "UPDATE users SET created_at = 9 WHERE handle != 'eve'"
+        )
+      );
+      expect(update.changes).toBe(2);
+
+      const check = unwrap(runQuery(dbPath, "SELECT count(*) AS n FROM users"));
+      expect(check.rows).toEqual([{ n: 3 }]);
+      expect(check.changes).toBeNull();
+    });
+  });
+
+  test("returns RETURNING rows from DML", async () => {
+    await withDir(async (dir) => {
+      const dbPath = await seeded(dir);
+      const result = unwrap(
+        runQuery(
+          dbPath,
+          "DELETE FROM users WHERE handle = 'alice' RETURNING handle"
+        )
+      );
+      expect(result.rows).toEqual([{ handle: "alice" }]);
+      expect(result.row_count).toBe(1);
+    });
+  });
+
+  test("rolls back a failed DML statement", async () => {
+    await withDir(async (dir) => {
+      const dbPath = await seeded(dir);
+      // handle is NOT NULL: the statement fails after the transaction opened.
       await expectDbError(
-        () =>
-          queryReadonly(
-            dbPath,
-            "INSERT INTO users (handle, created_at) VALUES ('eve', 3)"
-          ),
+        () => runQuery(dbPath, "INSERT INTO users (created_at) VALUES (3)"),
         "query_failed",
-        /readonly/i
+        /NOT NULL/i
       );
-      // Nothing was written.
-      const check = unwrap(
-        queryReadonly(dbPath, "SELECT count(*) AS n FROM users")
-      );
+      const check = unwrap(runQuery(dbPath, "SELECT count(*) AS n FROM users"));
       expect(check.rows).toEqual([{ n: 2 }]);
+    });
+  });
+
+  test("refuses DDL, PRAGMA, ATTACH and transaction control with a typed error", async () => {
+    await withDir(async (dir) => {
+      const dbPath = await seeded(dir);
+      for (const sql of [
+        "CREATE TABLE sneaky (id INTEGER)",
+        "DROP TABLE users",
+        "ALTER TABLE users ADD sneaky TEXT",
+        "PRAGMA journal_mode = DELETE",
+        "ATTACH DATABASE '/tmp/other.db' AS other",
+        "BEGIN",
+        "VACUUM",
+      ]) {
+        await expectDbError(
+          () => runQuery(dbPath, sql),
+          "disallowed_statement",
+          /only SELECT and DML/
+        );
+      }
+      // The schema and the WAL journal mode are untouched.
+      expect(tableNames(dbPath)).toEqual(["messages", "settings", "users"]);
+      expect(journalMode(dbPath)).toBe("wal");
     });
   });
 
@@ -382,15 +442,14 @@ describe("db query", () => {
     await withDir(async (dir) => {
       const dbPath = await seeded(dir);
       await expectDbError(
-        () =>
-          queryReadonly(dbPath, "SELECT handle FROM users; DELETE FROM users"),
+        () => runQuery(dbPath, "SELECT handle FROM users; DELETE FROM users"),
         "query_failed",
         /multiple SQL statements/
       );
 
       // A trailing semicolon (and semicolons inside string literals) are fine.
       const trailing = unwrap(
-        queryReadonly(
+        runQuery(
           dbPath,
           "SELECT count(*) AS n FROM users WHERE handle != 'a;b';"
         )
@@ -403,8 +462,7 @@ describe("db query", () => {
     await withDir(async (dir) => {
       const dbPath = await seeded(dir);
       await expectDbError(
-        () =>
-          queryReadonly(dbPath, "SELECT handle FROM users WHERE handle = ?"),
+        () => runQuery(dbPath, "SELECT handle FROM users WHERE handle = ?"),
         "query_failed",
         /parameters are not supported/
       );
@@ -424,7 +482,7 @@ describe("db query", () => {
       db.close();
 
       const result = unwrap(
-        queryReadonly(dbPath, "SELECT label FROM notes ORDER BY id")
+        runQuery(dbPath, "SELECT label FROM notes ORDER BY id")
       );
       expect(result.rows.length).toBe(1);
       expect(result.row_count).toBe(3);
@@ -443,7 +501,7 @@ describe("db query", () => {
     await withDir(async (dir) => {
       const dbPath = await seeded(dir);
       const result = unwrap(
-        queryReadonly(
+        runQuery(
           dbPath,
           "SELECT 42 AS small, 9007199254740993 AS big, x'41' AS data"
         )
@@ -459,7 +517,7 @@ describe("db query", () => {
     await withDir(async (dir) => {
       const dbPath = await seeded(dir);
       await expectDbError(
-        () => queryReadonly(dbPath, "   \n "),
+        () => runQuery(dbPath, "   \n "),
         "empty_sql",
         /no SQL statement/
       );
@@ -469,9 +527,9 @@ describe("db query", () => {
   test("errors with database_not_found on a missing database", async () => {
     await withDir(async (dir) => {
       await expectDbError(
-        () => queryReadonly(join(dir, "nope.db"), "SELECT 1"),
+        () => runQuery(join(dir, "nope.db"), "SELECT 1"),
         "database_not_found",
-        /cannot open database/
+        /no database at/
       );
     });
   });
