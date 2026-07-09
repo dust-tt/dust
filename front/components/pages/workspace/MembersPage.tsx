@@ -8,7 +8,11 @@ import {
 } from "@app/components/members/MemberSelectionTable";
 import { MembersList } from "@app/components/members/MembersList";
 import { ChangeMemberModal } from "@app/components/workspace/ChangeMemberModal";
-import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
+import {
+  useAuth,
+  useFeatureFlags,
+  useWorkspace,
+} from "@app/lib/auth/AuthContext";
 import { isFreePlan, isUpgraded } from "@app/lib/plans/plan_codes";
 import { useSearchMembers } from "@app/lib/swr/memberships";
 import {
@@ -28,6 +32,10 @@ import {
   Page,
   SearchInput,
   Spinner,
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
   Users01,
 } from "@dust-tt/sparkle";
 import type { PaginationState } from "@tanstack/react-table";
@@ -35,7 +43,7 @@ import { useCallback, useEffect, useState } from "react";
 
 const DEFAULT_PAGE_SIZE = 25;
 
-interface WorkspaceMembersGroupsListProps {
+interface WorkspaceMembersSectionProps {
   currentUser: UserType | null;
   isProvisioningEnabled: boolean;
   isManualInvitationsEnabled: boolean;
@@ -43,19 +51,19 @@ interface WorkspaceMembersGroupsListProps {
   searchTerm: string;
 }
 
-function WorkspaceMembersGroupsList({
+function WorkspaceMembersSection({
   currentUser,
   isProvisioningEnabled,
   isManualInvitationsEnabled,
   owner,
   searchTerm,
-}: WorkspaceMembersGroupsListProps) {
+}: WorkspaceMembersSectionProps) {
   const [view, setView] = useState("members");
 
   return (
-    <div>
+    <>
       {isManualInvitationsEnabled && (
-        <ButtonsSwitchList defaultValue="members" size="xs" className="mb-4">
+        <ButtonsSwitchList defaultValue="members" size="xs" className="w-fit">
           <ButtonsSwitch
             value="members"
             label="Members"
@@ -80,7 +88,7 @@ function WorkspaceMembersGroupsList({
       {view === "invitaitons" && isManualInvitationsEnabled && (
         <InvitationsList owner={owner} searchText={searchTerm} />
       )}
-    </div>
+    </>
   );
 }
 
@@ -154,7 +162,11 @@ function WorkspaceMembersList({
   );
 }
 
+
 export function MembersPage() {
+  const { hasFeature } = useFeatureFlags();
+  const isAdminGovernanceEnabled = hasFeature("admin_governance");
+
   const owner = useWorkspace();
   const { subscription, user } = useAuth();
   const plan = subscription.plan;
@@ -205,52 +217,71 @@ export function MembersPage() {
     );
   }
 
+  const members = (
+    <>
+      <div className="flex flex-row gap-2">
+        <SearchInput
+          placeholder={
+            isProvisioningEnabled ? "Search" : "Search members (email)"
+          }
+          value={searchTerm}
+          name="search"
+          onChange={setSearchTerm}
+          className="w-full"
+        />
+        {isManualInvitationsEnabled && (
+          <InviteEmailButtonWithModal
+            owner={owner}
+            prefillText=""
+            perSeatPricing={perSeatPricing}
+            onInviteClick={onInviteClick}
+            isFreePlan={isFreePlan(plan.code)}
+          />
+        )}
+      </div>
+      <WorkspaceMembersSection
+        currentUser={user}
+        owner={owner}
+        searchTerm={searchTerm}
+        isProvisioningEnabled={isProvisioningEnabled}
+        isManualInvitationsEnabled={isManualInvitationsEnabled}
+      />
+      {inviteBlockedPopupReason && (
+        <ReachedLimitPopup
+          isAdmin={isAdmin(owner)}
+          isOpened={!!inviteBlockedPopupReason}
+          onClose={() => setInviteBlockedPopupReason(null)}
+          subscription={subscription}
+          owner={owner}
+          code={inviteBlockedPopupReason}
+        />
+      )}
+    </>
+  );
+
   return (
     <div className="mb-4">
-      <Page.Vertical gap="lg" align="stretch">
+      <div className="flex flex-col gap-6">
         <Page.Header
           title="People"
           icon={Users01}
           description="Manage team members and their roles."
         />
-        <div className="flex flex-row gap-2">
-          <SearchInput
-            placeholder={
-              isProvisioningEnabled ? "Search" : "Search members (email)"
-            }
-            value={searchTerm}
-            name="search"
-            onChange={setSearchTerm}
-            className="w-full"
-          />
-          {isManualInvitationsEnabled && (
-            <InviteEmailButtonWithModal
-              owner={owner}
-              prefillText=""
-              perSeatPricing={perSeatPricing}
-              onInviteClick={onInviteClick}
-              isFreePlan={isFreePlan(plan.code)}
-            />
-          )}
-        </div>
-        <WorkspaceMembersGroupsList
-          currentUser={user}
-          owner={owner}
-          searchTerm={searchTerm}
-          isProvisioningEnabled={isProvisioningEnabled}
-          isManualInvitationsEnabled={isManualInvitationsEnabled}
-        />
-        {inviteBlockedPopupReason && (
-          <ReachedLimitPopup
-            isAdmin={isAdmin(owner)}
-            isOpened={!!inviteBlockedPopupReason}
-            onClose={() => setInviteBlockedPopupReason(null)}
-            subscription={subscription}
-            owner={owner}
-            code={inviteBlockedPopupReason}
-          />
+        {isAdminGovernanceEnabled ? (
+          <Tabs defaultValue="members">
+            <TabsList className="mb-6">
+              <TabsTrigger value="members" label="Members" />
+              <TabsTrigger value="groups" label="Groups" />
+            </TabsList>
+            <TabsContent value="members" className="flex flex-col gap-4">
+              {members}
+            </TabsContent>
+            <TabsContent value="groups">World</TabsContent>
+          </Tabs>
+        ) : (
+          members
         )}
-      </Page.Vertical>
+      </div>
     </div>
   );
 }
