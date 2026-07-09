@@ -478,7 +478,7 @@ describe("processToolResults", () => {
   });
 
   async function setupSandboxFunctionTest() {
-    const { auth, workspace, invocation, globalSpace } =
+    const { auth, workspace, invocation, globalSpace, podSpace } =
       await createPersistedSandboxFunctionInvocationTokenTestContext();
     const server = await InternalMCPServerInMemoryResource.makeNew(auth, {
       name: "common_utilities",
@@ -505,8 +505,53 @@ describe("processToolResults", () => {
       },
     };
 
-    return { auth, workspace, action, toolContext };
+    return { auth, workspace, action, invocation, podSpace, toolContext };
   }
+
+  it(`should offload registered resource blocks to ${TOOL_OUTPUTS_FOLDER_NAME}/{invocationId}/ in a sandbox function run context`, async () => {
+    const { auth, workspace, invocation, podSpace, toolContext } =
+      await setupSandboxFunctionTest();
+
+    const dataSourceNodeResult: DataSourceNodeContentType = {
+      mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.DATA_SOURCE_NODE_CONTENT,
+      uri: "notion://page/def456",
+      text: "# Function Notion Page\n\nSome content here.",
+      metadata: {
+        nodeId: "def456",
+        title: "Function Notion Page",
+        path: "/workspace/Function Notion Page",
+        parentTitle: null,
+        lastUpdatedAt: "2026-01-01T00:00:00Z",
+        sourceUrl: null,
+        mimeType: "application/vnd.notion.page",
+        hasChildren: false,
+        connectorProvider: null,
+      },
+    };
+
+    await processToolResults(auth, {
+      localLogger: logger.child({ test: true }),
+      toolContext,
+      toolCallResultContent: [
+        {
+          type: "resource",
+          resource: dataSourceNodeResult,
+        },
+      ],
+    });
+
+    const toolOutputWrite = fileStorageMock.saveFileCalls.find((call) =>
+      call.filePath.includes(`${TOOL_OUTPUTS_FOLDER_NAME}/`)
+    );
+    expect(toolOutputWrite).toBeDefined();
+    // Pod tool outputs are scoped by invocation so concurrent or successive invocations of the
+    // same pod cannot mix their outputs.
+    expect(toolOutputWrite?.filePath).toMatch(
+      new RegExp(
+        `w/${workspace.sId}/pods/${podSpace.sId}/files/${TOOL_OUTPUTS_FOLDER_NAME}/${invocation.sId}/\\d+_function_notion_page\\.md$`
+      )
+    );
+  });
 
   it("should write the full content array to a single GCS object in a sandbox function run context", async () => {
     const { auth, workspace, action, toolContext } =

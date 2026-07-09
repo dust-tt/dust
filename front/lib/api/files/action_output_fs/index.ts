@@ -67,18 +67,24 @@ function getToolOutputsScopedPath(
     );
   }
 
-  const rel = `${TOOL_OUTPUTS_FOLDER_NAME}/${fileName}`;
   switch (runContext.contextType) {
     case "agent_loop":
       return new Ok(
         conversationScopedPath({
           conversationId: runContext.conversation.sId,
-          rel,
+          rel: `${TOOL_OUTPUTS_FOLDER_NAME}/${fileName}`,
         })
       );
     case "sandbox_function":
+      // Scoped by invocation: a pod outlives its invocations, so a flat folder would mix
+      // outputs across invocations and the function could not tell its own apart. The
+      // invocation folder is visible in-sandbox at
+      // /files/pod-{pId}/.tool_outputs/{invocationId}/.
       return new Ok(
-        podScopedPath(runContext.invocation.sandboxFunction.space.sId, rel)
+        podScopedPath(
+          runContext.invocation.sandboxFunction.space.sId,
+          `${TOOL_OUTPUTS_FOLDER_NAME}/${runContext.invocation.sId}/${fileName}`
+        )
       );
     default:
       return assertNever(runContext);

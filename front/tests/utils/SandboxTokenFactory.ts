@@ -140,9 +140,18 @@ export async function createSandboxFunctionInvocationTokenTestContext({
 // them back (calling MCP tools from a function invocation).
 export async function createPersistedSandboxFunctionInvocationTokenTestContext() {
   const context = await createSandboxTokenTestContext();
-  const { auth, workspace } = context;
+  const { workspace } = context;
 
-  const podSpace = await SpaceFactory.project(workspace);
+  // Make the user a member of the pod space and refresh the auth so its groups include the pod
+  // editor group, matching production where the invocation-token auth is granted the pod space
+  // groups (pod-scoped writes like DustFileSystem.forPod require read access on the space).
+  const user = context.auth.getNonNullableUser();
+  const podSpace = await SpaceFactory.project(workspace, user.id);
+  const auth = await Authenticator.fromUserIdAndWorkspaceId(
+    user.sId,
+    workspace.sId
+  );
+
   const file = await FileFactory.create(auth, null, {
     contentType: sandboxFunctionContentType,
     fileName: "greet.ts",
@@ -183,6 +192,7 @@ export async function createPersistedSandboxFunctionInvocationTokenTestContext()
 
   return {
     ...context,
+    auth,
     podSpace,
     sandboxFunction,
     invocation,
