@@ -959,6 +959,16 @@ export async function disambiguateServerNamesBySpace(
  * Deduplicates MCP server configurations by view ID and name.
  * Priority order: agent actions > client-side > skill servers > JIT servers.
  */
+function getMCPServerConfigurationKey(
+  config: MCPServerConfigurationType
+): string {
+  const viewId = isServerSideMCPServerConfiguration(config)
+    ? config.mcpServerViewId
+    : config.clientSideMcpServerId;
+
+  return `${viewId}:${slugify(config.name)}`;
+}
+
 export function deduplicateMCPServerConfigurations({
   agentActions,
   clientSideActions,
@@ -977,10 +987,7 @@ export function deduplicateMCPServerConfigurations({
     ...skillServers,
     ...jitServers,
   ].filter((config) => {
-    const viewId = isServerSideMCPServerConfiguration(config)
-      ? config.mcpServerViewId
-      : config.clientSideMcpServerId;
-    const key = `${viewId}:${slugify(config.name)}`;
+    const key = getMCPServerConfigurationKey(config);
 
     if (seen.has(key)) {
       return false;
@@ -1018,15 +1025,20 @@ export async function tryListMCPTools(
     skillServers,
     jitServers,
   });
-  const nonSkillServers = [
-    ...agentLoopListToolsContext.agentConfiguration.actions,
-    ...(agentLoopListToolsContext.clientSideActionConfigurations ?? []),
-    ...jitServers,
-  ];
-  const isSkillServerConfig = deduplicatedConfigs.map(
-    (config) =>
-      skillServers.includes(config) && !nonSkillServers.includes(config)
+  const nonSkillServerKeys = new Set(
+    [
+      ...agentLoopListToolsContext.agentConfiguration.actions,
+      ...(agentLoopListToolsContext.clientSideActionConfigurations ?? []),
+      ...jitServers,
+    ].map(getMCPServerConfigurationKey)
   );
+  const skillServerKeys = new Set(
+    skillServers.map(getMCPServerConfigurationKey)
+  );
+  const isSkillServerConfig = deduplicatedConfigs.map((config) => {
+    const key = getMCPServerConfigurationKey(config);
+    return skillServerKeys.has(key) && !nonSkillServerKeys.has(key);
+  });
 
   const mcpServerActions = await disambiguateServerNamesBySpace(
     auth,
