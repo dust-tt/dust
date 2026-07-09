@@ -567,6 +567,8 @@ Set search_all=true only if the user explicitly requests to search all public wo
       running: "Setting Slack status",
       done: "Set Slack status",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
 });
 
