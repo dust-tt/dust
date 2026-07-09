@@ -26,19 +26,7 @@ import {
   DB_NAME_REGEX,
   type FunctionState,
   RESERVED_OBJECT_KEYS,
-} from "./types/db.ts";
-
-// The shape (types + name constants) lives in types/db.ts, the dependency-free single source
-// of truth that front's zod mirror is checked against. Re-exported here so runner-side
-// consumers keep a single import point.
-export {
-  type DatabaseColumn,
-  type DatabaseIndex,
-  type DatabaseSchema,
-  type DatabaseSchemaErrorKind,
-  type DatabaseTable,
-  DB_NAME_REGEX,
-  type FunctionState,
+  RESERVED_TABLE_PREFIXES,
 } from "./types/db.ts";
 
 export class DatabaseSchemaError extends Error {
@@ -57,20 +45,18 @@ function err(
   return new Err(new DatabaseSchemaError(kind, message));
 }
 
-// Table-name prefixes drizzle-kit's introspection ignores (plus SQLite internals): a table
-// named this way would pass build and first reconcile, then be invisible to every subsequent
-// reconcile plan — reject it up front.
-const RESERVED_TABLE_PREFIXES = [
-  "sqlite_",
-  "__drizzle",
-  "_litestream",
-  "_cf_",
-  "libsql_",
-];
-
-// `schema.databases`: unique names matching the database name contract.
+// `schema.databases`: unique names matching the database name contract. The regex rejects
+// `__proto__` (leading underscore) but matches `constructor`/`prototype`, and database names
+// become plain-object keys in the runner and front — reject the reserved keys explicitly.
 const declaredDatabasesSchema = z
-  .array(z.string().regex(DB_NAME_REGEX, `must match ${DB_NAME_REGEX}`))
+  .array(
+    z
+      .string()
+      .regex(DB_NAME_REGEX, `must match ${DB_NAME_REGEX}`)
+      .refine((name) => !RESERVED_OBJECT_KEYS.has(name), {
+        message: "is a reserved name",
+      })
+  )
   .refine((names) => new Set(names).size === names.length, {
     message: "contains duplicate names",
   });
@@ -95,6 +81,8 @@ const indexedColumnSchema = z.looseObject({ name: z.string().optional() });
 export async function readDeclaredDatabases(
   handlerPath: string
 ): Promise<Result<string[], DatabaseSchemaError>> {
+  // Unguarded on purpose: the caller must have imported handlerPath successfully already
+  // (build.ts runs getFunctionSchema first), so this import hits the module cache.
   const mod = await import(handlerPath);
   const schemaExport: unknown = Reflect.get(mod, "schema");
   const parsedExport = schemaExportSchema.safeParse(schemaExport);
@@ -191,7 +179,44 @@ export async function extractDatabaseSchema(
     );
   }
 
+  const namespaceViolation = checkDatabaseNamespace(dbName, tables);
+  if (namespaceViolation !== null) {
+    return new Err(namespaceViolation);
+  }
+
   return new Ok({ schemaFile, tables });
+}
+
+// sqlite_master's namespace is database-global and shared between tables and indexes: a
+// duplicate index name across tables, or an index named like a table, passes per-table
+// validation but fails at CREATE. Same for reserved prefixes on index names.
+function checkDatabaseNamespace(
+  dbName: string,
+  tables: Record<string, DatabaseTable>
+): DatabaseSchemaError | null {
+  const owners = new Map<string, string>();
+  for (const tableName of Object.keys(tables)) {
+    owners.set(tableName, `table "${tableName}"`);
+  }
+  for (const [tableName, table] of Object.entries(tables)) {
+    for (const indexName of Object.keys(table.indexes)) {
+      if (
+        RESERVED_TABLE_PREFIXES.some((prefix) => indexName.startsWith(prefix))
+      ) {
+        return invalid(
+          `database "${dbName}": index name "${indexName}" uses a reserved prefix (${RESERVED_TABLE_PREFIXES.join(", ")}) and is not allowed in pod databases`
+        );
+      }
+      const owner = owners.get(indexName);
+      if (owner !== undefined) {
+        return invalid(
+          `database "${dbName}": index "${indexName}" of table "${tableName}" collides with ${owner} — table and index names share one namespace in SQLite`
+        );
+      }
+      owners.set(indexName, `index "${indexName}" of table "${tableName}"`);
+    }
+  }
+  return null;
 }
 
 type TableConfig = ReturnType<typeof getTableConfig>;
@@ -207,9 +232,10 @@ const TABLE_RULES: TableRule[] = [
   checkNoForeignKeys,
   checkNoCheckConstraints,
   checkNoUniqueConstraints,
-  checkNoCompositePrimaryKey,
+  checkSinglePrimaryKeyDeclaration,
   checkNoDuplicateIndexNames,
   checkPlainColumnIndexes,
+  checkColumnPropsReadable,
 ];
 
 // Runs every table rule; a valid config comes back unchanged, ready for toDatabaseTable.
@@ -303,13 +329,23 @@ function checkNoUniqueConstraints(
   return null;
 }
 
-function checkNoCompositePrimaryKey(
+function checkSinglePrimaryKeyDeclaration(
   where: string,
   config: TableConfig
 ): DatabaseSchemaError | null {
   if (config.primaryKeys.some((pk) => pk.columns.length > 1)) {
     return invalid(
       `${where}: composite primary keys are not allowed in pod databases — use a single id column`
+    );
+  }
+  // SQLite allows one PRIMARY KEY per table: a second declaration (column-level .primaryKey()
+  // plus table-level primaryKey(), or two column-level ones) fails at CREATE.
+  const declarations =
+    config.columns.filter((column) => column.primary).length +
+    config.primaryKeys.length;
+  if (declarations > 1) {
+    return invalid(
+      `${where}: more than one primary key declaration — SQLite allows a single PRIMARY KEY per table`
     );
   }
   return null;
@@ -339,6 +375,23 @@ function checkPlainColumnIndexes(
     if (indexColumnNames(index.config) === null) {
       return invalid(
         `${where}: index "${index.config.name}" uses an SQL expression — only plain column indexes are supported in pod databases`
+      );
+    }
+  }
+  return null;
+}
+
+// The column instances come from the schema file's own drizzle-orm copy (NODE_PATH global in
+// the sandbox), read through a loose zod view. A version skew that moves the fields we read
+// must fail the build, not silently record a wrong shape.
+function checkColumnPropsReadable(
+  where: string,
+  config: TableConfig
+): DatabaseSchemaError | null {
+  for (const column of config.columns) {
+    if (!columnPropsSchema.safeParse(column).success) {
+      return invalid(
+        `${where}: column "${column.name}" has unreadable drizzle column properties — the schema file's drizzle-orm version is incompatible with this build`
       );
     }
   }
@@ -399,9 +452,16 @@ function toDatabaseTable(config: TableConfig): DatabaseTable {
 
 type ColumnProps = z.infer<typeof columnPropsSchema>;
 
+// Parse-or-throw is safe here: checkColumnPropsReadable already rejected unparseable columns
+// during validation, so a failure past that point is a bug.
 function columnProps(column: object): Partial<ColumnProps> {
   const parsed = columnPropsSchema.safeParse(column);
-  return parsed.success ? parsed.data : {};
+  if (!parsed.success) {
+    throw new Error(
+      "unreachable: column passed checkColumnPropsReadable but failed to parse"
+    );
+  }
+  return parsed.data;
 }
 
 // The plain column names of an index, or null if any entry is an SQL expression.
