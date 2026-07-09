@@ -68,7 +68,7 @@ export class ToolsCache {
     toolName,
   }: ToolsCacheKeyParams): Promise<boolean | null> {
     const cache = await this.loadCache();
-    const toolKey = this.createToolKey({ agentName, mcpServerName, toolName });
+    const toolKey = this.createToolKey({ mcpServerName, toolName });
     const cachedEntry = cache.find((entry) => entry === toolKey);
 
     if (!cachedEntry) {

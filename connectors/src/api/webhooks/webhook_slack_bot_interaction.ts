@@ -103,7 +103,6 @@ const AnswerUserQuestionButtonSchema = t.type({
 
 export type RequestToolPermissionActionValueParsed = {
   status: "approved" | "rejected";
-  agentName: string;
   toolName: string;
 };
 
@@ -371,7 +370,6 @@ const _webhookSlackBotInteractionsAPIHandler = async (
         const valueValidation = t
           .type({
             status: t.union([t.literal("approved"), t.literal("rejected")]),
-            agentName: t.string,
             toolName: t.string,
           })
           .decode(JSON.parse(action.value));
@@ -390,9 +388,9 @@ const _webhookSlackBotInteractionsAPIHandler = async (
           return;
         }
 
-        const { status: approved, agentName, toolName } = valueValidation.right;
+        const { status: approved, toolName } = valueValidation.right;
 
-        const text = `Agent \`${agentName}\`'s request to use tool \`${toolName}\` was ${
+        const text = `Agent's request to use tool \`${toolName}\` was ${
           approved === "approved" ? "✅ approved" : "❌ rejected"
         }`;
 
