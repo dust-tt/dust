@@ -46,8 +46,7 @@ const MCP_TOOL_OVERRIDES: Partial<
   "dust-chrome-extension": {
     interact_with_page: {
       title: (inputs) => `Allow agent to ${inputs.humanReadableDescription}?`,
-      alwaysAllowLabel: () =>
-        "Allow all the interactions with this tab",
+      alwaysAllowLabel: () => "Allow all the interactions with this tab",
     },
   },
   "dust-firefox-extension": {
@@ -110,8 +109,7 @@ const MCP_TOOL_OVERRIDES: Partial<
         }
         return `Allow agent to ${parts.join(" and ")} Pod user${addCount + removeCount === 1 ? "" : "s"}?`;
       },
-      alwaysAllowLabel: () =>
-        `Always allow agent to update Pod members`,
+      alwaysAllowLabel: () => `Always allow agent to update Pod members`,
     },
   },
   [WAKEUPS_SERVER_NAME]: {

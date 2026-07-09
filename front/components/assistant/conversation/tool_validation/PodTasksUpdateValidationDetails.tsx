@@ -21,7 +21,6 @@ interface PodTasksUpdateValidationDetailsProps {
   input: PodTasksUpdateTasksInput;
   owner: LightWorkspaceType;
   user: UserType;
-  agentName: string;
   conversationId?: string | null;
 }
 
@@ -43,7 +42,6 @@ interface TaskUpdateRowProps {
   workspaceId: string;
   taskInput: PodTasksUpdateTaskItemInput;
   user: UserType;
-  agentName: string;
 }
 
 interface FormatAssigneeLabelParams {
@@ -165,12 +163,7 @@ function AssigneeChangeRow({
   return <ChangeRow label="Assignee" before={beforeLabel} after={afterLabel} />;
 }
 
-function TaskUpdateRow({
-  workspaceId,
-  taskInput,
-  user,
-  agentName,
-}: TaskUpdateRowProps) {
+function TaskUpdateRow({ workspaceId, taskInput, user }: TaskUpdateRowProps) {
   const {
     task: currentTask,
     isWorkspacePodTaskLoading: isWorkspaceProjectTaskLoading,
@@ -273,9 +266,7 @@ function TaskUpdateRow({
                   Marked done by
                 </span>
                 <span className="text-sm font-medium text-foreground">
-                  {taskInput.markAsDoneByType === "user"
-                    ? "You"
-                    : `@${agentName}`}
+                  {taskInput.markAsDoneByType === "user" ? "you" : "agent"}
                 </span>
               </div>
             )}
@@ -344,9 +335,7 @@ function TaskUpdateRow({
                   Marked done by
                 </span>
                 <span className="text-sm font-medium text-foreground">
-                  {taskInput.markAsDoneByType === "user"
-                    ? "You"
-                    : `@${agentName}`}
+                  {taskInput.markAsDoneByType === "user" ? "you" : "agent"}
                 </span>
               </div>
             )}
@@ -371,7 +360,6 @@ export function PodTasksUpdateValidationDetails({
   input,
   owner,
   user,
-  agentName,
   conversationId,
 }: PodTasksUpdateValidationDetailsProps) {
   const { podLabel, isPodLabelLoading } = usePodLabel({
@@ -386,7 +374,7 @@ export function PodTasksUpdateValidationDetails({
   return (
     <div className="flex flex-col gap-3 pt-2">
       <p className="text-sm text-muted-foreground">
-        @{agentName} wants to update{" "}
+        Agent wants to update{" "}
         <span className="font-medium text-foreground">{taskCount}</span> task
         {taskCount === 1 ? "" : "s"} in{" "}
         <span className="font-medium text-foreground">
@@ -402,7 +390,6 @@ export function PodTasksUpdateValidationDetails({
             workspaceId={owner.sId}
             taskInput={taskInput}
             user={user}
-            agentName={agentName}
           />
         ))}
       </div>

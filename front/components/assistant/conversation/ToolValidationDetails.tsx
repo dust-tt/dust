@@ -176,7 +176,6 @@ export function ToolValidationDetails({
         input={blockedAction.inputs}
         owner={owner}
         user={user}
-        agentName="agent"
         conversationId={conversationId}
       />
     );
