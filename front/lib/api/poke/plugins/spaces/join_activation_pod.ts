@@ -1,7 +1,7 @@
 import {
-  createConversation,
-  postUserMessage,
-} from "@app/lib/api/assistant/conversation";
+  createActivationTrigger,
+  ensureActivationPodView,
+} from "@app/lib/api/assistant/activation";
 import { DustFileSystem } from "@app/lib/api/file_system";
 import { writeCanonicalFileContent } from "@app/lib/api/files/file_system_ops";
 import { createPlugin } from "@app/lib/api/poke/types";
@@ -18,8 +18,6 @@ import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import logger from "@app/logger/logger";
-import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
-import type { UserMessageContext } from "@app/types/assistant/conversation";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 
@@ -28,12 +26,6 @@ const ACTIVATION_POD_NAME_PREFIX = "'s Activation Pod";
 const joinActivationPodLogger = logger.child({
   activity: "join-activation-pod",
 });
-
-// Instruction the Dust agent receives to start the activation conversation.
-// Hidden to the user.
-const ACTIVATION_CONVERSATION_INITIAL_MESSAGE =
-  "Welcome me to my new Pod and recommend the next best action to get more value from Dust." +
-  " Also, pin a frame to the Pod that recommends skills, features, use cases, etc for me to eplore";
 
 // Pod is named after the first user in the list. If there are multiple users
 // with the same full name, named the pod after the first user's email.
@@ -158,65 +150,6 @@ async function setPodAgentsMd(
 
 function formatAgentsMdSuffix(written: boolean): string {
   return written ? " Saved AGENTS.md instructions." : "";
-}
-
-// Creates the Pod's first conversation.
-async function createPodActivationConversation(
-  podMemberAuth: Authenticator,
-  pod: SpaceResource,
-  creator: UserResource
-): Promise<Result<{ conversationId: string }, Error>> {
-  const conversation = await createConversation(podMemberAuth, {
-    title: `Activation Conversation for ${pod.name}`,
-    visibility: "unlisted",
-    spaceId: pod.id,
-  });
-
-  // Enable the activation skill for the activation conversation.
-  const [activationSkillResource] = await SkillResource.fetchByIds(
-    podMemberAuth,
-    [activationSkill.sId],
-    { onlyActive: true }
-  );
-  if (!activationSkillResource) {
-    return new Err(new Error("Activation skill not found."));
-  }
-  const pinResult = await SkillResource.upsertConversationSkills(
-    podMemberAuth,
-    {
-      conversationId: conversation.id,
-      skills: [activationSkillResource],
-      enabled: true,
-    }
-  );
-  if (pinResult.isErr()) {
-    return new Err(pinResult.error);
-  }
-
-  const creatorJson = creator.toJSON();
-
-  const context: UserMessageContext = {
-    username: creatorJson.username,
-    fullName: creatorJson.fullName,
-    email: creatorJson.email,
-    profilePictureUrl: creatorJson.image,
-    timezone: "UTC",
-    origin: "project_kickoff",
-  };
-
-  const postRes = await postUserMessage(podMemberAuth, {
-    conversation,
-    content: ACTIVATION_CONVERSATION_INITIAL_MESSAGE,
-    mentions: [{ configurationId: GLOBAL_AGENTS_SID.DUST }],
-    context,
-    skipToolsValidation: false,
-  });
-
-  if (postRes.isErr()) {
-    return new Err(new Error(postRes.error.api_error.message));
-  }
-
-  return new Ok({ conversationId: conversation.sId });
 }
 
 export const joinActivationPodPlugin = createPlugin({
@@ -363,25 +296,47 @@ export const joinActivationPodPlugin = createPlugin({
       return agentsMdResult;
     }
 
+    // Provision the shared activation webhook and create the user-owned trigger
+    // that fires the activation conversation.
+    const adminAuth = await Authenticator.internalAdminForWorkspace(
+      workspace.sId
+    );
     const podMemberAuth = await Authenticator.fromUserIdAndWorkspaceId(
       creator.sId,
       workspace.sId
     );
-    const kickoffResult = await createPodActivationConversation(
-      podMemberAuth,
-      pod,
-      creator
-    );
-    if (kickoffResult.isErr()) {
+
+    let activationTriggerCreated = false;
+    const podViewResult = await ensureActivationPodView(adminAuth, pod);
+    if (podViewResult.isErr()) {
       joinActivationPodLogger.error(
         {
           action: "join_activation_pod",
           spaceId: pod.sId,
           workspaceId: workspace.sId,
-          error: kickoffResult.error.message,
+          error: podViewResult.error.message,
         },
-        "Failed to create Activation Pod kickoff conversation"
+        "Failed to ensure Activation Pod webhook view"
       );
+    } else {
+      const triggerResult = await createActivationTrigger(podMemberAuth, {
+        pod,
+        creator,
+        podView: podViewResult.value,
+      });
+      if (triggerResult.isErr()) {
+        joinActivationPodLogger.error(
+          {
+            action: "join_activation_pod",
+            spaceId: pod.sId,
+            workspaceId: workspace.sId,
+            error: triggerResult.error.message,
+          },
+          "Failed to create Activation Pod trigger"
+        );
+      } else {
+        activationTriggerCreated = true;
+      }
     }
 
     joinActivationPodLogger.info(
@@ -390,7 +345,7 @@ export const joinActivationPodPlugin = createPlugin({
         created: true,
         defaultSkills: skillsResult.value.skillNames,
         agentsMdWritten: agentsMdResult.value.written,
-        kickoffConversationCreated: kickoffResult.isOk(),
+        activationTriggerCreated,
         spaceId: pod.sId,
         userIds: users.map((u) => u.sId),
         workspaceId: workspace.sId,

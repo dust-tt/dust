@@ -19,5 +19,12 @@
     "subscribedEvents": [],
     "description": "A generic webhook source for custom integrations.",
     "icon": "Webhook"
+  },
+  {
+    "name": "Activation",
+    "provider": null,
+    "subscribedEvents": [],
+    "description": "Internal activation kickoff events.",
+    "icon": "Webhook"
   }
 ]
