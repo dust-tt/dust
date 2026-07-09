@@ -295,6 +295,13 @@ export class MembershipResource extends BaseResource<MembershipModel> {
     );
   }
 
+  /**
+   * Returns the most recent membership row per (user, workspace), including
+   * revoked ones (endAt in the past). Excludes not-yet-started scheduled
+   * seat changes (startAt in the future) — use
+   * `getScheduledFutureMemberships` / `getScheduledMembershipsByUserIdInWorkspace`
+   * to read those separately.
+   */
   static async getLatestMemberships({
     users,
     workspace,
@@ -311,7 +318,11 @@ export class MembershipResource extends BaseResource<MembershipModel> {
           (resource) => new MembershipResource(MembershipModel, resource.get())
         );
 
-    const whereClause: WhereOptions<InferAttributes<MembershipModel>> = {};
+    const whereClause: WhereOptions<InferAttributes<MembershipModel>> = {
+      // Exclude not-yet-started scheduled seat changes: "latest" means the
+      // latest membership that has actually taken effect, not a future one.
+      startAt: { [Op.lte]: new Date() },
+    };
     if (roles) {
       whereClause.role = roles;
     }
