@@ -2,7 +2,10 @@ import { getAgentConfigurationsForView } from "@app/lib/api/assistant/configurat
 import { getLlmCredentials } from "@app/lib/api/provider_credentials";
 import type { Authenticator } from "@app/lib/auth";
 import logger from "@app/logger/logger";
-import type { AgentCartographyCoordinates } from "@app/types/api/assistant/cartography";
+import type {
+  AgentCartographyCoordinates,
+  AgentDuplicatePair,
+} from "@app/types/api/assistant/cartography";
 import type { AgentConfigurationType } from "@app/types/assistant/agent";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -17,6 +20,12 @@ const EMBEDDING_DIMENSIONS = 1024;
 
 // PCA needs at least 2 samples to project onto 2 components.
 const MIN_AGENTS_FOR_PROJECTION = 2;
+
+// Two agents whose embeddings have a cosine similarity at or above this
+// threshold are flagged as probable duplicates. Tuned on our reference
+// workspace so that only genuinely overlapping agents (e.g. two agents both
+// reviewing/scoring pull requests) are surfaced.
+const DUPLICATE_SIMILARITY_THRESHOLD = 0.65;
 
 function buildAgentEmbeddingInput(agent: AgentConfigurationType): string {
   return [
@@ -47,10 +56,77 @@ function normalizeTo01(points: number[][]): [number, number][] {
 }
 
 /**
+ * Cosine similarity between two equal-length embedding vectors, in [-1, 1]
+ * (in practice [0, 1] for OpenAI embeddings). Returns 0 if either vector is
+ * degenerate (zero norm).
+ */
+function cosineSimilarity(a: number[], b: number[]): number {
+  let dot = 0;
+  let normA = 0;
+  let normB = 0;
+  for (let i = 0; i < a.length; i++) {
+    dot += a[i] * b[i];
+    normA += a[i] * a[i];
+    normB += b[i] * b[i];
+  }
+  const denom = Math.sqrt(normA) * Math.sqrt(normB);
+  return denom > 0 ? dot / denom : 0;
+}
+
+/**
+ * Detects probable duplicate agents by scanning every pair of agents for a
+ * cosine similarity (on their high-dimensional embeddings, before PCA) at or
+ * above `DUPLICATE_SIMILARITY_THRESHOLD`. The returned pairs are sorted by
+ * descending similarity (most probable duplicate first).
+ *
+ * We compare the raw embeddings rather than the 2D PCA coordinates because the
+ * projection is lossy: two agents can land close on the 2D map without being
+ * genuine duplicates, and vice versa.
+ *
+ * Global (Dust-provided) agents are excluded: the model agents (GPT, Claude,
+ * …) all share near-identical descriptions and would otherwise dominate the
+ * results with false positives. We only look for duplicates among the
+ * workspace's own agents.
+ */
+function detectDuplicatePairs(
+  agents: AgentConfigurationType[],
+  embeddings: number[][]
+): AgentDuplicatePair[] {
+  const candidates = agents
+    .map((agent, i) => ({ agent, embedding: embeddings[i] }))
+    .filter(({ agent }) => agent.scope !== "global");
+
+  const duplicates: AgentDuplicatePair[] = [];
+
+  for (let i = 0; i < candidates.length; i++) {
+    for (let j = i + 1; j < candidates.length; j++) {
+      const similarity = cosineSimilarity(
+        candidates[i].embedding,
+        candidates[j].embedding
+      );
+      if (similarity >= DUPLICATE_SIMILARITY_THRESHOLD) {
+        duplicates.push({
+          agentIds: [candidates[i].agent.sId, candidates[j].agent.sId],
+          similarity,
+        });
+      }
+    }
+  }
+
+  return duplicates.sort((a, b) => b.similarity - a.similarity);
+}
+
+export type AgentCartographyResult = {
+  coordinates: AgentCartographyCoordinates;
+  duplicates: AgentDuplicatePair[];
+};
+
+/**
  * Computes a 2D cartography of the workspace's agents on the fly: embeds each
  * active agent (name + description + instructions) with OpenAI, projects the
  * high-dimensional embeddings down to 2D via PCA, and normalizes the result to
- * the unit square. Returns a `{ sId: [x, y] }` map.
+ * the unit square. Also flags probable duplicate agents from their embedding
+ * cosine similarity. Returns a `{ coordinates, duplicates }` object.
  *
  * The embeddings are computed in a single batched OpenAI call (one request for
  * all agents) to avoid an N+1 pattern.
@@ -58,7 +134,7 @@ function normalizeTo01(points: number[][]): [number, number][] {
 export async function computeAgentCartographyCoordinates(
   auth: Authenticator,
   { includeBuiltin = true }: { includeBuiltin?: boolean } = {}
-): Promise<Result<AgentCartographyCoordinates, Error>> {
+): Promise<Result<AgentCartographyResult, Error>> {
   const allAgents = await getAgentConfigurationsForView({
     auth,
     agentsGetView: "list",
@@ -72,7 +148,7 @@ export async function computeAgentCartographyCoordinates(
     : allAgents.filter((agent) => agent.scope !== "global");
 
   if (agents.length < MIN_AGENTS_FOR_PROJECTION) {
-    return new Ok({});
+    return new Ok({ coordinates: {}, duplicates: [] });
   }
 
   const credentials = await getLlmCredentials(auth, {
@@ -125,5 +201,7 @@ export async function computeAgentCartographyCoordinates(
     coordinates[agent.sId] = normalized[i];
   });
 
-  return new Ok(coordinates);
+  const duplicates = detectDuplicatePairs(agents, embeddings);
+
+  return new Ok({ coordinates, duplicates });
 }

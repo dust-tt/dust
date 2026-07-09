@@ -31,7 +31,7 @@ makeScript({}, async (_args, logger) => {
     return;
   }
 
-  const coordinatesByAgentId = result.value;
+  const { coordinates: coordinatesByAgentId, duplicates } = result.value;
 
   // Fetch the agents again to enrich the coordinates with name/description.
   const agents = await getAgentConfigurationsForView({
@@ -73,6 +73,23 @@ makeScript({}, async (_args, logger) => {
       `  mean inter-group distance:  ${score.inter.toFixed(4)}`,
       "",
       perAgentLines,
+    ].join("\n")
+  );
+
+  const duplicateLines = duplicates.length
+    ? duplicates
+        .map(
+          ({ agentIds: [a, b], similarity }) =>
+            `    ${similarity.toFixed(4)}  ${nameOf(a)} ⇔ ${nameOf(b)}`
+        )
+        .join("\n")
+    : "    (none above threshold)";
+
+  console.log(
+    [
+      "",
+      "Probable duplicates (cosine similarity above threshold, most probable first)",
+      duplicateLines,
     ].join("\n")
   );
 });

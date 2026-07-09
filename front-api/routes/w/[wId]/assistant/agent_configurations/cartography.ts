@@ -30,7 +30,7 @@ app.get(
       });
     }
 
-    return ctx.json({ coordinates: result.value });
+    return ctx.json(result.value);
   }
 );
 
