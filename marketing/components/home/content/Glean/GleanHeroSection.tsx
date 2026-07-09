@@ -1,7 +1,7 @@
 // biome-ignore-all lint/plugin/noNextImports: Next.js-specific file
 import { TRACKING_AREAS, withTracking } from "@marketing/lib/tracking";
 import { appendUTMParams } from "@marketing/lib/utils/utm";
-import { Button } from "@dust-tt/sparkle";
+import { LegacyButton as Button } from "@dust-tt/sparkle";
 import { motion } from "framer-motion";
 import Image from "next/image";
 import type { ReactNode } from "react";

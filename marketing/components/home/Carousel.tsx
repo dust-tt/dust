@@ -1,6 +1,10 @@
 import { classNames } from "@marketing/lib/utils";
 import type { RegularButtonProps } from "@dust-tt/sparkle";
-import { Button, ChevronLeft, ChevronRight } from "@dust-tt/sparkle";
+import {
+  LegacyButton as Button,
+  ChevronLeft,
+  ChevronRight,
+} from "@dust-tt/sparkle";
 import type { UseEmblaCarouselType } from "embla-carousel-react";
 import useEmblaCarousel from "embla-carousel-react";
 import * as React from "react";

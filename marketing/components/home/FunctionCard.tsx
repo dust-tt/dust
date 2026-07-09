@@ -1,6 +1,6 @@
 // biome-ignore-all lint/plugin/noNextImports: Next.js-specific file
 import { H3 } from "@marketing/components/home/ContentComponents";
-import { Button, ChevronRight, Icon } from "@dust-tt/sparkle";
+import { LegacyButton as Button, ChevronRight, Icon } from "@dust-tt/sparkle";
 import { cva } from "class-variance-authority";
 import Link from "next/link";
 // biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
