@@ -56,13 +56,20 @@ function normalizeTo01(points: number[][]): [number, number][] {
  * all agents) to avoid an N+1 pattern.
  */
 export async function computeAgentCartographyCoordinates(
-  auth: Authenticator
+  auth: Authenticator,
+  { includeBuiltin = true }: { includeBuiltin?: boolean } = {}
 ): Promise<Result<AgentCartographyCoordinates, Error>> {
-  const agents = await getAgentConfigurationsForView({
+  const allAgents = await getAgentConfigurationsForView({
     auth,
     agentsGetView: "list",
     variant: "full",
   });
+
+  // "Builtin" agents are the Dust-provided global-scope agents. When
+  // `includeBuiltin` is false we drop them before running the projection.
+  const agents = includeBuiltin
+    ? allAgents
+    : allAgents.filter((agent) => agent.scope !== "global");
 
   if (agents.length < MIN_AGENTS_FOR_PROJECTION) {
     return new Ok({});

@@ -14,7 +14,12 @@ app.get(
   async (ctx): HandlerResult<GetAgentCartographyCoordinatesResponseBody> => {
     const auth = ctx.get("auth");
 
-    const result = await computeAgentCartographyCoordinates(auth);
+    // Defaults to including builtin agents unless explicitly disabled.
+    const includeBuiltin = ctx.req.query("includeBuiltin") !== "false";
+
+    const result = await computeAgentCartographyCoordinates(auth, {
+      includeBuiltin,
+    });
     if (result.isErr()) {
       return apiError(ctx, {
         status_code: 500,

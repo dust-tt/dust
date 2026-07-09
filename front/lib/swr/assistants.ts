@@ -274,9 +274,11 @@ const EMPTY_COORDINATES: GetAgentCartographyCoordinatesResponseBody["coordinates
 
 export function useAgentCartographyCoordinates({
   workspaceId,
+  includeBuiltin = true,
   disabled,
 }: {
   workspaceId: string;
+  includeBuiltin?: boolean;
   disabled?: boolean;
 }) {
   const { fetcher } = useFetcher();
@@ -284,7 +286,7 @@ export function useAgentCartographyCoordinates({
     fetcher;
 
   const { data, error } = useSWRWithDefaults(
-    `/api/w/${workspaceId}/assistant/agent_configurations/cartography`,
+    `/api/w/${workspaceId}/assistant/agent_configurations/cartography?includeBuiltin=${includeBuiltin}`,
     coordinatesFetcher,
     { disabled }
   );
