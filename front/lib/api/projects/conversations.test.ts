@@ -80,7 +80,9 @@ describe("moveConversationToProject", () => {
     const user = auth.getNonNullableUser();
     const userJson = user.toJSON();
 
-    const projectSpaceGroup = projectSpace.groups.find((g) => g.isRegular());
+    const projectSpaceGroup = projectSpace.groups.find((g) =>
+      g.isRegularAuto()
+    );
     if (!projectSpaceGroup) {
       throw new Error("Project space regular group not found");
     }
@@ -141,7 +143,9 @@ describe("moveConversationToProject", () => {
     const user = auth.getNonNullableUser();
     const userJson = user.toJSON();
 
-    const projectSpaceGroup = projectSpace.groups.find((g) => g.isRegular());
+    const projectSpaceGroup = projectSpace.groups.find((g) =>
+      g.isRegularAuto()
+    );
     if (!projectSpaceGroup) {
       throw new Error("Project space regular group not found");
     }
@@ -301,7 +305,9 @@ describe("moveConversationToProject", () => {
     const internalAdminAuth = await Authenticator.internalAdminForWorkspace(
       workspace.sId
     );
-    const projectSpaceGroup = projectSpace.groups.find((g) => g.isRegular());
+    const projectSpaceGroup = projectSpace.groups.find((g) =>
+      g.isRegularAuto()
+    );
     if (!projectSpaceGroup) {
       throw new Error("Project space regular group not found");
     }
@@ -497,7 +503,9 @@ describe("moveConversationToProject", () => {
     const internalAdminAuth = await Authenticator.internalAdminForWorkspace(
       workspace.sId
     );
-    const projectSpaceGroup = projectSpace.groups.find((g) => g.isRegular());
+    const projectSpaceGroup = projectSpace.groups.find((g) =>
+      g.isRegularAuto()
+    );
     if (!projectSpaceGroup) {
       throw new Error("Project space regular group not found");
     }
@@ -600,7 +608,7 @@ describe("moveConversationToProject", () => {
     // Create destination project and add user as member
     const destinationProject = await SpaceFactory.project(workspace);
     const destinationProjectGroup = destinationProject.groups.find((g) =>
-      g.isRegular()
+      g.isRegularAuto()
     );
     if (!destinationProjectGroup) {
       throw new Error("Destination project regular group not found");
@@ -665,7 +673,9 @@ describe("moveConversationToProject", () => {
     );
 
     // Add current user as member (but not editor) of source project
-    const sourceProjectGroup = sourceProject.groups.find((g) => g.isRegular());
+    const sourceProjectGroup = sourceProject.groups.find((g) =>
+      g.isRegularAuto()
+    );
     if (!sourceProjectGroup) {
       throw new Error("Source project regular group not found");
     }
@@ -676,7 +686,7 @@ describe("moveConversationToProject", () => {
     // Create destination project and add user as member
     const destinationProject = await SpaceFactory.project(workspace);
     const destinationProjectGroup = destinationProject.groups.find((g) =>
-      g.isRegular()
+      g.isRegularAuto()
     );
     if (!destinationProjectGroup) {
       throw new Error("Destination project regular group not found");
@@ -725,7 +735,9 @@ describe("moveConversationToProject", () => {
     );
 
     // Add user as member of the project
-    const projectSpaceGroup = projectSpace.groups.find((g) => g.isRegular());
+    const projectSpaceGroup = projectSpace.groups.find((g) =>
+      g.isRegularAuto()
+    );
     if (!projectSpaceGroup) {
       throw new Error("Project space regular group not found");
     }
@@ -782,7 +794,9 @@ describe("moveConversationOutOfProject", () => {
     const internalAdminAuth = await Authenticator.internalAdminForWorkspace(
       workspace.sId
     );
-    const projectSpaceGroup = projectSpace.groups.find((g) => g.isRegular());
+    const projectSpaceGroup = projectSpace.groups.find((g) =>
+      g.isRegularAuto()
+    );
     if (!projectSpaceGroup) {
       throw new Error("Project space regular group not found");
     }
@@ -861,7 +875,9 @@ describe("moveConversationOutOfProject", () => {
     );
 
     // Add current user as member (but not editor) of project.
-    const projectSpaceGroup = projectSpace.groups.find((g) => g.isRegular());
+    const projectSpaceGroup = projectSpace.groups.find((g) =>
+      g.isRegularAuto()
+    );
     if (!projectSpaceGroup) {
       throw new Error("Project space regular group not found");
     }
@@ -922,7 +938,9 @@ describe("moveConversationOutOfProject", () => {
     const internalAdminAuth = await Authenticator.internalAdminForWorkspace(
       workspace.sId
     );
-    const projectSpaceGroup = projectSpace.groups.find((g) => g.isRegular());
+    const projectSpaceGroup = projectSpace.groups.find((g) =>
+      g.isRegularAuto()
+    );
     if (!projectSpaceGroup) {
       throw new Error("Project space regular group not found");
     }
@@ -1078,7 +1096,9 @@ describe("moveConversationOutOfProject", () => {
     const internalAdminAuth = await Authenticator.internalAdminForWorkspace(
       workspace.sId
     );
-    const projectSpaceGroup = projectSpace.groups.find((g) => g.isRegular());
+    const projectSpaceGroup = projectSpace.groups.find((g) =>
+      g.isRegularAuto()
+    );
     if (!projectSpaceGroup) {
       throw new Error("Project space regular group not found");
     }

@@ -1510,7 +1510,7 @@ export class GroupResource extends BaseResource<GroupModel> {
     >
   > {
     assert(
-      this.isRegular() ||
+      this.isRegularAuto() ||
         this.kind === "space_editors" ||
         this.kind === "agent_editors" ||
         this.kind === "skill_editors" ||
@@ -1687,7 +1687,7 @@ export class GroupResource extends BaseResource<GroupModel> {
     >
   > {
     assert(
-      this.isRegular() ||
+      this.isRegularAuto() ||
         this.kind === "space_editors" ||
         this.kind === "agent_editors" ||
         this.kind === "skill_editors" ||
@@ -1838,7 +1838,7 @@ export class GroupResource extends BaseResource<GroupModel> {
     const user = auth.getNonNullableUser();
     const workspace = auth.getNonNullableWorkspace();
 
-    if (!this.isRegular() && this.kind !== "space_editors") {
+    if (!this.isRegularAuto() && this.kind !== "space_editors") {
       return new Err(
         new DustError(
           "system_or_global_group",
@@ -2371,7 +2371,7 @@ export class GroupResource extends BaseResource<GroupModel> {
     return this.kind === "global";
   }
 
-  isRegular(): boolean {
+  isRegularAuto(): boolean {
     return this.kind === "regular_auto";
   }
 

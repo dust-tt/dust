@@ -46,7 +46,7 @@ describe("canAgentBeUsedInProjectConversation", () => {
       ReturnType<Authenticator["getNonNullableUser"]>["toJSON"]
     >
   ) {
-    const regularGroup = space.groups.find((g) => g.isRegular());
+    const regularGroup = space.groups.find((g) => g.isRegularAuto());
     if (!regularGroup) {
       throw new Error("Expected a regular group on the space");
     }
@@ -724,9 +724,11 @@ describe("updateConversationRequirements", () => {
     const user = auth.getNonNullableUser();
     const userJson = user.toJSON();
 
-    const projectSpaceGroup = projectSpace.groups.find((g) => g.isRegular());
+    const projectSpaceGroup = projectSpace.groups.find((g) =>
+      g.isRegularAuto()
+    );
     const anotherProjectSpaceGroup = anotherProjectSpace.groups.find((g) =>
-      g.isRegular()
+      g.isRegularAuto()
     );
 
     if (projectSpaceGroup) {
@@ -1354,7 +1356,7 @@ describe("rebuildConversationRequirements", () => {
     const userJson = auth.getNonNullableUser().toJSON();
 
     for (const space of [projectSpace, regularSpace, anotherRegularSpace]) {
-      const group = space.groups.find((g) => g.isRegular());
+      const group = space.groups.find((g) => g.isRegularAuto());
       if (!group) {
         continue;
       }
