@@ -203,12 +203,17 @@ export function prunePreviousInteractions(
       let effectiveFrontier = neededFrontier;
       for (let i = neededFrontier; i < floorStart; i++) {
         effectiveFrontier = i;
+        if (i === 0) {
+          // Index 0 is trivially always a checkpoint: it's the start of the conversation.
+          break;
+        }
         const bucketAtI = Math.floor(prefixSum[i] / PRUNING_CHECKPOINT_TOKENS);
-        const bucketBefore =
-          i === 0
-            ? -1
-            : Math.floor(prefixSum[i - 1] / PRUNING_CHECKPOINT_TOKENS);
-        if (bucketAtI > bucketBefore) {
+        const bucketBefore = Math.floor(
+          prefixSum[i - 1] / PRUNING_CHECKPOINT_TOKENS
+        );
+        if (bucketAtI !== bucketBefore) {
+          // We fell into a different bucket than the previous interaction, so this is a
+          // checkpoint too.
           break;
         }
       }
