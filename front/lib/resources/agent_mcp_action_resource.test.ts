@@ -158,7 +158,7 @@ describe("listBlockedActionsForConversation", () => {
 
     expect(result).toHaveLength(1);
     expect(result[0].status).toBe("blocked_validation_required");
-    expect(result[0].metadata.agentName).toBe("Test Agent");
+    expect(result[0].metadata.agentName).toBe("agent");
   });
 
   it("should only return blocked actions, not succeeded ones", async () => {

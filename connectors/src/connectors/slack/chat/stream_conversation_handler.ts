@@ -541,7 +541,7 @@ async function streamAgentAnswerToSlack(
         const postResult = await postUserActionEphemeral({
           text: "Approve tool execution",
           blocks: makeToolValidationBlock({
-            agentName: event.metadata.agentName,
+            agentName: "agent",
             toolName: event.metadata.toolName,
             id: JSON.stringify(blockId),
           }),
@@ -564,7 +564,7 @@ async function streamAgentAnswerToSlack(
           const postResult = await postUserActionEphemeral({
             text: "Personal authentication required",
             blocks: makeToolAuthenticationBlock({
-              agentName: event.metadata.agentName,
+              agentName: "agent",
               serverName: event.metadata.mcpServerDisplayName,
               conversationUrl,
               value: JSON.stringify({
@@ -603,7 +603,7 @@ async function streamAgentAnswerToSlack(
           const postResult = await postUserActionEphemeral({
             text: "File authorization required",
             blocks: makeToolFileAuthorizationBlock({
-              agentName: event.metadata.agentName,
+              agentName: "agent",
               fileName: event.fileAuthError.fileName,
               conversationUrl,
               value: JSON.stringify({
