@@ -81,8 +81,9 @@ Functions of the same Pod can share durable SQLite databases. The contract has f
 2. **Each function declares the databases it opens** in \`schema.databases: ["chat"]\`. Database
    names are lowercase \`[a-z][a-z0-9_]*\`.
 3. **Apply the schema file with the \`db_reconcile\` tool** — it creates the database on its
-   first run and applies additive DDL after edits. Publish validates schema files but never
-   applies them: an unreconciled database does not exist at runtime.
+   first run, applies additive DDL after edits, and is where the schema rules are enforced.
+   Publish neither validates nor applies schema files: an unreconciled database does not
+   exist at runtime.
 4. **At runtime, open a database with \`db(name)\` from \`@dust/pod\`** and query it with the
    imported table objects.
 
@@ -150,7 +151,7 @@ quality therefore determines how often you hit that wall:
   \`createdAt\` timestamp;
 - NO foreign keys (\`.references()\`), CHECK constraints or UNIQUE constraints (\`.unique()\` or
   table-level \`unique()\` — use \`uniqueIndex()\` instead, SQLite cannot add or drop a UNIQUE
-  constraint later without a table rebuild) — they are rejected at build time; enforce
+  constraint later without a table rebuild) — \`db_reconcile\` rejects them; enforce
   relational integrity in function code.
 
 When a shape must change anyway, evolve additively:
@@ -165,10 +166,10 @@ When a shape must change anyway, evolve additively:
 
 #### Applying schema changes
 
-Publishing validates each declared database's schema file (the rejections above) but never
-touches the live databases. Schema changes reach a live database only through the
-\`db_reconcile\` tool — run it after editing \`databases/{db}.db.ts\` (a database is created on
-its first reconcile; \`db()\` opens must-exist). It applies additive DDL only:
+Publishing neither validates nor touches pod databases. Schema changes reach a live database
+only through the \`db_reconcile\` tool — run it after editing \`databases/{db}.db.ts\` (a
+database is created on its first reconcile; \`db()\` opens must-exist). It validates the
+schema file (the rejections above) and applies additive DDL only:
 
 - "destructive changes are not allowed through reconcile" — the schema file drops something that
   exists in the live database. Restore the missing table or column declarations and evolve
