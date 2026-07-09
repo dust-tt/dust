@@ -79,13 +79,17 @@ export function InputBarModelPicker({
   const commitSelection = (selection: UserModelSelection) => {
     const isAutoSelection = selection.kind === "auto";
     const isAutoDefaultSelection = defaultSelection.kind === "auto";
-    const isSameModelSelection =
+    const isSameModelSelectionAsAgent =
       selection.kind === "model" &&
-      defaultSelection.kind !== "auto" &&
-      selection.model === defaultSelection.model &&
-      selection.effort === defaultSelection.effort;
+      defaultSelection.kind === "agent" &&
+      selection.model.modelId === agentModel?.modelId &&
+      selection.model.providerId === agentModel?.providerId &&
+      selection.effort === agentModel?.reasoningEffort;
 
-    if ((isAutoSelection && isAutoDefaultSelection) || isSameModelSelection) {
+    if (
+      (isAutoSelection && isAutoDefaultSelection) ||
+      isSameModelSelectionAsAgent
+    ) {
       setUserOverride(null);
       return;
     }
