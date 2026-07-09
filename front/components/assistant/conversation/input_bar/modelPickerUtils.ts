@@ -182,34 +182,35 @@ export function resolveDefaultSelection({
   lastRequestedModel: ModelSelectionType | null;
   models: ModelConfigurationType[];
 }): Selection {
-  if (lastRequestedModel) {
-    if (lastRequestedModel.modelId === AUTO_MODEL_ID) {
+  const requestedModel = lastRequestedModel
+    ? findAvailableModel(models, lastRequestedModel)
+    : undefined;
+  if (requestedModel) {
+    if (requestedModel.modelId === AUTO_MODEL_ID) {
       return { kind: "auto", toSend: AUTO_MODEL_SELECTION };
     }
-    const model = findAvailableModel(models, lastRequestedModel);
-    if (model) {
-      const effort =
-        lastRequestedModel.reasoningEffort ?? model.defaultReasoningEffort;
-      return {
-        kind: "model",
-        model,
-        effort,
-        toSend: buildModelSelection(model, effort),
-      };
-    }
+    const effort =
+      lastRequestedModel?.reasoningEffort ??
+      requestedModel.defaultReasoningEffort;
+    return {
+      kind: "model",
+      model: requestedModel,
+      effort,
+      toSend: buildModelSelection(requestedModel, effort),
+    };
   }
 
-  if (!agentModel || agentModel.modelId === AUTO_MODEL_ID) {
-    return { kind: "auto", toSend: AUTO_MODEL_SELECTION };
-  }
-  const model = findAvailableModel(models, agentModel);
-  if (!model) {
+  const agentDefaultModel = agentModel
+    ? findAvailableModel(models, agentModel)
+    : undefined;
+  if (!agentDefaultModel || agentDefaultModel.modelId === AUTO_MODEL_ID) {
     return { kind: "auto", toSend: AUTO_MODEL_SELECTION };
   }
   return {
     kind: "agent",
-    model,
-    effort: agentModel.reasoningEffort ?? model.defaultReasoningEffort,
+    model: agentDefaultModel,
+    effort:
+      agentModel?.reasoningEffort ?? agentDefaultModel.defaultReasoningEffort,
     toSend: undefined,
   };
 }
