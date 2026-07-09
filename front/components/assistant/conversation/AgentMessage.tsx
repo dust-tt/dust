@@ -136,6 +136,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from "react";
 import type { Components } from "react-markdown";
@@ -267,24 +268,44 @@ export function AgentMessage({
   // `subAgentCostCredits`) and flickering the displayed total during the close
   // animation.
   const [hasOpenedMenu, setHasOpenedMenu] = useState(false);
-  // Re-fetch (on menu open) only if a cost we want to show is still missing:
+  // Set once this message finishes a run live in this session (terminal stream
+  // event). Credits are computed in the finalize activity *after* the terminal
+  // event is published, so the streamed `costCredits` is never the authoritative
+  // total: it is `null` on a first run, and the *previous* run's total after an
+  // `ask_user` resume. So we keep the authoritative single-message fetch enabled
+  // and revalidate it when the menu opens (see below), rather than trusting the
+  // streamed value. Never reset: flipping `needsCostFetch` back to false would
+  // null the SWR key and revert the display to the stale streamed prop.
+  const [hasCompletedRunThisSession, setHasCompletedRunThisSession] =
+    useState(false);
+  // Owed revalidation, consumed on menu open: set on each terminal event,
+  // cleared once the mutate is fired, so reopening the menu with no new run in
+  // between does not refetch.
+  const pendingCostRevalidationRef = useRef(false);
+  // Re-fetch (on menu open) if a cost we want to show is still missing or may be
+  // stale:
   // - Own cost: null until the agentic loop finishes; absent while streaming/listed.
   // - Sub-agent cost: only aggregated by the single-message fetch, and only exists
   //   when a `run_agent` action is present (it triggers both run_agent and handover).
-  // Messages with no sub-agents only fetch if their own cost is still missing.
+  // - Live completion: the streamed cost is pre-recompute (see above), so any
+  //   message that completed a run this session needs the authoritative fetch.
   const needsCostFetch =
+    hasCompletedRunThisSession ||
     agentMessage.costCredits == null ||
     (hasMessageSpawnedSubAgent(agentMessage) &&
       agentMessage.subAgentCostCredits == null);
-  const { message: refreshedMessage, isMessageLoading } =
-    useConversationMessage({
-      conversationId,
-      workspaceId: owner.sId,
-      messageId: agentMessage.sId,
-      options: {
-        disabled: !hasOpenedMenu || !needsCostFetch,
-      },
-    });
+  const {
+    message: refreshedMessage,
+    isMessageLoading,
+    mutateMessage,
+  } = useConversationMessage({
+    conversationId,
+    workspaceId: owner.sId,
+    messageId: agentMessage.sId,
+    options: {
+      disabled: !hasOpenedMenu || !needsCostFetch,
+    },
+  });
   const refreshedAgentMessage =
     refreshedMessage?.type === "agent_message" ? refreshedMessage : null;
   const { creditCostItem, isCreditPriced } = useCreditCostMenuItem({
@@ -437,6 +458,18 @@ export function AgentMessage({
 
           case "agent_message_success":
           case "agent_message_gracefully_stopped":
+            // A run finished live: its terminal event carries a pre-recompute
+            // cost (credits are computed in the finalize activity after the event
+            // is published), so mark the cost for revalidation on the next menu
+            // open.
+            setHasCompletedRunThisSession(true);
+            pendingCostRevalidationRef.current = true;
+            // We can remove all blocked actions for this message (especially useful to let other users see the message updates)
+            void removeAllBlockedActionsForMessage({
+              messageId: sId,
+              conversationId,
+            });
+            break;
           case "agent_generation_cancelled":
           case "agent_error":
           case "generation_tokens":
@@ -915,6 +948,14 @@ export function AgentMessage({
             setIsMenuOpen(open);
             if (open) {
               setHasOpenedMenu(true);
+              // The streamed cost is stale after a live completion (computed
+              // post-event). Revalidate the authoritative value once per
+              // completion so the total (e.g. summed across an `ask_user`
+              // resume) is correct without a page refresh.
+              if (isCreditPriced && pendingCostRevalidationRef.current) {
+                pendingCostRevalidationRef.current = false;
+                void mutateMessage();
+              }
             }
           }}
         >
