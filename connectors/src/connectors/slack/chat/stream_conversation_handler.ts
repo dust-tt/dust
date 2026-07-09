@@ -35,6 +35,7 @@ import logger from "@connectors/logger/logger";
 import type { ConnectorResource } from "@connectors/resources/connector_resource";
 import { redisClient } from "@connectors/types/shared/redis_client";
 import type {
+  ActionGeneratedFileType,
   AgentActionPublicType,
   AgentEvent,
   ConversationPublicType,
@@ -766,7 +767,15 @@ async function streamAgentAnswerToSlack(
           authResult.ok &&
           authResult.response_metadata?.scopes?.includes("files:write")
         ) {
-          const files = actions.flatMap((action) => action.generatedFiles);
+          // Path-backed generated files have no fileId and cannot be downloaded by id, skip them.
+          const files = actions
+            .flatMap((action) => action.generatedFiles)
+            .filter(
+              (
+                file
+              ): file is Extract<ActionGeneratedFileType, { fileId: string }> =>
+                file.fileId !== null
+            );
           filesUploaded = await getFilesFromDust(files, dustAPI);
         }
 
