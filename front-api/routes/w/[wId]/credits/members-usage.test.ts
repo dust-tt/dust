@@ -40,10 +40,13 @@ const MEMBER_USAGE = {
   spendLimitWarningAlertId: null,
 };
 
+const CREDITS_RESET_AT = "2026-08-01T00:00:00.000Z";
+
 beforeEach(() => {
   vi.mocked(membersUsage.getMembersUsage).mockResolvedValue({
     members: [MEMBER_USAGE],
     total: 1,
+    creditsResetAt: CREDITS_RESET_AT,
   });
 });
 
@@ -73,6 +76,7 @@ describe("GET /api/w/[wId]/credits/members-usage", () => {
     expect(await response.json()).toEqual({
       members: [MEMBER_USAGE],
       total: 1,
+      creditsResetAt: CREDITS_RESET_AT,
     });
     expect(membersUsage.getMembersUsage).toHaveBeenCalled();
   });
@@ -89,6 +93,7 @@ describe("GET /api/w/[wId]/credits/members-usage", () => {
     expect(await response.json()).toEqual({
       members: [MEMBER_USAGE],
       total: 1,
+      creditsResetAt: CREDITS_RESET_AT,
     });
   });
 });

@@ -96,9 +96,36 @@ export interface BillingCycle {
 }
 
 /**
+ * A calendar day beyond the target month's length overflows into the next
+ * month when constructing a Date (e.g. Feb 31 → Mar 3). Bring such dates back
+ * to the last day of the expected month (day 0 of the month the date
+ * overflowed into).
+ *
+ * `month` is the expected JS month index and may be outside 0-11 (e.g. built
+ * from `referenceMonth + 1`); it is normalized before comparison.
+ */
+export function clampToMonth(
+  date: Date,
+  month: number,
+  useUTC: boolean
+): Date {
+  const expectedMonth = ((month % 12) + 12) % 12;
+  const actualMonth = useUTC ? date.getUTCMonth() : date.getMonth();
+  if (actualMonth === expectedMonth) {
+    return date;
+  }
+  return useUTC
+    ? new Date(Date.UTC(date.getUTCFullYear(), actualMonth, 0))
+    : new Date(date.getFullYear(), actualMonth, 0);
+}
+
+/**
  * Calculate the billing cycle for a given day of the month.
  * Example: if billing starts on the 4th, the cycle is from the 4th of one month
  * to the 4th of the next month (exclusive).
+ *
+ * A start day beyond a month's length is clamped to that month's last day
+ * (day 31 → Feb 28), matching the usual billing anniversary convention.
  *
  * @param billingCycleStartDay - The day of the month when the billing cycle starts (1-31)
  * @param referenceDate - The date to calculate the cycle for (defaults to now)
@@ -113,30 +140,25 @@ export function getBillingCycleFromDay(
     ? referenceDate.getUTCFullYear()
     : referenceDate.getFullYear();
   const month = useUTC ? referenceDate.getUTCMonth() : referenceDate.getMonth();
-  const day = useUTC ? referenceDate.getUTCDate() : referenceDate.getDate();
 
-  let cycleStart: Date;
-  let cycleEnd: Date;
+  // The anchor-day boundary in the month `monthOffset` months from the
+  // reference month, clamped to that month's last day when the month is
+  // shorter than the anchor day.
+  const boundary = (monthOffset: number): Date => {
+    const candidate = useUTC
+      ? new Date(
+          Date.UTC(year, month + monthOffset, billingCycleStartDay, 0, 0, 0, 0)
+        )
+      : new Date(year, month + monthOffset, billingCycleStartDay);
+    return clampToMonth(candidate, month + monthOffset, useUTC);
+  };
 
-  if (day >= billingCycleStartDay) {
-    // Billing cycle started this month, ends next month
-    cycleStart = useUTC
-      ? new Date(Date.UTC(year, month, billingCycleStartDay, 0, 0, 0, 0))
-      : new Date(year, month, billingCycleStartDay);
-    cycleEnd = useUTC
-      ? new Date(Date.UTC(year, month + 1, billingCycleStartDay, 0, 0, 0, 0))
-      : new Date(year, month + 1, billingCycleStartDay);
-  } else {
-    // Billing cycle started last month, ends this month
-    cycleStart = useUTC
-      ? new Date(Date.UTC(year, month - 1, billingCycleStartDay, 0, 0, 0, 0))
-      : new Date(year, month - 1, billingCycleStartDay);
-    cycleEnd = useUTC
-      ? new Date(Date.UTC(year, month, billingCycleStartDay, 0, 0, 0, 0))
-      : new Date(year, month, billingCycleStartDay);
+  // The cycle containing the reference date starts on the latest boundary at
+  // or before it: this month's boundary once reached, last month's otherwise.
+  if (boundary(0).getTime() <= referenceDate.getTime()) {
+    return { cycleStart: boundary(0), cycleEnd: boundary(1) };
   }
-
-  return { cycleStart, cycleEnd };
+  return { cycleStart: boundary(-1), cycleEnd: boundary(0) };
 }
 
 /**
