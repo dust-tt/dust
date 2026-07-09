@@ -211,7 +211,7 @@ export default async function createServer(
         if (containsFileOutput(sanitizedOutput) && runContext.conversation) {
           const fileContentResult = await processDustFileOutput(
             auth,
-            toolContext,
+            runContext,
             sanitizedOutput,
             runContext.conversation,
             app.name

@@ -205,15 +205,12 @@ const handlers: ToolHandlers<typeof DATA_WAREHOUSES_TOOLS_METADATA> = {
 
   query: async (
     { dataSources, tableIds, query, fileName },
-    { auth, toolContext }
+    { auth, runContext }
   ) => {
     // TODO(spolu): move query CSV output to DFS
-    assert(
-      isAgentLoopRunContext(toolContext?.runContext),
-      "AgentLoopRunContext expected"
-    );
+    assert(isAgentLoopRunContext(runContext), "AgentLoopRunContext expected");
 
-    const agentLoopRunContext = toolContext.runContext;
+    const agentLoopRunContext = runContext;
 
     const dataSourceConfigurationsResult =
       await getAgentDataSourceConfigurations(

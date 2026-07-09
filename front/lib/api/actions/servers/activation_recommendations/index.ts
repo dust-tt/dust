@@ -20,10 +20,10 @@ const handlers: ToolHandlers<typeof ACTIVATION_RECOMMENDATIONS_TOOLS_METADATA> =
   {
     create_recommendation: async (
       { content, rationale },
-      { auth, toolContext }
+      { auth, runContext }
     ) => {
-      const conversationId = isAgentLoopRunContext(toolContext?.runContext)
-        ? toolContext.runContext.conversation.id
+      const conversationId = isAgentLoopRunContext(runContext)
+        ? runContext.conversation.id
         : null;
 
       const rec = await ActivationRecommendationResource.makeNew(auth, {

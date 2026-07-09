@@ -13,7 +13,7 @@ import type {
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import type {
   AgentLoopRunContextType,
-  ToolContextType,
+  ToolRunContextType,
 } from "@app/lib/actions/types";
 import { renderConversationForModel } from "@app/lib/api/assistant/conversation_rendering";
 import { getDatasetSchema } from "@app/lib/api/datasets";
@@ -159,7 +159,7 @@ export async function prepareAppContext(
 
 export async function processDustFileOutput(
   auth: Authenticator,
-  toolContext: ToolContextType,
+  runContext: ToolRunContextType,
   sanitizedOutput: DustFileOutput,
   conversation: ConversationWithoutContentType,
   appName: string
@@ -256,7 +256,7 @@ export async function processDustFileOutput(
       fileName = makeFileName({ name: appName, ext: ".txt" });
     }
 
-    const result = await writeToToolOutputsFolder(auth, toolContext, {
+    const result = await writeToToolOutputsFolder(auth, runContext, {
       fileName,
       content: fileContent,
       contentType,

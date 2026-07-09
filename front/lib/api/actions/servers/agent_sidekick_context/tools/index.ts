@@ -694,10 +694,11 @@ const handlers: ToolHandlers<typeof AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA> = {
 
   get_agent_feedback: async (
     { limit, filter, latestVersionOnly },
-    { auth, toolContext }
+    { auth, runContext }
   ) => {
-    const agentConfigurationId =
-      getAgentConfigurationIdFromContext(toolContext);
+    const agentConfigurationId = getAgentConfigurationIdFromContext({
+      runContext,
+    });
 
     if (!agentConfigurationId) {
       return new Err(
@@ -796,9 +797,10 @@ const handlers: ToolHandlers<typeof AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA> = {
     ]);
   },
 
-  get_agent_insights: async ({ days }, { auth, toolContext }) => {
-    const agentConfigurationId =
-      getAgentConfigurationIdFromContext(toolContext);
+  get_agent_insights: async ({ days }, { auth, runContext }) => {
+    const agentConfigurationId = getAgentConfigurationIdFromContext({
+      runContext,
+    });
 
     if (!agentConfigurationId) {
       return new Err(
@@ -872,9 +874,10 @@ const handlers: ToolHandlers<typeof AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA> = {
   },
 
   // Suggestion handlers
-  suggest_prompt_edits: async (params, { auth, toolContext }) => {
-    const agentConfigurationId =
-      getAgentConfigurationIdFromContext(toolContext);
+  suggest_prompt_edits: async (params, { auth, runContext }) => {
+    const agentConfigurationId = getAgentConfigurationIdFromContext({
+      runContext,
+    });
 
     if (!agentConfigurationId) {
       return new Err(
@@ -916,9 +919,10 @@ const handlers: ToolHandlers<typeof AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA> = {
     }
   },
 
-  suggest_tools: async (params, { auth, toolContext }) => {
-    const agentConfigurationId =
-      getAgentConfigurationIdFromContext(toolContext);
+  suggest_tools: async (params, { auth, runContext }) => {
+    const agentConfigurationId = getAgentConfigurationIdFromContext({
+      runContext,
+    });
 
     if (!agentConfigurationId) {
       return new Err(
@@ -960,9 +964,10 @@ const handlers: ToolHandlers<typeof AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA> = {
     }
   },
 
-  suggest_sub_agent: async (params, { auth, toolContext }) => {
-    const agentConfigurationId =
-      getAgentConfigurationIdFromContext(toolContext);
+  suggest_sub_agent: async (params, { auth, runContext }) => {
+    const agentConfigurationId = getAgentConfigurationIdFromContext({
+      runContext,
+    });
 
     if (!agentConfigurationId) {
       return new Err(
@@ -1081,9 +1086,10 @@ const handlers: ToolHandlers<typeof AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA> = {
     }
   },
 
-  suggest_skills: async (params, { auth, toolContext }) => {
-    const agentConfigurationId =
-      getAgentConfigurationIdFromContext(toolContext);
+  suggest_skills: async (params, { auth, runContext }) => {
+    const agentConfigurationId = getAgentConfigurationIdFromContext({
+      runContext,
+    });
 
     if (!agentConfigurationId) {
       return new Err(
@@ -1125,7 +1131,7 @@ const handlers: ToolHandlers<typeof AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA> = {
     }
   },
 
-  suggest_model: async (params, { auth, toolContext }) => {
+  suggest_model: async (params, { auth, runContext }) => {
     const availableModels = await getAvailableModelsForWorkspace(auth);
     const availableModelIds = availableModels.map((m) => m.modelId);
 
@@ -1139,8 +1145,9 @@ const handlers: ToolHandlers<typeof AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA> = {
       );
     }
 
-    const agentConfigurationId =
-      getAgentConfigurationIdFromContext(toolContext);
+    const agentConfigurationId = getAgentConfigurationIdFromContext({
+      runContext,
+    });
 
     if (!agentConfigurationId) {
       return new Err(
@@ -1315,9 +1322,10 @@ const handlers: ToolHandlers<typeof AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA> = {
     ]);
   },
 
-  suggest_knowledge: async (params, { auth, toolContext }) => {
-    const agentConfigurationId =
-      getAgentConfigurationIdFromContext(toolContext);
+  suggest_knowledge: async (params, { auth, runContext }) => {
+    const agentConfigurationId = getAgentConfigurationIdFromContext({
+      runContext,
+    });
 
     if (!agentConfigurationId) {
       return new Err(
@@ -1420,9 +1428,10 @@ const handlers: ToolHandlers<typeof AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA> = {
     }
   },
 
-  list_suggestions: async (params, { auth, toolContext }) => {
-    const agentConfigurationId =
-      getAgentConfigurationIdFromContext(toolContext);
+  list_suggestions: async (params, { auth, runContext }) => {
+    const agentConfigurationId = getAgentConfigurationIdFromContext({
+      runContext,
+    });
 
     if (!agentConfigurationId) {
       return new Err(

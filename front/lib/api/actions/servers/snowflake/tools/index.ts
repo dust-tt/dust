@@ -135,8 +135,12 @@ async function getClientFromAuthInfo(
 }
 
 const handlers: ToolHandlers<typeof SNOWFLAKE_TOOLS_METADATA> = {
-  list_databases: async (_params, { authInfo, toolContext, auth }) => {
-    const clientRes = await getClientFromAuthInfo(authInfo, toolContext, auth);
+  list_databases: async (_params, { authInfo, runContext, auth }) => {
+    const clientRes = await getClientFromAuthInfo(
+      authInfo,
+      { runContext },
+      auth
+    );
     if (clientRes.isErr()) {
       return clientRes;
     }
@@ -159,8 +163,12 @@ const handlers: ToolHandlers<typeof SNOWFLAKE_TOOLS_METADATA> = {
     ]);
   },
 
-  list_schemas: async ({ database }, { authInfo, toolContext, auth }) => {
-    const clientRes = await getClientFromAuthInfo(authInfo, toolContext, auth);
+  list_schemas: async ({ database }, { authInfo, runContext, auth }) => {
+    const clientRes = await getClientFromAuthInfo(
+      authInfo,
+      { runContext },
+      auth
+    );
     if (clientRes.isErr()) {
       return clientRes;
     }
@@ -183,11 +191,12 @@ const handlers: ToolHandlers<typeof SNOWFLAKE_TOOLS_METADATA> = {
     ]);
   },
 
-  list_tables: async (
-    { database, schema },
-    { authInfo, toolContext, auth }
-  ) => {
-    const clientRes = await getClientFromAuthInfo(authInfo, toolContext, auth);
+  list_tables: async ({ database, schema }, { authInfo, runContext, auth }) => {
+    const clientRes = await getClientFromAuthInfo(
+      authInfo,
+      { runContext },
+      auth
+    );
     if (clientRes.isErr()) {
       return clientRes;
     }
@@ -212,9 +221,13 @@ const handlers: ToolHandlers<typeof SNOWFLAKE_TOOLS_METADATA> = {
 
   describe_table: async (
     { database, schema, table },
-    { authInfo, toolContext, auth }
+    { authInfo, runContext, auth }
   ) => {
-    const clientRes = await getClientFromAuthInfo(authInfo, toolContext, auth);
+    const clientRes = await getClientFromAuthInfo(
+      authInfo,
+      { runContext },
+      auth
+    );
     if (clientRes.isErr()) {
       return clientRes;
     }
@@ -248,9 +261,13 @@ const handlers: ToolHandlers<typeof SNOWFLAKE_TOOLS_METADATA> = {
 
   describe_semantic_view: async (
     { database, schema, semantic_view },
-    { authInfo, toolContext, auth }
+    { authInfo, runContext, auth }
   ) => {
-    const clientRes = await getClientFromAuthInfo(authInfo, toolContext, auth);
+    const clientRes = await getClientFromAuthInfo(
+      authInfo,
+      { runContext },
+      auth
+    );
     if (clientRes.isErr()) {
       return clientRes;
     }
@@ -283,9 +300,13 @@ const handlers: ToolHandlers<typeof SNOWFLAKE_TOOLS_METADATA> = {
 
   query: async (
     { sql, database, schema, warehouse, max_rows },
-    { authInfo, toolContext, auth }
+    { authInfo, runContext, auth }
   ) => {
-    const clientRes = await getClientFromAuthInfo(authInfo, toolContext, auth);
+    const clientRes = await getClientFromAuthInfo(
+      authInfo,
+      { runContext },
+      auth
+    );
     if (clientRes.isErr()) {
       return clientRes;
     }

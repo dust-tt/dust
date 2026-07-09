@@ -195,11 +195,11 @@ export async function searchFunction(
 }
 
 const handlers: ToolHandlers<typeof SEARCH_TOOLS_METADATA> = {
-  [SEARCH_TOOL_NAME]: (params, { auth, toolContext }) =>
+  [SEARCH_TOOL_NAME]: (params, { auth, runContext }) =>
     searchFunction(auth, {
       ...params,
       relativeTimeFrame: params.relativeTimeFrame ?? "all",
-      toolContext,
+      toolContext: { runContext },
     }),
 };
 

@@ -188,7 +188,7 @@ export async function processToolResults(
   }[] = await concurrentExecutor(
     toolCallResultContent,
     async (block, idx) => {
-      const res = await persistToolOutput(auth, toolContext, block, {
+      const res = await persistToolOutput(auth, runContext, block, {
         toolName: toolConfiguration.name,
         serverName: toolConfiguration.mcpServerName,
       });

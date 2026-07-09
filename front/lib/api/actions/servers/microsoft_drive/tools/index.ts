@@ -82,7 +82,7 @@ const handlers: ToolHandlers<typeof MICROSOFT_DRIVE_TOOLS_METADATA> = {
     }
   },
 
-  search_drive_items: async ({ query }, { auth, authInfo, toolContext }) => {
+  search_drive_items: async ({ query }, { auth, authInfo, runContext }) => {
     const client = await getGraphClient(authInfo);
     if (!client) {
       return new Err(
@@ -90,7 +90,9 @@ const handlers: ToolHandlers<typeof MICROSOFT_DRIVE_TOOLS_METADATA> = {
       );
     }
 
-    const allowedLabels = await getAllowedLabelsForMCPServer(auth, toolContext);
+    const allowedLabels = await getAllowedLabelsForMCPServer(auth, {
+      runContext,
+    });
 
     try {
       const response = await searchMicrosoftDriveItems({
@@ -316,7 +318,7 @@ const handlers: ToolHandlers<typeof MICROSOFT_DRIVE_TOOLS_METADATA> = {
 
   get_file_content: async (
     { itemId, driveId, siteId, offset, limit, getAsXml },
-    { auth, authInfo, toolContext }
+    { auth, authInfo, runContext }
   ) => {
     const client = await getGraphClient(authInfo);
     if (!client) {
@@ -325,7 +327,9 @@ const handlers: ToolHandlers<typeof MICROSOFT_DRIVE_TOOLS_METADATA> = {
       );
     }
 
-    const allowedLabels = await getAllowedLabelsForMCPServer(auth, toolContext);
+    const allowedLabels = await getAllowedLabelsForMCPServer(auth, {
+      runContext,
+    });
 
     try {
       const endpoint = await getDriveItemEndpoint(itemId, driveId, siteId);
@@ -459,7 +463,7 @@ const handlers: ToolHandlers<typeof MICROSOFT_DRIVE_TOOLS_METADATA> = {
 
   upload_file: async (
     { fileId, driveId, siteId, folderPath, fileName },
-    { auth, authInfo, toolContext }
+    { auth, authInfo, runContext }
   ) => {
     const client = await getGraphClient(authInfo);
     if (!client) {
@@ -468,19 +472,11 @@ const handlers: ToolHandlers<typeof MICROSOFT_DRIVE_TOOLS_METADATA> = {
       );
     }
 
-    if (!toolContext) {
-      return new Err(
-        new MCPError("No conversation context available for file access")
-      );
-    }
-
     try {
       // Get the file from conversation attachment
-      const fileResult = await getFileFromConversationAttachment(
-        auth,
-        fileId,
-        toolContext
-      );
+      const fileResult = await getFileFromConversationAttachment(auth, fileId, {
+        runContext,
+      });
 
       if (fileResult.isErr()) {
         return new Err(new MCPError(fileResult.error));

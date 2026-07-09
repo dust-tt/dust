@@ -234,26 +234,24 @@ describe("runSandboxBashTool", () => {
           sId: "workspace-id",
         }),
       },
-      toolContext: {
-        runContext: {
-          contextType: "agent_loop",
-          agentConfiguration: {
-            sId: "agent-id",
-          },
-          model: { providerId: "openai" },
-          agentMessage: { sId: "message-id", agentMessageId: 1 },
-          conversation: { sId: "conversation-id" },
-          action: {
-            sId: "sandbox-action-id",
-            toJSON: () => ({ sId: "sandbox-action-id" }),
-          },
-          stepContext: {
-            citationsCount: 0,
-            citationsOffset: 0,
-            resumeState: null,
-            retrievalTopK: 0,
-            websearchResultCount: 0,
-          },
+      runContext: {
+        contextType: "agent_loop",
+        agentConfiguration: {
+          sId: "agent-id",
+        },
+        model: { providerId: "openai" },
+        agentMessage: { sId: "message-id", agentMessageId: 1 },
+        conversation: { sId: "conversation-id" },
+        action: {
+          sId: "sandbox-action-id",
+          toJSON: () => ({ sId: "sandbox-action-id" }),
+        },
+        stepContext: {
+          citationsCount: 0,
+          citationsOffset: 0,
+          resumeState: null,
+          retrievalTopK: 0,
+          websearchResultCount: 0,
         },
       },
       signal: new AbortController().signal,
@@ -674,26 +672,24 @@ describe("runSandboxBashTool", () => {
   describe("resume mode", () => {
     function resumeStepContext(execId: string) {
       return {
-        toolContext: {
-          runContext: {
-            contextType: "agent_loop",
-            agentConfiguration: {
-              sId: "agent-id",
-            },
-            model: { providerId: "openai" },
-            agentMessage: { sId: "message-id", agentMessageId: 1 },
-            conversation: { sId: "conversation-id" },
-            action: {
-              sId: "sandbox-action-id",
-              toJSON: () => ({ sId: "sandbox-action-id" }),
-            },
-            stepContext: {
-              citationsCount: 0,
-              citationsOffset: 0,
-              resumeState: { execId },
-              retrievalTopK: 0,
-              websearchResultCount: 0,
-            },
+        runContext: {
+          contextType: "agent_loop",
+          agentConfiguration: {
+            sId: "agent-id",
+          },
+          model: { providerId: "openai" },
+          agentMessage: { sId: "message-id", agentMessageId: 1 },
+          conversation: { sId: "conversation-id" },
+          action: {
+            sId: "sandbox-action-id",
+            toJSON: () => ({ sId: "sandbox-action-id" }),
+          },
+          stepContext: {
+            citationsCount: 0,
+            citationsOffset: 0,
+            resumeState: { execId },
+            retrievalTopK: 0,
+            websearchResultCount: 0,
           },
         },
         auth: {
@@ -789,11 +785,9 @@ describe("addEgressDomainTool", () => {
           },
         }),
       },
-      toolContext: {
-        runContext: {
-          contextType: "agent_loop",
-          conversation: { sId: "conversation-id" },
-        },
+      runContext: {
+        contextType: "agent_loop",
+        conversation: { sId: "conversation-id" },
       },
       signal: new AbortController().signal,
     } as never;
