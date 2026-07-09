@@ -5,6 +5,7 @@ import logger from "@app/logger/logger";
 import type {
   AgentCartographyCoordinates,
   AgentDuplicatePair,
+  DuplicateConfidence,
 } from "@app/types/api/assistant/cartography";
 import type { AgentConfigurationType } from "@app/types/assistant/agent";
 import type { Result } from "@app/types/shared/result";
@@ -21,11 +22,29 @@ const EMBEDDING_DIMENSIONS = 1024;
 // PCA needs at least 2 samples to project onto 2 components.
 const MIN_AGENTS_FOR_PROJECTION = 2;
 
-// Two agents whose embeddings have a cosine similarity at or above this
-// threshold are flagged as probable duplicates. Tuned on our reference
-// workspace so that only genuinely overlapping agents (e.g. two agents both
-// reviewing/scoring pull requests) are surfaced.
-const DUPLICATE_SIMILARITY_THRESHOLD = 0.65;
+// Cosine-similarity cutoffs mapping a pair's similarity to a coarse confidence
+// bucket. A pair below `medium` is not flagged as a duplicate at all. Tuned on
+// our reference workspace so that only genuinely overlapping agents (e.g. two
+// agents both reviewing/scoring pull requests) are surfaced.
+const DUPLICATE_CONFIDENCE_THRESHOLDS: {
+  confidence: DuplicateConfidence;
+  minSimilarity: number;
+}[] = [
+  { confidence: "very_high", minSimilarity: 0.9 },
+  { confidence: "high", minSimilarity: 0.8 },
+  { confidence: "medium", minSimilarity: 0.65 },
+];
+
+/**
+ * Maps a cosine similarity to its confidence bucket, or null when it falls
+ * below the lowest ("medium") threshold and should not be flagged.
+ */
+function toDuplicateConfidence(similarity: number): DuplicateConfidence | null {
+  const match = DUPLICATE_CONFIDENCE_THRESHOLDS.find(
+    (t) => similarity > t.minSimilarity
+  );
+  return match?.confidence ?? null;
+}
 
 function buildAgentEmbeddingInput(agent: AgentConfigurationType): string {
   return [
@@ -75,8 +94,9 @@ function cosineSimilarity(a: number[], b: number[]): number {
 
 /**
  * Detects probable duplicate agents by scanning every pair of agents for a
- * cosine similarity (on their high-dimensional embeddings, before PCA) at or
- * above `DUPLICATE_SIMILARITY_THRESHOLD`. The returned pairs are sorted by
+ * cosine similarity (on their high-dimensional embeddings, before PCA) above
+ * the lowest confidence threshold. Each flagged pair carries a coarse
+ * confidence bucket rather than the raw score. The returned pairs are sorted by
  * descending similarity (most probable duplicate first).
  *
  * We compare the raw embeddings rather than the 2D PCA coordinates because the
@@ -96,7 +116,7 @@ function detectDuplicatePairs(
     .map((agent, i) => ({ agent, embedding: embeddings[i] }))
     .filter(({ agent }) => agent.scope !== "global");
 
-  const duplicates: AgentDuplicatePair[] = [];
+  const duplicates: { pair: AgentDuplicatePair; similarity: number }[] = [];
 
   for (let i = 0; i < candidates.length; i++) {
     for (let j = i + 1; j < candidates.length; j++) {
@@ -104,16 +124,22 @@ function detectDuplicatePairs(
         candidates[i].embedding,
         candidates[j].embedding
       );
-      if (similarity >= DUPLICATE_SIMILARITY_THRESHOLD) {
+      const confidence = toDuplicateConfidence(similarity);
+      if (confidence) {
         duplicates.push({
-          agentIds: [candidates[i].agent.sId, candidates[j].agent.sId],
+          pair: {
+            agentIds: [candidates[i].agent.sId, candidates[j].agent.sId],
+            confidence,
+          },
           similarity,
         });
       }
     }
   }
 
-  return duplicates.sort((a, b) => b.similarity - a.similarity);
+  return duplicates
+    .sort((a, b) => b.similarity - a.similarity)
+    .map((d) => d.pair);
 }
 
 export type AgentCartographyResult = {
@@ -131,7 +157,7 @@ export type AgentCartographyResult = {
  * The embeddings are computed in a single batched OpenAI call (one request for
  * all agents) to avoid an N+1 pattern.
  */
-export async function computeAgentCartographyCoordinates(
+export async function computeAgentCartography(
   auth: Authenticator,
   { includeBuiltin = true }: { includeBuiltin?: boolean } = {}
 ): Promise<Result<AgentCartographyResult, Error>> {

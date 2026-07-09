@@ -37,7 +37,7 @@ import {
 import { BROWSER_TIMEZONE } from "@app/lib/swr/workspaces";
 import type { GetAgentUsageResponseBody } from "@app/types/api/assistant/agent_usage";
 import type { GetSlackChannelsLinkedWithAgentResponseBody } from "@app/types/api/assistant/builder/slack/channels_linked_with_agent";
-import type { GetAgentCartographyCoordinatesResponseBody } from "@app/types/api/assistant/cartography";
+import type { GetAgentCartographyResponseBody } from "@app/types/api/assistant/cartography";
 import type { GetAgentConfigurationsResponseBody } from "@app/types/api/assistant/configuration";
 import type { GetAgentMcpConfigurationsResponseBody } from "@app/types/api/assistant/mcp_configurations";
 import type { GetAgentOverviewResponseBody } from "@app/types/api/assistant/observability/overview";
@@ -269,10 +269,10 @@ export function useAgentConfiguration({
 
 // Frozen constant to keep a stable reference while loading/error/disabled, so
 // consumers memoizing on the coordinates map don't re-run needlessly.
-const EMPTY_COORDINATES: GetAgentCartographyCoordinatesResponseBody["coordinates"] =
+const EMPTY_COORDINATES: GetAgentCartographyResponseBody["coordinates"] =
   Object.freeze({});
 
-export function useAgentCartographyCoordinates({
+export function useAgentCartography({
   workspaceId,
   includeBuiltin = true,
   disabled,
@@ -282,19 +282,19 @@ export function useAgentCartographyCoordinates({
   disabled?: boolean;
 }) {
   const { fetcher } = useFetcher();
-  const coordinatesFetcher: Fetcher<GetAgentCartographyCoordinatesResponseBody> =
-    fetcher;
+  const cartographyFetcher: Fetcher<GetAgentCartographyResponseBody> = fetcher;
 
   const { data, error } = useSWRWithDefaults(
     `/api/w/${workspaceId}/assistant/agent_configurations/cartography?includeBuiltin=${includeBuiltin}`,
-    coordinatesFetcher,
+    cartographyFetcher,
     { disabled }
   );
 
   return {
     coordinates: data?.coordinates ?? EMPTY_COORDINATES,
-    isAgentCartographyCoordinatesLoading: !error && !data && !disabled,
-    isAgentCartographyCoordinatesError: error,
+    duplicates: data?.duplicates ?? emptyArray(),
+    isAgentCartographyLoading: !error && !data && !disabled,
+    isAgentCartographyError: error,
   };
 }
 

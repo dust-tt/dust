@@ -1,4 +1,4 @@
-import { useAgentCartographyCoordinates } from "@app/lib/swr/assistants";
+import { useAgentCartography } from "@app/lib/swr/assistants";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import type { WorkspaceType } from "@app/types/user";
 import { Avatar, SliderToggle, Spinner } from "@dust-tt/sparkle";
@@ -78,11 +78,10 @@ export function Cartography({
 }: CartographyProps) {
   const [includeBuiltin, setIncludeBuiltin] = useState(false);
 
-  const { coordinates, isAgentCartographyCoordinatesLoading } =
-    useAgentCartographyCoordinates({
-      workspaceId: owner.sId,
-      includeBuiltin,
-    });
+  const { coordinates, isAgentCartographyLoading } = useAgentCartography({
+    workspaceId: owner.sId,
+    includeBuiltin,
+  });
 
   const points = useMemo<CartographyPoint[]>(
     () =>
@@ -96,7 +95,7 @@ export function Cartography({
     [agentConfigurations, coordinates]
   );
 
-  const loading = isLoading || isAgentCartographyCoordinatesLoading;
+  const loading = isLoading || isAgentCartographyLoading;
 
   return (
     <div className="mt-6 w-full">

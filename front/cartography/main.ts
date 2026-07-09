@@ -1,5 +1,5 @@
 import { computeGroupingScore } from "@app/cartography/scoring";
-import { computeAgentCartographyCoordinates } from "@app/lib/api/assistant/cartography";
+import { computeAgentCartography } from "@app/lib/api/assistant/cartography";
 import { getAgentConfigurationsForView } from "@app/lib/api/assistant/configuration/views";
 import { Authenticator } from "@app/lib/auth";
 import { makeScript } from "@app/scripts/helpers";
@@ -22,7 +22,7 @@ makeScript({}, async (_args, logger) => {
     WORKSPACE_ID
   );
 
-  const result = await computeAgentCartographyCoordinates(auth);
+  const result = await computeAgentCartography(auth);
   if (result.isErr()) {
     logger.error(
       { workspaceId: WORKSPACE_ID, err: result.error },
@@ -79,8 +79,8 @@ makeScript({}, async (_args, logger) => {
   const duplicateLines = duplicates.length
     ? duplicates
         .map(
-          ({ agentIds: [a, b], similarity }) =>
-            `    ${similarity.toFixed(4)}  ${nameOf(a)} ⇔ ${nameOf(b)}`
+          ({ agentIds: [a, b], confidence }) =>
+            `    ${confidence.padEnd(10)} ${nameOf(a)} ⇔ ${nameOf(b)}`
         )
         .join("\n")
     : "    (none above threshold)";
@@ -88,7 +88,7 @@ makeScript({}, async (_args, logger) => {
   console.log(
     [
       "",
-      "Probable duplicates (cosine similarity above threshold, most probable first)",
+      "Probable duplicates (confidence from embedding similarity, most probable first)",
       duplicateLines,
     ].join("\n")
   );
