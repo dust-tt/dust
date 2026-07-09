@@ -13,6 +13,7 @@ import {
   removeNodeFromTree,
 } from "@app/components/data_source_view/context/utils";
 import { isRemoteDatabase } from "@app/lib/data_sources";
+import { emptyArray } from "@app/lib/swr/swr";
 import { Checkbox, cn, Icon, Separator, Spinner } from "@dust-tt/sparkle";
 import type { ComponentType, ReactNode } from "react";
 import {
@@ -84,7 +85,7 @@ interface DataSourceListProps {
 }
 
 export function DataSourceList({
-  items = [],
+  items = emptyArray<DataSourceListItem>(),
   sections,
   onLoadMore,
   hasMore = false,
