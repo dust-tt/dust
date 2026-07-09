@@ -5,7 +5,7 @@ export const AUTO_MODEL_CONFIG: ModelConfigurationType = {
   providerId: AUTO_MODEL_ID,
   modelId: AUTO_MODEL_ID,
   displayName: "Auto: Dust handles model selection",
-  description: "Let's Dust select the best model for the task.",
+  description: "Let Dust select the best model for the task.",
   shortDescription: "Select the best model for the task.",
 
   // Everything below is just some value to make it compatible with the ModelConfigurationType.
@@ -20,9 +20,9 @@ export const AUTO_MODEL_CONFIG: ModelConfigurationType = {
   supportsVision: false,
   supportedReasoningEfforts: {
     none: true,
-    light: false,
-    medium: false,
-    high: false,
+    light: true,
+    medium: true,
+    high: true,
   },
   defaultReasoningEffort: "none",
   supportsResponseFormat: false,

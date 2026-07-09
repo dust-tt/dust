@@ -36,6 +36,7 @@ import {
   CLAUDE_OPUS_4_8_DEFAULT_MODEL_CONFIG,
   CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG,
 } from "@app/types/assistant/models/anthropic";
+import { AUTO_MODEL_CONFIG } from "@app/types/assistant/models/auto";
 import { GPT_5_5_MODEL_CONFIG } from "@app/types/assistant/models/openai";
 import {
   getMinimumReasoningEffort,
@@ -360,6 +361,7 @@ function getModelConfig(
   reasoningEffort: ReasoningEffort;
 } | null {
   const candidates = [
+    AUTO_MODEL_CONFIG,
     CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG,
     GPT_5_5_MODEL_CONFIG,
   ];

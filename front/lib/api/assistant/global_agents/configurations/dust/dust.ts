@@ -469,7 +469,10 @@ export function _getDustGlobalAgent(
   return _getDustLikeGlobalAgent(auth, args, {
     agentId: GLOBAL_AGENTS_SID.DUST,
     name: "dust",
-    preferredModelConfiguration: AUTO_MODEL_CONFIG,
+    preferredModelConfiguration: args.preferGpt55DefaultModel
+      ? GPT_5_5_MODEL_CONFIG
+      : AUTO_MODEL_CONFIG,
+    preferredReasoningEffort: "medium",
   });
 }
 
