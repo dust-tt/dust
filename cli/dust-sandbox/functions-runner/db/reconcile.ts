@@ -19,14 +19,14 @@ import { basename, dirname } from "node:path";
 import { is } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/bun-sqlite";
 import { SQLiteTable } from "drizzle-orm/sqlite-core";
-import { extractDatabaseSchema } from "./db.ts";
+import { Err, Ok, type Result } from "../result.ts";
+import type { DatabaseSchema } from "../types/db.ts";
 import {
   DB_BUSY_TIMEOUT_MS,
   DbCommandError,
   introspectLiveTables,
-} from "./db_common.ts";
-import { Err, Ok, type Result } from "./result.ts";
-import type { DatabaseSchema } from "./types/db.ts";
+} from "./common.ts";
+import { extractDatabaseSchema } from "./validate.ts";
 
 export interface ReconcileOutcome {
   created: boolean;

@@ -4,8 +4,8 @@
 // resolution) and passes absolute paths here, so these helpers only deal with files.
 
 import { Database } from "bun:sqlite";
-import { Err, Ok, type Result } from "./result.ts";
-import { type DbErrorKind, RESERVED_TABLE_PREFIXES } from "./types/db.ts";
+import { Err, Ok, type Result } from "../result.ts";
+import { type DbErrorKind, RESERVED_TABLE_PREFIXES } from "../types/db.ts";
 
 // Wait up to 5s for a writer's lock instead of failing immediately with SQLITE_BUSY
 // (function writes and litestream checkpoints hold short write locks):
