@@ -54,7 +54,14 @@ export type SandboxStartupPhase =
   // the token, starts the token server, and polls it ready (was three execs).
   | "gcs.mint_token"
   | "gcs.token_server"
-  | "gcs.gcsfuse_mount";
+  | "gcs.gcsfuse_mount"
+  // Pod state bring-up (cold start only, after gcs_mount): restore replicated
+  // SQLite databases, then start the daemon (its static directory-watcher
+  // config is baked in the image).
+  | "pod_state_setup"
+  | "pod_state.enumerate"
+  | "pod_state.restore_db"
+  | "pod_state.start_daemon";
 
 // Opens a parent APM span for a startup phase. The provider.* child spans nest
 // underneath automatically, so this adds semantic grouping (and a per-phase

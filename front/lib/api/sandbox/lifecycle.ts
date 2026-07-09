@@ -1,6 +1,4 @@
 import { DustFileSystem } from "@app/lib/api/file_system/dust_file_system";
-import type { SandboxOnlyMount } from "@app/lib/api/file_system/types";
-import { getPodSandboxFunctionsMountPoint } from "@app/lib/api/files/mount_path";
 import {
   ensureSandboxEgressOnExec,
   prepareSandboxEgressBeforeMount,
@@ -11,6 +9,7 @@ import {
   traceSandboxStartupPhase,
 } from "@app/lib/api/sandbox/instrumentation";
 import type { SandboxRuntimeOwner } from "@app/lib/api/sandbox/owner";
+import { podSandboxOnlyMounts } from "@app/lib/api/sandbox/pod_mounts";
 import { startTelemetry } from "@app/lib/api/sandbox/telemetry";
 import type { Authenticator } from "@app/lib/auth";
 import { ConversationSandboxAdapter } from "@app/lib/resources/conversation_sandbox_adapter";
@@ -163,17 +162,6 @@ export async function ensureConversationSandboxReady(
   });
 }
 
-// A pod's published function bundles are mounted read-only so the sandbox can execute them while
-// front stays the sole writer of bundles.
-function podSandboxFunctionsMount(pod: SpaceResource): SandboxOnlyMount {
-  return {
-    kind: "pod_sandbox_functions",
-    id: pod.sId,
-    sandboxMountPoint: getPodSandboxFunctionsMountPoint(pod.sId),
-    readOnly: true,
-  };
-}
-
 export async function ensurePodSandboxReady(
   auth: Authenticator,
   pod: SpaceResource
@@ -182,7 +170,7 @@ export async function ensurePodSandboxReady(
     ensureActive: () => PodSandboxAdapter.ensureSandboxActive(auth, pod),
     getFileSystem: () =>
       DustFileSystem.forPod(auth, pod, {
-        sandboxOnlyMounts: [podSandboxFunctionsMount(pod)],
+        sandboxOnlyMounts: podSandboxOnlyMounts(pod),
       }),
     runtimeOwner: {
       kind: "pod",

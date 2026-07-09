@@ -104,7 +104,7 @@ export function getPodSandboxFunctionsMountPoint(podId: string): string {
  * the bun child, and `@dust/pod` reads the env var — neither carries a fallback copy.
  *
  * TODO(pod-state): Track 1's parallel stack defines the same contract value as
- * `POD_STATE_DATABASES_DIR` in `front/lib/api/sandbox/pod_state.ts` (litestream config /
+ * `POD_STATE_DATABASES_DIR` in `front/lib/api/sandbox/db.ts` (litestream config /
  * restore side). Dedup into a single constant once both stacks are merged.
  */
 export const POD_SANDBOX_DATABASES_DIR = "/pod-state/databases";

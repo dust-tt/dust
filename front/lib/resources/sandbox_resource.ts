@@ -274,6 +274,18 @@ export class SandboxResource extends BaseResource<SandboxModel> {
     return this.update({ lastActivityAt: new Date() }, transaction);
   }
 
+  /**
+   * Mark this sandbox for destruction: the reaper's kill sweep destroys it,
+   * and ensureActive's kill-requested branch destroys-and-recreates it on the
+   * next access. Used when runtime bring-up left the sandbox half-initialized
+   * (e.g. pod-state restore failed after status=running was committed), so
+   * the failure self-heals through a fresh cold start instead of the warm
+   * path silently serving a broken sandbox.
+   */
+  async requestKill(): Promise<void> {
+    await this.update({ killRequestedAt: new Date() });
+  }
+
   async delete(
     auth: Authenticator,
     { transaction }: { transaction?: Transaction } = {}
