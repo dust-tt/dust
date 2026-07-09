@@ -1,11 +1,11 @@
 import type { Meta, StoryObj } from "@storybook/react";
 import React, { useState } from "react";
 
-import { NewInputWithSave } from "../index_with_tw_base";
+import { InputWithSave } from "../index_with_tw_base";
 
 const meta = {
-  title: "Forms & Inputs/NewInputWithSave",
-  component: NewInputWithSave,
+  title: "Forms & Inputs/LegacyInputWithSave",
+  component: InputWithSave,
   parameters: {
     layout: "padded",
     docs: {
@@ -43,7 +43,7 @@ const meta = {
       action: "saved",
     },
   },
-} satisfies Meta<React.ComponentProps<typeof NewInputWithSave>>;
+} satisfies Meta<React.ComponentProps<typeof InputWithSave>>;
 
 export default meta;
 type Story = StoryObj<typeof meta>;
@@ -60,7 +60,7 @@ function ControlledInputWithSave({
   const [value, setValue] = useState(initialValue);
 
   return (
-    <NewInputWithSave
+    <InputWithSave
       value={value}
       unit={unit}
       placeholder={placeholder}

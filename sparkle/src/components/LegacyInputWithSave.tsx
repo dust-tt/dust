@@ -1,5 +1,4 @@
-import { Button as NewButton } from "@sparkle/components/NewButton";
-import { NewInput } from "@sparkle/components/NewInput";
+import { Button } from "@sparkle/components/LegacyButton";
 import { cn } from "@sparkle/lib/utils";
 import React, {
   forwardRef,
@@ -8,25 +7,22 @@ import React, {
   useState,
 } from "react";
 
-export interface NewInputWithSaveProps
+export interface LegacyInputWithSaveProps
   extends Omit<
     React.InputHTMLAttributes<HTMLInputElement>,
-    "value" | "onChange" | "size"
+    "value" | "onChange"
   > {
   value?: string | null;
   unit?: string;
   onSave: (value: string) => Promise<void> | void;
-  // Cleans each keystroke before it's passed to onSave (e.g. strip non-digits).
   normalizeValue?: (value: string) => string;
-  // Formats the draft for display only (e.g. thousands separators); onSave still
-  // receives the normalized value.
   formatValue?: (value: string) => string;
   className?: string;
 }
 
-export const NewInputWithSave = forwardRef<
+export const LegacyInputWithSave = forwardRef<
   HTMLInputElement,
-  NewInputWithSaveProps
+  LegacyInputWithSaveProps
 >(
   (
     {
@@ -79,7 +75,6 @@ export const NewInputWithSave = forwardRef<
     };
 
     const handleBlur = (e: React.FocusEvent<HTMLInputElement>) => {
-      // Revert to the value before the edit, unless a save is in flight.
       if (!isSaving) {
         setIsEditing(false);
       }
@@ -96,16 +91,37 @@ export const NewInputWithSave = forwardRef<
       onKeyDown?.(e);
     };
 
-    // Composes <NewInput> for the field and overlays the unit + Save button on the
-    // right (like SearchInput), so it can't drift from the NewInput design. The
-    // input reserves right padding so its value stays clear of the overlay.
-    const hasOverlay = Boolean(unit) || showSaveButton;
-
     return (
-      <div className={cn("relative w-full", className)}>
-        <NewInput
+      <div
+        className={cn(
+          "flex h-9 w-full items-center gap-1.5 rounded-xl border py-1.5 pl-3 text-sm",
+          showSaveButton ? "pr-1.5" : "pr-3",
+          "text-foreground",
+          "bg-background",
+          "border-border",
+          "ring-inset ring-highlight/0",
+          disabled
+            ? "cursor-not-allowed"
+            : cn(
+                "cursor-text",
+                "focus-within:border-border-focus",
+                "focus-within:ring-2",
+                "focus-within:ring-highlight/20"
+              ),
+          className
+        )}
+        onClick={() => inputRef.current?.focus()}
+      >
+        <input
           ref={inputRef}
-          size="sm"
+          className={cn(
+            "h-full w-full min-w-0 flex-1 border-0 bg-transparent p-0 text-right",
+            "outline-hidden focus:outline-hidden focus-visible:outline-hidden",
+            "ring-0 focus:ring-0 focus-visible:ring-0 shadow-none",
+            "placeholder:text-muted-foreground",
+            disabled && "cursor-not-allowed text-muted-foreground"
+          )}
+          data-1p-ignore
           value={
             showSaveButton
               ? formatValue
@@ -123,37 +139,25 @@ export const NewInputWithSave = forwardRef<
           onKeyDown={handleKeyDown}
           disabled={disabled}
           readOnly={isSaving}
-          className={cn(showSaveButton ? "pr-20" : unit ? "pr-12" : null)}
           {...props}
         />
-        {hasOverlay && (
-          // pointer-events-none lets clicks fall through to the input (to
-          // focus it); the Save button re-enables them for itself.
-          <div className="pointer-events-none absolute inset-y-0 right-1 flex items-center gap-1.5">
-            {unit && (
-              <span className="shrink-0 text-sm text-faint">{unit}</span>
-            )}
-            {showSaveButton && (
-              <NewButton
-                label="Save"
-                variant="highlight"
-                size="xs"
-                isLoading={isSaving}
-                className="pointer-events-auto"
-                // Prevent the input from blurring (which would revert the edit)
-                // before the click registers.
-                onMouseDown={(e) => e.preventDefault()}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  void handleSave();
-                }}
-              />
-            )}
-          </div>
+        {unit && <span className="shrink-0 text-muted-foreground">{unit}</span>}
+        {showSaveButton && (
+          <Button
+            label="Save"
+            variant="highlight"
+            size="xs"
+            isLoading={isSaving}
+            onMouseDown={(e) => e.preventDefault()}
+            onClick={(e) => {
+              e.stopPropagation();
+              void handleSave();
+            }}
+          />
         )}
       </div>
     );
   }
 );
 
-NewInputWithSave.displayName = "NewInputWithSave";
+LegacyInputWithSave.displayName = "LegacyInputWithSave";

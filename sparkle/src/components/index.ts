@@ -26,10 +26,15 @@ export {
 export type {
   ButtonIconType,
   ButtonProps,
-  IconOnlyButtonProps,
-  RegularButtonProps,
+  ButtonSizeType,
+  ButtonVariantType,
 } from "./Button";
-export { Button, LegacyButton } from "./Button";
+export {
+  BUTTON_SIZES,
+  BUTTON_VARIANTS,
+  Button,
+  buttonVariants,
+} from "./Button";
 export type { ButtonGroupProps } from "./ButtonGroup";
 export { ButtonGroup, ButtonGroupDropdown } from "./ButtonGroup";
 export { ButtonsSwitch, ButtonsSwitchList } from "./ButtonsSwitch";
@@ -151,12 +156,26 @@ export {
 } from "./ImagePreview";
 export type { ImageZoomDialogProps } from "./ImageZoomDialog";
 export { downloadFile, ImageZoomDialog } from "./ImageZoomDialog";
-export { Input } from "./Input";
+export type { InputProps, InputSizeType } from "./Input";
+export { INPUT_SIZES, Input } from "./Input";
 export type { InputWithSaveProps } from "./InputWithSave";
 export { InputWithSave } from "./InputWithSave";
 export { InteractiveImageGrid } from "./InteractiveImageGrid";
 export { KeyboardShortcut } from "./KeyboardShortcut";
 export { Label } from "./Label";
+export type {
+  LegacyButtonProps,
+  LegacyButtonVariantType,
+  LegacyIconOnlyButtonProps,
+  LegacyRegularButtonProps,
+} from "./LegacyButton";
+export { LegacyButton, MetaButton } from "./LegacyButton";
+export type { LegacyInputProps } from "./LegacyInput";
+export { LegacyInput } from "./LegacyInput";
+export type { LegacyInputWithSaveProps } from "./LegacyInputWithSave";
+export { LegacyInputWithSave } from "./LegacyInputWithSave";
+export type { LegacyFlexSplitButtonProps } from "./LegacySplitButton";
+export { LegacyFlexSplitButton } from "./LegacySplitButton";
 export type { LinkWrapperProps } from "./LinkWrapper";
 export { LinkWrapper } from "./LinkWrapper";
 export { ListGroup, ListItem, ListItemSection } from "./ListItem";
@@ -191,24 +210,6 @@ export {
   NavTabPillList,
   NavTabPillTrigger,
 } from "./NavTabPill";
-export type {
-  ButtonIconType as NewButtonIconType,
-  ButtonProps as NewButtonProps,
-  ButtonSizeType as NewButtonSizeType,
-  ButtonVariantType as NewButtonVariantType,
-} from "./NewButton";
-export {
-  BUTTON_SIZES as NEW_BUTTON_SIZES,
-  BUTTON_VARIANTS as NEW_BUTTON_VARIANTS,
-  NewButton,
-  newButtonVariants,
-} from "./NewButton";
-export type { NewInputProps, NewInputSizeType } from "./NewInput";
-export { NEW_INPUT_SIZES, NewInput } from "./NewInput";
-export type { NewInputWithSaveProps } from "./NewInputWithSave";
-export { NewInputWithSave } from "./NewInputWithSave";
-export type { NewFlexSplitButtonProps } from "./NewSplitButton";
-export { NewFlexSplitButton } from "./NewSplitButton";
 export type { NotificationType } from "./Notification";
 export { Notification, useSendNotification } from "./Notification";
 export { NotificationButton } from "./NotificationButton";
@@ -262,6 +263,7 @@ export { SliderToggle } from "./SliderToggle";
 export { Spinner } from "./Spinner";
 export type { SpinnerBrandProps } from "./SpinnerBrand";
 export { SpinnerBrand } from "./SpinnerBrand";
+export type { FlexSplitButtonProps } from "./SplitButton";
 export { FlexSplitButton } from "./SplitButton";
 export { Tabs, TabsContent, TabsList, TabsTrigger } from "./Tabs";
 export { ReadOnlyTextArea, TextArea } from "./TextArea";

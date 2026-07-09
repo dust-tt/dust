@@ -1,4 +1,5 @@
 import { Button } from "@sparkle/components/Button";
+import { Input } from "@sparkle/components/Input";
 import { cn } from "@sparkle/lib/utils";
 import React, {
   forwardRef,
@@ -10,17 +11,12 @@ import React, {
 export interface InputWithSaveProps
   extends Omit<
     React.InputHTMLAttributes<HTMLInputElement>,
-    "value" | "onChange"
+    "value" | "onChange" | "size"
   > {
   value?: string | null;
   unit?: string;
   onSave: (value: string) => Promise<void> | void;
-  // Applied to the draft value on each keystroke (e.g. to strip non-digit
-  // characters for numeric inputs). The cleaned result is what gets passed to
-  // onSave.
   normalizeValue?: (value: string) => string;
-  // Applied to the normalized draft value for display during editing (e.g. to
-  // insert thousand-separator commas). Does not affect what onSave receives.
   formatValue?: (value: string) => string;
   className?: string;
 }
@@ -77,7 +73,6 @@ export const InputWithSave = forwardRef<HTMLInputElement, InputWithSaveProps>(
     };
 
     const handleBlur = (e: React.FocusEvent<HTMLInputElement>) => {
-      // Revert to the value before the edit, unless a save is in flight.
       if (!isSaving) {
         setIsEditing(false);
       }
@@ -94,39 +89,13 @@ export const InputWithSave = forwardRef<HTMLInputElement, InputWithSaveProps>(
       onKeyDown?.(e);
     };
 
+    const hasOverlay = Boolean(unit) || showSaveButton;
+
     return (
-      <div
-        className={cn(
-          "flex h-9 w-full items-center gap-1.5 rounded-xl border py-1.5 pl-3 text-sm",
-          showSaveButton ? "pr-1.5" : "pr-3",
-          "text-foreground",
-          "bg-background",
-          "border-border",
-          "ring-inset ring-highlight/0",
-          disabled
-            ? "cursor-not-allowed"
-            : cn(
-                "cursor-text",
-                "focus-within:border-border-focus",
-                "focus-within:ring-2",
-                "focus-within:ring-highlight/20"
-              ),
-          className
-        )}
-        onClick={() => inputRef.current?.focus()}
-      >
-        <input
+      <div className={cn("relative w-full", className)}>
+        <Input
           ref={inputRef}
-          className={cn(
-            "h-full w-full min-w-0 flex-1 border-0 bg-transparent p-0 text-right",
-            // The container carries the focus styles (via focus-within); the
-            // inner input must not render its own outline or ring.
-            "outline-hidden focus:outline-hidden focus-visible:outline-hidden",
-            "ring-0 focus:ring-0 focus-visible:ring-0 shadow-none",
-            "placeholder:text-muted-foreground",
-            disabled && "cursor-not-allowed text-muted-foreground"
-          )}
-          data-1p-ignore
+          size="sm"
           value={
             showSaveButton
               ? formatValue
@@ -144,23 +113,29 @@ export const InputWithSave = forwardRef<HTMLInputElement, InputWithSaveProps>(
           onKeyDown={handleKeyDown}
           disabled={disabled}
           readOnly={isSaving}
+          className={cn(showSaveButton ? "pr-20" : unit ? "pr-12" : null)}
           {...props}
         />
-        {unit && <span className="shrink-0 text-muted-foreground">{unit}</span>}
-        {showSaveButton && (
-          <Button
-            label="Save"
-            variant="highlight"
-            size="xs"
-            isLoading={isSaving}
-            // Prevent the input from blurring (which would revert the edit)
-            // before the click registers.
-            onMouseDown={(e) => e.preventDefault()}
-            onClick={(e) => {
-              e.stopPropagation();
-              void handleSave();
-            }}
-          />
+        {hasOverlay && (
+          <div className="pointer-events-none absolute inset-y-0 right-1 flex items-center gap-1.5">
+            {unit && (
+              <span className="shrink-0 text-sm text-faint">{unit}</span>
+            )}
+            {showSaveButton && (
+              <Button
+                label="Save"
+                variant="highlight"
+                size="xs"
+                isLoading={isSaving}
+                className="pointer-events-auto"
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  void handleSave();
+                }}
+              />
+            )}
+          </div>
         )}
       </div>
     );
