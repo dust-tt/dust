@@ -24,6 +24,7 @@ import omit from "lodash/omit";
 import agent from "./[aId]";
 import batchUpdateScope from "./batch_update_scope";
 import batchUpdateTags from "./batch_update_tags";
+import cartography from "./cartography";
 import createPending from "./create-pending";
 import deleteRoute from "./delete";
 import lookup from "./lookup";
@@ -332,6 +333,7 @@ app.post(
 // these names as agent ids.
 app.route("/batch_update_scope", batchUpdateScope);
 app.route("/batch_update_tags", batchUpdateTags);
+app.route("/cartography", cartography);
 app.route("/create-pending", createPending);
 app.route("/delete", deleteRoute);
 app.route("/lookup", lookup);

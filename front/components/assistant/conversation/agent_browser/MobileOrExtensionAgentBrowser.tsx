@@ -99,6 +99,7 @@ export function MobileOrExtensionAgentBrowser({
         />
       ) : viewTab === "cartography" ? (
         <Cartography
+          owner={owner}
           agentConfigurations={agentsByTab.all}
           isLoading={isLoading}
           onAgentClick={handleAgentClick}

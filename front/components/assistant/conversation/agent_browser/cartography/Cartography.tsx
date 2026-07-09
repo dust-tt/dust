@@ -1,4 +1,6 @@
+import { useAgentCartographyCoordinates } from "@app/lib/swr/assistants";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
+import type { WorkspaceType } from "@app/types/user";
 import { Avatar, Spinner } from "@dust-tt/sparkle";
 import { useMemo } from "react";
 import {
@@ -13,6 +15,7 @@ import {
 const CARTOGRAPHY_HEIGHT = 600;
 
 interface CartographyProps {
+  owner: WorkspaceType;
   agentConfigurations: LightAgentConfigurationType[];
   isLoading: boolean;
   onAgentClick: (agent: LightAgentConfigurationType) => void;
@@ -22,47 +25,6 @@ interface CartographyPoint {
   x: number;
   y: number;
   agent: LightAgentConfigurationType;
-}
-
-// Precomputed [x, y] coordinates keyed by agent sId. Only agents present in
-// this map are plotted.
-const AGENT_COORDINATES: Record<string, [number, number]> = {
-  "Mg2E6Edfow": [
-    0.8979972496792902,
-    0.24400403916380078
-  ],
-  "9XD9dibFZG": [
-    0.882108756328406,
-    0.5093051960701951
-  ],
-  "ww6gcIDP3E": [
-    0.619019443059537,
-    0.8085326635967579
-  ],
-  "U1B3dzDWmP": [
-    0.18744480112226222,
-    0.027372670671364792
-  ],
-  "unppcnu4ut": [
-    0.08909978971520159,
-    0.5730814204909128
-  ],
-  "OQhuKzqJp0": [
-    1,
-    0
-  ],
-  "PYwYFSRQi4": [
-    0,
-    0.02436148880939058
-  ],
-  "P3eDG5oH8a": [
-    0.5043019870895367,
-    0.5987372510462865
-  ],
-  "GborGtGKEt": [
-    0.3988296526222818,
-    1
-  ]
 }
 
 interface AgentPointShapeProps {
@@ -109,29 +71,35 @@ function AgentPointShape({
 }
 
 export function Cartography({
+  owner,
   agentConfigurations,
   isLoading,
   onAgentClick,
 }: CartographyProps) {
+  const { coordinates, isAgentCartographyCoordinatesLoading } =
+    useAgentCartographyCoordinates({ workspaceId: owner.sId });
+
   const points = useMemo<CartographyPoint[]>(
     () =>
       agentConfigurations
         // Only plot agents that have precomputed coordinates.
-        .filter((agent) => AGENT_COORDINATES[agent.sId] !== undefined)
+        .filter((agent) => coordinates[agent.sId] !== undefined)
         .map((agent) => {
-          const [x, y] = AGENT_COORDINATES[agent.sId];
+          const [x, y] = coordinates[agent.sId];
           return { x, y, agent };
         }),
-    [agentConfigurations]
+    [agentConfigurations, coordinates]
   );
 
-  if (isLoading || points.length === 0) {
+  const loading = isLoading || isAgentCartographyCoordinatesLoading;
+
+  if (loading || points.length === 0) {
     return (
       <div
         className="flex w-full items-center justify-center"
         style={{ height: CARTOGRAPHY_HEIGHT }}
       >
-        {isLoading ? (
+        {loading ? (
           <Spinner size="lg" />
         ) : (
           <span className="text-sm text-muted-foreground dark:text-muted-foreground-night">

@@ -189,6 +189,7 @@ export function WebAgentBrowser({
         />
       ) : viewTab === "cartography" ? (
         <Cartography
+          owner={owner}
           agentConfigurations={agentsByTab.all}
           isLoading={isLoading}
           onAgentClick={handleAgentClick}
