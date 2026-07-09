@@ -6,6 +6,7 @@ import {
 } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { workspaceAdminGuard } from "@app/lib/actions/mcp_internal_actions/utils";
 import { registerTool } from "@app/lib/actions/mcp_internal_actions/wrappers";
+import type { ToolContextType } from "@app/lib/actions/types";
 import { Authenticator } from "@app/lib/auth";
 import { GroupFactory } from "@app/tests/utils/GroupFactory";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
@@ -61,11 +62,22 @@ async function authForRole(role: MembershipRoleType): Promise<Authenticator> {
 }
 
 // Stands up an in-memory MCP server with the test tools registered for `auth`,
-// connects a client over the in-memory transport, and calls one tool.
+// connects a client over the in-memory transport, and calls one tool. Handlers only ever execute
+// with a run context (enforced by registerTool), so a minimal fake one is provided; the test
+// handlers only read `auth`.
 async function callTestTool(auth: Authenticator, toolName: string) {
+  const toolContext = {
+    runContext: {
+      contextType: "agent_loop",
+      agentConfiguration: { sId: "agent-id", version: 0 },
+      toolConfiguration: { sId: "tool-configuration-id" },
+      conversation: { sId: "conversation-id" },
+      agentMessage: { sId: "message-id" },
+    },
+  } as unknown as ToolContextType;
   const server = new McpServer({ name: "admin_guard_test", version: "1.0.0" });
   for (const tool of TEST_TOOLS) {
-    registerTool(auth, undefined, server, tool, {
+    registerTool(auth, toolContext, server, tool, {
       monitoringName: "admin_guard_test",
     });
   }
