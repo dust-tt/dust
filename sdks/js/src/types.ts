@@ -839,14 +839,23 @@ export const WebsearchResultSchema = z.object({
 
 export type WebsearchResultPublicType = z.infer<typeof WebsearchResultSchema>;
 
-const ActionGeneratedFileSchema = z.object({
-  fileId: z.string(),
+const ActionGeneratedFileBaseSchema = z.object({
   title: z.string(),
   contentType: ActionGeneratedFileContentTypeSchema,
   snippet: z.string().nullable(),
   hidden: z.boolean().optional(),
   isInProjectContext: z.boolean().optional(),
 });
+
+const ActionGeneratedFileSchema = z.union([
+  ActionGeneratedFileBaseSchema.extend({
+    fileId: z.string(),
+  }),
+  ActionGeneratedFileBaseSchema.extend({
+    fileId: z.null(),
+    filePath: z.string(),
+  }),
+]);
 
 export type ActionGeneratedFileType = z.infer<typeof ActionGeneratedFileSchema>;
 

@@ -498,6 +498,11 @@
  *             properties:
  *               fileId:
  *                 type: string
+ *                 nullable: true
+ *                 description: Dust file id for DB-backed files, or null for path-backed files.
+ *               filePath:
+ *                 type: string
+ *                 description: Canonical scoped path for path-backed files.
  *               title:
  *                 type: string
  *               contentType:
@@ -1614,6 +1619,11 @@
  *             properties:
  *               fileId:
  *                 type: string
+ *                 nullable: true
+ *                 description: Dust file id for DB-backed files, or null for path-backed files.
+ *               filePath:
+ *                 type: string
+ *                 description: Canonical scoped path for path-backed files.
  *               title:
  *                 type: string
  *               contentType:
