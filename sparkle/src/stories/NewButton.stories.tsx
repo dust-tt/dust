@@ -179,10 +179,11 @@ function Surface({
   return (
     <div
       className={[
-        dark ? "dark bg-background border-border" : "",
+        dark ? "dark border-border" : "",
         !dark ? "bg-background border-border" : "",
         "flex flex-col gap-4 rounded-2xl border p-6",
       ].join(" ")}
+      style={dark ? { backgroundColor: "#1F1C19" } : undefined}
     >
       <div>
         <div className="text-sm font-semibold text-foreground ">{title}</div>
