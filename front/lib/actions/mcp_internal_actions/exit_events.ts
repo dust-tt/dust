@@ -102,33 +102,23 @@ export async function getExitOrPauseEvents(
     case "tool_blocked_awaiting_input": {
       const { blockingEvents, state } = exitOutputItem;
 
-      // Assert (vs guarding the mutations like the cases below): here the mutations ARE the
-      // semantics. The whole point is to atomically flip the action to
-      // blocked_child_action_input_required and persist the resumeState in the step context so
-      // the loop pauses and can later resume exactly where it stopped. Skipping them would return
-      // [...blockingEvents, tool_paused] backed by no persisted state at all: a pause signal that
-      // nothing can ever resume, silently swallowing the tool's blocking behavior. Today the
-      // resource only comes from tools unavailable to sandbox functions (sandbox bash, which is
-      // conversation-bound by definition, and run_agent, which is conversation-tied for now).
+      if (isAgentLoopRunContext(runContext)) {
+        // Update the action status to blocked_child_action_input_required to break the agent loop.
+        await runContext.action.updateStatus(
+          "blocked_child_action_input_required"
+        );
+
+        // Update the step context to save the resume state.
+        await runContext.action.updateStepContext({
+          ...runContext.action.stepContext,
+          resumeState: state,
+        });
+      }
+
       // TODO(SANDBOX_FUNCTIONS): supporting run_agent from a sandbox function requires
       // invocation-level pause/resume semantics (persisted resume state on the invocation and a
       // way for the caller to resume); wire them here then. Until that exists, failing loudly
       // beats emitting a plausible-looking but broken pause.
-      assert(
-        isAgentLoopRunContext(runContext),
-        "tool_blocked_awaiting_input requires an agent loop run context."
-      );
-
-      // Update the action status to blocked_child_action_input_required to break the agent loop.
-      await runContext.action.updateStatus(
-        "blocked_child_action_input_required"
-      );
-
-      // Update the step context to save the resume state.
-      await runContext.action.updateStepContext({
-        ...runContext.action.stepContext,
-        resumeState: state,
-      });
 
       // Forward any UI-facing blocking events the tool collected, plus a `tool_paused` sentinel.
       // The sentinel keeps the pause-decision on the event channel even when `blockingEvents` is
