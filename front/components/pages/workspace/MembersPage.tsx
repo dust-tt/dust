@@ -23,13 +23,11 @@ import type {
 } from "@app/types/user";
 import { isAdmin } from "@app/types/user";
 import {
+  ButtonsSwitch,
+  ButtonsSwitchList,
   Page,
   SearchInput,
   Spinner,
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
   Users01,
 } from "@dust-tt/sparkle";
 import type { PaginationState } from "@tanstack/react-table";
@@ -52,29 +50,36 @@ function WorkspaceMembersGroupsList({
   owner,
   searchTerm,
 }: WorkspaceMembersGroupsListProps) {
+  const [view, setView] = useState("members");
+
   return (
-    <div className="flex flex-col gap-1 pt-2">
-      <Tabs defaultValue="members">
-        <TabsList className="mb-4">
-          <TabsTrigger value="members" label="Members" />
-          {isManualInvitationsEnabled && (
-            <TabsTrigger value="invitations" label="Invitations" />
-          )}
-        </TabsList>
-        <TabsContent value="members">
-          <WorkspaceMembersList
-            currentUser={currentUser}
-            owner={owner}
-            searchTerm={searchTerm}
-            isProvisioningEnabled={isProvisioningEnabled}
+    <div>
+      {isManualInvitationsEnabled && (
+        <ButtonsSwitchList defaultValue="members" size="xs" className="mb-4">
+          <ButtonsSwitch
+            value="members"
+            label="Members"
+            onClick={() => setView("members")}
           />
-        </TabsContent>
-        {isManualInvitationsEnabled && (
-          <TabsContent value="invitations">
-            <InvitationsList owner={owner} searchText={searchTerm} />
-          </TabsContent>
-        )}
-      </Tabs>
+          <ButtonsSwitch
+            value="invitations"
+            label="Invitations"
+            onClick={() => setView("invitations")}
+          />
+        </ButtonsSwitchList>
+      )}
+
+      {view === "members" && (
+        <WorkspaceMembersList
+          currentUser={currentUser}
+          owner={owner}
+          searchTerm={searchTerm}
+          isProvisioningEnabled={isProvisioningEnabled}
+        />
+      )}
+      {view === "invitaitons" && isManualInvitationsEnabled && (
+        <InvitationsList owner={owner} searchText={searchTerm} />
+      )}
     </div>
   );
 }
