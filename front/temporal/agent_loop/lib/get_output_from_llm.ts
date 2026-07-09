@@ -517,6 +517,7 @@ export async function getOutputFromLLMStream(
             logger.info(
               {
                 ...logContext,
+                agentConfigurationId: agentConfiguration.sId,
                 modelInteractionId,
                 previousMessageId,
                 cacheMissReasonType: cacheMissReason.type,
