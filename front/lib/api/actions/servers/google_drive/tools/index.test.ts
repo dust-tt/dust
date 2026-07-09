@@ -52,14 +52,18 @@ function createGaxiosError(code: number, message: string): Common.GaxiosError {
 }
 
 describe("handleFileAccessError", () => {
-  const createMockExtra = (toolServerId: string): ToolHandlerExtra =>
+  const createMockExtra = (toolServerId?: string): ToolHandlerExtra =>
     ({
       authInfo: undefined,
-      runContext: {
-        toolConfiguration: {
-          toolServerId,
-        },
-      },
+      toolContext: toolServerId
+        ? {
+            runContext: {
+              toolConfiguration: {
+                toolServerId,
+              },
+            },
+          }
+        : undefined,
     }) as ToolHandlerExtra;
 
   it("should return file authorization error for 403 with 'has not granted' message", async () => {
@@ -109,7 +113,7 @@ describe("handleFileAccessError", () => {
     const result = await handleFileAccessError(
       createGaxiosError(404, "File not found: has not granted write access"),
       "test-file-id",
-      createMockExtra("my-connection")
+      createMockExtra()
     );
 
     expect(result.isOk()).toBe(true);
@@ -118,7 +122,7 @@ describe("handleFileAccessError", () => {
       const item = content[0] as any;
       expect(item.type).toBe("resource");
       expect(item.resource).toMatchObject({
-        connectionId: "my-connection",
+        connectionId: "google_drive",
       });
     }
   });
@@ -245,11 +249,11 @@ describe("get_file_content", () => {
   const XLSX_MIMETYPE =
     "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
 
-  // Partial stub: the get_file_content handler only reads authInfo and runContext.
+  // Partial stub: the get_file_content handler only reads authInfo and toolContext.
   // Same pattern as the other MCP tool tests (files/tools).
   const extra = {
     authInfo: undefined,
-    runContext: undefined,
+    toolContext: undefined,
   } as unknown as ToolHandlerExtra;
 
   function isTextBlock(

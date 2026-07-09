@@ -395,7 +395,7 @@ const handlers: ToolHandlers<typeof MICROSOFT_TEAMS_TOOLS_METADATA> = {
       parentMessageId,
       mentions,
     },
-    { auth, authInfo, runContext }
+    { auth, authInfo, toolContext }
   ) => {
     const client = await getGraphClient(authInfo);
     if (!client) {
@@ -531,14 +531,14 @@ const handlers: ToolHandlers<typeof MICROSOFT_TEAMS_TOOLS_METADATA> = {
       // Add footer with link to Dust conversation if agent context is available
       let finalContent = messageContent;
 
-      if (isAgentLoopRunContext(runContext)) {
+      if (isAgentLoopRunContext(toolContext?.runContext)) {
         const agentUrl = getConversationRoute(
           auth.getNonNullableWorkspace().sId,
           "new",
-          `agentDetails=${runContext.agentConfiguration.sId}`,
+          `agentDetails=${toolContext.runContext.agentConfiguration.sId}`,
           config.getAppUrl()
         );
-        const agentName = runContext.agentConfiguration.name;
+        const agentName = toolContext.runContext.agentConfiguration.name;
         const footerMessage = `<em>Sent via <a href="${agentUrl}">${agentName} Agent</a> on Dust</em>`;
         finalContent = `${messageContent}<br/><br/>${footerMessage}`;
       }

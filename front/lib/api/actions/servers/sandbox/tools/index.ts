@@ -230,9 +230,9 @@ export async function createSandboxTools(
 ): Promise<ToolDefinition[]> {
   const handlers: ToolHandlers<typeof SANDBOX_TOOLS_METADATA> = {
     bash: runSandboxBashTool,
-    describe_toolset: async ({ format }, { auth, runContext }) => {
-      const providerId = isAgentLoopRunContext(runContext)
-        ? runContext.model.providerId
+    describe_toolset: async ({ format }, { auth, toolContext }) => {
+      const providerId = isAgentLoopRunContext(toolContext?.runContext)
+        ? toolContext.runContext.model.providerId
         : null;
       if (!providerId) {
         return new Err(new MCPError("Missing model provider ID"));
@@ -290,7 +290,7 @@ export async function runSandboxBashTool(
     timeoutMs?: number;
     workingDirectory?: string;
   },
-  { auth, runContext }: ToolHandlerExtra
+  { auth, toolContext }: ToolHandlerExtra
 ): Promise<
   Result<
     Array<
@@ -303,8 +303,12 @@ export async function runSandboxBashTool(
     MCPError
   >
 > {
-  assert(isAgentLoopRunContext(runContext), "AgentLoopRunContext expected");
+  assert(
+    isAgentLoopRunContext(toolContext?.runContext),
+    "AgentLoopRunContext expected"
+  );
 
+  const runContext = toolContext?.runContext;
   const {
     conversation,
     agentConfiguration,
@@ -484,9 +488,12 @@ export async function runSandboxBashTool(
 
 export async function addEgressDomainTool(
   { domain, reason }: { domain: string; reason: string },
-  { auth, runContext }: ToolHandlerExtra
+  { auth, toolContext }: ToolHandlerExtra
 ): Promise<Result<Array<{ type: "text"; text: string }>, MCPError>> {
-  assert(isAgentLoopRunContext(runContext), "AgentLoopRunContext expected");
+  assert(
+    isAgentLoopRunContext(toolContext?.runContext),
+    "AgentLoopRunContext expected"
+  );
   // Defense-in-depth: createSandboxTools already filters this tool out when
   // the workspace setting is off, so this metadata-only check is enough to
   // reject any caller that bypasses tool-list filtering.
@@ -500,7 +507,7 @@ export async function addEgressDomainTool(
 
   const ensureResult = await ensureConversationSandboxReady(
     auth,
-    runContext.conversation
+    toolContext.runContext.conversation
   );
   if (ensureResult.isErr()) {
     return new Err(new MCPError(ensureResult.error.message));

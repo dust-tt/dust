@@ -12,9 +12,9 @@ import { Err, Ok } from "@app/types/shared/result";
 
 export async function deleteHandler(
   { path }: { path: string },
-  { auth, runContext }: ToolHandlerExtra
+  { auth, toolContext }: ToolHandlerExtra
 ): Promise<ToolHandlerResult> {
-  const conversationRes = requireAgentLoopConversation({ runContext });
+  const conversationRes = requireAgentLoopConversation({ toolContext });
   if (conversationRes.isErr()) {
     return conversationRes;
   }

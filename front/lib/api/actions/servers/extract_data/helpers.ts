@@ -1,6 +1,6 @@
 import type { DataSourcesToolConfigurationType } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import { getCoreSearchArgs } from "@app/lib/actions/mcp_internal_actions/tools/utils";
-import type { ToolRunContext } from "@app/lib/actions/types";
+import type { ToolContextType } from "@app/lib/actions/types";
 import { constructPromptMultiActions } from "@app/lib/api/assistant/generation";
 import type { CoreDataSourceSearchCriteria } from "@app/lib/api/assistant/process_data_sources";
 import { writeToToolOutputsFolder } from "@app/lib/api/files/action_output_fs";
@@ -122,14 +122,14 @@ const EXTRACT_RESULT_SNIPPET_MAX_LENGTH = 1000;
 
 export async function generateProcessToolOutput({
   auth,
-  runContext,
+  toolContext,
   outputs,
   jsonSchema,
   timeFrame,
   objective,
 }: {
   auth: Authenticator;
-  runContext: ToolRunContext;
+  toolContext: ToolContextType;
   outputs: ProcessActionOutputsType | null;
   jsonSchema: JSONSchema;
   timeFrame: TimeFrame | null;
@@ -150,7 +150,7 @@ export async function generateProcessToolOutput({
   const fileName = makeFileName({ name: stem, ext: ".json" });
   const content = JSON.stringify(outputs?.data ?? [], null, 2);
 
-  const writeResult = await writeToToolOutputsFolder(auth, runContext, {
+  const writeResult = await writeToToolOutputsFolder(auth, toolContext, {
     fileName,
     content,
     contentType: "application/json",

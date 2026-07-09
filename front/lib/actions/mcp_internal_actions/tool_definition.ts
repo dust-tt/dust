@@ -1,6 +1,6 @@
 import type { MCPToolStakeLevelType } from "@app/lib/actions/constants";
 import type { MCPError } from "@app/lib/actions/mcp_errors";
-import type { ToolRunContext } from "@app/lib/actions/types";
+import type { ToolContextType } from "@app/lib/actions/types";
 import type {
   InternalMCPServerDefinitionType,
   MCPToolType,
@@ -22,7 +22,7 @@ export type ToolHandlerExtra = RequestHandlerExtra<
   ServerNotification
 > & {
   auth: Authenticator;
-  runContext: ToolRunContext;
+  toolContext?: ToolContextType;
 };
 
 export type ToolHandlerResult = Result<CallToolResult["content"], MCPError>;

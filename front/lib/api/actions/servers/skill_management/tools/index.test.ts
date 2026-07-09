@@ -108,12 +108,14 @@ describe("skill_management enable_skill tool", () => {
   } = {}) {
     return {
       auth,
-      runContext: {
-        contextType: "agent_loop",
-        agentConfiguration,
-        agentMessage,
-        conversation: conversationOverride,
-        userMessage: userMessageOverride,
+      toolContext: {
+        runContext: {
+          contextType: "agent_loop",
+          agentConfiguration,
+          agentMessage,
+          conversation: conversationOverride,
+          userMessage: userMessageOverride,
+        },
       },
       signal: new AbortController().signal,
     } as never;

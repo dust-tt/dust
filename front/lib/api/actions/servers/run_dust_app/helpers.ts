@@ -12,8 +12,8 @@ import type {
   ToolGeneratedFileType,
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import type {
-  AgentLoopRunContext,
-  ToolRunContext,
+  AgentLoopRunContextType,
+  ToolContextType,
 } from "@app/lib/actions/types";
 import { renderConversationForModel } from "@app/lib/api/assistant/conversation_rendering";
 import { getDatasetSchema } from "@app/lib/api/datasets";
@@ -159,7 +159,7 @@ export async function prepareAppContext(
 
 export async function processDustFileOutput(
   auth: Authenticator,
-  runContext: ToolRunContext,
+  toolContext: ToolContextType,
   sanitizedOutput: DustFileOutput,
   conversation: ConversationWithoutContentType,
   appName: string
@@ -256,7 +256,7 @@ export async function processDustFileOutput(
       fileName = makeFileName({ name: appName, ext: ".txt" });
     }
 
-    const result = await writeToToolOutputsFolder(auth, runContext, {
+    const result = await writeToToolOutputsFolder(auth, toolContext, {
       fileName,
       content: fileContent,
       contentType,
@@ -286,7 +286,7 @@ export async function processDustFileOutput(
 export async function prepareParamsWithHistory(
   params: { [p: string]: unknown },
   schema: DatasetSchema | null,
-  agentLoopRunContext: AgentLoopRunContext,
+  agentLoopRunContext: AgentLoopRunContextType,
   auth: Authenticator
 ): Promise<{ [p: string]: unknown }> {
   if (

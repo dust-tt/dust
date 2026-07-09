@@ -1,5 +1,5 @@
 import type { ToolHandlerExtra } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import type { ToolRunContext } from "@app/lib/actions/types";
+import type { ToolContextType } from "@app/lib/actions/types";
 import { CREATE_CONTENT_MAX_BYTES } from "@app/lib/api/actions/servers/files/metadata";
 import { editHandler } from "@app/lib/api/actions/servers/files/tools/edit";
 import { FRAME_SOURCE_MAX_BYTES } from "@app/lib/api/actions/servers/interactive_content/metadata";
@@ -24,11 +24,10 @@ function makeExtra(
   auth: Authenticator,
   conversation: ConversationType
 ): ToolHandlerExtra {
-  const runContext = {
-    contextType: "agent_loop",
-    conversation,
-  } as unknown as ToolRunContext;
-  return { auth, runContext } as unknown as ToolHandlerExtra;
+  const toolContext = {
+    runContext: { contextType: "agent_loop", conversation },
+  } as unknown as ToolContextType;
+  return { auth, toolContext } as unknown as ToolHandlerExtra;
 }
 
 async function setupProjectConversation(): Promise<{

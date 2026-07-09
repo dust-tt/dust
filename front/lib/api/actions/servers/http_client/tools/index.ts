@@ -113,7 +113,7 @@ async function handleSendRequest(
     body?: string;
     timeout_ms?: number;
   },
-  { auth, runContext }: ToolHandlerExtra
+  { auth, toolContext }: ToolHandlerExtra
 ) {
   const timeoutMs = timeout_ms ?? DEFAULT_TIMEOUT_MS;
   const controller = new AbortController();
@@ -121,7 +121,7 @@ async function handleSendRequest(
 
   const requestHeaders = validateAndSanitizeHeaders(headers);
 
-  const bearerToken = await getBearerToken(auth, { runContext });
+  const bearerToken = await getBearerToken(auth, toolContext);
   if (bearerToken) {
     requestHeaders["Authorization"] = `Bearer ${bearerToken}`;
   }

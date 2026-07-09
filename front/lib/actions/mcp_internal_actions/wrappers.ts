@@ -5,13 +5,12 @@ import type {
 } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import {
   isAgentLoopRunContext,
-  isSandboxFunctionRunContext,
-  type ToolContext,
-  type ToolRunContext,
+  type ToolContextType,
 } from "@app/lib/actions/types";
 import type { Authenticator } from "@app/lib/auth";
 import { getStatsDClient } from "@app/lib/utils/statsd";
 import logger from "@app/logger/logger";
+
 import type { Result } from "@app/types/shared/result";
 import { Ok } from "@app/types/shared/result";
 import { errorToString } from "@app/types/shared/utils/error_utils";
@@ -23,13 +22,12 @@ import type {
   ServerNotification,
   ServerRequest,
 } from "@modelcontextprotocol/sdk/types.js";
-import assert from "assert";
 
 const MAX_LOGGED_ERROR_MESSAGE_LENGTH = 200;
 
 export function registerTool(
   auth: Authenticator,
-  toolContext: ToolContext | undefined,
+  toolContext: ToolContextType | undefined,
   server: McpServer,
   tool: ToolDefinition,
   { monitoringName }: { monitoringName: string }
@@ -51,18 +49,13 @@ export function registerTool(
       auth,
       {
         toolNameForMonitoring: monitoringName,
-        runContext: toolContext?.runContext,
+        toolContext,
         enableAlerting: tool.enableAlerting,
       },
-      (params, extra) => {
-        // Handlers registered during the listing phase are never invoked: tools only execute on
-        // a connection established with a run context.
-        const runContext = toolContext?.runContext;
-        assert(runContext, "Tool handlers require a tool run context.");
-        return withToolResultProcessing(
-          tool.handler(params, { ...extra, runContext, auth })
-        );
-      }
+      (params, extra) =>
+        withToolResultProcessing(
+          tool.handler(params, { ...extra, toolContext, auth })
+        )
     )
   );
 }
@@ -116,12 +109,11 @@ function withToolLogging<T>(
   auth: Authenticator,
   {
     toolNameForMonitoring,
-    runContext,
+    toolContext,
     enableAlerting = false,
   }: {
     toolNameForMonitoring: string;
-    // Undefined at listing-phase registration; always set when the callback actually runs.
-    runContext: ToolRunContext | undefined;
+    toolContext: ToolContextType | undefined;
     enableAlerting?: boolean;
   },
   toolCallback: (
@@ -149,15 +141,15 @@ function withToolLogging<T>(
       toolName: toolNameForMonitoring,
     };
 
-    // Adding run context identifiers if available.
-    if (runContext) {
-      if (isAgentLoopRunContext(runContext)) {
+    // Adding agent loop context if available.
+    if (toolContext?.runContext) {
+      if (isAgentLoopRunContext(toolContext.runContext)) {
         const {
           agentConfiguration,
           toolConfiguration,
           conversation,
           agentMessage,
-        } = runContext;
+        } = toolContext.runContext;
         loggerArgs = {
           ...loggerArgs,
           actionConfigurationId: toolConfiguration.sId,
@@ -165,14 +157,6 @@ function withToolLogging<T>(
           agentConfigurationVersion: agentConfiguration.version,
           agentMessageId: agentMessage.sId,
           conversationId: conversation.sId,
-        };
-      } else if (isSandboxFunctionRunContext(runContext)) {
-        const { invocation, toolConfiguration } = runContext;
-        loggerArgs = {
-          ...loggerArgs,
-          actionConfigurationId: toolConfiguration.sId,
-          sandboxFunctionId: invocation.sandboxFunction.sId,
-          invocationId: invocation.sId,
         };
       }
     }

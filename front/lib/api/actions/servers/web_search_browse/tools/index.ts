@@ -48,12 +48,12 @@ async function handleWebsearch(
   { query }: { query: string },
   extra: ToolHandlerExtra
 ) {
-  const { runContext } = extra;
+  const { toolContext } = extra;
 
   const { websearchResultCount, citationsOffset } = isAgentLoopRunContext(
-    runContext
+    toolContext?.runContext
   )
-    ? runContext.stepContext
+    ? toolContext.runContext.stepContext
     : {
         websearchResultCount: AGENT_LESS_DEFAULT_WEBSEARCH_RESULT_COUNT,
         citationsOffset: 0,
@@ -121,11 +121,14 @@ async function handleWebbrowser(
   },
   extra: ToolHandlerExtra
 ) {
-  const { runContext, auth } = extra;
+  const { toolContext, auth } = extra;
+  if (!toolContext?.runContext) {
+    return new Err(new MCPError("No conversation context available"));
+  }
   const credentials = await getLlmCredentials(auth, {
     skipEmbeddingApiKeyRequirement: true,
   });
-  const { toolConfiguration } = runContext;
+  const { toolConfiguration } = toolContext.runContext;
   const useSummarization =
     isLightServerSideMCPToolConfiguration(toolConfiguration) &&
     toolConfiguration.additionalConfiguration[USE_SUMMARY_SWITCH] === true;
@@ -159,7 +162,7 @@ async function handleWebbrowser(
   });
 
   if (useSummarization) {
-    if (!isAgentLoopRunContext(runContext)) {
+    if (!isAgentLoopRunContext(toolContext.runContext)) {
       return new Err(
         new MCPError(
           "Summarization cannot be enabled outside of an agent loop context."
@@ -167,7 +170,7 @@ async function handleWebbrowser(
       );
     }
 
-    const runCtx = runContext;
+    const runCtx = toolContext.runContext;
     const { citationsOffset, websearchResultCount } = runCtx.stepContext;
     const refs = getRefs().slice(
       citationsOffset,
@@ -236,7 +239,7 @@ async function handleWebbrowser(
           ext: ".txt",
         });
 
-        const writeResult = await writeToToolOutputsFolder(auth, runCtx, {
+        const writeResult = await writeToToolOutputsFolder(auth, toolContext, {
           fileName,
           content: fileContent,
           contentType: "text/plain",

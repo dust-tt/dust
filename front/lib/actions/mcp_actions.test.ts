@@ -142,9 +142,7 @@ vi.mock("@app/lib/api/actions/servers/search/tools", async () => {
       mockSearchFunction({
         ...(params as object),
         auth: (extra as { auth?: unknown }).auth,
-        toolContext: {
-          runContext: (extra as { runContext?: unknown }).runContext,
-        },
+        toolContext: (extra as { toolContext?: unknown }).toolContext,
       }),
   };
   const handlersWithTags = {

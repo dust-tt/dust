@@ -17,11 +17,14 @@ import assert from "assert";
 const handlers: ToolHandlers<typeof ASK_USER_QUESTION_TOOLS_METADATA> = {
   ask_user_question: async (
     { question, options, multiSelect },
-    { runContext }
+    { toolContext }
   ) => {
-    assert(isAgentLoopRunContext(runContext), "AgentLoopRunContext expected");
+    assert(
+      isAgentLoopRunContext(toolContext?.runContext),
+      "AgentLoopRunContext expected"
+    );
 
-    const resumeState = runContext.stepContext.resumeState;
+    const resumeState = toolContext?.runContext?.stepContext?.resumeState;
     if (isUserQuestionResumeState(resumeState) && resumeState.answer) {
       const { answer } = resumeState;
       const selections = getUserQuestionSelections(

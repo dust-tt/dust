@@ -90,11 +90,14 @@ const listAttachmentsHandler: ToolHandlers<
   typeof CONVERSATION_FILES_TOOLS_METADATA
 >[typeof CONVERSATION_LIST_FILES_ACTION_NAME] = async (
   _,
-  { auth, runContext }
+  { auth, toolContext }
 ) => {
-  assert(isAgentLoopRunContext(runContext), "AgentLoopRunContext expected");
+  assert(
+    isAgentLoopRunContext(toolContext?.runContext),
+    "AgentLoopRunContext expected"
+  );
 
-  const conversation = runContext.conversation;
+  const conversation = toolContext.runContext.conversation;
   const allAttachments = await listAttachments(auth, { conversation });
 
   // When the conversation uses the new file system, regular files are surfaced via the
@@ -134,12 +137,15 @@ const handlers: ToolHandlers<typeof CONVERSATION_FILES_TOOLS_METADATA> = {
 
   [CONVERSATION_CAT_FILE_ACTION_NAME]: async (
     { fileId, offset, limit, grep },
-    { auth, runContext }
+    { auth, toolContext }
   ) => {
-    assert(isAgentLoopRunContext(runContext), "AgentLoopRunContext expected");
+    assert(
+      isAgentLoopRunContext(toolContext?.runContext),
+      "AgentLoopRunContext expected"
+    );
 
-    const conversation = runContext.conversation;
-    const model = runContext.model;
+    const conversation = toolContext.runContext.conversation;
+    const model = toolContext.runContext.model;
 
     const fileRes = await getFileFromConversation(
       auth,
@@ -263,11 +269,14 @@ const handlers: ToolHandlers<typeof CONVERSATION_FILES_TOOLS_METADATA> = {
 
   [CONVERSATION_SEARCH_FILES_ACTION_NAME]: async (
     { query },
-    { auth, runContext }
+    { auth, toolContext }
   ) => {
-    assert(isAgentLoopRunContext(runContext), "AgentLoopRunContext expected");
+    assert(
+      isAgentLoopRunContext(toolContext?.runContext),
+      "AgentLoopRunContext expected"
+    );
 
-    const conversation = runContext.conversation;
+    const conversation = toolContext.runContext.conversation;
     const attachments = await listAttachments(auth, { conversation });
     const filesUsableAsRetrievalQuery = attachments.filter(
       (f) => f.isSearchable
@@ -331,7 +340,7 @@ const handlers: ToolHandlers<typeof CONVERSATION_FILES_TOOLS_METADATA> = {
         uri: getDataSourceURI(dataSource),
         mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_SOURCE,
       })),
-      toolContext: { runContext },
+      toolContext,
     });
 
     return searchResults;

@@ -19,10 +19,10 @@ export async function publishHandler(
     path: string;
     slug: string;
   },
-  { auth, runContext }: ToolHandlerExtra
+  { auth, toolContext }: ToolHandlerExtra
 ): Promise<ToolHandlerResult> {
   const podResult = await getWritablePodContext(auth, {
-    toolContext: { runContext },
+    toolContext,
   });
   if (podResult.isErr()) {
     return new Err(podResult.error);

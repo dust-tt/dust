@@ -22,13 +22,16 @@ import { DustAPI, INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import assert from "assert";
 
 const handlers: ToolHandlers<typeof TOOLSETS_TOOLS_METADATA> = {
-  list: async (_, { auth, runContext }) => {
-    assert(isAgentLoopRunContext(runContext), "AgentLoopRunContext expected");
+  list: async (_, { auth, toolContext }) => {
+    assert(
+      isAgentLoopRunContext(toolContext?.runContext),
+      "AgentLoopRunContext expected"
+    );
 
     const mcpServerViewIdsFromAgentConfiguration =
-      runContext.agentConfiguration.actions
+      toolContext?.runContext?.agentConfiguration.actions
         .filter(isServerSideMCPServerConfiguration)
-        .map((action) => action.mcpServerViewId);
+        .map((action) => action.mcpServerViewId) ?? [];
 
     const owner = auth.getNonNullableWorkspace();
     const user = auth.user();
@@ -79,10 +82,18 @@ const handlers: ToolHandlers<typeof TOOLSETS_TOOLS_METADATA> = {
     );
   },
 
-  enable: async ({ toolsetId }, { auth, runContext }) => {
-    assert(isAgentLoopRunContext(runContext), "AgentLoopRunContext expected");
+  enable: async ({ toolsetId }, { auth, toolContext }) => {
+    assert(
+      isAgentLoopRunContext(toolContext?.runContext),
+      "AgentLoopRunContext expected"
+    );
 
-    const conversationId = runContext.conversation.sId;
+    const conversationId = toolContext?.runContext?.conversation.sId;
+    if (!conversationId) {
+      return new Err(
+        new MCPError("No active conversation context", { tracked: false })
+      );
+    }
 
     const owner = auth.getNonNullableWorkspace();
     const user = auth.user();
@@ -108,7 +119,8 @@ const handlers: ToolHandlers<typeof TOOLSETS_TOOLS_METADATA> = {
       config.nodeEnv === "development" ? "http://localhost:3000" : null
     );
 
-    const agentConfigurationId = runContext.agentConfiguration.sId;
+    const agentConfigurationId =
+      toolContext?.runContext?.agentConfiguration.sId;
 
     const res = await api.postConversationTools({
       conversationId,

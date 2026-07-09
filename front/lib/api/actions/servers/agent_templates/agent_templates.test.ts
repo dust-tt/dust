@@ -26,11 +26,11 @@ function getToolByName(name: string) {
   return tool;
 }
 
-function createTestExtra(auth: Authenticator, runContext?: unknown) {
+function createTestExtra(auth: Authenticator) {
   return {
     signal: new AbortController().signal,
     auth,
-    runContext,
+    toolContext: undefined,
   } as Parameters<(typeof TOOLS)[0]["handler"]>[1];
 }
 

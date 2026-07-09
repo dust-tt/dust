@@ -164,7 +164,7 @@ export type ToolOutputItemType = {
   workspaceId: ModelId;
 };
 
-export type AgentLoopRunContext = {
+export type AgentLoopRunContextType = {
   contextType: "agent_loop";
   action: AgentMCPActionResource;
   agentConfiguration: AgentConfigurationWithoutModelType;
@@ -176,14 +176,14 @@ export type AgentLoopRunContext = {
   userMessage: UserMessageType;
 };
 
-export type SandboxFunctionRunContext = {
+export type SandboxFunctionRunContextType = {
   contextType: "sandbox_function";
   action: SandboxFunctionMCPActionResource;
   invocation: SandboxFunctionInvocationResource;
   toolConfiguration: LightMCPToolConfigurationType;
 };
 
-export type AgentLoopListToolsContext = {
+export type AgentLoopListToolsContextType = {
   agentConfiguration: AgentConfigurationWithoutModelType;
   agentActionConfiguration: MCPServerConfigurationType;
   clientSideActionConfigurations?: ClientSideMCPServerConfigurationType[];
@@ -191,28 +191,24 @@ export type AgentLoopListToolsContext = {
   agentMessage: AgentMessageType;
 };
 
-// Context available to tool handlers at execution time: tools only ever run on a connection
-// established with a run context, never on a listing-phase connection.
-export type ToolRunContext = AgentLoopRunContext | SandboxFunctionRunContext;
-
 export function isSandboxFunctionRunContext(
-  value: ToolRunContext | undefined
-): value is SandboxFunctionRunContext {
+  value: AgentLoopRunContextType | SandboxFunctionRunContextType | undefined
+): value is SandboxFunctionRunContextType {
   return value?.contextType === "sandbox_function";
 }
 
 export function isAgentLoopRunContext(
-  value: ToolRunContext | undefined
-): value is AgentLoopRunContext {
+  value: AgentLoopRunContextType | SandboxFunctionRunContextType | undefined
+): value is AgentLoopRunContextType {
   return value?.contextType === "agent_loop";
 }
 
-export type ToolContext =
+export type ToolContextType =
   | {
-      runContext: ToolRunContext;
+      runContext: AgentLoopRunContextType | SandboxFunctionRunContextType;
       listToolsContext?: never;
     }
   | {
       runContext?: never;
-      listToolsContext: AgentLoopListToolsContext;
+      listToolsContext: AgentLoopListToolsContextType;
     };

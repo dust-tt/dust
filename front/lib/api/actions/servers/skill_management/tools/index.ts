@@ -97,8 +97,11 @@ async function findAvailableSkillForAgentLoop({
 }
 
 const handlers: ToolHandlers<typeof SKILL_MANAGEMENT_TOOLS_METADATA> = {
-  [ENABLE_SKILL_TOOL_NAME]: async ({ skillName }, { auth, runContext }) => {
-    assert(isAgentLoopRunContext(runContext), "AgentLoopRunContext expected");
+  [ENABLE_SKILL_TOOL_NAME]: async ({ skillName }, { auth, toolContext }) => {
+    assert(
+      isAgentLoopRunContext(toolContext?.runContext),
+      "AgentLoopRunContext expected"
+    );
 
     const {
       agentConfiguration,
@@ -106,7 +109,7 @@ const handlers: ToolHandlers<typeof SKILL_MANAGEMENT_TOOLS_METADATA> = {
       agentMessage,
       conversation,
       userMessage,
-    } = runContext;
+    } = toolContext.runContext;
 
     const agentLoopData = {
       agentConfiguration,
