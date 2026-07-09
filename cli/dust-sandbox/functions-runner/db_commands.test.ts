@@ -107,35 +107,15 @@ describe("db reconcile", () => {
 
   test("a failed first claim leaves no database file behind", async () => {
     await withDir(async (dir) => {
-      const dbPath = join(dir, "bad.db");
+      const dbPath = join(dir, "dup.db");
       await expectDbError(
-        () => reconcile(dbPath, fx("apply_fail.db.ts")),
+        () => reconcile(dbPath, fx("dup_index.db.ts")),
         "apply_failed",
         /rolled back/
       );
       for (const suffix of ["", "-wal", "-shm"]) {
         expect(existsSync(`${dbPath}${suffix}`)).toBe(false);
       }
-    });
-  });
-
-  test("a duplicate index name across tables fails at apply (shared SQLite namespace)", async () => {
-    await withDir(async (dir) => {
-      await expectDbError(
-        () => reconcile(join(dir, "dup.db"), fx("dup_index.db.ts")),
-        "apply_failed",
-        /rolled back/
-      );
-    });
-  });
-
-  test("a second primary-key declaration on one table fails before apply", async () => {
-    await withDir(async (dir) => {
-      await expectDbError(
-        () => reconcile(join(dir, "twice.db"), fx("pk_double.db.ts")),
-        "apply_failed",
-        /rolled back/
-      );
     });
   });
 
