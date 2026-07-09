@@ -21,7 +21,10 @@ import groupDetail from "./[groupId]";
 import spendLimit from "./[groupId]/spend_limit";
 
 export type GetGroupsResponseBody = {
-  groups: (GroupType & { memberCount: number })[];
+  groups: (GroupType & {
+    memberCount: number;
+    poolCapAwuCredits: number | null;
+  })[];
 };
 
 const GetGroupsQuerySchema = z.object({
@@ -57,11 +60,21 @@ app.get(
       groupKinds,
     });
 
+    const groupsJSON =
+      withMembers === "true"
+        ? await GroupResource.fetchJSONWithMembers(auth, groups)
+        : await GroupResource.toJSONWithMemberCounts(auth, groups);
+
+    const poolCaps = await GroupResource.getPoolCapAwuCreditsForGroups(
+      auth,
+      groups
+    );
+
     return ctx.json({
-      groups:
-        withMembers === "true"
-          ? await GroupResource.fetchJSONWithMembers(auth, groups)
-          : await GroupResource.toJSONWithMemberCounts(auth, groups),
+      groups: groupsJSON.map((group) => ({
+        ...group,
+        poolCapAwuCredits: poolCaps.get(group.id) ?? null,
+      })),
     });
   }
 );
