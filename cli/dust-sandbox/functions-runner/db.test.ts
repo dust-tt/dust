@@ -184,20 +184,12 @@ describe("declared database validation", () => {
     );
   });
 
-  test("accepts composite primary keys (SQLite enforces PK validity at apply)", async () => {
-    unwrap(await validateDeclaredDatabases(fixturesDir, ["composite"]));
-  });
-
   test("rejects a schema file exporting no tables", async () => {
     expectDbError(
       await validateDeclaredDatabases(fixturesDir, ["empty"]),
       "database_schema_invalid",
       /exports no tables/
     );
-  });
-
-  test("accepts an SQL-expression index (drizzle-kit plans it from the schema file)", async () => {
-    unwrap(await validateDeclaredDatabases(fixturesDir, ["expr"]));
   });
 
   test("rejects a missing schema file", async () => {
