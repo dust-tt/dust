@@ -1,3 +1,4 @@
+import { computeGroupingScore } from "@app/cartography/scoring";
 import { computeAgentCartographyCoordinates } from "@app/lib/api/assistant/cartography";
 import { getAgentConfigurationsForView } from "@app/lib/api/assistant/configuration/views";
 import { Authenticator } from "@app/lib/auth";
@@ -55,5 +56,31 @@ makeScript({}, async (_args, logger) => {
   logger.info(
     { count: lines.length, workspaceId: WORKSPACE_ID },
     `Agent 2D projection\n\n${lines.join("\n\n")}\n`
+  );
+
+  const score = computeGroupingScore(coordinatesByAgentId);
+  const nameOf = (sId: string): string => agentById.get(sId)?.name ?? sId;
+
+  const perAgentLines = score.perAgent
+    .map(
+      (p) =>
+        `    ${p.group.padEnd(12)} ${nameOf(p.sId).padEnd(24)} silhouette=${p.silhouette.toFixed(4)}`
+    )
+    .join("\n");
+
+  logger.info(
+    {
+      silhouette: score.silhouette,
+      meanIntraGroupDistance: score.intra,
+      meanInterGroupDistance: score.inter,
+    },
+    [
+      "Grouping score (higher silhouette = better separated groups, range [-1, 1])",
+      `  mean silhouette:            ${score.silhouette.toFixed(4)}`,
+      `  mean intra-group distance:  ${score.intra.toFixed(4)}`,
+      `  mean inter-group distance:  ${score.inter.toFixed(4)}`,
+      "",
+      perAgentLines,
+    ].join("\n")
   );
 });

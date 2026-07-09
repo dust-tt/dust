@@ -76,7 +76,7 @@ export function Cartography({
   isLoading,
   onAgentClick,
 }: CartographyProps) {
-  const [includeBuiltin, setIncludeBuiltin] = useState(true);
+  const [includeBuiltin, setIncludeBuiltin] = useState(false);
 
   const { coordinates, isAgentCartographyCoordinatesLoading } =
     useAgentCartographyCoordinates({
