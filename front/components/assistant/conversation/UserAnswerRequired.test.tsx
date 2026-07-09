@@ -1,4 +1,4 @@
-import type { BlockedToolExecution } from "@app/lib/actions/mcp";
+import type { AgentLoopBlockedToolExecution } from "@app/lib/actions/mcp";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
   act,
@@ -165,7 +165,7 @@ function makeBlockedAction({
   multiSelect = false,
 }: {
   multiSelect?: boolean;
-} = {}): BlockedToolExecution & {
+} = {}): AgentLoopBlockedToolExecution & {
   status: "blocked_user_answer_required";
 } {
   return {

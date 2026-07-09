@@ -1,4 +1,4 @@
-import type { BlockedToolExecution } from "@app/lib/actions/mcp";
+import type { AgentLoopBlockedToolExecution } from "@app/lib/actions/mcp";
 import {
   createConversation,
   postNewContentFragment,
@@ -1072,7 +1072,7 @@ export async function sendToolValidationEmail({
 }: {
   email: InboundEmail;
   agentConfiguration: LightAgentConfigurationType;
-  blockedActions: BlockedToolExecution[];
+  blockedActions: AgentLoopBlockedToolExecution[];
   conversation: { sId: string };
   workspace: LightWorkspaceType;
 }): Promise<void> {

@@ -1,4 +1,4 @@
-import type { BlockedToolExecution } from "@app/lib/actions/mcp";
+import type { AgentLoopBlockedToolExecution } from "@app/lib/actions/mcp";
 import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
 import {
   getInternalMCPServerNameFromSId,
@@ -288,7 +288,7 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
   static async listBlockedActionsForConversation(
     auth: Authenticator,
     conversation: ConversationResource
-  ): Promise<BlockedToolExecution[]> {
+  ): Promise<AgentLoopBlockedToolExecution[]> {
     const owner = auth.getNonNullableWorkspace();
 
     const latestAgentMessages =
@@ -375,7 +375,7 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
 
     const parentUserMessageById = keyBy(parentUserMessages, "id");
 
-    const blockedActionsList: BlockedToolExecution[] = [];
+    const blockedActionsList: AgentLoopBlockedToolExecution[] = [];
 
     // Fetch agent configurations with their specific versions from the actions.
     const agentConfigVersionPairs = removeNulls(
@@ -452,7 +452,7 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
       assert(parentUserMessage.userMessage, "Parent user message not found.");
 
       const baseActionParams: Omit<
-        BlockedToolExecution,
+        AgentLoopBlockedToolExecution,
         "status" | "authorizationInfo"
       > = {
         // Compute approval labels from persisted configuration + stored inputs.

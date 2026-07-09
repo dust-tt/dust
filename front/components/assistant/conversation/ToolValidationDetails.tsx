@@ -80,7 +80,9 @@ interface DisplayableInput {
 }
 
 interface ToolValidationDetailsProps {
-  blockedAction: BlockedToolExecution;
+  // Only the display fields are needed, so both agent-loop and sandbox-function blocked tool
+  // executions can be rendered.
+  blockedAction: Pick<BlockedToolExecution, "inputs" | "metadata">;
   user: UserType;
   owner: LightWorkspaceType;
   conversationId?: string | null;

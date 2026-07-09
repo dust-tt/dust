@@ -1,7 +1,7 @@
 import { useBlockedActionsContext } from "@app/components/assistant/conversation/BlockedActionsProvider";
 import { useAnswerUserQuestion } from "@app/hooks/useAnswerUserQuestion";
 import { useUserAnswerDraft } from "@app/hooks/useUserAnswerDraft";
-import type { BlockedToolExecution } from "@app/lib/actions/mcp";
+import type { AgentLoopBlockedToolExecution } from "@app/lib/actions/mcp";
 import type { UserQuestionAnswer } from "@app/lib/actions/types";
 import { canCurrentUserRespondToParentUserMessage } from "@app/lib/api/assistant/conversation/can_current_user_respond";
 import { useAuth } from "@app/lib/auth/AuthContext";
@@ -20,7 +20,7 @@ import type { KeyboardEvent } from "react";
 import { useEffect, useRef, useState } from "react";
 
 interface UserAnswerRequiredProps {
-  blockedAction: BlockedToolExecution & {
+  blockedAction: AgentLoopBlockedToolExecution & {
     status: "blocked_user_answer_required";
   };
   triggeringUser: UserType | null;
