@@ -1,10 +1,10 @@
-// Pod database shape (wire `version: 1`): the single authored definition.
+// Pod database wire/type contract: the single authored definition.
 //
 // This file must stay dependency-free (no imports): front type-imports the error kinds
-// (front/lib/api/sandbox_functions/build_on_sandbox.ts) and re-parses only the `databases`
-// record's names and schemaFile from the build envelope — the table shapes never leave the
-// sandbox. The runtime constants cannot cross that boundary (front never bundles cli code):
-// front mirrors DB_NAME_REGEX and equality-checks it in its tests.
+// (front/lib/api/sandbox_functions/build_on_sandbox.ts, dsbx_db.ts) and mirrors
+// DB_NAME_REGEX, equality-checked in front tests (front never bundles cli code). The
+// extracted schema shapes are runner-internal: validation plus reconcile's destructive
+// pre-check read table and column names, nothing more — no shape is stored or diffed.
 
 export const DB_NAME_REGEX = /^[a-z][a-z0-9_]{0,63}$/;
 
@@ -48,31 +48,11 @@ export type DbErrorKind =
   // these as model-correctable.
   | "internal";
 
-export interface DatabaseColumn {
-  type: string;
-  mode: string | null;
-  notNull: boolean;
-  hasDefault: boolean;
-  primaryKey: boolean;
-  autoIncrement: boolean;
-}
-
-export interface DatabaseIndex {
-  unique: boolean;
+export interface DatabaseTable {
+  // Column names only: reconcile's destructive pre-check needs presence, nothing needs shape.
   columns: string[];
 }
 
-export interface DatabaseTable {
-  columns: Record<string, DatabaseColumn>;
-  indexes: Record<string, DatabaseIndex>;
-}
-
 export interface DatabaseSchema {
-  schemaFile: string;
   tables: Record<string, DatabaseTable>;
-}
-
-export interface FunctionState {
-  version: 1;
-  databases: Record<string, DatabaseSchema>;
 }

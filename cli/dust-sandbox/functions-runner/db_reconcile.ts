@@ -154,7 +154,7 @@ function checkNoDestructiveChanges(
       if (liveColumn.hidden !== 0) {
         continue;
       }
-      if (desiredTable.columns[liveColumn.name] === undefined) {
+      if (!desiredTable.columns.includes(liveColumn.name)) {
         destructive.push(
           `column "${liveTable.name}"."${liveColumn.name}" would be dropped`
         );
