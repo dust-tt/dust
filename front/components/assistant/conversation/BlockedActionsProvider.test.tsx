@@ -59,7 +59,9 @@ const conversation: ConversationListItemType = {
 
 function makeAuthBlockedAction(
   actionId: string
-): AgentLoopBlockedToolExecution & { status: "blocked_authentication_required" } {
+): AgentLoopBlockedToolExecution & {
+  status: "blocked_authentication_required";
+} {
   return {
     conversationId: "conv_1",
     messageId: "msg_1",
