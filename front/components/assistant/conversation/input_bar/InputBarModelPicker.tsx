@@ -201,28 +201,16 @@ export function InputBarModelPicker({
       ? { model: selection.model, effort: selection.effort }
       : null;
   }, [agentModel, models]);
-  const agentDefaultKey = agentDefault
-    ? getModelWithReasoningEffortKey(
-        agentDefault.model.providerId,
-        agentDefault.model.modelId,
-        agentDefault.effort
-      )
-    : null;
-
   // Drop the agent default from Suggested
   const suggested = useMemo(
     () =>
-      agentDefaultKey
-        ? suggestedModelsWithEfforts.filter(
-            (s) =>
-              getModelWithReasoningEffortKey(
-                s.model.providerId,
-                s.model.modelId,
-                s.effort
-              ) !== agentDefaultKey
-          )
-        : suggestedModelsWithEfforts,
-    [suggestedModelsWithEfforts, agentDefaultKey]
+      suggestedModelsWithEfforts.filter(
+        (s) =>
+          agentDefault?.effort !== s.effort ||
+          agentDefault?.model.modelId !== s.model.modelId ||
+          agentDefault?.model.providerId !== s.model.providerId
+      ),
+    [suggestedModelsWithEfforts, agentDefault]
   );
 
   const isSearching = search.trim() !== "";
