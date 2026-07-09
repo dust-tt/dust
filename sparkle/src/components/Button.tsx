@@ -9,7 +9,7 @@ import { Spinner } from "@sparkle/components/Spinner";
 import { Tooltip } from "@sparkle/components/Tooltip";
 import { ChevronDown } from "@sparkle/icons/v2-stroke";
 import { cn } from "@sparkle/lib/utils";
-import { cva, type VariantProps } from "class-variance-authority";
+import { cva } from "class-variance-authority";
 import * as React from "react";
 
 // Redesigned button alongside the existing Button (unchanged). Sizes: 24/32/40px.
@@ -194,7 +194,7 @@ const RAISED_VARIANTS: ButtonVariantType[] = [
 const TEXT_SHADOW = "[text-shadow:0_1px_1.5px_rgba(0,0,0,0.08)]";
 const ICON_SHADOW = "drop-shadow-[0px_1px_0.75px_rgba(0,0,0,0.08)]";
 
-const ICON_SIZE_MAP: Record<ButtonSizeType, "xs" | "sm"> = {
+const INTERNAL_ICON_SIZE_MAP: Record<ButtonSizeType, "xs" | "sm"> = {
   xs: "xs",
   sm: "xs",
   md: "sm",
@@ -242,11 +242,40 @@ function isReactElement(visual: ButtonIconType): visual is React.ReactElement {
   return React.isValidElement(visual);
 }
 
+// Backward-compat aliases and mappings for internal sparkle components that
+// previously imported from the old Button.tsx. No other files need to change.
+type LegacyButtonSizeType = "icon" | "icon-xs" | "icon-sm" | "mini" | "xmini";
+type LegacyButtonVariantType = "highlight-secondary" | "warning-secondary";
+
+const LEGACY_SIZE_MAP: Record<LegacyButtonSizeType, ButtonSizeType> = {
+  icon: "sm",
+  "icon-xs": "xs",
+  "icon-sm": "md",
+  mini: "sm",
+  xmini: "xs",
+};
+
+const LEGACY_VARIANT_MAP: Record<LegacyButtonVariantType, ButtonVariantType> = {
+  "highlight-secondary": "highlight-ghost",
+  "warning-secondary": "warning-ghost",
+};
+
+export const ICON_SIZE_MAP: Record<ButtonSizeType, ButtonSizeType> = {
+  xs: "xs",
+  sm: "sm",
+  md: "md",
+};
+
+export type RegularButtonSize = ButtonSizeType;
+export type IconOnlyButtonProps = ButtonProps;
+export type RegularButtonProps = ButtonProps;
+
 export interface ButtonProps
   extends Omit<React.ButtonHTMLAttributes<HTMLButtonElement>, "size">,
-    Omit<LinkWrapperProps, "children" | "className">,
-    Pick<VariantProps<typeof buttonVariants>, "variant"> {
-  size?: ButtonSizeType;
+    Omit<LinkWrapperProps, "children" | "className"> {
+  size?: ButtonSizeType | LegacyButtonSizeType;
+  variant?: ButtonVariantType | LegacyButtonVariantType;
+  hasLighterFont?: boolean;
   label?: string;
   icon?: ButtonIconType;
   iconRight?: ButtonIconType;
@@ -285,14 +314,23 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
     },
     ref
   ) => {
-    const iconSize = ICON_SIZE_MAP[size];
+    const normalizedSize: ButtonSizeType =
+      size != null && size in LEGACY_SIZE_MAP
+        ? LEGACY_SIZE_MAP[size as LegacyButtonSizeType]
+        : ((size as ButtonSizeType) ?? "sm");
+    const normalizedVariant: ButtonVariantType =
+      variant != null && variant in LEGACY_VARIANT_MAP
+        ? LEGACY_VARIANT_MAP[variant as LegacyButtonVariantType]
+        : ((variant as ButtonVariantType) ?? "primary");
+    const iconSize = INTERNAL_ICON_SIZE_MAP[normalizedSize];
     const showCounter = isCounter && counterValue != null;
     const isIconOnly = !label && !showCounter && !isSelect && !!icon;
     // Menu triggers (dropdown/popover/select) skip the press scale, else the
     // opening menu jumps with the anchor. Radix sets aria-haspopup on the
     // trigger; isSelect is our chevron affordance. Tooltips don't, so they keep it.
     const isMenuTrigger = isSelect || props["aria-haspopup"] != null;
-    const hasTextShadow = variant != null && RAISED_VARIANTS.includes(variant);
+    const hasTextShadow =
+      normalizedVariant != null && RAISED_VARIANTS.includes(normalizedVariant);
     const iconShadow = hasTextShadow ? ICON_SHADOW : "";
 
     const renderIcon = (visual: ButtonIconType, extraClass = "") => {
@@ -305,10 +343,7 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
     const content = (
       <>
         {isLoading ? (
-          <Spinner
-            size="xs"
-            variant={spinnerVariantMap[variant ?? "primary"]}
-          />
+          <Spinner size="xs" variant={spinnerVariantMap[normalizedVariant]} />
         ) : (
           icon && renderIcon(icon, iconShadow)
         )}
@@ -319,7 +354,7 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
           <Counter
             value={Number(counterValue)}
             variant="primary"
-            size={COUNTER_SIZE_MAP[size]}
+            size={COUNTER_SIZE_MAP[normalizedSize]}
             isInButton={true}
           />
         )}
@@ -328,7 +363,9 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
           <Icon
             visual={ChevronDown}
             size={iconSize}
-            className={variant ? chevronVariantMap[variant] : ""}
+            className={
+              normalizedVariant ? chevronVariantMap[normalizedVariant] : ""
+            }
           />
         )}
       </>
@@ -357,8 +394,8 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
         ref={ref}
         className={cn(
           buttonVariants({
-            variant,
-            size,
+            variant: normalizedVariant,
+            size: normalizedSize,
             isIconOnly,
             press: !isMenuTrigger && !isLoading,
           }),

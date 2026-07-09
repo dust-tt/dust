@@ -60,6 +60,18 @@ const iconButtonVariants = cva(
           "active:text-primary-200",
           "text-background/50"
         ),
+        "highlight-ghost": cn(
+          "text-highlight-500",
+          "hover:text-highlight-400",
+          "active:text-highlight-dark",
+          "text-muted-foreground"
+        ),
+        "warning-ghost": cn(
+          "text-warning-500",
+          "hover:text-warning-400",
+          "active:text-warning-600",
+          "text-muted-foreground"
+        ),
       },
     },
     defaultVariants: {
