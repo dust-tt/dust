@@ -402,8 +402,7 @@ export async function runModel(
     enabledSkills,
     systemSkills,
     equippedSkills,
-    mcpActions,
-    mcpToolsListingError,
+    serverToolsAndInstructions: mcpActions,
   } = await startActiveObservation("resolve-tools", async () => {
     const attachments = await listAttachments(auth, { conversation });
     const jitServers = await getJITServers(auth, {
@@ -430,39 +429,28 @@ export async function runModel(
       skills: [...systemSkills, ...enabledSkills],
     });
 
-    const {
-      serverToolsAndInstructions: mcpActions,
-      error: mcpToolsListingError,
-    } = await startActiveObservation("list-mcp-tools", () =>
-      tryListMCPTools(
-        auth,
-        {
-          agentConfiguration,
-          conversation,
-          agentMessage,
-          clientSideActionConfigurations: clientSideMCPActionConfigurations,
-        },
-        { jitServers, skillServers }
-      )
+    const serverToolsAndInstructions = await startActiveObservation(
+      "list-mcp-tools",
+      () =>
+        tryListMCPTools(
+          auth,
+          {
+            agentConfiguration,
+            conversation,
+            agentMessage,
+            clientSideActionConfigurations: clientSideMCPActionConfigurations,
+          },
+          { jitServers, skillServers }
+        )
     );
 
     return {
       enabledSkills,
       equippedSkills,
       systemSkills,
-      mcpActions,
-      mcpToolsListingError,
+      serverToolsAndInstructions,
     };
   });
-
-  if (mcpToolsListingError) {
-    localLogger.error(
-      {
-        error: mcpToolsListingError,
-      },
-      "Error listing MCP tools."
-    );
-  }
 
   // Filter out ask_user_question when no human is available to answer: origins with no
   // interactive reply surface, or sub-agent runs (conversation depth > 0) where the
@@ -539,7 +527,6 @@ export async function runModel(
     fallbackPrompt,
     model,
     hasAvailableActions: availableActions.length > 0,
-    errorContext: mcpToolsListingError,
     conversation,
     serverToolsAndInstructions: filteredMcpActions,
     systemSkills,

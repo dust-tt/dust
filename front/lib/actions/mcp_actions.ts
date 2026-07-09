@@ -1000,7 +1000,8 @@ export function deduplicateMCPServerConfigurations({
 
 /**
  * List the MCP tools for the given agent actions.
- * Returns MCP tools by connecting to the specified MCP servers.
+ * Returns tools from MCP servers that listed successfully. Listing failures are
+ * logged and omitted from the returned tools.
  */
 export async function tryListMCPTools(
   auth: Authenticator,
@@ -1012,10 +1013,7 @@ export async function tryListMCPTools(
     jitServers: MCPServerConfigurationType[];
     skillServers: MCPServerConfigurationType[];
   }
-): Promise<{
-  serverToolsAndInstructions: ServerToolsAndInstructions[];
-  error?: string;
-}> {
+): Promise<ServerToolsAndInstructions[]> {
   const owner = auth.getNonNullableWorkspace();
 
   const deduplicatedConfigs = deduplicateMCPServerConfigurations({
@@ -1071,9 +1069,21 @@ export async function tryListMCPTools(
           action.mcpServerViewId
         );
         if (!mcpServerView) {
-          return new Err(
-            new Error(`MCP server view not found for ${action.name}`)
+          const error = new Error(
+            `MCP server view not found for ${action.name}`
           );
+          logger.error(
+            {
+              workspaceId: owner.sId,
+              conversationId: agentLoopListToolsContext.conversation.sId,
+              messageId: agentLoopListToolsContext.agentMessage.sId,
+              actionId: action.sId,
+              mcpServerName: action.name,
+              error,
+            },
+            `Error listing tools from MCP server: ${normalizeError(error)}`
+          );
+          return new Err(error);
         }
         connectionParams = makeServerSideMCPConnectionParams(mcpServerView);
       } else {
@@ -1108,14 +1118,7 @@ export async function tryListMCPTools(
             toolsAndInstructionsRes.error
           )}`
         );
-        return new Err(
-          new Error(
-            `An error occurred while listing the available tools for ${action.name}. ` +
-              "Tools from this server are not available for this message. " +
-              `Reason: ${normalizeError(toolsAndInstructionsRes.error).message}. ` +
-              "Inform the user of this issue."
-          )
-        );
+        return new Err(toolsAndInstructionsRes.error);
       }
 
       const { instructions, tools: rawToolsFromServer } =
@@ -1224,26 +1227,7 @@ export async function tryListMCPTools(
     { concurrency: 10 }
   );
 
-  // Aggregate results
-  const { serverToolsAndInstructions, errors } = results.reduce<{
-    serverToolsAndInstructions: ServerToolsAndInstructions[];
-    errors: string[];
-  }>(
-    (acc, result) => {
-      if (result.isOk()) {
-        acc.serverToolsAndInstructions.push(result.value);
-      } else {
-        acc.errors.push(result.error.message);
-      }
-      return acc;
-    },
-    { serverToolsAndInstructions: [], errors: [] }
-  );
-
-  return {
-    serverToolsAndInstructions,
-    error: errors.length > 0 ? errors.join("\n") : undefined,
-  };
+  return results.flatMap((result) => (result.isOk() ? [result.value] : []));
 }
 
 async function listToolsForClientSideMCPServer(
