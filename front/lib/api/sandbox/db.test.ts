@@ -1,4 +1,5 @@
 import {
+  isFuseStatfsMagic,
   isValidPodDatabaseName,
   parseLiveDatabaseNames,
   parseReplicaDatabaseNames,
@@ -53,5 +54,16 @@ describe("pod state helpers", () => {
 
     expect(parseLiveDatabaseNames(findOutput)).toEqual(["chat", "tasks"]);
     expect(parseLiveDatabaseNames("")).toEqual([]);
+  });
+
+  test("recognizes the FUSE statfs magic", () => {
+    expect(isFuseStatfsMagic("65735546")).toBe(true);
+    expect(isFuseStatfsMagic("65735546\n")).toBe(true);
+    expect(isFuseStatfsMagic("65735546 ")).toBe(true);
+
+    // ext4 / overlayfs magics: the underlying directory after a clean unmount.
+    expect(isFuseStatfsMagic("ef53")).toBe(false);
+    expect(isFuseStatfsMagic("794c7630")).toBe(false);
+    expect(isFuseStatfsMagic("")).toBe(false);
   });
 });

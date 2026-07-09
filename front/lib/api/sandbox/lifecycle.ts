@@ -1,4 +1,5 @@
 import { DustFileSystem } from "@app/lib/api/file_system/dust_file_system";
+import { setupPodStateOnColdStart } from "@app/lib/api/sandbox/db";
 import {
   ensureSandboxEgressOnExec,
   prepareSandboxEgressBeforeMount,
@@ -124,6 +125,30 @@ async function ensureOwnerSandboxReady(
         if (refreshResult.isErr()) {
           status = "error";
           return refreshResult;
+        }
+      }
+
+      // Pod state bring-up must run strictly AFTER the mounts (restore reads
+      // through the replica mount) and is awaited: `invoke` awaits
+      // ensurePodSandboxReady, which is what guarantees no function runs
+      // before the restore + daemon start completed. Only runs for pod
+      // owners.
+      if (freshlyCreated && runtimeOwner.kind === "pod") {
+        const podStateResult = await setupPodStateOnColdStart(auth, sandbox);
+        if (podStateResult.isErr()) {
+          // status=running was already committed by ensureActive, and this
+          // block only runs when freshlyCreated — a plain Err would make the
+          // NEXT call take the warm path and happily serve a half-initialized
+          // sandbox (unrestored databases, no litestream daemon). Request a
+          // kill instead: ensureActive's kill-requested branch destroys and
+          // recreates on the next access, re-running this setup from scratch.
+          logger.error(
+            { err: podStateResult.error, sandboxId: sandbox.sId },
+            "Pod state cold start failed — requesting sandbox kill so the next access recreates it."
+          );
+          await sandbox.requestKill();
+          status = "error";
+          return podStateResult;
         }
       }
 

@@ -60,6 +60,14 @@ export type SandboxLifecycleOwner = {
   fetchSandbox: () => Promise<SandboxResource | null>;
 };
 
+// Health check run under the lifecycle lock on a still-running sandbox,
+// before the provider pause/destroy. Ok means the sandbox's durable state is
+// safely flushed. Whether an Err blocks the operation — and how it is logged
+// — is decided per lifecycle entry point.
+export type SandboxPreSleepCheck = (
+  sandbox: SandboxResource
+) => Promise<Result<void, Error>>;
+
 export type SandboxCreateOwner = SandboxLifecycleOwner & {
   createSandbox: (blob: SandboxCreateBlob) => Promise<SandboxResource>;
   envVars: Record<string, string>;
@@ -99,6 +107,18 @@ export class SandboxResource extends BaseResource<SandboxModel> {
         "Failed to delete sandbox egress policy"
       )
     );
+  }
+
+  // No-op when there is no check or the sandbox is not running — a sleeping
+  // or pending_approval sandbox already passed the check when it paused.
+  private static async runPreSleepCheck(
+    beforeSleep: SandboxPreSleepCheck | undefined,
+    sandbox: SandboxResource
+  ): Promise<Result<void, Error>> {
+    if (!beforeSleep || sandbox.status !== "running") {
+      return new Ok(undefined);
+    }
+    return beforeSleep(sandbox);
   }
 
   private static async finalizeDestroyed(
@@ -433,10 +453,15 @@ export class SandboxResource extends BaseResource<SandboxModel> {
    * Ensure a running sandbox exists for the given owner.
    *
    * The provider is resolved internally — callers never touch it.
+   *
+   * `opts.beforeSleep` runs best-effort before the kill-requested
+   * destroy-and-recreate of a still-running sandbox: a failure is logged and
+   * recreation proceeds.
    */
   static async ensureActive(
     auth: Authenticator,
-    owner: SandboxCreateOwner
+    owner: SandboxCreateOwner,
+    opts: { beforeSleep?: SandboxPreSleepCheck } = {}
   ): Promise<Result<EnsureSandboxResult, Error>> {
     assert(
       auth.getNonNullableWorkspace().id !== undefined,
@@ -502,6 +527,21 @@ export class SandboxResource extends BaseResource<SandboxModel> {
           { sandbox: existing.toLogJSON() },
           "Sandbox has killRequestedAt — destroying and recreating."
         );
+        // Best-effort pre-destroy flush. Unlike the reaper's kill sweep this
+        // PROCEEDS on failure: this branch is the user-facing
+        // recovery/rollout path, and refusing to recreate would wedge the pod
+        // behind the very failure (e.g. a dead replica mount) the recreation
+        // fixes.
+        const flushResult = await this.runPreSleepCheck(
+          opts.beforeSleep,
+          existing
+        );
+        if (flushResult.isErr()) {
+          logger.error(
+            { sandbox: existing.toLogJSON(), err: flushResult.error },
+            "Pre-destroy health check failed on kill-requested sandbox — proceeding with recreation."
+          );
+        }
         const destroyResult = await provider.destroy(
           existing.providerId,
           tracingOpts
@@ -637,10 +677,15 @@ export class SandboxResource extends BaseResource<SandboxModel> {
    * Sleep a running sandbox for the given owner. Acquires the lifecycle lock,
    * re-fetches the sandbox inside it, and only sleeps if still running. If the
    * provider reports the sandbox as gone, marks it deleted instead.
+   *
+   * An `opts.beforeSleep` Err aborts the sleep: status stays `running`, so
+   * the reaper retries the check on its next cycle instead of pausing a
+   * sandbox with unreplicated state.
    */
   static async dangerouslySleepIfRunning(
     auth: Authenticator,
-    owner: SandboxLifecycleOwner
+    owner: SandboxLifecycleOwner,
+    opts: { beforeSleep?: SandboxPreSleepCheck } = {}
   ): Promise<Result<void, Error>> {
     return this.withLifecycleLock(owner.lockKey, async (provider) => {
       const sandbox = await owner.fetchSandbox();
@@ -650,6 +695,20 @@ export class SandboxResource extends BaseResource<SandboxModel> {
 
       const ctx = { workspaceId: auth.getNonNullableWorkspace().sId };
       const tracingOpts = { workspaceId: auth.getNonNullableWorkspace().sId };
+
+      const checkResult = await this.runPreSleepCheck(
+        opts.beforeSleep,
+        sandbox
+      );
+      if (checkResult.isErr()) {
+        // Status stays `running`, so the reaper retries the check on its next
+        // cycle instead of pausing a sandbox with unreplicated state.
+        logger.error(
+          { sandbox: sandbox.toLogJSON(), err: checkResult.error },
+          "Sandbox pre-sleep health check failed — not sleeping."
+        );
+        return checkResult;
+      }
 
       const result = await provider.sleep(sandbox.providerId, tracingOpts);
       if (result.isErr()) {
@@ -675,10 +734,13 @@ export class SandboxResource extends BaseResource<SandboxModel> {
    * Pause a running sandbox for tool approval. Calls sleep() on the
    * provider and sets the status to `pending_approval`. Unlike sleep, this
    * status prevents recreation on wake failure (frozen state is unrecoverable).
+   *
+   * An `opts.beforeSleep` Err aborts the pause.
    */
   static async pauseForApproval(
     auth: Authenticator,
-    owner: SandboxLifecycleOwner
+    owner: SandboxLifecycleOwner,
+    opts: { beforeSleep?: SandboxPreSleepCheck } = {}
   ): Promise<Result<void, Error>> {
     return this.withLifecycleLock(owner.lockKey, async (provider) => {
       const sandbox = await owner.fetchSandbox();
@@ -687,6 +749,26 @@ export class SandboxResource extends BaseResource<SandboxModel> {
       }
 
       const ctx = { workspaceId: auth.getNonNullableWorkspace().sId };
+
+      // The health check runs BEFORE the pending_approval DB flip on purpose:
+      // a failure then leaves DB=running + SDK=running (nothing happened),
+      // instead of a pending_approval row for a sandbox that never paused.
+      const checkResult = await this.runPreSleepCheck(
+        opts.beforeSleep,
+        sandbox
+      );
+      if (checkResult.isErr()) {
+        // TODO(@jd 20260730: remove the panic true)
+        logger.error(
+          {
+            sandbox: sandbox.toLogJSON(),
+            err: checkResult.error,
+            panic: true,
+          },
+          "Sandbox pre-sleep health check failed — not pausing for approval."
+        );
+        return checkResult;
+      }
 
       // Flip the DB to `pending_approval` BEFORE the provider sleep.
       // If we slept first and the DB update then failed, we'd be stuck with
@@ -874,10 +956,14 @@ export class SandboxResource extends BaseResource<SandboxModel> {
    * status. Acquires the lifecycle lock, re-fetches the sandbox, and only
    * destroys if it is non-deleted and still has `killRequestedAt`. Treats
    * `SandboxNotFoundError` as success.
+   *
+   * An `opts.beforeSleep` Err skips the destroy for this sweep: the row keeps
+   * its `killRequestedAt`, so the reaper retries next cycle.
    */
   static async dangerouslyDestroyIfKillRequested(
     auth: Authenticator,
-    owner: SandboxLifecycleOwner
+    owner: SandboxLifecycleOwner,
+    opts: { beforeSleep?: SandboxPreSleepCheck } = {}
   ): Promise<Result<void, Error>> {
     return this.withLifecycleLock(owner.lockKey, async (provider) => {
       const sandbox = await owner.fetchSandbox();
@@ -891,6 +977,25 @@ export class SandboxResource extends BaseResource<SandboxModel> {
 
       const ctx = { workspaceId: auth.getNonNullableWorkspace().sId };
       const tracingOpts = { workspaceId: auth.getNonNullableWorkspace().sId };
+
+      // Pre-destroy flush: kill-requested destroys (image rollouts) would
+      // otherwise lose state that never reached its replica.
+      const checkResult = await this.runPreSleepCheck(
+        opts.beforeSleep,
+        sandbox
+      );
+      if (checkResult.isErr()) {
+        // TODO(@jd 20260730: remove the panic true)
+        logger.error(
+          {
+            sandbox: sandbox.toLogJSON(),
+            err: checkResult.error,
+            panic: true,
+          },
+          "Kill-requested destroy: pre-destroy health check failed — skipping destroy this sweep."
+        );
+        return checkResult;
+      }
 
       const result = await provider.destroy(sandbox.providerId, tracingOpts);
       if (result.isErr()) {
