@@ -112,9 +112,9 @@ describe("GET /api/w/:wId/groups", () => {
     expect(response.status).toBe(200);
     const { groups } = await response.json();
 
-    expect(groups.every((g: { kind: string }) => g.kind === "regular")).toBe(
-      true
-    );
+    expect(
+      groups.every((g: { kind: string }) => g.kind === "regular_auto")
+    ).toBe(true);
     const backendGroup = groups.find(
       (g: { name: string }) => g.name === "Backend"
     );
