@@ -155,6 +155,11 @@ export async function checkImageGenerationRateLimit(
   const { limits } = auth.getNonNullablePlan();
   const { maxImagesPerWeek } = limits.capabilities.images;
 
+  // -1 means unlimited: skip the rate limit check entirely.
+  if (maxImagesPerWeek === -1) {
+    return new Ok(undefined);
+  }
+
   const remaining = await rateLimiter({
     key: `${IMAGE_GENERATION_RATE_LIMITER_KEY}_${workspace.sId}`,
     maxPerTimeframe: maxImagesPerWeek,
