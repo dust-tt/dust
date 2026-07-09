@@ -512,9 +512,9 @@ export const GPT_5_4_MINI_MODEL_CONFIG: ModelConfigurationType = {
   largeModel: false,
   description:
     "OpenAI's faster, cost-efficient version of GPT-5.4 for well-defined tasks (400k context).",
-  shortDescription: "OpenAI's latest mini model.",
+  shortDescription: "OpenAI's mini model.",
   isLegacy: false,
-  isLatest: true,
+  isLatest: false,
   generationTokensCount: 128_000,
   supportsVision: true,
   supportedReasoningEfforts: {
@@ -548,7 +548,7 @@ export const GPT_5_4_NANO_MODEL_CONFIG: ModelConfigurationType = {
     "OpenAI's fastest, most cost-efficient version of GPT-5.4 (400k context).",
   shortDescription: "OpenAI's fastest model.",
   isLegacy: false,
-  isLatest: true,
+  isLatest: false,
   generationTokensCount: 128_000,
   supportsVision: true,
   supportedReasoningEfforts: {
