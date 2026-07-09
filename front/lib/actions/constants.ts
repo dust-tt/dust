@@ -60,7 +60,10 @@ export type MCPValidationOutputType = (typeof MCP_VALIDATION_OUTPUTS)[number];
 export type MCPValidationMetadataType = {
   toolName: string;
   mcpServerName: string;
-  agentName: string;
+  // Deprecated (2026-07-09): no longer read by any client. Optional to match the public schema,
+  // but still emitted while already-deployed CLI and extension versions (which require it in
+  // their event schemas) cycle out. Remove from emit sites and schemas then.
+  agentName?: string;
   pubsubMessageId?: string;
   icon?: InternalAllowedIconType | CustomResourceIconType;
   displayedAs?: "agent" | "server";

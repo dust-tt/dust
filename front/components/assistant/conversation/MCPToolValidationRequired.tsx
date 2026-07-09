@@ -234,13 +234,13 @@ export function MCPToolValidationRequired({
     }
     if (toolOverride?.title) {
       return toolOverride.title(
-        blockedAction.metadata.agentName,
+        "agent",
         blockedAction.inputs
       );
     }
     const subject =
       blockedAction.metadata.displayedAs === "agent"
-        ? blockedAction.metadata.agentName
+        ? "agent"
         : blockedAction.metadata.mcpServerName;
     return `Allow ${asDisplayName(subject)} to ${asDisplayName(blockedAction.metadata.toolName)}?`;
   }
@@ -251,7 +251,7 @@ export function MCPToolValidationRequired({
     }
     if (toolOverride?.alwaysAllowLabel) {
       return toolOverride.alwaysAllowLabel(
-        blockedAction.metadata.agentName,
+        "agent",
         blockedAction.inputs
       );
     }
@@ -269,7 +269,7 @@ export function MCPToolValidationRequired({
         }
         return JSON.stringify(value);
       });
-    return `Always allow @${blockedAction.metadata.agentName} to ${asDisplayName(blockedAction.metadata.toolName)} ${
+    return `Always allow @agent to ${asDisplayName(blockedAction.metadata.toolName)} ${
       argValues.length > 0
         ? ` for the following parameters: ${argValues.join(", ")}`
         : ""

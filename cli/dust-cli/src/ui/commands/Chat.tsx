@@ -433,7 +433,7 @@ const CliChat: FC<CliChatProps> = ({
       // For low stake tools, check cache first
       if (event.stake === "low") {
         const cachedApproval = await toolsCache.getCachedApproval({
-          agentName: event.metadata.agentName,
+          agentName: "agent",
           mcpServerName: event.metadata.mcpServerName,
           toolName: event.metadata.toolName,
         });
@@ -490,7 +490,7 @@ const CliChat: FC<CliChatProps> = ({
         // Cache the approval if requested and it's a low stake tool
         if (cacheApproval && pendingApproval.stake === "low") {
           await toolsCache.setCachedApproval({
-            agentName: pendingApproval.metadata.agentName,
+            agentName: "agent",
             mcpServerName: pendingApproval.metadata.mcpServerName,
             toolName: pendingApproval.metadata.toolName,
           });
@@ -2055,7 +2055,7 @@ const CliChat: FC<CliChatProps> = ({
                   : inlineSelector.mode === "approval" &&
                       pendingApproval &&
                       pendingApproval.type === "tool_approve_execution"
-                    ? `Tool Approval Required: ${pendingApproval.metadata.agentName} wants to use ${pendingApproval.metadata.toolName}, what do you want to do? `
+                    ? `Tool Approval Required: agent wants to use ${pendingApproval.metadata.toolName}, what do you want to do? `
                     : inlineSelector.mode === "diff" && pendingDiffApproval
                       ? `Changes Preview: ${pendingDiffApproval.filePath} `
                       : mentionPrefix

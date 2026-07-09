@@ -1305,7 +1305,9 @@ const MCPStakeLevelSchema = z
   .optional();
 
 const MCPValidationMetadataSchema = z.object({
-  agentName: z.string(),
+  // Deprecated (2026-07-09): no longer read by clients, will stop being sent once old clients
+  // have cycled out.
+  agentName: z.string().optional(),
   icon: z
     .union([MCPInternalActionIconSchema, MCPExternalActionIconSchema])
     .optional(),
