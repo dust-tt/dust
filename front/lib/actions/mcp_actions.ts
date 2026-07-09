@@ -959,16 +959,6 @@ export async function disambiguateServerNamesBySpace(
  * Deduplicates MCP server configurations by view ID and name.
  * Priority order: agent actions > client-side > skill servers > JIT servers.
  */
-function getMCPServerConfigurationDeduplicationKey(
-  config: MCPServerConfigurationType
-): string {
-  const viewId = isServerSideMCPServerConfiguration(config)
-    ? config.mcpServerViewId
-    : config.clientSideMcpServerId;
-
-  return `${viewId}:${slugify(config.name)}`;
-}
-
 export function deduplicateMCPServerConfigurations({
   agentActions,
   clientSideActions,
@@ -987,7 +977,10 @@ export function deduplicateMCPServerConfigurations({
     ...skillServers,
     ...jitServers,
   ].filter((config) => {
-    const key = getMCPServerConfigurationDeduplicationKey(config);
+    const viewId = isServerSideMCPServerConfiguration(config)
+      ? config.mcpServerViewId
+      : config.clientSideMcpServerId;
+    const key = `${viewId}:${slugify(config.name)}`;
 
     if (seen.has(key)) {
       return false;
@@ -1025,19 +1018,15 @@ export async function tryListMCPTools(
     skillServers,
     jitServers,
   });
-  const nonSkillServerKeys = new Set(
-    [
-      ...agentLoopListToolsContext.agentConfiguration.actions,
-      ...(agentLoopListToolsContext.clientSideActionConfigurations ?? []),
-    ].map(getMCPServerConfigurationDeduplicationKey)
+  const nonSkillServers = [
+    ...agentLoopListToolsContext.agentConfiguration.actions,
+    ...(agentLoopListToolsContext.clientSideActionConfigurations ?? []),
+    ...jitServers,
+  ];
+  const isSkillServerConfig = deduplicatedConfigs.map(
+    (config) =>
+      skillServers.includes(config) && !nonSkillServers.includes(config)
   );
-  const skillServerKeys = new Set(
-    skillServers.map(getMCPServerConfigurationDeduplicationKey)
-  );
-  const isSkillServerConfig = deduplicatedConfigs.map((config) => {
-    const key = getMCPServerConfigurationDeduplicationKey(config);
-    return skillServerKeys.has(key) && !nonSkillServerKeys.has(key);
-  });
 
   const mcpServerActions = await disambiguateServerNamesBySpace(
     auth,
