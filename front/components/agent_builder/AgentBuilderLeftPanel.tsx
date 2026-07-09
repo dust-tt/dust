@@ -9,6 +9,7 @@ import {
   BarFooter,
   BarHeader,
   Button,
+  cn,
   ScrollArea,
   XClose,
 } from "@dust-tt/sparkle";
@@ -89,26 +90,33 @@ export function AgentBuilderLeftPanel({
           />
         </div>
       </ScrollArea>
-      {hasUnsavedChanges && (
-        <BarFooter
-          variant="default"
-          className="justify-between"
-          leftActions={
-            <Button
-              variant="outline"
-              label="Cancel"
-              onClick={handleCancel}
-              type="button"
-            />
-          }
-          rightActions={
-            <BarFooter.ButtonBar
-              variant="validate"
-              saveButtonProps={saveButtonProps}
-            />
-          }
-        />
-      )}
+      <div
+        className={cn(
+          "grid shrink-0 transition-[grid-template-rows] duration-300 ease-in-out",
+          hasUnsavedChanges ? "grid-rows-[1fr]" : "grid-rows-[0fr]"
+        )}
+      >
+        <div className="overflow-hidden">
+          <BarFooter
+            variant="default"
+            className="justify-between"
+            leftActions={
+              <Button
+                variant="outline"
+                label="Cancel"
+                onClick={handleCancel}
+                type="button"
+              />
+            }
+            rightActions={
+              <BarFooter.ButtonBar
+                variant="validate"
+                saveButtonProps={saveButtonProps}
+              />
+            }
+          />
+        </div>
+      </div>
     </div>
   );
 }
