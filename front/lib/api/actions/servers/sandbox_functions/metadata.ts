@@ -172,8 +172,9 @@ export const SANDBOX_FUNCTIONS_TOOLS_METADATA = createToolsRecord({
     description:
       "Apply a pod database's drizzle schema file to its live SQLite file with additive DDL " +
       "only, creating the database on first claim. Destructive changes are rejected with the " +
-      "additive migration path. Use it after editing a databases/{db}.db.ts schema file; " +
-      "publishing a function that declares the database runs the same reconcile.",
+      "additive migration path. This is the only way schema changes reach a live database — " +
+      "publish validates schema files but never applies them — so run it after editing a " +
+      "databases/{db}.db.ts schema file.",
     schema: {
       database: z
         .string()

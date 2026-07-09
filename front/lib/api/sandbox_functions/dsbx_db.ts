@@ -181,8 +181,9 @@ const RECONCILE_LOCK_ACQUIRE_TIMEOUT_MS = 30_000;
 
 /**
  * Resolve a model-supplied scoped schema-file path (e.g. `pod-{id}/databases/chat.db.ts`) to
- * its in-sandbox path and reconcile the database against it — the same gate publish runs for
- * each declared database, serialized with publishes under the pod's publish lock.
+ * its in-sandbox path and reconcile the database against it. This is the ONLY path that
+ * applies schema changes to a live database (publish validates but never applies); concurrent
+ * reconciles of one pod are serialized under a per-pod lock.
  */
 export async function reconcileDatabaseFromPodPath(
   auth: Authenticator,
@@ -206,7 +207,7 @@ export async function reconcileDatabaseFromPodPath(
   }
   try {
     return await executeWithLock(
-      `sandbox_function:publish:${space.sId}`,
+      `sandbox_function:db_reconcile:${space.sId}`,
       async () =>
         reconcileDatabaseOnSandbox(auth, {
           space,
@@ -221,7 +222,7 @@ export async function reconcileDatabaseFromPodPath(
       return new Err(
         new SandboxFunctionError(
           "publish_conflict",
-          `A publish or reconcile is in progress for this pod; retry shortly. (${err.message})`
+          `Another reconcile is in progress for this pod; retry shortly. (${err.message})`
         )
       );
     }
