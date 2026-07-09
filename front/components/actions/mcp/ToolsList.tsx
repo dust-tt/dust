@@ -85,7 +85,14 @@ function ToolItem({
         </h4>
       </div>
       {tool.description && (
-        <p className="text-sm text-muted-foreground">{tool.description}</p>
+        <Collapsible>
+          <CollapsibleTrigger label="Description" variant="secondary" />
+          <CollapsibleContent>
+            <p className="whitespace-pre-wrap break-words pt-1 text-sm text-muted-foreground">
+              {tool.description}
+            </p>
+          </CollapsibleContent>
+        </Collapsible>
       )}
       {toolEnabled && (
         <Card variant="primary" className="flex-col">
