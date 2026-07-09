@@ -15,6 +15,13 @@ export type PricingEntry = {
 // This record contains all static model IDs. Custom models use default pricing.
 const CURRENT_MODEL_PRICING: Record<StaticModelIdType, PricingEntry> = {
   // https://openai.com/api/pricing
+  "gpt-5.6-sol": {
+    input: 5.0,
+    output: 30.0,
+    cache_creation_input_tokens: 6.25,
+    cache_read_input_tokens: 0.5,
+  },
+  // https://openai.com/api/pricing
   "gpt-5.5": {
     input: 5.0,
     output: 30.0,
