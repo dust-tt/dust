@@ -1,5 +1,6 @@
-// Rejection fixture: two primary-key declarations on one table (column-level .primaryKey()
-// plus table-level primaryKey()). SQLite allows a single PRIMARY KEY per table.
+// Apply-failure fixture: two primary-key declarations on one table (column-level
+// .primaryKey() plus table-level primaryKey()). SQLite allows a single PRIMARY KEY per table
+// and refuses the CREATE TABLE at apply.
 import {
   integer,
   primaryKey,
