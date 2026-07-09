@@ -484,4 +484,53 @@ describe("GroupPermissionResource", () => {
       expect(await group.isMember(user2)).toBe(true);
     });
   });
+
+  describe("grantToEverybody / revokeFromEverybody", () => {
+    it("grants and revokes an instance-level permission on the global group", async () => {
+      const globalGroup = await GroupResource.internalFetchWorkspaceGlobalGroup(
+        workspace.id
+      );
+      if (!globalGroup) {
+        throw new Error("global group should exist");
+      }
+
+      await GroupPermissionResource.grantToEverybody(auth, {
+        permissionType: "read",
+        resourceType: "space",
+        resourceId: 42,
+      });
+
+      const grants = await GroupPermissionResource.listForGroups(auth, {
+        groupModelIds: [globalGroup.id],
+        permissionType: "read",
+        resourceType: "space",
+        resourceId: 42,
+      });
+      expect(grants).toHaveLength(1);
+
+      await GroupPermissionResource.revokeFromEverybody(auth, {
+        permissionType: "read",
+        resourceType: "space",
+        resourceId: 42,
+      });
+      expect(
+        await GroupPermissionResource.listForGroups(auth, {
+          groupModelIds: [globalGroup.id],
+          permissionType: "read",
+          resourceType: "space",
+          resourceId: 42,
+        })
+      ).toHaveLength(0);
+    });
+
+    it("rejects type-wide grants", async () => {
+      await expect(
+        GroupPermissionResource.grantToEverybody(auth, {
+          permissionType: "create",
+          resourceType: "agent",
+          resourceId: -1,
+        })
+      ).rejects.toThrow(/instance-level/);
+    });
+  });
 });
