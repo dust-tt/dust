@@ -19,6 +19,7 @@ export const GPT_5_2_MODEL_ID = "gpt-5.2" as const;
 export const GPT_5_4_MODEL_ID = "gpt-5.4" as const;
 export const GPT_5_5_MODEL_ID = "gpt-5.5" as const;
 export const GPT_5_6_SOL_MODEL_ID = "gpt-5.6-sol" as const;
+export const GPT_5_6_TERRA_MODEL_ID = "gpt-5.6-terra" as const;
 export const GPT_5_4_MINI_MODEL_ID = "gpt-5.4-mini" as const;
 export const GPT_5_4_NANO_MODEL_ID = "gpt-5.4-nano" as const;
 export const GPT_5_MINI_MODEL_ID = "gpt-5-mini" as const;
@@ -442,6 +443,42 @@ export const GPT_5_6_SOL_MODEL_CONFIG: ModelConfigurationType = {
   description:
     "OpenAI's GPT 5.6 Sol model for complex reasoning, coding, and agentic tasks (1M context).",
   shortDescription: "OpenAI's latest flagship model.",
+  isLegacy: false,
+  isLatest: true,
+  generationTokensCount: 128_000,
+  supportsVision: true,
+  supportedReasoningEfforts: {
+    none: true,
+    light: true,
+    medium: true,
+    high: true,
+  },
+  defaultReasoningEffort: "medium",
+  useNativeLightReasoning: true,
+  supportsResponseFormat: true,
+  supportsBatchProcessing: true,
+  formattingMetaPrompt: OPENAI_FORMATTING_META_PROMPT,
+  toolUseMetaPrompt: OPENAI_TOOL_USE_META_PROMPT,
+  tokenizer: { type: "tiktoken", base: "r50k_base" },
+  regionalAvailability: {
+    "us-central1": true,
+    "europe-west1": true,
+  },
+};
+// https://openai.com/index/previewing-gpt-5-6-sol/
+// gpt-5.6-terra is the balanced, lower-cost sibling of gpt-5.6-sol; same
+// reasoning abstraction mapping as gpt-5.6-sol.
+export const GPT_5_6_TERRA_MODEL_CONFIG: ModelConfigurationType = {
+  providerId: "openai",
+  modelId: GPT_5_6_TERRA_MODEL_ID,
+  displayName: "GPT 5.6 Terra",
+  contextSize: 1_000_000,
+  recommendedTopK: 32,
+  recommendedExhaustiveTopK: 64,
+  largeModel: true,
+  description:
+    "OpenAI's GPT 5.6 Terra model, a balanced option for everyday reasoning, coding, and agentic tasks (1M context).",
+  shortDescription: "OpenAI's balanced model.",
   isLegacy: false,
   isLatest: true,
   generationTokensCount: 128_000,
