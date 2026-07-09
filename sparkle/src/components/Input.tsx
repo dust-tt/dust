@@ -67,7 +67,7 @@ const innerInputVariants = cva(
   cn(
     "h-full w-full min-w-0 flex-1 border-0 bg-transparent outline-hidden",
     // <input> does not inherit typography from its wrapper by default.
-    "font-sans font-medium text-inherit",
+    "font-sans text-inherit",
     "text-foreground",
     "placeholder:text-faint",
     "disabled:cursor-not-allowed disabled:text-faint"
@@ -75,9 +75,9 @@ const innerInputVariants = cva(
   {
     variants: {
       size: {
-        xs: "px-2",
-        sm: "px-3",
-        md: "px-3",
+        xs: "px-2 text-xs",
+        sm: "px-3 text-sm",
+        md: "px-3 text-sm",
       },
     },
     defaultVariants: {
