@@ -53,10 +53,7 @@ makeScript({}, async (_args, logger) => {
     ].join("\n");
   });
 
-  logger.info(
-    { count: lines.length, workspaceId: WORKSPACE_ID },
-    `Agent 2D projection\n\n${lines.join("\n\n")}\n`
-  );
+  console.log(`Agent 2D projection\n\n${lines.join("\n\n")}\n`);
 
   const score = computeGroupingScore(coordinatesByAgentId);
   const nameOf = (sId: string): string => agentById.get(sId)?.name ?? sId;
@@ -68,12 +65,7 @@ makeScript({}, async (_args, logger) => {
     )
     .join("\n");
 
-  logger.info(
-    {
-      silhouette: score.silhouette,
-      meanIntraGroupDistance: score.intra,
-      meanInterGroupDistance: score.inter,
-    },
+  console.log(
     [
       "Grouping score (higher silhouette = better separated groups, range [-1, 1])",
       `  mean silhouette:            ${score.silhouette.toFixed(4)}`,

@@ -13,7 +13,7 @@ import OpenAI from "openai";
 // Using the smaller/cheaper OpenAI embedder. text-embedding-3-small natively
 // outputs 1536 dimensions.
 const EMBEDDING_MODEL = "text-embedding-3-small";
-const EMBEDDING_DIMENSIONS = 1536;
+const EMBEDDING_DIMENSIONS = 1024;
 
 // PCA needs at least 2 samples to project onto 2 components.
 const MIN_AGENTS_FOR_PROJECTION = 2;
