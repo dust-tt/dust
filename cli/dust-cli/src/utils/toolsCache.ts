@@ -7,7 +7,6 @@ interface ToolsCacheOptions {
 }
 
 type ToolsCacheKeyParams = {
-  agentName: string;
   mcpServerName: string;
   toolName: string;
 };
@@ -58,15 +57,13 @@ export class ToolsCache {
   }
 
   private createToolKey({
-    agentName,
     mcpServerName,
     toolName,
   }: ToolsCacheKeyParams): string {
-    return `${agentName}:${mcpServerName}:${toolName}`;
+    return `${mcpServerName}:${toolName}`;
   }
 
   public async getCachedApproval({
-    agentName,
     mcpServerName,
     toolName,
   }: ToolsCacheKeyParams): Promise<boolean | null> {
@@ -82,12 +79,11 @@ export class ToolsCache {
   }
 
   public async setCachedApproval({
-    agentName,
     mcpServerName,
     toolName,
   }: ToolsCacheKeyParams): Promise<void> {
     const cache = await this.loadCache();
-    const toolKey = this.createToolKey({ agentName, mcpServerName, toolName });
+    const toolKey = this.createToolKey({ mcpServerName, toolName });
     await this.saveCache([...cache, toolKey]);
   }
 
