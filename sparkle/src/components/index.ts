@@ -200,7 +200,8 @@ export type {
 export {
   BUTTON_SIZES as NEW_BUTTON_SIZES,
   BUTTON_VARIANTS as NEW_BUTTON_VARIANTS,
-  buttonVariants as newButtonVariants,
+  NewButton,
+  newButtonVariants,
 } from "./NewButton";
 export type { NewInputProps, NewInputSizeType } from "./NewInput";
 export { NEW_INPUT_SIZES, NewInput } from "./NewInput";
