@@ -170,6 +170,7 @@ app.post(
       reactions: [],
       costCredits: null,
       resolvedModel: null,
+      modelResolutionMethod: null,
     };
 
     const { serverToolsAndInstructions, error: mcpToolsListingError } =
