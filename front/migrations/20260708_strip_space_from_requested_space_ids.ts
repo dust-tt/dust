@@ -37,38 +37,55 @@ async function stripFromTable(
   execute: boolean,
   logger: Logger
 ): Promise<void> {
-  const [{ count }] = await frontSequelize.query<CountRow>(
-    `SELECT COUNT(*) AS count
-     FROM "${table}"
-     WHERE ${referencesTargetSpaces(spaceIdsLiteral)}`,
-    { type: QueryTypes.SELECT }
-  );
-  const affected = Number(count);
+  if (!execute) {
+    const [{ count }] = await frontSequelize.query<CountRow>(
+      `SELECT COUNT(*) AS count
+       FROM "${table}"
+       WHERE ${referencesTargetSpaces(spaceIdsLiteral)}`,
+      { type: QueryTypes.SELECT }
+    );
+    const affected = Number(count);
 
-  if (affected === 0) {
-    logger.info({ table }, "No rows reference the target spaces, skipping");
+    if (affected === 0) {
+      logger.info({ table }, "No rows reference the target spaces, skipping");
+    } else {
+      logger.info(
+        { table, affected },
+        "Would strip target spaces from requestedSpaceIds"
+      );
+    }
     return;
   }
 
-  if (!execute) {
+  await frontSequelize.transaction(async (transaction) => {
+    // Lock the matching rows so their requestedSpaceIds cannot change between
+    // the count and the update.
+    const locked = await frontSequelize.query<{ id: string }>(
+      `SELECT id
+       FROM "${table}"
+       WHERE ${referencesTargetSpaces(spaceIdsLiteral)}
+       FOR UPDATE`,
+      { type: QueryTypes.SELECT, transaction }
+    );
+    const affected = locked.length;
+
+    if (affected === 0) {
+      logger.info({ table }, "No rows reference the target spaces, skipping");
+      return;
+    }
+
+    await frontSequelize.query(
+      `UPDATE "${table}"
+       SET "requestedSpaceIds" = ${requestedSpaceIdsWithoutTargets(spaceIdsLiteral)}
+       WHERE ${referencesTargetSpaces(spaceIdsLiteral)}`,
+      { type: QueryTypes.UPDATE, transaction }
+    );
+
     logger.info(
       { table, affected },
-      "Would strip target spaces from requestedSpaceIds"
+      "Stripped target spaces from requestedSpaceIds"
     );
-    return;
-  }
-
-  await frontSequelize.query(
-    `UPDATE "${table}"
-     SET "requestedSpaceIds" = ${requestedSpaceIdsWithoutTargets(spaceIdsLiteral)}
-     WHERE ${referencesTargetSpaces(spaceIdsLiteral)}`,
-    { type: QueryTypes.UPDATE }
-  );
-
-  logger.info(
-    { table, affected },
-    "Stripped target spaces from requestedSpaceIds"
-  );
+  });
 }
 
 makeScript(
