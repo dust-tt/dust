@@ -744,7 +744,7 @@ export class WakeUpResource extends BaseResource<WakeUpModel> {
       where: {
         id: ids,
         workspaceId: auth.getNonNullableWorkspace().id,
-      } as WhereOptions<WakeUpModel>,
+      },
       transaction,
     });
   }
