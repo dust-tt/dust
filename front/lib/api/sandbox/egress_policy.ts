@@ -189,10 +189,10 @@ export async function readOwnerPolicy(
 // agent tool's exact-domain appends — wildcard entries such as
 // `*.github.com` are supported, and there is no domain-count cap (also
 // mirroring the workspace policy). Note the asymmetry with
-// addOwnerPolicyDomain, which caps at SANDBOX_POLICY_MAX_DOMAINS: if the
-// add_egress_domain tool is ever enabled on pod sandboxes, an admin list
-// over the cap would make every tool append fail — reconcile the two limits
-// then.
+// addOwnerPolicyDomain, which caps at SANDBOX_POLICY_MAX_DOMAINS and writes
+// the same pod files (tool approvals from a Pod's conversations are
+// Pod-scoped): an admin list over the cap makes every tool append in that
+// Pod fail its cap check.
 export async function writeOwnerPolicy(
   auth: Authenticator,
   ownerId: string,
@@ -235,13 +235,12 @@ export async function addOwnerPolicyDomain(
     return new Err(currentPolicy.error);
   }
 
-  // Exact-string membership is enough today: this function is the only
-  // writer of conversation owner files, and it only ever appends exact
-  // domains. If another writer starts putting wildcard entries in a file the
-  // tool also appends to (e.g. enabling the add_egress_domain tool on pod
-  // sandboxes, whose files are admin-managed), this check must become
-  // wildcard-aware or users will be prompted for domains a wildcard already
-  // covers.
+  // Exact-string membership on purpose. Pod files mix writers (admin-managed
+  // entries, possibly wildcards, plus tool appends from the Pod's
+  // conversations), so a domain covered by an admin wildcard still re-prompts
+  // for approval and lands as a redundant exact entry. Accepted: it matches
+  // the existing behavior for workspace-wildcard-covered domains in normal
+  // conversations, and a redundant exact entry is harmless.
   const alreadyAllowed = currentPolicy.value.allowedDomains.includes(
     parsedDomain.value
   );

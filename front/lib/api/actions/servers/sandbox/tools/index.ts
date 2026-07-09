@@ -511,10 +511,16 @@ export async function addEgressDomainTool(
     return new Err(new MCPError(parsed.error.message));
   }
 
-  // Keyed by the conversation: approvals persist for the conversation's
-  // lifetime, across sandbox destroy/recreate cycles.
+  // Approvals write to the sandbox's egress policy owner file. For a normal
+  // conversation that is the conversation itself (approvals persist for the
+  // conversation's lifetime, across sandbox destroy/recreate cycles). For a
+  // conversation inside a Pod it is the POD: pod network settings are shared,
+  // so the approval applies to every conversation in the Pod and the Pod's
+  // shared sandbox. Interim v0 behavior (internal-only, FF-gated) pending the
+  // approval-governance decision.
+  const egressPolicyOwnerId = conversation.spaceId ?? conversation.sId;
   const result = await addOwnerPolicyDomain(auth, {
-    ownerId: conversation.sId,
+    ownerId: egressPolicyOwnerId,
     domain: parsed.value,
   });
   if (result.isErr()) {
@@ -543,13 +549,19 @@ export async function addEgressDomainTool(
     },
   });
 
+  const isPodScoped = conversation.spaceId !== null;
   const text =
     result.value.addedDomain !== null
       ? `Allowed: ${result.value.addedDomain}\n` +
-        "The change applies to this conversation and persists across " +
-        "sandbox restarts."
+        (isPodScoped
+          ? "The change applies to this whole Pod — every conversation in it " +
+            "and the Pod's shared sandbox — and persists across sandbox restarts."
+          : "The change applies to this conversation and persists across " +
+            "sandbox restarts.")
       : `Already allowed: ${parsed.value}\n` +
-        "No change made; this domain was already in the conversation's allowlist.";
+        (isPodScoped
+          ? "No change made; this domain was already in the Pod's allowlist."
+          : "No change made; this domain was already in the conversation's allowlist.");
 
   return new Ok([{ type: "text" as const, text }]);
 }
