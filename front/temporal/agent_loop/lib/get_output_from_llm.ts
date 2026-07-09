@@ -241,6 +241,7 @@ export async function getOutputFromLLMStream(
     toolSearchEnabled,
     disableToolUse,
     cacheDiagnosticsEnabled,
+    isDustLikeAgent,
     specifications,
     flushParserTokens,
     contentParser,
@@ -528,6 +529,7 @@ export async function getOutputFromLLMStream(
             const reasonTags = [
               `model_id:${model.modelId}`,
               `reason:${cacheMissReason.type}`,
+              `is_dust_like_agent:${isDustLikeAgent}`,
             ];
             // Count: how often each reason occurs.
             getStatsDClient().increment(
