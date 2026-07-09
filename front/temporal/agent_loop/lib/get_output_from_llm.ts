@@ -1,4 +1,4 @@
-import { isDustLikeAgent } from "@app/lib/api/assistant/global_agents/global_agents";
+import { isDustLikeAgent } from "@app/lib/api/assistant/global_agents/prompt_context";
 import {
   getPreviousMessageId,
   setPreviousMessageId,
