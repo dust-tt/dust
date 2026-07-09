@@ -14,6 +14,7 @@ import type { FeedbackSelectorBaseProps } from "@app/components/assistant/conver
 import { FeedbackSelector } from "@app/components/assistant/conversation/FeedbackSelector";
 import { useAutoOpenFilesPanel } from "@app/components/assistant/conversation/files_panel/useAutoOpenFilesPanel";
 import { useGenerationContext } from "@app/components/assistant/conversation/GenerationContextProvider";
+import { getModelWithReasoningEffortLabel } from "@app/components/assistant/conversation/input_bar/modelPickerUtils";
 import { useAutoOpenInteractiveContent } from "@app/components/assistant/conversation/interactive_content/useAutoOpenInteractiveContent";
 import type {
   AgentMessageStateWithControlEvent,
@@ -65,7 +66,7 @@ import { useAuth, useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { clientFetch } from "@app/lib/egress/client";
 import type { DustError } from "@app/lib/error";
 import { FILE_ID_PATTERN } from "@app/lib/files";
-import { getResolvedModelLabel } from "@app/lib/llms/model_configurations";
+import { getSupportedModelConfig } from "@app/lib/llms/model_configurations";
 import { getFilePreviewDirectivePaths } from "@app/lib/markdown/file_preview";
 import { extractFromString } from "@app/lib/mentions/format";
 import { useUnifiedAgentConfigurations } from "@app/lib/swr/assistants";
@@ -1050,12 +1051,17 @@ export function AgentMessage({
     canShowAgentConversationActions(agentConfiguration.sId);
   const isArchived = agentConfiguration.status === "archived";
 
-  // When this message ran on a per-message model picked from the input-bar
-  // picker (rather than the agent's preset or an auto resolution), surface the
-  // model next to the agent name (e.g. "Dust with GPT-5.5 Light").
-  const perMessageModelLabel =
+  const perMessageModel =
     agentMessage.modelResolutionMethod === "user" && agentMessage.resolvedModel
-      ? getResolvedModelLabel(agentMessage.resolvedModel)
+      ? getSupportedModelConfig(agentMessage.resolvedModel)
+      : null;
+  const perMessageModelLabel =
+    perMessageModel && agentMessage.resolvedModel
+      ? getModelWithReasoningEffortLabel({
+          kind: "model",
+          model: perMessageModel,
+          effort: agentMessage.resolvedModel.reasoningEffort,
+        })
       : null;
 
   const renderName = useCallback(

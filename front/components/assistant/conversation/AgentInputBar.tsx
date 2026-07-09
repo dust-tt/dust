@@ -104,8 +104,6 @@ export const AgentInputBar = ({ context }: AgentInputBarProps) => {
         m.visibility !== "deleted"
     );
 
-  // Model the current user's previous message ran on, used to derive the model
-  // picker's default so a follow-up keeps the last model.
   const lastRequestedModel = lastUserMessage?.requestedModel ?? null;
 
   // Last agent mentioned by anyone in the conversation. Computed outside useMemo so the
