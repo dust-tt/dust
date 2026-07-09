@@ -2,8 +2,10 @@ import type { AgentModelConfigurationType } from "@app/types/assistant/agent";
 import { SUPPORTED_MODEL_CONFIGS } from "@app/types/assistant/models/models";
 import type {
   ModelConfigurationType,
+  ResolvedRequestedModel,
   SupportedModel,
 } from "@app/types/assistant/models/types";
+import capitalize from "lodash/capitalize";
 
 /**
  * Lazy-loaded cache for model configurations.
@@ -45,6 +47,24 @@ export function getSupportedModelConfig(
   );
 
   return config ?? null;
+}
+
+/**
+ * Human-readable label for a resolved model triplet (e.g. "GPT-5.5 Light"),
+ * matching the input-bar picker's labels. Returns null when the model is not
+ * known to this client build.
+ */
+export function getResolvedModelLabel(
+  resolvedModel: ResolvedRequestedModel
+): string | null {
+  const config = getSupportedModelConfig(resolvedModel);
+  if (!config) {
+    return null;
+  }
+  if (resolvedModel.reasoningEffort === "none") {
+    return config.displayName;
+  }
+  return `${config.displayName} ${capitalize(resolvedModel.reasoningEffort)}`;
 }
 
 /**

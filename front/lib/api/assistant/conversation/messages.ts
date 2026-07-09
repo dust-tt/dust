@@ -587,6 +587,7 @@ export const createAgentMessages = async (
             reactions: [],
             costCredits: null,
             resolvedModel: resolvedModelFromAgentMessageRow(agentMessageRow),
+            modelResolutionMethod: agentMessageRow.modelResolutionMethod,
           };
         }
       }

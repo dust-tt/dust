@@ -140,6 +140,7 @@ describe("renderAllMessages", () => {
             reactions: [],
             costCredits: null,
             resolvedModel: null,
+            modelResolutionMethod: null,
           } satisfies AgentMessageType,
         ];
       }

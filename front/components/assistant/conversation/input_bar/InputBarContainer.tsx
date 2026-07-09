@@ -206,6 +206,9 @@ export interface InputBarContainerProps {
   } | null;
   defaultAgentId?: string | null;
   isDefaultAgentLoading?: boolean;
+  // Model the current user's previous message ran on, used to derive the model
+  // picker's default. Null in a new conversation.
+  lastRequestedModel?: ModelSelectionType | null;
   // Skills pre-inserted into a new conversation's editor, as if manually added.
   defaultSkills?: DefaultSkillReference[];
   isDefaultSkillsLoading?: boolean;
@@ -264,6 +267,7 @@ const InputBarContainer = ({
   getDraft,
   defaultAgentId,
   isDefaultAgentLoading,
+  lastRequestedModel = null,
   defaultSkills,
   isDefaultSkillsLoading,
   isAgentBuilder = false,
@@ -1658,6 +1662,7 @@ const InputBarContainer = ({
                       hideCapabilities={hideCapabilities}
                       isDefaultAgentUnavailable={isDefaultAgentUnavailable}
                       isInputDisabled={disableInput}
+                      lastRequestedModel={lastRequestedModel}
                       onAgentRemove={() => setSelectedSingleAgent(null)}
                       onMCPServerViewSelect={onMCPServerViewSelect}
                       onModelSelectionChange={onModelSelectionChange}

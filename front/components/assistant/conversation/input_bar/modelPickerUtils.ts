@@ -1,4 +1,6 @@
+import type { AgentModelConfigurationType } from "@app/types/assistant/agent";
 import { CLAUDE_SONNET_4_6_MODEL_ID } from "@app/types/assistant/models/anthropic";
+import { AUTO_MODEL_ID } from "@app/types/assistant/models/auto";
 import { GPT_5_5_MODEL_ID } from "@app/types/assistant/models/openai";
 import type {
   ModelConfigurationType,
@@ -77,9 +79,19 @@ export interface ProviderGroup {
   models: { model: ModelConfigurationType; efforts: ReasoningEffort[] }[];
 }
 
-export type Selection =
+// A selection the user can actively make in the picker: either "Auto" or a
+// concrete model + effort.
+export type UserModelSelection =
   | { kind: "auto" }
   | { kind: "model"; model: ModelConfigurationType; effort: ReasoningEffort };
+
+// What the picker shows. On top of the user-pickable options, the derived
+// default can be the addressed agent's own configured model ("agent"): it
+// renders like a concrete model but is sent as *no* override, so the agent runs
+// its configured model and the resolution stays attributed to the agent.
+export type Selection =
+  | UserModelSelection
+  | { kind: "agent"; model: ModelConfigurationType; effort: ReasoningEffort };
 
 // The list body is a small state machine: hidden while Auto is on, then a
 // loading / empty / search-results / browse view depending on the models
@@ -125,12 +137,25 @@ export function getModelWithReasoningEffortLabel(selection: Selection): string {
   return `${model.displayName} ${capitalize(effort)}`;
 }
 
-// Converts the picker's local selection into the API model selection
+// Converts the picker's shown selection into the API model selection sent with
+// the message. See `Selection` above for why each kind maps the way it does.
 export function toModelSelection(
   selection: Selection
 ): ModelSelectionType | undefined {
   switch (selection.kind) {
     case "auto":
+      // Explicit auto override, so the backend routes through the auto model
+      // even when the addressed agent's own configured model is not auto.
+      // "none" is the auto model's only supported effort and keeps the value
+      // round-trippable (so a reload re-derives "Auto" from the stored request).
+      return {
+        providerId: AUTO_MODEL_ID,
+        modelId: AUTO_MODEL_ID,
+        reasoningEffort: "none",
+      };
+    case "agent":
+      // The picker shows the agent's own configured model as its default: send
+      // no override so the agent runs its configured model.
       return undefined;
     case "model":
       return {
@@ -142,4 +167,80 @@ export function toModelSelection(
       assertNeverAndIgnore(selection);
       return undefined;
   }
+}
+
+// Reasoning effort for a resolved model: honor the requested effort when the
+// model supports it, otherwise the model's default (or its first selectable
+// effort). Effort is never defaulted independently of the model.
+function resolveEffort(
+  model: ModelConfigurationType,
+  requested: ReasoningEffort | undefined
+): ReasoningEffort {
+  const selectable = getSelectableReasoningEfforts(model);
+  if (requested && selectable.includes(requested)) {
+    return requested;
+  }
+  if (selectable.includes(model.defaultReasoningEffort)) {
+    return model.defaultReasoningEffort;
+  }
+  return selectable[0] ?? model.defaultReasoningEffort;
+}
+
+function findAvailableModel(
+  models: ModelConfigurationType[],
+  selection: { providerId: string; modelId: string }
+): ModelConfigurationType | undefined {
+  return models.find(
+    (m) =>
+      m.providerId === selection.providerId && m.modelId === selection.modelId
+  );
+}
+
+// The picker's default selection when the user hasn't picked anything: the
+// model the current user's previous message ran on, falling back to the
+// addressed agent's configured model, falling back to "Auto". Purely derived
+// from its inputs — it recomputes as the agent, the last message, and the model
+// list load in, with no ordering dependency or seeding step.
+export function resolveDefaultSelection({
+  agentModel,
+  lastRequestedModel,
+  models,
+}: {
+  agentModel: AgentModelConfigurationType | null;
+  lastRequestedModel: ModelSelectionType | null;
+  models: ModelConfigurationType[];
+}): Selection {
+  // 1. Keep the model the current user's previous message ran on, if any.
+  if (lastRequestedModel) {
+    if (lastRequestedModel.modelId === AUTO_MODEL_ID) {
+      return { kind: "auto" };
+    }
+    const model = findAvailableModel(models, lastRequestedModel);
+    if (model) {
+      return {
+        kind: "model",
+        model,
+        effort: resolveEffort(model, lastRequestedModel.reasoningEffort),
+      };
+    }
+    // Last model no longer available (removed / BYOK revoked / still loading):
+    // fall back to the agent's default below.
+  }
+
+  // 2. No usable previous model: use the addressed agent's configured model.
+  //    An auto (or not-yet-resolved) agent shows "Auto".
+  if (!agentModel || agentModel.modelId === AUTO_MODEL_ID) {
+    return { kind: "auto" };
+  }
+  const model = findAvailableModel(models, agentModel);
+  if (!model) {
+    // Agent's model not (yet) available (e.g. models still loading): show Auto
+    // until it resolves.
+    return { kind: "auto" };
+  }
+  return {
+    kind: "agent",
+    model,
+    effort: resolveEffort(model, agentModel.reasoningEffort),
+  };
 }

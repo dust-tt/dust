@@ -5,11 +5,13 @@ import type {
   ProviderGroup,
   Selection,
   SuggestedModelWithReasoningEffort,
+  UserModelSelection,
 } from "@app/components/assistant/conversation/input_bar/modelPickerUtils";
 import {
   getModelWithReasoningEffortKey,
   getModelWithReasoningEffortLabel,
   getSelectableReasoningEfforts,
+  resolveDefaultSelection,
   SUGGESTED_PINS,
   toModelSelection,
 } from "@app/components/assistant/conversation/input_bar/modelPickerUtils";
@@ -29,10 +31,16 @@ import type {
 import { getAvailableReasoningEfforts } from "@app/types/assistant/models/types";
 import type { LightWorkspaceType } from "@app/types/user";
 import { Button, DropdownMenu, DropdownMenuTrigger } from "@dust-tt/sparkle";
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 interface InputBarModelPickerProps {
   agentModel: AgentModelConfigurationType | null;
+  // Identity of the agent the user is addressing. The manual override resets
+  // when this changes (keyed on identity, not the agent's model).
+  agentId: string | null;
+  // Model the current user's previous message in this conversation ran on, used
+  // to derive the picker's default. Null in a new conversation.
+  lastRequestedModel: ModelSelectionType | null;
   owner: LightWorkspaceType;
   buttonSize: "xs" | "sm";
   // Which side the dropdown opens toward. Mirrors the agent picker: "top" in an
@@ -45,6 +53,8 @@ interface InputBarModelPickerProps {
 
 export function InputBarModelPicker({
   agentModel,
+  agentId,
+  lastRequestedModel,
   owner,
   buttonSize,
   side = "top",
@@ -61,32 +71,32 @@ export function InputBarModelPicker({
 
   // The list of models is hidden while "Auto" is on.
   const [expanded, setExpanded] = useState(false);
-  const [selection, setSelection] = useState<Selection>({ kind: "auto" });
+
+  // The picker's only state: the user's manual override. Everything shown is
+  // `userOverride ?? <derived default>`. `null` means the user hasn't touched
+  // the picker, so the derived default is shown (and sent).
+  const [userOverride, setUserOverride] = useState<UserModelSelection | null>(
+    null
+  );
 
   // On mobile there are no nested submenus: the "More models" providers expand
   // inline below their name. This tracks the single provider currently expanded.
   const [expandedProvider, setExpandedProvider] =
     useState<ModelProviderIdType | null>(null);
 
-  // Commit a selection and notify the parent so it can attach (or, for "auto",
-  // clear) the per-message model override on the next send. Called from the
-  // user-driven handlers below and from the agent-change reset. `onSelectionChange`
-  // only stashes the value in a parent ref, so calling it here — including during
-  // the render-time reset — triggers no parent re-render.
-  const commitSelection = (next: Selection) => {
-    setSelection(next);
-    onSelectionChange?.(toModelSelection(next));
+  const commitSelection = (next: UserModelSelection) => {
+    setUserOverride(next);
   };
 
-  // Reset to Auto when the agent changes: a per-message override should not leak
-  // across agents.
-  const agentModelKey = agentModel
-    ? `${agentModel.providerId}/${agentModel.modelId}`
-    : null;
-  const prevAgentModelKeyRef = useRef(agentModelKey);
-  if (agentModelKey !== prevAgentModelKeyRef.current) {
-    prevAgentModelKeyRef.current = agentModelKey;
-    commitSelection({ kind: "auto" });
+  // Clear the manual override when the user switches which agent they address:
+  // an override should not leak across agents. Keyed on the agent's identity,
+  // not its model, so switching between two agents that share a model still
+  // resets. The initial null -> resolved-agent transition is a no-op (the
+  // override is already empty), so it never clobbers the derived default.
+  const prevAgentIdRef = useRef(agentId);
+  if (agentId !== prevAgentIdRef.current) {
+    prevAgentIdRef.current = agentId;
+    setUserOverride(null);
     setExpanded(false);
   }
 
@@ -94,6 +104,28 @@ export function InputBarModelPicker({
     owner,
     disabled: !hasModelsPicker,
   });
+
+  // Derived picker default (see resolveDefaultSelection). Recomputes as the
+  // agent, the last message and the model list load in.
+  const defaultSelection = useMemo(
+    () => resolveDefaultSelection({ agentModel, lastRequestedModel, models }),
+    [agentModel, lastRequestedModel, models]
+  );
+
+  // What the picker shows: the manual override if set, else the derived default.
+  const shown: Selection = userOverride ?? defaultSelection;
+  const shownModelSelection = useMemo(() => toModelSelection(shown), [shown]);
+
+  // Keep the parent's send-time selection in sync with whatever the picker
+  // shows — including the derived default the user never explicitly picked (so a
+  // reload reuses the last message's model). `onSelectionChange` only stashes
+  // the value in a parent ref, so this triggers no parent re-render.
+  useEffect(() => {
+    if (!hasModelsPicker) {
+      return;
+    }
+    onSelectionChange?.(shownModelSelection);
+  }, [hasModelsPicker, onSelectionChange, shownModelSelection]);
 
   const allModelsWithEfforts = useMemo<ModelWithReasoningEffort[]>(
     () =>
@@ -184,19 +216,19 @@ export function InputBarModelPicker({
   }, [allModelsWithEfforts, search]);
 
   const selectedKey =
-    selection.kind === "model"
-      ? getModelWithReasoningEffortKey(
-          selection.model.providerId,
-          selection.model.modelId,
-          selection.effort
-        )
-      : undefined;
+    shown.kind === "auto"
+      ? undefined
+      : getModelWithReasoningEffortKey(
+          shown.model.providerId,
+          shown.model.modelId,
+          shown.effort
+        );
 
-  // Auto is "on" while it is the committed selection and the list has not been
+  // Auto is "on" while it is the shown selection and the list has not been
   // manually expanded for browsing. It is hidden entirely while searching.
-  const isAutoOn = selection.kind === "auto" && !expanded;
+  const isAutoOn = shown.kind === "auto" && !expanded;
   const showAuto = !isSearching;
-  const showList = expanded || isSearching || selection.kind === "model";
+  const showList = expanded || isSearching || shown.kind !== "auto";
 
   const hasResults = isSearching
     ? filteredAll.length > 0
@@ -223,11 +255,11 @@ export function InputBarModelPicker({
 
   const label = isMobile
     ? "Model"
-    : `Model: ${getModelWithReasoningEffortLabel(selection)}`;
+    : `Model: ${getModelWithReasoningEffortLabel(shown)}`;
 
   const buttonIcon =
-    isMobile && selection.kind === "model"
-      ? getModelProviderLogo(selection.model.providerId, isDark)
+    isMobile && shown.kind !== "auto"
+      ? getModelProviderLogo(shown.model.providerId, isDark)
       : undefined;
 
   const toggleAuto = () => {

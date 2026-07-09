@@ -408,10 +408,10 @@
  *           type: number
  *           nullable: true
  *           description: Aggregated credit cost of all sub-agents (run_agent / agent_handover) spawned recursively by this message. Computed only on single-message fetches; null otherwise.
- *         requestedModel:
+ *         resolvedModel:
  *           type: object
  *           nullable: true
- *           description: Per-message model override from the input-bar model picker. Null when the agent ran its configured model.
+ *           description: Model triplet used to generate the message. Null when the agent ran its configured model (legacy).
  *           properties:
  *             providerId:
  *               type: string
@@ -419,6 +419,11 @@
  *               type: string
  *             reasoningEffort:
  *               type: string
+ *         modelResolutionMethod:
+ *           type: string
+ *           nullable: true
+ *           enum: [agent, user, auto]
+ *           description: How resolvedModel was chosen - agent (configured model), user (per-message picker), or auto (routed through the auto model). Null (legacy).
  *     PrivateLightAgentMessage:
  *       type: object
  *       description: A lighter agent message used in paginated message list responses.
@@ -524,6 +529,22 @@
  *           type: number
  *           nullable: true
  *           description: Aggregated credit cost of all sub-agents (run_agent / agent_handover) spawned recursively by this message. Computed only on single-message fetches; null otherwise.
+ *         resolvedModel:
+ *           type: object
+ *           nullable: true
+ *           description: Model triplet used to generate the message. Null when the agent ran its configured model (legacy).
+ *           properties:
+ *             providerId:
+ *               type: string
+ *             modelId:
+ *               type: string
+ *             reasoningEffort:
+ *               type: string
+ *         modelResolutionMethod:
+ *           type: string
+ *           nullable: true
+ *           enum: [agent, user, auto]
+ *           description: How resolvedModel was chosen - agent (configured model), user (per-message picker), or auto (routed through the auto model). Null (legacy).
  *         activitySteps:
  *           type: array
  *           items:

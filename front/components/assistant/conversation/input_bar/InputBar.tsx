@@ -66,6 +66,9 @@ interface InputBarProps {
   stickyMentions?: RichMention[];
   defaultAgentId?: string | null;
   isDefaultAgentLoading?: boolean;
+  // Model the current user's previous message ran on, used to derive the model
+  // picker's default. Null in a new conversation.
+  lastRequestedModel?: ModelSelectionType | null;
   defaultSkills?: InputBarContainerProps["defaultSkills"];
   isDefaultSkillsLoading?: boolean;
   actions?: InputBarContainerProps["actions"];
@@ -95,6 +98,7 @@ export const InputBar = React.memo(function InputBar({
   stickyMentions,
   defaultAgentId,
   isDefaultAgentLoading,
+  lastRequestedModel = null,
   defaultSkills,
   isDefaultSkillsLoading,
   actions = DEFAULT_INPUT_BAR_ACTIONS,
@@ -526,6 +530,7 @@ export const InputBar = React.memo(function InputBar({
             stickyMentions={stickyMentions}
             defaultAgentId={defaultAgentId}
             isDefaultAgentLoading={isDefaultAgentLoading}
+            lastRequestedModel={lastRequestedModel}
             defaultSkills={defaultSkills}
             isDefaultSkillsLoading={isDefaultSkillsLoading}
             fileUploaderService={fileUploaderService}

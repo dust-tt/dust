@@ -65,6 +65,7 @@ import { useAuth, useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { clientFetch } from "@app/lib/egress/client";
 import type { DustError } from "@app/lib/error";
 import { FILE_ID_PATTERN } from "@app/lib/files";
+import { getResolvedModelLabel } from "@app/lib/llms/model_configurations";
 import { getFilePreviewDirectivePaths } from "@app/lib/markdown/file_preview";
 import { extractFromString } from "@app/lib/mentions/format";
 import { useUnifiedAgentConfigurations } from "@app/lib/swr/assistants";
@@ -1049,6 +1050,14 @@ export function AgentMessage({
     canShowAgentConversationActions(agentConfiguration.sId);
   const isArchived = agentConfiguration.status === "archived";
 
+  // When this message ran on a per-message model picked from the input-bar
+  // picker (rather than the agent's preset or an auto resolution), surface the
+  // model next to the agent name (e.g. "Dust with GPT-5.5 Light").
+  const perMessageModelLabel =
+    agentMessage.modelResolutionMethod === "user" && agentMessage.resolvedModel
+      ? getResolvedModelLabel(agentMessage.resolvedModel)
+      : null;
+
   const renderName = useCallback(
     () => (
       <span className="inline-flex items-center">
@@ -1060,6 +1069,11 @@ export function AgentMessage({
           canMention={canMention}
           isDisabled={isArchived}
         />
+        {perMessageModelLabel && (
+          <span className="pl-1 font-normal text-muted-foreground">
+            with {perMessageModelLabel}
+          </span>
+        )}
         {parentAgent && (
           <Chip
             label={`handoff from @${parentAgent.name}`}
@@ -1076,6 +1090,7 @@ export function AgentMessage({
       agentConfiguration.sId,
       canMention,
       isArchived,
+      perMessageModelLabel,
       parentAgent,
       agentMessage.status,
     ]

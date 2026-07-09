@@ -309,6 +309,7 @@ The following skills are available for use with the skill_management__enable_ski
       reactions: [],
       costCredits: null,
       resolvedModel: null,
+      modelResolutionMethod: null,
     } satisfies AgentMessageType;
 
     const steps = await getSteps(authenticator, {
@@ -440,6 +441,7 @@ describe("vision image rendering in getSteps", () => {
       reactions: [],
       costCredits: null,
       resolvedModel: null,
+      modelResolutionMethod: null,
     };
 
     return { auth: authenticator, message, model, workspaceId, conversationId };
