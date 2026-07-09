@@ -2,8 +2,9 @@ import { describe, expect, test } from "bun:test";
 import { join } from "node:path";
 import {
   type DatabaseSchemaError,
-  extractFunctionState,
+  extractDatabaseSchema,
   readDeclaredDatabases,
+  validateDeclaredDatabases,
 } from "./db.ts";
 import type { Result } from "./result.ts";
 import type { DatabaseSchemaErrorKind } from "./types/db.ts";
@@ -66,13 +67,21 @@ describe("readDeclaredDatabases", () => {
   });
 });
 
-describe("extractFunctionState", () => {
-  test("extracts the full shape for the chat fixture", async () => {
-    const state = unwrap(await extractFunctionState(fixturesDir, ["chat"]));
-    expect(state.version).toBe(1);
-    expect(Object.keys(state.databases)).toEqual(["chat"]);
+describe("declared database validation", () => {
+  test("accepts the chat fixture", async () => {
+    unwrap(await validateDeclaredDatabases(fixturesDir, ["chat"]));
+  });
 
-    const chat = state.databases.chat;
+  // The extracted shape stays runner-internal (validation + reconcile's destructive
+  // pre-check); these assertions pin the duck-typed drizzle reads the rules rely on.
+  test("extracts the full shape of one schema file", async () => {
+    const chat = unwrap(
+      await extractDatabaseSchema(
+        "chat",
+        join("databases", "chat.db.ts"),
+        join(fixturesDir, "databases", "chat.db.ts")
+      )
+    );
     expect(chat.schemaFile).toBe(join("databases", "chat.db.ts"));
     expect(Object.keys(chat.tables).sort()).toEqual([
       "messages",
@@ -137,7 +146,7 @@ describe("extractFunctionState", () => {
 
   test("rejects inline foreign keys", async () => {
     expectDbError(
-      await extractFunctionState(fixturesDir, ["fk"]),
+      await validateDeclaredDatabases(fixturesDir, ["fk"]),
       "database_schema_invalid",
       /foreign keys .* not allowed/
     );
@@ -145,7 +154,7 @@ describe("extractFunctionState", () => {
 
   test("rejects table-level foreign keys", async () => {
     expectDbError(
-      await extractFunctionState(fixturesDir, ["fk_table"]),
+      await validateDeclaredDatabases(fixturesDir, ["fk_table"]),
       "database_schema_invalid",
       /foreign keys .* not allowed/
     );
@@ -153,7 +162,7 @@ describe("extractFunctionState", () => {
 
   test("rejects CHECK constraints", async () => {
     expectDbError(
-      await extractFunctionState(fixturesDir, ["checked"]),
+      await validateDeclaredDatabases(fixturesDir, ["checked"]),
       "database_schema_invalid",
       /CHECK constraints are not allowed/
     );
@@ -161,7 +170,7 @@ describe("extractFunctionState", () => {
 
   test("rejects a column-level .unique() constraint", async () => {
     expectDbError(
-      await extractFunctionState(fixturesDir, ["unique_column"]),
+      await validateDeclaredDatabases(fixturesDir, ["unique_column"]),
       "database_schema_invalid",
       /use uniqueIndex\(\) instead/
     );
@@ -169,39 +178,31 @@ describe("extractFunctionState", () => {
 
   test("rejects a table-level unique() constraint", async () => {
     expectDbError(
-      await extractFunctionState(fixturesDir, ["unique_table"]),
+      await validateDeclaredDatabases(fixturesDir, ["unique_table"]),
       "database_schema_invalid",
       /use uniqueIndex\(\) instead/
     );
   });
 
-  test("rejects composite primary keys", async () => {
-    expectDbError(
-      await extractFunctionState(fixturesDir, ["composite"]),
-      "database_schema_invalid",
-      /composite primary keys are not allowed/
-    );
+  test("accepts composite primary keys (SQLite enforces PK validity at apply)", async () => {
+    unwrap(await validateDeclaredDatabases(fixturesDir, ["composite"]));
   });
 
   test("rejects a schema file exporting no tables", async () => {
     expectDbError(
-      await extractFunctionState(fixturesDir, ["empty"]),
+      await validateDeclaredDatabases(fixturesDir, ["empty"]),
       "database_schema_invalid",
       /exports no tables/
     );
   });
 
-  test("rejects an SQL-expression index", async () => {
-    expectDbError(
-      await extractFunctionState(fixturesDir, ["expr"]),
-      "database_schema_invalid",
-      /SQL expression/
-    );
+  test("accepts an SQL-expression index (drizzle-kit plans it from the schema file)", async () => {
+    unwrap(await validateDeclaredDatabases(fixturesDir, ["expr"]));
   });
 
   test("rejects a missing schema file", async () => {
     expectDbError(
-      await extractFunctionState(fixturesDir, ["nosuchdb"]),
+      await validateDeclaredDatabases(fixturesDir, ["nosuchdb"]),
       "database_schema_unresolvable",
       /schema file not found/
     );
@@ -209,7 +210,7 @@ describe("extractFunctionState", () => {
 
   test("rejects a table name with a reserved prefix", async () => {
     expectDbError(
-      await extractFunctionState(fixturesDir, ["reserved_prefix"]),
+      await validateDeclaredDatabases(fixturesDir, ["reserved_prefix"]),
       "database_schema_invalid",
       /reserved prefix/
     );
@@ -217,7 +218,7 @@ describe("extractFunctionState", () => {
 
   test("rejects a column named after an Object.prototype key", async () => {
     expectDbError(
-      await extractFunctionState(fixturesDir, ["proto_column"]),
+      await validateDeclaredDatabases(fixturesDir, ["proto_column"]),
       "database_schema_invalid",
       /"__proto__" is reserved/
     );

@@ -11,7 +11,7 @@
 // `{ ok: true }` / `{ ok: false, error }` envelope.
 
 import { dirname } from "node:path";
-import { extractFunctionState, readDeclaredDatabases } from "./db.ts";
+import { readDeclaredDatabases, validateDeclaredDatabases } from "./db.ts";
 import { getFunctionSchema } from "./schema.ts";
 import type { DatabaseSchemaErrorKind } from "./types/db.ts";
 
@@ -74,9 +74,11 @@ export async function build(
     };
   }
 
-  // 3. Extract the per-database shapes when the function declares databases. Schema files
-  //    resolve relative to the SOURCE directory: the bundle has already inlined its own copy
-  //    of them.
+  // 3. Validate the declared databases' schema files when the function declares any —
+  //    nothing about databases travels in the schema file: the declaration lives in the
+  //    bundle's own `schema` export and the shapes live in the schema files and the live
+  //    database. Schema files resolve relative to the SOURCE directory: the bundle has
+  //    already inlined its own copy of them.
   const declared = await readDeclaredDatabases(outBundlePath);
   if (declared.isErr()) {
     return {
@@ -85,14 +87,16 @@ export async function build(
     };
   }
   if (declared.value.length > 0) {
-    const state = await extractFunctionState(dirname(srcPath), declared.value);
-    if (state.isErr()) {
+    const validated = await validateDeclaredDatabases(
+      dirname(srcPath),
+      declared.value
+    );
+    if (validated.isErr()) {
       return {
         ok: false,
-        error: { kind: state.error.kind, message: state.error.message },
+        error: { kind: validated.error.kind, message: validated.error.message },
       };
     }
-    schema.databases = state.value;
   }
 
   await Bun.write(outSchemaPath, JSON.stringify(schema));

@@ -89,7 +89,7 @@ describe("runner build", () => {
     expect(JSON.parse(stdout).error.kind).toBe("bad_args");
   });
 
-  test("writes manifest.v1 databases into the schema file for a declaring function", async () => {
+  test("validates declared databases but keeps them out of the schema file", async () => {
     await withOutDir(async (dir) => {
       const bundlePath = join(dir, "db-chat.ts");
       const schemaPath = join(dir, "db-chat.schema.json");
@@ -103,13 +103,10 @@ describe("runner build", () => {
       expect(code).toBe(0);
       expect(JSON.parse(stdout)).toEqual({ ok: true });
 
+      // Nothing about databases travels: the declaration lives in the bundle's own schema
+      // export, the shapes in the schema files and the live database.
       const schema = JSON.parse(await readFile(schemaPath, "utf8"));
-      expect(schema.databases.version).toBe(1);
-      expect(Object.keys(schema.databases.databases)).toEqual(["chat"]);
-      const chat = schema.databases.databases.chat;
-      expect(chat.schemaFile).toBe("databases/chat.db.ts");
-      expect(chat.tables.users.columns.created_at.mode).toBe("timestamp");
-      expect(chat.tables.users.indexes.users_handle_idx.unique).toBe(true);
+      expect("databases" in schema).toBe(false);
     });
   });
 
