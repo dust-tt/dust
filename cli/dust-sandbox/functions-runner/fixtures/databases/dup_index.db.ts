@@ -1,6 +1,6 @@
-// Apply-failure fixture: two tables declare the same index name. Per-table manifest validation
-// passes and both CREATE INDEX statements classify as additive, but SQLite rejects the second
-// at apply time — exercising the transaction rollback (and first-claim cleanup) path.
+// Rejection fixture: two tables declare the same index name. Table and index names share one
+// database-global namespace in SQLite, so the second CREATE INDEX would fail — the
+// database-level namespace check rejects it at validation.
 import { index, integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
 
 export const alpha = sqliteTable(

@@ -1,15 +1,19 @@
-// `dsbx db query` runner backend: read-only SQL against a live pod database.
+// `dsbx db query` runner backend: read-only SQL against a live pod database. Expected
+// refusals come back as Err (ERR1), never thrown.
 //
 // The database is opened read-only AND with `PRAGMA query_only = ON` (defense in depth), so
 // any write attempt fails. Small results return entirely in the stdout envelope; once a result
 // crosses the inline bounds, the COMPLETE result set is written to a spill file (one JSON
 // object per line) and the envelope carries the file path, a note saying so, and the first
-// rows as a preview. Nothing is ever silently dropped.
+// rows as a preview. Nothing is ever silently dropped. Spill files land in the sandbox's /tmp
+// and live as long as the sandbox does — no cleanup pass exists.
 
+import type { Statement } from "bun:sqlite";
 import { closeSync, openSync, writeSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { DbCommandError, openReadonly } from "./db_common.ts";
+import { Err, Ok, type Result } from "./result.ts";
 
 // Inline envelope bounds: a result within both stays entirely on stdout; beyond either, it
 // spills to a file. Bounds exist for stdout (which lands in the caller's context), not for
@@ -17,8 +21,7 @@ import { DbCommandError, openReadonly } from "./db_common.ts";
 export const QUERY_INLINE_ROW_CAP = 100;
 export const QUERY_INLINE_PAYLOAD_CAP_BYTES = 100_000;
 
-export interface QuerySuccess {
-  ok: true;
+export interface QueryOutcome {
   columns: string[];
   rows: Record<string, unknown>[];
   row_count: number;
@@ -28,100 +31,129 @@ export interface QuerySuccess {
   note: string | null;
 }
 
-export function queryReadonly(dbPath: string, sql: string): QuerySuccess {
+export function queryReadonly(
+  dbPath: string,
+  sql: string
+): Result<QueryOutcome, DbCommandError> {
   const trimmed = sql.trim();
   if (trimmed.length === 0) {
-    throw new DbCommandError("empty_sql", "no SQL statement provided on stdin");
+    return new Err(
+      new DbCommandError("empty_sql", "no SQL statement provided on stdin")
+    );
   }
 
-  const db = openReadonly(dbPath, { safeIntegers: true });
+  const opened = openReadonly(dbPath, { safeIntegers: true });
+  if (opened.isErr()) {
+    return opened;
+  }
+  const db = opened.value;
   try {
-    let statement;
+    let statement: Statement;
     try {
       statement = db.query(trimmed);
     } catch (e) {
-      throw new DbCommandError(
-        "query_failed",
-        e instanceof Error ? e.message : String(e)
+      return new Err(
+        new DbCommandError(
+          "query_failed",
+          e instanceof Error ? e.message : String(e)
+        )
+      );
+    }
+
+    // Bound parameters have no binding API on this path — an unbound `?` would silently run
+    // with NULL, and parameters also defeat the multi-statement check below (toString()
+    // diverges from the source text).
+    if (statement.paramsCount > 0) {
+      return new Err(
+        new DbCommandError(
+          "query_failed",
+          "bound parameters are not supported; inline the values in the statement"
+        )
       );
     }
 
     // bun:sqlite compiles only the FIRST statement and never executes what follows, so a
     // multi-statement script would silently return partial results. Instead of parsing SQL
     // ourselves, surface SQLite's own parse boundary: Statement.toString() is the compiled
-    // statement's text, so any non-whitespace input beyond it is a second statement. (With
-    // bound parameters toString() diverges from the source and the check fails open — our
-    // parameterless API never binds any.)
+    // statement's text, so any non-whitespace input beyond it is a second statement.
     const compiled = statement.toString();
     if (
       trimmed.startsWith(compiled) &&
       trimmed.slice(compiled.length).trim().length > 0
     ) {
-      throw new DbCommandError(
-        "query_failed",
-        "multiple SQL statements are not supported; send a single statement"
+      return new Err(
+        new DbCommandError(
+          "query_failed",
+          "multiple SQL statements are not supported; send a single statement"
+        )
       );
     }
 
-    const preview: Record<string, unknown>[] = [];
-    let previewBytes = 0;
-    const previewJson: string[] = [];
-    let rowCount = 0;
-    let spillFd: number | null = null;
-    let spillPath: string | null = null;
-    try {
-      for (const row of statement.iterate()) {
-        rowCount++;
-        const rowJson = JSON.stringify(row, jsonReplacer);
-        if (spillFd === null) {
-          if (
-            preview.length < QUERY_INLINE_ROW_CAP &&
-            previewBytes + rowJson.length <= QUERY_INLINE_PAYLOAD_CAP_BYTES
-          ) {
-            preview.push(JSON.parse(rowJson));
-            previewBytes += rowJson.length;
-            previewJson.push(rowJson);
-            continue;
-          }
-          // Crossed the inline bounds: from here on the full result set (including the
-          // preview rows already seen) streams to the spill file.
-          spillPath = join(tmpdir(), `dsbx-query-${crypto.randomUUID()}.jsonl`);
-          spillFd = openSync(spillPath, "w");
-          for (const line of previewJson) {
-            writeSync(spillFd, `${line}\n`);
-          }
-        }
-        writeSync(spillFd, `${rowJson}\n`);
-      }
-    } catch (e) {
-      if (e instanceof DbCommandError) {
-        throw e;
-      }
-      throw new DbCommandError(
-        "query_failed",
-        e instanceof Error ? e.message : String(e)
-      );
-    } finally {
-      if (spillFd !== null) {
-        closeSync(spillFd);
-      }
-    }
-
-    return {
-      ok: true,
-      columns: statement.columnNames,
-      rows: preview,
-      row_count: rowCount,
-      results_file: spillPath,
-      note:
-        spillPath === null
-          ? null
-          : `${rowCount} rows total; the first ${preview.length} are shown here as a preview. ` +
-            `The complete result set is in ${spillPath}, one JSON object per line.`,
-    };
+    return collectRows(statement);
   } finally {
     db.close();
   }
+}
+
+// Execute a result-returning statement, spilling beyond the inline bounds.
+function collectRows(
+  statement: Statement
+): Result<QueryOutcome, DbCommandError> {
+  const preview: Record<string, unknown>[] = [];
+  let previewBytes = 0;
+  const previewJson: string[] = [];
+  let rowCount = 0;
+  let spillFd: number | null = null;
+  let spillPath: string | null = null;
+  try {
+    for (const row of statement.iterate()) {
+      rowCount++;
+      const rowJson = JSON.stringify(row, jsonReplacer);
+      if (spillFd === null) {
+        if (
+          preview.length < QUERY_INLINE_ROW_CAP &&
+          previewBytes + Buffer.byteLength(rowJson, "utf8") <=
+            QUERY_INLINE_PAYLOAD_CAP_BYTES
+        ) {
+          preview.push(JSON.parse(rowJson));
+          previewBytes += Buffer.byteLength(rowJson, "utf8");
+          previewJson.push(rowJson);
+          continue;
+        }
+        // Crossed the inline bounds: from here on the full result set (including the
+        // preview rows already seen) streams to the spill file.
+        spillPath = join(tmpdir(), `dsbx-query-${crypto.randomUUID()}.jsonl`);
+        spillFd = openSync(spillPath, "w");
+        for (const line of previewJson) {
+          writeSync(spillFd, `${line}\n`);
+        }
+      }
+      writeSync(spillFd, `${rowJson}\n`);
+    }
+  } catch (e) {
+    return new Err(
+      new DbCommandError(
+        "query_failed",
+        e instanceof Error ? e.message : String(e)
+      )
+    );
+  } finally {
+    if (spillFd !== null) {
+      closeSync(spillFd);
+    }
+  }
+
+  return new Ok({
+    columns: statement.columnNames,
+    rows: preview,
+    row_count: rowCount,
+    results_file: spillPath,
+    note:
+      spillPath === null
+        ? null
+        : `${rowCount} rows total; the first ${preview.length} are shown here as a preview. ` +
+          `The complete result set is in ${spillPath}, one JSON object per line.`,
+  });
 }
 
 // A bun:sqlite row value is one of SQLite's five storage classes as surfaced by bun:sqlite

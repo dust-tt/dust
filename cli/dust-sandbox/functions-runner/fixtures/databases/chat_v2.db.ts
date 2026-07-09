@@ -22,6 +22,7 @@ export const users = sqliteTable(
     ),
     attachments: text("attachments", { mode: "json" }).$type<string[]>(),
     active: integer("active", { mode: "boolean" }).default(true),
+    nickname: text("nickname").default("anon"),
     score: real("score"),
     counter: blob("counter", { mode: "bigint" }),
     bio: text("bio"),
