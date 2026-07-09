@@ -162,19 +162,22 @@ export async function softDeleteSpaceAndLaunchScrubWorkflow(
       const mcpServerViewIds = mcpServerViews.map((v) => v.id);
       const dataSourceViewIds = dataSourceViews.map((v) => v.id);
 
-      // Find all skills that reference MCP server views or data source views from this space.
-      const [skillsWithMCPViews, skillsWithDataSourceViews] = await Promise.all(
-        [
+      // Find all skills that reference this space, either through an MCP server
+      // view / data source view located in it, or directly via requestedSpaceIds
+      // (a skill can request a space without holding a live view in it).
+      const [skillsWithMCPViews, skillsWithDataSourceViews, skillsWithSpace] =
+        await Promise.all([
           SkillResource.listByMCPServerViewIds(auth, mcpServerViewIds),
           SkillResource.listByDataSourceViewIds(auth, dataSourceViewIds),
-        ]
-      );
+          SkillResource.listByRequestedSpaceId(auth, space.id),
+        ]);
 
       // Merge and deduplicate skills.
       const skillMap = new Map<number, SkillResource>();
       for (const skill of [
         ...skillsWithMCPViews,
         ...skillsWithDataSourceViews,
+        ...skillsWithSpace,
       ]) {
         skillMap.set(skill.id, skill);
       }
@@ -183,28 +186,6 @@ export async function softDeleteSpaceAndLaunchScrubWorkflow(
       // Create sets for quick lookup.
       const mcpServerViewIdSet = new Set(mcpServerViewIds);
       const dataSourceViewIdSet = new Set(dataSourceViewIds);
-
-      // Collect all agent IDs that currently reference this space BEFORE calling updateSkill.
-      // updateSkill creates its own independent transaction for each skill, so its agent
-      // updates commit before the outer transaction. By collecting upfront, we can update
-      // all affected agents (direct references and skill-driven references) atomically
-      // with the space soft-delete in the outer transaction below.
-      const agentsReferencingSpace = await AgentConfigurationModel.findAll({
-        attributes: ["id"],
-        where: {
-          workspaceId: auth.getNonNullableWorkspace().id,
-          status: "active",
-          requestedSpaceIds: {
-            [Op.contains]: [space.id],
-          },
-        },
-      });
-      const agentIdsToClean = agentsReferencingSpace.map((a) => a.id);
-
-      logger.info(
-        { ...logContext, agentCount: agentIdsToClean.length },
-        "softDeleteSpace: cleaning up agent requestedSpaceIds"
-      );
 
       // Update each skill to remove MCP server views and attached knowledge from the deleted space.
       // Note: updateSkill manages its own transaction, so we call it sequentially.
@@ -269,44 +250,46 @@ export async function softDeleteSpaceAndLaunchScrubWorkflow(
         });
       }
 
-      // Update requestedSpaceIds for all agents collected above, atomically with the
-      // space soft-delete. We do a fresh read here (inside the outer transaction) so
-      // we get the current state after updateSkill's inner transactions have committed.
-      // This covers both direct references and skill-driven references that updateSkill
-      // may have already cleaned up (no-op) or missed (still need cleanup).
-      if (agentIdsToClean.length > 0) {
-        const agentsToUpdate = await AgentConfigurationModel.findAll({
-          attributes: ["id", "requestedSpaceIds"],
-          where: {
-            id: { [Op.in]: agentIdsToClean },
-            workspaceId: auth.getNonNullableWorkspace().id,
-            status: "active",
-          },
-          transaction: t,
-        });
+      // Strip the space from every agent still referencing it, atomically with
+      // the space soft-delete. We query fresh here (inside the outer transaction,
+      // after updateSkill's inner transactions have committed) rather than a
+      // snapshot taken before the skill loop: cleaning a skill recomputes the
+      // requestedSpaceIds of every agent using it, so the set of agents still
+      // referencing this space can change during the loop. This catches both
+      // direct references and skill-driven references left over after the loop.
+      const agentsToClean = await AgentConfigurationModel.findAll({
+        attributes: ["id", "requestedSpaceIds"],
+        where: {
+          workspaceId: auth.getNonNullableWorkspace().id,
+          status: "active",
+          requestedSpaceIds: { [Op.contains]: [space.id] },
+        },
+        transaction: t,
+      });
 
-        await concurrentExecutor(
-          agentsToUpdate.filter((a) => a.requestedSpaceIds.includes(space.id)),
-          async (agent) => {
-            const newSpaceIds = agent.requestedSpaceIds.filter(
-              (id) => id !== space.id
-            );
-            const res = await updateAgentRequirements(
-              auth,
-              {
-                agentModelId: agent.id,
-                newSpaceIds,
-              },
-              { transaction: t }
-            );
+      logger.info(
+        { ...logContext, agentCount: agentsToClean.length },
+        "softDeleteSpace: cleaning up agent requestedSpaceIds"
+      );
 
-            if (res.isErr()) {
-              throw res.error;
-            }
-          },
-          { concurrency: 4 }
-        );
-      }
+      await concurrentExecutor(
+        agentsToClean,
+        async (agent) => {
+          const newSpaceIds = agent.requestedSpaceIds.filter(
+            (id) => id !== space.id
+          );
+          const res = await updateAgentRequirements(
+            auth,
+            { agentModelId: agent.id, newSpaceIds },
+            { transaction: t }
+          );
+
+          if (res.isErr()) {
+            throw res.error;
+          }
+        },
+        { concurrency: 4 }
+      );
 
       // Finally, soft delete the space.
       const res = await space.delete(auth, {

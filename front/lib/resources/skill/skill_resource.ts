@@ -1379,6 +1379,26 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
   }
 
   /**
+   * List active skills whose requestedSpaceIds contains the given space. Used
+   * during space deletion to find skills that reference the space even when
+   * they have no MCP server view or data source view located in it.
+   */
+  static async listByRequestedSpaceId(
+    auth: Authenticator,
+    spaceModelId: ModelId
+  ): Promise<SkillResource[]> {
+    return this.baseFetch(auth, {
+      where: {
+        requestedSpaceIds: {
+          [Op.contains]: [spaceModelId],
+        },
+        status: "active",
+      },
+      onlyCustom: true,
+    });
+  }
+
+  /**
    * List enabled skills for a conversation.
    * If agentConfiguration is provided, includes both agent-enabled and conversation-enabled skills.
    * Otherwise, returns only conversation-enabled skills (JIT).
