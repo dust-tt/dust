@@ -111,7 +111,10 @@ describe("ensureConversationSandboxReady", () => {
     spaceId: pod.sId,
   };
   const image = { name: "dust-base" };
-  const sandbox = { providerId: "provider-id", sId: "sandbox-id" };
+  const sandbox = {
+    providerId: "provider-id",
+    sId: "sandbox-id",
+  };
   const mockFs = {
     setupSandboxMount: mockSetupSandboxMount,
     refreshSandboxMount: mockRefreshSandboxMount,
@@ -249,7 +252,9 @@ describe("ensureConversationSandboxReady", () => {
     expect(result.isOk()).toBe(true);
     expect(mockEnsurePodSandboxActive).toHaveBeenCalledWith(auth, pod);
     expect(mockEnsureSandboxActive).not.toHaveBeenCalled();
-    // The pod's published bundles are mounted read-only under a pod-scoped path.
+    // The pod's published bundles are mounted read-only under a pod-scoped
+    // path; the litestream replica prefix is mounted rw for the in-sandbox
+    // daemon.
     expect(mockForPod).toHaveBeenCalledWith(auth, pod, {
       sandboxOnlyMounts: [
         {
@@ -257,6 +262,12 @@ describe("ensureConversationSandboxReady", () => {
           id: pod.sId,
           sandboxMountPoint: `/sandbox-functions/pods/${pod.sId}`,
           readOnly: true,
+        },
+        {
+          kind: "pod_state",
+          id: pod.sId,
+          sandboxMountPoint: "/pod-state/replica",
+          readOnly: false,
         },
       ],
     });

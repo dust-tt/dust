@@ -2,7 +2,7 @@ import {
   isValidPodDatabaseName,
   parseLiveDatabaseNames,
   parseReplicaDatabaseNames,
-} from "@app/lib/api/sandbox/pod_state";
+} from "@app/lib/api/sandbox/db";
 import { describe, expect, test } from "vitest";
 
 describe("pod state helpers", () => {
