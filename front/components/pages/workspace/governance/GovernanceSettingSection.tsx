@@ -27,15 +27,14 @@ export const GovernanceSettingSection = ({
           <Page.H variant="h5">{label}</Page.H>
         </div>
       </div>
-      <div className="w-full rounded-xl border border-border">
-        {governancePermissions.map((governancePermission, idx) => (
+      <div className="w-full rounded-xl border border-border divide-y divide-border">
+        {governancePermissions.map((governancePermission) => (
           <GovernanceSettingRow
             key={
               governancePermission.permissionType +
               ":" +
               governancePermission.resourceType
             }
-            className={idx < governancePermissions.length - 1 ? "border-b" : ""}
             governancePermission={governancePermission}
             groups={groups}
             onChange={(newConfiguration) =>

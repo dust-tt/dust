@@ -12,7 +12,6 @@ import {
   ButtonsSwitch,
   ButtonsSwitchList,
   ContentMessage,
-  cn,
   Page,
 } from "@dust-tt/sparkle";
 import { useState } from "react";
@@ -96,14 +95,12 @@ interface GovernanceSettingRowProps {
   governancePermission: GovernancePermission;
   groups: GroupType[];
   onChange: (permission: GovernancePermissionConfiguration) => void;
-  className?: string;
 }
 
 export const GovernanceSettingRow = ({
   governancePermission,
   groups,
   onChange,
-  className,
 }: GovernanceSettingRowProps) => {
   const [configuration, setConfiguration] =
     useState<GovernancePermissionConfiguration>(
@@ -157,7 +154,7 @@ export const GovernanceSettingRow = ({
   }
 
   return (
-    <div className={cn("w-full flex flex-col gap-3 p-4", className)}>
+    <div className="w-full flex flex-col gap-3 p-4">
       <div className="flex w-full items-center gap-4 justify-between">
         <Page.Vertical gap="xs" sizing="grow">
           <Page.H variant="h6">{metadata.label}</Page.H>
