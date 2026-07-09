@@ -24,7 +24,6 @@ import {
   type DatabaseSchemaErrorKind,
   type DatabaseTable,
   DB_NAME_REGEX,
-  type FunctionState,
   RESERVED_OBJECT_KEYS,
   RESERVED_TABLE_PREFIXES,
 } from "./types/db.ts";
@@ -102,13 +101,14 @@ export async function readDeclaredDatabases(
   return new Ok(parsed.data);
 }
 
-// Builds the FunctionState for every declared database of a function, resolving each
-// `databases/{db}.db.ts` schema file relative to the function source directory.
-export async function extractFunctionState(
+// Validates every declared database's schema file (the canonical `databases/{db}.db.ts`
+// relative to the function source directory) with the full rule set, so a bad schema fails
+// the build with a model-correctable error. The extracted shapes stay runner-internal:
+// nothing stores them — reconcile re-extracts from the schema file it is given.
+export async function validateDeclaredDatabases(
   srcDir: string,
   dbNames: string[]
-): Promise<Result<FunctionState, DatabaseSchemaError>> {
-  const databases: Record<string, DatabaseSchema> = Object.create(null);
+): Promise<Result<undefined, DatabaseSchemaError>> {
   for (const name of dbNames) {
     const schemaFile = join("databases", `${name}.db.ts`);
     const database = await extractDatabaseSchema(
@@ -119,9 +119,8 @@ export async function extractFunctionState(
     if (database.isErr()) {
       return database;
     }
-    databases[name] = database.value;
   }
-  return new Ok({ version: 1, databases });
+  return new Ok(undefined);
 }
 
 // Extracts (and rule-checks) the DatabaseSchema of one drizzle schema file. Also used by
@@ -179,44 +178,7 @@ export async function extractDatabaseSchema(
     );
   }
 
-  const namespaceViolation = checkDatabaseNamespace(dbName, tables);
-  if (namespaceViolation !== null) {
-    return new Err(namespaceViolation);
-  }
-
   return new Ok({ schemaFile, tables });
-}
-
-// sqlite_master's namespace is database-global and shared between tables and indexes: a
-// duplicate index name across tables, or an index named like a table, passes per-table
-// validation but fails at CREATE. Same for reserved prefixes on index names.
-function checkDatabaseNamespace(
-  dbName: string,
-  tables: Record<string, DatabaseTable>
-): DatabaseSchemaError | null {
-  const owners = new Map<string, string>();
-  for (const tableName of Object.keys(tables)) {
-    owners.set(tableName, `table "${tableName}"`);
-  }
-  for (const [tableName, table] of Object.entries(tables)) {
-    for (const indexName of Object.keys(table.indexes)) {
-      if (
-        RESERVED_TABLE_PREFIXES.some((prefix) => indexName.startsWith(prefix))
-      ) {
-        return invalid(
-          `database "${dbName}": index name "${indexName}" uses a reserved prefix (${RESERVED_TABLE_PREFIXES.join(", ")}) and is not allowed in pod databases`
-        );
-      }
-      const owner = owners.get(indexName);
-      if (owner !== undefined) {
-        return invalid(
-          `database "${dbName}": index "${indexName}" of table "${tableName}" collides with ${owner} — table and index names share one namespace in SQLite`
-        );
-      }
-      owners.set(indexName, `index "${indexName}" of table "${tableName}"`);
-    }
-  }
-  return null;
 }
 
 type TableConfig = ReturnType<typeof getTableConfig>;
@@ -227,15 +189,16 @@ type TableRule = (
   config: TableConfig
 ) => DatabaseSchemaError | null;
 
+// Only constructs that block ADDITIVE EVOLUTION are rejected here (they live in the CREATE
+// TABLE DDL, which reconcile can never rebuild) plus names invisible to reconcile's
+// introspection. Anything SQLite itself refuses (duplicate names, double primary keys) fails
+// at `db reconcile` apply time instead — nothing records the shapes anymore, so there is no
+// recorded contract to protect.
 const TABLE_RULES: TableRule[] = [
   checkNoReservedNames,
   checkNoForeignKeys,
   checkNoCheckConstraints,
   checkNoUniqueConstraints,
-  checkSinglePrimaryKeyDeclaration,
-  checkNoDuplicateIndexNames,
-  checkPlainColumnIndexes,
-  checkColumnPropsReadable,
 ];
 
 // Runs every table rule; a valid config comes back unchanged, ready for toDatabaseTable.
@@ -329,75 +292,6 @@ function checkNoUniqueConstraints(
   return null;
 }
 
-function checkSinglePrimaryKeyDeclaration(
-  where: string,
-  config: TableConfig
-): DatabaseSchemaError | null {
-  if (config.primaryKeys.some((pk) => pk.columns.length > 1)) {
-    return invalid(
-      `${where}: composite primary keys are not allowed in pod databases — use a single id column`
-    );
-  }
-  // SQLite allows one PRIMARY KEY per table: a second declaration (column-level .primaryKey()
-  // plus table-level primaryKey(), or two column-level ones) fails at CREATE.
-  const declarations =
-    config.columns.filter((column) => column.primary).length +
-    config.primaryKeys.length;
-  if (declarations > 1) {
-    return invalid(
-      `${where}: more than one primary key declaration — SQLite allows a single PRIMARY KEY per table`
-    );
-  }
-  return null;
-}
-
-function checkNoDuplicateIndexNames(
-  where: string,
-  config: TableConfig
-): DatabaseSchemaError | null {
-  const seen = new Set<string>();
-  for (const index of config.indexes) {
-    if (seen.has(index.config.name)) {
-      return invalid(`${where}: duplicate index name "${index.config.name}"`);
-    }
-    seen.add(index.config.name);
-  }
-  return null;
-}
-
-function checkPlainColumnIndexes(
-  where: string,
-  config: TableConfig
-): DatabaseSchemaError | null {
-  for (const index of config.indexes) {
-    // Indexes are recorded as plain column lists; an expression index could be neither
-    // diffed at publish nor recreated by reconcile.
-    if (indexColumnNames(index.config) === null) {
-      return invalid(
-        `${where}: index "${index.config.name}" uses an SQL expression — only plain column indexes are supported in pod databases`
-      );
-    }
-  }
-  return null;
-}
-
-// The column instances come from the schema file's own drizzle-orm copy (NODE_PATH global in
-// the sandbox), read through a loose zod view. A version skew that moves the fields we read
-// must fail the build, not silently record a wrong shape.
-function checkColumnPropsReadable(
-  where: string,
-  config: TableConfig
-): DatabaseSchemaError | null {
-  for (const column of config.columns) {
-    if (!columnPropsSchema.safeParse(column).success) {
-      return invalid(
-        `${where}: column "${column.name}" has unreadable drizzle column properties — the schema file's drizzle-orm version is incompatible with this build`
-      );
-    }
-  }
-  return null;
-}
-
 // Column `mode` is the row<->JS (de)serialization contract. Most drizzle sqlite column classes
 // carry a `mode` instance property, but some (e.g. text/blob json variants) do not — fall back
 // to a columnType-derived map for those.
@@ -435,15 +329,11 @@ function toDatabaseTable(config: TableConfig): DatabaseTable {
 
   const indexes: Record<string, DatabaseIndex> = Object.create(null);
   for (const index of config.indexes) {
-    const columnNames = indexColumnNames(index.config);
-    if (columnNames === null) {
-      throw new Error(
-        `unreachable: expression index "${index.config.name}" passed validation`
-      );
-    }
+    // Expression members have no column name; record the named ones. The recording is
+    // internal to validation/reconcile — nothing stores or diffs it.
     indexes[index.config.name] = {
       unique: index.config.unique,
-      columns: columnNames,
+      columns: indexColumnNames(index.config) ?? [],
     };
   }
 
@@ -452,16 +342,9 @@ function toDatabaseTable(config: TableConfig): DatabaseTable {
 
 type ColumnProps = z.infer<typeof columnPropsSchema>;
 
-// Parse-or-throw is safe here: checkColumnPropsReadable already rejected unparseable columns
-// during validation, so a failure past that point is a bug.
 function columnProps(column: object): Partial<ColumnProps> {
   const parsed = columnPropsSchema.safeParse(column);
-  if (!parsed.success) {
-    throw new Error(
-      "unreachable: column passed checkColumnPropsReadable but failed to parse"
-    );
-  }
-  return parsed.data;
+  return parsed.success ? parsed.data : {};
 }
 
 // The plain column names of an index, or null if any entry is an SQL expression.

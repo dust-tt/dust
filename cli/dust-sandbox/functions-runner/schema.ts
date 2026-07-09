@@ -2,18 +2,12 @@
 
 import { basename, extname } from "node:path";
 import { z } from "zod";
-import type { FunctionState } from "./types/db.ts";
 
 export interface FunctionSchema {
   name: string;
   description: string | null;
   input_schema: Record<string, unknown> | null;
   output_schema: Record<string, unknown> | null;
-  // Per-database shapes (wire version 1) — set by `build` when the function declares
-  // `schema.databases`; absent otherwise. `function get` never sets it: bundles carry no
-  // schema files. Front reads back only the database names and schemaFile paths (the
-  // reconcile inputs); the table shapes live in the schema files and the live database.
-  databases?: FunctionState;
 }
 
 export function toJsonSchema(value: unknown): Record<string, unknown> | null {
