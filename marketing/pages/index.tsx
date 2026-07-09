@@ -5,20 +5,39 @@ import {
   fetchAuthContext,
   hasWorkosSessionCookie,
 } from "@marketing/lib/api/authContext";
+import { getServerFeatureFlagVariant } from "@marketing/lib/api/posthog_server";
+import type { HeroVariantKey } from "@marketing/lib/experiments/hero_experiment";
+import {
+  HERO_EXPERIMENT_FLAG_KEY,
+  isHeroVariantKey,
+  toHeroVariant,
+} from "@marketing/lib/experiments/hero_experiment";
 import type { NewsItem } from "@marketing/lib/homepage_news";
 import { fetchHomepageNews } from "@marketing/lib/homepage_news";
+import {
+  buildDustAidServerCookieString,
+  readAnonymousIdFromCookies,
+} from "@marketing/lib/utils/anonymous_id";
 import { extractUTMParams } from "@marketing/lib/utils/utm";
 import { Landing } from "@marketing/pages/home";
 import logger from "@marketing/logger/logger";
 import type { GetServerSideProps } from "next";
 import type { ParsedUrlQuery } from "querystring";
 import type { ReactElement } from "react";
+import { v4 as uuidv4 } from "uuid";
 
 interface HomeProps {
   postLoginReturnToUrl: string;
   news: NewsItem[];
   shape: number;
   gtmTrackingId: string | null;
+  // Server-resolved hero A/B variant, rendered into the initial HTML so the
+  // control copy never flashes to the test copy.
+  heroVariant: HeroVariantKey;
+  // Feature flags to seed posthog-js with, so the client agrees with the
+  // server-rendered variant and can record the exposure without a re-fetch.
+  // Null when flag evaluation was unavailable (client falls back to its own).
+  posthogBootstrap: { featureFlags: Record<string, string> } | null;
 }
 
 /**
@@ -99,7 +118,47 @@ export const getServerSideProps: GetServerSideProps<HomeProps> = async (
     postLoginCallbackUrl += `?inviteToken=${inviteToken}`;
   }
 
-  const news = await fetchHomepageNews();
+  // Resolve the PostHog distinct id from the persistent `_dust_aid` cookie so
+  // the server buckets the hero experiment identically to the client. On a
+  // visitor's very first request the cookie doesn't exist yet, so mint one here
+  // and set it on the response — otherwise the flag would be evaluated against a
+  // throwaway id and diverge from the client, reintroducing the flash we set out
+  // to avoid.
+  let distinctId = readAnonymousIdFromCookies(cookieHeader);
+  if (!distinctId) {
+    distinctId = uuidv4();
+    context.res.setHeader(
+      "Set-Cookie",
+      buildDustAidServerCookieString(distinctId, context.req.headers.host)
+    );
+  }
+
+  const [news, heroFlagValue] = await Promise.all([
+    fetchHomepageNews(),
+    getServerFeatureFlagVariant(HERO_EXPERIMENT_FLAG_KEY, distinctId),
+  ]);
+
+  let heroVariant = toHeroVariant(heroFlagValue);
+  // Only bootstrap the client when evaluation actually succeeded; on failure we
+  // rendered control and let posthog-js resolve the flag on its own.
+  let posthogBootstrap: { featureFlags: Record<string, string> } | null =
+    heroFlagValue === undefined
+      ? null
+      : { featureFlags: { [HERO_EXPERIMENT_FLAG_KEY]: heroVariant } };
+
+  // Dev-only override to preview a specific hero variant without a live PostHog
+  // experiment, e.g. `/?hero_variant=collaboration`. Never honored in
+  // production, where the variant must come from the real experiment.
+  if (config.getNodeEnv() !== "production") {
+    const requested = context.query.hero_variant;
+    const requestedValue = Array.isArray(requested) ? requested[0] : requested;
+    if (isHeroVariantKey(requestedValue)) {
+      heroVariant = requestedValue;
+      posthogBootstrap = {
+        featureFlags: { [HERO_EXPERIMENT_FLAG_KEY]: requestedValue },
+      };
+    }
+  }
 
   return {
     props: {
@@ -107,13 +166,15 @@ export const getServerSideProps: GetServerSideProps<HomeProps> = async (
       shape: 0,
       gtmTrackingId: process.env.NEXT_PUBLIC_GTM_TRACKING_ID ?? null,
       news,
+      heroVariant,
+      posthogBootstrap,
     },
   };
 };
 
 // biome-ignore lint/plugin/nextjsPageComponentNaming: pre-existing
-export default function Home({ news }: HomeProps) {
-  return <Landing news={news} />;
+export default function Home({ news, heroVariant }: HomeProps) {
+  return <Landing news={news} heroVariant={heroVariant} />;
 }
 
 Home.getLayout = (page: ReactElement, pageProps: LandingLayoutProps) => {

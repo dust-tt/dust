@@ -1,26 +1,7 @@
-import config from "@marketing/lib/api/config";
+import { getPosthogServerClient } from "@marketing/lib/api/posthog_server";
 import { DUST_COOKIES_ACCEPTED } from "@marketing/lib/cookies";
 import { readAnonymousIdFromCookies } from "@marketing/lib/utils/anonymous_id";
 import logger from "@marketing/logger/logger";
-import { PostHog } from "posthog-node";
-
-const POSTHOG_HOST = "https://eu.i.posthog.com";
-
-let posthogClient: PostHog | null = null;
-
-function getClient(): PostHog | null {
-  if (posthogClient) {
-    return posthogClient;
-  }
-
-  const apiKey = config.getPostHogApiKey();
-  if (!apiKey) {
-    return null;
-  }
-
-  posthogClient = new PostHog(apiKey, { host: POSTHOG_HOST });
-  return posthogClient;
-}
 
 // In-memory IP rate limit: 4 requests per 2s per IP. Per-process only — across
 // pods this is best-effort, which is acceptable for pageview spam control.
@@ -72,7 +53,7 @@ export async function trackPageview({
     return { type: "rate_limited" };
   }
 
-  const client = getClient();
+  const client = getPosthogServerClient();
   if (!client) {
     return { type: "ok" };
   }

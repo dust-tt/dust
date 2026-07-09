@@ -5,15 +5,15 @@ import { homeScenarios } from "@marketing/components/home/content/Product/heroOf
 import { mountFloorScene } from "@marketing/components/home/content/Product/heroOfficeScene";
 import type { TeamMember } from "@marketing/components/home/content/shared/team";
 import { useSignUpModal } from "@marketing/hooks/useSignUpModal";
+import type { HeroVariantKey } from "@marketing/lib/experiments/hero_experiment";
+import {
+  DEFAULT_HERO_VARIANT,
+  HERO_CONTENT,
+} from "@marketing/lib/experiments/hero_experiment";
 import { TRACKING_AREAS, withTracking } from "@marketing/lib/tracking";
 import { LegacyButton as Button } from "@dust-tt/sparkle";
 import Link from "next/link";
 import { useEffect, useRef } from "react";
-
-const HEADLINE_LINE_1 = "Multiplayer AI for";
-const HEADLINE_LINE_2 = "human-agent collaboration.";
-const LEAD_COPY =
-  "Dust is where people and agents collaborate as co-contributors, so that work doesn't just get done – it gets rewired.";
 
 const OFFICE_FIRST_NAMES = [
   "Aisha",
@@ -46,9 +46,16 @@ const TEAM_POOL: TeamMember[] = OFFICE_FIRST_NAMES.map((firstName) => ({
   github: "",
 }));
 
-export function HeroOfficeSection() {
+interface HeroOfficeSectionProps {
+  variant?: HeroVariantKey;
+}
+
+export function HeroOfficeSection({
+  variant = DEFAULT_HERO_VARIANT,
+}: HeroOfficeSectionProps = {}) {
   const { openSignUpModal } = useSignUpModal();
   const sceneRef = useRef<HTMLDivElement>(null);
+  const content = HERO_CONTENT[variant];
 
   useEffect(() => {
     const host = sceneRef.current;
@@ -136,14 +143,14 @@ export function HeroOfficeSection() {
               className="m-0 text-balance text-[clamp(40px,4.8vw,76px)] font-semibold leading-[90%] tracking-[-0.04em] text-foreground"
               style={{ fontFamily: "var(--font-sans, inherit)" }}
             >
-              {HEADLINE_LINE_1}
+              {content.headlineLine1}
               <br />
-              {HEADLINE_LINE_2}
+              {content.headlineLine2}
             </h1>
           </HomeReveal>
           <HomeReveal delay={80}>
             <p className="copy-lg max-w-[520px] text-pretty leading-[1.55] text-muted-foreground">
-              {LEAD_COPY}
+              {content.leadCopy}
             </p>
           </HomeReveal>
           <HomeReveal delay={160}>
@@ -152,14 +159,14 @@ export function HeroOfficeSection() {
                 <Button
                   variant="highlight"
                   size="md"
-                  label="Request a demo"
+                  label={content.primaryCtaLabel}
                   onClick={withTracking(TRACKING_AREAS.HOME, "hero_book_demo")}
                 />
               </Link>
               <Button
                 variant="ghost-secondary"
                 size="md"
-                label="Try for free →"
+                label={content.secondaryCtaLabel}
                 onClick={withTracking(
                   TRACKING_AREAS.HOME,
                   "hero_start_free",

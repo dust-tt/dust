@@ -121,9 +121,15 @@ export default function App({ Component, pageProps }: AppPropsWithLayout) {
     []
   );
 
+  // Feature flags evaluated server-side for this page (e.g. the homepage hero
+  // A/B experiment) are passed through to posthog-js so the client matches the
+  // server-rendered variant. `pageProps` is untyped, so read defensively.
+  const posthogBootstrapFlags: Record<string, string> | undefined =
+    pageProps?.posthogBootstrap?.featureFlags;
+
   return (
     <FetcherProvider fetcher={fetcher} fetcherWithBody={fetcherWithBody}>
-      <PostHogTracker>
+      <PostHogTracker bootstrapFlags={posthogBootstrapFlags}>
         <SparkleContext.Provider value={sparkleContextValue}>
           <SignUpModalProvider>
             {getLayout(<Component {...pageProps} />, pageProps)}

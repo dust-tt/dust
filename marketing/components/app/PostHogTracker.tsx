@@ -35,18 +35,27 @@ interface PostHogTrackerProps {
   // When true, assume cookies are accepted (logged in users).
   // Use in authenticated contexts (e.g. SPA) where the user is always logged in.
   authenticated?: boolean;
+  // Feature flags evaluated server-side (e.g. an A/B experiment resolved in
+  // getServerSideProps). Seeded into posthog-js at init so the client agrees
+  // with the server-rendered variant and can record the exposure synchronously,
+  // without waiting for a /decide round-trip (which would flash + mis-report).
+  bootstrapFlags?: Record<string, string>;
 }
 
 export function PostHogTracker({
   children,
   authenticated,
+  bootstrapFlags,
 }: PostHogTrackerProps) {
   // Always render PostHogProvider to avoid unmounting/remounting the entire
   // tree when tracking state changes. Tracking is controlled via
   // posthog.opt_in_capturing() / posthog.opt_out_capturing() instead.
   return (
     <PostHogProvider client={posthog}>
-      <PostHogTrackerInner authenticated={authenticated} />
+      <PostHogTrackerInner
+        authenticated={authenticated}
+        bootstrapFlags={bootstrapFlags}
+      />
       {children}
     </PostHogProvider>
   );
@@ -60,9 +69,13 @@ export function PostHogTracker({
  */
 interface PostHogTrackerInnerProps {
   authenticated?: boolean;
+  bootstrapFlags?: Record<string, string>;
 }
 
-function PostHogTrackerInner({ authenticated }: PostHogTrackerInnerProps) {
+function PostHogTrackerInner({
+  authenticated,
+  bootstrapFlags,
+}: PostHogTrackerInnerProps) {
   const router = useAppRouter();
   const [cookies] = useCookies([DUST_COOKIES_ACCEPTED]);
 
@@ -129,6 +142,20 @@ function PostHogTrackerInner({ authenticated }: PostHogTrackerInnerProps) {
     // prior anonymous browsing events are orphaned.
     const anonymousId = getOrCreateAnonymousId();
 
+    // Combine the anonymous distinct_id and any server-evaluated feature flags
+    // into a single bootstrap so posthog-js has both available synchronously at
+    // init time.
+    const bootstrap: {
+      distinctID?: string;
+      featureFlags?: Record<string, string>;
+    } = {};
+    if (anonymousId) {
+      bootstrap.distinctID = anonymousId;
+    }
+    if (bootstrapFlags && Object.keys(bootstrapFlags).length > 0) {
+      bootstrap.featureFlags = bootstrapFlags;
+    }
+
     posthog.init(POSTHOG_KEY, {
       // /subtle1 is rewritten to PostHog by marketing's own next.config.js.
       // Use a relative path so requests hit marketing's origin (not front).
@@ -136,7 +163,7 @@ function PostHogTrackerInner({ authenticated }: PostHogTrackerInnerProps) {
       person_profiles: "identified_only",
       defaults: "2025-05-24",
       persistence: "memory",
-      ...(anonymousId ? { bootstrap: { distinctID: anonymousId } } : {}),
+      ...(Object.keys(bootstrap).length > 0 ? { bootstrap } : {}),
       // Share PostHog cookies (including distinct_id) across all *.dust.tt
       // subdomains so the same identity persists through dust.tt → signin →
       // app.dust.tt. Takes effect when persistence upgrades to cookie in Phase 2.
@@ -258,7 +285,22 @@ function PostHogTrackerInner({ authenticated }: PostHogTrackerInnerProps) {
     });
 
     hasInitialized.current = true;
-  }, [isTrackablePage]);
+  }, [isTrackablePage, bootstrapFlags]);
+
+  // Record the experiment exposure for any server-bootstrapped feature flags.
+  // getFeatureFlag() emits PostHog's `$feature_flag_called` event (deduped per
+  // session), and since the value was bootstrapped from the server it resolves
+  // synchronously and matches the variant the visitor actually saw. Runs on
+  // initial load (after the init effect above sets posthog.__loaded) and again
+  // on client-side navigations that carry a fresh bootstrap.
+  useEffect(() => {
+    if (!posthog.__loaded || !bootstrapFlags) {
+      return;
+    }
+    for (const flagKey of Object.keys(bootstrapFlags)) {
+      posthog.getFeatureFlag(flagKey);
+    }
+  }, [bootstrapFlags]);
 
   // Identify the user as soon as possible after auth completes — NOT gated on
   // cookie consent. identify() is a first-party operation on an already-

@@ -60,6 +60,11 @@ const config = {
   getPostHogApiKey: (): string | undefined => {
     return EnvironmentConfig.getOptionalEnvVariable("NEXT_PUBLIC_POSTHOG_KEY");
   },
+  getNodeEnv: (): string => {
+    // NODE_ENV is inlined by Next at build time; read it directly here (like the
+    // NEXT_PUBLIC_* getters above) so the helper works on both server and client.
+    return process.env.NODE_ENV ?? "development";
+  },
 };
 
 export default config;

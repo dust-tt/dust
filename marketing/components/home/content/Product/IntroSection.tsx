@@ -9,6 +9,8 @@ import { HomeSecuritySection } from "@marketing/components/home/content/Product/
 import { HomeTeamSportSection } from "@marketing/components/home/content/Product/HomeTeamSportSection";
 import { HomeTeamUsageSection } from "@marketing/components/home/content/Product/HomeTeamUsageSection";
 import { HomeTrustedSection } from "@marketing/components/home/content/Product/HomeTrustedSection";
+import type { HeroVariantKey } from "@marketing/lib/experiments/hero_experiment";
+import { DEFAULT_HERO_VARIANT } from "@marketing/lib/experiments/hero_experiment";
 import type { NewsItem } from "@marketing/lib/homepage_news";
 
 const TESTIMONIAL_IMAGE = "/static/landing/people/quote-testimonial.png";
@@ -34,14 +36,18 @@ const QUOTES = [
 
 interface IntroSectionProps {
   news?: NewsItem[];
+  heroVariant?: HeroVariantKey;
 }
 
-export function IntroSection({ news }: IntroSectionProps = {}) {
+export function IntroSection({
+  news,
+  heroVariant = DEFAULT_HERO_VARIANT,
+}: IntroSectionProps = {}) {
   return (
     <section className="w-full">
       <HomeRevealStyles />
       <div className="flex flex-col">
-        <HeroOfficeSection />
+        <HeroOfficeSection variant={heroVariant} />
         <div className="relative left-1/2 right-1/2 -ml-[50vw] -mr-[50vw] flex w-screen flex-col">
           <HomeTrustedSection />
           <HomeTeamSportSection />
