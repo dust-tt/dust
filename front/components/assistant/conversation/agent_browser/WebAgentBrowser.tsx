@@ -188,7 +188,11 @@ export function WebAgentBrowser({
           showTagHeadings={true}
         />
       ) : viewTab === "cartography" ? (
-        <Cartography />
+        <Cartography
+          agentConfigurations={agentsByTab.all}
+          isLoading={isLoading}
+          onAgentClick={handleAgentClick}
+        />
       ) : (
         viewTab && (
           <AgentGrid
