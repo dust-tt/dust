@@ -728,6 +728,27 @@ export class WakeUpResource extends BaseResource<WakeUpModel> {
     return new Ok(undefined);
   }
 
+  // Batch-deletes wake-up rows by their model ids in a single query. Callers are
+  // responsible for having torn down each wake-up's Temporal footprint first, as
+  // this only removes the DB rows.
+  static async deleteByModelIds(
+    auth: Authenticator,
+    ids: ModelId[],
+    { transaction }: { transaction?: Transaction } = {}
+  ): Promise<void> {
+    if (ids.length === 0) {
+      return;
+    }
+
+    await this.model.destroy({
+      where: {
+        id: ids,
+        workspaceId: auth.getNonNullableWorkspace().id,
+      },
+      transaction,
+    });
+  }
+
   toJSON(): WakeUpType {
     const scheduleConfig: WakeUpScheduleConfig = (() => {
       switch (this.scheduleType) {

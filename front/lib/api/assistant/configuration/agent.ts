@@ -41,6 +41,7 @@ import { AgentSkillModel } from "@app/lib/models/agent/agent_skill";
 import { AgentSuggestionModel } from "@app/lib/models/agent/agent_suggestion";
 import { GroupAgentModel } from "@app/lib/models/agent/group_agent";
 import { TagAgentModel } from "@app/lib/models/agent/tag_agent";
+import { AgentUserRelationResource } from "@app/lib/resources/agent_user_relation_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
@@ -1567,6 +1568,65 @@ export async function restoreAgentConfiguration(
   return new Ok({ restored: updated[0] > 0 });
 }
 
+// Deletes the agent-scoped resources that are keyed by the agent sId (stable
+// across versions) and therefore have no DB foreign key to cascade on: triggers
+// (with their Temporal schedule), wake-ups (with their Temporal schedule /
+// pending workflow) and favorite / agent-user-relation rows.
+export async function cleanupAgentScopedResourcesForHardDeletion(
+  auth: Authenticator,
+  agentConfigurationId: string
+): Promise<void> {
+  const workspace = auth.getNonNullableWorkspace();
+
+  const triggers = await TriggerResource.listByAgentConfigurationId(
+    auth,
+    agentConfigurationId
+  );
+  await concurrentExecutor(
+    triggers,
+    async (trigger) => {
+      const deleteResult = await trigger.delete(auth);
+      if (deleteResult.isErr()) {
+        logger.error(
+          {
+            workspaceId: workspace.sId,
+            agentConfigurationId,
+            triggerId: trigger.sId,
+            error: deleteResult.error,
+          },
+          `Failed to delete trigger ${trigger.sId} while hard-deleting agent ${agentConfigurationId}`
+        );
+      }
+    },
+    { concurrency: 4 }
+  );
+
+  const wakeUps = await WakeUpResource.listByAgentConfigurationId(
+    auth,
+    agentConfigurationId
+  );
+  const deletableWakeUpIds: ModelId[] = [];
+  for (const wakeUp of wakeUps) {
+    const cleanupResult = await wakeUp.forceCancel(auth);
+    if (cleanupResult.isErr()) {
+      logger.error(
+        {
+          workspaceId: workspace.sId,
+          agentConfigurationId,
+          wakeUpId: wakeUp.sId,
+          error: cleanupResult.error,
+        },
+        `Failed cleaning up wake-up ${wakeUp.sId} Temporal state while hard-deleting agent ${agentConfigurationId}; leaving row for retry`
+      );
+      continue;
+    }
+    deletableWakeUpIds.push(wakeUp.id);
+  }
+  await WakeUpResource.deleteByModelIds(auth, deletableWakeUpIds);
+
+  await AgentUserRelationResource.deleteForAgent(auth, agentConfigurationId);
+}
+
 // Should only be called when we need to clean up the agent configuration
 // right after creating it due to an error.
 export async function unsafeHardDeleteAgentConfiguration(
@@ -1693,6 +1753,11 @@ export async function batchHardDeletePendingAgentConfigurations(
       where: { agentConfigurationId: agentIds, workspaceId },
       transaction: t,
     });
+
+    await AgentUserRelationResource.deleteForAgents(
+      agents.map((a) => a.sId),
+      { workspaceId, transaction: t }
+    );
 
     await AgentConfigurationModel.destroy({
       where: { id: agentIds, workspaceId },
