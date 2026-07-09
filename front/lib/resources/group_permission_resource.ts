@@ -3,6 +3,7 @@ import { BaseResource } from "@app/lib/resources/base_resource";
 import { assertValidGrant } from "@app/lib/resources/group_permission_registry";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
+import { GroupMembershipModel } from "@app/lib/resources/storage/models/group_memberships";
 import { GroupPermissionModel } from "@app/lib/resources/storage/models/group_permissions";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import { withTransaction } from "@app/lib/utils/sql_utils";
@@ -15,6 +16,7 @@ import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Ok } from "@app/types/shared/result";
 import { removeNulls } from "@app/types/shared/utils/general";
+import type { UserType } from "@app/types/user";
 import assert from "assert";
 import type { Attributes, ModelStatic, Transaction } from "sequelize";
 import { Op } from "sequelize";
@@ -66,6 +68,26 @@ interface ListForGroupsSpec {
   permissionType?: PermissionType;
   resourceType?: GroupPermissionResourceType;
   resourceId?: number;
+}
+
+interface UserGrantSpec {
+  user: UserType;
+  permissionType: PermissionType;
+  resourceType: GroupPermissionResourceType;
+  resourceId: number;
+  transaction?: Transaction;
+}
+
+function autoGroupName({
+  permissionType,
+  resourceType,
+  resourceId,
+}: {
+  permissionType: PermissionType;
+  resourceType: GroupPermissionResourceType;
+  resourceId: number;
+}): string {
+  return `Group for permission ${permissionType} on ${resourceType} (${resourceId})`;
 }
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
@@ -127,6 +149,161 @@ export class GroupPermissionResource extends BaseResource<GroupPermissionModel> 
     });
 
     return new this(GroupPermissionModel, row.get());
+  }
+
+  // Find the regular_auto group that already holds an instance-level grant for the given tuple.
+  // At most one such group is expected per (permissionType, resourceType, resourceId).
+  private static async findRegularAutoGroupForGrant(
+    auth: Authenticator,
+    {
+      permissionType,
+      resourceType,
+      resourceId,
+      transaction,
+    }: {
+      permissionType: PermissionType;
+      resourceType: GroupPermissionResourceType;
+      resourceId: number;
+      transaction?: Transaction;
+    }
+  ): Promise<GroupResource | null> {
+    const workspaceId = auth.getNonNullableWorkspace().id;
+    const grants = await GroupPermissionModel.findAll({
+      where: {
+        workspaceId,
+        permissionType,
+        resourceType,
+        resourceId,
+      },
+      transaction,
+    });
+    if (grants.length === 0) {
+      return null;
+    }
+
+    const groupIds = [...new Set(grants.map((grant) => grant.groupId))];
+    const groups = await GroupResource.fetchByModelIds(auth, groupIds, {
+      transaction,
+    });
+
+    return groups.find((group) => group.kind === "regular_auto") ?? null;
+  }
+
+  // Grant a user access to a resource by adding them to the regular_auto group that holds the
+  // grant. Creates the group and calls grant() on first use. Idempotent for repeat grants to the
+  // same user.
+  static async grantToUser(
+    auth: Authenticator,
+    {
+      user,
+      permissionType,
+      resourceType,
+      resourceId,
+      transaction,
+    }: UserGrantSpec
+  ): Promise<Result<undefined, Error>> {
+    return withTransaction(async (t) => {
+      let group = await this.findRegularAutoGroupForGrant(auth, {
+        permissionType,
+        resourceType,
+        resourceId,
+        transaction: t,
+      });
+
+      if (!group) {
+        group = await GroupResource.makeNew(
+          {
+            name: autoGroupName({ permissionType, resourceType, resourceId }),
+            kind: "regular_auto",
+            workspaceId: auth.getNonNullableWorkspace().id,
+          },
+          { transaction: t }
+        );
+        await this.grant(auth, {
+          group,
+          permissionType,
+          resourceType,
+          resourceId,
+          transaction: t,
+        });
+      }
+
+      const addResult = await group.dangerouslyAddMember(auth, {
+        user,
+        transaction: t,
+      });
+      if (addResult.isErr()) {
+        return addResult;
+      }
+
+      return new Ok(undefined);
+    }, transaction);
+  }
+
+  // Revoke a user's access by removing them from the regular_auto group that holds the grant. If the
+  // user was the last member, revokes the grant and deletes the group. No-op when the user is not a
+  // member of the backing group.
+  static async revokeFromUser(
+    auth: Authenticator,
+    {
+      user,
+      permissionType,
+      resourceType,
+      resourceId,
+      transaction,
+    }: UserGrantSpec
+  ): Promise<Result<undefined, Error>> {
+    return withTransaction(async (t) => {
+      const group = await this.findRegularAutoGroupForGrant(auth, {
+        permissionType,
+        resourceType,
+        resourceId,
+        transaction: t,
+      });
+      if (!group) {
+        return new Ok(undefined);
+      }
+
+      const membership = await GroupMembershipModel.findOne({
+        where: {
+          workspaceId: auth.getNonNullableWorkspace().id,
+          groupId: group.id,
+          userId: user.id,
+          status: "active",
+          startAt: { [Op.lte]: new Date() },
+          [Op.or]: [{ endAt: null }, { endAt: { [Op.gt]: new Date() } }],
+        },
+        transaction: t,
+      });
+      if (!membership) {
+        return new Ok(undefined);
+      }
+
+      const memberCount = await group.getMemberCount(auth);
+      const removeResult = await group.dangerouslyRemoveMember(auth, {
+        user,
+        transaction: t,
+      });
+      if (removeResult.isErr()) {
+        return removeResult;
+      }
+
+      if (memberCount === 1) {
+        await this.revoke(auth, {
+          group,
+          permissionType,
+          resourceType,
+          resourceId,
+          transaction: t,
+        });
+        const deleteResult = await group.delete(auth, { transaction: t });
+        if (deleteResult.isErr()) {
+          return deleteResult;
+        }
+      }
+
+      return new Ok(undefined);
+    }, transaction);
   }
 
   // Revoke a single instance-level grant. No-op if absent. Type-wide (-1) grants are removed via
