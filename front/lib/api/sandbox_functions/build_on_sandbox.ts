@@ -2,12 +2,12 @@ import { randomUUID } from "node:crypto";
 import path from "node:path";
 import { ensurePodSandboxReady } from "@app/lib/api/sandbox/lifecycle";
 import { shellEscape } from "@app/lib/api/sandbox/shell";
+import { parseDbEnvelope } from "@app/lib/api/sandbox_functions/dsbx_db";
 import type { SandboxFunctionErrorCode } from "@app/lib/api/sandbox_functions/errors";
 import { SandboxFunctionError } from "@app/lib/api/sandbox_functions/errors";
-import type { FunctionState } from "@app/lib/api/sandbox_functions/manifests";
-import { functionStateSchema } from "@app/lib/api/sandbox_functions/manifests";
 import type { Authenticator } from "@app/lib/auth";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
+import { POD_DATABASE_NAME_REGEX } from "@app/types/api/sandbox_functions";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
@@ -25,9 +25,33 @@ export interface SandboxFunctionBuildResult {
   bundleCode: string;
   inputSchema: JSONSchema;
   outputSchema: JSONSchema;
-  // Per-database shapes (wire version 1); null when the function declares no databases.
-  manifests: FunctionState | null;
+  // Databases the function declares (name -> schema file path relative to the source), from
+  // the build envelope; null when the function declares none.
+  databases: Record<string, { schemaFile: string }> | null;
 }
+
+// The build envelope's `databases` block (wire version 1). The runner also ships each table's
+// full shape, but front only needs which databases the function declares and where each schema
+// file lives (the reconcile inputs) — table shapes live in the pod's schema files and the live
+// SQLite file, nowhere else. The envelope is read back from the sandbox, where model-authored
+// code runs, so front revalidates the database names instead of trusting the runner.
+// Database names become plain-object keys in front, and the name regex alone lets
+// `constructor`/`prototype` through (only `__proto__` fails its leading-letter rule) —
+// reject the reserved keys explicitly, mirroring the runner's declaration check.
+const RESERVED_OBJECT_KEYS = new Set(["__proto__", "constructor", "prototype"]);
+
+const declaredDatabasesSchema = z.object({
+  version: z.literal(1),
+  databases: z.record(
+    z
+      .string()
+      .regex(POD_DATABASE_NAME_REGEX)
+      .refine((name) => !RESERVED_OBJECT_KEYS.has(name), {
+        message: "reserved name",
+      }),
+    z.object({ schemaFile: z.string() })
+  ),
+});
 
 // dsbx writes the bundle and schema to files (sandbox stdout can be truncated) and prints only
 // this envelope. Mirrors BuildResult in cli/dust-sandbox/functions-runner/build.ts.
@@ -51,7 +75,7 @@ const functionSchemaFileSchema = z.object({
   description: z.string().nullable(),
   input_schema: jsonSchemaValue.nullable(),
   output_schema: jsonSchemaValue.nullable(),
-  databases: functionStateSchema.optional(),
+  databases: declaredDatabasesSchema.optional(),
 });
 
 // Database schema rejections (typed build errors) map to the model-correctable
@@ -176,42 +200,7 @@ export async function buildSandboxFunctionOnSandbox(
 function parseBuildEnvelope(
   stdout: string
 ): Result<z.infer<typeof buildEnvelopeSchema>, SandboxFunctionError> {
-  // dsbx prints one JSON envelope. Take the last non-empty line to ignore any shell noise.
-  const lastLine =
-    stdout
-      .split("\n")
-      .map((line) => line.trim())
-      .filter((line) => line.length > 0)
-      .at(-1) ?? "";
-  if (lastLine.length === 0) {
-    return new Err(
-      new SandboxFunctionError(
-        "internal",
-        "dsbx function build produced no output."
-      )
-    );
-  }
-
-  let json: unknown;
-  try {
-    json = JSON.parse(lastLine);
-  } catch (err) {
-    return new Err(
-      new SandboxFunctionError(
-        "internal",
-        `Unparseable dsbx output: ${normalizeError(err).message}`
-      )
-    );
-  }
-
-  const parsed = buildEnvelopeSchema.safeParse(json);
-  if (!parsed.success) {
-    return new Err(
-      new SandboxFunctionError("internal", "Unexpected dsbx output shape.")
-    );
-  }
-
-  return new Ok(parsed.data);
+  return parseDbEnvelope(stdout, buildEnvelopeSchema, "dsbx function build");
 }
 
 function parseSchemaFile(
@@ -255,6 +244,6 @@ function parseSchemaFile(
     bundleCode,
     inputSchema,
     outputSchema,
-    manifests: parsed.data.databases ?? null,
+    databases: parsed.data.databases?.databases ?? null,
   });
 }

@@ -9,7 +9,6 @@ import {
 } from "@app/lib/api/sandbox/access_tokens";
 import { ensurePodSandboxReady } from "@app/lib/api/sandbox/lifecycle";
 import { shellEscape } from "@app/lib/api/sandbox/shell";
-import type { FunctionState } from "@app/lib/api/sandbox_functions/manifests";
 import type { Authenticator } from "@app/lib/auth";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
@@ -113,7 +112,6 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
       description,
       inputSchema,
       outputSchema,
-      manifests,
     }: {
       space: SpaceResource;
       file: FileResource;
@@ -121,7 +119,6 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
       description: string;
       inputSchema: JSONSchema;
       outputSchema: JSONSchema;
-      manifests?: FunctionState | null;
     },
     transaction?: Transaction
   ): Promise<SandboxFunctionResource> {
@@ -160,7 +157,6 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
         description,
         inputSchema,
         outputSchema,
-        manifests: manifests ?? null,
       },
       { transaction }
     );
@@ -169,10 +165,13 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
   }
 
   /**
-   * Re-publish: overwrite this function's bundle in place and refresh its contract. uploadContent
-   * rewrites the same file (canonical original plus its mount path <prefix>/<slug>.ts) and bumps the
-   * version, so the function's storage path stays stable across re-publishes rather than drifting to
-   * a disambiguated name. The caller checks write permission.
+   * Re-publish: overwrite this function's bundle in place and refresh its contract. The row is
+   * claimed FIRST with a conditional update against `expectedUpdatedAt` — a concurrent publish
+   * that stored since that read resolves to "conflict" before the live bundle is touched. Then
+   * uploadContent rewrites the same file (canonical original plus its mount path
+   * <prefix>/<slug>.ts) and bumps the version, so the function's storage path stays stable
+   * across re-publishes rather than drifting to a disambiguated name. The caller checks write
+   * permission.
    */
   async updateContent(
     auth: Authenticator,
@@ -181,23 +180,38 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
       description,
       inputSchema,
       outputSchema,
-      manifests,
+      expectedUpdatedAt,
     }: {
       bundleCode: string;
       description: string;
       inputSchema: JSONSchema;
       outputSchema: JSONSchema;
-      manifests: FunctionState | null;
+      expectedUpdatedAt: Date;
     }
-  ): Promise<Result<undefined, Error>> {
+  ): Promise<Result<"updated" | "conflict", Error>> {
     try {
+      const [affectedCount] = await SandboxFunctionModel.update(
+        { description, inputSchema, outputSchema },
+        {
+          where: {
+            id: this.id,
+            workspaceId: this.workspaceId,
+            updatedAt: expectedUpdatedAt,
+          },
+        }
+      );
+      if (affectedCount === 0) {
+        return new Ok("conflict");
+      }
+      // Keep the in-memory attributes in line with the row (the conditional update bypasses
+      // BaseResource.update).
+      Object.assign(this, { description, inputSchema, outputSchema });
       await this.file.uploadContent(auth, bundleCode);
-      await this.update({ description, inputSchema, outputSchema, manifests });
     } catch (error) {
       return new Err(normalizeError(error));
     }
 
-    return new Ok(undefined);
+    return new Ok("updated");
   }
 
   private static async baseFetch(

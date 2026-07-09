@@ -1,5 +1,4 @@
 import { formatSandboxFunction } from "@app/lib/api/actions/servers/sandbox_functions/tools/get";
-import type { FunctionState } from "@app/lib/api/sandbox_functions/manifests";
 import type { Authenticator } from "@app/lib/auth";
 import { SandboxFunctionResource } from "@app/lib/resources/sandbox_function_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
@@ -28,11 +27,9 @@ async function makeFunction(
   {
     slug,
     description,
-    manifests = null,
   }: {
     slug: string;
     description: string;
-    manifests?: FunctionState | null;
   }
 ): Promise<SandboxFunctionResource> {
   const file = await FileFactory.create(auth, null, {
@@ -51,7 +48,6 @@ async function makeFunction(
     description,
     inputSchema,
     outputSchema,
-    manifests,
   });
 }
 
@@ -71,30 +67,6 @@ describe("formatSandboxFunction", () => {
     expect(out).toContain("greet: Greet a user by name.");
     expect(out).toContain(`input: ${JSON.stringify(fn.inputSchema)}`);
     expect(out).toContain(`output: ${JSON.stringify(fn.outputSchema)}`);
-    // No databases declared -> no databases line.
-    expect(out).not.toContain("databases:");
-  });
-
-  it("surfaces declared databases", async () => {
-    const { authenticator, workspace } = await createResourceTest({
-      role: "admin",
-    });
-    const space = await SpaceFactory.project(workspace);
-    const fn = await makeFunction(authenticator, space, {
-      slug: "post-message",
-      description: "Post a message.",
-      manifests: {
-        version: 1,
-        databases: {
-          chat: { schemaFile: "databases/chat.db.ts", tables: {} },
-          notes: { schemaFile: "databases/notes.db.ts", tables: {} },
-        },
-      },
-    });
-
-    const out = formatSandboxFunction(fn);
-
-    expect(out).toContain("databases: chat, notes");
   });
 
   it("resolves a function by its slug within the pod", async () => {

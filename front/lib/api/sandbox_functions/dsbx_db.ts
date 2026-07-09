@@ -3,15 +3,18 @@ import { shellEscape } from "@app/lib/api/sandbox/shell";
 import { SandboxFunctionError } from "@app/lib/api/sandbox_functions/errors";
 import type { Authenticator } from "@app/lib/auth";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
+import logger from "@app/logger/logger";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { z } from "zod";
 
+import type { DbErrorKind } from "../../../../cli/dust-sandbox/functions-runner/types/db";
+
 const DSBX_BIN_PATH = "/opt/bin/dsbx";
 const DB_EXEC_TIMEOUT_MS = 60 * 1000;
 
-// Mirrors DEFAULT_POD_DATABASES_DIR in cli/dust-sandbox/src/commands/db/mod.rs (paths-env.v1).
+// Mirrors DEFAULT_POD_DATABASES_DIR in cli/dust-sandbox/src/commands/db/mod.rs.
 // Passed explicitly on every `dsbx db` exec, like DUST_FUNCTIONS_DIR on `function run`.
 export const DUST_POD_DATABASES_DIR = "/pod-state/databases";
 
@@ -42,8 +45,10 @@ export interface ReconcileDatabaseResult {
 
 // Runner error kinds the model can fix itself (bad schema file, destructive DDL, bad SQL,
 // unknown database) — mapped to `reconcile_blocked` (surfaced verbatim, tracked:false at the
-// MCP boundary). Everything else maps to `reconcile_failed`.
-const MODEL_CORRECTABLE_DB_KINDS = new Set([
+// MCP boundary). Everything else maps to `reconcile_failed`. The list is typed by the
+// runner's own kind union so a renamed kind fails the typecheck here instead of silently
+// degrading; the set reads plain wire strings.
+const MODEL_CORRECTABLE_DB_KIND_LIST: DbErrorKind[] = [
   "schema_unresolvable",
   "schema_invalid",
   "destructive_change",
@@ -51,7 +56,10 @@ const MODEL_CORRECTABLE_DB_KINDS = new Set([
   "database_not_found",
   "query_failed",
   "empty_sql",
-]);
+];
+const MODEL_CORRECTABLE_DB_KINDS: ReadonlySet<string> = new Set(
+  MODEL_CORRECTABLE_DB_KIND_LIST
+);
 
 function dbErrorToSandboxFunctionError(
   database: string,
@@ -59,14 +67,13 @@ function dbErrorToSandboxFunctionError(
 ): SandboxFunctionError {
   if ("ok" in envelope) {
     const { kind, message } = envelope.error;
-    // A destructive refusal can also mean the live schema drifted AHEAD of every stored
-    // manifest (a previous publish reconciled its DDL but failed before storing): the schema
+    // A destructive refusal can also mean the schema file is behind the live database
+    // (another function's publish or a previously failed one already applied wider DDL): the
     // file then looks like it drops columns it simply never declared. Spell out the recovery.
     const driftHint =
       kind === "destructive_change"
-        ? " If you did not remove anything, the live database may be ahead of the stored " +
-          "schemas from a previously failed publish: republish the function that declares " +
-          "the wider schema."
+        ? " If you did not remove anything, this schema file may be behind the live " +
+          "database: declare the missing tables and columns and republish."
         : "";
     return new SandboxFunctionError(
       MODEL_CORRECTABLE_DB_KINDS.has(kind)
@@ -139,80 +146,31 @@ export async function reconcileDatabaseOnSandbox(
   const parsed = envelope.value;
 
   if ("ok" in parsed && parsed.ok === true) {
+    // The applied DDL mutated a live pod database: leave a trace.
+    if (parsed.statements.length > 0) {
+      logger.info(
+        {
+          workspaceId: auth.getNonNullableWorkspace().sId,
+          podId: space.sId,
+          database,
+          created: parsed.created,
+          statements: parsed.statements,
+        },
+        "Pod database reconciled: applied DDL"
+      );
+    }
     return new Ok({ created: parsed.created, statements: parsed.statements });
   }
 
   return new Err(dbErrorToSandboxFunctionError(database, parsed));
 }
 
-// Mirrors the `dsbx db list` envelope in cli/dust-sandbox/src/commands/db/list.rs.
-const listEnvelopeSchema = z.union([
-  z.object({
-    ok: z.literal(true),
-    databases: z.array(z.object({ name: z.string(), size_bytes: z.number() })),
-  }),
-  dbErrorEnvelopeSchema,
-]);
-
-export interface LiveDatabaseEntry {
-  name: string;
-  sizeBytes: number;
-}
-
 /**
- * Run `dsbx db list` on the pod sandbox: enumerate the live `{db}.db` files with sizes.
+ * Parse the one-line JSON envelope a dsbx command prints as its last non-empty stdout line
+ * (sandbox stdout can carry shell noise and be truncated; files carry big payloads). Shared
+ * with `dsbx function build` (build_on_sandbox.ts).
  */
-export async function listDatabasesOnSandbox(
-  auth: Authenticator,
-  { space }: { space: SpaceResource }
-): Promise<Result<LiveDatabaseEntry[], SandboxFunctionError>> {
-  const ensureResult = await ensurePodSandboxReady(auth, space);
-  if (ensureResult.isErr()) {
-    return new Err(
-      new SandboxFunctionError(
-        "sandbox_unavailable",
-        ensureResult.error.message
-      )
-    );
-  }
-  const { sandbox } = ensureResult.value;
-
-  const execResult = await sandbox.exec(auth, `${DSBX_BIN_PATH} db list`, {
-    timeoutMs: DB_EXEC_TIMEOUT_MS,
-    envVars: { DUST_POD_DATABASES_DIR },
-    user: "agent-proxied",
-  });
-  if (execResult.isErr()) {
-    return new Err(
-      new SandboxFunctionError("internal", execResult.error.message)
-    );
-  }
-
-  const envelope = parseDbEnvelope(
-    execResult.value.stdout,
-    listEnvelopeSchema,
-    "dsbx db list"
-  );
-  if (envelope.isErr()) {
-    return envelope;
-  }
-  const parsed = envelope.value;
-  if ("ok" in parsed && parsed.ok === true) {
-    return new Ok(
-      parsed.databases.map((db) => ({
-        name: db.name,
-        sizeBytes: db.size_bytes,
-      }))
-    );
-  }
-  return new Err(dbErrorToSandboxFunctionError("(list)", parsed));
-}
-
-/**
- * Parse the one-line JSON envelope a `dsbx db` command prints as its last non-empty stdout
- * line (sandbox stdout can carry shell noise and be truncated; files carry big payloads).
- */
-function parseDbEnvelope<S extends z.ZodTypeAny>(
+export function parseDbEnvelope<S extends z.ZodTypeAny>(
   stdout: string,
   schema: S,
   what: string

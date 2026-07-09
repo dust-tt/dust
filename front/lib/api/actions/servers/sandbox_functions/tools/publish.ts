@@ -37,40 +37,13 @@ export async function publishHandler(
   if (result.isErr()) {
     return new Err(toMCPError(result.error));
   }
-  const { sandboxFunction, warnings, staleSiblings, untrackedDatabases } =
-    result.value;
 
-  const notes: { type: "text"; text: string }[] = [
+  return new Ok([
     {
       type: "text",
-      text: `Published sandbox function "${sandboxFunction.slug}".`,
+      text: `Published sandbox function "${result.value.slug}".`,
     },
-    ...warnings.map((warning): { type: "text"; text: string } => ({
-      type: "text",
-      text: `Warning — ${warning.message}`,
-    })),
-    ...staleSiblings.map((note): { type: "text"; text: string } => ({
-      type: "text",
-      text:
-        `Note — "${note.slug}" was published against an older schema of ` +
-        `${note.databases.join(", ")}. It keeps working, but republish it once its code is ` +
-        `aligned with the shared schema file${note.databases.length > 1 ? "s" : ""}.`,
-    })),
-  ];
-  if (untrackedDatabases.length > 0) {
-    const plural = untrackedDatabases.length > 1;
-    notes.push({
-      type: "text",
-      text:
-        `Note — untracked database${plural ? "s" : ""} ` +
-        `${untrackedDatabases.join(", ")}: no published function declares ` +
-        `${plural ? "them" : "it"} anymore. The data stays untouched (nothing is ever ` +
-        `dropped); declare ${plural ? "them" : "it"} again from a function to keep using ` +
-        `${plural ? "them" : "it"}.`,
-    });
-  }
-
-  return new Ok(notes);
+  ]);
 }
 
 function toMCPError(error: SandboxFunctionError): MCPError {
@@ -79,9 +52,8 @@ function toMCPError(error: SandboxFunctionError): MCPError {
     case "build_failed":
     case "schema_extraction_failed":
     case "invalid_contract":
-    // Compat blocks and reconcile refusals are model-correctable: the message carries the
-    // (function, table.column) list and the additive migrate path.
-    case "compat_blocked":
+    // Reconcile refusals are model-correctable: the message carries what was refused and the
+    // additive migrate path.
     case "reconcile_blocked":
     // Another publish holds the pod's lock; the model can simply retry.
     case "publish_conflict":

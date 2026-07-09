@@ -1,15 +1,13 @@
 import { buildSandboxFunctionOnSandbox } from "@app/lib/api/sandbox_functions/build_on_sandbox";
-import {
-  listDatabasesOnSandbox,
-  reconcileDatabaseOnSandbox,
-} from "@app/lib/api/sandbox_functions/dsbx_db";
+import { reconcileDatabaseOnSandbox } from "@app/lib/api/sandbox_functions/dsbx_db";
 import { SandboxFunctionError } from "@app/lib/api/sandbox_functions/errors";
-import type { FunctionState } from "@app/lib/api/sandbox_functions/manifests";
 import { publishSandboxFunction } from "@app/lib/api/sandbox_functions/publish_sandbox_function";
 import { Authenticator } from "@app/lib/auth";
+import { executeWithLock, LockAcquisitionTimeoutError } from "@app/lib/lock";
 import { SandboxFunctionResource } from "@app/lib/resources/sandbox_function_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { FileModel } from "@app/lib/resources/storage/models/files";
+import { FileFactory } from "@app/tests/utils/FileFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { fileStorageMock } from "@app/tests/utils/mocks/file_storage";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
@@ -41,17 +39,22 @@ vi.mock("@app/lib/api/sandbox_functions/dsbx_db", async (importOriginal) => {
   return {
     ...actual,
     reconcileDatabaseOnSandbox: vi.fn(),
-    listDatabasesOnSandbox: vi.fn(),
   };
 });
 
 // Mock the distributed lock to avoid a Redis dependency (established pattern, see
-// lib/api/data_sources.test.ts / lib/resources/sandbox_resource.test.ts).
-vi.mock("@app/lib/lock", () => ({
-  executeWithLock: vi.fn(
-    async (_lockName: string, fn: () => Promise<unknown>) => fn()
-  ),
-}));
+// lib/api/data_sources.test.ts / lib/resources/sandbox_resource.test.ts). The module's other
+// exports (LOCK_TTL_MS, LockAcquisitionTimeoutError) stay real.
+vi.mock("@app/lib/lock", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@app/lib/lock")>();
+
+  return {
+    ...actual,
+    executeWithLock: vi.fn(
+      async (_lockName: string, fn: () => Promise<unknown>) => fn()
+    ),
+  };
+});
 
 const inputSchema: JSONSchema = {
   type: "object",
@@ -65,48 +68,7 @@ const outputSchema: JSONSchema = {
   required: ["greeting"],
 };
 
-function chatState(
-  columns: Record<
-    string,
-    {
-      type: string;
-      mode: string | null;
-      notNull: boolean;
-      hasDefault: boolean;
-      primaryKey: boolean;
-      autoIncrement: boolean;
-    }
-  >
-): FunctionState {
-  return {
-    version: 1,
-    databases: {
-      chat: {
-        schemaFile: "databases/chat.db.ts",
-        tables: { messages: { columns, indexes: {} } },
-      },
-    },
-  };
-}
-
-const baseColumns = {
-  id: {
-    type: "integer",
-    mode: null,
-    notNull: true,
-    hasDefault: true,
-    primaryKey: true,
-    autoIncrement: true,
-  },
-  body: {
-    type: "text",
-    mode: null,
-    notNull: true,
-    hasDefault: false,
-    primaryKey: false,
-    autoIncrement: false,
-  },
-};
+const chatDatabases = { chat: { schemaFile: "databases/chat.db.ts" } };
 
 // The publisher must be a pod member so DustFileSystem.forPod grants read access, matching the
 // write gate the MCP tool enforces in production.
@@ -132,7 +94,6 @@ beforeEach(() => {
   vi.mocked(reconcileDatabaseOnSandbox).mockResolvedValue(
     new Ok({ created: false, statements: [] })
   );
-  vi.mocked(listDatabasesOnSandbox).mockResolvedValue(new Ok([]));
 });
 
 describe("publishSandboxFunction", () => {
@@ -143,7 +104,7 @@ describe("publishSandboxFunction", () => {
         bundleCode: "export default {};",
         inputSchema,
         outputSchema,
-        manifests: null,
+        databases: null,
       })
     );
 
@@ -158,14 +119,11 @@ describe("publishSandboxFunction", () => {
     if (result.isErr()) {
       return;
     }
-    const fn = result.value.sandboxFunction;
+    const fn = result.value;
     expect(fn.slug).toBe("greet");
     expect(fn.description).toBe("Greet someone.");
     expect(fn.inputSchema).toEqual(inputSchema);
     expect(fn.outputSchema).toEqual(outputSchema);
-    expect(fn.manifests).toBeNull();
-    expect(result.value.warnings).toEqual([]);
-    expect(result.value.staleSiblings).toEqual([]);
 
     expect(buildSandboxFunctionOnSandbox).toHaveBeenCalledWith(auth, {
       space,
@@ -197,7 +155,7 @@ describe("publishSandboxFunction", () => {
     const { workspace, space, auth } = await setupPod();
 
     vi.mocked(buildSandboxFunctionOnSandbox).mockResolvedValue(
-      new Ok({ bundleCode: "v1", inputSchema, outputSchema, manifests: null })
+      new Ok({ bundleCode: "v1", inputSchema, outputSchema, databases: null })
     );
     const first = await publishSandboxFunction(auth, {
       space,
@@ -209,7 +167,7 @@ describe("publishSandboxFunction", () => {
     if (first.isErr()) {
       return;
     }
-    const firstFileId = first.value.sandboxFunction.fileId;
+    const firstFileId = first.value.fileId;
     const [firstBundle] = await FileModel.findAll({
       where: { workspaceId: workspace.id },
     });
@@ -225,7 +183,7 @@ describe("publishSandboxFunction", () => {
         bundleCode: "v2",
         inputSchema,
         outputSchema: newOutputSchema,
-        manifests: null,
+        databases: null,
       })
     );
     const second = await publishSandboxFunction(auth, {
@@ -239,14 +197,12 @@ describe("publishSandboxFunction", () => {
       return;
     }
 
-    expect(second.value.sandboxFunction.id).toBe(
-      first.value.sandboxFunction.id
-    );
-    expect(second.value.sandboxFunction.description).toBe("v2");
-    expect(second.value.sandboxFunction.outputSchema).toEqual(newOutputSchema);
+    expect(second.value.id).toBe(first.value.id);
+    expect(second.value.description).toBe("v2");
+    expect(second.value.outputSchema).toEqual(newOutputSchema);
     // The bundle file is reused in place, not replaced: same row, canonical mount path retained, and
     // its version bumped by the re-upload.
-    expect(second.value.sandboxFunction.fileId).toBe(firstFileId);
+    expect(second.value.fileId).toBe(firstFileId);
 
     const listed = await SandboxFunctionResource.listBySpace(auth, space);
     expect(listed).toHaveLength(1);
@@ -258,6 +214,58 @@ describe("publishSandboxFunction", () => {
       `w/${workspace.sId}/pods/${space.sId}/sandbox-functions/greet.ts`
     );
     expect(files[0].version).toBeGreaterThan(firstVersion ?? 0);
+  });
+
+  it("maps a lock acquisition timeout to a retryable publish_conflict", async () => {
+    const { space, auth } = await setupPod();
+    vi.mocked(buildSandboxFunctionOnSandbox).mockResolvedValue(
+      new Ok({
+        bundleCode: "b",
+        inputSchema,
+        outputSchema,
+        databases: null,
+      })
+    );
+    vi.mocked(executeWithLock).mockRejectedValueOnce(
+      new LockAcquisitionTimeoutError("sandbox_function:publish:x")
+    );
+
+    const result = await publishSandboxFunction(auth, {
+      space,
+      slug: "greet",
+      description: "Greet someone.",
+      path: `pod-${space.sId}/greet.ts`,
+    });
+
+    expect(result.isErr()).toBe(true);
+    if (result.isOk()) {
+      return;
+    }
+    expect(result.error.code).toBe("publish_conflict");
+  });
+
+  it("propagates a non-timeout lock failure (e.g. Redis outage) instead of masking it", async () => {
+    const { space, auth } = await setupPod();
+    vi.mocked(buildSandboxFunctionOnSandbox).mockResolvedValue(
+      new Ok({
+        bundleCode: "b",
+        inputSchema,
+        outputSchema,
+        databases: null,
+      })
+    );
+    vi.mocked(executeWithLock).mockRejectedValueOnce(
+      new Error("redis connection refused")
+    );
+
+    await expect(
+      publishSandboxFunction(auth, {
+        space,
+        slug: "greet",
+        description: "Greet someone.",
+        path: `pod-${space.sId}/greet.ts`,
+      })
+    ).rejects.toThrow("redis connection refused");
   });
 
   it("rejects a path that escapes the pod mount", async () => {
@@ -331,17 +339,15 @@ describe("publishSandboxFunction", () => {
     expect(listed).toHaveLength(0);
   });
 
-  it("stores manifests, reconciles each declared database and flags untracked leftovers", async () => {
+  it("reconciles each declared database before storing", async () => {
     const { space, auth } = await setupPod();
-    const manifests = chatState(baseColumns);
     vi.mocked(buildSandboxFunctionOnSandbox).mockResolvedValue(
-      new Ok({ bundleCode: "b", inputSchema, outputSchema, manifests })
-    );
-    vi.mocked(listDatabasesOnSandbox).mockResolvedValue(
-      new Ok([
-        { name: "chat", sizeBytes: 4096 },
-        { name: "old_leftover", sizeBytes: 1024 },
-      ])
+      new Ok({
+        bundleCode: "b",
+        inputSchema,
+        outputSchema,
+        databases: chatDatabases,
+      })
     );
 
     const result = await publishSandboxFunction(auth, {
@@ -355,9 +361,7 @@ describe("publishSandboxFunction", () => {
     if (result.isErr()) {
       return;
     }
-    expect(result.value.sandboxFunction.manifests).toEqual(manifests);
-    // Declared by nobody anymore -> untracked; declared "chat" is not flagged.
-    expect(result.value.untrackedDatabases).toEqual(["old_leftover"]);
+    expect(result.value.slug).toBe("post-message");
 
     expect(reconcileDatabaseOnSandbox).toHaveBeenCalledTimes(1);
     expect(reconcileDatabaseOnSandbox).toHaveBeenCalledWith(auth, {
@@ -368,47 +372,37 @@ describe("publishSandboxFunction", () => {
     });
   });
 
-  it("blocks a publish that removes a column a sibling references, before any reconcile", async () => {
-    const { space, auth } = await setupPod();
-
-    // Publish the sibling first, with a manifest referencing chat.messages.body.
+  it("resolves a concurrent first publish of the same slug to a typed conflict with no orphaned file", async () => {
+    const { workspace, space, auth } = await setupPod();
     vi.mocked(buildSandboxFunctionOnSandbox).mockResolvedValue(
       new Ok({
-        bundleCode: "sib",
+        bundleCode: "b",
         inputSchema,
         outputSchema,
-        manifests: chatState(baseColumns),
+        databases: chatDatabases,
       })
     );
-    const sibling = await publishSandboxFunction(auth, {
-      space,
-      slug: "list-messages",
-      description: "List messages.",
-      path: `pod-${space.sId}/list-messages.ts`,
+    // Simulate a concurrent publish landing while this one reconciles (the 5s lock TTL is not
+    // renewed): the winner's row appears mid-section.
+    vi.mocked(reconcileDatabaseOnSandbox).mockImplementationOnce(async () => {
+      const file = await FileFactory.create(auth, null, {
+        contentType: sandboxFunctionContentType,
+        fileName: "post-message.ts",
+        fileSize: 100,
+        status: "created",
+        useCase: "project_context",
+        useCaseMetadata: { spaceId: space.sId },
+      });
+      await SandboxFunctionResource.makeNew(auth, {
+        space,
+        file,
+        slug: "post-message",
+        description: "Concurrent winner.",
+        inputSchema,
+        outputSchema,
+      });
+      return new Ok({ created: true, statements: [] });
     });
-    expect(sibling.isOk()).toBe(true);
-    vi.mocked(reconcileDatabaseOnSandbox).mockClear();
-
-    // The new publish renames body -> content (drops body).
-    const { body: _dropped, ...withoutBody } = baseColumns;
-    vi.mocked(buildSandboxFunctionOnSandbox).mockResolvedValue(
-      new Ok({
-        bundleCode: "new",
-        inputSchema,
-        outputSchema,
-        manifests: chatState({
-          ...withoutBody,
-          content: {
-            type: "text",
-            mode: null,
-            notNull: false,
-            hasDefault: false,
-            primaryKey: false,
-            autoIncrement: false,
-          },
-        }),
-      })
-    );
 
     const result = await publishSandboxFunction(auth, {
       space,
@@ -421,13 +415,15 @@ describe("publishSandboxFunction", () => {
     if (result.isOk()) {
       return;
     }
-    expect(result.error.code).toBe("compat_blocked");
-    expect(result.error.message).toContain("chat.messages.body");
-    expect(result.error.message).toContain("list-messages");
-    // Blocked before touching the live database, and nothing was stored.
-    expect(reconcileDatabaseOnSandbox).not.toHaveBeenCalled();
+    expect(result.error.code).toBe("publish_conflict");
+
+    // The winner's row and bundle are untouched; the loser created no second file.
     const listed = await SandboxFunctionResource.listBySpace(auth, space);
-    expect(listed.map((fn) => fn.slug)).toEqual(["list-messages"]);
+    expect(listed.map((fn) => fn.description)).toEqual(["Concurrent winner."]);
+    const files = await FileModel.findAll({
+      where: { workspaceId: workspace.id },
+    });
+    expect(files).toHaveLength(1);
   });
 
   it("propagates a reconcile refusal and stores nothing", async () => {
@@ -437,7 +433,7 @@ describe("publishSandboxFunction", () => {
         bundleCode: "b",
         inputSchema,
         outputSchema,
-        manifests: chatState(baseColumns),
+        databases: chatDatabases,
       })
     );
     vi.mocked(reconcileDatabaseOnSandbox).mockResolvedValue(
@@ -465,13 +461,16 @@ describe("publishSandboxFunction", () => {
 
   it("stops at the first failing database of a multi-db publish and stores nothing", async () => {
     const { space, auth } = await setupPod();
-    const manifests = chatState(baseColumns);
-    manifests.databases.notes = {
-      schemaFile: "databases/notes.db.ts",
-      tables: { notes: { columns: baseColumns, indexes: {} } },
-    };
     vi.mocked(buildSandboxFunctionOnSandbox).mockResolvedValue(
-      new Ok({ bundleCode: "b", inputSchema, outputSchema, manifests })
+      new Ok({
+        bundleCode: "b",
+        inputSchema,
+        outputSchema,
+        databases: {
+          ...chatDatabases,
+          notes: { schemaFile: "databases/notes.db.ts" },
+        },
+      })
     );
     // First database reconciles, the second is refused.
     vi.mocked(reconcileDatabaseOnSandbox)
@@ -498,86 +497,5 @@ describe("publishSandboxFunction", () => {
 
     const listed = await SandboxFunctionResource.listBySpace(auth, space);
     expect(listed).toHaveLength(0);
-  });
-
-  it("returns mode-drift warnings and stale-sibling notes on a compatible publish", async () => {
-    const { space, auth } = await setupPod();
-
-    vi.mocked(buildSandboxFunctionOnSandbox).mockResolvedValue(
-      new Ok({
-        bundleCode: "sib",
-        inputSchema,
-        outputSchema,
-        manifests: chatState({
-          ...baseColumns,
-          created_at: {
-            type: "integer",
-            mode: "timestamp",
-            notNull: true,
-            hasDefault: false,
-            primaryKey: false,
-            autoIncrement: false,
-          },
-        }),
-      })
-    );
-    const sibling = await publishSandboxFunction(auth, {
-      space,
-      slug: "list-messages",
-      description: "List messages.",
-      path: `pod-${space.sId}/list-messages.ts`,
-    });
-    expect(sibling.isOk()).toBe(true);
-
-    // Same storage shape but created_at loses its mode and a column is added: compatible,
-    // with a mode-drift warning and a stale-sibling note.
-    vi.mocked(buildSandboxFunctionOnSandbox).mockResolvedValue(
-      new Ok({
-        bundleCode: "new",
-        inputSchema,
-        outputSchema,
-        manifests: chatState({
-          ...baseColumns,
-          created_at: {
-            type: "integer",
-            mode: null,
-            notNull: true,
-            hasDefault: false,
-            primaryKey: false,
-            autoIncrement: false,
-          },
-          topic: {
-            type: "text",
-            mode: null,
-            notNull: false,
-            hasDefault: false,
-            primaryKey: false,
-            autoIncrement: false,
-          },
-        }),
-      })
-    );
-
-    const result = await publishSandboxFunction(auth, {
-      space,
-      slug: "report-activity",
-      description: "Report activity.",
-      path: `pod-${space.sId}/report-activity.ts`,
-    });
-
-    expect(result.isOk()).toBe(true);
-    if (result.isErr()) {
-      return;
-    }
-    expect(result.value.warnings).toHaveLength(1);
-    expect(result.value.warnings[0]).toMatchObject({
-      kind: "mode_drift",
-      database: "chat",
-      table: "messages",
-      subject: "created_at",
-    });
-    expect(result.value.staleSiblings).toEqual([
-      { slug: "list-messages", databases: ["chat"] },
-    ]);
   });
 });

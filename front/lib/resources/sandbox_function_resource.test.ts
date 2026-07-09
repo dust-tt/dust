@@ -467,7 +467,6 @@ describe("SandboxFunctionResource", () => {
     expect(command).toBe("/opt/bin/dsbx function run 'add-comment'");
     expect(opts?.envVars).toMatchObject({
       DUST_FUNCTIONS_DIR: `/sandbox-functions/pods/${space.sId}`,
-      DUST_POD_DATABASES_DIR: "/pod-state/databases",
       DUST_SANDBOX_TOKEN: "sbt-function-token",
     });
     expect(opts?.user).toBe("agent-proxied");
@@ -622,9 +621,12 @@ describe("SandboxFunctionResource", () => {
       description: "Second.",
       inputSchema: newInputSchema,
       outputSchema: newOutputSchema,
-      manifests: null,
+      expectedUpdatedAt: sandboxFunction.updatedAt,
     });
     expect(result.isOk()).toBe(true);
+    if (result.isOk()) {
+      expect(result.value).toBe("updated");
+    }
 
     // The row keeps the same bundle file and gets the refreshed contract.
     expect(sandboxFunction.fileId).toBe(firstFile.id);
@@ -652,6 +654,56 @@ describe("SandboxFunctionResource", () => {
     expect(fetched?.fileId).toBe(firstFile.id);
     expect(fetched?.description).toBe("Second.");
     expect(fetched?.outputSchema).toEqual(newOutputSchema);
+  });
+
+  it("resolves a stale expectedUpdatedAt to a conflict without touching the bundle", async () => {
+    const { authenticator, workspace } = await createResourceTest({
+      role: "admin",
+    });
+    const space = await SpaceFactory.project(workspace);
+
+    const file = await FileFactory.create(authenticator, null, {
+      contentType: sandboxFunctionContentType,
+      fileName: "greet.ts",
+      fileSize: 100,
+      status: "created",
+      useCase: "project_context",
+      useCaseMetadata: { spaceId: space.sId },
+    });
+    await file.uploadContent(authenticator, "v1");
+
+    const sandboxFunction = await SandboxFunctionResource.makeNew(
+      authenticator,
+      {
+        space,
+        file,
+        slug: "greet",
+        description: "First.",
+        inputSchema,
+        outputSchema,
+      }
+    );
+    const versionBefore = file.version;
+
+    // A concurrent publish stored since this row was read: the claim must miss.
+    const result = await sandboxFunction.updateContent(authenticator, {
+      bundleCode: "v2",
+      description: "Second.",
+      inputSchema,
+      outputSchema,
+      expectedUpdatedAt: new Date(0),
+    });
+    expect(result.isOk()).toBe(true);
+    if (result.isOk()) {
+      expect(result.value).toBe("conflict");
+    }
+
+    const fetched = await SandboxFunctionResource.fetchById(
+      authenticator,
+      sandboxFunction.sId
+    );
+    expect(fetched?.description).toBe("First.");
+    expect(file.version).toBe(versionBefore);
   });
 
   it("deletes all sandbox functions for a space", async () => {

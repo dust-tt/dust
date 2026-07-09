@@ -48,10 +48,9 @@ export const SANDBOX_FUNCTIONS_TOOLS_METADATA = createToolsRecord({
       "`schema` with zod `input` and `output` (plus an optional `databases` list of the pod " +
       "databases it opens, each backed by a `databases/{db}.db.ts` drizzle schema file). It is " +
       "bundled on the pod sandbox (`zod`, `drizzle-orm` and `@dust/pod` are available to import) " +
-      "and its input and output JSON schemas are extracted from the `schema` export. Publishing " +
-      "is gated on database compatibility: schema changes that would break a sibling function's " +
-      "published bundle are rejected with the additive migration path, and each declared " +
-      "database's live file is reconciled with additive DDL only. Re-publishing the same slug " +
+      "and its input and output JSON schemas are extracted from the `schema` export. Each " +
+      "declared database's live file is reconciled with additive DDL only: destructive schema " +
+      "changes are rejected with the additive migration path. Re-publishing the same slug " +
       "replaces the previous version.",
     schema: {
       slug: z

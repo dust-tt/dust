@@ -1,5 +1,4 @@
 import { formatSandboxFunctionsList } from "@app/lib/api/actions/servers/sandbox_functions/tools/list";
-import type { FunctionState } from "@app/lib/api/sandbox_functions/manifests";
 import type { Authenticator } from "@app/lib/auth";
 import { SandboxFunctionResource } from "@app/lib/resources/sandbox_function_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
@@ -28,11 +27,9 @@ async function makeFunction(
   {
     slug,
     description,
-    manifests = null,
   }: {
     slug: string;
     description: string;
-    manifests?: FunctionState | null;
   }
 ): Promise<SandboxFunctionResource> {
   const file = await FileFactory.create(auth, null, {
@@ -51,7 +48,6 @@ async function makeFunction(
     description,
     inputSchema,
     outputSchema,
-    manifests,
   });
 }
 
@@ -83,27 +79,6 @@ describe("formatSandboxFunctionsList", () => {
     // Neither the bundle filename nor the internal sId is surfaced.
     expect(out).not.toContain("greet.ts");
     expect(out).not.toContain(fn.sId);
-  });
-
-  it("shows each function's declared databases", async () => {
-    const { authenticator, workspace } = await createResourceTest({
-      role: "admin",
-    });
-    const space = await SpaceFactory.project(workspace);
-    const fn = await makeFunction(authenticator, space, {
-      slug: "post-message",
-      description: "Post a message.",
-      manifests: {
-        version: 1,
-        databases: {
-          chat: { schemaFile: "databases/chat.db.ts", tables: {} },
-        },
-      },
-    });
-
-    const out = formatSandboxFunctionsList([fn]);
-
-    expect(out).toContain("- post-message: Post a message. (databases: chat)");
   });
 
   it("lists every function", async () => {

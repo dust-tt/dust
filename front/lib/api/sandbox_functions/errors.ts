@@ -4,8 +4,6 @@ export type SandboxFunctionErrorCode =
   | "build_failed"
   | "schema_extraction_failed"
   | "invalid_contract"
-  // The manifest diff found a change that would break a sibling function's published bundle.
-  | "compat_blocked"
   // A `dsbx db` command refused a model-correctable input (destructive/disallowed DDL, bad
   // schema file, unknown database, bad SQL).
   | "reconcile_blocked"
