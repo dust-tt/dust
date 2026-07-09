@@ -28,6 +28,9 @@ export type {
   ButtonProps,
   ButtonSizeType,
   ButtonVariantType,
+  IconOnlyButtonProps,
+  RegularButtonProps,
+  RegularButtonSize,
 } from "./Button";
 export {
   BUTTON_SIZES,

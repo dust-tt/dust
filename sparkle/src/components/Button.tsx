@@ -276,6 +276,7 @@ export interface ButtonProps
   size?: ButtonSizeType | LegacyButtonSizeType;
   variant?: ButtonVariantType | LegacyButtonVariantType;
   hasLighterFont?: boolean;
+  isRounded?: boolean;
   label?: string;
   icon?: ButtonIconType;
   iconRight?: ButtonIconType;
@@ -302,6 +303,7 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
       isCounter = false,
       counterValue,
       isPulsing = false,
+      isRounded = false,
       tooltip,
       tooltipShortcut,
       href,
@@ -310,6 +312,8 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
       replace,
       shallow,
       "aria-label": ariaLabel,
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      hasLighterFont: _hasLighterFont,
       ...props
     },
     ref
@@ -400,6 +404,7 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
             press: !isMenuTrigger && !isLoading,
           }),
           isPulsing && "animate-ring-pulse-soft",
+          isRounded && "rounded-full",
           className
         )}
         aria-label={ariaLabel || tooltip || label}

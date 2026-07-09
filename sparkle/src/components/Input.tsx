@@ -137,7 +137,7 @@ export interface InputProps
   size?: InputSizeType;
   message?: string | null;
   messageStatus?: MessageStatus;
-  value?: string | null;
+  value?: string | number | readonly string[] | null;
   isError?: boolean;
   className?: string;
   containerClassName?: string;
