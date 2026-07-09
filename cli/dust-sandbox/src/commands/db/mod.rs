@@ -1,22 +1,19 @@
 //! `dsbx db` — pod database subcommands (reconcile/schema/list/query).
 //!
 //! Databases are per-pod SQLite files `{name}.db` under `$DUST_POD_DATABASES_DIR`
-//! (falling back to the image's `/pod-state/databases`, per the frozen paths-env.v1
-//! contract). This Rust layer owns name validation and path resolution; the DDL/SQL
+//! (falling back to the image's `/pod-state/databases`). This Rust layer owns name
+//! validation and path resolution; the DDL/SQL
 //! work runs in the embedded Bun runner (same privilege-drop machinery as
 //! `dsbx function`: dropped to `agent-proxied` via `runuser` whenever dsbx runs as
 //! root, NODE_PATH pointed at the image's global npm modules so `drizzle-kit`
 //! resolves at run time).
 
-use std::ffi::OsStr;
 use std::path::PathBuf;
-use std::process::Stdio;
 
 use anyhow::{anyhow, Result};
 use clap::Subcommand;
-use tokio::process::Command;
 
-use super::function::{ensure_runner, harness_node_path, running_as_root, set_mode, AGENT_USER};
+use super::function::spawn_runner;
 
 mod list;
 mod query;
@@ -31,11 +28,10 @@ pub use schema::cmd_db_schema;
 pub(crate) use super::function::emit_error;
 
 /// Directory holding the live pod databases. Set by front on `function run` /
-/// `db *` execs; the constant fallback matches the image layout (paths-env.v1).
-/// TODO(pod-state): Track 3's parallel stack adds identically-named consts plus a
-/// `pod_databases_dir()` helper to src/commands/function/mod.rs for `function run` — after the
-/// stacks merge, dedup onto a single shared definition (these here are the superset:
-/// PathBuf-typed helper + empty-value fallback).
+/// `db *` execs; the constant fallback matches the image layout.
+/// TODO(pod-state): function/mod.rs (Track 3, merged) carries identically-named consts plus
+/// an Option-typed `pod_databases_dir()` for `function run` — dedup onto a single shared
+/// definition (these here are the superset: PathBuf-typed helper + empty-value fallback).
 pub(crate) const POD_DATABASES_DIR_ENV: &str = "DUST_POD_DATABASES_DIR";
 pub(crate) const DEFAULT_POD_DATABASES_DIR: &str = "/pod-state/databases";
 
@@ -72,7 +68,7 @@ pub(crate) fn databases_dir() -> PathBuf {
         .unwrap_or_else(|| PathBuf::from(DEFAULT_POD_DATABASES_DIR))
 }
 
-/// Database name contract (paths-env.v1): `^[a-z][a-z0-9_]{0,63}$`. Also blocks
+/// Valid database names: `^[a-z][a-z0-9_]{0,63}$`. Also blocks
 /// path traversal — names never contain separators.
 pub(crate) fn is_valid_db_name(name: &str) -> bool {
     let mut chars = name.chars();
@@ -92,60 +88,6 @@ pub(crate) fn db_file_path(name: &str) -> Result<PathBuf> {
         )));
     }
     Ok(databases_dir().join(format!("{name}.db")))
-}
-
-/// Spawn the embedded runner under `bun` for a `db-*` subcommand. Mirrors
-/// `function`'s privilege model: dropped to `agent-proxied` via `runuser` whenever
-/// dsbx runs privileged, NODE_PATH prepended with the global npm modules (where
-/// drizzle-kit lives in the sandbox image), and stdout inherited so the runner's
-/// one-line JSON envelope reaches the caller. Returns the exit code.
-pub(crate) async fn spawn_db_runner(
-    subcommand: &str,
-    args: &[&OsStr],
-    inherit_stdin: bool,
-) -> Result<i32> {
-    let runner = ensure_runner()?;
-    let as_agent = running_as_root();
-    if as_agent {
-        // The dropped child must read the runner dsbx wrote as root (0600).
-        set_mode(&runner, 0o644)
-            .map_err(|e| emit_error(anyhow!("failed to prepare runner: {e}")))?;
-    }
-
-    let mut cmd = if as_agent {
-        let mut c = Command::new("runuser");
-        c.arg("-u")
-            .arg(AGENT_USER)
-            .arg("--")
-            .arg("bun")
-            .arg(&*runner);
-        c
-    } else {
-        let mut c = Command::new("bun");
-        c.arg(&*runner);
-        c
-    };
-    cmd.arg(subcommand).args(args);
-    cmd.env("NODE_PATH", harness_node_path())
-        // Threaded to the bun child for consistency with the paths-env.v1 contract
-        // (the runner itself receives resolved paths and does not read it today).
-        .env(POD_DATABASES_DIR_ENV, databases_dir())
-        .stdin(if inherit_stdin {
-            Stdio::inherit()
-        } else {
-            Stdio::null()
-        })
-        .stdout(Stdio::inherit())
-        .stderr(Stdio::inherit());
-
-    let status = cmd
-        .status()
-        .await
-        .map_err(|e| emit_error(anyhow!("failed to run bun: {e}")))?;
-
-    runner.close().ok();
-
-    Ok(status.code().unwrap_or(1))
 }
 
 #[cfg(test)]
