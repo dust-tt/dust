@@ -182,7 +182,7 @@ describe("/api/w/[wId]/groups/[groupId]/spend_limit", () => {
       const regularGroup = await GroupResource.makeNew({
         name: "Space group",
         workspaceId: workspace.id,
-        kind: "regular",
+        kind: "regular_auto",
       });
       const { auth } = await createPrivateApiMockRequest({
         method: "PUT",

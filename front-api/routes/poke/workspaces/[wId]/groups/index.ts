@@ -13,13 +13,7 @@ app.get("/", async (ctx): HandlerResult<PokeListGroups> => {
   const auth = ctx.get("auth");
 
   const groups = await GroupResource.listAllWorkspaceGroups(auth, {
-    groupKinds: [
-      "global",
-      "regular",
-      "regular_auto",
-      "space_editors",
-      "provisioned",
-    ],
+    groupKinds: ["global", "regular_auto", "space_editors", "provisioned"],
   });
 
   return ctx.json({ groups: groups.map((g) => g.toJSON()) });
