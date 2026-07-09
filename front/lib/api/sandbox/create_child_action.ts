@@ -225,7 +225,7 @@ export async function createSandboxChildAction(
       metadata: {
         toolName: fullToolConfiguration.originalName,
         mcpServerName: fullToolConfiguration.mcpServerName,
-        agentName: agentConfiguration.name,
+        agentName: "agent",
         icon: fullToolConfiguration.icon,
         displayedAs: getInternalMCPServerDisplayedAs(
           fullToolConfiguration.toolServerId

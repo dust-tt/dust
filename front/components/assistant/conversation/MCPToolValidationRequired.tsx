@@ -34,11 +34,8 @@ import {
 import { useMemo, useState } from "react";
 
 type ToolOverride = {
-  title?: (agentName: string, inputs: Record<string, unknown>) => string;
-  alwaysAllowLabel?: (
-    agentName: string,
-    inputs: Record<string, unknown>
-  ) => string;
+  title?: (inputs: Record<string, unknown>) => string;
+  alwaysAllowLabel?: (inputs: Record<string, unknown>) => string;
   detailsExpanded?: boolean;
 };
 
@@ -48,64 +45,58 @@ const MCP_TOOL_OVERRIDES: Partial<
 > = {
   "dust-chrome-extension": {
     interact_with_page: {
-      title: (agentName, inputs) =>
-        `Allow ${asDisplayName(agentName)} to ${inputs.humanReadableDescription}?`,
-      alwaysAllowLabel: (agentName, inputs) =>
-        "Allow all the interactions with this tab",
+      title: (inputs) => `Allow agent to ${inputs.humanReadableDescription}?`,
+      alwaysAllowLabel: () => "Allow all the interactions with this tab",
     },
   },
   "dust-firefox-extension": {
     interact_with_page: {
-      title: (agentName, inputs) =>
-        `Allow ${asDisplayName(agentName)} to ${inputs.humanReadableDescription}?`,
+      title: (inputs) => `Allow agent to ${inputs.humanReadableDescription}?`,
       alwaysAllowLabel: () => "Allow all the interactions with this tab",
     },
   },
   sandbox: {
     add_egress_domain: {
-      title: (agentName) =>
-        `Allow ${asDisplayName(agentName)} to add a domain to the Computer?`,
+      title: () => `Allow agent to add a domain to the Computer?`,
       detailsExpanded: true,
     },
   },
   [POD_TASKS_SERVER_NAME]: {
     [CREATE_TASKS_TOOL_NAME]: {
-      title: (agentName, inputs) => {
+      title: (inputs) => {
         if (!isPodTasksCreateTasksInput(inputs)) {
-          return `Allow ${asDisplayName(agentName)} to create tasks?`;
+          return `Allow agent to create tasks?`;
         }
         const count = inputs.tasks.length;
-        return `Allow ${asDisplayName(agentName)} to create ${count} task${count === 1 ? "" : "s"}?`;
+        return `Allow agent to create ${count} task${count === 1 ? "" : "s"}?`;
       },
-      alwaysAllowLabel: (agentName) =>
-        `Always allow ${asDisplayName(agentName)} to create tasks`,
+      alwaysAllowLabel: () => `Always allow agent to create tasks`,
     },
     [UPDATE_TASKS_TOOL_NAME]: {
-      title: (agentName, inputs) => {
+      title: (inputs) => {
         if (!isPodTasksUpdateTasksInput(inputs)) {
-          return `Allow ${asDisplayName(agentName)} to update tasks?`;
+          return `Allow agent to update tasks?`;
         }
         const count = inputs.tasks.length;
         const doneCount = inputs.tasks.filter(
           (task) => task.doneRationale
         ).length;
         if (doneCount > 0 && doneCount === count) {
-          return `Allow ${asDisplayName(agentName)} to mark ${count} task${count === 1 ? "" : "s"} as done?`;
+          return `Allow agent to mark ${count} task${count === 1 ? "" : "s"} as done?`;
         }
         if (doneCount > 0) {
-          return `Allow ${asDisplayName(agentName)} to update ${count} task${count === 1 ? "" : "s"} (${doneCount} marked as done)?`;
+          return `Allow agent to update ${count} task${count === 1 ? "" : "s"} (${doneCount} marked as done)?`;
         }
-        return `Allow ${asDisplayName(agentName)} to update ${count} task${count === 1 ? "" : "s"}?`;
+        return `Allow agent to update ${count} task${count === 1 ? "" : "s"}?`;
       },
-      alwaysAllowLabel: (agentName) =>
-        `Always allow ${asDisplayName(agentName)} to update tasks`,
+      alwaysAllowLabel: () => `Always allow agent to update tasks`,
     },
   },
   [POD_MANAGER_SERVER_NAME]: {
     [UPDATE_MEMBERS_TOOL_NAME]: {
-      title: (agentName, inputs) => {
+      title: (inputs) => {
         if (!isPodManagerUpdateMembersInput(inputs)) {
-          return `Allow ${asDisplayName(agentName)} to update Pod members?`;
+          return `Allow agent to update Pod members?`;
         }
         const addCount = Object.keys(inputs.membersToAdd ?? {}).length;
         const removeCount = inputs.membersToRemove?.length ?? 0;
@@ -116,24 +107,20 @@ const MCP_TOOL_OVERRIDES: Partial<
         if (removeCount > 0) {
           parts.push(`remove ${removeCount}`);
         }
-        return `Allow ${asDisplayName(agentName)} to ${parts.join(" and ")} Pod user${addCount + removeCount === 1 ? "" : "s"}?`;
+        return `Allow agent to ${parts.join(" and ")} Pod user${addCount + removeCount === 1 ? "" : "s"}?`;
       },
-      alwaysAllowLabel: (agentName) =>
-        `Always allow ${asDisplayName(agentName)} to update Pod members`,
+      alwaysAllowLabel: () => `Always allow agent to update Pod members`,
     },
   },
   [WAKEUPS_SERVER_NAME]: {
     schedule_wakeup: {
-      title: (agentName) =>
-        `Allow ${asDisplayName(agentName)} to schedule a wake-up?`,
+      title: () => `Allow agent to schedule a wake-up?`,
     },
     list_wakeups: {
-      title: (agentName) =>
-        `Allow ${asDisplayName(agentName)} to list wake-ups?`,
+      title: () => `Allow agent to list wake-ups?`,
     },
     cancel_wakeup: {
-      title: (agentName) =>
-        `Allow ${asDisplayName(agentName)} to cancel a wake-up?`,
+      title: () => `Allow agent to cancel a wake-up?`,
     },
   },
 };
@@ -233,14 +220,11 @@ export function MCPToolValidationRequired({
       return `Permission needed for ${asDisplayName(blockedAction.metadata.mcpServerName)}.`;
     }
     if (toolOverride?.title) {
-      return toolOverride.title(
-        blockedAction.metadata.agentName,
-        blockedAction.inputs
-      );
+      return toolOverride.title(blockedAction.inputs);
     }
     const subject =
       blockedAction.metadata.displayedAs === "agent"
-        ? blockedAction.metadata.agentName
+        ? "agent"
         : blockedAction.metadata.mcpServerName;
     return `Allow ${asDisplayName(subject)} to ${asDisplayName(blockedAction.metadata.toolName)}?`;
   }
@@ -250,10 +234,7 @@ export function MCPToolValidationRequired({
       return "Always allow";
     }
     if (toolOverride?.alwaysAllowLabel) {
-      return toolOverride.alwaysAllowLabel(
-        blockedAction.metadata.agentName,
-        blockedAction.inputs
-      );
+      return toolOverride.alwaysAllowLabel(blockedAction.inputs);
     }
 
     if (blockedAction.approvalArgsLabel) {
@@ -269,7 +250,7 @@ export function MCPToolValidationRequired({
         }
         return JSON.stringify(value);
       });
-    return `Always allow @${blockedAction.metadata.agentName} to ${asDisplayName(blockedAction.metadata.toolName)} ${
+    return `Always allow agent to ${asDisplayName(blockedAction.metadata.toolName)} ${
       argValues.length > 0
         ? ` for the following parameters: ${argValues.join(", ")}`
         : ""

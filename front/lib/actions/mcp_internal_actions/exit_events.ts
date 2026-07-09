@@ -1,4 +1,5 @@
 import type {
+  MCPApproveExecutionEvent,
   ToolAskUserQuestionEvent,
   ToolEarlyExitEvent,
   ToolFileAuthRequiredEvent,
@@ -10,7 +11,6 @@ import type { Authenticator } from "@app/lib/auth";
 import type { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import type { AgentLoopExecutionData } from "@app/types/assistant/agent_run";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
-import type { MCPApproveExecutionEvent } from "@dust-tt/client";
 import { assertNever, isAgentPauseOutputResourceType } from "@dust-tt/client";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 
@@ -82,18 +82,21 @@ export async function getExitOrPauseEvents(
           resumeState: state,
         });
 
-        // Forward any UI-facing blocking events the tool collected, plus a
-        // `tool_paused` sentinel. The sentinel keeps the pause-decision on
-        // the event channel even when `blockingEvents` is empty — the case
-        // for any future tool whose blocking event is published upstream
-        // out-of-band (e.g. sandbox bash, where the child's blocking event
-        // is published by `createSandboxChildAction` and never flows
-        // through bash's return). Without it, `runToolWithStreaming` would
-        // fall through to `markAsSucceeded` on an already-blocked action.
-        // Appended LAST so the for-await in `executeToolStreaming` processes
-        // every blocking event before the sentinel triggers the return.
+        // Forward any UI-facing blocking events the tool collected, plus a `tool_paused` sentinel.
+        // The sentinel keeps the pause-decision on the event channel even when `blockingEvents` is
+        // empty — the case for any future tool whose blocking event is published upstream
+        // out-of-band (e.g. sandbox bash, where the child's blocking event is published by
+        // `createSandboxChildAction` and never flows through bash's return). Without it,
+        // `runToolWithStreaming` would fall through to `markAsSucceeded` on an already-blocked
+        // action.  Appended LAST so the for-await in `executeToolStreaming` processes every
+        // blocking event before the sentinel triggers the return.
         return [
-          ...blockingEvents,
+          // Blocking events are parsed with the public client schemas where agentName is optional;
+          // normalize to the placeholder constant expected internally.
+          ...blockingEvents.map((event) => ({
+            ...event,
+            metadata: { ...event.metadata, agentName: "agent" as const },
+          })),
           {
             type: "tool_paused",
             created: Date.now(),
@@ -127,7 +130,7 @@ export async function getExitOrPauseEvents(
             metadata: {
               toolName: action.toolConfiguration.originalName,
               mcpServerName: action.toolConfiguration.mcpServerName,
-              agentName: agentConfiguration.name,
+              agentName: "agent",
               mcpServerDisplayName: action.toolConfiguration.mcpServerName,
               mcpServerId: action.toolConfiguration.toolServerId,
             },
@@ -178,7 +181,7 @@ export async function getExitOrPauseEvents(
             metadata: {
               toolName: action.toolConfiguration.originalName,
               mcpServerName: action.toolConfiguration.mcpServerName,
-              agentName: agentConfiguration.name,
+              agentName: "agent",
               mcpServerDisplayName: action.toolConfiguration.mcpServerName,
               mcpServerId: action.toolConfiguration.toolServerId,
             },
@@ -217,7 +220,7 @@ export async function getExitOrPauseEvents(
             metadata: {
               toolName: action.toolConfiguration.originalName,
               mcpServerName: action.toolConfiguration.mcpServerName,
-              agentName: agentConfiguration.name,
+              agentName: "agent",
             },
             inputs: action.augmentedInputs,
             question,

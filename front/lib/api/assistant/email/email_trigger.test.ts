@@ -368,7 +368,7 @@ function makeBlockedAction(): BlockedToolExecution {
     metadata: {
       toolName: "write_report",
       mcpServerName: "project_tools",
-      agentName: "approvals",
+      agentName: "agent",
     },
     inputs: {
       title: "Q2 report",

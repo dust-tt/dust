@@ -296,7 +296,7 @@ async function createActionForTool(
             metadata: {
               toolName: actionConfiguration.originalName,
               mcpServerName: actionConfiguration.mcpServerName,
-              agentName: agentConfiguration.name,
+              agentName: "agent",
               icon: actionConfiguration.icon,
               displayedAs: getInternalMCPServerDisplayedAs(
                 actionConfiguration.toolServerId

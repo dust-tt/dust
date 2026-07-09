@@ -471,7 +471,7 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
         metadata: {
           toolName: action.toolConfiguration.originalName,
           mcpServerName: action.toolConfiguration.mcpServerName,
-          agentName: agentConfiguration.name,
+          agentName: "agent",
           icon: action.toolConfiguration.icon,
         },
         argumentsRequiringApproval:
