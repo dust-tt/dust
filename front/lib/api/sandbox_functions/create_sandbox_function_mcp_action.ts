@@ -18,7 +18,6 @@ export class SandboxFunctionMCPActionError extends Error {
     readonly type:
       | "server_view_not_found"
       | "tool_not_available"
-      | "tool_requires_approval"
       | "invalid_inputs"
       | "invocation_not_found",
     message: string
@@ -27,10 +26,10 @@ export class SandboxFunctionMCPActionError extends Error {
   }
 }
 
-// Resolves and gates a tool for execution from a sandbox function invocation: the server must be
-// internal (remote servers have their own auth story), the tool must exist and be enabled, and
-// its effective stake must be `never_ask` (no approval surface without a conversation; approval
-// bubbling is gated on invocation durability). Tools that need an agent-loop context error at
+// Resolves a tool for execution from a sandbox function invocation: the tool must exist and be
+// enabled. The tool's stake is snapshotted but not enforced yet: tools execute regardless of it.
+// TODO(2026-07-09 SANDBOX_FUNCTIONS): bubble approval events up from the frame instead, honoring
+// stakes (gated on invocation durability). Tools that need an agent-loop context error at
 // execution based on the run context.
 async function resolveSandboxFunctionTool(
   auth: Authenticator,
@@ -39,15 +38,6 @@ async function resolveSandboxFunctionTool(
 ): Promise<
   Result<ServerSideMCPToolConfigurationType, SandboxFunctionMCPActionError>
 > {
-  if (view.serverType !== "internal") {
-    return new Err(
-      new SandboxFunctionMCPActionError(
-        "tool_not_available",
-        "This server's tools cannot be called from a sandbox function."
-      )
-    );
-  }
-
   const viewJSON = view.toJSON();
   const tool = viewJSON.server.tools.find((t) => t.name === toolName);
   if (!tool) {
@@ -80,7 +70,8 @@ async function resolveSandboxFunctionTool(
       dustAppConfiguration: null,
       secretName: null,
       dustProject: null,
-      internalMCPServerId: view.mcpServerId,
+      // Null for remote servers, matching the agent path (see `configuration/actions.ts`).
+      internalMCPServerId: view.internalMCPServerId,
     },
     [{ name: tool.name, description: tool.description }]
   );
@@ -100,19 +91,6 @@ async function resolveSandboxFunctionTool(
       new SandboxFunctionMCPActionError(
         "tool_not_available",
         `Tool ${toolName} is not available.`
-      )
-    );
-  }
-
-  if (
-    toolConfiguration.permission !== "never_ask" ||
-    (toolConfiguration.argumentsRequiringApproval ?? []).length > 0
-  ) {
-    return new Err(
-      new SandboxFunctionMCPActionError(
-        "tool_requires_approval",
-        `Tool ${toolName} requires user approval and cannot be called from a ` +
-          "sandbox function."
       )
     );
   }

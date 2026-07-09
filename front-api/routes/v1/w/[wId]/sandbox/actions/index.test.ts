@@ -1,5 +1,6 @@
 import { InternalMCPServerInMemoryResource } from "@app/lib/resources/internal_mcp_server_in_memory_resource";
 import { MCPServerViewFactory } from "@app/tests/utils/MCPServerViewFactory";
+import { RemoteMCPServerFactory } from "@app/tests/utils/RemoteMCPServerFactory";
 import {
   createSandboxFunctionInvocationTokenTestContext,
   createSandboxTokenTestContext,
@@ -45,7 +46,7 @@ describe("GET /api/v1/w/[wId]/sandbox/actions", () => {
     });
   });
 
-  it("lists internal servers of the pod and global spaces for invocation tokens", async () => {
+  it("lists servers of the pod and global spaces for invocation tokens", async () => {
     const { auth, token, workspace, globalSpace } =
       await createSandboxFunctionInvocationTokenTestContext();
 
@@ -63,6 +64,10 @@ describe("GET /api/v1/w/[wId]/sandbox/actions", () => {
       useCase: null,
     });
     await MCPServerViewFactory.create(workspace, search.id, globalSpace);
+    const remoteServer = await RemoteMCPServerFactory.create(workspace, {
+      name: "remote_server",
+    });
+    await MCPServerViewFactory.create(workspace, remoteServer.sId, globalSpace);
 
     const response = await getSandboxActions(workspace, token);
 
@@ -72,6 +77,6 @@ describe("GET /api/v1/w/[wId]/sandbox/actions", () => {
       body.serverViews
         .map((sv: { server: { name: string } }) => sv.server.name)
         .sort()
-    ).toEqual(["common_utilities", "search"]);
+    ).toEqual(["common_utilities", "remote_server", "search"]);
   });
 });

@@ -87,7 +87,7 @@ describe("POST /api/v1/w/[wId]/sandbox/actions/call (function invocation)", () =
     expect(response.status).toBe(404);
   });
 
-  it("rejects tools on non-internal servers", async () => {
+  it("creates actions for remote tools", async () => {
     const context =
       await createPersistedSandboxFunctionInvocationTokenTestContext();
     const remoteServer = await RemoteMCPServerFactory.create(context.workspace);
@@ -99,11 +99,20 @@ describe("POST /api/v1/w/[wId]/sandbox/actions/call (function invocation)", () =
 
     const response = await callSandboxTool(context.workspace, context.token, {
       serverViewId: view.sId,
-      toolName: "whatever",
+      toolName: "tool",
       arguments: {},
     });
 
-    expect(response.status).toBe(400);
+    expect(response.status).toBe(202);
+    const body = await response.json();
+    expect(body.status).toBe("pending");
+
+    // The stake is snapshotted but not enforced: remote tools default to high and still run.
+    const action = await SandboxFunctionMCPActionResource.fetchById(
+      context.auth,
+      body.actionId
+    );
+    expect(action?.toolConfiguration.permission).toBe("high");
   });
 
   it("creates actions for conversation-coupled servers too", async () => {

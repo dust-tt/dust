@@ -68,8 +68,8 @@ app.get("/", async (ctx): HandlerResult<GetSandboxToolsResponseType> => {
   const claims = ctx.get("sandboxClaims");
 
   // Sandbox function invocations have no agent configuration or conversation: they see the
-  // internal servers of their pod space (+ global space). Tools that require an agent-loop
-  // context error at execution based on the run context.
+  // servers of their pod space (+ global space). Tools that require an agent-loop context error
+  // at execution based on the run context.
   if (isSandboxFunctionInvocationTokenPayload(claims)) {
     // Deliberately not the EnsuringAutoViews variant: token read paths must not write. Auto
     // views not yet materialized in the global space stay invisible until another surface
@@ -80,9 +80,7 @@ app.get("/", async (ctx): HandlerResult<GetSandboxToolsResponseType> => {
       { includeGlobalSpace: true }
     );
 
-    const serverViews = views
-      .filter((view) => view.serverType === "internal")
-      .map((view) => view.toJSON());
+    const serverViews = views.map((view) => view.toJSON());
 
     return ctx.json(
       { serverViews: filterServerViews(serverViews, ctx.req.query()) },

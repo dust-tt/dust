@@ -61,14 +61,6 @@ app.post(
                 message: result.error.message,
               },
             });
-          case "tool_requires_approval":
-            return apiError(ctx, {
-              status_code: 403,
-              api_error: {
-                type: "invalid_request_error",
-                message: result.error.message,
-              },
-            });
           case "tool_not_available":
           case "invalid_inputs":
             return apiError(ctx, {
