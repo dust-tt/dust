@@ -5,6 +5,7 @@ import type {
   ProviderGroup,
   Selection,
   SuggestedModelWithReasoningEffort,
+  UserModelSelection,
 } from "@app/components/assistant/conversation/input_bar/modelPickerUtils";
 import {
   getModelWithReasoningEffortKey,
@@ -75,8 +76,20 @@ export function InputBarModelPicker({
   const [expandedProvider, setExpandedProvider] =
     useState<ModelProviderIdType | null>(null);
 
-  const commitSelection = (next: Selection) => {
-    setUserOverride(next);
+  const commitSelection = (selection: UserModelSelection) => {
+    const isAutoSelection = selection.kind === "auto";
+    const isAutoDefaultSelection = defaultSelection.kind === "auto";
+    const isSameModelSelection =
+      selection.kind === "model" &&
+      defaultSelection.kind !== "auto" &&
+      selection.model === defaultSelection.model &&
+      selection.effort === defaultSelection.effort;
+
+    if ((isAutoSelection && isAutoDefaultSelection) || isSameModelSelection) {
+      setUserOverride(null);
+      return;
+    }
+    setUserOverride(selection);
   };
 
   // Clear the manual override when the user switches which agent they address
@@ -322,13 +335,8 @@ export function InputBarModelPicker({
         selectedKey={selectedKey}
         onToggleAuto={toggleAuto}
         onSelectModel={(modelWithEffort: ModelWithReasoningEffort) => {
-          const key = getModelWithReasoningEffortKey(
-            modelWithEffort.model.providerId,
-            modelWithEffort.model.modelId,
-            modelWithEffort.effort
-          );
           commitSelection({
-            kind: key === agentDefaultKey ? "agent" : "model",
+            kind: "model",
             model: modelWithEffort.model,
             effort: modelWithEffort.effort,
           });
