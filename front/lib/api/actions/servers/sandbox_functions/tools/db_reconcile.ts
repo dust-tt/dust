@@ -24,9 +24,11 @@ export function formatReconcileResult(
 
 export async function dbReconcileHandler(
   { database, path }: { database: string; path: string },
-  { auth, toolContext }: ToolHandlerExtra
+  { auth, runContext }: ToolHandlerExtra
 ): Promise<ToolHandlerResult> {
-  const podResult = await getWritablePodContext(auth, { toolContext });
+  const podResult = await getWritablePodContext(auth, {
+    toolContext: { runContext },
+  });
   if (podResult.isErr()) {
     return new Err(podResult.error);
   }

@@ -9,9 +9,9 @@ import { Err, Ok } from "@app/types/shared/result";
 
 export async function dbSchemaHandler(
   { database }: { database: string },
-  { auth, toolContext }: ToolHandlerExtra
+  { auth, runContext }: ToolHandlerExtra
 ): Promise<ToolHandlerResult> {
-  const podResult = await getPod(auth, { toolContext });
+  const podResult = await getPod(auth, { toolContext: { runContext } });
   if (podResult.isErr()) {
     return new Err(podResult.error);
   }
