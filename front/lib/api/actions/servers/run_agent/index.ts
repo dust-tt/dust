@@ -22,7 +22,7 @@ import {
 import {
   type ActionGeneratedFileType,
   isAgentLoopRunContext,
-  type ToolContextType,
+  type ToolContext,
 } from "@app/lib/actions/types";
 import {
   isLightServerSideMCPToolConfiguration,
@@ -181,7 +181,7 @@ const runAgent = async (
     childAgentBlob,
   }: {
     auth: Authenticator;
-    toolContext?: ToolContextType;
+    toolContext?: ToolContext;
     sendNotification?: (
       notification: MCPProgressNotificationType
     ) => Promise<void>;
@@ -756,7 +756,7 @@ const runAgent = async (
   );
 };
 
-function isRunAgentHandoffMode(toolContext?: ToolContextType): boolean {
+function isRunAgentHandoffMode(toolContext?: ToolContext): boolean {
   if (!toolContext) {
     return false;
   }
@@ -845,7 +845,7 @@ async function leakyGetAgentNameAndDescriptionForChildAgent(
 
 async function createServer(
   auth: Authenticator,
-  toolContext?: ToolContextType
+  toolContext?: ToolContext
 ): Promise<McpServer> {
   const server = makeInternalMCPServer("run_agent");
 

@@ -6,7 +6,7 @@ import {
 } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { workspaceAdminGuard } from "@app/lib/actions/mcp_internal_actions/utils";
 import { registerTool } from "@app/lib/actions/mcp_internal_actions/wrappers";
-import type { ToolContextType } from "@app/lib/actions/types";
+import type { ToolContext } from "@app/lib/actions/types";
 import { Authenticator } from "@app/lib/auth";
 import { GroupFactory } from "@app/tests/utils/GroupFactory";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
@@ -74,7 +74,7 @@ async function callTestTool(auth: Authenticator, toolName: string) {
       conversation: { sId: "conversation-id" },
       agentMessage: { sId: "message-id" },
     },
-  } as unknown as ToolContextType;
+  } as unknown as ToolContext;
   const server = new McpServer({ name: "admin_guard_test", version: "1.0.0" });
   for (const tool of TEST_TOOLS) {
     registerTool(auth, toolContext, server, tool, {

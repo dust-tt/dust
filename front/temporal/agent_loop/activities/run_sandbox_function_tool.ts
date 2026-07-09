@@ -3,7 +3,7 @@ import {
   processToolNotification,
   processToolResults,
 } from "@app/lib/actions/mcp_execution";
-import type { SandboxFunctionRunContextType } from "@app/lib/actions/types";
+import type { SandboxFunctionRunContext } from "@app/lib/actions/types";
 import type { AuthenticatorType } from "@app/lib/auth";
 import { Authenticator } from "@app/lib/auth";
 import { SandboxFunctionMCPActionResource } from "@app/lib/resources/sandbox_function_mcp_action_resource";
@@ -55,7 +55,7 @@ export async function runSandboxFunctionToolActivity(
     workspaceId: auth.getNonNullableWorkspace().sId,
   });
 
-  const runContext: SandboxFunctionRunContextType = {
+  const runContext: SandboxFunctionRunContext = {
     contextType: "sandbox_function",
     action,
     invocation,

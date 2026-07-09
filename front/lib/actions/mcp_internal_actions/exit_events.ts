@@ -6,7 +6,7 @@ import type {
   ToolPausedEvent,
   ToolPersonalAuthRequiredEvent,
 } from "@app/lib/actions/mcp_internal_actions/events";
-import type { ToolContextType } from "@app/lib/actions/types";
+import type { ToolContext } from "@app/lib/actions/types";
 import { isAgentLoopRunContext } from "@app/lib/actions/types";
 import { pauseSandboxBashForBlockedChild } from "@app/lib/api/sandbox/sandbox_child_block";
 import type { Authenticator } from "@app/lib/auth";
@@ -30,7 +30,7 @@ export async function getExitOrPauseEvents(
     toolContext,
   }: {
     outputItems: MCPActionOutputItemWithContent[];
-    toolContext: ToolContextType;
+    toolContext: ToolContext;
   }
 ): Promise<
   (

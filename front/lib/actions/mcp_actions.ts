@@ -66,10 +66,10 @@ import {
 } from "@app/lib/actions/tool_interruptions";
 import { tryGetPrefixedToolName } from "@app/lib/actions/tool_name_utils";
 import {
-  type AgentLoopListToolsContextType,
+  type AgentLoopListToolsContext,
   isAgentLoopRunContext,
   isSandboxFunctionRunContext,
-  type ToolContextType,
+  type ToolContext,
 } from "@app/lib/actions/types";
 import {
   isClientSideMCPToolConfiguration,
@@ -345,7 +345,7 @@ export async function runToolCallWithDetachedSignal<T>(
 export async function* tryCallMCPTool(
   auth: Authenticator,
   inputs: Record<string, unknown> | undefined,
-  toolContext: ToolContextType,
+  toolContext: ToolContext,
   {
     progressToken,
     makeToolNotificationEvent,
@@ -761,7 +761,7 @@ type ServerSideMCPConnectionError =
 async function connectServerSideMCP(
   auth: Authenticator,
   toolConfiguration: ServerSideMCPToolConfigurationType,
-  toolContext: ToolContextType
+  toolContext: ToolContext
 ): Promise<Result<Client, ServerSideMCPConnectionError>> {
   const mcpServerView = await MCPServerViewResource.fetchById(
     auth,
@@ -893,7 +893,7 @@ function makeClientSideMCPConnectionParams(
 }
 
 type AgentLoopListToolsContextWithoutConfigurationType = Omit<
-  AgentLoopListToolsContextType,
+  AgentLoopListToolsContext,
   "agentActionConfiguration"
 >;
 
@@ -1403,7 +1403,7 @@ export async function buildToolConfigurationsFromRawTools(
 async function listMCPServerToolsAndServerInstructions(
   auth: Authenticator,
   config: MCPServerConfigurationType,
-  agentLoopListToolsContext: AgentLoopListToolsContextType,
+  agentLoopListToolsContext: AgentLoopListToolsContext,
   connectionParams: MCPConnectionParams
 ): Promise<
   Result<{ instructions?: string; tools: MCPToolConfigurationType[] }, Error>

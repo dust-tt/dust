@@ -6,8 +6,8 @@ import type {
 import {
   isAgentLoopRunContext,
   isSandboxFunctionRunContext,
-  type ToolContextType,
-  type ToolRunContextType,
+  type ToolContext,
+  type ToolRunContext,
 } from "@app/lib/actions/types";
 import type { Authenticator } from "@app/lib/auth";
 import { getStatsDClient } from "@app/lib/utils/statsd";
@@ -29,7 +29,7 @@ const MAX_LOGGED_ERROR_MESSAGE_LENGTH = 200;
 
 export function registerTool(
   auth: Authenticator,
-  toolContext: ToolContextType | undefined,
+  toolContext: ToolContext | undefined,
   server: McpServer,
   tool: ToolDefinition,
   { monitoringName }: { monitoringName: string }
@@ -121,7 +121,7 @@ function withToolLogging<T>(
   }: {
     toolNameForMonitoring: string;
     // Undefined at listing-phase registration; always set when the callback actually runs.
-    runContext: ToolRunContextType | undefined;
+    runContext: ToolRunContext | undefined;
     enableAlerting?: boolean;
   },
   toolCallback: (

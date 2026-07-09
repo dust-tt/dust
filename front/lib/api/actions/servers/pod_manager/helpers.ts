@@ -8,7 +8,7 @@ import { parsePodConfigurationURI } from "@app/lib/actions/mcp_internal_actions/
 import {
   isAgentLoopRunContext,
   isSandboxFunctionRunContext,
-  type ToolContextType,
+  type ToolContext,
 } from "@app/lib/actions/types";
 import type { DataSourceFilter } from "@app/lib/api/assistant/configuration/types";
 import { isContentNodeAttachmentType } from "@app/lib/api/assistant/conversation/attachments";
@@ -104,9 +104,7 @@ export async function buildProjectRetrieveDataSources(
  */
 export async function getPod(
   auth: Authenticator,
-  from:
-    | { toolContext?: ToolContextType }
-    | { dustPod?: DustPodConfigurationType }
+  from: { toolContext?: ToolContext } | { dustPod?: DustPodConfigurationType }
 ): Promise<Result<PodContext, MCPError>> {
   if ("dustPod" in from && from.dustPod) {
     const { dustPod } = from;
@@ -228,9 +226,7 @@ export function checkWritePermission(
  */
 export async function getWritablePodContext(
   auth: Authenticator,
-  from:
-    | { toolContext?: ToolContextType }
-    | { dustPod?: DustPodConfigurationType }
+  from: { toolContext?: ToolContext } | { dustPod?: DustPodConfigurationType }
 ): Promise<Result<PodContext, MCPError>> {
   const contextRes = await getPod(auth, from);
   if (contextRes.isErr()) {

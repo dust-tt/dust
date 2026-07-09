@@ -21,7 +21,7 @@ import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_ac
 import type { DataSourcesToolConfigurationType } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import type { MCPConnectionParams } from "@app/lib/actions/mcp_metadata";
 import { connectToMCPServer } from "@app/lib/actions/mcp_metadata";
-import type { AgentLoopRunContextType } from "@app/lib/actions/types";
+import type { AgentLoopRunContext } from "@app/lib/actions/types";
 import type { ServerSideMCPToolTypeWithStakeAndRetryPolicy } from "@app/lib/api/mcp";
 import { Authenticator } from "@app/lib/auth";
 import { getSupportedModelConfig } from "@app/lib/llms/model_configurations";
@@ -720,7 +720,7 @@ describe("tryCallMCPTool", () => {
     }
 
     // Create agent loop run context
-    const agentLoopRunContext: AgentLoopRunContextType = {
+    const agentLoopRunContext: AgentLoopRunContext = {
       contextType: "agent_loop",
       agentConfiguration,
       model: {

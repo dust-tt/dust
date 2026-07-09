@@ -1,4 +1,4 @@
-import type { ToolContextType } from "@app/lib/actions/types";
+import type { ToolContext } from "@app/lib/actions/types";
 import {
   CREATE_INTERACTIVE_CONTENT_FILE_TOOL_NAME,
   EDIT_INTERACTIVE_CONTENT_FILE_TOOL_NAME,
@@ -11,13 +11,13 @@ import { describe, expect, it } from "vitest";
 
 function toolContextWithUseFileSystem(
   useFileSystem: boolean | undefined
-): ToolContextType {
+): ToolContext {
   return {
     runContext: {
       contextType: "agent_loop",
       conversation: { metadata: { useFileSystem } },
     },
-  } as unknown as ToolContextType;
+  } as unknown as ToolContext;
 }
 
 describe("createInteractiveContentTools", () => {

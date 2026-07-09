@@ -12,7 +12,7 @@ import {
   processToolResults,
 } from "@app/lib/actions/mcp_execution";
 import type { DataSourceNodeContentType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
-import type { ToolContextType } from "@app/lib/actions/types";
+import type { ToolContext } from "@app/lib/actions/types";
 import { TOOL_OUTPUTS_FOLDER_NAME } from "@app/lib/api/files/mount_path";
 import { Authenticator } from "@app/lib/auth";
 import { getSupportedModelConfig } from "@app/lib/llms/model_configurations";
@@ -118,7 +118,7 @@ async function setupTest({
   const modelConfig = getSupportedModelConfig(agentModel);
   assert(modelConfig, "Supported model config should exist");
 
-  const toolContext: ToolContextType = {
+  const toolContext: ToolContext = {
     runContext: {
       contextType: "agent_loop",
       agentConfiguration,
@@ -502,7 +502,7 @@ describe("processToolResults", () => {
 
     fileStorageMock.reset();
 
-    const toolContext: ToolContextType = {
+    const toolContext: ToolContext = {
       runContext: {
         contextType: "sandbox_function",
         action,

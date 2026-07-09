@@ -1,6 +1,6 @@
 import { getExitOrPauseEvents } from "@app/lib/actions/mcp_internal_actions/exit_events";
 import { makeMCPToolExit } from "@app/lib/actions/mcp_internal_actions/utils";
-import type { AgentLoopRunContextType } from "@app/lib/actions/types";
+import type { AgentLoopRunContext } from "@app/lib/actions/types";
 import type { Authenticator } from "@app/lib/auth";
 import { describe, expect, it } from "vitest";
 
@@ -26,7 +26,7 @@ describe("getExitOrPauseEvents", () => {
           },
           agentMessage: { sId: "agent-message-id" },
           conversation: { sId: "conversation-id" },
-        } as AgentLoopRunContextType,
+        } as AgentLoopRunContext,
       },
     });
 

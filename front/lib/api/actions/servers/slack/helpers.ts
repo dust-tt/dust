@@ -2,7 +2,7 @@ import { MCPError } from "@app/lib/actions/mcp_errors";
 import { getFileFromConversationAttachment } from "@app/lib/actions/mcp_internal_actions/utils/file_utils";
 import {
   isAgentLoopRunContext,
-  type ToolContextType,
+  type ToolContext,
 } from "@app/lib/actions/types";
 import {
   formatSlackMessageForLLM,
@@ -753,7 +753,7 @@ export async function executeListPublicChannels(
 
 export async function executePostMessage(
   auth: Authenticator,
-  toolContext: ToolContextType,
+  toolContext: ToolContext,
   {
     accessToken,
     to,
@@ -928,7 +928,7 @@ export async function executeUpdateMessage({
 
 export async function executeScheduleMessage(
   auth: Authenticator,
-  toolContext: ToolContextType,
+  toolContext: ToolContext,
   {
     accessToken,
     to,

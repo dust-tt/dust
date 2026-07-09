@@ -14,7 +14,7 @@ import type {
 } from "@app/lib/actions/mcp_internal_actions/types";
 import {
   isAgentLoopRunContext,
-  type ToolContextType,
+  type ToolContext,
 } from "@app/lib/actions/types";
 import { getRefs } from "@app/lib/api/assistant/citations";
 import config from "@app/lib/api/config";
@@ -45,7 +45,7 @@ export async function search(
     tagsIn,
     tagsNot,
   }: SearchWithNodesInputType & TagsInputType,
-  { auth, toolContext }: { auth: Authenticator; toolContext?: ToolContextType }
+  { auth, toolContext }: { auth: Authenticator; toolContext?: ToolContext }
 ): Promise<Result<CallToolResult["content"], MCPError>> {
   const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
   const credentials = await getLlmCredentials(auth);
