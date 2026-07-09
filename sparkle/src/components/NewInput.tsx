@@ -75,9 +75,9 @@ const innerInputVariants = cva(
   {
     variants: {
       size: {
-        xs: "px-2",
-        sm: "px-3",
-        md: "px-3",
+        xs: "px-2 text-xs",
+        sm: "px-3 text-sm",
+        md: "px-3 text-sm",
       },
     },
     defaultVariants: {
