@@ -1076,9 +1076,15 @@ export function AgentMessage({
           isDisabled={isArchived}
         />
         {perMessageModelLabel && (
-          <span className="pl-1 font-normal text-muted-foreground">
-            with {perMessageModelLabel}
-          </span>
+          <Tooltip
+            label="Model was overridden for this message using the model picker."
+            tooltipTriggerAsChild
+            trigger={
+              <span className="pl-1 font-normal text-muted-foreground">
+                with {perMessageModelLabel}
+              </span>
+            }
+          />
         )}
         {parentAgent && (
           <Chip
