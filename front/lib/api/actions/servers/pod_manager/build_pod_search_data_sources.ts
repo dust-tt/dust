@@ -92,7 +92,7 @@ function podDataSourceFilter(
 
 /**
  * Data sources for semantic search over a Pod, scoped to files (Pod files, metadata,
- * searchable context nodes), conversations (transcripts in the dust_project connector), or
+ * searchable content nodes), conversations (transcripts in the dust_project connector), or
  * both. The Pod data source view mixes files and conversations; scope selects via parents
  * filters on that view.
  */

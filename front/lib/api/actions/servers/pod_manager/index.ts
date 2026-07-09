@@ -13,7 +13,7 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
  * - File operations: list, add, update, and remove project knowledge files
  * - Linked data: add/remove Company Data nodes from project context
  * - Metadata operations: edit description, add/edit URLs
- * - Retrieval: recent documents from the project data source and context nodes
+ * - Retrieval: recent documents from the project data source and content nodes
  * - Semantic search: project knowledge, project conversations, or both
  */
 function createServer(
