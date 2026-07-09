@@ -1,12 +1,7 @@
 import { getExitOrPauseEvents } from "@app/lib/actions/mcp_internal_actions/exit_events";
 import { makeMCPToolExit } from "@app/lib/actions/mcp_internal_actions/utils";
+import type { AgentLoopRunContextType } from "@app/lib/actions/types";
 import type { Authenticator } from "@app/lib/auth";
-import type { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
-import type { AgentConfigurationType } from "@app/types/assistant/agent";
-import type {
-  AgentMessageType,
-  ConversationWithoutContentType,
-} from "@app/types/assistant/conversation";
 import { describe, expect, it } from "vitest";
 
 describe("getExitOrPauseEvents", () => {
@@ -19,14 +14,20 @@ describe("getExitOrPauseEvents", () => {
 
     const events = await getExitOrPauseEvents({} as Authenticator, {
       outputItems: output.content.map((content) => ({ content })),
-      action: {} as AgentMCPActionResource,
-      agentConfiguration: {
-        sId: "agent-configuration-id",
-      } as AgentConfigurationType,
-      agentMessage: { sId: "agent-message-id" } as AgentMessageType,
-      conversation: {
-        sId: "conversation-id",
-      } as ConversationWithoutContentType,
+      toolContext: {
+        // The early exit path only reads identifiers off the run context; a partial mock is
+        // enough here.
+        runContext: {
+          contextType: "agent_loop",
+          action: { functionCallName: "test_tool", augmentedInputs: {} },
+          agentConfiguration: {
+            sId: "agent-configuration-id",
+            name: "Test Agent",
+          },
+          agentMessage: { sId: "agent-message-id" },
+          conversation: { sId: "conversation-id" },
+        } as AgentLoopRunContextType,
+      },
     });
 
     expect(events).toHaveLength(1);
