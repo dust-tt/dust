@@ -24,7 +24,7 @@ import type {
   Text,
 } from "@contentful/rich-text-types";
 import { BLOCKS, INLINES, MARKS } from "@contentful/rich-text-types";
-import { Button, cn } from "@dust-tt/sparkle";
+import { LegacyButton as Button, cn } from "@dust-tt/sparkle";
 import Image from "next/image";
 import type { ReactNode } from "react";
 import { useEffect, useState } from "react";
