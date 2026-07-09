@@ -11,7 +11,6 @@ import {
   getModelWithReasoningEffortKey,
   getModelWithReasoningEffortLabel,
   getSelectableReasoningEfforts,
-  resolveAgentDefaultModel,
   resolveDefaultSelection,
   SUGGESTED_PINS,
   toModelSelection,
@@ -189,10 +188,19 @@ export function InputBarModelPicker({
     }));
   }, [allModelsWithEfforts]);
 
-  const agentDefault = useMemo(
-    () => resolveAgentDefaultModel({ agentModel, models }),
-    [agentModel, models]
-  );
+  // The agent's configured default, ignoring the last-requested model: reuse
+  // resolveDefaultSelection with no last-requested model, then keep only the
+  // agent-model outcome.
+  const agentDefault = useMemo<ModelWithReasoningEffort | null>(() => {
+    const selection = resolveDefaultSelection({
+      agentModel,
+      lastRequestedModel: null,
+      models,
+    });
+    return selection.kind === "agent"
+      ? { model: selection.model, effort: selection.effort }
+      : null;
+  }, [agentModel, models]);
   const agentDefaultKey = agentDefault
     ? getModelWithReasoningEffortKey(
         agentDefault.model.providerId,

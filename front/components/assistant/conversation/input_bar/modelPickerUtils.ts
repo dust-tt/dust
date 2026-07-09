@@ -250,20 +250,3 @@ export function resolveDefaultSelection({
     effort: resolveEffort(model, agentModel.reasoningEffort),
   };
 }
-
-export function resolveAgentDefaultModel({
-  agentModel,
-  models,
-}: {
-  agentModel: AgentModelConfigurationType | null;
-  models: ModelConfigurationType[];
-}): ModelWithReasoningEffort | null {
-  if (!agentModel || agentModel.modelId === AUTO_MODEL_ID) {
-    return null;
-  }
-  const model = findAvailableModel(models, agentModel);
-  if (!model) {
-    return null;
-  }
-  return { model, effort: resolveEffort(model, agentModel.reasoningEffort) };
-}
