@@ -16,6 +16,23 @@ import { describe, expect, it } from "vitest";
 // sliding-window rule from the token-budget rule.
 const HUGE_BUDGET = 1_000_000;
 
+/**
+ * A deterministic pseudo-random number generator, used instead of Math.random() so a failing
+ * test prints a seed that reproduces the exact same failure when rerun.
+ *
+ * This is a linear congruential generator: state = (state * multiplier + increment) mod m,
+ * the same simple formula behind C's rand(). 1103515245 and 12345 are its standard multiplier
+ * and increment constants. Masking with 0x7fffffff keeps state a positive 31-bit integer, and
+ * dividing by that same value scales the result into [0, 1), like Math.random().
+ */
+function makeDeterministicRng(seed: number): () => number {
+  let state = seed;
+  return () => {
+    state = (state * 1103515245 + 12345) & 0x7fffffff;
+    return state / 0x7fffffff;
+  };
+}
+
 function withTokens<T extends ModelMessageTypeMultiActions>(
   message: T,
   tokenCount: number
@@ -178,16 +195,8 @@ describe("prunePreviousInteractions", () => {
   });
 
   it("never returns interactions whose combined token count exceeds maxTokens, across a wide randomized sweep (short of the floor's own unavoidable minimum)", () => {
-    function makeRng(seed: number) {
-      let s = seed;
-      return () => {
-        s = (s * 1103515245 + 12345) & 0x7fffffff;
-        return s / 0x7fffffff;
-      };
-    }
-
     for (let seed = 1; seed <= 2000; seed++) {
-      const rng = makeRng(seed);
+      const rng = makeDeterministicRng(seed);
       const n = 1 + Math.floor(rng() * 15);
       const toPreserve = 1 + Math.floor(rng() * 4);
       const items: InteractionWithTokens[] = [];
@@ -269,15 +278,10 @@ describe("prunePreviousInteractions across a growing conversation (realistic, va
   }
 
   it("keeps most turns byte-stable and never un-redacts an interaction, simulating a long conversation with realistic variable tool-result sizes", () => {
-    // Deterministic pseudo-random sizes (no Math.random, so a failure is reproducible from the
-    // seed alone). Mostly small-to-medium tool results, with an occasional large one. Mirrors the
-    // real spread of interaction sizes observed in production (roughly 200 to 9000 characters per
-    // tool result).
-    let seed = 42;
-    const nextRandom = () => {
-      seed = (seed * 1103515245 + 12345) & 0x7fffffff;
-      return seed / 0x7fffffff;
-    };
+    // Mostly small-to-medium tool results, with an occasional large one. Mirrors the real spread
+    // of interaction sizes observed in production (roughly 200 to 9000 characters per tool
+    // result).
+    const nextRandom = makeDeterministicRng(42);
     const nextInteractionSizeTokens = () =>
       nextRandom() < 0.15
         ? 500 + Math.floor(nextRandom() * 2500) // occasional large tool result

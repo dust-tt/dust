@@ -1,6 +1,12 @@
 import { getLlmCredentials } from "@app/lib/api/provider_credentials";
 import { tokenCountForTexts } from "@app/lib/tokenization";
-import type { ModelMessageTypeMultiActions } from "@app/types/assistant/generation";
+import type {
+  Content,
+  FunctionMessageTypeModel,
+  ModelMessageTypeMultiActions,
+  UserMessageTypeModel,
+} from "@app/types/assistant/generation";
+import { isTextContent } from "@app/types/assistant/generation";
 import { Err, Ok } from "@app/types/shared/result";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -72,6 +78,53 @@ function functionMessage(
     function_call_id: `${name}_call`,
     content,
   };
+}
+
+function isUserMessage(
+  message: ModelMessageTypeMultiActions
+): message is UserMessageTypeModel {
+  return message.role === "user";
+}
+
+function isFunctionMessage(
+  message: ModelMessageTypeMultiActions
+): message is FunctionMessageTypeModel {
+  return message.role === "function";
+}
+
+function textOf(content: Content): string | undefined {
+  return isTextContent(content) ? content.text : undefined;
+}
+
+function getFunctionMessage(
+  messages: ModelMessageTypeMultiActions[],
+  name?: string
+): FunctionMessageTypeModel {
+  const message = messages.find(
+    (m): m is FunctionMessageTypeModel =>
+      isFunctionMessage(m) && (name === undefined || m.name === name)
+  );
+  if (!message) {
+    throw new Error(
+      `Expected a function message${name ? ` named ${name}` : ""}`
+    );
+  }
+  return message;
+}
+
+// The previous-interaction messages built by the tests below are always named "i1_user",
+// "i1_tool", etc. This pulls out just those (never the current interaction's messages) as plain
+// comparable objects, regardless of whether they're user or function messages.
+function previousInteractionSummaries(
+  messages: ModelMessageTypeMultiActions[]
+): Array<{ role: string; name: string; content: string | Content[] }> {
+  return messages
+    .filter(
+      (m): m is UserMessageTypeModel | FunctionMessageTypeModel =>
+        isUserMessage(m) || isFunctionMessage(m)
+    )
+    .filter((m) => m.name.startsWith("i"))
+    .map((m) => ({ role: m.role, name: m.name, content: m.content }));
 }
 
 function mockTokenCounter({
@@ -198,11 +251,10 @@ describe("renderConversationForModel", () => {
       return;
     }
 
-    const functionOutput = res.value.modelConversation.messages.find(
-      (m) => m.role === "function"
+    const functionOutput = getFunctionMessage(
+      res.value.modelConversation.messages
     );
-    expect(functionOutput).toBeDefined();
-    expect((functionOutput as any).content).toContain(
+    expect(functionOutput.content).toContain(
       "This tool result is no longer available"
     );
     expect(res.value.prunedContext).toBe(true);
@@ -246,18 +298,18 @@ describe("renderConversationForModel", () => {
       return;
     }
 
-    const oldTool = res.value.modelConversation.messages.find(
-      (m: any) => m.role === "function" && m.name === "old_tool"
+    const oldTool = getFunctionMessage(
+      res.value.modelConversation.messages,
+      "old_tool"
     );
-    const newTool = res.value.modelConversation.messages.find(
-      (m: any) => m.role === "function" && m.name === "new_tool"
+    const newTool = getFunctionMessage(
+      res.value.modelConversation.messages,
+      "new_tool"
     );
-    expect(oldTool).toBeDefined();
-    expect((oldTool as any).content).toContain(
+    expect(oldTool.content).toContain(
       "This tool result is no longer available"
     );
-    expect(newTool).toBeDefined();
-    expect((newTool as any).content).toBe("new_function");
+    expect(newTool.content).toBe("new_function");
     expect(res.value.prunedContext).toBe(false);
   });
 
@@ -299,12 +351,12 @@ describe("renderConversationForModel", () => {
     const roles = res.value.modelConversation.messages.map((m) => m.role);
     expect(roles).not.toContain("content_fragment");
 
-    const firstUser = res.value.modelConversation.messages.find(
-      (m) => m.role === "user"
-    ) as any;
-    expect(firstUser).toBeDefined();
-    expect(firstUser.content[0].text).toBe("fragment_text");
-    expect(firstUser.content[1].text).toBe("user_text");
+    const firstUser = res.value.modelConversation.messages.find(isUserMessage);
+    if (!firstUser) {
+      throw new Error("Expected a user message");
+    }
+    expect(textOf(firstUser.content[0])).toBe("fragment_text");
+    expect(textOf(firstUser.content[1])).toBe("user_text");
   });
 
   it("returns an error when context window is still exceeded after pruning", async () => {
@@ -341,17 +393,21 @@ describe("renderConversationForModel", () => {
   });
 
   it("does not error when previousInteractions' floor alone overflows its budget, as long as the current interaction fits on its own", async () => {
-    // Three previous interactions, ALL inside the floor (PREVIOUS_INTERACTIONS_TO_PRESERVE = 3),
-    // each large enough that even fully redacted they still add up to more than
-    // budgetForInteractions (100 below). This is prunePreviousInteractions' own rare "real
-    // out-of-room" case (see its floor-redaction fallback).
+    // There are 3 previous interactions here, and PREVIOUS_INTERACTIONS_TO_PRESERVE is 3, so all
+    // 3 are kept in full and are never redacted. Each one is 340 tokens (20 + 20 + 300), so all 3
+    // together are 1020 tokens. The token budget for previous interactions is only 100 (set below
+    // via allowedTokenCount). There is no way to fit 1020 tokens of previous interactions into a
+    // budget of 100.
     //
-    // The current interaction is small and has no tool call of its own, so it comfortably fits
-    // budgetForInteractions on its own. The fix under test: the hard error check compares the
-    // current interaction against the FULL fixed pool (budgetForInteractions), not against
-    // whatever's nominally left after previousInteractions (which went negative here). So this
-    // must still succeed, leaning on the pre-existing "select interactions that fit" loop to trim
-    // previousInteractions down further rather than failing the whole render.
+    // The current interaction, on the other hand, is tiny: just 20 tokens (10 + 10), no tool call.
+    // It fits into the 100 token budget on its own, easily.
+    //
+    // What this test checks: the render must still succeed. It would be wrong to compute
+    // "100 minus the 1020 tokens previous interactions actually take" and use that negative
+    // number to decide if the current interaction fits, because that would make even a tiny
+    // current interaction look too big and fail the whole request. The current interaction only
+    // needs to fit the 100 token budget by itself. Previous interactions get trimmed down
+    // separately to make room.
     vi.mocked(renderAllMessages).mockResolvedValue([
       userMessage("floor1_user"),
       assistantMessage("floor1_assistant"),
@@ -403,18 +459,17 @@ describe("renderConversationForModel", () => {
     }
 
     const currentUser = res.value.modelConversation.messages.find(
-      (m: any) => m.role === "user" && m.content[0].text === "cur_user"
+      (m) => isUserMessage(m) && textOf(m.content[0]) === "cur_user"
     );
     expect(currentUser).toBeDefined();
 
     // previousInteractions couldn't all survive, but the render degraded gracefully instead of
     // failing outright: at least one floor interaction made it through, redacted.
-    const survivingFloorTools = res.value.modelConversation.messages.filter(
-      (m: any) => m.role === "function"
-    );
+    const survivingFloorTools =
+      res.value.modelConversation.messages.filter(isFunctionMessage);
     expect(survivingFloorTools.length).toBeGreaterThan(0);
     for (const tool of survivingFloorTools) {
-      expect((tool as any).content).toContain("no longer available");
+      expect(tool.content).toContain("no longer available");
     }
   });
 
@@ -554,8 +609,8 @@ describe("renderConversationForModel", () => {
     }
 
     const names = res.value.modelConversation.messages
-      .filter((m: any) => m.role === "function")
-      .map((m: any) => m.name);
+      .filter(isFunctionMessage)
+      .map((m) => m.name);
     expect(names).toEqual(["tool_07", "tool_08"]);
     expect(names).not.toContain("tool_01");
     expect(names).not.toContain("tool_02");
@@ -636,16 +691,14 @@ describe("renderConversationForModel", () => {
       return;
     }
 
-    const previousMessagesAtTurnT = turnT.value.modelConversation.messages
-      .filter(
-        (m: any) => typeof m.name === "string" && m.name.startsWith("i") // i1_tool..i4_tool, not "cur_*"
-      )
-      .map((m: any) => ({ role: m.role, name: m.name, content: m.content }));
+    const previousMessagesAtTurnT = previousInteractionSummaries(
+      turnT.value.modelConversation.messages
+    );
 
     // All four previous interactions are rendered in full at turn T.
     const toolNamesAtTurnT = previousMessagesAtTurnT
-      .filter((m: any) => m.role === "function")
-      .map((m: any) => m.name);
+      .filter((m) => m.role === "function")
+      .map((m) => m.name);
     expect(toolNamesAtTurnT).toEqual([
       "i1_tool",
       "i2_tool",
@@ -653,10 +706,8 @@ describe("renderConversationForModel", () => {
       "i4_tool",
     ]);
     for (const i of [1, 2, 3, 4]) {
-      const tool = previousMessagesAtTurnT.find(
-        (m: any) => m.name === `i${i}_tool`
-      ) as any;
-      expect(tool.content).toBe(`i${i}_tool_content`);
+      const tool = previousMessagesAtTurnT.find((m) => m.name === `i${i}_tool`);
+      expect(tool?.content).toBe(`i${i}_tool_content`);
     }
 
     // Turn T+1: i1..i4 are byte-for-byte identical to turn T. The ONLY change is that this
@@ -683,12 +734,9 @@ describe("renderConversationForModel", () => {
       return;
     }
 
-    const previousMessagesAtTurnTPlus1 =
+    const previousMessagesAtTurnTPlus1 = previousInteractionSummaries(
       turnTPlus1.value.modelConversation.messages
-        .filter(
-          (m: any) => typeof m.name === "string" && m.name.startsWith("i")
-        )
-        .map((m: any) => ({ role: m.role, name: m.name, content: m.content }));
+    );
 
     // Byte-identical to turn T: none of i1..i4 moved, despite the current interaction growing
     // from 20 to 220 tokens.
@@ -697,11 +745,10 @@ describe("renderConversationForModel", () => {
     // The current interaction itself is free to vary. It's new content, never previously cached,
     // and its own tool result gets progressively pruned since it doesn't fit its ideal share of
     // the budget on its own.
-    const currentToolAtTurnTPlus1 =
-      turnTPlus1.value.modelConversation.messages.find(
-        (m: any) => m.name === "cur_tool_big"
-      ) as any;
-    expect(currentToolAtTurnTPlus1).toBeDefined();
+    const currentToolAtTurnTPlus1 = getFunctionMessage(
+      turnTPlus1.value.modelConversation.messages,
+      "cur_tool_big"
+    );
     expect(currentToolAtTurnTPlus1.content).toContain("no longer available");
   });
 
