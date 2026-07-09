@@ -2,7 +2,7 @@ use std::path::Path;
 
 use anyhow::{anyhow, Result};
 
-use super::{db_file_path, emit_error, spawn_db_runner};
+use super::{db_file_path, emit_error, spawn_runner};
 
 /// Reconcile the pod database `name` with the drizzle schema file at
 /// `schema_file`: the runner plans via drizzle-kit, applies ADDITIVE statements
@@ -17,7 +17,7 @@ pub async fn cmd_db_reconcile(name: &str, schema_file: &str) -> Result<()> {
         return Err(emit_error(anyhow!("schema file not found: {schema_file}")));
     }
 
-    let code = spawn_db_runner(
+    let code = spawn_runner(
         "db-reconcile",
         &[db_path.as_os_str(), schema_path.as_os_str()],
         false,

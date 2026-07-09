@@ -38,7 +38,11 @@ fn enumerate_databases(dir: &Path) -> std::io::Result<Vec<DatabaseEntry>> {
     let mut databases: Vec<DatabaseEntry> = Vec::new();
     for entry in entries.flatten() {
         let path = entry.path();
-        if !path.is_file() || path.extension().and_then(|e| e.to_str()) != Some("db") {
+        // Never follow symlinks: the databases dir is workload-writable, and a planted link
+        // must not have dsbx report (or stat) a foreign file. DirEntry::file_type/metadata
+        // do not traverse links.
+        let is_regular_file = entry.file_type().map(|t| t.is_file()).unwrap_or(false);
+        if !is_regular_file || path.extension().and_then(|e| e.to_str()) != Some("db") {
             continue;
         }
         let Some(name) = path.file_stem().and_then(|s| s.to_str()) else {
@@ -53,8 +57,10 @@ fn enumerate_databases(dir: &Path) -> std::io::Result<Vec<DatabaseEntry>> {
         // lives in the WAL until litestream checkpoints it.
         let mut size_bytes = entry.metadata().map(|m| m.len()).unwrap_or(0);
         let wal_path = dir.join(format!("{name}.db-wal"));
-        if let Ok(wal_metadata) = std::fs::metadata(&wal_path) {
-            size_bytes += wal_metadata.len();
+        if let Ok(wal_metadata) = std::fs::symlink_metadata(&wal_path) {
+            if wal_metadata.is_file() {
+                size_bytes += wal_metadata.len();
+            }
         }
         databases.push(DatabaseEntry {
             name: name.to_string(),
