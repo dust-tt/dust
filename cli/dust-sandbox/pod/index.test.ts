@@ -137,7 +137,7 @@ describe("must-exist open", () => {
 
   test("the error tells the agent databases are created by publish", () => {
     const name = uniqueName("missing");
-    expect(() => db(name)).toThrow(/created by the first publish/);
+    expect(() => db(name)).toThrow(/created by their first reconcile/);
     expect(() => db(name)).toThrow(new RegExp(`databases/${name}\\.db\\.ts`));
   });
 
