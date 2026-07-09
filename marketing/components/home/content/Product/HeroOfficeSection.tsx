@@ -1,5 +1,6 @@
 // biome-ignore-all lint/plugin/noNextImports: Next.js-specific file
 
+import { HeroVideo } from "@marketing/components/home/content/Product/HeroVideo";
 import { HomeReveal } from "@marketing/components/home/content/Product/HomeReveal";
 import { homeScenarios } from "@marketing/components/home/content/Product/heroOfficeScenario";
 import { mountFloorScene } from "@marketing/components/home/content/Product/heroOfficeScene";
@@ -58,6 +59,11 @@ export function HeroOfficeSection({
   const content = HERO_CONTENT[variant];
 
   useEffect(() => {
+    if (content.heroVideo) {
+      // Video variants render an embed instead of the animated floor scene, so
+      // there is nothing to mount.
+      return;
+    }
     const host = sceneRef.current;
     if (!host) {
       return;
@@ -132,7 +138,7 @@ export function HeroOfficeSection({
       }
       cleanup?.();
     };
-  }, []);
+  }, [content.heroVideo]);
 
   return (
     <section className="relative left-1/2 right-1/2 -ml-[50vw] -mr-[50vw] w-screen bg-background pb-12">
@@ -181,11 +187,18 @@ export function HeroOfficeSection({
           delay={80}
           className="relative hidden w-full lg:block lg:w-[58%]"
         >
-          <div
-            ref={sceneRef}
-            className="dust-floor-host w-full lg:h-[min(86vh,900px)]"
-            aria-hidden="true"
-          />
+          {content.heroVideo ? (
+            <HeroVideo
+              videoId={content.heroVideo.youtubeId}
+              title={content.heroVideo.title}
+            />
+          ) : (
+            <div
+              ref={sceneRef}
+              className="dust-floor-host w-full lg:h-[min(86vh,900px)]"
+              aria-hidden="true"
+            />
+          )}
         </HomeReveal>
       </div>
     </section>

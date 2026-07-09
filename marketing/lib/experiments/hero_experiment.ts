@@ -25,6 +25,9 @@ export interface HeroContent {
   leadCopy: string;
   primaryCtaLabel: string;
   secondaryCtaLabel: string;
+  // When set, the hero's right column plays this customer-story clip instead of
+  // the animated office scene.
+  heroVideo?: { youtubeId: string; title: string };
 }
 
 export const HERO_CONTENT: Record<HeroVariantKey, HeroContent> = {
@@ -43,6 +46,12 @@ export const HERO_CONTENT: Record<HeroVariantKey, HeroContent> = {
       "Dust gives your whole organization shared context, smarter agents, and AI that actually knows your business.",
     primaryCtaLabel: "Request a demo",
     secondaryCtaLabel: "Try for free →",
+    // Laurel customer story:
+    // /customers/how-laurel-runs-like-a-400-person-company-with-a-100-person-team-using-dust
+    heroVideo: {
+      youtubeId: "FHbleyDAtEk",
+      title: "How Laurel runs like a 400-person company with Dust",
+    },
   },
 };
 
