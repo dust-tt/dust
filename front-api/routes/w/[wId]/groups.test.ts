@@ -107,7 +107,7 @@ describe("GET /api/w/:wId/groups", () => {
     const group = await GroupFactory.regular(workspace, "Backend");
     await GroupFactory.withMembers(auth, group, [user]);
 
-    const response = await getGroups(workspace, { kind: "regular" });
+    const response = await getGroups(workspace, { kind: "regular_auto" });
 
     expect(response.status).toBe(200);
     const { groups } = await response.json();
