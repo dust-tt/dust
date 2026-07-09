@@ -3,6 +3,7 @@ import { createToolsRecord } from "@app/lib/actions/mcp_internal_actions/tool_de
 import { getPrefixedToolName } from "@app/lib/actions/tool_name_utils";
 import {
   CREATE_INTERACTIVE_CONTENT_FILE_TOOL_NAME,
+  FRAME_SOURCE_MAX_BYTES,
   INTERACTIVE_CONTENT_SERVER_NAME,
   PUBLISH_INTERACTIVE_CONTENT_FILE_TOOL_NAME,
 } from "@app/lib/api/actions/servers/interactive_content/metadata";
@@ -258,7 +259,8 @@ const FILES_TOOLS_COMMON_METADATA = {
     description:
       "Create or overwrite a file in a conversation or Pod file system. " +
       "Accepts UTF-8 text content only. Binary files cannot be created via this tool. " +
-      `Content is capped at ${CREATE_CONTENT_MAX_BYTES / 1024} KB. ` +
+      `Content is capped at ${CREATE_CONTENT_MAX_BYTES / 1024} KB, or ` +
+      `${FRAME_SOURCE_MAX_BYTES / 1024} KB when overwriting an existing Frame source file. ` +
       "If the file already exists it is silently overwritten (shell \`>\` semantics); for " +
       `partial changes to an existing file, prefer \`${getPrefixedToolName(FILES_SERVER_NAME, FILES_EDIT_ACTION_NAME)}\` ` +
       "over resending the full content. " +
@@ -357,7 +359,8 @@ const EDIT_TOOL = {
     "`old_string` must match the file content exactly, including whitespace and indentation. " +
     "Fails if `old_string` is not found or if the number of occurrences does not match " +
     "`expected_replacements` (default 1); make `old_string` unique by including surrounding lines. " +
-    `Files larger than ${CREATE_CONTENT_MAX_BYTES / 1024} KB cannot be edited with this tool. ` +
+    `Files larger than ${CREATE_CONTENT_MAX_BYTES / 1024} KB cannot be edited with this tool, ` +
+    `except Frame source files, which get a higher, ${FRAME_SOURCE_MAX_BYTES / 1024} KB cap. ` +
     "Editing a Frame source file updates only its source, never the rendered Frame directly.",
   schema: {
     path: z
