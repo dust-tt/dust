@@ -1,22 +1,29 @@
+import { DeprecateAgentDialog } from "@app/components/assistant/conversation/agent_browser/cartography/DeprecateAgentDialog";
 import { useAgentCartography } from "@app/lib/swr/assistants";
+import { timeAgoFrom } from "@app/lib/utils";
 import type {
   AgentDuplicatePair,
   DuplicateConfidence,
 } from "@app/types/api/assistant/cartography";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import { assertNever } from "@app/types/shared/utils/assert_never";
+import { pluralize } from "@app/types/shared/utils/string_utils";
 import type { WorkspaceType } from "@app/types/user";
 import {
+  ActionChatBubbleBottomCenterTextIcon,
   ActionMapIcon,
   ActionSquare3Stack3DIcon,
+  ActionTimeIcon,
+  ActionUserGroupIcon,
   Avatar,
+  Button,
   Card,
   CardGrid,
   Chip,
   Icon,
   Spinner,
 } from "@dust-tt/sparkle";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import {
   CartesianGrid,
   ResponsiveContainer,
@@ -114,35 +121,104 @@ function confidenceChipProps(confidence: DuplicateConfidence): {
   }
 }
 
+interface AgentMetaLineProps {
+  icon: React.ComponentType;
+  text: string;
+}
+
+function AgentMetaLine({ icon, text }: AgentMetaLineProps) {
+  return (
+    <div className="flex items-center gap-1.5 text-xs text-muted-foreground dark:text-muted-foreground-night">
+      <Icon visual={icon} size="xs" />
+      <span className="truncate">{text}</span>
+    </div>
+  );
+}
+
 interface DuplicateAgentButtonProps {
   agent: LightAgentConfigurationType;
+  alternative: LightAgentConfigurationType;
+  owner: WorkspaceType;
   onAgentClick: (agent: LightAgentConfigurationType) => void;
 }
 
 function DuplicateAgentButton({
   agent,
+  alternative,
+  owner,
   onAgentClick,
 }: DuplicateAgentButtonProps) {
+  const [isDeprecateOpen, setIsDeprecateOpen] = useState(false);
+
+  const messageCount = agent.usage?.messageCount || 0;
+  const userCount = agent.usage?.userCount || 0;
+  const createdAgo = agent.versionCreatedAt
+    ? timeAgoFrom(new Date(agent.versionCreatedAt).getTime(), {
+        useLongFormat: true,
+      })
+    : null;
+
   return (
-    <button
-      type="button"
-      onClick={() => onAgentClick(agent)}
-      className="flex min-w-0 flex-1 items-center gap-2 rounded-xl p-2 text-left transition-colors hover:bg-muted-background focus:outline-none"
-    >
-      <Avatar size="sm" visual={agent.pictureUrl} />
-      <span className="min-w-0 flex-1 truncate text-sm font-medium text-foreground">
-        {agent.name}
-      </span>
-    </button>
+    <div className="flex min-w-0 flex-1 flex-col gap-2 rounded-xl p-2">
+      <button
+        type="button"
+        onClick={() => onAgentClick(agent)}
+        className="flex min-w-0 items-center gap-2 rounded-lg text-left transition-colors hover:bg-muted-background focus:outline-none"
+      >
+        <Avatar size="sm" visual={agent.pictureUrl} />
+        <span className="min-w-0 flex-1 truncate text-sm font-medium text-foreground">
+          {agent.name}
+        </span>
+      </button>
+      <div className="flex flex-col gap-1">
+        {messageCount !== undefined && (
+          <AgentMetaLine
+            icon={ActionChatBubbleBottomCenterTextIcon}
+            text={`${messageCount} message${pluralize(messageCount)} (30d)`}
+          />
+        )}
+        {userCount !== undefined && (
+          <AgentMetaLine
+            icon={ActionUserGroupIcon}
+            text={`${userCount} user${pluralize(userCount)} (30d)`}
+          />
+        )}
+        {createdAgo && (
+          <AgentMetaLine
+            icon={ActionTimeIcon}
+            text={`Updated ${createdAgo} ago`}
+          />
+        )}
+      </div>
+      <Button
+        variant="outline"
+        size="xs"
+        label="Deprecate"
+        className="w-full"
+        onClick={() => setIsDeprecateOpen(true)}
+      />
+      <DeprecateAgentDialog
+        agent={agent}
+        alternative={alternative}
+        owner={owner}
+        isOpen={isDeprecateOpen}
+        onClose={() => setIsDeprecateOpen(false)}
+      />
+    </div>
   );
 }
 
 interface DuplicatePairCardProps {
   pair: ResolvedDuplicatePair;
+  owner: WorkspaceType;
   onAgentClick: (agent: LightAgentConfigurationType) => void;
 }
 
-function DuplicatePairCard({ pair, onAgentClick }: DuplicatePairCardProps) {
+function DuplicatePairCard({
+  pair,
+  owner,
+  onAgentClick,
+}: DuplicatePairCardProps) {
   const chip = confidenceChipProps(pair.confidence);
 
   return (
@@ -153,9 +229,19 @@ function DuplicatePairCard({ pair, onAgentClick }: DuplicatePairCardProps) {
         </span>
         <Chip size="xs" color={chip.color} label={chip.label} />
       </div>
-      <div className="flex items-center gap-1">
-        <DuplicateAgentButton agent={pair.first} onAgentClick={onAgentClick} />
-        <DuplicateAgentButton agent={pair.second} onAgentClick={onAgentClick} />
+      <div className="flex items-stretch gap-1">
+        <DuplicateAgentButton
+          agent={pair.first}
+          alternative={pair.second}
+          owner={owner}
+          onAgentClick={onAgentClick}
+        />
+        <DuplicateAgentButton
+          agent={pair.second}
+          alternative={pair.first}
+          owner={owner}
+          onAgentClick={onAgentClick}
+        />
       </div>
     </Card>
   );
@@ -163,10 +249,15 @@ function DuplicatePairCard({ pair, onAgentClick }: DuplicatePairCardProps) {
 
 interface DuplicatesSectionProps {
   pairs: ResolvedDuplicatePair[];
+  owner: WorkspaceType;
   onAgentClick: (agent: LightAgentConfigurationType) => void;
 }
 
-function DuplicatesSection({ pairs, onAgentClick }: DuplicatesSectionProps) {
+function DuplicatesSection({
+  pairs,
+  owner,
+  onAgentClick,
+}: DuplicatesSectionProps) {
   return (
     <div className="mb-8 flex flex-col gap-3">
       <div className="flex items-center gap-2">
@@ -187,6 +278,7 @@ function DuplicatesSection({ pairs, onAgentClick }: DuplicatesSectionProps) {
           <DuplicatePairCard
             key={`${pair.first.sId}-${pair.second.sId}`}
             pair={pair}
+            owner={owner}
             onAgentClick={onAgentClick}
           />
         ))}
@@ -251,7 +343,11 @@ export function Cartography({
   return (
     <div className="mt-6 w-full">
       {!loading && duplicatePairs.length > 0 && (
-        <DuplicatesSection pairs={duplicatePairs} onAgentClick={onAgentClick} />
+        <DuplicatesSection
+          pairs={duplicatePairs}
+          owner={owner}
+          onAgentClick={onAgentClick}
+        />
       )}
       <div className="mb-3 mt-12 flex flex-col gap-1">
         <div className="flex items-center gap-2">
