@@ -119,22 +119,22 @@ describe("db reconcile", () => {
     });
   });
 
-  test("refuses a duplicate index name across tables (shared SQLite namespace)", async () => {
+  test("a duplicate index name across tables fails at apply (shared SQLite namespace)", async () => {
     await withDir(async (dir) => {
       await expectDbError(
         () => reconcile(join(dir, "dup.db"), fx("dup_index.db.ts")),
-        "schema_invalid",
-        /share one namespace/
+        "apply_failed",
+        /rolled back/
       );
     });
   });
 
-  test("refuses a second primary-key declaration on one table", async () => {
+  test("a second primary-key declaration on one table fails before apply", async () => {
     await withDir(async (dir) => {
       await expectDbError(
         () => reconcile(join(dir, "twice.db"), fx("pk_double.db.ts")),
-        "schema_invalid",
-        /more than one primary key/
+        "apply_failed",
+        /rolled back/
       );
     });
   });
