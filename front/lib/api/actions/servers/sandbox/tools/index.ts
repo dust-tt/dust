@@ -29,7 +29,7 @@ import {
 } from "@app/lib/api/sandbox/access_tokens";
 import { readNewDenyLogEntries } from "@app/lib/api/sandbox/egress";
 import {
-  addSandboxPolicyDomain,
+  addOwnerPolicyDomain,
   parseExactEgressDomain,
 } from "@app/lib/api/sandbox/egress_policy";
 import {
@@ -498,10 +498,9 @@ export async function addEgressDomainTool(
     );
   }
 
-  const ensureResult = await ensureConversationSandboxReady(
-    auth,
-    runContext.conversation
-  );
+  const { conversation } = runContext;
+
+  const ensureResult = await ensureConversationSandboxReady(auth, conversation);
   if (ensureResult.isErr()) {
     return new Err(new MCPError(ensureResult.error.message));
   }
@@ -512,8 +511,10 @@ export async function addEgressDomainTool(
     return new Err(new MCPError(parsed.error.message));
   }
 
-  const result = await addSandboxPolicyDomain(auth, {
-    sandboxProviderId: sandbox.providerId,
+  // Keyed by the conversation: approvals persist for the conversation's
+  // lifetime, across sandbox destroy/recreate cycles.
+  const result = await addOwnerPolicyDomain(auth, {
+    ownerId: conversation.sId,
     domain: parsed.value,
   });
   if (result.isErr()) {
@@ -533,6 +534,9 @@ export async function addEgressDomainTool(
     ],
     metadata: {
       sandbox_provider_id: sandbox.providerId,
+      // The approval's durable scope: policies are owner-keyed, so the
+      // conversation outlives any individual sandbox.
+      conversation_id: conversation.sId,
       domain: parsed.value,
       added: String(result.value.addedDomain !== null),
       reason,
@@ -542,10 +546,10 @@ export async function addEgressDomainTool(
   const text =
     result.value.addedDomain !== null
       ? `Allowed: ${result.value.addedDomain}\n` +
-        "The change is in effect for the current sandbox only and applies to " +
-        "subsequent commands in this conversation."
+        "The change applies to this conversation and persists across " +
+        "sandbox restarts."
       : `Already allowed: ${parsed.value}\n` +
-        "No change made; this domain was already in the sandbox's allowlist.";
+        "No change made; this domain was already in the conversation's allowlist.";
 
   return new Ok([{ type: "text" as const, text }]);
 }

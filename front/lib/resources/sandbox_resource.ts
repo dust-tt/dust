@@ -1,6 +1,6 @@
 import { getSandboxProvider } from "@app/lib/api/sandbox";
 import { revokeAllExecTokensForSandbox } from "@app/lib/api/sandbox/access_tokens";
-import { deleteSandboxPolicy } from "@app/lib/api/sandbox/egress_policy";
+import { deleteLegacySandboxPolicy } from "@app/lib/api/sandbox/egress_policy";
 import { getSandboxImage } from "@app/lib/api/sandbox/image";
 import {
   recordLifecycleOperation,
@@ -94,10 +94,14 @@ export interface SandboxResource extends ReadonlyAttributesType<SandboxModel> {}
 export class SandboxResource extends BaseResource<SandboxModel> {
   static model: ModelStaticWorkspaceAware<SandboxModel> = SandboxModel;
 
+  // Owner policy files (w/{wId}/sandboxes/{ownerId}.json) intentionally
+  // survive sandbox destruction; only the legacy per-providerId file is
+  // scrubbed here. Owner files are deleted with their owner (conversation
+  // destruction, pod space deletion).
   private static deleteEgressPolicyAfterDestroy(
     sandbox: SandboxResource
   ): void {
-    void deleteSandboxPolicy(sandbox.providerId).catch((err) =>
+    void deleteLegacySandboxPolicy(sandbox.providerId).catch((err) =>
       logger.warn(
         {
           err,
