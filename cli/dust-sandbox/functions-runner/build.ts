@@ -11,13 +11,11 @@
 // `{ ok: true }` / `{ ok: false, error }` envelope.
 
 import { getFunctionSchema } from "./schema.ts";
-import type { DatabaseSchemaErrorKind } from "./types/db.ts";
 
 export type BuildErrorKind =
   | "bad_args"
   | "build_failed"
-  | "schema_extraction_failed"
-  | DatabaseSchemaErrorKind;
+  | "schema_extraction_failed";
 
 export type BuildResult =
   | { ok: true }
@@ -62,17 +60,16 @@ export async function build(
 
   // 2. Extract the schema from the built artifact. Importing it also validates that the bundle
   //    loads and exposes a well-formed `schema` export.
-  let schema;
   try {
-    schema = await getFunctionSchema(outBundlePath);
+    const schema = await getFunctionSchema(outBundlePath);
+
+    await Bun.write(outSchemaPath, JSON.stringify(schema));
   } catch (e) {
     return {
       ok: false,
       error: { kind: "schema_extraction_failed", message: errorMessage(e) },
     };
   }
-
-  await Bun.write(outSchemaPath, JSON.stringify(schema));
 
   return { ok: true };
 }

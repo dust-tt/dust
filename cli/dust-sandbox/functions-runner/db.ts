@@ -134,7 +134,6 @@ const TABLE_RULES: TableRule[] = [
   checkNoUniqueConstraints,
 ];
 
-// Runs every table rule; a valid config comes back unchanged, ready for toDatabaseTable.
 function validateTableConfig(
   dbName: string,
   config: TableConfig
