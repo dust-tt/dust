@@ -1,8 +1,8 @@
 import type {
+  AgentLoopMCPApproveExecutionEvent,
   AgentLoopToolAskUserQuestionEvent,
   AgentLoopToolFileAuthRequiredEvent,
   AgentLoopToolPersonalAuthRequiredEvent,
-  AgentLoopMCPApproveExecutionEvent,
 } from "@app/lib/actions/mcp_internal_actions/events";
 import type { ModelId } from "@app/types/shared/model_id";
 
