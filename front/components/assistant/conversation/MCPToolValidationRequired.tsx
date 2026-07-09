@@ -1,5 +1,5 @@
+import { ToolValidationCard } from "@app/components/actions/blocked/ToolValidationCard";
 import { useBlockedActionsContext } from "@app/components/assistant/conversation/BlockedActionsProvider";
-import { ToolValidationCard } from "@app/components/assistant/conversation/ToolValidationCard";
 import { useValidateAction } from "@app/hooks/useValidateAction";
 import type { MCPValidationOutputType } from "@app/lib/actions/constants";
 import type { BlockedToolExecution } from "@app/lib/actions/mcp";

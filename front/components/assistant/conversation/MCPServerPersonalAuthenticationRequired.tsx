@@ -1,6 +1,6 @@
+import type { PersonalAuthResolutionOutcome } from "@app/components/actions/blocked/PersonalAuthenticationCard";
+import { PersonalAuthenticationCard } from "@app/components/actions/blocked/PersonalAuthenticationCard";
 import { useBlockedActionsContext } from "@app/components/assistant/conversation/BlockedActionsProvider";
-import type { PersonalAuthResolutionOutcome } from "@app/components/assistant/conversation/PersonalAuthenticationCard";
-import { PersonalAuthenticationCard } from "@app/components/assistant/conversation/PersonalAuthenticationCard";
 import { useResolveAuthentication } from "@app/hooks/useResolveAuthentication";
 import type { BlockedToolExecution } from "@app/lib/actions/mcp";
 import type { OAuthProvider } from "@app/types/oauth/lib";
