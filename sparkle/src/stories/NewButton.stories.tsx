@@ -23,7 +23,7 @@ const ICONS = {
 } as const;
 
 const meta = {
-  title: "Actions/NewButton",
+  title: "Actions/Button",
   component: NewButton,
   tags: ["autodocs"],
   parameters: {
