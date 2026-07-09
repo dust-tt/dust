@@ -22,18 +22,13 @@ export const AGENTS_TABS = [
   { label: "Favorites", id: "favorites" },
   { label: "All agents", id: "all" },
   { label: "Editable by me", id: "editable_by_me" },
-  { label: "Cartography", id: "cartography" },
 ] as const;
 
 export type TabId = (typeof AGENTS_TABS)[number]["id"];
 
 // Whether a tab should be selectable. Agent-listing tabs are disabled when they
-// have no agents; the Cartography tab is always enabled since it renders its own
-// content rather than a list of agents.
+// have no agents.
 export function isTabEnabled(tabId: TabId, agentsByTab: AgentsByTab): boolean {
-  if (tabId === "cartography") {
-    return true;
-  }
   return agentsByTab[tabId].length > 0;
 }
 

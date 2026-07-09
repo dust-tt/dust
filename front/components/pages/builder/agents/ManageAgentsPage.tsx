@@ -1,5 +1,6 @@
 import { AgentEditBar } from "@app/components/assistant/AgentEditBar";
 import { CreateDropdown } from "@app/components/assistant/CreateDropdown";
+import { Cartography } from "@app/components/assistant/conversation/agent_browser/cartography/Cartography";
 import { AgentSidebarMenu } from "@app/components/assistant/conversation/SidebarMenu";
 import { AgentDetailsSheet } from "@app/components/assistant/details/AgentDetailsSheet";
 import { AssistantsTable } from "@app/components/assistant/manager/AssistantsTable";
@@ -62,6 +63,11 @@ export const AGENT_MANAGER_TABS = [
     id: "archived",
     label: "Archived",
     description: "Archived agents.",
+  },
+  {
+    id: "cartography",
+    label: "Cartography",
+    description: "Visual map of your agents.",
   },
 ] as const;
 
@@ -157,6 +163,7 @@ export function ManageAgentsPage() {
           a.name.toLowerCase().localeCompare(b.name.toLowerCase())
         )
       ),
+      cartography: [],
     };
   }, [
     agentConfigurations,
@@ -339,8 +346,10 @@ export function ManageAgentsPage() {
                             AGENT_MANAGER_TABS.find((t) => t.id === tab.id)
                               ?.description
                           }
-                          isCounter={tab.id !== "archived"}
-                          counterValue={`${agentsByTab[tab.id].length}`}
+                          isCounter={
+                            tab.id !== "archived" && tab.id !== "cartography"
+                          }
+                          counterValue={`${agentsByTab[tab.id]?.length ?? 0}`}
                         />
                       ))}
                     </TabsList>
@@ -351,6 +360,13 @@ export function ManageAgentsPage() {
                   <div className="mt-8 flex justify-center">
                     <Spinner size="lg" />
                   </div>
+                ) : activeTab === "cartography" ? (
+                  <Cartography
+                    owner={owner}
+                    agentConfigurations={agentsByTab.all_custom}
+                    isLoading={isAgentConfigurationsLoading}
+                    onAgentClick={(agent) => setDetailedAgentId(agent.sId)}
+                  />
                 ) : activeTab && agentsByTab[activeTab] ? (
                   <AssistantsTable
                     isBatchEdit={isBatchEdit}

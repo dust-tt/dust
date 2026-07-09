@@ -22,7 +22,6 @@ import {
 } from "@dust-tt/sparkle";
 import { useMemo } from "react";
 
-import { Cartography } from "./cartography/Cartography";
 import {
   AGENTS_TABS,
   AgentBrowserSearchDropdown,
@@ -186,13 +185,6 @@ export function WebAgentBrowser({
           setDisplayedAssistantId={setDisplayedAssistantId}
           owner={owner}
           showTagHeadings={true}
-        />
-      ) : viewTab === "cartography" ? (
-        <Cartography
-          owner={owner}
-          agentConfigurations={agentsByTab.all}
-          isLoading={isLoading}
-          onAgentClick={handleAgentClick}
         />
       ) : (
         viewTab && (

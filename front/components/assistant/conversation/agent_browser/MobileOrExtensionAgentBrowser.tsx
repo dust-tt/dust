@@ -1,4 +1,3 @@
-import { Cartography } from "@app/components/assistant/conversation/agent_browser/cartography/Cartography";
 import type { AgentBrowserSharedProps } from "@app/components/assistant/conversation/agent_browser/shared";
 import {
   AGENTS_TABS,
@@ -96,13 +95,6 @@ export function MobileOrExtensionAgentBrowser({
           owner={owner}
           showTagHeadings={false}
           canGetMore={false}
-        />
-      ) : viewTab === "cartography" ? (
-        <Cartography
-          owner={owner}
-          agentConfigurations={agentsByTab.all}
-          isLoading={isLoading}
-          onAgentClick={handleAgentClick}
         />
       ) : (
         viewTab && (
