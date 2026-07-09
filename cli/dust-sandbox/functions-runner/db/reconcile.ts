@@ -37,38 +37,29 @@ export async function reconcile(
   dbPath: string,
   schemaPath: string
 ): Promise<Result<ReconcileOutcome, DbCommandError>> {
-  // 1. Validation also gives us the desired shape for the destructive pre-check.
   const desired = await validateSchemaFile(dbPath, schemaPath);
   if (desired.isErr()) {
     return desired;
   }
 
-  // The schema module's table exports feed drizzle-kit directly; validation above already
-  // proved the module imports. Dynamic import is required: schemaPath is a caller-provided
-  // runtime path to a model-authored file, so no static specifier can exist for it.
   const schemaModule: Record<string, unknown> = await import(schemaPath);
 
-  // 2.
   const created = claimDatabaseFile(dbPath);
   const sqlite = openLiveDatabase(dbPath, created);
   let succeeded = false;
   try {
-    // 3.
     const destructive = checkNoDestructiveChanges(sqlite, desired.value);
     if (destructive.isErr()) {
       return destructive;
     }
-    // 4.
     const planned = await planStatements(sqlite, schemaModule);
     if (planned.isErr()) {
       return planned;
     }
-    // 5.
     const additive = checkAdditiveOnly(planned.value);
     if (additive.isErr()) {
       return additive;
     }
-    // 6.
     const applied = applyInTransaction(sqlite, planned.value);
     if (applied.isErr()) {
       return applied;
@@ -78,8 +69,6 @@ export async function reconcile(
     return new Ok({ created, statements: planned.value });
   } finally {
     sqlite.close();
-    // A refused/failed reconcile on a FIRST claim must not leave an empty {db}.db behind:
-    // @dust/pod's db() opens must-exist, and an empty file is a silently valid database.
     if (created && !succeeded) {
       for (const suffix of ["", "-wal", "-shm"]) {
         rmSync(`${dbPath}${suffix}`, { force: true });
@@ -301,14 +290,15 @@ type DrizzleKitSQLiteDatabase = Parameters<PushSQLiteSchema>[1];
 
 // pushSQLiteSchema's parameter is nominally typed LibSQLDatabase but only `.all(sql)` /
 // `.run(sql)` are used, which the bun-sqlite drizzle instance provides with compatible
-// signatures (verified in the E2 spike). This shim documents (and confines) the cast — the
-// one deliberate type hole of this file.
+// signatures (verified in the E2 spike). The mismatch is nominal only, so the compiler
+// cannot verify it: the explicit `unknown` hop makes that the one deliberate, confined type
+// hole of this file rather than a silent widening.
 function asLibSqlDatabase(db: {
   // `never` params: callers pass functions with narrower query types (contravariance).
   all: (query: never) => unknown;
   run: (query: never) => unknown;
 }): DrizzleKitSQLiteDatabase {
-  return db as DrizzleKitSQLiteDatabase;
+  return db as unknown as DrizzleKitSQLiteDatabase;
 }
 
 async function withStdoutSuppressed<T>(fn: () => Promise<T>): Promise<T> {
