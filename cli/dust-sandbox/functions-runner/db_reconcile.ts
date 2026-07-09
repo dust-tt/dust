@@ -1,5 +1,5 @@
 // `dsbx db reconcile` runner backend: bring a live pod database in line with its drizzle schema
-// file, applying ADDITIVE DDL only.
+// file, applying ADDITIVE DDL only. Expected refusals come back as Err (ERR1), never thrown.
 //
 // `reconcile` orchestrates one numbered helper per step:
 //   1. Validate the schema file with the same rejections as `function build` (FK/CHECK/...).
@@ -14,16 +14,21 @@
 //      loop — never used.
 
 import { Database } from "bun:sqlite";
-import { chmodSync, existsSync, mkdirSync, rmSync } from "node:fs";
+import { chmodSync, closeSync, mkdirSync, openSync, rmSync } from "node:fs";
 import { basename, dirname } from "node:path";
 import { is } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/bun-sqlite";
 import { SQLiteTable } from "drizzle-orm/sqlite-core";
-import { type DatabaseSchema, extractDatabaseSchema } from "./db.ts";
-import { DbCommandError, introspectLiveTables } from "./db_common.ts";
+import { extractDatabaseSchema } from "./db.ts";
+import {
+  DB_BUSY_TIMEOUT_MS,
+  DbCommandError,
+  introspectLiveTables,
+} from "./db_common.ts";
+import { Err, Ok, type Result } from "./result.ts";
+import type { DatabaseSchema } from "./types/db.ts";
 
-export interface ReconcileSuccess {
-  ok: true;
+export interface ReconcileOutcome {
   created: boolean;
   statements: string[];
 }
@@ -31,9 +36,12 @@ export interface ReconcileSuccess {
 export async function reconcile(
   dbPath: string,
   schemaPath: string
-): Promise<ReconcileSuccess> {
+): Promise<Result<ReconcileOutcome, DbCommandError>> {
   // 1. Validation also gives us the desired shape for the destructive pre-check.
   const desired = await validateSchemaFile(dbPath, schemaPath);
+  if (desired.isErr()) {
+    return desired;
+  }
 
   // The schema module's table exports feed drizzle-kit directly; validation above already
   // proved the module imports. Dynamic import is required: schemaPath is a caller-provided
@@ -41,21 +49,33 @@ export async function reconcile(
   const schemaModule: Record<string, unknown> = await import(schemaPath);
 
   // 2.
-  const created = !existsSync(dbPath);
+  const created = claimDatabaseFile(dbPath);
   const sqlite = openLiveDatabase(dbPath, created);
   let succeeded = false;
   try {
     // 3.
-    assertNoDestructiveChanges(sqlite, desired);
+    const destructive = checkNoDestructiveChanges(sqlite, desired.value);
+    if (destructive.isErr()) {
+      return destructive;
+    }
     // 4.
-    const statements = await planStatements(sqlite, schemaModule);
+    const planned = await planStatements(sqlite, schemaModule);
+    if (planned.isErr()) {
+      return planned;
+    }
     // 5.
-    assertAdditiveOnly(statements);
+    const additive = checkAdditiveOnly(planned.value);
+    if (additive.isErr()) {
+      return additive;
+    }
     // 6.
-    applyInTransaction(sqlite, statements);
+    const applied = applyInTransaction(sqlite, planned.value);
+    if (applied.isErr()) {
+      return applied;
+    }
 
     succeeded = true;
-    return { ok: true, created, statements };
+    return new Ok({ created, statements: planned.value });
   } finally {
     sqlite.close();
     // A refused/failed reconcile on a FIRST claim must not leave an empty {db}.db behind:
@@ -68,12 +88,12 @@ export async function reconcile(
   }
 }
 
-// 1. Validate the schema file: same FK/CHECK/UNIQUE-constraint/composite-PK/empty rejections
-//    as build time (shared extractor); schema error kinds map onto db command error kinds.
+// 1. Validate the schema file: same FK/CHECK/UNIQUE-constraint/PK/empty rejections as build
+//    time (shared extractor); schema error kinds map onto db command error kinds.
 async function validateSchemaFile(
   dbPath: string,
   schemaPath: string
-): Promise<DatabaseSchema> {
+): Promise<Result<DatabaseSchema, DbCommandError>> {
   const dbName = basename(dbPath, ".db");
   const extracted = await extractDatabaseSchema(dbName, schemaPath, schemaPath);
   if (extracted.isErr()) {
@@ -81,22 +101,34 @@ async function validateSchemaFile(
       extracted.error.kind === "database_schema_unresolvable"
         ? "schema_unresolvable"
         : "schema_invalid";
-    throw new DbCommandError(kind, extracted.error.message);
+    return new Err(new DbCommandError(kind, extracted.error.message));
   }
-  return extracted.value;
+  return new Ok(extracted.value);
 }
 
-// 2. Open the live database read-write, creating it on first claim.
-function openLiveDatabase(dbPath: string, created: boolean): Database {
+// 2a. Detect + perform the first claim atomically: O_EXCL creation instead of an existsSync
+//     probe, so two concurrent reconciles cannot both believe they created the file. The
+//     failure-path cleanup above still only removes files this call created.
+function claimDatabaseFile(dbPath: string): boolean {
   mkdirSync(dirname(dbPath), { recursive: true });
-  const sqlite = new Database(dbPath, { create: true });
+  try {
+    closeSync(openSync(dbPath, "wx"));
+    return true;
+  } catch {
+    // Exists already (or is unreadable — the open below surfaces that as an internal error).
+    return false;
+  }
+}
+
+// 2b. Open the live database read-write (the file exists: claimDatabaseFile ran first).
+function openLiveDatabase(dbPath: string, created: boolean): Database {
+  const sqlite = new Database(dbPath, { readwrite: true, create: false });
   if (created) {
-    // Group-writable per the paths-env.v1 contract: litestream (user dust-state, group
-    // agent) must be able to write the file it replicates — and SQLite derives the -wal/-shm
-    // modes from the database file's mode.
+    // Group-writable so litestream (user dust-state, group agent) can write the file it
+    // replicates; SQLite derives the -wal/-shm modes from the database file's mode.
     chmodSync(dbPath, 0o660);
   }
-  sqlite.exec("PRAGMA busy_timeout = 5000;");
+  sqlite.exec(`PRAGMA busy_timeout = ${DB_BUSY_TIMEOUT_MS};`);
   if (created) {
     sqlite.exec("PRAGMA journal_mode = WAL;");
   }
@@ -105,10 +137,10 @@ function openLiveDatabase(dbPath: string, created: boolean): Database {
 }
 
 // 3. Destructive pre-check: everything live must still exist in the desired schema.
-function assertNoDestructiveChanges(
+function checkNoDestructiveChanges(
   sqlite: Database,
   desired: DatabaseSchema
-): void {
+): Result<undefined, DbCommandError> {
   const destructive: string[] = [];
   for (const liveTable of introspectLiveTables(sqlite)) {
     const desiredTable = desired.tables[liveTable.name];
@@ -117,6 +149,8 @@ function assertNoDestructiveChanges(
       continue;
     }
     for (const liveColumn of liveTable.columns) {
+      // hidden != 0 = generated or expression columns (PRAGMA table_xinfo), which a drizzle
+      // schema file never declares — comparing them would flag every one as dropped.
       if (liveColumn.hidden !== 0) {
         continue;
       }
@@ -128,19 +162,22 @@ function assertNoDestructiveChanges(
     }
   }
   if (destructive.length > 0) {
-    throw new DbCommandError(
-      "destructive_change",
-      `destructive changes are not allowed through reconcile: ${destructive.join("; ")}. ` +
-        "Keep existing tables and columns declared in the schema file and evolve additively."
+    return new Err(
+      new DbCommandError(
+        "destructive_change",
+        `destructive changes are not allowed through reconcile: ${destructive.join("; ")}. ` +
+          "Keep existing tables and columns declared in the schema file and evolve additively."
+      )
     );
   }
+  return new Ok(undefined);
 }
 
 // 4. Plan the diff between the live database and the schema module's exported tables.
 async function planStatements(
   sqlite: Database,
   schemaModule: Record<string, unknown>
-): Promise<string[]> {
+): Promise<Result<string[], DbCommandError>> {
   // drizzle-kit is resolved at runtime (global npm modules via NODE_PATH in the sandbox,
   // devDependency in tests): it is a publish-time-only engine and inlining it is not
   // possible (it dynamically imports optional database drivers).
@@ -156,18 +193,22 @@ async function planStatements(
 
   // drizzle-kit renders a progress spinner on stdout; capture and drop it so stdout stays a
   // single JSON envelope (the dsbx wire contract).
-  const plan = await withStdoutSuppressed(async () => {
-    const db = drizzle(sqlite);
-    return pushSQLiteSchema(imports, asLibSqlDatabase(db));
-  }).catch((e: unknown) => {
-    throw new DbCommandError(
-      "plan_failed",
-      `drizzle-kit could not plan the reconcile: ${
-        e instanceof Error ? e.message : String(e)
-      }`
+  try {
+    const plan = await withStdoutSuppressed(async () => {
+      const db = drizzle(sqlite);
+      return pushSQLiteSchema(imports, asLibSqlDatabase(db));
+    });
+    return new Ok(plan.statementsToExecute);
+  } catch (e) {
+    return new Err(
+      new DbCommandError(
+        "plan_failed",
+        `drizzle-kit could not plan the reconcile: ${
+          e instanceof Error ? e.message : String(e)
+        }`
+      )
     );
-  });
-  return plan.statementsToExecute;
+  }
 }
 
 // 5. Classify: additive statements only, or nothing is applied.
@@ -176,15 +217,19 @@ async function planStatements(
 // DROP INDEX. Note drizzle-kit push emits `ALTER TABLE x ADD y` without the COLUMN keyword.
 // Everything else (DROP TABLE/COLUMN, RENAME, INSERT of a table recreate-and-copy, ...) is
 // rejected.
+const ALTER_ADD_PATTERN = /^ALTER TABLE\s+(?:`[^`]+`|"[^"]+"|\S+)\s+ADD\s/i;
+
 const ALLOWED_STATEMENT_PATTERNS: RegExp[] = [
   /^CREATE TABLE\s/i,
-  /^ALTER TABLE\s+(?:`[^`]+`|"[^"]+"|\S+)\s+ADD\s/i,
+  ALTER_ADD_PATTERN,
   /^CREATE INDEX\s/i,
   /^CREATE UNIQUE INDEX\s/i,
   /^DROP INDEX\s/i,
 ];
 
-function assertAdditiveOnly(statements: string[]): void {
+function checkAdditiveOnly(
+  statements: string[]
+): Result<undefined, DbCommandError> {
   const disallowed = statements.filter(
     (statement) =>
       !ALLOWED_STATEMENT_PATTERNS.some((pattern) =>
@@ -192,18 +237,44 @@ function assertAdditiveOnly(statements: string[]): void {
       )
   );
   if (disallowed.length > 0) {
-    throw new DbCommandError(
-      "disallowed_statement",
-      `reconcile only applies additive DDL (CREATE TABLE, ADD COLUMN, CREATE [UNIQUE] INDEX, DROP INDEX); ` +
-        `refusing: ${disallowed.map((statement) => statement.replace(/\s+/g, " ").trim()).join(" | ")}`
+    return new Err(
+      new DbCommandError(
+        "disallowed_statement",
+        `reconcile only applies additive DDL (CREATE TABLE, ADD COLUMN, CREATE [UNIQUE] INDEX, DROP INDEX); ` +
+          `refusing: ${disallowed.map((statement) => statement.replace(/\s+/g, " ").trim()).join(" | ")}`
+      )
     );
   }
+
+  // SQLite categorically refuses adding a NOT NULL column without a default to an existing
+  // table; refuse it here as a correctable error instead of an opaque apply failure.
+  const notNullAdds = statements.filter(
+    (statement) =>
+      ALTER_ADD_PATTERN.test(statement.trimStart()) &&
+      /\bNOT NULL\b/i.test(statement) &&
+      !/\bDEFAULT\b/i.test(statement)
+  );
+  if (notNullAdds.length > 0) {
+    return new Err(
+      new DbCommandError(
+        "disallowed_statement",
+        `SQLite cannot add a NOT NULL column without a default to an existing table; make the ` +
+          `column nullable or give it a .default(...): ${notNullAdds
+            .map((statement) => statement.replace(/\s+/g, " ").trim())
+            .join(" | ")}`
+      )
+    );
+  }
+  return new Ok(undefined);
 }
 
 // 6. Apply in one transaction with rollback.
-function applyInTransaction(sqlite: Database, statements: string[]): void {
+function applyInTransaction(
+  sqlite: Database,
+  statements: string[]
+): Result<undefined, DbCommandError> {
   if (statements.length === 0) {
-    return;
+    return new Ok(undefined);
   }
   sqlite.exec("BEGIN IMMEDIATE;");
   try {
@@ -211,13 +282,16 @@ function applyInTransaction(sqlite: Database, statements: string[]): void {
       sqlite.exec(statement);
     }
     sqlite.exec("COMMIT;");
+    return new Ok(undefined);
   } catch (e) {
     sqlite.exec("ROLLBACK;");
-    throw new DbCommandError(
-      "apply_failed",
-      `reconcile failed to apply and was rolled back: ${
-        e instanceof Error ? e.message : String(e)
-      }`
+    return new Err(
+      new DbCommandError(
+        "apply_failed",
+        `reconcile failed to apply and was rolled back: ${
+          e instanceof Error ? e.message : String(e)
+        }`
+      )
     );
   }
 }

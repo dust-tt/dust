@@ -4,21 +4,13 @@
 // resolution) and passes absolute paths here, so these helpers only deal with files.
 
 import { Database } from "bun:sqlite";
+import { Err, Ok, type Result } from "./result.ts";
+import { type DbErrorKind, RESERVED_TABLE_PREFIXES } from "./types/db.ts";
 
-export type DbErrorKind =
-  | "bad_args"
-  | "database_not_found"
-  | "schema_unresolvable"
-  | "schema_invalid"
-  | "destructive_change"
-  | "disallowed_statement"
-  | "plan_failed"
-  | "apply_failed"
-  | "empty_sql"
-  | "query_failed"
-  // Unexpected non-DbCommandError failures (infrastructure, bugs) — front must NOT treat
-  // these as model-correctable.
-  | "internal";
+// Wait up to 5s for a writer's lock instead of failing immediately with SQLITE_BUSY
+// (function writes and litestream checkpoints hold short write locks):
+// https://sqlite.org/pragma.html#pragma_busy_timeout
+export const DB_BUSY_TIMEOUT_MS = 5000;
 
 export class DbCommandError extends Error {
   readonly kind: DbErrorKind;
@@ -45,20 +37,17 @@ export function errorEnvelope(e: unknown): {
   };
 }
 
-// Tables that live in a pod database but are not part of the data model: SQLite internals,
-// drizzle bookkeeping, and litestream sequencing tables.
+// Tables that live in a pod database but are not part of the data model: the same reserved
+// prefixes build rejects for declared tables (SQLite internals, drizzle bookkeeping,
+// litestream sequencing, plus prefixes drizzle-kit's introspection ignores).
 export function isInternalTable(name: string): boolean {
-  return (
-    name.startsWith("sqlite_") ||
-    name.startsWith("__drizzle") ||
-    name.startsWith("_litestream")
-  );
+  return RESERVED_TABLE_PREFIXES.some((prefix) => name.startsWith(prefix));
 }
 
 export function openReadonly(
   dbPath: string,
   { safeIntegers = false }: { safeIntegers?: boolean } = {}
-): Database {
+): Result<Database, DbCommandError> {
   let db: Database;
   try {
     // safeIntegers reads INTEGER columns as bigint instead of a possibly-lossy JS number
@@ -66,21 +55,20 @@ export function openReadonly(
     // https://bun.com/docs/api/sqlite#datatypes
     db = new Database(dbPath, { readonly: true, safeIntegers });
   } catch (e) {
-    throw new DbCommandError(
-      "database_not_found",
-      `cannot open database at ${dbPath}: ${
-        e instanceof Error ? e.message : String(e)
-      }`
+    return new Err(
+      new DbCommandError(
+        "database_not_found",
+        `cannot open database at ${dbPath}: ${
+          e instanceof Error ? e.message : String(e)
+        }`
+      )
     );
   }
   // Second write barrier on top of the readonly open: any statement that changes the
   // database fails with SQLITE_READONLY: https://sqlite.org/pragma.html#pragma_query_only
   db.exec("PRAGMA query_only = ON;");
-  // Wait up to 5s for a writer's lock instead of failing immediately with SQLITE_BUSY
-  // (function writes and litestream checkpoints hold short write locks):
-  // https://sqlite.org/pragma.html#pragma_busy_timeout
-  db.exec("PRAGMA busy_timeout = 5000;");
-  return db;
+  db.exec(`PRAGMA busy_timeout = ${DB_BUSY_TIMEOUT_MS};`);
+  return new Ok(db);
 }
 
 export interface LiveColumn {
@@ -96,7 +84,9 @@ export interface LiveIndex {
   name: string;
   unique: boolean;
   // "c" = CREATE INDEX, "u" = UNIQUE constraint auto-index, "pk" = PRIMARY KEY auto-index.
-  origin: string;
+  origin: "c" | "u" | "pk";
+  // Partial index (CREATE INDEX ... WHERE): the WHERE clause is not introspected.
+  partial: boolean;
   columns: (string | null)[]; // null for rowid/expression members
 }
 
@@ -143,9 +133,15 @@ export function introspectLiveTables(db: Database): LiveTable[] {
       }));
 
     const indexes: LiveIndex[] = db
-      .query<{ name: string; unique: number; origin: string }, []>(
-        `PRAGMA index_list(${quoteIdentifier(row.name)})`
-      )
+      .query<
+        {
+          name: string;
+          unique: number;
+          origin: "c" | "u" | "pk";
+          partial: number;
+        },
+        []
+      >(`PRAGMA index_list(${quoteIdentifier(row.name)})`)
       .all()
       .map((index) => {
         const members = db
@@ -157,6 +153,7 @@ export function introspectLiveTables(db: Database): LiveTable[] {
           name: index.name,
           unique: index.unique !== 0,
           origin: index.origin,
+          partial: index.partial !== 0,
           columns: members.map((member) => member.name),
         };
       });
