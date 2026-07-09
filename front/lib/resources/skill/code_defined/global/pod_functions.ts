@@ -134,9 +134,9 @@ the shared schema file.
 #### Get the first schema right — evolution is additive-only
 
 Schema changes can only ADD: new tables, new columns, new indexes. No table or column is ever
-dropped, renamed, or retyped through publish — those changes are rejected to protect data and
-the other published functions (indexes are the exception: they can be added and dropped).
-First-publish quality therefore determines how often you hit that wall:
+dropped, renamed, or retyped — reconcile rejects those changes to protect data and the other
+published functions (indexes are the exception: they can be added and dropped). First-schema
+quality therefore determines how often you hit that wall:
 
 - get table and column NAMES and TYPES right up front (renames are not possible later);
 - make columns nullable by default — add \`.notNull()\` only when certain, and never add a
@@ -145,10 +145,10 @@ First-publish quality therefore determines how often you hit that wall:
   creating it fails outright if existing rows already contain duplicates;
 - give every table an \`id: integer("id").primaryKey({ autoIncrement: true })\` and a
   \`createdAt\` timestamp;
-- NO foreign keys (\`.references()\`), CHECK constraints, UNIQUE constraints (\`.unique()\` or
+- NO foreign keys (\`.references()\`), CHECK constraints or UNIQUE constraints (\`.unique()\` or
   table-level \`unique()\` — use \`uniqueIndex()\` instead, SQLite cannot add or drop a UNIQUE
-  constraint later without a table rebuild) or composite primary keys — they are rejected at
-  build time; enforce relational integrity in function code.
+  constraint later without a table rebuild) — they are rejected at build time; enforce
+  relational integrity in function code.
 
 When a shape must change anyway, evolve additively:
 
@@ -160,14 +160,16 @@ When a shape must change anyway, evolve additively:
 - **outgrowing a JSON column**: add a proper table alongside it; new writes go to the table,
   readers prefer table rows and fall back to the JSON column for history.
 
-#### What publish does with databases
+#### Applying schema changes
 
-Publishing applies each declared database's schema file to the live database, with additive DDL
-only:
+Publishing validates each declared database's schema file (the rejections above) but never
+touches the live databases. Schema changes reach a live database only through the
+\`db_reconcile\` tool — run it after editing \`databases/{db}.db.ts\` (a database is created on
+its first reconcile; \`db()\` opens must-exist). It applies additive DDL only:
 
 - "destructive changes are not allowed through reconcile" — the schema file drops something that
-  exists in the live database. Restore the missing table or column declarations (the live
-  database may be ahead after another function's publish) and evolve additively instead.
+  exists in the live database. Restore the missing table or column declarations and evolve
+  additively instead.
 - Nothing cross-checks the other published functions: a schema change that reconciles cleanly
   can still break a sibling at runtime (a unique index added late, a column mode changed in one
   copy of a schema file). The additive rules above are what prevents this — follow them, and
@@ -212,8 +214,7 @@ The live databases have tools of their own: \`db_list\` shows them with sizes, \
 regenerates a database's live schema (storage types only — column modes exist only in the
 authored schema file), \`db_query\` runs one SQL statement (SELECT or INSERT/UPDATE/DELETE;
 schema changes are rejected), and \`db_reconcile\` applies an edited databases/{db}.db.ts to the
-live database — the same additive-only gate as publish. See each tool's own description for its
-arguments.
+live database (additive DDL only). See each tool's own description for its arguments.
 
 #### Calling a function from a Frame
 
