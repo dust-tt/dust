@@ -29,10 +29,10 @@ const app = publicApiApp();
  *       - Conversations
  *     summary: Download a conversation-scoped file by path
  *     description: |
- *       Download a file from a conversation's file system by its scoped path. The path must
- *       be conversation-scoped, i.e. start with `conversation/` or `conversation-{cId}/`
- *       (as surfaced by agent file system tools). The file content is streamed directly
- *       from the conversation mount.
+ *       Download a file from a conversation's file system by its scoped path. Pass the
+ *       canonical `filePath` surfaced in a message action's `generatedFiles` (the legacy
+ *       `conversation/foo.pdf` form is also accepted). The file content is streamed
+ *       directly from the conversation mount.
  *     parameters:
  *       - name: wId
  *         in: path
@@ -50,9 +50,10 @@ const app = publicApiApp();
  *         in: path
  *         required: true
  *         description: |
- *           Conversation-scoped file path, e.g. `conversation/foo.pdf` or
- *           `conversation-{cId}/foo.pdf`. A conversation scope prefix is required; any
- *           other scope prefix is rejected. Path traversal segments (`..`) are rejected.
+ *           Conversation-scoped file path: the canonical `filePath` returned in a message
+ *           action's `generatedFiles`, or the legacy `conversation/foo.pdf` form. Paths
+ *           scoped to another conversation or to a different scope are rejected. Path
+ *           traversal segments (`..`) are rejected.
  *         schema:
  *           type: string
  *     security:
@@ -88,8 +89,8 @@ app.get("/:rel{.+}", validate("param", ParamsSchema), async (ctx) => {
   }
 
   // Require a conversation-scoped path. The legacy `conversation/foo.pdf` form is still
-  // accepted, and the canonical `conversation-{cId}/foo.pdf` form is what current file
-  // tools surface in generatedFiles.
+  // accepted, alongside the canonical scoped path that current file tools surface in
+  // generatedFiles.
   const legacyScoped = parseScopedFilePath(rel);
   const canonicalScoped = legacyScoped ? null : parseCanonicalScopedPath(rel);
 
@@ -120,7 +121,7 @@ app.get("/:rel{.+}", validate("param", ParamsSchema), async (ctx) => {
       api_error: {
         type: "invalid_request_error",
         message:
-          "Invalid file path: must be a conversation-scoped path (e.g. `conversation/foo.pdf` or `conversation-{id}/foo.pdf`).",
+          "Invalid file path: must be a conversation-scoped path (the `filePath` from a message action's `generatedFiles`, or a `conversation/...` path).",
       },
     });
   }

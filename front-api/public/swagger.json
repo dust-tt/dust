@@ -1445,7 +1445,7 @@
           "Conversations"
         ],
         "summary": "Download a conversation-scoped file by path",
-        "description": "Download a file from a conversation's file system by its scoped path. The path must\nbe conversation-scoped, i.e. start with `conversation/` or `conversation-{cId}/`\n(as surfaced by agent file system tools). The file content is streamed directly\nfrom the conversation mount.\n",
+        "description": "Download a file from a conversation's file system by its scoped path. Pass the\ncanonical `filePath` surfaced in a message action's `generatedFiles` (the legacy\n`conversation/foo.pdf` form is also accepted). The file content is streamed\ndirectly from the conversation mount.\n",
         "parameters": [
           {
             "name": "wId",
@@ -1469,7 +1469,7 @@
             "name": "rel",
             "in": "path",
             "required": true,
-            "description": "Conversation-scoped file path, e.g. `conversation/foo.pdf` or\n`conversation-{cId}/foo.pdf`. A conversation scope prefix is required; any\nother scope prefix is rejected. Path traversal segments (`..`) are rejected.\n",
+            "description": "Conversation-scoped file path: the canonical `filePath` returned in a message\naction's `generatedFiles`, or the legacy `conversation/foo.pdf` form. Paths\nscoped to another conversation or to a different scope are rejected. Path\ntraversal segments (`..`) are rejected.\n",
             "schema": {
               "type": "string"
             }
@@ -13447,7 +13447,7 @@
                                   },
                                   "filePath": {
                                     "type": "string",
-                                    "description": "Canonical conversation-scoped path for path-backed files, e.g. `conversation-{cId}/report.docx`."
+                                    "description": "Canonical scoped path for path-backed files, as surfaced by agent file system tools."
                                   },
                                   "title": {
                                     "type": "string"

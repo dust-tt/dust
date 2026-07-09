@@ -310,7 +310,7 @@
  *                                   description: Dust file id for DB-backed files, or null for path-backed files.
  *                                 filePath:
  *                                   type: string
- *                                   description: Canonical conversation-scoped path for path-backed files, e.g. `conversation-{cId}/report.docx`.
+ *                                   description: Canonical scoped path for path-backed files, as surfaced by agent file system tools.
  *                                 title:
  *                                   type: string
  *                                 contentType:
