@@ -95,7 +95,7 @@ async function createProject(
     memberGroup = await GroupResource.makeNew({
       name: memberGroupName,
       workspaceId: workspace.id,
-      kind: "regular",
+      kind: "regular_auto",
     });
   }
 

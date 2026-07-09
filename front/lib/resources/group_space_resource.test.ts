@@ -39,7 +39,7 @@ describe("GroupSpaceMemberResource", () => {
       const testGroup = await GroupResource.makeNew({
         name: "Test Group",
         workspaceId: workspace.id,
-        kind: "regular",
+        kind: "regular_auto",
       });
 
       const groupSpaceMember = await GroupSpaceMemberResource.makeNew(auth, {
@@ -144,7 +144,7 @@ describe("GroupSpaceEditorResource", () => {
       const regularGroup = await GroupResource.makeNew({
         name: "Regular Group",
         workspaceId: workspace.id,
-        kind: "regular",
+        kind: "regular_auto",
       });
 
       await expect(
@@ -220,7 +220,7 @@ describe("GroupSpaceEditorResource", () => {
       const regularGroup = await GroupResource.makeNew({
         name: "Regular Group",
         workspaceId: workspace.id,
-        kind: "regular",
+        kind: "regular_auto",
       });
 
       // Delete existing editor groups
@@ -293,7 +293,7 @@ describe("GroupSpaceViewerResource", () => {
       const regularGroup = await GroupResource.makeNew({
         name: "Regular Group",
         workspaceId: workspace.id,
-        kind: "regular",
+        kind: "regular_auto",
       });
 
       await expect(
@@ -349,7 +349,7 @@ describe("GroupSpaceViewerResource", () => {
       const regularGroup = await GroupResource.makeNew({
         name: "Regular Group",
         workspaceId: workspace.id,
-        kind: "regular",
+        kind: "regular_auto",
       });
 
       // Create a GroupSpaceModel with a non-global group

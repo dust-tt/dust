@@ -106,6 +106,25 @@ describe("createSpaceAndGroup", () => {
       }
     });
 
+    it("should create the member group with kind regular_auto", async () => {
+      const result = await createSpaceAndGroup(adminAuth, {
+        name: "Kind Check Space",
+        isRestricted: true,
+        spaceKind: "regular",
+        managementMode: "manual",
+        memberIds: [user1.sId],
+      });
+
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
+        const memberGroup = result.value.groups.find((g) =>
+          g.name.startsWith("Group for space Kind Check Space")
+        );
+        expect(memberGroup).toBeDefined();
+        expect(memberGroup?.kind).toBe("regular_auto");
+      }
+    });
+
     it("should create a regular space with group management mode", async () => {
       const provisionedGroup = await GroupResource.makeNew({
         name: "Provisioned Group",

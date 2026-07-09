@@ -116,7 +116,7 @@ describe("GroupResource", () => {
       const regularGroup = await GroupResource.makeNew({
         name: "Test Group",
         workspaceId: workspace.id,
-        kind: "regular",
+        kind: "regular_auto",
       });
       await regularGroup.dangerouslyAddMembers(authenticator, {
         users: [user.toJSON()],
@@ -168,7 +168,7 @@ describe("GroupResource", () => {
       const sales = await GroupResource.makeNew({
         name: "Sales",
         workspaceId: workspace.id,
-        kind: "regular",
+        kind: "regular_auto",
       });
       await sales.dangerouslyAddMembers(authenticator, {
         users: [user.toJSON()],
@@ -214,7 +214,7 @@ describe("GroupResource", () => {
       const regularGroup = await GroupResource.makeNew({
         name: "Auth Test Group",
         workspaceId: workspace.id,
-        kind: "regular",
+        kind: "regular_auto",
       });
       await regularGroup.dangerouslyAddMembers(authenticator, {
         users: [user.toJSON()],
@@ -264,7 +264,7 @@ describe("GroupResource", () => {
       const regularGroup = await GroupResource.makeNew({
         name: "Suspend Test Group",
         workspaceId: workspace.id,
-        kind: "regular",
+        kind: "regular_auto",
       });
       await regularGroup.dangerouslyAddMembers(authenticator, {
         users: [user.toJSON()],
@@ -297,7 +297,7 @@ describe("GroupResource", () => {
       const regularGroup = await GroupResource.makeNew({
         name: "Cache Invalidation Test",
         workspaceId: workspace.id,
-        kind: "regular",
+        kind: "regular_auto",
       });
       await regularGroup.dangerouslyAddMembers(authenticator, {
         users: [user.toJSON()],
@@ -318,7 +318,7 @@ describe("GroupResource", () => {
       const regularGroup = await GroupResource.makeNew({
         name: "Restore Test Group",
         workspaceId: workspace.id,
-        kind: "regular",
+        kind: "regular_auto",
       });
       await regularGroup.dangerouslyAddMembers(authenticator, {
         users: [user.toJSON()],
@@ -352,7 +352,7 @@ describe("GroupResource", () => {
       const regularGroup = await GroupResource.makeNew({
         name: "Restore Cache Test",
         workspaceId: workspace.id,
-        kind: "regular",
+        kind: "regular_auto",
       });
       await regularGroup.dangerouslyAddMembers(authenticator, {
         users: [user.toJSON()],
@@ -380,7 +380,7 @@ describe("GroupResource", () => {
       const regularGroup = await GroupResource.makeNew({
         name: "Migration Test Group",
         workspaceId: workspace.id,
-        kind: "regular",
+        kind: "regular_auto",
       });
       await regularGroup.dangerouslyAddMembers(authenticator, {
         users: [secondaryUser.toJSON()],
@@ -428,7 +428,7 @@ describe("GroupResource", () => {
       const regularGroup = await GroupResource.makeNew({
         name: "Duplicate Migration Test",
         workspaceId: workspace.id,
-        kind: "regular",
+        kind: "regular_auto",
       });
 
       await regularGroup.dangerouslyAddMembers(authenticator, {
@@ -471,7 +471,7 @@ describe("GroupResource", () => {
       const regularGroup = await GroupResource.makeNew({
         name: "Cache Migration Test",
         workspaceId: workspace.id,
-        kind: "regular",
+        kind: "regular_auto",
       });
       await regularGroup.dangerouslyAddMembers(authenticator, {
         users: [secondaryUser.toJSON()],
@@ -511,7 +511,7 @@ describe("GroupResource", () => {
       const regularGroup = await GroupResource.makeNew({
         name: "Add Member Cache Test",
         workspaceId: workspace.id,
-        kind: "regular",
+        kind: "regular_auto",
       });
       await regularGroup.dangerouslyAddMembers(authenticator, {
         users: [user.toJSON()],
@@ -524,7 +524,7 @@ describe("GroupResource", () => {
       const regularGroup = await GroupResource.makeNew({
         name: "Remove Member Cache Test",
         workspaceId: workspace.id,
-        kind: "regular",
+        kind: "regular_auto",
       });
       await regularGroup.dangerouslyAddMembers(authenticator, {
         users: [user.toJSON()],
@@ -545,7 +545,7 @@ describe("GroupResource", () => {
       const regularGroup = await GroupResource.makeNew({
         name: "Delete Group Cache Test",
         workspaceId: workspace.id,
-        kind: "regular",
+        kind: "regular_auto",
       });
       await regularGroup.dangerouslyAddMembers(authenticator, {
         users: [user.toJSON()],
@@ -571,7 +571,7 @@ describe("GroupResource", () => {
         {
           name: "makeNew Initial Member Cache Test",
           workspaceId: workspace.id,
-          kind: "regular",
+          kind: "regular_auto",
         },
         { memberIds: [user.id] }
       );
@@ -602,7 +602,7 @@ describe("GroupResource", () => {
           {
             name: "Transaction Cache Test",
             workspaceId: workspace.id,
-            kind: "regular",
+            kind: "regular_auto",
           },
           { memberIds: [user.id], transaction }
         );
@@ -627,7 +627,7 @@ describe("GroupResource", () => {
       const regularGroup = await GroupResource.makeNew({
         name: "Pool Cap Group",
         workspaceId: workspace.id,
-        kind: "regular",
+        kind: "regular_auto",
       });
       expect(regularGroup.poolCapAwuCredits).toBeNull();
 
@@ -702,7 +702,7 @@ describe("GroupResource", () => {
         {
           name: "Regular capped",
           workspaceId: workspace.id,
-          kind: "regular",
+          kind: "regular_auto",
         },
         { memberIds: [user.id, user2.id] }
       );
@@ -745,7 +745,7 @@ describe("GroupResource", () => {
       const regularGroup = await GroupResource.makeNew({
         name: "Listed Regular Group",
         workspaceId: workspace.id,
-        kind: "regular",
+        kind: "regular_auto",
       });
       const key = await KeyFactory.system(systemGroup);
 
@@ -777,7 +777,7 @@ describe("GroupResource", () => {
       const newGroup = await GroupResource.makeNew({
         name: "Cache Invalidation Regular",
         workspaceId: workspace.id,
-        kind: "regular",
+        kind: "regular_auto",
       });
 
       expect(inMemoryCache.has(cacheKey)).toBe(false);
@@ -790,7 +790,7 @@ describe("GroupResource", () => {
       const regularGroup = await GroupResource.makeNew({
         name: "Delete Invalidates System Key Cache",
         workspaceId: workspace.id,
-        kind: "regular",
+        kind: "regular_auto",
       });
       const key = await KeyFactory.system(systemGroup);
       const cacheKey = getCacheKeyForWorkspaceGroupsFromSystemKey(workspace.id);
@@ -812,7 +812,7 @@ describe("GroupResource", () => {
       const regularGroup = await GroupResource.makeNew({
         name: "Name Before",
         workspaceId: workspace.id,
-        kind: "regular",
+        kind: "regular_auto",
       });
       const key = await KeyFactory.system(systemGroup);
       const cacheKey = getCacheKeyForWorkspaceGroupsFromSystemKey(workspace.id);
@@ -849,7 +849,7 @@ describe("GroupResource", () => {
           {
             name: "Deferred Invalidation Group",
             workspaceId: workspace.id,
-            kind: "regular",
+            kind: "regular_auto",
           },
           { transaction }
         );
@@ -875,7 +875,7 @@ describe("GroupResource", () => {
       const regularGroup = await GroupResource.makeNew({
         name: "Regular",
         workspaceId: workspace.id,
-        kind: "regular",
+        kind: "regular_auto",
       });
       const regularAutoGroup = await GroupResource.makeNew({
         name: "Regular Auto",

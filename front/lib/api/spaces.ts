@@ -511,7 +511,7 @@ export async function createSpaceAndGroup(
         {
           name: `${spaceKind === "project" ? PROJECT_GROUP_PREFIX : SPACE_GROUP_PREFIX} ${name}`,
           workspaceId: owner.id,
-          kind: "regular",
+          kind: "regular_auto",
         },
         { transaction: t }
       );
