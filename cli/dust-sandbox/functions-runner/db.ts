@@ -3,8 +3,9 @@
 // A function declares the pod databases it opens in `schema.databases: string[]`. Each declared
 // database must have a drizzle schema file at `databases/{db}.db.ts` relative to the function
 // source file's directory. This module imports those schema files, collects their exported
-// tables, validates the pod database rules (one named check per rule), and maps the tables to
-// DatabaseSchemas via drizzle's `getTableConfig`. Failures come back as Err, never thrown.
+// tables via drizzle's `getTableConfig`, and validates the pod database rules (one named
+// check per rule); only table and column NAMES come out — reconcile's destructive pre-check
+// reads them, nothing stores shapes. Failures come back as Err, never thrown.
 //
 // Cross-module-instance note: the schema file resolves its own `drizzle-orm` copy (NODE_PATH
 // global in the sandbox), while this runner ships an inlined copy. Table detection therefore
@@ -18,8 +19,6 @@ import { getTableConfig, SQLiteTable } from "drizzle-orm/sqlite-core";
 import { z } from "zod";
 import { Err, Ok, type Result } from "./result.ts";
 import {
-  type DatabaseColumn,
-  type DatabaseIndex,
   type DatabaseSchema,
   type DatabaseSchemaErrorKind,
   type DatabaseTable,
@@ -66,14 +65,8 @@ const declaredDatabasesSchema = z
 const schemaExportSchema = z.looseObject({ databases: z.unknown() });
 
 const columnPropsSchema = z.looseObject({
-  mode: z.string().optional(),
-  columnType: z.string().optional(),
   isUnique: z.boolean().optional(),
-  autoIncrement: z.boolean().optional(),
-  onUpdateFn: z.unknown().optional(),
 });
-
-const indexedColumnSchema = z.looseObject({ name: z.string().optional() });
 
 // Reads and validates the `databases` declaration off an already-importable handler module.
 // Returns [] when the function declares none.
@@ -168,7 +161,9 @@ export async function extractDatabaseSchema(
     if (validated.isErr()) {
       return validated;
     }
-    tables[config.name] = toDatabaseTable(validated.value);
+    tables[config.name] = {
+      columns: validated.value.columns.map((column) => column.name),
+    };
   }
 
   if (Object.keys(tables).length === 0) {
@@ -178,7 +173,7 @@ export async function extractDatabaseSchema(
     );
   }
 
-  return new Ok({ schemaFile, tables });
+  return new Ok({ tables });
 }
 
 type TableConfig = ReturnType<typeof getTableConfig>;
@@ -201,7 +196,7 @@ const TABLE_RULES: TableRule[] = [
   checkNoUniqueConstraints,
 ];
 
-// Runs every table rule; a valid config comes back unchanged, ready for toDatabaseTable.
+// Runs every table rule; a valid config comes back unchanged, ready for the name mapping.
 function validateTableConfig(
   dbName: string,
   config: TableConfig
@@ -292,73 +287,9 @@ function checkNoUniqueConstraints(
   return null;
 }
 
-// Column `mode` is the row<->JS (de)serialization contract. Most drizzle sqlite column classes
-// carry a `mode` instance property, but some (e.g. text/blob json variants) do not — fall back
-// to a columnType-derived map for those.
-const MODE_BY_COLUMN_TYPE: Record<string, string> = {
-  SQLiteTextJson: "json",
-  SQLiteBlobJson: "json",
-  SQLiteBlobBuffer: "buffer",
-  SQLiteBigInt: "bigint",
-  SQLiteNumericNumber: "number",
-  SQLiteNumericBigInt: "bigint",
-};
-
-// Maps a rule-checked TableConfig to the wire shape. Pure: all rejections happened in
-// validateTableConfig.
-function toDatabaseTable(config: TableConfig): DatabaseTable {
-  // Table-level primaryKey(): single-column declarations (composite ones were rejected) fold
-  // into that column's primaryKey flag.
-  const tableLevelPkColumns = new Set(
-    config.primaryKeys.flatMap((pk) => pk.columns.map((column) => column.name))
-  );
-
-  // Null-prototype accumulators: column/index names are model-authored object keys.
-  const columns: Record<string, DatabaseColumn> = Object.create(null);
-  for (const column of config.columns) {
-    const props = columnProps(column);
-    columns[column.name] = {
-      type: column.getSQLType().toLowerCase(),
-      mode: props.mode ?? MODE_BY_COLUMN_TYPE[props.columnType ?? ""] ?? null,
-      notNull: column.notNull,
-      hasDefault: column.hasDefault || props.onUpdateFn != null,
-      primaryKey: column.primary || tableLevelPkColumns.has(column.name),
-      autoIncrement: props.autoIncrement === true,
-    };
-  }
-
-  const indexes: Record<string, DatabaseIndex> = Object.create(null);
-  for (const index of config.indexes) {
-    // Expression members have no column name; record the named ones. The recording is
-    // internal to validation/reconcile — nothing stores or diffs it.
-    indexes[index.config.name] = {
-      unique: index.config.unique,
-      columns: indexColumnNames(index.config) ?? [],
-    };
-  }
-
-  return { columns, indexes };
-}
-
 type ColumnProps = z.infer<typeof columnPropsSchema>;
 
 function columnProps(column: object): Partial<ColumnProps> {
   const parsed = columnPropsSchema.safeParse(column);
   return parsed.success ? parsed.data : {};
-}
-
-// The plain column names of an index, or null if any entry is an SQL expression.
-function indexColumnNames(
-  indexConfig: TableConfig["indexes"][number]["config"]
-): string[] | null {
-  const names: string[] = [];
-  for (const indexed of indexConfig.columns) {
-    const parsed = indexedColumnSchema.safeParse(indexed);
-    const name = parsed.success ? parsed.data.name : undefined;
-    if (name === undefined) {
-      return null;
-    }
-    names.push(name);
-  }
-  return names;
 }

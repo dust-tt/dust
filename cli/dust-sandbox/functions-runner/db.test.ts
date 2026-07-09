@@ -2,7 +2,6 @@ import { describe, expect, test } from "bun:test";
 import { join } from "node:path";
 import {
   type DatabaseSchemaError,
-  extractDatabaseSchema,
   readDeclaredDatabases,
   validateDeclaredDatabases,
 } from "./db.ts";
@@ -71,79 +70,6 @@ describe("declared database validation", () => {
   test("accepts the chat fixture", async () => {
     unwrap(await validateDeclaredDatabases(fixturesDir, ["chat"]));
   });
-
-  // The extracted shape stays runner-internal (validation + reconcile's destructive
-  // pre-check); these assertions pin the duck-typed drizzle reads the rules rely on.
-  test("extracts the full shape of one schema file", async () => {
-    const chat = unwrap(
-      await extractDatabaseSchema(
-        "chat",
-        join("databases", "chat.db.ts"),
-        join(fixturesDir, "databases", "chat.db.ts")
-      )
-    );
-    expect(chat.schemaFile).toBe(join("databases", "chat.db.ts"));
-    expect(Object.keys(chat.tables).sort()).toEqual([
-      "messages",
-      "settings",
-      "users",
-    ]);
-
-    const users = chat.tables.users;
-    expect(users.columns.id).toEqual({
-      type: "integer",
-      mode: null,
-      notNull: true,
-      hasDefault: true,
-      primaryKey: true,
-      autoIncrement: true,
-    });
-    expect(users.columns.handle).toEqual({
-      type: "text",
-      mode: null,
-      notNull: true,
-      hasDefault: false,
-      primaryKey: false,
-      autoIncrement: false,
-    });
-    // Column modes are recorded, including the columnType-derived json mode.
-    expect(users.columns.created_at.mode).toBe("timestamp");
-    expect(users.columns.created_at.type).toBe("integer");
-    expect(users.columns.updated_at.mode).toBe("timestamp_ms");
-    // $defaultFn counts as hasDefault.
-    expect(users.columns.updated_at.hasDefault).toBe(true);
-    expect(users.columns.attachments.mode).toBe("json");
-    expect(users.columns.attachments.type).toBe("text");
-    expect(users.columns.active.mode).toBe("boolean");
-    expect(users.columns.active.hasDefault).toBe(true);
-    expect(users.columns.score.type).toBe("real");
-    expect(users.columns.counter.type).toBe("blob");
-    expect(users.columns.counter.mode).toBe("bigint");
-
-    // Indexes: explicit uniqueIndex + multi-column index, order preserved.
-    expect(users.indexes.users_handle_idx).toEqual({
-      unique: true,
-      columns: ["handle"],
-    });
-    expect(users.indexes.users_created_idx).toEqual({
-      unique: false,
-      columns: ["created_at", "handle"],
-    });
-    expect(chat.tables.messages.indexes.messages_slug_idx).toEqual({
-      unique: true,
-      columns: ["slug"],
-    });
-
-    // Table-level single-column primaryKey folds into the column flag.
-    const settings = chat.tables.settings;
-    expect(settings.columns.key.primaryKey).toBe(true);
-    expect(settings.columns.key.autoIncrement).toBe(false);
-    expect(settings.indexes.settings_scope_value_idx).toEqual({
-      unique: true,
-      columns: ["scope", "value"],
-    });
-  });
-
   test("rejects inline foreign keys", async () => {
     expectDbError(
       await validateDeclaredDatabases(fixturesDir, ["fk"]),
