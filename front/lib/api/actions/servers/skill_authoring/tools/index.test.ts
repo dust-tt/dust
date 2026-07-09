@@ -197,7 +197,9 @@ describe("skill_authoring tools", () => {
     if (otherUpdateResult.isOk()) {
       throw new Error("Expected another builder not to update the skill.");
     }
-    expect(otherUpdateResult.error.message).toBe("Skill not found.");
+    expect(otherUpdateResult.error.message).toBe(
+      "You need to be added as an editor of this skill before you can make changes."
+    );
 
     const updateResult = await getTool(UPDATE_SKILL_TOOL_NAME).handler(
       {
