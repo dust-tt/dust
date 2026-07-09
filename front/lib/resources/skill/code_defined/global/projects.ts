@@ -61,7 +61,7 @@ Use the \`sId\` from \`pod_tasks\` tools (e.g. \`list_tasks\`, \`create_tasks\`)
 
 When you need to find information, use this order (skip steps if the relevant tools are not in your tool list):
 1. **Pod overview**: \`${POD_MANAGER_SERVER_NAME}\` \`get_information\` returns the Pod URL, description, and what is attached to the Pod.
-2. **Topic or question**: \`${getPrefixedToolName(POD_MANAGER_SERVER_NAME, SEMANTIC_SEARCH_TOOL_NAME)}\` searches Pod files, linked context nodes, and Pod conversation transcripts by meaning. Use it when you have a topic or question rather than a specific file path.
+2. **Topic or question**: \`${getPrefixedToolName(POD_MANAGER_SERVER_NAME, SEMANTIC_SEARCH_TOOL_NAME)}\` searches Pod files, linked content nodes, and Pod conversation transcripts by meaning. Use it when you have a topic or question rather than a specific file path.
 3. **Known file path**: read the file directly under \`pod-{podId}/<rel>\` through the sandbox or the \`${FILES_SERVER_NAME}\` MCP tools.
 4. **Company-wide**: If still insufficient, use \`company_data_*\` tools and \`${SEARCH_SERVER_NAME}\` for broader company data sources.
 `,
