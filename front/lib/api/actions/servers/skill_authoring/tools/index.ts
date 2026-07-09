@@ -500,7 +500,11 @@ const handlers: ToolHandlers<typeof SKILL_AUTHORING_TOOLS_METADATA> = {
     }
 
     if (!skill.canWrite(auth)) {
-      return new Err(new MCPError("Skill not found."));
+      return new Err(
+        new MCPError(
+          "You need to be added as an editor of this skill before you can make changes."
+        )
+      );
     }
 
     // Resolve the new instructions: undefined keeps the existing ones, a full
