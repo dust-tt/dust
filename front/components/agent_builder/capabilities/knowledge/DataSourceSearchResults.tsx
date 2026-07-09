@@ -1,6 +1,9 @@
 // All mime types are okay to use from the public API.
 
-import type { DataSourceListItem } from "@app/components/agent_builder/capabilities/knowledge/DataSourceList";
+import type {
+  DataSourceListItem,
+  DataSourceListSection,
+} from "@app/components/agent_builder/capabilities/knowledge/DataSourceList";
 import { DataSourceList } from "@app/components/agent_builder/capabilities/knowledge/DataSourceList";
 import { useSpacesContext } from "@app/components/agent_builder/SpacesContext";
 import { useSourcesFormController } from "@app/components/agent_builder/utils";
@@ -235,8 +238,8 @@ export function DataSourceSearchResults({
   }, [searchResults]);
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
-  const listItems: DataSourceListItem[] = useMemo(() => {
-    return searchResults.map((node) => {
+  const sections: DataSourceListSection[] = useMemo(() => {
+    const items = searchResults.map((node) => {
       const id = `${node.dataSourceView.sId}:${node.internalId}`;
       return {
         id,
@@ -250,6 +253,7 @@ export function DataSourceSearchResults({
         entry: createNavigationEntry(node),
       } satisfies DataSourceListItem;
     });
+    return [{ items }];
   }, [searchResults, handleSearchResultClick]);
 
   if (!error && !isLoading && searchResults.length === 0) {
@@ -275,7 +279,7 @@ export function DataSourceSearchResults({
         </div>
       ) : (
         <DataSourceList
-          items={listItems}
+          sections={sections}
           isLoading={isLoading}
           className={cn("pb-4", isLoading && "pointer-events-none opacity-50")}
           isItemSelected={(item) => {

@@ -1,5 +1,8 @@
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
-import type { DataSourceListItem } from "@app/components/agent_builder/capabilities/knowledge/DataSourceList";
+import type {
+  DataSourceListItem,
+  DataSourceListSection,
+} from "@app/components/agent_builder/capabilities/knowledge/DataSourceList";
 import { DataSourceList } from "@app/components/agent_builder/capabilities/knowledge/DataSourceList";
 import { useDataSourceBuilderContext } from "@app/components/data_source_view/context/DataSourceBuilderContext";
 import {
@@ -37,54 +40,53 @@ export function DataSourceViewTable({
       spaceId: space?.sId ?? "",
     });
 
-  const listItems: DataSourceListItem[] = useMemo(
-    () =>
-      spaceDataSourceViews
-        .filter((dsv) => {
-          const connectorConfig = dsv.dataSource.connectorProvider
-            ? CONNECTOR_UI_CONFIGURATIONS[dsv.dataSource.connectorProvider]
-            : null;
+  const sections: DataSourceListSection[] = useMemo(() => {
+    const items = spaceDataSourceViews
+      .filter((dsv) => {
+        const connectorConfig = dsv.dataSource.connectorProvider
+          ? CONNECTOR_UI_CONFIGURATIONS[dsv.dataSource.connectorProvider]
+          : null;
 
-          if (connectorConfig?.isHiddenAsDataSource) {
-            return false;
-          }
+        if (connectorConfig?.isHiddenAsDataSource) {
+          return false;
+        }
 
-          switch (viewType) {
-            case "data_warehouse":
-              return isRemoteDatabase(dsv.dataSource);
-            case "table":
-              return !isRemoteDatabase(dsv.dataSource);
-            default:
-              return true;
-          }
-        })
-        .map((dsv) => {
-          const provider = dsv.dataSource.connectorProvider;
+        switch (viewType) {
+          case "data_warehouse":
+            return isRemoteDatabase(dsv.dataSource);
+          case "table":
+            return !isRemoteDatabase(dsv.dataSource);
+          default:
+            return true;
+        }
+      })
+      .map((dsv) => {
+        const provider = dsv.dataSource.connectorProvider;
 
-          const connectorProvider = provider
-            ? CONNECTOR_UI_CONFIGURATIONS[provider]
-            : null;
+        const connectorProvider = provider
+          ? CONNECTOR_UI_CONFIGURATIONS[provider]
+          : null;
 
-          const icon = provider
-            ? (connectorProvider?.getLogoComponent(isDark) ??
-              CATEGORY_DETAILS[dsv.category].icon)
-            : Folder;
+        const icon = provider
+          ? (connectorProvider?.getLogoComponent(isDark) ??
+            CATEGORY_DETAILS[dsv.category].icon)
+          : Folder;
 
-          return {
-            id: dsv.sId,
-            title: getDataSourceNameFromView(dsv),
-            onClick: () => setDataSourceViewEntry(dsv),
-            icon,
-            entry: {
-              type: "data_source",
-              dataSourceView: dsv,
-              tagsFilter: null,
-            },
-          } satisfies DataSourceListItem;
-        })
-        .toSorted((a, b) => a.title.localeCompare(b.title)),
-    [spaceDataSourceViews, viewType, isDark, setDataSourceViewEntry]
-  );
+        return {
+          id: dsv.sId,
+          title: getDataSourceNameFromView(dsv),
+          onClick: () => setDataSourceViewEntry(dsv),
+          icon,
+          entry: {
+            type: "data_source",
+            dataSourceView: dsv,
+            tagsFilter: null,
+          },
+        } satisfies DataSourceListItem;
+      })
+      .toSorted((a, b) => a.title.localeCompare(b.title));
+    return [{ items }];
+  }, [spaceDataSourceViews, viewType, isDark, setDataSourceViewEntry]);
 
   if (isSpaceDataSourceViewsLoading) {
     return (
@@ -95,6 +97,10 @@ export function DataSourceViewTable({
   }
 
   return (
-    <DataSourceList items={listItems} showSelectAllHeader headerTitle="Name" />
+    <DataSourceList
+      sections={sections}
+      showSelectAllHeader
+      headerTitle="Name"
+    />
   );
 }

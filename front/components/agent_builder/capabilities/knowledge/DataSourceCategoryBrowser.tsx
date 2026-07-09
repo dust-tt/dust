@@ -1,5 +1,8 @@
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
-import type { DataSourceListItem } from "@app/components/agent_builder/capabilities/knowledge/DataSourceList";
+import type {
+  DataSourceListItem,
+  DataSourceListSection,
+} from "@app/components/agent_builder/capabilities/knowledge/DataSourceList";
 import { DataSourceList } from "@app/components/agent_builder/capabilities/knowledge/DataSourceList";
 import { ConfirmContext } from "@app/components/Confirm";
 import { useDataSourceBuilderContext } from "@app/components/data_source_view/context/DataSourceBuilderContext";
@@ -47,7 +50,7 @@ export function DataSourceCategoryBrowser({
   const confirm = useContext(ConfirmContext);
   const { hasFeature } = useFeatureFlags();
 
-  const categoryItems = useMemo((): DataSourceListItem[] => {
+  const sections: DataSourceListSection[] = useMemo(() => {
     if (!isSpaceInfoLoading && spaceInfo) {
       const categoryRows = getCategoryRows(
         spaceInfo.categories,
@@ -59,18 +62,22 @@ export function DataSourceCategoryBrowser({
         }
       );
 
-      return categoryRows.map((category) => ({
-        id: category.id,
-        title: category.title,
-        icon: category.icon,
-        onClick: category.onClick,
-        entry: {
-          type: "category",
-          category: category.id,
-        },
-      }));
+      const items = categoryRows.map(
+        (category) =>
+          ({
+            id: category.id,
+            title: category.title,
+            icon: category.icon,
+            onClick: category.onClick,
+            entry: {
+              type: "category",
+              category: category.id,
+            },
+          }) satisfies DataSourceListItem
+      );
+      return [{ items }];
     }
-    return emptyArray<DataSourceListItem>();
+    return [{ items: emptyArray<DataSourceListItem>() }];
   }, [hasFeature, isSpaceInfoLoading, setCategoryEntry, spaceInfo]);
 
   const handleCategorySelectionChange = useCallback(
@@ -101,7 +108,7 @@ export function DataSourceCategoryBrowser({
 
   return (
     <DataSourceList
-      items={categoryItems}
+      sections={sections}
       showCheckboxOnlyForPartialSelection
       onSelectionChange={handleCategorySelectionChange}
     />

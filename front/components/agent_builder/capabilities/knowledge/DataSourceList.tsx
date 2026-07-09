@@ -13,7 +13,6 @@ import {
   removeNodeFromTree,
 } from "@app/components/data_source_view/context/utils";
 import { isRemoteDatabase } from "@app/lib/data_sources";
-import { emptyArray } from "@app/lib/swr/swr";
 import { Checkbox, cn, Icon, Separator, Spinner } from "@dust-tt/sparkle";
 import type { ComponentType, ReactNode } from "react";
 import {
@@ -34,17 +33,12 @@ export interface DataSourceListItem {
 }
 
 export interface DataSourceListSection {
-  title: string;
+  title?: string;
   items: DataSourceListItem[];
 }
 
 interface DataSourceListProps {
-  items?: DataSourceListItem[];
-  /**
-   * Render items grouped under section headers within the same scroll
-   * container. When provided, takes precedence over `items`.
-   */
-  sections?: DataSourceListSection[];
+  sections: DataSourceListSection[];
   onLoadMore?: () => Promise<void>;
   hasMore?: boolean;
   isLoading?: boolean;
@@ -85,7 +79,6 @@ interface DataSourceListProps {
 }
 
 export function DataSourceList({
-  items = emptyArray<DataSourceListItem>(),
   sections,
   onLoadMore,
   hasMore = false,
@@ -158,11 +151,9 @@ export function DataSourceList({
     [navigationHistory]
   );
 
-  // Flatten sections into a single ordered list; `sections` takes precedence
-  // over `items` when both are provided.
   const allItems = useMemo(
-    () => (sections ? sections.flatMap((section) => section.items) : items),
-    [sections, items]
+    () => sections.flatMap((section) => section.items),
+    [sections]
   );
 
   // Compute selectables items
@@ -361,67 +352,6 @@ export function DataSourceList({
     [confirm, isRowSelected, removeNode, selectNode, onSelectionChange]
   );
 
-  const renderRow = useCallback(
-    (item: DataSourceListItem) => {
-      const selectionState = isItemSelected
-        ? isItemSelected(item)
-        : isRowSelected(item.id);
-      const hideCheckbox = shouldHideCheckbox(item);
-
-      const shouldShowCheckbox = showCheckboxOnlyForPartialSelection
-        ? selectionState === "partial"
-        : !hideCheckbox;
-
-      return (
-        <Fragment key={item.id}>
-          <div
-            className="flex cursor-pointer items-center justify-between rounded-md p-3 hover:bg-muted/60"
-            onClick={() => item.onClick?.()}
-          >
-            <div className="flex min-w-0 flex-1 items-center gap-3">
-              {shouldShowCheckbox ? (
-                <Checkbox
-                  checked={selectionState}
-                  disabled={hideCheckbox}
-                  onClick={(e) => e.stopPropagation()}
-                  onCheckedChange={(state) =>
-                    handleSelectionChange(item, state)
-                  }
-                />
-              ) : (
-                <div className="w-5" />
-              )}
-
-              {item.icon && <Icon size="sm" visual={item.icon} />}
-              <div className="truncate text-sm text-foreground">
-                {item.title}
-              </div>
-            </div>
-
-            {additionalColumns.length > 0 && (
-              <div className="ml-3 flex w-1/3 items-start gap-3 text-sm text-muted-foreground">
-                {additionalColumns.map((col, idx) => (
-                  <div key={idx} className="min-w-0 flex-1 truncate text-left">
-                    {col.render(item)}
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-          <Separator />
-        </Fragment>
-      );
-    },
-    [
-      additionalColumns,
-      handleSelectionChange,
-      isItemSelected,
-      isRowSelected,
-      shouldHideCheckbox,
-      showCheckboxOnlyForPartialSelection,
-    ]
-  );
-
   return (
     <div
       ref={containerRef}
@@ -448,16 +378,68 @@ export function DataSourceList({
         </div>
       )}
       <Separator />
-      {sections
-        ? sections.map((section) => (
-            <Fragment key={section.title}>
-              <div className="heading-sm bg-muted-background p-2 text-foreground">
-                {section.title}
-              </div>
-              {section.items.map(renderRow)}
-            </Fragment>
-          ))
-        : items.map(renderRow)}
+      {sections.map((section, idx) => (
+        <Fragment key={section.title ?? idx}>
+          {section.title && (
+            <div className="heading-sm bg-muted-background p-2 text-foreground">
+              {section.title}
+            </div>
+          )}
+          {section.items.map((item) => {
+            const selectionState = isItemSelected
+              ? isItemSelected(item)
+              : isRowSelected(item.id);
+            const hideCheckbox = shouldHideCheckbox(item);
+
+            const shouldShowCheckbox = showCheckboxOnlyForPartialSelection
+              ? selectionState === "partial"
+              : !hideCheckbox;
+
+            return (
+              <Fragment key={item.id}>
+                <div
+                  className="flex cursor-pointer items-center justify-between rounded-md p-3 hover:bg-muted/60"
+                  onClick={() => item.onClick?.()}
+                >
+                  <div className="flex min-w-0 flex-1 items-center gap-3">
+                    {shouldShowCheckbox ? (
+                      <Checkbox
+                        checked={selectionState}
+                        disabled={hideCheckbox}
+                        onClick={(e) => e.stopPropagation()}
+                        onCheckedChange={(state) =>
+                          handleSelectionChange(item, state)
+                        }
+                      />
+                    ) : (
+                      <div className="w-5" />
+                    )}
+
+                    {item.icon && <Icon size="sm" visual={item.icon} />}
+                    <div className="truncate text-sm text-foreground">
+                      {item.title}
+                    </div>
+                  </div>
+
+                  {additionalColumns.length > 0 && (
+                    <div className="ml-3 flex w-1/3 items-start gap-3 text-sm text-muted-foreground">
+                      {additionalColumns.map((col, colIdx) => (
+                        <div
+                          key={colIdx}
+                          className="min-w-0 flex-1 truncate text-left"
+                        >
+                          {col.render(item)}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+                <Separator />
+              </Fragment>
+            );
+          })}
+        </Fragment>
+      ))}
 
       {/* Loading indicator at the bottom */}
       {isLoading && hasMore && (

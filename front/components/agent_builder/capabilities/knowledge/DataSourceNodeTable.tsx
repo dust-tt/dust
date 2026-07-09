@@ -1,5 +1,8 @@
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
-import type { DataSourceListItem } from "@app/components/agent_builder/capabilities/knowledge/DataSourceList";
+import type {
+  DataSourceListItem,
+  DataSourceListSection,
+} from "@app/components/agent_builder/capabilities/knowledge/DataSourceList";
 import { DataSourceList } from "@app/components/agent_builder/capabilities/knowledge/DataSourceList";
 import { useDataSourceBuilderContext } from "@app/components/data_source_view/context/DataSourceBuilderContext";
 import {
@@ -56,25 +59,24 @@ export function DataSourceNodeTable({ viewType }: DataSourceNodeTableProps) {
     }
   }, [hasNextPage, isLoadingMore, loadMore]);
 
-  const listItems: DataSourceListItem[] = useMemo(
-    () =>
-      childNodes.map((node) => {
-        return {
-          id: node.internalId,
-          title: getDisplayTitleForDataSourceViewContentNode(node, {
-            disambiguate: isTopLevelInView,
-          }),
-          icon: getVisualForDataSourceViewContentNode(node),
-          onClick: node.expandable ? () => addNodeEntry(node) : undefined,
-          entry: {
-            type: "node",
-            node,
-            tagsFilter: null,
-          },
-        };
-      }),
-    [childNodes, addNodeEntry, isTopLevelInView]
-  );
+  const sections: DataSourceListSection[] = useMemo(() => {
+    const items = childNodes.map((node) => {
+      return {
+        id: node.internalId,
+        title: getDisplayTitleForDataSourceViewContentNode(node, {
+          disambiguate: isTopLevelInView,
+        }),
+        icon: getVisualForDataSourceViewContentNode(node),
+        onClick: node.expandable ? () => addNodeEntry(node) : undefined,
+        entry: {
+          type: "node",
+          node,
+          tagsFilter: null,
+        },
+      } satisfies DataSourceListItem;
+    });
+    return [{ items }];
+  }, [childNodes, addNodeEntry, isTopLevelInView]);
 
   if (isNodesLoading) {
     return (
@@ -86,7 +88,7 @@ export function DataSourceNodeTable({ viewType }: DataSourceNodeTableProps) {
 
   return (
     <DataSourceList
-      items={listItems}
+      sections={sections}
       onLoadMore={handleLoadMore}
       hasMore={hasNextPage}
       isLoading={isLoadingMore}
