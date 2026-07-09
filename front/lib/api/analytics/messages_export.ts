@@ -21,6 +21,9 @@ interface AgentMessageDocument extends ElasticsearchBaseDocument {
   timestamp: string;
   agent_id: string;
   conversation_id: string;
+  // SIds of the agent messages that triggered this message through `run_agent`,
+  // direct parent first. Empty or absent for user-initiated messages.
+  ancestor_message_ids?: string[];
   user_id: string;
   context_origin: string;
   status: string;
@@ -37,6 +40,7 @@ export interface MessageExportRow {
   assistantName: string;
   assistantSettings: string;
   conversationId: string;
+  parentMessageId: string;
   userId: string;
   userEmail: string;
   source: string;
@@ -52,6 +56,7 @@ export const MESSAGE_EXPORT_HEADERS: (keyof MessageExportRow)[] = [
   "assistantName",
   "assistantSettings",
   "conversationId",
+  "parentMessageId",
   "userId",
   "userEmail",
   "source",
@@ -160,6 +165,7 @@ export async function fetchMessageExportRows({
       assistantName: agent?.name ?? doc.agent_id,
       assistantSettings: agent?.settings ?? "unknown",
       conversationId: doc.conversation_id,
+      parentMessageId: doc.ancestor_message_ids?.[0] ?? "",
       userId: doc.user_id,
       userEmail: userEmails.get(doc.user_id) ?? "",
       source: doc.context_origin ?? "",
