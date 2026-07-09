@@ -14,6 +14,7 @@ import { getPrivateUploadBucket } from "@app/lib/file_storage";
 import type { SandboxResource } from "@app/lib/resources/sandbox_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import logger from "@app/logger/logger";
+import { concurrentExecutor } from "@app/temporal/workflow_utils";
 import { Err, Ok, type Result } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 
@@ -198,19 +199,30 @@ export async function setupPodStateOnColdStart(
     const names = namesResult.value;
 
     // 2. Restore each database: temp file + quick_check + atomic rename.
-    for (const name of names) {
-      const restoreResult = await traceSandboxStartupPhase(
-        "pod_state.restore_db",
-        () => restorePodDatabase(auth, sandbox, name),
-        { database: name }
-      );
-      if (restoreResult.isErr()) {
-        childLogger.error(
-          { err: restoreResult.error, database: name },
-          "Pod state cold start: database restore failed"
+    // Concurrent (bounded): each restore is one sandbox exec streaming
+    // through the replica mount, so the wall clock is the slowest database
+    // instead of the sum — and every database keeps its own exec timeout.
+    const restoreResults = await concurrentExecutor(
+      names,
+      async (name) => {
+        const restoreResult = await traceSandboxStartupPhase(
+          "pod_state.restore_db",
+          () => restorePodDatabase(auth, sandbox, name),
+          { database: name }
         );
+        if (restoreResult.isErr()) {
+          childLogger.error(
+            { err: restoreResult.error, database: name },
+            "Pod state cold start: database restore failed"
+          );
+        }
         return restoreResult;
-      }
+      },
+      { concurrency: 10 }
+    );
+    const firstRestoreError = restoreResults.find((result) => result.isErr());
+    if (firstRestoreError) {
+      return firstRestoreError;
     }
 
     // 3. Start the daemon (unit + static directory-watcher config baked into
