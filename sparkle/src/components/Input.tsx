@@ -134,7 +134,7 @@ export interface InputProps
     React.InputHTMLAttributes<HTMLInputElement>,
     "value" | "size" | "prefix"
   > {
-  size?: InputSizeType;
+  size?: InputSizeType | number;
   message?: string | null;
   messageStatus?: MessageStatus;
   value?: string | number | readonly string[] | null;
@@ -153,7 +153,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
     {
       className,
       containerClassName,
-      size = "sm",
+      size: rawSize = "sm",
       message,
       messageStatus,
       value,
@@ -168,6 +168,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
     },
     ref
   ) => {
+    const size: InputSizeType = typeof rawSize === "number" ? "sm" : rawSize;
     const state =
       isError || (message && messageStatus === "error")
         ? "error"
