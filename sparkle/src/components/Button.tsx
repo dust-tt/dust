@@ -566,11 +566,10 @@ export type LegacyButtonVariantType = ButtonVariantType;
 export type LegacyRegularButtonSize = RegularButtonSize;
 export type LegacyRegularButtonProps = RegularButtonProps;
 export type LegacyIconOnlyButtonProps = IconOnlyButtonProps;
-// Re-export new Button so existing `import { Button } from '@sparkle/components/Button'` picks up the new component.
-export { Button } from "./NewButton";
 export {
   buttonVariants,
   ICON_SIZE_MAP as LEGACY_ICON_SIZE_MAP,
   LegacyButton,
+  LegacyButton as Button,
   MetaButton,
 };
