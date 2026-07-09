@@ -73,10 +73,11 @@ are not available at build time.
 
 Functions of the same Pod can share durable SQLite databases. The contract has three parts:
 
-1. **One schema file per database** at \`databases/{db}.db.ts\`, relative to the function sources.
-   It is the single source of truth: it declares the FULL intended schema of that database with
-   drizzle's \`sqliteTable\` DSL, and every function imports its table objects from it. Never
-   hand-write table objects inside a function file.
+1. **One schema file per database** at \`databases/{db}.db.ts\`, relative to the function sources
+   — functions sharing a database must live in the same source directory so they all import the
+   same file. It is the single source of truth: it declares the FULL intended schema of that
+   database with drizzle's \`sqliteTable\` DSL, and every function imports its table objects from
+   it. Never hand-write table objects inside a function file.
 2. **Each function declares the databases it opens** in \`schema.databases: ["chat"]\`. Database
    names are lowercase \`[a-z][a-z0-9_]*\`.
 3. **At runtime, open a database with \`db(name)\` from \`@dust/pod\`** and query it with the
@@ -132,14 +133,16 @@ the shared schema file.
 
 #### Get the first schema right — evolution is additive-only
 
-Schema changes can only ADD: new tables, new columns, new indexes. Nothing is ever dropped,
-renamed, or retyped through publish — those changes are rejected to protect data and the other
-published functions. First-publish quality therefore determines how often you hit that wall:
+Schema changes can only ADD: new tables, new columns, new indexes. No table or column is ever
+dropped, renamed, or retyped through publish — those changes are rejected to protect data and
+the other published functions (indexes are the exception: they can be added and dropped).
+First-publish quality therefore determines how often you hit that wall:
 
 - get table and column NAMES and TYPES right up front (renames are not possible later);
 - make columns nullable by default — add \`.notNull()\` only when certain, and never add a
   NOT NULL column without a \`.default(...)\` to an existing table;
-- no premature unique indexes — a unique index added later makes sibling writes fail;
+- no premature unique indexes — a unique index added later makes sibling writes fail, and
+  creating it fails outright if existing rows already contain duplicates;
 - give every table an \`id: integer("id").primaryKey({ autoIncrement: true })\` and a
   \`createdAt\` timestamp;
 - NO foreign keys (\`.references()\`), CHECK constraints, UNIQUE constraints (\`.unique()\` or
@@ -159,19 +162,16 @@ When a shape must change anyway, evolve additively:
 
 #### What publish does with databases
 
-Publishing checks the new schema against every other function of the Pod declaring the same
-database, then applies the additive DDL to the live database:
+Publishing applies each declared database's schema file to the live database, with additive DDL
+only:
 
-- "Publish blocked: this schema change would break published functions" — the message lists the
-  (function, table.column) pairs and the additive fix. Do NOT fight it: keep the old columns
-  declared and add alongside.
-- "destructive changes are not allowed through reconcile" — the schema file dropped something
-  that exists in the live database; restore the missing table or column declarations.
-- Mode-drift warnings ("declares integer (no mode); ... declare integer mode=timestamp") mean the
-  publish went through but functions disagree on a column's (de)serialization — align on the
-  shared schema file and republish.
-- Stale-sibling notes mean other functions were published against an older schema; they keep
-  working, republish them when convenient.
+- "destructive changes are not allowed through reconcile" — the schema file drops something that
+  exists in the live database. Restore the missing table or column declarations (the live
+  database may be ahead after another function's publish) and evolve additively instead.
+- Nothing cross-checks the other published functions: a schema change that reconciles cleanly
+  can still break a sibling at runtime (a unique index added late, a column mode changed in one
+  copy of a schema file). The additive rules above are what prevents this — follow them, and
+  keep every function of a database importing the same schema file.
 
 A function's \`fetch\` handler runs as the same egress-controlled user as the Computer's bash
 tool, so \`fetch()\` calls from inside it only reach domains on the pod's egress allowlist, and the
@@ -207,6 +207,13 @@ function's contract before relying on it or publishing a near-duplicate.
 Call a published function directly from this conversation with the \`call\` tool, passing its slug
 and an input payload matching its \`get\`-reported input schema. Use \`call\` yourself whenever you
 need the result now rather than asking a Frame to fetch it for you.
+
+The live databases have tools of their own: \`db_list\` shows them with sizes, \`db_schema\`
+regenerates a database's live schema (storage types only — column modes exist only in the
+authored schema file), \`db_query\` runs one SQL statement (SELECT or INSERT/UPDATE/DELETE;
+schema changes are rejected), and \`db_reconcile\` applies an edited databases/{db}.db.ts to the
+live database — the same additive-only gate as publish. See each tool's own description for its
+arguments.
 
 #### Calling a function from a Frame
 
