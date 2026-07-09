@@ -397,6 +397,7 @@ export function UsagePage() {
     overageCredits,
     isAwuPoolSummaryLoading,
     isAwuPoolSummaryError,
+    mutateAwuPoolSummary,
   } = useAwuPoolSummary({
     workspaceId: owner.sId,
   });
@@ -966,6 +967,9 @@ export function UsagePage() {
       <BuyAwuCreditsDialog
         isOpen={showBuyCreditDialog}
         onClose={() => setShowBuyCreditDialog(false)}
+        onPurchaseSuccess={() => {
+          void mutateAwuPoolSummary();
+        }}
         workspaceId={owner.sId}
         awuPurchaseInfo={awuPurchaseInfo}
         isAwuPurchaseInfoLoading={isAwuPurchaseInfoLoading}
