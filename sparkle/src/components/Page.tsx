@@ -2,7 +2,10 @@ import { Separator } from "@sparkle/components/Separator";
 import { cn } from "@sparkle/lib/utils";
 import React, { type ComponentType } from "react";
 
-import { Button, type ButtonProps } from "./Button";
+import {
+  LegacyButton as Button,
+  type LegacyButtonProps as ButtonProps,
+} from "./Button";
 import { Icon } from "./Icon";
 
 interface PageProps {

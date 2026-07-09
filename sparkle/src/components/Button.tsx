@@ -390,7 +390,7 @@ export type RegularButtonProps = CommonButtonProps & {
 
 export type ButtonProps = IconOnlyButtonProps | RegularButtonProps;
 
-const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
+const LegacyButton = React.forwardRef<HTMLButtonElement, ButtonProps>(
   (
     {
       label,
@@ -559,6 +559,18 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
   }
 );
 
-Button.displayName = "Button";
+LegacyButton.displayName = "LegacyButton";
 
-export { Button, buttonVariants, MetaButton };
+export type LegacyButtonProps = ButtonProps;
+export type LegacyButtonVariantType = ButtonVariantType;
+export type LegacyRegularButtonSize = RegularButtonSize;
+export type LegacyRegularButtonProps = RegularButtonProps;
+export type LegacyIconOnlyButtonProps = IconOnlyButtonProps;
+// Re-export new Button so existing `import { Button } from '@sparkle/components/Button'` picks up the new component.
+export { Button } from "./NewButton";
+export {
+  buttonVariants,
+  ICON_SIZE_MAP as LEGACY_ICON_SIZE_MAP,
+  LegacyButton,
+  MetaButton,
+};

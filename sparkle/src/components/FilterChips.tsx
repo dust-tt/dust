@@ -1,6 +1,6 @@
 import React, { useCallback, useState } from "react";
 
-import { Button } from "./Button";
+import { LegacyButton } from "./Button";
 
 interface FilterChipsProps<T extends string> {
   filters: T[];
@@ -31,7 +31,7 @@ export function FilterChips<T extends string>({
   return (
     <div className="flex flex-row flex-wrap gap-2">
       {filters.map((filterName) => (
-        <Button
+        <LegacyButton
           label={filterName}
           variant={selectedFilter === filterName ? "primary" : "ghost"}
           key={filterName}

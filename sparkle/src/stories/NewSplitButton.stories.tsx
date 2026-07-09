@@ -3,7 +3,7 @@ import React from "react";
 
 import { ArrowUp, ChevronDown } from "@sparkle/icons/v2-stroke";
 
-import { NewButton, NewFlexSplitButton } from "../index_with_tw_base";
+import { Button, NewFlexSplitButton } from "../index_with_tw_base";
 
 const meta: Meta<React.ComponentProps<typeof NewFlexSplitButton>> = {
   title: "Actions/NewSplitButton",
@@ -11,14 +11,14 @@ const meta: Meta<React.ComponentProps<typeof NewFlexSplitButton>> = {
   parameters: {
     docs: {
       description: {
-        component: `A primary action paired with an attached secondary affordance. **NewFlexSplitButton** renders a labelled **NewButton** (with \`label\`, \`icon\`, \`variant\`, and an \`isLoading\` state) joined to a \`splitAction\` — typically a chevron **NewButton** that opens a menu of related options. An opaque divider separates the two so the main button's hover/active overlay doesn't bleed through it.
+        component: `A primary action paired with an attached secondary affordance. **NewFlexSplitButton** renders a labelled **Button** (with \`label\`, \`icon\`, \`variant\`, and an \`isLoading\` state) joined to a \`splitAction\` — typically a chevron **Button** that opens a menu of related options. An opaque divider separates the two so the main button's hover/active overlay doesn't bleed through it.
 
 **When to use**
 - When one action is the obvious default but a few related variants should be one click away (e.g. "Send" + send options).
 
 **Guidelines**
 - Match the \`variant\` of the main button and the \`splitAction\` button so they read as one control.
-- Use an icon-only \`xs\` NewButton as the \`splitAction\`.`,
+- Use an icon-only \`xs\` Button as the \`splitAction\`.`,
       },
     },
   },
@@ -48,7 +48,7 @@ export const Variants: Story = {
           variant={variant}
           icon={ArrowUp}
           splitAction={
-            <NewButton size="xs" variant={variant} icon={ChevronDown} />
+            <Button size="xs" variant={variant} icon={ChevronDown} />
           }
         />
       ))}
@@ -67,7 +67,7 @@ export const Loading: Story = {
           icon={ArrowUp}
           isLoading
           splitAction={
-            <NewButton size="xs" variant={variant} icon={ChevronDown} />
+            <Button size="xs" variant={variant} icon={ChevronDown} />
           }
         />
       ))}

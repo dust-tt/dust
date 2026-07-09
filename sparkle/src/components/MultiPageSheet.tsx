@@ -1,4 +1,4 @@
-import { Button } from "@sparkle/components/Button";
+import { LegacyButton } from "@sparkle/components/Button";
 import { Icon } from "@sparkle/components/Icon";
 import { Separator } from "@sparkle/components/Separator";
 import {
@@ -43,9 +43,9 @@ interface MultiPageSheetProps {
   className?: string;
   disableNext?: boolean;
   disableSave?: boolean;
-  leftButton?: React.ComponentProps<typeof Button>;
-  centerButton?: React.ComponentProps<typeof Button>;
-  rightButton?: React.ComponentProps<typeof Button>;
+  leftButton?: React.ComponentProps<typeof LegacyButton>;
+  centerButton?: React.ComponentProps<typeof LegacyButton>;
+  rightButton?: React.ComponentProps<typeof LegacyButton>;
   addFooterSeparator?: boolean;
 }
 
@@ -56,9 +56,9 @@ const MultiPageSheetClose = SheetClose;
 interface MultiPageSheetFooterProps
   extends React.HTMLAttributes<HTMLDivElement> {
   addTopSeparator: boolean;
-  leftButton?: React.ComponentProps<typeof Button>;
-  centerButton?: React.ComponentProps<typeof Button>;
-  rightButton?: React.ComponentProps<typeof Button>;
+  leftButton?: React.ComponentProps<typeof LegacyButton>;
+  centerButton?: React.ComponentProps<typeof LegacyButton>;
+  rightButton?: React.ComponentProps<typeof LegacyButton>;
 }
 
 const MultiPageSheetFooter = ({
@@ -82,10 +82,12 @@ const MultiPageSheetFooter = ({
         </>
       )}
       <div className="flex flex-row justify-between">
-        <div>{leftButton && <Button {...leftButton} />}</div>
+        <div>{leftButton && <LegacyButton {...leftButton} />}</div>
         <div className="flex gap-2">
-          {centerButton && <Button {...centerButton} />}
-          {rightButton && <Button data-sheet-save="true" {...rightButton} />}
+          {centerButton && <LegacyButton {...centerButton} />}
+          {rightButton && (
+            <LegacyButton data-sheet-save="true" {...rightButton} />
+          )}
         </div>
       </div>
     </div>
@@ -176,7 +178,7 @@ const MultiPageSheetContent = React.forwardRef<
             <div className="flex items-center gap-3">
               {showNavigation && showHeaderNavigation && (
                 <div className="flex items-center gap-1">
-                  <Button
+                  <LegacyButton
                     icon={ChevronLeft}
                     variant="ghost"
                     size="sm"
@@ -184,7 +186,7 @@ const MultiPageSheetContent = React.forwardRef<
                     onClick={handlePrevious}
                     tooltip={hasPrevious ? "Previous page" : undefined}
                   />
-                  <Button
+                  <LegacyButton
                     icon={ChevronRight}
                     variant="ghost"
                     size="sm"

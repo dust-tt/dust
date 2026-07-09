@@ -6,7 +6,12 @@ import {
   BUTTON_VARIANTS,
 } from "@sparkle/components/Button";
 
-import { Button, Plus, Robot, Separator } from "../index_with_tw_base";
+import {
+  LegacyButton as Button,
+  Plus,
+  Robot,
+  Separator,
+} from "../index_with_tw_base";
 
 const ICONS = {
   none: null,

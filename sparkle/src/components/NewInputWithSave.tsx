@@ -1,4 +1,4 @@
-import { NewButton } from "@sparkle/components/NewButton";
+import { Button as NewButton } from "@sparkle/components/NewButton";
 import { NewInput } from "@sparkle/components/NewInput";
 import { cn } from "@sparkle/lib/utils";
 import React, {

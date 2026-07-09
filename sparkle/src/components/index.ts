@@ -29,7 +29,7 @@ export type {
   IconOnlyButtonProps,
   RegularButtonProps,
 } from "./Button";
-export { Button } from "./Button";
+export { Button, LegacyButton } from "./Button";
 export type { ButtonGroupProps } from "./ButtonGroup";
 export { ButtonGroup, ButtonGroupDropdown } from "./ButtonGroup";
 export { ButtonsSwitch, ButtonsSwitchList } from "./ButtonsSwitch";
@@ -192,16 +192,15 @@ export {
   NavTabPillTrigger,
 } from "./NavTabPill";
 export type {
-  NewButtonIconType,
-  NewButtonProps,
-  NewButtonSizeType,
-  NewButtonVariantType,
+  ButtonIconType as NewButtonIconType,
+  ButtonProps as NewButtonProps,
+  ButtonSizeType as NewButtonSizeType,
+  ButtonVariantType as NewButtonVariantType,
 } from "./NewButton";
 export {
-  NEW_BUTTON_SIZES,
-  NEW_BUTTON_VARIANTS,
-  NewButton,
-  newButtonVariants,
+  BUTTON_SIZES as NEW_BUTTON_SIZES,
+  BUTTON_VARIANTS as NEW_BUTTON_VARIANTS,
+  buttonVariants as newButtonVariants,
 } from "./NewButton";
 export type { NewInputProps, NewInputSizeType } from "./NewInput";
 export { NEW_INPUT_SIZES, NewInput } from "./NewInput";

@@ -1,4 +1,4 @@
-import { Button } from "@sparkle/components/Button";
+import { LegacyButton } from "@sparkle/components/Button";
 import { Dialog, DialogClose, DialogContent } from "@sparkle/components/Dialog";
 import { ImageWrapper } from "@sparkle/components/ImageWrapper";
 import { Spinner } from "@sparkle/components/Spinner";
@@ -67,7 +67,7 @@ function ImageZoomDialog({
         <div className="relative flex items-center justify-center gap-2">
           {/* Previous button */}
           {navigation?.hasPrevious && (
-            <Button
+            <LegacyButton
               variant="ghost"
               size="sm"
               icon={ChevronLeft}
@@ -99,7 +99,7 @@ function ImageZoomDialog({
                   onLoad={() => setImageLoaded(true)}
                 />
                 <DialogClose asChild>
-                  <Button
+                  <LegacyButton
                     variant="outline"
                     size="xs"
                     icon={XClose}
@@ -107,7 +107,7 @@ function ImageZoomDialog({
                   />
                 </DialogClose>
                 {imageLoaded && image.downloadUrl && (
-                  <Button
+                  <LegacyButton
                     variant="outline"
                     size="xs"
                     icon={Download01}
@@ -122,7 +122,7 @@ function ImageZoomDialog({
 
           {/* Next button */}
           {navigation?.hasNext && (
-            <Button
+            <LegacyButton
               variant="ghost"
               size="sm"
               icon={ChevronRight}
