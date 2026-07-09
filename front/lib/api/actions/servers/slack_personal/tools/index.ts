@@ -24,6 +24,7 @@ import {
   executeScheduleMessage,
   executeSearchChannels,
   executeSearchUser,
+  executeSetUserStatus,
   executeWriteCanvas,
   getSlackClient,
   isSlackMissingScope,
@@ -1036,6 +1037,47 @@ export function createSlackPersonalTools(
         }
         return new Err(
           new MCPError(`Error archiving channel: ${normalizeError(error)}`)
+        );
+      }
+    },
+    set_user_status: async (
+      { status_text, status_emoji, status_expiration },
+      { authInfo }
+    ) => {
+      const accessToken = authInfo?.token;
+      if (!accessToken) {
+        return new Ok(makePersonalAuthenticationError("slack_tools").content);
+      }
+
+      try {
+        const result = await executeSetUserStatus({
+          accessToken,
+          statusText: status_text,
+          statusEmoji: status_emoji,
+          statusExpiration: status_expiration,
+        });
+        if (result.isErr()) {
+          if (isSlackMissingScope(result.error)) {
+            return new Ok(
+              makePersonalAuthenticationError("slack_tools").content
+            );
+          }
+          return new Err(
+            new MCPError(`Failed to set Slack status: ${result.error}`)
+          );
+        }
+        const displayText =
+          status_text || status_emoji
+            ? `Status set to ${[status_emoji, status_text].filter(Boolean).join(" ")}`
+            : "Status cleared";
+        return new Ok([{ type: "text" as const, text: displayText }]);
+      } catch (error) {
+        const authError = handleSlackAuthError(error);
+        if (authError) {
+          return authError;
+        }
+        return new Err(
+          new MCPError(`Error setting status: ${normalizeError(error)}`)
         );
       }
     },

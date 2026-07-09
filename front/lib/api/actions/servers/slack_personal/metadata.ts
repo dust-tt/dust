@@ -537,6 +537,37 @@ Set search_all=true only if the user explicitly requests to search all public wo
     toolCostCategory: "advanced",
     freeUsage: false,
   },
+  set_user_status: {
+    description:
+      "Set the current user's Slack status (emoji + text). Pass empty strings to clear the status. " +
+      "Status expiration is optional — omit it to set a permanent status.",
+    schema: {
+      status_text: z
+        .string()
+        .max(100)
+        .describe(
+          "The status text to display (e.g. 'In a meeting'). Pass an empty string to clear."
+        ),
+      status_emoji: z
+        .string()
+        .describe(
+          "The status emoji to display (e.g. ':spiral_calendar_pad:'). Pass an empty string to clear."
+        ),
+      status_expiration: z
+        .number()
+        .int()
+        .nonnegative()
+        .optional()
+        .describe(
+          "Unix timestamp (seconds) when the status should expire. Omit or pass 0 for no expiration."
+        ),
+    },
+    stake: "low",
+    displayLabels: {
+      running: "Setting Slack status",
+      done: "Set Slack status",
+    },
+  },
 });
 
 // Server metadata for external consumption (e.g., by SDK).

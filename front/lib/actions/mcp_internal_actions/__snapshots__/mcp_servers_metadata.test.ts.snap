@@ -3138,6 +3138,7 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool stakes across a
     "search_messages": "never_ask",
     "search_user": "never_ask",
     "semantic_search_messages": "never_ask",
+    "set_user_status": "low",
     "write_canvas": "low",
   },
   "slack_bot": {
