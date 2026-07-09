@@ -48,12 +48,12 @@ async function handleWebsearch(
   { query }: { query: string },
   extra: ToolHandlerExtra
 ) {
-  const { toolContext } = extra;
+  const { runContext } = extra;
 
   const { websearchResultCount, citationsOffset } = isAgentLoopRunContext(
-    toolContext?.runContext
+    runContext
   )
-    ? toolContext.runContext.stepContext
+    ? runContext.stepContext
     : {
         websearchResultCount: AGENT_LESS_DEFAULT_WEBSEARCH_RESULT_COUNT,
         citationsOffset: 0,
@@ -121,14 +121,11 @@ async function handleWebbrowser(
   },
   extra: ToolHandlerExtra
 ) {
-  const { toolContext, auth } = extra;
-  if (!toolContext?.runContext) {
-    return new Err(new MCPError("No conversation context available"));
-  }
+  const { runContext, auth } = extra;
   const credentials = await getLlmCredentials(auth, {
     skipEmbeddingApiKeyRequirement: true,
   });
-  const { toolConfiguration } = toolContext.runContext;
+  const { toolConfiguration } = runContext;
   const useSummarization =
     isLightServerSideMCPToolConfiguration(toolConfiguration) &&
     toolConfiguration.additionalConfiguration[USE_SUMMARY_SWITCH] === true;
@@ -162,7 +159,7 @@ async function handleWebbrowser(
   });
 
   if (useSummarization) {
-    if (!isAgentLoopRunContext(toolContext.runContext)) {
+    if (!isAgentLoopRunContext(runContext)) {
       return new Err(
         new MCPError(
           "Summarization cannot be enabled outside of an agent loop context."
@@ -170,7 +167,7 @@ async function handleWebbrowser(
       );
     }
 
-    const runCtx = toolContext.runContext;
+    const runCtx = runContext;
     const { citationsOffset, websearchResultCount } = runCtx.stepContext;
     const refs = getRefs().slice(
       citationsOffset,
@@ -239,11 +236,15 @@ async function handleWebbrowser(
           ext: ".txt",
         });
 
-        const writeResult = await writeToToolOutputsFolder(auth, toolContext, {
-          fileName,
-          content: fileContent,
-          contentType: "text/plain",
-        });
+        const writeResult = await writeToToolOutputsFolder(
+          auth,
+          { runContext: runCtx },
+          {
+            fileName,
+            content: fileContent,
+            contentType: "text/plain",
+          }
+        );
 
         if (writeResult.isErr()) {
           throw writeResult.error;

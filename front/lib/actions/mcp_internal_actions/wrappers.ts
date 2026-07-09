@@ -6,11 +6,11 @@ import type {
 import {
   isAgentLoopRunContext,
   type ToolContextType,
+  type ToolRunContextType,
 } from "@app/lib/actions/types";
 import type { Authenticator } from "@app/lib/auth";
 import { getStatsDClient } from "@app/lib/utils/statsd";
 import logger from "@app/logger/logger";
-
 import type { Result } from "@app/types/shared/result";
 import { Ok } from "@app/types/shared/result";
 import { errorToString } from "@app/types/shared/utils/error_utils";
@@ -22,6 +22,7 @@ import type {
   ServerNotification,
   ServerRequest,
 } from "@modelcontextprotocol/sdk/types.js";
+import assert from "assert";
 
 const MAX_LOGGED_ERROR_MESSAGE_LENGTH = 200;
 
@@ -49,13 +50,18 @@ export function registerTool(
       auth,
       {
         toolNameForMonitoring: monitoringName,
-        toolContext,
+        runContext: toolContext?.runContext,
         enableAlerting: tool.enableAlerting,
       },
-      (params, extra) =>
-        withToolResultProcessing(
-          tool.handler(params, { ...extra, toolContext, auth })
-        )
+      (params, extra) => {
+        // Handlers registered during the listing phase are never invoked: tools only execute on
+        // a connection established with a run context.
+        const runContext = toolContext?.runContext;
+        assert(runContext, "Tool handlers require a tool run context.");
+        return withToolResultProcessing(
+          tool.handler(params, { ...extra, runContext, auth })
+        );
+      }
     )
   );
 }
@@ -109,11 +115,12 @@ function withToolLogging<T>(
   auth: Authenticator,
   {
     toolNameForMonitoring,
-    toolContext,
+    runContext,
     enableAlerting = false,
   }: {
     toolNameForMonitoring: string;
-    toolContext: ToolContextType | undefined;
+    // Undefined at listing-phase registration; always set when the callback actually runs.
+    runContext: ToolRunContextType | undefined;
     enableAlerting?: boolean;
   },
   toolCallback: (
@@ -142,14 +149,14 @@ function withToolLogging<T>(
     };
 
     // Adding agent loop context if available.
-    if (toolContext?.runContext) {
-      if (isAgentLoopRunContext(toolContext.runContext)) {
+    if (runContext) {
+      if (isAgentLoopRunContext(runContext)) {
         const {
           agentConfiguration,
           toolConfiguration,
           conversation,
           agentMessage,
-        } = toolContext.runContext;
+        } = runContext;
         loggerArgs = {
           ...loggerArgs,
           actionConfigurationId: toolConfiguration.sId,
