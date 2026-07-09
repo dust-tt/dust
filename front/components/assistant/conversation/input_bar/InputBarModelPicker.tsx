@@ -5,12 +5,12 @@ import type {
   ProviderGroup,
   Selection,
   SuggestedModelWithReasoningEffort,
-  UserModelSelection,
 } from "@app/components/assistant/conversation/input_bar/modelPickerUtils";
 import {
   getModelWithReasoningEffortKey,
   getModelWithReasoningEffortLabel,
   getSelectableReasoningEfforts,
+  resolveAgentDefaultModel,
   resolveDefaultSelection,
   SUGGESTED_PINS,
   toModelSelection,
@@ -68,16 +68,14 @@ export function InputBarModelPicker({
   // The list of models is hidden while "Auto" is on.
   const [expanded, setExpanded] = useState(false);
 
-  const [userOverride, setUserOverride] = useState<UserModelSelection | null>(
-    null
-  );
+  const [userOverride, setUserOverride] = useState<Selection | null>(null);
 
   // On mobile there are no nested submenus: the "More models" providers expand
   // inline below their name. This tracks the single provider currently expanded.
   const [expandedProvider, setExpandedProvider] =
     useState<ModelProviderIdType | null>(null);
 
-  const commitSelection = (next: UserModelSelection) => {
+  const commitSelection = (next: Selection) => {
     setUserOverride(next);
   };
 
@@ -181,6 +179,34 @@ export function InputBarModelPicker({
     }));
   }, [allModelsWithEfforts]);
 
+  const agentDefault = useMemo(
+    () => resolveAgentDefaultModel({ agentModel, models }),
+    [agentModel, models]
+  );
+  const agentDefaultKey = agentDefault
+    ? getModelWithReasoningEffortKey(
+        agentDefault.model.providerId,
+        agentDefault.model.modelId,
+        agentDefault.effort
+      )
+    : null;
+
+  // Drop the agent default from Suggested
+  const suggested = useMemo(
+    () =>
+      agentDefaultKey
+        ? suggestedModelsWithEfforts.filter(
+            (s) =>
+              getModelWithReasoningEffortKey(
+                s.model.providerId,
+                s.model.modelId,
+                s.effort
+              ) !== agentDefaultKey
+          )
+        : suggestedModelsWithEfforts,
+    [suggestedModelsWithEfforts, agentDefaultKey]
+  );
+
   const isSearching = search.trim() !== "";
 
   // While searching we show a single flat list over every model/effort.
@@ -221,13 +247,14 @@ export function InputBarModelPicker({
 
   const hasResults = isSearching
     ? filteredAll.length > 0
-    : suggestedModelsWithEfforts.length > 0 || moreByProvider.length > 0;
+    : !!agentDefault || suggested.length > 0 || moreByProvider.length > 0;
 
   // Collapse the correlated list booleans + data arrays into a single state so
   // the picker content receives one flat, exhaustively-typed prop.
   let listState: ModelPickerListState = {
     kind: "browse",
-    suggested: suggestedModelsWithEfforts,
+    agentDefault,
+    suggested,
     moreByProvider,
   };
   if (!showList) {
@@ -294,13 +321,18 @@ export function InputBarModelPicker({
         auto={auto}
         selectedKey={selectedKey}
         onToggleAuto={toggleAuto}
-        onSelectModel={(modelWithEffort: ModelWithReasoningEffort) =>
+        onSelectModel={(modelWithEffort: ModelWithReasoningEffort) => {
+          const key = getModelWithReasoningEffortKey(
+            modelWithEffort.model.providerId,
+            modelWithEffort.model.modelId,
+            modelWithEffort.effort
+          );
           commitSelection({
-            kind: "model",
+            kind: key === agentDefaultKey ? "agent" : "model",
             model: modelWithEffort.model,
             effort: modelWithEffort.effort,
-          })
-        }
+          });
+        }}
         expandedProvider={expandedProvider}
         onToggleProvider={(providerId) =>
           setExpandedProvider((current) =>

@@ -42,7 +42,7 @@ export const SUGGESTED_PINS: {
 ];
 
 export const AUTO_TOOLTIP =
-  "Dust selects and switches model for cost efficient performance and reliability. When an agent is created using a specific model, we use this model.";
+  "Dust selects and switches model for cost efficient performance and reliability.";
 
 // Per reasoning-effort blurbs shown in each model's hover tooltip: what the
 // effort does, and what it is recommended for.
@@ -104,6 +104,7 @@ export type ModelPickerListState =
   | { kind: "search"; models: ModelWithReasoningEffort[] }
   | {
       kind: "browse";
+      agentDefault: ModelWithReasoningEffort | null;
       suggested: SuggestedModelWithReasoningEffort[];
       moreByProvider: ProviderGroup[];
     };
@@ -243,4 +244,21 @@ export function resolveDefaultSelection({
     model,
     effort: resolveEffort(model, agentModel.reasoningEffort),
   };
+}
+
+export function resolveAgentDefaultModel({
+  agentModel,
+  models,
+}: {
+  agentModel: AgentModelConfigurationType | null;
+  models: ModelConfigurationType[];
+}): ModelWithReasoningEffort | null {
+  if (!agentModel || agentModel.modelId === AUTO_MODEL_ID) {
+    return null;
+  }
+  const model = findAvailableModel(models, agentModel);
+  if (!model) {
+    return null;
+  }
+  return { model, effort: resolveEffort(model, agentModel.reasoningEffort) };
 }
