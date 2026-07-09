@@ -126,16 +126,21 @@ export function getModelWithReasoningEffortKey(
 }
 
 export function getModelWithReasoningEffortLabel(selection: Selection): string {
-  if (selection.kind === "auto") {
-    return "Auto";
+  switch (selection.kind) {
+    case "auto":
+      return "Auto";
+    case "agent":
+      return "Default";
+    case "model": {
+      const { model, effort } = selection;
+      return effort === "none"
+        ? model.displayName
+        : `${model.displayName} ${capitalize(effort)}`;
+    }
+    default:
+      assertNeverAndIgnore(selection);
+      return "";
   }
-  const { model, effort } = selection;
-
-  if (effort === "none") {
-    return model.displayName;
-  }
-
-  return `${model.displayName} ${capitalize(effort)}`;
 }
 
 // Converts the picker's shown selection into the API model selection sent with
