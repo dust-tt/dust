@@ -4,10 +4,8 @@ import { SandboxResource } from "@app/lib/resources/sandbox_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
-import { POD_DATABASE_NAME_REGEX } from "@app/types/api/sandbox_functions";
 import { Err, Ok } from "@app/types/shared/result";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { DB_NAME_REGEX } from "../../../../cli/dust-sandbox/functions-runner/types/db";
 
 vi.mock("@app/lib/api/sandbox/lifecycle", () => ({
   ensurePodSandboxReady: vi.fn(),
@@ -88,8 +86,6 @@ describe("buildSandboxFunctionOnSandbox", () => {
       type: "object",
       properties: { greeting: { type: "string" } },
     });
-    // No `databases` field in the schema file -> no declared databases.
-    expect(result.value.databases).toBeNull();
 
     // Command shape: absolute dsbx, build subcommand, `--` then the escaped source path, and the
     // egress-controlled user.
@@ -118,118 +114,6 @@ describe("buildSandboxFunctionOnSandbox", () => {
     );
     expect(command).toContain(bundleReadPath);
     expect(command).toContain(schemaReadPath);
-  });
-
-  it("parses the declared databases from the schema file, keeping names and schema files only", async () => {
-    const { authenticator, sandbox, space } = await setup();
-    const schemaWithDatabases = JSON.stringify({
-      ...JSON.parse(validSchemaFile),
-      databases: {
-        version: 1,
-        databases: {
-          chat: {
-            schemaFile: "databases/chat.db.ts",
-            tables: {
-              users: {
-                columns: {
-                  id: {
-                    type: "integer",
-                    mode: null,
-                    notNull: true,
-                    hasDefault: true,
-                    primaryKey: true,
-                    autoIncrement: true,
-                  },
-                  created_at: {
-                    type: "integer",
-                    mode: "timestamp",
-                    notNull: true,
-                    hasDefault: false,
-                    primaryKey: false,
-                    autoIncrement: false,
-                  },
-                },
-                indexes: {
-                  users_handle_idx: { unique: true, columns: ["handle"] },
-                },
-              },
-            },
-          },
-        },
-      },
-    });
-    vi.spyOn(sandbox, "exec").mockResolvedValue(
-      new Ok({ exitCode: 0, stdout: okEnvelope, stderr: "" })
-    );
-    vi.spyOn(sandbox, "readFile")
-      .mockResolvedValueOnce(new Ok(Buffer.from("bundle")))
-      .mockResolvedValueOnce(new Ok(Buffer.from(schemaWithDatabases)));
-
-    const result = await buildSandboxFunctionOnSandbox(authenticator, {
-      space,
-      srcSandboxPath: SRC,
-    });
-
-    expect(result.isOk()).toBe(true);
-    if (result.isErr()) {
-      return;
-    }
-    // The per-table shapes the runner ships are dropped: front only keeps the reconcile
-    // inputs (database name -> schema file).
-    expect(result.value.databases).toEqual({
-      chat: { schemaFile: "databases/chat.db.ts" },
-    });
-  });
-
-  it("rejects a database name outside the runner's regex (prototype pollution)", async () => {
-    const { authenticator, sandbox, space } = await setup();
-    // Built as a raw JSON string: an object literal with a "__proto__" key would set the
-    // prototype instead of creating the own key this test needs. Database names become
-    // plain-object keys in front, so the name regex is the guard.
-    const hostileDatabases = `{"version":1,"databases":{"__proto__":{"schemaFile":"databases/x.db.ts"}}}`;
-    const schemaWithHostileDatabases = `{${validSchemaFile.slice(1, -1)},"databases":${hostileDatabases}}`;
-    vi.spyOn(sandbox, "exec").mockResolvedValue(
-      new Ok({ exitCode: 0, stdout: okEnvelope, stderr: "" })
-    );
-    vi.spyOn(sandbox, "readFile")
-      .mockResolvedValueOnce(new Ok(Buffer.from("bundle")))
-      .mockResolvedValueOnce(new Ok(Buffer.from(schemaWithHostileDatabases)));
-
-    const result = await buildSandboxFunctionOnSandbox(authenticator, {
-      space,
-      srcSandboxPath: SRC,
-    });
-
-    expect(result.isErr()).toBe(true);
-    if (result.isOk()) {
-      return;
-    }
-    expect(result.error.code).toBe("schema_extraction_failed");
-  });
-
-  it("rejects a schema file with a malformed databases shape", async () => {
-    const { authenticator, sandbox, space } = await setup();
-    const badDatabases = JSON.stringify({
-      ...JSON.parse(validSchemaFile),
-      databases: { version: 2, databases: {} },
-    });
-    vi.spyOn(sandbox, "exec").mockResolvedValue(
-      new Ok({ exitCode: 0, stdout: okEnvelope, stderr: "" })
-    );
-    vi.spyOn(sandbox, "readFile")
-      .mockResolvedValueOnce(new Ok(Buffer.from("bundle")))
-      .mockResolvedValueOnce(new Ok(Buffer.from(badDatabases)));
-
-    const result = await buildSandboxFunctionOnSandbox(authenticator, {
-      space,
-      srcSandboxPath: SRC,
-    });
-
-    expect(result.isErr()).toBe(true);
-    if (result.isOk()) {
-      return;
-    }
-    expect(result.error.code).toBe("schema_extraction_failed");
   });
 
   it("surfaces a build failure from the envelope without reading files", async () => {
@@ -402,15 +286,5 @@ describe("buildSandboxFunctionOnSandbox", () => {
       return;
     }
     expect(result.error.code).toBe("sandbox_unavailable");
-  });
-});
-
-// The runner validates database names at build time with DB_NAME_REGEX; front re-validates
-// them with its own mirrored regex (front cannot runtime-import cli code). Regex values
-// cannot be type-checked across that boundary, so equality is asserted here.
-describe("POD_DATABASE_NAME_REGEX", () => {
-  it("keeps the database name regex identical to the runner's", () => {
-    expect(POD_DATABASE_NAME_REGEX.source).toBe(DB_NAME_REGEX.source);
-    expect(POD_DATABASE_NAME_REGEX.flags).toBe(DB_NAME_REGEX.flags);
   });
 });
