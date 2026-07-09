@@ -64,12 +64,13 @@ const newButtonVariants = cva(
           OVERLAY,
           "bg-linear-to-b from-primary-700 to-primary-800",
           "dark:from-stone-50 dark:to-stone-150",
-          "dark:border dark:border-border-dark",
           "text-primary-50",
           RAISED_SHADOW,
           "data-[disabled]:from-primary-300 data-[disabled]:to-primary-400",
           "dark:data-[disabled]:opacity-50",
           // Dark: light button surface → darken on hover instead of lighten.
+          // Dark: light button → drop shadow uses black (not white foreground token) to avoid glow.
+          "dark:shadow-[inset_0_0_1px_0_rgba(255,255,255,0.5),0_0_0.5px_0_var(--color-border-dark),0_1px_1.5px_0_rgba(0,0,0,0.1)]",
           "dark:hover:after:bg-black/[0.04] dark:active:after:bg-black/[0.04]"
         ),
         highlight: cn(
@@ -78,6 +79,7 @@ const newButtonVariants = cva(
           "dark:from-blue-500 dark:to-blue-600",
           "text-white",
           RAISED_SHADOW,
+          "dark:shadow-[inset_0_0_1px_0_rgba(255,255,255,0.08),0_0_0.5px_0_var(--color-border-dark),0_1px_1.5px_0_rgba(0,0,0,0.1)]",
           "data-[disabled]:from-highlight-200 data-[disabled]:to-highlight-300",
           // Dark disabled: lock gradient (prevent ramp flip) then fade with opacity.
           "dark:data-[disabled]:from-highlight-600 dark:data-[disabled]:to-highlight-500",
@@ -89,6 +91,7 @@ const newButtonVariants = cva(
           "dark:from-red-500 dark:to-red-600",
           "text-white",
           RAISED_SHADOW,
+          "dark:shadow-[inset_0_0_1px_0_rgba(255,255,255,0.08),0_0_0.5px_0_var(--color-border-dark),0_1px_1.5px_0_rgba(0,0,0,0.1)]",
           "data-[disabled]:from-warning-200 data-[disabled]:to-warning-300",
           // Dark disabled: lock gradient (prevent ramp flip) then fade with opacity.
           "dark:data-[disabled]:from-warning-600 dark:data-[disabled]:to-warning-500",
@@ -102,9 +105,7 @@ const newButtonVariants = cva(
           "bg-linear-to-b from-primary-50 to-primary-100",
           "dark:from-stone-800 dark:to-stone-800",
           "text-muted-foreground dark:text-primary-900",
-          RAISED_SHADOW,
-          // Dark: a real drop shadow (not a glow) since the button surface is dark.
-          "dark:shadow-[inset_0_0_1px_0_rgba(255,255,255,0.08),0_0_0.5px_0_var(--color-border-dark),0_0.5px_1px_0_rgba(0,0,0,0.06)]",
+          "shadow-[inset_0_0_1px_0_rgba(255,255,255,0.08),0_0_0.5px_0_var(--color-border-dark),0_0.5px_1px_0_rgba(0,0,0,0.06)]",
           "hover:after:bg-black/[0.02] active:after:bg-black/[0.02]",
           "data-[disabled]:text-faint",
           "dark:data-[disabled]:opacity-50"
