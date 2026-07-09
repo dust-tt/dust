@@ -2,6 +2,7 @@ import type { WorkspaceLimit } from "@app/components/app/ReachedLimitPopup";
 import { ReachedLimitPopup } from "@app/components/app/ReachedLimitPopup";
 import { ConfirmContext } from "@app/components/Confirm";
 import { InviteEmailButtonWithModal } from "@app/components/members/InviteEmailButtonWithModal";
+import { BulkChangeSeatModal } from "@app/components/workspace/BulkChangeSeatModal";
 import { BulkEditSpendLimitModal } from "@app/components/workspace/BulkEditSpendLimitModal";
 import { BuyAwuCreditsDialog } from "@app/components/workspace/BuyAwuCreditsDialog";
 import { FreePlanUpgradeSection } from "@app/components/workspace/billing/FreePlanUpgradeSection";
@@ -58,6 +59,8 @@ import {
 import { useGroups } from "@app/lib/swr/groups";
 import type { BulkMemberSelectionBody } from "@app/lib/swr/memberships";
 import {
+  useBulkChangeSeatType,
+  useBulkSeatChangePreview,
   useBulkSetUserSpendLimit,
   useMembersUsage,
   useUpdateMemberSeatType,
@@ -75,6 +78,7 @@ import {
 import type {
   MembershipSeatType,
   MembershipUpgradeRequestType,
+  PaidSeatType,
 } from "@app/types/memberships";
 import {
   isMembershipSeatType,
@@ -554,6 +558,26 @@ export function UsagePage() {
     setIsBulkSpendLimitOpen(true);
   }, []);
 
+  const { doBulkChangeSeatType } = useBulkChangeSeatType({
+    workspaceId: owner.sId,
+  });
+  const { doFetchSeatChangePreview } = useBulkSeatChangePreview({
+    workspaceId: owner.sId,
+  });
+  const [isBulkChangeSeatOpen, setIsBulkChangeSeatOpen] = useState(false);
+
+  const handleBatchChangeSeat = useCallback(() => {
+    setIsBulkChangeSeatOpen(true);
+  }, []);
+
+  // Selected members visible on the current page, for the bulk seat modal's
+  // avatar row (with an "all across pages" selection this is the visible
+  // subset only).
+  const selectedVisibleMembers = useMemo(
+    () => membersUsage.filter((m) => selection.rowSelection[m.sId]),
+    [membersUsage, selection.rowSelection]
+  );
+
   // Translate the cross-page selection into the descriptor the bulk member
   // endpoints expect: explicit ids, or the current filter minus exclusions.
   const buildBulkSelectionBody = useCallback((): BulkMemberSelectionBody => {
@@ -661,6 +685,63 @@ export function UsagePage() {
       buildBulkSelectionBody,
       getBulkPendingMemberIds,
       doBulkSetSpendLimit,
+    ]
+  );
+
+  const handleBulkSeatChangePreview = useCallback(
+    (seatType: PaidSeatType) =>
+      doFetchSeatChangePreview({
+        selection: buildBulkSelectionBody(),
+        seatType,
+      }),
+    [doFetchSeatChangePreview, buildBulkSelectionBody]
+  );
+
+  const handleBulkChangeSeatValidate = useCallback(
+    async ({
+      seatType,
+      seatName,
+      hasDeferredChanges,
+    }: {
+      seatType: PaidSeatType;
+      seatName: string;
+      hasDeferredChanges: boolean;
+    }): Promise<boolean> => {
+      const pendingMemberIds = getBulkPendingMemberIds();
+      setSeatChangePendingMemberIds((prev) => {
+        const next = new Set(prev);
+        pendingMemberIds.forEach((id) => next.add(id));
+        return next;
+      });
+
+      try {
+        const body = await doBulkChangeSeatType({
+          selection: buildBulkSelectionBody(),
+          seatType,
+          seatName,
+          hasDeferredChanges,
+        });
+        if (!body) {
+          return false;
+        }
+
+        // Seat mutations can move members in or out of the currently filtered
+        // set, which makes the cross-page selection stale.
+        selection.clearSelection();
+        return true;
+      } finally {
+        setSeatChangePendingMemberIds((prev) => {
+          const next = new Set(prev);
+          pendingMemberIds.forEach((id) => next.delete(id));
+          return next;
+        });
+      }
+    },
+    [
+      selection,
+      buildBulkSelectionBody,
+      getBulkPendingMemberIds,
+      doBulkChangeSeatType,
     ]
   );
 
@@ -873,6 +954,9 @@ export function UsagePage() {
       onSelectAllAcrossPages={selection.selectAllAcrossPages}
       onClear={selection.clearSelection}
       onBatchEditSpendLimit={handleBatchEditSpendLimit}
+      onBatchChangeSeat={
+        isSeatBased && !isFreePlanWorkspace ? handleBatchChangeSeat : undefined
+      }
       disabled={isReadOnly}
     />
   );
@@ -1149,6 +1233,15 @@ export function UsagePage() {
         onClose={() => setIsBulkSpendLimitOpen(false)}
         memberCount={selection.selectedCount}
         onValidate={handleBulkSpendLimitValidate}
+      />
+      <BulkChangeSeatModal
+        isOpen={isBulkChangeSeatOpen}
+        onClose={() => setIsBulkChangeSeatOpen(false)}
+        memberCount={selection.selectedCount}
+        selectedMembers={selectedVisibleMembers}
+        seatPlans={seatPlans}
+        onFetchPreview={handleBulkSeatChangePreview}
+        onValidate={handleBulkChangeSeatValidate}
       />
       <EditAdvancedModelsModal
         isOpen={editAdvancedModelsTarget !== null}
