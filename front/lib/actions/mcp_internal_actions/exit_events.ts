@@ -82,19 +82,17 @@ export async function getExitOrPauseEvents(
           resumeState: state,
         });
 
-        // Forward any UI-facing blocking events the tool collected, plus a
-        // `tool_paused` sentinel. The sentinel keeps the pause-decision on
-        // the event channel even when `blockingEvents` is empty — the case
-        // for any future tool whose blocking event is published upstream
-        // out-of-band (e.g. sandbox bash, where the child's blocking event
-        // is published by `createSandboxChildAction` and never flows
-        // through bash's return). Without it, `runToolWithStreaming` would
-        // fall through to `markAsSucceeded` on an already-blocked action.
-        // Appended LAST so the for-await in `executeToolStreaming` processes
-        // every blocking event before the sentinel triggers the return.
+        // Forward any UI-facing blocking events the tool collected, plus a `tool_paused` sentinel.
+        // The sentinel keeps the pause-decision on the event channel even when `blockingEvents` is
+        // empty — the case for any future tool whose blocking event is published upstream
+        // out-of-band (e.g. sandbox bash, where the child's blocking event is published by
+        // `createSandboxChildAction` and never flows through bash's return). Without it,
+        // `runToolWithStreaming` would fall through to `markAsSucceeded` on an already-blocked
+        // action.  Appended LAST so the for-await in `executeToolStreaming` processes every
+        // blocking event before the sentinel triggers the return.
         return [
-          // Blocking events are parsed with the public client schemas where agentName is
-          // optional; normalize to the placeholder constant expected internally.
+          // Blocking events are parsed with the public client schemas where agentName is optional;
+          // normalize to the placeholder constant expected internally.
           ...blockingEvents.map((event) => ({
             ...event,
             metadata: { ...event.metadata, agentName: "agent" as const },
