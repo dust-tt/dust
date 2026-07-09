@@ -80,12 +80,29 @@ export interface ProviderGroup {
 }
 
 export type UserModelSelection =
-  | { kind: "auto" }
-  | { kind: "model"; model: ModelConfigurationType; effort: ReasoningEffort };
+  | { kind: "auto"; toSend: ModelSelectionType }
+  | ({ kind: "model"; toSend: ModelSelectionType } & ModelWithReasoningEffort);
 
 export type Selection =
   | UserModelSelection
-  | { kind: "agent"; model: ModelConfigurationType; effort: ReasoningEffort };
+  | ({ kind: "agent"; toSend: undefined } & ModelWithReasoningEffort);
+
+export const AUTO_MODEL_SELECTION: ModelSelectionType = {
+  providerId: AUTO_MODEL_ID,
+  modelId: AUTO_MODEL_ID,
+  reasoningEffort: "none",
+};
+
+export function buildModelSelection(
+  model: ModelConfigurationType,
+  effort: ReasoningEffort
+): ModelSelectionType {
+  return {
+    providerId: model.providerId,
+    modelId: model.modelId,
+    reasoningEffort: effort,
+  };
+}
 
 // The list body is a small state machine: hidden while Auto is on, then a
 // loading / empty / search-results / browse view depending on the models
@@ -119,7 +136,16 @@ export function getModelWithReasoningEffortKey(
   return `${providerId}/${modelId}/${effort}`;
 }
 
-export function getModelWithReasoningEffortLabel(selection: Selection): string {
+// Narrower than `Selection`: label rendering only needs the kind/model/effort,
+// not the API payload, so callers without a `toSend` handy (e.g. a per-message
+// model resolved after the fact) can pass a plain literal.
+export type LabelSelection =
+  | { kind: "auto" }
+  | ({ kind: "agent" | "model" } & ModelWithReasoningEffort);
+
+export function getModelWithReasoningEffortLabel(
+  selection: LabelSelection
+): string {
   switch (selection.kind) {
     case "auto":
       return "Auto";
@@ -134,31 +160,6 @@ export function getModelWithReasoningEffortLabel(selection: Selection): string {
     default:
       assertNeverAndIgnore(selection);
       return "";
-  }
-}
-
-export function toModelSelection(
-  selection: Selection
-): ModelSelectionType | undefined {
-  switch (selection.kind) {
-    case "auto":
-      return {
-        providerId: AUTO_MODEL_ID,
-        modelId: AUTO_MODEL_ID,
-        reasoningEffort: "none",
-      };
-    case "agent":
-      // No override, use the agent model.
-      return undefined;
-    case "model":
-      return {
-        providerId: selection.model.providerId,
-        modelId: selection.model.modelId,
-        reasoningEffort: selection.effort,
-      };
-    default:
-      assertNeverAndIgnore(selection);
-      return undefined;
   }
 }
 
@@ -183,29 +184,32 @@ export function resolveDefaultSelection({
 }): Selection {
   if (lastRequestedModel) {
     if (lastRequestedModel.modelId === AUTO_MODEL_ID) {
-      return { kind: "auto" };
+      return { kind: "auto", toSend: AUTO_MODEL_SELECTION };
     }
     const model = findAvailableModel(models, lastRequestedModel);
     if (model) {
+      const effort =
+        lastRequestedModel.reasoningEffort ?? model.defaultReasoningEffort;
       return {
         kind: "model",
         model,
-        effort:
-          lastRequestedModel.reasoningEffort ?? model.defaultReasoningEffort,
+        effort,
+        toSend: buildModelSelection(model, effort),
       };
     }
   }
 
   if (!agentModel || agentModel.modelId === AUTO_MODEL_ID) {
-    return { kind: "auto" };
+    return { kind: "auto", toSend: AUTO_MODEL_SELECTION };
   }
   const model = findAvailableModel(models, agentModel);
   if (!model) {
-    return { kind: "auto" };
+    return { kind: "auto", toSend: AUTO_MODEL_SELECTION };
   }
   return {
     kind: "agent",
     model,
     effort: agentModel.reasoningEffort ?? model.defaultReasoningEffort,
+    toSend: undefined,
   };
 }

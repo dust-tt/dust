@@ -8,12 +8,13 @@ import type {
   UserModelSelection,
 } from "@app/components/assistant/conversation/input_bar/modelPickerUtils";
 import {
+  AUTO_MODEL_SELECTION,
+  buildModelSelection,
   getModelWithReasoningEffortKey,
   getModelWithReasoningEffortLabel,
   getSelectableReasoningEfforts,
   resolveDefaultSelection,
   SUGGESTED_PINS,
-  toModelSelection,
 } from "@app/components/assistant/conversation/input_bar/modelPickerUtils";
 import { getModelProviderLogo } from "@app/components/providers/types";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
@@ -112,7 +113,7 @@ export function InputBarModelPicker({
   );
 
   const shown: Selection = userOverride ?? defaultSelection;
-  const shownModelSelection = useMemo(() => toModelSelection(shown), [shown]);
+  const shownModelSelection = shown.toSend;
 
   // Keep the parent's send-time selection in sync. `onSelectionChange` only
   // stashes the value in a parent ref, so this triggers no parent re-render.
@@ -288,7 +289,7 @@ export function InputBarModelPicker({
     if (isAutoOn) {
       setExpanded(true);
     } else {
-      commitSelection({ kind: "auto" });
+      commitSelection({ kind: "auto", toSend: AUTO_MODEL_SELECTION });
       setExpanded(false);
     }
   };
@@ -332,6 +333,10 @@ export function InputBarModelPicker({
             kind: "model",
             model: modelWithEffort.model,
             effort: modelWithEffort.effort,
+            toSend: buildModelSelection(
+              modelWithEffort.model,
+              modelWithEffort.effort
+            ),
           });
         }}
         expandedProvider={expandedProvider}
