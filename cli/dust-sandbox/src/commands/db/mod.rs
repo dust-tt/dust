@@ -53,7 +53,7 @@ pub enum DbCommand {
     },
     /// List pod databases with sizes
     List,
-    /// Execute read-only SQL (from stdin) against a pod database
+    /// Execute one SQL statement (from stdin) against a pod database (SELECT/DML; DDL is refused)
     Query {
         /// Database name (resolved to <name>.db in ${DUST_POD_DATABASES_DIR})
         name: String,

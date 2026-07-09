@@ -5,12 +5,13 @@
 //   runner build <src> <outBundle> <outSchema>   bundle + extract schema to files
 //   runner db-reconcile <dbPath> <schemaFile>    additive-only DDL reconcile -> stdout envelope
 //   runner db-schema <dbPath> <outSchemaTs>      regenerate drizzle schema file -> file + envelope
-//   runner db-query <dbPath>                     stdin SQL -> stdout rows envelope (read-only;
-//                                                large results spill to a file the envelope names)
+//   runner db-query <dbPath>                     stdin SQL -> stdout rows envelope (SELECT/DML
+//                                                only, DDL refused; large results spill to a file
+//                                                the envelope names)
 
 import { build } from "./build.ts";
 import { errorEnvelope } from "./db_common.ts";
-import { queryReadonly } from "./db_query.ts";
+import { runQuery } from "./db_query.ts";
 import { reconcile } from "./db_reconcile.ts";
 import { generateSchemaFileText } from "./db_schema.ts";
 import { invoke } from "./invoke.ts";
@@ -124,7 +125,7 @@ async function dbQueryHandler(args: string[]): Promise<number> {
   }
   try {
     const sql = await Bun.stdin.text();
-    const result = queryReadonly(dbPath, sql);
+    const result = runQuery(dbPath, sql);
     if (result.isErr()) {
       process.stdout.write(`${JSON.stringify(errorEnvelope(result.error))}\n`);
       return 1;
