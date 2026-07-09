@@ -4,7 +4,7 @@ import {
   getInternalMCPServerDisplayedAs,
   getInternalMCPServerNameFromSId,
 } from "@app/lib/actions/mcp_internal_actions/constants";
-import type { MCPApproveExecutionEvent } from "@app/lib/actions/mcp_internal_actions/events";
+import type { AgentLoopMCPApproveExecutionEvent } from "@app/lib/actions/mcp_internal_actions/events";
 import { validateToolInputs } from "@app/lib/actions/mcp_utils";
 import type { ToolExecutionStatus } from "@app/lib/actions/statuses";
 import { getApprovalArgsLabel } from "@app/lib/actions/tool_approval_labels";
@@ -62,7 +62,7 @@ export async function createToolActionsActivity(
 
   const actionBlobs: ActionBlob[] = [];
   const approvalEvents: Omit<
-    MCPApproveExecutionEvent,
+    AgentLoopMCPApproveExecutionEvent,
     "isLastBlockingEventForStep"
   >[] = [];
 
@@ -138,7 +138,7 @@ async function createActionForTool(
 ): Promise<{
   actionBlob: ActionBlob;
   approvalEventData?: Omit<
-    MCPApproveExecutionEvent,
+    AgentLoopMCPApproveExecutionEvent,
     "isLastBlockingEventForStep"
   >;
 } | void> {

@@ -1,5 +1,5 @@
 import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
-import type { MCPApproveExecutionEvent } from "@app/lib/actions/mcp_internal_actions/events";
+import type { AgentLoopMCPApproveExecutionEvent } from "@app/lib/actions/mcp_internal_actions/events";
 import type { ActionGeneratedFileType } from "@app/lib/actions/types";
 import type { AgentMessageFeedbackDirection } from "@app/lib/api/assistant/conversation/feedbacks";
 import type { AgentMCPActionWithOutputType } from "@app/types/actions";
@@ -843,6 +843,6 @@ export type ConversationMCPServerViewType = BaseConversationMCPServerViewType &
   );
 
 export type MCPActionValidationRequest = Omit<
-  MCPApproveExecutionEvent,
+  AgentLoopMCPApproveExecutionEvent,
   "type" | "created" | "configurationId"
 >;

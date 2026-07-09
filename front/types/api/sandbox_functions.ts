@@ -1,3 +1,4 @@
+import type { SandboxFunctionMCPApproveExecutionEvent } from "@app/lib/actions/mcp_internal_actions/events";
 import type { ToolExecutionBaseStatus } from "@app/lib/actions/statuses";
 
 export const SANDBOX_FUNCTION_INVOCATION_STATUSES = ["created"] as const;
@@ -47,7 +48,10 @@ export type SandboxFunctionInvocationResultEvent = {
 
 export type SandboxFunctionInvocationEvent =
   | SandboxFunctionInvocationCreatedEvent
-  | SandboxFunctionInvocationResultEvent;
+  | SandboxFunctionInvocationResultEvent
+  // Tool approval request surfaced by a tool running within the invocation. Not emitted by the
+  // tool execution activity yet; carried in the union so clients can already type their handling.
+  | SandboxFunctionMCPApproveExecutionEvent;
 
 export type PostSandboxFunctionInvocationRequestBody = {
   input?: unknown;
