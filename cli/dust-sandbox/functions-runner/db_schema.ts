@@ -13,25 +13,36 @@
 // statements against the database it came from.
 //
 // Column modes (timestamp/json/boolean/...) are a drizzle-level concept that SQLite does not
-// store — they are NOT regenerated here; they live in the published functions' stored
-// shapes.
+// store — they are NOT regenerated here; they only exist in the authored schema files.
 
-import type { LiveColumn, LiveTable } from "./db_common.ts";
+import type { DbCommandError, LiveColumn, LiveTable } from "./db_common.ts";
 import { introspectLiveTables, openReadonly } from "./db_common.ts";
+import { Ok, type Result } from "./result.ts";
 
 const GENERATED_HEADER = `// Generated from the live database by \`dsbx db schema\`.
 // Column modes (e.g. { mode: "timestamp" | "json" | "boolean" }) are not stored in SQLite,
-// so none appear here; the pod's published functions carry them in their stored function state.
+// so none appear here; re-declare them by hand from the original schema file or the
+// functions' code.
 `;
 
-export function generateSchemaFileText(dbPath: string): string {
-  const db = openReadonly(dbPath);
+export function generateSchemaFileText(
+  dbPath: string
+): Result<string, DbCommandError> {
+  const opened = openReadonly(dbPath);
+  if (opened.isErr()) {
+    return opened;
+  }
+  const db = opened.value;
   try {
     const tables = introspectLiveTables(db);
+    const blocks = tables.map((table) => generateTableBlock(table));
+
     const usedImports = new Set<string>(["sqliteTable"]);
-    const tableBlocks = tables.map((table) =>
-      generateTableBlock(table, usedImports)
-    );
+    for (const block of blocks) {
+      for (const name of block.imports) {
+        usedImports.add(name);
+      }
+    }
 
     const sqliteCoreImports = [...usedImports]
       .filter((name) => name !== "sql")
@@ -44,22 +55,27 @@ export function generateSchemaFileText(dbPath: string): string {
       importLines.unshift(`import { sql } from "drizzle-orm";`);
     }
 
-    return [
-      GENERATED_HEADER,
-      importLines.join("\n"),
-      "",
-      tableBlocks.join("\n\n"),
-      "",
-    ].join("\n");
+    return new Ok(
+      [
+        GENERATED_HEADER,
+        importLines.join("\n"),
+        "",
+        blocks.map((block) => block.text).join("\n\n"),
+        "",
+      ].join("\n")
+    );
   } finally {
     db.close();
   }
 }
 
-function generateTableBlock(
-  table: LiveTable,
-  usedImports: Set<string>
-): string {
+interface Generated {
+  text: string;
+  imports: string[];
+}
+
+function generateTableBlock(table: LiveTable): Generated {
+  const imports: string[] = [];
   const pkColumns = table.columns
     .filter((column) => column.pkOrdinal > 0 && column.hidden === 0)
     .sort((a, b) => a.pkOrdinal - b.pkOrdinal);
@@ -75,15 +91,32 @@ function generateTableBlock(
       ? pkColumns[0]
       : undefined;
   const singlePkName = singlePk?.name;
+  // Text sniff over this table's CREATE TABLE DDL: SQLite exposes AUTOINCREMENT nowhere else.
+  // Only consulted for the single INTEGER pk; a false positive would need another identifier
+  // in the same DDL to contain the bare keyword.
   const hasAutoIncrement = /\bAUTOINCREMENT\b/i.test(table.createSql);
 
-  // Single-column UNIQUE-constraint auto-indexes render as column-level .unique(); everything
-  // else renders in the table-level extras list.
-  const uniqueSingleColumns = new Set<string>();
   const extras: string[] = [];
 
   for (const index of table.indexes) {
     if (index.origin === "pk") {
+      continue;
+    }
+    if (index.origin === "u") {
+      // UNIQUE constraints live in the CREATE TABLE DDL and are rejected by build/reconcile
+      // (pod-created databases never have them) — emit a comment instead of a declaration
+      // reconcile would refuse.
+      extras.push(
+        `// UNIQUE constraint ${JSON.stringify(index.name)} cannot be redeclared in pod schemas — use uniqueIndex() on new tables instead`
+      );
+      continue;
+    }
+    if (index.partial) {
+      // The WHERE clause of a partial index is not introspected; a regenerated index without
+      // it would be a different index.
+      extras.push(
+        `// partial index ${JSON.stringify(index.name)} (CREATE INDEX ... WHERE) cannot be regenerated`
+      );
       continue;
     }
     const memberNames = index.columns.filter(
@@ -95,21 +128,8 @@ function generateTableBlock(
       );
       continue;
     }
-    if (index.origin === "u") {
-      if (memberNames.length === 1 && memberNames[0] !== undefined) {
-        uniqueSingleColumns.add(memberNames[0]);
-      } else {
-        // Multi-column UNIQUE constraint: auto-index names (sqlite_autoindex_*) are reserved,
-        // regenerate as an unnamed table-level unique().
-        usedImports.add("unique");
-        extras.push(
-          `unique().on(${memberNames.map((name) => `t.${propertyName(name)}`).join(", ")})`
-        );
-      }
-      continue;
-    }
     const builder = index.unique ? "uniqueIndex" : "index";
-    usedImports.add(builder);
+    imports.push(builder);
     extras.push(
       `${builder}(${JSON.stringify(index.name)}).on(${memberNames
         .map((name) => `t.${propertyName(name)}`)
@@ -118,7 +138,7 @@ function generateTableBlock(
   }
 
   if (singlePk === undefined && pkColumns.length > 0) {
-    usedImports.add("primaryKey");
+    imports.push("primaryKey");
     extras.push(
       `primaryKey({ columns: [${pkColumns
         .map((column) => `t.${propertyName(column.name)}`)
@@ -126,23 +146,26 @@ function generateTableBlock(
     );
   }
 
-  const columnLines = table.columns
-    .filter((column) => column.hidden === 0)
-    .map((column) =>
-      generateColumnLine(column, {
-        isSinglePk: column.name === singlePkName,
-        autoIncrement: column.name === singlePkName && hasAutoIncrement,
-        unique: uniqueSingleColumns.has(column.name),
-        usedImports,
-      })
-    );
-
-  const exportName = propertyName(table.name);
-  const head = `export const ${exportName} = sqliteTable(\n  ${JSON.stringify(table.name)},\n  {\n${columnLines.join("\n")}\n  }`;
-  if (extras.length === 0) {
-    return `${head}\n);`;
+  const columnLines: string[] = [];
+  for (const column of table.columns) {
+    if (column.hidden !== 0) {
+      continue;
+    }
+    const generated = generateColumnLine(column, {
+      isSinglePk: column.name === singlePkName,
+      autoIncrement: column.name === singlePkName && hasAutoIncrement,
+    });
+    columnLines.push(generated.text);
+    imports.push(...generated.imports);
   }
-  return `${head},\n  (t) => [\n${extras.map((extra) => `    ${extra},`).join("\n")}\n  ]\n);`;
+
+  const exportName = exportIdentifier(table.name);
+  const head = `export const ${exportName} = sqliteTable(\n  ${JSON.stringify(table.name)},\n  {\n${columnLines.join("\n")}\n  }`;
+  const text =
+    extras.length === 0
+      ? `${head}\n);`
+      : `${head},\n  (t) => [\n${extras.map((extra) => `    ${extra},`).join("\n")}\n  ]\n);`;
+  return { text, imports };
 }
 
 function generateColumnLine(
@@ -150,17 +173,14 @@ function generateColumnLine(
   {
     isSinglePk,
     autoIncrement,
-    unique,
-    usedImports,
   }: {
     isSinglePk: boolean;
     autoIncrement: boolean;
-    unique: boolean;
-    usedImports: Set<string>;
   }
-): string {
+): Generated {
+  const imports: string[] = [];
   const builder = builderForDeclaredType(column.declaredType);
-  usedImports.add(builder);
+  imports.push(builder);
 
   let line = `    ${propertyName(column.name)}: ${builder}(${JSON.stringify(column.name)})`;
   if (isSinglePk) {
@@ -172,13 +192,14 @@ function generateColumnLine(
   if (column.notNull && !isSinglePk) {
     line += ".notNull()";
   }
-  if (unique) {
-    line += ".unique()";
-  }
   if (column.defaultValue !== null && !isSinglePk) {
-    line += `.default(${renderDefault(column.defaultValue, usedImports)})`;
+    const rendered = renderDefault(column.defaultValue);
+    if (rendered.needsSql) {
+      imports.push("sql");
+    }
+    line += `.default(${rendered.text})`;
   }
-  return `${line},`;
+  return { text: `${line},`, imports };
 }
 
 // SQLite type-affinity rules (https://sqlite.org/datatype3.html#determination_of_column_affinity)
@@ -210,25 +231,86 @@ function builderForDeclaredType(declaredType: string): string {
 
 // PRAGMA table_xinfo reports defaults as SQL text: numbers verbatim, strings quoted, and
 // keywords/expressions raw. Renders literals natively and falls back to a sql`` template.
-function renderDefault(defaultSql: string, usedImports: Set<string>): string {
+function renderDefault(defaultSql: string): {
+  text: string;
+  needsSql: boolean;
+} {
   const trimmed = defaultSql.trim();
   if (/^-?\d+(\.\d+)?$/.test(trimmed)) {
-    return trimmed;
+    return { text: trimmed, needsSql: false };
   }
   // Boolean-mode columns render `DEFAULT true|false`; emit the bare literal so the DDL text
   // (and thus the drizzle-kit push plan) stays identical.
   if (/^(true|false)$/i.test(trimmed)) {
-    return trimmed.toLowerCase();
+    return { text: trimmed.toLowerCase(), needsSql: false };
   }
   if (trimmed.length >= 2 && trimmed.startsWith("'") && trimmed.endsWith("'")) {
-    return JSON.stringify(trimmed.slice(1, -1).replaceAll("''", "'"));
+    return {
+      text: JSON.stringify(trimmed.slice(1, -1).replaceAll("''", "'")),
+      needsSql: false,
+    };
   }
-  usedImports.add("sql");
-  return `sql\`${trimmed.replaceAll("`", "\\`")}\``;
+  return { text: `sql\`${trimmed.replaceAll("`", "\\`")}\``, needsSql: true };
 }
 
-// Table/column names become TS identifiers. Pod-created names already match
-// ^[a-z][a-z0-9_]*$; anything else (hand-made databases) is sanitized.
+// JS/TS reserved words cannot be `export const` identifiers (they are fine as object keys
+// and property accesses, so propertyName does not need this).
+const JS_RESERVED_WORDS = new Set([
+  "await",
+  "break",
+  "case",
+  "catch",
+  "class",
+  "const",
+  "continue",
+  "debugger",
+  "default",
+  "delete",
+  "do",
+  "else",
+  "enum",
+  "export",
+  "extends",
+  "false",
+  "finally",
+  "for",
+  "function",
+  "if",
+  "implements",
+  "import",
+  "in",
+  "instanceof",
+  "interface",
+  "let",
+  "new",
+  "null",
+  "package",
+  "private",
+  "protected",
+  "public",
+  "return",
+  "static",
+  "super",
+  "switch",
+  "this",
+  "throw",
+  "true",
+  "try",
+  "typeof",
+  "var",
+  "void",
+  "while",
+  "with",
+  "yield",
+]);
+
+function exportIdentifier(tableName: string): string {
+  const name = propertyName(tableName);
+  return JS_RESERVED_WORDS.has(name) ? `_${name}` : name;
+}
+
+// Table/column names become TS identifiers. Names outside ^[A-Za-z_$][A-Za-z0-9_$]*$ (possible
+// in hand-made databases; pod-created names match the db/table contracts) are sanitized.
 function propertyName(sqlName: string): string {
   const sanitized = sqlName.replaceAll(/[^A-Za-z0-9_$]/g, "_");
   return /^[A-Za-z_$]/.test(sanitized) ? sanitized : `_${sanitized}`;

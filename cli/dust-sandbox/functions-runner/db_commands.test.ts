@@ -4,7 +4,7 @@ import { existsSync, readFileSync, statSync } from "node:fs";
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { DbCommandError, type DbErrorKind } from "./db_common.ts";
+import { DbCommandError } from "./db_common.ts";
 import {
   QUERY_INLINE_PAYLOAD_CAP_BYTES,
   QUERY_INLINE_ROW_CAP,
@@ -12,6 +12,8 @@ import {
 } from "./db_query.ts";
 import { reconcile } from "./db_reconcile.ts";
 import { generateSchemaFileText } from "./db_schema.ts";
+import type { Result } from "./result.ts";
+import type { DbErrorKind } from "./types/db.ts";
 
 const fx = (n: string) => join(import.meta.dir, "fixtures", "databases", n);
 
@@ -25,33 +27,61 @@ async function withDir<T>(fn: (dir: string) => Promise<T>): Promise<T> {
 }
 
 async function expectDbError(
-  fn: () => Promise<unknown>,
+  fn: () =>
+    | Result<unknown, DbCommandError>
+    | Promise<Result<unknown, DbCommandError>>,
   kind: DbErrorKind,
   messagePattern: RegExp
 ): Promise<void> {
-  let caught: unknown;
-  try {
-    await fn();
-  } catch (e) {
-    caught = e;
+  const result = await fn();
+  expect(result.isErr()).toBe(true);
+  if (result.isErr()) {
+    expect(result.error).toBeInstanceOf(DbCommandError);
+    expect(result.error.kind).toBe(kind);
+    expect(result.error.message).toMatch(messagePattern);
   }
-  expect(caught).toBeInstanceOf(DbCommandError);
-  if (caught instanceof DbCommandError) {
-    expect(caught.kind).toBe(kind);
-    expect(caught.message).toMatch(messagePattern);
+}
+
+function unwrap<T>(result: Result<T, DbCommandError>): T {
+  if (result.isErr()) {
+    throw result.error;
   }
+  return result.value;
 }
 
 function tableNames(dbPath: string): string[] {
   const db = new Database(dbPath, { readonly: true });
   try {
+    return db
+      .query<{ name: string }, []>(
+        "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' ORDER BY name"
+      )
+      .all()
+      .map((row) => row.name);
+  } finally {
+    db.close();
+  }
+}
+
+function journalMode(dbPath: string): string {
+  const db = new Database(dbPath, { readonly: true });
+  try {
     return (
-      db
-        .query(
-          "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' ORDER BY name"
-        )
-        .all() as { name: string }[]
-    ).map((row) => row.name);
+      db.query<{ journal_mode: string }, []>("PRAGMA journal_mode").get()
+        ?.journal_mode ?? ""
+    );
+  } finally {
+    db.close();
+  }
+}
+
+function columnNames(dbPath: string, table: string): string[] {
+  const db = new Database(dbPath, { readonly: true });
+  try {
+    return db
+      .query<{ name: string }, []>(`PRAGMA table_xinfo(${table})`)
+      .all()
+      .map((column) => column.name);
   } finally {
     db.close();
   }
@@ -61,34 +91,25 @@ describe("db reconcile", () => {
   test("creates the database on first claim with WAL mode, group-writable, and applies the schema", async () => {
     await withDir(async (dir) => {
       const dbPath = join(dir, "chat.db");
-      const result = await reconcile(dbPath, fx("chat.db.ts"));
+      const result = unwrap(await reconcile(dbPath, fx("chat.db.ts")));
 
-      expect(result.ok).toBe(true);
       expect(result.created).toBe(true);
       expect(result.statements.length).toBeGreaterThan(0);
 
-      // Group-writable per paths-env.v1: litestream (dust-state, group agent) must write the
-      // file it replicates; -wal/-shm inherit this mode.
+      // Group-writable so litestream (dust-state, group agent) can write the file it
+      // replicates; -wal/-shm inherit this mode.
       expect(statSync(dbPath).mode & 0o777).toBe(0o660);
 
-      const db = new Database(dbPath, { readonly: true });
-      try {
-        const mode = db.query("PRAGMA journal_mode").get() as {
-          journal_mode: string;
-        };
-        expect(mode.journal_mode).toBe("wal");
-      } finally {
-        db.close();
-      }
+      expect(journalMode(dbPath)).toBe("wal");
       expect(tableNames(dbPath)).toEqual(["messages", "settings", "users"]);
     });
   });
 
   test("a failed first claim leaves no database file behind", async () => {
     await withDir(async (dir) => {
-      const dbPath = join(dir, "dup.db");
+      const dbPath = join(dir, "bad.db");
       await expectDbError(
-        () => reconcile(dbPath, fx("dup_index.db.ts")),
+        () => reconcile(dbPath, fx("apply_fail.db.ts")),
         "apply_failed",
         /rolled back/
       );
@@ -98,10 +119,30 @@ describe("db reconcile", () => {
     });
   });
 
+  test("refuses a duplicate index name across tables (shared SQLite namespace)", async () => {
+    await withDir(async (dir) => {
+      await expectDbError(
+        () => reconcile(join(dir, "dup.db"), fx("dup_index.db.ts")),
+        "schema_invalid",
+        /share one namespace/
+      );
+    });
+  });
+
+  test("refuses a second primary-key declaration on one table", async () => {
+    await withDir(async (dir) => {
+      await expectDbError(
+        () => reconcile(join(dir, "twice.db"), fx("pk_double.db.ts")),
+        "schema_invalid",
+        /more than one primary key/
+      );
+    });
+  });
+
   test("a failed reconcile on an EXISTING database keeps the file", async () => {
     await withDir(async (dir) => {
       const dbPath = join(dir, "chat.db");
-      await reconcile(dbPath, fx("chat.db.ts"));
+      unwrap(await reconcile(dbPath, fx("chat.db.ts")));
       await expectDbError(
         () => reconcile(dbPath, fx("chat_reduced.db.ts")),
         "destructive_change",
@@ -114,8 +155,8 @@ describe("db reconcile", () => {
   test("is idempotent: a second reconcile applies nothing", async () => {
     await withDir(async (dir) => {
       const dbPath = join(dir, "chat.db");
-      await reconcile(dbPath, fx("chat.db.ts"));
-      const second = await reconcile(dbPath, fx("chat.db.ts"));
+      unwrap(await reconcile(dbPath, fx("chat.db.ts")));
+      const second = unwrap(await reconcile(dbPath, fx("chat.db.ts")));
 
       expect(second.created).toBe(false);
       expect(second.statements).toEqual([]);
@@ -125,7 +166,7 @@ describe("db reconcile", () => {
   test("applies additive evolution (new column, new index, new table) and keeps data", async () => {
     await withDir(async (dir) => {
       const dbPath = join(dir, "chat.db");
-      await reconcile(dbPath, fx("chat.db.ts"));
+      unwrap(await reconcile(dbPath, fx("chat.db.ts")));
 
       const db = new Database(dbPath);
       db.exec(
@@ -133,19 +174,20 @@ describe("db reconcile", () => {
       );
       db.close();
 
-      const result = await reconcile(dbPath, fx("chat_v2.db.ts"));
+      const result = unwrap(await reconcile(dbPath, fx("chat_v2.db.ts")));
       expect(result.statements.join("\n")).toMatch(/ALTER TABLE .users. ADD/);
       expect(result.statements.join("\n")).toMatch(/CREATE TABLE .reactions./);
       expect(result.statements.join("\n")).toMatch(/users_bio_idx/);
 
       const after = new Database(dbPath, { readonly: true });
       try {
-        const row = after.query("SELECT handle, bio FROM users").get() as {
-          handle: string;
-          bio: unknown;
-        };
-        expect(row.handle).toBe("alice");
-        expect(row.bio).toBeNull();
+        const row = after
+          .query<{ handle: string; bio: unknown }, []>(
+            "SELECT handle, bio FROM users"
+          )
+          .get();
+        expect(row?.handle).toBe("alice");
+        expect(row?.bio).toBeNull();
       } finally {
         after.close();
       }
@@ -155,7 +197,7 @@ describe("db reconcile", () => {
   test("refuses destructive changes (dropped column/tables) with a typed error", async () => {
     await withDir(async (dir) => {
       const dbPath = join(dir, "chat.db");
-      await reconcile(dbPath, fx("chat.db.ts"));
+      unwrap(await reconcile(dbPath, fx("chat.db.ts")));
 
       await expectDbError(
         () => reconcile(dbPath, fx("chat_reduced.db.ts")),
@@ -167,10 +209,28 @@ describe("db reconcile", () => {
     });
   });
 
+  test("refuses adding a NOT NULL column without a default to an existing table", async () => {
+    await withDir(async (dir) => {
+      const dbPath = join(dir, "chat.db");
+      unwrap(await reconcile(dbPath, fx("chat.db.ts")));
+
+      // SQLite would refuse the ALTER at apply time; reconcile refuses it up front with a
+      // correctable error instead.
+      await expectDbError(
+        () => reconcile(dbPath, fx("chat_notnull_add.db.ts")),
+        "disallowed_statement",
+        /NOT NULL column without a default/
+      );
+
+      // Nothing was applied.
+      expect(columnNames(dbPath, "users")).not.toContain("email");
+    });
+  });
+
   test("refuses a type change (table recreate plan) with a typed error", async () => {
     await withDir(async (dir) => {
       const dbPath = join(dir, "notes.db");
-      await reconcile(dbPath, fx("notes.db.ts"));
+      unwrap(await reconcile(dbPath, fx("notes.db.ts")));
 
       await expectDbError(
         () => reconcile(dbPath, fx("notes_typechange.db.ts")),
@@ -181,10 +241,11 @@ describe("db reconcile", () => {
       // The live column type is unchanged.
       const db = new Database(dbPath, { readonly: true });
       try {
-        const info = db.query("PRAGMA table_xinfo(notes)").all() as {
-          name: string;
-          type: string;
-        }[];
+        const info = db
+          .query<{ name: string; type: string }, []>(
+            "PRAGMA table_xinfo(notes)"
+          )
+          .all();
         const label = info.find((column) => column.name === "label");
         expect(label?.type.toUpperCase()).toContain("TEXT");
       } finally {
@@ -218,13 +279,15 @@ describe("db schema", () => {
   test("regenerates a schema file that reconciles cleanly against the same database", async () => {
     await withDir(async (dir) => {
       const dbPath = join(dir, "chat.db");
-      await reconcile(dbPath, fx("chat.db.ts"));
+      unwrap(await reconcile(dbPath, fx("chat.db.ts")));
 
-      const text = generateSchemaFileText(dbPath);
+      const text = unwrap(generateSchemaFileText(dbPath));
       expect(text).toContain('from "drizzle-orm/sqlite-core"');
       expect(text).toContain("export const users = sqliteTable(");
       expect(text).toContain(".primaryKey({ autoIncrement: true })");
       expect(text).toContain('uniqueIndex("users_handle_idx")');
+      // Text defaults survive the regeneration.
+      expect(text).toContain('.default("anon")');
       expect(text).toContain("modes");
 
       // Roundtrip: the regenerated file must be a no-op plan against the live database. It is
@@ -234,7 +297,7 @@ describe("db schema", () => {
       try {
         const regenerated = join(scratch, "chat.regenerated.db.ts");
         await writeFile(regenerated, text);
-        const roundtrip = await reconcile(dbPath, regenerated);
+        const roundtrip = unwrap(await reconcile(dbPath, regenerated));
         expect(roundtrip.statements).toEqual([]);
       } finally {
         await rm(scratch, { recursive: true, force: true });
@@ -244,16 +307,11 @@ describe("db schema", () => {
 
   test("errors with database_not_found on a missing database", async () => {
     await withDir(async (dir) => {
-      let caught: unknown;
-      try {
-        generateSchemaFileText(join(dir, "nope.db"));
-      } catch (e) {
-        caught = e;
-      }
-      expect(caught).toBeInstanceOf(DbCommandError);
-      if (caught instanceof DbCommandError) {
-        expect(caught.kind).toBe("database_not_found");
-      }
+      await expectDbError(
+        () => generateSchemaFileText(join(dir, "nope.db")),
+        "database_not_found",
+        /cannot open database/
+      );
     });
   });
 });
@@ -261,7 +319,7 @@ describe("db schema", () => {
 describe("db query", () => {
   async function seeded(dir: string): Promise<string> {
     const dbPath = join(dir, "chat.db");
-    await reconcile(dbPath, fx("chat.db.ts"));
+    unwrap(await reconcile(dbPath, fx("chat.db.ts")));
     const db = new Database(dbPath);
     db.exec(
       "INSERT INTO users (handle, created_at) VALUES ('alice', 1), ('bob', 2)"
@@ -273,11 +331,9 @@ describe("db query", () => {
   test("returns rows with columns", async () => {
     await withDir(async (dir) => {
       const dbPath = await seeded(dir);
-      const result = queryReadonly(
-        dbPath,
-        "SELECT handle FROM users ORDER BY handle"
+      const result = unwrap(
+        queryReadonly(dbPath, "SELECT handle FROM users ORDER BY handle")
       );
-      expect(result.ok).toBe(true);
       expect(result.columns).toEqual(["handle"]);
       expect(result.rows).toEqual([{ handle: "alice" }, { handle: "bob" }]);
       expect(result.row_count).toBe(2);
@@ -289,7 +345,7 @@ describe("db query", () => {
   test("spills the complete result set to a file beyond the inline row cap", async () => {
     await withDir(async (dir) => {
       const dbPath = join(dir, "notes.db");
-      await reconcile(dbPath, fx("notes.db.ts"));
+      unwrap(await reconcile(dbPath, fx("notes.db.ts")));
       const db = new Database(dbPath);
       const insert = db.prepare("INSERT INTO notes (label) VALUES (?)");
       db.exec("BEGIN");
@@ -299,9 +355,8 @@ describe("db query", () => {
       db.exec("COMMIT");
       db.close();
 
-      const result = queryReadonly(
-        dbPath,
-        "SELECT label FROM notes ORDER BY id"
+      const result = unwrap(
+        queryReadonly(dbPath, "SELECT label FROM notes ORDER BY id")
       );
       expect(result.rows.length).toBe(QUERY_INLINE_ROW_CAP);
       expect(result.row_count).toBe(QUERY_INLINE_ROW_CAP + 1);
@@ -325,21 +380,19 @@ describe("db query", () => {
   test("rejects writes (read-only + query_only)", async () => {
     await withDir(async (dir) => {
       const dbPath = await seeded(dir);
-      let caught: unknown;
-      try {
-        queryReadonly(
-          dbPath,
-          "INSERT INTO users (handle, created_at) VALUES ('eve', 3)"
-        );
-      } catch (e) {
-        caught = e;
-      }
-      expect(caught).toBeInstanceOf(DbCommandError);
-      if (caught instanceof DbCommandError) {
-        expect(caught.kind).toBe("query_failed");
-      }
+      await expectDbError(
+        () =>
+          queryReadonly(
+            dbPath,
+            "INSERT INTO users (handle, created_at) VALUES ('eve', 3)"
+          ),
+        "query_failed",
+        /readonly/i
+      );
       // Nothing was written.
-      const check = queryReadonly(dbPath, "SELECT count(*) AS n FROM users");
+      const check = unwrap(
+        queryReadonly(dbPath, "SELECT count(*) AS n FROM users")
+      );
       expect(check.rows).toEqual([{ n: 2 }]);
     });
   });
@@ -347,31 +400,40 @@ describe("db query", () => {
   test("rejects multi-statement SQL (bun:sqlite would silently run only the first)", async () => {
     await withDir(async (dir) => {
       const dbPath = await seeded(dir);
-      let caught: unknown;
-      try {
-        queryReadonly(dbPath, "SELECT handle FROM users; DELETE FROM users");
-      } catch (e) {
-        caught = e;
-      }
-      expect(caught).toBeInstanceOf(DbCommandError);
-      if (caught instanceof DbCommandError) {
-        expect(caught.kind).toBe("query_failed");
-        expect(caught.message).toMatch(/multiple SQL statements/);
-      }
+      await expectDbError(
+        () =>
+          queryReadonly(dbPath, "SELECT handle FROM users; DELETE FROM users"),
+        "query_failed",
+        /multiple SQL statements/
+      );
 
       // A trailing semicolon (and semicolons inside string literals) are fine.
-      const trailing = queryReadonly(
-        dbPath,
-        "SELECT count(*) AS n FROM users WHERE handle != 'a;b';"
+      const trailing = unwrap(
+        queryReadonly(
+          dbPath,
+          "SELECT count(*) AS n FROM users WHERE handle != 'a;b';"
+        )
       );
       expect(trailing.rows).toEqual([{ n: 2 }]);
+    });
+  });
+
+  test("rejects bound parameters", async () => {
+    await withDir(async (dir) => {
+      const dbPath = await seeded(dir);
+      await expectDbError(
+        () =>
+          queryReadonly(dbPath, "SELECT handle FROM users WHERE handle = ?"),
+        "query_failed",
+        /parameters are not supported/
+      );
     });
   });
 
   test("spills beyond the inline payload bytes, even for a single oversized row", async () => {
     await withDir(async (dir) => {
       const dbPath = join(dir, "notes.db");
-      await reconcile(dbPath, fx("notes.db.ts"));
+      unwrap(await reconcile(dbPath, fx("notes.db.ts")));
       const db = new Database(dbPath);
       const insert = db.prepare("INSERT INTO notes (label) VALUES (?)");
       // Row one fits inline; row two crosses the byte bound; row three is already spilling.
@@ -380,9 +442,8 @@ describe("db query", () => {
       insert.run("small");
       db.close();
 
-      const result = queryReadonly(
-        dbPath,
-        "SELECT label FROM notes ORDER BY id"
+      const result = unwrap(
+        queryReadonly(dbPath, "SELECT label FROM notes ORDER BY id")
       );
       expect(result.rows.length).toBe(1);
       expect(result.row_count).toBe(3);
@@ -400,9 +461,11 @@ describe("db query", () => {
   test("serializes SQLite's non-JSON value classes: 64-bit integers and blobs", async () => {
     await withDir(async (dir) => {
       const dbPath = await seeded(dir);
-      const result = queryReadonly(
-        dbPath,
-        "SELECT 42 AS small, 9007199254740993 AS big, x'41' AS data"
+      const result = unwrap(
+        queryReadonly(
+          dbPath,
+          "SELECT 42 AS small, 9007199254740993 AS big, x'41' AS data"
+        )
       );
       // Exact integers come back as numbers; beyond 2^53 as decimal strings; blobs as base64.
       expect(result.rows).toEqual([
@@ -414,31 +477,21 @@ describe("db query", () => {
   test("errors on an empty SQL input", async () => {
     await withDir(async (dir) => {
       const dbPath = await seeded(dir);
-      let caught: unknown;
-      try {
-        queryReadonly(dbPath, "   \n ");
-      } catch (e) {
-        caught = e;
-      }
-      expect(caught).toBeInstanceOf(DbCommandError);
-      if (caught instanceof DbCommandError) {
-        expect(caught.kind).toBe("empty_sql");
-      }
+      await expectDbError(
+        () => queryReadonly(dbPath, "   \n "),
+        "empty_sql",
+        /no SQL statement/
+      );
     });
   });
 
   test("errors with database_not_found on a missing database", async () => {
     await withDir(async (dir) => {
-      let caught: unknown;
-      try {
-        queryReadonly(join(dir, "nope.db"), "SELECT 1");
-      } catch (e) {
-        caught = e;
-      }
-      expect(caught).toBeInstanceOf(DbCommandError);
-      if (caught instanceof DbCommandError) {
-        expect(caught.kind).toBe("database_not_found");
-      }
+      await expectDbError(
+        () => queryReadonly(join(dir, "nope.db"), "SELECT 1"),
+        "database_not_found",
+        /cannot open database/
+      );
     });
   });
 });
