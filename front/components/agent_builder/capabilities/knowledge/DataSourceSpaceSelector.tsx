@@ -83,28 +83,23 @@ export function DataSourceSpaceSelector({
     [confirm, removeNode]
   );
 
+  const sections = useMemo(
+    () => [
+      { title: "From spaces:", items: spaceItems },
+      ...(projectItems.length > 0
+        ? [{ title: "From Pods:", items: projectItems }]
+        : []),
+    ],
+    [spaceItems, projectItems]
+  );
+
   return (
     <div className="flex h-full flex-col">
-      <div className="heading-sm bg-muted-background p-2 text-foreground">
-        From spaces:
-      </div>
       <DataSourceList
-        items={spaceItems}
+        sections={sections}
         showCheckboxOnlyForPartialSelection
         onSelectionChange={handleSpaceSelectionChange}
       />
-      {projectItems.length > 0 && (
-        <>
-          <div className="heading-sm bg-muted-background p-2 text-foreground">
-            From Pods:
-          </div>
-          <DataSourceList
-            items={projectItems}
-            showCheckboxOnlyForPartialSelection
-            onSelectionChange={handleSpaceSelectionChange}
-          />
-        </>
-      )}
     </div>
   );
 }
