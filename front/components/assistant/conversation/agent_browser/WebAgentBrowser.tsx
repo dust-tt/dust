@@ -22,11 +22,13 @@ import {
 } from "@dust-tt/sparkle";
 import { useMemo } from "react";
 
+import { Cartography } from "./cartography/Cartography";
 import {
   AGENTS_TABS,
   AgentBrowserSearchDropdown,
   AgentGrid,
   AllTabContent,
+  isTabEnabled,
   useTagClick,
   type WebAgentBrowserProps,
 } from "./shared";
@@ -135,7 +137,7 @@ export function WebAgentBrowser({
             <TabsList>
               {AGENTS_TABS.map((tab) => (
                 <TabsTrigger
-                  disabled={agentsByTab[tab.id].length === 0}
+                  disabled={!isTabEnabled(tab.id, agentsByTab)}
                   key={tab.id}
                   value={tab.id}
                   label={tab.label}
@@ -185,6 +187,8 @@ export function WebAgentBrowser({
           owner={owner}
           showTagHeadings={true}
         />
+      ) : viewTab === "cartography" ? (
+        <Cartography />
       ) : (
         viewTab && (
           <AgentGrid

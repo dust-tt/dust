@@ -3,6 +3,7 @@ import {
   AGENTS_TABS,
   type AgentsByTab,
   ALL_TAG,
+  isTabEnabled,
   isValidTab,
   MOST_POPULAR_TAG,
   OTHERS_TAG,
@@ -152,8 +153,8 @@ export function AgentBrowser({
   // check the query string for the tab to show, the query param to look for is called "selectedTab"
   // if it's not found, show the first tab with agents
   const viewTab = useMemo(() => {
-    const enabledTabs = AGENTS_TABS.filter(
-      (tab) => agentsByTab[tab.id].length > 0
+    const enabledTabs = AGENTS_TABS.filter((tab) =>
+      isTabEnabled(tab.id, agentsByTab)
     );
     return selectedTab &&
       isValidTab(
