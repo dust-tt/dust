@@ -9,7 +9,7 @@ import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definitio
 import { makePersonalAuthenticationError } from "@app/lib/actions/mcp_internal_actions/utils";
 import {
   isAgentLoopRunContext,
-  type ToolContextType,
+  type ToolContext,
 } from "@app/lib/actions/types";
 import { SLACK_SEARCH_ACTION_NUM_RESULTS } from "@app/lib/actions/utils";
 import {
@@ -371,7 +371,7 @@ export interface SlackPersonalToolsResult {
 export function createSlackPersonalTools(
   auth: Authenticator,
   mcpServerId: string,
-  toolContext?: ToolContextType
+  toolContext?: ToolContext
 ): SlackPersonalToolsResult {
   const allowFooterRemoval =
     auth.workspace()?.metadata?.slackPersonalAllowFooterRemoval ?? false;

@@ -1,5 +1,5 @@
 import { isAgentLoopToolNotificationEvent } from "@app/lib/actions/mcp";
-import type { ToolContextType } from "@app/lib/actions/types";
+import type { ToolContext } from "@app/lib/actions/types";
 import { isSandboxChildActionInfo } from "@app/lib/actions/types";
 import { isLightClientSideMCPToolConfiguration } from "@app/lib/actions/types/guards";
 import {
@@ -229,7 +229,7 @@ async function executeToolStreaming(
     ? updateResourceAndPublishEvent
     : () => {};
 
-  const toolContext: ToolContextType = {
+  const toolContext: ToolContext = {
     runContext: {
       contextType: "agent_loop",
       action,

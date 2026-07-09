@@ -1,6 +1,6 @@
 import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
 import { ADVANCED_SEARCH_SWITCH } from "@app/lib/actions/mcp_internal_actions/constants";
-import type { ToolContextType } from "@app/lib/actions/types";
+import type { ToolContext } from "@app/lib/actions/types";
 import {
   isLightServerSideMCPToolConfiguration,
   isServerSideMCPServerConfiguration,
@@ -93,7 +93,7 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
  * Check if we are in advanced search mode,
  * relying on a magic value stored in the additionalConfiguration.
  */
-function isAdvancedSearchMode(toolContext?: ToolContextType) {
+function isAdvancedSearchMode(toolContext?: ToolContext) {
   return (
     (toolContext?.runContext &&
       isLightServerSideMCPToolConfiguration(
@@ -121,7 +121,7 @@ export async function getInternalMCPServer(
     internalMCPServerName: InternalMCPServerNameType;
     mcpServerId: string;
   },
-  toolContext?: ToolContextType
+  toolContext?: ToolContext
 ): Promise<McpServer> {
   switch (internalMCPServerName) {
     case "github":

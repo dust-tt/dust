@@ -1,6 +1,6 @@
 import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/utils";
 import { registerTool } from "@app/lib/actions/mcp_internal_actions/wrappers";
-import type { ToolContextType } from "@app/lib/actions/types";
+import type { ToolContext } from "@app/lib/actions/types";
 import type { Authenticator } from "@app/lib/auth";
 import logger from "@app/logger/logger";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
@@ -18,7 +18,7 @@ const localLogger = logger.child({ module: "mcp_slack_personal" });
 async function createServer(
   auth: Authenticator,
   mcpServerId: string,
-  toolContext?: ToolContextType
+  toolContext?: ToolContext
 ): Promise<McpServer> {
   const server = makeInternalMCPServer("slack");
 

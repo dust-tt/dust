@@ -1,6 +1,6 @@
 import {
   isAgentLoopRunContext,
-  type ToolContextType,
+  type ToolContext,
 } from "@app/lib/actions/types";
 import type { ConversationMetadata } from "@app/types/assistant/conversation";
 
@@ -41,7 +41,7 @@ export function isSidekickConversation(
  * Both variants contain the conversation, so we check both to access conversation metadata.
  */
 export function getSidekickMetadataFromContext(
-  toolContext?: ToolContextType
+  toolContext?: ToolContext
 ): SidekickMetadata | null {
   const metadata =
     (isAgentLoopRunContext(toolContext?.runContext)

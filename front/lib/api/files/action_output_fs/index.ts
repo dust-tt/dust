@@ -1,6 +1,6 @@
 import { FILE_OFFLOAD_TEXT_SIZE_BYTES } from "@app/lib/actions/action_output_limits";
 import { isResourceContentWithText } from "@app/lib/actions/mcp_internal_actions/output_schemas";
-import type { ToolRunContextType } from "@app/lib/actions/types";
+import type { ToolRunContext } from "@app/lib/actions/types";
 import { DustFileSystem } from "@app/lib/api/file_system/dust_file_system";
 import {
   conversationScopedPath,
@@ -34,7 +34,7 @@ export interface PersistedToolOutput {
  */
 async function getDustFileSystemForRunContext(
   auth: Authenticator,
-  runContext: ToolRunContextType
+  runContext: ToolRunContext
 ): Promise<Result<DustFileSystem, Error>> {
   switch (runContext.contextType) {
     case "agent_loop":
@@ -50,7 +50,7 @@ async function getDustFileSystemForRunContext(
 }
 
 function getToolOutputsScopedPath(
-  runContext: ToolRunContextType,
+  runContext: ToolRunContext,
   fileName: string
 ): string {
   switch (runContext.contextType) {
@@ -158,7 +158,7 @@ export async function writeToPodFolder(
  */
 export async function writeToToolOutputsFolder(
   auth: Authenticator,
-  runContext: ToolRunContextType,
+  runContext: ToolRunContext,
   {
     fileName,
     content,
@@ -196,7 +196,7 @@ export async function writeToToolOutputsFolder(
  */
 export async function persistToolOutput(
   auth: Authenticator,
-  runContext: ToolRunContextType,
+  runContext: ToolRunContext,
   block: CallToolResult["content"][number],
   { toolName, serverName }: { toolName: string; serverName: string }
 ): Promise<Result<PersistedToolOutput | null, Error>> {

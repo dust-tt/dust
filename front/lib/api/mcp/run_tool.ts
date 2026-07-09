@@ -19,7 +19,7 @@ import type {
 import { getExitOrPauseEvents } from "@app/lib/actions/mcp_internal_actions/exit_events";
 import { hideFileFromActionOutput } from "@app/lib/actions/mcp_utils";
 import type {
-  ToolContextType,
+  ToolContext,
   ToolOutputItemType,
 } from "@app/lib/actions/types";
 import { isAgentLoopRunContext } from "@app/lib/actions/types";
@@ -43,7 +43,7 @@ export async function* runToolWithStreaming(
   {
     toolContext,
   }: {
-    toolContext: ToolContextType;
+    toolContext: ToolContext;
   },
   options?: { signal?: AbortSignal }
 ): AsyncGenerator<

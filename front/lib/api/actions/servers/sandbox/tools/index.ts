@@ -7,7 +7,7 @@ import type {
 } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { isToolExecutionStatusBlocked } from "@app/lib/actions/statuses";
-import type { ToolContextType } from "@app/lib/actions/types";
+import type { ToolContext } from "@app/lib/actions/types";
 import {
   isAgentLoopRunContext,
   isSandboxResumeState,
@@ -226,7 +226,7 @@ function isSandboxAgentEgressRequestsAllowed(auth: Authenticator): boolean {
 
 export async function createSandboxTools(
   auth: Authenticator,
-  _toolContext?: ToolContextType
+  _toolContext?: ToolContext
 ): Promise<ToolDefinition[]> {
   const handlers: ToolHandlers<typeof SANDBOX_TOOLS_METADATA> = {
     bash: runSandboxBashTool,

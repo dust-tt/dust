@@ -3,7 +3,7 @@ import type { ToolHandlers } from "@app/lib/actions/mcp_internal_actions/tool_de
 import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import {
   isAgentLoopRunContext,
-  type ToolContextType,
+  type ToolContext,
 } from "@app/lib/actions/types";
 import { SnowflakeClient } from "@app/lib/api/actions/servers/snowflake/client";
 import {
@@ -35,7 +35,7 @@ interface SnowflakeQueryTagMetadata {
 // Builds Snowflake query tag for agent-level usage tracking.
 // Enables customers to track query costs per agent in QUERY_HISTORY.
 function buildQueryTagMetadata(
-  toolContext?: ToolContextType,
+  toolContext?: ToolContext,
   auth?: Authenticator
 ): string | undefined {
   if (!toolContext?.runContext || !auth) {
@@ -71,7 +71,7 @@ async function getClientFromAuthInfo(
       }
     | null
     | undefined,
-  toolContext?: ToolContextType,
+  toolContext?: ToolContext,
   auth?: Authenticator
 ): Promise<Result<SnowflakeClient, MCPError>> {
   const queryTagMetadata = buildQueryTagMetadata(toolContext, auth);

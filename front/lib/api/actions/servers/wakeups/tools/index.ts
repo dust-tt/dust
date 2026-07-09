@@ -3,7 +3,7 @@ import type { ToolHandlers } from "@app/lib/actions/mcp_internal_actions/tool_de
 import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import {
   isAgentLoopRunContext,
-  type ToolContextType,
+  type ToolContext,
 } from "@app/lib/actions/types";
 import { WAKEUPS_TOOLS_METADATA } from "@app/lib/api/actions/servers/wakeups/metadata";
 import type { Authenticator } from "@app/lib/auth";
@@ -92,7 +92,7 @@ function parseWhen(when: string):
   return null;
 }
 
-function getUserTimezone(toolContext?: ToolContextType): string | null {
+function getUserTimezone(toolContext?: ToolContext): string | null {
   if (!isAgentLoopRunContext(toolContext?.runContext)) {
     return null;
   }
@@ -127,7 +127,7 @@ function renderWakeUp(wakeUp: WakeUpType): string {
 
 export function createWakeupsTools(
   auth: Authenticator,
-  toolContext?: ToolContextType
+  toolContext?: ToolContext
 ) {
   const handlers: ToolHandlers<typeof WAKEUPS_TOOLS_METADATA> = {
     schedule_wakeup: async ({ when, reason, timezone }) => {

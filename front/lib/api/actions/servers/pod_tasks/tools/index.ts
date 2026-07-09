@@ -6,7 +6,7 @@ import type {
 import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import {
   isAgentLoopRunContext,
-  type ToolContextType,
+  type ToolContext,
 } from "@app/lib/actions/types";
 import {
   getPod,
@@ -204,7 +204,7 @@ function formatTaskListingLine(row: ProjectTaskResource): string {
 
 export function createProjectTasksTools(
   auth: Authenticator,
-  toolContext?: ToolContextType
+  toolContext?: ToolContext
 ): ToolDefinition[] {
   const owner = auth.getNonNullableWorkspace();
   const handlers: ToolHandlers<typeof POD_TASKS_TOOLS_METADATA> = {

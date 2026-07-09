@@ -10,7 +10,7 @@ import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definitio
 import { makePersonalAuthenticationError } from "@app/lib/actions/mcp_internal_actions/utils";
 import {
   isAgentLoopRunContext,
-  type ToolContextType,
+  type ToolContext,
 } from "@app/lib/actions/types";
 import { NOTION_SEARCH_ACTION_NUM_RESULTS } from "@app/lib/actions/utils";
 import { NOTION_TOOLS_METADATA } from "@app/lib/api/actions/servers/notion/metadata";
@@ -70,7 +70,7 @@ async function withNotionClient<T>(
 }
 
 export function createNotionTools(
-  toolContext?: ToolContextType
+  toolContext?: ToolContext
 ): ToolDefinition[] {
   const handlers: ToolHandlers<typeof NOTION_TOOLS_METADATA> = {
     search: async (
