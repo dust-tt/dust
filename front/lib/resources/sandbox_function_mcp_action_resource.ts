@@ -59,6 +59,14 @@ export class SandboxFunctionMCPActionResource extends BaseResource<SandboxFuncti
     });
   }
 
+  // String identifier of the invocation this action belongs to.
+  get invocationId(): string {
+    return makeSId("sandbox_function_invocation", {
+      id: this.sandboxFunctionInvocationId,
+      workspaceId: this.workspaceId,
+    });
+  }
+
   static modelIdToSId({
     id,
     workspaceId,
@@ -244,10 +252,18 @@ export class SandboxFunctionMCPActionResource extends BaseResource<SandboxFuncti
       return new Ok(null);
     }
 
-    try {
-      const file = getPrivateUploadBucket().file(this.outputGcsPath);
-      const [buffer] = await file.download();
+    // Retry the download: the poll client treats an error response as terminal, so a transient
+    // GCS failure here would permanently fail a tool call that actually succeeded.
+    const gcsPath = this.outputGcsPath;
+    const downloadResult = await withRetry(() =>
+      getPrivateUploadBucket().file(gcsPath).download()
+    );
+    if (downloadResult.isErr()) {
+      return new Err(downloadResult.error);
+    }
 
+    try {
+      const [buffer] = downloadResult.value;
       return new Ok(JSON.parse(buffer.toString("utf-8")));
     } catch (err) {
       return new Err(normalizeError(err));
@@ -389,10 +405,7 @@ export class SandboxFunctionMCPActionResource extends BaseResource<SandboxFuncti
       sId: this.sId,
       createdAt: this.createdAt.getTime(),
       updatedAt: this.updatedAt.getTime(),
-      invocationId: makeSId("sandbox_function_invocation", {
-        id: this.sandboxFunctionInvocationId,
-        workspaceId: this.workspaceId,
-      }),
+      invocationId: this.invocationId,
       toolName: this.toolName,
       inputs: this.inputs,
       status: this.status,

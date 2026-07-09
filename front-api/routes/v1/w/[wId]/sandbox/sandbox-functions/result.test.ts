@@ -89,8 +89,7 @@ describe("POST /api/v1/w/[wId]/sandbox/sandbox-functions/result", () => {
     expect(await response.json()).toEqual({
       error: {
         type: "invalid_request_error",
-        message:
-          "This sandbox token cannot access sandbox function invocations.",
+        message: "This sandbox token cannot access this endpoint.",
       },
     });
     expect(publishSandboxFunctionInvocationEvent).not.toHaveBeenCalled();

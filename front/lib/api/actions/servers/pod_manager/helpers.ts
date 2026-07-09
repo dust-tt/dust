@@ -142,6 +142,16 @@ export async function getPod(
       );
     }
 
+    // `SpaceResource.fetchById` filters by workspace only, not by the caller's space
+    // membership, so a caller passing an arbitrary pod id could otherwise read its members,
+    // conversations, documents and tasks. Report unreadable pods as not-found so this cannot
+    // probe which pod sIds exist.
+    if (!pod.canRead(auth)) {
+      return new Err(
+        new MCPError(`Pod not found: ${podId}`, { tracked: false })
+      );
+    }
+
     return new Ok({ pod });
   }
 
