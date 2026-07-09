@@ -168,7 +168,7 @@ export function AgentBuilderSpacesBlock({
   }, [globalSpace, nonGlobalSpacesWithRestrictions]);
 
   return (
-    <div className="space-y-3 px-6">
+    <div className="space-y-3">
       <div className="flex items-start justify-between">
         <div>
           <h2 className="heading-lg text-foreground">Spaces and Pods</h2>

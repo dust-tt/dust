@@ -16,7 +16,7 @@ export function AgentBuilderSectionContainer({
   children,
 }: AgentBuilderSectionContainerProps) {
   return (
-    <section className="flex flex-col gap-3 px-6">
+    <section className="flex flex-col gap-3">
       <div className="flex flex-col items-start justify-between gap-2 sm:flex-row sm:items-end">
         <div>
           <div className="flex flex-row items-center gap-2">
