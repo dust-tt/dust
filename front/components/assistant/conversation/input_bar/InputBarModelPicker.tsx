@@ -77,19 +77,17 @@ export function InputBarModelPicker({
     useState<ModelProviderIdType | null>(null);
 
   const commitSelection = (selection: UserModelSelection) => {
-    const isAutoSelection = selection.kind === "auto";
-    const isAutoDefaultSelection = defaultSelection.kind === "auto";
-    const isSameModelSelectionAsAgent =
+    const isSelectionAuto = selection.kind === "auto";
+    const isDefaultAuto = defaultSelection.kind === "auto";
+    const isSelectionSameModelAsAgent =
       selection.kind === "model" &&
       defaultSelection.kind === "agent" &&
       selection.model.modelId === agentModel?.modelId &&
       selection.model.providerId === agentModel?.providerId &&
       selection.effort === agentModel?.reasoningEffort;
 
-    if (
-      (isAutoSelection && isAutoDefaultSelection) ||
-      isSameModelSelectionAsAgent
-    ) {
+    if ((isSelectionAuto && isDefaultAuto) || isSelectionSameModelAsAgent) {
+      // show default
       setUserOverride(null);
       return;
     }
@@ -109,21 +107,16 @@ export function InputBarModelPicker({
     disabled: !hasModelsPicker,
   });
 
-  // Derived picker default (see resolveDefaultSelection). Recomputes as the
-  // agent, the last message and the model list load in.
   const defaultSelection = useMemo(
     () => resolveDefaultSelection({ agentModel, lastRequestedModel, models }),
     [agentModel, lastRequestedModel, models]
   );
 
-  // What the picker shows: the manual override if set, else the derived default.
   const shown: Selection = userOverride ?? defaultSelection;
   const shownModelSelection = useMemo(() => toModelSelection(shown), [shown]);
 
-  // Keep the parent's send-time selection in sync with whatever the picker
-  // shows — including the derived default the user never explicitly picked (so a
-  // reload reuses the last message's model). `onSelectionChange` only stashes
-  // the value in a parent ref, so this triggers no parent re-render.
+  // Keep the parent's send-time selection in sync. `onSelectionChange` only
+  // stashes the value in a parent ref, so this triggers no parent re-render.
   useEffect(() => {
     if (!hasModelsPicker) {
       return;
