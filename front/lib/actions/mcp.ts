@@ -11,6 +11,7 @@ import type {
   AgentLoopMCPApproveExecutionEvent,
   AgentLoopToolExecution,
   MCPApproveExecutionEvent,
+  SandboxFunctionToolExecution,
   ToolAskUserQuestionEvent,
   ToolFileAuthRequiredEvent,
   ToolPersonalAuthRequiredEvent,
@@ -163,40 +164,50 @@ export type LightMCPToolConfigurationType =
 
 export type { FileAuthorizationInfo };
 
-export type BlockedToolExecution = AgentLoopToolExecution &
-  (
-    | {
-        status: "blocked_validation_required";
-        authorizationInfo: AuthorizationInfo | null;
-      }
-    | {
-        status: "blocked_child_action_input_required";
-        authorizationInfo: AuthorizationInfo | null;
-        resumeState: Record<string, unknown> | null;
-        childBlockedActionsList: BlockedToolExecution[];
-      }
-    | {
-        status: "blocked_authentication_required";
-        metadata: MCPValidationMetadataType & {
-          mcpServerId: string;
-          mcpServerDisplayName: string;
-        };
-        authorizationInfo: AuthorizationInfo;
-      }
-    | {
-        status: "blocked_file_authorization_required";
-        metadata: MCPValidationMetadataType & {
-          mcpServerId: string;
-          mcpServerDisplayName: string;
-        };
-        fileAuthorizationInfo: FileAuthorizationInfo;
-      }
-    | {
-        status: "blocked_user_answer_required";
-        question: UserQuestion;
-        authorizationInfo: null;
-      }
-  );
+// Status-specific payloads of a blocked tool execution, shared by both run scopes.
+type BlockedToolExecutionVariant =
+  | {
+      status: "blocked_validation_required";
+      authorizationInfo: AuthorizationInfo | null;
+    }
+  | {
+      status: "blocked_child_action_input_required";
+      authorizationInfo: AuthorizationInfo | null;
+      resumeState: Record<string, unknown> | null;
+      // Child actions always belong to a child conversation, so they are agent-loop scoped.
+      childBlockedActionsList: AgentLoopBlockedToolExecution[];
+    }
+  | {
+      status: "blocked_authentication_required";
+      metadata: MCPValidationMetadataType & {
+        mcpServerId: string;
+        mcpServerDisplayName: string;
+      };
+      authorizationInfo: AuthorizationInfo;
+    }
+  | {
+      status: "blocked_file_authorization_required";
+      metadata: MCPValidationMetadataType & {
+        mcpServerId: string;
+        mcpServerDisplayName: string;
+      };
+      fileAuthorizationInfo: FileAuthorizationInfo;
+    }
+  | {
+      status: "blocked_user_answer_required";
+      question: UserQuestion;
+      authorizationInfo: null;
+    };
+
+export type AgentLoopBlockedToolExecution = AgentLoopToolExecution &
+  BlockedToolExecutionVariant;
+
+export type SandboxFunctionBlockedToolExecution = SandboxFunctionToolExecution &
+  BlockedToolExecutionVariant;
+
+export type BlockedToolExecution =
+  | AgentLoopBlockedToolExecution
+  | SandboxFunctionBlockedToolExecution;
 
 export function getMCPApprovalStateFromUserApprovalState(
   userApprovalState: ActionApprovalStateType

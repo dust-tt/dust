@@ -2,7 +2,7 @@ import { ToolValidationCard } from "@app/components/actions/blocked/ToolValidati
 import { useBlockedActionsContext } from "@app/components/assistant/conversation/BlockedActionsProvider";
 import { useValidateAction } from "@app/hooks/useValidateAction";
 import type { MCPValidationOutputType } from "@app/lib/actions/constants";
-import type { BlockedToolExecution } from "@app/lib/actions/mcp";
+import type { AgentLoopBlockedToolExecution } from "@app/lib/actions/mcp";
 import { useAuth } from "@app/lib/auth/AuthContext";
 import type { LightWorkspaceType, UserType } from "@app/types/user";
 import { useState } from "react";
@@ -10,7 +10,7 @@ import { useState } from "react";
 interface MCPToolValidationRequiredProps {
   triggeringUser: UserType | null;
   owner: LightWorkspaceType;
-  blockedAction: BlockedToolExecution;
+  blockedAction: AgentLoopBlockedToolExecution;
   conversationId?: string | null;
 }
 

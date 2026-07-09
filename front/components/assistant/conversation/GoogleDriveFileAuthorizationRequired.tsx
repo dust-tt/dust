@@ -3,7 +3,7 @@ import type { GooglePickerFile } from "@app/hooks/useGooglePicker";
 import { useGooglePicker } from "@app/hooks/useGooglePicker";
 import { useResolveAuthentication } from "@app/hooks/useResolveAuthentication";
 import type {
-  BlockedToolExecution,
+  AgentLoopBlockedToolExecution,
   FileAuthorizationInfo,
 } from "@app/lib/actions/mcp";
 import { canCurrentUserRespondToParentUserMessage } from "@app/lib/api/assistant/conversation/can_current_user_respond";
@@ -24,7 +24,7 @@ import {
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 interface GoogleDriveFileAuthorizationRequiredProps {
-  blockedAction: BlockedToolExecution;
+  blockedAction: AgentLoopBlockedToolExecution;
   triggeringUser: UserType | null;
   owner: LightWorkspaceType;
   fileAuthorizationInfo: FileAuthorizationInfo;

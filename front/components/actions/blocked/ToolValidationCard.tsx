@@ -1,7 +1,7 @@
 import { ToolValidationDetails } from "@app/components/assistant/conversation/ToolValidationDetails";
 import { getIcon } from "@app/components/resources/resources_icons";
 import type { MCPValidationOutputType } from "@app/lib/actions/constants";
-import type { ToolExecutionBase } from "@app/lib/actions/mcp_internal_actions/events";
+import type { BlockedToolExecution } from "@app/lib/actions/mcp";
 import {
   POD_MANAGER_SERVER_NAME,
   UPDATE_MEMBERS_TOOL_NAME,
@@ -123,10 +123,10 @@ const MCP_TOOL_OVERRIDES: Partial<
   },
 };
 
-// Display data needed to render a tool validation card. Both agent-loop and sandbox-function
-// blocked tool executions structurally satisfy this shape.
+// Display data needed to render a tool validation card, for both agent-loop and sandbox-function
+// blocked tool executions.
 export type ToolValidationRequest = Pick<
-  ToolExecutionBase,
+  BlockedToolExecution,
   | "actionId"
   | "userId"
   | "stake"

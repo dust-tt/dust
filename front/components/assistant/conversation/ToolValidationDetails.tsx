@@ -5,8 +5,8 @@ import {
 import { PodMembersUpdateValidationDetails } from "@app/components/assistant/conversation/tool_validation/PodMembersUpdateValidationDetails";
 import { PodTasksCreateValidationDetails } from "@app/components/assistant/conversation/tool_validation/PodTasksCreateValidationDetails";
 import { PodTasksUpdateValidationDetails } from "@app/components/assistant/conversation/tool_validation/PodTasksUpdateValidationDetails";
+import type { BlockedToolExecution } from "@app/lib/actions/mcp";
 import { ASHBY_SERVER_NAME } from "@app/lib/actions/mcp_internal_actions/constants";
-import type { ToolExecutionBase } from "@app/lib/actions/mcp_internal_actions/events";
 import {
   CREATE_REFERRAL_TOOL_NAME,
   UPDATE_JOB_POSTING_TOOL_NAME,
@@ -82,7 +82,7 @@ interface DisplayableInput {
 interface ToolValidationDetailsProps {
   // Only the display fields are needed, so both agent-loop and sandbox-function blocked tool
   // executions can be rendered.
-  blockedAction: Pick<ToolExecutionBase, "inputs" | "metadata">;
+  blockedAction: Pick<BlockedToolExecution, "inputs" | "metadata">;
   user: UserType;
   owner: LightWorkspaceType;
   conversationId?: string | null;
