@@ -328,16 +328,21 @@ export class KeyResource extends BaseResource<KeyModel> {
     );
   }
 
-  toJSON(): KeyType {
-    // We only display the full secret key for the first 10 minutes after creation.
+  toJSON(requestingUserModelId: ModelId): KeyType {
+    // We only display the full secret key to the admin who created it, and only
+    // for the first 10 minutes after creation. Every other admin (or the
+    // creator past the window) sees a redacted value.
     const currentTime = new Date();
     const createdAt = new Date(this.createdAt);
     const timeDifference = Math.abs(
       currentTime.getTime() - createdAt.getTime()
     );
     const differenceInMinutes = Math.ceil(timeDifference / (1000 * 60));
+    const isCreator = this.userId === requestingUserModelId;
     const secret =
-      differenceInMinutes > 10 ? redactString(this.secret, 4) : this.secret;
+      isCreator && differenceInMinutes <= 10
+        ? this.secret
+        : redactString(this.secret, 4);
 
     return {
       id: this.id,
