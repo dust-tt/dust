@@ -27,7 +27,7 @@ describe("Authenticator.hasWorkspacePermission", () => {
 
   // Build a non-admin member of `group` (if given) and return their authenticator.
   async function memberAuthInGroup(
-    group?: Awaited<ReturnType<typeof GroupFactory.regular>>
+    group?: Awaited<ReturnType<typeof GroupFactory.regularAuto>>
   ): Promise<Authenticator> {
     const user = await UserFactory.basic();
     await MembershipFactory.associate(workspace, user, { role: "user" });
@@ -59,7 +59,7 @@ describe("Authenticator.hasWorkspacePermission", () => {
   });
 
   it("returns true when one of the caller's groups holds the -1 grant", async () => {
-    const group = await GroupFactory.regular(workspace, "eng");
+    const group = await GroupFactory.regularAuto(workspace, "eng");
     await GroupPermissionResource.grantTypeWide(adminAuth, {
       group,
       ...CAPABILITY,
@@ -98,7 +98,7 @@ describe("Authenticator.hasWorkspacePermission", () => {
   });
 
   it("matches a wildcard grant against any capability", async () => {
-    const group = await GroupFactory.regular(workspace, "superadmins");
+    const group = await GroupFactory.regularAuto(workspace, "superadmins");
     await GroupPermissionResource.grantTypeWide(adminAuth, {
       group,
       permissionType: "*",
