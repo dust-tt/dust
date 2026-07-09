@@ -4,6 +4,7 @@ import { Authenticator } from "@app/lib/auth";
 import { makeScript } from "@app/scripts/helpers";
 
 const WORKSPACE_ID = "vigqnm0JoT";
+const USER_ID = "DIJEPbgQe2";
 
 /**
  * Standalone script that computes the 2D cartography projection for every agent
@@ -15,7 +16,10 @@ const WORKSPACE_ID = "vigqnm0JoT";
  *   cd front && npx tsx cartography/list_agents.ts
  */
 makeScript({}, async (_args, logger) => {
-  const auth = await Authenticator.internalAdminForWorkspace(WORKSPACE_ID);
+  const auth = await Authenticator.fromUserIdAndWorkspaceId(
+    USER_ID,
+    WORKSPACE_ID
+  );
 
   const result = await computeAgentCartographyCoordinates(auth);
   if (result.isErr()) {
