@@ -149,13 +149,17 @@ describe("sandbox egress helpers", () => {
   });
 
   function setup(sandbox: unknown) {
-    return setupEgressForwarder(auth, sandbox as never, { runtimeOwner });
+    return setupEgressForwarder(auth, sandbox as never, {
+      runtimeOwner,
+      egressPolicyOwnerId: "conversation-id",
+    });
   }
 
   function ensure(sandbox: unknown, opts: { wokeFromSleep: boolean }) {
     return ensureSandboxEgressOnExec(auth, sandbox as never, {
       ...opts,
       runtimeOwner,
+      egressPolicyOwnerId: "conversation-id",
     });
   }
 

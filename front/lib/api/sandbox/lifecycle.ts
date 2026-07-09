@@ -33,6 +33,10 @@ type SandboxReadyConfig = {
   ensureActive: () => Promise<Result<EnsureSandboxResult, Error>>;
   getFileSystem: () => Promise<Result<DustFileSystem, Error>>;
   runtimeOwner: SandboxRuntimeOwner;
+  // Which owner policy file (`w/{wId}/sandboxes/{ownerId}.json`) this
+  // sandbox's egress is scoped to. Distinct from runtimeOwner: conversations
+  // inside a Pod share the Pod's policy file.
+  egressPolicyOwnerId: string;
 };
 
 // /!\ All sandbox-touching tools must use the owner-specific ready helper rather than calling
@@ -40,7 +44,12 @@ type SandboxReadyConfig = {
 // skipped.
 async function ensureOwnerSandboxReady(
   auth: Authenticator,
-  { ensureActive, getFileSystem, runtimeOwner }: SandboxReadyConfig
+  {
+    ensureActive,
+    getFileSystem,
+    runtimeOwner,
+    egressPolicyOwnerId,
+  }: SandboxReadyConfig
 ): Promise<Result<EnsureSandboxReadyResult, Error>> {
   const startMs = performance.now();
   // cold is unknown until ensureActive returns; if it errors first (rare) we
@@ -93,7 +102,10 @@ async function ensureOwnerSandboxReady(
         // errors still taking precedence.
         const [prepResult, mountResult] = await Promise.all([
           traceSandboxStartupPhase("egress_prep", () =>
-            prepareSandboxEgressBeforeMount(auth, sandbox, { runtimeOwner })
+            prepareSandboxEgressBeforeMount(auth, sandbox, {
+              runtimeOwner,
+              egressPolicyOwnerId,
+            })
           ),
           traceSandboxStartupPhase("gcs_mount", async () => {
             const fsResult = await getFileSystem();
@@ -157,6 +169,7 @@ async function ensureOwnerSandboxReady(
         () =>
           ensureSandboxEgressOnExec(auth, sandbox, {
             runtimeOwner,
+            egressPolicyOwnerId,
             wokeFromSleep,
           })
       );
@@ -184,6 +197,10 @@ export async function ensureConversationSandboxReady(
       kind: "conversation",
       conversationId: conversation.sId,
     },
+    // Pod network settings apply to everything running in the Pod: a
+    // conversation inside a Pod uses the Pod's shared policy file, not a
+    // per-conversation one.
+    egressPolicyOwnerId: conversation.spaceId ?? conversation.sId,
   });
 }
 
@@ -201,5 +218,6 @@ export async function ensurePodSandboxReady(
       kind: "pod",
       spaceId: pod.sId,
     },
+    egressPolicyOwnerId: pod.sId,
   });
 }

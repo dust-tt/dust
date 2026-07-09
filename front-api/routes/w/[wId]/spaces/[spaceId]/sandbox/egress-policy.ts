@@ -56,6 +56,7 @@ app.get(
   }
 );
 
+/** @ignoreswagger */
 app.put(
   "/",
   withSpace({ requireCanReadOrAdministrate: true }),

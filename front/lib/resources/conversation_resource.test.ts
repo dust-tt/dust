@@ -665,6 +665,45 @@ describe("destroyConversation", () => {
     );
   });
 
+  it("does not scrub the Pod's egress policy file when destroying a pod conversation", async () => {
+    mockDeleteOwnerPolicy.mockResolvedValue(new Ok(undefined));
+    const workspace = auth.getNonNullableWorkspace();
+    const user = auth.getNonNullableUser();
+    // Pod membership plumbing: admin role to manage members, explicit pod
+    // membership for canRead, refreshed auth to pick the new groups up.
+    await MembershipFactory.associate(workspace, user, { role: "admin" });
+    const adminAuth = await Authenticator.fromUserIdAndWorkspaceId(
+      user.sId,
+      workspace.sId
+    );
+    const pod = await SpaceFactory.project(workspace);
+    const addMember = await pod.addMembers(adminAuth, {
+      userIds: [user.sId],
+    });
+    assert(addMember.isOk(), "Should add the test user to the pod");
+    const podAuth = await Authenticator.fromUserIdAndWorkspaceId(
+      user.sId,
+      workspace.sId
+    );
+
+    const conversationType = await ConversationFactory.create(podAuth, {
+      agentConfigurationId,
+      messagesCreatedAt: [new Date()],
+      spaceId: pod.id,
+    });
+    const conversation = await ConversationResource.fetchById(
+      podAuth,
+      conversationType.sId
+    );
+    assert(conversation, "Conversation should exist");
+
+    await destroyConversation(podAuth, { conversation });
+
+    // Pod conversations never own a policy file — the Pod's file is scrubbed
+    // by hardDeleteSpace, not conversation destruction.
+    expect(mockDeleteOwnerPolicy).not.toHaveBeenCalled();
+  });
+
   it("should delete batched message resources chunk by chunk", async () => {
     const conversationType = await ConversationFactory.create(auth, {
       agentConfigurationId,

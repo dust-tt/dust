@@ -101,8 +101,10 @@ export const SANDBOX_TOOLS_METADATA = createToolsRecord({
       "directly. Outbound HTTPS connections that fall outside the " +
       "allowlist surface as denied entries in `<network_proxy_logs>` in " +
       "the bash tool output. Allowlist entries added through this tool " +
-      "live for the lifetime of the current sandbox and are discarded " +
-      "when the sandbox is reaped.",
+      "persist for the lifetime of the conversation (across sandbox " +
+      "restarts). In a Pod, approvals are Pod-wide: the domain is allowed " +
+      "for every conversation in the Pod and the Pod's shared sandbox, so " +
+      "make that scope clear when asking the user.",
     schema: {
       domain: z
         .string()

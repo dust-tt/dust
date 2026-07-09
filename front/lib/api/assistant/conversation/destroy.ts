@@ -188,17 +188,24 @@ export async function destroyConversation(
   const owner = auth.getNonNullableWorkspace();
 
   // Best-effort scrub of the conversation's sandbox egress allowlist file
-  // (owner-keyed, so it is not deleted with individual sandboxes). A failure
-  // logs but does not block the destroy.
-  const deleteOwnerPolicyRes = await deleteOwnerPolicy(auth, conversation.sId);
-  if (deleteOwnerPolicyRes.isErr()) {
-    logger.warn(
-      {
-        err: deleteOwnerPolicyRes.error,
-        conversationId: conversation.sId,
-      },
-      "Failed to delete conversation egress policy file on destroy."
+  // (owner-keyed, so it is not deleted with individual sandboxes). Pod
+  // conversations never own a file — they share the Pod's policy file, which
+  // is scrubbed by hardDeleteSpace — so skip them. A failure logs but does
+  // not block the destroy.
+  if (conversation.spaceId === null) {
+    const deleteOwnerPolicyRes = await deleteOwnerPolicy(
+      auth,
+      conversation.sId
     );
+    if (deleteOwnerPolicyRes.isErr()) {
+      logger.warn(
+        {
+          err: deleteOwnerPolicyRes.error,
+          conversationId: conversation.sId,
+        },
+        "Failed to delete conversation egress policy file on destroy."
+      );
+    }
   }
 
   await ConversationForkResource.deleteForConversationModelId(auth, {

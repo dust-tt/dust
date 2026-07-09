@@ -772,8 +772,10 @@ describe("addEgressDomainTool", () => {
 
   function makeExtra({
     allowAgentEgressRequests = true,
+    conversationSpaceId = null,
   }: {
     allowAgentEgressRequests?: boolean;
+    conversationSpaceId?: string | null;
   } = {}) {
     return {
       auth: {
@@ -787,7 +789,10 @@ describe("addEgressDomainTool", () => {
       },
       runContext: {
         contextType: "agent_loop",
-        conversation: { sId: "conversation-id" },
+        conversation: {
+          sId: "conversation-id",
+          spaceId: conversationSpaceId,
+        },
       },
       signal: new AbortController().signal,
     } as never;
@@ -859,6 +864,36 @@ describe("addEgressDomainTool", () => {
     });
     if (result.isOk()) {
       expect(result.value[0].text).toContain("Allowed: example.org");
+    }
+  });
+
+  it("writes Pod-scoped approvals to the Pod's policy file for pod conversations", async () => {
+    const sandbox = {
+      providerId: "provider-id",
+      sId: "sandbox-id",
+    };
+    mockEnsureSandboxReady.mockResolvedValue(
+      new Ok({ sandbox, freshlyCreated: false })
+    );
+
+    const result = await addEgressDomainTool(
+      {
+        domain: "example.org",
+        reason: "Install package dependencies.",
+      },
+      makeExtra({ conversationSpaceId: "space-id" })
+    );
+
+    expect(result.isOk()).toBe(true);
+    // The approval lands in the POD's owner policy file — the same ownerId
+    // every sandbox in the Pod (conversations and the shared sandbox) carries
+    // in its egress JWT, so the domain is allowed Pod-wide.
+    expect(mockAddOwnerPolicyDomain).toHaveBeenCalledWith(expect.anything(), {
+      domain: "example.org",
+      ownerId: "space-id",
+    });
+    if (result.isOk()) {
+      expect(result.value[0].text).toContain("applies to this whole Pod");
     }
   });
 
