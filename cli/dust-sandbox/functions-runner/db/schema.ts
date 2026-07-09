@@ -15,9 +15,9 @@
 // Column modes (timestamp/json/boolean/...) are a drizzle-level concept that SQLite does not
 // store — they are NOT regenerated here; they only exist in the authored schema files.
 
-import type { DbCommandError, LiveColumn, LiveTable } from "./db_common.ts";
-import { introspectLiveTables, openReadonly } from "./db_common.ts";
-import { Ok, type Result } from "./result.ts";
+import { Ok, type Result } from "../result.ts";
+import type { DbCommandError, LiveColumn, LiveTable } from "./common.ts";
+import { introspectLiveTables, openReadonly } from "./common.ts";
 
 const GENERATED_HEADER = `// Generated from the live database by \`dsbx db schema\`.
 // Column modes (e.g. { mode: "timestamp" | "json" | "boolean" }) are not stored in SQLite,

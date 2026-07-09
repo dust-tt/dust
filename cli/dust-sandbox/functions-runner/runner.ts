@@ -9,10 +9,10 @@
 //                                                large results spill to a file the envelope names)
 
 import { build } from "./build.ts";
-import { errorEnvelope } from "./db_common.ts";
-import { queryReadonly } from "./db_query.ts";
-import { reconcile } from "./db_reconcile.ts";
-import { generateSchemaFileText } from "./db_schema.ts";
+import { errorEnvelope } from "./db/common.ts";
+import { queryReadonly } from "./db/query.ts";
+import { reconcile } from "./db/reconcile.ts";
+import { generateSchemaFileText } from "./db/schema.ts";
 import { invoke } from "./invoke.ts";
 import { BadInputError, parseInput, type RequestInput } from "./protocol.ts";
 import { getFunctionSchema } from "./schema.ts";

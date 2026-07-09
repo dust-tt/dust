@@ -12,8 +12,8 @@ import type { Statement } from "bun:sqlite";
 import { closeSync, openSync, writeSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { DbCommandError, openReadonly } from "./db_common.ts";
-import { Err, Ok, type Result } from "./result.ts";
+import { Err, Ok, type Result } from "../result.ts";
+import { DbCommandError, openReadonly } from "./common.ts";
 
 // Inline envelope bounds: a result within both stays entirely on stdout; beyond either, it
 // spills to a file. Bounds exist for stdout (which lands in the caller's context), not for

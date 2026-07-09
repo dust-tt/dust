@@ -4,18 +4,19 @@ import { existsSync, readFileSync, statSync } from "node:fs";
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { DbCommandError } from "./db_common.ts";
+import type { Result } from "../result.ts";
+import type { DbErrorKind } from "../types/db.ts";
+import { DbCommandError } from "./common.ts";
 import {
   QUERY_INLINE_PAYLOAD_CAP_BYTES,
   QUERY_INLINE_ROW_CAP,
   queryReadonly,
-} from "./db_query.ts";
-import { reconcile } from "./db_reconcile.ts";
-import { generateSchemaFileText } from "./db_schema.ts";
-import type { Result } from "./result.ts";
-import type { DbErrorKind } from "./types/db.ts";
+} from "./query.ts";
+import { reconcile } from "./reconcile.ts";
+import { generateSchemaFileText } from "./schema.ts";
 
-const fx = (n: string) => join(import.meta.dir, "fixtures", "databases", n);
+const fx = (n: string) =>
+  join(import.meta.dir, "..", "fixtures", "databases", n);
 
 async function withDir<T>(fn: (dir: string) => Promise<T>): Promise<T> {
   const dir = await mkdtemp(join(tmpdir(), "dsbx-db-test-"));
@@ -273,7 +274,7 @@ describe("db schema", () => {
       // Roundtrip: the regenerated file must be a no-op plan against the live database. It is
       // written inside the package tree so its `drizzle-orm` import resolves by node_modules
       // walk-up (the sandbox resolves it via NODE_PATH instead).
-      const scratch = await mkdtemp(join(import.meta.dir, ".db-test-"));
+      const scratch = await mkdtemp(join(import.meta.dir, "..", ".db-test-"));
       try {
         const regenerated = join(scratch, "chat.regenerated.db.ts");
         await writeFile(regenerated, text);
@@ -477,7 +478,7 @@ describe("db query", () => {
 });
 
 describe("runner db-* envelopes", () => {
-  const runner = join(import.meta.dir, "runner.ts");
+  const runner = join(import.meta.dir, "..", "runner.ts");
 
   async function run(args: string[], stdin?: string) {
     const proc = Bun.spawn(["bun", runner, ...args], {
