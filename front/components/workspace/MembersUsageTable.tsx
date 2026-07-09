@@ -607,6 +607,9 @@ function buildColumns({
 
 interface MembersUsageTableProps {
   members: MemberUsageType[];
+  // End of the current billing period (workspace-level, from the members-usage
+  // response) shown under the credits column header. Null hides the line.
+  creditsResetAt: string | null;
   isLoading: boolean;
   isRefreshing?: boolean;
   totalAllowedUsagePendingMemberIds: ReadonlySet<string>;
@@ -640,6 +643,7 @@ interface MembersUsageTableProps {
 
 export function MembersUsageTable({
   members,
+  creditsResetAt,
   isLoading,
   isRefreshing = false,
   totalAllowedUsagePendingMemberIds,
@@ -789,15 +793,6 @@ export function MembersUsageTable({
       onEditSpendLimit,
       onEditAdvancedModels,
     ]
-  );
-
-  // All paid seats share the workspace billing period, so the first member
-  // carrying a reset date is enough to label the column header.
-  const creditsResetAt = useMemo(
-    () =>
-      members.find((m) => m.nextCreditResetAt !== null)?.nextCreditResetAt ??
-      null,
-    [members]
   );
 
   const columns = useMemo(

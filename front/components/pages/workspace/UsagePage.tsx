@@ -451,6 +451,7 @@ export function UsagePage() {
 
   const {
     membersUsage,
+    creditsResetAt,
     isMembersUsageLoading,
     isMembersUsageRefreshing,
     totalMembersUsage,
@@ -916,6 +917,7 @@ export function UsagePage() {
   const membersTable = (
     <MembersUsageTable
       members={membersUsage}
+      creditsResetAt={creditsResetAt}
       isLoading={isMembersUsageLoading}
       isRefreshing={isMembersUsageRefreshing}
       readOnly={isReadOnly}
