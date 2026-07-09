@@ -2196,18 +2196,18 @@ export class GroupResource extends BaseResource<GroupModel> {
   // Backfill helper for the `regular` -> `regular_auto` rename.
   static async updateKindToRegularAutoByIds({
     workspaceId,
-    groupIds,
+    groupModelIds,
   }: {
     workspaceId: ModelId;
-    groupIds: ModelId[];
+    groupModelIds: ModelId[];
   }): Promise<number> {
-    if (groupIds.length === 0) {
+    if (groupModelIds.length === 0) {
       return 0;
     }
 
     const [affectedCount] = await GroupModel.update(
       { kind: "regular_auto" },
-      { where: { workspaceId, id: { [Op.in]: groupIds } } }
+      { where: { workspaceId, id: { [Op.in]: groupModelIds } } }
     );
 
     return affectedCount;

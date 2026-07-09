@@ -49,28 +49,28 @@ makeScript(
 
         totalWorkspacesWithLegacyGroups++;
 
-        const groupIds = legacyGroups.map((g) => g.id);
+        const groupModelIds = legacyGroups.map((g) => g.id);
 
         if (!execute) {
           logger.info(
             {
               workspaceId: workspace.sId,
               workspaceModelId: workspace.id,
-              count: groupIds.length,
+              count: groupModelIds.length,
             },
             "[DRY-RUN] Would rewrite regular groups to regular_auto"
           );
-          totalUpdated += groupIds.length;
+          totalUpdated += groupModelIds.length;
           return;
         }
 
         let updatedForWorkspace = 0;
-        const batches: ModelId[][] = chunkArray(groupIds, BATCH_SIZE);
+        const batches: ModelId[][] = chunkArray(groupModelIds, BATCH_SIZE);
         for (const batch of batches) {
           updatedForWorkspace +=
             await GroupResource.updateKindToRegularAutoByIds({
               workspaceId: workspace.id,
-              groupIds: batch,
+              groupModelIds: batch,
             });
         }
 
