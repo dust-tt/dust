@@ -141,6 +141,30 @@ describe("subscription billing cycle utilities", () => {
         expect(result.cycleEnd.toISOString()).toBe("2026-03-31T00:00:00.000Z");
       });
 
+      it("keeps the anchor time-of-day on boundaries, including clamped ones", () => {
+        // Anchor: day 31 at 14:00 UTC (hour-aligned contract start).
+        const anchor = new Date(Date.UTC(2026, 0, 31, 14, 0, 0));
+        const referenceDate = new Date(Date.UTC(2026, 2, 2, 12, 0, 0));
+        const result = getBillingCycleFromDay(31, referenceDate, true, anchor);
+
+        expect(result.cycleStart.toISOString()).toBe(
+          "2026-02-28T14:00:00.000Z"
+        );
+        expect(result.cycleEnd.toISOString()).toBe("2026-03-31T14:00:00.000Z");
+      });
+
+      it("keeps a reference before the anchor hour on the boundary day in the previous cycle", () => {
+        // Feb 4 at 09:00, boundary at 14:00: the new cycle hasn't started yet.
+        const anchor = new Date(Date.UTC(2026, 0, 4, 14, 0, 0));
+        const referenceDate = new Date(Date.UTC(2026, 1, 4, 9, 0, 0));
+        const result = getBillingCycleFromDay(4, referenceDate, true, anchor);
+
+        expect(result.cycleStart.toISOString()).toBe(
+          "2026-01-04T14:00:00.000Z"
+        );
+        expect(result.cycleEnd.toISOString()).toBe("2026-02-04T14:00:00.000Z");
+      });
+
       it("keeps day 31 boundaries in 31-day months", () => {
         // Mar 31, 2026, billing day 31: cycle runs Mar 31 → Apr 30 (clamped).
         const referenceDate = new Date(Date.UTC(2026, 2, 31, 12, 0, 0));

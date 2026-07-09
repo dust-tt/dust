@@ -110,9 +110,29 @@ export function clampToMonth(date: Date, month: number, useUTC: boolean): Date {
   if (actualMonth === expectedMonth) {
     return date;
   }
+  // Overflow only shifts days, so the date's time-of-day is the intended
+  // boundary time — keep it on the clamped result.
   return useUTC
-    ? new Date(Date.UTC(date.getUTCFullYear(), actualMonth, 0))
-    : new Date(date.getFullYear(), actualMonth, 0);
+    ? new Date(
+        Date.UTC(
+          date.getUTCFullYear(),
+          actualMonth,
+          0,
+          date.getUTCHours(),
+          date.getUTCMinutes(),
+          date.getUTCSeconds(),
+          date.getUTCMilliseconds()
+        )
+      )
+    : new Date(
+        date.getFullYear(),
+        actualMonth,
+        0,
+        date.getHours(),
+        date.getMinutes(),
+        date.getSeconds(),
+        date.getMilliseconds()
+      );
 }
 
 /**
@@ -126,16 +146,41 @@ export function clampToMonth(date: Date, month: number, useUTC: boolean): Date {
  * @param billingCycleStartDay - The day of the month when the billing cycle starts (1-31)
  * @param referenceDate - The date to calculate the cycle for (defaults to now)
  * @param useUTC - Whether to use UTC dates (for backend) or local dates (for frontend display)
+ * @param boundaryTimeOfDay - Time-of-day for cycle boundaries. Defaults to
+ * midnight; pass the billing anchor (e.g. the Metronome contract start, which
+ * is hour-aligned) to keep boundaries on its exact time.
  */
 export function getBillingCycleFromDay(
   billingCycleStartDay: number,
   referenceDate: Date = new Date(),
-  useUTC: boolean = false
+  useUTC: boolean = false,
+  boundaryTimeOfDay?: Date
 ): BillingCycle {
   const year = useUTC
     ? referenceDate.getUTCFullYear()
     : referenceDate.getFullYear();
   const month = useUTC ? referenceDate.getUTCMonth() : referenceDate.getMonth();
+
+  const hours = boundaryTimeOfDay
+    ? useUTC
+      ? boundaryTimeOfDay.getUTCHours()
+      : boundaryTimeOfDay.getHours()
+    : 0;
+  const minutes = boundaryTimeOfDay
+    ? useUTC
+      ? boundaryTimeOfDay.getUTCMinutes()
+      : boundaryTimeOfDay.getMinutes()
+    : 0;
+  const seconds = boundaryTimeOfDay
+    ? useUTC
+      ? boundaryTimeOfDay.getUTCSeconds()
+      : boundaryTimeOfDay.getSeconds()
+    : 0;
+  const milliseconds = boundaryTimeOfDay
+    ? useUTC
+      ? boundaryTimeOfDay.getUTCMilliseconds()
+      : boundaryTimeOfDay.getMilliseconds()
+    : 0;
 
   // The anchor-day boundary in the month `monthOffset` months from the
   // reference month, clamped to that month's last day when the month is
@@ -143,9 +188,25 @@ export function getBillingCycleFromDay(
   const boundary = (monthOffset: number): Date => {
     const candidate = useUTC
       ? new Date(
-          Date.UTC(year, month + monthOffset, billingCycleStartDay, 0, 0, 0, 0)
+          Date.UTC(
+            year,
+            month + monthOffset,
+            billingCycleStartDay,
+            hours,
+            minutes,
+            seconds,
+            milliseconds
+          )
         )
-      : new Date(year, month + monthOffset, billingCycleStartDay);
+      : new Date(
+          year,
+          month + monthOffset,
+          billingCycleStartDay,
+          hours,
+          minutes,
+          seconds,
+          milliseconds
+        );
     return clampToMonth(candidate, month + monthOffset, useUTC);
   };
 

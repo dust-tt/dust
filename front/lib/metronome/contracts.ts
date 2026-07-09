@@ -470,8 +470,8 @@ function billingPeriodFromContract(
   // `getNextSeatCreditRenewalDate`), on the grid anchored at the contract
   // start — so the credit cycle is the current month of the contract
   // anniversary day, regardless of any subscription's billing frequency.
-  // Boundaries are midnight-UTC; Metronome's actual boundaries sit on the
-  // contract's start hour, a divergence we accept for simplicity.
+  // Boundaries keep the contract start's (hour-aligned) time-of-day, matching
+  // Metronome's period boundaries.
   const hasCurrentPeriod = (contract.subscriptions ?? []).some(
     (s) => s.billing_periods?.current !== undefined
   );
@@ -480,11 +480,13 @@ function billingPeriodFromContract(
       new Error("No current billing period found on Metronome contract")
     );
   }
+  const contractStart = new Date(contract.starting_at);
   return new Ok(
     getBillingCycleFromDay(
-      new Date(contract.starting_at).getUTCDate(),
+      contractStart.getUTCDate(),
       new Date(),
-      true
+      true,
+      contractStart
     )
   );
 }
