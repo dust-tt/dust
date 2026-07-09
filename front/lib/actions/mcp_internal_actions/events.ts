@@ -5,6 +5,19 @@ import type {
 import type { UserQuestion } from "@app/lib/actions/types";
 import type { OAuthProvider } from "@app/types/oauth/lib";
 
+// Identifiers scoping an event to the run context it was emitted from, mirroring the contextType
+// split of AgentLoopRunContextType / SandboxFunctionRunContextType.
+export type AgentLoopEventScope = {
+  configurationId: string;
+  messageId: string;
+  conversationId: string;
+};
+
+export type SandboxFunctionEventScope = {
+  sandboxFunctionId: string;
+  invocationId: string;
+};
+
 interface ToolExecutionBase<
   T extends MCPValidationMetadataType = MCPValidationMetadataType,
 > {
@@ -29,19 +42,14 @@ interface ToolExecutionBase<
 // the conversation message channel.
 export interface AgentLoopToolExecution<
   T extends MCPValidationMetadataType = MCPValidationMetadataType,
-> extends ToolExecutionBase<T> {
-  conversationId: string;
-  messageId: string;
-  configurationId: string;
-}
+> extends ToolExecutionBase<T>,
+    AgentLoopEventScope {}
 
 // Tool execution scoped to a sandbox function invocation.
 export interface SandboxFunctionToolExecution<
   T extends MCPValidationMetadataType = MCPValidationMetadataType,
-> extends ToolExecutionBase<T> {
-  sandboxFunctionId: string;
-  invocationId: string;
-}
+> extends ToolExecutionBase<T>,
+    SandboxFunctionEventScope {}
 
 type ToolPersonalAuthError = {
   mcpServerId: string;
@@ -129,16 +137,11 @@ type ToolEarlyExitEventBase = {
   reason?: "deploy_interruption" | "user_cancellation" | "none";
 };
 
-export type AgentLoopToolEarlyExitEvent = ToolEarlyExitEventBase & {
-  configurationId: string;
-  messageId: string;
-  conversationId: string;
-};
+export type AgentLoopToolEarlyExitEvent = ToolEarlyExitEventBase &
+  AgentLoopEventScope;
 
-export type SandboxFunctionToolEarlyExitEvent = ToolEarlyExitEventBase & {
-  sandboxFunctionId: string;
-  invocationId: string;
-};
+export type SandboxFunctionToolEarlyExitEvent = ToolEarlyExitEventBase &
+  SandboxFunctionEventScope;
 
 export type ToolEarlyExitEvent =
   | AgentLoopToolEarlyExitEvent
@@ -164,16 +167,11 @@ type ToolPausedEventBase = {
   actionId: string;
 };
 
-export type AgentLoopToolPausedEvent = ToolPausedEventBase & {
-  configurationId: string;
-  messageId: string;
-  conversationId: string;
-};
+export type AgentLoopToolPausedEvent = ToolPausedEventBase &
+  AgentLoopEventScope;
 
-export type SandboxFunctionToolPausedEvent = ToolPausedEventBase & {
-  sandboxFunctionId: string;
-  invocationId: string;
-};
+export type SandboxFunctionToolPausedEvent = ToolPausedEventBase &
+  SandboxFunctionEventScope;
 
 export type ToolPausedEvent =
   | AgentLoopToolPausedEvent
