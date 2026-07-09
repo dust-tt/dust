@@ -247,16 +247,25 @@ export function AgentBuilderInstructionsEditor({
     return extensions;
   }, [owner.sId, suggestionHandler]);
 
-  // Debounce serialization to prevent performance issues
+  // Debounce serialization to prevent performance issues. Fire on the leading
+  // edge as well so the form dirty state (and the save bar / close button it
+  // drives) flips immediately on the first edit; rapid typing still coalesces
+  // to the trailing edge.
   const debouncedUpdate = useMemo(
     () =>
-      debounce((editor: CoreEditor | ReactEditor) => {
-        if (!isInstructionDiffMode && !editor.isDestroyed) {
-          field.onChange(editor.getMarkdown());
-          // Strip style/class/id attributes to store clean HTML structure.
-          instructionsHtmlField.onChange(stripHtmlAttributes(editor.getHTML()));
-        }
-      }, INSTRUCTIONS_DEBOUNCE_MS),
+      debounce(
+        (editor: CoreEditor | ReactEditor) => {
+          if (!isInstructionDiffMode && !editor.isDestroyed) {
+            field.onChange(editor.getMarkdown());
+            // Strip style/class/id attributes to store clean HTML structure.
+            instructionsHtmlField.onChange(
+              stripHtmlAttributes(editor.getHTML())
+            );
+          }
+        },
+        INSTRUCTIONS_DEBOUNCE_MS,
+        { leading: true, trailing: true }
+      ),
     [field, instructionsHtmlField, isInstructionDiffMode]
   );
 
