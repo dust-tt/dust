@@ -7,17 +7,16 @@ import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { WorkspaceType } from "@app/types/user";
 import {
-  ActionExternalLinkIcon,
+  ActionMapIcon,
   ActionSquare3Stack3DIcon,
   Avatar,
   Card,
   CardGrid,
   Chip,
   Icon,
-  SliderToggle,
   Spinner,
 } from "@dust-tt/sparkle";
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import {
   CartesianGrid,
   ResponsiveContainer,
@@ -156,11 +155,6 @@ function DuplicatePairCard({ pair, onAgentClick }: DuplicatePairCardProps) {
       </div>
       <div className="flex items-center gap-1">
         <DuplicateAgentButton agent={pair.first} onAgentClick={onAgentClick} />
-        <Icon
-          visual={ActionExternalLinkIcon}
-          size="sm"
-          className="shrink-0 text-muted-foreground dark:text-muted-foreground-night"
-        />
         <DuplicateAgentButton agent={pair.second} onAgentClick={onAgentClick} />
       </div>
     </Card>
@@ -207,12 +201,10 @@ export function Cartography({
   isLoading,
   onAgentClick,
 }: CartographyProps) {
-  const [includeBuiltin, setIncludeBuiltin] = useState(false);
-
   const { coordinates, duplicates, isAgentCartographyLoading } =
     useAgentCartography({
       workspaceId: owner.sId,
-      includeBuiltin,
+      includeBuiltin: false,
     });
 
   const points = useMemo<CartographyPoint[]>(
@@ -258,20 +250,18 @@ export function Cartography({
 
   return (
     <div className="mt-6 w-full">
-      <div className="flex items-center justify-between mb-6">
-        <span className="heading-base">Cartography</span>
-        <label className="flex items-center gap-2 text-sm text-muted-foreground dark:text-muted-foreground-night">
-          Show builtin agents
-          <SliderToggle
-            size="xs"
-            selected={includeBuiltin}
-            onClick={() => setIncludeBuiltin((prev) => !prev)}
-          />
-        </label>
-      </div>
       {!loading && duplicatePairs.length > 0 && (
         <DuplicatesSection pairs={duplicatePairs} onAgentClick={onAgentClick} />
       )}
+      <div className="mb-3 mt-12 flex flex-col gap-1">
+        <div className="flex items-center gap-2">
+          <Icon visual={ActionMapIcon} size="md" className="text-foreground" />
+          <span className="heading-base">Agent map</span>
+        </div>
+        <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+          Similar agents are grouped together.
+        </p>
+      </div>
       {loading || points.length === 0 ? (
         <div
           className="flex w-full items-center justify-center"
