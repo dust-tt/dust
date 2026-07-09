@@ -9,6 +9,11 @@ export type SandboxFunctionInvocationStatus =
 // Lowercase alphanumeric with single hyphen separators (e.g. `greet`, `send-slack-message`).
 export const SANDBOX_FUNCTION_SLUG_REGEX = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 
+// Mirrors DB_NAME_REGEX in cli/dust-sandbox/functions-runner/types/db.ts. Regex values cannot
+// be type-checked and front cannot runtime-import cli code; equality is asserted in
+// build_on_sandbox.test.ts.
+export const POD_DATABASE_NAME_REGEX = /^[a-z][a-z0-9_]{0,63}$/;
+
 export function isValidSandboxFunctionSlug(value: unknown): value is string {
   return typeof value === "string" && SANDBOX_FUNCTION_SLUG_REGEX.test(value);
 }

@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import path from "node:path";
 import { ensurePodSandboxReady } from "@app/lib/api/sandbox/lifecycle";
 import { shellEscape } from "@app/lib/api/sandbox/shell";
+import { parseDbEnvelope } from "@app/lib/api/sandbox_functions/dsbx_db";
 import type { SandboxFunctionErrorCode } from "@app/lib/api/sandbox_functions/errors";
 import { SandboxFunctionError } from "@app/lib/api/sandbox_functions/errors";
 import type { Authenticator } from "@app/lib/auth";
@@ -141,42 +142,7 @@ export async function buildSandboxFunctionOnSandbox(
 function parseBuildEnvelope(
   stdout: string
 ): Result<z.infer<typeof buildEnvelopeSchema>, SandboxFunctionError> {
-  // dsbx prints one JSON envelope. Take the last non-empty line to ignore any shell noise.
-  const lastLine =
-    stdout
-      .split("\n")
-      .map((line) => line.trim())
-      .filter((line) => line.length > 0)
-      .at(-1) ?? "";
-  if (lastLine.length === 0) {
-    return new Err(
-      new SandboxFunctionError(
-        "internal",
-        "dsbx function build produced no output."
-      )
-    );
-  }
-
-  let json: unknown;
-  try {
-    json = JSON.parse(lastLine);
-  } catch (err) {
-    return new Err(
-      new SandboxFunctionError(
-        "internal",
-        `Unparseable dsbx output: ${normalizeError(err).message}`
-      )
-    );
-  }
-
-  const parsed = buildEnvelopeSchema.safeParse(json);
-  if (!parsed.success) {
-    return new Err(
-      new SandboxFunctionError("internal", "Unexpected dsbx output shape.")
-    );
-  }
-
-  return new Ok(parsed.data);
+  return parseDbEnvelope(stdout, buildEnvelopeSchema, "dsbx function build");
 }
 
 function parseSchemaFile(
@@ -216,5 +182,9 @@ function parseSchemaFile(
     );
   }
 
-  return new Ok({ bundleCode, inputSchema, outputSchema });
+  return new Ok({
+    bundleCode,
+    inputSchema,
+    outputSchema,
+  });
 }

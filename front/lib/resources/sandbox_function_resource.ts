@@ -165,10 +165,13 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
   }
 
   /**
-   * Re-publish: overwrite this function's bundle in place and refresh its contract. uploadContent
-   * rewrites the same file (canonical original plus its mount path <prefix>/<slug>.ts) and bumps the
-   * version, so the function's storage path stays stable across re-publishes rather than drifting to
-   * a disambiguated name. The caller checks write permission.
+   * Re-publish: overwrite this function's bundle in place and refresh its contract. The row is
+   * claimed FIRST with a conditional update against `expectedUpdatedAt` — a concurrent publish
+   * that stored since that read resolves to "conflict" before the live bundle is touched. Then
+   * uploadContent rewrites the same file (canonical original plus its mount path
+   * <prefix>/<slug>.ts) and bumps the version, so the function's storage path stays stable
+   * across re-publishes rather than drifting to a disambiguated name. The caller checks write
+   * permission.
    */
   async updateContent(
     auth: Authenticator,
@@ -177,21 +180,38 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
       description,
       inputSchema,
       outputSchema,
+      expectedUpdatedAt,
     }: {
       bundleCode: string;
       description: string;
       inputSchema: JSONSchema;
       outputSchema: JSONSchema;
+      expectedUpdatedAt: Date;
     }
-  ): Promise<Result<undefined, Error>> {
+  ): Promise<Result<"updated" | "conflict", Error>> {
     try {
+      const [affectedCount] = await SandboxFunctionModel.update(
+        { description, inputSchema, outputSchema },
+        {
+          where: {
+            id: this.id,
+            workspaceId: this.workspaceId,
+            updatedAt: expectedUpdatedAt,
+          },
+        }
+      );
+      if (affectedCount === 0) {
+        return new Ok("conflict");
+      }
+      // Keep the in-memory attributes in line with the row (the conditional update bypasses
+      // BaseResource.update).
+      Object.assign(this, { description, inputSchema, outputSchema });
       await this.file.uploadContent(auth, bundleCode);
-      await this.update({ description, inputSchema, outputSchema });
     } catch (error) {
       return new Err(normalizeError(error));
     }
 
-    return new Ok(undefined);
+    return new Ok("updated");
   }
 
   private static async baseFetch(

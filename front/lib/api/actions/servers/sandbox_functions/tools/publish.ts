@@ -52,9 +52,15 @@ function toMCPError(error: SandboxFunctionError): MCPError {
     case "build_failed":
     case "schema_extraction_failed":
     case "invalid_contract":
+    // Reconcile refusals are model-correctable: the message carries what was refused and the
+    // additive migrate path.
+    case "reconcile_blocked":
+    // Another publish holds the pod's lock; the model can simply retry.
+    case "publish_conflict":
       // The model controls the path and the function source, so surface the detail to let it fix.
       return new MCPError(error.message, { tracked: false });
     case "sandbox_unavailable":
+    case "reconcile_failed":
     case "internal":
       return new MCPError(error.message);
     default:

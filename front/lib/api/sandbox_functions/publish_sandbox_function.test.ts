@@ -5,6 +5,7 @@ import { Authenticator } from "@app/lib/auth";
 import { SandboxFunctionResource } from "@app/lib/resources/sandbox_function_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { FileModel } from "@app/lib/resources/storage/models/files";
+import { FileFactory } from "@app/tests/utils/FileFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { fileStorageMock } from "@app/tests/utils/mocks/file_storage";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
@@ -66,7 +67,11 @@ describe("publishSandboxFunction", () => {
   it("publishes a new function with one bundle file under the dedicated prefix", async () => {
     const { workspace, space, auth } = await setupPod();
     vi.mocked(buildSandboxFunctionOnSandbox).mockResolvedValue(
-      new Ok({ bundleCode: "export default {};", inputSchema, outputSchema })
+      new Ok({
+        bundleCode: "export default {};",
+        inputSchema,
+        outputSchema,
+      })
     );
 
     const result = await publishSandboxFunction(auth, {
@@ -90,7 +95,6 @@ describe("publishSandboxFunction", () => {
       space,
       srcSandboxPath: `/files/pod-${space.sId}/greet.ts`,
     });
-
     // The source stays on the mount, so the bundle is the only FileResource.
     const files = await FileModel.findAll({
       where: { workspaceId: workspace.id },
@@ -138,7 +142,11 @@ describe("publishSandboxFunction", () => {
       required: ["text"],
     };
     vi.mocked(buildSandboxFunctionOnSandbox).mockResolvedValue(
-      new Ok({ bundleCode: "v2", inputSchema, outputSchema: newOutputSchema })
+      new Ok({
+        bundleCode: "v2",
+        inputSchema,
+        outputSchema: newOutputSchema,
+      })
     );
     const second = await publishSandboxFunction(auth, {
       space,
@@ -239,5 +247,50 @@ describe("publishSandboxFunction", () => {
     expect(files).toHaveLength(0);
     const listed = await SandboxFunctionResource.listBySpace(auth, space);
     expect(listed).toHaveLength(0);
+  });
+
+  it("a first publish that loses a build race updates the winner's row in place", async () => {
+    const { workspace, space, auth } = await setupPod();
+    // Simulate a concurrent publish landing while this one builds: the winner's row appears
+    // before the loser reaches the store.
+    vi.mocked(buildSandboxFunctionOnSandbox).mockImplementationOnce(
+      async () => {
+        const file = await FileFactory.create(auth, null, {
+          contentType: sandboxFunctionContentType,
+          fileName: "post-message.ts",
+          fileSize: 100,
+          status: "created",
+          useCase: "project_context",
+          useCaseMetadata: { spaceId: space.sId },
+        });
+        await SandboxFunctionResource.makeNew(auth, {
+          space,
+          file,
+          slug: "post-message",
+          description: "Concurrent winner.",
+          inputSchema,
+          outputSchema,
+        });
+        return new Ok({ bundleCode: "b", inputSchema, outputSchema });
+      }
+    );
+
+    const result = await publishSandboxFunction(auth, {
+      space,
+      slug: "post-message",
+      description: "Post a message.",
+      path: `pod-${space.sId}/post-message.ts`,
+    });
+
+    // The existing-row read happens after the build, so the loser sees the winner and takes
+    // the guarded update path: one row, one bundle file, last writer wins.
+    expect(result.isOk()).toBe(true);
+
+    const listed = await SandboxFunctionResource.listBySpace(auth, space);
+    expect(listed.map((fn) => fn.description)).toEqual(["Post a message."]);
+    const files = await FileModel.findAll({
+      where: { workspaceId: workspace.id },
+    });
+    expect(files).toHaveLength(1);
   });
 });

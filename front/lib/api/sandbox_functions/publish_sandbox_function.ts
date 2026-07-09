@@ -11,13 +11,18 @@ import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 
 /**
- * Publish a sandbox function: build the source the model wrote to the pod mount, then store the
- * bundle and its extracted contract.
+ * Publish a sandbox function: build the source the model wrote to the pod mount, then store
+ * the bundle and its contract. Publish neither validates nor touches pod databases — the
+ * schema rules and the live files belong to `dsbx db reconcile`.
  *
- * The bundle is stored as a single `project_context` FileResource with the sandbox-function content
- * type, which FileResource routes into the dedicated, front-only sandbox-functions prefix. The
- * SandboxFunctionResource is upserted on (space, slug): re-publish swaps the bundle, otherwise a new
- * row is created. Returns a domain Result, no HTTP shapes (BACK18).
+ * Concurrency: no lock. A re-publish claims the row with a conditional update against the
+ * updatedAt it read (updateContent), and a first publish re-checks right before creating the
+ * bundle file, with the unique (workspaceId, spaceId, slug) index as the ultimate guard.
+ *
+ * The bundle is stored as a single `project_context` FileResource with the sandbox-function
+ * content type, which FileResource routes into the dedicated, front-only sandbox-functions
+ * prefix. The SandboxFunctionResource is upserted on (space, slug): re-publish swaps the bundle,
+ * otherwise a new row is created. Returns a domain Result, no HTTP shapes (BACK18).
  */
 export async function publishSandboxFunction(
   auth: Authenticator,
@@ -57,8 +62,8 @@ export async function publishSandboxFunction(
   }
   const { bundleCode, inputSchema, outputSchema } = buildResult.value;
 
-  // Re-publish overwrites the existing bundle in place so its mount path (<prefix>/<slug>.ts) stays
-  // stable; only a first publish creates the backing file.
+  // Re-publish overwrites the existing bundle in place so its mount path (<prefix>/<slug>.ts)
+  // stays stable; only a first publish creates the backing file.
   const existing = await SandboxFunctionResource.fetchBySpaceAndSlug(
     auth,
     space,
@@ -70,14 +75,41 @@ export async function publishSandboxFunction(
       description,
       inputSchema,
       outputSchema,
+      expectedUpdatedAt: existing.updatedAt,
     });
     if (updateResult.isErr()) {
       return new Err(
         new SandboxFunctionError("internal", updateResult.error.message)
       );
     }
+    if (updateResult.value === "conflict") {
+      return new Err(
+        new SandboxFunctionError(
+          "publish_conflict",
+          "A concurrent publish updated this function while this one was being checked; retry."
+        )
+      );
+    }
 
     return new Ok(existing);
+  }
+
+  // A concurrent first publish may have stored while this one built: re-check right before
+  // creating so the race resolves to a typed conflict instead of a unique-index throw, and
+  // before the bundle file exists so nothing is orphaned. The unique (workspaceId, spaceId,
+  // slug) index stays the ultimate guard for the residual window.
+  const concurrent = await SandboxFunctionResource.fetchBySpaceAndSlug(
+    auth,
+    space,
+    slug
+  );
+  if (concurrent !== null) {
+    return new Err(
+      new SandboxFunctionError(
+        "publish_conflict",
+        "A concurrent publish created this function while this one was being checked; retry."
+      )
+    );
   }
 
   const fileResult = await createBundleFile(auth, { space, slug, bundleCode });

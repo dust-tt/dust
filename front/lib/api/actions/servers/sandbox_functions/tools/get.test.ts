@@ -24,7 +24,13 @@ const outputSchema: JSONSchema = {
 async function makeFunction(
   auth: Authenticator,
   space: SpaceResource,
-  { slug, description }: { slug: string; description: string }
+  {
+    slug,
+    description,
+  }: {
+    slug: string;
+    description: string;
+  }
 ): Promise<SandboxFunctionResource> {
   const file = await FileFactory.create(auth, null, {
     contentType: sandboxFunctionContentType,
