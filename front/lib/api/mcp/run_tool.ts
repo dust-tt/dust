@@ -18,10 +18,7 @@ import type {
 } from "@app/lib/actions/mcp_internal_actions/events";
 import { getExitOrPauseEvents } from "@app/lib/actions/mcp_internal_actions/exit_events";
 import { hideFileFromActionOutput } from "@app/lib/actions/mcp_utils";
-import type {
-  ToolContext,
-  ToolOutputItemType,
-} from "@app/lib/actions/types";
+import type { ToolContext, ToolOutputItemType } from "@app/lib/actions/types";
 import { isAgentLoopRunContext } from "@app/lib/actions/types";
 import { handleMCPActionError } from "@app/lib/api/mcp/error";
 import type { Authenticator } from "@app/lib/auth";

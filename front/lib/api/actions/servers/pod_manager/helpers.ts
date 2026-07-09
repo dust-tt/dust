@@ -104,9 +104,7 @@ export async function buildProjectRetrieveDataSources(
  */
 export async function getPod(
   auth: Authenticator,
-  from:
-    | { toolContext?: ToolContext }
-    | { dustPod?: DustPodConfigurationType }
+  from: { toolContext?: ToolContext } | { dustPod?: DustPodConfigurationType }
 ): Promise<Result<PodContext, MCPError>> {
   if ("dustPod" in from && from.dustPod) {
     const { dustPod } = from;
@@ -228,9 +226,7 @@ export function checkWritePermission(
  */
 export async function getWritablePodContext(
   auth: Authenticator,
-  from:
-    | { toolContext?: ToolContext }
-    | { dustPod?: DustPodConfigurationType }
+  from: { toolContext?: ToolContext } | { dustPod?: DustPodConfigurationType }
 ): Promise<Result<PodContext, MCPError>> {
   const contextRes = await getPod(auth, from);
   if (contextRes.isErr()) {

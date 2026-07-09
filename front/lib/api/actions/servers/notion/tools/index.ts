@@ -69,9 +69,7 @@ async function withNotionClient<T>(
   }
 }
 
-export function createNotionTools(
-  toolContext?: ToolContext
-): ToolDefinition[] {
+export function createNotionTools(toolContext?: ToolContext): ToolDefinition[] {
   const handlers: ToolHandlers<typeof NOTION_TOOLS_METADATA> = {
     search: async (
       { query, type, relativeTimeFrame },

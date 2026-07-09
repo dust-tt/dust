@@ -193,9 +193,7 @@ export type AgentLoopListToolsContext = {
 
 // Context available to tool handlers at execution time: tools only ever run on a connection
 // established with a run context, never on a listing-phase connection.
-export type ToolRunContext =
-  | AgentLoopRunContext
-  | SandboxFunctionRunContext;
+export type ToolRunContext = AgentLoopRunContext | SandboxFunctionRunContext;
 
 export function isSandboxFunctionRunContext(
   value: ToolRunContext | undefined
