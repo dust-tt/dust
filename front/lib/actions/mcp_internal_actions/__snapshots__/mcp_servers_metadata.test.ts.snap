@@ -2080,6 +2080,10 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool billing info ac
     },
   },
   "slack": {
+    "add_reaction": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
     "archive_channel": {
       "freeUsage": false,
       "toolCostCategory": "advanced",
@@ -2089,6 +2093,10 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool billing info ac
       "toolCostCategory": "advanced",
     },
     "get_channel_canvases": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "get_reactions": {
       "freeUsage": false,
       "toolCostCategory": "advanced",
     },
@@ -2113,6 +2121,10 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool billing info ac
       "toolCostCategory": "advanced",
     },
     "read_thread_messages": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "remove_reaction": {
       "freeUsage": false,
       "toolCostCategory": "advanced",
     },
