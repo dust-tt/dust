@@ -128,29 +128,28 @@ describe("prunePreviousInteractions", () => {
 
   it("renders an already-settled old interaction identically across turns when using the same fixed budget, instead of flipping every time a new turn is appended", () => {
     // Same scale as the batching test below: budget = PRUNING_CHECKPOINT_TOKENS, 60-token
-    // interactions. n=90 and n=91 both sit inside the same stable stretch (redaction only needed
-    // past interaction ~84, frontier doesn't move again until well past n=105), so an interaction
-    // deep in the already-redacted region (well before the frontier) must render identically
-    // whether or not the newest turn has arrived yet.
+    // interactions. n is derived from the budget (comfortably past the point where redaction
+    // becomes necessary) rather than hardcoded, so this test stays valid regardless of what
+    // PRUNING_CHECKPOINT_TOKENS is currently set to. n and n+1 both sit inside the same stable
+    // stretch, so an interaction deep in the already-redacted region (well before the frontier)
+    // must render identically whether or not the newest turn has arrived yet.
     const toolTokens = 40;
+    const interactionSize = 60; // toolTokens + user/assistant overhead, per buildTurnWithSize
     const floor = 3;
     const budget = PRUNING_CHECKPOINT_TOKENS;
-    const DEEP_INDEX = 10; // well before the frontier (~84) in both cases
+    const n = Math.ceil((budget / interactionSize) * 1.2);
+    const DEEP_INDEX = 10; // well before the frontier in both cases
 
-    const buildHistory = (n: number) =>
+    const buildHistory = (count: number) =>
       groupMessagesIntoInteractions(
-        Array.from({ length: n }, (_, i) => i + 1).flatMap((i) =>
+        Array.from({ length: count }, (_, i) => i + 1).flatMap((i) =>
           buildTurnWithSize(i, toolTokens)
         )
       );
 
-    const prunedAtN = prunePreviousInteractions(
-      buildHistory(90),
-      budget,
-      floor
-    );
+    const prunedAtN = prunePreviousInteractions(buildHistory(n), budget, floor);
     const prunedAtNPlus1 = prunePreviousInteractions(
-      buildHistory(91),
+      buildHistory(n + 1),
       budget,
       floor
     );
@@ -162,13 +161,17 @@ describe("prunePreviousInteractions", () => {
   });
 
   it("batches redaction across a checkpoint boundary instead of advancing on every single turn", () => {
-    // Interaction size chosen so ~83 turns fit before redaction is even needed (budget =
-    // PRUNING_CHECKPOINT_TOKENS), and then several turns' worth of growth accumulate between
-    // checkpoint crossings. This exercises the batching behavior at a realistic scale instead of
-    // tiny numbers where every eligible interaction gets redacted in one shot.
+    // Interaction size and starting point derived from PRUNING_CHECKPOINT_TOKENS itself (rather
+    // than a hardcoded turn count) so this test keeps exercising real batching behavior no matter
+    // what that constant is currently set to. n0 is the first turn count where redaction becomes
+    // necessary at all; sampling a window right past that point exercises the batching behavior at
+    // a realistic scale instead of tiny numbers where every eligible interaction gets redacted in
+    // one shot.
     const toolTokens = 40; // interaction = 60 tokens
+    const interactionSize = 60;
     const floor = 3;
     const budget = PRUNING_CHECKPOINT_TOKENS;
+    const n0 = Math.ceil(budget / interactionSize) + 1;
 
     const frontierAt = (n: number) => {
       const messages = Array.from({ length: n }, (_, i) => i + 1).flatMap((i) =>
@@ -187,7 +190,7 @@ describe("prunePreviousInteractions", () => {
     // every single one. Sample a 20-turn window known to sit inside such a stable stretch for
     // these parameters.
     const boundaries = new Set<number>();
-    for (let n = 87; n <= 106; n++) {
+    for (let n = n0; n <= n0 + 19; n++) {
       boundaries.add(frontierAt(n));
     }
 
@@ -291,8 +294,10 @@ describe("prunePreviousInteractions across a growing conversation (realistic, va
     const FLOOR = 3;
     // Order of magnitude of a real allowedTokenCount - baseTokens: large enough that many turns
     // of small talk fit before any redaction is needed at all, matching the real production
-    // observation that redaction is a late, occasional event, not a per-turn certainty.
-    const BUDGET = 20_000;
+    // observation that redaction is a late, occasional event, not a per-turn certainty. Kept as a
+    // multiple of PRUNING_CHECKPOINT_TOKENS rather than an absolute number, so the checkpoint
+    // mechanism always has room to find a crossing regardless of that constant's current value.
+    const BUDGET = PRUNING_CHECKPOINT_TOKENS * 4;
 
     const interactionSizes: number[] = [];
     let mutationTurnCount = 0;
