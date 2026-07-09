@@ -16,7 +16,8 @@
 // store — they are NOT regenerated here; they only exist in the authored schema files.
 
 import { Ok, type Result } from "../result.ts";
-import type { DbCommandError, LiveColumn, LiveTable } from "./common.ts";
+import type { LiveColumn, LiveTable } from "../types/db.ts";
+import type { DbCommandError } from "./common.ts";
 import { introspectLiveTables, openReadonly } from "./common.ts";
 
 const GENERATED_HEADER = `// Generated from the live database by \`dsbx db schema\`.

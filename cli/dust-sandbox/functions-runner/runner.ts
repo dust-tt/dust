@@ -76,25 +76,21 @@ function emitDbBadArgs(usage: string): number {
   return 2;
 }
 
-// Expected refusals come back as Err values from the db helpers; the catch blocks are the
-// process boundary for unexpected throws only (errorEnvelope maps those to kind "internal").
+// The db helpers return Result; expected refusals are the Err branch. Unexpected throws are
+// bugs — we don't catch our own errors (ERR1); they surface as an internal error at the
+// front boundary (a runner that emits no envelope).
 async function dbReconcileHandler(args: string[]): Promise<number> {
   const [dbPath, schemaFile] = args;
   if (!dbPath || !schemaFile) {
     return emitDbBadArgs("usage: runner db-reconcile <dbPath> <schemaFile>");
   }
-  try {
-    const result = await reconcile(dbPath, schemaFile);
-    if (result.isErr()) {
-      process.stdout.write(`${JSON.stringify(errorEnvelope(result.error))}\n`);
-      return 1;
-    }
-    process.stdout.write(`${JSON.stringify({ ok: true, ...result.value })}\n`);
-    return 0;
-  } catch (e) {
-    process.stdout.write(`${JSON.stringify(errorEnvelope(e))}\n`);
+  const result = await reconcile(dbPath, schemaFile);
+  if (result.isErr()) {
+    process.stdout.write(`${JSON.stringify(errorEnvelope(result.error))}\n`);
     return 1;
   }
+  process.stdout.write(`${JSON.stringify({ ok: true, ...result.value })}\n`);
+  return 0;
 }
 
 async function dbSchemaHandler(args: string[]): Promise<number> {
@@ -102,19 +98,14 @@ async function dbSchemaHandler(args: string[]): Promise<number> {
   if (!dbPath || !outSchemaTs) {
     return emitDbBadArgs("usage: runner db-schema <dbPath> <outSchemaTs>");
   }
-  try {
-    const result = generateSchemaFileText(dbPath);
-    if (result.isErr()) {
-      process.stdout.write(`${JSON.stringify(errorEnvelope(result.error))}\n`);
-      return 1;
-    }
-    await Bun.write(outSchemaTs, result.value);
-    process.stdout.write(`${JSON.stringify({ ok: true })}\n`);
-    return 0;
-  } catch (e) {
-    process.stdout.write(`${JSON.stringify(errorEnvelope(e))}\n`);
+  const result = generateSchemaFileText(dbPath);
+  if (result.isErr()) {
+    process.stdout.write(`${JSON.stringify(errorEnvelope(result.error))}\n`);
     return 1;
   }
+  await Bun.write(outSchemaTs, result.value);
+  process.stdout.write(`${JSON.stringify({ ok: true })}\n`);
+  return 0;
 }
 
 async function dbQueryHandler(args: string[]): Promise<number> {
@@ -122,19 +113,14 @@ async function dbQueryHandler(args: string[]): Promise<number> {
   if (!dbPath) {
     return emitDbBadArgs("usage: runner db-query <dbPath> (SQL on stdin)");
   }
-  try {
-    const sql = await Bun.stdin.text();
-    const result = queryReadonly(dbPath, sql);
-    if (result.isErr()) {
-      process.stdout.write(`${JSON.stringify(errorEnvelope(result.error))}\n`);
-      return 1;
-    }
-    process.stdout.write(`${JSON.stringify({ ok: true, ...result.value })}\n`);
-    return 0;
-  } catch (e) {
-    process.stdout.write(`${JSON.stringify(errorEnvelope(e))}\n`);
+  const sql = await Bun.stdin.text();
+  const result = queryReadonly(dbPath, sql);
+  if (result.isErr()) {
+    process.stdout.write(`${JSON.stringify(errorEnvelope(result.error))}\n`);
     return 1;
   }
+  process.stdout.write(`${JSON.stringify({ ok: true, ...result.value })}\n`);
+  return 0;
 }
 
 async function main(): Promise<number> {
