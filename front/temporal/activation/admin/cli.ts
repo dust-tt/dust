@@ -1,13 +1,11 @@
-import {
-  determineEligibleActivationUsers,
-} from "@app/lib/api/activation/orchestrator";
+import { determineEligibleActivationUsers } from "@app/lib/api/activation/orchestrator";
 import logger from "@app/logger/logger";
 import parseArgs from "minimist";
 
 const cliLogger = logger.child({ component: "activation.orchestrator.cli" });
 
 function usage() {
-  console.error(`Usage:
+  cliLogger.info(`Usage:
   run --workspace <sId> [--dry-run] [--execute] [--user <userId>]
 
 Options:
@@ -33,32 +31,43 @@ const main = async () => {
 
   const workspaceId: string | undefined = argv["workspace"];
   if (!workspaceId) {
-    console.error("Error: --workspace is required");
+    cliLogger.error("--workspace is required");
     usage();
     process.exit(1);
   }
 
-  const userIdFilter: number | null =
+  const userModelIdFilter: number | null =
     argv["user"] != null ? parseInt(argv["user"], 10) : null;
   const dryRun = !argv["execute"];
 
-  cliLogger.info({ workspaceId, userIdFilter, dryRun }, "starting run");
+  cliLogger.info({ workspaceId, userModelIdFilter, dryRun }, "starting run");
 
   const { eligible, skipped } = await determineEligibleActivationUsers({
     workspaceId,
-    userIdFilter,
+    userModelIdFilter,
   });
 
   cliLogger.info(
-    { workspaceId, userIdFilter, eligibleCount: eligible.length, skippedCount: skipped.length },
+    {
+      workspaceId,
+      userModelIdFilter,
+      eligibleCount: eligible.length,
+      skippedCount: skipped.length,
+    },
     "Nudge plan"
   );
 
   for (const plan of eligible) {
-    cliLogger.info({ userId: plan.targetUserId, podId: plan.podId }, "User eligible for nudge");
+    cliLogger.info(
+      { userModelId: plan.targetUserModelId, podId: plan.podId },
+      "User eligible for nudge"
+    );
   }
   for (const s of skipped) {
-    cliLogger.info({ userId: s.userId, podId: s.podId }, "User skipped for nudge");
+    cliLogger.info(
+      { userModelId: s.userModelId, podId: s.podId },
+      "User skipped for nudge"
+    );
   }
 };
 

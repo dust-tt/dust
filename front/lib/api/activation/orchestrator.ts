@@ -1,16 +1,16 @@
 import { Authenticator } from "@app/lib/auth";
 import { ProjectMetadataResource } from "@app/lib/resources/project_metadata_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
-import { concurrentExecutor } from "@app/lib/utils/async_utils";
+import type { ModelId } from "@app/types/shared/model_id";
 
 export type NudgePlan = {
   podId: string;
-  spaceId: number;
-  targetUserId: number;
+  spaceModelId: ModelId;
+  targetUserModelId: ModelId;
 };
 
 export type SkippedUser = {
-  userId: number;
+  userModelId: ModelId;
   podId: string;
 };
 
@@ -20,30 +20,30 @@ export type OrchestratorResult = {
 };
 
 /**
- * Returns a map of spaceId → active member userIds for each pod
+ * Returns a map of space model id → active member user model ids for each pod.
  */
 async function fetchPodMembers(
   auth: Authenticator,
-  spaceIds: number[]
-): Promise<Map<number, number[]>> {
-  if (spaceIds.length === 0) {
+  spaceModelIds: ModelId[]
+): Promise<Map<ModelId, ModelId[]>> {
+  if (spaceModelIds.length === 0) {
     return new Map();
   }
 
-  const spaces = await SpaceResource.fetchByModelIds(auth, spaceIds);
+  const spaces = await SpaceResource.fetchByModelIds(auth, spaceModelIds);
+  const membersBySpaceModelId =
+    await SpaceResource.fetchDistinctActiveManualGroupMembersBySpaces(
+      auth,
+      spaces
+    );
 
-  const result = new Map<number, number[]>();
-  await concurrentExecutor(
-    spaces,
-    async (space) => {
-      const members = await space.fetchDistinctActiveManualGroupMembers(auth);
-      result.set(
-        space.id,
-        members.map((u) => u.id)
-      );
-    },
-    { concurrency: 5 }
-  );
+  const result = new Map<ModelId, ModelId[]>();
+  for (const [spaceModelId, members] of membersBySpaceModelId) {
+    result.set(
+      spaceModelId,
+      members.map((u) => u.id)
+    );
+  }
   return result;
 }
 
@@ -52,10 +52,10 @@ async function fetchPodMembers(
  */
 export async function determineEligibleActivationUsers({
   workspaceId,
-  userIdFilter,
+  userModelIdFilter,
 }: {
   workspaceId: string;
-  userIdFilter: number | null;
+  userModelIdFilter: ModelId | null;
 }): Promise<OrchestratorResult> {
   const auth = await Authenticator.internalAdminForWorkspace(workspaceId);
 
@@ -71,20 +71,20 @@ export async function determineEligibleActivationUsers({
   for (const pod of pods) {
     const members = podMembers.get(pod.spaceId) ?? [];
 
-    for (const userId of members) {
-      if (userIdFilter !== null && userId !== userIdFilter) {
+    for (const userModelId of members) {
+      if (userModelIdFilter !== null && userModelId !== userModelIdFilter) {
         continue;
       }
 
-      if (!isEligibleForActivation(userId)) {
-        skipped.push({ userId, podId: pod.sId });
+      if (!isEligibleForActivation(userModelId)) {
+        skipped.push({ userModelId, podId: pod.sId });
         continue;
       }
 
       eligible.push({
         podId: pod.sId,
-        spaceId: pod.spaceId,
-        targetUserId: userId,
+        spaceModelId: pod.spaceId,
+        targetUserModelId: userModelId,
       });
     }
   }
@@ -93,6 +93,6 @@ export async function determineEligibleActivationUsers({
 }
 
 // TODO: This is a placeholder for the actual eligibility logic
-function isEligibleForActivation(userId: number): boolean {
+function isEligibleForActivation(userModelId: ModelId): boolean {
   return true;
 }

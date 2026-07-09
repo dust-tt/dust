@@ -1684,6 +1684,65 @@ export class SpaceResource extends BaseResource<SpaceModel> {
     return [...byId.values()];
   }
 
+  /**
+   * Batched variant of {@link SpaceResource.fetchDistinctActiveManualGroupMembers}
+   * across many spaces. Fetches every group's active memberships in a single
+   * query (and the referenced users in a single query), avoiding the N+1 that
+   * calling the per-space method in a loop would incur. Returns a map from
+   * space model id to its distinct active members.
+   */
+  static async fetchDistinctActiveManualGroupMembersBySpaces(
+    auth: Authenticator,
+    spaces: SpaceResource[]
+  ): Promise<Map<ModelId, UserResource[]>> {
+    const result = new Map<ModelId, UserResource[]>();
+    if (spaces.length === 0) {
+      return result;
+    }
+
+    // Manual groups (regular + editor) per space, plus the flat set of them all.
+    const manualGroupsBySpaceModelId = new Map<ModelId, GroupResource[]>();
+    const allGroups: GroupResource[] = [];
+    for (const space of spaces) {
+      const groups = space.groups.filter(
+        (g) => g.kind === "regular" || g.kind === "space_editors"
+      );
+      manualGroupsBySpaceModelId.set(space.id, groups);
+      allGroups.push(...groups);
+    }
+
+    // Single query for the active memberships across every group.
+    const userModelIdsByGroupModelId =
+      await GroupResource.getActiveMembershipsForGroups(auth, allGroups);
+
+    // Single query for all the users referenced by those memberships.
+    const allUserModelIds = new Set<ModelId>();
+    for (const userModelIds of Object.values(userModelIdsByGroupModelId)) {
+      for (const userModelId of userModelIds) {
+        allUserModelIds.add(userModelId);
+      }
+    }
+    const users = await UserResource.fetchByModelIds([...allUserModelIds]);
+    const usersByModelId = new Map(users.map((u) => [u.id, u]));
+
+    // Reassemble the distinct member set for each space.
+    for (const space of spaces) {
+      const groups = manualGroupsBySpaceModelId.get(space.id) ?? [];
+      const byId = new Map<ModelId, UserResource>();
+      for (const group of groups) {
+        for (const userModelId of userModelIdsByGroupModelId[group.id] ?? []) {
+          const user = usersByModelId.get(userModelId);
+          if (user && !byId.has(user.id)) {
+            byId.set(user.id, user);
+          }
+        }
+      }
+      result.set(space.id, [...byId.values()]);
+    }
+
+    return result;
+  }
+
   toJSON(): SpaceType {
     return {
       createdAt: this.createdAt.getTime(),
