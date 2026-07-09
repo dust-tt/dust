@@ -71,7 +71,7 @@ are not available at build time.
 
 #### Pod databases: durable shared state
 
-Functions of the same Pod can share durable SQLite databases. The contract has three parts:
+Functions of the same Pod can share durable SQLite databases. The contract has four parts:
 
 1. **One schema file per database** at \`databases/{db}.db.ts\`, relative to the function sources
    — functions sharing a database must live in the same source directory so they all import the
@@ -80,7 +80,10 @@ Functions of the same Pod can share durable SQLite databases. The contract has t
    it. Never hand-write table objects inside a function file.
 2. **Each function declares the databases it opens** in \`schema.databases: ["chat"]\`. Database
    names are lowercase \`[a-z][a-z0-9_]*\`.
-3. **At runtime, open a database with \`db(name)\` from \`@dust/pod\`** and query it with the
+3. **Apply the schema file with the \`db_reconcile\` tool** — it creates the database on its
+   first run and applies additive DDL after edits. Publish validates schema files but never
+   applies them: an unreconciled database does not exist at runtime.
+4. **At runtime, open a database with \`db(name)\` from \`@dust/pod\`** and query it with the
    imported table objects.
 
 \`\`\`ts
