@@ -5,7 +5,12 @@
 
 import { Database } from "bun:sqlite";
 import { Err, Ok, type Result } from "../result.ts";
-import { type DbErrorKind, RESERVED_TABLE_PREFIXES } from "../types/db.ts";
+import {
+  type DbErrorKind,
+  type LiveIndex,
+  type LiveTable,
+  RESERVED_TABLE_PREFIXES,
+} from "../types/db.ts";
 
 // Wait up to 5s for a writer's lock instead of failing immediately with SQLITE_BUSY
 // (function writes and litestream checkpoints hold short write locks):
@@ -21,20 +26,12 @@ export class DbCommandError extends Error {
   }
 }
 
-export function errorEnvelope(e: unknown): {
+// Serializes a db command error (the Err branch of a Result) to the wire envelope.
+export function errorEnvelope(error: DbCommandError): {
   ok: false;
   error: { kind: DbErrorKind; message: string };
 } {
-  if (e instanceof DbCommandError) {
-    return { ok: false, error: { kind: e.kind, message: e.message } };
-  }
-  return {
-    ok: false,
-    error: {
-      kind: "internal",
-      message: e instanceof Error ? e.message : String(e),
-    },
-  };
+  return { ok: false, error: { kind: error.kind, message: error.message } };
 }
 
 // Tables that live in a pod database but are not part of the data model: the same reserved
@@ -69,32 +66,6 @@ export function openReadonly(
   db.exec("PRAGMA query_only = ON;");
   db.exec(`PRAGMA busy_timeout = ${DB_BUSY_TIMEOUT_MS};`);
   return new Ok(db);
-}
-
-export interface LiveColumn {
-  name: string;
-  declaredType: string;
-  notNull: boolean;
-  defaultValue: string | null;
-  pkOrdinal: number;
-  hidden: number;
-}
-
-export interface LiveIndex {
-  name: string;
-  unique: boolean;
-  // "c" = CREATE INDEX, "u" = UNIQUE constraint auto-index, "pk" = PRIMARY KEY auto-index.
-  origin: "c" | "u" | "pk";
-  // Partial index (CREATE INDEX ... WHERE): the WHERE clause is not introspected.
-  partial: boolean;
-  columns: (string | null)[]; // null for rowid/expression members
-}
-
-export interface LiveTable {
-  name: string;
-  createSql: string;
-  columns: LiveColumn[];
-  indexes: LiveIndex[];
 }
 
 // Introspects the user-facing tables of a live database via sqlite_master + PRAGMAs.

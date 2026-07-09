@@ -56,3 +56,32 @@ export interface DatabaseTable {
 export interface DatabaseSchema {
   tables: Record<string, DatabaseTable>;
 }
+
+// Live SQLite introspection shapes (sqlite_master + PRAGMAs), produced by
+// db/common.ts's introspectLiveTables and consumed by reconcile's destructive pre-check and
+// db schema generation.
+export interface LiveColumn {
+  name: string;
+  declaredType: string;
+  notNull: boolean;
+  defaultValue: string | null;
+  pkOrdinal: number;
+  hidden: number;
+}
+
+export interface LiveIndex {
+  name: string;
+  unique: boolean;
+  // "c" = CREATE INDEX, "u" = UNIQUE constraint auto-index, "pk" = PRIMARY KEY auto-index.
+  origin: "c" | "u" | "pk";
+  // Partial index (CREATE INDEX ... WHERE): the WHERE clause is not introspected.
+  partial: boolean;
+  columns: (string | null)[]; // null for rowid/expression members
+}
+
+export interface LiveTable {
+  name: string;
+  createSql: string;
+  columns: LiveColumn[];
+  indexes: LiveIndex[];
+}
