@@ -14,7 +14,7 @@ import type {
 } from "@app/lib/actions/mcp_internal_actions/types";
 import {
   isAgentLoopRunContext,
-  type ToolContext,
+  type ToolRunContext,
 } from "@app/lib/actions/types";
 import { getRefs } from "@app/lib/api/assistant/citations";
 import config from "@app/lib/api/config";
@@ -45,22 +45,20 @@ export async function search(
     tagsIn,
     tagsNot,
   }: SearchWithNodesInputType & TagsInputType,
-  { auth, toolContext }: { auth: Authenticator; toolContext?: ToolContext }
+  { auth, runContext }: { auth: Authenticator; runContext: ToolRunContext }
 ): Promise<Result<CallToolResult["content"], MCPError>> {
   const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
   const credentials = await getLlmCredentials(auth);
   const timeFrame = parseTimeFrame(relativeTimeFrame ?? "all");
 
-  if (!toolContext?.runContext) {
+  if (!runContext) {
     throw new Error(
       "agentLoopRunContext is required where the tool is called."
     );
   }
 
-  const { retrievalTopK, citationsOffset } = isAgentLoopRunContext(
-    toolContext.runContext
-  )
-    ? toolContext.runContext.stepContext
+  const { retrievalTopK, citationsOffset } = isAgentLoopRunContext(runContext)
+    ? runContext.stepContext
     : { retrievalTopK: AGENT_LESS_DEFAULT_RETRIEVAL_TOP_K, citationsOffset: 0 };
 
   const agentDataSourceConfigurationsResult =

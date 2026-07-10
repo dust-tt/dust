@@ -40,7 +40,7 @@ export const SANDBOX_STATIC_ROOT_CONSUMED_DIRS = [
 export const SANDBOX_ROOT_INVOKED_HELPERS = [
   "/opt/bin/dsbx",
   "/usr/local/bin/dust-install-trust-bundle",
-  // Root invokes litestream on the pod-state sleep barrier (`litestream sync
+  // Root invokes litestream on the pod-state pre-sleep sync (`litestream sync
   // -wait`) and cold-start restore, so it must stay root-owned/non-writable.
   "/opt/bin/litestream",
 ] as const;

@@ -1406,6 +1406,7 @@
  *       oneOf:
  *         - $ref: '#/components/schemas/PrivateSandboxFunctionInvocationCreatedEvent'
  *         - $ref: '#/components/schemas/PrivateSandboxFunctionInvocationResultEvent'
+ *         - $ref: '#/components/schemas/PrivateSandboxFunctionInvocationErrorEvent'
  *     PrivateSandboxFunctionInvocationCreatedEvent:
  *       type: object
  *       required: [type, created, invocation]
@@ -1444,6 +1445,22 @@
  *           type: string
  *         result:
  *           description: Result returned by the sandbox function.
+ *     PrivateSandboxFunctionInvocationErrorEvent:
+ *       type: object
+ *       required: [type, created, invocationId, functionId, message]
+ *       properties:
+ *         type:
+ *           type: string
+ *           enum: [sandbox_function_invocation_error]
+ *         created:
+ *           type: integer
+ *         invocationId:
+ *           type: string
+ *         functionId:
+ *           type: string
+ *         message:
+ *           type: string
+ *           description: Why the invocation failed before producing a result.
  *     PrivateAgentMessageEvent:
  *       type: object
  *       description: Server-Sent Event for agent message streaming. Discriminated on the `type` field. Each event also includes a `step` integer.

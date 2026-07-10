@@ -8,7 +8,7 @@ import {
 } from "@app/lib/actions/mcp_internal_actions/tools/utils";
 import {
   isAgentLoopRunContext,
-  type ToolContext,
+  type ToolRunContext,
 } from "@app/lib/actions/types";
 import { getRefs } from "@app/lib/api/assistant/citations";
 import config from "@app/lib/api/config";
@@ -76,9 +76,9 @@ export async function cat(
     limit?: number;
     grep?: string;
   },
-  { auth, toolContext }: { auth: Authenticator; toolContext?: ToolContext }
+  { auth, runContext }: { auth: Authenticator; runContext: ToolRunContext }
 ) {
-  if (!toolContext?.runContext) {
+  if (!runContext) {
     return new Err(new MCPError("No conversation context available"));
   }
 
@@ -169,8 +169,8 @@ export async function cat(
     );
   }
 
-  const { citationsOffset } = isAgentLoopRunContext(toolContext.runContext)
-    ? toolContext.runContext.stepContext
+  const { citationsOffset } = isAgentLoopRunContext(runContext)
+    ? runContext.stepContext
     : { citationsOffset: 0 };
 
   if (citationsOffset >= getRefs().length) {

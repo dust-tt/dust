@@ -45,6 +45,21 @@ import type { LightWorkspaceType } from "@app/types/user";
 import { assert, beforeEach, describe, expect, it, vi } from "vitest";
 import { destroyConversation } from "../api/assistant/conversation/destroy";
 
+const { mockDeleteOwnerPolicy } = vi.hoisted(() => ({
+  mockDeleteOwnerPolicy: vi.fn(),
+}));
+
+vi.mock(
+  import("../../lib/api/sandbox/egress_policy"),
+  async (importOriginal) => {
+    const mod = await importOriginal();
+    return {
+      ...mod,
+      deleteOwnerPolicy: mockDeleteOwnerPolicy,
+    };
+  }
+);
+
 vi.mock(import("../../lib/api/redis"), async (importOriginal) => {
   const mod = await importOriginal();
   return {
@@ -628,6 +643,26 @@ describe("destroyConversation", () => {
 
     const agents = await setupTestAgents(workspace, user);
     agentConfigurationId = agents[0].sId;
+  });
+
+  it("scrubs the conversation's egress policy file on destroy", async () => {
+    mockDeleteOwnerPolicy.mockResolvedValue(new Ok(undefined));
+    const conversationType = await ConversationFactory.create(auth, {
+      agentConfigurationId,
+      messagesCreatedAt: [new Date()],
+    });
+    const conversation = await ConversationResource.fetchById(
+      auth,
+      conversationType.sId
+    );
+    assert(conversation, "Conversation should exist");
+
+    await destroyConversation(auth, { conversation });
+
+    expect(mockDeleteOwnerPolicy).toHaveBeenCalledWith(
+      expect.anything(),
+      conversation.sId
+    );
   });
 
   it("should delete batched message resources chunk by chunk", async () => {

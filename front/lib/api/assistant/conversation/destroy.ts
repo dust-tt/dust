@@ -1,4 +1,5 @@
 import { hardDeleteDataSource } from "@app/lib/api/data_sources";
+import { deleteOwnerPolicy } from "@app/lib/api/sandbox/egress_policy";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentSuggestionModel } from "@app/lib/models/agent/agent_suggestion";
 import {
@@ -28,6 +29,7 @@ import {
   ProjectTaskSourceModel,
 } from "@app/lib/resources/storage/models/project_task";
 import { WakeUpResource } from "@app/lib/resources/wakeup_resource";
+import logger from "@app/logger/logger";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
@@ -184,6 +186,20 @@ export async function destroyConversation(
   }
 ): Promise<Result<void, Error>> {
   const owner = auth.getNonNullableWorkspace();
+
+  // Best-effort scrub of the conversation's sandbox egress allowlist file
+  // (owner-keyed, so it is not deleted with individual sandboxes). A failure
+  // logs but does not block the destroy.
+  const deleteOwnerPolicyRes = await deleteOwnerPolicy(auth, conversation.sId);
+  if (deleteOwnerPolicyRes.isErr()) {
+    logger.warn(
+      {
+        err: deleteOwnerPolicyRes.error,
+        conversationId: conversation.sId,
+      },
+      "Failed to delete conversation egress policy file on destroy."
+    );
+  }
 
   await ConversationForkResource.deleteForConversationModelId(auth, {
     conversationModelId: conversation.id,

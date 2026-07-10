@@ -4,6 +4,11 @@
 # gcsfuse mount and the cold-start restore — starting at boot would let the
 # daemon write to the unmounted local directory and manage files mid-restore.
 
+# JSON logs (slog): fluent-bit parses the journal MESSAGE with its json
+# parser, so level/msg land as structured fields in Datadog.
+logging:
+  type: json
+
 # Control socket for the pre-sleep `litestream sync -wait`. Lives in the
 # unit's RuntimeDirectory (unix socket paths are capped ~104 chars).
 socket:
