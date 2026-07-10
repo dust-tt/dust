@@ -288,12 +288,7 @@ export function DataTable<TData extends TBaseData>({
         </DataTable.Header>
         <DataTable.Body>
           {table.getRowModel().rows.map((row) => {
-            const handleRowClick = (
-              event: React.MouseEvent<HTMLTableRowElement>
-            ) => {
-              if (isRowInteractiveClick(event)) {
-                return;
-              }
+            const handleRowClick = () => {
               if (enableRowSelection && row.getCanSelect()) {
                 row.toggleSelected(!enableMultiRowSelection ? true : undefined);
               }
@@ -651,12 +646,7 @@ export function ScrollableDataTable<TData extends TBaseData>({
           >
             {rowVirtualizer.getVirtualItems().map((virtualRow) => {
               const row = rows[virtualRow.index];
-              const handleRowClick = (
-                event: React.MouseEvent<HTMLTableRowElement>
-              ) => {
-                if (isRowInteractiveClick(event)) {
-                  return;
-                }
+              const handleRowClick = () => {
                 if (enableRowSelection && row.getCanSelect()) {
                   row.toggleSelected(
                     !enableMultiRowSelection ? true : undefined
@@ -838,8 +828,8 @@ DataTable.Body = function Body({
 
 interface RowProps extends React.HTMLAttributes<HTMLTableRowElement> {
   children: ReactNode;
-  onClick?: (event: React.MouseEvent<HTMLTableRowElement>) => void;
-  onDoubleClick?: (event: React.MouseEvent<HTMLTableRowElement>) => void;
+  onClick?: () => void;
+  onDoubleClick?: () => void;
   widthClassName: string;
   "data-selected"?: boolean;
   rowData?: TBaseData;
@@ -953,17 +943,6 @@ const preventMenuItemClickThrough = (event: React.PointerEvent) => {
   // Prevent the subsequent click from reaching elements behind the menu when
   // it closes on pointer down (modal={false}).
   event.preventDefault();
-};
-
-const isRowInteractiveClick = (
-  event: React.MouseEvent<HTMLTableRowElement>
-) => {
-  const target = event.target as HTMLElement;
-  return Boolean(
-    target.closest(
-      "button, a, input, textarea, select, label, [role='button'], [role='checkbox'], [role='menuitem'], [role='menuitemcheckbox'], [role='menuitemradio']"
-    )
-  );
 };
 
 // Shared menu rendering functions
