@@ -211,22 +211,18 @@ function buildReplayOnlyToolSpecification(
   };
 }
 
-function compareToolNames(left: string, right: string): number {
-  if (left < right) {
-    return -1;
-  }
-  if (left > right) {
-    return 1;
-  }
-  return 0;
-}
-
 function sortToolSpecifications(
   specifications: AgentActionSpecification[]
 ): AgentActionSpecification[] {
-  return [...specifications].sort((left, right) =>
-    compareToolNames(left.name, right.name)
-  );
+  return [...specifications].sort((left, right) => {
+    if (left.name < right.name) {
+      return -1;
+    }
+    if (left.name > right.name) {
+      return 1;
+    }
+    return 0;
+  });
 }
 
 // A custom agent's configured tools are its identity: they stay in the eagerly
@@ -285,7 +281,7 @@ export function buildSpecificationsWithReplayPlaceholders(
   const currentToolNames = new Set(baseSpecifications.map((spec) => spec.name));
   const missingReplayedToolNames = getReplayedToolNames(modelConversation)
     .filter((name) => !currentToolNames.has(name))
-    .sort(compareToolNames);
+    .sort();
 
   return {
     specifications: sortToolSpecifications([
