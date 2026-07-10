@@ -1,4 +1,5 @@
 import type { LightMCPToolConfigurationType } from "@app/lib/actions/mcp";
+import type { ToolExecutionBaseStatus } from "@app/lib/actions/statuses";
 import type { ToolOutputItemType } from "@app/lib/actions/types";
 import type { Authenticator } from "@app/lib/auth";
 import { getPrivateUploadBucket } from "@app/lib/file_storage";
@@ -186,6 +187,30 @@ export class SandboxFunctionMCPActionResource extends BaseResource<SandboxFuncti
       status: "errored",
       executionDurationMs: Math.round(executionDurationMs),
     });
+  }
+
+  // Updates only if the action still has the expected status: a WHERE-guarded compare-and-swap,
+  // so concurrent resolutions of a blocked action have exactly one winner.
+  async updateStatusFromExpected(
+    auth: Authenticator,
+    {
+      status,
+      expectedStatus,
+    }: {
+      status: ToolExecutionBaseStatus;
+      expectedStatus: ToolExecutionBaseStatus;
+    }
+  ): Promise<[affectedCount: number]> {
+    return SandboxFunctionMCPActionModel.update(
+      { status },
+      {
+        where: {
+          id: this.id,
+          workspaceId: auth.getNonNullableWorkspace().id,
+          status: expectedStatus,
+        },
+      }
+    );
   }
 
   private outputGcsPathFor(auth: Authenticator): string {
