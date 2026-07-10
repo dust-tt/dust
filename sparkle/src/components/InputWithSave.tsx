@@ -113,7 +113,7 @@ export const InputWithSave = forwardRef<HTMLInputElement, InputWithSaveProps>(
           onKeyDown={handleKeyDown}
           disabled={disabled}
           readOnly={isSaving}
-          className={cn(showSaveButton ? "pr-20" : unit ? "pr-12" : null)}
+          className={cn("text-right", showSaveButton ? "pr-20" : unit ? "pr-12" : null)}
           {...props}
         />
         {hasOverlay && (
