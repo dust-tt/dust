@@ -109,9 +109,7 @@ export const SANDBOX_FUNCTIONS_TOOLS_METADATA = createToolsRecord({
     freeUsage: true,
   },
   db_list: {
-    description:
-      "List the pod's live SQLite databases with their sizes. A database is created by the " +
-      "first publish of a function that declares it.",
+    description: "List the pod's SQLite databases and their sizes.",
     schema: {},
     stake: "never_ask",
     displayLabels: {
@@ -122,10 +120,7 @@ export const SANDBOX_FUNCTIONS_TOOLS_METADATA = createToolsRecord({
     freeUsage: true,
   },
   db_schema: {
-    description:
-      "Get the live schema of a pod database, regenerated from the SQLite file as a drizzle " +
-      "schema file. Column modes are not stored in SQLite and do not appear: the authored " +
-      "databases/{db}.db.ts file stays the source of truth.",
+    description: "Get a pod database's live schema as a drizzle schema file.",
     schema: {
       database: z
         .string()
@@ -142,11 +137,7 @@ export const SANDBOX_FUNCTIONS_TOOLS_METADATA = createToolsRecord({
   },
   db_query: {
     description:
-      "Run a single SQL statement against a pod database: SELECT and DML " +
-      "(INSERT/UPDATE/DELETE/REPLACE, optionally WITH-prefixed, RETURNING supported) are " +
-      "allowed; schema changes (DDL) are rejected — evolve the schema with the db_reconcile " +
-      "tool or by publishing. Rows come back as JSON; a result crossing the inline bounds is " +
-      "written in full to a sandbox file the response names.",
+      "Run a single SQL statement against a pod database: SELECT and DML.",
     schema: {
       database: z
         .string()
@@ -170,11 +161,7 @@ export const SANDBOX_FUNCTIONS_TOOLS_METADATA = createToolsRecord({
   },
   db_reconcile: {
     description:
-      "Apply a pod database's drizzle schema file to its live SQLite file with additive DDL " +
-      "only, creating the database on first claim. Destructive changes are rejected with the " +
-      "additive migration path. This is the only way schema changes reach a live database — " +
-      "publish validates schema files but never applies them — so run it after editing a " +
-      "databases/{db}.db.ts schema file.",
+      "Apply a pod database's drizzle schema file to its live database (additive changes only).",
     schema: {
       database: z
         .string()
