@@ -3,7 +3,7 @@ import { getAugmentedInputs } from "@app/lib/actions/mcp_execution";
 import type { AgentLoopMCPApproveExecutionEvent } from "@app/lib/actions/mcp_internal_actions/events";
 import { validateToolInputs } from "@app/lib/actions/mcp_utils";
 import type { ToolExecutionStatus } from "@app/lib/actions/statuses";
-import { makeMCPApproveExecutionEventData } from "@app/lib/actions/tool_approval_events";
+import { makeMCPApproveExecutionEventBase } from "@app/lib/actions/tool_approval_events";
 import { getExecutionStatusFromConfig } from "@app/lib/actions/tool_status";
 import type { StepContext } from "@app/lib/actions/types";
 import {
@@ -277,7 +277,7 @@ async function createActionForTool(
     approvalEventData:
       status === "blocked_validation_required"
         ? {
-            ...(await makeMCPApproveExecutionEventData(auth, {
+            ...(await makeMCPApproveExecutionEventBase(auth, {
               actionId: action.sId,
               toolConfiguration: actionConfiguration,
               inputs: action.augmentedInputs,

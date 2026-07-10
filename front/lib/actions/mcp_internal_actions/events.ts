@@ -119,7 +119,8 @@ export interface SandboxFunctionMCPApproveExecutionEvent
   type: "tool_approve_execution";
 }
 
-export interface MCPApproveExecutionEventData extends ToolExecutionBase {
+// Scope-neutral approval event fields. Callers add agent-loop or sandbox-function identifiers.
+export interface MCPApproveExecutionEventBase extends ToolExecutionBase {
   type: "tool_approve_execution";
 }
 

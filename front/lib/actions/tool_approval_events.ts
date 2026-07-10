@@ -3,7 +3,7 @@ import {
   getInternalMCPServerDisplayedAs,
   getInternalMCPServerNameFromSId,
 } from "@app/lib/actions/mcp_internal_actions/constants";
-import type { MCPApproveExecutionEventData } from "@app/lib/actions/mcp_internal_actions/events";
+import type { MCPApproveExecutionEventBase } from "@app/lib/actions/mcp_internal_actions/events";
 import { getApprovalArgsLabel } from "@app/lib/actions/tool_approval_labels";
 import type { Authenticator } from "@app/lib/auth";
 
@@ -17,7 +17,7 @@ type ApprovalToolConfiguration = Pick<
   | "toolServerId"
 >;
 
-export async function makeMCPApproveExecutionEventData(
+export async function makeMCPApproveExecutionEventBase(
   auth: Authenticator,
   {
     actionId,
@@ -32,7 +32,7 @@ export async function makeMCPApproveExecutionEventData(
     approvalLabelInputs?: Record<string, unknown>;
     approvalSubjectName: string;
   }
-): Promise<MCPApproveExecutionEventData> {
+): Promise<MCPApproveExecutionEventBase> {
   const argumentsRequiringApproval =
     toolConfiguration.argumentsRequiringApproval ?? [];
 

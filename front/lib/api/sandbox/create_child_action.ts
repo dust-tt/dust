@@ -5,7 +5,7 @@ import {
 } from "@app/lib/actions/mcp_actions";
 import type { AgentLoopMCPApproveExecutionEvent } from "@app/lib/actions/mcp_internal_actions/events";
 import { validateToolInputs } from "@app/lib/actions/mcp_utils";
-import { makeMCPApproveExecutionEventData } from "@app/lib/actions/tool_approval_events";
+import { makeMCPApproveExecutionEventBase } from "@app/lib/actions/tool_approval_events";
 import { tryGetPrefixedToolName } from "@app/lib/actions/tool_name_utils";
 import { getExecutionStatusFromConfig } from "@app/lib/actions/tool_status";
 import { isServerSideMCPServerConfiguration } from "@app/lib/actions/types/guards";
@@ -203,7 +203,7 @@ export async function createSandboxChildAction(
 
   if (status === "blocked_validation_required") {
     const approvalRequirementEvent: AgentLoopMCPApproveExecutionEvent = {
-      ...(await makeMCPApproveExecutionEventData(auth, {
+      ...(await makeMCPApproveExecutionEventBase(auth, {
         actionId: action.sId,
         toolConfiguration: fullToolConfiguration,
         inputs: rawInputs,
