@@ -49,6 +49,7 @@ import {
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import { AGENT_MESSAGE_STATUSES_TO_TRACK } from "@app/types/assistant/conversation";
+import { CAP_ELIGIBLE_GROUP_KINDS } from "@app/types/groups";
 import type {
   MembershipSeatType,
   NormalizedPoolLimitSeatType,
@@ -1353,7 +1354,7 @@ export async function getMembersUsage({
     GroupResource.listGroupNamesByUserModelIdInWorkspace({
       workspace,
       userModelIds: users.map((u) => u.id),
-      groupKinds: ["provisioned"],
+      groupKinds: [...CAP_ELIGIBLE_GROUP_KINDS],
     }),
     GroupResource.listMaxPoolCapAwuCreditsByUserModelIdInWorkspace({
       workspace,
