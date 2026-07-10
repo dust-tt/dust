@@ -2,6 +2,10 @@ import {
   getBotOrUserName,
   getUserInfo,
 } from "@connectors/connectors/slack/lib/bot_user_helpers";
+import {
+  EMPTY_SECTION,
+  formatSlackMessageForLLM,
+} from "@connectors/connectors/slack/lib/message_formatter";
 import type { CoreAPIDataSourceDocumentSection } from "@connectors/lib/data_sources";
 import { renderDocumentTitleAndContent } from "@connectors/lib/data_sources";
 import { formatDateForUpsert } from "@connectors/lib/formatting";
@@ -9,8 +13,10 @@ import type { DataSourceConfig, ModelId } from "@connectors/types";
 import { safeSubstring } from "@connectors/types";
 import type { WebClient } from "@slack/web-api";
 import type { MessageElement } from "@slack/web-api/dist/types/response/ConversationsRepliesResponse";
-
-import { formatSlackMessageUnfurlAttachments } from "./message_attachments";
+import {
+  formatSlackMessageUnfurlAttachments,
+  isUnfurlAttachment,
+} from "./message_attachments";
 
 async function processMessageForMentions(
   message: string,
@@ -75,14 +81,16 @@ export async function formatMessagesForUpsert({
       const messageDate = new Date(parseInt(message.ts as string, 10) * 1000);
       const messageDateStr = formatDateForUpsert(messageDate);
 
-      const filesInfo = message.files
-        ? "\n" +
-          message.files
-            .map((file) => {
-              return `Attached file : ${file.name} ( ${file.mimetype} )`;
-            })
-            .join("\n")
-        : "";
+      const nonUnfurlAttachments = message.attachments?.filter(
+        (a) => !isUnfurlAttachment(a)
+      );
+
+      const formatted = formatSlackMessageForLLM({
+        text,
+        blocks: message.blocks,
+        attachments: nonUnfurlAttachments,
+        files: message.files,
+      });
 
       // Slack renders forwarded/shared messages as message unfurl attachments.
       const forwardedMessagesText = formatSlackMessageUnfurlAttachments(
@@ -93,14 +101,23 @@ export async function formatMessagesForUpsert({
         ? `\n${forwardedMessagesText}`
         : "";
 
+      // `content` only has a single text slot, so flatten the reconstructed
+      // top-level text, blocks, attachments and files into one string.
+      const body = [
+        formatted.text,
+        formatted.blocks,
+        formatted.attachments,
+        formatted.files,
+      ]
+        .filter((s) => s !== EMPTY_SECTION)
+        .join("\n");
+
       return {
         messageDate,
         dateStr: messageDateStr,
         authorName,
         authorEmail,
-        text: text + filesInfo + forwardedMessagesInfo,
-        content: text + forwardedMessagesInfo + "\n",
-        sections: [],
+        text: body + forwardedMessagesInfo,
       };
     })
   );
