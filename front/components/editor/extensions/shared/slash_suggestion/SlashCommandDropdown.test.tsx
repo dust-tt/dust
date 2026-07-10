@@ -30,10 +30,13 @@ describe("SlashCommandDropdown", () => {
       fireEvent.pointerMove(screen.getByRole("menuitem"), {
         pointerType: "mouse",
       });
-      await new Promise((resolve) => setTimeout(resolve, 350));
+      await new Promise((resolve) => setTimeout(resolve, 750));
     });
 
     expect(screen.getByRole("tooltip")).toHaveTextContent(
+      "Full skill description"
+    );
+    expect(document.querySelector('[data-side="right"]')).toHaveTextContent(
       "Full skill description"
     );
   });

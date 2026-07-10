@@ -345,11 +345,6 @@ export const SlashCommandDropdown = forwardRef<
                         label={item.label}
                         description={item.description}
                         truncateText
-                        tooltip={
-                          item.tooltip?.media
-                            ? undefined
-                            : item.tooltip?.description
-                        }
                         endComponent={
                           canShowDetails ? (
                             <Button
@@ -378,7 +373,7 @@ export const SlashCommandDropdown = forwardRef<
                       />
                     );
 
-                    const itemContent = item.tooltip?.media ? (
+                    const itemContent = item.tooltip ? (
                       <DropdownTooltipTrigger
                         description={item.tooltip.description}
                         media={item.tooltip.media}
@@ -438,11 +433,6 @@ export const SlashCommandDropdown = forwardRef<
                       label={item.label}
                       description={item.description}
                       truncateText
-                      tooltip={
-                        item.tooltip?.media
-                          ? undefined
-                          : item.tooltip?.description
-                      }
                       endComponent={
                         canShowDetails ? (
                           <Button
@@ -471,7 +461,7 @@ export const SlashCommandDropdown = forwardRef<
                     />
                   );
 
-                  const itemContent = item.tooltip?.media ? (
+                  const itemContent = item.tooltip ? (
                     <DropdownTooltipTrigger
                       description={item.tooltip.description}
                       media={item.tooltip.media}
