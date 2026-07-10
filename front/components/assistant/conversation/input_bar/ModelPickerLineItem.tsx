@@ -1,66 +1,97 @@
 import { ModelPickerRowTooltip } from "@app/components/assistant/conversation/input_bar/ModelPickerRowTooltip";
 import type { ModelWithReasoningEffort } from "@app/components/assistant/conversation/input_bar/modelPickerUtils";
+import { REASONING_EFFORT_INFO } from "@app/components/assistant/conversation/input_bar/modelPickerUtils";
+import { isReasoningEffort } from "@app/types/assistant/models/reasoning";
+import type {
+  ModelConfigurationType,
+  ReasoningEffort,
+} from "@app/types/assistant/models/types";
 import {
-  getModelWithReasoningEffortKey,
-  REASONING_EFFORT_INFO,
-} from "@app/components/assistant/conversation/input_bar/modelPickerUtils";
-import { Chip, DropdownMenuRadioItem } from "@dust-tt/sparkle";
+  ButtonsSwitch,
+  ButtonsSwitchList,
+  Check,
+  DropdownMenuItem,
+  Icon,
+} from "@dust-tt/sparkle";
 import capitalize from "lodash/capitalize";
 
 interface ModelPickerLineItemProps {
-  modelWithEffort: ModelWithReasoningEffort;
+  model: ModelConfigurationType;
+  efforts: ReasoningEffort[];
+  // The effort used when the row itself is clicked.
+  initialEffort: ReasoningEffort;
+  // Non-null when this row is the current selection: shows the check mark and
+  // the effort switch under the row.
+  selectedEffort: ReasoningEffort | null;
   isMobile: boolean;
   onSelect: (modelWithEffort: ModelWithReasoningEffort) => void;
   recommendation?: string;
 }
 
-// A single selectable model/effort row, wrapped in its hover tooltip.
+// A single selectable model row, wrapped in its hover tooltip. The selected
+// row exposes a compact effort switch right under it.
 export function ModelPickerLineItem({
-  modelWithEffort,
+  model,
+  efforts,
+  initialEffort,
+  selectedEffort,
   isMobile,
   onSelect,
   recommendation,
 }: ModelPickerLineItemProps) {
-  const key = getModelWithReasoningEffortKey(
-    modelWithEffort.model.providerId,
-    modelWithEffort.model.modelId,
-    modelWithEffort.effort
-  );
-  const info = REASONING_EFFORT_INFO[modelWithEffort.effort];
+  const isSelected = selectedEffort !== null;
 
   return (
-    <ModelPickerRowTooltip
-      description={recommendation ?? ""}
-      isMobile={isMobile}
-      media={
-        <div className="flex flex-col gap-3 text-sm">
-          <div>
+    <>
+      <ModelPickerRowTooltip
+        description={recommendation ?? ""}
+        isMobile={isMobile}
+        media={
+          <div className="flex flex-col text-sm">
             <div className="font-medium text-foreground dark:text-foreground-night">
-              {modelWithEffort.model.displayName}
+              {model.displayName}
             </div>
             <div className="text-muted-foreground dark:text-muted-foreground-night">
-              {modelWithEffort.model.shortDescription}
+              {model.shortDescription}
             </div>
           </div>
-          <div className="text-muted-foreground dark:text-muted-foreground-night">
-            {info.reasoning}
-          </div>
-        </div>
-      }
-    >
-      <DropdownMenuRadioItem
-        value={key}
-        onClick={() => onSelect(modelWithEffort)}
+        }
       >
-        <span className="flex grow items-center gap-2">
-          <span className="line-clamp-1">
-            {modelWithEffort.model.displayName}
-          </span>
-          {modelWithEffort.effort !== "none" && (
-            <Chip size="mini" label={capitalize(modelWithEffort.effort)} />
-          )}
-        </span>
-      </DropdownMenuRadioItem>
-    </ModelPickerRowTooltip>
+        <DropdownMenuItem
+          label={model.displayName}
+          endComponent={
+            isSelected ? <Icon visual={Check} size="xs" /> : undefined
+          }
+          onClick={() =>
+            onSelect({ model, effort: selectedEffort ?? initialEffort })
+          }
+          onSelect={(e) => e.preventDefault()}
+        />
+      </ModelPickerRowTooltip>
+      {isSelected && efforts.length > 1 && (
+        <div className="px-2 pb-1.5 pt-0.5">
+          <ButtonsSwitchList
+            key={selectedEffort}
+            size="xs"
+            fullWidth
+            defaultValue={selectedEffort}
+            onValueChange={(value) => {
+              if (isReasoningEffort(value)) {
+                onSelect({ model, effort: value });
+              }
+            }}
+          >
+            {efforts.map((effort) => (
+              <ButtonsSwitch
+                key={effort}
+                value={effort}
+                label={capitalize(effort)}
+                tooltip={REASONING_EFFORT_INFO[effort].reasoning}
+              />
+            ))}
+          </ButtonsSwitchList>
+        </div>
+      )}
+    </>
   );
 }

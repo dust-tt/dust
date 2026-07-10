@@ -4,19 +4,26 @@ import type {
   ModelPickerListState,
   ModelWithReasoningEffort,
 } from "@app/components/assistant/conversation/input_bar/modelPickerUtils";
-import { getModelWithReasoningEffortKey } from "@app/components/assistant/conversation/input_bar/modelPickerUtils";
+import {
+  getInitialReasoningEffort,
+  getModelKey,
+  getSelectableReasoningEfforts,
+} from "@app/components/assistant/conversation/input_bar/modelPickerUtils";
 import { getModelProviderLogo } from "@app/components/providers/types";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { useIsMobile } from "@app/lib/swr/useIsMobile";
 import { getProviderDisplayName } from "@app/types/assistant/models/providers";
-import type { ModelProviderIdType } from "@app/types/assistant/models/types";
+import type {
+  ModelConfigurationType,
+  ModelProviderIdType,
+  ReasoningEffort,
+} from "@app/types/assistant/models/types";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import {
   ChevronDown,
   ChevronRight,
   DropdownMenuItem,
   DropdownMenuLabel,
-  DropdownMenuRadioGroup,
   DropdownMenuSeparator,
   DropdownMenuSub,
   DropdownMenuSubContent,
@@ -28,7 +35,7 @@ import { Fragment } from "react";
 
 interface ModelPickerListProps {
   listState: ModelPickerListState;
-  selectedKey?: string;
+  selected: ModelWithReasoningEffort | null;
   onSelectModel: (modelWithEffort: ModelWithReasoningEffort) => void;
   // On mobile the "More models" providers expand inline; this tracks the single
   // provider currently expanded.
@@ -38,13 +45,22 @@ interface ModelPickerListProps {
 
 export function ModelPickerList({
   listState,
-  selectedKey,
+  selected,
   onSelectModel,
   expandedProvider,
   onToggleProvider,
 }: ModelPickerListProps) {
   const { isDark } = useTheme();
   const isMobile = useIsMobile();
+
+  const selectedEffortFor = (
+    model: ModelConfigurationType
+  ): ReasoningEffort | null =>
+    selected &&
+    getModelKey(selected.model.providerId, selected.model.modelId) ===
+      getModelKey(model.providerId, model.modelId)
+      ? selected.effort
+      : null;
 
   switch (listState.kind) {
     case "hidden":
@@ -68,63 +84,76 @@ export function ModelPickerList({
       return (
         <>
           <DropdownMenuSeparator />
-          <DropdownMenuRadioGroup value={selectedKey}>
-            {listState.models.map((modelWithEffort) => (
-              <ModelPickerLineItem
-                key={getModelWithReasoningEffortKey(
-                  modelWithEffort.model.providerId,
-                  modelWithEffort.model.modelId,
-                  modelWithEffort.effort
-                )}
-                modelWithEffort={modelWithEffort}
-                isMobile={isMobile}
-                onSelect={onSelectModel}
-              />
-            ))}
-          </DropdownMenuRadioGroup>
+          {listState.models.map((model) => (
+            <ModelPickerLineItem
+              key={getModelKey(model.providerId, model.modelId)}
+              model={model}
+              efforts={getSelectableReasoningEfforts(model)}
+              initialEffort={getInitialReasoningEffort(model)}
+              selectedEffort={selectedEffortFor(model)}
+              isMobile={isMobile}
+              onSelect={onSelectModel}
+            />
+          ))}
         </>
       );
 
     case "browse":
       return (
         <>
+          {listState.currentSelection && (
+            <>
+              <DropdownMenuSeparator />
+              <DropdownMenuLabel label="Selected" />
+              <ModelPickerLineItem
+                model={listState.currentSelection.model}
+                efforts={getSelectableReasoningEfforts(
+                  listState.currentSelection.model
+                )}
+                initialEffort={listState.currentSelection.effort}
+                selectedEffort={selectedEffortFor(
+                  listState.currentSelection.model
+                )}
+                isMobile={isMobile}
+                onSelect={onSelectModel}
+              />
+            </>
+          )}
           {listState.agentDefault && (
             <>
               <DropdownMenuSeparator />
               <DropdownMenuLabel label="Default from agent" />
-              <DropdownMenuRadioGroup value={selectedKey}>
-                <ModelPickerLineItem
-                  key={getModelWithReasoningEffortKey(
-                    listState.agentDefault.model.providerId,
-                    listState.agentDefault.model.modelId,
-                    listState.agentDefault.effort
-                  )}
-                  modelWithEffort={listState.agentDefault}
-                  isMobile={isMobile}
-                  onSelect={onSelectModel}
-                />
-              </DropdownMenuRadioGroup>
+              <ModelPickerLineItem
+                model={listState.agentDefault.model}
+                efforts={getSelectableReasoningEfforts(
+                  listState.agentDefault.model
+                )}
+                initialEffort={listState.agentDefault.effort}
+                selectedEffort={selectedEffortFor(listState.agentDefault.model)}
+                isMobile={isMobile}
+                onSelect={onSelectModel}
+              />
             </>
           )}
           {listState.suggested.length > 0 && (
             <>
               <DropdownMenuSeparator />
               <DropdownMenuLabel label="Suggested" />
-              <DropdownMenuRadioGroup value={selectedKey}>
-                {listState.suggested.map((modelWithEffort) => (
-                  <ModelPickerLineItem
-                    key={getModelWithReasoningEffortKey(
-                      modelWithEffort.model.providerId,
-                      modelWithEffort.model.modelId,
-                      modelWithEffort.effort
-                    )}
-                    modelWithEffort={modelWithEffort}
-                    isMobile={isMobile}
-                    onSelect={onSelectModel}
-                    recommendation={modelWithEffort.recommendation}
-                  />
-                ))}
-              </DropdownMenuRadioGroup>
+              {listState.suggested.map((suggestedModel) => (
+                <ModelPickerLineItem
+                  key={getModelKey(
+                    suggestedModel.model.providerId,
+                    suggestedModel.model.modelId
+                  )}
+                  model={suggestedModel.model}
+                  efforts={getSelectableReasoningEfforts(suggestedModel.model)}
+                  initialEffort={suggestedModel.effort}
+                  selectedEffort={selectedEffortFor(suggestedModel.model)}
+                  isMobile={isMobile}
+                  onSelect={onSelectModel}
+                  recommendation={suggestedModel.recommendation}
+                />
+              ))}
             </>
           )}
           {listState.moreByProvider.length > 0 && (
@@ -156,7 +185,7 @@ export function ModelPickerList({
                     {expandedProvider === provider.providerId && (
                       <ModelPickerProviderSection
                         provider={provider}
-                        selectedKey={selectedKey}
+                        selected={selected}
                         isMobile={isMobile}
                         onSelect={onSelectModel}
                       />
@@ -171,7 +200,7 @@ export function ModelPickerList({
                     <DropdownMenuSubContent>
                       <ModelPickerProviderSection
                         provider={provider}
-                        selectedKey={selectedKey}
+                        selected={selected}
                         isMobile={isMobile}
                         onSelect={onSelectModel}
                       />

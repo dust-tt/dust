@@ -10,7 +10,7 @@ import type {
 import {
   AUTO_MODEL_SELECTION,
   buildModelSelection,
-  getModelWithReasoningEffortKey,
+  getModelKey,
   getModelWithReasoningEffortLabel,
   getSelectableReasoningEfforts,
   resolveDefaultSelection,
@@ -124,17 +124,6 @@ export function InputBarModelPicker({
     onSelectionChange?.(shownModelSelection);
   }, [hasModelsPicker, onSelectionChange, shownModelSelection]);
 
-  const allModelsWithEfforts = useMemo<ModelWithReasoningEffort[]>(
-    () =>
-      models.flatMap((model) =>
-        getSelectableReasoningEfforts(model).map((effort) => ({
-          model,
-          effort,
-        }))
-      ),
-    [models]
-  );
-
   // Resolve the pinned combos against the workspace's actual models (skipping any
   // the workspace doesn't have or that don't support the pinned effort).
   const suggestedModelsWithEfforts = useMemo<
@@ -167,27 +156,21 @@ export function InputBarModelPicker({
   const moreByProvider = useMemo<ProviderGroup[]>(() => {
     const providers = new Map<
       ModelProviderIdType,
-      Map<string, { model: ModelConfigurationType; efforts: ReasoningEffort[] }>
+      { model: ModelConfigurationType; efforts: ReasoningEffort[] }[]
     >();
-    for (const modelWithEffort of allModelsWithEfforts) {
-      const providerId = modelWithEffort.model.providerId;
-      let modelsMap = providers.get(providerId);
-      if (!modelsMap) {
-        modelsMap = new Map();
-        providers.set(providerId, modelsMap);
+    for (const model of models) {
+      let entries = providers.get(model.providerId);
+      if (!entries) {
+        entries = [];
+        providers.set(model.providerId, entries);
       }
-      let entry = modelsMap.get(modelWithEffort.model.modelId);
-      if (!entry) {
-        entry = { model: modelWithEffort.model, efforts: [] };
-        modelsMap.set(modelWithEffort.model.modelId, entry);
-      }
-      entry.efforts.push(modelWithEffort.effort);
+      entries.push({ model, efforts: getSelectableReasoningEfforts(model) });
     }
-    return Array.from(providers.entries()).map(([providerId, modelsMap]) => ({
+    return Array.from(providers.entries()).map(([providerId, entries]) => ({
       providerId,
-      models: Array.from(modelsMap.values()),
+      models: entries,
     }));
-  }, [allModelsWithEfforts]);
+  }, [models]);
 
   // The agent's configured default, ignoring the last-requested model: reuse
   // resolveDefaultSelection with no last-requested model, then keep only the
@@ -202,12 +185,12 @@ export function InputBarModelPicker({
       ? { model: selection.model, effort: selection.effort }
       : null;
   }, [agentModel, models]);
-  // Drop the agent default from Suggested
+  // Drop the agent default from Suggested (rows are per model now, so compare
+  // models only).
   const suggested = useMemo(
     () =>
       suggestedModelsWithEfforts.filter(
         (s) =>
-          agentDefault?.effort !== s.effort ||
           agentDefault?.model.modelId !== s.model.modelId ||
           agentDefault?.model.providerId !== s.model.providerId
       ),
@@ -216,35 +199,41 @@ export function InputBarModelPicker({
 
   const isSearching = search.trim() !== "";
 
-  // While searching we show a single flat list over every model/effort.
-  const filteredAll = useMemo<ModelWithReasoningEffort[]>(() => {
+  // While searching we show a single flat list of models.
+  const filteredModels = useMemo<ModelConfigurationType[]>(() => {
     const q = search.trim().toLowerCase();
     if (!q) {
-      return allModelsWithEfforts;
+      return models;
     }
-    return allModelsWithEfforts.filter(
-      (modelWithEffort) =>
-        getModelWithReasoningEffortLabel({
-          model: modelWithEffort.model,
-          effort: modelWithEffort.effort,
-          kind: "model",
-        })
-          .toLowerCase()
-          .includes(q) ||
-        getProviderDisplayName(modelWithEffort.model.providerId)
-          .toLowerCase()
-          .includes(q)
+    return models.filter(
+      (model) =>
+        model.displayName.toLowerCase().includes(q) ||
+        getProviderDisplayName(model.providerId).toLowerCase().includes(q)
     );
-  }, [allModelsWithEfforts, search]);
+  }, [models, search]);
 
-  const selectedKey =
-    shown.kind === "auto"
-      ? undefined
-      : getModelWithReasoningEffortKey(
-          shown.model.providerId,
-          shown.model.modelId,
-          shown.effort
-        );
+  const selected: ModelWithReasoningEffort | null =
+    shown.kind === "auto" ? null : { model: shown.model, effort: shown.effort };
+
+  // Surface a user-picked model as a top "Selected" section when its row is
+  // otherwise buried in a provider submenu, keeping its effort tunable from
+  // the first level of the menu.
+  const currentSelection = useMemo<ModelWithReasoningEffort | null>(() => {
+    if (shown.kind !== "model") {
+      return null;
+    }
+    const shownKey = getModelKey(shown.model.providerId, shown.model.modelId);
+    const hasVisibleRow =
+      (agentDefault &&
+        getModelKey(
+          agentDefault.model.providerId,
+          agentDefault.model.modelId
+        ) === shownKey) ||
+      suggested.some(
+        (s) => getModelKey(s.model.providerId, s.model.modelId) === shownKey
+      );
+    return hasVisibleRow ? null : { model: shown.model, effort: shown.effort };
+  }, [shown, agentDefault, suggested]);
 
   // Auto is "on" while it is the shown selection and the list has not been
   // manually expanded for browsing. It is hidden entirely while searching.
@@ -253,13 +242,14 @@ export function InputBarModelPicker({
   const showList = expanded || isSearching || shown.kind !== "auto";
 
   const hasResults = isSearching
-    ? filteredAll.length > 0
+    ? filteredModels.length > 0
     : !!agentDefault || suggested.length > 0 || moreByProvider.length > 0;
 
   // Collapse the correlated list booleans + data arrays into a single state so
   // the picker content receives one flat, exhaustively-typed prop.
   let listState: ModelPickerListState = {
     kind: "browse",
+    currentSelection,
     agentDefault,
     suggested,
     moreByProvider,
@@ -271,7 +261,7 @@ export function InputBarModelPicker({
   } else if (!hasResults) {
     listState = { kind: "empty" };
   } else if (isSearching) {
-    listState = { kind: "search", models: filteredAll };
+    listState = { kind: "search", models: filteredModels };
   }
 
   const auto = showAuto ? { isOn: isAutoOn } : null;
@@ -326,7 +316,7 @@ export function InputBarModelPicker({
         onSearchChange={setSearch}
         listState={listState}
         auto={auto}
-        selectedKey={selectedKey}
+        selected={selected}
         onToggleAuto={toggleAuto}
         onSelectModel={(modelWithEffort: ModelWithReasoningEffort) => {
           commitSelection({

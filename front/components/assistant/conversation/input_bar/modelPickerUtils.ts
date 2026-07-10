@@ -13,19 +13,14 @@ import { getAvailableReasoningEfforts } from "@app/types/assistant/models/types"
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import capitalize from "lodash/capitalize";
 
+// One pin per model: the effort is only the initial pick, tunable in place via
+// the effort switch shown under the selected row.
 export const SUGGESTED_PINS: {
   providerId: ModelProviderIdType;
   modelId: string;
   effort: ReasoningEffort;
   recommendation: string;
 }[] = [
-  {
-    providerId: "anthropic",
-    modelId: CLAUDE_SONNET_4_6_MODEL_ID,
-    effort: "light",
-    recommendation:
-      "Quick answers. Recommended for easy retrieval, light analysis or general questions.",
-  },
   {
     providerId: "anthropic",
     modelId: CLAUDE_SONNET_4_6_MODEL_ID,
@@ -113,9 +108,12 @@ export type ModelPickerListState =
   | { kind: "hidden" }
   | { kind: "loading" }
   | { kind: "empty" }
-  | { kind: "search"; models: ModelWithReasoningEffort[] }
+  | { kind: "search"; models: ModelConfigurationType[] }
   | {
       kind: "browse";
+      // The current selection when it is only reachable through a provider
+      // submenu: surfaced as a top "Selected" row so its effort stays tunable.
+      currentSelection: ModelWithReasoningEffort | null;
       agentDefault: ModelWithReasoningEffort | null;
       suggested: SuggestedModelWithReasoningEffort[];
       moreByProvider: ProviderGroup[];
@@ -129,12 +127,19 @@ export function getSelectableReasoningEfforts(
   return withReasoning.length > 0 ? withReasoning : efforts;
 }
 
-export function getModelWithReasoningEffortKey(
-  providerId: string,
-  modelId: string,
-  effort: ReasoningEffort
-): string {
-  return `${providerId}/${modelId}/${effort}`;
+export function getModelKey(providerId: string, modelId: string): string {
+  return `${providerId}/${modelId}`;
+}
+
+// The effort used when a model row is clicked (before any tuning through the
+// effort switch): the model's default when selectable, else the first option.
+export function getInitialReasoningEffort(
+  model: ModelConfigurationType
+): ReasoningEffort {
+  const efforts = getSelectableReasoningEfforts(model);
+  return efforts.includes(model.defaultReasoningEffort)
+    ? model.defaultReasoningEffort
+    : efforts[0];
 }
 
 // Narrower than `Selection`: label rendering only needs the kind/model/effort,
