@@ -1035,6 +1035,8 @@ export async function tryListMCPTools(
   const skillServerKeys = new Set(
     skillServers.map(getMCPServerConfigurationKey)
   );
+  // System servers are included in skillServers, but should keep their eager
+  // metadata even when the same server is also exposed by an enabled skill.
   for (const systemSkillServer of systemSkillServers) {
     skillServerKeys.delete(getMCPServerConfigurationKey(systemSkillServer));
   }
