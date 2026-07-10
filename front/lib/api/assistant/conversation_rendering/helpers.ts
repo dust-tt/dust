@@ -15,7 +15,7 @@ import {
 } from "@app/lib/api/assistant/skills_rendering";
 import { DustFileSystem } from "@app/lib/api/file_system";
 import { getConversationFileMountSignedUrl } from "@app/lib/api/files/gcs_mount/files";
-import type { Authenticator } from "@app/lib/auth";
+import { type Authenticator, hasFeatureFlag } from "@app/lib/auth";
 import { getSupportedModelConfig } from "@app/lib/llms/model_configurations";
 import {
   replaceMentionsWithAt,
@@ -110,7 +110,13 @@ async function renderActionForMultiActionsModel(
   auth: Authenticator,
   action: AgentMCPActionWithOutputType,
   model: ModelConfigurationType,
-  { conversationId }: { conversationId: string }
+  {
+    conversationId,
+    renderSearchResultsAsMarkdown,
+  }: {
+    conversationId: string;
+    renderSearchResultsAsMarkdown: boolean;
+  }
 ): Promise<FunctionMessageTypeModel> {
   if (action.status === "denied") {
     return {
@@ -146,7 +152,11 @@ async function renderActionForMultiActionsModel(
   }
 
   const outputItems = removeNulls(
-    action.output?.map(rewriteContentForModel) ?? []
+    action.output?.map((content) =>
+      rewriteContentForModel(content, {
+        renderSearchResultsAsMarkdown,
+      })
+    ) ?? []
   );
 
   let output: string | Content[];
@@ -230,6 +240,10 @@ export async function getSteps(
     return [];
   }
   const actions = removeNulls(message.actions);
+  const renderSearchResultsAsMarkdown = await hasFeatureFlag(
+    auth,
+    "render_semantic_search_results_as_markdown"
+  );
 
   // We store for each step (identified by its index) the "contents" array (raw model outputs, including
   // text content, reasoning and function calls) and "actions", i.e the function results.
@@ -247,6 +261,7 @@ export async function getSteps(
       action,
       result: await renderActionForMultiActionsModel(auth, action, model, {
         conversationId,
+        renderSearchResultsAsMarkdown,
       }),
       enabledSkillMessages: renderEnabledSkillMessagesForAction(action, {
         enabledSkillById,
