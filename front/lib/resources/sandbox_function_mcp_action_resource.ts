@@ -167,6 +167,12 @@ export class SandboxFunctionMCPActionResource extends BaseResource<SandboxFuncti
     return action ?? null;
   }
 
+  async updateStatus(
+    status: ToolExecutionBaseStatus
+  ): Promise<[affectedCount: number]> {
+    return this.update({ status });
+  }
+
   async markAsSucceeded({
     executionDurationMs,
   }: {

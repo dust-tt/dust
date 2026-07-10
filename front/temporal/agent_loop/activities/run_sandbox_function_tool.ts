@@ -1,16 +1,18 @@
 import { isToolExecutionStatusFinal } from "@app/lib/actions/statuses";
 import type { SandboxFunctionRunContext } from "@app/lib/actions/types";
 import { runToolWithStreaming } from "@app/lib/api/mcp/run_tool";
+import { publishSandboxFunctionInvocationEvent } from "@app/lib/api/sandbox_functions/events";
 import type { AuthenticatorType } from "@app/lib/auth";
 import { Authenticator } from "@app/lib/auth";
 import { SandboxFunctionMCPActionResource } from "@app/lib/resources/sandbox_function_mcp_action_resource";
 import { SandboxFunctionResource } from "@app/lib/resources/sandbox_function_resource";
 import { getShutdownSignal } from "@app/lib/shutdown_signal";
-import { drainAsyncGenerator } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import type { ModelId } from "@app/types/shared/model_id";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { Context } from "@temporalio/activity";
+import assert from "assert";
 
 export async function runSandboxFunctionToolActivity(
   authType: AuthenticatorType,
@@ -58,31 +60,47 @@ export async function runSandboxFunctionToolActivity(
 
   const startTimeMs = performance.now();
 
-  // `runToolWithStreaming` executes the tool and persists the output. Its events are drained:
-  // there is no invocation event stream to forward them to yet.
-  // TODO(2026-07-08 SANDBOX_FUNCTIONS): forward these events to the invocation event stream once
-  // it exists (e.g. viz progress).
   const abortSignal = AbortSignal.any([
     Context.current().cancellationSignal,
     getShutdownSignal(),
   ]);
 
   try {
-    await drainAsyncGenerator(
-      runToolWithStreaming(
-        auth,
-        { toolContext: { runContext } },
-        { signal: abortSignal }
-      )
-    );
+    for await (const event of runToolWithStreaming(
+      auth,
+      { toolContext: { runContext } },
+      { signal: abortSignal }
+    )) {
+      switch (event.type) {
+        case "tool_personal_auth_required":
+          assert(
+            "invocationId" in event,
+            "Expected a sandbox function authentication event."
+          );
+          await publishSandboxFunctionInvocationEvent(event, {
+            invocationId: invocation.sId,
+          });
+          break;
+        case "tool_approve_execution":
+        case "tool_ask_user_question":
+        case "tool_early_exit":
+        case "tool_error":
+        case "tool_file_auth_required":
+        case "tool_notification":
+        case "tool_paused":
+        case "tool_success":
+          break;
+        default:
+          assertNever(event);
+      }
+    }
 
-    // Pause resources make the run yield events and return without a terminal status. There is
-    // no pause surface for function invocations yet, so fail closed to errored rather than leave
-    // the action `running` with the poll hanging until token expiry. The pause resource is
-    // persisted in the output, so the function sees what the tool needs (e.g. which provider to
-    // authenticate) and handles it on its side. Approval bubbling replaces this with
-    // `blocked_validation_required` plus an invocation stream event.
-    if (!isToolExecutionStatusFinal(action.status)) {
+    // Personal authentication is an expected non-terminal pause surfaced through the invocation
+    // stream. Other pause resources still fail closed until their resolution flows are wired.
+    if (
+      !isToolExecutionStatusFinal(action.status) &&
+      action.status !== "blocked_authentication_required"
+    ) {
       await action.markAsErrored({
         executionDurationMs: performance.now() - startTimeMs,
       });

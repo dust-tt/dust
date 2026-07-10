@@ -150,16 +150,24 @@ export async function getExitOrPauseEvents(
         `The tool ${toolCallName} requires personal ` +
         `authentication, please authenticate to use it.`;
 
-      // The blocked statuses only exist on agent MCP actions; sandbox function invocations observe
-      // the returned event instead.
-      if (isAgentLoopRunContext(runContext)) {
-        // Update the action to mark it as blocked because of a personal authentication error.
-        await runContext.action.updateStatus("blocked_authentication_required");
-        await pauseSandboxBashForBlockedChild(
-          auth,
-          runContext.action,
-          runContext.conversation
-        );
+      switch (runContext.contextType) {
+        case "agent_loop":
+          await runContext.action.updateStatus(
+            "blocked_authentication_required"
+          );
+          await pauseSandboxBashForBlockedChild(
+            auth,
+            runContext.action,
+            runContext.conversation
+          );
+          break;
+        case "sandbox_function":
+          await runContext.action.updateStatus(
+            "blocked_authentication_required"
+          );
+          break;
+        default:
+          assertNever(runContext);
       }
 
       return [
