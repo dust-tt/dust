@@ -1,0 +1,235 @@
+import { ANALYTICS_ALIAS_NAME, withEs } from "@app/lib/api/elasticsearch";
+
+import type { Authenticator } from "@app/lib/auth";
+import { storeAgentAnalyticsActivity } from "@app/temporal/analytics_queue/activities";
+import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
+import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
+import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
+import { TagFactory } from "@app/tests/utils/TagFactory";
+import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
+import { Ok } from "@app/types/shared/result";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+
+// Keep the DB and resources real; only stub the Elasticsearch boundary so we can
+// capture the document that would be indexed without depending on a live cluster.
+vi.mock("@app/lib/api/elasticsearch", async (importActual) => {
+  const actual =
+    await importActual<typeof import("@app/lib/api/elasticsearch")>();
+  return { ...actual, withEs: vi.fn() };
+});
+
+/**
+ * Wire `withEs` to run its callback against a stub client that records every
+ * `index` call, and return the array of captured params.
+ */
+function captureIndexedDocs(): Array<{ index: string; id: string; body: any }> {
+  const indexed: Array<{ index: string; id: string; body: any }> = [];
+  vi.mocked(withEs).mockImplementation(async (fn: any) => {
+    const client = {
+      index: async (params: any) => {
+        indexed.push(params);
+        return {};
+      },
+      bulk: async () => ({}),
+      update: async () => ({}),
+    };
+    return new Ok(await fn(client));
+  });
+  return indexed;
+}
+
+function analyticsDoc(
+  indexed: Array<{ index: string; body: any }>
+): Record<string, any> | undefined {
+  return indexed.find((p) => p.index === ANALYTICS_ALIAS_NAME)?.body;
+}
+
+/**
+ * Create a conversation with a user message and an agent message pinned to the
+ * given agent configuration id/version, and return the sIds needed to run the
+ * analytics activity.
+ */
+async function seedMessages(
+  auth: Authenticator,
+  {
+    agentConfigurationId,
+    agentConfigurationVersion,
+  }: {
+    agentConfigurationId: string;
+    agentConfigurationVersion: number;
+  }
+): Promise<{
+  conversationSId: string;
+  userMessageId: string;
+  agentMessageId: string;
+}> {
+  const workspace = auth.getNonNullableWorkspace();
+
+  const conversation = await ConversationFactory.create(auth, {
+    agentConfigurationId,
+    messagesCreatedAt: [],
+  });
+
+  const userMessageRow = await ConversationFactory.createUserMessageWithRank({
+    auth,
+    workspace,
+    conversationId: conversation.id,
+    rank: 0,
+    content: "Hello",
+  });
+
+  const agentMessageRow = await ConversationFactory.createAgentMessageWithRank({
+    workspace,
+    conversationId: conversation.id,
+    rank: 1,
+    agentConfigurationId,
+    agentConfigurationVersion,
+  });
+
+  return {
+    conversationSId: conversation.sId,
+    userMessageId: userMessageRow.sId,
+    agentMessageId: agentMessageRow.sId,
+  };
+}
+
+async function runAnalytics(
+  auth: Authenticator,
+  {
+    conversationSId,
+    agentMessageId,
+    userMessageId,
+  }: { conversationSId: string; agentMessageId: string; userMessageId: string }
+): Promise<void> {
+  await storeAgentAnalyticsActivity(auth.toJSON(), {
+    agentLoopArgs: {
+      agentMessageId,
+      agentMessageVersion: 0,
+      conversationId: conversationSId,
+      conversationTitle: null,
+      conversationBranchId: null,
+      userMessageId,
+      userMessageVersion: 0,
+    },
+  });
+}
+
+describe("storeAgentAnalyticsActivity - agent_tag_ids", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("stamps the agent's tag sIds onto the analytics document", async () => {
+    const { authenticator: auth } = await createResourceTest({ role: "admin" });
+
+    const agent = await AgentConfigurationFactory.createTestAgent(auth);
+    const tag = await TagFactory.create(auth.getNonNullableWorkspace(), {
+      name: "post-sales",
+    });
+    await tag.addToAgent(auth, agent);
+
+    const seeded = await seedMessages(auth, {
+      agentConfigurationId: agent.sId,
+      agentConfigurationVersion: agent.version,
+    });
+
+    const indexed = captureIndexedDocs();
+    await runAnalytics(auth, seeded);
+
+    const doc = analyticsDoc(indexed);
+    expect(doc).toBeDefined();
+    expect(doc?.agent_id).toBe(agent.sId);
+    expect(doc?.agent_tag_ids).toEqual([tag.sId]);
+  });
+
+  it("stamps all tag sIds when the agent has multiple tags", async () => {
+    const { authenticator: auth } = await createResourceTest({ role: "admin" });
+
+    const agent = await AgentConfigurationFactory.createTestAgent(auth);
+    const workspace = auth.getNonNullableWorkspace();
+    const tagA = await TagFactory.create(workspace, { name: "post-sales" });
+    const tagB = await TagFactory.create(workspace, { name: "help-center" });
+    await tagA.addToAgent(auth, agent);
+    await tagB.addToAgent(auth, agent);
+
+    const seeded = await seedMessages(auth, {
+      agentConfigurationId: agent.sId,
+      agentConfigurationVersion: agent.version,
+    });
+
+    const indexed = captureIndexedDocs();
+    await runAnalytics(auth, seeded);
+
+    const doc = analyticsDoc(indexed);
+    expect(doc?.agent_tag_ids).toHaveLength(2);
+    expect([...doc!.agent_tag_ids].sort()).toEqual([tagA.sId, tagB.sId].sort());
+  });
+
+  it("stamps an empty array when the agent has no tags", async () => {
+    const { authenticator: auth } = await createResourceTest({ role: "admin" });
+
+    const agent = await AgentConfigurationFactory.createTestAgent(auth);
+
+    const seeded = await seedMessages(auth, {
+      agentConfigurationId: agent.sId,
+      agentConfigurationVersion: agent.version,
+    });
+
+    const indexed = captureIndexedDocs();
+    await runAnalytics(auth, seeded);
+
+    expect(analyticsDoc(indexed)?.agent_tag_ids).toEqual([]);
+  });
+
+  it("stamps an empty array for global agents", async () => {
+    const { authenticator: auth } = await createResourceTest({ role: "admin" });
+
+    const seeded = await seedMessages(auth, {
+      agentConfigurationId: GLOBAL_AGENTS_SID.HELPER,
+      agentConfigurationVersion: 0,
+    });
+
+    const indexed = captureIndexedDocs();
+    await runAnalytics(auth, seeded);
+
+    const doc = analyticsDoc(indexed);
+    expect(doc?.agent_id).toBe(GLOBAL_AGENTS_SID.HELPER);
+    expect(doc?.agent_tag_ids).toEqual([]);
+  });
+
+  it("reflects the tags from the agent version that produced the message", async () => {
+    const { authenticator: auth } = await createResourceTest({ role: "admin" });
+
+    // v0 has one tag.
+    const agent = await AgentConfigurationFactory.createTestAgent(auth);
+    const tag = await TagFactory.create(auth.getNonNullableWorkspace(), {
+      name: "post-sales",
+    });
+    await tag.addToAgent(auth, agent);
+
+    // Bump to v1, which is created without tags.
+    const updated = await AgentConfigurationFactory.updateTestAgent(
+      auth,
+      agent.sId
+    );
+    expect(updated.version).toBeGreaterThan(agent.version);
+
+    // A message pinned to v0 still resolves v0's tags.
+    const seededV0 = await seedMessages(auth, {
+      agentConfigurationId: agent.sId,
+      agentConfigurationVersion: agent.version,
+    });
+    let indexed = captureIndexedDocs();
+    await runAnalytics(auth, seededV0);
+    expect(analyticsDoc(indexed)?.agent_tag_ids).toEqual([tag.sId]);
+
+    // A message pinned to v1 resolves v1's (empty) tags.
+    const seededV1 = await seedMessages(auth, {
+      agentConfigurationId: agent.sId,
+      agentConfigurationVersion: updated.version,
+    });
+    indexed = captureIndexedDocs();
+    await runAnalytics(auth, seededV1);
+    expect(analyticsDoc(indexed)?.agent_tag_ids).toEqual([]);
+  });
+});

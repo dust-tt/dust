@@ -22,6 +22,7 @@ import {
   intelligenceAwuFromRunUsagesGroupedByRunKey,
   toolAwuFromAction,
 } from "@app/lib/metronome/events";
+import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import type { AgentMessageFeedbackModel } from "@app/lib/models/agent/conversation";
 import {
   AgentMessageModel,
@@ -45,6 +46,7 @@ import type { SkillDefinition } from "@app/lib/resources/skill/code_defined/shar
 import { SystemSkillsRegistry } from "@app/lib/resources/skill/code_defined/system_registry";
 import { UserModel } from "@app/lib/resources/storage/models/user";
 import { makeSId } from "@app/lib/resources/string_ids";
+import { TagResource } from "@app/lib/resources/tags_resource";
 import logger from "@app/logger/logger";
 import type {
   AgentLoopArgs,
@@ -206,6 +208,10 @@ export async function storeAgentAnalytics(
     contextOrigin
   );
 
+  // Collect the agent's tag ids at message time.
+  // NOTE: may not be stable over time, see `collectAgentTagIds` for details.
+  const agentTagIds = await collectAgentTagIds(auth, agentAgentMessageRow);
+
   const llmAwu = intelligenceAwuFromRunUsagesGroupedByRunKey(
     runUsages,
     contextOrigin
@@ -248,6 +254,7 @@ export async function storeAgentAnalytics(
   const document: AgentMessageAnalyticsData = {
     agent_id: agentAgentMessageRow.agentConfigurationId,
     agent_version: agentAgentMessageRow.agentConfigurationVersion.toString(),
+    agent_tag_ids: agentTagIds,
     ancestor_message_ids: ancestorMessageIds,
     conversation_id: conversationRow.sId,
     cost,
@@ -401,6 +408,48 @@ async function collectToolUsageFromMessage(
       cost_awu,
     };
   });
+}
+
+/**
+ * Collect the tag ids attached to the agent configuration version that
+ * produced this message. Tags are stored per agent-configuration version, so we
+ * resolve the exact version to capture the agent's tags at message time. Global
+ * agents are code-defined and have no DB-backed tags.
+ *
+ * NOTE: there are several ways to edit agent tags, which creates a discrepancy:
+ *  - if a tag is added/removed through the route `w/{Id}/assistant/agent_configurations/{sId}/tags`,
+ *    the tag_agents model is updated and no new agent_configuration version is created.
+ *  - if a tag is added/removed through the route `w/{Id}/assistant/agent_configurations/{sId}`,
+ *    the agent_configuration version is bumped and the tag_agents model is updated.
+ * It results that we can loose the history of tags for a given agent_configuration version if the first
+ * route is used.
+ */
+async function collectAgentTagIds(
+  auth: Authenticator,
+  agentAgentMessageRow: AgentMessageModel
+): Promise<string[]> {
+  const { agentConfigurationId, agentConfigurationVersion } =
+    agentAgentMessageRow;
+
+  if (isGlobalAgentId(agentConfigurationId)) {
+    return [];
+  }
+
+  const agentConfiguration = await AgentConfigurationModel.findOne({
+    where: {
+      workspaceId: auth.getNonNullableWorkspace().id,
+      sId: agentConfigurationId,
+      version: agentConfigurationVersion,
+    },
+    attributes: ["id"],
+  });
+
+  if (!agentConfiguration) {
+    return [];
+  }
+
+  const tags = await TagResource.listForAgent(auth, agentConfiguration.id);
+  return tags.map((tag) => tag.sId);
 }
 
 /**

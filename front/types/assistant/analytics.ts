@@ -52,6 +52,9 @@ export interface AgentMessageAnalyticsSkillUsed {
 export interface AgentMessageAnalyticsData extends ElasticsearchBaseDocument {
   agent_id: string;
   agent_version: string;
+  // Tag sIds attached to the agent configuration version that produced this
+  // message, captured at index time (reflects the agent's tags at message time).
+  agent_tag_ids: string[];
   ancestor_message_ids: string[];
   conversation_id: string;
   cost: AgentMessageAnalyticsCost;
