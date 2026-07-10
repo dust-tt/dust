@@ -435,9 +435,14 @@ export const VisualizationActionIframe = forwardRef<
   const [activeInvocations, setActiveInvocations] = useState<
     { functionId: string; invocationId: string }[]
   >([]);
-  const invocationResolversRef = useRef<
-    Map<string, (response: CommandResultMap["callFunction"]) => void>
-  >(new Map());
+  const invocationResolversRef = useRef<Map<
+    string,
+    (response: CommandResultMap["callFunction"]) => void
+  > | null>(null);
+  if (invocationResolversRef.current === null) {
+    invocationResolversRef.current = new Map();
+  }
+  const invocationResolvers = invocationResolversRef.current;
 
   const waitForSandboxFunctionInvocationResult = useCallback(
     ({
@@ -448,22 +453,22 @@ export const VisualizationActionIframe = forwardRef<
       invocationId: string;
     }) =>
       new Promise<CommandResultMap["callFunction"]>((resolve) => {
-        invocationResolversRef.current.set(invocationId, resolve);
+        invocationResolvers.set(invocationId, resolve);
         setActiveInvocations((prev) => [...prev, { functionId, invocationId }]);
       }),
-    []
+    [invocationResolvers]
   );
 
   const settleSandboxFunctionInvocation = useCallback(
     (invocationId: string, response: CommandResultMap["callFunction"]) => {
-      const resolve = invocationResolversRef.current.get(invocationId);
-      invocationResolversRef.current.delete(invocationId);
+      const resolve = invocationResolvers.get(invocationId);
+      invocationResolvers.delete(invocationId);
       setActiveInvocations((prev) =>
         prev.filter((invocation) => invocation.invocationId !== invocationId)
       );
       resolve?.(response);
     },
-    []
+    [invocationResolvers]
   );
 
   // Combine internal ref with forwarded ref.
