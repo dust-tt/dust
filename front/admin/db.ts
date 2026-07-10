@@ -46,11 +46,6 @@ import { WebhookRequestModel } from "@app/lib/models/agent/triggers/webhook_requ
 import { WebhookRequestTriggerModel } from "@app/lib/models/agent/triggers/webhook_request_trigger";
 import { WebhookSourceModel } from "@app/lib/models/agent/triggers/webhook_source";
 import { WebhookSourcesViewModel } from "@app/lib/models/agent/triggers/webhook_sources_view";
-import {
-  GroupAllowedAdvancedModel,
-  UserAllowedAdvancedModel,
-  WorkspaceAllowedAdvancedModel,
-} from "@app/lib/models/allowed_advanced_model";
 import { DustAppSecretModel } from "@app/lib/models/dust_app_secret";
 import { ExtensionConfigurationModel } from "@app/lib/models/extension";
 import { FeatureFlagModel } from "@app/lib/models/feature_flag";
@@ -207,9 +202,6 @@ export function loadAllModels() {
     PlanModel,
     SubscriptionModel,
     ProviderCredentialModel,
-    UserAllowedAdvancedModel,
-    GroupAllowedAdvancedModel,
-    WorkspaceAllowedAdvancedModel,
     TemplateModel,
     CreditModel,
     CouponModel,
