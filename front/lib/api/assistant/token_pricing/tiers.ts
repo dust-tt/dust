@@ -333,6 +333,12 @@ export const STATIC_MODEL_TIERS: StaticModelTiersLookup = {
     medium: "balanced",
     high: "balanced",
   },
+  "accounts/fireworks/models/kimi-k2p6": {
+    none: "balanced",
+    light: "balanced",
+    medium: "balanced",
+    high: "balanced",
+  },
   "accounts/fireworks/models/minimax-m2p5": {
     light: "balanced",
     medium: "balanced",

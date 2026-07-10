@@ -34,6 +34,8 @@ export const FIREWORKS_KIMI_K2_INSTRUCT_MODEL_ID =
   "accounts/fireworks/models/kimi-k2-instruct-0905" as const;
 export const FIREWORKS_KIMI_K2P5_MODEL_ID =
   "accounts/fireworks/models/kimi-k2p5" as const;
+export const FIREWORKS_KIMI_K2P6_MODEL_ID =
+  "accounts/fireworks/models/kimi-k2p6" as const;
 export const FIREWORKS_MINIMAX_M2P5_MODEL_ID =
   "accounts/fireworks/models/minimax-m2p5" as const;
 export const FIREWORKS_GLM_5_MODEL_ID =
@@ -74,6 +76,7 @@ export const MODEL_IDS = [
   FIREWORKS_DEEPSEEK_V4_PRO_MODEL_ID,
   FIREWORKS_KIMI_K2_INSTRUCT_MODEL_ID,
   FIREWORKS_KIMI_K2P5_MODEL_ID,
+  FIREWORKS_KIMI_K2P6_MODEL_ID,
   FIREWORKS_MINIMAX_M2P5_MODEL_ID,
   FIREWORKS_GLM_5_MODEL_ID,
   FIREWORKS_GLM_5P2_MODEL_ID,

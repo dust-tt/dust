@@ -53,7 +53,7 @@ import {
   FIREWORKS_DEEPSEEK_V4_PRO_MODEL_CONFIG,
   FIREWORKS_GLM_5_MODEL_CONFIG,
   FIREWORKS_GLM_5P2_MODEL_CONFIG,
-  FIREWORKS_KIMI_K2P5_MODEL_CONFIG,
+  FIREWORKS_KIMI_K2P6_MODEL_CONFIG,
   FIREWORKS_MINIMAX_M2P5_MODEL_CONFIG,
 } from "@app/types/assistant/models/fireworks";
 import {
@@ -653,7 +653,7 @@ export function _getDustKimiGlobalAgent(
   return _getDustLikeGlobalAgent(auth, args, {
     agentId: GLOBAL_AGENTS_SID.DUST_KIMI,
     name: "dust-kimi",
-    preferredModelConfiguration: FIREWORKS_KIMI_K2P5_MODEL_CONFIG,
+    preferredModelConfiguration: FIREWORKS_KIMI_K2P6_MODEL_CONFIG,
     preferredReasoningEffort: "light",
   });
 }
@@ -665,7 +665,7 @@ export function _getDustKimiMediumGlobalAgent(
   return _getDustLikeGlobalAgent(auth, args, {
     agentId: GLOBAL_AGENTS_SID.DUST_KIMI_MEDIUM,
     name: "dust-kimi-medium",
-    preferredModelConfiguration: FIREWORKS_KIMI_K2P5_MODEL_CONFIG,
+    preferredModelConfiguration: FIREWORKS_KIMI_K2P6_MODEL_CONFIG,
     preferredReasoningEffort: "medium",
   });
 }
@@ -677,7 +677,7 @@ export function _getDustKimiHighGlobalAgent(
   return _getDustLikeGlobalAgent(auth, args, {
     agentId: GLOBAL_AGENTS_SID.DUST_KIMI_HIGH,
     name: "dust-kimi-high",
-    preferredModelConfiguration: FIREWORKS_KIMI_K2P5_MODEL_CONFIG,
+    preferredModelConfiguration: FIREWORKS_KIMI_K2P6_MODEL_CONFIG,
     preferredReasoningEffort: "high",
   });
 }

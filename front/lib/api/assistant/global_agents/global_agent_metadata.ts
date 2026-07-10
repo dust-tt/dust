@@ -618,7 +618,7 @@ export function getGlobalAgentMetadata(sId: GLOBAL_AGENTS_SID): AgentMetadata {
       return {
         sId: GLOBAL_AGENTS_SID.DUST_KIMI,
         name: "dust-kimi",
-        description: "Same as dust but running Kimi K2.5.",
+        description: "Same as dust but running Kimi K2.6.",
         pictureUrl: DUST_AVATAR_URL,
       };
     case GLOBAL_AGENTS_SID.DUST_KIMI_MEDIUM:

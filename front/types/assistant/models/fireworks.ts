@@ -8,6 +8,8 @@ export const FIREWORKS_KIMI_K2_INSTRUCT_MODEL_ID =
   "accounts/fireworks/models/kimi-k2-instruct-0905" as const;
 export const FIREWORKS_KIMI_K2P5_MODEL_ID =
   "accounts/fireworks/models/kimi-k2p5" as const;
+export const FIREWORKS_KIMI_K2P6_MODEL_ID =
+  "accounts/fireworks/models/kimi-k2p6" as const;
 export const FIREWORKS_MINIMAX_M2P5_MODEL_ID =
   "accounts/fireworks/models/minimax-m2p5" as const;
 export const FIREWORKS_GLM_5_MODEL_ID =
@@ -113,8 +115,41 @@ export const FIREWORKS_KIMI_K2P5_MODEL_CONFIG: ModelConfigurationType = {
   recommendedExhaustiveTopK: 64,
   largeModel: true,
   description:
-    "Moonshot AI's flagship agentic model with 262k context and vision support (served via Fireworks).",
+    "Moonshot AI's agentic model with 262k context and vision support (served via Fireworks).",
   shortDescription: "Kimi K2.5 with vision support.",
+  isLegacy: true,
+  isLatest: false,
+  generationTokensCount: 2048,
+  supportsVision: true,
+  supportedReasoningEfforts: {
+    none: true,
+    light: true,
+    medium: true,
+    high: true,
+  },
+  defaultReasoningEffort: "light",
+  supportsResponseFormat: true,
+  tokenizer: { type: "tiktoken", base: "o200k_base" },
+  availableIfOneOf: {
+    featureFlag: "fireworks_new_model_feature",
+  },
+  regionalAvailability: {
+    "us-central1": true,
+    "europe-west1": false,
+  },
+};
+// https://fireworks.ai/models/fireworks/kimi-k2p6
+export const FIREWORKS_KIMI_K2P6_MODEL_CONFIG: ModelConfigurationType = {
+  providerId: "fireworks",
+  modelId: FIREWORKS_KIMI_K2P6_MODEL_ID,
+  displayName: "Kimi K2.6 (Fireworks)",
+  contextSize: 262_000,
+  recommendedTopK: 32,
+  recommendedExhaustiveTopK: 64,
+  largeModel: true,
+  description:
+    "Moonshot AI's flagship agentic model with 262k context and vision support (served via Fireworks).",
+  shortDescription: "Kimi K2.6 with vision support.",
   isLegacy: false,
   isLatest: true,
   generationTokensCount: 2048,

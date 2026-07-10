@@ -314,6 +314,11 @@ export const SUPPORTED_MODEL_CONFIGS: ReadonlyArray<ModelConfig> = [
     providerId: "fireworks",
   },
   {
+    modelId: "accounts/fireworks/models/kimi-k2p6",
+    displayName: "Kimi K2.6 (Fireworks)",
+    providerId: "fireworks",
+  },
+  {
     modelId: "accounts/fireworks/models/minimax-m2p5",
     displayName: "MiniMax M2.5 (Fireworks)",
     providerId: "fireworks",
