@@ -22,7 +22,6 @@ import {
   intelligenceAwuFromRunUsagesGroupedByRunKey,
   toolAwuFromAction,
 } from "@app/lib/metronome/events";
-import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import type { AgentMessageFeedbackModel } from "@app/lib/models/agent/conversation";
 import {
   AgentMessageModel,
@@ -435,20 +434,12 @@ async function collectAgentTagIds(
     return [];
   }
 
-  const agentConfiguration = await AgentConfigurationModel.findOne({
-    where: {
-      workspaceId: auth.getNonNullableWorkspace().id,
-      sId: agentConfigurationId,
-      version: agentConfigurationVersion,
-    },
-    attributes: ["id"],
-  });
+  const tags = await TagResource.listForAgentVersion(
+    auth,
+    agentConfigurationId,
+    agentConfigurationVersion
+  );
 
-  if (!agentConfiguration) {
-    return [];
-  }
-
-  const tags = await TagResource.listForAgent(auth, agentConfiguration.id);
   return tags.map((tag) => tag.sId);
 }
 

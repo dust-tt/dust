@@ -1,4 +1,5 @@
 import type { Authenticator } from "@app/lib/auth";
+import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { TagAgentModel } from "@app/lib/models/agent/tag_agent";
 import { TagModel } from "@app/lib/models/tags";
 import { BaseResource } from "@app/lib/resources/base_resource";
@@ -218,6 +219,43 @@ export class TagResource extends BaseResource<TagModel> {
     return mapValues(groupBy(tagAgents, "agentConfigurationId"), (group) =>
       group.map((tagAgent) => tagsMap[tagAgent.tagId])
     );
+  }
+
+  /**
+   * List the tags attached to a specific agent configuration version, identified
+   * by its sId and version.
+   */
+  static async listForAgentVersion(
+    auth: Authenticator,
+    agentConfigurationId: string,
+    agentConfigurationVersion: number
+  ): Promise<TagResource[]> {
+    const tagAgents = await TagAgentModel.findAll({
+      where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
+      },
+      include: [
+        {
+          model: AgentConfigurationModel,
+          required: true,
+          attributes: [],
+          where: {
+            sId: agentConfigurationId,
+            version: agentConfigurationVersion,
+          },
+        },
+      ],
+    });
+
+    if (tagAgents.length === 0) {
+      return [];
+    }
+
+    return this.baseFetch(auth, {
+      where: {
+        id: tagAgents.map((tagAgent) => tagAgent.tagId),
+      },
+    });
   }
 
   async addToAgent(
