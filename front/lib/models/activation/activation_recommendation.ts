@@ -16,12 +16,17 @@ export type ActivationRecommendationStatus =
   | "executed"
   | "dismissed";
 
+// "user": recommendation surfaced organically in a user's conversation
+// "system": recommendation proactively generated and delivered by the orchestrator
+export type ActivationRecommendationOrigin = "user" | "system";
+
 export class ActivationRecommendationModel extends WorkspaceAwareModel<ActivationRecommendationModel> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
   declare userId: ForeignKey<UserModel["id"]>;
   declare status: ActivationRecommendationStatus;
+  declare origin: ActivationRecommendationOrigin;
   declare content: string;
   declare rationale: string;
 
@@ -50,6 +55,10 @@ ActivationRecommendationModel.init(
       allowNull: false,
     },
     status: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+    origin: {
       type: DataTypes.STRING,
       allowNull: false,
     },
@@ -96,6 +105,10 @@ ActivationRecommendationModel.init(
       },
       {
         fields: ["createdTriggerId"],
+        concurrently: true,
+      },
+      {
+        fields: ["workspaceId", "userId", "origin", "createdAt"],
         concurrently: true,
       },
     ],

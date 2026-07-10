@@ -30,6 +30,7 @@ const handlers: ToolHandlers<typeof ACTIVATION_RECOMMENDATIONS_TOOLS_METADATA> =
         content,
         rationale,
         conversationId,
+        origin: "user",
       });
 
       return new Ok([

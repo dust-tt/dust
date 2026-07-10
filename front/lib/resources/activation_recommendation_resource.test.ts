@@ -5,23 +5,38 @@ import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import { describe, expect, it } from "vitest";
 
-const makeRec = (auth: Authenticator) =>
+const makeRec = (
+  auth: Authenticator,
+  overrides: { origin?: "user" | "system" } = {}
+) =>
   ActivationRecommendationResource.makeNew(auth, {
     content: "Try the Slack integration",
     rationale: "User has Slack but no Slack skill",
     conversationId: null,
+    origin: overrides.origin ?? "user",
   });
 
 describe("ActivationRecommendationResource", () => {
   describe("makeNew", () => {
-    it("creates a recommendation with status 'suggested'", async () => {
+    it("creates a conversation recommendation with status 'suggested'", async () => {
       const { authenticator } = await createResourceTest({ role: "user" });
 
       const rec = await makeRec(authenticator);
 
       expect(rec.status).toBe("suggested");
+      expect(rec.origin).toBe("user");
       expect(rec.content).toBe("Try the Slack integration");
       expect(rec.rationale).toBe("User has Slack but no Slack skill");
+      expect(rec.sId).toBeTruthy();
+    });
+
+    it("creates a system recommendation with status 'suggested'", async () => {
+      const { authenticator } = await createResourceTest({ role: "user" });
+
+      const rec = await makeRec(authenticator, { origin: "system" });
+
+      expect(rec.status).toBe("suggested");
+      expect(rec.origin).toBe("system");
       expect(rec.sId).toBeTruthy();
     });
   });
@@ -100,6 +115,60 @@ describe("ActivationRecommendationResource", () => {
         await ActivationRecommendationResource.fetchByUser(authenticator);
 
       expect(recs).toHaveLength(0);
+    });
+  });
+
+  describe("fetchLatestSystemRecommendationForUser", () => {
+    it("returns null when no system recommendations exist", async () => {
+      const { authenticator } = await createResourceTest({ role: "user" });
+      await makeRec(authenticator, { origin: "user" });
+
+      const result =
+        await ActivationRecommendationResource.fetchLatestSystemRecommendationForUser(
+          authenticator
+        );
+
+      expect(result).toBeNull();
+    });
+
+    it("returns the most recent system recommendation", async () => {
+      const { authenticator } = await createResourceTest({ role: "user" });
+      const first = await makeRec(authenticator, { origin: "system" });
+      const second = await makeRec(authenticator, { origin: "system" });
+
+      const result =
+        await ActivationRecommendationResource.fetchLatestSystemRecommendationForUser(
+          authenticator
+        );
+
+      expect(result).not.toBeNull();
+      expect(result!.sId).toBe(second.sId);
+      expect(result!.origin).toBe("system");
+      // first was created earlier, second is the latest
+      expect(result!.sId).not.toBe(first.sId);
+    });
+
+    it("does not return system recommendations from another user", async () => {
+      const { workspace, authenticator } = await createResourceTest({
+        role: "user",
+      });
+      const otherUser = await UserFactory.basic();
+      await MembershipFactory.associate(workspace, otherUser, {
+        role: "user",
+      });
+      const otherAuth = await Authenticator.fromUserIdAndWorkspaceId(
+        otherUser.sId,
+        workspace.sId
+      );
+
+      await makeRec(otherAuth, { origin: "system" });
+
+      const result =
+        await ActivationRecommendationResource.fetchLatestSystemRecommendationForUser(
+          authenticator
+        );
+
+      expect(result).toBeNull();
     });
   });
 

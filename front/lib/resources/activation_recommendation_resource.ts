@@ -1,6 +1,7 @@
 import type { Authenticator } from "@app/lib/auth";
 import {
   ActivationRecommendationModel,
+  type ActivationRecommendationOrigin,
   type ActivationRecommendationStatus,
 } from "@app/lib/models/activation/activation_recommendation";
 import { BaseResource } from "@app/lib/resources/base_resource";
@@ -53,7 +54,7 @@ export class ActivationRecommendationResource extends BaseResource<ActivationRec
     blob: Pick<
       CreationAttributes<ActivationRecommendationModel>,
       "content" | "rationale" | "conversationId"
-    >
+    > & { origin: ActivationRecommendationOrigin }
   ): Promise<ActivationRecommendationResource> {
     const workspace = auth.getNonNullableWorkspace();
     const user = auth.getNonNullableUser();
@@ -62,6 +63,7 @@ export class ActivationRecommendationResource extends BaseResource<ActivationRec
       workspaceId: workspace.id,
       userId: user.id,
       status: "suggested",
+      origin: blob.origin,
       content: blob.content,
       rationale: blob.rationale,
       conversationId: blob.conversationId ?? null,
@@ -108,6 +110,22 @@ export class ActivationRecommendationResource extends BaseResource<ActivationRec
     });
 
     return recs.map((rec) => new this(this.model, rec.get()));
+  }
+
+  static async fetchLatestSystemRecommendationForUser(
+    auth: Authenticator
+  ): Promise<ActivationRecommendationResource | null> {
+    const user = auth.getNonNullableUser();
+    const rec = await this.model.findOne({
+      where: {
+        userId: user.id,
+        workspaceId: auth.getNonNullableWorkspace().id,
+        origin: "system" satisfies ActivationRecommendationOrigin,
+      },
+      order: [["createdAt", "DESC"]],
+    });
+
+    return rec ? new this(this.model, rec.get()) : null;
   }
 
   async updateFields(fields: {
