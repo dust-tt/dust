@@ -3,6 +3,7 @@ import type {
   ToolSettings,
 } from "@app/components/actions/mcp/forms/mcpServerFormSchema";
 import {
+  canToolUseMediumStakeLevel,
   encodeMCPToolNameForForm,
   getDefaultInternalToolStakeLevel,
 } from "@app/components/actions/mcp/forms/mcpServerFormSchema";
@@ -209,6 +210,11 @@ export const ToolsList = memo(
 
             <div className="flex flex-col gap-4">
               {tools.map((tool) => {
+                const availableStakeLevels = MCP_TOOL_STAKE_LEVELS.filter(
+                  (stakeLevel) =>
+                    stakeLevel !== "medium" ||
+                    canToolUseMediumStakeLevel(mcpServerView.server, tool.name)
+                );
                 const defaultSettings = getDefaultToolSettings({
                   tool,
                   toolMetadataByName,
@@ -222,7 +228,7 @@ export const ToolsList = memo(
                       tool={tool}
                       settings={defaultSettings}
                       mayUpdate={mayUpdate}
-                      availableStakeLevels={MCP_TOOL_STAKE_LEVELS}
+                      availableStakeLevels={availableStakeLevels}
                       onChange={noop}
                     />
                   );
@@ -238,7 +244,7 @@ export const ToolsList = memo(
                       <ToolItem
                         tool={tool}
                         mayUpdate={mayUpdate}
-                        availableStakeLevels={MCP_TOOL_STAKE_LEVELS}
+                        availableStakeLevels={availableStakeLevels}
                         settings={field.value ?? defaultSettings}
                         onChange={field.onChange}
                       />
