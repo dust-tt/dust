@@ -174,12 +174,6 @@ function findAvailableModel(
   );
 }
 
-// Resolve the agent's configured model. First look in the workspace picker
-// shortlist, then fall back to the full model catalog: an agent may be
-// configured with a supported model that is no longer surfaced in the picker
-// (older or de-emphasized models, e.g. GPT-5.5). Without this fallback the
-// picker cannot find the model and collapses to "Auto"; with it, the agent's
-// actual default is shown as "Default".
 function findAgentModel(
   models: ModelConfigurationType[],
   agentModel: AgentModelConfigurationType
