@@ -126,16 +126,6 @@ app.patch(
 
     const group = groupRes.value;
 
-    if (!group.isRegularManual()) {
-      return apiError(ctx, {
-        status_code: 404,
-        api_error: {
-          type: "group_not_found",
-          message: "Group not found.",
-        },
-      });
-    }
-
     const updateRes = await group.updateRegularManualGroup(auth, {
       name,
       memberIds,
@@ -163,6 +153,14 @@ app.patch(
             status_code: 404,
             api_error: {
               type: "user_not_found",
+              message: updateRes.error.message,
+            },
+          });
+        case "group_not_found":
+          return apiError(ctx, {
+            status_code: 404,
+            api_error: {
+              type: "group_not_found",
               message: updateRes.error.message,
             },
           });

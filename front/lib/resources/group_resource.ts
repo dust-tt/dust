@@ -2211,6 +2211,7 @@ export class GroupResource extends BaseResource<GroupModel> {
         | "user_not_found"
         | "user_not_member"
         | "user_already_member"
+        | "group_not_found"
         | "group_requirements_not_met"
         | "system_or_global_group"
       >
@@ -2223,6 +2224,10 @@ export class GroupResource extends BaseResource<GroupModel> {
           `Only workspace admins and ${BUSINESS_ADMIN_ROLE_NAME}s can update groups.`
         )
       );
+    }
+
+    if (!this.isRegularManual()) {
+      return new Err(new DustError("group_not_found", "Group not found."));
     }
 
     if (name !== undefined) {
