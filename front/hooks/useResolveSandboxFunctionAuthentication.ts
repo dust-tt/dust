@@ -54,7 +54,8 @@ export function useResolveSandboxFunctionAuthentication({
         sendNotification({
           type: "error",
           title: "Failed to resolve authentication",
-          description: "Failed to resume the authentication tool. Please try again.",
+          description:
+            "Failed to resume the authentication tool. Please try again.",
         });
         return { success: false };
       } finally {
