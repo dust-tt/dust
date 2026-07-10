@@ -672,6 +672,18 @@ export async function listMetronomePackages(): Promise<
         );
         continue;
       }
+      const filteredSeatTypes = new Map(
+        productSeatTypes
+          .entries()
+          .filter(
+            (entry) =>
+              pkg.subscriptions &&
+              pkg.subscriptions.some(
+                (s) => s.subscription_rate.product.id === entry[0]
+              )
+          )
+      );
+
       packages.push({
         id: pkg.id,
         name,
@@ -679,7 +691,10 @@ export async function listMetronomePackages(): Promise<
         rateCardId: pkg.rate_card_id ?? undefined,
         tier,
         currency: classifyMetronomePackageCurrencyByName(name),
-        seats: seatConfigsFromPackageOverrides(pkg.overrides, productSeatTypes),
+        seats: seatConfigsFromPackageOverrides(
+          pkg.overrides,
+          filteredSeatTypes
+        ),
         // billing_anchor_date is not exposed on PackageListResponse; default to
         // contract_start_date which all current packages use.
         billingAnchor: "contract_start_date" as const,
