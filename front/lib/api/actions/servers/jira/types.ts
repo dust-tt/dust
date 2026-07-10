@@ -664,6 +664,50 @@ export type JiraIssueWithAttachments = z.infer<
   typeof JiraIssueWithAttachmentsSchema
 >;
 
+// --- Jira Software Agile: Boards ---
+
+export const JiraBoardSchema = z.object({
+  id: z.number(),
+  name: z.string(),
+  type: z.string(),
+  location: z
+    .object({
+      projectKey: z.string().optional(),
+      projectName: z.string().optional(),
+      displayName: z.string().optional(),
+    })
+    .optional(),
+});
+
+export const JiraBoardsResponseSchema = z.object({
+  values: z.array(JiraBoardSchema),
+  isLast: z.boolean(),
+  startAt: z.number().optional(),
+  maxResults: z.number().optional(),
+  total: z.number().optional(),
+});
+
+// --- Jira Software Agile: Sprints ---
+
+export const JiraSprintSchema = z.object({
+  id: z.number(),
+  name: z.string(),
+  state: z.string(),
+  startDate: z.string().optional(),
+  endDate: z.string().optional(),
+  completeDate: z.string().optional(),
+  goal: z.string().optional(),
+  boardId: z.number().optional(),
+  originBoardId: z.number().optional(),
+});
+
+export const JiraSprintsResponseSchema = z.object({
+  values: z.array(JiraSprintSchema),
+  isLast: z.boolean(),
+  startAt: z.number().optional(),
+  maxResults: z.number().optional(),
+});
+
 export function isADFDocument(value: unknown): value is ADFDocument {
   return ADFDocumentSchema.safeParse(value).success;
 }

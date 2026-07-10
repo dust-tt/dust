@@ -36,6 +36,10 @@ export class JiraOAuthProvider implements BaseOAuthStrategyProvider {
       // Write permissions
       "write:jira-work",
 
+      // Jira Software Agile API (boards and sprints)
+      "read:board-scope:jira-software",
+      "read:sprint:jira-software",
+
       // Required for OAuth refresh token
       "offline_access",
     ];

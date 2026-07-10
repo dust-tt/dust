@@ -1181,6 +1181,10 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool billing info ac
       "freeUsage": false,
       "toolCostCategory": "advanced",
     },
+    "get_boards": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
     "get_connection_info": {
       "freeUsage": false,
       "toolCostCategory": "advanced",
@@ -1222,6 +1226,10 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool billing info ac
       "toolCostCategory": "advanced",
     },
     "get_projects": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "get_sprints": {
       "freeUsage": false,
       "toolCostCategory": "advanced",
     },
@@ -2859,6 +2867,7 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool stakes across a
     "create_issue_link": "low",
     "delete_issue_link": "low",
     "get_attachments": "never_ask",
+    "get_boards": "never_ask",
     "get_connection_info": "never_ask",
     "get_issue": "never_ask",
     "get_issue_create_fields": "never_ask",
@@ -2870,6 +2879,7 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool stakes across a
     "get_project": "never_ask",
     "get_project_versions": "never_ask",
     "get_projects": "never_ask",
+    "get_sprints": "never_ask",
     "get_transitions": "never_ask",
     "get_users": "never_ask",
     "read_attachment": "never_ask",
