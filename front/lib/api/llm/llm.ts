@@ -235,10 +235,7 @@ export abstract class LLM<TPayload = unknown> {
               modelInteractionId,
               ...(cacheMissReason && {
                 cacheMissReasonType: cacheMissReason.type,
-                ...(cacheMissReason.cacheMissedInputTokens !== undefined && {
-                  cacheMissedInputTokens:
-                    cacheMissReason.cacheMissedInputTokens,
-                }),
+                cacheMissedInputTokens: cacheMissReason.cacheMissedInputTokens,
               }),
             },
           });
