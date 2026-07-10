@@ -414,17 +414,6 @@ export async function processToolResults(
             };
           }
 
-          // Only non-blob resources reach this point (blobs are offloaded to file
-          // storage above), so there is nothing to inline besides text fields.
-          localLogger.info(
-            {
-              mimeType: block.resource.mimeType ?? null,
-              toolName: toolConfiguration.name,
-              serverName: toolConfiguration.mcpServerName,
-            },
-            "MCP tool returned an embedded resource with an unsupported or missing mimeType; storing it inline in the conversation."
-          );
-
           return {
             content: {
               type: block.type,
