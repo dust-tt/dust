@@ -128,8 +128,6 @@ export function InputBarModelPicker({
   const allModelsWithEfforts = useMemo<ModelWithReasoningEffort[]>(
     () =>
       models
-        // The auto model is surfaced through the dedicated "Auto" toggle, not as
-        // a browsable model line (its own "Dust" provider group / a search hit).
         .filter((model) => model.modelId !== AUTO_MODEL_ID)
         .flatMap((model) =>
           getSelectableReasoningEfforts(model).map((effort) => ({
