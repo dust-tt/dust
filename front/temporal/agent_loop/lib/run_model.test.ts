@@ -5,6 +5,7 @@ import { ANTHROPIC_PROVIDER_ID } from "@app/lib/api/llm/clients/anthropic/types"
 import {
   buildBaseSpecifications,
   buildSpecificationsWithReplayPlaceholders,
+  buildToolDefinitionsForTokenCount,
 } from "@app/temporal/agent_loop/lib/run_model";
 import type {
   ModelConversationTypeMultiActions,
@@ -157,6 +158,47 @@ function makeAgentServerConfiguration({
     internalMCPServerId: null,
   };
 }
+
+describe("buildToolDefinitionsForTokenCount", () => {
+  it("includes every spec, eager or not, when tool search is disabled", () => {
+    const specs = [
+      makeSpecification("eager_tool", { eager: true }),
+      makeSpecification("deferred_tool", { eager: false }),
+    ];
+
+    const tools = JSON.parse(buildToolDefinitionsForTokenCount(specs, false));
+
+    expect(tools.map((t: { name: string }) => t.name)).toEqual([
+      "eager_tool",
+      "deferred_tool",
+    ]);
+  });
+
+  it("keeps only eager specs, plus the tool-search tool itself, when tool search is enabled", () => {
+    const specs = [
+      makeSpecification("eager_tool", { eager: true }),
+      makeSpecification("deferred_tool", { eager: false }),
+      makeSpecification("another_deferred_tool"),
+    ];
+
+    const tools = JSON.parse(buildToolDefinitionsForTokenCount(specs, true));
+
+    expect(tools).toEqual([
+      { type: "tool_search_tool_bm25_20251119", name: "tool_search_tool_bm25" },
+      expect.objectContaining({ name: "eager_tool" }),
+    ]);
+  });
+
+  it("still includes the tool-search tool when no spec is eager", () => {
+    const specs = [makeSpecification("deferred_tool", { eager: false })];
+
+    const tools = JSON.parse(buildToolDefinitionsForTokenCount(specs, true));
+
+    expect(tools).toEqual([
+      { type: "tool_search_tool_bm25_20251119", name: "tool_search_tool_bm25" },
+    ]);
+  });
+});
 
 describe("buildBaseSpecifications", () => {
   it("marks a custom agent's configured tools eager", () => {
