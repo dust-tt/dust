@@ -21,7 +21,6 @@ import { getRedisHybridManager } from "@app/lib/api/redis-hybrid-manager";
 import { resolveSandboxChildBlock } from "@app/lib/api/sandbox/sandbox_child_block";
 import type { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
-import { AgentMessageModel } from "@app/lib/models/agent/conversation";
 import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import type { ConversationResource } from "@app/lib/resources/conversation_resource";
 import logger from "@app/logger/logger";
@@ -130,29 +129,20 @@ export async function validateAction(
         });
         break;
       case "medium":
-        const agentMessage = await AgentMessageModel.findOne({
-          where: {
-            workspaceId: owner.id,
-            id: action.agentMessageId,
-          },
-        });
-        if (agentMessage) {
-          const argumentsRequiringApproval =
-            action.toolConfiguration.argumentsRequiringApproval ?? [];
-          const argsAndValues = extractArgRequiringApprovalValues(
-            argumentsRequiringApproval,
-            action.augmentedInputs
-          );
+        const argumentsRequiringApproval =
+          action.toolConfiguration.argumentsRequiringApproval ?? [];
+        const argsAndValues = extractArgRequiringApprovalValues(
+          argumentsRequiringApproval,
+          action.augmentedInputs
+        );
 
-          // Same as the "low" case: use the configuration name so sandbox
-          // child approvals are keyed on the tool, not the parent sandbox tool.
-          await user.createToolApproval(auth, {
-            mcpServerId: action.toolConfiguration.toolServerId,
-            toolName: action.toolConfiguration.name,
-            agentId: agentMessage.agentConfigurationId,
-            argsAndValues,
-          });
-        }
+        // Same as the "low" case: use the configuration name so sandbox
+        // child approvals are keyed on the tool, not the parent sandbox tool.
+        await user.createToolApproval(auth, {
+          mcpServerId: action.toolConfiguration.toolServerId,
+          toolName: action.toolConfiguration.name,
+          argsAndValues,
+        });
         break;
       default:
         break;

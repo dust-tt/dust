@@ -71,7 +71,7 @@ export const POD_MANAGER_TOOLS_METADATA = createToolsRecord({
           "Optional Pod to remove the content node from, will fallback to the conversation's Pod."
         ),
     },
-    stake: "medium",
+    stake: "low",
     displayLabels: {
       running: "Removing content node from Pod",
       done: "Remove content node from Pod",
@@ -144,7 +144,7 @@ export const POD_MANAGER_TOOLS_METADATA = createToolsRecord({
           "Optional Pod to update members for, will fallback to the conversation's Pod."
         ),
     },
-    stake: "medium",
+    stake: "low",
     displayLabels: {
       running: "Updating Pod members",
       done: "Update Pod members",

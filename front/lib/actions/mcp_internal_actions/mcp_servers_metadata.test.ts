@@ -28,6 +28,7 @@ import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_ac
 import {
   AVAILABLE_INTERNAL_MCP_SERVER_NAMES,
   getInternalMCPServerMetadata,
+  getInternalMCPServerToolArgumentsRequiringApproval,
   getInternalMCPServerToolStakes,
 } from "@app/lib/actions/mcp_internal_actions/constants";
 import { InMemoryWithAuthTransport } from "@app/lib/actions/mcp_internal_actions/in_memory_with_auth_transport";
@@ -323,6 +324,26 @@ describe("MCP Servers Metadata Snapshot", () => {
         error.message += hint;
       }
       throw error;
+    }
+  });
+
+  it("requires input scoping for every medium-stake tool", () => {
+    for (const serverName of AVAILABLE_INTERNAL_MCP_SERVER_NAMES) {
+      const stakes = getInternalMCPServerToolStakes(serverName);
+
+      for (const [toolName, stake] of Object.entries(stakes)) {
+        if (stake === "medium") {
+          const argumentsRequiringApproval =
+            getInternalMCPServerToolArgumentsRequiringApproval(
+              serverName,
+              toolName
+            );
+          expect(
+            argumentsRequiringApproval?.length ?? 0,
+            `${serverName}.${toolName}`
+          ).toBeGreaterThan(0);
+        }
+      }
     }
   });
 });

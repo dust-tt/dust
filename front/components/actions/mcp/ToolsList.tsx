@@ -71,7 +71,7 @@ function ToolItem({
 
   const toolPermissionLabel: Record<MCPToolStakeLevelType, string> = {
     high: "High (always ask for confirmation)",
-    medium: "Medium (allows per-agent confirmation save)",
+    medium: "Medium (allows input-scoped confirmation save)",
     low: "Low (allows user-global confirmation save)",
     never_ask: "Never ask (automatic execution)",
   };
@@ -194,8 +194,8 @@ export const ToolsList = memo(
                   <b>High stake</b> tools need explicit user approval.
                 </li>
                 <li>
-                  <b>Medium stake</b> tools allow users to save per-agent
-                  confirmations.
+                  <b>Medium stake</b> tools allow users to save confirmations
+                  for specific tool inputs.
                 </li>
                 <li>
                   Users can completely disable confirmations for{" "}

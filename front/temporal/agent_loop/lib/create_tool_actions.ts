@@ -158,7 +158,6 @@ async function createActionForTool(
     actionConfiguration,
     skipToolsValidation: agentMessage.skipToolsValidation,
     context: {
-      agentId: agentConfiguration.sId,
       toolInputs: rawInputs,
     },
   });
