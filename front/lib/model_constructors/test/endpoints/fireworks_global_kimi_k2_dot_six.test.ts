@@ -1,10 +1,7 @@
 // @vitest-environment node
 
 import { FireworksGlobalKimiK2Dot6Stream } from "@app/lib/model_constructors/stream/endpoints/fireworks_global_kimi_k2_dot_six";
-import {
-  HAS_REASONING,
-  INPUT_CONFIGURATION_ERROR,
-} from "@app/lib/model_constructors/test/cases";
+import { INPUT_CONFIGURATION_ERROR } from "@app/lib/model_constructors/test/cases";
 import { runStreamEndpointTests } from "@app/lib/model_constructors/test/runner";
 import type { StreamSetup } from "@app/lib/model_constructors/test/setup";
 
@@ -51,8 +48,7 @@ export const FireworksGlobalKimiK2Dot6StreamSetup: StreamSetup = {
     "calc/calc/t-default/r-default/force-tool": null,
     "calc/calc/t-default/r-none/force-tool": null,
 
-    // Kimi K2.6 always reasons, so `none` still yields reasoning content.
-    "reasoning/no-tools/t-default/r-none": [HAS_REASONING],
+    "reasoning/no-tools/t-default/r-none": null,
     "reasoning/no-tools/t-default/r-low": null,
 
     "output-format/json-schema/t-default/r-none": null,
