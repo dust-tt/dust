@@ -2,12 +2,15 @@ import type { ToolExecutionStatus } from "@app/lib/actions/statuses";
 import type { AgentMessageFeedbackDirection } from "@app/lib/api/assistant/conversation/feedbacks";
 import type { AgentMCPActionWithOutputType } from "@app/types/actions";
 import type {
+  AgentMessageType,
   LightAgentMessageWithActionsType,
   LightConversationType,
   MessageFeedback,
   UserMessageTypeWithContentFragments,
 } from "@app/types/assistant/conversation";
+import type { ModelId } from "@app/types/shared/model_id";
 import type { UserType } from "@app/types/user";
+import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 
 function mockUser(username: string): UserType {
   return {
@@ -60,29 +63,38 @@ export function mockAction(params: {
   functionCallName: string;
   status: "succeeded" | "failed";
   params?: Record<string, unknown>;
-  output?: string | null;
+  output?: string | CallToolResult["content"] | null;
+  internalMCPServerName?: AgentMCPActionWithOutputType["internalMCPServerName"];
+  toolName?: string;
+  functionCallId?: string;
+  step?: number;
+  citationsAllocated?: number;
 }): AgentMCPActionWithOutputType {
   const status: ToolExecutionStatus =
     params.status === "succeeded" ? "succeeded" : "errored";
+  const output =
+    typeof params.output === "string"
+      ? [{ type: "text" as const, text: params.output }]
+      : (params.output ?? null);
   return {
     id: 0,
     sId: "",
     createdAt: 0,
     updatedAt: 0,
     agentMessageId: 0,
-    internalMCPServerName: null,
-    toolName: params.functionCallName,
+    internalMCPServerName: params.internalMCPServerName ?? null,
+    toolName: params.toolName ?? params.functionCallName,
     mcpServerId: null,
     functionCallName: params.functionCallName,
-    functionCallId: "",
+    functionCallId: params.functionCallId ?? "",
     params: params.params ?? {},
-    citationsAllocated: 0,
+    citationsAllocated: params.citationsAllocated ?? 0,
     status,
-    step: 0,
+    step: params.step ?? 0,
     executionDurationMs: null,
     displayLabels: null,
     generatedFiles: [],
-    output: params.output ? [{ type: "text", text: params.output }] : null,
+    output,
     citations: null,
   };
 }
@@ -133,6 +145,74 @@ export function mockAgentMessage(
       thumbDirection: f.direction,
       content: f.comment ?? null,
     })),
+  };
+}
+
+export type MockFullAgentMessageParams = {
+  id?: ModelId;
+  agentMessageId?: ModelId;
+  sId?: string;
+  parentMessageId?: string;
+  content?: string | null;
+  // Unlike mockAgentMessage's stubbed configuration, AgentMessageType.configuration is the full
+  // LightAgentConfigurationType (model, instructions, tags, etc.), so there's no sensible stub to
+  // default to here: pass the real agent configuration (e.g. from AgentConfigurationFactory).
+  configuration: AgentMessageType["configuration"];
+  actions?: Parameters<typeof mockAction>[0][];
+  // Defaults to one function_call content per action, mirroring its functionCallId/
+  // functionCallName/params. Override only when a test needs to exercise contents that diverge
+  // from the actions (e.g. error or cross-provider reasoning content).
+  contents?: AgentMessageType["contents"];
+};
+
+// Full AgentMessageType, as consumed by getSteps. Unlike mockAgentMessage (the light variant used
+// for streaming/reconstruction tests), this includes the id/agentMessageId/contents fields getSteps
+// actually reads.
+export function mockFullAgentMessage(
+  params: MockFullAgentMessageParams
+): AgentMessageType {
+  const actions = (params.actions ?? []).map(mockAction);
+
+  return {
+    id: params.id ?? 1,
+    agentMessageId: params.agentMessageId ?? 1,
+    type: "agent_message",
+    sId: params.sId ?? "agent_msg_1",
+    version: 1,
+    rank: 1,
+    branchId: null,
+    created: 0,
+    completedTs: null,
+    parentMessageId: params.parentMessageId ?? "user_msg_1",
+    parentAgentMessageId: null,
+    status: "succeeded",
+    content: params.content ?? null,
+    chainOfThought: null,
+    error: null,
+    visibility: "visible",
+    configuration: params.configuration,
+    skipToolsValidation: false,
+    actions,
+    contents:
+      params.contents ??
+      actions.map((action) => ({
+        step: action.step,
+        content: {
+          type: "function_call" as const,
+          value: {
+            id: action.functionCallId,
+            name: action.functionCallName,
+            arguments: JSON.stringify(action.params),
+          },
+        },
+      })),
+    modelInteractionDurationMs: null,
+    resolvedModel: null,
+    modelResolutionMethod: null,
+    richMentions: [],
+    completionDurationMs: null,
+    reactions: [],
+    costCredits: null,
   };
 }
 

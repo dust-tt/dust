@@ -3,9 +3,9 @@ import { renderEquippedSkillsUserMessage } from "@app/lib/api/assistant/skills_r
 import { getSupportedModelConfig } from "@app/lib/llms/model_configurations";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
+import { mockFullAgentMessage } from "@app/tests/utils/conversation_test_factories";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { SkillFactory } from "@app/tests/utils/SkillFactory";
-import type { AgentMessageType } from "@app/types/assistant/conversation";
 import type { TextContent } from "@app/types/assistant/generation";
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import assert from "assert";
@@ -248,69 +248,20 @@ The following skills are available for use with the skill_management__enable_ski
       text: `Skill "${commitSkill.name}" has been enabled.`,
     });
 
-    const message = {
-      id: 1,
-      agentMessageId: 1,
-      type: "agent_message",
-      sId: "agent_msg_1",
-      version: 1,
-      rank: 1,
-      branchId: null,
-      created: Date.now(),
-      completedTs: null,
-      parentMessageId: "user_msg_1",
-      parentAgentMessageId: null,
-      status: "succeeded",
-      content: null,
-      chainOfThought: null,
-      error: null,
-      visibility: "visible",
+    const message = mockFullAgentMessage({
       configuration: agentConfig,
-      skipToolsValidation: false,
       actions: [
         {
-          id: 1,
-          sId: "action_1",
-          createdAt: Date.now(),
-          updatedAt: Date.now(),
-          agentMessageId: 1,
-          internalMCPServerName: "skill_management",
-          toolName: "enable_skill",
-          mcpServerId: null,
           functionCallName: "skill_management__enable_skill",
           functionCallId: "toolu_enable_skill",
+          internalMCPServerName: "skill_management",
+          toolName: "enable_skill",
           params: { skillName: commitSkill.name },
-          citationsAllocated: 0,
           status: "succeeded",
-          step: 0,
-          executionDurationMs: null,
-          displayLabels: null,
-          generatedFiles: [],
           output: [outputBlock],
-          citations: null,
         },
       ],
-      contents: [
-        {
-          step: 0,
-          content: {
-            type: "function_call",
-            value: {
-              id: "toolu_enable_skill",
-              name: "skill_management__enable_skill",
-              arguments: '{"skillName":"commit"}',
-            },
-          },
-        },
-      ],
-      modelInteractionDurationMs: null,
-      richMentions: [],
-      completionDurationMs: null,
-      reactions: [],
-      costCredits: null,
-      resolvedModel: null,
-      modelResolutionMethod: null,
-    } satisfies AgentMessageType;
+    });
 
     const steps = await getSteps(authenticator, {
       enabledSkillById: new Map([[commitSkill.sId, commitSkill]]),
@@ -371,78 +322,28 @@ describe("vision image rendering in getSteps", () => {
       gcsPathOverride ??
       `w/${workspaceId}/conversations/${conversationId}/files/photo.png`;
 
-    const message: AgentMessageType = {
-      id: 1,
-      agentMessageId: 1,
-      type: "agent_message" as const,
-      sId: "agent_msg_1",
-      version: 1,
-      rank: 1,
-      branchId: null,
-      created: Date.now(),
-      completedTs: null,
-      parentMessageId: "user_msg_1",
-      parentAgentMessageId: null,
-      status: "succeeded" as const,
-      content: null,
-      chainOfThought: null,
-      error: null,
-      visibility: "visible" as const,
+    const visionResource = {
+      uri: "dust://files/conversation/photo.png",
+      mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.MODEL_VISION_IMAGE,
+      text: "" as const,
+      filePath: gcsPath,
+      imageContentType: "image/png",
+    };
+
+    const message = mockFullAgentMessage({
       configuration: agentConfig,
-      skipToolsValidation: false,
       actions: [
         {
-          id: 1,
-          sId: "action_1",
-          createdAt: Date.now(),
-          updatedAt: Date.now(),
-          agentMessageId: 1,
-          internalMCPServerName: "files",
-          toolName: "cat",
-          mcpServerId: null,
           functionCallName: "files__cat",
           functionCallId: "toolu_cat_1",
+          internalMCPServerName: "files",
+          toolName: "cat",
           params: { path: "conversation/photo.png" },
-          citationsAllocated: 0,
-          status: "succeeded" as const,
-          step: 0,
-          executionDurationMs: null,
-          displayLabels: null,
-          generatedFiles: [],
-          citations: null,
-          output: (() => {
-            const resource = {
-              uri: "dust://files/conversation/photo.png",
-              mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.MODEL_VISION_IMAGE,
-              text: "" as const,
-              filePath: gcsPath,
-              imageContentType: "image/png",
-            };
-            return [{ type: "resource" as const, resource }];
-          })(),
+          status: "succeeded",
+          output: [{ type: "resource" as const, resource: visionResource }],
         },
       ],
-      contents: [
-        {
-          step: 0,
-          content: {
-            type: "function_call" as const,
-            value: {
-              id: "toolu_cat_1",
-              name: "files__cat",
-              arguments: '{"path":"conversation/photo.png"}',
-            },
-          },
-        },
-      ],
-      modelInteractionDurationMs: null,
-      richMentions: [],
-      completionDurationMs: null,
-      reactions: [],
-      costCredits: null,
-      resolvedModel: null,
-      modelResolutionMethod: null,
-    };
+    });
 
     return { auth: authenticator, message, model, workspaceId, conversationId };
   };
@@ -532,10 +433,7 @@ describe("vision image rendering in getSteps", () => {
 
 describe("websearch resource array compaction in getSteps", () => {
   it("flattens every result in a multi-result websearch output, dropping the resource wrapper and mimeType from each", async () => {
-    const { authenticator, conversationsSpace } = await createResourceTest({
-      role: "admin",
-    });
-    const workspaceId = authenticator.getNonNullableWorkspace().sId;
+    const { authenticator } = await createResourceTest({ role: "admin" });
 
     const agentConfig = await AgentConfigurationFactory.createTestAgent(
       authenticator,
@@ -545,16 +443,8 @@ describe("websearch resource array compaction in getSteps", () => {
         model: { providerId: "anthropic", modelId: "claude-sonnet-4-6" },
       }
     );
-    const conversation = await ConversationFactory.create(authenticator, {
-      agentConfigurationId: agentConfig.sId,
-      messagesCreatedAt: [],
-      spaceId: conversationsSpace.id,
-    });
-    const conversationId = conversation.sId;
     const model = getSupportedModelConfig(agentConfig.model);
-    if (!model) {
-      throw new Error("Expected a supported model configuration.");
-    }
+    assert(model, "Expected a supported model configuration.");
 
     const websearchResults = [
       {
@@ -578,45 +468,17 @@ describe("websearch resource array compaction in getSteps", () => {
       },
     ];
 
-    const message: AgentMessageType = {
-      id: 1,
-      agentMessageId: 1,
-      type: "agent_message" as const,
-      sId: "agent_msg_1",
-      version: 1,
-      rank: 1,
-      branchId: null,
-      created: Date.now(),
-      completedTs: null,
-      parentMessageId: "user_msg_1",
-      parentAgentMessageId: null,
-      status: "succeeded" as const,
-      content: null,
-      chainOfThought: null,
-      error: null,
-      visibility: "visible" as const,
+    const message = mockFullAgentMessage({
       configuration: agentConfig,
-      skipToolsValidation: false,
       actions: [
         {
-          id: 1,
-          sId: "action_1",
-          createdAt: Date.now(),
-          updatedAt: Date.now(),
-          agentMessageId: 1,
-          internalMCPServerName: "web_search_&_browse",
-          toolName: "websearch",
-          mcpServerId: null,
           functionCallName: "web_search_browse__websearch",
           functionCallId: "toolu_websearch_1",
+          internalMCPServerName: "web_search_&_browse",
+          toolName: "websearch",
           params: { query: "world cup 2026 schedule" },
           citationsAllocated: websearchResults.length,
-          status: "succeeded" as const,
-          step: 0,
-          executionDurationMs: null,
-          displayLabels: null,
-          generatedFiles: [],
-          citations: null,
+          status: "succeeded",
           output: websearchResults.map((r) => ({
             type: "resource" as const,
             resource: {
@@ -626,32 +488,13 @@ describe("websearch resource array compaction in getSteps", () => {
           })),
         },
       ],
-      contents: [
-        {
-          step: 0,
-          content: {
-            type: "function_call" as const,
-            value: {
-              id: "toolu_websearch_1",
-              name: "web_search_browse__websearch",
-              arguments: '{"query":"world cup 2026 schedule"}',
-            },
-          },
-        },
-      ],
-      modelInteractionDurationMs: null,
-      richMentions: [],
-      completionDurationMs: null,
-      reactions: [],
-      costCredits: null,
-      resolvedModel: null,
-    };
+    });
 
     const steps = await getSteps(authenticator, {
       model,
       message,
-      workspaceId,
-      conversationId,
+      workspaceId: "workspace_123",
+      conversationId: "conv_1",
       enabledSkillById: new Map(),
       onMissingAction: "skip",
     });
