@@ -1,4 +1,5 @@
 import type { BillingCycle } from "@app/lib/client/subscription";
+import { getBillingCycleFromDay } from "@app/lib/client/subscription";
 import {
   ceilToHourISO,
   createMetronomeContract,
@@ -465,20 +466,29 @@ export async function applySeatRateOverrides({
 function billingPeriodFromContract(
   contract: CachedContract
 ): Result<BillingCycle, Error> {
-  const currentPeriod = contract.subscriptions
-    ?.map((s) => s.billing_periods?.current)
-    .find((bp) => bp !== undefined);
-
-  if (!currentPeriod) {
+  // Per-seat credits recur MONTHLY even on annually-billed seats (see
+  // `getNextSeatCreditRenewalDate`), on the grid anchored at the contract
+  // start — so the credit cycle is the current month of the contract
+  // anniversary day, regardless of any subscription's billing frequency.
+  // Boundaries keep the contract start's (hour-aligned) time-of-day, matching
+  // Metronome's period boundaries.
+  const hasCurrentPeriod = (contract.subscriptions ?? []).some(
+    (s) => s.billing_periods?.current !== undefined
+  );
+  if (!hasCurrentPeriod) {
     return new Err(
       new Error("No current billing period found on Metronome contract")
     );
   }
-
-  return new Ok({
-    cycleStart: new Date(currentPeriod.starting_at),
-    cycleEnd: new Date(currentPeriod.ending_before),
-  });
+  const contractStart = new Date(contract.starting_at);
+  return new Ok(
+    getBillingCycleFromDay(
+      contractStart.getUTCDate(),
+      new Date(),
+      true,
+      contractStart
+    )
+  );
 }
 
 /**
