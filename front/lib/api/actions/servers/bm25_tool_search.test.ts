@@ -946,8 +946,9 @@ const QUERIES: LabeledQuery[] = [
     expected: "pod_manager.list_pods",
   },
   {
-    query: "create a new private pod for the launch plan",
+    query: "create a new restricted pod for the launch plan",
     expected: "pod_manager.create_pod",
+    maxRank: 2,
   },
   {
     query: "what is this pod's title description and linked content",
@@ -956,6 +957,7 @@ const QUERIES: LabeledQuery[] = [
   {
     query: "rename this pod and update its description",
     expected: "pod_manager.edit_information",
+    maxRank: 2,
   },
   {
     query: "add a teammate as an editor to this pod",
@@ -993,6 +995,19 @@ const QUERIES: LabeledQuery[] = [
   {
     query: "send a follow up message to an existing pod conversation",
     expected: "pod_manager.add_message_to_conversation",
+  },
+  {
+    query: "move this conversation into the marketing pod",
+    expected: "pod_manager.move_conversation",
+  },
+  {
+    query: "move this conversation out of the pod",
+    expected: "pod_manager.move_conversation",
+  },
+  {
+    query: "make this pod open to the whole workspace",
+    expected: "pod_manager.edit_information",
+    maxRank: 2,
   },
 
   // --- val_town ---

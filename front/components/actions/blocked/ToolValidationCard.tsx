@@ -3,10 +3,14 @@ import { getIcon } from "@app/components/resources/resources_icons";
 import type { MCPValidationOutputType } from "@app/lib/actions/constants";
 import type { BlockedToolExecution } from "@app/lib/actions/mcp";
 import {
+  EDIT_INFORMATION_TOOL_NAME,
   POD_MANAGER_SERVER_NAME,
   UPDATE_MEMBERS_TOOL_NAME,
 } from "@app/lib/api/actions/servers/pod_manager/metadata";
-import { isPodManagerUpdateMembersInput } from "@app/lib/api/actions/servers/pod_manager/types";
+import {
+  isPodManagerEditInformationInput,
+  isPodManagerUpdateMembersInput,
+} from "@app/lib/api/actions/servers/pod_manager/types";
 import {
   CREATE_TASKS_TOOL_NAME,
   POD_TASKS_SERVER_NAME,
@@ -91,6 +95,31 @@ const MCP_TOOL_OVERRIDES: Partial<
     },
   },
   [POD_MANAGER_SERVER_NAME]: {
+    [EDIT_INFORMATION_TOOL_NAME]: {
+      title: (inputs) => {
+        if (!isPodManagerEditInformationInput(inputs)) {
+          return `Allow agent to edit Pod information?`;
+        }
+        const fields: string[] = [];
+        if (inputs.title !== undefined) {
+          fields.push("title");
+        }
+        if (inputs.description !== undefined) {
+          fields.push("description");
+        }
+        if (inputs.access !== undefined) {
+          fields.push("access");
+        }
+        if (inputs.pinnedFramePath !== undefined) {
+          fields.push("pinned frame");
+        }
+        if (fields.length === 0) {
+          return `Allow agent to edit Pod information?`;
+        }
+        return `Allow agent to update Pod ${fields.join(", ")}?`;
+      },
+      alwaysAllowLabel: () => `Always allow agent to edit Pod information`,
+    },
     [UPDATE_MEMBERS_TOOL_NAME]: {
       title: (inputs) => {
         if (!isPodManagerUpdateMembersInput(inputs)) {
