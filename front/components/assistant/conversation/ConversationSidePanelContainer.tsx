@@ -23,6 +23,7 @@ export default function ConversationSidePanelContainer({
   const { currentPanel, setPanelRef, onPanelClosed } =
     useConversationSidePanelContext();
   const panelRef = useRef<ImperativePanelHandle | null>(null);
+  const isDraggingRef = useRef(false);
   const [fullScreenHash] = useHashParam(FULL_SCREEN_HASH_PARAM);
   const isFullScreen = fullScreenHash === "true";
 
@@ -73,6 +74,13 @@ export default function ConversationSidePanelContainer({
           withHandle={currentPanel && !isFullScreen}
           disabled={!currentPanel || isFullScreen}
           className="z-50"
+          onDragging={(isDragging) => {
+            isDraggingRef.current = isDragging;
+
+            if (!isDragging && panelRef.current?.isCollapsed()) {
+              onPanelClosed();
+            }
+          }}
         />
       )}
       {/* Panel Container - either Interactive Content or Actions */}
@@ -80,13 +88,23 @@ export default function ConversationSidePanelContainer({
         ref={panelRef}
         minSize={20}
         defaultSize={0}
-        onCollapse={() => {
-          if (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) {
+        onResize={(size, previousSize) => {
+          if (
+            size === 0 &&
+            previousSize !== undefined &&
+            previousSize > 0 &&
+            !isDraggingRef.current &&
+            window.matchMedia?.("(prefers-reduced-motion: reduce)").matches
+          ) {
             onPanelClosed();
           }
         }}
-        onTransitionEnd={() => {
-          if (panelRef.current?.isCollapsed()) {
+        onTransitionEnd={(event) => {
+          if (
+            event.target === event.currentTarget &&
+            event.propertyName === "flex-grow" &&
+            panelRef.current?.isCollapsed()
+          ) {
             onPanelClosed();
           }
         }}

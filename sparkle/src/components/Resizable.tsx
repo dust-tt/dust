@@ -23,8 +23,6 @@ const ResizablePanelGroup: React.ForwardRefExoticComponent<
   ({ className, direction, id, ...props }, forwardedRef) => {
     const panelGroupRef = React.useRef<ResizablePanelGroupRef | null>(null);
     const [isDragging, setIsDragging] = React.useState(false);
-    const [panelGroupElement, setPanelGroupElement] =
-      React.useState<HTMLElement | null>(null);
     const [panelGroupSizePx, setPanelGroupSizePx] = React.useState<
       number | undefined
     >();
@@ -42,49 +40,42 @@ const ResizablePanelGroup: React.ForwardRefExoticComponent<
       [forwardedRef]
     );
 
-    const updatePanelGroupSize = React.useCallback(() => {
+    React.useLayoutEffect(() => {
+      const panelGroupId = id ?? panelGroupRef.current?.getId();
+      const panelGroupElement = panelGroupId
+        ? ResizablePrimitive.getPanelGroupElement(panelGroupId)
+        : null;
+
       if (!panelGroupElement) {
         setPanelGroupSizePx(undefined);
         return;
       }
 
-      const nextSize =
-        direction === "vertical"
-          ? panelGroupElement.clientHeight
-          : panelGroupElement.clientWidth;
+      const updatePanelGroupSize = () => {
+        const nextSize =
+          direction === "vertical"
+            ? panelGroupElement.clientHeight
+            : panelGroupElement.clientWidth;
 
-      setPanelGroupSizePx((previousSize) =>
-        previousSize === nextSize ? previousSize : nextSize
-      );
-    }, [direction, panelGroupElement]);
+        setPanelGroupSizePx((previousSize) =>
+          previousSize === nextSize ? previousSize : nextSize
+        );
+      };
 
-    React.useLayoutEffect(() => {
-      const panelGroupId = panelGroupRef.current?.getId();
-
-      setPanelGroupElement(
-        panelGroupId
-          ? ResizablePrimitive.getPanelGroupElement(panelGroupId)
-          : null
-      );
-    }, []);
-
-    React.useLayoutEffect(() => {
       updatePanelGroupSize();
-    }, [updatePanelGroupSize]);
 
-    React.useEffect(() => {
-      if (!panelGroupElement || typeof ResizeObserver === "undefined") {
+      if (typeof ResizeObserver === "undefined") {
         return;
       }
 
-      const resizeObserver = new ResizeObserver(updatePanelGroupSize);
+      const resizeObserver = new ResizeObserver(() => updatePanelGroupSize());
 
       resizeObserver.observe(panelGroupElement);
 
       return () => {
         resizeObserver.disconnect();
       };
-    }, [panelGroupElement, updatePanelGroupSize]);
+    }, [direction, id]);
 
     const contextValue = React.useMemo(
       () => ({
@@ -124,28 +115,18 @@ const ResizablePanelContent = ({
   panelSize,
 }: ResizablePanelContentProps) => {
   const panelGroupContext = React.useContext(ResizablePanelGroupContext);
+  const contentSizePx =
+    panelGroupContext?.panelGroupSizePx && panelSize
+      ? Math.round((panelGroupContext.panelGroupSizePx * panelSize) / 100)
+      : undefined;
+  let panelSizeStyle: React.CSSProperties | undefined;
 
-  const panelSizeStyle = React.useMemo<React.CSSProperties | undefined>(() => {
-    if (!panelGroupContext?.panelGroupSizePx || !panelSize) {
-      return undefined;
-    }
-
-    const nextSize = Math.round(
-      (panelGroupContext.panelGroupSizePx * panelSize) / 100
-    );
-
-    if (nextSize <= 0) {
-      return undefined;
-    }
-
-    return panelGroupContext.direction === "vertical"
-      ? { height: nextSize }
-      : { width: nextSize };
-  }, [
-    panelGroupContext?.direction,
-    panelGroupContext?.panelGroupSizePx,
-    panelSize,
-  ]);
+  if (contentSizePx && contentSizePx > 0) {
+    panelSizeStyle =
+      panelGroupContext?.direction === "vertical"
+        ? { height: contentSizePx }
+        : { width: contentSizePx };
+  }
 
   return (
     <div className="h-full w-full" style={panelSizeStyle}>
@@ -160,8 +141,8 @@ type ResizablePanelProps = React.ComponentProps<
 > & {
   animated?: boolean;
   /**
-   * Keeps content laid out at the expanded panel size while an animated panel
-   * opens or collapses. Manual handle dragging still resizes content live.
+   * Keeps content laid out at the latest non-zero target size while the panel
+   * animates. Manual handle dragging still resizes content live.
    */
   stableContent?: boolean;
   /** Target panel size, as a percentage of the panel group. */
@@ -175,7 +156,6 @@ const ResizablePanel = React.forwardRef<ResizablePanelRef, ResizablePanelProps>(
       children,
       className,
       defaultSize,
-      onExpand,
       onResize,
       stableContent = false,
       stableContentSize,
@@ -184,7 +164,6 @@ const ResizablePanel = React.forwardRef<ResizablePanelRef, ResizablePanelProps>(
     forwardedRef
   ) => {
     const panelGroupContext = React.useContext(ResizablePanelGroupContext);
-    const panelRef = React.useRef<ResizablePanelRef | null>(null);
     const fallbackContentPanelSize =
       stableContentSize ??
       (typeof defaultSize === "number" && defaultSize > 0
@@ -195,29 +174,13 @@ const ResizablePanel = React.forwardRef<ResizablePanelRef, ResizablePanelProps>(
     >();
     const contentPanelSize = lastStablePanelSize ?? fallbackContentPanelSize;
 
-    const updateStablePanelSize = React.useCallback(
-      (panelSize: number | undefined) => {
-        if (!stableContent || !panelSize || panelSize <= 0) {
-          return;
-        }
+    const updateStablePanelSize = (panelSize: number | undefined) => {
+      if (!stableContent || !panelSize || panelSize <= 0) {
+        return;
+      }
 
-        setLastStablePanelSize(panelSize);
-      },
-      [stableContent]
-    );
-
-    const setPanelRef = React.useCallback(
-      (node: ResizablePanelRef | null) => {
-        panelRef.current = node;
-
-        if (typeof forwardedRef === "function") {
-          forwardedRef(node);
-        } else if (forwardedRef) {
-          forwardedRef.current = node;
-        }
-      },
-      [forwardedRef]
-    );
+      setLastStablePanelSize(panelSize);
+    };
 
     const handleResize: NonNullable<
       React.ComponentProps<typeof ResizablePrimitive.Panel>["onResize"]
@@ -226,20 +189,10 @@ const ResizablePanel = React.forwardRef<ResizablePanelRef, ResizablePanelProps>(
       onResize?.(size, previousSize);
     };
 
-    const handleExpand: NonNullable<
-      React.ComponentProps<typeof ResizablePrimitive.Panel>["onExpand"]
-    > = () => {
-      updateStablePanelSize(
-        lastStablePanelSize ?? stableContentSize ?? panelRef.current?.getSize()
-      );
-      onExpand?.();
-    };
-
     return (
       <ResizablePrimitive.Panel
-        ref={setPanelRef}
+        ref={forwardedRef}
         defaultSize={defaultSize}
-        onExpand={handleExpand}
         onResize={handleResize}
         className={cn(
           animated && "motion-reduce:transition-none",
