@@ -3,6 +3,7 @@ import { Button } from "@sparkle/components/Button";
 import { Checkbox } from "@sparkle/components/Checkbox";
 import {
   DropdownMenu,
+  DropdownMenuCheckboxItem,
   DropdownMenuContent,
   DropdownMenuGroup,
   DropdownMenuItem,
@@ -287,7 +288,12 @@ export function DataTable<TData extends TBaseData>({
         </DataTable.Header>
         <DataTable.Body>
           {table.getRowModel().rows.map((row) => {
-            const handleRowClick = () => {
+            const handleRowClick = (
+              event: React.MouseEvent<HTMLTableRowElement>
+            ) => {
+              if (isRowInteractiveClick(event)) {
+                return;
+              }
               if (enableRowSelection && row.getCanSelect()) {
                 row.toggleSelected(!enableMultiRowSelection ? true : undefined);
               }
@@ -645,7 +651,12 @@ export function ScrollableDataTable<TData extends TBaseData>({
           >
             {rowVirtualizer.getVirtualItems().map((virtualRow) => {
               const row = rows[virtualRow.index];
-              const handleRowClick = () => {
+              const handleRowClick = (
+                event: React.MouseEvent<HTMLTableRowElement>
+              ) => {
+                if (isRowInteractiveClick(event)) {
+                  return;
+                }
                 if (enableRowSelection && row.getCanSelect()) {
                   row.toggleSelected(
                     !enableMultiRowSelection ? true : undefined
@@ -827,8 +838,8 @@ DataTable.Body = function Body({
 
 interface RowProps extends React.HTMLAttributes<HTMLTableRowElement> {
   children: ReactNode;
-  onClick?: () => void;
-  onDoubleClick?: () => void;
+  onClick?: (event: React.MouseEvent<HTMLTableRowElement>) => void;
+  onDoubleClick?: (event: React.MouseEvent<HTMLTableRowElement>) => void;
   widthClassName: string;
   "data-selected"?: boolean;
   rowData?: TBaseData;
@@ -925,15 +936,35 @@ interface RegularMenuItem
 type SubmenuEntry = {
   id: string;
   name: string;
+  checked?: boolean;
+  description?: string;
 };
 
 interface SubmenuMenuItem extends BaseMenuItem {
   kind: "submenu";
   items: SubmenuEntry[];
   onSelect: (itemId: string) => void;
+  selectionMode?: "default" | "checkbox";
 }
 
 export type MenuItem = RegularMenuItem | SubmenuMenuItem;
+
+const preventMenuItemClickThrough = (event: React.PointerEvent) => {
+  // Prevent the subsequent click from reaching elements behind the menu when
+  // it closes on pointer down (modal={false}).
+  event.preventDefault();
+};
+
+const isRowInteractiveClick = (
+  event: React.MouseEvent<HTMLTableRowElement>
+) => {
+  const target = event.target as HTMLElement;
+  return Boolean(
+    target.closest(
+      "button, a, input, textarea, select, label, [role='button'], [role='checkbox'], [role='menuitem'], [role='menuitemcheckbox'], [role='menuitemradio']"
+    )
+  );
+};
 
 // Shared menu rendering functions
 const renderSubmenuItem = (
@@ -942,23 +973,52 @@ const renderSubmenuItem = (
   onItemClick?: () => void
 ) => (
   <DropdownMenuSub key={`${item.label}-${index}`}>
-    <DropdownMenuSubTrigger label={item.label} disabled={item.disabled} />
+    <DropdownMenuSubTrigger
+      label={item.label}
+      disabled={item.disabled}
+      onPointerDown={(event) => {
+        event.stopPropagation();
+      }}
+    />
     <DropdownMenuPortal>
       <DropdownMenuSubContent>
-        <ScrollArea className="flex max-h-72 min-w-24 flex-col" hideScrollBar>
-          {item.items.map((subItem) => (
-            <DropdownMenuItem
+        {item.selectionMode === "checkbox" ? (
+          item.items.map((subItem) => (
+            <DropdownMenuCheckboxItem
               key={subItem.id}
               label={subItem.name}
-              onClick={(event) => {
-                event.stopPropagation();
+              description={subItem.description}
+              checked={subItem.checked}
+              onCheckedChange={(checked) => {
+                if (!checked) {
+                  return;
+                }
                 item.onSelect(subItem.id);
                 onItemClick?.();
               }}
+              onSelect={(event) => {
+                event.preventDefault();
+              }}
             />
-          ))}
-          <ScrollBar className="py-0" />
-        </ScrollArea>
+          ))
+        ) : (
+          <ScrollArea className="flex max-h-72 min-w-24 flex-col" hideScrollBar>
+            {item.items.map((subItem) => (
+              <DropdownMenuItem
+                key={subItem.id}
+                label={subItem.name}
+                description={subItem.description}
+                onPointerDown={preventMenuItemClickThrough}
+                onClick={(event) => {
+                  event.stopPropagation();
+                  item.onSelect(subItem.id);
+                  onItemClick?.();
+                }}
+              />
+            ))}
+            <ScrollBar className="py-0" />
+          </ScrollArea>
+        )}
       </DropdownMenuSubContent>
     </DropdownMenuPortal>
   </DropdownMenuSub>
@@ -975,6 +1035,7 @@ const renderRegularItem = (
     <DropdownMenuItem
       key={`item-${index}`}
       {...itemProps}
+      onPointerDown={preventMenuItemClickThrough}
       onClick={(event) => {
         event.stopPropagation();
         itemProps.onClick?.(event);
@@ -1013,14 +1074,34 @@ DataTable.MoreButton = function MoreButton({
   dropdownMenuProps,
   disabled,
 }: DataTableMoreButtonProps) {
+  const [open, setOpen] = useState(false);
+
   if (!menuItems?.length) {
     return null;
   }
 
+  const { onOpenChange: dropdownOnOpenChange, ...restDropdownMenuProps } =
+    dropdownMenuProps ?? {};
+
+  const closeMenu = () => {
+    setOpen(false);
+  };
+
   return (
-    <DropdownMenu modal={false} {...dropdownMenuProps}>
+    <DropdownMenu
+      open={open}
+      onOpenChange={(nextOpen) => {
+        setOpen(nextOpen);
+        dropdownOnOpenChange?.(nextOpen);
+      }}
+      modal={false}
+      {...restDropdownMenuProps}
+    >
       <DropdownMenuTrigger
         onClick={(event) => {
+          event.stopPropagation();
+        }}
+        onPointerDown={(event) => {
           event.stopPropagation();
         }}
         asChild
@@ -1036,7 +1117,9 @@ DataTable.MoreButton = function MoreButton({
 
       <DropdownMenuContent align="end" hidden={disabled}>
         <DropdownMenuGroup>
-          {menuItems.map((item, index) => renderMenuItem(item, index))}
+          {menuItems.map((item, index) =>
+            renderMenuItem(item, index, closeMenu)
+          )}
         </DropdownMenuGroup>
       </DropdownMenuContent>
     </DropdownMenu>
