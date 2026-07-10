@@ -60,7 +60,7 @@ export const SearchInput = forwardRef<HTMLInputElement, SearchInputProps>(
     const inputId = id ?? name;
 
     return (
-      <div className="relative">
+      <div className={cn("relative", className)}>
         <Input
           id={inputId}
           label={label}
