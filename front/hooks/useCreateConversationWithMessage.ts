@@ -135,6 +135,7 @@ export function useCreateConversationWithMessage({
             input,
             mentions: richMentions ?? [],
             contentFragments,
+            modelSelection,
           });
 
           // Post the message in the background so navigation isn't blocked on it.

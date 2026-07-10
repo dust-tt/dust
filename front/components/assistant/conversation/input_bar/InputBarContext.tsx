@@ -8,6 +8,7 @@ import type {
   RichAgentMention,
   RichMention,
 } from "@app/types/assistant/mentions";
+import type { ModelSelectionType } from "@app/types/assistant/models/types";
 import type { ContentFragmentsType } from "@app/types/content_fragment";
 import { isComputerFeatureEnabled } from "@app/types/shared/feature_flags";
 import {
@@ -23,6 +24,7 @@ export type PendingConversationMessage = {
   input: string;
   mentions: RichMention[];
   contentFragments: ContentFragmentsType;
+  modelSelection?: ModelSelectionType;
 };
 
 export type PendingInputText = {
