@@ -34,6 +34,7 @@ export function MCPServerPersonalAuthenticationRequired({
   ): Promise<boolean> => {
     const result = await resolveAuthentication({
       contextType: "agent_loop",
+      kind: "authentication",
       outcome,
       actionId: blockedAction.actionId,
       conversationId: blockedAction.conversationId,

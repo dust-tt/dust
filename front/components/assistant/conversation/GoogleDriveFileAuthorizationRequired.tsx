@@ -56,7 +56,6 @@ export function GoogleDriveFileAuthorizationRequired({
   const { removeCompletedAction } = useBlockedActionsContext();
   const { resolveAuthentication, isResolving } = useResolveAuthentication({
     owner,
-    kind: "file_authorization",
   });
   const isExtension = clientType === "extension";
 
@@ -162,6 +161,7 @@ export function GoogleDriveFileAuthorizationRequired({
   const handleSkip = useCallback(async () => {
     const denyRes = await resolveAuthentication({
       contextType: "agent_loop",
+      kind: "file_authorization",
       outcome: "denied",
       actionId: blockedAction.actionId,
       conversationId: blockedAction.conversationId,
