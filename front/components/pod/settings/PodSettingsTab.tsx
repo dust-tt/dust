@@ -1,4 +1,9 @@
 import { AgentPicker } from "@app/components/assistant/AgentPicker";
+import {
+  CapabilitiesPickerItemsList,
+  getSkillCapabilityPickerItem,
+  SkillCapabilityPickerIcon,
+} from "@app/components/assistant/CapabilitiesPickerItemsList";
 import { ConfirmContext } from "@app/components/Confirm";
 import { MarkdownFileEditor } from "@app/components/editor/MarkdownFileEditor";
 import { DeletePodDialog } from "@app/components/pod/settings/DeletePodDialog";
@@ -13,7 +18,6 @@ import {
   POD_AGENTS_MD_MAX_CHARACTER_COUNT,
 } from "@app/lib/api/projects/constants";
 import { useFeatureFlags } from "@app/lib/auth/AuthContext";
-import { getSkillAvatarIcon } from "@app/lib/skill";
 import { useUnifiedAgentConfigurations } from "@app/lib/swr/assistants";
 import {
   useCheckPodName,
@@ -43,7 +47,6 @@ import {
   cn,
   DropdownMenu,
   DropdownMenuContent,
-  DropdownMenuItem,
   DropdownMenuSearchbar,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
@@ -62,14 +65,7 @@ import {
   XCircle,
 } from "@dust-tt/sparkle";
 import { zodResolver } from "@hookform/resolvers/zod";
-import {
-  createElement,
-  useCallback,
-  useContext,
-  useEffect,
-  useMemo,
-  useState,
-} from "react";
+import { useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 
 interface PodSettingsTabProps {
@@ -609,7 +605,7 @@ export function PodSettingsTab({
                     !isPodEditor && "opacity-50"
                   )}
                 >
-                  {createElement(getSkillAvatarIcon(skill), { size: "xs" })}
+                  <SkillCapabilityPickerIcon skill={skill} />
                   <span className="grow truncate notranslate">
                     {skill.name}
                   </span>
@@ -658,28 +654,17 @@ export function PodSettingsTab({
                     align="start"
                     dropdownHeaders={skillPickerDropdownHeaders}
                   >
-                    {addableSkills.length === 0 ? (
-                      <div className="px-2 py-4 text-center text-sm text-muted-foreground">
-                        {normalizedSkillSearch.length > 0
+                    <CapabilitiesPickerItemsList
+                      emptyMessage={
+                        normalizedSkillSearch.length > 0
                           ? "No skills found"
-                          : "No more skills to add"}
-                      </div>
-                    ) : (
-                      addableSkills.map((skill) => (
-                        <DropdownMenuItem
-                          key={skill.sId}
-                          icon={createElement(getSkillAvatarIcon(skill), {
-                            size: "xs",
-                          })}
-                          label={skill.name}
-                          description={skill.userFacingDescription ?? undefined}
-                          truncateText
-                          onClick={() => {
-                            void addDefaultSkill(skill.sId);
-                          }}
-                        />
-                      ))
-                    )}
+                          : "No more skills to add"
+                      }
+                      items={addableSkills.map(getSkillCapabilityPickerItem)}
+                      onItemSelect={(item) => {
+                        void addDefaultSkill(item.skill.sId);
+                      }}
+                    />
                   </DropdownMenuContent>
                 </DropdownMenu>
               )}

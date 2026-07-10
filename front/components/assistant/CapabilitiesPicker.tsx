@@ -1,5 +1,10 @@
 import { CreateMCPServerDialog } from "@app/components/actions/mcp/create/CreateMCPServerDialog";
 import {
+  CapabilitiesPickerItemsList,
+  type CapabilityPickerItem,
+  getSkillCapabilityPickerItem,
+} from "@app/components/assistant/CapabilitiesPickerItemsList";
+import {
   matchesSlashCommandCapabilityQuery,
   sortSlashCommandCapabilityMatches,
 } from "@app/components/editor/extensions/shared/SlashCommandCapabilitiesItems";
@@ -13,7 +18,6 @@ import type { DefaultRemoteMCPServerConfig } from "@app/lib/actions/mcp_internal
 import { getDefaultRemoteMCPServerByName } from "@app/lib/actions/mcp_internal_actions/remote_servers";
 import { isJITMCPServerView } from "@app/lib/actions/mcp_internal_actions/utils";
 import type { MCPServerType, MCPServerViewType } from "@app/lib/api/mcp";
-import { getSkillAvatarIcon } from "@app/lib/skill";
 import {
   useAvailableMCPServers,
   useMCPServerViewsFromSpaces,
@@ -30,45 +34,17 @@ import type { SkillWithoutInstructionsAndToolsType } from "@app/types/assistant/
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import { asDisplayName } from "@app/types/shared/utils/string_utils";
 import type { UserType, WorkspaceType } from "@app/types/user";
-import type { DropdownMenuItemProps } from "@dust-tt/sparkle";
 import {
   Button,
-  Chip,
-  DotsHorizontal,
   DropdownMenu,
   DropdownMenuContent,
-  DropdownMenuItem,
   DropdownMenuSearchbar,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
   LoadingBlock,
   ShapesPlus,
 } from "@dust-tt/sparkle";
-import { useEffect, useMemo, useRef, useState } from "react";
-
-interface CapabilityPickerItemBase {
-  description?: string;
-  icon: DropdownMenuItemProps["icon"];
-  id: string;
-  label: string;
-  sortName: string;
-}
-
-type CapabilityPickerItem = CapabilityPickerItemBase &
-  (
-    | {
-        kind: "skill";
-        skill: SkillWithoutInstructionsAndToolsType;
-      }
-    | {
-        kind: "tool";
-        serverView: MCPServerViewType;
-      }
-    | {
-        kind: "uninstalled_tool";
-        server: MCPServerType;
-      }
-  );
+import { useEffect, useMemo, useState } from "react";
 
 function CapabilitiesPickerLoading({ count = 5 }: { count?: number }) {
   return (
@@ -84,74 +60,6 @@ function CapabilitiesPickerLoading({ count = 5 }: { count?: number }) {
           </div>
         </div>
       ))}
-    </div>
-  );
-}
-
-interface CapabilitiesPickerItemsListProps {
-  emptyMessage: string;
-  items: CapabilityPickerItem[];
-  onItemSelect: (item: CapabilityPickerItem) => void;
-  onSkillDetails: (skillId: string) => void;
-  onToolDetails: (serverView: MCPServerViewType) => void;
-}
-
-function CapabilitiesPickerItemsList({
-  emptyMessage,
-  items,
-  onItemSelect,
-  onSkillDetails,
-  onToolDetails,
-}: CapabilitiesPickerItemsListProps) {
-  const listRef = useRef<HTMLDivElement>(null);
-
-  if (items.length === 0) {
-    return (
-      <div className="px-2 py-4 text-center text-sm text-muted-foreground">
-        {emptyMessage}
-      </div>
-    );
-  }
-
-  return (
-    <div ref={listRef}>
-      {items.map((item) => {
-        const endComponent =
-          item.kind === "uninstalled_tool" ? (
-            <Chip size="xs" color="info" label="Configure" />
-          ) : (
-            <Button
-              icon={DotsHorizontal}
-              variant="outline"
-              size="mini"
-              className="opacity-0 group-data-[highlighted]:opacity-100 group-focus-within:opacity-100"
-              onClick={(e) => {
-                e.stopPropagation();
-                e.preventDefault();
-
-                if (item.kind === "skill") {
-                  onSkillDetails(item.skill.sId);
-                } else {
-                  onToolDetails(item.serverView);
-                }
-              }}
-            />
-          );
-
-        return (
-          <DropdownMenuItem
-            key={item.id}
-            icon={item.icon}
-            itemId={item.id}
-            label={item.label}
-            description={item.description}
-            truncateText
-            endComponent={endComponent}
-            className="group"
-            onClick={() => onItemSelect(item)}
-          />
-        );
-      })}
     </div>
   );
 }
@@ -351,17 +259,7 @@ export function CapabilitiesPicker({
           continue;
         }
 
-        const SkillAvatar = getSkillAvatarIcon(skill);
-
-        items.push({
-          kind: "skill",
-          skill,
-          id: `skills-picker-${skill.sId}`,
-          icon: <SkillAvatar size="xs" />,
-          label: skill.name,
-          sortName: skill.name.toLowerCase(),
-          description,
-        });
+        items.push(getSkillCapabilityPickerItem(skill));
       }
 
       for (const serverView of serverViews) {
