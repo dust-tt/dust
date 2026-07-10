@@ -16,7 +16,7 @@ describe("ModelsTierResource permissions", () => {
   beforeEach(async () => {
     workspace = await WorkspaceFactory.basic();
     await GroupFactory.defaults(workspace);
-    group = await GroupFactory.regular(workspace, "tier-users");
+    group = await GroupFactory.regularAuto(workspace, "tier-users");
     auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
   });
 
