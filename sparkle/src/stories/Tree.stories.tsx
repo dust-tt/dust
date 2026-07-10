@@ -9,7 +9,7 @@ import {
 } from "@sparkle/logo/platforms";
 
 import {
-  Button,
+  LegacyButton as Button,
   Chip,
   DownloadCloud01,
   Settings01,
