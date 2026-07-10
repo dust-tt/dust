@@ -92,7 +92,7 @@ function getValidateActionRequest(
       };
     case "sandbox_function":
       return {
-        url: `/api/w/${workspaceId}/sandbox-functions/${request.sandboxFunctionId}/invocations/${request.invocationId}/actions/${request.actionId}/validate`,
+        url: `/api/w/${workspaceId}/sandbox-functions/${request.sandboxFunctionId}/invocations/${request.invocationId}/actions/${request.actionId}/validate-action`,
         body: { approved: request.approved },
       };
     default:

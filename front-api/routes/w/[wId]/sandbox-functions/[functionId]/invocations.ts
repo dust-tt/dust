@@ -148,7 +148,7 @@ app.post(
 
 /** @ignoreswagger */
 app.post(
-  "/:invocationId/actions/:actionId/validate",
+  "/:invocationId/actions/:actionId/validate-action",
   validate("param", ValidateActionParamsSchema),
   validate("json", ValidateActionBodySchema),
   async (ctx): HandlerResult<{ success: boolean }> => {

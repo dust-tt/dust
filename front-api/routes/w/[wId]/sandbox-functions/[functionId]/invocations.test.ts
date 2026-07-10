@@ -175,7 +175,7 @@ function postValidate({
   body: unknown;
 }) {
   return honoApp.request(
-    `/api/w/${workspaceId}/sandbox-functions/${encodeURIComponent(functionIdOrSlug)}/invocations/${invocationId}/actions/${actionId}/validate`,
+    `/api/w/${workspaceId}/sandbox-functions/${encodeURIComponent(functionIdOrSlug)}/invocations/${invocationId}/actions/${actionId}/validate-action`,
     {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -361,7 +361,7 @@ describe("POST /api/w/:wId/sandbox-functions/:functionIdOrSlug/invocations", () 
   });
 });
 
-describe("POST /api/w/:wId/sandbox-functions/:functionIdOrSlug/invocations/:invocationId/actions/:actionId/validate", () => {
+describe("POST /api/w/:wId/sandbox-functions/:functionIdOrSlug/invocations/:invocationId/actions/:actionId/validate-action", () => {
   it("approves a blocked action and launches its workflow", async () => {
     const { workspace, sandboxFunction, invocation, action, adminAuth } =
       await setupBlockedAction();
