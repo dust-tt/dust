@@ -1,5 +1,8 @@
 import { GCSFileSystemBackend } from "@app/lib/api/file_system/backends/gcs_file_system_backend";
-import { getPrivateUploadBucket } from "@app/lib/file_storage";
+import {
+  DEFAULT_SIGNED_URL_EXPIRATION_DELAY_MS,
+  getPrivateUploadBucket,
+} from "@app/lib/file_storage";
 import logger from "@app/logger/logger";
 import assert from "assert";
 import { Readable } from "stream";
@@ -661,7 +664,8 @@ describe("GCSFileSystemBackend.getDownloadUrl", () => {
       expect(result.value).toBe("https://signed.example.com/file.pdf");
     }
     expect(getSignedUrlMock).toHaveBeenCalledWith(
-      `w/${WORKSPACE_ID}/conversations/${CONV_ID}/files/report.pdf`
+      `w/${WORKSPACE_ID}/conversations/${CONV_ID}/files/report.pdf`,
+      { expirationDelayMs: DEFAULT_SIGNED_URL_EXPIRATION_DELAY_MS }
     );
   });
 
@@ -672,7 +676,8 @@ describe("GCSFileSystemBackend.getDownloadUrl", () => {
       expect(result.value).toBe("https://signed.example.com/file.pdf");
     }
     expect(getSignedUrlMock).toHaveBeenCalledWith(
-      `w/${WORKSPACE_ID}/pods/${POD_ID}/files/data.csv`
+      `w/${WORKSPACE_ID}/pods/${POD_ID}/files/data.csv`,
+      { expirationDelayMs: DEFAULT_SIGNED_URL_EXPIRATION_DELAY_MS }
     );
   });
 
