@@ -1531,7 +1531,31 @@ export async function processStripeWebhookEvent({
           );
           await matchingSubscription.markAsEnded("ended");
           break;
-        case "active":
+        case "active": {
+          // Race-safety: a poke switch_contract cutover may already have
+          // provisioned a pending Metronome subscription for this workspace.
+          // Stripe's subscription.deleted can be delivered/processed before
+          // Metronome's contract.start webhook that activates it. If a
+          // pending subscription exists, this deletion is an expected part
+          // of the cutover, not organic churn — leave this subscription
+          // alone (contract.start's activatePending() will end it) and do
+          // not scrub.
+          const pendingSubscription =
+            await SubscriptionResource.fetchPendingByWorkspaceModelId(
+              matchingSubscription.workspaceId
+            );
+          if (pendingSubscription) {
+            logger.info(
+              {
+                event,
+                workspaceId: stripeSubscription.metadata?.workspaceId,
+                pendingSubscriptionId: pendingSubscription.sId,
+              },
+              "[Stripe Webhook] customer.subscription.deleted raced ahead of a pending Metronome cutover. Leaving subscription active; contract.start will finalize the swap."
+            );
+            break;
+          }
+
           logger.info(
             { event },
             "[Stripe Webhook] Received customer.subscription.deleted event with the subscription status = active. Ending the subscription and deleting some workspace data"
@@ -1586,6 +1610,7 @@ export async function processStripeWebhookEvent({
             });
           }
           break;
+        }
         default:
           assertNever(matchingSubscription.status);
       }
