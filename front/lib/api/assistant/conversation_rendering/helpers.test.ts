@@ -529,3 +529,140 @@ describe("vision image rendering in getSteps", () => {
     }
   });
 });
+
+describe("websearch resource array compaction in getSteps", () => {
+  it("flattens every result in a multi-result websearch output, dropping the resource wrapper and mimeType from each", async () => {
+    const { authenticator, conversationsSpace } = await createResourceTest({
+      role: "admin",
+    });
+    const workspaceId = authenticator.getNonNullableWorkspace().sId;
+
+    const agentConfig = await AgentConfigurationFactory.createTestAgent(
+      authenticator,
+      {
+        name: "Websearch Agent",
+        description: "An agent that searches the web",
+        model: { providerId: "anthropic", modelId: "claude-sonnet-4-6" },
+      }
+    );
+    const conversation = await ConversationFactory.create(authenticator, {
+      agentConfigurationId: agentConfig.sId,
+      messagesCreatedAt: [],
+      spaceId: conversationsSpace.id,
+    });
+    const conversationId = conversation.sId;
+    const model = getSupportedModelConfig(agentConfig.model);
+    if (!model) {
+      throw new Error("Expected a supported model configuration.");
+    }
+
+    const websearchResults = [
+      {
+        uri: "https://www.foxsports.com/soccer/fifa-world-cup/schedule",
+        text: "STREAM FIFA WORLD CUP 2026 · GROUP STAGE · Match Day 1. Jun 11 - Jun 17 · Match Day 2. Jun 18 - Jun 23 · Match Day 3. Jun 24 - Jun 27.",
+        title: "2026 FIFA World Cup Schedule | FOX Sports",
+        reference: "g8q",
+      },
+      {
+        uri: "https://www.france24.com/en/full-coverage/world-cup/fixtures-results/",
+        text: "June 11 to July 19, 2026. A total of 104 matches will be played over 39 days. Knockout stage: June 28 to July 19. July 14 and 15.",
+        title:
+          "World Cup 2026 fixtures and results: full match schedule - France 24",
+        reference: "duj",
+      },
+      {
+        uri: "https://www.espn.com/soccer/team/fixtures/_/id/478/france",
+        text: "France Fixtures ; September, 2026 · Fri, Sep 25. TUR · FRA · Mon, Sep 28 ; October, 2026 · Fri, Oct 2. FRA · ITA · Mon, Oct 5 ; November, 2026 · Thu, Nov 12. ITA · FRA.",
+        title: "France Fixtures - ESPN",
+        reference: "cvs",
+      },
+    ];
+
+    const message: AgentMessageType = {
+      id: 1,
+      agentMessageId: 1,
+      type: "agent_message" as const,
+      sId: "agent_msg_1",
+      version: 1,
+      rank: 1,
+      branchId: null,
+      created: Date.now(),
+      completedTs: null,
+      parentMessageId: "user_msg_1",
+      parentAgentMessageId: null,
+      status: "succeeded" as const,
+      content: null,
+      chainOfThought: null,
+      error: null,
+      visibility: "visible" as const,
+      configuration: agentConfig,
+      skipToolsValidation: false,
+      actions: [
+        {
+          id: 1,
+          sId: "action_1",
+          createdAt: Date.now(),
+          updatedAt: Date.now(),
+          agentMessageId: 1,
+          internalMCPServerName: "web_search_&_browse",
+          toolName: "websearch",
+          mcpServerId: null,
+          functionCallName: "web_search_browse__websearch",
+          functionCallId: "toolu_websearch_1",
+          params: { query: "world cup 2026 schedule" },
+          citationsAllocated: websearchResults.length,
+          status: "succeeded" as const,
+          step: 0,
+          executionDurationMs: null,
+          displayLabels: null,
+          generatedFiles: [],
+          citations: null,
+          output: websearchResults.map((r) => ({
+            type: "resource" as const,
+            resource: {
+              mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.WEBSEARCH_RESULT,
+              ...r,
+            },
+          })),
+        },
+      ],
+      contents: [
+        {
+          step: 0,
+          content: {
+            type: "function_call" as const,
+            value: {
+              id: "toolu_websearch_1",
+              name: "web_search_browse__websearch",
+              arguments: '{"query":"world cup 2026 schedule"}',
+            },
+          },
+        },
+      ],
+      modelInteractionDurationMs: null,
+      richMentions: [],
+      completionDurationMs: null,
+      reactions: [],
+      costCredits: null,
+      resolvedModel: null,
+    };
+
+    const steps = await getSteps(authenticator, {
+      model,
+      message,
+      workspaceId,
+      conversationId,
+      enabledSkillById: new Map(),
+      onMissingAction: "skip",
+    });
+
+    const result = steps[0].actions[0].result;
+    expect(typeof result.content).toBe("string");
+    assert(typeof result.content === "string");
+
+    const parsed = JSON.parse(result.content);
+    // Every result is flattened to its own fields directly, no "type"/"resource" wrapper and
+    // no mimeType, for the whole array, not just a single item.
+    expect(parsed).toEqual(websearchResults);
+  });
+});
