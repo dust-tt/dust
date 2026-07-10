@@ -76,21 +76,21 @@ mod tests {
     use super::*;
 
     #[test]
-    fn lists_db_files_only_sorted_with_wal_inclusive_sizes() {
+    fn lists_db_files_only_sorted_with_wal_inclusive_sizes() -> Result<()> {
         let dir = tempfile::tempdir().expect("tempdir");
-        std::fs::write(dir.path().join("notes.db"), b"y").unwrap();
-        std::fs::write(dir.path().join("chat.db"), "x".repeat(42)).unwrap();
+        std::fs::write(dir.path().join("notes.db"), b"y")?;
+        std::fs::write(dir.path().join("chat.db"), "x".repeat(42))?;
         // WAL size is folded into the database's size (wal_autocheckpoint=0 keeps data there);
         // SHM and stray files are not databases and never listed on their own.
-        std::fs::write(dir.path().join("chat.db-wal"), "w".repeat(8)).unwrap();
-        std::fs::write(dir.path().join("chat.db-shm"), b"s").unwrap();
-        std::fs::write(dir.path().join("readme.txt"), b"t").unwrap();
-        std::fs::create_dir(dir.path().join("subdir.db")).unwrap();
+        std::fs::write(dir.path().join("chat.db-wal"), "w".repeat(8))?;
+        std::fs::write(dir.path().join("chat.db-shm"), b"s")?;
+        std::fs::write(dir.path().join("readme.txt"), b"t")?;
+        std::fs::create_dir(dir.path().join("subdir.db"))?;
         // Names outside the frozen ^[a-z][a-z0-9_]{0,63}$ contract are not pod databases.
-        std::fs::write(dir.path().join("Weird Name.db"), b"n").unwrap();
-        std::fs::write(dir.path().join("UPPER.db"), b"n").unwrap();
+        std::fs::write(dir.path().join("Weird Name.db"), b"n")?;
+        std::fs::write(dir.path().join("UPPER.db"), b"n")?;
 
-        let databases = enumerate_databases(dir.path()).unwrap();
+        let databases = enumerate_databases(dir.path())?;
         assert_eq!(
             databases,
             vec![
@@ -104,11 +104,13 @@ mod tests {
                 },
             ]
         );
+        Ok(())
     }
 
     #[test]
-    fn missing_dir_is_an_empty_list() {
-        let databases = enumerate_databases(Path::new("/nonexistent/dsbx-db-list-test")).unwrap();
+    fn missing_dir_is_an_empty_list() -> Result<()> {
+        let databases = enumerate_databases(Path::new("/nonexistent/dsbx-db-list-test"))?;
         assert!(databases.is_empty());
+        Ok(())
     }
 }
