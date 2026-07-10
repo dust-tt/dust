@@ -74,6 +74,9 @@ export class SlackToolsOAuthProvider implements BaseOAuthStrategyProvider {
             "canvases:write",
             "search:read.files",
             "search:read.users",
+            // Reactions.
+            "reactions:write",
+            "reactions:read",
             // The following two are needed for some customer scenarios that require us to create/invite/archive channels
             "channels:write",
             "groups:write",

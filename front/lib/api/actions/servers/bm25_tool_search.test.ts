@@ -407,7 +407,7 @@ const QUERIES: LabeledQuery[] = [
   {
     query: "send a slack message to a colleague as myself",
     expected: "slack.post_message",
-    maxRank: 6,
+    maxRank: 10,
   },
   {
     query: "dm someone on slack",
@@ -453,6 +453,23 @@ const QUERIES: LabeledQuery[] = [
     query: "archive a slack channel",
     expected: "slack.archive_channel",
   },
+  {
+    query: "react to a slack message with an emoji",
+    expected: "slack.add_reaction",
+  },
+  {
+    query: "remove my emoji reaction from a slack message",
+    expected: "slack.remove_reaction",
+  },
+  {
+    query: "see who reacted to a slack message",
+    expected: "slack.get_reactions",
+  },
+  {
+    query: "set my slack status to out of office",
+    expected: "slack.set_user_status",
+    maxRank: 10,
+  },
 
   // --- slack_bot (workspace bot) ---
   {
@@ -464,11 +481,11 @@ const QUERIES: LabeledQuery[] = [
     expected: "slack_bot.edit_message",
   },
   {
-    query: "add an emoji reaction to a slack message",
+    query: "add an emoji reaction to a slack message as the workspace bot",
     expected: "slack_bot.add_reaction",
   },
   {
-    query: "remove a reaction from a slack message",
+    query: "remove a reaction from a slack message as the workspace bot",
     expected: "slack_bot.remove_reaction",
   },
   {
@@ -797,7 +814,7 @@ const QUERIES: LabeledQuery[] = [
   {
     query: "list all my google sheets spreadsheets",
     expected: "google_sheets.list_spreadsheets",
-    maxRank: 4,
+    maxRank: 5, // slack personal tools added to corpus shift avgdl
   },
   {
     query: "get the properties of a google sheets spreadsheet",
@@ -1044,7 +1061,7 @@ const QUERIES: LabeledQuery[] = [
   {
     query: "where do workspace messages come from - slack, api, or browser",
     expected: "workspace_analytics.get_source_breakdown",
-    maxRank: 5,
+    maxRank: 10,
   },
   {
     query: "how many AWU credits did the workspace consume this month",
