@@ -1838,9 +1838,9 @@ describe("agent_sidekick_context tools", () => {
 
       const tool = getToolByName("suggest_model");
       // gpt-5.6-sol is in USED_MODEL_CONFIGS but openai is not whitelisted
-      expect(
-        USED_MODEL_CONFIGS.some((m) => m.modelId === "gpt-5.6-sol")
-      ).toBe(true);
+      expect(USED_MODEL_CONFIGS.some((m) => m.modelId === "gpt-5.6-sol")).toBe(
+        true
+      );
       const result = await tool.handler(
         {
           suggestion: {

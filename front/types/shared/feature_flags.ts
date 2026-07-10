@@ -52,8 +52,7 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     stage: "dust_only",
   },
   dust_agent_sonnet_5_default: {
-    description:
-      "Use Claude Sonnet 5 as the default model for the @dust agent",
+    description: "Use Claude Sonnet 5 as the default model for the @dust agent",
     stage: "dust_only",
   },
   notion_private_integration: {
