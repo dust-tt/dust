@@ -286,6 +286,11 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
       "Skip injecting the OpenAI formatting meta prompt entirely (no markdown/paragraph style guidance)",
     stage: "dust_only",
   },
+  render_search_results_as_markdown: {
+    description:
+      "Render semantic search results as Markdown instead of serialized JSON",
+    stage: "dust_only",
+  },
   admin_governance: {
     description:
       "Access to admin governance features, including assigning the business_admin role from the UI",
