@@ -6,9 +6,11 @@
  */
 
 import { GroupResource } from "@app/lib/resources/group_resource";
+import { GroupModel } from "@app/lib/resources/storage/models/groups";
 import { makeScript } from "@app/scripts/helpers";
 import { runOnAllWorkspaces } from "@app/scripts/workspace_helpers";
 import type { ModelId } from "@app/types/shared/model_id";
+import { Op } from "sequelize";
 
 // Number of group ids rewritten per SQL update.
 const BATCH_SIZE = 500;
@@ -21,6 +23,26 @@ function chunkArray<T>(arr: T[], size: number): T[][] {
     chunks.push(arr.slice(i, i + size));
   }
   return chunks;
+}
+
+// Backfill helper for the `regular` -> `regular_auto` rename.
+async function updateKindToRegularAutoByIds({
+  workspaceId,
+  groupModelIds,
+}: {
+  workspaceId: ModelId;
+  groupModelIds: ModelId[];
+}): Promise<number> {
+  if (groupModelIds.length === 0) {
+    return 0;
+  }
+
+  const [affectedCount] = await GroupModel.update(
+    { kind: "regular_auto" },
+    { where: { workspaceId, id: { [Op.in]: groupModelIds } } }
+  );
+
+  return affectedCount;
 }
 
 makeScript(
@@ -67,11 +89,10 @@ makeScript(
         let updatedForWorkspace = 0;
         const batches: ModelId[][] = chunkArray(groupModelIds, BATCH_SIZE);
         for (const batch of batches) {
-          updatedForWorkspace +=
-            await GroupResource.updateKindToRegularAutoByIds({
-              workspaceId: workspace.id,
-              groupModelIds: batch,
-            });
+          updatedForWorkspace += await updateKindToRegularAutoByIds({
+            workspaceId: workspace.id,
+            groupModelIds: batch,
+          });
         }
 
         // The system-key group cache stores each group's kind; invalidate it so
