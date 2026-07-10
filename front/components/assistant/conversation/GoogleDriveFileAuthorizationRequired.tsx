@@ -1,7 +1,6 @@
 import { useBlockedActionsContext } from "@app/components/assistant/conversation/BlockedActionsProvider";
 import type { GooglePickerFile } from "@app/hooks/useGooglePicker";
 import { useGooglePicker } from "@app/hooks/useGooglePicker";
-import { useResolveAuthentication } from "@app/hooks/useResolveAuthentication";
 import type {
   AgentLoopBlockedToolExecution,
   FileAuthorizationInfo,
@@ -11,6 +10,7 @@ import { useAuth } from "@app/lib/auth/AuthContext";
 import { useRegionContext } from "@app/lib/auth/RegionContext";
 import { useClientType } from "@app/lib/context/clientType";
 import { clientFetch } from "@app/lib/egress/client";
+import { useResolveAuthentication } from "@app/lib/swr/tool_actions";
 import type { PickerTokenResponseType } from "@app/types/api/google_drive";
 import type { LightWorkspaceType, UserType } from "@app/types/user";
 import {
@@ -161,6 +161,7 @@ export function GoogleDriveFileAuthorizationRequired({
 
   const handleSkip = useCallback(async () => {
     const denyRes = await resolveAuthentication({
+      contextType: "agent_loop",
       outcome: "denied",
       actionId: blockedAction.actionId,
       conversationId: blockedAction.conversationId,

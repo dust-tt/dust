@@ -2,7 +2,7 @@ import { ToolValidationCard } from "@app/components/actions/blocked/ToolValidati
 import type { MCPValidationOutputType } from "@app/lib/actions/constants";
 import type { SandboxFunctionMCPApproveExecutionEvent } from "@app/lib/actions/mcp_internal_actions/events";
 import { useAuth } from "@app/lib/auth/AuthContext";
-import { useValidateSandboxFunctionAction } from "@app/lib/swr/sandbox_functions";
+import { useValidateAction } from "@app/lib/swr/tool_actions";
 import { useState } from "react";
 
 interface SandboxFunctionToolApprovalCardProps {
@@ -17,7 +17,7 @@ export function SandboxFunctionToolApprovalCard({
   const { user, workspace } = useAuth();
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  const { validateAction, isValidating } = useValidateSandboxFunctionAction({
+  const { validateAction, isValidating } = useValidateAction({
     owner: workspace,
     onError: setErrorMessage,
   });
@@ -28,6 +28,7 @@ export function SandboxFunctionToolApprovalCard({
     setErrorMessage(null);
 
     const result = await validateAction({
+      contextType: "sandbox_function",
       sandboxFunctionId: event.sandboxFunctionId,
       invocationId: event.invocationId,
       actionId: event.actionId,

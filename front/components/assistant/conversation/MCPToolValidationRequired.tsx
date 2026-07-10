@@ -1,9 +1,9 @@
 import { ToolValidationCard } from "@app/components/actions/blocked/ToolValidationCard";
 import { useBlockedActionsContext } from "@app/components/assistant/conversation/BlockedActionsProvider";
-import { useValidateAction } from "@app/hooks/useValidateAction";
 import type { MCPValidationOutputType } from "@app/lib/actions/constants";
 import type { AgentLoopBlockedToolExecution } from "@app/lib/actions/mcp";
 import { useAuth } from "@app/lib/auth/AuthContext";
+import { useValidateAction } from "@app/lib/swr/tool_actions";
 import type { LightWorkspaceType, UserType } from "@app/types/user";
 import { useState } from "react";
 
@@ -43,7 +43,10 @@ export function MCPToolValidationRequired({
     setErrorMessage(null);
 
     const result = await validateAction({
-      validationRequest: blockedAction,
+      contextType: "agent_loop",
+      conversationId: blockedAction.conversationId,
+      messageId: blockedAction.messageId,
+      actionId: blockedAction.actionId,
       approved,
     });
 
@@ -66,7 +69,10 @@ export function MCPToolValidationRequired({
 
       for (const cascadeAction of cascadable) {
         const cascadeResult = await validateAction({
-          validationRequest: cascadeAction,
+          contextType: "agent_loop",
+          conversationId: cascadeAction.conversationId,
+          messageId: cascadeAction.messageId,
+          actionId: cascadeAction.actionId,
           approved: "approved",
         });
         if (cascadeResult.success) {
