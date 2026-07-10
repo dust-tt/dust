@@ -6,7 +6,7 @@ import type {
 } from "@app/lib/api/assistant/conversation/resolve_authentication";
 import { useFetcher } from "@app/lib/swr/swr";
 import { isAPIErrorResponse } from "@app/types/error";
-import { assertNever } from "@app/types/shared/utils/assert_never";
+import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import type { LightWorkspaceType } from "@app/types/user";
 import { useCallback, useState } from "react";
 
@@ -36,10 +36,22 @@ type ToolActionContext =
       invocationId: string;
     };
 
-type ResolveAuthenticationRequest = ToolActionContext & {
-  actionId: string;
-  outcome: ResolveAuthenticationOutcome;
-};
+type ResolveAuthenticationRequest =
+  | {
+      contextType: "agent_loop";
+      kind: ResolveAuthenticationKind;
+      conversationId: string;
+      messageId: string;
+      actionId: string;
+      outcome: ResolveAuthenticationOutcome;
+    }
+  | {
+      contextType: "sandbox_function";
+      sandboxFunctionId: string;
+      invocationId: string;
+      actionId: string;
+      outcome: ResolveAuthenticationOutcome;
+    };
 
 type ValidateActionRequest = ToolActionContext & {
   actionId: string;
@@ -53,13 +65,12 @@ interface ToolActionMutationRequest {
 
 function getResolveAuthenticationRequest(
   workspaceId: string,
-  kind: ResolveAuthenticationKind,
   request: ResolveAuthenticationRequest
-): ToolActionMutationRequest {
+): ToolActionMutationRequest | null {
   switch (request.contextType) {
     case "agent_loop":
       return {
-        url: `/api/w/${workspaceId}/assistant/conversations/${request.conversationId}/messages/${request.messageId}/${ROUTE_FOR_KIND[kind]}`,
+        url: `/api/w/${workspaceId}/assistant/conversations/${request.conversationId}/messages/${request.messageId}/${ROUTE_FOR_KIND[request.kind]}`,
         body: {
           actionId: request.actionId,
           outcome: request.outcome,
@@ -72,14 +83,29 @@ function getResolveAuthenticationRequest(
         body: { outcome: request.outcome },
       };
     default:
-      return assertNever(request);
+      assertNeverAndIgnore(request);
+      return null;
+  }
+}
+
+function getAuthenticationKindLabel(
+  request: ResolveAuthenticationRequest
+): string {
+  switch (request.contextType) {
+    case "agent_loop":
+      return LABEL_FOR_KIND[request.kind];
+    case "sandbox_function":
+      return LABEL_FOR_KIND.authentication;
+    default:
+      assertNeverAndIgnore(request);
+      return LABEL_FOR_KIND.authentication;
   }
 }
 
 function getValidateActionRequest(
   workspaceId: string,
   request: ValidateActionRequest
-): ToolActionMutationRequest {
+): ToolActionMutationRequest | null {
   switch (request.contextType) {
     case "agent_loop":
       return {
@@ -96,18 +122,17 @@ function getValidateActionRequest(
         body: { approved: request.approved },
       };
     default:
-      return assertNever(request);
+      assertNeverAndIgnore(request);
+      return null;
   }
 }
 
 interface UseResolveAuthenticationParams {
   owner: LightWorkspaceType;
-  kind?: ResolveAuthenticationKind;
 }
 
 export function useResolveAuthentication({
   owner,
-  kind = "authentication",
 }: UseResolveAuthenticationParams) {
   const sendNotification = useSendNotification();
   const { fetcher } = useFetcher();
@@ -118,11 +143,10 @@ export function useResolveAuthentication({
       setIsResolving(true);
 
       try {
-        const request = getResolveAuthenticationRequest(
-          owner.sId,
-          kind,
-          resolution
-        );
+        const request = getResolveAuthenticationRequest(owner.sId, resolution);
+        if (!request) {
+          return { success: false };
+        }
         await fetcher(request.url, {
           method: "POST",
           headers: {
@@ -137,17 +161,18 @@ export function useResolveAuthentication({
           return { success: true };
         }
 
+        const label = getAuthenticationKindLabel(resolution);
         sendNotification({
           type: "error",
-          title: `Failed to resolve ${LABEL_FOR_KIND[kind]}`,
-          description: `Failed to resume the ${LABEL_FOR_KIND[kind]} tool. Please try again.`,
+          title: `Failed to complete ${label}`,
+          description: `The tool could not resume after ${label}. Please try again.`,
         });
         return { success: false };
       } finally {
         setIsResolving(false);
       }
     },
-    [owner.sId, sendNotification, fetcher, kind]
+    [owner.sId, sendNotification, fetcher]
   );
 
   return { resolveAuthentication, isResolving };
@@ -168,6 +193,9 @@ export function useValidateAction({ owner, onError }: UseValidateActionParams) {
 
       try {
         const request = getValidateActionRequest(owner.sId, validation);
+        if (!request) {
+          return { success: false };
+        }
         await fetcher(request.url, {
           method: "POST",
           headers: {
