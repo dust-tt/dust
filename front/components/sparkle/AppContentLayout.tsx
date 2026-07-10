@@ -147,7 +147,7 @@ export function AppContentLayout({ children }: AppContentLayoutProps) {
                   "flex flex-1 flex-col",
                   isMobile
                     ? MOBILE_DOCUMENT_SCROLL_CLASSES.contentArea
-                    : "min-h-0 h-panel overflow-y-auto"
+                    : "min-h-0 h-panel overflow-y-auto [scrollbar-gutter:stable]"
                 )}
               >
                 <AppLayoutTitle />
@@ -157,7 +157,7 @@ export function AppContentLayout({ children }: AppContentLayoutProps) {
                       "flex w-full flex-col items-center",
                       isMobile
                         ? MOBILE_DOCUMENT_SCROLL_CLASSES.contentArea
-                        : "h-full overflow-y-auto",
+                        : "h-full overflow-y-auto [scrollbar-gutter:stable]",
                       contentWidth === "centered" ? "pt-4" : "pt-8",
                       contentClassName
                     )}
@@ -182,7 +182,7 @@ export function AppContentLayout({ children }: AppContentLayoutProps) {
                   "flex flex-1 flex-col",
                   isMobile
                     ? MOBILE_DOCUMENT_SCROLL_CLASSES.contentArea
-                    : "min-h-0 overflow-y-auto"
+                    : "min-h-0 overflow-y-auto [scrollbar-gutter:stable]"
                 )}
               >
                 {contentWidth ? (
@@ -193,7 +193,7 @@ export function AppContentLayout({ children }: AppContentLayoutProps) {
                         "flex w-full flex-col items-center",
                         isMobile
                           ? MOBILE_DOCUMENT_SCROLL_CLASSES.contentArea
-                          : "overflow-y-auto",
+                          : "overflow-y-auto [scrollbar-gutter:stable]",
                         contentWidth === "centered"
                           ? cn(
                               title ? "h-[calc(100vh-3.5rem)]" : "h-full",
