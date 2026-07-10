@@ -14,6 +14,10 @@ export const MODELS_TIER_NAMES = [
 
 export type ModelsTierName = (typeof MODELS_TIER_NAMES)[number];
 
+export function isModelsTierName(value: unknown): value is ModelsTierName {
+  return MODELS_TIER_NAMES.includes(value as ModelsTierName);
+}
+
 export type ModelTierSelection = {
   modelId: StaticModelIdType;
   providerId: ModelProviderIdType;
