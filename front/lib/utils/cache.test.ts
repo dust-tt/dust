@@ -241,6 +241,41 @@ describe("cacheWithRedis", () => {
         })
       ).toThrow("ttlMs should be less than 24 hours");
     });
+
+    it("resolves ttlMs as a function of the call's own args", async () => {
+      const mockFn = vi.fn().mockResolvedValue("data");
+      Object.defineProperty(mockFn, "name", { value: "testFn" });
+
+      mockRedisClient.get.mockResolvedValue(null);
+      mockRedisClient.set.mockResolvedValue("OK");
+
+      const cachedFn = cacheWithRedis(
+        mockFn,
+        (_key: string, ttl: number) => `${_key}-${ttl}`,
+        {
+          ttlMs: (_key: string, ttl: number) => ttl,
+        }
+      );
+      await cachedFn("key1", 12345);
+
+      expect(mockRedisClient.set).toHaveBeenCalledWith(
+        "cacheWithRedis-testFn-key1-12345",
+        JSON.stringify("data"),
+        { PX: 12345 }
+      );
+    });
+
+    it("throws only once a call resolves a function ttlMs above 24 hours", async () => {
+      const mockFn = vi.fn().mockResolvedValue("data");
+
+      const cachedFn = cacheWithRedis(mockFn, (ttl: number) => `${ttl}`, {
+        ttlMs: (ttl: number) => ttl,
+      });
+
+      await expect(cachedFn(25 * 60 * 60 * 1000)).rejects.toThrow(
+        "ttlMs should be less than 24 hours"
+      );
+    });
   });
 
   describe("null value handling (cacheNullValues option)", () => {

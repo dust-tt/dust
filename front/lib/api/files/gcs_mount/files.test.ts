@@ -9,7 +9,10 @@ import {
   renameGCSMountFile,
 } from "@app/lib/api/files/gcs_mount/files";
 import type { Authenticator } from "@app/lib/auth";
-import { getPrivateUploadBucket } from "@app/lib/file_storage";
+import {
+  DEFAULT_SIGNED_URL_EXPIRATION_DELAY_MS,
+  getPrivateUploadBucket,
+} from "@app/lib/file_storage";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
@@ -62,7 +65,9 @@ describe("getConversationFileMountSignedUrl", () => {
     if (result.isOk()) {
       expect(result.value).toBe("https://signed.example.com/photo.png");
     }
-    expect(getSignedUrlMock).toHaveBeenCalledWith(gcsPath);
+    expect(getSignedUrlMock).toHaveBeenCalledWith(gcsPath, {
+      expirationDelayMs: DEFAULT_SIGNED_URL_EXPIRATION_DELAY_MS,
+    });
   });
 
   it("returns Err without calling GCS when path belongs to a different conversation", async () => {
