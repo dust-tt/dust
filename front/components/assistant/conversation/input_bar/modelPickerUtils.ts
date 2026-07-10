@@ -1,3 +1,4 @@
+import { getSupportedModelConfig } from "@app/lib/llms/model_configurations";
 import type { AgentModelConfigurationType } from "@app/types/assistant/agent";
 import { CLAUDE_SONNET_4_6_MODEL_ID } from "@app/types/assistant/models/anthropic";
 import { AUTO_MODEL_ID } from "@app/types/assistant/models/auto";
@@ -173,6 +174,23 @@ function findAvailableModel(
   );
 }
 
+// Resolve the agent's configured model. First look in the workspace picker
+// shortlist, then fall back to the full model catalog: an agent may be
+// configured with a supported model that is no longer surfaced in the picker
+// (older or de-emphasized models, e.g. GPT-5.5). Without this fallback the
+// picker cannot find the model and collapses to "Auto"; with it, the agent's
+// actual default is shown as "Default".
+function findAgentModel(
+  models: ModelConfigurationType[],
+  agentModel: AgentModelConfigurationType
+): ModelConfigurationType | undefined {
+  return (
+    findAvailableModel(models, agentModel) ??
+    getSupportedModelConfig(agentModel) ??
+    undefined
+  );
+}
+
 export function resolveDefaultSelection({
   agentModel,
   lastRequestedModel,
@@ -201,7 +219,7 @@ export function resolveDefaultSelection({
   }
 
   const agentDefaultModel = agentModel
-    ? findAvailableModel(models, agentModel)
+    ? findAgentModel(models, agentModel)
     : undefined;
   if (!agentDefaultModel || agentDefaultModel.modelId === AUTO_MODEL_ID) {
     return { kind: "auto", toSend: AUTO_MODEL_SELECTION };
