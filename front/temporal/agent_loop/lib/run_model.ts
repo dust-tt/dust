@@ -211,20 +211,6 @@ function buildReplayOnlyToolSpecification(
   };
 }
 
-function sortToolSpecifications(
-  specifications: AgentActionSpecification[]
-): AgentActionSpecification[] {
-  return [...specifications].sort((left, right) => {
-    if (left.name < right.name) {
-      return -1;
-    }
-    if (left.name > right.name) {
-      return 1;
-    }
-    return 0;
-  });
-}
-
 // A custom agent's configured tools are its identity: they stay in the eagerly
 // loaded set so the model always sees them instead of having to discover them
 // through tool search. The set is small and stable per agent version, so the
@@ -250,8 +236,8 @@ export function buildBaseSpecifications(
       .filter((id) => id !== -1)
   );
 
-  return sortToolSpecifications(
-    availableActions.map((action) => {
+  return availableActions
+    .map((action) => {
       const specification = buildToolSpecification(action);
       if (
         isCustomAgent &&
@@ -263,7 +249,7 @@ export function buildBaseSpecifications(
 
       return specification;
     })
-  );
+    .sort((left, right) => left.name.localeCompare(right.name));
 }
 
 // Replayed tools keep their intrinsic `eager` flag: providers resolve deferred
@@ -284,12 +270,12 @@ export function buildSpecificationsWithReplayPlaceholders(
     .sort();
 
   return {
-    specifications: sortToolSpecifications([
+    specifications: [
       ...baseSpecifications,
       ...missingReplayedToolNames.map((name) =>
         buildReplayOnlyToolSpecification(name)
       ),
-    ]),
+    ].sort((left, right) => left.name.localeCompare(right.name)),
     missingReplayedToolNames,
   };
 }
