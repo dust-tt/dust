@@ -228,12 +228,17 @@ export abstract class LLM<TPayload = unknown> {
         buffer.addEvent(currentEvent);
 
         if (currentEvent.type === "interaction_id") {
-          buffer.setModelInteractionId(currentEvent.content.modelInteractionId);
+          const { modelInteractionId, cacheMissReason } = currentEvent.content;
+          buffer.setModelInteractionId(modelInteractionId);
           this.generation.updateTrace({
             metadata: {
-              modelInteractionId: currentEvent.content.modelInteractionId,
-              ...(currentEvent.content.cacheMissReason && {
-                cacheMissReasonType: currentEvent.content.cacheMissReason.type,
+              modelInteractionId,
+              ...(cacheMissReason && {
+                cacheMissReasonType: cacheMissReason.type,
+                ...(cacheMissReason.cacheMissedInputTokens !== undefined && {
+                  cacheMissedInputTokens:
+                    cacheMissReason.cacheMissedInputTokens,
+                }),
               }),
             },
           });
