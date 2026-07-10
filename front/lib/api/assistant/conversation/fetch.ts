@@ -14,6 +14,7 @@ import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { ContentFragmentModel } from "@app/lib/resources/storage/models/content_fragment";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { getConversationRoute } from "@app/lib/utils/router";
+import { getStatsDClient } from "@app/lib/utils/statsd";
 import type {
   AgentMessageType,
   CompactionMessageType,
@@ -94,7 +95,14 @@ export const getLightConversation = async (
 // guaranteed floor. The boundary is anchored on a fixed, absolute interaction index rather than
 // distance from the most recent interaction, so it only advances once a full batch of new
 // interactions has accumulated instead of sliding by one every single turn.
-export const TOOL_OUTPUT_FETCH_BATCH_SIZE = 10;
+//
+// When the boundary does advance, every interaction between the old and new checkpoint loses its
+// tool-output content in a single turn (see computeMessagesWithToolOutputContent), which busts the
+// prompt cache for that turn. A larger batch means fewer crossings overall. It also means most
+// conversations whose interaction count never reaches the threshold never cross it at all. 30 is a
+// placeholder pending real data on the interaction-count distribution (see the
+// "conversation.interactions_count" metric below). Revisit once that data is in.
+export const TOOL_OUTPUT_FETCH_BATCH_SIZE = 30;
 
 /**
  * Decides which agent messages should have their tool-output content fetched.
@@ -270,6 +278,12 @@ async function _getConversation<V extends "light" | "full">(
           // We don't care about the other messages.
         })
       )
+    );
+
+    // Purely observational, see TOOL_OUTPUT_FETCH_BATCH_SIZE above.
+    getStatsDClient().distribution(
+      "conversation.interactions_count",
+      interactions.length
     );
 
     messagesWithToolOutputContent = computeMessagesWithToolOutputContent(
