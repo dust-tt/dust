@@ -12,9 +12,7 @@ const configSchema = fireworksConfigSchema.extend({
   reasoning: z
     .object({ effort: z.enum(FIREWORKS_SUPPORTED_REASONING_EFFORTS) })
     .optional()
-    .transform((r) =>
-      r && (r.effort === "medium" || r.effort === "high") ? r : undefined
-    ),
+    .default({ effort: "high" }),
 });
 
 // Mixin carrying shared config; runtime base differs per surface.
