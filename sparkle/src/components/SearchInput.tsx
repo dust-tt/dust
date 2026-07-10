@@ -60,50 +60,50 @@ export const SearchInput = forwardRef<HTMLInputElement, SearchInputProps>(
     const inputId = id ?? name;
 
     return (
-        <div className="relative">
-          <Input
-            id={inputId}
-            label={label}
-            type="text"
-            name={name}
-            autoComplete="off"
-            placeholder={placeholder}
-            value={value}
-            onChange={(e) => {
-              onChange(e.target.value);
-            }}
-            onFocus={onFocus}
-            onBlur={onBlur}
-            onKeyDown={onKeyDown}
-            disabled={disabled}
-            ref={ref}
-          />
-          <div className="absolute inset-y-0 right-0 flex items-center pr-1">
-            {isLoading ? (
-              <div className="px-1">
-                <Spinner size="xs" />
-              </div>
-            ) : value ? (
-              <Button
-                icon={XClose}
-                variant="ghost"
+      <div className="relative">
+        <Input
+          id={inputId}
+          label={label}
+          type="text"
+          name={name}
+          autoComplete="off"
+          placeholder={placeholder}
+          value={value}
+          onChange={(e) => {
+            onChange(e.target.value);
+          }}
+          onFocus={onFocus}
+          onBlur={onBlur}
+          onKeyDown={onKeyDown}
+          disabled={disabled}
+          ref={ref}
+        />
+        <div className="absolute inset-y-0 right-0 flex items-center pr-1">
+          {isLoading ? (
+            <div className="px-1">
+              <Spinner size="xs" />
+            </div>
+          ) : value ? (
+            <Button
+              icon={XClose}
+              variant="ghost"
+              size="xs"
+              onClick={clearInputField}
+            />
+          ) : (
+            <div
+              className={cn(
+                "px-2",
+                disabled ? "text-muted-foreground" : "text-foreground"
+              )}
+            >
+              <Icon
+                visual={SearchMd}
                 size="xs"
-                onClick={clearInputField}
+                className="text-muted-foreground"
               />
-            ) : (
-              <div
-                className={cn(
-                  "px-2",
-                  disabled ? "text-muted-foreground" : "text-foreground"
-                )}
-              >
-                <Icon
-                  visual={SearchMd}
-                  size="xs"
-                  className="text-muted-foreground"
-                />
-              </div>
-            )}
+            </div>
+          )}
         </div>
       </div>
     );

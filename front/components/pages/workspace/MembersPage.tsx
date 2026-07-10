@@ -85,10 +85,9 @@ export function MembersPage() {
               {membersContent}
             </TabsContent>
             <TabsContent value="groups" className="flex flex-col gap-4">
-              <ContentMessage
-                size="md"
-              >
-                This page is WIP. Do not change unless you know what you are doing.
+              <ContentMessage size="md">
+                This page is WIP. Do not change unless you know what you are
+                doing.
               </ContentMessage>
             </TabsContent>
           </Tabs>
