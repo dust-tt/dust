@@ -68,6 +68,33 @@ export function openReadonly(
   return new Ok(db);
 }
 
+// Pragmas every write connection needs to coexist with litestream; @dust/pod sets the same ones.
+export function applyWritePragmas(db: Database): void {
+  db.exec(`PRAGMA busy_timeout = ${DB_BUSY_TIMEOUT_MS};`);
+  // Litestream is the only checkpointer; a self-checkpoint can make it miss frames.
+  db.exec("PRAGMA wal_autocheckpoint = 0;");
+  db.exec("PRAGMA synchronous = NORMAL;");
+}
+
+export const POD_DATABASE_MAX_SIZE_BYTES_ENV =
+  "DUST_POD_DATABASE_MAX_SIZE_BYTES";
+
+// The per-database size quota, the same env var @dust/pod reads for workload writes.
+export function podDatabaseMaxSizeBytes(): Result<number, DbCommandError> {
+  const raw = process.env[POD_DATABASE_MAX_SIZE_BYTES_ENV];
+  const parsed =
+    raw !== undefined && /^[0-9]+$/.test(raw) ? Number(raw) : Number.NaN;
+  if (!Number.isSafeInteger(parsed) || parsed <= 0) {
+    return new Err(
+      new DbCommandError(
+        "internal",
+        `${POD_DATABASE_MAX_SIZE_BYTES_ENV} must be a positive integer byte count; got ${JSON.stringify(raw)}`
+      )
+    );
+  }
+  return new Ok(parsed);
+}
+
 // Introspects the user-facing tables of a live database via sqlite_master + PRAGMAs.
 export function introspectLiveTables(db: Database): LiveTable[] {
   const rows = db

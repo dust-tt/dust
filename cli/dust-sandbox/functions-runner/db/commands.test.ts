@@ -267,15 +267,13 @@ describe("db schema", () => {
       );
       db.close();
 
-      // We return drizzle-kit's own pull output verbatim, under a header note.
+      // We return drizzle-kit's own pull output verbatim.
       const text = unwrap(generateSchemaFileText(dbPath));
       expect(text).toContain('from "drizzle-orm/sqlite-core"');
       expect(text).toContain("export const users = sqliteTable(");
       expect(text).toContain(".primaryKey({ autoIncrement: true })");
       expect(text).toContain('uniqueIndex("users_handle_idx")');
       expect(text).toContain('.default("anon")');
-      // SQLite does not store column modes; the header records that they are dropped.
-      expect(text).toContain("modes");
     });
   });
 
