@@ -14,8 +14,6 @@ export const podFunctionsSkill = {
     "A pod function is a hosted function that runs on the Pod's own Computer, shared across " +
     "every conversation in the Pod, with the ability to persist data and call other tools. It's " +
     "callable by slug from this conversation or from a Frame's own runtime.",
-  // TODO(POD_FUNCTION: JD/spolu): the SQLite/db() story for "Persisting state across calls"
-  // below still needs to be filled in.
   instructions: `Pod functions are versioned, typed functions published on the Pod's own
 Computer: a persistent environment shared across every conversation in the Pod, not the one
 scoped to this conversation. Each one is a TypeScript module with zod-typed input and output,
@@ -67,13 +65,8 @@ You can split the implementation across several files on the Pod and import them
 relative imports into one module. The bundle is a snapshot taken at publish time, so editing an
 imported helper has no effect until you re-publish.
 
-The only external package you can import is \`zod\`. Other npm packages are not available at build
-time.
-
-A function's \`fetch\` handler runs as the same egress-controlled user as the Computer's bash
-tool, so \`fetch()\` calls from inside it only reach domains on the pod's egress allowlist, and the
-workspace's \`DST_*\` (plain config) and \`DSEC_*\` (HTTPS secret placeholder) environment variables
-are available under the same substitution rules as the Computer.
+The external packages you can import are \`zod\`, \`drizzle-orm\` and \`@dust/pod\`. Other npm packages
+are not available at build time.
 
 #### Persisting state across calls
 
@@ -81,6 +74,57 @@ A function's process can read and write the Pod's file system exactly like the C
 under \`/files/pod-<podId>\` (or through the \`files\` MCP server, scoped to \`pod-<podId>/<rel>\`). Anything
 written there persists across calls and conversations, not just for the duration of one
 invocation.
+
+Functions of the same Pod can share durable SQLite databases (via \`drizzle-orm\`):
+- **One schema file per database** at \`databases/{db}.db.ts\`, relative to the sources: the single
+  source of truth declaring that database's full schema with drizzle's \`sqliteTable\` DSL. Every
+  function imports its table objects from it (never hand-write tables in a function file), so
+  functions sharing a database must live in the same source directory.
+- **Name functions that use this db.ts by writting a comment a the top** 
+- **Apply the schema file with \`sandbox_functions__db_reconcile\`**; it creates the database and
+  applies additive DDL after edits, and enforces the rules below. Publishing does not touch
+  databases; an unreconciled database does not exist at runtime.
+- **At runtime open a database with \`db(name)\` from \`@dust/pod\`** and query it with the imported
+  table objects.
+
+\`\`\`ts
+// databases/chat.db.ts; the full intended schema, shared by every chat function
+import { index, integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
+
+export const messages = sqliteTable("messages", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  author: text("author"),
+  body: text("body"),
+  createdAt: integer("created_at", { mode: "timestamp" }),
+}, (t) => [index("messages_created_idx").on(t.createdAt)]);
+
+// post-message.ts; declares schema.databases: ["chat"], then inside fetch:
+import { db } from "@dust/pod";
+import { messages } from "./databases/chat.db.ts";
+const row = db("chat").insert(messages)
+  .values({ author, body, createdAt: new Date() })
+  .returning({ id: messages.id }).get();
+\`\`\`
+
+Column \`mode\` (\`"timestamp" | "boolean" | "json" | ...\`) is the row-to-JS (de)serialization; keep it identical across functions by always importing the shared schema file.
+
+**Evolution is additive-only.** Reconcile can only ADD tables, columns, and indexes; nothing is
+dropped, renamed, or retyped (indexes excepted, and it rejects a destructive schema file). Get
+names and types right up front, and:
+
+- make columns nullable by default; never add a NOT NULL column without a \`.default(...)\`;
+- no premature unique indexes (a late \`uniqueIndex()\` fails if rows already duplicate);
+- no foreign keys (\`.references()\`), CHECK or UNIQUE constraints; use \`uniqueIndex()\` and enforce
+  integrity in code;
+- give every table an \`id\` and a \`createdAt\`;
+- to change a shape, add alongside: a new nullable column read with a fallback, or a new table
+  preferred over the old on read.
+
+A function's \`fetch\` handler runs as the same egress-controlled user as the Computer's bash
+tool, so \`fetch()\` calls from inside it only reach domains on the pod's egress allowlist, and the
+workspace's \`DST_*\` (plain config) and \`DSEC_*\` (HTTPS secret placeholder) environment variables
+are available under the same substitution rules as the Computer.
+
 
 #### Calling other tools from a function
 
@@ -92,18 +136,24 @@ servers and tools before writing the function.
 
 #### Publishing, discovering, and invoking
 
-Once the source is on the Pod, use the \`publish\` tool to build it. Publishing bundles and
+Once the source is on the Pod, use \`sandbox_functions__publish\` to build it. Publishing bundles and
 type-checks the source on the Computer and extracts the input and output JSON schemas from the
 \`schema\` export. Publishing again under the same name replaces the previous version. The stored
 bundle is owned by the platform and runs from a read-only mount, so a published function can be
 executed but never overwritten from within the Computer.
 
-Use the \`list\` and \`get\` tools to see what the Pod has already published and to inspect a
-function's contract before relying on it or publishing a near-duplicate.
+Use \`sandbox_functions__list\` and \`sandbox_functions__get\` to see what the Pod has already
+published and to inspect a function's contract before relying on it or publishing a near-duplicate.
 
-Call a published function directly from this conversation with the \`call\` tool, passing its slug
-and an input payload matching its \`get\`-reported input schema. Use \`call\` yourself whenever you
-need the result now rather than asking a Frame to fetch it for you.
+Call a published function directly from this conversation with \`sandbox_functions__call\`, passing
+its slug and an input payload matching its \`get\`-reported input schema. Call it yourself whenever
+you need the result now rather than asking a Frame to fetch it for you.
+
+The live databases have their own tools: \`sandbox_functions__db_list\` (sizes),
+\`sandbox_functions__db_schema\` (live storage types only; column modes exist only in the authored
+file), \`sandbox_functions__db_query\` (one SQL statement; no schema changes; a result too large to
+return inline is written to a pod file whose path it reports), and \`sandbox_functions__db_reconcile\`
+(apply an edited \`databases/{db}.db.ts\`). See each tool's description for its arguments.
 
 #### Calling a function from a Frame
 
