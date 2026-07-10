@@ -224,26 +224,37 @@ function SandboxFunctionInvocation({
     return null;
   }
 
+  let blockedActionCard: React.ReactNode;
+  switch (blockedAction.event.type) {
+    case "tool_approve_execution":
+      blockedActionCard = (
+        <SandboxFunctionToolApprovalCard
+          key={blockedAction.eventId}
+          event={blockedAction.event}
+          onResolved={() => removeBlockedAction(blockedAction.eventId)}
+        />
+      );
+      break;
+    case "tool_personal_auth_required":
+      blockedActionCard = (
+        <SandboxFunctionPersonalAuthCard
+          key={blockedAction.eventId}
+          event={blockedAction.event}
+          onResolved={() => removeBlockedAction(blockedAction.eventId)}
+        />
+      );
+      break;
+    default:
+      assertNeverAndIgnore(blockedAction.event);
+      blockedActionCard = null;
+  }
+
   // Covers the frame while the tool is blocked on user input; positioned within the component's
   // relative root, same layering approach as the loading spinner overlay. Cards are keyed by the
   // delivery eventId so consecutive events of the same type never reuse local card state.
   return (
     <div className="absolute inset-0 z-10 flex items-center justify-center overflow-auto bg-panel-background p-4">
-      <div className="w-full max-w-xl">
-        {blockedAction.event.type === "tool_approve_execution" ? (
-          <SandboxFunctionToolApprovalCard
-            key={blockedAction.eventId}
-            event={blockedAction.event}
-            onResolved={() => removeBlockedAction(blockedAction.eventId)}
-          />
-        ) : (
-          <SandboxFunctionPersonalAuthCard
-            key={blockedAction.eventId}
-            event={blockedAction.event}
-            onResolved={() => removeBlockedAction(blockedAction.eventId)}
-          />
-        )}
-      </div>
+      <div className="w-full max-w-xl">{blockedActionCard}</div>
     </div>
   );
 }
