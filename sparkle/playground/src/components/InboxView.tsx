@@ -5,7 +5,6 @@ import {
   Collapsible,
   CollapsibleContent,
   ConversationListItem,
-  Icon,
   Inbox01,
   ListGroup,
   ReplySection,
@@ -20,6 +19,7 @@ import { getAgentById } from "../data/agents";
 import { getRandomGreetingForName } from "../data/greetings";
 import type { Agent, Conversation, Space, User } from "../data/types";
 import { getUserById } from "../data/users";
+import { EmptyState } from "./EmptyState";
 import { TaskItem } from "./TaskItem";
 
 type InboxTab = "conversations" | "tasks";
@@ -660,20 +660,19 @@ export function InboxView({
     );
   };
 
+  const renderEmptyState = (title: string, description: React.ReactNode) => (
+    <EmptyState icon={Inbox01} title={title} description={description} />
+  );
+
   const renderConversationsTab = () => {
     if (!hasConversationContent) {
-      return (
-        <div className="flex flex-1 flex-col items-center justify-center gap-2">
-          <div className="flex flex-col items-center justify-center gap-1 text-foreground">
-            <Icon size="md" visual={Inbox01} />
-            <h2 className="heading-xl">Inbox</h2>
-          </div>
-          <p className="text-center text-lg text-muted-foreground">
-            You're all caught up!
-            <br />
-            Nothing new under the sun.
-          </p>
-        </div>
+      return renderEmptyState(
+        "Inbox",
+        <>
+          You're all caught up!
+          <br />
+          Nothing new under the sun.
+        </>
       );
     }
 
@@ -681,17 +680,14 @@ export function InboxView({
       return (
         <div className="flex flex-1 flex-col gap-3">
           {renderConversationsToolbar()}
-          <div className="flex flex-1 flex-col items-center justify-center gap-2">
-            <div className="flex flex-col items-center justify-center gap-1 text-foreground">
-              <Icon size="md" visual={Inbox01} />
-              <h2 className="heading-xl">Inbox</h2>
-            </div>
-            <p className="text-center text-lg text-muted-foreground">
+          {renderEmptyState(
+            "Inbox",
+            <>
               You're all caught up!
               <br />
               Nothing new under the sun.
-            </p>
-          </div>
+            </>
+          )}
         </div>
       );
     }
@@ -778,16 +774,9 @@ export function InboxView({
 
   const renderTasksTab = () => {
     if (!hasTaskContent) {
-      return (
-        <div className="flex flex-1 flex-col items-center justify-center gap-2">
-          <div className="flex flex-col items-center justify-center gap-1 text-foreground">
-            <Icon size="md" visual={Inbox01} />
-            <h2 className="heading-xl">All tasks done</h2>
-          </div>
-          <p className="text-center text-lg text-muted-foreground">
-            No ongoing tasks across your pods.
-          </p>
-        </div>
+      return renderEmptyState(
+        "All tasks done",
+        "No ongoing tasks across your pods."
       );
     }
 
@@ -808,15 +797,10 @@ export function InboxView({
       return (
         <div className="flex flex-1 flex-col gap-3">
           {renderTasksToolbar()}
-          <div className="flex flex-1 flex-col items-center justify-center gap-2">
-            <div className="flex flex-col items-center justify-center gap-1 text-foreground">
-              <Icon size="md" visual={Inbox01} />
-              <h2 className="heading-xl">All tasks done</h2>
-            </div>
-            <p className="text-center text-lg text-muted-foreground">
-              No ongoing tasks across your pods.
-            </p>
-          </div>
+          {renderEmptyState(
+            "All tasks done",
+            "No ongoing tasks across your pods."
+          )}
         </div>
       );
     }

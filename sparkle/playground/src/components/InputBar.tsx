@@ -55,7 +55,7 @@ interface InputBarProps {
 }
 
 export function InputBar({
-  placeholder = "Get work done",
+  placeholder = "What are we working on?",
   className,
   instructionReference,
   taskCommand,
@@ -222,7 +222,10 @@ export function InputBar({
         "rounded-2xl",
         variant === "default" && "bg-primary-50/70 backdrop-blur-md",
         variant === "embedded" && "bg-primary-50",
-        variant === "default" && (showFocusStyle ? "" : "border"),
+        variant === "default" &&
+          (showFocusStyle
+            ? "border border-border-focus outline-hidden ring-2 ring-highlight/20"
+            : "border border-border"),
         className
       )}
     >

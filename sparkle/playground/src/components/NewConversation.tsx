@@ -927,7 +927,7 @@ export function NewConversation({
       <ConversationTopSection>
         <div className="heading-2xl text-foreground">{greeting}</div>
         <InputBar
-          placeholder="Ask a question"
+          placeholder="What are we working on?"
           className="w-full max-w-4xl"
           beforeSendButton={
             <DropdownMenu>
@@ -953,7 +953,7 @@ export function NewConversation({
       {/* Bottom portion: grows with its content; the page scrolls as a whole. */}
       <div className="flex flex-none justify-center px-4 pb-8">
         <div className="flex w-full max-w-4xl flex-col gap-3">
-          <div className="mx-auto flex w-full max-w-3xl flex-col gap-3 px-4 pb-8 text-center">
+          <div className="mx-auto flex w-full max-w-xl flex-col gap-3 px-4 pb-8 text-center">
             <div className="heading-2xl text-foreground">
               {isAboutDust ? "About Dust" : "Agents & Skills"}
             </div>
