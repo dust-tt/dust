@@ -8,7 +8,6 @@ import {
   resolveBulkMemberSelectionUserIds,
 } from "@app/lib/api/users/bulk_member_selection";
 import type { Authenticator } from "@app/lib/auth";
-import { hasFeatureFlag } from "@app/lib/auth";
 import { runBulkChangeSeatTypeWorkflow } from "@app/temporal/bulk_seat_change/client";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { ensureIsBusinessAdmin } from "@front-api/middlewares/ensure_role";
@@ -31,22 +30,12 @@ export type BulkSeatChangePreviewResponseBody = {
   preview: BulkSeatChangePreview;
 };
 
-// Shared guards for the apply and preview handlers. Returns the error
-// response when a guard fails, null when the request may proceed.
-async function checkBulkSeatTypeAccess(
+// Shared guard for the apply and preview handlers. Returns the error
+// response when the guard fails, null when the request may proceed.
+function checkBulkSeatTypeAccess(
   ctx: Context,
   auth: Authenticator
-): Promise<ReturnType<typeof apiError> | null> {
-  if (!(await hasFeatureFlag(auth, "pricing_groups"))) {
-    return apiError(ctx, {
-      status_code: 403,
-      api_error: {
-        type: "feature_flag_not_found",
-        message: "The pricing_groups feature is not enabled.",
-      },
-    });
-  }
-
+): ReturnType<typeof apiError> | null {
   if (!auth.getNonNullableSubscriptionResource().isMetronomeOnlyBilled) {
     return apiError(ctx, {
       status_code: 403,
@@ -72,7 +61,7 @@ app.post(
   async (ctx): HandlerResult<BulkChangeSeatTypeResponseBody> => {
     const auth = ctx.get("auth");
 
-    const accessError = await checkBulkSeatTypeAccess(ctx, auth);
+    const accessError = checkBulkSeatTypeAccess(ctx, auth);
     if (accessError) {
       return accessError;
     }
@@ -134,7 +123,7 @@ app.post(
   async (ctx): HandlerResult<BulkSeatChangePreviewResponseBody> => {
     const auth = ctx.get("auth");
 
-    const accessError = await checkBulkSeatTypeAccess(ctx, auth);
+    const accessError = checkBulkSeatTypeAccess(ctx, auth);
     if (accessError) {
       return accessError;
     }

@@ -6,7 +6,6 @@ import {
   MAX_USER_SPEND_LIMIT_AWU_CREDITS,
   MIN_USER_SPEND_LIMIT_AWU_CREDITS,
 } from "@app/lib/api/users/spend_limit";
-import { hasFeatureFlag } from "@app/lib/auth";
 import { runBulkSetUserSpendLimitWorkflow } from "@app/temporal/bulk_spend_limit/client";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { ensureIsBusinessAdmin } from "@front-api/middlewares/ensure_role";
@@ -46,16 +45,6 @@ app.post(
   validate("json", BodySchema),
   async (ctx): HandlerResult<BulkSetUserSpendLimitResponseBody> => {
     const auth = ctx.get("auth");
-
-    if (!(await hasFeatureFlag(auth, "pricing_groups"))) {
-      return apiError(ctx, {
-        status_code: 403,
-        api_error: {
-          type: "feature_flag_not_found",
-          message: "The pricing_groups feature is not enabled.",
-        },
-      });
-    }
 
     if (!auth.getNonNullableSubscriptionResource().isMetronomeOnlyBilled) {
       return apiError(ctx, {
