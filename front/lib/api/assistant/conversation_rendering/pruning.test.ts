@@ -127,12 +127,10 @@ describe("prunePreviousInteractions", () => {
   });
 
   it("renders an already-settled old interaction identically across turns when using the same fixed budget, instead of flipping every time a new turn is appended", () => {
-    // Same scale as the batching test below: budget = PRUNING_CHECKPOINT_TOKENS, 60-token
-    // interactions. n is derived from the budget (comfortably past the point where redaction
-    // becomes necessary) rather than hardcoded, so this test stays valid regardless of what
-    // PRUNING_CHECKPOINT_TOKENS is currently set to. n and n+1 both sit inside the same stable
-    // stretch, so an interaction deep in the already-redacted region (well before the frontier)
-    // must render identically whether or not the newest turn has arrived yet.
+    // n is derived from the budget, comfortably past the point where redaction becomes necessary,
+    // so this test stays valid regardless of PRUNING_CHECKPOINT_TOKENS's value. n and n+1 sit
+    // inside the same stable stretch, so an interaction deep in the already-redacted region must
+    // render identically whether or not the newest turn has arrived yet.
     const toolTokens = 40;
     const interactionSize = 60; // toolTokens + user/assistant overhead, per buildTurnWithSize
     const floor = 3;
@@ -161,12 +159,9 @@ describe("prunePreviousInteractions", () => {
   });
 
   it("batches redaction across a checkpoint boundary instead of advancing on every single turn", () => {
-    // Interaction size and starting point derived from PRUNING_CHECKPOINT_TOKENS itself (rather
-    // than a hardcoded turn count) so this test keeps exercising real batching behavior no matter
-    // what that constant is currently set to. n0 is the first turn count where redaction becomes
-    // necessary at all; sampling a window right past that point exercises the batching behavior at
-    // a realistic scale instead of tiny numbers where every eligible interaction gets redacted in
-    // one shot.
+    // n0 (like n above) is derived from the budget: the first turn count where redaction becomes
+    // necessary at all. Sampling a window right past that point exercises real batching at a
+    // realistic scale, rather than tiny numbers where everything eligible redacts in one shot.
     const toolTokens = 40; // interaction = 60 tokens
     const interactionSize = 60;
     const floor = 3;
