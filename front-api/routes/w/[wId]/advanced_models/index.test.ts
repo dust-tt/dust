@@ -191,7 +191,7 @@ describe("POST/DELETE /api/w/:wId/advanced_models/allowed/groups", () => {
 
   it("allows admins to add, list, and remove group allowed models", async () => {
     const { workspace } = await createPrivateApiMockRequest({ role: "admin" });
-    const group = await GroupFactory.regular(
+    const group = await GroupFactory.regularAuto(
       workspace,
       "Advanced models group"
     );

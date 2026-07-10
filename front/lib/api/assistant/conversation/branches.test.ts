@@ -49,7 +49,7 @@ describe("mergeConversationBranch", () => {
       workspace.sId
     );
 
-    const projectGroup = projectSpace.groups.find((g) => g.isRegular());
+    const projectGroup = projectSpace.groups.find((g) => g.isRegularAuto());
     if (!projectGroup) {
       throw new Error("Project group should exist.");
     }
@@ -72,7 +72,9 @@ describe("mergeConversationBranch", () => {
       throw new Error(addProjectMemberToProjectRes.error.message);
     }
 
-    const restrictedGroup = restrictedSpace.groups.find((g) => g.isRegular());
+    const restrictedGroup = restrictedSpace.groups.find((g) =>
+      g.isRegularAuto()
+    );
     if (!restrictedGroup) {
       throw new Error("Restricted space group should exist.");
     }
