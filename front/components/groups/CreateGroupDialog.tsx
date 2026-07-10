@@ -59,7 +59,6 @@ export function CreateGroupDialog({
               owner={owner}
               selectedMemberIds={selectedMemberIds}
               onSelectionChange={(ids) => setSelectedMemberIds(ids)}
-              searchLabel="Members"
             />
           </div>
         </DialogContainer>
