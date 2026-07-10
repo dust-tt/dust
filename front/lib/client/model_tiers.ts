@@ -47,7 +47,7 @@ export function expandMaxTierName(
 }
 
 export function formatModelTiersSummary(
-  maxTierName: ModelsTierName | null
+  maxTierName: ModelsTierName | null | undefined
 ): string {
   if (!maxTierName) {
     return "--";

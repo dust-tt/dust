@@ -11,31 +11,35 @@ import {
   seatTypeDisplayName,
 } from "@app/components/workspace/billing/seatTypeUtils";
 import { ChangeSeatModal } from "@app/components/workspace/ChangeSeatModal";
-import {
-  EditAdvancedModelsModal,
-  type EditAdvancedModelsTarget,
-} from "@app/components/workspace/EditAdvancedModelsModal";
 import { EditSpendLimitModal } from "@app/components/workspace/EditSpendLimitModal";
+import { GroupModelTierPickerDropdown } from "@app/components/workspace/GroupModelTierPickerDropdown";
 import { GroupsUsageTable } from "@app/components/workspace/GroupsUsageTable";
 import { MembersSelectionBanner } from "@app/components/workspace/MembersSelectionBanner";
 import { MembersUsageTable } from "@app/components/workspace/MembersUsageTable";
 import { getSeatIconColorClass } from "@app/components/workspace/seat_styles";
 import { TopUpsHistoryTable } from "@app/components/workspace/TopUpsHistoryTable";
 import { UpgradeRequestsTable } from "@app/components/workspace/UpgradeRequestsTable";
-import { AdvancedModelsSettingsCard } from "@app/components/workspace/usage/AdvancedModelsSettingsCard";
 import { LockedSection } from "@app/components/workspace/usage/LockedSection";
+import { ModelTiersSettingsCard } from "@app/components/workspace/usage/ModelTiersSettingsCard";
 import { UsageNotificationsCard } from "@app/components/workspace/usage/UsageNotificationsCard";
 import { UsageProgrammaticLimitCard } from "@app/components/workspace/usage/UsageProgrammaticLimitCard";
 import { UsageSettingsCard } from "@app/components/workspace/usage/UsageSettingsCard";
 import { useMembersSelection } from "@app/hooks/useMembersSelection";
+import type { ModelsTierName } from "@app/lib/api/assistant/token_pricing/tiers";
 import type { MemberUsageType } from "@app/lib/api/credits/members_usage";
 import {
   useAuth,
   useFeatureFlags,
   useWorkspace,
 } from "@app/lib/auth/AuthContext";
-import { buildAdvancedModelDisplayNameMap } from "@app/lib/client/advanced_models";
 import { formatCredits } from "@app/lib/client/credits";
+import type { UserModelTierSelection } from "@app/lib/client/model_tier_options";
+import { INHERIT_MODEL_TIER } from "@app/lib/client/model_tier_options";
+import {
+  buildModelTierDefinitionByName,
+  expandMaxTierName,
+} from "@app/lib/client/model_tiers";
+import { DEFAULT_MAX_MODEL_TIER } from "@app/lib/model_tiers/tier_order";
 import {
   isCreditPricedFreePlan,
   isEnterprisePlanPrefix,
@@ -43,12 +47,6 @@ import {
   isUpgraded,
 } from "@app/lib/plans/plan_codes";
 import { useAppRouter, useSearchParam } from "@app/lib/platform";
-import {
-  useAdvancedModels,
-  useGroupAllowedAdvancedModels,
-  useUserAllowedAdvancedModels,
-  useWorkspaceAllowedAdvancedModels,
-} from "@app/lib/swr/advanced_models";
 import {
   useAwuPoolSummary,
   useAwuPurchaseInfo,
@@ -65,6 +63,13 @@ import {
   useMembersUsage,
   useUpdateMemberSeatType,
 } from "@app/lib/swr/memberships";
+import {
+  useGroupAllowedModelTiers,
+  useModelTiers,
+  useUserAllowedModelTierMutations,
+  useUserAllowedModelTiers,
+  useWorkspaceAllowedModelTiers,
+} from "@app/lib/swr/model_tiers";
 import {
   useResolveUpgradeRequest,
   useUpgradeRequests,
@@ -230,8 +235,6 @@ export function UsagePage() {
   );
   const [editSpendLimitMember, setEditSpendLimitMember] =
     useState<MemberUsageType | null>(null);
-  const [editAdvancedModelsTarget, setEditAdvancedModelsTarget] =
-    useState<EditAdvancedModelsTarget | null>(null);
   const [
     totalAllowedUsagePendingMemberIds,
     setTotalAllowedUsagePendingMemberIds,
@@ -302,22 +305,21 @@ export function UsagePage() {
     },
     []
   );
-  const handleEditAdvancedModelsFromTable = useCallback(
-    (member: MemberUsageType) => {
-      setEditAdvancedModelsTarget({
-        scope: "user",
+  const { setUserAllowedModelTier, clearUserAllowedModelTier } =
+    useUserAllowedModelTierMutations({ owner });
+  const handleSetUserModelTier = useCallback(
+    (member: MemberUsageType, selection: UserModelTierSelection) => {
+      if (selection === INHERIT_MODEL_TIER) {
+        void clearUserAllowedModelTier({ userId: member.sId });
+        return;
+      }
+
+      void setUserAllowedModelTier({
         userId: member.sId,
-        name: member.name,
-        image: member.image,
+        tierName: selection,
       });
     },
-    []
-  );
-  const handleEditWorkspaceAdvancedModels = useCallback(
-    (target: Extract<EditAdvancedModelsTarget, { scope: "workspace" }>) => {
-      setEditAdvancedModelsTarget(target);
-    },
-    []
+    [clearUserAllowedModelTier, setUserAllowedModelTier]
   );
   const handleUpgradePlanRequest = useCallback(
     (request: MembershipUpgradeRequestType) => {
@@ -473,47 +475,51 @@ export function UsagePage() {
   const selectedGroupName =
     groups.find((g) => g.sId === groupFilter)?.name ?? null;
 
-  const { models: advancedModelsCatalog } = useAdvancedModels({
+  const { tiers: modelTiersCatalog } = useModelTiers({
     owner,
     disabled: !modelsPickerEnabled,
   });
-  const { users: userAllowedAdvancedModels } = useUserAllowedAdvancedModels({
+  const { users: userAllowedModelTiers } = useUserAllowedModelTiers({
     owner,
     disabled: !modelsPickerEnabled,
   });
-  const { groups: groupAllowedAdvancedModels } = useGroupAllowedAdvancedModels({
+  const { groups: groupAllowedModelTiers } = useGroupAllowedModelTiers({
     owner,
     disabled: !modelsPickerEnabled,
   });
-  const { models: workspaceAllowedAdvancedModels } =
-    useWorkspaceAllowedAdvancedModels({
-      owner,
-      disabled: !modelsPickerEnabled,
-    });
-  const advancedModelDisplayNameByKey = useMemo(
-    () => buildAdvancedModelDisplayNameMap(advancedModelsCatalog),
-    [advancedModelsCatalog]
+  const { maxTierName: workspaceMaxTierName } = useWorkspaceAllowedModelTiers({
+    owner,
+    disabled: !modelsPickerEnabled,
+  });
+  const modelTierDefinitionByName = useMemo(
+    () => buildModelTierDefinitionByName(modelTiersCatalog),
+    [modelTiersCatalog]
   );
-  const userAllowedAdvancedModelsByUserId = useMemo(() => {
-    const map: Record<
-      string,
-      (typeof userAllowedAdvancedModels)[number]["models"]
-    > = {};
-    for (const entry of userAllowedAdvancedModels) {
-      map[entry.userId] = entry.models;
+  const workspaceAllowedModelTiers = useMemo(
+    () => expandMaxTierName(workspaceMaxTierName ?? DEFAULT_MAX_MODEL_TIER),
+    [workspaceMaxTierName]
+  );
+  const userModelTierSelectionByUserId = useMemo(() => {
+    const map: Record<string, UserModelTierSelection> = {};
+    for (const entry of userAllowedModelTiers) {
+      map[entry.userId] = entry.maxTierName;
     }
     return map;
-  }, [userAllowedAdvancedModels]);
-  const groupAdvancedModelsByGroupId = useMemo(() => {
-    const map: Record<
-      string,
-      (typeof groupAllowedAdvancedModels)[number]["models"]
-    > = {};
-    for (const entry of groupAllowedAdvancedModels) {
-      map[entry.groupId] = entry.models;
+  }, [userAllowedModelTiers]);
+  const userAllowedModelTiersByUserId = useMemo(() => {
+    const map: Record<string, ModelsTierName[]> = {};
+    for (const entry of userAllowedModelTiers) {
+      map[entry.userId] = expandMaxTierName(entry.maxTierName);
     }
     return map;
-  }, [groupAllowedAdvancedModels]);
+  }, [userAllowedModelTiers]);
+  const groupModelTiersByGroupId = useMemo(() => {
+    const map: Record<string, ModelsTierName[]> = {};
+    for (const entry of groupAllowedModelTiers) {
+      map[entry.groupId] = expandMaxTierName(entry.maxTierName);
+    }
+    return map;
+  }, [groupAllowedModelTiers]);
   const groupNameToId = useMemo(() => {
     const map = new Map<string, string>();
     for (const group of groups) {
@@ -521,21 +527,6 @@ export function UsagePage() {
     }
     return map;
   }, [groups]);
-
-  const handleEditGroupAdvancedModels = useCallback(() => {
-    if (!groupFilter) {
-      return;
-    }
-    const group = groups.find((g) => g.sId === groupFilter);
-    if (!group) {
-      return;
-    }
-    setEditAdvancedModelsTarget({
-      scope: "group",
-      groupId: group.sId,
-      name: group.name,
-    });
-  }, [groupFilter, groups]);
 
   // Cross-page selection for batch actions on the members table. Resets when the
   // filter identity changes (the "all matching" set is no longer the same).
@@ -921,19 +912,20 @@ export function UsagePage() {
       isRefreshing={isMembersUsageRefreshing}
       readOnly={isReadOnly}
       showSpendLimit={!isFreePlanWorkspace}
-      showAdvancedModelsColumn={modelsPickerEnabled}
-      userAllowedAdvancedModelsByUserId={userAllowedAdvancedModelsByUserId}
-      groupAdvancedModelsByGroupId={groupAdvancedModelsByGroupId}
-      workspaceAllowedAdvancedModels={workspaceAllowedAdvancedModels}
+      showModelTiersColumn={modelsPickerEnabled}
+      userModelTierSelectionByUserId={userModelTierSelectionByUserId}
+      userAllowedModelTiersByUserId={userAllowedModelTiersByUserId}
+      groupModelTiersByGroupId={groupModelTiersByGroupId}
+      workspaceAllowedModelTiers={workspaceAllowedModelTiers}
       groupNameToId={groupNameToId}
-      advancedModelDisplayNameByKey={advancedModelDisplayNameByKey}
+      modelTierDefinitionByName={modelTierDefinitionByName}
       totalAllowedUsagePendingMemberIds={totalAllowedUsagePendingMemberIds}
       seatChangePendingMemberIds={seatChangePendingMemberIds}
       isSeatBased={isSeatBased}
       onChangeSeat={handleChangeSeatFromTable}
       onRemoveSeat={onRemoveSeat}
       onEditSpendLimit={handleEditSpendLimitFromTable}
-      onEditAdvancedModels={handleEditAdvancedModelsFromTable}
+      onSetUserModelTier={handleSetUserModelTier}
       pagination={pagination}
       setPagination={setPagination}
       totalRowCount={totalMembersUsage}
@@ -1113,12 +1105,10 @@ export function UsagePage() {
                     <div className="flex flex-row items-center gap-2">
                       {groupsFilterDropdown}
                       {modelsPickerEnabled && groupFilter && (
-                        <Button
-                          label="Edit group advanced models"
-                          variant="outline"
-                          size="sm"
-                          disabled={isReadOnly}
-                          onClick={handleEditGroupAdvancedModels}
+                        <GroupModelTierPickerDropdown
+                          owner={owner}
+                          groupId={groupFilter}
+                          readOnly={isReadOnly}
                         />
                       )}
                       {seatFilterDropdown}
@@ -1149,7 +1139,11 @@ export function UsagePage() {
 
           {isWorkspaceAdmin && (
             <TabsContent value="groups">
-              <GroupsUsageTable owner={owner} readOnly={isReadOnly} />
+              <GroupsUsageTable
+                owner={owner}
+                readOnly={isReadOnly}
+                showModelTiersColumn={modelsPickerEnabled}
+              />
             </TabsContent>
           )}
 
@@ -1168,13 +1162,7 @@ export function UsagePage() {
                   hasPool={hasPool}
                 />
                 {modelsPickerEnabled && (
-                  <AdvancedModelsSettingsCard
-                    owner={owner}
-                    readOnly={isReadOnly}
-                    onEditWorkspaceAdvancedModels={
-                      handleEditWorkspaceAdvancedModels
-                    }
-                  />
+                  <ModelTiersSettingsCard owner={owner} readOnly={isReadOnly} />
                 )}
                 <LockedSection
                   locked={!isAwuPoolSummaryLoading && !hasPool}
@@ -1245,13 +1233,6 @@ export function UsagePage() {
         seatPlans={seatPlans}
         onFetchPreview={handleBulkSeatChangePreview}
         onValidate={handleBulkChangeSeatValidate}
-      />
-      <EditAdvancedModelsModal
-        isOpen={editAdvancedModelsTarget !== null}
-        onClose={() => setEditAdvancedModelsTarget(null)}
-        owner={owner}
-        target={editAdvancedModelsTarget}
-        readOnly={isReadOnly}
       />
     </>
   );
