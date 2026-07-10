@@ -238,15 +238,12 @@ const handlers: ToolHandlers<typeof QUERY_TABLES_V2_TOOLS_METADATA> = {
 
   [EXECUTE_DATABASE_QUERY_TOOL_NAME]: async (
     { tables, query, fileName },
-    { auth, toolContext }
+    { auth, runContext }
   ) => {
     // TODO(mcp): @fontanierh: we should not have a strict dependency on the agentLoopRunContext.
-    assert(
-      isAgentLoopRunContext(toolContext?.runContext),
-      "AgentLoopRunContext expected"
-    );
+    assert(isAgentLoopRunContext(runContext), "AgentLoopRunContext expected");
 
-    const agentLoopRunContext = toolContext.runContext;
+    const agentLoopRunContext = runContext;
 
     const resolvedRes = await resolveTableConfigurations(auth, tables);
     if (resolvedRes.isErr()) {

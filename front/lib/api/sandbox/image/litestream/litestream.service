@@ -9,6 +9,9 @@ ExecStart=/opt/bin/litestream replicate -config /etc/litestream.yml
 Restart=always
 RestartSec=2s
 
+# Pinned: fluent-bit's journal grep filter forwards on this identifier.
+SyslogIdentifier=litestream
+
 # Control socket directory (/run/litestream), created by systemd as
 # dust-state. The pre-sleep `litestream sync -wait` runs against the socket
 # in there; the socket is enabled by the static /etc/litestream.yml baked at

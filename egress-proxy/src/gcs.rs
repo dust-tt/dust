@@ -68,17 +68,58 @@ impl GcsPolicyProvider {
         self.cache.invalidate(cache_key).await;
     }
 
+    // Workspace policy lives at `w/{wId}/sandbox-egress-policy.json`. During the layout
+    // migration we fall back to the legacy `workspaces/{wId}.json` path when
+    // the new object is absent (not on errors: those stay fail-closed).
+    // TODO(2026-08-15 EGRESS_RELAYOUT): drop the legacy fallback once the
+    // backfill has run and legacy objects are deleted.
     pub async fn get_workspace_policy(&self, w_id: &str) -> Result<Option<Policy>> {
+        let current = self
+            .get_policy(
+                &format!("w2:{w_id}"),
+                &format!("w/{w_id}/sandbox-egress-policy.json"),
+            )
+            .await?;
+
+        if current.is_some() {
+            return Ok(current);
+        }
+
         self.get_policy(&format!("w:{w_id}"), &format!("workspaces/{w_id}.json"))
             .await
     }
 
+    // Legacy per-sandbox policy, keyed by the ephemeral provider id. Still
+    // read (unioned with the owner policy) so in-flight approvals from before
+    // the layout migration keep working until those sandboxes age out.
+    // TODO(2026-08-15 EGRESS_RELAYOUT): drop once pre-migration sandboxes are
+    // gone.
     pub async fn get_sandbox_policy(&self, sb_id: &str) -> Result<Option<Policy>> {
         self.get_policy(&format!("s:{sb_id}"), &format!("sandboxes/{sb_id}.json"))
             .await
     }
 
-    pub async fn evaluate(&self, w_id: Option<&str>, sb_id: &str, domain: &str) -> bool {
+    // Owner policy: the stable per-owner allowlist at
+    // `w/{wId}/sandboxes/{ownerId}.json`, where ownerId is a conversation sId
+    // (conversation sandboxes) or a space sId (pod sandboxes). Survives
+    // sandbox destroy/recreate cycles.
+    pub async fn get_owner_policy(&self, w_id: &str, owner_id: &str) -> Result<Option<Policy>> {
+        self.get_policy(
+            &format!("o:{w_id}:{owner_id}"),
+            &format!("w/{w_id}/sandboxes/{owner_id}.json"),
+        )
+        .await
+    }
+
+    // A domain is allowed if ANY of the workspace, owner, or legacy sandbox
+    // policies allows it. Every lookup fails closed: a GCS error never grants.
+    pub async fn evaluate(
+        &self,
+        w_id: Option<&str>,
+        owner_id: Option<&str>,
+        sb_id: &str,
+        domain: &str,
+    ) -> bool {
         let workspace_allows = match w_id {
             Some(workspace_id) => match self.get_workspace_policy(workspace_id).await {
                 Ok(Some(policy)) => policy.allows(domain),
@@ -92,6 +133,24 @@ impl GcsPolicyProvider {
         };
 
         if workspace_allows {
+            return true;
+        }
+
+        // The owner path needs both ids; tokens minted before the layout
+        // migration carry no ownerId and skip straight to the legacy file.
+        let owner_allows = match (w_id, owner_id) {
+            (Some(w_id), Some(owner_id)) => match self.get_owner_policy(w_id, owner_id).await {
+                Ok(Some(policy)) => policy.allows(domain),
+                Ok(None) => false,
+                Err(error) => {
+                    warn!(error = %error, w_id, owner_id, "owner policy lookup failed");
+                    false
+                }
+            },
+            _ => false,
+        };
+
+        if owner_allows {
             return true;
         }
 

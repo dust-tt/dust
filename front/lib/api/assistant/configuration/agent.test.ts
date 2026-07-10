@@ -1,28 +1,33 @@
 import {
   archiveAgentConfiguration,
+  cleanupAgentScopedResourcesForHardDeletion,
   createAgentConfiguration,
   createPendingAgentConfiguration,
   getAgentConfiguration,
   restoreAgentConfiguration,
   updateAgentConfigurationsScope,
 } from "@app/lib/api/assistant/configuration/agent";
+import { setAgentUserFavorite } from "@app/lib/api/assistant/user_relation";
 import { Authenticator } from "@app/lib/auth";
 import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { AgentSuggestionResource } from "@app/lib/resources/agent_suggestion_resource";
+import { AgentUserRelationResource } from "@app/lib/resources/agent_user_relation_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { GroupMembershipModel } from "@app/lib/resources/storage/models/group_memberships";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
 import { TriggerResource } from "@app/lib/resources/trigger_resource";
 import { WakeUpResource } from "@app/lib/resources/wakeup_resource";
+import * as scheduleClient from "@app/temporal/triggers/schedule_client";
 import * as wakeUpClient from "@app/temporal/triggers/wakeup_client";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { AgentSuggestionFactory } from "@app/tests/utils/AgentSuggestionFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
+import { TriggerFactory } from "@app/tests/utils/TriggerFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import { WakeUpFactory } from "@app/tests/utils/WakeUpFactory";
-import { Ok } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
 import { describe, expect, it, vi } from "vitest";
 
 describe("createAgentConfiguration with pending agent", () => {
@@ -412,6 +417,115 @@ describe("archiveAgentConfiguration and restoreAgentConfiguration", () => {
     // Archive must reconcile the leaked schedule even though the row is already
     // terminal (it used to skip non-scheduled wake-ups entirely).
     expect(cancelSpy).toHaveBeenCalled();
+
+    launchSpy.mockRestore();
+    cancelSpy.mockRestore();
+  });
+});
+
+describe("cleanupAgentScopedResourcesForHardDeletion", () => {
+  it("removes triggers, wake-ups and favorites for the agent", async () => {
+    const mockCreateSchedule = vi
+      .spyOn(scheduleClient, "createOrUpdateAgentSchedule")
+      .mockResolvedValue(new Ok("workflow-id"));
+    const mockDeleteSchedule = vi
+      .spyOn(scheduleClient, "deleteTriggerSchedule")
+      .mockResolvedValue(new Ok(undefined));
+    const launchSpy = vi
+      .spyOn(wakeUpClient, "launchOrScheduleWakeUpTemporalWorkflow")
+      .mockResolvedValue(new Ok(undefined));
+    const cancelSpy = vi
+      .spyOn(wakeUpClient, "cancelWakeUpTemporalWorkflow")
+      .mockResolvedValue(new Ok(undefined));
+
+    const { authenticator } = await createResourceTest({
+      role: "admin",
+    });
+    const agent =
+      await AgentConfigurationFactory.createTestAgent(authenticator);
+
+    await TriggerFactory.schedule(authenticator, {
+      agentConfigurationId: agent.sId,
+      status: "enabled",
+      configuration: {
+        cron: "0 9 * * 1",
+        timezone: "UTC",
+      },
+    });
+
+    const conversation = await ConversationFactory.create(authenticator, {
+      agentConfigurationId: agent.sId,
+      messagesCreatedAt: [new Date()],
+    });
+    await WakeUpFactory.cron(authenticator, conversation, agent, {
+      reason: "Daily wake-up",
+    });
+
+    const favoriteResult = await setAgentUserFavorite({
+      auth: authenticator,
+      agentId: agent.sId,
+      userFavorite: true,
+    });
+    expect(favoriteResult.isOk()).toBe(true);
+
+    await cleanupAgentScopedResourcesForHardDeletion(authenticator, agent.sId);
+
+    const remainingTriggers = await TriggerResource.listByAgentConfigurationId(
+      authenticator,
+      agent.sId
+    );
+    expect(remainingTriggers).toHaveLength(0);
+
+    const remainingWakeUps = await WakeUpResource.listByAgentConfigurationId(
+      authenticator,
+      agent.sId
+    );
+    expect(remainingWakeUps).toHaveLength(0);
+
+    const remainingFavoriteCount =
+      await AgentUserRelationResource.countForAgent(authenticator, agent.sId);
+    expect(remainingFavoriteCount).toBe(0);
+
+    expect(mockDeleteSchedule).toHaveBeenCalled();
+    expect(cancelSpy).toHaveBeenCalled();
+
+    mockCreateSchedule.mockRestore();
+    mockDeleteSchedule.mockRestore();
+    launchSpy.mockRestore();
+    cancelSpy.mockRestore();
+  });
+
+  it("keeps the wake-up row when Temporal cancellation fails", async () => {
+    const launchSpy = vi
+      .spyOn(wakeUpClient, "launchOrScheduleWakeUpTemporalWorkflow")
+      .mockResolvedValue(new Ok(undefined));
+    // Simulate a transient Temporal failure when cancelling the schedule.
+    const cancelSpy = vi
+      .spyOn(wakeUpClient, "cancelWakeUpTemporalWorkflow")
+      .mockResolvedValue(new Err(new Error("temporal unavailable")));
+
+    const { authenticator } = await createResourceTest({ role: "admin" });
+    const agent =
+      await AgentConfigurationFactory.createTestAgent(authenticator);
+
+    const conversation = await ConversationFactory.create(authenticator, {
+      agentConfigurationId: agent.sId,
+      messagesCreatedAt: [new Date()],
+    });
+    await WakeUpFactory.cron(authenticator, conversation, agent, {
+      reason: "Daily wake-up",
+    });
+
+    await cleanupAgentScopedResourcesForHardDeletion(authenticator, agent.sId);
+
+    // The Temporal schedule could not be deleted, so the row must survive to
+    // keep the wake-up id available for a retry / the reconciler.
+    const remainingWakeUps = await WakeUpResource.listByAgentConfigurationId(
+      authenticator,
+      agent.sId
+    );
+    expect(remainingWakeUps).toHaveLength(1);
+    expect(remainingWakeUps[0].status).toBe("scheduled");
 
     launchSpy.mockRestore();
     cancelSpy.mockRestore();

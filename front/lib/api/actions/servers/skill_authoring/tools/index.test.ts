@@ -44,8 +44,13 @@ function getTool(name: string) {
   return tool;
 }
 
+// The tools under test never read runContext, so a partial extra cast to ToolHandlerExtra is
+// sufficient (mirroring the poke tools test).
 function makeExtra(auth: Authenticator) {
-  return {
+  const extra: Pick<
+    ToolHandlerExtra,
+    "auth" | "requestId" | "sendNotification" | "sendRequest" | "signal"
+  > = {
     auth,
     requestId: "test-request",
     sendNotification: async () => {},
@@ -53,7 +58,9 @@ function makeExtra(auth: Authenticator) {
       throw new Error("Unexpected MCP request in skill_authoring test.");
     },
     signal: new AbortController().signal,
-  } satisfies ToolHandlerExtra;
+  };
+
+  return extra as ToolHandlerExtra;
 }
 
 // Seed a skill directly and refresh the authenticator so it picks up the editor
@@ -197,7 +204,9 @@ describe("skill_authoring tools", () => {
     if (otherUpdateResult.isOk()) {
       throw new Error("Expected another builder not to update the skill.");
     }
-    expect(otherUpdateResult.error.message).toBe("Skill not found.");
+    expect(otherUpdateResult.error.message).toBe(
+      "You need to be added as an editor of this skill before you can make changes."
+    );
 
     const updateResult = await getTool(UPDATE_SKILL_TOOL_NAME).handler(
       {

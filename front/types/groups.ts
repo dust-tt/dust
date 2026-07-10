@@ -25,7 +25,6 @@ import { isRoleType } from "./user";
  *  provisioned group: Contains all users from a provisioned group.
  */
 export const GROUP_KINDS = [
-  "regular",
   "regular_auto",
   // space_editors is used to know if a member of a manual group can edit the group
   "space_editors",
@@ -78,7 +77,6 @@ export type GroupType = {
 
 export const GroupKindCodec = z.enum([
   "global",
-  "regular",
   "regular_auto",
   "space_editors",
   "agent_editors",

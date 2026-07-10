@@ -5,7 +5,7 @@ import type {
   ToolHandlers,
 } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import type { ToolContextType } from "@app/lib/actions/types";
+import type { ToolContext } from "@app/lib/actions/types";
 import type { StatuspageClient } from "@app/lib/api/actions/servers/statuspage/client";
 import { getStatuspageClient } from "@app/lib/api/actions/servers/statuspage/client";
 import { STATUSPAGE_TOOLS_METADATA } from "@app/lib/api/actions/servers/statuspage/metadata";
@@ -32,7 +32,7 @@ async function withClient(
 
 export function createStatuspageTools(
   _auth: Authenticator,
-  _toolContext?: ToolContextType
+  _toolContext?: ToolContext
 ) {
   const handlers: ToolHandlers<typeof STATUSPAGE_TOOLS_METADATA> = {
     list_pages: async (_params, extra: ToolHandlerExtra) => {

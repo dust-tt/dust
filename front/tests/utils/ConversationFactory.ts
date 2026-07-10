@@ -411,6 +411,7 @@ export class ConversationFactory {
       richMentions: [],
       costCredits: null,
       resolvedModel: null,
+      modelResolutionMethod: null,
     };
 
     if (!mcpAction) {

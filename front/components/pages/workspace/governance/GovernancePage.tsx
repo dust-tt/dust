@@ -20,6 +20,7 @@ import type {
 } from "@app/types/user";
 import {
   ActionFrame,
+  ContentMessage,
   Icon,
   Lock01,
   Page,
@@ -145,6 +146,9 @@ export const GovernancePage = () => {
         description="Manage what members can do in your workspace."
         icon={Toggle01Left}
       />
+      <ContentMessage>
+        This page is WIP. Do not change unless you know what you are doing.
+      </ContentMessage>
       <div className="flex w-full flex-col gap-8">
         {sections.map((section) => (
           <GovernanceSettingSection

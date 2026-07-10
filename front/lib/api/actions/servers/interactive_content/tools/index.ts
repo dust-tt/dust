@@ -7,7 +7,7 @@ import type {
 import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import {
   isAgentLoopRunContext,
-  type ToolContextType,
+  type ToolContext,
 } from "@app/lib/actions/types";
 import { buildInteractiveContentFileNotification } from "@app/lib/api/actions/servers/interactive_content/helpers";
 import {
@@ -39,7 +39,7 @@ import assert from "assert";
 
 export async function createInteractiveContentTools(
   auth: Authenticator,
-  toolContext?: ToolContextType
+  toolContext?: ToolContext
 ): Promise<ToolDefinition[]> {
   const handlers: ToolHandlers<typeof INTERACTIVE_CONTENT_TOOLS_METADATA> = {
     create_interactive_content_file: async (

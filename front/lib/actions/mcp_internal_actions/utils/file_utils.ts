@@ -1,6 +1,6 @@
 import {
   isAgentLoopRunContext,
-  type ToolContextType,
+  type ToolContext,
 } from "@app/lib/actions/types";
 import { resolveFile } from "@app/lib/api/actions/servers/files/tools/utils";
 import {
@@ -53,7 +53,7 @@ export type ConversationFileRef = {
 export async function resolveConversationFileRef(
   auth: Authenticator,
   fileId: string,
-  toolContext: ToolContextType | undefined
+  toolContext: ToolContext | undefined
 ): Promise<Result<ConversationFileRef, string>> {
   // Canonical scoped paths (conversation-{id}/..., pod-{id}/...) produced by the new
   // DustFileSystem layer. Resolved directly — no conversation context needed.
@@ -161,7 +161,7 @@ export async function resolveConversationFileRef(
 export async function getFileFromConversationAttachment(
   auth: Authenticator,
   fileId: string,
-  toolContext: ToolContextType
+  toolContext: ToolContext
 ): Promise<
   Result<
     {

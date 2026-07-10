@@ -61,6 +61,10 @@ const REGISTRY: Record<ConcreteResourceType, ResourceTypeRule> = {
     instanceLevelPermissions: [],
     typeLevelPermissions: ["read"],
   },
+  models_tier: {
+    instanceLevelPermissions: ["use"],
+    typeLevelPermissions: [],
+  },
 };
 
 interface GrantSpec {

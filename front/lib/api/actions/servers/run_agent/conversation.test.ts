@@ -1,4 +1,4 @@
-import type { AgentLoopRunContextType } from "@app/lib/actions/types";
+import type { AgentLoopRunContext } from "@app/lib/actions/types";
 import { getOrCreateConversation } from "@app/lib/api/actions/servers/run_agent/conversation";
 import type { Authenticator } from "@app/lib/auth";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
@@ -17,7 +17,7 @@ function buildRunAgentFixtures({ spaceId }: { spaceId: string | null }): {
   mainConversation: ConversationType;
   originMessage: AgentMessageType;
   mainAgent: AgentConfigurationType;
-  agentLoopContext: AgentLoopRunContextType;
+  agentLoopContext: AgentLoopRunContext;
 } {
   const userMessage: UserMessageType = {
     id: -1,
@@ -90,7 +90,7 @@ function buildRunAgentFixtures({ spaceId }: { spaceId: string | null }): {
     stepContext: {
       resumeState: null,
     },
-  } as AgentLoopRunContextType;
+  } as AgentLoopRunContext;
 
   const mainConversation = {
     sId: generateRandomModelSId(),

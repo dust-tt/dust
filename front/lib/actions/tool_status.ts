@@ -1,7 +1,6 @@
 import type { MCPToolStakeLevelType } from "@app/lib/actions/constants";
 import type { MCPToolConfigurationType } from "@app/lib/actions/mcp";
 import type { Authenticator } from "@app/lib/auth";
-import type { AgentMessageType } from "@app/types/assistant/conversation";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { isNumberOrBoolean, isString } from "@app/types/shared/utils/general";
 
@@ -19,11 +18,11 @@ export async function getExecutionStatusFromConfig(
   auth: Authenticator,
   {
     actionConfiguration,
-    agentMessage,
+    skipToolsValidation = false,
     context,
   }: {
     actionConfiguration: StakeCheckConfiguration;
-    agentMessage: AgentMessageType;
+    skipToolsValidation?: boolean;
     context?: ToolInputContext;
   }
 ): Promise<{
@@ -31,10 +30,8 @@ export async function getExecutionStatusFromConfig(
   status: "ready_allowed_implicitly" | "blocked_validation_required";
   serverId?: string;
 }> {
-  // If the agent message is marked as "skipToolsValidation" we skip all tools validation
-  // irrespective of the `actionConfiguration.permission`. This is set when the agent message was
-  // created by an API call where the caller explicitly set `skipToolsValidation` to true.
-  if (agentMessage.skipToolsValidation) {
+  // Explicit validation bypasses take precedence over the tool permission.
+  if (skipToolsValidation) {
     return { status: "ready_allowed_implicitly" };
   }
 

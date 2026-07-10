@@ -206,6 +206,7 @@ export interface InputBarContainerProps {
   } | null;
   defaultAgentId?: string | null;
   isDefaultAgentLoading?: boolean;
+  lastRequestedModel?: ModelSelectionType | null;
   // Skills pre-inserted into a new conversation's editor, as if manually added.
   defaultSkills?: DefaultSkillReference[];
   isDefaultSkillsLoading?: boolean;
@@ -264,6 +265,7 @@ const InputBarContainer = ({
   getDraft,
   defaultAgentId,
   isDefaultAgentLoading,
+  lastRequestedModel = null,
   defaultSkills,
   isDefaultSkillsLoading,
   isAgentBuilder = false,
@@ -1642,7 +1644,7 @@ const InputBarContainer = ({
             <div className="relative flex min-h-8 w-full items-center justify-between">
               <div className={cn("flex w-full items-center px-2")}>
                 {!isRecording && (
-                  <div className="flex items-center">
+                  <div className="flex items-center gap-1">
                     <InputBarButtons
                       actions={actions}
                       allAgents={allAgents}
@@ -1658,6 +1660,7 @@ const InputBarContainer = ({
                       hideCapabilities={hideCapabilities}
                       isDefaultAgentUnavailable={isDefaultAgentUnavailable}
                       isInputDisabled={disableInput}
+                      lastRequestedModel={lastRequestedModel}
                       onAgentRemove={() => setSelectedSingleAgent(null)}
                       onMCPServerViewSelect={onMCPServerViewSelect}
                       onModelSelectionChange={onModelSelectionChange}
@@ -1686,9 +1689,7 @@ const InputBarContainer = ({
               </div>
             </div>
           </div>
-          <div
-            className={cn("absolute bottom-2 right-2 flex items-center gap-2")}
-          >
+          <div className="absolute bottom-2 right-2 flex items-center gap-1.5">
             {clientType === "extension" && (
               <>
                 <div ref={plusButtonRef}>
@@ -1797,7 +1798,7 @@ const InputBarContainer = ({
                 )}
               </>
             )}
-            <div className="flex items-center">
+            <div className="flex items-center gap-1">
               {conversation && (
                 <ContextUsageIndicator
                   buttonSize={buttonSize}

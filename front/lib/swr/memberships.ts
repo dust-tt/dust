@@ -505,6 +505,7 @@ export function useMembersUsage({
 
   return {
     membersUsage: data?.members ?? emptyArray(),
+    creditsResetAt: data?.creditsResetAt ?? null,
     isMembersUsageLoading: !error && !data && !disabled,
     isMembersUsageRefreshing: isLoading && !!data && !disabled,
     isMembersUsageError: !!error,

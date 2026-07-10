@@ -22,6 +22,7 @@ import type { SandboxResource } from "@app/lib/resources/sandbox_resource";
 import logger from "@app/logger/logger";
 import { isDevelopment } from "@app/types/shared/env";
 import { Err, Ok, type Result } from "@app/types/shared/result";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import jwt from "jsonwebtoken";
 import { z } from "zod";
@@ -106,13 +107,28 @@ async function runSuccessfulRootCommand(
   return new Ok(undefined);
 }
 
-export function mintEgressJwt(providerId: string, workspaceId: string): string {
+// ownerId is the sandbox owner's stable sId (conversation sId for
+// conversation sandboxes, space sId for pod sandboxes); it selects the owner
+// policy file `w/{wId}/sandboxes/{ownerId}.json`. sbId stays for identity and
+// log tracing. Older proxy builds ignore the ownerId claim. Object params on
+// purpose: the values are look-alike sIds and transposed positional args
+// would compile fine and fail silently.
+export function mintEgressJwt({
+  providerId,
+  workspaceId,
+  ownerId,
+}: {
+  providerId: string;
+  workspaceId: string;
+  ownerId: string;
+}): string {
   return jwt.sign(
     {
       iss: "dust-front",
       aud: "dust-egress-proxy",
       sbId: providerId,
       wId: workspaceId,
+      ownerId,
     },
     config.getEgressProxyJwtSecret(),
     {
@@ -124,20 +140,24 @@ export function mintEgressJwt(providerId: string, workspaceId: string): string {
 
 const INVALIDATION_JWT_TTL_SECONDS = 60;
 
+// The proxy derives the cache keys to evict from the claims: workspaceId
+// alone evicts the workspace policy (both layouts during the migration
+// window); workspaceId + ownerId evicts the owner policy. workspaceId is
+// required so the proxy-rejected `ownerId`-only shape is unrepresentable.
 export function mintEgressInvalidationJwt({
   workspaceId,
-  sandboxId,
+  ownerId,
 }: {
-  workspaceId?: string;
-  sandboxId?: string;
+  workspaceId: string;
+  ownerId?: string;
 }): string {
   return jwt.sign(
     {
       iss: "dust-front",
       aud: "dust-egress-proxy",
       action: "invalidate-policy",
-      ...(workspaceId ? { wId: workspaceId } : {}),
-      ...(sandboxId ? { sbId: sandboxId } : {}),
+      wId: workspaceId,
+      ...(ownerId ? { ownerId } : {}),
     },
     config.getEgressProxyJwtSecret(),
     {
@@ -505,10 +525,23 @@ export async function setupEgressForwarder(
     return new Err(normalizeError(error));
   }
 
-  const token = mintEgressJwt(
-    sandbox.providerId,
-    auth.getNonNullableWorkspace().sId
-  );
+  let ownerId: string;
+  switch (runtimeOwner.kind) {
+    case "pod":
+      ownerId = runtimeOwner.spaceId;
+      break;
+    case "conversation":
+      ownerId = runtimeOwner.conversationId;
+      break;
+    default:
+      assertNever(runtimeOwner);
+  }
+
+  const token = mintEgressJwt({
+    providerId: sandbox.providerId,
+    workspaceId: auth.getNonNullableWorkspace().sId,
+    ownerId,
+  });
 
   // Token, secrets, and manifest are written in order, each gated on the
   // previous succeeding, mirroring the original sequential flow exactly: any

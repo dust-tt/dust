@@ -39,7 +39,7 @@ app.get(
 
     const allGroups = space.groups.filter((g) =>
       space.managementMode === "manual"
-        ? g.isRegular() || g.kind === "space_editors"
+        ? g.isRegularAuto() || g.kind === "space_editors"
         : g.kind === "provisioned"
     );
 

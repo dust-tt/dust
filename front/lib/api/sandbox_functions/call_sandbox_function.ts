@@ -68,6 +68,11 @@ export async function callSandboxFunction(
     lastEventId: null,
     signal: AbortSignal.timeout(CALL_RESULT_WAIT_TIMEOUT_MS),
   })) {
+    // Terminal error published when the invocation failed before producing a result.
+    if (data.type === "sandbox_function_invocation_error") {
+      return new Err(new Error(data.message));
+    }
+
     if (data.type !== "sandbox_function_invocation_result") {
       continue;
     }

@@ -160,7 +160,7 @@ describe("PATCH /api/w/:wId/spaces/:spaceId/project_tasks/:taskId", () => {
       workspace.sId
     );
     const memberGroup =
-      project.groups.find((g) => g.isRegular()) ?? project.groups[0]!;
+      project.groups.find((g) => g.isRegularAuto()) ?? project.groups[0]!;
     await GroupFactory.withMembers(adminAuth, memberGroup, [otherUser]);
 
     const todo = await ProjectTaskFactory.create(workspace, project, {

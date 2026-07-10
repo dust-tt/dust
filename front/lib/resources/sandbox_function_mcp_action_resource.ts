@@ -85,12 +85,14 @@ export class SandboxFunctionMCPActionResource extends BaseResource<SandboxFuncti
       toolName,
       inputs,
       toolConfiguration,
+      status,
     }: {
       invocation: SandboxFunctionInvocationResource;
       mcpServerView: MCPServerViewResource;
       toolName: string;
       inputs: Record<string, unknown>;
       toolConfiguration: LightMCPToolConfigurationType;
+      status: "running" | "blocked_validation_required";
     },
     transaction?: Transaction
   ): Promise<SandboxFunctionMCPActionResource> {
@@ -111,7 +113,7 @@ export class SandboxFunctionMCPActionResource extends BaseResource<SandboxFuncti
         toolName,
         inputs,
         toolConfiguration,
-        status: "running",
+        status,
       },
       { transaction }
     );
@@ -169,7 +171,10 @@ export class SandboxFunctionMCPActionResource extends BaseResource<SandboxFuncti
   }: {
     executionDurationMs: number;
   }): Promise<void> {
-    await this.update({ status: "succeeded", executionDurationMs });
+    await this.update({
+      status: "succeeded",
+      executionDurationMs: Math.round(executionDurationMs),
+    });
   }
 
   async markAsErrored({
@@ -177,7 +182,10 @@ export class SandboxFunctionMCPActionResource extends BaseResource<SandboxFuncti
   }: {
     executionDurationMs: number;
   }): Promise<void> {
-    await this.update({ status: "errored", executionDurationMs });
+    await this.update({
+      status: "errored",
+      executionDurationMs: Math.round(executionDurationMs),
+    });
   }
 
   private outputGcsPathFor(auth: Authenticator): string {

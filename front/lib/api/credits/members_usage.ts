@@ -49,6 +49,7 @@ import {
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import { AGENT_MESSAGE_STATUSES_TO_TRACK } from "@app/types/assistant/conversation";
+import { CAP_ELIGIBLE_GROUP_KINDS } from "@app/types/groups";
 import type {
   MembershipSeatType,
   NormalizedPoolLimitSeatType,
@@ -134,6 +135,10 @@ export type MemberUsageType = {
 export type GetMembersUsageResponseBody = {
   members: MemberUsageType[];
   total: number;
+  // ISO end of the current billing period: when per-seat credits next reset.
+  // Optional for backward compatibility.
+  // null when Metronome is not configured or the period cannot be resolved.
+  creditsResetAt: string | null;
 };
 
 // Workspace seats have a zero AWU allocation, so `buildSeatDataByUserId` skips
@@ -196,6 +201,26 @@ type ConsumedCreditsBucket = {
 type ConsumedCreditsAggs = {
   by_user?: estypes.AggregationsMultiBucketAggregateBase<ConsumedCreditsBucket>;
 };
+
+// End of the workspace's current billing period — the instant per-seat credits
+// next reset. Reads the same cached period `fetchConsumedAwuCreditsByUserId`
+// scopes the consumed totals to, so the two always agree. Null when Metronome
+// is not set up for the workspace or the period cannot be resolved.
+async function fetchCreditsResetAt(
+  workspace: LightWorkspaceType
+): Promise<string | null> {
+  const periodResult = await getCachedMetronomeCurrentBillingPeriod(
+    workspace.sId
+  );
+  if (periodResult.isErr()) {
+    logger.warn(
+      { err: periodResult.error, workspaceId: workspace.sId },
+      "[MembersUsage] Failed to resolve billing period for credits reset date"
+    );
+    return null;
+  }
+  return periodResult.value?.cycleEnd.toISOString() ?? null;
+}
 
 // Per-user consumed AWU credits for the current billing cycle, summed from the
 // analytics index (`cost.full_awu`, precomputed at index time) by Elasticsearch.
@@ -1218,6 +1243,10 @@ export async function getMembersUsage({
   const { metronomeCustomerId } = workspace;
   const metronomeContractId = subscription?.metronomeContractId ?? null;
 
+  // Resolved up front (Redis-cached) so even empty pages carry the reset date
+  // for the table header.
+  const creditsResetAt = await fetchCreditsResetAt(workspace);
+
   // When a seat-type and/or group filter is active, resolve the matching user
   // sIds up front and restrict the search to their intersection, so pagination
   // and the returned `total` reflect the filtered set. No match (in any active
@@ -1229,7 +1258,7 @@ export async function getMembersUsage({
     groupId: paginationParams.groupId,
   });
   if (restrictToUserIds !== undefined && restrictToUserIds.length === 0) {
-    return { members: [], total: 0 };
+    return { members: [], total: 0, creditsResetAt };
   }
 
   const usersResult = await resolveMembersUsagePageUsers({
@@ -1240,13 +1269,13 @@ export async function getMembersUsage({
   });
 
   if (usersResult.isErr()) {
-    return { members: [], total: 0 };
+    return { members: [], total: 0, creditsResetAt };
   }
 
   const { users, total } = usersResult.value;
 
   if (users.length === 0) {
-    return { members: [], total };
+    return { members: [], total, creditsResetAt };
   }
 
   // The workspace-wide default pool cap lives on the credit-usage
@@ -1325,7 +1354,7 @@ export async function getMembersUsage({
     GroupResource.listGroupNamesByUserModelIdInWorkspace({
       workspace,
       userModelIds: users.map((u) => u.id),
-      groupKinds: ["provisioned"],
+      groupKinds: [...CAP_ELIGIBLE_GROUP_KINDS],
     }),
     GroupResource.listMaxPoolCapAwuCreditsByUserModelIdInWorkspace({
       workspace,
@@ -1510,5 +1539,6 @@ export async function getMembersUsage({
   return {
     members: membersUsage,
     total,
+    creditsResetAt,
   };
 }

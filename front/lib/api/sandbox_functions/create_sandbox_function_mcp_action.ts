@@ -1,7 +1,11 @@
 import type { ServerSideMCPToolConfigurationType } from "@app/lib/actions/mcp";
 import { MCP_TOOL_CONFIGURATION_FIELDS_TO_OMIT } from "@app/lib/actions/mcp";
 import { buildToolConfigurationsFromRawTools } from "@app/lib/actions/mcp_actions";
+import type { SandboxFunctionMCPApproveExecutionEvent } from "@app/lib/actions/mcp_internal_actions/events";
 import { validateToolInputs } from "@app/lib/actions/mcp_utils";
+import { makeMCPApproveExecutionEventBase } from "@app/lib/actions/tool_approval_events";
+import { getExecutionStatusFromConfig } from "@app/lib/actions/tool_status";
+import { publishSandboxFunctionInvocationEvent } from "@app/lib/api/sandbox_functions/events";
 import type { Authenticator } from "@app/lib/auth";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { SandboxFunctionInvocationResource } from "@app/lib/resources/sandbox_function_invocation_resource";
@@ -11,6 +15,7 @@ import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
 import { launchSandboxFunctionToolWorkflow } from "@app/temporal/agent_loop/client";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 import omit from "lodash/omit";
 
 export class SandboxFunctionMCPActionError extends Error {
@@ -26,11 +31,8 @@ export class SandboxFunctionMCPActionError extends Error {
   }
 }
 
-// Resolves a tool for execution from a sandbox function invocation: the tool must exist and be
-// enabled. The tool's stake is snapshotted but not enforced yet: tools execute regardless of it.
-// TODO(2026-07-09 SANDBOX_FUNCTIONS): bubble approval events up from the frame instead, honoring
-// stakes (gated on invocation durability). Tools that need an agent-loop context error at
-// execution based on the run context.
+// Resolves a tool for execution from a sandbox function invocation. The tool must exist and be
+// enabled. Tools that need an agent-loop context error at execution based on the run context.
 async function resolveSandboxFunctionTool(
   auth: Authenticator,
   view: MCPServerViewResource,
@@ -100,7 +102,8 @@ async function resolveSandboxFunctionTool(
 
 /**
  * Creates a sandbox function MCP action (code running inside a sandbox function invocation
- * calling an MCP tool through the public sandbox API) and launches its execution workflow.
+ * calling an MCP tool through the public sandbox API). The workflow is launched immediately when
+ * the tool does not require approval; otherwise an approval event is published to the invocation.
  */
 export async function createSandboxFunctionMCPAction(
   auth: Authenticator,
@@ -181,18 +184,60 @@ export async function createSandboxFunctionMCPAction(
     );
   }
 
+  const toolConfiguration = toolConfigurationRes.value;
+  const { status: executionStatus } = await getExecutionStatusFromConfig(auth, {
+    actionConfiguration: toolConfiguration,
+  });
+
+  let actionStatus: "running" | "blocked_validation_required";
+  switch (executionStatus) {
+    case "ready_allowed_implicitly":
+      actionStatus = "running";
+      break;
+    case "blocked_validation_required":
+      actionStatus = "blocked_validation_required";
+      break;
+    default:
+      assertNever(executionStatus);
+  }
+
   const action = await SandboxFunctionMCPActionResource.makeNew(auth, {
     invocation,
     mcpServerView: view,
     toolName,
     inputs: rawInputs,
     toolConfiguration: omit(
-      toolConfigurationRes.value,
+      toolConfiguration,
       MCP_TOOL_CONFIGURATION_FIELDS_TO_OMIT
     ),
+    status: actionStatus,
   });
 
-  await launchSandboxFunctionToolWorkflow(auth, { action });
+  switch (actionStatus) {
+    case "running":
+      await launchSandboxFunctionToolWorkflow(auth, { action });
+      break;
+    case "blocked_validation_required": {
+      const approvalEventBase = await makeMCPApproveExecutionEventBase(auth, {
+        actionId: action.sId,
+        toolConfiguration,
+        inputs: rawInputs,
+        approvalSubjectName: sandboxFunction.slug,
+      });
+      const approvalEvent: SandboxFunctionMCPApproveExecutionEvent = {
+        ...approvalEventBase,
+        sandboxFunctionId: sandboxFunction.sId,
+        invocationId: invocation.sId,
+      };
+
+      await publishSandboxFunctionInvocationEvent(approvalEvent, {
+        invocationId: invocation.sId,
+      });
+      break;
+    }
+    default:
+      assertNever(actionStatus);
+  }
 
   return new Ok({ actionId: action.sId });
 }

@@ -65,11 +65,11 @@ function getToolByName(name: string) {
 }
 
 // Create a minimal extra object for testing.
-function createTestExtra(auth: Authenticator, toolContext?: unknown) {
+function createTestExtra(auth: Authenticator, runContext?: unknown) {
   return {
     signal: new AbortController().signal,
     auth,
-    toolContext,
+    runContext,
   } as Parameters<(typeof TOOLS)[0]["handler"]>[1];
 }
 
@@ -1837,14 +1837,14 @@ describe("agent_sidekick_context tools", () => {
       );
 
       const tool = getToolByName("suggest_model");
-      // gpt-5.5 is in USED_MODEL_CONFIGS but openai is not whitelisted
-      expect(USED_MODEL_CONFIGS.some((m) => m.modelId === "gpt-5.5")).toBe(
+      // gpt-5.6-sol is in USED_MODEL_CONFIGS but openai is not whitelisted
+      expect(USED_MODEL_CONFIGS.some((m) => m.modelId === "gpt-5.6-sol")).toBe(
         true
       );
       const result = await tool.handler(
         {
           suggestion: {
-            modelId: "gpt-5.5",
+            modelId: "gpt-5.6-sol",
           },
         },
         createTestExtra(authenticator)
@@ -1853,7 +1853,7 @@ describe("agent_sidekick_context tools", () => {
       expect(result.isErr()).toBe(true);
       if (result.isErr()) {
         expect(result.error.message).toContain("Invalid model ID");
-        expect(result.error.message).toContain("gpt-5.5");
+        expect(result.error.message).toContain("gpt-5.6-sol");
       }
     });
   });

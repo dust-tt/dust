@@ -35,6 +35,7 @@ import type { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_r
 import { RemoteMCPServerToolMetadataResource } from "@app/lib/resources/remote_mcp_server_tool_metadata_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
+import { updateResourceAndPublishEvent } from "@app/temporal/agent_loop/activities/common";
 import { launchSandboxChildToolWorkflow } from "@app/temporal/agent_loop/client";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { AgentMCPServerConfigurationFactory } from "@app/tests/utils/AgentMCPServerConfigurationFactory";
@@ -231,6 +232,20 @@ describe("createSandboxChildAction", () => {
     expect(child?.status).toBe("blocked_validation_required");
     expect(child?.toolConfiguration.permission).toBe("medium");
     expect(vi.mocked(launchSandboxChildToolWorkflow)).not.toHaveBeenCalled();
+    expect(vi.mocked(updateResourceAndPublishEvent)).toHaveBeenCalledWith(
+      auth,
+      expect.objectContaining({
+        event: expect.objectContaining({
+          type: "tool_approve_execution",
+          actionId: child?.sId,
+          inputs: { objectName: "Contact" },
+          stake: "medium",
+          metadata: expect.objectContaining({
+            toolName: TOOL_NAME,
+          }),
+        }),
+      })
+    );
   });
 
   it("auto-approves medium-stake tools when an approval recorded on a direct call exists", async () => {

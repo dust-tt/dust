@@ -71,7 +71,7 @@ describe("POST /api/w/:wId/pods/:podId/tasks/seed", () => {
     );
 
     const regularSpace = await SpaceFactory.regular(workspace);
-    const memberGroup = regularSpace.groups.find((g) => g.isRegular());
+    const memberGroup = regularSpace.groups.find((g) => g.isRegularAuto());
     if (memberGroup) {
       await memberGroup.dangerouslyAddMembers(adminAuth, {
         users: [user.toJSON()],

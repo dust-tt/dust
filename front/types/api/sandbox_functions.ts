@@ -1,3 +1,7 @@
+import type {
+  SandboxFunctionMCPApproveExecutionEvent,
+  SandboxFunctionToolPersonalAuthRequiredEvent,
+} from "@app/lib/actions/mcp_internal_actions/events";
 import type { ToolExecutionBaseStatus } from "@app/lib/actions/statuses";
 
 export const SANDBOX_FUNCTION_INVOCATION_STATUSES = ["created"] as const;
@@ -45,9 +49,32 @@ export type SandboxFunctionInvocationResultEvent = {
   result: unknown;
 };
 
+// Published when the invocation failed before producing a result, so listeners settle instead of
+// waiting forever.
+export type SandboxFunctionInvocationErrorEvent = {
+  type: "sandbox_function_invocation_error";
+  created: number;
+  invocationId: string;
+  functionId: string;
+  message: string;
+};
+
 export type SandboxFunctionInvocationEvent =
   | SandboxFunctionInvocationCreatedEvent
-  | SandboxFunctionInvocationResultEvent;
+  | SandboxFunctionInvocationResultEvent
+  | SandboxFunctionInvocationErrorEvent
+  | SandboxFunctionMCPApproveExecutionEvent
+  | SandboxFunctionToolPersonalAuthRequiredEvent;
+
+// The events that end an invocation stream: no further event is published after them.
+export function isSandboxFunctionInvocationTerminalEvent(
+  event: SandboxFunctionInvocationEvent
+): boolean {
+  return (
+    event.type === "sandbox_function_invocation_result" ||
+    event.type === "sandbox_function_invocation_error"
+  );
+}
 
 export type PostSandboxFunctionInvocationRequestBody = {
   input?: unknown;

@@ -73,7 +73,7 @@ describe("SpaceResource", () => {
       regularGroup = await GroupResource.makeNew({
         name: "Test Regular Group",
         workspaceId: workspace.id,
-        kind: "regular",
+        kind: "regular_auto",
       });
 
       regularSpace = await SpaceResource.makeNew(
@@ -713,7 +713,7 @@ describe("SpaceResource", () => {
         projectMemberGroup = await GroupResource.makeNew({
           name: "Project Members Group",
           workspaceId: workspace.id,
-          kind: "regular",
+          kind: "regular_auto",
         });
       });
 
@@ -1313,7 +1313,7 @@ describe("SpaceResource", () => {
       regularGroup = await GroupResource.makeNew({
         name: "Regular Group",
         workspaceId: workspace.id,
-        kind: "regular",
+        kind: "regular_auto",
       });
 
       const openSpace = await SpaceResource.makeNew(
@@ -1333,7 +1333,7 @@ describe("SpaceResource", () => {
       restrictedGroup = await GroupResource.makeNew({
         name: "Restricted Group",
         workspaceId: workspace.id,
-        kind: "regular",
+        kind: "regular_auto",
       });
 
       const restrictedSpace = await SpaceResource.makeNew(
@@ -1368,7 +1368,7 @@ describe("SpaceResource", () => {
 
     it("should return project spaces only for members", async () => {
       const projectSpace = await SpaceFactory.project(workspace);
-      const projectGroup = projectSpace.groups.find((g) => g.isRegular());
+      const projectGroup = projectSpace.groups.find((g) => g.isRegularAuto());
 
       // User is not a member, should not see it
       const userSpaces =
@@ -1499,7 +1499,7 @@ describe("SpaceResource", () => {
         regularGroup = await GroupResource.makeNew({
           name: "Regular Group",
           workspaceId: workspace.id,
-          kind: "regular",
+          kind: "regular_auto",
         });
 
         const openSpace = await SpaceResource.makeNew(
@@ -1522,7 +1522,7 @@ describe("SpaceResource", () => {
         restrictedGroup = await GroupResource.makeNew({
           name: "Restricted Group",
           workspaceId: workspace.id,
-          kind: "regular",
+          kind: "regular_auto",
         });
 
         const restrictedSpace = await SpaceResource.makeNew(
@@ -1564,7 +1564,7 @@ describe("SpaceResource", () => {
         regularGroup = await GroupResource.makeNew({
           name: "Project Group",
           workspaceId: workspace.id,
-          kind: "regular",
+          kind: "regular_auto",
         });
 
         const projectSpace = await SpaceResource.makeNew(
@@ -1588,7 +1588,7 @@ describe("SpaceResource", () => {
         restrictedGroup = await GroupResource.makeNew({
           name: "Project Group",
           workspaceId: workspace.id,
-          kind: "regular",
+          kind: "regular_auto",
         });
 
         const projectSpace = await SpaceResource.makeNew(
@@ -1816,62 +1816,6 @@ describe("SpaceResource cleanup on delete", () => {
 
       // Verify they match exactly
       expect(modelsWithSpaceFK).toEqual(knownModels);
-    });
-  });
-
-  // Transitional coverage for the `regular` -> `regular_auto` rename. A manual
-  // space whose member group is `regular_auto` must resolve through
-  // getSpaceManualMemberGroup (which asserts exactly one regular member group),
-  // otherwise member-facing operations throw for not-yet-backfilled spaces.
-  describe("regular_auto member group (rename double-read)", () => {
-    let workspace: Awaited<ReturnType<typeof WorkspaceFactory.basic>>;
-    let adminAuth: Authenticator;
-
-    beforeEach(async () => {
-      workspace = await WorkspaceFactory.basic();
-      const adminUser = await UserFactory.basic();
-
-      const { globalGroup, systemGroup } =
-        await GroupFactory.defaults(workspace);
-
-      await MembershipFactory.associate(workspace, adminUser, {
-        role: "admin",
-      });
-
-      const internalAdminAuth = await Authenticator.internalAdminForWorkspace(
-        workspace.sId
-      );
-      await SpaceResource.makeDefaultsForWorkspace(internalAdminAuth, {
-        globalGroup,
-        systemGroup,
-      });
-
-      adminAuth = await Authenticator.fromUserIdAndWorkspaceId(
-        adminUser.sId,
-        workspace.sId
-      );
-    });
-
-    it("resolves the member group and renames it on updateName", async () => {
-      const memberGroup = await GroupResource.makeNew({
-        name: "Regular Auto Member Group",
-        workspaceId: workspace.id,
-        kind: "regular_auto",
-      });
-      const space = await SpaceResource.makeNew(
-        {
-          name: "Regular Auto Space",
-          kind: "regular",
-          workspaceId: workspace.id,
-          managementMode: "manual",
-        },
-        { members: [memberGroup] }
-      );
-
-      const result = await space.updateName(adminAuth, "Renamed Space");
-
-      expect(result.isOk()).toBe(true);
-      expect(space.name).toBe("Renamed Space");
     });
   });
 });

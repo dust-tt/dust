@@ -27,9 +27,9 @@ export async function createHandler(
     content,
     content_type,
   }: { path: string; content: string; content_type: string },
-  { auth, toolContext }: ToolHandlerExtra
+  { auth, runContext }: ToolHandlerExtra
 ): Promise<ToolHandlerResult> {
-  const conversationRes = requireAgentLoopConversation({ toolContext });
+  const conversationRes = requireAgentLoopConversation({ runContext });
   if (conversationRes.isErr()) {
     return conversationRes;
   }

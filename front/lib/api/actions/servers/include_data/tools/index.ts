@@ -3,7 +3,7 @@ import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definitio
 import { shouldAutoGenerateTags } from "@app/lib/actions/mcp_internal_actions/tools/tags/utils";
 import {
   isAgentLoopRunContext,
-  type ToolContextType,
+  type ToolContext,
 } from "@app/lib/actions/types";
 import { AGENT_LESS_DEFAULT_RETRIEVAL_TOP_K } from "@app/lib/api/actions/servers/data_sources_file_system/tools/search";
 import { runIncludeDataRetrieval } from "@app/lib/api/actions/servers/include_data/include_function";
@@ -17,7 +17,7 @@ import type { Authenticator } from "@app/lib/auth";
 // Create tools with access to auth via closure
 export function createIncludeDataTools(
   auth: Authenticator,
-  toolContext?: ToolContextType
+  toolContext?: ToolContext
 ) {
   const areTagsDynamic = toolContext
     ? shouldAutoGenerateTags(toolContext)

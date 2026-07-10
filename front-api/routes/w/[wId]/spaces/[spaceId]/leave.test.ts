@@ -20,7 +20,7 @@ async function addUserToProject(
   user: UserResource,
   options: { asEditor?: boolean } = {}
 ) {
-  const memberGroup = project.groups.find((g) => g.isRegular());
+  const memberGroup = project.groups.find((g) => g.isRegularAuto());
   const editorGroup = project.groups.find((g) => g.kind === "space_editors");
 
   if (memberGroup) {
@@ -46,7 +46,7 @@ describe("POST /api/w/:wId/spaces/:spaceId/leave", () => {
       );
 
       const regularSpace = await SpaceFactory.regular(workspace);
-      const memberGroup = regularSpace.groups.find((g) => g.isRegular());
+      const memberGroup = regularSpace.groups.find((g) => g.isRegularAuto());
       if (memberGroup) {
         await memberGroup.dangerouslyAddMembers(adminAuth, {
           users: [user.toJSON()],
@@ -122,7 +122,7 @@ describe("POST /api/w/:wId/spaces/:spaceId/leave", () => {
       expect(response.status).toBe(200);
       expect((await response.json()).success).toBe(true);
 
-      const memberGroup = project.groups.find((g) => g.isRegular());
+      const memberGroup = project.groups.find((g) => g.isRegularAuto());
       if (memberGroup) {
         const isMember = await memberGroup.isMember(user);
         expect(isMember).toBe(false);

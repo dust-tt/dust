@@ -837,7 +837,7 @@ describe("POST /api/w/:wId/skills", () => {
     const { auth, workspace, user } = await setupTest("admin");
 
     const regularSpace = await SpaceFactory.regular(workspace);
-    const memberGroup = await GroupFactory.regular(
+    const memberGroup = await GroupFactory.regularAuto(
       workspace,
       "Tool Space Members"
     );
@@ -938,7 +938,7 @@ describe("POST /api/w/:wId/skills", () => {
     const { auth, workspace, user } = await setupTest("admin");
 
     const regularSpace = await SpaceFactory.regular(workspace);
-    const memberGroup = await GroupFactory.regular(
+    const memberGroup = await GroupFactory.regularAuto(
       workspace,
       "Knowledge Space Members"
     );

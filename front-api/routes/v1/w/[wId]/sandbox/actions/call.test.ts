@@ -6,7 +6,18 @@ import { createPersistedSandboxFunctionInvocationTokenTestContext } from "@app/t
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { Ok } from "@app/types/shared/result";
 import { honoApp } from "@front-api/app";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+
+vi.mock("@app/lib/api/sandbox_functions/events", async (importOriginal) => {
+  const actual =
+    await importOriginal<
+      typeof import("@app/lib/api/sandbox_functions/events")
+    >();
+  return {
+    ...actual,
+    publishSandboxFunctionInvocationEvent: vi.fn(),
+  };
+});
 
 vi.mock("@app/temporal/agent_loop/client", async (importOriginal) => {
   const actual =
@@ -16,6 +27,9 @@ vi.mock("@app/temporal/agent_loop/client", async (importOriginal) => {
     launchSandboxFunctionToolWorkflow: vi.fn(async () => new Ok(undefined)),
   };
 });
+
+import { publishSandboxFunctionInvocationEvent } from "@app/lib/api/sandbox_functions/events";
+import { launchSandboxFunctionToolWorkflow } from "@app/temporal/agent_loop/client";
 
 function callSandboxTool(
   workspace: { sId: string },
@@ -48,6 +62,10 @@ async function setupWithView() {
 }
 
 describe("POST /api/v1/w/[wId]/sandbox/actions/call (function invocation)", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
   it("creates a running action and launches its workflow", async () => {
     const { auth, token, workspace, invocation, view } = await setupWithView();
 
@@ -72,6 +90,13 @@ describe("POST /api/v1/w/[wId]/sandbox/actions/call (function invocation)", () =
     expect(action?.inputs).toEqual({ max: 10 });
     expect(action?.sandboxFunctionInvocationId).toBe(invocation.id);
     expect(action?.toolConfiguration.permission).toBe("never_ask");
+    expect(vi.mocked(launchSandboxFunctionToolWorkflow)).toHaveBeenCalledWith(
+      expect.anything(),
+      { action: expect.objectContaining({ sId: action?.sId }) }
+    );
+    expect(
+      vi.mocked(publishSandboxFunctionInvocationEvent)
+    ).not.toHaveBeenCalled();
   });
 
   it("returns 404 for an unknown server view", async () => {
@@ -87,7 +112,7 @@ describe("POST /api/v1/w/[wId]/sandbox/actions/call (function invocation)", () =
     expect(response.status).toBe(404);
   });
 
-  it("creates actions for remote tools", async () => {
+  it("blocks high-stake tools and publishes an approval event", async () => {
     const context =
       await createPersistedSandboxFunctionInvocationTokenTestContext();
     const remoteServer = await RemoteMCPServerFactory.create(context.workspace);
@@ -107,12 +132,29 @@ describe("POST /api/v1/w/[wId]/sandbox/actions/call (function invocation)", () =
     const body = await response.json();
     expect(body.status).toBe("pending");
 
-    // The stake is snapshotted but not enforced: remote tools default to high and still run.
     const action = await SandboxFunctionMCPActionResource.fetchById(
       context.auth,
       body.actionId
     );
     expect(action?.toolConfiguration.permission).toBe("high");
+    expect(action?.status).toBe("blocked_validation_required");
+    expect(vi.mocked(launchSandboxFunctionToolWorkflow)).not.toHaveBeenCalled();
+    expect(
+      vi.mocked(publishSandboxFunctionInvocationEvent)
+    ).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: "tool_approve_execution",
+        actionId: action?.sId,
+        sandboxFunctionId: context.sandboxFunction.sId,
+        invocationId: context.invocation.sId,
+        stake: "high",
+        inputs: {},
+        metadata: expect.objectContaining({
+          toolName: "tool",
+        }),
+      }),
+      { invocationId: context.invocation.sId }
+    );
   });
 
   it("creates actions for conversation-coupled servers too", async () => {

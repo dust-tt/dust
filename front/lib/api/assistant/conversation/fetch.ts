@@ -1,4 +1,5 @@
 import { groupMessagesIntoInteractions } from "@app/lib/api/assistant/conversation/interactions";
+import type { Interaction } from "@app/lib/api/assistant/conversation_rendering/pruning";
 import { batchRenderMessages } from "@app/lib/api/assistant/messages";
 import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
@@ -88,6 +89,43 @@ export const getLightConversation = async (
     lastInteractionsToFetchToolOutputContentFor,
     messagePagination
   );
+
+// Batch size (in interactions) for extending the tool-output-content fetch window beyond the
+// guaranteed floor. The boundary is anchored on a fixed, absolute interaction index rather than
+// distance from the most recent interaction, so it only advances once a full batch of new
+// interactions has accumulated instead of sliding by one every single turn.
+export const TOOL_OUTPUT_FETCH_BATCH_SIZE = 10;
+
+/**
+ * Decides which agent messages should have their tool-output content fetched.
+ *
+ * The last `floorCount` interactions are always included. Beyond that floor, the window extends
+ * backward to the most recent checkpoint at or before the floor's start, a fixed multiple of
+ * TOOL_OUTPUT_FETCH_BATCH_SIZE. Because checkpoints are fixed positions counted from the start of
+ * the conversation, not from the tail, the boundary stays put across most turns and only jumps
+ * forward once a whole batch has accumulated.
+ */
+export function computeMessagesWithToolOutputContent(
+  interactions: Interaction<{ id: ModelId; role: "user" | "agent" }>[],
+  floorCount: number
+): Set<ModelId> {
+  if (floorCount <= 0) {
+    return new Set();
+  }
+
+  const floorStart = Math.max(interactions.length - floorCount, 0);
+  const checkpointStart =
+    Math.floor(floorStart / TOOL_OUTPUT_FETCH_BATCH_SIZE) *
+    TOOL_OUTPUT_FETCH_BATCH_SIZE;
+
+  return new Set(
+    interactions
+      .slice(checkpointStart)
+      .flatMap((i) =>
+        i.messages.filter((m) => m.role === "agent").map((m) => m.id)
+      )
+  );
+}
 
 async function _getConversation<V extends "light" | "full">(
   auth: Authenticator,
@@ -211,42 +249,33 @@ async function _getConversation<V extends "light" | "full">(
 
   let messagesWithToolOutputContent: Set<ModelId> | null = null;
 
-  // In the case of the agentic loop, to save memory and latency, we only want to fetch content for the last N interactions.
+  // In the case of the agentic loop, to save memory and latency, we don't want to fetch tool
+  // output content for every interaction in the conversation. See
+  // computeMessagesWithToolOutputContent for how the fetch window is decided.
   if (lastInteractionsToFetchToolOutputContentFor !== null) {
-    if (lastInteractionsToFetchToolOutputContentFor <= 0) {
-      messagesWithToolOutputContent = new Set();
-    } else {
-      const interactions = groupMessagesIntoInteractions(
-        removeNulls(
-          messages.map((m) => {
-            if (m.userMessageId) {
-              return {
-                id: m.userMessageId,
-                role: "user",
-              };
-            } else if (m.agentMessageId) {
-              return {
-                id: m.agentMessageId,
-                role: "agent",
-              };
-            }
-            // We don't care about the other messages.
-          })
-        )
-      );
+    const interactions = groupMessagesIntoInteractions(
+      removeNulls(
+        messages.map((m) => {
+          if (m.userMessageId) {
+            return {
+              id: m.userMessageId,
+              role: "user" as const,
+            };
+          } else if (m.agentMessageId) {
+            return {
+              id: m.agentMessageId,
+              role: "agent" as const,
+            };
+          }
+          // We don't care about the other messages.
+        })
+      )
+    );
 
-      // Keep the last N interactions with the highest ranks (order is correct because of the sort above).
-      const interactionsToKeep = interactions.slice(
-        -lastInteractionsToFetchToolOutputContentFor
-      );
-
-      // We only need to fetch content for the actions of the last N interactions.
-      messagesWithToolOutputContent = new Set(
-        interactionsToKeep.flatMap((i) =>
-          i.messages.filter((m) => m.role === "agent").map((m) => m.id)
-        )
-      );
-    }
+    messagesWithToolOutputContent = computeMessagesWithToolOutputContent(
+      interactions,
+      lastInteractionsToFetchToolOutputContentFor
+    );
   }
 
   const renderRes = await batchRenderMessages(

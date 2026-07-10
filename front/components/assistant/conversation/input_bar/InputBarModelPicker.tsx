@@ -5,13 +5,16 @@ import type {
   ProviderGroup,
   Selection,
   SuggestedModelWithReasoningEffort,
+  UserModelSelection,
 } from "@app/components/assistant/conversation/input_bar/modelPickerUtils";
 import {
+  AUTO_MODEL_SELECTION,
+  buildModelSelection,
   getModelWithReasoningEffortKey,
   getModelWithReasoningEffortLabel,
   getSelectableReasoningEfforts,
+  resolveDefaultSelection,
   SUGGESTED_PINS,
-  toModelSelection,
 } from "@app/components/assistant/conversation/input_bar/modelPickerUtils";
 import { getModelProviderLogo } from "@app/components/providers/types";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
@@ -29,10 +32,12 @@ import type {
 import { getAvailableReasoningEfforts } from "@app/types/assistant/models/types";
 import type { LightWorkspaceType } from "@app/types/user";
 import { Button, DropdownMenu, DropdownMenuTrigger } from "@dust-tt/sparkle";
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 interface InputBarModelPickerProps {
   agentModel: AgentModelConfigurationType | null;
+  agentId: string | null;
+  lastRequestedModel: ModelSelectionType | null;
   owner: LightWorkspaceType;
   buttonSize: "xs" | "sm";
   // Which side the dropdown opens toward. Mirrors the agent picker: "top" in an
@@ -45,6 +50,8 @@ interface InputBarModelPickerProps {
 
 export function InputBarModelPicker({
   agentModel,
+  agentId,
+  lastRequestedModel,
   owner,
   buttonSize,
   side = "top",
@@ -61,32 +68,37 @@ export function InputBarModelPicker({
 
   // The list of models is hidden while "Auto" is on.
   const [expanded, setExpanded] = useState(false);
-  const [selection, setSelection] = useState<Selection>({ kind: "auto" });
+
+  const [userOverride, setUserOverride] = useState<Selection | null>(null);
 
   // On mobile there are no nested submenus: the "More models" providers expand
   // inline below their name. This tracks the single provider currently expanded.
   const [expandedProvider, setExpandedProvider] =
     useState<ModelProviderIdType | null>(null);
 
-  // Commit a selection and notify the parent so it can attach (or, for "auto",
-  // clear) the per-message model override on the next send. Called from the
-  // user-driven handlers below and from the agent-change reset. `onSelectionChange`
-  // only stashes the value in a parent ref, so calling it here — including during
-  // the render-time reset — triggers no parent re-render.
-  const commitSelection = (next: Selection) => {
-    setSelection(next);
-    onSelectionChange?.(toModelSelection(next));
+  const commitSelection = (selection: UserModelSelection) => {
+    const isSelectionAuto = selection.kind === "auto";
+    const isDefaultAuto = defaultSelection.kind === "auto";
+    const isSelectionSameModelAsAgent =
+      selection.kind === "model" &&
+      defaultSelection.kind === "agent" &&
+      selection.model.modelId === agentModel?.modelId &&
+      selection.model.providerId === agentModel?.providerId &&
+      selection.effort === agentModel?.reasoningEffort;
+
+    if ((isSelectionAuto && isDefaultAuto) || isSelectionSameModelAsAgent) {
+      // show default
+      setUserOverride(null);
+      return;
+    }
+    setUserOverride(selection);
   };
 
-  // Reset to Auto when the agent changes: a per-message override should not leak
-  // across agents.
-  const agentModelKey = agentModel
-    ? `${agentModel.providerId}/${agentModel.modelId}`
-    : null;
-  const prevAgentModelKeyRef = useRef(agentModelKey);
-  if (agentModelKey !== prevAgentModelKeyRef.current) {
-    prevAgentModelKeyRef.current = agentModelKey;
-    commitSelection({ kind: "auto" });
+  // Clear the manual override when the user switches which agent they address
+  const prevAgentIdRef = useRef(agentId);
+  if (agentId !== prevAgentIdRef.current) {
+    prevAgentIdRef.current = agentId;
+    setUserOverride(null);
     setExpanded(false);
   }
 
@@ -94,6 +106,23 @@ export function InputBarModelPicker({
     owner,
     disabled: !hasModelsPicker,
   });
+
+  const defaultSelection = useMemo(
+    () => resolveDefaultSelection({ agentModel, lastRequestedModel, models }),
+    [agentModel, lastRequestedModel, models]
+  );
+
+  const shown: Selection = userOverride ?? defaultSelection;
+  const shownModelSelection = shown.toSend;
+
+  // Keep the parent's send-time selection in sync. `onSelectionChange` only
+  // stashes the value in a parent ref, so this triggers no parent re-render.
+  useEffect(() => {
+    if (!hasModelsPicker) {
+      return;
+    }
+    onSelectionChange?.(shownModelSelection);
+  }, [hasModelsPicker, onSelectionChange, shownModelSelection]);
 
   const allModelsWithEfforts = useMemo<ModelWithReasoningEffort[]>(
     () =>
@@ -160,6 +189,31 @@ export function InputBarModelPicker({
     }));
   }, [allModelsWithEfforts]);
 
+  // The agent's configured default, ignoring the last-requested model: reuse
+  // resolveDefaultSelection with no last-requested model, then keep only the
+  // agent-model outcome.
+  const agentDefault = useMemo<ModelWithReasoningEffort | null>(() => {
+    const selection = resolveDefaultSelection({
+      agentModel,
+      lastRequestedModel: null,
+      models,
+    });
+    return selection.kind === "agent"
+      ? { model: selection.model, effort: selection.effort }
+      : null;
+  }, [agentModel, models]);
+  // Drop the agent default from Suggested
+  const suggested = useMemo(
+    () =>
+      suggestedModelsWithEfforts.filter(
+        (s) =>
+          agentDefault?.effort !== s.effort ||
+          agentDefault?.model.modelId !== s.model.modelId ||
+          agentDefault?.model.providerId !== s.model.providerId
+      ),
+    [suggestedModelsWithEfforts, agentDefault]
+  );
+
   const isSearching = search.trim() !== "";
 
   // While searching we show a single flat list over every model/effort.
@@ -184,29 +238,30 @@ export function InputBarModelPicker({
   }, [allModelsWithEfforts, search]);
 
   const selectedKey =
-    selection.kind === "model"
-      ? getModelWithReasoningEffortKey(
-          selection.model.providerId,
-          selection.model.modelId,
-          selection.effort
-        )
-      : undefined;
+    shown.kind === "auto"
+      ? undefined
+      : getModelWithReasoningEffortKey(
+          shown.model.providerId,
+          shown.model.modelId,
+          shown.effort
+        );
 
-  // Auto is "on" while it is the committed selection and the list has not been
+  // Auto is "on" while it is the shown selection and the list has not been
   // manually expanded for browsing. It is hidden entirely while searching.
-  const isAutoOn = selection.kind === "auto" && !expanded;
+  const isAutoOn = shown.kind === "auto" && !expanded;
   const showAuto = !isSearching;
-  const showList = expanded || isSearching || selection.kind === "model";
+  const showList = expanded || isSearching || shown.kind !== "auto";
 
   const hasResults = isSearching
     ? filteredAll.length > 0
-    : suggestedModelsWithEfforts.length > 0 || moreByProvider.length > 0;
+    : !!agentDefault || suggested.length > 0 || moreByProvider.length > 0;
 
   // Collapse the correlated list booleans + data arrays into a single state so
   // the picker content receives one flat, exhaustively-typed prop.
   let listState: ModelPickerListState = {
     kind: "browse",
-    suggested: suggestedModelsWithEfforts,
+    agentDefault,
+    suggested,
     moreByProvider,
   };
   if (!showList) {
@@ -223,18 +278,18 @@ export function InputBarModelPicker({
 
   const label = isMobile
     ? "Model"
-    : `Model: ${getModelWithReasoningEffortLabel(selection)}`;
+    : `Model: ${getModelWithReasoningEffortLabel(shown)}`;
 
   const buttonIcon =
-    isMobile && selection.kind === "model"
-      ? getModelProviderLogo(selection.model.providerId, isDark)
+    isMobile && shown.kind !== "auto"
+      ? getModelProviderLogo(shown.model.providerId, isDark)
       : undefined;
 
   const toggleAuto = () => {
     if (isAutoOn) {
       setExpanded(true);
     } else {
-      commitSelection({ kind: "auto" });
+      commitSelection({ kind: "auto", toSend: AUTO_MODEL_SELECTION });
       setExpanded(false);
     }
   };
@@ -273,13 +328,17 @@ export function InputBarModelPicker({
         auto={auto}
         selectedKey={selectedKey}
         onToggleAuto={toggleAuto}
-        onSelectModel={(modelWithEffort: ModelWithReasoningEffort) =>
+        onSelectModel={(modelWithEffort: ModelWithReasoningEffort) => {
           commitSelection({
             kind: "model",
             model: modelWithEffort.model,
             effort: modelWithEffort.effort,
-          })
-        }
+            toSend: buildModelSelection(
+              modelWithEffort.model,
+              modelWithEffort.effort
+            ),
+          });
+        }}
         expandedProvider={expandedProvider}
         onToggleProvider={(providerId) =>
           setExpandedProvider((current) =>

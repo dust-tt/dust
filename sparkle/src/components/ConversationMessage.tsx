@@ -215,7 +215,7 @@ const ConversationMessageHeader = React.forwardRef<
                   <IconButton
                     icon={DotsHorizontal}
                     size="xs"
-                    variant="highlight-secondary"
+                    variant="highlight-ghost"
                     aria-label="Message actions"
                   />
                 </DropdownMenuTrigger>

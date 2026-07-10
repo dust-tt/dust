@@ -1,4 +1,4 @@
-import type { ToolContextType } from "@app/lib/actions/types";
+import type { ToolContext } from "@app/lib/actions/types";
 import {
   isLightServerSideMCPToolConfiguration,
   isServerSideMCPServerConfiguration,
@@ -12,7 +12,7 @@ function hasTagAutoMode(dataSourceConfigurations: DataSourceConfiguration[]) {
   );
 }
 
-export function shouldAutoGenerateTags(toolContext: ToolContextType): boolean {
+export function shouldAutoGenerateTags(toolContext: ToolContext): boolean {
   const { listToolsContext, runContext } = toolContext;
   if (
     !!listToolsContext?.agentActionConfiguration &&

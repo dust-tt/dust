@@ -3,7 +3,7 @@ import type { ToolHandlers } from "@app/lib/actions/mcp_internal_actions/tool_de
 import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/utils";
 import { registerTool } from "@app/lib/actions/mcp_internal_actions/wrappers";
-import type { ToolContextType } from "@app/lib/actions/types";
+import type { ToolContext } from "@app/lib/actions/types";
 import {
   AGENT_TEMPLATES_SERVER_NAME,
   AGENT_TEMPLATES_TOOLS_METADATA,
@@ -51,7 +51,7 @@ const TOOLS = buildTools(AGENT_TEMPLATES_TOOLS_METADATA, handlers);
 
 function createServer(
   auth: Authenticator,
-  toolContext?: ToolContextType
+  toolContext?: ToolContext
 ): McpServer {
   const server = makeInternalMCPServer(AGENT_TEMPLATES_SERVER_NAME);
   for (const tool of TOOLS) {

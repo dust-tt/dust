@@ -652,9 +652,11 @@ describe("retryAgentMessage", () => {
       const user = auth.getNonNullableUser();
       const userJson = user.toJSON();
 
-      const projectSpaceGroup = projectSpace.groups.find((g) => g.isRegular());
+      const projectSpaceGroup = projectSpace.groups.find((g) =>
+        g.isRegularAuto()
+      );
       const anotherProjectSpaceGroup = anotherProjectSpace.groups.find((g) =>
-        g.isRegular()
+        g.isRegularAuto()
       );
 
       if (projectSpaceGroup) {
@@ -2355,7 +2357,9 @@ describe("postUserMessage", () => {
       );
 
       // Add member user to the project space group
-      const projectSpaceGroup = projectSpace.groups.find((g) => g.isRegular());
+      const projectSpaceGroup = projectSpace.groups.find((g) =>
+        g.isRegularAuto()
+      );
       if (projectSpaceGroup) {
         const addRes = await projectSpaceGroup.dangerouslyAddMember(
           internalAdminAuth,
@@ -2727,9 +2731,11 @@ describe("postUserMessage", () => {
       );
       const user = auth.getNonNullableUser();
 
-      const projectSpaceGroup = projectSpace.groups.find((g) => g.isRegular());
+      const projectSpaceGroup = projectSpace.groups.find((g) =>
+        g.isRegularAuto()
+      );
       const anotherProjectSpaceGroup = anotherProjectSpace.groups.find((g) =>
-        g.isRegular()
+        g.isRegularAuto()
       );
 
       if (projectSpaceGroup) {
@@ -3685,9 +3691,11 @@ describe("postNewContentFragment", () => {
     // SpaceFactory.project creates a group and associates it with the space
     // We need to add the user to those groups
     // The groups are available on space.groups
-    const projectSpaceGroup = projectSpace.groups.find((g) => g.isRegular());
+    const projectSpaceGroup = projectSpace.groups.find((g) =>
+      g.isRegularAuto()
+    );
     const anotherProjectSpaceGroup = anotherProjectSpace.groups.find((g) =>
-      g.isRegular()
+      g.isRegularAuto()
     );
 
     if (projectSpaceGroup) {

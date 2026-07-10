@@ -176,6 +176,8 @@ export function createPlaceholderAgentMessage({
     citations: {},
     generatedFiles: [],
     activitySteps: [],
+    resolvedModel: null,
+    modelResolutionMethod: null,
     actions: [],
     richMentions: [],
     completionDurationMs: null,

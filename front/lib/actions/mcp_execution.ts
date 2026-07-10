@@ -17,7 +17,7 @@ import {
 import { handleBase64Upload } from "@app/lib/actions/mcp_utils";
 import type {
   ActionGeneratedFileType,
-  ToolContextType,
+  ToolContext,
   ToolOutputItemType,
 } from "@app/lib/actions/types";
 import { isAgentLoopRunContext } from "@app/lib/actions/types";
@@ -75,7 +75,7 @@ export async function processToolNotification(
   {
     toolContext,
   }: {
-    toolContext: ToolContextType;
+    toolContext: ToolContext;
   }
 ): Promise<{
   event: ToolNotificationEvent;
@@ -171,7 +171,7 @@ export async function processToolResults(
   }: {
     localLogger: Logger;
     toolCallResultContent: CallToolResult["content"];
-    toolContext: ToolContextType;
+    toolContext: ToolContext;
   }
 ): Promise<{
   outputItems: ToolOutputItemType[];
@@ -188,7 +188,7 @@ export async function processToolResults(
   }[] = await concurrentExecutor(
     toolCallResultContent,
     async (block, idx) => {
-      const res = await persistToolOutput(auth, toolContext, block, {
+      const res = await persistToolOutput(auth, runContext, block, {
         toolName: toolConfiguration.name,
         serverName: toolConfiguration.mcpServerName,
       });

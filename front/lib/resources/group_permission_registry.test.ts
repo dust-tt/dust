@@ -44,6 +44,16 @@ describe("assertValidGrant", () => {
       ).not.toThrow();
     });
 
+    it("models tier use with a tier id", () => {
+      expect(() =>
+        assertValidGrant({
+          permissionType: "use",
+          resourceType: "models_tier",
+          resourceId: 2,
+        })
+      ).not.toThrow();
+    });
+
     it("full wildcard with -1", () => {
       expect(() =>
         assertValidGrant({
@@ -104,6 +114,16 @@ describe("assertValidGrant", () => {
           resourceId: 0,
         })
       ).toThrow(/positive resourceId/);
+    });
+
+    it("type-wide grant on models_tier", () => {
+      expect(() =>
+        assertValidGrant({
+          permissionType: "use",
+          resourceType: "models_tier",
+          resourceId: WHOLE_TYPE_RESOURCE_ID,
+        })
+      ).toThrow(/cannot be granted type-wide/);
     });
   });
 });

@@ -620,6 +620,7 @@ export async function notifyWorkflowError(
     reactions: [],
     costCredits: null,
     resolvedModel: resolvedModelFromAgentMessageRow(messageRow.agentMessage),
+    modelResolutionMethod: messageRow.agentMessage.modelResolutionMethod,
 
     // HACKY: These last 3 fields are not used in the workflow error case but required in the type.
     configuration: null as unknown as LightAgentConfigurationType,

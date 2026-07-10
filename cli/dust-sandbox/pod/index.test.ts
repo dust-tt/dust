@@ -3,9 +3,6 @@ import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { existsSync, mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-
-import { blob, integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
-
 import {
   db,
   POD_DATABASE_BUSY_TIMEOUT_MS,
@@ -17,7 +14,8 @@ import {
   PodDatabaseInvalidNameError,
   PodDatabaseNotDeclaredError,
   PodDatabasesUnavailableError,
-} from "./index.ts";
+} from "@dust/pod";
+import { blob, integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
 
 // The production quota front passes per exec.
 const ONE_GIB_BYTES = 1024 * 1024 * 1024;
@@ -139,7 +137,7 @@ describe("must-exist open", () => {
 
   test("the error tells the agent databases are created by publish", () => {
     const name = uniqueName("missing");
-    expect(() => db(name)).toThrow(/created by the first publish/);
+    expect(() => db(name)).toThrow(/created by their first reconcile/);
     expect(() => db(name)).toThrow(new RegExp(`databases/${name}\\.db\\.ts`));
   });
 

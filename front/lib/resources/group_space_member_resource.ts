@@ -106,11 +106,9 @@ export class GroupSpaceMemberResource extends GroupSpaceBaseResource {
       );
       if (filterOnManagementMode) {
         // Keep only regular groups in manual mode, provisioned groups in provisioned mode
-        const filterOnKind: GroupKind[] =
-          space.managementMode === "manual"
-            ? ["regular", "regular_auto"]
-            : ["provisioned"];
-        if (!filterOnKind.includes(groupModel.kind)) {
+        const filterOnKind: GroupKind =
+          space.managementMode === "manual" ? "regular_auto" : "provisioned";
+        if (groupModel.kind !== filterOnKind) {
           return null;
         }
       }

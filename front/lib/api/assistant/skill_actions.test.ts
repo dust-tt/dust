@@ -61,7 +61,7 @@ describe("resolveSkillMCPServers", () => {
       conversation,
     });
 
-    const { error, serverToolsAndInstructions } = await tryListMCPTools(
+    const serverToolsAndInstructions = await tryListMCPTools(
       authenticator,
       {
         agentConfiguration,
@@ -74,7 +74,6 @@ describe("resolveSkillMCPServers", () => {
         skillServers,
       }
     );
-    expect(error).toBeUndefined();
 
     const serverNames = serverToolsAndInstructions.map(
       ({ serverName }) => serverName
@@ -137,7 +136,7 @@ describe("resolveSkillMCPServers", () => {
       throw new Error("Expected skill management MCP server view.");
     }
 
-    const { error, serverToolsAndInstructions } = await tryListMCPTools(
+    const serverToolsAndInstructions = await tryListMCPTools(
       authenticator,
       {
         agentConfiguration,
@@ -155,7 +154,6 @@ describe("resolveSkillMCPServers", () => {
         ],
       }
     );
-    expect(error).toBeUndefined();
 
     const enableSkillTool = serverToolsAndInstructions
       .flatMap(({ tools }) => tools)
