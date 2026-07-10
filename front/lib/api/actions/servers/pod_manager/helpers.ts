@@ -305,6 +305,25 @@ export async function resolvePodUserRolesBySId(
   return roleByUserSId;
 }
 
+export async function getPodMemberAndEditorSIds(
+  auth: Authenticator,
+  pod: SpaceResource
+): Promise<{ editorIds: string[]; memberIds: string[] }> {
+  const roleByUserSId = await resolvePodUserRolesBySId(auth, pod);
+  const editorIds: string[] = [];
+  const memberIds: string[] = [];
+
+  for (const [userSId, role] of roleByUserSId.entries()) {
+    if (role === "editor") {
+      editorIds.push(userSId);
+    } else {
+      memberIds.push(userSId);
+    }
+  }
+
+  return { editorIds, memberIds };
+}
+
 export function partitionMembersToRemove(
   membersToRemove: string[],
   roleByUserSId: Map<string, "editor" | "member">

@@ -21,6 +21,8 @@ export const POD_MANAGER_SERVER_NAME = "pod_manager" as const;
 export const UPDATE_MEMBERS_TOOL_NAME = "update_members" as const;
 export const LIST_MEMBERS_TOOL_NAME = "list_members" as const;
 export const SEMANTIC_SEARCH_TOOL_NAME = "semantic_search" as const;
+export const EDIT_INFORMATION_TOOL_NAME = "edit_information" as const;
+export const MOVE_CONVERSATION_TOOL_NAME = "move_conversation" as const;
 
 export const POD_MANAGER_TOOLS_METADATA = createToolsRecord({
   add_content_node: {
@@ -77,11 +79,12 @@ export const POD_MANAGER_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "basic",
     freeUsage: false,
   },
-  edit_information: {
+  [EDIT_INFORMATION_TOOL_NAME]: {
     description:
-      "Edit Pod information: title, description, and/or pinned frame. " +
+      "Edit Pod information: title, description, access, and/or pinned frame. " +
       "Provide at least one field to update. Descriptions must be plain text only (no markdown, HTML, or formatting). " +
-      "The pinned frame must be an existing Pod file path under `pod/` (use null to unpin).",
+      "The pinned frame must be an existing Pod file path under `pod/` (use null to unpin). " +
+      "Access can be set to open or restricted; open Pods are subject to workspace policy.",
     schema: {
       title: z.string().optional().describe("New Pod title"),
       description: z
@@ -89,6 +92,12 @@ export const POD_MANAGER_TOOLS_METADATA = createToolsRecord({
         .optional()
         .describe(
           "New Pod description. Must be plain text only (no markdown, HTML, or other formatting). Keep it brief and concise: 1-2 short sentences max."
+        ),
+      access: z
+        .enum(["restricted", "open"])
+        .optional()
+        .describe(
+          "Pod access. restricted = limited to invited members; open = all workspace members can join. Open Pods are subject to workspace policy."
         ),
       pinnedFramePath: z
         .string()
@@ -145,7 +154,7 @@ export const POD_MANAGER_TOOLS_METADATA = createToolsRecord({
   },
   get_information: {
     description:
-      "Get metadata about the Pod: URL, title, description, pinned frame, " +
+      "Get metadata about the Pod: URL, title, description, access, pinned frame, " +
       "and linked Company Data content-node references attached to the " +
       "Pod context. This returns metadata only, not document bodies or " +
       "transcript bodies. Scoped path operations live under " +
@@ -248,20 +257,20 @@ export const POD_MANAGER_TOOLS_METADATA = createToolsRecord({
   },
   create_pod: {
     description:
-      "Create a new Pod. By default the Pod is private. The creator is always added as a Pod editor. " +
-      "You can optionally set visibility to open and add initial members or editors via membersToAdd.",
+      "Create a new Pod. By default the Pod is restricted. The creator is always added as a Pod editor. " +
+      "You can optionally set access to open and add initial members or editors via membersToAdd.",
     schema: {
       title: z.string().describe("Pod title"),
       description: z
         .string()
         .optional()
         .describe("Optional Pod description (plain text recommended)"),
-      visibility: z
-        .enum(["private", "open"])
+      access: z
+        .enum(["restricted", "open"])
         .optional()
-        .default("private")
+        .default("restricted")
         .describe(
-          "Pod visibility. Defaults to private. Open Pods are subject to workspace policy."
+          "Pod access. Defaults to restricted. Open Pods are subject to workspace policy."
         ),
       membersToAdd: PodMembersToAddSchema.optional().describe(
         "Optional user ids to add after creation mapped to their Pod role (member or editor). The creator is always an editor."
@@ -436,6 +445,39 @@ export const POD_MANAGER_TOOLS_METADATA = createToolsRecord({
     displayLabels: {
       running: "Listing Pod conversations",
       done: "List conversations",
+    },
+    toolCostCategory: "basic",
+    freeUsage: true,
+  },
+  [MOVE_CONVERSATION_TOOL_NAME]: {
+    description:
+      "Move a conversation into a Pod or out of its Pod to the user's personal conversations. " +
+      "Set destination to 'pod' to move into a Pod (requires dustPod), or 'personal' to move out of the current Pod. " +
+      "If conversationId is omitted, the current agent conversation is used when available.",
+    schema: {
+      destination: z
+        .enum(["pod", "personal"])
+        .describe(
+          "Where to move the conversation: 'pod' = into a Pod; 'personal' = out of the Pod to personal conversations."
+        ),
+      conversationId: z
+        .string()
+        .optional()
+        .describe(
+          "Conversation id to move; defaults to the conversation this agent run is in when omitted"
+        ),
+      dustPod: ConfigurableToolInputSchemas[
+        INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_POD
+      ]
+        .optional()
+        .describe(
+          "Target Pod when destination is 'pod'. Required when moving into a Pod."
+        ),
+    },
+    stake: "never_ask",
+    displayLabels: {
+      running: "Moving conversation",
+      done: "Move conversation",
     },
     toolCostCategory: "basic",
     freeUsage: true,

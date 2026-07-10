@@ -1,5 +1,5 @@
 import { classNames } from "@marketing/lib/utils";
-import type { RegularButtonProps } from "@dust-tt/sparkle";
+import type { LegacyRegularButtonProps } from "@dust-tt/sparkle";
 import {
   LegacyButton as Button,
   ChevronLeft,
@@ -214,7 +214,7 @@ CarouselItem.displayName = "CarouselItem";
 
 const CarouselPrevious = React.forwardRef<
   HTMLButtonElement,
-  RegularButtonProps
+  LegacyRegularButtonProps
 >(({ className, variant = "outline", size = "sm", ...props }, ref) => {
   const { scrollPrev, canScrollPrev, isLooping } = useCarousel();
 
@@ -233,24 +233,25 @@ const CarouselPrevious = React.forwardRef<
 });
 CarouselPrevious.displayName = "CarouselPrevious";
 
-const CarouselNext = React.forwardRef<HTMLButtonElement, RegularButtonProps>(
-  ({ className, variant = "outline", size = "sm", ...props }, ref) => {
-    const { scrollNext, canScrollNext, isLooping } = useCarousel();
+const CarouselNext = React.forwardRef<
+  HTMLButtonElement,
+  LegacyRegularButtonProps
+>(({ className, variant = "outline", size = "sm", ...props }, ref) => {
+  const { scrollNext, canScrollNext, isLooping } = useCarousel();
 
-    return (
-      <Button
-        ref={ref}
-        variant={variant}
-        size={size}
-        icon={ChevronRight}
-        className={className}
-        disabled={!isLooping && !canScrollNext}
-        onClick={scrollNext}
-        {...props}
-      />
-    );
-  }
-);
+  return (
+    <Button
+      ref={ref}
+      variant={variant}
+      size={size}
+      icon={ChevronRight}
+      className={className}
+      disabled={!isLooping && !canScrollNext}
+      onClick={scrollNext}
+      {...props}
+    />
+  );
+});
 CarouselNext.displayName = "CarouselNext";
 
 export {
