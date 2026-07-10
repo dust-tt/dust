@@ -4,7 +4,7 @@
 import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { Err, Ok, type Result } from "../result.ts";
+import { Err, Ok, type Result } from "#result.ts";
 import { DbCommandError } from "./common.ts";
 
 export function generateSchemaFileText(
