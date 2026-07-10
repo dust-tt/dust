@@ -2,7 +2,7 @@ import type { PersonalAuthResolutionOutcome } from "@app/components/actions/bloc
 import { PersonalAuthenticationCard } from "@app/components/actions/blocked/PersonalAuthenticationCard";
 import type { SandboxFunctionToolPersonalAuthRequiredEvent } from "@app/lib/actions/mcp_internal_actions/events";
 import { useAuth } from "@app/lib/auth/AuthContext";
-import { useResolveSandboxFunctionAuthentication } from "@app/lib/swr/tool_actions";
+import { useResolveAuthentication } from "@app/lib/swr/tool_actions";
 
 interface SandboxFunctionPersonalAuthCardProps {
   event: SandboxFunctionToolPersonalAuthRequiredEvent;
@@ -15,13 +15,15 @@ export function SandboxFunctionPersonalAuthCard({
 }: SandboxFunctionPersonalAuthCardProps) {
   const { user, workspace } = useAuth();
 
-  const { resolveAuthentication, isResolving } =
-    useResolveSandboxFunctionAuthentication({ owner: workspace });
+  const { resolveAuthentication, isResolving } = useResolveAuthentication({
+    owner: workspace,
+  });
 
   const handleResolve = async (
     outcome: PersonalAuthResolutionOutcome
   ): Promise<boolean> => {
     const result = await resolveAuthentication({
+      contextType: "sandbox_function",
       sandboxFunctionId: event.sandboxFunctionId,
       invocationId: event.invocationId,
       actionId: event.actionId,

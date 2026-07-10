@@ -161,6 +161,7 @@ export function GoogleDriveFileAuthorizationRequired({
 
   const handleSkip = useCallback(async () => {
     const denyRes = await resolveAuthentication({
+      contextType: "agent_loop",
       outcome: "denied",
       actionId: blockedAction.actionId,
       conversationId: blockedAction.conversationId,

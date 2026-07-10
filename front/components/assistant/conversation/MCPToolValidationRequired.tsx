@@ -43,7 +43,10 @@ export function MCPToolValidationRequired({
     setErrorMessage(null);
 
     const result = await validateAction({
-      validationRequest: blockedAction,
+      contextType: "agent_loop",
+      conversationId: blockedAction.conversationId,
+      messageId: blockedAction.messageId,
+      actionId: blockedAction.actionId,
       approved,
     });
 
@@ -66,7 +69,10 @@ export function MCPToolValidationRequired({
 
       for (const cascadeAction of cascadable) {
         const cascadeResult = await validateAction({
-          validationRequest: cascadeAction,
+          contextType: "agent_loop",
+          conversationId: cascadeAction.conversationId,
+          messageId: cascadeAction.messageId,
+          actionId: cascadeAction.actionId,
           approved: "approved",
         });
         if (cascadeResult.success) {
