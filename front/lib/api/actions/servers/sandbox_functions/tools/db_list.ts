@@ -10,18 +10,11 @@ import { Err, Ok } from "@app/types/shared/result";
 
 export function formatDatabasesList(databases: LiveDatabaseEntry[]): string {
   if (databases.length === 0) {
-    return (
-      "No live databases in this pod. A database is created by the first publish of a " +
-      "function that declares it."
-    );
+    return "No live databases in this pod";
   }
 
   const lines = databases.map((db) => `- ${db.name} (${db.sizeBytes} bytes)`);
-  return (
-    `Pod databases:\n${lines.join("\n")}\n\n` +
-    "Use the db_schema tool to see a database's live schema and the db_query tool to run " +
-    "SQL against it."
-  );
+  return lines.join("\n");
 }
 
 export async function dbListHandler(

@@ -1,7 +1,11 @@
 import { randomUUID } from "node:crypto";
 import path from "node:path";
 import { DustFileSystem } from "@app/lib/api/file_system/dust_file_system";
-import { podDatabaseExecEnvVars } from "@app/lib/api/files/mount_path";
+import { SCOPED_PREFIX_POD } from "@app/lib/api/file_system/types";
+import {
+  podDatabaseExecEnvVars,
+  TOOL_OUTPUTS_FOLDER_NAME,
+} from "@app/lib/api/files/mount_path";
 import { getRedisStreamClient } from "@app/lib/api/redis";
 import { ensurePodSandboxReady } from "@app/lib/api/sandbox/lifecycle";
 import { shellEscape } from "@app/lib/api/sandbox/shell";
@@ -9,6 +13,7 @@ import type { SandboxFunctionErrorCode } from "@app/lib/api/sandbox_functions/er
 import { SandboxFunctionError } from "@app/lib/api/sandbox_functions/errors";
 import type { Authenticator } from "@app/lib/auth";
 import { distributedLock, distributedUnlock } from "@app/lib/lock";
+import type { SandboxResource } from "@app/lib/resources/sandbox_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import logger from "@app/logger/logger";
 import tracer from "@app/logger/tracer";
@@ -22,9 +27,9 @@ import type { DbErrorKind } from "../../../../cli/dust-sandbox/functions-runner/
 const DSBX_BIN_PATH = "/opt/bin/dsbx";
 const DB_EXEC_TIMEOUT_MS = 60 * 1000;
 
-// Mirrors the runner envelopes in cli/dust-sandbox/functions-runner/db_reconcile.ts /
-// db_common.ts, plus dsbx's own `{error}` shape (emit_error in
-// cli/dust-sandbox/src/commands/function/mod.rs).
+// The two error envelopes a dsbx db command can print: the runner's typed `{ok:false}`
+// (DbCommandError in cli/dust-sandbox/functions-runner/db/common.ts) and dsbx's own bare
+// `{error}` (emit_error in cli/dust-sandbox/src/commands/function/mod.rs).
 const dbErrorEnvelopeSchema = z.union([
   z.object({
     ok: z.literal(false),
@@ -33,6 +38,102 @@ const dbErrorEnvelopeSchema = z.union([
   z.object({ error: z.string() }),
 ]);
 
+// Runner error kinds the model can fix itself (bad schema, destructive/disallowed DDL, bad SQL,
+// unknown database). Typed by the runner's kind union so a renamed kind fails this typecheck.
+const MODEL_CORRECTABLE_DB_KINDS: ReadonlySet<string> = new Set<DbErrorKind>([
+  "schema_unresolvable",
+  "schema_invalid",
+  "destructive_change",
+  "disallowed_statement",
+  "database_not_found",
+  "query_failed",
+  "empty_sql",
+]);
+
+// `dsbxErrorCode` is the code for dsbx's bare `{error}` envelope: reconcile_blocked where the
+// model supplies the inputs dsbx validates (reconcile takes a model-supplied schema path);
+// internal for list/schema/query, which pre-validate the db name at the tool boundary so only
+// infra failures reach here.
+function dbErrorToSandboxFunctionError(
+  database: string | null,
+  envelope: z.infer<typeof dbErrorEnvelopeSchema>,
+  dsbxErrorCode: SandboxFunctionErrorCode
+): SandboxFunctionError {
+  const prefix = database === null ? "" : `Database "${database}": `;
+  if ("ok" in envelope) {
+    const { kind, message } = envelope.error;
+    // A destructive refusal often just means the schema file lags the live database (a prior
+    // publish applied wider DDL), so it looks like it drops columns it never declared.
+    const driftHint =
+      kind === "destructive_change"
+        ? " If you did not remove anything, the schema file may be behind the live database: " +
+          "declare the missing tables and columns and republish."
+        : "";
+    return new SandboxFunctionError(
+      MODEL_CORRECTABLE_DB_KINDS.has(kind)
+        ? "reconcile_blocked"
+        : "reconcile_failed",
+      `${prefix}${message}${driftHint}`
+    );
+  }
+  return new SandboxFunctionError(dsbxErrorCode, `${prefix}${envelope.error}`);
+}
+
+// Ensure the pod sandbox is up, run a `dsbx db` command as agent-proxied, and parse its one-line
+// JSON envelope. Returns the sandbox too, since `db schema` reads a file back afterwards.
+async function execDbCommand<S extends z.ZodTypeAny>(
+  auth: Authenticator,
+  space: SpaceResource,
+  {
+    command,
+    schema,
+    what,
+    envVars,
+    stdin,
+  }: {
+    command: string;
+    schema: S;
+    what: string;
+    envVars?: Record<string, string>;
+    stdin?: string;
+  }
+): Promise<
+  Result<
+    { sandbox: SandboxResource; envelope: z.infer<S> },
+    SandboxFunctionError
+  >
+> {
+  const ensureResult = await ensurePodSandboxReady(auth, space);
+  if (ensureResult.isErr()) {
+    return new Err(
+      new SandboxFunctionError(
+        "sandbox_unavailable",
+        ensureResult.error.message
+      )
+    );
+  }
+  const { sandbox } = ensureResult.value;
+
+  const execResult = await sandbox.exec(auth, command, {
+    timeoutMs: DB_EXEC_TIMEOUT_MS,
+    envVars: { ...podDatabaseExecEnvVars(), ...envVars },
+    user: "agent-proxied",
+    stdin,
+  });
+  if (execResult.isErr()) {
+    return new Err(
+      new SandboxFunctionError("internal", execResult.error.message)
+    );
+  }
+
+  const envelope = parseDbEnvelope(execResult.value.stdout, schema, what);
+  if (envelope.isErr()) {
+    return envelope;
+  }
+  return new Ok({ sandbox, envelope: envelope.value });
+}
+
+// Success mirrors the reconcile result in cli/dust-sandbox/functions-runner/db/reconcile.ts.
 const reconcileEnvelopeSchema = z.union([
   z.object({
     ok: z.literal(true),
@@ -47,60 +148,10 @@ export interface ReconcileDatabaseResult {
   statements: string[];
 }
 
-// Runner error kinds the model can fix itself (bad schema file, destructive DDL, bad SQL,
-// unknown database) — mapped to `reconcile_blocked` (surfaced verbatim, tracked:false at the
-// MCP boundary). Everything else maps to `reconcile_failed`. The list is typed by the
-// runner's own kind union so a renamed kind fails the typecheck here instead of silently
-// degrading; the set reads plain wire strings.
-const MODEL_CORRECTABLE_DB_KIND_LIST: DbErrorKind[] = [
-  "schema_unresolvable",
-  "schema_invalid",
-  "destructive_change",
-  "disallowed_statement",
-  "database_not_found",
-  "query_failed",
-  "empty_sql",
-];
-const MODEL_CORRECTABLE_DB_KINDS: ReadonlySet<string> = new Set(
-  MODEL_CORRECTABLE_DB_KIND_LIST
-);
-
-function dbErrorToSandboxFunctionError(
-  database: string | null,
-  envelope: z.infer<typeof dbErrorEnvelopeSchema>,
-  // Code for the dsbx-level `{error}` envelope (as opposed to the runner's typed
-  // `{ok: false}`). It is model-correctable only where the model controls the inputs dsbx
-  // validates: reconcile takes a model-supplied schema path, while list/schema/query
-  // pre-validate the database name at the tool boundary, leaving only infrastructure
-  // failures (runner spawn, unreadable databases dir).
-  dsbxErrorCode: SandboxFunctionErrorCode
-): SandboxFunctionError {
-  const prefix = database === null ? "" : `Database "${database}": `;
-  if ("ok" in envelope) {
-    const { kind, message } = envelope.error;
-    // A destructive refusal can also mean the schema file is behind the live database
-    // (another function's publish or a previously failed one already applied wider DDL): the
-    // file then looks like it drops columns it simply never declared. Spell out the recovery.
-    const driftHint =
-      kind === "destructive_change"
-        ? " If you did not remove anything, this schema file may be behind the live " +
-          "database: declare the missing tables and columns and republish."
-        : "";
-    return new SandboxFunctionError(
-      MODEL_CORRECTABLE_DB_KINDS.has(kind)
-        ? "reconcile_blocked"
-        : "reconcile_failed",
-      `${prefix}${message}${driftHint}`
-    );
-  }
-  return new SandboxFunctionError(dsbxErrorCode, `${prefix}${envelope.error}`);
-}
-
 /**
- * Run `dsbx db reconcile <name> <schema-file>` on the pod sandbox: plan the DDL for the
- * database's drizzle schema file, apply it when strictly additive, refuse anything destructive
- * with a typed error. Runs as `agent-proxied` (the schema file is model-written code that gets
- * imported).
+ * `dsbx db reconcile <name> <schema-file>`: plan the DDL for the database's drizzle schema file,
+ * apply it when strictly additive, refuse anything destructive. Runs as `agent-proxied` (the
+ * schema file is model-written code that gets imported).
  */
 export async function reconcileDatabaseOnSandbox(
   auth: Authenticator,
@@ -114,75 +165,49 @@ export async function reconcileDatabaseOnSandbox(
     schemaFileSandboxPath: string;
   }
 ): Promise<Result<ReconcileDatabaseResult, SandboxFunctionError>> {
-  const ensureResult = await ensurePodSandboxReady(auth, space);
-  if (ensureResult.isErr()) {
-    return new Err(
-      new SandboxFunctionError(
-        "sandbox_unavailable",
-        ensureResult.error.message
-      )
-    );
-  }
-  const { sandbox } = ensureResult.value;
-
-  const command = [
-    "set -euo pipefail",
-    // `--` stops the model-influenced database name and schema path from being read as flags.
-    `${DSBX_BIN_PATH} db reconcile -- ${shellEscape(database)} ${shellEscape(schemaFileSandboxPath)}`,
-  ].join("\n");
-
-  const execResult = await sandbox.exec(auth, command, {
-    timeoutMs: DB_EXEC_TIMEOUT_MS,
-    envVars: podDatabaseExecEnvVars(),
-    user: "agent-proxied",
+  const result = await execDbCommand(auth, space, {
+    // `--` stops the model-influenced name and path from being read as flags.
+    command: `set -euo pipefail\n${DSBX_BIN_PATH} db reconcile -- ${shellEscape(database)} ${shellEscape(schemaFileSandboxPath)}`,
+    schema: reconcileEnvelopeSchema,
+    what: `dsbx db reconcile ${database}`,
   });
-  if (execResult.isErr()) {
-    return new Err(
-      new SandboxFunctionError("internal", execResult.error.message)
-    );
+  if (result.isErr()) {
+    return result;
   }
+  const { envelope } = result.value;
 
-  const envelope = parseDbEnvelope(
-    execResult.value.stdout,
-    reconcileEnvelopeSchema,
-    `dsbx db reconcile ${database}`
-  );
-  if (envelope.isErr()) {
-    return envelope;
-  }
-  const parsed = envelope.value;
-
-  if ("ok" in parsed && parsed.ok === true) {
-    // The applied DDL mutated a live pod database: leave a trace.
-    if (parsed.statements.length > 0) {
+  if ("ok" in envelope && envelope.ok) {
+    if (envelope.statements.length > 0) {
       logger.info(
         {
           workspaceId: auth.getNonNullableWorkspace().sId,
           podId: space.sId,
           database,
-          created: parsed.created,
-          statements: parsed.statements,
+          created: envelope.created,
+          statements: envelope.statements,
         },
         "Pod database reconciled: applied DDL"
       );
     }
-    return new Ok({ created: parsed.created, statements: parsed.statements });
+    return new Ok({
+      created: envelope.created,
+      statements: envelope.statements,
+    });
   }
 
-  // dsbx-level `{error}` here means a bad database name or missing schema file, both
-  // model-supplied on this path.
+  // A bare `{error}` here is a bad database name or missing schema file, both model-supplied.
   return new Err(
-    dbErrorToSandboxFunctionError(database, parsed, "reconcile_blocked")
+    dbErrorToSandboxFunctionError(database, envelope, "reconcile_blocked")
   );
 }
 
 const RECONCILE_LOCK_ACQUIRE_TIMEOUT_MS = 30_000;
 
 /**
- * Resolve a model-supplied scoped schema-file path (e.g. `pod-{id}/databases/chat.db.ts`) to
- * its in-sandbox path and reconcile the database against it. This is the ONLY path that
- * applies schema changes to a live database (publish validates but never applies); concurrent
- * reconciles of one pod are serialized under a per-pod lock.
+ * Resolve a model-supplied scoped schema-file path (e.g. `pod-{id}/databases/chat.db.ts`) to its
+ * in-sandbox path and reconcile against it. The only path that applies schema changes to a live
+ * database (publish validates but never applies); concurrent reconciles of one pod are serialized
+ * under a per-pod lock.
  */
 export async function reconcileDatabaseFromPodPath(
   auth: Authenticator,
@@ -204,9 +229,9 @@ export async function reconcileDatabaseFromPodPath(
       new SandboxFunctionError("invalid_path", resolved.error.message)
     );
   }
-  // Serialize concurrent reconciles of one pod under a per-pod Redis lock. We acquire it
-  // directly (rather than via executeWithLock) so that failing to acquire within the timeout
-  // surfaces as a retryable publish_conflict Result instead of a thrown error.
+
+  // Acquire the per-pod lock directly (not via executeWithLock) so a timeout surfaces as a
+  // retryable publish_conflict Result instead of a thrown error.
   const client = await getRedisStreamClient({ origin: "lock" });
   const lockName = `sandbox_function:db_reconcile:${space.sId}`;
   const lockValue = await tracer.trace(
@@ -243,7 +268,7 @@ export async function reconcileDatabaseFromPodPath(
   }
 }
 
-// Mirrors the `dsbx db list` envelope in cli/dust-sandbox/src/commands/db/list.rs.
+// Success mirrors the `dsbx db list` envelope in cli/dust-sandbox/src/commands/db/list.rs.
 const listEnvelopeSchema = z.union([
   z.object({
     ok: z.literal(true),
@@ -257,119 +282,70 @@ export interface LiveDatabaseEntry {
   sizeBytes: number;
 }
 
-/**
- * Run `dsbx db list` on the pod sandbox: enumerate the live `{db}.db` files with their sizes
- * (WAL included).
- */
+/** `dsbx db list`: enumerate the live `{db}.db` files with their sizes (WAL included). */
 export async function listDatabasesOnSandbox(
   auth: Authenticator,
   { space }: { space: SpaceResource }
 ): Promise<Result<LiveDatabaseEntry[], SandboxFunctionError>> {
-  const ensureResult = await ensurePodSandboxReady(auth, space);
-  if (ensureResult.isErr()) {
-    return new Err(
-      new SandboxFunctionError(
-        "sandbox_unavailable",
-        ensureResult.error.message
-      )
-    );
-  }
-  const { sandbox } = ensureResult.value;
-
-  const execResult = await sandbox.exec(auth, `${DSBX_BIN_PATH} db list`, {
-    timeoutMs: DB_EXEC_TIMEOUT_MS,
-    envVars: podDatabaseExecEnvVars(),
-    user: "agent-proxied",
+  const result = await execDbCommand(auth, space, {
+    command: `${DSBX_BIN_PATH} db list`,
+    schema: listEnvelopeSchema,
+    what: "dsbx db list",
   });
-  if (execResult.isErr()) {
-    return new Err(
-      new SandboxFunctionError("internal", execResult.error.message)
-    );
+  if (result.isErr()) {
+    return result;
   }
-
-  const envelope = parseDbEnvelope(
-    execResult.value.stdout,
-    listEnvelopeSchema,
-    "dsbx db list"
-  );
-  if (envelope.isErr()) {
-    return envelope;
-  }
-  const parsed = envelope.value;
-  if ("ok" in parsed && parsed.ok === true) {
+  const { envelope } = result.value;
+  if ("ok" in envelope && envelope.ok) {
     return new Ok(
-      parsed.databases.map((db) => ({
+      envelope.databases.map((db) => ({
         name: db.name,
         sizeBytes: db.size_bytes,
       }))
     );
   }
-  return new Err(dbErrorToSandboxFunctionError(null, parsed, "internal"));
+  return new Err(dbErrorToSandboxFunctionError(null, envelope, "internal"));
 }
 
-// `dsbx db schema` follows the file-output pattern (the regenerated file is the payload,
-// stdout only carries the envelope), so success is a bare `{ok}`.
+// `dsbx db schema` writes the regenerated file and prints only `{ok}`.
 const schemaEnvelopeSchema = z.union([
   z.object({ ok: z.literal(true) }),
   dbErrorEnvelopeSchema,
 ]);
 
-// Non-mounted scratch root for regenerated schema files, like BUILD_STAGING_ROOT in
-// build_on_sandbox.ts.
+// Non-mounted scratch root for regenerated schema files (cf. BUILD_STAGING_ROOT).
 const DB_SCHEMA_STAGING_ROOT = "/tmp/dust-sandbox-db-schemas";
 
 /**
- * Run `dsbx db schema` on the pod sandbox: regenerate a drizzle schema file from the live
- * database and read its text back. Column modes are not stored in SQLite, so the text carries
- * storage types only — the authored databases/{db}.db.ts stays the source of truth.
+ * `dsbx db schema`: regenerate a drizzle schema file from the live database and read its text
+ * back. SQLite does not store column modes, so the text carries storage types only — the authored
+ * databases/{db}.db.ts stays the source of truth.
  */
 export async function getDatabaseSchemaOnSandbox(
   auth: Authenticator,
   { space, database }: { space: SpaceResource; database: string }
 ): Promise<Result<string, SandboxFunctionError>> {
-  const ensureResult = await ensurePodSandboxReady(auth, space);
-  if (ensureResult.isErr()) {
-    return new Err(
-      new SandboxFunctionError(
-        "sandbox_unavailable",
-        ensureResult.error.message
-      )
-    );
-  }
-  const { sandbox } = ensureResult.value;
-
   const outDir = path.posix.join(DB_SCHEMA_STAGING_ROOT, randomUUID());
   const outPath = path.posix.join(outDir, `${database}.db.ts`);
-  const command = [
-    "set -euo pipefail",
-    `rm -rf -- ${shellEscape(outDir)}`,
-    `mkdir -p -- ${shellEscape(outDir)}`,
-    // `--` stops the model-influenced database name from being read as a flag.
-    `${DSBX_BIN_PATH} db schema -- ${shellEscape(database)} ${shellEscape(outPath)}`,
-  ].join("\n");
-
-  const execResult = await sandbox.exec(auth, command, {
-    timeoutMs: DB_EXEC_TIMEOUT_MS,
-    envVars: podDatabaseExecEnvVars(),
-    user: "agent-proxied",
+  const result = await execDbCommand(auth, space, {
+    command: [
+      "set -euo pipefail",
+      `rm -rf -- ${shellEscape(outDir)}`,
+      `mkdir -p -- ${shellEscape(outDir)}`,
+      // `--` stops the model-influenced database name from being read as a flag.
+      `${DSBX_BIN_PATH} db schema -- ${shellEscape(database)} ${shellEscape(outPath)}`,
+    ].join("\n"),
+    schema: schemaEnvelopeSchema,
+    what: `dsbx db schema ${database}`,
   });
-  if (execResult.isErr()) {
+  if (result.isErr()) {
+    return result;
+  }
+  const { sandbox, envelope } = result.value;
+  if (!("ok" in envelope) || !envelope.ok) {
     return new Err(
-      new SandboxFunctionError("internal", execResult.error.message)
+      dbErrorToSandboxFunctionError(database, envelope, "internal")
     );
-  }
-
-  const envelope = parseDbEnvelope(
-    execResult.value.stdout,
-    schemaEnvelopeSchema,
-    `dsbx db schema ${database}`
-  );
-  if (envelope.isErr()) {
-    return envelope;
-  }
-  const parsed = envelope.value;
-  if (!("ok" in parsed) || parsed.ok !== true) {
-    return new Err(dbErrorToSandboxFunctionError(database, parsed, "internal"));
   }
 
   const fileResult = await sandbox.readFile(auth, outPath);
@@ -381,7 +357,7 @@ export async function getDatabaseSchemaOnSandbox(
   return new Ok(fileResult.value.toString("utf8"));
 }
 
-// Mirrors QuerySuccess in cli/dust-sandbox/functions-runner/db_query.ts.
+// Success mirrors QueryOutcome in cli/dust-sandbox/functions-runner/db/query.ts.
 const queryEnvelopeSchema = z.union([
   z.object({
     ok: z.literal(true),
@@ -399,19 +375,18 @@ export interface QueryDatabaseResult {
   columns: string[];
   rows: Record<string, unknown>[];
   rowCount: number;
-  // Rows affected, for statements that return no columns (plain INSERT/UPDATE/DELETE);
-  // null for result-returning statements.
+  // Rows affected for statements that return no columns (plain INSERT/UPDATE/DELETE); null for
+  // result-returning statements.
   changes: number | null;
-  // Set when the result crossed the runner's inline bounds: `rows` is then a preview and the
-  // complete result set is at this sandbox path, one JSON object per line.
+  // Set when the result crossed the runner's inline bounds: `rows` is then a preview and the full
+  // result set is at this sandbox path, one JSON object per line.
   resultsFile: string | null;
   note: string | null;
 }
 
 /**
- * Run `dsbx db query` on the pod sandbox: execute one SQL statement (stdin) against a live
- * database. The runner allows SELECT and DML but refuses DDL/PRAGMA/ATTACH, so the schema
- * only evolves through reconcile.
+ * `dsbx db query`: execute one SQL statement (stdin) against a live database. The runner allows
+ * SELECT and DML but refuses DDL/PRAGMA/ATTACH, so the schema only evolves through reconcile.
  */
 export async function queryDatabaseOnSandbox(
   auth: Authenticator,
@@ -421,63 +396,41 @@ export async function queryDatabaseOnSandbox(
     sql,
   }: { space: SpaceResource; database: string; sql: string }
 ): Promise<Result<QueryDatabaseResult, SandboxFunctionError>> {
-  const ensureResult = await ensurePodSandboxReady(auth, space);
-  if (ensureResult.isErr()) {
-    return new Err(
-      new SandboxFunctionError(
-        "sandbox_unavailable",
-        ensureResult.error.message
-      )
-    );
-  }
-  const { sandbox } = ensureResult.value;
-
-  const command = [
-    "set -euo pipefail",
+  const result = await execDbCommand(auth, space, {
     // `--` stops the model-influenced database name from being read as a flag.
-    `${DSBX_BIN_PATH} db query -- ${shellEscape(database)}`,
-  ].join("\n");
-
-  const execResult = await sandbox.exec(auth, command, {
-    timeoutMs: DB_EXEC_TIMEOUT_MS,
-    envVars: podDatabaseExecEnvVars(),
-    user: "agent-proxied",
+    command: `set -euo pipefail\n${DSBX_BIN_PATH} db query -- ${shellEscape(database)}`,
+    schema: queryEnvelopeSchema,
+    what: `dsbx db query ${database}`,
+    // Oversized results spill into this pod-files dir (writable by agent-proxied), so the full
+    // set becomes a pod file. Mirrors the pod mount in dust_file_system.ts. The var name must
+    // match POD_QUERY_SPILL_DIR_ENV in cli/dust-sandbox/src/commands/db/query.rs.
+    envVars: {
+      DUST_POD_QUERY_SPILL_DIR: `/files/${SCOPED_PREFIX_POD}${space.sId}/${TOOL_OUTPUTS_FOLDER_NAME}/db`,
+    },
     stdin: sql,
   });
-  if (execResult.isErr()) {
-    return new Err(
-      new SandboxFunctionError("internal", execResult.error.message)
-    );
+  if (result.isErr()) {
+    return result;
   }
-
-  const envelope = parseDbEnvelope(
-    execResult.value.stdout,
-    queryEnvelopeSchema,
-    `dsbx db query ${database}`
-  );
-  if (envelope.isErr()) {
-    return envelope;
-  }
-  const parsed = envelope.value;
-  if ("ok" in parsed && parsed.ok === true) {
+  const { envelope } = result.value;
+  if ("ok" in envelope && envelope.ok) {
     return new Ok({
-      columns: parsed.columns,
-      rows: parsed.rows,
-      rowCount: parsed.row_count,
-      changes: parsed.changes,
-      resultsFile: parsed.results_file,
-      note: parsed.note,
+      columns: envelope.columns,
+      rows: envelope.rows,
+      rowCount: envelope.row_count,
+      changes: envelope.changes,
+      resultsFile: envelope.results_file,
+      note: envelope.note,
     });
   }
-  return new Err(dbErrorToSandboxFunctionError(database, parsed, "internal"));
+  return new Err(dbErrorToSandboxFunctionError(database, envelope, "internal"));
 }
 
 /**
  * Parse the one-line JSON envelope a dsbx command prints as its last non-empty stdout line
- * (sandbox stdout can carry shell noise and be truncated; files carry big payloads). Shared
- * with `dsbx function build` (build_on_sandbox.ts).
+ * (sandbox stdout can carry shell noise and be truncated; big payloads go to files).
  */
-export function parseDbEnvelope<S extends z.ZodTypeAny>(
+function parseDbEnvelope<S extends z.ZodTypeAny>(
   stdout: string,
   schema: S,
   what: string

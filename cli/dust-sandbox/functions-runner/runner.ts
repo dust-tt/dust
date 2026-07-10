@@ -5,9 +5,9 @@
 //   runner build <src> <outBundle> <outSchema>   bundle + extract schema to files
 //   runner db-reconcile <dbPath> <schemaFile>    additive-only DDL reconcile -> stdout envelope
 //   runner db-schema <dbPath> <outSchemaTs>      regenerate drizzle schema file -> file + envelope
-//   runner db-query <dbPath>                     stdin SQL -> stdout rows envelope (SELECT/DML
-//                                                only, DDL refused; large results spill to a file
-//                                                the envelope names)
+//   runner db-query <dbPath> [spillDir]          stdin SQL -> stdout rows envelope (SELECT/DML,
+//                                                DDL refused; a large result spills to a file
+//                                                under spillDir that the envelope names)
 
 import { build } from "./build.ts";
 import { errorEnvelope, podDatabaseMaxSizeBytes } from "./db/common.ts";
@@ -110,9 +110,13 @@ async function dbSchemaHandler(args: string[]): Promise<number> {
 }
 
 async function dbQueryHandler(args: string[]): Promise<number> {
-  const [dbPath] = args;
+  // spillDir is where an oversized result is written as a pod file; Rust passes the pod-files
+  // dir. Absent (a bare dbPath), runQuery falls back to a temp dir.
+  const [dbPath, spillDir] = args;
   if (!dbPath) {
-    return emitDbBadArgs("usage: runner db-query <dbPath> (SQL on stdin)");
+    return emitDbBadArgs(
+      "usage: runner db-query <dbPath> [spillDir] (SQL on stdin)"
+    );
   }
   const maxSizeBytes = podDatabaseMaxSizeBytes();
   if (maxSizeBytes.isErr()) {
@@ -122,7 +126,7 @@ async function dbQueryHandler(args: string[]): Promise<number> {
     return 1;
   }
   const sql = await Bun.stdin.text();
-  const result = runQuery(dbPath, sql, maxSizeBytes.value);
+  const result = runQuery(dbPath, sql, maxSizeBytes.value, spillDir);
   if (result.isErr()) {
     process.stdout.write(`${JSON.stringify(errorEnvelope(result.error))}\n`);
     return 1;
