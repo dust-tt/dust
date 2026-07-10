@@ -1,22 +1,16 @@
-import { tryCallMCPTool } from "@app/lib/actions/mcp_actions";
-import {
-  processToolNotification,
-  processToolResults,
-} from "@app/lib/actions/mcp_execution";
+import { isToolExecutionStatusFinal } from "@app/lib/actions/statuses";
 import type { SandboxFunctionRunContext } from "@app/lib/actions/types";
+import { runToolWithStreaming } from "@app/lib/api/mcp/run_tool";
 import type { AuthenticatorType } from "@app/lib/auth";
 import { Authenticator } from "@app/lib/auth";
 import { SandboxFunctionMCPActionResource } from "@app/lib/resources/sandbox_function_mcp_action_resource";
 import { SandboxFunctionResource } from "@app/lib/resources/sandbox_function_resource";
-import {
-  drainAsyncGenerator,
-  withPeriodicHeartbeat,
-} from "@app/lib/utils/async_utils";
+import { getShutdownSignal } from "@app/lib/shutdown_signal";
+import { drainAsyncGenerator } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
-import { TOOL_RESULT_PROCESSING_HEARTBEAT_INTERVAL_MS } from "@app/temporal/agent_loop/config";
 import type { ModelId } from "@app/types/shared/model_id";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
-import { heartbeat } from "@temporalio/activity";
+import { Context } from "@temporalio/activity";
 
 export async function runSandboxFunctionToolActivity(
   authType: AuthenticatorType,
@@ -64,68 +58,48 @@ export async function runSandboxFunctionToolActivity(
 
   const startTimeMs = performance.now();
 
-  // `processToolNotification` persists `store_resource` progress output on the action. The event
-  // it returns has no stream to reach yet (there is no invocation event stream), so we drain the
-  // generator for the tool result (its return value) and discard the events.
+  // `runToolWithStreaming` executes the tool and persists the output. Its events are drained:
+  // there is no invocation event stream to forward them to yet.
   // TODO(2026-07-08 SANDBOX_FUNCTIONS): forward these events to the invocation event stream once
   // it exists (e.g. viz progress).
-  const toolCallResult = await drainAsyncGenerator(
-    tryCallMCPTool(
-      auth,
-      action.inputs,
-      { runContext },
-      {
-        progressToken: action.id,
-        makeToolNotificationEvent: async (notification) => {
-          const { event } = await processToolNotification(auth, notification, {
-            toolContext: { runContext },
-          });
-          return event;
-        },
-      }
-    )
-  );
+  const abortSignal = AbortSignal.any([
+    Context.current().cancellationSignal,
+    getShutdownSignal(),
+  ]);
 
-  // Persist the output through the same result processing as the agent loop: the full content
-  // array goes to the action's single GCS output object. Error content is persisted too, the
-  // poll endpoint returns it alongside the errored status. Processing can take minutes when
-  // handling files, so heartbeat while it runs.
   try {
-    await withPeriodicHeartbeat(
-      () =>
-        processToolResults(auth, {
-          localLogger,
-          toolCallResultContent: toolCallResult.content,
-          toolContext: { runContext },
-        }),
-      {
-        intervalMs: TOOL_RESULT_PROCESSING_HEARTBEAT_INTERVAL_MS,
-        heartbeatFn: () => {
-          heartbeat();
-          localLogger.info("MCP tool result processing heartbeat");
-        },
-      }
+    await drainAsyncGenerator(
+      runToolWithStreaming(
+        auth,
+        { toolContext: { runContext } },
+        { signal: abortSignal }
+      )
     );
+
+    // Pause resources make the run yield events and return without a terminal status. There is
+    // no pause surface for function invocations yet, so fail closed to errored rather than leave
+    // the action `running` with the poll hanging until token expiry. The pause resource is
+    // persisted in the output, so the function sees what the tool needs (e.g. which provider to
+    // authenticate) and handles it on its side. Approval bubbling replaces this with
+    // `blocked_validation_required` plus an invocation stream event.
+    if (!isToolExecutionStatusFinal(action.status)) {
+      await action.markAsErrored({
+        executionDurationMs: performance.now() - startTimeMs,
+      });
+    }
   } catch (err) {
-    // `processToolResults` throws when output cannot be persisted (no acceptable degraded
-    // state). The agent loop lets that abort the step; here there is no step to abort, so catch
-    // it and mark the action errored, otherwise it would stay `running` and the poll never
-    // reaches a terminal status.
+    // The run throws when output cannot be persisted, and for `retry_on_interrupt` tools on
+    // worker shutdown (a throw meant to trigger a Temporal retry that this workflow never grants,
+    // maximumAttempts is 1). In both cases mark the action errored: a failed activity would leave
+    // it `running` with the poll hanging until token expiry, and the calling frame is the retry
+    // layer for functions. TODO(2026-07-09 SANDBOX_FUNCTIONS): honor retry_on_interrupt with a
+    // retryable proxy dispatched on the action's retryPolicy, like the agent loop workflow.
     localLogger.error(
       { err: normalizeError(err) },
-      "Failed to persist sandbox function tool output, marking action as errored"
+      "Failed to run sandbox function tool, marking action as errored"
     );
     await action.markAsErrored({
-      executionDurationMs: Math.round(performance.now() - startTimeMs),
+      executionDurationMs: performance.now() - startTimeMs,
     });
-    return;
-  }
-
-  const executionDurationMs = Math.round(performance.now() - startTimeMs);
-
-  if (toolCallResult.isError) {
-    await action.markAsErrored({ executionDurationMs });
-  } else {
-    await action.markAsSucceeded({ executionDurationMs });
   }
 }
