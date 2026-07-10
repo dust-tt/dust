@@ -1687,7 +1687,7 @@ const InputBarContainer = ({
             </div>
           </div>
           <div
-            className={cn("absolute bottom-2 right-2 flex items-center gap-2")}
+            className="absolute bottom-2 right-2 flex items-center gap-1.5"
           >
             {clientType === "extension" && (
               <>
@@ -1797,7 +1797,7 @@ const InputBarContainer = ({
                 )}
               </>
             )}
-            <div className="flex items-center">
+            <div className="flex items-center gap-1">
               {conversation && (
                 <ContextUsageIndicator
                   buttonSize={buttonSize}
