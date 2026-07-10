@@ -67,8 +67,8 @@ export type ServerSideMCPToolType = Omit<
   toolServerId: string;
   timeoutMs?: number;
   retryPolicy: MCPToolRetryPolicyType;
-  // For "medium" stake tools: defines which arguments require per-agent approval.
-  // When present, the user must approve the specific (agent, tool, argument values) combination.
+  // For "medium" stake tools: defines which argument values scope the approval.
+  // The user must approve each specific combination of values.
   argumentsRequiringApproval?: string[];
   displayLabels?: ToolDisplayLabels;
   // When true, the tool is loaded upfront in the cached tools prefix instead of
@@ -85,8 +85,8 @@ export type ClientSideMCPToolType = Omit<
   toolServerId: string;
   type: "mcp_configuration";
   timeoutMs?: number;
-  // For "medium" stake tools: defines which arguments require per-agent approval.
-  // When present, the user must approve the specific (agent, tool, argument values) combination.
+  // For "medium" stake tools: defines which argument values scope the approval.
+  // The user must approve each specific combination of values.
   argumentsRequiringApproval?: string[];
   displayLabels?: ToolDisplayLabels;
   // When true, the tool is loaded upfront in the cached tools prefix instead of

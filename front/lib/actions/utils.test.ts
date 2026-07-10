@@ -40,7 +40,6 @@ describe("Tool validation utilities", () => {
       const hasApproval = await user.hasApprovedTool(auth, {
         mcpServerId,
         toolName: functionCallName,
-        agentId: null,
         argsAndValues: null,
       });
       expect(hasApproval).toBe(true);
@@ -65,13 +64,11 @@ describe("Tool validation utilities", () => {
       const hasTool1 = await user.hasApprovedTool(auth, {
         mcpServerId,
         toolName: functionCallName1,
-        agentId: null,
         argsAndValues: null,
       });
       const hasTool2 = await user.hasApprovedTool(auth, {
         mcpServerId,
         toolName: functionCallName2,
-        agentId: null,
         argsAndValues: null,
       });
       expect(hasTool1).toBe(true);
@@ -96,7 +93,6 @@ describe("Tool validation utilities", () => {
       const hasApproval = await user.hasApprovedTool(auth, {
         mcpServerId,
         toolName: functionCallName,
-        agentId: null,
         argsAndValues: null,
       });
       expect(hasApproval).toBe(true);
@@ -114,7 +110,6 @@ describe("Tool validation utilities", () => {
       const hasApproval = await user.hasApprovedTool(auth, {
         mcpServerId,
         toolName: functionCallName,
-        agentId: null,
         argsAndValues: null,
       });
       expect(hasApproval).toBe(true);

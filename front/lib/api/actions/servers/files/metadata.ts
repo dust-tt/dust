@@ -339,7 +339,7 @@ const FILES_TOOLS_COMMON_METADATA = {
           `Scoped file path as returned by \`${getPrefixedToolName(FILES_SERVER_NAME, FILES_LIST_ACTION_NAME)}\` (e.g. \`conversation-<id>/output.json\`)`
         ),
     },
-    stake: "medium" as const,
+    stake: "low" as const,
     displayLabels: {
       running: "Deleting file",
       done: "Deleted file",

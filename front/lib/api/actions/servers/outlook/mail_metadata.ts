@@ -405,7 +405,7 @@ export const OUTLOOK_TOOLS_METADATA = createToolsRecord({
             "Note: the shared mailbox address must be known in advance — there is no API to auto-discover it."
         ),
     },
-    stake: "medium",
+    stake: "low",
     displayLabels: {
       running: "Moving messages",
       done: "Move messages",

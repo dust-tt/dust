@@ -205,7 +205,7 @@ export const GMAIL_TOOLS_METADATA = createToolsRecord({
         .optional()
         .describe("Label IDs to remove."),
     },
-    stake: "medium",
+    stake: "low",
     displayLabels: {
       running: "Modifying Gmail message labels",
       done: "Modify Gmail message labels",

@@ -242,7 +242,7 @@ export const MICROSOFT_DRIVE_TOOLS_METADATA = createToolsRecord({
         ),
       name: z.string().describe("The new name for the file or folder."),
     },
-    stake: "medium",
+    stake: "low",
     displayLabels: {
       running: "Renaming OneDrive/SharePoint item",
       done: "Rename OneDrive/SharePoint item",

@@ -585,7 +585,6 @@ async function migrateInternalMCPServerIdReferences(
         userId: approval.userId,
         mcpServerId: canonicalSId,
         toolName: approval.toolName,
-        agentId: approval.agentId,
         argsAndValuesMd5: approval.argsAndValuesMd5,
       },
     });

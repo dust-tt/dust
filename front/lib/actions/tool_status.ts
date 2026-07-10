@@ -5,7 +5,6 @@ import { assertNever } from "@app/types/shared/utils/assert_never";
 import { isNumberOrBoolean, isString } from "@app/types/shared/utils/general";
 
 export interface ToolInputContext {
-  agentId: string;
   toolInputs: Record<string, unknown>;
 }
 
@@ -38,7 +37,7 @@ export async function getExecutionStatusFromConfig(
   // Permissions:
   // - "never_ask": Automatically approved
   // - "low": Ask user for approval and allow to automatically approve next time
-  // - "medium": Ask user for approval per (agent, argument values) combination
+  // - "medium": Ask user for approval per argument-values combination
   // - "high": Ask for approval each time
   // - undefined: Use default permission ("never_ask" for default tools, "high" for other tools)
   switch (actionConfiguration.permission) {
@@ -60,13 +59,13 @@ export async function getExecutionStatusFromConfig(
       return { status: "blocked_validation_required" };
     }
     case "medium": {
-      // Medium stake requires per-argument, per-agent approval.
+      // Medium stake requires per-argument approval.
       // If context is missing, we block.
       const user = auth.user();
       if (!user || !context) {
         return { status: "blocked_validation_required" };
       }
-      const { agentId, toolInputs } = context;
+      const { toolInputs } = context;
       const argumentsRequiringApproval =
         actionConfiguration.argumentsRequiringApproval ?? [];
       const argsAndValues = extractArgRequiringApprovalValues(
@@ -77,7 +76,6 @@ export async function getExecutionStatusFromConfig(
       const userHasApproved = await user.hasApprovedTool(auth, {
         mcpServerId: actionConfiguration.toolServerId,
         toolName: actionConfiguration.name,
-        agentId,
         argsAndValues,
       });
 
@@ -117,7 +115,6 @@ export async function setUserAlwaysApprovedTool(
   await user.createToolApproval(auth, {
     mcpServerId,
     toolName: functionCallName,
-    agentId: null,
     argsAndValues: null,
   });
 }
@@ -145,7 +142,6 @@ export async function hasUserAlwaysApprovedTool(
   return user.hasApprovedTool(auth, {
     mcpServerId,
     toolName: functionCallName,
-    agentId: null,
     argsAndValues: null,
   });
 }

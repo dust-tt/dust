@@ -1511,7 +1511,7 @@ describe("validateAction", () => {
     }
 
     it("records medium-stake approvals under the tool configuration name, not the function-call name", async () => {
-      const { agentConfig, agentMessageId, agentMessageMessage } =
+      const { agentMessageId, agentMessageMessage } =
         await createAgentMessageChain();
 
       // Sandbox child actions share their parent's step content, so the
@@ -1543,7 +1543,6 @@ describe("validateAction", () => {
         await user.hasApprovedTool(auth, {
           mcpServerId: "test-server",
           toolName: "salesforce__update_object",
-          agentId: agentConfig.sId,
           argsAndValues: { objectName: "Contact" },
         })
       ).toBe(true);
@@ -1551,7 +1550,6 @@ describe("validateAction", () => {
         await user.hasApprovedTool(auth, {
           mcpServerId: "test-server",
           toolName: "sandbox__bash",
-          agentId: agentConfig.sId,
           argsAndValues: { objectName: "Contact" },
         })
       ).toBe(false);

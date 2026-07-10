@@ -1260,9 +1260,8 @@ type InternalMCPServerEntryCommon = {
   isRestricted: IsRestrictedCallback | undefined;
   isPreview: boolean;
   runtimeToolStakeLevelCallback?: RuntimeToolStakeLevelCallback;
-  // Defines which arguments require per-agent approval for "medium" stake tools.
-  // When a tool has "medium" stake, the user must approve the specific combination
-  // of (agent, tool, argument values) before the tool can execute.
+  // Defines which argument values scope approval for "medium" stake tools.
+  // The user must approve each specific combination before the tool can execute.
   tools_arguments_requiring_approval: Record<string, string[]> | undefined;
   tools_retry_policies: Record<string, MCPToolRetryPolicyType> | undefined;
   timeoutMs: number | undefined;
@@ -1476,6 +1475,15 @@ export function getInternalMCPServerToolStakes(
   const server: InternalMCPServerEntry = INTERNAL_MCP_SERVERS[name];
 
   return server.metadata.tools_stakes;
+}
+
+export function getInternalMCPServerToolArgumentsRequiringApproval(
+  name: InternalMCPServerNameType,
+  toolName: string
+): string[] | undefined {
+  const server: InternalMCPServerEntry = INTERNAL_MCP_SERVERS[name];
+
+  return server.tools_arguments_requiring_approval?.[toolName];
 }
 
 export function resolveInternalMCPServerToolStakeLevel(

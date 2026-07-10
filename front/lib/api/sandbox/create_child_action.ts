@@ -182,7 +182,6 @@ export async function createSandboxChildAction(
     actionConfiguration: fullToolConfiguration,
     skipToolsValidation: agentMessage.skipToolsValidation,
     context: {
-      agentId: agentConfiguration.sId,
       toolInputs: rawInputs,
     },
   });
