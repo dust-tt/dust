@@ -324,11 +324,7 @@ export const SlashCommandDropdown = forwardRef<
                   truncateText
                   endComponent={<DropdownMenuShortcut shortcut="Esc" />}
                   onClick={() => selectEntry(0)}
-                  onPointerMove={(event) => {
-                    event.preventDefault();
-                    setSelectedIndex(0);
-                  }}
-                  onPointerLeave={(event) => event.preventDefault()}
+                  onFocus={() => setSelectedIndex(0)}
                   className={cn(
                     "text-muted-foreground [&_span]:text-xs",
                     selectedIndex === 0 &&
@@ -368,11 +364,7 @@ export const SlashCommandDropdown = forwardRef<
                           ) : undefined
                         }
                         onClick={() => selectEntry(index)}
-                        onPointerMove={(e) => {
-                          e.preventDefault();
-                          setSelectedIndex(index);
-                        }}
-                        onPointerLeave={(e) => e.preventDefault()}
+                        onFocus={() => setSelectedIndex(index)}
                         className={cn(
                           "group",
                           index === selectedIndex &&
@@ -460,11 +452,7 @@ export const SlashCommandDropdown = forwardRef<
                         ) : undefined
                       }
                       onClick={() => selectEntry(entryIndex)}
-                      onPointerMove={(e) => {
-                        e.preventDefault();
-                        setSelectedIndex(entryIndex);
-                      }}
-                      onPointerLeave={(e) => e.preventDefault()}
+                      onFocus={() => setSelectedIndex(entryIndex)}
                       className={cn(
                         "group",
                         entryIndex === selectedIndex &&
