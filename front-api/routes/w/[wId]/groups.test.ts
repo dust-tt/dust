@@ -24,6 +24,10 @@ function postGroup(workspace: { sId: string }, body: Record<string, unknown>) {
   });
 }
 
+function getGroup(workspace: { sId: string }, groupId: string) {
+  return honoApp.request(`/api/w/${workspace.sId}/groups/${groupId}`);
+}
+
 describe("GET /api/w/:wId/groups", () => {
   it("returns groups with correct member counts", async () => {
     const { workspace, user, auth } = await createPrivateApiMockRequest({
@@ -277,5 +281,84 @@ describe("POST /api/w/:wId/groups", () => {
     expect(
       (await postGroup(workspace, { name: "No members", memberIds: [] })).status
     ).toBe(400);
+  });
+});
+
+describe("GET /api/w/:wId/groups/:groupId", () => {
+  it("returns the group with its members inline", async () => {
+    const { workspace, user, auth } = await createPrivateApiMockRequest({
+      method: "GET",
+      role: "admin",
+    });
+    const extraUser = await UserFactory.basic();
+    await MembershipFactory.associate(workspace, extraUser, { role: "user" });
+
+    const group = await GroupFactory.regularManual(workspace, "Finance");
+    const addResult = await group.dangerouslyAddMembers(auth, {
+      users: [user.toJSON(), extraUser.toJSON()],
+    });
+    if (addResult.isErr()) {
+      throw addResult.error;
+    }
+
+    const response = await getGroup(workspace, group.sId);
+
+    expect(response.status).toBe(200);
+    const body = await response.json();
+    expect(body.group.sId).toBe(group.sId);
+    expect(body.group.kind).toBe("regular_manual");
+    expect(new Set(body.members.map((m: { sId: string }) => m.sId))).toEqual(
+      new Set([user.sId, extraUser.sId])
+    );
+  });
+
+  it("lets an admin read the group", async () => {
+    const { workspace } = await createPrivateApiMockRequest({
+      method: "GET",
+      role: "admin",
+    });
+    const group = await GroupFactory.regularManual(workspace, "Legal");
+
+    const response = await getGroup(workspace, group.sId);
+
+    expect(response.status).toBe(200);
+  });
+
+  it("lets a business admin read the group", async () => {
+    const { workspace } = await createPrivateApiMockRequest({
+      method: "GET",
+      role: "business_admin",
+    });
+    const group = await GroupFactory.regularManual(workspace, "Legal");
+
+    const response = await getGroup(workspace, group.sId);
+
+    expect(response.status).toBe(200);
+  });
+
+  it("returns 403 for a regular user", async () => {
+    const { workspace } = await createPrivateApiMockRequest({
+      method: "GET",
+      role: "user",
+    });
+    const group = await GroupFactory.regularManual(workspace, "Secret");
+
+    const response = await getGroup(workspace, group.sId);
+
+    expect(response.status).toBe(403);
+    expect((await response.json()).error.type).toBe("workspace_auth_error");
+  });
+
+  it("returns 404 for a non-regular_manual group", async () => {
+    const { workspace } = await createPrivateApiMockRequest({
+      method: "GET",
+      role: "admin",
+    });
+    const group = await GroupFactory.regularAuto(workspace, "Automatic");
+
+    const response = await getGroup(workspace, group.sId);
+
+    expect(response.status).toBe(404);
+    expect((await response.json()).error.type).toBe("group_not_found");
   });
 });
