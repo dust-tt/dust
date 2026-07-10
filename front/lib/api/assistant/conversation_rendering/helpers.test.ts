@@ -3,9 +3,9 @@ import { renderEquippedSkillsUserMessage } from "@app/lib/api/assistant/skills_r
 import { getSupportedModelConfig } from "@app/lib/llms/model_configurations";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
+import { mockFullAgentMessage } from "@app/tests/utils/conversation_test_factories";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { SkillFactory } from "@app/tests/utils/SkillFactory";
-import type { AgentMessageType } from "@app/types/assistant/conversation";
 import type { TextContent } from "@app/types/assistant/generation";
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import assert from "assert";
@@ -248,69 +248,20 @@ The following skills are available for use with the skill_management__enable_ski
       text: `Skill "${commitSkill.name}" has been enabled.`,
     });
 
-    const message = {
-      id: 1,
-      agentMessageId: 1,
-      type: "agent_message",
-      sId: "agent_msg_1",
-      version: 1,
-      rank: 1,
-      branchId: null,
-      created: Date.now(),
-      completedTs: null,
-      parentMessageId: "user_msg_1",
-      parentAgentMessageId: null,
-      status: "succeeded",
-      content: null,
-      chainOfThought: null,
-      error: null,
-      visibility: "visible",
+    const message = mockFullAgentMessage({
       configuration: agentConfig,
-      skipToolsValidation: false,
       actions: [
         {
-          id: 1,
-          sId: "action_1",
-          createdAt: Date.now(),
-          updatedAt: Date.now(),
-          agentMessageId: 1,
-          internalMCPServerName: "skill_management",
-          toolName: "enable_skill",
-          mcpServerId: null,
           functionCallName: "skill_management__enable_skill",
           functionCallId: "toolu_enable_skill",
+          internalMCPServerName: "skill_management",
+          toolName: "enable_skill",
           params: { skillName: commitSkill.name },
-          citationsAllocated: 0,
           status: "succeeded",
-          step: 0,
-          executionDurationMs: null,
-          displayLabels: null,
-          generatedFiles: [],
           output: [outputBlock],
-          citations: null,
         },
       ],
-      contents: [
-        {
-          step: 0,
-          content: {
-            type: "function_call",
-            value: {
-              id: "toolu_enable_skill",
-              name: "skill_management__enable_skill",
-              arguments: '{"skillName":"commit"}',
-            },
-          },
-        },
-      ],
-      modelInteractionDurationMs: null,
-      richMentions: [],
-      completionDurationMs: null,
-      reactions: [],
-      costCredits: null,
-      resolvedModel: null,
-      modelResolutionMethod: null,
-    } satisfies AgentMessageType;
+    });
 
     const steps = await getSteps(authenticator, {
       enabledSkillById: new Map([[commitSkill.sId, commitSkill]]),
@@ -371,78 +322,28 @@ describe("vision image rendering in getSteps", () => {
       gcsPathOverride ??
       `w/${workspaceId}/conversations/${conversationId}/files/photo.png`;
 
-    const message: AgentMessageType = {
-      id: 1,
-      agentMessageId: 1,
-      type: "agent_message" as const,
-      sId: "agent_msg_1",
-      version: 1,
-      rank: 1,
-      branchId: null,
-      created: Date.now(),
-      completedTs: null,
-      parentMessageId: "user_msg_1",
-      parentAgentMessageId: null,
-      status: "succeeded" as const,
-      content: null,
-      chainOfThought: null,
-      error: null,
-      visibility: "visible" as const,
+    const visionResource = {
+      uri: "dust://files/conversation/photo.png",
+      mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.MODEL_VISION_IMAGE,
+      text: "" as const,
+      filePath: gcsPath,
+      imageContentType: "image/png",
+    };
+
+    const message = mockFullAgentMessage({
       configuration: agentConfig,
-      skipToolsValidation: false,
       actions: [
         {
-          id: 1,
-          sId: "action_1",
-          createdAt: Date.now(),
-          updatedAt: Date.now(),
-          agentMessageId: 1,
-          internalMCPServerName: "files",
-          toolName: "cat",
-          mcpServerId: null,
           functionCallName: "files__cat",
           functionCallId: "toolu_cat_1",
+          internalMCPServerName: "files",
+          toolName: "cat",
           params: { path: "conversation/photo.png" },
-          citationsAllocated: 0,
-          status: "succeeded" as const,
-          step: 0,
-          executionDurationMs: null,
-          displayLabels: null,
-          generatedFiles: [],
-          citations: null,
-          output: (() => {
-            const resource = {
-              uri: "dust://files/conversation/photo.png",
-              mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.MODEL_VISION_IMAGE,
-              text: "" as const,
-              filePath: gcsPath,
-              imageContentType: "image/png",
-            };
-            return [{ type: "resource" as const, resource }];
-          })(),
+          status: "succeeded",
+          output: [{ type: "resource" as const, resource: visionResource }],
         },
       ],
-      contents: [
-        {
-          step: 0,
-          content: {
-            type: "function_call" as const,
-            value: {
-              id: "toolu_cat_1",
-              name: "files__cat",
-              arguments: '{"path":"conversation/photo.png"}',
-            },
-          },
-        },
-      ],
-      modelInteractionDurationMs: null,
-      richMentions: [],
-      completionDurationMs: null,
-      reactions: [],
-      costCredits: null,
-      resolvedModel: null,
-      modelResolutionMethod: null,
-    };
+    });
 
     return { auth: authenticator, message, model, workspaceId, conversationId };
   };
@@ -474,7 +375,7 @@ describe("vision image rendering in getSteps", () => {
     }
   });
 
-  it("falls back to JSON when the model does not support vision", async () => {
+  it("falls back to JSON when the model does not support vision, flattened and without the resource wrapper or mimeType", async () => {
     const { auth, message, model, workspaceId, conversationId } =
       await buildVisionTest();
     const nonVisionModel = { ...model, supportsVision: false };
@@ -490,6 +391,19 @@ describe("vision image rendering in getSteps", () => {
 
     const result = steps[0].actions[0].result;
     expect(typeof result.content).toBe("string");
+    assert(typeof result.content === "string");
+
+    const parsed = JSON.parse(result.content);
+    // Flattened: the resource's own fields directly, no "type"/"resource" wrapper and no
+    // mimeType (a pure internal type discriminator the model never reads).
+    expect(parsed).toEqual([
+      {
+        uri: "dust://files/conversation/photo.png",
+        text: "",
+        filePath: `w/${workspaceId}/conversations/${conversationId}/files/photo.png`,
+        imageContentType: "image/png",
+      },
+    ]);
   });
 
   it("renders [Image unavailable] when the path does not belong to the conversation", async () => {
@@ -514,5 +428,84 @@ describe("vision image rendering in getSteps", () => {
         text: expect.stringContaining("Image unavailable"),
       });
     }
+  });
+});
+
+describe("websearch resource array compaction in getSteps", () => {
+  it("flattens every result in a multi-result websearch output, dropping the resource wrapper and mimeType from each", async () => {
+    const { authenticator } = await createResourceTest({ role: "admin" });
+
+    const agentConfig = await AgentConfigurationFactory.createTestAgent(
+      authenticator,
+      {
+        name: "Websearch Agent",
+        description: "An agent that searches the web",
+        model: { providerId: "anthropic", modelId: "claude-sonnet-4-6" },
+      }
+    );
+    const model = getSupportedModelConfig(agentConfig.model);
+    assert(model, "Expected a supported model configuration.");
+
+    const websearchResults = [
+      {
+        uri: "https://www.foxsports.com/soccer/fifa-world-cup/schedule",
+        text: "STREAM FIFA WORLD CUP 2026 · GROUP STAGE · Match Day 1. Jun 11 - Jun 17 · Match Day 2. Jun 18 - Jun 23 · Match Day 3. Jun 24 - Jun 27.",
+        title: "2026 FIFA World Cup Schedule | FOX Sports",
+        reference: "g8q",
+      },
+      {
+        uri: "https://www.france24.com/en/full-coverage/world-cup/fixtures-results/",
+        text: "June 11 to July 19, 2026. A total of 104 matches will be played over 39 days. Knockout stage: June 28 to July 19. July 14 and 15.",
+        title:
+          "World Cup 2026 fixtures and results: full match schedule - France 24",
+        reference: "duj",
+      },
+      {
+        uri: "https://www.espn.com/soccer/team/fixtures/_/id/478/france",
+        text: "France Fixtures ; September, 2026 · Fri, Sep 25. TUR · FRA · Mon, Sep 28 ; October, 2026 · Fri, Oct 2. FRA · ITA · Mon, Oct 5 ; November, 2026 · Thu, Nov 12. ITA · FRA.",
+        title: "France Fixtures - ESPN",
+        reference: "cvs",
+      },
+    ];
+
+    const message = mockFullAgentMessage({
+      configuration: agentConfig,
+      actions: [
+        {
+          functionCallName: "web_search_browse__websearch",
+          functionCallId: "toolu_websearch_1",
+          internalMCPServerName: "web_search_&_browse",
+          toolName: "websearch",
+          params: { query: "world cup 2026 schedule" },
+          citationsAllocated: websearchResults.length,
+          status: "succeeded",
+          output: websearchResults.map((r) => ({
+            type: "resource" as const,
+            resource: {
+              mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.WEBSEARCH_RESULT,
+              ...r,
+            },
+          })),
+        },
+      ],
+    });
+
+    const steps = await getSteps(authenticator, {
+      model,
+      message,
+      workspaceId: "workspace_123",
+      conversationId: "conv_1",
+      enabledSkillById: new Map(),
+      onMissingAction: "skip",
+    });
+
+    const result = steps[0].actions[0].result;
+    expect(typeof result.content).toBe("string");
+    assert(typeof result.content === "string");
+
+    const parsed = JSON.parse(result.content);
+    // Every result is flattened to its own fields directly, no "type"/"resource" wrapper and
+    // no mimeType, for the whole array, not just a single item.
+    expect(parsed).toEqual(websearchResults);
   });
 });
