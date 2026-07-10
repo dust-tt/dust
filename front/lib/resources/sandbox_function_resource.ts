@@ -9,6 +9,7 @@ import {
 } from "@app/lib/api/sandbox/access_tokens";
 import { ensurePodSandboxReady } from "@app/lib/api/sandbox/lifecycle";
 import { shellEscape } from "@app/lib/api/sandbox/shell";
+import { publishSandboxFunctionInvocationEvent } from "@app/lib/api/sandbox_functions/events";
 import type { Authenticator } from "@app/lib/auth";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
@@ -379,6 +380,41 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
     auth: Authenticator,
     body: PostSandboxFunctionInvocationRequestBody
   ): Promise<Result<SandboxFunctionInvocationType, Error>> {
+    let invocation: SandboxFunctionInvocationResource | null = null;
+
+    // Once the invocation exists, listeners may be waiting on its event channel for a terminal
+    // event: publish the error so they settle instead of waiting forever, then propagate it.
+    const failInvocation = async (
+      error: Error
+    ): Promise<Result<SandboxFunctionInvocationType, Error>> => {
+      if (invocation) {
+        try {
+          await publishSandboxFunctionInvocationEvent(
+            {
+              type: "sandbox_function_invocation_error",
+              created: Date.now(),
+              invocationId: invocation.sId,
+              functionId: this.sId,
+              message: error.message,
+            },
+            { invocationId: invocation.sId }
+          );
+        } catch (publishError) {
+          // Best effort: the error is still propagated to the caller through the Err below.
+          logger.error(
+            {
+              workspaceId: auth.getNonNullableWorkspace().sId,
+              sandboxFunctionId: this.sId,
+              invocationId: invocation.sId,
+              error: normalizeError(publishError),
+            },
+            "Failed to publish sandbox function invocation error event"
+          );
+        }
+      }
+      return new Err(error);
+    };
+
     try {
       if (!this.space.canReadOrAdministrate(auth)) {
         return new Err(new Error("Sandbox function space is not accessible."));
@@ -389,7 +425,7 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
         return ensureResult;
       }
 
-      const invocation = await SandboxFunctionInvocationResource.makeNew(auth, {
+      invocation = await SandboxFunctionInvocationResource.makeNew(auth, {
         sandboxFunction: this,
       });
       await ensureResult.value.sandbox.updateLastActivityAt();
@@ -433,7 +469,7 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
         user: "agent-proxied",
       });
       if (execResult.isErr()) {
-        return execResult;
+        return failInvocation(execResult.error);
       }
       if (execResult.value.exitCode !== 0) {
         const { exitCode, stdout, stderr } = execResult.value;
@@ -456,7 +492,7 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
           stderr || stdout,
           SANDBOX_FUNCTION_ERROR_DETAIL_MAX_CHARS
         ).trim();
-        return new Err(
+        return failInvocation(
           new Error(
             `Sandbox function invocation failed with exit code ${exitCode}${
               detail ? `:\n${detail}` : "."
@@ -475,7 +511,7 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
         createdAt: invocation.createdAt.toISOString(),
       });
     } catch (error) {
-      return new Err(normalizeError(error));
+      return failInvocation(normalizeError(error));
     }
   }
 

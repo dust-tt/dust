@@ -12174,6 +12174,9 @@
           },
           {
             "$ref": "#/components/schemas/PrivateSandboxFunctionInvocationResultEvent"
+          },
+          {
+            "$ref": "#/components/schemas/PrivateSandboxFunctionInvocationErrorEvent"
           }
         ]
       },
@@ -12250,6 +12253,37 @@
           },
           "result": {
             "description": "Result returned by the sandbox function."
+          }
+        }
+      },
+      "PrivateSandboxFunctionInvocationErrorEvent": {
+        "type": "object",
+        "required": [
+          "type",
+          "created",
+          "invocationId",
+          "functionId",
+          "message"
+        ],
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "sandbox_function_invocation_error"
+            ]
+          },
+          "created": {
+            "type": "integer"
+          },
+          "invocationId": {
+            "type": "string"
+          },
+          "functionId": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string",
+            "description": "Why the invocation failed before producing a result."
           }
         }
       },
