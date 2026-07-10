@@ -1,6 +1,12 @@
+import { SandboxFunctionPersonalAuthCard } from "@app/components/actions/blocked/SandboxFunctionPersonalAuthCard";
+import { SandboxFunctionToolApprovalCard } from "@app/components/actions/blocked/SandboxFunctionToolApprovalCard";
 import { useVisualizationRetry } from "@app/hooks/conversations";
 import { useEventSource } from "@app/hooks/useEventSource";
 import { useSendNotification } from "@app/hooks/useNotification";
+import type {
+  SandboxFunctionMCPApproveExecutionEvent,
+  SandboxFunctionToolPersonalAuthRequiredEvent,
+} from "@app/lib/actions/mcp_internal_actions/events";
 import { clientFetch } from "@app/lib/egress/client";
 import { getErrorFromResponse } from "@app/lib/swr/swr";
 import datadogLogger from "@app/logger/datadogLogger";
@@ -101,14 +107,51 @@ interface SandboxFunctionInvocationProps {
   ) => void;
 }
 
-// Consumes one invocation's event stream, settles the pending iframe call, and will render
-// approval or authentication UI when needed.
+type SandboxFunctionBlockingEvent =
+  | SandboxFunctionMCPApproveExecutionEvent
+  | SandboxFunctionToolPersonalAuthRequiredEvent;
+
+type QueuedBlockingEvent = {
+  // SSE event id, unique per delivery. Removal targets this exact version: resolving an action can
+  // produce a follow-up blocking event for the same actionId (e.g. approval then personal auth)
+  // before the resolve response returns, and that newer entry must survive the removal.
+  eventId: string;
+  event: SandboxFunctionBlockingEvent;
+};
+
+// Consumes one invocation's event stream, settles the pending iframe call, and renders the
+// approval or authentication card over the frame while a tool is blocked on user input.
 function SandboxFunctionInvocation({
   workspaceId,
   functionId,
   invocationId,
   onSettle,
 }: SandboxFunctionInvocationProps) {
+  const [blockedActions, setBlockedActions] = useState<QueuedBlockingEvent[]>(
+    []
+  );
+
+  const enqueueBlockedAction = useCallback(
+    (eventId: string, event: SandboxFunctionBlockingEvent) => {
+      setBlockedActions((prev) => {
+        // The stream can re-deliver or supersede an event after a reconnect or a resolution:
+        // replace by actionId, keeping the newest delivery.
+        const existingIndex = prev.findIndex(
+          (a) => a.event.actionId === event.actionId
+        );
+        const entry = { eventId, event };
+        return existingIndex === -1
+          ? [...prev, entry]
+          : prev.map((a, index) => (index === existingIndex ? entry : a));
+      });
+    },
+    []
+  );
+
+  const removeBlockedAction = useCallback((eventId: string) => {
+    setBlockedActions((prev) => prev.filter((a) => a.eventId !== eventId));
+  }, []);
+
   const buildEventSourceURL = useCallback(
     (lastEvent: string | null) => {
       const esURL = `/api/sse/w/${workspaceId}/sandbox-functions/${functionId}/invocations/${invocationId}/events`;
@@ -144,12 +187,8 @@ function SandboxFunctionInvocation({
             });
             break;
           case "tool_approve_execution":
-            // TODO(SANDBOX_FUNCTIONS): surface a tool approval flow to the user and post the
-            // validation back; not emitted by the tool execution activity yet.
-            break;
           case "tool_personal_auth_required":
-            // TODO(SANDBOX_FUNCTIONS): surface a personal authentication flow to the user and
-            // post the resolution back; not emitted by the tool execution activity yet.
+            enqueueBlockedAction(eventPayload.eventId, eventPayload.data);
             break;
           default:
             assertNeverAndIgnore(eventPayload.data);
@@ -163,7 +202,7 @@ function SandboxFunctionInvocation({
         });
       }
     },
-    [invocationId, onSettle]
+    [invocationId, onSettle, enqueueBlockedAction]
   );
 
   const onTerminalError = useCallback(() => {
@@ -180,7 +219,44 @@ function SandboxFunctionInvocation({
     { onTerminalError }
   );
 
-  return null;
+  const blockedAction = blockedActions.at(0);
+  if (!blockedAction) {
+    return null;
+  }
+
+  let blockedActionCard: React.ReactNode;
+  switch (blockedAction.event.type) {
+    case "tool_approve_execution":
+      blockedActionCard = (
+        <SandboxFunctionToolApprovalCard
+          key={blockedAction.eventId}
+          event={blockedAction.event}
+          onResolved={() => removeBlockedAction(blockedAction.eventId)}
+        />
+      );
+      break;
+    case "tool_personal_auth_required":
+      blockedActionCard = (
+        <SandboxFunctionPersonalAuthCard
+          key={blockedAction.eventId}
+          event={blockedAction.event}
+          onResolved={() => removeBlockedAction(blockedAction.eventId)}
+        />
+      );
+      break;
+    default:
+      assertNeverAndIgnore(blockedAction.event);
+      blockedActionCard = null;
+  }
+
+  // Covers the frame while the tool is blocked on user input; positioned within the component's
+  // relative root, same layering approach as the loading spinner overlay. Cards are keyed by the
+  // delivery eventId so consecutive events of the same type never reuse local card state.
+  return (
+    <div className="absolute inset-0 z-10 flex items-center justify-center overflow-auto bg-panel-background p-4">
+      <div className="w-full max-w-xl">{blockedActionCard}</div>
+    </div>
+  );
 }
 
 // Custom hook to encapsulate the logic for handling visualization messages.
