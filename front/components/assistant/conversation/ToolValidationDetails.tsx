@@ -2,6 +2,7 @@ import {
   AshbyJobPostingUpdateDetails,
   AshbyReferralDetails,
 } from "@app/components/assistant/conversation/tool_validation/AshbyValidationDetails";
+import { PodEditInformationValidationDetails } from "@app/components/assistant/conversation/tool_validation/PodEditInformationValidationDetails";
 import { PodMembersUpdateValidationDetails } from "@app/components/assistant/conversation/tool_validation/PodMembersUpdateValidationDetails";
 import { PodTasksCreateValidationDetails } from "@app/components/assistant/conversation/tool_validation/PodTasksCreateValidationDetails";
 import { PodTasksUpdateValidationDetails } from "@app/components/assistant/conversation/tool_validation/PodTasksUpdateValidationDetails";
@@ -16,10 +17,14 @@ import {
   isAshbyUpdateJobPostingInput,
 } from "@app/lib/api/actions/servers/ashby/types";
 import {
+  EDIT_INFORMATION_TOOL_NAME,
   POD_MANAGER_SERVER_NAME,
   UPDATE_MEMBERS_TOOL_NAME,
 } from "@app/lib/api/actions/servers/pod_manager/metadata";
-import { isPodManagerUpdateMembersInput } from "@app/lib/api/actions/servers/pod_manager/types";
+import {
+  isPodManagerEditInformationInput,
+  isPodManagerUpdateMembersInput,
+} from "@app/lib/api/actions/servers/pod_manager/types";
 import {
   CREATE_TASKS_TOOL_NAME,
   POD_TASKS_SERVER_NAME,
@@ -182,6 +187,20 @@ export function ToolValidationDetails({
         input={blockedAction.inputs}
         owner={owner}
         user={user}
+        conversationId={conversationId}
+      />
+    );
+  }
+
+  if (
+    blockedAction.metadata.mcpServerName === POD_MANAGER_SERVER_NAME &&
+    blockedAction.metadata.toolName === EDIT_INFORMATION_TOOL_NAME &&
+    isPodManagerEditInformationInput(blockedAction.inputs)
+  ) {
+    return (
+      <PodEditInformationValidationDetails
+        input={blockedAction.inputs}
+        owner={owner}
         conversationId={conversationId}
       />
     );

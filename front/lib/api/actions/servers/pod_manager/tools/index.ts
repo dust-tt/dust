@@ -19,6 +19,7 @@ import { buildPodSearchDataSources } from "@app/lib/api/actions/servers/pod_mana
 import {
   buildProjectRetrieveDataSources,
   getPod,
+  getPodMemberAndEditorSIds,
   getWritablePodContext,
   makeSuccessResponse,
   partitionMembersToRemove,
@@ -26,7 +27,9 @@ import {
   withErrorHandling,
 } from "@app/lib/api/actions/servers/pod_manager/helpers";
 import {
+  EDIT_INFORMATION_TOOL_NAME,
   LIST_MEMBERS_TOOL_NAME,
+  MOVE_CONVERSATION_TOOL_NAME,
   POD_MANAGER_TOOLS_METADATA,
   SEMANTIC_SEARCH_TOOL_NAME,
   UPDATE_MEMBERS_TOOL_NAME,
@@ -50,6 +53,10 @@ import {
   listProjectContextAttachments,
   removeContentNodesFromProject,
 } from "@app/lib/api/projects/context";
+import {
+  moveConversationOutOfProject,
+  moveConversationToProject,
+} from "@app/lib/api/projects/conversations";
 import { listPodsForScope } from "@app/lib/api/projects/list";
 import { validatePinnedFramePath } from "@app/lib/api/projects/pinned_frame";
 import { createSpaceAndGroup } from "@app/lib/api/spaces";
@@ -235,7 +242,7 @@ export function createProjectManagerTools(
       }, "Failed to remove linked content from Pod");
     },
 
-    edit_information: async (params) => {
+    [EDIT_INFORMATION_TOOL_NAME]: async (params) => {
       return withErrorHandling(async () => {
         const contextRes = await getPod(auth, {
           toolContext,
@@ -256,21 +263,25 @@ export function createProjectManagerTools(
           );
         }
 
-        const { title, description, pinnedFramePath } = params;
+        const { title, description, pinnedFramePath, access } = params;
         if (
           title === undefined &&
           description === undefined &&
-          pinnedFramePath === undefined
+          pinnedFramePath === undefined &&
+          access === undefined
         ) {
           return new Err(
             new MCPError(
-              "At least one of title, description, or pinnedFramePath must be provided",
+              "At least one of title, description, access, or pinnedFramePath must be provided",
               { tracked: false }
             )
           );
         }
 
-        const updates: ProjectMetadataBlob & { title?: string } = {};
+        const updates: ProjectMetadataBlob & {
+          title?: string;
+          access?: "restricted" | "open";
+        } = {};
 
         if (title !== undefined) {
           const updateNameRes = await pod.updateName(auth, title);
@@ -302,7 +313,43 @@ export function createProjectManagerTools(
           updates.pinnedFramePath = validation.value;
         }
 
-        const { title: _title, ...podUpdates } = updates;
+        if (access !== undefined) {
+          const owner = auth.getNonNullableWorkspace();
+          if (access === "open" && !areOpenPodsAllowed(owner)) {
+            return new Err(
+              new MCPError(
+                "Open Pods are disabled by your workspace admin. Set access to restricted instead.",
+                { tracked: false }
+              )
+            );
+          }
+
+          const newIsRestricted = access !== "open";
+          const currentlyRestricted = !pod.isOpen();
+          if (newIsRestricted !== currentlyRestricted) {
+            const { editorIds, memberIds } = await getPodMemberAndEditorSIds(
+              auth,
+              pod
+            );
+            const updatePermissionsRes = await pod.updatePermissions(auth, {
+              name: pod.name,
+              isRestricted: newIsRestricted,
+              managementMode: "manual",
+              memberIds,
+              editorIds,
+            });
+            if (updatePermissionsRes.isErr()) {
+              return new Err(
+                new MCPError(updatePermissionsRes.error.message, {
+                  tracked: false,
+                })
+              );
+            }
+            updates.access = access;
+          }
+        }
+
+        const { title: _title, access: _access, ...podUpdates } = updates;
         let metadata = await ProjectMetadataResource.fetchBySpace(auth, pod);
         if (!metadata) {
           metadata = await ProjectMetadataResource.makeNew(
@@ -529,6 +576,7 @@ export function createProjectManagerTools(
               id: pod.sId,
               name: pod.name,
               url: projectUrl,
+              access: pod.isOpen() ? "open" : "restricted",
               description: metadata?.description ?? null,
               pinnedFramePath: metadata?.pinnedFramePath ?? null,
               contentNodes,
@@ -784,10 +832,10 @@ export function createProjectManagerTools(
       return withErrorHandling(async () => {
         const owner = auth.getNonNullableWorkspace();
 
-        if (params.visibility === "open" && !areOpenPodsAllowed(owner)) {
+        if (params.access === "open" && !areOpenPodsAllowed(owner)) {
           return new Err(
             new MCPError(
-              "Open Pods are disabled by your workspace admin. Create a private Pod instead.",
+              "Open Pods are disabled by your workspace admin. Create a restricted Pod instead.",
               { tracked: false }
             )
           );
@@ -795,7 +843,7 @@ export function createProjectManagerTools(
 
         const createSpaceRes = await createSpaceAndGroup(auth, {
           name: params.title,
-          isRestricted: params.visibility !== "open",
+          isRestricted: params.access !== "open",
           spaceKind: "project",
           managementMode: "manual",
           memberIds: [],
@@ -931,7 +979,7 @@ export function createProjectManagerTools(
             pod: {
               id: pod.sId,
               title: pod.name,
-              visibility: pod.isOpen() ? "open" : "private",
+              access: pod.isOpen() ? "open" : "restricted",
               dustPod: {
                 uri: makePodConfigurationURI(owner.sId, pod.sId),
                 mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_POD,
@@ -1447,6 +1495,112 @@ export function createProjectManagerTools(
           })
         );
       }, "Failed to add message to conversation");
+    },
+
+    [MOVE_CONVERSATION_TOOL_NAME]: async (params) => {
+      return withErrorHandling(async () => {
+        const owner = auth.getNonNullableWorkspace();
+
+        const conversationId =
+          params.conversationId ??
+          (isAgentLoopRunContext(toolContext?.runContext)
+            ? toolContext.runContext.conversation.sId
+            : null);
+
+        if (!conversationId) {
+          return new Err(
+            new MCPError(
+              "No conversationId provided and no conversation in agent context; pass conversationId explicitly.",
+              { tracked: false }
+            )
+          );
+        }
+
+        const conversationRes = await getConversation(
+          auth,
+          conversationId,
+          false
+        );
+        if (conversationRes.isErr()) {
+          return new Err(
+            new MCPError(`Conversation not found: ${conversationId}`, {
+              tracked: false,
+            })
+          );
+        }
+
+        const conversation = conversationRes.value;
+        const conversationUrl = getConversationRoute(
+          owner.sId,
+          conversation.sId,
+          undefined,
+          config.getAppUrl()
+        );
+
+        if (params.destination === "pod") {
+          if (!params.dustPod) {
+            return new Err(
+              new MCPError("dustPod is required when destination is 'pod'.", {
+                tracked: false,
+              })
+            );
+          }
+
+          const contextRes = await getPod(auth, {
+            toolContext,
+            dustPod: params.dustPod,
+          });
+          if (contextRes.isErr()) {
+            return contextRes;
+          }
+
+          const { pod } = contextRes.value;
+          const moveRes = await moveConversationToProject(auth, {
+            conversation,
+            spaceId: pod.sId,
+          });
+
+          if (moveRes.isErr()) {
+            return new Err(
+              new MCPError(moveRes.error.message, { tracked: false })
+            );
+          }
+
+          return new Ok(
+            makeSuccessResponse({
+              success: true,
+              destination: "pod",
+              conversationId: conversation.sId,
+              podId: pod.sId,
+              podName: pod.name,
+              conversationUrl,
+              message: `Conversation moved to Pod "${pod.name}".`,
+            })
+          );
+        }
+
+        const previousPodId = conversation.spaceId ?? null;
+        const moveRes = await moveConversationOutOfProject(auth, {
+          conversation,
+        });
+
+        if (moveRes.isErr()) {
+          return new Err(
+            new MCPError(moveRes.error.message, { tracked: false })
+          );
+        }
+
+        return new Ok(
+          makeSuccessResponse({
+            success: true,
+            destination: "personal",
+            conversationId: conversation.sId,
+            previousPodId,
+            conversationUrl,
+            message: "Conversation moved out of Pod successfully.",
+          })
+        );
+      }, "Failed to move conversation");
     },
   };
 
