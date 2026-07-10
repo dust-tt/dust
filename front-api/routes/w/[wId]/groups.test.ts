@@ -1,3 +1,4 @@
+import { GroupResource } from "@app/lib/resources/group_resource";
 import { GroupFactory } from "@app/tests/utils/GroupFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
@@ -13,6 +14,14 @@ function getGroups(
   return honoApp.request(
     `/api/w/${workspace.sId}/groups${search ? `?${search}` : ""}`
   );
+}
+
+function postGroup(workspace: { sId: string }, body: Record<string, unknown>) {
+  return honoApp.request(`/api/w/${workspace.sId}/groups`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
 }
 
 describe("GET /api/w/:wId/groups", () => {
@@ -120,5 +129,126 @@ describe("GET /api/w/:wId/groups", () => {
     );
     expect(backendGroup).toBeDefined();
     expect(backendGroup.memberCount).toBe(1);
+  });
+});
+
+describe("POST /api/w/:wId/groups", () => {
+  it("lets an admin create a regular_manual group", async () => {
+    const { workspace, auth } = await createPrivateApiMockRequest({
+      method: "POST",
+      role: "admin",
+    });
+
+    const response = await postGroup(workspace, { name: "Finance" });
+
+    expect(response.status).toBe(200);
+    const { group } = await response.json();
+    expect(group.name).toBe("Finance");
+    expect(group.kind).toBe("regular_manual");
+
+    const created = await GroupResource.fetchById(auth, group.sId);
+    expect(created.isOk()).toBe(true);
+  });
+
+  it("creates a group seeded with the provided members", async () => {
+    const { workspace, user, auth } = await createPrivateApiMockRequest({
+      method: "POST",
+      role: "admin",
+    });
+    const extraUser = await UserFactory.basic();
+    await MembershipFactory.associate(workspace, extraUser, { role: "user" });
+
+    const response = await postGroup(workspace, {
+      name: "Seeded",
+      memberIds: [user.sId, extraUser.sId],
+    });
+
+    expect(response.status).toBe(200);
+    const { group } = await response.json();
+
+    const created = await GroupResource.fetchById(auth, group.sId);
+    if (created.isErr()) {
+      throw created.error;
+    }
+    const members = await created.value.getActiveMembers(auth);
+    expect(new Set(members.map((m) => m.sId))).toEqual(
+      new Set([user.sId, extraUser.sId])
+    );
+  });
+
+  it("returns 404 when a member id does not belong to the workspace", async () => {
+    const { workspace } = await createPrivateApiMockRequest({
+      method: "POST",
+      role: "admin",
+    });
+    // A user that exists but is not a member of this workspace.
+    const outsider = await UserFactory.basic();
+
+    const response = await postGroup(workspace, {
+      name: "Bad members",
+      memberIds: [outsider.sId],
+    });
+
+    expect(response.status).toBe(404);
+    expect((await response.json()).error.type).toBe("user_not_found");
+  });
+
+  it("lets a business admin create a regular_manual group", async () => {
+    const { workspace } = await createPrivateApiMockRequest({
+      method: "POST",
+      role: "business_admin",
+    });
+
+    const response = await postGroup(workspace, { name: "Legal" });
+
+    expect(response.status).toBe(200);
+    const { group } = await response.json();
+    expect(group.kind).toBe("regular_manual");
+  });
+
+  it("returns 403 for a regular user", async () => {
+    const { workspace } = await createPrivateApiMockRequest({
+      method: "POST",
+      role: "user",
+    });
+
+    const response = await postGroup(workspace, { name: "Nope" });
+
+    expect(response.status).toBe(403);
+    expect((await response.json()).error.type).toBe("workspace_auth_error");
+  });
+
+  it("returns 403 for a builder", async () => {
+    const { workspace } = await createPrivateApiMockRequest({
+      method: "POST",
+      role: "builder",
+    });
+
+    const response = await postGroup(workspace, { name: "Nope" });
+
+    expect(response.status).toBe(403);
+  });
+
+  it("returns 409 when a group with the same name already exists", async () => {
+    const { workspace } = await createPrivateApiMockRequest({
+      method: "POST",
+      role: "admin",
+    });
+    await GroupFactory.regularManual(workspace, "Duplicate");
+
+    const response = await postGroup(workspace, { name: "Duplicate" });
+
+    expect(response.status).toBe(409);
+    expect((await response.json()).error.type).toBe("invalid_request_error");
+  });
+
+  it("returns 400 when name is missing or empty", async () => {
+    const { workspace } = await createPrivateApiMockRequest({
+      method: "POST",
+      role: "admin",
+    });
+
+    expect((await postGroup(workspace, {})).status).toBe(400);
+    expect((await postGroup(workspace, { name: "" })).status).toBe(400);
   });
 });

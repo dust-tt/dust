@@ -41,6 +41,7 @@ import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { removeNulls } from "@app/types/shared/utils/general";
 import type { LightWorkspaceType, UserType } from "@app/types/user";
+import { BUSINESS_ADMIN_ROLE_NAME } from "@app/types/user";
 import type { DirectoryGroup } from "@workos-inc/node";
 import assert from "assert";
 import type {
@@ -420,6 +421,73 @@ export class GroupResource extends BaseResource<GroupModel> {
     }
 
     return defaultGroup;
+  }
+
+  /**
+   * Creates a new regular_manual group. These groups are created and managed
+   * manually by workspace admins and business admins from the UI to grant
+   * permissions to their members.
+   */
+  static async makeNewRegularManual(
+    auth: Authenticator,
+    { name, memberIds }: { name: string; memberIds?: string[] }
+  ): Promise<
+    Result<
+      GroupResource,
+      DustError<
+        | "unauthorized"
+        | "name_conflict"
+        | "user_not_found"
+        | "user_already_member"
+        | "group_requirements_not_met"
+        | "system_or_global_group"
+      >
+    >
+  > {
+    if (!auth.isBusinessAdmin()) {
+      return new Err(
+        new DustError(
+          "unauthorized",
+          `Only workspace admins and ${BUSINESS_ADMIN_ROLE_NAME}s can create groups.`
+        )
+      );
+    }
+
+    const owner = auth.getNonNullableWorkspace();
+
+    const existing = await GroupResource.fetchByName(auth, name);
+    if (existing) {
+      return new Err(
+        new DustError(
+          "name_conflict",
+          `A group named "${name}" already exists in this workspace.`
+        )
+      );
+    }
+
+    const group = await GroupResource.makeNew({
+      name,
+      kind: "regular_manual",
+      workspaceId: owner.id,
+    });
+
+    const uniqueMemberIds = memberIds ? [...new Set(memberIds)] : [];
+    if (uniqueMemberIds.length > 0) {
+      const users = await UserResource.fetchByIds(uniqueMemberIds);
+      if (users.length !== uniqueMemberIds.length) {
+        return new Err(
+          new DustError("user_not_found", "Some users were not found.")
+        );
+      }
+      const addResult = await group.dangerouslyAddMembers(auth, {
+        users: users.map((u) => u.toJSON()),
+      });
+      if (addResult.isErr()) {
+        return new Err(addResult.error);
+      }
+    }
+
+    return new Ok(group);
   }
 
   static async findAgentIdsForGroups(
