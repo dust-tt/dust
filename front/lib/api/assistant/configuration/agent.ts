@@ -1,5 +1,4 @@
 import type { ServerSideMCPServerConfigurationType } from "@app/lib/actions/mcp";
-import { getModelsForAuth } from "@app/lib/advanced_models/enabled_models";
 import {
   WEB_SEARCH_BROWSE_ACTION_DESCRIPTION,
   WEB_SEARCH_BROWSE_SERVER_NAME,
@@ -27,6 +26,7 @@ import config from "@app/lib/api/config";
 import { Authenticator, getFeatureFlags } from "@app/lib/auth";
 import { isRemoteDatabase } from "@app/lib/data_sources";
 import { DustError } from "@app/lib/error";
+import { getModelsForAuth } from "@app/lib/model_tiers/enabled_models";
 import { AgentDataSourceConfigurationModel } from "@app/lib/models/agent/actions/data_sources";
 import {
   AgentChildAgentConfigurationModel,

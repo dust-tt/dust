@@ -3,7 +3,6 @@ import type {
   MCPServerConfigurationType,
   ServerSideMCPServerConfigurationType,
 } from "@app/lib/actions/mcp";
-import { getAdvancedModelAccessErrorForAgentConfiguration } from "@app/lib/advanced_models/access";
 import { pruneSuggestionsForAgent } from "@app/lib/api/assistant/agent_suggestion_pruning";
 import { createAgentActionConfiguration } from "@app/lib/api/assistant/configuration/actions";
 import {
@@ -15,6 +14,7 @@ import { getAgentConfigurationRequirementsFromCapabilities } from "@app/lib/api/
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
 import { getSupportedModelConfig } from "@app/lib/llms/model_configurations";
+import { getModelTierAccessErrorForAgentConfiguration } from "@app/lib/model_tiers/access";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { getResourceIdFromSId } from "@app/lib/resources/string_ids";
@@ -158,14 +158,12 @@ export async function createOrUpgradeAgentConfiguration({
     );
   }
 
-  const accessError = await getAdvancedModelAccessErrorForAgentConfiguration(
-    auth,
-    {
-      agentName: assistant.name,
-      model: modelConfig,
-      featureFlags,
-    }
-  );
+  const accessError = await getModelTierAccessErrorForAgentConfiguration(auth, {
+    agentName: assistant.name,
+    model: modelConfig,
+    reasoningEffort: assistant.model.reasoningEffort,
+    featureFlags,
+  });
   if (accessError) {
     return new Err(new Error(accessError.message));
   }
