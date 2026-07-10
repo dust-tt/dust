@@ -115,7 +115,7 @@ export const ModelConfigurationSchema = z.object({
   supportsBatchProcessing: z.boolean().optional(),
   // If true, the model supports deferring rarely-used tool definitions out of
   // its active context until searched/discovered on demand. Provider-specific
-  // (currently only consulted for Anthropic models); must not be enabled based
+  // (currently only consulted for Anthropic models). Must not be enabled based
   // on a feature flag alone, since unsupported models reject the request.
   supportsToolSearch: z.boolean().optional(),
   // Specify if the model is available in specific regions.
