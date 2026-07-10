@@ -1,7 +1,7 @@
-import { getAutoModelForAuth } from "@app/lib/advanced_models/enabled_models";
 import { PREFERRED_LARGE_MODEL_CONFIGS } from "@app/lib/api/assistant/model_preferences";
 import { selectEnabledModel } from "@app/lib/api/assistant/models";
 import type { Authenticator } from "@app/lib/auth";
+import { getAutoModelForAuth } from "@app/lib/model_tiers/enabled_models";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import { AUTO_MODEL_ID } from "@app/types/assistant/models/auto";
 import { SUPPORTED_MODEL_CONFIGS } from "@app/types/assistant/models/models";
