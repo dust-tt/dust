@@ -254,7 +254,7 @@ export function toReasoningEffortParam(
 ): OpenAIReasoningEffort | undefined {
   switch (effort) {
     case "none":
-      return undefined;
+      return "none";
     case "minimal":
       return "minimal";
     case "low":
@@ -266,7 +266,7 @@ export function toReasoningEffortParam(
     case "xhigh":
       return "xhigh";
     case "maximal":
-      return undefined;
+      return "max";
     default:
       return assertNever(effort);
   }

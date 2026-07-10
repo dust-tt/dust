@@ -7,6 +7,7 @@ export const FIREWORKS_SUPPORTED_REASONING_EFFORTS = [
   "low",
   "medium",
   "high",
+  "maximal",
 ] as const;
 
 export type FireworksSupportedReasoningEffort =
