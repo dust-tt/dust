@@ -211,6 +211,24 @@ function buildReplayOnlyToolSpecification(
   };
 }
 
+function compareToolNames(left: string, right: string): number {
+  if (left < right) {
+    return -1;
+  }
+  if (left > right) {
+    return 1;
+  }
+  return 0;
+}
+
+function sortToolSpecifications(
+  specifications: AgentActionSpecification[]
+): AgentActionSpecification[] {
+  return [...specifications].sort((left, right) =>
+    compareToolNames(left.name, right.name)
+  );
+}
+
 // A custom agent's configured tools are its identity: they stay in the eagerly
 // loaded set so the model always sees them instead of having to discover them
 // through tool search. The set is small and stable per agent version, so the
@@ -236,18 +254,20 @@ export function buildBaseSpecifications(
       .filter((id) => id !== -1)
   );
 
-  return availableActions.map((action) => {
-    const specification = buildToolSpecification(action);
-    if (
-      isCustomAgent &&
-      isServerSideMCPToolConfiguration(action) &&
-      agentActionModelIds.has(action.id)
-    ) {
-      return { ...specification, eager: true };
-    }
+  return sortToolSpecifications(
+    availableActions.map((action) => {
+      const specification = buildToolSpecification(action);
+      if (
+        isCustomAgent &&
+        isServerSideMCPToolConfiguration(action) &&
+        agentActionModelIds.has(action.id)
+      ) {
+        return { ...specification, eager: true };
+      }
 
-    return specification;
-  });
+      return specification;
+    })
+  );
 }
 
 // Replayed tools keep their intrinsic `eager` flag: providers resolve deferred
@@ -263,17 +283,17 @@ export function buildSpecificationsWithReplayPlaceholders(
   missingReplayedToolNames: string[];
 } {
   const currentToolNames = new Set(baseSpecifications.map((spec) => spec.name));
-  const missingReplayedToolNames = getReplayedToolNames(
-    modelConversation
-  ).filter((name) => !currentToolNames.has(name));
+  const missingReplayedToolNames = getReplayedToolNames(modelConversation)
+    .filter((name) => !currentToolNames.has(name))
+    .sort(compareToolNames);
 
   return {
-    specifications: [
+    specifications: sortToolSpecifications([
       ...baseSpecifications,
       ...missingReplayedToolNames.map((name) =>
         buildReplayOnlyToolSpecification(name)
       ),
-    ],
+    ]),
     missingReplayedToolNames,
   };
 }
