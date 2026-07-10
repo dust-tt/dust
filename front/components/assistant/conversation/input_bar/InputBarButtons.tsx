@@ -54,6 +54,7 @@ interface InputBarButtonsProps {
   // When true, disables every picker (tools, attachment) in addition to the
   // agent selector which is muted via `disableAgentSelector`.
   isInputDisabled: boolean;
+  lastRequestedModel: ModelSelectionType | null;
   onAgentRemove: () => void;
   onMCPServerViewSelect: (serverView: MCPServerViewType) => void;
   onModelSelectionChange?: (
@@ -87,6 +88,7 @@ export const InputBarButtons = React.memo(function InputBarButtons({
   hideCapabilities,
   isDefaultAgentUnavailable,
   isInputDisabled,
+  lastRequestedModel,
   onAgentRemove,
   onMCPServerViewSelect,
   onModelSelectionChange,
@@ -249,6 +251,8 @@ export const InputBarButtons = React.memo(function InputBarButtons({
   const modelPickerButton = actions.includes("model-picker") && (
     <InputBarModelPicker
       agentModel={selectedAgentModel}
+      agentId={selectedAgent?.id ?? null}
+      lastRequestedModel={lastRequestedModel}
       owner={owner}
       buttonSize={buttonSize}
       side={conversation ? "top" : "bottom"}

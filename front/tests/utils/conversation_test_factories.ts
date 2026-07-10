@@ -126,6 +126,8 @@ export function mockAgentMessage(
     citations: {},
     generatedFiles: [],
     activitySteps: [],
+    resolvedModel: null,
+    modelResolutionMethod: null,
     actions: (params.actions ?? []).map(mockAction),
     feedback: (params.feedback ?? []).map((f) => ({
       thumbDirection: f.direction,

@@ -635,6 +635,7 @@ describe("tryCallMCPTool", () => {
       richMentions: [],
       costCredits: null,
       resolvedModel: null,
+      modelResolutionMethod: null,
     };
     const userMessage: UserMessageType = {
       id: -1,

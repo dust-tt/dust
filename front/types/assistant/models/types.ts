@@ -36,6 +36,13 @@ export type ResolvedRequestedModel = {
   reasoningEffort: ReasoningEffort;
 };
 
+// How an agent message's model was resolved: "agent" (ran the agent's own
+// configured model, no override), "user" (ran a per-message model picked from
+// the input-bar picker), or "auto" (resolved through the auto model).
+export const MODEL_RESOLUTION_METHODS = ["agent", "user", "auto"] as const;
+export type ModelResolutionMethodType =
+  (typeof MODEL_RESOLUTION_METHODS)[number];
+
 // z.object (not z.record) so every reasoning effort key is required.
 const ReasoningEffortSupportSchema = z.object({
   none: z.boolean(),

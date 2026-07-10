@@ -14,6 +14,7 @@ import type { FeedbackSelectorBaseProps } from "@app/components/assistant/conver
 import { FeedbackSelector } from "@app/components/assistant/conversation/FeedbackSelector";
 import { useAutoOpenFilesPanel } from "@app/components/assistant/conversation/files_panel/useAutoOpenFilesPanel";
 import { useGenerationContext } from "@app/components/assistant/conversation/GenerationContextProvider";
+import { getModelWithReasoningEffortLabel } from "@app/components/assistant/conversation/input_bar/modelPickerUtils";
 import { useAutoOpenInteractiveContent } from "@app/components/assistant/conversation/interactive_content/useAutoOpenInteractiveContent";
 import type {
   AgentMessageStateWithControlEvent,
@@ -65,6 +66,7 @@ import { useAuth, useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { clientFetch } from "@app/lib/egress/client";
 import type { DustError } from "@app/lib/error";
 import { FILE_ID_PATTERN } from "@app/lib/files";
+import { getSupportedModelConfig } from "@app/lib/llms/model_configurations";
 import { getFilePreviewDirectivePaths } from "@app/lib/markdown/file_preview";
 import { extractFromString } from "@app/lib/mentions/format";
 import { useUnifiedAgentConfigurations } from "@app/lib/swr/assistants";
@@ -1049,6 +1051,19 @@ export function AgentMessage({
     canShowAgentConversationActions(agentConfiguration.sId);
   const isArchived = agentConfiguration.status === "archived";
 
+  const perMessageModel =
+    agentMessage.modelResolutionMethod === "user" && agentMessage.resolvedModel
+      ? getSupportedModelConfig(agentMessage.resolvedModel)
+      : null;
+  const perMessageModelLabel =
+    perMessageModel && agentMessage.resolvedModel
+      ? getModelWithReasoningEffortLabel({
+          kind: "model",
+          model: perMessageModel,
+          effort: agentMessage.resolvedModel.reasoningEffort,
+        })
+      : null;
+
   const renderName = useCallback(
     () => (
       <span className="inline-flex items-center">
@@ -1060,6 +1075,17 @@ export function AgentMessage({
           canMention={canMention}
           isDisabled={isArchived}
         />
+        {perMessageModelLabel && (
+          <Tooltip
+            label="Model was overridden for this message using the model picker."
+            tooltipTriggerAsChild
+            trigger={
+              <span className="pl-1 font-normal text-muted-foreground">
+                with {perMessageModelLabel}
+              </span>
+            }
+          />
+        )}
         {parentAgent && (
           <Chip
             label={`handoff from @${parentAgent.name}`}
@@ -1076,6 +1102,7 @@ export function AgentMessage({
       agentConfiguration.sId,
       canMention,
       isArchived,
+      perMessageModelLabel,
       parentAgent,
       agentMessage.status,
     ]

@@ -25,6 +25,8 @@ import type {
   ParticipantActionType,
   UserMessageOrigin,
 } from "@app/types/assistant/conversation";
+import type { ModelResolutionMethodType } from "@app/types/assistant/models/types";
+import { MODEL_RESOLUTION_METHODS } from "@app/types/assistant/models/types";
 import type { CreationOptional, ForeignKey, NonAttribute } from "sequelize";
 
 export class ConversationModel extends WorkspaceAwareModel<ConversationModel> {
@@ -453,11 +455,6 @@ UserMessageModel.belongsTo(KeyModel, {
   foreignKey: { name: "userContextApiKeyId", allowNull: true },
   onDelete: "RESTRICT",
 });
-
-const MODEL_RESOLUTION_METHODS = ["agent", "user", "auto"] as const;
-
-export type ModelResolutionMethodType =
-  (typeof MODEL_RESOLUTION_METHODS)[number];
 
 export class AgentMessageModel extends WorkspaceAwareModel<AgentMessageModel> {
   declare createdAt: CreationOptional<Date>;

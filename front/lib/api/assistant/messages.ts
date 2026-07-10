@@ -829,6 +829,7 @@ async function renderSingleAgentMessage(
     // batchRenderAgentMessages), so it is `null` for bulk conversation rendering.
     subAgentCostCredits,
     resolvedModel: resolvedModelFromAgentMessageRow(agentMessage),
+    modelResolutionMethod: agentMessage.modelResolutionMethod,
   } satisfies AgentMessageType;
 
   if (viewType === "full") {
