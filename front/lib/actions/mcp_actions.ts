@@ -1025,26 +1025,20 @@ export async function tryListMCPTools(
     skillServers,
     jitServers,
   });
-  const nonSkillServerKeys = new Set(
+  const nonDeferredServerKeys = new Set(
     [
       ...agentLoopListToolsContext.agentConfiguration.actions,
       ...(agentLoopListToolsContext.clientSideActionConfigurations ?? []),
       ...jitServers,
+      ...systemSkillServers,
     ].map(getMCPServerConfigurationKey)
   );
   const skillServerKeys = new Set(
     skillServers.map(getMCPServerConfigurationKey)
   );
-  const systemSkillServerKeys = new Set(
-    systemSkillServers.map(getMCPServerConfigurationKey)
-  );
-  const shouldDeferSkillServerConfig = deduplicatedConfigs.map((config) => {
+  const isSkillServerConfig = deduplicatedConfigs.map((config) => {
     const key = getMCPServerConfigurationKey(config);
-    return (
-      skillServerKeys.has(key) &&
-      !systemSkillServerKeys.has(key) &&
-      !nonSkillServerKeys.has(key)
-    );
+    return skillServerKeys.has(key) && !nonDeferredServerKeys.has(key);
   });
 
   const mcpServerActions = await disambiguateServerNamesBySpace(
@@ -1053,7 +1047,7 @@ export async function tryListMCPTools(
   );
   const mcpServerActionsWithOrigin = mcpServerActions.map((action, index) => ({
     action,
-    shouldDeferSkillServer: shouldDeferSkillServerConfig[index],
+    isFromSkillServer: isSkillServerConfig[index],
   }));
 
   // Pre-fetch all MCPServerViews for server-side configs to avoid N+1 queries.
@@ -1071,7 +1065,7 @@ export async function tryListMCPTools(
   // Discover all tools exposed by all available MCP servers.
   const results = await concurrentExecutor(
     mcpServerActionsWithOrigin,
-    async ({ action, shouldDeferSkillServer }) => {
+    async ({ action, isFromSkillServer }) => {
       let connectionParams: MCPConnectionParams;
       if (isServerSideMCPServerConfiguration(action)) {
         const mcpServerView = preFetchedMcpServerViews.get(
@@ -1218,7 +1212,7 @@ export async function tryListMCPTools(
 
         processedTools.push({
           ...toolConfig,
-          ...(shouldDeferSkillServer ? { eager: undefined } : {}),
+          ...(isFromSkillServer ? { eager: undefined } : {}),
           originalName: toolConfig.name,
           mcpServerName: action.name,
           name: toolName,
