@@ -232,6 +232,9 @@ export abstract class LLM<TPayload = unknown> {
           this.generation.updateTrace({
             metadata: {
               modelInteractionId: currentEvent.content.modelInteractionId,
+              ...(currentEvent.content.cacheMissReason && {
+                cacheMissReasonType: currentEvent.content.cacheMissReason.type,
+              }),
             },
           });
         }
