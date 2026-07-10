@@ -35,8 +35,7 @@ Write the source as a TypeScript file on the Pod file system (the Computer's mou
 \`/files/pod-<podId>\`, or through the \`files\` MCP server under a \`pod-<podId>/<rel>\` path). The module
 must:
 
-- export a \`schema\` object with a \`description\` and zod \`input\` and \`output\` schemas (plus a
-  \`databases\` list when the function uses pod databases, see below),
+- export a \`schema\` object with a \`description\` and zod \`input\` and \`output\` schemas,
 - default-export an object with a \`fetch(request: Request): Promise<Response>\` method (the Bun and
   Web Workers handler shape). A bare default-exported function is rejected.
 
@@ -64,125 +63,10 @@ export default {
 You can split the implementation across several files on the Pod and import them with relative paths
 (e.g. \`import { parse } from "./lib/parse.ts"\`). Publishing bundles the entrypoint and all of its
 relative imports into one module. The bundle is a snapshot taken at publish time, so editing an
-imported helper (including a database schema file) has no effect until you re-publish.
+imported helper has no effect until you re-publish.
 
 The external packages you can import are \`zod\`, \`drizzle-orm\` and \`@dust/pod\`. Other npm packages
 are not available at build time.
-
-#### Pod databases: durable shared state
-
-Functions of the same Pod can share durable SQLite databases. The contract has four parts:
-
-1. **One schema file per database** at \`databases/{db}.db.ts\`, relative to the function sources
-   — functions sharing a database must live in the same source directory so they all import the
-   same file. It is the single source of truth: it declares the FULL intended schema of that
-   database with drizzle's \`sqliteTable\` DSL, and every function imports its table objects from
-   it. Never hand-write table objects inside a function file.
-2. **Each function declares the databases it opens** in \`schema.databases: ["chat"]\`. Database
-   names are lowercase \`[a-z][a-z0-9_]*\`.
-3. **Apply the schema file with the \`db_reconcile\` tool** — it creates the database on its
-   first run, applies additive DDL after edits, and is where the schema rules are enforced.
-   Publish neither validates nor applies schema files: an unreconciled database does not
-   exist at runtime.
-4. **At runtime, open a database with \`db(name)\` from \`@dust/pod\`** and query it with the
-   imported table objects.
-
-\`\`\`ts
-// databases/chat.db.ts — the full intended schema of chat.db, shared by every chat function
-import { index, integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
-
-export const messages = sqliteTable(
-  "messages",
-  {
-    id: integer("id").primaryKey({ autoIncrement: true }),
-    author: text("author"),
-    body: text("body"),
-    attachments: text("attachments", { mode: "json" }).$type<string[]>(),
-    createdAt: integer("created_at", { mode: "timestamp" }),
-  },
-  (t) => [index("messages_created_idx").on(t.createdAt)]
-);
-\`\`\`
-
-\`\`\`ts
-// post-message.ts
-import { z } from "zod";
-import { db } from "@dust/pod";
-import { messages } from "./databases/chat.db.ts";
-
-export const schema = {
-  description: "Post a message.",
-  databases: ["chat"],
-  input: z.object({ author: z.string(), body: z.string() }),
-  output: z.object({ id: z.number() }),
-};
-
-export default {
-  async fetch(request: Request): Promise<Response> {
-    const { author, body } = await request.json();
-    const row = db("chat")
-      .insert(messages)
-      .values({ author, body, createdAt: new Date() })
-      .returning({ id: messages.id })
-      .get();
-    return Response.json(row);
-  },
-};
-\`\`\`
-
-Column modes (\`{ mode: "timestamp" | "timestamp_ms" | "boolean" | "json" | ... }\`) are the
-row-to-JS (de)serialization contract — they turn SQLite's light storage types into Dates, booleans
-and parsed JSON. Keep them identical across every function of a database by always importing from
-the shared schema file.
-
-#### Get the first schema right — evolution is additive-only
-
-Schema changes can only ADD: new tables, new columns, new indexes. No table or column is ever
-dropped, renamed, or retyped — reconcile rejects those changes to protect data and the other
-published functions (indexes are the exception: they can be added and dropped). First-schema
-quality therefore determines how often you hit that wall:
-
-- get table and column NAMES and TYPES right up front (renames are not possible later);
-- make columns nullable by default — add \`.notNull()\` only when certain, and never add a
-  NOT NULL column without a \`.default(...)\` to an existing table;
-- no premature unique indexes — a unique index added later makes sibling writes fail, and
-  creating it fails outright if existing rows already contain duplicates;
-- give every table an \`id: integer("id").primaryKey({ autoIncrement: true })\` and a
-  \`createdAt\` timestamp;
-- NO foreign keys (\`.references()\`), CHECK constraints or UNIQUE constraints (\`.unique()\` or
-  table-level \`unique()\` — use \`uniqueIndex()\` instead, SQLite cannot add or drop a UNIQUE
-  constraint later without a table rebuild) — \`db_reconcile\` rejects them; enforce
-  relational integrity in function code.
-
-When a shape must change anyway, evolve additively:
-
-- **new column**: add it nullable (or with a default), write it going forward, and read with a
-  fallback: \`row.newColumn ?? deriveFromOldColumn(row)\`;
-- **replacing a column (e.g. rename)**: ADD the new column, keep the old one declared; publish
-  writers that dual-write both, readers that prefer the new and fall back to the old; only then
-  republish the remaining functions;
-- **outgrowing a JSON column**: add a proper table alongside it; new writes go to the table,
-  readers prefer table rows and fall back to the JSON column for history.
-
-#### Applying schema changes
-
-Publishing neither validates nor touches pod databases. Schema changes reach a live database
-only through the \`db_reconcile\` tool — run it after editing \`databases/{db}.db.ts\` (a
-database is created on its first reconcile; \`db()\` opens must-exist). It validates the
-schema file (the rejections above) and applies additive DDL only:
-
-- "destructive changes are not allowed through reconcile" — the schema file drops something that
-  exists in the live database. Restore the missing table or column declarations and evolve
-  additively instead.
-- Nothing cross-checks the other published functions: a schema change that reconciles cleanly
-  can still break a sibling at runtime (a unique index added late, a column mode changed in one
-  copy of a schema file). The additive rules above are what prevents this — follow them, and
-  keep every function of a database importing the same schema file.
-
-A function's \`fetch\` handler runs as the same egress-controlled user as the Computer's bash
-tool, so \`fetch()\` calls from inside it only reach domains on the pod's egress allowlist, and the
-workspace's \`DST_*\` (plain config) and \`DSEC_*\` (HTTPS secret placeholder) environment variables
-are available under the same substitution rules as the Computer.
 
 #### Persisting state across calls
 
@@ -190,6 +74,57 @@ A function's process can read and write the Pod's file system exactly like the C
 under \`/files/pod-<podId>\` (or through the \`files\` MCP server, scoped to \`pod-<podId>/<rel>\`). Anything
 written there persists across calls and conversations, not just for the duration of one
 invocation.
+
+Functions of the same Pod can share durable SQLite databases (via \`drizzle-orm\`):
+- **One schema file per database** at \`databases/{db}.db.ts\`, relative to the sources: the single
+  source of truth declaring that database's full schema with drizzle's \`sqliteTable\` DSL. Every
+  function imports its table objects from it (never hand-write tables in a function file), so
+  functions sharing a database must live in the same source directory.
+- **Name functions that use this db.ts by writting a comment a the top** 
+- **Apply the schema file with \`sandbox_functions__db_reconcile\`**; it creates the database and
+  applies additive DDL after edits, and enforces the rules below. Publishing does not touch
+  databases; an unreconciled database does not exist at runtime.
+- **At runtime open a database with \`db(name)\` from \`@dust/pod\`** and query it with the imported
+  table objects.
+
+\`\`\`ts
+// databases/chat.db.ts; the full intended schema, shared by every chat function
+import { index, integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
+
+export const messages = sqliteTable("messages", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  author: text("author"),
+  body: text("body"),
+  createdAt: integer("created_at", { mode: "timestamp" }),
+}, (t) => [index("messages_created_idx").on(t.createdAt)]);
+
+// post-message.ts; declares schema.databases: ["chat"], then inside fetch:
+import { db } from "@dust/pod";
+import { messages } from "./databases/chat.db.ts";
+const row = db("chat").insert(messages)
+  .values({ author, body, createdAt: new Date() })
+  .returning({ id: messages.id }).get();
+\`\`\`
+
+Column \`mode\` (\`"timestamp" | "boolean" | "json" | ...\`) is the row-to-JS (de)serialization; keep it identical across functions by always importing the shared schema file.
+
+**Evolution is additive-only.** Reconcile can only ADD tables, columns, and indexes; nothing is
+dropped, renamed, or retyped (indexes excepted, and it rejects a destructive schema file). Get
+names and types right up front, and:
+
+- make columns nullable by default; never add a NOT NULL column without a \`.default(...)\`;
+- no premature unique indexes (a late \`uniqueIndex()\` fails if rows already duplicate);
+- no foreign keys (\`.references()\`), CHECK or UNIQUE constraints; use \`uniqueIndex()\` and enforce
+  integrity in code;
+- give every table an \`id\` and a \`createdAt\`;
+- to change a shape, add alongside: a new nullable column read with a fallback, or a new table
+  preferred over the old on read.
+
+A function's \`fetch\` handler runs as the same egress-controlled user as the Computer's bash
+tool, so \`fetch()\` calls from inside it only reach domains on the pod's egress allowlist, and the
+workspace's \`DST_*\` (plain config) and \`DSEC_*\` (HTTPS secret placeholder) environment variables
+are available under the same substitution rules as the Computer.
+
 
 #### Calling other tools from a function
 
@@ -201,24 +136,24 @@ servers and tools before writing the function.
 
 #### Publishing, discovering, and invoking
 
-Once the source is on the Pod, use the \`publish\` tool to build it. Publishing bundles and
+Once the source is on the Pod, use \`sandbox_functions__publish\` to build it. Publishing bundles and
 type-checks the source on the Computer and extracts the input and output JSON schemas from the
 \`schema\` export. Publishing again under the same name replaces the previous version. The stored
 bundle is owned by the platform and runs from a read-only mount, so a published function can be
 executed but never overwritten from within the Computer.
 
-Use the \`list\` and \`get\` tools to see what the Pod has already published and to inspect a
-function's contract before relying on it or publishing a near-duplicate.
+Use \`sandbox_functions__list\` and \`sandbox_functions__get\` to see what the Pod has already
+published and to inspect a function's contract before relying on it or publishing a near-duplicate.
 
-Call a published function directly from this conversation with the \`call\` tool, passing its slug
-and an input payload matching its \`get\`-reported input schema. Use \`call\` yourself whenever you
-need the result now rather than asking a Frame to fetch it for you.
+Call a published function directly from this conversation with \`sandbox_functions__call\`, passing
+its slug and an input payload matching its \`get\`-reported input schema. Call it yourself whenever
+you need the result now rather than asking a Frame to fetch it for you.
 
-The live databases have tools of their own: \`db_list\` shows them with sizes, \`db_schema\`
-regenerates a database's live schema (storage types only — column modes exist only in the
-authored schema file), \`db_query\` runs one SQL statement (SELECT or INSERT/UPDATE/DELETE;
-schema changes are rejected), and \`db_reconcile\` applies an edited databases/{db}.db.ts to the
-live database (additive DDL only). See each tool's own description for its arguments.
+The live databases have their own tools: \`sandbox_functions__db_list\` (sizes),
+\`sandbox_functions__db_schema\` (live storage types only; column modes exist only in the authored
+file), \`sandbox_functions__db_query\` (one SQL statement; no schema changes; a result too large to
+return inline is written to a pod file whose path it reports), and \`sandbox_functions__db_reconcile\`
+(apply an edited \`databases/{db}.db.ts\`). See each tool's description for its arguments.
 
 #### Calling a function from a Frame
 
