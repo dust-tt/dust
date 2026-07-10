@@ -157,6 +157,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
       message,
       messageStatus,
       value,
+      label,
       isError,
       disabled,
       icon,
