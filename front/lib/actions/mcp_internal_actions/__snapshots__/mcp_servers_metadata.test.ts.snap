@@ -2008,6 +2008,22 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool billing info ac
       "freeUsage": true,
       "toolCostCategory": "basic",
     },
+    "db_list": {
+      "freeUsage": true,
+      "toolCostCategory": "basic",
+    },
+    "db_query": {
+      "freeUsage": true,
+      "toolCostCategory": "basic",
+    },
+    "db_reconcile": {
+      "freeUsage": true,
+      "toolCostCategory": "basic",
+    },
+    "db_schema": {
+      "freeUsage": true,
+      "toolCostCategory": "basic",
+    },
     "get": {
       "freeUsage": true,
       "toolCostCategory": "basic",
@@ -3117,6 +3133,10 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool stakes across a
   },
   "sandbox_functions": {
     "call": "low",
+    "db_list": "never_ask",
+    "db_query": "never_ask",
+    "db_reconcile": "low",
+    "db_schema": "never_ask",
     "get": "never_ask",
     "list": "never_ask",
     "publish": "low",

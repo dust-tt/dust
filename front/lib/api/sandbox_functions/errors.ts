@@ -4,6 +4,9 @@ export type SandboxFunctionErrorCode =
   | "build_failed"
   | "schema_extraction_failed"
   | "invalid_contract"
+  | "publish_conflict"
+  | "reconcile_blocked"
+  | "reconcile_failed"
   | "internal";
 
 export class SandboxFunctionError extends Error {

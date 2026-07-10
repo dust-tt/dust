@@ -25,8 +25,8 @@ import fs from "fs";
 import path from "path";
 
 const DUST_BEDROCK_IMAGE_VERSION = "1.10.0";
-const DUST_BASE_IMAGE_VERSION = "0.8.53";
-const DSBX_CLI_VERSION = "0.1.32";
+const DUST_BASE_IMAGE_VERSION = "0.8.54";
+const DSBX_CLI_VERSION = "0.1.33";
 // Identity, not coverage list: agent-proxied is a specific Linux user. The
 // nftables ruleset covers SANDBOX_UNTRUSTED_UIDS as a set; reordering that
 // list must not silently change this user's UID.
@@ -452,15 +452,13 @@ SHELLEOF`,
       {
         name: "drizzle-kit",
         version: "0.31.10",
-        description:
-          "Schema push/pull engine (used by dsbx db commands, not function code)",
+        description: "drizzle-kit",
         runtime: "node",
       },
       {
         name: "@libsql/client",
         version: "0.17.4",
-        description:
-          "SQLite driver drizzle-kit introspect connects through (dsbx db schema pull)",
+        description: "SQLite driver for drizzle-kit",
         runtime: "node",
       },
     ],

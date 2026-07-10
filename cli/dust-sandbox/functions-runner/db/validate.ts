@@ -17,14 +17,14 @@ import { existsSync } from "node:fs";
 import { is } from "drizzle-orm";
 import { getTableConfig, SQLiteTable } from "drizzle-orm/sqlite-core";
 import { z } from "zod";
-import { Err, Ok, type Result } from "../result.ts";
+import { Err, Ok, type Result } from "#result.ts";
 import {
   type DatabaseSchema,
   type DatabaseSchemaErrorKind,
   type DatabaseTable,
   RESERVED_OBJECT_KEYS,
   RESERVED_TABLE_PREFIXES,
-} from "../types/db.ts";
+} from "#types/db.ts";
 
 export class DatabaseSchemaError extends Error {
   readonly kind: DatabaseSchemaErrorKind;

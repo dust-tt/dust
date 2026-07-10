@@ -1,22 +1,12 @@
 import { Database, type Statement } from "bun:sqlite";
-import { closeSync, existsSync, openSync, writeSync } from "node:fs";
+import { closeSync, existsSync, mkdirSync, openSync, writeSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { Err, Ok, type Result } from "../result.ts";
+import { Err, Ok, type Result } from "#result.ts";
 import { applyWritePragmas, DbCommandError } from "./common.ts";
 
 export const QUERY_INLINE_ROW_CAP = 100;
 export const QUERY_INLINE_PAYLOAD_CAP_BYTES = 100_000;
-
-const ALLOWED_KEYWORDS = new Set([
-  "select",
-  "values",
-  "with",
-  "insert",
-  "update",
-  "delete",
-  "replace",
-]);
 
 export interface QueryOutcome {
   columns: string[];
@@ -31,7 +21,10 @@ export function runQuery(
   dbPath: string,
   sql: string,
   // Omitted only by tests that don't exercise the quota; runner.ts always passes it.
-  maxSizeBytes?: number
+  maxSizeBytes?: number,
+  // Directory the spill file is written to — a pod file, so the caller can read the full result
+  // set. runner.ts passes the pod-files dir from Rust; tests omit it and fall back to a temp dir.
+  spillDir?: string
 ): Result<QueryOutcome, DbCommandError> {
   const trimmed = sql.trim();
   if (trimmed.length === 0) {
@@ -40,29 +33,12 @@ export function runQuery(
     );
   }
 
-  // Statement-type allowlist, matched on the raw text before preparing. This is the ONLY use of
-  // the leading keyword: it decides what the caller may run, never how the statement executes.
-  // It cannot be replaced with something more precise — bun:sqlite exposes neither an authorizer
-  // (sqlite3_set_authorizer) nor a per-statement readonly flag (sqlite3_stmt_readonly), so there
-  // is nothing to ask SQLite about a prepared statement's effects. An anchored allowlist is the
-  // fail-closed direction: a leading comment, PRAGMA, ATTACH, VACUUM, or any DDL keyword misses
-  // the match and is refused (gating before prepare also sidesteps the pragmas that act at
-  // compile time: https://sqlite.org/pragma.html). It is sound because bun compiles/executes only
-  // the first statement (the multi-statement guard below rejects any trailing text) and SQLite's
-  // grammar is prefix-keyword-determined: nothing starting with SELECT/VALUES can write, and a
-  // WITH can carry neither DDL nor a data-modifying CTE (SQLite rejects `WITH x AS (INSERT …)`).
-  // Whatever slips past is still caught behaviorally by the schema_version barrier below.
-  const keyword = trimmed.match(/^[A-Za-z]+/)?.[0].toLowerCase();
-  if (keyword === undefined || !ALLOWED_KEYWORDS.has(keyword)) {
-    return new Err(
-      new DbCommandError(
-        "disallowed_statement",
-        "only SELECT and DML (INSERT/UPDATE/DELETE/REPLACE, optionally WITH) are allowed; " +
-          "schema changes go through reconcile"
-      )
-    );
-  }
-
+  // No statement-type allowlist: the guards below subsume it. The single-statement check rejects a
+  // trailing statement, so a stateful setup can't be paired with a follow-up that uses it — not
+  // `PRAGMA writable_schema=ON; UPDATE sqlite_master ...`, not `ATTACH ...; SELECT ... FROM other`.
+  // BEGIN IMMEDIATE makes VACUUM/BEGIN/`PRAGMA journal_mode` error out (they can't run inside a
+  // transaction), and the schema_version re-check rolls back any DDL. A lone connection-scoped
+  // pragma or ATTACH resets when the connection closes, so on its own it changes nothing.
   const opened = openReadwrite(dbPath, maxSizeBytes);
   if (opened.isErr()) {
     return opened;
@@ -111,19 +87,18 @@ export function runQuery(
     }
 
     // One statement, one transaction — the same path for reads and writes. The schema_version
-    // re-check is the real barrier behind the keyword gate: anything that reached here and still
-    // moved the schema is turned into an Err and never committed; a read leaves the version
-    // untouched. BEGIN IMMEDIATE means a read holds the write lock for its duration — fine for a
-    // single-writer per-pod database, and the price of not branching on a read/write guess that
-    // bun gives us no reliable way to make.
+    // re-check refuses DDL behaviorally: anything that moved the schema is turned into an Err and
+    // never committed; a read leaves the version untouched. BEGIN IMMEDIATE means a read holds the
+    // write lock for its duration — fine for a single-writer per-pod database, and the price of not
+    // branching on a read/write guess that bun gives us no reliable way to make.
     db.exec("BEGIN IMMEDIATE;");
     const versionBefore = schemaVersion(db);
-    let result = execute(statement);
+    let result = execute(statement, spillDir);
     if (result.isOk() && schemaVersion(db) !== versionBefore) {
       result = new Err(
         new DbCommandError(
           "disallowed_statement",
-          "the statement changed the database schema; schema changes go through reconcile"
+          "the statement changed the database schema; DDL is forbidden in query mode"
         )
       );
     }
@@ -219,11 +194,14 @@ function executionError(e: unknown): DbCommandError {
 // Run one prepared statement and shape its output. A statement that returns no columns is a
 // plain INSERT/UPDATE/DELETE: execute it and report the affected-row count, the only meaningful
 // output run() surfaces. Anything with columns — SELECT, VALUES, or a RETURNING clause — streams
-// its rows through collectRows, spilling past the inline bounds. columnNames, not the keyword, is
-// the discriminator, so `INSERT … RETURNING` correctly returns its rows.
-function execute(statement: Statement): Result<QueryOutcome, DbCommandError> {
+// its rows through collectRows, spilling past the inline bounds. columnNames is the discriminator,
+// so `INSERT … RETURNING` correctly returns its rows.
+function execute(
+  statement: Statement,
+  spillDir: string | undefined
+): Result<QueryOutcome, DbCommandError> {
   if (statement.columnNames.length > 0) {
-    return collectRows(statement);
+    return collectRows(statement, spillDir);
   }
   let changes: number;
   try {
@@ -243,7 +221,8 @@ function execute(statement: Statement): Result<QueryOutcome, DbCommandError> {
 
 // Execute a result-returning statement, spilling beyond the inline bounds.
 function collectRows(
-  statement: Statement
+  statement: Statement,
+  spillDir: string | undefined
 ): Result<QueryOutcome, DbCommandError> {
   const preview: Record<string, unknown>[] = [];
   let previewBytes = 0;
@@ -266,7 +245,10 @@ function collectRows(
           previewJson.push(rowJson);
           continue;
         }
-        spillPath = join(tmpdir(), `dsbx-query-${crypto.randomUUID()}.jsonl`);
+        const dir = spillDir ?? tmpdir();
+        // The pod-files spill dir (e.g. /files/pod-<id>/.tool_outputs/db) is not pre-created.
+        mkdirSync(dir, { recursive: true });
+        spillPath = join(dir, `dsbx-query-${crypto.randomUUID()}.jsonl`);
         spillFd = openSync(spillPath, "w");
         for (const line of previewJson) {
           writeSync(spillFd, `${line}\n`);
