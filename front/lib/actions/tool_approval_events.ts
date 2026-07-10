@@ -35,6 +35,16 @@ export async function makeMCPApproveExecutionEventBase(
 ): Promise<MCPApproveExecutionEventBase> {
   const argumentsRequiringApproval =
     toolConfiguration.argumentsRequiringApproval ?? [];
+  const approvalArgsLabel = await getApprovalArgsLabel({
+    auth,
+    internalMCPServerName: getInternalMCPServerNameFromSId(
+      toolConfiguration.toolServerId
+    ),
+    toolName: toolConfiguration.originalName,
+    agentName: approvalSubjectName,
+    inputs: approvalLabelInputs,
+    argumentsRequiringApproval,
+  });
 
   return {
     type: "tool_approve_execution",
@@ -53,15 +63,6 @@ export async function makeMCPApproveExecutionEventBase(
       ),
     },
     argumentsRequiringApproval,
-    approvalArgsLabel: await getApprovalArgsLabel({
-      auth,
-      internalMCPServerName: getInternalMCPServerNameFromSId(
-        toolConfiguration.toolServerId
-      ),
-      toolName: toolConfiguration.originalName,
-      agentName: approvalSubjectName,
-      inputs: approvalLabelInputs,
-      argumentsRequiringApproval,
-    }),
+    approvalArgsLabel,
   };
 }
