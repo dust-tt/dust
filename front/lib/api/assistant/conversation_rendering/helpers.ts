@@ -242,7 +242,7 @@ export async function getSteps(
   const actions = removeNulls(message.actions);
   const renderSearchResultsAsMarkdown = await hasFeatureFlag(
     auth,
-    "render_semantic_search_results_as_markdown"
+    "render_search_results_as_markdown"
   );
 
   // We store for each step (identified by its index) the "contents" array (raw model outputs, including
