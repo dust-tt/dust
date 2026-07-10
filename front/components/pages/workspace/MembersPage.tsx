@@ -1,3 +1,4 @@
+import { WorkspaceGroupsList } from "@app/components/groups/WorkspaceGroupsList";
 import { WorkspaceMembersSection } from "@app/components/members/WorkspaceMembersSection";
 import {
   useAuth,
@@ -89,6 +90,7 @@ export function MembersPage() {
                 This page is WIP. Do not change unless you know what you are
                 doing.
               </ContentMessage>
+              <WorkspaceGroupsList owner={owner} />
             </TabsContent>
           </Tabs>
         ) : (
