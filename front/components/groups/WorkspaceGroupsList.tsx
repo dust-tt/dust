@@ -108,30 +108,36 @@ export function WorkspaceGroupsList({ owner }: WorkspaceGroupsListProps) {
       {!isGroupsLoading &&
         (rows.length > 0 ? (
           <>
-                <div className="flex flex-row gap-2">
-        <SearchInput
-          placeholder="Search groups"
-          value={searchTerm}
-          name="search"
-          onChange={setSearchTerm}
-          className="w-full"
-        />
-        <Button
-          icon={Plus}
-          label="Create group"
-          onClick={() => setIsCreateDialogOpen(true)}
-        />
-      </div>
-          <DataTable
-            data={rows}
-            columns={columns}
-            filter={searchTerm}
-            filterColumn="name"
-          />
+            <div className="flex flex-row gap-2">
+              <SearchInput
+                placeholder="Search groups"
+                value={searchTerm}
+                name="search"
+                onChange={setSearchTerm}
+                className="w-full"
+              />
+              <Button
+                icon={Plus}
+                label="Create group"
+                onClick={() => setIsCreateDialogOpen(true)}
+              />
+            </div>
+            <DataTable
+              data={rows}
+              columns={columns}
+              filter={searchTerm}
+              filterColumn="name"
+            />
           </>
         ) : (
           <EmptyCTA
-            action={<Button icon={Plus} label="Create group" onClick={() => setIsCreateDialogOpen(true)} />}
+            action={
+              <Button
+                icon={Plus}
+                label="Create group"
+                onClick={() => setIsCreateDialogOpen(true)}
+              />
+            }
             message="You don’t have any groups yet."
           />
         ))}
