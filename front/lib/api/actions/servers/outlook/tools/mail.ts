@@ -26,7 +26,7 @@ const MAX_ATTACHMENT_SIZE_BYTES = 3 * 1024 * 1024; // 3MB — Graph API inline a
 async function fetchAttachment(
   auth: ToolHandlerExtra["auth"],
   attachmentFilePath: string | undefined,
-  toolContext: ToolHandlerExtra["toolContext"]
+  runContext: ToolHandlerExtra["runContext"]
 ): Promise<
   | Ok<{ buffer: Buffer; filename: string; contentType: string } | null>
   | Err<MCPError>
@@ -35,14 +35,10 @@ async function fetchAttachment(
     return new Ok(null);
   }
 
-  if (!toolContext) {
-    return new Err(new MCPError("No agent context available"));
-  }
-
   const fileResult = await getFileFromConversationAttachment(
     auth,
     attachmentFilePath,
-    toolContext
+    { runContext }
   );
 
   if (fileResult.isErr()) {
@@ -814,7 +810,7 @@ function validateMailParams({
 const handlers: ToolHandlers<typeof OUTLOOK_TOOLS_METADATA> = {
   get_messages: async (
     { search, folderName, top = 10, skip = 0, select, sharedMailboxAddress },
-    { authInfo, auth, toolContext }
+    { authInfo, auth, runContext }
   ) => {
     const accessToken = authInfo?.token;
     if (!accessToken) {
@@ -841,7 +837,9 @@ const handlers: ToolHandlers<typeof OUTLOOK_TOOLS_METADATA> = {
       folderId = resolved.folderId;
     }
 
-    const allowedLabels = await getAllowedLabelsForMCPServer(auth, toolContext);
+    const allowedLabels = await getAllowedLabelsForMCPServer(auth, {
+      runContext,
+    });
 
     if (allowedLabels.length > 0) {
       // Two parallel requests:
@@ -1482,7 +1480,7 @@ const handlers: ToolHandlers<typeof OUTLOOK_TOOLS_METADATA> = {
       sharedMailboxAddress,
       attachmentFilePath,
     },
-    { authInfo, auth, toolContext }
+    { authInfo, auth, runContext }
   ) => {
     const accessToken = authInfo?.token;
     if (!accessToken) {
@@ -1492,7 +1490,7 @@ const handlers: ToolHandlers<typeof OUTLOOK_TOOLS_METADATA> = {
     const attachmentResult = await fetchAttachment(
       auth,
       attachmentFilePath,
-      toolContext
+      runContext
     );
     if (attachmentResult.isErr()) {
       return attachmentResult;
@@ -1596,7 +1594,7 @@ const handlers: ToolHandlers<typeof OUTLOOK_TOOLS_METADATA> = {
       replyAll = false,
       attachmentFilePath,
     },
-    { authInfo, auth, toolContext }
+    { authInfo, auth, runContext }
   ) => {
     const accessToken = authInfo?.token;
     if (!accessToken) {
@@ -1616,7 +1614,7 @@ const handlers: ToolHandlers<typeof OUTLOOK_TOOLS_METADATA> = {
     const attachmentResult = await fetchAttachment(
       auth,
       attachmentFilePath,
-      toolContext
+      runContext
     );
     if (attachmentResult.isErr()) {
       return attachmentResult;

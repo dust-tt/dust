@@ -67,8 +67,8 @@ The response includes:
         instructionsHtml,
         scope: formData.agentSettings.scope,
         model: {
-          modelId: formData.generationSettings.modelSettings.modelId,
-          providerId: formData.generationSettings.modelSettings.providerId,
+          modelId: formData.generationSettings.modelSettings?.modelId,
+          providerId: formData.generationSettings.modelSettings?.providerId,
           reasoningEffort: formData.generationSettings.reasoningEffort,
         },
         tools: formData.actions.map((action) => ({

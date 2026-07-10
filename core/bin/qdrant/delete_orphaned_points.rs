@@ -15,10 +15,7 @@ async fn delete_orphaned_points_for_document_id(
     qdrant_client: &DustQdrantClient,
     document_id: &str,
 ) -> Result<()> {
-    match ds
-        .retrieve(store.clone(), &document_id, &None, true, &None)
-        .await
-    {
+    match ds.retrieve(store.clone(), &document_id, &None, true).await {
         Err(e) => Err(e),
         Ok(None) => Ok(()),
         Ok(Some(_)) => Err(anyhow!("Document still exists. Won't delete.")),

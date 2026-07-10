@@ -6,7 +6,7 @@ import type {
 import { resolveConversationFileRef } from "@app/lib/actions/mcp_internal_actions/utils/file_utils";
 import {
   isAgentLoopRunContext,
-  type ToolContextType,
+  type ToolContext,
 } from "@app/lib/actions/types";
 import { computeTokensCostForUsageInMicroUsd } from "@app/lib/api/assistant/token_pricing";
 import { uploadBase64ImageToFileStorage } from "@app/lib/api/files/upload";
@@ -155,6 +155,11 @@ export async function checkImageGenerationRateLimit(
   const { limits } = auth.getNonNullablePlan();
   const { maxImagesPerWeek } = limits.capabilities.images;
 
+  // -1 means unlimited: skip the rate limit check entirely.
+  if (maxImagesPerWeek === -1) {
+    return new Ok(undefined);
+  }
+
   const remaining = await rateLimiter({
     key: `${IMAGE_GENERATION_RATE_LIMITER_KEY}_${workspace.sId}`,
     maxPerTimeframe: maxImagesPerWeek,
@@ -204,7 +209,7 @@ export function trackTokenUsage({
 
 export async function uploadAndFormatImageResponse(
   auth: Authenticator,
-  toolContext: ToolContextType | undefined,
+  toolContext: ToolContext | undefined,
   images: Base64ImageData[],
   fileName: string
 ): Promise<
@@ -292,7 +297,7 @@ async function processSingleImageFile(
     maxImageSize: number;
     supportedContentTypes: string[];
     providerId: ModelProviderIdType;
-    toolContext: ToolContextType | undefined;
+    toolContext: ToolContext | undefined;
   }
 ): Promise<Ok<ReferenceImageFile> | Err<MCPError>> {
   const workspace = auth.getNonNullableWorkspace();
@@ -360,7 +365,7 @@ export async function processImageFileIds(
     providerId,
   }: {
     imageFileIds: string[];
-    toolContext: ToolContextType | undefined;
+    toolContext: ToolContext | undefined;
     supportedContentTypes: string[];
     providerId: ModelProviderIdType;
   }

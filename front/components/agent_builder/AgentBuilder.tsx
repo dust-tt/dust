@@ -25,7 +25,6 @@ import { useSidekickMCPServer } from "@app/components/agent_builder/sidekick/use
 import { submitAgentBuilderForm } from "@app/components/agent_builder/submitAgentBuilderForm";
 import {
   getDefaultAgentFormData,
-  getDefaultModel,
   transformAgentConfigurationToFormData,
   transformDuplicateAgentToFormData,
   transformTemplateToFormData,
@@ -59,12 +58,20 @@ import { emptyArray, useFetcher } from "@app/lib/swr/swr";
 import { getConversationRoute } from "@app/lib/utils/router";
 import { removeParamFromRouter } from "@app/lib/utils/router_util";
 import datadogLogger from "@app/logger/datadogLogger";
+import type { EnabledModelConfigurationType } from "@app/types/api/assistant/models";
 import type { AgentConfigurationType } from "@app/types/assistant/agent";
 import type { TemplateInfo } from "@app/types/assistant/templates";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { isString, removeNulls } from "@app/types/shared/utils/general";
 import { pluralize } from "@app/types/shared/utils/string_utils";
 import { isBuilder } from "@app/types/user";
+import {
+  ContentMessage,
+  ContentMessageAction,
+  InfoCircle,
+  RefreshCw02,
+  Spinner,
+} from "@dust-tt/sparkle";
 import { zodResolver } from "@hookform/resolvers/zod";
 import set from "lodash/set";
 import {
@@ -110,12 +117,63 @@ interface AgentBuilderProps {
   onSaved?: () => void;
 }
 
-export default function AgentBuilder({
+export default function AgentBuilder(props: AgentBuilderProps) {
+  const { owner } = useAgentBuilderContext();
+  const { defaultModel, isModelsError } = useModels({ owner });
+
+  if (!props.agentConfiguration && !defaultModel) {
+    if (isModelsError) {
+      return (
+        <div className="flex h-full w-full items-center justify-center p-4">
+          <ContentMessage
+            title="Unable to load models"
+            variant="warning"
+            icon={InfoCircle}
+            size="lg"
+            action={
+              <ContentMessageAction
+                icon={RefreshCw02}
+                label="Retry"
+                variant="warning"
+                onClick={() => window.location.reload()}
+              />
+            }
+          >
+            We could not determine the default model for this agent. Please try
+            again.
+          </ContentMessage>
+        </div>
+      );
+    }
+
+    return (
+      <div className="flex h-full w-full items-center justify-center">
+        <Spinner />
+      </div>
+    );
+  }
+
+  return (
+    <AgentBuilderForm
+      {...props}
+      newAgentDefaultModel={
+        props.agentConfiguration ? undefined : defaultModel!
+      }
+    />
+  );
+}
+
+interface AgentBuilderFormProps extends AgentBuilderProps {
+  newAgentDefaultModel?: EnabledModelConfigurationType;
+}
+
+function AgentBuilderForm({
   agentConfiguration,
   duplicateAgentId,
   conversationId,
   onSaved,
-}: AgentBuilderProps) {
+  newAgentDefaultModel,
+}: AgentBuilderFormProps) {
   const { owner, user, isAdmin, assistantTemplate } = useAgentBuilderContext();
   const { supportedDataSourceViews } = useDataSourceViewsContext();
   const { mcpServerViews } = useMCPServerViewsContext();
@@ -180,8 +238,6 @@ export default function AgentBuilder({
     owner,
     agentConfigurationId: agentConfiguration?.sId ?? null,
   });
-
-  const { models: availableModels } = useModels({ owner });
 
   const { slackChannels: slackChannelsLinkedWithAgent } =
     useSlackChannelsLinkedWithAgent({
@@ -274,12 +330,25 @@ export default function AgentBuilder({
       return transformAgentConfigurationToFormData(agentConfiguration);
     }
 
-    if (assistantTemplate) {
-      return transformTemplateToFormData(assistantTemplate, user);
+    if (assistantTemplate && newAgentDefaultModel) {
+      return transformTemplateToFormData(
+        assistantTemplate,
+        user,
+        newAgentDefaultModel
+      );
     }
 
-    return getDefaultAgentFormData({ user });
-  }, [agentConfiguration, duplicateAgentId, assistantTemplate, user]);
+    return getDefaultAgentFormData({
+      user,
+      defaultModel: newAgentDefaultModel!,
+    });
+  }, [
+    agentConfiguration,
+    duplicateAgentId,
+    assistantTemplate,
+    user,
+    newAgentDefaultModel,
+  ]);
 
   const form = useForm<AgentBuilderFormData>({
     resolver: zodResolver(agentBuilderFormSchema),
@@ -294,7 +363,6 @@ export default function AgentBuilder({
   useEffect(() => {
     const currentValues = form.getValues();
 
-    const defaultModel = getDefaultModel(availableModels);
     const userOwnedTriggers = triggers.filter(
       (trigger) => trigger.editor === user.id
     );
@@ -317,17 +385,19 @@ export default function AgentBuilder({
             : [user],
         slackChannels: agentSlackChannels,
       },
-      // For new agents, update model settings once available models are loaded.
-      ...(!agentConfiguration && {
-        generationSettings: {
-          ...currentValues.generationSettings,
-          modelSettings: {
-            modelId: defaultModel.modelId,
-            providerId: defaultModel.providerId,
+      // Templates may preset a model; override it with the backend default.
+      ...(!agentConfiguration &&
+        assistantTemplate &&
+        newAgentDefaultModel && {
+          generationSettings: {
+            ...currentValues.generationSettings,
+            modelSettings: {
+              modelId: newAgentDefaultModel.modelId,
+              providerId: newAgentDefaultModel.providerId,
+            },
+            reasoningEffort: newAgentDefaultModel.defaultReasoningEffort,
           },
-          reasoningEffort: defaultModel.defaultReasoningEffort,
-        },
-      }),
+        }),
     });
   }, [
     triggers,
@@ -344,7 +414,8 @@ export default function AgentBuilder({
     editors,
     agentConfiguration,
     agentSlackChannels,
-    availableModels,
+    assistantTemplate,
+    newAgentDefaultModel,
   ]);
 
   const { showDialog, ...dialogProps } = useAwaitableDialog({
@@ -578,7 +649,7 @@ export default function AgentBuilder({
     );
     sendNotification({
       title: `Agent ${agentConfiguration ? "edition" : "creation"} failed.`,
-      description: "There was an error validating the form.",
+      description: errorMessage,
       type: "error",
     });
   };

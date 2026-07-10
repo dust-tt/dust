@@ -7,7 +7,10 @@ import {
   MAX_PENDING_SUB_AGENT_SUGGESTIONS,
   MAX_PENDING_TOOLS_SUGGESTIONS,
 } from "@app/lib/api/actions/servers/agent_sidekick_context/constants";
-import { DESCRIBE_MCP_TOOL_NAME } from "@app/lib/reinforcement/types";
+import {
+  DESCRIBE_MCP_TOOL_NAME,
+  DESCRIBE_SKILL_TOOL_NAME,
+} from "@app/lib/reinforcement/types";
 import { MODEL_IDS } from "@app/types/assistant/models/models";
 import { ORDERED_REASONING_EFFORTS } from "@app/types/assistant/models/reasoning";
 import {
@@ -159,6 +162,21 @@ export const AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA = createToolsRecord({
     displayLabels: {
       running: "Describing MCP server",
       done: "Describe MCP server",
+    },
+    toolCostCategory: "basic",
+    freeUsage: true,
+  },
+  [DESCRIBE_SKILL_TOOL_NAME]: {
+    description:
+      "Get detailed information about a skill: its name, description, instructions, and configured tools.",
+    schema: {
+      skillId: z.string().describe("The sId of the skill to describe"),
+    },
+    stake: "never_ask",
+    eager: true,
+    displayLabels: {
+      running: "Describing skill",
+      done: "Describe skill",
     },
     toolCostCategory: "basic",
     freeUsage: true,
@@ -512,50 +530,6 @@ export const AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA = createToolsRecord({
     displayLabels: {
       running: "Updating suggestion state",
       done: "Update suggestion state",
-    },
-    toolCostCategory: "basic",
-    freeUsage: true,
-  },
-  search_agent_templates: {
-    description:
-      "Search published agent templates. Use jobType for tag-based filtering or query for semantic search. " +
-      "Returns full template details including sidekickInstructions.",
-    schema: {
-      jobType: z
-        .string()
-        .optional()
-        .describe(
-          "User's job type to filter templates by relevant tags (e.g. 'sales', 'engineering', 'legal'). If omitted, returns all published templates."
-        ),
-      query: z
-        .string()
-        .optional()
-        .describe(
-          "Free-text query to semantically search templates. Use when the user describes a specific use case not covered by jobType tags."
-        ),
-    },
-    eager: true,
-    stake: "never_ask",
-    displayLabels: {
-      running: "Searching templates",
-      done: "Search templates",
-    },
-    toolCostCategory: "basic",
-    freeUsage: true,
-  },
-  get_agent_template: {
-    description:
-      "Fetch template-specific guidance for the current agent. " +
-      "Use this tool when the agent was created from a template to retrieve specialized sidekickInstructions that define how you should assist with this agent type. " +
-      "These instructions may contain domain-specific rules, preferred approaches, or constraints you should follow.",
-    schema: {
-      templateId: z.string().describe("The sId of the template to retrieve"),
-    },
-    stake: "never_ask",
-    eager: true,
-    displayLabels: {
-      running: "Fetching template",
-      done: "Fetch template",
     },
     toolCostCategory: "basic",
     freeUsage: true,

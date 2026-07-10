@@ -33,7 +33,7 @@ export function SkillInfoPage({
   onClose,
 }: SkillInfoPageProps) {
   const [selectedTab, setSelectedTab] = useState<SkillTabType>("info");
-  const showEditorsTabs = skill.canWrite;
+  const showEditorsTabs = skill.canAdministrate;
 
   return (
     <div className="flex h-full flex-col gap-4">

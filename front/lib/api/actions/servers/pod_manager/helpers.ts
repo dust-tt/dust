@@ -8,7 +8,7 @@ import { parsePodConfigurationURI } from "@app/lib/actions/mcp_internal_actions/
 import {
   isAgentLoopRunContext,
   isSandboxFunctionRunContext,
-  type ToolContextType,
+  type ToolContext,
 } from "@app/lib/actions/types";
 import type { DataSourceFilter } from "@app/lib/api/assistant/configuration/types";
 import { isContentNodeAttachmentType } from "@app/lib/api/assistant/conversation/attachments";
@@ -104,9 +104,7 @@ export async function buildProjectRetrieveDataSources(
  */
 export async function getPod(
   auth: Authenticator,
-  from:
-    | { toolContext?: ToolContextType }
-    | { dustPod?: DustPodConfigurationType }
+  from: { toolContext?: ToolContext } | { dustPod?: DustPodConfigurationType }
 ): Promise<Result<PodContext, MCPError>> {
   if ("dustPod" in from && from.dustPod) {
     const { dustPod } = from;
@@ -137,6 +135,16 @@ export async function getPod(
     // Fetch the space by podId.
     const pod = await SpaceResource.fetchById(auth, podId);
     if (!pod) {
+      return new Err(
+        new MCPError(`Pod not found: ${podId}`, { tracked: false })
+      );
+    }
+
+    // `SpaceResource.fetchById` filters by workspace only, not by the caller's space
+    // membership, so a caller passing an arbitrary pod id could otherwise read its members,
+    // conversations, documents and tasks. Report unreadable pods as not-found so this cannot
+    // probe which pod sIds exist.
+    if (!pod.canRead(auth)) {
       return new Err(
         new MCPError(`Pod not found: ${podId}`, { tracked: false })
       );
@@ -218,9 +226,7 @@ export function checkWritePermission(
  */
 export async function getWritablePodContext(
   auth: Authenticator,
-  from:
-    | { toolContext?: ToolContextType }
-    | { dustPod?: DustPodConfigurationType }
+  from: { toolContext?: ToolContext } | { dustPod?: DustPodConfigurationType }
 ): Promise<Result<PodContext, MCPError>> {
   const contextRes = await getPod(auth, from);
   if (contextRes.isErr()) {

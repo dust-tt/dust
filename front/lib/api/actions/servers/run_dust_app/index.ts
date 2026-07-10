@@ -9,7 +9,7 @@ import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/uti
 import { registerTool } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import {
   isAgentLoopRunContext,
-  type ToolContextType,
+  type ToolContext,
 } from "@app/lib/actions/types";
 import {
   isLightServerSideMCPToolConfigurationWithName,
@@ -51,7 +51,7 @@ import type { TextContent } from "@modelcontextprotocol/sdk/types.js";
  */
 export default async function createServer(
   auth: Authenticator,
-  toolContext?: ToolContextType
+  toolContext?: ToolContext
 ): Promise<McpServer> {
   const server = makeInternalMCPServer("run_dust_app");
   const owner = auth.getNonNullableWorkspace();
@@ -211,7 +211,7 @@ export default async function createServer(
         if (containsFileOutput(sanitizedOutput) && runContext.conversation) {
           const fileContentResult = await processDustFileOutput(
             auth,
-            toolContext,
+            runContext,
             sanitizedOutput,
             runContext.conversation,
             app.name

@@ -6,7 +6,7 @@ import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definitio
 import { shouldAutoGenerateTags } from "@app/lib/actions/mcp_internal_actions/tools/tags/utils";
 import {
   isAgentLoopRunContext,
-  type ToolContextType,
+  type ToolContext,
 } from "@app/lib/actions/types";
 import {
   isLightServerSideMCPToolConfiguration,
@@ -35,7 +35,7 @@ import type { TimeFrame } from "@app/types/shared/utils/time_frame";
 import assert from "assert";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
 
-function getServerSideConfiguration(toolContext?: ToolContextType) {
+function getServerSideConfiguration(toolContext?: ToolContext) {
   if (
     toolContext?.listToolsContext &&
     isServerSideMCPServerConfiguration(
@@ -60,7 +60,7 @@ function getServerSideConfiguration(toolContext?: ToolContextType) {
 // Create tools with access to auth via closure
 export function createExtractDataTools(
   auth: Authenticator,
-  toolContext?: ToolContextType
+  toolContext?: ToolContext
 ) {
   const areTagsDynamic = toolContext
     ? shouldAutoGenerateTags(toolContext)
@@ -199,7 +199,7 @@ export function createExtractDataTools(
 
     const result = await generateProcessToolOutput({
       auth,
-      toolContext,
+      runContext: toolContext.runContext,
       outputs,
       jsonSchema: jsonSchemaForExtraction,
       timeFrame: timeFrameForExtraction ?? null,

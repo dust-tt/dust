@@ -3,6 +3,7 @@ import {
   SwitchContractBodySchema,
   switchContract,
 } from "@app/lib/api/poke/switch_contract";
+import { isMetronomeBillingEnabled } from "@app/lib/api/subscription";
 import type { Authenticator } from "@app/lib/auth";
 import {
   ceilToHourISO,
@@ -303,6 +304,17 @@ export async function migrateWorkspaceToBusiness(
     return new Ok({
       status: "skipped",
       reason: "no active Stripe-billed subscription",
+    });
+  }
+
+  // `switchContract` requires Metronome billing; skip workspaces still on the
+  // `legacy_billing` feature flag rather than letting `switchContract` throw
+  // further down. (Every caller here has a live `stripeSubscriptionId`, so
+  // `isMetronomeOnlyBilled` is never relevant to this check.)
+  if (!(await isMetronomeBillingEnabled(auth))) {
+    return new Ok({
+      status: "skipped",
+      reason: "workspace is on legacy (non-Metronome) billing",
     });
   }
 

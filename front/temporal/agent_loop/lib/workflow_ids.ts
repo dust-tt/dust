@@ -42,3 +42,13 @@ export function makeSandboxChildToolWorkflowId({
 }) {
   return `sandbox-child-tool-workflow-${workspaceId}-${actionModelId}`;
 }
+
+export function makeSandboxFunctionToolWorkflowId({
+  workspaceId,
+  actionModelId,
+}: {
+  workspaceId: string;
+  actionModelId: number;
+}) {
+  return `sandbox-function-tool-workflow-${workspaceId}-${actionModelId}`;
+}

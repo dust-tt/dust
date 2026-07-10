@@ -73,7 +73,7 @@ describe("SpaceResource", () => {
       regularGroup = await GroupResource.makeNew({
         name: "Test Regular Group",
         workspaceId: workspace.id,
-        kind: "regular",
+        kind: "regular_auto",
       });
 
       regularSpace = await SpaceResource.makeNew(
@@ -713,7 +713,7 @@ describe("SpaceResource", () => {
         projectMemberGroup = await GroupResource.makeNew({
           name: "Project Members Group",
           workspaceId: workspace.id,
-          kind: "regular",
+          kind: "regular_auto",
         });
       });
 
@@ -1313,7 +1313,7 @@ describe("SpaceResource", () => {
       regularGroup = await GroupResource.makeNew({
         name: "Regular Group",
         workspaceId: workspace.id,
-        kind: "regular",
+        kind: "regular_auto",
       });
 
       const openSpace = await SpaceResource.makeNew(
@@ -1333,7 +1333,7 @@ describe("SpaceResource", () => {
       restrictedGroup = await GroupResource.makeNew({
         name: "Restricted Group",
         workspaceId: workspace.id,
-        kind: "regular",
+        kind: "regular_auto",
       });
 
       const restrictedSpace = await SpaceResource.makeNew(
@@ -1368,9 +1368,7 @@ describe("SpaceResource", () => {
 
     it("should return project spaces only for members", async () => {
       const projectSpace = await SpaceFactory.project(workspace);
-      const projectGroup = projectSpace.groups.find(
-        (g) => g.kind === "regular"
-      );
+      const projectGroup = projectSpace.groups.find((g) => g.isRegular());
 
       // User is not a member, should not see it
       const userSpaces =
@@ -1501,7 +1499,7 @@ describe("SpaceResource", () => {
         regularGroup = await GroupResource.makeNew({
           name: "Regular Group",
           workspaceId: workspace.id,
-          kind: "regular",
+          kind: "regular_auto",
         });
 
         const openSpace = await SpaceResource.makeNew(
@@ -1524,7 +1522,7 @@ describe("SpaceResource", () => {
         restrictedGroup = await GroupResource.makeNew({
           name: "Restricted Group",
           workspaceId: workspace.id,
-          kind: "regular",
+          kind: "regular_auto",
         });
 
         const restrictedSpace = await SpaceResource.makeNew(
@@ -1566,7 +1564,7 @@ describe("SpaceResource", () => {
         regularGroup = await GroupResource.makeNew({
           name: "Project Group",
           workspaceId: workspace.id,
-          kind: "regular",
+          kind: "regular_auto",
         });
 
         const projectSpace = await SpaceResource.makeNew(
@@ -1590,7 +1588,7 @@ describe("SpaceResource", () => {
         restrictedGroup = await GroupResource.makeNew({
           name: "Project Group",
           workspaceId: workspace.id,
-          kind: "regular",
+          kind: "regular_auto",
         });
 
         const projectSpace = await SpaceResource.makeNew(

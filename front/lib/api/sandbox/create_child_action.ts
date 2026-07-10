@@ -7,7 +7,7 @@ import {
   getInternalMCPServerDisplayedAs,
   getInternalMCPServerNameFromSId,
 } from "@app/lib/actions/mcp_internal_actions/constants";
-import type { MCPApproveExecutionEvent } from "@app/lib/actions/mcp_internal_actions/events";
+import type { AgentLoopMCPApproveExecutionEvent } from "@app/lib/actions/mcp_internal_actions/events";
 import { validateToolInputs } from "@app/lib/actions/mcp_utils";
 import { getApprovalArgsLabel } from "@app/lib/actions/tool_approval_labels";
 import { tryGetPrefixedToolName } from "@app/lib/actions/tool_name_utils";
@@ -211,7 +211,7 @@ export async function createSandboxChildAction(
     const internalMCPServerName = getInternalMCPServerNameFromSId(
       fullToolConfiguration.toolServerId
     );
-    const approvalRequirementEvent: MCPApproveExecutionEvent = {
+    const approvalRequirementEvent: AgentLoopMCPApproveExecutionEvent = {
       type: "tool_approve_execution",
       actionId: action.sId,
       configurationId: fullToolConfiguration.sId,
@@ -225,7 +225,7 @@ export async function createSandboxChildAction(
       metadata: {
         toolName: fullToolConfiguration.originalName,
         mcpServerName: fullToolConfiguration.mcpServerName,
-        agentName: agentConfiguration.name,
+        agentName: "agent",
         icon: fullToolConfiguration.icon,
         displayedAs: getInternalMCPServerDisplayedAs(
           fullToolConfiguration.toolServerId

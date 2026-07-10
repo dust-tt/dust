@@ -27,6 +27,7 @@ import {
 } from "@app/types/shared/utils/assert_never";
 import {
   Button,
+  Checkbox,
   CheckCircle,
   Dialog,
   DialogContainer,
@@ -35,6 +36,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  Hoverable,
   Icon,
   Input,
   Spinner,
@@ -393,6 +395,8 @@ export function BuyAwuCreditsDialog({
   currentTotalPoolCredits,
 }: BuyAwuCreditsDialogProps) {
   const [amountInput, setAmountInput] = useState<string>("");
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
+  const [acceptedNonRefundable, setAcceptedNonRefundable] = useState(false);
   const [purchaseState, setPurchaseState] = useState<PurchaseState>("idle");
   const [errorMessage, setErrorMessage] = useState<string>("");
   // Ignore polled attempts older than the one we just started, so a cached
@@ -438,6 +442,8 @@ export function BuyAwuCreditsDialog({
 
   const resetModalStateAndClose = useCallback(() => {
     setAmountInput("");
+    setAcceptedTerms(false);
+    setAcceptedNonRefundable(false);
     setPurchaseState("idle");
     setErrorMessage("");
     setPurchaseStartedAtMs(null);
@@ -493,7 +499,11 @@ export function BuyAwuCreditsDialog({
     currencyToAwuCredits(parsedAmount, currency) / (1 - discountPercent / 100)
   );
 
-  const canPurchase = isValidAmount && !amountExceedsMax;
+  const canPurchase =
+    isValidAmount &&
+    !amountExceedsMax &&
+    acceptedTerms &&
+    acceptedNonRefundable;
 
   const handlePurchase = async () => {
     setPurchaseStartedAtMs(Date.now());
@@ -693,6 +703,45 @@ export function BuyAwuCreditsDialog({
                     </div>
                   </div>
                 )}
+
+              <div className="flex flex-col gap-3 border-t border-border pt-4">
+                <label className="flex cursor-pointer items-start gap-3">
+                  <Checkbox
+                    checked={acceptedTerms}
+                    onCheckedChange={() => setAcceptedTerms(!acceptedTerms)}
+                  />
+                  <span className="text-sm text-foreground">
+                    I agree to the{" "}
+                    <Hoverable
+                      href="https://dust.tt/terms"
+                      variant="highlight"
+                      target="_blank"
+                    >
+                      Terms & Conditions
+                    </Hoverable>{" "}
+                    and{" "}
+                    <Hoverable
+                      href="https://dust.tt/privacy"
+                      variant="highlight"
+                      target="_blank"
+                    >
+                      Privacy Policy
+                    </Hoverable>
+                  </span>
+                </label>
+
+                <label className="flex cursor-pointer items-start gap-3">
+                  <Checkbox
+                    checked={acceptedNonRefundable}
+                    onCheckedChange={() =>
+                      setAcceptedNonRefundable(!acceptedNonRefundable)
+                    }
+                  />
+                  <span className="text-sm text-foreground">
+                    I understand credits are non-refundable after purchase
+                  </span>
+                </label>
+              </div>
             </div>
           </div>
         );

@@ -1,6 +1,5 @@
 import { DustFileSystem } from "@app/lib/api/file_system/dust_file_system";
-import type { SandboxOnlyMount } from "@app/lib/api/file_system/types";
-import { getPodSandboxFunctionsMountPoint } from "@app/lib/api/files/mount_path";
+import { setupPodStateOnColdStart } from "@app/lib/api/sandbox/db";
 import {
   ensureSandboxEgressOnExec,
   prepareSandboxEgressBeforeMount,
@@ -11,6 +10,7 @@ import {
   traceSandboxStartupPhase,
 } from "@app/lib/api/sandbox/instrumentation";
 import type { SandboxRuntimeOwner } from "@app/lib/api/sandbox/owner";
+import { podSandboxOnlyMounts } from "@app/lib/api/sandbox/pod_mounts";
 import { startTelemetry } from "@app/lib/api/sandbox/telemetry";
 import type { Authenticator } from "@app/lib/auth";
 import { ConversationSandboxAdapter } from "@app/lib/resources/conversation_sandbox_adapter";
@@ -128,6 +128,30 @@ async function ensureOwnerSandboxReady(
         }
       }
 
+      // Pod state bring-up must run strictly AFTER the mounts (restore reads
+      // through the replica mount) and is awaited: `invoke` awaits
+      // ensurePodSandboxReady, which is what guarantees no function runs
+      // before the restore + daemon start completed. Only runs for pod
+      // owners.
+      if (freshlyCreated && runtimeOwner.kind === "pod") {
+        const podStateResult = await setupPodStateOnColdStart(auth, sandbox);
+        if (podStateResult.isErr()) {
+          // status=running was already committed by ensureActive, and this
+          // block only runs when freshlyCreated — a plain Err would make the
+          // NEXT call take the warm path and happily serve a half-initialized
+          // sandbox (unrestored databases, no litestream daemon). Request a
+          // kill instead: ensureActive's kill-requested branch destroys and
+          // recreates on the next access, re-running this setup from scratch.
+          logger.error(
+            { err: podStateResult.error, sandboxId: sandbox.sId },
+            "Pod state cold start failed — requesting sandbox kill so the next access recreates it."
+          );
+          await sandbox.requestKill();
+          status = "error";
+          return podStateResult;
+        }
+      }
+
       const ensureEgressResult = await traceSandboxStartupPhase(
         "egress_on_exec",
         () =>
@@ -163,17 +187,6 @@ export async function ensureConversationSandboxReady(
   });
 }
 
-// A pod's published function bundles are mounted read-only so the sandbox can execute them while
-// front stays the sole writer of bundles.
-function podSandboxFunctionsMount(pod: SpaceResource): SandboxOnlyMount {
-  return {
-    kind: "pod_sandbox_functions",
-    id: pod.sId,
-    sandboxMountPoint: getPodSandboxFunctionsMountPoint(pod.sId),
-    readOnly: true,
-  };
-}
-
 export async function ensurePodSandboxReady(
   auth: Authenticator,
   pod: SpaceResource
@@ -182,7 +195,7 @@ export async function ensurePodSandboxReady(
     ensureActive: () => PodSandboxAdapter.ensureSandboxActive(auth, pod),
     getFileSystem: () =>
       DustFileSystem.forPod(auth, pod, {
-        sandboxOnlyMounts: [podSandboxFunctionsMount(pod)],
+        sandboxOnlyMounts: podSandboxOnlyMounts(pod),
       }),
     runtimeOwner: {
       kind: "pod",

@@ -13,6 +13,8 @@ import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { FileFactory } from "@app/tests/utils/FileFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
+import type { MockFileVersion } from "@app/tests/utils/mocks/file_storage";
+import { fileStorageMock } from "@app/tests/utils/mocks/file_storage";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
@@ -1137,6 +1139,99 @@ describe("FileResource", () => {
 
       // Only canonical write, no mount path write.
       expect(allUploadCalls).toHaveLength(1);
+    });
+  });
+
+  describe("revert", () => {
+    // revert() reads versions and refreshes the mount entirely through getPrivateUploadBucket(),
+    // which fileStorageMock already stubs globally (see tests/utils/mocks/file_storage.ts).
+    // setSortedFileVersions/setCopyFileFails drive it without reaching into FileResource's
+    // private methods. fileStorageMock.reset() (global beforeEach) clears both between tests.
+    function mockVersion(): MockFileVersion {
+      return {
+        copy: vi.fn().mockResolvedValue(undefined),
+        delete: vi.fn().mockResolvedValue(undefined),
+      };
+    }
+
+    it("refreshes the mount copy from the restored canonical version", async () => {
+      const { authenticator: auth, workspace } = await createResourceTest({
+        role: "admin",
+      });
+
+      const frameFile = await FileFactory.create(auth, null, {
+        contentType: frameContentType,
+        fileName: "frame.html",
+        fileSize: 100,
+        status: "ready",
+        useCase: "conversation",
+        useCaseMetadata: { conversationId: "conv-revert" },
+      });
+
+      const row = await FileModel.findOne({
+        where: { id: frameFile.id, workspaceId: workspace.id },
+      });
+      assert(row?.mountFilePath, "Mount path should be set");
+
+      fileStorageMock.setSortedFileVersions(() => [
+        mockVersion(),
+        mockVersion(),
+      ]);
+
+      const result = await frameFile.revert(auth, {
+        revertedByAgentConfigurationId: "agent-1",
+      });
+
+      expect(result.isOk()).toBe(true);
+
+      const allCopyFileCalls = vi
+        .mocked(getPrivateUploadBucket)
+        .mock.results.flatMap((r) =>
+          r.type === "return" ? vi.mocked(r.value.copyFile).mock.calls : []
+        );
+
+      // The mount copy must be refreshed to the restored canonical version, so reads through
+      // the mount and the next publish see the reverted content rather than the stale mount.
+      expect(
+        allCopyFileCalls.some((call) => call[1] === row.mountFilePath)
+      ).toBe(true);
+    });
+
+    it("still succeeds when refreshing the mount copy fails", async () => {
+      const { authenticator: auth } = await createResourceTest({
+        role: "admin",
+      });
+
+      const frameFile = await FileFactory.create(auth, null, {
+        contentType: frameContentType,
+        fileName: "frame.html",
+        fileSize: 100,
+        status: "ready",
+        useCase: "conversation",
+        useCaseMetadata: { conversationId: "conv-revert-fail" },
+      });
+
+      fileStorageMock.setSortedFileVersions(() => [
+        mockVersion(),
+        mockVersion(),
+      ]);
+
+      // The restore copy succeeds (the version object's own .copy() call), but the mount
+      // refresh's copyFile() call fails. Best-effort: the revert must not fail because of it,
+      // since the canonical restore already succeeded by that point. setUseCaseMetadata
+      // (called earlier in revert(), unrelated to this fix) also refreshes the mount as a
+      // side effect, so only the call after the restore should fail.
+      let copyFileCallCount = 0;
+      fileStorageMock.setCopyFileFails(() => {
+        copyFileCallCount += 1;
+        return copyFileCallCount > 1;
+      });
+
+      const result = await frameFile.revert(auth, {
+        revertedByAgentConfigurationId: "agent-1",
+      });
+
+      expect(result.isOk()).toBe(true);
     });
   });
 

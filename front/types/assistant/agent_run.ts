@@ -4,7 +4,6 @@
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import { PREVIOUS_INTERACTIONS_TO_PRESERVE } from "@app/lib/api/assistant/conversation_rendering";
-import { reconcileModelSettings } from "@app/lib/api/assistant/models";
 import { getStaticReplyForUserMessage } from "@app/lib/api/assistant/static_reply";
 import type { AuthenticatorType } from "@app/lib/auth";
 import { Authenticator } from "@app/lib/auth";
@@ -325,29 +324,25 @@ export async function getAgentLoopDataWithAuth(
     return new Err(new Error(`Agent configuration not found ${agentId}`));
   }
 
-  const { model: agentConfigModel, ...agentConfigurationWithoutModel } =
+  const { model: agentModelConfig, ...agentConfigurationWithoutModel } =
     agentConfiguration;
 
-  // Apply the per-message model override from the input-bar picker, if any. This
-  // is the single choke point every downstream consumer reads for the run model
-  // (run_model, prompt commands, ...). Settings are inherited from the agent's
-  // configuration, then reconciled against the picked model's capabilities.
-  const { requestedModel } = agentMessage;
-  const agentModel = requestedModel
-    ? reconcileModelSettings(requestedModel, {
-        ...agentConfigModel,
-        providerId: requestedModel.providerId,
-        modelId: requestedModel.modelId,
-        reasoningEffort: requestedModel.reasoningEffort,
-      })
-    : agentConfigModel;
+  // The resolved model is stored in the agent message.
+  // Legacy message will not have a resolved model.
+  const { resolvedModel } = agentMessage;
+  const resolvedModelConfig: AgentModelConfigurationType = {
+    // Apply configuration that are not stored in the resolved model (temperature, responseFormat, etc.)
+    ...agentModelConfig,
+    // Apply the resolved model.
+    ...resolvedModel,
+  };
 
-  const model = getSupportedModelConfig(agentModel);
+  const modelConfig = getSupportedModelConfig(resolvedModelConfig);
 
-  if (!model) {
+  if (!modelConfig) {
     return new Err(
       new Error(
-        `The model you selected does not support multi-actions ${agentModel.modelId}.`
+        `The model you selected does not support multi-actions ${resolvedModelConfig.modelId}.`
       )
     );
   }
@@ -355,8 +350,14 @@ export async function getAgentLoopDataWithAuth(
   return new Ok({
     agentConfiguration: agentConfigurationWithoutModel,
     model: {
-      ...agentModel,
-      ...model,
+      // This contains general configuration for the model, like the provider and model ID.
+      ...modelConfig,
+      // This contains specific configuration for reasoning effort, temperature, etc.
+      ...resolvedModelConfig,
+      // Cleanup unsupported settings
+      ...(modelConfig?.supportsResponseFormat
+        ? { responseFormat: resolvedModelConfig.responseFormat }
+        : { responseFormat: undefined }),
     },
     agentMessage,
     auth,

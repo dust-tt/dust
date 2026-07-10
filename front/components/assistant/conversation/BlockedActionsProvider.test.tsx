@@ -1,4 +1,4 @@
-import type { BlockedToolExecution } from "@app/lib/actions/mcp";
+import type { AgentLoopBlockedToolExecution } from "@app/lib/actions/mcp";
 import type { ConversationListItemType } from "@app/types/assistant/conversation";
 import type { LightWorkspaceType } from "@app/types/user";
 import { render, screen } from "@testing-library/react";
@@ -11,7 +11,7 @@ import {
 } from "./BlockedActionsProvider";
 
 const mutateBlockedActionsMock = vi.fn();
-let blockedActionsMock: BlockedToolExecution[] = [];
+let blockedActionsMock: AgentLoopBlockedToolExecution[] = [];
 
 vi.mock("@app/lib/swr/blocked_actions", () => ({
   useBlockedActions: () => ({
@@ -59,7 +59,9 @@ const conversation: ConversationListItemType = {
 
 function makeAuthBlockedAction(
   actionId: string
-): BlockedToolExecution & { status: "blocked_authentication_required" } {
+): AgentLoopBlockedToolExecution & {
+  status: "blocked_authentication_required";
+} {
   return {
     conversationId: "conv_1",
     messageId: "msg_1",

@@ -1,3 +1,4 @@
+import { actionCardDirective } from "@app/components/markdown/ActionCardDirective";
 import {
   CiteBlock,
   getCiteDirective,
@@ -87,6 +88,7 @@ export const AgentMessageMarkdown = ({
       filePreviewDirective,
       toolDirective,
       quickReplyDirective,
+      actionCardDirective,
       ...additionalMarkdownPlugins,
     ];
 

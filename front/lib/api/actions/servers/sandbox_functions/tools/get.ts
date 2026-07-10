@@ -17,9 +17,9 @@ export function formatSandboxFunction(fn: SandboxFunctionResource): string {
 
 export async function getHandler(
   { slug }: { slug: string },
-  { auth, toolContext }: ToolHandlerExtra
+  { auth, runContext }: ToolHandlerExtra
 ): Promise<ToolHandlerResult> {
-  const podResult = await getPod(auth, { toolContext });
+  const podResult = await getPod(auth, { toolContext: { runContext } });
   if (podResult.isErr()) {
     return new Err(podResult.error);
   }

@@ -1,4 +1,5 @@
 import type { ServerSideMCPServerConfigurationType } from "@app/lib/actions/mcp";
+import { getModelsForAuth } from "@app/lib/advanced_models/enabled_models";
 import {
   WEB_SEARCH_BROWSE_ACTION_DESCRIPTION,
   WEB_SEARCH_BROWSE_SERVER_NAME,
@@ -40,6 +41,7 @@ import { AgentSkillModel } from "@app/lib/models/agent/agent_skill";
 import { AgentSuggestionModel } from "@app/lib/models/agent/agent_suggestion";
 import { GroupAgentModel } from "@app/lib/models/agent/group_agent";
 import { TagAgentModel } from "@app/lib/models/agent/tag_agent";
+import { AgentUserRelationResource } from "@app/lib/resources/agent_user_relation_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
@@ -55,6 +57,8 @@ import { TagResource } from "@app/lib/resources/tags_resource";
 import { TemplateResource } from "@app/lib/resources/template_resource";
 import { TriggerResource } from "@app/lib/resources/trigger_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
+import { WakeUpResource } from "@app/lib/resources/wakeup_resource";
+import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { withTransaction } from "@app/lib/utils/sql_utils";
 import logger from "@app/logger/logger";
 import { tracer } from "@app/logger/tracer";
@@ -73,7 +77,6 @@ import {
   GLOBAL_AGENTS_SID,
   isGlobalAgentId,
 } from "@app/types/assistant/assistant";
-import { CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG } from "@app/types/assistant/models/anthropic";
 import { validateResponseFormat } from "@app/types/assistant/models/utils";
 import { CoreAPI } from "@app/types/core/core_api";
 import type { ModelId } from "@app/types/shared/model_id";
@@ -111,6 +114,7 @@ export async function createPendingAgentConfiguration(
   const user = auth.getNonNullableUser();
 
   const sId = generateRandomModelSId();
+  const { defaultModel } = await getModelsForAuth(auth);
 
   await withTransaction(async (t) => {
     const agent = await AgentConfigurationModel.create(
@@ -122,11 +126,10 @@ export async function createPendingAgentConfiguration(
         name: PENDING_AGENT_PLACEHOLDER_NAME,
         description: PENDING_AGENT_PLACEHOLDER_DESCRIPTION,
         instructions: null,
-        providerId: CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG.providerId,
-        modelId: CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG.modelId,
+        providerId: defaultModel.providerId,
+        modelId: defaultModel.modelId,
         temperature: 0.7,
-        reasoningEffort:
-          CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG.defaultReasoningEffort,
+        reasoningEffort: defaultModel.defaultReasoningEffort,
         maxStepsPerRun: 8,
         reinforcement: "auto",
         pictureUrl: PENDING_AGENT_PLACEHOLDER_PICTURE_URL,
@@ -1311,6 +1314,39 @@ export async function createGenericAgentConfiguration(
   return new Ok({ agentConfiguration, subAgentConfiguration });
 }
 
+// Cancels every still-scheduled wake-up targeting the given agent, deleting the
+// backing Temporal schedule (cron) or pending workflow (one-shot). Errors are
+// logged but do not abort the caller.
+async function cancelWakeUpsForAgent(
+  auth: Authenticator,
+  agentConfigurationId: string
+): Promise<void> {
+  const workspace = auth.getNonNullableWorkspace();
+  const wakeUps = await WakeUpResource.listByAgentConfigurationId(
+    auth,
+    agentConfigurationId
+  );
+
+  await concurrentExecutor(
+    wakeUps,
+    async (wakeUp) => {
+      const cancelResult = await wakeUp.forceCancel(auth);
+      if (cancelResult.isErr()) {
+        logger.error(
+          {
+            workspaceId: workspace.sId,
+            agentConfigurationId,
+            wakeUpId: wakeUp.sId,
+            error: cancelResult.error,
+          },
+          `Failed to cancel wake-up ${wakeUp.sId} for agent ${agentConfigurationId}`
+        );
+      }
+    },
+    { concurrency: 5 }
+  );
+}
+
 export async function archiveAgentConfiguration(
   auth: Authenticator,
   agentConfigurationId: string
@@ -1348,6 +1384,8 @@ export async function archiveAgentConfiguration(
       );
     }
   }
+
+  await cancelWakeUpsForAgent(auth, agentConfigurationId);
 
   const updated = await AgentConfigurationModel.update(
     { status: "archived" },
@@ -1530,6 +1568,65 @@ export async function restoreAgentConfiguration(
   return new Ok({ restored: updated[0] > 0 });
 }
 
+// Deletes the agent-scoped resources that are keyed by the agent sId (stable
+// across versions) and therefore have no DB foreign key to cascade on: triggers
+// (with their Temporal schedule), wake-ups (with their Temporal schedule /
+// pending workflow) and favorite / agent-user-relation rows.
+export async function cleanupAgentScopedResourcesForHardDeletion(
+  auth: Authenticator,
+  agentConfigurationId: string
+): Promise<void> {
+  const workspace = auth.getNonNullableWorkspace();
+
+  const triggers = await TriggerResource.listByAgentConfigurationId(
+    auth,
+    agentConfigurationId
+  );
+  await concurrentExecutor(
+    triggers,
+    async (trigger) => {
+      const deleteResult = await trigger.delete(auth);
+      if (deleteResult.isErr()) {
+        logger.error(
+          {
+            workspaceId: workspace.sId,
+            agentConfigurationId,
+            triggerId: trigger.sId,
+            error: deleteResult.error,
+          },
+          `Failed to delete trigger ${trigger.sId} while hard-deleting agent ${agentConfigurationId}`
+        );
+      }
+    },
+    { concurrency: 4 }
+  );
+
+  const wakeUps = await WakeUpResource.listByAgentConfigurationId(
+    auth,
+    agentConfigurationId
+  );
+  const deletableWakeUpIds: ModelId[] = [];
+  for (const wakeUp of wakeUps) {
+    const cleanupResult = await wakeUp.forceCancel(auth);
+    if (cleanupResult.isErr()) {
+      logger.error(
+        {
+          workspaceId: workspace.sId,
+          agentConfigurationId,
+          wakeUpId: wakeUp.sId,
+          error: cleanupResult.error,
+        },
+        `Failed cleaning up wake-up ${wakeUp.sId} Temporal state while hard-deleting agent ${agentConfigurationId}; leaving row for retry`
+      );
+      continue;
+    }
+    deletableWakeUpIds.push(wakeUp.id);
+  }
+  await WakeUpResource.deleteByModelIds(auth, deletableWakeUpIds);
+
+  await AgentUserRelationResource.deleteForAgent(auth, agentConfigurationId);
+}
+
 // Should only be called when we need to clean up the agent configuration
 // right after creating it due to an error.
 export async function unsafeHardDeleteAgentConfiguration(
@@ -1657,6 +1754,11 @@ export async function batchHardDeletePendingAgentConfigurations(
       transaction: t,
     });
 
+    await AgentUserRelationResource.deleteForAgents(
+      agents.map((a) => a.sId),
+      { workspaceId, transaction: t }
+    );
+
     await AgentConfigurationModel.destroy({
       where: { id: agentIds, workspaceId },
       transaction: t,
@@ -1706,7 +1808,7 @@ export async function updateAgentPermissions(
     const transactionResult = await withTransaction(async (t) => {
       if (usersToAdd.length > 0) {
         // Check authorization for agent_editors groups (allowing members and admins)
-        if (!editorGroupRes.value.canWrite(auth)) {
+        if (!editorGroupRes.value.canAdministrate(auth)) {
           return new Err(
             new DustError(
               "unauthorized",
@@ -1725,7 +1827,7 @@ export async function updateAgentPermissions(
 
       if (usersToRemove.length > 0) {
         // Check authorization for agent_editors groups (allowing members and admins)
-        if (!editorGroupRes.value.canWrite(auth)) {
+        if (!editorGroupRes.value.canAdministrate(auth)) {
           return new Err(
             new DustError(
               "unauthorized",

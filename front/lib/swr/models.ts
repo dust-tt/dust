@@ -16,11 +16,12 @@ export function useModels({
   const { data, error } = useSWRWithDefaults(
     `/api/w/${owner.sId}/models`,
     modelsFetcher,
-    { disabled }
+    { disabled, revalidateOnFocus: false }
   );
 
   return {
     models: data?.models ?? emptyArray(),
+    defaultModel: data?.defaultModel ?? null,
     isModelsLoading: !error && !data && !disabled,
     isModelsError: !!error,
   };

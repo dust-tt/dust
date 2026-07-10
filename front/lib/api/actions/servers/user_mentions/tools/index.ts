@@ -18,7 +18,7 @@ import { DustAPI } from "@dust-tt/client";
 const handlers: ToolHandlers<typeof USER_MENTIONS_TOOLS_METADATA> = {
   [SEARCH_AVAILABLE_USERS_TOOL_NAME]: async (
     { searchTerm },
-    { auth, toolContext }
+    { auth, runContext }
   ) => {
     const user = auth.user();
     const prodCredentials = await prodAPICredentialsForOwner(
@@ -42,8 +42,8 @@ const handlers: ToolHandlers<typeof USER_MENTIONS_TOOLS_METADATA> = {
     const r = await api.getMentionsSuggestions({
       query: searchTerm,
       select: ["users"],
-      conversationId: isAgentLoopRunContext(toolContext?.runContext)
-        ? toolContext.runContext.conversation.sId
+      conversationId: isAgentLoopRunContext(runContext)
+        ? runContext.conversation.sId
         : undefined,
     });
 

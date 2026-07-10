@@ -239,6 +239,7 @@ export class ConversationFactory {
         }),
       rank: messageRow.rank,
       reactions: [],
+      requestedModel: null,
     };
 
     return { messageRow, userMessage };
@@ -409,6 +410,8 @@ export class ConversationFactory {
       branchId: messageRow.getBranchId(),
       richMentions: [],
       costCredits: null,
+      resolvedModel: null,
+      modelResolutionMethod: null,
     };
 
     if (!mcpAction) {

@@ -1,4 +1,5 @@
 import { getAuditLogContext } from "@app/lib/api/audit/workos_audit";
+import { updateMembershipSeatAndTrack } from "@app/lib/api/membership";
 import { processMetronomeWebhook } from "@app/lib/api/metronome/process_webhook";
 import { reconcileWorkspaceUserCreditStates } from "@app/lib/api/metronome/reconcile_credit_state";
 import { setUserSpendLimit } from "@app/lib/api/users/spend_limit";
@@ -6,11 +7,13 @@ import { Authenticator } from "@app/lib/auth";
 import type { MetronomeWebhookEvent } from "@app/lib/metronome/webhook_events";
 import { cleanAndFinalizeMetronomeDraftInvoice } from "@app/lib/plans/stripe";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
+import { UserResource } from "@app/lib/resources/user_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
 import type { UserSpendLimit } from "@app/types/api/users/spend_limit";
+import type { PaidSeatType } from "@app/types/memberships";
 
 const SET_SPEND_LIMIT_CONCURRENCY = 1;
 
@@ -75,6 +78,84 @@ export async function setSpendLimitForUsersActivity({
   if (transientFailures.length > 0) {
     throw new Error(
       `[BulkSpendLimit] ${transientFailures.length} transient failure(s) setting spend limit; retrying. ` +
+        `First: ${transientFailures[0].userId}: ${transientFailures[0].message}`
+    );
+  }
+
+  return { succeeded, failures };
+}
+
+export type ChangeSeatTypeChunkResult = {
+  succeeded: number;
+  failures: { userId: string; message: string }[];
+};
+
+// Move a chunk of members to `seatType`. Permanent failures (member revoked
+// between selection and run, seat cap reached, free-plan workspace) are
+// recorded; transient Metronome failures throw so Temporal retries the chunk
+// (`updateMembershipSeatAndTrack` no-ops on members already on the target
+// seat, so re-running already-applied members is safe).
+export async function changeSeatTypeForUsersActivity({
+  workspaceId,
+  actorUserId,
+  userIds,
+  seatType,
+}: {
+  workspaceId: string;
+  actorUserId: string;
+  userIds: string[];
+  seatType: PaidSeatType;
+}): Promise<ChangeSeatTypeChunkResult> {
+  const auth = await Authenticator.fromUserIdAndWorkspaceId(
+    actorUserId,
+    workspaceId
+  );
+  const workspace = auth.getNonNullableWorkspace();
+  const author = auth.getNonNullableUser().toJSON();
+
+  const users = await UserResource.fetchByIds(userIds);
+  const userById = new Map(users.map((user) => [user.sId, user]));
+
+  const failures: { userId: string; message: string }[] = [];
+  const transientFailures: { userId: string; message: string }[] = [];
+  let succeeded = 0;
+
+  // TODO(fabien): consider adding a new method to do bulk update of the seats.
+  // The current updateMembershipSeatAndTrack cannot be called in parallel because
+  // it does not do the limit checks atomicly.
+  for (const userId of userIds) {
+    // Workspace membership is enforced by `updateMembershipSeatAndTrack`
+    // (`not_found` when the user holds no active membership here).
+    const user = userById.get(userId);
+    if (!user) {
+      failures.push({ userId, message: "not_found" });
+      continue;
+    }
+    const result = await updateMembershipSeatAndTrack({
+      user,
+      workspace,
+      newSeatType: seatType,
+      author,
+    });
+    if (result.isOk()) {
+      succeeded++;
+      continue;
+    }
+    const failure = { userId, message: result.error.type };
+    if (result.error.type === "metronome_error") {
+      transientFailures.push(failure);
+    } else {
+      failures.push(failure);
+    }
+    logger.error(
+      { workspaceId, userId, seatType, err: result.error },
+      "[BulkSeatChange] Failed to change seat type for member"
+    );
+  }
+
+  if (transientFailures.length > 0) {
+    throw new Error(
+      `[BulkSeatChange] ${transientFailures.length} transient failure(s) changing seat type; retrying. ` +
         `First: ${transientFailures[0].userId}: ${transientFailures[0].message}`
     );
   }

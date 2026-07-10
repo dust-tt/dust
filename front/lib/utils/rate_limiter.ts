@@ -121,6 +121,68 @@ export async function rateLimiter({
   }
 }
 
+/**
+ * Unconditionally records `incrementBy` consumption units against `key`, with no limit guard.
+ *
+ * Unlike `rateLimiter`, which drops the write entirely when count + incrementBy would exceed the
+ * limit, this always persists the entries. Use this for post-hoc recording of a cost that already
+ * happened (e.g. AWU credits for a message that already ran) — enforcement must happen beforehand
+ * via `getRateLimiterCount` + a limit check, not by relying on this function to gatekeep.
+ */
+export async function addRateLimiterCount({
+  key,
+  timeframeSeconds,
+  incrementBy,
+  logger,
+}: {
+  key: string;
+  timeframeSeconds: number;
+  incrementBy: number;
+  logger: LoggerInterface;
+}): Promise<void> {
+  if (!Number.isInteger(incrementBy) || incrementBy <= 0) {
+    throw new Error("incrementBy must be a positive integer.");
+  }
+  if (!Number.isInteger(timeframeSeconds) || timeframeSeconds <= 0) {
+    throw new Error("timeframeSeconds must be a positive integer.");
+  }
+
+  const redisKey = makeRateLimiterKey(key);
+  const windowMs = timeframeSeconds * 1000;
+
+  const luaScript = `
+    local key = KEYS[1]
+    local window_ms = tonumber(ARGV[1])
+    local increment_by = tonumber(ARGV[2])
+
+    -- Use Redis server time to avoid client clock skew
+    local t = redis.call('TIME') -- { seconds, microseconds }
+    local now_ms = tonumber(t[1]) * 1000 + math.floor(tonumber(t[2]) / 1000)
+
+    -- Always record unconditionally: no limit check, no dropped writes.
+    for i = 1, increment_by do
+      redis.call('ZADD', key, now_ms, ARGV[2 + i])
+    end
+
+    -- Keep the key around a bit longer than the window to allow trims
+    redis.call('PEXPIRE', key, window_ms + 60000)
+  `;
+
+  try {
+    const redis = await getRedisStreamClient({ origin: "rate_limiter" });
+    const values = Array.from({ length: incrementBy }, () => uuidv4());
+    await redis.eval(luaScript, {
+      keys: [redisKey],
+      arguments: [windowMs.toString(), incrementBy.toString(), ...values],
+    });
+  } catch (e) {
+    getStatsDClient().increment("ratelimiter.error.count", 1, [
+      "operation:add",
+    ]);
+    logger.error({ key, incrementBy, error: e }, "addRateLimiterCount error");
+  }
+}
+
 export async function expireRateLimiterKey({
   key,
 }: {

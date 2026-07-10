@@ -26,7 +26,7 @@ import {
 } from "@app/lib/api/actions/servers/conversation_files/metadata";
 import { FILES_SERVER_NAME } from "@app/lib/api/actions/servers/files/metadata";
 import { citationMetaPrompt } from "@app/lib/api/assistant/citations";
-import { isDustLikeAgent } from "@app/lib/api/assistant/global_agents/global_agents";
+import { isDustLikeAgent } from "@app/lib/api/assistant/global_agents/prompt_context";
 import { TRUNCATED_SNIPPET_SIZE } from "@app/lib/api/files/snippet";
 import type {
   StructuredSystemPrompt,
@@ -54,14 +54,12 @@ function constructContextSection({
   agentConfiguration,
   model,
   owner,
-  errorContext,
   disableFormattingPrompt,
 }: {
   userMessage: UserMessageType;
   agentConfiguration: AgentLoopExecutionData["agentConfiguration"];
   model: AgentLoopExecutionData["model"];
   owner: WorkspaceType | null;
-  errorContext?: string;
   disableFormattingPrompt: boolean;
 }): string {
   const d = moment(new Date()).tz(userMessage.context.timezone);
@@ -76,13 +74,6 @@ function constructContextSection({
 
   if (model.formattingMetaPrompt && !disableFormattingPrompt) {
     context += `# RESPONSE FORMAT\n${model.formattingMetaPrompt}\n`;
-  }
-
-  if (errorContext) {
-    context +=
-      "\n\n # INSTRUCTIONS ERROR\n\nNote: There was an error while building instructions:\n" +
-      errorContext +
-      "\n";
   }
 
   return context;
@@ -390,7 +381,6 @@ export function constructPromptMultiActions(
     fallbackPrompt,
     model,
     hasAvailableActions,
-    errorContext,
     conversation,
     serverToolsAndInstructions,
     systemSkills,
@@ -407,7 +397,6 @@ export function constructPromptMultiActions(
     fallbackPrompt?: string;
     model: AgentLoopExecutionData["model"];
     hasAvailableActions: boolean;
-    errorContext?: string;
     conversation?: ConversationWithoutContentType;
     serverToolsAndInstructions?: ServerToolsAndInstructions[];
     systemSkills: SkillResource[];
@@ -439,7 +428,6 @@ export function constructPromptMultiActions(
 
   const contextSection = constructContextSection({
     agentConfiguration,
-    errorContext,
     model,
     owner,
     userMessage,

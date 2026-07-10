@@ -1,4 +1,5 @@
 import type { LightMCPToolConfigurationType } from "@app/lib/actions/mcp";
+import type { ToolOutputItemType } from "@app/lib/actions/types";
 import type { Authenticator } from "@app/lib/auth";
 import { getPrivateUploadBucket } from "@app/lib/file_storage";
 import {
@@ -54,6 +55,14 @@ export class SandboxFunctionMCPActionResource extends BaseResource<SandboxFuncti
   get sId(): string {
     return SandboxFunctionMCPActionResource.modelIdToSId({
       id: this.id,
+      workspaceId: this.workspaceId,
+    });
+  }
+
+  // String identifier of the invocation this action belongs to.
+  get invocationId(): string {
+    return makeSId("sandbox_function_invocation", {
+      id: this.sandboxFunctionInvocationId,
       workspaceId: this.workspaceId,
     });
   }
@@ -176,14 +185,18 @@ export class SandboxFunctionMCPActionResource extends BaseResource<SandboxFuncti
   }
 
   // Writes the full content array to a single GCS object and records its path on the row. Written
-  // exactly once, at tool completion.
-  async writeOutput(
+  // exactly once, at tool completion. Returns the stored contents in the generic tool output item
+  // shape shared with AgentMCPActionResource.createOutputItems.
+  async createOutputItems(
     auth: Authenticator,
-    content: CallToolResult["content"]
-  ): Promise<Result<undefined, Error>> {
+    contents: Array<{
+      content: CallToolResult["content"][number];
+      fileId?: ModelId;
+    }>
+  ): Promise<Result<ToolOutputItemType[], Error>> {
     const gcsPath = this.outputGcsPathFor(auth);
     const file = getPrivateUploadBucket().file(gcsPath);
-    const json = JSON.stringify(content);
+    const json = JSON.stringify(contents.map((c) => c.content));
 
     const writeResult = await withRetry(() =>
       file.save(Buffer.from(json, "utf-8"), {
@@ -224,7 +237,14 @@ export class SandboxFunctionMCPActionResource extends BaseResource<SandboxFuncti
       return new Err(normalizeError(err));
     }
 
-    return new Ok(undefined);
+    return new Ok(
+      contents.map((c) => ({
+        content: c.content,
+        fileId: c.fileId ?? null,
+        file: null,
+        workspaceId: this.workspaceId,
+      }))
+    );
   }
 
   async readOutput(): Promise<Result<CallToolResult["content"] | null, Error>> {
@@ -232,10 +252,18 @@ export class SandboxFunctionMCPActionResource extends BaseResource<SandboxFuncti
       return new Ok(null);
     }
 
-    try {
-      const file = getPrivateUploadBucket().file(this.outputGcsPath);
-      const [buffer] = await file.download();
+    // Retry the download: the poll client treats an error response as terminal, so a transient
+    // GCS failure here would permanently fail a tool call that actually succeeded.
+    const gcsPath = this.outputGcsPath;
+    const downloadResult = await withRetry(() =>
+      getPrivateUploadBucket().file(gcsPath).download()
+    );
+    if (downloadResult.isErr()) {
+      return new Err(downloadResult.error);
+    }
 
+    try {
+      const [buffer] = downloadResult.value;
       return new Ok(JSON.parse(buffer.toString("utf-8")));
     } catch (err) {
       return new Err(normalizeError(err));
@@ -377,10 +405,7 @@ export class SandboxFunctionMCPActionResource extends BaseResource<SandboxFuncti
       sId: this.sId,
       createdAt: this.createdAt.getTime(),
       updatedAt: this.updatedAt.getTime(),
-      invocationId: makeSId("sandbox_function_invocation", {
-        id: this.sandboxFunctionInvocationId,
-        workspaceId: this.workspaceId,
-      }),
+      invocationId: this.invocationId,
       toolName: this.toolName,
       inputs: this.inputs,
       status: this.status,

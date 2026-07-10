@@ -3,6 +3,7 @@ import { getRedisHybridManager } from "@app/lib/api/redis-hybrid-manager";
 import { createCallbackReader } from "@app/lib/utils";
 import logger from "@app/logger/logger";
 import type { SandboxFunctionInvocationEvent } from "@app/types/api/sandbox_functions";
+import { isSandboxFunctionInvocationTerminalEvent } from "@app/types/api/sandbox_functions";
 
 const SANDBOX_FUNCTION_INVOCATION_EVENTS_ORIGIN =
   "sandbox_function_invocation_events" as const;
@@ -58,7 +59,7 @@ export async function* getSandboxFunctionInvocationEvents({
     for (const rawEvent of history) {
       const event = parseSandboxFunctionInvocationEvent(rawEvent);
       yield event;
-      if (event.data.type === "sandbox_function_invocation_result") {
+      if (isSandboxFunctionInvocationTerminalEvent(event.data)) {
         return;
       }
     }
@@ -83,7 +84,7 @@ export async function* getSandboxFunctionInvocationEvents({
 
       const event = parseSandboxFunctionInvocationEvent(rawEvent);
       yield event;
-      if (event.data.type === "sandbox_function_invocation_result") {
+      if (isSandboxFunctionInvocationTerminalEvent(event.data)) {
         break;
       }
     }

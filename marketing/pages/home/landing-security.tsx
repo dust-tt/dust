@@ -11,7 +11,7 @@ import { PageMetadata } from "@marketing/components/home/PageMetadata";
 import { HomeTrustedMarqueeCompact } from "@marketing/components/home/content/Product/HomeTrustedSection";
 import { TRACKING_AREAS, withTracking } from "@marketing/lib/tracking";
 import { cn } from "@marketing/components/poke/shadcn/lib/utils";
-import { ArrowRight, Button, Icon } from "@dust-tt/sparkle";
+import { ArrowRight, LegacyButton as Button, Icon } from "@dust-tt/sparkle";
 import Link from "next/link";
 import { useRouter } from "next/router";
 import type { ReactElement, ReactNode } from "react";

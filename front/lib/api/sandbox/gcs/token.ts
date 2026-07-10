@@ -168,7 +168,11 @@ function getStorageMountRole(): string {
  *     loopback-served token (gcsfuse fetches it over http) still cannot write there.
  *
  * Total rule count is `1 + 2 * prefixes.length`. CAB allows up to 10 rules, so we support up to 4
- * concurrent prefixes.
+ * concurrent prefixes. Current budget: a pod sandbox mounts files (rw) +
+ * sandbox-functions (ro) + state (rw, the litestream replica prefix) = 3 prefixes = 7 rules.
+ *
+ * Prefixes carry NO trailing slash: the conditions below append the '/' themselves, so a
+ * trailing-slash prefix would produce 'state//' and silently break listing.
  */
 export function buildAccessBoundaryRules(
   bucket: string,

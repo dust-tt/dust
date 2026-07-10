@@ -200,5 +200,7 @@ export function getLightAgentMessageFromAgentMessage(
     costCredits: agentMessage.costCredits,
     subAgentCostCredits: agentMessage.subAgentCostCredits,
     activitySteps: [],
+    resolvedModel: agentMessage.resolvedModel,
+    modelResolutionMethod: agentMessage.modelResolutionMethod,
   };
 }

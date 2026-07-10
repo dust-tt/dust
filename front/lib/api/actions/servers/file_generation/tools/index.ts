@@ -55,7 +55,7 @@ const handlers: ToolHandlers<typeof FILE_GENERATION_TOOLS_METADATA> = {
 
   convert_file_format: async (
     { file_id_or_url, source_format, output_format },
-    { auth, toolContext }
+    { auth, runContext }
   ) => {
     const convertAPIKey = config.getConvertAPIKey();
     const contentType = getContentTypeFromOutputFormat(output_format);
@@ -68,11 +68,9 @@ const handlers: ToolHandlers<typeof FILE_GENERATION_TOOLS_METADATA> = {
     // as returned by generate_file for text outputs. Resolve it to a signed URL
     // that ConvertAPI can fetch.
     if (!validateUrl(file_id_or_url).valid) {
-      const refResult = await resolveConversationFileRef(
-        auth,
-        file_id_or_url,
-        toolContext
-      );
+      const refResult = await resolveConversationFileRef(auth, file_id_or_url, {
+        runContext,
+      });
       if (refResult.isErr()) {
         return new Err(
           new MCPError(`File not found: ${file_id_or_url}`, {

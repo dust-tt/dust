@@ -636,7 +636,7 @@ export class GroupResource extends BaseResource<GroupModel> {
     workspaceId,
     groupKinds = [
       "global",
-      "regular",
+      "regular_auto",
       "space_editors",
       "system",
       "provisioned",
@@ -1025,7 +1025,7 @@ export class GroupResource extends BaseResource<GroupModel> {
     options: { groupKinds?: GroupKind[] } = {}
   ): Promise<GroupResource[]> {
     const {
-      groupKinds = ["global", "regular", "space_editors", "provisioned"],
+      groupKinds = ["global", "regular_auto", "space_editors", "provisioned"],
     } = options;
     const groups = await this.baseFetch(auth, {
       where: {
@@ -1190,7 +1190,7 @@ export class GroupResource extends BaseResource<GroupModel> {
   static async listGroupNamesByUserModelIdInWorkspace({
     workspace,
     userModelIds,
-    groupKinds = ["regular", "provisioned"],
+    groupKinds = ["regular_auto", "provisioned"],
   }: {
     workspace: LightWorkspaceType;
     userModelIds: ModelId[];
@@ -1510,7 +1510,7 @@ export class GroupResource extends BaseResource<GroupModel> {
     >
   > {
     assert(
-      this.kind === "regular" ||
+      this.isRegular() ||
         this.kind === "space_editors" ||
         this.kind === "agent_editors" ||
         this.kind === "skill_editors" ||
@@ -1554,10 +1554,10 @@ export class GroupResource extends BaseResource<GroupModel> {
       );
     }
 
-    // Users can only be added to regular, space_editors, agent_editors, skill_editors or provisioned groups.
+    // Users can only be added to regular_auto, space_editors, agent_editors, skill_editors or provisioned groups.
     if (
       ![
-        "regular",
+        "regular_auto",
         "space_editors",
         "agent_editors",
         "skill_editors",
@@ -1687,7 +1687,7 @@ export class GroupResource extends BaseResource<GroupModel> {
     >
   > {
     assert(
-      this.kind === "regular" ||
+      this.isRegular() ||
         this.kind === "space_editors" ||
         this.kind === "agent_editors" ||
         this.kind === "skill_editors" ||
@@ -1725,10 +1725,10 @@ export class GroupResource extends BaseResource<GroupModel> {
       );
     }
 
-    // Users can only be removed from regular, space_editors, agent_editors, skill_editors or provisioned groups.
+    // Users can only be removed from regular_auto, space_editors, agent_editors, skill_editors or provisioned groups.
     if (
       ![
-        "regular",
+        "regular_auto",
         "space_editors",
         "agent_editors",
         "skill_editors",
@@ -1826,7 +1826,7 @@ export class GroupResource extends BaseResource<GroupModel> {
    * Unlike removeMembers(), this method does not require admin/editor permissions.
    * Users can always remove themselves from groups they are members of.
    *
-   * Only works for "regular" and "space_editors" groups.
+   * Only works for "regular_auto" and "space_editors" groups.
    * TODO(remy): Replace this with dangerouslyRemoveMembers once available
    */
   async leaveGroup(
@@ -1838,7 +1838,7 @@ export class GroupResource extends BaseResource<GroupModel> {
     const user = auth.getNonNullableUser();
     const workspace = auth.getNonNullableWorkspace();
 
-    if (this.kind !== "regular" && this.kind !== "space_editors") {
+    if (!this.isRegular() && this.kind !== "space_editors") {
       return new Err(
         new DustError(
           "system_or_global_group",
@@ -2283,9 +2283,11 @@ export class GroupResource extends BaseResource<GroupModel> {
    * 2. Role-based: Workspace admins get read and write access
    *
    * For agent_editors and skill_editors groups, the permissions are:
-   * 1. Group-based: The group's members get read and write access
-   * 2. Role-based: Workspace admins get read and write access. All users can
+   * 1. Group-based: The group's members get full access
+   * 2. Role-based: Workspace admins get read and admin access. All users can
    *    read "agent_editors" and "skill_editors" groups.
+   *    Admin do not have write access, they can however add themselves to
+   *    groups to gain it.
    *
    * CAUTION: if / when editing, note that for role permissions, permissions are
    * NOT inherited, i.e., if you set a permission for role "user", an "admin"
@@ -2301,11 +2303,11 @@ export class GroupResource extends BaseResource<GroupModel> {
           groups: [
             {
               id: this.id,
-              permissions: ["read", "write"],
+              permissions: ["read", "write", "admin"],
             },
           ],
           roles: [
-            { role: "admin", permissions: ["read", "write", "admin"] },
+            { role: "admin", permissions: ["read", "admin"] },
             {
               role: "user",
               permissions: ["read"],
@@ -2357,6 +2359,10 @@ export class GroupResource extends BaseResource<GroupModel> {
     return auth.canWrite(this.requestedPermissions());
   }
 
+  canAdministrate(auth: Authenticator): boolean {
+    return auth.canAdministrate(this.requestedPermissions());
+  }
+
   isSystem(): boolean {
     return this.kind === "system";
   }
@@ -2366,7 +2372,7 @@ export class GroupResource extends BaseResource<GroupModel> {
   }
 
   isRegular(): boolean {
-    return this.kind === "regular";
+    return this.kind === "regular_auto";
   }
 
   isSpaceEditor(): boolean {

@@ -99,7 +99,7 @@ export function SkillDetailsSheetContent({
 }: SkillDetailsSheetContentProps) {
   const [selectedTab, setSelectedTab] = useState<"info" | "editors">("info");
 
-  const showEditorsTabs = skill.status !== "suggested" && skill.canWrite;
+  const showEditorsTabs = skill.status !== "suggested" && skill.canAdministrate;
 
   if (showEditorsTabs) {
     return (
@@ -190,7 +190,7 @@ const DescriptionSection = ({
             size="sm"
           >
             It is no longer active and cannot be used.
-            {skill.canWrite && (
+            {skill.canAdministrate && (
               <div className="mt-2">
                 <Button
                   variant="outline"

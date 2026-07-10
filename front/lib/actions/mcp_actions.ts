@@ -66,10 +66,10 @@ import {
 } from "@app/lib/actions/tool_interruptions";
 import { tryGetPrefixedToolName } from "@app/lib/actions/tool_name_utils";
 import {
-  type AgentLoopListToolsContextType,
+  type AgentLoopListToolsContext,
   isAgentLoopRunContext,
   isSandboxFunctionRunContext,
-  type ToolContextType,
+  type ToolContext,
 } from "@app/lib/actions/types";
 import {
   isClientSideMCPToolConfiguration,
@@ -345,7 +345,7 @@ export async function runToolCallWithDetachedSignal<T>(
 export async function* tryCallMCPTool(
   auth: Authenticator,
   inputs: Record<string, unknown> | undefined,
-  toolContext: ToolContextType,
+  toolContext: ToolContext,
   {
     progressToken,
     makeToolNotificationEvent,
@@ -761,7 +761,7 @@ type ServerSideMCPConnectionError =
 async function connectServerSideMCP(
   auth: Authenticator,
   toolConfiguration: ServerSideMCPToolConfigurationType,
-  toolContext: ToolContextType
+  toolContext: ToolContext
 ): Promise<Result<Client, ServerSideMCPConnectionError>> {
   const mcpServerView = await MCPServerViewResource.fetchById(
     auth,
@@ -893,7 +893,7 @@ function makeClientSideMCPConnectionParams(
 }
 
 type AgentLoopListToolsContextWithoutConfigurationType = Omit<
-  AgentLoopListToolsContextType,
+  AgentLoopListToolsContext,
   "agentActionConfiguration"
 >;
 
@@ -959,6 +959,16 @@ export async function disambiguateServerNamesBySpace(
  * Deduplicates MCP server configurations by view ID and name.
  * Priority order: agent actions > client-side > skill servers > JIT servers.
  */
+function getMCPServerConfigurationKey(
+  config: MCPServerConfigurationType
+): string {
+  const viewId = isServerSideMCPServerConfiguration(config)
+    ? config.mcpServerViewId
+    : config.clientSideMcpServerId;
+
+  return `${viewId}:${slugify(config.name)}`;
+}
+
 export function deduplicateMCPServerConfigurations({
   agentActions,
   clientSideActions,
@@ -977,10 +987,7 @@ export function deduplicateMCPServerConfigurations({
     ...skillServers,
     ...jitServers,
   ].filter((config) => {
-    const viewId = isServerSideMCPServerConfiguration(config)
-      ? config.mcpServerViewId
-      : config.clientSideMcpServerId;
-    const key = `${viewId}:${slugify(config.name)}`;
+    const key = getMCPServerConfigurationKey(config);
 
     if (seen.has(key)) {
       return false;
@@ -993,7 +1000,8 @@ export function deduplicateMCPServerConfigurations({
 
 /**
  * List the MCP tools for the given agent actions.
- * Returns MCP tools by connecting to the specified MCP servers.
+ * Returns tools from MCP servers that listed successfully. Listing failures are
+ * logged and omitted from the returned tools.
  */
 export async function tryListMCPTools(
   auth: Authenticator,
@@ -1005,10 +1013,7 @@ export async function tryListMCPTools(
     jitServers: MCPServerConfigurationType[];
     skillServers: MCPServerConfigurationType[];
   }
-): Promise<{
-  serverToolsAndInstructions: ServerToolsAndInstructions[];
-  error?: string;
-}> {
+): Promise<ServerToolsAndInstructions[]> {
   const owner = auth.getNonNullableWorkspace();
 
   const deduplicatedConfigs = deduplicateMCPServerConfigurations({
@@ -1018,11 +1023,29 @@ export async function tryListMCPTools(
     skillServers,
     jitServers,
   });
+  const nonSkillServerKeys = new Set(
+    [
+      ...agentLoopListToolsContext.agentConfiguration.actions,
+      ...(agentLoopListToolsContext.clientSideActionConfigurations ?? []),
+      ...jitServers,
+    ].map(getMCPServerConfigurationKey)
+  );
+  const skillServerKeys = new Set(
+    skillServers.map(getMCPServerConfigurationKey)
+  );
+  const isSkillServerConfig = deduplicatedConfigs.map((config) => {
+    const key = getMCPServerConfigurationKey(config);
+    return skillServerKeys.has(key) && !nonSkillServerKeys.has(key);
+  });
 
   const mcpServerActions = await disambiguateServerNamesBySpace(
     auth,
     deduplicatedConfigs
   );
+  const mcpServerActionsWithOrigin = mcpServerActions.map((action, index) => ({
+    action,
+    isFromSkillServer: isSkillServerConfig[index],
+  }));
 
   // Pre-fetch all MCPServerViews for server-side configs to avoid N+1 queries.
   const serverSideViewIds = mcpServerActions
@@ -1038,17 +1061,29 @@ export async function tryListMCPTools(
 
   // Discover all tools exposed by all available MCP servers.
   const results = await concurrentExecutor(
-    mcpServerActions,
-    async (action) => {
+    mcpServerActionsWithOrigin,
+    async ({ action, isFromSkillServer }) => {
       let connectionParams: MCPConnectionParams;
       if (isServerSideMCPServerConfiguration(action)) {
         const mcpServerView = preFetchedMcpServerViews.get(
           action.mcpServerViewId
         );
         if (!mcpServerView) {
-          return new Err(
-            new Error(`MCP server view not found for ${action.name}`)
+          const error = new Error(
+            `MCP server view not found for ${action.name}`
           );
+          logger.error(
+            {
+              workspaceId: owner.sId,
+              conversationId: agentLoopListToolsContext.conversation.sId,
+              messageId: agentLoopListToolsContext.agentMessage.sId,
+              actionId: action.sId,
+              mcpServerName: action.name,
+              error,
+            },
+            `Error listing tools from MCP server: ${normalizeError(error)}`
+          );
+          return new Err(error);
         }
         connectionParams = makeServerSideMCPConnectionParams(mcpServerView);
       } else {
@@ -1083,14 +1118,7 @@ export async function tryListMCPTools(
             toolsAndInstructionsRes.error
           )}`
         );
-        return new Err(
-          new Error(
-            `An error occurred while listing the available tools for ${action.name}. ` +
-              "Tools from this server are not available for this message. " +
-              `Reason: ${normalizeError(toolsAndInstructionsRes.error).message}. ` +
-              "Inform the user of this issue."
-          )
-        );
+        return new Err(toolsAndInstructionsRes.error);
       }
 
       const { instructions, tools: rawToolsFromServer } =
@@ -1181,6 +1209,7 @@ export async function tryListMCPTools(
 
         processedTools.push({
           ...toolConfig,
+          ...(isFromSkillServer ? { eager: undefined } : {}),
           originalName: toolConfig.name,
           mcpServerName: action.name,
           name: toolName,
@@ -1198,26 +1227,7 @@ export async function tryListMCPTools(
     { concurrency: 10 }
   );
 
-  // Aggregate results
-  const { serverToolsAndInstructions, errors } = results.reduce<{
-    serverToolsAndInstructions: ServerToolsAndInstructions[];
-    errors: string[];
-  }>(
-    (acc, result) => {
-      if (result.isOk()) {
-        acc.serverToolsAndInstructions.push(result.value);
-      } else {
-        acc.errors.push(result.error.message);
-      }
-      return acc;
-    },
-    { serverToolsAndInstructions: [], errors: [] }
-  );
-
-  return {
-    serverToolsAndInstructions,
-    error: errors.length > 0 ? errors.join("\n") : undefined,
-  };
+  return results.flatMap((result) => (result.isOk() ? [result.value] : []));
 }
 
 async function listToolsForClientSideMCPServer(
@@ -1377,7 +1387,7 @@ export async function buildToolConfigurationsFromRawTools(
 async function listMCPServerToolsAndServerInstructions(
   auth: Authenticator,
   config: MCPServerConfigurationType,
-  agentLoopListToolsContext: AgentLoopListToolsContextType,
+  agentLoopListToolsContext: AgentLoopListToolsContext,
   connectionParams: MCPConnectionParams
 ): Promise<
   Result<{ instructions?: string; tools: MCPToolConfigurationType[] }, Error>

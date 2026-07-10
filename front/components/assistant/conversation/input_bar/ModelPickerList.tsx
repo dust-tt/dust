@@ -88,6 +88,24 @@ export function ModelPickerList({
     case "browse":
       return (
         <>
+          {listState.agentDefault && (
+            <>
+              <DropdownMenuSeparator />
+              <DropdownMenuLabel label="Default from agent" />
+              <DropdownMenuRadioGroup value={selectedKey}>
+                <ModelPickerLineItem
+                  key={getModelWithReasoningEffortKey(
+                    listState.agentDefault.model.providerId,
+                    listState.agentDefault.model.modelId,
+                    listState.agentDefault.effort
+                  )}
+                  modelWithEffort={listState.agentDefault}
+                  isMobile={isMobile}
+                  onSelect={onSelectModel}
+                />
+              </DropdownMenuRadioGroup>
+            </>
+          )}
           {listState.suggested.length > 0 && (
             <>
               <DropdownMenuSeparator />

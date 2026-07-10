@@ -55,10 +55,10 @@ export function isGroupPermissionResourceType(
 const PERMISSION_CONFIGURATION_SCOPES = [
   "everyone",
   "groups",
-  "disabled",
+  "admins_only",
 ] as const;
 
-type PermissionConfigurationScope =
+export type PermissionConfigurationScope =
   (typeof PERMISSION_CONFIGURATION_SCOPES)[number];
 
 export const isValidPermissionConfigurationScope = (

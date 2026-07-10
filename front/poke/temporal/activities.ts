@@ -2,6 +2,7 @@ import { hardDeleteApp } from "@app/lib/api/apps";
 import { destroyConversation } from "@app/lib/api/assistant/conversation/destroy";
 import config from "@app/lib/api/config";
 import { hardDeleteDataSource } from "@app/lib/api/data_sources";
+import { deletePodStatePrefix } from "@app/lib/api/sandbox/db";
 import { hardDeleteSpace } from "@app/lib/api/spaces";
 import { deleteWebhookSource } from "@app/lib/api/webhook_source";
 import { deleteWorksOSOrganizationWithWorkspace } from "@app/lib/api/workos/organization";
@@ -165,6 +166,14 @@ export async function scrubSpaceActivity({
       await SandboxFunctionResource.deleteAllForSpace(auth, space);
     if (deleteSandboxFunctionsResult.isErr()) {
       throw deleteSandboxFunctionsResult.error;
+    }
+
+    // Pod state (litestream replica) objects are never FileResources, so the
+    // per-function deletes above cannot reach them — scrub the whole GCS
+    // prefix or the replica chain leaks forever.
+    const deletePodStateResult = await deletePodStatePrefix(auth, space);
+    if (deletePodStateResult.isErr()) {
+      throw deletePodStateResult.error;
     }
   }
 

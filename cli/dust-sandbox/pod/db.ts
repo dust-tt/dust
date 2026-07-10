@@ -8,16 +8,16 @@ import { drizzle } from "drizzle-orm/bun-sqlite";
  *
  * `db(name)` returns a cached Drizzle instance over the pod's live SQLite
  * database at `${DUST_POD_DATABASES_DIR}/{name}.db`. Databases are created by
- * the publish pipeline (`dsbx db reconcile`), never here: the file is opened
+ * `dsbx db reconcile` (the db_reconcile tool), never here: the file is opened
  * must-exist so a typo'd name errors clearly instead of minting an empty
  * database. Functions that never call `db()` pay nothing.
  *
  * Disk guardrails — pod state must not fill the sandbox disk by accident:
  *
  * - `db()` cannot create database files (must-exist open), so the set of
- *   databases is fixed at publish time. Total pod-state footprint is the
- *   number of declared databases times the per-database cap; bounding the
- *   count is the publish pipeline's job.
+ *   databases is fixed by what reconcile has created. Total pod-state
+ *   footprint is the number of databases times the per-database cap;
+ *   bounding the count is the reconcile path's job.
  * - Each database is capped via `PRAGMA max_page_count` at the byte quota
  *   front chooses and passes per exec (1 GiB in production — see
  *   {@link POD_DATABASE_MAX_SIZE_BYTES_ENV}). Writes past the cap fail with
@@ -99,9 +99,9 @@ export class PodDatabaseNotDeclaredError extends PodDatabaseError {
   constructor(dbName: string, path: string) {
     super(
       `Pod database "${dbName}" does not exist (no database file at ${path}). ` +
-        `Databases are created by the first publish that declares them: add ` +
-        `"${dbName}" to a function's schema.databases, define its tables in ` +
-        `databases/${dbName}.db.ts, and publish that function.`
+        `Databases are created by their first reconcile: define the tables in ` +
+        `databases/${dbName}.db.ts, apply it with the db_reconcile tool, and ` +
+        `declare "${dbName}" in the function's schema.databases.`
     );
     this.name = "PodDatabaseNotDeclaredError";
   }
@@ -184,40 +184,43 @@ function wrapStatement<T extends object>(
  * through `prepare` (which `query()` and `transaction()` also go through).
  */
 class PodSqliteDatabase extends Database {
-  readonly #dbName: string;
-  readonly #maxSizeBytes: number;
+  private readonly dbName: string;
+  private readonly maxSizeBytes: number;
 
   constructor(path: string, dbName: string, maxSizeBytes: number) {
     // readwrite without create: opening a missing file throws SQLITE_CANTOPEN
     // instead of minting an empty database (verified against bun 1.3.14).
     super(path, { readwrite: true });
-    this.#dbName = dbName;
-    this.#maxSizeBytes = maxSizeBytes;
+    this.dbName = dbName;
+    this.maxSizeBytes = maxSizeBytes;
   }
 
-  run<ParamsType extends SQLQueryBindings[]>(
+  override run<ParamsType extends SQLQueryBindings[]>(
     sql: string,
     ...bindings: ParamsType[]
   ): Changes {
     try {
       return super.run(sql, ...bindings);
     } catch (err) {
-      throw translateSqliteError(err, this.#dbName, this.#maxSizeBytes);
+      throw translateSqliteError(err, this.dbName, this.maxSizeBytes);
     }
   }
 
-  exec<ParamsType extends SQLQueryBindings[]>(
+  override exec<ParamsType extends SQLQueryBindings[]>(
     sql: string,
     ...bindings: ParamsType[]
   ): Changes {
     try {
       return super.exec(sql, ...bindings);
     } catch (err) {
-      throw translateSqliteError(err, this.#dbName, this.#maxSizeBytes);
+      throw translateSqliteError(err, this.dbName, this.maxSizeBytes);
     }
   }
 
-  prepare<ReturnType, ParamsType extends SQLQueryBindings | SQLQueryBindings[]>(
+  override prepare<
+    ReturnType,
+    ParamsType extends SQLQueryBindings | SQLQueryBindings[],
+  >(
     sql: string,
     params?: ParamsType
     // The `any[]` conditional mirrors bun:sqlite's own Database.prepare signature.
@@ -226,7 +229,7 @@ class PodSqliteDatabase extends Database {
     ParamsType extends any[] ? ParamsType : [ParamsType]
   > {
     const stmt = super.prepare<ReturnType, ParamsType>(sql, params);
-    return wrapStatement(stmt, this.#dbName, this.#maxSizeBytes);
+    return wrapStatement(stmt, this.dbName, this.maxSizeBytes);
   }
 }
 
@@ -266,7 +269,7 @@ function podDatabaseMaxSizeBytes(): number {
 /**
  * Per-connection settings, re-applied on every open. `journal_mode = WAL` is
  * not set here: it is a persistent per-database setting, applied once when
- * the publish pipeline creates the file.
+ * reconcile creates the file.
  */
 function applyPragmas(sqlite: PodSqliteDatabase, maxSizeBytes: number): void {
   // WAL allows a single writer at a time: concurrent function invocations —
@@ -315,7 +318,7 @@ const instances = new Map<string, PodDatabase>();
  *   DUST_POD_DATABASE_MAX_SIZE_BYTES is absent or invalid — db() only works
  *   in functions launched by `dsbx function run`.
  * @throws PodDatabaseNotDeclaredError when no database file exists — databases
- *   are created by the first publish that declares them.
+ *   are created by their first reconcile.
  * @throws PodDatabaseFullError (from queries) when the database hits its quota.
  */
 export function db(name: string): PodDatabase {

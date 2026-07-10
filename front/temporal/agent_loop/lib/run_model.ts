@@ -22,7 +22,7 @@ import {
   globalAgentInjectsToolsets,
   globalAgentInjectsUserContext,
   globalAgentInjectsWorkspaceContext,
-} from "@app/lib/api/assistant/global_agents/global_agents";
+} from "@app/lib/api/assistant/global_agents/prompt_context";
 import {
   buildUserContext,
   buildWorkspaceContext,
@@ -236,18 +236,20 @@ export function buildBaseSpecifications(
       .filter((id) => id !== -1)
   );
 
-  return availableActions.map((action) => {
-    const specification = buildToolSpecification(action);
-    if (
-      isCustomAgent &&
-      isServerSideMCPToolConfiguration(action) &&
-      agentActionModelIds.has(action.id)
-    ) {
-      return { ...specification, eager: true };
-    }
+  return availableActions
+    .map((action) => {
+      const specification = buildToolSpecification(action);
+      if (
+        isCustomAgent &&
+        isServerSideMCPToolConfiguration(action) &&
+        agentActionModelIds.has(action.id)
+      ) {
+        return { ...specification, eager: true };
+      }
 
-    return specification;
-  });
+      return specification;
+    })
+    .sort((left, right) => left.name.localeCompare(right.name));
 }
 
 // Replayed tools keep their intrinsic `eager` flag: providers resolve deferred
@@ -263,9 +265,9 @@ export function buildSpecificationsWithReplayPlaceholders(
   missingReplayedToolNames: string[];
 } {
   const currentToolNames = new Set(baseSpecifications.map((spec) => spec.name));
-  const missingReplayedToolNames = getReplayedToolNames(
-    modelConversation
-  ).filter((name) => !currentToolNames.has(name));
+  const missingReplayedToolNames = getReplayedToolNames(modelConversation)
+    .filter((name) => !currentToolNames.has(name))
+    .sort();
 
   return {
     specifications: [
@@ -273,7 +275,7 @@ export function buildSpecificationsWithReplayPlaceholders(
       ...missingReplayedToolNames.map((name) =>
         buildReplayOnlyToolSpecification(name)
       ),
-    ],
+    ].sort((left, right) => left.name.localeCompare(right.name)),
     missingReplayedToolNames,
   };
 }
@@ -402,8 +404,7 @@ export async function runModel(
     enabledSkills,
     systemSkills,
     equippedSkills,
-    mcpActions,
-    mcpToolsListingError,
+    serverToolsAndInstructions: mcpActions,
   } = await startActiveObservation("resolve-tools", async () => {
     const attachments = await listAttachments(auth, { conversation });
     const jitServers = await getJITServers(auth, {
@@ -430,39 +431,28 @@ export async function runModel(
       skills: [...systemSkills, ...enabledSkills],
     });
 
-    const {
-      serverToolsAndInstructions: mcpActions,
-      error: mcpToolsListingError,
-    } = await startActiveObservation("list-mcp-tools", () =>
-      tryListMCPTools(
-        auth,
-        {
-          agentConfiguration,
-          conversation,
-          agentMessage,
-          clientSideActionConfigurations: clientSideMCPActionConfigurations,
-        },
-        { jitServers, skillServers }
-      )
+    const serverToolsAndInstructions = await startActiveObservation(
+      "list-mcp-tools",
+      () =>
+        tryListMCPTools(
+          auth,
+          {
+            agentConfiguration,
+            conversation,
+            agentMessage,
+            clientSideActionConfigurations: clientSideMCPActionConfigurations,
+          },
+          { jitServers, skillServers }
+        )
     );
 
     return {
       enabledSkills,
       equippedSkills,
       systemSkills,
-      mcpActions,
-      mcpToolsListingError,
+      serverToolsAndInstructions,
     };
   });
-
-  if (mcpToolsListingError) {
-    localLogger.error(
-      {
-        error: mcpToolsListingError,
-      },
-      "Error listing MCP tools."
-    );
-  }
 
   // Filter out ask_user_question when no human is available to answer: origins with no
   // interactive reply surface, or sub-agent runs (conversation depth > 0) where the
@@ -539,7 +529,6 @@ export async function runModel(
     fallbackPrompt,
     model,
     hasAvailableActions: availableActions.length > 0,
-    errorContext: mcpToolsListingError,
     conversation,
     serverToolsAndInstructions: filteredMcpActions,
     systemSkills,

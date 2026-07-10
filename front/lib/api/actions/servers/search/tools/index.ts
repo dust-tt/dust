@@ -10,7 +10,7 @@ import {
 } from "@app/lib/actions/mcp_internal_actions/tools/utils";
 import {
   isAgentLoopRunContext,
-  type ToolContextType,
+  type ToolContext,
 } from "@app/lib/actions/types";
 import { AGENT_LESS_DEFAULT_RETRIEVAL_TOP_K } from "@app/lib/api/actions/servers/data_sources_file_system/tools/search";
 import {
@@ -56,7 +56,7 @@ export async function searchFunction(
     nodeIds?: string[];
     tagsIn?: string[];
     tagsNot?: string[];
-    toolContext?: ToolContextType;
+    toolContext?: ToolContext;
   }
 ): Promise<Result<CallToolResult["content"], MCPError>> {
   const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
@@ -195,11 +195,11 @@ export async function searchFunction(
 }
 
 const handlers: ToolHandlers<typeof SEARCH_TOOLS_METADATA> = {
-  [SEARCH_TOOL_NAME]: (params, { auth, toolContext }) =>
+  [SEARCH_TOOL_NAME]: (params, { auth, runContext }) =>
     searchFunction(auth, {
       ...params,
       relativeTimeFrame: params.relativeTimeFrame ?? "all",
-      toolContext,
+      toolContext: { runContext },
     }),
 };
 

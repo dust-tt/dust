@@ -91,7 +91,7 @@ describe("POST /api/w/:wId/spaces/:spaceId/project_tasks/mark_read", () => {
     );
 
     const regularSpace = await SpaceFactory.regular(workspace);
-    const memberGroup = regularSpace.groups.find((g) => g.kind === "regular");
+    const memberGroup = regularSpace.groups.find((g) => g.isRegular());
     if (memberGroup) {
       await memberGroup.dangerouslyAddMembers(adminAuth, {
         users: [user.toJSON()],

@@ -488,7 +488,6 @@ async function streamAgentResponse({
         // Send approval card in thread with user-specific view
         // The original user sees interactive buttons, others see a read-only message
         const approvalCard = createBasicToolApprovalAdaptiveCard({
-          agentName: event.metadata.agentName,
           toolName: event.metadata.toolName,
           conversationId: event.conversationId,
           messageId: event.messageId,

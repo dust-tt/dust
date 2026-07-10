@@ -5,6 +5,7 @@ import {
   getConversationFilesBasePath,
   getPodFilesBasePath,
   getPodSandboxFunctionsBasePath,
+  getPodStateBasePath,
   isAgentScopedPath,
   isCanonicalScopedPath,
   isLegacyScopedPath,
@@ -21,6 +22,7 @@ import {
   resolveMountFileSourcePath,
   resolveMoveSourcePath,
   resolveScopedMountFilePath,
+  splitFrameEntryScopedPath,
   validateMountFolderName,
 } from "@app/lib/api/files/mount_path";
 import { FileFactory } from "@app/tests/utils/FileFactory";
@@ -60,6 +62,14 @@ describe("mount_path helpers", () => {
       expect(
         getPodSandboxFunctionsBasePath({ workspaceId: "ws1", podId: "spc1" })
       ).toBe("w/ws1/pods/spc1/sandbox-functions/");
+    });
+  });
+
+  describe("getPodStateBasePath", () => {
+    it("should return a dedicated prefix separate from pod files and functions", () => {
+      expect(getPodStateBasePath({ workspaceId: "ws1", podId: "spc1" })).toBe(
+        "w/ws1/pods/spc1/state/"
+      );
     });
   });
 
@@ -566,6 +576,65 @@ describe("mount_path helpers", () => {
       });
 
       expect(disambiguateFileName(file)).toBe(`.gitignore_${file.sId}`);
+    });
+  });
+
+  describe("splitFrameEntryScopedPath", () => {
+    it("splits a conversation-scoped entry path into its root and relative entry", () => {
+      const result = splitFrameEntryScopedPath(
+        "conversation-abc/Dashboard.tsx"
+      );
+
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
+        expect(result.value).toEqual({
+          root: "conversation-abc",
+          entryRelPath: "Dashboard.tsx",
+        });
+      }
+    });
+
+    it("splits an entry nested under a subdirectory", () => {
+      const result = splitFrameEntryScopedPath(
+        "conversation-abc/dashboards/Sales.tsx"
+      );
+
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
+        expect(result.value).toEqual({
+          root: "conversation-abc/dashboards",
+          entryRelPath: "Sales.tsx",
+        });
+      }
+    });
+
+    it("splits a pod-scoped entry path", () => {
+      const result = splitFrameEntryScopedPath("pod-xyz/Dashboard.tsx");
+
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
+        expect(result.value).toEqual({
+          root: "pod-xyz",
+          entryRelPath: "Dashboard.tsx",
+        });
+      }
+    });
+
+    it("ignores a trailing slash", () => {
+      const result = splitFrameEntryScopedPath(
+        "conversation-abc/Dashboard.tsx/"
+      );
+
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
+        expect(result.value.entryRelPath).toBe("Dashboard.tsx");
+      }
+    });
+
+    it("fails when the path has no directory component", () => {
+      const result = splitFrameEntryScopedPath("Dashboard.tsx");
+
+      expect(result.isErr()).toBe(true);
     });
   });
 });

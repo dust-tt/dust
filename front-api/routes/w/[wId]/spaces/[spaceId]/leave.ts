@@ -40,7 +40,7 @@ app.post(
 
     const user = auth.getNonNullableUser();
 
-    const memberGroup = space.groups.find((g) => g.kind === "regular");
+    const memberGroup = space.groups.find((g) => g.isRegular());
     const editorGroup = space.groups.find((g) => g.kind === "space_editors");
 
     if (editorGroup) {

@@ -74,6 +74,21 @@ export const SUPPORTED_MODEL_CONFIGS: ReadonlyArray<ModelConfig> = [
     providerId: "openai",
   },
   {
+    modelId: "gpt-5.6-sol",
+    displayName: "GPT 5.6 Sol",
+    providerId: "openai",
+  },
+  {
+    modelId: "gpt-5.6-terra",
+    displayName: "GPT 5.6 Terra",
+    providerId: "openai",
+  },
+  {
+    modelId: "gpt-5.6-luna",
+    displayName: "GPT 5.6 Luna",
+    providerId: "openai",
+  },
+  {
     modelId: "gpt-5.4-nano",
     displayName: "GPT-5.4 Nano",
     providerId: "openai",

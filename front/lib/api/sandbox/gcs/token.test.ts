@@ -185,6 +185,33 @@ describe("buildAccessBoundaryRules", () => {
     ).toBe(false);
   });
 
+  it("emits 7 rules for the full pod sandbox prefix set (files, functions, state)", () => {
+    // Pod sandboxes mount three prefixes; the CAB ceiling is 10 rules, so
+    // this must stay at 7 (1 unconditional + 2 per prefix).
+    const rules = buildAccessBoundaryRules("bucket-x", [
+      { prefix: "w/ws1/pods/spc1/files", readOnly: false },
+      { prefix: "w/ws1/pods/spc1/sandbox-functions", readOnly: true },
+      { prefix: "w/ws1/pods/spc1/state", readOnly: false },
+    ]);
+    expect(rules).toHaveLength(7);
+  });
+
+  it("grants read/write on the pod state prefix", () => {
+    const rules = buildAccessBoundaryRules("bucket-x", [
+      { prefix: "w/ws1/pods/spc1/state", readOnly: false },
+    ]);
+
+    const objectRule = rules.find((r) =>
+      r.availablePermissions[0].includes("objectUser")
+    );
+    expect(objectRule).toBeDefined();
+    expect(
+      objectRule &&
+        "availabilityCondition" in objectRule &&
+        objectRule.availabilityCondition.expression
+    ).toContain("projects/_/buckets/bucket-x/objects/w/ws1/pods/spc1/state/");
+  });
+
   it("references every prefix in list and resource.name conditions", () => {
     const prefixes = [
       { prefix: "w/ws1/conversations/c1/files", readOnly: false },

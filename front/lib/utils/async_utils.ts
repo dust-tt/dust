@@ -124,3 +124,16 @@ export async function withPeriodicHeartbeat<T>(
 export async function setTimeoutAync(delayMs: number = 0): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, delayMs));
 }
+
+// Consume an async generator, discarding its yields, and return its return value. `for await`
+// discards generator return values and `yield*` only works inside another generator, so callers
+// that need the return value outside of a generator have to drain manually.
+export async function drainAsyncGenerator<Y, R>(
+  generator: AsyncGenerator<Y, R>
+): Promise<R> {
+  let result = await generator.next();
+  while (!result.done) {
+    result = await generator.next();
+  }
+  return result.value;
+}

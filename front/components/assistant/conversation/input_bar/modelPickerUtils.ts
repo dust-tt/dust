@@ -1,4 +1,6 @@
+import type { AgentModelConfigurationType } from "@app/types/assistant/agent";
 import { CLAUDE_SONNET_4_6_MODEL_ID } from "@app/types/assistant/models/anthropic";
+import { AUTO_MODEL_ID } from "@app/types/assistant/models/auto";
 import { GPT_5_5_MODEL_ID } from "@app/types/assistant/models/openai";
 import type {
   ModelConfigurationType,
@@ -40,7 +42,7 @@ export const SUGGESTED_PINS: {
 ];
 
 export const AUTO_TOOLTIP =
-  "Dust selects and switches model for cost efficient performance and reliability. When an agent is created using a specific model, we use this model.";
+  "Dust selects and switches model for cost efficient performance and reliability.";
 
 // Per reasoning-effort blurbs shown in each model's hover tooltip: what the
 // effort does, and what it is recommended for.
@@ -77,9 +79,30 @@ export interface ProviderGroup {
   models: { model: ModelConfigurationType; efforts: ReasoningEffort[] }[];
 }
 
+export type UserModelSelection =
+  | { kind: "auto"; toSend: ModelSelectionType }
+  | ({ kind: "model"; toSend: ModelSelectionType } & ModelWithReasoningEffort);
+
 export type Selection =
-  | { kind: "auto" }
-  | { kind: "model"; model: ModelConfigurationType; effort: ReasoningEffort };
+  | UserModelSelection
+  | ({ kind: "agent"; toSend: undefined } & ModelWithReasoningEffort);
+
+export const AUTO_MODEL_SELECTION: ModelSelectionType = {
+  providerId: AUTO_MODEL_ID,
+  modelId: AUTO_MODEL_ID,
+  reasoningEffort: "none",
+};
+
+export function buildModelSelection(
+  model: ModelConfigurationType,
+  effort: ReasoningEffort
+): ModelSelectionType {
+  return {
+    providerId: model.providerId,
+    modelId: model.modelId,
+    reasoningEffort: effort,
+  };
+}
 
 // The list body is a small state machine: hidden while Auto is on, then a
 // loading / empty / search-results / browse view depending on the models
@@ -92,6 +115,7 @@ export type ModelPickerListState =
   | { kind: "search"; models: ModelWithReasoningEffort[] }
   | {
       kind: "browse";
+      agentDefault: ModelWithReasoningEffort | null;
       suggested: SuggestedModelWithReasoningEffort[];
       moreByProvider: ProviderGroup[];
     };
@@ -112,34 +136,81 @@ export function getModelWithReasoningEffortKey(
   return `${providerId}/${modelId}/${effort}`;
 }
 
-export function getModelWithReasoningEffortLabel(selection: Selection): string {
-  if (selection.kind === "auto") {
-    return "Auto";
-  }
-  const { model, effort } = selection;
+// Narrower than `Selection`: label rendering only needs the kind/model/effort,
+// not the API payload, so callers without a `toSend` handy (e.g. a per-message
+// model resolved after the fact) can pass a plain literal.
+export type LabelSelection =
+  | { kind: "auto" }
+  | ({ kind: "agent" | "model" } & ModelWithReasoningEffort);
 
-  if (effort === "none") {
-    return model.displayName;
-  }
-
-  return `${model.displayName} ${capitalize(effort)}`;
-}
-
-// Converts the picker's local selection into the API model selection
-export function toModelSelection(
-  selection: Selection
-): ModelSelectionType | undefined {
+export function getModelWithReasoningEffortLabel(
+  selection: LabelSelection
+): string {
   switch (selection.kind) {
     case "auto":
-      return undefined;
-    case "model":
-      return {
-        providerId: selection.model.providerId,
-        modelId: selection.model.modelId,
-        reasoningEffort: selection.effort,
-      };
+      return "Auto";
+    case "agent":
+      return "Default";
+    case "model": {
+      const { model, effort } = selection;
+      return effort === "none"
+        ? model.displayName
+        : `${model.displayName} ${capitalize(effort)}`;
+    }
     default:
       assertNeverAndIgnore(selection);
-      return undefined;
+      return "";
   }
+}
+
+function findAvailableModel(
+  models: ModelConfigurationType[],
+  selection: { providerId: string; modelId: string }
+): ModelConfigurationType | undefined {
+  return models.find(
+    (m) =>
+      m.providerId === selection.providerId && m.modelId === selection.modelId
+  );
+}
+
+export function resolveDefaultSelection({
+  agentModel,
+  lastRequestedModel,
+  models,
+}: {
+  agentModel: AgentModelConfigurationType | null;
+  lastRequestedModel: ModelSelectionType | null;
+  models: ModelConfigurationType[];
+}): Selection {
+  const requestedModel = lastRequestedModel
+    ? findAvailableModel(models, lastRequestedModel)
+    : undefined;
+  if (requestedModel) {
+    if (requestedModel.modelId === AUTO_MODEL_ID) {
+      return { kind: "auto", toSend: AUTO_MODEL_SELECTION };
+    }
+    const effort =
+      lastRequestedModel?.reasoningEffort ??
+      requestedModel.defaultReasoningEffort;
+    return {
+      kind: "model",
+      model: requestedModel,
+      effort,
+      toSend: buildModelSelection(requestedModel, effort),
+    };
+  }
+
+  const agentDefaultModel = agentModel
+    ? findAvailableModel(models, agentModel)
+    : undefined;
+  if (!agentDefaultModel || agentDefaultModel.modelId === AUTO_MODEL_ID) {
+    return { kind: "auto", toSend: AUTO_MODEL_SELECTION };
+  }
+  return {
+    kind: "agent",
+    model: agentDefaultModel,
+    effort:
+      agentModel?.reasoningEffort ?? agentDefaultModel.defaultReasoningEffort,
+    toSend: undefined,
+  };
 }

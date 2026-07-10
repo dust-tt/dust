@@ -6,6 +6,7 @@ import {
 } from "@app/components/pages/onboarding/SubscriptionPlans";
 import { UserMenu } from "@app/components/UserMenu";
 import { useAuth } from "@app/lib/auth/AuthContext";
+import { useRedirectAwayFromCheckoutIfAlreadyPaid } from "@app/lib/client/subscription";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { useAppRouter } from "@app/lib/platform";
 import { useUser } from "@app/lib/swr/user";
@@ -17,6 +18,9 @@ export function SelectSubscriptionPage() {
   const { workspace, user: authUser } = useAuth();
   const router = useAppRouter();
   const { user } = useUser();
+
+  const shouldRedirectAwayFromCheckout =
+    useRedirectAwayFromCheckoutIfAlreadyPaid();
 
   const [billingPeriod, setBillingPeriod] =
     React.useState<BillingPeriod>("monthly");
@@ -37,6 +41,10 @@ export function SelectSubscriptionPage() {
       );
     }
   );
+
+  if (shouldRedirectAwayFromCheckout) {
+    return null;
+  }
 
   return (
     <>

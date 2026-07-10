@@ -1,5 +1,5 @@
 import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
-import type { MCPApproveExecutionEvent } from "@app/lib/actions/mcp_internal_actions/events";
+import type { AgentLoopMCPApproveExecutionEvent } from "@app/lib/actions/mcp_internal_actions/events";
 import type { ActionGeneratedFileType } from "@app/lib/actions/types";
 import type { AgentMessageFeedbackDirection } from "@app/lib/api/assistant/conversation/feedbacks";
 import type { AgentMCPActionWithOutputType } from "@app/types/actions";
@@ -17,7 +17,11 @@ import type {
   LightAgentConfigurationType,
 } from "./agent";
 import type { MentionType, RichMention } from "./mentions";
-import type { ResolvedRequestedModel } from "./models/types";
+import type {
+  ModelResolutionMethodType,
+  ModelSelectionType,
+  ResolvedRequestedModel,
+} from "./models/types";
 
 export type MessageVisibility = "visible" | "deleted" | "pending";
 
@@ -194,6 +198,8 @@ export type UserMessageType = {
   context: UserMessageContext;
   agenticMessageData?: AgenticMessageData;
   reactions: MessageReactionType[];
+  // Model's triplet requested by the user manually when running the agent. Null when the user did not request a specific model.
+  requestedModel: ModelSelectionType | null;
 };
 
 export type UserMessageTypeWithoutMentions = Omit<
@@ -363,10 +369,12 @@ export type AgentMessageType = BaseAgentMessageType & {
   actions: AgentMCPActionWithOutputType[];
   contents: Array<{ step: number; content: AgentContentItemType }>;
   modelInteractionDurationMs: number | null;
-  // Per-message model override from the input-bar model picker: the resolved
-  // model. Null/undefined when the agent ran its own configured model. Optional
-  // during rollout. See [BACK12].
-  requestedModel?: ResolvedRequestedModel | null;
+  // Model's triplet used to generate the message. Legacy: null, the agent ran its own configured model.
+  resolvedModel: ResolvedRequestedModel | null;
+  // How `resolvedModel` was chosen: "agent" (agent's configured model), "user"
+  // (per-message model picked from the input-bar picker), or "auto" (routed
+  // through the auto model). Legacy: null.
+  modelResolutionMethod: ModelResolutionMethodType | null;
 };
 
 export type AgentMessageTypeWithoutMentions = Omit<
@@ -388,6 +396,10 @@ export type LightAgentMessageType = BaseAgentMessageType & {
   citations: Record<string, CitationType>;
   generatedFiles: Omit<ActionGeneratedFileType, "snippet">[];
   activitySteps: InlineActivityStep[];
+  // Model's triplet used to generate the message, and how it was chosen. Used to
+  // label messages that ran on a per-message picker override. Legacy: null.
+  resolvedModel: ResolvedRequestedModel | null;
+  modelResolutionMethod: ModelResolutionMethodType | null;
 };
 
 // This type represents the agent message we can reconstruct by accumulating streaming events
@@ -840,6 +852,6 @@ export type ConversationMCPServerViewType = BaseConversationMCPServerViewType &
   );
 
 export type MCPActionValidationRequest = Omit<
-  MCPApproveExecutionEvent,
+  AgentLoopMCPApproveExecutionEvent,
   "type" | "created" | "configurationId"
 >;

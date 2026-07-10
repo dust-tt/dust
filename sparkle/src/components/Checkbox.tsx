@@ -6,7 +6,7 @@ import React from "react";
 import { Label } from "./Label";
 import { Tooltip } from "./Tooltip";
 
-const checkboxStyles = cva(
+export const checkboxStyles = cva(
   cn(
     "h-4 w-4 rounded-md relative shrink-0 peer border transition duration-200 ease-in-out motion-reduce:transition-none",
     "active:scale-95",
@@ -19,7 +19,7 @@ const checkboxStyles = cva(
 
 // The checked state renders a dark rounded square that fills the box's inner
 // content area; the light "ring" is the box's own border showing through.
-const checkboxIndicatorStyles = cva(
+export const checkboxIndicatorStyles = cva(
   "absolute inset-0 flex items-center justify-center rounded-[3px]",
   {
     variants: {

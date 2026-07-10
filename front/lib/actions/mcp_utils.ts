@@ -15,7 +15,7 @@ import {
   TOOL_GENERATED_FILE_MIME_TYPE,
   TOOL_GENERATED_FILE_PATH_MIME_TYPE,
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
-import type { ToolContextType } from "@app/lib/actions/types";
+import type { ToolContext } from "@app/lib/actions/types";
 import { isAgentLoopRunContext } from "@app/lib/actions/types";
 import { isEnableSkillResultOutput } from "@app/lib/api/actions/servers/skill_management/rendering";
 import {
@@ -181,7 +181,7 @@ export async function handleBase64Upload(
     base64Data: string;
     mimeType: string;
     fileName: string;
-    toolContext: ToolContextType;
+    toolContext: ToolContext;
   }
 ): Promise<{
   content: CallToolResult["content"][number];

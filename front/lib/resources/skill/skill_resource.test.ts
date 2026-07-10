@@ -1,4 +1,5 @@
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
+import { Authenticator } from "@app/lib/auth";
 import { getSupportedModelConfig } from "@app/lib/llms/model_configurations";
 import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { SkillDataSourceConfigurationModel } from "@app/lib/models/skill";
@@ -17,6 +18,7 @@ import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { DataSourceViewFactory } from "@app/tests/utils/DataSourceViewFactory";
 import { GroupSpaceFactory } from "@app/tests/utils/GroupSpaceFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
+import { KeyFactory } from "@app/tests/utils/KeyFactory";
 import { MCPServerViewFactory } from "@app/tests/utils/MCPServerViewFactory";
 import { RemoteMCPServerFactory } from "@app/tests/utils/RemoteMCPServerFactory";
 import { SkillFactory } from "@app/tests/utils/SkillFactory";
@@ -39,6 +41,27 @@ describe("SkillResource", () => {
       await config.destroy();
     }
     createdConfigurations.length = 0;
+  });
+
+  describe("permissions", () => {
+    it("allows builder API keys to administrate skills", async () => {
+      const skill = await SkillFactory.create(testContext.authenticator);
+      const builderKey = await KeyFactory.regular(testContext.globalGroup);
+      const readOnlyKey = await KeyFactory.readOnly(testContext.globalGroup);
+
+      const builderAuth = (
+        await Authenticator.fromKey(builderKey, testContext.workspace.sId)
+      ).workspaceAuth;
+      const readOnlyAuth = (
+        await Authenticator.fromKey(readOnlyKey, testContext.workspace.sId)
+      ).workspaceAuth;
+
+      expect(skill.canWrite(builderAuth)).toBe(true);
+      expect(skill.canAdministrate(builderAuth)).toBe(true);
+
+      expect(skill.canWrite(readOnlyAuth)).toBe(false);
+      expect(skill.canAdministrate(readOnlyAuth)).toBe(false);
+    });
   });
 
   // Helper function to create real SkillDataSourceConfigurationModel instances
@@ -1722,7 +1745,7 @@ describe("SkillResource", () => {
       expect(enabledSkills.map((s) => s.sId)).not.toContain(defaultSkill.sId);
     });
 
-    it("moves a pod default into enabledSkills once the agent enables it", async () => {
+    it("keeps an enabled pod default in both enabled and equipped skills", async () => {
       const { authenticator, workspace, user } = testContext;
 
       const space = await SpaceFactory.project(workspace, user.id);
@@ -1751,12 +1774,14 @@ describe("SkillResource", () => {
         conversation,
       });
 
-      const { enabledSkills } = await SkillResource.listForAgentLoop(
-        authenticator,
-        { agentConfiguration: agent, conversation }
-      );
+      const { enabledSkills, equippedSkills } =
+        await SkillResource.listForAgentLoop(authenticator, {
+          agentConfiguration: agent,
+          conversation,
+        });
 
       expect(enabledSkills.map((s) => s.sId)).toContain(defaultSkill.sId);
+      expect(equippedSkills.map((s) => s.sId)).toContain(defaultSkill.sId);
     });
 
     it("does not duplicate a pod default that is also an agent skill", async () => {
@@ -1791,6 +1816,49 @@ describe("SkillResource", () => {
       );
 
       expect(equippedSkills.filter((s) => s.sId === skill.sId)).toHaveLength(1);
+    });
+
+    it("sorts equipped skills across sources", async () => {
+      const { authenticator, workspace, user } = testContext;
+
+      const space = await SpaceFactory.project(workspace, user.id);
+      const podDefaultSkill = await SkillFactory.create(authenticator, {
+        name: "A Pod Default Skill",
+      });
+      const metadata = await ProjectMetadataResource.makeNew(
+        authenticator,
+        space,
+        { description: "d" }
+      );
+      await metadata.setDefaultSkills(authenticator, [podDefaultSkill]);
+
+      const agentSkill = await SkillFactory.create(authenticator, {
+        name: "Z Agent Skill",
+      });
+      const agent = await AgentConfigurationFactory.createTestAgent(
+        authenticator,
+        { name: "Pod Agent" }
+      );
+      await agentSkill.addToAgent(authenticator, agent);
+
+      const conversation = await ConversationFactory.create(authenticator, {
+        agentConfigurationId: agent.sId,
+        messagesCreatedAt: [],
+        spaceId: space.id,
+      });
+
+      const { equippedSkills } = await SkillResource.listForAgentLoop(
+        authenticator,
+        { agentConfiguration: agent, conversation }
+      );
+
+      expect(
+        equippedSkills
+          .map((s) => s.name)
+          .filter((name) =>
+            ["A Pod Default Skill", "Z Agent Skill"].includes(name)
+          )
+      ).toEqual(["A Pod Default Skill", "Z Agent Skill"]);
     });
   });
 

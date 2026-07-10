@@ -268,6 +268,47 @@ describe("buildBaseSpecifications", () => {
     expect(specifications[0].eager).toBeUndefined();
   });
 
+  it("sorts specifications by tool name before model calls", () => {
+    const specifications = buildBaseSpecifications(
+      [
+        makeServerSideToolConfiguration("zeta_tool", {
+          mcpServerViewId: "view_zeta",
+          serverConfigurationModelId: 102,
+        }),
+        makeClientSideToolConfiguration("alpha_tool"),
+        makeServerSideToolConfiguration("middle_tool", {
+          mcpServerViewId: "view_middle",
+          serverConfigurationModelId: 101,
+        }),
+      ],
+      {
+        sId: "custom_agent",
+        actions: [
+          makeAgentServerConfiguration({
+            mcpServerViewId: "view_zeta",
+            serverConfigurationModelId: 102,
+          }),
+          makeAgentServerConfiguration({
+            mcpServerViewId: "view_middle",
+            serverConfigurationModelId: 101,
+          }),
+        ],
+      }
+    );
+
+    expect(specifications.map((s) => s.name)).toEqual([
+      "alpha_tool",
+      "middle_tool",
+      "zeta_tool",
+    ]);
+    expect(specifications.find((s) => s.name === "middle_tool")?.eager).toBe(
+      true
+    );
+    expect(specifications.find((s) => s.name === "zeta_tool")?.eager).toBe(
+      true
+    );
+  });
+
   it("preserves the intrinsic eager flag on non-configured tools", () => {
     const specifications = buildBaseSpecifications(
       [
@@ -384,6 +425,29 @@ describe("buildSpecificationsWithReplayPlaceholders", () => {
     const placeholder = specifications[1];
     expect(placeholder.name).toBe("removed_tool");
     expect(placeholder.eager).toBeUndefined();
+  });
+
+  it("sorts replay placeholders with the current tool specifications", () => {
+    const baseSpecifications = [
+      makeSpecification("zeta_tool"),
+      makeSpecification("alpha_tool"),
+    ];
+    const conversation = makeConversation([
+      assistantMessageWithFunctionCalls(["middle_tool"]),
+    ]);
+
+    const { specifications, missingReplayedToolNames } =
+      buildSpecificationsWithReplayPlaceholders(
+        baseSpecifications,
+        conversation
+      );
+
+    expect(missingReplayedToolNames).toEqual(["middle_tool"]);
+    expect(specifications.map((s) => s.name)).toEqual([
+      "alpha_tool",
+      "middle_tool",
+      "zeta_tool",
+    ]);
   });
 
   it("appends placeholders for tools referenced by replayed tool search results", () => {

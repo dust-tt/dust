@@ -24,23 +24,35 @@ import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import { renderConversationAsTextWithFeedback } from "@app/lib/api/assistant/conversation/render_conversation_with_feedback";
 import type { AgentMessageFeedbackWithMetadataType } from "@app/lib/api/assistant/feedback";
 import { getAgentFeedbacks } from "@app/lib/api/assistant/feedback";
+import {
+  formatAvailableModels,
+  formatAvailableSkills,
+  formatAvailableTools,
+  formatMcpDescription,
+} from "@app/lib/api/assistant/global_agents/sidekick_context";
 import { fetchAgentOverview } from "@app/lib/api/assistant/observability/overview";
 import { buildAgentAnalyticsBaseQuery } from "@app/lib/api/assistant/observability/utils";
 import {
-  formatTemplatesAsText,
-  getTemplatesForSidekick,
-} from "@app/lib/api/assistant/sidekick_templates";
+  describeMcpServer,
+  getAvailableModelsForWorkspace,
+  listAvailableSkills,
+  listAvailableTools,
+} from "@app/lib/api/assistant/workspace_capabilities";
 import config from "@app/lib/api/config";
 import { getLlmCredentials } from "@app/lib/api/provider_credentials";
 import type { Authenticator } from "@app/lib/auth";
 import { getDisplayNameForDataSource } from "@app/lib/data_sources";
+import { formatSkillContext } from "@app/lib/reinforcement/format_skill_context";
+import {
+  DESCRIBE_MCP_TOOL_NAME,
+  DESCRIBE_SKILL_TOOL_NAME,
+} from "@app/lib/reinforcement/types";
 import { AgentSuggestionResource } from "@app/lib/resources/agent_suggestion_resource";
 import type { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
-import { TemplateResource } from "@app/lib/resources/template_resource";
 import logger from "@app/logger/logger";
 import type { DataSourceViewCategory } from "@app/types/api/public/spaces";
 import type {
@@ -58,7 +70,6 @@ import { isModelProviderId } from "@app/types/assistant/models/providers";
 import type { ContentFragmentType } from "@app/types/content_fragment";
 import { isContentFragmentType } from "@app/types/content_fragment";
 import { CoreAPI } from "@app/types/core/core_api";
-import { isJobType } from "@app/types/job_type";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
@@ -77,6 +88,7 @@ import {
   isToolsSuggestion,
 } from "@app/types/suggestions/agent_suggestion";
 import { JSDOM } from "jsdom";
+import type { z } from "zod";
 
 const SIDEKICK_KNOWLEDGE_CATEGORIES: DataSourceViewCategory[] = [
   "managed",
@@ -510,21 +522,6 @@ export async function createSkillsSuggestions({
   return new Ok(createdSuggestions);
 }
 
-import {
-  formatAvailableModels,
-  formatAvailableSkills,
-  formatAvailableTools,
-  formatMcpDescription,
-} from "@app/lib/api/assistant/global_agents/sidekick_context";
-import {
-  describeMcpServer,
-  getAvailableModelsForWorkspace,
-  listAvailableSkills,
-  listAvailableTools,
-} from "@app/lib/api/assistant/workspace_capabilities";
-import { DESCRIBE_MCP_TOOL_NAME } from "@app/lib/reinforcement/types";
-import type { z } from "zod";
-
 /**
  * Lists all knowledge data source views across all spaces the user has access to.
  * Filters to knowledge categories (managed, folder, website), with optional category narrowing.
@@ -605,6 +602,21 @@ const handlers: ToolHandlers<typeof AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA> = {
     ]);
   },
 
+  [DESCRIBE_SKILL_TOOL_NAME]: async ({ skillId }, { auth }) => {
+    const skill = await SkillResource.fetchById(auth, skillId);
+    if (!skill) {
+      return new Ok([
+        { type: "text" as const, text: `Skill not found: ${skillId}` },
+      ]);
+    }
+    return new Ok([
+      {
+        type: "text" as const,
+        text: formatSkillContext(skill.toJSON(auth)),
+      },
+    ]);
+  },
+
   get_available_agents: async ({ limit, agentPrefix }, { auth }) => {
     const agents = await getAgentConfigurationsForView({
       auth,
@@ -682,10 +694,11 @@ const handlers: ToolHandlers<typeof AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA> = {
 
   get_agent_feedback: async (
     { limit, filter, latestVersionOnly },
-    { auth, toolContext }
+    { auth, runContext }
   ) => {
-    const agentConfigurationId =
-      getAgentConfigurationIdFromContext(toolContext);
+    const agentConfigurationId = getAgentConfigurationIdFromContext({
+      runContext,
+    });
 
     if (!agentConfigurationId) {
       return new Err(
@@ -784,9 +797,10 @@ const handlers: ToolHandlers<typeof AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA> = {
     ]);
   },
 
-  get_agent_insights: async ({ days }, { auth, toolContext }) => {
-    const agentConfigurationId =
-      getAgentConfigurationIdFromContext(toolContext);
+  get_agent_insights: async ({ days }, { auth, runContext }) => {
+    const agentConfigurationId = getAgentConfigurationIdFromContext({
+      runContext,
+    });
 
     if (!agentConfigurationId) {
       return new Err(
@@ -860,9 +874,10 @@ const handlers: ToolHandlers<typeof AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA> = {
   },
 
   // Suggestion handlers
-  suggest_prompt_edits: async (params, { auth, toolContext }) => {
-    const agentConfigurationId =
-      getAgentConfigurationIdFromContext(toolContext);
+  suggest_prompt_edits: async (params, { auth, runContext }) => {
+    const agentConfigurationId = getAgentConfigurationIdFromContext({
+      runContext,
+    });
 
     if (!agentConfigurationId) {
       return new Err(
@@ -904,9 +919,10 @@ const handlers: ToolHandlers<typeof AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA> = {
     }
   },
 
-  suggest_tools: async (params, { auth, toolContext }) => {
-    const agentConfigurationId =
-      getAgentConfigurationIdFromContext(toolContext);
+  suggest_tools: async (params, { auth, runContext }) => {
+    const agentConfigurationId = getAgentConfigurationIdFromContext({
+      runContext,
+    });
 
     if (!agentConfigurationId) {
       return new Err(
@@ -948,9 +964,10 @@ const handlers: ToolHandlers<typeof AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA> = {
     }
   },
 
-  suggest_sub_agent: async (params, { auth, toolContext }) => {
-    const agentConfigurationId =
-      getAgentConfigurationIdFromContext(toolContext);
+  suggest_sub_agent: async (params, { auth, runContext }) => {
+    const agentConfigurationId = getAgentConfigurationIdFromContext({
+      runContext,
+    });
 
     if (!agentConfigurationId) {
       return new Err(
@@ -1069,9 +1086,10 @@ const handlers: ToolHandlers<typeof AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA> = {
     }
   },
 
-  suggest_skills: async (params, { auth, toolContext }) => {
-    const agentConfigurationId =
-      getAgentConfigurationIdFromContext(toolContext);
+  suggest_skills: async (params, { auth, runContext }) => {
+    const agentConfigurationId = getAgentConfigurationIdFromContext({
+      runContext,
+    });
 
     if (!agentConfigurationId) {
       return new Err(
@@ -1113,7 +1131,7 @@ const handlers: ToolHandlers<typeof AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA> = {
     }
   },
 
-  suggest_model: async (params, { auth, toolContext }) => {
+  suggest_model: async (params, { auth, runContext }) => {
     const availableModels = await getAvailableModelsForWorkspace(auth);
     const availableModelIds = availableModels.map((m) => m.modelId);
 
@@ -1127,8 +1145,9 @@ const handlers: ToolHandlers<typeof AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA> = {
       );
     }
 
-    const agentConfigurationId =
-      getAgentConfigurationIdFromContext(toolContext);
+    const agentConfigurationId = getAgentConfigurationIdFromContext({
+      runContext,
+    });
 
     if (!agentConfigurationId) {
       return new Err(
@@ -1303,9 +1322,10 @@ const handlers: ToolHandlers<typeof AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA> = {
     ]);
   },
 
-  suggest_knowledge: async (params, { auth, toolContext }) => {
-    const agentConfigurationId =
-      getAgentConfigurationIdFromContext(toolContext);
+  suggest_knowledge: async (params, { auth, runContext }) => {
+    const agentConfigurationId = getAgentConfigurationIdFromContext({
+      runContext,
+    });
 
     if (!agentConfigurationId) {
       return new Err(
@@ -1408,9 +1428,10 @@ const handlers: ToolHandlers<typeof AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA> = {
     }
   },
 
-  list_suggestions: async (params, { auth, toolContext }) => {
-    const agentConfigurationId =
-      getAgentConfigurationIdFromContext(toolContext);
+  list_suggestions: async (params, { auth, runContext }) => {
+    const agentConfigurationId = getAgentConfigurationIdFromContext({
+      runContext,
+    });
 
     if (!agentConfigurationId) {
       return new Err(
@@ -1769,43 +1790,6 @@ const handlers: ToolHandlers<typeof AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA> = {
       {
         type: "text" as const,
         text: JSON.stringify({ results }, null, 2),
-      },
-    ]);
-  },
-
-  search_agent_templates: async ({ jobType, query }, { auth }) => {
-    const res = await getTemplatesForSidekick({
-      auth,
-      jobType: jobType && isJobType(jobType) ? jobType : undefined,
-      query,
-      limit: 10,
-    });
-    if (res.isErr()) {
-      return new Err(new MCPError(res.error.message, { tracked: false }));
-    }
-    return new Ok([
-      {
-        type: "text" as const,
-        text: formatTemplatesAsText(res.value),
-      },
-    ]);
-  },
-
-  get_agent_template: async ({ templateId }, _extra) => {
-    const template = await TemplateResource.fetchByExternalId(templateId);
-
-    if (!template) {
-      return new Err(
-        new MCPError(`Template not found: ${templateId}`, {
-          tracked: false,
-        })
-      );
-    }
-
-    return new Ok([
-      {
-        type: "text" as const,
-        text: formatTemplatesAsText([template]),
       },
     ]);
   },
