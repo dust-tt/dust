@@ -1,9 +1,5 @@
 import { AgentPicker } from "@app/components/assistant/AgentPicker";
-import {
-  CapabilitiesPickerItemsList,
-  getSkillCapabilityPickerItem,
-  SkillCapabilityPickerIcon,
-} from "@app/components/assistant/CapabilitiesPickerItemsList";
+import { CapabilitiesPickerItemsList } from "@app/components/assistant/CapabilitiesPicker";
 import { ConfirmContext } from "@app/components/Confirm";
 import { MarkdownFileEditor } from "@app/components/editor/MarkdownFileEditor";
 import { DeletePodDialog } from "@app/components/pod/settings/DeletePodDialog";
@@ -18,6 +14,7 @@ import {
   POD_AGENTS_MD_MAX_CHARACTER_COUNT,
 } from "@app/lib/api/projects/constants";
 import { useFeatureFlags } from "@app/lib/auth/AuthContext";
+import { getSkillAvatarIcon } from "@app/lib/skill";
 import { useUnifiedAgentConfigurations } from "@app/lib/swr/assistants";
 import {
   useCheckPodName,
@@ -605,7 +602,7 @@ export function PodSettingsTab({
                     !isPodEditor && "opacity-50"
                   )}
                 >
-                  <SkillCapabilityPickerIcon skill={skill} />
+                  <Avatar size="xs" icon={getSkillAvatarIcon(skill)} />
                   <span className="grow truncate notranslate">
                     {skill.name}
                   </span>
@@ -660,9 +657,23 @@ export function PodSettingsTab({
                           ? "No skills found"
                           : "No more skills to add"
                       }
-                      items={addableSkills.map(getSkillCapabilityPickerItem)}
+                      items={addableSkills.map((skill) => {
+                        const SkillAvatar = getSkillAvatarIcon(skill);
+
+                        return {
+                          kind: "skill" as const,
+                          skill,
+                          id: `pod-default-skills-picker-${skill.sId}`,
+                          icon: <SkillAvatar size="xs" />,
+                          label: skill.name,
+                          sortName: skill.name.toLowerCase(),
+                          description: skill.userFacingDescription ?? undefined,
+                        };
+                      })}
                       onItemSelect={(item) => {
-                        void addDefaultSkill(item.skill.sId);
+                        if (item.kind === "skill") {
+                          void addDefaultSkill(item.skill.sId);
+                        }
                       }}
                     />
                   </DropdownMenuContent>
