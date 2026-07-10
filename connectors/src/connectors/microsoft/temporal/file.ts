@@ -360,6 +360,22 @@ export async function syncOneFile({
       return false;
     }
 
+    // 423 Locked is transient: skip without persisting a skipReason so the next
+    // delta retries the file once it is unlocked.
+    if (axios.isAxiosError(error) && error.response?.status === 423) {
+      localLogger.info(
+        {
+          status: 423,
+          fileName: file.name,
+          internalId: documentId,
+          webUrl: file.webUrl,
+        },
+        "File is locked (423), skipping for this delta"
+      );
+
+      return false;
+    }
+
     // Re-throw other errors
     throw error;
   }
