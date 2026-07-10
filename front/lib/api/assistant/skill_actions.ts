@@ -299,12 +299,6 @@ export async function resolveSkillMCPServers(
     }
   );
 
-  const activeSkills = [...systemSkills, ...enabledSkills];
-
-  if (activeSkills.length === 0) {
-    return { skillServers: [], systemSkillServers: [] };
-  }
-
   return getSkillServers(auth, {
     agentConfiguration,
     enabledSkills,
