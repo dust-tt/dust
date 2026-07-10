@@ -57,15 +57,29 @@ const sizeClasses: Record<SheetSizeType, string> = {
 const sheetVariants = cva(
   cn(
     "fixed z-50 overflow-hidden flex flex-col h-full w-full",
-    "bg-modal-background"
+    "bg-modal-background",
+    "data-[state=open]:animate-in data-[state=closed]:animate-out",
+    "duration-300 ease-out-quint motion-reduce:animate-none"
   ),
   {
     variants: {
       side: {
-        top: "inset-x-0 top-0 border-b border-border",
-        bottom: "inset-x-0 bottom-0 border-t border-border",
-        left: "inset-y-0 left-0 border-r border-border",
-        right: "inset-y-0 right-0 border-l border-border",
+        top: cn(
+          "inset-x-0 top-0 border-b border-border",
+          "data-[state=open]:slide-in-from-top-full data-[state=closed]:slide-out-to-top-full"
+        ),
+        bottom: cn(
+          "inset-x-0 bottom-0 border-t border-border",
+          "data-[state=open]:slide-in-from-bottom-full data-[state=closed]:slide-out-to-bottom-full"
+        ),
+        left: cn(
+          "inset-y-0 left-0 border-r border-border",
+          "data-[state=open]:slide-in-from-left-full data-[state=closed]:slide-out-to-left-full"
+        ),
+        right: cn(
+          "inset-y-0 right-0 border-l border-border",
+          "data-[state=open]:slide-in-from-right-full data-[state=closed]:slide-out-to-right-full"
+        ),
       },
       size: sizeClasses,
     },
@@ -198,7 +212,6 @@ const SheetContent = React.forwardRef<
             onInteractOutside={handleInteractOutside}
             onKeyDownCapture={onKeyDownCapture}
             {...props}
-            data-side={side ?? "right"}
           >
             {children}
           </SheetPrimitive.Content>
