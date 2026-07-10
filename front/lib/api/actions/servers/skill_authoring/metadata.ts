@@ -48,13 +48,15 @@ export const SKILL_AUTHORING_TOOLS_METADATA = [
         .enum(["all", "writable", "agent_discoverable"])
         .optional()
         .describe(
-          "Scope of skills to return. `writable` (default): only skills the user can edit. `all`: every skill in the workspace. `agent_discoverable`: only skills the agent can invoke in this conversation."
+          "Scope of skills to return. `writable` (default): only skills the user can edit. `all`: every skill in the workspace. `agent_discoverable`: only workspace-default skills discoverable by agents (independent of conversation context)."
         ),
       cursor: z
-        .string()
+        .number()
+        .int()
+        .nonnegative()
         .optional()
         .describe(
-          "Pagination cursor from a previous call. Omit for the first page."
+          "Pagination offset from a previous call's nextCursor. Omit for the first page."
         ),
       limit: z
         .number()

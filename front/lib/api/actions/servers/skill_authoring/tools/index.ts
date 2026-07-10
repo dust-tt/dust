@@ -364,16 +364,22 @@ const handlers: ToolHandlers<typeof SKILL_AUTHORING_TOOLS_METADATA> = {
           : allSkills;
     }
 
+    skills = [...skills].sort((a, b) => a.sId.localeCompare(b.sId));
+
     const pageSize = Math.min(limit ?? 20, 50);
-    const offset = cursor
-      ? parseInt(Buffer.from(cursor, "base64").toString(), 10)
-      : 0;
+    const offset = cursor ?? 0;
+
+    if (offset > skills.length) {
+      return new Err(
+        new MCPError(
+          `cursor ${offset} is out of range (total: ${skills.length})`
+        )
+      );
+    }
+
     const page = skills.slice(offset, offset + pageSize);
     const nextOffset = offset + pageSize;
-    const nextCursor =
-      nextOffset < skills.length
-        ? Buffer.from(String(nextOffset)).toString("base64")
-        : null;
+    const nextCursor = nextOffset < skills.length ? nextOffset : null;
 
     const summaries = page.map((skill) => ({
       sId: skill.sId,
