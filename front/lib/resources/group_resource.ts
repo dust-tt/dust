@@ -2267,6 +2267,35 @@ export class GroupResource extends BaseResource<GroupModel> {
     return new Ok(undefined);
   }
 
+  async deleteRegularManualGroup(
+    auth: Authenticator
+  ): Promise<
+    Result<
+      undefined,
+      DustError<"unauthorized" | "group_not_found" | "internal_error">
+    >
+  > {
+    if (!auth.isBusinessAdmin()) {
+      return new Err(
+        new DustError(
+          "unauthorized",
+          `Only workspace admins and ${BUSINESS_ADMIN_ROLE_NAME}s can delete groups.`
+        )
+      );
+    }
+
+    if (!this.isRegularManual()) {
+      return new Err(new DustError("group_not_found", "Group not found."));
+    }
+
+    const deleteRes = await this.delete(auth);
+    if (deleteRes.isErr()) {
+      return new Err(new DustError("internal_error", deleteRes.error.message));
+    }
+
+    return new Ok(undefined);
+  }
+
   // Per-group usage spend limit (excluding seat allowance), applied per member.
   // Pass null to clear the cap.
   async updatePoolCap(

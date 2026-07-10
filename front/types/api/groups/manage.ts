@@ -29,3 +29,7 @@ export type PatchGroupResponseBody = {
   group: GroupType;
   members: UserType[];
 };
+
+export type DeleteGroupResponseBody = {
+  success: true;
+};

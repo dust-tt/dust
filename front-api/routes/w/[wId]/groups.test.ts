@@ -40,6 +40,12 @@ function patchGroup(
   });
 }
 
+function deleteGroup(workspace: { sId: string }, groupId: string) {
+  return honoApp.request(`/api/w/${workspace.sId}/groups/${groupId}`, {
+    method: "DELETE",
+  });
+}
+
 describe("GET /api/w/:wId/groups", () => {
   it("returns groups with correct member counts", async () => {
     const { workspace, user, auth } = await createPrivateApiMockRequest({
@@ -591,5 +597,65 @@ describe("PATCH /api/w/:wId/groups/:groupId", () => {
 
     expect(response.status).toBe(400);
     expect((await response.json()).error.type).toBe("invalid_request_error");
+  });
+});
+
+describe("DELETE /api/w/:wId/groups/:groupId", () => {
+  it("lets an admin delete the group", async () => {
+    const { workspace, auth } = await createPrivateApiMockRequest({
+      method: "DELETE",
+      role: "admin",
+    });
+    const group = await GroupFactory.regularManual(workspace, "Doomed");
+
+    const response = await deleteGroup(workspace, group.sId);
+
+    expect(response.status).toBe(200);
+    expect((await response.json()).success).toBe(true);
+
+    const refetched = await GroupResource.fetchById(auth, group.sId);
+    expect(refetched.isErr()).toBe(true);
+  });
+
+  it("lets a business admin delete the group", async () => {
+    const { workspace } = await createPrivateApiMockRequest({
+      method: "DELETE",
+      role: "business_admin",
+    });
+    const group = await GroupFactory.regularManual(workspace, "Doomed");
+
+    const response = await deleteGroup(workspace, group.sId);
+
+    expect(response.status).toBe(200);
+  });
+
+  it("returns 403 for a regular user", async () => {
+    const { workspace } = await createPrivateApiMockRequest({
+      method: "DELETE",
+      role: "user",
+    });
+    const group = await GroupFactory.regularManual(workspace, "Doomed");
+
+    const response = await deleteGroup(workspace, group.sId);
+
+    expect(response.status).toBe(403);
+    expect((await response.json()).error.type).toBe("workspace_auth_error");
+  });
+
+  it("returns 404 for a non-regular_manual group", async () => {
+    const { workspace, auth } = await createPrivateApiMockRequest({
+      method: "DELETE",
+      role: "admin",
+    });
+    const group = await GroupFactory.regularAuto(workspace, "Automatic");
+
+    const response = await deleteGroup(workspace, group.sId);
+
+    expect(response.status).toBe(404);
+    expect((await response.json()).error.type).toBe("group_not_found");
+
+    // The group must not have been deleted.
+    const refetched = await GroupResource.fetchById(auth, group.sId);
+    expect(refetched.isOk()).toBe(true);
   });
 });
