@@ -18,6 +18,12 @@ export class WorkspaceSandboxEnvVarModel extends WorkspaceAwareModel<WorkspaceSa
   declare placeholderNonce: Buffer | null;
   declare allowedDomains: string[] | null;
   declare encryptedValue: string;
+  // A SecretSourceKind (see lib/api/sandbox/secret_source.ts). Typed as
+  // string because the DB may hold kinds newer than the deployed code.
+  declare secretSourceKind: CreationOptional<string>;
+  // Encrypted provider config for external secret sources. Always null for
+  // `dust-managed`; parsing/decryption is deferred to the provider PRs.
+  declare secretSourceConfig: CreationOptional<object | null>;
   declare createdByUserId: ForeignKey<UserModel["id"]> | null;
   declare lastUpdatedByUserId: ForeignKey<UserModel["id"]> | null;
 
@@ -59,6 +65,17 @@ WorkspaceSandboxEnvVarModel.init(
     encryptedValue: {
       type: DANGEROUSLY_UNBOUNDED_TEXT,
       allowNull: false,
+    },
+    secretSourceKind: {
+      type: DANGEROUSLY_UNBOUNDED_TEXT,
+      allowNull: false,
+      defaultValue: "dust-managed",
+      field: "secret_source_kind",
+    },
+    secretSourceConfig: {
+      type: DataTypes.JSONB,
+      allowNull: true,
+      field: "secret_source_config",
     },
   },
   {

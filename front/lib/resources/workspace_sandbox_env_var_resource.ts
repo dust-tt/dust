@@ -299,6 +299,8 @@ export class WorkspaceSandboxEnvVarResource extends BaseResource<WorkspaceSandbo
         placeholderNonce: kind === "https_secret" ? randomBytes(16) : null,
         allowedDomains: normalizedAllowedDomains.value,
         encryptedValue,
+        secretSourceKind: "dust-managed",
+        secretSourceConfig: null,
         createdByUserId: user.id,
         lastUpdatedByUserId: user.id,
       });
@@ -436,6 +438,14 @@ export class WorkspaceSandboxEnvVarResource extends BaseResource<WorkspaceSandbo
     if (!normalizedAllowedDomainsValue) {
       return new Err(
         new Error("HTTPS secrets require at least one allowed domain.")
+      );
+    }
+
+    if (this.secretSourceKind !== "dust-managed") {
+      return new Err(
+        new Error(
+          `Secret source '${this.secretSourceKind}' is not yet implemented for sandbox environment variable ${previousEnvName}.`
+        )
       );
     }
 
@@ -694,6 +704,14 @@ export class WorkspaceSandboxEnvVarResource extends BaseResource<WorkspaceSandbo
         kind: resource.kind,
         name: resource.name,
       });
+
+      if (resource.secretSourceKind !== "dust-managed") {
+        return new Err(
+          new Error(
+            `Secret source '${resource.secretSourceKind}' is not yet implemented for sandbox environment variable ${envName}.`
+          )
+        );
+      }
 
       try {
         env[envName] = decrypt({

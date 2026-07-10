@@ -50,6 +50,14 @@ export async function buildEgressSecretFileEntries(
       );
     }
 
+    if (resource.secretSourceKind !== "dust-managed") {
+      return new Err(
+        new Error(
+          `Secret source '${resource.secretSourceKind}' is not yet implemented for HTTPS secret ${resource.envName}.`
+        )
+      );
+    }
+
     let value: string;
     try {
       value = decrypt({

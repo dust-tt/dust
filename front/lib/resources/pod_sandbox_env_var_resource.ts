@@ -468,6 +468,14 @@ export class PodSandboxEnvVarResource extends BaseResource<PodSandboxEnvVarModel
       );
     }
 
+    if (this.secretSourceKind !== "dust-managed") {
+      return new Err(
+        new Error(
+          `Secret source '${this.secretSourceKind}' is not yet implemented for pod env var ${previousEnvName}.`
+        )
+      );
+    }
+
     if (this.encryptedValue === null) {
       return new Err(
         new Error(

@@ -4,6 +4,7 @@ import {
 } from "@app/lib/api/sandbox/root_command";
 import { PodSandboxEnvVarResource } from "@app/lib/resources/pod_sandbox_env_var_resource";
 import { PodSandboxEnvVarModel } from "@app/lib/resources/storage/models/pod_sandbox_env_var";
+import { WorkspaceSandboxEnvVarModel } from "@app/lib/resources/storage/models/workspace_sandbox_env_var";
 import { WorkspaceSandboxEnvVarResource } from "@app/lib/resources/workspace_sandbox_env_var_resource";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
@@ -323,6 +324,40 @@ describe("egress secrets file", () => {
         spaceId: pod.sId,
       }
     );
+    expect(entriesResult.isErr()).toBe(true);
+    if (entriesResult.isOk()) {
+      throw new Error("Expected an error.");
+    }
+    expect(entriesResult.error.message).toContain("not yet implemented");
+  });
+
+  it("fails the whole build when a workspace row has a non-dust-managed source", async () => {
+    const { authenticator } = await createResourceTest({ role: "admin" });
+
+    const secretResult = await WorkspaceSandboxEnvVarResource.makeNew(
+      authenticator,
+      {
+        name: "API_TOKEN",
+        kind: "https_secret",
+        value: "api-secret",
+        allowedDomains: ["api.example.com"],
+      }
+    );
+    expect(secretResult.isOk()).toBe(true);
+
+    // Simulate a row written by a future external-provider version: the
+    // current code must error out, never emit an empty value.
+    await WorkspaceSandboxEnvVarModel.update(
+      { secretSourceKind: "vault" },
+      {
+        where: {
+          workspaceId: authenticator.getNonNullableWorkspace().id,
+          name: "API_TOKEN",
+        },
+      }
+    );
+
+    const entriesResult = await buildEgressSecretFileEntries(authenticator);
     expect(entriesResult.isErr()).toBe(true);
     if (entriesResult.isOk()) {
       throw new Error("Expected an error.");

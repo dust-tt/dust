@@ -30,6 +30,8 @@ describe("WorkspaceSandboxEnvVarResource", () => {
     });
     expect(row?.encryptedValue).toBeDefined();
     expect(row?.encryptedValue).not.toBe("super-secret-token");
+    expect(row?.secretSourceKind).toBe("dust-managed");
+    expect(row?.secretSourceConfig).toBeNull();
 
     const envResult =
       await WorkspaceSandboxEnvVarResource.loadEnv(authenticator);
@@ -87,6 +89,38 @@ describe("WorkspaceSandboxEnvVarResource", () => {
     expect(envResult.isErr()).toBe(true);
     if (envResult.isErr()) {
       expect(envResult.error.message).toContain("DST_API_TOKEN");
+    }
+  });
+
+  it("fails closed when a row has a non-dust-managed secret source", async () => {
+    const { authenticator } = await createResourceTest({ role: "admin" });
+
+    const createResult = await WorkspaceSandboxEnvVarResource.makeNew(
+      authenticator,
+      {
+        name: "API_TOKEN",
+        value: "super-secret-token",
+      }
+    );
+    expect(createResult.isOk()).toBe(true);
+
+    // Simulate a row written by a future external-provider version: the
+    // current code must error out, never inject a stale or empty value.
+    await WorkspaceSandboxEnvVarModel.update(
+      { secretSourceKind: "vault" },
+      {
+        where: {
+          workspaceId: authenticator.getNonNullableWorkspace().id,
+          name: "API_TOKEN",
+        },
+      }
+    );
+
+    const envResult =
+      await WorkspaceSandboxEnvVarResource.loadEnv(authenticator);
+    expect(envResult.isErr()).toBe(true);
+    if (envResult.isErr()) {
+      expect(envResult.error.message).toContain("not yet implemented");
     }
   });
 
