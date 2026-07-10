@@ -187,6 +187,9 @@ export async function createSandboxFunctionMCPAction(
   const toolConfiguration = toolConfigurationRes.value;
   const { status: executionStatus } = await getExecutionStatusFromConfig(auth, {
     actionConfiguration: toolConfiguration,
+    context: {
+      toolInputs: rawInputs,
+    },
   });
 
   let actionStatus: "running" | "blocked_validation_required";
