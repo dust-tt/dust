@@ -1,14 +1,17 @@
 import { randomUUID } from "node:crypto";
 import path from "node:path";
 import { DustFileSystem } from "@app/lib/api/file_system/dust_file_system";
+import { podDatabaseExecEnvVars } from "@app/lib/api/files/mount_path";
+import { getRedisStreamClient } from "@app/lib/api/redis";
 import { ensurePodSandboxReady } from "@app/lib/api/sandbox/lifecycle";
 import { shellEscape } from "@app/lib/api/sandbox/shell";
 import type { SandboxFunctionErrorCode } from "@app/lib/api/sandbox_functions/errors";
 import { SandboxFunctionError } from "@app/lib/api/sandbox_functions/errors";
 import type { Authenticator } from "@app/lib/auth";
-import { executeWithLock, LockAcquisitionTimeoutError } from "@app/lib/lock";
+import { distributedLock, distributedUnlock } from "@app/lib/lock";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import logger from "@app/logger/logger";
+import tracer from "@app/logger/tracer";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
@@ -18,10 +21,6 @@ import type { DbErrorKind } from "../../../../cli/dust-sandbox/functions-runner/
 
 const DSBX_BIN_PATH = "/opt/bin/dsbx";
 const DB_EXEC_TIMEOUT_MS = 60 * 1000;
-
-// Mirrors DEFAULT_POD_DATABASES_DIR in cli/dust-sandbox/src/commands/db/mod.rs.
-// Passed explicitly on every `dsbx db` exec, like DUST_FUNCTIONS_DIR on `function run`.
-export const DUST_POD_DATABASES_DIR = "/pod-state/databases";
 
 // Mirrors the runner envelopes in cli/dust-sandbox/functions-runner/db_reconcile.ts /
 // db_common.ts, plus dsbx's own `{error}` shape (emit_error in
@@ -134,7 +133,7 @@ export async function reconcileDatabaseOnSandbox(
 
   const execResult = await sandbox.exec(auth, command, {
     timeoutMs: DB_EXEC_TIMEOUT_MS,
-    envVars: { DUST_POD_DATABASES_DIR },
+    envVars: podDatabaseExecEnvVars(),
     user: "agent-proxied",
   });
   if (execResult.isErr()) {
@@ -205,28 +204,42 @@ export async function reconcileDatabaseFromPodPath(
       new SandboxFunctionError("invalid_path", resolved.error.message)
     );
   }
-  try {
-    return await executeWithLock(
-      `sandbox_function:db_reconcile:${space.sId}`,
-      async () =>
-        reconcileDatabaseOnSandbox(auth, {
-          space,
-          database,
-          schemaFileSandboxPath: resolved.value,
-        }),
-      RECONCILE_LOCK_ACQUIRE_TIMEOUT_MS,
-      { traceAcquireResource: "sandbox_function.db_reconcile" }
-    );
-  } catch (err) {
-    if (err instanceof LockAcquisitionTimeoutError) {
-      return new Err(
-        new SandboxFunctionError(
-          "publish_conflict",
-          `Another reconcile is in progress for this pod; retry shortly. (${err.message})`
-        )
-      );
+  // Serialize concurrent reconciles of one pod under a per-pod Redis lock. We acquire it
+  // directly (rather than via executeWithLock) so that failing to acquire within the timeout
+  // surfaces as a retryable publish_conflict Result instead of a thrown error.
+  const client = await getRedisStreamClient({ origin: "lock" });
+  const lockName = `sandbox_function:db_reconcile:${space.sId}`;
+  const lockValue = await tracer.trace(
+    "lock.acquire",
+    { resource: "sandbox_function.db_reconcile" },
+    async () => {
+      const startMs = Date.now();
+      while (Date.now() - startMs < RECONCILE_LOCK_ACQUIRE_TIMEOUT_MS) {
+        const acquired = await distributedLock(client, lockName);
+        if (acquired) {
+          return acquired;
+        }
+        await new Promise((resolve) => setTimeout(resolve, 100));
+      }
+      return undefined;
     }
-    throw err;
+  );
+  if (!lockValue) {
+    return new Err(
+      new SandboxFunctionError(
+        "publish_conflict",
+        "Another reconcile is in progress for this pod; retry shortly."
+      )
+    );
+  }
+  try {
+    return await reconcileDatabaseOnSandbox(auth, {
+      space,
+      database,
+      schemaFileSandboxPath: resolved.value,
+    });
+  } finally {
+    await distributedUnlock(client, lockName, lockValue);
   }
 }
 
@@ -265,7 +278,7 @@ export async function listDatabasesOnSandbox(
 
   const execResult = await sandbox.exec(auth, `${DSBX_BIN_PATH} db list`, {
     timeoutMs: DB_EXEC_TIMEOUT_MS,
-    envVars: { DUST_POD_DATABASES_DIR },
+    envVars: podDatabaseExecEnvVars(),
     user: "agent-proxied",
   });
   if (execResult.isErr()) {
@@ -337,7 +350,7 @@ export async function getDatabaseSchemaOnSandbox(
 
   const execResult = await sandbox.exec(auth, command, {
     timeoutMs: DB_EXEC_TIMEOUT_MS,
-    envVars: { DUST_POD_DATABASES_DIR },
+    envVars: podDatabaseExecEnvVars(),
     user: "agent-proxied",
   });
   if (execResult.isErr()) {
@@ -427,7 +440,7 @@ export async function queryDatabaseOnSandbox(
 
   const execResult = await sandbox.exec(auth, command, {
     timeoutMs: DB_EXEC_TIMEOUT_MS,
-    envVars: { DUST_POD_DATABASES_DIR },
+    envVars: podDatabaseExecEnvVars(),
     user: "agent-proxied",
     stdin: sql,
   });

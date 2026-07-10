@@ -151,7 +151,7 @@ export const SANDBOX_FUNCTIONS_TOOLS_METADATA = createToolsRecord({
             "rejected."
         ),
     },
-    stake: "low",
+    stake: "never_ask",
     displayLabels: {
       running: "Querying pod database...",
       done: "Queried pod database",
