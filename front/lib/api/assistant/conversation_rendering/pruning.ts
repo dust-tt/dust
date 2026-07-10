@@ -7,10 +7,18 @@ const PRUNED_TOOL_RESULT_PLACEHOLDER =
 const PRUNED_TOOL_RESULT_TOKENS = 24;
 
 // Batch granularity for the redaction checkpoint in prunePreviousInteractions. Same idea as the
-// `clear_at_least` setting on provider-native context-editing features. Don't invalidate a cached
-// prefix for a handful of tokens. Only redact once enough new content has accumulated to make the
-// cache-write cost worthwhile. Starting point, tune against production cache-miss metrics.
-export const PRUNING_CHECKPOINT_TOKENS = 5000;
+// `clear_at_least` setting on provider-native context-editing features: don't invalidate a cached
+// prefix for a handful of tokens, only once enough new content has accumulated to make the
+// cache-write cost worthwhile. A turn running a couple of tool calls can easily produce several
+// thousand tokens on its own, so this needs enough headroom above that to actually batch.
+//
+// A flat value rather than a percentage of context size, since our model fleet has no context
+// window between 16k and 64k tokens: any model above that tier has ample room regardless of the
+// exact value chosen here. For a model whose budget never reaches this checkpoint, the search
+// simply never finds a crossing and falls back to redacting everything eligible once triggered,
+// still stable, just without the batching benefit. Starting point, tune against production
+// cache-miss metrics.
+export const PRUNING_CHECKPOINT_TOKENS = 20_000;
 
 export type MessageWithTokens = ModelMessageTypeMultiActions & {
   tokenCount: number;
