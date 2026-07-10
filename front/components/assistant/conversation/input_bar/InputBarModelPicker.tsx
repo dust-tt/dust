@@ -22,6 +22,7 @@ import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { useModels } from "@app/lib/swr/models";
 import { useIsMobile } from "@app/lib/swr/useIsMobile";
 import type { AgentModelConfigurationType } from "@app/types/assistant/agent";
+import { AUTO_MODEL_ID } from "@app/types/assistant/models/auto";
 import { getProviderDisplayName } from "@app/types/assistant/models/providers";
 import type {
   ModelConfigurationType,
@@ -126,12 +127,14 @@ export function InputBarModelPicker({
 
   const allModelsWithEfforts = useMemo<ModelWithReasoningEffort[]>(
     () =>
-      models.flatMap((model) =>
-        getSelectableReasoningEfforts(model).map((effort) => ({
-          model,
-          effort,
-        }))
-      ),
+      models
+        .filter((model) => model.modelId !== AUTO_MODEL_ID)
+        .flatMap((model) =>
+          getSelectableReasoningEfforts(model).map((effort) => ({
+            model,
+            effort,
+          }))
+        ),
     [models]
   );
 
