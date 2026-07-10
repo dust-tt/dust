@@ -57,6 +57,7 @@ import {
   AgentMessageContentParser,
   getDelimitersConfiguration,
 } from "@app/lib/llms/agent_message_content_parser";
+import { TOOL_SEARCH_TOOL } from "@app/lib/model_constructors/sdk/anthropic_ai/converters/input/tool_search";
 import { AgentStepContentResource } from "@app/lib/resources/agent_step_content_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
@@ -120,6 +121,29 @@ const ASK_USER_QUESTION_BLOCKED_ORIGINS: readonly UserMessageOrigin[] = [
   "reinforcement",
   "branch_anchor",
 ];
+
+// Builds the JSON blob whose token count estimates how many tokens the tool
+// definitions actually cost in context, for the model's token budget. When
+// tool search is active, deferred (non-eager) tool schemas are excluded from
+// the model's context until discovered, so they must not count toward the
+// budget the same way eager specs do: only eager specs, plus the tool-search
+// tool itself, are actually in context up front.
+export function buildToolDefinitionsForTokenCount(
+  specifications: AgentActionSpecification[],
+  toolSearchEnabled: boolean
+): string {
+  const specsInContext = toolSearchEnabled
+    ? specifications.filter((s) => s.eager)
+    : specifications;
+  return JSON.stringify([
+    ...(toolSearchEnabled ? [TOOL_SEARCH_TOOL] : []),
+    ...specsInContext.map((s) => ({
+      name: s.name,
+      description: s.description,
+      inputSchema: s.inputSchema,
+    })),
+  ]);
+}
 
 // Concatenate two content strings, ensuring at least one whitespace character
 // between them when both are non-empty. This prevents words from being glued
@@ -558,12 +582,9 @@ export async function runModel(
 
   // Count the number of tokens used by the functions presented to the model.
   // This is a rough estimate of the number of tokens.
-  const tools = JSON.stringify(
-    baseSpecifications.map((s) => ({
-      name: s.name,
-      description: s.description,
-      inputSchema: s.inputSchema,
-    }))
+  const tools = buildToolDefinitionsForTokenCount(
+    baseSpecifications,
+    toolSearchEnabled
   );
 
   // Turn the conversation into a digest that can be presented to the model.
