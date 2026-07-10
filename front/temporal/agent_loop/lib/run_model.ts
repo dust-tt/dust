@@ -547,7 +547,12 @@ export async function runModel(
   // Specs carry the intrinsic `eager` property only. Whether a non-eager tool is
   // deferred behind tool search is an Anthropic-specific policy applied in the
   // Anthropic client, gated on `toolSearchEnabled` (threaded through below).
-  const toolSearchEnabled = featureFlags.includes("anthropic_tool_search");
+  // Gated on model.supportsToolSearch too: unsupported models reject the
+  // request outright if deferred tools are included, so the feature flag alone
+  // is not enough to decide this.
+  const toolSearchEnabled =
+    featureFlags.includes("anthropic_tool_search") &&
+    !!model.supportsToolSearch;
   const baseSpecifications: AgentActionSpecification[] =
     buildBaseSpecifications(availableActions, agentConfiguration);
 
