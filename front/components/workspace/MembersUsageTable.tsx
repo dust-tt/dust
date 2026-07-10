@@ -9,14 +9,23 @@ import {
   MUTED_BAR_CLASSES,
   OVERAGE_BAR_CLASSES,
 } from "@app/components/workspace/seat_styles";
+import type { ModelsTierName } from "@app/lib/api/assistant/token_pricing/tiers";
 import type { MemberUsageType } from "@app/lib/api/credits/members_usage";
-import {
-  getAdvancedModelDisplayNames,
-  resolveAdvancedModelsForUser,
-} from "@app/lib/client/advanced_models";
 import { formatCredits } from "@app/lib/client/credits";
+import type { UserModelTierSelection } from "@app/lib/client/model_tier_options";
+import {
+  getUserModelTierMenuItemsWithSelection,
+  INHERIT_MODEL_TIER,
+  toUserModelTierSelection,
+} from "@app/lib/client/model_tier_options";
+import {
+  formatModelTiersSummary,
+  formatUserModelTierInheritLabel,
+  resolveModelTiersForUser,
+} from "@app/lib/client/model_tiers";
+import { getMaxTierName } from "@app/lib/model_tiers/tier_order";
+import type { ModelsTierDefinition } from "@app/lib/resources/models_tier_resource";
 import type { EffectiveSpendLimitSource } from "@app/lib/spend_limits/effective";
-import type { AllowedAdvancedModelType } from "@app/types/api/advanced_models";
 import {
   isPaidSeatType,
   type MembershipSeatType,
@@ -43,17 +52,22 @@ import type {
 } from "@tanstack/react-table";
 import { useMemo } from "react";
 
-const EMPTY_USER_ALLOWED_ADVANCED_MODELS_BY_USER_ID: Record<
+const EMPTY_USER_MODEL_TIER_SELECTION_BY_USER_ID: Record<
   string,
-  AllowedAdvancedModelType[]
+  UserModelTierSelection
 > = {};
-const EMPTY_GROUP_ADVANCED_MODELS_BY_GROUP_ID: Record<
+const EMPTY_USER_ALLOWED_MODEL_TIERS_BY_USER_ID: Record<
   string,
-  AllowedAdvancedModelType[]
+  ModelsTierName[]
 > = {};
-const EMPTY_WORKSPACE_ALLOWED_ADVANCED_MODELS: AllowedAdvancedModelType[] = [];
+const EMPTY_GROUP_MODEL_TIERS_BY_GROUP_ID: Record<string, ModelsTierName[]> =
+  {};
+const EMPTY_WORKSPACE_ALLOWED_MODEL_TIERS: ModelsTierName[] = [];
 const EMPTY_GROUP_NAME_TO_ID = new Map<string, string>();
-const EMPTY_ADVANCED_MODEL_DISPLAY_NAME_BY_KEY = new Map<string, string>();
+const EMPTY_MODEL_TIER_DEFINITION_BY_NAME = new Map<
+  ModelsTierName,
+  ModelsTierDefinition
+>();
 
 type RowData = {
   sId: string;
@@ -73,8 +87,8 @@ type RowData = {
   scheduledSeatChangeAt: string | null;
   isTotalAllowedUsagePending: boolean;
   isSeatChangePending: boolean;
-  advancedModelDisplayNames: string[];
-  hasUserLevelAdvancedModelsOverride: boolean;
+  modelTiersSummary: string;
+  hasUserLevelModelTiersOverride: boolean;
   menuItems: MenuItem[];
 };
 
@@ -509,56 +523,23 @@ function buildConsumedAwuCreditsColumn(
   };
 }
 
-const advancedModelsColumn: ColumnDef<RowData, string> = {
-  id: "advancedModels" as const,
-  header: "Advanced models",
+const modelTiersColumn: ColumnDef<RowData, string> = {
+  id: "modelTiers" as const,
+  header: "Models tier",
   enableSorting: false,
-  accessorFn: (row) => row.advancedModelDisplayNames.join(", "),
+  accessorFn: (row) => row.modelTiersSummary,
   cell: (info: Info) => {
-    const displayNames = info.row.original.advancedModelDisplayNames;
-    const customSuffix = info.row.original.hasUserLevelAdvancedModelsOverride
+    const summary = info.row.original.modelTiersSummary;
+    const customSuffix = info.row.original.hasUserLevelModelTiersOverride
       ? " (custom)"
       : "";
 
-    if (displayNames.length === 0) {
-      return (
-        <DataTable.CellContent>
-          <span className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-            --
-          </span>
-        </DataTable.CellContent>
-      );
-    }
-
-    if (displayNames.length === 1) {
-      return (
-        <DataTable.CellContent>
-          <span className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-            {displayNames[0]}
-            {customSuffix}
-          </span>
-        </DataTable.CellContent>
-      );
-    }
-
     return (
       <DataTable.CellContent>
-        <Tooltip
-          label={
-            <div className="flex flex-col gap-0.5">
-              {displayNames.map((name, index) => (
-                <span key={`${name}-${index}`}>{name}</span>
-              ))}
-            </div>
-          }
-          tooltipTriggerAsChild
-          trigger={
-            <span className="cursor-default text-sm text-muted-foreground dark:text-muted-foreground-night">
-              {displayNames.length} models
-              {customSuffix}
-            </span>
-          }
-        />
+        <span className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+          {summary}
+          {customSuffix}
+        </span>
       </DataTable.CellContent>
     );
   },
@@ -573,7 +554,12 @@ const actionsColumn: ColumnDef<RowData, string> = {
   enableSorting: false,
   accessorKey: "actions",
   cell: (info: Info) => (
-    <DataTable.MoreButton menuItems={info.row.original.menuItems} />
+    <div
+      onClick={(event) => event.stopPropagation()}
+      onPointerDown={(event) => event.stopPropagation()}
+    >
+      <DataTable.MoreButton menuItems={info.row.original.menuItems} />
+    </div>
   ),
   meta: {
     className: "w-14",
@@ -583,19 +569,19 @@ const actionsColumn: ColumnDef<RowData, string> = {
 function buildColumns({
   enableSelection,
   showGroupsColumn,
-  showAdvancedModelsColumn,
+  showModelTiersColumn,
   creditsResetAt,
 }: {
   enableSelection: boolean;
   showGroupsColumn: boolean;
-  showAdvancedModelsColumn: boolean;
+  showModelTiersColumn: boolean;
   creditsResetAt: string | null;
 }): ColumnDef<RowData, string>[] {
   return [
     ...(enableSelection ? [createSelectionColumn<RowData>()] : []),
     nameColumn,
     ...(showGroupsColumn ? [groupsColumn] : []),
-    ...(showAdvancedModelsColumn ? [advancedModelsColumn] : []),
+    ...(showModelTiersColumn ? [modelTiersColumn] : []),
     seatTypeColumn,
     {
       ...buildConsumedAwuCreditsColumn(creditsResetAt),
@@ -620,16 +606,17 @@ interface MembersUsageTableProps {
   onChangeSeat: (member: MemberUsageType) => void;
   onRemoveSeat: (member: MemberUsageType) => void;
   onEditSpendLimit: (member: MemberUsageType) => void;
-  onEditAdvancedModels?: (member: MemberUsageType) => void;
-  showAdvancedModelsColumn?: boolean;
-  userAllowedAdvancedModelsByUserId?: Record<
-    string,
-    AllowedAdvancedModelType[]
-  >;
-  groupAdvancedModelsByGroupId?: Record<string, AllowedAdvancedModelType[]>;
-  workspaceAllowedAdvancedModels?: AllowedAdvancedModelType[];
+  onSetUserModelTier?: (
+    member: MemberUsageType,
+    selection: UserModelTierSelection
+  ) => void;
+  showModelTiersColumn?: boolean;
+  userModelTierSelectionByUserId?: Record<string, UserModelTierSelection>;
+  userAllowedModelTiersByUserId?: Record<string, ModelsTierName[]>;
+  groupModelTiersByGroupId?: Record<string, ModelsTierName[]>;
+  workspaceAllowedModelTiers?: ModelsTierName[];
   groupNameToId?: Map<string, string>;
-  advancedModelDisplayNameByKey?: Map<string, string>;
+  modelTierDefinitionByName?: Map<ModelsTierName, ModelsTierDefinition>;
   pagination: PaginationState;
   setPagination: (pagination: PaginationState) => void;
   totalRowCount: number;
@@ -654,13 +641,14 @@ export function MembersUsageTable({
   onChangeSeat,
   onRemoveSeat,
   onEditSpendLimit,
-  onEditAdvancedModels,
-  showAdvancedModelsColumn = false,
-  userAllowedAdvancedModelsByUserId = EMPTY_USER_ALLOWED_ADVANCED_MODELS_BY_USER_ID,
-  groupAdvancedModelsByGroupId = EMPTY_GROUP_ADVANCED_MODELS_BY_GROUP_ID,
-  workspaceAllowedAdvancedModels = EMPTY_WORKSPACE_ALLOWED_ADVANCED_MODELS,
+  onSetUserModelTier,
+  showModelTiersColumn = false,
+  userModelTierSelectionByUserId = EMPTY_USER_MODEL_TIER_SELECTION_BY_USER_ID,
+  userAllowedModelTiersByUserId = EMPTY_USER_ALLOWED_MODEL_TIERS_BY_USER_ID,
+  groupModelTiersByGroupId = EMPTY_GROUP_MODEL_TIERS_BY_GROUP_ID,
+  workspaceAllowedModelTiers = EMPTY_WORKSPACE_ALLOWED_MODEL_TIERS,
   groupNameToId = EMPTY_GROUP_NAME_TO_ID,
-  advancedModelDisplayNameByKey = EMPTY_ADVANCED_MODEL_DISPLAY_NAME_BY_KEY,
+  modelTierDefinitionByName = EMPTY_MODEL_TIER_DEFINITION_BY_NAME,
   pagination,
   setPagination,
   totalRowCount,
@@ -674,14 +662,14 @@ export function MembersUsageTable({
   const rows: RowData[] = useMemo(
     () =>
       members.map((m) => {
-        const resolvedAdvancedModels = showAdvancedModelsColumn
-          ? resolveAdvancedModelsForUser({
+        const resolvedModelTiers = showModelTiersColumn
+          ? resolveModelTiersForUser({
               userId: m.sId,
               groupNames: m.groups,
               groupNameToId,
-              userAllowedAdvancedModelsByUserId,
-              groupAdvancedModelsByGroupId,
-              workspaceAllowedAdvancedModels,
+              userAllowedTierNamesByUserId: userAllowedModelTiersByUserId,
+              groupTierNamesByGroupId: groupModelTiersByGroupId,
+              workspaceAllowedTierNames: workspaceAllowedModelTiers,
             })
           : null;
 
@@ -705,14 +693,10 @@ export function MembersUsageTable({
             m.sId
           ),
           isSeatChangePending: seatChangePendingMemberIds.has(m.sId),
-          advancedModelDisplayNames: resolvedAdvancedModels
-            ? getAdvancedModelDisplayNames({
-                models: resolvedAdvancedModels.models,
-                displayNameByKey: advancedModelDisplayNameByKey,
-              })
-            : [],
-          hasUserLevelAdvancedModelsOverride:
-            resolvedAdvancedModels?.hasUserLevelOverride ?? false,
+          modelTiersSummary: formatModelTiersSummary(
+            getMaxTierName(resolvedModelTiers?.tiers ?? [])
+          ),
+          hasUserLevelModelTiersOverride: resolvedModelTiers?.source === "user",
           menuItems: [
             ...(!m.seatType || m.seatType === "none"
               ? [
@@ -734,9 +718,6 @@ export function MembersUsageTable({
                   },
                 ]
               : []),
-            // Only paid, message-sending seats have a spend limit to edit. Free
-            // seats have no pool (their cap is just the fixed free allowance), and
-            // "none"/seatless members can't send anything — so the option hides.
             ...(showSpendLimit &&
             m.seatType &&
             m.seatType !== "free" &&
@@ -750,17 +731,34 @@ export function MembersUsageTable({
                   },
                 ]
               : []),
-            ...(showAdvancedModelsColumn && onEditAdvancedModels
+            ...(showModelTiersColumn && onSetUserModelTier
               ? [
                   {
-                    kind: "item" as const,
-                    label: "Edit advanced models",
+                    kind: "submenu" as const,
+                    label: "Models tier",
                     disabled: readOnly,
-                    onClick: () => onEditAdvancedModels(m),
+                    selectionMode: "checkbox" as const,
+                    items: getUserModelTierMenuItemsWithSelection({
+                      selectedValue:
+                        userModelTierSelectionByUserId[m.sId] ??
+                        INHERIT_MODEL_TIER,
+                      inheritLabel: formatUserModelTierInheritLabel({
+                        groupNames: m.groups,
+                        groupNameToId,
+                        groupTierNamesByGroupId: groupModelTiersByGroupId,
+                        workspaceAllowedTierNames: workspaceAllowedModelTiers,
+                      }),
+                    }).map((tierItem) => ({
+                      id: tierItem.id,
+                      name: tierItem.name,
+                      description: tierItem.description,
+                      checked: tierItem.checked,
+                    })),
+                    onSelect: (itemId: string) =>
+                      onSetUserModelTier(m, toUserModelTierSelection(itemId)),
                   },
                 ]
               : []),
-            // Only members who currently hold a billable seat can have it removed.
             ...(isSeatBased && m.seatType && m.seatType !== "none"
               ? [
                   {
@@ -781,17 +779,17 @@ export function MembersUsageTable({
       seatChangePendingMemberIds,
       isSeatBased,
       showSpendLimit,
-      showAdvancedModelsColumn,
-      userAllowedAdvancedModelsByUserId,
-      groupAdvancedModelsByGroupId,
-      workspaceAllowedAdvancedModels,
+      showModelTiersColumn,
+      userModelTierSelectionByUserId,
+      userAllowedModelTiersByUserId,
+      groupModelTiersByGroupId,
+      workspaceAllowedModelTiers,
       groupNameToId,
-      advancedModelDisplayNameByKey,
       readOnly,
       onChangeSeat,
       onRemoveSeat,
       onEditSpendLimit,
-      onEditAdvancedModels,
+      onSetUserModelTier,
     ]
   );
 
@@ -800,15 +798,10 @@ export function MembersUsageTable({
       buildColumns({
         enableSelection,
         showGroupsColumn,
-        showAdvancedModelsColumn,
+        showModelTiersColumn,
         creditsResetAt,
       }),
-    [
-      enableSelection,
-      showGroupsColumn,
-      showAdvancedModelsColumn,
-      creditsResetAt,
-    ]
+    [enableSelection, showGroupsColumn, showModelTiersColumn, creditsResetAt]
   );
 
   if (isLoading) {
