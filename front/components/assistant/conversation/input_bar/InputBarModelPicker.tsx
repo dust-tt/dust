@@ -202,15 +202,11 @@ export function InputBarModelPicker({
       ? { model: selection.model, effort: selection.effort }
       : null;
   }, [agentModel, models]);
-  // Drop the agent default from Suggested
+  // Hide the Suggested section entirely when the agent has a configured
+  // default: the default already surfaces the recommended pick, so the
+  // suggestions would be redundant.
   const suggested = useMemo(
-    () =>
-      suggestedModelsWithEfforts.filter(
-        (s) =>
-          agentDefault?.effort !== s.effort ||
-          agentDefault?.model.modelId !== s.model.modelId ||
-          agentDefault?.model.providerId !== s.model.providerId
-      ),
+    () => (agentDefault ? [] : suggestedModelsWithEfforts),
     [suggestedModelsWithEfforts, agentDefault]
   );
 
