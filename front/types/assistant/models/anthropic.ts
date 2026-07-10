@@ -118,6 +118,7 @@ export const CLAUDE_4_5_SONNET_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   tokenCountAdjustment: ANTHROPIC_TOKEN_COUNT_ADJUSTMENT,
   supportsPromptCaching: true,
   supportsBatchProcessing: true,
+  supportsToolSearch: true,
   tokenizer: { type: "tiktoken", base: "anthropic_base" },
   regionalAvailability: {
     "us-central1": true,
@@ -207,6 +208,7 @@ export const CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   defaultReasoningEffort: "light",
   tokenCountAdjustment: ANTHROPIC_TOKEN_COUNT_ADJUSTMENT,
   supportsBatchProcessing: true,
+  supportsToolSearch: true,
   tokenizer: { type: "tiktoken", base: "anthropic_base" },
   regionalAvailability: {
     "us-central1": true,
@@ -239,6 +241,7 @@ export const CLAUDE_4_5_OPUS_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   tokenCountAdjustment: ANTHROPIC_TOKEN_COUNT_ADJUSTMENT,
   supportsPromptCaching: true,
   supportsBatchProcessing: true,
+  supportsToolSearch: true,
   availableIfOneOf: {
     featureFlag: "claude_4_5_opus_feature",
   },
@@ -274,6 +277,7 @@ export const CLAUDE_OPUS_4_6_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   tokenCountAdjustment: ANTHROPIC_TOKEN_COUNT_ADJUSTMENT,
   supportsPromptCaching: true,
   supportsBatchProcessing: true,
+  supportsToolSearch: true,
   tokenizer: { type: "tiktoken", base: "anthropic_base" },
   customThinkingType: "auto",
   availableIfOneOf: {
@@ -315,6 +319,7 @@ export const CLAUDE_OPUS_4_7_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   tokenCountAdjustment: ANTHROPIC_TOKEN_COUNT_ADJUSTMENT * 1.35,
   supportsPromptCaching: true,
   supportsBatchProcessing: true,
+  supportsToolSearch: true,
   tokenizer: { type: "tiktoken", base: "anthropic_base" },
   customThinkingType: "auto",
   availableIfOneOf: {
@@ -357,6 +362,7 @@ export const CLAUDE_OPUS_4_8_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   tokenCountAdjustment: ANTHROPIC_TOKEN_COUNT_ADJUSTMENT * 1.35,
   supportsPromptCaching: true,
   supportsBatchProcessing: true,
+  supportsToolSearch: true,
   tokenizer: { type: "tiktoken", base: "anthropic_base" },
   customThinkingType: "auto",
   availableIfOneOf: {
@@ -404,6 +410,7 @@ export const CLAUDE_FABLE_5_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   tokenCountAdjustment: ANTHROPIC_TOKEN_COUNT_ADJUSTMENT * 1.35,
   supportsPromptCaching: true,
   supportsBatchProcessing: true,
+  supportsToolSearch: true,
   tokenizer: { type: "tiktoken", base: "anthropic_base" },
   customThinkingType: "auto",
   availableIfOneOf: {
@@ -449,6 +456,7 @@ export const CLAUDE_SONNET_5_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   tokenCountAdjustment: ANTHROPIC_TOKEN_COUNT_ADJUSTMENT,
   supportsPromptCaching: true,
   supportsBatchProcessing: false,
+  supportsToolSearch: true,
   tokenizer: { type: "tiktoken", base: "anthropic_base" },
   customThinkingType: "auto",
   customBetas: ["auto-thinking-2026-01-12", "max-effort-2026-01-24"],
@@ -485,6 +493,7 @@ export const CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   tokenCountAdjustment: ANTHROPIC_TOKEN_COUNT_ADJUSTMENT,
   supportsPromptCaching: true,
   supportsBatchProcessing: true,
+  supportsToolSearch: true,
   tokenizer: { type: "tiktoken", base: "anthropic_base" },
   customThinkingType: "auto",
   customBetas: ["auto-thinking-2026-01-12", "max-effort-2026-01-24"],
