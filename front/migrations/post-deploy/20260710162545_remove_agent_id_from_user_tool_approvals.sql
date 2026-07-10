@@ -1,7 +1,8 @@
 /*
-Run migrations/20260710_deduplicate_user_tool_approvals.ts before applying this migration. Build
-the replacement index before dropping agentId to minimize the period without uniqueness enforcement
-for medium-stake approvals.
+Run migrations/20260710_downgrade_unscoped_medium_tool_metadata.ts and
+migrations/20260710_deduplicate_user_tool_approvals.ts before applying this migration. Build the
+replacement index before dropping agentId to minimize the period without uniqueness enforcement for
+medium-stake approvals.
 */
 SET SESSION statement_timeout = 1200000;
 SET SESSION lock_timeout = 3000;
