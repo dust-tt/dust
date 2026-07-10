@@ -636,7 +636,6 @@ export class GroupResource extends BaseResource<GroupModel> {
     workspaceId,
     groupKinds = [
       "global",
-      "regular",
       "regular_auto",
       "space_editors",
       "system",
@@ -1026,13 +1025,7 @@ export class GroupResource extends BaseResource<GroupModel> {
     options: { groupKinds?: GroupKind[] } = {}
   ): Promise<GroupResource[]> {
     const {
-      groupKinds = [
-        "global",
-        "regular",
-        "regular_auto",
-        "space_editors",
-        "provisioned",
-      ],
+      groupKinds = ["global", "regular_auto", "space_editors", "provisioned"],
     } = options;
     const groups = await this.baseFetch(auth, {
       where: {
@@ -1197,7 +1190,7 @@ export class GroupResource extends BaseResource<GroupModel> {
   static async listGroupNamesByUserModelIdInWorkspace({
     workspace,
     userModelIds,
-    groupKinds = ["regular", "regular_auto", "provisioned"],
+    groupKinds = ["regular_auto", "provisioned"],
   }: {
     workspace: LightWorkspaceType;
     userModelIds: ModelId[];
@@ -1561,10 +1554,9 @@ export class GroupResource extends BaseResource<GroupModel> {
       );
     }
 
-    // Users can only be added to regular, regular_auto, space_editors, agent_editors, skill_editors or provisioned groups.
+    // Users can only be added to regular_auto, space_editors, agent_editors, skill_editors or provisioned groups.
     if (
       ![
-        "regular",
         "regular_auto",
         "space_editors",
         "agent_editors",
@@ -1733,10 +1725,9 @@ export class GroupResource extends BaseResource<GroupModel> {
       );
     }
 
-    // Users can only be removed from regular, regular_auto, space_editors, agent_editors, skill_editors or provisioned groups.
+    // Users can only be removed from regular_auto, space_editors, agent_editors, skill_editors or provisioned groups.
     if (
       ![
-        "regular",
         "regular_auto",
         "space_editors",
         "agent_editors",
@@ -1835,7 +1826,7 @@ export class GroupResource extends BaseResource<GroupModel> {
    * Unlike removeMembers(), this method does not require admin/editor permissions.
    * Users can always remove themselves from groups they are members of.
    *
-   * Only works for "regular" and "space_editors" groups.
+   * Only works for "regular_auto" and "space_editors" groups.
    * TODO(remy): Replace this with dangerouslyRemoveMembers once available
    */
   async leaveGroup(
@@ -2381,7 +2372,7 @@ export class GroupResource extends BaseResource<GroupModel> {
   }
 
   isRegular(): boolean {
-    return this.kind === "regular" || this.kind === "regular_auto";
+    return this.kind === "regular_auto";
   }
 
   isSpaceEditor(): boolean {
