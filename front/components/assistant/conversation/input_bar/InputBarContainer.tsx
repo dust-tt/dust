@@ -1686,9 +1686,7 @@ const InputBarContainer = ({
               </div>
             </div>
           </div>
-          <div
-            className="absolute bottom-2 right-2 flex items-center gap-1.5"
-          >
+          <div className="absolute bottom-2 right-2 flex items-center gap-1.5">
             {clientType === "extension" && (
               <>
                 <div ref={plusButtonRef}>
