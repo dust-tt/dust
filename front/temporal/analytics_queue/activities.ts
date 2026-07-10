@@ -19,7 +19,7 @@ import { isLLMTraceId } from "@app/lib/api/llm/traces/buffer";
 import type { AuthenticatorType } from "@app/lib/auth";
 import { Authenticator } from "@app/lib/auth";
 import {
-  intelligenceAwuFromRunUsages,
+  intelligenceAwuFromRunUsagesGroupedByRunKey,
   toolAwuFromAction,
 } from "@app/lib/metronome/events";
 import type { AgentMessageFeedbackModel } from "@app/lib/models/agent/conversation";
@@ -206,7 +206,10 @@ export async function storeAgentAnalytics(
     contextOrigin
   );
 
-  const llmAwu = intelligenceAwuFromRunUsages(runUsages, contextOrigin);
+  const llmAwu = intelligenceAwuFromRunUsagesGroupedByRunKey(
+    runUsages,
+    contextOrigin
+  );
   const toolAwu = toolsUsed.reduce((sum, tool) => sum + tool.cost_awu, 0);
   const cost = {
     full_awu: llmAwu + toolAwu,
@@ -284,12 +287,15 @@ export async function storeAgentAnalytics(
 }
 
 /**
- * Fetch the run usages for all runs associated with this agent message.
+ * Fetch the run usages for all runs associated with this agent message,
+ * tagged with the runKey of the agent-loop execution they belong to (so
+ * intelligence cost can be ceiled per execution, matching the billed
+ * Metronome events).
  */
 async function fetchRunUsagesForMessage(
   auth: Authenticator,
   agentMessage: AgentMessageModel
-): Promise<RunUsageType[]> {
+): Promise<(RunUsageType & { runKey: string | null })[]> {
   if (!agentMessage.runIds || agentMessage.runIds.length === 0) {
     return [];
   }
