@@ -29,6 +29,11 @@ enum Commands {
         #[command(subcommand)]
         command: commands::function::FunctionCommand,
     },
+    /// Manage pod databases
+    Db {
+        #[command(subcommand)]
+        command: commands::db::DbCommand,
+    },
     /// Interact with MCP servers and tools
     Tools {
         /// Emit the tool execution result as JSON (`{ content, isError }`)
@@ -77,6 +82,16 @@ async fn run() -> anyhow::Result<()> {
                 out_bundle,
                 out_schema,
             } => commands::cmd_function_build(&src, &out_bundle, &out_schema).await?,
+        },
+        Commands::Db { command } => match command {
+            commands::db::DbCommand::Reconcile { name, schema_file } => {
+                commands::cmd_db_reconcile(&name, &schema_file).await?
+            }
+            commands::db::DbCommand::Schema { name, out_schema } => {
+                commands::cmd_db_schema(&name, &out_schema).await?
+            }
+            commands::db::DbCommand::List => commands::cmd_db_list()?,
+            commands::db::DbCommand::Query { name } => commands::cmd_db_query(&name).await?,
         },
         Commands::Tools {
             json,
@@ -187,6 +202,73 @@ mod tests {
             },
             _ => panic!("expected function"),
         }
+    }
+
+    #[test]
+    fn db_reconcile_parses() {
+        let cli = Cli::try_parse_from([
+            "dsbx",
+            "db",
+            "reconcile",
+            "chat",
+            "/files/pod-x/databases/chat.db.ts",
+        ])
+        .expect("parse");
+        match cli.command {
+            Commands::Db { command } => match command {
+                commands::db::DbCommand::Reconcile { name, schema_file } => {
+                    assert_eq!(name, "chat");
+                    assert_eq!(schema_file, "/files/pod-x/databases/chat.db.ts");
+                }
+                _ => panic!("expected reconcile"),
+            },
+            _ => panic!("expected db"),
+        }
+    }
+
+    #[test]
+    fn db_schema_parses() {
+        let cli = Cli::try_parse_from(["dsbx", "db", "schema", "chat", "/tmp/out/chat.db.ts"])
+            .expect("parse");
+        match cli.command {
+            Commands::Db { command } => match command {
+                commands::db::DbCommand::Schema { name, out_schema } => {
+                    assert_eq!(name, "chat");
+                    assert_eq!(out_schema, "/tmp/out/chat.db.ts");
+                }
+                _ => panic!("expected schema"),
+            },
+            _ => panic!("expected db"),
+        }
+    }
+
+    #[test]
+    fn db_list_parses() {
+        let cli = Cli::try_parse_from(["dsbx", "db", "list"]).expect("parse");
+        match cli.command {
+            Commands::Db { command } => match command {
+                commands::db::DbCommand::List => {}
+                _ => panic!("expected list"),
+            },
+            _ => panic!("expected db"),
+        }
+    }
+
+    #[test]
+    fn db_query_parses() {
+        let cli = Cli::try_parse_from(["dsbx", "db", "query", "chat"]).expect("parse");
+        match cli.command {
+            Commands::Db { command } => match command {
+                commands::db::DbCommand::Query { name } => assert_eq!(name, "chat"),
+                _ => panic!("expected query"),
+            },
+            _ => panic!("expected db"),
+        }
+    }
+
+    #[test]
+    fn db_reconcile_requires_schema_file() {
+        assert!(Cli::try_parse_from(["dsbx", "db", "reconcile", "chat"]).is_err());
     }
 
     #[test]

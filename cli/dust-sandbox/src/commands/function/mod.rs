@@ -184,10 +184,35 @@ pub(crate) async fn spawn_function(
 /// caller-owned scratch dir. stdout is inherited so the runner's `{ok}` envelope
 /// reaches the caller.
 pub(crate) async fn spawn_build(src: &Path, out_bundle: &Path, out_schema: &Path) -> Result<i32> {
+    // The schema-extraction step imports the built bundle (running its
+    // top-level code) and inherits dsbx's env like function runs do, so a
+    // top-level `db()` call sees the same databases directory at build time.
+    spawn_runner(
+        "build",
+        &[
+            src.as_os_str(),
+            out_bundle.as_os_str(),
+            out_schema.as_os_str(),
+        ],
+        false,
+    )
+    .await
+}
+
+/// Spawn the embedded runner under `bun` for one runner subcommand (`build`, `db-*`).
+/// Dropped to `agent-proxied` via `runuser` whenever dsbx runs privileged, NODE_PATH
+/// prepended with the global npm modules (where drizzle-kit lives in the sandbox image),
+/// stdout inherited so the runner's one-line JSON envelope reaches the caller. Returns the
+/// exit code.
+pub(crate) async fn spawn_runner(
+    subcommand: &str,
+    args: &[&std::ffi::OsStr],
+    inherit_stdin: bool,
+) -> Result<i32> {
     let runner = ensure_runner()?;
     let as_agent = running_as_root();
     if as_agent {
-        // The dropped child must read the runner dsbx wrote as root.
+        // The dropped child must read the runner dsbx wrote as root (0600).
         set_mode(&runner, 0o644)
             .map_err(|e| emit_error(anyhow!("failed to prepare runner: {e}")))?;
     }
@@ -198,26 +223,20 @@ pub(crate) async fn spawn_build(src: &Path, out_bundle: &Path, out_schema: &Path
             .arg(AGENT_USER)
             .arg("--")
             .arg("bun")
-            .arg(&*runner)
-            .arg("build")
-            .arg(src)
-            .arg(out_bundle)
-            .arg(out_schema);
+            .arg(&*runner);
         c
     } else {
         let mut c = Command::new("bun");
-        c.arg(&*runner)
-            .arg("build")
-            .arg(src)
-            .arg(out_bundle)
-            .arg(out_schema);
+        c.arg(&*runner);
         c
     };
-    // The schema-extraction step imports the built bundle (running its
-    // top-level code) and inherits dsbx's env like function runs do, so a
-    // top-level `db()` call sees the same databases directory at build time.
+    cmd.arg(subcommand).args(args);
     cmd.env("NODE_PATH", harness_node_path())
-        .stdin(Stdio::null())
+        .stdin(if inherit_stdin {
+            Stdio::inherit()
+        } else {
+            Stdio::null()
+        })
         .stdout(Stdio::inherit())
         .stderr(Stdio::inherit());
 
