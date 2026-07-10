@@ -7,7 +7,7 @@ import { useState } from "react";
 
 interface SandboxFunctionToolApprovalCardProps {
   event: SandboxFunctionMCPApproveExecutionEvent;
-  onResolved: (actionId: string) => void;
+  onResolved: () => void;
 }
 
 export function SandboxFunctionToolApprovalCard({
@@ -38,7 +38,7 @@ export function SandboxFunctionToolApprovalCard({
       return false;
     }
 
-    onResolved(event.actionId);
+    onResolved();
     return true;
   };
 

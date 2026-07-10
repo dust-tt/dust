@@ -111,6 +111,14 @@ type SandboxFunctionBlockingEvent =
   | SandboxFunctionMCPApproveExecutionEvent
   | SandboxFunctionToolPersonalAuthRequiredEvent;
 
+type QueuedBlockingEvent = {
+  // SSE event id, unique per delivery. Removal targets this exact version: resolving an action can
+  // produce a follow-up blocking event for the same actionId (e.g. approval then personal auth)
+  // before the resolve response returns, and that newer entry must survive the removal.
+  eventId: string;
+  event: SandboxFunctionBlockingEvent;
+};
+
 // Consumes one invocation's event stream, settles the pending iframe call, and renders the
 // approval or authentication card over the frame while a tool is blocked on user input.
 function SandboxFunctionInvocation({
@@ -119,27 +127,29 @@ function SandboxFunctionInvocation({
   invocationId,
   onSettle,
 }: SandboxFunctionInvocationProps) {
-  const [blockedActions, setBlockedActions] = useState<
-    SandboxFunctionBlockingEvent[]
-  >([]);
+  const [blockedActions, setBlockedActions] = useState<QueuedBlockingEvent[]>(
+    []
+  );
 
   const enqueueBlockedAction = useCallback(
-    (event: SandboxFunctionBlockingEvent) => {
+    (eventId: string, event: SandboxFunctionBlockingEvent) => {
       setBlockedActions((prev) => {
-        // The stream can re-deliver an event after a reconnect: replace by actionId.
+        // The stream can re-deliver or supersede an event after a reconnect or a resolution:
+        // replace by actionId, keeping the newest delivery.
         const existingIndex = prev.findIndex(
-          (a) => a.actionId === event.actionId
+          (a) => a.event.actionId === event.actionId
         );
+        const entry = { eventId, event };
         return existingIndex === -1
-          ? [...prev, event]
-          : prev.map((a, index) => (index === existingIndex ? event : a));
+          ? [...prev, entry]
+          : prev.map((a, index) => (index === existingIndex ? entry : a));
       });
     },
     []
   );
 
-  const removeBlockedAction = useCallback((actionId: string) => {
-    setBlockedActions((prev) => prev.filter((a) => a.actionId !== actionId));
+  const removeBlockedAction = useCallback((eventId: string) => {
+    setBlockedActions((prev) => prev.filter((a) => a.eventId !== eventId));
   }, []);
 
   const buildEventSourceURL = useCallback(
@@ -178,7 +188,7 @@ function SandboxFunctionInvocation({
             break;
           case "tool_approve_execution":
           case "tool_personal_auth_required":
-            enqueueBlockedAction(eventPayload.data);
+            enqueueBlockedAction(eventPayload.eventId, eventPayload.data);
             break;
           default:
             assertNeverAndIgnore(eventPayload.data);
@@ -215,19 +225,22 @@ function SandboxFunctionInvocation({
   }
 
   // Covers the frame while the tool is blocked on user input; positioned within the component's
-  // relative root, same layering approach as the loading spinner overlay.
+  // relative root, same layering approach as the loading spinner overlay. Cards are keyed by the
+  // delivery eventId so consecutive events of the same type never reuse local card state.
   return (
     <div className="absolute inset-0 z-10 flex items-center justify-center overflow-auto bg-panel-background p-4">
       <div className="w-full max-w-xl">
-        {blockedAction.type === "tool_approve_execution" ? (
+        {blockedAction.event.type === "tool_approve_execution" ? (
           <SandboxFunctionToolApprovalCard
-            event={blockedAction}
-            onResolved={removeBlockedAction}
+            key={blockedAction.eventId}
+            event={blockedAction.event}
+            onResolved={() => removeBlockedAction(blockedAction.eventId)}
           />
         ) : (
           <SandboxFunctionPersonalAuthCard
-            event={blockedAction}
-            onResolved={removeBlockedAction}
+            key={blockedAction.eventId}
+            event={blockedAction.event}
+            onResolved={() => removeBlockedAction(blockedAction.eventId)}
           />
         )}
       </div>

@@ -6,7 +6,7 @@ import { useAuth } from "@app/lib/auth/AuthContext";
 
 interface SandboxFunctionPersonalAuthCardProps {
   event: SandboxFunctionToolPersonalAuthRequiredEvent;
-  onResolved: (actionId: string) => void;
+  onResolved: () => void;
 }
 
 export function SandboxFunctionPersonalAuthCard({
@@ -32,7 +32,7 @@ export function SandboxFunctionPersonalAuthCard({
       return false;
     }
 
-    onResolved(event.actionId);
+    onResolved();
     return true;
   };
 
