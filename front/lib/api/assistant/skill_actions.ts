@@ -88,7 +88,9 @@ export async function getSkillServers(
     })
   );
 
-  const mcpServers = mcpServersWithOrigin.map(({ server }) => server);
+  const skillServers = mcpServersWithOrigin
+    .filter(({ isSystemSkill }) => !isSystemSkill)
+    .map(({ server }) => server);
   const systemSkillServers = mcpServersWithOrigin
     .filter(({ isSystemSkill }) => isSystemSkill)
     .map(({ server }) => server);
@@ -125,7 +127,7 @@ export async function getSkillServers(
 
   return {
     skillServers: [
-      ...mcpServers,
+      ...skillServers,
       ...removeNulls([fileSystemServer, dataWarehouseServer]),
     ],
     systemSkillServers,
