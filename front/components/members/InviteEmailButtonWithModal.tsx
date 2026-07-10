@@ -43,7 +43,6 @@ import {
   DialogTitle,
   DialogTrigger,
   InfoCircle,
-  Label,
   Plus,
   TextArea,
 } from "@dust-tt/sparkle";
@@ -385,12 +384,12 @@ export function InviteEmailButtonWithModal({
         <DialogContainer>
           <div className="flex flex-col gap-6 text-sm">
             <div className="flex flex-col gap-2">
-              <Label
+              <label
                 className="heading-base text-foreground"
                 htmlFor="email-addresses"
               >
                 Email addresses
-              </Label>
+              </label>
               <TextArea
                 id="email-addresses"
                 placeholder="Email addresses, comma separated"

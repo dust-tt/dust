@@ -3,7 +3,6 @@ import { InfoCircle } from "@sparkle/icons/v2-stroke";
 import { cn } from "@sparkle/lib/utils";
 import { cva } from "class-variance-authority";
 import React, { forwardRef } from "react";
-import { Label } from "./Label";
 
 const MESSAGE_STATUS = ["info", "default", "error"] as const;
 
@@ -88,7 +87,6 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
       message,
       messageStatus,
       value,
-      label,
       isError,
       disabled,
       ...props
@@ -103,11 +101,6 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
           : "default";
     return (
       <div className={cn("flex flex-col gap-1", containerClassName)}>
-        {label && (
-          <Label htmlFor={props.name} className="mb-1">
-            {label}
-          </Label>
-        )}
         <input
           ref={ref}
           className={cn("ring-inset", inputStyleClasses({ state }), className)}
