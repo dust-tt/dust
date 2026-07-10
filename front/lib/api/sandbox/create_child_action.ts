@@ -110,7 +110,7 @@ export async function createSandboxChildAction(
     conversation,
     attachments: [],
   });
-  const skillServers = await resolveSkillMCPServers(auth, {
+  const { skillServers } = await resolveSkillMCPServers(auth, {
     agentConfiguration,
     conversation,
   });

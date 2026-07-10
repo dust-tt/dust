@@ -450,9 +450,10 @@ export async function runModel(
     const { enabledSkills, systemSkills, equippedSkills } =
       await SkillResource.listForAgentLoop(auth, runAgentData);
 
-    const skillServers = await getSkillServers(auth, {
+    const { skillServers, systemSkillServers } = await getSkillServers(auth, {
       agentConfiguration,
-      skills: [...systemSkills, ...enabledSkills],
+      enabledSkills,
+      systemSkills,
     });
 
     const serverToolsAndInstructions = await startActiveObservation(
@@ -466,7 +467,7 @@ export async function runModel(
             agentMessage,
             clientSideActionConfigurations: clientSideMCPActionConfigurations,
           },
-          { jitServers, skillServers }
+          { jitServers, skillServers, systemSkillServers }
         )
     );
 

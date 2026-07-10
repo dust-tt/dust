@@ -1009,9 +1009,11 @@ export async function tryListMCPTools(
   {
     jitServers,
     skillServers,
+    systemSkillServers,
   }: {
     jitServers: MCPServerConfigurationType[];
     skillServers: MCPServerConfigurationType[];
+    systemSkillServers: MCPServerConfigurationType[];
   }
 ): Promise<ServerToolsAndInstructions[]> {
   const owner = auth.getNonNullableWorkspace();
@@ -1033,9 +1035,16 @@ export async function tryListMCPTools(
   const skillServerKeys = new Set(
     skillServers.map(getMCPServerConfigurationKey)
   );
-  const isSkillServerConfig = deduplicatedConfigs.map((config) => {
+  const systemSkillServerKeys = new Set(
+    systemSkillServers.map(getMCPServerConfigurationKey)
+  );
+  const shouldDeferSkillServerConfig = deduplicatedConfigs.map((config) => {
     const key = getMCPServerConfigurationKey(config);
-    return skillServerKeys.has(key) && !nonSkillServerKeys.has(key);
+    return (
+      skillServerKeys.has(key) &&
+      !systemSkillServerKeys.has(key) &&
+      !nonSkillServerKeys.has(key)
+    );
   });
 
   const mcpServerActions = await disambiguateServerNamesBySpace(
@@ -1044,7 +1053,7 @@ export async function tryListMCPTools(
   );
   const mcpServerActionsWithOrigin = mcpServerActions.map((action, index) => ({
     action,
-    isFromSkillServer: isSkillServerConfig[index],
+    shouldDeferSkillServer: shouldDeferSkillServerConfig[index],
   }));
 
   // Pre-fetch all MCPServerViews for server-side configs to avoid N+1 queries.
@@ -1062,7 +1071,7 @@ export async function tryListMCPTools(
   // Discover all tools exposed by all available MCP servers.
   const results = await concurrentExecutor(
     mcpServerActionsWithOrigin,
-    async ({ action, isFromSkillServer }) => {
+    async ({ action, shouldDeferSkillServer }) => {
       let connectionParams: MCPConnectionParams;
       if (isServerSideMCPServerConfiguration(action)) {
         const mcpServerView = preFetchedMcpServerViews.get(
@@ -1209,7 +1218,7 @@ export async function tryListMCPTools(
 
         processedTools.push({
           ...toolConfig,
-          ...(isFromSkillServer ? { eager: undefined } : {}),
+          ...(shouldDeferSkillServer ? { eager: undefined } : {}),
           originalName: toolConfig.name,
           mcpServerName: action.name,
           name: toolName,

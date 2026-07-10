@@ -17,16 +17,24 @@ const SKILL_KNOWLEDGE_FILE_SYSTEM_SERVER_NAME = "skill_knowledge_file_system";
 const SKILL_KNOWLEDGE_DATA_WAREHOUSE_SERVER_NAME =
   "skill_knowledge_data_warehouse";
 
+type ResolvedSkillMCPServers = {
+  skillServers: MCPServerConfigurationType[];
+  systemSkillServers: MCPServerConfigurationType[];
+};
+
 export async function getSkillServers(
   auth: Authenticator,
   {
     agentConfiguration,
-    skills,
+    enabledSkills,
+    systemSkills,
   }: {
     agentConfiguration: AgentLoopExecutionData["agentConfiguration"];
-    skills: SkillResource[];
+    enabledSkills: SkillResource[];
+    systemSkills: SkillResource[];
   }
-): Promise<MCPServerConfigurationType[]> {
+): Promise<ResolvedSkillMCPServers> {
+  const skills = [...systemSkills, ...enabledSkills];
   let inheritedDataSourceViews: DataSourceViewResource[] = [];
   if (skills.some((skill) => skill.inheritsAgentConfigurationDataSources)) {
     inheritedDataSourceViews = await DataSourceViewResource.listBySpaceIds(
@@ -43,7 +51,8 @@ export async function getSkillServers(
     (v) => !isRemoteDatabase(v.dataSource)
   );
 
-  const mcpServers = skills.flatMap((skill) =>
+  const systemSkillIds = new Set(systemSkills.map((skill) => skill.sId));
+  const mcpServersWithOrigin = skills.flatMap((skill) =>
     skill.mcpServerConfigurations.map((config) => {
       const { view, childAgentId, serverNameOverride } = config;
 
@@ -67,14 +76,22 @@ export async function getSkillServers(
         filter: dsView.toViewFilter(),
       }));
 
-      return buildServerSideMCPServerConfiguration({
-        mcpServerView: view,
-        dataSources,
-        childAgentId,
-        serverNameOverride,
-      });
+      return {
+        server: buildServerSideMCPServerConfiguration({
+          mcpServerView: view,
+          dataSources,
+          childAgentId,
+          serverNameOverride,
+        }),
+        isSystemSkill: systemSkillIds.has(skill.sId),
+      };
     })
   );
+
+  const mcpServers = mcpServersWithOrigin.map(({ server }) => server);
+  const systemSkillServers = mcpServersWithOrigin
+    .filter(({ isSystemSkill }) => isSystemSkill)
+    .map(({ server }) => server);
 
   const {
     documentDataSourceConfigurations,
@@ -106,10 +123,13 @@ export async function getSkillServers(
     mcpServerView: autoInternalViews.get("data_warehouses") ?? null,
   });
 
-  return [
-    ...mcpServers,
-    ...removeNulls([fileSystemServer, dataWarehouseServer]),
-  ];
+  return {
+    skillServers: [
+      ...mcpServers,
+      ...removeNulls([fileSystemServer, dataWarehouseServer]),
+    ],
+    systemSkillServers,
+  };
 }
 
 /**
@@ -270,7 +290,7 @@ export async function resolveSkillMCPServers(
     agentConfiguration: AgentConfigurationType;
     conversation: ConversationType;
   }
-): Promise<MCPServerConfigurationType[]> {
+): Promise<ResolvedSkillMCPServers> {
   const { enabledSkills, systemSkills } = await SkillResource.listForAgentLoop(
     auth,
     {
@@ -282,11 +302,12 @@ export async function resolveSkillMCPServers(
   const activeSkills = [...systemSkills, ...enabledSkills];
 
   if (activeSkills.length === 0) {
-    return [];
+    return { skillServers: [], systemSkillServers: [] };
   }
 
   return getSkillServers(auth, {
     agentConfiguration,
-    skills: activeSkills,
+    enabledSkills,
+    systemSkills,
   });
 }
