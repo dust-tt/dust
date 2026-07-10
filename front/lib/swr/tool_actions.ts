@@ -6,7 +6,7 @@ import type {
 } from "@app/lib/api/assistant/conversation/resolve_authentication";
 import { useFetcher } from "@app/lib/swr/swr";
 import { isAPIErrorResponse } from "@app/types/error";
-import { assertNever } from "@app/types/shared/utils/assert_never";
+import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import type { LightWorkspaceType } from "@app/types/user";
 import { useCallback, useState } from "react";
 
@@ -66,7 +66,7 @@ interface ToolActionMutationRequest {
 function getResolveAuthenticationRequest(
   workspaceId: string,
   request: ResolveAuthenticationRequest
-): ToolActionMutationRequest {
+): ToolActionMutationRequest | null {
   switch (request.contextType) {
     case "agent_loop":
       return {
@@ -83,7 +83,8 @@ function getResolveAuthenticationRequest(
         body: { outcome: request.outcome },
       };
     default:
-      return assertNever(request);
+      assertNeverAndIgnore(request);
+      return null;
   }
 }
 
@@ -96,14 +97,15 @@ function getAuthenticationKindLabel(
     case "sandbox_function":
       return LABEL_FOR_KIND.authentication;
     default:
-      return assertNever(request);
+      assertNeverAndIgnore(request);
+      return LABEL_FOR_KIND.authentication;
   }
 }
 
 function getValidateActionRequest(
   workspaceId: string,
   request: ValidateActionRequest
-): ToolActionMutationRequest {
+): ToolActionMutationRequest | null {
   switch (request.contextType) {
     case "agent_loop":
       return {
@@ -120,7 +122,8 @@ function getValidateActionRequest(
         body: { approved: request.approved },
       };
     default:
-      return assertNever(request);
+      assertNeverAndIgnore(request);
+      return null;
   }
 }
 
@@ -141,6 +144,9 @@ export function useResolveAuthentication({
 
       try {
         const request = getResolveAuthenticationRequest(owner.sId, resolution);
+        if (!request) {
+          return { success: false };
+        }
         await fetcher(request.url, {
           method: "POST",
           headers: {
@@ -187,6 +193,9 @@ export function useValidateAction({ owner, onError }: UseValidateActionParams) {
 
       try {
         const request = getValidateActionRequest(owner.sId, validation);
+        if (!request) {
+          return { success: false };
+        }
         await fetcher(request.url, {
           method: "POST",
           headers: {
