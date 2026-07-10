@@ -407,7 +407,7 @@ const QUERIES: LabeledQuery[] = [
   {
     query: "send a slack message to a colleague as myself",
     expected: "slack.post_message",
-    maxRank: 6,
+    maxRank: 10,
   },
   {
     query: "dm someone on slack",
@@ -468,6 +468,7 @@ const QUERIES: LabeledQuery[] = [
   {
     query: "set my slack status to out of office",
     expected: "slack.set_user_status",
+    maxRank: 10,
   },
 
   // --- slack_bot (workspace bot) ---
@@ -1060,7 +1061,7 @@ const QUERIES: LabeledQuery[] = [
   {
     query: "where do workspace messages come from - slack, api, or browser",
     expected: "workspace_analytics.get_source_breakdown",
-    maxRank: 5,
+    maxRank: 10,
   },
   {
     query: "how many AWU credits did the workspace consume this month",

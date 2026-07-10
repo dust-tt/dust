@@ -231,7 +231,8 @@ The search_all parameter should only be set to true if the user explicitly reque
     freeUsage: false,
   },
   remove_reaction: {
-    description: "Remove a reaction emoji from a Slack message as the workspace bot",
+    description:
+      "Remove a reaction emoji from a Slack message as the workspace bot",
     schema: {
       channel: z.string().describe("The channel where the message is located"),
       timestamp: z
