@@ -999,6 +999,8 @@ const DropdownMenuFilters = React.forwardRef(DropdownMenuFiltersInner) as {
 DropdownMenuFilters.displayName = "DropdownMenuFilters";
 
 // DropdownTooltip: Simple tooltip with consistent layout: optional media at top, description below.
+const DROPDOWN_TOOLTIP_DELAY_MS = 700;
+
 export interface DropdownTooltipProps {
   description: string;
   media?: React.ReactNode;
@@ -1047,6 +1049,9 @@ const DropdownTooltipTrigger = React.forwardRef<
     ref
   ) => {
     const [isOpen, setIsOpen] = React.useState(false);
+    const openTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(
+      null
+    );
 
     const handleOpenChange = React.useCallback(
       (open: boolean) => {
@@ -1054,6 +1059,15 @@ const DropdownTooltipTrigger = React.forwardRef<
         onVisibilityChange?.(open);
       },
       [onVisibilityChange]
+    );
+
+    React.useEffect(
+      () => () => {
+        if (openTimerRef.current) {
+          clearTimeout(openTimerRef.current);
+        }
+      },
+      []
     );
 
     React.useEffect(() => {
@@ -1091,9 +1105,43 @@ const DropdownTooltipTrigger = React.forwardRef<
     const container = useSheetContainer(mountPortalContainer);
 
     return (
-      <TooltipPrimitive.Provider delayDuration={700}>
+      <TooltipPrimitive.Provider delayDuration={DROPDOWN_TOOLTIP_DELAY_MS}>
         <TooltipPrimitive.Root open={isOpen} onOpenChange={handleOpenChange}>
-          <TooltipPrimitive.Trigger asChild className={className} ref={ref}>
+          <TooltipPrimitive.Trigger
+            asChild
+            className={className}
+            ref={ref}
+            onPointerLeave={(event) => {
+              if (!event.defaultPrevented) {
+                return;
+              }
+
+              if (openTimerRef.current) {
+                clearTimeout(openTimerRef.current);
+                openTimerRef.current = null;
+              }
+              if (isOpen) {
+                handleOpenChange(false);
+              }
+            }}
+            onPointerMove={(event) => {
+              // Slash rows prevent pointer events to preserve editor focus. Radix skips its
+              // tooltip handler in that case, so preserve the same delayed open explicitly.
+              if (
+                event.pointerType === "touch" ||
+                !event.defaultPrevented ||
+                isOpen ||
+                openTimerRef.current
+              ) {
+                return;
+              }
+
+              openTimerRef.current = setTimeout(() => {
+                openTimerRef.current = null;
+                handleOpenChange(true);
+              }, DROPDOWN_TOOLTIP_DELAY_MS);
+            }}
+          >
             {/* Wrapper allows pointer events even when child is disabled, while maintaining proper positioning */}
             <span className="block w-full">{children}</span>
           </TooltipPrimitive.Trigger>
