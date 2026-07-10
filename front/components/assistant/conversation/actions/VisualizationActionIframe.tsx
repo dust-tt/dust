@@ -1,6 +1,7 @@
 import { useVisualizationRetry } from "@app/hooks/conversations";
+import { useEventSource } from "@app/hooks/useEventSource";
 import { useSendNotification } from "@app/hooks/useNotification";
-import { clientEventSource, clientFetch } from "@app/lib/egress/client";
+import { clientFetch } from "@app/lib/egress/client";
 import { getErrorFromResponse } from "@app/lib/swr/swr";
 import datadogLogger from "@app/logger/datadogLogger";
 import type {
@@ -90,103 +91,103 @@ const getExtensionFromBlob = (blob: Blob): string => {
   return mimeToExt[blob.type] || "txt"; // Default to 'txt' if mime type is unknown.
 };
 
-const SANDBOX_FUNCTION_INVOCATION_RESULT_TIMEOUT_MS = 5 * 60 * 1000;
-
-async function waitForSandboxFunctionInvocationResult({
-  functionId,
-  invocationId,
-  workspaceId,
-}: {
+interface SandboxFunctionInvocationProps {
+  workspaceId: string;
   functionId: string;
   invocationId: string;
-  workspaceId: string;
-}): Promise<CommandResultMap["callFunction"]> {
-  let source: Awaited<ReturnType<typeof clientEventSource>>;
-  try {
-    source = await clientEventSource(
-      `/api/sse/w/${workspaceId}/sandbox-functions/${functionId}/invocations/${invocationId}/events`
-    );
-  } catch (error) {
-    return {
-      result: null,
-      error:
-        "Failed to listen to function invocation events: " +
-        normalizeError(error).message,
-    };
-  }
+  onSettle: (
+    invocationId: string,
+    response: CommandResultMap["callFunction"]
+  ) => void;
+}
 
-  return new Promise((resolve) => {
-    let isDone = false;
-    let timeoutId: ReturnType<typeof setTimeout> | undefined;
-
-    const finish = (response: CommandResultMap["callFunction"]) => {
-      if (isDone) {
-        return;
+// Owns the client side of one in-flight invocation: consumes its SSE stream through
+// useEventSource (which handles the `done` idle sentinel, lastEventId resumes, reconnection
+// backoff and bfcache recovery) and settles the pending `callFunction` promise held by the
+// parent. Will also render the blocking-event UI (tool approval, personal authentication) for the
+// invocation; renders nothing until then. No client-side deadline: the server guarantees a
+// terminal event (result or error) once the invocation exists.
+function SandboxFunctionInvocation({
+  workspaceId,
+  functionId,
+  invocationId,
+  onSettle,
+}: SandboxFunctionInvocationProps) {
+  const buildEventSourceURL = useCallback(
+    (lastEvent: string | null) => {
+      const esURL = `/api/sse/w/${workspaceId}/sandbox-functions/${functionId}/invocations/${invocationId}/events`;
+      let lastEventId = "";
+      if (lastEvent) {
+        const eventPayload: { eventId: string } = JSON.parse(lastEvent);
+        lastEventId = eventPayload.eventId;
       }
+      return esURL + "?lastEventId=" + lastEventId;
+    },
+    [workspaceId, functionId, invocationId]
+  );
 
-      isDone = true;
-      if (timeoutId !== undefined) {
-        clearTimeout(timeoutId);
-      }
-      source.close();
-      resolve(response);
-    };
-
-    timeoutId = setTimeout(() => {
-      finish({
-        result: null,
-        error: "Timed out waiting for function invocation result.",
-      });
-    }, SANDBOX_FUNCTION_INVOCATION_RESULT_TIMEOUT_MS);
-
-    source.onmessage = (event) => {
-      if (event.data === "done") {
-        finish({
-          result: null,
-          error: "Function invocation stream ended before a result.",
-        });
-        return;
-      }
-
+  const onEventCallback = useCallback(
+    (eventStr: string) => {
       try {
         const eventPayload: {
+          eventId: string;
           data: SandboxFunctionInvocationEvent;
-        } = JSON.parse(event.data);
+        } = JSON.parse(eventStr);
 
         switch (eventPayload.data.type) {
           case "sandbox_function_invocation_created":
             // NO-OP
             break;
           case "sandbox_function_invocation_result":
-            finish({ result: eventPayload.data.result });
+            onSettle(invocationId, { result: eventPayload.data.result });
             break;
           case "sandbox_function_invocation_error":
-            finish({ result: null, error: eventPayload.data.message });
+            onSettle(invocationId, {
+              result: null,
+              error: eventPayload.data.message,
+            });
             break;
           case "tool_approve_execution":
             // TODO(SANDBOX_FUNCTIONS): surface a tool approval flow to the user and post the
             // validation back; not emitted by the tool execution activity yet.
             break;
+          case "tool_personal_auth_required":
+            // TODO(SANDBOX_FUNCTIONS): surface a personal authentication flow to the user and
+            // post the resolution back; not emitted by the tool execution activity yet.
+            break;
           default:
             assertNeverAndIgnore(eventPayload.data);
         }
       } catch (error) {
-        finish({
+        onSettle(invocationId, {
           result: null,
           error:
             "Failed to parse function invocation event: " +
             normalizeError(error).message,
         });
       }
-    };
+    },
+    [invocationId, onSettle]
+  );
 
-    source.onerror = () => {
-      finish({
+  const { isError } = useEventSource(
+    buildEventSourceURL,
+    onEventCallback,
+    `sandbox-function-invocation-${invocationId}`
+  );
+
+  // useEventSource only exposes its terminal failure (reconnect attempts exhausted) as state, so
+  // an effect is the only place to propagate it into the pending call settlement.
+  useEffect(() => {
+    if (isError) {
+      onSettle(invocationId, {
         result: null,
         error: "Failed to listen to function invocation events.",
       });
-    };
-  });
+    }
+  }, [isError, invocationId, onSettle]);
+
+  return null;
 }
 
 // Custom hook to encapsulate the logic for handling visualization messages.
@@ -194,12 +195,12 @@ function useVisualizationDataHandler({
   createSandboxFunctionInvocation,
   getFileBlob,
   onEditText,
-  workspaceId,
   setCodeDrawerOpened,
   setContentHeight,
   setErrorMessage,
   visualization,
   vizIframeRef,
+  waitForSandboxFunctionInvocationResult,
 }: {
   createSandboxFunctionInvocation: (
     functionIdOrSlug: string,
@@ -212,7 +213,10 @@ function useVisualizationDataHandler({
   setErrorMessage: (v: SetStateAction<string | null>) => void;
   visualization: Visualization;
   vizIframeRef: React.MutableRefObject<HTMLIFrameElement | null>;
-  workspaceId: string;
+  waitForSandboxFunctionInvocationResult: (params: {
+    functionId: string;
+    invocationId: string;
+  }) => Promise<CommandResultMap["callFunction"]>;
 }) {
   const sendNotification = useSendNotification();
   const { code } = visualization;
@@ -289,7 +293,6 @@ function useVisualizationDataHandler({
           }
 
           const result = await waitForSandboxFunctionInvocationResult({
-            workspaceId,
             functionId: invocationRes.value.functionId,
             invocationId: invocationRes.value.sId,
           });
@@ -372,7 +375,7 @@ function useVisualizationDataHandler({
     visualization.identifier,
     vizIframeRef,
     sendNotification,
-    workspaceId,
+    waitForSandboxFunctionInvocationResult,
   ]);
 }
 
@@ -432,6 +435,43 @@ export const VisualizationActionIframe = forwardRef<
   const [retryClicked, setRetryClicked] = useState(false);
   const [isCodeDrawerOpen, setCodeDrawerOpened] = useState(false);
   const vizIframeRef = useRef<HTMLIFrameElement | null>(null);
+
+  // In-flight sandbox function invocations. Each entry mounts a
+  // SandboxFunctionInvocation; the resolver of the pending `callFunction` promise is kept
+  // in a ref so settling stays a pure state update.
+  const [activeInvocations, setActiveInvocations] = useState<
+    { functionId: string; invocationId: string }[]
+  >([]);
+  const invocationResolversRef = useRef<
+    Map<string, (response: CommandResultMap["callFunction"]) => void>
+  >(new Map());
+
+  const waitForSandboxFunctionInvocationResult = useCallback(
+    ({
+      functionId,
+      invocationId,
+    }: {
+      functionId: string;
+      invocationId: string;
+    }) =>
+      new Promise<CommandResultMap["callFunction"]>((resolve) => {
+        invocationResolversRef.current.set(invocationId, resolve);
+        setActiveInvocations((prev) => [...prev, { functionId, invocationId }]);
+      }),
+    []
+  );
+
+  const settleSandboxFunctionInvocation = useCallback(
+    (invocationId: string, response: CommandResultMap["callFunction"]) => {
+      const resolve = invocationResolversRef.current.get(invocationId);
+      invocationResolversRef.current.delete(invocationId);
+      setActiveInvocations((prev) =>
+        prev.filter((invocation) => invocation.invocationId !== invocationId)
+      );
+      resolve?.(response);
+    },
+    []
+  );
 
   // Combine internal ref with forwarded ref.
   const combinedRef = useCallback(
@@ -557,7 +597,7 @@ export const VisualizationActionIframe = forwardRef<
     setErrorMessage,
     visualization,
     vizIframeRef,
-    workspaceId,
+    waitForSandboxFunctionInvocationResult,
   });
 
   const { code, complete: codeFullyGenerated } = visualization;
@@ -617,6 +657,15 @@ export const VisualizationActionIframe = forwardRef<
           code={code}
         />
       )}
+      {activeInvocations.map((invocation) => (
+        <SandboxFunctionInvocation
+          key={invocation.invocationId}
+          workspaceId={workspaceId}
+          functionId={invocation.functionId}
+          invocationId={invocation.invocationId}
+          onSettle={settleSandboxFunctionInvocation}
+        />
+      ))}
       <div
         className={cn(
           "relative w-full overflow-hidden",

@@ -1,4 +1,7 @@
-import type { SandboxFunctionMCPApproveExecutionEvent } from "@app/lib/actions/mcp_internal_actions/events";
+import type {
+  SandboxFunctionMCPApproveExecutionEvent,
+  SandboxFunctionToolPersonalAuthRequiredEvent,
+} from "@app/lib/actions/mcp_internal_actions/events";
 import type { ToolExecutionBaseStatus } from "@app/lib/actions/statuses";
 
 export const SANDBOX_FUNCTION_INVOCATION_STATUSES = ["created"] as const;
@@ -60,7 +63,8 @@ export type SandboxFunctionInvocationEvent =
   | SandboxFunctionInvocationCreatedEvent
   | SandboxFunctionInvocationResultEvent
   | SandboxFunctionInvocationErrorEvent
-  | SandboxFunctionMCPApproveExecutionEvent;
+  | SandboxFunctionMCPApproveExecutionEvent
+  | SandboxFunctionToolPersonalAuthRequiredEvent;
 
 // The events that end an invocation stream: no further event is published after them.
 export function isSandboxFunctionInvocationTerminalEvent(
