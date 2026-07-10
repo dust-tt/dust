@@ -124,7 +124,6 @@ export type StepContext = {
 
 type ActionGeneratedFileBase = {
   title: string;
-  contentType: AllSupportedFileContentType;
   snippet: string | null;
   hidden?: boolean;
   createdAt?: number;
@@ -135,14 +134,16 @@ type ActionGeneratedFileBase = {
   skipDataSourceIndexing?: boolean;
 };
 
-// File backed by a Dust FileResource.
+// File backed by a Dust FileResource: always a supported content type.
 export type ActionGeneratedDBFileType = ActionGeneratedFileBase & {
+  contentType: AllSupportedFileContentType;
   fileId: string;
   filePath?: never;
 };
 
-// File path only, no FileResource in DB.
+// File path only, no FileResource in DB. Not restricted to supported content types.
 export type ActionGeneratedFilePathType = ActionGeneratedFileBase & {
+  contentType: string;
   fileId: null;
   filePath: string;
 };

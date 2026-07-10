@@ -100,7 +100,7 @@ export async function writeToConversationFolder(
     fileName,
   }: {
     content: string | Buffer;
-    contentType: AllSupportedFileContentType;
+    contentType: string;
     fileName: string;
   }
 ): Promise<Result<string, Error>> {
@@ -140,7 +140,7 @@ export async function writeToPodFolder(
     fileName,
   }: {
     content: string | Buffer;
-    contentType: AllSupportedFileContentType;
+    contentType: string;
     fileName: string;
   }
 ): Promise<Result<string, Error>> {

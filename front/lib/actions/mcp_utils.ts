@@ -33,10 +33,7 @@ import type { Authenticator } from "@app/lib/auth";
 import { FileResource } from "@app/lib/resources/file_resource";
 import type { FileModel } from "@app/lib/resources/storage/models/files";
 import logger from "@app/logger/logger";
-import type {
-  SupportedFileContentType,
-  SupportedImageContentType,
-} from "@app/types/files";
+import type { SupportedImageContentType } from "@app/types/files";
 import { isSupportedFileContentType } from "@app/types/files";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
@@ -51,16 +48,13 @@ import { basename, extname } from "path";
 
 type ResourceInfo =
   | { type: "image"; contentType: SupportedImageContentType }
-  | { type: "file"; contentType: SupportedFileContentType };
+  | { type: "file"; contentType: string };
 
-function getResourceInfo(mimeType: string): ResourceInfo | null {
+function getResourceInfo(mimeType: string): ResourceInfo {
   if (isSupportedImageContentType(mimeType)) {
     return { type: "image", contentType: mimeType };
   }
-  if (isSupportedFileContentType(mimeType)) {
-    return { type: "file", contentType: mimeType };
-  }
-  return null;
+  return { type: "file", contentType: mimeType };
 }
 
 export function hideFileFromActionOutput({
@@ -191,16 +185,6 @@ export async function handleBase64Upload(
   assert(runContext, "handleBase64Upload requires a tool run context.");
 
   const resourceInfo = getResourceInfo(mimeType);
-
-  if (!resourceInfo) {
-    return {
-      content: {
-        type: "text",
-        text: `The mime type of the generated resource (${mimeType}) is not supported.`,
-      },
-      file: null,
-    };
-  }
 
   const maxUploadSizeBytes =
     resourceInfo.type === "image"

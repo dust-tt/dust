@@ -379,6 +379,52 @@ describe("processToolResults", () => {
     }
   });
 
+  it("should store an unsupported blob resource as a file instead of inlining it", async () => {
+    const { auth, toolContext } = await setupTest();
+
+    fileStorageMock.reset();
+
+    const blobBytes = Buffer.from("PK fake zip payload");
+    const base64Blob = blobBytes.toString("base64");
+
+    const { outputItems, generatedFiles } = await processToolResults(auth, {
+      localLogger: logger.child({ test: true }),
+      toolContext,
+      toolCallResultContent: [
+        {
+          type: "resource",
+          resource: {
+            uri: "file://archive.zip",
+            blob: base64Blob,
+            mimeType: "application/zip",
+          },
+        },
+      ],
+    });
+
+    expect(outputItems).toHaveLength(1);
+    const stored = outputItems[0].content;
+
+    // The blob is turned into a file-path reference; the base64 is NOT inlined into the output.
+    expect(stored.type).toBe("resource");
+    if (stored.type === "resource") {
+      expect(stored.resource.mimeType).toBe(
+        INTERNAL_MIME_TYPES.TOOL_OUTPUT.FILE_PATH
+      );
+      expect("blob" in stored.resource).toBe(false);
+    }
+
+    // The raw bytes were written to file storage.
+    const fileWrite = fileStorageMock.saveFileCalls.find(
+      (call) => Buffer.isBuffer(call.content) && call.content.equals(blobBytes)
+    );
+    expect(fileWrite).toBeDefined();
+
+    // The generated file reference preserves the original (unsupported) content type.
+    expect(generatedFiles).toHaveLength(1);
+    expect(generatedFiles[0].contentType).toBe("application/zip");
+  });
+
   it(`should persist DATA_SOURCE_NODE_CONTENT block to ${TOOL_OUTPUTS_FOLDER_NAME}/`, async () => {
     const { auth, toolContext } = await setupTest();
 
