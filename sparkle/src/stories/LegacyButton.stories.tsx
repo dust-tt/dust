@@ -4,7 +4,7 @@ import React from "react";
 import {
   REGULAR_BUTTON_SIZES,
   BUTTON_VARIANTS,
-} from "@sparkle/components/Button";
+} from "@sparkle/components/LegacyButton";
 
 import {
   LegacyButton as Button,

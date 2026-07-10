@@ -1,15 +1,13 @@
 import type { Meta, StoryObj } from "@storybook/react";
 import React from "react";
 
-import { NEW_INPUT_SIZES } from "@sparkle/components/NewInput";
-
-import { Image03, NewInput, SearchMd } from "../index_with_tw_base";
+import { Input } from "../index_with_tw_base";
 
 const MESSAGE_STATUSES = ["info", "default", "error"] as const;
 
 const meta = {
-  title: "Forms & Inputs/NewInput",
-  component: NewInput,
+  title: "Forms & Inputs/LegacyInput",
+  component: Input,
   tags: ["autodocs"],
   parameters: {
     docs: {
@@ -29,11 +27,6 @@ const meta = {
     },
   },
   argTypes: {
-    size: {
-      options: NEW_INPUT_SIZES,
-      control: { type: "select" },
-      description: "The size of the input (sm / md / lg)",
-    },
     placeholder: {
       control: "text",
       description: "Placeholder text for the input",
@@ -69,58 +62,22 @@ const meta = {
       description: "HTML input type",
     },
   },
-} satisfies Meta<typeof NewInput>;
+} satisfies Meta<typeof Input>;
 
 export default meta;
 type Story = StoryObj<typeof meta>;
 
 export const Playground: Story = {
   args: {
-    size: "md",
     placeholder: "Enter text...",
     value: "",
-    label: "NewInput Label",
+    label: "Input Label",
     message: "This is a helper message",
     messageStatus: "info",
     disabled: false,
     isError: false,
     type: "text",
   },
-};
-
-export const Sizes: Story = {
-  render: () => (
-    <div className="flex w-72 flex-col gap-4">
-      {NEW_INPUT_SIZES.map((size) => (
-        <NewInput key={size} size={size} placeholder={`Size ${size}`} />
-      ))}
-    </div>
-  ),
-};
-
-export const WithIcons: Story = {
-  render: () => (
-    <div className="flex w-72 flex-col gap-4">
-      <NewInput placeholder="Search…" icon={SearchMd} />
-      <NewInput placeholder="With trailing icon" iconRight={Image03} />
-      <NewInput placeholder="Both" icon={SearchMd} iconRight={Image03} />
-    </div>
-  ),
-};
-
-export const WithPrefixSuffix: Story = {
-  render: () => (
-    <div className="flex w-72 flex-col gap-4">
-      <NewInput
-        placeholder="0.00"
-        prefix={<span className="text-faint">$</span>}
-      />
-      <NewInput
-        placeholder="12,890"
-        suffix={<span className="text-faint">cr</span>}
-      />
-    </div>
-  ),
 };
 
 export const WithError: Story = {
@@ -156,33 +113,33 @@ export const AllVariants: Story = {
   render: () => (
     <div className="flex flex-col gap-20">
       <div className="grid grid-cols-3 gap-4">
-        <NewInput
+        <Input
           placeholder="placeholder"
           name="input"
           message="Name must be unique"
           messageStatus="info"
         />
-        <NewInput
+        <Input
           placeholder="placeholder"
           name="input"
           value="value"
           message="errored because it's a very long message"
           messageStatus="error"
         />
-        <NewInput
+        <Input
           placeholder="placeholder"
           name="input"
           value="value"
           message="Default message"
         />
-        <NewInput
+        <Input
           placeholder="placeholder"
           name="input"
           value="value"
           message="errored because it's a very long message"
           messageStatus="error"
         />
-        <NewInput
+        <Input
           placeholder="placeholder"
           name="input"
           value="disabled"
@@ -191,28 +148,28 @@ export const AllVariants: Story = {
         />
       </div>
       <div className="grid grid-cols-3 gap-4">
-        <NewInput placeholder="placeholder" name="input" />
-        <NewInput
+        <Input placeholder="placeholder" name="input" />
+        <Input
           placeholder="placeholder"
           name="input"
           value="value"
           message="errored because it's a very long message"
           messageStatus="error"
         />
-        <NewInput
+        <Input
           placeholder="placeholder"
           name="input"
           value="value"
           message="Default message"
         />
-        <NewInput
+        <Input
           placeholder="placeholder"
           name="input"
           value="value"
           message="errored because it's a very long message"
           messageStatus="error"
         />
-        <NewInput
+        <Input
           placeholder="placeholder"
           name="input"
           value="test"
@@ -220,17 +177,17 @@ export const AllVariants: Story = {
         />
       </div>
       <div className="grid grid-cols-3 gap-4">
-        <NewInput
+        <Input
           placeholder="placeholder"
           name="input"
           label="Firstname"
           isError
         />
-        <NewInput
+        <Input
           placeholder="placeholder"
           name="input"
           label="Lastname"
-          message="NewInput your lastname"
+          message="Input your lastname"
           messageStatus="info"
           isError
         />

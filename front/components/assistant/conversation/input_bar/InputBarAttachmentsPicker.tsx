@@ -620,7 +620,7 @@ export const InputBarAttachmentsPicker = ({
             <Input
               type="file"
               ref={fileInputRef}
-              style={{ display: "none" }}
+              containerClassName="hidden"
               onChange={async (e) => {
                 setIsOpen(false);
                 await fileUploaderService.handleFileChange(e);
