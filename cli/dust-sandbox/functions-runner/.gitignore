@@ -1,3 +1,5 @@
 node_modules/
 # Generated bundle — built via `bun run build` before compiling dsbx (not committed).
 runner.js
+# In-tree scratch dirs of the db schema round-trip test.
+.db-test-*/

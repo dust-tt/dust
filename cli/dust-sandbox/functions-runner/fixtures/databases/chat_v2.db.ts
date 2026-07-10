@@ -1,5 +1,4 @@
-// Happy-path pod database schema fixture: covers modes, defaults, plain and unique indexes,
-// and single-column table-level primaryKey().
+// Additive evolution of chat.db.ts: one new column, one new index, one new table.
 import {
   blob,
   index,
@@ -26,10 +25,12 @@ export const users = sqliteTable(
     nickname: text("nickname").default("anon"),
     score: real("score"),
     counter: blob("counter", { mode: "bigint" }),
+    bio: text("bio"),
   },
   (t) => [
     uniqueIndex("users_handle_idx").on(t.handle),
     index("users_created_idx").on(t.createdAt, t.handle),
+    index("users_bio_idx").on(t.bio),
   ]
 );
 
@@ -56,3 +57,9 @@ export const settings = sqliteTable(
     uniqueIndex("settings_scope_value_idx").on(t.scope, t.value),
   ]
 );
+
+export const reactions = sqliteTable("reactions", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  messageId: integer("message_id").notNull(),
+  emoji: text("emoji").notNull(),
+});

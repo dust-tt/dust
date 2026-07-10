@@ -25,7 +25,7 @@ import fs from "fs";
 import path from "path";
 
 const DUST_BEDROCK_IMAGE_VERSION = "1.10.0";
-const DUST_BASE_IMAGE_VERSION = "0.8.52";
+const DUST_BASE_IMAGE_VERSION = "0.8.53";
 const DSBX_CLI_VERSION = "0.1.32";
 // Identity, not coverage list: agent-proxied is a specific Linux user. The
 // nftables ruleset covers SANDBOX_UNTRUSTED_UIDS as a set; reordering that
@@ -456,10 +456,17 @@ SHELLEOF`,
           "Schema push/pull engine (used by dsbx db commands, not function code)",
         runtime: "node",
       },
+      {
+        name: "@libsql/client",
+        version: "0.17.4",
+        description:
+          "SQLite driver drizzle-kit introspect connects through (dsbx db schema pull)",
+        runtime: "node",
+      },
     ],
     {
       installCmd:
-        "npm install -g typescript tsx pptxgenjs@4.0.1 zod@4.4.3 drizzle-orm@0.45.2 drizzle-kit@0.31.10",
+        "npm install -g typescript tsx pptxgenjs@4.0.1 zod@4.4.3 drizzle-orm@0.45.2 drizzle-kit@0.31.10 @libsql/client@0.17.4",
     }
   )
   .runCmd(

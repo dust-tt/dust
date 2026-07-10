@@ -96,7 +96,7 @@ describe("sandbox image registry", () => {
   test("pins the current dust-base image tag", () => {
     expect(getDustBaseImage().imageId).toEqual({
       imageName: "dust-base",
-      tag: "0.8.52",
+      tag: "0.8.53",
     });
   });
 
@@ -460,7 +460,7 @@ describe("sandbox image registry", () => {
     expect(runCommands).toEqual(
       expect.arrayContaining([
         expect.stringContaining(
-          "npm install -g typescript tsx pptxgenjs@4.0.1 zod@4.4.3 drizzle-orm@0.45.2 drizzle-kit@0.31.10"
+          "npm install -g typescript tsx pptxgenjs@4.0.1 zod@4.4.3 drizzle-orm@0.45.2 drizzle-kit@0.31.10 @libsql/client@0.17.4"
         ),
         expect.stringContaining(
           "mkdir -p /opt/npm-global/lib/node_modules/@dust"
@@ -482,6 +482,7 @@ describe("sandbox image registry", () => {
       expect.arrayContaining([
         expect.objectContaining({ name: "drizzle-orm", version: "0.45.2" }),
         expect.objectContaining({ name: "drizzle-kit", version: "0.31.10" }),
+        expect.objectContaining({ name: "@libsql/client", version: "0.17.4" }),
         expect.objectContaining({ name: "@dust/pod", version: "0.1.0" }),
       ])
     );
