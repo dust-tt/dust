@@ -146,10 +146,10 @@ export async function createPendingAgentConfiguration(
       authorId: user.id,
     });
     await auth.refresh({ transaction: t });
-    if (!group.canWrite(auth)) {
+    if (!group.canAdministrate(auth)) {
       throw new DustError(
         "unauthorized",
-        "User does not have write permission for the agent editors group."
+        "User does not have permission to manage the agent editors group."
       );
     }
     await group.dangerouslySetMembers(auth, {
@@ -850,7 +850,7 @@ export async function createAgentConfiguration(
             }
           }
 
-          if (!group.canWrite(auth) && auth.user()) {
+          if (!group.canAdministrate(auth) && auth.user()) {
             logger.error(
               {
                 workspaceId: owner.sId,
@@ -1808,7 +1808,7 @@ export async function updateAgentPermissions(
     const transactionResult = await withTransaction(async (t) => {
       if (usersToAdd.length > 0) {
         // Check authorization for agent_editors groups (allowing members and admins)
-        if (!editorGroupRes.value.canWrite(auth)) {
+        if (!editorGroupRes.value.canAdministrate(auth)) {
           return new Err(
             new DustError(
               "unauthorized",
@@ -1827,7 +1827,7 @@ export async function updateAgentPermissions(
 
       if (usersToRemove.length > 0) {
         // Check authorization for agent_editors groups (allowing members and admins)
-        if (!editorGroupRes.value.canWrite(auth)) {
+        if (!editorGroupRes.value.canAdministrate(auth)) {
           return new Err(
             new DustError(
               "unauthorized",
