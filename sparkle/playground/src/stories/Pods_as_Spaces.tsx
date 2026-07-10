@@ -3,7 +3,7 @@ import {
   Avatar,
   BookOpen01,
   Button,
-  Card,
+  ChevronDown,
   Code01,
   ContactsRobot,
   Cube01,
@@ -24,6 +24,7 @@ import {
   DropdownMenuTrigger,
   Edit04,
   Heart,
+  Icon,
   Inbox01,
   LayoutLeft,
   LayoutRight,
@@ -36,6 +37,7 @@ import {
   NavigationListCompactLabel,
   NavigationListItem,
   NavigationListItemAction,
+  PencilLine,
   Plus,
   ScrollArea,
   ScrollBar,
@@ -629,30 +631,32 @@ function DustMain() {
       {/* Top Bar */}
       <div className="flex h-14 items-center justify-between gap-2 border-b border pl-1 pr-2">
         <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Card
-              size="xs"
-              onClick={(e: MouseEvent) => e.preventDefault()}
-              className="p-1"
-              containerClassName="flex-1 min-w-0"
-            >
-              <div className="flex min-w-0 items-center gap-2 pr-1">
+          <DropdownMenuTrigger className="group min-w-0 flex-1 rounded-xl p-2 hover:bg-hover data-[state=open]:bg-selected">
+            <div className="flex cursor-pointer items-center justify-between gap-2">
+              <span className="sr-only">Open user menu</span>
+              <div className="flex min-w-0 items-center gap-2">
                 <Avatar
                   name={user.fullName}
                   visual={user.portrait}
                   size="sm"
                   isRounded={true}
                 />
-                <div className="flex min-w-0 grow flex-col text-sm text-foreground">
-                  <span className="heading-sm min-w-0 overflow-hidden text-ellipsis whitespace-nowrap">
+                <div className="flex min-w-0 flex-1 flex-col items-start text-left">
+                  <span className="heading-sm w-full truncate text-foreground transition-colors">
                     {user.fullName}
                   </span>
-                  <span className="-mt-0.5 min-w-0 overflow-hidden text-ellipsis whitespace-nowrap text-xs text-muted-foreground">
+                  <span className="-mt-0.5 w-full truncate text-sm text-muted-foreground">
                     ACME
                   </span>
                 </div>
               </div>
-            </Card>
+              <div className="flex-shrink-0">
+                <Icon
+                  visual={ChevronDown}
+                  className="text-muted-foreground group-hover:text-primary-400 group-active:text-primary-950"
+                />
+              </div>
+            </div>
           </DropdownMenuTrigger>
           <DropdownMenuContent>
             <DropdownMenuItem
@@ -775,7 +779,7 @@ function DustMain() {
             variant="primary"
             tooltip="New Conversation"
             size="sm"
-            icon={MessageChatSquare}
+            icon={PencilLine}
             label="New"
             onClick={handleNewConversation}
           />

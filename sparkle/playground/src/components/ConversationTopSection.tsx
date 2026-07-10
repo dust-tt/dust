@@ -14,8 +14,10 @@ export function ConversationTopSection({
   children,
 }: ConversationTopSectionProps) {
   return (
-    <div className="flex flex-col gap-4 h-[30%] min-h-60 max-h-[320px] w-[100%] max-w-3xl mx-auto flex-none items-center justify-center px-4">
-      {children}
+    <div className="flex flex-none h-[30%] min-h-60 max-h-[320px] justify-center items-center px-4 pb-8">
+      <div className="flex w-full max-w-4xl flex-col gap-3 justify-center items-center">
+        {children}
+      </div>
     </div>
   );
 }

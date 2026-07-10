@@ -105,6 +105,7 @@ import type {
 import { getUserById } from "../data/users";
 import { Breadcrumbs, type BreadcrumbsItem } from "./BreadcrumbsDnd";
 import { ConversationTopSection } from "./ConversationTopSection";
+import { EmptyState } from "./EmptyState";
 import { DataTable } from "./DataTableDnd";
 import { FilePreviewPanel } from "./FilePreviewPanel";
 import {
@@ -1332,21 +1333,20 @@ function ProjectSetupEmptyState({
   onSetupProject: () => void;
 }) {
   return (
-    <div className="flex h-full w-full flex-col items-center justify-center gap-0 text-center">
-      <h3 className="heading-lg text-foreground">It's quiet in here.</h3>
-      <p className="text-muted-foreground textbase mb-3">
-        Your Pod is ready but empty! Let us help you invite people, add key
-        data, and more.
-      </p>
-      <Button
-        label="Let's go"
-        icon={Stars02}
-        size="md"
-        variant="highlight"
-        onClick={onSetupProject}
-        isPulsing
-      />
-    </div>
+    <EmptyState
+      title="It's quiet in here."
+      description="Your Pod is ready but empty! Let us help you invite people, add key data, and more."
+      action={
+        <Button
+          label="Let's go"
+          icon={Stars02}
+          size="md"
+          variant="highlight"
+          onClick={onSetupProject}
+          isPulsing
+        />
+      }
+    />
   );
 }
 
@@ -3525,7 +3525,7 @@ export function GroupConversationView({
           const userId = info.getValue() as string;
           return editorIds.includes(userId) ? (
             <DataTable.CellContent>
-              <Chip size="xs" color="green" label="editor" />
+              <Chip size="xs" color="success" label="editor" />
             </DataTable.CellContent>
           ) : (
             <DataTable.BasicCellContent label="" />
@@ -3616,7 +3616,8 @@ export function GroupConversationView({
               {renderPodGreeting("Conversations")}
               <InputBar
                 autoFocus
-                placeholder={`Start a conversation in ${space.name}`}
+                placeholder="What are we working on?"
+                className="w-full max-w-4xl"
               />
             </>
           }
@@ -4403,7 +4404,7 @@ export function GroupConversationView({
                   onChange={setKnowledgeSearchText}
                   placeholder="Search files..."
                   size="md"
-                  className="w-full"
+                  className="w-full max-w-xl"
                 />
               )}
             </>
@@ -4639,7 +4640,6 @@ export function GroupConversationView({
                 </div>
               </div>
               <SliderToggle
-                size="xs"
                 selected={isPublic}
                 onClick={() => {
                   const nextValue = !isPublic;

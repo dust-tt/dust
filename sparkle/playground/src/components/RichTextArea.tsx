@@ -516,6 +516,7 @@ const instructionSnippetMark = Mark.create({
 
 const richTextAreaVariants = cva(
   cn(
+    "sparkle-richtextarea",
     "w-full text-base leading-6 outline-hidden whitespace-pre-wrap break-words"
   ),
   {
