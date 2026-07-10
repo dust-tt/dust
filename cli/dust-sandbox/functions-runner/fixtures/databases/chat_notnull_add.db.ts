@@ -1,5 +1,5 @@
-// Happy-path pod database schema fixture: covers modes, defaults, plain and unique indexes,
-// and single-column table-level primaryKey().
+// chat.db.ts plus a NOT NULL column WITHOUT a default on an existing table: SQLite cannot
+// apply that ALTER, so reconcile must refuse it up front as a disallowed statement.
 import {
   blob,
   index,
@@ -26,6 +26,7 @@ export const users = sqliteTable(
     nickname: text("nickname").default("anon"),
     score: real("score"),
     counter: blob("counter", { mode: "bigint" }),
+    email: text("email").notNull(),
   },
   (t) => [
     uniqueIndex("users_handle_idx").on(t.handle),

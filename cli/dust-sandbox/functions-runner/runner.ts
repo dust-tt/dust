@@ -1,10 +1,15 @@
 #!/usr/bin/env bun
-// Embedded runner for `dsbx function`. Subcommands:
+// Embedded runner for `dsbx function` and `dsbx db`. Subcommands:
 //   runner run <path>                            stdin request envelope -> stdout Output JSON
 //   runner get <path>                            -> stdout FunctionSchema JSON (or {error})
 //   runner build <src> <outBundle> <outSchema>   bundle + extract schema to files
+//   runner db-reconcile <dbPath> <schemaFile>    additive-only DDL reconcile -> stdout envelope
+//   runner db-schema <dbPath> <outSchemaTs>      regenerate drizzle schema file -> file + envelope
 
 import { build } from "./build.ts";
+import { errorEnvelope } from "./db/common.ts";
+import { reconcile } from "./db/reconcile.ts";
+import { generateSchemaFileText } from "./db/schema.ts";
 import { invoke } from "./invoke.ts";
 import { BadInputError, parseInput, type RequestInput } from "./protocol.ts";
 import { getFunctionSchema } from "./schema.ts";
@@ -58,10 +63,58 @@ async function buildHandler(args: string[]): Promise<number> {
   return result.ok ? 0 : 1;
 }
 
+function emitDbBadArgs(usage: string): number {
+  process.stdout.write(
+    `${JSON.stringify({
+      ok: false,
+      error: { kind: "bad_args", message: usage },
+    })}\n`
+  );
+  return 2;
+}
+
+// The db helpers return Result; expected refusals are the Err branch. Unexpected throws are
+// bugs — we don't catch our own errors (ERR1); they surface as an internal error at the
+// front boundary (a runner that emits no envelope).
+async function dbReconcileHandler(args: string[]): Promise<number> {
+  const [dbPath, schemaFile] = args;
+  if (!dbPath || !schemaFile) {
+    return emitDbBadArgs("usage: runner db-reconcile <dbPath> <schemaFile>");
+  }
+  const result = await reconcile(dbPath, schemaFile);
+  if (result.isErr()) {
+    process.stdout.write(`${JSON.stringify(errorEnvelope(result.error))}\n`);
+    return 1;
+  }
+  process.stdout.write(`${JSON.stringify({ ok: true, ...result.value })}\n`);
+  return 0;
+}
+
+async function dbSchemaHandler(args: string[]): Promise<number> {
+  const [dbPath, outSchemaTs] = args;
+  if (!dbPath || !outSchemaTs) {
+    return emitDbBadArgs("usage: runner db-schema <dbPath> <outSchemaTs>");
+  }
+  const result = generateSchemaFileText(dbPath);
+  if (result.isErr()) {
+    process.stdout.write(`${JSON.stringify(errorEnvelope(result.error))}\n`);
+    return 1;
+  }
+  await Bun.write(outSchemaTs, result.value);
+  process.stdout.write(`${JSON.stringify({ ok: true })}\n`);
+  return 0;
+}
+
 async function main(): Promise<number> {
   const [command, ...rest] = process.argv.slice(2);
   if (command === "build") {
     return buildHandler(rest);
+  }
+  if (command === "db-reconcile") {
+    return dbReconcileHandler(rest);
+  }
+  if (command === "db-schema") {
+    return dbSchemaHandler(rest);
   }
 
   const [handlerPath] = rest;
