@@ -45,8 +45,24 @@ import type {
 } from "@app/types/assistant/generation";
 import type { ModelConfigurationType } from "@app/types/assistant/models/types";
 import { removeNulls } from "@app/types/shared/utils/general";
+import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 
 const RENDER_ACTIONS_CONCURRENCY = 5;
+
+/**
+ * Drops the internal "type": "resource" wrapper and the top-level mimeType discriminator from a
+ * resource-shaped tool output item before it's serialized for the model. Every resource schema's
+ * mimeType is a fixed literal used only to distinguish shapes in our own code (see
+ * output_schemas.ts); it's never a real content type, and never what the model reads. Other item
+ * types (text, image) are returned unchanged.
+ */
+function compactResourceItem(item: CallToolResult["content"][number]) {
+  if (item.type !== "resource") {
+    return item;
+  }
+  const { mimeType: _mimeType, ...resource } = item.resource;
+  return resource;
+}
 
 async function getDustFileSystemDownloadUrl(
   auth: Authenticator,
@@ -193,7 +209,7 @@ async function renderActionForMultiActionsModel(
     }
     output = contentArray;
   } else {
-    output = JSON.stringify(outputItems);
+    output = JSON.stringify(outputItems.map(compactResourceItem));
   }
 
   return {

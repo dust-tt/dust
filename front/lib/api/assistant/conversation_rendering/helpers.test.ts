@@ -474,7 +474,7 @@ describe("vision image rendering in getSteps", () => {
     }
   });
 
-  it("falls back to JSON when the model does not support vision", async () => {
+  it("falls back to JSON when the model does not support vision, flattened and without the resource wrapper or mimeType", async () => {
     const { auth, message, model, workspaceId, conversationId } =
       await buildVisionTest();
     const nonVisionModel = { ...model, supportsVision: false };
@@ -490,6 +490,19 @@ describe("vision image rendering in getSteps", () => {
 
     const result = steps[0].actions[0].result;
     expect(typeof result.content).toBe("string");
+    assert(typeof result.content === "string");
+
+    const parsed = JSON.parse(result.content);
+    // Flattened: the resource's own fields directly, no "type"/"resource" wrapper and no
+    // mimeType (a pure internal type discriminator the model never reads).
+    expect(parsed).toEqual([
+      {
+        uri: "dust://files/conversation/photo.png",
+        text: "",
+        filePath: `w/${workspaceId}/conversations/${conversationId}/files/photo.png`,
+        imageContentType: "image/png",
+      },
+    ]);
   });
 
   it("renders [Image unavailable] when the path does not belong to the conversation", async () => {
