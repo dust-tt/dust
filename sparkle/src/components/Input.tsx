@@ -65,7 +65,7 @@ const fieldVariants = cva(
 
 const innerInputVariants = cva(
   cn(
-    "h-full w-full min-w-0 flex-1 border-0 bg-transparent outline-hidden",
+    "h-full w-full min-w-0 flex-1 border-0 bg-transparent outline-hidden focus:shadow-none",
     // <input> does not inherit typography from its wrapper by default.
     "font-sans text-inherit",
     "text-foreground",
