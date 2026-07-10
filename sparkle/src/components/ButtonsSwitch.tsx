@@ -152,7 +152,7 @@ export const ButtonsSwitch = React.forwardRef<
       variant={isActive ? "outline" : "ghost"}
       label={label}
       icon={icon}
-      className={className}
+      className={cn(!isActive && "border border-transparent", className)}
       disabled={isDisabled}
       onClick={handleClick}
       {...props}
