@@ -77,22 +77,22 @@ export const STATIC_MODEL_TIERS: StaticModelTiersLookup = {
     none: "cost_efficient",
   },
   "gpt-4-turbo": {
-    none: "balanced",
+    none: "cost_efficient",
   },
   "gpt-4o": {
-    none: "balanced",
+    none: "cost_efficient",
   },
   "gpt-4.1-2025-04-14": {
-    none: "balanced",
+    none: "cost_efficient",
   },
   "gpt-4.1-mini-2025-04-14": {
-    none: "balanced",
+    none: "cost_efficient",
   },
   "gpt-4o-2024-08-06": {
-    none: "balanced",
+    none: "cost_efficient",
   },
   "gpt-4o-mini": {
-    none: "balanced",
+    none: "cost_efficient",
   },
   "gpt-5.1": {
     none: "balanced",
@@ -109,8 +109,8 @@ export const STATIC_MODEL_TIERS: StaticModelTiersLookup = {
   "gpt-5.4-mini": {
     none: "cost_efficient",
     light: "cost_efficient",
-    medium: "balanced",
-    high: "balanced",
+    medium: "cost_efficient",
+    high: "cost_efficient",
   },
   "gpt-5.4": {
     none: "balanced",
@@ -145,7 +145,7 @@ export const STATIC_MODEL_TIERS: StaticModelTiersLookup = {
   "gpt-5.4-nano": {
     none: "cost_efficient",
     light: "cost_efficient",
-    medium: "balanced",
+    medium: "cost_efficient",
     high: "cost_efficient",
   },
   "gpt-5": {
@@ -155,13 +155,13 @@ export const STATIC_MODEL_TIERS: StaticModelTiersLookup = {
   },
   "gpt-5-mini": {
     light: "cost_efficient",
-    medium: "balanced",
-    high: "balanced",
+    medium: "cost_efficient",
+    high: "cost_efficient",
   },
   "gpt-5-nano": {
     light: "cost_efficient",
-    medium: "balanced",
-    high: "balanced",
+    medium: "cost_efficient",
+    high: "cost_efficient",
   },
   o1: {
     none: "balanced",
@@ -251,8 +251,8 @@ export const STATIC_MODEL_TIERS: StaticModelTiersLookup = {
   },
   "claude-haiku-4-5-20251001": {
     light: "cost_efficient",
-    medium: "balanced",
-    high: "balanced",
+    medium: "cost_efficient",
+    high: "cost_efficient",
   },
   "mistral-large-latest": {
     none: "balanced",
