@@ -26,7 +26,7 @@ import {
   SearchInput,
 } from "@dust-tt/sparkle";
 import type { PaginationState } from "@tanstack/react-table";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 
 const DEFAULT_PAGE_SIZE = 25;
 
@@ -164,11 +164,6 @@ function WorkspaceMembersList({
     pageSize: DEFAULT_PAGE_SIZE,
     groupKind: isProvisioningEnabled ? "provisioned" : undefined,
   });
-
-  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
-  useEffect(() => {
-    setPagination({ pageIndex: 0, pageSize: DEFAULT_PAGE_SIZE });
-  }, [setPagination]);
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   const resetSelectedMember = useCallback(() => {
