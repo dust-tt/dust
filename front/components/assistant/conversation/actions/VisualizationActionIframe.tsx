@@ -101,12 +101,8 @@ interface SandboxFunctionInvocationProps {
   ) => void;
 }
 
-// Owns the client side of one in-flight invocation: consumes its SSE stream through
-// useEventSource (which handles the `done` idle sentinel, lastEventId resumes, reconnection
-// backoff and bfcache recovery) and settles the pending `callFunction` promise held by the
-// parent. Will also render the blocking-event UI (tool approval, personal authentication) for the
-// invocation; renders nothing until then. No client-side deadline: the server guarantees a
-// terminal event (result or error) once the invocation exists.
+// Consumes one invocation's event stream, settles the pending iframe call, and will render
+// approval or authentication UI when needed.
 function SandboxFunctionInvocation({
   workspaceId,
   functionId,
@@ -170,22 +166,19 @@ function SandboxFunctionInvocation({
     [invocationId, onSettle]
   );
 
-  const { isError } = useEventSource(
+  const onTerminalError = useCallback(() => {
+    onSettle(invocationId, {
+      result: null,
+      error: "Failed to listen to function invocation events.",
+    });
+  }, [invocationId, onSettle]);
+
+  useEventSource(
     buildEventSourceURL,
     onEventCallback,
-    `sandbox-function-invocation-${invocationId}`
+    `sandbox-function-invocation-${invocationId}`,
+    { onTerminalError }
   );
-
-  // useEventSource only exposes its terminal failure (reconnect attempts exhausted) as state, so
-  // an effect is the only place to propagate it into the pending call settlement.
-  useEffect(() => {
-    if (isError) {
-      onSettle(invocationId, {
-        result: null,
-        error: "Failed to listen to function invocation events.",
-      });
-    }
-  }, [isError, invocationId, onSettle]);
 
   return null;
 }

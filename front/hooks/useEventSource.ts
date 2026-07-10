@@ -88,11 +88,16 @@ const stableEventSourceManager = {
   },
 };
 
+interface UseEventSourceOptions {
+  isReadyToConsumeStream?: boolean;
+  onTerminalError?: (error: Error) => void;
+}
+
 export function useEventSource(
   buildURL: (lastEvent: string | null) => string | null,
   onEventCallback: (event: string) => void,
   uniqueId: string,
-  { isReadyToConsumeStream = true }: { isReadyToConsumeStream?: boolean } = {}
+  { isReadyToConsumeStream = true, onTerminalError }: UseEventSourceOptions = {}
 ) {
   const [isError, setIsError] = useState<Error | null>(null);
   const lastEvent = useRef<string | null>(null);
@@ -164,7 +169,9 @@ export function useEventSource(
 
         if (reconnectAttempts.current >= MAX_RECONNECT_ATTEMPTS) {
           logger.error("EventSource: too many errors, not reconnecting.");
-          setIsError(new Error("Too many errors, closing connection."));
+          const error = new Error("Too many errors, closing connection.");
+          setIsError(error);
+          onTerminalError?.(error);
 
           return;
         }
@@ -186,7 +193,7 @@ export function useEventSource(
 
       return source;
     },
-    [buildURL, onEventCallback, uniqueId, sourceManager]
+    [buildURL, onEventCallback, uniqueId, sourceManager, onTerminalError]
   );
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: `connect` is intentionally excluded — its identity may change every render if callers don't memoize buildURL/onEventCallback, which would abort in-flight connections.
