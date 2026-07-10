@@ -88,6 +88,8 @@ interface ConversationViewProps {
   pendingValidationForSheet?: ConversationPendingValidation | null;
   /** When set, citation clicks call this instead of opening the internal sheet. */
   onCitationOpen?: (citation: { title: string; icon?: string }) => void;
+  /** When true, the input bar at the bottom is not rendered. */
+  hideInputBar?: boolean;
 }
 
 export function ConversationView({
@@ -103,6 +105,7 @@ export function ConversationView({
   onSend,
   pendingValidationForSheet,
   onCitationOpen,
+  hideInputBar = false,
 }: ConversationViewProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -941,14 +944,16 @@ export function ConversationView({
             <div ref={messagesEndRef} className="h-32 shrink-0" />
           </NewConversationContainer>
         </div>
-        <div className="pointer-events-none absolute bottom-4 left-0 right-0 flex justify-center">
-          <div className="pointer-events-auto w-full max-w-4xl px-4">
-            <InputBar
-              className="shadow-xl"
-              onSend={validationDisplayMode === "sheet" ? onSend : undefined}
-            />
+        {!hideInputBar && (
+          <div className="pointer-events-none absolute bottom-4 left-0 right-0 flex justify-center">
+            <div className="pointer-events-auto w-full max-w-4xl px-4">
+              <InputBar
+                className="shadow-xl"
+                onSend={validationDisplayMode === "sheet" ? onSend : undefined}
+              />
+            </div>
           </div>
-        </div>
+        )}
       </div>
 
       {/* Image citation zoom dialog */}
