@@ -56,6 +56,7 @@ import mcp from "./mcp";
 import me from "./me";
 import members from "./members";
 import metronome from "./metronome";
+import modelTiers from "./model_tiers";
 import models from "./models";
 import oauthSetup from "./oauth/[provider]/setup";
 import pods from "./pods";
@@ -774,6 +775,7 @@ app.post(
 // targets declared above.
 app.route("/analytics", analytics);
 app.route("/advanced_models", advancedModels);
+app.route("/model_tiers", modelTiers);
 app.route("/assistant", assistant);
 app.route("/audit-logs", auditLogs);
 app.route("/billing", billing);
