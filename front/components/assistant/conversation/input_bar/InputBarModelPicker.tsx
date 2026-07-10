@@ -290,6 +290,7 @@ export function InputBarModelPicker({
 
   const toggleAuto = () => {
     if (isAutoOn) {
+      setUserOverride(null);
       setExpanded(true);
     } else {
       commitSelection({ kind: "auto", toSend: AUTO_MODEL_SELECTION });
