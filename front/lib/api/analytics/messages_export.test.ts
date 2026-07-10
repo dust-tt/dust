@@ -101,4 +101,34 @@ describe("fetchMessageExportRows", () => {
     }
     expect(result.value[0].credits).toBe(0);
   });
+
+  it("reports the direct parent in parentMessageId and defaults to empty", async () => {
+    const { authenticator, workspace } = await createResourceTest({
+      role: "admin",
+    });
+
+    mockMessageHits([
+      messageDoc({
+        message_id: "msg_child",
+        ancestor_message_ids: ["msg_parent"],
+      }),
+      messageDoc({ message_id: "msg_root" }),
+    ]);
+
+    const result = await fetchMessageExportRows({
+      auth: authenticator,
+      owner: workspace,
+      startDate: "2026-07-01",
+      endDate: "2026-07-02",
+      timezone: "UTC",
+    });
+
+    expect(result.isOk()).toBe(true);
+    if (result.isErr()) {
+      throw result.error;
+    }
+    expect(result.value).toHaveLength(2);
+    expect(result.value[0].parentMessageId).toBe("msg_parent");
+    expect(result.value[1].parentMessageId).toBe("");
+  });
 });
