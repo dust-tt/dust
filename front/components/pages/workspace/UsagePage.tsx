@@ -75,6 +75,7 @@ import {
   usePerSeatPricing,
   useWorkspaceSeatAvailability,
 } from "@app/lib/swr/workspaces";
+import { CAP_ELIGIBLE_GROUP_KINDS } from "@app/types/groups";
 import type {
   MembershipSeatType,
   MembershipUpgradeRequestType,
@@ -468,7 +469,7 @@ export function UsagePage() {
 
   const { groups } = useGroups({
     owner,
-    kinds: ["provisioned"],
+    kinds: [...CAP_ELIGIBLE_GROUP_KINDS],
     disabled: !pricingGroupsEnabled && !modelsPickerEnabled,
   });
   const selectedGroupName =
