@@ -13,11 +13,13 @@ export class SandboxFunctionMCPActionFactory {
       mcpServerView,
       toolName = "math_operation",
       inputs = { expression: "2+2" },
+      status = "running",
     }: {
       invocation: SandboxFunctionInvocationResource;
       mcpServerView: MCPServerViewResource;
       toolName?: string;
       inputs?: Record<string, unknown>;
+      status?: "running" | "blocked_validation_required";
     }
   ): Promise<SandboxFunctionMCPActionResource> {
     const serverName = mcpServerView.toJSON().server.name;
@@ -53,6 +55,7 @@ export class SandboxFunctionMCPActionFactory {
       toolName,
       inputs,
       toolConfiguration,
+      status,
     });
   }
 }

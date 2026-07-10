@@ -85,12 +85,14 @@ export class SandboxFunctionMCPActionResource extends BaseResource<SandboxFuncti
       toolName,
       inputs,
       toolConfiguration,
+      status,
     }: {
       invocation: SandboxFunctionInvocationResource;
       mcpServerView: MCPServerViewResource;
       toolName: string;
       inputs: Record<string, unknown>;
       toolConfiguration: LightMCPToolConfigurationType;
+      status: "running" | "blocked_validation_required";
     },
     transaction?: Transaction
   ): Promise<SandboxFunctionMCPActionResource> {
@@ -111,7 +113,7 @@ export class SandboxFunctionMCPActionResource extends BaseResource<SandboxFuncti
         toolName,
         inputs,
         toolConfiguration,
-        status: "running",
+        status,
       },
       { transaction }
     );

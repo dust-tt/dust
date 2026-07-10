@@ -37,9 +37,9 @@ app.post(
       arguments: toolArgs,
     } = ctx.req.valid("json");
 
-    // Sandbox function invocations have no conversation: the action is persisted on the
-    // invocation and executed by a dedicated workflow. The sandbox is never paused (function
-    // invocations are blocking execs) so the response can be returned directly.
+    // Sandbox function invocations have no conversation: the action and any approval event are
+    // scoped to the invocation. The sandbox is never paused (function invocations are blocking
+    // execs), so the response can be returned directly.
     if (isSandboxFunctionInvocationTokenPayload(claims)) {
       const result = await createSandboxFunctionMCPAction(auth, {
         sandboxFunctionId: claims.sandboxFunctionId,
