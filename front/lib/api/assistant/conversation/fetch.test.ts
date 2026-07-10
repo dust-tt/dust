@@ -51,31 +51,43 @@ describe("computeMessagesWithToolOutputContent", () => {
   });
 
   it("excludes the oldest batch once the floor's start crosses a batch boundary, and stays put across many turns", () => {
-    // At n=14, floorStart=10, which is the first batch boundary: interactions 1-10 (ids) get
-    // excluded, 11-14 stay included.
-    const atFirstCrossing = computeMessagesWithToolOutputContent(
-      buildInteractions(14),
-      4
-    );
-    expect(atFirstCrossing).toEqual(new Set([11, 12, 13, 14]));
+    const floorCount = 4;
+    const batch = TOOL_OUTPUT_FETCH_BATCH_SIZE;
 
-    // Ten turns later (n=23, floorStart=19), the boundary hasn't moved yet: still exactly
-    // interactions 1-10 excluded, everything from 11 onward included.
-    const tenTurnsLater = computeMessagesWithToolOutputContent(
-      buildInteractions(23),
-      4
-    );
-    expect(tenTurnsLater).toEqual(
-      new Set(Array.from({ length: 13 }, (_, i) => i + 11))
-    );
+    // ids strictly after `excludedUpTo` (i.e. from excludedUpTo+1 to n).
+    const idsIncludedFrom = (excludedUpTo: number, n: number) =>
+      new Set(
+        Array.from({ length: n - excludedUpTo }, (_, i) => excludedUpTo + i + 1)
+      );
 
-    // One more turn (n=24, floorStart=20) crosses the next batch boundary: interactions 11-20 now
-    // also get excluded, in one jump.
-    const nextCrossing = computeMessagesWithToolOutputContent(
-      buildInteractions(24),
-      4
-    );
-    expect(nextCrossing).toEqual(new Set([21, 22, 23, 24]));
+    // First n where floorStart (n - floorCount) reaches the first batch boundary: ids 1..batch
+    // get excluded.
+    const nAtFirstCrossing = batch + floorCount;
+    expect(
+      computeMessagesWithToolOutputContent(
+        buildInteractions(nAtFirstCrossing),
+        floorCount
+      )
+    ).toEqual(idsIncludedFrom(batch, nAtFirstCrossing));
+
+    // Just before the second boundary: unchanged from above, the checkpoint hasn't moved yet.
+    const nJustBeforeNextCrossing = 2 * batch + floorCount - 1;
+    expect(
+      computeMessagesWithToolOutputContent(
+        buildInteractions(nJustBeforeNextCrossing),
+        floorCount
+      )
+    ).toEqual(idsIncludedFrom(batch, nJustBeforeNextCrossing));
+
+    // One more turn crosses the next boundary: ids batch+1..2*batch also get excluded, in one
+    // jump.
+    const nAtNextCrossing = 2 * batch + floorCount;
+    expect(
+      computeMessagesWithToolOutputContent(
+        buildInteractions(nAtNextCrossing),
+        floorCount
+      )
+    ).toEqual(idsIncludedFrom(2 * batch, nAtNextCrossing));
   });
 
   it("never re-includes an interaction once it stops being fetched, as the conversation grows", () => {
@@ -83,8 +95,10 @@ describe("computeMessagesWithToolOutputContent", () => {
     // batch boundary, that's the whole point. What must never happen is the opposite: something
     // that's already excluded coming back once more interactions arrive.
     let previouslyExcluded = new Set<number>();
+    // Comfortably past two batch boundary crossings, whatever the batch size is.
+    const upperBound = 2 * TOOL_OUTPUT_FETCH_BATCH_SIZE + 20;
 
-    for (let n = 1; n <= 50; n++) {
+    for (let n = 1; n <= upperBound; n++) {
       const included = computeMessagesWithToolOutputContent(
         buildInteractions(n),
         4
