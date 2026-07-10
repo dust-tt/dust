@@ -287,9 +287,6 @@ export function InputBarModelPicker({
 
   const toggleAuto = () => {
     if (isAutoOn) {
-      // Untoggling Auto returns to the agent's Default if it has one, and stays
-      // on Auto otherwise. Clearing any manual override surfaces the resolved
-      // default selection ("Default", or "Auto" when the agent has no default).
       setUserOverride(null);
       setExpanded(true);
     } else {
