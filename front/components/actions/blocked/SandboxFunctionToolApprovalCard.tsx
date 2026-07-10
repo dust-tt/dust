@@ -2,7 +2,7 @@ import { ToolValidationCard } from "@app/components/actions/blocked/ToolValidati
 import type { MCPValidationOutputType } from "@app/lib/actions/constants";
 import type { SandboxFunctionMCPApproveExecutionEvent } from "@app/lib/actions/mcp_internal_actions/events";
 import { useAuth } from "@app/lib/auth/AuthContext";
-import { useValidateSandboxFunctionAction } from "@app/lib/swr/sandbox_functions";
+import { useValidateSandboxFunctionAction } from "@app/lib/swr/tool_actions";
 import { useState } from "react";
 
 interface SandboxFunctionToolApprovalCardProps {

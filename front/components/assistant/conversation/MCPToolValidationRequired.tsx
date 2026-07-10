@@ -1,9 +1,9 @@
 import { ToolValidationCard } from "@app/components/actions/blocked/ToolValidationCard";
 import { useBlockedActionsContext } from "@app/components/assistant/conversation/BlockedActionsProvider";
-import { useValidateAction } from "@app/hooks/useValidateAction";
 import type { MCPValidationOutputType } from "@app/lib/actions/constants";
 import type { AgentLoopBlockedToolExecution } from "@app/lib/actions/mcp";
 import { useAuth } from "@app/lib/auth/AuthContext";
+import { useValidateAction } from "@app/lib/swr/tool_actions";
 import type { LightWorkspaceType, UserType } from "@app/types/user";
 import { useState } from "react";
 

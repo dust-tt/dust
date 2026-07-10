@@ -2,7 +2,7 @@ import type { PersonalAuthResolutionOutcome } from "@app/components/actions/bloc
 import { PersonalAuthenticationCard } from "@app/components/actions/blocked/PersonalAuthenticationCard";
 import type { SandboxFunctionToolPersonalAuthRequiredEvent } from "@app/lib/actions/mcp_internal_actions/events";
 import { useAuth } from "@app/lib/auth/AuthContext";
-import { useResolveSandboxFunctionAuthentication } from "@app/lib/swr/sandbox_functions";
+import { useResolveSandboxFunctionAuthentication } from "@app/lib/swr/tool_actions";
 
 interface SandboxFunctionPersonalAuthCardProps {
   event: SandboxFunctionToolPersonalAuthRequiredEvent;

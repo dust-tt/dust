@@ -1,8 +1,8 @@
 import type { PersonalAuthResolutionOutcome } from "@app/components/actions/blocked/PersonalAuthenticationCard";
 import { PersonalAuthenticationCard } from "@app/components/actions/blocked/PersonalAuthenticationCard";
 import { useBlockedActionsContext } from "@app/components/assistant/conversation/BlockedActionsProvider";
-import { useResolveAuthentication } from "@app/hooks/useResolveAuthentication";
 import type { AgentLoopBlockedToolExecution } from "@app/lib/actions/mcp";
+import { useResolveAuthentication } from "@app/lib/swr/tool_actions";
 import type { OAuthProvider } from "@app/types/oauth/lib";
 import type { LightWorkspaceType, UserType } from "@app/types/user";
 

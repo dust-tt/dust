@@ -41,7 +41,7 @@ vi.mock("@app/lib/swr/mcp_servers", () => ({
   }),
 }));
 
-vi.mock("@app/hooks/useResolveAuthentication", () => ({
+vi.mock("@app/lib/swr/tool_actions", () => ({
   useResolveAuthentication: () => ({
     resolveAuthentication: resolveAuthenticationMock,
     isResolving: false,
