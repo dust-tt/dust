@@ -57,6 +57,28 @@ function getMemberTableRows(members: SearchMemberType[]): MemberRowData[] {
   }));
 }
 
+function renderNameCell(info: CellContext<MemberRowData, unknown>) {
+  const { fullName, image, email } = info.row.original;
+  return (
+    <DataTable.CellContent>
+      <div className="flex items-center gap-2">
+        <Avatar
+          name={fullName}
+          visual={image || undefined}
+          size="xs"
+          isRounded
+        />
+        <div className="flex flex-col">
+          <span className="text-sm">{fullName}</span>
+          {email && (
+            <span className="text-xs text-muted-foreground">{email}</span>
+          )}
+        </div>
+      </div>
+    </DataTable.CellContent>
+  );
+}
+
 interface MemberSelectionTableProps {
   owner: LightWorkspaceType;
   selectedMemberIds: Set<string>;
@@ -64,6 +86,7 @@ interface MemberSelectionTableProps {
   extraColumns?: ColumnDef<MemberRowData>[];
   buildersOnly?: boolean;
   initialMembers?: SearchMemberType[];
+  searchLabel?: string;
 }
 
 export function MemberSelectionTable({
@@ -73,6 +96,7 @@ export function MemberSelectionTable({
   extraColumns,
   buildersOnly,
   initialMembers,
+  searchLabel,
 }: MemberSelectionTableProps) {
   const [searchText, setSearchText] = useState("");
   const [pagination, setPagination] = useState<PaginationState>({
@@ -157,29 +181,7 @@ export function MemberSelectionTable({
         meta: {
           className: "w-full",
         },
-        cell: (info: CellContext<MemberRowData, unknown>) => {
-          const { fullName, image, email } = info.row.original;
-          return (
-            <DataTable.CellContent>
-              <div className="flex items-center gap-2">
-                <Avatar
-                  name={fullName}
-                  visual={image || undefined}
-                  size="xs"
-                  isRounded
-                />
-                <div className="flex flex-col">
-                  <span className="text-sm">{fullName}</span>
-                  {email && (
-                    <span className="text-xs text-muted-foreground">
-                      {email}
-                    </span>
-                  )}
-                </div>
-              </div>
-            </DataTable.CellContent>
-          );
-        },
+        cell: renderNameCell,
       },
       ...(extraColumns ?? []),
     ];
@@ -189,10 +191,10 @@ export function MemberSelectionTable({
     <>
       <SearchInput
         name="member-search"
+        label={searchLabel}
         value={searchText}
         onChange={handleSearchChange}
         placeholder="Search users..."
-        className="mt-2"
       />
       <div className="flex min-h-0 flex-1 flex-col">
         {isLoading ? (

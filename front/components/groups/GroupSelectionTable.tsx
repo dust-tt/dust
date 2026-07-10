@@ -36,6 +36,34 @@ interface GroupSelectionTableProps {
   onSelectionChange: (ids: Set<string>, groups: GroupType[]) => void;
 }
 
+const columns: ColumnDef<GroupRowData>[] = [
+  createSelectionColumn<GroupRowData>(),
+  {
+    accessorKey: "name",
+    header: "Name",
+    id: "name",
+    sortingFn: "text",
+    meta: {
+      className: "w-full",
+    },
+    cell: (info: CellContext<GroupRowData, unknown>) => (
+      <DataTable.CellContent icon={Users01}>
+        {info.row.original.name}
+      </DataTable.CellContent>
+    ),
+  },
+  {
+    accessorKey: "memberCount",
+    header: "Members",
+    id: "memberCount",
+    cell: (info: CellContext<GroupRowData, unknown>) => (
+      <DataTable.CellContent>
+        {info.row.original.memberCount}
+      </DataTable.CellContent>
+    ),
+  },
+];
+
 export function GroupSelectionTable({
   owner,
   selectedGroupIds,
@@ -103,37 +131,6 @@ export function GroupSelectionTable({
 
     onSelectionChange(newIds, resolvedGroups);
   };
-
-  const columns: ColumnDef<GroupRowData>[] = useMemo(
-    () => [
-      createSelectionColumn<GroupRowData>(),
-      {
-        accessorKey: "name",
-        header: "Name",
-        id: "name",
-        sortingFn: "text",
-        meta: {
-          className: "w-full",
-        },
-        cell: (info: CellContext<GroupRowData, unknown>) => (
-          <DataTable.CellContent icon={Users01}>
-            {info.row.original.name}
-          </DataTable.CellContent>
-        ),
-      },
-      {
-        accessorKey: "memberCount",
-        header: "Members",
-        id: "memberCount",
-        cell: (info: CellContext<GroupRowData, unknown>) => (
-          <DataTable.CellContent>
-            {info.row.original.memberCount}
-          </DataTable.CellContent>
-        ),
-      },
-    ],
-    []
-  );
 
   return (
     <>

@@ -384,10 +384,11 @@ export function InviteEmailButtonWithModal({
         <DialogContainer>
           <div className="flex flex-col gap-6 text-sm">
             <div className="flex flex-col gap-2">
-              <div className="heading-base text-foreground">
+              <Label className="heading-base text-foreground" htmlFor="email-addresses">
                 Email addresses
-              </div>
+              </Label>
               <TextArea
+                id="email-addresses"
                 placeholder="Email addresses, comma separated"
                 minRows={3}
                 value={inviteEmails}

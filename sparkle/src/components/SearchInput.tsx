@@ -27,7 +27,9 @@ export interface SearchInputProps {
   onKeyDown?: (e: React.KeyboardEvent<HTMLInputElement>) => void;
   onFocus?: () => void;
   onBlur?: () => void;
+  id?: string;
   name: string;
+  label?: string;
   disabled?: boolean;
   isLoading?: boolean;
   className?: string;
@@ -37,12 +39,14 @@ export const SearchInput = forwardRef<HTMLInputElement, SearchInputProps>(
   (
     {
       placeholder = "Search",
+      id,
       value,
       onChange,
       onKeyDown,
       onFocus,
       onBlur,
       name,
+      label,
       disabled = false,
       isLoading = false,
       className,
@@ -53,49 +57,55 @@ export const SearchInput = forwardRef<HTMLInputElement, SearchInputProps>(
       onChange("");
     };
 
+    const inputId = id ?? name;
+
     return (
-      <div className={cn("relative", className)}>
-        <Input
-          type="text"
-          name={name}
-          autoComplete="off"
-          placeholder={placeholder}
-          value={value}
-          onChange={(e) => {
-            onChange(e.target.value);
-          }}
-          onFocus={onFocus}
-          onBlur={onBlur}
-          onKeyDown={onKeyDown}
-          disabled={disabled}
-          ref={ref}
-        />
-        <div className="absolute inset-y-0 right-0 flex items-center pr-1">
-          {isLoading ? (
-            <div className="px-1">
-              <Spinner size="xs" />
-            </div>
-          ) : value ? (
-            <Button
-              icon={XClose}
-              variant="ghost"
-              size="xs"
-              onClick={clearInputField}
-            />
-          ) : (
-            <div
-              className={cn(
-                "px-2",
-                disabled ? "text-muted-foreground" : "text-foreground"
-              )}
-            >
-              <Icon
-                visual={SearchMd}
+      <div className={cn("flex flex-col gap-1", className)}>
+        <div className="relative">
+          <Input
+            id={inputId}
+            label={label}
+            type="text"
+            name={name}
+            autoComplete="off"
+            placeholder={placeholder}
+            value={value}
+            onChange={(e) => {
+              onChange(e.target.value);
+            }}
+            onFocus={onFocus}
+            onBlur={onBlur}
+            onKeyDown={onKeyDown}
+            disabled={disabled}
+            ref={ref}
+          />
+          <div className="absolute inset-y-0 right-0 flex items-center pr-1">
+            {isLoading ? (
+              <div className="px-1">
+                <Spinner size="xs" />
+              </div>
+            ) : value ? (
+              <Button
+                icon={XClose}
+                variant="ghost"
                 size="xs"
-                className="text-muted-foreground"
+                onClick={clearInputField}
               />
-            </div>
-          )}
+            ) : (
+              <div
+                className={cn(
+                  "px-2",
+                  disabled ? "text-muted-foreground" : "text-foreground"
+                )}
+              >
+                <Icon
+                  visual={SearchMd}
+                  size="xs"
+                  className="text-muted-foreground"
+                />
+              </div>
+            )}
+          </div>
         </div>
       </div>
     );

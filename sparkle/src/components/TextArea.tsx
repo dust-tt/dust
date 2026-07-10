@@ -74,6 +74,7 @@ const TextArea = React.forwardRef<HTMLTextAreaElement, TextareaProps>(
   (
     {
       className,
+      id,
       resize,
       minRows = 10,
       error,
@@ -87,6 +88,7 @@ const TextArea = React.forwardRef<HTMLTextAreaElement, TextareaProps>(
     return (
       <div className="flex flex-col gap-1 p-px">
         <textarea
+          id={id}
           className={cn(
             textAreaVariants({
               resize,
