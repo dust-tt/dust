@@ -22,7 +22,7 @@ interface ModelPickerContentProps {
   // The Auto row: null hides it entirely (e.g. while searching), otherwise
   // `isOn` drives the toggle state.
   auto: { isOn: boolean } | null;
-  selectedKey?: string;
+  selected: ModelWithReasoningEffort | null;
   onToggleAuto: () => void;
   onSelectModel: (modelWithEffort: ModelWithReasoningEffort) => void;
   // On mobile the "More models" providers expand inline; this tracks the single
@@ -37,7 +37,7 @@ export function ModelPickerContent({
   onSearchChange,
   listState,
   auto,
-  selectedKey,
+  selected,
   onToggleAuto,
   onSelectModel,
   expandedProvider,
@@ -70,7 +70,7 @@ export function ModelPickerContent({
 
       <ModelPickerList
         listState={listState}
-        selectedKey={selectedKey}
+        selected={selected}
         onSelectModel={onSelectModel}
         expandedProvider={expandedProvider}
         onToggleProvider={onToggleProvider}
