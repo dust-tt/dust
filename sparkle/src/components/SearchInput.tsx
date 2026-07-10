@@ -29,7 +29,6 @@ export interface SearchInputProps {
   onBlur?: () => void;
   id?: string;
   name: string;
-  label?: string;
   disabled?: boolean;
   isLoading?: boolean;
   className?: string;
@@ -46,7 +45,6 @@ export const SearchInput = forwardRef<HTMLInputElement, SearchInputProps>(
       onFocus,
       onBlur,
       name,
-      label,
       disabled = false,
       isLoading = false,
       className,
@@ -63,7 +61,6 @@ export const SearchInput = forwardRef<HTMLInputElement, SearchInputProps>(
       <div className={cn("relative", className)}>
         <Input
           id={inputId}
-          label={label}
           type="text"
           name={name}
           autoComplete="off"

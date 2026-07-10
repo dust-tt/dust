@@ -64,7 +64,6 @@ interface MemberSelectionTableProps {
   extraColumns?: ColumnDef<MemberRowData>[];
   buildersOnly?: boolean;
   initialMembers?: SearchMemberType[];
-  searchLabel?: string;
 }
 
 export function MemberSelectionTable({
@@ -74,7 +73,6 @@ export function MemberSelectionTable({
   extraColumns,
   buildersOnly,
   initialMembers,
-  searchLabel,
 }: MemberSelectionTableProps) {
   const [searchText, setSearchText] = useState("");
   const [pagination, setPagination] = useState<PaginationState>({
@@ -191,7 +189,6 @@ export function MemberSelectionTable({
     <>
       <SearchInput
         name="member-search"
-        label={searchLabel}
         value={searchText}
         onChange={handleSearchChange}
         placeholder="Search users..."
