@@ -21,7 +21,7 @@ interface AgentMessageDocument extends ElasticsearchBaseDocument {
   timestamp: string;
   agent_id: string;
   conversation_id: string;
-  // SIds of the agent messages that triggered this message through `run_agent`,
+  // Ids of the agent messages that triggered this message through `run_agent`,
   // direct parent first. Empty or absent for user-initiated messages.
   ancestor_message_ids?: string[];
   user_id: string;
