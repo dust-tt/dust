@@ -62,7 +62,14 @@ import {
   XCircle,
 } from "@dust-tt/sparkle";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useCallback, useContext, useEffect, useMemo, useState } from "react";
+import {
+  createElement,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 import { useForm } from "react-hook-form";
 
 interface PodSettingsTabProps {
@@ -602,7 +609,7 @@ export function PodSettingsTab({
                     !isPodEditor && "opacity-50"
                   )}
                 >
-                  <Avatar size="xs" icon={getSkillAvatarIcon(skill)} />
+                  {createElement(getSkillAvatarIcon(skill), { size: "xs" })}
                   <span className="grow truncate notranslate">
                     {skill.name}
                   </span>
@@ -661,7 +668,9 @@ export function PodSettingsTab({
                       addableSkills.map((skill) => (
                         <DropdownMenuItem
                           key={skill.sId}
-                          icon={getSkillAvatarIcon(skill)}
+                          icon={createElement(getSkillAvatarIcon(skill), {
+                            size: "xs",
+                          })}
                           label={skill.name}
                           description={skill.userFacingDescription ?? undefined}
                           truncateText
