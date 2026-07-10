@@ -44,6 +44,7 @@ export type DbErrorKind =
   | "apply_failed"
   | "empty_sql"
   | "query_failed"
+  | "database_full"
   // Unexpected non-DbCommandError failures (infrastructure, bugs) — front must NOT treat
   // these as model-correctable.
   | "internal";

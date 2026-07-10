@@ -5,9 +5,13 @@
 //   runner build <src> <outBundle> <outSchema>   bundle + extract schema to files
 //   runner db-reconcile <dbPath> <schemaFile>    additive-only DDL reconcile -> stdout envelope
 //   runner db-schema <dbPath> <outSchemaTs>      regenerate drizzle schema file -> file + envelope
+//   runner db-query <dbPath>                     stdin SQL -> stdout rows envelope (SELECT/DML
+//                                                only, DDL refused; large results spill to a file
+//                                                the envelope names)
 
 import { build } from "./build.ts";
-import { errorEnvelope } from "./db/common.ts";
+import { errorEnvelope, podDatabaseMaxSizeBytes } from "./db/common.ts";
+import { runQuery } from "./db/query.ts";
 import { reconcile } from "./db/reconcile.ts";
 import { generateSchemaFileText } from "./db/schema.ts";
 import { invoke } from "./invoke.ts";
@@ -105,6 +109,28 @@ async function dbSchemaHandler(args: string[]): Promise<number> {
   return 0;
 }
 
+async function dbQueryHandler(args: string[]): Promise<number> {
+  const [dbPath] = args;
+  if (!dbPath) {
+    return emitDbBadArgs("usage: runner db-query <dbPath> (SQL on stdin)");
+  }
+  const maxSizeBytes = podDatabaseMaxSizeBytes();
+  if (maxSizeBytes.isErr()) {
+    process.stdout.write(
+      `${JSON.stringify(errorEnvelope(maxSizeBytes.error))}\n`
+    );
+    return 1;
+  }
+  const sql = await Bun.stdin.text();
+  const result = runQuery(dbPath, sql, maxSizeBytes.value);
+  if (result.isErr()) {
+    process.stdout.write(`${JSON.stringify(errorEnvelope(result.error))}\n`);
+    return 1;
+  }
+  process.stdout.write(`${JSON.stringify({ ok: true, ...result.value })}\n`);
+  return 0;
+}
+
 async function main(): Promise<number> {
   const [command, ...rest] = process.argv.slice(2);
   if (command === "build") {
@@ -115,6 +141,9 @@ async function main(): Promise<number> {
   }
   if (command === "db-schema") {
     return dbSchemaHandler(rest);
+  }
+  if (command === "db-query") {
+    return dbQueryHandler(rest);
   }
 
   const [handlerPath] = rest;

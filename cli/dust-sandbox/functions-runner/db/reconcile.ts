@@ -22,7 +22,7 @@ import { SQLiteTable } from "drizzle-orm/sqlite-core";
 import { Err, Ok, type Result } from "../result.ts";
 import type { DatabaseSchema } from "../types/db.ts";
 import {
-  DB_BUSY_TIMEOUT_MS,
+  applyWritePragmas,
   DbCommandError,
   introspectLiveTables,
 } from "./common.ts";
@@ -117,11 +117,10 @@ function openLiveDatabase(dbPath: string, created: boolean): Database {
     // replicates; SQLite derives the -wal/-shm modes from the database file's mode.
     chmodSync(dbPath, 0o660);
   }
-  sqlite.exec(`PRAGMA busy_timeout = ${DB_BUSY_TIMEOUT_MS};`);
   if (created) {
     sqlite.exec("PRAGMA journal_mode = WAL;");
   }
-  sqlite.exec("PRAGMA synchronous = NORMAL;");
+  applyWritePragmas(sqlite);
   return sqlite;
 }
 
