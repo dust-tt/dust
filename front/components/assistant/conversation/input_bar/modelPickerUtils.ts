@@ -2,7 +2,7 @@ import { getSupportedModelConfig } from "@app/lib/llms/model_configurations";
 import type { AgentModelConfigurationType } from "@app/types/assistant/agent";
 import { CLAUDE_SONNET_4_6_MODEL_ID } from "@app/types/assistant/models/anthropic";
 import { AUTO_MODEL_ID } from "@app/types/assistant/models/auto";
-import { GPT_5_6_SOL_MODEL_ID } from "@app/types/assistant/models/openai";
+import { GPT_5_6_TERRA_MODEL_ID } from "@app/types/assistant/models/openai";
 import type {
   ModelConfigurationType,
   ModelProviderIdType,
@@ -35,7 +35,7 @@ export const SUGGESTED_PINS: {
   },
   {
     providerId: "openai",
-    modelId: GPT_5_6_SOL_MODEL_ID,
+    modelId: GPT_5_6_TERRA_MODEL_ID,
     effort: "high",
     recommendation:
       "Hard problems. Recommended for high quality retrieval, complex analysis and Frames",
