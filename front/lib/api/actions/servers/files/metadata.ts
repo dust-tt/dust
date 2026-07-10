@@ -3,7 +3,9 @@ import { createToolsRecord } from "@app/lib/actions/mcp_internal_actions/tool_de
 import { getPrefixedToolName } from "@app/lib/actions/tool_name_utils";
 import {
   CREATE_INTERACTIVE_CONTENT_FILE_TOOL_NAME,
+  FRAME_SOURCE_MAX_BYTES,
   INTERACTIVE_CONTENT_SERVER_NAME,
+  PUBLISH_INTERACTIVE_CONTENT_FILE_TOOL_NAME,
 } from "@app/lib/api/actions/servers/interactive_content/metadata";
 import { FILE_PREVIEW_DIRECTIVE_EXAMPLE } from "@app/lib/markdown/file_preview";
 import { frameContentType, frameSlideshowContentType } from "@app/types/files";
@@ -257,12 +259,17 @@ const FILES_TOOLS_COMMON_METADATA = {
     description:
       "Create or overwrite a file in a conversation or Pod file system. " +
       "Accepts UTF-8 text content only. Binary files cannot be created via this tool. " +
-      `Content is capped at ${CREATE_CONTENT_MAX_BYTES / 1024} KB. ` +
-      "If the file already exists it is silently overwritten (shell \`>\` semantics). " +
-      "A file written with a Frame content type is only a source file on the mount. To turn it " +
-      `into a shareable rendered Frame, use \`${getPrefixedToolName(INTERACTIVE_CONTENT_SERVER_NAME, CREATE_INTERACTIVE_CONTENT_FILE_TOOL_NAME)}\` ` +
-      "with mode='template' and this path as source. " +
-      "Overwriting an existing Frame file updates only its source, never the rendered Frame directly. " +
+      `Content is capped at ${CREATE_CONTENT_MAX_BYTES / 1024} KB, or ` +
+      `${FRAME_SOURCE_MAX_BYTES / 1024} KB when overwriting an existing Frame source file. ` +
+      "If the file already exists it is silently overwritten (shell \`>\` semantics); for " +
+      `partial changes to an existing file, prefer \`${getPrefixedToolName(FILES_SERVER_NAME, FILES_EDIT_ACTION_NAME)}\` ` +
+      "over resending the full content. " +
+      "A new file written with a Frame content type is only a source file on the mount. To turn " +
+      `it into a shareable rendered Frame, use \`${getPrefixedToolName(INTERACTIVE_CONTENT_SERVER_NAME, CREATE_INTERACTIVE_CONTENT_FILE_TOOL_NAME)}\` ` +
+      "with mode='template' and this path as source, but never do this for a Frame that " +
+      "already exists. " +
+      "Overwriting an existing Frame file updates only its source, never the rendered Frame " +
+      "directly. " +
       "Returns whether the file was created or updated, along with its path and size.",
     schema: {
       path: z
@@ -345,12 +352,16 @@ const FILES_TOOLS_COMMON_METADATA = {
 const EDIT_TOOL = {
   description:
     "Edit a text file by replacing an exact string match with new content. " +
+    "This is also how to update an existing Frame (interactive dashboard, data visualization, " +
+    "chart, or slideshow): make targeted edits to the Frame's source file, then publish it with " +
+    `\`${getPrefixedToolName(INTERACTIVE_CONTENT_SERVER_NAME, PUBLISH_INTERACTIVE_CONTENT_FILE_TOOL_NAME)}\`. ` +
+    "Never create a new Frame or rewrite the whole source to change an existing one. " +
     "`old_string` must match the file content exactly, including whitespace and indentation. " +
     "Fails if `old_string` is not found or if the number of occurrences does not match " +
     "`expected_replacements` (default 1); make `old_string` unique by including surrounding lines. " +
-    `Files larger than ${CREATE_CONTENT_MAX_BYTES / 1024} KB cannot be edited with this tool. ` +
-    "Editing a Frame source file updates only its source, never the rendered Frame directly. " +
-    "The tool result explains how to apply the change to the rendered Frame.",
+    `Files larger than ${CREATE_CONTENT_MAX_BYTES / 1024} KB cannot be edited with this tool, ` +
+    `except Frame source files, which get a higher, ${FRAME_SOURCE_MAX_BYTES / 1024} KB cap. ` +
+    "Editing a Frame source file updates only its source, never the rendered Frame directly.",
   schema: {
     path: z
       .string()
@@ -374,6 +385,9 @@ const EDIT_TOOL = {
       ),
   },
   stake: "never_ask" as const,
+  // Editing a file is a common case, so it's worth keeping this in the cached prefix instead
+  // of behind tool search.
+  eager: true,
   displayLabels: {
     running: "Editing file",
     done: "Edited file",

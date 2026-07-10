@@ -9,4 +9,5 @@ export type PokeWorkspaceType = LightWorkspaceType & {
 
 export type GetPokeWorkspacesResponseBody = {
   workspaces: PokeWorkspaceType[];
+  hasMore: boolean;
 };

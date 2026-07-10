@@ -27,7 +27,7 @@ export function SkillDetailsButtonBar({
 }: SkillDetailsButtonBarProps) {
   const [showArchiveDialog, setShowArchiveDialog] = useState(false);
 
-  if (!skill.canWrite) {
+  if (!skill.canAdministrate) {
     return null;
   }
 
@@ -43,31 +43,27 @@ export function SkillDetailsButtonBar({
         }}
       />
       <div className="flex flex-row items-center gap-2 px-1.5">
-        {skill.canWrite && (
-          <Button
-            size="sm"
-            tooltip="Edit skill"
-            href={getSkillBuilderRoute(owner.sId, skill.sId)}
-            variant="outline"
-            icon={Edit04}
-          />
-        )}
+        <Button
+          size="sm"
+          tooltip="Edit skill"
+          href={getSkillBuilderRoute(owner.sId, skill.sId)}
+          variant="outline"
+          icon={Edit04}
+        />
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button icon={DotsHorizontal} size="sm" variant="ghost" />
           </DropdownMenuTrigger>
           <DropdownMenuContent>
-            {skill.canWrite && (
-              <DropdownMenuItem
-                label="Archive"
-                icon={Trash01}
-                variant="warning"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setShowArchiveDialog(true);
-                }}
-              />
-            )}
+            <DropdownMenuItem
+              label="Archive"
+              icon={Trash01}
+              variant="warning"
+              onClick={(e) => {
+                e.stopPropagation();
+                setShowArchiveDialog(true);
+              }}
+            />
           </DropdownMenuContent>
         </DropdownMenu>
       </div>

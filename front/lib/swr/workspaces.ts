@@ -1235,14 +1235,18 @@ export function useCreateCheckoutSession({
   return { createSession, isCreating };
 }
 
+// Polls the checkout activation status by Stripe setup session id. The session
+// id is known to the client from the first step, so polling can start while the
+// activation contract is still being provisioned (the contract id only exists
+// once that provisioning completes server-side).
 export function useCheckBusinessActivation({
   workspaceId,
-  contractId,
+  setupSessionId,
   disabled,
   pollIntervalMs = 0,
 }: {
   workspaceId: string;
-  contractId: string | null;
+  setupSessionId: string | null;
   disabled?: boolean;
   pollIntervalMs?: number;
 }) {
@@ -1250,9 +1254,9 @@ export function useCheckBusinessActivation({
   const statusFetcher: Fetcher<GetBusinessActivationResponseBody> = fetcher;
 
   const url =
-    disabled || !contractId
+    disabled || !setupSessionId
       ? null
-      : `/api/w/${workspaceId}/subscriptions/checkout/business-activation?contract_id=${contractId}`;
+      : `/api/w/${workspaceId}/subscriptions/checkout/business-activation?setup_session_id=${setupSessionId}`;
 
   const { data, error } = useSWRWithDefaults(url, statusFetcher, {
     refreshInterval: pollIntervalMs,
@@ -1261,10 +1265,38 @@ export function useCheckBusinessActivation({
 
   return {
     checkoutPayment: data?.checkoutPayment ?? null,
-    invoiceUrl: data?.invoiceUrl ?? null,
-    isCheckoutPaymentLoading: !error && !data && !disabled && !!contractId,
+    isCheckoutPaymentLoading: !error && !data && !disabled && !!setupSessionId,
     isCheckoutPaymentError: !!error,
   };
+}
+
+// Fetches the Stripe hosted invoice (receipt) URL for a completed checkout. Kept
+// separate from `useCheckBusinessActivation` because the underlying Stripe
+// round-trip is slow (~seconds): the status poll must stay fast so the success
+// screen shows immediately, and this fetches the receipt URL lazily afterwards
+// (only enabled once the checkout has succeeded).
+export function useCheckoutReceiptUrl({
+  workspaceId,
+  setupSessionId,
+  disabled,
+}: {
+  workspaceId: string;
+  setupSessionId: string | null;
+  disabled?: boolean;
+}) {
+  const { fetcher } = useFetcher();
+  const statusFetcher: Fetcher<GetBusinessActivationResponseBody> = fetcher;
+
+  const url =
+    disabled || !setupSessionId
+      ? null
+      : `/api/w/${workspaceId}/subscriptions/checkout/business-activation?setup_session_id=${setupSessionId}&receipt=true`;
+
+  const { data } = useSWRWithDefaults(url, statusFetcher, {
+    revalidateOnFocus: false,
+  });
+
+  return { receiptUrl: data?.invoiceUrl ?? null };
 }
 
 export function useInitiateBusinessActivation({

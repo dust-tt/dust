@@ -1,8 +1,8 @@
 import type {
-  MCPApproveExecutionEvent,
-  ToolAskUserQuestionEvent,
-  ToolFileAuthRequiredEvent,
-  ToolPersonalAuthRequiredEvent,
+  AgentLoopMCPApproveExecutionEvent,
+  AgentLoopToolAskUserQuestionEvent,
+  AgentLoopToolFileAuthRequiredEvent,
+  AgentLoopToolPersonalAuthRequiredEvent,
 } from "@app/lib/actions/mcp_internal_actions/events";
 import type { ModelId } from "@app/types/shared/model_id";
 
@@ -12,10 +12,10 @@ import type { ModelId } from "@app/types/shared/model_id";
  * rather than immediately when they occur.
  */
 type DeferrableEvent =
-  | MCPApproveExecutionEvent
-  | ToolAskUserQuestionEvent
-  | ToolFileAuthRequiredEvent
-  | ToolPersonalAuthRequiredEvent;
+  | AgentLoopMCPApproveExecutionEvent
+  | AgentLoopToolAskUserQuestionEvent
+  | AgentLoopToolFileAuthRequiredEvent
+  | AgentLoopToolPersonalAuthRequiredEvent;
 
 /**
  * Context information needed to send a deferred event.

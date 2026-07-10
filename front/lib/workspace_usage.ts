@@ -14,6 +14,7 @@ import { MembershipModel } from "@app/lib/resources/storage/models/membership";
 import { UserModel } from "@app/lib/resources/storage/models/user";
 import { getConversationRoute } from "@app/lib/utils/router";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
+import { CAP_ELIGIBLE_GROUP_KINDS } from "@app/types/groups";
 import type { ModelId } from "@app/types/shared/model_id";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { WorkspaceType } from "@app/types/user";
@@ -291,7 +292,7 @@ export async function getUserGroupMemberships(
             required: true,
             where: {
               kind: {
-                [Op.in]: ["provisioned"],
+                [Op.in]: [...CAP_ELIGIBLE_GROUP_KINDS],
               },
             },
           },

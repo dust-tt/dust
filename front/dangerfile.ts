@@ -148,10 +148,10 @@ function checkSDKLabel() {
 }
 
 function checkDeployPlanSection() {
-  const PRDescription = danger.github.pr.body;
+  const PRDescription = danger.github.pr.body ?? "";
 
   const deployPlanSectionRegex =
-    /## Deploy Plan.*?\r\n([\s\S]*?)(?=<!--|\n##|$)/;
+    /## Deploy Plan.*?\r?\n([\s\S]*?)(?=<!--|\n##|$)/;
 
   const match = PRDescription.match(deployPlanSectionRegex);
   if (!match || match[1].trim().length < 20) {

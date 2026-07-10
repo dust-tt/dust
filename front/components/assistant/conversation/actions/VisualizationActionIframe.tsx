@@ -1,6 +1,13 @@
+import { SandboxFunctionPersonalAuthCard } from "@app/components/actions/blocked/SandboxFunctionPersonalAuthCard";
+import { SandboxFunctionToolApprovalCard } from "@app/components/actions/blocked/SandboxFunctionToolApprovalCard";
 import { useVisualizationRetry } from "@app/hooks/conversations";
+import { useEventSource } from "@app/hooks/useEventSource";
 import { useSendNotification } from "@app/hooks/useNotification";
-import { clientEventSource, clientFetch } from "@app/lib/egress/client";
+import type {
+  SandboxFunctionMCPApproveExecutionEvent,
+  SandboxFunctionToolPersonalAuthRequiredEvent,
+} from "@app/lib/actions/mcp_internal_actions/events";
+import { clientFetch } from "@app/lib/egress/client";
 import { getErrorFromResponse } from "@app/lib/swr/swr";
 import datadogLogger from "@app/logger/datadogLogger";
 import type {
@@ -90,96 +97,166 @@ const getExtensionFromBlob = (blob: Blob): string => {
   return mimeToExt[blob.type] || "txt"; // Default to 'txt' if mime type is unknown.
 };
 
-const SANDBOX_FUNCTION_INVOCATION_RESULT_TIMEOUT_MS = 5 * 60 * 1000;
-
-async function waitForSandboxFunctionInvocationResult({
-  functionId,
-  invocationId,
-  workspaceId,
-}: {
+interface SandboxFunctionInvocationProps {
+  workspaceId: string;
   functionId: string;
   invocationId: string;
-  workspaceId: string;
-}): Promise<CommandResultMap["callFunction"]> {
-  let source: Awaited<ReturnType<typeof clientEventSource>>;
-  try {
-    source = await clientEventSource(
-      `/api/sse/w/${workspaceId}/sandbox-functions/${functionId}/invocations/${invocationId}/events`
-    );
-  } catch (error) {
-    return {
-      result: null,
-      error:
-        "Failed to listen to function invocation events: " +
-        normalizeError(error).message,
-    };
-  }
+  onSettle: (
+    invocationId: string,
+    response: CommandResultMap["callFunction"]
+  ) => void;
+}
 
-  return new Promise((resolve) => {
-    let isDone = false;
-    let timeoutId: ReturnType<typeof setTimeout> | undefined;
+type SandboxFunctionBlockingEvent =
+  | SandboxFunctionMCPApproveExecutionEvent
+  | SandboxFunctionToolPersonalAuthRequiredEvent;
 
-    const finish = (response: CommandResultMap["callFunction"]) => {
-      if (isDone) {
-        return;
-      }
+type QueuedBlockingEvent = {
+  // SSE event id, unique per delivery. Removal targets this exact version: resolving an action can
+  // produce a follow-up blocking event for the same actionId (e.g. approval then personal auth)
+  // before the resolve response returns, and that newer entry must survive the removal.
+  eventId: string;
+  event: SandboxFunctionBlockingEvent;
+};
 
-      isDone = true;
-      if (timeoutId !== undefined) {
-        clearTimeout(timeoutId);
-      }
-      source.close();
-      resolve(response);
-    };
+// Consumes one invocation's event stream, settles the pending iframe call, and renders the
+// approval or authentication card over the frame while a tool is blocked on user input.
+function SandboxFunctionInvocation({
+  workspaceId,
+  functionId,
+  invocationId,
+  onSettle,
+}: SandboxFunctionInvocationProps) {
+  const [blockedActions, setBlockedActions] = useState<QueuedBlockingEvent[]>(
+    []
+  );
 
-    timeoutId = setTimeout(() => {
-      finish({
-        result: null,
-        error: "Timed out waiting for function invocation result.",
+  const enqueueBlockedAction = useCallback(
+    (eventId: string, event: SandboxFunctionBlockingEvent) => {
+      setBlockedActions((prev) => {
+        // The stream can re-deliver or supersede an event after a reconnect or a resolution:
+        // replace by actionId, keeping the newest delivery.
+        const existingIndex = prev.findIndex(
+          (a) => a.event.actionId === event.actionId
+        );
+        const entry = { eventId, event };
+        return existingIndex === -1
+          ? [...prev, entry]
+          : prev.map((a, index) => (index === existingIndex ? entry : a));
       });
-    }, SANDBOX_FUNCTION_INVOCATION_RESULT_TIMEOUT_MS);
+    },
+    []
+  );
 
-    source.onmessage = (event) => {
-      if (event.data === "done") {
-        finish({
-          result: null,
-          error: "Function invocation stream ended before a result.",
-        });
-        return;
+  const removeBlockedAction = useCallback((eventId: string) => {
+    setBlockedActions((prev) => prev.filter((a) => a.eventId !== eventId));
+  }, []);
+
+  const buildEventSourceURL = useCallback(
+    (lastEvent: string | null) => {
+      const esURL = `/api/sse/w/${workspaceId}/sandbox-functions/${functionId}/invocations/${invocationId}/events`;
+      let lastEventId = "";
+      if (lastEvent) {
+        const eventPayload: { eventId: string } = JSON.parse(lastEvent);
+        lastEventId = eventPayload.eventId;
       }
+      return esURL + "?lastEventId=" + lastEventId;
+    },
+    [workspaceId, functionId, invocationId]
+  );
 
+  const onEventCallback = useCallback(
+    (eventStr: string) => {
       try {
         const eventPayload: {
+          eventId: string;
           data: SandboxFunctionInvocationEvent;
-        } = JSON.parse(event.data);
+        } = JSON.parse(eventStr);
 
         switch (eventPayload.data.type) {
           case "sandbox_function_invocation_created":
             // NO-OP
             break;
           case "sandbox_function_invocation_result":
-            finish({ result: eventPayload.data.result });
+            onSettle(invocationId, { result: eventPayload.data.result });
+            break;
+          case "sandbox_function_invocation_error":
+            onSettle(invocationId, {
+              result: null,
+              error: eventPayload.data.message,
+            });
+            break;
+          case "tool_approve_execution":
+          case "tool_personal_auth_required":
+            enqueueBlockedAction(eventPayload.eventId, eventPayload.data);
             break;
           default:
             assertNeverAndIgnore(eventPayload.data);
         }
       } catch (error) {
-        finish({
+        onSettle(invocationId, {
           result: null,
           error:
             "Failed to parse function invocation event: " +
             normalizeError(error).message,
         });
       }
-    };
+    },
+    [invocationId, onSettle, enqueueBlockedAction]
+  );
 
-    source.onerror = () => {
-      finish({
-        result: null,
-        error: "Failed to listen to function invocation events.",
-      });
-    };
-  });
+  const onTerminalError = useCallback(() => {
+    onSettle(invocationId, {
+      result: null,
+      error: "Failed to listen to function invocation events.",
+    });
+  }, [invocationId, onSettle]);
+
+  useEventSource(
+    buildEventSourceURL,
+    onEventCallback,
+    `sandbox-function-invocation-${invocationId}`,
+    { onTerminalError }
+  );
+
+  const blockedAction = blockedActions.at(0);
+  if (!blockedAction) {
+    return null;
+  }
+
+  let blockedActionCard: React.ReactNode;
+  switch (blockedAction.event.type) {
+    case "tool_approve_execution":
+      blockedActionCard = (
+        <SandboxFunctionToolApprovalCard
+          key={blockedAction.eventId}
+          event={blockedAction.event}
+          onResolved={() => removeBlockedAction(blockedAction.eventId)}
+        />
+      );
+      break;
+    case "tool_personal_auth_required":
+      blockedActionCard = (
+        <SandboxFunctionPersonalAuthCard
+          key={blockedAction.eventId}
+          event={blockedAction.event}
+          onResolved={() => removeBlockedAction(blockedAction.eventId)}
+        />
+      );
+      break;
+    default:
+      assertNeverAndIgnore(blockedAction.event);
+      blockedActionCard = null;
+  }
+
+  // Covers the frame while the tool is blocked on user input; positioned within the component's
+  // relative root, same layering approach as the loading spinner overlay. Cards are keyed by the
+  // delivery eventId so consecutive events of the same type never reuse local card state.
+  return (
+    <div className="absolute inset-0 z-10 flex items-center justify-center overflow-auto bg-panel-background p-4">
+      <div className="w-full max-w-xl">{blockedActionCard}</div>
+    </div>
+  );
 }
 
 // Custom hook to encapsulate the logic for handling visualization messages.
@@ -187,12 +264,12 @@ function useVisualizationDataHandler({
   createSandboxFunctionInvocation,
   getFileBlob,
   onEditText,
-  workspaceId,
   setCodeDrawerOpened,
   setContentHeight,
   setErrorMessage,
   visualization,
   vizIframeRef,
+  waitForSandboxFunctionInvocationResult,
 }: {
   createSandboxFunctionInvocation: (
     functionIdOrSlug: string,
@@ -205,7 +282,10 @@ function useVisualizationDataHandler({
   setErrorMessage: (v: SetStateAction<string | null>) => void;
   visualization: Visualization;
   vizIframeRef: React.MutableRefObject<HTMLIFrameElement | null>;
-  workspaceId: string;
+  waitForSandboxFunctionInvocationResult: (params: {
+    functionId: string;
+    invocationId: string;
+  }) => Promise<CommandResultMap["callFunction"]>;
 }) {
   const sendNotification = useSendNotification();
   const { code } = visualization;
@@ -282,7 +362,6 @@ function useVisualizationDataHandler({
           }
 
           const result = await waitForSandboxFunctionInvocationResult({
-            workspaceId,
             functionId: invocationRes.value.functionId,
             invocationId: invocationRes.value.sId,
           });
@@ -365,7 +444,7 @@ function useVisualizationDataHandler({
     visualization.identifier,
     vizIframeRef,
     sendNotification,
-    workspaceId,
+    waitForSandboxFunctionInvocationResult,
   ]);
 }
 
@@ -425,6 +504,48 @@ export const VisualizationActionIframe = forwardRef<
   const [retryClicked, setRetryClicked] = useState(false);
   const [isCodeDrawerOpen, setCodeDrawerOpened] = useState(false);
   const vizIframeRef = useRef<HTMLIFrameElement | null>(null);
+
+  // In-flight sandbox function invocations. Each entry mounts a
+  // SandboxFunctionInvocation; the resolver of the pending `callFunction` promise is kept
+  // in a ref so settling stays a pure state update.
+  const [activeInvocations, setActiveInvocations] = useState<
+    { functionId: string; invocationId: string }[]
+  >([]);
+  const invocationResolversRef = useRef<Map<
+    string,
+    (response: CommandResultMap["callFunction"]) => void
+  > | null>(null);
+  if (invocationResolversRef.current === null) {
+    invocationResolversRef.current = new Map();
+  }
+  const invocationResolvers = invocationResolversRef.current;
+
+  const waitForSandboxFunctionInvocationResult = useCallback(
+    ({
+      functionId,
+      invocationId,
+    }: {
+      functionId: string;
+      invocationId: string;
+    }) =>
+      new Promise<CommandResultMap["callFunction"]>((resolve) => {
+        invocationResolvers.set(invocationId, resolve);
+        setActiveInvocations((prev) => [...prev, { functionId, invocationId }]);
+      }),
+    [invocationResolvers]
+  );
+
+  const settleSandboxFunctionInvocation = useCallback(
+    (invocationId: string, response: CommandResultMap["callFunction"]) => {
+      const resolve = invocationResolvers.get(invocationId);
+      invocationResolvers.delete(invocationId);
+      setActiveInvocations((prev) =>
+        prev.filter((invocation) => invocation.invocationId !== invocationId)
+      );
+      resolve?.(response);
+    },
+    [invocationResolvers]
+  );
 
   // Combine internal ref with forwarded ref.
   const combinedRef = useCallback(
@@ -550,7 +671,7 @@ export const VisualizationActionIframe = forwardRef<
     setErrorMessage,
     visualization,
     vizIframeRef,
-    workspaceId,
+    waitForSandboxFunctionInvocationResult,
   });
 
   const { code, complete: codeFullyGenerated } = visualization;
@@ -610,6 +731,15 @@ export const VisualizationActionIframe = forwardRef<
           code={code}
         />
       )}
+      {activeInvocations.map((invocation) => (
+        <SandboxFunctionInvocation
+          key={invocation.invocationId}
+          workspaceId={workspaceId}
+          functionId={invocation.functionId}
+          invocationId={invocation.invocationId}
+          onSettle={settleSandboxFunctionInvocation}
+        />
+      ))}
       <div
         className={cn(
           "relative w-full overflow-hidden",

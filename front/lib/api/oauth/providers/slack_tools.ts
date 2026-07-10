@@ -68,11 +68,15 @@ export class SlackToolsOAuthProvider implements BaseOAuthStrategyProvider {
             "users:read.email",
             "users:read",
             "usergroups:read",
+            "users.profile:write",
             // The following scopes are needed to use the official Slack MCP, and could be helpful if we switch to that later
             "canvases:read",
             "canvases:write",
             "search:read.files",
             "search:read.users",
+            // Reactions.
+            "reactions:write",
+            "reactions:read",
             // The following two are needed for some customer scenarios that require us to create/invite/archive channels
             "channels:write",
             "groups:write",

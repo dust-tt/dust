@@ -21,11 +21,13 @@ export const GovernanceSettingSection = ({
 }: GovernanceSettingSectionProps) => {
   return (
     <div className="flex w-full flex-col gap-4">
-      <div className="flex items-center gap-2">
-        <Icon visual={icon} className="text-muted-foreground" />
-        <Page.H variant="h5">{label}</Page.H>
+      <div className="flex flex-col">
+        <div className="flex items-center gap-2">
+          <Icon visual={icon} className="text-muted-foreground" />
+          <Page.H variant="h5">{label}</Page.H>
+        </div>
       </div>
-      <div className="w-full rounded-xl border border-border">
+      <div className="w-full rounded-xl border border-border divide-y divide-border">
         {governancePermissions.map((governancePermission) => (
           <GovernanceSettingRow
             key={

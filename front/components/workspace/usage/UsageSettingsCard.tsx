@@ -68,7 +68,7 @@ export function UsageSettingsCard({
     }
   };
 
-  const currentDefaultLimit = defaultUserSpendLimit?.awuCredits ?? null;
+  const currentDefaultLimit = defaultUserSpendLimit?.awuCredits ?? 0;
 
   const handleSaveDefaultLimit = async (newValue: string) => {
     const parsed = Number(newValue);
@@ -90,7 +90,7 @@ export function UsageSettingsCard({
       <SettingsList>
         <LockedSection locked={!hasPool}>
           <SettingsList.Row
-            title="Default workspace credit pool monthly limit"
+            title="Default per-user workspace credit pool monthly limit"
             description={
               <>
                 Define the workspace credit pool credit limit for users per
@@ -107,14 +107,12 @@ export function UsageSettingsCard({
                   pattern="[0-9]*"
                   placeholder="No access"
                   value={
-                    currentDefaultLimit === null || currentDefaultLimit === 0
+                    currentDefaultLimit === 0
                       ? ""
                       : currentDefaultLimit.toLocaleString()
                   }
                   unit={
-                    (currentDefaultLimit === null ||
-                      currentDefaultLimit === 0) &&
-                    !isEditingDefaultLimit
+                    currentDefaultLimit === 0 && !isEditingDefaultLimit
                       ? undefined
                       : "credits/month"
                   }

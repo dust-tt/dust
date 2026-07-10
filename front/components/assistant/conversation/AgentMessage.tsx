@@ -14,6 +14,7 @@ import type { FeedbackSelectorBaseProps } from "@app/components/assistant/conver
 import { FeedbackSelector } from "@app/components/assistant/conversation/FeedbackSelector";
 import { useAutoOpenFilesPanel } from "@app/components/assistant/conversation/files_panel/useAutoOpenFilesPanel";
 import { useGenerationContext } from "@app/components/assistant/conversation/GenerationContextProvider";
+import { getModelWithReasoningEffortLabel } from "@app/components/assistant/conversation/input_bar/modelPickerUtils";
 import { useAutoOpenInteractiveContent } from "@app/components/assistant/conversation/interactive_content/useAutoOpenInteractiveContent";
 import type {
   AgentMessageStateWithControlEvent,
@@ -32,6 +33,7 @@ import {
   useCreditCostMenuItem,
 } from "@app/components/assistant/conversation/useCreditCostMenuItem";
 import { ConfirmContext } from "@app/components/Confirm";
+import { getActionCardPlugin } from "@app/components/markdown/ActionCardDirective";
 import {
   CitationsContext,
   CiteBlock,
@@ -64,7 +66,10 @@ import { useAuth, useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { clientFetch } from "@app/lib/egress/client";
 import type { DustError } from "@app/lib/error";
 import { FILE_ID_PATTERN } from "@app/lib/files";
+import { getSupportedModelConfig } from "@app/lib/llms/model_configurations";
 import { getFilePreviewDirectivePaths } from "@app/lib/markdown/file_preview";
+import { extractFromString } from "@app/lib/mentions/format";
+import { useUnifiedAgentConfigurations } from "@app/lib/swr/assistants";
 import { getConversationRoute } from "@app/lib/utils/router";
 import { formatTimestring } from "@app/lib/utils/timestamps";
 import datadogLogger from "@app/logger/datadogLogger";
@@ -78,6 +83,10 @@ import { isLightAgentMessageType } from "@app/types/assistant/conversation";
 import type {
   RichAgentMention,
   RichMention,
+} from "@app/types/assistant/mentions";
+import {
+  isAgentMention,
+  toRichAgentMentionType,
 } from "@app/types/assistant/mentions";
 import type { ContentFragmentsType } from "@app/types/content_fragment";
 import {
@@ -129,6 +138,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from "react";
 import type { Components } from "react-markdown";
@@ -260,24 +270,44 @@ export function AgentMessage({
   // `subAgentCostCredits`) and flickering the displayed total during the close
   // animation.
   const [hasOpenedMenu, setHasOpenedMenu] = useState(false);
-  // Re-fetch (on menu open) only if a cost we want to show is still missing:
+  // Set once this message finishes a run live in this session (terminal stream
+  // event). Credits are computed in the finalize activity *after* the terminal
+  // event is published, so the streamed `costCredits` is never the authoritative
+  // total: it is `null` on a first run, and the *previous* run's total after an
+  // `ask_user` resume. So we keep the authoritative single-message fetch enabled
+  // and revalidate it when the menu opens (see below), rather than trusting the
+  // streamed value. Never reset: flipping `needsCostFetch` back to false would
+  // null the SWR key and revert the display to the stale streamed prop.
+  const [hasCompletedRunThisSession, setHasCompletedRunThisSession] =
+    useState(false);
+  // Owed revalidation, consumed on menu open: set on each terminal event,
+  // cleared once the mutate is fired, so reopening the menu with no new run in
+  // between does not refetch.
+  const pendingCostRevalidationRef = useRef(false);
+  // Re-fetch (on menu open) if a cost we want to show is still missing or may be
+  // stale:
   // - Own cost: null until the agentic loop finishes; absent while streaming/listed.
   // - Sub-agent cost: only aggregated by the single-message fetch, and only exists
   //   when a `run_agent` action is present (it triggers both run_agent and handover).
-  // Messages with no sub-agents only fetch if their own cost is still missing.
+  // - Live completion: the streamed cost is pre-recompute (see above), so any
+  //   message that completed a run this session needs the authoritative fetch.
   const needsCostFetch =
+    hasCompletedRunThisSession ||
     agentMessage.costCredits == null ||
     (hasMessageSpawnedSubAgent(agentMessage) &&
       agentMessage.subAgentCostCredits == null);
-  const { message: refreshedMessage, isMessageLoading } =
-    useConversationMessage({
-      conversationId,
-      workspaceId: owner.sId,
-      messageId: agentMessage.sId,
-      options: {
-        disabled: !hasOpenedMenu || !needsCostFetch,
-      },
-    });
+  const {
+    message: refreshedMessage,
+    isMessageLoading,
+    mutateMessage,
+  } = useConversationMessage({
+    conversationId,
+    workspaceId: owner.sId,
+    messageId: agentMessage.sId,
+    options: {
+      disabled: !hasOpenedMenu || !needsCostFetch,
+    },
+  });
   const refreshedAgentMessage =
     refreshedMessage?.type === "agent_message" ? refreshedMessage : null;
   const { creditCostItem, isCreditPriced } = useCreditCostMenuItem({
@@ -315,6 +345,10 @@ export function AgentMessage({
     VirtuosoMessage,
     VirtuosoMessageListContext
   >();
+
+  const { agentConfigurations } = useUnifiedAgentConfigurations({
+    workspaceId: owner.sId,
+  });
 
   const isTriggeredByCurrentUser = useMemo(
     () => triggeringUser?.sId === user.sId,
@@ -426,6 +460,18 @@ export function AgentMessage({
 
           case "agent_message_success":
           case "agent_message_gracefully_stopped":
+            // A run finished live: its terminal event carries a pre-recompute
+            // cost (credits are computed in the finalize activity after the event
+            // is published), so mark the cost for revalidation on the next menu
+            // open.
+            setHasCompletedRunThisSession(true);
+            pendingCostRevalidationRef.current = true;
+            // We can remove all blocked actions for this message (especially useful to let other users see the message updates)
+            void removeAllBlockedActionsForMessage({
+              messageId: sId,
+              conversationId,
+            });
+            break;
           case "agent_generation_cancelled":
           case "agent_error":
           case "generation_tokens":
@@ -904,6 +950,14 @@ export function AgentMessage({
             setIsMenuOpen(open);
             if (open) {
               setHasOpenedMenu(true);
+              // The streamed cost is stale after a live completion (computed
+              // post-event). Revalidate the authoritative value once per
+              // completion so the total (e.g. summed across an `ask_user`
+              // resume) is correct without a page refresh.
+              if (isCreditPriced && pendingCostRevalidationRef.current) {
+                pendingCostRevalidationRef.current = false;
+                void mutateMessage();
+              }
             }
           }}
         >
@@ -951,13 +1005,25 @@ export function AgentMessage({
 
   const handleQuickReply = useCallback(
     async (reply: string) => {
-      const mention: RichAgentMention = {
-        id: agentMessage.configuration.sId,
-        type: "agent",
-        label: agentMessage.configuration.name,
-        pictureUrl: agentMessage.configuration.pictureUrl ?? "",
-        description: "",
-      };
+      const parsedMention = extractFromString(reply).find(isAgentMention);
+      const matchedAgent = parsedMention
+        ? agentConfigurations.find(
+            (a) => a.sId === parsedMention.configurationId
+          )
+        : undefined;
+      const currentAgent = agentConfigurations.find(
+        (a) => a.sId === agentMessage.configuration.sId
+      );
+      const resolvedConfig = matchedAgent ?? currentAgent;
+      const mention: RichAgentMention = resolvedConfig
+        ? toRichAgentMentionType(resolvedConfig)
+        : {
+            id: agentMessage.configuration.sId,
+            type: "agent",
+            label: agentMessage.configuration.name,
+            pictureUrl: agentMessage.configuration.pictureUrl,
+            description: "",
+          };
 
       const result = await handleSubmit(reply, [mention], {
         uploaded: [],
@@ -972,13 +1038,31 @@ export function AgentMessage({
         });
       }
     },
-    [agentMessage.configuration, handleSubmit, sendNotification]
+    [
+      agentConfigurations,
+      agentMessage.configuration,
+      handleSubmit,
+      sendNotification,
+    ]
   );
 
   const canMention =
     agentConfiguration.canRead &&
     canShowAgentConversationActions(agentConfiguration.sId);
   const isArchived = agentConfiguration.status === "archived";
+
+  const perMessageModel =
+    agentMessage.modelResolutionMethod === "user" && agentMessage.resolvedModel
+      ? getSupportedModelConfig(agentMessage.resolvedModel)
+      : null;
+  const perMessageModelLabel =
+    perMessageModel && agentMessage.resolvedModel
+      ? getModelWithReasoningEffortLabel({
+          kind: "model",
+          model: perMessageModel,
+          effort: agentMessage.resolvedModel.reasoningEffort,
+        })
+      : null;
 
   const renderName = useCallback(
     () => (
@@ -991,6 +1075,17 @@ export function AgentMessage({
           canMention={canMention}
           isDisabled={isArchived}
         />
+        {perMessageModelLabel && (
+          <Tooltip
+            label="Model was overridden for this message using the model picker."
+            tooltipTriggerAsChild
+            trigger={
+              <span className="pl-1 font-normal text-muted-foreground">
+                with {perMessageModelLabel}
+              </span>
+            }
+          />
+        )}
         {parentAgent && (
           <Chip
             label={`handoff from @${parentAgent.name}`}
@@ -1007,6 +1102,7 @@ export function AgentMessage({
       agentConfiguration.sId,
       canMention,
       isArchived,
+      perMessageModelLabel,
       parentAgent,
       agentMessage.status,
     ]
@@ -1263,6 +1359,7 @@ function AgentMessageContent({
       sup: CiteBlock,
       quickReply: getQuickReplyPlugin(onQuickReplySend, isLastMessage),
       toolSetup: getToolSetupPlugin(owner, handleToolSetupComplete),
+      action_card: getActionCardPlugin(onQuickReplySend, isLastMessage),
       ...propsAdditionalMarkdownComponents,
     }),
     [

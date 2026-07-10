@@ -30,9 +30,9 @@ export function isMembershipOriginType(
   return MEMBERSHIP_ORIGIN_TYPES.includes(value as MembershipOriginType);
 }
 
-// Billable seat types — each maps to a Metronome product.
-export const BILLABLE_SEAT_TYPES = [
-  "free",
+// Paid seat types — billable seats excluding the one-shot `free` starter seat.
+// These are the seats a member can be moved to from the admin seat pickers.
+export const PAID_SEAT_TYPES = [
   "workspace",
   "workspace_yearly",
   "pro",
@@ -40,6 +40,11 @@ export const BILLABLE_SEAT_TYPES = [
   "max",
   "max_yearly",
 ] as const;
+
+export type PaidSeatType = (typeof PAID_SEAT_TYPES)[number];
+
+// Billable seat types — each maps to a Metronome product.
+export const BILLABLE_SEAT_TYPES = ["free", ...PAID_SEAT_TYPES] as const;
 
 export const MEMBERSHIP_SEAT_TYPES = [
   // `none` = no billable seat assigned; member cannot send messages.
@@ -171,7 +176,9 @@ export function isSeatBased(
   }
 }
 
-export function isPaidSeatType(seatType: MembershipSeatType): boolean {
+export function isPaidSeatType(
+  seatType: MembershipSeatType
+): seatType is PaidSeatType {
   switch (seatType) {
     case "workspace":
     case "workspace_yearly":

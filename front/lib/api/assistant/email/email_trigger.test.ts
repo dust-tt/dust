@@ -1,4 +1,4 @@
-import type { BlockedToolExecution } from "@app/lib/actions/mcp";
+import type { AgentLoopBlockedToolExecution } from "@app/lib/actions/mcp";
 import type { InboundEmail } from "@app/lib/api/assistant/email/email_trigger";
 import {
   ASSISTANT_EMAIL_SUBDOMAIN,
@@ -358,8 +358,8 @@ function makeInboundEmail(): InboundEmail {
   };
 }
 
-function makeBlockedAction(): BlockedToolExecution {
-  const blockedAction: BlockedToolExecution = {
+function makeBlockedAction(): AgentLoopBlockedToolExecution {
+  const blockedAction: AgentLoopBlockedToolExecution = {
     conversationId: "conversation-1",
     messageId: "message-1",
     actionId: "action-1",
@@ -368,7 +368,7 @@ function makeBlockedAction(): BlockedToolExecution {
     metadata: {
       toolName: "write_report",
       mcpServerName: "project_tools",
-      agentName: "approvals",
+      agentName: "agent",
     },
     inputs: {
       title: "Q2 report",

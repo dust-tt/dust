@@ -22,7 +22,7 @@ describe("GET /api/w/:wId/groups", () => {
       role: "admin",
     });
 
-    const group = await GroupFactory.regular(workspace, "Engineering");
+    const group = await GroupFactory.regularAuto(workspace, "Engineering");
     await GroupFactory.withMembers(auth, group, [user]);
 
     const response = await getGroups(workspace);
@@ -49,7 +49,7 @@ describe("GET /api/w/:wId/groups", () => {
       role: "admin",
     });
 
-    const group = await GroupFactory.regular(workspace, "Design");
+    const group = await GroupFactory.regularAuto(workspace, "Design");
 
     const extraUsers = await Promise.all([
       UserFactory.basic(),
@@ -86,7 +86,7 @@ describe("GET /api/w/:wId/groups", () => {
       role: "admin",
     });
 
-    await GroupFactory.regular(workspace, "Empty");
+    await GroupFactory.regularAuto(workspace, "Empty");
 
     const response = await getGroups(workspace);
 
@@ -104,17 +104,17 @@ describe("GET /api/w/:wId/groups", () => {
       role: "admin",
     });
 
-    const group = await GroupFactory.regular(workspace, "Backend");
+    const group = await GroupFactory.regularAuto(workspace, "Backend");
     await GroupFactory.withMembers(auth, group, [user]);
 
-    const response = await getGroups(workspace, { kind: "regular" });
+    const response = await getGroups(workspace, { kind: "regular_auto" });
 
     expect(response.status).toBe(200);
     const { groups } = await response.json();
 
-    expect(groups.every((g: { kind: string }) => g.kind === "regular")).toBe(
-      true
-    );
+    expect(
+      groups.every((g: { kind: string }) => g.kind === "regular_auto")
+    ).toBe(true);
     const backendGroup = groups.find(
       (g: { name: string }) => g.name === "Backend"
     );

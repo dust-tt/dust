@@ -1,13 +1,9 @@
 import type { MCPToolConfigurationType } from "@app/lib/actions/mcp";
 import { getAugmentedInputs } from "@app/lib/actions/mcp_execution";
-import {
-  getInternalMCPServerDisplayedAs,
-  getInternalMCPServerNameFromSId,
-} from "@app/lib/actions/mcp_internal_actions/constants";
-import type { MCPApproveExecutionEvent } from "@app/lib/actions/mcp_internal_actions/events";
+import type { AgentLoopMCPApproveExecutionEvent } from "@app/lib/actions/mcp_internal_actions/events";
 import { validateToolInputs } from "@app/lib/actions/mcp_utils";
 import type { ToolExecutionStatus } from "@app/lib/actions/statuses";
-import { getApprovalArgsLabel } from "@app/lib/actions/tool_approval_labels";
+import { makeMCPApproveExecutionEventBase } from "@app/lib/actions/tool_approval_events";
 import { getExecutionStatusFromConfig } from "@app/lib/actions/tool_status";
 import type { StepContext } from "@app/lib/actions/types";
 import {
@@ -62,7 +58,7 @@ export async function createToolActionsActivity(
 
   const actionBlobs: ActionBlob[] = [];
   const approvalEvents: Omit<
-    MCPApproveExecutionEvent,
+    AgentLoopMCPApproveExecutionEvent,
     "isLastBlockingEventForStep"
   >[] = [];
 
@@ -138,7 +134,7 @@ async function createActionForTool(
 ): Promise<{
   actionBlob: ActionBlob;
   approvalEventData?: Omit<
-    MCPApproveExecutionEvent,
+    AgentLoopMCPApproveExecutionEvent,
     "isLastBlockingEventForStep"
   >;
 } | void> {
@@ -158,12 +154,9 @@ async function createActionForTool(
   );
 
   const rawInputs = JSON.parse(stepContent.value.value.arguments);
-  const argumentsRequiringApproval =
-    actionConfiguration.argumentsRequiringApproval ?? [];
-
   const { status } = await getExecutionStatusFromConfig(auth, {
     actionConfiguration,
-    agentMessage,
+    skipToolsValidation: agentMessage.skipToolsValidation,
     context: {
       agentId: agentConfiguration.sId,
       toolInputs: rawInputs,
@@ -284,35 +277,16 @@ async function createActionForTool(
     approvalEventData:
       status === "blocked_validation_required"
         ? {
-            type: "tool_approve_execution",
-            actionId: action.sId,
+            ...(await makeMCPApproveExecutionEventBase(auth, {
+              actionId: action.sId,
+              toolConfiguration: actionConfiguration,
+              inputs: action.augmentedInputs,
+              approvalLabelInputs: rawInputs,
+              approvalSubjectName: agentConfiguration.name,
+            })),
             configurationId: agentConfiguration.sId,
             conversationId: conversation.sId,
-            created: Date.now(),
-            inputs: action.augmentedInputs,
             messageId: agentMessage.sId,
-            stake: actionConfiguration.permission,
-            userId: auth.user()?.sId,
-            metadata: {
-              toolName: actionConfiguration.originalName,
-              mcpServerName: actionConfiguration.mcpServerName,
-              agentName: agentConfiguration.name,
-              icon: actionConfiguration.icon,
-              displayedAs: getInternalMCPServerDisplayedAs(
-                actionConfiguration.toolServerId
-              ),
-            },
-            argumentsRequiringApproval,
-            approvalArgsLabel: await getApprovalArgsLabel({
-              auth,
-              internalMCPServerName: getInternalMCPServerNameFromSId(
-                actionConfiguration.toolServerId
-              ),
-              toolName: actionConfiguration.originalName,
-              agentName: agentConfiguration.name,
-              inputs: rawInputs,
-              argumentsRequiringApproval,
-            }),
           }
         : undefined,
   };

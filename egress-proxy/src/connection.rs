@@ -195,7 +195,12 @@ async fn handle_connection_inner(
     if !default_allows
         && !state
             .policy_provider
-            .evaluate(token.w_id.as_deref(), sb_id, &request.domain)
+            .evaluate(
+                token.w_id.as_deref(),
+                token.owner_id.as_deref(),
+                sb_id,
+                &request.domain,
+            )
             .await
     {
         deny(
@@ -336,6 +341,7 @@ async fn handle_connection_inner(
 
     info!(
         sb_id = sb_id,
+        owner_id = token.owner_id.as_deref(),
         domain = %request.domain,
         original_dest_port = request.original_dest_port,
         upstream_addr = %upstream_addr,
@@ -398,6 +404,7 @@ fn log_deny(
     warn!(
         deny_reason = %reason,
         sb_id = token.and_then(|token| token.sb_id.as_deref()),
+        owner_id = token.and_then(|token| token.owner_id.as_deref()),
         domain = request.map(|request| request.domain.as_str()),
         original_dest_port = request.map(|request| request.original_dest_port),
         upstream_addr = upstream_addr.map(|address| address.to_string()),

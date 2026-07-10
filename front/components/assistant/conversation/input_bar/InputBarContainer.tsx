@@ -65,6 +65,7 @@ import {
   isRichUserMention,
   toRichAgentMentionType,
 } from "@app/types/assistant/mentions";
+import type { ModelSelectionType } from "@app/types/assistant/models/types";
 import type { SkillWithoutInstructionsAndToolsType } from "@app/types/assistant/skill_configuration";
 import type { DataSourceViewContentNode } from "@app/types/data_source_view";
 import {
@@ -137,6 +138,7 @@ export const INPUT_BAR_ACTIONS = [
   "attachment",
   "agents-list",
   "agents-list-with-actions",
+  "model-picker",
   "turn-into-agent",
   "voice",
   "fullscreen",
@@ -204,6 +206,7 @@ export interface InputBarContainerProps {
   } | null;
   defaultAgentId?: string | null;
   isDefaultAgentLoading?: boolean;
+  lastRequestedModel?: ModelSelectionType | null;
   // Skills pre-inserted into a new conversation's editor, as if manually added.
   defaultSkills?: DefaultSkillReference[];
   isDefaultSkillsLoading?: boolean;
@@ -217,6 +220,9 @@ export interface InputBarContainerProps {
   onEnterKeyDown: CustomEditorProps["onEnterKeyDown"];
   onMCPServerViewDeselect: (serverView: MCPServerViewType) => void;
   onMCPServerViewSelect: (serverView: MCPServerViewType) => void;
+  onModelSelectionChange?: (
+    modelSelection: ModelSelectionType | undefined
+  ) => void;
   onNodeSelect: (node: DataSourceViewContentNode) => void;
   onNodeUnselect: (node: DataSourceViewContentNode) => void;
   onResetMCPServerViews: () => void;
@@ -259,6 +265,7 @@ const InputBarContainer = ({
   getDraft,
   defaultAgentId,
   isDefaultAgentLoading,
+  lastRequestedModel = null,
   defaultSkills,
   isDefaultSkillsLoading,
   isAgentBuilder = false,
@@ -266,6 +273,7 @@ const InputBarContainer = ({
   onNodeUnselect,
   attachedNodes,
   onMCPServerViewSelect,
+  onModelSelectionChange,
   onMCPServerViewDeselect,
   selectedMCPServerViews,
   onResetMCPServerViews,
@@ -1554,6 +1562,32 @@ const InputBarContainer = ({
         }}
       >
         <div className="flex w-0 flex-grow flex-col">
+          {!isRecording && editor && (
+            <div
+              className={cn("relative flex px-0 pt-1", !isMobile && "hidden")}
+            >
+              <Button
+                variant="ghost-secondary"
+                icon={Type01}
+                size={buttonSize}
+                onClick={() => setIsToolbarOpen(!isToolbarOpen)}
+              />
+              <Toolbar
+                variant="overlay"
+                className={cn(
+                  isToolbarOpen
+                    ? "pointer-events-auto w-full"
+                    : "pointer-events-none hidden"
+                )}
+                onClose={(e: React.MouseEvent<HTMLButtonElement>) => {
+                  e.stopPropagation();
+                  setIsToolbarOpen(false);
+                }}
+              >
+                <ToolBarContent editor={editor} />
+              </Toolbar>
+            </div>
+          )}
           <div className="relative">
             <EditorContent
               editor={editor}
@@ -1608,38 +1642,9 @@ const InputBarContainer = ({
               ))}
             </div>
             <div className="relative flex min-h-8 w-full items-center justify-between">
-              {!isRecording && editor && (
-                <Toolbar
-                  variant="overlay"
-                  className={cn(
-                    isToolbarOpen
-                      ? "pointer-events-auto w-full"
-                      : "pointer-events-none hidden w-[120px]",
-                    !isMobile && "hidden"
-                  )}
-                  onClose={(e: React.MouseEvent<HTMLButtonElement>) => {
-                    e.stopPropagation();
-                    setIsToolbarOpen(false);
-                  }}
-                >
-                  <ToolBarContent editor={editor} />
-                </Toolbar>
-              )}
-              <div
-                className={cn(
-                  "flex w-full items-center px-2",
-                  isToolbarOpen && "opacity-0"
-                )}
-              >
+              <div className={cn("flex w-full items-center px-2")}>
                 {!isRecording && (
-                  <div className="flex items-center">
-                    <Button
-                      variant="ghost-secondary"
-                      icon={Type01}
-                      size={buttonSize}
-                      className={cn("flex", !isMobile && "hidden")}
-                      onClick={() => setIsToolbarOpen(!isToolbarOpen)}
-                    />
+                  <div className="flex items-center gap-1">
                     <InputBarButtons
                       actions={actions}
                       allAgents={allAgents}
@@ -1655,8 +1660,10 @@ const InputBarContainer = ({
                       hideCapabilities={hideCapabilities}
                       isDefaultAgentUnavailable={isDefaultAgentUnavailable}
                       isInputDisabled={disableInput}
+                      lastRequestedModel={lastRequestedModel}
                       onAgentRemove={() => setSelectedSingleAgent(null)}
                       onMCPServerViewSelect={onMCPServerViewSelect}
+                      onModelSelectionChange={onModelSelectionChange}
                       onNodeSelect={onNodeSelect}
                       onNodeUnselect={onNodeUnselect}
                       onSkillSelect={handleSkillSelect}
@@ -1682,9 +1689,7 @@ const InputBarContainer = ({
               </div>
             </div>
           </div>
-          <div
-            className={cn("absolute bottom-2 right-2 flex items-center gap-2")}
-          >
+          <div className="absolute bottom-2 right-2 flex items-center gap-1.5">
             {clientType === "extension" && (
               <>
                 <div ref={plusButtonRef}>
@@ -1793,7 +1798,7 @@ const InputBarContainer = ({
                 )}
               </>
             )}
-            <div className="flex items-center">
+            <div className="flex items-center gap-1">
               {conversation && (
                 <ContextUsageIndicator
                   buttonSize={buttonSize}

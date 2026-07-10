@@ -176,7 +176,7 @@ app.post(
               api_error: {
                 type: "rate_limit_error",
                 message:
-                  "Your workspace has reached its programmatic monthly spending cap.",
+                  "Your workspace has reached its programmatic monthly spending cap. An admin can raise the cap in the workspace's usage settings.",
               },
             });
           }

@@ -85,6 +85,15 @@ export function getWorkspaceDefaultAgentId(
   return typeof value === "string" ? value : null;
 }
 
+// The Workspace Analyst agent (and the workspace_analytics skill + MCP server it
+// relies on) are available to all workspaces by default. Admins can opt out via
+// the workspace settings, which sets `disableWorkspaceAnalytics` to true.
+export function isWorkspaceAnalyticsEnabled(
+  owner: LightWorkspaceType
+): boolean {
+  return owner.metadata?.disableWorkspaceAnalytics !== true;
+}
+
 /**
  * The default agent that should be pre-selected for new conversations.
  * A pod-level default agent takes precedence over the workspace-level default agent.

@@ -73,7 +73,7 @@ export function UsageNotificationsCard({
       </div>
       <SettingsList>
         <SettingsList.Row
-          title="Workspace credit pool threshold"
+          title="Workspace credit pool threshold alert"
           description={
             <>
               Email all workspace admins when your remaining workspace credit

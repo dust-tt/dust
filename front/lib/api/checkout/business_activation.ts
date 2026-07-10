@@ -9,6 +9,8 @@ import { Authenticator } from "@app/lib/auth";
 import {
   type CheckoutPayment,
   getCheckoutPaymentStatus,
+  getCheckoutPaymentStatusBySession,
+  markCheckoutPaymentActivating,
   markCheckoutPaymentFailed,
   markCheckoutPaymentSucceeded,
   recordCheckoutPaymentSyncFailure,
@@ -257,6 +259,7 @@ export async function createPaymentGatedBusinessActivation({
   // handler can update it even if it races ahead of this function returning.
   await setCheckoutPaymentPending({
     workspaceId: workspace.sId,
+    setupSessionId,
     metronomeCustomerId,
     contractId: metronomeContractId,
     userId,
@@ -275,8 +278,17 @@ export async function createPaymentGatedBusinessActivation({
 
   // Step 6: zero-amount fast path — no invoice to create, activate immediately.
   if (effectiveAmountCents === 0) {
+    // We need to retrieve an up-to-date workspace object here
+    // before calling handleSubscriptionActivationSuccess
+    const freshWorkspace = await WorkspaceResource.fetchById(workspace.sId);
+    if (!freshWorkspace) {
+      return new Err({
+        type: "metronome_error",
+        message: "Workspace not found during zero-amount activation",
+      });
+    }
     await handleSubscriptionActivationSuccess({
-      workspace,
+      workspace: freshWorkspace,
       contractId: metronomeContractId,
       invoiceId: "free-activation",
     });
@@ -438,6 +450,17 @@ export async function handleSubscriptionActivationSuccess({
     );
     return;
   }
+
+  // Payment has cleared and activation is starting. Surface it to the polling UI
+  // as early as possible so the long-running work below (contract swap, workspace
+  // restore, seat update, seat sync, ending the previous contract, ...) shows as
+  // "activating your workspace" rather than still "processing payment". Marked
+  // here — the single entry point for both the webhook and the zero-amount fast
+  // path — so every activation route advances the UI consistently.
+  await markCheckoutPaymentActivating({
+    workspaceId: workspace.sId,
+    contractId,
+  });
 
   const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
   const lightWorkspace = renderLightWorkspaceType({ workspace });
@@ -869,22 +892,43 @@ export type GetBusinessActivationResponseBody = {
 };
 
 /**
- * Returns the checkout payment status and, when payment has succeeded, the
- * Stripe hosted invoice URL. Coordinates the two sequential external-service
- * calls so the GET handler stays thin.
+ * Returns the checkout payment status and, only when explicitly requested via
+ * `includeReceiptUrl`, the Stripe hosted invoice URL.
+ *
+ * The record is looked up either by contract id or by Stripe setup session id.
+ * The polling UI uses the session id so it can start polling from the first
+ * step (the contract id only exists once provisioning has run inside the
+ * confirming request).
+ *
+ * The invoice-URL fetch is a slow (~seconds) Stripe round-trip, so the polling
+ * UI does NOT request it: it polls only for status and transitions to the
+ * success screen immediately on `succeeded`. The success screen then fetches the
+ * receipt URL lazily (a single call with `includeReceiptUrl`) for its "View
+ * receipt" button, without blocking the transition.
  */
 export async function getBusinessActivationStatus(
   workspace: LightWorkspaceType,
-  contractId: string
+  identifier: { contractId: string } | { setupSessionId: string },
+  { includeReceiptUrl = false }: { includeReceiptUrl?: boolean } = {}
 ): Promise<GetBusinessActivationResponseBody> {
-  const checkoutPayment = await getCheckoutPaymentStatus({
-    workspaceId: workspace.sId,
-    contractId,
-  });
+  const checkoutPayment =
+    "contractId" in identifier
+      ? await getCheckoutPaymentStatus({
+          workspaceId: workspace.sId,
+          contractId: identifier.contractId,
+        })
+      : await getCheckoutPaymentStatusBySession({
+          workspaceId: workspace.sId,
+          setupSessionId: identifier.setupSessionId,
+        });
 
   let invoiceUrl: string | undefined;
   if (
+    includeReceiptUrl &&
     checkoutPayment?.status === "succeeded" &&
+    // Zero-amount (coupon) activations have no Stripe invoice — the invoiceId is
+    // a "free-activation" placeholder — so there is no receipt to fetch.
+    checkoutPayment.initialAmountCents > 0 &&
     checkoutPayment.invoiceId &&
     workspace.metronomeCustomerId
   ) {

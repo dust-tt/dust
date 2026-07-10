@@ -404,13 +404,13 @@ app.delete(
     }
     const { skill } = loaded;
 
-    // Check if user can write.
-    if (!skill.canWrite(auth)) {
+    // Check if user can administrate.
+    if (!skill.canAdministrate(auth)) {
       return apiError(ctx, {
         status_code: 403,
         api_error: {
           type: "app_auth_error",
-          message: "Only editors can delete this skill.",
+          message: "Only admins and editors can archive this skill.",
         },
       });
     }

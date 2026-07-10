@@ -2,7 +2,7 @@ import { MCPError } from "@app/lib/actions/mcp_errors";
 import { getFileFromConversationAttachment } from "@app/lib/actions/mcp_internal_actions/utils/file_utils";
 import {
   isAgentLoopRunContext,
-  type ToolContextType,
+  type ToolContext,
 } from "@app/lib/actions/types";
 import {
   formatSlackMessageForLLM,
@@ -14,6 +14,7 @@ import { removeDiacritics } from "@app/lib/utils";
 import { cacheWithRedis } from "@app/lib/utils/cache";
 import { getConversationRoute } from "@app/lib/utils/router";
 import logger from "@app/logger/logger";
+import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { WebAPICallResult } from "@slack/web-api";
@@ -752,7 +753,7 @@ export async function executeListPublicChannels(
 
 export async function executePostMessage(
   auth: Authenticator,
-  toolContext: ToolContextType,
+  toolContext: ToolContext,
   {
     accessToken,
     to,
@@ -927,7 +928,7 @@ export async function executeUpdateMessage({
 
 export async function executeScheduleMessage(
   auth: Authenticator,
-  toolContext: ToolContextType,
+  toolContext: ToolContext,
   {
     accessToken,
     to,
@@ -1721,4 +1722,29 @@ export async function executeReadThreadMessages({
       text: JSON.stringify(formattedOutput, null, 2),
     },
   ]);
+}
+
+export async function executeSetUserStatus({
+  accessToken,
+  statusText,
+  statusEmoji,
+  statusExpiration,
+}: {
+  accessToken: string;
+  statusText: string;
+  statusEmoji: string;
+  statusExpiration?: number;
+}): Promise<Result<void, string>> {
+  const slackClient = await getSlackClient(accessToken);
+  const response = await slackClient.users.profile.set({
+    profile: {
+      status_text: statusText,
+      status_emoji: statusEmoji,
+      status_expiration: statusExpiration ?? 0,
+    },
+  });
+  if (!response.ok) {
+    return new Err(response.error ?? "Failed to set status");
+  }
+  return new Ok(undefined);
 }

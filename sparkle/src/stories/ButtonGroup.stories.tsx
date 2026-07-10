@@ -3,7 +3,7 @@ import React from "react";
 
 import {
   BUTTON_VARIANTS,
-  type RegularButtonSize,
+  type ButtonSizeType,
   type ButtonVariantType,
 } from "@sparkle/components/Button";
 
@@ -25,7 +25,7 @@ const DefaultButtons = ({
   size = "sm",
 }: {
   variant?: ButtonVariantType;
-  size?: RegularButtonSize;
+  size?: ButtonSizeType;
 }) => (
   <>
     <Button label="First" variant={variant} size={size} />

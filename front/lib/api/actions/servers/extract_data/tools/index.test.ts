@@ -1,5 +1,5 @@
 import type { LightServerSideMCPToolConfigurationType } from "@app/lib/actions/mcp";
-import type { ToolContextType } from "@app/lib/actions/types";
+import type { ToolContext } from "@app/lib/actions/types";
 import {
   generateProcessToolOutput,
   getCoreDataSourceSearchCriterias,
@@ -39,7 +39,7 @@ const CONFIGURED_TIME_FRAME = {
   unit: "day" as const,
 };
 
-function makeRunContext(): ToolContextType {
+function makeRunContext(): ToolContext {
   const toolConfiguration: LightServerSideMCPToolConfigurationType = {
     id: -1,
     sId: "tool-configuration-id",
@@ -77,7 +77,7 @@ function makeRunContext(): ToolContextType {
       conversation: {},
       toolConfiguration,
     },
-  } as unknown as ToolContextType;
+  } as unknown as ToolContext;
 }
 
 describe("createExtractDataTools", () => {

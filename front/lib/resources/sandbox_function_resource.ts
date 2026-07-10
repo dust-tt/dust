@@ -1,17 +1,25 @@
 import config from "@app/lib/api/config";
-import { getPodSandboxFunctionsMountPoint } from "@app/lib/api/files/mount_path";
+import {
+  getPodSandboxFunctionsMountPoint,
+  POD_SANDBOX_DATABASES_DIR,
+} from "@app/lib/api/files/mount_path";
 import {
   generateExecId,
   generateSandboxFunctionInvocationToken,
 } from "@app/lib/api/sandbox/access_tokens";
 import { ensurePodSandboxReady } from "@app/lib/api/sandbox/lifecycle";
 import { shellEscape } from "@app/lib/api/sandbox/shell";
+import { publishSandboxFunctionInvocationEvent } from "@app/lib/api/sandbox_functions/events";
 import type { Authenticator } from "@app/lib/auth";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { SandboxFunctionInvocationResource } from "@app/lib/resources/sandbox_function_invocation_resource";
+import type { SandboxFunctionMCPActionResource } from "@app/lib/resources/sandbox_function_mcp_action_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
-import { SandboxFunctionModel } from "@app/lib/resources/storage/models/sandbox_function";
+import {
+  SandboxFunctionInvocationModel,
+  SandboxFunctionModel,
+} from "@app/lib/resources/storage/models/sandbox_function";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { ModelStaticWorkspaceAware } from "@app/lib/resources/storage/wrappers/workspace_models";
 import {
@@ -261,6 +269,42 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
     return sandboxFunction ?? null;
   }
 
+  // Lives here rather than on SandboxFunctionMCPActionResource: that resource can only type-import
+  // the invocation resource (the invocation resource value-imports it for cascade deletion), so it
+  // cannot construct an invocation. Takes the action rather than its FK id so callers don't thread
+  // a ModelId around.
+  static async fetchInvocationForAction(
+    auth: Authenticator,
+    action: SandboxFunctionMCPActionResource
+  ): Promise<SandboxFunctionInvocationResource | null> {
+    const invocation = await SandboxFunctionInvocationModel.findOne({
+      where: {
+        id: action.sandboxFunctionInvocationId,
+        workspaceId: auth.getNonNullableWorkspace().id,
+      },
+    });
+    if (!invocation) {
+      return null;
+    }
+
+    const sandboxFunction = await this.fetchById(
+      auth,
+      this.modelIdToSId({
+        id: invocation.sandboxFunctionId,
+        workspaceId: invocation.workspaceId,
+      })
+    );
+    if (!sandboxFunction) {
+      return null;
+    }
+
+    return new SandboxFunctionInvocationResource(
+      SandboxFunctionInvocationModel,
+      invocation.get(),
+      { sandboxFunction }
+    );
+  }
+
   static async listBySpace(
     auth: Authenticator,
     space: SpaceResource
@@ -336,6 +380,41 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
     auth: Authenticator,
     body: PostSandboxFunctionInvocationRequestBody
   ): Promise<Result<SandboxFunctionInvocationType, Error>> {
+    let invocation: SandboxFunctionInvocationResource | null = null;
+
+    // Once the invocation exists, listeners may be waiting on its event channel for a terminal
+    // event: publish the error so they settle instead of waiting forever, then propagate it.
+    const failInvocation = async (
+      error: Error
+    ): Promise<Result<SandboxFunctionInvocationType, Error>> => {
+      if (invocation) {
+        try {
+          await publishSandboxFunctionInvocationEvent(
+            {
+              type: "sandbox_function_invocation_error",
+              created: Date.now(),
+              invocationId: invocation.sId,
+              functionId: this.sId,
+              message: error.message,
+            },
+            { invocationId: invocation.sId }
+          );
+        } catch (publishError) {
+          // Best effort: the error is still propagated to the caller through the Err below.
+          logger.error(
+            {
+              workspaceId: auth.getNonNullableWorkspace().sId,
+              sandboxFunctionId: this.sId,
+              invocationId: invocation.sId,
+              error: normalizeError(publishError),
+            },
+            "Failed to publish sandbox function invocation error event"
+          );
+        }
+      }
+      return new Err(error);
+    };
+
     try {
       if (!this.space.canReadOrAdministrate(auth)) {
         return new Err(new Error("Sandbox function space is not accessible."));
@@ -346,7 +425,7 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
         return ensureResult;
       }
 
-      const invocation = await SandboxFunctionInvocationResource.makeNew(auth, {
+      invocation = await SandboxFunctionInvocationResource.makeNew(auth, {
         sandboxFunction: this,
       });
       await ensureResult.value.sandbox.updateLastActivityAt();
@@ -382,6 +461,7 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
         envVars: {
           DUST_API_URL: `${dustAPIBaseUrlForSandbox()}/api/v1/w/${auth.getNonNullableWorkspace().sId}`,
           DUST_FUNCTIONS_DIR: getPodSandboxFunctionsMountPoint(this.space.sId),
+          DUST_POD_DATABASES_DIR: POD_SANDBOX_DATABASES_DIR,
           DUST_SANDBOX_TOKEN: token,
         },
         stdin: JSON.stringify(inputEnvelope),
@@ -389,7 +469,7 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
         user: "agent-proxied",
       });
       if (execResult.isErr()) {
-        return execResult;
+        return failInvocation(execResult.error);
       }
       if (execResult.value.exitCode !== 0) {
         const { exitCode, stdout, stderr } = execResult.value;
@@ -412,7 +492,7 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
           stderr || stdout,
           SANDBOX_FUNCTION_ERROR_DETAIL_MAX_CHARS
         ).trim();
-        return new Err(
+        return failInvocation(
           new Error(
             `Sandbox function invocation failed with exit code ${exitCode}${
               detail ? `:\n${detail}` : "."
@@ -431,7 +511,7 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
         createdAt: invocation.createdAt.toISOString(),
       });
     } catch (error) {
-      return new Err(normalizeError(error));
+      return failInvocation(normalizeError(error));
     }
   }
 

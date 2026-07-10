@@ -3,13 +3,9 @@ import {
   deduplicateMCPServerConfigurations,
   disambiguateServerNamesBySpace,
 } from "@app/lib/actions/mcp_actions";
-import {
-  getInternalMCPServerDisplayedAs,
-  getInternalMCPServerNameFromSId,
-} from "@app/lib/actions/mcp_internal_actions/constants";
-import type { MCPApproveExecutionEvent } from "@app/lib/actions/mcp_internal_actions/events";
+import type { AgentLoopMCPApproveExecutionEvent } from "@app/lib/actions/mcp_internal_actions/events";
 import { validateToolInputs } from "@app/lib/actions/mcp_utils";
-import { getApprovalArgsLabel } from "@app/lib/actions/tool_approval_labels";
+import { makeMCPApproveExecutionEventBase } from "@app/lib/actions/tool_approval_events";
 import { tryGetPrefixedToolName } from "@app/lib/actions/tool_name_utils";
 import { getExecutionStatusFromConfig } from "@app/lib/actions/tool_status";
 import { isServerSideMCPServerConfiguration } from "@app/lib/actions/types/guards";
@@ -184,7 +180,7 @@ export async function createSandboxChildAction(
 
   const { status } = await getExecutionStatusFromConfig(auth, {
     actionConfiguration: fullToolConfiguration,
-    agentMessage,
+    skipToolsValidation: agentMessage.skipToolsValidation,
     context: {
       agentId: agentConfiguration.sId,
       toolInputs: rawInputs,
@@ -206,40 +202,17 @@ export async function createSandboxChildAction(
   });
 
   if (status === "blocked_validation_required") {
-    const argumentsRequiringApproval =
-      fullToolConfiguration.argumentsRequiringApproval ?? [];
-    const internalMCPServerName = getInternalMCPServerNameFromSId(
-      fullToolConfiguration.toolServerId
-    );
-    const approvalRequirementEvent: MCPApproveExecutionEvent = {
-      type: "tool_approve_execution",
-      actionId: action.sId,
+    const approvalRequirementEvent: AgentLoopMCPApproveExecutionEvent = {
+      ...(await makeMCPApproveExecutionEventBase(auth, {
+        actionId: action.sId,
+        toolConfiguration: fullToolConfiguration,
+        inputs: rawInputs,
+        approvalSubjectName: agentConfiguration.name,
+      })),
       configurationId: fullToolConfiguration.sId,
       conversationId: conversation.sId,
-      created: Date.now(),
-      inputs: rawInputs,
       messageId: agentMessage.sId,
-      stake: fullToolConfiguration.permission,
-      userId: auth.user()?.sId,
       isLastBlockingEventForStep: true,
-      metadata: {
-        toolName: fullToolConfiguration.originalName,
-        mcpServerName: fullToolConfiguration.mcpServerName,
-        agentName: agentConfiguration.name,
-        icon: fullToolConfiguration.icon,
-        displayedAs: getInternalMCPServerDisplayedAs(
-          fullToolConfiguration.toolServerId
-        ),
-      },
-      argumentsRequiringApproval,
-      approvalArgsLabel: await getApprovalArgsLabel({
-        auth,
-        internalMCPServerName,
-        toolName: fullToolConfiguration.originalName,
-        agentName: agentConfiguration.name,
-        inputs: rawInputs,
-        argumentsRequiringApproval,
-      }),
     };
 
     await updateResourceAndPublishEvent(auth, {

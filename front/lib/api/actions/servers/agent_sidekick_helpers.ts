@@ -1,8 +1,8 @@
-import type { ToolContextType } from "@app/lib/actions/types";
+import type { ToolContext } from "@app/lib/actions/types";
 import { getSidekickMetadataFromContext } from "@app/lib/api/actions/servers/helpers";
 
 export function getAgentConfigurationIdFromContext(
-  toolContext?: ToolContextType
+  toolContext?: ToolContext
 ): string | null {
   return (
     getSidekickMetadataFromContext(toolContext)
@@ -11,7 +11,7 @@ export function getAgentConfigurationIdFromContext(
 }
 
 export function getAgentConfigurationVersionFromContext(
-  toolContext?: ToolContextType
+  toolContext?: ToolContext
 ): number | null {
   return (
     getSidekickMetadataFromContext(toolContext)

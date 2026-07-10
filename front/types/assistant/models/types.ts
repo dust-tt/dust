@@ -7,7 +7,8 @@ import {
 import type { ExtractSpecificKeys } from "../../shared/typescipt_utils";
 import type { TokenizerConfig } from "../../tokenizer";
 import type { EMBEDDING_PROVIDER_IDS } from "./embedding";
-import type { MODEL_IDS, SUPPORTED_MODEL_CONFIGS } from "./models";
+import type { SUPPORTED_MODEL_CONFIGS } from "./models";
+import { MODEL_IDS } from "./models";
 import type { BYOK_MODEL_PROVIDER_IDS } from "./providers";
 import { MODEL_PROVIDER_IDS } from "./providers";
 import { ORDERED_REASONING_EFFORTS } from "./reasoning";
@@ -23,7 +24,7 @@ export type CustomThinkingType = (typeof CUSTOM_THINKING_TYPES)[number];
 // provider/model pick, with an optional reasoning-effort override.
 export const ModelSelectionSchema = z.object({
   providerId: z.enum(MODEL_PROVIDER_IDS),
-  modelId: z.string(),
+  modelId: z.enum(MODEL_IDS),
   reasoningEffort: z.enum(ORDERED_REASONING_EFFORTS).optional(),
 });
 export type ModelSelectionType = z.infer<typeof ModelSelectionSchema>;
@@ -34,6 +35,13 @@ export type ResolvedRequestedModel = {
   modelId: ModelIdType;
   reasoningEffort: ReasoningEffort;
 };
+
+// How an agent message's model was resolved: "agent" (ran the agent's own
+// configured model, no override), "user" (ran a per-message model picked from
+// the input-bar picker), or "auto" (resolved through the auto model).
+export const MODEL_RESOLUTION_METHODS = ["agent", "user", "auto"] as const;
+export type ModelResolutionMethodType =
+  (typeof MODEL_RESOLUTION_METHODS)[number];
 
 // z.object (not z.record) so every reasoning effort key is required.
 const ReasoningEffortSupportSchema = z.object({
@@ -105,6 +113,11 @@ export const ModelConfigurationSchema = z.object({
   useEapKey: z.boolean().optional(),
   disablePrefill: z.boolean().optional(),
   supportsBatchProcessing: z.boolean().optional(),
+  // If true, the model supports deferring rarely-used tool definitions out of
+  // its active context until searched/discovered on demand. Provider-specific
+  // (currently only consulted for Anthropic models). Must not be enabled based
+  // on a feature flag alone, since unsupported models reject the request.
+  supportsToolSearch: z.boolean().optional(),
   // Specify if the model is available in specific regions.
   regionalAvailability: z.record(z.enum(SUPPORTED_REGIONS), z.boolean()),
   availableIfOneOf: AvailabilityConditionSchema.optional(),

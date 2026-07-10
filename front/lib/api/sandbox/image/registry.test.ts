@@ -96,7 +96,7 @@ describe("sandbox image registry", () => {
   test("pins the current dust-base image tag", () => {
     expect(getDustBaseImage().imageId).toEqual({
       imageName: "dust-base",
-      tag: "0.8.50",
+      tag: "0.8.53",
     });
   });
 
@@ -167,7 +167,7 @@ describe("sandbox image registry", () => {
       expect(command).toContain("/usr/bin/systemd-analyze unit-paths");
       expect(command).toContain("systemd unit path must be absolute");
       expect(command).toContain(
-        "for path in /opt/bin/dsbx /usr/local/bin/dust-install-trust-bundle"
+        "for path in /opt/bin/dsbx /usr/local/bin/dust-install-trust-bundle /opt/bin/litestream"
       );
       expect(command).toContain("empty-password local accounts must not exist");
       expect(command).toContain("privileged primary group");
@@ -348,6 +348,178 @@ describe("sandbox image registry", () => {
         ),
       ])
     );
+  });
+
+  test("installs the pinned litestream release to /opt/bin", () => {
+    const runCommands = getRunCommands(getDustBaseImageOperations());
+    const installCommand = runCommands.find((command) =>
+      command.includes("benbjohnson/litestream/releases/download")
+    );
+
+    expect(installCommand).toBeDefined();
+    expect(installCommand).toContain(
+      "https://github.com/benbjohnson/litestream/releases/download/v0.5.13/litestream-0.5.13-linux-x86_64.tar.gz"
+    );
+    expect(installCommand).toContain(
+      "chown root:root /opt/bin/litestream && chmod 755 /opt/bin/litestream"
+    );
+  });
+
+  test("creates the dust-state user and the pod-state directory layout", () => {
+    const runCommands = getRunCommands(getDustBaseImageOperations());
+
+    expect(runCommands).toEqual(
+      expect.arrayContaining([
+        expect.stringContaining(
+          "useradd --system --no-create-home --gid dust-state --groups agent --shell /usr/sbin/nologin dust-state"
+        ),
+        expect.stringContaining("install -d -o root -g root -m 755 /pod-state"),
+        expect.stringContaining(
+          "install -d -o dust-state -g agent -m 2770 /pod-state/databases"
+        ),
+        expect.stringContaining("setfacl -R -d -m g::rwx /pod-state/databases"),
+        expect.stringContaining("setfacl -R -m g::rwx /pod-state/databases"),
+        expect.stringContaining(
+          "install -d -o dust-state -g dust-state -m 700 /pod-state/replica"
+        ),
+      ])
+    );
+  });
+
+  test("copies the litestream systemd unit for runtime start only", () => {
+    const operations = getDustBaseImageOperations();
+    const runCommands = getRunCommands(operations);
+    const copyOperations = getCopyOperations(operations);
+    const litestreamUnit = getCopiedContent(
+      copyOperations,
+      "/etc/systemd/system/litestream.service"
+    );
+
+    expect(litestreamUnit).toContain(
+      "Description=Dust Litestream replication daemon for pod state"
+    );
+    expect(litestreamUnit).toContain("User=dust-state");
+    expect(litestreamUnit).toContain("Group=dust-state");
+    expect(litestreamUnit).toContain(
+      "ExecStart=/opt/bin/litestream replicate -config /etc/litestream.yml"
+    );
+    expect(litestreamUnit).toContain("Restart=always");
+    // fluent-bit's journal grep filter forwards on this identifier.
+    expect(litestreamUnit).toContain("SyslogIdentifier=litestream");
+    expect(litestreamUnit).toContain("RuntimeDirectory=litestream");
+    expect(litestreamUnit).toContain("NoNewPrivileges=yes");
+    expect(litestreamUnit).toContain("ProtectSystem=strict");
+    expect(litestreamUnit).toContain("ReadWritePaths=/pod-state");
+    expect(litestreamUnit).toContain("RestrictAddressFamilies=AF_UNIX");
+    expect(litestreamUnit).toContain("MemoryDenyWriteExecute=yes");
+
+    // The unit must NOT be enabled at build: front starts the daemon at
+    // runtime AFTER the replica mount + restore. Enabled at boot, the daemon
+    // would write to the unmounted local replica dir (the silent-unmount
+    // failure mode) and manage files mid-restore.
+    const enableCommands = runCommands.filter((command) =>
+      command.includes("systemctl enable")
+    );
+    expect(enableCommands.length).toBeGreaterThan(0);
+    for (const command of enableCommands) {
+      expect(command).not.toContain("litestream");
+    }
+  });
+
+  test("bakes the static litestream directory-watcher config", () => {
+    const copyOperations = getCopyOperations(getDustBaseImageOperations());
+    const litestreamConfig = getCopiedContent(
+      copyOperations,
+      "/etc/litestream.yml"
+    );
+
+    // JSON logs so fluent-bit's json parser structures the journal entries.
+    expect(litestreamConfig).toContain("logging:");
+    expect(litestreamConfig).toContain("type: json");
+
+    // Control socket for the pre-sleep `litestream sync -wait`.
+    expect(litestreamConfig).toContain("socket:");
+    expect(litestreamConfig).toContain("enabled: true");
+    expect(litestreamConfig).toContain("path: /run/litestream/litestream.sock");
+
+    // Directory watcher: post-cold-start databases are discovered
+    // automatically; the replica subdir is named by db FILENAME ({db}.db).
+    expect(litestreamConfig).toContain("dir: /pod-state/databases");
+    expect(litestreamConfig).toContain('pattern: "*.db"');
+    expect(litestreamConfig).toContain("watch: true");
+    expect(litestreamConfig).toContain("type: file");
+    expect(litestreamConfig).toContain("path: /pod-state/replica");
+  });
+
+  test("pins drizzle packages and vendors @dust/pod", () => {
+    const operations = getDustBaseImageOperations();
+    const runCommands = getRunCommands(operations);
+    const copyOperations = getCopyOperations(operations);
+    const image = getDustBaseImage();
+
+    expect(runCommands).toEqual(
+      expect.arrayContaining([
+        expect.stringContaining(
+          "npm install -g typescript tsx pptxgenjs@4.0.1 zod@4.4.3 drizzle-orm@0.45.2 drizzle-kit@0.31.10 @libsql/client@0.17.4"
+        ),
+        expect.stringContaining(
+          "mkdir -p /opt/npm-global/lib/node_modules/@dust"
+        ),
+      ])
+    );
+
+    // Vendored copy of @dust/pod. Do NOT materialize the content here: the
+    // generator bun-builds cli/dust-sandbox/pod, which is written by a
+    // parallel track and may be absent in this checkout.
+    const podCopy = copyOperations.find(
+      (operation) =>
+        operation.dest === "/opt/npm-global/lib/node_modules/@dust/pod"
+    );
+    expect(podCopy).toBeDefined();
+    expect(podCopy?.src.type).toBe("content");
+
+    expect(image.tools).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ name: "drizzle-orm", version: "0.45.2" }),
+        expect.objectContaining({ name: "drizzle-kit", version: "0.31.10" }),
+        expect.objectContaining({ name: "@libsql/client", version: "0.17.4" }),
+        expect.objectContaining({ name: "@dust/pod", version: "0.1.0" }),
+      ])
+    );
+  });
+
+  test("runs pod-state install ops before the final hardening re-run", () => {
+    const runCommands = getRunCommands(getDustBaseImageOperations());
+    const lastHardeningIndex = runCommands.reduce(
+      (last, command, index) =>
+        command.includes("sudo must not be installed in sandbox images")
+          ? index
+          : last,
+      -1
+    );
+    const litestreamIndex = runCommands.findIndex((command) =>
+      command.includes("benbjohnson/litestream/releases/download")
+    );
+    const podStateIndex = runCommands.findIndex((command) =>
+      command.includes("install -d -o dust-state -g agent -m 2770")
+    );
+    const drizzleIndex = runCommands.findIndex((command) =>
+      command.includes("drizzle-orm@0.45.2")
+    );
+    const podPackageMkdirIndex = runCommands.findIndex((command) =>
+      command.includes("mkdir -p /opt/npm-global/lib/node_modules/@dust")
+    );
+
+    expect(lastHardeningIndex).toBeGreaterThanOrEqual(0);
+    for (const index of [
+      litestreamIndex,
+      podStateIndex,
+      drizzleIndex,
+      podPackageMkdirIndex,
+    ]) {
+      expect(index).toBeGreaterThanOrEqual(0);
+      expect(index).toBeLessThan(lastHardeningIndex);
+    }
   });
 
   test("keeps the nftables UID filter aligned with untrusted sandbox UIDs", () => {

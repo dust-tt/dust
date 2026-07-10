@@ -1,10 +1,10 @@
 import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/utils";
 import { registerTool } from "@app/lib/actions/mcp_internal_actions/wrappers";
-import type { ToolContextType } from "@app/lib/actions/types";
+import type { ToolContext } from "@app/lib/actions/types";
 import { TOOLS } from "@app/lib/api/actions/servers/workday/tools";
 import type { Authenticator } from "@app/lib/auth";
 
-function createServer(auth: Authenticator, toolContext?: ToolContextType) {
+function createServer(auth: Authenticator, toolContext?: ToolContext) {
   const server = makeInternalMCPServer("workday");
 
   for (const tool of TOOLS) {

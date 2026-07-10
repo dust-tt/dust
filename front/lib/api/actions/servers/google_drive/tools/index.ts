@@ -147,7 +147,7 @@ function normalizeCode(code: string | number | undefined): string | undefined {
 export async function handleFileAccessError(
   err: unknown,
   fileId: string,
-  { authInfo, toolContext }: Pick<ToolHandlerExtra, "authInfo" | "toolContext">,
+  { authInfo, runContext }: Pick<ToolHandlerExtra, "authInfo" | "runContext">,
   fileMeta?: { name?: string; mimeType?: string }
 ): Promise<ToolHandlerResult> {
   if (err instanceof Common.GaxiosError) {
@@ -172,9 +172,7 @@ export async function handleFileAccessError(
         message.includes("has not granted") ||
         message.includes("write access"))
     ) {
-      const connectionId =
-        toolContext?.runContext?.toolConfiguration.toolServerId ??
-        "google_drive";
+      const connectionId = runContext.toolConfiguration.toolServerId;
 
       return new Ok(
         makeFileAuthorizationError({
@@ -296,10 +294,10 @@ function handleDriveAccessError(
  */
 function addAgentAttribution(
   content: string,
-  { toolContext }: Pick<ToolHandlerExtra, "toolContext">
+  { runContext }: Pick<ToolHandlerExtra, "runContext">
 ): string {
-  if (isAgentLoopRunContext(toolContext?.runContext)) {
-    const agentConfig = toolContext.runContext.agentConfiguration;
+  if (isAgentLoopRunContext(runContext)) {
+    const agentConfig = runContext.agentConfiguration;
     return `${content}\n\nSent via ${agentConfig.name} Agent on Dust`;
   }
   return content;
@@ -445,7 +443,7 @@ const handlers: ToolHandlers<typeof GOOGLE_DRIVE_TOOLS_METADATA> = {
 
   get_file_content: async (
     { fileId, offset = 0, limit = MAX_CONTENT_SIZE },
-    { authInfo, toolContext }
+    { authInfo, runContext }
   ) => {
     const drive = await getDriveClient(authInfo);
     if (!drive) {
@@ -646,12 +644,12 @@ const handlers: ToolHandlers<typeof GOOGLE_DRIVE_TOOLS_METADATA> = {
     } catch (err) {
       return handleFileAccessError(err, fileId, {
         authInfo,
-        toolContext,
+        runContext,
       });
     }
   },
 
-  get_spreadsheet: async ({ spreadsheetId }, { authInfo, toolContext }) => {
+  get_spreadsheet: async ({ spreadsheetId }, { authInfo, runContext }) => {
     const sheets = await getSheetsClient(authInfo);
     if (!sheets) {
       return new Err(new MCPError("Failed to authenticate with Google Sheets"));
@@ -668,7 +666,7 @@ const handlers: ToolHandlers<typeof GOOGLE_DRIVE_TOOLS_METADATA> = {
     } catch (err) {
       return handleFileAccessError(err, spreadsheetId, {
         authInfo,
-        toolContext,
+        runContext,
       });
     }
   },
@@ -680,7 +678,7 @@ const handlers: ToolHandlers<typeof GOOGLE_DRIVE_TOOLS_METADATA> = {
       majorDimension = "ROWS",
       valueRenderOption = "FORMATTED_VALUE",
     },
-    { authInfo, toolContext }
+    { authInfo, runContext }
   ) => {
     const sheets = await getSheetsClient(authInfo);
     if (!sheets) {
@@ -701,7 +699,7 @@ const handlers: ToolHandlers<typeof GOOGLE_DRIVE_TOOLS_METADATA> = {
     } catch (err) {
       return handleFileAccessError(err, spreadsheetId, {
         authInfo,
-        toolContext,
+        runContext,
       });
     }
   },
@@ -738,7 +736,7 @@ const handlers: ToolHandlers<typeof GOOGLE_DRIVE_TOOLS_METADATA> = {
 
   get_document_structure: async (
     { documentId, offset = 0, limit = 100 },
-    { authInfo, toolContext }
+    { authInfo, runContext }
   ) => {
     const docs = await getDocsClient(authInfo);
     if (!docs) {
@@ -752,14 +750,14 @@ const handlers: ToolHandlers<typeof GOOGLE_DRIVE_TOOLS_METADATA> = {
     } catch (err) {
       return handleFileAccessError(err, documentId, {
         authInfo,
-        toolContext,
+        runContext,
       });
     }
   },
 
   get_presentation_structure: async (
     { presentationId, offset = 0, limit = 10 },
-    { authInfo, toolContext }
+    { authInfo, runContext }
   ) => {
     const slides = await getSlidesClient(authInfo);
     if (!slides) {
@@ -773,14 +771,14 @@ const handlers: ToolHandlers<typeof GOOGLE_DRIVE_TOOLS_METADATA> = {
     } catch (err) {
       return handleFileAccessError(err, presentationId, {
         authInfo,
-        toolContext,
+        runContext,
       });
     }
   },
 
   list_file_permissions: async (
     { fileId, capabilities },
-    { authInfo, toolContext }
+    { authInfo, runContext }
   ) => {
     const shareError = await ensureCapability(
       "canShare",
@@ -822,7 +820,7 @@ const handlers: ToolHandlers<typeof GOOGLE_DRIVE_TOOLS_METADATA> = {
     } catch (err) {
       return handleFileAccessError(err, fileId, {
         authInfo,
-        toolContext,
+        runContext,
       });
     }
   },
@@ -969,7 +967,7 @@ const writeHandlers: ToolHandlers<typeof GOOGLE_DRIVE_WRITE_TOOLS_METADATA> = {
 
   copy_file: async (
     { fileId, name, parentId, capabilities },
-    { authInfo, toolContext }
+    { authInfo, runContext }
   ) => {
     const accessError = await ensureCapability(
       "canCopy",
@@ -1004,7 +1002,7 @@ const writeHandlers: ToolHandlers<typeof GOOGLE_DRIVE_WRITE_TOOLS_METADATA> = {
     } catch (err) {
       return handleFileAccessError(err, fileId, {
         authInfo,
-        toolContext,
+        runContext,
       });
     }
 
@@ -1041,7 +1039,7 @@ const writeHandlers: ToolHandlers<typeof GOOGLE_DRIVE_WRITE_TOOLS_METADATA> = {
 
   create_comment: async (
     { fileId, content, capabilities },
-    { authInfo, toolContext }
+    { authInfo, runContext }
   ) => {
     const accessError = await ensureCapability(
       "canComment",
@@ -1058,7 +1056,7 @@ const writeHandlers: ToolHandlers<typeof GOOGLE_DRIVE_WRITE_TOOLS_METADATA> = {
     }
 
     const finalContent = addAgentAttribution(content, {
-      toolContext,
+      runContext,
     });
 
     try {
@@ -1086,14 +1084,14 @@ const writeHandlers: ToolHandlers<typeof GOOGLE_DRIVE_WRITE_TOOLS_METADATA> = {
     } catch (err) {
       return handleFileAccessError(err, fileId, {
         authInfo,
-        toolContext,
+        runContext,
       });
     }
   },
 
   create_reply: async (
     { fileId, commentId, content, capabilities },
-    { authInfo, toolContext }
+    { authInfo, runContext }
   ) => {
     const accessError = await ensureCapability(
       "canComment",
@@ -1110,7 +1108,7 @@ const writeHandlers: ToolHandlers<typeof GOOGLE_DRIVE_WRITE_TOOLS_METADATA> = {
     }
 
     const finalContent = addAgentAttribution(content, {
-      toolContext,
+      runContext,
     });
 
     try {
@@ -1141,14 +1139,14 @@ const writeHandlers: ToolHandlers<typeof GOOGLE_DRIVE_WRITE_TOOLS_METADATA> = {
     } catch (err) {
       return handleFileAccessError(err, fileId, {
         authInfo,
-        toolContext,
+        runContext,
       });
     }
   },
 
   update_document: async (
     { documentId, operations, capabilities },
-    { authInfo, toolContext }
+    { authInfo, runContext }
   ) => {
     const accessError = await ensureCapability(
       "canEdit",
@@ -1199,7 +1197,7 @@ const writeHandlers: ToolHandlers<typeof GOOGLE_DRIVE_WRITE_TOOLS_METADATA> = {
       return handleFileAccessError(
         err,
         documentId,
-        { authInfo, toolContext },
+        { authInfo, runContext },
         {
           name: documentId,
           mimeType: "application/vnd.google-apps.document",
@@ -1218,7 +1216,7 @@ const writeHandlers: ToolHandlers<typeof GOOGLE_DRIVE_WRITE_TOOLS_METADATA> = {
       insertDataOption = "INSERT_ROWS",
       capabilities,
     },
-    { authInfo, toolContext }
+    { authInfo, runContext }
   ) => {
     const accessError = await ensureCapability(
       "canEdit",
@@ -1253,7 +1251,7 @@ const writeHandlers: ToolHandlers<typeof GOOGLE_DRIVE_WRITE_TOOLS_METADATA> = {
       return handleFileAccessError(
         err,
         spreadsheetId,
-        { authInfo, toolContext },
+        { authInfo, runContext },
         {
           name: spreadsheetId,
           mimeType: "application/vnd.google-apps.spreadsheet",
@@ -1264,7 +1262,7 @@ const writeHandlers: ToolHandlers<typeof GOOGLE_DRIVE_WRITE_TOOLS_METADATA> = {
 
   update_spreadsheet: async (
     { spreadsheetId, operations, capabilities },
-    { authInfo, toolContext }
+    { authInfo, runContext }
   ) => {
     const accessError = await ensureCapability(
       "canEdit",
@@ -1344,7 +1342,7 @@ const writeHandlers: ToolHandlers<typeof GOOGLE_DRIVE_WRITE_TOOLS_METADATA> = {
       return handleFileAccessError(
         err,
         spreadsheetId,
-        { authInfo, toolContext },
+        { authInfo, runContext },
         {
           name: spreadsheetId,
           mimeType: "application/vnd.google-apps.spreadsheet",
@@ -1355,7 +1353,7 @@ const writeHandlers: ToolHandlers<typeof GOOGLE_DRIVE_WRITE_TOOLS_METADATA> = {
 
   update_presentation: async (
     { presentationId, operations, capabilities },
-    { authInfo, toolContext }
+    { authInfo, runContext }
   ) => {
     const accessError = await ensureCapability(
       "canEdit",
@@ -1406,7 +1404,7 @@ const writeHandlers: ToolHandlers<typeof GOOGLE_DRIVE_WRITE_TOOLS_METADATA> = {
       return handleFileAccessError(
         err,
         presentationId,
-        { authInfo, toolContext },
+        { authInfo, runContext },
         {
           name: presentationId,
           mimeType: "application/vnd.google-apps.presentation",
@@ -1427,7 +1425,7 @@ const writeHandlers: ToolHandlers<typeof GOOGLE_DRIVE_WRITE_TOOLS_METADATA> = {
       emailMessage,
       capabilities,
     },
-    { authInfo, toolContext }
+    { authInfo, runContext }
   ) => {
     const shareError = await ensureCapability(
       "canShare",
@@ -1464,7 +1462,7 @@ const writeHandlers: ToolHandlers<typeof GOOGLE_DRIVE_WRITE_TOOLS_METADATA> = {
     } catch (err) {
       return handleFileAccessError(err, fileId, {
         authInfo,
-        toolContext,
+        runContext,
       });
     }
 
@@ -1490,7 +1488,7 @@ const writeHandlers: ToolHandlers<typeof GOOGLE_DRIVE_WRITE_TOOLS_METADATA> = {
 
   update_file_permission: async (
     { fileId, permissionId, role, capabilities },
-    { authInfo, toolContext }
+    { authInfo, runContext }
   ) => {
     const shareError = await ensureCapability(
       "canShare",
@@ -1517,7 +1515,7 @@ const writeHandlers: ToolHandlers<typeof GOOGLE_DRIVE_WRITE_TOOLS_METADATA> = {
     } catch (err) {
       return handleFileAccessError(err, fileId, {
         authInfo,
-        toolContext,
+        runContext,
       });
     }
 
@@ -1539,7 +1537,7 @@ const writeHandlers: ToolHandlers<typeof GOOGLE_DRIVE_WRITE_TOOLS_METADATA> = {
 
   revoke_file_sharing: async (
     { fileId, permissionId, capabilities },
-    { authInfo, toolContext }
+    { authInfo, runContext }
   ) => {
     const shareError = await ensureCapability(
       "canShare",
@@ -1565,7 +1563,7 @@ const writeHandlers: ToolHandlers<typeof GOOGLE_DRIVE_WRITE_TOOLS_METADATA> = {
     } catch (err) {
       return handleFileAccessError(err, fileId, {
         authInfo,
-        toolContext,
+        runContext,
       });
     }
 
@@ -1587,25 +1585,17 @@ const writeHandlers: ToolHandlers<typeof GOOGLE_DRIVE_WRITE_TOOLS_METADATA> = {
 
   upload_file: async (
     { fileId, parentId, fileName },
-    { auth, authInfo, toolContext }
+    { auth, authInfo, runContext }
   ) => {
     const drive = await getDriveClient(authInfo);
     if (!drive) {
       return new Err(new MCPError("Failed to authenticate with Google Drive"));
     }
 
-    if (!toolContext) {
-      return new Err(
-        new MCPError("No conversation context available for file access")
-      );
-    }
-
     try {
-      const fileResult = await getFileFromConversationAttachment(
-        auth,
-        fileId,
-        toolContext
-      );
+      const fileResult = await getFileFromConversationAttachment(auth, fileId, {
+        runContext,
+      });
 
       if (fileResult.isErr()) {
         return new Err(new MCPError(fileResult.error));

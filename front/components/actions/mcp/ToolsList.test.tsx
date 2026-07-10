@@ -28,8 +28,8 @@ vi.mock("@dust-tt/sparkle", () => ({
   ),
   Collapsible: ({ children }: any) => <div>{children}</div>,
   CollapsibleContent: ({ children }: any) => <div>{children}</div>,
-  CollapsibleTrigger: ({ children }: any) => (
-    <button type="button">{children}</button>
+  CollapsibleTrigger: ({ children, label }: any) => (
+    <button type="button">{children ?? label}</button>
   ),
   ContentMessage: ({ children }: any) => <div>{children}</div>,
   DropdownMenu: ({ children }: any) => <div>{children}</div>,

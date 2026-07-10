@@ -81,5 +81,5 @@ function's contract before relying on it. See each tool's own description for it
     !agentLoopData.conversation ||
     !isPodConversation(agentLoopData.conversation),
   // Equipped in Pod conversations but not auto-enabled.
-  isAutoEquippedForAgentLoop: (): boolean => true,
+  getAutoEnabledOrEquippedForAgentLoop: () => "equipped",
 } as const satisfies GlobalSkillDefinition;

@@ -4,7 +4,7 @@ import type {
   ToolHandlers,
 } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import type { ToolContextType } from "@app/lib/actions/types";
+import type { ToolContext } from "@app/lib/actions/types";
 import {
   formatActionAsString,
   getActionsWithDetails,
@@ -16,7 +16,7 @@ import { Err, Ok } from "@app/types/shared/result";
 
 export function createSalesloftTools(
   auth: Authenticator,
-  _toolContext?: ToolContextType
+  _toolContext?: ToolContext
 ): ToolDefinition[] {
   const handlers: ToolHandlers<typeof SALESLOFT_TOOLS_METADATA> = {
     get_actions: async ({ include_due_actions_only }, extra) => {

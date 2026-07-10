@@ -2,6 +2,12 @@ import {
   getLocalAccountPrivilegeHardeningCommand,
   getRootConsumedPathHardeningCommand,
 } from "@app/lib/api/sandbox/hardening";
+import {
+  buildPodPackage,
+  POD_PACKAGE_IMAGE_DIR,
+  POD_PACKAGE_NAME,
+  POD_PACKAGE_VERSION,
+} from "@app/lib/api/sandbox/image/pod_package";
 import { PROFILE_DIR } from "@app/lib/api/sandbox/image/profile";
 import { buildDustToolsBinary } from "@app/lib/api/sandbox/image/profile/build";
 import { SandboxImage } from "@app/lib/api/sandbox/image/sandbox_image";
@@ -19,7 +25,7 @@ import fs from "fs";
 import path from "path";
 
 const DUST_BEDROCK_IMAGE_VERSION = "1.10.0";
-const DUST_BASE_IMAGE_VERSION = "0.8.50";
+const DUST_BASE_IMAGE_VERSION = "0.8.53";
 const DSBX_CLI_VERSION = "0.1.32";
 // Identity, not coverage list: agent-proxied is a specific Linux user. The
 // nftables ruleset covers SANDBOX_UNTRUSTED_UIDS as a set; reordering that
@@ -39,7 +45,11 @@ const BUN_VERSION = "1.3.14";
 // machine and not another. This assumes an Ubuntu base and build-time egress to
 // launchpad.net; if PPAs are blocked, install the TDF .deb bundle instead.
 const LIBREOFFICE_PPA = "ppa:libreoffice/ppa";
+// Litestream (Apache-2.0) replicates the pod-state SQLite databases to the
+// GCS replica mount.
+const LITESTREAM_VERSION = "0.5.13";
 const EGRESS_LOCAL_DIR = path.resolve(__dirname, "egress");
+const LITESTREAM_LOCAL_DIR = path.resolve(__dirname, "litestream");
 const PROFILE_LOCAL_DIR = path.resolve(__dirname, "profile");
 const TELEMETRY_LOCAL_DIR = path.resolve(__dirname, "telemetry");
 
@@ -199,6 +209,35 @@ function getEgressResolverUserSetupCommand(): string {
   ].join(" && ");
 }
 
+function getDustStateUserSetupCommand(): string {
+  // dust-state runs the litestream replication daemon (pod state). Primary
+  // group dust-state owns the replica mount point; supplementary membership
+  // in `agent` grants rw on the live databases dir shared with agent-proxied
+  // function code. Deliberately NOT in SANDBOX_UNTRUSTED_UIDS: it never
+  // executes workload code.
+  return [
+    "groupadd --system dust-state",
+    "useradd --system --no-create-home --gid dust-state --groups agent --shell /usr/sbin/nologin dust-state",
+  ].join(" && ");
+}
+
+function getPodStateSetupCommand(): string {
+  // /pod-state/databases holds the live SQLite files: both agent-proxied
+  // function code (group agent) and the litestream daemon (user dust-state)
+  // need rw, so it gets the same setgid + default-ACL treatment as /files.
+  // /pod-state/replica is the gcsfuse mount point for the litestream replica
+  // — the durable copy of pod state. Untrusted workload code must never read
+  // or tamper with it, so the directory is dust-state-only: 0700 here, no
+  // allow_other on the runtime mount.
+  return [
+    "install -d -o root -g root -m 755 /pod-state",
+    "install -d -o dust-state -g agent -m 2770 /pod-state/databases",
+    "setfacl -R -d -m g::rwx /pod-state/databases",
+    "setfacl -R -m g::rwx /pod-state/databases",
+    "install -d -o dust-state -g dust-state -m 700 /pod-state/replica",
+  ].join(" && ");
+}
+
 function getSshHardeningCommand(): string {
   // Layered on purpose, not redundant. `AllowUsers agent` is the load-bearing
   // lock (whitelist). The other lines defend the case where a future bedrock
@@ -265,20 +304,51 @@ const DUST_BASE_IMAGE = SandboxImage.fromDocker(
   .runCmd(getLocalAccountPrivilegeHardeningCommand(), { user: "root" })
   .runCmd(getAgentProxiedSetupCommand(), { user: "root" })
   .runCmd(getSshHardeningCommand(), { user: "root" })
-  // Create simple netcat-based token server script.
+  // Create the token server script. Threaded on purpose: gcsfuse fetches the
+  // token on EVERY GCS request (--reuse-token-from-url=false), and a
+  // single-connection nc loop drops concurrent fetches (connection reset →
+  // gcsfuse retry backoff), starving call-dense consumers like the pod-state
+  // litestream restore.
   .runCmd("mkdir -p /home/agent/.bin", { user: "root" })
   // TODO(2026-03-06 SANDBOX): .copy is broken, use file once fixed.
   .runCmd(
     `tee /home/agent/.bin/token-server.sh > /dev/null << 'SHELLEOF'
 #!/bin/bash
-while true; do
-  (echo -ne "HTTP/1.1 200 OK\\r\\nContent-Type: application/json\\r\\nContent-Length: $(stat -c %s /tmp/token.json 2>/dev/null || echo 0)\\r\\n\\r\\n"; cat /tmp/token.json 2>/dev/null) | nc -l -p 9876 -q 1
-done
+exec python3 - << 'PYEOF'
+import http.server
+import socketserver
+
+
+class Handler(http.server.BaseHTTPRequestHandler):
+    def do_GET(self):
+        try:
+            body = open("/tmp/token.json", "rb").read()
+        except OSError:
+            body = b"{}"
+        self.send_response(200)
+        self.send_header("Content-Type", "application/json")
+        self.send_header("Content-Length", str(len(body)))
+        self.end_headers()
+        self.wfile.write(body)
+
+    def log_message(self, *args):
+        pass
+
+
+class Server(socketserver.ThreadingMixIn, http.server.HTTPServer):
+    daemon_threads = True
+    allow_reuse_address = True
+
+
+Server(("127.0.0.1", 9876), Handler).serve_forever()
+PYEOF
 SHELLEOF`,
     { user: "root" }
   )
   .runCmd("chmod 755 /home/agent/.bin/token-server.sh", { user: "root" })
   .runCmd(getEgressResolverUserSetupCommand(), { user: "root" })
+  .runCmd(getDustStateUserSetupCommand(), { user: "root" })
+  .runCmd(getPodStateSetupCommand(), { user: "root" })
   // Hidden tools: installed but not in manifest (back profile functions)
   .runCmd("apt-get update && apt-get install -y ripgrep fd-find sd", {
     user: "root",
@@ -301,7 +371,7 @@ SHELLEOF`,
   // fc-cache rebuilds the fontconfig cache so the new fonts resolve at runtime.
   .runCmd(
     "apt-get update && apt-get install -y jq pandoc imagemagick ffmpeg unzip file " +
-      "libreoffice poppler-utils qpdf " +
+      "sqlite3 libreoffice poppler-utils qpdf " +
       "fonts-crosextra-carlito fonts-crosextra-caladea fonts-liberation2 " +
       "fonts-noto-core && fc-cache -f",
     { user: "root" }
@@ -372,8 +442,32 @@ SHELLEOF`,
         description: "Schema validation (sandbox function contracts)",
         runtime: "node",
       },
+      {
+        name: "drizzle-orm",
+        version: "0.45.2",
+        description:
+          "SQLite ORM (pod database schema files and function queries)",
+        runtime: "node",
+      },
+      {
+        name: "drizzle-kit",
+        version: "0.31.10",
+        description:
+          "Schema push/pull engine (used by dsbx db commands, not function code)",
+        runtime: "node",
+      },
+      {
+        name: "@libsql/client",
+        version: "0.17.4",
+        description:
+          "SQLite driver drizzle-kit introspect connects through (dsbx db schema pull)",
+        runtime: "node",
+      },
     ],
-    { installCmd: "npm install -g typescript tsx pptxgenjs@4.0.1 zod@4.4.3" }
+    {
+      installCmd:
+        "npm install -g typescript tsx pptxgenjs@4.0.1 zod@4.4.3 drizzle-orm@0.45.2 drizzle-kit@0.31.10 @libsql/client@0.17.4",
+    }
   )
   .runCmd(
     `curl -fsSL https://github.com/dust-tt/dust/releases/download/dsbx-v${DSBX_CLI_VERSION}/dsbx-linux-x86_64 -o /tmp/dsbx && ` +
@@ -420,6 +514,43 @@ SHELLEOF`,
   .registerTool({
     name: "bun",
     description: "Fast JavaScript/TypeScript runtime and package manager",
+    runtime: "node",
+  })
+  .runCmd(
+    `curl -fsSL https://github.com/benbjohnson/litestream/releases/download/v${LITESTREAM_VERSION}/litestream-${LITESTREAM_VERSION}-linux-x86_64.tar.gz -o /tmp/litestream.tar.gz && ` +
+      "tar -xzf /tmp/litestream.tar.gz -C /tmp litestream && " +
+      "rm /tmp/litestream.tar.gz && " +
+      "mv /tmp/litestream /opt/bin/litestream && " +
+      "chown root:root /opt/bin/litestream && chmod 755 /opt/bin/litestream",
+    { user: "root" }
+  )
+  // Litestream unit + STATIC config (all paths are pod-state contract
+  // constants), both baked at build. The unit is deliberately NOT enabled:
+  // front starts it at runtime AFTER the replica gcsfuse mount and the
+  // cold-start restore — at boot the daemon would write to the unmounted
+  // local directory (the silent-unmount failure mode) and manage files
+  // mid-restore.
+  .copy(
+    getLocalContent(LITESTREAM_LOCAL_DIR, "litestream.service"),
+    "/etc/systemd/system/litestream.service",
+    { user: "root" }
+  )
+  .copy(
+    getLocalContent(LITESTREAM_LOCAL_DIR, "litestream.yml"),
+    "/etc/litestream.yml",
+    { user: "root" }
+  )
+  // Vendor @dust/pod into the global node_modules (see pod_package.ts for why
+  // this is a build-time copy rather than an npm install).
+  .runCmd(`mkdir -p ${path.posix.dirname(POD_PACKAGE_IMAGE_DIR)}`, {
+    user: "root",
+  })
+  .copy(buildPodPackage, POD_PACKAGE_IMAGE_DIR, { user: "root" })
+  .registerTool({
+    name: POD_PACKAGE_NAME,
+    version: POD_PACKAGE_VERSION,
+    description:
+      "Pod database access: db(name) returns a drizzle instance over the pod's SQLite database",
     runtime: "node",
   })
   .runCmd(`mkdir -p ${PROFILE_DIR}`, { user: "root" })

@@ -44,8 +44,13 @@ function getTool(name: string) {
   return tool;
 }
 
+// The tools under test never read runContext, so a partial extra cast to ToolHandlerExtra is
+// sufficient (mirroring the poke tools test).
 function makeExtra(auth: Authenticator) {
-  return {
+  const extra: Pick<
+    ToolHandlerExtra,
+    "auth" | "requestId" | "sendNotification" | "sendRequest" | "signal"
+  > = {
     auth,
     requestId: "test-request",
     sendNotification: async () => {},
@@ -53,7 +58,9 @@ function makeExtra(auth: Authenticator) {
       throw new Error("Unexpected MCP request in skill_authoring test.");
     },
     signal: new AbortController().signal,
-  } satisfies ToolHandlerExtra;
+  };
+
+  return extra as ToolHandlerExtra;
 }
 
 // Seed a skill directly and refresh the authenticator so it picks up the editor
@@ -120,11 +127,11 @@ describe("skill_authoring tools", () => {
     if (listResult.isErr()) {
       throw listResult.error;
     }
-    expect(listResult.value[1]?.type).toBe("text");
-    if (listResult.value[1]?.type !== "text") {
+    expect(listResult.value[0]?.type).toBe("text");
+    if (listResult.value[0]?.type !== "text") {
       throw new Error("Expected JSON text output.");
     }
-    expect(JSON.parse(listResult.value[1].text)).toMatchObject({
+    expect(JSON.parse(listResult.value[0].text)).toMatchObject({
       skills: [
         expect.objectContaining({
           sId: output.resource.skillId,
@@ -168,11 +175,11 @@ describe("skill_authoring tools", () => {
     if (otherListResult.isErr()) {
       throw otherListResult.error;
     }
-    expect(otherListResult.value[1]?.type).toBe("text");
-    if (otherListResult.value[1]?.type !== "text") {
+    expect(otherListResult.value[0]?.type).toBe("text");
+    if (otherListResult.value[0]?.type !== "text") {
       throw new Error("Expected JSON text output.");
     }
-    expect(JSON.parse(otherListResult.value[1].text)).toMatchObject({
+    expect(JSON.parse(otherListResult.value[0].text)).toMatchObject({
       skills: [],
     });
 
@@ -197,7 +204,9 @@ describe("skill_authoring tools", () => {
     if (otherUpdateResult.isOk()) {
       throw new Error("Expected another builder not to update the skill.");
     }
-    expect(otherUpdateResult.error.message).toBe("Skill not found.");
+    expect(otherUpdateResult.error.message).toBe(
+      "You need to be added as an editor of this skill before you can make changes."
+    );
 
     const updateResult = await getTool(UPDATE_SKILL_TOOL_NAME).handler(
       {

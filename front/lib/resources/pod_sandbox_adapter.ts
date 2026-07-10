@@ -1,9 +1,14 @@
+import { DustFileSystem } from "@app/lib/api/file_system/dust_file_system";
+import { ensurePodStateHealthOnSleep } from "@app/lib/api/sandbox/db";
+import { getSandboxImage } from "@app/lib/api/sandbox/image";
+import { podSandboxOnlyMounts } from "@app/lib/api/sandbox/pod_mounts";
 import type { Authenticator } from "@app/lib/auth";
 import {
   type EnsureSandboxResult,
   type SandboxCreateBlob,
   type SandboxDeleteOwner,
   type SandboxLifecycleOwner,
+  type SandboxPreSleepCheck,
   SandboxResource,
 } from "@app/lib/resources/sandbox_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
@@ -84,6 +89,32 @@ export class PodSandboxAdapter {
     };
   }
 
+  // Pod state pre-sleep flush: every committed SQLite transaction must reach
+  // the GCS replica before the sandbox may pause or be destroyed. The refresh
+  // callback rewrites /tmp/token.json first — the sync flushes through
+  // gcsfuse and the token may have expired while the sandbox sat idle.
+  private static podPreSleepCheck(
+    auth: Authenticator,
+    pod: SpaceResource
+  ): SandboxPreSleepCheck {
+    return (sandbox) =>
+      ensurePodStateHealthOnSleep(auth, sandbox, {
+        refreshMountCredential: async () => {
+          const imageResult = getSandboxImage(auth);
+          if (imageResult.isErr()) {
+            return imageResult;
+          }
+          const fsResult = await DustFileSystem.forPod(auth, pod, {
+            sandboxOnlyMounts: podSandboxOnlyMounts(pod),
+          });
+          if (fsResult.isErr()) {
+            return fsResult;
+          }
+          return fsResult.value.refreshSandboxMount(sandbox, imageResult.value);
+        },
+      });
+  }
+
   private static toSandboxDeleteOwner(
     auth: Authenticator,
     pod: SpaceResource
@@ -122,13 +153,17 @@ export class PodSandboxAdapter {
   ): Promise<Result<EnsureSandboxResult, Error>> {
     this.assertPod(pod);
 
-    return SandboxResource.ensureActive(auth, {
-      lockKey: pod.sId,
-      envVars: { SPACE_ID: pod.sId },
-      logLabel: "pod",
-      fetchSandbox: () => this.fetchSandboxByPod(auth, pod),
-      createSandbox: (blob) => this.createSandboxRecordForPod(auth, pod, blob),
-    });
+    return SandboxResource.ensureActive(
+      auth,
+      {
+        ...this.toSandboxLifecycleOwner(auth, pod),
+        envVars: { SPACE_ID: pod.sId },
+        logLabel: "pod",
+        createSandbox: (blob) =>
+          this.createSandboxRecordForPod(auth, pod, blob),
+      },
+      { beforeSleep: this.podPreSleepCheck(auth, pod) }
+    );
   }
 
   static async pauseSandboxForApproval(
@@ -137,10 +172,11 @@ export class PodSandboxAdapter {
   ): Promise<Result<void, Error>> {
     this.assertPod(pod);
 
-    return SandboxResource.pauseForApproval(auth, {
-      lockKey: pod.sId,
-      fetchSandbox: () => this.fetchSandboxByPod(auth, pod),
-    });
+    return SandboxResource.pauseForApproval(
+      auth,
+      this.toSandboxLifecycleOwner(auth, pod),
+      { beforeSleep: this.podPreSleepCheck(auth, pod) }
+    );
   }
 
   static async deleteSandbox(
@@ -159,7 +195,8 @@ export class PodSandboxAdapter {
   ): Promise<Result<void, Error>> {
     return SandboxResource.dangerouslySleepIfRunning(
       auth,
-      this.toSandboxLifecycleOwner(auth, pod)
+      this.toSandboxLifecycleOwner(auth, pod),
+      { beforeSleep: this.podPreSleepCheck(auth, pod) }
     );
   }
 
@@ -189,7 +226,8 @@ export class PodSandboxAdapter {
   ): Promise<Result<void, Error>> {
     return SandboxResource.dangerouslyDestroyIfKillRequested(
       auth,
-      this.toSandboxLifecycleOwner(auth, pod)
+      this.toSandboxLifecycleOwner(auth, pod),
+      { beforeSleep: this.podPreSleepCheck(auth, pod) }
     );
   }
 

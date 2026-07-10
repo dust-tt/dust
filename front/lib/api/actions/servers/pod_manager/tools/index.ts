@@ -8,7 +8,7 @@ import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definitio
 import { getPrefixedToolName } from "@app/lib/actions/tool_name_utils";
 import {
   isAgentLoopRunContext,
-  type ToolContextType,
+  type ToolContext,
 } from "@app/lib/actions/types";
 import {
   FILES_LIST_ACTION_NAME,
@@ -103,7 +103,7 @@ function formatListedConversationWithoutMessages(
 
 export function createProjectManagerTools(
   auth: Authenticator,
-  toolContext?: ToolContextType
+  toolContext?: ToolContext
 ): ToolDefinition[] {
   const handlers: ToolHandlers<typeof POD_MANAGER_TOOLS_METADATA> = {
     add_content_node: async (params) => {
@@ -971,7 +971,7 @@ export function createProjectManagerTools(
         if (dataSources.length === 0) {
           return new Err(
             new MCPError(
-              "No Pod data source or Pod context nodes available to retrieve from.",
+              "No Pod data source or Pod content nodes available to retrieve from.",
               { tracked: false }
             )
           );

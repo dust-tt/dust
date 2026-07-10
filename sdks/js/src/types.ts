@@ -23,6 +23,7 @@ const ModelProviderIdSchema = FlexibleEnumSchema<
   | "fireworks"
   | "xai"
   | "noop"
+  | "auto"
 >();
 
 export type KnownModelLLMId =
@@ -37,6 +38,9 @@ export type KnownModelLLMId =
   | "gpt-5.2"
   | "gpt-5.4"
   | "gpt-5.5"
+  | "gpt-5.6-sol"
+  | "gpt-5.6-terra"
+  | "gpt-5.6-luna"
   | "gpt-5.4-mini"
   | "gpt-5.4-nano"
   | "gpt-5-nano"
@@ -94,7 +98,8 @@ export type KnownModelLLMId =
   | "grok-4-fast-reasoning-latest"
   | "grok-4-1-fast-non-reasoning-latest"
   | "grok-4-1-fast-reasoning-latest"
-  | "noop"; // Noop
+  | "noop" // Noop
+  | "auto"; // Auto
 
 // Cast to allow custom/unknown model IDs while preserving autocomplete.
 const ModelLLMIdSchema = FlexibleEnumSchema<KnownModelLLMId>() as z.ZodType<
@@ -716,14 +721,17 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "discord_bot"
   | "dummy_feature_for_flag_testing"
   | "dust_agent_gpt_5_5_default"
+  | "dust_agent_sonnet_5_default"
   | "dust_internal_global_agents"
   | "fireworks_new_model_feature"
   | "google_sheets_tool"
+  | "group_permissions_shadow"
   | "http_client_tool"
   | "index_private_slack_channel"
-  | "models_picker"
+  | "labs_mcp_actions_dashboard"
   | "labs_transcripts"
   | "legacy_dust_apps"
+  | "models_picker"
   | "netsuite_mcp"
   | "noop_model_feature"
   | "notion_private_integration"
@@ -835,14 +843,23 @@ export const WebsearchResultSchema = z.object({
 
 export type WebsearchResultPublicType = z.infer<typeof WebsearchResultSchema>;
 
-const ActionGeneratedFileSchema = z.object({
-  fileId: z.string(),
+const ActionGeneratedFileBaseSchema = z.object({
   title: z.string(),
   contentType: ActionGeneratedFileContentTypeSchema,
   snippet: z.string().nullable(),
   hidden: z.boolean().optional(),
   isInProjectContext: z.boolean().optional(),
 });
+
+const ActionGeneratedFileSchema = z.union([
+  ActionGeneratedFileBaseSchema.extend({
+    fileId: z.string(),
+  }),
+  ActionGeneratedFileBaseSchema.extend({
+    fileId: z.null(),
+    filePath: z.string(),
+  }),
+]);
 
 export type ActionGeneratedFileType = z.infer<typeof ActionGeneratedFileSchema>;
 
@@ -1303,7 +1320,9 @@ const MCPStakeLevelSchema = z
   .optional();
 
 const MCPValidationMetadataSchema = z.object({
-  agentName: z.string(),
+  // Deprecated (2026-07-09): no longer read by clients, will stop being sent once old clients
+  // have cycled out.
+  agentName: z.string().optional(),
   icon: z
     .union([MCPInternalActionIconSchema, MCPExternalActionIconSchema])
     .optional(),

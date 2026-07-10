@@ -79,6 +79,32 @@ describe("PATCH /api/w/:wId/skills/:sId/editors", () => {
     );
   });
 
+  it("admin who is not a skill editor can become an editor", async () => {
+    const { workspace, user } = await setup();
+
+    const builderUser = await UserFactory.basic();
+    await MembershipFactory.associate(workspace, builderUser, {
+      role: "builder",
+    });
+    const builderAuth = await Authenticator.fromUserIdAndWorkspaceId(
+      builderUser.sId,
+      workspace.sId
+    );
+    const skill = await SkillFactory.create(builderAuth);
+
+    const response = await patch(workspace, skill.sId, {
+      addEditorIds: [user.sId],
+    });
+
+    expect(response.status).toBe(200);
+    const data = await response.json();
+    expect(data.editors).toHaveLength(2);
+    expect(data.editors.map((e: { sId: string }) => e.sId)).toContain(
+      builderUser.sId
+    );
+    expect(data.editors.map((e: { sId: string }) => e.sId)).toContain(user.sId);
+  });
+
   it("rejects adding regular user as editor", async () => {
     const { workspace, auth } = await setup();
 

@@ -23,6 +23,7 @@ import {
 } from "@app/temporal/agent_loop/activities/finalize";
 import { publishDeferredEventsActivity } from "@app/temporal/agent_loop/activities/publish_deferred_events";
 import { runModelAndCreateActionsActivity } from "@app/temporal/agent_loop/activities/run_model_and_create_actions_wrapper";
+import { runSandboxFunctionToolActivity } from "@app/temporal/agent_loop/activities/run_sandbox_function_tool";
 import { runToolActivity } from "@app/temporal/agent_loop/activities/run_tool";
 import { QUEUE_NAME } from "@app/temporal/agent_loop/config";
 import { instrumentationSinks } from "@app/temporal/agent_loop/sinks";
@@ -70,6 +71,7 @@ export async function runAgentLoopWorker() {
       checkCreditsActivity,
       publishDeferredEventsActivity,
       runModelAndCreateActionsActivity,
+      runSandboxFunctionToolActivity,
       runToolActivity,
     },
     taskQueue: QUEUE_NAME,

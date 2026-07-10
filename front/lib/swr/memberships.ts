@@ -13,9 +13,11 @@ import type {
   GetUserSpendLimitResponseBody,
   PutUserSpendLimitResponseBody,
 } from "@app/types/api/users/spend_limit";
+import { SUPPORTED_CURRENCIES } from "@app/types/currency";
 import type { GroupKind } from "@app/types/groups";
 import { isGroupKind } from "@app/types/groups";
-import type { MembershipSeatType } from "@app/types/memberships";
+import type { MembershipSeatType, PaidSeatType } from "@app/types/memberships";
+import { MEMBERSHIP_SEAT_TYPES, PAID_SEAT_TYPES } from "@app/types/memberships";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import type {
   LightUserTypeWithWorkspace,
@@ -227,7 +229,13 @@ function bulkSpendLimitUrl(workspaceId: string): string {
   return `/api/w/${workspaceId}/members/bulk-spend-limit`;
 }
 
-type BulkSpendLimitSelectionBody =
+function bulkSeatTypeUrl(workspaceId: string): string {
+  return `/api/w/${workspaceId}/members/bulk-seat-type`;
+}
+
+// Cross-page member selection descriptor shared by the bulk member endpoints
+// (spend limit and seat type).
+export type BulkMemberSelectionBody =
   | { mode: "ids"; userIds: string[] }
   | {
       mode: "all";
@@ -252,7 +260,7 @@ export function useBulkSetUserSpendLimit({
       selection,
       limit,
     }: {
-      selection: BulkSpendLimitSelectionBody;
+      selection: BulkMemberSelectionBody;
       limit: { kind: "unlimited" } | { kind: "limited"; awuCredits: number };
     }): Promise<{ workflowId: string; memberCount: number } | null> => {
       const res = await clientFetch(bulkSpendLimitUrl(workspaceId), {
@@ -288,6 +296,140 @@ export function useBulkSetUserSpendLimit({
   );
 
   return { doBulkSetSpendLimit };
+}
+
+const BulkSeatChangeMoveSchema = z.object({
+  fromSeatType: z.enum(MEMBERSHIP_SEAT_TYPES),
+  fromSeatName: z.string().nullable(),
+  kind: z.enum(["unchanged", "immediate", "deferred"]),
+  count: z.number().int(),
+});
+
+const BulkSeatChangeSeatTotalSchema = z.object({
+  seatType: z.enum(MEMBERSHIP_SEAT_TYPES),
+  seatName: z.string(),
+  committedSeats: z.number().int(),
+  assignedBefore: z.number().int(),
+  assignedAfter: z.number().int(),
+});
+
+const BulkSeatChangePreviewResponseSchema = z.object({
+  preview: z.object({
+    memberCount: z.number().int(),
+    targetSeatType: z.enum(PAID_SEAT_TYPES),
+    targetSeatName: z.string(),
+    currency: z.enum(SUPPORTED_CURRENCIES),
+    moves: z.array(BulkSeatChangeMoveSchema),
+    immediateDeltaMonthlyCents: z.number(),
+    deferredDeltaMonthlyCents: z.number(),
+    // Optional: tolerate an older server that doesn't send the fields yet.
+    nextBillingPeriodAt: z.string().nullable().optional(),
+    seatTotals: z.array(BulkSeatChangeSeatTotalSchema).optional(),
+  }),
+});
+
+export type BulkSeatChangePreviewBody = z.infer<
+  typeof BulkSeatChangePreviewResponseSchema
+>["preview"];
+
+export function useBulkSeatChangePreview({
+  workspaceId,
+}: {
+  workspaceId: string;
+}) {
+  const sendNotification = useSendNotification();
+
+  const doFetchSeatChangePreview = useCallback(
+    async ({
+      selection,
+      seatType,
+    }: {
+      selection: BulkMemberSelectionBody;
+      seatType: PaidSeatType;
+    }): Promise<BulkSeatChangePreviewBody | null> => {
+      const res = await clientFetch(`${bulkSeatTypeUrl(workspaceId)}/preview`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ selection, seatType }),
+      });
+
+      if (!res.ok) {
+        const error = await res.json();
+        sendNotification({
+          type: "error",
+          title: "Failed to prepare seat change",
+          description: error?.error?.message ?? "An unexpected error occurred.",
+        });
+        return null;
+      }
+
+      return BulkSeatChangePreviewResponseSchema.parse(await res.json())
+        .preview;
+    },
+    [workspaceId, sendNotification]
+  );
+
+  return { doFetchSeatChangePreview };
+}
+
+const BulkChangeSeatTypeResponseSchema = z.object({
+  workflowId: z.string(),
+  memberCount: z.number().int(),
+});
+
+export function useBulkChangeSeatType({
+  workspaceId,
+}: {
+  workspaceId: string;
+}) {
+  const sendNotification = useSendNotification();
+
+  const doBulkChangeSeatType = useCallback(
+    async ({
+      selection,
+      seatType,
+      seatName,
+      hasDeferredChanges,
+    }: {
+      selection: BulkMemberSelectionBody;
+      seatType: PaidSeatType;
+      seatName: string;
+      // Whether some selected members are being downgraded — their change
+      // applies at the next credit refresh, so the notification says so.
+      hasDeferredChanges: boolean;
+    }): Promise<{ workflowId: string; memberCount: number } | null> => {
+      const res = await clientFetch(bulkSeatTypeUrl(workspaceId), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ selection, seatType }),
+      });
+
+      if (!res.ok) {
+        const error = await res.json();
+        sendNotification({
+          type: "error",
+          title: "Failed to update seats",
+          description: error?.error?.message ?? "An unexpected error occurred.",
+        });
+        return null;
+      }
+
+      const body = BulkChangeSeatTypeResponseSchema.parse(await res.json());
+      sendNotification({
+        type: "success",
+        title: "Seats updated",
+        description: hasDeferredChanges
+          ? `Changed ${body.memberCount.toLocaleString("en-US")} members to ${seatName}. Downgrades take effect at the next credit refresh.`
+          : `Changed ${body.memberCount.toLocaleString("en-US")} members to ${seatName}.`,
+      });
+
+      await invalidateMembersUsage(workspaceId);
+      return body;
+    },
+    [workspaceId, sendNotification]
+  );
+
+  return { doBulkChangeSeatType };
 }
 
 export async function invalidateMembersUsage(
@@ -363,6 +505,7 @@ export function useMembersUsage({
 
   return {
     membersUsage: data?.members ?? emptyArray(),
+    creditsResetAt: data?.creditsResetAt ?? null,
     isMembersUsageLoading: !error && !data && !disabled,
     isMembersUsageRefreshing: isLoading && !!data && !disabled,
     isMembersUsageError: !!error,

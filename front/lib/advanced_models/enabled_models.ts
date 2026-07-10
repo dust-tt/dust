@@ -1,9 +1,12 @@
 import { advancedModelKey } from "@app/lib/advanced_models/resolve_allowed";
+import { pickPreferredLargeModel } from "@app/lib/api/assistant/model_preferences";
+import { getAvailableModelsForWorkspace } from "@app/lib/api/assistant/workspace_capabilities";
 import { isAdvancedModel } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
 import { AdvancedModelResource } from "@app/lib/resources/advanced_model_resource";
 import type { EnabledModelConfigurationType } from "@app/types/api/assistant/models";
+import { AUTO_MODEL_ID } from "@app/types/assistant/models/auto";
 import type { ModelConfigurationType } from "@app/types/assistant/models/types";
 
 export async function withModelSelectability(
@@ -34,4 +37,46 @@ export async function withModelSelectability(
       !isAdvancedModel(model) ||
       allowedAdvancedModelKeys.has(advancedModelKey(model)),
   }));
+}
+
+export async function getEnabledModelsForAuth(
+  auth: Authenticator
+): Promise<EnabledModelConfigurationType[]> {
+  const availableModels = await getAvailableModelsForWorkspace(auth);
+  return withModelSelectability(auth, { models: availableModels });
+}
+
+export function getDefaultModelFromEnabledModels(
+  models: EnabledModelConfigurationType[]
+): EnabledModelConfigurationType {
+  const selectableModels = models.filter((m) => m.isSelectable);
+  const autoModel = selectableModels.find((m) => m.modelId === AUTO_MODEL_ID);
+  if (autoModel) {
+    return autoModel;
+  }
+
+  return {
+    ...pickPreferredLargeModel(selectableModels),
+    isSelectable: true,
+  };
+}
+
+export async function getAutoModelForAuth(
+  auth: Authenticator
+): Promise<EnabledModelConfigurationType | null> {
+  const availableModels = await getEnabledModelsForAuth(auth);
+  return {
+    ...pickPreferredLargeModel(availableModels.filter((m) => m.isSelectable)),
+  };
+}
+
+export async function getModelsForAuth(auth: Authenticator): Promise<{
+  models: EnabledModelConfigurationType[];
+  defaultModel: EnabledModelConfigurationType;
+}> {
+  const models = await getEnabledModelsForAuth(auth);
+  return {
+    models,
+    defaultModel: getDefaultModelFromEnabledModels(models),
+  };
 }

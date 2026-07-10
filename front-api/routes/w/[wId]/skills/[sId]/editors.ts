@@ -95,7 +95,7 @@ app.patch(
     }
     const { skill: skillRes, editorGroup } = loaded;
 
-    if (!skillRes.canWrite(auth)) {
+    if (!skillRes.canAdministrate(auth)) {
       return apiError(ctx, {
         status_code: 403,
         api_error: {
@@ -137,10 +137,10 @@ app.patch(
       }
     }
 
-    // Check authorization for modifying group members
-    if (!editorGroup.canWrite(auth)) {
+    // Check authorization for modifying group members.
+    if (!editorGroup.canAdministrate(auth)) {
       return apiError(ctx, {
-        status_code: 401,
+        status_code: 403,
         api_error: {
           type: "workspace_auth_error",
           message: "You are not authorized to modify the skill editors group.",

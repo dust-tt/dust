@@ -436,11 +436,9 @@ export function makePlanMessage({
  * This is used when an agent sends a tool_approve_execution event to Slack.
  */
 export function makeToolValidationBlock({
-  agentName,
   toolName,
   id,
 }: {
-  agentName: string;
   toolName: string;
   id: string;
 }) {
@@ -449,7 +447,7 @@ export function makeToolValidationBlock({
       type: "section",
       text: {
         type: "mrkdwn",
-        text: `Agent \`${agentName}\` is requesting permission to use tool \`${toolName}\``,
+        text: `The agent is requesting permission to use tool \`${toolName}\``,
       },
     },
     {
@@ -466,7 +464,6 @@ export function makeToolValidationBlock({
           style: "primary",
           value: JSON.stringify({
             status: "approved",
-            agentName,
             toolName,
           } as RequestToolPermissionActionValueParsed),
           action_id: APPROVE_TOOL_EXECUTION,
@@ -481,7 +478,6 @@ export function makeToolValidationBlock({
           style: "danger",
           value: JSON.stringify({
             status: "rejected",
-            agentName,
             toolName,
           } as RequestToolPermissionActionValueParsed),
           action_id: REJECT_TOOL_EXECUTION,
@@ -492,12 +488,10 @@ export function makeToolValidationBlock({
 }
 
 export function makeToolAuthenticationBlock({
-  agentName,
   serverName,
   conversationUrl,
   value,
 }: {
-  agentName: string;
   serverName: string;
   conversationUrl: string;
   value: string;
@@ -507,7 +501,7 @@ export function makeToolAuthenticationBlock({
       type: "section",
       text: {
         type: "mrkdwn",
-        text: `Agent \`${agentName}\` requires personal authentication for \`${serverName}\``,
+        text: `The agent requires personal authentication for \`${serverName}\``,
       },
     },
     {
@@ -602,12 +596,10 @@ export function makeUserQuestionBlock({
   return blocks;
 }
 export function makeToolFileAuthorizationBlock({
-  agentName,
   fileName,
   conversationUrl,
   value,
 }: {
-  agentName: string;
   fileName: string;
   conversationUrl: string;
   value: string;
@@ -617,7 +609,7 @@ export function makeToolFileAuthorizationBlock({
       type: "section",
       text: {
         type: "mrkdwn",
-        text: `Agent \`${agentName}\` requires file authorization for \`${fileName}\``,
+        text: `The agent requires file authorization for \`${fileName}\``,
       },
     },
     {

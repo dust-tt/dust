@@ -1,11 +1,18 @@
 import { PlanModel, SubscriptionModel } from "@app/lib/models/plan";
 import { FREE_NO_PLAN_DATA } from "@app/lib/plans/free_plans";
-import { getPlanCodeSortPriority } from "@app/lib/plans/plan_codes";
+import type { PokePlanTypeFilter } from "@app/lib/plans/plan_codes";
+import {
+  isPokePlanTypeFilter,
+  POKE_PLAN_TYPE_FILTERS,
+} from "@app/lib/plans/plan_codes";
 import { renderSubscriptionFromModels } from "@app/lib/plans/renderers";
 import { tryParsePhoneNumber } from "@app/lib/plans/trial/phone";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
-import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
+import {
+  buildPokePlanCodeWhere,
+  SubscriptionResource,
+} from "@app/lib/resources/subscription_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { WorkspaceVerificationAttemptResource } from "@app/lib/resources/workspace_verification_attempt_resource";
@@ -17,7 +24,7 @@ import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { pokeApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
-import type { FindOptions, Order, WhereOptions } from "sequelize";
+import type { FindOptions, Includeable, Order, WhereOptions } from "sequelize";
 import { Op } from "sequelize";
 
 import wId from "./[wId]";
@@ -39,6 +46,8 @@ app.get("/", async (ctx): HandlerResult<GetPokeWorkspacesResponseBody> => {
   const upgradedQuery = ctx.req.query("upgraded");
   const searchQuery = ctx.req.query("search");
   const limitQuery = ctx.req.query("limit");
+  const offsetQuery = ctx.req.query("offset");
+  const planTypeQuery = ctx.req.query("planType");
 
   let listUpgraded: boolean | undefined;
   if (upgradedQuery !== undefined) {
@@ -55,7 +64,20 @@ app.get("/", async (ctx): HandlerResult<GetPokeWorkspacesResponseBody> => {
     listUpgraded = upgradedQuery === "true";
   }
 
-  let originalLimit = 0;
+  let planTypeFilter: PokePlanTypeFilter | undefined;
+  if (planTypeQuery !== undefined) {
+    if (!isPokePlanTypeFilter(planTypeQuery)) {
+      return apiError(ctx, {
+        status_code: 400,
+        api_error: {
+          type: "invalid_request_error",
+          message: `The request query is invalid, expects { planType: one of ${POKE_PLAN_TYPE_FILTERS.join(", ")} }.`,
+        },
+      });
+    }
+    planTypeFilter = planTypeQuery;
+  }
+
   let limit = 0;
   if (limitQuery !== undefined) {
     if (!/^\d+$/.test(limitQuery)) {
@@ -67,8 +89,21 @@ app.get("/", async (ctx): HandlerResult<GetPokeWorkspacesResponseBody> => {
         },
       });
     }
-    originalLimit = parseInt(limitQuery, 10);
-    limit = originalLimit;
+    limit = parseInt(limitQuery, 10);
+  }
+
+  let offset = 0;
+  if (offsetQuery !== undefined) {
+    if (!/^\d+$/.test(offsetQuery)) {
+      return apiError(ctx, {
+        status_code: 400,
+        api_error: {
+          type: "invalid_request_error",
+          message: "The request query is invalid, expects { offset: number }.",
+        },
+      });
+    }
+    offset = parseInt(offsetQuery, 10);
   }
 
   const searchTerm = searchQuery
@@ -87,6 +122,17 @@ app.get("/", async (ctx): HandlerResult<GetPokeWorkspacesResponseBody> => {
     } else {
       conditions.push({ id: { [Op.notIn]: workspaceIds } });
     }
+  }
+
+  // "free" has no plan-code pattern of its own (it's "no active subscription,
+  // or one that isn't any of the other buckets"), so it's implemented as an
+  // exclude-list of the (small, non-free) workspace ids. Every other bucket
+  // is instead filtered directly in the main query below via an inner join
+  // on the matching plan code, so we only ever fetch the requested page.
+  if (planTypeFilter === "free") {
+    const nonFreeWorkspaceIds =
+      await SubscriptionResource.listActiveWorkspaceIdsWithNonFreePlanType();
+    conditions.push({ id: { [Op.notIn]: nonFreeWorkspaceIds } });
   }
 
   if (searchTerm) {
@@ -165,48 +211,63 @@ app.get("/", async (ctx): HandlerResult<GetPokeWorkspacesResponseBody> => {
         ],
       });
     }
-
-    // In case of search, we increase the limit for the sql query to 100
-    // because we'll sort manually (until a better solution is found).
-    // Note from seb: I tried ordering directly in the query but I stumbled
-    // into sequelize behaviors that I don't understand.
-    limit = 100;
   }
 
   const where: FindOptions<WorkspaceModel>["where"] = conditions.length
     ? { [Op.and]: conditions }
     : {};
 
+  // For non-free buckets, filter directly via an inner join on the matching
+  // plan code so the DB does the filtering *and* the pagination in one
+  // query — we never materialize the (possibly large) matching id set in
+  // Node. "free" is instead expressed as an exclude condition above (see
+  // `conditions`), so the subscriptions include here stays a plain left
+  // join in that case, same as when there's no plan-type filter at all.
+  const subscriptionsInclude: Includeable =
+    planTypeFilter !== undefined && planTypeFilter !== "free"
+      ? {
+          model: SubscriptionModel,
+          as: "subscriptions",
+          where: { status: "active" },
+          required: true,
+          include: [
+            {
+              model: PlanModel,
+              as: "plan",
+              where: buildPokePlanCodeWhere(planTypeFilter),
+              required: true,
+            },
+          ],
+        }
+      : {
+          model: SubscriptionModel,
+          as: "subscriptions",
+          where: { status: "active" },
+          required: false,
+          include: [{ model: PlanModel, as: "plan" }],
+        };
+
+  // Fetch one extra row past the requested page so we can tell whether a
+  // next page exists without a second query.
+  //
+  // subQuery: false — Sequelize's default subquery-splitting for
+  // limit+hasMany-include generates invalid SQL once a nested `required`
+  // include is involved (a join clause ends up referencing the
+  // "subscriptions" alias without bringing it into that subquery's scope).
+  // Disabling it makes Sequelize LIMIT/OFFSET the joined row set directly,
+  // which is safe here since a workspace has at most one active
+  // subscription, so the join can't duplicate rows.
   const workspaces = await WorkspaceModel.findAll({
     where,
-    limit,
-    include: [
-      {
-        model: SubscriptionModel,
-        as: "subscriptions",
-        where: { status: "active" },
-        required: false,
-        include: [{ model: PlanModel, as: "plan" }],
-      },
-    ],
+    limit: limit + 1,
+    offset,
+    include: [subscriptionsInclude],
     order,
+    subQuery: false,
   });
 
-  // If limit was bumped above originalLimit, sort by plan priority
-  // (enterprise first, then pro, then free / old-free) and trim back.
-  let displayed = workspaces;
-  if (limit > originalLimit) {
-    const sorted = [...workspaces].sort((a, b) => {
-      const planAPriority = getPlanCodeSortPriority(
-        a.subscriptions?.[0]?.plan?.code || ""
-      );
-      const planBPriority = getPlanCodeSortPriority(
-        b.subscriptions?.[0]?.plan?.code || ""
-      );
-      return planAPriority - planBPriority;
-    });
-    displayed = sorted.slice(0, originalLimit);
-  }
+  const hasMore = workspaces.length > limit;
+  const displayed = workspaces.slice(0, limit);
 
   const lightWorkspaces = displayed.map((workspace) =>
     renderLightWorkspaceType({ workspace, role: "admin" })
@@ -230,6 +291,7 @@ app.get("/", async (ctx): HandlerResult<GetPokeWorkspacesResponseBody> => {
       }),
       membersCount: membersCountByWorkspaceId[workspace.sId] ?? 0,
     })),
+    hasMore,
   });
 });
 

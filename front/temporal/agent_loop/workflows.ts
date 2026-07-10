@@ -10,6 +10,7 @@ import type * as ensureTitleActivities from "@app/temporal/agent_loop/activities
 import type * as finalizeActivities from "@app/temporal/agent_loop/activities/finalize";
 import type * as publishDeferredEventsActivities from "@app/temporal/agent_loop/activities/publish_deferred_events";
 import type * as runModelAndCreateWrapperActivities from "@app/temporal/agent_loop/activities/run_model_and_create_actions_wrapper";
+import type * as runSandboxFunctionToolActivities from "@app/temporal/agent_loop/activities/run_sandbox_function_tool";
 import type * as runToolActivities from "@app/temporal/agent_loop/activities/run_tool";
 import {
   MODEL_ACTIVITY_HEARTBEAT_TIMEOUT_MS,
@@ -93,6 +94,17 @@ const { runToolActivity: runRetryableToolActivity } = proxyActivities<
   heartbeatTimeout: TOOL_ACTIVITY_HEARTBEAT_TIMEOUT_MS,
   retry: {
     maximumAttempts: RETRY_ON_INTERRUPT_MAX_ATTEMPTS,
+  },
+});
+
+const { runSandboxFunctionToolActivity } = proxyActivities<
+  typeof runSandboxFunctionToolActivities
+>({
+  startToCloseTimeout: toolActivityStartToCloseTimeoutMs,
+  heartbeatTimeout: TOOL_ACTIVITY_HEARTBEAT_TIMEOUT_MS,
+  retry: {
+    // Do not retry tool activities. Those are not idempotent.
+    maximumAttempts: 1,
   },
 });
 
@@ -527,4 +539,14 @@ export async function runSandboxChildToolWorkflow({
   if (deferredEvents.length > 0) {
     await publishDeferredEventsActivity(deferredEvents);
   }
+}
+
+export async function runSandboxFunctionToolWorkflow({
+  authType,
+  actionModelId,
+}: {
+  authType: AuthenticatorType;
+  actionModelId: number;
+}) {
+  await runSandboxFunctionToolActivity(authType, { actionModelId });
 }

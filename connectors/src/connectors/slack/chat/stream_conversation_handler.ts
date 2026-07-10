@@ -35,6 +35,7 @@ import logger from "@connectors/logger/logger";
 import type { ConnectorResource } from "@connectors/resources/connector_resource";
 import { redisClient } from "@connectors/types/shared/redis_client";
 import type {
+  ActionGeneratedFileType,
   AgentActionPublicType,
   AgentEvent,
   ConversationPublicType,
@@ -541,7 +542,6 @@ async function streamAgentAnswerToSlack(
         const postResult = await postUserActionEphemeral({
           text: "Approve tool execution",
           blocks: makeToolValidationBlock({
-            agentName: event.metadata.agentName,
             toolName: event.metadata.toolName,
             id: JSON.stringify(blockId),
           }),
@@ -564,7 +564,6 @@ async function streamAgentAnswerToSlack(
           const postResult = await postUserActionEphemeral({
             text: "Personal authentication required",
             blocks: makeToolAuthenticationBlock({
-              agentName: event.metadata.agentName,
               serverName: event.metadata.mcpServerDisplayName,
               conversationUrl,
               value: JSON.stringify({
@@ -603,7 +602,6 @@ async function streamAgentAnswerToSlack(
           const postResult = await postUserActionEphemeral({
             text: "File authorization required",
             blocks: makeToolFileAuthorizationBlock({
-              agentName: event.metadata.agentName,
               fileName: event.fileAuthError.fileName,
               conversationUrl,
               value: JSON.stringify({
@@ -769,7 +767,15 @@ async function streamAgentAnswerToSlack(
           authResult.ok &&
           authResult.response_metadata?.scopes?.includes("files:write")
         ) {
-          const files = actions.flatMap((action) => action.generatedFiles);
+          // Path-backed generated files have no fileId and cannot be downloaded by id, skip them.
+          const files = actions
+            .flatMap((action) => action.generatedFiles)
+            .filter(
+              (
+                file
+              ): file is Extract<ActionGeneratedFileType, { fileId: string }> =>
+                file.fileId !== null
+            );
           filesUploaded = await getFilesFromDust(files, dustAPI);
         }
 

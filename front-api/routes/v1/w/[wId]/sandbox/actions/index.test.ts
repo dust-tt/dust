@@ -1,3 +1,6 @@
+import { InternalMCPServerInMemoryResource } from "@app/lib/resources/internal_mcp_server_in_memory_resource";
+import { MCPServerViewFactory } from "@app/tests/utils/MCPServerViewFactory";
+import { RemoteMCPServerFactory } from "@app/tests/utils/RemoteMCPServerFactory";
 import {
   createSandboxFunctionInvocationTokenTestContext,
   createSandboxTokenTestContext,
@@ -43,18 +46,37 @@ describe("GET /api/v1/w/[wId]/sandbox/actions", () => {
     });
   });
 
-  it("rejects sandbox function invocation tokens", async () => {
-    const { token, workspace } =
+  it("lists servers of the pod and global spaces for invocation tokens", async () => {
+    const { auth, token, workspace, globalSpace } =
       await createSandboxFunctionInvocationTokenTestContext();
+
+    const commonUtilities = await InternalMCPServerInMemoryResource.makeNew(
+      auth,
+      { name: "common_utilities", useCase: null }
+    );
+    await MCPServerViewFactory.create(
+      workspace,
+      commonUtilities.id,
+      globalSpace
+    );
+    const search = await InternalMCPServerInMemoryResource.makeNew(auth, {
+      name: "search",
+      useCase: null,
+    });
+    await MCPServerViewFactory.create(workspace, search.id, globalSpace);
+    const remoteServer = await RemoteMCPServerFactory.create(workspace, {
+      name: "remote_server",
+    });
+    await MCPServerViewFactory.create(workspace, remoteServer.sId, globalSpace);
 
     const response = await getSandboxActions(workspace, token);
 
-    expect(response.status).toBe(403);
-    expect(await response.json()).toEqual({
-      error: {
-        type: "invalid_request_error",
-        message: "This sandbox token cannot access sandbox actions.",
-      },
-    });
+    expect(response.status).toBe(200);
+    const body = await response.json();
+    expect(
+      body.serverViews
+        .map((sv: { server: { name: string } }) => sv.server.name)
+        .sort()
+    ).toEqual(["common_utilities", "remote_server", "search"]);
   });
 });

@@ -8,6 +8,7 @@ import { ProjectKnowledgePolicy } from "@app/components/workspace/settings/Proje
 import { RestrictAgentsPublishingCapability } from "@app/components/workspace/settings/RestrictAgentsPublishingCapability";
 import { SlackPersonalFooterRemovalToggle } from "@app/components/workspace/settings/SlackPersonalFooterRemovalToggle";
 import { VoiceTranscriptionToggle } from "@app/components/workspace/settings/VoiceTranscriptionToggle";
+import { WorkspaceAnalyticsToggle } from "@app/components/workspace/settings/WorkspaceAnalyticsToggle";
 import { useAuth, useFeatureFlags } from "@app/lib/auth/AuthContext";
 import type { WorkspaceType } from "@app/types/user";
 import { ContextItem, Page } from "@dust-tt/sparkle";
@@ -23,15 +24,16 @@ export function CapabilitiesSection({
 }: CapabilitiesSectionProps) {
   const { subscription } = useAuth();
   const { hasFeature } = useFeatureFlags();
-  const hasAuditLogsAccess =
-    subscription.plan.isAuditLogsAllowed || hasFeature("audit_logs");
+  const isAdminGovernanceEnabled = hasFeature("admin_governance");
 
   return (
     <Page.Vertical align="stretch" gap="md">
       <Page.H variant="h4">Capabilities</Page.H>
       <ContextItem.List>
         <div className="h-full border-b border-border" />
-        <InteractiveContentSharingToggle owner={owner} />
+        {!isAdminGovernanceEnabled && (
+          <InteractiveContentSharingToggle owner={owner} />
+        )}
         {!subscription.plan.isByok && (
           <VoiceTranscriptionToggle owner={owner} />
         )}
@@ -40,8 +42,9 @@ export function CapabilitiesSection({
         <EmailAgentsToggle owner={owner} />
         <PrivateConversationUrlsToggle owner={owner} />
         <SlackPersonalFooterRemovalToggle owner={owner} />
+        <WorkspaceAnalyticsToggle owner={owner} />
         <DustMcpServerSettingsItem owner={owner} />
-        {hasAuditLogsAccess && <AuditLogsToggle owner={owner} />}
+        {!isAdminGovernanceEnabled && <AuditLogsToggle owner={owner} />}
         {publishingRestrictionMessage && (
           <RestrictAgentsPublishingCapability
             subElement={publishingRestrictionMessage}

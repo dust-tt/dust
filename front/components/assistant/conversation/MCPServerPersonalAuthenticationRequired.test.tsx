@@ -1,4 +1,4 @@
-import type { BlockedToolExecution } from "@app/lib/actions/mcp";
+import type { AgentLoopBlockedToolExecution } from "@app/lib/actions/mcp";
 import type { LightWorkspaceType } from "@app/types/user";
 import { act, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
@@ -115,7 +115,7 @@ const owner: LightWorkspaceType = {
   metronomeCustomerId: null,
 };
 
-function makeBlockedAction(): BlockedToolExecution & {
+function makeBlockedAction(): AgentLoopBlockedToolExecution & {
   status: "blocked_authentication_required";
 } {
   return {

@@ -34,6 +34,7 @@ export const ASK_USER_QUESTION_TOOLS_METADATA = createToolsRecord({
     },
     enableAlerting: true,
     stake: "never_ask",
+    eager: true,
     displayLabels: {
       running: "Asking user...",
       done: "User answered",

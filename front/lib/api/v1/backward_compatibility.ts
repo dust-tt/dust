@@ -1,5 +1,4 @@
 import { isRunAgentQueryProgressOutput } from "@app/lib/actions/mcp_internal_actions/output_schemas";
-import type { ActionGeneratedDBFileType } from "@app/lib/actions/types";
 import type { MessageStreamEvent } from "@app/lib/api/assistant/pubsub";
 import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
@@ -170,17 +169,8 @@ function getRawContents(msg: AgentMessageType): Array<{
 export function addBackwardCompatibleAgentMessageFields(
   agentMessage: AgentMessageType
 ): AgentMessagePublicType {
-  // File path files have no public file resource. Omit them from each action's generatedFiles.
-  const publicActions = agentMessage.actions.map((action) => ({
-    ...action,
-    generatedFiles: action.generatedFiles.filter(
-      (f): f is ActionGeneratedDBFileType => f.fileId !== null
-    ),
-  }));
-
   return {
     ...agentMessage,
-    actions: publicActions,
     // Map "gracefully_stopped" to "succeeded" and "interrupted" to "cancelled" for the public API.
     status:
       agentMessage.status === "gracefully_stopped"
@@ -194,9 +184,8 @@ export function addBackwardCompatibleAgentMessageFields(
 
 /**
  * Transforms an internal agent message stream event into the public
- * `AgentMessageEventType` exposed by the v1 SSE endpoint. Filters out
- * file-path generated files (no public file resource) and enriches
- * `run_agent` tool notifications with child conversation URLs.
+ * `AgentMessageEventType` exposed by the v1 SSE endpoint. Enriches `run_agent`
+ * tool notifications with child conversation URLs.
  */
 export function toPublicAgentMessageEvent(
   auth: Authenticator,
@@ -226,12 +215,6 @@ export function toPublicAgentMessageEvent(
       eventId: event.eventId,
       data: {
         ...event.data,
-        action: {
-          ...event.data.action,
-          generatedFiles: event.data.action.generatedFiles.filter(
-            (f): f is ActionGeneratedDBFileType => f.fileId !== null
-          ),
-        },
         notification: {
           ...event.data.notification,
           // For backward compatibility, we need to move the _meta.data to the root level.
@@ -239,24 +222,6 @@ export function toPublicAgentMessageEvent(
             label,
             output,
           },
-        },
-      },
-    };
-  }
-
-  if (
-    event.data.type === "agent_action_success" ||
-    event.data.type === "tool_params"
-  ) {
-    return {
-      eventId: event.eventId,
-      data: {
-        ...event.data,
-        action: {
-          ...event.data.action,
-          generatedFiles: event.data.action.generatedFiles.filter(
-            (f): f is ActionGeneratedDBFileType => f.fileId !== null
-          ),
         },
       },
     };

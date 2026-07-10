@@ -2,11 +2,19 @@ import type { Meta, StoryObj } from "@storybook/react";
 import React from "react";
 
 import {
-  REGULAR_BUTTON_SIZES,
+  BUTTON_SIZES,
   BUTTON_VARIANTS,
+  type ButtonSizeType,
+  type ButtonVariantType,
 } from "@sparkle/components/Button";
 
-import { Button, Plus, Robot, Separator } from "../index_with_tw_base";
+import {
+  ArrowRight,
+  Button,
+  Plus,
+  Robot,
+  Separator,
+} from "../index_with_tw_base";
 
 const ICONS = {
   none: null,
@@ -21,18 +29,15 @@ const meta = {
   parameters: {
     docs: {
       description: {
-        component: `Buttons let users trigger an action or event — submitting a form, opening a dialog, or confirming a choice. Sparkle buttons come in several visual **variants** and **sizes**, and support icons, loading and pulsing states, an inline counter, and a dropdown-chevron affordance (**isSelect**).
+        component: `Buttons let users trigger an action or event — submitting a form, opening a dialog, or confirming a choice. The button comes in several visual **variants** and three **sizes** (xs / sm / md), and supports a leading and/or trailing icon, loading and disabled states, an inline counter, and a dropdown-chevron affordance (**isSelect**).
 
-**When to use**
-- To perform an action on the current page (save, delete, open a menu).
-- As the primary call-to-action in a form, dialog, or empty state.
+**For design review:** the **Overview** story shows every variant in light and dark side by side; **Sizes** shows the S/M/L scale; **States** shows default / icon / loading / disabled. Press a button to see the 0.97 press animation (it's automatically suppressed on dropdown triggers).
 
 **Guidelines**
-- Use a single **highlight** (primary) button per view; use **outline** or **ghost** for secondary actions.
+- Use a single **highlight** button per view; use **outline** or a **ghost** variant for secondary actions.
 - Write concise, verb-first labels ("Save changes", not "OK").
-- The **mini** / icon-only sizes require an **icon** and have no label — always pair them with a tooltip.
-- Set **isLoading** during async work to communicate progress and prevent double submits.
-- For navigation between pages, prefer a link styled as a button over an \`onClick\` handler.`,
+- An icon-only button (an **icon** with no **label**) should always have a **tooltip**.
+- Set **isLoading** during async work to communicate progress and prevent double submits.`,
       },
     },
   },
@@ -43,22 +48,25 @@ const meta = {
       control: { type: "select" },
     },
     size: {
-      description:
-        "The size of the button (Note: 'mini' size requires an icon and cannot have a label)",
-      options: REGULAR_BUTTON_SIZES,
+      description: "The size of the button",
+      options: BUTTON_SIZES,
       control: { type: "select" },
     },
     icon: {
-      description: "Icon to display in the button (Required for mini size)",
+      description: "Leading icon (omit the label for an icon-only button)",
       options: Object.keys(ICONS),
       mapping: ICONS,
       control: { type: "select" },
-      if: { arg: "size", neq: "mini" },
+    },
+    iconRight: {
+      description: "Trailing icon",
+      options: Object.keys(ICONS),
+      mapping: ICONS,
+      control: { type: "select" },
     },
     label: {
-      description: "Button label (Not available for mini size)",
+      description: "Button label (omit for an icon-only button)",
       control: { type: "text" },
-      if: { arg: "size", neq: "mini" },
     },
     disabled: {
       description: "Whether the button should be disabled",
@@ -69,24 +77,12 @@ const meta = {
       description: "Whether the button should display a loading spinner",
       control: "boolean",
     },
-    isPulsing: {
-      description: "Whether the button should have a pulsing animation",
-      control: "boolean",
-    },
     isSelect: {
       description: "Whether the button should display a dropdown chevron",
       control: "boolean",
     },
     isCounter: {
-      description: "Whether the button should display a counter",
-      control: "boolean",
-    },
-    briefPulse: {
-      description: "Whether the button should display a brief pulse",
-      control: "boolean",
-    },
-    hasLighterFont: {
-      description: "Whether the label uses a normal font weight",
+      description: "Whether the button should display an inline counter",
       control: "boolean",
     },
     counterValue: {
@@ -94,73 +90,189 @@ const meta = {
       control: "text",
       if: { arg: "isCounter", eq: true },
     },
+    isPulsing: {
+      description: "Whether the button should have a pulsing ring animation",
+      control: "boolean",
+    },
     tooltip: {
       description: "Optional tooltip text to display on hover",
       control: "text",
     },
   },
-  render: (args) => {
-    if (args.size === "mini" && !args.icon) {
-      args.icon = ICONS.Plus;
-    }
-    return <Button {...args} />;
-  },
+  render: (args) => <Button {...args} />,
 } satisfies Meta<typeof Button>;
 
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-export const ExampleButton: Story = {
+// ---------------------------------------------------------------------------
+// Showcase helpers
+// ---------------------------------------------------------------------------
+
+const labelClass = "text-xs font-medium text-muted-foreground ";
+
+// One variant row across its states.
+function VariantRow({
+  variant,
+  size,
+}: {
+  variant: ButtonVariantType;
+  size: ButtonSizeType;
+}) {
+  return (
+    <div className="flex items-center gap-3">
+      <div className={`w-32 shrink-0 ${labelClass}`}>{variant}</div>
+      <Button size={size} variant={variant} label="Button" />
+      <Button size={size} variant={variant} icon={Plus} label="Button" />
+      <Button
+        size={size}
+        variant={variant}
+        icon={Plus}
+        iconRight={ArrowRight}
+        label="Button"
+      />
+      <Button size={size} variant={variant} icon={Plus} tooltip="Add" />
+      <Button size={size} variant={variant} label="Button" isLoading />
+      <Button size={size} variant={variant} label="Button" disabled />
+    </div>
+  );
+}
+
+function ColumnLegend() {
+  return (
+    <div className={`flex items-center gap-3 ${labelClass}`}>
+      <div className="w-32 shrink-0">variant \ state</div>
+      <div className="w-[88px]">label</div>
+      <div className="w-[112px]">+ icon</div>
+      <div className="w-[132px]">+ both</div>
+      <div className="w-8">icon</div>
+      <div className="w-[100px]">loading</div>
+      <div>disabled</div>
+    </div>
+  );
+}
+
+function VariantGrid({ size = "md" }: { size?: ButtonSizeType }) {
+  return (
+    <div className="flex flex-col gap-3">
+      <ColumnLegend />
+      {BUTTON_VARIANTS.map((variant) => (
+        <VariantRow key={variant} variant={variant} size={size} />
+      ))}
+    </div>
+  );
+}
+
+// A themed surface card. `dark` toggles the `.dark` ancestor (sparkle's
+// class-based dark mode) so every button inside renders its dark treatment.
+function Surface({
+  dark = false,
+  title,
+  caption,
+  children,
+}: {
+  dark?: boolean;
+  title: string;
+  caption?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div
+      className={[
+        dark ? "dark border-border" : "",
+        !dark ? "bg-background border-border" : "",
+        "flex flex-col gap-4 rounded-2xl border p-6",
+      ].join(" ")}
+      style={dark ? { backgroundColor: "#1F1C19" } : undefined}
+    >
+      <div>
+        <div className="text-sm font-semibold text-foreground ">{title}</div>
+        {caption && <div className={`mt-0.5 ${labelClass}`}>{caption}</div>}
+      </div>
+      {children}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Stories
+// ---------------------------------------------------------------------------
+
+/** Interactive single button — tweak any prop from the Controls panel. */
+export const Playground: Story = {
   args: {
-    variant: "outline",
+    variant: "primary",
     label: "Button",
     size: "md",
     isLoading: false,
-    isPulsing: false,
     isSelect: false,
-    briefPulse: false,
-    hasLighterFont: false,
+    isPulsing: false,
     disabled: false,
     isCounter: false,
     counterValue: "1",
   },
 };
 
-export const MiniButton: Story = {
-  render: () => <Button size="icon" icon={Plus} />,
+/**
+ * Every variant in light and dark, side by side — the main story for design
+ * review. Each row walks through the states: label, + icon, + both icons,
+ * icon-only, loading, disabled.
+ */
+export const Overview: Story = {
+  render: () => (
+    <div className="flex flex-col gap-6">
+      <Surface title="Light">
+        <VariantGrid size="md" />
+      </Surface>
+      <Surface
+        dark
+        title="Dark"
+        caption="Primary and outline swap in dark mode (designer spec); every other variant is unchanged — its tokens adapt on their own."
+      >
+        <VariantGrid size="md" />
+      </Surface>
+    </div>
+  ),
 };
 
-const ButtonBySize = ({
-  size,
-}: {
-  // Only regular button sizes that support a label (no icon-only or mini)
-  size: Exclude<(typeof REGULAR_BUTTON_SIZES)[number], "mini">;
-}) => (
-  <>
-    <Separator />
-    <h3 className="text-primary">{size?.toUpperCase()}</h3>
-    <div className="flex flex-col gap-4">
-      {BUTTON_VARIANTS.map((variant) => (
-        <div key={variant} className="flex flex-col gap-2">
-          <div className="text-sm font-medium text-primary">{variant}</div>
-          <div className="flex items-center gap-4">
-            <Button size={size} variant={variant} label="Button" />
-            <Button size={size} variant={variant} label="Button" isLoading />
-            <Button size={size} variant={variant} icon={Plus} label="Button" />
-            <Button size={size} variant={variant} label="Button" disabled />
-          </div>
+/** The S / M / L scale (24 / 32 / 40px) across all variants. */
+export const Sizes: Story = {
+  render: () => (
+    <div className="flex flex-col gap-6">
+      {BUTTON_SIZES.map((size) => (
+        <div key={size} className="flex flex-col gap-3">
+          <Separator />
+          <h3 className={labelClass}>{size.toUpperCase()}</h3>
+          <VariantGrid size={size} />
         </div>
       ))}
     </div>
-  </>
-);
+  ),
+};
 
-export const Gallery: Story = {
+/** Icon-only buttons across sizes, plus the fully-rounded shape. */
+export const IconButtons: Story = {
+  render: () => (
+    <div className="flex items-center gap-4">
+      <Button size="xs" variant="outline" icon={Plus} tooltip="Add" />
+      <Button size="sm" variant="outline" icon={Plus} tooltip="Add" />
+      <Button size="md" variant="outline" icon={Plus} tooltip="Add" />
+      <Button size="md" variant="highlight" icon={Plus} tooltip="Add" />
+      <Button size="md" variant="primary" icon={Robot} tooltip="Agent" />
+    </div>
+  ),
+};
+
+/** Dropdown affordance (isSelect), inline counter, and pulsing. */
+export const SpecialStates: Story = {
   render: () => (
     <div className="flex flex-col gap-4">
-      <ButtonBySize size="xs" />
-      <ButtonBySize size="sm" />
-      <ButtonBySize size="md" />
+      <div className="flex items-center gap-4">
+        <Button variant="outline" label="Select agent" icon={Robot} isSelect />
+        <Button variant="primary" label="Filter" isSelect />
+        <Button variant="outline" label="Messages" isCounter counterValue="8" />
+        <Button variant="primary" label="Live" isPulsing />
+      </div>
     </div>
   ),
 };

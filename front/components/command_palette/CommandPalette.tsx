@@ -198,8 +198,8 @@ export function CommandPalette({ owner, user }: CommandPaletteProps) {
         void router.push(getPodRoute(owner.sId, item.pod.sId));
         return;
       }
-      // Skills without write access have only one action (view details).
-      if (item.kind === "skill" && !item.skill.canWrite) {
+      // Skills without administration access have only one action (view details).
+      if (item.kind === "skill" && !item.skill.canAdministrate) {
         executeAction(item, "view_details");
       } else {
         setSelectedItem(item);

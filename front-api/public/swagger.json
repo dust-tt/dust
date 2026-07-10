@@ -715,6 +715,7 @@
                   },
                   "toolset": {
                     "type": "array",
+                    "description": "Replaces the full set of tools on the agent. Any tool not present in this array is removed, so send the complete desired toolset. Each entry resolves an MCP server by name (see configuration.mcp_server_name). Entries that cannot be resolved are not applied and are returned in the skippedActions field of the response rather than causing the whole request to fail.",
                     "items": {
                       "type": "object",
                       "properties": {
@@ -731,7 +732,13 @@
                           ]
                         },
                         "configuration": {
-                          "type": "object"
+                          "type": "object",
+                          "properties": {
+                            "mcp_server_name": {
+                              "type": "string",
+                              "description": "Name of the MCP server to attach. Both built-in (internal) tools and remote MCP servers are supported. A remote MCP server must first be shared to a space (global or a regular space the caller can access); it is matched by its display name, which must be unambiguous within the workspace."
+                            }
+                          }
                         }
                       }
                     }
@@ -759,6 +766,7 @@
                     },
                     "skippedActions": {
                       "type": "array",
+                      "description": "Toolset entries that could not be applied (e.g. the referenced MCP server was not found, is not shared to an accessible space, or the name was ambiguous). The request still succeeds; inspect this list to confirm every intended tool was attached.",
                       "items": {
                         "type": "object",
                         "properties": {
@@ -1437,7 +1445,7 @@
           "Conversations"
         ],
         "summary": "Download a conversation-scoped file by path",
-        "description": "Download a file from a conversation's file system by its scoped path. The path must\nbe conversation-scoped, i.e. start with `conversation/` (as surfaced by agent file\nsystem tools). The file content is streamed directly from the conversation mount.\n",
+        "description": "Download a file from a conversation's file system by its scoped path. Pass the\ncanonical `filePath` surfaced in a message action's `generatedFiles` (the legacy\n`conversation/foo.pdf` form is also accepted). The file content is streamed\ndirectly from the conversation mount.\n",
         "parameters": [
           {
             "name": "wId",
@@ -1461,7 +1469,7 @@
             "name": "rel",
             "in": "path",
             "required": true,
-            "description": "Conversation-scoped file path, e.g. `conversation/foo.pdf` or\n`conversation/subdir/foo.pdf`. The `conversation/` prefix is required; any other\nscope prefix is rejected. Path traversal segments (`..`) are rejected.\n",
+            "description": "Conversation-scoped file path: the canonical `filePath` returned in a message\naction's `generatedFiles`, or the legacy `conversation/foo.pdf` form. Paths\nscoped to another conversation or to a different scope are rejected. Path\ntraversal segments (`..`) are rejected.\n",
             "schema": {
               "type": "string"
             }
@@ -10554,10 +10562,10 @@
             "nullable": true,
             "description": "Aggregated credit cost of all sub-agents (run_agent / agent_handover) spawned recursively by this message. Computed only on single-message fetches; null otherwise."
           },
-          "requestedModel": {
+          "resolvedModel": {
             "type": "object",
             "nullable": true,
-            "description": "Per-message model override from the input-bar model picker. Null when the agent ran its configured model.",
+            "description": "Model triplet used to generate the message. Null when the agent ran its configured model (legacy).",
             "properties": {
               "providerId": {
                 "type": "string"
@@ -10569,6 +10577,16 @@
                 "type": "string"
               }
             }
+          },
+          "modelResolutionMethod": {
+            "type": "string",
+            "nullable": true,
+            "enum": [
+              "agent",
+              "user",
+              "auto"
+            ],
+            "description": "How resolvedModel was chosen - agent (configured model), user (per-message picker), or auto (routed through the auto model). Null (legacy)."
           }
         }
       },
@@ -10687,7 +10705,13 @@
               "type": "object",
               "properties": {
                 "fileId": {
-                  "type": "string"
+                  "type": "string",
+                  "nullable": true,
+                  "description": "Dust file id for DB-backed files, or null for path-backed files."
+                },
+                "filePath": {
+                  "type": "string",
+                  "description": "Canonical scoped path for path-backed files."
                 },
                 "title": {
                   "type": "string"
@@ -10720,6 +10744,32 @@
             "type": "number",
             "nullable": true,
             "description": "Aggregated credit cost of all sub-agents (run_agent / agent_handover) spawned recursively by this message. Computed only on single-message fetches; null otherwise."
+          },
+          "resolvedModel": {
+            "type": "object",
+            "nullable": true,
+            "description": "Model triplet used to generate the message. Null when the agent ran its configured model (legacy).",
+            "properties": {
+              "providerId": {
+                "type": "string"
+              },
+              "modelId": {
+                "type": "string"
+              },
+              "reasoningEffort": {
+                "type": "string"
+              }
+            }
+          },
+          "modelResolutionMethod": {
+            "type": "string",
+            "nullable": true,
+            "enum": [
+              "agent",
+              "user",
+              "auto"
+            ],
+            "description": "How resolvedModel was chosen - agent (configured model), user (per-message picker), or auto (routed through the auto model). Null (legacy)."
           },
           "activitySteps": {
             "type": "array",
@@ -12160,6 +12210,9 @@
           },
           {
             "$ref": "#/components/schemas/PrivateSandboxFunctionInvocationResultEvent"
+          },
+          {
+            "$ref": "#/components/schemas/PrivateSandboxFunctionInvocationErrorEvent"
           }
         ]
       },
@@ -12236,6 +12289,37 @@
           },
           "result": {
             "description": "Result returned by the sandbox function."
+          }
+        }
+      },
+      "PrivateSandboxFunctionInvocationErrorEvent": {
+        "type": "object",
+        "required": [
+          "type",
+          "created",
+          "invocationId",
+          "functionId",
+          "message"
+        ],
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "sandbox_function_invocation_error"
+            ]
+          },
+          "created": {
+            "type": "integer"
+          },
+          "invocationId": {
+            "type": "string"
+          },
+          "functionId": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string",
+            "description": "Why the invocation failed before producing a result."
           }
         }
       },
@@ -12521,7 +12605,13 @@
               "type": "object",
               "properties": {
                 "fileId": {
-                  "type": "string"
+                  "type": "string",
+                  "nullable": true,
+                  "description": "Dust file id for DB-backed files, or null for path-backed files."
+                },
+                "filePath": {
+                  "type": "string",
+                  "description": "Canonical scoped path for path-backed files."
                 },
                 "title": {
                   "type": "string"
@@ -13411,7 +13501,45 @@
                       },
                       "actions": {
                         "type": "array",
-                        "example": []
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "generatedFiles": {
+                              "type": "array",
+                              "description": "Files generated by this action. Path-backed files have `fileId: null`\nand can be downloaded through the conversation files endpoint using\n`filePath`.\n",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "fileId": {
+                                    "type": "string",
+                                    "nullable": true,
+                                    "description": "Dust file id for DB-backed files, or null for path-backed files."
+                                  },
+                                  "filePath": {
+                                    "type": "string",
+                                    "description": "Canonical scoped path for path-backed files, as surfaced by agent file system tools."
+                                  },
+                                  "title": {
+                                    "type": "string"
+                                  },
+                                  "contentType": {
+                                    "type": "string"
+                                  },
+                                  "snippet": {
+                                    "type": "string",
+                                    "nullable": true
+                                  },
+                                  "hidden": {
+                                    "type": "boolean"
+                                  },
+                                  "isInProjectContext": {
+                                    "type": "boolean"
+                                  }
+                                }
+                              }
+                            }
+                          }
+                        }
                       },
                       "chainOfThought": {
                         "type": "string",

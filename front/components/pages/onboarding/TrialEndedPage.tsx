@@ -5,6 +5,7 @@ import {
 } from "@app/components/pages/onboarding/SubscriptionPlans";
 import { DontLoseSection } from "@app/components/paywall/DontLoseSection";
 import { useAuth } from "@app/lib/auth/AuthContext";
+import { useRedirectAwayFromCheckoutIfAlreadyPaid } from "@app/lib/client/subscription";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { useAppRouter } from "@app/lib/platform";
 import type { BillingPeriod } from "@app/types/plan";
@@ -15,6 +16,9 @@ export function TrialEndedPage() {
   const { workspace, user: authUser } = useAuth();
   const router = useAppRouter();
   const [billingPeriod, setBillingPeriod] = useState<BillingPeriod>("monthly");
+
+  const shouldRedirectAwayFromCheckout =
+    useRedirectAwayFromCheckoutIfAlreadyPaid();
 
   const { submit: handleSubscribe } = useSubmitFunction(
     async (seatType: PaidPlanTier) => {
@@ -28,6 +32,10 @@ export function TrialEndedPage() {
       );
     }
   );
+
+  if (shouldRedirectAwayFromCheckout) {
+    return null;
+  }
 
   return (
     <main className="flex min-h-screen flex-col items-center justify-center px-4 py-8">

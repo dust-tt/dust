@@ -408,10 +408,10 @@
  *           type: number
  *           nullable: true
  *           description: Aggregated credit cost of all sub-agents (run_agent / agent_handover) spawned recursively by this message. Computed only on single-message fetches; null otherwise.
- *         requestedModel:
+ *         resolvedModel:
  *           type: object
  *           nullable: true
- *           description: Per-message model override from the input-bar model picker. Null when the agent ran its configured model.
+ *           description: Model triplet used to generate the message. Null when the agent ran its configured model (legacy).
  *           properties:
  *             providerId:
  *               type: string
@@ -419,6 +419,11 @@
  *               type: string
  *             reasoningEffort:
  *               type: string
+ *         modelResolutionMethod:
+ *           type: string
+ *           nullable: true
+ *           enum: [agent, user, auto]
+ *           description: How resolvedModel was chosen - agent (configured model), user (per-message picker), or auto (routed through the auto model). Null (legacy).
  *     PrivateLightAgentMessage:
  *       type: object
  *       description: A lighter agent message used in paginated message list responses.
@@ -498,6 +503,11 @@
  *             properties:
  *               fileId:
  *                 type: string
+ *                 nullable: true
+ *                 description: Dust file id for DB-backed files, or null for path-backed files.
+ *               filePath:
+ *                 type: string
+ *                 description: Canonical scoped path for path-backed files.
  *               title:
  *                 type: string
  *               contentType:
@@ -519,6 +529,22 @@
  *           type: number
  *           nullable: true
  *           description: Aggregated credit cost of all sub-agents (run_agent / agent_handover) spawned recursively by this message. Computed only on single-message fetches; null otherwise.
+ *         resolvedModel:
+ *           type: object
+ *           nullable: true
+ *           description: Model triplet used to generate the message. Null when the agent ran its configured model (legacy).
+ *           properties:
+ *             providerId:
+ *               type: string
+ *             modelId:
+ *               type: string
+ *             reasoningEffort:
+ *               type: string
+ *         modelResolutionMethod:
+ *           type: string
+ *           nullable: true
+ *           enum: [agent, user, auto]
+ *           description: How resolvedModel was chosen - agent (configured model), user (per-message picker), or auto (routed through the auto model). Null (legacy).
  *         activitySteps:
  *           type: array
  *           items:
@@ -1401,6 +1427,7 @@
  *       oneOf:
  *         - $ref: '#/components/schemas/PrivateSandboxFunctionInvocationCreatedEvent'
  *         - $ref: '#/components/schemas/PrivateSandboxFunctionInvocationResultEvent'
+ *         - $ref: '#/components/schemas/PrivateSandboxFunctionInvocationErrorEvent'
  *     PrivateSandboxFunctionInvocationCreatedEvent:
  *       type: object
  *       required: [type, created, invocation]
@@ -1439,6 +1466,22 @@
  *           type: string
  *         result:
  *           description: Result returned by the sandbox function.
+ *     PrivateSandboxFunctionInvocationErrorEvent:
+ *       type: object
+ *       required: [type, created, invocationId, functionId, message]
+ *       properties:
+ *         type:
+ *           type: string
+ *           enum: [sandbox_function_invocation_error]
+ *         created:
+ *           type: integer
+ *         invocationId:
+ *           type: string
+ *         functionId:
+ *           type: string
+ *         message:
+ *           type: string
+ *           description: Why the invocation failed before producing a result.
  *     PrivateAgentMessageEvent:
  *       type: object
  *       description: Server-Sent Event for agent message streaming. Discriminated on the `type` field. Each event also includes a `step` integer.
@@ -1614,6 +1657,11 @@
  *             properties:
  *               fileId:
  *                 type: string
+ *                 nullable: true
+ *                 description: Dust file id for DB-backed files, or null for path-backed files.
+ *               filePath:
+ *                 type: string
+ *                 description: Canonical scoped path for path-backed files.
  *               title:
  *                 type: string
  *               contentType:

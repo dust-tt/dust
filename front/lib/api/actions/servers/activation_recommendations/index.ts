@@ -3,7 +3,7 @@ import type { ToolHandlers } from "@app/lib/actions/mcp_internal_actions/tool_de
 import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/utils";
 import { registerTool } from "@app/lib/actions/mcp_internal_actions/wrappers";
-import type { ToolContextType } from "@app/lib/actions/types";
+import type { ToolContext } from "@app/lib/actions/types";
 import { isAgentLoopRunContext } from "@app/lib/actions/types";
 import {
   ACTIVATION_RECOMMENDATIONS_SERVER_NAME,
@@ -20,10 +20,10 @@ const handlers: ToolHandlers<typeof ACTIVATION_RECOMMENDATIONS_TOOLS_METADATA> =
   {
     create_recommendation: async (
       { content, rationale },
-      { auth, toolContext }
+      { auth, runContext }
     ) => {
-      const conversationId = isAgentLoopRunContext(toolContext?.runContext)
-        ? toolContext.runContext.conversation.id
+      const conversationId = isAgentLoopRunContext(runContext)
+        ? runContext.conversation.id
         : null;
 
       const rec = await ActivationRecommendationResource.makeNew(auth, {
@@ -131,7 +131,7 @@ const handlers: ToolHandlers<typeof ACTIVATION_RECOMMENDATIONS_TOOLS_METADATA> =
 
 function createServer(
   auth: Authenticator,
-  toolContext?: ToolContextType
+  toolContext?: ToolContext
 ): McpServer {
   const server = makeInternalMCPServer(ACTIVATION_RECOMMENDATIONS_SERVER_NAME);
 

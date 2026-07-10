@@ -17,6 +17,7 @@ import {
   CARRY_ON_RENEWAL_CUSTOM_FIELD_KEY,
   CURRENCY_TO_CREDIT_TYPE_ID,
   getCreditTypeAwuId,
+  getProductFreeCreditId,
   getProductPrepaidCommitId,
   getProductSeatSubscriptionCommitId,
   HUBSPOT_DEAL_ID_CUSTOM_FIELD_KEY,
@@ -120,6 +121,18 @@ export const SwitchContractBodySchema = z.object({
       invoiceAmount: z.number().min(0, "Invoice amount must be zero or more"),
       paymentSchedule: paymentScheduleSchema,
     })
+    .optional(),
+  // Optional recurring free AWU credit grant, applied as a contract-level
+  // (non-seat) `add_recurring_credits` edit rather than baked into a
+  // package — e.g. the Partner Demo shared monthly pool
+  // (dust-tt/decisions#937). Usable with any package/tier; recurs monthly,
+  // for the life of the contract (no end date). Unlike `initialCredits`,
+  // this is a pure credit grant with no invoice, so no Stripe customer is
+  // required.
+  recurringFreeCreditAwuPerMonth: z
+    .number()
+    .int("Recurring free credit must be an integer number of AWU credits")
+    .min(1, "Recurring free credit must be at least 1 credit")
     .optional(),
   // Optional per-seat-type settings for the new contract. `minSeats` is the
   // billing floor persisted to `workspace_seat_limits`. `rate` is the per-seat
@@ -671,9 +684,8 @@ async function persistCreditConfig(
     paygEnabled: body.paygEnabled,
     usageCapCredits: body.usageCapCredits ?? null,
     balanceThresholdAwuCredits: body.balanceThresholdCredits ?? null,
-    defaultPoolCapAwuCredits: body.defaultPoolCapCredits ?? null,
-    programmaticMonthlyCapAwuCredits:
-      body.programmaticMonthlyCapCredits ?? null,
+    defaultPoolCapAwuCredits: body.defaultPoolCapCredits ?? 0,
+    programmaticMonthlyCapAwuCredits: body.programmaticMonthlyCapCredits ?? 0,
     autoSeatUpgradeEnabled: body.autoSeatUpgradeEnabled,
     topUpEnabled: body.topUpEnabled,
     autoInvoiceFinalizationEnabled: body.autoInvoiceFinalizationEnabled,
@@ -742,6 +754,32 @@ async function stepContractEdits({
 }: PostProvisionCtx): Promise<string | null> {
   const addCommits: NonNullable<ContractEditParams["add_commits"]> = [];
   const addOverrides: NonNullable<ContractEditParams["add_overrides"]> = [];
+  const addRecurringCredits: NonNullable<
+    ContractEditParams["add_recurring_credits"]
+  > = [];
+
+  // Optional recurring free AWU credit pool, granted directly on this
+  // contract (not baked into the package) — e.g. the Partner Demo shared
+  // monthly pool. Reuses the "Free Credits" FIXED product; won't be
+  // misclassified as a legacy free credit by `isMetronomeFreeCredit` since
+  // that additionally requires priority 1 and the programmatic-USD credit
+  // type.
+  if (body.recurringFreeCreditAwuPerMonth) {
+    addRecurringCredits.push({
+      product_id: getProductFreeCreditId(),
+      access_amount: {
+        credit_type_id: getCreditTypeAwuId(),
+        unit_price: body.recurringFreeCreditAwuPerMonth,
+        quantity: 1,
+      },
+      commit_duration: { value: 1, unit: "PERIODS" },
+      priority: AWU_PRIORITY_PURCHASED_COMMIT,
+      starting_at: floorToHourISO(alignedStart),
+      applicable_product_tags: ["usage"],
+      recurrence_frequency: "MONTHLY",
+      name: `Recurring free credit: ${body.recurringFreeCreditAwuPerMonth.toLocaleString()} AWU/month`,
+    });
+  }
 
   // Initial credits prepaid commit.
   if (body.initialCredits && resolvedCurrency) {
@@ -897,7 +935,8 @@ async function stepContractEdits({
   if (
     netPaymentTermsDays === undefined &&
     addCommits.length === 0 &&
-    addOverrides.length === 0
+    addOverrides.length === 0 &&
+    addRecurringCredits.length === 0
   ) {
     return null;
   }
@@ -910,6 +949,9 @@ async function stepContractEdits({
       : {}),
     ...(addCommits.length > 0 ? { add_commits: addCommits } : {}),
     ...(addOverrides.length > 0 ? { add_overrides: addOverrides } : {}),
+    ...(addRecurringCredits.length > 0
+      ? { add_recurring_credits: addRecurringCredits }
+      : {}),
   });
   if (result.isErr()) {
     return `contract_edits: ${result.error.message}`;

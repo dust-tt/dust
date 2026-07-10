@@ -1,6 +1,10 @@
 import { SEARCH_SERVER_NAME } from "@app/lib/actions/mcp_internal_actions/constants";
+import { getPrefixedToolName } from "@app/lib/actions/tool_name_utils";
 import { FILES_SERVER_NAME } from "@app/lib/api/actions/servers/files/metadata";
-import { POD_MANAGER_SERVER_NAME } from "@app/lib/api/actions/servers/pod_manager/metadata";
+import {
+  POD_MANAGER_SERVER_NAME,
+  SEMANTIC_SEARCH_TOOL_NAME,
+} from "@app/lib/api/actions/servers/pod_manager/metadata";
 import {
   formatPodAgentsMdPromptSection,
   readPodAgentsMdContent,
@@ -57,19 +61,17 @@ Use the \`sId\` from \`pod_tasks\` tools (e.g. \`list_tasks\`, \`create_tasks\`)
 
 When you need to find information, use this order (skip steps if the relevant tools are not in your tool list):
 1. **Pod overview**: \`${POD_MANAGER_SERVER_NAME}\` \`get_information\` returns the Pod URL, description, and what is attached to the Pod.
-2. **Pod files**: read and search \`pod-{podId}/<rel>\` files through the sandbox or the \`${FILES_SERVER_NAME}\` MCP tools.
-3. **Company-wide**: If still insufficient, use \`company_data_*\` tools and \`${SEARCH_SERVER_NAME}\` for broader company data sources.
+2. **Topic or question**: \`${getPrefixedToolName(POD_MANAGER_SERVER_NAME, SEMANTIC_SEARCH_TOOL_NAME)}\` searches Pod files, linked content nodes, and Pod conversation transcripts by meaning. Use it when you have a topic or question rather than a specific file path.
+3. **Known file path**: read the file directly under \`pod-{podId}/<rel>\` through the sandbox or the \`${FILES_SERVER_NAME}\` MCP tools.
+4. **Company-wide**: If still insufficient, use \`company_data_*\` tools and \`${SEARCH_SERVER_NAME}\` for broader company data sources.
 `,
 
   mcpServers: [{ name: "pod_manager" }, { name: "pod_tasks" }],
-  version: 3,
+  version: 4,
   icon: "ActionFolderIcon",
   isRestricted: undefined,
-  // Auto-enabled whenever the conversation belongs to a Pod.
-  isAutoEnabledForAgentLoop: ({ conversation }) =>
-    isPodConversation(conversation),
-  // Auto-equipped for all agent loops.
-  isAutoEquippedForAgentLoop: (): boolean => true,
+  getAutoEnabledOrEquippedForAgentLoop: ({ conversation }) =>
+    isPodConversation(conversation) ? "enabled" : "equipped",
 } as const satisfies GlobalSkillDefinition;
 
 export async function constructProjectContext(

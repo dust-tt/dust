@@ -247,8 +247,8 @@ export function PodSettingsTab({
       tabIndex={interactive ? 0 : -1}
       aria-label={
         isInheritingWorkspaceDefault
-          ? `Default agent: ${displayedDefaultAgent?.name ?? "Dust"} (workspace default)`
-          : `Default agent: ${displayedDefaultAgent?.name ?? "Dust"}`
+          ? `Default Agent: ${displayedDefaultAgent?.name ?? "Dust"} (workspace default)`
+          : `Default Agent: ${displayedDefaultAgent?.name ?? "Dust"}`
       }
       aria-disabled={!interactive}
       className={cn(
@@ -586,7 +586,7 @@ export function PodSettingsTab({
         {isDefaultSkillsEnabled && (
           <div className="flex w-full flex-col gap-2">
             <div className="heading-lg">Default Skills</div>
-            <p className="text-sm text-muted-foregroundt">
+            <p className="text-sm text-muted-foreground">
               The skills pre-selected when anyone starts a new conversation in
               this Pod. Members can still edit the skills in each conversation.
             </p>

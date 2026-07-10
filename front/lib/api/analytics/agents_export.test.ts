@@ -7,6 +7,7 @@ import {
 import { rowsToCsv } from "@app/lib/api/analytics/csv_utils";
 import { searchAnalytics } from "@app/lib/api/elasticsearch";
 import { Authenticator } from "@app/lib/auth";
+import { GroupResource } from "@app/lib/resources/group_resource";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
@@ -71,6 +72,25 @@ describe("fetchAgentExportRows", () => {
     const agent = await AgentConfigurationFactory.createTestAgent(authorAAuth, {
       name: "Multi-author agent",
     });
+
+    const editorGroupResult = await GroupResource.findEditorGroupForAgent(
+      authorAAuth,
+      agent
+    );
+    expect(editorGroupResult.isOk()).toBe(true);
+    if (editorGroupResult.isErr()) {
+      throw editorGroupResult.error;
+    }
+    const addAuthorBResult =
+      await editorGroupResult.value.dangerouslyAddMembers(authorAAuth, {
+        users: [authorB.toJSON()],
+      });
+    expect(addAuthorBResult.isOk()).toBe(true);
+    if (addAuthorBResult.isErr()) {
+      throw addAuthorBResult.error;
+    }
+    await authorBAuth.refresh();
+
     await AgentConfigurationFactory.updateTestAgent(authorBAuth, agent.sId);
 
     const result = await fetchAgentExportRows(

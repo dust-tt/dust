@@ -38,11 +38,12 @@ vi.mock("@app/lib/file_storage", () => ({
 }));
 
 import {
-  addSandboxPolicyDomain,
-  deleteSandboxPolicy,
+  addOwnerPolicyDomain,
+  deleteLegacySandboxPolicy,
+  deleteOwnerPolicy,
   deleteWorkspacePolicy,
   parseExactEgressDomain,
-  readSandboxPolicy,
+  readOwnerPolicy,
   readWorkspacePolicy,
   writeWorkspacePolicy,
 } from "./egress_policy";
@@ -51,50 +52,90 @@ const mockAuth = {
   getNonNullableWorkspace: () => ({ sId: "workspace-sid" }),
 } as unknown as Authenticator;
 
+const WORKSPACE_PATH = "w/workspace-sid/sandbox-egress-policy.json";
+const LEGACY_WORKSPACE_PATH = "workspaces/workspace-sid.json";
+const OWNER_PATH = "w/workspace-sid/sandboxes/owner-sid.json";
+
+const NOT_FOUND = { code: 404 };
+
+function setupBucketMocks() {
+  mockGetEgressPolicyBucket.mockReturnValue("egress-policy-bucket");
+  mockGetEgressProxyInternalUrl.mockReturnValue("https://egress-proxy");
+  mockMintEgressInvalidationJwt.mockReturnValue("invalidation-token");
+  mockFetch.mockResolvedValue({ ok: true, status: 200 });
+  vi.stubGlobal("fetch", mockFetch);
+  mockUploadRawContentToBucket.mockResolvedValue(undefined);
+  mockDelete.mockResolvedValue(undefined);
+  mockGetBucketInstance.mockReturnValue({
+    delete: mockDelete,
+    fetchFileContent: mockFetchFileContent,
+    uploadRawContentToBucket: mockUploadRawContentToBucket,
+  });
+}
+
+// Path-aware GCS stub: absent paths reject like GCS 404s.
+function setGcsObjects(objects: Record<string, { allowedDomains: string[] }>) {
+  mockFetchFileContent.mockImplementation(async (filePath: string) => {
+    const policy = objects[filePath];
+    if (!policy) {
+      throw NOT_FOUND;
+    }
+    return JSON.stringify(policy);
+  });
+}
+
 describe("workspace egress policy storage", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-
-    mockGetEgressPolicyBucket.mockReturnValue("egress-policy-bucket");
-    mockGetEgressProxyInternalUrl.mockReturnValue("https://egress-proxy");
-    mockMintEgressInvalidationJwt.mockReturnValue("invalidation-token");
-    mockFetch.mockResolvedValue({ ok: true, status: 200 });
-    vi.stubGlobal("fetch", mockFetch);
-    mockFetchFileContent.mockResolvedValue(
-      JSON.stringify({ allowedDomains: ["API.GitHub.COM"] })
-    );
-    mockUploadRawContentToBucket.mockResolvedValue(undefined);
-    mockDelete.mockResolvedValue(undefined);
-    mockGetBucketInstance.mockReturnValue({
-      delete: mockDelete,
-      fetchFileContent: mockFetchFileContent,
-      uploadRawContentToBucket: mockUploadRawContentToBucket,
-    });
+    setupBucketMocks();
   });
 
-  it("reads workspace policy files from the workspace prefix", async () => {
+  it("reads the workspace policy from the new layout", async () => {
+    setGcsObjects({
+      [WORKSPACE_PATH]: { allowedDomains: ["API.GitHub.COM"] },
+    });
+
     const result = await readWorkspacePolicy(mockAuth);
 
-    expect(result).toEqual(
-      new Ok({
-        allowedDomains: ["api.github.com"],
-      })
-    );
-    expect(mockGetBucketInstance).toHaveBeenCalledWith("egress-policy-bucket");
-    expect(mockFetchFileContent).toHaveBeenCalledWith(
-      "workspaces/workspace-sid.json"
+    expect(result).toEqual(new Ok({ allowedDomains: ["api.github.com"] }));
+    expect(mockFetchFileContent).toHaveBeenCalledWith(WORKSPACE_PATH);
+  });
+
+  it("falls back to the legacy path when the new object is absent", async () => {
+    setGcsObjects({
+      [LEGACY_WORKSPACE_PATH]: { allowedDomains: ["legacy.example.com"] },
+    });
+
+    const result = await readWorkspacePolicy(mockAuth);
+
+    expect(result).toEqual(new Ok({ allowedDomains: ["legacy.example.com"] }));
+    expect(mockFetchFileContent).toHaveBeenCalledWith(WORKSPACE_PATH);
+    expect(mockFetchFileContent).toHaveBeenCalledWith(LEGACY_WORKSPACE_PATH);
+  });
+
+  it("prefers the new layout over the legacy path when both exist", async () => {
+    setGcsObjects({
+      [WORKSPACE_PATH]: { allowedDomains: ["new.example.com"] },
+      [LEGACY_WORKSPACE_PATH]: { allowedDomains: ["legacy.example.com"] },
+    });
+
+    const result = await readWorkspacePolicy(mockAuth);
+
+    expect(result).toEqual(new Ok({ allowedDomains: ["new.example.com"] }));
+    expect(mockFetchFileContent).not.toHaveBeenCalledWith(
+      LEGACY_WORKSPACE_PATH
     );
   });
 
-  it("returns an empty policy when the workspace policy file is missing", async () => {
-    mockFetchFileContent.mockRejectedValue({ code: 404 });
+  it("returns an empty policy when neither layout has a file", async () => {
+    setGcsObjects({});
 
     const result = await readWorkspacePolicy(mockAuth);
 
     expect(result).toEqual(new Ok({ allowedDomains: [] }));
   });
 
-  it("writes normalized workspace policy files", async () => {
+  it("writes normalized policy files to both layouts", async () => {
     const result = await writeWorkspacePolicy(mockAuth, {
       policy: {
         allowedDomains: ["API.GitHub.COM", "*.GitHub.COM"],
@@ -106,13 +147,36 @@ describe("workspace egress policy storage", () => {
         allowedDomains: ["api.github.com", "*.github.com"],
       })
     );
-    expect(mockUploadRawContentToBucket).toHaveBeenCalledWith({
-      content: JSON.stringify({
-        allowedDomains: ["api.github.com", "*.github.com"],
-      }),
-      contentType: "application/json",
-      filePath: "workspaces/workspace-sid.json",
+    const content = JSON.stringify({
+      allowedDomains: ["api.github.com", "*.github.com"],
     });
+    expect(mockUploadRawContentToBucket).toHaveBeenCalledWith({
+      content,
+      contentType: "application/json",
+      filePath: WORKSPACE_PATH,
+    });
+    // Dual-write to the legacy path for front rollback safety.
+    expect(mockUploadRawContentToBucket).toHaveBeenCalledWith({
+      content,
+      contentType: "application/json",
+      filePath: LEGACY_WORKSPACE_PATH,
+    });
+  });
+
+  it("succeeds when only the legacy dual-write fails", async () => {
+    mockUploadRawContentToBucket.mockImplementation(
+      async ({ filePath }: { filePath: string }) => {
+        if (filePath === LEGACY_WORKSPACE_PATH) {
+          throw new Error("legacy write failed");
+        }
+      }
+    );
+
+    const result = await writeWorkspacePolicy(mockAuth, {
+      policy: { allowedDomains: ["api.github.com"] },
+    });
+
+    expect(result).toEqual(new Ok({ allowedDomains: ["api.github.com"] }));
   });
 
   it("does not write invalid domain entries", async () => {
@@ -126,65 +190,51 @@ describe("workspace egress policy storage", () => {
     expect(mockUploadRawContentToBucket).not.toHaveBeenCalled();
   });
 
-  it("deletes workspace policy files and ignores missing objects", async () => {
+  it("deletes both layouts and ignores missing objects", async () => {
     const result = await deleteWorkspacePolicy(mockAuth);
 
     expect(result).toEqual(new Ok(undefined));
-    expect(mockDelete).toHaveBeenCalledWith("workspaces/workspace-sid.json", {
+    expect(mockDelete).toHaveBeenCalledWith(WORKSPACE_PATH, {
+      ignoreNotFound: true,
+    });
+    expect(mockDelete).toHaveBeenCalledWith(LEGACY_WORKSPACE_PATH, {
       ignoreNotFound: true,
     });
   });
 });
 
-describe("sandbox egress policy storage", () => {
+describe("owner egress policy storage", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    setupBucketMocks();
+  });
 
-    mockGetEgressPolicyBucket.mockReturnValue("egress-policy-bucket");
-    mockGetEgressProxyInternalUrl.mockReturnValue("https://egress-proxy");
-    mockMintEgressInvalidationJwt.mockReturnValue("invalidation-token");
-    mockFetch.mockResolvedValue({ ok: true, status: 200 });
-    vi.stubGlobal("fetch", mockFetch);
-    mockFetchFileContent.mockResolvedValue(
-      JSON.stringify({ allowedDomains: ["API.GitHub.COM"] })
-    );
-    mockUploadRawContentToBucket.mockResolvedValue(undefined);
-    mockDelete.mockResolvedValue(undefined);
-    mockGetBucketInstance.mockReturnValue({
-      delete: mockDelete,
-      fetchFileContent: mockFetchFileContent,
-      uploadRawContentToBucket: mockUploadRawContentToBucket,
+  it("reads owner policy files from the workspace-prefixed path", async () => {
+    setGcsObjects({
+      [OWNER_PATH]: { allowedDomains: ["API.GitHub.COM"] },
     });
+
+    const result = await readOwnerPolicy(mockAuth, "owner-sid");
+
+    expect(result).toEqual(new Ok({ allowedDomains: ["api.github.com"] }));
+    expect(mockFetchFileContent).toHaveBeenCalledWith(OWNER_PATH);
   });
 
-  it("reads sandbox policy files from the sandbox prefix", async () => {
-    const result = await readSandboxPolicy("provider-id");
+  it("returns an empty policy when the owner file is missing", async () => {
+    setGcsObjects({});
 
-    expect(result).toEqual(
-      new Ok({
-        allowedDomains: ["api.github.com"],
-      })
-    );
-    expect(mockFetchFileContent).toHaveBeenCalledWith(
-      "sandboxes/provider-id.json"
-    );
-  });
-
-  it("returns an empty policy when the sandbox policy file is missing", async () => {
-    mockFetchFileContent.mockRejectedValue({ code: 404 });
-
-    const result = await readSandboxPolicy("provider-id");
+    const result = await readOwnerPolicy(mockAuth, "owner-sid");
 
     expect(result).toEqual(new Ok({ allowedDomains: [] }));
   });
 
-  it("normalizes a sandbox domain and appends it to the existing policy", async () => {
-    mockFetchFileContent.mockResolvedValue(
-      JSON.stringify({ allowedDomains: ["api.github.com"] })
-    );
+  it("normalizes a domain and appends it to the existing owner policy", async () => {
+    setGcsObjects({
+      [OWNER_PATH]: { allowedDomains: ["api.github.com"] },
+    });
 
-    const result = await addSandboxPolicyDomain(mockAuth, {
-      sandboxProviderId: "provider-id",
+    const result = await addOwnerPolicyDomain(mockAuth, {
+      ownerId: "owner-sid",
       domain: "Registry.NPMJS.org",
     });
 
@@ -201,17 +251,17 @@ describe("sandbox egress policy storage", () => {
         allowedDomains: ["api.github.com", "registry.npmjs.org"],
       }),
       contentType: "application/json",
-      filePath: "sandboxes/provider-id.json",
+      filePath: OWNER_PATH,
     });
   });
 
   it("reports addedDomain as null when the domain is already allowed", async () => {
-    mockFetchFileContent.mockResolvedValue(
-      JSON.stringify({ allowedDomains: ["api.github.com"] })
-    );
+    setGcsObjects({
+      [OWNER_PATH]: { allowedDomains: ["api.github.com"] },
+    });
 
-    const result = await addSandboxPolicyDomain(mockAuth, {
-      sandboxProviderId: "provider-id",
+    const result = await addOwnerPolicyDomain(mockAuth, {
+      ownerId: "owner-sid",
       domain: "API.GitHub.COM",
     });
 
@@ -223,11 +273,11 @@ describe("sandbox egress policy storage", () => {
     );
   });
 
-  it("creates sandbox policy files from an empty start", async () => {
-    mockFetchFileContent.mockRejectedValue({ code: 404 });
+  it("creates owner policy files from an empty start", async () => {
+    setGcsObjects({});
 
-    const result = await addSandboxPolicyDomain(mockAuth, {
-      sandboxProviderId: "provider-id",
+    const result = await addOwnerPolicyDomain(mockAuth, {
+      ownerId: "owner-sid",
       domain: "example.org",
     });
 
@@ -240,13 +290,13 @@ describe("sandbox egress policy storage", () => {
     expect(mockUploadRawContentToBucket).toHaveBeenCalledWith({
       content: JSON.stringify({ allowedDomains: ["example.org"] }),
       contentType: "application/json",
-      filePath: "sandboxes/provider-id.json",
+      filePath: OWNER_PATH,
     });
   });
 
-  it("rejects wildcard domains for sandbox policy additions", async () => {
-    const result = await addSandboxPolicyDomain(mockAuth, {
-      sandboxProviderId: "provider-id",
+  it("rejects wildcard domains for owner policy additions", async () => {
+    const result = await addOwnerPolicyDomain(mockAuth, {
+      ownerId: "owner-sid",
       domain: "*.example.org",
     });
 
@@ -255,17 +305,17 @@ describe("sandbox egress policy storage", () => {
     expect(mockUploadRawContentToBucket).not.toHaveBeenCalled();
   });
 
-  it("rejects sandbox policies over the domain cap", async () => {
+  it("rejects owner policies over the domain cap", async () => {
     const existingDomains = Array.from(
       { length: 100 },
       (_, i) => `domain-${i}.example.com`
     );
-    mockFetchFileContent.mockResolvedValue(
-      JSON.stringify({ allowedDomains: existingDomains })
-    );
+    setGcsObjects({
+      [OWNER_PATH]: { allowedDomains: existingDomains },
+    });
 
-    const result = await addSandboxPolicyDomain(mockAuth, {
-      sandboxProviderId: "provider-id",
+    const result = await addOwnerPolicyDomain(mockAuth, {
+      ownerId: "owner-sid",
       domain: "overflow.example.com",
     });
 
@@ -273,9 +323,11 @@ describe("sandbox egress policy storage", () => {
     expect(mockUploadRawContentToBucket).not.toHaveBeenCalled();
   });
 
-  it("invalidates the sandbox policy cache after writes", async () => {
-    await addSandboxPolicyDomain(mockAuth, {
-      sandboxProviderId: "provider-id",
+  it("invalidates the owner policy cache with workspace and owner", async () => {
+    setGcsObjects({});
+
+    await addOwnerPolicyDomain(mockAuth, {
+      ownerId: "owner-sid",
       domain: "example.org",
     });
 
@@ -291,15 +343,16 @@ describe("sandbox egress policy storage", () => {
       );
     });
     expect(mockMintEgressInvalidationJwt).toHaveBeenCalledWith({
-      sandboxId: "provider-id",
+      workspaceId: "workspace-sid",
+      ownerId: "owner-sid",
     });
   });
 
-  it("deletes sandbox policy files and invalidates cache", async () => {
-    const result = await deleteSandboxPolicy("provider-id");
+  it("deletes owner policy files and invalidates cache", async () => {
+    const result = await deleteOwnerPolicy(mockAuth, "owner-sid");
 
     expect(result).toEqual(new Ok(undefined));
-    expect(mockDelete).toHaveBeenCalledWith("sandboxes/provider-id.json", {
+    expect(mockDelete).toHaveBeenCalledWith(OWNER_PATH, {
       ignoreNotFound: true,
     });
     await vi.waitFor(() => {
@@ -308,6 +361,16 @@ describe("sandbox egress policy storage", () => {
         expect.anything()
       );
     });
+  });
+
+  it("deletes legacy per-provider policy files without invalidation", async () => {
+    const result = await deleteLegacySandboxPolicy("provider-id");
+
+    expect(result).toEqual(new Ok(undefined));
+    expect(mockDelete).toHaveBeenCalledWith("sandboxes/provider-id.json", {
+      ignoreNotFound: true,
+    });
+    expect(mockMintEgressInvalidationJwt).not.toHaveBeenCalled();
   });
 
   it("parses exact domains and rejects malformed entries", () => {

@@ -2,6 +2,7 @@ import type { WorkspaceLimit } from "@app/components/app/ReachedLimitPopup";
 import { ReachedLimitPopup } from "@app/components/app/ReachedLimitPopup";
 import { ConfirmContext } from "@app/components/Confirm";
 import { InviteEmailButtonWithModal } from "@app/components/members/InviteEmailButtonWithModal";
+import { BulkChangeSeatModal } from "@app/components/workspace/BulkChangeSeatModal";
 import { BulkEditSpendLimitModal } from "@app/components/workspace/BulkEditSpendLimitModal";
 import { BuyAwuCreditsDialog } from "@app/components/workspace/BuyAwuCreditsDialog";
 import { FreePlanUpgradeSection } from "@app/components/workspace/billing/FreePlanUpgradeSection";
@@ -56,7 +57,10 @@ import {
   useSeatPlan,
 } from "@app/lib/swr/credits";
 import { useGroups } from "@app/lib/swr/groups";
+import type { BulkMemberSelectionBody } from "@app/lib/swr/memberships";
 import {
+  useBulkChangeSeatType,
+  useBulkSeatChangePreview,
   useBulkSetUserSpendLimit,
   useMembersUsage,
   useUpdateMemberSeatType,
@@ -71,9 +75,11 @@ import {
   usePerSeatPricing,
   useWorkspaceSeatAvailability,
 } from "@app/lib/swr/workspaces";
+import { CAP_ELIGIBLE_GROUP_KINDS } from "@app/types/groups";
 import type {
   MembershipSeatType,
   MembershipUpgradeRequestType,
+  PaidSeatType,
 } from "@app/types/memberships";
 import {
   isMembershipSeatType,
@@ -151,7 +157,6 @@ export function UsagePage() {
   // invite, seat changes, spend limits, settings) is disabled.
   const isReadOnly = !isCreditPriced && hasFeature("usage_page_read_only");
   const canViewUsage = isCreditPriced || isReadOnly;
-  const pricingGroupsEnabled = hasFeature("pricing_groups");
   const [searchTerm, setSearchTerm] = useState("");
   const [seatTypeFilter, setSeatTypeFilter] = useState<
     MembershipSeatType | "none" | null
@@ -392,6 +397,7 @@ export function UsagePage() {
     overageCredits,
     isAwuPoolSummaryLoading,
     isAwuPoolSummaryError,
+    mutateAwuPoolSummary,
   } = useAwuPoolSummary({
     workspaceId: owner.sId,
   });
@@ -445,6 +451,7 @@ export function UsagePage() {
 
   const {
     membersUsage,
+    creditsResetAt,
     isMembersUsageLoading,
     isMembersUsageRefreshing,
     totalMembersUsage,
@@ -461,8 +468,7 @@ export function UsagePage() {
 
   const { groups } = useGroups({
     owner,
-    kinds: ["provisioned"],
-    disabled: !pricingGroupsEnabled && !modelsPickerEnabled,
+    kinds: [...CAP_ELIGIBLE_GROUP_KINDS],
   });
   const selectedGroupName =
     groups.find((g) => g.sId === groupFilter)?.name ?? null;
@@ -553,6 +559,43 @@ export function UsagePage() {
     setIsBulkSpendLimitOpen(true);
   }, []);
 
+  const { doBulkChangeSeatType } = useBulkChangeSeatType({
+    workspaceId: owner.sId,
+  });
+  const { doFetchSeatChangePreview } = useBulkSeatChangePreview({
+    workspaceId: owner.sId,
+  });
+  const [isBulkChangeSeatOpen, setIsBulkChangeSeatOpen] = useState(false);
+
+  const handleBatchChangeSeat = useCallback(() => {
+    setIsBulkChangeSeatOpen(true);
+  }, []);
+
+  // Selected members visible on the current page, for the bulk seat modal's
+  // avatar row (with an "all across pages" selection this is the visible
+  // subset only).
+  const selectedVisibleMembers = useMemo(
+    () => membersUsage.filter((m) => selection.rowSelection[m.sId]),
+    [membersUsage, selection.rowSelection]
+  );
+
+  // Translate the cross-page selection into the descriptor the bulk member
+  // endpoints expect: explicit ids, or the current filter minus exclusions.
+  const buildBulkSelectionBody = useCallback((): BulkMemberSelectionBody => {
+    const descriptor = selection.descriptor();
+    return descriptor.mode === "ids"
+      ? descriptor
+      : {
+          mode: "all" as const,
+          filter: {
+            seatType: seatTypeFilter ?? undefined,
+            groupId: groupFilter ?? undefined,
+            search: searchTerm.trim() || undefined,
+          },
+          excludeUserIds: descriptor.excludeUserIds,
+        };
+  }, [selection, seatTypeFilter, groupFilter, searchTerm]);
+
   const onRemoveSeat = useCallback(
     async (member: MemberUsageType) => {
       // Free seats carry no renewing allowance to preserve, so removing one is
@@ -598,31 +641,21 @@ export function UsagePage() {
     handleApproveOnModalSaved();
   }, [handleApproveOnModalSaved, clearSelection]);
 
+  // Rows to spin while a bulk update runs — the request returns once the bulk
+  // workflow has completed. For an "all matching" selection only the current
+  // page is visible, so spin its non-excluded rows.
+  const getBulkPendingMemberIds = useCallback((): string[] => {
+    const descriptor = selection.descriptor();
+    return descriptor.mode === "ids"
+      ? descriptor.userIds
+      : pageItemIds.filter((id) => !descriptor.excludeUserIds.includes(id));
+  }, [selection, pageItemIds]);
+
   const handleBulkSpendLimitValidate = useCallback(
     async (
       limit: { kind: "unlimited" } | { kind: "limited"; awuCredits: number }
     ): Promise<boolean> => {
-      const descriptor = selection.descriptor();
-      const selectionBody =
-        descriptor.mode === "ids"
-          ? descriptor
-          : {
-              mode: "all" as const,
-              filter: {
-                seatType: seatTypeFilter ?? undefined,
-                groupId: groupFilter ?? undefined,
-                search: searchTerm.trim() || undefined,
-              },
-              excludeUserIds: descriptor.excludeUserIds,
-            };
-
-      // Spin the affected rows while the update runs — the request returns
-      // once the bulk workflow has completed. For an "all matching" selection
-      // only the current page is visible, so spin its non-excluded rows.
-      const pendingMemberIds =
-        descriptor.mode === "ids"
-          ? descriptor.userIds
-          : pageItemIds.filter((id) => !descriptor.excludeUserIds.includes(id));
+      const pendingMemberIds = getBulkPendingMemberIds();
       setTotalAllowedUsagePendingMemberIds((prev) => {
         const next = new Set(prev);
         pendingMemberIds.forEach((id) => next.add(id));
@@ -631,7 +664,7 @@ export function UsagePage() {
 
       try {
         const body = await doBulkSetSpendLimit({
-          selection: selectionBody,
+          selection: buildBulkSelectionBody(),
           limit,
         });
         if (!body) {
@@ -650,11 +683,66 @@ export function UsagePage() {
     },
     [
       selection,
-      seatTypeFilter,
-      groupFilter,
-      searchTerm,
+      buildBulkSelectionBody,
+      getBulkPendingMemberIds,
       doBulkSetSpendLimit,
-      pageItemIds,
+    ]
+  );
+
+  const handleBulkSeatChangePreview = useCallback(
+    (seatType: PaidSeatType) =>
+      doFetchSeatChangePreview({
+        selection: buildBulkSelectionBody(),
+        seatType,
+      }),
+    [doFetchSeatChangePreview, buildBulkSelectionBody]
+  );
+
+  const handleBulkChangeSeatValidate = useCallback(
+    async ({
+      seatType,
+      seatName,
+      hasDeferredChanges,
+    }: {
+      seatType: PaidSeatType;
+      seatName: string;
+      hasDeferredChanges: boolean;
+    }): Promise<boolean> => {
+      const pendingMemberIds = getBulkPendingMemberIds();
+      setSeatChangePendingMemberIds((prev) => {
+        const next = new Set(prev);
+        pendingMemberIds.forEach((id) => next.add(id));
+        return next;
+      });
+
+      try {
+        const body = await doBulkChangeSeatType({
+          selection: buildBulkSelectionBody(),
+          seatType,
+          seatName,
+          hasDeferredChanges,
+        });
+        if (!body) {
+          return false;
+        }
+
+        // Seat mutations can move members in or out of the currently filtered
+        // set, which makes the cross-page selection stale.
+        selection.clearSelection();
+        return true;
+      } finally {
+        setSeatChangePendingMemberIds((prev) => {
+          const next = new Set(prev);
+          pendingMemberIds.forEach((id) => next.delete(id));
+          return next;
+        });
+      }
+    },
+    [
+      selection,
+      buildBulkSelectionBody,
+      getBulkPendingMemberIds,
+      doBulkChangeSeatType,
     ]
   );
 
@@ -799,7 +887,7 @@ export function UsagePage() {
     </DropdownMenu>
   );
 
-  const groupsFilterDropdown = pricingGroupsEnabled && groups.length > 0 && (
+  const groupsFilterDropdown = groups.length > 0 && (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button
@@ -828,6 +916,7 @@ export function UsagePage() {
   const membersTable = (
     <MembersUsageTable
       members={membersUsage}
+      creditsResetAt={creditsResetAt}
       isLoading={isMembersUsageLoading}
       isRefreshing={isMembersUsageRefreshing}
       readOnly={isReadOnly}
@@ -850,8 +939,8 @@ export function UsagePage() {
       totalRowCount={totalMembersUsage}
       sorting={sorting}
       setSorting={handleSetSorting}
-      showGroupsColumn={pricingGroupsEnabled && groups.length > 0}
-      enableSelection={pricingGroupsEnabled && !isReadOnly}
+      showGroupsColumn={groups.length > 0}
+      enableSelection={!isReadOnly}
       rowSelection={selection.rowSelection}
       onRowSelectionChange={selection.onRowSelectionChange}
     />
@@ -867,6 +956,9 @@ export function UsagePage() {
       onSelectAllAcrossPages={selection.selectAllAcrossPages}
       onClear={selection.clearSelection}
       onBatchEditSpendLimit={handleBatchEditSpendLimit}
+      onBatchChangeSeat={
+        isSeatBased && !isFreePlanWorkspace ? handleBatchChangeSeat : undefined
+      }
       disabled={isReadOnly}
     />
   );
@@ -876,6 +968,9 @@ export function UsagePage() {
       <BuyAwuCreditsDialog
         isOpen={showBuyCreditDialog}
         onClose={() => setShowBuyCreditDialog(false)}
+        onPurchaseSuccess={() => {
+          void mutateAwuPoolSummary();
+        }}
         workspaceId={owner.sId}
         awuPurchaseInfo={awuPurchaseInfo}
         isAwuPurchaseInfoLoading={isAwuPurchaseInfoLoading}
@@ -981,9 +1076,7 @@ export function UsagePage() {
         <Tabs defaultValue="members">
           <TabsList className="mb-4">
             <TabsTrigger value="members" label="Members" />
-            {isWorkspaceAdmin && pricingGroupsEnabled && (
-              <TabsTrigger value="groups" label="Groups" />
-            )}
+            {isWorkspaceAdmin && <TabsTrigger value="groups" label="Groups" />}
             {isWorkspaceAdmin && isCreditPriced && (
               <TabsTrigger value="top-ups" label="Top-ups history" />
             )}
@@ -1054,7 +1147,7 @@ export function UsagePage() {
             </Page.Vertical>
           </TabsContent>
 
-          {isWorkspaceAdmin && pricingGroupsEnabled && (
+          {isWorkspaceAdmin && (
             <TabsContent value="groups">
               <GroupsUsageTable owner={owner} readOnly={isReadOnly} />
             </TabsContent>
@@ -1143,6 +1236,15 @@ export function UsagePage() {
         onClose={() => setIsBulkSpendLimitOpen(false)}
         memberCount={selection.selectedCount}
         onValidate={handleBulkSpendLimitValidate}
+      />
+      <BulkChangeSeatModal
+        isOpen={isBulkChangeSeatOpen}
+        onClose={() => setIsBulkChangeSeatOpen(false)}
+        memberCount={selection.selectedCount}
+        selectedMembers={selectedVisibleMembers}
+        seatPlans={seatPlans}
+        onFetchPreview={handleBulkSeatChangePreview}
+        onValidate={handleBulkChangeSeatValidate}
       />
       <EditAdvancedModelsModal
         isOpen={editAdvancedModelsTarget !== null}

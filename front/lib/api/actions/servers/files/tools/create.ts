@@ -11,6 +11,7 @@ import {
   scopedPathsFromArgs,
 } from "@app/lib/api/actions/servers/files/tools/agent_loop_fs";
 import { frameSourceUpdatedNotice } from "@app/lib/api/actions/servers/files/tools/utils";
+import { FRAME_SOURCE_MAX_BYTES } from "@app/lib/api/actions/servers/interactive_content/metadata";
 import { getFilePreviewDirectiveInstruction } from "@app/lib/markdown/file_preview";
 import {
   isAllSupportedFileContentType,
@@ -26,21 +27,11 @@ export async function createHandler(
     content,
     content_type,
   }: { path: string; content: string; content_type: string },
-  { auth, toolContext }: ToolHandlerExtra
+  { auth, runContext }: ToolHandlerExtra
 ): Promise<ToolHandlerResult> {
-  const conversationRes = requireAgentLoopConversation({ toolContext });
+  const conversationRes = requireAgentLoopConversation({ runContext });
   if (conversationRes.isErr()) {
     return conversationRes;
-  }
-
-  const contentBuffer = Buffer.from(content, "utf8");
-  if (contentBuffer.byteLength > CREATE_CONTENT_MAX_BYTES) {
-    return new Err(
-      new MCPError(
-        `Content exceeds the ${CREATE_CONTENT_MAX_BYTES / 1024} KB limit.`,
-        { tracked: false }
-      )
-    );
   }
 
   const fsResult = await getDustFileSystemForAgentLoop(
@@ -68,6 +59,18 @@ export async function createHandler(
       // Keep the frame content type on the mount so the file stays recognized as a Frame.
       writeContentType = statResult.value.contentType;
     }
+  }
+
+  const contentBuffer = Buffer.from(content, "utf8");
+  const maxBytes = isFrameSourceOverwrite
+    ? FRAME_SOURCE_MAX_BYTES
+    : CREATE_CONTENT_MAX_BYTES;
+  if (contentBuffer.byteLength > maxBytes) {
+    return new Err(
+      new MCPError(`Content exceeds the ${maxBytes / 1024} KB limit.`, {
+        tracked: false,
+      })
+    );
   }
 
   const writeResult = await dustFs.write(path, contentBuffer, writeContentType);

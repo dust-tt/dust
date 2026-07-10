@@ -2,6 +2,7 @@ import { getFileParentsMemoized } from "@connectors/connectors/google_drive/lib/
 import {
   getDriveClient,
   getInternalId,
+  isFileTooLargeToDownloadError,
 } from "@connectors/connectors/google_drive/temporal/utils";
 import {
   handleCsvFile,
@@ -10,6 +11,7 @@ import {
 } from "@connectors/connectors/shared/file";
 import type { CoreAPIDataSourceDocumentSection } from "@connectors/lib/data_sources";
 import {
+  MAX_FILE_SIZE_TO_DOWNLOAD,
   renderDocumentTitleAndContent,
   renderMarkdownSection,
 } from "@connectors/lib/data_sources";
@@ -43,6 +45,10 @@ export async function handleFileExport(
       },
       {
         responseType: "arraybuffer",
+        // Google-native files report no size in their metadata, so the pre-download guard cannot
+        // catch them. Cap the download itself so a huge file is aborted mid-stream instead of being
+        // fully buffered in memory (a source of OOMs).
+        maxContentLength: MAX_FILE_SIZE_TO_DOWNLOAD,
       }
     );
   } catch (e) {
@@ -81,8 +87,7 @@ export async function handleFileExport(
       }
     }
 
-    const maybeErrorWithCode = e as { code: string };
-    if (maybeErrorWithCode.code === "ERR_OUT_OF_RANGE") {
+    if (isFileTooLargeToDownloadError(e)) {
       localLogger.info({}, "File too big to be downloaded. Skipping");
       return null;
     }

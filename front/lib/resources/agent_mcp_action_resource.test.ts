@@ -158,7 +158,7 @@ describe("listBlockedActionsForConversation", () => {
 
     expect(result).toHaveLength(1);
     expect(result[0].status).toBe("blocked_validation_required");
-    expect(result[0].metadata.agentName).toBe("Test Agent");
+    expect(result[0].metadata.agentName).toBe("agent");
   });
 
   it("should only return blocked actions, not succeeded ones", async () => {
@@ -420,16 +420,27 @@ describe("Output items with GCS storage", () => {
 
     expect(action).toBeDefined();
 
-    const outputItems = await action!.createOutputItems(
+    const outputRes = await action!.createOutputItems(
       auth,
       contents.map((c) => ({ content: c }))
     );
+    if (outputRes.isErr()) {
+      throw outputRes.error;
+    }
+    const outputItems = outputRes.value;
 
-    return { action: action!, outputItems };
+    // createOutputItems returns the generic content view; fetch the created rows for assertions
+    // on persistence-side fields.
+    const outputItemRows = await AgentMCPActionOutputItemModel.findAll({
+      where: { workspaceId: workspace.id, agentMCPActionId: action!.id },
+      order: [["id", "ASC"]],
+    });
+
+    return { action: action!, outputItems, outputItemRows };
   };
 
   it("should create output items in both DB and GCS", async () => {
-    const { outputItems } = await createActionWithOutputItems([
+    const { outputItems, outputItemRows } = await createActionWithOutputItems([
       { type: "text", text: "Hello from GCS" },
     ]);
 
@@ -440,7 +451,7 @@ describe("Output items with GCS storage", () => {
     });
 
     // contentGcsPath should be set (GCS write succeeded).
-    expect(outputItems[0].contentGcsPath).toBeTruthy();
+    expect(outputItemRows[0].contentGcsPath).toBeTruthy();
 
     // GCS store should have one entry.
     expect(gcsStore.size).toBe(1);
@@ -472,7 +483,7 @@ describe("Output items with GCS storage", () => {
   });
 
   it("warms Redis cache for each item after createOutputItems succeeds", async () => {
-    const { outputItems } = await createActionWithOutputItems([
+    const { outputItemRows } = await createActionWithOutputItems([
       { type: "text", text: "first" },
       { type: "text", text: "second" },
     ]);
@@ -480,9 +491,9 @@ describe("Output items with GCS storage", () => {
     const redis = await getRedisCacheClient({ origin: "cache_with_redis" });
     const setCalls = vi.mocked(redis.set).mock.calls;
 
-    expect(outputItems).toHaveLength(2);
+    expect(outputItemRows).toHaveLength(2);
 
-    for (const item of outputItems) {
+    for (const item of outputItemRows) {
       expect(setCalls).toContainEqual([
         `cacheWithRedis-fetchGcsContent-${gcsContentCacheKey(auth, "", item.id)}`,
         JSON.stringify(item.content),
@@ -573,7 +584,7 @@ describe("Output items with GCS storage", () => {
   });
 
   it("fetchOutputItemsByActionIds with actionIdsWithoutContent does not load content or GCS path", async () => {
-    const { action, outputItems } = await createActionWithOutputItems([
+    const { action, outputItemRows } = await createActionWithOutputItems([
       { type: "text", text: "not loaded" },
     ]);
 
@@ -584,7 +595,7 @@ describe("Output items with GCS storage", () => {
 
     const items = map.get(action.id);
     expect(items).toHaveLength(1);
-    expect(items![0].id).toBe(outputItems[0].id);
+    expect(items![0].id).toBe(outputItemRows[0].id);
     expect(items![0].content).toBeUndefined();
     expect(items![0].contentGcsPath).toBeUndefined();
   });
@@ -607,7 +618,7 @@ describe("Output items with GCS storage", () => {
       contentType: "text/csv",
     };
 
-    const outputItems = await action.createOutputItems(auth, [
+    await action.createOutputItems(auth, [
       {
         content: {
           type: "resource",
@@ -616,11 +627,14 @@ describe("Output items with GCS storage", () => {
       },
     ]);
 
-    expect(outputItems).toHaveLength(1);
-    expect(outputItems[0].generatedFilePath).toBe(
+    const outputItemRows = await AgentMCPActionOutputItemModel.findAll({
+      where: { workspaceId: workspace.id, agentMCPActionId: action.id },
+    });
+    expect(outputItemRows).toHaveLength(1);
+    expect(outputItemRows[0].generatedFilePath).toBe(
       "conversation-abc123/analysis.csv"
     );
-    expect(outputItems[0].generatedFileContentType).toBe("text/csv");
+    expect(outputItemRows[0].generatedFileContentType).toBe("text/csv");
   });
 
   it("should return generatedFilePath and generatedFileContentType when ignoreContent is true", async () => {

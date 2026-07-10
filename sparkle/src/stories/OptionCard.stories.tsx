@@ -17,6 +17,7 @@ const meta = {
 **Guidelines**
 - Provide \`onClick\` to make the card interactive; without it the card is display-only.
 - Use \`counterValue\` to convey ordering or quantity, and \`selected\` to reflect the current choice (it sets \`aria-pressed\`).
+- Use \`selectionIndicator="radio"\` for single-select lists and \`selectionIndicator="checkbox"\` for multi-select lists, so the selection mode is visually unambiguous.
 - Stack multiple cards in a column; for one-tap suggested prompts that send immediately, use **QuickReplyBlock** instead.`,
       },
     },
@@ -74,6 +75,59 @@ export const DisabledOption: Story = {
         label="Calendar conflicts"
         description="Events that overlap with your focus blocks."
         counterValue={3}
+      />
+    </div>
+  ),
+};
+
+export const SingleSelect: Story = {
+  render: () => (
+    <div className="flex w-full max-w-sm flex-col gap-2">
+      <OptionCard
+        label="Unread emails"
+        description="Only conversations you have not opened yet."
+        counterValue={1}
+        selectionIndicator="radio"
+        selected
+      />
+      <OptionCard
+        label="Slack mentions"
+        description="Messages where you were directly tagged."
+        counterValue={2}
+        selectionIndicator="radio"
+      />
+      <OptionCard
+        label="Calendar conflicts"
+        description="Events that overlap with your focus blocks."
+        counterValue={3}
+        selectionIndicator="radio"
+      />
+    </div>
+  ),
+};
+
+export const MultiSelect: Story = {
+  render: () => (
+    <div className="flex w-full max-w-sm flex-col gap-2">
+      <OptionCard
+        label="Unread emails"
+        description="Only conversations you have not opened yet."
+        counterValue={1}
+        selectionIndicator="checkbox"
+        selected
+      />
+      <OptionCard
+        label="Slack mentions"
+        description="Messages where you were directly tagged."
+        counterValue={2}
+        selectionIndicator="checkbox"
+        selected
+      />
+      <OptionCard
+        label="Calendar conflicts"
+        description="Events that overlap with your focus blocks."
+        counterValue={3}
+        selectionIndicator="checkbox"
       />
     </div>
   ),

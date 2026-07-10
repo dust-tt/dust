@@ -3,7 +3,12 @@ import type {
   ToolHandlerExtra,
   ToolHandlerResult,
 } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import { CREATE_CONTENT_MAX_BYTES } from "@app/lib/api/actions/servers/files/metadata";
+import { getPrefixedToolName } from "@app/lib/actions/tool_name_utils";
+import {
+  CREATE_CONTENT_MAX_BYTES,
+  FILES_CAT_ACTION_NAME,
+  FILES_SERVER_NAME,
+} from "@app/lib/api/actions/servers/files/metadata";
 import {
   getDustFileSystemForAgentLoop,
   requireAgentLoopConversation,
@@ -13,6 +18,7 @@ import {
   frameSourceUpdatedNotice,
   isReadableAsText,
 } from "@app/lib/api/actions/servers/files/tools/utils";
+import { FRAME_SOURCE_MAX_BYTES } from "@app/lib/api/actions/servers/interactive_content/metadata";
 import { getUpdatedContentAndOccurrences } from "@app/lib/api/files/utils";
 import {
   isInteractiveContentType,
@@ -33,9 +39,9 @@ export async function editHandler(
     new_string: string;
     expected_replacements?: number;
   },
-  { auth, toolContext }: ToolHandlerExtra
+  { auth, runContext }: ToolHandlerExtra
 ): Promise<ToolHandlerResult> {
-  const conversationRes = requireAgentLoopConversation({ toolContext });
+  const conversationRes = requireAgentLoopConversation({ runContext });
   if (conversationRes.isErr()) {
     return conversationRes;
   }
@@ -75,10 +81,13 @@ export async function editHandler(
     );
   }
 
-  if (sizeBytes > CREATE_CONTENT_MAX_BYTES) {
+  const maxBytes = isFrameSource
+    ? FRAME_SOURCE_MAX_BYTES
+    : CREATE_CONTENT_MAX_BYTES;
+  if (sizeBytes > maxBytes) {
     return new Err(
       new MCPError(
-        `\`${path}\` exceeds the ${CREATE_CONTENT_MAX_BYTES / 1024} KB limit and cannot be edited with this tool.`,
+        `\`${path}\` exceeds the ${maxBytes / 1024} KB limit and cannot be edited with this tool.`,
         { tracked: false }
       )
     );
@@ -104,9 +113,14 @@ export async function editHandler(
 
   if (occurrences === 0) {
     return new Err(
-      new MCPError(`String not found in file: "${old_string}"`, {
-        tracked: false,
-      })
+      new MCPError(
+        `String "${old_string}" not found in file. The file may have changed since you last ` +
+          `read it: re-read it with \`${getPrefixedToolName(FILES_SERVER_NAME, FILES_CAT_ACTION_NAME)}\` ` +
+          "and retry with the exact current text. Never resend the whole file content.",
+        {
+          tracked: false,
+        }
+      )
     );
   }
 
@@ -121,12 +135,11 @@ export async function editHandler(
   }
 
   const updatedBuffer = Buffer.from(updatedContent, "utf8");
-  if (updatedBuffer.byteLength > CREATE_CONTENT_MAX_BYTES) {
+  if (updatedBuffer.byteLength > maxBytes) {
     return new Err(
-      new MCPError(
-        `Edited content exceeds the ${CREATE_CONTENT_MAX_BYTES / 1024} KB limit.`,
-        { tracked: false }
-      )
+      new MCPError(`Edited content exceeds the ${maxBytes / 1024} KB limit.`, {
+        tracked: false,
+      })
     );
   }
 

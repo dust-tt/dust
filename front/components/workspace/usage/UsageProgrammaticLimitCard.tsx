@@ -20,17 +20,17 @@ export function UsageProgrammaticLimitCard({
     workspaceId,
   });
 
-  const currentLimit = programmaticUsageLimit?.monthlyCapCredits ?? null;
+  const currentLimit = programmaticUsageLimit?.monthlyCapCredits ?? 0;
 
   const [isEditing, setIsEditing] = useState(false);
 
   const handleSaveLimit = async (newValue: string) => {
     const trimmed = newValue.trim();
 
-    // An empty value means no programmatic access. Save 0 (not null) so
-    // Metronome alerts are upserted with cap=0 and actually block access.
+    // An empty value means no programmatic access: save 0 so the cap blocks
+    // access. There is no "no cap" / unlimited state.
     if (trimmed === "") {
-      if (currentLimit === null || currentLimit === 0) {
+      if (currentLimit === 0) {
         return;
       }
       await doUpdateProgrammaticUsageLimit(0);
@@ -65,16 +65,8 @@ export function UsageProgrammaticLimitCard({
                 inputMode="numeric"
                 pattern="[0-9]*"
                 placeholder="No access"
-                value={
-                  currentLimit === null || currentLimit === 0
-                    ? ""
-                    : currentLimit.toLocaleString()
-                }
-                unit={
-                  (currentLimit === null || currentLimit === 0) && !isEditing
-                    ? undefined
-                    : "credits"
-                }
+                value={currentLimit === 0 ? "" : currentLimit.toLocaleString()}
+                unit={currentLimit === 0 && !isEditing ? undefined : "credits"}
                 normalizeValue={(value) => value.replace(/[^\d]/g, "")}
                 formatValue={(value) =>
                   value ? Number(value).toLocaleString() : value

@@ -1,6 +1,7 @@
 import { renderAgentMessageContentView } from "@app/lib/api/assistant/activity_steps";
 import { updateAgentMessageWithFinalStatus } from "@app/lib/api/assistant/conversation";
 import { getCompletionDuration } from "@app/lib/api/assistant/messages";
+import { resolvedModelFromAgentMessageRow } from "@app/lib/api/assistant/models";
 import { publishConversationRelatedEvent } from "@app/lib/api/assistant/streaming/events";
 import type { AgentMessageEvents } from "@app/lib/api/assistant/streaming/types";
 import { TERMINAL_AGENT_MESSAGE_EVENT_TYPES } from "@app/lib/api/assistant/streaming/types";
@@ -618,6 +619,8 @@ export async function notifyWorkflowError(
     richMentions: [],
     reactions: [],
     costCredits: null,
+    resolvedModel: resolvedModelFromAgentMessageRow(messageRow.agentMessage),
+    modelResolutionMethod: messageRow.agentMessage.modelResolutionMethod,
 
     // HACKY: These last 3 fields are not used in the workflow error case but required in the type.
     configuration: null as unknown as LightAgentConfigurationType,

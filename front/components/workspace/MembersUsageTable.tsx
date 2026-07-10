@@ -18,6 +18,7 @@ import { formatCredits } from "@app/lib/client/credits";
 import type { EffectiveSpendLimitSource } from "@app/lib/spend_limits/effective";
 import type { AllowedAdvancedModelType } from "@app/types/api/advanced_models";
 import {
+  isPaidSeatType,
   type MembershipSeatType,
   SEAT_TYPE_ORDER,
   toBaseSeatType,
@@ -86,6 +87,28 @@ function getScheduledSeatChangeLabel(
   scheduledSeatType: MembershipSeatType,
   scheduledSeatChangeAt: string | null
 ): string {
+  const dateSuffix = scheduledSeatChangeAt
+    ? ` (${new Date(scheduledSeatChangeAt).toLocaleDateString("en-US", {
+        month: "long",
+        day: "numeric",
+        timeZone: "UTC",
+      })})`
+    : "";
+
+  // A same-tier monthly→yearly commitment (e.g. pro -> pro_yearly) isn't a
+  // tier upgrade/downgrade/change — the user stays on the same tier, only the
+  // billing cadence switches. Call that out explicitly instead of the
+  // confusing "changed to Pro" wording, since the user is already on Pro.
+  const isMonthlyToYearlySwitch =
+    !!currentSeatType &&
+    isPaidSeatType(currentSeatType) &&
+    !currentSeatType.endsWith("_yearly") &&
+    scheduledSeatType.endsWith("_yearly") &&
+    toBaseSeatType(currentSeatType) === toBaseSeatType(scheduledSeatType);
+  if (isMonthlyToYearlySwitch) {
+    return `This user will switch to annual billing at the end of the billing period${dateSuffix}`;
+  }
+
   const currentRank = currentSeatType ? SEAT_TYPE_ORDER[currentSeatType] : 0;
   const scheduledRank = SEAT_TYPE_ORDER[scheduledSeatType];
   const verb =
@@ -95,13 +118,6 @@ function getScheduledSeatChangeLabel(
         ? "downgraded"
         : "changed";
   const targetLabel = seatTypeDisplayName(scheduledSeatType);
-  const dateSuffix = scheduledSeatChangeAt
-    ? ` (${new Date(scheduledSeatChangeAt).toLocaleDateString("en-US", {
-        month: "long",
-        day: "numeric",
-        timeZone: "UTC",
-      })})`
-    : "";
   return `This user will be ${verb} to ${targetLabel} at the end of the billing period${dateSuffix}`;
 }
 
@@ -591,6 +607,9 @@ function buildColumns({
 
 interface MembersUsageTableProps {
   members: MemberUsageType[];
+  // End of the current billing period (workspace-level, from the members-usage
+  // response) shown under the credits column header. Null hides the line.
+  creditsResetAt: string | null;
   isLoading: boolean;
   isRefreshing?: boolean;
   totalAllowedUsagePendingMemberIds: ReadonlySet<string>;
@@ -624,6 +643,7 @@ interface MembersUsageTableProps {
 
 export function MembersUsageTable({
   members,
+  creditsResetAt,
   isLoading,
   isRefreshing = false,
   totalAllowedUsagePendingMemberIds,
@@ -773,15 +793,6 @@ export function MembersUsageTable({
       onEditSpendLimit,
       onEditAdvancedModels,
     ]
-  );
-
-  // All paid seats share the workspace billing period, so the first member
-  // carrying a reset date is enough to label the column header.
-  const creditsResetAt = useMemo(
-    () =>
-      members.find((m) => m.nextCreditResetAt !== null)?.nextCreditResetAt ??
-      null,
-    [members]
   );
 
   const columns = useMemo(

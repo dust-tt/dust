@@ -114,6 +114,17 @@ const SwitchContractFormSchema = z
       .min(2, "Number of periods must be at least 2")
       .max(60, "Number of periods must be at most 60")
       .optional(),
+    // Optional recurring free AWU credit pool, granted directly on the
+    // contract (not tied to the package) — e.g. the Partner Demo shared
+    // monthly pool. Toggled via `showRecurringFreeCredit`; assembled into
+    // `recurringFreeCreditAwuPerMonth` on submit. No invoice involved, so no
+    // Stripe customer is required.
+    showRecurringFreeCredit: z.boolean().default(false),
+    recurringFreeCreditAwuPerMonth: z
+      .number()
+      .int("Recurring free credit must be an integer number of AWU credits")
+      .min(1, "Recurring free credit must be at least 1 credit")
+      .optional(),
     // Per-seat-type settings, keyed by seat type. Every seat type the selected
     // package knows about is shown; only `selected` ones are submitted. `selected`
     // is pre-checked for the seats the package entitles by default, and can be
@@ -266,6 +277,8 @@ export default function SwitchContractDialog({
       initialCreditsInvoiceAmount: undefined,
       initialCreditsFrequency: "one_time",
       initialCreditsPeriods: undefined,
+      showRecurringFreeCredit: false,
+      recurringFreeCreditAwuPerMonth: undefined,
       seats: {},
     },
   });
@@ -503,9 +516,33 @@ export default function SwitchContractDialog({
 
   const showInitialCredits = form.watch("showInitialCredits");
   const initialCreditsFrequency = form.watch("initialCreditsFrequency");
+  const showRecurringFreeCredit = form.watch("showRecurringFreeCredit");
 
   const stripeCollectionMethod = form.watch("stripeCollectionMethod");
   const watchedSeats = form.watch("seats");
+  const forceSeatType = form.watch("forceSeatType");
+
+  // "Force seat type" may only promote members onto a seat that is actually
+  // entitled (checked) on the contract being created — offering an
+  // unentitled seat type would silently fail server-side. Recomputed on
+  // every render (not memoized against `watchedSeats`'s object identity,
+  // which doesn't reliably change across nested-field updates) so this
+  // stays in sync with the live checkbox state, same as each row's own
+  // `isSelected`.
+  const enterableSeatTypes = BILLABLE_SEAT_TYPES.filter(
+    (seatType) => watchedSeats?.[seatType]?.selected ?? false
+  );
+
+  // Clear a forced seat type that's no longer entitled (e.g. the operator
+  // unchecked it) so a stale override can't be submitted silently.
+  useEffect(() => {
+    if (
+      forceSeatType &&
+      !enterableSeatTypes.some((seatType) => seatType === forceSeatType)
+    ) {
+      form.setValue("forceSeatType", "");
+    }
+  }, [forceSeatType, enterableSeatTypes, form]);
 
   // When any payment frequency field changes, pre-fill its sibling periods
   // field with the canonical default. Uses form.watch(callback) — the only
@@ -629,6 +666,16 @@ export default function SwitchContractDialog({
                 : undefined,
           },
         };
+      }
+      // Recurring free credit pool: only sent when the operator toggled the
+      // section on. No invoice involved, so no Stripe customer is required.
+      if (values.showRecurringFreeCredit) {
+        if (values.recurringFreeCreditAwuPerMonth === undefined) {
+          setError("Recurring free credit requires an amount.");
+          return;
+        }
+        cleaned.recurringFreeCreditAwuPerMonth =
+          values.recurringFreeCreditAwuPerMonth;
       }
       // Resolve the start moment. "immediately" leaves `startingAt` unset so
       // the server swaps at the current hour.
@@ -946,7 +993,9 @@ export default function SwitchContractDialog({
                           />
                         </>
                       )}
-                      <Label className="text-sm">Monthly usage cap (AWU)</Label>
+                      <Label className="text-sm">
+                        Monthly usage cap (credits)
+                      </Label>
                       <InputField
                         control={form.control}
                         name="usageCapCredits"
@@ -962,7 +1011,9 @@ export default function SwitchContractDialog({
                         type="number"
                         placeholder="0"
                       />
-                      <Label className="text-sm">Balance alert (AWU)</Label>
+                      <Label className="text-sm">
+                        Workspace credit pool threshold alert (credits)
+                      </Label>
                       <InputField
                         control={form.control}
                         name="balanceThresholdCredits"
@@ -971,7 +1022,8 @@ export default function SwitchContractDialog({
                         placeholder="no alert"
                       />
                       <Label className="text-sm">
-                        Per-user pool access (AWU)
+                        Default per-user workspace credit pool monthly limit
+                        (credits)
                       </Label>
                       <InputField
                         control={form.control}
@@ -981,7 +1033,7 @@ export default function SwitchContractDialog({
                         placeholder="no access"
                       />
                       <Label className="text-sm">
-                        Programmatic cap/mo (AWU)
+                        Programmatic monthly limit (credits)
                       </Label>
                       <InputField
                         control={form.control}
@@ -1186,7 +1238,7 @@ export default function SwitchContractDialog({
                           mountPortalContainer={portalContainer}
                           options={[
                             { value: "", display: "— No override —" },
-                            ...BILLABLE_SEAT_TYPES.map((seatType) => ({
+                            ...enterableSeatTypes.map((seatType) => ({
                               value: seatType,
                               display: seatType,
                             })),
@@ -1271,6 +1323,34 @@ export default function SwitchContractDialog({
                     </div>
                   </div>
                 )}
+                <div className="border-t pt-4">
+                  <div className="grid grid-cols-[200px_1fr] items-center gap-x-4 gap-y-2">
+                    <Label className="text-sm font-medium">
+                      Recurring free credit pool (monthly)
+                    </Label>
+                    <SliderToggle
+                      selected={showRecurringFreeCredit}
+                      onClick={() =>
+                        form.setValue(
+                          "showRecurringFreeCredit",
+                          !showRecurringFreeCredit
+                        )
+                      }
+                    />
+                    {showRecurringFreeCredit && (
+                      <>
+                        <Label className="text-sm">Credits (AWU) / month</Label>
+                        <InputField
+                          control={form.control}
+                          name="recurringFreeCreditAwuPerMonth"
+                          hideLabel
+                          type="number"
+                          placeholder="e.g., 10000"
+                        />
+                      </>
+                    )}
+                  </div>
+                </div>
               </DialogContainer>
               <DialogFooter>
                 <Button

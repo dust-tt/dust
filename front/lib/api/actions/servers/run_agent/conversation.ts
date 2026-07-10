@@ -1,5 +1,5 @@
 import { MCPError } from "@app/lib/actions/mcp_errors";
-import type { AgentLoopRunContextType } from "@app/lib/actions/types";
+import type { AgentLoopRunContext } from "@app/lib/actions/types";
 import {
   appendFilePathsHintToQuery,
   copyConversationFilesIntoSub,
@@ -45,7 +45,7 @@ function isUserSideError(error: APIError): boolean {
 export async function getOrCreateConversation(
   api: DustAPI,
   auth: Authenticator,
-  agentLoopContext: AgentLoopRunContextType,
+  agentLoopContext: AgentLoopRunContext,
   {
     childAgentBlob,
     childAgentId,

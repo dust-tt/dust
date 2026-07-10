@@ -3,7 +3,7 @@ import type { ToolHandlers } from "@app/lib/actions/mcp_internal_actions/tool_de
 import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import {
   isAgentLoopRunContext,
-  type ToolContextType,
+  type ToolContext,
 } from "@app/lib/actions/types";
 import { SCHEDULES_MANAGEMENT_TOOLS_METADATA } from "@app/lib/api/actions/servers/schedules_management/metadata";
 import { generateScheduleRule } from "@app/lib/api/assistant/configuration/triggers";
@@ -35,7 +35,7 @@ function renderSchedule(schedule: ScheduleTriggerType): string {
   return lines.join("\n");
 }
 
-function getUserTimezone(toolContext?: ToolContextType): string | null {
+function getUserTimezone(toolContext?: ToolContext): string | null {
   if (!isAgentLoopRunContext(toolContext?.runContext)) {
     return null;
   }
@@ -51,7 +51,7 @@ function getUserTimezone(toolContext?: ToolContextType): string | null {
 
 export function createSchedulesManagementTools(
   auth: Authenticator,
-  toolContext?: ToolContextType
+  toolContext?: ToolContext
 ) {
   const handlers: ToolHandlers<typeof SCHEDULES_MANAGEMENT_TOOLS_METADATA> = {
     create_schedule: async ({ name, schedule, prompt, timezone }) => {

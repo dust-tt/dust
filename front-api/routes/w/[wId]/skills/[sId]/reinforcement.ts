@@ -92,15 +92,15 @@ app.patch(
       });
     }
 
-    // Toggling reinforcement requires editor access; if the skill is locked,
-    // only admins can flip it.
+    // Toggling reinforcement requires skill administration access; if the
+    // skill is locked, only admins can flip it.
     if (reinforcement !== undefined) {
-      if (!skill.canWrite(auth)) {
+      if (!skill.canAdministrate(auth)) {
         return apiError(ctx, {
           status_code: 403,
           api_error: {
             type: "app_auth_error",
-            message: "Only editors can modify this skill.",
+            message: "Only admins and editors can modify this skill.",
           },
         });
       }

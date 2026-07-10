@@ -4,10 +4,8 @@ import {
   updateConversationRequirements,
 } from "@app/lib/api/assistant/conversation/permissions";
 import { getCompletionDuration } from "@app/lib/api/assistant/messages";
-import {
-  requestedAgentModelFromColumns,
-  resolveModelSelection,
-} from "@app/lib/api/assistant/models";
+import { resolvedModelFromAgentMessageRow } from "@app/lib/api/assistant/models";
+import { resolveModel } from "@app/lib/api/assistant/resolve_model";
 import { type Authenticator, getFeatureFlags } from "@app/lib/auth";
 import {
   AgentMessageModel,
@@ -39,7 +37,7 @@ import type {
 import { isPodConversation } from "@app/types/assistant/conversation";
 import type { MentionType } from "@app/types/assistant/mentions";
 import { isAgentMention } from "@app/types/assistant/mentions";
-import type { ResolvedRequestedModel } from "@app/types/assistant/models/types";
+import type { ModelSelectionType } from "@app/types/assistant/models/types";
 import type { ModelId } from "@app/types/shared/model_id";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { removeNulls } from "@app/types/shared/utils/general";
@@ -97,6 +95,7 @@ export async function createUserMessage(
           context: UserMessageContext;
           agenticMessageData?: AgenticMessageData;
           visibility?: MessageVisibility;
+          requestedModel: ModelSelectionType | null;
         };
     transaction: Transaction;
   }
@@ -110,6 +109,7 @@ export async function createUserMessage(
   let context: UserMessageContext | null = null;
   let agenticMessageData: AgenticMessageData | undefined = undefined;
   let visibility: MessageVisibility = "visible";
+  let requestedModel: ModelSelectionType | null = null;
 
   switch (metadata.type) {
     case "edit":
@@ -121,6 +121,7 @@ export async function createUserMessage(
 
       context = metadata.message.context;
       agenticMessageData = metadata.message.agenticMessageData;
+      requestedModel = metadata.message.requestedModel;
       break;
     case "delete":
       // See softDeleteUserMessageAndReplies for why a v+1 placeholder is used instead of an UPDATE.
@@ -147,6 +148,7 @@ export async function createUserMessage(
 
       context = metadata.context;
       agenticMessageData = metadata.agenticMessageData;
+      requestedModel = metadata.requestedModel;
       if (metadata.visibility) {
         visibility = metadata.visibility;
       }
@@ -199,6 +201,9 @@ export async function createUserMessage(
       userContextAuthMethod: context.authMethod ?? null,
       agenticMessageType,
       agenticOriginMessageId,
+      requestedModelId: requestedModel?.modelId ?? null,
+      requestedProviderId: requestedModel?.providerId ?? null,
+      requestedReasoningEffort: requestedModel?.reasoningEffort ?? null,
       userId: user?.id,
       workspaceId: workspace.id,
     },
@@ -238,6 +243,7 @@ export async function createUserMessage(
     rank: m.rank,
     branchId: conversation.branchId,
     reactions: [],
+    requestedModel,
   };
   return createdUserMessage;
 }
@@ -254,6 +260,7 @@ export const createAgentMessages = async (
       | {
           type: "retry";
           agentMessage: AgentMessageType;
+          agentMessageRow: AgentMessageModel;
           parentId: number;
         }
       | {
@@ -268,7 +275,6 @@ export const createAgentMessages = async (
           skipToolsValidation: boolean;
           nextMessageRank: number;
           userMessage: UserMessageTypeWithoutMentions;
-          requestedModel?: ResolvedRequestedModel | null;
         };
     transaction?: Transaction;
   }
@@ -292,25 +298,20 @@ export const createAgentMessages = async (
     case "retry":
       {
         const agentConfiguration = metadata.agentMessage.configuration;
-        // Preserve the per-message model override, but re-validate it: a model
-        // enabled at first send may have since been disabled for the workspace,
-        // in which case the retry falls back to the agent's configured model.
-        const retriedModel = metadata.agentMessage.requestedModel;
-        const revalidatedModel = retriedModel
-          ? resolveModelSelection(auth, retriedModel, {
-              featureFlags: await getFeatureFlags(auth),
-            })
-          : null;
         const agentMessageRow = await AgentMessageModel.create(
           {
             status: "created",
             agentConfigurationId: agentConfiguration.sId,
             agentConfigurationVersion: agentConfiguration.version,
             workspaceId: owner.id,
-            skipToolsValidation: metadata.agentMessage.skipToolsValidation,
-            requestedProviderId: revalidatedModel?.providerId ?? null,
-            requestedModelId: revalidatedModel?.modelId ?? null,
-            requestedReasoningEffort: revalidatedModel?.reasoningEffort ?? null,
+            // Copy over the values from the original agent message row.
+            skipToolsValidation: metadata.agentMessageRow.skipToolsValidation,
+            resolvedProviderId: metadata.agentMessageRow.resolvedProviderId,
+            resolvedModelId: metadata.agentMessageRow.resolvedModelId,
+            resolvedReasoningEffort:
+              metadata.agentMessageRow.resolvedReasoningEffort,
+            modelResolutionMethod:
+              metadata.agentMessageRow.modelResolutionMethod,
           },
           { transaction }
         );
@@ -403,6 +404,7 @@ export const createAgentMessages = async (
           metadata.mentions.filter(isAgentMention),
           (mention) => mention.configurationId
         );
+        const featureFlags = await getFeatureFlags(auth);
 
         await concurrentExecutor(
           uniqueAgentMentions,
@@ -464,6 +466,15 @@ export const createAgentMessages = async (
               { transaction }
             );
 
+            const { resolvedModel, modelResolutionMethod } = await resolveModel(
+              auth,
+              {
+                selection: metadata.userMessage.requestedModel ?? undefined,
+                configuration,
+                featureFlags,
+              }
+            );
+
             const agentMessageRow = await AgentMessageModel.create(
               {
                 status: "created",
@@ -471,11 +482,10 @@ export const createAgentMessages = async (
                 agentConfigurationVersion: configuration.version,
                 workspaceId: owner.id,
                 skipToolsValidation: metadata.skipToolsValidation,
-                requestedProviderId:
-                  metadata.requestedModel?.providerId ?? null,
-                requestedModelId: metadata.requestedModel?.modelId ?? null,
-                requestedReasoningEffort:
-                  metadata.requestedModel?.reasoningEffort ?? null,
+                resolvedProviderId: resolvedModel?.providerId ?? null,
+                resolvedModelId: resolvedModel?.modelId ?? null,
+                resolvedReasoningEffort: resolvedModel?.reasoningEffort ?? null,
+                modelResolutionMethod,
               },
               { transaction }
             );
@@ -576,7 +586,8 @@ export const createAgentMessages = async (
             richMentions: [],
             reactions: [],
             costCredits: null,
-            requestedModel: requestedAgentModelFromColumns(agentMessageRow),
+            resolvedModel: resolvedModelFromAgentMessageRow(agentMessageRow),
+            modelResolutionMethod: agentMessageRow.modelResolutionMethod,
           };
         }
       }

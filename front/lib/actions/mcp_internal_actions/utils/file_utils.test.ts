@@ -1,4 +1,4 @@
-import type { ToolContextType } from "@app/lib/actions/types";
+import type { ToolContext } from "@app/lib/actions/types";
 import { createConversation } from "@app/lib/api/assistant/conversation";
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import { FileResource } from "@app/lib/resources/file_resource";
@@ -46,10 +46,10 @@ vi.mock("@app/lib/api/file_system", async (importOriginal) => {
   };
 });
 
-function makeToolContext(conversation: ConversationType): ToolContextType {
+function makeToolContext(conversation: ConversationType): ToolContext {
   return {
     runContext: { contextType: "agent_loop", conversation },
-  } as unknown as ToolContextType;
+  } as unknown as ToolContext;
 }
 
 function makeReadableStream(content: string): Readable {

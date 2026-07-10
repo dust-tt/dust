@@ -6,6 +6,7 @@ import type {
 import type { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import type { SandboxFunctionInvocationResource } from "@app/lib/resources/sandbox_function_invocation_resource";
 import type { SandboxFunctionMCPActionResource } from "@app/lib/resources/sandbox_function_mcp_action_resource";
+import type { FileModel } from "@app/lib/resources/storage/models/files";
 import type {
   AgentConfigurationWithoutModelType,
   AgentModelConfigurationType,
@@ -17,6 +18,8 @@ import type {
 } from "@app/types/assistant/conversation";
 import type { ModelConfigurationType } from "@app/types/assistant/models/types";
 import type { AllSupportedFileContentType } from "@app/types/files";
+import type { ModelId } from "@app/types/shared/model_id";
+import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
 
 const FileAuthorizationInfoSchema = z.object({
@@ -152,7 +155,17 @@ export type ActionGeneratedFileType =
   | ActionGeneratedDBFileType
   | ActionGeneratedFilePathType;
 
-export type AgentLoopRunContextType = {
+// A persisted tool output item in the generic shape returned by both AgentMCPActionResource and
+// SandboxFunctionMCPActionResource createOutputItems: the stored content plus the file linkage
+// required to render the model-facing view (hideFileFromActionOutput).
+export type ToolOutputItemType = {
+  content: CallToolResult["content"][number];
+  fileId: ModelId | null;
+  file: FileModel | null;
+  workspaceId: ModelId;
+};
+
+export type AgentLoopRunContext = {
   contextType: "agent_loop";
   action: AgentMCPActionResource;
   agentConfiguration: AgentConfigurationWithoutModelType;
@@ -164,14 +177,14 @@ export type AgentLoopRunContextType = {
   userMessage: UserMessageType;
 };
 
-export type SandboxFunctionRunContextType = {
+export type SandboxFunctionRunContext = {
   contextType: "sandbox_function";
   action: SandboxFunctionMCPActionResource;
   invocation: SandboxFunctionInvocationResource;
   toolConfiguration: LightMCPToolConfigurationType;
 };
 
-export type AgentLoopListToolsContextType = {
+export type AgentLoopListToolsContext = {
   agentConfiguration: AgentConfigurationWithoutModelType;
   agentActionConfiguration: MCPServerConfigurationType;
   clientSideActionConfigurations?: ClientSideMCPServerConfigurationType[];
@@ -179,24 +192,28 @@ export type AgentLoopListToolsContextType = {
   agentMessage: AgentMessageType;
 };
 
+// Context available to tool handlers at execution time: tools only ever run on a connection
+// established with a run context, never on a listing-phase connection.
+export type ToolRunContext = AgentLoopRunContext | SandboxFunctionRunContext;
+
 export function isSandboxFunctionRunContext(
-  value: AgentLoopRunContextType | SandboxFunctionRunContextType | undefined
-): value is SandboxFunctionRunContextType {
+  value: ToolRunContext | undefined
+): value is SandboxFunctionRunContext {
   return value?.contextType === "sandbox_function";
 }
 
 export function isAgentLoopRunContext(
-  value: AgentLoopRunContextType | SandboxFunctionRunContextType | undefined
-): value is AgentLoopRunContextType {
+  value: ToolRunContext | undefined
+): value is AgentLoopRunContext {
   return value?.contextType === "agent_loop";
 }
 
-export type ToolContextType =
+export type ToolContext =
   | {
-      runContext: AgentLoopRunContextType | SandboxFunctionRunContextType;
+      runContext: ToolRunContext;
       listToolsContext?: never;
     }
   | {
       runContext?: never;
-      listToolsContext: AgentLoopListToolsContextType;
+      listToolsContext: AgentLoopListToolsContext;
     };
