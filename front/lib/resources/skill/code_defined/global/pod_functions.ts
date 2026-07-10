@@ -9,38 +9,33 @@ export const podFunctionsSkill = {
   kind: "global",
   name: "Pod Functions",
   userFacingDescription:
-    "Give Frames a typed backend, or a way to turn a multi-step task into one reusable function.",
+    "Run hosted functions on the Pod's Computer that can persist data and call other tools.",
   agentFacingDescription:
-    "A pod function is a versioned, typed server-side function stored on the Pod, callable by " +
-    "slug from this conversation or from a Frame's own runtime. It unblocks a Frame from having " +
-    "to run something itself: reaching a server-side capability its browser sandbox cannot (an " +
-    "external API call, a workspace secret, logic no client code should hold), reusing a " +
-    "multi-step operation (several API calls, some branching, a non-trivial computation) behind " +
-    "one typed contract instead of redoing it by hand every time, or reading and writing data " +
-    "that outlives a single conversation, so a Frame calling the function keeps showing current " +
-    "state even when that state was last written from somewhere else.",
-  // TODO(POD_FUNCTION: JD): the "Persisting state across calls" section below is a placeholder header only;
-  // fill in the SQLite/db() story once it's finalized.
-  instructions: `Pod functions are versioned, typed callables stored on the Pod. Each one is a
-TypeScript module with zod-typed input and output, bundled on the Pod's sandbox at publish time and
-reusable across conversations in the same Pod, callable from a Frame's own runtime or directly
-from this conversation with the call tool described below.
+    "A pod function is a hosted function that runs on the Pod's own Computer, shared across " +
+    "every conversation in the Pod, with the ability to persist data and call other tools. It's " +
+    "callable by slug from this conversation or from a Frame's own runtime.",
+  // TODO(POD_FUNCTION: JD/spolu): the SQLite/db() story for "Persisting state across calls"
+  // below still needs to be filled in.
+  instructions: `Pod functions are versioned, typed functions published on the Pod's own
+Computer: a persistent environment shared across every conversation in the Pod, not the one
+scoped to this conversation. Each one is a TypeScript module with zod-typed input and output,
+bundled at publish time and reusable across conversations in the same Pod, callable from a
+Frame's own runtime or directly from this conversation with the call tool described below.
 
 Reach for a pod function instead of inline code or an ad hoc tool call when any of these apply:
 
-- A Frame needs a server-side capability it cannot run inside its own browser sandbox: an
-  external API call, a workspace secret, or logic no client-side code should hold.
-- The same multi-step operation (several API calls, some branching, a non-trivial computation)
-  keeps getting redone by hand and is worth collapsing behind one typed input/output contract.
-- Data needs to persist beyond one call and be shared across writers: written from this
-  conversation or another conversation in the same Pod, then read back by a Frame that always
-  shows the latest state without needing the conversation that wrote it (see "Persisting state
-  across calls" below).
+- A Frame needs a server-side capability it cannot run inside its own browser sandbox: calling
+  another tool through dsbx, using a workspace secret, or logic no client-side code should hold
+  (see "Calling other tools from a function" below).
+- Data needs to persist beyond one call: files on the Pod, or rows in a SQLite database, are
+  there on the next call and visible to a Frame that always reflects the latest state (see
+  "Persisting state across calls" below).
 
 #### Authoring a function
 
-Write the source as a TypeScript file on the Pod file system (the sandbox mount \`/files/pod\`, or
-through the \`files\` MCP server under a \`pod-<podId>/<rel>\` path). The module must:
+Write the source as a TypeScript file on the Pod file system (the Computer's mount at
+\`/files/pod-<podId>\`, or through the \`files\` MCP server under a \`pod-<podId>/<rel>\` path). The module
+must:
 
 - export a \`schema\` object with a \`description\` and zod \`input\` and \`output\` schemas,
 - default-export an object with a \`fetch(request: Request): Promise<Response>\` method (the Bun and
@@ -82,13 +77,26 @@ are available under the same substitution rules as the Computer.
 
 #### Persisting state across calls
 
+A function's process can read and write the Pod's file system exactly like the Computer does,
+under \`/files/pod-<podId>\` (or through the \`files\` MCP server, scoped to \`pod-<podId>/<rel>\`). Anything
+written there persists across calls and conversations, not just for the duration of one
+invocation.
+
+#### Calling other tools from a function
+
+\`dsbx\` is available inside a function's own process, the same way it is in the conversation's
+Computer: shell out to \`dsbx tools --json [SERVER_NAME] [TOOL_NAME] [ARGS]...\` and parse its
+stdout (\`{ content, isError }\`) for the result.
+Run \`dsbx tools --help\` from the Computer to explore available
+servers and tools before writing the function.
+
 #### Publishing, discovering, and invoking
 
 Once the source is on the Pod, use the \`publish\` tool to build it. Publishing bundles and
-type-checks the source on the sandbox and extracts the input and output JSON schemas from the
+type-checks the source on the Computer and extracts the input and output JSON schemas from the
 \`schema\` export. Publishing again under the same name replaces the previous version. The stored
 bundle is owned by the platform and runs from a read-only mount, so a published function can be
-executed but never overwritten from within a sandbox.
+executed but never overwritten from within the Computer.
 
 Use the \`list\` and \`get\` tools to see what the Pod has already published and to inspect a
 function's contract before relying on it or publishing a near-duplicate.
