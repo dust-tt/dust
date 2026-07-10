@@ -845,17 +845,20 @@ export type WebsearchResultPublicType = z.infer<typeof WebsearchResultSchema>;
 
 const ActionGeneratedFileBaseSchema = z.object({
   title: z.string(),
-  contentType: ActionGeneratedFileContentTypeSchema,
   snippet: z.string().nullable(),
   hidden: z.boolean().optional(),
   isInProjectContext: z.boolean().optional(),
 });
 
 const ActionGeneratedFileSchema = z.union([
+  // File backed by a Dust FileResource: always a supported content type.
   ActionGeneratedFileBaseSchema.extend({
+    contentType: ActionGeneratedFileContentTypeSchema,
     fileId: z.string(),
   }),
+  // File path only, no FileResource in DB. Not restricted to supported content types.
   ActionGeneratedFileBaseSchema.extend({
+    contentType: z.string(),
     fileId: z.null(),
     filePath: z.string(),
   }),
