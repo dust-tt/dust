@@ -236,18 +236,20 @@ export function buildBaseSpecifications(
       .filter((id) => id !== -1)
   );
 
-  return availableActions.map((action) => {
-    const specification = buildToolSpecification(action);
-    if (
-      isCustomAgent &&
-      isServerSideMCPToolConfiguration(action) &&
-      agentActionModelIds.has(action.id)
-    ) {
-      return { ...specification, eager: true };
-    }
+  return availableActions
+    .map((action) => {
+      const specification = buildToolSpecification(action);
+      if (
+        isCustomAgent &&
+        isServerSideMCPToolConfiguration(action) &&
+        agentActionModelIds.has(action.id)
+      ) {
+        return { ...specification, eager: true };
+      }
 
-    return specification;
-  });
+      return specification;
+    })
+    .sort((left, right) => left.name.localeCompare(right.name));
 }
 
 // Replayed tools keep their intrinsic `eager` flag: providers resolve deferred
@@ -263,9 +265,9 @@ export function buildSpecificationsWithReplayPlaceholders(
   missingReplayedToolNames: string[];
 } {
   const currentToolNames = new Set(baseSpecifications.map((spec) => spec.name));
-  const missingReplayedToolNames = getReplayedToolNames(
-    modelConversation
-  ).filter((name) => !currentToolNames.has(name));
+  const missingReplayedToolNames = getReplayedToolNames(modelConversation)
+    .filter((name) => !currentToolNames.has(name))
+    .sort();
 
   return {
     specifications: [
@@ -273,7 +275,7 @@ export function buildSpecificationsWithReplayPlaceholders(
       ...missingReplayedToolNames.map((name) =>
         buildReplayOnlyToolSpecification(name)
       ),
-    ],
+    ].sort((left, right) => left.name.localeCompare(right.name)),
     missingReplayedToolNames,
   };
 }
