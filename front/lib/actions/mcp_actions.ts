@@ -1025,20 +1025,22 @@ export async function tryListMCPTools(
     skillServers,
     jitServers,
   });
-  const nonDeferredServerKeys = new Set(
+  const nonSkillServerKeys = new Set(
     [
       ...agentLoopListToolsContext.agentConfiguration.actions,
       ...(agentLoopListToolsContext.clientSideActionConfigurations ?? []),
       ...jitServers,
-      ...systemSkillServers,
     ].map(getMCPServerConfigurationKey)
   );
   const skillServerKeys = new Set(
     skillServers.map(getMCPServerConfigurationKey)
   );
+  for (const systemSkillServer of systemSkillServers) {
+    skillServerKeys.delete(getMCPServerConfigurationKey(systemSkillServer));
+  }
   const isSkillServerConfig = deduplicatedConfigs.map((config) => {
     const key = getMCPServerConfigurationKey(config);
-    return skillServerKeys.has(key) && !nonDeferredServerKeys.has(key);
+    return skillServerKeys.has(key) && !nonSkillServerKeys.has(key);
   });
 
   const mcpServerActions = await disambiguateServerNamesBySpace(
