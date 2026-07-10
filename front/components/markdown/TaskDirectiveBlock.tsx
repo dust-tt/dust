@@ -6,6 +6,7 @@ import { useUnifiedAgentConfigurations } from "@app/lib/swr/assistants";
 import {
   usePodMetadata,
   useStartPodTaskConversation,
+  useUpdatePodTask,
   useWorkspacePodTask,
 } from "@app/lib/swr/pods";
 import { timeAgoFrom } from "@app/lib/utils";
@@ -23,7 +24,9 @@ import {
 import {
   AttachmentChip,
   Avatar,
+  Checkbox,
   CheckCircle,
+  cn,
   LinkWrapper,
   PopoverContent,
   PopoverRoot,
@@ -32,7 +35,7 @@ import {
   Spinner,
   Tooltip,
 } from "@dust-tt/sparkle";
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { visit } from "unist-util-visit";
 
 function formatTaskStatusLabel(status: PodTaskStatus): string {
@@ -166,16 +169,22 @@ function TaskDirectivePopoverBodyLoaded({
   data,
   activeAgents,
   agentsLoading,
-  onTaskUpdated,
+  mutateWorkspacePodTask,
 }: {
   owner: LightWorkspaceType;
   taskId: string;
   data: GetWorkspacePodTaskResponseBody;
   activeAgents: LightAgentConfigurationType[];
   agentsLoading: boolean;
-  onTaskUpdated?: () => void;
+  mutateWorkspacePodTask: (
+    data?: GetWorkspacePodTaskResponseBody,
+    options?: { revalidate?: boolean }
+  ) => Promise<GetWorkspacePodTaskResponseBody | undefined>;
 }) {
   const { task, space: pod } = data;
+  const doUpdate = useUpdatePodTask({ owner, podId: pod.sId });
+  const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
+
   const projectHref = getPodRoute(owner.sId, pod.sId);
   const assignee = task.user;
   const dotStatus: ConversationDotStatus =
@@ -185,6 +194,49 @@ function TaskDirectivePopoverBodyLoaded({
     dotStatus,
     hasConversation
   );
+  const isDone = task.status === "done";
+  const canEdit = pod.isMember && !pod.archivedAt;
+
+  const handleToggleDone = useCallback(async () => {
+    if (!canEdit || isUpdatingStatus) {
+      return;
+    }
+
+    const nextStatus: PodTaskStatus = isDone ? "todo" : "done";
+    const optimisticData: GetWorkspacePodTaskResponseBody = {
+      task: {
+        ...task,
+        status: nextStatus,
+        doneAt: nextStatus === "done" ? new Date() : null,
+      },
+      space: pod,
+    };
+
+    void mutateWorkspacePodTask(optimisticData, { revalidate: false });
+    setIsUpdatingStatus(true);
+    try {
+      const result = await doUpdate(taskId, { status: nextStatus });
+      if (result.isErr()) {
+        void mutateWorkspacePodTask();
+      } else {
+        void mutateWorkspacePodTask(
+          { task: result.value, space: pod },
+          { revalidate: false }
+        );
+      }
+    } finally {
+      setIsUpdatingStatus(false);
+    }
+  }, [
+    canEdit,
+    doUpdate,
+    isDone,
+    isUpdatingStatus,
+    mutateWorkspacePodTask,
+    pod,
+    task,
+    taskId,
+  ]);
 
   const showStartInPopover =
     (task.status !== "in_progress" && task.status !== "done") ||
@@ -192,9 +244,24 @@ function TaskDirectivePopoverBodyLoaded({
 
   return (
     <div className="flex flex-col p-3">
-      <p className="whitespace-pre-wrap break-words text-sm leading-relaxed text-foreground">
-        {task.text}
-      </p>
+      <div className="flex items-start gap-3">
+        <div className="mt-0.5 shrink-0">
+          <Checkbox
+            checked={isDone}
+            disabled={!canEdit || isUpdatingStatus}
+            isMutedAfterCheck
+            onCheckedChange={() => void handleToggleDone()}
+          />
+        </div>
+        <p
+          className={cn(
+            "min-w-0 flex-1 whitespace-pre-wrap break-words text-sm leading-relaxed",
+            isDone ? "text-faint line-through" : "text-foreground"
+          )}
+        >
+          {task.text}
+        </p>
+      </div>
 
       <Separator className="-mx-3 my-3 shrink-0 bg-border/60" />
 
@@ -252,7 +319,7 @@ function TaskDirectivePopoverBodyLoaded({
               task={task}
               activeAgents={activeAgents}
               agentsLoading={agentsLoading}
-              onStarted={onTaskUpdated}
+              onStarted={() => void mutateWorkspacePodTask()}
               triggerSize="icon-xs"
             />
           ) : null}
@@ -356,7 +423,7 @@ function TaskDirectivePopoverContent({
       data={{ task, space: pod }}
       activeAgents={activeAgents}
       agentsLoading={agentsLoading}
-      onTaskUpdated={() => void mutateWorkspacePodTask()}
+      mutateWorkspacePodTask={mutateWorkspacePodTask}
     />
   );
 }
@@ -399,7 +466,7 @@ function TaskDirectiveChipInner({
           sideOffset={6}
           collisionPadding={16}
           className="w-[min(22rem,calc(100vw-1.5rem))] overflow-hidden rounded-xl border border-border/70 p-0 shadow-xl ring-1 ring-black/[0.04] dark:ring-white/[0.06]"
-          onOpenAutoFocus={(e) => e.preventDefault()}
+          onOpenAutoFocus={(e: any) => e.preventDefault()}
         >
           {/*
             Visibility-gated mount: the popover content (and all its SWR hooks —
