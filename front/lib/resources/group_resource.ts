@@ -2199,6 +2199,69 @@ export class GroupResource extends BaseResource<GroupModel> {
     return new Ok(undefined);
   }
 
+  async updateRegularManualGroup(
+    auth: Authenticator,
+    { name, memberIds }: { name?: string; memberIds?: string[] }
+  ): Promise<
+    Result<
+      undefined,
+      DustError<
+        | "unauthorized"
+        | "name_conflict"
+        | "user_not_found"
+        | "user_not_member"
+        | "user_already_member"
+        | "group_requirements_not_met"
+        | "system_or_global_group"
+      >
+    >
+  > {
+    if (!auth.isBusinessAdmin()) {
+      return new Err(
+        new DustError(
+          "unauthorized",
+          `Only workspace admins and ${BUSINESS_ADMIN_ROLE_NAME}s can update groups.`
+        )
+      );
+    }
+
+    if (name !== undefined) {
+      const existing = await GroupResource.fetchByName(auth, name);
+      if (existing && existing.id !== this.id) {
+        return new Err(
+          new DustError(
+            "name_conflict",
+            `A group named "${name}" already exists in this workspace.`
+          )
+        );
+      }
+
+      const updateRes = await this.updateName(auth, name);
+      if (updateRes.isErr()) {
+        return new Err(new DustError("unauthorized", updateRes.error.message));
+      }
+    }
+
+    if (memberIds !== undefined) {
+      const uniqueMemberIds = [...new Set(memberIds)];
+      const users = await UserResource.fetchByIds(uniqueMemberIds);
+      if (users.length !== uniqueMemberIds.length) {
+        return new Err(
+          new DustError("user_not_found", "Some users were not found.")
+        );
+      }
+
+      const setResult = await this.dangerouslySetMembers(auth, {
+        users: users.map((u) => u.toJSON()),
+      });
+      if (setResult.isErr()) {
+        return new Err(setResult.error);
+      }
+    }
+
+    return new Ok(undefined);
+  }
+
   // Per-group usage spend limit (excluding seat allowance), applied per member.
   // Pass null to clear the cap.
   async updatePoolCap(

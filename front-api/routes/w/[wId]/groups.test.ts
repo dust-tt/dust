@@ -28,6 +28,18 @@ function getGroup(workspace: { sId: string }, groupId: string) {
   return honoApp.request(`/api/w/${workspace.sId}/groups/${groupId}`);
 }
 
+function patchGroup(
+  workspace: { sId: string },
+  groupId: string,
+  body: Record<string, unknown>
+) {
+  return honoApp.request(`/api/w/${workspace.sId}/groups/${groupId}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+}
+
 describe("GET /api/w/:wId/groups", () => {
   it("returns groups with correct member counts", async () => {
     const { workspace, user, auth } = await createPrivateApiMockRequest({
@@ -360,5 +372,211 @@ describe("GET /api/w/:wId/groups/:groupId", () => {
 
     expect(response.status).toBe(404);
     expect((await response.json()).error.type).toBe("group_not_found");
+  });
+});
+
+describe("PATCH /api/w/:wId/groups/:groupId", () => {
+  it("renames the group", async () => {
+    const { workspace, auth } = await createPrivateApiMockRequest({
+      method: "PATCH",
+      role: "admin",
+    });
+    const group = await GroupFactory.regularManual(workspace, "Old name");
+
+    const response = await patchGroup(workspace, group.sId, {
+      name: "New name",
+    });
+
+    expect(response.status).toBe(200);
+    const body = await response.json();
+    expect(body.group.name).toBe("New name");
+
+    const refetched = await GroupResource.fetchById(auth, group.sId);
+    if (refetched.isErr()) {
+      throw refetched.error;
+    }
+    expect(refetched.value.name).toBe("New name");
+  });
+
+  it("sets the full member list", async () => {
+    const { workspace, user, auth } = await createPrivateApiMockRequest({
+      method: "PATCH",
+      role: "admin",
+    });
+    const extraUser = await UserFactory.basic();
+    await MembershipFactory.associate(workspace, extraUser, { role: "user" });
+
+    const group = await GroupFactory.regularManual(workspace, "Team");
+    // Seed with a single member that should be replaced by the PATCH.
+    const seed = await group.dangerouslyAddMembers(auth, {
+      users: [user.toJSON()],
+    });
+    if (seed.isErr()) {
+      throw seed.error;
+    }
+
+    const response = await patchGroup(workspace, group.sId, {
+      memberIds: [extraUser.sId],
+    });
+
+    expect(response.status).toBe(200);
+    const body = await response.json();
+    expect(new Set(body.members.map((m: { sId: string }) => m.sId))).toEqual(
+      new Set([extraUser.sId])
+    );
+  });
+
+  it("clears all members with an empty array", async () => {
+    const { workspace, user, auth } = await createPrivateApiMockRequest({
+      method: "PATCH",
+      role: "admin",
+    });
+    const group = await GroupFactory.regularManual(workspace, "Team");
+    const seed = await group.dangerouslyAddMembers(auth, {
+      users: [user.toJSON()],
+    });
+    if (seed.isErr()) {
+      throw seed.error;
+    }
+
+    const response = await patchGroup(workspace, group.sId, {
+      memberIds: [],
+    });
+
+    expect(response.status).toBe(200);
+    const body = await response.json();
+    expect(body.members).toEqual([]);
+  });
+
+  it("renames and sets members in a single request", async () => {
+    const { workspace, user } = await createPrivateApiMockRequest({
+      method: "PATCH",
+      role: "admin",
+    });
+    const group = await GroupFactory.regularManual(workspace, "Old name");
+
+    const response = await patchGroup(workspace, group.sId, {
+      name: "New name",
+      memberIds: [user.sId],
+    });
+
+    expect(response.status).toBe(200);
+    const body = await response.json();
+    expect(body.group.name).toBe("New name");
+    expect(new Set(body.members.map((m: { sId: string }) => m.sId))).toEqual(
+      new Set([user.sId])
+    );
+  });
+
+  it("leaves members unchanged when only renaming", async () => {
+    const { workspace, user, auth } = await createPrivateApiMockRequest({
+      method: "PATCH",
+      role: "admin",
+    });
+    const group = await GroupFactory.regularManual(workspace, "Old name");
+    const seed = await group.dangerouslyAddMembers(auth, {
+      users: [user.toJSON()],
+    });
+    if (seed.isErr()) {
+      throw seed.error;
+    }
+
+    const response = await patchGroup(workspace, group.sId, {
+      name: "New name",
+    });
+
+    expect(response.status).toBe(200);
+    const body = await response.json();
+    expect(new Set(body.members.map((m: { sId: string }) => m.sId))).toEqual(
+      new Set([user.sId])
+    );
+  });
+
+  it("lets a business admin update the group", async () => {
+    const { workspace } = await createPrivateApiMockRequest({
+      method: "PATCH",
+      role: "business_admin",
+    });
+    const group = await GroupFactory.regularManual(workspace, "Old name");
+
+    const response = await patchGroup(workspace, group.sId, {
+      name: "New name",
+    });
+
+    expect(response.status).toBe(200);
+  });
+
+  it("returns 403 for a regular user", async () => {
+    const { workspace } = await createPrivateApiMockRequest({
+      method: "PATCH",
+      role: "user",
+    });
+    const group = await GroupFactory.regularManual(workspace, "Old name");
+
+    const response = await patchGroup(workspace, group.sId, {
+      name: "New name",
+    });
+
+    expect(response.status).toBe(403);
+    expect((await response.json()).error.type).toBe("workspace_auth_error");
+  });
+
+  it("returns 404 for a non-regular_manual group", async () => {
+    const { workspace } = await createPrivateApiMockRequest({
+      method: "PATCH",
+      role: "admin",
+    });
+    const group = await GroupFactory.regularAuto(workspace, "Automatic");
+
+    const response = await patchGroup(workspace, group.sId, {
+      name: "New name",
+    });
+
+    expect(response.status).toBe(404);
+    expect((await response.json()).error.type).toBe("group_not_found");
+  });
+
+  it("returns 409 when renaming to an existing group name", async () => {
+    const { workspace } = await createPrivateApiMockRequest({
+      method: "PATCH",
+      role: "admin",
+    });
+    await GroupFactory.regularManual(workspace, "Taken");
+    const group = await GroupFactory.regularManual(workspace, "Original");
+
+    const response = await patchGroup(workspace, group.sId, {
+      name: "Taken",
+    });
+
+    expect(response.status).toBe(409);
+    expect((await response.json()).error.type).toBe("invalid_request_error");
+  });
+
+  it("returns 404 when a member id does not belong to the workspace", async () => {
+    const { workspace } = await createPrivateApiMockRequest({
+      method: "PATCH",
+      role: "admin",
+    });
+    const group = await GroupFactory.regularManual(workspace, "Team");
+    const outsider = await UserFactory.basic();
+
+    const response = await patchGroup(workspace, group.sId, {
+      memberIds: [outsider.sId],
+    });
+
+    expect(response.status).toBe(404);
+    expect((await response.json()).error.type).toBe("user_not_found");
+  });
+
+  it("returns 400 for an empty name", async () => {
+    const { workspace } = await createPrivateApiMockRequest({
+      method: "PATCH",
+      role: "admin",
+    });
+    const group = await GroupFactory.regularManual(workspace, "Team");
+
+    const response = await patchGroup(workspace, group.sId, { name: "" });
+
+    expect(response.status).toBe(400);
   });
 });
