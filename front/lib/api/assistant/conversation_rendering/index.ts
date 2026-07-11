@@ -165,10 +165,19 @@ export async function renderConversationForModel(
   // budgetForInteractions, which stays at the real ceiling below for the current interaction's own
   // safety net: a legitimately large current turn must never be rejected just for this smaller,
   // proactive target.
-  const previousInteractionsPruningBudget = Math.min(
-    budgetForInteractions,
-    model.contextSize * PRUNING_TARGET_CONTEXT_UTILIZATION - baseTokens
-  );
+  //
+  // Only applied when it's actually a positive constraint. For a small-context model with a large
+  // system prompt or many equipped tools, baseTokens alone can already exceed the proactive target,
+  // making it negative, and forcing that instead of budgetForInteractions would push
+  // prunePreviousInteractions into redacting its protected floor as routine behavior, not the rare
+  // last-resort case it's meant to be. Falling back to budgetForInteractions in that case keeps
+  // this proactive trigger strictly an early-warning mechanism, never a stricter one than before.
+  const pruningTargetCeiling =
+    model.contextSize * PRUNING_TARGET_CONTEXT_UTILIZATION - baseTokens;
+  const previousInteractionsPruningBudget =
+    pruningTargetCeiling > 0
+      ? Math.min(budgetForInteractions, pruningTargetCeiling)
+      : budgetForInteractions;
 
   const previousInteractions = prunePreviousInteractions(
     interactions.slice(0, -1),
