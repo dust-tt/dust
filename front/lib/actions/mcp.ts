@@ -344,6 +344,12 @@ export function isSandboxFunctionToolEvent<
   return "sandboxFunctionId" in event;
 }
 
+export function isAgentLoopToolEvent<
+  T extends AgentLoopEventScope | SandboxFunctionEventScope,
+>(event: T): event is Extract<T, AgentLoopEventScope> {
+  return "conversationId" in event;
+}
+
 export function isToolFileAuthRequiredEvent(
   event: unknown
 ): event is ToolFileAuthRequiredEvent {
