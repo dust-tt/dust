@@ -42,12 +42,10 @@ export const TOOL_DEFINITIONS_COUNT_ADJUSTMENT_FACTOR = 0.7;
 export const TOKENS_MARGIN = 1024;
 
 // Target ceiling (as a fraction of contextSize) for triggering previous-interactions pruning,
-// picked to sit safely below the customer-facing compaction warning (~70% of contextSize).
-// Without this, allowedTokenCount alone (contextSize - generationTokensCount) sits anywhere from
-// 68% to 99% of contextSize depending on the model, so pruning would do nothing for most of the
-// fleet until conversations are already past the point where compaction forces the user to stop.
-// Kept independent of generationTokensCount, which also doubles as the actual max_tokens sent to
-// the provider.
+// picked to sit safely below the customer-facing compaction warning (~70% of contextSize) rather
+// than the real ceiling, which sits at 68-99% depending on the model and otherwise leaves pruning
+// doing nothing until compaction has already fired. Kept independent of generationTokensCount,
+// which also doubles as the actual max_tokens sent to the provider.
 export const PRUNING_TARGET_CONTEXT_UTILIZATION = 0.6;
 
 export async function renderConversationForModel(
@@ -162,16 +160,11 @@ export async function renderConversationForModel(
   const budgetForInteractions = allowedTokenCount - baseTokens;
 
   // See PRUNING_TARGET_CONTEXT_UTILIZATION for why this trigger exists. Kept separate from
-  // budgetForInteractions, which stays at the real ceiling below for the current interaction's own
-  // safety net: a legitimately large current turn must never be rejected just for this smaller,
-  // proactive target.
-  //
-  // Only applied when it's actually a positive constraint. For a small-context model with a large
-  // system prompt or many equipped tools, baseTokens alone can already exceed the proactive target,
-  // making it negative, and forcing that instead of budgetForInteractions would push
-  // prunePreviousInteractions into redacting its protected floor as routine behavior, not the rare
-  // last-resort case it's meant to be. Falling back to budgetForInteractions in that case keeps
-  // this proactive trigger strictly an early-warning mechanism, never a stricter one than before.
+  // budgetForInteractions (the real ceiling, used below for the current interaction's own safety
+  // net) and only applied when positive: a small-context model with a large prompt or many tools
+  // can push baseTokens past the target on its own, and forcing that negative number would make
+  // prunePreviousInteractions redact its protected floor as routine behavior, not a rare last
+  // resort.
   const pruningTargetCeiling =
     model.contextSize * PRUNING_TARGET_CONTEXT_UTILIZATION - baseTokens;
   const previousInteractionsPruningBudget =
