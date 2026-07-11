@@ -41,6 +41,15 @@ const IMAGE_CONTENT_TOKEN_COUNT = 3100;
 export const TOOL_DEFINITIONS_COUNT_ADJUSTMENT_FACTOR = 0.7;
 export const TOKENS_MARGIN = 1024;
 
+// Target ceiling (as a fraction of contextSize) for triggering previous-interactions pruning,
+// picked to sit safely below the customer-facing compaction warning (~70% of contextSize).
+// Without this, allowedTokenCount alone (contextSize - generationTokensCount) sits anywhere from
+// 68% to 99% of contextSize depending on the model, so pruning would do nothing for most of the
+// fleet until conversations are already past the point where compaction forces the user to stop.
+// Kept independent of generationTokensCount, which also doubles as the actual max_tokens sent to
+// the provider.
+export const PRUNING_TARGET_CONTEXT_UTILIZATION = 0.6;
+
 export async function renderConversationForModel(
   auth: Authenticator,
   {
@@ -152,9 +161,18 @@ export async function renderConversationForModel(
   // absorbs whatever budget remains, with its own progressive-pruning safety net below.
   const budgetForInteractions = allowedTokenCount - baseTokens;
 
+  // See PRUNING_TARGET_CONTEXT_UTILIZATION for why this trigger exists. Kept separate from
+  // budgetForInteractions, which stays at the real ceiling below for the current interaction's own
+  // safety net: a legitimately large current turn must never be rejected just for this smaller,
+  // proactive target.
+  const previousInteractionsPruningBudget = Math.min(
+    budgetForInteractions,
+    model.contextSize * PRUNING_TARGET_CONTEXT_UTILIZATION - baseTokens
+  );
+
   const previousInteractions = prunePreviousInteractions(
     interactions.slice(0, -1),
-    budgetForInteractions,
+    previousInteractionsPruningBudget,
     PREVIOUS_INTERACTIONS_TO_PRESERVE
   );
   const previousInteractionsTokens = previousInteractions.reduce(

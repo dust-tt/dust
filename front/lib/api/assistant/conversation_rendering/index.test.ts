@@ -178,6 +178,9 @@ describe("renderConversationForModel", () => {
     providerId: "openai",
     modelId: "gpt-4.1",
     tokenizer: "cl100k_base",
+    // Large enough that PRUNING_TARGET_CONTEXT_UTILIZATION never becomes the binding constraint
+    // in these tests, which are all sized in the low hundreds of tokens.
+    contextSize: 200_000,
   } as any;
 
   beforeEach(() => {
@@ -310,6 +313,96 @@ describe("renderConversationForModel", () => {
       "This tool result is no longer available"
     );
     expect(newTool.content).toBe("new_function");
+    expect(res.value.prunedContext).toBe(false);
+  });
+
+  it("proactively prunes previous interactions once they cross PRUNING_TARGET_CONTEXT_UTILIZATION of contextSize, even though allowedTokenCount alone would comfortably fit them", async () => {
+    // contextSize: 2000 -> proactive target of 159 tokens (60% minus baseTokens), well below the
+    // 220-token previous interaction below.
+    vi.mocked(renderAllMessages).mockResolvedValue([
+      userMessage("old_user"),
+      assistantMessage("old_assistant"),
+      functionMessage("old_tool", "old_function"),
+      userMessage("new_user"),
+      assistantMessage("new_assistant"),
+    ]);
+    mockTokenCounter({
+      byContains: {
+        old_user: 10,
+        old_assistant: 10,
+        old_function: 200,
+        new_user: 10,
+        new_assistant: 10,
+      },
+    });
+
+    const res = await renderConversationForModel(auth, {
+      conversation: createConversation(),
+      model: { ...model, contextSize: 2000 },
+      prompt: "PROMPT",
+      enabledSkills: [],
+      tools: "TOOLS",
+      // Comfortably fits both interactions in full under the real ceiling: proves redaction is
+      // driven by the proactive target, not by running out of the real budget.
+      allowedTokenCount: computeAllowedTokenCount({
+        promptTokens: 10,
+        toolsTokens: 10,
+        interactionTokens: 2000,
+      }),
+    });
+
+    expect(res.isOk()).toBe(true);
+    if (res.isErr()) {
+      return;
+    }
+
+    const oldTool = getFunctionMessage(
+      res.value.modelConversation.messages,
+      "old_tool"
+    );
+    expect(oldTool.content).toContain("no longer available");
+  });
+
+  it("still lets a legitimately large current interaction through, unaffected by the smaller proactive-pruning target", async () => {
+    // Same 159-token proactive target as above (contextSize: 2000), but the current interaction
+    // (320 tokens) comfortably fits the real allowedTokenCount, which is the ceiling that matters
+    // here (see previousInteractionsPruningBudget's own comment for why).
+    vi.mocked(renderAllMessages).mockResolvedValue([
+      userMessage("cur_user"),
+      assistantMessage("cur_assistant"),
+      functionMessage("cur_tool", "cur_function"),
+    ]);
+    mockTokenCounter({
+      byContains: {
+        cur_user: 10,
+        cur_assistant: 10,
+        cur_function: 300,
+      },
+    });
+
+    const res = await renderConversationForModel(auth, {
+      conversation: createConversation(),
+      model: { ...model, contextSize: 2000 },
+      prompt: "PROMPT",
+      enabledSkills: [],
+      tools: "TOOLS",
+      allowedTokenCount: computeAllowedTokenCount({
+        promptTokens: 10,
+        toolsTokens: 10,
+        interactionTokens: 2000,
+      }),
+    });
+
+    expect(res.isOk()).toBe(true);
+    if (res.isErr()) {
+      return;
+    }
+
+    const currentTool = getFunctionMessage(
+      res.value.modelConversation.messages,
+      "cur_tool"
+    );
+    expect(currentTool.content).toBe("cur_function");
     expect(res.value.prunedContext).toBe(false);
   });
 
