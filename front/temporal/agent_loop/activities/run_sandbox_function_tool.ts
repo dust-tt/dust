@@ -1,4 +1,4 @@
-import { isSandboxFunctionToolPersonalAuthRequiredEvent } from "@app/lib/actions/mcp";
+import { isSandboxFunctionToolEvent } from "@app/lib/actions/mcp";
 import { isToolExecutionStatusFinal } from "@app/lib/actions/statuses";
 import type { SandboxFunctionRunContext } from "@app/lib/actions/types";
 import { runToolWithStreaming } from "@app/lib/api/mcp/run_tool";
@@ -75,7 +75,7 @@ export async function runSandboxFunctionToolActivity(
       switch (event.type) {
         case "tool_personal_auth_required":
           assert(
-            isSandboxFunctionToolPersonalAuthRequiredEvent(event),
+            isSandboxFunctionToolEvent(event),
             "Expected a sandbox function authentication event."
           );
           await publishSandboxFunctionInvocationEvent(event, {

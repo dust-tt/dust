@@ -8,11 +8,12 @@ import type {
   MCPServerAvailability,
 } from "@app/lib/actions/mcp_internal_actions/constants";
 import type {
+  AgentLoopEventScope,
   AgentLoopMCPApproveExecutionEvent,
   AgentLoopToolExecution,
   MCPApproveExecutionEvent,
+  SandboxFunctionEventScope,
   SandboxFunctionToolExecution,
-  SandboxFunctionToolPersonalAuthRequiredEvent,
   ToolAskUserQuestionEvent,
   ToolFileAuthRequiredEvent,
   ToolPersonalAuthRequiredEvent,
@@ -284,12 +285,6 @@ export type ToolNotificationEvent =
   | AgentLoopToolNotificationEvent
   | SandboxFunctionToolNotificationEvent;
 
-export function isAgentLoopToolNotificationEvent(
-  event: ToolNotificationEvent
-): event is AgentLoopToolNotificationEvent {
-  return "messageId" in event;
-}
-
 // AgentActionRunningEvents are events related action execution within an agent loop.
 export type AgentActionRunningEvents =
   | AgentLoopToolParamsEvent
@@ -343,9 +338,9 @@ export function isToolPersonalAuthRequiredEvent(
   );
 }
 
-export function isSandboxFunctionToolPersonalAuthRequiredEvent(
-  event: ToolPersonalAuthRequiredEvent
-): event is SandboxFunctionToolPersonalAuthRequiredEvent {
+export function isSandboxFunctionToolEvent<
+  T extends AgentLoopEventScope | SandboxFunctionEventScope,
+>(event: T): event is Extract<T, SandboxFunctionEventScope> {
   return "sandboxFunctionId" in event;
 }
 
