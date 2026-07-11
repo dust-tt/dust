@@ -549,19 +549,17 @@ export async function addEgressDomainTool(
     },
   });
 
-  const isPodScoped = conversation.spaceId !== null;
+  // Scope wording matches the tool description: pod approvals apply Pod-wide.
+  const scope =
+    conversation.spaceId !== null
+      ? "this Pod (every conversation in it and the Pod's shared sandbox)"
+      : "this conversation";
   const text =
     result.value.addedDomain !== null
       ? `Allowed: ${result.value.addedDomain}\n` +
-        (isPodScoped
-          ? "The change applies to this whole Pod — every conversation in it " +
-            "and the Pod's shared sandbox — and persists across sandbox restarts."
-          : "The change applies to this conversation and persists across " +
-            "sandbox restarts.")
+        `The change applies to ${scope} and persists across sandbox restarts.`
       : `Already allowed: ${parsed.value}\n` +
-        (isPodScoped
-          ? "No change made; this domain was already in the Pod's allowlist."
-          : "No change made; this domain was already in the conversation's allowlist.");
+        `No change made; this domain is already allowed for ${scope}.`;
 
   return new Ok([{ type: "text" as const, text }]);
 }

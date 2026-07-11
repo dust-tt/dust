@@ -86,7 +86,8 @@ app.put(
       });
     }
 
-    const result = await writeOwnerPolicy(auth, space.sId, {
+    const result = await writeOwnerPolicy(auth, {
+      ownerId: space.sId,
       policy: parsedPolicy.value,
     });
     if (result.isErr()) {

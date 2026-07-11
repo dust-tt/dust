@@ -195,25 +195,25 @@ export async function readOwnerPolicy(
 // Pod fail its cap check.
 export async function writeOwnerPolicy(
   auth: Authenticator,
-  ownerId: string,
-  { policy }: { policy: EgressPolicy }
+  { ownerId, policy }: { ownerId: string; policy: EgressPolicy }
 ): Promise<Result<EgressPolicy, Error>> {
-  const normalizedPolicy = normalizeEgressPolicy(policy);
+  const normalizedPolicyRes = normalizeEgressPolicy(policy);
 
-  if (normalizedPolicy.isErr()) {
-    return normalizedPolicy;
+  if (normalizedPolicyRes.isErr()) {
+    return normalizedPolicyRes;
   }
 
   try {
     await getPolicyBucket().uploadRawContentToBucket({
-      content: JSON.stringify(normalizedPolicy.value),
+      content: JSON.stringify(normalizedPolicyRes.value),
       contentType: "application/json",
       filePath: getOwnerPolicyPath(auth, ownerId),
     });
 
-    void invalidateOwnerPolicyCache(auth, ownerId);
+    // Never throws (fully caught internally); awaited so no promise escapes.
+    await invalidateOwnerPolicyCache(auth, ownerId);
 
-    return new Ok(normalizedPolicy.value);
+    return new Ok(normalizedPolicyRes.value);
   } catch (error) {
     return new Err(normalizeError(error));
   }

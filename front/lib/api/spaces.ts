@@ -391,6 +391,16 @@ export async function hardDeleteSpace(
     }
   }
 
+  // Delete the pod's sandbox egress allowlist file BEFORE touching the DB:
+  // if GCS refuses, we abort with everything intact and the admin retries.
+  // (Owner-keyed, so it is not deleted with individual sandboxes.)
+  if (space.isProject()) {
+    const deleteOwnerPolicyRes = await deleteOwnerPolicy(auth, space.sId);
+    if (deleteOwnerPolicyRes.isErr()) {
+      return deleteOwnerPolicyRes;
+    }
+  }
+
   await withTransaction(async (t) => {
     // Delete all spaces groups.
     for (const group of space.groups) {
@@ -422,20 +432,6 @@ export async function hardDeleteSpace(
       spaceId: space.sId,
       stopReason: "project hard deleted",
     });
-
-    // Best-effort scrub of the pod's sandbox egress allowlist file
-    // (owner-keyed, so it is not deleted with individual sandboxes). A
-    // failure logs but does not block the deletion.
-    const deleteOwnerPolicyRes = await deleteOwnerPolicy(auth, space.sId);
-    if (deleteOwnerPolicyRes.isErr()) {
-      logger.warn(
-        {
-          err: deleteOwnerPolicyRes.error,
-          spaceId: space.sId,
-        },
-        "Failed to delete pod egress policy file on space deletion."
-      );
-    }
   }
 
   return new Ok(undefined);

@@ -893,7 +893,9 @@ describe("addEgressDomainTool", () => {
       ownerId: "space-id",
     });
     if (result.isOk()) {
-      expect(result.value[0].text).toContain("applies to this whole Pod");
+      expect(result.value[0].text).toContain(
+        "applies to this Pod (every conversation in it and the Pod's shared sandbox)"
+      );
     }
   });
 

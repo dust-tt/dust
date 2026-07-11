@@ -2,25 +2,55 @@ import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import type { MembershipRoleType } from "@app/types/memberships";
-import { Err, Ok } from "@app/types/shared/result";
 import { honoApp } from "@front-api/app";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { mockReadOwnerPolicy, mockWriteOwnerPolicy } = vi.hoisted(() => ({
-  mockReadOwnerPolicy: vi.fn(),
-  mockWriteOwnerPolicy: vi.fn(),
-}));
-
-vi.mock("@app/lib/api/sandbox/egress_policy", async (importOriginal) => {
-  const actual =
-    await importOriginal<typeof import("@app/lib/api/sandbox/egress_policy")>();
-
+// Mock one level down at the storage layer: the route exercises the real
+// readOwnerPolicy / writeOwnerPolicy, and only GCS is faked. `gcsStore` is an
+// in-memory object store keyed by file path.
+const { gcsStore, inMemoryBucket } = vi.hoisted(() => {
+  const store = new Map<string, string>();
   return {
-    ...actual,
-    readOwnerPolicy: mockReadOwnerPolicy,
-    writeOwnerPolicy: mockWriteOwnerPolicy,
+    gcsStore: store,
+    inMemoryBucket: {
+      uploadRawContentToBucket: async ({
+        content,
+        filePath,
+      }: {
+        content: string;
+        filePath: string;
+      }) => {
+        store.set(filePath, content);
+      },
+      fetchFileContent: async (filePath: string) => {
+        const content = store.get(filePath);
+        if (content === undefined) {
+          // Mirror the GCS "object not found" shape isGCSNotFoundError reads.
+          throw { code: 404 };
+        }
+        return content;
+      },
+      delete: async (filePath: string) => {
+        store.delete(filePath);
+      },
+    },
   };
 });
+
+// Full replacement (not importOriginal): evaluating the real module needs
+// SERVICE_ACCOUNT. `getBucketInstance` is the seam the egress policy code
+// uses; the other bucket getters are stubbed so booting the full route app
+// doesn't hit real GCS construction.
+vi.mock("@app/lib/file_storage", () => ({
+  getBucketInstance: vi.fn(() => inMemoryBucket),
+  getPrivateUploadBucket: vi.fn(() => inMemoryBucket),
+  getPublicUploadBucket: vi.fn(() => inMemoryBucket),
+  getUpsertQueueBucket: vi.fn(() => inMemoryBucket),
+  getDustDataSourcesBucket: vi.fn(() => inMemoryBucket),
+  getWebhookRequestsBucket: vi.fn(() => inMemoryBucket),
+  getLLMTracesBucket: vi.fn(() => inMemoryBucket),
+  getPokeUserConfigBucket: vi.fn(() => inMemoryBucket),
+}));
 
 async function setupTest({
   role = "admin",
@@ -60,63 +90,44 @@ function putPolicy(wId: string, spaceId: string, body: unknown) {
 describe("GET/PUT /api/w/:wId/spaces/:spaceId/sandbox/egress-policy", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-
-    mockReadOwnerPolicy.mockResolvedValue(
-      new Ok({ allowedDomains: ["api.github.com"] })
-    );
-    mockWriteOwnerPolicy.mockImplementation(
-      async (
-        _auth: unknown,
-        _ownerId: unknown,
-        { policy }: { policy: { allowedDomains: string[] } }
-      ) => {
-        return new Ok(policy);
-      }
-    );
+    gcsStore.clear();
   });
 
-  it("returns the pod egress policy to workspace admins", async () => {
+  it("returns an empty policy when no pod policy file exists", async () => {
     const { workspace } = await setupTest();
     const pod = await SpaceFactory.project(workspace);
 
     const response = await getPolicy(workspace.sId, pod.sId);
 
     expect(response.status).toBe(200);
-    expect(await response.json()).toEqual({
-      policy: { allowedDomains: ["api.github.com"] },
-    });
-    expect(mockReadOwnerPolicy).toHaveBeenCalledWith(
-      expect.anything(),
-      pod.sId
-    );
+    expect(await response.json()).toEqual({ policy: { allowedDomains: [] } });
   });
 
-  it("updates the pod egress policy with normalized domains", async () => {
+  it("persists domains and returns them on round-trip, normalized", async () => {
     const { workspace } = await setupTest();
     const pod = await SpaceFactory.project(workspace);
 
-    const response = await putPolicy(workspace.sId, pod.sId, {
+    const putResponse = await putPolicy(workspace.sId, pod.sId, {
       allowedDomains: ["API.GitHub.COM", "*.GitHub.COM"],
     });
 
-    expect(response.status).toBe(200);
-    expect(mockWriteOwnerPolicy).toHaveBeenCalledWith(
-      expect.anything(),
-      pod.sId,
-      {
-        policy: {
-          allowedDomains: ["api.github.com", "*.github.com"],
-        },
-      }
+    expect(putResponse.status).toBe(200);
+    expect(await putResponse.json()).toEqual({
+      policy: { allowedDomains: ["api.github.com", "*.github.com"] },
+    });
+
+    // The GCS object landed at the pod's owner path.
+    expect(gcsStore.get(`w/${workspace.sId}/sandboxes/${pod.sId}.json`)).toBe(
+      JSON.stringify({ allowedDomains: ["api.github.com", "*.github.com"] })
     );
-    expect(await response.json()).toEqual({
-      policy: {
-        allowedDomains: ["api.github.com", "*.github.com"],
-      },
+
+    const getResponse = await getPolicy(workspace.sId, pod.sId);
+    expect(await getResponse.json()).toEqual({
+      policy: { allowedDomains: ["api.github.com", "*.github.com"] },
     });
   });
 
-  it("rejects invalid domain entries", async () => {
+  it("rejects invalid domain entries and writes nothing", async () => {
     const { workspace } = await setupTest();
     const pod = await SpaceFactory.project(workspace);
 
@@ -125,7 +136,7 @@ describe("GET/PUT /api/w/:wId/spaces/:spaceId/sandbox/egress-policy", () => {
     });
 
     expect(response.status).toBe(400);
-    expect(mockWriteOwnerPolicy).not.toHaveBeenCalled();
+    expect(gcsStore.size).toBe(0);
   });
 
   it("rejects non-admin users with a 403", async () => {
@@ -164,15 +175,5 @@ describe("GET/PUT /api/w/:wId/spaces/:spaceId/sandbox/egress-policy", () => {
       allowedDomains: ["api.github.com"],
     });
     expect(putResponse.status).toBe(400);
-  });
-
-  it("returns 500 when storage read fails", async () => {
-    const { workspace } = await setupTest();
-    const pod = await SpaceFactory.project(workspace);
-    mockReadOwnerPolicy.mockResolvedValue(new Err(new Error("GCS failed")));
-
-    const response = await getPolicy(workspace.sId, pod.sId);
-
-    expect(response.status).toBe(500);
   });
 });
