@@ -20,6 +20,17 @@ vi.mock("@app/lib/actions/mcp_actions", async (importOriginal) => {
   };
 });
 
+vi.mock("@app/lib/api/sandbox_functions/events", async (importOriginal) => {
+  const actual =
+    await importOriginal<
+      typeof import("@app/lib/api/sandbox_functions/events")
+    >();
+  return {
+    ...actual,
+    publishSandboxFunctionInvocationEvent: vi.fn(),
+  };
+});
+
 // The activity reads the temporal cancellation signal and heartbeats; neither exists outside a
 // real activity context.
 vi.mock("@temporalio/activity", () => ({
@@ -28,6 +39,8 @@ vi.mock("@temporalio/activity", () => ({
   },
   heartbeat: vi.fn(),
 }));
+
+import { publishSandboxFunctionInvocationEvent } from "@app/lib/api/sandbox_functions/events";
 
 function mockToolCallResult(result: CallToolResult) {
   vi.mocked(tryCallMCPTool).mockImplementation(async function* () {
@@ -78,13 +91,9 @@ describe("runSandboxFunctionToolActivity", () => {
     expect(refetched?.status).toBe("succeeded");
   });
 
-  it("should fail closed to errored when the tool requires personal authentication", async () => {
+  it("should block and publish when the tool requires personal authentication", async () => {
     const { auth, action } = await setupActivityRun();
 
-    // Pause resources yield events without a terminal status; with no pause surface for function
-    // invocations the activity must fail closed, otherwise the action stays `running` and the
-    // poll hangs until token expiry. The resource lands in the output so the function sees what
-    // the tool needs.
     const authRequiredResource: AgentPauseOutputResourceType = {
       mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.AGENT_PAUSE_TOOL_OUTPUT,
       type: "tool_personal_auth_required",
@@ -106,7 +115,18 @@ describe("runSandboxFunctionToolActivity", () => {
         auth,
         action.id
       );
-    expect(refetched?.status).toBe("errored");
+    expect(refetched?.status).toBe("blocked_authentication_required");
+    expect(publishSandboxFunctionInvocationEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: "tool_personal_auth_required",
+        actionId: action.sId,
+        invocationId: action.invocationId,
+        authError: expect.objectContaining({
+          provider: "google_drive",
+        }),
+      }),
+      { invocationId: action.invocationId }
+    );
 
     const outputWrite = fileStorageMock.saveFileCalls.find((call) =>
       call.filePath.endsWith(`mcp_output_items/${action.sId}/output.json`)
