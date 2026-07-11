@@ -12,6 +12,7 @@ import type {
   AgentLoopToolExecution,
   MCPApproveExecutionEvent,
   SandboxFunctionToolExecution,
+  SandboxFunctionToolPersonalAuthRequiredEvent,
   ToolAskUserQuestionEvent,
   ToolFileAuthRequiredEvent,
   ToolPersonalAuthRequiredEvent,
@@ -340,6 +341,12 @@ export function isToolPersonalAuthRequiredEvent(
     "type" in event &&
     event.type === "tool_personal_auth_required"
   );
+}
+
+export function isSandboxFunctionToolPersonalAuthRequiredEvent(
+  event: ToolPersonalAuthRequiredEvent
+): event is SandboxFunctionToolPersonalAuthRequiredEvent {
+  return "sandboxFunctionId" in event;
 }
 
 export function isToolFileAuthRequiredEvent(
