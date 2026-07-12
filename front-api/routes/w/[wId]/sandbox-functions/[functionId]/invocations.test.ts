@@ -5,7 +5,6 @@ import { SandboxFunctionInvocationResource } from "@app/lib/resources/sandbox_fu
 import { SandboxFunctionMCPActionResource } from "@app/lib/resources/sandbox_function_mcp_action_resource";
 import { SandboxFunctionResource } from "@app/lib/resources/sandbox_function_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
-import { SandboxFunctionInvocationModel } from "@app/lib/resources/storage/models/sandbox_function";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { FileFactory } from "@app/tests/utils/FileFactory";
 import { GroupFactory } from "@app/tests/utils/GroupFactory";
@@ -297,7 +296,8 @@ describe("POST /api/w/:wId/sandbox-functions/:functionIdOrSlug/invocations", () 
   });
 
   it("returns 500 when invocation execution fails", async () => {
-    const { workspace, sandboxFunction } = await setupSandboxFunction();
+    const { workspace, sandboxFunction, adminAuth } =
+      await setupSandboxFunction();
     vi.mocked(
       SandboxFunctionInvocationResource.prototype.execute
     ).mockResolvedValueOnce(new Err(new Error("sandbox unavailable")));
@@ -314,13 +314,6 @@ describe("POST /api/w/:wId/sandbox-functions/:functionIdOrSlug/invocations", () 
         message: "Sandbox function invocation failed.",
       },
     });
-    const invocation = await SandboxFunctionInvocationModel.findOne({
-      where: {
-        sandboxFunctionId: sandboxFunction.id,
-        workspaceId: workspace.id,
-      },
-    });
-    expect(invocation?.status).toBe("errored");
     expect(publishSandboxFunctionInvocationEvent).toHaveBeenCalledWith(
       expect.objectContaining({
         type: "sandbox_function_invocation_error",
@@ -330,6 +323,26 @@ describe("POST /api/w/:wId/sandbox-functions/:functionIdOrSlug/invocations", () 
       }),
       { invocationId: expect.stringMatching(/^sfi_/) }
     );
+    const errorEvent = vi
+      .mocked(publishSandboxFunctionInvocationEvent)
+      .mock.calls.find(
+        ([event]) => event.type === "sandbox_function_invocation_error"
+      )?.[0];
+    expect(errorEvent?.type).toBe("sandbox_function_invocation_error");
+    if (
+      !errorEvent ||
+      errorEvent.type !== "sandbox_function_invocation_error"
+    ) {
+      return;
+    }
+    const invocation = await SandboxFunctionInvocationResource.fetchById(
+      adminAuth,
+      {
+        sandboxFunction,
+        invocationId: errorEvent.invocationId,
+      }
+    );
+    expect(invocation?.status).toBe("errored");
   });
 
   it("requires sandbox functions to be enabled", async () => {

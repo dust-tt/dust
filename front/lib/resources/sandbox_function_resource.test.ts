@@ -439,10 +439,12 @@ describe("SandboxFunctionResource", () => {
       throw executionResult.error;
     }
 
-    const invocationModel = await SandboxFunctionInvocationModel.findOne({
-      where: { id: invocation.id, workspaceId: workspace.id },
-    });
-    expect(invocationModel?.status).toBe("created");
+    const refetchedInvocation =
+      await SandboxFunctionInvocationResource.fetchById(authenticator, {
+        sandboxFunction,
+        invocationId: invocation.sId,
+      });
+    expect(refetchedInvocation?.status).toBe("created");
     const refreshedSandbox = await SandboxModel.findOne({
       where: { id: sandbox.id, workspaceId: workspace.id },
     });
