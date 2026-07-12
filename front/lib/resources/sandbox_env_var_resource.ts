@@ -163,18 +163,18 @@ export class SandboxEnvVarResource extends BaseResource<SandboxEnvVarModel> {
 
   // Boot-path loads for a pod scope must be tied to the sandbox activation
   // owner: it states caller intent, catching plumbing that would inject one
-  // pod's secrets into another pod's sandbox. Not an authorization point —
-  // row scoping decides access.
+  // pod's secrets into another pod's sandbox. Pod config applies to every
+  // Computer running in the Pod, so both pod-owned sandboxes and
+  // conversation-owned sandboxes whose conversation lives in the pod
+  // qualify. Not an authorization point — row scoping decides access.
   private static assertBootOwner(
     scope: SandboxEnvVarScope,
     owner: SandboxRuntimeOwner | undefined
   ) {
     if (scope.kind === "pod") {
       assert(
-        owner !== undefined &&
-          owner.kind === "pod" &&
-          owner.spaceId === scope.pod.sId,
-        "Pod env vars can only be loaded for pod-owned sandboxes."
+        owner !== undefined && owner.spaceId === scope.pod.sId,
+        "Pod env vars can only be loaded for sandboxes running in that pod."
       );
     }
   }

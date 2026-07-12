@@ -4,6 +4,7 @@ import {
 } from "@app/lib/api/sandbox/root_command";
 import { SandboxEnvVarResource } from "@app/lib/resources/sandbox_env_var_resource";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
+import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { Ok } from "@app/types/shared/result";
 import { describe, expect, it, vi } from "vitest";
 
@@ -17,8 +18,8 @@ describe("sandbox environment manifest", () => {
   const conversationOwner = {
     kind: "conversation" as const,
     conversationId: "conversation-id",
+    spaceId: null,
   };
-  const podOwner = { kind: "pod" as const, spaceId: "space-id" };
 
   it("builds a deterministic manifest without any value field", async () => {
     const { authenticator } = await createResourceTest({ role: "admin" });
@@ -123,12 +124,15 @@ describe("sandbox environment manifest", () => {
   });
 
   it("uses SPACE_ID instead of CONVERSATION_ID for pod sandbox manifests", async () => {
-    const { authenticator } = await createResourceTest({ role: "admin" });
+    const { authenticator, workspace, user } = await createResourceTest({
+      role: "admin",
+    });
+    const pod = await SpaceFactory.project(workspace, user.id);
 
-    const manifestResult = await buildSandboxEnvManifest(
-      authenticator,
-      podOwner
-    );
+    const manifestResult = await buildSandboxEnvManifest(authenticator, {
+      kind: "pod",
+      spaceId: pod.sId,
+    });
 
     expect(manifestResult.isOk()).toBe(true);
     if (manifestResult.isErr()) {
@@ -145,6 +149,86 @@ describe("sandbox environment manifest", () => {
         description: "current workspace sId",
       },
     ]);
+  });
+
+  it("lists pod vars (pod wins on collision) for sandboxes running in a pod", async () => {
+    const { authenticator, workspace, user } = await createResourceTest({
+      role: "admin",
+    });
+    const pod = await SpaceFactory.project(workspace, user.id);
+
+    const workspaceVar = await SandboxEnvVarResource.makeNew(
+      authenticator,
+      { kind: "workspace", workspace },
+      { name: "WORKSPACE_ONLY", value: "workspace-value" }
+    );
+    expect(workspaceVar.isOk()).toBe(true);
+
+    const collidingSecret = await SandboxEnvVarResource.makeNew(
+      authenticator,
+      { kind: "workspace", workspace },
+      {
+        name: "SHARED_SECRET",
+        kind: "https_secret",
+        value: "workspace-secret",
+        allowedDomains: ["workspace.example.com"],
+      }
+    );
+    expect(collidingSecret.isOk()).toBe(true);
+
+    const podSecret = await SandboxEnvVarResource.makeNew(
+      authenticator,
+      { kind: "pod", pod },
+      {
+        name: "SHARED_SECRET",
+        kind: "https_secret",
+        value: "pod-secret",
+        allowedDomains: ["pod.example.com"],
+      }
+    );
+    expect(podSecret.isOk()).toBe(true);
+    if (podSecret.isErr()) {
+      throw podSecret.error;
+    }
+
+    const podVar = await SandboxEnvVarResource.makeNew(
+      authenticator,
+      { kind: "pod", pod },
+      { name: "POD_ONLY", value: "pod-value" }
+    );
+    expect(podVar.isOk()).toBe(true);
+
+    // Same listing for the pod owner and a conversation running in the pod.
+    for (const owner of [
+      { kind: "pod" as const, spaceId: pod.sId },
+      {
+        kind: "conversation" as const,
+        conversationId: "conversation-test",
+        spaceId: pod.sId,
+      },
+    ]) {
+      const manifestResult = await buildSandboxEnvManifest(
+        authenticator,
+        owner
+      );
+      expect(manifestResult.isOk()).toBe(true);
+      if (manifestResult.isErr()) {
+        throw manifestResult.error;
+      }
+
+      expect(manifestResult.value.config).toEqual([
+        { name: "DST_POD_ONLY" },
+        { name: "DST_WORKSPACE_ONLY" },
+      ]);
+      // Pod wins on collision: the pod row's placeholder and domains.
+      expect(manifestResult.value.httpsSecrets).toEqual([
+        {
+          name: "DSEC_SHARED_SECRET",
+          placeholder: `__DSEC_${podSecret.value.toJSON().placeholderNonce}__`,
+          allowedDomains: ["pod.example.com"],
+        },
+      ]);
+    }
   });
 
   it("rejects an HTTPS secret missing a placeholder nonce", async () => {

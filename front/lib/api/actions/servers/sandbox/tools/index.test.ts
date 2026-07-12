@@ -1,4 +1,5 @@
 import { Authenticator } from "@app/lib/auth";
+import { SpaceResource } from "@app/lib/resources/space_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
@@ -226,7 +227,9 @@ describe("runSandboxBashTool", () => {
     mockFetchActionById.mockResolvedValue(null);
   });
 
-  function makeExtra() {
+  function makeExtra(
+    overrides: { conversation?: { sId: string; spaceId?: string } } = {}
+  ) {
     return {
       auth: {
         getNonNullableWorkspace: () => ({
@@ -241,7 +244,7 @@ describe("runSandboxBashTool", () => {
         },
         model: { providerId: "openai" },
         agentMessage: { sId: "message-id", agentMessageId: 1 },
-        conversation: { sId: "conversation-id" },
+        conversation: overrides.conversation ?? { sId: "conversation-id" },
         action: {
           sId: "sandbox-action-id",
           toJSON: () => ({ sId: "sandbox-action-id" }),
@@ -329,6 +332,62 @@ describe("runSandboxBashTool", () => {
       },
       "sandbox bash output contained env var values; redacted"
     );
+  });
+
+  it("redacts pod env var values for conversations running in a pod", async () => {
+    const workspaceValue = "workspace-entropy-token-123";
+    const podValue = "pod-entropy-token-456";
+    mockLoadEnv.mockImplementation((_auth: unknown, scope: { kind: string }) =>
+      Promise.resolve(
+        new Ok(
+          scope.kind === "pod"
+            ? { DST_POD_TOKEN: podValue }
+            : { DST_API_TOKEN: workspaceValue }
+        )
+      )
+    );
+    const fetchSpaceSpy = vi
+      .spyOn(SpaceResource, "fetchById")
+      .mockResolvedValue({
+        sId: "space-id",
+        isProject: () => true,
+      } as unknown as SpaceResource);
+
+    const sandbox = {
+      providerId: "provider-id",
+      sId: "sandbox-id",
+      exec: vi.fn().mockResolvedValue(
+        new Ok({
+          exitCode: 0,
+          stdout: `ws=${workspaceValue} pod=${podValue}`,
+          stderr: "",
+        })
+      ),
+    };
+    mockEnsureSandboxReady.mockResolvedValue(
+      new Ok({ sandbox, freshlyCreated: false })
+    );
+
+    const result = await runSandboxBashTool(
+      { command: "echo token", description: "Run command" },
+      makeExtra({
+        conversation: { sId: "conversation-id", spaceId: "space-id" },
+      })
+    );
+    fetchSpaceSpy.mockRestore();
+
+    expect(result.isOk()).toBe(true);
+    if (result.isErr()) {
+      throw result.error;
+    }
+    const first = result.value[0];
+    if (first.type !== "text") {
+      throw new Error(`expected text item, got ${first.type}`);
+    }
+    expect(first.text).toContain("«redacted: $DST_API_TOKEN»");
+    expect(first.text).toContain("«redacted: $DST_POD_TOKEN»");
+    expect(first.text).not.toContain(workspaceValue);
+    expect(first.text).not.toContain(podValue);
   });
 
   it("redacts eligible values from appended network proxy logs", async () => {
