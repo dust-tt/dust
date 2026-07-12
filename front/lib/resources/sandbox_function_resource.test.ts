@@ -2,6 +2,7 @@ import { generateSandboxFunctionInvocationToken } from "@app/lib/api/sandbox/acc
 import { ensurePodSandboxReady } from "@app/lib/api/sandbox/lifecycle";
 import { Authenticator } from "@app/lib/auth";
 import { FileResource } from "@app/lib/resources/file_resource";
+import { SandboxFunctionInvocationResource } from "@app/lib/resources/sandbox_function_invocation_resource";
 import { SandboxFunctionResource } from "@app/lib/resources/sandbox_function_resource";
 import { SandboxResource } from "@app/lib/resources/sandbox_resource";
 import { SandboxModel } from "@app/lib/resources/storage/models/sandbox";
@@ -369,7 +370,7 @@ describe("SandboxFunctionResource", () => {
     );
   });
 
-  it("invokes the function on the pod sandbox", async () => {
+  it("creates an invocation and executes it on the pod sandbox", async () => {
     const { authenticator, workspace } = await createResourceTest({
       role: "admin",
     });
@@ -417,28 +418,32 @@ describe("SandboxFunctionResource", () => {
     vi.mocked(generateSandboxFunctionInvocationToken).mockResolvedValue(
       "sbt-function-token"
     );
-    const result = await sandboxFunction.invoke(authenticator, {
-      input: { message: "hello" },
-      context: { frameFileId: file.sId },
-    });
+    const result = await sandboxFunction.createInvocation(authenticator);
 
     if (result.isErr()) {
       throw result.error;
     }
-    expect(result.value).toMatchObject({
+    expect(result.value.toJSON()).toMatchObject({
       functionId: sandboxFunction.sId,
       status: "created",
     });
     expect(result.value.sId).toMatch(/^sfi_/);
-    expect(Date.parse(result.value.createdAt)).not.toBeNaN();
-    const invocation = await SandboxFunctionInvocationModel.findOne({
-      where: {
-        workspaceId: workspace.id,
-        sandboxFunctionId: sandboxFunction.id,
-      },
+    expect(Date.parse(result.value.toJSON().createdAt)).not.toBeNaN();
+    const invocation = result.value;
+    expect(invocation.status).toBe("created");
+
+    const executionResult = await invocation.execute(authenticator, {
+      input: { message: "hello" },
+      context: { frameFileId: file.sId },
     });
-    expect(invocation).not.toBeNull();
-    expect(invocation?.status).toBe("created");
+    if (executionResult.isErr()) {
+      throw executionResult.error;
+    }
+
+    const invocationModel = await SandboxFunctionInvocationModel.findOne({
+      where: { id: invocation.id, workspaceId: workspace.id },
+    });
+    expect(invocationModel?.status).toBe("created");
     const refreshedSandbox = await SandboxModel.findOne({
       where: { id: sandbox.id, workspaceId: workspace.id },
     });
@@ -451,7 +456,7 @@ describe("SandboxFunctionResource", () => {
       {
         sandbox,
         sandboxFunction,
-        invocationId: result.value.sId,
+        invocationId: invocation.sId,
         execId: expect.any(String),
       }
     );
@@ -529,11 +534,16 @@ describe("SandboxFunctionResource", () => {
       "sbt-function-token"
     );
 
-    return { authenticator, sandboxFunction, sandbox };
+    const invocation = await SandboxFunctionInvocationResource.makeNew(
+      authenticator,
+      { sandboxFunction }
+    );
+
+    return { authenticator, sandboxFunction, sandbox, invocation };
   }
 
   it("surfaces the runner stderr when the invocation exits non-zero", async () => {
-    const { authenticator, sandboxFunction, sandbox } = await setupInvokeTest();
+    const { authenticator, sandbox, invocation } = await setupInvokeTest();
     vi.spyOn(sandbox, "exec").mockResolvedValue(
       new Ok({
         exitCode: 1,
@@ -542,7 +552,7 @@ describe("SandboxFunctionResource", () => {
       })
     );
 
-    const result = await sandboxFunction.invoke(authenticator, {
+    const result = await invocation.execute(authenticator, {
       input: { message: "hello" },
     });
 
@@ -557,7 +567,7 @@ describe("SandboxFunctionResource", () => {
   });
 
   it("falls back to the runner stdout when stderr is empty on failure", async () => {
-    const { authenticator, sandboxFunction, sandbox } = await setupInvokeTest();
+    const { authenticator, sandbox, invocation } = await setupInvokeTest();
     vi.spyOn(sandbox, "exec").mockResolvedValue(
       new Ok({
         exitCode: 2,
@@ -566,7 +576,7 @@ describe("SandboxFunctionResource", () => {
       })
     );
 
-    const result = await sandboxFunction.invoke(authenticator, {
+    const result = await invocation.execute(authenticator, {
       input: { message: "hello" },
     });
 

@@ -1,14 +1,3 @@
-import config from "@app/lib/api/config";
-import {
-  getPodSandboxFunctionsMountPoint,
-  podDatabaseExecEnvVars,
-} from "@app/lib/api/files/mount_path";
-import {
-  generateExecId,
-  generateSandboxFunctionInvocationToken,
-} from "@app/lib/api/sandbox/access_tokens";
-import { ensurePodSandboxReady } from "@app/lib/api/sandbox/lifecycle";
-import { shellEscape } from "@app/lib/api/sandbox/shell";
 import { publishSandboxFunctionInvocationEvent } from "@app/lib/api/sandbox_functions/events";
 import type { Authenticator } from "@app/lib/auth";
 import { BaseResource } from "@app/lib/resources/base_resource";
@@ -28,41 +17,14 @@ import {
   makeSId,
 } from "@app/lib/resources/string_ids";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
-import logger from "@app/logger/logger";
-import type {
-  PostSandboxFunctionInvocationRequestBody,
-  SandboxFunctionInvocationType,
-} from "@app/types/api/sandbox_functions";
 import { isValidSandboxFunctionSlug } from "@app/types/api/sandbox_functions";
 import { sandboxFunctionContentType } from "@app/types/files";
-import { isDevelopment } from "@app/types/shared/env";
 import type { ModelId } from "@app/types/shared/model_id";
 import { Err, Ok, type Result } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
-import { truncate } from "@app/types/shared/utils/string_utils";
 import assert from "assert";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
 import type { Attributes, Transaction } from "sequelize";
-
-const SANDBOX_FUNCTION_WORKING_DIRECTORY = "/home/agent";
-const SANDBOX_FUNCTION_EXEC_TIMEOUT_MS = 2 * 60 * 1000;
-const DSBX_BIN_PATH = "/opt/bin/dsbx";
-// Caps on runner output surfaced on failure: a small head for the error forwarded to the agent,
-// a larger one for the log fields.
-const SANDBOX_FUNCTION_ERROR_DETAIL_MAX_CHARS = 2_048;
-const SANDBOX_FUNCTION_ERROR_LOG_MAX_CHARS = 16_384;
-
-function dustAPIBaseUrlForSandbox(): string {
-  return isDevelopment() && config.getSandboxDevFrontHostName()
-    ? `https://${config.getSandboxDevFrontHostName()}`
-    : config.getApiBaseUrl();
-}
-
-function buildSandboxFunctionRunCommand(slug: string): string {
-  // dsbx resolves `function run <slug>` as `${DUST_FUNCTIONS_DIR}/<slug>.ts`, which is the
-  // read-only mount of the pod's published bundles.
-  return `${DSBX_BIN_PATH} function run ${shellEscape(slug)}`;
-}
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export interface SandboxFunctionResource
@@ -376,143 +338,27 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
     return new Ok(sandboxFunctions.length);
   }
 
-  async invoke(
-    auth: Authenticator,
-    body: PostSandboxFunctionInvocationRequestBody
-  ): Promise<Result<SandboxFunctionInvocationType, Error>> {
-    let invocation: SandboxFunctionInvocationResource | null = null;
-
-    // Once the invocation exists, listeners may be waiting on its event channel for a terminal
-    // event: publish the error so they settle instead of waiting forever, then propagate it.
-    const failInvocation = async (
-      error: Error
-    ): Promise<Result<SandboxFunctionInvocationType, Error>> => {
-      if (invocation) {
-        try {
-          await publishSandboxFunctionInvocationEvent(
-            {
-              type: "sandbox_function_invocation_error",
-              created: Date.now(),
-              invocationId: invocation.sId,
-              functionId: this.sId,
-              message: error.message,
-            },
-            { invocationId: invocation.sId }
-          );
-        } catch (publishError) {
-          // Best effort: the error is still propagated to the caller through the Err below.
-          logger.error(
-            {
-              workspaceId: auth.getNonNullableWorkspace().sId,
-              sandboxFunctionId: this.sId,
-              invocationId: invocation.sId,
-              error: normalizeError(publishError),
-            },
-            "Failed to publish sandbox function invocation error event"
-          );
-        }
-      }
-      return new Err(error);
-    };
-
-    try {
-      if (!this.space.canReadOrAdministrate(auth)) {
-        return new Err(new Error("Sandbox function space is not accessible."));
-      }
-
-      const ensureResult = await ensurePodSandboxReady(auth, this.space);
-      if (ensureResult.isErr()) {
-        return ensureResult;
-      }
-
-      invocation = await SandboxFunctionInvocationResource.makeNew(auth, {
-        sandboxFunction: this,
-      });
-      await ensureResult.value.sandbox.updateLastActivityAt();
-
-      const execId = generateExecId();
-      const token = await generateSandboxFunctionInvocationToken(auth, {
-        sandbox: ensureResult.value.sandbox,
-        sandboxFunction: this,
-        invocationId: invocation.sId,
-        execId,
-      });
-
-      const command = buildSandboxFunctionRunCommand(this.slug);
-      const inputEnvelope = {
-        method: "POST",
-        url: `https://dust.local/sandbox-functions/${this.sId}/invocations/${invocation.sId}`,
-        headers: {
-          "content-type": "application/json",
-          "x-dust-sandbox-function-id": this.sId,
-          "x-dust-sandbox-function-invocation-id": invocation.sId,
-          ...(body.context?.frameFileId
-            ? { "x-dust-frame-file-id": body.context.frameFileId }
-            : {}),
-        },
-        ...(body.input === undefined
-          ? {}
-          : { body: JSON.stringify(body.input) }),
-        encoding: "utf8",
-      };
-
-      const execResult = await ensureResult.value.sandbox.exec(auth, command, {
-        workingDirectory: SANDBOX_FUNCTION_WORKING_DIRECTORY,
-        envVars: {
-          DUST_API_URL: `${dustAPIBaseUrlForSandbox()}/api/v1/w/${auth.getNonNullableWorkspace().sId}`,
-          DUST_FUNCTIONS_DIR: getPodSandboxFunctionsMountPoint(this.space.sId),
-          ...podDatabaseExecEnvVars(),
-          DUST_SANDBOX_TOKEN: token,
-        },
-        stdin: JSON.stringify(inputEnvelope),
-        timeoutMs: SANDBOX_FUNCTION_EXEC_TIMEOUT_MS,
-        user: "agent-proxied",
-      });
-      if (execResult.isErr()) {
-        return failInvocation(execResult.error);
-      }
-      if (execResult.value.exitCode !== 0) {
-        const { exitCode, stdout, stderr } = execResult.value;
-        logger.error(
-          {
-            workspaceId: auth.getNonNullableWorkspace().sId,
-            spaceId: this.space.sId,
-            sandboxFunctionId: this.sId,
-            slug: this.slug,
-            invocationId: invocation.sId,
-            exitCode,
-            stdout: truncate(stdout, SANDBOX_FUNCTION_ERROR_LOG_MAX_CHARS),
-            stderr: truncate(stderr, SANDBOX_FUNCTION_ERROR_LOG_MAX_CHARS),
-          },
-          "Sandbox function invocation failed"
-        );
-        // Surface the runner's stderr (stdout when empty) so the agent sees the actual cause,
-        // not just the exit code.
-        const detail = truncate(
-          stderr || stdout,
-          SANDBOX_FUNCTION_ERROR_DETAIL_MAX_CHARS
-        ).trim();
-        return failInvocation(
-          new Error(
-            `Sandbox function invocation failed with exit code ${exitCode}${
-              detail ? `:\n${detail}` : "."
-            }`
-          )
-        );
-      }
-
-      // Keep the invocation token valid for its short TTL. The durable version
-      // of this flow will let dsbx post invocation results back to Dust with
-      // the same token, then revoke it once results are accepted.
-      return new Ok({
-        sId: invocation.sId,
-        functionId: this.sId,
-        status: invocation.status,
-        createdAt: invocation.createdAt.toISOString(),
-      });
-    } catch (error) {
-      return failInvocation(normalizeError(error));
+  async createInvocation(
+    auth: Authenticator
+  ): Promise<Result<SandboxFunctionInvocationResource, Error>> {
+    if (!this.space.canReadOrAdministrate(auth)) {
+      return new Err(new Error("Sandbox function space is not accessible."));
     }
+
+    const invocation = await SandboxFunctionInvocationResource.makeNew(auth, {
+      sandboxFunction: this,
+    });
+
+    await publishSandboxFunctionInvocationEvent(
+      {
+        type: "sandbox_function_invocation_created",
+        created: invocation.createdAt.getTime(),
+        invocation: invocation.toJSON(),
+      },
+      { invocationId: invocation.sId }
+    );
+
+    return new Ok(invocation);
   }
 
   async delete(auth: Authenticator): Promise<Result<undefined, Error>> {

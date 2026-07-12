@@ -1,5 +1,4 @@
 import { MCP_VALIDATION_OUTPUTS } from "@app/lib/actions/constants";
-import { publishSandboxFunctionInvocationEvent } from "@app/lib/api/sandbox_functions/events";
 import { validateSandboxFunctionAction } from "@app/lib/api/sandbox_functions/validate_action";
 import { SandboxFunctionResource } from "@app/lib/resources/sandbox_function_resource";
 import type {
@@ -113,7 +112,7 @@ app.post(
       });
     }
 
-    const invocationResult = await sandboxFunction.invoke(auth, body);
+    const invocationResult = await sandboxFunction.createInvocation(auth);
     if (invocationResult.isErr()) {
       return apiError(
         ctx,
@@ -128,18 +127,25 @@ app.post(
       );
     }
 
-    await publishSandboxFunctionInvocationEvent(
-      {
-        type: "sandbox_function_invocation_created",
-        created: Date.parse(invocationResult.value.createdAt),
-        invocation: invocationResult.value,
-      },
-      { invocationId: invocationResult.value.sId }
-    );
+    const executionResult = await invocationResult.value.execute(auth, body);
+    if (executionResult.isErr()) {
+      await invocationResult.value.fail(executionResult.error);
+      return apiError(
+        ctx,
+        {
+          status_code: 500,
+          api_error: {
+            type: "internal_server_error",
+            message: "Sandbox function invocation failed.",
+          },
+        },
+        executionResult.error
+      );
+    }
 
     return ctx.json(
       {
-        invocation: invocationResult.value,
+        invocation: invocationResult.value.toJSON(),
       },
       201
     );

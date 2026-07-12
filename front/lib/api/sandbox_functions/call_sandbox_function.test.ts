@@ -1,6 +1,7 @@
 import { callSandboxFunction } from "@app/lib/api/sandbox_functions/call_sandbox_function";
 import type { SandboxFunctionInvocationStreamEvent } from "@app/lib/api/sandbox_functions/events";
 import type { Authenticator } from "@app/lib/auth";
+import { SandboxFunctionInvocationResource } from "@app/lib/resources/sandbox_function_invocation_resource";
 import { SandboxFunctionResource } from "@app/lib/resources/sandbox_function_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { FileFactory } from "@app/tests/utils/FileFactory";
@@ -88,15 +89,13 @@ async function setup(): Promise<{
   });
   const space = await SpaceFactory.project(workspace);
   const fn = await makeFunction(authenticator, space);
-  const invocationId = "sfi_test";
-  vi.spyOn(fn, "invoke").mockResolvedValue(
-    new Ok({
-      sId: invocationId,
-      functionId: fn.sId,
-      status: "created",
-      createdAt: new Date(0).toISOString(),
-    })
+  const invocation = await SandboxFunctionInvocationResource.makeNew(
+    authenticator,
+    { sandboxFunction: fn }
   );
+  const invocationId = invocation.sId;
+  vi.spyOn(fn, "createInvocation").mockResolvedValue(new Ok(invocation));
+  vi.spyOn(invocation, "execute").mockResolvedValue(new Ok(undefined));
   return { auth: authenticator, fn, invocationId };
 }
 
@@ -274,9 +273,9 @@ describe("callSandboxFunction", () => {
     });
   });
 
-  it("propagates an Err from invoke()", async () => {
+  it("propagates an Err from createInvocation()", async () => {
     const { auth, fn } = await setup();
-    vi.spyOn(fn, "invoke").mockResolvedValue(
+    vi.spyOn(fn, "createInvocation").mockResolvedValue(
       new Err(new Error("sandbox unavailable"))
     );
 

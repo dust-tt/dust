@@ -5,6 +5,7 @@ import { SandboxFunctionInvocationResource } from "@app/lib/resources/sandbox_fu
 import { SandboxFunctionMCPActionResource } from "@app/lib/resources/sandbox_function_mcp_action_resource";
 import { SandboxFunctionResource } from "@app/lib/resources/sandbox_function_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
+import { SandboxFunctionInvocationModel } from "@app/lib/resources/storage/models/sandbox_function";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { FileFactory } from "@app/tests/utils/FileFactory";
 import { GroupFactory } from "@app/tests/utils/GroupFactory";
@@ -67,6 +68,10 @@ const outputSchema: JSONSchema = {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  vi.spyOn(
+    SandboxFunctionInvocationResource.prototype,
+    "execute"
+  ).mockResolvedValue(new Ok(undefined));
 });
 
 afterEach(() => {
@@ -206,19 +211,8 @@ function postInvocation({
 }
 
 describe("POST /api/w/:wId/sandbox-functions/:functionIdOrSlug/invocations", () => {
-  it("creates an invocation through the sandbox function resource", async () => {
+  it("creates and executes an invocation", async () => {
     const { workspace, sandboxFunction } = await setupSandboxFunction();
-    const createdAt = new Date().toISOString();
-    const invokeSpy = vi
-      .spyOn(SandboxFunctionResource.prototype, "invoke")
-      .mockResolvedValue(
-        new Ok({
-          sId: "test-invocation-id",
-          functionId: sandboxFunction.sId,
-          status: "created",
-          createdAt,
-        })
-      );
 
     const response = await postInvocation({
       workspaceId: workspace.sId,
@@ -231,46 +225,33 @@ describe("POST /api/w/:wId/sandbox-functions/:functionIdOrSlug/invocations", () 
 
     expect(response.status).toBe(201);
     const body = await response.json();
-    expect(body).toEqual({
-      invocation: {
-        sId: "test-invocation-id",
+    expect(body).toMatchObject({
+      invocation: expect.objectContaining({
+        sId: expect.stringMatching(/^sfi_/),
         functionId: sandboxFunction.sId,
         status: "created",
-        createdAt,
-      },
+        createdAt: expect.any(String),
+      }),
     });
-    expect(invokeSpy).toHaveBeenCalledWith(expect.anything(), {
+    const invocation = body.invocation;
+    expect(
+      SandboxFunctionInvocationResource.prototype.execute
+    ).toHaveBeenCalledWith(expect.anything(), {
       input: { message: "hello" },
       context: { frameFileId: sandboxFunction.file.sId },
     });
     expect(publishSandboxFunctionInvocationEvent).toHaveBeenCalledWith(
       {
         type: "sandbox_function_invocation_created",
-        created: Date.parse(createdAt),
-        invocation: {
-          sId: "test-invocation-id",
-          functionId: sandboxFunction.sId,
-          status: "created",
-          createdAt,
-        },
+        created: Date.parse(invocation.createdAt),
+        invocation,
       },
-      { invocationId: "test-invocation-id" }
+      { invocationId: invocation.sId }
     );
   });
 
   it("creates an invocation by pod id and function slug", async () => {
     const { workspace, sandboxFunction } = await setupSandboxFunction();
-    const createdAt = new Date().toISOString();
-    const invokeSpy = vi
-      .spyOn(SandboxFunctionResource.prototype, "invoke")
-      .mockResolvedValue(
-        new Ok({
-          sId: "test-invocation-id",
-          functionId: sandboxFunction.sId,
-          status: "created",
-          createdAt,
-        })
-      );
 
     const response = await postInvocation({
       workspaceId: workspace.sId,
@@ -281,7 +262,9 @@ describe("POST /api/w/:wId/sandbox-functions/:functionIdOrSlug/invocations", () 
     });
 
     expect(response.status).toBe(201);
-    expect(invokeSpy).toHaveBeenCalledWith(expect.anything(), {
+    expect(
+      SandboxFunctionInvocationResource.prototype.execute
+    ).toHaveBeenCalledWith(expect.anything(), {
       input: { message: "hello" },
     });
   });
@@ -304,14 +287,6 @@ describe("POST /api/w/:wId/sandbox-functions/:functionIdOrSlug/invocations", () 
 
   it("does not require Computer access", async () => {
     const { workspace, sandboxFunction } = await setupSandboxFunction();
-    vi.spyOn(SandboxFunctionResource.prototype, "invoke").mockResolvedValue(
-      new Ok({
-        sId: "test-invocation-id",
-        functionId: sandboxFunction.sId,
-        status: "created",
-        createdAt: new Date().toISOString(),
-      })
-    );
 
     const response = await postInvocation({
       workspaceId: workspace.sId,
@@ -321,11 +296,11 @@ describe("POST /api/w/:wId/sandbox-functions/:functionIdOrSlug/invocations", () 
     expect(response.status).toBe(201);
   });
 
-  it("returns 500 when the resource invocation fails", async () => {
+  it("returns 500 when invocation execution fails", async () => {
     const { workspace, sandboxFunction } = await setupSandboxFunction();
-    vi.spyOn(SandboxFunctionResource.prototype, "invoke").mockResolvedValue(
-      new Err(new Error("sandbox failed"))
-    );
+    vi.mocked(
+      SandboxFunctionInvocationResource.prototype.execute
+    ).mockResolvedValueOnce(new Err(new Error("sandbox unavailable")));
 
     const response = await postInvocation({
       workspaceId: workspace.sId,
@@ -339,6 +314,22 @@ describe("POST /api/w/:wId/sandbox-functions/:functionIdOrSlug/invocations", () 
         message: "Sandbox function invocation failed.",
       },
     });
+    const invocation = await SandboxFunctionInvocationModel.findOne({
+      where: {
+        sandboxFunctionId: sandboxFunction.id,
+        workspaceId: workspace.id,
+      },
+    });
+    expect(invocation?.status).toBe("errored");
+    expect(publishSandboxFunctionInvocationEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: "sandbox_function_invocation_error",
+        invocationId: expect.stringMatching(/^sfi_/),
+        functionId: sandboxFunction.sId,
+        message: "sandbox unavailable",
+      }),
+      { invocationId: expect.stringMatching(/^sfi_/) }
+    );
   });
 
   it("requires sandbox functions to be enabled", async () => {
