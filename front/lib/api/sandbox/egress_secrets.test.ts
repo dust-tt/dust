@@ -2,7 +2,7 @@ import {
   type RootCommand,
   renderRootCommand,
 } from "@app/lib/api/sandbox/root_command";
-import { WorkspaceSandboxEnvVarResource } from "@app/lib/resources/workspace_sandbox_env_var_resource";
+import { SandboxEnvVarResource } from "@app/lib/resources/sandbox_env_var_resource";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { Ok } from "@app/types/shared/result";
 import { describe, expect, it, vi } from "vitest";
@@ -16,8 +16,9 @@ describe("egress secrets file", () => {
   it("builds the dsbx secrets JSON entries from HTTPS secrets only", async () => {
     const { authenticator } = await createResourceTest({ role: "admin" });
 
-    const configResult = await WorkspaceSandboxEnvVarResource.makeNew(
+    const configResult = await SandboxEnvVarResource.makeNew(
       authenticator,
+      { kind: "workspace", workspace: authenticator.getNonNullableWorkspace() },
       {
         name: "CONFIG_TOKEN",
         value: "config-token",
@@ -25,8 +26,9 @@ describe("egress secrets file", () => {
     );
     expect(configResult.isOk()).toBe(true);
 
-    const apiSecretResult = await WorkspaceSandboxEnvVarResource.makeNew(
+    const apiSecretResult = await SandboxEnvVarResource.makeNew(
       authenticator,
+      { kind: "workspace", workspace: authenticator.getNonNullableWorkspace() },
       {
         name: "API_TOKEN",
         kind: "https_secret",
@@ -39,8 +41,9 @@ describe("egress secrets file", () => {
       throw apiSecretResult.error;
     }
 
-    const slackSecretResult = await WorkspaceSandboxEnvVarResource.makeNew(
+    const slackSecretResult = await SandboxEnvVarResource.makeNew(
       authenticator,
+      { kind: "workspace", workspace: authenticator.getNonNullableWorkspace() },
       {
         name: "SLACK_TOKEN",
         kind: "https_secret",
@@ -77,8 +80,9 @@ describe("egress secrets file", () => {
 
   it("writes the secrets file through stdin without putting values in argv", async () => {
     const { authenticator } = await createResourceTest({ role: "admin" });
-    const secretResult = await WorkspaceSandboxEnvVarResource.makeNew(
+    const secretResult = await SandboxEnvVarResource.makeNew(
       authenticator,
+      { kind: "workspace", workspace: authenticator.getNonNullableWorkspace() },
       {
         name: "API_TOKEN",
         kind: "https_secret",

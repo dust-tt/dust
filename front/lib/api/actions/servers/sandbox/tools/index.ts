@@ -48,7 +48,7 @@ import type { ExecResult } from "@app/lib/api/sandbox/provider";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
 import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
-import { WorkspaceSandboxEnvVarResource } from "@app/lib/resources/workspace_sandbox_env_var_resource";
+import { SandboxEnvVarResource } from "@app/lib/resources/sandbox_env_var_resource";
 import logger from "@app/logger/logger";
 import type { ModelProviderIdType } from "@app/types/assistant/models/types";
 import { isDevelopment } from "@app/types/shared/env";
@@ -182,7 +182,10 @@ async function redactSandboxEnvVarsFromOutput(
 ): Promise<Result<string, Error>> {
   // loadEnv is intentionally config-only. HTTPS secrets are injected as DSEC
   // placeholders and their real values should never be materialized here.
-  const envResult = await WorkspaceSandboxEnvVarResource.loadEnv(auth);
+  const envResult = await SandboxEnvVarResource.loadEnv(auth, {
+    kind: "workspace",
+    workspace: auth.getNonNullableWorkspace(),
+  });
   if (envResult.isErr()) {
     return envResult;
   }

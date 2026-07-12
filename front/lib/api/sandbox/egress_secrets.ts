@@ -1,10 +1,13 @@
 import { randomBytes } from "node:crypto";
 
-import { renderEgressSecretPlaceholder } from "@app/lib/api/sandbox/env_vars";
+import {
+  renderEgressSecretPlaceholder,
+  scopeEncryptionKey,
+} from "@app/lib/api/sandbox/env_vars";
 import { rootCommand } from "@app/lib/api/sandbox/root_command";
 import type { Authenticator } from "@app/lib/auth";
+import { SandboxEnvVarResource } from "@app/lib/resources/sandbox_env_var_resource";
 import type { SandboxResource } from "@app/lib/resources/sandbox_resource";
-import { WorkspaceSandboxEnvVarResource } from "@app/lib/resources/workspace_sandbox_env_var_resource";
 import { Err, Ok, type Result } from "@app/types/shared/result";
 import { decrypt } from "@app/types/shared/utils/encryption";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
@@ -25,9 +28,14 @@ type EgressSecretFileEntry = {
 export async function buildEgressSecretFileEntries(
   auth: Authenticator
 ): Promise<Result<EgressSecretFileEntry[], Error>> {
-  const owner = auth.getNonNullableWorkspace();
-  const resources =
-    await WorkspaceSandboxEnvVarResource.listHttpsSecretsForEgress(auth);
+  const scope = {
+    kind: "workspace" as const,
+    workspace: auth.getNonNullableWorkspace(),
+  };
+  const resources = await SandboxEnvVarResource.listHttpsSecretsForEgress(
+    auth,
+    scope
+  );
 
   const entries: EgressSecretFileEntry[] = [];
   for (const resource of resources) {
@@ -50,7 +58,7 @@ export async function buildEgressSecretFileEntries(
     try {
       value = decrypt({
         encrypted: resource.encryptedValue,
-        key: owner.sId,
+        key: scopeEncryptionKey(scope),
         useCase: "developer_secret",
       });
     } catch (error) {
