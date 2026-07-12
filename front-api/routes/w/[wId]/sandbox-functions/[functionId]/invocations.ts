@@ -1,5 +1,7 @@
 import { MCP_VALIDATION_OUTPUTS } from "@app/lib/actions/constants";
+import { publishSandboxFunctionInvocationEvent } from "@app/lib/api/sandbox_functions/events";
 import { validateSandboxFunctionAction } from "@app/lib/api/sandbox_functions/validate_action";
+import { SandboxFunctionInvocationResource } from "@app/lib/resources/sandbox_function_invocation_resource";
 import { SandboxFunctionResource } from "@app/lib/resources/sandbox_function_resource";
 import type {
   PostSandboxFunctionInvocationRequestBody,
@@ -112,24 +114,22 @@ app.post(
       });
     }
 
-    const invocationResult = await sandboxFunction.createInvocation(auth);
-    if (invocationResult.isErr()) {
-      return apiError(
-        ctx,
-        {
-          status_code: 500,
-          api_error: {
-            type: "internal_server_error",
-            message: "Sandbox function invocation failed.",
-          },
-        },
-        invocationResult.error
-      );
-    }
+    const invocation = await SandboxFunctionInvocationResource.makeNew(auth, {
+      sandboxFunction,
+    });
+    const invocationType = invocation.toJSON();
+    await publishSandboxFunctionInvocationEvent(
+      {
+        type: "sandbox_function_invocation_created",
+        created: invocation.createdAt.getTime(),
+        invocation: invocationType,
+      },
+      { invocationId: invocation.sId }
+    );
 
-    const executionResult = await invocationResult.value.execute(auth, body);
+    const executionResult = await invocation.execute(auth, body);
     if (executionResult.isErr()) {
-      await invocationResult.value.fail(executionResult.error);
+      await invocation.fail(executionResult.error);
       return apiError(
         ctx,
         {
@@ -145,7 +145,7 @@ app.post(
 
     return ctx.json(
       {
-        invocation: invocationResult.value.toJSON(),
+        invocation: invocationType,
       },
       201
     );

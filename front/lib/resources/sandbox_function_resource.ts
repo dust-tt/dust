@@ -1,4 +1,3 @@
-import { publishSandboxFunctionInvocationEvent } from "@app/lib/api/sandbox_functions/events";
 import type { Authenticator } from "@app/lib/auth";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
@@ -336,29 +335,6 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
     }
 
     return new Ok(sandboxFunctions.length);
-  }
-
-  async createInvocation(
-    auth: Authenticator
-  ): Promise<Result<SandboxFunctionInvocationResource, Error>> {
-    if (!this.space.canReadOrAdministrate(auth)) {
-      return new Err(new Error("Sandbox function space is not accessible."));
-    }
-
-    const invocation = await SandboxFunctionInvocationResource.makeNew(auth, {
-      sandboxFunction: this,
-    });
-
-    await publishSandboxFunctionInvocationEvent(
-      {
-        type: "sandbox_function_invocation_created",
-        created: invocation.createdAt.getTime(),
-        invocation: invocation.toJSON(),
-      },
-      { invocationId: invocation.sId }
-    );
-
-    return new Ok(invocation);
   }
 
   async delete(auth: Authenticator): Promise<Result<undefined, Error>> {

@@ -418,18 +418,17 @@ describe("SandboxFunctionResource", () => {
     vi.mocked(generateSandboxFunctionInvocationToken).mockResolvedValue(
       "sbt-function-token"
     );
-    const result = await sandboxFunction.createInvocation(authenticator);
+    const invocation = await SandboxFunctionInvocationResource.makeNew(
+      authenticator,
+      { sandboxFunction }
+    );
 
-    if (result.isErr()) {
-      throw result.error;
-    }
-    expect(result.value.toJSON()).toMatchObject({
+    expect(invocation.toJSON()).toMatchObject({
       functionId: sandboxFunction.sId,
       status: "created",
     });
-    expect(result.value.sId).toMatch(/^sfi_/);
-    expect(Date.parse(result.value.toJSON().createdAt)).not.toBeNaN();
-    const invocation = result.value;
+    expect(invocation.sId).toMatch(/^sfi_/);
+    expect(Date.parse(invocation.toJSON().createdAt)).not.toBeNaN();
     expect(invocation.status).toBe("created");
 
     const executionResult = await invocation.execute(authenticator, {
@@ -485,12 +484,12 @@ describe("SandboxFunctionResource", () => {
     const inputEnvelope = JSON.parse(opts.stdin);
     expect(inputEnvelope).toMatchObject({
       method: "POST",
-      url: `https://dust.local/sandbox-functions/${sandboxFunction.sId}/invocations/${result.value.sId}`,
+      url: `https://dust.local/sandbox-functions/${sandboxFunction.sId}/invocations/${invocation.sId}`,
       headers: {
         "content-type": "application/json",
         "x-dust-frame-file-id": file.sId,
         "x-dust-sandbox-function-id": sandboxFunction.sId,
-        "x-dust-sandbox-function-invocation-id": result.value.sId,
+        "x-dust-sandbox-function-invocation-id": invocation.sId,
       },
       body: JSON.stringify({ message: "hello" }),
       encoding: "utf8",
