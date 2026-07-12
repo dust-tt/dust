@@ -127,7 +127,7 @@ export async function writeWorkspacePolicy(
     );
   }
 
-  void invalidateWorkspacePolicyCache(auth);
+  await invalidateWorkspacePolicyCache(auth);
 
   return new Ok(normalizedPolicy.value);
 }
@@ -147,7 +147,7 @@ export async function deleteWorkspacePolicy(
       ignoreNotFound: true,
     });
 
-    void invalidateWorkspacePolicyCache(auth);
+    await invalidateWorkspacePolicyCache(auth);
 
     return new Ok(undefined);
   } catch (error) {
@@ -210,7 +210,6 @@ export async function writeOwnerPolicy(
       filePath: getOwnerPolicyPath(auth, ownerId),
     });
 
-    // Never throws (fully caught internally); awaited so no promise escapes.
     await invalidateOwnerPolicyCache(auth, ownerId);
 
     return new Ok(normalizedPolicyRes.value);
@@ -267,7 +266,7 @@ export async function addOwnerPolicyDomain(
       filePath: getOwnerPolicyPath(auth, ownerId),
     });
 
-    void invalidateOwnerPolicyCache(auth, ownerId);
+    await invalidateOwnerPolicyCache(auth, ownerId);
 
     return new Ok({ policy, addedDomain });
   } catch (error) {
@@ -307,7 +306,7 @@ export async function deleteOwnerPolicy(
       ignoreNotFound: true,
     });
 
-    void invalidateOwnerPolicyCache(auth, ownerId);
+    await invalidateOwnerPolicyCache(auth, ownerId);
 
     return new Ok(undefined);
   } catch (error) {
@@ -315,6 +314,8 @@ export async function deleteOwnerPolicy(
   }
 }
 
+// Best-effort proxy cache bust, bounded by INVALIDATION_TIMEOUT_MS. Never
+// throws (failures are logged); awaited at call sites so no promise escapes.
 async function invalidateWorkspacePolicyCache(
   auth: Authenticator
 ): Promise<void> {
@@ -350,6 +351,7 @@ async function invalidateWorkspacePolicyCache(
   }
 }
 
+// Same contract as invalidateWorkspacePolicyCache: never throws, bounded.
 async function invalidateOwnerPolicyCache(
   auth: Authenticator,
   ownerId: string

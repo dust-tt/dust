@@ -250,7 +250,10 @@ export async function scrubSpaceActivity({
 
   hardDeleteLogger.info({ space: space.sId, workspaceId }, "Deleting space");
 
-  await hardDeleteSpace(auth, space);
+  const hardDeleteRes = await hardDeleteSpace(auth, space);
+  if (hardDeleteRes.isErr()) {
+    throw hardDeleteRes.error;
+  }
 }
 
 async function deleteSpaceConversations(

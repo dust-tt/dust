@@ -40,7 +40,7 @@ import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
-import { Ok } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
 import type { LightWorkspaceType } from "@app/types/user";
 import { assert, beforeEach, describe, expect, it, vi } from "vitest";
 import { destroyConversation } from "../api/assistant/conversation/destroy";
@@ -663,6 +663,29 @@ describe("destroyConversation", () => {
       expect.anything(),
       conversation.sId
     );
+  });
+
+  it("aborts the destroy when the egress policy scrub fails", async () => {
+    mockDeleteOwnerPolicy.mockResolvedValue(new Err(new Error("GCS failed")));
+    const conversationType = await ConversationFactory.create(auth, {
+      agentConfigurationId,
+      messagesCreatedAt: [new Date()],
+    });
+    const conversation = await ConversationResource.fetchById(
+      auth,
+      conversationType.sId
+    );
+    assert(conversation, "Conversation should exist");
+
+    const result = await destroyConversation(auth, { conversation });
+
+    expect(result.isErr()).toBe(true);
+    // The conversation survives: its Temporal caller retries the destroy.
+    const stillThere = await ConversationResource.fetchById(
+      auth,
+      conversationType.sId
+    );
+    expect(stillThere).not.toBeNull();
   });
 
   it("does not scrub the Pod's egress policy file when destroying a pod conversation", async () => {

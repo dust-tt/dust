@@ -1,56 +1,10 @@
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
+import { fileStorageMock } from "@app/tests/utils/mocks/file_storage";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import type { MembershipRoleType } from "@app/types/memberships";
 import { honoApp } from "@front-api/app";
-import { beforeEach, describe, expect, it, vi } from "vitest";
-
-// Mock one level down at the storage layer: the route exercises the real
-// readOwnerPolicy / writeOwnerPolicy, and only GCS is faked. `gcsStore` is an
-// in-memory object store keyed by file path.
-const { gcsStore, inMemoryBucket } = vi.hoisted(() => {
-  const store = new Map<string, string>();
-  return {
-    gcsStore: store,
-    inMemoryBucket: {
-      uploadRawContentToBucket: async ({
-        content,
-        filePath,
-      }: {
-        content: string;
-        filePath: string;
-      }) => {
-        store.set(filePath, content);
-      },
-      fetchFileContent: async (filePath: string) => {
-        const content = store.get(filePath);
-        if (content === undefined) {
-          // Mirror the GCS "object not found" shape isGCSNotFoundError reads.
-          throw { code: 404 };
-        }
-        return content;
-      },
-      delete: async (filePath: string) => {
-        store.delete(filePath);
-      },
-    },
-  };
-});
-
-// Full replacement (not importOriginal): evaluating the real module needs
-// SERVICE_ACCOUNT. `getBucketInstance` is the seam the egress policy code
-// uses; the other bucket getters are stubbed so booting the full route app
-// doesn't hit real GCS construction.
-vi.mock("@app/lib/file_storage", () => ({
-  getBucketInstance: vi.fn(() => inMemoryBucket),
-  getPrivateUploadBucket: vi.fn(() => inMemoryBucket),
-  getPublicUploadBucket: vi.fn(() => inMemoryBucket),
-  getUpsertQueueBucket: vi.fn(() => inMemoryBucket),
-  getDustDataSourcesBucket: vi.fn(() => inMemoryBucket),
-  getWebhookRequestsBucket: vi.fn(() => inMemoryBucket),
-  getLLMTracesBucket: vi.fn(() => inMemoryBucket),
-  getPokeUserConfigBucket: vi.fn(() => inMemoryBucket),
-}));
+import { beforeEach, describe, expect, it } from "vitest";
 
 async function setupTest({
   role = "admin",
@@ -89,8 +43,10 @@ function putPolicy(wId: string, spaceId: string, body: unknown) {
 
 describe("GET/PUT /api/w/:wId/spaces/:spaceId/sandbox/egress-policy", () => {
   beforeEach(() => {
-    vi.clearAllMocks();
-    gcsStore.clear();
+    // The GCS global mock (registered in vite.setup.ts) is reset before each
+    // test; enable real not-found semantics so reads round-trip through the
+    // in-memory object store and unwritten paths 404 like real GCS.
+    fileStorageMock.setFetchFileContentNotFound(() => true);
   });
 
   it("returns an empty policy when no pod policy file exists", async () => {
@@ -117,7 +73,9 @@ describe("GET/PUT /api/w/:wId/spaces/:spaceId/sandbox/egress-policy", () => {
     });
 
     // The GCS object landed at the pod's owner path.
-    expect(gcsStore.get(`w/${workspace.sId}/sandboxes/${pod.sId}.json`)).toBe(
+    expect(
+      fileStorageMock.getObject(`w/${workspace.sId}/sandboxes/${pod.sId}.json`)
+    ).toBe(
       JSON.stringify({ allowedDomains: ["api.github.com", "*.github.com"] })
     );
 
@@ -136,7 +94,9 @@ describe("GET/PUT /api/w/:wId/spaces/:spaceId/sandbox/egress-policy", () => {
     });
 
     expect(response.status).toBe(400);
-    expect(gcsStore.size).toBe(0);
+    expect(
+      fileStorageMock.getObject(`w/${workspace.sId}/sandboxes/${pod.sId}.json`)
+    ).toBeUndefined();
   });
 
   it("rejects non-admin users with a 403", async () => {
