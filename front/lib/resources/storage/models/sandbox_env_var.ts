@@ -6,21 +6,21 @@ import {
 import { SpaceModel } from "@app/lib/resources/storage/models/spaces";
 import { UserModel } from "@app/lib/resources/storage/models/user";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
-import type { WorkspaceSandboxEnvVarKind } from "@app/types/sandbox/env_var";
+import type { SandboxEnvVarKind } from "@app/types/sandbox/env_var";
 import type { CreationOptional, ForeignKey, NonAttribute } from "sequelize";
 import { Op } from "sequelize";
 
 // One table for both sandbox env var scopes, discriminated by `spaceId`:
 // NULL = workspace-scoped, set = pod-scoped (pods are project spaces).
 // Uniqueness is per scope via the partial indexes below.
-export class WorkspaceSandboxEnvVarModel extends WorkspaceAwareModel<WorkspaceSandboxEnvVarModel> {
+export class SandboxEnvVarModel extends WorkspaceAwareModel<SandboxEnvVarModel> {
   declare id: CreationOptional<number>;
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
   declare spaceId: ForeignKey<SpaceModel["id"]> | null;
   declare name: string;
-  declare kind: CreationOptional<WorkspaceSandboxEnvVarKind>;
+  declare kind: CreationOptional<SandboxEnvVarKind>;
   declare placeholderNonce: Buffer | null;
   declare allowedDomains: string[] | null;
   declare encryptedValue: string;
@@ -31,7 +31,7 @@ export class WorkspaceSandboxEnvVarModel extends WorkspaceAwareModel<WorkspaceSa
   declare lastUpdatedByUser: NonAttribute<UserModel | null>;
 }
 
-WorkspaceSandboxEnvVarModel.init(
+SandboxEnvVarModel.init(
   {
     createdAt: {
       type: DataTypes.DATE,
@@ -68,18 +68,15 @@ WorkspaceSandboxEnvVarModel.init(
     },
   },
   {
+    // The table keeps its legacy workspace_-prefixed name — renaming it is a
+    // dedicated migration (rename + compatibility view through the deploy
+    // window), deliberately not bundled here.
     modelName: "workspace_sandbox_env_var",
     sequelize: frontSequelize,
     indexes: [
-      // TODO(2026-07-12 SANDBOX_SECRETS): legacy full unique, superseded by
-      // the partial uniques below. Kept so already-deployed
-      // (workspaceId, name) queries stay indexed; the resources PR drops it
-      // post-deploy.
-      {
-        name: "workspace_sandbox_env_vars_workspace_name_idx",
-        unique: true,
-        fields: ["workspaceId", "name"],
-      },
+      // The legacy full unique (workspaceId, name) index is dropped
+      // post-deploy (20260712120000) — it would reject pod rows shadowing a
+      // workspace name.
       // Per-scope uniqueness: one name per workspace scope...
       {
         name: "sandbox_env_vars_workspace_scope_name_idx",
@@ -105,23 +102,23 @@ WorkspaceSandboxEnvVarModel.init(
   }
 );
 
-WorkspaceSandboxEnvVarModel.belongsTo(SpaceModel, {
+SandboxEnvVarModel.belongsTo(SpaceModel, {
   foreignKey: { name: "spaceId", allowNull: true },
   onDelete: "RESTRICT",
   as: "space",
 });
 
-SpaceModel.hasMany(WorkspaceSandboxEnvVarModel, {
+SpaceModel.hasMany(SandboxEnvVarModel, {
   foreignKey: { name: "spaceId", allowNull: true },
 });
 
-WorkspaceSandboxEnvVarModel.belongsTo(UserModel, {
+SandboxEnvVarModel.belongsTo(UserModel, {
   as: "createdByUser",
   foreignKey: { name: "createdByUserId", allowNull: true },
   onDelete: "SET NULL",
 });
 
-WorkspaceSandboxEnvVarModel.belongsTo(UserModel, {
+SandboxEnvVarModel.belongsTo(UserModel, {
   as: "lastUpdatedByUser",
   foreignKey: { name: "lastUpdatedByUserId", allowNull: true },
   onDelete: "SET NULL",

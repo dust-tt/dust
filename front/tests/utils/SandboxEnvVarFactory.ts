@@ -1,7 +1,7 @@
 import type { Authenticator } from "@app/lib/auth";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
-import { WorkspaceSandboxEnvVarModel } from "@app/lib/resources/storage/models/workspace_sandbox_env_var";
-import type { WorkspaceSandboxEnvVarKind } from "@app/types/sandbox/env_var";
+import { SandboxEnvVarModel } from "@app/lib/resources/storage/models/sandbox_env_var";
+import type { SandboxEnvVarKind } from "@app/types/sandbox/env_var";
 
 export class SandboxEnvVarFactory {
   // Writes the model directly on purpose: lets tests seed rows the
@@ -12,13 +12,13 @@ export class SandboxEnvVarFactory {
     opts: {
       name: string;
       space?: SpaceResource;
-      kind?: WorkspaceSandboxEnvVarKind;
+      kind?: SandboxEnvVarKind;
       encryptedValue?: string;
     }
-  ): Promise<WorkspaceSandboxEnvVarModel> {
+  ): Promise<SandboxEnvVarModel> {
     const user = auth.getNonNullableUser();
 
-    return WorkspaceSandboxEnvVarModel.create({
+    return SandboxEnvVarModel.create({
       workspaceId: auth.getNonNullableWorkspace().id,
       spaceId: opts.space?.id ?? null,
       name: opts.name,

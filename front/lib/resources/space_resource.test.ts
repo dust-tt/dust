@@ -10,8 +10,8 @@ import { SpaceResource } from "@app/lib/resources/space_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { GroupMembershipModel } from "@app/lib/resources/storage/models/group_memberships";
 import { GroupSpaceModel } from "@app/lib/resources/storage/models/group_spaces";
+import { SandboxEnvVarModel } from "@app/lib/resources/storage/models/sandbox_env_var";
 import { SpaceModel } from "@app/lib/resources/storage/models/spaces";
-import { WorkspaceSandboxEnvVarModel } from "@app/lib/resources/storage/models/workspace_sandbox_env_var";
 import type { UserResource } from "@app/lib/resources/user_resource";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
@@ -171,12 +171,12 @@ describe("SpaceResource", () => {
       expect(hardDeleteResult.isOk()).toBe(true);
 
       await expect(
-        WorkspaceSandboxEnvVarModel.count({
+        SandboxEnvVarModel.count({
           where: { workspaceId: workspace.id, spaceId: pod.id },
         })
       ).resolves.toBe(0);
       await expect(
-        WorkspaceSandboxEnvVarModel.count({
+        SandboxEnvVarModel.count({
           where: { workspaceId: workspace.id, name: "WORKSPACE_TOKEN" },
         })
       ).resolves.toBe(1);

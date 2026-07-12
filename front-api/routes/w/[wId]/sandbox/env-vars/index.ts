@@ -1,14 +1,14 @@
 import { getAuditLogContext } from "@app/lib/api/audit/workos_audit";
 import {
-  parseWorkspaceSandboxEnvVarNameForKind,
+  parseSandboxEnvVarNameForKind,
   validateEnvVarValueForKind,
 } from "@app/lib/api/sandbox/env_vars";
-import { WorkspaceSandboxEnvVarResource } from "@app/lib/resources/workspace_sandbox_env_var_resource";
+import { SandboxEnvVarResource } from "@app/lib/resources/sandbox_env_var_resource";
 import type {
-  GetWorkspaceSandboxEnvVarsResponseBody,
-  PostWorkspaceSandboxEnvVarsResponseBody,
+  GetSandboxEnvVarsResponseBody,
+  PostSandboxEnvVarsResponseBody,
 } from "@app/types/api/sandbox/env_vars";
-import { WORKSPACE_SANDBOX_ENV_VAR_KINDS } from "@app/types/sandbox/env_var";
+import { SANDBOX_ENV_VAR_KINDS } from "@app/types/sandbox/env_var";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
@@ -19,7 +19,7 @@ import envVarId from "./[id]";
 const PostWorkspaceSandboxEnvVarBodySchema = z.object({
   name: z.string(),
   value: z.string(),
-  kind: z.enum(WORKSPACE_SANDBOX_ENV_VAR_KINDS).optional(),
+  kind: z.enum(SANDBOX_ENV_VAR_KINDS).optional(),
   allowedDomains: z.array(z.string()).nullable().optional(),
 });
 
@@ -27,28 +27,28 @@ const PostWorkspaceSandboxEnvVarBodySchema = z.object({
 const app = workspaceApp();
 
 /** @ignoreswagger */
-app.get(
-  "/",
-  async (ctx): HandlerResult<GetWorkspaceSandboxEnvVarsResponseBody> => {
-    const auth = ctx.get("auth");
+app.get("/", async (ctx): HandlerResult<GetSandboxEnvVarsResponseBody> => {
+  const auth = ctx.get("auth");
 
-    const envVars = await WorkspaceSandboxEnvVarResource.listForWorkspace(auth);
+  const envVars = await SandboxEnvVarResource.listForScope(auth, {
+    kind: "workspace",
+    workspace: auth.getNonNullableWorkspace(),
+  });
 
-    return ctx.json({
-      envVars: envVars.map((envVar) => envVar.toJSON()),
-    });
-  }
-);
+  return ctx.json({
+    envVars: envVars.map((envVar) => envVar.toJSON()),
+  });
+});
 
 app.post(
   "/",
   validate("json", PostWorkspaceSandboxEnvVarBodySchema),
-  async (ctx): HandlerResult<PostWorkspaceSandboxEnvVarsResponseBody> => {
+  async (ctx): HandlerResult<PostSandboxEnvVarsResponseBody> => {
     const auth = ctx.get("auth");
     const body = ctx.req.valid("json");
 
     const kind = body.kind ?? "config";
-    const parsedName = parseWorkspaceSandboxEnvVarNameForKind({
+    const parsedName = parseSandboxEnvVarNameForKind({
       kind,
       name: body.name,
     });
@@ -71,13 +71,17 @@ app.post(
       });
     }
 
-    const result = await WorkspaceSandboxEnvVarResource.upsert(auth, {
-      name: parsedName.value,
-      value: body.value,
-      kind,
-      allowedDomains: body.allowedDomains,
-      context: getAuditLogContext(auth),
-    });
+    const result = await SandboxEnvVarResource.upsert(
+      auth,
+      { kind: "workspace", workspace: auth.getNonNullableWorkspace() },
+      {
+        name: parsedName.value,
+        value: body.value,
+        kind,
+        allowedDomains: body.allowedDomains,
+        context: getAuditLogContext(auth),
+      }
+    );
     if (result.isErr()) {
       return apiError(ctx, {
         status_code: 400,

@@ -1,7 +1,7 @@
 import { getAuditLogContext } from "@app/lib/api/audit/workos_audit";
-import type { PatchWorkspaceSandboxEnvVarResponseBody } from "@app/lib/resources/workspace_sandbox_env_var_resource";
-import { WorkspaceSandboxEnvVarResource } from "@app/lib/resources/workspace_sandbox_env_var_resource";
-import { WORKSPACE_SANDBOX_ENV_VAR_KINDS } from "@app/types/sandbox/env_var";
+import type { PatchSandboxEnvVarResponseBody } from "@app/lib/resources/sandbox_env_var_resource";
+import { SandboxEnvVarResource } from "@app/lib/resources/sandbox_env_var_resource";
+import { SANDBOX_ENV_VAR_KINDS } from "@app/types/sandbox/env_var";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
@@ -9,7 +9,7 @@ import type { SuccessResponseBody } from "@front-api/routes/types";
 import { z } from "zod";
 
 const PatchWorkspaceSandboxEnvVarBodySchema = z.object({
-  kind: z.enum(WORKSPACE_SANDBOX_ENV_VAR_KINDS).optional(),
+  kind: z.enum(SANDBOX_ENV_VAR_KINDS).optional(),
   allowedDomains: z.array(z.string()).optional(),
 });
 
@@ -25,7 +25,7 @@ app.patch(
   "/",
   validate("param", ParamsSchema),
   validate("json", PatchWorkspaceSandboxEnvVarBodySchema),
-  async (ctx): HandlerResult<PatchWorkspaceSandboxEnvVarResponseBody> => {
+  async (ctx): HandlerResult<PatchSandboxEnvVarResponseBody> => {
     const auth = ctx.get("auth");
     const { id } = ctx.req.valid("param");
 
@@ -40,8 +40,14 @@ app.patch(
       });
     }
 
-    const envVar = await WorkspaceSandboxEnvVarResource.fetchById(auth, id);
-    if (!envVar) {
+    const scope = {
+      kind: "workspace" as const,
+      workspace: auth.getNonNullableWorkspace(),
+    };
+    const envVar = await SandboxEnvVarResource.fetchById(auth, id);
+    // The table also holds pod-scoped rows — this workspace route must not
+    // read or mutate them (they are encrypted under a different scope key).
+    if (!envVar || !envVar.belongsToScope(scope)) {
       return apiError(ctx, {
         status_code: 404,
         api_error: {
@@ -76,7 +82,7 @@ app.patch(
         });
       }
 
-      const promoteResult = await envVar.promoteToHttpsSecret(auth, {
+      const promoteResult = await envVar.promoteToHttpsSecret(auth, scope, {
         allowedDomains,
         context: getAuditLogContext(auth),
       });
@@ -94,7 +100,7 @@ app.patch(
     }
 
     if (allowedDomains !== undefined) {
-      const updateResult = await envVar.updateAllowedDomains(auth, {
+      const updateResult = await envVar.updateAllowedDomains(auth, scope, {
         allowedDomains,
         context: getAuditLogContext(auth),
       });
@@ -122,8 +128,16 @@ app.delete(
     const auth = ctx.get("auth");
     const { id } = ctx.req.valid("param");
 
-    const envVar = await WorkspaceSandboxEnvVarResource.fetchById(auth, id);
-    if (!envVar) {
+    const envVar = await SandboxEnvVarResource.fetchById(auth, id);
+    // The table also holds pod-scoped rows — this workspace route must not
+    // read or mutate them.
+    if (
+      !envVar ||
+      !envVar.belongsToScope({
+        kind: "workspace",
+        workspace: auth.getNonNullableWorkspace(),
+      })
+    ) {
       return apiError(ctx, {
         status_code: 404,
         api_error: {

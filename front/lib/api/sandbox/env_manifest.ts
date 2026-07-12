@@ -7,8 +7,8 @@ import {
 } from "@app/lib/api/sandbox/owner";
 import { rootCommand } from "@app/lib/api/sandbox/root_command";
 import type { Authenticator } from "@app/lib/auth";
+import { SandboxEnvVarResource } from "@app/lib/resources/sandbox_env_var_resource";
 import type { SandboxResource } from "@app/lib/resources/sandbox_resource";
-import { WorkspaceSandboxEnvVarResource } from "@app/lib/resources/workspace_sandbox_env_var_resource";
 import { Err, Ok, type Result } from "@app/types/shared/result";
 
 export const SANDBOX_ENV_MANIFEST_PATH = "/run/dust/sandbox-env-manifest.json";
@@ -38,7 +38,10 @@ export async function buildSandboxEnvManifest(
   auth: Authenticator,
   owner: SandboxRuntimeOwner
 ): Promise<Result<SandboxEnvManifest, Error>> {
-  const allVars = await WorkspaceSandboxEnvVarResource.listForWorkspace(auth);
+  const allVars = await SandboxEnvVarResource.listForScope(auth, {
+    kind: "workspace",
+    workspace: auth.getNonNullableWorkspace(),
+  });
 
   const httpsSecrets: SandboxEnvManifest["httpsSecrets"] = [];
   for (const resource of allVars) {

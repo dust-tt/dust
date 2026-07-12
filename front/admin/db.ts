@@ -127,6 +127,7 @@ import {
   SandboxModel,
   SandboxOwnerModel,
 } from "@app/lib/resources/storage/models/sandbox";
+import { SandboxEnvVarModel } from "@app/lib/resources/storage/models/sandbox_env_var";
 import {
   SandboxFunctionInvocationModel,
   SandboxFunctionModel,
@@ -148,7 +149,6 @@ import { UserProjectPreferencesModel } from "@app/lib/resources/storage/models/u
 import { WakeUpModel } from "@app/lib/resources/storage/models/wakeup";
 import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import { WorkspaceHasDomainModel } from "@app/lib/resources/storage/models/workspace_has_domain";
-import { WorkspaceSandboxEnvVarModel } from "@app/lib/resources/storage/models/workspace_sandbox_env_var";
 import { WorkspaceSeatLimitModel } from "@app/lib/resources/storage/models/workspace_seat_limit";
 import { WorkspaceVerificationAttemptModel } from "@app/lib/resources/storage/models/workspace_verification_attempt";
 import { isDevelopment, isTest } from "@app/types/shared/env";
@@ -280,7 +280,7 @@ export function loadAllModels() {
     TakeawaysVersionModel,
     UserProjectPreferencesModel,
     WorkspaceSensitivityLabelConfigModel,
-    WorkspaceSandboxEnvVarModel,
+    SandboxEnvVarModel,
     WorkspaceSeatLimitModel,
     ActivationRecommendationModel,
     ActivationNudgeModel,

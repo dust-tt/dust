@@ -19,6 +19,7 @@ import { SANDBOX_TRUST_ENV_VARS } from "@app/lib/api/sandbox/trust_env";
 import type { Authenticator } from "@app/lib/auth";
 import { executeWithLock } from "@app/lib/lock";
 import { BaseResource } from "@app/lib/resources/base_resource";
+import { SandboxEnvVarResource } from "@app/lib/resources/sandbox_env_var_resource";
 import type { SandboxStatus } from "@app/lib/resources/storage/models/sandbox";
 import {
   SandboxModel,
@@ -28,7 +29,6 @@ import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { ModelStaticWorkspaceAware } from "@app/lib/resources/storage/wrappers/workspace_models";
 import { makeSId } from "@app/lib/resources/string_ids";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
-import { WorkspaceSandboxEnvVarResource } from "@app/lib/resources/workspace_sandbox_env_var_resource";
 import { withTransaction } from "@app/lib/utils/sql_utils";
 import logger from "@app/logger/logger";
 import type { ModelId } from "@app/types/shared/model_id";
@@ -419,13 +419,22 @@ export class SandboxResource extends BaseResource<SandboxModel> {
     ownerEnvVars: Record<string, string>,
     imageEnvVars: Record<string, string> | undefined
   ): Promise<Result<Record<string, string>, Error>> {
-    const workspaceEnvResult =
-      await WorkspaceSandboxEnvVarResource.loadEnv(auth);
+    const workspaceScope = {
+      kind: "workspace" as const,
+      workspace: auth.getNonNullableWorkspace(),
+    };
+    const workspaceEnvResult = await SandboxEnvVarResource.loadEnv(
+      auth,
+      workspaceScope
+    );
     if (workspaceEnvResult.isErr()) {
       return workspaceEnvResult;
     }
     const httpsSecretEnvResult =
-      await WorkspaceSandboxEnvVarResource.loadHttpsSecretPlaceholderEnv(auth);
+      await SandboxEnvVarResource.loadHttpsSecretPlaceholderEnv(
+        auth,
+        workspaceScope
+      );
     if (httpsSecretEnvResult.isErr()) {
       return httpsSecretEnvResult;
     }

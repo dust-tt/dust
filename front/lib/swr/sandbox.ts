@@ -1,6 +1,6 @@
 import { useSendNotification } from "@app/hooks/useNotification";
 import { clientFetch } from "@app/lib/egress/client";
-import type { PatchWorkspaceSandboxEnvVarResponseBody } from "@app/lib/resources/workspace_sandbox_env_var_resource";
+import type { PatchSandboxEnvVarResponseBody } from "@app/lib/resources/sandbox_env_var_resource";
 import {
   emptyArray,
   getErrorFromResponse,
@@ -12,14 +12,14 @@ import type {
   PutWorkspaceEgressPolicyResponseBody,
 } from "@app/types/api/sandbox/egress_policy";
 import type {
-  GetWorkspaceSandboxEnvVarsResponseBody,
-  PostWorkspaceSandboxEnvVarsResponseBody,
+  GetSandboxEnvVarsResponseBody,
+  PostSandboxEnvVarsResponseBody,
 } from "@app/types/api/sandbox/env_vars";
 import type { EgressPolicy } from "@app/types/sandbox/egress_policy";
 import { EMPTY_EGRESS_POLICY } from "@app/types/sandbox/egress_policy";
 import type {
-  WorkspaceSandboxEnvVarKind,
-  WorkspaceSandboxEnvVarType,
+  SandboxEnvVarKind,
+  SandboxEnvVarType,
 } from "@app/types/sandbox/env_var";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { LightWorkspaceType } from "@app/types/user";
@@ -37,7 +37,7 @@ function workspaceSandboxEnvVarsUrl(workspaceId: string) {
 type WorkspaceSandboxEnvVarWritePayload = {
   name: string;
   value: string;
-  kind?: WorkspaceSandboxEnvVarKind;
+  kind?: SandboxEnvVarKind;
   allowedDomains?: string[] | null;
 };
 
@@ -72,8 +72,7 @@ export function useWorkspaceSandboxEnvVars({
   disabled?: boolean;
 }) {
   const { fetcher } = useFetcher();
-  const envVarsFetcher: Fetcher<GetWorkspaceSandboxEnvVarsResponseBody> =
-    fetcher;
+  const envVarsFetcher: Fetcher<GetSandboxEnvVarsResponseBody> = fetcher;
   const { data, error, mutate, isLoading } = useSWRWithDefaults(
     workspaceSandboxEnvVarsUrl(owner.sId),
     envVarsFetcher,
@@ -129,8 +128,7 @@ export function useUpsertWorkspaceSandboxEnvVar({
         return false;
       }
 
-      const data: PostWorkspaceSandboxEnvVarsResponseBody =
-        await response.json();
+      const data: PostSandboxEnvVarsResponseBody = await response.json();
       await mutateWorkspaceSandboxEnvVars();
       sendNotification({
         type: "success",
@@ -175,8 +173,8 @@ export function usePatchWorkspaceSandboxEnvVar({
     envVar,
     kind,
   }: {
-    envVar: WorkspaceSandboxEnvVarType;
-    kind?: WorkspaceSandboxEnvVarKind;
+    envVar: SandboxEnvVarType;
+    kind?: SandboxEnvVarKind;
     allowedDomains?: string[] | null;
   }): Promise<boolean> => {
     setIsPatching(true);
@@ -202,8 +200,7 @@ export function usePatchWorkspaceSandboxEnvVar({
         return false;
       }
 
-      const data: PatchWorkspaceSandboxEnvVarResponseBody =
-        await response.json();
+      const data: PatchSandboxEnvVarResponseBody = await response.json();
       await mutateWorkspaceSandboxEnvVars();
       sendNotification({
         type: "success",
@@ -245,7 +242,7 @@ export function useDeleteWorkspaceSandboxEnvVar({
   });
 
   const deleteWorkspaceSandboxEnvVar = async (
-    envVar: WorkspaceSandboxEnvVarType
+    envVar: SandboxEnvVarType
   ): Promise<boolean> => {
     setIsDeleting(true);
     try {

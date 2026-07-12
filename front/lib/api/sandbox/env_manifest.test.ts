@@ -2,7 +2,7 @@ import {
   type RootCommand,
   renderRootCommand,
 } from "@app/lib/api/sandbox/root_command";
-import { WorkspaceSandboxEnvVarResource } from "@app/lib/resources/workspace_sandbox_env_var_resource";
+import { SandboxEnvVarResource } from "@app/lib/resources/sandbox_env_var_resource";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { Ok } from "@app/types/shared/result";
 import { describe, expect, it, vi } from "vitest";
@@ -23,8 +23,9 @@ describe("sandbox environment manifest", () => {
   it("builds a deterministic manifest without any value field", async () => {
     const { authenticator } = await createResourceTest({ role: "admin" });
 
-    const zConfigResult = await WorkspaceSandboxEnvVarResource.makeNew(
+    const zConfigResult = await SandboxEnvVarResource.makeNew(
       authenticator,
+      { kind: "workspace", workspace: authenticator.getNonNullableWorkspace() },
       {
         name: "Z_CONFIG",
         value: "config-z",
@@ -32,8 +33,9 @@ describe("sandbox environment manifest", () => {
     );
     expect(zConfigResult.isOk()).toBe(true);
 
-    const aConfigResult = await WorkspaceSandboxEnvVarResource.makeNew(
+    const aConfigResult = await SandboxEnvVarResource.makeNew(
       authenticator,
+      { kind: "workspace", workspace: authenticator.getNonNullableWorkspace() },
       {
         name: "A_CONFIG",
         value: "config-a",
@@ -41,8 +43,9 @@ describe("sandbox environment manifest", () => {
     );
     expect(aConfigResult.isOk()).toBe(true);
 
-    const slackSecretResult = await WorkspaceSandboxEnvVarResource.makeNew(
+    const slackSecretResult = await SandboxEnvVarResource.makeNew(
       authenticator,
+      { kind: "workspace", workspace: authenticator.getNonNullableWorkspace() },
       {
         name: "SLACK_TOKEN",
         kind: "https_secret",
@@ -55,8 +58,9 @@ describe("sandbox environment manifest", () => {
       throw slackSecretResult.error;
     }
 
-    const apiSecretResult = await WorkspaceSandboxEnvVarResource.makeNew(
+    const apiSecretResult = await SandboxEnvVarResource.makeNew(
       authenticator,
+      { kind: "workspace", workspace: authenticator.getNonNullableWorkspace() },
       {
         name: "API_TOKEN",
         kind: "https_secret",
@@ -146,8 +150,9 @@ describe("sandbox environment manifest", () => {
   it("rejects an HTTPS secret missing a placeholder nonce", async () => {
     const { authenticator } = await createResourceTest({ role: "admin" });
 
-    const secretResult = await WorkspaceSandboxEnvVarResource.makeNew(
+    const secretResult = await SandboxEnvVarResource.makeNew(
       authenticator,
+      { kind: "workspace", workspace: authenticator.getNonNullableWorkspace() },
       {
         name: "API_TOKEN",
         kind: "https_secret",
@@ -169,10 +174,9 @@ describe("sandbox environment manifest", () => {
       value: null,
       configurable: true,
     });
-    vi.spyOn(
-      WorkspaceSandboxEnvVarResource,
-      "listForWorkspace"
-    ).mockResolvedValueOnce([secretResult.value]);
+    vi.spyOn(SandboxEnvVarResource, "listForScope").mockResolvedValueOnce([
+      secretResult.value,
+    ]);
 
     const manifestResult = await buildSandboxEnvManifest(
       authenticator,
@@ -189,8 +193,9 @@ describe("sandbox environment manifest", () => {
 
   it("writes the manifest with mode 644 owned by root", async () => {
     const { authenticator } = await createResourceTest({ role: "admin" });
-    const secretResult = await WorkspaceSandboxEnvVarResource.makeNew(
+    const secretResult = await SandboxEnvVarResource.makeNew(
       authenticator,
+      { kind: "workspace", workspace: authenticator.getNonNullableWorkspace() },
       {
         name: "API_TOKEN",
         kind: "https_secret",
