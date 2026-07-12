@@ -1,5 +1,6 @@
 import type { Authenticator } from "@app/lib/auth";
 import type { ConversationResource } from "@app/lib/resources/conversation_resource";
+import { PodSandboxAdapter } from "@app/lib/resources/pod_sandbox_adapter";
 import {
   type EnsureSandboxResult,
   type SandboxCreateBlob,
@@ -7,18 +8,25 @@ import {
   type SandboxLifecycleOwner,
   SandboxResource,
 } from "@app/lib/resources/sandbox_resource";
+import { SpaceResource } from "@app/lib/resources/space_resource";
 import { SandboxOwnerModel } from "@app/lib/resources/storage/models/sandbox";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { withTransaction } from "@app/lib/utils/sql_utils";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import type { ModelId } from "@app/types/shared/model_id";
-import type { Result } from "@app/types/shared/result";
+import { Ok, type Result } from "@app/types/shared/result";
 import { Op, type Transaction } from "sequelize";
 
 type ConversationSandboxOwner = Pick<
   ConversationWithoutContentType,
   "id" | "sId"
 >;
+
+// ensureSandboxActive additionally needs the conversation's space (a string
+// sId, so ConversationResource — whose spaceId is a ModelId — does not
+// qualify) to inject pod-scoped env vars for conversations inside a pod.
+type ConversationSandboxEnsureOwner = ConversationSandboxOwner &
+  Pick<ConversationWithoutContentType, "spaceId">;
 
 type ConversationSandboxLifecycleOwner = Pick<
   ConversationResource,
@@ -134,15 +142,58 @@ export class ConversationSandboxAdapter {
 
   static async ensureSandboxActive(
     auth: Authenticator,
-    conversation: ConversationSandboxOwner
+    conversation: ConversationSandboxEnsureOwner
   ): Promise<Result<EnsureSandboxResult, Error>> {
     return SandboxResource.ensureActive(auth, {
       lockKey: conversation.sId,
-      envVars: { CONVERSATION_ID: conversation.sId },
+      // Factory form: the pod-scope loads only run when a sandbox is
+      // actually created.
+      envVars: () => this.buildConversationEnvVars(auth, conversation),
       logLabel: "conversation",
       fetchSandbox: () => this.fetchSandbox(auth, conversation),
       createSandbox: (blob) =>
         this.createSandboxRecordForConversation(auth, conversation, blob),
+    });
+  }
+
+  // Pod-level sandbox config applies to every Computer running in the Pod:
+  // a conversation inside a pod receives the pod's config vars and DSEC
+  // placeholders alongside its own env, same layering as pod-owned
+  // sandboxes (owner layer beats the workspace layer, pod wins on name
+  // collision). A conversation whose space is missing or not a project gets
+  // workspace vars only — the egress-secrets file build applies the same
+  // rule, keeping the file and the env consistent.
+  private static async buildConversationEnvVars(
+    auth: Authenticator,
+    conversation: ConversationSandboxEnsureOwner
+  ): Promise<Result<Record<string, string>, Error>> {
+    const baseEnv = { CONVERSATION_ID: conversation.sId };
+
+    if (!conversation.spaceId) {
+      return new Ok(baseEnv);
+    }
+
+    const pod = await SpaceResource.fetchById(auth, conversation.spaceId);
+    if (!pod || !pod.isProject()) {
+      return new Ok(baseEnv);
+    }
+
+    const podScopedResult = await PodSandboxAdapter.buildPodScopedEnvVars(
+      auth,
+      pod,
+      {
+        kind: "conversation",
+        conversationId: conversation.sId,
+        spaceId: pod.sId,
+      }
+    );
+    if (podScopedResult.isErr()) {
+      return podScopedResult;
+    }
+
+    return new Ok({
+      ...podScopedResult.value,
+      ...baseEnv,
     });
   }
 
