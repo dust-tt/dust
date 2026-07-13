@@ -22,6 +22,39 @@ type ResolvedSkillMCPServers = {
   systemSkillServers: MCPServerConfigurationType[];
 };
 
+function skillMCPServerConfigToServerSideConfig(auth: Authenticator, config: SkillMCPServerConfiguration, {
+remoteDbDataSourceViews, nonRemoteDbDataSourceViews
+}: {remoteDbDataSourceViews: DataSourceViewResource[]; nonRemoteDbDataSourceViews: DataSourceViewResource[]}): ServerSideMCPServerConfigurationType {
+  const { view, childAgentId, serverNameOverride } = config;
+
+  const {
+    requiresDataWarehouseConfiguration,
+    requiresDataSourceConfiguration,
+  } = getMCPServerRequirements(view.toJSON());
+
+  let applicableViews: DataSourceViewResource[];
+  if (requiresDataWarehouseConfiguration) {
+    applicableViews = remoteDbDataSourceViews;
+  } else if (requiresDataSourceConfiguration) {
+    applicableViews = nonRemoteDbDataSourceViews;
+  } else {
+    applicableViews = [];
+  }
+
+  const dataSources = applicableViews.map((dsView) => ({
+    dataSourceViewId: dsView.sId,
+    workspaceId: auth.getNonNullableWorkspace().sId,
+    filter: dsView.toViewFilter(),
+  }));
+
+  return buildServerSideMCPServerConfiguration({
+      mcpServerView: view,
+      dataSources,
+      childAgentId,
+      serverNameOverride,
+    });
+}
+
 export async function getSkillServers(
   auth: Authenticator,
   {
@@ -44,56 +77,19 @@ export async function getSkillServers(
     );
   }
 
-  const remoteDbViews = inheritedDataSourceViews.filter((v) =>
+  const remoteDbDataSourceViews = inheritedDataSourceViews.filter((v) =>
     isRemoteDatabase(v.dataSource)
   );
-  const nonRemoteDbViews = inheritedDataSourceViews.filter(
+  const nonRemoteDbDataSourceViews = inheritedDataSourceViews.filter(
     (v) => !isRemoteDatabase(v.dataSource)
   );
 
-  const systemSkillIds = new Set(systemSkills.map((skill) => skill.sId));
-  const mcpServersWithOrigin = skills.flatMap((skill) =>
-    skill.mcpServerConfigurations.map((config) => {
-      const { view, childAgentId, serverNameOverride } = config;
-
-      const {
-        requiresDataWarehouseConfiguration,
-        requiresDataSourceConfiguration,
-      } = getMCPServerRequirements(view.toJSON());
-
-      let applicableViews: DataSourceViewResource[];
-      if (requiresDataWarehouseConfiguration) {
-        applicableViews = remoteDbViews;
-      } else if (requiresDataSourceConfiguration) {
-        applicableViews = nonRemoteDbViews;
-      } else {
-        applicableViews = [];
-      }
-
-      const dataSources = applicableViews.map((dsView) => ({
-        dataSourceViewId: dsView.sId,
-        workspaceId: auth.getNonNullableWorkspace().sId,
-        filter: dsView.toViewFilter(),
-      }));
-
-      return {
-        server: buildServerSideMCPServerConfiguration({
-          mcpServerView: view,
-          dataSources,
-          childAgentId,
-          serverNameOverride,
-        }),
-        isSystemSkill: systemSkillIds.has(skill.sId),
-      };
-    })
+  const skillServers = enabledSkills.flatMap((skill) =>
+    skill.mcpServerConfigurations.map((config) => skillMCPServerConfigToServerSideConfig(auth, config, {remoteDbDataSourceViews, nonRemoteDbDataSourceViews}))
   );
-
-  const skillServers = mcpServersWithOrigin
-    .filter(({ isSystemSkill }) => !isSystemSkill)
-    .map(({ server }) => server);
-  const systemSkillServers = mcpServersWithOrigin
-    .filter(({ isSystemSkill }) => isSystemSkill)
-    .map(({ server }) => server);
+  const systemSkillServers = systemSkills.flatMap((skill) =>
+    skill.mcpServerConfigurations.map((config) => skillMCPServerConfigToServerSideConfig(auth, config, {remoteDbDataSourceViews, nonRemoteDbDataSourceViews}))
+  );
 
   const {
     documentDataSourceConfigurations,
