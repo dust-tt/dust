@@ -635,14 +635,9 @@ export class GroupResource extends BaseResource<GroupModel> {
   // Use with care as this gives access to all groups in the workspace.
   static async internalFetchAllWorkspaceGroups({
     workspaceId,
-    groupKinds = [
-      "global",
-      "regular_auto",
-      "regular_manual",
-      "space_editors",
-      "system",
-      "provisioned",
-    ],
+    groupKinds = GROUP_KINDS.filter(
+      (k) => !isAgentEditorGroupKind(k) && !isSkillEditorGroupKind(k)
+    ),
     transaction,
   }: {
     workspaceId: ModelId;

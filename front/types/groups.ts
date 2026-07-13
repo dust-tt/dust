@@ -11,11 +11,15 @@ import { isRoleType } from "./user";
  * global group: Contains all users from the workspace. Has access to the global
  * Space which holds all existing datasource created before spaces.
  *
- * regular_auto group: Contains specific users added by workspace admins. Has access
- * to the list of spaces configured by workspace admins.
+ * "regular" groups are groups for which users are selected one by one (as opposed
+ * to provisioned groups whose membership is synced from an external identity
+ * provider). They come in two flavors depending on how the group was created:
  *
- * regular_manual group: Groups created manually from the UI. They can be used to
- * grant specific permissions to users.
+ * regular_auto group: Created implicitly by Dust (e.g. agent editors, space
+ * members).
+ *
+ * regular_manual group: Created manually by the user via the UI. They can be used
+ * to grant specific permissions to users.
  *
  * agent_editors group: Group specific to represent agent editors, tied to an
  *  agent. Has special permissions: not restricted only to admins. Users can
