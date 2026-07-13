@@ -5,6 +5,7 @@ import { AssistantInstructionsPage } from "@dust-tt/front/components/poke/pages/
 import { CacheLookupPage } from "@dust-tt/front/components/poke/pages/CacheLookupPage";
 import { ConnectorRedirectPage } from "@dust-tt/front/components/poke/pages/ConnectorRedirectPage";
 import { ConversationPage } from "@dust-tt/front/components/poke/pages/ConversationPage";
+import { ConversationRenderPage } from "@dust-tt/front/components/poke/pages/ConversationRenderPage";
 import { CouponsPage } from "@dust-tt/front/components/poke/pages/CouponsPage";
 import { DashboardPage } from "@dust-tt/front/components/poke/pages/DashboardPage";
 import { DataSourcePage } from "@dust-tt/front/components/poke/pages/DataSourcePage";
@@ -107,6 +108,10 @@ export const routes: RouteObject[] = [
             element: <TriggerDetailsPage />,
           },
           { path: "conversation/:cId", element: <ConversationPage /> },
+          {
+            path: "conversation/:cId/render",
+            element: <ConversationRenderPage />,
+          },
           { path: "data_sources/:dsId", element: <DataSourcePage /> },
           {
             path: "data_sources/:dsId/notion-requests",
