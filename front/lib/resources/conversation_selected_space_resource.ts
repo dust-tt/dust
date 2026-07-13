@@ -84,11 +84,13 @@ export class ConversationSelectedSpaceResource extends BaseResource<Conversation
       conversation,
       spaces,
       origin,
+      sourceSelections,
       transaction,
     }: {
       conversation: ConversationWithoutContentType;
       spaces: SpaceResource[];
       origin: ConversationSelectedSpaceOrigin;
+      sourceSelections?: ConversationSelectedSpaceResource[];
       transaction?: Transaction;
     }
   ): Promise<{
@@ -98,9 +100,23 @@ export class ConversationSelectedSpaceResource extends BaseResource<Conversation
   }> {
     return withTransaction(async (t) => {
       const workspace = auth.getNonNullableWorkspace();
-      const user = auth.getNonNullableUser();
       const uniqueSpaces = uniqBy(spaces, "id");
       const spaceModelIds = uniqueSpaces.map((space) => space.id);
+      const authUserId = auth.user()?.id;
+      const selectedByUserModelIdBySpaceModelId = new Map(
+        sourceSelections?.map((selection) => [
+          selection.spaceId,
+          selection.selectedByUserId,
+        ])
+      );
+      const getSelectedByUserModelId = (spaceModelId: ModelId): ModelId => {
+        const selectedByUserModelId =
+          selectedByUserModelIdBySpaceModelId.get(spaceModelId) ?? authUserId;
+        if (!selectedByUserModelId) {
+          throw new Error("A selecting user is required for a selected Space.");
+        }
+        return selectedByUserModelId;
+      };
 
       if (spaceModelIds.length === 0) {
         return {
@@ -135,7 +151,7 @@ export class ConversationSelectedSpaceResource extends BaseResource<Conversation
             workspaceId: workspace.id,
             conversationId: conversation.id,
             spaceId: space.id,
-            selectedByUserId: user.id,
+            selectedByUserId: getSelectedByUserModelId(space.id),
             origin,
             removedAt: null,
           })),
@@ -152,23 +168,38 @@ export class ConversationSelectedSpaceResource extends BaseResource<Conversation
 
       let reactivatedSpaceModelIds = new Set<ModelId>();
       if (removedRows.length > 0) {
-        const [, reactivatedRows] = await this.model.update(
-          {
-            selectedByUserId: user.id,
-            origin,
-            removedAt: null,
-          },
-          {
-            where: {
-              workspaceId: workspace.id,
-              id: {
-                [Op.in]: removedRows.map((row) => row.id),
-              },
+        const rowsBySelectedByUserId = new Map<
+          ModelId,
+          ConversationSelectedSpaceModel[]
+        >();
+        for (const row of removedRows) {
+          const selectedByUserModelId = getSelectedByUserModelId(row.spaceId);
+          const rows = rowsBySelectedByUserId.get(selectedByUserModelId) ?? [];
+          rows.push(row);
+          rowsBySelectedByUserId.set(selectedByUserModelId, rows);
+        }
+
+        const reactivatedRows: ConversationSelectedSpaceModel[] = [];
+        for (const [selectedByUserModelId, rows] of rowsBySelectedByUserId) {
+          const [, updatedRows] = await this.model.update(
+            {
+              selectedByUserId: selectedByUserModelId,
+              origin,
+              removedAt: null,
             },
-            transaction: t,
-            returning: true,
-          }
-        );
+            {
+              where: {
+                workspaceId: workspace.id,
+                id: {
+                  [Op.in]: rows.map((row) => row.id),
+                },
+              },
+              transaction: t,
+              returning: true,
+            }
+          );
+          reactivatedRows.push(...updatedRows);
+        }
         reactivatedSpaceModelIds = new Set(
           reactivatedRows.map((row) => row.spaceId)
         );
