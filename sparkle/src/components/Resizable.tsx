@@ -4,9 +4,12 @@ import * as ResizablePrimitive from "react-resizable-panels";
 
 type ResizablePanelGroupProps = React.ComponentProps<
   typeof ResizablePrimitive.PanelGroup
->;
+> & {
+  animated?: boolean;
+};
 
 const ResizablePanelGroupContext = React.createContext<{
+  animated: boolean;
   direction: ResizablePanelGroupProps["direction"];
   isDragging: boolean;
   panelGroupSizePx?: number;
@@ -20,7 +23,7 @@ type ResizablePanelGroupRef = React.ElementRef<
 const ResizablePanelGroup: React.ForwardRefExoticComponent<
   ResizablePanelGroupProps & React.RefAttributes<ResizablePanelGroupRef>
 > = React.forwardRef<ResizablePanelGroupRef, ResizablePanelGroupProps>(
-  ({ className, direction, id, ...props }, forwardedRef) => {
+  ({ animated = false, className, direction, id, ...props }, forwardedRef) => {
     const panelGroupRef = React.useRef<ResizablePanelGroupRef | null>(null);
     const [isDragging, setIsDragging] = React.useState(false);
     const [panelGroupSizePx, setPanelGroupSizePx] = React.useState<
@@ -79,12 +82,13 @@ const ResizablePanelGroup: React.ForwardRefExoticComponent<
 
     const contextValue = React.useMemo(
       () => ({
+        animated,
         direction,
         isDragging,
         panelGroupSizePx,
         setIsDragging,
       }),
-      [direction, isDragging, panelGroupSizePx]
+      [animated, direction, isDragging, panelGroupSizePx]
     );
 
     return (
@@ -139,7 +143,6 @@ type ResizablePanelRef = React.ElementRef<typeof ResizablePrimitive.Panel>;
 type ResizablePanelProps = React.ComponentProps<
   typeof ResizablePrimitive.Panel
 > & {
-  animated?: boolean;
   /**
    * Keeps content laid out at the latest non-zero target size while the panel
    * animates. Manual handle dragging still resizes content live.
@@ -152,7 +155,6 @@ type ResizablePanelProps = React.ComponentProps<
 const ResizablePanel = React.forwardRef<ResizablePanelRef, ResizablePanelProps>(
   (
     {
-      animated = false,
       children,
       className,
       defaultSize,
@@ -195,10 +197,10 @@ const ResizablePanel = React.forwardRef<ResizablePanelRef, ResizablePanelProps>(
         defaultSize={defaultSize}
         onResize={handleResize}
         className={cn(
-          animated && "motion-reduce:transition-none",
-          animated &&
+          panelGroupContext?.animated && "motion-reduce:transition-none",
+          panelGroupContext?.animated &&
             !panelGroupContext?.isDragging &&
-            "transition-[flex-grow,flex-basis] duration-300 ease-out-quint",
+            "transition-[flex-grow] duration-300 ease-out-quint",
           className
         )}
         {...props}

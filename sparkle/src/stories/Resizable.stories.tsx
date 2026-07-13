@@ -21,7 +21,7 @@ const meta = {
 
 **Guidelines**
 - Give each **ResizablePanel** a \`defaultSize\` (percentages within a group) so the initial split is predictable.
-- Use \`animated\` with \`stableContent\` when programmatic collapse or expand should not reflow content through intermediate widths.
+- Set \`animated\` on the group and \`stableContent\` on a panel when programmatic collapse or expand should not reflow content through intermediate widths.
 - Nest a **ResizablePanelGroup** inside a panel to combine horizontal and vertical splits.`,
       },
     },
@@ -65,6 +65,7 @@ export const AnimatedCollapsible = () => {
         variant="outline"
       />
       <ResizablePanelGroup
+        animated
         direction="horizontal"
         className="h-64 w-[800px] overflow-hidden rounded-lg border bg-white"
       >
@@ -80,7 +81,6 @@ export const AnimatedCollapsible = () => {
           minSize={20}
           collapsedSize={0}
           collapsible
-          animated
           stableContent
           onCollapse={() => setIsOpen(false)}
           onExpand={() => setIsOpen(true)}
