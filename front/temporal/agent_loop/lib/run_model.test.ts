@@ -469,6 +469,22 @@ describe("buildSpecificationsWithReplayPlaceholders", () => {
     expect(placeholder.eager).toBeUndefined();
   });
 
+  it("does not append placeholders for calls handled by the missing action catcher", () => {
+    const conversation = makeConversation([
+      assistantMessageWithFunctionCalls(["hallucinated_tool"]),
+    ]);
+
+    const { specifications, missingReplayedToolNames } =
+      buildSpecificationsWithReplayPlaceholders(
+        [],
+        conversation,
+        new Set(["call_0"])
+      );
+
+    expect(missingReplayedToolNames).toEqual([]);
+    expect(specifications).toEqual([]);
+  });
+
   it("sorts replay placeholders with the current tool specifications", () => {
     const baseSpecifications = [
       makeSpecification("zeta_tool"),

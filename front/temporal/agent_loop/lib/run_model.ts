@@ -85,8 +85,10 @@ import type { AgentLoopExecutionData } from "@app/types/assistant/agent_run";
 import { isGlobalAgentId } from "@app/types/assistant/assistant";
 import type {
   AgentMessageType,
+  ConversationType,
   UserMessageOrigin,
 } from "@app/types/assistant/conversation";
+import { isAgentMessageType } from "@app/types/assistant/conversation";
 import {
   isTextContent,
   type ModelConversationTypeMultiActions,
@@ -167,7 +169,8 @@ function concatWithNewlineBoundary(
 // passthrough parsing below (block shapes, server tool names) belongs behind a
 // provider-agnostic dispatch keyed on the passthrough provider id.
 function getReplayedToolNames(
-  modelConversation: ModelConversationTypeMultiActions
+  modelConversation: ModelConversationTypeMultiActions,
+  missingActionCatcherFunctionCallIds: ReadonlySet<string>
 ): string[] {
   const toolNames = new Set<string>();
 
@@ -175,7 +178,12 @@ function getReplayedToolNames(
     switch (message.role) {
       case "assistant":
         for (const content of message.contents) {
-          if (content.type === "function_call") {
+          if (
+            content.type === "function_call" &&
+            !missingActionCatcherFunctionCallIds.has(content.value.id)
+          ) {
+            // Missing-action catcher calls remain in the replay so the model
+            // sees their error, but their attempted names were never tools.
             toolNames.add(content.value.name);
           }
           if (
@@ -216,6 +224,28 @@ function getReplayedToolNames(
   }
 
   return [...toolNames];
+}
+
+function getMissingActionCatcherFunctionCallIds(
+  conversation: ConversationType
+): Set<string> {
+  const functionCallIds = new Set<string>();
+
+  for (const messageVersions of conversation.content) {
+    for (const message of messageVersions) {
+      if (!isAgentMessageType(message)) {
+        continue;
+      }
+
+      for (const action of message.actions) {
+        if (action.internalMCPServerName === "missing_action_catcher") {
+          functionCallIds.add(action.functionCallId);
+        }
+      }
+    }
+  }
+
+  return functionCallIds;
 }
 
 function buildReplayOnlyToolSpecification(
@@ -283,13 +313,17 @@ export function buildBaseSpecifications(
 // definition.
 export function buildSpecificationsWithReplayPlaceholders(
   baseSpecifications: AgentActionSpecification[],
-  modelConversation: ModelConversationTypeMultiActions
+  modelConversation: ModelConversationTypeMultiActions,
+  missingActionCatcherFunctionCallIds: ReadonlySet<string> = new Set()
 ): {
   specifications: AgentActionSpecification[];
   missingReplayedToolNames: string[];
 } {
   const currentToolNames = new Set(baseSpecifications.map((spec) => spec.name));
-  const missingReplayedToolNames = getReplayedToolNames(modelConversation)
+  const missingReplayedToolNames = getReplayedToolNames(
+    modelConversation,
+    missingActionCatcherFunctionCallIds
+  )
     .filter((name) => !currentToolNames.has(name))
     .sort();
 
@@ -635,7 +669,8 @@ export async function runModel(
   const { specifications, missingReplayedToolNames } =
     buildSpecificationsWithReplayPlaceholders(
       baseSpecifications,
-      modelConversationRes.value.modelConversation
+      modelConversationRes.value.modelConversation,
+      getMissingActionCatcherFunctionCallIds(conversation)
     );
 
   if (missingReplayedToolNames.length > 0) {
