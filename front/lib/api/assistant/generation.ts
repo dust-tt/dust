@@ -222,6 +222,8 @@ function constructSkillsSection({
     "It is not useful to enable skills that are already enabled, this would only output the skill's content again.\n" +
     "Referenced skills may not appear in the available-skills list; a tag is enough to enable the skill by name. " +
     "Only enable skills you actually need, because enabling a skill loads its full instructions into context.\n" +
+    `Enabled skill instructions can also contain \`<knowledge id=\"...\" title=\"...\" ... />\` tags, which point to specific workspace knowledge attached to the skill. ` +
+    `For document knowledge, use the skill's \`cat\` tool with \`nodeId\` set to the tag's \`id\` to read it directly; when \`hasChildren=\"true\"\`, use \`list\` or \`semantic_search\` to explore its contents.\n` +
     `Enabled skill instructions can also contain \`<unavailable_skill id=\"...\" />\` tags. ` +
     "These mean the instructions used to reference another skill, but that skill is no longer available to this conversation, for example because skill scope or permissions changed. " +
     "Do not try to enable unavailable skill tags.\n" +
