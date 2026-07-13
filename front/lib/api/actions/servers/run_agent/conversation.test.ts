@@ -1,7 +1,9 @@
 import type { AgentLoopRunContext } from "@app/lib/actions/types";
 import { getOrCreateConversation } from "@app/lib/api/actions/servers/run_agent/conversation";
+import * as conversationDestroy from "@app/lib/api/assistant/conversation/destroy";
 import type { Authenticator } from "@app/lib/auth";
 import { getApiKeyNameHeader } from "@app/lib/auth";
+import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
 import type { AgentConfigurationType } from "@app/types/assistant/agent";
 import type {
@@ -9,13 +11,22 @@ import type {
   ConversationType,
   UserMessageType,
 } from "@app/types/assistant/conversation";
-import { Ok } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
 import { decodeUtf8HeaderValue } from "@app/types/shared/utils/http_headers";
 import { getHeaderFromUserEmail } from "@app/types/user";
-import type { ConversationPublicType } from "@dust-tt/client";
+import type { APIError, ConversationPublicType } from "@dust-tt/client";
 import { DustAPI } from "@dust-tt/client";
 import assert from "assert";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
+const { mockCopySelectedConversationSpacesToChild } = vi.hoisted(() => ({
+  mockCopySelectedConversationSpacesToChild: vi.fn(),
+}));
+
+vi.mock("@app/lib/api/assistant/conversation/selected_spaces", () => ({
+  copySelectedConversationSpacesToChild:
+    mockCopySelectedConversationSpacesToChild,
+}));
 
 function buildRunAgentFixtures({ spaceId }: { spaceId: string | null }): {
   mainConversation: ConversationType;
@@ -112,30 +123,42 @@ function buildRunAgentFixtures({ spaceId }: { spaceId: string | null }): {
 }
 
 function createMockApi(
-  createConversationImpl: DustAPI["createConversation"]
+  createConversationImpl: DustAPI["createConversation"],
+  conversation: ConversationPublicType
 ): DustAPI {
   return {
     createConversation: createConversationImpl,
-    getConversation: vi.fn(),
-    postUserMessage: vi.fn(),
+    getConversation: vi.fn().mockResolvedValue(new Ok(conversation)),
+    postUserMessage: vi.fn().mockResolvedValue(
+      new Ok({
+        sId: generateRandomModelSId(),
+      })
+    ),
   } as unknown as DustAPI;
 }
 
 describe("getOrCreateConversation", () => {
+  beforeEach(() => {
+    mockCopySelectedConversationSpacesToChild.mockReset();
+    mockCopySelectedConversationSpacesToChild.mockResolvedValue(
+      new Ok(undefined)
+    );
+  });
+
   it("forwards the parent conversation spaceId when creating a sub-conversation", async () => {
     const spaceId = generateRandomModelSId();
     const { mainConversation, originMessage, mainAgent, agentLoopContext } =
       buildRunAgentFixtures({ spaceId });
 
+    const childConversation = {
+      sId: generateRandomModelSId(),
+    } as ConversationPublicType;
     const mockCreateConversation = vi.fn().mockResolvedValue(
       new Ok({
-        conversation: {
-          sId: generateRandomModelSId(),
-        } as ConversationPublicType,
-        message: { sId: generateRandomModelSId() },
+        conversation: childConversation,
       })
     );
-    const api = createMockApi(mockCreateConversation);
+    const api = createMockApi(mockCreateConversation, childConversation);
 
     const result = await getOrCreateConversation(
       api,
@@ -163,21 +186,37 @@ describe("getOrCreateConversation", () => {
         depth: mainConversation.depth + 1,
       })
     );
+    expect(mockCreateConversation.mock.calls[0][0]).not.toHaveProperty(
+      "message"
+    );
+    expect(mockCopySelectedConversationSpacesToChild).toHaveBeenCalledWith(
+      expect.anything(),
+      {
+        parentConversation: mainConversation,
+        childConversationId: childConversation.sId,
+      }
+    );
+    expect(api.postUserMessage).toHaveBeenCalledWith(
+      expect.objectContaining({ conversationId: childConversation.sId })
+    );
+    expect(
+      mockCopySelectedConversationSpacesToChild.mock.invocationCallOrder[0]
+    ).toBeLessThan(vi.mocked(api.postUserMessage).mock.invocationCallOrder[0]);
   });
 
   it("omits spaceId when the parent conversation has no space", async () => {
     const { mainConversation, originMessage, mainAgent, agentLoopContext } =
       buildRunAgentFixtures({ spaceId: null });
 
+    const childConversation = {
+      sId: generateRandomModelSId(),
+    } as ConversationPublicType;
     const mockCreateConversation = vi.fn().mockResolvedValue(
       new Ok({
-        conversation: {
-          sId: generateRandomModelSId(),
-        } as ConversationPublicType,
-        message: { sId: generateRandomModelSId() },
+        conversation: childConversation,
       })
     );
-    const api = createMockApi(mockCreateConversation);
+    const api = createMockApi(mockCreateConversation, childConversation);
 
     const result = await getOrCreateConversation(
       api,
@@ -330,5 +369,103 @@ describe("getOrCreateConversation", () => {
         "jérôme.łukasz@example.com"
       );
     });
+  });
+
+  it("cleans up a new child conversation when selected Space inheritance fails", async () => {
+    const { mainConversation, originMessage, mainAgent, agentLoopContext } =
+      buildRunAgentFixtures({ spaceId: null });
+    const childConversation = {
+      sId: generateRandomModelSId(),
+    } as ConversationPublicType;
+    const childConversationResource = {} as ConversationResource;
+    const mockCreateConversation = vi.fn().mockResolvedValue(
+      new Ok({
+        conversation: childConversation,
+      })
+    );
+    const api = createMockApi(mockCreateConversation, childConversation);
+    const fetchChildSpy = vi
+      .spyOn(ConversationResource, "fetchById")
+      .mockResolvedValue(childConversationResource);
+    const destroyConversationSpy = vi
+      .spyOn(conversationDestroy, "destroyConversation")
+      .mockResolvedValue(new Ok(undefined));
+    mockCopySelectedConversationSpacesToChild.mockResolvedValueOnce(
+      new Err(new Error("copy failed"))
+    );
+
+    const result = await getOrCreateConversation(
+      api,
+      {} as Authenticator,
+      agentLoopContext,
+      {
+        childAgentBlob: { name: "ChildAgent", description: "A child agent" },
+        childAgentId: generateRandomModelSId(),
+        mainAgent,
+        originMessage,
+        mainConversation,
+        query: "Do something",
+        toolsetsToAdd: null,
+        fileOrContentFragmentIds: null,
+        filePaths: null,
+        conversationId: null,
+      }
+    );
+
+    expect(result.isErr()).toBe(true);
+    expect(fetchChildSpy).toHaveBeenCalledWith(
+      expect.anything(),
+      childConversation.sId
+    );
+    expect(destroyConversationSpy).toHaveBeenCalledWith(expect.anything(), {
+      conversation: childConversationResource,
+    });
+    expect(api.postUserMessage).not.toHaveBeenCalled();
+
+    fetchChildSpy.mockRestore();
+    destroyConversationSpy.mockRestore();
+  });
+
+  it("does not clean up a child conversation after an ambiguous post failure", async () => {
+    const { mainConversation, originMessage, mainAgent, agentLoopContext } =
+      buildRunAgentFixtures({ spaceId: null });
+    const childConversation = {
+      sId: generateRandomModelSId(),
+    } as ConversationPublicType;
+    const mockCreateConversation = vi.fn().mockResolvedValue(
+      new Ok({
+        conversation: childConversation,
+      })
+    );
+    const api = createMockApi(mockCreateConversation, childConversation);
+    vi.mocked(api.postUserMessage).mockResolvedValueOnce(
+      new Err({
+        type: "internal_server_error",
+        message: "socket hang up",
+      } as APIError)
+    );
+    const fetchChildSpy = vi.spyOn(ConversationResource, "fetchById");
+
+    const result = await getOrCreateConversation(
+      api,
+      {} as Authenticator,
+      agentLoopContext,
+      {
+        childAgentBlob: { name: "ChildAgent", description: "A child agent" },
+        childAgentId: generateRandomModelSId(),
+        mainAgent,
+        originMessage,
+        mainConversation,
+        query: "Do something",
+        toolsetsToAdd: null,
+        fileOrContentFragmentIds: null,
+        filePaths: null,
+        conversationId: null,
+      }
+    );
+
+    expect(result.isErr()).toBe(true);
+    expect(fetchChildSpy).not.toHaveBeenCalled();
+    fetchChildSpy.mockRestore();
   });
 });
