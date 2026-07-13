@@ -1439,7 +1439,17 @@ describe("getEmailSummary", () => {
             },
           ],
         },
-        tokensUsed: 100,
+        tokenBreakdown: {
+          assistantMessages: 0,
+          compactionMessages: 0,
+          contentFragments: 0,
+          margin: 1024,
+          prompt: 10,
+          toolDefinitions: 7,
+          toolResults: 0,
+          userMessages: 10,
+        },
+        tokensUsed: 1051,
         prunedContext: false,
       })
     );

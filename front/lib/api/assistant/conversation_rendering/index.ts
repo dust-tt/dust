@@ -49,6 +49,17 @@ export const TOKENS_MARGIN = 1024;
 // conversation, current interaction included. No separate, looser budget for it.
 export const PRUNING_TARGET_CONTEXT_UTILIZATION = 0.6;
 
+export type ConversationRenderTokenBreakdown = {
+  assistantMessages: number;
+  compactionMessages: number;
+  contentFragments: number;
+  margin: number;
+  prompt: number;
+  toolDefinitions: number;
+  toolResults: number;
+  userMessages: number;
+};
+
 /**
  * Escalates through pruning and dropping until the conversation fits budgetForInteractions, or
  * returns an error if even the last resort isn't enough. Four layers, each tried only if the
@@ -192,6 +203,7 @@ export async function renderConversationForModel(
   Result<
     {
       modelConversation: ModelConversationTypeMultiActions;
+      tokenBreakdown: ConversationRenderTokenBreakdown;
       tokensUsed: number;
       prunedContext: boolean;
     },
@@ -255,12 +267,10 @@ export async function renderConversationForModel(
   const [promptCount, toolDefinitionsCount] = promptToolsRes.value;
 
   // Calculate base token usage.
-  const baseTokens =
-    promptCount +
-    Math.floor(
-      toolDefinitionsCount * TOOL_DEFINITIONS_COUNT_ADJUSTMENT_FACTOR
-    ) +
-    TOKENS_MARGIN;
+  const adjustedToolDefinitionsCount = Math.floor(
+    toolDefinitionsCount * TOOL_DEFINITIONS_COUNT_ADJUSTMENT_FACTOR
+  );
+  const baseTokens = promptCount + adjustedToolDefinitionsCount + TOKENS_MARGIN;
 
   const interactions = groupMessagesIntoInteractions(messagesWithTokens);
 
@@ -314,6 +324,37 @@ export async function renderConversationForModel(
   const selected: MessageWithTokens[] = prunedInteractions.flatMap(
     (interaction) => interaction.messages
   );
+  const tokenBreakdown: ConversationRenderTokenBreakdown = {
+    assistantMessages: 0,
+    compactionMessages: 0,
+    contentFragments: 0,
+    margin: TOKENS_MARGIN,
+    prompt: promptCount,
+    toolDefinitions: adjustedToolDefinitionsCount,
+    toolResults: 0,
+    userMessages: 0,
+  };
+  for (const message of selected) {
+    switch (message.role) {
+      case "assistant":
+        tokenBreakdown.assistantMessages += message.tokenCount;
+        break;
+      case "compaction":
+        tokenBreakdown.compactionMessages += message.tokenCount;
+        break;
+      case "content_fragment":
+        tokenBreakdown.contentFragments += message.tokenCount;
+        break;
+      case "function":
+        tokenBreakdown.toolResults += message.tokenCount;
+        break;
+      case "user":
+        tokenBreakdown.userMessages += message.tokenCount;
+        break;
+      default:
+        assertNever(message);
+    }
+  }
   const tokensUsed = baseTokens + totalTokens;
 
   // Merge content fragments into user messages.
@@ -400,6 +441,7 @@ export async function renderConversationForModel(
     modelConversation: {
       messages: finalMessages,
     },
+    tokenBreakdown,
     tokensUsed,
     prunedContext,
   });

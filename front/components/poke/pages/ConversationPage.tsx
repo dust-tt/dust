@@ -910,6 +910,16 @@ export function ConversationPage() {
       providerId: string;
       prunedContext: boolean;
       remainingInputTokens: number;
+      tokenBreakdown: {
+        assistantMessages: number;
+        compactionMessages: number;
+        contentFragments: number;
+        margin: number;
+        prompt: number;
+        toolDefinitions: number;
+        toolResults: number;
+        userMessages: number;
+      };
       toolDefinitions: unknown[];
     };
     tokensUsed: number;

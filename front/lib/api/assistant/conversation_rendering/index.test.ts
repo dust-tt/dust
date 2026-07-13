@@ -204,6 +204,21 @@ describe("renderConversationForModel", () => {
     }
 
     expect(res.value.modelConversation.messages).toHaveLength(3);
+    expect(res.value.tokenBreakdown).toEqual({
+      assistantMessages: 10,
+      compactionMessages: 0,
+      contentFragments: 0,
+      margin: 1024,
+      prompt: 10,
+      toolDefinitions: 7,
+      toolResults: 10,
+      userMessages: 10,
+    });
+    expect(
+      Object.values(res.value.tokenBreakdown).reduce(
+        (sum, count) => sum + count
+      )
+    ).toBe(res.value.tokensUsed);
     expect(res.value.tokensUsed).toBe(1071);
     expect(res.value.prunedContext).toBe(false);
   });
@@ -544,6 +559,7 @@ describe("renderConversationForModel", () => {
     }
     expect(textOf(firstUser.content[0])).toBe("fragment_text");
     expect(textOf(firstUser.content[1])).toBe("user_text");
+    expect(res.value.tokenBreakdown.contentFragments).toBe(10);
   });
 
   it("returns an error when context window is still exceeded after every pruning layer", async () => {

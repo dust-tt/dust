@@ -3,7 +3,10 @@ import { tryListMCPTools } from "@app/lib/actions/mcp_actions";
 import { createClientSideMCPServerConfigurations } from "@app/lib/api/actions/mcp_client_side";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
-import { renderConversationForModel } from "@app/lib/api/assistant/conversation_rendering";
+import {
+  type ConversationRenderTokenBreakdown,
+  renderConversationForModel,
+} from "@app/lib/api/assistant/conversation_rendering";
 import { constructPromptMultiActions } from "@app/lib/api/assistant/generation";
 import { getJITServers } from "@app/lib/api/assistant/jit_actions";
 import { listAttachments } from "@app/lib/api/assistant/jit_utils";
@@ -49,6 +52,7 @@ export type PostRenderConversationResponseBody = {
     providerId: string;
     prunedContext: boolean;
     remainingInputTokens: number;
+    tokenBreakdown: ConversationRenderTokenBreakdown;
     toolDefinitions: unknown[];
   };
   tokensUsed: number;
@@ -273,7 +277,8 @@ app.post(
       });
     }
 
-    const { modelConversation, prunedContext, tokensUsed } = convoRes.value;
+    const { modelConversation, prunedContext, tokenBreakdown, tokensUsed } =
+      convoRes.value;
 
     let promptTokenCountApprox = 0;
     let toolsTokenCountApprox = 0;
@@ -298,6 +303,7 @@ app.post(
         providerId: model.providerId,
         prunedContext,
         remainingInputTokens: Math.max(0, allowedTokenCount - tokensUsed),
+        tokenBreakdown,
         toolDefinitions,
       },
       tokensUsed,
