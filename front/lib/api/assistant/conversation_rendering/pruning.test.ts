@@ -161,6 +161,61 @@ describe("pruneToolResults", () => {
     ]);
   });
 
+  it("calling it twice with a wider floor only ever reaches further, never reconsiders what the first call already redacted", () => {
+    // This is the pattern index.ts's escalation uses: call once with the normal floor, then again
+    // with a smaller floor (0) and a tighter budget if that wasn't enough. Verifies the two calls
+    // don't conflict: the first call's redactions are untouched, and the second call reaches
+    // exactly the previously-protected tool results, nothing more, nothing less.
+    const messages = [1, 2, 3, 4, 5, 6].flatMap((i) => turn(i, 5000));
+
+    // First call: same as the test above. Redacts turns 1-4, protects the floor of the last 2
+    // (turns 5 and 6, each still at their full 5000 tokens).
+    const afterFirstCall = pruneToolResults(
+      asInteractions(messages),
+      12_000,
+      2
+    );
+    const redactedAfterFirstCall = functionMessagesOf(
+      flatMessages(afterFirstCall)
+    ).map((f) => isRedacted(f.content));
+    expect(redactedAfterFirstCall).toEqual([
+      true,
+      true,
+      true,
+      true,
+      false,
+      false,
+    ]);
+
+    // Second call: floor widened to 0, budget tightened to 300. Current total (turns 1-4 redacted
+    // at 44 tokens each, turns 5-6 still at 5020 each) is 10_216, so both floor turns need
+    // redacting too: redacting turn 5 alone only brings it to 5_240, still over 300, so turn 6
+    // gets redacted as well, landing at 264.
+    const afterSecondCall = pruneToolResults(afterFirstCall, 300, 0);
+    const flatAfterSecondCall = flatMessages(afterSecondCall);
+
+    // Turns 1-4 are untouched by the second call: same redacted placeholders as after the first.
+    // The eligibility filter already excludes them (redacting an already-redacted message saves
+    // nothing), so the second call never reprocesses them.
+    for (let i = 0; i < 4; i++) {
+      expect(functionMessagesOf(flatAfterSecondCall)[i].content).toBe(
+        functionMessagesOf(flatMessages(afterFirstCall))[i].content
+      );
+    }
+    // Turns 5-6, previously protected by the floor, are now reachable and redacted.
+    expect(
+      functionMessagesOf(flatAfterSecondCall)
+        .slice(4)
+        .map((f) => isRedacted(f.content))
+    ).toEqual([true, true]);
+
+    const totalTokens = flatAfterSecondCall.reduce(
+      (sum, m) => sum + m.tokenCount,
+      0
+    );
+    expect(totalTokens).toBeLessThanOrEqual(300);
+  });
+
   it("never touches non-function messages, regardless of budget", () => {
     const messages = [1, 2, 3].flatMap((i) => turn(i, 5000));
     const pruned = flatMessages(
