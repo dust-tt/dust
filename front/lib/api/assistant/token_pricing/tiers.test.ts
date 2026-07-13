@@ -76,7 +76,7 @@ describe("token_pricing/tiers", () => {
   it("classifies generated custom models as premium", () => {
     // Custom models are generated from GCS at build time and are therefore not
     // present in the checked-in CUSTOM_MODEL_IDS fixture.
-    const customModelId = "claude-fruitcake-eap" as ModelIdType;
+    const customModelId: ModelIdType = "claude-fruitcake-eap";
 
     expect(ModelsTierResource.getTierForModel(customModelId, "high")).toBe(
       "premium"
