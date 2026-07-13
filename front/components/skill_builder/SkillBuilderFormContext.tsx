@@ -1,6 +1,6 @@
 import { actionSchema } from "@app/components/shared/tools_picker/types";
+import { AGENT_FACING_DESCRIPTION_MAX_LENGTH } from "@app/lib/skills/constants";
 import {
-  AGENT_FACING_DESCRIPTION_MAX_LENGTH,
   SKILL_REINFORCEMENT_MODES,
   SkillWithoutInstructionsAndToolsSchema,
 } from "@app/types/assistant/skill_configuration";

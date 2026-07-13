@@ -1,5 +1,6 @@
 import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { createToolsRecord } from "@app/lib/actions/mcp_internal_actions/tool_definition";
+import { AGENT_FACING_DESCRIPTION_MAX_LENGTH } from "@app/lib/skills/constants";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { z } from "zod";
 import { zodToJsonSchema } from "zod-to-json-schema";
@@ -67,6 +68,7 @@ export const SKILL_AUTHORING_TOOLS_METADATA = createToolsRecord({
         .describe("Short description shown to users browsing skills."),
       agentFacingDescription: z
         .string()
+        .max(AGENT_FACING_DESCRIPTION_MAX_LENGTH)
         .describe(
           "Description used by agents to decide when to use the skill."
         ),
@@ -112,6 +114,7 @@ export const SKILL_AUTHORING_TOOLS_METADATA = createToolsRecord({
         .describe("New short description shown to users browsing skills."),
       agentFacingDescription: z
         .string()
+        .max(AGENT_FACING_DESCRIPTION_MAX_LENGTH)
         .optional()
         .describe("New description used by agents to decide when to use it."),
       instructions: z

@@ -5,11 +5,9 @@ import { formatSkillContext } from "@app/lib/reinforcement/format_skill_context"
 import { buildReinforcedSkillsLLMParams } from "@app/lib/reinforcement/run_reinforced_analysis";
 import { SKILL_INSTRUCTION_HTML_EDIT_PROMPT } from "@app/lib/reinforcement/skill_instruction_edit_prompt";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
+import { AGENT_FACING_DESCRIPTION_MAX_LENGTH } from "@app/lib/skills/constants";
 import logger from "@app/logger/logger";
-import {
-  AGENT_FACING_DESCRIPTION_MAX_LENGTH,
-  type SkillType,
-} from "@app/types/assistant/skill_configuration";
+import type { SkillType } from "@app/types/assistant/skill_configuration";
 
 const ASSEMBLY_ORDER = [
   "primary_goal",
