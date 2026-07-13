@@ -57,7 +57,6 @@ export const SIMPLE_OBJECTS = ["contacts", "companies", "deals"] as const;
 type SimpleObjectType = (typeof SIMPLE_OBJECTS)[number];
 
 const SPECIAL_OBJECTS = ["owners"] as const;
-type SpecialObjectType = (typeof SPECIAL_OBJECTS)[number];
 
 export const ALL_OBJECTS = [...SIMPLE_OBJECTS, ...SPECIAL_OBJECTS] as const;
 
@@ -293,7 +292,7 @@ export const getObjectProperties = async ({
   creatableOnly,
 }: {
   accessToken: string;
-  objectType: SimpleObjectType | SpecialObjectType;
+  objectType: string;
   creatableOnly: boolean;
 }) => {
   const hubspotClient = new Client({ accessToken });
@@ -1182,19 +1181,7 @@ export const searchCrmObjects = async ({
   after,
 }: {
   accessToken: string;
-  objectType:
-    | SimpleObjectType
-    | "tasks"
-    | "notes"
-    | "meetings"
-    | "calls"
-    | "emails"
-    | "line_items"
-    | "quotes"
-    | "feedback_submissions"
-    | "products"
-    | "tickets"
-    | "leads";
+  objectType: string;
   filters?: Array<HubspotFilter>;
   query?: string;
   propertiesToReturn?: string[];
@@ -1224,11 +1211,30 @@ export const searchCrmObjects = async ({
     }
   }
 
+  const STANDARD_SORTABLE_OBJECT_TYPES = new Set([
+    "contacts",
+    "companies",
+    "deals",
+    "tasks",
+    "notes",
+    "meetings",
+    "calls",
+    "emails",
+    "products",
+    "line_items",
+    "quotes",
+    "feedback_submissions",
+    "tickets",
+    "leads",
+  ]);
+
   const searchRequest: HubspotSearchRequest = {
     filterGroups: filters
       ? [{ filters: buildHubspotFilters(filters, propertyTypes) }]
       : [],
-    sorts: ["-createdate"],
+    sorts: STANDARD_SORTABLE_OBJECT_TYPES.has(objectType)
+      ? ["-createdate"]
+      : undefined,
     properties: finalPropertiesToReturn,
     limit: Math.min(limit, MAX_LIMIT),
     after: after,
@@ -1312,9 +1318,11 @@ export const searchCrmObjects = async ({
           );
         break;
       default:
-        throw new Error(
-          `Search for object type "${objectType}" is not explicitly implemented. Add to switch.`
+        searchResponse = await hubspotClient.crm.objects.searchApi.doSearch(
+          objectType,
+          searchRequest
         );
+        break;
     }
 
     return {
@@ -1629,6 +1637,106 @@ export const deleteTask = async ({
     localLogger.error(
       { error, taskId },
       `Error deleting task with ID ${taskId}:`
+    );
+    throw normalizeError(error);
+  }
+};
+
+export const listCustomObjectSchemas = async ({
+  accessToken,
+}: {
+  accessToken: string;
+}) => {
+  const hubspotClient = new Client({ accessToken });
+  const response = await hubspotClient.crm.schemas.coreApi.getAll();
+
+  return response.results.map((schema) => ({
+    name: schema.name,
+    objectTypeId: schema.objectTypeId,
+    fullyQualifiedName: schema.fullyQualifiedName,
+    labels: schema.labels,
+    properties: schema.properties.map((p) => ({
+      name: p.name,
+      label: p.label,
+      type: p.type,
+    })),
+  }));
+};
+
+export const createCustomObject = async ({
+  accessToken,
+  objectType,
+  properties,
+  associations,
+}: {
+  accessToken: string;
+  objectType: string;
+  properties: Record<string, string>;
+  associations?: Array<{
+    toObjectId: string;
+    toObjectType: string;
+  }>;
+}): Promise<SimplePublicObject> => {
+  const hubspotClient = new Client({ accessToken });
+
+  const builtAssociations: SimplePublicObjectInputForCreate["associations"] =
+    [];
+
+  if (associations && associations.length > 0) {
+    for (const assoc of associations) {
+      const associationTypeId = await getAssociationTypeId(
+        accessToken,
+        objectType,
+        assoc.toObjectType
+      );
+      builtAssociations.push({
+        to: { id: assoc.toObjectId },
+        types: [
+          {
+            associationCategory:
+              AssociationSpecAssociationCategoryEnum.HubspotDefined,
+            associationTypeId,
+          },
+        ],
+      });
+    }
+  }
+
+  const objectData: SimplePublicObjectInputForCreate = {
+    properties,
+    associations: builtAssociations,
+  };
+
+  return hubspotClient.crm.objects.basicApi.create(objectType, objectData);
+};
+
+export const updateCustomObject = async ({
+  accessToken,
+  objectType,
+  objectId,
+  properties,
+}: {
+  accessToken: string;
+  objectType: string;
+  objectId: string;
+  properties: Record<string, string>;
+}): Promise<SimplePublicObject> => {
+  const hubspotClient = new Client({ accessToken });
+
+  const updateInput: SimplePublicObjectInput = {
+    properties,
+  };
+
+  try {
+    return await hubspotClient.crm.objects.basicApi.update(
+      objectType,
+      objectId,
+      updateInput
+    );
+  } catch (error) {
+    localLogger.error(
+      { error, objectType, objectId },
+      `Error updating custom object ${objectType} with ID ${objectId}:`
     );
     throw normalizeError(error);
   }
