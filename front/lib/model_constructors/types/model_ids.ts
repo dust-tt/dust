@@ -1,3 +1,6 @@
+export const GPT_5_6_SOL_MODEL_ID = "gpt-5.6-sol" as const;
+export const GPT_5_6_TERRA_MODEL_ID = "gpt-5.6-terra" as const;
+export const GPT_5_6_LUNA_MODEL_ID = "gpt-5.6-luna" as const;
 export const GPT_5_5_MODEL_ID = "gpt-5.5" as const;
 export const GPT_5_4_MODEL_ID = "gpt-5.4" as const;
 export const GPT_5_4_MINI_MODEL_ID = "gpt-5.4-mini" as const;
@@ -49,6 +52,9 @@ export const NOOP_MODEL_ID = "noop" as const;
 
 // Include a few examples for now
 export const MODEL_IDS = [
+  GPT_5_6_SOL_MODEL_ID,
+  GPT_5_6_TERRA_MODEL_ID,
+  GPT_5_6_LUNA_MODEL_ID,
   GPT_5_5_MODEL_ID,
   GPT_5_4_MODEL_ID,
   GPT_5_4_MINI_MODEL_ID,

@@ -30,6 +30,9 @@ import { OpenAIResponsesEuropeGptFiveDotFourStream } from "@app/lib/model_constr
 import { OpenAIResponsesEuropeGptFiveDotFourMiniStream } from "@app/lib/model_constructors/stream/endpoints/openai_responses_eu_gpt_five_dot_four_mini";
 import { OpenAIResponsesEuropeGptFiveDotFourNanoStream } from "@app/lib/model_constructors/stream/endpoints/openai_responses_eu_gpt_five_dot_four_nano";
 import { OpenAIResponsesEuropeGptFiveDotOneStream } from "@app/lib/model_constructors/stream/endpoints/openai_responses_eu_gpt_five_dot_one";
+import { OpenAIResponsesEuropeGptFiveDotSixLunaStream } from "@app/lib/model_constructors/stream/endpoints/openai_responses_eu_gpt_five_dot_six_luna";
+import { OpenAIResponsesEuropeGptFiveDotSixSolStream } from "@app/lib/model_constructors/stream/endpoints/openai_responses_eu_gpt_five_dot_six_sol";
+import { OpenAIResponsesEuropeGptFiveDotSixTerraStream } from "@app/lib/model_constructors/stream/endpoints/openai_responses_eu_gpt_five_dot_six_terra";
 import { OpenAIResponsesEuropeGptFiveDotTwoStream } from "@app/lib/model_constructors/stream/endpoints/openai_responses_eu_gpt_five_dot_two";
 import { OpenAIResponsesEuropeGptFiveMiniStream } from "@app/lib/model_constructors/stream/endpoints/openai_responses_eu_gpt_five_mini";
 import { OpenAIResponsesEuropeGptFiveNanoStream } from "@app/lib/model_constructors/stream/endpoints/openai_responses_eu_gpt_five_nano";
@@ -39,6 +42,9 @@ import { OpenAIResponsesGlobalGptFiveDotFourStream } from "@app/lib/model_constr
 import { OpenAIResponsesGlobalGptFiveDotFourMiniStream } from "@app/lib/model_constructors/stream/endpoints/openai_responses_global_gpt_five_dot_four_mini";
 import { OpenAIResponsesGlobalGptFiveDotFourNanoStream } from "@app/lib/model_constructors/stream/endpoints/openai_responses_global_gpt_five_dot_four_nano";
 import { OpenAIResponsesGlobalGptFiveDotOneStream } from "@app/lib/model_constructors/stream/endpoints/openai_responses_global_gpt_five_dot_one";
+import { OpenAIResponsesGlobalGptFiveDotSixLunaStream } from "@app/lib/model_constructors/stream/endpoints/openai_responses_global_gpt_five_dot_six_luna";
+import { OpenAIResponsesGlobalGptFiveDotSixSolStream } from "@app/lib/model_constructors/stream/endpoints/openai_responses_global_gpt_five_dot_six_sol";
+import { OpenAIResponsesGlobalGptFiveDotSixTerraStream } from "@app/lib/model_constructors/stream/endpoints/openai_responses_global_gpt_five_dot_six_terra";
 import { OpenAIResponsesGlobalGptFiveDotTwoStream } from "@app/lib/model_constructors/stream/endpoints/openai_responses_global_gpt_five_dot_two";
 import { OpenAIResponsesGlobalGptFiveMiniStream } from "@app/lib/model_constructors/stream/endpoints/openai_responses_global_gpt_five_mini";
 import { OpenAIResponsesGlobalGptFiveNanoStream } from "@app/lib/model_constructors/stream/endpoints/openai_responses_global_gpt_five_nano";
@@ -95,6 +101,12 @@ export const STREAM_ENDPOINTS = {
     OpenAIResponsesEuropeGptFiveDotFourStream,
   [OpenAIResponsesEuropeGptFiveDotOneStream.id]:
     OpenAIResponsesEuropeGptFiveDotOneStream,
+  [OpenAIResponsesEuropeGptFiveDotSixLunaStream.id]:
+    OpenAIResponsesEuropeGptFiveDotSixLunaStream,
+  [OpenAIResponsesEuropeGptFiveDotSixSolStream.id]:
+    OpenAIResponsesEuropeGptFiveDotSixSolStream,
+  [OpenAIResponsesEuropeGptFiveDotSixTerraStream.id]:
+    OpenAIResponsesEuropeGptFiveDotSixTerraStream,
   [OpenAIResponsesEuropeGptFiveDotTwoStream.id]:
     OpenAIResponsesEuropeGptFiveDotTwoStream,
   [OpenAIResponsesEuropeGptFiveMiniStream.id]:
@@ -112,6 +124,12 @@ export const STREAM_ENDPOINTS = {
     OpenAIResponsesGlobalGptFiveDotFourStream,
   [OpenAIResponsesGlobalGptFiveDotOneStream.id]:
     OpenAIResponsesGlobalGptFiveDotOneStream,
+  [OpenAIResponsesGlobalGptFiveDotSixLunaStream.id]:
+    OpenAIResponsesGlobalGptFiveDotSixLunaStream,
+  [OpenAIResponsesGlobalGptFiveDotSixSolStream.id]:
+    OpenAIResponsesGlobalGptFiveDotSixSolStream,
+  [OpenAIResponsesGlobalGptFiveDotSixTerraStream.id]:
+    OpenAIResponsesGlobalGptFiveDotSixTerraStream,
   [OpenAIResponsesGlobalGptFiveDotTwoStream.id]:
     OpenAIResponsesGlobalGptFiveDotTwoStream,
   [OpenAIResponsesGlobalGptFiveMiniStream.id]:
