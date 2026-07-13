@@ -313,8 +313,10 @@ async function createActionForTool(
             })),
             configurationId: agentConfiguration.sId,
             conversationId: conversation.sId,
-            editable: isServerSideMCPToolConfiguration(actionConfiguration)
-              ? actionConfiguration.editable
+            editableArguments: isServerSideMCPToolConfiguration(
+              actionConfiguration
+            )
+              ? actionConfiguration.editableArguments
               : undefined,
             messageId: agentMessage.sId,
           }

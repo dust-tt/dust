@@ -1479,11 +1479,6 @@ export type ToolExecutionBlockedStatusType = z.infer<
   typeof ToolExecutionBlockedStatusSchema
 >;
 
-const EditableToolConfigSchema = z.object({
-  isEditable: z.boolean(),
-  editableArguments: z.array(z.string()),
-});
-
 const ToolExecutionMetadataSchema = z.object({
   actionId: z.string(),
   inputs: z.record(z.any()),
@@ -1499,7 +1494,6 @@ const ToolExecutionMetadataSchema = z.object({
 const BlockedActionExecutionSchema = ToolExecutionMetadataSchema.extend({
   messageId: z.string(),
   conversationId: z.string(),
-  editable: EditableToolConfigSchema.optional(),
   status: ToolExecutionBlockedStatusSchema,
   // Present only when status is "blocked_user_answer_required".
   question: UserQuestionItemSchema.optional(),
@@ -1515,7 +1509,6 @@ const MCPApproveExecutionEventSchema = ToolExecutionMetadataSchema.extend({
   configurationId: z.string(),
   conversationId: z.string(),
   created: z.number(),
-  editable: EditableToolConfigSchema.optional(),
   isLastBlockingEventForStep: z.boolean().optional(),
   messageId: z.string(),
 });
