@@ -77,6 +77,7 @@ function pruneConversationToBudget(
   { interactions: InteractionWithTokens[]; prunedContext: boolean },
   Error
 > {
+  // Layer 1: proactive redaction, within the protected floor, up to pruningBudget.
   let redacted = pruneToolResults(
     interactions,
     pruningBudget,
@@ -88,6 +89,7 @@ function pruneConversationToBudget(
     0
   );
 
+  // Layer 2: drop whole previous interactions, oldest first, never the current one.
   if (totalTokens > budgetForInteractions) {
     const currentInteraction = redacted[redacted.length - 1];
     const previousBefore = redacted.slice(0, -1);
@@ -106,6 +108,7 @@ function pruneConversationToBudget(
     );
   }
 
+  // Layer 3: redaction alone wasn't enough, force it past TOOL_RESULTS_TO_PRESERVE.
   if (totalTokens > budgetForInteractions) {
     logger.warn(
       { ...logDetails, totalTokens, budgetForInteractions },
@@ -119,6 +122,7 @@ function pruneConversationToBudget(
     );
   }
 
+  // Layer 4: still over budget, drop previous interactions past PREVIOUS_INTERACTIONS_TO_PRESERVE.
   if (totalTokens > budgetForInteractions) {
     logger.warn(
       { ...logDetails, totalTokens, budgetForInteractions },
@@ -141,6 +145,7 @@ function pruneConversationToBudget(
     );
   }
 
+  // Last resort exhausted: even the current interaction alone doesn't fit.
   if (totalTokens > budgetForInteractions) {
     logger.error(
       {

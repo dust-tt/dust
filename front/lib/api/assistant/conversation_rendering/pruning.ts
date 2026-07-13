@@ -1,4 +1,5 @@
 import type { ModelMessageTypeMultiActions } from "@app/types/assistant/generation";
+import assert from "assert";
 
 const PRUNED_TOOL_RESULT_PLACEHOLDER =
   "<dust_system>" +
@@ -33,20 +34,24 @@ export type Interaction<T extends MinimalMessageType> = {
 
 export type InteractionWithTokens = Interaction<MessageWithTokens>;
 
+/** Turns a function-role message into the pruned placeholder. */
+function redactToolResultMessage(
+  message: Extract<MessageWithTokens, { role: "function" }>
+): Extract<MessageWithTokens, { role: "function" }> {
+  return {
+    ...message,
+    content: PRUNED_TOOL_RESULT_PLACEHOLDER,
+    tokenCount: PRUNED_TOOL_RESULT_TOKENS,
+  };
+}
+
 /** Replaces every tool result in an interaction with a placeholder. */
 export function pruneAllToolResults(
   interaction: InteractionWithTokens
 ): InteractionWithTokens {
-  const prunedMessages = interaction.messages.map((msg) => {
-    if (msg.role === "function") {
-      return {
-        ...msg,
-        content: PRUNED_TOOL_RESULT_PLACEHOLDER,
-        tokenCount: PRUNED_TOOL_RESULT_TOKENS,
-      };
-    }
-    return msg;
-  });
+  const prunedMessages = interaction.messages.map((msg) =>
+    msg.role === "function" ? redactToolResultMessage(msg) : msg
+  );
 
   return {
     messages: prunedMessages,
@@ -72,11 +77,11 @@ function sliceIntoInteractions(
     (sum, interaction) => sum + interaction.messages.length,
     0
   );
-  if (messages.length !== expectedLength) {
-    throw new Error(
-      `sliceIntoInteractions: message count mismatch (expected ${expectedLength}, got ${messages.length}). Redaction must never add, remove, or reorder messages.`
-    );
-  }
+
+  assert(
+    messages.length === expectedLength,
+    `sliceIntoInteractions: message count mismatch (expected ${expectedLength}, got ${messages.length}). Redaction must never add, remove, or reorder messages.`
+  );
 
   const result: InteractionWithTokens[] = [];
   let offset = 0;
@@ -88,7 +93,7 @@ function sliceIntoInteractions(
   return result;
 }
 
-/** The flat redaction algorithm behind pruneToolResults; see that function for the full contract. */
+/** The flat redaction algorithm behind pruneToolResults. See that function for the full contract. */
 function redactFlat(
   messages: MessageWithTokens[],
   maxTokens: number,
@@ -99,10 +104,13 @@ function redactFlat(
     return messages;
   }
 
-  // redactedTokens is what each function-role message would cost once redacted.
+  // redactedTokens is what each message would cost once redacted, capped at its original size so
+  // a tool result already smaller than the placeholder is never reported as shrinking.
   const originalTokens = messages.map((m) => m.tokenCount);
   const redactedTokens = messages.map((m, i) =>
-    m.role === "function" ? PRUNED_TOOL_RESULT_TOKENS : originalTokens[i]
+    m.role === "function"
+      ? Math.min(originalTokens[i], PRUNED_TOOL_RESULT_TOKENS)
+      : originalTokens[i]
   );
 
   // Prefix sum from the start of the conversation. The value at a fixed index never changes once
@@ -170,17 +178,9 @@ function redactFlat(
 
   const toRedact = new Set(eligible.slice(0, effectiveFrontier + 1));
 
-  return messages.map((m, i) => {
-    // Narrows m to the function-role variant. toRedact is already function-only by construction.
-    if (m.role === "function" && toRedact.has(i)) {
-      return {
-        ...m,
-        content: PRUNED_TOOL_RESULT_PLACEHOLDER,
-        tokenCount: PRUNED_TOOL_RESULT_TOKENS,
-      };
-    }
-    return m;
-  });
+  return messages.map((m, i) =>
+    m.role === "function" && toRedact.has(i) ? redactToolResultMessage(m) : m
+  );
 }
 
 /**
