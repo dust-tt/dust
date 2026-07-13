@@ -377,7 +377,7 @@ describe("getOrCreateConversation", () => {
     const childConversation = {
       sId: generateRandomModelSId(),
     } as ConversationPublicType;
-    const childConversationResource = {} as ConversationResource;
+    const childConversationResource = ConversationResource.prototype;
     const mockCreateConversation = vi.fn().mockResolvedValue(
       new Ok({
         conversation: childConversation,
