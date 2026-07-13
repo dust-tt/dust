@@ -18,11 +18,17 @@ const PRUNED_TOOL_RESULT_PLACEHOLDER =
   "</dust_system>";
 const PRUNED_TOOL_RESULT_TOKENS = 24;
 
-// Batch size for the pruning checkpoint: like provider-native `clear_at_least`, don't move the
-// frontier for a handful of tokens, only once enough has accumulated to be worth invalidating the
-// cached prefix. Flat rather than a percentage of contextSize since no model in our fleet sits
-// between 16k-64k tokens. Starting point, tune against production cache-miss metrics.
+// Pruning advances through history in batches of this size, not message by message. Every move
+// of the pruning frontier invalidates the provider cache from that point on. Moving it for a
+// handful of tokens costs more than it saves, so it only moves once a batch has accumulated.
+// Flat rather than a percentage of contextSize since no model in our fleet sits between 16k-64k
+// tokens. Starting point, tune against production cache-miss metrics.
 export const PRUNING_CHECKPOINT_TOKENS = 20_000;
+
+// Batch size for drops. Same starting value as PRUNING_CHECKPOINT_TOKENS but a separate knob.
+// A drop invalidates the cache from the very first message, pruning only from its frontier, so
+// a drop miss costs more and may deserve a larger batch. Tune independently.
+export const DROP_CHECKPOINT_TOKENS = 20_000;
 
 // How many of the most recent tool results pruneToolResults never prunes, regardless of budget.
 // Counted in tool results, not turns: a single turn's own long tool-call chain is eligible for
@@ -206,12 +212,13 @@ function pruneToolResultsFlat(
  * turns when pruning alone isn't enough is a separate operation (dropInteractionsToFit) for
  * exactly that reason.
  *
- * The pruning boundary is a pure function of the (immutable) history and this call's inputs, so
- * the same input always prunes the same way, stable enough to survive the model provider's
- * prompt cache. maxTokens should be stable across turns for that to hold. It doesn't have to be
- * byte-identical: the caller derives it from prompt and tool-definition sizes that drift a little
- * between turns, and the checkpoint rounding absorbs drift well below PRUNING_CHECKPOINT_TOKENS.
- * What it must not be is a fast-moving live quantity (remaining budget, time, message count).
+ * Everything here is recomputed from scratch on every call. Cache stability therefore depends
+ * on this function making the same decisions every time. It does, provided its inputs hold
+ * still: the history is immutable by nature, and maxTokens must be roughly stable across turns.
+ * Small drift in maxTokens is fine (the caller derives it from prompt and tool sizes, which
+ * move a little), because the checkpoint rounding absorbs anything well below
+ * PRUNING_CHECKPOINT_TOKENS. What breaks stability is a maxTokens that changes on every call,
+ * like a remaining budget, a timestamp, or a message count.
  */
 export function pruneToolResults(
   interactions: InteractionWithTokens[],
@@ -235,26 +242,82 @@ export function pruneToolResults(
  *
  * Never drops into the last interactionsToPreserve. A caller still over budget after that can
  * retry with a smaller floor, or force pruneToolResults deeper.
+ *
+ * batchToCheckpoint decides how much to drop beyond the strict minimum.
+ *
+ * With batchToCheckpoint true, the drop extends past the minimal fit to the next checkpoint (a
+ * DROP_CHECKPOINT_TOKENS multiple in the prefix sums). Why: any drop invalidates the provider
+ * cache entirely, since the cache matches on prefixes and a drop changes the first message.
+ * Batching cannot make one drop cheaper. What it does is make drops rare. The extra room means
+ * the next several turns fit without dropping again. A conversation sitting at its budget would
+ * otherwise re-drop, and pay a full cache miss, on every single call. Exception: when no
+ * checkpoint exists before the floor, the drop stays minimal. Extending to the floor would
+ * erase content without gaining any stability.
+ *
+ * With batchToCheckpoint false, the drop is exactly minimal. This is for last-resort callers
+ * that are already cutting into recent interactions and should cut as few as possible.
+ *
+ * One ordering rule keeps the checkpoints meaningful: this function must run after pruning,
+ * with a budget at most as tight as pruning's. Checkpoints only stabilize the drop boundary if
+ * the prefix sums are identical from one call to the next. That holds because by the time a
+ * conversation drops at all, everything prunable in the droppable range was already pruned, so
+ * the token counts there no longer change. Dropping with a looser budget than pruning would
+ * silently bring back a moving drop boundary on every call.
  */
 export function dropInteractionsToFit(
   interactions: InteractionWithTokens[],
-  maxTokens: number,
-  interactionsToPreserve: number
+  {
+    maxTokens,
+    interactionsToPreserve,
+    batchToCheckpoint,
+  }: {
+    maxTokens: number;
+    interactionsToPreserve: number;
+    batchToCheckpoint: boolean;
+  }
 ): InteractionWithTokens[] {
-  let result = interactions;
-  const n = result.length;
+  const n = interactions.length;
   const floorStart = Math.max(n - interactionsToPreserve, 0);
 
-  let totalTokens = sumInteractionTokens(result);
+  // Prefix sum over interactions, from the start of the conversation.
+  const prefixSum: number[] = [];
+  let running = 0;
+  for (const interaction of interactions) {
+    running += getInteractionTokenCount(interaction);
+    prefixSum.push(running);
+  }
 
+  if (n === 0 || prefixSum[n - 1] <= maxTokens) {
+    return interactions;
+  }
+
+  // Minimal drop needed: walk oldest-to-newest until the remaining total fits.
+  let remaining = prefixSum[n - 1];
   let dropUpToIndex = -1;
-  for (let i = 0; i < floorStart && totalTokens > maxTokens; i++) {
-    totalTokens -= getInteractionTokenCount(result[i]);
+  for (let i = 0; i < floorStart && remaining > maxTokens; i++) {
+    remaining -= getInteractionTokenCount(interactions[i]);
     dropUpToIndex = i;
   }
-  if (dropUpToIndex >= 0) {
-    result = result.slice(dropUpToIndex + 1);
+  if (dropUpToIndex < 0) {
+    return interactions;
   }
 
-  return result;
+  if (batchToCheckpoint) {
+    // Extend the drop to the first checkpoint at or past the minimal point. The minimal point
+    // moves with the caller's budget. The checkpoints don't, so consecutive calls land on the
+    // same boundary. Index 0 compares against prefix sum 0, which lets the very first drop of a
+    // conversation reach a real checkpoint too, instead of dropping one interaction now and
+    // re-dropping on the next call.
+    for (let i = dropUpToIndex; i < floorStart; i++) {
+      const bucketAtIdx = Math.floor(prefixSum[i] / DROP_CHECKPOINT_TOKENS);
+      const bucketBefore =
+        i === 0 ? 0 : Math.floor(prefixSum[i - 1] / DROP_CHECKPOINT_TOKENS);
+      if (bucketAtIdx !== bucketBefore) {
+        dropUpToIndex = i;
+        break;
+      }
+    }
+  }
+
+  return interactions.slice(dropUpToIndex + 1);
 }

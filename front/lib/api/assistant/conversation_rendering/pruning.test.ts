@@ -454,25 +454,8 @@ describe("dropInteractionsToFit", () => {
     return groupMessagesIntoInteractions(messages);
   }
 
-  it("returns the same reference when nothing needs to be dropped", () => {
-    const interactions = interactionsFromMessages(
-      [1, 2, 3].flatMap((i) => turn(i, 10))
-    );
-    const result = dropInteractionsToFit(interactions, HUGE_BUDGET, 3);
-    expect(result).toBe(interactions);
-  });
-
-  it("drops whole interactions oldest-first until the budget fits", () => {
-    const interactions = interactionsFromMessages(
-      [1, 2, 3, 4, 5].flatMap((i) => turn(i, 100))
-    );
-    // Each interaction costs 120 tokens (10+10+100). Budget only fits 2.
-    const result = dropInteractionsToFit(interactions, 240, 0);
-
-    expect(result).toHaveLength(2);
-    expect(result.map((i) => getInteractionTokenCount(i))).toEqual([120, 120]);
-    // The two that survive are the most recent (i4, i5), oldest dropped first.
-    const survivingUserTexts = result.flatMap((i) =>
+  function survivingUserTexts(interactions: InteractionWithTokens[]) {
+    return interactions.flatMap((i) =>
       i.messages
         .filter(
           (m): m is Extract<MessageWithTokens, { role: "user" }> =>
@@ -482,7 +465,36 @@ describe("dropInteractionsToFit", () => {
           m.content.map((c) => (c.type === "text" ? c.text : "")).join("")
         )
     );
-    expect(survivingUserTexts).toEqual(["u4", "u5"]);
+  }
+
+  it("returns the same reference when nothing needs to be dropped", () => {
+    const interactions = interactionsFromMessages(
+      [1, 2, 3].flatMap((i) => turn(i, 10))
+    );
+    const result = dropInteractionsToFit(interactions, {
+      maxTokens: HUGE_BUDGET,
+      interactionsToPreserve: 3,
+      batchToCheckpoint: true,
+    });
+    expect(result).toBe(interactions);
+  });
+
+  it("drops whole interactions oldest-first until the budget fits", () => {
+    const interactions = interactionsFromMessages(
+      [1, 2, 3, 4, 5].flatMap((i) => turn(i, 100))
+    );
+    // Each interaction costs 120 tokens (10+10+100). Budget only fits 2. Total prefix sums (600
+    // max) never cross a 20k checkpoint, so the drop stays exactly minimal.
+    const result = dropInteractionsToFit(interactions, {
+      maxTokens: 240,
+      interactionsToPreserve: 0,
+      batchToCheckpoint: true,
+    });
+
+    expect(result).toHaveLength(2);
+    expect(result.map((i) => getInteractionTokenCount(i))).toEqual([120, 120]);
+    // The two that survive are the most recent (i4, i5), oldest dropped first.
+    expect(survivingUserTexts(result)).toEqual(["u4", "u5"]);
   });
 
   it("never drops into the protected floor, even if that means staying over budget", () => {
@@ -490,7 +502,147 @@ describe("dropInteractionsToFit", () => {
       [1, 2, 3].flatMap((i) => turn(i, 100))
     );
     // Budget is impossibly small, but interactionsToPreserve=3 protects all 3 interactions here.
-    const result = dropInteractionsToFit(interactions, 1, 3);
+    const result = dropInteractionsToFit(interactions, {
+      maxTokens: 1,
+      interactionsToPreserve: 3,
+      batchToCheckpoint: true,
+    });
     expect(result).toHaveLength(3);
+  });
+
+  it("rounds the drop forward to the next checkpoint, buying headroom beyond the minimal fit", () => {
+    // 10 interactions of 4000 tokens each (turn = 10 + 10 + 3980), prefix sums 4k, 8k, ..., 40k.
+    const interactions = interactionsFromMessages(
+      [1, 2, 3, 4, 5, 6, 7, 8, 9, 10].flatMap((i) => turn(i, 3980))
+    );
+    // Hand-verified: total 40_000 over a 33_000 budget. Minimal fit drops i1-i2 (remaining
+    // 32_000). The first checkpoint at or past that point is i5, whose prefix sum 20_000 crosses
+    // the 20k bucket (its predecessor sits at 16_000). The drop extends there: i1-i5 dropped,
+    // survivors i6-i10 total 20_000, leaving 13_000 of headroom below the budget instead of
+    // 1_000. That headroom is the point: several future turns fit before the head moves again.
+    const result = dropInteractionsToFit(interactions, {
+      maxTokens: 33_000,
+      interactionsToPreserve: 0,
+      batchToCheckpoint: true,
+    });
+
+    expect(survivingUserTexts(result)).toEqual(["u6", "u7", "u8", "u9", "u10"]);
+  });
+
+  it("keeps the same head while growth stays within a checkpoint, then jumps a whole bucket", () => {
+    const historyOf = (count: number) =>
+      interactionsFromMessages(
+        Array.from({ length: count }, (_, i) => i + 1).flatMap((i) =>
+          turn(i, 3980)
+        )
+      );
+    const headOf = (interactions: InteractionWithTokens[]) =>
+      survivingUserTexts(interactions)[0];
+
+    // Hand-verified at 4000 tokens per interaction and a fixed 33_000 budget. With 10
+    // interactions the minimal fit is 2 drops, with 11 it is 3: both round forward to the same
+    // checkpoint at prefix sum 20_000, so the head stays at i6 while the conversation grows.
+    expect(
+      headOf(
+        dropInteractionsToFit(historyOf(10), {
+          maxTokens: 33_000,
+          interactionsToPreserve: 0,
+      batchToCheckpoint: true,
+        })
+      )
+    ).toBe("u6");
+    expect(
+      headOf(
+        dropInteractionsToFit(historyOf(11), {
+          maxTokens: 33_000,
+          interactionsToPreserve: 0,
+      batchToCheckpoint: true,
+        })
+      )
+    ).toBe("u6");
+
+    // At 15 interactions (60_000 total) the minimal fit passes the 20k checkpoint, so the head
+    // jumps a whole bucket to the next crossing: i10's prefix sum 40_000 crosses the 40k bucket,
+    // putting the head at i11. One batched move instead of five single-interaction slides.
+    expect(
+      headOf(
+        dropInteractionsToFit(historyOf(15), {
+          maxTokens: 33_000,
+          interactionsToPreserve: 0,
+      batchToCheckpoint: true,
+        })
+      )
+    ).toBe("u11");
+  });
+
+  it("falls back to the minimal drop when no checkpoint exists in the droppable range", () => {
+    // 8 interactions of 2000 tokens each: every prefix sum stays under 20k, so there is no
+    // checkpoint anywhere. Rounding forward here would mean dropping all the way to the floor,
+    // erasing content for no stability gain, so the drop must stay exactly minimal.
+    const interactions = interactionsFromMessages(
+      [1, 2, 3, 4, 5, 6, 7, 8].flatMap((i) => turn(i, 1980))
+    );
+    // Hand-verified: total 16_000 over a 13_000 budget, dropping i1-i2 lands at 12_000.
+    const result = dropInteractionsToFit(interactions, {
+      maxTokens: 13_000,
+      interactionsToPreserve: 3,
+      batchToCheckpoint: true,
+    });
+
+    expect(survivingUserTexts(result)).toEqual([
+      "u3",
+      "u4",
+      "u5",
+      "u6",
+      "u7",
+      "u8",
+    ]);
+  });
+
+  it("lands the very first drop on a real checkpoint instead of paying a minimal drop and re-dropping next call", () => {
+    // 10 interactions of 4000 tokens. Hand-verified: total 40_000 over a 39_000 budget, the
+    // minimal fit drops only i1 (remaining 36_000). Treating index 0's predecessor as prefix sum
+    // 0, no crossing exists until i5 (prefix sum 20_000 vs 16_000), so the first-ever drop
+    // already extends there. Same head as a much tighter budget would produce (see the test
+    // above): drop onset lands directly on the stable geometry, one full cache miss, not two.
+    const interactions = interactionsFromMessages(
+      [1, 2, 3, 4, 5, 6, 7, 8, 9, 10].flatMap((i) => turn(i, 3980))
+    );
+    const result = dropInteractionsToFit(interactions, {
+      maxTokens: 39_000,
+      interactionsToPreserve: 0,
+      batchToCheckpoint: true,
+    });
+
+    expect(survivingUserTexts(result)).toEqual(["u6", "u7", "u8", "u9", "u10"]);
+  });
+
+  it("drops exactly the minimum when batchToCheckpoint is false, never rounding into recent interactions", () => {
+    // The last-resort path (index.ts layer 4) uses this mode: the head moves on this call no
+    // matter what, so rounding forward would erase recent interactions for zero cache benefit.
+    // Hand-verified: sizes 5000/14000/10000, budget 12_000. Minimal drops i1-i2 (remaining
+    // 10_000). Batched would extend to the crossing at i3 (prefix sum 29_000 vs 19_000) and
+    // return nothing at all.
+    const interactions = interactionsFromMessages(
+      [
+        turn(1, 4980),
+        turn(2, 13_980),
+        turn(3, 9980),
+      ].flat()
+    );
+
+    const minimal = dropInteractionsToFit(interactions, {
+      maxTokens: 12_000,
+      interactionsToPreserve: 0,
+      batchToCheckpoint: false,
+    });
+    expect(survivingUserTexts(minimal)).toEqual(["u3"]);
+
+    const batched = dropInteractionsToFit(interactions, {
+      maxTokens: 12_000,
+      interactionsToPreserve: 0,
+      batchToCheckpoint: true,
+    });
+    expect(batched).toHaveLength(0);
   });
 });
