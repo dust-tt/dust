@@ -285,6 +285,7 @@ const FILES_TOOLS_COMMON_METADATA = {
         ),
     },
     stake: "never_ask" as const,
+    eager: true,
     displayLabels: {
       running: "Writing file",
       done: "Write file",
@@ -412,6 +413,7 @@ const EXTRACT_TEXT_TOOL = {
       ),
   },
   stake: "never_ask" as const,
+  eager: true,
   displayLabels: {
     running: "Extracting text from document",
     done: "Extracted text from document",
