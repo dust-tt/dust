@@ -1703,7 +1703,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
     const allGroups: GroupResource[] = [];
     for (const space of spaces) {
       const groups = space.groups.filter(
-        (g) => g.kind === "regular" || g.kind === "space_editors"
+        (g) => g.kind === "regular_auto" || g.kind === "space_editors"
       );
       manualGroupsBySpaceModelId.set(space.id, groups);
       allGroups.push(...groups);
