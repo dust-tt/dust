@@ -110,7 +110,6 @@ export default function ConversationSidePanelContainer({
         }}
         collapsible
         collapsedSize={0}
-        animated
         stableContent
         stableContentSize={DEFAULT_RIGHT_PANEL_SIZE}
         className={cn(
