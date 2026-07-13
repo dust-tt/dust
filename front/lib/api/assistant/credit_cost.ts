@@ -3,10 +3,15 @@ import type { ToolExecutionStatus } from "@app/lib/actions/statuses";
 import { isToolExecutionStatusFinal } from "@app/lib/actions/statuses";
 import { getToolNameFromFunctionCallName } from "@app/lib/actions/tool_display_labels";
 import { makeFairUseAwuCreditsRateLimitKeyForUser } from "@app/lib/api/assistant/rate_limits";
+import type { ToolCostCategory } from "@app/lib/api/mcp";
 import type { Authenticator } from "@app/lib/auth";
 import {
+  awuFromMicroUsd,
   computeRunKey,
+  getToolBillingInfo,
   intelligenceAwuFromRunUsagesGroupedByRunKey,
+  isFreeOrigin,
+  toolAwuFromAction,
   toolAwuFromActions,
 } from "@app/lib/metronome/events";
 import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
@@ -22,11 +27,143 @@ import {
   AGENT_MESSAGE_STATUSES_TO_TRACK,
   type UserMessageOrigin,
 } from "@app/types/assistant/conversation";
+import type {
+  ModelIdType,
+  ModelProviderIdType,
+} from "@app/types/assistant/models/types";
 
 interface CreditActionMinimalInput {
   toolName: string;
   internalMCPServerName: InternalMCPServerNameType | null;
   status: ToolExecutionStatus;
+}
+
+export interface AgentMessageCreditsModelBreakdown {
+  providerId: ModelProviderIdType;
+  modelId: ModelIdType;
+  promptTokens: number;
+  completionTokens: number;
+  cachedTokens: number;
+  cacheCreationTokens: number;
+  costMicroUsd: number;
+  awu: number;
+}
+
+export interface AgentMessageCreditsToolBreakdown {
+  actionId: string;
+  toolName: string;
+  internalMCPServerName: InternalMCPServerNameType | null;
+  toolCostCategory: ToolCostCategory;
+  free: boolean;
+  awu: number;
+}
+
+export interface AgentMessageCreditsBreakdown {
+  llmAwu: number;
+  toolAwu: number;
+  totalAwu: number;
+  byModel: AgentMessageCreditsModelBreakdown[];
+  byTool: AgentMessageCreditsToolBreakdown[];
+}
+
+/**
+ * Same computation as `computeAgentMessageCredits`, but split by LLM vs. tool
+ * cost and by model / tool so it can be displayed (e.g. in poke) instead of
+ * only summed. `byModel[].awu` is computed by grouping per runKey first
+ * (matching `intelligenceAwuFromRunUsagesGroupedByRunKey`), so the sum of
+ * `byModel[].awu` always equals `llmAwu` exactly.
+ */
+export function computeAgentMessageCreditsBreakdown({
+  runUsages,
+  actions,
+  contextOrigin,
+}: {
+  runUsages: (RunUsageType & { runKey: string | null })[];
+  actions: (CreditActionMinimalInput & { actionId: string })[];
+  contextOrigin: UserMessageOrigin | null;
+}): AgentMessageCreditsBreakdown {
+  const finalActions = actions.filter((a) =>
+    isToolExecutionStatusFinal(a.status)
+  );
+
+  const modelUsageByKey = new Map<
+    string,
+    Omit<AgentMessageCreditsModelBreakdown, "awu">
+  >();
+  for (const usage of runUsages) {
+    const key = `${usage.providerId}|${usage.modelId}`;
+    const existing = modelUsageByKey.get(key) ?? {
+      providerId: usage.providerId,
+      modelId: usage.modelId,
+      promptTokens: 0,
+      completionTokens: 0,
+      cachedTokens: 0,
+      cacheCreationTokens: 0,
+      costMicroUsd: 0,
+    };
+    modelUsageByKey.set(key, {
+      ...existing,
+      promptTokens: existing.promptTokens + usage.promptTokens,
+      completionTokens: existing.completionTokens + usage.completionTokens,
+      cachedTokens: existing.cachedTokens + (usage.cachedTokens ?? 0),
+      cacheCreationTokens:
+        existing.cacheCreationTokens + (usage.cacheCreationTokens ?? 0),
+      costMicroUsd: existing.costMicroUsd + usage.costMicroUsd,
+    });
+  }
+
+  const modelAwuByKey = new Map<string, number>();
+  if (!isFreeOrigin(contextOrigin)) {
+    const byRunKey = new Map<string, RunUsageType[]>();
+    for (const usage of runUsages) {
+      const runKey = usage.runKey ?? "__legacy__";
+      const group = byRunKey.get(runKey) ?? [];
+      group.push(usage);
+      byRunKey.set(runKey, group);
+    }
+
+    for (const group of byRunKey.values()) {
+      const costByModel = new Map<string, number>();
+      for (const usage of group) {
+        const key = `${usage.providerId}|${usage.modelId}`;
+        costByModel.set(key, (costByModel.get(key) ?? 0) + usage.costMicroUsd);
+      }
+      for (const [key, costMicroUsd] of costByModel) {
+        modelAwuByKey.set(
+          key,
+          (modelAwuByKey.get(key) ?? 0) + awuFromMicroUsd(costMicroUsd)
+        );
+      }
+    }
+  }
+
+  const byModel = Array.from(modelUsageByKey.entries()).map(([key, usage]) => ({
+    ...usage,
+    awu: modelAwuByKey.get(key) ?? 0,
+  }));
+
+  const byTool = finalActions.map((action) => {
+    const { toolCostCategory, freeUsage } = getToolBillingInfo(
+      action.internalMCPServerName,
+      action.toolName
+    );
+    return {
+      actionId: action.actionId,
+      toolName: action.toolName,
+      internalMCPServerName: action.internalMCPServerName,
+      toolCostCategory,
+      free: freeUsage || isFreeOrigin(contextOrigin),
+      awu: toolAwuFromAction(action, contextOrigin),
+    };
+  });
+
+  const llmAwu = intelligenceAwuFromRunUsagesGroupedByRunKey(
+    runUsages,
+    contextOrigin
+  );
+  const toolAwu = toolAwuFromActions(finalActions, contextOrigin);
+
+  return { llmAwu, toolAwu, totalAwu: llmAwu + toolAwu, byModel, byTool };
 }
 
 export function computeAgentMessageCredits({

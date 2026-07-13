@@ -1,8 +1,14 @@
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
+import { computeAgentMessageCreditsBreakdown } from "@app/lib/api/assistant/credit_cost";
 import { isLLMTraceId } from "@app/lib/api/llm/traces/buffer";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentMessageModel } from "@app/lib/models/agent/conversation";
-import type { ConversationError } from "@app/types/assistant/conversation";
+import type { RunUsageType } from "@app/lib/resources/run_resource";
+import { RunResource } from "@app/lib/resources/run_resource";
+import type {
+  ConversationError,
+  UserMessageType,
+} from "@app/types/assistant/conversation";
 import type {
   PokeAgentMessageType,
   PokeConversationType,
@@ -43,6 +49,48 @@ export async function getPokeConversation(
       agentMessagesWithRunIds.map((m) => [m.id, m.runIds])
     );
 
+    // Batch-fetch every run and its token usage for the whole conversation in one
+    // shot (rather than per message), then regroup by dustRunId below so each
+    // message's recalculated cost breakdown can be computed with zero
+    // additional queries per message.
+    const allDustRunIds = [
+      ...new Set(
+        Array.from(runIdsByAgentMessageId.values()).flatMap((ids) => ids ?? [])
+      ),
+    ];
+    const runs =
+      allDustRunIds.length > 0
+        ? await RunResource.listByDustRunIds(auth, {
+            dustRunIds: allDustRunIds,
+          })
+        : [];
+    const runUsages =
+      runs.length > 0
+        ? await RunResource.listRunUsagesForRuns(auth, { runs })
+        : [];
+
+    const dustRunIdByRunModelId = new Map(runs.map((r) => [r.id, r.dustRunId]));
+    const runUsagesByDustRunId = new Map<
+      string,
+      (RunUsageType & { runKey: string | null })[]
+    >();
+    for (const usage of runUsages) {
+      const dustRunId = dustRunIdByRunModelId.get(usage.runModelId);
+      if (!dustRunId) {
+        continue;
+      }
+      const group = runUsagesByDustRunId.get(dustRunId) ?? [];
+      group.push(usage);
+      runUsagesByDustRunId.set(dustRunId, group);
+    }
+
+    const userMessageBySId = new Map(
+      pokeConversation.content
+        .flat()
+        .filter((m): m is UserMessageType => m.type === "user_message")
+        .map((m) => [m.sId, m])
+    );
+
     // Cycle through the messages and actions and enrich them with runId(s) and timestamps.
     for (const messages of pokeConversation.content) {
       for (const m of messages) {
@@ -71,6 +119,23 @@ export async function getPokeConversation(
               a.created = a.createdAt;
             }
           }
+
+          const runUsagesForMessage = (runIds ?? []).flatMap(
+            (dustRunId) => runUsagesByDustRunId.get(dustRunId) ?? []
+          );
+          const contextOrigin =
+            userMessageBySId.get(m.parentMessageId)?.context.origin ?? null;
+
+          m.costBreakdown = computeAgentMessageCreditsBreakdown({
+            runUsages: runUsagesForMessage,
+            actions: m.actions.map((a) => ({
+              actionId: a.sId,
+              toolName: a.toolName,
+              internalMCPServerName: a.internalMCPServerName,
+              status: a.status,
+            })),
+            contextOrigin,
+          });
         }
       }
     }

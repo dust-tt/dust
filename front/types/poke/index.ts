@@ -1,4 +1,5 @@
 import type { ActionGeneratedFileType } from "@app/lib/actions/types";
+import type { AgentMessageCreditsBreakdown } from "@app/lib/api/assistant/credit_cost";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import type { RegionType } from "@app/types/region";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
@@ -77,6 +78,10 @@ export type PokeAgentMessageType = Omit<AgentMessageType, "actions"> & {
   runIds?: string[] | null;
   runUrls?: { runId: string; url: string; isLLM: boolean }[] | null;
   actions: PokeAgentActionType[];
+  // Recalculated LLM + tool cost breakdown, computed fresh from token usage and
+  // tool actions (as opposed to `costCredits`/`subAgentCostCredits`, which are
+  // the stored values from the billing pipeline). Poke-only, for auditing.
+  costBreakdown?: AgentMessageCreditsBreakdown;
 };
 
 export type PokeConversationType = Omit<ConversationType, "content"> & {

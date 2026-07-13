@@ -1,5 +1,7 @@
 import { PluginList } from "@app/components/poke/plugins/PluginList";
+import type { AgentMessageCreditsToolBreakdown } from "@app/lib/api/assistant/credit_cost";
 import { useWorkspace } from "@app/lib/auth/AuthContext";
+import { formatCredits, formatMicroUsdCompact } from "@app/lib/client/credits";
 import { clientFetch } from "@app/lib/egress/client";
 import { useRequiredPathParam } from "@app/lib/platform";
 import { usePokeConversation } from "@app/poke/swr";
@@ -318,12 +320,14 @@ function getActionStatus(
 
 interface ToolActionViewProps {
   action: PokeAgentMessageType["actions"][number];
+  cost?: AgentMessageCreditsToolBreakdown;
   isExpanded: boolean;
   onToggle: () => void;
 }
 
 function ToolActionContent({
   action,
+  cost,
   isExpanded,
   onToggle,
 }: ToolActionViewProps) {
@@ -387,6 +391,15 @@ function ToolActionContent({
             size="xs"
           />
         )}
+        {cost && (
+          <span title={`${cost.toolCostCategory} tool cost category`}>
+            <Chip
+              color="primary"
+              label={cost.free ? "free" : `${cost.awu} AWU`}
+              size="xs"
+            />
+          </span>
+        )}
       </span>
       <span className="w-16 shrink-0 text-right font-mono text-sm tabular-nums text-muted-foreground">
         {duration}
@@ -408,7 +421,12 @@ function ToolActionContent({
   );
 }
 
-function ToolActionView({ action, isExpanded, onToggle }: ToolActionViewProps) {
+function ToolActionView({
+  action,
+  cost,
+  isExpanded,
+  onToggle,
+}: ToolActionViewProps) {
   return (
     <div>
       <div
@@ -421,6 +439,7 @@ function ToolActionView({ action, isExpanded, onToggle }: ToolActionViewProps) {
       >
         <ToolActionContent
           action={action}
+          cost={cost}
           isExpanded={isExpanded}
           onToggle={onToggle}
         />
@@ -438,6 +457,115 @@ function ToolActionView({ action, isExpanded, onToggle }: ToolActionViewProps) {
               2
             )}
           </CodeBlock>
+        </div>
+      )}
+    </div>
+  );
+}
+
+interface CostBreakdownViewProps {
+  message: PokeAgentMessageType;
+  isExpanded: boolean;
+  onToggle: () => void;
+}
+
+function CostBreakdownView({
+  message,
+  isExpanded,
+  onToggle,
+}: CostBreakdownViewProps) {
+  const breakdown = message.costBreakdown;
+  if (!breakdown) {
+    return null;
+  }
+
+  const stored = message.costCredits;
+  const mismatch = stored != null && stored !== breakdown.totalAwu;
+  const hasDetails = breakdown.byModel.length > 0;
+
+  return (
+    <div className="mt-2 rounded-md border border-separator bg-muted-background px-2 py-1.5">
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+        {hasDetails && (
+          <Button
+            variant="outline"
+            size="icon"
+            icon={
+              <ChevronDown
+                className={cn(
+                  "h-4 w-4 transition-transform",
+                  !isExpanded ? "-rotate-90" : null
+                )}
+              />
+            }
+            onClick={onToggle}
+            aria-expanded={isExpanded}
+            aria-label={
+              isExpanded ? "Collapse cost breakdown" : "Expand cost breakdown"
+            }
+          />
+        )}
+        <span className="shrink-0 text-sm font-medium text-foreground">
+          Cost
+        </span>
+        <MetadataItem label="stored" mono>
+          {stored != null ? `${formatCredits(stored)} AWU` : "—"}
+        </MetadataItem>
+        <MetadataItem label="recalculated" mono>
+          {`${formatCredits(breakdown.totalAwu)} AWU`}
+        </MetadataItem>
+        <MetadataItem label="llm / tools" mono>
+          {`${formatCredits(breakdown.llmAwu)} / ${formatCredits(breakdown.toolAwu)}`}
+        </MetadataItem>
+        {message.subAgentCostCredits != null &&
+          message.subAgentCostCredits > 0 && (
+            <MetadataItem label="sub-agents" mono>
+              {`${formatCredits(message.subAgentCostCredits)} AWU`}
+            </MetadataItem>
+          )}
+        {mismatch && <Chip color="warning" label="mismatch" size="xs" />}
+      </div>
+      {isExpanded && hasDetails && (
+        <div className="mt-2 overflow-hidden overflow-x-auto rounded-md border border-separator bg-background">
+          <table className="w-full text-left text-sm">
+            <thead className="text-muted-foreground">
+              <tr>
+                <th className="px-2 py-1 font-medium">Model</th>
+                <th className="px-2 py-1 text-right font-medium">Prompt</th>
+                <th className="px-2 py-1 text-right font-medium">Completion</th>
+                <th className="px-2 py-1 text-right font-medium">Cached</th>
+                <th className="px-2 py-1 text-right font-medium">$ cost</th>
+                <th className="px-2 py-1 text-right font-medium">AWU</th>
+              </tr>
+            </thead>
+            <tbody>
+              {breakdown.byModel.map((m) => (
+                <tr
+                  key={`${m.providerId}-${m.modelId}`}
+                  className="border-t border-separator"
+                >
+                  <td className="px-2 py-1 font-mono">
+                    {m.providerId}/{m.modelId}
+                  </td>
+                  <td className="px-2 py-1 text-right font-mono tabular-nums">
+                    {m.promptTokens}
+                  </td>
+                  <td className="px-2 py-1 text-right font-mono tabular-nums">
+                    {m.completionTokens}
+                  </td>
+                  <td className="px-2 py-1 text-right font-mono tabular-nums">
+                    {m.cachedTokens}
+                  </td>
+                  <td className="px-2 py-1 text-right font-mono tabular-nums">
+                    {formatMicroUsdCompact(m.costMicroUsd)}
+                  </td>
+                  <td className="px-2 py-1 text-right font-mono tabular-nums">
+                    {m.awu}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       )}
     </div>
@@ -591,6 +719,7 @@ const AgentMessageView = ({
     expandedProviderPassthroughEntries,
     setExpandedProviderPassthroughEntries,
   ] = useState<Set<string>>(new Set());
+  const [isCostExpanded, setIsCostExpanded] = useState(false);
 
   const toggleAction = (actionId: string) => {
     setExpandedActions((prev) => {
@@ -617,6 +746,10 @@ const AgentMessageView = ({
 
   const providerPassthroughEntries = getProviderPassthroughEntries(
     message.contents
+  );
+
+  const costByActionId = new Map<string, AgentMessageCreditsToolBreakdown>(
+    message.costBreakdown?.byTool.map((t) => [t.actionId, t]) ?? []
   );
 
   return (
@@ -691,6 +824,11 @@ const AgentMessageView = ({
             )}
           </div>
         </div>
+        <CostBreakdownView
+          message={message}
+          isExpanded={isCostExpanded}
+          onToggle={() => setIsCostExpanded((prev) => !prev)}
+        />
         {providerPassthroughEntries.map((entry) => (
           <ProviderPassthroughView
             key={entry.key}
@@ -705,6 +843,7 @@ const AgentMessageView = ({
             <ToolActionView
               key={a.sId}
               action={a}
+              cost={costByActionId.get(a.sId)}
               isExpanded={isExpanded}
               onToggle={() => toggleAction(a.sId)}
             />
