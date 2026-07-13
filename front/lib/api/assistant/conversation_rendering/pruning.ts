@@ -95,8 +95,13 @@ function sliceIntoInteractions(
 /** The flat algorithm behind pruneToolResults. See that function for the full contract. */
 function pruneToolResultsFlat(
   messages: MessageWithTokens[],
-  maxTokens: number,
-  toolResultsToPreserve: number
+  {
+    maxTokens,
+    toolResultsToPreserve,
+  }: {
+    maxTokens: number;
+    toolResultsToPreserve: number;
+  }
 ): MessageWithTokens[] {
   const n = messages.length;
   if (n === 0) {
@@ -210,15 +215,13 @@ function pruneToolResultsFlat(
  */
 export function pruneToolResults(
   interactions: InteractionWithTokens[],
-  maxTokens: number,
-  toolResultsToPreserve: number
+  opts: {
+    maxTokens: number;
+    toolResultsToPreserve: number;
+  }
 ): InteractionWithTokens[] {
   const messages = interactions.flatMap((interaction) => interaction.messages);
-  const pruned = pruneToolResultsFlat(
-    messages,
-    maxTokens,
-    toolResultsToPreserve
-  );
+  const pruned = pruneToolResultsFlat(messages, opts);
   if (pruned === messages) {
     return interactions; // No-op: same reference, same as dropInteractionsToFit below.
   }

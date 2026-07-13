@@ -116,7 +116,10 @@ describe("pruneToolResults", () => {
   it("keeps everything untouched when the budget comfortably covers the full history", () => {
     const messages = [1, 2, 3, 4].flatMap((i) => turn(i));
     const wrapped = asInteractions(messages);
-    const pruned = pruneToolResults(wrapped, HUGE_BUDGET, 10);
+    const pruned = pruneToolResults(wrapped, {
+      maxTokens: HUGE_BUDGET,
+      toolResultsToPreserve: 10,
+    });
 
     expect(pruned).toBe(wrapped); // same reference: nothing needed pruning.
     for (const fn of functionMessagesOf(flatMessages(pruned))) {
@@ -128,7 +131,10 @@ describe("pruneToolResults", () => {
     // 6 turns, one tool result each (all big enough that pruning several is required).
     const messages = [1, 2, 3, 4, 5, 6].flatMap((i) => turn(i, 5000));
     // Budget forces pruning of everything except the last 2 tool results.
-    const pruned = pruneToolResults(asInteractions(messages), 12_000, 2);
+    const pruned = pruneToolResults(asInteractions(messages), {
+      maxTokens: 12_000,
+      toolResultsToPreserve: 2,
+    });
 
     const fns = functionMessagesOf(flatMessages(pruned));
     expect(fns.map((f) => isPruned(f.content))).toEqual([
@@ -145,7 +151,10 @@ describe("pruneToolResults", () => {
     // ONE interaction (one continuous turn) making 6 tool calls in a row, e.g. a single agent
     // response that does 6 tool-call steps before its final answer. Preserve only the last 2.
     const oneLongTurn = [1, 2, 3, 4, 5, 6].flatMap((i) => toolStep(i, 5000));
-    const pruned = pruneToolResults(asInteractions(oneLongTurn), 12_000, 2);
+    const pruned = pruneToolResults(asInteractions(oneLongTurn), {
+      maxTokens: 12_000,
+      toolResultsToPreserve: 2,
+    });
 
     const fns = functionMessagesOf(flatMessages(pruned));
     // Steps 1-4 (this SAME turn's own earlier steps) get pruned. Only the last 2 survive.
@@ -170,11 +179,10 @@ describe("pruneToolResults", () => {
 
     // First call: same as the test above. Prunes turns 1-4, protects the floor of the last 2
     // (turns 5 and 6, each still at their full 5000 tokens).
-    const afterFirstCall = pruneToolResults(
-      asInteractions(messages),
-      12_000,
-      2
-    );
+    const afterFirstCall = pruneToolResults(asInteractions(messages), {
+      maxTokens: 12_000,
+      toolResultsToPreserve: 2,
+    });
     const prunedAfterFirstCall = functionMessagesOf(
       flatMessages(afterFirstCall)
     ).map((f) => isPruned(f.content));
@@ -191,7 +199,10 @@ describe("pruneToolResults", () => {
     // at 44 tokens each, turns 5-6 still at 5020 each) is 10_216, so both floor turns need
     // pruning too: pruning turn 5 alone only brings it to 5_240, still over 300, so turn 6
     // gets pruned as well, landing at 264.
-    const afterSecondCall = pruneToolResults(afterFirstCall, 300, 0);
+    const afterSecondCall = pruneToolResults(afterFirstCall, {
+      maxTokens: 300,
+      toolResultsToPreserve: 0,
+    });
     const flatAfterSecondCall = flatMessages(afterSecondCall);
 
     // Turns 1-4 are untouched by the second call: same pruned placeholders as after the first.
@@ -219,7 +230,10 @@ describe("pruneToolResults", () => {
   it("never touches non-function messages, regardless of budget", () => {
     const messages = [1, 2, 3].flatMap((i) => turn(i, 5000));
     const pruned = flatMessages(
-      pruneToolResults(asInteractions(messages), 100, 0)
+      pruneToolResults(asInteractions(messages), {
+        maxTokens: 100,
+        toolResultsToPreserve: 0,
+      })
     );
 
     for (const [i, m] of pruned.entries()) {
@@ -236,7 +250,10 @@ describe("pruneToolResults", () => {
     // Budget impossibly small: even pruning everything eligible won't fit. The floor (last 2
     // tool results) must still survive untouched, since that's this function's contract. Fitting
     // the impossible case is the caller's job (dropInteractionsToFit or a smaller floor).
-    const pruned = pruneToolResults(asInteractions(messages), 1, 2);
+    const pruned = pruneToolResults(asInteractions(messages), {
+      maxTokens: 1,
+      toolResultsToPreserve: 2,
+    });
 
     const fns = functionMessagesOf(flatMessages(pruned));
     expect(fns.map((f) => isPruned(f.content))).toEqual([true, false, false]);
@@ -294,7 +311,10 @@ describe("pruneToolResults", () => {
     // sweep the three tiny results in too, each GROWING by 23 tokens (1 -> 24), pushing the real
     // total to 1_596, over the 1_530 budget.
     const pruned = flatMessages(
-      pruneToolResults(asInteractions(messages), 1530, 1)
+      pruneToolResults(asInteractions(messages), {
+        maxTokens: 1530,
+        toolResultsToPreserve: 1,
+      })
     );
     const totalTokens = pruned.reduce((sum, m) => sum + m.tokenCount, 0);
 
@@ -329,11 +349,10 @@ describe("pruneToolResults", () => {
 
     const historyA = [0, 1, 2, 3, 4, 5].map((i) => toolResult(i, 4000));
     const prunedA = flatMessages(
-      pruneToolResults(
-        asInteractions(historyA),
+      pruneToolResults(asInteractions(historyA), {
         maxTokens,
-        toolResultsToPreserve
-      )
+        toolResultsToPreserve,
+      })
     );
     // Hand-verified: pruning indices 0-4 (saving 3976 tokens each) brings the 24_000-token
     // total down to 4_120, under the 6_000 budget. The checkpoint (20_000) happens to land
@@ -348,11 +367,10 @@ describe("pruneToolResults", () => {
     // unchanged: this is the batching guarantee in action.
     const historyB = [...historyA, toolResult(6, 500)];
     const prunedB = flatMessages(
-      pruneToolResults(
-        asInteractions(historyB),
+      pruneToolResults(asInteractions(historyB), {
         maxTokens,
-        toolResultsToPreserve
-      )
+        toolResultsToPreserve,
+      })
     );
     expect(
       functionMessagesOf(prunedB)
@@ -371,11 +389,10 @@ describe("pruneToolResults", () => {
     // added in this very call, gets pruned too, not just index 5.
     const historyC = [...historyA, toolResult(6, 4000)];
     const prunedC = flatMessages(
-      pruneToolResults(
-        asInteractions(historyC),
+      pruneToolResults(asInteractions(historyC), {
         maxTokens,
-        toolResultsToPreserve
-      )
+        toolResultsToPreserve,
+      })
     );
     const prunedFlagsC = functionMessagesOf(prunedC).map((f) =>
       isPruned(f.content)
@@ -385,8 +402,14 @@ describe("pruneToolResults", () => {
 
   it("is a pure function of history: the same input always yields the same pruning decision", () => {
     const messages = [1, 2, 3, 4, 5].flatMap((i) => turn(i, 3000));
-    const first = pruneToolResults(asInteractions(messages), 10_000, 2);
-    const second = pruneToolResults(asInteractions(messages), 10_000, 2);
+    const first = pruneToolResults(asInteractions(messages), {
+      maxTokens: 10_000,
+      toolResultsToPreserve: 2,
+    });
+    const second = pruneToolResults(asInteractions(messages), {
+      maxTokens: 10_000,
+      toolResultsToPreserve: 2,
+    });
     expect(first).toEqual(second);
   });
 
@@ -397,7 +420,10 @@ describe("pruneToolResults", () => {
     const interactions = groupMessagesIntoInteractions(
       [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].flatMap((i) => turn(i, 5000))
     );
-    const pruned = pruneToolResults(interactions, 51_000, 10);
+    const pruned = pruneToolResults(interactions, {
+      maxTokens: 51_000,
+      toolResultsToPreserve: 10,
+    });
 
     // Interaction boundaries survive exactly: still 12 interactions, each still 3 messages.
     expect(pruned).toHaveLength(12);

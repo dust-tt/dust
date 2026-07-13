@@ -79,11 +79,10 @@ function pruneConversationToBudget(
   Error
 > {
   // Layer 1: proactive pruning, within the protected floor, up to pruningBudget.
-  let pruned = pruneToolResults(
-    interactions,
-    pruningBudget,
-    TOOL_RESULTS_TO_PRESERVE
-  );
+  let pruned = pruneToolResults(interactions, {
+    maxTokens: pruningBudget,
+    toolResultsToPreserve: TOOL_RESULTS_TO_PRESERVE,
+  });
   let prunedContext = pruned !== interactions;
   let totalTokens = sumInteractionTokens(pruned);
 
@@ -112,7 +111,10 @@ function pruneConversationToBudget(
       { ...logDetails, totalTokens, budgetForInteractions },
       "Dropped every eligible previous interaction; still over budget, forcing floor pruning."
     );
-    pruned = pruneToolResults(pruned, budgetForInteractions, 0);
+    pruned = pruneToolResults(pruned, {
+      maxTokens: budgetForInteractions,
+      toolResultsToPreserve: 0,
+    });
     prunedContext = true;
     totalTokens = sumInteractionTokens(pruned);
   }
