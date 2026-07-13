@@ -1,17 +1,10 @@
 import { TOOL_NAME_SEPARATOR } from "@app/lib/actions/constants";
-import type { MCPToolConfigurationType } from "@app/lib/actions/mcp";
-import { buildToolSpecification } from "@app/lib/actions/mcp";
 import { tryListMCPTools } from "@app/lib/actions/mcp_actions";
-import { autoInternalMCPServerNameToSId } from "@app/lib/actions/mcp_helper";
 import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
 import { isJITMCPServerView } from "@app/lib/actions/mcp_internal_actions/utils";
 import type { StepContext } from "@app/lib/actions/types";
 import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
-import {
-  isServerSideMCPServerConfiguration,
-  isServerSideMCPServerConfigurationWithName,
-  isServerSideMCPToolConfiguration,
-} from "@app/lib/actions/types/guards";
+import { isServerSideMCPServerConfigurationWithName } from "@app/lib/actions/types/guards";
 import { computeStepContexts } from "@app/lib/actions/utils";
 import { createClientSideMCPServerConfigurations } from "@app/lib/api/actions/mcp_client_side";
 import { renderConversationForModel } from "@app/lib/api/assistant/conversation_rendering";
@@ -30,6 +23,12 @@ import {
 import { getJITServers } from "@app/lib/api/assistant/jit_actions";
 import { listAttachments } from "@app/lib/api/assistant/jit_utils";
 import { getCompletionDuration } from "@app/lib/api/assistant/messages";
+import {
+  buildBaseSpecifications,
+  buildSpecificationsWithReplayPlaceholders,
+  buildToolDefinitionsForTokenCount,
+  getMissingActionCatcherFunctionCallIds,
+} from "@app/lib/api/assistant/model_rendering_tools";
 import { getSkillServers } from "@app/lib/api/assistant/skill_actions";
 import { renderEquippedSkillsUserMessage } from "@app/lib/api/assistant/skills_rendering";
 import {
@@ -37,11 +36,6 @@ import {
   emitAuditLogEventDirect,
 } from "@app/lib/api/audit/workos_audit";
 import { getStreamLLM } from "@app/lib/api/llm";
-import { ANTHROPIC_PROVIDER_ID } from "@app/lib/api/llm/clients/anthropic/types";
-import {
-  parseAnthropicToolSearchBlock,
-  TOOL_SEARCH_SERVER_TOOL_NAMES,
-} from "@app/lib/api/llm/clients/anthropic/utils/tool_search_passthrough";
 import type { LLMTraceContext } from "@app/lib/api/llm/traces/types";
 import {
   getByokUserFacingLLMErrorMessage,
@@ -57,7 +51,6 @@ import {
   AgentMessageContentParser,
   getDelimitersConfiguration,
 } from "@app/lib/llms/agent_message_content_parser";
-import { TOOL_SEARCH_TOOL } from "@app/lib/model_constructors/sdk/anthropic_ai/converters/input/tool_search";
 import { getModelTierAccessErrorForAgentConfiguration } from "@app/lib/model_tiers/access";
 import { AgentStepContentResource } from "@app/lib/resources/agent_step_content_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
@@ -78,22 +71,13 @@ import { RUN_MODEL_MAX_RETRIES } from "@app/temporal/agent_loop/config";
 import { getOutputFromLLMStream } from "@app/temporal/agent_loop/lib/get_output_from_llm";
 import { sliceConversationForAgentMessage } from "@app/temporal/agent_loop/lib/loop_utils";
 import { makeRunModelLLMError } from "@app/temporal/agent_loop/lib/run_model_errors";
-import type {
-  AgentActionsEvent,
-  AgentConfigurationType,
-} from "@app/types/assistant/agent";
+import type { AgentActionsEvent } from "@app/types/assistant/agent";
 import type { AgentLoopExecutionData } from "@app/types/assistant/agent_run";
-import { isGlobalAgentId } from "@app/types/assistant/assistant";
 import type {
   AgentMessageType,
-  ConversationType,
   UserMessageOrigin,
 } from "@app/types/assistant/conversation";
-import { isAgentMessageType } from "@app/types/assistant/conversation";
-import {
-  isTextContent,
-  type ModelConversationTypeMultiActions,
-} from "@app/types/assistant/generation";
+import { isTextContent } from "@app/types/assistant/generation";
 import { isByokProviderId } from "@app/types/assistant/models/providers";
 import { isComputerFeatureEnabled } from "@app/types/shared/feature_flags";
 import type { ModelId } from "@app/types/shared/model_id";
@@ -102,6 +86,12 @@ import { removeNulls } from "@app/types/shared/utils/general";
 import { startActiveObservation } from "@langfuse/tracing";
 import { Context, heartbeat } from "@temporalio/activity";
 import assert from "assert";
+
+export {
+  buildBaseSpecifications,
+  buildSpecificationsWithReplayPlaceholders,
+  buildToolDefinitionsForTokenCount,
+};
 
 const ASK_USER_QUESTION_BLOCKED_ORIGINS: readonly UserMessageOrigin[] = [
   "api",
@@ -125,29 +115,6 @@ const ASK_USER_QUESTION_BLOCKED_ORIGINS: readonly UserMessageOrigin[] = [
   "branch_anchor",
 ];
 
-// Builds the JSON blob whose token count estimates how many tokens the tool
-// definitions actually cost in context, for the model's token budget. When
-// tool search is active, deferred (non-eager) tool schemas are excluded from
-// the model's context until discovered, so they must not count toward the
-// budget the same way eager specs do: only eager specs, plus the tool-search
-// tool itself, are actually in context up front.
-export function buildToolDefinitionsForTokenCount(
-  specifications: AgentActionSpecification[],
-  toolSearchEnabled: boolean
-): string {
-  const specsInContext = toolSearchEnabled
-    ? specifications.filter((s) => s.eager)
-    : specifications;
-  return JSON.stringify([
-    ...(toolSearchEnabled ? [TOOL_SEARCH_TOOL] : []),
-    ...specsInContext.map((s) => ({
-      name: s.name,
-      description: s.description,
-      inputSchema: s.inputSchema,
-    })),
-  ]);
-}
-
 // Concatenate two content strings, ensuring at least one whitespace character
 // between them when both are non-empty. This prevents words from being glued
 // together across successive LLM calls.
@@ -164,190 +131,6 @@ function concatWithNewlineBoundary(
     return previous + "\n" + current;
   }
   return previous + current;
-}
-
-// TODO(2026-07-06 flav): Avoid leaking provider specifics in the agent loop. The Anthropic
-// passthrough parsing below (block shapes, server tool names) belongs behind a
-// provider-agnostic dispatch keyed on the passthrough provider id.
-function getReplayedToolNames(
-  modelConversation: ModelConversationTypeMultiActions,
-  missingActionCatcherFunctionCallIds: Set<string>
-): string[] {
-  const toolNames = new Set<string>();
-
-  for (const message of modelConversation.messages) {
-    switch (message.role) {
-      case "assistant":
-        for (const content of message.contents) {
-          if (
-            content.type === "function_call" &&
-            !missingActionCatcherFunctionCallIds.has(content.value.id)
-          ) {
-            // Missing-action catcher calls remain in the replay so the model
-            // sees their error, but their attempted names were never tools.
-            toolNames.add(content.value.name);
-          }
-          if (
-            content.type === "provider_passthrough" &&
-            content.value.provider === ANTHROPIC_PROVIDER_ID
-          ) {
-            const block = parseAnthropicToolSearchBlock(content.value.block);
-
-            if (
-              block?.type === "tool_search_tool_result" &&
-              block.content.type === "tool_search_tool_search_result"
-            ) {
-              for (const ref of block.content.tool_references) {
-                // The search can match the tool search tool itself. Never
-                // synthesize a replay placeholder for it: the Anthropic client
-                // prepends the real server tool, and a placeholder would
-                // duplicate its name in the request.
-                if (
-                  TOOL_SEARCH_SERVER_TOOL_NAMES.some(
-                    (name) => name === ref.tool_name
-                  )
-                ) {
-                  continue;
-                }
-                toolNames.add(ref.tool_name);
-              }
-            }
-          }
-        }
-        break;
-      case "function":
-      case "compaction":
-      case "user":
-        break;
-      default:
-        assertNever(message);
-    }
-  }
-
-  return [...toolNames];
-}
-
-function getMissingActionCatcherFunctionCallIds(
-  conversation: ConversationType
-): Set<string> {
-  const functionCallIds = new Set<string>();
-  const missingActionCatcherMCPServerId = autoInternalMCPServerNameToSId({
-    name: "missing_action_catcher",
-    workspaceId: conversation.owner.id,
-  });
-
-  for (const messageVersions of conversation.content) {
-    for (const message of messageVersions) {
-      if (!isAgentMessageType(message)) {
-        continue;
-      }
-
-      for (const action of message.actions) {
-        // mcpServerId is serialized from the action's
-        // toolConfiguration.toolServerId.
-        if (action.mcpServerId === missingActionCatcherMCPServerId) {
-          functionCallIds.add(action.functionCallId);
-        }
-      }
-    }
-  }
-
-  return functionCallIds;
-}
-
-function buildReplayOnlyToolSpecification(
-  name: string
-): AgentActionSpecification {
-  return {
-    name,
-    description:
-      "Replay-only placeholder for a historical tool call. " +
-      "This tool is not available for new calls.",
-    inputSchema: {
-      type: "object",
-      properties: {},
-      required: [],
-      additionalProperties: true,
-    },
-  };
-}
-
-// A custom agent's configured tools are its identity: they stay in the eagerly
-// loaded set so the model always sees them instead of having to discover them
-// through tool search. The set is small and stable per agent version, so the
-// cached tool prefix stays byte-stable. Global agents keep the curated per-tool
-// metadata flags, and conversation, skill and JIT provided tools stay deferred
-// so mid-conversation additions append to the deferred catalog instead of
-// rewriting the prefix.
-export function buildBaseSpecifications(
-  availableActions: MCPToolConfigurationType[],
-  agentConfiguration: Pick<AgentConfigurationType, "sId" | "actions">
-): AgentActionSpecification[] {
-  const isCustomAgent = !isGlobalAgentId(agentConfiguration.sId);
-  // Tools are matched to configured actions through the configuration's
-  // persisted id, not the server view id: several configurations of the same
-  // internal server share one view (e.g. two query_tables actions), and
-  // runtime-built JIT and skill servers reuse those views too with a synthetic
-  // id of -1. Matching on the view id would wrongly promote JIT tools that
-  // appear mid-conversation, rewriting the cached tool prefix.
-  const agentActionModelIds = new Set(
-    agentConfiguration.actions
-      .filter(isServerSideMCPServerConfiguration)
-      .map((action) => action.id)
-      .filter((id) => id !== -1)
-  );
-
-  return availableActions
-    .map((action) => {
-      const specification = buildToolSpecification(action);
-      if (
-        isCustomAgent &&
-        isServerSideMCPToolConfiguration(action) &&
-        agentActionModelIds.has(action.id)
-      ) {
-        return { ...specification, eager: true };
-      }
-
-      return specification;
-    })
-    .sort((left, right) => left.name.localeCompare(right.name));
-}
-
-// Replayed tools keep their intrinsic `eager` flag: providers resolve deferred
-// tools from the replayed history, and promoting them would invalidate the
-// cached tool prefix. We only append placeholders for replayed tools that are
-// no longer configured, since every tool referenced in history must have a
-// definition.
-export function buildSpecificationsWithReplayPlaceholders(
-  baseSpecifications: AgentActionSpecification[],
-  {
-    modelConversation,
-    missingActionCatcherFunctionCallIds = new Set(),
-  }: {
-    modelConversation: ModelConversationTypeMultiActions;
-    missingActionCatcherFunctionCallIds?: Set<string>;
-  }
-): {
-  specifications: AgentActionSpecification[];
-  missingReplayedToolNames: string[];
-} {
-  const currentToolNames = new Set(baseSpecifications.map((spec) => spec.name));
-  const missingReplayedToolNames = getReplayedToolNames(
-    modelConversation,
-    missingActionCatcherFunctionCallIds
-  )
-    .filter((name) => !currentToolNames.has(name))
-    .sort();
-
-  return {
-    specifications: [
-      ...baseSpecifications,
-      ...missingReplayedToolNames.map((name) =>
-        buildReplayOnlyToolSpecification(name)
-      ),
-    ].sort((left, right) => left.name.localeCompare(right.name)),
-    missingReplayedToolNames,
-  };
 }
 
 // This method is used by the multi-actions execution loop to pick the next action to execute and
