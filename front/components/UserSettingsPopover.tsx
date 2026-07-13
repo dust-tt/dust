@@ -246,12 +246,10 @@ function UsageSection({ owner, onClose, visible }: UsageSectionProps) {
         </section>
       )}
 
-      {isCreditBased && (
-        <MyAwuUsageFromAnalyticsChart
-          workspaceId={owner.sId}
-          disabled={!visible}
-        />
-      )}
+      <MyAwuUsageFromAnalyticsChart
+        workspaceId={owner.sId}
+        disabled={!visible}
+      />
 
       {isAdmin && (
         <section className="flex items-center justify-between border-b border-border dark:border-border-dark pb-4">
