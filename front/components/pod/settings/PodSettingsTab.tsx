@@ -1,4 +1,5 @@
 import { AgentPicker } from "@app/components/assistant/AgentPicker";
+import { CapabilitiesPickerItemsList } from "@app/components/assistant/CapabilitiesPicker";
 import { ConfirmContext } from "@app/components/Confirm";
 import { MarkdownFileEditor } from "@app/components/editor/MarkdownFileEditor";
 import { DeletePodDialog } from "@app/components/pod/settings/DeletePodDialog";
@@ -43,7 +44,6 @@ import {
   cn,
   DropdownMenu,
   DropdownMenuContent,
-  DropdownMenuItem,
   DropdownMenuSearchbar,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
@@ -651,26 +651,31 @@ export function PodSettingsTab({
                     align="start"
                     dropdownHeaders={skillPickerDropdownHeaders}
                   >
-                    {addableSkills.length === 0 ? (
-                      <div className="px-2 py-4 text-center text-sm text-muted-foreground">
-                        {normalizedSkillSearch.length > 0
+                    <CapabilitiesPickerItemsList
+                      emptyMessage={
+                        normalizedSkillSearch.length > 0
                           ? "No skills found"
-                          : "No more skills to add"}
-                      </div>
-                    ) : (
-                      addableSkills.map((skill) => (
-                        <DropdownMenuItem
-                          key={skill.sId}
-                          icon={getSkillAvatarIcon(skill)}
-                          label={skill.name}
-                          description={skill.userFacingDescription ?? undefined}
-                          truncateText
-                          onClick={() => {
-                            void addDefaultSkill(skill.sId);
-                          }}
-                        />
-                      ))
-                    )}
+                          : "No more skills to add"
+                      }
+                      items={addableSkills.map((skill) => {
+                        const SkillAvatar = getSkillAvatarIcon(skill);
+
+                        return {
+                          kind: "skill" as const,
+                          skill,
+                          id: `pod-default-skills-picker-${skill.sId}`,
+                          icon: <SkillAvatar size="xs" />,
+                          label: skill.name,
+                          sortName: skill.name.toLowerCase(),
+                          description: skill.userFacingDescription ?? undefined,
+                        };
+                      })}
+                      onItemSelect={(item) => {
+                        if (item.kind === "skill") {
+                          void addDefaultSkill(item.skill.sId);
+                        }
+                      }}
+                    />
                   </DropdownMenuContent>
                 </DropdownMenu>
               )}
