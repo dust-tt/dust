@@ -3,15 +3,13 @@ import type { ToolExecutionStatus } from "@app/lib/actions/statuses";
 import { isToolExecutionStatusFinal } from "@app/lib/actions/statuses";
 import { getToolNameFromFunctionCallName } from "@app/lib/actions/tool_display_labels";
 import { makeFairUseAwuCreditsRateLimitKeyForUser } from "@app/lib/api/assistant/rate_limits";
+import { searchAnalytics } from "@app/lib/api/elasticsearch";
 import type { ToolCostCategory } from "@app/lib/api/mcp";
 import type { Authenticator } from "@app/lib/auth";
 import {
-  awuFromMicroUsd,
   computeRunKey,
   getToolBillingInfo,
   intelligenceAwuFromRunUsagesGroupedByRunKey,
-  isFreeOrigin,
-  toolAwuFromAction,
   toolAwuFromActions,
 } from "@app/lib/metronome/events";
 import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
@@ -23,30 +21,19 @@ import {
   getTimeframeSecondsFromLiteral,
 } from "@app/lib/utils/rate_limiter";
 import logger from "@app/logger/logger";
+import type {
+  AgentMessageAnalyticsData,
+  AgentMessageAnalyticsToolUsed,
+} from "@app/types/assistant/analytics";
 import {
   AGENT_MESSAGE_STATUSES_TO_TRACK,
   type UserMessageOrigin,
 } from "@app/types/assistant/conversation";
-import type {
-  ModelIdType,
-  ModelProviderIdType,
-} from "@app/types/assistant/models/types";
 
 interface CreditActionMinimalInput {
   toolName: string;
   internalMCPServerName: InternalMCPServerNameType | null;
   status: ToolExecutionStatus;
-}
-
-export interface AgentMessageCreditsModelBreakdown {
-  providerId: ModelProviderIdType;
-  modelId: ModelIdType;
-  promptTokens: number;
-  completionTokens: number;
-  cachedTokens: number;
-  cacheCreationTokens: number;
-  costMicroUsd: number;
-  awu: number;
 }
 
 export interface AgentMessageCreditsToolBreakdown {
@@ -62,108 +49,115 @@ export interface AgentMessageCreditsBreakdown {
   llmAwu: number;
   toolAwu: number;
   totalAwu: number;
-  byModel: AgentMessageCreditsModelBreakdown[];
   byTool: AgentMessageCreditsToolBreakdown[];
 }
 
 /**
- * Same computation as `computeAgentMessageCredits`, but split by LLM vs. tool
- * cost and by model / tool so it can be displayed (e.g. in poke) instead of
- * only summed. `byModel[].awu` is computed by grouping per runKey first
- * (matching `intelligenceAwuFromRunUsagesGroupedByRunKey`), so the sum of
- * `byModel[].awu` always equals `llmAwu` exactly.
+ * Fetches the stored analytics document for each message, keyed by messageId. Returns an empty
+ * map (rather than failing) on an Elasticsearch error, since this only feeds a poke-only
+ * auditing display, not the billing pipeline itself.
  */
-export function computeAgentMessageCreditsBreakdown({
-  runUsages,
-  actions,
-  contextOrigin,
-}: {
-  runUsages: (RunUsageType & { runKey: string | null })[];
-  actions: (CreditActionMinimalInput & { actionId: string })[];
-  contextOrigin: UserMessageOrigin | null;
-}): AgentMessageCreditsBreakdown {
-  const finalActions = actions.filter((a) =>
-    isToolExecutionStatusFinal(a.status)
+export async function fetchAgentMessageCostAnalyticsByMessageIds(
+  auth: Authenticator,
+  { messageIds }: { messageIds: string[] }
+): Promise<Map<string, AgentMessageAnalyticsData>> {
+  if (messageIds.length === 0) {
+    return new Map();
+  }
+
+  const workspaceId = auth.getNonNullableWorkspace().sId;
+  const result = await searchAnalytics<AgentMessageAnalyticsData>(
+    {
+      bool: {
+        filter: [
+          { term: { workspace_id: workspaceId } },
+          { terms: { message_id: messageIds } },
+        ],
+      },
+    },
+    { size: messageIds.length }
   );
 
-  const modelUsageByKey = new Map<
+  if (result.isErr()) {
+    logger.error(
+      { workspaceId, error: result.error },
+      "[Credits] Failed to fetch agent message cost analytics from Elasticsearch."
+    );
+    return new Map();
+  }
+
+  return new Map(
+    result.value.hits.hits
+      .flatMap((hit) => (hit._source ? [hit._source] : []))
+      .map((doc) => [doc.message_id, doc])
+  );
+}
+
+/**
+ * Builds the LLM/tool cost split and per-tool breakdown for display (e.g. in poke) from the
+ * message's stored analytics document, rather than recomputing it live from current code: the
+ * analytics document is a frozen snapshot of the cost as computed by the billing pipeline at run
+ * time, so comparing it against the stored `costCredits` catches genuine billing bugs instead of
+ * drifting apart whenever the AWU pricing formulas are later tuned.
+ *
+ * The analytics document's `tools_used` entries carry no `actionId`, so they are matched back to
+ * `actions` by `(step, toolName)`: both lists are built from the same ordered set of actions at
+ * analytics-indexing time, so a positional match within that key is reliable in practice.
+ */
+export function buildAgentMessageCreditsBreakdownFromAnalytics({
+  analytics,
+  actions,
+}: {
+  analytics: Pick<AgentMessageAnalyticsData, "cost" | "tools_used"> | undefined;
+  actions: (CreditActionMinimalInput & { actionId: string; step: number })[];
+}): AgentMessageCreditsBreakdown | undefined {
+  // `cost` and `tools_used` were added to the analytics document after it first shipped, so
+  // older documents may be missing either (or the document itself may not exist yet for a very
+  // recently sent message) — degrade to no breakdown rather than throwing on missing data.
+  if (!analytics?.cost) {
+    return undefined;
+  }
+
+  const toolUsageQueueByKey = new Map<
     string,
-    Omit<AgentMessageCreditsModelBreakdown, "awu">
+    AgentMessageAnalyticsToolUsed[]
   >();
-  for (const usage of runUsages) {
-    const key = `${usage.providerId}|${usage.modelId}`;
-    const existing = modelUsageByKey.get(key) ?? {
-      providerId: usage.providerId,
-      modelId: usage.modelId,
-      promptTokens: 0,
-      completionTokens: 0,
-      cachedTokens: 0,
-      cacheCreationTokens: 0,
-      costMicroUsd: 0,
-    };
-    modelUsageByKey.set(key, {
-      ...existing,
-      promptTokens: existing.promptTokens + usage.promptTokens,
-      completionTokens: existing.completionTokens + usage.completionTokens,
-      cachedTokens: existing.cachedTokens + (usage.cachedTokens ?? 0),
-      cacheCreationTokens:
-        existing.cacheCreationTokens + (usage.cacheCreationTokens ?? 0),
-      costMicroUsd: existing.costMicroUsd + usage.costMicroUsd,
-    });
+  for (const tool of analytics.tools_used ?? []) {
+    const key = `${tool.step_index}|${tool.tool_name}`;
+    const queue = toolUsageQueueByKey.get(key) ?? [];
+    queue.push(tool);
+    toolUsageQueueByKey.set(key, queue);
   }
 
-  const modelAwuByKey = new Map<string, number>();
-  if (!isFreeOrigin(contextOrigin)) {
-    const byRunKey = new Map<string, RunUsageType[]>();
-    for (const usage of runUsages) {
-      const runKey = usage.runKey ?? "__legacy__";
-      const group = byRunKey.get(runKey) ?? [];
-      group.push(usage);
-      byRunKey.set(runKey, group);
+  const byTool: AgentMessageCreditsToolBreakdown[] = [];
+  for (const action of actions) {
+    const matched = toolUsageQueueByKey
+      .get(`${action.step}|${action.toolName}`)
+      ?.shift();
+    if (!matched) {
+      continue;
     }
 
-    for (const group of byRunKey.values()) {
-      const costByModel = new Map<string, number>();
-      for (const usage of group) {
-        const key = `${usage.providerId}|${usage.modelId}`;
-        costByModel.set(key, (costByModel.get(key) ?? 0) + usage.costMicroUsd);
-      }
-      for (const [key, costMicroUsd] of costByModel) {
-        modelAwuByKey.set(
-          key,
-          (modelAwuByKey.get(key) ?? 0) + awuFromMicroUsd(costMicroUsd)
-        );
-      }
-    }
-  }
-
-  const byModel = Array.from(modelUsageByKey.entries()).map(([key, usage]) => ({
-    ...usage,
-    awu: modelAwuByKey.get(key) ?? 0,
-  }));
-
-  const byTool = finalActions.map((action) => {
-    const { toolCostCategory, freeUsage } = getToolBillingInfo(
+    const { toolCostCategory } = getToolBillingInfo(
       action.internalMCPServerName,
       action.toolName
     );
-    return {
+    byTool.push({
       actionId: action.actionId,
       toolName: action.toolName,
       internalMCPServerName: action.internalMCPServerName,
       toolCostCategory,
-      free: freeUsage || isFreeOrigin(contextOrigin),
-      awu: toolAwuFromAction(action, contextOrigin),
-    };
-  });
+      free: matched.cost_awu === 0 && isToolExecutionStatusFinal(action.status),
+      awu: matched.cost_awu,
+    });
+  }
 
-  const llmAwu = intelligenceAwuFromRunUsagesGroupedByRunKey(
-    runUsages,
-    contextOrigin
-  );
-  const toolAwu = toolAwuFromActions(finalActions, contextOrigin);
-
-  return { llmAwu, toolAwu, totalAwu: llmAwu + toolAwu, byModel, byTool };
+  return {
+    llmAwu: analytics.cost.llm_awu,
+    toolAwu: analytics.cost.tool_awu,
+    totalAwu: analytics.cost.full_awu,
+    byTool,
+  };
 }
 
 export function computeAgentMessageCredits({

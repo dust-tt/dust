@@ -1,7 +1,7 @@
 import { PluginList } from "@app/components/poke/plugins/PluginList";
 import type { AgentMessageCreditsToolBreakdown } from "@app/lib/api/assistant/credit_cost";
 import { useWorkspace } from "@app/lib/auth/AuthContext";
-import { formatCredits, formatMicroUsdCompact } from "@app/lib/client/credits";
+import { formatCredits } from "@app/lib/client/credits";
 import { clientFetch } from "@app/lib/egress/client";
 import { useRequiredPathParam } from "@app/lib/platform";
 import { usePokeConversation } from "@app/poke/swr";
@@ -465,15 +465,9 @@ function ToolActionView({
 
 interface CostBreakdownViewProps {
   message: PokeAgentMessageType;
-  isExpanded: boolean;
-  onToggle: () => void;
 }
 
-function CostBreakdownView({
-  message,
-  isExpanded,
-  onToggle,
-}: CostBreakdownViewProps) {
+function CostBreakdownView({ message }: CostBreakdownViewProps) {
   const breakdown = message.costBreakdown;
   if (!breakdown) {
     return null;
@@ -481,37 +475,17 @@ function CostBreakdownView({
 
   const stored = message.costCredits;
   const mismatch = stored != null && stored !== breakdown.totalAwu;
-  const hasDetails = breakdown.byModel.length > 0;
 
   return (
     <div className="mt-2 rounded-md border border-separator bg-muted-background px-2 py-1.5">
       <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-        {hasDetails && (
-          <Button
-            variant="outline"
-            size="icon"
-            icon={
-              <ChevronDown
-                className={cn(
-                  "h-4 w-4 transition-transform",
-                  !isExpanded ? "-rotate-90" : null
-                )}
-              />
-            }
-            onClick={onToggle}
-            aria-expanded={isExpanded}
-            aria-label={
-              isExpanded ? "Collapse cost breakdown" : "Expand cost breakdown"
-            }
-          />
-        )}
         <span className="shrink-0 text-sm font-medium text-foreground">
           Cost
         </span>
         <MetadataItem label="stored" mono>
           {stored != null ? `${formatCredits(stored)} AWU` : "—"}
         </MetadataItem>
-        <MetadataItem label="recalculated" mono>
+        <MetadataItem label="analytics" mono>
           {`${formatCredits(breakdown.totalAwu)} AWU`}
         </MetadataItem>
         <MetadataItem label="llm / tools" mono>
@@ -525,49 +499,6 @@ function CostBreakdownView({
           )}
         {mismatch && <Chip color="warning" label="mismatch" size="xs" />}
       </div>
-      {isExpanded && hasDetails && (
-        <div className="mt-2 overflow-hidden overflow-x-auto rounded-md border border-separator bg-background">
-          <table className="w-full text-left text-sm">
-            <thead className="text-muted-foreground">
-              <tr>
-                <th className="px-2 py-1 font-medium">Model</th>
-                <th className="px-2 py-1 text-right font-medium">Prompt</th>
-                <th className="px-2 py-1 text-right font-medium">Completion</th>
-                <th className="px-2 py-1 text-right font-medium">Cached</th>
-                <th className="px-2 py-1 text-right font-medium">$ cost</th>
-                <th className="px-2 py-1 text-right font-medium">AWU</th>
-              </tr>
-            </thead>
-            <tbody>
-              {breakdown.byModel.map((m) => (
-                <tr
-                  key={`${m.providerId}-${m.modelId}`}
-                  className="border-t border-separator"
-                >
-                  <td className="px-2 py-1 font-mono">
-                    {m.providerId}/{m.modelId}
-                  </td>
-                  <td className="px-2 py-1 text-right font-mono tabular-nums">
-                    {m.promptTokens}
-                  </td>
-                  <td className="px-2 py-1 text-right font-mono tabular-nums">
-                    {m.completionTokens}
-                  </td>
-                  <td className="px-2 py-1 text-right font-mono tabular-nums">
-                    {m.cachedTokens}
-                  </td>
-                  <td className="px-2 py-1 text-right font-mono tabular-nums">
-                    {formatMicroUsdCompact(m.costMicroUsd)}
-                  </td>
-                  <td className="px-2 py-1 text-right font-mono tabular-nums">
-                    {m.awu}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
     </div>
   );
 }
@@ -719,7 +650,6 @@ const AgentMessageView = ({
     expandedProviderPassthroughEntries,
     setExpandedProviderPassthroughEntries,
   ] = useState<Set<string>>(new Set());
-  const [isCostExpanded, setIsCostExpanded] = useState(false);
 
   const toggleAction = (actionId: string) => {
     setExpandedActions((prev) => {
@@ -824,11 +754,7 @@ const AgentMessageView = ({
             )}
           </div>
         </div>
-        <CostBreakdownView
-          message={message}
-          isExpanded={isCostExpanded}
-          onToggle={() => setIsCostExpanded((prev) => !prev)}
-        />
+        <CostBreakdownView message={message} />
         {providerPassthroughEntries.map((entry) => (
           <ProviderPassthroughView
             key={entry.key}

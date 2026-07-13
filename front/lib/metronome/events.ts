@@ -188,7 +188,7 @@ export function intelligenceAwuFromRunUsages(
 // Synthetic group for run usages whose run has no runKey yet (legacy rows, or
 // non-agent-loop runs). They are summed together so behavior matches the old
 // single-ceil computation for them.
-const LEGACY_RUN_KEY = "__legacy__";
+export const LEGACY_RUN_KEY = "__legacy__";
 
 // Intelligence credits for an agent message, ceiling per agent-loop execution
 // (runKey) to exactly match the per-execution Metronome events. Metronome emits
