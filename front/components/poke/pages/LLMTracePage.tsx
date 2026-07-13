@@ -1,4 +1,5 @@
 import { InputTab } from "@app/components/poke/llm_traces/InputTab";
+import { LangfuseTraceView } from "@app/components/poke/llm_traces/LangfuseTraceView";
 import { OutputTab } from "@app/components/poke/llm_traces/OutputTab";
 import { RawJsonTab } from "@app/components/poke/llm_traces/RawJsonTab";
 import type { TokenUsage } from "@app/lib/api/llm/types/events";
@@ -48,10 +49,13 @@ export function LLMTracePage() {
 
   const runId = useRequiredPathParam("runId");
   usePokePageMetadata({ name: owner.name, subtitle: "LLM Trace", sId: runId });
-  const { trace, isLLMTraceLoading, isLLMTraceError } = usePokeLLMTrace({
-    workspace: owner,
-    runId,
-  });
+  const {
+    langfuseError,
+    langfuseTrace,
+    trace,
+    isLLMTraceLoading,
+    isLLMTraceError,
+  } = usePokeLLMTrace({ workspace: owner, runId });
 
   if (isLLMTraceLoading) {
     return (
@@ -61,17 +65,38 @@ export function LLMTracePage() {
     );
   }
 
-  if (isLLMTraceError || !trace) {
+  if (isLLMTraceError || (!trace && !langfuseTrace)) {
     return (
       <div className="flex h-64 flex-col items-center justify-center">
         <div className="text-lg font-medium text-warning">
           Failed to load LLM trace
         </div>
         <div className="mt-2 text-sm text-muted-foreground">
-          The trace may not exist or there was an error fetching it from GCS.
+          {langfuseError ??
+            "The trace was not found in either the trace buffer or Langfuse."}
         </div>
       </div>
     );
+  }
+
+  if (langfuseTrace && !trace) {
+    return (
+      <div className="max-w-6xl">
+        <Page.Vertical align="stretch">
+          <div>
+            <h1 className="text-2xl font-bold">LLM Trace</h1>
+            <div className="text-sm text-muted-foreground">
+              Run ID: <code className="text-xs">{runId}</code>
+            </div>
+          </div>
+          <LangfuseTraceView trace={langfuseTrace} />
+        </Page.Vertical>
+      </div>
+    );
+  }
+
+  if (!trace) {
+    return null;
   }
 
   const toolCallCount = trace?.output?.toolCalls?.length;
@@ -200,6 +225,13 @@ export function LLMTracePage() {
             <RawJsonTab trace={trace} />
           </TabsContent>
         </Tabs>
+
+        {langfuseTrace && <LangfuseTraceView trace={langfuseTrace} />}
+        {langfuseError && (
+          <div className="rounded-lg border border-warning-300 bg-warning-50 p-4 text-sm text-warning-900">
+            Langfuse data could not be loaded: {langfuseError}
+          </div>
+        )}
       </Page.Vertical>
     </div>
   );

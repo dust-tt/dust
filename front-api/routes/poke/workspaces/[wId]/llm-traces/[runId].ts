@@ -1,12 +1,10 @@
 import { fetchLLMTrace, isLLMTraceId } from "@app/lib/api/llm/traces/buffer";
+import { fetchLangfuseTraceByDustTraceId } from "@app/lib/api/llm/traces/langfuse";
+import type { GetPokeLLMTraceResponseBody } from "@app/types/api/poke/llm_traces";
 import { pokeApp } from "@front-api/middlewares/ctx";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import { z } from "zod";
-
-interface GetLLMTraceResponseBody {
-  trace: unknown | null;
-}
 
 const ParamsSchema = z.object({
   runId: z.string(),
@@ -19,7 +17,7 @@ const app = pokeApp();
 app.get(
   "/",
   validate("param", ParamsSchema),
-  async (ctx): HandlerResult<GetLLMTraceResponseBody> => {
+  async (ctx): HandlerResult<GetPokeLLMTraceResponseBody> => {
     const auth = ctx.get("auth");
     const { runId } = ctx.req.valid("param");
 
@@ -34,9 +32,18 @@ app.get(
       });
     }
 
-    const trace = await fetchLLMTrace(auth, { runId });
+    const [trace, langfuseTraceRes] = await Promise.all([
+      fetchLLMTrace(auth, { runId }),
+      fetchLangfuseTraceByDustTraceId(auth, { dustTraceId: runId }),
+    ]);
 
-    return ctx.json({ trace });
+    return ctx.json({
+      langfuseError: langfuseTraceRes.isErr()
+        ? langfuseTraceRes.error.message
+        : null,
+      langfuseTrace: langfuseTraceRes.isOk() ? langfuseTraceRes.value : null,
+      trace,
+    });
   }
 );
 

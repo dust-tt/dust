@@ -7,6 +7,7 @@ import type {
   GetDocumentsResponseBody,
   GetTablesResponseBody,
 } from "@app/types/api/poke/data_sources";
+import type { GetPokeLLMTraceResponseBody } from "@app/types/api/poke/llm_traces";
 import type { PullTemplatesResponseBody } from "@app/types/api/poke/templates";
 import { useCallback, useMemo, useState } from "react";
 import type { Fetcher } from "swr";
@@ -129,7 +130,8 @@ export function usePokeLLMTrace({
   disabled?: boolean;
 }) {
   const { fetcher } = useFetcher();
-  const llmTraceFetcher: Fetcher<{ trace: LLMTrace | null }> = fetcher;
+  const llmTraceFetcher: Fetcher<GetPokeLLMTraceResponseBody<LLMTrace>> =
+    fetcher;
 
   const { data, error, mutate } = useSWR(
     runId && !disabled
@@ -139,6 +141,8 @@ export function usePokeLLMTrace({
   );
 
   return {
+    langfuseError: data?.langfuseError ?? null,
+    langfuseTrace: data?.langfuseTrace ?? null,
     trace: data ? data.trace : null,
     isLLMTraceLoading: !error && !data && !disabled,
     isLLMTraceError: error,
