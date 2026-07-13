@@ -124,7 +124,7 @@ export function MCPToolValidationRequired({
           onValidationStart={handleValidationStart}
         />
         {errorMessage && (
-          <div className="mt-2 text-sm font-medium text-warning-800 dark:text-warning-800-night">
+          <div className="mt-2 text-sm font-medium text-warning-800">
             {errorMessage}
           </div>
         )}
