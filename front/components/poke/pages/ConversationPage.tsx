@@ -1,9 +1,7 @@
 import { PluginList } from "@app/components/poke/plugins/PluginList";
 import { useWorkspace } from "@app/lib/auth/AuthContext";
-import { clientFetch } from "@app/lib/egress/client";
 import { useRequiredPathParam } from "@app/lib/platform";
 import { usePokeConversation } from "@app/poke/swr";
-import { usePokeAgentConfigurations } from "@app/poke/swr/agent_configurations";
 import { usePokeConversationConfig } from "@app/poke/swr/conversation_config";
 import { usePokePageMetadata } from "@app/poke/swr/currentPage";
 import { useCopyReinforcementTestCase } from "@app/poke/swr/reinforcement_test_case";
@@ -24,30 +22,17 @@ import {
   Check,
   ChevronDown,
   Chip,
-  Clipboard,
-  ClipboardCheck,
   CodeBlock,
   ConversationMessage,
   cn,
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-  Input,
   LinkWrapper,
   Markdown,
   Page,
   Spinner,
-  useCopyToClipboard,
   XClose,
 } from "@dust-tt/sparkle";
 import { CodeBracketIcon, DocumentTextIcon } from "@heroicons/react/24/outline";
-import {
-  type ComponentProps,
-  type ReactNode,
-  useEffect,
-  useState,
-} from "react";
+import { type ComponentProps, type ReactNode, useState } from "react";
 
 type ChipColor = NonNullable<ComponentProps<typeof Chip>["color"]>;
 
@@ -816,87 +801,9 @@ export function ConversationPage() {
     spaceDetails?.space.kind === "project" ? spaceDetails.space : null;
 
   const [useMarkdown, setUseMarkdown] = useState(false);
-  const { data: agents } = usePokeAgentConfigurations({
-    owner,
-    agentsGetView: "admin_internal",
-  });
-
-  const defaultAgentId = (() => {
-    const lastAgentMessage = conversation?.content
-      .map((versions) => versions[versions.length - 1])
-      .reverse()
-      .find((m) => m.type === "agent_message") as
-      | PokeAgentMessageType
-      | undefined;
-    return lastAgentMessage?.configuration.sId ?? agents[0]?.sId ?? "";
-  })();
-
-  const [selectedAgentId, setSelectedAgentId] =
-    useState<string>(defaultAgentId);
-  const [contextSizeOverride, setContextSizeOverride] = useState<string>("");
-  const [isRendering, setIsRendering] = useState(false);
-  const [renderError, setRenderError] = useState<string | null>(null);
-  const [renderResult, setRenderResult] = useState<null | {
-    tokensUsed: number;
-    modelContextSizeUsed: number;
-    modelConversation: unknown;
-    promptTokenCountApprox: number;
-    toolsTokenCountApprox: number;
-  }>(null);
-  const [showRenderControls, setShowRenderControls] = useState(false);
-  const [isCopiedJSON, copyJSON] = useCopyToClipboard();
 
   const { copyTestCase, isLoading: isTestCaseLoading } =
     useCopyReinforcementTestCase({ owner, conversationId });
-
-  useEffect(() => {
-    if (!selectedAgentId) {
-      if (defaultAgentId) {
-        setSelectedAgentId(defaultAgentId);
-      }
-    }
-  }, [defaultAgentId, selectedAgentId]);
-
-  async function handleRenderConversation() {
-    if (!selectedAgentId) {
-      setRenderError("Select an agent sId first.");
-      return;
-    }
-    setIsRendering(true);
-    setRenderError(null);
-    setRenderResult(null);
-    try {
-      const response = await clientFetch(
-        `/api/poke/workspaces/${owner.sId}/conversations/${conversationId}/render`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            agentId: selectedAgentId,
-            contextSizeOverride: contextSizeOverride
-              ? Number(contextSizeOverride)
-              : null,
-          }),
-        }
-      );
-      const data = await response.json();
-      if (!response.ok) {
-        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-        throw new Error(data.error?.message || "Failed to render conversation");
-      }
-      setRenderResult({
-        tokensUsed: data.tokensUsed,
-        modelContextSizeUsed: data.modelContextSizeUsed,
-        modelConversation: data.modelConversation,
-        promptTokenCountApprox: data.promptTokenCountApprox,
-        toolsTokenCountApprox: data.toolsTokenCountApprox,
-      });
-    } catch (e) {
-      setRenderError(e instanceof Error ? e.message : "Unknown error");
-    } finally {
-      setIsRendering(false);
-    }
-  }
 
   if (isConfigLoading) {
     return (
@@ -1001,17 +908,10 @@ export function ConversationPage() {
               onClick={() => setUseMarkdown(!useMarkdown)}
             />
             <Button
-              label="Render Conversation"
+              href={`/poke/${owner.sId}/conversation/${conversationId}/render`}
+              label="Render diagnostics"
               variant="primary"
               size="xs"
-              onClick={() => {
-                if (!showRenderControls) {
-                  setShowRenderControls(true);
-                  return;
-                }
-                void handleRenderConversation();
-              }}
-              disabled={isRendering}
             />
             <Button
               label="Self-improving skills test"
@@ -1020,105 +920,7 @@ export function ConversationPage() {
               onClick={() => void copyTestCase()}
               disabled={isTestCaseLoading}
             />
-            {isRendering && <Spinner size="xs" />}
-            {showRenderControls && (
-              <div className="ml-2 flex items-center space-x-2">
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button
-                      label={
-                        selectedAgentId
-                          ? `Agent: ${
-                              agents.find((a) => a.sId === selectedAgentId)
-                                ?.name ?? selectedAgentId
-                            }`
-                          : "Select Agent"
-                      }
-                      variant="outline"
-                      size="xs"
-                    />
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="start">
-                    {agents.map((a) => (
-                      <DropdownMenuItem
-                        key={a.sId}
-                        onClick={() => setSelectedAgentId(a.sId)}
-                      >
-                        {a.name} ({a.sId})
-                      </DropdownMenuItem>
-                    ))}
-                  </DropdownMenuContent>
-                </DropdownMenu>
-                <Input
-                  placeholder="Context size override"
-                  value={contextSizeOverride}
-                  onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                    setContextSizeOverride(e.target.value)
-                  }
-                  className="h-7 w-44"
-                />
-              </div>
-            )}
           </div>
-          {(renderError !== null || renderResult !== null) && (
-            <div className="mt-2 rounded-md border p-2">
-              {renderError && <div className="text-warning">{renderError}</div>}
-              {renderResult && (
-                <div className="flex flex-col space-y-2">
-                  <div className="flex items-center space-x-2">
-                    <Chip
-                      color="highlight"
-                      label={`Tokens used: ${renderResult.tokensUsed}`}
-                      size="xs"
-                    />
-                    <Chip
-                      color="info"
-                      label={`Context size: ${renderResult.modelContextSizeUsed}`}
-                      size="xs"
-                    />
-                    <Chip
-                      color="highlight"
-                      label={`Prompt tokens: ${renderResult.promptTokenCountApprox}`}
-                      size="xs"
-                    />
-                    <Chip
-                      color="success"
-                      label={`Tools tokens: ${renderResult.toolsTokenCountApprox}`}
-                      size="xs"
-                    />
-                    <Button
-                      label={isCopiedJSON ? "Copied" : "Copy JSON"}
-                      variant="outline"
-                      size="xs"
-                      icon={isCopiedJSON ? ClipboardCheck : Clipboard}
-                      onClick={() =>
-                        copyJSON(
-                          JSON.stringify(
-                            renderResult.modelConversation,
-                            null,
-                            2
-                          )
-                        )
-                      }
-                    />
-                    <Button
-                      label="Close"
-                      variant="outline"
-                      size="xs"
-                      icon={XClose}
-                      onClick={() => {
-                        setRenderError(null);
-                        setRenderResult(null);
-                      }}
-                    />
-                  </div>
-                  <CodeBlock wrapLongLines className="language-json">
-                    {JSON.stringify(renderResult.modelConversation, null, 2)}
-                  </CodeBlock>
-                </div>
-              )}
-            </div>
-          )}
           {(pendingUserCount > 0 || createdAgentCount > 0) && (
             <div className="flex flex-wrap items-center gap-2 rounded-md border border-separator bg-muted-background px-3 py-2 text-sm text-muted-foreground">
               <span className="text-sm font-medium text-foreground">
