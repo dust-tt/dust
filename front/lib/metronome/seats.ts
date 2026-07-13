@@ -1330,6 +1330,7 @@ export async function syncSeatCount({
   startingAt,
   contract,
   assumeEmptySeats,
+  carryConsumptionAcrossStartingAt = false,
 }: {
   metronomeCustomerId: string;
   contractId: string;
@@ -1344,6 +1345,10 @@ export async function syncSeatCount({
   // empty. Only safe for a freshly provisioned contract (no prior assignments)
   // — passed by switchContract when the contract was newly created.
   assumeEmptySeats?: boolean;
+  // Run the seat-credit ledger transfer (carry consumed AWU from an old
+  // recurring-credit seat to a new one, e.g. `pro` -> `max`) even though an
+  // explicit `startingAt` is set.
+  carryConsumptionAcrossStartingAt?: boolean;
 }): Promise<Result<undefined, Error>> {
   let didMutateSeatData = false;
 
@@ -1567,7 +1572,7 @@ export async function syncSeatCount({
       );
     }
     let pendingCreditTransfers: SeatCreditTransfer[] = [];
-    if (!startingAt) {
+    if (!startingAt || carryConsumptionAcrossStartingAt) {
       pendingCreditTransfers = await emptyOriginSeatCreditsForTransfers({
         metronomeCustomerId,
         contractId,
