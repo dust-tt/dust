@@ -12,9 +12,12 @@ import {
   isContentNodeAttachmentType,
   isFileAttachmentType,
 } from "@app/lib/api/assistant/conversation/attachments";
+import { destroyConversation } from "@app/lib/api/assistant/conversation/destroy";
+import { copySelectedConversationSpacesToChild } from "@app/lib/api/assistant/conversation/selected_spaces";
 import { listAttachments } from "@app/lib/api/assistant/jit_utils";
 import type { Authenticator } from "@app/lib/auth";
 import { serializeMention } from "@app/lib/mentions/format";
+import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import logger from "@app/logger/logger";
 import type { AgentLoopExecutionData } from "@app/types/assistant/agent_run";
 import type { UserMessageOrigin } from "@app/types/assistant/conversation";
@@ -26,6 +29,7 @@ import type {
   ConversationPublicType,
   DustAPI,
   PublicPostContentFragmentRequestBody,
+  PublicPostMessagesRequestBody,
 } from "@dust-tt/client";
 
 /**
@@ -40,6 +44,89 @@ function isUserSideError(error: APIError): boolean {
     error.type === "plan_message_limit_exceeded" ||
     error.type === "rate_limit_error"
   );
+}
+
+async function cleanupSubConversationAfterSetupFailure(
+  auth: Authenticator,
+  conversationId: string
+): Promise<void> {
+  try {
+    const conversation = await ConversationResource.fetchById(
+      auth,
+      conversationId
+    );
+    if (!conversation) {
+      return;
+    }
+
+    const result = await destroyConversation(auth, { conversation });
+    if (result.isErr()) {
+      throw result.error;
+    }
+  } catch (error) {
+    logger.error(
+      { error, conversationId },
+      "Failed to clean up sub-conversation after setup failure"
+    );
+  }
+}
+
+async function postMessageAndFetchConversation(
+  api: DustAPI,
+  {
+    conversationId,
+    message,
+    onPostMessageError,
+  }: {
+    conversationId: string;
+    message: PublicPostMessagesRequestBody;
+    onPostMessageError?: () => Promise<void>;
+  }
+): Promise<
+  Result<
+    { conversation: ConversationPublicType; userMessageId: string },
+    MCPError
+  >
+> {
+  const messageRes = await api.postUserMessage({ conversationId, message });
+  if (messageRes.isErr()) {
+    const isUserSide = isUserSideError(messageRes.error);
+    const isTransient = isTransientNetworkError(messageRes.error);
+    if (!isTransient) {
+      await onPostMessageError?.();
+    }
+    return new Err(
+      new MCPError(
+        isUserSide ? messageRes.error.message : "Failed to create message",
+        {
+          cause: messageRes.error,
+          tracked: !isUserSide && !isTransient,
+        }
+      )
+    );
+  }
+
+  const conversationRes = await api.getConversation({ conversationId });
+  if (conversationRes.isErr()) {
+    const isUserSide = isUserSideError(conversationRes.error);
+    const isTransient = isTransientNetworkError(conversationRes.error);
+    return new Err(
+      new MCPError(
+        isUserSide
+          ? conversationRes.error.message
+          : "Failed to get conversation",
+        {
+          cause: conversationRes.error,
+          tracked: !isUserSide && !isTransient,
+        }
+      )
+    );
+  }
+
+  return new Ok({
+    conversation: conversationRes.value,
+    userMessageId: messageRes.value.sId,
+  });
 }
 
 export async function getOrCreateConversation(
@@ -181,66 +268,44 @@ export async function getOrCreateConversation(
 
   parentOrigin = parentMessage.context.origin ?? null;
 
+  const makeSubAgentMessage = (
+    type: "run_agent" | "agent_handover"
+  ): PublicPostMessagesRequestBody => ({
+    content: `${serializeMention({ name: childAgentBlob.name, sId: childAgentId })} ${queryWithFilePaths}`,
+    mentions: [{ configurationId: childAgentId }],
+    context: {
+      timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+      username: mainAgent.name,
+      fullName: `@${mainAgent.name}`,
+      email: null,
+      profilePictureUrl: mainAgent.pictureUrl,
+      origin: parentOrigin,
+      selectedMCPServerViewIds: toolsetsToAdd,
+    },
+    agenticMessageData: {
+      // `run_agent` type will skip adding the conversation to the user history.
+      type,
+      originMessageId: originMessage.sId,
+    },
+    skipToolsValidation:
+      type === "run_agent"
+        ? (agentMessage.skipToolsValidation ?? false)
+        : false,
+  });
+
   if (conversationId) {
     const agenticMessageType =
       mainConversation.sId !== conversationId ? "run_agent" : "agent_handover";
-    const messageRes = await api.postUserMessage({
+    const result = await postMessageAndFetchConversation(api, {
       conversationId,
-      message: {
-        content: `${serializeMention({ name: childAgentBlob.name, sId: childAgentId })} ${queryWithFilePaths}`,
-        mentions: [{ configurationId: childAgentId }],
-        context: {
-          timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-          username: mainAgent.name,
-          fullName: `@${mainAgent.name}`,
-          email: null,
-          profilePictureUrl: mainAgent.pictureUrl,
-          origin: parentOrigin,
-          selectedMCPServerViewIds: toolsetsToAdd,
-        },
-        agenticMessageData: {
-          // `run_agent` type will skip adding the conversation to the user history.
-          type: agenticMessageType,
-          originMessageId: originMessage.sId,
-        },
-      },
+      message: makeSubAgentMessage(agenticMessageType),
     });
-
-    if (messageRes.isErr()) {
-      const isUserSide = isUserSideError(messageRes.error);
-      const isTransient = isTransientNetworkError(messageRes.error);
-      const message = isUserSide
-        ? messageRes.error.message
-        : "Failed to create message";
-      return new Err(
-        new MCPError(message, {
-          cause: messageRes.error,
-          tracked: !isUserSide && !isTransient,
-        })
-      );
-    }
-
-    const convRes = await api.getConversation({
-      conversationId,
-    });
-
-    if (convRes.isErr()) {
-      const isUserSide = isUserSideError(convRes.error);
-      const isTransient = isTransientNetworkError(convRes.error);
-      const message = isUserSide
-        ? convRes.error.message
-        : "Failed to get conversation";
-      return new Err(
-        new MCPError(message, {
-          cause: convRes.error,
-          tracked: !isUserSide && !isTransient,
-        })
-      );
+    if (result.isErr()) {
+      return result;
     }
 
     return new Ok({
-      conversation: convRes.value,
-      userMessageId: messageRes.value.sId,
+      ...result.value,
       isNewConversation: true,
     });
   }
@@ -250,26 +315,7 @@ export async function getOrCreateConversation(
     visibility: "unlisted",
     depth: mainConversation.depth + 1,
     spaceId: mainConversation.spaceId ?? undefined,
-    message: {
-      content: `${serializeMention({ name: childAgentBlob.name, sId: childAgentId })} ${queryWithFilePaths}`,
-      mentions: [{ configurationId: childAgentId }],
-      context: {
-        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-        username: mainAgent.name,
-        fullName: `@${mainAgent.name}`,
-        email: null,
-        profilePictureUrl: mainAgent.pictureUrl,
-        origin: parentOrigin,
-        selectedMCPServerViewIds: toolsetsToAdd,
-      },
-      agenticMessageData: {
-        // `run_agent` type will skip adding the conversation to the user history.
-        type: "run_agent",
-        originMessageId: originMessage.sId,
-      },
-    },
     contentFragments,
-    skipToolsValidation: agentMessage.skipToolsValidation ?? false,
   });
 
   if (convRes.isErr()) {
@@ -297,10 +343,22 @@ export async function getOrCreateConversation(
     );
   }
 
-  const { conversation, message: createdUserMessage } = convRes.value;
+  const { conversation } = convRes.value;
 
-  if (!createdUserMessage) {
-    return new Err(new MCPError("Failed to retrieve the created message."));
+  const selectedSpacesResult = await copySelectedConversationSpacesToChild(
+    auth,
+    {
+      parentConversation: mainConversation,
+      childConversationId: conversation.sId,
+    }
+  );
+  if (selectedSpacesResult.isErr()) {
+    await cleanupSubConversationAfterSetupFailure(auth, conversation.sId);
+    return new Err(
+      new MCPError("Failed to inherit selected Spaces", {
+        cause: selectedSpacesResult.error,
+      })
+    );
   }
 
   const copyRes = await copyConversationFilesIntoSub(auth, {
@@ -309,12 +367,22 @@ export async function getOrCreateConversation(
     filePaths: resolvedFilePaths,
   });
   if (copyRes.isErr()) {
+    await cleanupSubConversationAfterSetupFailure(auth, conversation.sId);
     return copyRes;
   }
 
+  const result = await postMessageAndFetchConversation(api, {
+    conversationId: conversation.sId,
+    message: makeSubAgentMessage("run_agent"),
+    onPostMessageError: () =>
+      cleanupSubConversationAfterSetupFailure(auth, conversation.sId),
+  });
+  if (result.isErr()) {
+    return result;
+  }
+
   return new Ok({
-    conversation,
+    ...result.value,
     isNewConversation: true,
-    userMessageId: createdUserMessage.sId,
   });
 }
