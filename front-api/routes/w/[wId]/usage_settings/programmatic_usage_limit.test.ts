@@ -20,7 +20,7 @@ vi.mock("@app/lib/api/credits/programmatic_usage_limit", async () => {
 const TEST_METRONOME_CUSTOMER_ID = "cust_test_xxx";
 
 async function makeMetronomeWorkspace(): Promise<WorkspaceType> {
-  return WorkspaceFactory.metronome({
+  return WorkspaceFactory.creditPriced({
     metronomeCustomerId: TEST_METRONOME_CUSTOMER_ID,
   });
 }
@@ -256,6 +256,25 @@ describe("/api/w/[wId]/usage_settings/programmatic_usage_limit", () => {
       });
 
       expect(response.status).toBe(500);
+    });
+
+    it("returns 400 when the workspace is not on a credit-priced plan", async () => {
+      const workspace = await WorkspaceFactory.metronome({
+        metronomeCustomerId: TEST_METRONOME_CUSTOMER_ID,
+      });
+      await createPrivateApiMockRequest({
+        role: "admin",
+        workspace,
+      });
+
+      const response = await putRequest(workspace.sId, {
+        monthlyCapCredits: 500,
+      });
+
+      expect(response.status).toBe(400);
+      const data = (await response.json()) as { error: { type: string } };
+      expect(data.error.type).toBe("invalid_request_error");
+      expect(businessLayer.syncProgrammaticUsageLimit).not.toHaveBeenCalled();
     });
   });
 });

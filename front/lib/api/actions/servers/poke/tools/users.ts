@@ -42,7 +42,7 @@ export const userHandlers: UserHandlers = {
     const targetAuth = targetAuthResult.value;
 
     const groups = await GroupResource.listAllWorkspaceGroups(targetAuth, {
-      groupKinds: ["global", "regular", "space_editors", "provisioned"],
+      groupKinds: ["global", "regular_auto", "space_editors", "provisioned"],
     });
 
     return jsonResponse({

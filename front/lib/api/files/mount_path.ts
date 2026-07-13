@@ -104,10 +104,52 @@ export function getPodSandboxFunctionsMountPoint(podId: string): string {
  * the bun child, and `@dust/pod` reads the env var — neither carries a fallback copy.
  *
  * TODO(pod-state): Track 1's parallel stack defines the same contract value as
- * `POD_STATE_DATABASES_DIR` in `front/lib/api/sandbox/pod_state.ts` (litestream config /
+ * `POD_STATE_DATABASES_DIR` in `front/lib/api/sandbox/db.ts` (litestream config /
  * restore side). Dedup into a single constant once both stacks are merged.
  */
 export const POD_SANDBOX_DATABASES_DIR = "/pod-state/databases";
+
+/**
+ * Per-database size quota in bytes (1 GiB). The other half of the paths-env.v1 contract: like
+ * the databases dir, front owns this value and passes it per exec as
+ * `DUST_POD_DATABASE_MAX_SIZE_BYTES`; both `@dust/pod`'s `db()` and the `dsbx db query` runner
+ * require it and carry no fallback (see `cli/dust-sandbox/pod/db.ts`). A single source here
+ * keeps the quota the workload writes against identical to the one `db_query` enforces.
+ */
+export const POD_SANDBOX_DATABASE_MAX_SIZE_BYTES = 1024 * 1024 * 1024;
+
+/**
+ * The env vars every pod-database exec (`dsbx function run` and every `dsbx db` subcommand)
+ * must carry so the bun child resolves the databases dir and the size quota. Returned as a
+ * fresh object so callers can spread it into their own env without sharing a reference.
+ */
+export function podDatabaseExecEnvVars(): {
+  DUST_POD_DATABASES_DIR: string;
+  DUST_POD_DATABASE_MAX_SIZE_BYTES: string;
+} {
+  return {
+    DUST_POD_DATABASES_DIR: POD_SANDBOX_DATABASES_DIR,
+    DUST_POD_DATABASE_MAX_SIZE_BYTES: String(
+      POD_SANDBOX_DATABASE_MAX_SIZE_BYTES
+    ),
+  };
+}
+
+/**
+ * Prefix for the pod's Litestream state replica (LTX chains for the pod's SQLite databases). The
+ * sandbox's litestream daemon is the only writer, through the dust-state-only gcsfuse mount at
+ * /pod-state/replica. Never mounted under /files, never a FileResource: cleanup is a wholesale
+ * prefix delete at pod deletion (see deletePodStatePrefix).
+ */
+export function getPodStateBasePath({
+  workspaceId,
+  podId,
+}: {
+  workspaceId: string;
+  podId: string;
+}): string {
+  return `${getBaseMountPathForWorkspace({ workspaceId })}pods/${podId}/state/`;
+}
 
 /**
  * Given a mount file path like "w/.../files/report.pdf",
@@ -615,6 +657,28 @@ export function disambiguateFileName(file: FileResource): string {
   const basename = fileName.substring(0, lastDot);
   const ext = fileName.substring(lastDot);
   return `${basename}_${sId}${ext}`;
+}
+
+/**
+ * Split a scoped path to a Frame's entry source file into its bundling root and the entry's path
+ * relative to that root, e.g. "conversation-abc/dashboards/Sales.tsx" splits into
+ * "conversation-abc/dashboards" and "Sales.tsx". Callers pass the entry's full current path
+ * rather than a directory (see `frameEntryRelPath` on `FileUseCaseMetadata` for why).
+ */
+export function splitFrameEntryScopedPath(
+  scopedPath: string
+): Result<{ root: string; entryRelPath: string }, Error> {
+  const trimmed = scopedPath.replace(/\/+$/, "");
+  const root = path.posix.dirname(trimmed);
+  if (root === "." || root === "/") {
+    return new Err(
+      new Error(
+        `Path must include the entry file's directory, e.g. 'conversation-<id>/<filename>': got '${scopedPath}'.`
+      )
+    );
+  }
+
+  return new Ok({ root, entryRelPath: path.posix.basename(trimmed) });
 }
 
 /**

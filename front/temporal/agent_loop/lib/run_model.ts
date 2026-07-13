@@ -2,6 +2,7 @@ import { TOOL_NAME_SEPARATOR } from "@app/lib/actions/constants";
 import type { MCPToolConfigurationType } from "@app/lib/actions/mcp";
 import { buildToolSpecification } from "@app/lib/actions/mcp";
 import { tryListMCPTools } from "@app/lib/actions/mcp_actions";
+import { autoInternalMCPServerNameToSId } from "@app/lib/actions/mcp_helper";
 import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
 import { isJITMCPServerView } from "@app/lib/actions/mcp_internal_actions/utils";
 import type { StepContext } from "@app/lib/actions/types";
@@ -12,7 +13,6 @@ import {
   isServerSideMCPToolConfiguration,
 } from "@app/lib/actions/types/guards";
 import { computeStepContexts } from "@app/lib/actions/utils";
-import { getAdvancedModelAccessErrorForAgentConfiguration } from "@app/lib/advanced_models/access";
 import { createClientSideMCPServerConfigurations } from "@app/lib/api/actions/mcp_client_side";
 import { renderConversationForModel } from "@app/lib/api/assistant/conversation_rendering";
 import { categorizeConversationRenderErrorMessage } from "@app/lib/api/assistant/errors";
@@ -22,7 +22,7 @@ import {
   globalAgentInjectsToolsets,
   globalAgentInjectsUserContext,
   globalAgentInjectsWorkspaceContext,
-} from "@app/lib/api/assistant/global_agents/global_agents";
+} from "@app/lib/api/assistant/global_agents/prompt_context";
 import {
   buildUserContext,
   buildWorkspaceContext,
@@ -57,6 +57,8 @@ import {
   AgentMessageContentParser,
   getDelimitersConfiguration,
 } from "@app/lib/llms/agent_message_content_parser";
+import { TOOL_SEARCH_TOOL } from "@app/lib/model_constructors/sdk/anthropic_ai/converters/input/tool_search";
+import { getModelTierAccessErrorForAgentConfiguration } from "@app/lib/model_tiers/access";
 import { AgentStepContentResource } from "@app/lib/resources/agent_step_content_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
@@ -84,8 +86,10 @@ import type { AgentLoopExecutionData } from "@app/types/assistant/agent_run";
 import { isGlobalAgentId } from "@app/types/assistant/assistant";
 import type {
   AgentMessageType,
+  ConversationType,
   UserMessageOrigin,
 } from "@app/types/assistant/conversation";
+import { isAgentMessageType } from "@app/types/assistant/conversation";
 import {
   isTextContent,
   type ModelConversationTypeMultiActions,
@@ -121,6 +125,29 @@ const ASK_USER_QUESTION_BLOCKED_ORIGINS: readonly UserMessageOrigin[] = [
   "branch_anchor",
 ];
 
+// Builds the JSON blob whose token count estimates how many tokens the tool
+// definitions actually cost in context, for the model's token budget. When
+// tool search is active, deferred (non-eager) tool schemas are excluded from
+// the model's context until discovered, so they must not count toward the
+// budget the same way eager specs do: only eager specs, plus the tool-search
+// tool itself, are actually in context up front.
+export function buildToolDefinitionsForTokenCount(
+  specifications: AgentActionSpecification[],
+  toolSearchEnabled: boolean
+): string {
+  const specsInContext = toolSearchEnabled
+    ? specifications.filter((s) => s.eager)
+    : specifications;
+  return JSON.stringify([
+    ...(toolSearchEnabled ? [TOOL_SEARCH_TOOL] : []),
+    ...specsInContext.map((s) => ({
+      name: s.name,
+      description: s.description,
+      inputSchema: s.inputSchema,
+    })),
+  ]);
+}
+
 // Concatenate two content strings, ensuring at least one whitespace character
 // between them when both are non-empty. This prevents words from being glued
 // together across successive LLM calls.
@@ -143,7 +170,8 @@ function concatWithNewlineBoundary(
 // passthrough parsing below (block shapes, server tool names) belongs behind a
 // provider-agnostic dispatch keyed on the passthrough provider id.
 function getReplayedToolNames(
-  modelConversation: ModelConversationTypeMultiActions
+  modelConversation: ModelConversationTypeMultiActions,
+  missingActionCatcherFunctionCallIds: Set<string>
 ): string[] {
   const toolNames = new Set<string>();
 
@@ -151,7 +179,12 @@ function getReplayedToolNames(
     switch (message.role) {
       case "assistant":
         for (const content of message.contents) {
-          if (content.type === "function_call") {
+          if (
+            content.type === "function_call" &&
+            !missingActionCatcherFunctionCallIds.has(content.value.id)
+          ) {
+            // Missing-action catcher calls remain in the replay so the model
+            // sees their error, but their attempted names were never tools.
             toolNames.add(content.value.name);
           }
           if (
@@ -192,6 +225,34 @@ function getReplayedToolNames(
   }
 
   return [...toolNames];
+}
+
+function getMissingActionCatcherFunctionCallIds(
+  conversation: ConversationType
+): Set<string> {
+  const functionCallIds = new Set<string>();
+  const missingActionCatcherMCPServerId = autoInternalMCPServerNameToSId({
+    name: "missing_action_catcher",
+    workspaceId: conversation.owner.id,
+  });
+
+  for (const messageVersions of conversation.content) {
+    for (const message of messageVersions) {
+      if (!isAgentMessageType(message)) {
+        continue;
+      }
+
+      for (const action of message.actions) {
+        // mcpServerId is serialized from the action's
+        // toolConfiguration.toolServerId.
+        if (action.mcpServerId === missingActionCatcherMCPServerId) {
+          functionCallIds.add(action.functionCallId);
+        }
+      }
+    }
+  }
+
+  return functionCallIds;
 }
 
 function buildReplayOnlyToolSpecification(
@@ -236,18 +297,20 @@ export function buildBaseSpecifications(
       .filter((id) => id !== -1)
   );
 
-  return availableActions.map((action) => {
-    const specification = buildToolSpecification(action);
-    if (
-      isCustomAgent &&
-      isServerSideMCPToolConfiguration(action) &&
-      agentActionModelIds.has(action.id)
-    ) {
-      return { ...specification, eager: true };
-    }
+  return availableActions
+    .map((action) => {
+      const specification = buildToolSpecification(action);
+      if (
+        isCustomAgent &&
+        isServerSideMCPToolConfiguration(action) &&
+        agentActionModelIds.has(action.id)
+      ) {
+        return { ...specification, eager: true };
+      }
 
-    return specification;
-  });
+      return specification;
+    })
+    .sort((left, right) => left.name.localeCompare(right.name));
 }
 
 // Replayed tools keep their intrinsic `eager` flag: providers resolve deferred
@@ -257,15 +320,24 @@ export function buildBaseSpecifications(
 // definition.
 export function buildSpecificationsWithReplayPlaceholders(
   baseSpecifications: AgentActionSpecification[],
-  modelConversation: ModelConversationTypeMultiActions
+  {
+    modelConversation,
+    missingActionCatcherFunctionCallIds = new Set(),
+  }: {
+    modelConversation: ModelConversationTypeMultiActions;
+    missingActionCatcherFunctionCallIds?: Set<string>;
+  }
 ): {
   specifications: AgentActionSpecification[];
   missingReplayedToolNames: string[];
 } {
   const currentToolNames = new Set(baseSpecifications.map((spec) => spec.name));
   const missingReplayedToolNames = getReplayedToolNames(
-    modelConversation
-  ).filter((name) => !currentToolNames.has(name));
+    modelConversation,
+    missingActionCatcherFunctionCallIds
+  )
+    .filter((name) => !currentToolNames.has(name))
+    .sort();
 
   return {
     specifications: [
@@ -273,7 +345,7 @@ export function buildSpecificationsWithReplayPlaceholders(
       ...missingReplayedToolNames.map((name) =>
         buildReplayOnlyToolSpecification(name)
       ),
-    ],
+    ].sort((left, right) => left.name.localeCompare(right.name)),
     missingReplayedToolNames,
   };
 }
@@ -384,11 +456,12 @@ export async function runModel(
   const featureFlags = await getFeatureFlags(auth);
 
   if (step === 0) {
-    const accessError = await getAdvancedModelAccessErrorForAgentConfiguration(
+    const accessError = await getModelTierAccessErrorForAgentConfiguration(
       auth,
       {
         agentName: agentConfiguration.name,
         model,
+        reasoningEffort: model.reasoningEffort,
         featureFlags,
       }
     );
@@ -402,8 +475,7 @@ export async function runModel(
     enabledSkills,
     systemSkills,
     equippedSkills,
-    mcpActions,
-    mcpToolsListingError,
+    serverToolsAndInstructions: mcpActions,
   } = await startActiveObservation("resolve-tools", async () => {
     const attachments = await listAttachments(auth, { conversation });
     const jitServers = await getJITServers(auth, {
@@ -425,44 +497,34 @@ export async function runModel(
     const { enabledSkills, systemSkills, equippedSkills } =
       await SkillResource.listForAgentLoop(auth, runAgentData);
 
-    const skillServers = await getSkillServers(auth, {
+    const { skillServers, systemSkillServers } = await getSkillServers(auth, {
       agentConfiguration,
-      skills: [...systemSkills, ...enabledSkills],
+      enabledSkills,
+      systemSkills,
     });
 
-    const {
-      serverToolsAndInstructions: mcpActions,
-      error: mcpToolsListingError,
-    } = await startActiveObservation("list-mcp-tools", () =>
-      tryListMCPTools(
-        auth,
-        {
-          agentConfiguration,
-          conversation,
-          agentMessage,
-          clientSideActionConfigurations: clientSideMCPActionConfigurations,
-        },
-        { jitServers, skillServers }
-      )
+    const serverToolsAndInstructions = await startActiveObservation(
+      "list-mcp-tools",
+      () =>
+        tryListMCPTools(
+          auth,
+          {
+            agentConfiguration,
+            conversation,
+            agentMessage,
+            clientSideActionConfigurations: clientSideMCPActionConfigurations,
+          },
+          { jitServers, skillServers, systemSkillServers }
+        )
     );
 
     return {
       enabledSkills,
       equippedSkills,
       systemSkills,
-      mcpActions,
-      mcpToolsListingError,
+      serverToolsAndInstructions,
     };
   });
-
-  if (mcpToolsListingError) {
-    localLogger.error(
-      {
-        error: mcpToolsListingError,
-      },
-      "Error listing MCP tools."
-    );
-  }
 
   // Filter out ask_user_question when no human is available to answer: origins with no
   // interactive reply surface, or sub-agent runs (conversation depth > 0) where the
@@ -539,7 +601,6 @@ export async function runModel(
     fallbackPrompt,
     model,
     hasAvailableActions: availableActions.length > 0,
-    errorContext: mcpToolsListingError,
     conversation,
     serverToolsAndInstructions: filteredMcpActions,
     systemSkills,
@@ -558,18 +619,20 @@ export async function runModel(
   // Specs carry the intrinsic `eager` property only. Whether a non-eager tool is
   // deferred behind tool search is an Anthropic-specific policy applied in the
   // Anthropic client, gated on `toolSearchEnabled` (threaded through below).
-  const toolSearchEnabled = featureFlags.includes("anthropic_tool_search");
+  // Gated on model.supportsToolSearch too: unsupported models reject the
+  // request outright if deferred tools are included, so the feature flag alone
+  // is not enough to decide this.
+  const toolSearchEnabled =
+    featureFlags.includes("anthropic_tool_search") &&
+    !!model.supportsToolSearch;
   const baseSpecifications: AgentActionSpecification[] =
     buildBaseSpecifications(availableActions, agentConfiguration);
 
   // Count the number of tokens used by the functions presented to the model.
   // This is a rough estimate of the number of tokens.
-  const tools = JSON.stringify(
-    baseSpecifications.map((s) => ({
-      name: s.name,
-      description: s.description,
-      inputSchema: s.inputSchema,
-    }))
+  const tools = buildToolDefinitionsForTokenCount(
+    baseSpecifications,
+    toolSearchEnabled
   );
 
   // Turn the conversation into a digest that can be presented to the model.
@@ -617,10 +680,11 @@ export async function runModel(
   }
 
   const { specifications, missingReplayedToolNames } =
-    buildSpecificationsWithReplayPlaceholders(
-      baseSpecifications,
-      modelConversationRes.value.modelConversation
-    );
+    buildSpecificationsWithReplayPlaceholders(baseSpecifications, {
+      modelConversation: modelConversationRes.value.modelConversation,
+      missingActionCatcherFunctionCallIds:
+        getMissingActionCatcherFunctionCallIds(conversation),
+    });
 
   if (missingReplayedToolNames.length > 0) {
     localLogger.info(

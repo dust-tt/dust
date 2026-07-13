@@ -1,10 +1,37 @@
+import { getPrefixedToolName } from "@app/lib/actions/tool_name_utils";
+import {
+  FILES_EDIT_ACTION_NAME,
+  FILES_SERVER_NAME,
+} from "@app/lib/api/actions/servers/files/metadata";
+import {
+  EDIT_INTERACTIVE_CONTENT_FILE_TOOL_NAME,
+  PUBLISH_INTERACTIVE_CONTENT_FILE_TOOL_NAME,
+  RETRIEVE_INTERACTIVE_CONTENT_FILE_TOOL_NAME,
+} from "@app/lib/api/actions/servers/interactive_content/metadata";
 import { framesSkill } from "@app/lib/resources/skill/code_defined/global/frames";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
+import type { AgentLoopExecutionData } from "@app/types/assistant/agent_run";
 import { describe, expect, it } from "vitest";
 
-// Marker only present in the computer-first variant of the Frames instructions.
-const COMPUTER_FIRST_MARKER = "preferred: edit in the Computer";
+// Markers unique to each variant of the updating section.
+const COMPUTER_FIRST_MARKER =
+  "mounted in the Computer at `/files/conversation-";
+const FILES_FIRST_MARKER =
+  "available to your file tools at `conversation-<conversationId>";
+
+const FILES_EDIT_TOOL = getPrefixedToolName(
+  FILES_SERVER_NAME,
+  FILES_EDIT_ACTION_NAME
+);
+
+function agentLoopDataWithUseFileSystem(
+  useFileSystem: boolean | undefined
+): AgentLoopExecutionData {
+  return {
+    conversation: { metadata: { useFileSystem } },
+  } as unknown as AgentLoopExecutionData;
+}
 
 describe("framesSkill.fetchInstructions", () => {
   it("teaches the computer-first flow when the Computer is enabled", async () => {
@@ -15,13 +42,14 @@ describe("framesSkill.fetchInstructions", () => {
     });
 
     expect(instructions).toContain(COMPUTER_FIRST_MARKER);
-    expect(instructions).toContain(
-      "/files/conversation-<conversationId>/<FrameName>.tsx"
+    expect(instructions).toContain(PUBLISH_INTERACTIVE_CONTENT_FILE_TOOL_NAME);
+    expect(instructions).not.toContain(EDIT_INTERACTIVE_CONTENT_FILE_TOOL_NAME);
+    expect(instructions).not.toContain(
+      RETRIEVE_INTERACTIVE_CONTENT_FILE_TOOL_NAME
     );
-    expect(instructions).toContain("publish_interactive_content_file");
   });
 
-  it("falls back to the retrieve and edit flow when the Computer is disabled", async () => {
+  it("teaches the files-tools flow when the Computer is disabled", async () => {
     const { authenticator: auth } = await createResourceTest({});
     await FeatureFlagFactory.basic(auth, "disable_computer_feature");
 
@@ -30,6 +58,38 @@ describe("framesSkill.fetchInstructions", () => {
     });
 
     expect(instructions).not.toContain(COMPUTER_FIRST_MARKER);
-    expect(instructions).toContain("### Updating Existing Files:");
+    expect(instructions).toContain(FILES_FIRST_MARKER);
+    expect(instructions).toContain(FILES_EDIT_TOOL);
+    expect(instructions).toContain(PUBLISH_INTERACTIVE_CONTENT_FILE_TOOL_NAME);
+    expect(instructions).not.toContain(EDIT_INTERACTIVE_CONTENT_FILE_TOOL_NAME);
+    expect(instructions).not.toContain(
+      RETRIEVE_INTERACTIVE_CONTENT_FILE_TOOL_NAME
+    );
+  });
+
+  it("keeps the retrieve and file-id edit flow for legacy conversations", async () => {
+    const { authenticator: auth } = await createResourceTest({});
+
+    const instructions = await framesSkill.fetchInstructions(auth, {
+      spaceIds: [],
+      agentLoopData: agentLoopDataWithUseFileSystem(false),
+    });
+
+    expect(instructions).not.toContain(COMPUTER_FIRST_MARKER);
+    expect(instructions).not.toContain(FILES_FIRST_MARKER);
+    expect(instructions).toContain(EDIT_INTERACTIVE_CONTENT_FILE_TOOL_NAME);
+    expect(instructions).toContain(RETRIEVE_INTERACTIVE_CONTENT_FILE_TOOL_NAME);
+  });
+
+  it("treats a conversation with the file system like a new conversation", async () => {
+    const { authenticator: auth } = await createResourceTest({});
+
+    const instructions = await framesSkill.fetchInstructions(auth, {
+      spaceIds: [],
+      agentLoopData: agentLoopDataWithUseFileSystem(true),
+    });
+
+    expect(instructions).toContain(COMPUTER_FIRST_MARKER);
+    expect(instructions).not.toContain(EDIT_INTERACTIVE_CONTENT_FILE_TOOL_NAME);
   });
 });

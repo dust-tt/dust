@@ -50,8 +50,8 @@ export class AgentYAMLConverter {
         },
         instructions: formData.instructions,
         generation_settings: {
-          model_id: formData.generationSettings.modelSettings.modelId,
-          provider_id: formData.generationSettings.modelSettings.providerId,
+          model_id: formData.generationSettings.modelSettings?.modelId,
+          provider_id: formData.generationSettings.modelSettings?.providerId,
           temperature: formData.generationSettings.temperature,
           reasoning_effort: formData.generationSettings.reasoningEffort,
           response_format: formData.generationSettings.responseFormat,

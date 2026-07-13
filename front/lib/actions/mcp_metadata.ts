@@ -32,7 +32,7 @@ import {
   MCPOAuthProvider,
   MCPOAuthProviderError,
 } from "@app/lib/actions/mcp_oauth_provider";
-import type { ToolContextType } from "@app/lib/actions/types";
+import type { ToolContext } from "@app/lib/actions/types";
 import { ClientSideRedisMCPTransport } from "@app/lib/api/actions/mcp_client_side";
 import type {
   MCPServerType,
@@ -359,7 +359,7 @@ export async function connectToMCPServer(
     toolContext,
   }: {
     params: MCPConnectionParams;
-    toolContext?: ToolContextType;
+    toolContext?: ToolContext;
   }
 ): Promise<
   Result<Client, Error | MCPServerPersonalAuthenticationRequiredError>

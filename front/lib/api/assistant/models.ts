@@ -1,28 +1,15 @@
+import { PREFERRED_LARGE_MODEL_CONFIGS } from "@app/lib/api/assistant/model_preferences";
+import { isProviderWhitelisted } from "@app/lib/api/assistant/provider_whitelist";
 import { config as regionConfig } from "@app/lib/api/regions/config";
 import { isModelEnabled } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
-import type { AgentMessageModel } from "@app/lib/models/agent/conversation";
+import type { UserMessageModel } from "@app/lib/models/agent/conversation";
 import { isByokTransitioningPlan } from "@app/lib/plans/plan_codes";
-import {
-  CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG,
-  CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG,
-} from "@app/types/assistant/models/anthropic";
-import {
-  GEMINI_3_1_PRO_MODEL_CONFIG,
-  GEMINI_3_5_FLASH_MODEL_CONFIG,
-} from "@app/types/assistant/models/google_ai_studio";
-import {
-  MISTRAL_MEDIUM_3_5_MODEL_CONFIG,
-  MISTRAL_SMALL_MODEL_CONFIG,
-} from "@app/types/assistant/models/mistral";
-import {
-  isModelId,
-  SUPPORTED_MODEL_CONFIGS,
-} from "@app/types/assistant/models/models";
-import {
-  GPT_5_5_MODEL_CONFIG,
-  GPT_5_MINI_MODEL_CONFIG,
-} from "@app/types/assistant/models/openai";
+import { CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG } from "@app/types/assistant/models/anthropic";
+import { GEMINI_3_5_FLASH_MODEL_CONFIG } from "@app/types/assistant/models/google_ai_studio";
+import { MISTRAL_SMALL_MODEL_CONFIG } from "@app/types/assistant/models/mistral";
+import { isModelId } from "@app/types/assistant/models/models";
+import { GPT_5_MINI_MODEL_CONFIG } from "@app/types/assistant/models/openai";
 import {
   BYOK_MODEL_PROVIDER_IDS,
   isModelProviderId,
@@ -32,14 +19,10 @@ import { isReasoningEffort } from "@app/types/assistant/models/reasoning";
 import type {
   ModelConfigurationType,
   ModelProviderIdType,
-  ModelSelectionType,
   ReasoningEffort,
   ResolvedRequestedModel,
 } from "@app/types/assistant/models/types";
-import {
-  GROK_4_1_FAST_NON_REASONING_MODEL_CONFIG,
-  GROK_4_MODEL_CONFIG,
-} from "@app/types/assistant/models/xai";
+import { GROK_4_1_FAST_NON_REASONING_MODEL_CONFIG } from "@app/types/assistant/models/xai";
 import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
 
 export function getWhitelistedProviders(
@@ -82,12 +65,13 @@ export function getWhitelistedProviders(
   return whiteListedProviders.intersection(configuredProviders);
 }
 
-export function isProviderWhitelisted(
+export { isProviderWhitelisted } from "@app/lib/api/assistant/provider_whitelist";
+
+export function isProviderWhitelistedForAuth(
   auth: Authenticator,
   providerId: ModelProviderIdType
 ): boolean {
-  const whitelistedProviders = getWhitelistedProviders(auth);
-  return whitelistedProviders.has(providerId);
+  return isProviderWhitelisted(getWhitelistedProviders(auth), providerId);
 }
 
 type ModelEnablementContext = Parameters<typeof isModelEnabled>[1];
@@ -190,114 +174,67 @@ function _getSmallWhitelistedModel(
   );
 }
 
-const ORDERED_LARGE_MODEL_CONFIGS: ModelConfigurationType[] = [
-  CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG,
-  GPT_5_5_MODEL_CONFIG,
-  GEMINI_3_1_PRO_MODEL_CONFIG,
-  MISTRAL_MEDIUM_3_5_MODEL_CONFIG,
-  GROK_4_MODEL_CONFIG,
-];
-
 function _getLargeWhitelistedModel(
   context: ModelEnablementContext,
   { forBatch: hasBatch }: { forBatch?: boolean } = {}
 ): ModelConfigurationType | null {
   return (
-    ORDERED_LARGE_MODEL_CONFIGS.find(
+    PREFERRED_LARGE_MODEL_CONFIGS.find(
       (m) =>
         isModelEnabled(m, context) && (!hasBatch || m.supportsBatchProcessing)
     ) ?? null
   );
 }
 
-// ---------------------------------------------------------------------------
-// Per-message model picker.
-//
-// A picker selection is an explicit provider/model pick. It is validated against
-// the workspace's enabled models via the same isModelEnabled predicate enforced
-// everywhere else, so the resolved model can never be rejected later. Most picks
-// use the model's own defaultReasoningEffort; the pick may pin an explicit one.
-// ---------------------------------------------------------------------------
-
-function toResolvedModel(
-  config: ModelConfigurationType,
-  reasoningEffort?: ReasoningEffort
-): ResolvedRequestedModel {
-  return {
-    providerId: config.providerId,
-    modelId: config.modelId,
-    reasoningEffort: reasoningEffort ?? config.defaultReasoningEffort,
-  };
+function isResolvedModel(m: {
+  providerId: string | null;
+  modelId: string | null;
+  reasoningEffort: string | null;
+}): m is ResolvedRequestedModel {
+  return (
+    m.providerId !== null &&
+    m.modelId !== null &&
+    m.reasoningEffort !== null &&
+    isModelProviderId(m.providerId) &&
+    isModelId(m.modelId) &&
+    isReasoningEffort(m.reasoningEffort as ReasoningEffort)
+  );
 }
 
-// Resolves a raw picker selection to a concrete model, or null when it cannot be
-// honored for this workspace (unknown or disabled model), in which case the
-// caller falls back to the agent's configured model.
-export function resolveModelSelection(
-  auth: Authenticator,
-  selection: ModelSelectionType,
-  { featureFlags }: { featureFlags: WhitelistableFeature[] }
+export function resolvedModelFromUserMessageRow(
+  row: UserMessageModel
 ): ResolvedRequestedModel | null {
-  const config = SUPPORTED_MODEL_CONFIGS.find(
-    (m) =>
-      m.providerId === selection.providerId && m.modelId === selection.modelId
-  );
-  if (!config) {
+  const { requestedProviderId, requestedModelId, requestedReasoningEffort } =
+    row;
+  const resolvedModel = {
+    providerId: requestedProviderId,
+    modelId: requestedModelId,
+    reasoningEffort: requestedReasoningEffort,
+  };
+  if (!isResolvedModel(resolvedModel)) {
     return null;
   }
-  const enabled = selectEnabledModel(auth, [config], { featureFlags });
-  if (!enabled) {
-    return null;
-  }
-  // Honor an explicit effort only if the model supports it; otherwise fall back
-  // to its default (raw API clients can send an unsupported effort).
-  const effort =
-    selection.reasoningEffort &&
-    enabled.supportedReasoningEfforts[selection.reasoningEffort]
-      ? selection.reasoningEffort
-      : undefined;
-  return toResolvedModel(enabled, effort);
+
+  return resolvedModel;
 }
 
-// Drops agent model settings the picked override can't honor: a structured-output
-// responseFormat inherited onto a model with `supportsResponseFormat: false` makes
-// the run error or silently ignore the schema.
-export function reconcileModelSettings<T extends { responseFormat?: string }>(
-  requested: ResolvedRequestedModel,
-  settings: T
-): T {
-  const config = SUPPORTED_MODEL_CONFIGS.find(
-    (m) =>
-      m.providerId === requested.providerId && m.modelId === requested.modelId
-  );
-  if (config?.supportsResponseFormat) {
-    return settings;
-  }
-  return { ...settings, responseFormat: undefined };
-}
-
-// Rebuilds a `ResolvedRequestedModel` from the raw agent-message columns, or null
+// Rebuilds a `ResolvedRequestedModel` from the raw agent|user-message columns, or null
 // when no override was stored (or the stored values fail validation). Values are
 // written by the resolver above, so validation is defensive.
-export function resolvedModelFromAgentMessageRow(
-  row: AgentMessageModel
-): ResolvedRequestedModel | null {
+export function resolvedModelFromAgentMessageRow(row: {
+  resolvedProviderId: string | null;
+  resolvedModelId: string | null;
+  resolvedReasoningEffort: string | null;
+}): ResolvedRequestedModel | null {
   const { resolvedProviderId, resolvedModelId, resolvedReasoningEffort } = row;
-
-  if (
-    !resolvedProviderId ||
-    !resolvedModelId ||
-    !resolvedReasoningEffort ||
-    !isModelProviderId(resolvedProviderId) ||
-    !isModelId(resolvedModelId) ||
-    !isReasoningEffort(resolvedReasoningEffort)
-  ) {
-    return null;
-  }
-
-  return {
+  const resolvedModel = {
     providerId: resolvedProviderId,
     modelId: resolvedModelId,
     reasoningEffort: resolvedReasoningEffort,
   };
+  if (!isResolvedModel(resolvedModel)) {
+    return null;
+  }
+
+  return resolvedModel;
 }

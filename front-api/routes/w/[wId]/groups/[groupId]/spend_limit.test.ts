@@ -2,7 +2,6 @@ import * as spendLimits from "@app/lib/metronome/alerts/spend_limits";
 import * as planType from "@app/lib/metronome/plan_type";
 import * as seatTypes from "@app/lib/metronome/seat_types";
 import { GroupResource } from "@app/lib/resources/group_resource";
-import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { buildCachedContractMock } from "@app/tests/utils/metronome_contracts";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
@@ -122,12 +121,11 @@ describe("/api/w/[wId]/groups/[groupId]/spend_limit", () => {
     it("returns 403 for a business admin (admin-only write)", async () => {
       const workspace = await makeMetronomeWorkspaceWithCustomer();
       const group = await makeProvisionedGroup(workspace);
-      const { auth } = await createPrivateApiMockRequest({
+      await createPrivateApiMockRequest({
         method: "PUT",
         role: "business_admin",
         workspace,
       });
-      await FeatureFlagFactory.basic(auth, "pricing_groups");
 
       const response = await putLimit(workspace.sId, group.sId, {
         kind: "limited",
@@ -143,12 +141,11 @@ describe("/api/w/[wId]/groups/[groupId]/spend_limit", () => {
     it("returns 400 on out-of-bounds awuCredits", async () => {
       const workspace = await makeMetronomeWorkspaceWithCustomer();
       const group = await makeProvisionedGroup(workspace);
-      const { auth } = await createPrivateApiMockRequest({
+      await createPrivateApiMockRequest({
         method: "PUT",
         role: "admin",
         workspace,
       });
-      await FeatureFlagFactory.basic(auth, "pricing_groups");
 
       for (const awuCredits of [-1, 1.5, 100_000_000]) {
         const response = await putLimit(workspace.sId, group.sId, {
@@ -161,12 +158,11 @@ describe("/api/w/[wId]/groups/[groupId]/spend_limit", () => {
 
     it("returns 404 when the group does not exist", async () => {
       const workspace = await makeMetronomeWorkspaceWithCustomer();
-      const { auth } = await createPrivateApiMockRequest({
+      await createPrivateApiMockRequest({
         method: "PUT",
         role: "admin",
         workspace,
       });
-      await FeatureFlagFactory.basic(auth, "pricing_groups");
 
       const response = await putLimit(workspace.sId, "nonexistent-group-id", {
         kind: "limited",
@@ -182,14 +178,13 @@ describe("/api/w/[wId]/groups/[groupId]/spend_limit", () => {
       const regularGroup = await GroupResource.makeNew({
         name: "Space group",
         workspaceId: workspace.id,
-        kind: "regular",
+        kind: "regular_auto",
       });
-      const { auth } = await createPrivateApiMockRequest({
+      await createPrivateApiMockRequest({
         method: "PUT",
         role: "admin",
         workspace,
       });
-      await FeatureFlagFactory.basic(auth, "pricing_groups");
 
       const response = await putLimit(workspace.sId, regularGroup.sId, {
         kind: "limited",
@@ -210,7 +205,6 @@ describe("/api/w/[wId]/groups/[groupId]/spend_limit", () => {
         role: "admin",
         workspace,
       });
-      await FeatureFlagFactory.basic(auth, "pricing_groups");
 
       const response = await putLimit(workspace.sId, group.sId, {
         kind: "limited",
@@ -250,7 +244,6 @@ describe("/api/w/[wId]/groups/[groupId]/spend_limit", () => {
         role: "admin",
         workspace,
       });
-      await FeatureFlagFactory.basic(auth, "pricing_groups");
       await group.updatePoolCap(auth, 25_000);
 
       const response = await putLimit(workspace.sId, group.sId, {

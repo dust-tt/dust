@@ -24,10 +24,10 @@ app.get(
     const auth = ctx.get("auth");
     const { sId } = ctx.req.valid("param");
 
-    // Check that user has access to this skill.
+    // Check that user can administrate this skill.
     const skill = await SkillResource.fetchById(auth, sId);
 
-    if (!skill || !skill.canWrite(auth)) {
+    if (!skill || !skill.canAdministrate(auth)) {
       return apiError(ctx, {
         status_code: 404,
         api_error: {

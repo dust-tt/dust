@@ -2,7 +2,6 @@ import { PlanModel, SubscriptionModel } from "@app/lib/models/plan";
 import { FREE_NO_PLAN_DATA } from "@app/lib/plans/free_plans";
 import type { PokePlanTypeFilter } from "@app/lib/plans/plan_codes";
 import {
-  getPokePlanTypeFilter,
   isPokePlanTypeFilter,
   POKE_PLAN_TYPE_FILTERS,
 } from "@app/lib/plans/plan_codes";
@@ -10,7 +9,10 @@ import { renderSubscriptionFromModels } from "@app/lib/plans/renderers";
 import { tryParsePhoneNumber } from "@app/lib/plans/trial/phone";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
-import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
+import {
+  buildPokePlanCodeWhere,
+  SubscriptionResource,
+} from "@app/lib/resources/subscription_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { WorkspaceVerificationAttemptResource } from "@app/lib/resources/workspace_verification_attempt_resource";
@@ -22,7 +24,7 @@ import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { pokeApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
-import type { FindOptions, Order, WhereOptions } from "sequelize";
+import type { FindOptions, Includeable, Order, WhereOptions } from "sequelize";
 import { Op } from "sequelize";
 
 import wId from "./[wId]";
@@ -122,6 +124,17 @@ app.get("/", async (ctx): HandlerResult<GetPokeWorkspacesResponseBody> => {
     }
   }
 
+  // "free" has no plan-code pattern of its own (it's "no active subscription,
+  // or one that isn't any of the other buckets"), so it's implemented as an
+  // exclude-list of the (small, non-free) workspace ids. Every other bucket
+  // is instead filtered directly in the main query below via an inner join
+  // on the matching plan code, so we only ever fetch the requested page.
+  if (planTypeFilter === "free") {
+    const nonFreeWorkspaceIds =
+      await SubscriptionResource.listActiveWorkspaceIdsWithNonFreePlanType();
+    conditions.push({ id: { [Op.notIn]: nonFreeWorkspaceIds } });
+  }
+
   if (searchTerm) {
     // Search by Stripe subscription ID (exact match).
     let isSearchByStripeSubscription = false;
@@ -200,54 +213,61 @@ app.get("/", async (ctx): HandlerResult<GetPokeWorkspacesResponseBody> => {
     }
   }
 
-  // Plan-type filtering happens in JS below (a workspace's plan type can
-  // depend on there being no active subscription at all, which SQL can't
-  // express against this over-fetched set), so we can't rely on SQL
-  // LIMIT/OFFSET to select the right page in that case: we over-fetch a
-  // wide candidate set from offset 0, filter it in JS, then slice out the
-  // requested page ourselves. Otherwise (plain pagination, no plan-type
-  // filter) we paginate directly in SQL. Either way we fetch one extra row
-  // past the requested page so we can tell whether a next page exists
-  // without a second query.
-  const needsOverFetch = planTypeFilter !== undefined;
-  const fetchLimit = needsOverFetch
-    ? Math.max(100, offset + limit + 1)
-    : limit + 1;
-  const fetchOffset = needsOverFetch ? 0 : offset;
-
   const where: FindOptions<WorkspaceModel>["where"] = conditions.length
     ? { [Op.and]: conditions }
     : {};
 
+  // For non-free buckets, filter directly via an inner join on the matching
+  // plan code so the DB does the filtering *and* the pagination in one
+  // query — we never materialize the (possibly large) matching id set in
+  // Node. "free" is instead expressed as an exclude condition above (see
+  // `conditions`), so the subscriptions include here stays a plain left
+  // join in that case, same as when there's no plan-type filter at all.
+  const subscriptionsInclude: Includeable =
+    planTypeFilter !== undefined && planTypeFilter !== "free"
+      ? {
+          model: SubscriptionModel,
+          as: "subscriptions",
+          where: { status: "active" },
+          required: true,
+          include: [
+            {
+              model: PlanModel,
+              as: "plan",
+              where: buildPokePlanCodeWhere(planTypeFilter),
+              required: true,
+            },
+          ],
+        }
+      : {
+          model: SubscriptionModel,
+          as: "subscriptions",
+          where: { status: "active" },
+          required: false,
+          include: [{ model: PlanModel, as: "plan" }],
+        };
+
+  // Fetch one extra row past the requested page so we can tell whether a
+  // next page exists without a second query.
+  //
+  // subQuery: false — Sequelize's default subquery-splitting for
+  // limit+hasMany-include generates invalid SQL once a nested `required`
+  // include is involved (a join clause ends up referencing the
+  // "subscriptions" alias without bringing it into that subquery's scope).
+  // Disabling it makes Sequelize LIMIT/OFFSET the joined row set directly,
+  // which is safe here since a workspace has at most one active
+  // subscription, so the join can't duplicate rows.
   const workspaces = await WorkspaceModel.findAll({
     where,
-    limit: fetchLimit,
-    offset: fetchOffset,
-    include: [
-      {
-        model: SubscriptionModel,
-        as: "subscriptions",
-        where: { status: "active" },
-        required: false,
-        include: [{ model: PlanModel, as: "plan" }],
-      },
-    ],
+    limit: limit + 1,
+    offset,
+    include: [subscriptionsInclude],
     order,
+    subQuery: false,
   });
 
-  let displayed = workspaces;
-  if (planTypeFilter) {
-    displayed = displayed.filter((workspace) => {
-      const planCode = workspace.subscriptions[0]
-        ? workspace.subscriptions[0].plan.code
-        : FREE_NO_PLAN_DATA.code;
-      return getPokePlanTypeFilter(planCode) === planTypeFilter;
-    });
-  }
-
-  const pageStart = needsOverFetch ? offset : 0;
-  const hasMore = displayed.length > pageStart + limit;
-  displayed = displayed.slice(pageStart, pageStart + limit);
+  const hasMore = workspaces.length > limit;
+  const displayed = workspaces.slice(0, limit);
 
   const lightWorkspaces = displayed.map((workspace) =>
     renderLightWorkspaceType({ workspace, role: "admin" })

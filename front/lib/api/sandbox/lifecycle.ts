@@ -1,6 +1,5 @@
 import { DustFileSystem } from "@app/lib/api/file_system/dust_file_system";
-import type { SandboxOnlyMount } from "@app/lib/api/file_system/types";
-import { getPodSandboxFunctionsMountPoint } from "@app/lib/api/files/mount_path";
+import { setupPodStateOnColdStart } from "@app/lib/api/sandbox/db";
 import {
   ensureSandboxEgressOnExec,
   prepareSandboxEgressBeforeMount,
@@ -11,6 +10,7 @@ import {
   traceSandboxStartupPhase,
 } from "@app/lib/api/sandbox/instrumentation";
 import type { SandboxRuntimeOwner } from "@app/lib/api/sandbox/owner";
+import { podSandboxOnlyMounts } from "@app/lib/api/sandbox/pod_mounts";
 import { startTelemetry } from "@app/lib/api/sandbox/telemetry";
 import type { Authenticator } from "@app/lib/auth";
 import { ConversationSandboxAdapter } from "@app/lib/resources/conversation_sandbox_adapter";
@@ -33,6 +33,10 @@ type SandboxReadyConfig = {
   ensureActive: () => Promise<Result<EnsureSandboxResult, Error>>;
   getFileSystem: () => Promise<Result<DustFileSystem, Error>>;
   runtimeOwner: SandboxRuntimeOwner;
+  // Which owner policy file (`w/{wId}/sandboxes/{ownerId}.json`) this
+  // sandbox's egress is scoped to. Distinct from runtimeOwner: conversations
+  // inside a Pod share the Pod's policy file.
+  egressPolicyOwnerId: string;
 };
 
 // /!\ All sandbox-touching tools must use the owner-specific ready helper rather than calling
@@ -40,7 +44,12 @@ type SandboxReadyConfig = {
 // skipped.
 async function ensureOwnerSandboxReady(
   auth: Authenticator,
-  { ensureActive, getFileSystem, runtimeOwner }: SandboxReadyConfig
+  {
+    ensureActive,
+    getFileSystem,
+    runtimeOwner,
+    egressPolicyOwnerId,
+  }: SandboxReadyConfig
 ): Promise<Result<EnsureSandboxReadyResult, Error>> {
   const startMs = performance.now();
   // cold is unknown until ensureActive returns; if it errors first (rare) we
@@ -93,7 +102,10 @@ async function ensureOwnerSandboxReady(
         // errors still taking precedence.
         const [prepResult, mountResult] = await Promise.all([
           traceSandboxStartupPhase("egress_prep", () =>
-            prepareSandboxEgressBeforeMount(auth, sandbox, { runtimeOwner })
+            prepareSandboxEgressBeforeMount(auth, sandbox, {
+              runtimeOwner,
+              egressPolicyOwnerId,
+            })
           ),
           traceSandboxStartupPhase("gcs_mount", async () => {
             const fsResult = await getFileSystem();
@@ -128,11 +140,36 @@ async function ensureOwnerSandboxReady(
         }
       }
 
+      // Pod state bring-up must run strictly AFTER the mounts (restore reads
+      // through the replica mount) and is awaited: `invoke` awaits
+      // ensurePodSandboxReady, which is what guarantees no function runs
+      // before the restore + daemon start completed. Only runs for pod
+      // owners.
+      if (freshlyCreated && runtimeOwner.kind === "pod") {
+        const podStateResult = await setupPodStateOnColdStart(auth, sandbox);
+        if (podStateResult.isErr()) {
+          // status=running was already committed by ensureActive, and this
+          // block only runs when freshlyCreated — a plain Err would make the
+          // NEXT call take the warm path and happily serve a half-initialized
+          // sandbox (unrestored databases, no litestream daemon). Request a
+          // kill instead: ensureActive's kill-requested branch destroys and
+          // recreates on the next access, re-running this setup from scratch.
+          logger.error(
+            { err: podStateResult.error, sandboxId: sandbox.sId },
+            "Pod state cold start failed — requesting sandbox kill so the next access recreates it."
+          );
+          await sandbox.requestKill();
+          status = "error";
+          return podStateResult;
+        }
+      }
+
       const ensureEgressResult = await traceSandboxStartupPhase(
         "egress_on_exec",
         () =>
           ensureSandboxEgressOnExec(auth, sandbox, {
             runtimeOwner,
+            egressPolicyOwnerId,
             wokeFromSleep,
           })
       );
@@ -160,18 +197,11 @@ export async function ensureConversationSandboxReady(
       kind: "conversation",
       conversationId: conversation.sId,
     },
+    // Pod network settings apply to everything running in the Pod: a
+    // conversation inside a Pod uses the Pod's shared policy file, not a
+    // per-conversation one.
+    egressPolicyOwnerId: conversation.spaceId ?? conversation.sId,
   });
-}
-
-// A pod's published function bundles are mounted read-only so the sandbox can execute them while
-// front stays the sole writer of bundles.
-function podSandboxFunctionsMount(pod: SpaceResource): SandboxOnlyMount {
-  return {
-    kind: "pod_sandbox_functions",
-    id: pod.sId,
-    sandboxMountPoint: getPodSandboxFunctionsMountPoint(pod.sId),
-    readOnly: true,
-  };
 }
 
 export async function ensurePodSandboxReady(
@@ -182,11 +212,12 @@ export async function ensurePodSandboxReady(
     ensureActive: () => PodSandboxAdapter.ensureSandboxActive(auth, pod),
     getFileSystem: () =>
       DustFileSystem.forPod(auth, pod, {
-        sandboxOnlyMounts: [podSandboxFunctionsMount(pod)],
+        sandboxOnlyMounts: podSandboxOnlyMounts(pod),
       }),
     runtimeOwner: {
       kind: "pod",
       spaceId: pod.sId,
     },
+    egressPolicyOwnerId: pod.sId,
   });
 }

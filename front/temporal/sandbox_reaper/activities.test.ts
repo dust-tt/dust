@@ -11,12 +11,14 @@ import { Ok } from "@app/types/shared/result";
 import { describe, expect, it, vi } from "vitest";
 
 const {
+  mockEnsurePodStateHealthOnSleep,
   mockExecuteWithLock,
   mockGetSandboxImage,
   mockGetSandboxProvider,
   mockHeartbeat,
   mockProviderSleep,
 } = vi.hoisted(() => ({
+  mockEnsurePodStateHealthOnSleep: vi.fn(),
   mockExecuteWithLock: vi.fn(),
   mockGetSandboxImage: vi.fn(),
   mockGetSandboxProvider: vi.fn(),
@@ -35,6 +37,18 @@ vi.mock("@app/lib/api/sandbox", () => ({
 vi.mock("@app/lib/api/sandbox/image", () => ({
   getSandboxImage: mockGetSandboxImage,
 }));
+
+// The pod pre-sleep health check execs into the sandbox, and the provider
+// here is a stub. The reaper contract is only that the check gates the pod
+// sleep.
+vi.mock("@app/lib/api/sandbox/db", async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import("@app/lib/api/sandbox/db")>();
+  return {
+    ...actual,
+    ensurePodStateHealthOnSleep: mockEnsurePodStateHealthOnSleep,
+  };
+});
 
 vi.mock("@app/lib/lock", () => ({
   executeWithLock: mockExecuteWithLock,
@@ -62,6 +76,7 @@ describe("reapStaleSandboxesActivity", () => {
         .mockResolvedValueOnce(new Ok({ providerId: "pod-provider" })),
       sleep: mockProviderSleep.mockResolvedValue(new Ok(undefined)),
     });
+    mockEnsurePodStateHealthOnSleep.mockResolvedValue(new Ok(undefined));
     const { authenticator, workspace } = await createResourceTest({
       role: "admin",
     });
@@ -109,5 +124,7 @@ describe("reapStaleSandboxesActivity", () => {
     expect(mockProviderSleep).toHaveBeenCalledWith("pod-provider", {
       workspaceId: workspace.sId,
     });
+    // Pod sleeps run the pre-sleep state health check; conversations don't.
+    expect(mockEnsurePodStateHealthOnSleep).toHaveBeenCalledTimes(1);
   });
 });

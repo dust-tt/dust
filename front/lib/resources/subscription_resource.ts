@@ -18,6 +18,7 @@ import { PlanModel, SubscriptionModel } from "@app/lib/models/plan";
 import { resolvePackageAliasForCurrency } from "@app/lib/plans/billing_currency";
 import type { PlanAttributes } from "@app/lib/plans/free_plans";
 import { FREE_NO_PLAN_DATA } from "@app/lib/plans/free_plans";
+import type { PokeNonFreePlanTypeFilter } from "@app/lib/plans/plan_codes";
 import {
   FREE_TEST_PLAN_CODE,
   isEnterprisePlanPrefix,
@@ -26,6 +27,8 @@ import {
   isProPlanPrefix,
   isUpgraded,
   isWhitelistedBusinessPlan,
+  POKE_PLAN_CODE_MATCHERS,
+  POKE_PLAN_TYPE_FILTERS,
   PRO_PLAN_SEAT_39_CODE,
 } from "@app/lib/plans/plan_codes";
 import { renderPlanFromModel } from "@app/lib/plans/renderers";
@@ -74,7 +77,12 @@ import { Err, Ok } from "@app/types/shared/result";
 import { sendUserOperationMessage } from "@app/types/shared/user_operation";
 import type { LightWorkspaceType, WorkspaceType } from "@app/types/user";
 import keyBy from "lodash/keyBy";
-import type { Attributes, CreationAttributes, Transaction } from "sequelize";
+import type {
+  Attributes,
+  CreationAttributes,
+  Transaction,
+  WhereOptions,
+} from "sequelize";
 import { Op } from "sequelize";
 import type Stripe from "stripe";
 
@@ -89,6 +97,22 @@ export type GetSubscriptionStatusResponseBody = {
 
 const DEFAULT_PLAN_WHEN_NO_SUBSCRIPTION: PlanAttributes = FREE_NO_PLAN_DATA;
 const FREE_NO_PLAN_SUBSCRIPTION_ID = -1;
+
+// Builds the Sequelize where-clause matching a poke plan-type bucket's plan
+// codes (see POKE_PLAN_CODE_MATCHERS).
+export function buildPokePlanCodeWhere(
+  bucket: PokeNonFreePlanTypeFilter
+): WhereOptions<PlanModel> {
+  const matcher = POKE_PLAN_CODE_MATCHERS[bucket];
+  if (matcher.type === "exact") {
+    return { code: { [Op.in]: matcher.values } };
+  }
+  return {
+    [Op.or]: matcher.values.map((prefix) => ({
+      code: { [Op.like]: `${prefix}%` },
+    })),
+  };
+}
 
 type CachedSubscription = {
   id: number;
@@ -729,6 +753,50 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
           renderPlanFromModel({ plan: sub.plan })
         )
     );
+  }
+
+  /**
+   * Get workspace ids with an active subscription matching ANY non-free poke
+   * plan-type bucket (enterprise, legacy_enterprise, legacy_pro, business,
+   * friends_and_family, dust).
+   *
+   * Used to implement the "free" plan-type filter on the poke workspaces
+   * list as an exclude-list: a workspace counts as "free" if it has no
+   * active subscription at all, or one that isn't in one of the other
+   * buckets — there's no plan-code pattern to match "free" directly. This
+   * set is expected to stay in the low thousands (paying + legacy + F&F/dust
+   * tenants) even as the free-tier population grows into the hundreds of
+   * thousands, since it excludes free plans entirely.
+   */
+  static async listActiveWorkspaceIdsWithNonFreePlanType(): Promise<ModelId[]> {
+    const nonFreeBuckets = POKE_PLAN_TYPE_FILTERS.filter(
+      (filter): filter is PokeNonFreePlanTypeFilter => filter !== "free"
+    );
+
+    const subscriptions = await this.model.findAll({
+      where: { status: "active" },
+      attributes: ["workspaceId"],
+      // WORKSPACE_ISOLATION_BYPASS: Internal use to compute the (small,
+      // non-free) workspace id set to exclude for poke's "free" plan-type
+      // filter, across all workspaces.
+      // biome-ignore lint/plugin/noUnverifiedWorkspaceBypass: WORKSPACE_ISOLATION_BYPASS verified
+      dangerouslyBypassWorkspaceIsolationSecurity: true,
+      include: [
+        {
+          model: PlanModel,
+          as: "plan",
+          attributes: [],
+          where: {
+            [Op.or]: nonFreeBuckets.map((bucket) =>
+              buildPokePlanCodeWhere(bucket)
+            ),
+          },
+          required: true,
+        },
+      ],
+    });
+
+    return subscriptions.map((s) => s.workspaceId);
   }
 
   /**

@@ -16,6 +16,7 @@ const {
   mockRefreshSandboxMount,
   mockPrepareSandboxEgressBeforeMount,
   mockStartTelemetry,
+  mockSetupPodStateOnColdStart,
 } = vi.hoisted(() => {
   const mockSetupSandboxMount = vi.fn();
   const mockRefreshSandboxMount = vi.fn();
@@ -34,6 +35,18 @@ const {
     mockRefreshSandboxMount,
     mockPrepareSandboxEgressBeforeMount: vi.fn(),
     mockStartTelemetry: vi.fn(),
+    mockSetupPodStateOnColdStart: vi.fn(),
+  };
+});
+
+// Partial mock: pod_mounts.ts imports POD_STATE_REPLICA_MOUNT_POINT from the
+// same module, so the real constants must be preserved.
+vi.mock("@app/lib/api/sandbox/db", async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import("@app/lib/api/sandbox/db")>();
+  return {
+    ...actual,
+    setupPodStateOnColdStart: mockSetupPodStateOnColdStart,
   };
 });
 
@@ -111,7 +124,12 @@ describe("ensureConversationSandboxReady", () => {
     spaceId: pod.sId,
   };
   const image = { name: "dust-base" };
-  const sandbox = { providerId: "provider-id", sId: "sandbox-id" };
+  const mockRequestKill = vi.fn().mockResolvedValue(undefined);
+  const sandbox = {
+    providerId: "provider-id",
+    sId: "sandbox-id",
+    requestKill: mockRequestKill,
+  };
   const mockFs = {
     setupSandboxMount: mockSetupSandboxMount,
     refreshSandboxMount: mockRefreshSandboxMount,
@@ -134,6 +152,7 @@ describe("ensureConversationSandboxReady", () => {
     mockForPod.mockResolvedValue(new Ok(mockFs));
     mockSetupSandboxMount.mockResolvedValue(new Ok(undefined));
     mockRefreshSandboxMount.mockResolvedValue(new Ok(undefined));
+    mockSetupPodStateOnColdStart.mockResolvedValue(new Ok(undefined));
   });
 
   it("preps egress, mounts files, and ensures egress on exec for freshly-created sandboxes", async () => {
@@ -151,7 +170,7 @@ describe("ensureConversationSandboxReady", () => {
     expect(mockPrepareSandboxEgressBeforeMount).toHaveBeenCalledWith(
       auth,
       sandbox,
-      { runtimeOwner: conversationOwner }
+      { runtimeOwner: conversationOwner, egressPolicyOwnerId: conversation.sId }
     );
     expect(mockStartTelemetry).toHaveBeenCalledWith(
       auth,
@@ -163,12 +182,40 @@ describe("ensureConversationSandboxReady", () => {
     expect(mockRefreshSandboxMount).not.toHaveBeenCalled();
     expect(mockEnsureSandboxEgressOnExec).toHaveBeenCalledWith(auth, sandbox, {
       runtimeOwner: conversationOwner,
+      egressPolicyOwnerId: conversation.sId,
       wokeFromSleep: false,
     });
 
     expect(mockSetupSandboxMount.mock.invocationCallOrder[0]).toBeLessThan(
       mockEnsureSandboxEgressOnExec.mock.invocationCallOrder[0]
     );
+  });
+
+  it("scopes egress policy to the Pod for conversations inside a Pod", async () => {
+    mockEnsureSandboxActive.mockResolvedValue(
+      new Ok({ freshlyCreated: true, sandbox, wokeFromSleep: false })
+    );
+    const podConversation = { sId: "conversation-id", spaceId: "space-id" };
+
+    const result = await ensureConversationSandboxReady(
+      auth as never,
+      podConversation as never
+    );
+
+    expect(result.isOk()).toBe(true);
+    // runtimeOwner stays the conversation (env vars, logs, file system)...
+    expect(mockPrepareSandboxEgressBeforeMount).toHaveBeenCalledWith(
+      auth,
+      sandbox,
+      // ...but the egress policy is scoped to the Pod's shared file.
+      { runtimeOwner: conversationOwner, egressPolicyOwnerId: "space-id" }
+    );
+    expect(mockEnsureSandboxEgressOnExec).toHaveBeenCalledWith(auth, sandbox, {
+      runtimeOwner: conversationOwner,
+      egressPolicyOwnerId: "space-id",
+      wokeFromSleep: false,
+    });
+    expect(mockForConversation).toHaveBeenCalledWith(auth, podConversation);
   });
 
   it("starts GCS mount before initial egress prep resolves", async () => {
@@ -219,6 +266,7 @@ describe("ensureConversationSandboxReady", () => {
     expect(mockRefreshSandboxMount).toHaveBeenCalledWith(sandbox, image);
     expect(mockEnsureSandboxEgressOnExec).toHaveBeenCalledWith(auth, sandbox, {
       runtimeOwner: conversationOwner,
+      egressPolicyOwnerId: conversation.sId,
       wokeFromSleep: true,
     });
   });
@@ -249,7 +297,9 @@ describe("ensureConversationSandboxReady", () => {
     expect(result.isOk()).toBe(true);
     expect(mockEnsurePodSandboxActive).toHaveBeenCalledWith(auth, pod);
     expect(mockEnsureSandboxActive).not.toHaveBeenCalled();
-    // The pod's published bundles are mounted read-only under a pod-scoped path.
+    // The pod's published bundles are mounted read-only under a pod-scoped
+    // path; the litestream replica prefix is mounted rw for the in-sandbox
+    // daemon.
     expect(mockForPod).toHaveBeenCalledWith(auth, pod, {
       sandboxOnlyMounts: [
         {
@@ -258,20 +308,66 @@ describe("ensureConversationSandboxReady", () => {
           sandboxMountPoint: `/sandbox-functions/pods/${pod.sId}`,
           readOnly: true,
         },
+        {
+          kind: "pod_state",
+          id: pod.sId,
+          sandboxMountPoint: "/pod-state/replica",
+          readOnly: false,
+        },
       ],
     });
     expect(mockForConversation).not.toHaveBeenCalled();
     expect(mockPrepareSandboxEgressBeforeMount).toHaveBeenCalledWith(
       auth,
       sandbox,
-      { runtimeOwner: podOwner }
+      { runtimeOwner: podOwner, egressPolicyOwnerId: pod.sId }
     );
     expect(mockStartTelemetry).toHaveBeenCalledWith(auth, sandbox, podOwner);
     expect(mockSetupSandboxMount).toHaveBeenCalledWith(sandbox, image);
+    // Pod state bring-up runs after the mounts and before egress-on-exec.
+    expect(mockSetupPodStateOnColdStart).toHaveBeenCalledWith(auth, sandbox);
+    expect(mockSetupSandboxMount.mock.invocationCallOrder[0]).toBeLessThan(
+      mockSetupPodStateOnColdStart.mock.invocationCallOrder[0]
+    );
+    expect(
+      mockSetupPodStateOnColdStart.mock.invocationCallOrder[0]
+    ).toBeLessThan(mockEnsureSandboxEgressOnExec.mock.invocationCallOrder[0]);
     expect(mockEnsureSandboxEgressOnExec).toHaveBeenCalledWith(auth, sandbox, {
       runtimeOwner: podOwner,
+      egressPolicyOwnerId: pod.sId,
       wokeFromSleep: false,
     });
+  });
+
+  it("does not run pod state bring-up for conversation sandboxes", async () => {
+    mockEnsureSandboxActive.mockResolvedValue(
+      new Ok({ freshlyCreated: true, sandbox, wokeFromSleep: false })
+    );
+
+    const result = await ensureConversationSandboxReady(
+      auth as never,
+      conversation as never
+    );
+
+    expect(result.isOk()).toBe(true);
+    expect(mockSetupPodStateOnColdStart).not.toHaveBeenCalled();
+  });
+
+  it("requests a sandbox kill when pod state cold start fails", async () => {
+    mockEnsurePodSandboxActive.mockResolvedValue(
+      new Ok({ freshlyCreated: true, sandbox, wokeFromSleep: false })
+    );
+    const podStateError = new Error("restore failed");
+    mockSetupPodStateOnColdStart.mockResolvedValue(new Err(podStateError));
+
+    const result = await ensurePodSandboxReady(auth as never, pod as never);
+
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error).toBe(podStateError);
+    }
+    expect(mockRequestKill).toHaveBeenCalledTimes(1);
+    expect(mockEnsureSandboxEgressOnExec).not.toHaveBeenCalled();
   });
 
   it("short-circuits when the sandbox image lookup fails", async () => {

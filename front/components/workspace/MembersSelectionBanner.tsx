@@ -13,6 +13,8 @@ interface MembersSelectionBannerProps {
   onSelectAllAcrossPages: () => void;
   onClear: () => void;
   onBatchEditSpendLimit: () => void;
+  // Absent when the workspace has no assignable seat tiers (non seat-based).
+  onBatchChangeSeat?: () => void;
   disabled?: boolean;
 }
 
@@ -29,6 +31,7 @@ export function MembersSelectionBanner({
   onSelectAllAcrossPages,
   onClear,
   onBatchEditSpendLimit,
+  onBatchChangeSeat,
   disabled = false,
 }: MembersSelectionBannerProps) {
   if (selectedCount === 0) {
@@ -64,6 +67,14 @@ export function MembersSelectionBanner({
         onClick={onClear}
         disabled={disabled}
       />
+      {onBatchChangeSeat && (
+        <ContentMessageAction
+          variant="primary"
+          label="Batch change seat"
+          onClick={onBatchChangeSeat}
+          disabled={disabled}
+        />
+      )}
       <ContentMessageAction
         variant="primary"
         label="Batch edit spend limit"

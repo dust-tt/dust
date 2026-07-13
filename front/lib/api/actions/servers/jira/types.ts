@@ -558,9 +558,17 @@ export const JiraIssueFieldsSchema = z
     }),
     summary: z.string(),
     description: ADFDocumentSchema.nullable(),
-    issuetype: z.object({
-      name: z.string(),
-    }),
+    issuetype: z
+      .object({
+        id: z.string().optional(),
+        name: z.string().optional(),
+      })
+      .describe(
+        "The issue type, identified by `id` (preferred) or `name`. Use `get_issue_types` " +
+          "to list the valid types and their ids for the project. Prefer `id`: resolving a " +
+          "type by `name` is ambiguous when several projects share a localized type name " +
+          "(e.g. sub-task types), which can make Jira reject an otherwise valid type."
+      ),
     status: z.object({
       name: z.string(),
     }),

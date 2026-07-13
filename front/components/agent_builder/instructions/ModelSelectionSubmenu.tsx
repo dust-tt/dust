@@ -10,7 +10,6 @@ import { useAuth, useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { useRegionContext } from "@app/lib/auth/RegionContext";
 import type { EnabledModelConfigurationType } from "@app/types/api/assistant/models";
 import { getProviderDisplayName } from "@app/types/assistant/models/providers";
-import type { RegionType } from "@app/types/region";
 import {
   DropdownMenuLabel,
   DropdownMenuPortal,
@@ -64,11 +63,6 @@ function ModelRadioItem({
   );
 }
 
-const SHOULD_DISPLAY_FLAG: Record<RegionType, boolean> = {
-  "europe-west1": true,
-  "us-central1": false,
-};
-
 export function ModelSelectionSubmenu({ models }: ModelSelectionSubmenuProps) {
   const { isDark } = useTheme();
   const { field: modelField } = useController<
@@ -89,22 +83,16 @@ export function ModelSelectionSubmenu({ models }: ModelSelectionSubmenuProps) {
   const { subscription } = useAuth();
 
   const showRegionalFlag =
-    hasFeature("use_vertex_for_supported_models") &&
-    SHOULD_DISPLAY_FLAG[regionInfo.name] &&
-    !subscription.plan.isByok;
-
-  const flag = showRegionalFlag ? (
-    <RegionalFlag region={regionInfo.name} />
-  ) : null;
+    hasFeature("use_vertex_for_supported_models") && !subscription.plan.isByok;
 
   const { bestGeneralModels, providerGroups } = getModelsCategorization(models);
 
-  const currentModelKey = modelField.value.modelId;
+  const currentModelKey = modelField.value?.modelId;
 
   const selectedModel = models.find(
     (model) =>
-      model.modelId === modelField.value.modelId &&
-      model.providerId === modelField.value.providerId
+      model.modelId === modelField.value?.modelId &&
+      model.providerId === modelField.value?.providerId
   );
 
   const isSelectedModelNotInBest =
@@ -128,8 +116,8 @@ export function ModelSelectionSubmenu({ models }: ModelSelectionSubmenuProps) {
   };
 
   const isModelSelected = (modelConfig: EnabledModelConfigurationType) =>
-    modelConfig.modelId === modelField.value.modelId &&
-    modelConfig.providerId === modelField.value.providerId;
+    modelConfig.modelId === modelField.value?.modelId &&
+    modelConfig.providerId === modelField.value?.providerId;
 
   return (
     <DropdownMenuSub>
@@ -147,9 +135,10 @@ export function ModelSelectionSubmenu({ models }: ModelSelectionSubmenuProps) {
                   isSelected={true}
                   onModelSelection={handleModelSelection}
                   regionalComponent={
-                    selectedModel.regionalAvailability[regionInfo.name]
-                      ? flag
-                      : null
+                    selectedModel.regionalAvailability[regionInfo.name] &&
+                    showRegionalFlag ? (
+                      <RegionalFlag region={regionInfo.name} />
+                    ) : null
                   }
                 />
               </DropdownMenuRadioGroup>
@@ -166,9 +155,10 @@ export function ModelSelectionSubmenu({ models }: ModelSelectionSubmenuProps) {
                 isSelected={isModelSelected(modelConfig)}
                 onModelSelection={handleModelSelection}
                 regionalComponent={
-                  modelConfig.regionalAvailability[regionInfo.name]
-                    ? flag
-                    : null
+                  modelConfig.regionalAvailability[regionInfo.name] &&
+                  showRegionalFlag ? (
+                    <RegionalFlag region={regionInfo.name} />
+                  ) : null
                 }
               />
             ))}
@@ -199,9 +189,9 @@ export function ModelSelectionSubmenu({ models }: ModelSelectionSubmenuProps) {
                               regionalComponent={
                                 modelConfig.regionalAvailability[
                                   regionInfo.name
-                                ]
-                                  ? flag
-                                  : null
+                                ] && showRegionalFlag ? (
+                                  <RegionalFlag region={regionInfo.name} />
+                                ) : null
                               }
                             />
                           ))}
@@ -226,9 +216,9 @@ export function ModelSelectionSubmenu({ models }: ModelSelectionSubmenuProps) {
                               regionalComponent={
                                 modelConfig.regionalAvailability[
                                   regionInfo.name
-                                ]
-                                  ? flag
-                                  : null
+                                ] && showRegionalFlag ? (
+                                  <RegionalFlag region={regionInfo.name} />
+                                ) : null
                               }
                             />
                           ))}

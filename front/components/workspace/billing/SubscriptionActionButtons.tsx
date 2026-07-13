@@ -1,4 +1,5 @@
 import { useSubscriptionContext } from "@app/components/workspace/billing/SubscriptionContext";
+import { isCreditPricedFreePlan } from "@app/lib/plans/plan_codes";
 import { TRACKING_AREAS, withTracking } from "@app/lib/tracking";
 import {
   Button,
@@ -15,12 +16,16 @@ import {
 
 function CancelMetronomeSubscriptionDialog() {
   const {
+    subscription,
     periodEndLabel,
     isCancellingSubscription,
     cancelSubscription,
     showCancelDialog,
     setShowCancelDialog,
   } = useSubscriptionContext();
+  const isImmediateCancellation = isCreditPricedFreePlan(
+    subscription.plan.code
+  );
   // "July 12, 2026" → "July 12"
   const shortDate = periodEndLabel ? periodEndLabel.split(",")[0] : null;
 
@@ -37,7 +42,9 @@ function CancelMetronomeSubscriptionDialog() {
         <DialogHeader>
           <DialogTitle>Cancel your subscription</DialogTitle>
           <DialogDescription>
-            {periodEndLabel ? (
+            {isImmediateCancellation ? (
+              "Your subscription will end immediately."
+            ) : periodEndLabel ? (
               <>
                 Your plan will remain active until{" "}
                 <span className="font-bold">{periodEndLabel}</span>.
@@ -52,6 +59,10 @@ function CancelMetronomeSubscriptionDialog() {
             <div className="flex justify-center py-8">
               <Spinner variant="dark" size="md" />
             </div>
+          ) : isImmediateCancellation ? (
+            <ContentMessage size="sm" variant="highlight">
+              This ends your subscription right away and cannot be undone.
+            </ContentMessage>
           ) : (
             <div className="flex flex-col gap-4">
               {periodEndLabel && (

@@ -52,7 +52,7 @@ export function cacheWithRedis<T, Args extends unknown[]>(
   fn: CacheableFunction<JsonSerializable<T>, Args>,
   resolver: KeyResolver<Args>,
   options: {
-    ttlMs?: number;
+    ttlMs?: number | ((...args: Args) => number);
     redisUri?: string;
     useDistributedLock?: boolean;
     skipIfLocked?: false;
@@ -64,7 +64,7 @@ export function cacheWithRedis<T, Args extends unknown[]>(
   fn: CacheableFunction<JsonSerializable<T>, Args>,
   resolver: KeyResolver<Args>,
   options: {
-    ttlMs?: number;
+    ttlMs?: number | ((...args: Args) => number);
     redisUri?: string;
     useDistributedLock: true;
     // When true and the distributed lock is taken, return null immediately.
@@ -84,7 +84,7 @@ export function cacheWithRedis<T, Args extends unknown[]>(
     skipIfLocked = false,
     cacheNullValues = true,
   }: {
-    ttlMs?: number;
+    ttlMs?: number | ((...args: Args) => number);
     // Kept for backwards compatibility, no longer used.
     redisUri?: string;
     useDistributedLock?: boolean;
@@ -94,11 +94,18 @@ export function cacheWithRedis<T, Args extends unknown[]>(
     cacheNullValues?: boolean;
   }
 ): (...args: Args) => Promise<JsonSerializable<T> | null> {
-  if (ttlMs !== undefined && ttlMs > 60 * 60 * 24 * 1000) {
+  // A static ttlMs is validated eagerly, same as before. A function ttlMs can only be
+  // validated once the args are known, so that case is checked per-call below instead.
+  if (typeof ttlMs === "number" && ttlMs > 60 * 60 * 24 * 1000) {
     throw new Error("ttlMs should be less than 24 hours");
   }
 
   return async function (...args: Args): Promise<JsonSerializable<T> | null> {
+    const resolvedTtlMs = typeof ttlMs === "function" ? ttlMs(...args) : ttlMs;
+    if (resolvedTtlMs !== undefined && resolvedTtlMs > 60 * 60 * 24 * 1000) {
+      throw new Error("ttlMs should be less than 24 hours");
+    }
+
     const key = getCacheKey(fn, resolver, args);
 
     const redisCli = await getRedisCacheClient({ origin: "cache_with_redis" });
@@ -143,9 +150,9 @@ export function cacheWithRedis<T, Args extends unknown[]>(
 
       const result = await fn(...args);
       if (cacheNullValues || result != null) {
-        if (ttlMs !== undefined) {
+        if (resolvedTtlMs !== undefined) {
           await redisCli.set(key, JSON.stringify(result), {
-            PX: ttlMs,
+            PX: resolvedTtlMs,
           });
         } else {
           await redisCli.set(key, JSON.stringify(result));

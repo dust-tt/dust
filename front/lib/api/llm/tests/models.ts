@@ -27,6 +27,7 @@ import {
   FIREWORKS_GLM_5P2_MODEL_ID,
   FIREWORKS_KIMI_K2_INSTRUCT_MODEL_ID,
   FIREWORKS_KIMI_K2P5_MODEL_ID,
+  FIREWORKS_KIMI_K2P6_MODEL_ID,
   FIREWORKS_MINIMAX_M2P5_MODEL_ID,
 } from "@app/types/assistant/models/fireworks";
 import {
@@ -61,6 +62,9 @@ import {
   GPT_5_4_MODEL_ID,
   GPT_5_4_NANO_MODEL_ID,
   GPT_5_5_MODEL_ID,
+  GPT_5_6_LUNA_MODEL_ID,
+  GPT_5_6_SOL_MODEL_ID,
+  GPT_5_6_TERRA_MODEL_ID,
   GPT_5_MINI_MODEL_ID,
   GPT_5_MODEL_ID,
   GPT_5_NANO_MODEL_ID,
@@ -176,6 +180,9 @@ export const MODELS: Record<
   [GPT_5_2_MODEL_ID]: { runTest: false, providerId: "openai" },
   [GPT_5_4_MODEL_ID]: { runTest: false, providerId: "openai" },
   [GPT_5_5_MODEL_ID]: { runTest: false, providerId: "openai" },
+  [GPT_5_6_SOL_MODEL_ID]: { runTest: false, providerId: "openai" },
+  [GPT_5_6_TERRA_MODEL_ID]: { runTest: false, providerId: "openai" },
+  [GPT_5_6_LUNA_MODEL_ID]: { runTest: false, providerId: "openai" },
   [GPT_5_4_MINI_MODEL_ID]: { runTest: false, providerId: "openai" },
   [GPT_5_4_NANO_MODEL_ID]: { runTest: true, providerId: "openai" },
   [GPT_5_MINI_MODEL_ID]: { runTest: false, providerId: "openai" },
@@ -199,6 +206,10 @@ export const MODELS: Record<
     providerId: "fireworks",
   },
   [FIREWORKS_KIMI_K2P5_MODEL_ID]: {
+    runTest: false,
+    providerId: "fireworks",
+  },
+  [FIREWORKS_KIMI_K2P6_MODEL_ID]: {
     runTest: false,
     providerId: "fireworks",
   },

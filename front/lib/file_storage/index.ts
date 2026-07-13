@@ -29,7 +29,7 @@ const GCS_EXTRA_RETRYABLE_ERROR_MESSAGE_REGEX = /socket hang up/i;
 // if the object does not already exist", which makes the create safe to retry.
 const GCS_OBJECT_DOES_NOT_EXIST_GENERATION_MATCH = 0;
 
-const DEFAULT_SIGNED_URL_EXPIRATION_DELAY_MS = 5 * 60 * 1000; // 5 minutes.
+export const DEFAULT_SIGNED_URL_EXPIRATION_DELAY_MS = 5 * 60 * 1000; // 5 minutes.
 
 // Threshold above which file uploads switch from a single multipart POST to a
 // resumable upload (see FileResource.getWriteStream). Below it, uploads are

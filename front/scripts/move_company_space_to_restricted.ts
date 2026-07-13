@@ -161,7 +161,7 @@ makeScript(
       const memberGroup = await GroupResource.makeNew(
         {
           name: `${SPACE_GROUP_PREFIX} ${spaceName}`,
-          kind: "regular",
+          kind: "regular_auto",
           workspaceId: workspace.id,
         },
         { transaction: t }

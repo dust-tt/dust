@@ -65,6 +65,7 @@ function triggerTypeToBuilderType(
         naturalLanguageDescription: trigger.naturalLanguageDescription,
         configuration: trigger.configuration,
         editor: trigger.editor,
+        spaceId: trigger.spaceId,
       };
     case "webhook":
       return {
@@ -79,6 +80,7 @@ function triggerTypeToBuilderType(
         webhookSourceViewId: trigger.webhookSourceViewId,
         executionPerDayLimitOverride: trigger.executionPerDayLimitOverride,
         executionMode: trigger.executionMode,
+        spaceId: trigger.spaceId,
       };
     default:
       assertNever(trigger);

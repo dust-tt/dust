@@ -3,7 +3,7 @@ import {
   makeCoreSearchNodesFilters,
   type ResolvedDataSourceConfiguration,
 } from "@app/lib/actions/mcp_internal_actions/tools/utils";
-import type { AgentLoopRunContextType } from "@app/lib/actions/types";
+import type { AgentLoopRunContext } from "@app/lib/actions/types";
 import { isServerSideMCPServerConfiguration } from "@app/lib/actions/types/guards";
 import type { DataSourceConfiguration } from "@app/lib/api/assistant/configuration/types";
 import { getSkillDataSourceConfigurations } from "@app/lib/api/assistant/skill_actions";
@@ -22,7 +22,7 @@ const MAX_TEMPLATE_SIZE_BYTES = 1 * 1024 * 1024; // 1MB
 
 async function fetchTemplateFromCanonicalPath(
   auth: Authenticator,
-  runContext: AgentLoopRunContextType,
+  runContext: AgentLoopRunContext,
   canonicalPath: string
 ): Promise<Result<string, MCPError>> {
   const { conversation } = runContext;
@@ -97,7 +97,7 @@ async function fetchTemplateFromCanonicalPath(
  */
 export async function fetchTemplateContent(
   auth: Authenticator,
-  runContext: AgentLoopRunContextType,
+  runContext: AgentLoopRunContext,
   {
     templateRef,
   }: {

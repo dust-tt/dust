@@ -1,5 +1,6 @@
 import {
   getConversationFilesBasePath,
+  parseCanonicalScopedPath,
   parseScopedFilePath,
 } from "@app/lib/api/files/mount_path";
 import { getPrivateUploadBucket } from "@app/lib/file_storage";
@@ -28,9 +29,10 @@ const app = publicApiApp();
  *       - Conversations
  *     summary: Download a conversation-scoped file by path
  *     description: |
- *       Download a file from a conversation's file system by its scoped path. The path must
- *       be conversation-scoped, i.e. start with `conversation/` (as surfaced by agent file
- *       system tools). The file content is streamed directly from the conversation mount.
+ *       Download a file from a conversation's file system by its scoped path. Pass the
+ *       canonical `filePath` surfaced in a message action's `generatedFiles` (the legacy
+ *       `conversation/foo.pdf` form is also accepted). The file content is streamed
+ *       directly from the conversation mount.
  *     parameters:
  *       - name: wId
  *         in: path
@@ -48,9 +50,10 @@ const app = publicApiApp();
  *         in: path
  *         required: true
  *         description: |
- *           Conversation-scoped file path, e.g. `conversation/foo.pdf` or
- *           `conversation/subdir/foo.pdf`. The `conversation/` prefix is required; any other
- *           scope prefix is rejected. Path traversal segments (`..`) are rejected.
+ *           Conversation-scoped file path: the canonical `filePath` returned in a message
+ *           action's `generatedFiles`, or the legacy `conversation/foo.pdf` form. Paths
+ *           scoped to another conversation or to a different scope are rejected. Path
+ *           traversal segments (`..`) are rejected.
  *         schema:
  *           type: string
  *     security:
@@ -85,21 +88,45 @@ app.get("/:rel{.+}", validate("param", ParamsSchema), async (ctx) => {
     });
   }
 
-  // Require a conversation-scoped path (e.g. `conversation/foo.pdf`), matching what the agent
-  // file system tools surface. Bare relative paths and other scope prefixes are rejected.
-  const scoped = parseScopedFilePath(rel);
-  if (!scoped || scoped.prefix !== "conversation") {
+  // Require a conversation-scoped path. The legacy `conversation/foo.pdf` form is still
+  // accepted, alongside the canonical scoped path that current file tools surface in
+  // generatedFiles.
+  const legacyScoped = parseScopedFilePath(rel);
+  const canonicalScoped = legacyScoped ? null : parseCanonicalScopedPath(rel);
+
+  let relativePath: string | null = null;
+  if (legacyScoped?.prefix === "conversation") {
+    relativePath = legacyScoped.rel;
+  } else if (
+    canonicalScoped?.scope.kind === "canonical-conversation" &&
+    canonicalScoped.scope.id === cId
+  ) {
+    relativePath = canonicalScoped.relPath;
+  } else if (
+    canonicalScoped?.scope.kind === "canonical-conversation" &&
+    canonicalScoped.scope.id !== cId
+  ) {
+    return apiError(ctx, {
+      status_code: 403,
+      api_error: {
+        type: "workspace_auth_error",
+        message: "Access denied: path is outside conversation scope.",
+      },
+    });
+  }
+
+  if (relativePath === null) {
     return apiError(ctx, {
       status_code: 400,
       api_error: {
         type: "invalid_request_error",
         message:
-          "Invalid file path: must be a conversation-scoped path (e.g. `conversation/foo.pdf`).",
+          "Invalid file path: must be a conversation-scoped path (the `filePath` from a message action's `generatedFiles`, or a `conversation/...` path).",
       },
     });
   }
 
-  const normalizedRelative = path.posix.normalize(scoped.rel);
+  const normalizedRelative = path.posix.normalize(relativePath);
   if (
     normalizedRelative.startsWith("..") ||
     normalizedRelative.startsWith("/")

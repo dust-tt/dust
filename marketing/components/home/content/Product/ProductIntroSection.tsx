@@ -2,7 +2,7 @@
 import { H1, P } from "@marketing/components/home/ContentComponents";
 import { HeroVisual } from "@marketing/components/home/content/Product/HeroVisual";
 import TrustedBy from "@marketing/components/home/TrustedBy";
-import { Button, Rocket02 } from "@dust-tt/sparkle";
+import { LegacyButton as Button, Rocket02 } from "@dust-tt/sparkle";
 import Link from "next/link";
 import { useState } from "react";
 

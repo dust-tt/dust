@@ -10,12 +10,13 @@ import type {
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import {
   isRunAgentQueryResourceType,
+  isSearchResultResourceType,
   isToolGeneratedFile,
   isToolMarkerResourceType,
   TOOL_GENERATED_FILE_MIME_TYPE,
   TOOL_GENERATED_FILE_PATH_MIME_TYPE,
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
-import type { ToolContextType } from "@app/lib/actions/types";
+import type { ToolContext } from "@app/lib/actions/types";
 import { isAgentLoopRunContext } from "@app/lib/actions/types";
 import { isEnableSkillResultOutput } from "@app/lib/api/actions/servers/skill_management/rendering";
 import {
@@ -106,7 +107,10 @@ export function hideFileFromActionOutput({
 }
 
 export function rewriteContentForModel(
-  content: CallToolResult["content"][number]
+  content: CallToolResult["content"][number],
+  {
+    renderSearchResultsAsMarkdown = false,
+  }: { renderSearchResultsAsMarkdown?: boolean } = {}
 ): CallToolResult["content"][number] | null {
   // Only render tool generated files that are supported.
   if (
@@ -149,6 +153,26 @@ export function rewriteContentForModel(
     return null;
   }
 
+  if (renderSearchResultsAsMarkdown && isSearchResultResourceType(content)) {
+    let text = `Search result: ${content.resource.text}\n`;
+    text += `id: ${content.resource.id}\n`;
+    text += `url: ${content.resource.uri}\n`;
+    text += `ref: ${content.resource.ref}\n`;
+    // We don't show the source provider, as it's redundant with the URL.
+
+    if (content.resource.tags.length > 0) {
+      text += `tags: ${content.resource.tags.join(", ")}\n`;
+    }
+    if (content.resource.chunks.length > 0) {
+      text += `retrieved chunks:\n-----------\n${content.resource.chunks.join("------------")}`;
+    }
+
+    return {
+      type: "text",
+      text,
+    };
+  }
+
   return content;
 }
 
@@ -181,7 +205,7 @@ export async function handleBase64Upload(
     base64Data: string;
     mimeType: string;
     fileName: string;
-    toolContext: ToolContextType;
+    toolContext: ToolContext;
   }
 ): Promise<{
   content: CallToolResult["content"][number];

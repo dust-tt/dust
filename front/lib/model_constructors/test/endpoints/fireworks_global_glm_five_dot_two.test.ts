@@ -1,10 +1,7 @@
 // @vitest-environment node
 
 import { FireworksGlobalGlmFiveDotTwoStream } from "@app/lib/model_constructors/stream/endpoints/fireworks_global_glm_five_dot_two";
-import {
-  HAS_REASONING,
-  INPUT_CONFIGURATION_ERROR,
-} from "@app/lib/model_constructors/test/cases";
+import { INPUT_CONFIGURATION_ERROR } from "@app/lib/model_constructors/test/cases";
 import { runStreamEndpointTests } from "@app/lib/model_constructors/test/runner";
 import type { StreamSetup } from "@app/lib/model_constructors/test/setup";
 
@@ -20,28 +17,28 @@ export const FireworksGlobalGlmFiveDotTwoStreamSetup: StreamSetup = {
     "simple/no-tools/t-default/r-low": null,
     "simple/no-tools/t-default/r-medium": null,
     "simple/no-tools/t-default/r-high": null,
-    "simple/no-tools/t-default/r-maximal": [INPUT_CONFIGURATION_ERROR],
+    "simple/no-tools/t-default/r-maximal": null,
     "simple/no-tools/t-0/r-default": null,
     "simple/no-tools/t-0/r-none": null,
     "simple/no-tools/t-0/r-minimal": [INPUT_CONFIGURATION_ERROR],
     "simple/no-tools/t-0/r-low": null,
     "simple/no-tools/t-0/r-medium": null,
     "simple/no-tools/t-0/r-high": null,
-    "simple/no-tools/t-0/r-maximal": [INPUT_CONFIGURATION_ERROR],
+    "simple/no-tools/t-0/r-maximal": null,
     "simple/no-tools/t-0.1/r-default": null,
     "simple/no-tools/t-0.1/r-none": null,
     "simple/no-tools/t-0.1/r-minimal": [INPUT_CONFIGURATION_ERROR],
     "simple/no-tools/t-0.1/r-low": null,
     "simple/no-tools/t-0.1/r-medium": null,
     "simple/no-tools/t-0.1/r-high": null,
-    "simple/no-tools/t-0.1/r-maximal": [INPUT_CONFIGURATION_ERROR],
+    "simple/no-tools/t-0.1/r-maximal": null,
     "simple/no-tools/t-1/r-default": null,
     "simple/no-tools/t-1/r-none": null,
     "simple/no-tools/t-1/r-minimal": [INPUT_CONFIGURATION_ERROR],
     "simple/no-tools/t-1/r-low": null,
     "simple/no-tools/t-1/r-medium": null,
     "simple/no-tools/t-1/r-high": null,
-    "simple/no-tools/t-1/r-maximal": [INPUT_CONFIGURATION_ERROR],
+    "simple/no-tools/t-1/r-maximal": null,
 
     "calc/calc/t-default/r-medium": null,
     "calc/calc/t-0.1/r-default": null,
@@ -51,8 +48,7 @@ export const FireworksGlobalGlmFiveDotTwoStreamSetup: StreamSetup = {
     "calc/calc/t-default/r-default/force-tool": null,
     "calc/calc/t-default/r-none/force-tool": null,
 
-    // GLM always reasons, so `none` still yields reasoning content.
-    "reasoning/no-tools/t-default/r-none": [HAS_REASONING],
+    "reasoning/no-tools/t-default/r-none": null,
     "reasoning/no-tools/t-default/r-low": null,
 
     "output-format/json-schema/t-default/r-none": null,

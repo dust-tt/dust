@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 
-import { getBillingCycle, getBillingCycleFromDay } from "./subscription";
+import {
+  clampToMonth,
+  getBillingCycle,
+  getBillingCycleFromDay,
+} from "./subscription";
 
 describe("subscription billing cycle utilities", () => {
   describe("getBillingCycleFromDay", () => {
@@ -102,15 +106,74 @@ describe("subscription billing cycle utilities", () => {
     });
 
     describe("edge case: billing day at end of month (28-31)", () => {
-      it("handles billing day 31 in months with fewer days", () => {
+      it("clamps the boundary to the last day of shorter months", () => {
         // Feb 15, 2026 (Feb has 28 days), billing starts on day 31
         const referenceDate = new Date(Date.UTC(2026, 1, 15, 12, 0, 0));
         const result = getBillingCycleFromDay(31, referenceDate, true);
 
-        // JavaScript Date handles overflow - Feb 31 becomes Mar 3
-        // This is existing behavior we're documenting
-        expect(result.cycleStart.getUTCMonth()).toBe(0); // January
-        expect(result.cycleEnd.getUTCMonth()).toBe(2); // March (Feb 31 overflows)
+        expect(result.cycleStart.toISOString()).toBe(
+          "2026-01-31T00:00:00.000Z"
+        );
+        expect(result.cycleEnd.toISOString()).toBe("2026-02-28T00:00:00.000Z");
+      });
+
+      it("selects the cycle containing the reference date right after a clamped boundary (Jan 31 anchor, March 2)", () => {
+        // Anchor on the 31st; on March 2 the current cycle started on the
+        // clamped Feb 28 boundary, not on Jan 31 — and it ends on Mar 31.
+        const referenceDate = new Date(Date.UTC(2026, 2, 2, 12, 0, 0));
+        const result = getBillingCycleFromDay(31, referenceDate, true);
+
+        expect(result.cycleStart.toISOString()).toBe(
+          "2026-02-28T00:00:00.000Z"
+        );
+        expect(result.cycleEnd.toISOString()).toBe("2026-03-31T00:00:00.000Z");
+      });
+
+      it("starts a new cycle on the clamped boundary day itself", () => {
+        // Feb 28, 2026, billing day 31: the Feb boundary clamps to Feb 28, so
+        // a new cycle starts that day.
+        const referenceDate = new Date(Date.UTC(2026, 1, 28, 12, 0, 0));
+        const result = getBillingCycleFromDay(31, referenceDate, true);
+
+        expect(result.cycleStart.toISOString()).toBe(
+          "2026-02-28T00:00:00.000Z"
+        );
+        expect(result.cycleEnd.toISOString()).toBe("2026-03-31T00:00:00.000Z");
+      });
+
+      it("keeps the anchor time-of-day on boundaries, including clamped ones", () => {
+        // Anchor: day 31 at 14:00 UTC (hour-aligned contract start).
+        const anchor = new Date(Date.UTC(2026, 0, 31, 14, 0, 0));
+        const referenceDate = new Date(Date.UTC(2026, 2, 2, 12, 0, 0));
+        const result = getBillingCycleFromDay(31, referenceDate, true, anchor);
+
+        expect(result.cycleStart.toISOString()).toBe(
+          "2026-02-28T14:00:00.000Z"
+        );
+        expect(result.cycleEnd.toISOString()).toBe("2026-03-31T14:00:00.000Z");
+      });
+
+      it("keeps a reference before the anchor hour on the boundary day in the previous cycle", () => {
+        // Feb 4 at 09:00, boundary at 14:00: the new cycle hasn't started yet.
+        const anchor = new Date(Date.UTC(2026, 0, 4, 14, 0, 0));
+        const referenceDate = new Date(Date.UTC(2026, 1, 4, 9, 0, 0));
+        const result = getBillingCycleFromDay(4, referenceDate, true, anchor);
+
+        expect(result.cycleStart.toISOString()).toBe(
+          "2026-01-04T14:00:00.000Z"
+        );
+        expect(result.cycleEnd.toISOString()).toBe("2026-02-04T14:00:00.000Z");
+      });
+
+      it("keeps day 31 boundaries in 31-day months", () => {
+        // Mar 31, 2026, billing day 31: cycle runs Mar 31 → Apr 30 (clamped).
+        const referenceDate = new Date(Date.UTC(2026, 2, 31, 12, 0, 0));
+        const result = getBillingCycleFromDay(31, referenceDate, true);
+
+        expect(result.cycleStart.toISOString()).toBe(
+          "2026-03-31T00:00:00.000Z"
+        );
+        expect(result.cycleEnd.toISOString()).toBe("2026-04-30T00:00:00.000Z");
       });
     });
 
@@ -168,6 +231,27 @@ describe("subscription billing cycle utilities", () => {
         expect(utcResult.cycleStart.getUTCDate()).toBe(10);
         // Local result uses local methods, but at noon UTC most places see same day
       });
+    });
+  });
+
+  describe("clampToMonth", () => {
+    it("returns the date unchanged when it is in the expected month", () => {
+      const date = new Date(Date.UTC(2026, 1, 15));
+      expect(clampToMonth(date, 1, true)).toBe(date);
+    });
+
+    it("clamps an overflowed date back to the last day of the expected month", () => {
+      // Feb 31, 2026 overflows to Mar 3; expected month is February.
+      const overflowed = new Date(Date.UTC(2026, 1, 31));
+      const result = clampToMonth(overflowed, 1, true);
+      expect(result.toISOString()).toBe("2026-02-28T00:00:00.000Z");
+    });
+
+    it("normalizes out-of-range month indices", () => {
+      // Month index 13 = February of the following year.
+      const overflowed = new Date(Date.UTC(2026, 13, 31));
+      const result = clampToMonth(overflowed, 13, true);
+      expect(result.toISOString()).toBe("2027-02-28T00:00:00.000Z");
     });
   });
 

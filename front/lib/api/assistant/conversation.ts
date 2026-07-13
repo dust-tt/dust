@@ -27,10 +27,7 @@ import {
   batchRenderMessages,
   batchRenderUserMessagesWithoutMentions,
 } from "@app/lib/api/assistant/messages";
-import {
-  isProviderWhitelisted,
-  resolveModelSelection,
-} from "@app/lib/api/assistant/models";
+import { isProviderWhitelistedForAuth } from "@app/lib/api/assistant/models";
 import { gracefullyStopAgentLoop } from "@app/lib/api/assistant/pubsub";
 import {
   MESSAGE_RATE_LIMIT_PER_ACTOR_PER_HOUR,
@@ -159,10 +156,7 @@ import {
   isUserMention,
   toMentionType,
 } from "@app/types/assistant/mentions";
-import type {
-  ModelSelectionType,
-  ResolvedRequestedModel,
-} from "@app/types/assistant/models/types";
+import type { ModelSelectionType } from "@app/types/assistant/models/types";
 import type {
   ContentFragmentContextType,
   ContentFragmentType,
@@ -596,14 +590,6 @@ export async function postUserMessage(
   }
 
   const featureFlags = await getFeatureFlags(auth);
-
-  // Resolve the picker selection to a concrete model for this workspace. If it
-  // cannot be honored (unknown/disabled model), we leave `resolvedModel` null
-  // and the agent's configured model is used.
-  const resolvedModel: ResolvedRequestedModel | null = modelSelection
-    ? resolveModelSelection(auth, modelSelection, { featureFlags })
-    : null;
-
   const isPartOfPod = isPodConversation(conversation);
 
   if (isPartOfPod) {
@@ -793,7 +779,7 @@ export async function postUserMessage(
       });
     }
 
-    const isProviderEnabled = isProviderWhitelisted(
+    const isProviderEnabled = isProviderWhitelistedForAuth(
       auth,
       agentConfig.model.providerId
     );
@@ -891,6 +877,7 @@ export async function postUserMessage(
                 ...context,
                 origin: "branch_anchor",
               },
+              requestedModel: modelSelection ?? null,
             },
             transaction: t,
           });
@@ -1001,6 +988,7 @@ export async function postUserMessage(
         context: enrichedContext,
         agenticMessageData,
         visibility,
+        requestedModel: modelSelection ?? null,
       },
       transaction: t,
     });
@@ -1045,7 +1033,6 @@ export async function postUserMessage(
             skipToolsValidation,
             nextMessageRank,
             userMessage: userMessageWithoutMentions,
-            resolvedModel,
           },
           transaction: t,
         });
@@ -1287,7 +1274,7 @@ export async function editUserMessage(
       });
     }
 
-    const isProviderEnabled = isProviderWhitelisted(
+    const isProviderEnabled = isProviderWhitelistedForAuth(
       auth,
       agentConfig.model.providerId
     );
@@ -1898,6 +1885,7 @@ export async function retryAgentMessage(
           type: "retry",
           parentId: messageRow.parentId,
           agentMessage: message,
+          agentMessageRow: messageRow.agentMessage,
         },
         transaction: t,
       });
@@ -3111,11 +3099,16 @@ export async function updateAgentMessageWithFinalStatus(
     agentMessage,
     status,
     error,
+    dangerouslyBypassSameStepCheck = false,
   }: {
     conversation: ConversationWithoutContentType;
     agentMessage: AgentMessageType;
     status: Exclude<AgentMessageStatus, "created">;
     error?: ToolErrorEvent["error"];
+    // Force finalization even if the message is in an anomalous state (e.g. blocked actions
+    // spanning multiple steps). Used by the unstick-conversation poke plugin to rescue genuinely
+    // stuck conversations. Leave false everywhere else so invariant violations surface as errors.
+    dangerouslyBypassSameStepCheck?: boolean;
   }
 ): Promise<{
   completedTs: number;
@@ -3185,6 +3178,7 @@ export async function updateAgentMessageWithFinalStatus(
       ? await AgentMCPActionResource.denyBlockedActionsForAgentMessage(auth, {
           agentMessageId: agentMessage.agentMessageId,
           transaction: t,
+          dangerouslyBypassSameStepCheck,
         })
       : [];
 

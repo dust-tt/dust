@@ -21,6 +21,7 @@ import { AnthropicGlobalClaudeSonnetFourDotSixStream } from "@app/lib/model_cons
 import { FireworksGlobalDeepSeekV4ProStream } from "@app/lib/model_constructors/stream/endpoints/fireworks_global_deepseek_v4_pro";
 import { FireworksGlobalGlmFiveDotTwoStream } from "@app/lib/model_constructors/stream/endpoints/fireworks_global_glm_five_dot_two";
 import { FireworksGlobalKimiK2Dot5Stream } from "@app/lib/model_constructors/stream/endpoints/fireworks_global_kimi_k2_dot_five";
+import { FireworksGlobalKimiK2Dot6Stream } from "@app/lib/model_constructors/stream/endpoints/fireworks_global_kimi_k2_dot_six";
 import { GoogleAiStudioGlobalGeminiThreeDotOneProStream } from "@app/lib/model_constructors/stream/endpoints/google_ai_studio_global_gemini_3_1_pro";
 import { MistralEuropeCodestralStream } from "@app/lib/model_constructors/stream/endpoints/mistral_eu_codestral";
 import { MistralEuropeMistralLargeStream } from "@app/lib/model_constructors/stream/endpoints/mistral_eu_mistral_large";
@@ -63,6 +64,7 @@ import { AnthropicGlobalClaudeSonnetFourDotSixStreamSetup } from "@app/lib/model
 import { FireworksGlobalDeepSeekV4ProStreamSetup } from "@app/lib/model_constructors/test/endpoints/fireworks_global_deepseek_v4_pro.test";
 import { FireworksGlobalGlmFiveDotTwoStreamSetup } from "@app/lib/model_constructors/test/endpoints/fireworks_global_glm_five_dot_two.test";
 import { FireworksGlobalKimiK2Dot5StreamSetup } from "@app/lib/model_constructors/test/endpoints/fireworks_global_kimi_k2_dot_five.test";
+import { FireworksGlobalKimiK2Dot6StreamSetup } from "@app/lib/model_constructors/test/endpoints/fireworks_global_kimi_k2_dot_six.test";
 import { GoogleAiStudioGlobalGeminiThreeDotOneProStreamSetup } from "@app/lib/model_constructors/test/endpoints/google_ai_studio_global_gemini_3_1_pro.test";
 import { MistralEuropeCodestralStreamSetup } from "@app/lib/model_constructors/test/endpoints/mistral_eu_codestral.test";
 import { MistralEuropeMistralLargeStreamSetup } from "@app/lib/model_constructors/test/endpoints/mistral_eu_mistral_large.test";
@@ -125,6 +127,7 @@ export const STREAM_ENDPOINT_SETUPS = {
   [FireworksGlobalGlmFiveDotTwoStream.id]:
     FireworksGlobalGlmFiveDotTwoStreamSetup,
   [FireworksGlobalKimiK2Dot5Stream.id]: FireworksGlobalKimiK2Dot5StreamSetup,
+  [FireworksGlobalKimiK2Dot6Stream.id]: FireworksGlobalKimiK2Dot6StreamSetup,
   [GoogleAiStudioGlobalGeminiThreeDotOneProStream.id]:
     GoogleAiStudioGlobalGeminiThreeDotOneProStreamSetup,
   [MistralEuropeCodestralStream.id]: MistralEuropeCodestralStreamSetup,

@@ -559,16 +559,16 @@ export class RemoteMCPServerResource extends BaseResource<RemoteMCPServerModel> 
       };
       return new Ok(connectionMetadata);
     } catch (e) {
-      logger.error(
-        { error: e },
-        "Failed to register client, this server might require a pre-approval process."
-      );
-      return new Err(
-        new DustError(
-          "internal_error",
-          "Failed to register client, this server might require a pre-approval process. Please contact support@dust.com."
-        )
-      );
+      // Servers that don't advertise a registration_endpoint don't support DCR at all — the
+      // failure isn't a broken registration attempt, it's expected, and Static OAuth is the
+      // right path.
+      const message = metadata.registration_endpoint
+        ? "Failed to register client, this server might require a pre-approval process. Please contact support@dust.com."
+        : "This server does not support automatic OAuth setup (no dynamic client registration " +
+          "endpoint). Please use Static OAuth with the client ID/secret provided by the " +
+          "server's OAuth application.";
+      logger.error({ error: e }, message);
+      return new Err(new DustError("internal_error", message));
     }
   }
 

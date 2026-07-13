@@ -116,33 +116,22 @@ export function isPokePlanTypeFilter(
   return POKE_PLAN_TYPE_FILTERS.some((filter) => filter === value);
 }
 
-// Classifies a plan code into a poke plan-type filter bucket, or null if it
-// doesn't match any of them.
-export const getPokePlanTypeFilter = (
-  planCode: string
-): PokePlanTypeFilter | null => {
-  if (planCode.startsWith("CP_ENT_")) {
-    return "enterprise";
-  }
-  if (planCode.startsWith("ENT_")) {
-    return "legacy_enterprise";
-  }
-  if (planCode.startsWith("PRO_")) {
-    return "legacy_pro";
-  }
-  if (planCode.startsWith("CP_BUSINESS_")) {
-    return "business";
-  }
-  if (isFriendsAndFamilyPlan(planCode)) {
-    return "friends_and_family";
-  }
-  if (planCode.startsWith("FREE_")) {
-    return "free";
-  }
-  if (planCode.startsWith("DUST_") || planCode.startsWith("CP_DUST_")) {
-    return "dust";
-  }
-  return null;
+export type PokeNonFreePlanTypeFilter = Exclude<PokePlanTypeFilter, "free">;
+
+// Single source of truth for how each non-free bucket maps to plan codes.
+// Consumed to build the SQL filter for the poke workspaces list endpoint:
+// `free` has no code pattern of its own there — it's derived as "doesn't
+// match any of these".
+export const POKE_PLAN_CODE_MATCHERS: Record<
+  PokeNonFreePlanTypeFilter,
+  { type: "prefix"; values: string[] } | { type: "exact"; values: string[] }
+> = {
+  enterprise: { type: "prefix", values: ["CP_ENT_"] },
+  legacy_enterprise: { type: "prefix", values: ["ENT_"] },
+  legacy_pro: { type: "prefix", values: ["PRO_"] },
+  business: { type: "prefix", values: ["CP_BUSINESS_"] },
+  friends_and_family: { type: "exact", values: ["FREE_FRIENDSAMILY"] },
+  dust: { type: "prefix", values: ["DUST_", "CP_DUST_"] },
 };
 
 export function isProPlan(plan?: PlanType) {

@@ -12,6 +12,7 @@ import {
 } from "@app/lib/api/actions/servers/agent_router/metadata";
 import { AGENT_SIDEKICK_AGENT_STATE_SERVER } from "@app/lib/api/actions/servers/agent_sidekick_agent_state/metadata";
 import { AGENT_SIDEKICK_CONTEXT_SERVER } from "@app/lib/api/actions/servers/agent_sidekick_context/metadata";
+import { AGENT_TEMPLATES_SERVER } from "@app/lib/api/actions/servers/agent_templates/metadata";
 import { ASHBY_SERVER } from "@app/lib/api/actions/servers/ashby/metadata";
 import { ASK_USER_QUESTION_SERVER } from "@app/lib/api/actions/servers/ask_user_question/metadata";
 import { CLARI_COPILOT_SERVER } from "@app/lib/api/actions/servers/clari_copilot/metadata";
@@ -156,6 +157,7 @@ export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   "user_analytics",
   "agent_sidekick_agent_state",
   "agent_sidekick_context",
+  "agent_templates",
   "agent_memory",
   "agent_router",
   ASHBY_SERVER_NAME,
@@ -1173,7 +1175,7 @@ export const INTERNAL_MCP_SERVERS = {
   },
   exa_people_and_company: {
     id: 1036,
-    availability: "manual",
+    availability: "auto",
     allowMultipleInstances: false,
     isPreview: false,
     isRestricted: ({ featureFlags }) =>
@@ -1218,6 +1220,17 @@ export const INTERNAL_MCP_SERVERS = {
     timeoutMs: undefined,
     metadata: ACTIVATION_RECOMMENDATIONS_SERVER,
   },
+  agent_templates: {
+    id: 1041,
+    availability: "auto_hidden_builder",
+    allowMultipleInstances: false,
+    isPreview: false,
+    isRestricted: undefined,
+    tools_arguments_requiring_approval: undefined,
+    tools_retry_policies: undefined,
+    timeoutMs: undefined,
+    metadata: AGENT_TEMPLATES_SERVER,
+  },
   // Using satisfies here instead of: type to avoid TypeScript widening the type and breaking the type inference for AutoInternalMCPServerNameType.
 } satisfies {
   [K in InternalMCPServerNameType]: InternalMCPServerEntryBase<K>;
@@ -1247,9 +1260,8 @@ type InternalMCPServerEntryCommon = {
   isRestricted: IsRestrictedCallback | undefined;
   isPreview: boolean;
   runtimeToolStakeLevelCallback?: RuntimeToolStakeLevelCallback;
-  // Defines which arguments require per-agent approval for "medium" stake tools.
-  // When a tool has "medium" stake, the user must approve the specific combination
-  // of (agent, tool, argument values) before the tool can execute.
+  // Defines which argument values scope approval for "medium" stake tools.
+  // The user must approve each specific combination before the tool can execute.
   tools_arguments_requiring_approval: Record<string, string[]> | undefined;
   tools_retry_policies: Record<string, MCPToolRetryPolicyType> | undefined;
   timeoutMs: number | undefined;
@@ -1463,6 +1475,15 @@ export function getInternalMCPServerToolStakes(
   const server: InternalMCPServerEntry = INTERNAL_MCP_SERVERS[name];
 
   return server.metadata.tools_stakes;
+}
+
+export function getInternalMCPServerToolArgumentsRequiringApproval(
+  name: InternalMCPServerNameType,
+  toolName: string
+): string[] | undefined {
+  const server: InternalMCPServerEntry = INTERNAL_MCP_SERVERS[name];
+
+  return server.tools_arguments_requiring_approval?.[toolName];
 }
 
 export function resolveInternalMCPServerToolStakeLevel(

@@ -17,14 +17,14 @@ import {
 import { handleBase64Upload } from "@app/lib/actions/mcp_utils";
 import type {
   ActionGeneratedFileType,
-  ToolContextType,
+  ToolContext,
+  ToolOutputItemType,
 } from "@app/lib/actions/types";
 import { isAgentLoopRunContext } from "@app/lib/actions/types";
 import { isInternalServerSideMCPToolConfiguration } from "@app/lib/actions/types/guards";
 import { persistToolOutput } from "@app/lib/api/files/action_output_fs";
 import { processAndStoreFromUrl } from "@app/lib/api/files/upload";
 import type { Authenticator } from "@app/lib/auth";
-import type { AgentMCPActionOutputItemModel } from "@app/lib/models/agent/actions/mcp";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import type {
@@ -75,33 +75,31 @@ export async function processToolNotification(
   {
     toolContext,
   }: {
-    toolContext: ToolContextType;
+    toolContext: ToolContext;
   }
 ): Promise<{
   event: ToolNotificationEvent;
-  storedItems: AgentMCPActionOutputItemModel[];
+  outputItems: ToolOutputItemType[];
 }> {
   const { runContext } = toolContext;
   assert(runContext, "processToolNotification requires a tool run context.");
 
   const output = notification.params._meta.data.output;
 
-  let storedItems: AgentMCPActionOutputItemModel[] = [];
+  let outputItems: ToolOutputItemType[] = [];
 
   // Handle store_resource notifications by creating output items immediately (fire-and-forget GCS).
   if (isStoreResourceProgressOutput(output)) {
-    // TODO(SANDBOX_FUNCTIONS): persist sandbox function outputs (writeOutput) when running in a
-    // sandbox function run context.
-    assert(
-      isAgentLoopRunContext(runContext),
-      "store_resource notifications require an agent loop run context."
-    );
-    storedItems = await runContext.action.createOutputItems(
+    const outputRes = await runContext.action.createOutputItems(
       auth,
       output.contents.map((content) => ({
         content: sanitizeStringsDeep(content),
       }))
     );
+    if (outputRes.isErr()) {
+      throw outputRes.error;
+    }
+    outputItems = outputRes.value;
   }
 
   // Specific handling for run_agent notifications indicating the tool has
@@ -139,7 +137,7 @@ export async function processToolNotification(
           },
           notification: notification.params,
         },
-        storedItems,
+        outputItems,
       };
     case "sandbox_function":
       return {
@@ -151,7 +149,7 @@ export async function processToolNotification(
           action: runContext.action.toJSON(),
           notification: notification.params,
         },
-        storedItems,
+        outputItems,
       };
     default:
       return assertNever(runContext);
@@ -159,7 +157,9 @@ export async function processToolNotification(
 }
 
 /**
- * Processes tool results, handles file uploads, and creates output items.
+ * Processes tool results, handles file uploads, and persists the output: one output item per
+ * content block in an agent loop, a single GCS object holding the full content array for a
+ * sandbox function invocation.
  * Returns the processed content and generated files.
  */
 export async function processToolResults(
@@ -171,10 +171,10 @@ export async function processToolResults(
   }: {
     localLogger: Logger;
     toolCallResultContent: CallToolResult["content"];
-    toolContext: ToolContextType;
+    toolContext: ToolContext;
   }
 ): Promise<{
-  outputItems: AgentMCPActionOutputItemModel[];
+  outputItems: ToolOutputItemType[];
   generatedFiles: ActionGeneratedFileType[];
 }> {
   const { runContext } = toolContext;
@@ -188,7 +188,7 @@ export async function processToolResults(
   }[] = await concurrentExecutor(
     toolCallResultContent,
     async (block, idx) => {
-      const res = await persistToolOutput(auth, toolContext, block, {
+      const res = await persistToolOutput(auth, runContext, block, {
         toolName: toolConfiguration.name,
         serverName: toolConfiguration.mcpServerName,
       });
@@ -445,20 +445,6 @@ export async function processToolResults(
     }
   );
 
-  // TODO(SANDBOX_FUNCTIONS): persist sandbox function outputs (writeOutput) when running in a
-  // sandbox function run context.
-  assert(
-    isAgentLoopRunContext(runContext),
-    "processToolResults requires an agent loop run context to store output items."
-  );
-  const outputItems = await runContext.action.createOutputItems(
-    auth,
-    cleanContent.map((c) => ({
-      content: sanitizeStringsDeep(c.content),
-      fileId: c.file?.id,
-    }))
-  );
-
   const generatedFiles: ActionGeneratedFileType[] = removeNulls(
     cleanContent.map((c) => {
       if (c.file) {
@@ -491,7 +477,22 @@ export async function processToolResults(
     })
   );
 
-  return { outputItems, generatedFiles };
+  // Persist the processed contents on the run context's action: per-item rows for agent loop
+  // actions, a single output object for sandbox function actions.
+  const outputRes = await runContext.action.createOutputItems(
+    auth,
+    cleanContent.map((c) => ({
+      content: sanitizeStringsDeep(c.content),
+      fileId: c.file?.id,
+    }))
+  );
+
+  // Surfaced as an exception: there is no acceptable degraded state for unpersisted tool outputs.
+  if (outputRes.isErr()) {
+    throw outputRes.error;
+  }
+
+  return { outputItems: outputRes.value, generatedFiles };
 }
 
 /**

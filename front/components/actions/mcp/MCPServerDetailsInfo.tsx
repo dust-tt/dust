@@ -11,7 +11,12 @@ import {
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import { asDisplayName } from "@app/types/shared/utils/string_utils";
 import type { LightWorkspaceType } from "@app/types/user";
-import { Separator } from "@dust-tt/sparkle";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+  Separator,
+} from "@dust-tt/sparkle";
 import { useMemo } from "react";
 
 type MCPServerDetailsInfoProps = {
@@ -48,9 +53,14 @@ export function MCPServerDetailsInfo({
               {asDisplayName(tool.name)}
             </div>
             {tool.description && (
-              <p className="text-sm text-muted-foreground">
-                {tool.description}
-              </p>
+              <Collapsible>
+                <CollapsibleTrigger label="Description" variant="secondary" />
+                <CollapsibleContent>
+                  <p className="whitespace-pre-wrap break-words pt-1 text-sm text-muted-foreground">
+                    {tool.description}
+                  </p>
+                </CollapsibleContent>
+              </Collapsible>
             )}
           </div>
         ))}

@@ -1,3 +1,4 @@
+import { GroupModelTierPickerDropdown } from "@app/components/workspace/GroupModelTierPickerDropdown";
 import { useGroups, useUpdateGroupSpendLimit } from "@app/lib/swr/groups";
 import type { GroupSpendLimit } from "@app/types/api/groups/spend_limit";
 import { CAP_ELIGIBLE_GROUP_KINDS } from "@app/types/groups";
@@ -9,6 +10,7 @@ import { useMemo, useState } from "react";
 interface GroupsUsageTableProps {
   owner: LightWorkspaceType;
   readOnly: boolean;
+  showModelTiersColumn?: boolean;
 }
 
 type GroupRowData = {
@@ -70,7 +72,11 @@ function GroupCapCell({ group, readOnly, onSave }: GroupCapCellProps) {
   );
 }
 
-export function GroupsUsageTable({ owner, readOnly }: GroupsUsageTableProps) {
+export function GroupsUsageTable({
+  owner,
+  readOnly,
+  showModelTiersColumn = false,
+}: GroupsUsageTableProps) {
   const { groups, isGroupsLoading } = useGroups({
     owner,
     kinds: [...CAP_ELIGIBLE_GROUP_KINDS],
@@ -134,8 +140,25 @@ export function GroupsUsageTable({ owner, readOnly }: GroupsUsageTableProps) {
         ),
         enableSorting: false,
       },
+      ...(showModelTiersColumn
+        ? [
+            {
+              id: "modelTiers",
+              header: "Models tier",
+              meta: { className: "w-64" },
+              cell: (info: GroupInfo) => (
+                <GroupModelTierPickerDropdown
+                  owner={owner}
+                  groupId={info.row.original.groupId}
+                  readOnly={readOnly}
+                />
+              ),
+              enableSorting: false,
+            } satisfies ColumnDef<GroupRowData, string>,
+          ]
+        : []),
     ],
-    [readOnly, doUpdateGroupSpendLimit]
+    [owner, readOnly, showModelTiersColumn, doUpdateGroupSpendLimit]
   );
 
   if (isGroupsLoading) {

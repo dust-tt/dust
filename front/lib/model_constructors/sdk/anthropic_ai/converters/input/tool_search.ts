@@ -23,7 +23,8 @@ const TOOL_SEARCH_TOOL_TYPE = TOOL_SEARCH_TOOL.type;
 // regular tool call in the same turn: the API leaves such searches un-run (the
 // turn ends on the tool call), and replaying the un-run blocks is fragile.
 // Skill-enabling tools are called out explicitly because they are the most
-// frequent offender observed in practice.
+// frequent offender observed in practice. It also discourages chaining searches
+// when a tool returned by the first search can already handle the task.
 export const TOOL_SEARCH_INSTRUCTION =
   "You can search for and load far more tools than are visible to you now, " +
   "including ones that fetch live or account-specific data and act in external " +
@@ -35,7 +36,10 @@ export const TOOL_SEARCH_INSTRUCTION =
   "several searches together is fine, but if you call any other tool " +
   "(including enabling a skill) in the same turn as a search, the search is " +
   "discarded and never runs. Search first, wait for the results, and only " +
-  "then call the other tools you need.";
+  "then call the other tools you need. Avoid chaining searches one after " +
+  "another: prefer using the best matching tool from the results. Search " +
+  "again only if none of the returned tools can handle the task, and refine " +
+  "the query instead of repeating it.";
 
 export function includesToolSearchTool(
   tools: ReadonlyArray<{ type?: string | null }>

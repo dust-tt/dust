@@ -9,8 +9,7 @@ export const USER_ANALYTICS_SERVER_NAME = "user_analytics" as const;
 export const USER_ANALYTICS_TOOLS_METADATA = createToolsRecord({
   get_personal_usage: {
     description:
-      "Get this user's top skills and tools over the last 30 days, ranked by execution count. " +
-      "Always scoped to the authenticated user.",
+      "Get the authenticated user's personal usage over the last 30 days: their top skills and top tools ranked by execution count.",
     schema: {},
     stake: "never_ask",
     toolCostCategory: "basic",

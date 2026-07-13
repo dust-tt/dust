@@ -7,11 +7,12 @@ const TOOL_EXECUTION_FINAL_STATUSES = [
 type ToolExecutionFinalStatus = (typeof TOOL_EXECUTION_FINAL_STATUSES)[number];
 
 // Base lifecycle shared by every MCP tool execution, regardless of context: the tool runs, may be
-// blocked awaiting user approval, and ends succeeded, errored, or denied. AgentMCPActionModel and
-// SandboxFunctionMCPActionModel both draw from this vocabulary; the agent loop extends it with its
-// scheduling and conversation-interaction states below.
+// blocked awaiting user approval or authentication, and ends succeeded, errored, or denied.
+// AgentMCPActionModel and SandboxFunctionMCPActionModel both draw from this vocabulary; the agent
+// loop extends it with its scheduling and conversation-interaction states below.
 export const TOOL_EXECUTION_BASE_STATUSES = [
   "running",
+  "blocked_authentication_required",
   "blocked_validation_required",
   ...TOOL_EXECUTION_FINAL_STATUSES,
 ] as const;
@@ -24,7 +25,6 @@ export type ToolExecutionBaseStatus =
 const TOOL_EXECUTION_AGENT_LOOP_EXTENSION_STATUSES = [
   "ready_allowed_explicitly",
   "ready_allowed_implicitly",
-  "blocked_authentication_required",
   "blocked_file_authorization_required",
   "blocked_child_action_input_required",
   "blocked_user_answer_required",

@@ -152,7 +152,7 @@ export const LUMA_TOOLS_METADATA = createToolsRecord({
           "Set to true to suppress email notifications to guests about this update."
         ),
     },
-    stake: "medium",
+    stake: "low",
     displayLabels: {
       running: "Updating Luma event",
       done: "Update Luma event",
@@ -236,7 +236,7 @@ export const LUMA_TOOLS_METADATA = createToolsRecord({
           "Whether to refund the guest when declining (for paid registrations)."
         ),
     },
-    stake: "medium",
+    stake: "low",
     displayLabels: {
       running: "Updating Luma guest status",
       done: "Update Luma guest status",
@@ -281,7 +281,7 @@ export const LUMA_TOOLS_METADATA = createToolsRecord({
         .array(z.string())
         .describe("Array of email addresses to send invitations to."),
     },
-    stake: "medium",
+    stake: "low",
     displayLabels: {
       running: "Sending Luma invites",
       done: "Send Luma invites",

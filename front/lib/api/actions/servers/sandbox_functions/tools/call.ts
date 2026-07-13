@@ -10,9 +10,9 @@ import { Err, Ok } from "@app/types/shared/result";
 
 export async function callHandler(
   { slug, input }: { slug: string; input?: Record<string, unknown> },
-  { auth, toolContext }: ToolHandlerExtra
+  { auth, runContext }: ToolHandlerExtra
 ): Promise<ToolHandlerResult> {
-  const podResult = await getPod(auth, { toolContext });
+  const podResult = await getPod(auth, { toolContext: { runContext } });
   if (podResult.isErr()) {
     return new Err(podResult.error);
   }

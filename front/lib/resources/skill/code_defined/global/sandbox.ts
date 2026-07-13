@@ -1,21 +1,13 @@
+import { isDustLikeAgent } from "@app/lib/api/assistant/global_agents/prompt_context";
 import { TOOL_OUTPUTS_FOLDER_NAME } from "@app/lib/api/files/mount_path";
 import { readWorkspacePolicy } from "@app/lib/api/sandbox/egress_policy";
-import {
-  createToolManifest,
-  filterDsbxToolEntries,
-  getSandboxImage,
-  getToolsForProvider,
-  toolManifestToYAML,
-} from "@app/lib/api/sandbox/image";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
 import type { GlobalSkillDefinition } from "@app/lib/resources/skill/code_defined/shared";
 import logger from "@app/logger/logger";
 import type { AgentLoopExecutionData } from "@app/types/assistant/agent_run";
 import { isPodConversation } from "@app/types/assistant/conversation";
-import type { ModelProviderIdType } from "@app/types/assistant/models/types";
 import { isComputerFeatureEnabled } from "@app/types/shared/feature_flags";
-import { Ok } from "@app/types/shared/result";
 
 function buildSandboxInstructionProse({
   hasDsbxTools,
@@ -77,7 +69,7 @@ immediately visible through the other.
 Default to the sandbox, not the \`files\` MCP server. Whenever the sandbox
 is available, navigate and process conversation files and tool outputs
 with bash on \`/files/conversation\` using the standard POSIX toolchain
-plus \`jq\` / \`rg\` (see the available tools manifest below). This is
+plus \`jq\` / \`rg\` (call \`describe_toolset\` for the full list). This is
 cheaper than MCP round-trips, keeps intermediate output out of the
 conversation context, and lets you compose pipelines. Reach for the
 \`files\` MCP server only for a trivial one-shot read where spinning up a
@@ -290,7 +282,6 @@ attempt to reconstruct, decode, or otherwise recover the value.`;
 
 async function buildSandboxInstructions(
   auth: Authenticator,
-  providerId: ModelProviderIdType | undefined,
   { hasDsbxTools, isProject }: { hasDsbxTools: boolean; isProject: boolean }
 ): Promise<string> {
   const networkAccessSection = await buildNetworkAccessSection(auth);
@@ -299,34 +290,9 @@ async function buildSandboxInstructions(
   const projectFilesSection = isProject ? buildProjectFilesSection() : null;
   const sandboxInstructions = buildSandboxInstructionProse({ hasDsbxTools });
 
-  let toolsResult;
-
   const filesSections = [conversationFilesSection, projectFilesSection]
     .filter((s): s is string => s !== null)
     .join("\n\n");
-
-  if (providerId) {
-    toolsResult = getToolsForProvider(auth, providerId, {
-      includeDsbxTools: hasDsbxTools,
-    });
-  } else {
-    const imageResult = getSandboxImage(auth);
-    if (imageResult.isErr()) {
-      return `${sandboxInstructions}\n\n${filesSections}\n\n${networkAccessSection}\n\n${environmentVariablesSection}`;
-    }
-    toolsResult = new Ok(
-      filterDsbxToolEntries(imageResult.value.tools, {
-        includeDsbxTools: hasDsbxTools,
-      })
-    );
-  }
-
-  if (toolsResult.isErr()) {
-    return `${sandboxInstructions}\n\n${filesSections}\n\n${networkAccessSection}\n\n${environmentVariablesSection}`;
-  }
-
-  const manifest = createToolManifest(toolsResult.value);
-  const manifestYaml = toolManifestToYAML(manifest);
 
   return `${sandboxInstructions}
 
@@ -338,13 +304,10 @@ ${environmentVariablesSection}
 
 #### Sandbox Available Tools and Libraries
 
-The following tools and libraries are pre-installed in the sandbox environment.
-Installing packages in the sandbox is NOT possible.
-CRITICAL: Use ONLY the sandbox tools listed below, NOTHING ELSE.
-
-\`\`\`yaml
-${manifestYaml}
-\`\`\`
+Tools and libraries are pre-installed in the sandbox environment. Installing
+packages in the sandbox is NOT possible. Call \`describe_toolset\` to inspect
+the available CLI binaries and language libraries, including their exact
+versions. Use ONLY the tools listed there, NOTHING ELSE.
 
 `;
 }
@@ -369,14 +332,13 @@ export const sandboxSkill = {
       agentLoopData,
     }: { spaceIds: string[]; agentLoopData?: AgentLoopExecutionData }
   ) => {
-    const providerId = agentLoopData?.model.providerId;
     const flags = await getFeatureFlags(auth);
     const hasDsbxTools = isComputerFeatureEnabled(flags);
     const isProject = agentLoopData?.conversation
       ? isPodConversation(agentLoopData.conversation)
       : false;
 
-    return buildSandboxInstructions(auth, providerId, {
+    return buildSandboxInstructions(auth, {
       hasDsbxTools,
       isProject,
     });
@@ -384,9 +346,13 @@ export const sandboxSkill = {
   mcpServers: [{ name: "sandbox" }],
   version: 1,
   icon: "CommandLineIcon",
-  // Auto-equipped for every agent unless the workspace has disabled the
+  // Auto-enabled for dust-like agents, which are heavy users of it.
+  // This allows adding the bash tool eagerly, as it's used for a wide variety of use cases and deferring it would
+  // increase significantly the number of tool searches ran overall.
+  // Auto-equipped for every other agent unless the workspace has disabled the
   // Computer, but not enabled until the agent decides to use it.
-  getAutoEnabledOrEquippedForAgentLoop: () => "equipped",
+  getAutoEnabledOrEquippedForAgentLoop: ({ agentConfiguration }) =>
+    isDustLikeAgent(agentConfiguration.sId) ? "enabled" : "equipped",
   isRestricted: async (auth: Authenticator) => {
     const flags = await getFeatureFlags(auth);
 

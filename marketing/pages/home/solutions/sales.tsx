@@ -26,7 +26,7 @@ import { PageMetadata } from "@marketing/components/home/PageMetadata";
 import TrustedBy from "@marketing/components/home/TrustedBy";
 import { TRACKING_AREAS, withTracking } from "@marketing/lib/tracking";
 import { classNames } from "@marketing/lib/utils";
-import { Button } from "@dust-tt/sparkle";
+import { LegacyButton as Button } from "@dust-tt/sparkle";
 import Link from "next/link";
 import { useRouter } from "next/router";
 import type { ReactElement } from "react";

@@ -1,5 +1,6 @@
 import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { createToolsRecord } from "@app/lib/actions/mcp_internal_actions/tool_definition";
+import { AGENT_FACING_DESCRIPTION_MAX_LENGTH } from "@app/lib/skills/labels";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { z } from "zod";
 import { zodToJsonSchema } from "zod-to-json-schema";
@@ -13,8 +14,28 @@ export const UPDATE_SKILL_TOOL_NAME = "update_skill" as const;
 export const SKILL_AUTHORING_TOOLS_METADATA = createToolsRecord({
   [LIST_SKILLS_TOOL_NAME]: {
     description:
-      "List active custom Skills in this workspace. Returns lightweight summaries so you can find the skill id to inspect or update.",
-    schema: {},
+      "List active custom Skills in this workspace. Returns lightweight summaries (sId, name, agentFacingDescription, canWrite) paginated.",
+    schema: {
+      filter: z
+        .enum(["all", "writable", "agent_discoverable"])
+        .optional()
+        .describe(
+          "Scope of skills to return. `writable` (default): only skills the user can edit. `all`: every skill in the workspace. `agent_discoverable`: only skills the agent can invoke in this conversation."
+        ),
+      cursor: z
+        .string()
+        .optional()
+        .describe(
+          "Pagination cursor from a previous call. Omit for the first page."
+        ),
+      limit: z
+        .number()
+        .int()
+        .positive()
+        .max(50)
+        .optional()
+        .describe("Skills per page. Default 20, max 50."),
+    },
     stake: "never_ask",
     displayLabels: {
       running: "Listing skills",
@@ -47,6 +68,7 @@ export const SKILL_AUTHORING_TOOLS_METADATA = createToolsRecord({
         .describe("Short description shown to users browsing skills."),
       agentFacingDescription: z
         .string()
+        .max(AGENT_FACING_DESCRIPTION_MAX_LENGTH)
         .describe(
           "Description used by agents to decide when to use the skill."
         ),
@@ -92,6 +114,7 @@ export const SKILL_AUTHORING_TOOLS_METADATA = createToolsRecord({
         .describe("New short description shown to users browsing skills."),
       agentFacingDescription: z
         .string()
+        .max(AGENT_FACING_DESCRIPTION_MAX_LENGTH)
         .optional()
         .describe("New description used by agents to decide when to use it."),
       instructions: z

@@ -1,13 +1,25 @@
+import type { ToolGeneratedFilePathType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { Authenticator } from "@app/lib/auth";
+import { MessageModel } from "@app/lib/models/agent/conversation";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
+import { AgentMCPActionFactory } from "@app/tests/utils/AgentMCPActionFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { createPublicApiMockRequest } from "@app/tests/utils/generic_public_api_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
+import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import { honoApp } from "@front-api/app";
-import { assert, describe, expect, it } from "vitest";
+import { assert, describe, expect, it, vi } from "vitest";
+
+// devModeConstants reads localStorage at module load. jsdom does not always
+// have localStorage initialized when mock factories evaluate, which crashes
+// tests whose mocked libs transitively import AuthContext. Stub it here.
+vi.mock("@app/components/dev/devModeConstants", () => ({
+  DEV_MODE_STORAGE_KEY: "dust_dev_mode",
+  DEV_MODE_ACTIVE: false,
+}));
 
 async function setupGetRequest() {
   const { workspace, key } = await createPublicApiMockRequest({
@@ -125,6 +137,85 @@ describe("GET /api/v1/w/[wId]/assistant/conversations/[cId]", () => {
     const response = await getConversation(workspace, key, conversation.sId);
 
     expect(response.status).toBe(200);
+  });
+
+  it("returns path-backed generated files on agent message actions", async () => {
+    const { workspace, key } = await createPublicApiMockRequest({
+      method: "GET",
+    });
+
+    const user = await UserFactory.basic();
+    await MembershipFactory.associate(workspace, user, { role: "builder" });
+    const userAuth = await Authenticator.fromUserIdAndWorkspaceId(
+      user.sId,
+      workspace.sId
+    );
+
+    const conversation = await ConversationFactory.create(userAuth, {
+      agentConfigurationId: GLOBAL_AGENTS_SID.DUST,
+      messagesCreatedAt: [new Date()],
+    });
+    const messageRows = await MessageModel.findAll({
+      where: {
+        conversationId: conversation.id,
+        workspaceId: workspace.id,
+      },
+      order: [["rank", "ASC"]],
+    });
+    const agentMessageRow = messageRows.find(
+      (message) => message.agentMessageId !== null
+    );
+    assert(agentMessageRow?.agentMessageId, "Agent message should exist");
+
+    const { action } = await AgentMCPActionFactory.create(userAuth, {
+      workspace,
+      conversationModelId: conversation.id,
+      agentMessageModelId: agentMessageRow.agentMessageId,
+      status: "succeeded",
+    });
+
+    const generatedFile: ToolGeneratedFilePathType = {
+      text: "file written",
+      uri: `conversation-${conversation.sId}/report.docx`,
+      mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.FILE_PATH,
+      path: `conversation-${conversation.sId}/report.docx`,
+      title: "report.docx",
+      contentType:
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    };
+    const outputRes = await action.createOutputItems(userAuth, [
+      {
+        content: {
+          type: "resource",
+          resource: generatedFile,
+        },
+      },
+    ]);
+    assert(outputRes.isOk(), "Failed to create output items");
+
+    const response = await getConversation(workspace, key, conversation.sId);
+    const data = await response.json();
+
+    expect(response.status, JSON.stringify(data)).toBe(200);
+    const agentMessage = data.conversation.content
+      .flat()
+      .find(
+        (message: { sId: string; type: string }) =>
+          message.sId === agentMessageRow.sId &&
+          message.type === "agent_message"
+      );
+
+    expect(agentMessage.actions[0].generatedFiles).toEqual([
+      {
+        fileId: null,
+        filePath: `conversation-${conversation.sId}/report.docx`,
+        title: "report.docx",
+        contentType:
+          "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        snippet: null,
+        hidden: false,
+      },
+    ]);
   });
 });
 

@@ -197,7 +197,11 @@ export function useProviders({
   };
 }
 
-export function useKeys(owner: LightWorkspaceType) {
+export function useKeys(
+  owner: LightWorkspaceType,
+  options?: { disabled?: boolean }
+) {
+  const disabled = options?.disabled ?? false;
   const { fetcher } = useFetcher();
   const keysFetcher: Fetcher<GetKeysResponseBody> = fetcher;
   const { data, error, isValidating } = useSWRWithDefaults(
@@ -205,12 +209,13 @@ export function useKeys(owner: LightWorkspaceType) {
     keysFetcher,
     {
       revalidateOnFocus: false,
+      disabled,
     }
   );
 
   return {
     isKeysError: error,
-    isKeysLoading: !error && !data,
+    isKeysLoading: !error && !data && !disabled,
     isValidating,
     keys: data?.keys ?? emptyArray(),
   };

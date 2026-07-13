@@ -390,6 +390,14 @@ export const PRODUCTS: ProductDef[] = [
     name: "Seat Subscription Commit",
     type: "FIXED",
   },
+  // FIXED product for arbitrary scheduled/one-off invoice charges (e.g.
+  // professional services, setup fees) added via `add_scheduled_charges`.
+  // Unlike the credit products above, this grants no contract credit — it's
+  // a pure invoice line item.
+  {
+    name: "Platform Fee",
+    type: "FIXED",
+  },
 ];
 
 // Factory for a single seat subscription. All share the same ADVANCE collection

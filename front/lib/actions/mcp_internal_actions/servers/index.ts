@@ -1,6 +1,6 @@
 import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
 import { ADVANCED_SEARCH_SWITCH } from "@app/lib/actions/mcp_internal_actions/constants";
-import type { ToolContextType } from "@app/lib/actions/types";
+import type { ToolContext } from "@app/lib/actions/types";
 import {
   isLightServerSideMCPToolConfiguration,
   isServerSideMCPServerConfiguration,
@@ -10,6 +10,7 @@ import { default as agentMemoryServer } from "@app/lib/api/actions/servers/agent
 import { default as agentRouterServer } from "@app/lib/api/actions/servers/agent_router";
 import { default as agentSidekickAgentStateServer } from "@app/lib/api/actions/servers/agent_sidekick_agent_state";
 import { default as agentSidekickContextServer } from "@app/lib/api/actions/servers/agent_sidekick_context";
+import { default as agentTemplatesServer } from "@app/lib/api/actions/servers/agent_templates";
 import { default as ashbyServer } from "@app/lib/api/actions/servers/ashby";
 import { default as askUserQuestionServer } from "@app/lib/api/actions/servers/ask_user_question";
 import { default as clariCopilotServer } from "@app/lib/api/actions/servers/clari_copilot";
@@ -92,7 +93,7 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
  * Check if we are in advanced search mode,
  * relying on a magic value stored in the additionalConfiguration.
  */
-function isAdvancedSearchMode(toolContext?: ToolContextType) {
+function isAdvancedSearchMode(toolContext?: ToolContext) {
   return (
     (toolContext?.runContext &&
       isLightServerSideMCPToolConfiguration(
@@ -120,7 +121,7 @@ export async function getInternalMCPServer(
     internalMCPServerName: InternalMCPServerNameType;
     mcpServerId: string;
   },
-  toolContext?: ToolContextType
+  toolContext?: ToolContext
 ): Promise<McpServer> {
   switch (internalMCPServerName) {
     case "github":
@@ -227,6 +228,8 @@ export async function getInternalMCPServer(
       return agentSidekickAgentStateServer(auth, toolContext);
     case "agent_sidekick_context":
       return agentSidekickContextServer(auth, toolContext);
+    case "agent_templates":
+      return agentTemplatesServer(auth, toolContext);
     case "exa_people_and_company":
       return exaServer(auth, toolContext);
     case "fathom":

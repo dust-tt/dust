@@ -15,6 +15,11 @@ pub struct JwtValidator {
 pub struct ValidatedToken {
     pub sb_id: Option<String>,
     pub w_id: Option<String>,
+    // Stable policy-scope key for the sandbox's owner: a conversation sId for
+    // conversation sandboxes, a space sId for pod sandboxes. Selects the
+    // owner policy file `w/{wId}/sandboxes/{ownerId}.json`. Optional for
+    // back-compat with tokens minted before the owner-keyed layout.
+    pub owner_id: Option<String>,
     pub action: Option<String>,
 }
 
@@ -34,6 +39,8 @@ struct Claims {
     sb_id: Option<String>,
     #[serde(rename = "wId")]
     w_id: Option<String>,
+    #[serde(rename = "ownerId")]
+    owner_id: Option<String>,
     action: Option<String>,
     exp: usize,
 }
@@ -73,37 +80,27 @@ fn claims_to_validated_token(
         return Err(JwtValidationError::Expired);
     }
 
-    let sb_id = claims.sb_id.and_then(|value| {
-        let trimmed = value.trim();
-        if trimmed.is_empty() {
-            None
-        } else {
-            Some(trimmed.to_string())
-        }
-    });
-
-    let w_id = claims.w_id.and_then(|value| {
-        let trimmed = value.trim();
-        if trimmed.is_empty() {
-            None
-        } else {
-            Some(trimmed.to_string())
-        }
-    });
-
-    let action = claims.action.and_then(|value| {
-        let trimmed = value.trim();
-        if trimmed.is_empty() {
-            None
-        } else {
-            Some(trimmed.to_string())
-        }
-    });
+    let sb_id = normalize_claim(claims.sb_id);
+    let w_id = normalize_claim(claims.w_id);
+    let owner_id = normalize_claim(claims.owner_id);
+    let action = normalize_claim(claims.action);
 
     Ok(ValidatedToken {
         sb_id,
         w_id,
+        owner_id,
         action,
+    })
+}
+
+fn normalize_claim(value: Option<String>) -> Option<String> {
+    value.and_then(|value| {
+        let trimmed = value.trim();
+        if trimmed.is_empty() {
+            None
+        } else {
+            Some(trimmed.to_string())
+        }
     })
 }
 
@@ -141,6 +138,8 @@ mod tests {
         sb_id: Option<&'a str>,
         #[serde(rename = "wId", skip_serializing_if = "Option::is_none")]
         w_id: Option<&'a str>,
+        #[serde(rename = "ownerId", skip_serializing_if = "Option::is_none")]
+        owner_id: Option<&'a str>,
         #[serde(skip_serializing_if = "Option::is_none")]
         action: Option<&'a str>,
         iss: &'a str,
@@ -168,6 +167,7 @@ mod tests {
         let token = token_with_claims(TestClaims {
             sb_id: None,
             w_id: None,
+            owner_id: None,
             action: Some("invalidate-policy"),
             iss: EXPECTED_ISSUER,
             aud: EXPECTED_AUDIENCE,
@@ -226,6 +226,7 @@ mod tests {
         let token = token_with_claims(TestClaims {
             sb_id: None,
             w_id: Some("workspace"),
+            owner_id: None,
             action: Some("invalidate-policy"),
             iss: EXPECTED_ISSUER,
             aud: EXPECTED_AUDIENCE,
@@ -241,9 +242,66 @@ mod tests {
             ValidatedToken {
                 sb_id: None,
                 w_id: Some("workspace".to_string()),
+                owner_id: None,
                 action: Some("invalidate-policy".to_string()),
             }
         );
+    }
+
+    #[test]
+    fn validates_token_with_owner_id() {
+        let validator = JwtValidator::new("secret");
+        let token = token_with_claims(TestClaims {
+            sb_id: Some("sbx"),
+            w_id: Some("workspace"),
+            owner_id: Some("owner"),
+            action: None,
+            iss: EXPECTED_ISSUER,
+            aud: EXPECTED_AUDIENCE,
+            exp: future_exp(60),
+        });
+
+        let validated = validator
+            .validate(&token)
+            .expect("token with ownerId should validate");
+
+        assert_eq!(validated.sb_id.as_deref(), Some("sbx"));
+        assert_eq!(validated.w_id.as_deref(), Some("workspace"));
+        assert_eq!(validated.owner_id.as_deref(), Some("owner"));
+    }
+
+    #[test]
+    fn accepts_tokens_without_owner_id() {
+        // Back-compat: tokens minted before the owner-keyed layout carry no
+        // ownerId and must keep validating.
+        let validator = JwtValidator::new("secret");
+        let token = sandbox_token("secret", "sbx", Some("workspace"), 60);
+
+        let validated = validator
+            .validate(&token)
+            .expect("token without ownerId should validate");
+
+        assert_eq!(validated.owner_id, None);
+    }
+
+    #[test]
+    fn normalizes_empty_owner_id_to_none() {
+        let validator = JwtValidator::new("secret");
+        let token = token_with_claims(TestClaims {
+            sb_id: Some("sbx"),
+            w_id: Some("workspace"),
+            owner_id: Some("   "),
+            action: None,
+            iss: EXPECTED_ISSUER,
+            aud: EXPECTED_AUDIENCE,
+            exp: future_exp(60),
+        });
+
+        let validated = validator
+            .validate(&token)
+            .expect("empty ownerId should normalize to None");
+
+        assert_eq!(validated.owner_id, None);
     }
 
     #[test]
@@ -263,6 +321,7 @@ mod tests {
         let token = token_with_claims(TestClaims {
             sb_id: Some("sbx"),
             w_id: Some("workspace"),
+            owner_id: None,
             action: None,
             iss: EXPECTED_ISSUER,
             aud: "wrong",
@@ -284,6 +343,7 @@ mod tests {
         let claims = TestClaims {
             sb_id: Some(sb_id),
             w_id,
+            owner_id: None,
             action: None,
             iss: EXPECTED_ISSUER,
             aud: EXPECTED_AUDIENCE,

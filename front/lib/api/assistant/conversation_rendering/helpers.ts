@@ -15,7 +15,7 @@ import {
 } from "@app/lib/api/assistant/skills_rendering";
 import { DustFileSystem } from "@app/lib/api/file_system";
 import { getConversationFileMountSignedUrl } from "@app/lib/api/files/gcs_mount/files";
-import type { Authenticator } from "@app/lib/auth";
+import { type Authenticator, hasFeatureFlag } from "@app/lib/auth";
 import { getSupportedModelConfig } from "@app/lib/llms/model_configurations";
 import {
   replaceMentionsWithAt,
@@ -45,8 +45,24 @@ import type {
 } from "@app/types/assistant/generation";
 import type { ModelConfigurationType } from "@app/types/assistant/models/types";
 import { removeNulls } from "@app/types/shared/utils/general";
+import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 
 const RENDER_ACTIONS_CONCURRENCY = 5;
+
+/**
+ * Drops the internal "type": "resource" wrapper and the top-level mimeType discriminator from a
+ * resource-shaped tool output item before it's serialized for the model. Every resource schema's
+ * mimeType is a fixed literal used only to distinguish shapes in our own code (see
+ * output_schemas.ts); it's never a real content type, and never what the model reads. Other item
+ * types (text, image) are returned unchanged.
+ */
+function compactResourceItem(item: CallToolResult["content"][number]) {
+  if (item.type !== "resource") {
+    return item;
+  }
+  const { mimeType: _mimeType, ...resource } = item.resource;
+  return resource;
+}
 
 async function getDustFileSystemDownloadUrl(
   auth: Authenticator,
@@ -110,7 +126,13 @@ async function renderActionForMultiActionsModel(
   auth: Authenticator,
   action: AgentMCPActionWithOutputType,
   model: ModelConfigurationType,
-  { conversationId }: { conversationId: string }
+  {
+    conversationId,
+    renderSearchResultsAsMarkdown,
+  }: {
+    conversationId: string;
+    renderSearchResultsAsMarkdown: boolean;
+  }
 ): Promise<FunctionMessageTypeModel> {
   if (action.status === "denied") {
     return {
@@ -146,7 +168,11 @@ async function renderActionForMultiActionsModel(
   }
 
   const outputItems = removeNulls(
-    action.output?.map(rewriteContentForModel) ?? []
+    action.output?.map((content) =>
+      rewriteContentForModel(content, {
+        renderSearchResultsAsMarkdown,
+      })
+    ) ?? []
   );
 
   let output: string | Content[];
@@ -193,7 +219,7 @@ async function renderActionForMultiActionsModel(
     }
     output = contentArray;
   } else {
-    output = JSON.stringify(outputItems);
+    output = JSON.stringify(outputItems.map(compactResourceItem));
   }
 
   return {
@@ -230,6 +256,10 @@ export async function getSteps(
     return [];
   }
   const actions = removeNulls(message.actions);
+  const renderSearchResultsAsMarkdown = await hasFeatureFlag(
+    auth,
+    "render_search_results_as_markdown"
+  );
 
   // We store for each step (identified by its index) the "contents" array (raw model outputs, including
   // text content, reasoning and function calls) and "actions", i.e the function results.
@@ -247,6 +277,7 @@ export async function getSteps(
       action,
       result: await renderActionForMultiActionsModel(auth, action, model, {
         conversationId,
+        renderSearchResultsAsMarkdown,
       }),
       enabledSkillMessages: renderEnabledSkillMessagesForAction(action, {
         enabledSkillById,
