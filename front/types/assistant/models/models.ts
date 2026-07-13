@@ -247,6 +247,11 @@ export const STATIC_MODEL_IDS = [
 // Type for static model IDs only (excludes custom models from GCS).
 export type StaticModelIdType = (typeof STATIC_MODEL_IDS)[number];
 
+export const isStaticModelId = (
+  modelId: ModelIdType
+): modelId is StaticModelIdType =>
+  STATIC_MODEL_IDS.includes(modelId as StaticModelIdType);
+
 // Combined model IDs: static + custom (custom models generated at build time from GCS).
 export const MODEL_IDS = [...STATIC_MODEL_IDS, ...CUSTOM_MODEL_IDS] as const;
 

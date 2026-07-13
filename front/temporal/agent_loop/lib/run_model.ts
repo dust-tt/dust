@@ -461,6 +461,7 @@ export async function runModel(
       {
         agentName: agentConfiguration.name,
         model,
+        reasoningEffort: model.reasoningEffort,
         featureFlags,
       }
     );
