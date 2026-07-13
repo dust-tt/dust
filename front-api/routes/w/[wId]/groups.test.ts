@@ -579,4 +579,17 @@ describe("PATCH /api/w/:wId/groups/:groupId", () => {
 
     expect(response.status).toBe(400);
   });
+
+  it("returns 400 for an empty body", async () => {
+    const { workspace } = await createPrivateApiMockRequest({
+      method: "PATCH",
+      role: "admin",
+    });
+    const group = await GroupFactory.regularManual(workspace, "Team");
+
+    const response = await patchGroup(workspace, group.sId, {});
+
+    expect(response.status).toBe(400);
+    expect((await response.json()).error.type).toBe("invalid_request_error");
+  });
 });

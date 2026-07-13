@@ -92,6 +92,16 @@ app.patch(
     const { groupId } = ctx.req.valid("param");
     const { name, memberIds } = ctx.req.valid("json");
 
+    if (name === undefined && memberIds === undefined) {
+      return apiError(ctx, {
+        status_code: 400,
+        api_error: {
+          type: "invalid_request_error",
+          message: "At least one of `name` or `memberIds` must be provided.",
+        },
+      });
+    }
+
     const groupRes = await GroupResource.fetchById(auth, groupId);
     if (groupRes.isErr()) {
       switch (groupRes.error.code) {
