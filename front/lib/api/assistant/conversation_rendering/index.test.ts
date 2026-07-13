@@ -112,21 +112,6 @@ function getFunctionMessage(
   return message;
 }
 
-// The previous-interaction messages built by the tests below are always named "i1_user",
-// "i1_tool", etc. This pulls out just those (never the current interaction's messages) as plain
-// comparable objects, regardless of whether they're user or function messages.
-function previousInteractionSummaries(
-  messages: ModelMessageTypeMultiActions[]
-): Array<{ role: string; name: string; content: string | Content[] }> {
-  return messages
-    .filter(
-      (m): m is UserMessageTypeModel | FunctionMessageTypeModel =>
-        isUserMessage(m) || isFunctionMessage(m)
-    )
-    .filter((m) => m.name.startsWith("i"))
-    .map((m) => ({ role: m.role, name: m.name, content: m.content }));
-}
-
 function mockTokenCounter({
   byContains,
   promptTokens = 10,
@@ -179,7 +164,8 @@ describe("renderConversationForModel", () => {
     modelId: "gpt-4.1",
     tokenizer: "cl100k_base",
     // Large enough that PRUNING_TARGET_CONTEXT_UTILIZATION never becomes the binding constraint
-    // in these tests, which are all sized in the low hundreds of tokens.
+    // in these tests, which are all sized in the low hundreds of tokens, unless explicitly
+    // overridden.
     contextSize: 200_000,
   } as any;
 
@@ -222,18 +208,24 @@ describe("renderConversationForModel", () => {
     expect(res.value.prunedContext).toBe(false);
   });
 
-  it("prunes current interaction progressively when it exceeds budget", async () => {
-    vi.mocked(renderAllMessages).mockResolvedValue([
-      userMessage("curr_user"),
-      assistantMessage("curr_assistant"),
-      functionMessage("curr_tool", "curr_function_big"),
+  it("redacts old tool outputs beyond TOOL_RESULTS_TO_PRESERVE but keeps the most recent ones, across separate interactions", async () => {
+    // 12 interactions (TOOL_RESULTS_TO_PRESERVE is 10), each with one tool call: the first 2 are
+    // outside the preserved window and must be redacted. The last 10 are the protected floor and
+    // must survive untouched, regardless of budget-driven checkpoint search.
+    const messages = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].flatMap((i) => [
+      userMessage(`u_${i}`),
+      assistantMessage(`a_${i}`),
+      functionMessage(`tool_${i}`, `result_${i}`),
     ]);
+    vi.mocked(renderAllMessages).mockResolvedValue(messages);
     mockTokenCounter({
-      byContains: {
-        curr_user: 10,
-        curr_assistant: 10,
-        curr_function_big: 80,
-      },
+      byContains: Object.fromEntries(
+        [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].flatMap((i) => [
+          [`u_${i}`, 10],
+          [`a_${i}`, 10],
+          [`result_${i}`, 5000],
+        ])
+      ),
     });
 
     const res = await renderConversationForModel(auth, {
@@ -242,10 +234,13 @@ describe("renderConversationForModel", () => {
       prompt: "PROMPT",
       enabledSkills: [],
       tools: "TOOLS",
+      // Total unredacted: 12 * 5020 = 60_240. Redacting the 2 eligible tool results (outside the
+      // floor of 10) saves 2 * (5000 - 24) = 9_952, bringing it to 50_288, comfortably under
+      // this budget. Nothing else needs to be touched.
       allowedTokenCount: computeAllowedTokenCount({
         promptTokens: 10,
         toolsTokens: 10,
-        interactionTokens: 79,
+        interactionTokens: 51_000,
       }),
     });
 
@@ -254,198 +249,127 @@ describe("renderConversationForModel", () => {
       return;
     }
 
-    const functionOutput = getFunctionMessage(
-      res.value.modelConversation.messages
+    const tool1 = getFunctionMessage(
+      res.value.modelConversation.messages,
+      "tool_1"
     );
-    expect(functionOutput.content).toContain(
-      "This tool result is no longer available"
+    const tool2 = getFunctionMessage(
+      res.value.modelConversation.messages,
+      "tool_2"
     );
+    const tool3 = getFunctionMessage(
+      res.value.modelConversation.messages,
+      "tool_3"
+    );
+    const tool12 = getFunctionMessage(
+      res.value.modelConversation.messages,
+      "tool_12"
+    );
+    expect(tool1.content).toContain("This tool result is no longer available");
+    expect(tool2.content).toContain("This tool result is no longer available");
+    expect(tool3.content).toBe("result_3");
+    expect(tool12.content).toBe("result_12");
     expect(res.value.prunedContext).toBe(true);
   });
 
-  it("prunes previous interactions tool outputs and keeps last interaction", async () => {
-    vi.mocked(renderAllMessages).mockResolvedValue([
-      userMessage("old_user"),
-      assistantMessage("old_assistant"),
-      functionMessage("old_tool", "old_function_big"),
-      userMessage("new_user"),
-      assistantMessage("new_assistant"),
-      functionMessage("new_tool", "new_function"),
-    ]);
-    mockTokenCounter({
-      byContains: {
-        old_user: 20,
-        old_assistant: 20,
-        old_function_big: 200,
-        new_user: 20,
-        new_assistant: 20,
-        new_function: 20,
-      },
-    });
-
-    const res = await renderConversationForModel(auth, {
-      conversation: createConversation(),
-      model,
-      prompt: "PROMPT",
-      enabledSkills: [],
-      tools: "TOOLS",
-      allowedTokenCount: computeAllowedTokenCount({
-        promptTokens: 10,
-        toolsTokens: 10,
-        interactionTokens: 212,
-      }),
-    });
-
-    expect(res.isOk()).toBe(true);
-    if (res.isErr()) {
-      return;
-    }
-
-    const oldTool = getFunctionMessage(
-      res.value.modelConversation.messages,
-      "old_tool"
-    );
-    const newTool = getFunctionMessage(
-      res.value.modelConversation.messages,
-      "new_tool"
-    );
-    expect(oldTool.content).toContain(
-      "This tool result is no longer available"
-    );
-    expect(newTool.content).toBe("new_function");
-    expect(res.value.prunedContext).toBe(false);
-  });
-
-  it("proactively prunes previous interactions once they cross PRUNING_TARGET_CONTEXT_UTILIZATION of contextSize, even though allowedTokenCount alone would comfortably fit them", async () => {
-    // contextSize: 2000 -> proactive target of 159 tokens (60% minus baseTokens), well below the
-    // 220-token previous interaction below. With only one previous interaction (inside
-    // PREVIOUS_INTERACTIONS_TO_PRESERVE's floor), this exercises prunePreviousInteractions' own
-    // last-resort floor redaction, not its checkpoint-based frontier. See the test below that
-    // exercises the checkpoint-based frontier instead.
-    vi.mocked(renderAllMessages).mockResolvedValue([
-      userMessage("old_user"),
-      assistantMessage("old_assistant"),
-      functionMessage("old_tool", "old_function"),
-      userMessage("new_user"),
-      assistantMessage("new_assistant"),
-    ]);
-    mockTokenCounter({
-      byContains: {
-        old_user: 10,
-        old_assistant: 10,
-        old_function: 200,
-        new_user: 10,
-        new_assistant: 10,
-      },
-    });
-
-    const res = await renderConversationForModel(auth, {
-      conversation: createConversation(),
-      model: { ...model, contextSize: 2000 },
-      prompt: "PROMPT",
-      enabledSkills: [],
-      tools: "TOOLS",
-      // Comfortably fits both interactions in full under the real ceiling: proves redaction is
-      // driven by the proactive target, not by running out of the real budget.
-      allowedTokenCount: computeAllowedTokenCount({
-        promptTokens: 10,
-        toolsTokens: 10,
-        interactionTokens: 2000,
-      }),
-    });
-
-    expect(res.isOk()).toBe(true);
-    if (res.isErr()) {
-      return;
-    }
-
-    const oldTool = getFunctionMessage(
-      res.value.modelConversation.messages,
-      "old_tool"
-    );
-    expect(oldTool.content).toContain("no longer available");
-  });
-
-  it("still lets a legitimately large current interaction through, unaffected by the smaller proactive-pruning target", async () => {
-    // Same 159-token proactive target as above (contextSize: 2000), but the current interaction
-    // (320 tokens) comfortably fits the real allowedTokenCount, which is the ceiling that matters
-    // here (see previousInteractionsPruningBudget's own comment for why).
-    vi.mocked(renderAllMessages).mockResolvedValue([
-      userMessage("cur_user"),
-      assistantMessage("cur_assistant"),
-      functionMessage("cur_tool", "cur_function"),
-    ]);
-    mockTokenCounter({
-      byContains: {
-        cur_user: 10,
-        cur_assistant: 10,
-        cur_function: 300,
-      },
-    });
-
-    const res = await renderConversationForModel(auth, {
-      conversation: createConversation(),
-      model: { ...model, contextSize: 2000 },
-      prompt: "PROMPT",
-      enabledSkills: [],
-      tools: "TOOLS",
-      allowedTokenCount: computeAllowedTokenCount({
-        promptTokens: 10,
-        toolsTokens: 10,
-        interactionTokens: 2000,
-      }),
-    });
-
-    expect(res.isOk()).toBe(true);
-    if (res.isErr()) {
-      return;
-    }
-
-    const currentTool = getFunctionMessage(
-      res.value.modelConversation.messages,
-      "cur_tool"
-    );
-    expect(currentTool.content).toBe("cur_function");
-    expect(res.value.prunedContext).toBe(false);
-  });
-
-  it("genuinely proactively prunes eligible interactions through the checkpoint-based frontier, not just the last-resort floor path", async () => {
-    // 5 previous interactions (250 tokens each: 10 user + 10 assistant + 230 tool),
-    // PREVIOUS_INTERACTIONS_TO_PRESERVE=3 leaves i0,i1 eligible and i2,i3,i4 as the protected
-    // floor. contextSize 3400 gives a proactive target of 999 tokens (60% minus baseTokens):
-    // the floor alone (750) comfortably fits under it, so last-resort never fires, but the full
-    // 1250-token total doesn't, so i0 and i1 (but not the floor) get redacted through the normal
-    // frontier search, leaving 838 tokens, back under the target without needing to drop anything.
-    const previousInteractionMessages = [0, 1, 2, 3, 4].flatMap((i) => [
-      userMessage(`i${i}_user`),
-      assistantMessage(`i${i}_assistant`),
-      functionMessage(`i${i}_tool`, `i${i}_tool_content`),
+  it("redacts a single turn's OWN earlier tool-call steps once it makes many tool calls, since the current turn gets no special exemption", async () => {
+    // ONE continuous interaction: a single user question answered via 12 tool-call steps before
+    // the final reply. Nothing here is a "previous interaction", it's all the current turn, yet
+    // its own earliest steps (beyond TOOL_RESULTS_TO_PRESERVE=10) still get redacted.
+    const indices = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
+    const steps = indices.flatMap((i) => [
+      assistantMessage(`thinking_${i}`),
+      functionMessage(`step_${i}`, `step_${i}_result_big`),
     ]);
     vi.mocked(renderAllMessages).mockResolvedValue([
-      ...previousInteractionMessages,
-      userMessage("cur_user"),
-      assistantMessage("cur_assistant"),
+      userMessage("the_question"),
+      ...steps,
+      assistantMessage("final_answer"),
     ]);
     mockTokenCounter({
       byContains: Object.fromEntries([
-        ...[0, 1, 2, 3, 4].flatMap((i) => [
-          [`i${i}_user`, 10],
-          [`i${i}_assistant`, 10],
-          [`i${i}_tool_content`, 230],
+        ["the_question", 10],
+        ["final_answer", 10],
+        ...indices.flatMap((i) => [
+          [`thinking_${i}`, 10],
+          [`step_${i}_result_big`, 5000],
         ]),
-        ["cur_user", 10],
-        ["cur_assistant", 10],
       ]),
     });
 
     const res = await renderConversationForModel(auth, {
       conversation: createConversation(),
-      model: { ...model, contextSize: 3400 },
+      model,
       prompt: "PROMPT",
       enabledSkills: [],
       tools: "TOOLS",
-      // Far above the real usage here: proves redaction comes from the proactive target, not from
-      // running out of the real budget.
+      // Total unredacted: 10 (question) + 12*(10+5000) + 10 (answer) = 60_140. Redacting the 2
+      // steps outside the floor of 10 saves 2 * (5000-24) = 9_952 -> 50_188, under this budget.
+      allowedTokenCount: computeAllowedTokenCount({
+        promptTokens: 10,
+        toolsTokens: 10,
+        interactionTokens: 51_000,
+      }),
+    });
+
+    expect(res.isOk()).toBe(true);
+    if (res.isErr()) {
+      return;
+    }
+
+    const step1 = getFunctionMessage(
+      res.value.modelConversation.messages,
+      "step_1"
+    );
+    const step2 = getFunctionMessage(
+      res.value.modelConversation.messages,
+      "step_2"
+    );
+    const step3 = getFunctionMessage(
+      res.value.modelConversation.messages,
+      "step_3"
+    );
+    const step12 = getFunctionMessage(
+      res.value.modelConversation.messages,
+      "step_12"
+    );
+    expect(step1.content).toContain("This tool result is no longer available");
+    expect(step2.content).toContain("This tool result is no longer available");
+    expect(step3.content).toBe("step_3_result_big");
+    expect(step12.content).toBe("step_12_result_big");
+    expect(res.value.prunedContext).toBe(true);
+  });
+
+  it("proactively redacts once the conversation crosses PRUNING_TARGET_CONTEXT_UTILIZATION of contextSize, even though allowedTokenCount alone would comfortably fit it", async () => {
+    // 12 small interactions (TOOL_RESULTS_TO_PRESERVE=10, so 2 fall outside the floor). contextSize
+    // 4_000 gives a proactive target of 1_359 tokens (baseTokens=1041, so 4_000*0.6 - 1041):
+    // comfortably above the 1_288 tokens left after redacting the 2 eligible tool results, but
+    // well below the 1_440 unredacted total, so the proactive target is what forces the
+    // redaction, not the real ceiling, which is set far higher below.
+    const messages = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].flatMap((i) => [
+      userMessage(`u_${i}`),
+      assistantMessage(`a_${i}`),
+      functionMessage(`tool_${i}`, `result_${i}`),
+    ]);
+    vi.mocked(renderAllMessages).mockResolvedValue(messages);
+    mockTokenCounter({
+      byContains: Object.fromEntries(
+        [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].flatMap((i) => [
+          [`u_${i}`, 10],
+          [`a_${i}`, 10],
+          [`result_${i}`, 100],
+        ])
+      ),
+    });
+
+    const res = await renderConversationForModel(auth, {
+      conversation: createConversation(),
+      model: { ...model, contextSize: 4_000 },
+      prompt: "PROMPT",
+      enabledSkills: [],
+      tools: "TOOLS",
+      // Real ceiling comfortably fits everything (1_440) in full: proves redaction is driven by
+      // the proactive target, not by running out of the real budget.
       allowedTokenCount: computeAllowedTokenCount({
         promptTokens: 10,
         toolsTokens: 10,
@@ -458,58 +382,54 @@ describe("renderConversationForModel", () => {
       return;
     }
 
-    const i0Tool = getFunctionMessage(
+    const tool1 = getFunctionMessage(
       res.value.modelConversation.messages,
-      "i0_tool"
+      "tool_1"
     );
-    const i4Tool = getFunctionMessage(
+    const tool12 = getFunctionMessage(
       res.value.modelConversation.messages,
-      "i4_tool"
+      "tool_12"
     );
-    expect(i0Tool.content).toContain("no longer available");
-    expect(i4Tool.content).toBe("i4_tool_content");
+    expect(tool1.content).toContain("no longer available");
+    expect(tool12.content).toBe("result_12");
   });
 
-  it("falls back to the real budget instead of forcing a negative proactive target, so a large system prompt/tool footprint on a small-context model never breaks the protected floor", async () => {
-    // contextSize 16_384 (GPT-3.5-turbo-sized) with a 6000-token prompt and 6000-token tool
-    // definitions footprint: baseTokens (~11224) alone already exceeds the 60% proactive target
-    // (~9830), which would go negative if applied naively. previousInteractionsPruningBudget must
-    // fall back to the real budgetForInteractions (300 here), which comfortably covers all 3
-    // previous interactions (all inside the protected floor), so none of them should be touched.
-    const previousInteractionMessages = [0, 1, 2].flatMap((i) => [
-      userMessage(`i${i}_user`),
-      assistantMessage(`i${i}_assistant`),
-      functionMessage(`i${i}_tool`, `i${i}_tool_content`),
+  it("drops a whole previous interaction entirely, not just its tool result, when redaction alone still doesn't fit", async () => {
+    // Ten previous interactions, each dominated by large USER/ASSISTANT text (never redacted by
+    // pruneToolResults) rather than tool output. Redaction alone cannot shrink these enough, so
+    // dropInteractionsToFit must remove some of them wholesale.
+    const previousInteractions = [1, 2, 3, 4, 5].flatMap((i) => [
+      userMessage(`old_user_${i}_big`),
+      assistantMessage(`old_assistant_${i}_big`),
     ]);
     vi.mocked(renderAllMessages).mockResolvedValue([
-      ...previousInteractionMessages,
-      userMessage("cur_user"),
-      assistantMessage("cur_assistant"),
+      ...previousInteractions,
+      userMessage("new_user"),
+      assistantMessage("new_assistant"),
     ]);
     mockTokenCounter({
       byContains: Object.fromEntries([
-        ...[0, 1, 2].flatMap((i) => [
-          [`i${i}_user`, 10],
-          [`i${i}_assistant`, 10],
-          [`i${i}_tool_content`, 20],
+        ...[1, 2, 3, 4, 5].flatMap((i) => [
+          [`old_user_${i}_big`, 200],
+          [`old_assistant_${i}_big`, 200],
         ]),
-        ["cur_user", 10],
-        ["cur_assistant", 10],
+        ["new_user", 10],
+        ["new_assistant", 10],
       ]),
-      promptTokens: 6000,
-      toolsTokens: 6000,
     });
 
     const res = await renderConversationForModel(auth, {
       conversation: createConversation(),
-      model: { ...model, contextSize: 16_384 },
+      model,
       prompt: "PROMPT",
       enabledSkills: [],
       tools: "TOOLS",
+      // Each old interaction costs 400 tokens. Budget only leaves room for the current (20) plus
+      // roughly one old interaction (400), nowhere near all 5 (2000).
       allowedTokenCount: computeAllowedTokenCount({
-        promptTokens: 6000,
-        toolsTokens: 6000,
-        interactionTokens: 300,
+        promptTokens: 10,
+        toolsTokens: 10,
+        interactionTokens: 450,
       }),
     });
 
@@ -518,16 +438,70 @@ describe("renderConversationForModel", () => {
       return;
     }
 
-    for (const i of [0, 1, 2]) {
-      const tool = getFunctionMessage(
-        res.value.modelConversation.messages,
-        `i${i}_tool`
-      );
-      expect(tool.content).toBe(`i${i}_tool_content`);
-    }
+    const roles = res.value.modelConversation.messages;
+    const survivingUserTexts = roles
+      .filter(isUserMessage)
+      .map((m) => textOf(m.content[0]));
+    // Oldest interactions are dropped first. The newest ones (closest to "new_user") survive.
+    expect(survivingUserTexts).not.toContain("old_user_1_big");
+    expect(survivingUserTexts).toContain("new_user");
   });
 
-  it("merges content fragment into following user message", async () => {
+  it("drops a content fragment TOGETHER WITH its user message when the whole interaction is dropped, never separates them", async () => {
+    // The oldest interaction carries a content fragment (e.g. a file upload) immediately before
+    // its user message. When that whole interaction is dropped for space, the content fragment
+    // must go with it, never survive alone with no user message to merge into.
+    vi.mocked(renderAllMessages).mockResolvedValue([
+      contentFragmentMessage("uploaded_file_big"),
+      userMessage("old_user_big"),
+      assistantMessage("old_assistant_big"),
+      userMessage("new_user"),
+      assistantMessage("new_assistant"),
+    ]);
+    mockTokenCounter({
+      byContains: {
+        uploaded_file_big: 300,
+        old_user_big: 200,
+        old_assistant_big: 200,
+        new_user: 10,
+        new_assistant: 10,
+      },
+    });
+
+    const res = await renderConversationForModel(auth, {
+      conversation: createConversation(),
+      model,
+      prompt: "PROMPT",
+      enabledSkills: [],
+      tools: "TOOLS",
+      // Budget only fits the current interaction (20 tokens). The 700-token old interaction
+      // (content fragment + user + assistant) must be dropped as a whole.
+      allowedTokenCount: computeAllowedTokenCount({
+        promptTokens: 10,
+        toolsTokens: 10,
+        interactionTokens: 50,
+      }),
+    });
+
+    expect(res.isOk()).toBe(true);
+    if (res.isErr()) {
+      return;
+    }
+
+    const roles = res.value.modelConversation.messages.map((m) => m.role);
+    // No dangling content_fragment role should ever reach the final output (they're merged into
+    // user messages, or dropped together with them), this asserts the merge-or-drop invariant
+    // held even though the interaction carrying the fragment was entirely dropped.
+    expect(roles).not.toContain("content_fragment");
+
+    const survivingUserTexts = res.value.modelConversation.messages
+      .filter(isUserMessage)
+      .map((m) => textOf(m.content[0]));
+    expect(survivingUserTexts).not.toContain("old_user_big");
+    expect(survivingUserTexts).toContain("new_user");
+  });
+
+  it("merges content fragment into following user message when both survive", async () => {
     vi.mocked(renderAllMessages).mockResolvedValue([
       contentFragmentMessage("fragment_text"),
       userMessage("user_text"),
@@ -573,7 +547,7 @@ describe("renderConversationForModel", () => {
     expect(textOf(firstUser.content[1])).toBe("user_text");
   });
 
-  it("returns an error when context window is still exceeded after pruning", async () => {
+  it("returns an error when context window is still exceeded after every pruning layer", async () => {
     vi.mocked(renderAllMessages).mockResolvedValue([
       userMessage("BIG_USER"),
       assistantMessage("BIG_ASSISTANT"),
@@ -603,87 +577,6 @@ describe("renderConversationForModel", () => {
       expect(res.error.message).toContain(
         "Context window exceeded: at least one message is required"
       );
-    }
-  });
-
-  it("does not error when previousInteractions' floor alone overflows its budget, as long as the current interaction fits on its own", async () => {
-    // There are 3 previous interactions here, and PREVIOUS_INTERACTIONS_TO_PRESERVE is 3, so all
-    // 3 are kept in full and are never redacted. Each one is 340 tokens (20 + 20 + 300), so all 3
-    // together are 1020 tokens. The token budget for previous interactions is only 100 (set below
-    // via allowedTokenCount). There is no way to fit 1020 tokens of previous interactions into a
-    // budget of 100.
-    //
-    // The current interaction, on the other hand, is tiny: just 20 tokens (10 + 10), no tool call.
-    // It fits into the 100 token budget on its own, easily.
-    //
-    // What this test checks: the render must still succeed. It would be wrong to compute
-    // "100 minus the 1020 tokens previous interactions actually take" and use that negative
-    // number to decide if the current interaction fits, because that would make even a tiny
-    // current interaction look too big and fail the whole request. The current interaction only
-    // needs to fit the 100 token budget by itself. Previous interactions get trimmed down
-    // separately to make room.
-    vi.mocked(renderAllMessages).mockResolvedValue([
-      userMessage("floor1_user"),
-      assistantMessage("floor1_assistant"),
-      functionMessage("floor1_tool", "floor1_tool_content"),
-      userMessage("floor2_user"),
-      assistantMessage("floor2_assistant"),
-      functionMessage("floor2_tool", "floor2_tool_content"),
-      userMessage("floor3_user"),
-      assistantMessage("floor3_assistant"),
-      functionMessage("floor3_tool", "floor3_tool_content"),
-      userMessage("cur_user"),
-      assistantMessage("cur_assistant"),
-    ]);
-    mockTokenCounter({
-      byContains: {
-        floor1_user: 20,
-        floor1_assistant: 20,
-        floor1_tool_content: 300,
-        floor2_user: 20,
-        floor2_assistant: 20,
-        floor2_tool_content: 300,
-        floor3_user: 20,
-        floor3_assistant: 20,
-        floor3_tool_content: 300,
-        cur_user: 10,
-        cur_assistant: 10,
-      },
-    });
-
-    const res = await renderConversationForModel(auth, {
-      conversation: createConversation(),
-      model,
-      prompt: "PROMPT",
-      enabledSkills: [],
-      tools: "TOOLS",
-      // budgetForInteractions = 100: far less than the floor's real size (3 * 340 = 1020) or even
-      // its fully-redacted minimum (3 * 64 = 192), but comfortably more than the current
-      // interaction's own 20 tokens.
-      allowedTokenCount: computeAllowedTokenCount({
-        promptTokens: 10,
-        toolsTokens: 10,
-        interactionTokens: 100,
-      }),
-    });
-
-    expect(res.isOk()).toBe(true);
-    if (res.isErr()) {
-      return;
-    }
-
-    const currentUser = res.value.modelConversation.messages.find(
-      (m) => isUserMessage(m) && textOf(m.content[0]) === "cur_user"
-    );
-    expect(currentUser).toBeDefined();
-
-    // previousInteractions couldn't all survive, but the render degraded gracefully instead of
-    // failing outright: at least one floor interaction made it through, redacted.
-    const survivingFloorTools =
-      res.value.modelConversation.messages.filter(isFunctionMessage);
-    expect(survivingFloorTools.length).toBeGreaterThan(0);
-    for (const tool of survivingFloorTools) {
-      expect(tool.content).toContain("no longer available");
     }
   });
 
@@ -801,9 +694,17 @@ describe("renderConversationForModel", () => {
       },
     });
 
-    // Each interaction is 90 tokens (30 + 30 + 30).
-    // Budget below allows exactly 2 interactions to fit after base tokens:
-    // interaction budget = 189 => 2 * 90 = 180 fits, 3 * 90 = 270 does not.
+    // Each interaction is 90 tokens (30 + 30 + 30), well within TOOL_RESULTS_TO_PRESERVE (10 tool
+    // results total here), so Layer 1 (redaction) can't touch any of them at all, this is meant
+    // to exercise Layer 2 (drop-entirely) in isolation, not cascade into Layer 3's force-redaction.
+    //
+    // Hand-verified: total unredacted = 8 * 90 = 720. Layer 2's target for the 7 previous
+    // interactions is budgetForInteractions(400) - current's cost(90) = 310. With
+    // PREVIOUS_INTERACTIONS_TO_PRESERVE=3, i1-i4 (4 * 90 = 360) can be dropped, leaving the
+    // protected floor i5-i7 (3 * 90 = 270) plus current i8 (90) = 360 <= 400: Layer 2 alone gets
+    // under budget, so Layer 3/4 never fire and i5-i8 survive WITH THEIR REAL, UNREDACTED CONTENT
+    //, an earlier version of this test only checked message names, which stay the same whether
+    // a tool result is redacted or not, and so couldn't actually tell the difference.
     const res = await renderConversationForModel(auth, {
       conversation: createConversation(),
       model,
@@ -813,7 +714,7 @@ describe("renderConversationForModel", () => {
       allowedTokenCount: computeAllowedTokenCount({
         promptTokens: 10,
         toolsTokens: 10,
-        interactionTokens: 189,
+        interactionTokens: 400,
       }),
     });
 
@@ -822,148 +723,20 @@ describe("renderConversationForModel", () => {
       return;
     }
 
-    const names = res.value.modelConversation.messages
-      .filter(isFunctionMessage)
-      .map((m) => m.name);
-    expect(names).toEqual(["tool_07", "tool_08"]);
+    const functionMessages =
+      res.value.modelConversation.messages.filter(isFunctionMessage);
+    const names = functionMessages.map((m) => m.name);
+    expect(names).toEqual(["tool_05", "tool_06", "tool_07", "tool_08"]);
     expect(names).not.toContain("tool_01");
     expect(names).not.toContain("tool_02");
     expect(names).not.toContain("tool_03");
     expect(names).not.toContain("tool_04");
-    expect(names).not.toContain("tool_05");
-    expect(names).not.toContain("tool_06");
-  });
 
-  it("renders previous interactions identically across turns, regardless of how big the current interaction happens to be", async () => {
-    // Four previous interactions (i1..i4), each 70 tokens (10 user + 10 assistant + 50 tool),
-    // comfortably within budgetForInteractions on their own. Prior to the fix, this scenario used
-    // to drop i2/i3/i4 entirely on the turn where the current interaction grew large, purely
-    // because current and previousInteractions shared one live pool in the final selection loop.
-    // Now previousInteractions gets a fixed, current-independent claim on the budget, so its
-    // rendering must be byte-identical across both calls below.
-    const previousInteractionMessages = [
-      userMessage("i1_user"),
-      assistantMessage("i1_assistant"),
-      functionMessage("i1_tool", "i1_tool_content"),
-      userMessage("i2_user"),
-      assistantMessage("i2_assistant"),
-      functionMessage("i2_tool", "i2_tool_content"),
-      userMessage("i3_user"),
-      assistantMessage("i3_assistant"),
-      functionMessage("i3_tool", "i3_tool_content"),
-      userMessage("i4_user"),
-      assistantMessage("i4_assistant"),
-      functionMessage("i4_tool", "i4_tool_content"),
-    ];
-    const byContains = {
-      i1_user: 10,
-      i1_assistant: 10,
-      i1_tool_content: 50,
-      i2_user: 10,
-      i2_assistant: 10,
-      i2_tool_content: 50,
-      i3_user: 10,
-      i3_assistant: 10,
-      i3_tool_content: 50,
-      i4_user: 10,
-      i4_assistant: 10,
-      i4_tool_content: 50,
-      cur_user_small: 10,
-      cur_assistant_small: 10,
-      cur_user_big: 10,
-      cur_assistant_big: 10,
-      cur_tool_big_content: 200,
-    };
-
-    // Same allowedTokenCount on both calls, same model, same context window. The only thing that
-    // differs between "turn T" and "turn T+1" is how big the new current-turn content is.
-    // budgetForInteractions = 400 comfortably covers i1..i4 (4 * 70 = 280) on its own.
-    const allowedTokenCount = computeAllowedTokenCount({
-      promptTokens: 10,
-      toolsTokens: 10,
-      interactionTokens: 400,
-    });
-
-    // Turn T: current interaction is small (20 tokens: just user + assistant, no tool call).
-    vi.mocked(renderAllMessages).mockResolvedValue([
-      ...previousInteractionMessages,
-      userMessage("cur_user_small"),
-      assistantMessage("cur_assistant_small"),
-    ]);
-    mockTokenCounter({ byContains });
-
-    const turnT = await renderConversationForModel(auth, {
-      conversation: createConversation(),
-      model,
-      prompt: "PROMPT",
-      enabledSkills: [],
-      tools: "TOOLS",
-      allowedTokenCount,
-    });
-    expect(turnT.isOk()).toBe(true);
-    if (turnT.isErr()) {
-      return;
+    // The surviving tool results carry their REAL content, not a redaction placeholder,
+    // confirming Layer 2 (drop) alone was enough, and Layer 3 (force-redact) never fired.
+    for (const [i, name] of ["f_05", "f_06", "f_07", "f_08"].entries()) {
+      expect(functionMessages[i].content).toBe(name);
     }
-
-    const previousMessagesAtTurnT = previousInteractionSummaries(
-      turnT.value.modelConversation.messages
-    );
-
-    // All four previous interactions are rendered in full at turn T.
-    const toolNamesAtTurnT = previousMessagesAtTurnT
-      .filter((m) => m.role === "function")
-      .map((m) => m.name);
-    expect(toolNamesAtTurnT).toEqual([
-      "i1_tool",
-      "i2_tool",
-      "i3_tool",
-      "i4_tool",
-    ]);
-    for (const i of [1, 2, 3, 4]) {
-      const tool = previousMessagesAtTurnT.find((m) => m.name === `i${i}_tool`);
-      expect(tool?.content).toBe(`i${i}_tool_content`);
-    }
-
-    // Turn T+1: i1..i4 are byte-for-byte identical to turn T. The ONLY change is that this
-    // turn's new current interaction now includes a big tool call (220 tokens instead of 20),
-    // exactly like a user turn that happens to trigger a large tool result.
-    vi.mocked(renderAllMessages).mockResolvedValue([
-      ...previousInteractionMessages,
-      userMessage("cur_user_big"),
-      assistantMessage("cur_assistant_big"),
-      functionMessage("cur_tool_big", "cur_tool_big_content"),
-    ]);
-    mockTokenCounter({ byContains });
-
-    const turnTPlus1 = await renderConversationForModel(auth, {
-      conversation: createConversation(),
-      model,
-      prompt: "PROMPT",
-      enabledSkills: [],
-      tools: "TOOLS",
-      allowedTokenCount, // same context window budget as turn T
-    });
-    expect(turnTPlus1.isOk()).toBe(true);
-    if (turnTPlus1.isErr()) {
-      return;
-    }
-
-    const previousMessagesAtTurnTPlus1 = previousInteractionSummaries(
-      turnTPlus1.value.modelConversation.messages
-    );
-
-    // Byte-identical to turn T: none of i1..i4 moved, despite the current interaction growing
-    // from 20 to 220 tokens.
-    expect(previousMessagesAtTurnTPlus1).toEqual(previousMessagesAtTurnT);
-
-    // The current interaction itself is free to vary. It's new content, never previously cached,
-    // and its own tool result gets progressively pruned since it doesn't fit its ideal share of
-    // the budget on its own.
-    const currentToolAtTurnTPlus1 = getFunctionMessage(
-      turnTPlus1.value.modelConversation.messages,
-      "cur_tool_big"
-    );
-    expect(currentToolAtTurnTPlus1.content).toContain("no longer available");
   });
 
   it("prepends leading messages", async () => {

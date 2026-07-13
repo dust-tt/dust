@@ -6,19 +6,18 @@ const PRUNED_TOOL_RESULT_PLACEHOLDER =
   "</dust_system>";
 const PRUNED_TOOL_RESULT_TOKENS = 24;
 
-// Batch granularity for the redaction checkpoint in prunePreviousInteractions. Same idea as the
-// `clear_at_least` setting on provider-native context-editing features: don't invalidate a cached
-// prefix for a handful of tokens, only once enough new content has accumulated to make the
-// cache-write cost worthwhile. A turn running a couple of tool calls can easily produce several
-// thousand tokens on its own, so this needs enough headroom above that to actually batch.
-//
-// A flat value rather than a percentage of context size, since our model fleet has no context
-// window between 16k and 64k tokens: any model above that tier has ample room regardless of the
-// exact value chosen here. For a model whose budget never reaches this checkpoint, the search
-// simply never finds a crossing and falls back to redacting everything eligible once triggered,
-// still stable, just without the batching benefit. Starting point, tune against production
-// cache-miss metrics.
+// Batch size for the redaction checkpoint: like provider-native `clear_at_least`, don't move the
+// frontier for a handful of tokens, only once enough has accumulated to be worth invalidating the
+// cached prefix. Flat rather than a percentage of contextSize since no model in our fleet sits
+// between 16k-64k tokens. Starting point, tune against production cache-miss metrics.
 export const PRUNING_CHECKPOINT_TOKENS = 20_000;
+
+// How many of the most recent tool results pruneToolResults never redacts, regardless of budget.
+// Counted in tool results, not turns: a single turn's own long tool-call chain is eligible for
+// redaction past this window exactly like an older turn's would be. Mirrors Anthropic's own
+// `clear_tool_uses` (`keep: {type: "tool_uses", value: N}`), which has no turn concept either.
+// Starting point, tune against production metrics.
+export const TOOL_RESULTS_TO_PRESERVE = 10;
 
 export type MessageWithTokens = ModelMessageTypeMultiActions & {
   tokenCount: number;
@@ -35,10 +34,7 @@ export type Interaction<T extends MinimalMessageType> = {
 
 export type InteractionWithTokens = Interaction<MessageWithTokens>;
 
-/**
- * Prunes all tool results in an interaction.
- * Returns a new interaction with all tool results replaced by placeholders.
- */
+/** Replaces every tool result in an interaction with a placeholder. */
 export function pruneAllToolResults(
   interaction: InteractionWithTokens
 ): InteractionWithTokens {
@@ -58,9 +54,7 @@ export function pruneAllToolResults(
   };
 }
 
-/**
- * Calculate total tokens for an interaction.
- */
+/** Total tokens across an interaction's messages. */
 export function getInteractionTokenCount(
   interaction: InteractionWithTokens
 ): number {
@@ -68,110 +62,52 @@ export function getInteractionTokenCount(
 }
 
 /**
- * Progressively prune tool results from an interaction to meet token budget. Prunes from oldest to
- * newest tool results until the interaction fits.
+ * Re-slices a flat message array back into template's interaction boundaries. Safe because
+ * redactFlat never adds, removes, or reorders messages. Throws if that's ever violated.
  */
-export function progressivelyPruneInteraction(
-  interaction: InteractionWithTokens,
-  maxTokens: number
-): InteractionWithTokens {
-  const currentTokens = getInteractionTokenCount(interaction);
-  if (currentTokens <= maxTokens) {
-    return interaction;
+function sliceIntoInteractions(
+  template: InteractionWithTokens[],
+  messages: MessageWithTokens[]
+): InteractionWithTokens[] {
+  const expectedLength = template.reduce(
+    (sum, interaction) => sum + interaction.messages.length,
+    0
+  );
+  if (messages.length !== expectedLength) {
+    throw new Error(
+      `sliceIntoInteractions: message count mismatch (expected ${expectedLength}, got ${messages.length}). Redaction must never add, remove, or reorder messages.`
+    );
   }
 
-  // Find all tool result messages.
-  const toolResultIndices: number[] = [];
-  for (let i = 0; i < interaction.messages.length; i++) {
-    if (interaction.messages[i].role === "function") {
-      toolResultIndices.push(i);
-    }
+  const result: InteractionWithTokens[] = [];
+  let offset = 0;
+  for (const interaction of template) {
+    const count = interaction.messages.length;
+    result.push({ messages: messages.slice(offset, offset + count) });
+    offset += count;
   }
-
-  let prunedContext = false;
-
-  // Prune from oldest to newest, recalculating tokens each time.
-  let prunedMessages = [...interaction.messages];
-  for (const index of toolResultIndices) {
-    // If very last tool result is pruned, we mark prunedContext as true.
-    if (index === toolResultIndices[toolResultIndices.length - 1]) {
-      prunedContext = true;
-    }
-    const message = prunedMessages[index];
-    if (message.role === "function") {
-      // Create a new array with the pruned message.
-      prunedMessages = [...prunedMessages];
-      prunedMessages[index] = {
-        ...message,
-        content: PRUNED_TOOL_RESULT_PLACEHOLDER,
-        tokenCount: PRUNED_TOOL_RESULT_TOKENS,
-      };
-
-      // Check if we've pruned enough.
-      const newTotalTokens = prunedMessages.reduce(
-        (sum, msg) => sum + msg.tokenCount,
-        0
-      );
-      if (newTotalTokens <= maxTokens) {
-        break;
-      }
-    }
-  }
-
-  return {
-    messages: prunedMessages,
-    prunedContext,
-  };
+  return result;
 }
 
-/**
- * Prunes tool results from previous interactions to fit within maxTokens, fully preserving the
- * last interactionsToPreserve interactions whenever the budget allows it. Guarantees the returned
- * interactions' combined token count never exceeds maxTokens, short of interactionsToPreserve's
- * own redacted floor alone exceeding it. That's a real out-of-room case left for the caller to
- * handle.
- *
- * The redaction boundary is computed from each interaction's ORIGINAL (pre-redaction) size. That
- * value never changes once an interaction is permanent history. It's then snapped back to the
- * nearest checkpoint in a prefix sum computed from the start of the conversation (see
- * PRUNING_CHECKPOINT_TOKENS). Because both of these are pure functions of immutable history plus
- * fixed constants, the same input history always yields the same redaction decisions across calls.
- * Those decisions only change once enough new content has accumulated to cross the next
- * checkpoint, not on every single turn. That's what keeps the rendered previous interactions
- * byte-stable across most turns and therefore reusable from the model provider's prompt cache.
- * Callers relying on this stability must always pass the SAME maxTokens across turns, not one
- * derived from a live, per-turn quantity like the current interaction's own size. See
- * renderConversationForModel for how that's arranged.
- *
- * If even fully redacting everything outside the floor isn't enough, for example many old
- * interactions whose placeholders alone add up, already-redacted interactions are dropped
- * entirely, oldest first, up to but never into the floor. This is a rare out-of-room
- * fallback, not routine operation.
- */
-export function prunePreviousInteractions(
-  inputInteractions: InteractionWithTokens[],
+/** The flat redaction algorithm behind pruneToolResults; see that function for the full contract. */
+function redactFlat(
+  messages: MessageWithTokens[],
   maxTokens: number,
-  interactionsToPreserve: number
-): InteractionWithTokens[] {
-  let interactions = [...inputInteractions];
-  const n = interactions.length;
+  toolResultsToPreserve: number
+): MessageWithTokens[] {
+  const n = messages.length;
   if (n === 0) {
-    return interactions;
+    return messages;
   }
 
-  // Original sizes are permanent. They never change once an interaction is history, regardless of
-  // how it eventually gets redacted. redactedTokens is what each interaction would cost if
-  // redacted, computed without mutating anything yet, purely to size the redaction savings.
-  const originalTokens = interactions.map((interaction) =>
-    getInteractionTokenCount(interaction)
-  );
-  const redactedTokens = interactions.map((interaction) =>
-    getInteractionTokenCount(pruneAllToolResults(interaction))
+  // redactedTokens is what each function-role message would cost once redacted.
+  const originalTokens = messages.map((m) => m.tokenCount);
+  const redactedTokens = messages.map((m, i) =>
+    m.role === "function" ? PRUNED_TOOL_RESULT_TOKENS : originalTokens[i]
   );
 
-  // Prefix sum from the START of the conversation. The value at a fixed index never changes
-  // across turns: it only depends on interactions that are already permanent by the time that
-  // index exists.
+  // Prefix sum from the start of the conversation. The value at a fixed index never changes once
+  // that message is history.
   const prefixSum: number[] = [];
   let running = 0;
   for (const tokens of originalTokens) {
@@ -179,87 +115,136 @@ export function prunePreviousInteractions(
     prefixSum.push(running);
   }
 
-  // The last interactionsToPreserve interactions are a hard floor: never redacted by this
-  // function, regardless of budget. (If the floor alone exceeds maxTokens, that's a real
-  // out-of-room situation handled by the caller's own downstream safety nets, not here.)
+  const functionIndices: number[] = [];
+  for (let i = 0; i < n; i++) {
+    if (messages[i].role === "function") {
+      functionIndices.push(i);
+    }
+  }
+
+  // Last toolResultsToPreserve tool results: never redacted, regardless of budget.
+  const floorStart = Math.max(
+    functionIndices.length - toolResultsToPreserve,
+    0
+  );
+  // Excludes results already smaller than the placeholder (e.g. "ok"). Redacting one would grow
+  // it, not shrink it, breaking the budget guarantee below.
+  const eligible = functionIndices
+    .slice(0, floorStart)
+    .filter((idx) => redactedTokens[idx] < originalTokens[idx]);
+
+  const totalIfNothingRedacted = prefixSum[n - 1];
+  if (totalIfNothingRedacted <= maxTokens) {
+    return messages;
+  }
+
+  // Minimal redaction needed: walk oldest-to-newest until the running total fits.
+  let total = totalIfNothingRedacted;
+  let neededFrontier = -1;
+  for (let k = 0; k < eligible.length && total > maxTokens; k++) {
+    const idx = eligible[k];
+    total -= originalTokens[idx] - redactedTokens[idx];
+    neededFrontier = k;
+  }
+
+  if (neededFrontier < 0) {
+    return messages;
+  }
+
+  // Round forward to the next checkpoint (a prefix-sum multiple of PRUNING_CHECKPOINT_TOKENS) so
+  // the same boundary keeps holding for several turns instead of creeping forward on every one.
+  let effectiveFrontier = neededFrontier;
+  for (let k = neededFrontier; k < eligible.length; k++) {
+    effectiveFrontier = k;
+    const idx = eligible[k];
+    if (idx === 0) {
+      break; // Start of conversation is trivially a checkpoint.
+    }
+    const bucketAtIdx = Math.floor(prefixSum[idx] / PRUNING_CHECKPOINT_TOKENS);
+    const bucketBefore = Math.floor(
+      prefixSum[idx - 1] / PRUNING_CHECKPOINT_TOKENS
+    );
+    if (bucketAtIdx !== bucketBefore) {
+      break;
+    }
+  }
+
+  const toRedact = new Set(eligible.slice(0, effectiveFrontier + 1));
+
+  return messages.map((m, i) => {
+    // Narrows m to the function-role variant. toRedact is already function-only by construction.
+    if (m.role === "function" && toRedact.has(i)) {
+      return {
+        ...m,
+        content: PRUNED_TOOL_RESULT_PLACEHOLDER,
+        tokenCount: PRUNED_TOOL_RESULT_TOKENS,
+      };
+    }
+    return m;
+  });
+}
+
+/**
+ * Redacts tool results across the whole conversation, previous interactions and the current,
+ * in-progress one combined, as one flat sequence, oldest eligible first. No exemption for the
+ * current turn: a long tool-call chain within it becomes eligible past toolResultsToPreserve
+ * exactly like an older turn's would (mirrors Anthropic's own `clear_tool_uses`, which has no turn
+ * concept either).
+ *
+ * Takes and returns `InteractionWithTokens[]`, flattening and re-slicing internally so callers
+ * never juggle a flat view and an interaction view themselves. Only ever replaces a function
+ * message's content. Never removes or reorders a message, so every tool_use stays paired with a
+ * tool_result and a content fragment is never separated from its user message. Dropping whole
+ * turns when redaction alone isn't enough is a separate operation (dropInteractionsToFit) for
+ * exactly that reason.
+ *
+ * The redaction boundary is a pure function of immutable history plus fixed constants, so the
+ * same input always redacts the same way, stable enough to survive the model provider's prompt
+ * cache. Callers must pass the SAME maxTokens across turns, not one derived from a live quantity.
+ */
+export function pruneToolResults(
+  interactions: InteractionWithTokens[],
+  maxTokens: number,
+  toolResultsToPreserve: number
+): InteractionWithTokens[] {
+  const messages = interactions.flatMap((interaction) => interaction.messages);
+  const redacted = redactFlat(messages, maxTokens, toolResultsToPreserve);
+  if (redacted === messages) {
+    return interactions; // No-op: same reference, same as dropInteractionsToFit below.
+  }
+  return sliceIntoInteractions(interactions, redacted);
+}
+
+/**
+ * Drops whole interactions entirely, oldest first, when redaction alone (pruneToolResults) isn't
+ * enough. Whole interactions only, since partial drops risk orphaning a tool_use or separating a
+ * content fragment from its user message.
+ *
+ * Never drops into the last interactionsToPreserve. A caller still over budget after that can
+ * retry with a smaller floor, or force pruneToolResults deeper.
+ */
+export function dropInteractionsToFit(
+  interactions: InteractionWithTokens[],
+  maxTokens: number,
+  interactionsToPreserve: number
+): InteractionWithTokens[] {
+  let result = interactions;
+  const n = result.length;
   const floorStart = Math.max(n - interactionsToPreserve, 0);
 
-  let totalIfNothingRedacted = 0;
-  for (let i = 0; i < n; i++) {
-    totalIfNothingRedacted += originalTokens[i];
-  }
-
-  if (totalIfNothingRedacted > maxTokens) {
-    // Redact starting from the OLDEST eligible interaction forward, tracking the actual running
-    // total (not just whether original sizes would exceed budget), until it fits. This is the
-    // minimal redaction needed. Nothing above this frontier is touched.
-    let total = totalIfNothingRedacted;
-    let neededFrontier = -1;
-    for (let i = 0; i < floorStart && total > maxTokens; i++) {
-      total -= originalTokens[i] - redactedTokens[i];
-      neededFrontier = i;
-    }
-
-    if (neededFrontier >= 0) {
-      // Round the frontier FORWARD to the next checkpoint at or after neededFrontier. A checkpoint
-      // is a position where the immutable prefix sum crosses a multiple of
-      // PRUNING_CHECKPOINT_TOKENS. This deliberately redacts a bit more than strictly necessary
-      // right now, so the same boundary keeps satisfying the budget for several subsequent turns
-      // instead of creeping forward by one interaction on almost every single turn. Never extends
-      // past floorStart - 1, so the budget is still always respected even if no checkpoint is
-      // found in range.
-      let effectiveFrontier = neededFrontier;
-      for (let i = neededFrontier; i < floorStart; i++) {
-        effectiveFrontier = i;
-        if (i === 0) {
-          // Index 0 is trivially always a checkpoint: it's the start of the conversation.
-          break;
-        }
-        const bucketAtI = Math.floor(prefixSum[i] / PRUNING_CHECKPOINT_TOKENS);
-        const bucketBefore = Math.floor(
-          prefixSum[i - 1] / PRUNING_CHECKPOINT_TOKENS
-        );
-        if (bucketAtI !== bucketBefore) {
-          // We fell into a different bucket than the previous interaction, so this is a
-          // checkpoint too.
-          break;
-        }
-      }
-
-      for (let i = 0; i <= effectiveFrontier; i++) {
-        interactions[i] = pruneAllToolResults(interactions[i]);
-      }
-    }
-  }
-
-  let totalTokens = interactions.reduce(
+  let totalTokens = result.reduce(
     (sum, interaction) => sum + getInteractionTokenCount(interaction),
     0
   );
 
-  // Still over budget after the redaction pass above. Either many old, already-redacted
-  // placeholders add up, or some eligible interactions above the frontier are themselves large.
-  // Drop already-redacted-or-eligible interactions entirely, oldest first, up to but never into
-  // the floor. This is strictly less disruptive than touching the floor, so it's always tried
-  // first.
   let dropUpToIndex = -1;
-  for (let i = 0; i < Math.min(floorStart, n) && totalTokens > maxTokens; i++) {
-    totalTokens -= getInteractionTokenCount(interactions[i]);
+  for (let i = 0; i < floorStart && totalTokens > maxTokens; i++) {
+    totalTokens -= getInteractionTokenCount(result[i]);
     dropUpToIndex = i;
   }
   if (dropUpToIndex >= 0) {
-    interactions = interactions.slice(dropUpToIndex + 1);
+    result = result.slice(dropUpToIndex + 1);
   }
 
-  // Absolute last resort: even with every eligible interaction dropped entirely, the floor's own
-  // real size alone still doesn't fit. Redact floor interactions too, oldest first. This only
-  // kicks in as a last resort, not routine operation, so it's fine for it to be driven by the
-  // floor's live size rather than a checkpoint.
-  for (let i = 0; i < interactions.length && totalTokens > maxTokens; i++) {
-    const before = getInteractionTokenCount(interactions[i]);
-    interactions[i] = pruneAllToolResults(interactions[i]);
-    totalTokens -= before - getInteractionTokenCount(interactions[i]);
-  }
-
-  return interactions;
+  return result;
 }
