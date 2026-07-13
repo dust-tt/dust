@@ -12,7 +12,7 @@ import { buildReinforcedSkillsLLMParams } from "@app/lib/reinforcement/run_reinf
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { SkillSuggestionResource } from "@app/lib/resources/skill_suggestion_resource";
-import { AGENT_FACING_DESCRIPTION_MAX_LENGTH } from "@app/lib/skills/constants";
+import { AGENT_FACING_DESCRIPTION_MAX_LENGTH } from "@app/lib/skills/labels";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { getSkillBuilderRoute } from "@app/lib/utils/router";
 import logger from "@app/logger/logger";
