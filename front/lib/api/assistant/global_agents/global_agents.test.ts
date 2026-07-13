@@ -243,6 +243,22 @@ describe("getGlobalAgents custom model agents", () => {
 });
 
 describe("getGlobalAgents OpenAI Dust agents", () => {
+  it("hides Luna variants without the internal global agents feature flag", async () => {
+    const auth = await createAuthenticatorWithFlags([]);
+
+    const agents = await getGlobalAgents(
+      auth,
+      [
+        GLOBAL_AGENTS_SID.DUST_OAI_LUNA,
+        GLOBAL_AGENTS_SID.DUST_OAI_LUNA_MEDIUM,
+        GLOBAL_AGENTS_SID.DUST_OAI_LUNA_HIGH,
+      ],
+      "light"
+    );
+
+    expect(agents).toEqual([]);
+  });
+
   it("resolves Sol and Luna variants with light, medium, and high reasoning", async () => {
     const auth = await createAuthenticatorWithFlags([
       "dust_internal_global_agents",
