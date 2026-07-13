@@ -547,7 +547,7 @@ describe("dropInteractionsToFit", () => {
         dropInteractionsToFit(historyOf(10), {
           maxTokens: 33_000,
           interactionsToPreserve: 0,
-      batchToCheckpoint: true,
+          batchToCheckpoint: true,
         })
       )
     ).toBe("u6");
@@ -556,7 +556,7 @@ describe("dropInteractionsToFit", () => {
         dropInteractionsToFit(historyOf(11), {
           maxTokens: 33_000,
           interactionsToPreserve: 0,
-      batchToCheckpoint: true,
+          batchToCheckpoint: true,
         })
       )
     ).toBe("u6");
@@ -569,7 +569,7 @@ describe("dropInteractionsToFit", () => {
         dropInteractionsToFit(historyOf(15), {
           maxTokens: 33_000,
           interactionsToPreserve: 0,
-      batchToCheckpoint: true,
+          batchToCheckpoint: true,
         })
       )
     ).toBe("u11");
@@ -624,11 +624,7 @@ describe("dropInteractionsToFit", () => {
     // 10_000). Batched would extend to the crossing at i3 (prefix sum 29_000 vs 19_000) and
     // return nothing at all.
     const interactions = interactionsFromMessages(
-      [
-        turn(1, 4980),
-        turn(2, 13_980),
-        turn(3, 9980),
-      ].flat()
+      [turn(1, 4980), turn(2, 13_980), turn(3, 9980)].flat()
     );
 
     const minimal = dropInteractionsToFit(interactions, {
