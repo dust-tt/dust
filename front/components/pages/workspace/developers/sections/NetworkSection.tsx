@@ -172,7 +172,7 @@ export function NetworkSection() {
 
         <Page.SectionHeader
           title="Allowed domains"
-          description="These domains apply to every Computer in this workspace. Hostnames are matched exactly: allowing example.com does not allow www.example.com. Add both separately when needed, or use *.example.com to allow all subdomains. Changes are picked up by egress proxy cache refreshes, typically within 60 seconds."
+          description="These domains apply to every Computer in this workspace. Hostnames are matched exactly. To allow both example.com and www.example.com, add each separately. A wildcard such as *.example.com allows subdomains, but not example.com itself. Changes are picked up by egress proxy cache refreshes, typically within 60 seconds."
         />
 
         <form
