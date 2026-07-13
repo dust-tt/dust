@@ -13,6 +13,7 @@ import {
   STATIC_MODEL_IDS,
   SUPPORTED_MODEL_CONFIGS,
 } from "@app/types/assistant/models/models";
+import type { ModelIdType } from "@app/types/assistant/models/types";
 import {
   GPT_5_5_MODEL_ID,
   GPT_5_NANO_MODEL_ID,
@@ -70,6 +71,16 @@ describe("token_pricing/tiers", () => {
     expect(
       ModelsTierResource.getTierForModel(CLAUDE_FABLE_5_MODEL_ID, "high")
     ).toBe("premium");
+  });
+
+  it("classifies generated custom models as premium", () => {
+    // Custom models are generated from GCS at build time and are therefore not
+    // present in the checked-in CUSTOM_MODEL_IDS fixture.
+    const customModelId = "claude-fruitcake-eap" as ModelIdType;
+
+    expect(ModelsTierResource.getTierForModel(customModelId, "high")).toBe(
+      "premium"
+    );
   });
 
   it("classifies sonnet with light reasoning as cost efficient", () => {

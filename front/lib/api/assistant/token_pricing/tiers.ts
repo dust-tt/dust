@@ -1,6 +1,7 @@
 import { STATIC_MODEL_SUPPORTED_REASONING_EFFORTS } from "@app/lib/api/assistant/token_pricing/static_model_reasoning_efforts";
 import type { StaticModelIdType } from "@app/types/assistant/models/models";
 import type {
+  ModelIdType,
   ModelProviderIdType,
   ReasoningEffort,
   ReasoningEffortSupport,
@@ -19,7 +20,7 @@ export function isModelsTierName(value: unknown): value is ModelsTierName {
 }
 
 export type ModelTierSelection = {
-  modelId: StaticModelIdType;
+  modelId: ModelIdType;
   providerId: ModelProviderIdType;
   reasoningEffort: ReasoningEffort;
 };
@@ -76,7 +77,7 @@ export { STATIC_MODEL_SUPPORTED_REASONING_EFFORTS };
 
 // Tier assignment per static model and supported reasoning effort. Must list every
 // StaticModelIdType and every effort from STATIC_MODEL_SUPPORTED_REASONING_EFFORTS.
-export const STATIC_MODEL_TIERS: StaticModelTiersLookup = {
+export const STATIC_MODEL_TIERS = {
   "gpt-3.5-turbo": {
     none: "cost_efficient",
   },

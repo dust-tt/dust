@@ -25,6 +25,7 @@ import type {
   GroupAllowedModelTiersType,
   UserAllowedModelTiersType,
 } from "@app/types/api/model_tiers";
+import { isStaticModelId } from "@app/types/assistant/models/models";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -75,8 +76,9 @@ export class ModelsTierResource {
   static getTierForSelection(
     selection: ModelTierSelection
   ): ModelsTierName | null {
-    return (
-      STATIC_MODEL_TIERS[selection.modelId][selection.reasoningEffort] ?? null
+    return this.getTierForModel(
+      selection.modelId,
+      selection.reasoningEffort
     );
   }
 
@@ -84,7 +86,18 @@ export class ModelsTierResource {
     modelId: ModelTierSelection["modelId"],
     reasoningEffort: ModelTierSelection["reasoningEffort"]
   ): ModelsTierName | null {
-    return STATIC_MODEL_TIERS[modelId][reasoningEffort] ?? null;
+    // Custom models are generated at build time and cannot be exhaustively
+    // listed in STATIC_MODEL_TIERS. Default them to the most restrictive tier
+    // so newly introduced custom/EAP models are access-controlled immediately.
+    if (!isStaticModelId(modelId)) {
+      return "premium";
+    }
+
+    const tiersByReasoningEffort: Partial<
+      Record<ModelTierSelection["reasoningEffort"], ModelsTierName>
+    > = STATIC_MODEL_TIERS[modelId];
+
+    return tiersByReasoningEffort[reasoningEffort] ?? null;
   }
 
   private static assertIsAdmin(auth: Authenticator): void {
