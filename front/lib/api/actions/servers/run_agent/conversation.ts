@@ -61,7 +61,10 @@ async function cleanupSubConversationAfterSetupFailure(
 
     const result = await destroyConversation(auth, { conversation });
     if (result.isErr()) {
-      throw result.error;
+      logger.error(
+        { error: result.error, conversationId },
+        "Failed to clean up sub-conversation after setup failure"
+      );
     }
   } catch (error) {
     logger.error(
@@ -92,7 +95,7 @@ async function postMessageAndFetchConversation(
   if (messageRes.isErr()) {
     const isUserSide = isUserSideError(messageRes.error);
     const isTransient = isTransientNetworkError(messageRes.error);
-    if (!isTransient) {
+    if (isUserSide) {
       await onPostMessageError?.();
     }
     return new Err(
