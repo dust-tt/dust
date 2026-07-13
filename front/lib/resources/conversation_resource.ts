@@ -2153,10 +2153,13 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     const orderDirection = pagination.orderDirection ?? "desc";
 
     const { where: filterWhere } = this.getOptions(options);
+    // Kept as a plain WhereAttributeHash (no `[Op.or]` key) so that later
+    // pagination-cursor code can freely read/mutate `whereClause.updatedAt`.
+    // The run_agent-sub-conversation exclusion is applied separately, via
+    // `[Op.and]`, at the `findAll` call site below.
     const whereClause: WhereOptions<InferAttributes<ConversationModel>> = {
       ...filterWhere,
       spaceId: spaceModelId,
-      [Op.or]: this.excludeRunAgentSubConversationsOrClause(auth),
       ...(restrictToConversationModelIds && {
         id: { [Op.in]: restrictToConversationModelIds },
       }),
@@ -2223,7 +2226,12 @@ export class ConversationResource extends BaseResource<ConversationModel> {
         auth,
         options,
         {
-          where: batchWhereClause,
+          where: {
+            [Op.and]: [
+              batchWhereClause,
+              { [Op.or]: this.excludeRunAgentSubConversationsOrClause(auth) },
+            ],
+          },
           order: [["updatedAt", orderDirection === "desc" ? "DESC" : "ASC"]],
           limit: chunkSize,
         }
