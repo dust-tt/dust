@@ -429,7 +429,6 @@ export const POD_MANAGER_TOOLS_METADATA = createToolsRecord({
     schema: {
       conversationId: z
         .string()
-        .optional()
         .describe(
           "Target conversation ID. The active conversation is not a valid target."
         ),
