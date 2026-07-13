@@ -33,7 +33,7 @@ import {
   Users01,
 } from "@dust-tt/sparkle";
 import type { PaginationState } from "@tanstack/react-table";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 
 const DEFAULT_PAGE_SIZE = 25;
 
@@ -96,6 +96,7 @@ function WorkspaceMembersList({
     pageIndex: 0,
     pageSize: DEFAULT_PAGE_SIZE,
   });
+  const [prevSearchTerm, setPrevSearchTerm] = useState(searchTerm);
 
   const [selectedMember, setSelectedMember] =
     useState<UserTypeWithWorkspace | null>(null);
@@ -108,10 +109,10 @@ function WorkspaceMembersList({
     groupKind: isProvisioningEnabled ? "provisioned" : undefined,
   });
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: searchTerm is the reset trigger, not used in the body
-  useEffect(() => {
+  if (searchTerm !== prevSearchTerm) {
+    setPrevSearchTerm(searchTerm);
     setPagination({ pageIndex: 0, pageSize: DEFAULT_PAGE_SIZE });
-  }, [searchTerm]);
+  }
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   const resetSelectedMember = useCallback(() => {
