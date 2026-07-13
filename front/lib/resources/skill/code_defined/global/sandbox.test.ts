@@ -18,6 +18,14 @@ describe("sandboxSkill", () => {
     expect(instructions).toContain("- Python: python, pandas 3.0.1");
     expect(instructions).toContain("- Node: typescript, tsx");
     expect(instructions).toContain("`describe_toolset`");
+    const systemTools = instructions
+      .split("\n")
+      .find((line) => line.startsWith("- System:"));
+    expect(systemTools).toBeDefined();
+    expect(systemTools).not.toContain("xlsx_inspect");
+    expect(systemTools).not.toContain("pptx_inspect");
+    expect(systemTools).not.toContain("docx_inspect");
+    expect(systemTools).not.toContain("pptx_slides");
     expect(instructions).toContain(
       "Dust-specific Office helpers (not standard Linux commands)"
     );

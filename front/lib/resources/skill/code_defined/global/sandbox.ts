@@ -18,6 +18,13 @@ import type { ModelProviderIdType } from "@app/types/assistant/models/types";
 import { isComputerFeatureEnabled } from "@app/types/shared/feature_flags";
 import { Ok } from "@app/types/shared/result";
 
+const DESCRIBED_OFFICE_TOOL_NAMES = new Set([
+  "xlsx_inspect",
+  "pptx_inspect",
+  "docx_inspect",
+  "pptx_slides",
+]);
+
 function buildSandboxInstructionProse({
   hasDsbxTools,
 }: {
@@ -327,7 +334,11 @@ async function buildSandboxInstructions(
   }
 
   const compactManifest = toolManifestToCompactText(
-    createToolManifest(toolsResult.value)
+    createToolManifest(
+      toolsResult.value.filter(
+        (tool) => !DESCRIBED_OFFICE_TOOL_NAMES.has(tool.name)
+      )
+    )
   );
 
   return `${sandboxInstructions}
