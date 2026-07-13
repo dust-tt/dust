@@ -12,11 +12,12 @@ PACKAGE ?= com.dust.mobile
 ACTIVITY ?= .android.MainActivity
 DEBUG_APK ?= app/build/outputs/apk/debug/app-debug.apk
 PROD_DEBUG_APK ?= app/build/outputs/apk/prodDebug/app-prodDebug.apk
+PHONE_RELEASE_APK ?= dist/dust-mobile-phone-release.apk
 PRESENTATION_AUTH_TIMEOUT_SECONDS ?= $(if $(AUTH_TIMEOUT_SECONDS),$(AUTH_TIMEOUT_SECONDS),900)
 
 .DEFAULT_GOAL := help
 
-.PHONY: help show-app bypass-login doctor test verify presentation-check presentation-refresh presentation-check-workos presentation-capture-workos presentation-check-clean presentation-index presentation-summary check-presentation-pack check-brand-assets check-build-config core-test app-test build assemble-debug assemble-prod-debug install-debug install-prod-debug run-debug run-prod-debug run-prod-debug-local-preview smoke-samsung-prod smoke-samsung-prod-visible smoke-samsung-prod-visible-fresh smoke-samsung-local-preview present-samsung-local-preview smoke-samsung-auth-resilience smoke-samsung-auth-resilience-current smoke-samsung-authenticated-preflight smoke-samsung-authenticated smoke-samsung-demo-ui lint-debug lint-prod-debug logs uninstall clean-local
+.PHONY: help show-app bypass-login doctor devices phone-doctor test verify presentation-check presentation-refresh presentation-check-workos presentation-capture-workos presentation-check-clean presentation-index presentation-summary check-presentation-pack check-brand-assets check-build-config core-test app-test build assemble-debug assemble-prod-debug phone-release install-debug install-prod-debug install-phone run-debug run-prod-debug run-phone run-prod-debug-local-preview smoke-samsung-prod smoke-samsung-prod-visible smoke-samsung-prod-visible-fresh smoke-samsung-local-preview present-samsung-local-preview smoke-samsung-auth-resilience smoke-samsung-auth-resilience-current smoke-samsung-authenticated-preflight smoke-samsung-authenticated smoke-samsung-demo-ui lint-debug lint-prod-debug logs phone-diagnostics uninstall clean-local
 
 ## help: list available targets
 help:
@@ -39,13 +40,21 @@ bypass-login: show-app
 doctor:
 	ADB="$(ADB)" EMULATOR="$(EMULATOR)" AVD="$(AVD)" SYSTEM_IMAGE="$(SYSTEM_IMAGE)" bash scripts/doctor.sh
 
+## devices: list attached Android devices and authorization state
+devices:
+	ADB="$(ADB)" scripts/android-device.sh devices
+
+## phone-doctor: inspect the selected physical device/emulator and installed Dust package
+phone-doctor:
+	ADB="$(ADB)" PACKAGE="$(PACKAGE)" ACTIVITY="$(ACTIVITY)" scripts/android-device.sh doctor
+
 ## test: run all Gradle tests
 test:
 	$(GRADLE) test
 
 ## verify: run the full Android test/build/lint gate
 verify: check-brand-assets
-	$(GRADLE) :core:test :app:testDebugUnitTest :app:assembleDebug :app:lintDebug :app:assembleProdDebug :app:lintProdDebug :app:assembleRelease
+	$(GRADLE) :core:test :app:testDebugUnitTest :app:assembleDebug :app:lintDebug :app:assembleProdDebug :app:lintProdDebug :app:assembleRelease :app:assemblePhoneRelease
 	$(MAKE) check-build-config
 
 ## presentation-check: run the full readiness gate, verify artifacts, and leave the Samsung sample workspace inbox open
@@ -116,7 +125,7 @@ check-brand-assets:
 
 ## check-build-config: verify generated build variants use expected URLs and bypass flags
 check-build-config:
-	$(GRADLE) :app:generateDebugBuildConfig :app:generateProdDebugBuildConfig :app:generateReleaseBuildConfig :app:processDebugMainManifest :app:processProdDebugMainManifest :app:processReleaseMainManifest
+	$(GRADLE) :app:generateDebugBuildConfig :app:generateProdDebugBuildConfig :app:generateReleaseBuildConfig :app:generatePhoneReleaseBuildConfig :app:processDebugMainManifest :app:processProdDebugMainManifest :app:processReleaseMainManifest :app:processPhoneReleaseMainManifest
 	scripts/check-build-config.sh
 
 ## core-test: run JVM tests for the core module only
@@ -139,21 +148,33 @@ assemble-debug:
 assemble-prod-debug:
 	$(GRADLE) :app:assembleProdDebug
 
+## phone-release: build and verify a production-configured APK for local sideloading
+phone-release:
+	GRADLE="$(GRADLE)" scripts/build-phone-release.sh
+
 ## install-debug: build and install the debug APK on the attached device/emulator
 install-debug: assemble-debug
-	$(ADB) install -r $(DEBUG_APK)
+	ADB="$(ADB)" PACKAGE="$(PACKAGE)" ACTIVITY="$(ACTIVITY)" scripts/android-device.sh install $(DEBUG_APK)
 
 ## install-prod-debug: build and install the production-targeted debug APK
 install-prod-debug: assemble-prod-debug
-	$(ADB) install -r $(PROD_DEBUG_APK)
+	ADB="$(ADB)" PACKAGE="$(PACKAGE)" ACTIVITY="$(ACTIVITY)" scripts/android-device.sh install $(PROD_DEBUG_APK)
+
+## install-phone: build and install the local phone release on the selected device
+install-phone: phone-release
+	ADB="$(ADB)" PACKAGE="$(PACKAGE)" ACTIVITY="$(ACTIVITY)" scripts/android-device.sh install $(PHONE_RELEASE_APK)
 
 ## run-debug: install and launch the debug app on the attached device/emulator
 run-debug: install-debug
-	$(ADB) shell am start -n $(PACKAGE)/$(ACTIVITY)
+	ADB="$(ADB)" PACKAGE="$(PACKAGE)" ACTIVITY="$(ACTIVITY)" scripts/android-device.sh launch
 
 ## run-prod-debug: install and launch the production-targeted debug app
 run-prod-debug: install-prod-debug
-	$(ADB) shell am start -n $(PACKAGE)/$(ACTIVITY)
+	ADB="$(ADB)" PACKAGE="$(PACKAGE)" ACTIVITY="$(ACTIVITY)" scripts/android-device.sh launch
+
+## run-phone: build, install, and launch the local phone release
+run-phone: install-phone
+	ADB="$(ADB)" PACKAGE="$(PACKAGE)" ACTIVITY="$(ACTIVITY)" scripts/android-device.sh launch
 
 ## run-prod-debug-local-preview: install prodDebug and open the local preview session
 run-prod-debug-local-preview:
@@ -224,16 +245,15 @@ lint-prod-debug:
 
 ## logs: stream logcat for the running app process
 logs:
-	@pid="$$( $(ADB) shell pidof -s $(PACKAGE) | tr -d '\r' )"; \
-	if [ -z "$$pid" ]; then \
-		echo "No running process for $(PACKAGE). Start the app first."; \
-		exit 1; \
-	fi; \
-	$(ADB) logcat --pid="$$pid"
+	ADB="$(ADB)" PACKAGE="$(PACKAGE)" ACTIVITY="$(ACTIVITY)" scripts/android-device.sh logs
+
+## phone-diagnostics: capture app state, current UI, rendering data, and recent logs
+phone-diagnostics:
+	ADB="$(ADB)" PACKAGE="$(PACKAGE)" ACTIVITY="$(ACTIVITY)" scripts/android-device.sh diagnostics
 
 ## uninstall: remove the app from the attached device/emulator
 uninstall:
-	$(ADB) uninstall $(PACKAGE) || true
+	ADB="$(ADB)" PACKAGE="$(PACKAGE)" ACTIVITY="$(ACTIVITY)" scripts/android-device.sh uninstall
 
 ## clean-local: remove local Gradle/Kotlin build artifacts
 clean-local:
