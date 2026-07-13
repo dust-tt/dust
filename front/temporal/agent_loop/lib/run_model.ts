@@ -2,6 +2,7 @@ import { TOOL_NAME_SEPARATOR } from "@app/lib/actions/constants";
 import type { MCPToolConfigurationType } from "@app/lib/actions/mcp";
 import { buildToolSpecification } from "@app/lib/actions/mcp";
 import { tryListMCPTools } from "@app/lib/actions/mcp_actions";
+import { autoInternalMCPServerNameToSId } from "@app/lib/actions/mcp_helper";
 import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
 import { isJITMCPServerView } from "@app/lib/actions/mcp_internal_actions/utils";
 import type { StepContext } from "@app/lib/actions/types";
@@ -230,6 +231,10 @@ function getMissingActionCatcherFunctionCallIds(
   conversation: ConversationType
 ): Set<string> {
   const functionCallIds = new Set<string>();
+  const missingActionCatcherMCPServerId = autoInternalMCPServerNameToSId({
+    name: "missing_action_catcher",
+    workspaceId: conversation.owner.id,
+  });
 
   for (const messageVersions of conversation.content) {
     for (const message of messageVersions) {
@@ -238,7 +243,9 @@ function getMissingActionCatcherFunctionCallIds(
       }
 
       for (const action of message.actions) {
-        if (action.internalMCPServerName === "missing_action_catcher") {
+        // mcpServerId is serialized from the action's
+        // toolConfiguration.toolServerId.
+        if (action.mcpServerId === missingActionCatcherMCPServerId) {
           functionCallIds.add(action.functionCallId);
         }
       }
