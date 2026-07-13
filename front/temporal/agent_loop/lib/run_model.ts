@@ -320,8 +320,13 @@ export function buildBaseSpecifications(
 // definition.
 export function buildSpecificationsWithReplayPlaceholders(
   baseSpecifications: AgentActionSpecification[],
-  modelConversation: ModelConversationTypeMultiActions,
-  missingActionCatcherFunctionCallIds: Set<string>
+  {
+    modelConversation,
+    missingActionCatcherFunctionCallIds = new Set(),
+  }: {
+    modelConversation: ModelConversationTypeMultiActions;
+    missingActionCatcherFunctionCallIds?: Set<string>;
+  }
 ): {
   specifications: AgentActionSpecification[];
   missingReplayedToolNames: string[];
@@ -674,11 +679,11 @@ export async function runModel(
   }
 
   const { specifications, missingReplayedToolNames } =
-    buildSpecificationsWithReplayPlaceholders(
-      baseSpecifications,
-      modelConversationRes.value.modelConversation,
-      getMissingActionCatcherFunctionCallIds(conversation)
-    );
+    buildSpecificationsWithReplayPlaceholders(baseSpecifications, {
+      modelConversation: modelConversationRes.value.modelConversation,
+      missingActionCatcherFunctionCallIds:
+        getMissingActionCatcherFunctionCallIds(conversation),
+    });
 
   if (missingReplayedToolNames.length > 0) {
     localLogger.info(
