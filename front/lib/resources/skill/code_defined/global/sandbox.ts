@@ -344,8 +344,11 @@ ${compactManifest}
 
 Versions are shown when pinned. Installing packages in the sandbox is NOT
 possible. Call \`describe_toolset\` for full descriptions and usage metadata.
-The Dust file helpers and Office inspectors support \`<command> --help\` for
-detailed usage. Use ONLY the tools listed above, NOTHING ELSE.
+Unlike the standard Linux utilities above, \`xlsx_inspect\`, \`pptx_inspect\`,
+and \`docx_inspect\` are Dust-specific commands for structural inspection and
+QA of Office files; \`pptx_slides\` safely duplicates, moves, or deletes slides.
+Prefer these helpers for their formats and run \`<command> --help\` for detailed
+usage. Use ONLY the tools listed above, NOTHING ELSE.
 
 `;
 }

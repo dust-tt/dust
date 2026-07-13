@@ -18,6 +18,12 @@ describe("sandboxSkill", () => {
     expect(instructions).toContain("- Python: python, pandas 3.0.1");
     expect(instructions).toContain("- Node: typescript, tsx");
     expect(instructions).toContain("`describe_toolset`");
+    expect(instructions).toMatch(
+      /Unlike the standard Linux utilities above, `xlsx_inspect`, `pptx_inspect`,\s+and `docx_inspect` are Dust-specific commands for structural inspection/
+    );
+    expect(instructions).toContain(
+      "`pptx_slides` safely duplicates, moves, or deletes slides"
+    );
     expect(instructions).toContain("`<command> --help`");
     expect(instructions).not.toContain("name: dsbx");
     expect(instructions).not.toContain("```yaml");
