@@ -430,7 +430,7 @@ export class GroupResource extends BaseResource<GroupModel> {
    */
   static async makeNewRegularManual(
     auth: Authenticator,
-    { name, memberIds }: { name: string; memberIds?: string[] }
+    { name, memberIds }: { name: string; memberIds: string[] }
   ): Promise<
     Result<
       GroupResource,
@@ -471,20 +471,18 @@ export class GroupResource extends BaseResource<GroupModel> {
       workspaceId: owner.id,
     });
 
-    const uniqueMemberIds = memberIds ? [...new Set(memberIds)] : [];
-    if (uniqueMemberIds.length > 0) {
-      const users = await UserResource.fetchByIds(uniqueMemberIds);
-      if (users.length !== uniqueMemberIds.length) {
-        return new Err(
-          new DustError("user_not_found", "Some users were not found.")
-        );
-      }
-      const addResult = await group.dangerouslyAddMembers(auth, {
-        users: users.map((u) => u.toJSON()),
-      });
-      if (addResult.isErr()) {
-        return new Err(addResult.error);
-      }
+    const uniqueMemberIds = [...new Set(memberIds)];
+    const users = await UserResource.fetchByIds(uniqueMemberIds);
+    if (users.length !== uniqueMemberIds.length) {
+      return new Err(
+        new DustError("user_not_found", "Some users were not found.")
+      );
+    }
+    const addResult = await group.dangerouslyAddMembers(auth, {
+      users: users.map((u) => u.toJSON()),
+    });
+    if (addResult.isErr()) {
+      return new Err(addResult.error);
     }
 
     return new Ok(group);

@@ -134,12 +134,15 @@ describe("GET /api/w/:wId/groups", () => {
 
 describe("POST /api/w/:wId/groups", () => {
   it("lets an admin create a regular_manual group", async () => {
-    const { workspace, auth } = await createPrivateApiMockRequest({
+    const { workspace, user, auth } = await createPrivateApiMockRequest({
       method: "POST",
       role: "admin",
     });
 
-    const response = await postGroup(workspace, { name: "Finance" });
+    const response = await postGroup(workspace, {
+      name: "Finance",
+      memberIds: [user.sId],
+    });
 
     expect(response.status).toBe(200);
     const { group } = await response.json();
@@ -194,12 +197,15 @@ describe("POST /api/w/:wId/groups", () => {
   });
 
   it("lets a business admin create a regular_manual group", async () => {
-    const { workspace } = await createPrivateApiMockRequest({
+    const { workspace, user } = await createPrivateApiMockRequest({
       method: "POST",
       role: "business_admin",
     });
 
-    const response = await postGroup(workspace, { name: "Legal" });
+    const response = await postGroup(workspace, {
+      name: "Legal",
+      memberIds: [user.sId],
+    });
 
     expect(response.status).toBe(200);
     const { group } = await response.json();
@@ -230,25 +236,46 @@ describe("POST /api/w/:wId/groups", () => {
   });
 
   it("returns 409 when a group with the same name already exists", async () => {
-    const { workspace } = await createPrivateApiMockRequest({
+    const { workspace, user } = await createPrivateApiMockRequest({
       method: "POST",
       role: "admin",
     });
     await GroupFactory.regularManual(workspace, "Duplicate");
 
-    const response = await postGroup(workspace, { name: "Duplicate" });
+    const response = await postGroup(workspace, {
+      name: "Duplicate",
+      memberIds: [user.sId],
+    });
 
     expect(response.status).toBe(409);
     expect((await response.json()).error.type).toBe("invalid_request_error");
   });
 
   it("returns 400 when name is missing or empty", async () => {
+    const { workspace, user } = await createPrivateApiMockRequest({
+      method: "POST",
+      role: "admin",
+    });
+
+    expect((await postGroup(workspace, { memberIds: [user.sId] })).status).toBe(
+      400
+    );
+    expect(
+      (await postGroup(workspace, { name: "", memberIds: [user.sId] })).status
+    ).toBe(400);
+  });
+
+  it("returns 400 when members are missing or empty", async () => {
     const { workspace } = await createPrivateApiMockRequest({
       method: "POST",
       role: "admin",
     });
 
-    expect((await postGroup(workspace, {})).status).toBe(400);
-    expect((await postGroup(workspace, { name: "" })).status).toBe(400);
+    expect((await postGroup(workspace, { name: "No members" })).status).toBe(
+      400
+    );
+    expect(
+      (await postGroup(workspace, { name: "No members", memberIds: [] })).status
+    ).toBe(400);
   });
 });

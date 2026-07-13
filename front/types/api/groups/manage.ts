@@ -3,7 +3,7 @@ import { z } from "zod";
 
 export const CreateGroupBodySchema = z.object({
   name: z.string().min(1),
-  memberIds: z.array(z.string()).optional(),
+  memberIds: z.array(z.string()).min(1),
 });
 
 export type CreateGroupBodyType = z.infer<typeof CreateGroupBodySchema>;
