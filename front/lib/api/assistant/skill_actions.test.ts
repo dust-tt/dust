@@ -56,10 +56,13 @@ describe("resolveSkillMCPServers", () => {
       conversation,
     });
 
-    const skillServers = await resolveSkillMCPServers(authenticator, {
-      agentConfiguration,
-      conversation,
-    });
+    const { skillServers, systemSkillServers } = await resolveSkillMCPServers(
+      authenticator,
+      {
+        agentConfiguration,
+        conversation,
+      }
+    );
 
     const serverToolsAndInstructions = await tryListMCPTools(
       authenticator,
@@ -72,6 +75,7 @@ describe("resolveSkillMCPServers", () => {
       {
         jitServers: [],
         skillServers,
+        systemSkillServers,
       }
     );
 
@@ -95,6 +99,12 @@ describe("resolveSkillMCPServers", () => {
         (tool) => tool.name === `${SKILL_COMPANY_DATA_SERVER_NAME}__cat`
       )
     ).toHaveLength(1);
+    expect(
+      companyDataTools.find(
+        (tool) =>
+          tool.name === `${SKILL_COMPANY_DATA_SERVER_NAME}__semantic_search`
+      )?.eager
+    ).toBe(true);
     expect(
       serverToolsAndInstructions
         .flatMap(({ tools }) => tools)
@@ -152,6 +162,7 @@ describe("resolveSkillMCPServers", () => {
             serverNameOverride: SKILL_MANAGEMENT_SERVER_NAME,
           }),
         ],
+        systemSkillServers: [],
       }
     );
 

@@ -1009,9 +1009,11 @@ export async function tryListMCPTools(
   {
     jitServers,
     skillServers,
+    systemSkillServers,
   }: {
     jitServers: MCPServerConfigurationType[];
     skillServers: MCPServerConfigurationType[];
+    systemSkillServers: MCPServerConfigurationType[];
   }
 ): Promise<ServerToolsAndInstructions[]> {
   const owner = auth.getNonNullableWorkspace();
@@ -1020,7 +1022,7 @@ export async function tryListMCPTools(
     agentActions: agentLoopListToolsContext.agentConfiguration.actions,
     clientSideActions:
       agentLoopListToolsContext.clientSideActionConfigurations ?? [],
-    skillServers,
+    skillServers: [...systemSkillServers, ...skillServers],
     jitServers,
   });
   const nonSkillServerKeys = new Set(
@@ -1033,9 +1035,17 @@ export async function tryListMCPTools(
   const skillServerKeys = new Set(
     skillServers.map(getMCPServerConfigurationKey)
   );
+  const systemSkillServerKeys = new Set(
+    systemSkillServers.map(getMCPServerConfigurationKey)
+  );
+  // A server exposed by both buckets keeps its system-skill behavior.
   const isSkillServerConfig = deduplicatedConfigs.map((config) => {
     const key = getMCPServerConfigurationKey(config);
-    return skillServerKeys.has(key) && !nonSkillServerKeys.has(key);
+    return (
+      skillServerKeys.has(key) &&
+      !systemSkillServerKeys.has(key) &&
+      !nonSkillServerKeys.has(key)
+    );
   });
 
   const mcpServerActions = await disambiguateServerNamesBySpace(
