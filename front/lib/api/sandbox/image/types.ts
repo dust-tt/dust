@@ -40,13 +40,7 @@ export const SANDBOX_UNTRUSTED_UIDS = [SANDBOX_AGENT_PROXIED_UID] as const;
 export const TOOL_RUNTIMES = ["system", "python", "node"] as const;
 export type ToolRuntime = (typeof TOOL_RUNTIMES)[number];
 
-export const TOOL_CATEGORIES = [
-  "system",
-  "dust",
-  "office",
-  "python",
-  "node",
-] as const;
+export const TOOL_CATEGORIES = ["system", "dust", "python", "node"] as const;
 export type ToolCategory = (typeof TOOL_CATEGORIES)[number];
 
 export const TOOL_PROFILES = ["openai", "anthropic", "gemini"] as const;

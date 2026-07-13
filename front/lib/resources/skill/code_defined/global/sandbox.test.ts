@@ -16,10 +16,7 @@ describe("sandboxSkill", () => {
     expect(instructions).toContain("dsbx tools");
     expect(instructions).toContain("- System: git, curl");
     expect(instructions).toContain(
-      "- Dust: dsbx, apply_patch, read_file, write_file, edit_file, grep_files, glob, list_dir"
-    );
-    expect(instructions).toContain(
-      "- Office: xlsx_inspect, pptx_inspect, pptx_slides, docx_inspect"
+      "- Dust: dsbx, apply_patch, read_file, write_file, edit_file, grep_files, glob, list_dir, xlsx_inspect, pptx_inspect, pptx_slides, docx_inspect"
     );
     expect(instructions).toContain("- Python: python, pandas 3.0.1");
     expect(instructions).toContain("- Node: typescript, tsx");
@@ -34,9 +31,8 @@ describe("sandboxSkill", () => {
     expect(instructions).toContain(
       "System tools are standard preinstalled command-line utilities"
     );
-    expect(instructions).toMatch(
-      /Dust and Office\s+tools are Dust-provided helpers/
-    );
+    expect(instructions).toContain("Dust tools are");
+    expect(instructions).toContain("non-standard helpers provided by Dust");
     expect(instructions).toContain("`<command> --help`");
     expect(instructions).not.toContain("name: dsbx");
     expect(instructions).not.toContain("```yaml");

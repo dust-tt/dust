@@ -768,7 +768,7 @@ SHELLEOF`,
     returns:
       "Workbook overview, or one cell per line: '<address>  <formula or value>  [cached result]  numFmt: <fmt>  [font: <color>]  [fill: <color>]'. Empty cells skipped",
     runtime: "system",
-    category: "office",
+    category: "dust",
   })
   // --- pptx_inspect: structural inspection of .pptx decks ---
   .registerTool({
@@ -780,7 +780,7 @@ SHELLEOF`,
     returns:
       "A per-mode text report: deck overview, or per-slide shapes with [!] blockers / [i] advisories, or layouts / text / media listings. --qa and --render publish JPEGs and print their files__cat scoped paths; --compare ends in a [QA: PASS/FAIL] verdict. See --help for field-level detail.",
     runtime: "system",
-    category: "office",
+    category: "dust",
   })
   // --- pptx_slides: safe slide-level structural edits ---
   .registerTool({
@@ -791,7 +791,7 @@ SHELLEOF`,
       "pptx_slides <file> (--duplicate N[,N,...] [--count K] [--after M] | --move N --to M | --delete N[,N,...])",
     returns: "A one-line summary of the change and the deck's new slide count",
     runtime: "system",
-    category: "office",
+    category: "dust",
   })
   // --- docx_inspect: structural inspection of .docx documents ---
   .registerTool({
@@ -803,7 +803,7 @@ SHELLEOF`,
     returns:
       "Document overview with theme + default typography and heading outline, or one paragraph/style/section/table/change/field per line. Render mode publishes each page and prints its scoped path (files__cat-readable)",
     runtime: "system",
-    category: "office",
+    category: "dust",
   })
   .withCapability("gcsfuse")
   .withResources({ vcpu: 2, memoryMb: 2048 })

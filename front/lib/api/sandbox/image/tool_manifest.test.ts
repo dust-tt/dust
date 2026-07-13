@@ -28,7 +28,7 @@ describe("createToolManifest()", () => {
         name: "xlsx_inspect",
         description: "Workbook inspector",
         runtime: "system",
-        category: "office",
+        category: "dust",
       },
       { name: "pandas", description: "Data analysis", runtime: "python" },
       { name: "tsx", description: "TypeScript executor", runtime: "node" },
@@ -41,8 +41,6 @@ describe("createToolManifest()", () => {
     ]);
     expect(manifest.tools.dust).toEqual([
       { name: "read_file", description: "File reader" },
-    ]);
-    expect(manifest.tools.office).toEqual([
       { name: "xlsx_inspect", description: "Workbook inspector" },
     ]);
     expect(manifest.tools.python).toEqual([
@@ -62,7 +60,6 @@ describe("createToolManifest()", () => {
 
     expect(manifest.tools.system).toBeDefined();
     expect(manifest.tools.dust).toBeUndefined();
-    expect(manifest.tools.office).toBeUndefined();
     expect(manifest.tools.python).toBeUndefined();
     expect(manifest.tools.node).toBeUndefined();
   });
@@ -153,7 +150,7 @@ describe("toolManifestToCompactText()", () => {
         name: "xlsx_inspect",
         description: "Workbook inspector",
         runtime: "system",
-        category: "office",
+        category: "dust",
       },
       {
         name: "pandas",
@@ -169,7 +166,7 @@ describe("toolManifestToCompactText()", () => {
     const text = toolManifestToCompactText(manifest);
 
     expect(text).toBe(
-      "- System: curl\n- Dust: read_file\n- Office: xlsx_inspect\n- Python: pandas 2.2.3\n- Node: tsx"
+      "- System: curl\n- Dust: read_file, xlsx_inspect\n- Python: pandas 2.2.3\n- Node: tsx"
     );
   });
 });
