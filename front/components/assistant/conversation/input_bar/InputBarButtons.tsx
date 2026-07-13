@@ -146,6 +146,7 @@ export const InputBarButtons = React.memo(function InputBarButtons({
             aria-disabled={isInputDisabled}
             className={cn(
               "inline-flex box-border items-center rounded-lg h-7 heading-xs px-2 gap-1.5 bg-muted-background border-border text-primary-900 transition-colors duration-200",
+              isMobile && "pl-1",
               isInputDisabled
                 ? "opacity-50 pointer-events-none"
                 : "cursor-pointer hover:bg-hover"
@@ -184,7 +185,7 @@ export const InputBarButtons = React.memo(function InputBarButtons({
             variant="ghost-secondary"
             size={buttonSize}
             icon={Robot}
-            label="Agent"
+            label={!isMobile ? "Agent" : undefined}
             disabled={isInputDisabled}
             className={cn(disableAgentSelector && "bg-primary-150")}
           />

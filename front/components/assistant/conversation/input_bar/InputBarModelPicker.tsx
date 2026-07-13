@@ -312,6 +312,7 @@ export function InputBarModelPicker({
     >
       <DropdownMenuTrigger asChild>
         <Button
+          className="px-2"
           variant="ghost-secondary"
           size={buttonSize}
           label={label}
