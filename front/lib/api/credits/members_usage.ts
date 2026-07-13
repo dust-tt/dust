@@ -458,20 +458,25 @@ async function fetchSeatDataForMembersTable({
 // Live per-seat AWU balance remaining for paid (seat-managed) seats, keyed by
 // userId. This is the expensive read (`listMetronomeSeatBalances`) gated to poke
 // — free seats are handled separately by `fetchFreeSeatCreditsForMembersTable`.
+// Always queried by explicit `seatIds`: Metronome's unfiltered seat-balances
+// list silently omits most seats on contracts with a few hundred+ seats.
 // Degrades to an empty map on any read failure so the table still renders.
 async function fetchSeatBalancesForMembersTable({
   metronomeCustomerId,
   metronomeContractId,
+  userIds,
 }: {
   metronomeCustomerId: string | null;
   metronomeContractId: string | null;
+  userIds: string[];
 }): Promise<Map<string, number>> {
-  if (!metronomeCustomerId || !metronomeContractId) {
+  if (!metronomeCustomerId || !metronomeContractId || userIds.length === 0) {
     return new Map();
   }
   const result = await listMetronomeSeatBalances({
     metronomeCustomerId,
     metronomeContractId,
+    seatIds: userIds,
   });
   const balanceByUserId = new Map<string, number>();
   if (result.isErr()) {
@@ -1323,6 +1328,7 @@ export async function getMembersUsage({
       ? fetchSeatBalancesForMembersTable({
           metronomeCustomerId: metronomeCustomerId ?? null,
           metronomeContractId,
+          userIds: users.map((u) => u.sId),
         })
       : Promise.resolve(new Map<string, number>()),
     // Free-seat per-user credit balance + granted total. Needed on every surface
