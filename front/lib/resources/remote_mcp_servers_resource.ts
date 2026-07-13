@@ -527,6 +527,21 @@ export class RemoteMCPServerResource extends BaseResource<RemoteMCPServerModel> 
       }
     }
 
+    // Some authorization servers only support pre-registered (static) clients and don't
+    // advertise a registration endpoint at all. Attempting DCR in that case always fails and
+    // the resulting error is misleading (it looks like a failed registration attempt rather
+    // than "this server doesn't support automatic setup").
+    if (!metadata.registration_endpoint) {
+      return new Err(
+        new DustError(
+          "internal_error",
+          "This server does not support automatic OAuth setup (no dynamic client " +
+            "registration endpoint). Please use Static OAuth with the client ID/secret " +
+            "provided by the server's OAuth application."
+        )
+      );
+    }
+
     try {
       // Try DCR.
       const fullInformation = await registerClient(serverUrl, {
