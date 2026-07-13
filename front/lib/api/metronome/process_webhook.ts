@@ -1613,13 +1613,6 @@ export async function processMetronomeWebhook({
 
       const activeSubscription =
         await SubscriptionResource.fetchActiveByWorkspaceModelId(workspace.id);
-      if (!activeSubscription) {
-        logger.warn(
-          { contractId, customerId, workspaceId: workspace.sId },
-          "[Metronome Webhook] contract.start: no active subscription"
-        );
-        break;
-      }
 
       // Idempotency: re-deliveries land here with the active subscription
       // already pointing at the new contract.

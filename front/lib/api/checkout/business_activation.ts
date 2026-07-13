@@ -518,17 +518,6 @@ export async function handleSubscriptionActivationSuccess({
   // Switch workspace DB subscription to CP_BUSINESS_PLAN.
   const activeSubscription =
     await SubscriptionResource.fetchActiveByWorkspaceModelId(workspace.id);
-  if (!activeSubscription) {
-    logger.error(
-      {
-        panic: true,
-        workspaceId: workspace.sId,
-        contractId,
-      },
-      "[Business Activation] No active subscription found during webhook success — cannot activate"
-    );
-    return;
-  }
 
   // Snapshot validation: ensure the Metronome contract on the active subscription
   // still matches what was captured at checkout time. If another checkout already
