@@ -518,7 +518,10 @@ describe("constructPromptMultiActions - system prompt stability", () => {
       '`<knowledge id="..." title="..." ... />` tags, which point to specific workspace knowledge attached to the skill'
     );
     expect(text).toContain(
-      "use the skill's `cat` tool with `nodeId` set to the tag's `id`"
+      "The tag's `id` can be passed as `nodeId` to the skill's knowledge tools"
+    );
+    expect(text).toContain(
+      "`semantic_search` can search within the node and `list` can show its direct children"
     );
     expect(text).not.toContain(
       "Create a git commit with a descriptive message."
