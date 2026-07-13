@@ -1,8 +1,8 @@
 import type {
-  MessageParam,
-  RawMessageStartEvent,
-  RawMessageStreamEvent,
-} from "@anthropic-ai/sdk/resources/messages/messages";
+  BetaRawMessageStartEvent,
+  BetaRawMessageStreamEvent,
+} from "@anthropic-ai/sdk/resources/beta/messages/messages";
+import type { MessageParam } from "@anthropic-ai/sdk/resources/messages/messages";
 import {
   parseAnthropicToolSearchBlock,
   stripUnreplayableToolSearchBlocks,
@@ -98,17 +98,17 @@ const inputConverters: MessageBlockConverters = {
 
 // The incident stream: two tool searches and a client tool call in one burst,
 // ending on stop_reason "tool_use" with NO tool_search_tool_result blocks.
-function incidentStreamEvents(): RawMessageStreamEvent[] {
+function incidentStreamEvents(): BetaRawMessageStreamEvent[] {
   return [
     {
       type: "message_start",
       message: { id: "msg_incident" },
-    } as RawMessageStartEvent,
+    } as BetaRawMessageStartEvent,
     {
       type: "content_block_start",
       index: 0,
       content_block: { type: "text", text: "", citations: [] },
-    } as RawMessageStreamEvent,
+    } as BetaRawMessageStreamEvent,
     {
       type: "content_block_delta",
       index: 0,
@@ -116,8 +116,8 @@ function incidentStreamEvents(): RawMessageStreamEvent[] {
         type: "text_delta",
         text: "Let me find the right tools and enable Go Deep.",
       },
-    } as RawMessageStreamEvent,
-    { type: "content_block_stop", index: 0 } as RawMessageStreamEvent,
+    } as BetaRawMessageStreamEvent,
+    { type: "content_block_stop", index: 0 } as BetaRawMessageStreamEvent,
     {
       type: "content_block_start",
       index: 1,
@@ -127,7 +127,7 @@ function incidentStreamEvents(): RawMessageStreamEvent[] {
         name: "tool_search_tool_bm25",
         input: {},
       },
-    } as RawMessageStreamEvent,
+    } as BetaRawMessageStreamEvent,
     {
       type: "content_block_delta",
       index: 1,
@@ -135,8 +135,8 @@ function incidentStreamEvents(): RawMessageStreamEvent[] {
         type: "input_json_delta",
         partial_json: '{"limit":10,"query":"search retrieve documents"}',
       },
-    } as RawMessageStreamEvent,
-    { type: "content_block_stop", index: 1 } as RawMessageStreamEvent,
+    } as BetaRawMessageStreamEvent,
+    { type: "content_block_stop", index: 1 } as BetaRawMessageStreamEvent,
     {
       type: "content_block_start",
       index: 2,
@@ -146,7 +146,7 @@ function incidentStreamEvents(): RawMessageStreamEvent[] {
         name: "tool_search_tool_bm25",
         input: {},
       },
-    } as RawMessageStreamEvent,
+    } as BetaRawMessageStreamEvent,
     {
       type: "content_block_delta",
       index: 2,
@@ -154,8 +154,8 @@ function incidentStreamEvents(): RawMessageStreamEvent[] {
         type: "input_json_delta",
         partial_json: '{"limit":10,"query":"Google Calendar list events"}',
       },
-    } as RawMessageStreamEvent,
-    { type: "content_block_stop", index: 2 } as RawMessageStreamEvent,
+    } as BetaRawMessageStreamEvent,
+    { type: "content_block_stop", index: 2 } as BetaRawMessageStreamEvent,
     {
       type: "content_block_start",
       index: 3,
@@ -165,7 +165,7 @@ function incidentStreamEvents(): RawMessageStreamEvent[] {
         name: "skill_management__enable_skill",
         input: {},
       },
-    } as RawMessageStreamEvent,
+    } as BetaRawMessageStreamEvent,
     {
       type: "content_block_delta",
       index: 3,
@@ -173,8 +173,8 @@ function incidentStreamEvents(): RawMessageStreamEvent[] {
         type: "input_json_delta",
         partial_json: '{"skillName":"Go Deep"}',
       },
-    } as RawMessageStreamEvent,
-    { type: "content_block_stop", index: 3 } as RawMessageStreamEvent,
+    } as BetaRawMessageStreamEvent,
+    { type: "content_block_stop", index: 3 } as BetaRawMessageStreamEvent,
     {
       type: "message_delta",
       delta: { stop_reason: "tool_use", stop_sequence: null },
@@ -186,14 +186,14 @@ function incidentStreamEvents(): RawMessageStreamEvent[] {
         output_tokens_details: null,
         server_tool_use: null,
       },
-    } as RawMessageStreamEvent,
-    { type: "message_stop" } as RawMessageStreamEvent,
+    } as BetaRawMessageStreamEvent,
+    { type: "message_stop" } as BetaRawMessageStreamEvent,
   ];
 }
 
 async function* streamOf(
-  events: RawMessageStreamEvent[]
-): AsyncGenerator<RawMessageStreamEvent> {
+  events: BetaRawMessageStreamEvent[]
+): AsyncGenerator<BetaRawMessageStreamEvent> {
   for (const event of events) {
     yield event;
   }

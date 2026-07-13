@@ -1,7 +1,5 @@
-import type {
-  MessageCreateParamsNonStreaming,
-  RawMessageStreamEvent,
-} from "@anthropic-ai/sdk/resources";
+import type { MessageCreateParamsNonStreaming } from "@anthropic-ai/sdk/resources";
+import type { BetaRawMessageStreamEvent } from "@anthropic-ai/sdk/resources/beta/messages/messages";
 import {
   type ClaudeSonnetFourDotSix,
   WithAnthropicClaudeSonnetFourDotSixConfig,
@@ -31,6 +29,6 @@ export class AnthropicGlobalClaudeSonnetFourDotSixStream extends WithAnthropicCl
 
 AnthropicGlobalClaudeSonnetFourDotSixStream satisfies StreamEndpointConstructor<
   MessageCreateParamsNonStreaming,
-  RawMessageStreamEvent,
+  BetaRawMessageStreamEvent,
   ClaudeSonnetFourDotSix
 >;

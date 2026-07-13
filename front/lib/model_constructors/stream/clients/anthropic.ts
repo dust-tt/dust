@@ -1,9 +1,9 @@
 import AnthropicClient from "@anthropic-ai/sdk";
 import type {
-  MessageCreateParamsNonStreaming,
-  MessageCreateParamsStreaming,
-  RawMessageStreamEvent,
-} from "@anthropic-ai/sdk/resources/messages/messages";
+  BetaMessageStreamParams,
+  BetaRawMessageStreamEvent,
+} from "@anthropic-ai/sdk/resources/beta/messages/messages";
+import type { MessageCreateParamsNonStreaming } from "@anthropic-ai/sdk/resources/messages/messages";
 import {
   type AnthropicInputConfig,
   anthropicConfigSchema,
@@ -21,7 +21,7 @@ export abstract class AnthropicStream extends WithAnthropicAIInputConverter(
   WithAnthropicAIOutputConverter(
     StreamEndpoint<
       MessageCreateParamsNonStreaming,
-      RawMessageStreamEvent,
+      BetaRawMessageStreamEvent,
       AnthropicInputConfig
     >
   )
@@ -42,14 +42,14 @@ export abstract class AnthropicStream extends WithAnthropicAIInputConverter(
 
   async *streamRaw(
     input: MessageCreateParamsNonStreaming
-  ): AsyncGenerator<RawMessageStreamEvent> {
-    // `buildRequestPayload` is shared with batch and omits `stream`; opt in here.
-    const streamingInput: MessageCreateParamsStreaming = {
+  ): AsyncGenerator<BetaRawMessageStreamEvent> {
+    // `buildRequestPayload` is shared with batch and omits `stream`; the beta
+    // `.stream()` opts in. Non-beta payloads are assignable to the beta params.
+    const streamingInput: BetaMessageStreamParams = {
       ...input,
-      stream: true,
       cache_control: { type: "ephemeral" },
     };
-    const stream = this.client.messages.stream(streamingInput);
+    const stream = this.client.beta.messages.stream(streamingInput);
 
     // The SDK reuses and mutates event objects, so deep-copy each one.
     for await (const event of stream) {
@@ -58,7 +58,7 @@ export abstract class AnthropicStream extends WithAnthropicAIInputConverter(
   }
 
   async *rawStreamOutputToEvents(
-    stream: AsyncGenerator<RawMessageStreamEvent>
+    stream: AsyncGenerator<BetaRawMessageStreamEvent>
   ): AsyncGenerator<ModelResponseEvent> {
     yield* rawOutputToEvents(stream, this.metadata(), this);
   }
