@@ -19,9 +19,11 @@ function createServer(
     });
   }
 
-  // Register web tools (websearch, webbrowser)
+  // This server can be added mid-conversation, so its web tools must not inherit
+  // the dedicated web server's eager flag and invalidate the cached tool prefix.
   for (const tool of WEB_TOOLS) {
-    registerTool(auth, toolContext, server, tool, {
+    const deferredTool = { ...tool, eager: undefined };
+    registerTool(auth, toolContext, server, deferredTool, {
       monitoringName: HTTP_CLIENT_TOOL_NAME,
     });
   }

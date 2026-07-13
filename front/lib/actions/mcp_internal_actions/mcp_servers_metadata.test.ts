@@ -30,6 +30,7 @@ import {
   getInternalMCPServerMetadata,
   getInternalMCPServerToolArgumentsRequiringApproval,
   getInternalMCPServerToolStakes,
+  isAutoInternalMCPServerName,
 } from "@app/lib/actions/mcp_internal_actions/constants";
 import { InMemoryWithAuthTransport } from "@app/lib/actions/mcp_internal_actions/in_memory_with_auth_transport";
 import { getInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/servers";
@@ -259,6 +260,29 @@ describe("MCP Servers Metadata Snapshot", () => {
         `Failed to extract metadata from ${serversWithErrors.length} server(s):\n${errorDetails}`
       );
     }
+  });
+
+  it("does not define eager tools on servers added mid-conversation", async () => {
+    const eagerConditionalTools: string[] = [];
+
+    for (const serverName of AVAILABLE_INTERNAL_MCP_SERVER_NAMES) {
+      if (isAutoInternalMCPServerName(serverName)) {
+        continue;
+      }
+
+      const tools = await getToolsFromServer(serverName);
+      for (const tool of tools) {
+        if (tool.eager) {
+          eagerConditionalTools.push(`${serverName}.${tool.name}`);
+        }
+      }
+    }
+
+    expect(
+      eagerConditionalTools,
+      "Eager tools must be present from the first model call. Adding one " +
+        "mid-conversation invalidates the cached tool prefix."
+    ).toEqual([]);
   });
 
   it("should have stable tool billing info across all servers", () => {
