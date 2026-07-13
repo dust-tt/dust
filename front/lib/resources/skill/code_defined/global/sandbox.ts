@@ -6,6 +6,7 @@ import {
   filterDsbxToolEntries,
   getSandboxImage,
   getToolsForProvider,
+  type ToolManifest,
   toolManifestToCompactText,
 } from "@app/lib/api/sandbox/image";
 import type { Authenticator } from "@app/lib/auth";
@@ -289,6 +290,27 @@ value you should not have — apologize, do not retry the command, and do not
 attempt to reconstruct, decode, or otherwise recover the value.`;
 }
 
+function buildNotableDustHelpersSection(manifest: ToolManifest): string {
+  const helpers = new Map(
+    (manifest.tools.dust ?? [])
+      .filter((tool) => /\.(?:docx|pptx|xlsx)\b/.test(tool.description))
+      .map((tool) => [tool.name, tool])
+  );
+
+  if (helpers.size === 0) {
+    return "";
+  }
+
+  const descriptions = [...helpers.values()]
+    .map((tool) => {
+      const summary = tool.description.match(/^.*?\.(?=\s|$)/)?.[0];
+      return `- \`${tool.name}\`: ${summary ?? tool.description}`;
+    })
+    .join("\n");
+
+  return `Notable Dust helpers:\n\n${descriptions}\n\n`;
+}
+
 async function buildSandboxInstructions(
   auth: Authenticator,
   providerId: ModelProviderIdType | undefined,
@@ -326,9 +348,9 @@ async function buildSandboxInstructions(
     return `${sandboxInstructions}\n\n${filesSections}\n\n${networkAccessSection}\n\n${environmentVariablesSection}`;
   }
 
-  const compactManifest = toolManifestToCompactText(
-    createToolManifest(toolsResult.value)
-  );
+  const manifest = createToolManifest(toolsResult.value);
+  const compactManifest = toolManifestToCompactText(manifest);
+  const notableDustHelpersSection = buildNotableDustHelpersSection(manifest);
 
   return `${sandboxInstructions}
 
@@ -347,16 +369,7 @@ possible. Call \`describe_toolset\` for full descriptions and usage metadata.
 System tools are standard preinstalled command-line utilities. Dust tools are
 non-standard helpers provided by Dust.
 
-Notable Dust helpers:
-
-- \`xlsx_inspect\`: Inspect workbook structure, formulas, values, and styles.
-- \`pptx_inspect\`: Inspect and QA slide structure, content, rendering, and
-  fidelity.
-- \`docx_inspect\`: Inspect document structure, styles, content, and rendering.
-- \`pptx_slides\`: Duplicate, move, or delete .pptx slides without corrupting
-  the package.
-
-Run \`<command> --help\` for detailed modes and flags. Use ONLY the tools listed
+${notableDustHelpersSection}Run \`<command> --help\` for detailed modes and flags. Use ONLY the tools listed
 above, NOTHING ELSE.
 
 `;
