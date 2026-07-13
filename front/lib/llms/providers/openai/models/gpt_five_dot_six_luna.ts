@@ -1,5 +1,7 @@
 export function WithDustGptFiveDotSixLunaConfig<
-  TBase extends abstract new (...args: any[]) => object,
+  TBase extends abstract new (
+    ...args: any[]
+  ) => object,
 >(Base: TBase) {
   abstract class DustGptFiveDotSixLuna extends Base {
     static readonly displayName = "GPT-5.6 Luna";

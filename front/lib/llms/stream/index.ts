@@ -153,9 +153,9 @@ export const DUST_STREAM_ENDPOINTS = {
 
 export function getStreamEndpoints(
   workspaceConfiguration: WorkspaceConfig,
-  inputCondition: Where<EndpointConfig>,
+  inputCondition: Where<EndpointConfig>
 ) {
   return Object.values(DUST_STREAM_ENDPOINTS).filter((constructor) =>
-    isEndpointAvailable(constructor, workspaceConfiguration, inputCondition),
+    isEndpointAvailable(constructor, workspaceConfiguration, inputCondition)
   );
 }

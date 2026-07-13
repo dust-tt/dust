@@ -5,7 +5,7 @@ import type { StreamEndpointConstructor } from "@app/lib/model_constructors/stre
 import { GLOBAL } from "@app/lib/model_constructors/types/regions";
 
 export class OpenAIResponsesGlobalGptFiveDotSixLunaStream extends WithOpenAIGptFiveDotSixLunaConfig(
-  OpenAIResponsesStream,
+  OpenAIResponsesStream
 ) {
   // https://developers.openai.com/api/docs/models/gpt-5.6-luna
   static readonly tokenPricing = {

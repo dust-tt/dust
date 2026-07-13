@@ -3,7 +3,7 @@ import { defineDustStreamEndpoint } from "@app/lib/llms/stream/dust_stream_endpo
 import { OpenAIResponsesEuropeGptFiveDotSixTerraStream } from "@app/lib/model_constructors/stream/endpoints/openai_responses_eu_gpt_five_dot_six_terra";
 
 export class DustOpenAIResponsesEuropeGptFiveDotSixTerraStream extends WithDustGptFiveDotSixTerraConfig(
-  OpenAIResponsesEuropeGptFiveDotSixTerraStream,
+  OpenAIResponsesEuropeGptFiveDotSixTerraStream
 ) {
   static readonly endpointFilter = {};
 }

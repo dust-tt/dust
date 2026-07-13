@@ -45,49 +45,49 @@ function parseToolArguments(argumentsJson: string): Record<string, unknown> {
 export interface OutputEventConverters {
   responseCreatedToResponseIdEvent(
     metadata: EndpointMetadata,
-    event: ResponseCreatedEvent,
+    event: ResponseCreatedEvent
   ): ResponseIdEvent;
   textDeltaToTextDeltaEvent(
     metadata: EndpointMetadata,
-    delta: string,
+    delta: string
   ): TextDeltaEvent;
   reasoningSummaryDeltaToReasoningDeltaEvent(
     metadata: EndpointMetadata,
-    delta: string,
+    delta: string
   ): ReasoningDeltaEvent;
   functionCallToToolCallStartedEvent(
     metadata: EndpointMetadata,
     id: string,
     index: number,
-    name: string,
+    name: string
   ): ToolCallStartedEvent;
   argumentsDeltaToToolCallDeltaEvent(
-    metadata: EndpointMetadata,
+    metadata: EndpointMetadata
   ): ToolCallDeltaEvent;
   accumulatedTextToTextEvent(
     metadata: EndpointMetadata,
     text: string,
-    id?: string,
+    id?: string
   ): TextEvent;
   accumulatedReasoningToReasoningEvent(
     metadata: EndpointMetadata,
     text: string,
     id?: string,
-    encryptedContent?: string,
+    encryptedContent?: string
   ): ReasoningEvent;
   functionCallToToolCallEvent(
     metadata: EndpointMetadata,
     id: string,
     name: string,
-    argumentsJson: string,
+    argumentsJson: string
   ): ToolCallEvent;
   usageToTokenUsageEvent(
     metadata: EndpointMetadata,
-    usage: ResponseUsage,
+    usage: ResponseUsage
   ): TokenUsageEvent;
   streamErrorToErrorEvent(
     metadata: EndpointMetadata,
-    error: unknown,
+    error: unknown
   ): ErrorEvent;
 }
 
@@ -95,7 +95,7 @@ export interface OutputEventConverters {
 
 export function responseCreatedToResponseIdEvent(
   metadata: EndpointMetadata,
-  event: ResponseCreatedEvent,
+  event: ResponseCreatedEvent
 ): ResponseIdEvent {
   return {
     type: "response_id",
@@ -106,14 +106,14 @@ export function responseCreatedToResponseIdEvent(
 
 export function textDeltaToTextDeltaEvent(
   metadata: EndpointMetadata,
-  delta: string,
+  delta: string
 ): TextDeltaEvent {
   return { type: "text_delta", content: { value: delta }, metadata };
 }
 
 export function reasoningSummaryDeltaToReasoningDeltaEvent(
   metadata: EndpointMetadata,
-  delta: string,
+  delta: string
 ): ReasoningDeltaEvent {
   return { type: "reasoning_delta", content: { value: delta }, metadata };
 }
@@ -122,13 +122,13 @@ export function functionCallToToolCallStartedEvent(
   metadata: EndpointMetadata,
   id: string,
   index: number,
-  name: string,
+  name: string
 ): ToolCallStartedEvent {
   return { type: "tool_call_started", content: { id, index, name }, metadata };
 }
 
 export function argumentsDeltaToToolCallDeltaEvent(
-  metadata: EndpointMetadata,
+  metadata: EndpointMetadata
 ): ToolCallDeltaEvent {
   return { type: "tool_call_delta", metadata };
 }
@@ -136,7 +136,7 @@ export function argumentsDeltaToToolCallDeltaEvent(
 export function accumulatedTextToTextEvent(
   metadata: EndpointMetadata,
   text: string,
-  id?: string,
+  id?: string
 ): TextEvent {
   return {
     type: "text",
@@ -151,7 +151,7 @@ export function accumulatedReasoningToReasoningEvent(
   metadata: EndpointMetadata,
   text: string,
   id?: string,
-  encryptedContent?: string,
+  encryptedContent?: string
 ): ReasoningEvent {
   // The reasoning item id and its encrypted content are needed to resend the
   // reasoning item on the next turn (the Responses API requires both).
@@ -175,7 +175,7 @@ export function functionCallToToolCallEvent(
   metadata: EndpointMetadata,
   id: string,
   name: string,
-  argumentsJson: string,
+  argumentsJson: string
 ): ToolCallEvent {
   return {
     type: "tool_call",
@@ -186,7 +186,7 @@ export function functionCallToToolCallEvent(
 
 export function usageToTokenUsageEvent(
   metadata: EndpointMetadata,
-  usage: ResponseUsage,
+  usage: ResponseUsage
 ): TokenUsageEvent {
   const cacheHit = usage.input_tokens_details?.cached_tokens ?? 0;
   const reasoning = usage.output_tokens_details?.reasoning_tokens ?? 0;
@@ -237,7 +237,7 @@ function classifyStreamError(error: unknown): ClassifiedStreamError {
 // default branch.
 function apiErrorToErrorEvent(
   metadata: EndpointMetadata,
-  error: APIError,
+  error: APIError
 ): ErrorEvent {
   const status = error.status;
   switch (status) {
@@ -299,7 +299,7 @@ function apiErrorToErrorEvent(
 // `ErrorEvent`, so everything leaving the endpoint is an event, not an exception.
 export function streamErrorToErrorEvent(
   metadata: EndpointMetadata,
-  error: unknown,
+  error: unknown
 ): ErrorEvent {
   const classified = classifyStreamError(error);
   switch (classified.kind) {
@@ -331,7 +331,7 @@ export function streamErrorToErrorEvent(
 export function outputItemToEvents(
   item: ResponseOutputItem,
   metadata: EndpointMetadata,
-  converters: OutputEventConverters,
+  converters: OutputEventConverters
 ): ModelResponseEvent[] {
   switch (item.type) {
     case "message":
@@ -342,7 +342,7 @@ export function outputItemToEvents(
               converters.accumulatedTextToTextEvent(
                 metadata,
                 part.text,
-                item.id,
+                item.id
               ),
             ];
           case "refusal":
@@ -367,7 +367,7 @@ export function outputItemToEvents(
               metadata,
               text,
               item.id,
-              item.encrypted_content ?? undefined,
+              item.encrypted_content ?? undefined
             ),
           ]
         : [];
@@ -378,7 +378,7 @@ export function outputItemToEvents(
           metadata,
           item.call_id,
           item.name,
-          item.arguments,
+          item.arguments
         ),
       ];
     // Output item types we don't surface (server tools, image gen, etc.).
@@ -420,7 +420,7 @@ export function outputItemToEvents(
 export async function* rawOutputToEvents(
   stream: AsyncGenerator<ResponseStreamEvent>,
   metadata: EndpointMetadata,
-  converters: OutputEventConverters,
+  converters: OutputEventConverters
 ): AsyncGenerator<ModelResponseEvent> {
   const aggregated: (TextEvent | ReasoningEvent | ToolCallEvent)[] = [];
   let usage: ResponseUsage | null = null;
@@ -456,7 +456,7 @@ export async function* rawOutputToEvents(
         outputEvents = [
           converters.reasoningSummaryDeltaToReasoningDeltaEvent(
             metadata,
-            event.delta,
+            event.delta
           ),
         ];
         break;
@@ -467,7 +467,7 @@ export async function* rawOutputToEvents(
               metadata,
               event.item.call_id,
               event.output_index,
-              event.item.name,
+              event.item.name
             ),
           ];
         }
@@ -486,7 +486,7 @@ export async function* rawOutputToEvents(
       case "response.failed":
         yield converters.streamErrorToErrorEvent(
           metadata,
-          event.response.error,
+          event.response.error
         );
         return;
       case "response.incomplete":
@@ -580,7 +580,7 @@ export async function* rawOutputToEvents(
 // -- Non-streaming entry point: a complete batch response → events --
 
 function isNonDeltaEvent(
-  event: ModelResponseEvent,
+  event: ModelResponseEvent
 ): event is NonDeltaResponseEvent {
   return (
     event.type !== "text_delta" &&
@@ -596,7 +596,7 @@ function isNonDeltaEvent(
 export function responseToEvents(
   response: OpenAIResponse,
   metadata: EndpointMetadata,
-  converters: OutputEventConverters,
+  converters: OutputEventConverters
 ): NonDeltaResponseEvent[] {
   // Terminal failure states surface as a single error event.
   if (response.status === "failed") {

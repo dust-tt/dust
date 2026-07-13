@@ -5,7 +5,7 @@ import type { StreamEndpointConstructor } from "@app/lib/model_constructors/stre
 import { EUROPE } from "@app/lib/model_constructors/types/regions";
 
 export class OpenAIResponsesEuropeGptFiveDotSixSolStream extends WithOpenAIGptFiveDotSixSolConfig(
-  OpenAIResponsesStream,
+  OpenAIResponsesStream
 ) {
   // https://developers.openai.com/api/docs/models/gpt-5.6-sol
   // Regional (data residency) endpoints are charged a 10% uplift for models
