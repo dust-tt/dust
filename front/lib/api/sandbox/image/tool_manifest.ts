@@ -44,6 +44,24 @@ export function toolManifestToJSON(manifest: ToolManifest): string {
   return JSON.stringify(manifest, null, 2);
 }
 
+export function toolManifestToCompactText(manifest: ToolManifest): string {
+  return TOOL_RUNTIMES.flatMap((runtime) => {
+    const tools = manifest.tools[runtime];
+    if (!tools) {
+      return [];
+    }
+
+    const entries = new Set(
+      tools.map((tool) =>
+        tool.version ? `${tool.name} ${tool.version}` : tool.name
+      )
+    );
+    const label = runtime.charAt(0).toUpperCase() + runtime.slice(1);
+
+    return [`- ${label}: ${[...entries].join(", ")}`];
+  }).join("\n");
+}
+
 export function toolManifestToYAML(manifest: ToolManifest): string {
   return yaml.dump(manifest);
 }

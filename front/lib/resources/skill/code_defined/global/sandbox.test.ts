@@ -6,7 +6,7 @@ import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { describe, expect, it } from "vitest";
 
 describe("sandboxSkill", () => {
-  it("points to the on-demand toolset description instead of inlining it", async () => {
+  it("inlines a compact toolset and points to detailed help", async () => {
     const { authenticator: auth } = await createResourceTest({});
 
     const instructions = await sandboxSkill.fetchInstructions(auth, {
@@ -14,7 +14,11 @@ describe("sandboxSkill", () => {
     });
 
     expect(instructions).toContain("dsbx tools");
+    expect(instructions).toContain("- System: git, curl");
+    expect(instructions).toContain("- Python: python, pandas 3.0.1");
+    expect(instructions).toContain("- Node: typescript, tsx");
     expect(instructions).toContain("`describe_toolset`");
+    expect(instructions).toContain("`<command> --help`");
     expect(instructions).not.toContain("name: dsbx");
     expect(instructions).not.toContain("```yaml");
   });
@@ -29,6 +33,11 @@ describe("sandboxSkill", () => {
     });
 
     expect(instructions).not.toContain("dsbx tools");
+    const systemTools = instructions
+      .split("\n")
+      .find((line) => line.startsWith("- System:"));
+    expect(systemTools).toBeDefined();
+    expect(systemTools).not.toContain("dsbx");
   });
 
   it("instructs the model to analyze mounted tabular files with code", async () => {

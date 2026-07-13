@@ -1,5 +1,6 @@
 import {
   createToolManifest,
+  toolManifestToCompactText,
   toolManifestToJSON,
   toolManifestToYAML,
 } from "@app/lib/api/sandbox/image/tool_manifest";
@@ -115,6 +116,27 @@ describe("toolManifestToJSON()", () => {
 
     expect(parsed.version).toBe("1.0");
     expect(parsed.tools.system).toHaveLength(1);
+  });
+});
+
+describe("toolManifestToCompactText()", () => {
+  test("lists names and versions on one line per runtime", () => {
+    const tools: ToolEntry[] = [
+      { name: "curl", description: "HTTP client", runtime: "system" },
+      {
+        name: "pandas",
+        version: "2.2.3",
+        description: "Data analysis",
+        runtime: "python",
+      },
+      { name: "tsx", description: "TypeScript executor", runtime: "node" },
+      { name: "curl", description: "HTTP client", runtime: "system" },
+    ];
+    const manifest = createToolManifest(tools);
+
+    const text = toolManifestToCompactText(manifest);
+
+    expect(text).toBe("- System: curl\n- Python: pandas 2.2.3\n- Node: tsx");
   });
 });
 
