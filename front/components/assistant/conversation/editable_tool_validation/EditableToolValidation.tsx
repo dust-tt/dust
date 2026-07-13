@@ -19,7 +19,7 @@ interface EditableToolValidationProps {
 export function isEditableToolValidationSupported(
   blockedAction: ValidationRequiredToolExecution
 ): boolean {
-  return !!blockedAction.editable?.isEditable;
+  return !!blockedAction.editableArguments?.length;
 }
 
 export function EditableToolValidation({
