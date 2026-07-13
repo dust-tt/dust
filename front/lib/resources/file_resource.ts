@@ -110,6 +110,7 @@ import { Op, UniqueConstraintError } from "sequelize";
 import type { Readable, Writable } from "stream";
 import { validate } from "uuid";
 import type { ModelStaticWorkspaceAware } from "./storage/wrappers/workspace_models";
+import { destroyForWorkspaceInBatches } from "./storage/wrappers/workspace_models";
 
 export type FileVersion = "processed" | "original" | "public";
 
@@ -131,11 +132,6 @@ export type ShareFileResponseBody = {
   shareUrl: string;
   viewerFiles: ShareFrameViewerFile[];
 };
-
-// Number of rows deleted per statement in `deleteAllForWorkspaceInBatches`. Keeps each
-// transaction short-lived to avoid blocking concurrent `CREATE INDEX CONCURRENTLY` migrations
-// on large workspaces (see dust-tt/tasks#9564).
-const DELETE_BATCH_SIZE = 1000;
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export interface FileResource extends ReadonlyAttributesType<FileModel> {}
@@ -471,41 +467,7 @@ export class FileResource extends BaseResource<FileModel> {
     // unbounded DELETE. A single-statement delete on a large workspace can hold a transaction
     // open for a long time, which blocks `CREATE INDEX CONCURRENTLY` statements run by other
     // migrations (see dust-tt/tasks#9564).
-    return this.deleteAllForWorkspaceInBatches(workspaceId);
-  }
-
-  private static async deleteAllForWorkspaceInBatches(
-    workspaceId: ModelId
-  ): Promise<number> {
-    let totalDeleted = 0;
-
-    for (;;) {
-      // Select a small batch of ids first, then delete by id. This keeps each transaction short
-      // (bounded by DELETE_BATCH_SIZE rows) instead of locking/deleting the whole table at once.
-      const rows = await this.model.findAll({
-        attributes: ["id"],
-        where: { workspaceId },
-        order: [["id", "ASC"]],
-        limit: DELETE_BATCH_SIZE,
-      });
-
-      if (rows.length === 0) {
-        break;
-      }
-
-      const deletedCount = await this.model.destroy({
-        where: { id: { [Op.in]: rows.map((r) => r.id) } },
-      });
-
-      totalDeleted += deletedCount;
-
-      // Fewer rows than the batch size means we reached the end of the table for this workspace.
-      if (rows.length < DELETE_BATCH_SIZE) {
-        break;
-      }
-    }
-
-    return totalDeleted;
+    return destroyForWorkspaceInBatches(this.model, { workspaceId });
   }
 
   static async deleteAllForUser(

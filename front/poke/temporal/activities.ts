@@ -68,6 +68,7 @@ import {
   UserToolApprovalModel,
 } from "@app/lib/resources/storage/models/user";
 import { WorkspaceHasDomainModel } from "@app/lib/resources/storage/models/workspace_has_domain";
+import { destroyForWorkspaceInBatches } from "@app/lib/resources/storage/wrappers/workspace_models";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { TagResource } from "@app/lib/resources/tags_resource";
 import { TakeawaysResource } from "@app/lib/resources/takeaways_resource";
@@ -878,11 +879,11 @@ export async function deleteWorkspaceUserMetadataActivity({
     return;
   }
 
-  // Delete all workspace-scoped user metadata
-  const deletedCount = await UserMetadataModel.destroy({
-    where: {
-      workspaceId: workspace.id,
-    },
+  // Delete all workspace-scoped user metadata. Batched: these tables grow with user count and an
+  // unbounded DELETE can hold a long-lived transaction that blocks concurrent
+  // `CREATE INDEX CONCURRENTLY` migrations (see dust-tt/tasks#9564).
+  const deletedCount = await destroyForWorkspaceInBatches(UserMetadataModel, {
+    workspaceId: workspace.id,
   });
 
   logger.info(
@@ -890,11 +891,12 @@ export async function deleteWorkspaceUserMetadataActivity({
     "Deleted workspace-scoped user metadata"
   );
 
-  const deleteCountApproval = await UserToolApprovalModel.destroy({
-    where: {
+  const deleteCountApproval = await destroyForWorkspaceInBatches(
+    UserToolApprovalModel,
+    {
       workspaceId: workspace.id,
-    },
-  });
+    }
+  );
 
   logger.info(
     { workspaceId, deleteCountApproval },
