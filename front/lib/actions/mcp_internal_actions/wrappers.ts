@@ -44,7 +44,7 @@ export function registerTool(
           stake: tool.stake,
           displayLabels: tool.displayLabels,
           eager: tool.eager,
-          editable: tool.editable,
+          editableArguments: tool.editableArguments,
         },
       },
     },

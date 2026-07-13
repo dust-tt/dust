@@ -65,11 +65,6 @@ export type ToolDisplayLabels = {
   icon?: InternalAllowedIconType; // optional per-tool icon override
 };
 
-export type EditableToolConfig = {
-  isEditable: boolean;
-  editableArguments: string[];
-};
-
 export type MCPToolType = {
   name: string;
   description: string;
@@ -81,7 +76,7 @@ export type MCPToolType = {
   // being deferred behind tool search. Absent for remote/client-side tools, which
   // therefore default to deferred.
   eager?: boolean;
-  editable?: EditableToolConfig;
+  editableArguments?: string[];
 };
 
 export type MCPServerType = {
