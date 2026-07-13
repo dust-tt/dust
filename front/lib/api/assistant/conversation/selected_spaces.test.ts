@@ -13,6 +13,8 @@ vi.mock("@app/lib/api/audit/workos_audit", async (importOriginal) => {
 
 import {
   addSelectedConversationSpaces,
+  copySelectedConversationSpacesToChild,
+  getEffectiveSpaceIdsForAgentRun,
   listSelectableSpaces,
   type SelectedConversationSpacesError,
   validateSelectableSpaces,
@@ -21,6 +23,7 @@ import { Authenticator } from "@app/lib/auth";
 import { ConversationSelectedSpaceResource } from "@app/lib/resources/conversation_selected_space_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
+import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
@@ -81,6 +84,16 @@ describe("selected conversation Spaces", () => {
       workspace.sId
     );
     await regularGroup(space).dangerouslyAddMembers(internalAdminAuth, {
+      users: [user],
+    });
+    await auth.refresh();
+  }
+
+  async function removeCurrentUser(space: SpaceResource) {
+    const internalAdminAuth = await Authenticator.internalAdminForWorkspace(
+      workspace.sId
+    );
+    await regularGroup(space).dangerouslyRemoveMembers(internalAdminAuth, {
       users: [user],
     });
     await auth.refresh();
@@ -267,5 +280,115 @@ describe("selected conversation Spaces", () => {
       )
     ).toEqual([]);
     expect(mockEmitAuditLogEvent).not.toHaveBeenCalled();
+  });
+
+  it("uses selected Spaces as effective runtime scope when still valid", async () => {
+    await enableFeature();
+    const selectedSpace = await memberOpenSpace();
+    const requestedSpaceModelIds = [globalSpace.id];
+    const agentConfiguration = await AgentConfigurationFactory.createTestAgent(
+      auth,
+      { requestedSpaceIds: requestedSpaceModelIds }
+    );
+    const conv = await conversation();
+
+    await ConversationSelectedSpaceResource.upsertForConversation(auth, {
+      conversation: conv,
+      origin: "input_bar",
+      spaces: [selectedSpace],
+    });
+
+    const effectiveSpaceIds = await getEffectiveSpaceIdsForAgentRun(auth, {
+      agentConfiguration,
+      conversation: conv,
+    });
+
+    expect(effectiveSpaceIds).toEqual(
+      expect.arrayContaining([globalSpace.sId, selectedSpace.sId])
+    );
+  });
+
+  it("keeps valid selected Spaces when another selection becomes invalid", async () => {
+    await enableFeature();
+    const validSelectedSpace = await memberRestrictedSpace();
+    const invalidSelectedSpace = await memberRestrictedSpace();
+    const agentConfiguration = await AgentConfigurationFactory.createTestAgent(
+      auth,
+      { requestedSpaceIds: [globalSpace.id] }
+    );
+    const conv = await conversation();
+
+    await ConversationSelectedSpaceResource.upsertForConversation(auth, {
+      conversation: conv,
+      origin: "input_bar",
+      spaces: [validSelectedSpace, invalidSelectedSpace],
+    });
+    await removeCurrentUser(invalidSelectedSpace);
+
+    await expect(
+      getEffectiveSpaceIdsForAgentRun(auth, {
+        agentConfiguration,
+        conversation: conv,
+      })
+    ).resolves.toEqual([globalSpace.sId, validSelectedSpace.sId]);
+  });
+
+  it("copies valid selected Spaces to a child conversation", async () => {
+    await enableFeature();
+    const selectedSpace = await memberRestrictedSpace();
+    const parentConversation = await conversation();
+    const childConversation = await conversation();
+
+    await ConversationSelectedSpaceResource.upsertForConversation(auth, {
+      conversation: parentConversation,
+      origin: "input_bar",
+      spaces: [selectedSpace],
+    });
+    const userSpy = vi.spyOn(auth, "user").mockReturnValue(null);
+
+    unwrapResult(
+      await copySelectedConversationSpacesToChild(auth, {
+        parentConversation,
+        childConversationId: childConversation.sId,
+      })
+    );
+    userSpy.mockRestore();
+
+    const childSelectedSpaces =
+      await ConversationSelectedSpaceResource.listActiveSpacesByConversation(
+        auth,
+        { conversation: childConversation }
+      );
+    expect(childSelectedSpaces.map((space) => space.sId)).toEqual([
+      selectedSpace.sId,
+    ]);
+    const [selectedSpaceRow] =
+      await ConversationSelectedSpaceResource.listByConversation(auth, {
+        conversation: childConversation,
+      });
+    expect(selectedSpaceRow.origin).toBe("parent_conversation");
+  });
+
+  it("ignores selected Spaces at runtime when the feature flag is disabled", async () => {
+    const selectedSpace = await memberRestrictedSpace();
+    const requestedSpaceModelIds = [globalSpace.id];
+    const agentConfiguration = await AgentConfigurationFactory.createTestAgent(
+      auth,
+      { requestedSpaceIds: requestedSpaceModelIds }
+    );
+    const conv = await conversation();
+
+    await ConversationSelectedSpaceResource.upsertForConversation(auth, {
+      conversation: conv,
+      origin: "input_bar",
+      spaces: [selectedSpace],
+    });
+
+    await expect(
+      getEffectiveSpaceIdsForAgentRun(auth, {
+        agentConfiguration,
+        conversation: conv,
+      })
+    ).resolves.toEqual([globalSpace.sId]);
   });
 });

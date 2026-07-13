@@ -26,6 +26,7 @@ export class SelectedConversationSpacesError extends Error {
   constructor(
     readonly code:
       | "conversation_not_mutable"
+      | "conversation_not_found"
       | "feature_flag_not_found"
       | "space_not_found"
       | "space_not_selectable",
@@ -148,12 +149,14 @@ export async function addSelectedConversationSpaces(
     spaceIds,
     origin,
     auditContext,
+    sourceSelections,
     transaction,
   }: {
     conversation: ConversationWithoutContentType;
     spaceIds: string[];
     origin: ConversationSelectedSpaceOrigin;
     auditContext?: AuditLogContext;
+    sourceSelections?: ConversationSelectedSpaceResource[];
     transaction?: Transaction;
   }
 ): Promise<
@@ -232,6 +235,7 @@ export async function addSelectedConversationSpaces(
         conversation,
         spaces,
         origin,
+        sourceSelections,
         transaction: t,
       });
     newlyActiveSpaces = [...createdSpaces, ...reactivatedSpaces];
@@ -285,4 +289,121 @@ export async function addSelectedConversationSpaces(
   }
 
   return result;
+}
+
+export async function getEffectiveSpaceIdsForAgentRun(
+  auth: Authenticator,
+  {
+    agentConfiguration,
+    conversation,
+    transaction,
+  }: {
+    agentConfiguration: { requestedSpaceIds: string[] };
+    conversation: ConversationWithoutContentType;
+    transaction?: Transaction;
+  }
+): Promise<string[]> {
+  const selectedSpaceIds = await getValidSelectedSpaceIdsForAgentRun(auth, {
+    conversation,
+    transaction,
+  });
+
+  return uniq([...agentConfiguration.requestedSpaceIds, ...selectedSpaceIds]);
+}
+
+/**
+ * Validates durable conversation selections against the runtime authenticator.
+ * Selector provenance is audit history, not an ongoing authorization grant;
+ * system-key runs intentionally preserve selections materialized in the ACL.
+ */
+export async function getValidSelectedSpaceIdsForAgentRun(
+  auth: Authenticator,
+  {
+    conversation,
+    transaction,
+  }: {
+    conversation: ConversationWithoutContentType;
+    transaction?: Transaction;
+  }
+): Promise<string[]> {
+  const featureFlags = await getFeatureFlags(auth);
+  if (!featureFlags.includes("restricted_spaces_in_input_bar")) {
+    return [];
+  }
+
+  const selectedSpaces =
+    await ConversationSelectedSpaceResource.listActiveSpacesByConversation(
+      auth,
+      {
+        conversation,
+        transaction,
+      }
+    );
+
+  return selectedSpaces
+    .filter((space) => space.canRead(auth) && space.isRegular())
+    .map((space) => space.sId);
+}
+
+export async function copySelectedConversationSpacesToChild(
+  auth: Authenticator,
+  {
+    parentConversation,
+    childConversationId,
+  }: {
+    parentConversation: ConversationWithoutContentType;
+    childConversationId: string;
+  }
+): Promise<Result<undefined, SelectedConversationSpacesError>> {
+  const selectedSpaceIds = await getValidSelectedSpaceIdsForAgentRun(auth, {
+    conversation: parentConversation,
+  });
+  if (selectedSpaceIds.length === 0) {
+    return new Ok(undefined);
+  }
+
+  const childConversation = await ConversationResource.fetchById(
+    auth,
+    childConversationId
+  );
+  if (!childConversation) {
+    return new Err(
+      new SelectedConversationSpacesError(
+        "conversation_not_found",
+        "Child conversation not found or access was denied."
+      )
+    );
+  }
+
+  const parentSelections =
+    await ConversationSelectedSpaceResource.listByConversation(auth, {
+      activeOnly: false,
+      conversation: parentConversation,
+    });
+  const selectedSpaceModelIds = new Set(
+    removeNulls(selectedSpaceIds.map(getResourceIdFromSId))
+  );
+  const sourceSelections = parentSelections.filter((selection) =>
+    selectedSpaceModelIds.has(selection.spaceId)
+  );
+  if (sourceSelections.length !== selectedSpaceModelIds.size) {
+    return new Err(
+      new SelectedConversationSpacesError(
+        "space_not_selectable",
+        "Selected Space provenance changed while creating the child conversation."
+      )
+    );
+  }
+
+  const result = await addSelectedConversationSpaces(auth, {
+    conversation: childConversation.toJSON(),
+    spaceIds: selectedSpaceIds,
+    origin: "parent_conversation",
+    sourceSelections,
+  });
+  if (result.isErr()) {
+    return new Err(result.error);
+  }
+
+  return new Ok(undefined);
 }
