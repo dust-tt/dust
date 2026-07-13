@@ -34,6 +34,13 @@ The response includes:
       _meta: {
         dust: {
           timeoutMs: 10_000,
+          // Keep this tool in the eagerly loaded set when Anthropic tool search
+          // is enabled. It is Sidekick's primary tool (the prompt mandates
+          // calling it), and deferring it behind tool search makes it invisible
+          // when the model skips discovery. Completes #28691, which made the
+          // server-side sidekick tools eager but could not cover this
+          // client-side registration.
+          eager: true,
         },
       },
     },
