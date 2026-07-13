@@ -1922,6 +1922,37 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     return nextWakeupAtByConversationId;
   }
 
+  /**
+   * Builds a WHERE condition that only excludes conversations that are
+   * genuine agent-spawned sub-conversations (depth > 0 and not registered as
+   * a user-initiated fork in `conversation_forks`).
+   *
+   * User-initiated branches/forks also increment `depth` (see
+   * `createConversationFork` in `forks.ts`), but they are real,
+   * user-facing conversations that should remain discoverable in every
+   * conversation list. Only `run_agent`-spawned sub-conversations, which are
+   * never registered in `conversation_forks`, should stay hidden.
+   */
+  private static excludeRunAgentSubConversationsWhereClause(
+    auth: Authenticator
+  ): WhereOptions<InferAttributes<ConversationModel>> {
+    const workspaceId = auth.getNonNullableWorkspace().id;
+
+    return {
+      [Op.or]: [
+        { depth: { [Op.eq]: 0 } },
+        {
+          id: {
+            [Op.in]: literal(
+              `(SELECT "childConversationId" FROM "conversation_forks" ` +
+                `WHERE "conversation_forks"."workspaceId" = ${workspaceId})`
+            ),
+          },
+        },
+      ],
+    };
+  }
+
   static async listSpaceUnreadConversationsAndActivityForUser(
     auth: Authenticator,
     spaceIds: number[]
@@ -1944,7 +1975,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
         where: {
           spaceId: { [Op.in]: spaceIds },
           visibility: { [Op.eq]: "unlisted" },
-          depth: { [Op.eq]: 0 }, // Only fetch root conversations
+          ...this.excludeRunAgentSubConversationsWhereClause(auth),
         },
       }
     );
@@ -2121,7 +2152,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     const whereClause: WhereOptions<InferAttributes<ConversationModel>> = {
       ...filterWhere,
       spaceId: spaceModelId,
-      depth: { [Op.eq]: 0 }, // Only fetch root conversations
+      ...this.excludeRunAgentSubConversationsWhereClause(auth),
       ...(restrictToConversationModelIds && {
         id: { [Op.in]: restrictToConversationModelIds },
       }),
