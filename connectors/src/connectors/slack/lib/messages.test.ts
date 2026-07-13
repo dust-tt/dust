@@ -38,12 +38,12 @@ import { formatMessagesForUpsert } from "./messages";
 
 function upsert(messages: MessageElement[]) {
   return formatMessagesForUpsert({
-    dataSourceConfig: {} as unknown as DataSourceConfig,
+    dataSourceConfig: {} as DataSourceConfig,
     channelName: "alerts",
     messages,
     isThread: true,
     connectorId: 1 as ModelId,
-    slackClient: {} as unknown as WebClient,
+    slackClient: {} as WebClient,
   });
 }
 
@@ -93,7 +93,7 @@ describe("formatMessagesForUpsert", () => {
           ],
         },
       ],
-    } as unknown as MessageElement;
+    } as MessageElement;
 
     const result = await upsert([message]);
     const text = sectionFullText(result);
@@ -123,7 +123,7 @@ describe("formatMessagesForUpsert", () => {
           fallback: "deploy failed",
         },
       ],
-    } as unknown as MessageElement;
+    } as MessageElement;
 
     const result = await upsert([message]);
     const text = sectionFullText(result);
@@ -142,7 +142,7 @@ describe("formatMessagesForUpsert", () => {
       user: "U1",
       ts: "1720000000.000300",
       text: "the deploy is done",
-    } as unknown as MessageElement;
+    } as MessageElement;
 
     const text = sectionFullText(await upsert([message]));
 
@@ -163,7 +163,7 @@ describe("formatMessagesForUpsert", () => {
           text: { type: "mrkdwn", text: "block detail line" },
         },
       ],
-    } as unknown as MessageElement;
+    } as MessageElement;
 
     const text = sectionFullText(await upsert([message]));
 
