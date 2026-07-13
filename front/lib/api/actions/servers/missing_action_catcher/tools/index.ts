@@ -1,7 +1,13 @@
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import type { ToolDefinition } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import type { ToolContext } from "@app/lib/actions/types";
+import {
+  isAgentLoopRunContext,
+  type ToolContext,
+} from "@app/lib/actions/types";
 import { Err, Ok } from "@app/types/shared/result";
+import { truncate } from "@app/types/shared/utils/string_utils";
+
+const MAX_ATTEMPTED_ACTION_NAME_LENGTH = 256;
 
 // This server has dynamically created tools based on the agentLoopContext.
 // The tool name comes from the context at runtime.
@@ -18,6 +24,13 @@ export function createMissingActionCatcherTools(
       throw new Error("No action name found");
     }
 
+    const missingActionName = isAgentLoopRunContext(agentLoopContext.runContext)
+      ? truncate(
+          agentLoopContext.runContext.action.functionCallName,
+          MAX_ATTEMPTED_ACTION_NAME_LENGTH
+        )
+      : actionName;
+
     return [
       {
         name: actionName,
@@ -33,7 +46,7 @@ export function createMissingActionCatcherTools(
         handler: async () => {
           return new Err(
             new MCPError(
-              `Tool "${actionName}" not found. ` +
+              `Tool "${missingActionName}" not found. ` +
                 "This answer to the function call is a catch-all.\n" +
                 "  1. The function name needs to be checked to ensure it matches one of the tools " +
                 "available (case sensitivity, word separators, ...).\n" +
