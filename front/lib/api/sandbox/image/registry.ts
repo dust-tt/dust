@@ -480,6 +480,7 @@ SHELLEOF`,
     name: DSBX_TOOL_NAME,
     description: "Dust CLI",
     runtime: "system",
+    category: "dust",
   })
   .runCmd("mkdir -p /skills && chmod 755 /skills", { user: "root" })
   .runCmd(
@@ -498,6 +499,7 @@ SHELLEOF`,
       "apply_patch '*** Begin Patch\\n*** Update File: <path>\\n@@ [context]\\n-old\\n+new\\n*** End Patch'",
     returns: "Summary of applied changes (A/M/D per file)",
     runtime: "system",
+    category: "dust",
     profile: "openai",
   })
   .runCmd(
@@ -679,6 +681,7 @@ SHELLEOF`,
     returns:
       "Header with line range + numbered lines (format: '  N\\tcontent')",
     runtime: "system",
+    category: "dust",
     profile: ["anthropic", "openai"],
   })
   .registerTool({
@@ -689,6 +692,7 @@ SHELLEOF`,
     returns:
       "Header with line range + numbered lines (format: '  N\\tcontent')",
     runtime: "system",
+    category: "dust",
     profile: "gemini",
   })
   .registerTool({
@@ -698,6 +702,7 @@ SHELLEOF`,
     usage: "write_file <path> <content>",
     returns: "'Wrote <path> (<bytes> bytes)' on success",
     runtime: "system",
+    category: "dust",
     profile: ["anthropic", "gemini"],
   })
   .registerTool({
@@ -707,6 +712,7 @@ SHELLEOF`,
     usage: "edit_file [--replace-all] <old_text> <new_text> <path>",
     returns: "'Edited <path>' on success, unified diff on stderr",
     runtime: "system",
+    category: "dust",
     profile: ["anthropic", "gemini"],
   })
   // --- grep_files: anthropic has extra flags ---
@@ -718,6 +724,7 @@ SHELLEOF`,
       "grep_files <pattern> [--glob GLOB] [--path PATH] [--max-results N] [--max-per-file N] [--context N] [--offset N] [--output-mode content|files|count] [--case-insensitive] [--max-line-length N]",
     returns: "file:line:content format with match count footer",
     runtime: "system",
+    category: "dust",
     profile: "anthropic",
   })
   .registerTool({
@@ -728,6 +735,7 @@ SHELLEOF`,
       "grep_files <pattern> [--glob GLOB] [--path PATH] [--max-results N] [--max-per-file N] [--context N] [--offset N]",
     returns: "file:line:content format with match count footer",
     runtime: "system",
+    category: "dust",
     profile: ["openai", "gemini"],
   })
   // --- glob: uniform with pagination ---
@@ -737,6 +745,7 @@ SHELLEOF`,
     usage: "glob <pattern> [--path PATH] [--offset N] [--limit N]",
     returns: "Sorted file paths with pagination hint",
     runtime: "system",
+    category: "dust",
   })
   // --- list_dir: uniform with type suffixes and pagination ---
   .registerTool({
@@ -747,6 +756,7 @@ SHELLEOF`,
     returns: "Sorted paths with type suffixes and pagination hint",
     profile: ["openai", "gemini"],
     runtime: "system",
+    category: "dust",
   })
   // --- xlsx_inspect: structural inspection of .xlsx workbooks ---
   .registerTool({

@@ -10,6 +10,7 @@ import * as yaml from "js-yaml";
 export function createToolManifest(tools: readonly ToolEntry[]): ToolManifest {
   const toolsByCategory: Record<ToolCategory, ManifestToolEntry[]> = {
     system: [],
+    dust: [],
     office: [],
     python: [],
     node: [],

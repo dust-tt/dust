@@ -344,9 +344,9 @@ ${compactManifest}
 
 Versions are shown when pinned. Installing packages in the sandbox is NOT
 possible. Call \`describe_toolset\` for full descriptions and usage metadata.
-Office tools are Dust-specific helpers for structural inspection, QA,
-rendering, and safe slide operations. Run \`<command> --help\` for detailed
-modes and flags. Use ONLY the tools listed above, NOTHING ELSE.
+System tools are standard preinstalled command-line utilities. Dust and Office
+tools are Dust-provided helpers. Run \`<command> --help\` for detailed modes
+and flags. Use ONLY the tools listed above, NOTHING ELSE.
 
 `;
 }

@@ -19,6 +19,12 @@ describe("createToolManifest()", () => {
     const tools: ToolEntry[] = [
       { name: "curl", description: "HTTP client", runtime: "system" },
       {
+        name: "read_file",
+        description: "File reader",
+        runtime: "system",
+        category: "dust",
+      },
+      {
         name: "xlsx_inspect",
         description: "Workbook inspector",
         runtime: "system",
@@ -32,6 +38,9 @@ describe("createToolManifest()", () => {
 
     expect(manifest.tools.system).toEqual([
       { name: "curl", description: "HTTP client" },
+    ]);
+    expect(manifest.tools.dust).toEqual([
+      { name: "read_file", description: "File reader" },
     ]);
     expect(manifest.tools.office).toEqual([
       { name: "xlsx_inspect", description: "Workbook inspector" },
@@ -52,6 +61,7 @@ describe("createToolManifest()", () => {
     const manifest = createToolManifest(tools);
 
     expect(manifest.tools.system).toBeDefined();
+    expect(manifest.tools.dust).toBeUndefined();
     expect(manifest.tools.office).toBeUndefined();
     expect(manifest.tools.python).toBeUndefined();
     expect(manifest.tools.node).toBeUndefined();
@@ -134,6 +144,12 @@ describe("toolManifestToCompactText()", () => {
     const tools: ToolEntry[] = [
       { name: "curl", description: "HTTP client", runtime: "system" },
       {
+        name: "read_file",
+        description: "File reader",
+        runtime: "system",
+        category: "dust",
+      },
+      {
         name: "xlsx_inspect",
         description: "Workbook inspector",
         runtime: "system",
@@ -153,7 +169,7 @@ describe("toolManifestToCompactText()", () => {
     const text = toolManifestToCompactText(manifest);
 
     expect(text).toBe(
-      "- System: curl\n- Office: xlsx_inspect\n- Python: pandas 2.2.3\n- Node: tsx"
+      "- System: curl\n- Dust: read_file\n- Office: xlsx_inspect\n- Python: pandas 2.2.3\n- Node: tsx"
     );
   });
 });

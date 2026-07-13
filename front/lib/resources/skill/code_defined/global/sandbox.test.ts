@@ -16,6 +16,9 @@ describe("sandboxSkill", () => {
     expect(instructions).toContain("dsbx tools");
     expect(instructions).toContain("- System: git, curl");
     expect(instructions).toContain(
+      "- Dust: dsbx, apply_patch, read_file, write_file, edit_file, grep_files, glob, list_dir"
+    );
+    expect(instructions).toContain(
       "- Office: xlsx_inspect, pptx_inspect, pptx_slides, docx_inspect"
     );
     expect(instructions).toContain("- Python: python, pandas 3.0.1");
@@ -25,11 +28,15 @@ describe("sandboxSkill", () => {
       .split("\n")
       .find((line) => line.startsWith("- System:"));
     expect(systemTools).toBeDefined();
+    expect(systemTools).not.toContain("dsbx");
+    expect(systemTools).not.toContain("read_file");
     expect(systemTools).not.toContain("xlsx_inspect");
-    expect(systemTools).not.toContain("pptx_inspect");
-    expect(systemTools).not.toContain("docx_inspect");
-    expect(systemTools).not.toContain("pptx_slides");
-    expect(instructions).toContain("Office tools are Dust-specific helpers");
+    expect(instructions).toContain(
+      "System tools are standard preinstalled command-line utilities"
+    );
+    expect(instructions).toMatch(
+      /Dust and Office\s+tools are Dust-provided helpers/
+    );
     expect(instructions).toContain("`<command> --help`");
     expect(instructions).not.toContain("name: dsbx");
     expect(instructions).not.toContain("```yaml");
@@ -45,11 +52,11 @@ describe("sandboxSkill", () => {
     });
 
     expect(instructions).not.toContain("dsbx tools");
-    const systemTools = instructions
+    const dustTools = instructions
       .split("\n")
-      .find((line) => line.startsWith("- System:"));
-    expect(systemTools).toBeDefined();
-    expect(systemTools).not.toContain("dsbx");
+      .find((line) => line.startsWith("- Dust:"));
+    expect(dustTools).toBeDefined();
+    expect(dustTools).not.toContain("dsbx");
   });
 
   it("instructs the model to analyze mounted tabular files with code", async () => {
