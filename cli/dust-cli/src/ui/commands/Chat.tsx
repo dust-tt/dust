@@ -433,7 +433,6 @@ const CliChat: FC<CliChatProps> = ({
       // For low stake tools, check cache first
       if (event.stake === "low") {
         const cachedApproval = await toolsCache.getCachedApproval({
-          agentName: event.metadata.agentName,
           mcpServerName: event.metadata.mcpServerName,
           toolName: event.metadata.toolName,
         });
@@ -490,7 +489,6 @@ const CliChat: FC<CliChatProps> = ({
         // Cache the approval if requested and it's a low stake tool
         if (cacheApproval && pendingApproval.stake === "low") {
           await toolsCache.setCachedApproval({
-            agentName: pendingApproval.metadata.agentName,
             mcpServerName: pendingApproval.metadata.mcpServerName,
             toolName: pendingApproval.metadata.toolName,
           });
@@ -813,7 +811,6 @@ const CliChat: FC<CliChatProps> = ({
       if (selectedAgent) {
         // Pre-cache the Edit tool to avoid approval prompts
         await toolsCache.setCachedApproval({
-          agentName: selectedAgent.name,
           mcpServerName: "fs-cli",
           toolName: "edit_file",
         });
@@ -2055,7 +2052,7 @@ const CliChat: FC<CliChatProps> = ({
                   : inlineSelector.mode === "approval" &&
                       pendingApproval &&
                       pendingApproval.type === "tool_approve_execution"
-                    ? `Tool Approval Required: ${pendingApproval.metadata.agentName} wants to use ${pendingApproval.metadata.toolName}, what do you want to do? `
+                    ? `Tool Approval Required: the agent wants to use ${pendingApproval.metadata.toolName}, what do you want to do? `
                     : inlineSelector.mode === "diff" && pendingDiffApproval
                       ? `Changes Preview: ${pendingDiffApproval.filePath} `
                       : mentionPrefix

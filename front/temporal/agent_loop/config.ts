@@ -10,3 +10,10 @@ export const RUN_MODEL_ACTIVITY_TIMEOUT_SAFETY_MARGIN_MS = 1 * 60 * 1000;
 
 export const TOOL_ACTIVITY_HEARTBEAT_TIMEOUT_MS = 60 * 1000;
 export const MODEL_ACTIVITY_HEARTBEAT_TIMEOUT_MS = 60 * 1000;
+
+// Heartbeat cadence while tool result processing runs (file handling can take minutes): fire
+// comfortably within the heartbeat timeout.
+const TOOL_RESULT_PROCESSING_HEARTBEAT_TIMEOUT_MARGIN_MS = 5 * 1000;
+export const TOOL_RESULT_PROCESSING_HEARTBEAT_INTERVAL_MS =
+  TOOL_ACTIVITY_HEARTBEAT_TIMEOUT_MS -
+  TOOL_RESULT_PROCESSING_HEARTBEAT_TIMEOUT_MARGIN_MS;

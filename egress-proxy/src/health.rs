@@ -77,23 +77,34 @@ async fn invalidate_policy(
         return Err(StatusCode::FORBIDDEN);
     }
 
-    // Derive the cache key from claims: exactly one of wId or sbId must be set.
-    let cache_key = match (validated.w_id.as_deref(), validated.sb_id.as_deref()) {
-        (Some(w_id), None) => format!("w:{w_id}"),
-        (None, Some(sb_id)) => format!("s:{sb_id}"),
+    // Derive the cache keys from claims:
+    // - wId alone evicts the workspace policy (both layouts during the
+    //   migration window);
+    // - wId + ownerId evicts the owner policy (the cache key needs both);
+    // - sbId alone evicts the legacy per-sandbox policy.
+    let cache_keys = match (
+        validated.w_id.as_deref(),
+        validated.owner_id.as_deref(),
+        validated.sb_id.as_deref(),
+    ) {
+        (Some(w_id), None, None) => vec![format!("w2:{w_id}"), format!("w:{w_id}")],
+        (Some(w_id), Some(owner_id), None) => vec![format!("o:{w_id}:{owner_id}")],
+        (None, None, Some(sb_id)) => vec![format!("s:{sb_id}")],
         _ => {
-            warn!("invalidate-policy: token must have exactly one of wId or sbId");
+            warn!("invalidate-policy: token must have wId, wId + ownerId, or sbId");
             return Err(StatusCode::BAD_REQUEST);
         }
     };
 
-    state.policy_provider.invalidate(&cache_key).await;
+    for cache_key in &cache_keys {
+        state.policy_provider.invalidate(cache_key).await;
+    }
 
-    info!(cache_key = %cache_key, "invalidated policy cache entry");
+    let invalidated = cache_keys.join(",");
 
-    Ok(Json(InvalidateResponse {
-        invalidated: cache_key,
-    }))
+    info!(cache_keys = %invalidated, "invalidated policy cache entries");
+
+    Ok(Json(InvalidateResponse { invalidated }))
 }
 
 fn extract_bearer_token(headers: &HeaderMap) -> Option<&str> {

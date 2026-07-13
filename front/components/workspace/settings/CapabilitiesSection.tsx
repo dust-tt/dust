@@ -24,15 +24,16 @@ export function CapabilitiesSection({
 }: CapabilitiesSectionProps) {
   const { subscription } = useAuth();
   const { hasFeature } = useFeatureFlags();
-  const hasAuditLogsAccess =
-    subscription.plan.isAuditLogsAllowed || hasFeature("audit_logs");
+  const isAdminGovernanceEnabled = hasFeature("admin_governance");
 
   return (
     <Page.Vertical align="stretch" gap="md">
       <Page.H variant="h4">Capabilities</Page.H>
       <ContextItem.List>
         <div className="h-full border-b border-border" />
-        <InteractiveContentSharingToggle owner={owner} />
+        {!isAdminGovernanceEnabled && (
+          <InteractiveContentSharingToggle owner={owner} />
+        )}
         {!subscription.plan.isByok && (
           <VoiceTranscriptionToggle owner={owner} />
         )}
@@ -43,7 +44,7 @@ export function CapabilitiesSection({
         <SlackPersonalFooterRemovalToggle owner={owner} />
         <WorkspaceAnalyticsToggle owner={owner} />
         <DustMcpServerSettingsItem owner={owner} />
-        {hasAuditLogsAccess && <AuditLogsToggle owner={owner} />}
+        {!isAdminGovernanceEnabled && <AuditLogsToggle owner={owner} />}
         {publishingRestrictionMessage && (
           <RestrictAgentsPublishingCapability
             subElement={publishingRestrictionMessage}

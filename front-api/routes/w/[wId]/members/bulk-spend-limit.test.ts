@@ -1,6 +1,5 @@
 import { UserResource } from "@app/lib/resources/user_resource";
 import * as bulkClient from "@app/temporal/bulk_spend_limit/client";
-import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
@@ -61,12 +60,11 @@ describe("POST /api/w/[wId]/members/bulk-spend-limit", () => {
 
   it("allows a business admin to launch the workflow", async () => {
     const workspace = await makeMetronomeWorkspace();
-    const { auth } = await createPrivateApiMockRequest({
+    await createPrivateApiMockRequest({
       method: "POST",
       role: "business_admin",
       workspace,
     });
-    await FeatureFlagFactory.basic(auth, "pricing_groups");
 
     const member = await UserFactory.basic();
     vi.mocked(UserResource.searchAllUsers).mockResolvedValue(
@@ -86,30 +84,11 @@ describe("POST /api/w/[wId]/members/bulk-spend-limit", () => {
     expect(bulkClient.runBulkSetUserSpendLimitWorkflow).toHaveBeenCalled();
   });
 
-  it("returns 403 when the pricing_groups flag is off", async () => {
-    const workspace = await makeMetronomeWorkspace();
-    await createPrivateApiMockRequest({
-      method: "POST",
-      role: "admin",
-      workspace,
-    });
-
-    const response = await post(workspace.sId, {
-      selection: { mode: "ids", userIds: ["u1"] },
-      limit: { kind: "limited", awuCredits: 1000 },
-    });
-
-    expect(response.status).toBe(403);
-    expect((await response.json()).error.type).toBe("feature_flag_not_found");
-    expect(bulkClient.runBulkSetUserSpendLimitWorkflow).not.toHaveBeenCalled();
-  });
-
   it("returns 403 when the workspace is not on Metronome billing", async () => {
-    const { workspace, auth } = await createPrivateApiMockRequest({
+    const { workspace } = await createPrivateApiMockRequest({
       method: "POST",
       role: "admin",
     });
-    await FeatureFlagFactory.basic(auth, "pricing_groups");
 
     const response = await post(workspace.sId, {
       selection: { mode: "ids", userIds: ["u1"] },
@@ -123,12 +102,11 @@ describe("POST /api/w/[wId]/members/bulk-spend-limit", () => {
 
   it("returns 400 when the explicit selection is empty", async () => {
     const workspace = await makeMetronomeWorkspace();
-    const { auth } = await createPrivateApiMockRequest({
+    await createPrivateApiMockRequest({
       method: "POST",
       role: "admin",
       workspace,
     });
-    await FeatureFlagFactory.basic(auth, "pricing_groups");
 
     const response = await post(workspace.sId, {
       selection: { mode: "ids", userIds: [] },
@@ -141,12 +119,11 @@ describe("POST /api/w/[wId]/members/bulk-spend-limit", () => {
 
   it("returns 400 when awuCredits is out of range", async () => {
     const workspace = await makeMetronomeWorkspace();
-    const { auth } = await createPrivateApiMockRequest({
+    await createPrivateApiMockRequest({
       method: "POST",
       role: "admin",
       workspace,
     });
-    await FeatureFlagFactory.basic(auth, "pricing_groups");
 
     const response = await post(workspace.sId, {
       selection: { mode: "ids", userIds: ["u1"] },
@@ -159,12 +136,11 @@ describe("POST /api/w/[wId]/members/bulk-spend-limit", () => {
 
   it("launches the workflow with the de-duplicated, validated member ids", async () => {
     const workspace = await makeMetronomeWorkspace();
-    const { auth } = await createPrivateApiMockRequest({
+    await createPrivateApiMockRequest({
       method: "POST",
       role: "admin",
       workspace,
     });
-    await FeatureFlagFactory.basic(auth, "pricing_groups");
 
     const member1 = await UserFactory.basic();
     const member2 = await UserFactory.basic();
@@ -196,12 +172,11 @@ describe("POST /api/w/[wId]/members/bulk-spend-limit", () => {
 
   it("returns 400 when no submitted ids are active members", async () => {
     const workspace = await makeMetronomeWorkspace();
-    const { auth } = await createPrivateApiMockRequest({
+    await createPrivateApiMockRequest({
       method: "POST",
       role: "admin",
       workspace,
     });
-    await FeatureFlagFactory.basic(auth, "pricing_groups");
     // None of the submitted ids resolve to an active member.
     vi.mocked(UserResource.searchAllUsers).mockResolvedValue(
       new Ok({ users: [], total: 0 })
@@ -219,12 +194,11 @@ describe("POST /api/w/[wId]/members/bulk-spend-limit", () => {
 
   it("returns 500 when member resolution fails (e.g. search outage)", async () => {
     const workspace = await makeMetronomeWorkspace();
-    const { auth } = await createPrivateApiMockRequest({
+    await createPrivateApiMockRequest({
       method: "POST",
       role: "admin",
       workspace,
     });
-    await FeatureFlagFactory.basic(auth, "pricing_groups");
     vi.mocked(UserResource.searchAllUsers).mockResolvedValue(
       new Err(new Error("search unavailable"))
     );

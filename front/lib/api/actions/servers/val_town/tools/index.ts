@@ -1,7 +1,7 @@
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import type { ToolHandlers } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import type { ToolContextType } from "@app/lib/actions/types";
+import type { ToolContext } from "@app/lib/actions/types";
 import {
   getValTownClient,
   isValTownError,
@@ -18,7 +18,7 @@ const API_KEY_NOT_CONFIGURED_ERROR =
 
 export function createValTownTools(
   auth: Authenticator,
-  toolContext?: ToolContextType
+  toolContext?: ToolContext
 ) {
   const handlers: ToolHandlers<typeof VAL_TOWN_TOOLS_METADATA> = {
     create_val: async ({ name, privacy, description, orgId }) => {

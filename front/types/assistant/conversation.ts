@@ -1,5 +1,5 @@
 import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
-import type { MCPApproveExecutionEvent } from "@app/lib/actions/mcp_internal_actions/events";
+import type { AgentLoopMCPApproveExecutionEvent } from "@app/lib/actions/mcp_internal_actions/events";
 import type { ActionGeneratedFileType } from "@app/lib/actions/types";
 import type { AgentMessageFeedbackDirection } from "@app/lib/api/assistant/conversation/feedbacks";
 import type { AgentMCPActionWithOutputType } from "@app/types/actions";
@@ -18,6 +18,7 @@ import type {
 } from "./agent";
 import type { MentionType, RichMention } from "./mentions";
 import type {
+  ModelResolutionMethodType,
   ModelSelectionType,
   ResolvedRequestedModel,
 } from "./models/types";
@@ -370,6 +371,10 @@ export type AgentMessageType = BaseAgentMessageType & {
   modelInteractionDurationMs: number | null;
   // Model's triplet used to generate the message. Legacy: null, the agent ran its own configured model.
   resolvedModel: ResolvedRequestedModel | null;
+  // How `resolvedModel` was chosen: "agent" (agent's configured model), "user"
+  // (per-message model picked from the input-bar picker), or "auto" (routed
+  // through the auto model). Legacy: null.
+  modelResolutionMethod: ModelResolutionMethodType | null;
 };
 
 export type AgentMessageTypeWithoutMentions = Omit<
@@ -391,6 +396,10 @@ export type LightAgentMessageType = BaseAgentMessageType & {
   citations: Record<string, CitationType>;
   generatedFiles: Omit<ActionGeneratedFileType, "snippet">[];
   activitySteps: InlineActivityStep[];
+  // Model's triplet used to generate the message, and how it was chosen. Used to
+  // label messages that ran on a per-message picker override. Legacy: null.
+  resolvedModel: ResolvedRequestedModel | null;
+  modelResolutionMethod: ModelResolutionMethodType | null;
 };
 
 // This type represents the agent message we can reconstruct by accumulating streaming events
@@ -843,6 +852,6 @@ export type ConversationMCPServerViewType = BaseConversationMCPServerViewType &
   );
 
 export type MCPActionValidationRequest = Omit<
-  MCPApproveExecutionEvent,
+  AgentLoopMCPApproveExecutionEvent,
   "type" | "created" | "configurationId"
 >;

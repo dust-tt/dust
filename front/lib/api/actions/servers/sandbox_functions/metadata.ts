@@ -1,6 +1,9 @@
 import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { createToolsRecord } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import { SANDBOX_FUNCTION_SLUG_REGEX } from "@app/types/api/sandbox_functions";
+import {
+  POD_DATABASE_NAME_REGEX,
+  SANDBOX_FUNCTION_SLUG_REGEX,
+} from "@app/types/api/sandbox_functions";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { z } from "zod";
 import { zodToJsonSchema } from "zod-to-json-schema";
@@ -101,6 +104,81 @@ export const SANDBOX_FUNCTIONS_TOOLS_METADATA = createToolsRecord({
     displayLabels: {
       running: "Calling sandbox function...",
       done: "Called sandbox function",
+    },
+    toolCostCategory: "basic",
+    freeUsage: true,
+  },
+  db_list: {
+    description: "List the pod's SQLite databases and their sizes.",
+    schema: {},
+    stake: "never_ask",
+    displayLabels: {
+      running: "Listing pod databases...",
+      done: "Listed pod databases",
+    },
+    toolCostCategory: "basic",
+    freeUsage: true,
+  },
+  db_schema: {
+    description: "Get a pod database's live schema as a drizzle schema file.",
+    schema: {
+      database: z
+        .string()
+        .regex(POD_DATABASE_NAME_REGEX)
+        .describe("The database name, as shown by the db_list tool."),
+    },
+    stake: "never_ask",
+    displayLabels: {
+      running: "Reading database schema...",
+      done: "Read database schema",
+    },
+    toolCostCategory: "basic",
+    freeUsage: true,
+  },
+  db_query: {
+    description:
+      "Run a single SQL statement against a pod database: SELECT and DML.",
+    schema: {
+      database: z
+        .string()
+        .regex(POD_DATABASE_NAME_REGEX)
+        .describe("The database name, as shown by the db_list tool."),
+      sql: z
+        .string()
+        .min(1)
+        .describe(
+          "One SQL statement (SELECT or INSERT/UPDATE/DELETE). Multiple statements are " +
+            "rejected."
+        ),
+    },
+    stake: "never_ask",
+    displayLabels: {
+      running: "Querying pod database...",
+      done: "Queried pod database",
+    },
+    toolCostCategory: "basic",
+    freeUsage: true,
+  },
+  db_reconcile: {
+    description:
+      "Apply a pod database's drizzle schema file to its live database (additive changes only).",
+    schema: {
+      database: z
+        .string()
+        .regex(POD_DATABASE_NAME_REGEX)
+        .describe("The database name declared by the schema file."),
+      path: z
+        .string()
+        .min(1)
+        .describe(
+          "Scoped path to the database's drizzle schema file in the pod, as shown by the " +
+            "files tools (e.g. `pod-<id>/databases/chat.db.ts`)."
+        ),
+    },
+    stake: "low",
+    displayLabels: {
+      running: "Reconciling pod database...",
+      done: "Reconciled pod database",
     },
     toolCostCategory: "basic",
     freeUsage: true,

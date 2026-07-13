@@ -19,6 +19,7 @@ vi.mock("@app/lib/api/redis", () => ({
 
 import {
   getCheckoutPaymentStatus,
+  getCheckoutPaymentStatusBySession,
   markCheckoutPaymentFailed,
   markCheckoutPaymentSucceeded,
   recordCheckoutPaymentSyncFailure,
@@ -28,6 +29,7 @@ import { BUSINESS_USD_PACKAGE_ALIAS } from "@app/lib/metronome/types";
 
 const BASE_INPUT = {
   workspaceId: "ws_test",
+  setupSessionId: "seti_test",
   metronomeCustomerId: "cst_abc",
   contractId: "contract_abc",
   userId: "user_1",
@@ -92,6 +94,29 @@ describe("checkout_payment_status Redis helpers", () => {
       const result = await getCheckoutPaymentStatus({
         workspaceId: "ws_test",
         contractId: "contract_nonexistent",
+      });
+      expect(result).toBeNull();
+    });
+  });
+
+  describe("getCheckoutPaymentStatusBySession", () => {
+    it("resolves the record via the setup session id", async () => {
+      await setCheckoutPaymentPending(BASE_INPUT);
+
+      const result = await getCheckoutPaymentStatusBySession({
+        workspaceId: BASE_INPUT.workspaceId,
+        setupSessionId: BASE_INPUT.setupSessionId,
+      });
+
+      expect(result).not.toBeNull();
+      expect(result!.contractId).toBe(BASE_INPUT.contractId);
+      expect(result!.status).toBe("pending");
+    });
+
+    it("returns null when the session pointer does not exist", async () => {
+      const result = await getCheckoutPaymentStatusBySession({
+        workspaceId: "ws_test",
+        setupSessionId: "seti_nonexistent",
       });
       expect(result).toBeNull();
     });

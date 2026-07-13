@@ -178,7 +178,7 @@ async function listAvailableTools(
     skills: [...systemSkills, ...enabledSkills],
   });
 
-  const { serverToolsAndInstructions: mcpActions } = await tryListMCPTools(
+  const mcpActions = await tryListMCPTools(
     auth,
     {
       agentConfiguration,

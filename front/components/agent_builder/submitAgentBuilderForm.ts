@@ -392,6 +392,10 @@ export async function submitAgentBuilderForm({
   const pictureUrlToUse =
     formData.agentSettings.pictureUrl ?? getRandomDefaultAvatar();
 
+  if (!formData.generationSettings.modelSettings) {
+    return new Err(new Error("Model settings are required"));
+  }
+
   // Process actions asynchronously to handle folder-to-table expansion
   const mcpActions = formData.actions;
 
@@ -466,7 +470,8 @@ export async function submitAgentBuilderForm({
         modelId: formData.generationSettings.modelSettings.modelId,
         providerId: formData.generationSettings.modelSettings.providerId,
         temperature: formData.generationSettings.temperature,
-        reasoningEffort: formData.generationSettings.reasoningEffort,
+        reasoningEffort:
+          formData.generationSettings.reasoningEffort ?? undefined,
         responseFormat: formData.generationSettings.responseFormat,
       },
       skills: formData.skills.map((skill) => ({

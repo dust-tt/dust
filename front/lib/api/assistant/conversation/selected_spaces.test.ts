@@ -66,7 +66,7 @@ describe("selected conversation Spaces", () => {
   }
 
   function regularGroup(space: SpaceResource) {
-    const group = space.groups.find((g) => g.kind === "regular");
+    const group = space.groups.find((g) => g.isRegularAuto());
     if (!group) {
       throw new Error("Expected regular member group on Space");
     }

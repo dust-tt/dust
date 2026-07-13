@@ -319,8 +319,15 @@ export function _getSidekickGlobalAgent(
       })
     : null;
 
+  const templatesAction = sidekickContext?.mcpServerViews?.templates
+    ? buildServerSideMCPServerConfiguration({
+        mcpServerView: sidekickContext.mcpServerViews.templates,
+      })
+    : null;
+
   const actions = [
     ...(contextAction ? [contextAction] : []),
+    ...(templatesAction ? [templatesAction] : []),
     ...(companyDataAction ? [companyDataAction] : []),
   ];
 

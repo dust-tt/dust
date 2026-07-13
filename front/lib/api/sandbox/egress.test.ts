@@ -159,8 +159,12 @@ describe("sandbox egress helpers", () => {
     });
   }
 
-  it("mints a proxy JWT bound to the provider sandbox id", () => {
-    const token = mintEgressJwt("provider-sandbox-id", "workspace-id");
+  it("mints a proxy JWT bound to the provider sandbox id and owner", () => {
+    const token = mintEgressJwt({
+      providerId: "provider-sandbox-id",
+      workspaceId: "workspace-id",
+      ownerId: "owner-id",
+    });
     const payload = jwt.verify(token, "egress-secret", {
       algorithms: ["HS256"],
       audience: "dust-egress-proxy",
@@ -169,6 +173,7 @@ describe("sandbox egress helpers", () => {
 
     expect(payload.sbId).toBe("provider-sandbox-id");
     expect(payload.wId).toBe("workspace-id");
+    expect(payload.ownerId).toBe("owner-id");
     expect(payload.exp).toBeGreaterThan(payload.iat ?? 0);
   });
 

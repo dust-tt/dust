@@ -12,6 +12,7 @@ import {
 import { ChartContainer } from "@app/components/charts/ChartContainer";
 import type { LegendItem } from "@app/components/charts/ChartLegend";
 import { ChartTooltipCard } from "@app/components/charts/ChartTooltip";
+import { AnalyticsFilterDropdown } from "@app/components/workspace/analytics/AnalyticsFilterDropdown";
 import type { AnalyticsFilter } from "@app/components/workspace/analytics/analyticsFilter";
 import {
   isScopeDimension,
@@ -35,6 +36,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@dust-tt/sparkle";
+import type { ReactNode } from "react";
 import { useCallback, useMemo, useState } from "react";
 import { Bar, BarChart, CartesianGrid, Tooltip, XAxis, YAxis } from "recharts";
 import type { TooltipContentProps } from "recharts/types/component/Tooltip";
@@ -193,6 +195,9 @@ export interface BaseAwuUsageFromAnalyticsChartProps {
   // selection when onFilterChange is provided.
   filter?: AnalyticsFilter;
   onFilterChange?: (next: AnalyticsFilter) => void;
+  // Rendered right of the filter chips. Injected by the workspace chart only:
+  // the dropdown needs the workspace auth context to list filterable entities.
+  filterDropdown?: ReactNode;
 }
 
 interface UsageChartControlsProps {
@@ -205,6 +210,7 @@ interface UsageChartControlsProps {
   groupByOptions: GroupByOption[];
   filter?: AnalyticsFilter;
   onFilterChange?: (next: AnalyticsFilter) => void;
+  filterDropdown?: ReactNode;
   hasDrilldown: boolean;
   onClearDrilldown: () => void;
   csvDownload: ReturnType<typeof useDownloadCsv>;
@@ -220,26 +226,32 @@ function UsageChartControls({
   groupByOptions,
   filter,
   onFilterChange,
+  filterDropdown,
   hasDrilldown,
   onClearDrilldown,
   csvDownload,
 }: UsageChartControlsProps) {
   return (
     <div className="flex items-center gap-2">
-      {filter &&
-        onFilterChange &&
-        SCOPE_DIMENSIONS.flatMap((dimension) =>
-          (filter[dimension] ?? []).map((entity) => (
-            <Chip
-              key={`${dimension}:${entity.id}`}
-              size="xs"
-              label={`${SCOPE_DIMENSION_LABEL[dimension]}: ${entity.name}`}
-              onRemove={() =>
-                onFilterChange(removeScopeEntity(filter, dimension, entity.id))
-              }
-            />
-          ))
-        )}
+      {filter && onFilterChange && (
+        <div className="flex flex-wrap items-center justify-end gap-2">
+          {SCOPE_DIMENSIONS.flatMap((dimension) =>
+            (filter[dimension] ?? []).map((entity) => (
+              <Chip
+                key={`${dimension}:${entity.id}`}
+                size="xs"
+                label={`${SCOPE_DIMENSION_LABEL[dimension]}: ${entity.name}`}
+                onRemove={() =>
+                  onFilterChange(
+                    removeScopeEntity(filter, dimension, entity.id)
+                  )
+                }
+              />
+            ))
+          )}
+        </div>
+      )}
+      {filterDropdown}
       {hasDrilldown && (
         <Button
           label="Clear filters"
@@ -537,6 +549,7 @@ export function BaseAwuUsageFromAnalyticsChart({
   groupByOptions = GROUP_BY_OPTIONS,
   filter,
   onFilterChange,
+  filterDropdown,
 }: BaseAwuUsageFromAnalyticsChartProps) {
   // Legend-driven drilldown: when non-null, only these series are shown.
   const [enabledKeys, setEnabledKeys] = useState<string[] | null>(null);
@@ -634,6 +647,7 @@ export function BaseAwuUsageFromAnalyticsChart({
           groupByOptions={groupByOptions}
           filter={filter}
           onFilterChange={onFilterChange}
+          filterDropdown={filterDropdown}
           hasDrilldown={!!effectiveEnabledKeys}
           onClearDrilldown={() => setEnabledKeys(null)}
           csvDownload={csvDownload}
@@ -693,6 +707,12 @@ export function AwuUsageFromAnalyticsChart({
       exportUrlPrefix={`/api/w/${workspaceId}/analytics/awu-usage-analytics`}
       filter={filter}
       onFilterChange={onFilterChange}
+      filterDropdown={
+        <AnalyticsFilterDropdown
+          filter={filter}
+          onFilterChange={onFilterChange}
+        />
+      }
     />
   );
 }

@@ -6,6 +6,7 @@ import { SuspensedCodeEditor } from "@app/components/SuspensedCodeEditor";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { useModels } from "@app/lib/swr/models";
 import { isSupportingResponseFormat } from "@app/types/assistant/assistant";
+import { AUTO_MODEL_ID } from "@app/types/assistant/models/auto";
 import { validateResponseFormat } from "@app/types/assistant/models/utils";
 import {
   Button,
@@ -22,8 +23,9 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
   File04,
+  SliderToggle,
 } from "@dust-tt/sparkle";
-import React from "react";
+import React, { useCallback, useMemo } from "react";
 import { useController } from "react-hook-form";
 
 function getResponseFormatError(value: string): string | null {
@@ -57,6 +59,14 @@ export function AdvancedSettings() {
   const { isDark } = useTheme();
   const { owner } = useAgentBuilderContext();
   const { models } = useModels({ owner });
+
+  const [autoModel, otherModels] = useMemo(() => {
+    return [
+      models.find((model) => model.modelId === AUTO_MODEL_ID),
+      models.filter((model) => model.modelId !== AUTO_MODEL_ID),
+    ];
+  }, [models]);
+
   const { field: modelSettingsField } = useController<
     AgentBuilderFormData,
     "generationSettings.modelSettings"
@@ -75,6 +85,33 @@ export function AdvancedSettings() {
     string | null
   >(null);
 
+  const [modelSettingsBeforeAuto, setModelSettingsBeforeAuto] = React.useState<
+    AgentBuilderFormData["generationSettings"]["modelSettings"] | null
+  >(null);
+
+  const isAutoModelSelected =
+    modelSettingsField.value?.modelId === AUTO_MODEL_ID || false;
+
+  const handleAutoModelSelection = useCallback(
+    (e: React.MouseEvent<HTMLElement>) => {
+      e.preventDefault();
+      e.stopPropagation();
+
+      if (!isAutoModelSelected) {
+        setModelSettingsBeforeAuto(modelSettingsField.value);
+        modelSettingsField.onChange({ ...autoModel });
+      } else {
+        modelSettingsField.onChange(modelSettingsBeforeAuto ?? null);
+      }
+    },
+    [
+      modelSettingsField,
+      modelSettingsBeforeAuto,
+      autoModel,
+      isAutoModelSelected,
+    ]
+  );
+
   if (!models) {
     return null;
   }
@@ -82,9 +119,9 @@ export function AdvancedSettings() {
   const currentValue = tempResponseFormat ?? responseFormatField.value ?? "";
   const validationError = getResponseFormatError(currentValue);
 
-  const supportsResponseFormat = isSupportingResponseFormat(
-    modelSettingsField.value.modelId
-  );
+  const supportsResponseFormat =
+    modelSettingsField.value &&
+    isSupportingResponseFormat(modelSettingsField.value.modelId);
   return (
     <>
       <DropdownMenu>
@@ -92,9 +129,26 @@ export function AdvancedSettings() {
           <Button label="Advanced" variant="outline" size="sm" isSelect />
         </DropdownMenuTrigger>
         <DropdownMenuContent align="start">
-          <ModelSelectionSubmenu models={models} />
+          {autoModel && (
+            <DropdownMenuItem
+              label="Auto"
+              description="Select the best model for the task."
+              onClick={handleAutoModelSelection}
+              endComponent={
+                <SliderToggle
+                  selected={isAutoModelSelected}
+                  onClick={handleAutoModelSelection}
+                />
+              }
+            ></DropdownMenuItem>
+          )}
 
-          <ReasoningEffortSubmenu models={models} />
+          {!isAutoModelSelected && (
+            <>
+              <ModelSelectionSubmenu models={otherModels} />
+              <ReasoningEffortSubmenu models={otherModels} />
+            </>
+          )}
 
           {supportsResponseFormat && (
             <DropdownMenuItem

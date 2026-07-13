@@ -8,6 +8,7 @@
     "verbatimModuleSyntax": true,
     "noEmit": true,
     "strict": true,
+    "noImplicitOverride": true,
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
     "resolveJsonModule": true

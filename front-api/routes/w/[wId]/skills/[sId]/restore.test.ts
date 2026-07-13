@@ -7,23 +7,30 @@ import { UserFactory } from "@app/tests/utils/UserFactory";
 import { honoApp } from "@front-api/app";
 import { describe, expect, it } from "vitest";
 
-async function setupTest(options: { canWrite?: boolean } = {}) {
-  const canWrite = options.canWrite ?? true;
-
+async function setupTest(
+  options: {
+    requestUserRole?: "admin" | "builder" | "user";
+    skillOwnerRole?: "admin" | "builder";
+  } = {}
+) {
+  const requestUserRole = options.requestUserRole ?? "builder";
+  const skillOwnerRole = options.skillOwnerRole ?? requestUserRole;
   const { workspace, user } = await createPrivateApiMockRequest({
-    role: "builder",
+    role: requestUserRole,
     method: "POST",
   });
 
   let skillOwnerAuth: Authenticator;
-  if (canWrite) {
+  if (skillOwnerRole === requestUserRole) {
     skillOwnerAuth = await Authenticator.fromUserIdAndWorkspaceId(
       user.sId,
       workspace.sId
     );
   } else {
     const skillOwner = await UserFactory.basic();
-    await MembershipFactory.associate(workspace, skillOwner, { role: "admin" });
+    await MembershipFactory.associate(workspace, skillOwner, {
+      role: skillOwnerRole,
+    });
     skillOwnerAuth = await Authenticator.fromUserIdAndWorkspaceId(
       skillOwner.sId,
       workspace.sId
@@ -44,8 +51,10 @@ function post(workspace: { sId: string }, sId: string) {
 }
 
 describe("POST /api/w/:wId/skills/:sId/restore", () => {
-  it("should return 200 and restore skill when user can write", async () => {
-    const { workspace, skill, auth } = await setupTest({ canWrite: true });
+  it("should return 200 and restore skill when user can administrate", async () => {
+    const { workspace, skill, auth } = await setupTest({
+      requestUserRole: "builder",
+    });
 
     const response = await post(workspace, skill.sId);
 
@@ -56,8 +65,26 @@ describe("POST /api/w/:wId/skills/:sId/restore", () => {
     expect(updatedSkill?.status).toBe("active");
   });
 
-  it("should return 403 when user cannot write", async () => {
-    const { workspace, skill } = await setupTest({ canWrite: false });
+  it("allows a workspace admin to restore a skill they do not edit", async () => {
+    const { workspace, skill, auth } = await setupTest({
+      requestUserRole: "admin",
+      skillOwnerRole: "builder",
+    });
+
+    const response = await post(workspace, skill.sId);
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({ success: true });
+
+    const updatedSkill = await SkillResource.fetchById(auth, skill.sId);
+    expect(updatedSkill?.status).toBe("active");
+  });
+
+  it("should return 403 when user cannot administrate", async () => {
+    const { workspace, skill } = await setupTest({
+      requestUserRole: "builder",
+      skillOwnerRole: "admin",
+    });
 
     const response = await post(workspace, skill.sId);
 
@@ -65,13 +92,13 @@ describe("POST /api/w/:wId/skills/:sId/restore", () => {
     expect(await response.json()).toEqual({
       error: {
         type: "app_auth_error",
-        message: "Only editors can restore this skill.",
+        message: "Only admins and editors can restore this skill.",
       },
     });
   });
 
   it("should return 404 when skill does not exist", async () => {
-    const { workspace } = await setupTest({ canWrite: true });
+    const { workspace } = await setupTest();
 
     const response = await post(workspace, "non_existent_skill_id");
 

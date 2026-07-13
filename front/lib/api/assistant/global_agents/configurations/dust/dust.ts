@@ -53,7 +53,7 @@ import {
   FIREWORKS_DEEPSEEK_V4_PRO_MODEL_CONFIG,
   FIREWORKS_GLM_5_MODEL_CONFIG,
   FIREWORKS_GLM_5P2_MODEL_CONFIG,
-  FIREWORKS_KIMI_K2P5_MODEL_CONFIG,
+  FIREWORKS_KIMI_K2P6_MODEL_CONFIG,
   FIREWORKS_MINIMAX_M2P5_MODEL_CONFIG,
 } from "@app/types/assistant/models/fireworks";
 import {
@@ -87,6 +87,9 @@ interface DustLikeGlobalAgentArgs {
   // When set, the @dust agent defaults to GPT 5.5 (medium reasoning) instead of
   // Claude Sonnet 4.6. Gated by the `dust_agent_gpt_5_5_default` feature flag.
   preferGpt55DefaultModel?: boolean;
+  // When set, the @dust agent defaults to Claude Sonnet 5 instead of Claude
+  // Sonnet 4.6. Gated by the `dust_agent_sonnet_5_default` feature flag.
+  preferSonnet5DefaultModel?: boolean;
 }
 
 const INSTRUCTION_SECTIONS = {
@@ -465,9 +468,11 @@ export function _getDustGlobalAgent(
   return _getDustLikeGlobalAgent(auth, args, {
     agentId: GLOBAL_AGENTS_SID.DUST,
     name: "dust",
-    preferredModelConfiguration: args.preferGpt55DefaultModel
-      ? GPT_5_5_MODEL_CONFIG
-      : CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG,
+    preferredModelConfiguration: args.preferSonnet5DefaultModel
+      ? CLAUDE_SONNET_5_DEFAULT_MODEL_CONFIG
+      : args.preferGpt55DefaultModel
+        ? GPT_5_5_MODEL_CONFIG
+        : CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG,
     preferredReasoningEffort: "medium",
   });
 }
@@ -648,7 +653,7 @@ export function _getDustKimiGlobalAgent(
   return _getDustLikeGlobalAgent(auth, args, {
     agentId: GLOBAL_AGENTS_SID.DUST_KIMI,
     name: "dust-kimi",
-    preferredModelConfiguration: FIREWORKS_KIMI_K2P5_MODEL_CONFIG,
+    preferredModelConfiguration: FIREWORKS_KIMI_K2P6_MODEL_CONFIG,
     preferredReasoningEffort: "light",
   });
 }
@@ -660,7 +665,7 @@ export function _getDustKimiMediumGlobalAgent(
   return _getDustLikeGlobalAgent(auth, args, {
     agentId: GLOBAL_AGENTS_SID.DUST_KIMI_MEDIUM,
     name: "dust-kimi-medium",
-    preferredModelConfiguration: FIREWORKS_KIMI_K2P5_MODEL_CONFIG,
+    preferredModelConfiguration: FIREWORKS_KIMI_K2P6_MODEL_CONFIG,
     preferredReasoningEffort: "medium",
   });
 }
@@ -672,7 +677,7 @@ export function _getDustKimiHighGlobalAgent(
   return _getDustLikeGlobalAgent(auth, args, {
     agentId: GLOBAL_AGENTS_SID.DUST_KIMI_HIGH,
     name: "dust-kimi-high",
-    preferredModelConfiguration: FIREWORKS_KIMI_K2P5_MODEL_CONFIG,
+    preferredModelConfiguration: FIREWORKS_KIMI_K2P6_MODEL_CONFIG,
     preferredReasoningEffort: "high",
   });
 }

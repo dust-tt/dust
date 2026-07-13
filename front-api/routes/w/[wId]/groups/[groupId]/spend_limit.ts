@@ -12,7 +12,6 @@ import { workspaceApp } from "@front-api/middlewares/ctx";
 import { ensureIsAdmin } from "@front-api/middlewares/ensure_role";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
-import { withFeatureFlag } from "@front-api/middlewares/with_feature_flag";
 import { z } from "zod";
 
 const UpdateGroupSpendLimitBodySchema = z.discriminatedUnion("kind", [
@@ -82,7 +81,6 @@ app.put(
   "/",
   validate("param", ParamsSchema),
   ensureIsAdmin(),
-  withFeatureFlag("pricing_groups"),
   validate("json", UpdateGroupSpendLimitBodySchema),
   async (ctx): HandlerResult<PutGroupSpendLimitResponseBody> => {
     const auth = ctx.get("auth");

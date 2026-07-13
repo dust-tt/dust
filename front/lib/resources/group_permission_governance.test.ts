@@ -21,8 +21,8 @@ describe("GroupPermissionResource — governance state (reads)", () => {
   beforeEach(async () => {
     workspace = await WorkspaceFactory.basic();
     await GroupFactory.defaults(workspace);
-    groupA = await GroupFactory.regular(workspace, "A");
-    groupB = await GroupFactory.regular(workspace, "B");
+    groupA = await GroupFactory.regularAuto(workspace, "A");
+    groupB = await GroupFactory.regularAuto(workspace, "B");
     auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
 
     const fetched = await GroupResource.internalFetchWorkspaceGlobalGroup(

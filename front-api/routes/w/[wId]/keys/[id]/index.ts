@@ -52,6 +52,7 @@ app.patch(
   validate("json", PatchKeyBodySchema),
   async (ctx): HandlerResult<PatchKeyResponseBody> => {
     const auth = ctx.get("auth");
+    const user = auth.getNonNullableUser();
     const owner = auth.getNonNullableWorkspace();
 
     const { id } = ctx.req.valid("param");
@@ -162,7 +163,7 @@ app.patch(
         workspace: owner,
         id,
       });
-      return ctx.json({ key: (updated ?? key).toJSON() });
+      return ctx.json({ key: (updated ?? key).toJSON(user.id) });
     }
 
     // Legacy USD monthly cap.
@@ -215,7 +216,7 @@ app.patch(
     });
 
     return ctx.json({
-      key: key.toJSON(),
+      key: key.toJSON(user.id),
     });
   }
 );

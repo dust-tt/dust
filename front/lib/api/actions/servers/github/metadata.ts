@@ -89,7 +89,7 @@ export const GITHUB_TOOLS_METADATA = createToolsRecord({
             " to remove the current milestone."
         ),
     },
-    stake: "medium",
+    stake: "low",
     displayLabels: {
       running: "Updating GitHub issue",
       done: "Update GitHub issue",

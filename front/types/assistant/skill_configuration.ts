@@ -58,6 +58,7 @@ export const SkillWithoutInstructionsAndToolsSchema = z.object({
     })
   ),
   canWrite: z.boolean(),
+  canAdministrate: z.boolean(),
   isDefault: z.boolean(),
 });
 

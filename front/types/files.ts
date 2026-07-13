@@ -57,6 +57,12 @@ export type FileUseCaseMetadata = {
   // only). Set when the frame has been published: its presence means a built bundle exists
   // (stored as the processed version) and records where to re-read sources on republish.
   frameBundleRootPath?: string;
+  // Scoped path of the Frame's entry file, relative to frameBundleRootPath, as of the last
+  // successful publish. The model names the entry's full path directly when publishing (see the
+  // publish tool), so fileName has no guaranteed relationship to it: this is the only durable
+  // record of what the entry actually is. Live edits (no model in the loop, triggered by a UI
+  // click) reuse it to know what to rebuild from, rather than guessing from fileName.
+  frameEntryRelPath?: string;
 };
 
 export function isConversationFileUseCase(

@@ -166,13 +166,14 @@ export class SkillSuggestionResource extends BaseResource<SkillSuggestionModel> 
       skillResources.map((s) => [s.id, s])
     );
 
-    // Filter suggestions to only include those for skills the user can edit.
+    // Filter suggestions to only include those for skills the user can
+    // administrate.
     const resources = removeNulls(
       suggestions.map((suggestion) => {
         const skillResource = skillResourceByModelId.get(
           suggestion.skillConfigurationId
         );
-        if (!skillResource || !skillResource.canWrite(auth)) {
+        if (!skillResource || !skillResource.canAdministrate(auth)) {
           return null;
         }
         const user = suggestion.updatedByUser;

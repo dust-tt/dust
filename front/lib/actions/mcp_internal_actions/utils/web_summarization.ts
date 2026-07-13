@@ -1,4 +1,4 @@
-import type { AgentLoopRunContextType } from "@app/lib/actions/types";
+import type { AgentLoopRunContext } from "@app/lib/actions/types";
 import { runMultiActionsAgent } from "@app/lib/api/assistant/call_llm";
 import {
   getSmallWhitelistedModel,
@@ -32,7 +32,7 @@ export async function summarizeWithLLM({
 }: {
   auth: Authenticator;
   content: string;
-  agentLoopRunContext: AgentLoopRunContextType;
+  agentLoopRunContext: AgentLoopRunContext;
 }): Promise<Result<string, Error>> {
   const toSummarize = content.slice(0, MAX_CHARACTERS_TO_SUMMARIZE);
 

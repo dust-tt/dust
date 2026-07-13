@@ -1,6 +1,7 @@
 // esbuild (pulled in by buildFrameBundle) requires a real node environment; jsdom breaks its
 // TextEncoder invariant.
 // @vitest-environment node
+import { splitFrameEntryScopedPath } from "@app/lib/api/files/mount_path";
 import type { FrameSourceReader } from "@app/lib/api/viz/build_frame_bundle";
 import { publishFrame } from "@app/lib/api/viz/publish_frame";
 import { FileResource } from "@app/lib/resources/file_resource";
@@ -10,6 +11,7 @@ import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { fileStorageMock } from "@app/tests/utils/mocks/file_storage";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import { frameContentType } from "@app/types/files";
+import assert from "assert";
 import { Readable } from "stream";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -115,6 +117,7 @@ describe("publishFrame", () => {
     const result = await publishFrame(auth, {
       file,
       reader: inMemoryReader(VALID_SOURCES),
+      entryRelPath: "Dashboard.tsx",
       rootScopedPath: ROOT,
     });
 
@@ -123,9 +126,10 @@ describe("publishFrame", () => {
       expect(result.value.warnings).toEqual([]);
     }
 
-    // The frame now renders the bundle, and the build root is recorded for republish.
+    // The frame now renders the bundle, and the build root and entry are recorded for republish.
     expect(file.getRenderableVersion()).toBe("processed");
     expect(file.useCaseMetadata?.frameBundleRootPath).toBe(ROOT);
+    expect(file.useCaseMetadata?.frameEntryRelPath).toBe("Dashboard.tsx");
 
     expect(uploadBundleSpy).toHaveBeenCalledTimes(1);
     const bundle = uploadBundleSpy.mock.calls[0][1];
@@ -158,6 +162,7 @@ describe("publishFrame", () => {
 }
 `,
       }),
+      entryRelPath: "Dashboard.tsx",
       rootScopedPath: ROOT,
     });
 
@@ -197,6 +202,7 @@ describe("publishFrame", () => {
     const result = await publishFrame(auth, {
       file,
       reader,
+      entryRelPath: "Dashboard.tsx",
       rootScopedPath: ROOT,
     });
 
@@ -220,6 +226,7 @@ describe("publishFrame", () => {
       file,
       // Entry is "Dashboard.tsx" but the tree only has a component.
       reader: inMemoryReader({ "Chart.tsx": VALID_SOURCES["Chart.tsx"] }),
+      entryRelPath: "Dashboard.tsx",
       rootScopedPath: ROOT,
     });
 
@@ -248,6 +255,7 @@ describe("publishFrame", () => {
     const result = await publishFrame(auth, {
       file,
       reader: inMemoryReader({ "notes.txt": "hello" }),
+      entryRelPath: "notes.txt",
       rootScopedPath: ROOT,
     });
 
@@ -255,5 +263,82 @@ describe("publishFrame", () => {
     if (result.isErr()) {
       expect(result.error.code).toBe("not_interactive_content");
     }
+  });
+
+  it("publishes two frames sharing a fileName independently, each from its own content", async () => {
+    const { authenticator: auth } = await createResourceTest({});
+    const conversation = await ConversationFactory.create(auth, {
+      agentConfigurationId: GLOBAL_AGENTS_SID.DUST,
+      messagesCreatedAt: [new Date()],
+    });
+
+    const first = await FileFactory.create(auth, null, {
+      contentType: frameContentType,
+      fileName: "Dashboard.tsx",
+      fileSize: 100,
+      status: "ready",
+      useCase: "conversation",
+      useCaseMetadata: { conversationId: conversation.sId },
+    });
+    const second = await FileFactory.create(auth, null, {
+      contentType: frameContentType,
+      fileName: "Dashboard.tsx",
+      fileSize: 100,
+      status: "ready",
+      useCase: "conversation",
+      useCaseMetadata: { conversationId: conversation.sId },
+    });
+
+    // The second frame keeps the same fileName but is stored under an sId-disambiguated path,
+    // exactly what the model would see if it listed the directory before publishing.
+    const firstScopedPath = first.toScopedPath(auth);
+    const secondScopedPath = second.toScopedPath(auth);
+    expect(firstScopedPath).not.toBe(secondScopedPath);
+    assert(firstScopedPath && secondScopedPath);
+
+    const firstSplit = splitFrameEntryScopedPath(firstScopedPath);
+    const secondSplit = splitFrameEntryScopedPath(secondScopedPath);
+    assert(firstSplit.isOk() && secondSplit.isOk());
+
+    // mockImplementation, not mockReturnValue: a Readable is single-use, and this mock is read
+    // once per publish call (twice here).
+    vi.spyOn(FileResource.prototype, "getSharedReadStream").mockImplementation(
+      () => Readable.from([Buffer.from("self contained", "utf-8")])
+    );
+
+    const firstSource = `export default function Dashboard() {
+  return <div>first frame</div>;
+}
+`;
+    const secondSource = `export default function Dashboard() {
+  return <div>second frame</div>;
+}
+`;
+
+    const firstResult = await publishFrame(auth, {
+      file: first,
+      reader: inMemoryReader({ [firstSplit.value.entryRelPath]: firstSource }),
+      entryRelPath: firstSplit.value.entryRelPath,
+      rootScopedPath: firstSplit.value.root,
+    });
+    const secondResult = await publishFrame(auth, {
+      file: second,
+      reader: inMemoryReader({
+        [secondSplit.value.entryRelPath]: secondSource,
+      }),
+      entryRelPath: secondSplit.value.entryRelPath,
+      rootScopedPath: secondSplit.value.root,
+    });
+
+    expect(firstResult.isOk()).toBe(true);
+    expect(secondResult.isOk()).toBe(true);
+    expect(first.getRenderableVersion()).toBe("processed");
+    expect(second.getRenderableVersion()).toBe("processed");
+    expect(first.useCaseMetadata?.frameEntryRelPath).toBe(
+      firstSplit.value.entryRelPath
+    );
+    expect(second.useCaseMetadata?.frameEntryRelPath).toBe(
+      secondSplit.value.entryRelPath
+    );
   });
 });

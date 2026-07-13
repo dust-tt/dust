@@ -25,6 +25,7 @@ app.post(
   validate("param", KeyIdParamSchema),
   async (ctx): HandlerResult<PostKeysResponseBody> => {
     const auth = ctx.get("auth");
+    const user = auth.getNonNullableUser();
     const owner = auth.getNonNullableWorkspace();
 
     const { id } = ctx.req.valid("param");
@@ -61,7 +62,7 @@ app.post(
 
     return ctx.json({
       key: {
-        ...key.toJSON(),
+        ...key.toJSON(user.id),
         status: "disabled",
       },
     });

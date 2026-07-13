@@ -11,8 +11,10 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const {
   mockSetCheckoutPaymentPending,
   mockGetCheckoutPaymentStatus,
+  mockGetCheckoutPaymentStatusBySession,
   mockMarkCheckoutPaymentSucceeded,
   mockMarkCheckoutPaymentFailed,
+  mockMarkCheckoutPaymentActivating,
   mockRecordCheckoutPaymentSyncFailure,
   mockSwapMetronomeContract,
   mockFetchActiveSubscription,
@@ -27,8 +29,10 @@ const {
 } = vi.hoisted(() => ({
   mockSetCheckoutPaymentPending: vi.fn(),
   mockGetCheckoutPaymentStatus: vi.fn(),
+  mockGetCheckoutPaymentStatusBySession: vi.fn(),
   mockMarkCheckoutPaymentSucceeded: vi.fn(),
   mockMarkCheckoutPaymentFailed: vi.fn(),
+  mockMarkCheckoutPaymentActivating: vi.fn(),
   mockRecordCheckoutPaymentSyncFailure: vi.fn(),
   mockSwapMetronomeContract: vi.fn(),
   mockFetchActiveSubscription: vi.fn(),
@@ -45,8 +49,10 @@ const {
 vi.mock("@app/lib/credits/checkout_payment_status", () => ({
   setCheckoutPaymentPending: mockSetCheckoutPaymentPending,
   getCheckoutPaymentStatus: mockGetCheckoutPaymentStatus,
+  getCheckoutPaymentStatusBySession: mockGetCheckoutPaymentStatusBySession,
   markCheckoutPaymentSucceeded: mockMarkCheckoutPaymentSucceeded,
   markCheckoutPaymentFailed: mockMarkCheckoutPaymentFailed,
+  markCheckoutPaymentActivating: mockMarkCheckoutPaymentActivating,
   recordCheckoutPaymentSyncFailure: mockRecordCheckoutPaymentSyncFailure,
 }));
 
@@ -257,8 +263,12 @@ beforeEach(() => {
   mockAddPaymentGatedCommit.mockResolvedValue(new Ok({ editId: "edit_1" }));
   mockScheduleContractEnd.mockResolvedValue(new Ok(undefined));
   mockGetCheckoutPaymentStatus.mockResolvedValue(CHECKOUT_PAYMENT_PENDING);
+  mockGetCheckoutPaymentStatusBySession.mockResolvedValue(
+    CHECKOUT_PAYMENT_PENDING
+  );
   mockMarkCheckoutPaymentSucceeded.mockResolvedValue(undefined);
   mockMarkCheckoutPaymentFailed.mockResolvedValue(undefined);
+  mockMarkCheckoutPaymentActivating.mockResolvedValue(undefined);
   mockRecordCheckoutPaymentSyncFailure.mockResolvedValue(undefined);
   mockSwapMetronomeContract.mockResolvedValue(undefined);
   mockInvalidateCache.mockResolvedValue(undefined);

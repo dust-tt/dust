@@ -1,4 +1,4 @@
-import type { BlockedToolExecution } from "@app/lib/actions/mcp";
+import type { AgentLoopBlockedToolExecution } from "@app/lib/actions/mcp";
 import { isBlockedActionEvent } from "@app/lib/actions/mcp";
 import { getMessageChannelId } from "@app/lib/api/assistant/streaming/helpers";
 import {
@@ -17,7 +17,7 @@ import type {
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 
 export type GetBlockedActionsResponseType = {
-  blockedActions: BlockedToolExecution[];
+  blockedActions: AgentLoopBlockedToolExecution[];
 };
 
 /**

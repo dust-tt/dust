@@ -7,7 +7,7 @@ import type {
 } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { isToolExecutionStatusBlocked } from "@app/lib/actions/statuses";
-import type { ToolContextType } from "@app/lib/actions/types";
+import type { ToolContext } from "@app/lib/actions/types";
 import {
   isAgentLoopRunContext,
   isSandboxResumeState,
@@ -29,7 +29,7 @@ import {
 } from "@app/lib/api/sandbox/access_tokens";
 import { readNewDenyLogEntries } from "@app/lib/api/sandbox/egress";
 import {
-  addSandboxPolicyDomain,
+  addOwnerPolicyDomain,
   parseExactEgressDomain,
 } from "@app/lib/api/sandbox/egress_policy";
 import {
@@ -226,13 +226,13 @@ function isSandboxAgentEgressRequestsAllowed(auth: Authenticator): boolean {
 
 export async function createSandboxTools(
   auth: Authenticator,
-  _toolContext?: ToolContextType
+  _toolContext?: ToolContext
 ): Promise<ToolDefinition[]> {
   const handlers: ToolHandlers<typeof SANDBOX_TOOLS_METADATA> = {
     bash: runSandboxBashTool,
-    describe_toolset: async ({ format }, { auth, toolContext }) => {
-      const providerId = isAgentLoopRunContext(toolContext?.runContext)
-        ? toolContext.runContext.model.providerId
+    describe_toolset: async ({ format }, { auth, runContext }) => {
+      const providerId = isAgentLoopRunContext(runContext)
+        ? runContext.model.providerId
         : null;
       if (!providerId) {
         return new Err(new MCPError("Missing model provider ID"));
@@ -290,7 +290,7 @@ export async function runSandboxBashTool(
     timeoutMs?: number;
     workingDirectory?: string;
   },
-  { auth, toolContext }: ToolHandlerExtra
+  { auth, runContext }: ToolHandlerExtra
 ): Promise<
   Result<
     Array<
@@ -303,12 +303,8 @@ export async function runSandboxBashTool(
     MCPError
   >
 > {
-  assert(
-    isAgentLoopRunContext(toolContext?.runContext),
-    "AgentLoopRunContext expected"
-  );
+  assert(isAgentLoopRunContext(runContext), "AgentLoopRunContext expected");
 
-  const runContext = toolContext?.runContext;
   const {
     conversation,
     agentConfiguration,
@@ -488,12 +484,9 @@ export async function runSandboxBashTool(
 
 export async function addEgressDomainTool(
   { domain, reason }: { domain: string; reason: string },
-  { auth, toolContext }: ToolHandlerExtra
+  { auth, runContext }: ToolHandlerExtra
 ): Promise<Result<Array<{ type: "text"; text: string }>, MCPError>> {
-  assert(
-    isAgentLoopRunContext(toolContext?.runContext),
-    "AgentLoopRunContext expected"
-  );
+  assert(isAgentLoopRunContext(runContext), "AgentLoopRunContext expected");
   // Defense-in-depth: createSandboxTools already filters this tool out when
   // the workspace setting is off, so this metadata-only check is enough to
   // reject any caller that bypasses tool-list filtering.
@@ -505,10 +498,9 @@ export async function addEgressDomainTool(
     );
   }
 
-  const ensureResult = await ensureConversationSandboxReady(
-    auth,
-    toolContext.runContext.conversation
-  );
+  const { conversation } = runContext;
+
+  const ensureResult = await ensureConversationSandboxReady(auth, conversation);
   if (ensureResult.isErr()) {
     return new Err(new MCPError(ensureResult.error.message));
   }
@@ -519,8 +511,10 @@ export async function addEgressDomainTool(
     return new Err(new MCPError(parsed.error.message));
   }
 
-  const result = await addSandboxPolicyDomain(auth, {
-    sandboxProviderId: sandbox.providerId,
+  // Keyed by the conversation: approvals persist for the conversation's
+  // lifetime, across sandbox destroy/recreate cycles.
+  const result = await addOwnerPolicyDomain(auth, {
+    ownerId: conversation.sId,
     domain: parsed.value,
   });
   if (result.isErr()) {
@@ -540,6 +534,9 @@ export async function addEgressDomainTool(
     ],
     metadata: {
       sandbox_provider_id: sandbox.providerId,
+      // The approval's durable scope: policies are owner-keyed, so the
+      // conversation outlives any individual sandbox.
+      conversation_id: conversation.sId,
       domain: parsed.value,
       added: String(result.value.addedDomain !== null),
       reason,
@@ -549,10 +546,10 @@ export async function addEgressDomainTool(
   const text =
     result.value.addedDomain !== null
       ? `Allowed: ${result.value.addedDomain}\n` +
-        "The change is in effect for the current sandbox only and applies to " +
-        "subsequent commands in this conversation."
+        "The change applies to this conversation and persists across " +
+        "sandbox restarts."
       : `Already allowed: ${parsed.value}\n` +
-        "No change made; this domain was already in the sandbox's allowlist.";
+        "No change made; this domain was already in the conversation's allowlist.";
 
   return new Ok([{ type: "text" as const, text }]);
 }

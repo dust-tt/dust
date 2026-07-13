@@ -6,7 +6,7 @@ import { Err, Ok } from "@app/types/shared/result";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const {
-  mockAddSandboxPolicyDomain,
+  mockAddOwnerPolicyDomain,
   mockReadNewDenyLogEntries,
   mockEmitAuditLogEvent,
   mockGenerateExecId,
@@ -21,7 +21,7 @@ const {
   mockLoggerWarn,
   mockFetchActionById,
 } = vi.hoisted(() => ({
-  mockAddSandboxPolicyDomain: vi.fn(),
+  mockAddOwnerPolicyDomain: vi.fn(),
   mockReadNewDenyLogEntries: vi.fn(),
   mockEmitAuditLogEvent: vi.fn(),
   mockGenerateExecId: vi.fn(),
@@ -54,7 +54,7 @@ vi.mock("@app/lib/api/sandbox/egress_policy", async (importOriginal) => {
 
   return {
     ...actual,
-    addSandboxPolicyDomain: mockAddSandboxPolicyDomain,
+    addOwnerPolicyDomain: mockAddOwnerPolicyDomain,
   };
 });
 
@@ -234,26 +234,24 @@ describe("runSandboxBashTool", () => {
           sId: "workspace-id",
         }),
       },
-      toolContext: {
-        runContext: {
-          contextType: "agent_loop",
-          agentConfiguration: {
-            sId: "agent-id",
-          },
-          model: { providerId: "openai" },
-          agentMessage: { sId: "message-id", agentMessageId: 1 },
-          conversation: { sId: "conversation-id" },
-          action: {
-            sId: "sandbox-action-id",
-            toJSON: () => ({ sId: "sandbox-action-id" }),
-          },
-          stepContext: {
-            citationsCount: 0,
-            citationsOffset: 0,
-            resumeState: null,
-            retrievalTopK: 0,
-            websearchResultCount: 0,
-          },
+      runContext: {
+        contextType: "agent_loop",
+        agentConfiguration: {
+          sId: "agent-id",
+        },
+        model: { providerId: "openai" },
+        agentMessage: { sId: "message-id", agentMessageId: 1 },
+        conversation: { sId: "conversation-id" },
+        action: {
+          sId: "sandbox-action-id",
+          toJSON: () => ({ sId: "sandbox-action-id" }),
+        },
+        stepContext: {
+          citationsCount: 0,
+          citationsOffset: 0,
+          resumeState: null,
+          retrievalTopK: 0,
+          websearchResultCount: 0,
         },
       },
       signal: new AbortController().signal,
@@ -674,26 +672,24 @@ describe("runSandboxBashTool", () => {
   describe("resume mode", () => {
     function resumeStepContext(execId: string) {
       return {
-        toolContext: {
-          runContext: {
-            contextType: "agent_loop",
-            agentConfiguration: {
-              sId: "agent-id",
-            },
-            model: { providerId: "openai" },
-            agentMessage: { sId: "message-id", agentMessageId: 1 },
-            conversation: { sId: "conversation-id" },
-            action: {
-              sId: "sandbox-action-id",
-              toJSON: () => ({ sId: "sandbox-action-id" }),
-            },
-            stepContext: {
-              citationsCount: 0,
-              citationsOffset: 0,
-              resumeState: { execId },
-              retrievalTopK: 0,
-              websearchResultCount: 0,
-            },
+        runContext: {
+          contextType: "agent_loop",
+          agentConfiguration: {
+            sId: "agent-id",
+          },
+          model: { providerId: "openai" },
+          agentMessage: { sId: "message-id", agentMessageId: 1 },
+          conversation: { sId: "conversation-id" },
+          action: {
+            sId: "sandbox-action-id",
+            toJSON: () => ({ sId: "sandbox-action-id" }),
+          },
+          stepContext: {
+            citationsCount: 0,
+            citationsOffset: 0,
+            resumeState: { execId },
+            retrievalTopK: 0,
+            websearchResultCount: 0,
           },
         },
         auth: {
@@ -766,7 +762,7 @@ describe("addEgressDomainTool", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    mockAddSandboxPolicyDomain.mockResolvedValue(
+    mockAddOwnerPolicyDomain.mockResolvedValue(
       new Ok({
         addedDomain: "example.org",
         policy: { allowedDomains: ["example.org"] },
@@ -789,11 +785,9 @@ describe("addEgressDomainTool", () => {
           },
         }),
       },
-      toolContext: {
-        runContext: {
-          contextType: "agent_loop",
-          conversation: { sId: "conversation-id" },
-        },
+      runContext: {
+        contextType: "agent_loop",
+        conversation: { sId: "conversation-id" },
       },
       signal: new AbortController().signal,
     } as never;
@@ -815,7 +809,7 @@ describe("addEgressDomainTool", () => {
       );
     }
     expect(mockEnsureSandboxReady).not.toHaveBeenCalled();
-    expect(mockAddSandboxPolicyDomain).not.toHaveBeenCalled();
+    expect(mockAddOwnerPolicyDomain).not.toHaveBeenCalled();
   });
 
   it("adds the domain to the active sandbox policy and emits an audit event", async () => {
@@ -840,9 +834,9 @@ describe("addEgressDomainTool", () => {
       expect.anything(),
       expect.objectContaining({ sId: "conversation-id" })
     );
-    expect(mockAddSandboxPolicyDomain).toHaveBeenCalledWith(expect.anything(), {
+    expect(mockAddOwnerPolicyDomain).toHaveBeenCalledWith(expect.anything(), {
       domain: "example.org",
-      sandboxProviderId: "provider-id",
+      ownerId: "conversation-id",
     });
     expect(mockEmitAuditLogEvent).toHaveBeenCalledWith({
       auth: expect.anything(),
@@ -858,6 +852,7 @@ describe("addEgressDomainTool", () => {
       metadata: {
         added: "true",
         domain: "example.org",
+        conversation_id: "conversation-id",
         reason: "Install package dependencies.",
         sandbox_provider_id: "provider-id",
       },
@@ -877,7 +872,7 @@ describe("addEgressDomainTool", () => {
         freshlyCreated: false,
       })
     );
-    mockAddSandboxPolicyDomain.mockResolvedValue(
+    mockAddOwnerPolicyDomain.mockResolvedValue(
       new Ok({
         addedDomain: null,
         policy: { allowedDomains: ["example.org"] },
@@ -926,7 +921,7 @@ describe("addEgressDomainTool", () => {
     );
 
     expect(result.isErr()).toBe(true);
-    expect(mockAddSandboxPolicyDomain).not.toHaveBeenCalled();
+    expect(mockAddOwnerPolicyDomain).not.toHaveBeenCalled();
     expect(mockEmitAuditLogEvent).not.toHaveBeenCalled();
   });
 
@@ -944,7 +939,7 @@ describe("addEgressDomainTool", () => {
     );
 
     expect(result.isErr()).toBe(true);
-    expect(mockAddSandboxPolicyDomain).not.toHaveBeenCalled();
+    expect(mockAddOwnerPolicyDomain).not.toHaveBeenCalled();
   });
 
   it("surfaces sandbox policy helper errors", async () => {
@@ -957,7 +952,7 @@ describe("addEgressDomainTool", () => {
         freshlyCreated: false,
       })
     );
-    mockAddSandboxPolicyDomain.mockResolvedValue(
+    mockAddOwnerPolicyDomain.mockResolvedValue(
       new Err(new Error("Sandbox egress policy cannot exceed 100 domains."))
     );
 

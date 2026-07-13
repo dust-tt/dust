@@ -15,6 +15,27 @@ export type PricingEntry = {
 // This record contains all static model IDs. Custom models use default pricing.
 const CURRENT_MODEL_PRICING: Record<StaticModelIdType, PricingEntry> = {
   // https://openai.com/api/pricing
+  "gpt-5.6-sol": {
+    input: 5.0,
+    output: 30.0,
+    cache_creation_input_tokens: 6.25,
+    cache_read_input_tokens: 0.5,
+  },
+  // https://openai.com/api/pricing
+  "gpt-5.6-terra": {
+    input: 2.5,
+    output: 15.0,
+    cache_creation_input_tokens: 3.125,
+    cache_read_input_tokens: 0.25,
+  },
+  // https://openai.com/api/pricing
+  "gpt-5.6-luna": {
+    input: 1.0,
+    output: 6.0,
+    cache_creation_input_tokens: 1.25,
+    cache_read_input_tokens: 0.1,
+  },
+  // https://openai.com/api/pricing
   "gpt-5.5": {
     input: 5.0,
     output: 30.0,
@@ -330,6 +351,12 @@ const CURRENT_MODEL_PRICING: Record<StaticModelIdType, PricingEntry> = {
     output: 3.0,
     cache_read_input_tokens: 0.1,
   },
+  // https://fireworks.ai/models/fireworks/kimi-k2p6
+  "accounts/fireworks/models/kimi-k2p6": {
+    input: 0.95,
+    output: 4.0,
+    cache_read_input_tokens: 0.16,
+  },
   // https://app.fireworks.ai/models/fireworks/minimax-m2p5
   "accounts/fireworks/models/minimax-m2p5": {
     input: 0.3,
@@ -380,6 +407,14 @@ const CURRENT_MODEL_PRICING: Record<StaticModelIdType, PricingEntry> = {
   noop: {
     input: 0,
     output: 0,
+  },
+  // Fake model for auto selection.
+  // This model is not real and is used to select the best model for the task.
+  // It is not used for actual generation.
+  auto: {
+    input: 0,
+    output: 0,
+    cache_read_input_tokens: 0,
   },
 };
 

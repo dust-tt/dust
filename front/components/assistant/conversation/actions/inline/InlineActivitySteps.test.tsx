@@ -69,6 +69,8 @@ const mockAgentMessage: LightAgentMessageType = {
   citations: {},
   generatedFiles: [],
   activitySteps: [],
+  resolvedModel: null,
+  modelResolutionMethod: null,
 };
 
 describe("InlineActivitySteps", () => {

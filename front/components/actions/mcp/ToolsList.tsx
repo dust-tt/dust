@@ -3,6 +3,7 @@ import type {
   ToolSettings,
 } from "@app/components/actions/mcp/forms/mcpServerFormSchema";
 import {
+  canToolUseMediumStakeLevel,
   encodeMCPToolNameForForm,
   getDefaultInternalToolStakeLevel,
 } from "@app/components/actions/mcp/forms/mcpServerFormSchema";
@@ -71,7 +72,7 @@ function ToolItem({
 
   const toolPermissionLabel: Record<MCPToolStakeLevelType, string> = {
     high: "High (always ask for confirmation)",
-    medium: "Medium (allows per-agent confirmation save)",
+    medium: "Medium (allows input-scoped confirmation save)",
     low: "Low (allows user-global confirmation save)",
     never_ask: "Never ask (automatic execution)",
   };
@@ -85,7 +86,14 @@ function ToolItem({
         </h4>
       </div>
       {tool.description && (
-        <p className="text-sm text-muted-foreground">{tool.description}</p>
+        <Collapsible>
+          <CollapsibleTrigger label="Description" variant="secondary" />
+          <CollapsibleContent>
+            <p className="whitespace-pre-wrap break-words pt-1 text-sm text-muted-foreground">
+              {tool.description}
+            </p>
+          </CollapsibleContent>
+        </Collapsible>
       )}
       {toolEnabled && (
         <Card variant="primary" className="flex-col">
@@ -187,8 +195,8 @@ export const ToolsList = memo(
                   <b>High stake</b> tools need explicit user approval.
                 </li>
                 <li>
-                  <b>Medium stake</b> tools allow users to save per-agent
-                  confirmations.
+                  <b>Medium stake</b> tools allow users to save confirmations
+                  for specific tool inputs.
                 </li>
                 <li>
                   Users can completely disable confirmations for{" "}
@@ -202,6 +210,11 @@ export const ToolsList = memo(
 
             <div className="flex flex-col gap-4">
               {tools.map((tool) => {
+                const availableStakeLevels = MCP_TOOL_STAKE_LEVELS.filter(
+                  (stakeLevel) =>
+                    stakeLevel !== "medium" ||
+                    canToolUseMediumStakeLevel(mcpServerView.server, tool.name)
+                );
                 const defaultSettings = getDefaultToolSettings({
                   tool,
                   toolMetadataByName,
@@ -215,7 +228,7 @@ export const ToolsList = memo(
                       tool={tool}
                       settings={defaultSettings}
                       mayUpdate={mayUpdate}
-                      availableStakeLevels={MCP_TOOL_STAKE_LEVELS}
+                      availableStakeLevels={availableStakeLevels}
                       onChange={noop}
                     />
                   );
@@ -231,7 +244,7 @@ export const ToolsList = memo(
                       <ToolItem
                         tool={tool}
                         mayUpdate={mayUpdate}
-                        availableStakeLevels={MCP_TOOL_STAKE_LEVELS}
+                        availableStakeLevels={availableStakeLevels}
                         settings={field.value ?? defaultSettings}
                         onChange={field.onChange}
                       />

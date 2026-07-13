@@ -11,7 +11,6 @@ import {
 } from "@app/lib/metronome/alerts/programmatic_cap";
 import { CreditUsageConfigurationResource } from "@app/lib/resources/credit_usage_configuration_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
-import { isCreditPricedPlan } from "@app/types/plan";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 
@@ -64,18 +63,6 @@ export async function syncProgrammaticUsageLimit({
   if (!workspace.metronomeCustomerId) {
     return new Err(
       new Error(`Workspace ${workspace.sId} has no Metronome customer ID.`)
-    );
-  }
-
-  // Programmatic cap alerts are AWU-credit based and only meaningful on
-  // credit-priced (new-pricing) plans. Legacy programmatic usage is billed in
-  // USD via Stripe PAYG and must never create Metronome alerts.
-  const plan = auth.plan();
-  if (!plan || !isCreditPricedPlan(plan)) {
-    return new Err(
-      new Error(
-        `Programmatic usage limit only applies to credit-priced plans (workspace ${workspace.sId}).`
-      )
     );
   }
 

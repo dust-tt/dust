@@ -1,4 +1,5 @@
 import { groupMessagesIntoInteractions } from "@app/lib/api/assistant/conversation/interactions";
+import type { Interaction } from "@app/lib/api/assistant/conversation_rendering/pruning";
 import { batchRenderMessages } from "@app/lib/api/assistant/messages";
 import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
@@ -13,6 +14,7 @@ import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { ContentFragmentModel } from "@app/lib/resources/storage/models/content_fragment";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { getConversationRoute } from "@app/lib/utils/router";
+import { getStatsDClient } from "@app/lib/utils/statsd";
 import type {
   AgentMessageType,
   CompactionMessageType,
@@ -88,6 +90,50 @@ export const getLightConversation = async (
     lastInteractionsToFetchToolOutputContentFor,
     messagePagination
   );
+
+// Batch size (in interactions) for extending the tool-output-content fetch window beyond the
+// guaranteed floor. The boundary is anchored on a fixed, absolute interaction index rather than
+// distance from the most recent interaction, so it only advances once a full batch of new
+// interactions has accumulated instead of sliding by one every single turn.
+//
+// When the boundary does advance, every interaction between the old and new checkpoint loses its
+// tool-output content in a single turn (see computeMessagesWithToolOutputContent), which busts the
+// prompt cache for that turn. A larger batch means fewer crossings overall. It also means most
+// conversations whose interaction count never reaches the threshold never cross it at all. 30 is a
+// placeholder pending real data on the interaction-count distribution (see the
+// "conversation.interactions_count" metric below). Revisit once that data is in.
+export const TOOL_OUTPUT_FETCH_BATCH_SIZE = 30;
+
+/**
+ * Decides which agent messages should have their tool-output content fetched.
+ *
+ * The last `floorCount` interactions are always included. Beyond that floor, the window extends
+ * backward to the most recent checkpoint at or before the floor's start, a fixed multiple of
+ * TOOL_OUTPUT_FETCH_BATCH_SIZE. Because checkpoints are fixed positions counted from the start of
+ * the conversation, not from the tail, the boundary stays put across most turns and only jumps
+ * forward once a whole batch has accumulated.
+ */
+export function computeMessagesWithToolOutputContent(
+  interactions: Interaction<{ id: ModelId; role: "user" | "agent" }>[],
+  floorCount: number
+): Set<ModelId> {
+  if (floorCount <= 0) {
+    return new Set();
+  }
+
+  const floorStart = Math.max(interactions.length - floorCount, 0);
+  const checkpointStart =
+    Math.floor(floorStart / TOOL_OUTPUT_FETCH_BATCH_SIZE) *
+    TOOL_OUTPUT_FETCH_BATCH_SIZE;
+
+  return new Set(
+    interactions
+      .slice(checkpointStart)
+      .flatMap((i) =>
+        i.messages.filter((m) => m.role === "agent").map((m) => m.id)
+      )
+  );
+}
 
 async function _getConversation<V extends "light" | "full">(
   auth: Authenticator,
@@ -211,42 +257,39 @@ async function _getConversation<V extends "light" | "full">(
 
   let messagesWithToolOutputContent: Set<ModelId> | null = null;
 
-  // In the case of the agentic loop, to save memory and latency, we only want to fetch content for the last N interactions.
+  // In the case of the agentic loop, to save memory and latency, we don't want to fetch tool
+  // output content for every interaction in the conversation. See
+  // computeMessagesWithToolOutputContent for how the fetch window is decided.
   if (lastInteractionsToFetchToolOutputContentFor !== null) {
-    if (lastInteractionsToFetchToolOutputContentFor <= 0) {
-      messagesWithToolOutputContent = new Set();
-    } else {
-      const interactions = groupMessagesIntoInteractions(
-        removeNulls(
-          messages.map((m) => {
-            if (m.userMessageId) {
-              return {
-                id: m.userMessageId,
-                role: "user",
-              };
-            } else if (m.agentMessageId) {
-              return {
-                id: m.agentMessageId,
-                role: "agent",
-              };
-            }
-            // We don't care about the other messages.
-          })
-        )
-      );
+    const interactions = groupMessagesIntoInteractions(
+      removeNulls(
+        messages.map((m) => {
+          if (m.userMessageId) {
+            return {
+              id: m.userMessageId,
+              role: "user" as const,
+            };
+          } else if (m.agentMessageId) {
+            return {
+              id: m.agentMessageId,
+              role: "agent" as const,
+            };
+          }
+          // We don't care about the other messages.
+        })
+      )
+    );
 
-      // Keep the last N interactions with the highest ranks (order is correct because of the sort above).
-      const interactionsToKeep = interactions.slice(
-        -lastInteractionsToFetchToolOutputContentFor
-      );
+    // Purely observational, see TOOL_OUTPUT_FETCH_BATCH_SIZE above.
+    getStatsDClient().distribution(
+      "conversation.interactions_count",
+      interactions.length
+    );
 
-      // We only need to fetch content for the actions of the last N interactions.
-      messagesWithToolOutputContent = new Set(
-        interactionsToKeep.flatMap((i) =>
-          i.messages.filter((m) => m.role === "agent").map((m) => m.id)
-        )
-      );
-    }
+    messagesWithToolOutputContent = computeMessagesWithToolOutputContent(
+      interactions,
+      lastInteractionsToFetchToolOutputContentFor
+    );
   }
 
   const renderRes = await batchRenderMessages(

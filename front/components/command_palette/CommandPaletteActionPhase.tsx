@@ -39,7 +39,7 @@ function canEdit(item: ActionPhaseItem): boolean {
     case "agent":
       return item.agent.canEdit;
     case "skill":
-      return item.skill.canWrite;
+      return item.skill.canAdministrate;
   }
 }
 

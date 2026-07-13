@@ -47,12 +47,13 @@ app.get(
   ensureIsAdmin(),
   async (ctx): HandlerResult<GetKeysResponseBody> => {
     const auth = ctx.get("auth");
+    const user = auth.getNonNullableUser();
     const owner = auth.getNonNullableWorkspace();
 
     const keys = await KeyResource.listNonSystemKeysByWorkspace(owner);
 
     return ctx.json({
-      keys: keys.map((k) => k.toJSON()),
+      keys: keys.map((k) => k.toJSON(user.id)),
     });
   }
 );
@@ -277,7 +278,7 @@ app.post(
 
     return ctx.json(
       {
-        key: created.toJSON(),
+        key: created.toJSON(user.id),
       },
       201
     );

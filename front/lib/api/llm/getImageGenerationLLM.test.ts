@@ -5,7 +5,7 @@ import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mockGetLlmCredentials = vi.hoisted(() => vi.fn());
-const mockIsProviderWhitelisted = vi.hoisted(() => vi.fn());
+const mockIsProviderWhitelistedForAuth = vi.hoisted(() => vi.fn());
 const mockGoogleImageGenerationLLM = vi.hoisted(() => vi.fn());
 const mockOpenAIImageGenerationLLM = vi.hoisted(() => vi.fn());
 const mockGetCurrentRegion = vi.hoisted(() => vi.fn());
@@ -15,7 +15,7 @@ vi.mock("@app/lib/api/provider_credentials", () => ({
 }));
 
 vi.mock("@app/lib/api/assistant/models", () => ({
-  isProviderWhitelisted: mockIsProviderWhitelisted,
+  isProviderWhitelistedForAuth: mockIsProviderWhitelistedForAuth,
 }));
 
 vi.mock("@app/lib/api/llm/clients/google/imageGeneration", () => ({
@@ -106,7 +106,7 @@ describe("getImageGenerationLLM", () => {
     auth = makeAuth();
 
     mockGetLlmCredentials.mockResolvedValue(CREDENTIALS);
-    mockIsProviderWhitelisted.mockReturnValue(false);
+    mockIsProviderWhitelistedForAuth.mockReturnValue(false);
     mockGetCurrentRegion.mockReturnValue("us-central1");
 
     mockGoogleImageGenerationLLM.mockImplementation(function (_auth, args) {
@@ -118,7 +118,7 @@ describe("getImageGenerationLLM", () => {
   });
 
   it("returns OpenAI gpt-image-2 when openai is whitelisted", async () => {
-    mockIsProviderWhitelisted.mockImplementation(
+    mockIsProviderWhitelistedForAuth.mockImplementation(
       (_auth, providerId) => providerId === "openai"
     );
 
@@ -136,7 +136,7 @@ describe("getImageGenerationLLM", () => {
   });
 
   it("prefers OpenAI over Gemini when both providers are whitelisted", async () => {
-    mockIsProviderWhitelisted.mockReturnValue(true);
+    mockIsProviderWhitelistedForAuth.mockReturnValue(true);
 
     const llm = await getImageGenerationLLM(auth);
 
@@ -152,7 +152,7 @@ describe("getImageGenerationLLM", () => {
   });
 
   it("falls back to Gemini when openai is not whitelisted", async () => {
-    mockIsProviderWhitelisted.mockImplementation(
+    mockIsProviderWhitelistedForAuth.mockImplementation(
       (_auth, providerId) => providerId === "google_ai_studio"
     );
 
@@ -179,7 +179,7 @@ describe("getImageGenerationLLM", () => {
 
   it("falls back to Gemini in the EU region even when openai is whitelisted", async () => {
     mockGetCurrentRegion.mockReturnValue("europe-west1");
-    mockIsProviderWhitelisted.mockReturnValue(true);
+    mockIsProviderWhitelistedForAuth.mockReturnValue(true);
 
     const llm = await getImageGenerationLLM(auth);
 
@@ -196,7 +196,7 @@ describe("getImageGenerationLLM", () => {
 
   it("falls back to OpenAI gpt-image-1.5 in the EU region when only openai is whitelisted", async () => {
     mockGetCurrentRegion.mockReturnValue("europe-west1");
-    mockIsProviderWhitelisted.mockImplementation(
+    mockIsProviderWhitelistedForAuth.mockImplementation(
       (_auth, providerId) => providerId === "openai"
     );
 

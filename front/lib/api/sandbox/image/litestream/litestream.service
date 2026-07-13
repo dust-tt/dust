@@ -1,0 +1,39 @@
+[Unit]
+Description=Dust Litestream replication daemon for pod state
+After=network.target
+
+[Service]
+User=dust-state
+Group=dust-state
+ExecStart=/opt/bin/litestream replicate -config /etc/litestream.yml
+Restart=always
+RestartSec=2s
+
+# Pinned: fluent-bit's journal grep filter forwards on this identifier.
+SyslogIdentifier=litestream
+
+# Control socket directory (/run/litestream), created by systemd as
+# dust-state. The pre-sleep `litestream sync -wait` runs against the socket
+# in there; the socket is enabled by the static /etc/litestream.yml baked at
+# image build (directory-watcher config over /pod-state/databases).
+RuntimeDirectory=litestream
+RuntimeDirectoryMode=0755
+
+# Defense in depth, modeled on dust-egress-resolver.service. The daemon only
+# needs rw under /pod-state (live databases + replica gcsfuse mount); the
+# control socket is AF_UNIX and the file replica needs no network.
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ReadWritePaths=/pod-state
+ProtectHome=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+RestrictAddressFamilies=AF_UNIX
+RestrictNamespaces=yes
+LockPersonality=yes
+MemoryDenyWriteExecute=yes
+
+[Install]
+WantedBy=multi-user.target

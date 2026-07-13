@@ -32,7 +32,7 @@ app.get(
       ? Array.isArray(kind)
         ? kind
         : [kind]
-      : ["global", "regular", "space_editors"];
+      : ["global", "regular_auto", "space_editors"];
 
     const groups: GroupResource[] = spaceId
       ? await GroupResource.listForSpaceById(auth, spaceId, { groupKinds })

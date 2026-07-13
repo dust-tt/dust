@@ -1,7 +1,18 @@
 import { Card, type CardVariantType } from "@sparkle/components/Card";
+import {
+  checkboxIndicatorStyles,
+  checkboxStyles,
+} from "@sparkle/components/Checkbox";
 import { Counter } from "@sparkle/components/Counter";
+import {
+  radioIndicatorStyles,
+  radioStyles,
+} from "@sparkle/components/RadioGroup";
+import { Check } from "@sparkle/icons/v2-stroke";
 import { cn } from "@sparkle/lib/utils";
 import React from "react";
+
+export type OptionCardSelectionIndicator = "radio" | "checkbox";
 
 export interface OptionCardProps {
   label: string;
@@ -11,6 +22,7 @@ export interface OptionCardProps {
   disabled?: boolean;
   disableHover?: boolean;
   className?: string;
+  selectionIndicator?: OptionCardSelectionIndicator;
   onClick?: () => void;
   onFocusCapture?: React.FocusEventHandler<HTMLDivElement>;
   onMouseEnter?: React.MouseEventHandler<HTMLDivElement>;
@@ -27,6 +39,7 @@ export function OptionCard({
   onClick,
   onFocusCapture,
   onMouseEnter,
+  selectionIndicator,
 }: OptionCardProps) {
   const variant: CardVariantType = selected ? "active" : "tertiary";
   const isInteractive = onClick !== undefined && !disabled;
@@ -69,6 +82,26 @@ export function OptionCard({
           <span className="text-xs text-muted-foreground">{description}</span>
         )}
       </div>
+      {selectionIndicator === "radio" && (
+        <div
+          aria-hidden="true"
+          className={cn(radioStyles(), "pointer-events-none shrink-0")}
+        >
+          {selected && <div className={radioIndicatorStyles()} />}
+        </div>
+      )}
+      {selectionIndicator === "checkbox" && (
+        <div
+          aria-hidden="true"
+          className={cn(checkboxStyles(), "pointer-events-none shrink-0")}
+        >
+          {selected && (
+            <div className={checkboxIndicatorStyles()}>
+              <Check className="h-3 w-3 text-background" />
+            </div>
+          )}
+        </div>
+      )}
     </Card>
   );
 }

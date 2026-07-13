@@ -97,7 +97,7 @@ export function ContextUsageIndicator({
       : "default";
 
   return (
-    <div className="hidden md:block" onClick={(e) => e.stopPropagation()}>
+    <div className="hidden md:block h-6" onClick={(e) => e.stopPropagation()}>
       <PopoverRoot>
         <PopoverTrigger asChild>
           <Button

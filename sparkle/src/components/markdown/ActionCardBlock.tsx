@@ -60,6 +60,22 @@ const descriptionVariants = cva("", {
   defaultVariants: { size: "default", status: "active" },
 });
 
+const subtitleVariants = cva("", {
+  variants: {
+    size: {
+      compact: "text-sm",
+      default: "text-base",
+    },
+    status: {
+      active: "text-foreground",
+      disabled: "text-faint",
+      accepted: "text-faint",
+      rejected: "text-faint",
+    },
+  },
+  defaultVariants: { size: "default", status: "active" },
+});
+
 type ActionButtonPosition = "header" | "footer";
 
 export interface ActionCardBlockProps {
@@ -70,6 +86,7 @@ export interface ActionCardBlockProps {
     | React.ReactElement<AvatarStackProps>;
 
   // Content
+  subtitle?: string;
   description?: React.ReactNode;
   collapsibleContent?: React.ReactElement;
   collapsibleLabel?: string;
@@ -95,6 +112,7 @@ export interface ActionCardBlockProps {
 export function ActionCardBlock({
   title,
   visual,
+  subtitle,
   description,
   collapsibleContent,
   collapsibleLabel,
@@ -129,6 +147,8 @@ export function ActionCardBlock({
       : title;
 
   const titleClasses = titleVariants({ size, status: state });
+
+  const subtitleClasses = subtitleVariants({ size, status: state });
 
   const descriptionClasses = descriptionVariants({ size, status: state });
 
@@ -186,12 +206,17 @@ export function ActionCardBlock({
       className={cn("flex-col", isCompact ? "gap-2" : "gap-3")}
     >
       {showHeader && (
-        <div className="flex min-h-6 flex-wrap items-center justify-between gap-2">
+        <div className="flex min-h-6 flex-wrap items-start justify-between gap-2">
           <div className="flex min-w-0 items-center gap-2">
             {resolvedVisual}
-            {resolvedTitle && (
-              <div className={titleClasses}>{resolvedTitle}</div>
-            )}
+            <div className="flex min-w-0 flex-col">
+              {resolvedTitle && (
+                <div className={titleClasses}>{resolvedTitle}</div>
+              )}
+              {!isResolved && subtitle && (
+                <div className={subtitleClasses}>{subtitle}</div>
+              )}
+            </div>
           </div>
           {showActionsInHeader && (
             <div className="ml-auto shrink-0">{actionButtons}</div>

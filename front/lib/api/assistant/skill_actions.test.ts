@@ -1,4 +1,7 @@
+import { buildServerSideMCPServerConfiguration } from "@app/lib/actions/configuration/helpers";
+import { ENABLE_SKILL_TOOL_NAME } from "@app/lib/actions/constants";
 import { tryListMCPTools } from "@app/lib/actions/mcp_actions";
+import { SKILL_MANAGEMENT_SERVER_NAME } from "@app/lib/actions/mcp_internal_actions/constants";
 import { resolveSkillMCPServers } from "@app/lib/api/assistant/skill_actions";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { SKILL_COMPANY_DATA_SERVER_NAME } from "@app/lib/resources/skill/code_defined/shared";
@@ -58,7 +61,7 @@ describe("resolveSkillMCPServers", () => {
       conversation,
     });
 
-    const { error, serverToolsAndInstructions } = await tryListMCPTools(
+    const serverToolsAndInstructions = await tryListMCPTools(
       authenticator,
       {
         agentConfiguration,
@@ -71,7 +74,6 @@ describe("resolveSkillMCPServers", () => {
         skillServers,
       }
     );
-    expect(error).toBeUndefined();
 
     const serverNames = serverToolsAndInstructions.map(
       ({ serverName }) => serverName
@@ -98,5 +100,69 @@ describe("resolveSkillMCPServers", () => {
         .flatMap(({ tools }) => tools)
         .some((tool) => tool.name.startsWith("data_sources_file_system__"))
     ).toBe(false);
+  });
+
+  it("keeps tools from skill servers deferred even when their metadata is eager", async () => {
+    const { authenticator, workspace } = await createResourceTest({
+      role: "admin",
+    });
+    await MCPServerViewResource.ensureAllAutoToolsAreCreated(authenticator);
+
+    const agentConfiguration =
+      await AgentConfigurationFactory.createTestAgent(authenticator);
+    const conversation = await ConversationFactory.create(authenticator, {
+      agentConfigurationId: agentConfiguration.sId,
+      messagesCreatedAt: [],
+    });
+    const { agentMessage } = await ConversationFactory.createAgentMessage(
+      authenticator,
+      {
+        workspace,
+        conversation,
+        agentConfig: agentConfiguration,
+      }
+    );
+
+    const autoInternalViews =
+      await MCPServerViewResource.getMCPServerViewsForAutoInternalToolsAsMap(
+        authenticator,
+        [SKILL_MANAGEMENT_SERVER_NAME]
+      );
+    const skillManagementView = autoInternalViews.get(
+      SKILL_MANAGEMENT_SERVER_NAME
+    );
+    expect(skillManagementView).toBeDefined();
+    if (!skillManagementView) {
+      throw new Error("Expected skill management MCP server view.");
+    }
+
+    const serverToolsAndInstructions = await tryListMCPTools(
+      authenticator,
+      {
+        agentConfiguration,
+        agentMessage,
+        clientSideActionConfigurations: [],
+        conversation,
+      },
+      {
+        jitServers: [],
+        skillServers: [
+          buildServerSideMCPServerConfiguration({
+            mcpServerView: skillManagementView,
+            serverNameOverride: SKILL_MANAGEMENT_SERVER_NAME,
+          }),
+        ],
+      }
+    );
+
+    const enableSkillTool = serverToolsAndInstructions
+      .flatMap(({ tools }) => tools)
+      .find(
+        (tool) =>
+          tool.name ===
+          `${SKILL_MANAGEMENT_SERVER_NAME}__${ENABLE_SKILL_TOOL_NAME}`
+      );
+    expect(enableSkillTool).toBeDefined();
+    expect(enableSkillTool?.eager).toBeUndefined();
   });
 });

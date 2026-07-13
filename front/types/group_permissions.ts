@@ -17,6 +17,7 @@ export const PERMISSION_TYPES = [
   "create",
   "publish",
   "invite",
+  "use",
   "*",
 ] as const;
 export type PermissionType = (typeof PERMISSION_TYPES)[number];
@@ -30,6 +31,7 @@ export const GROUP_PERMISSION_RESOURCE_TYPES = [
   "billing",
   "identity",
   "audit_log",
+  "models_tier",
   "*",
 ] as const;
 export type GroupPermissionResourceType =
@@ -55,10 +57,10 @@ export function isGroupPermissionResourceType(
 const PERMISSION_CONFIGURATION_SCOPES = [
   "everyone",
   "groups",
-  "disabled",
+  "admins_only",
 ] as const;
 
-type PermissionConfigurationScope =
+export type PermissionConfigurationScope =
   (typeof PERMISSION_CONFIGURATION_SCOPES)[number];
 
 export const isValidPermissionConfigurationScope = (

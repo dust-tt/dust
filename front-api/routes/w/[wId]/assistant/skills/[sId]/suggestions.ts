@@ -17,7 +17,7 @@ import { validate } from "@front-api/middlewares/validator";
 
 // Mounted at /api/w/:wId/assistant/skills/:sId/suggestions.
 // The `skill` context variable is set by the parent skills/[sId]/index.ts
-// middleware, which also enforces canWrite.
+// middleware, which also enforces canAdministrate.
 const app = skillApp();
 
 /** @ignoreswagger */

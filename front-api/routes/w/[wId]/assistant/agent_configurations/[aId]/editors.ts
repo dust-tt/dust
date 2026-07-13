@@ -203,7 +203,7 @@ app.patch(
     }
 
     const editorGroup = editorGroupRes.value;
-    if (!editorGroup.canWrite(auth)) {
+    if (!editorGroup.canAdministrate(auth)) {
       return apiError(ctx, {
         status_code: 403,
         api_error: {

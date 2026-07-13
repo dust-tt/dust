@@ -532,7 +532,6 @@ impl DataSource {
                 &self.project,
                 &self.data_source_id(),
                 &document_id.to_string(),
-                &None,
             )
             .await?;
 
@@ -710,7 +709,6 @@ impl DataSource {
                     &self.project,
                     &self.data_source_id(),
                     &document_id.to_string(),
-                    &None,
                 )
                 .await?;
 
@@ -1391,7 +1389,7 @@ impl DataSource {
 
                 tokio::spawn(async move {
                     match store
-                        .load_data_source_document(&project, &data_source_id, &document_id, &None)
+                        .load_data_source_document(&project, &data_source_id, &document_id)
                         .await?
                     {
                         Some(mut d) => {
@@ -1810,17 +1808,11 @@ impl DataSource {
         document_id: &str,
         view_filter: &Option<SearchFilter>,
         remove_system_tags: bool,
-        version_hash: &Option<String>,
     ) -> Result<Option<Document>> {
         let store = store.clone();
 
         let mut d = match store
-            .load_data_source_document(
-                &self.project,
-                &self.data_source_id,
-                document_id,
-                version_hash,
-            )
+            .load_data_source_document(&self.project, &self.data_source_id, document_id)
             .await?
         {
             Some(d) => d,
@@ -1863,7 +1855,7 @@ impl DataSource {
         document_id: &str,
     ) -> Result<()> {
         let document = match store
-            .load_data_source_document(&self.project, &self.data_source_id, document_id, &None)
+            .load_data_source_document(&self.project, &self.data_source_id, document_id)
             .await?
         {
             Some(document) => document,
@@ -2000,7 +1992,6 @@ impl DataSource {
                 document_id,
                 None,
                 &None,
-                &None,
                 false,
             )
             .await?;
@@ -2056,7 +2047,6 @@ impl DataSource {
                 &self.data_source_id,
                 document_id,
                 None,
-                &None,
                 &None,
                 false,
             )
@@ -2220,9 +2210,8 @@ impl DataSource {
     ) -> Result<Option<DocumnentBlobPayload>> {
         let store = store.clone();
 
-        // Only fetch latest version by passing None as version_hash.
         let d = match store
-            .load_data_source_document(&self.project, &self.data_source_id, document_id, &None)
+            .load_data_source_document(&self.project, &self.data_source_id, document_id)
             .await?
         {
             Some(d) => d,

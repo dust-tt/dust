@@ -23,12 +23,9 @@ import { normalizeError } from "@app/types/shared/utils/error_utils";
 import assert from "assert";
 
 const handlers: ToolHandlers<typeof PLAN_MODE_TOOLS_METADATA> = {
-  create_plan: async ({ content }, { auth, toolContext }) => {
-    assert(
-      isAgentLoopRunContext(toolContext?.runContext),
-      "AgentLoopRunContext expected"
-    );
-    const { conversation } = toolContext.runContext;
+  create_plan: async ({ content }, { auth, runContext }) => {
+    assert(isAgentLoopRunContext(runContext), "AgentLoopRunContext expected");
+    const { conversation } = runContext;
 
     return withPlanModeLock(conversation.sId, async () => {
       const existing = await getActivePlanContent(auth, conversation);
@@ -60,12 +57,9 @@ const handlers: ToolHandlers<typeof PLAN_MODE_TOOLS_METADATA> = {
     });
   },
 
-  edit_plan: async ({ old_string, new_string }, { auth, toolContext }) => {
-    assert(
-      isAgentLoopRunContext(toolContext?.runContext),
-      "AgentLoopRunContext expected"
-    );
-    const { conversation } = toolContext.runContext;
+  edit_plan: async ({ old_string, new_string }, { auth, runContext }) => {
+    assert(isAgentLoopRunContext(runContext), "AgentLoopRunContext expected");
+    const { conversation } = runContext;
 
     try {
       return await withPlanModeLock(conversation.sId, async () => {
@@ -134,12 +128,9 @@ const handlers: ToolHandlers<typeof PLAN_MODE_TOOLS_METADATA> = {
     }
   },
 
-  close_plan: async ({ reason }, { auth, toolContext }) => {
-    assert(
-      isAgentLoopRunContext(toolContext?.runContext),
-      "AgentLoopRunContext expected"
-    );
-    const { conversation } = toolContext.runContext;
+  close_plan: async ({ reason }, { auth, runContext }) => {
+    assert(isAgentLoopRunContext(runContext), "AgentLoopRunContext expected");
+    const { conversation } = runContext;
 
     const closed = await closeActivePlan(auth, conversation);
     if (closed.isErr()) {

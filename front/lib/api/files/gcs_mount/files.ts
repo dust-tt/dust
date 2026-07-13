@@ -10,6 +10,7 @@ import {
 } from "@app/lib/api/files/mount_path";
 import type { Authenticator } from "@app/lib/auth";
 import { getPrivateUploadBucket } from "@app/lib/file_storage";
+import { getCachedPrivateUploadSignedUrl } from "@app/lib/file_storage/signed_url_cache";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import type { FileResource } from "@app/lib/resources/file_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
@@ -196,7 +197,7 @@ export async function getConversationFileMountSignedUrl(
     );
   }
   try {
-    const url = await getPrivateUploadBucket().getSignedUrl(gcsPath);
+    const url = await getCachedPrivateUploadSignedUrl(gcsPath);
     return new Ok(url);
   } catch (err) {
     return new Err(normalizeError(err));

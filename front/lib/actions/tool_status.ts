@@ -1,12 +1,10 @@
 import type { MCPToolStakeLevelType } from "@app/lib/actions/constants";
 import type { MCPToolConfigurationType } from "@app/lib/actions/mcp";
 import type { Authenticator } from "@app/lib/auth";
-import type { AgentMessageType } from "@app/types/assistant/conversation";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { isNumberOrBoolean, isString } from "@app/types/shared/utils/general";
 
 export interface ToolInputContext {
-  agentId: string;
   toolInputs: Record<string, unknown>;
 }
 
@@ -19,11 +17,11 @@ export async function getExecutionStatusFromConfig(
   auth: Authenticator,
   {
     actionConfiguration,
-    agentMessage,
+    skipToolsValidation = false,
     context,
   }: {
     actionConfiguration: StakeCheckConfiguration;
-    agentMessage: AgentMessageType;
+    skipToolsValidation?: boolean;
     context?: ToolInputContext;
   }
 ): Promise<{
@@ -31,17 +29,15 @@ export async function getExecutionStatusFromConfig(
   status: "ready_allowed_implicitly" | "blocked_validation_required";
   serverId?: string;
 }> {
-  // If the agent message is marked as "skipToolsValidation" we skip all tools validation
-  // irrespective of the `actionConfiguration.permission`. This is set when the agent message was
-  // created by an API call where the caller explicitly set `skipToolsValidation` to true.
-  if (agentMessage.skipToolsValidation) {
+  // Explicit validation bypasses take precedence over the tool permission.
+  if (skipToolsValidation) {
     return { status: "ready_allowed_implicitly" };
   }
 
   // Permissions:
   // - "never_ask": Automatically approved
   // - "low": Ask user for approval and allow to automatically approve next time
-  // - "medium": Ask user for approval per (agent, argument values) combination
+  // - "medium": Ask user for approval per argument-values combination
   // - "high": Ask for approval each time
   // - undefined: Use default permission ("never_ask" for default tools, "high" for other tools)
   switch (actionConfiguration.permission) {
@@ -63,13 +59,13 @@ export async function getExecutionStatusFromConfig(
       return { status: "blocked_validation_required" };
     }
     case "medium": {
-      // Medium stake requires per-argument, per-agent approval.
+      // Medium stake requires per-argument approval.
       // If context is missing, we block.
       const user = auth.user();
       if (!user || !context) {
         return { status: "blocked_validation_required" };
       }
-      const { agentId, toolInputs } = context;
+      const { toolInputs } = context;
       const argumentsRequiringApproval =
         actionConfiguration.argumentsRequiringApproval ?? [];
       const argsAndValues = extractArgRequiringApprovalValues(
@@ -80,7 +76,6 @@ export async function getExecutionStatusFromConfig(
       const userHasApproved = await user.hasApprovedTool(auth, {
         mcpServerId: actionConfiguration.toolServerId,
         toolName: actionConfiguration.name,
-        agentId,
         argsAndValues,
       });
 
@@ -120,7 +115,6 @@ export async function setUserAlwaysApprovedTool(
   await user.createToolApproval(auth, {
     mcpServerId,
     toolName: functionCallName,
-    agentId: null,
     argsAndValues: null,
   });
 }
@@ -148,7 +142,6 @@ export async function hasUserAlwaysApprovedTool(
   return user.hasApprovedTool(auth, {
     mcpServerId,
     toolName: functionCallName,
-    agentId: null,
     argsAndValues: null,
   });
 }

@@ -164,6 +164,7 @@ export const functionCallModelEvents: ResponseStreamEvent[] = [
         input_tokens: 1391,
         input_tokens_details: {
           cached_tokens: 0,
+          cache_write_tokens: 0,
         },
         output_tokens: 74,
         output_tokens_details: {

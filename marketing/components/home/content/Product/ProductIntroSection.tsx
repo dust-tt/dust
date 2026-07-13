@@ -6,7 +6,7 @@ import {
   HomeRevealStyles,
 } from "@marketing/components/home/content/Product/HomeReveal";
 import TrustedBy from "@marketing/components/home/TrustedBy";
-import { Button, Rocket02 } from "@dust-tt/sparkle";
+import { LegacyButton as Button, Rocket02 } from "@dust-tt/sparkle";
 import Link from "next/link";
 import { useState } from "react";
 

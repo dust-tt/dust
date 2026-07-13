@@ -1423,7 +1423,6 @@ impl Store for PostgresStore {
         project: &Project,
         data_source_id: &str,
         document_id: &str,
-        version_hash: &Option<String>,
     ) -> Result<Option<Document>> {
         let project_id = project.project_id();
         let data_source_id = data_source_id.to_string();
@@ -1445,34 +1444,18 @@ impl Store for PostgresStore {
             _ => unreachable!(),
         };
         // TODO(Thomas-020425): Read tags from nodes table.
-        let r = match version_hash {
-            None => {
-                c.query(
-                    "SELECT dsd.id, dsd.created, dsd.timestamp, dsn.tags_array, dsn.parents, \
-                       dsn.source_url, dsd.hash, dsd.text_size, dsd.chunk_count, dsn.title, \
-                       dsn.mime_type, dsn.provider_visibility \
-                       FROM data_sources_documents dsd \
-                       INNER JOIN data_sources_nodes dsn ON dsn.document=dsd.id \
-                       WHERE dsd.data_source = $1 AND dsd.document_id = $2 \
-                       AND dsd.status='latest' LIMIT 1",
-                    &[&data_source_row_id, &document_id],
-                )
-                .await?
-            }
-            Some(version_hash) => {
-                c.query(
-                    "SELECT dsd.id, dsd.created, dsd.timestamp, dsn.tags_array, dsn.parents, \
-                       dsn.source_url, dsd.hash, dsd.text_size, dsd.chunk_count, dsn.title, \
-                       dsn.mime_type, dsn.provider_visibility \
-                       FROM data_sources_documents dsd \
-                       INNER JOIN data_sources_nodes dsn ON dsn.document=dsd.id \
-                       WHERE dsd.data_source = $1 AND dsd.document_id = $2 \
-                       AND dsd.hash = $3 LIMIT 1",
-                    &[&data_source_row_id, &document_id, &version_hash],
-                )
-                .await?
-            }
-        };
+        let r = c
+            .query(
+                "SELECT dsd.id, dsd.created, dsd.timestamp, dsn.tags_array, dsn.parents, \
+                   dsn.source_url, dsd.hash, dsd.text_size, dsd.chunk_count, dsn.title, \
+                   dsn.mime_type, dsn.provider_visibility \
+                   FROM data_sources_documents dsd \
+                   INNER JOIN data_sources_nodes dsn ON dsn.document=dsd.id \
+                   WHERE dsd.data_source = $1 AND dsd.document_id = $2 \
+                   AND dsd.status='latest' LIMIT 1",
+                &[&data_source_row_id, &document_id],
+            )
+            .await?;
 
         let d: Option<(
             i64,
@@ -1696,7 +1679,6 @@ impl Store for PostgresStore {
         document_id: &str,
         limit_offset: Option<(usize, usize)>,
         view_filter: &Option<SearchFilter>,
-        latest_hash: &Option<String>,
         include_count: bool,
     ) -> Result<(Vec<DocumentVersion>, usize)> {
         let project_id = project.project_id();
@@ -1719,46 +1701,6 @@ impl Store for PostgresStore {
             _ => unreachable!(),
         };
 
-        // The `created` timestamp of the version specified by `latest_hash`
-        // (if `latest_hash` is `None`, then this is the latest version's `created` timestamp).
-        let latest_hash_created: i64 = match latest_hash {
-            Some(latest_hash) => {
-                let stmt = c
-                    .prepare(
-                        "SELECT created FROM data_sources_documents \
-                           WHERE data_source = $1 AND document_id = $2 AND hash = $3 LIMIT 1",
-                    )
-                    .await?;
-                let r = c
-                    .query(&stmt, &[&data_source_row_id, &document_id, &latest_hash])
-                    .await?;
-                match r.len() {
-                    0 => Err(anyhow!("Unknown document hash"))?,
-                    1 => r[0].get(0),
-                    _ => unreachable!(),
-                }
-            }
-
-            // Get the latest version's created timestamp (accepting deleted versions).
-            None => {
-                let stmt = c
-                    .prepare(
-                        "SELECT created FROM data_sources_documents \
-                           WHERE data_source = $1 AND document_id = $2 \
-                           ORDER BY created DESC LIMIT 1",
-                    )
-                    .await?;
-                let r = c.query(&stmt, &[&data_source_row_id, &document_id]).await?;
-                match r.len() {
-                    // If no hash was specified and there are no versions, just return an empty
-                    // array.
-                    0 => return Ok((vec![], 0)),
-                    1 => r[0].get(0),
-                    _ => unreachable!(),
-                }
-            }
-        };
-
         let mut where_clauses: Vec<String> = vec![];
         let mut params: Vec<&(dyn ToSql + Sync)> = vec![];
 
@@ -1766,8 +1708,6 @@ impl Store for PostgresStore {
         params.push(&data_source_row_id);
         where_clauses.push("dsd.document_id = $2".to_string());
         params.push(&document_id);
-        where_clauses.push("dsd.created <= $3".to_string());
-        params.push(&latest_hash_created);
 
         let (filter_clauses, filter_params, p_idx) = Self::where_clauses_and_params_for_filter(
             view_filter,

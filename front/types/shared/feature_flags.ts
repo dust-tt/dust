@@ -51,6 +51,10 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
       "Use GPT 5.5 (medium reasoning) as the default model for the @dust agent",
     stage: "dust_only",
   },
+  dust_agent_sonnet_5_default: {
+    description: "Use Claude Sonnet 5 as the default model for the @dust agent",
+    stage: "dust_only",
+  },
   notion_private_integration: {
     description: "Setup Notion private integration tokens",
     stage: "on_demand",
@@ -156,11 +160,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
   usage_page_read_only: {
     description:
       "Allow legacy-contract workspaces to view the Usage page in read-only mode (analytics and member spend visible; all actions disabled).",
-    stage: "on_demand",
-  },
-  pricing_groups: {
-    description:
-      "Surface org groups on the Usage page: groups column, groups filter, and bulk spend-limit editing across a selection of members.",
     stage: "on_demand",
   },
   xai_feature: {
@@ -318,6 +317,11 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
   },
   activation_skill: {
     description: "Enable the Activation skill for agentic user activation pods",
+    stage: "dust_only",
+  },
+  group_permissions_shadow: {
+    description:
+      "Admin Governance: evaluate the new group_permissions checks alongside the legacy ones and log mismatches (shadow mode). Serves the legacy result; safe to toggle.",
     stage: "dust_only",
   },
 } as const satisfies Record<string, FeatureFlag>;

@@ -1,3 +1,4 @@
+import type { SandboxTokenPayload } from "@app/lib/api/sandbox/access_tokens";
 import {
   isSandboxExecTokenPayload,
   isSandboxFunctionInvocationTokenPayload,
@@ -18,8 +19,20 @@ import { apiError } from "./utils";
 
 type SandboxTokenKind = "action" | "function_invocation";
 type SandboxAuthOptions = {
-  tokenKind: SandboxTokenKind;
+  allowedTokenKinds: SandboxTokenKind[];
 };
+
+function getSandboxTokenKind(
+  claims: SandboxTokenPayload
+): SandboxTokenKind | null {
+  if (isSandboxExecTokenPayload(claims)) {
+    return "action";
+  }
+  if (isSandboxFunctionInvocationTokenPayload(claims)) {
+    return "function_invocation";
+  }
+  return null;
+}
 
 function readHeaders(ctx: Context): Record<string, string> {
   const headers: Record<string, string> = {};
@@ -38,7 +51,7 @@ function readHeaders(ctx: Context): Record<string, string> {
  * Mirrors `withSandboxAuthentication` in `front/lib/api/auth_wrappers.ts`.
  */
 export function sandboxAuth({
-  tokenKind,
+  allowedTokenKinds,
 }: SandboxAuthOptions): MiddlewareHandler<SandboxCtx> {
   return createMiddleware<SandboxCtx>(async (ctx, next) => {
     const wId = ctx.req.param("wId");
@@ -83,25 +96,13 @@ export function sandboxAuth({
         },
       });
     }
-    if (tokenKind === "action" && !isSandboxExecTokenPayload(claims)) {
+    const claimsKind = getSandboxTokenKind(claims);
+    if (claimsKind === null || !allowedTokenKinds.includes(claimsKind)) {
       return apiError(ctx, {
         status_code: 403,
         api_error: {
           type: "invalid_request_error",
-          message: "This sandbox token cannot access sandbox actions.",
-        },
-      });
-    }
-    if (
-      tokenKind === "function_invocation" &&
-      !isSandboxFunctionInvocationTokenPayload(claims)
-    ) {
-      return apiError(ctx, {
-        status_code: 403,
-        api_error: {
-          type: "invalid_request_error",
-          message:
-            "This sandbox token cannot access sandbox function invocations.",
+          message: "This sandbox token cannot access this endpoint.",
         },
       });
     }
@@ -112,7 +113,7 @@ export function sandboxAuth({
     }
     const auth = authRes.value;
 
-    if (tokenKind === "action") {
+    if (claimsKind === "action") {
       const featureFlags = await getFeatureFlags(auth);
       if (!isComputerFeatureEnabled(featureFlags)) {
         return apiError(ctx, {

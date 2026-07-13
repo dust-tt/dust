@@ -1,4 +1,4 @@
-import type { BlockedToolExecution } from "@app/lib/actions/mcp";
+import type { AgentLoopBlockedToolExecution } from "@app/lib/actions/mcp";
 import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
 import {
   getInternalMCPServerNameFromSId,
@@ -16,7 +16,7 @@ import {
   getToolDisplayLabels,
   getToolNameFromFunctionCallName,
 } from "@app/lib/actions/tool_display_labels";
-import type { StepContext } from "@app/lib/actions/types";
+import type { StepContext, ToolOutputItemType } from "@app/lib/actions/types";
 import {
   isFileAuthorizationInfo,
   isSandboxChildActionInfo,
@@ -288,7 +288,7 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
   static async listBlockedActionsForConversation(
     auth: Authenticator,
     conversation: ConversationResource
-  ): Promise<BlockedToolExecution[]> {
+  ): Promise<AgentLoopBlockedToolExecution[]> {
     const owner = auth.getNonNullableWorkspace();
 
     const latestAgentMessages =
@@ -375,7 +375,7 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
 
     const parentUserMessageById = keyBy(parentUserMessages, "id");
 
-    const blockedActionsList: BlockedToolExecution[] = [];
+    const blockedActionsList: AgentLoopBlockedToolExecution[] = [];
 
     // Fetch agent configurations with their specific versions from the actions.
     const agentConfigVersionPairs = removeNulls(
@@ -452,7 +452,7 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
       assert(parentUserMessage.userMessage, "Parent user message not found.");
 
       const baseActionParams: Omit<
-        BlockedToolExecution,
+        AgentLoopBlockedToolExecution,
         "status" | "authorizationInfo"
       > = {
         // Compute approval labels from persisted configuration + stored inputs.
@@ -471,7 +471,7 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
         metadata: {
           toolName: action.toolConfiguration.originalName,
           mcpServerName: action.toolConfiguration.mcpServerName,
-          agentName: agentConfiguration.name,
+          agentName: "agent",
           icon: action.toolConfiguration.icon,
         },
         argumentsRequiringApproval:
@@ -718,12 +718,24 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
     });
   }
 
+  /**
+   * A message should never have blocked actions from more than one step, and resume paths rely
+   * on that to resume the agent loop from a single, unambiguous step. By default this enforces the
+   * invariant and throws on a violation, surfacing the bug. `dangerouslyBypassSameStepCheck` (used
+   * by the unstick-conversation poke plugin) skips the check so a genuinely stuck conversation can
+   * still be finalized.
+   */
   static async listBlockedActionsForAgentMessage(
     auth: Authenticator,
     {
       agentMessageId,
       transaction,
-    }: { agentMessageId: ModelId; transaction?: Transaction }
+      dangerouslyBypassSameStepCheck = false,
+    }: {
+      agentMessageId: ModelId;
+      transaction?: Transaction;
+      dangerouslyBypassSameStepCheck?: boolean;
+    }
   ): Promise<AgentMCPActionResource[]> {
     const actions = await this.baseFetch(
       auth,
@@ -742,13 +754,14 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
       return [];
     }
 
-    // Assert all blocked actions have the same step.
-    const steps = actions.map((a) => a.stepContent.step);
-    const uniqueSteps = [...new Set(steps)];
-    assert(
-      uniqueSteps.length === 1,
-      `All blocked actions must be from the same step, got ${steps.join(", ")}`
-    );
+    if (!dangerouslyBypassSameStepCheck) {
+      const steps = actions.map((a) => a.stepContent.step);
+      const uniqueSteps = [...new Set(steps)];
+      assert(
+        uniqueSteps.length === 1,
+        `All blocked actions must be from the same step, got ${steps.join(", ")}`
+      );
+    }
 
     return actions;
   }
@@ -759,17 +772,27 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
    * "blocked actions denied" commit atomically. Guarded on blocked statuses so a concurrent
    * approval that already transitioned the action is not clobbered. Returns the actions
    * actually denied, with their pre-deny resources.
+   *
+   * `dangerouslyBypassSameStepCheck` is forwarded to listBlockedActionsForAgentMessage: leave it
+   * false to enforce the single-step invariant; the unstick-conversation poke plugin passes true to
+   * finalize an anomalous, genuinely stuck conversation instead of throwing.
    */
   static async denyBlockedActionsForAgentMessage(
     auth: Authenticator,
     {
       agentMessageId,
       transaction,
-    }: { agentMessageId: ModelId; transaction: Transaction }
+      dangerouslyBypassSameStepCheck = false,
+    }: {
+      agentMessageId: ModelId;
+      transaction: Transaction;
+      dangerouslyBypassSameStepCheck?: boolean;
+    }
   ): Promise<AgentMCPActionResource[]> {
     const blockedActions = await this.listBlockedActionsForAgentMessage(auth, {
       agentMessageId,
       transaction,
+      dangerouslyBypassSameStepCheck,
     });
 
     if (blockedActions.length === 0) {
@@ -827,7 +850,7 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
       content: CallToolResult["content"][number];
       fileId?: ModelId;
     }>
-  ): Promise<AgentMCPActionOutputItemModel[]> {
+  ): Promise<Result<ToolOutputItemType[], Error>> {
     const outputItems = await AgentMCPActionOutputItemModel.bulkCreate(
       contents.map((c) => {
         const { generatedFilePath, generatedFileContentType } =
@@ -863,8 +886,7 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
     // GCS write is retried internally. If it still fails we surface the error rather than leaving
     // rows with no `contentGcsPath`. There is no acceptable degraded state.
     if (gcsResult.isErr()) {
-      // TODO(2026-05-08 FLAV) Return a result and refactor all call sites.
-      throw gcsResult.error;
+      return new Err(gcsResult.error);
     }
 
     await warmGcsContentCache(
@@ -896,7 +918,21 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
       { concurrency: CONCURRENCY_UPDATE_OUTPUT_ITEMS }
     );
 
-    return outputItems;
+    // Return the stored contents in the generic tool output item shape.
+    return new Ok(
+      removeNulls(
+        outputItems.map((item) =>
+          item.content
+            ? {
+                content: item.content,
+                fileId: item.fileId ?? null,
+                file: item.file ?? null,
+                workspaceId: item.workspaceId,
+              }
+            : null
+        )
+      )
+    );
   }
 
   static async fetchOutputItemsByActionIds(

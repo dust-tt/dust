@@ -468,6 +468,7 @@ describe("SandboxFunctionResource", () => {
     expect(opts?.envVars).toMatchObject({
       DUST_FUNCTIONS_DIR: `/sandbox-functions/pods/${space.sId}`,
       DUST_POD_DATABASES_DIR: "/pod-state/databases",
+      DUST_POD_DATABASE_MAX_SIZE_BYTES: "1073741824",
       DUST_SANDBOX_TOKEN: "sbt-function-token",
     });
     expect(opts?.user).toBe("agent-proxied");

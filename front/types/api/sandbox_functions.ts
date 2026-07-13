@@ -1,3 +1,7 @@
+import type {
+  SandboxFunctionMCPApproveExecutionEvent,
+  SandboxFunctionToolPersonalAuthRequiredEvent,
+} from "@app/lib/actions/mcp_internal_actions/events";
 import type { ToolExecutionBaseStatus } from "@app/lib/actions/statuses";
 
 export const SANDBOX_FUNCTION_INVOCATION_STATUSES = ["created"] as const;
@@ -7,6 +11,11 @@ export type SandboxFunctionInvocationStatus =
 
 // Lowercase alphanumeric with single hyphen separators (e.g. `greet`, `send-slack-message`).
 export const SANDBOX_FUNCTION_SLUG_REGEX = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
+
+// Mirrors DB_NAME_REGEX in cli/dust-sandbox/functions-runner/types/db.ts. Regex values cannot
+// be type-checked and front cannot runtime-import cli code; equality is asserted in
+// build_on_sandbox.test.ts.
+export const POD_DATABASE_NAME_REGEX = /^[a-z][a-z0-9_]{0,63}$/;
 
 export function isValidSandboxFunctionSlug(value: unknown): value is string {
   return typeof value === "string" && SANDBOX_FUNCTION_SLUG_REGEX.test(value);
@@ -45,9 +54,32 @@ export type SandboxFunctionInvocationResultEvent = {
   result: unknown;
 };
 
+// Published when the invocation failed before producing a result, so listeners settle instead of
+// waiting forever.
+export type SandboxFunctionInvocationErrorEvent = {
+  type: "sandbox_function_invocation_error";
+  created: number;
+  invocationId: string;
+  functionId: string;
+  message: string;
+};
+
 export type SandboxFunctionInvocationEvent =
   | SandboxFunctionInvocationCreatedEvent
-  | SandboxFunctionInvocationResultEvent;
+  | SandboxFunctionInvocationResultEvent
+  | SandboxFunctionInvocationErrorEvent
+  | SandboxFunctionMCPApproveExecutionEvent
+  | SandboxFunctionToolPersonalAuthRequiredEvent;
+
+// The events that end an invocation stream: no further event is published after them.
+export function isSandboxFunctionInvocationTerminalEvent(
+  event: SandboxFunctionInvocationEvent
+): boolean {
+  return (
+    event.type === "sandbox_function_invocation_result" ||
+    event.type === "sandbox_function_invocation_error"
+  );
+}
 
 export type PostSandboxFunctionInvocationRequestBody = {
   input?: unknown;

@@ -11,7 +11,7 @@ import {
   PartnerIdealPartners,
   PartnerSocialProof,
 } from "@marketing/components/home/PartnerHero";
-import { Button } from "@dust-tt/sparkle";
+import { LegacyButton as Button } from "@dust-tt/sparkle";
 import type { GetStaticProps } from "next";
 import { useRouter } from "next/router";
 import type { ReactElement } from "react";

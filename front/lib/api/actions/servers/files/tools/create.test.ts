@@ -1,5 +1,6 @@
 import type { ToolHandlerExtra } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import type { ToolContextType } from "@app/lib/actions/types";
+import type { ToolRunContext } from "@app/lib/actions/types";
+import { CREATE_CONTENT_MAX_BYTES } from "@app/lib/api/actions/servers/files/metadata";
 import { createHandler } from "@app/lib/api/actions/servers/files/tools/create";
 import { createConversation } from "@app/lib/api/assistant/conversation";
 import { Authenticator } from "@app/lib/auth";
@@ -14,10 +15,11 @@ function makeExtra(
   auth: Authenticator,
   conversation: ConversationType
 ): ToolHandlerExtra {
-  const toolContext = {
-    runContext: { contextType: "agent_loop", conversation },
-  } as unknown as ToolContextType;
-  return { auth, toolContext } as unknown as ToolHandlerExtra;
+  const runContext = {
+    contextType: "agent_loop",
+    conversation,
+  } as unknown as ToolRunContext;
+  return { auth, runContext } as unknown as ToolHandlerExtra;
 }
 
 async function setupProjectConversation(): Promise<{
@@ -105,5 +107,26 @@ describe("createHandler", () => {
     expect(fileStorageMock.saveFileCalls[0].contentType).toBe(
       "application/vnd.dust.frame"
     );
+  });
+
+  it("overwrites an existing frame file well over the generic 50 KB limit", async () => {
+    const { auth, conversation } = await setupProjectConversation();
+    fileStorageMock.setFileMetadata(() => ({
+      contentType: "application/vnd.dust.frame",
+      size: "100",
+    }));
+    const content = "x".repeat(CREATE_CONTENT_MAX_BYTES + 1);
+
+    const result = await createHandler(
+      {
+        path: `conversation-${conversation.sId}/interactive.tsx`,
+        content,
+        content_type: "text/plain",
+      },
+      makeExtra(auth, conversation)
+    );
+
+    assert(result.isOk());
+    expect(fileStorageMock.saveFileCalls).toHaveLength(1);
   });
 });
