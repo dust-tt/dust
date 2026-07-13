@@ -105,7 +105,7 @@ describe("editAndValidateAction", () => {
         workspace,
         conversation,
         agentConfig,
-        parentMessageId: userMessageRow.id,
+        parentMessageModelId: userMessageRow.id,
         rank: 1,
         mcpAction: {
           toolConfiguration: makeToolConfiguration({ editable }),
@@ -119,7 +119,7 @@ describe("editAndValidateAction", () => {
     return {
       actionId: action!.sId,
       messageId: agentMessage.sId,
-      stepContentId: action!.stepContent.id,
+      stepContentModelId: action!.stepContent.id,
     };
   }
 
@@ -130,10 +130,10 @@ describe("editAndValidateAction", () => {
     return action!;
   }
 
-  async function reloadStepContentValue(stepContentId: number) {
+  async function reloadStepContentValue(stepContentModelId: number) {
     const stepContent = await AgentStepContentResource.fetchByModelIdWithAuth(
       auth,
-      stepContentId
+      stepContentModelId
     );
     expect(stepContent).not.toBeNull();
 
@@ -151,7 +151,7 @@ describe("editAndValidateAction", () => {
   }
 
   it("updates editable inputs, stores user-edited inputs, and approves the action", async () => {
-    const { actionId, messageId, stepContentId } =
+    const { actionId, messageId, stepContentModelId } =
       await createAgentMessageWithBlockedAction();
     const conversationResource = await getConversationResource();
 
@@ -177,7 +177,7 @@ describe("editAndValidateAction", () => {
     });
     expect(action.status).toBe("ready_allowed_explicitly");
 
-    const stepContentValue = await reloadStepContentValue(stepContentId);
+    const stepContentValue = await reloadStepContentValue(stepContentModelId);
     expect(stepContentValue).toMatchObject({
       value: {
         arguments: JSON.stringify({

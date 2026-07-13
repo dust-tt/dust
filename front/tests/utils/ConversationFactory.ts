@@ -448,7 +448,7 @@ export class ConversationFactory {
       workspace,
       conversation,
       agentConfig,
-      parentMessageId = null,
+      parentMessageModelId = null,
       rank = 0,
       mcpAction,
       runIds = null,
@@ -459,7 +459,7 @@ export class ConversationFactory {
         | ConversationWithoutContentType
         | ConversationResource;
       agentConfig: LightAgentConfigurationType;
-      parentMessageId?: ModelId | null;
+      parentMessageModelId?: ModelId | null;
       rank?: number;
       mcpAction?: {
         toolConfiguration: LightServerSideMCPToolConfigurationType;
@@ -487,7 +487,7 @@ export class ConversationFactory {
       sId: generateRandomModelSId(),
       rank,
       conversationId: conversation.id,
-      parentId: parentMessageId,
+      parentId: parentMessageModelId,
       agentMessageId: agentMessageRow.id,
       workspaceId: workspace.id,
     });
