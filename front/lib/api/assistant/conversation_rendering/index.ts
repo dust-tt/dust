@@ -103,7 +103,9 @@ function pruneConversationToBudget(
     totalTokens = sumInteractionTokens(pruned);
   }
 
-  // Layer 3: pruning alone wasn't enough, force it past TOOL_RESULTS_TO_PRESERVE.
+  // Layer 3: reaching here means layer 2 dropped every previous interaction it was allowed to,
+  // and what remains (the last PREVIOUS_INTERACTIONS_TO_PRESERVE plus the current interaction)
+  // still doesn't fit. Force pruning past TOOL_RESULTS_TO_PRESERVE into the protected floor.
   if (totalTokens > budgetForInteractions) {
     logger.warn(
       { ...logDetails, totalTokens, budgetForInteractions },
@@ -114,7 +116,9 @@ function pruneConversationToBudget(
     totalTokens = sumInteractionTokens(pruned);
   }
 
-  // Layer 4: still over budget, drop previous interactions past PREVIOUS_INTERACTIONS_TO_PRESERVE.
+  // Layer 4: still over budget with every tool result already at placeholder size. Drop previous
+  // interactions past PREVIOUS_INTERACTIONS_TO_PRESERVE, down to the current interaction alone
+  // if needed.
   if (totalTokens > budgetForInteractions) {
     logger.warn(
       { ...logDetails, totalTokens, budgetForInteractions },
