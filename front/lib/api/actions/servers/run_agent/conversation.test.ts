@@ -19,9 +19,23 @@ import { DustAPI } from "@dust-tt/client";
 import assert from "assert";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-const { mockCopySelectedConversationSpacesToChild } = vi.hoisted(() => ({
+const {
+  mockCopyConversationFilesIntoSub,
+  mockCopySelectedConversationSpacesToChild,
+} = vi.hoisted(() => ({
+  mockCopyConversationFilesIntoSub: vi.fn(),
   mockCopySelectedConversationSpacesToChild: vi.fn(),
 }));
+
+vi.mock("@app/lib/api/actions/servers/run_agent/file_paths", async () => {
+  const original = await vi.importActual<
+    typeof import("@app/lib/api/actions/servers/run_agent/file_paths")
+  >("@app/lib/api/actions/servers/run_agent/file_paths");
+  return {
+    ...original,
+    copyConversationFilesIntoSub: mockCopyConversationFilesIntoSub,
+  };
+});
 
 vi.mock("@app/lib/api/assistant/conversation/selected_spaces", () => ({
   copySelectedConversationSpacesToChild:
@@ -137,8 +151,29 @@ function createMockApi(
   } as unknown as DustAPI;
 }
 
+function buildRequest(
+  fixtures: ReturnType<typeof buildRunAgentFixtures>,
+  overrides: Partial<Parameters<typeof getOrCreateConversation>[3]> = {}
+): Parameters<typeof getOrCreateConversation>[3] {
+  return {
+    childAgentBlob: { name: "ChildAgent", description: "A child agent" },
+    childAgentId: generateRandomModelSId(),
+    ...fixtures,
+    query: "Do something",
+    toolsetsToAdd: null,
+    fileOrContentFragmentIds: null,
+    filePaths: null,
+    conversationId: null,
+    ...overrides,
+  };
+}
+
 describe("getOrCreateConversation", () => {
+  afterEach(() => vi.restoreAllMocks());
+
   beforeEach(() => {
+    mockCopyConversationFilesIntoSub.mockReset();
+    mockCopyConversationFilesIntoSub.mockResolvedValue(new Ok(undefined));
     mockCopySelectedConversationSpacesToChild.mockReset();
     mockCopySelectedConversationSpacesToChild.mockResolvedValue(
       new Ok(undefined)
@@ -467,5 +502,134 @@ describe("getOrCreateConversation", () => {
     expect(result.isErr()).toBe(true);
     expect(fetchChildSpy).not.toHaveBeenCalled();
     fetchChildSpy.mockRestore();
+  });
+
+  it("cleans up a new child conversation after a user-side post failure", async () => {
+    const fixtures = buildRunAgentFixtures({ spaceId: null });
+    const childConversation = {
+      sId: generateRandomModelSId(),
+    } as ConversationPublicType;
+    const api = createMockApi(
+      vi.fn().mockResolvedValue(new Ok({ conversation: childConversation })),
+      childConversation
+    );
+    vi.mocked(api.postUserMessage).mockResolvedValueOnce(
+      new Err({
+        type: "invalid_request_error",
+        message: "invalid message",
+      } as APIError)
+    );
+    const fetchChildSpy = vi
+      .spyOn(ConversationResource, "fetchById")
+      .mockResolvedValue(ConversationResource.prototype);
+    const destroyConversationSpy = vi
+      .spyOn(conversationDestroy, "destroyConversation")
+      .mockResolvedValue(new Err(new Error("cleanup failed")));
+
+    const result = await getOrCreateConversation(
+      api,
+      {} as Authenticator,
+      fixtures.agentLoopContext,
+      buildRequest(fixtures)
+    );
+
+    assert(result.isErr());
+    expect(result.error.message).toBe("invalid message");
+    expect(fetchChildSpy).toHaveBeenCalledWith(
+      expect.anything(),
+      childConversation.sId
+    );
+    expect(destroyConversationSpy).toHaveBeenCalledOnce();
+  });
+
+  it("cleans up a new child conversation when file copying fails", async () => {
+    const fixtures = buildRunAgentFixtures({ spaceId: null });
+    const childConversation = {
+      sId: generateRandomModelSId(),
+    } as ConversationPublicType;
+    const api = createMockApi(
+      vi.fn().mockResolvedValue(new Ok({ conversation: childConversation })),
+      childConversation
+    );
+    mockCopyConversationFilesIntoSub.mockResolvedValueOnce(
+      new Err(new Error("copy failed"))
+    );
+    const fetchChildSpy = vi
+      .spyOn(ConversationResource, "fetchById")
+      .mockResolvedValue(ConversationResource.prototype);
+    const destroyConversationSpy = vi
+      .spyOn(conversationDestroy, "destroyConversation")
+      .mockResolvedValue(new Ok(undefined));
+
+    const result = await getOrCreateConversation(
+      api,
+      {} as Authenticator,
+      fixtures.agentLoopContext,
+      buildRequest(fixtures)
+    );
+
+    expect(result.isErr()).toBe(true);
+    expect(fetchChildSpy).toHaveBeenCalledWith(
+      expect.anything(),
+      childConversation.sId
+    );
+    expect(destroyConversationSpy).toHaveBeenCalledOnce();
+    expect(api.postUserMessage).not.toHaveBeenCalled();
+  });
+
+  it("never cleans up the parent conversation after a handover post failure", async () => {
+    const fixtures = buildRunAgentFixtures({ spaceId: null });
+    const api = createMockApi(vi.fn(), {} as ConversationPublicType);
+    vi.mocked(api.postUserMessage).mockResolvedValueOnce(
+      new Err({
+        type: "invalid_request_error",
+        message: "invalid message",
+      } as APIError)
+    );
+    const destroyConversationSpy = vi.spyOn(
+      conversationDestroy,
+      "destroyConversation"
+    );
+    const fetchChildSpy = vi.spyOn(ConversationResource, "fetchById");
+
+    const result = await getOrCreateConversation(
+      api,
+      {} as Authenticator,
+      fixtures.agentLoopContext,
+      buildRequest(fixtures, { conversationId: fixtures.mainConversation.sId })
+    );
+
+    expect(result.isErr()).toBe(true);
+    expect(fetchChildSpy).not.toHaveBeenCalled();
+    expect(destroyConversationSpy).not.toHaveBeenCalled();
+  });
+
+  it("does not clean up after posting succeeds but fetching the child fails", async () => {
+    const fixtures = buildRunAgentFixtures({ spaceId: null });
+    const childConversation = {
+      sId: generateRandomModelSId(),
+    } as ConversationPublicType;
+    const api = createMockApi(
+      vi.fn().mockResolvedValue(new Ok({ conversation: childConversation })),
+      childConversation
+    );
+    vi.mocked(api.getConversation).mockResolvedValueOnce(
+      new Err({
+        type: "internal_server_error",
+        message: "fetch failed",
+      } as APIError)
+    );
+    const fetchChildSpy = vi.spyOn(ConversationResource, "fetchById");
+
+    const result = await getOrCreateConversation(
+      api,
+      {} as Authenticator,
+      fixtures.agentLoopContext,
+      buildRequest(fixtures)
+    );
+
+    expect(result.isErr()).toBe(true);
+    expect(api.postUserMessage).toHaveBeenCalledOnce();
+    expect(fetchChildSpy).not.toHaveBeenCalled();
   });
 });
