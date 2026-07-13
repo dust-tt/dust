@@ -1701,7 +1701,7 @@ export class MembershipResource extends BaseResource<MembershipModel> {
       {
         author,
         userId: user.id,
-        workspaceId: workspace.id,
+        workspaceId: workspace.sId,
       },
       "Membership scheduled seat change cancelled"
     );
