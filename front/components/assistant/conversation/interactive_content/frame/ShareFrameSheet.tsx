@@ -36,7 +36,6 @@ import {
   Label,
   Lock01,
   MessageChatSquare,
-  ScrollArea,
   Sheet,
   SheetContainer,
   SheetContent,
@@ -383,7 +382,7 @@ export function ShareFrameSheet({
                         No one has been invited yet.
                       </p>
                     ) : (
-                      <ScrollArea className="max-h-96">
+                      <div className="flex flex-col">
                         {activeGrants.map((grant) => (
                           <GrantRow
                             key={grant.id}
@@ -407,7 +406,7 @@ export function ShareFrameSheet({
                             ))}
                           </>
                         )}
-                      </ScrollArea>
+                      </div>
                     )}
                   </div>
                 )}
