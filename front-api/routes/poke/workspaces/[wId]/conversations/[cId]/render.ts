@@ -41,6 +41,16 @@ const ParamsSchema = z.object({
 });
 
 export type PostRenderConversationResponseBody = {
+  diagnostics: {
+    generationTokensReserved: number;
+    inputTokenBudget: number;
+    modelId: string;
+    prompt: string;
+    providerId: string;
+    prunedContext: boolean;
+    remainingInputTokens: number;
+    toolDefinitions: unknown[];
+  };
   tokensUsed: number;
   modelConversation: unknown;
   modelContextSizeUsed: number;
@@ -223,13 +233,12 @@ app.post(
     const specifications = availableActions.map((t) =>
       buildToolSpecification(t)
     );
-    const tools = JSON.stringify(
-      specifications.map((s) => ({
-        name: s.name,
-        description: s.description,
-        inputSchema: s.inputSchema,
-      }))
-    );
+    const toolDefinitions = specifications.map((s) => ({
+      name: s.name,
+      description: s.description,
+      inputSchema: s.inputSchema,
+    }));
+    const tools = JSON.stringify(toolDefinitions);
 
     const contextSize =
       typeof contextSizeOverride === "number" && contextSizeOverride > 0
@@ -264,7 +273,7 @@ app.post(
       });
     }
 
-    const { modelConversation, tokensUsed } = convoRes.value;
+    const { modelConversation, prunedContext, tokensUsed } = convoRes.value;
 
     let promptTokenCountApprox = 0;
     let toolsTokenCountApprox = 0;
@@ -281,6 +290,16 @@ app.post(
     }
 
     return ctx.json({
+      diagnostics: {
+        generationTokensReserved: model.generationTokensCount,
+        inputTokenBudget: allowedTokenCount,
+        modelId: model.modelId,
+        prompt,
+        providerId: model.providerId,
+        prunedContext,
+        remainingInputTokens: Math.max(0, allowedTokenCount - tokensUsed),
+        toolDefinitions,
+      },
       tokensUsed,
       modelConversation,
       modelContextSizeUsed: contextSize,

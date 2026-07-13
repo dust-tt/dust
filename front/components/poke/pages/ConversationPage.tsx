@@ -902,6 +902,16 @@ export function ConversationPage() {
   const [isRendering, setIsRendering] = useState(false);
   const [renderError, setRenderError] = useState<string | null>(null);
   const [renderResult, setRenderResult] = useState<null | {
+    diagnostics: null | {
+      generationTokensReserved: number;
+      inputTokenBudget: number;
+      modelId: string;
+      prompt: string;
+      providerId: string;
+      prunedContext: boolean;
+      remainingInputTokens: number;
+      toolDefinitions: unknown[];
+    };
     tokensUsed: number;
     modelContextSizeUsed: number;
     modelConversation: unknown;
@@ -950,6 +960,7 @@ export function ConversationPage() {
         throw new Error(data.error?.message || "Failed to render conversation");
       }
       setRenderResult({
+        diagnostics: data.diagnostics ?? null,
         tokensUsed: data.tokensUsed,
         modelContextSizeUsed: data.modelContextSizeUsed,
         modelConversation: data.modelConversation,
@@ -1130,7 +1141,7 @@ export function ConversationPage() {
               {renderError && <div className="text-warning">{renderError}</div>}
               {renderResult && (
                 <div className="flex flex-col space-y-2">
-                  <div className="flex items-center space-x-2">
+                  <div className="flex flex-wrap items-center gap-2">
                     <Chip
                       color="highlight"
                       label={`Tokens used: ${renderResult.tokensUsed}`}
@@ -1151,19 +1162,35 @@ export function ConversationPage() {
                       label={`Tools tokens: ${renderResult.toolsTokenCountApprox}`}
                       size="xs"
                     />
+                    {renderResult.diagnostics && (
+                      <>
+                        <Chip
+                          color="primary"
+                          label={`${renderResult.diagnostics.providerId}/${renderResult.diagnostics.modelId}`}
+                          size="xs"
+                        />
+                        <Chip
+                          color="info"
+                          label={`Input budget: ${renderResult.diagnostics.inputTokenBudget}`}
+                          size="xs"
+                        />
+                        <Chip
+                          color="success"
+                          label={`Remaining: ${renderResult.diagnostics.remainingInputTokens}`}
+                          size="xs"
+                        />
+                        {renderResult.diagnostics.prunedContext && (
+                          <Chip color="warning" label="Pruned" size="xs" />
+                        )}
+                      </>
+                    )}
                     <Button
                       label={isCopiedJSON ? "Copied" : "Copy JSON"}
                       variant="outline"
                       size="xs"
                       icon={isCopiedJSON ? ClipboardCheck : Clipboard}
                       onClick={() =>
-                        copyJSON(
-                          JSON.stringify(
-                            renderResult.modelConversation,
-                            null,
-                            2
-                          )
-                        )
+                        copyJSON(JSON.stringify(renderResult, null, 2))
                       }
                     />
                     <Button
@@ -1178,7 +1205,7 @@ export function ConversationPage() {
                     />
                   </div>
                   <CodeBlock wrapLongLines className="language-json">
-                    {JSON.stringify(renderResult.modelConversation, null, 2)}
+                    {JSON.stringify(renderResult, null, 2)}
                   </CodeBlock>
                 </div>
               )}
