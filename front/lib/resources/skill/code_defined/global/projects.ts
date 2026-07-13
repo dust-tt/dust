@@ -63,7 +63,7 @@ export async function constructProjectContext(
     // message metadata header, and keeping this block per-pod stable lets conversations in the
     // same Pod share their prompt prefix for caching.
     instructions += `
-This conversation belongs to the Pod "${space?.name}" (id: ${space?.sId}).
+This conversation is part of the Pod "${space?.name}" (id: ${space?.sId}).
 Use its context when relevant before searching company-wide sources.
 `;
 
