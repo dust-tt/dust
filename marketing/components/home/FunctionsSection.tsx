@@ -19,10 +19,10 @@ function FunctionsSection() {
       title: "Sales",
       color: "rose",
       features: [
-        "Create account snapshots from past interactions and CRM data.",
-        "Generate targeted outreach using call transcripts and insights.",
-        "Answer prospect questions and RFPs with product and competitor insights.",
-        "Analyze calls to improve pitch delivery and objection handling.",
+        "Run post-call processes automatically",
+        "Deploy shared sales agents",
+        "Answer RFPs with skills that improve",
+        "Generate outreach that knows your prospect and your pitch",
       ],
       visualSrc: "/static/landing/functions/sales_min.png",
       href: "/home/solutions/sales",
@@ -31,10 +31,10 @@ function FunctionsSection() {
       title: "Marketing",
       color: "golden",
       features: [
-        "Write on-brand content in minutes.",
-        "Create consistent launch messaging.",
-        "Translate while maintaining brand voice.",
-        "Extract actionable insights from feedback.",
+        "Deploy a self-improving writing skill",
+        "Create on-brand content at scale",
+        "Launch faster with shared agents",
+        "Extract insights from feedback",
       ],
       visualSrc: "/static/landing/functions/marketing_min.png",
       href: "/home/solutions/marketing",
@@ -43,10 +43,10 @@ function FunctionsSection() {
       title: "Customer Support",
       color: "blue",
       features: [
-        "Connect agents to knowledge base for instant responses.",
-        "Identify product improvements from ticket patterns.",
-        "Auto-create FAQs from resolved tickets.",
-        "Auto-route tickets based on queries and expertise.",
+        "Escalate tickets with full context",
+        "Build a knowledge agent that improves",
+        "Spot product issues from support patterns",
+        "Coordinate resolution in Pods",
       ],
       visualSrc: "/static/landing/functions/customersupport_min.png",
       href: "/home/solutions/customer-support",
@@ -143,7 +143,7 @@ function FunctionsSection() {
         title={
           <div className="flex w-full items-center justify-between">
             <H2 className="text-center text-3xl font-medium md:text-4xl xl:text-5xl">
-              What agent will you use or create today?
+              See Dust in action across your team
             </H2>
           </div>
         }

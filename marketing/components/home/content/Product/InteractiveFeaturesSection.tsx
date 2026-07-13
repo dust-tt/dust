@@ -1,4 +1,5 @@
 import { H2, P } from "@marketing/components/home/ContentComponents";
+import { HomeReveal } from "@marketing/components/home/content/Product/HomeReveal";
 import { ChevronUp, Separator } from "@dust-tt/sparkle";
 import { useState } from "react";
 
@@ -10,119 +11,110 @@ interface FeatureItem {
 
 const features: FeatureItem[] = [
   {
-    id: "connections",
-    title: "Build custom connections",
+    id: "pods",
+    title: "Pods",
     description:
-      "Create custom integrations with your existing tools and APIs.",
+      "Persistent shared workspace where humans and agents collaborate around any topic, project, or initiative. Shared conversations, tasks, files and agents, all in one place.",
   },
   {
-    id: "integrations",
-    title: "Build custom integrations",
+    id: "skill",
+    title: "Self-improving skill",
     description:
-      "Connect Dust to your internal systems and workflows, such as Slack, GitHub, Notion and more.",
+      "Skills that get smarter with every use. As your team runs agents, the system learns and improves, compounding your organization's intelligence over time without any manual effort.",
   },
   {
-    id: "tools",
-    title: "Build custom agentic tools",
+    id: "computer",
+    title: "Computer",
     description:
-      "Extend your agents with custom tools such as semantic search, SQL queries, data visualization, and more.",
-  },
-  {
-    id: "access",
-    title: "Access from your tools",
-    description:
-      "Integrate Dust directly into your existing development environment.",
-  },
-  {
-    id: "workflows",
-    title: "Add to workflows",
-    description:
-      "Automate complex workflows with Dust agents like multi-step processes, data orchestration, and more.",
+      "Give your agents a real computer. Read and write files, run code, and process any data, inside an isolated Linux environment, scoped to each conversation",
   },
 ];
 
-const getBackgroundColor = (activeFeature: string) => {
+const getBackgroundColor = (activeFeature: string | null) => {
   switch (activeFeature) {
-    case "connections":
+    case "pods":
       return "bg-golden-50";
-    case "integrations":
+    case "skill":
       return "bg-green-50";
-    case "tools":
-      return "bg-gray-50";
-    case "access":
+    case "computer":
       return "bg-blue-50";
-    case "workflows":
-      return "bg-purple-50";
     default:
       return "bg-gray-50";
   }
 };
 
-const getImageSrc = (activeFeature: string) => {
+const getImageSrc = (activeFeature: string | null) => {
   switch (activeFeature) {
-    case "connections":
+    case "pods":
       return "/static/landing/product/connectors.svg";
-    case "integrations":
-      return "/static/landing/product/slack-incident.svg";
-    case "tools":
+    case "skill":
       return "/static/landing/product/support.svg";
-    case "access":
-      return "/static/landing/product/slack-ticket.svg";
-    case "workflows":
+    case "computer":
       return "/static/landing/product/zendesk-dust.svg";
     default:
       return "";
   }
 };
 
-const getImageAlt = (activeFeature: string) => {
+const getImageAlt = (activeFeature: string | null) => {
   switch (activeFeature) {
-    case "connections":
-      return "Custom Connections";
-    case "integrations":
-      return "Custom Integrations";
-    case "tools":
-      return "Custom Tools";
-    case "access":
-      return "Tool Access";
-    case "workflows":
-      return "Workflow Integration";
+    case "pods":
+      return "Pods";
+    case "skill":
+      return "Self-improving skill";
+    case "computer":
+      return "Computer";
     default:
       return "";
   }
 };
 
 export function InteractiveFeaturesSection() {
-  const [activeFeature, setActiveFeature] = useState<string>("connections");
+  const [activeFeature, setActiveFeature] = useState<string | null>("pods");
 
   return (
     <div className="w-full">
-      <div className="mx-auto flex max-w-4xl flex-col items-center gap-6 px-4 text-center sm:gap-2 sm:px-6 lg:px-8">
-        <H2 className="text-center text-3xl font-medium md:text-4xl xl:text-5xl">
-          Extend your capabilities
-        </H2>
-        <P size="lg" className="text-base text-muted-foreground sm:text-lg">
-          Sometimes you need to build something specific. We get it. <br />
-          Code your own tools and integrations without breaking everything else.
-        </P>
+      <div className="mx-auto flex max-w-4xl flex-col items-center gap-6 text-center sm:gap-2 lg:px-8">
+        <HomeReveal>
+          <H2
+            className="text-center text-3xl font-medium md:text-4xl xl:text-5xl"
+            style={{ textAlign: "center" }}
+          >
+            Capabilities built for AI Operator
+          </H2>
+        </HomeReveal>
+        <HomeReveal delay={80}>
+          <P size="lg" className="text-base text-muted-foreground sm:text-lg">
+            The fastest-moving companies don&apos;t just use AI. They run it.
+            Dust gives AI Operators the capabilities to build, deploy and
+            improve AI across their entire organization.
+          </P>
+        </HomeReveal>
       </div>
 
-      <div className="mt-16 flex flex-col gap-8 lg:flex-row lg:items-center lg:gap-12">
-        <div className="order-1 w-full lg:order-2 lg:w-1/2">
+      {/* Same container metrics as the CapabilitySection blocks. */}
+      <div className="mx-auto flex w-full max-w-[1180px] flex-col items-center gap-12 py-14 lg:flex-row lg:gap-20 lg:px-6 lg:py-24">
+        <HomeReveal
+          variant="photo"
+          delay={120}
+          className="order-1 w-full lg:order-2 lg:w-1/2"
+        >
           <div
             className={`relative flex aspect-[4/3] w-full items-center justify-center overflow-hidden rounded-2xl ${getBackgroundColor(activeFeature)}`}
           >
             <div className="flex h-full w-full items-center justify-center">
-              <img
-                src={getImageSrc(activeFeature)}
-                alt={getImageAlt(activeFeature)}
-                className="h-auto max-h-full w-auto max-w-full object-contain"
-              />
+              {activeFeature && (
+                <img
+                  src={getImageSrc(activeFeature)}
+                  alt={getImageAlt(activeFeature)}
+                  className="h-auto max-h-full w-auto max-w-full object-contain"
+                />
+              )}
             </div>
           </div>
-        </div>
+        </HomeReveal>
 
-        <div className="order-2 w-full lg:order-1 lg:w-1/2">
+        <HomeReveal delay={80} className="order-2 w-full lg:order-1 lg:w-1/2">
           <div className="w-full">
             {features.map((feature) => {
               const isActive = activeFeature === feature.id;
@@ -130,7 +122,11 @@ export function InteractiveFeaturesSection() {
                 <div key={feature.id} className="w-full">
                   <button
                     className="flex w-full items-center justify-between py-6 text-left focus:outline-hidden"
-                    onClick={() => setActiveFeature(feature.id)}
+                    onClick={() =>
+                      setActiveFeature((prev) =>
+                        prev === feature.id ? null : feature.id
+                      )
+                    }
                     aria-expanded={isActive}
                   >
                     <span className="text-lg font-medium text-foreground">
@@ -164,7 +160,7 @@ export function InteractiveFeaturesSection() {
               );
             })}
           </div>
-        </div>
+        </HomeReveal>
       </div>
     </div>
   );
