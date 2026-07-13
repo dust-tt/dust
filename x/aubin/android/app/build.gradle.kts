@@ -46,6 +46,11 @@ android {
                 "proguard-rules.pro",
             )
         }
+        create("phoneRelease") {
+            initWith(getByName("release"))
+            matchingFallbacks += listOf("release")
+            signingConfig = signingConfigs.getByName("debug")
+        }
     }
 
     buildFeatures {
