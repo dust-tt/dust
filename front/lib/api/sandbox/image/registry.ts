@@ -758,6 +758,7 @@ SHELLEOF`,
     returns:
       "Workbook overview, or one cell per line: '<address>  <formula or value>  [cached result]  numFmt: <fmt>  [font: <color>]  [fill: <color>]'. Empty cells skipped",
     runtime: "system",
+    category: "office",
   })
   // --- pptx_inspect: structural inspection of .pptx decks ---
   .registerTool({
@@ -769,6 +770,7 @@ SHELLEOF`,
     returns:
       "A per-mode text report: deck overview, or per-slide shapes with [!] blockers / [i] advisories, or layouts / text / media listings. --qa and --render publish JPEGs and print their files__cat scoped paths; --compare ends in a [QA: PASS/FAIL] verdict. See --help for field-level detail.",
     runtime: "system",
+    category: "office",
   })
   // --- pptx_slides: safe slide-level structural edits ---
   .registerTool({
@@ -779,16 +781,7 @@ SHELLEOF`,
       "pptx_slides <file> (--duplicate N[,N,...] [--count K] [--after M] | --move N --to M | --delete N[,N,...])",
     returns: "A one-line summary of the change and the deck's new slide count",
     runtime: "system",
-  })
-  // --- pptx_slides: safe slide-level structural edits ---
-  .registerTool({
-    name: "pptx_slides",
-    description:
-      "Duplicate, move, or delete .pptx slides without corrupting the package - shares image parts, deep-clones charts, rewrites relationship ids. --duplicate and --delete take a slide pattern (a single slide, a comma list, or ranges, e.g. 2,5,7-9), so do every duplicate or delete in one call rather than one slide at a time. Edit copies afterward with python-pptx",
-    usage:
-      "pptx_slides <file> (--duplicate N[,N,...] [--count K] [--after M] | --move N --to M | --delete N[,N,...])",
-    returns: "A one-line summary of the change and the deck's new slide count",
-    runtime: "system",
+    category: "office",
   })
   // --- docx_inspect: structural inspection of .docx documents ---
   .registerTool({
@@ -800,6 +793,7 @@ SHELLEOF`,
     returns:
       "Document overview with theme + default typography and heading outline, or one paragraph/style/section/table/change/field per line. Render mode publishes each page and prints its scoped path (files__cat-readable)",
     runtime: "system",
+    category: "office",
   })
   .withCapability("gcsfuse")
   .withResources({ vcpu: 2, memoryMb: 2048 })

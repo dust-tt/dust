@@ -1,15 +1,16 @@
 import type {
   ManifestToolEntry,
+  ToolCategory,
   ToolEntry,
   ToolManifest,
-  ToolRuntime,
 } from "@app/lib/api/sandbox/image/types";
-import { TOOL_RUNTIMES } from "@app/lib/api/sandbox/image/types";
+import { TOOL_CATEGORIES } from "@app/lib/api/sandbox/image/types";
 import * as yaml from "js-yaml";
 
 export function createToolManifest(tools: readonly ToolEntry[]): ToolManifest {
-  const toolsByRuntime: Record<ToolRuntime, ManifestToolEntry[]> = {
+  const toolsByCategory: Record<ToolCategory, ManifestToolEntry[]> = {
     system: [],
+    office: [],
     python: [],
     node: [],
   };
@@ -22,15 +23,15 @@ export function createToolManifest(tools: readonly ToolEntry[]): ToolManifest {
       ...(tool.usage && { usage: tool.usage }),
       ...(tool.returns && { returns: tool.returns }),
     };
-    toolsByRuntime[tool.runtime].push(entry);
+    toolsByCategory[tool.category ?? tool.runtime].push(entry);
   }
 
   const filteredTools: Partial<
-    Record<ToolRuntime, readonly ManifestToolEntry[]>
+    Record<ToolCategory, readonly ManifestToolEntry[]>
   > = {};
-  for (const runtime of TOOL_RUNTIMES) {
-    if (toolsByRuntime[runtime].length > 0) {
-      filteredTools[runtime] = toolsByRuntime[runtime];
+  for (const category of TOOL_CATEGORIES) {
+    if (toolsByCategory[category].length > 0) {
+      filteredTools[category] = toolsByCategory[category];
     }
   }
 
@@ -45,8 +46,8 @@ export function toolManifestToJSON(manifest: ToolManifest): string {
 }
 
 export function toolManifestToCompactText(manifest: ToolManifest): string {
-  return TOOL_RUNTIMES.flatMap((runtime) => {
-    const tools = manifest.tools[runtime];
+  return TOOL_CATEGORIES.flatMap((category) => {
+    const tools = manifest.tools[category];
     if (!tools) {
       return [];
     }
@@ -56,7 +57,7 @@ export function toolManifestToCompactText(manifest: ToolManifest): string {
         tool.version ? `${tool.name} ${tool.version}` : tool.name
       )
     );
-    const label = runtime.charAt(0).toUpperCase() + runtime.slice(1);
+    const label = category.charAt(0).toUpperCase() + category.slice(1);
 
     return [`- ${label}: ${[...entries].join(", ")}`];
   }).join("\n");

@@ -18,13 +18,6 @@ import type { ModelProviderIdType } from "@app/types/assistant/models/types";
 import { isComputerFeatureEnabled } from "@app/types/shared/feature_flags";
 import { Ok } from "@app/types/shared/result";
 
-const DESCRIBED_OFFICE_TOOL_NAMES = new Set([
-  "xlsx_inspect",
-  "pptx_inspect",
-  "docx_inspect",
-  "pptx_slides",
-]);
-
 function buildSandboxInstructionProse({
   hasDsbxTools,
 }: {
@@ -334,11 +327,7 @@ async function buildSandboxInstructions(
   }
 
   const compactManifest = toolManifestToCompactText(
-    createToolManifest(
-      toolsResult.value.filter(
-        (tool) => !DESCRIBED_OFFICE_TOOL_NAMES.has(tool.name)
-      )
-    )
+    createToolManifest(toolsResult.value)
   );
 
   return `${sandboxInstructions}
@@ -355,21 +344,9 @@ ${compactManifest}
 
 Versions are shown when pinned. Installing packages in the sandbox is NOT
 possible. Call \`describe_toolset\` for full descriptions and usage metadata.
-
-Dust-specific Office helpers (not standard Linux commands):
-
-- \`xlsx_inspect\`: Inspect workbook sheets, ranges, formulas, cached values,
-  number formats, and cell styling; search values or formatting metadata.
-- \`pptx_inspect\`: Inspect and QA deck structure, layouts, shapes, text,
-  charts, tables, and media; render slides and compare edits with their source.
-- \`docx_inspect\`: Inspect document structure, styles, headings, paragraphs,
-  tables, sections, tracked changes, fields, and media; render pages for visual
-  review.
-- \`pptx_slides\`: Safely duplicate, move, or delete slides while preserving
-  package relationships.
-
-Prefer these helpers for the listed operations. Run \`<command> --help\` for
-detailed modes and flags. Use ONLY the tools listed above, NOTHING ELSE.
+Office tools are Dust-specific helpers for structural inspection, QA,
+rendering, and safe slide operations. Run \`<command> --help\` for detailed
+modes and flags. Use ONLY the tools listed above, NOTHING ELSE.
 
 `;
 }

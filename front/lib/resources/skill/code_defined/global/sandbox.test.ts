@@ -15,6 +15,9 @@ describe("sandboxSkill", () => {
 
     expect(instructions).toContain("dsbx tools");
     expect(instructions).toContain("- System: git, curl");
+    expect(instructions).toContain(
+      "- Office: xlsx_inspect, pptx_inspect, pptx_slides, docx_inspect"
+    );
     expect(instructions).toContain("- Python: python, pandas 3.0.1");
     expect(instructions).toContain("- Node: typescript, tsx");
     expect(instructions).toContain("`describe_toolset`");
@@ -26,21 +29,7 @@ describe("sandboxSkill", () => {
     expect(systemTools).not.toContain("pptx_inspect");
     expect(systemTools).not.toContain("docx_inspect");
     expect(systemTools).not.toContain("pptx_slides");
-    expect(instructions).toContain(
-      "Dust-specific Office helpers (not standard Linux commands)"
-    );
-    expect(instructions).toContain(
-      "- `xlsx_inspect`: Inspect workbook sheets, ranges, formulas"
-    );
-    expect(instructions).toContain(
-      "- `pptx_inspect`: Inspect and QA deck structure"
-    );
-    expect(instructions).toContain(
-      "- `docx_inspect`: Inspect document structure, styles"
-    );
-    expect(instructions).toContain(
-      "- `pptx_slides`: Safely duplicate, move, or delete slides"
-    );
+    expect(instructions).toContain("Office tools are Dust-specific helpers");
     expect(instructions).toContain("`<command> --help`");
     expect(instructions).not.toContain("name: dsbx");
     expect(instructions).not.toContain("```yaml");

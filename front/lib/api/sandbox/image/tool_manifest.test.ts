@@ -15,9 +15,15 @@ describe("createToolManifest()", () => {
     expect(manifest.version).toBe("1.0");
   });
 
-  test("groups tools by runtime", () => {
+  test("groups tools by category", () => {
     const tools: ToolEntry[] = [
       { name: "curl", description: "HTTP client", runtime: "system" },
+      {
+        name: "xlsx_inspect",
+        description: "Workbook inspector",
+        runtime: "system",
+        category: "office",
+      },
       { name: "pandas", description: "Data analysis", runtime: "python" },
       { name: "tsx", description: "TypeScript executor", runtime: "node" },
     ];
@@ -27,6 +33,9 @@ describe("createToolManifest()", () => {
     expect(manifest.tools.system).toEqual([
       { name: "curl", description: "HTTP client" },
     ]);
+    expect(manifest.tools.office).toEqual([
+      { name: "xlsx_inspect", description: "Workbook inspector" },
+    ]);
     expect(manifest.tools.python).toEqual([
       { name: "pandas", description: "Data analysis" },
     ]);
@@ -35,7 +44,7 @@ describe("createToolManifest()", () => {
     ]);
   });
 
-  test("omits empty runtime categories", () => {
+  test("omits empty categories", () => {
     const tools: ToolEntry[] = [
       { name: "curl", description: "HTTP client", runtime: "system" },
     ];
@@ -43,6 +52,7 @@ describe("createToolManifest()", () => {
     const manifest = createToolManifest(tools);
 
     expect(manifest.tools.system).toBeDefined();
+    expect(manifest.tools.office).toBeUndefined();
     expect(manifest.tools.python).toBeUndefined();
     expect(manifest.tools.node).toBeUndefined();
   });
@@ -120,9 +130,15 @@ describe("toolManifestToJSON()", () => {
 });
 
 describe("toolManifestToCompactText()", () => {
-  test("lists names and versions on one line per runtime", () => {
+  test("lists names and versions on one line per category", () => {
     const tools: ToolEntry[] = [
       { name: "curl", description: "HTTP client", runtime: "system" },
+      {
+        name: "xlsx_inspect",
+        description: "Workbook inspector",
+        runtime: "system",
+        category: "office",
+      },
       {
         name: "pandas",
         version: "2.2.3",
@@ -136,7 +152,9 @@ describe("toolManifestToCompactText()", () => {
 
     const text = toolManifestToCompactText(manifest);
 
-    expect(text).toBe("- System: curl\n- Python: pandas 2.2.3\n- Node: tsx");
+    expect(text).toBe(
+      "- System: curl\n- Office: xlsx_inspect\n- Python: pandas 2.2.3\n- Node: tsx"
+    );
   });
 });
 
