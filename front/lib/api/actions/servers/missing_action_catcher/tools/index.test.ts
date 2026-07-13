@@ -1,17 +1,18 @@
-import type { ToolContext } from "@app/lib/actions/types";
 import { createMissingActionCatcherTools } from "@app/lib/api/actions/servers/missing_action_catcher/tools";
 import { describe, expect, it } from "vitest";
 
 const MISSING_ACTION_TOOL_NAME = "missing_action";
 
-function makeToolContext(functionCallName: string): ToolContext {
+function makeToolContext(functionCallName: string) {
   return {
     runContext: {
       contextType: "agent_loop",
       action: { functionCallName },
       toolConfiguration: { name: MISSING_ACTION_TOOL_NAME },
     },
-  } as unknown as ToolContext;
+  } satisfies NonNullable<
+    Parameters<typeof createMissingActionCatcherTools>[0]
+  >;
 }
 
 async function getToolErrorMessage(functionCallName: string): Promise<string> {
@@ -21,7 +22,7 @@ async function getToolErrorMessage(functionCallName: string): Promise<string> {
 
   expect(tool.name).toBe(MISSING_ACTION_TOOL_NAME);
 
-  const result = await tool.handler({}, {} as never);
+  const result = await tool.handler();
   expect(result.isErr()).toBe(true);
   if (result.isOk()) {
     throw new Error("Expected missing action catcher to return an error.");

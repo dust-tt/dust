@@ -1,20 +1,42 @@
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import type { ToolDefinition } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import {
-  isAgentLoopRunContext,
-  type ToolContext,
-} from "@app/lib/actions/types";
 import { Err, Ok } from "@app/types/shared/result";
 import { truncate } from "@app/types/shared/utils/string_utils";
 
 const MAX_ATTEMPTED_ACTION_NAME_LENGTH = 256;
 
+type MissingActionAgentLoopRunContext = {
+  contextType: "agent_loop";
+  action: { functionCallName: string };
+  toolConfiguration: { name: string };
+};
+
+type MissingActionRunContext =
+  | MissingActionAgentLoopRunContext
+  | {
+      contextType: "sandbox_function";
+      toolConfiguration: { name: string };
+    };
+
+interface MissingActionCatcherContext {
+  runContext?: MissingActionRunContext;
+  listToolsContext?: {
+    agentActionConfiguration: { name: string };
+  };
+}
+
+function isMissingActionAgentLoopRunContext(
+  runContext: MissingActionRunContext | undefined
+): runContext is MissingActionAgentLoopRunContext {
+  return runContext?.contextType === "agent_loop";
+}
+
 // This server has dynamically created tools based on the agentLoopContext.
 // The tool name comes from the context at runtime.
 // TODO(spolu): move to AgentLoopRunContextType
 export function createMissingActionCatcherTools(
-  agentLoopContext?: ToolContext
-): ToolDefinition[] {
+  agentLoopContext?: MissingActionCatcherContext
+) {
   if (agentLoopContext) {
     const actionName = agentLoopContext.runContext
       ? agentLoopContext.runContext.toolConfiguration.name
@@ -24,7 +46,9 @@ export function createMissingActionCatcherTools(
       throw new Error("No action name found");
     }
 
-    const missingActionName = isAgentLoopRunContext(agentLoopContext.runContext)
+    const missingActionName = isMissingActionAgentLoopRunContext(
+      agentLoopContext.runContext
+    )
       ? truncate(
           agentLoopContext.runContext.action.functionCallName,
           MAX_ATTEMPTED_ACTION_NAME_LENGTH
@@ -59,7 +83,7 @@ export function createMissingActionCatcherTools(
             )
           );
         },
-      },
+      } satisfies ToolDefinition,
     ];
   }
 
@@ -78,6 +102,6 @@ export function createMissingActionCatcherTools(
       handler: async () => {
         return new Ok([{ type: "text", text: "No action name found" }]);
       },
-    },
+    } satisfies ToolDefinition,
   ];
 }
