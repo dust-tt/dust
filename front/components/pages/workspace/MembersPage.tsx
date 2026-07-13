@@ -108,10 +108,10 @@ function WorkspaceMembersList({
     groupKind: isProvisioningEnabled ? "provisioned" : undefined,
   });
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
+  // biome-ignore lint/correctness/useExhaustiveDependencies: searchTerm is the reset trigger, not used in the body
   useEffect(() => {
     setPagination({ pageIndex: 0, pageSize: DEFAULT_PAGE_SIZE });
-  }, [setPagination]);
+  }, [searchTerm]);
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   const resetSelectedMember = useCallback(() => {
