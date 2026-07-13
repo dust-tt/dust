@@ -87,7 +87,8 @@ function pruneConversationToBudget(
   let prunedContext = pruned !== interactions;
   let totalTokens = sumInteractionTokens(pruned);
 
-  // Layer 2: drop whole previous interactions, oldest first, never the current one.
+  // Layer 2: drop whole previous interactions, oldest first. The last
+  // PREVIOUS_INTERACTIONS_TO_PRESERVE of them are protected, and the current one always survives.
   if (totalTokens > budgetForInteractions) {
     const currentInteraction = pruned[pruned.length - 1];
     const previousBefore = pruned.slice(0, -1);
