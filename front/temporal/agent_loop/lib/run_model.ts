@@ -1,36 +1,17 @@
 import { TOOL_NAME_SEPARATOR } from "@app/lib/actions/constants";
-import { tryListMCPTools } from "@app/lib/actions/mcp_actions";
 import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
-import { isJITMCPServerView } from "@app/lib/actions/mcp_internal_actions/utils";
 import type { StepContext } from "@app/lib/actions/types";
-import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
-import { isServerSideMCPServerConfigurationWithName } from "@app/lib/actions/types/guards";
 import { computeStepContexts } from "@app/lib/actions/utils";
-import { createClientSideMCPServerConfigurations } from "@app/lib/api/actions/mcp_client_side";
 import { renderConversationForModel } from "@app/lib/api/assistant/conversation_rendering";
 import { categorizeConversationRenderErrorMessage } from "@app/lib/api/assistant/errors";
-import { constructPromptMultiActions } from "@app/lib/api/assistant/generation";
-import { buildToolsetsContext } from "@app/lib/api/assistant/global_agents/configurations/dust/dust";
-import {
-  globalAgentInjectsToolsets,
-  globalAgentInjectsUserContext,
-  globalAgentInjectsWorkspaceContext,
-} from "@app/lib/api/assistant/global_agents/prompt_context";
-import {
-  buildUserContext,
-  buildWorkspaceContext,
-} from "@app/lib/api/assistant/global_agents/sidekick_context";
-import { getJITServers } from "@app/lib/api/assistant/jit_actions";
-import { listAttachments } from "@app/lib/api/assistant/jit_utils";
 import { getCompletionDuration } from "@app/lib/api/assistant/messages";
 import {
   buildBaseSpecifications,
   buildSpecificationsWithReplayPlaceholders,
   buildToolDefinitionsForTokenCount,
   getMissingActionCatcherFunctionCallIds,
-} from "@app/lib/api/assistant/model_rendering_tools";
-import { getSkillServers } from "@app/lib/api/assistant/skill_actions";
-import { renderEquippedSkillsUserMessage } from "@app/lib/api/assistant/skills_rendering";
+  prepareModelRender,
+} from "@app/lib/api/assistant/model_rendering";
 import {
   buildAuditLogTarget,
   emitAuditLogEventDirect,
@@ -42,7 +23,6 @@ import {
   getUserFacingLLMErrorMessage,
   LLM_ERROR_TYPE_TO_CATEGORY,
 } from "@app/lib/api/llm/types/errors";
-import { systemPromptToText } from "@app/lib/api/llm/types/options";
 import { DEFAULT_MCP_TOOL_RETRY_POLICY } from "@app/lib/api/mcp";
 import { getLlmCredentials } from "@app/lib/api/provider_credentials";
 import { type Authenticator, getFeatureFlags } from "@app/lib/auth";
@@ -56,9 +36,6 @@ import { AgentStepContentResource } from "@app/lib/resources/agent_step_content_
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { ProviderCredentialResource } from "@app/lib/resources/provider_credential_resource";
-import { constructProjectContext } from "@app/lib/resources/skill/code_defined/global/projects";
-import { SkillResource } from "@app/lib/resources/skill/skill_resource";
-import { SpaceResource } from "@app/lib/resources/space_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
 import logger from "@app/logger/logger";
 import tracer from "@app/logger/tracer";
@@ -73,13 +50,9 @@ import { sliceConversationForAgentMessage } from "@app/temporal/agent_loop/lib/l
 import { makeRunModelLLMError } from "@app/temporal/agent_loop/lib/run_model_errors";
 import type { AgentActionsEvent } from "@app/types/assistant/agent";
 import type { AgentLoopExecutionData } from "@app/types/assistant/agent_run";
-import type {
-  AgentMessageType,
-  UserMessageOrigin,
-} from "@app/types/assistant/conversation";
+import type { AgentMessageType } from "@app/types/assistant/conversation";
 import { isTextContent } from "@app/types/assistant/generation";
 import { isByokProviderId } from "@app/types/assistant/models/providers";
-import { isComputerFeatureEnabled } from "@app/types/shared/feature_flags";
 import type { ModelId } from "@app/types/shared/model_id";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { removeNulls } from "@app/types/shared/utils/general";
@@ -92,28 +65,6 @@ export {
   buildSpecificationsWithReplayPlaceholders,
   buildToolDefinitionsForTokenCount,
 };
-
-const ASK_USER_QUESTION_BLOCKED_ORIGINS: readonly UserMessageOrigin[] = [
-  "api",
-  "cli",
-  "cli_programmatic",
-  "email",
-  "excel",
-  "gsheet",
-  "make",
-  "n8n",
-  "powerpoint",
-  "raycast",
-  "slack_workflow",
-  "teams",
-  "transcript",
-  "zapier",
-  "zendesk",
-  "onboarding_conversation",
-  "reinforced_skill_notification",
-  "reinforcement",
-  "branch_anchor",
-];
 
 // Concatenate two content strings, ensuring at least one whitespace character
 // between them when both are non-empty. This prevents words from being glued
@@ -254,72 +205,6 @@ export async function runModel(
     }
   }
 
-  const {
-    enabledSkills,
-    systemSkills,
-    equippedSkills,
-    serverToolsAndInstructions: mcpActions,
-  } = await startActiveObservation("resolve-tools", async () => {
-    const attachments = await listAttachments(auth, { conversation });
-    const jitServers = await getJITServers(auth, {
-      agentConfiguration,
-      conversation,
-      attachments,
-    });
-
-    const clientSideMCPServerIds = [
-      ...(userMessage.context.clientSideMCPServerIds ?? []),
-    ];
-
-    const clientSideMCPActionConfigurations =
-      await createClientSideMCPServerConfigurations(
-        auth,
-        clientSideMCPServerIds
-      );
-
-    const { enabledSkills, systemSkills, equippedSkills } =
-      await SkillResource.listForAgentLoop(auth, runAgentData);
-
-    const { skillServers, systemSkillServers } = await getSkillServers(auth, {
-      agentConfiguration,
-      enabledSkills,
-      systemSkills,
-    });
-
-    const serverToolsAndInstructions = await startActiveObservation(
-      "list-mcp-tools",
-      () =>
-        tryListMCPTools(
-          auth,
-          {
-            agentConfiguration,
-            conversation,
-            agentMessage,
-            clientSideActionConfigurations: clientSideMCPActionConfigurations,
-          },
-          { jitServers, skillServers, systemSkillServers }
-        )
-    );
-
-    return {
-      enabledSkills,
-      equippedSkills,
-      systemSkills,
-      serverToolsAndInstructions,
-    };
-  });
-
-  // Filter out ask_user_question when no human is available to answer: origins with no
-  // interactive reply surface, or sub-agent runs (conversation depth > 0) where the
-  // "user" is the parent agent rather than a human.
-  const supportsInteractiveQuestions =
-    !ASK_USER_QUESTION_BLOCKED_ORIGINS.includes(userMessage.context.origin) &&
-    conversation.depth === 0;
-
-  const filteredMcpActions = supportsInteractiveQuestions
-    ? mcpActions
-    : mcpActions.filter((s) => s.serverName !== "ask_user_question");
-
   const isLastStep = step === agentConfiguration.maxStepsPerRun;
 
   // On the last step we force the agent to run the generation: the tools are
@@ -328,98 +213,23 @@ export async function runModel(
   // replayed history resolvable), but the model is forbidden from calling them
   // (tool choice "none").
   const disableToolUse = isLastStep;
-  const availableActions = filteredMcpActions.flatMap((s) => s.tools);
-
-  let fallbackPrompt = "You are a conversational agent";
-  if (agentConfiguration.actions.length || availableActions.length > 0) {
-    fallbackPrompt += " with access to tool use.";
-  } else {
-    fallbackPrompt += ".";
-  }
-
-  let toolsetsContext: string | undefined;
-  const hasToolsetsAction = agentConfiguration.actions.some((action) =>
-    isServerSideMCPServerConfigurationWithName(action, "toolsets")
-  );
-  if (globalAgentInjectsToolsets(agentConfiguration.sId) && hasToolsetsAction) {
-    const globalSpace = await SpaceResource.fetchWorkspaceGlobalSpace(auth);
-    const allToolsets =
-      await MCPServerViewResource.listBySpaceEnsuringAutoViews(
-        auth,
-        globalSpace
-      );
-    const filteredToolsets = allToolsets.filter((toolset) => {
-      const mcpServerView = toolset.toJSON();
-      return (
-        isJITMCPServerView(mcpServerView) &&
-        mcpServerView.server.availability !== "auto_hidden_builder"
-      );
-    });
-    toolsetsContext = buildToolsetsContext(filteredToolsets);
-  }
-
-  let userContext: string | undefined;
-  if (globalAgentInjectsUserContext(agentConfiguration.sId) && auth.user()) {
-    userContext = (await buildUserContext(auth)) ?? undefined;
-  }
-
-  let workspaceContext: string | undefined;
-  if (globalAgentInjectsWorkspaceContext(agentConfiguration.sId)) {
-    workspaceContext = await buildWorkspaceContext(auth);
-  }
-
-  const projectContext = await constructProjectContext(auth, {
-    conversation,
-  });
-
-  const isNewFileExplorer = conversation.metadata?.useFileSystem === true;
-  const hasSandboxTools = isComputerFeatureEnabled(featureFlags);
-  const disableFormattingPrompt = featureFlags.includes(
-    "disable_formatting_prompt"
-  );
-
-  const prompt = constructPromptMultiActions(auth, {
-    userMessage,
-    agentConfiguration,
-    fallbackPrompt,
-    model,
-    hasAvailableActions: availableActions.length > 0,
-    conversation,
-    serverToolsAndInstructions: filteredMcpActions,
-    systemSkills,
-    toolsetsContext,
-    userContext,
-    workspaceContext,
-    projectContext,
-    isNewFileExplorer,
-    hasSandboxTools,
-    disableFormattingPrompt,
-  });
-  const leadingMessages = removeNulls([
-    renderEquippedSkillsUserMessage(equippedSkills),
-  ]);
-
-  // Specs carry the intrinsic `eager` property only. Whether a non-eager tool is
-  // deferred behind tool search is an Anthropic-specific policy applied in the
-  // Anthropic client, gated on `toolSearchEnabled` (threaded through below).
-  // Gated on model.supportsToolSearch too: unsupported models reject the
-  // request outright if deferred tools are included, so the feature flag alone
-  // is not enough to decide this.
-  const toolSearchEnabled =
-    featureFlags.includes("anthropic_tool_search") &&
-    !!model.supportsToolSearch;
-  const baseSpecifications: AgentActionSpecification[] =
-    buildBaseSpecifications(availableActions, agentConfiguration);
-
-  // Count the number of tokens used by the functions presented to the model.
-  // This is a rough estimate of the number of tokens.
-  const tools = buildToolDefinitionsForTokenCount(
+  const {
+    availableActions,
     baseSpecifications,
-    toolSearchEnabled
-  );
+    enabledSkills,
+    leadingMessages,
+    prompt,
+    promptText,
+    tools,
+    toolSearchEnabled,
+  } = await prepareModelRender(auth, {
+    runAgentData,
+    featureFlags,
+    conversation,
+    agentMessage,
+  });
 
   // Turn the conversation into a digest that can be presented to the model.
-  const promptText = systemPromptToText(prompt);
   const modelConversationRes = await startActiveObservation(
     "render-conversation",
     () =>
