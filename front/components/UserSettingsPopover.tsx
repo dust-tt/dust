@@ -268,7 +268,7 @@ function UsageSection({ owner, onClose, visible }: UsageSectionProps) {
             size="xs"
             label="Billing"
             icon={ExternalLinkIcon}
-            href={`/w/${owner.sId}/billing`}
+            href={`/w/${owner.sId}/${isCreditBased ? "billing" : "subscription"}`}
             target="_blank"
           />
         </section>

@@ -12,7 +12,7 @@ import { useAuth } from "@app/lib/auth/AuthContext";
 import { isCreditPricedFreePlan } from "@app/lib/plans/plan_codes";
 import { useAppRouter } from "@app/lib/platform";
 import { useWorkspaceCoupons } from "@app/lib/swr/workspaces";
-import { isSubscriptionMetronomeBilled } from "@app/types/plan";
+import { isCreditPricedPlan } from "@app/types/plan";
 import {
   CreditCard01,
   Page,
@@ -27,13 +27,13 @@ export function BillingPage() {
   const { workspace: owner, subscription } = useAuth();
   const router = useAppRouter();
   const freePlan = isCreditPricedFreePlan(subscription.plan.code);
-  const isMetronome = isSubscriptionMetronomeBilled(subscription);
+  const isCreditPriced = isCreditPricedPlan(subscription.plan);
 
   useEffect(() => {
-    if (!isMetronome) {
+    if (!isCreditPriced) {
       void router.replace(`/w/${owner.sId}/subscription`);
     }
-  }, [isMetronome, owner.sId, router]);
+  }, [isCreditPriced, owner.sId, router]);
 
   // The Coupons tab is only shown when the workspace has redeemed at least
   // one coupon — most workspaces never do.
@@ -43,7 +43,7 @@ export function BillingPage() {
   });
   const hasCoupons = coupons.length > 0;
 
-  if (!isMetronome) {
+  if (!isCreditPriced) {
     return null;
   }
 
