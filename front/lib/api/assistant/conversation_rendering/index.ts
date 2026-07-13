@@ -23,17 +23,19 @@ import type { CredentialsType } from "@app/types/provider";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
-import type { MessageWithTokens } from "./pruning";
+import type { InteractionWithTokens, MessageWithTokens } from "./pruning";
 import {
+  dropInteractionsToFit,
   getInteractionTokenCount,
-  progressivelyPruneInteraction,
-  prunePreviousInteractions,
+  pruneToolResults,
+  sumInteractionTokens,
+  TOOL_RESULTS_TO_PRESERVE,
 } from "./pruning";
 
-// When previous interactions pruning is enabled, we'll attempt to fully preserve this number of
-// interactions. This value was originally at 1 and bumped at 3 with the introduction of
-// gracefully_stopped agent message and user message steering to don't prune tool outputs too
-// aggressively.
+// How many of the most recent interactions dropInteractionsToFit never drops entirely, even if
+// their own tool results were already pruned. A different floor from TOOL_RESULTS_TO_PRESERVE
+// (pruning.ts). That one protects tool result content regardless of turn. This one protects whole
+// recent turns from being erased regardless of how many tool calls they made.
 export const PREVIOUS_INTERACTIONS_TO_PRESERVE = 3;
 
 // Fixed number of tokens assumed for image contents
@@ -41,12 +43,122 @@ const IMAGE_CONTENT_TOKEN_COUNT = 3100;
 export const TOOL_DEFINITIONS_COUNT_ADJUSTMENT_FACTOR = 0.7;
 export const TOKENS_MARGIN = 1024;
 
-// Target ceiling (as a fraction of contextSize) for triggering previous-interactions pruning,
-// picked to sit safely below the customer-facing compaction warning (~70% of contextSize) rather
-// than the real ceiling, which sits at 68-99% depending on the model and otherwise leaves pruning
-// doing nothing until compaction has already fired. Kept independent of generationTokensCount,
-// which also doubles as the actual max_tokens sent to the provider.
+// Proactive pruning target as a fraction of contextSize, picked to sit below the customer-facing
+// compaction warning (~70%) rather than the real ceiling (68-99% depending on model), which would
+// otherwise leave pruning inactive until compaction has already fired. Applies to the whole
+// conversation, current interaction included. No separate, looser budget for it.
 export const PRUNING_TARGET_CONTEXT_UTILIZATION = 0.6;
+
+/**
+ * Escalates through pruning and dropping until the conversation fits budgetForInteractions, or
+ * returns an error if even the last resort isn't enough. Four layers, each tried only if the
+ * previous one left the conversation over budget: prune tool results proactively (up to
+ * pruningBudget), drop old interactions entirely (never the current one), force pruning into the
+ * protected floor, then force dropping past the protected floor.
+ *
+ * pruneToolResults and dropInteractionsToFit are each called twice, once with their normal floor
+ * and once with a floor of 0. This is safe because both floors work off the CURRENT state: a
+ * message pruneToolResults already pruned is already at the placeholder size, so pruning it
+ * again would save nothing and its own eligibility check excludes it, and an interaction
+ * dropInteractionsToFit already dropped is simply gone from the array, so there's nothing left
+ * for the second call to reconsider. Each call only ever reaches further than the one before it.
+ */
+function pruneConversationToBudget(
+  interactions: InteractionWithTokens[],
+  {
+    pruningBudget,
+    budgetForInteractions,
+    logDetails,
+  }: {
+    pruningBudget: number;
+    budgetForInteractions: number;
+    logDetails: Record<string, unknown>;
+  }
+): Result<
+  { interactions: InteractionWithTokens[]; prunedContext: boolean },
+  Error
+> {
+  // Layer 1: proactive pruning, within the protected floor, up to pruningBudget.
+  let pruned = pruneToolResults(interactions, {
+    maxTokens: pruningBudget,
+    toolResultsToPreserve: TOOL_RESULTS_TO_PRESERVE,
+  });
+  let prunedContext = pruned !== interactions;
+  let totalTokens = sumInteractionTokens(pruned);
+
+  // Layer 2: drop whole previous interactions, oldest first. The last
+  // PREVIOUS_INTERACTIONS_TO_PRESERVE of them are protected, and the current one always survives.
+  if (totalTokens > budgetForInteractions) {
+    const currentInteraction = pruned[pruned.length - 1];
+    const previousBefore = pruned.slice(0, -1);
+    const previousAfter = dropInteractionsToFit(
+      previousBefore,
+      budgetForInteractions - getInteractionTokenCount(currentInteraction),
+      PREVIOUS_INTERACTIONS_TO_PRESERVE
+    );
+    if (previousAfter !== previousBefore) {
+      prunedContext = true;
+    }
+    pruned = [...previousAfter, currentInteraction];
+    totalTokens = sumInteractionTokens(pruned);
+  }
+
+  // Layer 3: reaching here means layer 2 dropped every previous interaction it was allowed to,
+  // and what remains (the last PREVIOUS_INTERACTIONS_TO_PRESERVE plus the current interaction)
+  // still doesn't fit. Force pruning past TOOL_RESULTS_TO_PRESERVE into the protected floor.
+  if (totalTokens > budgetForInteractions) {
+    logger.warn(
+      { ...logDetails, totalTokens, budgetForInteractions },
+      "Dropped every eligible previous interaction; still over budget, forcing floor pruning."
+    );
+    pruned = pruneToolResults(pruned, {
+      maxTokens: budgetForInteractions,
+      toolResultsToPreserve: 0,
+    });
+    prunedContext = true;
+    totalTokens = sumInteractionTokens(pruned);
+  }
+
+  // Layer 4: still over budget with every tool result already at placeholder size. Drop previous
+  // interactions past PREVIOUS_INTERACTIONS_TO_PRESERVE, down to the current interaction alone
+  // if needed.
+  if (totalTokens > budgetForInteractions) {
+    logger.warn(
+      { ...logDetails, totalTokens, budgetForInteractions },
+      "Floor pruning still not enough; dropping previous interactions past the normal floor."
+    );
+    const currentInteraction = pruned[pruned.length - 1];
+    const previousBefore = pruned.slice(0, -1);
+    const previousAfter = dropInteractionsToFit(
+      previousBefore,
+      budgetForInteractions - getInteractionTokenCount(currentInteraction),
+      0
+    );
+    if (previousAfter !== previousBefore) {
+      prunedContext = true;
+    }
+    pruned = [...previousAfter, currentInteraction];
+    totalTokens = sumInteractionTokens(pruned);
+  }
+
+  // Last resort exhausted: even the current interaction alone doesn't fit.
+  if (totalTokens > budgetForInteractions) {
+    logger.error(
+      {
+        ...logDetails,
+        failureStage: "interaction_exceeds_after_pruning",
+        totalTokens,
+        budgetForInteractions,
+      },
+      "Render Conversation V2: No interactions fit in context window."
+    );
+    return new Err(
+      new Error("Context window exceeded: at least one message is required")
+    );
+  }
+
+  return new Ok({ interactions: pruned, prunedContext });
+}
 
 export async function renderConversationForModel(
   auth: Authenticator,
@@ -152,45 +264,19 @@ export async function renderConversationForModel(
 
   const interactions = groupMessagesIntoInteractions(messagesWithTokens);
 
-  // Previous interactions get first, fixed claim on the token budget, independent of how big this
-  // turn's own new content happens to be. This is what keeps their rendering stable across turns.
-  // The budget prunePreviousInteractions works against never depends on a live, per-turn
-  // quantity. The current interaction (this turn's own new content, never previously cached)
-  // absorbs whatever budget remains, with its own progressive-pruning safety net below.
+  // Hard ceiling shared by every interaction combined: previous history plus the current,
+  // still-in-progress turn.
   const budgetForInteractions = allowedTokenCount - baseTokens;
 
-  // See PRUNING_TARGET_CONTEXT_UTILIZATION for why this trigger exists. Kept separate from
-  // budgetForInteractions (the real ceiling, used below for the current interaction's own safety
-  // net) and only applied when positive: a small-context model with a large prompt or many tools
-  // can push baseTokens past the target on its own, and forcing that negative number would make
-  // prunePreviousInteractions redact its protected floor as routine behavior, not a rare last
-  // resort.
+  // Only applied when positive: a small-context model with a large prompt/tools footprint can
+  // push baseTokens past the target alone, and a negative value would make the floor prune by
+  // default instead of as a last resort.
   const pruningTargetCeiling =
     model.contextSize * PRUNING_TARGET_CONTEXT_UTILIZATION - baseTokens;
-  const previousInteractionsPruningBudget =
+  const pruningBudget =
     pruningTargetCeiling > 0
       ? Math.min(budgetForInteractions, pruningTargetCeiling)
       : budgetForInteractions;
-
-  const previousInteractions = prunePreviousInteractions(
-    interactions.slice(0, -1),
-    previousInteractionsPruningBudget,
-    PREVIOUS_INTERACTIONS_TO_PRESERVE
-  );
-  const previousInteractionsTokens = previousInteractions.reduce(
-    (sum, interaction) => sum + getInteractionTokenCount(interaction),
-    0
-  );
-
-  let currentInteraction = interactions[interactions.length - 1];
-  let currentInteractionTokens = getInteractionTokenCount(currentInteraction);
-
-  // Ideally, the current interaction gets whatever's left after previousInteractions. But
-  // previousInteractions is capped by construction (see prunePreviousInteractions), so this can
-  // only go negative in the rare case where even the (redacted) floor alone didn't fit. In that
-  // case we still only require the current interaction to fit the full fixed pool on its own,
-  // matching the pre-existing hard safety net below.
-  const currentBudget = budgetForInteractions - previousInteractionsTokens;
 
   const logDetails = {
     workspaceId: conversation.owner.sId,
@@ -214,60 +300,21 @@ export async function renderConversationForModel(
     pokeUrl: `https://poke.dust.tt/${conversation.owner.sId}/conversation/${conversation.sId}`,
   };
 
-  if (currentInteractionTokens > currentBudget) {
-    // The last interaction does not fit within its ideal share of the token budget.
-    // We apply progressive pruning to that interaction until it fits.
-    currentInteraction = progressivelyPruneInteraction(
-      currentInteraction,
-      currentBudget
-    );
-    if (currentInteraction.prunedContext) {
-      logger.warn(
-        {
-          ...logDetails,
-          currentInteractionTokens,
-          currentBudget,
-        },
-        "Last tool result was pruned to fit in context window."
-      );
-    }
-    currentInteractionTokens = getInteractionTokenCount(currentInteraction);
-    // The hard requirement is only that the current interaction fits the full fixed pool on its
-    // own: previousInteractions can still be trimmed further below (oldest first) to make room.
-    if (currentInteractionTokens > budgetForInteractions) {
-      logger.error(
-        {
-          ...logDetails,
-          failureStage: "interaction_exceeds_after_pruning",
-          currentInteractionTokens,
-          budgetForInteractions,
-        },
-        "Render Conversation V2: No interactions fit in context window."
-      );
-      return new Err(
-        new Error("Context window exceeded: at least one message is required")
-      );
-    }
+  const pruneRes = pruneConversationToBudget(interactions, {
+    pruningBudget,
+    budgetForInteractions,
+    logDetails,
+  });
+  if (pruneRes.isErr()) {
+    return pruneRes;
   }
+  const { interactions: prunedInteractions, prunedContext } = pruneRes.value;
+  const totalTokens = sumInteractionTokens(prunedInteractions);
 
-  const prunedInteractions = [...previousInteractions, currentInteraction];
-
-  // Select interactions that fit within token budget.
-  const selected: MessageWithTokens[] = [];
-  let tokensUsed = baseTokens;
-
-  // Go backward through interactions.
-  for (let i = prunedInteractions.length - 1; i >= 0; i--) {
-    const interaction = prunedInteractions[i];
-
-    const interactionTokens = getInteractionTokenCount(interaction);
-    if (tokensUsed + interactionTokens <= allowedTokenCount) {
-      tokensUsed += interactionTokens;
-      selected.unshift(...interaction.messages);
-    } else {
-      break;
-    }
-  }
+  const selected: MessageWithTokens[] = prunedInteractions.flatMap(
+    (interaction) => interaction.messages
+  );
+  const tokensUsed = baseTokens + totalTokens;
 
   // Merge content fragments into user messages.
   for (let i = selected.length - 1; i >= 0; i--) {
@@ -297,19 +344,21 @@ export async function renderConversationForModel(
     }
   }
 
+  // Only reachable when the conversation had no messages to begin with: pruning never drops the
+  // current interaction, and the merge above throws before it could empty one out. Not a context
+  // window problem, despite living downstream of the budget machinery.
   if (selected.length === 0) {
     logger.error(
       {
         ...logDetails,
-        failureStage: "no_interactions_selected",
+        failureStage: "no_messages_to_render",
         tokensUsed,
         budgetForInteractions,
-        selectedMessageCount: selected.length,
       },
-      "Render Conversation V2: No interactions fit in context window."
+      "Render Conversation V2: conversation has no messages to render."
     );
     return new Err(
-      new Error("Context window exceeded: at least one message is required")
+      new Error("Conversation contains no messages: at least one is required")
     );
   }
 
@@ -324,8 +373,6 @@ export async function renderConversationForModel(
       ): message is ModelMessageTypeMultiActionsWithoutContentFragment =>
         message.role !== "content_fragment"
     );
-
-  const prunedContext = currentInteraction.prunedContext ?? false;
 
   const pruneSelectAndFinalizeMs = Date.now() - stepStart;
 
