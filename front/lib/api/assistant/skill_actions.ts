@@ -1,5 +1,8 @@
 import { buildServerSideMCPServerConfiguration } from "@app/lib/actions/configuration/helpers";
-import type {MCPServerConfigurationType, ServerSideMCPServerConfigurationType} from "@app/lib/actions/mcp";
+import type {
+  MCPServerConfigurationType,
+  ServerSideMCPServerConfigurationType,
+} from "@app/lib/actions/mcp";
 import type { AutoInternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
 import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import type { DataSourceConfiguration } from "@app/lib/api/assistant/configuration/types";
@@ -7,7 +10,10 @@ import type { Authenticator } from "@app/lib/auth";
 import { isRemoteDatabase } from "@app/lib/data_sources";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
-import {type SkillMCPServerConfiguration, SkillResource} from "@app/lib/resources/skill/skill_resource";
+import {
+  type SkillMCPServerConfiguration,
+  SkillResource,
+} from "@app/lib/resources/skill/skill_resource";
 import type { AgentConfigurationType } from "@app/types/assistant/agent";
 import type { AgentLoopExecutionData } from "@app/types/assistant/agent_run";
 import type { ConversationType } from "@app/types/assistant/conversation";
@@ -22,9 +28,17 @@ type ResolvedSkillMCPServers = {
   systemSkillServers: MCPServerConfigurationType[];
 };
 
-function skillMCPServerConfigToServerSideConfig(auth: Authenticator, config: SkillMCPServerConfiguration, {
-remoteDbDataSourceViews, nonRemoteDbDataSourceViews
-}: {remoteDbDataSourceViews: DataSourceViewResource[]; nonRemoteDbDataSourceViews: DataSourceViewResource[]}): ServerSideMCPServerConfigurationType {
+function skillMCPServerConfigToServerSideConfig(
+  auth: Authenticator,
+  config: SkillMCPServerConfiguration,
+  {
+    remoteDbDataSourceViews,
+    nonRemoteDbDataSourceViews,
+  }: {
+    remoteDbDataSourceViews: DataSourceViewResource[];
+    nonRemoteDbDataSourceViews: DataSourceViewResource[];
+  }
+): ServerSideMCPServerConfigurationType {
   const { view, childAgentId, serverNameOverride } = config;
 
   const {
@@ -48,11 +62,11 @@ remoteDbDataSourceViews, nonRemoteDbDataSourceViews
   }));
 
   return buildServerSideMCPServerConfiguration({
-      mcpServerView: view,
-      dataSources,
-      childAgentId,
-      serverNameOverride,
-    });
+    mcpServerView: view,
+    dataSources,
+    childAgentId,
+    serverNameOverride,
+  });
 }
 
 export async function getSkillServers(
@@ -85,10 +99,20 @@ export async function getSkillServers(
   );
 
   const skillServers = enabledSkills.flatMap((skill) =>
-    skill.mcpServerConfigurations.map((config) => skillMCPServerConfigToServerSideConfig(auth, config, {remoteDbDataSourceViews, nonRemoteDbDataSourceViews}))
+    skill.mcpServerConfigurations.map((config) =>
+      skillMCPServerConfigToServerSideConfig(auth, config, {
+        remoteDbDataSourceViews,
+        nonRemoteDbDataSourceViews,
+      })
+    )
   );
   const systemSkillServers = systemSkills.flatMap((skill) =>
-    skill.mcpServerConfigurations.map((config) => skillMCPServerConfigToServerSideConfig(auth, config, {remoteDbDataSourceViews, nonRemoteDbDataSourceViews}))
+    skill.mcpServerConfigurations.map((config) =>
+      skillMCPServerConfigToServerSideConfig(auth, config, {
+        remoteDbDataSourceViews,
+        nonRemoteDbDataSourceViews,
+      })
+    )
   );
 
   const {
