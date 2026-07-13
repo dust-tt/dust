@@ -485,7 +485,7 @@ export async function syncNonThreaded({
   const slackClient = await getSlackClient(connectorId);
 
   let hasMore: boolean | undefined = undefined;
-  let latestTsSec = endTsSec;
+  let nextCursor: string | undefined = undefined;
   const seenMessagesTs = new Set<string>();
   do {
     let c: ConversationsHistoryResponse | undefined = undefined;
@@ -507,8 +507,9 @@ export async function syncNonThreaded({
               channel: channelId,
               limit: CONVERSATION_HISTORY_LIMIT,
               oldest: `${startTsSec}`,
-              latest: `${latestTsSec}`,
+              latest: `${endTsSec}`,
               inclusive: true,
+              cursor: nextCursor,
             })
           ),
         { source: "syncNonThreaded" }
@@ -544,7 +545,7 @@ export async function syncNonThreaded({
           connectorId,
           error: c.error,
           oldest: startTsSec,
-          latest: latestTsSec,
+          latest: endTsSec,
         },
         "Failed getting messages for channel"
       );
@@ -556,9 +557,6 @@ export async function syncNonThreaded({
     await heartbeat();
 
     for (const message of c.messages) {
-      if (message.ts) {
-        latestTsSec = parseInt(message.ts);
-      }
       const isIndexable = await shouldIndexSlackMessage(
         slackConfiguration,
         message,
@@ -574,7 +572,10 @@ export async function syncNonThreaded({
         messages.push(message);
       }
     }
-    hasMore = c.has_more;
+    // Paginate via Slack's cursor; manual `latest` juggling truncated ts to whole
+    // seconds and could loop forever on a busy second.
+    nextCursor = c.response_metadata?.next_cursor || undefined;
+    hasMore = Boolean(c.has_more && nextCursor);
 
     if (messages.length > MAX_SYNC_NON_THREAD_MESSAGES) {
       logger.warn(
