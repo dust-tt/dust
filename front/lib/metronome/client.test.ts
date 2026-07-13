@@ -6,6 +6,7 @@ import {
   createMetronomeContract,
   createMetronomeCredit,
   findSeatCreditSegmentForPeriod,
+  updateSubscriptionSeats,
 } from "@app/lib/metronome/client";
 import type { Result } from "@app/types/shared/result";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -475,5 +476,90 @@ describe("addComplimentaryCommitToContract", () => {
     });
     expect(commit.access_schedule.schedule_items[0].amount).toBe(4_200);
     expect(commit).not.toHaveProperty("invoice_schedule");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// updateSubscriptionSeats
+// ---------------------------------------------------------------------------
+
+describe("updateSubscriptionSeats", () => {
+  const seatIds = (n: number, prefix: string) =>
+    Array.from({ length: n }, (_, i) => `${prefix}-${i}`);
+
+  it("sends a single edit when at or below the 1000-seat cap", async () => {
+    const result = await updateSubscriptionSeats({
+      metronomeCustomerId: "cust-1",
+      contractId: "contract-1",
+      fromSubscriptionId: "sub-1",
+      addSeatIds: seatIds(1000, "add"),
+      startingAt: "2026-04-01T00:00:00.000Z",
+    });
+
+    unwrapOk(result);
+    expect(mockContractsEdit).toHaveBeenCalledTimes(1);
+    const call = mockContractsEdit.mock.calls[0][0];
+    expect(
+      call.update_subscriptions[0].seat_updates.add_seat_ids[0].seat_ids
+    ).toHaveLength(1000);
+  });
+
+  it("chunks adds and removes into separate edits above the cap", async () => {
+    const result = await updateSubscriptionSeats({
+      metronomeCustomerId: "cust-1",
+      contractId: "contract-1",
+      fromSubscriptionId: "sub-1",
+      addSeatIds: seatIds(2500, "add"),
+      removeSeatIds: seatIds(1200, "rm"),
+      addUnassignedSeats: 5,
+      startingAt: "2026-04-01T00:00:00.000Z",
+    });
+
+    unwrapOk(result);
+    // 2500 adds → 3 chunks; 1200 removes → 2 chunks; editCount = max = 3.
+    expect(mockContractsEdit).toHaveBeenCalledTimes(3);
+
+    // No single edit exceeds the cap.
+    for (const [{ update_subscriptions }] of mockContractsEdit.mock.calls) {
+      for (const { seat_updates } of update_subscriptions) {
+        for (const entry of seat_updates.add_seat_ids ?? []) {
+          expect(entry.seat_ids.length).toBeLessThanOrEqual(1000);
+        }
+        for (const entry of seat_updates.remove_seat_ids ?? []) {
+          expect(entry.seat_ids.length).toBeLessThanOrEqual(1000);
+        }
+      }
+    }
+
+    // Every add/remove is sent exactly once across all edits.
+    const allAdds = mockContractsEdit.mock.calls.flatMap(
+      ([{ update_subscriptions }]) =>
+        update_subscriptions.flatMap(
+          ({
+            seat_updates,
+          }: {
+            seat_updates: { add_seat_ids?: { seat_ids: string[] }[] };
+          }) => (seat_updates.add_seat_ids ?? []).flatMap((e) => e.seat_ids)
+        )
+    );
+    expect(new Set(allAdds).size).toBe(2500);
+
+    // Unassigned delta is applied on the final edit only.
+    const lastCall = mockContractsEdit.mock.calls[2][0];
+    expect(
+      lastCall.update_subscriptions[0].seat_updates.add_unassigned_seats[0]
+        .quantity
+    ).toBe(5);
+  });
+
+  it("does not call edit when there is nothing to change", async () => {
+    const result = await updateSubscriptionSeats({
+      metronomeCustomerId: "cust-1",
+      contractId: "contract-1",
+      fromSubscriptionId: "sub-1",
+    });
+
+    unwrapOk(result);
+    expect(mockContractsEdit).not.toHaveBeenCalled();
   });
 });

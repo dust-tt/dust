@@ -27,6 +27,7 @@ import type {
 } from "@metronome/sdk/resources/v1/customers";
 import type { ContractEditParams } from "@metronome/sdk/resources/v2/contracts";
 import type { IncomingHttpHeaders } from "http";
+import chunk from "lodash/chunk";
 import { z } from "zod";
 import type {
   MetronomeBalance,
@@ -1537,6 +1538,9 @@ export async function getMetronomeSubscriptionAssignedSeatIds({
  * - `removeUnassignedSeats`: seats to remove from `fromSubscriptionId` (pool
  *   reconciliation — consuming a pre-purchased slot)
  */
+// Metronome rejects any single contracts.edit carrying more than 1000 seat IDs.
+const MAX_SEAT_IDS_PER_EDIT = 1000;
+
 export async function updateSubscriptionSeats({
   metronomeCustomerId,
   contractId,
@@ -1571,76 +1575,96 @@ export async function updateSubscriptionSeats({
 
   const scheduleTime = startingAt ?? floorToHourISO(new Date());
 
-  const fromSeatUpdates = {
-    ...(removeSeatIds.length > 0
-      ? {
-          remove_seat_ids: [
-            { seat_ids: removeSeatIds, starting_at: scheduleTime },
-          ],
-        }
-      : {}),
-    ...(addUnassignedSeats > 0
-      ? {
-          add_unassigned_seats: [
-            { quantity: addUnassignedSeats, starting_at: scheduleTime },
-          ],
-        }
-      : {}),
-    ...(removeUnassignedSeats > 0
-      ? {
-          remove_unassigned_seats: [
-            { quantity: removeUnassignedSeats, starting_at: scheduleTime },
-          ],
-        }
-      : {}),
-    ...(hasFromSeatIds
-      ? { add_seat_ids: [{ seat_ids: addSeatIds, starting_at: scheduleTime }] }
-      : {}),
-  };
+  // Metronome caps each edit at 1000 seat IDs, so chunk adds/removes. Unassigned
+  // deltas go on the final edit, after every add has drained the pool.
+  const addChunks =
+    addSeatIds.length > 0 ? chunk(addSeatIds, MAX_SEAT_IDS_PER_EDIT) : [];
+  const removeChunks =
+    removeSeatIds.length > 0 ? chunk(removeSeatIds, MAX_SEAT_IDS_PER_EDIT) : [];
+  const editCount = Math.max(addChunks.length, removeChunks.length, 1);
 
-  const updateSubscriptions = [
-    ...(Object.keys(fromSeatUpdates).length > 0
-      ? [{ subscription_id: fromSubscriptionId, seat_updates: fromSeatUpdates }]
-      : []),
-    ...(toSubscriptionId && addSeatIds.length > 0
-      ? [
-          {
-            subscription_id: toSubscriptionId,
-            seat_updates: {
-              add_seat_ids: [
-                { seat_ids: addSeatIds, starting_at: scheduleTime },
-              ],
+  for (let i = 0; i < editCount; i++) {
+    const isLastEdit = i === editCount - 1;
+    const addChunk = addChunks[i] ?? [];
+    const removeChunk = removeChunks[i] ?? [];
+
+    const fromSeatUpdates = {
+      ...(removeChunk.length > 0
+        ? {
+            remove_seat_ids: [
+              { seat_ids: removeChunk, starting_at: scheduleTime },
+            ],
+          }
+        : {}),
+      ...(isLastEdit && addUnassignedSeats > 0
+        ? {
+            add_unassigned_seats: [
+              { quantity: addUnassignedSeats, starting_at: scheduleTime },
+            ],
+          }
+        : {}),
+      ...(isLastEdit && removeUnassignedSeats > 0
+        ? {
+            remove_unassigned_seats: [
+              { quantity: removeUnassignedSeats, starting_at: scheduleTime },
+            ],
+          }
+        : {}),
+      ...(!toSubscriptionId && addChunk.length > 0
+        ? { add_seat_ids: [{ seat_ids: addChunk, starting_at: scheduleTime }] }
+        : {}),
+    };
+
+    const updateSubscriptions = [
+      ...(Object.keys(fromSeatUpdates).length > 0
+        ? [
+            {
+              subscription_id: fromSubscriptionId,
+              seat_updates: fromSeatUpdates,
             },
-          },
-        ]
-      : []),
-  ];
+          ]
+        : []),
+      ...(toSubscriptionId && addChunk.length > 0
+        ? [
+            {
+              subscription_id: toSubscriptionId,
+              seat_updates: {
+                add_seat_ids: [
+                  { seat_ids: addChunk, starting_at: scheduleTime },
+                ],
+              },
+            },
+          ]
+        : []),
+    ];
 
-  if (updateSubscriptions.length === 0) {
-    return new Ok(undefined);
+    if (updateSubscriptions.length === 0) {
+      continue;
+    }
+
+    try {
+      await getMetronomeClient().v2.contracts.edit({
+        customer_id: metronomeCustomerId,
+        contract_id: contractId,
+        update_subscriptions: updateSubscriptions,
+      });
+    } catch (err) {
+      const error = normalizeError(err);
+      logger.error(
+        {
+          error,
+          metronomeCustomerId,
+          contractId,
+          fromSubscriptionId,
+          toSubscriptionId,
+        },
+        "[Metronome] Failed to update subscription seats"
+      );
+      return new Err(error);
+    }
   }
 
-  try {
-    await getMetronomeClient().v2.contracts.edit({
-      customer_id: metronomeCustomerId,
-      contract_id: contractId,
-      update_subscriptions: updateSubscriptions,
-    });
-    return new Ok(undefined);
-  } catch (err) {
-    const error = normalizeError(err);
-    logger.error(
-      {
-        error,
-        metronomeCustomerId,
-        contractId,
-        fromSubscriptionId,
-        toSubscriptionId,
-      },
-      "[Metronome] Failed to update subscription seats"
-    );
-    return new Err(error);
-  }
+  return new Ok(undefined);
 }
 
 // ---------------------------------------------------------------------------
