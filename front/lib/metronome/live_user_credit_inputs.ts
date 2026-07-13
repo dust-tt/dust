@@ -126,7 +126,7 @@ export async function fetchLiveUserCreditInputs({
     const seatBalancesResult = await listMetronomeSeatBalances({
       metronomeCustomerId,
       metronomeContractId,
-      seatId: userId,
+      seatIds: [userId],
     });
     if (seatBalancesResult.isErr()) {
       return new Err(

@@ -56,6 +56,7 @@ import type {
 import {
   computeUserNearLimit,
   expectedUserCreditState,
+  hasMetronomeSeatBalance,
   normalizeToPoolLimitSeatType,
 } from "@app/types/memberships";
 import type { Result } from "@app/types/shared/result";
@@ -502,11 +503,51 @@ export async function reconcileWorkspaceUserCreditStates({
   }
   const workspaceId = workspace.sId;
 
+  // The seat-allowance cache (contract) and the DB queries can genuinely
+  // throw, so they stay wrapped — the ERR1-authorised case. The per-user
+  // overrides come from the memberships and the workspace default from the
+  // credit-usage configuration (both pool-only values); the seat allowances
+  // are needed to derive the total thresholds.
+  let seatAllowances: Partial<Record<NormalizedPoolLimitSeatType, number>>;
+  let defaultPoolCapAwuCredits: number;
+  let memberships: MembershipResource[];
+  try {
+    seatAllowances = await getSeatAllowancesByNormalizedSeatType(workspaceId);
+    const creditUsageConfig =
+      await CreditUsageConfigurationResource.fetchByWorkspaceModelId(
+        workspace.id
+      );
+    defaultPoolCapAwuCredits = creditUsageConfig?.defaultPoolCapAwuCredits ?? 0;
+    ({ memberships } = await MembershipResource.getActiveMemberships({
+      workspace,
+    }));
+  } catch (err) {
+    logger.error(
+      { workspaceId, err: normalizeError(err) },
+      "[ReconcileCreditState] Failed to load cap thresholds or memberships"
+    );
+    return;
+  }
+
+  // Per-user usage and seat balances are both scoped to the active members'
+  // user ids (an unfiltered seatBalances query silently omits most seats on
+  // contracts with a few hundred+ seats), so load memberships first.
+  const memberUserIds = memberships
+    .map((m) => m.user?.sId)
+    .filter((sId): sId is string => sId !== undefined);
+  // Only pro/max (and their _yearly variants) carry an individual Metronome
+  // seat balance — querying free/none/workspace members too would just
+  // waste calls on ids Metronome will report as not found.
+  const seatBalanceEligibleUserIds = memberships.flatMap((m) =>
+    m.user?.sId && hasMetronomeSeatBalance(m.seatType) ? [m.user.sId] : []
+  );
+
   // These return our `Result` type: handle their errors with early returns
   // rather than throw + catch (ERR1).
   const seatBalancesResult = await listMetronomeSeatBalances({
     metronomeCustomerId,
     metronomeContractId,
+    seatIds: seatBalanceEligibleUserIds,
   });
   if (seatBalancesResult.isErr()) {
     logger.error(
@@ -536,37 +577,6 @@ export async function reconcileWorkspaceUserCreditStates({
     ? perUserCreditBalancesResult.value
     : new Map<string, { balanceAwu: number; startingBalanceAwu: number }>();
 
-  // The seat-allowance cache (contract) and the DB queries can genuinely
-  // throw, so they stay wrapped — the ERR1-authorised case. The per-user
-  // overrides come from the memberships and the workspace default from the
-  // credit-usage configuration (both pool-only values); the seat allowances
-  // are needed to derive the total thresholds.
-  let seatAllowances: Partial<Record<NormalizedPoolLimitSeatType, number>>;
-  let defaultPoolCapAwuCredits: number;
-  let memberships: MembershipResource[];
-  try {
-    seatAllowances = await getSeatAllowancesByNormalizedSeatType(workspaceId);
-    const creditUsageConfig =
-      await CreditUsageConfigurationResource.fetchByWorkspaceModelId(
-        workspace.id
-      );
-    defaultPoolCapAwuCredits = creditUsageConfig?.defaultPoolCapAwuCredits ?? 0;
-    ({ memberships } = await MembershipResource.getActiveMemberships({
-      workspace,
-    }));
-  } catch (err) {
-    logger.error(
-      { workspaceId, err: normalizeError(err) },
-      "[ReconcileCreditState] Failed to load cap thresholds or memberships"
-    );
-    return;
-  }
-
-  // Per-user usage is scoped to the active members' user ids (an unfiltered
-  // query is capped server-side and omits users), so load memberships first.
-  const memberUserIds = memberships
-    .map((m) => m.user?.sId)
-    .filter((sId): sId is string => sId !== undefined);
   const usageResult = await fetchPerUserAwuUsage({
     workspaceId,
     metronomeCustomerId,
