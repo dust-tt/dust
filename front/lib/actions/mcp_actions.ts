@@ -1038,6 +1038,15 @@ export async function tryListMCPTools(
   const systemSkillServerKeys = new Set(
     systemSkillServers.map(getMCPServerConfigurationKey)
   );
+  const nonJITServerKeys = new Set(
+    [
+      ...agentLoopListToolsContext.agentConfiguration.actions,
+      ...(agentLoopListToolsContext.clientSideActionConfigurations ?? []),
+      ...systemSkillServers,
+      ...skillServers,
+    ].map(getMCPServerConfigurationKey)
+  );
+  const jitServerKeys = new Set(jitServers.map(getMCPServerConfigurationKey));
   // A server exposed by both buckets keeps its system-skill behavior.
   const isSkillServerConfig = deduplicatedConfigs.map((config) => {
     const key = getMCPServerConfigurationKey(config);
@@ -1047,6 +1056,12 @@ export async function tryListMCPTools(
       !nonSkillServerKeys.has(key)
     );
   });
+  // Only configurations provided exclusively through JIT can appear after the
+  // conversation has started.
+  const isJITServerConfig = deduplicatedConfigs.map((config) => {
+    const key = getMCPServerConfigurationKey(config);
+    return jitServerKeys.has(key) && !nonJITServerKeys.has(key);
+  });
 
   const mcpServerActions = await disambiguateServerNamesBySpace(
     auth,
@@ -1054,6 +1069,7 @@ export async function tryListMCPTools(
   );
   const mcpServerActionsWithOrigin = mcpServerActions.map((action, index) => ({
     action,
+    isFromJITServer: isJITServerConfig[index],
     isFromSkillServer: isSkillServerConfig[index],
   }));
 
@@ -1072,7 +1088,7 @@ export async function tryListMCPTools(
   // Discover all tools exposed by all available MCP servers.
   const results = await concurrentExecutor(
     mcpServerActionsWithOrigin,
-    async ({ action, isFromSkillServer }) => {
+    async ({ action, isFromJITServer, isFromSkillServer }) => {
       let connectionParams: MCPConnectionParams;
       if (isServerSideMCPServerConfiguration(action)) {
         const mcpServerView = preFetchedMcpServerViews.get(
@@ -1133,6 +1149,28 @@ export async function tryListMCPTools(
 
       const { instructions, tools: rawToolsFromServer } =
         toolsAndInstructionsRes.value;
+
+      const eagerManualToolNames = rawToolsFromServer
+        .filter(
+          (tool) =>
+            isServerSideMCPToolConfiguration(tool) &&
+            tool.availability === "manual" &&
+            tool.eager
+        )
+        .map((tool) => tool.name);
+      if (isFromJITServer && eagerManualToolNames.length > 0) {
+        logger.warn(
+          {
+            workspaceId: owner.sId,
+            conversationId: agentLoopListToolsContext.conversation.sId,
+            messageId: agentLoopListToolsContext.agentMessage.sId,
+            actionId: action.sId,
+            mcpServerName: action.name,
+            eagerToolNames: eagerManualToolNames,
+          },
+          "Conditionally added MCP server exposes eager tools, which may invalidate the cached tool prefix"
+        );
+      }
 
       const processedTools: MCPToolConfigurationType[] = [];
 
