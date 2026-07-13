@@ -527,21 +527,6 @@ export class RemoteMCPServerResource extends BaseResource<RemoteMCPServerModel> 
       }
     }
 
-    // Some authorization servers only support pre-registered (static) clients and don't
-    // advertise a registration endpoint at all. Attempting DCR in that case always fails and
-    // the resulting error is misleading (it looks like a failed registration attempt rather
-    // than "this server doesn't support automatic setup").
-    if (!metadata.registration_endpoint) {
-      return new Err(
-        new DustError(
-          "internal_error",
-          "This server does not support automatic OAuth setup (no dynamic client " +
-            "registration endpoint). Please use Static OAuth with the client ID/secret " +
-            "provided by the server's OAuth application."
-        )
-      );
-    }
-
     try {
       // Try DCR.
       const fullInformation = await registerClient(serverUrl, {
@@ -574,16 +559,16 @@ export class RemoteMCPServerResource extends BaseResource<RemoteMCPServerModel> 
       };
       return new Ok(connectionMetadata);
     } catch (e) {
-      logger.error(
-        { error: e },
-        "Failed to register client, this server might require a pre-approval process."
-      );
-      return new Err(
-        new DustError(
-          "internal_error",
-          "Failed to register client, this server might require a pre-approval process. Please contact support@dust.com."
-        )
-      );
+      // Servers that don't advertise a registration_endpoint don't support DCR at all — the
+      // failure isn't a broken registration attempt, it's expected, and Static OAuth is the
+      // right path.
+      const message = metadata.registration_endpoint
+        ? "Failed to register client, this server might require a pre-approval process. Please contact support@dust.com."
+        : "This server does not support automatic OAuth setup (no dynamic client registration " +
+          "endpoint). Please use Static OAuth with the client ID/secret provided by the " +
+          "server's OAuth application.";
+      logger.error({ error: e }, message);
+      return new Err(new DustError("internal_error", message));
     }
   }
 
