@@ -314,7 +314,7 @@ export function getGlobalAgentMetadata(sId: GLOBAL_AGENTS_SID): AgentMetadata {
       return {
         sId: GLOBAL_AGENTS_SID.DUST_OAI,
         name: "dust-oai",
-        description: "Same as dust but running OpenAI models.",
+        description: "Same as dust but running GPT-5.6 Sol.",
         pictureUrl: DUST_AVATAR_URL,
       };
     case GLOBAL_AGENTS_SID.DUST_OAI_MEDIUM:
@@ -329,6 +329,27 @@ export function getGlobalAgentMetadata(sId: GLOBAL_AGENTS_SID): AgentMetadata {
         sId: GLOBAL_AGENTS_SID.DUST_OAI_HIGH,
         name: "dust-oai-high",
         description: "Same as dust-oai but with high reasoning effort.",
+        pictureUrl: DUST_AVATAR_URL,
+      };
+    case GLOBAL_AGENTS_SID.DUST_OAI_LUNA:
+      return {
+        sId: GLOBAL_AGENTS_SID.DUST_OAI_LUNA,
+        name: "dust-oai-luna",
+        description: "Same as dust but running GPT-5.6 Luna.",
+        pictureUrl: DUST_AVATAR_URL,
+      };
+    case GLOBAL_AGENTS_SID.DUST_OAI_LUNA_MEDIUM:
+      return {
+        sId: GLOBAL_AGENTS_SID.DUST_OAI_LUNA_MEDIUM,
+        name: "dust-oai-luna-medium",
+        description: "Same as dust-oai-luna but with medium reasoning effort.",
+        pictureUrl: DUST_AVATAR_URL,
+      };
+    case GLOBAL_AGENTS_SID.DUST_OAI_LUNA_HIGH:
+      return {
+        sId: GLOBAL_AGENTS_SID.DUST_OAI_LUNA_HIGH,
+        name: "dust-oai-luna-high",
+        description: "Same as dust-oai-luna but with high reasoning effort.",
         pictureUrl: DUST_AVATAR_URL,
       };
     case GLOBAL_AGENTS_SID.DUST_OAI_NANO_HIGH:
