@@ -2,6 +2,10 @@ import { getGlobalAgents } from "@app/lib/api/assistant/global_agents/global_age
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
+import {
+  GPT_5_6_LUNA_MODEL_ID,
+  GPT_5_6_SOL_MODEL_ID,
+} from "@app/types/assistant/models/openai";
 import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
 import { describe, expect, it, vi } from "vitest";
 
@@ -235,5 +239,81 @@ describe("getGlobalAgents custom model agents", () => {
     } finally {
       mockCustomModels.configs.push(...removed);
     }
+  });
+});
+
+describe("getGlobalAgents OpenAI Dust agents", () => {
+  it("hides Luna variants without the internal global agents feature flag", async () => {
+    const auth = await createAuthenticatorWithFlags([]);
+
+    const agents = await getGlobalAgents(
+      auth,
+      [
+        GLOBAL_AGENTS_SID.DUST_OAI_LUNA,
+        GLOBAL_AGENTS_SID.DUST_OAI_LUNA_MEDIUM,
+        GLOBAL_AGENTS_SID.DUST_OAI_LUNA_HIGH,
+      ],
+      "light"
+    );
+
+    expect(agents).toEqual([]);
+  });
+
+  it("resolves Sol and Luna variants with light, medium, and high reasoning", async () => {
+    const auth = await createAuthenticatorWithFlags([
+      "dust_internal_global_agents",
+    ]);
+
+    const agents = await getGlobalAgents(
+      auth,
+      [
+        GLOBAL_AGENTS_SID.DUST_OAI,
+        GLOBAL_AGENTS_SID.DUST_OAI_MEDIUM,
+        GLOBAL_AGENTS_SID.DUST_OAI_HIGH,
+        GLOBAL_AGENTS_SID.DUST_OAI_LUNA,
+        GLOBAL_AGENTS_SID.DUST_OAI_LUNA_MEDIUM,
+        GLOBAL_AGENTS_SID.DUST_OAI_LUNA_HIGH,
+      ],
+      "light"
+    );
+
+    expect(
+      agents.map((agent) => ({
+        sId: agent.sId,
+        modelId: agent.model.modelId,
+        reasoningEffort: agent.model.reasoningEffort,
+      }))
+    ).toEqual([
+      {
+        sId: GLOBAL_AGENTS_SID.DUST_OAI,
+        modelId: GPT_5_6_SOL_MODEL_ID,
+        reasoningEffort: "light",
+      },
+      {
+        sId: GLOBAL_AGENTS_SID.DUST_OAI_MEDIUM,
+        modelId: GPT_5_6_SOL_MODEL_ID,
+        reasoningEffort: "medium",
+      },
+      {
+        sId: GLOBAL_AGENTS_SID.DUST_OAI_HIGH,
+        modelId: GPT_5_6_SOL_MODEL_ID,
+        reasoningEffort: "high",
+      },
+      {
+        sId: GLOBAL_AGENTS_SID.DUST_OAI_LUNA,
+        modelId: GPT_5_6_LUNA_MODEL_ID,
+        reasoningEffort: "light",
+      },
+      {
+        sId: GLOBAL_AGENTS_SID.DUST_OAI_LUNA_MEDIUM,
+        modelId: GPT_5_6_LUNA_MODEL_ID,
+        reasoningEffort: "medium",
+      },
+      {
+        sId: GLOBAL_AGENTS_SID.DUST_OAI_LUNA_HIGH,
+        modelId: GPT_5_6_LUNA_MODEL_ID,
+        reasoningEffort: "high",
+      },
+    ]);
   });
 });
