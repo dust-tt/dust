@@ -72,8 +72,8 @@ import type {
   Attributes,
   CreationAttributes,
   InferAttributes,
+  Literal,
   Transaction,
-  WhereAttributeHash,
   WhereOptions,
 } from "sequelize";
 import { col, fn, literal, Op, QueryTypes, Sequelize, where } from "sequelize";
@@ -1924,9 +1924,9 @@ export class ConversationResource extends BaseResource<ConversationModel> {
   }
 
   /**
-   * Builds the `[Op.or]` alternatives for a WHERE clause that only excludes
-   * conversations that are genuine agent-spawned sub-conversations (depth > 0
-   * and not registered as a user-initiated fork in `conversation_forks`).
+   * Builds a `Literal` subquery selecting the ids of conversations that are
+   * genuine agent-spawned sub-conversations: `depth > 0` and NOT registered
+   * as a user-initiated fork in `conversation_forks`.
    *
    * User-initiated branches/forks also increment `depth` (see
    * `createConversationFork` in `forks.ts`), but they are real,
@@ -1934,27 +1934,26 @@ export class ConversationResource extends BaseResource<ConversationModel> {
    * conversation list. Only `run_agent`-spawned sub-conversations, which are
    * never registered in `conversation_forks`, should stay hidden.
    *
-   * Returned as the alternatives array for a `[Op.or]` key (rather than a
-   * full `WhereOptions` object to spread) so callers can assign it as a
-   * single property on their own `WhereOptions`-typed literal, matching the
-   * existing `depth: { [Op.eq]: 0 }` assignment pattern.
+   * Meant to be used as the value of an `[Op.notIn]` key on the `id`
+   * attribute, e.g. `id: { [Op.notIn]: <this literal> }`. Returning a plain
+   * `Literal` (rather than a `WhereOptions`/`[Op.or]` shape) keeps every
+   * caller's `where` object a flat `WhereAttributeHash` with no top-level
+   * `Op` keys, matching the existing `depth: { [Op.eq]: 0 }` assignment
+   * pattern and avoiding type-inference issues when that `where` object is
+   * later spread or mutated (e.g. pagination-cursor `updatedAt` handling in
+   * `listConversationsInSpacePaginated`).
    */
-  private static excludeRunAgentSubConversationsOrClause(
+  private static excludedRunAgentSubConversationIdsLiteral(
     auth: Authenticator
-  ): WhereAttributeHash<InferAttributes<ConversationModel>>[] {
+  ): Literal {
     const workspaceId = auth.getNonNullableWorkspace().id;
 
-    return [
-      { depth: { [Op.eq]: 0 } },
-      {
-        id: {
-          [Op.in]: literal(
-            `(SELECT "childConversationId" FROM "conversation_forks" ` +
-              `WHERE "conversation_forks"."workspaceId" = ${workspaceId})`
-          ),
-        },
-      },
-    ];
+    return literal(
+      `(SELECT "id" FROM "conversations" WHERE "workspaceId" = ${workspaceId} ` +
+        `AND "depth" > 0 AND "id" NOT IN ` +
+        `(SELECT "childConversationId" FROM "conversation_forks" ` +
+        `WHERE "conversation_forks"."workspaceId" = ${workspaceId}))`
+    );
   }
 
   static async listSpaceUnreadConversationsAndActivityForUser(
@@ -1979,7 +1978,9 @@ export class ConversationResource extends BaseResource<ConversationModel> {
         where: {
           spaceId: { [Op.in]: spaceIds },
           visibility: { [Op.eq]: "unlisted" },
-          [Op.or]: this.excludeRunAgentSubConversationsOrClause(auth),
+          id: {
+            [Op.notIn]: this.excludedRunAgentSubConversationIdsLiteral(auth),
+          },
         },
       }
     );
@@ -2153,16 +2154,15 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     const orderDirection = pagination.orderDirection ?? "desc";
 
     const { where: filterWhere } = this.getOptions(options);
-    // Kept as a plain WhereAttributeHash (no `[Op.or]` key) so that later
-    // pagination-cursor code can freely read/mutate `whereClause.updatedAt`.
-    // The run_agent-sub-conversation exclusion is applied separately, via
-    // `[Op.and]`, at the `findAll` call site below.
     const whereClause: WhereOptions<InferAttributes<ConversationModel>> = {
       ...filterWhere,
       spaceId: spaceModelId,
-      ...(restrictToConversationModelIds && {
-        id: { [Op.in]: restrictToConversationModelIds },
-      }),
+      id: {
+        [Op.notIn]: this.excludedRunAgentSubConversationIdsLiteral(auth),
+        ...(restrictToConversationModelIds && {
+          [Op.in]: restrictToConversationModelIds,
+        }),
+      },
     };
 
     if (pagination.lastValue) {
@@ -2226,12 +2226,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
         auth,
         options,
         {
-          where: {
-            [Op.and]: [
-              batchWhereClause,
-              { [Op.or]: this.excludeRunAgentSubConversationsOrClause(auth) },
-            ],
-          },
+          where: batchWhereClause,
           order: [["updatedAt", orderDirection === "desc" ? "DESC" : "ASC"]],
           limit: chunkSize,
         }
