@@ -8,6 +8,7 @@ import { tokenCountForTexts } from "@app/lib/tokenization";
 import logger from "@app/logger/logger";
 import type { AgentLoopExecutionData } from "@app/types/assistant/agent_run";
 import type { ConversationType } from "@app/types/assistant/conversation";
+import type { ConversationRenderDiagnostics } from "@app/types/assistant/conversation_rendering";
 import type {
   ModelConversationTypeMultiActions,
   ModelMessageTypeMultiActions,
@@ -192,6 +193,7 @@ export async function renderConversationForModel(
   Result<
     {
       modelConversation: ModelConversationTypeMultiActions;
+      diagnostics: ConversationRenderDiagnostics;
       tokensUsed: number;
       prunedContext: boolean;
     },
@@ -315,6 +317,11 @@ export async function renderConversationForModel(
     (interaction) => interaction.messages
   );
   const tokensUsed = baseTokens + totalTokens;
+  const selectedInteractionCount = prunedInteractions.length;
+
+  const selectedMessageTokenCounts = selected.map(
+    (message) => message.tokenCount
+  );
 
   // Merge content fragments into user messages.
   for (let i = selected.length - 1; i >= 0; i--) {
@@ -339,8 +346,13 @@ export async function renderConversationForModel(
         );
       }
 
-      userMessage.content = [...cfMessage.content, ...userMessage.content];
+      selected[i + 1] = {
+        ...userMessage,
+        content: [...cfMessage.content, ...userMessage.content],
+      };
+      selectedMessageTokenCounts[i + 1] += selectedMessageTokenCounts[i];
       selected.splice(i, 1);
+      selectedMessageTokenCounts.splice(i, 1);
     }
   }
 
@@ -374,6 +386,54 @@ export async function renderConversationForModel(
         message.role !== "content_fragment"
     );
 
+  const messageBreakdown = finalMessages.map((message, index) => ({
+    index,
+    name: "name" in message ? message.name : null,
+    role: message.role,
+    tokenCount: selectedMessageTokenCounts[index],
+  }));
+  const selectedMessagesTokenCount = selectedMessageTokenCounts.reduce(
+    (sum, tokenCount) => sum + tokenCount,
+    0
+  );
+  const adjustedToolDefinitionsCount = Math.floor(
+    toolDefinitionsCount * TOOL_DEFINITIONS_COUNT_ADJUSTMENT_FACTOR
+  );
+  const originalPreviousInteractions = interactions.slice(0, -1);
+  const prunedPreviousInteractions = prunedInteractions.slice(0, -1);
+  const previousInteractionsPruned =
+    prunedPreviousInteractions.length < originalPreviousInteractions.length ||
+    sumInteractionTokens(prunedPreviousInteractions) <
+      sumInteractionTokens(originalPreviousInteractions);
+  const currentInteractionPruned =
+    getInteractionTokenCount(
+      prunedInteractions[prunedInteractions.length - 1]
+    ) < getInteractionTokenCount(interactions[interactions.length - 1]);
+
+  const diagnostics: ConversationRenderDiagnostics = {
+    counts: {
+      modelMessageCount: finalMessages.length,
+      renderedInteractionCount: interactions.length,
+      renderedMessageCount: messages.length,
+      selectedInteractionCount,
+    },
+    messageBreakdown,
+    pruning: {
+      currentInteractionPruned,
+      omittedInteractionCount: interactions.length - selectedInteractionCount,
+      previousInteractionsPruned,
+    },
+    tokenCounts: {
+      allowed: allowedTokenCount,
+      messages: selectedMessagesTokenCount,
+      prompt: promptCount,
+      remaining: Math.max(allowedTokenCount - tokensUsed, 0),
+      safetyMargin: TOKENS_MARGIN,
+      toolDefinitionsAdjusted: adjustedToolDefinitionsCount,
+      toolDefinitionsRaw: toolDefinitionsCount,
+      total: tokensUsed,
+    },
+  };
   const pruneSelectAndFinalizeMs = Date.now() - stepStart;
 
   logger.info(
@@ -397,6 +457,7 @@ export async function renderConversationForModel(
   );
 
   return new Ok({
+    diagnostics,
     modelConversation: {
       messages: finalMessages,
     },

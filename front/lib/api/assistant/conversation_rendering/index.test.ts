@@ -206,6 +206,34 @@ describe("renderConversationForModel", () => {
     expect(res.value.modelConversation.messages).toHaveLength(3);
     expect(res.value.tokensUsed).toBe(1071);
     expect(res.value.prunedContext).toBe(false);
+    expect(res.value.diagnostics).toEqual({
+      counts: {
+        modelMessageCount: 3,
+        renderedInteractionCount: 1,
+        renderedMessageCount: 3,
+        selectedInteractionCount: 1,
+      },
+      messageBreakdown: [
+        { index: 0, name: "user", role: "user", tokenCount: 10 },
+        { index: 1, name: "assistant", role: "assistant", tokenCount: 10 },
+        { index: 2, name: "tool_1", role: "function", tokenCount: 10 },
+      ],
+      pruning: {
+        currentInteractionPruned: false,
+        omittedInteractionCount: 0,
+        previousInteractionsPruned: false,
+      },
+      tokenCounts: {
+        allowed: 1171,
+        messages: 30,
+        prompt: 10,
+        remaining: 100,
+        safetyMargin: 1024,
+        toolDefinitionsAdjusted: 7,
+        toolDefinitionsRaw: 10,
+        total: 1071,
+      },
+    });
   });
 
   it("prunes old tool outputs beyond TOOL_RESULTS_TO_PRESERVE but keeps the most recent ones, across separate interactions", async () => {
@@ -544,6 +572,11 @@ describe("renderConversationForModel", () => {
     }
     expect(textOf(firstUser.content[0])).toBe("fragment_text");
     expect(textOf(firstUser.content[1])).toBe("user_text");
+    expect(res.value.diagnostics.messageBreakdown).toEqual([
+      { index: 0, name: "user", role: "user", tokenCount: 20 },
+      { index: 1, name: "assistant", role: "assistant", tokenCount: 10 },
+      { index: 2, name: "tool_1", role: "function", tokenCount: 10 },
+    ]);
   });
 
   it("returns an error when context window is still exceeded after every pruning layer", async () => {

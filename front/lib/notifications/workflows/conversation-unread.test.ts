@@ -1428,6 +1428,32 @@ describe("getEmailSummary", () => {
     // Set up consistent mock for renderConversationForModel
     vi.mocked(renderConversationForModel).mockResolvedValue(
       new Ok({
+        diagnostics: {
+          counts: {
+            modelMessageCount: 1,
+            renderedInteractionCount: 1,
+            renderedMessageCount: 1,
+            selectedInteractionCount: 1,
+          },
+          messageBreakdown: [
+            { index: 0, name: "Test User", role: "user", tokenCount: 100 },
+          ],
+          pruning: {
+            currentInteractionPruned: false,
+            omittedInteractionCount: 0,
+            previousInteractionsPruned: false,
+          },
+          tokenCounts: {
+            allowed: 1_000,
+            messages: 100,
+            prompt: 0,
+            remaining: 900,
+            safetyMargin: 0,
+            toolDefinitionsAdjusted: 0,
+            toolDefinitionsRaw: 0,
+            total: 100,
+          },
+        },
         modelConversation: {
           messages: [
             {
