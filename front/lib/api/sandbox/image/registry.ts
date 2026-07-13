@@ -752,7 +752,7 @@ SHELLEOF`,
   .registerTool({
     name: "xlsx_inspect",
     description:
-      "Inspect workbook structure, formulas, values, and styles. Inspect .xlsx structure: sheets, formulas, cached values, number formats, font and fill color (theme/indexed colors resolved to ARGB). --grep --meta searches by metadata tokens (e.g. 'fill: FFFF...' for yellow highlights, 'numFmt: 0%' for percent-formatted cells)",
+      "Inspect .xlsx structure: sheets, formulas, cached values, number formats, font and fill color (theme/indexed colors resolved to ARGB). --grep --meta searches by metadata tokens (e.g. 'fill: FFFF...' for yellow highlights, 'numFmt: 0%' for percent-formatted cells)",
     usage:
       "xlsx_inspect <file> [--sheet NAME] [--range A1:Z50] [--grep PATTERN [--regex] [--meta]] [--names] [--limit N] [--offset N]",
     returns:
@@ -763,7 +763,7 @@ SHELLEOF`,
   .registerTool({
     name: "pptx_inspect",
     description:
-      "Inspect and QA slide structure, content, rendering, and fidelity. Inspect .pptx structure (slides, layouts, shapes, text, charts, tables, embedded media) throughout the edit loop. Overview by default, plus modes --slide, --layouts, --text, --media, --render, --qa (post-edit boxed-render + text-readback visual gate) and --compare FILE (template-fidelity [QA: PASS/FAIL] gate). Run with --help for the full per-mode flag reference; the pptx skill covers when and how to use each.",
+      "Inspect and QA .pptx structure (slides, layouts, shapes, text, charts, tables, embedded media) throughout the edit loop. Overview by default, plus modes --slide, --layouts, --text, --media, --render, --qa (post-edit boxed-render + text-readback visual gate) and --compare FILE (template-fidelity [QA: PASS/FAIL] gate). Run with --help for the full per-mode flag reference; the pptx skill covers when and how to use each.",
     usage:
       "pptx_inspect <file> [--qa N[,N,...]] [--slide N[,N,...]] [--layouts] [--text] [--media] [--render] [--render-dir DIR] [--compare FILE] [--max-shapes N] [--offset N] (see --help)",
     returns:
@@ -774,7 +774,7 @@ SHELLEOF`,
   .registerTool({
     name: "pptx_slides",
     description:
-      "Duplicate, move, or delete .pptx slides without corrupting the package. Shares image parts, deep-clones charts, and rewrites relationship ids. --duplicate and --delete take a slide pattern (a single slide, a comma list, or ranges, e.g. 2,5,7-9), so do every duplicate or delete in one call rather than one slide at a time. Edit copies afterward with python-pptx",
+      "Duplicate, move, or delete .pptx slides without corrupting the package - shares image parts, deep-clones charts, rewrites relationship ids. --duplicate and --delete take a slide pattern (a single slide, a comma list, or ranges, e.g. 2,5,7-9), so do every duplicate or delete in one call rather than one slide at a time. Edit copies afterward with python-pptx",
     usage:
       "pptx_slides <file> (--duplicate N[,N,...] [--count K] [--after M] | --move N --to M | --delete N[,N,...])",
     returns: "A one-line summary of the change and the deck's new slide count",
@@ -784,7 +784,7 @@ SHELLEOF`,
   .registerTool({
     name: "pptx_slides",
     description:
-      "Duplicate, move, or delete .pptx slides without corrupting the package. Shares image parts, deep-clones charts, and rewrites relationship ids. --duplicate and --delete take a slide pattern (a single slide, a comma list, or ranges, e.g. 2,5,7-9), so do every duplicate or delete in one call rather than one slide at a time. Edit copies afterward with python-pptx",
+      "Duplicate, move, or delete .pptx slides without corrupting the package - shares image parts, deep-clones charts, rewrites relationship ids. --duplicate and --delete take a slide pattern (a single slide, a comma list, or ranges, e.g. 2,5,7-9), so do every duplicate or delete in one call rather than one slide at a time. Edit copies afterward with python-pptx",
     usage:
       "pptx_slides <file> (--duplicate N[,N,...] [--count K] [--after M] | --move N --to M | --delete N[,N,...])",
     returns: "A one-line summary of the change and the deck's new slide count",
@@ -794,7 +794,7 @@ SHELLEOF`,
   .registerTool({
     name: "docx_inspect",
     description:
-      "Inspect document structure, styles, content, and rendering. Inspect .docx structure: sections, headings outline, paragraph and character styles with resolved typography, run formatting, tables, tracked changes, fields, embedded media. Use before editing a document to map style names so the model can apply Heading1 / Normal / Quote rather than restyling inline. --render rasterizes pages to JPEG, published into the conversation; the command prints each page's scoped path (a files__cat-readable image). --render-dir DIR is the base dir renders publish under, as DIR/.docx_render/<doc>/ (default /files/conversation)",
+      "Inspect .docx structure: sections, headings outline, paragraph and character styles with resolved typography, run formatting, tables, tracked changes, fields, embedded media. Use before editing a document to map style names so the model can apply Heading1 / Normal / Quote rather than restyling inline. --render rasterizes pages to JPEG, published into the conversation; the command prints each page's scoped path (a files__cat-readable image). --render-dir DIR is the base dir renders publish under, as DIR/.docx_render/<doc>/ (default /files/conversation)",
     usage:
       "docx_inspect <file> [--styles] [--paragraphs] [--text] [--tables] [--sections] [--changes] [--fields] [--media] [--render] [--render-dir DIR] [--offset N] [--max N] [--page N]",
     returns:
