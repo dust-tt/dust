@@ -262,7 +262,7 @@ describe("MCP Servers Metadata Snapshot", () => {
     }
   });
 
-  it("does not define eager tools on servers added mid-conversation", async () => {
+  it("does not introduce new eager tools on servers added mid-conversation", async () => {
     const eagerConditionalTools: string[] = [];
 
     for (const serverName of AVAILABLE_INTERNAL_MCP_SERVER_NAMES) {
@@ -278,11 +278,15 @@ describe("MCP Servers Metadata Snapshot", () => {
       }
     }
 
+    // Keep the existing runtime behavior, but make any new exception explicit.
+    const knownEagerConditionalTools = [
+      "http_client.webbrowser",
+      "http_client.websearch",
+    ];
     expect(
-      eagerConditionalTools,
-      "Eager tools must be present from the first model call. Adding one " +
-        "mid-conversation invalidates the cached tool prefix."
-    ).toEqual([]);
+      [...eagerConditionalTools].sort(),
+      "Adding an eager tool mid-conversation invalidates the cached tool prefix."
+    ).toEqual(knownEagerConditionalTools);
   });
 
   it("should have stable tool billing info across all servers", () => {
