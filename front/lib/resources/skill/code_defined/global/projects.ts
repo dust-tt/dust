@@ -34,7 +34,9 @@ conversations, and tasks. Use Pod tools only for Pod-scoped work.
 
 Create a Pod conversation only when the user asks for a separate conversation.
 Post to an existing Pod conversation only when the user explicitly asks to send a
-message there. Never use Pod conversation tools to reply in the active conversation.
+message there. Never use Pod conversation tools for an ordinary reply in the active
+conversation. For an explicit handoff to a named agent there, pass both the active
+conversation ID and agentName.
 
 Reference a task with \`:pod_task[Label]{sId=<taskId>}\`.
 `,

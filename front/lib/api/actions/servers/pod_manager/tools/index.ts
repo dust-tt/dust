@@ -90,9 +90,11 @@ const LIST_CONVERSATIONS_DEFAULT_LOOKBACK_MS = 30 * 24 * 60 * 60 * 1000;
 function validatePodConversationMessageTarget({
   conversationId,
   currentConversationId,
+  agentName,
 }: {
   conversationId: string | undefined;
   currentConversationId: string | null;
+  agentName: string | undefined;
 }): Result<string, MCPError> {
   if (!conversationId) {
     return new Err(
@@ -103,10 +105,10 @@ function validatePodConversationMessageTarget({
     );
   }
 
-  if (conversationId === currentConversationId) {
+  if (conversationId === currentConversationId && !agentName?.trim()) {
     return new Err(
       new MCPError(
-        "This tool cannot post to the active conversation. Respond normally instead.",
+        "Posting to the active conversation requires agentName for an explicit handoff. Respond normally instead.",
         { tracked: false }
       )
     );
@@ -1395,6 +1397,7 @@ export function createProjectManagerTools(
         const conversationIdRes = validatePodConversationMessageTarget({
           conversationId: params.conversationId,
           currentConversationId,
+          agentName: params.agentName,
         });
         if (conversationIdRes.isErr()) {
           return conversationIdRes;

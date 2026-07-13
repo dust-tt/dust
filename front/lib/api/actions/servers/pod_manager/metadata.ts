@@ -425,12 +425,12 @@ export const POD_MANAGER_TOOLS_METADATA = createToolsRecord({
   },
   add_message_to_conversation: {
     description:
-      "Post to a different existing Pod conversation. Use only when the user explicitly asks to send a message there. Never use this tool to reply in the active conversation.",
+      "Post to an existing Pod conversation only when explicitly asked. Never use this tool for an ordinary reply. The active conversation is allowed only for an explicit handoff to agentName.",
     schema: {
       conversationId: z
         .string()
         .describe(
-          "Target conversation ID. The active conversation is not a valid target."
+          "Required target conversation ID. To reply in the active conversation, respond normally without this tool. Target it only for an explicit handoff with agentName."
         ),
       message: z
         .string()
@@ -439,7 +439,7 @@ export const POD_MANAGER_TOOLS_METADATA = createToolsRecord({
         .string()
         .optional()
         .describe(
-          "Pod agent to trigger. Omit to post without triggering an agent."
+          "Pod agent to trigger. Required when targeting the active conversation; otherwise omit to post without triggering an agent."
         ),
       dustPod:
         ConfigurableToolInputSchemas[
