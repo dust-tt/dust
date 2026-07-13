@@ -1,3 +1,4 @@
+import { EgressDomainListEditor } from "@app/components/sandbox/EgressDomainListEditor";
 import {
   useAuth,
   useFeatureFlags,
@@ -8,10 +9,8 @@ import {
   useUpdateWorkspaceSandboxAgentEgressRequests,
   useWorkspaceEgressPolicy,
 } from "@app/lib/swr/sandbox";
-import { normalizeEgressPolicyDomain } from "@app/types/sandbox/egress_policy";
 import { isComputerFeatureEnabled } from "@app/types/shared/feature_flags";
 import {
-  Button,
   ContentMessage,
   Dialog,
   DialogContainer,
@@ -20,12 +19,9 @@ import {
   DialogHeader,
   DialogTitle,
   InfoCircle,
-  Input,
   Page,
-  Plus,
   SliderToggle,
   Spinner,
-  Trash01,
 } from "@dust-tt/sparkle";
 import { useState } from "react";
 
@@ -34,7 +30,6 @@ export function NetworkSection() {
   const { isAdmin } = useAuth();
   const { featureFlags } = useFeatureFlags();
   const hasSandboxAdmin = isComputerFeatureEnabled(featureFlags);
-  const [domainInput, setDomainInput] = useState("");
   const [isEnableAgentRequestsDialogOpen, setIsEnableAgentRequestsDialogOpen] =
     useState(false);
 
@@ -53,52 +48,6 @@ export function NetworkSection() {
     updateWorkspaceSandboxAgentEgressRequests,
     isUpdatingWorkspaceSandboxAgentEgressRequests,
   } = useUpdateWorkspaceSandboxAgentEgressRequests({ owner });
-
-  const hasDomainInput = domainInput.trim().length > 0;
-  const domainInputResult = hasDomainInput
-    ? normalizeEgressPolicyDomain(domainInput)
-    : null;
-  const normalizedDomain =
-    domainInputResult?.isOk() === true ? domainInputResult.value : null;
-  const isDuplicate =
-    normalizedDomain !== null &&
-    policy.allowedDomains.includes(normalizedDomain);
-  const domainInputMessage =
-    domainInputResult?.isErr() === true
-      ? domainInputResult.error.message
-      : isDuplicate
-        ? "This domain is already allowed."
-        : normalizedDomain
-          ? `Will be saved as ${normalizedDomain}.`
-          : "Use an exact domain such as api.openai.com or a wildcard such as *.mistral.ai.";
-  const isDomainInputInvalid =
-    domainInputResult?.isErr() === true || isDuplicate;
-  const canAddDomain =
-    normalizedDomain !== null &&
-    !isDuplicate &&
-    !isUpdatingWorkspaceEgressPolicy;
-
-  const saveDomains = async (allowedDomains: string[]) => {
-    return updateWorkspaceEgressPolicy({ allowedDomains });
-  };
-
-  const handleAddDomain = async () => {
-    if (!canAddDomain || normalizedDomain === null) {
-      return;
-    }
-
-    const success = await saveDomains([
-      ...policy.allowedDomains,
-      normalizedDomain,
-    ]);
-    if (success) {
-      setDomainInput("");
-    }
-  };
-
-  const handleRemoveDomain = async (domain: string) => {
-    await saveDomains(policy.allowedDomains.filter((d) => d !== domain));
-  };
 
   const handleToggleAgentEgressRequests = async () => {
     if (allowAgentEgressRequests) {
@@ -175,64 +124,14 @@ export function NetworkSection() {
           description="These domains apply to every Computer in this workspace. Hostnames are matched exactly. To allow both example.com and www.example.com, add each separately. A wildcard such as *.example.com allows subdomains, but not example.com itself. Changes are picked up by egress proxy cache refreshes, typically within 60 seconds."
         />
 
-        <form
-          className="flex flex-col gap-3 sm:flex-row sm:items-start"
-          onSubmit={(event) => {
-            event.preventDefault();
-            void handleAddDomain();
-          }}
-        >
-          <div className="grow">
-            <Input
-              label="Domain"
-              name="domain"
-              placeholder="e.g. api.openai.com or *.mistral.ai"
-              value={domainInput}
-              message={domainInputMessage}
-              messageStatus={isDomainInputInvalid ? "error" : "info"}
-              onChange={(event) => setDomainInput(event.target.value)}
-              disabled={isUpdatingWorkspaceEgressPolicy}
-            />
-          </div>
-          <Button
-            type="submit"
-            label="Add domain"
-            icon={Plus}
-            disabled={!canAddDomain}
-            isLoading={isUpdatingWorkspaceEgressPolicy}
-            className="mt-0 sm:mt-7"
-          />
-        </form>
-
-        {policy.allowedDomains.length === 0 ? (
-          <ContentMessage variant="outline" size="lg">
-            No workspace-specific domains are currently allowed.
-          </ContentMessage>
-        ) : (
-          <div className="flex w-full flex-col divide-y divide-separator">
-            {policy.allowedDomains.map((domain) => (
-              <div key={domain} className="flex items-center gap-3 py-3">
-                <pre
-                  title={domain}
-                  className="min-w-0 grow overflow-x-auto whitespace-nowrap rounded bg-muted-background p-2 text-sm text-foreground"
-                >
-                  {domain}
-                </pre>
-                <Button
-                  variant="warning"
-                  size="mini"
-                  icon={Trash01}
-                  tooltip={`Remove ${domain}`}
-                  disabled={isUpdatingWorkspaceEgressPolicy}
-                  onClick={() => {
-                    void handleRemoveDomain(domain);
-                  }}
-                  className="shrink-0"
-                />
-              </div>
-            ))}
-          </div>
-        )}
+        <EgressDomainListEditor
+          allowedDomains={policy.allowedDomains}
+          onSave={(allowedDomains) =>
+            updateWorkspaceEgressPolicy({ allowedDomains })
+          }
+          isUpdating={isUpdatingWorkspaceEgressPolicy}
+          emptyMessage="No workspace-specific domains are currently allowed."
+        />
       </Page.Vertical>
     );
   };
