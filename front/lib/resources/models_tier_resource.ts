@@ -83,18 +83,11 @@ export class ModelsTierResource {
     modelId: ModelTierSelection["modelId"],
     reasoningEffort: ModelTierSelection["reasoningEffort"]
   ): ModelsTierName | null {
-    // Custom models are generated at build time and cannot be exhaustively
-    // listed in STATIC_MODEL_TIERS. Default them to the most restrictive tier
-    // so newly introduced custom/EAP models are access-controlled immediately.
+    // includes models added at runtime on GCP (EAPs)
     if (!isStaticModelId(modelId)) {
       return "premium";
     }
-
-    const tiersByReasoningEffort: Partial<
-      Record<ModelTierSelection["reasoningEffort"], ModelsTierName>
-    > = STATIC_MODEL_TIERS[modelId];
-
-    return tiersByReasoningEffort[reasoningEffort] ?? null;
+    return STATIC_MODEL_TIERS[modelId][reasoningEffort] ?? null;
   }
 
   private static assertIsAdmin(auth: Authenticator): void {
