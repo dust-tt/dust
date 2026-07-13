@@ -1,13 +1,22 @@
 import { isDustLikeAgent } from "@app/lib/api/assistant/global_agents/prompt_context";
 import { TOOL_OUTPUTS_FOLDER_NAME } from "@app/lib/api/files/mount_path";
 import { readWorkspacePolicy } from "@app/lib/api/sandbox/egress_policy";
+import {
+  createToolManifest,
+  filterDsbxToolEntries,
+  getSandboxImage,
+  getToolsForProvider,
+  toolManifestToCompactText,
+} from "@app/lib/api/sandbox/image";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
 import type { GlobalSkillDefinition } from "@app/lib/resources/skill/code_defined/shared";
 import logger from "@app/logger/logger";
 import type { AgentLoopExecutionData } from "@app/types/assistant/agent_run";
 import { isPodConversation } from "@app/types/assistant/conversation";
+import type { ModelProviderIdType } from "@app/types/assistant/models/types";
 import { isComputerFeatureEnabled } from "@app/types/shared/feature_flags";
+import { Ok } from "@app/types/shared/result";
 
 function buildSandboxInstructionProse({
   hasDsbxTools,
@@ -282,6 +291,7 @@ attempt to reconstruct, decode, or otherwise recover the value.`;
 
 async function buildSandboxInstructions(
   auth: Authenticator,
+  providerId: ModelProviderIdType | undefined,
   { hasDsbxTools, isProject }: { hasDsbxTools: boolean; isProject: boolean }
 ): Promise<string> {
   const networkAccessSection = await buildNetworkAccessSection(auth);
@@ -290,9 +300,35 @@ async function buildSandboxInstructions(
   const projectFilesSection = isProject ? buildProjectFilesSection() : null;
   const sandboxInstructions = buildSandboxInstructionProse({ hasDsbxTools });
 
+  let toolsResult;
+
   const filesSections = [conversationFilesSection, projectFilesSection]
     .filter((s): s is string => s !== null)
     .join("\n\n");
+
+  if (providerId) {
+    toolsResult = getToolsForProvider(auth, providerId, {
+      includeDsbxTools: hasDsbxTools,
+    });
+  } else {
+    const imageResult = getSandboxImage(auth);
+    if (imageResult.isErr()) {
+      return `${sandboxInstructions}\n\n${filesSections}\n\n${networkAccessSection}\n\n${environmentVariablesSection}`;
+    }
+    toolsResult = new Ok(
+      filterDsbxToolEntries(imageResult.value.tools, {
+        includeDsbxTools: hasDsbxTools,
+      })
+    );
+  }
+
+  if (toolsResult.isErr()) {
+    return `${sandboxInstructions}\n\n${filesSections}\n\n${networkAccessSection}\n\n${environmentVariablesSection}`;
+  }
+
+  const compactManifest = toolManifestToCompactText(
+    createToolManifest(toolsResult.value)
+  );
 
   return `${sandboxInstructions}
 
@@ -304,10 +340,12 @@ ${environmentVariablesSection}
 
 #### Sandbox Available Tools and Libraries
 
-Tools and libraries are pre-installed in the sandbox environment. Installing
-packages in the sandbox is NOT possible. Call \`describe_toolset\` to inspect
-the available CLI binaries and language libraries, including their exact
-versions. Use ONLY the tools listed there, NOTHING ELSE.
+${compactManifest}
+
+Versions are shown when pinned. Installing packages in the sandbox is NOT
+possible. Call \`describe_toolset\` for full descriptions and usage metadata.
+The Dust file helpers and Office inspectors support \`<command> --help\` for
+detailed usage. Use ONLY the tools listed above, NOTHING ELSE.
 
 `;
 }
@@ -332,13 +370,14 @@ export const sandboxSkill = {
       agentLoopData,
     }: { spaceIds: string[]; agentLoopData?: AgentLoopExecutionData }
   ) => {
+    const providerId = agentLoopData?.model.providerId;
     const flags = await getFeatureFlags(auth);
     const hasDsbxTools = isComputerFeatureEnabled(flags);
     const isProject = agentLoopData?.conversation
       ? isPodConversation(agentLoopData.conversation)
       : false;
 
-    return buildSandboxInstructions(auth, {
+    return buildSandboxInstructions(auth, providerId, {
       hasDsbxTools,
       isProject,
     });
