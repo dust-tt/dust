@@ -427,7 +427,8 @@ describe("buildSpecificationsWithReplayPlaceholders", () => {
     const { specifications, missingReplayedToolNames } =
       buildSpecificationsWithReplayPlaceholders(
         baseSpecifications,
-        conversation
+        conversation,
+        new Set()
       );
 
     expect(specifications).toEqual(baseSpecifications);
@@ -444,7 +445,8 @@ describe("buildSpecificationsWithReplayPlaceholders", () => {
 
     const { specifications } = buildSpecificationsWithReplayPlaceholders(
       baseSpecifications,
-      conversation
+      conversation,
+      new Set()
     );
 
     expect(specifications[0].eager).toBe(true);
@@ -459,7 +461,8 @@ describe("buildSpecificationsWithReplayPlaceholders", () => {
     const { specifications, missingReplayedToolNames } =
       buildSpecificationsWithReplayPlaceholders(
         baseSpecifications,
-        conversation
+        conversation,
+        new Set()
       );
 
     expect(missingReplayedToolNames).toEqual(["removed_tool"]);
@@ -497,7 +500,8 @@ describe("buildSpecificationsWithReplayPlaceholders", () => {
     const { specifications, missingReplayedToolNames } =
       buildSpecificationsWithReplayPlaceholders(
         baseSpecifications,
-        conversation
+        conversation,
+        new Set()
       );
 
     expect(missingReplayedToolNames).toEqual(["middle_tool"]);
@@ -517,7 +521,8 @@ describe("buildSpecificationsWithReplayPlaceholders", () => {
     const { specifications, missingReplayedToolNames } =
       buildSpecificationsWithReplayPlaceholders(
         baseSpecifications,
-        conversation
+        conversation,
+        new Set()
       );
 
     expect(missingReplayedToolNames).toEqual(["removed_tool"]);
@@ -539,7 +544,8 @@ describe("buildSpecificationsWithReplayPlaceholders", () => {
     const { specifications, missingReplayedToolNames } =
       buildSpecificationsWithReplayPlaceholders(
         baseSpecifications,
-        conversation
+        conversation,
+        new Set()
       );
 
     expect(missingReplayedToolNames).toEqual([]);
@@ -553,7 +559,7 @@ describe("buildSpecificationsWithReplayPlaceholders", () => {
     ]);
 
     const { specifications, missingReplayedToolNames } =
-      buildSpecificationsWithReplayPlaceholders([], conversation);
+      buildSpecificationsWithReplayPlaceholders([], conversation, new Set());
 
     expect(missingReplayedToolNames).toEqual(["removed_tool"]);
     expect(specifications).toHaveLength(1);

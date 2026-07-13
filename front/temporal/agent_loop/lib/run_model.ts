@@ -170,7 +170,7 @@ function concatWithNewlineBoundary(
 // provider-agnostic dispatch keyed on the passthrough provider id.
 function getReplayedToolNames(
   modelConversation: ModelConversationTypeMultiActions,
-  missingActionCatcherFunctionCallIds: ReadonlySet<string>
+  missingActionCatcherFunctionCallIds: Set<string>
 ): string[] {
   const toolNames = new Set<string>();
 
@@ -314,7 +314,7 @@ export function buildBaseSpecifications(
 export function buildSpecificationsWithReplayPlaceholders(
   baseSpecifications: AgentActionSpecification[],
   modelConversation: ModelConversationTypeMultiActions,
-  missingActionCatcherFunctionCallIds: ReadonlySet<string> = new Set()
+  missingActionCatcherFunctionCallIds: Set<string>
 ): {
   specifications: AgentActionSpecification[];
   missingReplayedToolNames: string[];
