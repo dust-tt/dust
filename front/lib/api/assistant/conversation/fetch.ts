@@ -1,5 +1,5 @@
 import { groupMessagesIntoInteractions } from "@app/lib/api/assistant/conversation/interactions";
-import type { Interaction } from "@app/lib/api/assistant/conversation_rendering/pruning";
+import type { Interaction } from "@app/lib/api/assistant/conversation/interactions";
 import { batchRenderMessages } from "@app/lib/api/assistant/messages";
 import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";

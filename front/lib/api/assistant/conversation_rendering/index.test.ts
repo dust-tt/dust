@@ -208,9 +208,9 @@ describe("renderConversationForModel", () => {
     expect(res.value.prunedContext).toBe(false);
   });
 
-  it("redacts old tool outputs beyond TOOL_RESULTS_TO_PRESERVE but keeps the most recent ones, across separate interactions", async () => {
+  it("prunes old tool outputs beyond TOOL_RESULTS_TO_PRESERVE but keeps the most recent ones, across separate interactions", async () => {
     // 12 interactions (TOOL_RESULTS_TO_PRESERVE is 10), each with one tool call: the first 2 are
-    // outside the preserved window and must be redacted. The last 10 are the protected floor and
+    // outside the preserved window and must be pruned. The last 10 are the protected floor and
     // must survive untouched, regardless of budget-driven checkpoint search.
     const messages = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].flatMap((i) => [
       userMessage(`u_${i}`),
@@ -234,7 +234,7 @@ describe("renderConversationForModel", () => {
       prompt: "PROMPT",
       enabledSkills: [],
       tools: "TOOLS",
-      // Total unredacted: 12 * 5020 = 60_240. Redacting the 2 eligible tool results (outside the
+      // Total unpruned: 12 * 5020 = 60_240. Pruning the 2 eligible tool results (outside the
       // floor of 10) saves 2 * (5000 - 24) = 9_952, bringing it to 50_288, comfortably under
       // this budget. Nothing else needs to be touched.
       allowedTokenCount: computeAllowedTokenCount({
@@ -272,10 +272,10 @@ describe("renderConversationForModel", () => {
     expect(res.value.prunedContext).toBe(true);
   });
 
-  it("redacts a single turn's OWN earlier tool-call steps once it makes many tool calls, since the current turn gets no special exemption", async () => {
+  it("prunes a single turn's OWN earlier tool-call steps once it makes many tool calls, since the current turn gets no special exemption", async () => {
     // ONE continuous interaction: a single user question answered via 12 tool-call steps before
     // the final reply. Nothing here is a "previous interaction", it's all the current turn, yet
-    // its own earliest steps (beyond TOOL_RESULTS_TO_PRESERVE=10) still get redacted.
+    // its own earliest steps (beyond TOOL_RESULTS_TO_PRESERVE=10) still get pruned.
     const indices = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
     const steps = indices.flatMap((i) => [
       assistantMessage(`thinking_${i}`),
@@ -303,7 +303,7 @@ describe("renderConversationForModel", () => {
       prompt: "PROMPT",
       enabledSkills: [],
       tools: "TOOLS",
-      // Total unredacted: 10 (question) + 12*(10+5000) + 10 (answer) = 60_140. Redacting the 2
+      // Total unpruned: 10 (question) + 12*(10+5000) + 10 (answer) = 60_140. Pruning the 2
       // steps outside the floor of 10 saves 2 * (5000-24) = 9_952 -> 50_188, under this budget.
       allowedTokenCount: computeAllowedTokenCount({
         promptTokens: 10,
@@ -340,12 +340,12 @@ describe("renderConversationForModel", () => {
     expect(res.value.prunedContext).toBe(true);
   });
 
-  it("proactively redacts once the conversation crosses PRUNING_TARGET_CONTEXT_UTILIZATION of contextSize, even though allowedTokenCount alone would comfortably fit it", async () => {
+  it("proactively prunes once the conversation crosses PRUNING_TARGET_CONTEXT_UTILIZATION of contextSize, even though allowedTokenCount alone would comfortably fit it", async () => {
     // 12 small interactions (TOOL_RESULTS_TO_PRESERVE=10, so 2 fall outside the floor). contextSize
     // 4_000 gives a proactive target of 1_359 tokens (baseTokens=1041, so 4_000*0.6 - 1041):
-    // comfortably above the 1_288 tokens left after redacting the 2 eligible tool results, but
-    // well below the 1_440 unredacted total, so the proactive target is what forces the
-    // redaction, not the real ceiling, which is set far higher below.
+    // comfortably above the 1_288 tokens left after pruning the 2 eligible tool results, but
+    // well below the 1_440 unpruned total, so the proactive target is what forces the
+    // pruning, not the real ceiling, which is set far higher below.
     const messages = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].flatMap((i) => [
       userMessage(`u_${i}`),
       assistantMessage(`a_${i}`),
@@ -368,7 +368,7 @@ describe("renderConversationForModel", () => {
       prompt: "PROMPT",
       enabledSkills: [],
       tools: "TOOLS",
-      // Real ceiling comfortably fits everything (1_440) in full: proves redaction is driven by
+      // Real ceiling comfortably fits everything (1_440) in full: proves pruning is driven by
       // the proactive target, not by running out of the real budget.
       allowedTokenCount: computeAllowedTokenCount({
         promptTokens: 10,
@@ -394,9 +394,9 @@ describe("renderConversationForModel", () => {
     expect(tool12.content).toBe("result_12");
   });
 
-  it("drops a whole previous interaction entirely, not just its tool result, when redaction alone still doesn't fit", async () => {
-    // Ten previous interactions, each dominated by large USER/ASSISTANT text (never redacted by
-    // pruneToolResults) rather than tool output. Redaction alone cannot shrink these enough, so
+  it("drops a whole previous interaction entirely, not just its tool result, when pruning alone still doesn't fit", async () => {
+    // Ten previous interactions, each dominated by large USER/ASSISTANT text (never pruned by
+    // pruneToolResults) rather than tool output. Pruning alone cannot shrink these enough, so
     // dropInteractionsToFit must remove some of them wholesale.
     const previousInteractions = [1, 2, 3, 4, 5].flatMap((i) => [
       userMessage(`old_user_${i}_big`),
@@ -438,8 +438,7 @@ describe("renderConversationForModel", () => {
       return;
     }
 
-    const roles = res.value.modelConversation.messages;
-    const survivingUserTexts = roles
+    const survivingUserTexts = res.value.modelConversation.messages
       .filter(isUserMessage)
       .map((m) => textOf(m.content[0]));
     // Oldest interactions are dropped first. The newest ones (closest to "new_user") survive.
@@ -580,6 +579,29 @@ describe("renderConversationForModel", () => {
     }
   });
 
+  it("returns a distinct error, not a context-window one, when the conversation has no messages at all", async () => {
+    vi.mocked(renderAllMessages).mockResolvedValue([]);
+    mockTokenCounter({ byContains: {} });
+
+    const res = await renderConversationForModel(auth, {
+      conversation: createConversation(),
+      model,
+      prompt: "PROMPT",
+      enabledSkills: [],
+      tools: "TOOLS",
+      allowedTokenCount: computeAllowedTokenCount({
+        promptTokens: 10,
+        toolsTokens: 10,
+        interactionTokens: 100,
+      }),
+    });
+
+    expect(res.isErr()).toBe(true);
+    if (res.isErr()) {
+      expect(res.error.message).toContain("Conversation contains no messages");
+    }
+  });
+
   it("bubbles prompt/tools tokenization errors", async () => {
     vi.mocked(renderAllMessages).mockResolvedValue([userMessage("u1")]);
     vi.mocked(tokenCountForTexts).mockImplementation(async (texts) => {
@@ -695,16 +717,16 @@ describe("renderConversationForModel", () => {
     });
 
     // Each interaction is 90 tokens (30 + 30 + 30), well within TOOL_RESULTS_TO_PRESERVE (10 tool
-    // results total here), so Layer 1 (redaction) can't touch any of them at all, this is meant
-    // to exercise Layer 2 (drop-entirely) in isolation, not cascade into Layer 3's force-redaction.
+    // results total here), so Layer 1 (pruning) can't touch any of them at all, this is meant
+    // to exercise Layer 2 (drop-entirely) in isolation, not cascade into Layer 3's force-pruning.
     //
-    // Hand-verified: total unredacted = 8 * 90 = 720. Layer 2's target for the 7 previous
+    // Hand-verified: total unpruned = 8 * 90 = 720. Layer 2's target for the 7 previous
     // interactions is budgetForInteractions(400) - current's cost(90) = 310. With
     // PREVIOUS_INTERACTIONS_TO_PRESERVE=3, i1-i4 (4 * 90 = 360) can be dropped, leaving the
     // protected floor i5-i7 (3 * 90 = 270) plus current i8 (90) = 360 <= 400: Layer 2 alone gets
-    // under budget, so Layer 3/4 never fire and i5-i8 survive WITH THEIR REAL, UNREDACTED CONTENT
-    //, an earlier version of this test only checked message names, which stay the same whether
-    // a tool result is redacted or not, and so couldn't actually tell the difference.
+    // under budget, so Layer 3/4 never fire and i5-i8 survive WITH THEIR REAL, UNPRUNED CONTENT.
+    // An earlier version of this test only checked message names, which stay the same whether
+    // a tool result is pruned or not, and so couldn't actually tell the difference.
     const res = await renderConversationForModel(auth, {
       conversation: createConversation(),
       model,
@@ -732,8 +754,8 @@ describe("renderConversationForModel", () => {
     expect(names).not.toContain("tool_03");
     expect(names).not.toContain("tool_04");
 
-    // The surviving tool results carry their REAL content, not a redaction placeholder,
-    // confirming Layer 2 (drop) alone was enough, and Layer 3 (force-redact) never fired.
+    // The surviving tool results carry their REAL content, not a pruning placeholder,
+    // confirming Layer 2 (drop) alone was enough, and Layer 3 (force-prune) never fired.
     for (const [i, name] of ["f_05", "f_06", "f_07", "f_08"].entries()) {
       expect(functionMessages[i].content).toBe(name);
     }
