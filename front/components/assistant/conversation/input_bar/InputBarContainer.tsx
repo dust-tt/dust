@@ -1641,7 +1641,7 @@ const InputBarContainer = ({
                 </React.Fragment>
               ))}
             </div>
-            <div className="relative flex min-h-7 w-full items-center justify-between">
+            <div className="flex min-h-7 w-full items-center">
               <div className={cn("flex w-full items-center px-2")}>
                 {!isRecording && (
                   <div
