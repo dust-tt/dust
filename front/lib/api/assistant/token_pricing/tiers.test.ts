@@ -13,11 +13,11 @@ import {
   STATIC_MODEL_IDS,
   SUPPORTED_MODEL_CONFIGS,
 } from "@app/types/assistant/models/models";
-import type { ModelIdType } from "@app/types/assistant/models/types";
 import {
   GPT_5_5_MODEL_ID,
   GPT_5_NANO_MODEL_ID,
 } from "@app/types/assistant/models/openai";
+import type { ModelIdType } from "@app/types/assistant/models/types";
 import { getAvailableReasoningEfforts } from "@app/types/assistant/models/types";
 import { GROK_4_FAST_REASONING_MODEL_CONFIG } from "@app/types/assistant/models/xai";
 import { describe, expect, it } from "vitest";

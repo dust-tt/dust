@@ -76,10 +76,7 @@ export class ModelsTierResource {
   static getTierForSelection(
     selection: ModelTierSelection
   ): ModelsTierName | null {
-    return this.getTierForModel(
-      selection.modelId,
-      selection.reasoningEffort
-    );
+    return this.getTierForModel(selection.modelId, selection.reasoningEffort);
   }
 
   static getTierForModel(
