@@ -19,6 +19,7 @@ import type { useSpaceInfo } from "@app/lib/swr/spaces";
 import { getConversationRoute } from "@app/lib/utils/router";
 import type { RichMention } from "@app/types/assistant/mentions";
 import { toMentionType } from "@app/types/assistant/mentions";
+import type { ModelSelectionType } from "@app/types/assistant/models/types";
 import type { ContentFragmentsType } from "@app/types/content_fragment";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -96,7 +97,8 @@ export function PodPageContent({
       input: string,
       mentions: RichMention[],
       contentFragments: ContentFragmentsType,
-      selectedMCPServerViewIds?: string[]
+      selectedMCPServerViewIds?: string[],
+      modelSelection?: ModelSelectionType
     ): Promise<Result<undefined, DustError>> => {
       if (isSubmitting) {
         return new Err({
@@ -115,6 +117,7 @@ export function PodPageContent({
           contentFragments,
           selectedMCPServerViewIds,
           richMentions: mentions,
+          modelSelection,
         },
         spaceId: podInfo.sId,
         // Navigate as soon as the conversation exists; the first message is posted
