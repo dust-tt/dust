@@ -14,9 +14,8 @@ export const PRUNING_CHECKPOINT_TOKENS = 20_000;
 
 // How many of the most recent tool results pruneToolResults never redacts, regardless of budget.
 // Counted in tool results, not turns: a single turn's own long tool-call chain is eligible for
-// redaction past this window exactly like an older turn's would be. Mirrors Anthropic's own
-// `clear_tool_uses` (`keep: {type: "tool_uses", value: N}`), which has no turn concept either.
-// Starting point, tune against production metrics.
+// redaction past this window exactly like an older turn's would be. Starting point, tune against
+// production metrics.
 export const TOOL_RESULTS_TO_PRESERVE = 10;
 
 export type MessageWithTokens = ModelMessageTypeMultiActions & {
@@ -188,8 +187,7 @@ function redactFlat(
  * Redacts tool results across the whole conversation, previous interactions and the current,
  * in-progress one combined, as one flat sequence, oldest eligible first. No exemption for the
  * current turn: a long tool-call chain within it becomes eligible past toolResultsToPreserve
- * exactly like an older turn's would (mirrors Anthropic's own `clear_tool_uses`, which has no turn
- * concept either).
+ * exactly like an older turn's would.
  *
  * Takes and returns `InteractionWithTokens[]`, flattening and re-slicing internally so callers
  * never juggle a flat view and an interaction view themselves. Only ever replaces a function
