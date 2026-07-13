@@ -93,11 +93,11 @@ interface CapabilitiesPickerItemsListProps {
   emptyMessage: string;
   items: CapabilityPickerItem[];
   onItemSelect: (item: CapabilityPickerItem) => void;
-  onSkillDetails: (skillId: string) => void;
-  onToolDetails: (serverView: MCPServerViewType) => void;
+  onSkillDetails?: (skillId: string) => void;
+  onToolDetails?: (serverView: MCPServerViewType) => void;
 }
 
-function CapabilitiesPickerItemsList({
+export function CapabilitiesPickerItemsList({
   emptyMessage,
   items,
   onItemSelect,
@@ -120,7 +120,7 @@ function CapabilitiesPickerItemsList({
         const endComponent =
           item.kind === "uninstalled_tool" ? (
             <Chip size="xs" color="info" label="Configure" />
-          ) : (
+          ) : onSkillDetails && onToolDetails ? (
             <Button
               icon={DotsHorizontal}
               variant="outline"
@@ -137,7 +137,7 @@ function CapabilitiesPickerItemsList({
                 }
               }}
             />
-          );
+          ) : undefined;
 
         const menuItem = (
           <DropdownMenuItem

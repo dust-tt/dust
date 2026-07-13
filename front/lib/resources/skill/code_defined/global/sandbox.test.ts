@@ -6,7 +6,7 @@ import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { describe, expect, it } from "vitest";
 
 describe("sandboxSkill", () => {
-  it("includes dsbx tools instructions and manifest entry when sandbox is enabled", async () => {
+  it("points to the on-demand toolset description instead of inlining it", async () => {
     const { authenticator: auth } = await createResourceTest({});
 
     const instructions = await sandboxSkill.fetchInstructions(auth, {
@@ -14,10 +14,12 @@ describe("sandboxSkill", () => {
     });
 
     expect(instructions).toContain("dsbx tools");
-    expect(instructions).toContain("name: dsbx");
+    expect(instructions).toContain("`describe_toolset`");
+    expect(instructions).not.toContain("name: dsbx");
+    expect(instructions).not.toContain("```yaml");
   });
 
-  it("hides dsbx tools instructions and manifest entry when computer is disabled", async () => {
+  it("hides dsbx tools instructions when computer is disabled", async () => {
     const { authenticator: auth } = await createResourceTest({});
 
     await FeatureFlagFactory.basic(auth, "disable_computer_feature");
@@ -27,7 +29,6 @@ describe("sandboxSkill", () => {
     });
 
     expect(instructions).not.toContain("dsbx tools");
-    expect(instructions).not.toContain("name: dsbx");
   });
 
   it("instructs the model to analyze mounted tabular files with code", async () => {

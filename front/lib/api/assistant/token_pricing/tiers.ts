@@ -1,6 +1,7 @@
 import { STATIC_MODEL_SUPPORTED_REASONING_EFFORTS } from "@app/lib/api/assistant/token_pricing/static_model_reasoning_efforts";
 import type { StaticModelIdType } from "@app/types/assistant/models/models";
 import type {
+  ModelIdType,
   ModelProviderIdType,
   ReasoningEffort,
   ReasoningEffortSupport,
@@ -19,7 +20,7 @@ export function isModelsTierName(value: unknown): value is ModelsTierName {
 }
 
 export type ModelTierSelection = {
-  modelId: StaticModelIdType;
+  modelId: ModelIdType;
   providerId: ModelProviderIdType;
   reasoningEffort: ReasoningEffort;
 };

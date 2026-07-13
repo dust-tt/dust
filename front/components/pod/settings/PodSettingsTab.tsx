@@ -1,8 +1,10 @@
 import { AgentPicker } from "@app/components/assistant/AgentPicker";
+import { CapabilitiesPickerItemsList } from "@app/components/assistant/CapabilitiesPicker";
 import { ConfirmContext } from "@app/components/Confirm";
 import { MarkdownFileEditor } from "@app/components/editor/MarkdownFileEditor";
 import { DeletePodDialog } from "@app/components/pod/settings/DeletePodDialog";
 import { PodMembersTable } from "@app/components/pod/settings/PodMembersTable";
+import { PodNetworkSection } from "@app/components/pod/settings/PodNetworkSection";
 import { PodSettingsOptionLabel } from "@app/components/pod/settings/PodSettingsOptionLabel";
 import { SuggestedTasksGenerationTile } from "@app/components/pod/settings/SuggestedTasksGenerationTile";
 import { usePodConversationsSummary } from "@app/hooks/conversations";
@@ -12,7 +14,7 @@ import {
   POD_AGENTS_MD_FILENAME,
   POD_AGENTS_MD_MAX_CHARACTER_COUNT,
 } from "@app/lib/api/projects/constants";
-import { useFeatureFlags } from "@app/lib/auth/AuthContext";
+import { useAuth, useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { getSkillAvatarIcon } from "@app/lib/skill";
 import { useUnifiedAgentConfigurations } from "@app/lib/swr/assistants";
 import {
@@ -43,7 +45,6 @@ import {
   cn,
   DropdownMenu,
   DropdownMenuContent,
-  DropdownMenuItem,
   DropdownMenuSearchbar,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
@@ -95,10 +96,16 @@ export function PodSettingsTab({
 
   const confirm = useContext(ConfirmContext);
   const { hasFeature } = useFeatureFlags();
+  const { isAdmin } = useAuth();
   const hasWorkspaceDefaultAgentFeature = hasFeature("workspace_default_agent");
   const isDefaultAgentEnabled =
     hasFeature("pod_default_agent") || hasWorkspaceDefaultAgentFeature;
   const isDefaultSkillsEnabled = hasFeature("pod_default_skills");
+  // The pod sandbox network allowlist is workspace-admin only (matching the
+  // API) and part of the Sandbox Functions surface.
+  // Mirrors the API gate (workspace-admin + sandbox_functions FF; pod
+  // membership deliberately not consulted) — change both together.
+  const isPodNetworkEnabled = isAdmin && hasFeature("sandbox_functions");
 
   const { podMetadata, isPodMetadataLoading } = usePodMetadata({
     workspaceId: owner.sId,
@@ -651,26 +658,31 @@ export function PodSettingsTab({
                     align="start"
                     dropdownHeaders={skillPickerDropdownHeaders}
                   >
-                    {addableSkills.length === 0 ? (
-                      <div className="px-2 py-4 text-center text-sm text-muted-foreground">
-                        {normalizedSkillSearch.length > 0
+                    <CapabilitiesPickerItemsList
+                      emptyMessage={
+                        normalizedSkillSearch.length > 0
                           ? "No skills found"
-                          : "No more skills to add"}
-                      </div>
-                    ) : (
-                      addableSkills.map((skill) => (
-                        <DropdownMenuItem
-                          key={skill.sId}
-                          icon={getSkillAvatarIcon(skill)}
-                          label={skill.name}
-                          description={skill.userFacingDescription ?? undefined}
-                          truncateText
-                          onClick={() => {
-                            void addDefaultSkill(skill.sId);
-                          }}
-                        />
-                      ))
-                    )}
+                          : "No more skills to add"
+                      }
+                      items={addableSkills.map((skill) => {
+                        const SkillAvatar = getSkillAvatarIcon(skill);
+
+                        return {
+                          kind: "skill" as const,
+                          skill,
+                          id: `pod-default-skills-picker-${skill.sId}`,
+                          icon: <SkillAvatar size="xs" />,
+                          label: skill.name,
+                          sortName: skill.name.toLowerCase(),
+                          description: skill.userFacingDescription ?? undefined,
+                        };
+                      })}
+                      onItemSelect={(item) => {
+                        if (item.kind === "skill") {
+                          void addDefaultSkill(item.skill.sId);
+                        }
+                      }}
+                    />
                   </DropdownMenuContent>
                 </DropdownMenu>
               )}
@@ -720,6 +732,10 @@ export function PodSettingsTab({
             </div>
           </div>
         </div>
+
+        {isPodNetworkEnabled && (
+          <PodNetworkSection owner={owner} podId={pod.sId} />
+        )}
 
         <div className="flex flex-col gap-3">
           <div className="flex items-center gap-2">

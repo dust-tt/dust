@@ -2,6 +2,7 @@ import { TOOL_NAME_SEPARATOR } from "@app/lib/actions/constants";
 import type { MCPToolConfigurationType } from "@app/lib/actions/mcp";
 import { buildToolSpecification } from "@app/lib/actions/mcp";
 import { tryListMCPTools } from "@app/lib/actions/mcp_actions";
+import { autoInternalMCPServerNameToSId } from "@app/lib/actions/mcp_helper";
 import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
 import { isJITMCPServerView } from "@app/lib/actions/mcp_internal_actions/utils";
 import type { StepContext } from "@app/lib/actions/types";
@@ -85,8 +86,10 @@ import type { AgentLoopExecutionData } from "@app/types/assistant/agent_run";
 import { isGlobalAgentId } from "@app/types/assistant/assistant";
 import type {
   AgentMessageType,
+  ConversationType,
   UserMessageOrigin,
 } from "@app/types/assistant/conversation";
+import { isAgentMessageType } from "@app/types/assistant/conversation";
 import {
   isTextContent,
   type ModelConversationTypeMultiActions,
@@ -167,7 +170,8 @@ function concatWithNewlineBoundary(
 // passthrough parsing below (block shapes, server tool names) belongs behind a
 // provider-agnostic dispatch keyed on the passthrough provider id.
 function getReplayedToolNames(
-  modelConversation: ModelConversationTypeMultiActions
+  modelConversation: ModelConversationTypeMultiActions,
+  missingActionCatcherFunctionCallIds: Set<string>
 ): string[] {
   const toolNames = new Set<string>();
 
@@ -175,7 +179,12 @@ function getReplayedToolNames(
     switch (message.role) {
       case "assistant":
         for (const content of message.contents) {
-          if (content.type === "function_call") {
+          if (
+            content.type === "function_call" &&
+            !missingActionCatcherFunctionCallIds.has(content.value.id)
+          ) {
+            // Missing-action catcher calls remain in the replay so the model
+            // sees their error, but their attempted names were never tools.
             toolNames.add(content.value.name);
           }
           if (
@@ -216,6 +225,34 @@ function getReplayedToolNames(
   }
 
   return [...toolNames];
+}
+
+function getMissingActionCatcherFunctionCallIds(
+  conversation: ConversationType
+): Set<string> {
+  const functionCallIds = new Set<string>();
+  const missingActionCatcherMCPServerId = autoInternalMCPServerNameToSId({
+    name: "missing_action_catcher",
+    workspaceId: conversation.owner.id,
+  });
+
+  for (const messageVersions of conversation.content) {
+    for (const message of messageVersions) {
+      if (!isAgentMessageType(message)) {
+        continue;
+      }
+
+      for (const action of message.actions) {
+        // mcpServerId is serialized from the action's
+        // toolConfiguration.toolServerId.
+        if (action.mcpServerId === missingActionCatcherMCPServerId) {
+          functionCallIds.add(action.functionCallId);
+        }
+      }
+    }
+  }
+
+  return functionCallIds;
 }
 
 function buildReplayOnlyToolSpecification(
@@ -283,13 +320,22 @@ export function buildBaseSpecifications(
 // definition.
 export function buildSpecificationsWithReplayPlaceholders(
   baseSpecifications: AgentActionSpecification[],
-  modelConversation: ModelConversationTypeMultiActions
+  {
+    modelConversation,
+    missingActionCatcherFunctionCallIds = new Set(),
+  }: {
+    modelConversation: ModelConversationTypeMultiActions;
+    missingActionCatcherFunctionCallIds?: Set<string>;
+  }
 ): {
   specifications: AgentActionSpecification[];
   missingReplayedToolNames: string[];
 } {
   const currentToolNames = new Set(baseSpecifications.map((spec) => spec.name));
-  const missingReplayedToolNames = getReplayedToolNames(modelConversation)
+  const missingReplayedToolNames = getReplayedToolNames(
+    modelConversation,
+    missingActionCatcherFunctionCallIds
+  )
     .filter((name) => !currentToolNames.has(name))
     .sort();
 
@@ -415,6 +461,7 @@ export async function runModel(
       {
         agentName: agentConfiguration.name,
         model,
+        reasoningEffort: model.reasoningEffort,
         featureFlags,
       }
     );
@@ -450,9 +497,10 @@ export async function runModel(
     const { enabledSkills, systemSkills, equippedSkills } =
       await SkillResource.listForAgentLoop(auth, runAgentData);
 
-    const skillServers = await getSkillServers(auth, {
+    const { skillServers, systemSkillServers } = await getSkillServers(auth, {
       agentConfiguration,
-      skills: [...systemSkills, ...enabledSkills],
+      enabledSkills,
+      systemSkills,
     });
 
     const serverToolsAndInstructions = await startActiveObservation(
@@ -466,7 +514,7 @@ export async function runModel(
             agentMessage,
             clientSideActionConfigurations: clientSideMCPActionConfigurations,
           },
-          { jitServers, skillServers }
+          { jitServers, skillServers, systemSkillServers }
         )
     );
 
@@ -632,10 +680,11 @@ export async function runModel(
   }
 
   const { specifications, missingReplayedToolNames } =
-    buildSpecificationsWithReplayPlaceholders(
-      baseSpecifications,
-      modelConversationRes.value.modelConversation
-    );
+    buildSpecificationsWithReplayPlaceholders(baseSpecifications, {
+      modelConversation: modelConversationRes.value.modelConversation,
+      missingActionCatcherFunctionCallIds:
+        getMissingActionCatcherFunctionCallIds(conversation),
+    });
 
   if (missingReplayedToolNames.length > 0) {
     localLogger.info(

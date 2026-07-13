@@ -180,12 +180,13 @@ export function isReadableAsText(contentType: string): boolean {
   return (
     mime.startsWith("text/") ||
     [
-      "application/json",
-      "application/yaml",
-      "application/xml",
-      "application/x-ndjson",
       "application/javascript",
+      "application/json",
       "application/typescript",
+      "application/vnd.dust.frame",
+      "application/x-ndjson",
+      "application/xml",
+      "application/yaml",
     ].includes(mime)
   );
 }

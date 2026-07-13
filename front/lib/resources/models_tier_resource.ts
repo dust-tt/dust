@@ -25,6 +25,7 @@ import type {
   GroupAllowedModelTiersType,
   UserAllowedModelTiersType,
 } from "@app/types/api/model_tiers";
+import { isStaticModelId } from "@app/types/assistant/models/models";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -75,15 +76,17 @@ export class ModelsTierResource {
   static getTierForSelection(
     selection: ModelTierSelection
   ): ModelsTierName | null {
-    return (
-      STATIC_MODEL_TIERS[selection.modelId][selection.reasoningEffort] ?? null
-    );
+    return this.getTierForModel(selection.modelId, selection.reasoningEffort);
   }
 
   static getTierForModel(
     modelId: ModelTierSelection["modelId"],
     reasoningEffort: ModelTierSelection["reasoningEffort"]
   ): ModelsTierName | null {
+    // includes models added at runtime on GCP (EAPs)
+    if (!isStaticModelId(modelId)) {
+      return "premium";
+    }
     return STATIC_MODEL_TIERS[modelId][reasoningEffort] ?? null;
   }
 

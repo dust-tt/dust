@@ -985,6 +985,10 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool billing info ac
       "freeUsage": false,
       "toolCostCategory": "advanced",
     },
+    "create_custom_object": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
     "create_deal": {
       "freeUsage": false,
       "toolCostCategory": "advanced",
@@ -1069,6 +1073,10 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool billing info ac
       "freeUsage": false,
       "toolCostCategory": "advanced",
     },
+    "list_custom_object_schemas": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
     "list_email_campaigns": {
       "freeUsage": false,
       "toolCostCategory": "advanced",
@@ -1102,6 +1110,10 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool billing info ac
       "toolCostCategory": "advanced",
     },
     "update_contact": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "update_custom_object": {
       "freeUsage": false,
       "toolCostCategory": "advanced",
     },
@@ -2836,6 +2848,7 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool stakes across a
     "create_communication": "high",
     "create_company": "high",
     "create_contact": "high",
+    "create_custom_object": "high",
     "create_deal": "high",
     "create_lead": "high",
     "create_meeting": "high",
@@ -2857,6 +2870,7 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool stakes across a
     "get_user_activity": "never_ask",
     "list_association_labels": "never_ask",
     "list_associations": "never_ask",
+    "list_custom_object_schemas": "never_ask",
     "list_email_campaigns": "never_ask",
     "list_email_events": "never_ask",
     "list_marketing_emails": "never_ask",
@@ -2866,6 +2880,7 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool stakes across a
     "search_owners": "never_ask",
     "update_company": "high",
     "update_contact": "high",
+    "update_custom_object": "high",
     "update_deal": "high",
     "update_task": "high",
   },

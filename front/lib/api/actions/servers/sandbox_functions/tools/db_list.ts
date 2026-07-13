@@ -14,7 +14,12 @@ export function formatDatabasesList(databases: LiveDatabaseEntry[]): string {
   }
 
   const lines = databases.map((db) => `- ${db.name} (${db.sizeBytes} bytes)`);
-  return lines.join("\n");
+  return [
+    "Pod databases:",
+    ...lines,
+    "",
+    "Use db_schema to inspect a database and db_query to run SQL against it.",
+  ].join("\n");
 }
 
 export async function dbListHandler(

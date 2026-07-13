@@ -10,6 +10,7 @@ import type {
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import {
   isRunAgentQueryResourceType,
+  isSearchResultResourceType,
   isToolGeneratedFile,
   isToolMarkerResourceType,
   TOOL_GENERATED_FILE_MIME_TYPE,
@@ -106,7 +107,10 @@ export function hideFileFromActionOutput({
 }
 
 export function rewriteContentForModel(
-  content: CallToolResult["content"][number]
+  content: CallToolResult["content"][number],
+  {
+    renderSearchResultsAsMarkdown = false,
+  }: { renderSearchResultsAsMarkdown?: boolean } = {}
 ): CallToolResult["content"][number] | null {
   // Only render tool generated files that are supported.
   if (
@@ -147,6 +151,26 @@ export function rewriteContentForModel(
     isRunAgentQueryResourceType(content)
   ) {
     return null;
+  }
+
+  if (renderSearchResultsAsMarkdown && isSearchResultResourceType(content)) {
+    let text = `Search result: ${content.resource.text}\n`;
+    text += `id: ${content.resource.id}\n`;
+    text += `url: ${content.resource.uri}\n`;
+    text += `ref: ${content.resource.ref}\n`;
+    // We don't show the source provider, as it's redundant with the URL.
+
+    if (content.resource.tags.length > 0) {
+      text += `tags: ${content.resource.tags.join(", ")}\n`;
+    }
+    if (content.resource.chunks.length > 0) {
+      text += `retrieved chunks:\n-----------\n${content.resource.chunks.join("------------")}`;
+    }
+
+    return {
+      type: "text",
+      text,
+    };
   }
 
   return content;

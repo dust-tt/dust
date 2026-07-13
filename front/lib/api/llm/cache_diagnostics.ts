@@ -13,16 +13,23 @@ import { normalizeError } from "@app/types/shared/utils/error_utils";
 // migration: flip the flag off and the keys expire on their own.
 const CACHE_DIAGNOSTICS_TTL_SECONDS = 600;
 
-function makeCacheDiagnosticsKey({
-  conversationId,
-  agentConfigurationId,
-}: {
+export interface CacheDiagnosticsKey {
   conversationId: string;
   agentConfigurationId: string;
-}): string {
+  providerId: string;
+}
+
+function makeCacheDiagnosticsKey({
+  agentConfigurationId,
+  conversationId,
+  providerId,
+}: CacheDiagnosticsKey): string {
   // Include the agent so concurrent agents answering in the same conversation
   // (multiple mentions) keep independent chains instead of clobbering each other.
-  return `cache_diagnostics:${conversationId}:${agentConfigurationId}`;
+  // Include the provider so a mid-conversation provider switch starts a fresh
+  // chain instead of sending another provider's response id. The model is not
+  // needed: Providers already detect model changes across consecutive requests.
+  return `cache_diagnostics:${conversationId}:${agentConfigurationId}:${providerId}`;
 }
 
 // Returns the previous LLM call's response id for this conversation and agent,
@@ -31,10 +38,9 @@ function makeCacheDiagnosticsKey({
 //
 // Diagnostics is pure observability, so a Redis failure must never break
 // generation: on error we log and behave as if there were no prior id.
-export async function getPreviousMessageId(key: {
-  conversationId: string;
-  agentConfigurationId: string;
-}): Promise<string | null> {
+export async function getPreviousMessageId(
+  key: CacheDiagnosticsKey
+): Promise<string | null> {
   try {
     return await runOnRedisCache({ origin: "cache_diagnostics" }, (client) =>
       client.get(makeCacheDiagnosticsKey(key))
@@ -52,10 +58,7 @@ export async function getPreviousMessageId(key: {
 // Best-effort: a Redis failure is logged and swallowed so it cannot break the
 // agent loop.
 export async function setPreviousMessageId(
-  key: {
-    conversationId: string;
-    agentConfigurationId: string;
-  },
+  key: CacheDiagnosticsKey,
   modelInteractionId: string
 ): Promise<void> {
   try {
