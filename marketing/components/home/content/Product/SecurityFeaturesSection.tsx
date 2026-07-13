@@ -1,4 +1,5 @@
 import { H2, P } from "@marketing/components/home/ContentComponents";
+import { HomeReveal } from "@marketing/components/home/content/Product/HomeReveal";
 import { ChevronUp, Separator } from "@dust-tt/sparkle";
 import { useState } from "react";
 
@@ -14,7 +15,7 @@ const securityFeatures: SecurityFeature[] = [
     id: "ingest",
     title: "Your data stays where you want it",
     description:
-      "Control data selection and hosting location within rigorous security parameters.",
+      "Choose EU or US hosting. Control exactly which data sources your agents can access. Your organization's intelligence stays yours, never used to train models.",
     placeholder: "Data Control Placeholder",
   },
   {
@@ -38,20 +39,33 @@ export function SecurityFeaturesSection() {
 
   return (
     <div className="w-full">
-      <div className="mx-auto flex max-w-4xl flex-col items-center gap-6 px-4 text-center sm:gap-2 sm:px-6 lg:px-8">
-        <H2 className="text-center text-3xl font-medium md:text-4xl xl:text-5xl">
-          Built with enterprise-grade security
-        </H2>
-        <P size="lg" className="text-base text-muted-foreground sm:text-lg">
-          We've made security our core focus from day one.<br></br> SOC 2,
-          HIPAA, GDPR, all the acronyms your security team loves. Ship fast
-          without getting blocked by compliance.
-        </P>
+      <div className="mx-auto flex max-w-4xl flex-col items-center gap-6 text-center sm:gap-2 lg:px-8">
+        <HomeReveal>
+          <H2
+            className="text-center text-3xl font-medium md:text-4xl xl:text-5xl"
+            style={{ textAlign: "center" }}
+          >
+            Built with enterprise-grade security
+          </H2>
+        </HomeReveal>
+        <HomeReveal delay={80}>
+          <P size="lg" className="text-base text-muted-foreground sm:text-lg">
+            We've made security our core focus from day one.<br></br> SOC 2,
+            HIPAA, GDPR, and full data sovereignty. Your data is never used to
+            train models. Ship fast without your security team hitting the
+            brakes.
+          </P>
+        </HomeReveal>
       </div>
 
-      <div className="mt-16 flex flex-col gap-8 lg:flex-row lg:gap-12">
+      {/* Same container metrics as the CapabilitySection blocks. */}
+      <div className="mx-auto flex w-full max-w-[1180px] flex-col items-center gap-12 py-14 lg:flex-row lg:gap-20 lg:px-6 lg:py-24">
         {/* Image - Above on mobile, left on desktop */}
-        <div className="order-1 w-full lg:order-1 lg:w-1/2">
+        <HomeReveal
+          variant="photo"
+          delay={120}
+          className="order-1 w-full lg:order-1 lg:w-1/2"
+        >
           <div
             className={`relative flex aspect-[4/3] items-center justify-center overflow-hidden rounded-2xl ${
               activeFeature === "ingest"
@@ -87,10 +101,13 @@ export function SecurityFeaturesSection() {
               )}
             </div>
           </div>
-        </div>
+        </HomeReveal>
 
         {/* Accordion - Below on mobile, right on desktop */}
-        <div className="order-2 w-full lg:order-2 lg:flex lg:w-1/2 lg:items-center">
+        <HomeReveal
+          delay={80}
+          className="order-2 w-full lg:order-2 lg:flex lg:w-1/2 lg:items-center"
+        >
           <div className="flex w-full flex-col items-center lg:items-start">
             {securityFeatures.map((feature) => {
               const isActive = activeFeature === feature.id;
@@ -132,7 +149,7 @@ export function SecurityFeaturesSection() {
               );
             })}
           </div>
-        </div>
+        </HomeReveal>
       </div>
     </div>
   );

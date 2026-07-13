@@ -242,7 +242,10 @@ export default function TrustedBy({
       )}
     >
       {showTitle && (
-        <H4 className="mb-6 w-full text-center text-foreground">
+        <H4
+          className="mb-6 w-full text-center text-foreground"
+          style={{ textAlign: "center" }}
+        >
           Trusted by <span className="text-blue-500">3,000+</span> organizations
         </H4>
       )}
