@@ -78,6 +78,7 @@ import {
   type UserMessageOrigin,
 } from "@app/types/assistant/conversation";
 import { extractDataSourceIdFromNodeId } from "@app/types/core/content_node";
+import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
@@ -85,6 +86,34 @@ import { AGENT_LESS_DEFAULT_RETRIEVAL_TOP_K } from "../../data_sources_file_syst
 import { formatConversationsForDisplay } from "./conversation_formatting";
 
 const LIST_CONVERSATIONS_DEFAULT_LOOKBACK_MS = 30 * 24 * 60 * 60 * 1000;
+
+export function validatePodConversationMessageTarget({
+  conversationId,
+  currentConversationId,
+}: {
+  conversationId: string | undefined;
+  currentConversationId: string | null;
+}): Result<string, MCPError> {
+  if (!conversationId) {
+    return new Err(
+      new MCPError(
+        "conversationId is required. To reply in the active conversation, respond normally instead of using this tool.",
+        { tracked: false }
+      )
+    );
+  }
+
+  if (conversationId === currentConversationId) {
+    return new Err(
+      new MCPError(
+        "This tool cannot post to the active conversation. Respond normally instead.",
+        { tracked: false }
+      )
+    );
+  }
+
+  return new Ok(conversationId);
+}
 
 function formatListedConversationWithoutMessages(
   c: ConversationResource,
@@ -1358,6 +1387,20 @@ export function createProjectManagerTools(
 
     add_message_to_conversation: async (params) => {
       return withErrorHandling(async () => {
+        const currentConversationId = isAgentLoopRunContext(
+          toolContext?.runContext
+        )
+          ? toolContext.runContext.conversation.sId
+          : null;
+        const conversationIdRes = validatePodConversationMessageTarget({
+          conversationId: params.conversationId,
+          currentConversationId,
+        });
+        if (conversationIdRes.isErr()) {
+          return conversationIdRes;
+        }
+        const conversationId = conversationIdRes.value;
+
         const contextRes = await getWritablePodContext(auth, {
           toolContext,
           dustPod: params.dustPod,
@@ -1369,21 +1412,6 @@ export function createProjectManagerTools(
         const { pod } = contextRes.value;
         const user = auth.user();
         const owner = auth.getNonNullableWorkspace();
-
-        const conversationId =
-          params.conversationId ??
-          (isAgentLoopRunContext(toolContext?.runContext)
-            ? toolContext.runContext.conversation.sId
-            : null);
-
-        if (!conversationId) {
-          return new Err(
-            new MCPError(
-              "No conversationId provided and no conversation in agent context; pass conversationId explicitly.",
-              { tracked: false }
-            )
-          );
-        }
 
         const conversationRes = await getConversation(
           auth,

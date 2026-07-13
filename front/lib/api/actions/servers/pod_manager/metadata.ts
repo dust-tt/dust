@@ -27,9 +27,9 @@ export const MOVE_CONVERSATION_TOOL_NAME = "move_conversation" as const;
 export const POD_MANAGER_TOOLS_METADATA = createToolsRecord({
   add_content_node: {
     description:
-      "Add a content node reference from Company Data to the Pod context. The node will be available to all conversations in this Pod.",
+      "Reference an existing Company Data node in a specific Pod's shared context.",
     schema: {
-      title: z.string().describe("Display title for the content node"),
+      title: z.string().describe("Title for the content node"),
       dataSourceNodeId: z
         .string()
         .startsWith(DATA_SOURCE_NODE_ID)
@@ -40,9 +40,7 @@ export const POD_MANAGER_TOOLS_METADATA = createToolsRecord({
         INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_POD
       ]
         .optional()
-        .describe(
-          "Optional Pod to add the content node to, will fallback to the conversation's Pod."
-        ),
+        .describe("Target Pod. Defaults to the current conversation's Pod."),
     },
     stake: "never_ask",
     displayLabels: {
@@ -54,8 +52,7 @@ export const POD_MANAGER_TOOLS_METADATA = createToolsRecord({
   },
   remove_content_node: {
     description:
-      "Remove a content node reference from the Pod context. The node will no longer be available to conversations in this Pod. " +
-      "Use nodeId with nodeDataSourceViewId from get_information attachments for this reference.",
+      "Detach a Company Data node from a Pod. Use IDs returned by get_information.",
     schema: {
       nodeId: z.string().describe("Internal node ID to remove"),
       nodeDataSourceViewId: z
@@ -67,9 +64,7 @@ export const POD_MANAGER_TOOLS_METADATA = createToolsRecord({
         INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_POD
       ]
         .optional()
-        .describe(
-          "Optional Pod to remove the content node from, will fallback to the conversation's Pod."
-        ),
+        .describe("Target Pod. Defaults to the current conversation's Pod."),
     },
     stake: "low",
     displayLabels: {
@@ -81,10 +76,7 @@ export const POD_MANAGER_TOOLS_METADATA = createToolsRecord({
   },
   [EDIT_INFORMATION_TOOL_NAME]: {
     description:
-      "Edit Pod information: title, description, access, and/or pinned frame. " +
-      "Provide at least one field to update. Descriptions must be plain text only (no markdown, HTML, or formatting). " +
-      "The pinned frame must be an existing Pod file path under `pod/` (use null to unpin). " +
-      "Access can be set to open or restricted; open Pods are subject to workspace policy.",
+      "Change an existing Pod: make it open to the workspace or restricted, rename it, edit its plain-text description, or pin a frame.",
     schema: {
       title: z.string().optional().describe("New Pod title"),
       description: z
@@ -110,9 +102,7 @@ export const POD_MANAGER_TOOLS_METADATA = createToolsRecord({
         INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_POD
       ]
         .optional()
-        .describe(
-          "Optional Pod to edit, will fallback to the conversation's Pod."
-        ),
+        .describe("Target Pod. Defaults to the current conversation's Pod."),
     },
     stake: "low",
     displayLabels: {
@@ -124,11 +114,7 @@ export const POD_MANAGER_TOOLS_METADATA = createToolsRecord({
   },
   [UPDATE_MEMBERS_TOOL_NAME]: {
     description:
-      "Update membership for an existing Pod: invite, add, remove, " +
-      "promote, or demote teammates as Pod members or editors by user id. " +
-      "Requires Pod editor permissions. " +
-      "Editors and members are mutually exclusive: adding an editor removes them from members, " +
-      "and adding a member is a no-op if the user is already an editor.",
+      "Add, remove, promote, or demote teammates as members or editors of an existing Pod.",
     schema: {
       membersToAdd: PodMembersToAddSchema.optional().describe(
         "User ids to add mapped to their Pod role (member or editor)."
@@ -140,9 +126,7 @@ export const POD_MANAGER_TOOLS_METADATA = createToolsRecord({
         INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_POD
       ]
         .optional()
-        .describe(
-          "Optional Pod to update members for, will fallback to the conversation's Pod."
-        ),
+        .describe("Target Pod. Defaults to the current conversation's Pod."),
     },
     stake: "low",
     displayLabels: {
@@ -154,20 +138,13 @@ export const POD_MANAGER_TOOLS_METADATA = createToolsRecord({
   },
   get_information: {
     description:
-      "Get metadata about the Pod: URL, title, description, access, pinned frame, " +
-      "and linked Company Data content-node references attached to the " +
-      "Pod context. This returns metadata only, not document bodies or " +
-      "transcript bodies. Scoped path operations live under " +
-      `\`${SCOPED_PREFIX_POD}<id>/<rel>\` paths in the ` +
-      `\`${FILES_SERVER_NAME}\` MCP server.`,
+      "Read a Pod's URL, title, description, access, pinned frame, and attached Company Data references.",
     schema: {
       dustPod: ConfigurableToolInputSchemas[
         INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_POD
       ]
         .optional()
-        .describe(
-          "Optional Pod to get information from, will fallback to the conversation's Pod."
-        ),
+        .describe("Target Pod. Defaults to the current conversation's Pod."),
     },
     stake: "never_ask",
     displayLabels: {
@@ -178,10 +155,7 @@ export const POD_MANAGER_TOOLS_METADATA = createToolsRecord({
     freeUsage: true,
   },
   [LIST_MEMBERS_TOOL_NAME]: {
-    description:
-      "List all people in the Pod, including members and editors. " +
-      "Each entry includes user ID, name, email, and role or status " +
-      "within the Pod.",
+    description: "List a Pod's members and editors.",
     schema: {
       limit: z
         .number()
@@ -202,9 +176,7 @@ export const POD_MANAGER_TOOLS_METADATA = createToolsRecord({
         INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_POD
       ]
         .optional()
-        .describe(
-          "Optional Pod to list members of, will fallback to the conversation's Pod."
-        ),
+        .describe("Target Pod. Defaults to the current conversation's Pod."),
     },
     stake: "never_ask",
     displayLabels: {
@@ -216,9 +188,7 @@ export const POD_MANAGER_TOOLS_METADATA = createToolsRecord({
   },
   list_pods: {
     description:
-      "List non-archived Pods. Defaults to Pods where you are a member (access='member'). " +
-      "Use access='open' to list all open Pods in the workspace. " +
-      "Each entry includes id, name, and dustPod (uri + mimeType) to pass as the dustPod argument to other pod_manager tools.",
+      "List Pods you belong to, or list open Pods with access='open'.",
     schema: {
       access: z
         .enum(["member", "open"])
@@ -257,8 +227,7 @@ export const POD_MANAGER_TOOLS_METADATA = createToolsRecord({
   },
   create_pod: {
     description:
-      "Create a new Pod. By default the Pod is restricted. The creator is always added as a Pod editor. " +
-      "You can optionally set access to open and add initial members or editors via membersToAdd.",
+      "Create a Pod. Defaults to restricted access and makes the creator an editor.",
     schema: {
       title: z.string().describe("Pod title"),
       description: z
@@ -292,9 +261,7 @@ export const POD_MANAGER_TOOLS_METADATA = createToolsRecord({
   },
   retrieve_recent_documents: {
     description:
-      "Fetch the most recent documents from this Pod's knowledge data source and from any content nodes linked in the " +
-      "Pod context, in reverse chronological order up to the retrieval limit. Respects optional time window. " +
-      "Optionally restrict to subtrees using nodeIds.",
+      "Retrieve the most recent documents from a specific Pod and its attached Company Data nodes.",
     schema: {
       timeFrame: IncludeInputSchema.shape.timeFrame,
       nodeIds: SearchWithNodesInputSchema.shape.nodeIds,
@@ -313,10 +280,7 @@ export const POD_MANAGER_TOOLS_METADATA = createToolsRecord({
   },
   [SEMANTIC_SEARCH_TOOL_NAME]: {
     description:
-      "Find and search for information about a topic or question across Pod " +
-      "files, content nodes attached to the Pod, and Pod conversation " +
-      "transcripts using semantic retrieval. The searchScope parameter " +
-      "allows selecting files, conversations, or both.",
+      "Search for information about a topic across Pod files, linked content nodes, and Pod conversation transcripts. Use searchScope to select files, conversations, or both.",
     schema: {
       query: z
         .string()
@@ -341,9 +305,7 @@ export const POD_MANAGER_TOOLS_METADATA = createToolsRecord({
         INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_POD
       ]
         .optional()
-        .describe(
-          "Optional Pod to search, will fallback to the conversation's Pod."
-        ),
+        .describe("Target Pod. Defaults to the current conversation's Pod."),
     },
     stake: "never_ask",
     displayLabels: {
@@ -355,29 +317,15 @@ export const POD_MANAGER_TOOLS_METADATA = createToolsRecord({
   },
   create_conversation: {
     description:
-      "Create or start a new Pod conversation and post a user message. " +
-      "Default for Pod work: pass an agentName so a Pod agent handles " +
-      "the task inside the new conversation. Do NOT do the work yourself. " +
-      "Omit agentName only when posting a simple message that requires " +
-      "no intellectual work (e.g. a status update, a comment, a note) " +
-      "or when explicitly asked to post the final output.",
+      "Start a separate conversation inside a specific Pod and post its first message. Use only when the user explicitly asks to create that conversation.",
     schema: {
-      message: z
-        .string()
-        .describe(
-          "When agentName is provided: the raw task description and context for the agent to act on. When agentName is omitted: the complete finished output to deposit as-is."
-        ),
+      message: z.string().describe("First message for the new conversation."),
       title: z.string().describe("Title for the conversation"),
       agentName: z
         .string()
         .optional()
         .describe(
-          "The name of the Pod agent to trigger in the new conversation. " +
-            "The tool searches matching agent configurations and uses the " +
-            "best match. Use this whenever the user asks for work to be " +
-            "done in a Pod. When omitted, no agent is triggered and the " +
-            "message is posted as a static result. Use this only to " +
-            "deposit a finished artifact you have already fully produced."
+          "Pod agent to trigger. Omit to post the message without triggering an agent."
         ),
       dustPod:
         ConfigurableToolInputSchemas[
@@ -394,12 +342,7 @@ export const POD_MANAGER_TOOLS_METADATA = createToolsRecord({
   },
   list_conversations: {
     description:
-      "List conversations in the Pod updated on or after a given time (updatedSince). " +
-      "Use unreadOnly=true to return only conversations with unread messages (same as narrowing unread), " +
-      "or false to include all that match the time filter. " +
-      "When unreadOnly is false, results are paginated: pass pageCursor from nextPageCursor of the previous response to fetch the next page (efficient, one DB page per call). " +
-      "When unreadOnly is true, pagination cursors are not used; the tool scans conversations in the window up to the requested limit. " +
-      "By default, only conversation metadata is returned (no message bodies). Set includeMessages=true to load and format all messages (much heavier).",
+      "List a specific Pod's conversations by update time or unread status. Returns metadata unless includeMessages=true.",
     schema: {
       unreadOnly: z
         .boolean()
@@ -451,9 +394,7 @@ export const POD_MANAGER_TOOLS_METADATA = createToolsRecord({
   },
   [MOVE_CONVERSATION_TOOL_NAME]: {
     description:
-      "Move a conversation into a Pod or out of its Pod to the user's personal conversations. " +
-      "Set destination to 'pod' to move into a Pod (requires dustPod), or 'personal' to move out of the current Pod. " +
-      "If conversationId is omitted, the current agent conversation is used when available.",
+      "Move a conversation into a Pod or back to personal conversations.",
     schema: {
       destination: z
         .enum(["pod", "personal"])
@@ -484,37 +425,22 @@ export const POD_MANAGER_TOOLS_METADATA = createToolsRecord({
   },
   add_message_to_conversation: {
     description:
-      "Send or post a follow-up user message to an existing conversation " +
-      "in this Pod. Default for Pod work: pass an agentName so a Pod agent " +
-      "handles the task inside the conversation. Do NOT do the work " +
-      "yourself. " +
-      "Omit agentName only when posting a simple message that requires " +
-      "no intellectual work (e.g. a status update, a comment, a note) " +
-      "or when explicitly asked to post the final output. " +
-      "The conversation must belong to the same Pod. If conversationId is " +
-      "omitted, the current agent conversation is used (when available).",
+      "Post to a different existing Pod conversation. Use only when the user explicitly asks to send a message there. Never use this tool to reply in the active conversation.",
     schema: {
       conversationId: z
         .string()
         .optional()
         .describe(
-          "Conversation id to post to; defaults to the conversation this agent run is in when omitted"
+          "Target conversation ID. The active conversation is not a valid target."
         ),
       message: z
         .string()
-        .describe(
-          "When agentName is provided: the raw task description and context for the agent to act on. When agentName is omitted: the complete finished output to deposit as-is."
-        ),
+        .describe("Message to post in the target conversation."),
       agentName: z
         .string()
         .optional()
         .describe(
-          "The name of the Pod agent to trigger in the conversation. " +
-            "The tool searches matching agent configurations and uses the " +
-            "best match. Use this whenever the user asks for work to be " +
-            "done in a Pod. When omitted, no agent is triggered and the " +
-            "message is posted as a static result. Use this only to " +
-            "deposit a finished artifact you have already fully produced."
+          "Pod agent to trigger. Omit to post without triggering an agent."
         ),
       dustPod:
         ConfigurableToolInputSchemas[
@@ -535,10 +461,7 @@ export const POD_MANAGER_SERVER = {
   serverInfo: {
     name: "pod_manager",
     version: "1.0.0",
-    description:
-      "Manage Pod metadata, members, conversations, and Company Data references. " +
-      `Raw Pod file operations (create, read, search, write, delete) live in the \`${FILES_SERVER_NAME}\` MCP ` +
-      `server under \`${SCOPED_PREFIX_POD}<id>/<rel>\` scoped paths.`,
+    description: `Manage Pods and separate Pod conversations. Files use \`${FILES_SERVER_NAME}\` under \`${SCOPED_PREFIX_POD}<id>/<rel>\`.`,
     icon: "ActionDocumentTextIcon",
     authorization: null,
     documentationUrl: null,

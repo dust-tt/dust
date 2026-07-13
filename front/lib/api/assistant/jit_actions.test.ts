@@ -471,7 +471,7 @@ describe("getJITServers", () => {
       expect(viewNames).toContain("pod_manager");
     });
 
-    it("auto-equips but does not auto-enable projects outside a project", async () => {
+    it("does not auto-equip projects outside a project", async () => {
       const buckets = await SkillResource.listForAgentLoop(auth, {
         agentConfiguration: agentConfig,
         conversation,
@@ -480,11 +480,11 @@ describe("getJITServers", () => {
       expectSkillBuckets(buckets, "projects", {
         enabled: false,
         system: false,
-        equipped: true,
+        equipped: false,
       });
     });
 
-    it("does not duplicate auto-equipped projects already configured on the agent", async () => {
+    it("equips projects when configured on the agent", async () => {
       await SkillFactory.linkGlobalSkillToAgent(auth, {
         globalSkillId: "projects",
         agentConfigurationId: agentConfig.id,
@@ -505,7 +505,7 @@ describe("getJITServers", () => {
       ).toHaveLength(1);
     });
 
-    it("keeps auto-equipped projects available after it is enabled", async () => {
+    it("keeps conversation-enabled projects out of equipped skills", async () => {
       const [projectSkill] = await SkillResource.fetchByIds(
         auth,
         ["projects"],
@@ -525,7 +525,7 @@ describe("getJITServers", () => {
       expectSkillBuckets(buckets, "projects", {
         enabled: true,
         system: false,
-        equipped: true,
+        equipped: false,
       });
     });
 
