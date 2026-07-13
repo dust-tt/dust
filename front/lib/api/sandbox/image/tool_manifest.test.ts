@@ -15,21 +15,9 @@ describe("createToolManifest()", () => {
     expect(manifest.version).toBe("1.0");
   });
 
-  test("groups tools by category", () => {
+  test("groups tools by runtime", () => {
     const tools: ToolEntry[] = [
       { name: "curl", description: "HTTP client", runtime: "system" },
-      {
-        name: "read_file",
-        description: "File reader",
-        runtime: "system",
-        category: "dust",
-      },
-      {
-        name: "xlsx_inspect",
-        description: "Workbook inspector",
-        runtime: "system",
-        category: "dust",
-      },
       { name: "pandas", description: "Data analysis", runtime: "python" },
       { name: "tsx", description: "TypeScript executor", runtime: "node" },
     ];
@@ -39,10 +27,6 @@ describe("createToolManifest()", () => {
     expect(manifest.tools.system).toEqual([
       { name: "curl", description: "HTTP client" },
     ]);
-    expect(manifest.tools.dust).toEqual([
-      { name: "read_file", description: "File reader" },
-      { name: "xlsx_inspect", description: "Workbook inspector" },
-    ]);
     expect(manifest.tools.python).toEqual([
       { name: "pandas", description: "Data analysis" },
     ]);
@@ -51,7 +35,7 @@ describe("createToolManifest()", () => {
     ]);
   });
 
-  test("omits empty categories", () => {
+  test("omits empty runtime categories", () => {
     const tools: ToolEntry[] = [
       { name: "curl", description: "HTTP client", runtime: "system" },
     ];
@@ -59,7 +43,6 @@ describe("createToolManifest()", () => {
     const manifest = createToolManifest(tools);
 
     expect(manifest.tools.system).toBeDefined();
-    expect(manifest.tools.dust).toBeUndefined();
     expect(manifest.tools.python).toBeUndefined();
     expect(manifest.tools.node).toBeUndefined();
   });
@@ -147,12 +130,6 @@ describe("toolManifestToCompactText()", () => {
         category: "dust",
       },
       {
-        name: "xlsx_inspect",
-        description: "Workbook inspector",
-        runtime: "system",
-        category: "dust",
-      },
-      {
         name: "pandas",
         version: "2.2.3",
         description: "Data analysis",
@@ -166,7 +143,7 @@ describe("toolManifestToCompactText()", () => {
     const text = toolManifestToCompactText(manifest);
 
     expect(text).toBe(
-      "- System: curl\n- Dust: read_file, xlsx_inspect\n- Python: pandas 2.2.3\n- Node: tsx"
+      "- System: curl\n- Dust: read_file\n- Python: pandas 2.2.3\n- Node: tsx"
     );
   });
 });

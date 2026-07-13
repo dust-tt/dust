@@ -793,6 +793,17 @@ SHELLEOF`,
     runtime: "system",
     category: "dust",
   })
+  // --- pptx_slides: safe slide-level structural edits ---
+  .registerTool({
+    name: "pptx_slides",
+    description:
+      "Duplicate, move, or delete .pptx slides without corrupting the package - shares image parts, deep-clones charts, rewrites relationship ids. --duplicate and --delete take a slide pattern (a single slide, a comma list, or ranges, e.g. 2,5,7-9), so do every duplicate or delete in one call rather than one slide at a time. Edit copies afterward with python-pptx",
+    usage:
+      "pptx_slides <file> (--duplicate N[,N,...] [--count K] [--after M] | --move N --to M | --delete N[,N,...])",
+    returns: "A one-line summary of the change and the deck's new slide count",
+    runtime: "system",
+    category: "dust",
+  })
   // --- docx_inspect: structural inspection of .docx documents ---
   .registerTool({
     name: "docx_inspect",

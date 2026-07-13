@@ -345,8 +345,19 @@ ${compactManifest}
 Versions are shown when pinned. Installing packages in the sandbox is NOT
 possible. Call \`describe_toolset\` for full descriptions and usage metadata.
 System tools are standard preinstalled command-line utilities. Dust tools are
-non-standard helpers provided by Dust. Run \`<command> --help\` for detailed
-modes and flags. Use ONLY the tools listed above, NOTHING ELSE.
+non-standard helpers provided by Dust.
+
+Notable Dust helpers:
+
+- \`xlsx_inspect\`: Inspect workbook structure, formulas, values, and styles.
+- \`pptx_inspect\`: Inspect and QA slide structure, content, rendering, and
+  fidelity.
+- \`docx_inspect\`: Inspect document structure, styles, content, and rendering.
+- \`pptx_slides\`: Duplicate, move, or delete .pptx slides without corrupting
+  the package.
+
+Run \`<command> --help\` for detailed modes and flags. Use ONLY the tools listed
+above, NOTHING ELSE.
 
 `;
 }

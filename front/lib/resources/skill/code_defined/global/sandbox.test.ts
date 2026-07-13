@@ -21,18 +21,10 @@ describe("sandboxSkill", () => {
     expect(instructions).toContain("- Python: python, pandas 3.0.1");
     expect(instructions).toContain("- Node: typescript, tsx");
     expect(instructions).toContain("`describe_toolset`");
-    const systemTools = instructions
-      .split("\n")
-      .find((line) => line.startsWith("- System:"));
-    expect(systemTools).toBeDefined();
-    expect(systemTools).not.toContain("dsbx");
-    expect(systemTools).not.toContain("read_file");
-    expect(systemTools).not.toContain("xlsx_inspect");
+    expect(instructions).toContain("Notable Dust helpers:");
     expect(instructions).toContain(
-      "System tools are standard preinstalled command-line utilities"
+      "- `pptx_slides`: Duplicate, move, or delete .pptx slides without corrupting"
     );
-    expect(instructions).toContain("Dust tools are");
-    expect(instructions).toContain("non-standard helpers provided by Dust");
     expect(instructions).toContain("`<command> --help`");
     expect(instructions).not.toContain("name: dsbx");
     expect(instructions).not.toContain("```yaml");
