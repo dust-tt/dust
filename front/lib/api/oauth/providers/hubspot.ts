@@ -55,6 +55,7 @@ export class HubspotOAuthProvider implements BaseOAuthStrategyProvider {
       "content",
       "tickets",
       "crm.objects.products.read",
+      "crm.objects.communications.read",
     ];
 
     const workspaceGrantedScopes = extraConfig?.workspace_granted_scopes;

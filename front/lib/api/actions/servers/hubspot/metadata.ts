@@ -24,6 +24,7 @@ const searchableObjectTypes = [
   "feedback_submissions",
   "tickets",
   "leads",
+  "communications",
 ] as const;
 
 const filterSchema = z.object({
