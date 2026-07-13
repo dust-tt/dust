@@ -344,11 +344,21 @@ ${compactManifest}
 
 Versions are shown when pinned. Installing packages in the sandbox is NOT
 possible. Call \`describe_toolset\` for full descriptions and usage metadata.
-Unlike the standard Linux utilities above, \`xlsx_inspect\`, \`pptx_inspect\`,
-and \`docx_inspect\` are Dust-specific commands for structural inspection and
-QA of Office files; \`pptx_slides\` safely duplicates, moves, or deletes slides.
-Prefer these helpers for their formats and run \`<command> --help\` for detailed
-usage. Use ONLY the tools listed above, NOTHING ELSE.
+
+Dust-specific Office helpers (not standard Linux commands):
+
+- \`xlsx_inspect\`: Inspect workbook sheets, ranges, formulas, cached values,
+  number formats, and cell styling; search values or formatting metadata.
+- \`pptx_inspect\`: Inspect and QA deck structure, layouts, shapes, text,
+  charts, tables, and media; render slides and compare edits with their source.
+- \`docx_inspect\`: Inspect document structure, styles, headings, paragraphs,
+  tables, sections, tracked changes, fields, and media; render pages for visual
+  review.
+- \`pptx_slides\`: Safely duplicate, move, or delete slides while preserving
+  package relationships.
+
+Prefer these helpers for the listed operations. Run \`<command> --help\` for
+detailed modes and flags. Use ONLY the tools listed above, NOTHING ELSE.
 
 `;
 }
