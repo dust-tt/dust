@@ -11,11 +11,13 @@ import { frontSequelize } from "@app/lib/resources/storage";
 import { GroupMembershipModel } from "@app/lib/resources/storage/models/group_memberships";
 import { GroupSpaceModel } from "@app/lib/resources/storage/models/group_spaces";
 import { SpaceModel } from "@app/lib/resources/storage/models/spaces";
+import { WorkspaceSandboxEnvVarModel } from "@app/lib/resources/storage/models/workspace_sandbox_env_var";
 import type { UserResource } from "@app/lib/resources/user_resource";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { GroupFactory } from "@app/tests/utils/GroupFactory";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
+import { SandboxEnvVarFactory } from "@app/tests/utils/SandboxEnvVarFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
@@ -140,6 +142,44 @@ describe("SpaceResource", () => {
           },
         })
       ).resolves.toBe(0);
+    });
+
+    it("should delete pod-scoped sandbox env vars but keep workspace-scoped ones when hard deleting a space", async () => {
+      const pod = await SpaceFactory.project(workspace, user1.id);
+
+      await SandboxEnvVarFactory.create(adminAuth, {
+        name: "POD_TOKEN",
+        space: pod,
+      });
+      await SandboxEnvVarFactory.create(adminAuth, {
+        name: "WORKSPACE_TOKEN",
+      });
+
+      const softDeleteResult = await pod.delete(adminAuth, {
+        hardDelete: false,
+      });
+      expect(softDeleteResult.isOk()).toBe(true);
+
+      const deletedSpace = await SpaceResource.fetchById(adminAuth, pod.sId, {
+        includeDeleted: true,
+      });
+      if (!deletedSpace) {
+        throw new Error("Deleted space should exist");
+      }
+
+      const hardDeleteResult = await hardDeleteSpace(adminAuth, deletedSpace);
+      expect(hardDeleteResult.isOk()).toBe(true);
+
+      await expect(
+        WorkspaceSandboxEnvVarModel.count({
+          where: { workspaceId: workspace.id, spaceId: pod.id },
+        })
+      ).resolves.toBe(0);
+      await expect(
+        WorkspaceSandboxEnvVarModel.count({
+          where: { workspaceId: workspace.id, name: "WORKSPACE_TOKEN" },
+        })
+      ).resolves.toBe(1);
     });
 
     describe("authorization checks", () => {
@@ -1744,6 +1784,7 @@ const KNOWN_SPACE_RELATED_MODELS = [
   "data_source_view",
   "group_vaults",
   "mcp_server_view",
+  "workspace_sandbox_env_var",
   "sandbox_function",
   "sandbox_owner",
   "project_metadata",
