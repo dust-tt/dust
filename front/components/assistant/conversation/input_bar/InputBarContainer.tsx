@@ -1610,7 +1610,7 @@ const InputBarContainer = ({
             )}
           </BubbleMenu>
           <div
-            className={cn("flex w-full flex-col", "py-1.5 md:pb-2")}
+            className={cn("flex w-full flex-col", "pt-1.5 pb-2")}
             style={{
               transition: `padding ${COLLAPSE_TRANSITION}`,
             }}
@@ -1641,10 +1641,15 @@ const InputBarContainer = ({
                 </React.Fragment>
               ))}
             </div>
-            <div className="relative flex min-h-8 w-full items-center justify-between">
+            <div className="relative flex w-full items-center justify-between">
               <div className={cn("flex w-full items-center px-2")}>
                 {!isRecording && (
-                  <div className="flex items-center gap-1">
+                  <div
+                    className={cn(
+                      "flex items-center",
+                      isMobile ? "gap-0.5" : "gap-1"
+                    )}
+                  >
                     <InputBarButtons
                       actions={actions}
                       allAgents={allAgents}
@@ -1689,7 +1694,12 @@ const InputBarContainer = ({
               </div>
             </div>
           </div>
-          <div className="absolute bottom-2 right-2 flex items-center gap-1.5">
+          <div
+            className={cn(
+              "absolute bottom-2 right-2 flex items-center",
+              isMobile ? "gap-1" : "gap-1.5"
+            )}
+          >
             {clientType === "extension" && (
               <>
                 <div ref={plusButtonRef}>
@@ -1798,7 +1808,12 @@ const InputBarContainer = ({
                 )}
               </>
             )}
-            <div className="flex items-center gap-1">
+            <div
+              className={cn(
+                "flex items-center",
+                isMobile ? "gap-0.5" : "gap-1"
+              )}
+            >
               {conversation && (
                 <ContextUsageIndicator
                   buttonSize={buttonSize}
