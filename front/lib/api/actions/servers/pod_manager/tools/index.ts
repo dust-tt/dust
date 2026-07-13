@@ -87,7 +87,7 @@ import { formatConversationsForDisplay } from "./conversation_formatting";
 
 const LIST_CONVERSATIONS_DEFAULT_LOOKBACK_MS = 30 * 24 * 60 * 60 * 1000;
 
-export function validatePodConversationMessageTarget({
+function validatePodConversationMessageTarget({
   conversationId,
   currentConversationId,
 }: {
