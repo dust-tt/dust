@@ -52,14 +52,7 @@ function makeToolConfiguration({
     retryPolicy: "no_retry",
     originalName: "send_mail",
     mcpServerName: "gmail",
-    ...(editable
-      ? {
-          editable: {
-            isEditable: true,
-            editableArguments: ["subject"],
-          },
-        }
-      : {}),
+    ...(editable ? { editableArguments: ["subject"] } : {}),
   };
 }
 

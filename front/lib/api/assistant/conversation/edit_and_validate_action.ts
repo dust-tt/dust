@@ -1,7 +1,6 @@
 import type { ActionApprovalStateType } from "@app/lib/actions/mcp";
+import { isLightServerSideMCPToolConfiguration } from "@app/lib/actions/types/guards";
 import { validateAction } from "@app/lib/api/assistant/conversation/validate_actions";
-import type { EditableToolConfig } from "@app/lib/api/mcp";
-import { EditableToolConfigSchema } from "@app/lib/api/mcp_schemas";
 import type { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
 import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
@@ -24,21 +23,22 @@ function getChangedEditedInputs({
   );
 }
 
-function getEditableToolConfig(
+function getEditableArguments(
   action: AgentMCPActionResource
-): Result<EditableToolConfig, DustError<"action_not_editable">> {
-  const editableResult = EditableToolConfigSchema.safeParse(
-    "editable" in action.toolConfiguration
-      ? action.toolConfiguration.editable
-      : undefined
-  );
-  if (!editableResult.success || !editableResult.data.isEditable) {
+): Result<string[], DustError<"action_not_editable">> {
+  const editableArguments = isLightServerSideMCPToolConfiguration(
+    action.toolConfiguration
+  )
+    ? action.toolConfiguration.editableArguments
+    : undefined;
+
+  if (!editableArguments || editableArguments.length === 0) {
     return new Err(
       new DustError("action_not_editable", "Action inputs are not editable.")
     );
   }
 
-  return new Ok(editableResult.data);
+  return new Ok(editableArguments);
 }
 
 export async function editAndValidateAction(
@@ -103,13 +103,13 @@ export async function editAndValidateAction(
     return new Ok(undefined);
   }
 
-  const editableResult = getEditableToolConfig(action);
+  const editableResult = getEditableArguments(action);
   if (editableResult.isErr()) {
     return editableResult;
   }
 
   const editedKeys = Object.keys(editedArguments);
-  const editableArguments = new Set(editableResult.value.editableArguments);
+  const editableArguments = new Set(editableResult.value);
   const disallowedKey = editedKeys.find((key) => !editableArguments.has(key));
   if (!!disallowedKey) {
     return new Err(
