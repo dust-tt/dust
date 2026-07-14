@@ -1,6 +1,7 @@
 import { hardDeleteApp } from "@app/lib/api/apps";
 import { updateAgentRequirements } from "@app/lib/api/assistant/configuration/agent_requirements";
 import { createDataSourceAndConnectorForProject } from "@app/lib/api/projects/connector";
+import { deleteOwnerPolicy } from "@app/lib/api/sandbox/egress_policy";
 import { getWorkspaceAdministrationVersionLock } from "@app/lib/api/workspace";
 import type { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
@@ -387,6 +388,17 @@ export async function hardDeleteSpace(
     const res = await webhookSourceView.hardDelete(auth);
     if (res.isErr()) {
       return res;
+    }
+  }
+
+  // Delete the pod's sandbox egress allowlist file BEFORE touching the DB:
+  // if GCS refuses, we abort with everything intact, and the Temporal
+  // activity driving the scrub retries the whole deletion.
+  // (Owner-keyed, so it is not deleted with individual sandboxes.)
+  if (space.isProject()) {
+    const deleteOwnerPolicyRes = await deleteOwnerPolicy(auth, space.sId);
+    if (deleteOwnerPolicyRes.isErr()) {
+      return deleteOwnerPolicyRes;
     }
   }
 

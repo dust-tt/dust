@@ -30,6 +30,7 @@ export default async function setup() {
     NOVU_SECRET_KEY: "test-secret-key",
     DUST_PRIVATE_UPLOADS_BUCKET: "test-private-bucket",
     DUST_UPLOAD_BUCKET: "test-public-bucket",
+    EGRESS_PROXY_POLICY_BUCKET: "test-egress-policy-bucket",
     REDIS_CACHE_URI: process.env.REDIS_CACHE_URI,
     REDIS_URI: process.env.REDIS_URI,
     NEXT_PUBLIC_DUST_API_URL: "http://fake-url",

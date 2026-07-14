@@ -34,6 +34,8 @@ The response includes:
       _meta: {
         dust: {
           timeoutMs: 10_000,
+          // Never defer behind tool search: this is Sidekick's primary tool.
+          eager: true,
         },
       },
     },

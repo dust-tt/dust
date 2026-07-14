@@ -22,7 +22,6 @@ import type { SandboxResource } from "@app/lib/resources/sandbox_resource";
 import logger from "@app/logger/logger";
 import { isDevelopment } from "@app/types/shared/env";
 import { Err, Ok, type Result } from "@app/types/shared/result";
-import { assertNever } from "@app/types/shared/utils/assert_never";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import jwt from "jsonwebtoken";
 import { z } from "zod";
@@ -334,12 +333,18 @@ export async function checkEgressForwarderHealth(
 export async function prepareSandboxEgressBeforeMount(
   auth: Authenticator,
   sandbox: SandboxResource,
-  { runtimeOwner }: { runtimeOwner: SandboxRuntimeOwner }
+  {
+    runtimeOwner,
+    egressPolicyOwnerId,
+  }: { runtimeOwner: SandboxRuntimeOwner; egressPolicyOwnerId: string }
 ): Promise<Result<void, Error>> {
   if (config.getSandboxDevUnrestrictedEgress()) {
     return teardownInSandboxEgressRedirect(auth, sandbox);
   }
-  return setupEgressForwarder(auth, sandbox, { runtimeOwner });
+  return setupEgressForwarder(auth, sandbox, {
+    runtimeOwner,
+    egressPolicyOwnerId,
+  });
 }
 
 // Egress check that runs after GCS mounts on every exec: in prod, verifies
@@ -351,8 +356,13 @@ export async function ensureSandboxEgressOnExec(
   sandbox: SandboxResource,
   {
     runtimeOwner,
+    egressPolicyOwnerId,
     wokeFromSleep,
-  }: { runtimeOwner: SandboxRuntimeOwner; wokeFromSleep: boolean }
+  }: {
+    runtimeOwner: SandboxRuntimeOwner;
+    egressPolicyOwnerId: string;
+    wokeFromSleep: boolean;
+  }
 ): Promise<Result<void, Error>> {
   if (config.getSandboxDevUnrestrictedEgress()) {
     if (wokeFromSleep) {
@@ -373,6 +383,7 @@ export async function ensureSandboxEgressOnExec(
     return setupEgressForwarder(auth, sandbox, {
       restartExisting: true,
       runtimeOwner,
+      egressPolicyOwnerId,
     });
   }
 
@@ -395,6 +406,7 @@ export async function ensureSandboxEgressOnExec(
     return setupEgressForwarder(auth, sandbox, {
       restartExisting: true,
       runtimeOwner,
+      egressPolicyOwnerId,
     });
   }
 
@@ -506,7 +518,17 @@ export async function setupEgressForwarder(
   {
     restartExisting = false,
     runtimeOwner,
-  }: { restartExisting?: boolean; runtimeOwner: SandboxRuntimeOwner }
+    egressPolicyOwnerId,
+  }: {
+    restartExisting?: boolean;
+    runtimeOwner: SandboxRuntimeOwner;
+    // The egress POLICY owner, distinct from runtimeOwner: conversations
+    // inside a Pod share the Pod's policy file, so their policy owner is the
+    // Pod space's sId while runtimeOwner (env vars, log context, file system
+    // selection) stays the conversation. Derived by the lifecycle ready
+    // helpers.
+    egressPolicyOwnerId: string;
+  }
 ): Promise<Result<void, Error>> {
   const logContext = {
     event: "egress.setup",
@@ -525,22 +547,10 @@ export async function setupEgressForwarder(
     return new Err(normalizeError(error));
   }
 
-  let ownerId: string;
-  switch (runtimeOwner.kind) {
-    case "pod":
-      ownerId = runtimeOwner.spaceId;
-      break;
-    case "conversation":
-      ownerId = runtimeOwner.conversationId;
-      break;
-    default:
-      assertNever(runtimeOwner);
-  }
-
   const token = mintEgressJwt({
     providerId: sandbox.providerId,
     workspaceId: auth.getNonNullableWorkspace().sId,
-    ownerId,
+    ownerId: egressPolicyOwnerId,
   });
 
   // Token, secrets, and manifest are written in order, each gated on the

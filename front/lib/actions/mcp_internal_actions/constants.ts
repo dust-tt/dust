@@ -1175,7 +1175,7 @@ export const INTERNAL_MCP_SERVERS = {
   },
   exa_people_and_company: {
     id: 1036,
-    availability: "manual",
+    availability: "auto",
     allowMultipleInstances: false,
     isPreview: false,
     isRestricted: ({ featureFlags }) =>

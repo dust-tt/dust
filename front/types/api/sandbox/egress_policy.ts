@@ -7,3 +7,11 @@ export type GetWorkspaceEgressPolicyResponseBody = {
 export type PutWorkspaceEgressPolicyResponseBody = {
   policy: EgressPolicy;
 };
+
+export type GetPodEgressPolicyResponseBody = {
+  policy: EgressPolicy;
+};
+
+export type PutPodEgressPolicyResponseBody = {
+  policy: EgressPolicy;
+};
