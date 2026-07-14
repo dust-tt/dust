@@ -1703,6 +1703,72 @@ const untouched = "prefix${referencedFile.sId}suffix";`
     expect(conversationIds).toContain(result.value.conversationId);
   });
 
+  it("surfaces the fork of a project conversation in unread lists for project members", async () => {
+    const {
+      auth: initialAuth,
+      user,
+      workspace,
+    } = await createPrivateApiMockRequest({ role: "admin" });
+
+    const otherUser = await UserFactory.basic();
+    await MembershipFactory.associate(workspace, otherUser, { role: "user" });
+
+    const project = await SpaceFactory.project(workspace);
+    const addMembersRes = await project.addMembers(initialAuth, {
+      userIds: [user.sId, otherUser.sId],
+    });
+    expect(addMembersRes.isOk()).toBe(true);
+
+    // Refresh auths after adding the users to the project (permissions are cached).
+    const auth = await Authenticator.fromUserIdAndWorkspaceId(
+      user.sId,
+      workspace.sId
+    );
+    const otherAuth = await Authenticator.fromUserIdAndWorkspaceId(
+      otherUser.sId,
+      workspace.sId
+    );
+
+    const parentConversation = await createConversation(auth, {
+      title: "Parent conversation",
+      visibility: "unlisted",
+      spaceId: project.id,
+    });
+
+    const userMessage = await createUserMessage(auth, {
+      conversation: parentConversation,
+      rank: 0,
+      content: "How should I continue this?",
+    });
+    const sourceMessage = await createAgentMessage(auth, {
+      conversation: parentConversation,
+      rank: 1,
+      parentId: userMessage.id,
+      status: "succeeded",
+    });
+
+    const result = await createConversationFork(auth, {
+      conversationId: parentConversation.sId,
+      sourceMessageId: sourceMessage.sId,
+    });
+
+    expect(result.isErr()).toBe(false);
+    if (result.isErr()) {
+      throw result.error;
+    }
+
+    // The other project member never opened the fork: it must show up in
+    // their non-participant unread list (the sidebar activity badge path).
+    const { nonParticipantUnreadConversations } =
+      await ConversationResource.listSpaceUnreadConversationsAndActivityForUser(
+        otherAuth,
+        [project.id]
+      );
+
+    const unreadIds = nonParticipantUnreadConversations.map((c) => c.sId);
+    expect(unreadIds).toContain(result.value.conversationId);
+  });
+
   it("inherits the parent's requested spaces so the fork does not broaden visibility", async () => {
     const {
       auth: initialAuth,
