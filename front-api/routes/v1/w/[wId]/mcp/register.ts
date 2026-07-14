@@ -1,7 +1,6 @@
-import {
-  MCPServerInstanceLimitError,
-  registerMCPServer,
-} from "@app/lib/api/actions/mcp/client_side_registry";
+import { registerMCPServer } from "@app/lib/api/actions/mcp/client_side_registry";
+import { rateLimiter } from "@app/lib/utils/rate_limiter";
+import logger from "@app/logger/logger";
 import type { RegisterMCPResponseType } from "@dust-tt/client";
 import { PublicRegisterMCPRequestBodySchema } from "@dust-tt/client";
 import { publicApiApp } from "@front-api/middlewares/ctx";
@@ -83,6 +82,23 @@ app.post(
 
     const { serverName } = ctx.req.valid("json");
 
+    const userId = auth.getNonNullableUser().id;
+    const remaining = await rateLimiter({
+      key: `mcp:register:${userId}`,
+      maxPerTimeframe: 100,
+      timeframeSeconds: 60,
+      logger,
+    });
+    if (remaining <= 0) {
+      return apiError(ctx, {
+        status_code: 429,
+        api_error: {
+          type: "rate_limit_error",
+          message: "Too many MCP server registrations. Please try again later.",
+        },
+      });
+    }
+
     // Register the server.
     const registration = await registerMCPServer(auth, {
       serverName,
@@ -90,24 +106,11 @@ app.post(
     });
 
     if (registration.isErr()) {
-      const error = registration.error;
-      // Check if this is a server instance limit error.
-      if (error instanceof MCPServerInstanceLimitError) {
-        return apiError(ctx, {
-          status_code: 400,
-          api_error: {
-            type: "invalid_request_error",
-            message: error.message,
-          },
-        });
-      }
-
-      // Other errors are treated as server errors.
       return apiError(ctx, {
         status_code: 500,
         api_error: {
           type: "internal_server_error",
-          message: error.message,
+          message: registration.error.message,
         },
       });
     }

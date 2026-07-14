@@ -1,7 +1,6 @@
-import {
-  MCPServerInstanceLimitError,
-  registerMCPServer,
-} from "@app/lib/api/actions/mcp/client_side_registry";
+import { registerMCPServer } from "@app/lib/api/actions/mcp/client_side_registry";
+import { rateLimiter } from "@app/lib/utils/rate_limiter";
+import logger from "@app/logger/logger";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
@@ -36,22 +35,35 @@ app.post(
     const auth = ctx.get("auth");
     const { serverName } = ctx.req.valid("json");
 
+    const userId = auth.getNonNullableUser().id;
+    const remaining = await rateLimiter({
+      key: `mcp:register:${userId}`,
+      maxPerTimeframe: 100,
+      timeframeSeconds: 60,
+      logger,
+    });
+    if (remaining <= 0) {
+      return apiError(ctx, {
+        status_code: 429,
+        api_error: {
+          type: "rate_limit_error",
+          message: "Too many MCP server registrations. Please try again later.",
+        },
+      });
+    }
+
     const registration = await registerMCPServer(auth, {
       serverName,
       workspaceId: auth.getNonNullableWorkspace().sId,
     });
 
     if (registration.isErr()) {
-      const error = registration.error;
-      if (error instanceof MCPServerInstanceLimitError) {
-        return apiError(ctx, {
-          status_code: 400,
-          api_error: { type: "invalid_request_error", message: error.message },
-        });
-      }
       return apiError(ctx, {
         status_code: 500,
-        api_error: { type: "internal_server_error", message: error.message },
+        api_error: {
+          type: "internal_server_error",
+          message: registration.error.message,
+        },
       });
     }
 
