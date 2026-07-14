@@ -150,12 +150,20 @@ function isWorkspaceIsolationBypassEnabled<T>(
   );
 }
 
-// Default number of rows deleted per statement by `destroyForWorkspaceInBatches`.
-const DESTROY_FOR_WORKSPACE_BATCH_SIZE = 1000;
+// Number of rows deleted per statement by `destroyForWorkspaceInBatches`. Deleting 1_000 rows by
+// primary key stays in the low-millisecond range while keeping round-trips bounded.
+const DESTROY_FOR_WORKSPACE_BATCH_SIZE = 1_000;
+
+// Minimal row shape accepted by `destroyForWorkspaceInBatches`. Using a concrete model type
+// instead of a generic keeps the workspace scoping type-checked without unsafe casts.
+type WorkspaceScopedModel = Model & {
+  id: ModelId;
+  workspaceId: ModelId | null;
+};
 
 /**
- * Delete all rows of a workspace-scoped table for a given workspace in small, id-ordered batches
- * instead of a single unbounded `DELETE ... WHERE "workspaceId" = X`.
+ * Delete all rows of a workspace-scoped table for a given workspace in small batches instead of
+ * a single unbounded `DELETE ... WHERE "workspaceId" = X`.
  *
  * A single-statement delete on a large table can hold a transaction open for a long time, which
  * blocks `CREATE INDEX CONCURRENTLY` statements run by concurrent migrations. Each iteration here
@@ -169,13 +177,6 @@ const DESTROY_FOR_WORKSPACE_BATCH_SIZE = 1000;
  *
  * Returns the total number of rows deleted.
  */
-// Minimal row shape accepted by `destroyForWorkspaceInBatches`. Using a concrete model type
-// instead of a generic keeps the workspace scoping type-checked without unsafe casts.
-type WorkspaceScopedModel = Model & {
-  id: ModelId;
-  workspaceId: ModelId | null;
-};
-
 export async function destroyForWorkspaceInBatches(
   model: ModelStatic<WorkspaceScopedModel>,
   {
@@ -187,10 +188,12 @@ export async function destroyForWorkspaceInBatches(
   }
 ): Promise<number> {
   let totalDeleted = 0;
+  let rowCount = 0;
 
-  for (;;) {
-    // Select a small batch of ids first, then delete by id. This keeps each statement short
-    // (bounded by `batchSize` rows) instead of locking/deleting the whole table at once.
+  do {
+    // Select a bounded batch of ids first, then delete by id. The select is intentionally
+    // unordered: each batch is deleted before the next select, so any rows will do, and an
+    // ORDER BY would force a top-N sort on tables without a (workspaceId, id) index.
     // `includeDeleted` gives hard-delete semantics on soft-deletable models (soft-deleted rows
     // are swept too); it is ignored by non-soft-deletable models.
     const findOptions: WithIncludeDeleted<
@@ -198,13 +201,13 @@ export async function destroyForWorkspaceInBatches(
     > = {
       attributes: ["id"],
       where: { workspaceId },
-      order: [["id", "ASC"]],
       limit: batchSize,
       includeDeleted: true,
     };
     const rows = await model.findAll(findOptions);
+    rowCount = rows.length;
 
-    if (rows.length === 0) {
+    if (rowCount === 0) {
       break;
     }
 
@@ -220,12 +223,7 @@ export async function destroyForWorkspaceInBatches(
       hardDelete: true,
     };
     totalDeleted += await model.destroy(destroyOptions);
-
-    // Fewer rows than the batch size means we reached the end of the table for this workspace.
-    if (rows.length < batchSize) {
-      break;
-    }
-  }
+  } while (rowCount === batchSize);
 
   return totalDeleted;
 }
