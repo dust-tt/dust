@@ -3316,75 +3316,6 @@ describe("listSpaceUnreadConversationsForUser", () => {
     expect(allConversationIds).toContain(conversationIds[0]);
     expect(allConversationIds).not.toContain(subConversation.sId);
   });
-
-  it("should include a user-initiated fork (depth > 0) in unread lists", async () => {
-    const parentConversation = await ConversationFactory.create(adminAuth, {
-      agentConfigurationId: agents[0].sId,
-      messagesCreatedAt: [dateFromDaysAgo(1)],
-      spaceId: spaceModelIds[0],
-    });
-    const forkedConversation = await ConversationFactory.create(adminAuth, {
-      agentConfigurationId: agents[0].sId,
-      messagesCreatedAt: [dateFromDaysAgo(0)],
-      spaceId: spaceModelIds[0],
-    });
-    await ConversationModel.update(
-      { depth: 1 },
-      {
-        where: {
-          workspaceId: workspace.id,
-          sId: forkedConversation.sId,
-        },
-      }
-    );
-
-    const parentMessages = await MessageModel.findAll({
-      where: {
-        workspaceId: workspace.id,
-        conversationId: parentConversation.id,
-      },
-    });
-    const sourceMessage = parentMessages.find(
-      (m) => m.agentMessageId !== null
-    );
-    assert(sourceMessage, "Expected parent conversation to have an agent message");
-
-    const parentConversationResource = await ConversationResource.fetchById(
-      adminAuth,
-      parentConversation.sId
-    );
-    const forkedConversationResource = await ConversationResource.fetchById(
-      adminAuth,
-      forkedConversation.sId
-    );
-    assert(parentConversationResource && forkedConversationResource);
-
-    await ConversationForkResource.makeNew(adminAuth, {
-      parentConversation: parentConversationResource,
-      childConversation: forkedConversationResource,
-      sourceMessageModelId: sourceMessage.id,
-      branchedAt: new Date(),
-    });
-
-    await ConversationResource.upsertParticipation(userAuth, {
-      conversation: forkedConversationResource,
-      action: "posted",
-      user: userAuth.getNonNullableUser().toJSON(),
-      lastReadAt: null,
-    });
-
-    const userConversations =
-      await ConversationResource.listSpaceUnreadConversationsAndActivityForUser(
-        userAuth,
-        spaceModelIds
-      );
-
-    const allConversationIds = [
-      ...userConversations.unreadConversations,
-      ...userConversations.nonParticipantUnreadConversations,
-    ].map((c) => c.sId);
-    expect(allConversationIds).toContain(forkedConversation.sId);
-  });
 });
 
 describe("Space Handling", () => {
@@ -6665,60 +6596,6 @@ describe("ConversationResource.listConversationsInSpacePaginated", () => {
     const conversationIds = result.conversations.map((c) => c.sId);
     expect(conversationIds).toContain(rootConversation.sId);
     expect(conversationIds).not.toContain(subConversation.sId);
-  });
-
-  it("should include a user-initiated fork (depth > 0) in the paginated list", async () => {
-    const parentConversation = await createConvoWithUpdatedAt(2);
-    const forkedConversation = await createConvoWithUpdatedAt(0);
-    await ConversationModel.update(
-      { depth: 1 },
-      {
-        where: {
-          workspaceId: workspace.id,
-          sId: forkedConversation.sId,
-        },
-      }
-    );
-
-    const parentMessages = await MessageModel.findAll({
-      where: {
-        workspaceId: workspace.id,
-        conversationId: parentConversation.id,
-      },
-    });
-    const sourceMessage = parentMessages.find(
-      (m) => m.agentMessageId !== null
-    );
-    assert(sourceMessage, "Expected parent conversation to have an agent message");
-
-    const parentConversationResource = await ConversationResource.fetchById(
-      adminAuth,
-      parentConversation.sId
-    );
-    const forkedConversationResource = await ConversationResource.fetchById(
-      adminAuth,
-      forkedConversation.sId
-    );
-    assert(parentConversationResource && forkedConversationResource);
-
-    await ConversationForkResource.makeNew(adminAuth, {
-      parentConversation: parentConversationResource,
-      childConversation: forkedConversationResource,
-      sourceMessageModelId: sourceMessage.id,
-      branchedAt: new Date(),
-    });
-
-    const result = await ConversationResource.listConversationsInSpacePaginated(
-      adminAuth,
-      {
-        spaceId: space.sId,
-        pagination: { limit: 10 },
-      }
-    );
-
-    const listedConversationIds = result.conversations.map((c) => c.sId);
-    expect(listedConversationIds).toContain(parentConversation.sId);
-    expect(listedConversationIds).toContain(forkedConversation.sId);
   });
 
   it("should return hasMore: false when no more results", async () => {

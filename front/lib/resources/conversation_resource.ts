@@ -72,7 +72,6 @@ import type {
   Attributes,
   CreationAttributes,
   InferAttributes,
-  Literal,
   Transaction,
   WhereOptions,
 } from "sequelize";
@@ -1923,39 +1922,6 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     return nextWakeupAtByConversationId;
   }
 
-  /**
-   * Builds a `Literal` subquery selecting the ids of conversations that are
-   * genuine agent-spawned sub-conversations: `depth > 0` and NOT registered
-   * as a user-initiated fork in `conversation_forks`.
-   *
-   * User-initiated branches/forks also increment `depth` (see
-   * `createConversationFork` in `forks.ts`), but they are real,
-   * user-facing conversations that should remain discoverable in every
-   * conversation list. Only `run_agent`-spawned sub-conversations, which are
-   * never registered in `conversation_forks`, should stay hidden.
-   *
-   * Meant to be used as the value of an `[Op.notIn]` key on the `id`
-   * attribute, e.g. `id: { [Op.notIn]: <this literal> }`. Returning a plain
-   * `Literal` (rather than a `WhereOptions`/`[Op.or]` shape) keeps every
-   * caller's `where` object a flat `WhereAttributeHash` with no top-level
-   * `Op` keys, matching the existing `depth: { [Op.eq]: 0 }` assignment
-   * pattern and avoiding type-inference issues when that `where` object is
-   * later spread or mutated (e.g. pagination-cursor `updatedAt` handling in
-   * `listConversationsInSpacePaginated`).
-   */
-  private static excludedRunAgentSubConversationIdsLiteral(
-    auth: Authenticator
-  ): Literal {
-    const workspaceId = auth.getNonNullableWorkspace().id;
-
-    return literal(
-      `(SELECT "id" FROM "conversations" WHERE "workspaceId" = ${workspaceId} ` +
-        `AND "depth" > 0 AND "id" NOT IN ` +
-        `(SELECT "childConversationId" FROM "conversation_forks" ` +
-        `WHERE "conversation_forks"."workspaceId" = ${workspaceId}))`
-    );
-  }
-
   static async listSpaceUnreadConversationsAndActivityForUser(
     auth: Authenticator,
     spaceIds: number[]
@@ -1978,9 +1944,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
         where: {
           spaceId: { [Op.in]: spaceIds },
           visibility: { [Op.eq]: "unlisted" },
-          id: {
-            [Op.notIn]: this.excludedRunAgentSubConversationIdsLiteral(auth),
-          },
+          depth: { [Op.eq]: 0 }, // Only fetch root conversations
         },
       }
     );
@@ -2157,12 +2121,10 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     const whereClause: WhereOptions<InferAttributes<ConversationModel>> = {
       ...filterWhere,
       spaceId: spaceModelId,
-      id: {
-        [Op.notIn]: this.excludedRunAgentSubConversationIdsLiteral(auth),
-        ...(restrictToConversationModelIds && {
-          [Op.in]: restrictToConversationModelIds,
-        }),
-      },
+      depth: { [Op.eq]: 0 }, // Only fetch root conversations
+      ...(restrictToConversationModelIds && {
+        id: { [Op.in]: restrictToConversationModelIds },
+      }),
     };
 
     if (pagination.lastValue) {

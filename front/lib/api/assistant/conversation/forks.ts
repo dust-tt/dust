@@ -628,7 +628,10 @@ export async function createConversationFork(
         sId: generateRandomModelSId(),
         title: null,
         visibility: parentConversation.visibility,
-        depth: parentConversation.depth + 1,
+        // Forks are user-facing conversations, not run_agent sub-conversations:
+        // they must keep the parent's depth so depth-based behaviors (space
+        // listing, notifications, action limits) treat them as such.
+        depth: parentConversation.depth,
         triggerId: null,
         spaceId: parentConversation.space?.id ?? null,
         requestedSpaceIds: [...parentConversation.requestedSpaceIds],
