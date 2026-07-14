@@ -17,6 +17,7 @@ import { ProjectMetadataResource } from "@app/lib/resources/project_metadata_res
 import { activationSkill } from "@app/lib/resources/skill/code_defined/global/activation";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
+import { UserProjectPreferencesResource } from "@app/lib/resources/user_project_preferences_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import logger from "@app/logger/logger";
 import type { Result } from "@app/types/shared/result";
@@ -297,6 +298,13 @@ export const joinActivationPodPlugin = createPlugin({
     if (activationResult.isErr()) {
       return activationResult;
     }
+
+    // Star the pod for every member so it surfaces in their sidebar.
+    await UserProjectPreferencesResource.setStarredForUsers(auth, {
+      spaceModelId: pod.id,
+      userModelIds: users.map((u) => u.id),
+      isStarred: true,
+    });
 
     const skillsResult = await setPodDefaultSkills(auth, pod, selectedSkillIds);
     if (skillsResult.isErr()) {
