@@ -63,8 +63,21 @@ export function PreviewableCitation({
   const sendNotification = useSendNotification();
   const sidePanel = useContext(ConversationSidePanelContext);
 
+  // Interactive content (Frames) only opens in the side panel, like the
+  // generated-file cards: the preview dialog cannot render it, so never route
+  // it there. The panel requires a fileId: use the one resolved upstream when
+  // available (zero fetch), otherwise resolve it from the scoped path on
+  // click. Without any identifier (or without the panel provider), the
+  // citation cannot open anything.
+  const isInteractive = isInteractiveContentType(contentType);
+  const canOpen =
+    !isInteractive || (sidePanel != null && (!!fileId || !!filePath));
+
   const handleClick = async () => {
-    if (isInteractiveContentType(contentType) && sidePanel) {
+    if (isInteractive) {
+      if (sidePanel == null) {
+        return;
+      }
       try {
         const resolvedFileId =
           fileId ?? (filePath ? await resolveFileIdFromPath(filePath) : null);
@@ -102,25 +115,33 @@ export function PreviewableCitation({
       ) : (
         title
       ));
+    const inlineContent = (
+      <>
+        <Icon visual={FileIcon} size="xs" className="shrink-0 self-center" />
+        <span className="truncate">{title}</span>
+      </>
+    );
 
     return (
       <Tooltip
         tooltipTriggerAsChild
         trigger={
-          <Hoverable variant="highlight" asChild>
-            <button
-              type="button"
-              onClick={handleClick}
-              className="inline-flex max-w-full items-baseline gap-1 align-baseline"
-            >
-              <Icon
-                visual={FileIcon}
-                size="xs"
-                className="shrink-0 self-center"
-              />
-              <span className="truncate">{title}</span>
-            </button>
-          </Hoverable>
+          canOpen ? (
+            <Hoverable variant="highlight" asChild>
+              <button
+                type="button"
+                onClick={handleClick}
+                className="inline-flex max-w-full items-baseline gap-1 align-baseline"
+              >
+                {inlineContent}
+              </button>
+            </Hoverable>
+          ) : (
+            // No click affordance when the citation cannot open anything.
+            <span className="inline-flex max-w-full items-baseline gap-1 align-baseline">
+              {inlineContent}
+            </span>
+          )
         }
         label={inlineTooltipLabel}
       />

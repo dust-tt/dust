@@ -1,15 +1,34 @@
 import { ConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
 import { FilePreviewProvider } from "@app/components/assistant/conversation/FilePreviewContext";
+import { makeFileAttachment } from "@app/lib/api/assistant/conversation/attachments";
 import {
   getFilePreviewDirectivePaths,
   getFilePreviewMarkdownDirective,
 } from "@app/lib/markdown/file_preview";
 import { LightWorkspaceFactory } from "@app/tests/utils/LightWorkspaceFactory";
+import type { ConversationAttachmentType } from "@app/types/api/assistant/conversation/attachments";
 import { DUST_FILE_ID_HEADER, frameContentType } from "@app/types/files";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { filePreviewDirective, getFilePreviewPlugin } from "./FilePreviewBlock";
+import type { FilePreviewLookupContextValue } from "./FilePreviewBlock";
+import {
+  FilePreviewLookupContext,
+  filePreviewDirective,
+  getFilePreviewPlugin,
+} from "./FilePreviewBlock";
+
+let attachmentsMock: ConversationAttachmentType[] = [];
+
+vi.mock("@app/hooks/conversations/useConversationAttachments", () => ({
+  useConversationAttachments: () => ({
+    attachments: attachmentsMock,
+    isConversationAttachmentsLoading: false,
+    isConversationAttachmentsError: undefined,
+    mutateConversationAttachments: vi.fn(),
+  }),
+}));
 
 const mockOwner = LightWorkspaceFactory.build({
   sId: "w_test_ws",
@@ -209,5 +228,172 @@ describe("getFilePreviewPlugin", () => {
     render(<FilePreview path="conversation-c1/exports/data.csv" />);
 
     expect(screen.getByText("data.csv")).toBeInTheDocument();
+  });
+});
+
+describe("FilePreviewBlock interactive file resolution", () => {
+  const openPanel = vi.fn();
+
+  beforeEach(() => {
+    openPanel.mockClear();
+    attachmentsMock = [];
+  });
+
+  function renderWithLookup({
+    children,
+    generatedFiles,
+  }: {
+    children: ReactNode;
+    generatedFiles: FilePreviewLookupContextValue["generatedFiles"];
+  }) {
+    return render(
+      <FilePreviewProvider owner={mockOwner}>
+        <ConversationSidePanelContext.Provider
+          value={{
+            closePanel: vi.fn(),
+            currentPanel: undefined,
+            data: undefined,
+            onPanelClosed: vi.fn(),
+            openPanel,
+            panelRef: { current: null },
+            setPanelRef: vi.fn(),
+            setVirtuosoMsg: vi.fn(),
+            togglePanel: vi.fn(),
+            virtuosoMsg: null,
+          }}
+        >
+          <FilePreviewLookupContext.Provider
+            value={{
+              conversationId: "c1",
+              generatedFiles,
+              owner: mockOwner,
+            }}
+          >
+            {children}
+          </FilePreviewLookupContext.Provider>
+        </ConversationSidePanelContext.Provider>
+      </FilePreviewProvider>
+    );
+  }
+
+  it("opens a frame in the side panel, even without a directive contentType", () => {
+    const FilePreview = getFilePreviewPlugin();
+
+    renderWithLookup({
+      children: (
+        <FilePreview
+          path="conversation-c1/HappyTuesday.tsx"
+          title="HappyTuesday.tsx"
+        />
+      ),
+      generatedFiles: [
+        {
+          contentType: frameContentType,
+          fileId: "fil_frame1",
+          title: "HappyTuesday.tsx",
+        },
+      ],
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "HappyTuesday.tsx" }));
+
+    expect(openPanel).toHaveBeenCalledWith({
+      type: "interactive_content",
+      fileId: "fil_frame1",
+    });
+    // Resolved in memory: no path-resolution request needed.
+    expect(mockClientFetch).not.toHaveBeenCalled();
+  });
+
+  it("resolves a frame from earlier messages through conversation attachments", () => {
+    attachmentsMock = [
+      makeFileAttachment({
+        contentType: frameContentType,
+        fileId: "fil_from_attachments",
+        hideFromUser: false,
+        isInProjectContext: false,
+        snippet: null,
+        source: "agent",
+        title: "HappyTuesday.tsx",
+      }),
+    ];
+    const FilePreview = getFilePreviewPlugin();
+
+    renderWithLookup({
+      children: (
+        <FilePreview
+          path="conversation-c1/HappyTuesday.tsx"
+          title="HappyTuesday.tsx"
+        />
+      ),
+      generatedFiles: [],
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "HappyTuesday.tsx" }));
+
+    expect(openPanel).toHaveBeenCalledWith({
+      type: "interactive_content",
+      fileId: "fil_from_attachments",
+    });
+  });
+
+  it("falls back to path resolution when neither the message nor attachments resolve the frame", async () => {
+    const FilePreview = getFilePreviewPlugin();
+    mockClientFetch.mockResolvedValue(
+      new Response(null, {
+        status: 200,
+        headers: { [DUST_FILE_ID_HEADER]: "fil_resolved_from_path" },
+      })
+    );
+
+    renderWithLookup({
+      children: (
+        <FilePreview
+          path="conversation-c1/Unknown.tsx"
+          title="Unknown.tsx"
+          contentType={frameContentType}
+        />
+      ),
+      generatedFiles: [],
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Unknown.tsx" }));
+
+    await waitFor(() => {
+      expect(openPanel).toHaveBeenCalledWith({
+        type: "interactive_content",
+        fileId: "fil_resolved_from_path",
+      });
+    });
+    expect(mockClientFetch).toHaveBeenCalledWith(
+      "/api/w/w_test_ws/files/path/conversation-c1/Unknown.tsx?metadata=1",
+      { method: "HEAD" }
+    );
+  });
+
+  it("keeps the preview dialog for non-interactive files", async () => {
+    const FilePreview = getFilePreviewPlugin();
+    // The dialog's content fetch is irrelevant here (clearAllMocks does not
+    // drop resolved values set by earlier tests): pin a 404 so the viewer
+    // renders its error state instead of parsing a fake document.
+    mockClientFetch.mockResolvedValue(new Response(null, { status: 404 }));
+
+    renderWithLookup({
+      children: (
+        <FilePreview
+          path="conversation-c1/report.pdf"
+          title="report.pdf"
+          contentType="application/pdf"
+        />
+      ),
+      generatedFiles: [],
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "report.pdf" }));
+
+    expect(openPanel).not.toHaveBeenCalled();
+    expect(
+      await screen.findByRole("dialog", { name: "report.pdf" })
+    ).toBeInTheDocument();
   });
 });

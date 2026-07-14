@@ -38,6 +38,7 @@ import {
   CitationsContext,
   CiteBlock,
 } from "@app/components/markdown/CiteBlock";
+import { FilePreviewLookupContext } from "@app/components/markdown/FilePreviewBlock";
 import type { MCPReferenceCitation } from "@app/components/markdown/MCPReferenceCitation";
 import { getQuickReplyPlugin } from "@app/components/markdown/QuickReplyBlock";
 import { getToolSetupPlugin } from "@app/components/markdown/tool/tool";
@@ -1348,6 +1349,17 @@ function AgentMessageContent({
     [references, updateActiveReferences]
   );
 
+  // Lets inline `:preview_file` references resolve to their FileResource so
+  // interactive files (Frames) open in the side panel (see FilePreviewBlock).
+  const filePreviewLookupValue = useMemo(
+    () => ({
+      conversationId,
+      generatedFiles: agentMessage.generatedFiles,
+      owner,
+    }),
+    [conversationId, agentMessage.generatedFiles, owner]
+  );
+
   const handleToolSetupComplete = useCallback(
     (toolId: string) => {
       void postFollowUp(toolId);
@@ -1519,16 +1531,18 @@ function AgentMessageContent({
           agentMessage.content !== "" &&
           agentMessage.streaming.agentState === "done" && (
             <div>
-              <AgentMessageMarkdown
-                content={sanitizeVisualizationContent(agentMessage.content)}
-                owner={owner}
-                streamingState={
-                  agentMessage.status === "cancelled" ? "cancelled" : "none"
-                }
-                isLastMessage={isLastMessage}
-                additionalMarkdownComponents={additionalMarkdownComponents}
-                additionalMarkdownPlugins={additionalMarkdownPlugins}
-              />
+              <FilePreviewLookupContext.Provider value={filePreviewLookupValue}>
+                <AgentMessageMarkdown
+                  content={sanitizeVisualizationContent(agentMessage.content)}
+                  owner={owner}
+                  streamingState={
+                    agentMessage.status === "cancelled" ? "cancelled" : "none"
+                  }
+                  isLastMessage={isLastMessage}
+                  additionalMarkdownComponents={additionalMarkdownComponents}
+                  additionalMarkdownPlugins={additionalMarkdownPlugins}
+                />
+              </FilePreviewLookupContext.Provider>
             </div>
           )}
         {generatedFiles.length > 0 && (

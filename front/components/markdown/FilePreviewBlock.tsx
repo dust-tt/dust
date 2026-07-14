@@ -1,4 +1,5 @@
 import { PreviewableCitation } from "@app/components/assistant/conversation/attachment/PreviewableCitation";
+import { useInteractiveFileResolution } from "@app/hooks/conversations/useInteractiveFileResolution";
 import {
   FILE_PREVIEW_COMPONENT_NAME,
   FILE_PREVIEW_DIRECTIVE_NAME,
@@ -6,8 +7,25 @@ import {
   getFilePreviewContentType,
   getFilePreviewTypeLabel,
 } from "@app/lib/markdown/file_preview";
+import type { LightAgentMessageType } from "@app/types/assistant/conversation";
 import { isString } from "@app/types/shared/utils/general";
+import type { LightWorkspaceType } from "@app/types/user";
+import { createContext, useContext } from "react";
 import { visit } from "unist-util-visit";
+
+export interface FilePreviewLookupContextValue {
+  owner: LightWorkspaceType;
+  conversationId: string | null;
+  generatedFiles: LightAgentMessageType["generatedFiles"];
+}
+
+// Message-scoped data used to resolve inline file references to their
+// FileResource, so interactive files (Frames) open in the side panel instead of
+// the preview dialog (which cannot render them). Mirrors CitationsContext: the
+// provider lives in AgentMessage. Null outside conversation messages, where
+// inline previews keep the plain dialog behavior.
+export const FilePreviewLookupContext =
+  createContext<FilePreviewLookupContextValue | null>(null);
 
 interface FilePreviewBlockProps {
   contentType?: string;
@@ -43,6 +61,8 @@ export function FilePreviewBlock({
   path,
   title,
 }: FilePreviewBlockProps) {
+  const lookup = useContext(FilePreviewLookupContext);
+
   if (!path) {
     return null;
   }
@@ -52,15 +72,84 @@ export function FilePreviewBlock({
     contentType,
     fileName,
   });
+
+  if (lookup) {
+    return (
+      <ResolvedFilePreviewBlock
+        contentType={fileContentType}
+        fileName={fileName}
+        lookup={lookup}
+        path={path}
+      />
+    );
+  }
+
+  return (
+    <FilePreviewCitation
+      contentType={fileContentType}
+      fileName={fileName}
+      path={path}
+    />
+  );
+}
+
+interface ResolvedFilePreviewBlockProps {
+  contentType: string;
+  fileName: string;
+  lookup: FilePreviewLookupContextValue;
+  path: string;
+}
+
+function ResolvedFilePreviewBlock({
+  contentType,
+  fileName,
+  lookup,
+  path,
+}: ResolvedFilePreviewBlockProps) {
+  const resolved = useInteractiveFileResolution({
+    contentType,
+    conversationId: lookup.conversationId,
+    fileName,
+    generatedFiles: lookup.generatedFiles,
+    owner: lookup.owner,
+    path,
+  });
+
+  return (
+    <FilePreviewCitation
+      // The resolved content type is authoritative: the directive may omit it,
+      // in which case the filename-derived type is not the interactive one.
+      contentType={resolved?.contentType ?? contentType}
+      fileId={resolved?.fileId}
+      fileName={fileName}
+      path={path}
+    />
+  );
+}
+
+interface FilePreviewCitationProps {
+  contentType: string;
+  fileId?: string;
+  fileName: string;
+  path: string;
+}
+
+function FilePreviewCitation({
+  contentType,
+  fileId,
+  fileName,
+  path,
+}: FilePreviewCitationProps) {
   const typeLabel = getFilePreviewTypeLabel({
-    contentType: fileContentType,
+    contentType,
     fileName,
   });
 
   return (
     <PreviewableCitation
+      fileId={fileId}
       filePath={path}
-      contentType={fileContentType}
+      contentType={contentType}
       title={fileName}
       description={typeLabel}
       variant="inline"
