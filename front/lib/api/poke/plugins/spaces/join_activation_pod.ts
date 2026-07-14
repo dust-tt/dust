@@ -1,7 +1,8 @@
 import {
   createActivationTrigger,
-  ensureActivationPodView,
-} from "@app/lib/api/assistant/activation";
+  emitActivationEvent,
+  getOrCreateActivationWebhookSourceView,
+} from "@app/lib/api/activation/trigger";
 import { DustFileSystem } from "@app/lib/api/file_system";
 import { writeCanonicalFileContent } from "@app/lib/api/files/file_system_ops";
 import { createPlugin } from "@app/lib/api/poke/types";
@@ -167,6 +168,13 @@ export const joinActivationPodPlugin = createPlugin({
           "Comma-separated sId(s) of the workspace member(s) to add to the " +
           "Activation Pod as members.",
       },
+      podName: {
+        type: "string",
+        label: "Pod name",
+        description:
+          "Optional. Name for the Activation Pod. Defaults to " +
+          `"<creator>${ACTIVATION_POD_NAME_PREFIX}" if left blank.`,
+      },
       defaultSkillIds: {
         type: "enum",
         label: "Default skills",
@@ -207,7 +215,7 @@ export const joinActivationPodPlugin = createPlugin({
   execute: async (
     auth,
     _resource,
-    { userIds, defaultSkillIds, agentsMdInstructions }
+    { userIds, podName: podNameInput, defaultSkillIds, agentsMdInstructions }
   ) => {
     const requestedUserIds = parseUserIds(userIds);
     if (requestedUserIds.length === 0) {
@@ -246,7 +254,11 @@ export const joinActivationPodPlugin = createPlugin({
     }
 
     const [creator, ...otherUsers] = users;
-    const podName = activationPodNameForCreator(creator, otherUsers);
+    const trimmedPodName = podNameInput?.trim();
+    const podName =
+      trimmedPodName && trimmedPodName.length > 0
+        ? trimmedPodName
+        : activationPodNameForCreator(creator, otherUsers);
     const podLink = (space: SpaceResource) =>
       `/poke/${workspace.sId}/spaces/${space.sId}`;
 
@@ -306,37 +318,40 @@ export const joinActivationPodPlugin = createPlugin({
       workspace.sId
     );
 
-    let activationTriggerCreated = false;
-    const podViewResult = await ensureActivationPodView(adminAuth, pod);
+    const podViewResult = await getOrCreateActivationWebhookSourceView(
+      adminAuth,
+      pod
+    );
     if (podViewResult.isErr()) {
-      joinActivationPodLogger.error(
-        {
-          action: "join_activation_pod",
-          spaceId: pod.sId,
-          workspaceId: workspace.sId,
-          error: podViewResult.error.message,
-        },
-        "Failed to ensure Activation Pod webhook view"
+      return new Err(
+        new Error(
+          `Failed to get or create Activation Pod webhook view: ${podViewResult.error.message}`
+        )
       );
-    } else {
-      const triggerResult = await createActivationTrigger(podMemberAuth, {
-        pod,
-        creator,
-        podView: podViewResult.value,
-      });
-      if (triggerResult.isErr()) {
-        joinActivationPodLogger.error(
-          {
-            action: "join_activation_pod",
-            spaceId: pod.sId,
-            workspaceId: workspace.sId,
-            error: triggerResult.error.message,
-          },
-          "Failed to create Activation Pod trigger"
-        );
-      } else {
-        activationTriggerCreated = true;
-      }
+    }
+
+    const triggerResult = await createActivationTrigger(podMemberAuth, {
+      pod,
+      creator,
+      podView: podViewResult.value,
+    });
+    if (triggerResult.isErr()) {
+      return new Err(
+        new Error(
+          `Failed to create Activation Pod trigger: ${triggerResult.error.message}`
+        )
+      );
+    }
+
+    // Fire the activation event so the trigger kicks off the initial conversation
+    // as soon as the pod is provisioned.
+    const emitResult = await emitActivationEvent(adminAuth, pod);
+    if (emitResult.isErr()) {
+      return new Err(
+        new Error(
+          `Failed to emit Activation Pod event: ${emitResult.error.message}`
+        )
+      );
     }
 
     joinActivationPodLogger.info(
@@ -345,7 +360,6 @@ export const joinActivationPodPlugin = createPlugin({
         created: true,
         defaultSkills: skillsResult.value.skillNames,
         agentsMdWritten: agentsMdResult.value.written,
-        activationTriggerCreated,
         spaceId: pod.sId,
         userIds: users.map((u) => u.sId),
         workspaceId: workspace.sId,
@@ -358,7 +372,8 @@ export const joinActivationPodPlugin = createPlugin({
       value:
         `Created Activation Pod with 1 editor and ${otherUsers.length} member(s).` +
         formatDefaultSkillsSuffix(skillsResult.value.skillNames) +
-        formatAgentsMdSuffix(agentsMdResult.value.written),
+        formatAgentsMdSuffix(agentsMdResult.value.written) +
+        " Triggered the activation conversation.",
       link: podLink(pod),
       linkText: "Open Pod in Poke",
     });

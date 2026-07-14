@@ -14,17 +14,13 @@ import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
+import { randomUUID } from "crypto";
 
 // A single workspace-level webhook source is shared by all Activation Pods.
-export const ACTIVATION_WEBHOOK_SOURCE_NAME = "Activation";
-
+const ACTIVATION_WEBHOOK_SOURCE_NAME = "Activation";
 const ACTIVATION_POD_ID_FIELD = "podId";
-
-export const ACTIVATION_CUSTOM_PROMPT =
-  "Welcome me to my new Pod and recommend the next best action to get more value from Dust." +
-  " Also, pin a frame to the Pod that recommends skills, features, use cases, etc for me to explore" +
-  " and ensure that it is small enough so all the content is visible without scrolling.";
-
+const ACTIVATION_TRIGGER_CUSTOM_PROMPT = `Run the activation workflow.
+`;
 function activationTriggerFilter(podSId: string): string {
   return `(eq "${ACTIVATION_POD_ID_FIELD}" "${podSId}")`;
 }
@@ -33,24 +29,44 @@ function activationEventBody(podSId: string): Record<string, unknown> {
   return { [ACTIVATION_POD_ID_FIELD]: podSId };
 }
 
-export async function ensureActivationPodView(
+// Fetches the shared Activation webhook source, creating it if it does not yet
+// exist for the workspace. Runs under an admin authenticator because creating a
+// webhook source requires system space administration.
+async function getOrCreateActivationWebhookSource(
+  adminAuth: Authenticator
+): Promise<WebhookSourceResource> {
+  const existing = await WebhookSourceResource.fetchByName(
+    adminAuth,
+    ACTIVATION_WEBHOOK_SOURCE_NAME
+  );
+  if (existing) {
+    return existing;
+  }
+
+  return WebhookSourceResource.makeNew(
+    adminAuth,
+    {
+      workspaceId: adminAuth.getNonNullableWorkspace().id,
+      name: ACTIVATION_WEBHOOK_SOURCE_NAME,
+      urlSecret: randomUUID().replace(/-/g, ""),
+      secret: null,
+      signatureHeader: null,
+      signatureAlgorithm: null,
+      provider: null,
+      subscribedEvents: [],
+    },
+    {
+      description: "Fires nudges to users in Activation Pods",
+    }
+  );
+}
+
+export async function getOrCreateActivationWebhookSourceView(
   adminAuth: Authenticator,
   pod: SpaceResource
 ): Promise<Result<WebhookSourcesViewResource, Error>> {
   try {
-    const source = await WebhookSourceResource.fetchByName(
-      adminAuth,
-      ACTIVATION_WEBHOOK_SOURCE_NAME
-    );
-    if (!source) {
-      return new Err(
-        new Error(
-          `Webhook source "${ACTIVATION_WEBHOOK_SOURCE_NAME}" is not provisioned ` +
-            "for this workspace. Create it via the webhook sources admin UI (or " +
-            "the triggers seed in local dev) before provisioning Activation Pods."
-        )
-      );
-    }
+    const source = await getOrCreateActivationWebhookSource(adminAuth);
 
     const systemView =
       await WebhookSourcesViewResource.getWebhookSourceViewForSystemSpace(
@@ -63,11 +79,16 @@ export async function ensureActivationPodView(
       );
     }
 
-    const existingViews = await WebhookSourcesViewResource.listByWebhookSource(
+    // Scope the lookup to the pod's own space (idempotent on retries, and avoids
+    // loading views for other pods — some of which may reference soft-deleted
+    // spaces that would fail to resolve).
+    const existingPodViews = await WebhookSourcesViewResource.listBySpace(
       adminAuth,
-      systemView.webhookSourceId
+      pod
     );
-    const existingPodView = existingViews.find((v) => v.space.sId === pod.sId);
+    const existingPodView = existingPodViews.find(
+      (v) => v.webhookSourceId === systemView.webhookSourceId
+    );
     if (existingPodView) {
       return new Ok(existingPodView);
     }
@@ -85,6 +106,10 @@ export async function ensureActivationPodView(
 
 // Creates the pod's user-owned activation trigger. Runs under the creator's
 // authenticator so the trigger is owned by the user.
+//
+// TODO(activation): creating the trigger on the user's behalf is temporary for
+// testing. We will replace this with a consent path where the user explicitly
+// opts in before we provision a trigger owned by them.
 export async function createActivationTrigger(
   podMemberAuth: Authenticator,
   {
@@ -105,7 +130,7 @@ export async function createActivationTrigger(
   const triggerRes = await TriggerResource.makeNew(podMemberAuth, {
     workspaceId: podMemberAuth.getNonNullableWorkspace().id,
     agentConfigurationId: GLOBAL_AGENTS_SID.DUST,
-    name: "Activation kickoff",
+    name: "Activation - " + pod.name,
     kind: "webhook",
     status: "enabled",
     configuration: {
@@ -113,11 +138,15 @@ export async function createActivationTrigger(
       filter: activationTriggerFilter(pod.sId),
     },
     naturalLanguageDescription: null,
-    customPrompt: ACTIVATION_CUSTOM_PROMPT,
+    customPrompt: ACTIVATION_TRIGGER_CUSTOM_PROMPT,
     editor: creator.id,
     webhookSourceViewId: podView.id,
-    executionPerDayLimitOverride: 1,
+    executionPerDayLimitOverride: 5,
     executionMode: "fair_use",
+    // TODO(activation): "user" is not strictly accurate since the trigger is
+    // provisioned on the user's behalf rather than by them. This is temporary:
+    // once the consent path lands (see above) the trigger is genuinely
+    // user-owned, making "user" correct.
     origin: "user",
     spaceId: spaceIdRes.value,
   });
