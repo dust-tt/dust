@@ -158,9 +158,9 @@ const DESTROY_FOR_WORKSPACE_BATCH_SIZE = 1000;
  * instead of a single unbounded `DELETE ... WHERE "workspaceId" = X`.
  *
  * A single-statement delete on a large table can hold a transaction open for a long time, which
- * blocks `CREATE INDEX CONCURRENTLY` statements run by concurrent migrations (see
- * dust-tt/tasks#9564). Each iteration here selects a bounded batch of ids and deletes them in a
- * short-lived statement, so locks are never held for long.
+ * blocks `CREATE INDEX CONCURRENTLY` statements run by concurrent migrations. Each iteration here
+ * selects a bounded batch of ids and deletes them in a short-lived statement, so locks are never
+ * held for long.
  *
  * Works on any model with a numeric `id` primary key and a `workspaceId` column (both
  * `WorkspaceAwareModel` and plain `BaseModel` tables that carry a `workspaceId`). For
@@ -169,17 +169,20 @@ const DESTROY_FOR_WORKSPACE_BATCH_SIZE = 1000;
  *
  * Returns the total number of rows deleted.
  */
-export async function destroyForWorkspaceInBatches<
-  M extends Model & { id: ModelId },
->(
-  model: ModelStatic<M>,
+// Minimal row shape accepted by `destroyForWorkspaceInBatches`. Using a concrete model type
+// instead of a generic keeps the workspace scoping type-checked without unsafe casts.
+type WorkspaceScopedModel = Model & {
+  id: ModelId;
+  workspaceId: ModelId | null;
+};
+
+export async function destroyForWorkspaceInBatches(
+  model: ModelStatic<WorkspaceScopedModel>,
   {
     workspaceId,
-    where,
     batchSize = DESTROY_FOR_WORKSPACE_BATCH_SIZE,
   }: {
     workspaceId: ModelId;
-    where?: WhereOptions<Attributes<M>>;
     batchSize?: number;
   }
 ): Promise<number> {
@@ -188,30 +191,35 @@ export async function destroyForWorkspaceInBatches<
   for (;;) {
     // Select a small batch of ids first, then delete by id. This keeps each statement short
     // (bounded by `batchSize` rows) instead of locking/deleting the whole table at once.
-    const rows = await model.findAll({
+    // `includeDeleted` gives hard-delete semantics on soft-deletable models (soft-deleted rows
+    // are swept too); it is ignored by non-soft-deletable models.
+    const findOptions: WithIncludeDeleted<
+      FindOptions<Attributes<WorkspaceScopedModel>>
+    > = {
       attributes: ["id"],
-      where: { ...where, workspaceId } as WhereOptions<Attributes<M>>,
+      where: { workspaceId },
       order: [["id", "ASC"]],
       limit: batchSize,
-      // Hard-delete semantics on soft-deletable models: include soft-deleted rows in the sweep.
-      // This option is ignored by non-soft-deletable models.
       includeDeleted: true,
-    } as FindOptions<Attributes<M>>);
+    };
+    const rows = await model.findAll(findOptions);
 
     if (rows.length === 0) {
       break;
     }
 
-    const deletedCount = await model.destroy({
+    // `hardDelete` gives hard-delete semantics on soft-deletable models; it is ignored by
+    // non-soft-deletable models.
+    const destroyOptions: WithHardDelete<
+      DestroyOptions<Attributes<WorkspaceScopedModel>>
+    > = {
       where: {
         id: { [Op.in]: rows.map((r) => r.id) },
         workspaceId,
-      } as WhereOptions<Attributes<M>>,
-      // Hard-delete semantics on soft-deletable models; ignored by non-soft-deletable models.
+      },
       hardDelete: true,
-    } as DestroyOptions<Attributes<M>>);
-
-    totalDeleted += deletedCount;
+    };
+    totalDeleted += await model.destroy(destroyOptions);
 
     // Fewer rows than the batch size means we reached the end of the table for this workspace.
     if (rows.length < batchSize) {

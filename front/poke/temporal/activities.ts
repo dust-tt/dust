@@ -879,9 +879,7 @@ export async function deleteWorkspaceUserMetadataActivity({
     return;
   }
 
-  // Delete all workspace-scoped user metadata. Batched: these tables grow with user count and an
-  // unbounded DELETE can hold a long-lived transaction that blocks concurrent
-  // `CREATE INDEX CONCURRENTLY` migrations (see dust-tt/tasks#9564).
+  // Delete all workspace-scoped user metadata. Batched: these tables grow with user count.
   const deletedCount = await destroyForWorkspaceInBatches(UserMetadataModel, {
     workspaceId: workspace.id,
   });

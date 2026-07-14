@@ -11,8 +11,8 @@ import {
   RunModel,
   RunUsageModel,
 } from "@app/lib/resources/storage/models/runs";
-import { destroyForWorkspaceInBatches } from "@app/lib/resources/storage/wrappers/workspace_models";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
+import { destroyForWorkspaceInBatches } from "@app/lib/resources/storage/wrappers/workspace_models";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
 import { getStatsDClient } from "@app/lib/utils/statsd";
 import logger from "@app/logger/logger";
@@ -296,12 +296,8 @@ export class RunResource extends BaseResource<RunModel> {
   static async deleteAllForWorkspace(auth: Authenticator) {
     const workspace = auth.getNonNullableWorkspace();
 
-    // Both `runs` and `run_usages` can be very large for old workspaces. Delete them in small
-    // id-ordered batches so no single statement holds a long-lived transaction that would block
-    // concurrent `CREATE INDEX CONCURRENTLY` migrations (see dust-tt/tasks#9564).
-    // `run_usages` rows carry their own `workspaceId`, so they can be swept directly without the
-    // previous unbounded `runId IN (SELECT id FROM runs ...)` subselect. They must go first
-    // because of the FK on `runId`.
+    // Batched: both tables can be very large for old workspaces. `run_usages` carries its own
+    // `workspaceId` so it is swept directly; it must go first because of its FK on `runId`.
     await destroyForWorkspaceInBatches(RunUsageModel, {
       workspaceId: workspace.id,
     });

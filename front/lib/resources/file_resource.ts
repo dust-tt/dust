@@ -463,10 +463,8 @@ export class FileResource extends BaseResource<FileModel> {
       where: { workspaceId },
     });
 
-    // Delete the (potentially very large) `files` table in small batches instead of a single
-    // unbounded DELETE. A single-statement delete on a large workspace can hold a transaction
-    // open for a long time, which blocks `CREATE INDEX CONCURRENTLY` statements run by other
-    // migrations (see dust-tt/tasks#9564).
+    // Batched: `files` can be very large and a single unbounded DELETE blocks concurrent
+    // migrations.
     return destroyForWorkspaceInBatches(this.model, { workspaceId });
   }
 
