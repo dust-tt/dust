@@ -56,12 +56,11 @@ export const PRUNING_TARGET_CONTEXT_UTILIZATION = 0.6;
  * pruningBudget), drop old interactions entirely (never the current one), force pruning into the
  * protected floor, then force dropping past the protected floor.
  *
- * pruneToolResults and dropInteractionsToFit are each called twice, once with their normal floor
- * and once with a floor of 0. This is safe because both floors work off the CURRENT state: a
- * message pruneToolResults already pruned is already at the placeholder size, so pruning it
- * again would save nothing and its own eligibility check excludes it, and an interaction
- * dropInteractionsToFit already dropped is simply gone from the array, so there's nothing left
- * for the second call to reconsider. Each call only ever reaches further than the one before it.
+ * pruneToolResults and dropInteractionsToFit each run twice, first with their normal floor and
+ * then with a floor of 0. The second call never conflicts with the first. An already-pruned
+ * message sits at placeholder size, so re-pruning it saves nothing and the eligibility check
+ * skips it. An already-dropped interaction is gone from the array, so there is nothing left to
+ * reconsider. The second call can only ever reach further than the first.
  */
 function pruneConversationToBudget(
   interactions: InteractionWithTokens[],
@@ -78,6 +77,11 @@ function pruneConversationToBudget(
   { interactions: InteractionWithTokens[]; prunedContext: boolean },
   Error
 > {
+  // An empty conversation trivially fits, and the layers below assume at least one interaction.
+  if (interactions.length === 0) {
+    return new Ok({ interactions, prunedContext: false });
+  }
+
   // Layer 1: proactive pruning, within the protected floor, up to pruningBudget.
   let pruned = pruneToolResults(interactions, {
     maxTokens: pruningBudget,
@@ -91,16 +95,17 @@ function pruneConversationToBudget(
   if (totalTokens > budgetForInteractions) {
     const currentInteraction = pruned[pruned.length - 1];
     const previousBefore = pruned.slice(0, -1);
-    const previousAfter = dropInteractionsToFit(
-      previousBefore,
-      budgetForInteractions - getInteractionTokenCount(currentInteraction),
-      PREVIOUS_INTERACTIONS_TO_PRESERVE
-    );
+    const previousAfter = dropInteractionsToFit(previousBefore, {
+      maxTokens:
+        budgetForInteractions - getInteractionTokenCount(currentInteraction),
+      interactionsToPreserve: PREVIOUS_INTERACTIONS_TO_PRESERVE,
+      batchToCheckpoint: true,
+    });
     if (previousAfter !== previousBefore) {
       prunedContext = true;
+      pruned = [...previousAfter, currentInteraction];
+      totalTokens = sumInteractionTokens(pruned);
     }
-    pruned = [...previousAfter, currentInteraction];
-    totalTokens = sumInteractionTokens(pruned);
   }
 
   // Layer 3: reaching here means layer 2 dropped every previous interaction it was allowed to,
@@ -111,17 +116,21 @@ function pruneConversationToBudget(
       { ...logDetails, totalTokens, budgetForInteractions },
       "Dropped every eligible previous interaction; still over budget, forcing floor pruning."
     );
+    const beforeFloorPruning = pruned;
     pruned = pruneToolResults(pruned, {
       maxTokens: budgetForInteractions,
       toolResultsToPreserve: 0,
     });
-    prunedContext = true;
+    if (pruned !== beforeFloorPruning) {
+      prunedContext = true;
+    }
     totalTokens = sumInteractionTokens(pruned);
   }
 
   // Layer 4: still over budget with every tool result already at placeholder size. Drop previous
   // interactions past PREVIOUS_INTERACTIONS_TO_PRESERVE, down to the current interaction alone
-  // if needed.
+  // if needed. Minimal drops here, not batched: the head moves on this call regardless, and the
+  // interactions a batched over-drop would additionally erase are the most recent ones.
   if (totalTokens > budgetForInteractions) {
     logger.warn(
       { ...logDetails, totalTokens, budgetForInteractions },
@@ -129,16 +138,17 @@ function pruneConversationToBudget(
     );
     const currentInteraction = pruned[pruned.length - 1];
     const previousBefore = pruned.slice(0, -1);
-    const previousAfter = dropInteractionsToFit(
-      previousBefore,
-      budgetForInteractions - getInteractionTokenCount(currentInteraction),
-      0
-    );
+    const previousAfter = dropInteractionsToFit(previousBefore, {
+      maxTokens:
+        budgetForInteractions - getInteractionTokenCount(currentInteraction),
+      interactionsToPreserve: 0,
+      batchToCheckpoint: false,
+    });
     if (previousAfter !== previousBefore) {
       prunedContext = true;
+      pruned = [...previousAfter, currentInteraction];
+      totalTokens = sumInteractionTokens(pruned);
     }
-    pruned = [...previousAfter, currentInteraction];
-    totalTokens = sumInteractionTokens(pruned);
   }
 
   // Last resort exhausted: even the current interaction alone doesn't fit.

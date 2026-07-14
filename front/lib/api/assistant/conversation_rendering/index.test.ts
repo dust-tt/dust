@@ -602,6 +602,28 @@ describe("renderConversationForModel", () => {
     }
   });
 
+  it("handles an empty conversation gracefully even when the budget is already negative", async () => {
+    // Regression: baseTokens (prompt + tools + margin) exceeding allowedTokenCount makes the
+    // interactions budget negative. With no interactions at all, the escalation layers used to
+    // dereference the last interaction of an empty array and throw instead of returning an Err.
+    vi.mocked(renderAllMessages).mockResolvedValue([]);
+    mockTokenCounter({ byContains: {} });
+
+    const res = await renderConversationForModel(auth, {
+      conversation: createConversation(),
+      model,
+      prompt: "PROMPT",
+      enabledSkills: [],
+      tools: "TOOLS",
+      allowedTokenCount: 100,
+    });
+
+    expect(res.isErr()).toBe(true);
+    if (res.isErr()) {
+      expect(res.error.message).toContain("Conversation contains no messages");
+    }
+  });
+
   it("bubbles prompt/tools tokenization errors", async () => {
     vi.mocked(renderAllMessages).mockResolvedValue([userMessage("u1")]);
     vi.mocked(tokenCountForTexts).mockImplementation(async (texts) => {
