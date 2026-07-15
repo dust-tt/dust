@@ -5,12 +5,15 @@ import {
 } from "@app/lib/api/assistant/conversation";
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import { isUserMessageContextOverflowing } from "@app/lib/api/assistant/conversation/helper";
+import { parseModelSelection } from "@app/lib/api/assistant/models";
 import { postUserMessageAndWaitForCompletion } from "@app/lib/api/assistant/streaming/blocking";
 import { addBackwardCompatibleAgentMessageFields } from "@app/lib/api/v1/backward_compatibility";
+import { getFeatureFlags } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import type { UserMessageContext } from "@app/types/assistant/conversation";
+import type { ModelSelectionType } from "@app/types/assistant/models/types";
 import { isEmptyString } from "@app/types/shared/utils/general";
 import {
   type PostMessagesResponseBody,
@@ -102,9 +105,38 @@ app.post(
       blocking,
       skipToolsValidation,
       agenticMessageData,
+      modelSelection,
     } = ctx.req.valid("json");
 
     const origin = context.origin ?? "api";
+
+    let requestedModelSelection: ModelSelectionType | undefined;
+    if (modelSelection) {
+      const featureFlags = await getFeatureFlags(auth);
+      if (!featureFlags.includes("models_picker")) {
+        return apiError(ctx, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message:
+              "modelSelection requires the models picker feature to be enabled on the workspace.",
+          },
+        });
+      }
+
+      const parsedModelSelection = parseModelSelection(modelSelection);
+      if (!parsedModelSelection) {
+        return apiError(ctx, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message:
+              "The modelSelection providerId, modelId or reasoningEffort is not a known value.",
+          },
+        });
+      }
+      requestedModelSelection = parsedModelSelection;
+    }
 
     if (isEmptyString(context.username)) {
       return apiError(ctx, {
@@ -232,6 +264,7 @@ app.post(
             conversation,
             mentions,
             skipToolsValidation: skipToolsValidation ?? false,
+            modelSelection: requestedModelSelection,
           })
         : await postUserMessage(auth, {
             content,
@@ -240,6 +273,7 @@ app.post(
             conversation,
             mentions,
             skipToolsValidation: skipToolsValidation ?? false,
+            modelSelection: requestedModelSelection,
           });
     if (messageRes.isErr()) {
       return apiError(ctx, messageRes.error);

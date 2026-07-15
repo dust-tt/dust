@@ -1,4 +1,7 @@
-import type { LightAgentConfigurationType } from "@dust-tt/client";
+import type {
+  AvailableModelType,
+  LightAgentConfigurationType,
+} from "@dust-tt/client";
 import { describe, expect, it } from "vitest";
 
 import { processMentions, processMessageForMention } from "./mentions";
@@ -115,6 +118,143 @@ describe("processMentions", () => {
     expect(result.error.message).toBe(
       "Agent =support is not available to you. Check the name or ask your workspace administrator for access."
     );
+  });
+
+  const availableModels: AvailableModelType[] = [
+    {
+      providerId: "openai",
+      modelId: "gpt-5.6-luna",
+      displayName: "GPT-5.6 Luna",
+      supportedReasoningEfforts: ["light", "medium", "high"],
+      defaultReasoningEffort: "medium",
+    },
+    {
+      providerId: "anthropic",
+      modelId: "claude-sonnet-4-6",
+      displayName: "Claude Sonnet 4.6",
+      supportedReasoningEfforts: ["none", "light", "medium", "high"],
+      defaultReasoningEffort: "light",
+    },
+  ];
+
+  it("matches a model id with a reasoning effort suffix", () => {
+    const result = processMentions({
+      message: "+gpt-5.6-luna-high what is the capital of France?",
+      activeAgentConfigurations,
+      mentionCandidate: "+gpt-5.6-luna-high",
+      availableModels,
+    });
+
+    expect(result.isOk()).toBe(true);
+    if (result.isErr()) {
+      throw result.error;
+    }
+    expect(result.value).toEqual({
+      mention: undefined,
+      modelSelection: {
+        providerId: "openai",
+        modelId: "gpt-5.6-luna",
+        reasoningEffort: "high",
+      },
+      processedMessage: "what is the capital of France?",
+    });
+  });
+
+  it("matches a bare model id with the model's default reasoning effort", () => {
+    const result = processMentions({
+      message: "+gpt-5.6-luna what is the capital of France?",
+      activeAgentConfigurations,
+      mentionCandidate: "+gpt-5.6-luna",
+      availableModels,
+    });
+
+    expect(result.isOk()).toBe(true);
+    if (result.isErr()) {
+      throw result.error;
+    }
+    expect(result.value.modelSelection).toEqual({
+      providerId: "openai",
+      modelId: "gpt-5.6-luna",
+      reasoningEffort: "medium",
+    });
+  });
+
+  it("matches model mentions ignoring case and with the = prefix", () => {
+    const result = processMentions({
+      message: "=Claude-Sonnet-4-6-none help me",
+      activeAgentConfigurations,
+      mentionCandidate: "=Claude-Sonnet-4-6-none",
+      availableModels,
+    });
+
+    expect(result.isOk()).toBe(true);
+    if (result.isErr()) {
+      throw result.error;
+    }
+    expect(result.value).toEqual({
+      mention: undefined,
+      modelSelection: {
+        providerId: "anthropic",
+        modelId: "claude-sonnet-4-6",
+        reasoningEffort: "none",
+      },
+      processedMessage: "help me",
+    });
+  });
+
+  it("does not match a model with an unsupported reasoning effort suffix", () => {
+    const result = processMentions({
+      message: "+gpt-5.6-luna-none help me",
+      activeAgentConfigurations,
+      mentionCandidate: "+gpt-5.6-luna-none",
+      availableModels,
+    });
+
+    expect(result.isOk()).toBe(true);
+    if (result.isErr()) {
+      throw result.error;
+    }
+    // Falls back to fuzzy agent matching.
+    expect(result.value.modelSelection).toBeUndefined();
+    expect(result.value.mention).toBeDefined();
+  });
+
+  it("prioritizes an exact agent name match over a model match", () => {
+    const result = processMentions({
+      message: "+gpt-5.6-luna help me",
+      activeAgentConfigurations: [
+        ...activeAgentConfigurations,
+        makeAgentConfiguration({ name: "gpt-5.6-luna", sId: "luna-agent" }),
+      ],
+      mentionCandidate: "+gpt-5.6-luna",
+      availableModels,
+    });
+
+    expect(result.isOk()).toBe(true);
+    if (result.isErr()) {
+      throw result.error;
+    }
+    expect(result.value.modelSelection).toBeUndefined();
+    expect(result.value.mention).toEqual({
+      agentId: "luna-agent",
+      agentName: "gpt-5.6-luna",
+    });
+  });
+
+  it("falls back to fuzzy agent matching when no models are available", () => {
+    const result = processMentions({
+      message: "+gpt-5.6-luna-high help me",
+      activeAgentConfigurations,
+      mentionCandidate: "+gpt-5.6-luna-high",
+      availableModels: [],
+    });
+
+    expect(result.isOk()).toBe(true);
+    if (result.isErr()) {
+      throw result.error;
+    }
+    expect(result.value.modelSelection).toBeUndefined();
+    expect(result.value.mention).toBeDefined();
   });
 
   it("keeps fuzzy matching for +mentions and ~mentions", () => {

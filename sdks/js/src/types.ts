@@ -2311,6 +2311,46 @@ export type GetWorkspaceFeatureFlagsResponseType = z.infer<
   typeof GetWorkspaceFeatureFlagsResponseSchema
 >;
 
+export const ReasoningEffortSchema = z.enum([
+  "none",
+  "light",
+  "medium",
+  "high",
+]);
+
+export type ReasoningEffortType = z.infer<typeof ReasoningEffortSchema>;
+
+// Per-message model override. Only honored when the workspace has the models
+// picker feature enabled; the exact model and provider ids are validated
+// server-side.
+export const PublicModelSelectionSchema = z.object({
+  providerId: z.string(),
+  modelId: z.string(),
+  reasoningEffort: ReasoningEffortSchema.optional(),
+});
+
+export type PublicModelSelectionType = z.infer<
+  typeof PublicModelSelectionSchema
+>;
+
+export const AvailableModelSchema = z.object({
+  providerId: z.string(),
+  modelId: z.string(),
+  displayName: z.string(),
+  supportedReasoningEfforts: ReasoningEffortSchema.array(),
+  defaultReasoningEffort: ReasoningEffortSchema,
+});
+
+export type AvailableModelType = z.infer<typeof AvailableModelSchema>;
+
+export const GetAvailableModelsResponseSchema = z.object({
+  models: AvailableModelSchema.array(),
+});
+
+export type GetAvailableModelsResponseType = z.infer<
+  typeof GetAvailableModelsResponseSchema
+>;
+
 export const PublicPostMessagesRequestBodySchema = z.intersection(
   z.object({
     content: z.string().min(1),
@@ -2319,6 +2359,7 @@ export const PublicPostMessagesRequestBodySchema = z.intersection(
       clientSideMCPServerIds: z.array(z.string()).optional().nullable(),
     }),
     agenticMessageData: AgenticMessageDataSchema.optional(),
+    modelSelection: PublicModelSelectionSchema.optional(),
   }),
   z
     .object({
@@ -2419,6 +2460,7 @@ export const PublicPostConversationsRequestBodySchema = z.intersection(
           mentions: z.array(MentionSchema),
           context: UserMessageContextSchema,
           agenticMessageData: AgenticMessageDataSchema.optional(),
+          modelSelection: PublicModelSelectionSchema.optional(),
         }),
         z
           .object({

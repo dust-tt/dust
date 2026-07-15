@@ -68,6 +68,7 @@ import {
   GetActiveMemberEmailsInWorkspaceResponseSchema,
   GetAgentConfigurationsResponseSchema,
   GetAppsResponseSchema,
+  GetAvailableModelsResponseSchema,
   GetConversationResponseSchema,
   GetConversationsResponseSchema,
   GetDataSourcesResponseSchema,
@@ -1814,6 +1815,26 @@ export class DustAPI {
     }
 
     return new Ok(r.value.feature_flags);
+  }
+
+  // Lists the models that can be requested as a per-message model override.
+  // Returns an empty list when the workspace does not have the models picker
+  // feature enabled.
+  async getAvailableModels() {
+    const res = await this.request({
+      method: "GET",
+      path: "models",
+    });
+
+    const r = await this._resultFromResponse(
+      GetAvailableModelsResponseSchema,
+      res
+    );
+    if (r.isErr()) {
+      return r;
+    }
+
+    return new Ok(r.value.models);
   }
 
   async searchDataSourceViews(searchParams: URLSearchParams) {

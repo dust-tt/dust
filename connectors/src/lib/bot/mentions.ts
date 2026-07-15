@@ -1,4 +1,9 @@
-import type { LightAgentConfigurationType, Result } from "@dust-tt/client";
+import type {
+  AvailableModelType,
+  LightAgentConfigurationType,
+  PublicModelSelectionType,
+  Result,
+} from "@dust-tt/client";
 import { Err, Ok } from "@dust-tt/client";
 import jaroWinkler from "talisman/metrics/jaro-winkler";
 
@@ -12,17 +17,56 @@ const EXACT_MATCH_MENTION_PREFIX = "=";
 // Pattern to match @mention, +mention, ~mention, and =mention.
 const MENTION_PATTERN = /(?<!\S)[@+~=]([a-zA-Z0-9_\.-]{1,40})(?=\s|,|$)/g;
 
+// Matches a mention candidate against the models available on the workspace:
+// either a bare model id (e.g. `gpt-5.6-luna`, run with the model's default
+// reasoning effort) or a model id with a reasoning effort suffix (e.g.
+// `gpt-5.6-luna-high`).
+function findModelMatch(
+  candidateName: string,
+  availableModels: AvailableModelType[]
+): PublicModelSelectionType | null {
+  const candidate = candidateName.toLowerCase();
+
+  // O(n²) acceptable: the models list is small (< 100 entries, 4 efforts max).
+  for (const model of availableModels) {
+    const modelId = model.modelId.toLowerCase();
+
+    if (candidate === modelId) {
+      return {
+        providerId: model.providerId,
+        modelId: model.modelId,
+        reasoningEffort: model.defaultReasoningEffort,
+      };
+    }
+
+    for (const effort of model.supportedReasoningEfforts) {
+      if (candidate === `${modelId}-${effort}`) {
+        return {
+          providerId: model.providerId,
+          modelId: model.modelId,
+          reasoningEffort: effort,
+        };
+      }
+    }
+  }
+
+  return null;
+}
+
 export function processMentions({
   message,
   activeAgentConfigurations,
   mentionCandidate,
+  availableModels = [],
 }: {
   message: string;
   activeAgentConfigurations: LightAgentConfigurationType[];
   mentionCandidate: string | null;
+  availableModels?: AvailableModelType[];
 }): Result<
   {
     mention: MentionMatch | undefined;
+    modelSelection?: PublicModelSelectionType;
     processedMessage: string;
   },
   Error
@@ -35,6 +79,28 @@ export function processMentions({
   }
 
   const mentionCandidateName = mentionCandidate.slice(1).toLowerCase();
+
+  // An agent whose name exactly matches the candidate always takes priority
+  // over a model mention; only then do we look for an exact model match (e.g.
+  // `+gpt-5.6-luna-high`), which invokes the default agent with that model.
+  const hasExactAgentMatch = activeAgentConfigurations.some(
+    (agentConfiguration) =>
+      agentConfiguration.name.toLowerCase() === mentionCandidateName
+  );
+
+  if (!hasExactAgentMatch) {
+    const modelSelection = findModelMatch(
+      mentionCandidateName,
+      availableModels
+    );
+    if (modelSelection) {
+      return new Ok({
+        mention: undefined,
+        modelSelection,
+        processedMessage: message.replace(mentionCandidate, "").trim(),
+      });
+    }
+  }
 
   if (mentionCandidate.startsWith(EXACT_MATCH_MENTION_PREFIX)) {
     const exactCandidate = activeAgentConfigurations.find(
