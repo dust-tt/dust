@@ -16,11 +16,20 @@ export function sanitizeHeadersArray(rows: HeaderRow[]): HeaderRow[] {
     .filter(({ key, value }) => key.length > 0 && value.length > 0);
 }
 
-// HTTP header values must fit in ISO-8859-1: fetch throws on any code point above
-// 0xFF, and Node rejects control characters. Replace offending characters so
-// attribution values such as API key names or user emails never fail the request.
-export function toLatin1SafeHeaderValue(value: string): string {
-  return value.replace(/[^\x20-\x7e\x80-\xff]/gu, "?");
+// Counterpart of `encodeUtf8HeaderValue` in @dust-tt/client
+// (sdks/js/src/http_headers.ts): DustAPI carries non-Latin-1 extra header
+// values (emoji or non-Latin scripts in API key names, internationalized user
+// emails) as RFC 2047 encoded-words (`=?utf-8?B?<base64>?=`) since HTTP header
+// values must fit in ISO-8859-1. This decodes them on the receiving end;
+// anything that isn't a well-formed encoded-word is returned as-is.
+const ENCODED_WORD_REGEX = /^=\?utf-8\?B\?([A-Za-z0-9+/]*={0,2})\?=$/i;
+
+export function decodeUtf8HeaderValue(value: string): string {
+  const match = value.match(ENCODED_WORD_REGEX);
+  if (!match) {
+    return value;
+  }
+  return Buffer.from(match[1], "base64").toString("utf8");
 }
 
 export function headersArrayToRecord(

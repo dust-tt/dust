@@ -10,6 +10,7 @@ import type {
   UserMessageType,
 } from "@app/types/assistant/conversation";
 import { Ok } from "@app/types/shared/result";
+import { decodeUtf8HeaderValue } from "@app/types/shared/utils/http_headers";
 import { getHeaderFromUserEmail } from "@app/types/user";
 import type { ConversationPublicType } from "@dust-tt/client";
 import { DustAPI } from "@dust-tt/client";
@@ -214,10 +215,15 @@ describe("getOrCreateConversation", () => {
       const { mainConversation, originMessage, mainAgent, agentLoopContext } =
         buildRunAgentFixtures({ spaceId: null });
 
+      // Typed against the two methods getApiKeyNameHeader exercises; the cast
+      // to Authenticator only widens to the class type.
       const auth = {
-        attributionKey: () => ({ name: "Clé 🔑 złoty smørrebrød" }),
-        key: () => undefined,
-      } as unknown as Authenticator;
+        attributionKey: () => ({ id: 1, name: "Clé 🔑 złoty smørrebrød" }),
+        key: () => null,
+      } satisfies Pick<
+        Authenticator,
+        "attributionKey" | "key"
+      > as unknown as Authenticator;
 
       const cannedOwner = {
         id: 1,
@@ -310,10 +316,19 @@ describe("getOrCreateConversation", () => {
       assert(result.isOk());
       expect(capturedRequests).toHaveLength(1);
       const headers = capturedRequests[0].headers;
-      // Latin-1 characters (é, ø) are preserved; characters above 0xFF (ł, emoji)
-      // are replaced so the request can be sent at all.
-      expect(headers.get("x-dust-api-key-name")).toBe("Clé ? z?oty smørrebrød");
-      expect(headers.get("x-api-user-email")).toBe("jérôme.?ukasz@example.com");
+      // Values with characters above 0xFF (ł, emoji) travel as an RFC 2047
+      // encoded-word and round-trip losslessly through the header.
+      const keyNameHeader = headers.get("x-dust-api-key-name");
+      assert(keyNameHeader);
+      expect(keyNameHeader).toMatch(/^=\?utf-8\?B\?/);
+      expect(decodeUtf8HeaderValue(keyNameHeader)).toBe(
+        "Clé 🔑 złoty smørrebrød"
+      );
+      const emailHeader = headers.get("x-api-user-email");
+      assert(emailHeader);
+      expect(decodeUtf8HeaderValue(emailHeader)).toBe(
+        "jérôme.łukasz@example.com"
+      );
     });
   });
 });
