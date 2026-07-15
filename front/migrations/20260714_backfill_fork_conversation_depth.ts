@@ -14,7 +14,22 @@ import { makeScript } from "@app/scripts/helpers";
 // Raw SQL bypasses Sequelize hooks on purpose: `updatedAt` must stay untouched
 // so backfilled conversations keep their position in updatedAt-ordered lists.
 
-const MISMATCH_CONDITION = `
+// Fork children whose depth differs from their parent's. Only valid as the
+// FROM+WHERE body of a SELECT; the UPDATE below needs a different shape.
+const MISMATCHED_FORK_CHILDREN_SQL = `
+  FROM conversations c
+  JOIN conversation_forks f
+    ON f."childConversationId" = c.id
+   AND f."workspaceId" = c."workspaceId"
+  JOIN conversations p
+    ON p.id = f."parentConversationId"
+   AND p."workspaceId" = f."workspaceId"
+  WHERE c.depth <> p.depth
+`;
+
+const UPDATE_BATCH_SQL = `
+  UPDATE conversations c
+  SET depth = p.depth
   FROM conversation_forks f
   JOIN conversations p
     ON p.id = f."parentConversationId"
@@ -22,6 +37,7 @@ const MISMATCH_CONDITION = `
   WHERE c.id = f."childConversationId"
     AND c."workspaceId" = f."workspaceId"
     AND c.depth <> p.depth
+    AND c.id IN (:ids)
 `;
 
 // Keeps each UPDATE's row-lock footprint small on the hot conversations table.
@@ -32,7 +48,7 @@ const MAX_BATCHES = 10_000;
 makeScript({}, async ({ execute }, logger) => {
   if (!execute) {
     const [{ count }] = await frontSequelize.query<{ count: string }>(
-      `SELECT COUNT(*) AS count FROM conversations c ${MISMATCH_CONDITION}`,
+      `SELECT COUNT(*) AS count ${MISMATCHED_FORK_CHILDREN_SQL}`,
       { type: QueryTypes.SELECT }
     );
     logger.info(
@@ -46,7 +62,7 @@ makeScript({}, async ({ execute }, logger) => {
   let reachedFixpoint = false;
   for (let batch = 1; batch <= MAX_BATCHES; batch++) {
     const rows = await frontSequelize.query<{ id: number }>(
-      `SELECT c.id FROM conversations c ${MISMATCH_CONDITION} LIMIT ${BATCH_SIZE}`,
+      `SELECT c.id ${MISMATCHED_FORK_CHILDREN_SQL} LIMIT ${BATCH_SIZE}`,
       { type: QueryTypes.SELECT }
     );
 
@@ -55,13 +71,10 @@ makeScript({}, async ({ execute }, logger) => {
       break;
     }
 
-    const [, updated] = await frontSequelize.query(
-      `UPDATE conversations c SET depth = p.depth ${MISMATCH_CONDITION} AND c.id IN (:ids)`,
-      {
-        type: QueryTypes.UPDATE,
-        replacements: { ids: rows.map((r) => r.id) },
-      }
-    );
+    const [, updated] = await frontSequelize.query(UPDATE_BATCH_SQL, {
+      type: QueryTypes.UPDATE,
+      replacements: { ids: rows.map((r) => r.id) },
+    });
     totalUpdated += updated;
     logger.info({ batch, updated, totalUpdated }, "Fork depth backfill batch");
   }
