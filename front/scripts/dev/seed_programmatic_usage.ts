@@ -100,6 +100,7 @@ async function seedProgrammaticUsage(
     const document: AgentMessageAnalyticsData = {
       agent_id: `seed-agent-${i % AGENT_COUNT}`,
       agent_version: "1",
+      agent_tag_ids: [],
       ancestor_message_ids: [],
       conversation_id: `seed-conv-${i}`,
       cost: {
