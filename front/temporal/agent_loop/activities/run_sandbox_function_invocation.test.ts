@@ -62,7 +62,7 @@ afterEach(() => {
 
 describe("runSandboxFunctionInvocationActivity", () => {
   it("executes the existing invocation", async () => {
-    const { authenticator, invocation } = await setup();
+    const { authenticator, sandboxFunction, invocation } = await setup();
     const executeSpy = vi
       .spyOn(SandboxFunctionInvocationResource.prototype, "execute")
       .mockImplementation(async function (
@@ -73,6 +73,7 @@ describe("runSandboxFunctionInvocationActivity", () => {
       });
 
     await runSandboxFunctionInvocationActivity(authenticator.toJSON(), {
+      sandboxFunctionId: sandboxFunction.sId,
       invocationId: invocation.sId,
     });
 
@@ -88,6 +89,7 @@ describe("runSandboxFunctionInvocationActivity", () => {
 
     await expect(
       runSandboxFunctionInvocationActivity(authenticator.toJSON(), {
+        sandboxFunctionId: sandboxFunction.sId,
         invocationId: invocation.sId,
       })
     ).rejects.toThrow("sandbox unavailable");

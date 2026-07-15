@@ -397,6 +397,7 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
     );
 
     const launchResult = await launchSandboxFunctionInvocationWorkflow(auth, {
+      sandboxFunction,
       invocation,
     });
     if (launchResult.isErr()) {

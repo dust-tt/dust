@@ -1,20 +1,30 @@
 import type { AuthenticatorType } from "@app/lib/auth";
 import { Authenticator } from "@app/lib/auth";
+import { SandboxFunctionInvocationResource } from "@app/lib/resources/sandbox_function_invocation_resource";
 import { SandboxFunctionResource } from "@app/lib/resources/sandbox_function_resource";
 
 export type RunSandboxFunctionInvocationActivityArgs = {
+  sandboxFunctionId: string;
   invocationId: string;
 };
 
 export async function runSandboxFunctionInvocationActivity(
   authType: AuthenticatorType,
-  { invocationId }: RunSandboxFunctionInvocationActivityArgs
+  { sandboxFunctionId, invocationId }: RunSandboxFunctionInvocationActivityArgs
 ): Promise<void> {
   const auth = await Authenticator.fromJsonWithRefrehedGroups(authType);
-  const invocation = await SandboxFunctionResource.fetchInvocationById(
+  const sandboxFunction = await SandboxFunctionResource.fetchById(
     auth,
-    invocationId
+    sandboxFunctionId
   );
+  if (!sandboxFunction) {
+    throw new Error(`Sandbox function not found: ${sandboxFunctionId}`);
+  }
+
+  const invocation = await SandboxFunctionInvocationResource.fetchById(auth, {
+    sandboxFunction,
+    invocationId,
+  });
   if (!invocation) {
     throw new Error(`Sandbox function invocation not found: ${invocationId}`);
   }

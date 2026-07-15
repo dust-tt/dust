@@ -231,12 +231,24 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
     return sandboxFunction ?? null;
   }
 
-  // This lives here because the invocation resource value-imports the sandbox function resource,
-  // so it cannot fetch the parent function itself without introducing a circular dependency.
-  private static async fetchInvocation(
+  // Lives here rather than on SandboxFunctionMCPActionResource: that resource can only type-import
+  // the invocation resource (the invocation resource value-imports it for cascade deletion), so it
+  // cannot construct an invocation. Takes the action rather than its FK id so callers don't thread
+  // a ModelId around.
+  static async fetchInvocationForAction(
     auth: Authenticator,
-    invocation: SandboxFunctionInvocationModel
+    action: SandboxFunctionMCPActionResource
   ): Promise<SandboxFunctionInvocationResource | null> {
+    const invocation = await SandboxFunctionInvocationModel.findOne({
+      where: {
+        id: action.sandboxFunctionInvocationId,
+        workspaceId: auth.getNonNullableWorkspace().id,
+      },
+    });
+    if (!invocation) {
+      return null;
+    }
+
     const sandboxFunction = await this.fetchById(
       auth,
       this.modelIdToSId({
@@ -255,50 +267,6 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
         workspaceId: invocation.workspaceId,
       }),
     });
-  }
-
-  static async fetchInvocationById(
-    auth: Authenticator,
-    invocationId: string
-  ): Promise<SandboxFunctionInvocationResource | null> {
-    if (!isResourceSId("sandbox_function_invocation", invocationId)) {
-      return null;
-    }
-
-    const invocationModelId = getResourceIdFromSId(invocationId);
-    if (invocationModelId === null) {
-      return null;
-    }
-
-    const invocation = await SandboxFunctionInvocationModel.findOne({
-      where: {
-        id: invocationModelId,
-        workspaceId: auth.getNonNullableWorkspace().id,
-      },
-    });
-    if (!invocation) {
-      return null;
-    }
-
-    return this.fetchInvocation(auth, invocation);
-  }
-
-  // This takes the action rather than its foreign key so callers do not thread a ModelId around.
-  static async fetchInvocationForAction(
-    auth: Authenticator,
-    action: SandboxFunctionMCPActionResource
-  ): Promise<SandboxFunctionInvocationResource | null> {
-    const invocation = await SandboxFunctionInvocationModel.findOne({
-      where: {
-        id: action.sandboxFunctionInvocationId,
-        workspaceId: auth.getNonNullableWorkspace().id,
-      },
-    });
-    if (!invocation) {
-      return null;
-    }
-
-    return this.fetchInvocation(auth, invocation);
   }
 
   static async listBySpace(

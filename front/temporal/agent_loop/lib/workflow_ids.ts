@@ -55,10 +55,10 @@ export function makeSandboxFunctionToolWorkflowId({
 
 export function makeSandboxFunctionInvocationWorkflowId({
   workspaceId,
-  invocationModelId,
+  invocationId,
 }: {
   workspaceId: string;
-  invocationModelId: number;
+  invocationId: string;
 }) {
-  return `sandbox-function-invocation-workflow-${workspaceId}-${invocationModelId}`;
+  return `sandbox-function-invocation-workflow-${workspaceId}-${invocationId}`;
 }

@@ -4,6 +4,7 @@ import type { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import type { SandboxFunctionInvocationResource } from "@app/lib/resources/sandbox_function_invocation_resource";
 import type { SandboxFunctionMCPActionResource } from "@app/lib/resources/sandbox_function_mcp_action_resource";
+import type { SandboxFunctionResource } from "@app/lib/resources/sandbox_function_resource";
 import { getTemporalClientForAgentNamespace } from "@app/lib/temporal";
 import logger from "@app/logger/logger";
 import { logAgentLoopStart } from "@app/temporal/agent_loop/activities/instrumentation";
@@ -304,8 +305,10 @@ export async function launchSandboxFunctionToolWorkflow(
 export async function launchSandboxFunctionInvocationWorkflow(
   auth: Authenticator,
   {
+    sandboxFunction,
     invocation,
   }: {
+    sandboxFunction: SandboxFunctionResource;
     invocation: SandboxFunctionInvocationResource;
   }
 ): Promise<Result<undefined, Error>> {
@@ -313,19 +316,26 @@ export async function launchSandboxFunctionInvocationWorkflow(
   const { workspaceId } = authType;
   const workflowId = makeSandboxFunctionInvocationWorkflowId({
     workspaceId,
-    invocationModelId: invocation.id,
+    invocationId: invocation.sId,
   });
 
   try {
     const client = await getTemporalClientForAgentNamespace();
     await client.workflow.start(runSandboxFunctionInvocationWorkflow, {
-      args: [{ authType, invocationId: invocation.sId }],
+      args: [
+        {
+          authType,
+          sandboxFunctionId: sandboxFunction.sId,
+          invocationId: invocation.sId,
+        },
+      ],
       taskQueue: QUEUE_NAME,
       workflowId,
       searchAttributes: {
         workspaceId: [workspaceId],
       },
       memo: {
+        sandboxFunctionId: sandboxFunction.sId,
         invocationId: invocation.sId,
         workspaceId,
       },

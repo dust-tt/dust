@@ -237,6 +237,7 @@ describe("POST /api/w/:wId/sandbox-functions/:functionIdOrSlug/invocations", () 
     expect(launchSandboxFunctionInvocationWorkflow).toHaveBeenCalledWith(
       expect.anything(),
       {
+        sandboxFunction: expect.objectContaining({ sId: sandboxFunction.sId }),
         invocation: expect.objectContaining({ sId: invocation.sId }),
       }
     );
@@ -265,6 +266,7 @@ describe("POST /api/w/:wId/sandbox-functions/:functionIdOrSlug/invocations", () 
     expect(launchSandboxFunctionInvocationWorkflow).toHaveBeenCalledWith(
       expect.anything(),
       expect.objectContaining({
+        sandboxFunction: expect.objectContaining({ sId: sandboxFunction.sId }),
         invocation: expect.objectContaining({
           sId: expect.stringMatching(/^sfi_/),
         }),

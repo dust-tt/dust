@@ -564,12 +564,15 @@ export async function runSandboxFunctionToolWorkflow({
 
 export async function runSandboxFunctionInvocationWorkflow({
   authType,
+  sandboxFunctionId,
   invocationId,
 }: {
   authType: AuthenticatorType;
+  sandboxFunctionId: string;
   invocationId: string;
 }) {
   await runSandboxFunctionInvocationActivity(authType, {
+    sandboxFunctionId,
     invocationId,
   });
 }
