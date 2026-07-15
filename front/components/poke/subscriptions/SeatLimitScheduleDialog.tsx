@@ -255,6 +255,12 @@ function ScheduleEditor({
   const selectedName =
     seatTypeOptions.find((o) => o.seatType === seatType)?.name ?? seatType;
 
+  // Phases already saved to the server. They can't be removed here: a deletion
+  // would not retract the effective-dated update already programmed into
+  // Metronome. Only unsaved (newly added) phases — always appended after the
+  // saved ones — can be removed before saving.
+  const savedPhaseCount = (schedule[seatType] ?? []).length;
+
   const onSelectSeatType = (next: MembershipSeatType) => {
     if (next === seatType) {
       return;
@@ -393,6 +399,11 @@ function ScheduleEditor({
                         type="datetime-local"
                         step={3600}
                         transformValue={floorToHour}
+                        // A saved phase's start is locked: moving it would strand
+                        // the effective-dated update already sent to Metronome.
+                        // Commitment / max stay editable (a re-sync re-programs
+                        // the same segment).
+                        disabled={index < savedPhaseCount}
                       />
                       {utcInputToLocalLabel(
                         phaseValues?.[index]?.startAt ?? ""
@@ -424,6 +435,12 @@ function ScheduleEditor({
                       icon={Trash01}
                       size="xs"
                       variant="outline"
+                      disabled={index < savedPhaseCount}
+                      tooltip={
+                        index < savedPhaseCount
+                          ? "Saved phases can't be removed"
+                          : undefined
+                      }
                       onClick={() => handleRemovePhase(index)}
                     />
                   </Fragment>
