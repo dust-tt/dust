@@ -26,7 +26,7 @@ import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 
-export const MIN_USER_SPEND_LIMIT_AWU_CREDITS = 1;
+export const MIN_USER_SPEND_LIMIT_AWU_CREDITS = 0;
 export const MAX_USER_SPEND_LIMIT_AWU_CREDITS = 1_000_000;
 
 export type UserSpendLimitErrorType =
