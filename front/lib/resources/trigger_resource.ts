@@ -207,17 +207,10 @@ export class TriggerResource extends BaseResource<TriggerModel> {
     return new Ok(triggers);
   }
 
-  // Lists triggers owned by the given editors, optionally narrowed to a single
-  // Pod (space). Passing spaceModelId = null lists across all Pods.
+  // Lists all triggers owned by the given editors, across all Pods.
   static async listByEditors(
     auth: Authenticator,
-    {
-      editorIds,
-      spaceModelId = null,
-    }: {
-      editorIds: ModelId[];
-      spaceModelId?: ModelId | null;
-    }
+    { editorIds }: { editorIds: ModelId[] }
   ): Promise<Result<TriggerResource[], Error>> {
     if (editorIds.length === 0) {
       return new Ok([]);
@@ -225,7 +218,6 @@ export class TriggerResource extends BaseResource<TriggerModel> {
     const triggers = await this.baseFetch(auth, {
       where: {
         editor: { [Op.in]: editorIds },
-        ...(spaceModelId !== null ? { spaceId: spaceModelId } : {}),
       },
     });
     return new Ok(triggers);

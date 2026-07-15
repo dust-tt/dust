@@ -8,6 +8,7 @@ import {
 import { SCHEDULES_MANAGEMENT_TOOLS_METADATA } from "@app/lib/api/actions/servers/schedules_management/metadata";
 import { generateScheduleRule } from "@app/lib/api/assistant/configuration/triggers";
 import type { Authenticator } from "@app/lib/auth";
+import { SpaceResource } from "@app/lib/resources/space_resource";
 import {
   resolveTriggerSpaceId,
   TriggerResource,
@@ -22,7 +23,10 @@ import { Err, Ok } from "@app/types/shared/result";
 import assert from "assert";
 import { UniqueConstraintError } from "sequelize";
 
-function renderSchedule(schedule: ScheduleTriggerType): string {
+function renderSchedule(
+  schedule: ScheduleTriggerType,
+  podName?: string | null
+): string {
   const config = schedule.configuration;
   const scheduleDesc =
     schedule.naturalLanguageDescription ?? describeScheduleConfig(config);
@@ -31,6 +35,9 @@ function renderSchedule(schedule: ScheduleTriggerType): string {
     `- **${schedule.name}** (ID: ${schedule.sId})`,
     `  Schedule: ${scheduleInfo}`,
   ];
+  if (podName) {
+    lines.push(`  Pod: ${podName}`);
+  }
   if (schedule.customPrompt) {
     lines.push(`  Prompt: ${schedule.customPrompt}`);
   }
@@ -163,7 +170,7 @@ export function createSchedulesManagementTools(
       ]);
     },
 
-    list_schedules: async ({ podId }) => {
+    list_schedules: async () => {
       assert(
         isAgentLoopRunContext(toolContext?.runContext),
         "AgentLoopRunContext expected"
@@ -172,16 +179,8 @@ export function createSchedulesManagementTools(
       const owner = auth.getNonNullableWorkspace();
       const userId = auth.getNonNullableUser().id;
 
-      // List the user's schedules, optionally narrowed to a single Pod.
-      const spaceIdRes = await resolveTriggerSpaceId(auth, podId);
-      if (spaceIdRes.isErr()) {
-        return new Err(new MCPError(spaceIdRes.error));
-      }
-      const spaceId = spaceIdRes.value;
-
       const schedulesResult = await TriggerResource.listByEditors(auth, {
         editorIds: [userId],
-        spaceModelId: spaceId,
       });
 
       if (schedulesResult.isErr()) {
@@ -192,28 +191,44 @@ export function createSchedulesManagementTools(
         `workspace_id:${owner.sId}`,
       ]);
 
-      const heading =
-        spaceId !== null ? "Schedules for this Pod" : "Your schedules";
+      const schedules = schedulesResult.value
+        .map((s) => s.toJSON())
+        .filter(isScheduleTrigger);
 
-      if (schedulesResult.value.length === 0) {
+      if (schedules.length === 0) {
         return new Ok([
           {
             type: "text" as const,
-            text: `${heading}: none found.`,
+            text: "You have no schedules.",
           },
         ]);
       }
 
-      const scheduleList = schedulesResult.value
-        .map((s) => s.toJSON())
-        .filter(isScheduleTrigger)
-        .map((schedule) => renderSchedule(schedule))
+      // Resolve Pod names for schedules attached to a Pod (single batch query).
+      const podSIds = [
+        ...new Set(
+          schedules
+            .map((s) => s.spaceId)
+            .filter((id): id is string => id !== null)
+        ),
+      ];
+      const pods =
+        podSIds.length > 0 ? await SpaceResource.fetchByIds(auth, podSIds) : [];
+      const podNameBySId = new Map(pods.map((p) => [p.sId, p.name]));
+
+      const scheduleList = schedules
+        .map((schedule) =>
+          renderSchedule(
+            schedule,
+            schedule.spaceId ? podNameBySId.get(schedule.spaceId) : null
+          )
+        )
         .join("\n\n");
 
       return new Ok([
         {
           type: "text" as const,
-          text: `${heading}:\n\n${scheduleList}`,
+          text: `Your schedules:\n\n${scheduleList}`,
         },
       ]);
     },
