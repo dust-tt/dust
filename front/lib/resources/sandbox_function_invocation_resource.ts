@@ -48,20 +48,14 @@ const SANDBOX_FUNCTION_ERROR_LOG_MAX_CHARS = 16_384;
 const GCS_CONCURRENCY = 4;
 
 type SandboxFunctionInvocationData = {
-  input: unknown;
-  result?: unknown;
-  error?: string;
-};
-
-type StoredSandboxFunctionInvocationData = {
   input?: unknown;
   result?: unknown;
   error?: string;
 };
 
-function isStoredSandboxFunctionInvocationData(
+function isSandboxFunctionInvocationData(
   data: unknown
-): data is StoredSandboxFunctionInvocationData {
+): data is SandboxFunctionInvocationData {
   return (
     typeof data === "object" &&
     data !== null &&
@@ -74,15 +68,11 @@ function parseSandboxFunctionInvocationData(
   content: string
 ): SandboxFunctionInvocationData {
   const data: unknown = JSON.parse(content);
-  if (!isStoredSandboxFunctionInvocationData(data)) {
+  if (!isSandboxFunctionInvocationData(data)) {
     throw new Error("Invalid sandbox function invocation data.");
   }
 
-  return {
-    input: data.input,
-    ...(Object.hasOwn(data, "result") ? { result: data.result } : {}),
-    ...(typeof data.error === "string" ? { error: data.error } : {}),
-  };
+  return data;
 }
 
 function gcsPathForInvocation(
