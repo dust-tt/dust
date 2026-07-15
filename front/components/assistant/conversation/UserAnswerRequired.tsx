@@ -291,8 +291,8 @@ export function UserAnswerRequired({
         "flex flex-col gap-4 rounded-2xl border border-dark bg-background p-5 outline-hidden",
         "ease-enter motion-reduce:animate-none",
         isCompleted
-          ? "animate-out fade-out-0 zoom-out-[98.5%] slide-out-to-top-[6px] duration-exit"
-          : "animate-in fade-in-0 zoom-in-[98.5%] slide-in-from-bottom-2 duration-enter",
+          ? "animate-out fade-out-0 zoom-out-95 duration-exit"
+          : "animate-in fade-in-0 zoom-in-95 duration-enter",
         isKeyboardNavigating && "cursor-none"
       )}
     >
@@ -303,10 +303,10 @@ export function UserAnswerRequired({
         <div
           aria-hidden={isSubmitting}
           className={cn(
-            "flex flex-col gap-2 transition-[opacity,transform] ease-enter motion-reduce:transition-none",
+            "flex flex-col gap-2 transition-opacity ease-enter motion-reduce:transition-none",
             isSubmitting
-              ? "scale-[.985] opacity-0 duration-exit"
-              : "scale-100 opacity-100 duration-enter"
+              ? "opacity-0 duration-exit"
+              : "opacity-100 duration-enter"
           )}
         >
           {question.options.map((option, index) => (
@@ -356,10 +356,10 @@ export function UserAnswerRequired({
           role={isSubmitting ? "status" : undefined}
           aria-hidden={!isSubmitting}
           className={cn(
-            "absolute inset-0 flex items-center justify-center transition-[opacity,transform] ease-enter motion-reduce:transition-none",
+            "absolute inset-0 flex items-center justify-center transition-opacity ease-enter motion-reduce:transition-none",
             isSubmitting
-              ? "scale-100 opacity-100 duration-enter"
-              : "pointer-events-none scale-[.96] opacity-0 duration-exit"
+              ? "opacity-100 duration-enter"
+              : "pointer-events-none opacity-0 duration-exit"
           )}
         >
           <Spinner size="lg" />
