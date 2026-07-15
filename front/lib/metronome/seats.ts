@@ -1402,14 +1402,18 @@ export async function syncSeatCount({
     // transitions: each row has `startAt > now` and represents the seat
     // type the user will be on from `startAt` forward. The companion "current"
     // row (with `endAt = startAt`) still appears in `getActiveMemberships`.
-    const [{ memberships: activeMemberships }, futureMemberships, seatLimits] =
-      await Promise.all([
-        MembershipResource.getActiveMemberships({ workspace }),
-        MembershipResource.getScheduledFutureMemberships({ workspace }),
-        // Per-seat-type min/max configuration (only `minSeats` today). Used to
-        // clamp the count sent to Metronome up to the configured floor.
-        WorkspaceSeatLimitResource.fetchByWorkspace({ workspace }),
-      ]);
+    const [
+      { memberships: activeMemberships },
+      futureMemberships,
+      seatLimitSchedule,
+    ] = await Promise.all([
+      MembershipResource.getActiveMemberships({ workspace }),
+      MembershipResource.getScheduledFutureMemberships({ workspace }),
+      // Per-seat-type min/max configuration over time: the active segment plus
+      // any scheduled-future changes. Used to clamp the count sent to Metronome
+      // up to the configured floor at each effective moment.
+      WorkspaceSeatLimitResource.fetchScheduleByWorkspace({ workspace }),
+    ]);
 
     // TODO(pricing): Remove this + planCode param once we have no more shadow legacy contracts
     const legacy = !isCreditPricedPlanPrefix(planCode);
@@ -1490,9 +1494,47 @@ export async function syncSeatCount({
     // remap at the contract start); deduping prevents reconciling that segment
     // twice, which would double-apply the unassigned-seat floor.
     const baseMs = startingAt ? Date.parse(startingAt) : Date.now();
+    const nowMs = Date.now();
+    // Scheduled seat-limit (commitment) change moments: every future segment
+    // start is an effective date where the committed floor changes, so Metronome
+    // must be programmed with the new quantity from that instant — even if no
+    // membership changes at the same moment.
+    const seatLimitChangeMs: number[] = [];
+    for (const segments of seatLimitSchedule.values()) {
+      for (const seg of segments) {
+        if (seg.startAt.getTime() > nowMs) {
+          seatLimitChangeMs.push(seg.startAt.getTime());
+        }
+      }
+    }
     const effectiveTimestampsMs = Array.from(
-      new Set([baseMs, ...scheduledChanges.map((c) => c.at.getTime())])
+      new Set([
+        baseMs,
+        ...scheduledChanges.map((c) => c.at.getTime()),
+        ...seatLimitChangeMs,
+      ])
     ).sort((a, b) => a - b);
+
+    // The seat limit (min/max) effective for `seatType` at `tMs`, walking its
+    // scheduled segments. Undefined when no limit applies at that moment.
+    const seatLimitAt = (
+      seatType: MembershipSeatType,
+      tMs: number
+    ): SeatLimit | undefined => {
+      const segments = seatLimitSchedule.get(seatType);
+      if (!segments) {
+        return undefined;
+      }
+      for (const seg of segments) {
+        if (
+          seg.startAt.getTime() <= tMs &&
+          (seg.endAt === null || seg.endAt.getTime() > tMs)
+        ) {
+          return { minSeats: seg.minSeats, maxSeats: seg.maxSeats };
+        }
+      }
+      return undefined;
+    };
 
     // Compute the desired seat type per user at a given timestamp, by walking
     // scheduled changes from earliest up to (and including) `tMs`.
@@ -1596,13 +1638,15 @@ export async function syncSeatCount({
     for (const { sub, seatType } of seatSubscriptions) {
       const subscriptionId = sub.id!;
       const quantityMode = sub.quantity_management_mode ?? "QUANTITY_ONLY";
-      const seatLimit = seatLimits.get(seatType);
 
       if (quantityMode === "SEAT_BASED") {
-        // One reconcile per distinct effective moment. `desiredSIds` is
-        // evaluated at the SAME moment the segment is written to — so a future
-        // contract start reflects the membership state at the start (post-remap)
-        // rather than "now".
+        // One reconcile per distinct effective moment. `desiredSIds` and the
+        // seat limit are BOTH evaluated at the SAME moment the segment is
+        // written to — so a future contract start reflects the membership state
+        // at the start (post-remap), and a scheduled commitment change reflects
+        // the floor active from that instant. A commitment change that leaves
+        // membership unchanged therefore only moves the *unassigned* seats (the
+        // floor top-up), since the assigned real users stay the same.
         for (const tMs of effectiveTimestampsMs) {
           const isImmediateBase = tMs === baseMs && !startingAt;
           // Immediate base sync: let Metronome default to "now" for both the
@@ -1618,7 +1662,7 @@ export async function syncSeatCount({
             subscriptionId,
             seatType,
             desiredSIds: desiredSIdsAt(seatType, tMs),
-            seatLimit,
+            seatLimit: seatLimitAt(seatType, tMs),
             startingAt: segmentStartingAt,
             coveringDate,
             workspaceId: workspace.sId,
@@ -1630,40 +1674,56 @@ export async function syncSeatCount({
           didMutateSeatData = didMutateSeatData || result.value;
         }
       } else {
-        // QUANTITY_ONLY: only sync the "now" total. Scheduled changes within
-        // a quantity-only seat tier are not modeled — they're rare in practice
-        // (free / unlimited tiers) and Metronome doesn't bill them per-seat.
-        const actualQuantity = desiredSIdsAt(seatType, Date.now()).length;
-        // Clamp up to the configured billing floor: below `minSeats` we still
-        // bill the floor. `maxSeats` is deliberately NOT applied here — it is
-        // an assignment-time cap, and billing must always reflect the actual
-        // assigned count so members holding a seat are never unbilled.
-        const quantity = clampSeatCountToMin(actualQuantity, seatLimit);
-        logger.info(
-          {
-            workspaceId: workspace.sId,
+        // QUANTITY_ONLY: send the total for "now" plus a future-dated total at
+        // every effective moment where it changes (a scheduled commitment or
+        // membership change). Consecutive equal quantities are skipped so we
+        // only write real transitions. `maxSeats` is deliberately NOT applied
+        // here — it is an assignment-time cap, and billing must always reflect
+        // the actual assigned count so members holding a seat are never
+        // unbilled.
+        let lastQuantity: number | undefined;
+        for (const tMs of effectiveTimestampsMs) {
+          const isImmediateBase = tMs === baseMs && !startingAt;
+          const segmentStartingAt = isImmediateBase
+            ? startingAt
+            : new Date(tMs).toISOString();
+          const actualQuantity = desiredSIdsAt(seatType, tMs).length;
+          // Clamp up to the configured billing floor: below `minSeats` we still
+          // bill the floor.
+          const quantity = clampSeatCountToMin(
+            actualQuantity,
+            seatLimitAt(seatType, tMs)
+          );
+          if (quantity === lastQuantity) {
+            continue;
+          }
+          lastQuantity = quantity;
+          logger.info(
+            {
+              workspaceId: workspace.sId,
+              contractId,
+              subscriptionId,
+              seatType,
+              actualQuantity,
+              quantity,
+              startingAt: segmentStartingAt,
+            },
+            quantity !== actualQuantity
+              ? "[Metronome] Updating seat quantity (clamped up to configured min)"
+              : "[Metronome] Updating seat quantity"
+          );
+          const updateResult = await updateSubscriptionQuantity({
+            metronomeCustomerId,
             contractId,
             subscriptionId,
-            seatType,
-            actualQuantity,
             quantity,
-            minSeats: seatLimit?.minSeats,
-          },
-          quantity !== actualQuantity
-            ? "[Metronome] Updating seat quantity (clamped up to configured min)"
-            : "[Metronome] Updating seat quantity"
-        );
-        const updateResult = await updateSubscriptionQuantity({
-          metronomeCustomerId,
-          contractId,
-          subscriptionId,
-          quantity,
-          startingAt,
-        });
-        if (updateResult.isErr()) {
-          return new Err(updateResult.error);
+            startingAt: segmentStartingAt,
+          });
+          if (updateResult.isErr()) {
+            return new Err(updateResult.error);
+          }
+          didMutateSeatData = true;
         }
-        didMutateSeatData = true;
       }
     }
 
