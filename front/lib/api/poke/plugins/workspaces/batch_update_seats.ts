@@ -112,6 +112,7 @@ export const batchUpdateSeatsPlugin = createPlugin({
           workspace,
           newSeatType: seatType,
           author,
+          allowReturningMemberFreeSeat: true,
         });
         if (res.isErr()) {
           return { email, status: "failed" as const, error: res.error.type };
