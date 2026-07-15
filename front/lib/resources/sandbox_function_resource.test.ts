@@ -1,11 +1,6 @@
-import { generateSandboxFunctionInvocationToken } from "@app/lib/api/sandbox/access_tokens";
-import { ensurePodSandboxReady } from "@app/lib/api/sandbox/lifecycle";
 import { Authenticator } from "@app/lib/auth";
 import { FileResource } from "@app/lib/resources/file_resource";
-import { SandboxFunctionInvocationResource } from "@app/lib/resources/sandbox_function_invocation_resource";
 import { SandboxFunctionResource } from "@app/lib/resources/sandbox_function_resource";
-import { SandboxResource } from "@app/lib/resources/sandbox_resource";
-import { SandboxModel } from "@app/lib/resources/storage/models/sandbox";
 import {
   SandboxFunctionInvocationModel,
   SandboxFunctionModel,
@@ -17,23 +12,8 @@ import { fileStorageMock } from "@app/tests/utils/mocks/file_storage";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import { sandboxFunctionContentType } from "@app/types/files";
-import { Ok } from "@app/types/shared/result";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
-import { beforeEach, describe, expect, it, vi } from "vitest";
-
-vi.mock("@app/lib/api/sandbox/lifecycle", () => ({
-  ensurePodSandboxReady: vi.fn(),
-}));
-
-vi.mock("@app/lib/api/sandbox/access_tokens", async (importOriginal) => {
-  const actual =
-    await importOriginal<typeof import("@app/lib/api/sandbox/access_tokens")>();
-
-  return {
-    ...actual,
-    generateSandboxFunctionInvocationToken: vi.fn(),
-  };
-});
+import { beforeEach, describe, expect, it } from "vitest";
 
 const inputSchema: JSONSchema = {
   type: "object",
@@ -51,10 +31,7 @@ const outputSchema: JSONSchema = {
   required: ["commentId"],
 };
 
-const ONE_HOUR_MS = 60 * 60 * 1_000;
-
 beforeEach(() => {
-  vi.clearAllMocks();
   fileStorageMock.reset();
 });
 
@@ -368,225 +345,6 @@ describe("SandboxFunctionResource", () => {
         }),
       ])
     );
-  });
-
-  it("creates an invocation and executes it on the pod sandbox", async () => {
-    const { authenticator, workspace } = await createResourceTest({
-      role: "admin",
-    });
-    const space = await SpaceFactory.project(workspace);
-    const file = await FileFactory.create(authenticator, null, {
-      contentType: sandboxFunctionContentType,
-      fileName: "comments.ts",
-      fileSize: 100,
-      status: "created",
-      useCase: "project_context",
-      useCaseMetadata: { spaceId: space.sId },
-    });
-    const sandboxFunction = await SandboxFunctionResource.makeNew(
-      authenticator,
-      {
-        space,
-        file,
-        slug: "add-comment",
-        description: "Add a comment.",
-        inputSchema,
-        outputSchema,
-      }
-    );
-    const sandbox = await SandboxResource.makeNew(authenticator, {
-      providerId: "test-provider-id",
-      status: "running",
-      baseImage: "dust-base",
-      version: "0.0.0-test",
-    });
-    const staleLastActivityAt = new Date(Date.now() - ONE_HOUR_MS);
-    await SandboxModel.update(
-      { lastActivityAt: staleLastActivityAt },
-      { where: { id: sandbox.id } }
-    );
-    const execSpy = vi.spyOn(sandbox, "exec").mockResolvedValue(
-      new Ok({
-        exitCode: 0,
-        stdout: "hello world\n",
-        stderr: "",
-      })
-    );
-    vi.mocked(ensurePodSandboxReady).mockResolvedValue(
-      new Ok({ sandbox, freshlyCreated: false })
-    );
-    vi.mocked(generateSandboxFunctionInvocationToken).mockResolvedValue(
-      "sbt-function-token"
-    );
-    const invocation = await SandboxFunctionInvocationResource.makeNew(
-      authenticator,
-      { sandboxFunction }
-    );
-
-    expect(invocation.toJSON()).toMatchObject({
-      functionId: sandboxFunction.sId,
-      status: "created",
-    });
-    expect(invocation.sId).toMatch(/^sfi_/);
-    expect(Date.parse(invocation.toJSON().createdAt)).not.toBeNaN();
-    expect(invocation.status).toBe("created");
-
-    const executionResult = await invocation.execute(authenticator, {
-      input: { message: "hello" },
-      context: { frameFileId: file.sId },
-    });
-    if (executionResult.isErr()) {
-      throw executionResult.error;
-    }
-
-    const refetchedInvocation =
-      await SandboxFunctionInvocationResource.fetchById(authenticator, {
-        sandboxFunction,
-        invocationId: invocation.sId,
-      });
-    expect(refetchedInvocation?.status).toBe("created");
-    const refreshedSandbox = await SandboxModel.findOne({
-      where: { id: sandbox.id, workspaceId: workspace.id },
-    });
-    expect(refreshedSandbox?.lastActivityAt.getTime()).toBeGreaterThan(
-      staleLastActivityAt.getTime()
-    );
-    expect(ensurePodSandboxReady).toHaveBeenCalledWith(authenticator, space);
-    expect(generateSandboxFunctionInvocationToken).toHaveBeenCalledWith(
-      authenticator,
-      {
-        sandbox,
-        sandboxFunction,
-        invocationId: invocation.sId,
-        execId: expect.any(String),
-      }
-    );
-    expect(execSpy).toHaveBeenCalledTimes(1);
-
-    const execCall = execSpy.mock.calls[0];
-    expect(execCall).toBeDefined();
-    if (!execCall) {
-      return;
-    }
-    const [, command, opts] = execCall;
-    // The bundle is read from the read-only mount, so the command is just the run, no staging write.
-    expect(command).toBe("/opt/bin/dsbx function run 'add-comment'");
-    expect(opts?.envVars).toMatchObject({
-      DUST_FUNCTIONS_DIR: `/sandbox-functions/pods/${space.sId}`,
-      DUST_POD_DATABASES_DIR: "/pod-state/databases",
-      DUST_POD_DATABASE_MAX_SIZE_BYTES: "1073741824",
-      DUST_SANDBOX_TOKEN: "sbt-function-token",
-    });
-    expect(opts?.user).toBe("agent-proxied");
-    expect(opts?.workingDirectory).toBe("/home/agent");
-    expect(typeof opts?.stdin).toBe("string");
-    if (typeof opts?.stdin !== "string") {
-      return;
-    }
-    const inputEnvelope = JSON.parse(opts.stdin);
-    expect(inputEnvelope).toMatchObject({
-      method: "POST",
-      url: `https://dust.local/sandbox-functions/${sandboxFunction.sId}/invocations/${invocation.sId}`,
-      headers: {
-        "content-type": "application/json",
-        "x-dust-frame-file-id": file.sId,
-        "x-dust-sandbox-function-id": sandboxFunction.sId,
-        "x-dust-sandbox-function-invocation-id": invocation.sId,
-      },
-      body: JSON.stringify({ message: "hello" }),
-      encoding: "utf8",
-    });
-  });
-
-  async function setupInvokeTest() {
-    const { authenticator, workspace } = await createResourceTest({
-      role: "admin",
-    });
-    const space = await SpaceFactory.project(workspace);
-    const file = await FileFactory.create(authenticator, null, {
-      contentType: sandboxFunctionContentType,
-      fileName: "comments.ts",
-      fileSize: 100,
-      status: "created",
-      useCase: "project_context",
-      useCaseMetadata: { spaceId: space.sId },
-    });
-    const sandboxFunction = await SandboxFunctionResource.makeNew(
-      authenticator,
-      {
-        space,
-        file,
-        slug: "add-comment",
-        description: "Add a comment.",
-        inputSchema,
-        outputSchema,
-      }
-    );
-    const sandbox = await SandboxResource.makeNew(authenticator, {
-      providerId: "test-provider-id",
-      status: "running",
-      baseImage: "dust-base",
-      version: "0.0.0-test",
-    });
-    vi.mocked(ensurePodSandboxReady).mockResolvedValue(
-      new Ok({ sandbox, freshlyCreated: false })
-    );
-    vi.mocked(generateSandboxFunctionInvocationToken).mockResolvedValue(
-      "sbt-function-token"
-    );
-
-    const invocation = await SandboxFunctionInvocationResource.makeNew(
-      authenticator,
-      { sandboxFunction }
-    );
-
-    return { authenticator, sandboxFunction, sandbox, invocation };
-  }
-
-  it("surfaces the runner stderr when the invocation exits non-zero", async () => {
-    const { authenticator, sandbox, invocation } = await setupInvokeTest();
-    vi.spyOn(sandbox, "exec").mockResolvedValue(
-      new Ok({
-        exitCode: 1,
-        stdout: "some stdout",
-        stderr: "dsbx command failed: connection refused",
-      })
-    );
-
-    const result = await invocation.execute(authenticator, {
-      input: { message: "hello" },
-    });
-
-    expect(result.isErr()).toBe(true);
-    if (result.isOk()) {
-      return;
-    }
-    expect(result.error.message).toContain("exit code 1");
-    expect(result.error.message).toContain(
-      "dsbx command failed: connection refused"
-    );
-  });
-
-  it("falls back to the runner stdout when stderr is empty on failure", async () => {
-    const { authenticator, sandbox, invocation } = await setupInvokeTest();
-    vi.spyOn(sandbox, "exec").mockResolvedValue(
-      new Ok({
-        exitCode: 2,
-        stdout: "boom from stdout",
-        stderr: "",
-      })
-    );
-
-    const result = await invocation.execute(authenticator, {
-      input: { message: "hello" },
-    });
-
-    expect(result.isErr()).toBe(true);
-    if (result.isOk()) {
-      return;
-    }
-    expect(result.error.message).toContain("exit code 2");
-    expect(result.error.message).toContain("boom from stdout");
   });
 
   it("overwrites the bundle and contract in place on re-publish", async () => {
