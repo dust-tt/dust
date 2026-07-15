@@ -3,14 +3,15 @@ import { Authenticator } from "@app/lib/auth";
 import { SandboxFunctionInvocationResource } from "@app/lib/resources/sandbox_function_invocation_resource";
 import { SandboxFunctionResource } from "@app/lib/resources/sandbox_function_resource";
 
-export type RunSandboxFunctionInvocationActivityArgs = {
-  sandboxFunctionId: string;
-  invocationId: string;
-};
-
 export async function runSandboxFunctionInvocationActivity(
   authType: AuthenticatorType,
-  { sandboxFunctionId, invocationId }: RunSandboxFunctionInvocationActivityArgs
+  {
+    sandboxFunctionId,
+    invocationId,
+  }: {
+    sandboxFunctionId: string;
+    invocationId: string;
+  }
 ): Promise<void> {
   const auth = await Authenticator.fromJsonWithRefrehedGroups(authType);
   const sandboxFunction = await SandboxFunctionResource.fetchById(
