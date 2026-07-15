@@ -27,6 +27,7 @@ export interface SearchInputProps {
   onKeyDown?: (e: React.KeyboardEvent<HTMLInputElement>) => void;
   onFocus?: () => void;
   onBlur?: () => void;
+  id?: string;
   name: string;
   disabled?: boolean;
   isLoading?: boolean;
@@ -37,6 +38,7 @@ export const SearchInput = forwardRef<HTMLInputElement, SearchInputProps>(
   (
     {
       placeholder = "Search",
+      id,
       value,
       onChange,
       onKeyDown,
@@ -53,9 +55,12 @@ export const SearchInput = forwardRef<HTMLInputElement, SearchInputProps>(
       onChange("");
     };
 
+    const inputId = id ?? name;
+
     return (
       <div className={cn("relative", className)}>
         <Input
+          id={inputId}
           type="text"
           name={name}
           autoComplete="off"

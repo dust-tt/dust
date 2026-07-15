@@ -192,7 +192,6 @@ export function MemberSelectionTable({
         value={searchText}
         onChange={handleSearchChange}
         placeholder="Search users..."
-        className="mt-2"
       />
       <div className="flex min-h-0 flex-1 flex-col">
         {isLoading ? (
