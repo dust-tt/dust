@@ -57,6 +57,8 @@ type BaseBreadcrumbItem = {
 
 type LinkBreadcrumbItem = BaseBreadcrumbItem & {
   href: string;
+  shallow?: boolean;
+  replace?: boolean;
   onClick?: never;
 };
 
@@ -152,6 +154,8 @@ function BreadcrumbItemRenderer({
     return (
       <Button
         href={item.href}
+        shallow={item.shallow}
+        replace={item.replace}
         icon={item.icon}
         variant={buttonVariant ?? (isLast ? "ghost" : "ghost-secondary")}
         label={truncatedLabel}
