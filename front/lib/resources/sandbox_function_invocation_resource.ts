@@ -161,7 +161,9 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
   }
 
   async fail(error: Error): Promise<void> {
-    await this.writeData({ input: this.input, error: error.message });
+    const data = { input: this.input, error: error.message };
+    await SandboxFunctionInvocationResource.writeDataToGcs(this.gcsPath, data);
+    this.data = data;
     await this.update({ status: "errored" });
     await publishSandboxFunctionInvocationEvent(
       {
@@ -176,7 +178,9 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
   }
 
   async succeed(result: unknown): Promise<void> {
-    await this.writeData({ input: this.input, result });
+    const data = { input: this.input, result };
+    await SandboxFunctionInvocationResource.writeDataToGcs(this.gcsPath, data);
+    this.data = data;
     await this.update({ status: "succeeded" });
     await publishSandboxFunctionInvocationEvent(
       {
@@ -298,6 +302,8 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
   private static async loadDataFromGcs(
     gcsPath: string | null
   ): Promise<SandboxFunctionInvocationData> {
+    // TODO: Remove null support after running
+    // `20260715_backfill_sandbox_function_invocation_gcs_paths.ts`.
     if (!gcsPath) {
       return { input: undefined };
     }
@@ -314,9 +320,15 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
   }
 
   private static async writeDataToGcs(
-    gcsPath: string,
+    gcsPath: string | null,
     data: SandboxFunctionInvocationData
   ): Promise<void> {
+    // TODO: Remove null support after running
+    // `20260715_backfill_sandbox_function_invocation_gcs_paths.ts`.
+    if (!gcsPath) {
+      return;
+    }
+
     const writeResult = await withRetry(() =>
       getPrivateUploadBucket()
         .file(gcsPath)
@@ -327,15 +339,6 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
     if (writeResult.isErr()) {
       throw writeResult.error;
     }
-  }
-
-  private async writeData(data: SandboxFunctionInvocationData): Promise<void> {
-    if (!this.gcsPath) {
-      throw new Error("Sandbox function invocation has no GCS path.");
-    }
-
-    await SandboxFunctionInvocationResource.writeDataToGcs(this.gcsPath, data);
-    this.data = data;
   }
 
   private static async deleteDataFromGcs(gcsPaths: string[]): Promise<void> {
