@@ -36,7 +36,6 @@ const ResizablePanelGroup = ({
 
   React.useLayoutEffect(() => {
     if (!animateLayoutChanges) {
-      setPanelGroupSizePx(undefined);
       return;
     }
 
@@ -81,7 +80,7 @@ const ResizablePanelGroup = ({
       animateLayoutChanges,
       direction,
       isDragging,
-      panelGroupSizePx,
+      panelGroupSizePx: animateLayoutChanges ? panelGroupSizePx : undefined,
       setIsDragging,
     }),
     [animateLayoutChanges, direction, isDragging, panelGroupSizePx]
