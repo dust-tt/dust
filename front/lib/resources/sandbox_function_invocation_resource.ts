@@ -222,9 +222,6 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
           "content-type": "application/json",
           "x-dust-sandbox-function-id": sandboxFunction.sId,
           "x-dust-sandbox-function-invocation-id": this.sId,
-          ...(body.context?.frameFileId
-            ? { "x-dust-frame-file-id": body.context.frameFileId }
-            : {}),
         },
         ...(body.input === undefined
           ? {}

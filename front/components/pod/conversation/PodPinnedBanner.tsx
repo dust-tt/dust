@@ -55,7 +55,6 @@ function PodPinnedBannerFrame({
         identifier: `viz-banner-${fileId}`,
       }}
       conversationId={null}
-      frameFileId={fileId}
       spaceId={podId}
       isInDrawer={true}
       ref={iframeRef}

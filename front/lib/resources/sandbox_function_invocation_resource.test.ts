@@ -102,7 +102,6 @@ async function setupExecutionTest() {
   return {
     authenticator,
     space,
-    file,
     sandboxFunction,
     sandbox,
     invocation,
@@ -199,7 +198,7 @@ describe("SandboxFunctionInvocationResource", () => {
   });
 
   it("executes an invocation on the pod sandbox", async () => {
-    const { authenticator, space, file, sandboxFunction, sandbox, invocation } =
+    const { authenticator, space, sandboxFunction, sandbox, invocation } =
       await setupExecutionTest();
     const updateLastActivityAtSpy = vi.spyOn(sandbox, "updateLastActivityAt");
     const execSpy = vi.spyOn(sandbox, "exec").mockResolvedValue(
@@ -219,7 +218,6 @@ describe("SandboxFunctionInvocationResource", () => {
 
     const executionResult = await invocation.execute(authenticator, {
       input: { message: "hello" },
-      context: { frameFileId: file.sId },
     });
     if (executionResult.isErr()) {
       throw executionResult.error;
@@ -270,7 +268,6 @@ describe("SandboxFunctionInvocationResource", () => {
       url: `https://dust.local/sandbox-functions/${sandboxFunction.sId}/invocations/${invocation.sId}`,
       headers: {
         "content-type": "application/json",
-        "x-dust-frame-file-id": file.sId,
         "x-dust-sandbox-function-id": sandboxFunction.sId,
         "x-dust-sandbox-function-invocation-id": invocation.sId,
       },

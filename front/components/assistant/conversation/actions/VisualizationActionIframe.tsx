@@ -481,7 +481,6 @@ export function CodeDrawer({
 interface VisualizationActionIframeProps {
   agentConfigurationId: string | null;
   conversationId: string | null;
-  frameFileId?: string;
   isEditable?: boolean;
   isInDrawer?: boolean;
   isPublic?: boolean;
@@ -565,7 +564,6 @@ export const VisualizationActionIframe = forwardRef<
   const {
     agentConfigurationId,
     conversationId,
-    frameFileId,
     isEditable = false,
     isInDrawer = false,
     isPublic = false,
@@ -631,7 +629,6 @@ export const VisualizationActionIframe = forwardRef<
 
         const body: PostSandboxFunctionInvocationRequestBody = {
           input,
-          context: frameFileId ? { frameFileId } : undefined,
         };
 
         const encodedFunctionIdOrSlug = encodeURIComponent(functionIdOrSlug);
@@ -659,7 +656,7 @@ export const VisualizationActionIframe = forwardRef<
         return new Err(normalizeError(error));
       }
     },
-    [frameFileId, isPublic, workspaceId]
+    [isPublic, workspaceId]
   );
 
   useVisualizationDataHandler({
