@@ -1,5 +1,4 @@
 import { MCP_VALIDATION_OUTPUTS } from "@app/lib/actions/constants";
-import { publishSandboxFunctionInvocationEvent } from "@app/lib/api/sandbox_functions/events";
 import { validateSandboxFunctionAction } from "@app/lib/api/sandbox_functions/validate_action";
 import { SandboxFunctionInvocationResource } from "@app/lib/resources/sandbox_function_invocation_resource";
 import { SandboxFunctionResource } from "@app/lib/resources/sandbox_function_resource";
@@ -114,16 +113,11 @@ app.post(
       });
     }
 
-    const invocation = await SandboxFunctionInvocationResource.makeNew(auth, {
-      sandboxFunction,
-    });
-    await publishSandboxFunctionInvocationEvent(
+    const invocation = await SandboxFunctionInvocationResource.createAndPublish(
+      auth,
       {
-        type: "sandbox_function_invocation_created",
-        created: invocation.createdAt.getTime(),
-        invocation: invocation.toJSON(),
-      },
-      { invocationId: invocation.sId }
+        sandboxFunction,
+      }
     );
 
     const executionResult = await invocation.execute(auth, body);

@@ -231,6 +231,27 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
     return new this(this.model, invocation.get(), { sandboxFunction });
   }
 
+  static async createAndPublish(
+    auth: Authenticator,
+    {
+      sandboxFunction,
+    }: {
+      sandboxFunction: SandboxFunctionResource;
+    }
+  ): Promise<SandboxFunctionInvocationResource> {
+    const invocation = await this.makeNew(auth, { sandboxFunction });
+    await publishSandboxFunctionInvocationEvent(
+      {
+        type: "sandbox_function_invocation_created",
+        created: invocation.createdAt.getTime(),
+        invocation: invocation.toJSON(),
+      },
+      { invocationId: invocation.sId }
+    );
+
+    return invocation;
+  }
+
   private static async baseFetch(
     auth: Authenticator,
     {
