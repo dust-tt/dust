@@ -422,7 +422,15 @@ describe("UserAnswerRequired", () => {
     expect(removeCompletedActionMock).toHaveBeenCalledWith("action_1");
   });
 
-  it("skips when Escape is pressed while the component is focused", async () => {
+  it("disables controls and skips when Escape is pressed", async () => {
+    let resolveAnswer = (_result: { success: boolean }) => {};
+    answerQuestionMock.mockImplementationOnce(
+      () =>
+        new Promise<{ success: boolean }>((resolve) => {
+          resolveAnswer = resolve;
+        })
+    );
+
     const { container } = render(
       <UserAnswerRequired
         blockedAction={makeBlockedAction()}
@@ -445,6 +453,21 @@ describe("UserAnswerRequired", () => {
         answer: { selectedOptions: [] },
       });
     });
+
+    const status = await screen.findByRole("status");
+    const hiddenOption = screen.getByRole("button", {
+      name: /Alpha/i,
+      hidden: true,
+    });
+
+    expect(status).toHaveTextContent("Skipping question");
+    expect(status).toHaveClass("duration-exit");
+    expect(hiddenOption.parentElement).toHaveClass("duration-exit");
+    expect(hiddenOption).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Skip" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Send answer" })).toBeDisabled();
+
+    await act(async () => resolveAnswer({ success: true }));
     await finishExitAnimation(container);
     expect(removeCompletedActionMock).toHaveBeenCalledWith("action_1");
   });

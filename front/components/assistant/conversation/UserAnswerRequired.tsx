@@ -328,7 +328,7 @@ export function UserAnswerRequired({
                 isKeyboardNavigating && "cursor-none"
               )}
               onClick={() => handleOptionClick(index)}
-              disabled={isAnswerSubmitting}
+              disabled={isSubmitting}
             />
           ))}
           <OptionCard
@@ -358,12 +358,14 @@ export function UserAnswerRequired({
           className={cn(
             "absolute inset-0 flex items-center justify-center transition-opacity ease-enter motion-reduce:transition-none",
             isSubmitting
-              ? "opacity-100 duration-enter"
-              : "pointer-events-none opacity-0 duration-exit"
+              ? "opacity-100 duration-exit"
+              : "pointer-events-none opacity-0 duration-enter"
           )}
         >
           <Spinner size="lg" />
-          <span className="sr-only">Submitting answer</span>
+          <span className="sr-only">
+            {isSkipSubmitting ? "Skipping question" : "Submitting answer"}
+          </span>
         </div>
       </div>
       {errorMessage && (
@@ -378,13 +380,14 @@ export function UserAnswerRequired({
           size="sm"
           onClick={handleSkip}
           isLoading={isSkipSubmitting}
+          disabled={isSubmitting}
         />
         <Button
           icon={ArrowUp}
           variant="highlight"
           size="sm"
           isLoading={isAnswerSubmitting}
-          disabled={answerDraft.answerToSubmit === null}
+          disabled={isSubmitting || answerDraft.answerToSubmit === null}
           onClick={handleSubmit}
           aria-label="Send answer"
         />
