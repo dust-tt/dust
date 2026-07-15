@@ -50,7 +50,7 @@ export function UserAnswerRequired({
   const [pendingSubmission, setPendingSubmission] = useState<
     "answer" | "skip" | null
   >(null);
-  const [isCompleted, setIsCompleted] = useState(false);
+  const [isExiting, setIsExiting] = useState(false);
   const [activeOptionIndex, setActiveOptionIndex] = useState(0);
   const [isCustomResponseFocused, setIsCustomResponseFocused] = useState(false);
   const [isKeyboardNavigating, setIsKeyboardNavigating] = useState(false);
@@ -85,38 +85,40 @@ export function UserAnswerRequired({
     answer: UserQuestionAnswer,
     { isSkip = false }: { isSkip?: boolean } = {}
   ) {
+    // Move focus out of the controls before disabling and hiding them.
     containerRef.current?.focus({ preventScroll: true });
     setPendingSubmission(isSkip ? "skip" : "answer");
-    // Submit against the action's own conversation/message: for a sub-agent
-    // question these are the child's ids (the action lives in the child
-    // conversation). For a direct question they equal the current conversation.
-    const result = await answerQuestion({
-      conversationId: blockedAction.conversationId,
-      messageId: blockedAction.messageId,
-      actionId: blockedAction.actionId,
-      answer,
-    });
+    try {
+      // Submit against the action's own conversation/message: for a sub-agent
+      // question these are the child's ids (the action lives in the child
+      // conversation). For a direct question they equal the current conversation.
+      const result = await answerQuestion({
+        conversationId: blockedAction.conversationId,
+        messageId: blockedAction.messageId,
+        actionId: blockedAction.actionId,
+        answer,
+      });
 
-    if (result.success) {
+      if (!result.success) {
+        setPendingSubmission(null);
+        return;
+      }
+
       // Resume the agent run. For a sub-agent question this also relaunches the
       // blocked parent run (the child retry is a no-op once the answer is in).
-      let shouldWaitForExitAnimation = false;
-      try {
-        await retryHandler();
-        if (shouldReduceMotion) {
-          removeCompletedAction(blockedAction.actionId);
-        } else {
-          shouldWaitForExitAnimation = true;
-          setIsCompleted(true);
-        }
-      } finally {
-        if (!shouldWaitForExitAnimation) {
-          setPendingSubmission(null);
-        }
-      }
-    } else {
+      await retryHandler();
+    } catch (error) {
       setPendingSubmission(null);
+      throw error;
     }
+
+    if (shouldReduceMotion) {
+      removeCompletedAction(blockedAction.actionId);
+      return;
+    }
+
+    // Keep the submission state visible until the exit animation removes the card.
+    setIsExiting(true);
   }
 
   function activateOption(index: number) {
@@ -283,14 +285,14 @@ export function UserAnswerRequired({
       onKeyDown={handleContainerKeyDown}
       onMouseMove={() => setIsKeyboardNavigating(false)}
       onAnimationEnd={(event) => {
-        if (isCompleted && event.currentTarget === event.target) {
+        if (isExiting && event.currentTarget === event.target) {
           removeCompletedAction(blockedAction.actionId);
         }
       }}
       className={cn(
         "flex flex-col gap-4 rounded-2xl border border-dark bg-background p-5 outline-hidden",
         "ease-enter motion-reduce:animate-none",
-        isCompleted
+        isExiting
           ? "animate-out fill-mode-forwards fade-out-0 duration-exit"
           : "animate-in fade-in-0 duration-enter",
         isKeyboardNavigating && "cursor-none"
