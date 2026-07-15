@@ -176,21 +176,26 @@ export class UserResource extends BaseResource<UserModel> {
 
   // Batch-reads a single user-scoped metadata value for
   // many users in one query. Returns a Map keyed by user model id, omitting
-  // users that have no value for the key.
+  // users that have no value for the key. Pass `value` to filter in the DB.
   static async fetchUserScopedMetadataValuesByUserModelIds(
     key: string,
-    userModelIds: ModelId[]
+    userModelIds: ModelId[],
+    { value }: { value?: string } = {}
   ): Promise<Map<ModelId, string>> {
     if (userModelIds.length === 0) {
       return new Map();
     }
+    const where: Record<string, unknown> = {
+      key,
+      userId: { [Op.in]: userModelIds },
+      workspaceId: null,
+    };
+    if (value !== undefined) {
+      where["value"] = value;
+    }
     const rows = await UserMetadataModel.findAll({
       attributes: ["userId", "value"],
-      where: {
-        key,
-        userId: { [Op.in]: userModelIds },
-        workspaceId: null,
-      },
+      where,
     });
     return new Map(rows.map((row) => [row.userId, row.value]));
   }

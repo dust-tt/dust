@@ -1,3 +1,4 @@
+import { MCPError } from "@app/lib/actions/mcp_errors";
 import type { ToolHandlers } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/utils";
@@ -26,7 +27,7 @@ import {
 import type { Authenticator } from "@app/lib/auth";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { JOB_TYPE_LABELS } from "@app/types/job_type";
-import { Ok } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 
 const DAYS = 30;
@@ -58,7 +59,7 @@ async function resolveAccessibleSkills(
 // workspace_analytics tools. Scoping is entirely by `userIds`, so the same
 // renderer serves both the caller's own usage and an anonymized job-type
 // cohort.
-async function buildDetailedUsageLines(
+async function buildDetailedUsageSections(
   auth: Authenticator,
   { userIds, window }: { userIds: string[]; window: ResolvedTimeWindow }
 ): Promise<string[]> {
@@ -157,7 +158,7 @@ const handlers: ToolHandlers<typeof USER_ANALYTICS_TOOLS_METADATA> = {
       "last_30_days"
     );
     if (window.isErr()) {
-      return new Ok([{ type: "text" as const, text: window.error }]);
+      return new Err(new MCPError(window.error, { tracked: false }));
     }
     const { label } = window.value;
 
@@ -174,14 +175,14 @@ const handlers: ToolHandlers<typeof USER_ANALYTICS_TOOLS_METADATA> = {
             type: "text" as const,
             text:
               `Usage for the ${jobTypeLabel} job type is not available: it has ` +
-              `${cohort.userCount} user${cohort.userCount === 1 ? "" : "s"}, ` +
-              `below the ${MIN_USERS_FOR_ANONYMITY}-user minimum ` +
-              "required to keep individual usage anonymous.",
+              `${cohort.userCount} user${cohort.userCount === 1 ? "" : "s"} — ` +
+              `fewer than the ${MIN_USERS_FOR_ANONYMITY} required ` +
+              "to keep individual usage anonymous.",
           },
         ]);
       }
 
-      const sections = await buildDetailedUsageLines(auth, {
+      const sections = await buildDetailedUsageSections(auth, {
         userIds: cohort.userIds,
         window: window.value,
       });
@@ -205,7 +206,7 @@ const handlers: ToolHandlers<typeof USER_ANALYTICS_TOOLS_METADATA> = {
       ]);
     }
 
-    const sections = await buildDetailedUsageLines(auth, {
+    const sections = await buildDetailedUsageSections(auth, {
       userIds: [user.sId],
       window: window.value,
     });

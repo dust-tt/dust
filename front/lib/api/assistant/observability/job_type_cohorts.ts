@@ -28,14 +28,13 @@ export async function fetchJobTypeCohort(
     return { kind: "below_anonymity_floor", userCount: 0 };
   }
 
-  const jobTypeByUserModelId =
+  const matchingByModelId =
     await UserResource.fetchUserScopedMetadataValuesByUserModelIds(
       "job_type",
-      memberModelIds
+      memberModelIds,
+      { value: jobType }
     );
-  const matchingModelIds = memberModelIds.filter(
-    (modelId) => jobTypeByUserModelId.get(modelId) === jobType
-  );
+  const matchingModelIds = [...matchingByModelId.keys()];
 
   if (matchingModelIds.length < MIN_USERS_FOR_ANONYMITY) {
     return {
