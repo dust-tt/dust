@@ -122,6 +122,7 @@ app.get(
       isDefault: isDefault === "true" ? true : undefined,
       withInstructions: false,
       withTools: false,
+      withFileAttachments: false,
     });
 
     if (withRelations === "true") {

@@ -68,6 +68,7 @@ async function fetchSkillEditorsForWorkspace({
     status: "active",
     withInstructions: false,
     withTools: false,
+    withFileAttachments: false,
   });
 
   if (skills.length === 0) {

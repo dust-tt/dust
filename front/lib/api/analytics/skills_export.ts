@@ -33,6 +33,7 @@ export async function fetchSkillExportRows(
     onlyCustom: true,
     withInstructions: false,
     withTools: false,
+    withFileAttachments: false,
   });
 
   const usedSkillsResult = await fetchUsedSkills(baseQuery);

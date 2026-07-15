@@ -1,5 +1,8 @@
 import { Authenticator } from "@app/lib/auth";
-import { SkillMCPServerConfigurationModel } from "@app/lib/models/skill";
+import {
+  SkillFileAttachmentModel,
+  SkillMCPServerConfigurationModel,
+} from "@app/lib/models/skill";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { discoverToolsSkill } from "@app/lib/resources/skill/code_defined/system/discover_tools";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
@@ -239,6 +242,10 @@ describe("GET /api/w/:wId/skills", () => {
       name: "Picker Skill",
       userFacingDescription: "Shown in the capabilities picker",
     });
+    const fileAttachmentFindAllSpy = vi.spyOn(
+      SkillFileAttachmentModel,
+      "findAll"
+    );
 
     const response = await getSkills(workspace);
 
@@ -270,6 +277,8 @@ describe("GET /api/w/:wId/skills", () => {
       "instructionsHtml"
     );
     expect(skillWithoutInstructionsAndTools).not.toHaveProperty("tools");
+    expect(fileAttachmentFindAllSpy).not.toHaveBeenCalled();
+    fileAttachmentFindAllSpy.mockRestore();
   });
 
   it("should not fetch dynamic global instructions", async () => {
