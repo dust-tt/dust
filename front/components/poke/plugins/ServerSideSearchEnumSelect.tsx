@@ -72,6 +72,10 @@ export function ServerSideSearchEnumSelect({
   });
 
   const selectedValues = React.useMemo(() => values ?? [], [values]);
+  const selectedValuesSet = React.useMemo(
+    () => new Set(selectedValues),
+    [selectedValues]
+  );
 
   const staticOptionByValue = React.useMemo(
     () => new Map(staticOptions.map((option) => [option.value, option])),
@@ -106,7 +110,7 @@ export function ServerSideSearchEnumSelect({
   const handleSelect = React.useCallback(
     (value: string) => {
       if (multiple) {
-        const next = selectedValues.includes(value)
+        const next = selectedValuesSet.has(value)
           ? selectedValues.filter((v) => v !== value)
           : [...selectedValues, value];
         onValuesChange(next);
@@ -116,7 +120,7 @@ export function ServerSideSearchEnumSelect({
       onValuesChange([value]);
       setOpen(false);
     },
-    [multiple, onValuesChange, selectedValues]
+    [multiple, onValuesChange, selectedValues, selectedValuesSet]
   );
 
   const title =
@@ -177,7 +181,7 @@ export function ServerSideSearchEnumSelect({
                 <PokeCommandEmpty>No members found.</PokeCommandEmpty>
                 <PokeCommandGroup>
                   {staticOptions.map((option) => {
-                    const isSelected = selectedValues.includes(option.value);
+                    const isSelected = selectedValuesSet.has(option.value);
                     return (
                       <PokeCommandItem
                         value={option.label}
@@ -205,7 +209,7 @@ export function ServerSideSearchEnumSelect({
                     .filter((member) => !staticOptionByValue.has(member.sId))
                     .map((member) => {
                       const memberLabel = formatMemberLabel(member);
-                      const isSelected = selectedValues.includes(member.sId);
+                      const isSelected = selectedValuesSet.has(member.sId);
 
                       return (
                         <PokeCommandItem
