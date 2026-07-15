@@ -1,7 +1,9 @@
 import { isSandboxFunctionInvocationTokenPayload } from "@app/lib/api/sandbox/access_tokens";
-import { publishSandboxFunctionInvocationEvent } from "@app/lib/api/sandbox_functions/events";
+import { SandboxFunctionInvocationResource } from "@app/lib/resources/sandbox_function_invocation_resource";
+import { SandboxFunctionResource } from "@app/lib/resources/sandbox_function_resource";
 import { sandboxApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
+import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import type { SuccessResponseBody } from "@front-api/routes/types";
 import { z } from "zod";
@@ -37,16 +39,35 @@ app.post(
       return ctx.json({ success: true });
     }
 
-    await publishSandboxFunctionInvocationEvent(
-      {
-        type: "sandbox_function_invocation_result",
-        created: Date.now(),
-        invocationId: sandboxClaims.invocationId,
-        functionId: sandboxClaims.sandboxFunctionId,
-        result,
-      },
-      { invocationId: sandboxClaims.invocationId }
+    const sandboxFunction = await SandboxFunctionResource.fetchById(
+      auth,
+      sandboxClaims.sandboxFunctionId
     );
+    if (!sandboxFunction) {
+      return apiError(ctx, {
+        status_code: 404,
+        api_error: {
+          type: "invalid_request_error",
+          message: "Sandbox function not found.",
+        },
+      });
+    }
+
+    const invocation = await SandboxFunctionInvocationResource.fetchById(auth, {
+      sandboxFunction,
+      invocationId: sandboxClaims.invocationId,
+    });
+    if (!invocation) {
+      return apiError(ctx, {
+        status_code: 404,
+        api_error: {
+          type: "invalid_request_error",
+          message: "Sandbox function invocation not found.",
+        },
+      });
+    }
+
+    await invocation.succeed(result);
 
     return ctx.json({ success: true });
   }

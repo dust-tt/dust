@@ -105,6 +105,20 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
     );
   }
 
+  async succeed(result: unknown): Promise<void> {
+    await this.update({ status: "succeeded" });
+    await publishSandboxFunctionInvocationEvent(
+      {
+        type: "sandbox_function_invocation_result",
+        created: Date.now(),
+        invocationId: this.sId,
+        functionId: this.sandboxFunction.sId,
+        result,
+      },
+      { invocationId: this.sId }
+    );
+  }
+
   async execute(
     auth: Authenticator,
     body: PostSandboxFunctionInvocationRequestBody

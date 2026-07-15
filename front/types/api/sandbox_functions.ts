@@ -7,6 +7,7 @@ import type { ToolExecutionBaseStatus } from "@app/lib/actions/statuses";
 export const SANDBOX_FUNCTION_INVOCATION_STATUSES = [
   "created",
   "errored",
+  "succeeded",
 ] as const;
 
 export type SandboxFunctionInvocationStatus =
