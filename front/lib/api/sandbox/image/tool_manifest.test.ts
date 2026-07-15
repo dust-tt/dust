@@ -120,7 +120,7 @@ describe("toolManifestToJSON()", () => {
 });
 
 describe("toolManifestToCompactText()", () => {
-  test("lists names and versions on one line per section", () => {
+  test("lists names and versions on one line per runtime", () => {
     const tools: ToolEntry[] = [
       { name: "curl", description: "HTTP client", runtime: "system" },
       {
@@ -143,7 +143,7 @@ describe("toolManifestToCompactText()", () => {
     const text = toolManifestToCompactText(manifest);
 
     expect(text).toBe(
-      "- System: curl\n- Dust: read_file\n- Python: pandas 2.2.3\n- Node: tsx"
+      "- System: curl, read_file\n- Python: pandas 2.2.3\n- Node: tsx"
     );
   });
 });

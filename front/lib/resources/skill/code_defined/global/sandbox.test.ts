@@ -14,10 +14,12 @@ describe("sandboxSkill", () => {
     });
 
     expect(instructions).toContain("dsbx tools");
-    expect(instructions).toContain("- System: git, curl");
-    expect(instructions).toContain(
-      "- Dust: dsbx, apply_patch, read_file, write_file, edit_file, grep_files, glob, list_dir, xlsx_inspect, pptx_inspect, pptx_slides, docx_inspect"
-    );
+    const systemTools = instructions
+      .split("\n")
+      .find((line) => line.startsWith("- System:"));
+    expect(systemTools).toContain("git, curl");
+    expect(systemTools).toContain("xlsx_inspect");
+    expect(instructions).not.toContain("- Dust:");
     expect(instructions).toContain("- Python: python, pandas 3.0.1");
     expect(instructions).toContain("- Node: typescript, tsx");
     expect(instructions).toContain("`describe_toolset`");
@@ -41,11 +43,11 @@ describe("sandboxSkill", () => {
     });
 
     expect(instructions).not.toContain("dsbx tools");
-    const dustTools = instructions
+    const systemTools = instructions
       .split("\n")
-      .find((line) => line.startsWith("- Dust:"));
-    expect(dustTools).toBeDefined();
-    expect(dustTools).not.toContain("dsbx");
+      .find((line) => line.startsWith("- System:"));
+    expect(systemTools).toBeDefined();
+    expect(systemTools).not.toContain("dsbx");
     expect(instructions).not.toContain("- `dsbx`: Dust CLI");
   });
 

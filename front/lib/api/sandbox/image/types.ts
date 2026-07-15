@@ -143,9 +143,7 @@ export interface ManifestToolEntry {
 export interface ToolManifest {
   readonly version: "1.0";
   readonly tools: Readonly<
-    Partial<Record<ToolRuntime, readonly ManifestToolEntry[]>> & {
-      readonly dust?: readonly ManifestToolEntry[];
-    }
+    Partial<Record<ToolRuntime, readonly ManifestToolEntry[]>>
   >;
 }
 

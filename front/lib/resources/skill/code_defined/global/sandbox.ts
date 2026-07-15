@@ -350,7 +350,7 @@ async function buildSandboxInstructions(
   const compactManifest = toolManifestToCompactText(manifest);
   const dustToolDetailsSection = buildToolDetailsSection(
     "Dust",
-    manifest.tools.dust ?? []
+    toolsResult.value.filter((tool) => tool.isDustTool)
   );
 
   return `${sandboxInstructions}
@@ -367,7 +367,7 @@ ${compactManifest}
 
 Versions are shown when pinned. Installing packages in the sandbox is NOT
 possible. Call \`describe_toolset\` for full descriptions and usage metadata.
-System tools are standard preinstalled command-line utilities. Dust tools are
+System tools include standard preinstalled command-line utilities and
 non-standard helpers provided by Dust.
 
 ${dustToolDetailsSection}Run \`<command> --help\` for detailed modes and flags. Use ONLY the tools listed
