@@ -20,95 +20,88 @@ const ResizablePanelGroupContext = React.createContext<{
   setIsDragging: (isDragging: boolean) => void;
 } | null>(null);
 
-const ResizablePanelGroup = React.forwardRef<
-  React.ElementRef<typeof ResizablePrimitive.PanelGroup>,
-  ResizablePanelGroupProps
->(
-  (
-    { animateLayoutChanges = false, className, direction, id, ...props },
-    forwardedRef
-  ) => {
-    const panelGroupRef =
-      React.useRef<React.ElementRef<typeof ResizablePrimitive.PanelGroup>>(
-        null
+const ResizablePanelGroup = ({
+  animateLayoutChanges = false,
+  className,
+  direction,
+  id,
+  ...props
+}: ResizablePanelGroupProps) => {
+  const panelGroupRef =
+    React.useRef<React.ElementRef<typeof ResizablePrimitive.PanelGroup>>(null);
+  const [isDragging, setIsDragging] = React.useState(false);
+  const [panelGroupSizePx, setPanelGroupSizePx] = React.useState<
+    number | undefined
+  >();
+
+  React.useLayoutEffect(() => {
+    if (!animateLayoutChanges) {
+      setPanelGroupSizePx(undefined);
+      return;
+    }
+
+    const panelGroupId = id ?? panelGroupRef.current?.getId();
+    const panelGroupElement = panelGroupId
+      ? ResizablePrimitive.getPanelGroupElement(panelGroupId)
+      : null;
+
+    if (!panelGroupElement) {
+      setPanelGroupSizePx(undefined);
+      return;
+    }
+
+    const updatePanelGroupSize = () => {
+      const nextSize =
+        direction === "vertical"
+          ? panelGroupElement.clientHeight
+          : panelGroupElement.clientWidth;
+
+      setPanelGroupSizePx((previousSize) =>
+        previousSize === nextSize ? previousSize : nextSize
       );
-    const [isDragging, setIsDragging] = React.useState(false);
-    const [panelGroupSizePx, setPanelGroupSizePx] = React.useState<
-      number | undefined
-    >();
+    };
 
-    React.useImperativeHandle(forwardedRef, () => panelGroupRef.current!);
+    updatePanelGroupSize();
 
-    React.useLayoutEffect(() => {
-      if (!animateLayoutChanges) {
-        setPanelGroupSizePx(undefined);
-        return;
-      }
+    if (typeof ResizeObserver === "undefined") {
+      return;
+    }
 
-      const panelGroupId = id ?? panelGroupRef.current?.getId();
-      const panelGroupElement = panelGroupId
-        ? ResizablePrimitive.getPanelGroupElement(panelGroupId)
-        : null;
+    const resizeObserver = new ResizeObserver(() => updatePanelGroupSize());
 
-      if (!panelGroupElement) {
-        setPanelGroupSizePx(undefined);
-        return;
-      }
+    resizeObserver.observe(panelGroupElement);
 
-      const updatePanelGroupSize = () => {
-        const nextSize =
-          direction === "vertical"
-            ? panelGroupElement.clientHeight
-            : panelGroupElement.clientWidth;
+    return () => {
+      resizeObserver.disconnect();
+    };
+  }, [animateLayoutChanges, direction, id]);
 
-        setPanelGroupSizePx((previousSize) =>
-          previousSize === nextSize ? previousSize : nextSize
-        );
-      };
+  const contextValue = React.useMemo(
+    () => ({
+      animateLayoutChanges,
+      direction,
+      isDragging,
+      panelGroupSizePx,
+      setIsDragging,
+    }),
+    [animateLayoutChanges, direction, isDragging, panelGroupSizePx]
+  );
 
-      updatePanelGroupSize();
-
-      if (typeof ResizeObserver === "undefined") {
-        return;
-      }
-
-      const resizeObserver = new ResizeObserver(() => updatePanelGroupSize());
-
-      resizeObserver.observe(panelGroupElement);
-
-      return () => {
-        resizeObserver.disconnect();
-      };
-    }, [animateLayoutChanges, direction, id]);
-
-    const contextValue = React.useMemo(
-      () => ({
-        animateLayoutChanges,
-        direction,
-        isDragging,
-        panelGroupSizePx,
-        setIsDragging,
-      }),
-      [animateLayoutChanges, direction, isDragging, panelGroupSizePx]
-    );
-
-    return (
-      <ResizablePanelGroupContext.Provider value={contextValue}>
-        <ResizablePrimitive.PanelGroup
-          ref={panelGroupRef}
-          id={id}
-          direction={direction}
-          className={cn(
-            "flex h-full w-full data-[panel-group-direction=vertical]:flex-col",
-            className
-          )}
-          {...props}
-        />
-      </ResizablePanelGroupContext.Provider>
-    );
-  }
-);
-ResizablePanelGroup.displayName = "ResizablePanelGroup";
+  return (
+    <ResizablePanelGroupContext.Provider value={contextValue}>
+      <ResizablePrimitive.PanelGroup
+        ref={panelGroupRef}
+        id={id}
+        direction={direction}
+        className={cn(
+          "flex h-full w-full data-[panel-group-direction=vertical]:flex-col",
+          className
+        )}
+        {...props}
+      />
+    </ResizablePanelGroupContext.Provider>
+  );
+};
 
 interface ResizablePanelContentProps {
   children: React.ReactNode;
