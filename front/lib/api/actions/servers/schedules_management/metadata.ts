@@ -49,13 +49,13 @@ export const SCHEDULES_MANAGEMENT_TOOLS_METADATA = createToolsRecord({
   },
   list_schedules: {
     description:
-      "List the current user's schedules. Pass podId to list all of your schedules attached to that Pod (across agents); otherwise lists your schedules for this agent.",
+      "List the current user's schedules. Pass podId to narrow the list to schedules attached to that Pod; omit it to list all of your schedules.",
     schema: {
       podId: z
         .string()
         .optional()
         .describe(
-          "Optional Pod ID (sId) to list schedules for. Omit to list this agent's schedules."
+          "Optional Pod ID (sId) to narrow the list to that Pod's schedules. Omit to list all of your schedules."
         ),
     },
     stake: "never_ask",
@@ -72,12 +72,6 @@ export const SCHEDULES_MANAGEMENT_TOOLS_METADATA = createToolsRecord({
       scheduleId: z
         .string()
         .describe("The schedule ID (get this from list_schedules)"),
-      podId: z
-        .string()
-        .optional()
-        .describe(
-          "Optional Pod ID (sId) the schedule belongs to. Pass the same podId used with list_schedules."
-        ),
     },
     stake: "high",
     displayLabels: {

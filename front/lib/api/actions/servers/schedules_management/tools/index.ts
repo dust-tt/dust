@@ -172,49 +172,34 @@ export function createSchedulesManagementTools(
       const owner = auth.getNonNullableWorkspace();
       const userId = auth.getNonNullableUser().id;
 
-      const { agentConfiguration } = toolContext.runContext;
-
-      // When a podId is provided, list all of the user's schedules scoped to
-      // that Pod (across agents). Otherwise, list this agent's schedules.
+      // List the user's schedules, optionally narrowed to a single Pod.
       const spaceIdRes = await resolveTriggerSpaceId(auth, podId);
       if (spaceIdRes.isErr()) {
         return new Err(new MCPError(spaceIdRes.error));
       }
       const spaceId = spaceIdRes.value;
 
-      const schedulesResult =
-        spaceId !== null
-          ? await TriggerResource.listBySpaceAndEditors(auth, {
-              spaceModelId: spaceId,
-              editorIds: [userId],
-            })
-          : await TriggerResource.listByAgentConfigurationIdAndEditors(auth, {
-              agentConfigurationId: agentConfiguration.sId,
-              editorIds: [userId],
-            });
+      const schedulesResult = await TriggerResource.listByEditors(auth, {
+        editorIds: [userId],
+        spaceModelId: spaceId,
+      });
 
       if (schedulesResult.isErr()) {
-        return new Err(
-          new MCPError(
-            spaceId !== null
-              ? "Error while fetching schedules for this Pod"
-              : "Error while fetching schedules for this agent"
-          )
-        );
+        return new Err(new MCPError("Error while fetching schedules"));
       }
 
       getStatsDClient().increment("tools.schedules_management.listed", 1, [
         `workspace_id:${owner.sId}`,
-        `agent_id:${agentConfiguration.sId}`,
       ]);
 
-      const scope = spaceId !== null ? "Pod" : "agent";
+      const heading =
+        spaceId !== null ? "Schedules for this Pod" : "Your schedules";
 
       if (schedulesResult.value.length === 0) {
         return new Ok([
           {
             type: "text" as const,
-            text: `No schedules configured for this ${scope}.`,
+            text: `${heading}: none found.`,
           },
         ]);
       }
@@ -228,12 +213,12 @@ export function createSchedulesManagementTools(
       return new Ok([
         {
           type: "text" as const,
-          text: `Schedules for this ${scope}:\n\n${scheduleList}`,
+          text: `${heading}:\n\n${scheduleList}`,
         },
       ]);
     },
 
-    disable_schedule: async ({ scheduleId, podId }) => {
+    disable_schedule: async ({ scheduleId }) => {
       assert(
         isAgentLoopRunContext(toolContext?.runContext),
         "AgentLoopRunContext expected"
@@ -242,33 +227,13 @@ export function createSchedulesManagementTools(
       const owner = auth.getNonNullableWorkspace();
       const userId = auth.getNonNullableUser().id;
 
-      const { agentConfiguration } = toolContext.runContext;
-
-      // Match the scope used by list_schedules so any schedule the user can see
-      // there can also be disabled: pass the same podId.
-      const spaceIdRes = await resolveTriggerSpaceId(auth, podId);
-      if (spaceIdRes.isErr()) {
-        return new Err(new MCPError(spaceIdRes.error));
-      }
-      const spaceId = spaceIdRes.value;
-
-      const triggersResult =
-        spaceId !== null
-          ? await TriggerResource.listBySpaceAndEditors(auth, {
-              spaceModelId: spaceId,
-              editorIds: [userId],
-            })
-          : await TriggerResource.listByAgentConfigurationIdAndEditors(auth, {
-              agentConfigurationId: agentConfiguration.sId,
-              editorIds: [userId],
-            });
-      if (triggersResult.isErr()) {
-        return new Err(new MCPError("Error fetching schedules"));
-      }
-      const schedule = triggersResult.value.find(
-        (t) => t.kind === "schedule" && t.sId === scheduleId
-      );
-      if (!schedule) {
+      // Disable by id; only the schedule's own editor may disable it.
+      const schedule = await TriggerResource.fetchById(auth, scheduleId);
+      if (
+        !schedule ||
+        schedule.kind !== "schedule" ||
+        schedule.editor !== userId
+      ) {
         return new Err(new MCPError("Schedule not found"));
       }
 
@@ -283,7 +248,6 @@ export function createSchedulesManagementTools(
 
       getStatsDClient().increment("tools.schedules_management.disabled", 1, [
         `workspace_id:${owner.sId}`,
-        `agent_id:${agentConfiguration.sId}`,
       ]);
 
       return new Ok([
