@@ -117,6 +117,14 @@ function utcInputToISO(value: string): string {
   return new Date(`${value}:00Z`).toISOString();
 }
 
+// The default start for a new (non-first) phase: one day after the previous
+// phase's start, keeping the whole-hour UTC alignment.
+function addOneDayUTCInput(value: string): string {
+  const date = new Date(`${value}:00Z`);
+  date.setUTCDate(date.getUTCDate() + 1);
+  return toUTCInput(date.toISOString());
+}
+
 // Floor a `datetime-local` value ("YYYY-MM-DDTHH:mm") to the top of the hour.
 function floorToHour(value: string): string {
   if (!value) {
@@ -188,7 +196,7 @@ function ScheduleEditor({
       phases: seatType ? phasesForSeatType(schedule, seatType) : [],
     },
   });
-  const { fields, append, remove, replace } = useFieldArray({
+  const { fields, replace } = useFieldArray({
     control: form.control,
     name: "phases",
   });
@@ -212,6 +220,45 @@ function ScheduleEditor({
   const onSelectSeatType = (next: MembershipSeatType) => {
     setSeatType(next);
     replace(phasesForSeatType(schedule, next));
+  };
+
+  const handleAddPhase = () => {
+    const current = form.getValues("phases");
+    // First phase: starts now (floored to the hour), open-ended.
+    if (current.length === 0) {
+      replace([
+        {
+          startAt: toUTCInput(new Date().toISOString()),
+          endAt: "",
+          minSeats: 0,
+        },
+      ]);
+      return;
+    }
+    // Otherwise the new phase starts the day after the previous phase, and the
+    // previous (until-now open-ended) phase is closed at that moment.
+    const previous = current[current.length - 1];
+    const newStart = addOneDayUTCInput(previous.startAt);
+    const closedPrevious = current.map((phase, i) =>
+      i === current.length - 1 ? { ...phase, endAt: newStart } : phase
+    );
+    replace([...closedPrevious, { startAt: newStart, endAt: "", minSeats: 0 }]);
+  };
+
+  const handleRemovePhase = (index: number) => {
+    const current = form.getValues("phases");
+    const remaining = current.filter((_, i) => i !== index);
+    // Keep the timeline contiguous after a removal: the phase before the
+    // removed one now runs up to the following phase's start — or becomes
+    // open-ended (blank end) when the removed phase was the last one.
+    const realigned = remaining.map((phase, i) => {
+      if (index === 0 || i !== index - 1) {
+        return phase;
+      }
+      const following = remaining[index];
+      return { ...phase, endAt: following ? following.startAt : "" };
+    });
+    replace(realigned);
   };
 
   const onSubmit = async (values: ScheduleFormValues) => {
@@ -372,6 +419,10 @@ function ScheduleEditor({
                       title="End (UTC, blank = open-ended)"
                       type="datetime-local"
                       step={3600}
+                      // The last phase is always open-ended: its end is not
+                      // editable and stays blank.
+                      disabled={index === fields.length - 1}
+                      placeholder="open-ended"
                       transformValue={floorToHour}
                       // Keep phases contiguous: editing a phase's end moves the
                       // next phase's start to match.
@@ -418,7 +469,7 @@ function ScheduleEditor({
                     variant="warning"
                     size="xs"
                     label="Remove"
-                    onClick={() => remove(index)}
+                    onClick={() => handleRemovePhase(index)}
                   />
                 </div>
               ))}
@@ -430,13 +481,7 @@ function ScheduleEditor({
                 variant="outline"
                 size="xs"
                 label="Add phase"
-                onClick={() =>
-                  append({
-                    startAt: toUTCInput(new Date().toISOString()),
-                    endAt: "",
-                    minSeats: 0,
-                  })
-                }
+                onClick={handleAddPhase}
               />
             </div>
           </form>
