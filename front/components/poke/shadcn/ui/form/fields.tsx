@@ -125,6 +125,12 @@ interface InputFieldProps<T extends FieldValues> {
   disabled?: boolean;
   /** Optional transform applied to the raw string value before updating the form. */
   transformValue?: (value: string) => string | number;
+  /**
+   * Optional callback fired with the new value after the form field is updated.
+   * Useful to keep a sibling field in sync (e.g. a phase's start date and the
+   * previous phase's end date). Not called when a number field is cleared.
+   */
+  onValueChange?: (value: string | number) => void;
 }
 
 export function InputField<T extends FieldValues>({
@@ -139,6 +145,7 @@ export function InputField<T extends FieldValues>({
   readOnly,
   disabled,
   transformValue,
+  onValueChange,
 }: InputFieldProps<T>) {
   return (
     <PokeFormField
@@ -161,7 +168,9 @@ export function InputField<T extends FieldValues>({
               value={field.value ?? ""}
               onChange={(e) => {
                 if (transformValue) {
-                  field.onChange(transformValue(e.target.value));
+                  const transformed = transformValue(e.target.value);
+                  field.onChange(transformed);
+                  onValueChange?.(transformed);
                   return;
                 }
 
@@ -173,11 +182,13 @@ export function InputField<T extends FieldValues>({
                   const parsed = Number(e.target.value);
                   if (isFinite(parsed)) {
                     field.onChange(parsed);
+                    onValueChange?.(parsed);
                   }
                   return;
                 }
 
                 field.onChange(e.target.value);
+                onValueChange?.(e.target.value);
               }}
               readOnly={readOnly}
               disabled={disabled}

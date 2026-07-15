@@ -305,6 +305,16 @@ function ScheduleEditor({
                       name={`phases.${index}.startAt`}
                       title="Start"
                       type="datetime-local"
+                      // Keep phases contiguous: editing a phase's start moves
+                      // the previous phase's end to match.
+                      onValueChange={(value) => {
+                        if (index > 0) {
+                          form.setValue(
+                            `phases.${index - 1}.endAt`,
+                            String(value)
+                          );
+                        }
+                      }}
                     />
                   </div>
                   <div className="w-52">
@@ -313,6 +323,16 @@ function ScheduleEditor({
                       name={`phases.${index}.endAt`}
                       title="End (blank = open-ended)"
                       type="datetime-local"
+                      // Keep phases contiguous: editing a phase's end moves the
+                      // next phase's start to match.
+                      onValueChange={(value) => {
+                        if (index < fields.length - 1) {
+                          form.setValue(
+                            `phases.${index + 1}.startAt`,
+                            String(value)
+                          );
+                        }
+                      }}
                     />
                   </div>
                   <div className="w-28">
