@@ -1866,6 +1866,7 @@ const InputBarContainer = ({
                             isSubmitBlocked ? "ghost-secondary" : "highlight"
                           }
                           disabled={isSubmitDisabled}
+                          className="rounded-full"
                           onClick={async (
                             e: React.MouseEvent<HTMLButtonElement>
                           ) => {
