@@ -74,7 +74,7 @@ async function setup() {
   });
   const invocation = await SandboxFunctionInvocationResource.makeNew(
     authenticator,
-    { sandboxFunction }
+    { sandboxFunction, input: undefined }
   );
 
   const server = await RemoteMCPServerFactory.create(workspace);
@@ -185,7 +185,7 @@ describe("SandboxFunctionMCPActionResource", () => {
     await action.createOutputItems(authenticator, [
       { content: { type: "text", text: "4" } },
     ]);
-    expect(gcsStore.size).toBe(1);
+    expect(gcsStore.size).toBe(2);
 
     // The action FKs the invocation with RESTRICT: deletion must not throw.
     const deleteResult = await invocation.delete(authenticator);
@@ -232,9 +232,10 @@ describe("SandboxFunctionMCPActionResource", () => {
     await action.createOutputItems(authenticator, [
       { content: { type: "text", text: "4" } },
     ]);
-    expect(gcsStore.size).toBe(1);
+    expect(gcsStore.size).toBe(2);
 
-    // GCS deletion is deferred to afterCommit: on rollback, neither the rows nor the objects go.
+    // The invocation data is deleted immediately, while action output deletion remains deferred
+    // to afterCommit and the database rows are restored by the rollback.
     await expect(
       frontSequelize.transaction(async (transaction) => {
         await invocation.delete(authenticator, { transaction });
@@ -260,7 +261,7 @@ describe("SandboxFunctionMCPActionResource", () => {
     await action.createOutputItems(authenticator, [
       { content: { type: "text", text: "4" } },
     ]);
-    expect(gcsStore.size).toBe(1);
+    expect(gcsStore.size).toBe(2);
 
     // The action FKs the view with RESTRICT: hard-deleting the view (e.g. sharing a server to
     // the company space, remote server deletion) must not throw.
@@ -273,6 +274,6 @@ describe("SandboxFunctionMCPActionResource", () => {
         action.sId
       )
     ).toBeNull();
-    expect(gcsStore.size).toBe(0);
+    expect(gcsStore.size).toBe(1);
   });
 });

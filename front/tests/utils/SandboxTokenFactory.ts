@@ -178,6 +178,7 @@ export async function createPersistedSandboxFunctionInvocationTokenTestContext()
   });
   const invocation = await SandboxFunctionInvocationResource.makeNew(auth, {
     sandboxFunction,
+    input: undefined,
   });
 
   const token = await generateSandboxFunctionInvocationToken(auth, {

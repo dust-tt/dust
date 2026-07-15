@@ -11,6 +11,7 @@ import { ensurePodSandboxReady } from "@app/lib/api/sandbox/lifecycle";
 import { shellEscape } from "@app/lib/api/sandbox/shell";
 import { publishSandboxFunctionInvocationEvent } from "@app/lib/api/sandbox_functions/events";
 import type { Authenticator } from "@app/lib/auth";
+import { getPrivateUploadBucket } from "@app/lib/file_storage";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { SandboxFunctionMCPActionResource } from "@app/lib/resources/sandbox_function_mcp_action_resource";
 import type { SandboxFunctionResource } from "@app/lib/resources/sandbox_function_resource";
@@ -23,6 +24,7 @@ import {
   makeSId,
 } from "@app/lib/resources/string_ids";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
+import { concurrentExecutor, withRetry } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import type {
   PostSandboxFunctionInvocationRequestBody,
@@ -34,6 +36,8 @@ import { Err, Ok, type Result } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { truncate } from "@app/types/shared/utils/string_utils";
 import type { Attributes, Transaction } from "sequelize";
+import { Op } from "sequelize";
+import { z } from "zod";
 
 const SANDBOX_FUNCTION_WORKING_DIRECTORY = "/home/agent";
 const SANDBOX_FUNCTION_EXEC_TIMEOUT_MS = 2 * 60 * 1000;
@@ -42,6 +46,34 @@ const DSBX_BIN_PATH = "/opt/bin/dsbx";
 // a larger one for the log fields.
 const SANDBOX_FUNCTION_ERROR_DETAIL_MAX_CHARS = 2_048;
 const SANDBOX_FUNCTION_ERROR_LOG_MAX_CHARS = 16_384;
+const GCS_CONCURRENCY = 4;
+const SANDBOX_FUNCTION_INVOCATION_DATA_VERSION = 1;
+
+const SandboxFunctionInvocationDataSchema = z.object({
+  version: z.literal(SANDBOX_FUNCTION_INVOCATION_DATA_VERSION),
+  input: z.unknown().optional(),
+  result: z.unknown().optional(),
+  error: z.string().optional(),
+});
+
+type SandboxFunctionInvocationData = z.infer<
+  typeof SandboxFunctionInvocationDataSchema
+>;
+
+function parseSandboxFunctionInvocationData(
+  content: string
+): SandboxFunctionInvocationData {
+  const result = SandboxFunctionInvocationDataSchema.safeParse(
+    JSON.parse(content)
+  );
+  if (!result.success) {
+    throw new Error(
+      `Invalid sandbox function invocation data: ${result.error.message}`
+    );
+  }
+
+  return result.data;
+}
 
 function dustAPIBaseUrlForSandbox(): string {
   return isDevelopment() && config.getSandboxDevFrontHostName()
@@ -65,14 +97,25 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
     SandboxFunctionInvocationModel;
 
   readonly sandboxFunction: SandboxFunctionResource;
+  private data: SandboxFunctionInvocationData;
 
   constructor(
     model: ModelStaticWorkspaceAware<SandboxFunctionInvocationModel>,
     blob: Attributes<SandboxFunctionInvocationModel>,
-    { sandboxFunction }: { sandboxFunction: SandboxFunctionResource }
+    {
+      sandboxFunction,
+      data = {
+        version: SANDBOX_FUNCTION_INVOCATION_DATA_VERSION,
+        input: undefined,
+      },
+    }: {
+      sandboxFunction: SandboxFunctionResource;
+      data?: SandboxFunctionInvocationData;
+    }
   ) {
     super(model, blob);
     this.sandboxFunction = sandboxFunction;
+    this.data = data;
   }
 
   get sId(): string {
@@ -80,6 +123,22 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
       id: this.id,
       workspaceId: this.workspaceId,
     });
+  }
+
+  private buildGcsPath(auth: Authenticator): string {
+    return `w/${auth.getNonNullableWorkspace().sId}/sandbox_functions/${this.sandboxFunction.sId}/invocations/${this.sId}`;
+  }
+
+  get input(): unknown {
+    return this.data.input;
+  }
+
+  get result(): unknown {
+    return this.data.result;
+  }
+
+  get error(): string | undefined {
+    return this.data.error;
   }
 
   toJSON(): SandboxFunctionInvocationType {
@@ -92,6 +151,12 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
   }
 
   async fail(error: Error): Promise<void> {
+    this.data = {
+      version: SANDBOX_FUNCTION_INVOCATION_DATA_VERSION,
+      input: this.input,
+      error: error.message,
+    };
+    await this.writeDataToGcs();
     await this.update({ status: "errored" });
     await publishSandboxFunctionInvocationEvent(
       {
@@ -106,6 +171,12 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
   }
 
   async succeed(result: unknown): Promise<void> {
+    this.data = {
+      version: SANDBOX_FUNCTION_INVOCATION_DATA_VERSION,
+      input: this.input,
+      result,
+    };
+    await this.writeDataToGcs();
     await this.update({ status: "succeeded" });
     await publishSandboxFunctionInvocationEvent(
       {
@@ -224,12 +295,73 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
     return makeSId("sandbox_function_invocation", { id, workspaceId });
   }
 
+  private async loadDataFromGcs(): Promise<void> {
+    // TODO: Remove null support after running
+    // `20260715_backfill_sandbox_function_invocation_gcs_paths.ts`.
+    const { gcsPath } = this;
+    if (!gcsPath) {
+      this.data = {
+        version: SANDBOX_FUNCTION_INVOCATION_DATA_VERSION,
+        input: undefined,
+      };
+      return;
+    }
+
+    const downloadResult = await withRetry(() =>
+      getPrivateUploadBucket().file(gcsPath).download()
+    );
+    if (downloadResult.isErr()) {
+      throw downloadResult.error;
+    }
+
+    const [buffer] = downloadResult.value;
+    this.data = parseSandboxFunctionInvocationData(buffer.toString("utf-8"));
+  }
+
+  private async writeDataToGcs(): Promise<void> {
+    // TODO: Remove null support after running
+    // `20260715_backfill_sandbox_function_invocation_gcs_paths.ts`.
+    const { gcsPath } = this;
+    if (!gcsPath) {
+      return;
+    }
+
+    const writeResult = await withRetry(() =>
+      getPrivateUploadBucket()
+        .file(gcsPath)
+        .save(Buffer.from(JSON.stringify(this.data), "utf-8"), {
+          contentType: "application/json",
+        })
+    );
+    if (writeResult.isErr()) {
+      throw writeResult.error;
+    }
+  }
+
+  private static async deleteDataFromGcs(gcsPaths: string[]): Promise<void> {
+    try {
+      const bucket = getPrivateUploadBucket();
+      await concurrentExecutor(
+        gcsPaths,
+        (gcsPath) => bucket.delete(gcsPath, { ignoreNotFound: true }),
+        { concurrency: GCS_CONCURRENCY }
+      );
+    } catch (error) {
+      logger.error(
+        { err: normalizeError(error), pathCount: gcsPaths.length },
+        "Failed to delete sandbox function invocation data from GCS"
+      );
+    }
+  }
+
   static async makeNew(
     auth: Authenticator,
     {
       sandboxFunction,
+      input,
     }: {
       sandboxFunction: SandboxFunctionResource;
+      input: unknown;
     },
     transaction?: Transaction
   ): Promise<SandboxFunctionInvocationResource> {
@@ -238,11 +370,24 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
         workspaceId: auth.getNonNullableWorkspace().id,
         sandboxFunctionId: sandboxFunction.id,
         status: "created",
+        gcsPath: null,
       },
       { transaction }
     );
 
-    return new this(this.model, invocation.get(), { sandboxFunction });
+    const data: SandboxFunctionInvocationData = {
+      version: SANDBOX_FUNCTION_INVOCATION_DATA_VERSION,
+      input,
+    };
+    const resource = new this(this.model, invocation.get(), {
+      sandboxFunction,
+      data,
+    });
+    const gcsPath = resource.buildGcsPath(auth);
+    await resource.update({ gcsPath }, transaction);
+    await resource.writeDataToGcs();
+
+    return resource;
   }
 
   static async createAndStartExecution(
@@ -255,7 +400,10 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
       body: PostSandboxFunctionInvocationRequestBody;
     }
   ): Promise<Result<SandboxFunctionInvocationResource, Error>> {
-    const invocation = await this.makeNew(auth, { sandboxFunction });
+    const invocation = await this.makeNew(auth, {
+      sandboxFunction,
+      input: body.input,
+    });
     await publishSandboxFunctionInvocationEvent(
       {
         type: "sandbox_function_invocation_created",
@@ -293,9 +441,15 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
       ...rest,
     });
 
-    return invocations.map(
-      (invocation) =>
-        new this(this.model, invocation.get(), { sandboxFunction })
+    return concurrentExecutor(
+      invocations,
+      async (invocation) => {
+        const blob = invocation.get();
+        const resource = new this(this.model, blob, { sandboxFunction });
+        await resource.loadDataFromGcs();
+        return resource;
+      },
+      { concurrency: GCS_CONCURRENCY }
     );
   }
 
@@ -335,19 +489,32 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
     sandboxFunction: SandboxFunctionResource,
     { transaction }: { transaction?: Transaction } = {}
   ): Promise<number> {
+    const where = {
+      sandboxFunctionId: sandboxFunction.id,
+      workspaceId: sandboxFunction.workspaceId,
+    };
+    const invocations = await this.model.findAll({
+      attributes: ["gcsPath"],
+      where: {
+        ...where,
+        gcsPath: { [Op.ne]: null },
+      },
+      transaction,
+    });
+    const gcsPaths = invocations.flatMap(({ gcsPath }) =>
+      gcsPath ? [gcsPath] : []
+    );
+
     // MCP actions FK invocations with RESTRICT: delete them (rows + output GCS objects) first.
     await SandboxFunctionMCPActionResource.deleteAllForSandboxFunction(
       sandboxFunction,
       { transaction }
     );
 
-    return this.model.destroy({
-      where: {
-        sandboxFunctionId: sandboxFunction.id,
-        workspaceId: sandboxFunction.workspaceId,
-      },
-      transaction,
-    });
+    const deletedCount = await this.model.destroy({ where, transaction });
+    await this.deleteDataFromGcs(gcsPaths);
+
+    return deletedCount;
   }
 
   async delete(
@@ -370,6 +537,11 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
         },
         transaction,
       });
+      if (this.gcsPath) {
+        await SandboxFunctionInvocationResource.deleteDataFromGcs([
+          this.gcsPath,
+        ]);
+      }
 
       return new Ok(undefined);
     } catch (error) {

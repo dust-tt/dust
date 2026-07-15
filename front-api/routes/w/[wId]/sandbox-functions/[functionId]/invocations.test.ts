@@ -149,7 +149,7 @@ async function setupBlockedAction({
 
   const invocation = await SandboxFunctionInvocationResource.makeNew(
     adminAuth,
-    { sandboxFunction }
+    { sandboxFunction, input: undefined }
   );
   const action = await SandboxFunctionMCPActionFactory.create(adminAuth, {
     invocation,
@@ -516,7 +516,7 @@ describe("POST /api/w/:wId/sandbox-functions/:functionIdOrSlug/invocations/:invo
       await setupBlockedAction();
     const otherInvocation = await SandboxFunctionInvocationResource.makeNew(
       adminAuth,
-      { sandboxFunction }
+      { sandboxFunction, input: undefined }
     );
 
     const response = await postValidate({
