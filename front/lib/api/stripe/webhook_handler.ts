@@ -265,7 +265,7 @@ async function resolveMetronomeSubscriptionInvoiceCtx(
   const subscription = await SubscriptionResource.fetchActiveByWorkspaceModelId(
     workspace.id
   );
-  if (!subscription) {
+  if (subscription.isLegacyFreeNoPlan()) {
     return null;
   }
   const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
@@ -295,7 +295,7 @@ async function resolveCreditPurchaseInvoiceCtx(
   const subscription = await SubscriptionResource.fetchActiveByWorkspaceModelId(
     workspace.id
   );
-  if (!subscription) {
+  if (subscription.isLegacyFreeNoPlan()) {
     return null;
   }
   const auth = await Authenticator.internalAdminForWorkspace(workspaceId);
