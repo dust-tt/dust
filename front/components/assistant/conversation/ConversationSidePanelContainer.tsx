@@ -16,12 +16,6 @@ interface ConversationSidePanelContainerProps {
   owner: LightWorkspaceType;
 }
 
-const isHorizontalResizeKey = (key: string) =>
-  key === "ArrowLeft" ||
-  key === "ArrowRight" ||
-  key === "End" ||
-  key === "Home";
-
 export default function ConversationSidePanelContainer({
   conversation,
   owner,
@@ -29,7 +23,6 @@ export default function ConversationSidePanelContainer({
   const { currentPanel, setPanelRef, onPanelClosed } =
     useConversationSidePanelContext();
   const panelRef = useRef<ImperativePanelHandle | null>(null);
-  const isDraggingRef = useRef(false);
   const [fullScreenHash] = useHashParam(FULL_SCREEN_HASH_PARAM);
   const isFullScreen = fullScreenHash === "true";
 
@@ -81,19 +74,7 @@ export default function ConversationSidePanelContainer({
           disabled={!currentPanel || isFullScreen}
           className="z-50"
           onDragging={(isDragging) => {
-            isDraggingRef.current = isDragging;
-
             if (!isDragging && panelRef.current?.isCollapsed()) {
-              onPanelClosed();
-            }
-          }}
-          onKeyDown={(event) => {
-            if (
-              event.defaultPrevented &&
-              isHorizontalResizeKey(event.key) &&
-              panelRef.current?.isCollapsed() &&
-              !window.matchMedia?.("(prefers-reduced-motion: reduce)").matches
-            ) {
               onPanelClosed();
             }
           }}
@@ -104,17 +85,6 @@ export default function ConversationSidePanelContainer({
         ref={panelRef}
         minSize={20}
         defaultSize={0}
-        onResize={(size, previousSize) => {
-          if (
-            size === 0 &&
-            previousSize !== undefined &&
-            previousSize > 0 &&
-            !isDraggingRef.current &&
-            window.matchMedia?.("(prefers-reduced-motion: reduce)").matches
-          ) {
-            onPanelClosed();
-          }
-        }}
         onTransitionEnd={(event) => {
           if (
             event.target === event.currentTarget &&

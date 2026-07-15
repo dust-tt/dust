@@ -6,9 +6,8 @@ type ResizablePanelGroupProps = React.ComponentProps<
   typeof ResizablePrimitive.PanelGroup
 > & {
   /**
-   * Animates programmatic panel layout changes while keeping direct pointer
-   * and keyboard resizing immediate. Reduced-motion preferences are respected
-   * automatically.
+   * Animates panel layout changes while keeping pointer dragging immediate.
+   * Reduced-motion preferences shorten the transition automatically.
    */
   animateLayoutChanges?: boolean;
 };
@@ -16,10 +15,9 @@ type ResizablePanelGroupProps = React.ComponentProps<
 const ResizablePanelGroupContext = React.createContext<{
   animateLayoutChanges: boolean;
   direction: ResizablePanelGroupProps["direction"];
-  isResizing: boolean;
+  isDragging: boolean;
   panelGroupSizePx?: number;
   setIsDragging: (isDragging: boolean) => void;
-  setIsKeyboardResizing: (isKeyboardResizing: boolean) => void;
 } | null>(null);
 
 type ResizablePanelGroupRef = React.ElementRef<
@@ -35,7 +33,6 @@ const ResizablePanelGroup: React.ForwardRefExoticComponent<
   ) => {
     const panelGroupRef = React.useRef<ResizablePanelGroupRef | null>(null);
     const [isDragging, setIsDragging] = React.useState(false);
-    const [isKeyboardResizing, setIsKeyboardResizing] = React.useState(false);
     const [panelGroupSizePx, setPanelGroupSizePx] = React.useState<
       number | undefined
     >();
@@ -94,18 +91,11 @@ const ResizablePanelGroup: React.ForwardRefExoticComponent<
       () => ({
         animateLayoutChanges,
         direction,
-        isResizing: isDragging || isKeyboardResizing,
+        isDragging,
         panelGroupSizePx,
         setIsDragging,
-        setIsKeyboardResizing,
       }),
-      [
-        animateLayoutChanges,
-        direction,
-        isDragging,
-        isKeyboardResizing,
-        panelGroupSizePx,
-      ]
+      [animateLayoutChanges, direction, isDragging, panelGroupSizePx]
     );
 
     return (
@@ -221,9 +211,9 @@ const ResizablePanel = React.forwardRef<
         onResize={handleResize}
         className={cn(
           panelGroupContext?.animateLayoutChanges &&
-            "motion-reduce:transition-none",
+            "motion-reduce:duration-75",
           panelGroupContext?.animateLayoutChanges &&
-            !panelGroupContext?.isResizing &&
+            !panelGroupContext?.isDragging &&
             "transition-[flex-grow] duration-300 ease-out-quint",
           className
         )}
@@ -242,72 +232,19 @@ const ResizablePanel = React.forwardRef<
 );
 ResizablePanel.displayName = "ResizablePanel";
 
-const isKeyboardResizeKey = (key: string) => {
-  switch (key) {
-    case "ArrowDown":
-    case "ArrowLeft":
-    case "ArrowRight":
-    case "ArrowUp":
-    case "End":
-    case "Enter":
-    case "Home":
-      return true;
-    default:
-      return false;
-  }
-};
-
-type ResizableHandleProps = React.ComponentProps<
-  typeof ResizablePrimitive.PanelResizeHandle
-> & {
-  withHandle?: boolean;
-};
-
 const ResizableHandle = ({
   withHandle,
   className,
-  disabled,
-  onBlur,
   onDragging,
-  onKeyDownCapture,
-  onKeyUpCapture,
   ...props
-}: ResizableHandleProps) => {
+}: React.ComponentProps<typeof ResizablePrimitive.PanelResizeHandle> & {
+  withHandle?: boolean;
+}) => {
   const panelGroupContext = React.useContext(ResizablePanelGroupContext);
 
   const handleDragging = (isDragging: boolean) => {
     panelGroupContext?.setIsDragging(isDragging);
     onDragging?.(isDragging);
-  };
-
-  const handleKeyDownCapture: NonNullable<
-    ResizableHandleProps["onKeyDownCapture"]
-  > = (event) => {
-    onKeyDownCapture?.(event);
-
-    if (
-      !disabled &&
-      !event.defaultPrevented &&
-      !event.isPropagationStopped() &&
-      isKeyboardResizeKey(event.key)
-    ) {
-      panelGroupContext?.setIsKeyboardResizing(true);
-    }
-  };
-
-  const handleKeyUpCapture: NonNullable<
-    ResizableHandleProps["onKeyUpCapture"]
-  > = (event) => {
-    if (isKeyboardResizeKey(event.key)) {
-      panelGroupContext?.setIsKeyboardResizing(false);
-    }
-
-    onKeyUpCapture?.(event);
-  };
-
-  const handleBlur = () => {
-    panelGroupContext?.setIsKeyboardResizing(false);
-    onBlur?.();
   };
 
   return (
@@ -328,11 +265,7 @@ const ResizableHandle = ({
         "bg-primary-100",
         className
       )}
-      disabled={disabled}
-      onBlur={handleBlur}
       onDragging={handleDragging}
-      onKeyDownCapture={handleKeyDownCapture}
-      onKeyUpCapture={handleKeyUpCapture}
       {...props}
     >
       {withHandle && (
