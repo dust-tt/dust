@@ -1,6 +1,7 @@
 import { TOOL_NAME_SEPARATOR } from "@app/lib/actions/constants";
 import {
   fetchAgentMetadata,
+  fetchTagNames,
   fetchUserEmails,
 } from "@app/lib/api/analytics/enrichment";
 import { resolveServerDisplayNames } from "@app/lib/api/assistant/observability/tool_usage";
@@ -20,6 +21,8 @@ interface AgentMessageDocument extends ElasticsearchBaseDocument {
   message_id: string;
   timestamp: string;
   agent_id: string;
+  // Optional: docs indexed before agent_tag_ids shipped don't carry it.
+  agent_tag_ids?: string[];
   conversation_id: string;
   // Ids of the agent messages that triggered this message through `run_agent`,
   // direct parent first. Empty or absent for user-initiated messages.
@@ -39,6 +42,7 @@ export interface MessageExportRow {
   assistantId: string;
   assistantName: string;
   assistantSettings: string;
+  assistantTags: string;
   conversationId: string;
   parentMessageId: string;
   userId: string;
@@ -55,6 +59,7 @@ export const MESSAGE_EXPORT_HEADERS: (keyof MessageExportRow)[] = [
   "assistantId",
   "assistantName",
   "assistantSettings",
+  "assistantTags",
   "conversationId",
   "parentMessageId",
   "userId",
@@ -142,17 +147,22 @@ export async function fetchMessageExportRows({
   const uniqueUserIds = [
     ...new Set(docs.map((d) => d.user_id).filter(Boolean)),
   ];
+  const uniqueTagIds = [
+    ...new Set(docs.flatMap((d) => d.agent_tag_ids ?? []).filter(Boolean)),
+  ];
   const uniqueServerNames = [
     ...new Set(
       docs.flatMap((d) => (d.tools_used ?? []).map((t) => t.server_name))
     ),
   ];
 
-  const [agentMeta, userEmails, serverDisplayNames] = await Promise.all([
-    fetchAgentMetadata(uniqueAgentIds, owner),
-    fetchUserEmails(uniqueUserIds),
-    resolveServerDisplayNames(auth, uniqueServerNames),
-  ]);
+  const [agentMeta, userEmails, tagNames, serverDisplayNames] =
+    await Promise.all([
+      fetchAgentMetadata(uniqueAgentIds, owner),
+      fetchUserEmails(uniqueUserIds),
+      fetchTagNames(auth, uniqueTagIds),
+      resolveServerDisplayNames(auth, uniqueServerNames),
+    ]);
 
   const rows: MessageExportRow[] = docs.map((doc) => {
     const agent = agentMeta.get(doc.agent_id);
@@ -164,6 +174,9 @@ export async function fetchMessageExportRows({
       assistantId: doc.agent_id,
       assistantName: agent?.name ?? doc.agent_id,
       assistantSettings: agent?.settings ?? "unknown",
+      assistantTags: joinDistinctSorted(
+        (doc.agent_tag_ids ?? []).map((id) => tagNames.get(id))
+      ),
       conversationId: doc.conversation_id,
       parentMessageId: doc.ancestor_message_ids?.[0] ?? "",
       userId: doc.user_id,
