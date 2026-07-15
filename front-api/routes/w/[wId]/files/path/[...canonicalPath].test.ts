@@ -243,12 +243,14 @@ describe("HEAD /api/w/:wId/files/path/:canonicalPath", () => {
 
   it("returns metadata headers without a body", async () => {
     const { workspace, conversation } = await setup();
+    const createReadStream = vi.fn().mockReturnValue(makeReadStream());
 
     const bucket = makeBucket({
       existingFilePathSuffixes: ["/files/data.csv"],
       getMetadata: vi
         .fn()
         .mockResolvedValue([{ contentType: "text/csv", size: "512" }]),
+      createReadStream,
     });
     vi.mocked(getPrivateUploadBucket).mockReturnValue(bucket as any);
 
@@ -263,6 +265,7 @@ describe("HEAD /api/w/:wId/files/path/:canonicalPath", () => {
 
     expect(response.status).toBe(200);
     expect(response.headers.get("Content-Type")).toBe("text/csv");
+    expect(createReadStream).not.toHaveBeenCalled();
   });
 
   it("returns 404 when file does not exist", async () => {
