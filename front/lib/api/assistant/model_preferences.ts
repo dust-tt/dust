@@ -17,6 +17,7 @@ import {
   GROK_4_MODEL_CONFIG,
 } from "@app/types/assistant/models/xai";
 
+// includes options for users who are on cost_efficient caps
 export const PREFERRED_LARGE_MODEL_CONFIGS: ModelConfigurationType[] = [
   // first will use Sonnet 4.6 light if user is on cost_effective cap
   CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG,
