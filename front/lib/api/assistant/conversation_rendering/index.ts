@@ -186,6 +186,20 @@ export async function renderConversationForModel(
   const messagesWithTokens = messagesWithTokensRes.value;
   const [promptCount, toolDefinitionsCount] = promptToolsRes.value;
 
+  // Leading messages include equipped skills. Keep them outside the prunable interactions while
+  // still charging their tokens against both the hard ceiling and the proactive pruning target.
+  const leadingMessagesWithTokens = messagesWithTokens.slice(
+    0,
+    leadingMessages.length
+  );
+  const renderedMessagesWithTokens = messagesWithTokens.slice(
+    leadingMessages.length
+  );
+  const leadingMessagesTokenCount = leadingMessagesWithTokens.reduce(
+    (sum, message) => sum + message.tokenCount,
+    0
+  );
+
   // Calculate base token usage.
   const baseTokens =
     promptCount +
@@ -194,17 +208,22 @@ export async function renderConversationForModel(
     ) +
     TOKENS_MARGIN;
 
-  const interactions = groupMessagesIntoInteractions(messagesWithTokens);
+  const interactions = groupMessagesIntoInteractions(
+    renderedMessagesWithTokens
+  );
 
   // Hard ceiling shared by every interaction combined: previous history plus the current,
   // still-in-progress turn.
-  const budgetForInteractions = allowedTokenCount - baseTokens;
+  const budgetForInteractions =
+    allowedTokenCount - baseTokens - leadingMessagesTokenCount;
 
   // Only applied when positive: a small-context model with a large prompt/tools footprint can
   // push baseTokens past the target alone, and a negative value would make the floor prune by
   // default instead of as a last resort.
   const pruningTargetCeiling =
-    model.contextSize * PRUNING_TARGET_CONTEXT_UTILIZATION - baseTokens;
+    model.contextSize * PRUNING_TARGET_CONTEXT_UTILIZATION -
+    baseTokens -
+    leadingMessagesTokenCount;
   const pruningBudget =
     pruningTargetCeiling > 0
       ? Math.min(budgetForInteractions, pruningTargetCeiling)
@@ -224,6 +243,7 @@ export async function renderConversationForModel(
       tokenizer: model.tokenizer,
     },
     baseTokens,
+    leadingMessagesTokenCount,
     promptCount,
     toolDefinitionsCount,
     tokensMargin: TOKENS_MARGIN,
@@ -253,11 +273,13 @@ export async function renderConversationForModel(
     prunedContext,
     stats: pruningStats,
   } = pruneRes.value;
-  const totalTokens = sumInteractionTokens(prunedInteractions);
+  const totalTokens =
+    leadingMessagesTokenCount + sumInteractionTokens(prunedInteractions);
 
-  const selected: MessageWithTokens[] = prunedInteractions.flatMap(
-    (interaction) => interaction.messages
-  );
+  const selected: MessageWithTokens[] = [
+    ...leadingMessagesWithTokens,
+    ...prunedInteractions.flatMap((interaction) => interaction.messages),
+  ];
   const tokensUsed = baseTokens + totalTokens;
 
   // Merge content fragments into user messages.

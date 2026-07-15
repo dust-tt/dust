@@ -47,10 +47,7 @@ function createConversation() {
   } as any;
 }
 
-function userMessage(
-  text: string,
-  name = "user"
-): ModelMessageTypeMultiActions {
+function userMessage(text: string, name = "user"): UserMessageTypeModel {
   return {
     role: "user" as const,
     name,
@@ -829,5 +826,56 @@ describe("renderConversationForModel", () => {
       leadingMessage,
       userMessage("rendered"),
     ]);
+  });
+
+  it("never drops leading messages when pruning old interactions", async () => {
+    const leadingMessage = userMessage("equipped_skills");
+    vi.mocked(renderAllMessages).mockResolvedValue([
+      userMessage("old_user_1"),
+      assistantMessage("old_assistant_1"),
+      userMessage("old_user_2"),
+      assistantMessage("old_assistant_2"),
+      userMessage("old_user_3"),
+      assistantMessage("old_assistant_3"),
+      userMessage("new_user"),
+      assistantMessage("new_assistant"),
+    ]);
+    mockTokenCounter({
+      byContains: {
+        equipped_skills: 10,
+        old_user_1: 200,
+        old_assistant_1: 200,
+        old_user_2: 200,
+        old_assistant_2: 200,
+        old_user_3: 200,
+        old_assistant_3: 200,
+        new_user: 10,
+        new_assistant: 10,
+      },
+    });
+
+    const res = await renderConversationForModel(auth, {
+      conversation: createConversation(),
+      model,
+      prompt: "PROMPT",
+      enabledSkills: [],
+      tools: "TOOLS",
+      allowedTokenCount: computeAllowedTokenCount({
+        promptTokens: 10,
+        toolsTokens: 10,
+        interactionTokens: 450,
+      }),
+      leadingMessages: [leadingMessage],
+    });
+
+    expect(res.isOk()).toBe(true);
+    if (res.isErr()) {
+      return;
+    }
+
+    expect(res.value.modelConversation.messages[0]).toEqual(leadingMessage);
+    expect(res.value.modelConversation.messages).not.toContainEqual(
+      userMessage("old_user_1")
+    );
   });
 });
