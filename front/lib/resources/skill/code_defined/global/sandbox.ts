@@ -1,13 +1,23 @@
 import { isDustLikeAgent } from "@app/lib/api/assistant/global_agents/prompt_context";
 import { TOOL_OUTPUTS_FOLDER_NAME } from "@app/lib/api/files/mount_path";
 import { readWorkspacePolicy } from "@app/lib/api/sandbox/egress_policy";
+import {
+  createToolManifest,
+  filterDsbxToolEntries,
+  getSandboxImage,
+  getToolsForProvider,
+  toolManifestToCompactText,
+} from "@app/lib/api/sandbox/image";
+import type { ManifestToolEntry } from "@app/lib/api/sandbox/image/types";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
 import type { GlobalSkillDefinition } from "@app/lib/resources/skill/code_defined/shared";
 import logger from "@app/logger/logger";
 import type { AgentLoopExecutionData } from "@app/types/assistant/agent_run";
 import { isPodConversation } from "@app/types/assistant/conversation";
+import type { ModelProviderIdType } from "@app/types/assistant/models/types";
 import { isComputerFeatureEnabled } from "@app/types/shared/feature_flags";
+import { Ok } from "@app/types/shared/result";
 
 function buildSandboxInstructionProse({
   hasDsbxTools,
@@ -280,8 +290,29 @@ value you should not have — apologize, do not retry the command, and do not
 attempt to reconstruct, decode, or otherwise recover the value.`;
 }
 
+function buildToolDetailsSection(
+  label: string,
+  entries: readonly ManifestToolEntry[]
+): string {
+  const tools = new Map(entries.map((tool) => [tool.name, tool]));
+
+  if (tools.size === 0) {
+    return "";
+  }
+
+  const descriptions = [...tools.values()]
+    .sort((a, b) => a.name.localeCompare(b.name))
+    .map((tool) => {
+      const summary = tool.description.match(/^.*?\.(?=\s|$)/)?.[0];
+      return `- \`${tool.name}\`: ${summary ?? tool.description}`;
+    })
+    .join("\n");
+  return `${label} tool details:\n\n${descriptions}\n\n`;
+}
+
 async function buildSandboxInstructions(
   auth: Authenticator,
+  providerId: ModelProviderIdType | undefined,
   { hasDsbxTools, isProject }: { hasDsbxTools: boolean; isProject: boolean }
 ): Promise<string> {
   const networkAccessSection = await buildNetworkAccessSection(auth);
@@ -290,9 +321,38 @@ async function buildSandboxInstructions(
   const projectFilesSection = isProject ? buildProjectFilesSection() : null;
   const sandboxInstructions = buildSandboxInstructionProse({ hasDsbxTools });
 
+  let toolsResult;
+
   const filesSections = [conversationFilesSection, projectFilesSection]
     .filter((s): s is string => s !== null)
     .join("\n\n");
+
+  if (providerId) {
+    toolsResult = getToolsForProvider(auth, providerId, {
+      includeDsbxTools: hasDsbxTools,
+    });
+  } else {
+    const imageResult = getSandboxImage(auth);
+    if (imageResult.isErr()) {
+      return `${sandboxInstructions}\n\n${filesSections}\n\n${networkAccessSection}\n\n${environmentVariablesSection}`;
+    }
+    toolsResult = new Ok(
+      filterDsbxToolEntries(imageResult.value.tools, {
+        includeDsbxTools: hasDsbxTools,
+      })
+    );
+  }
+
+  if (toolsResult.isErr()) {
+    return `${sandboxInstructions}\n\n${filesSections}\n\n${networkAccessSection}\n\n${environmentVariablesSection}`;
+  }
+
+  const manifest = createToolManifest(toolsResult.value);
+  const compactManifest = toolManifestToCompactText(manifest);
+  const dustToolDetailsSection = buildToolDetailsSection(
+    "Dust",
+    toolsResult.value.filter((tool) => tool.isDustTool)
+  );
 
   return `${sandboxInstructions}
 
@@ -304,10 +364,15 @@ ${environmentVariablesSection}
 
 #### Sandbox Available Tools and Libraries
 
-Tools and libraries are pre-installed in the sandbox environment. Installing
-packages in the sandbox is NOT possible. Call \`describe_toolset\` to inspect
-the available CLI binaries and language libraries, including their exact
-versions. Use ONLY the tools listed there, NOTHING ELSE.
+${compactManifest}
+
+Versions are shown when pinned. Installing packages in the sandbox is NOT
+possible. Call \`describe_toolset\` for full descriptions and usage metadata.
+System tools include standard preinstalled command-line utilities and
+non-standard helpers provided by Dust.
+
+${dustToolDetailsSection}Run \`<command> --help\` for detailed modes and flags. Use ONLY the tools listed
+above, NOTHING ELSE.
 
 `;
 }
@@ -320,7 +385,7 @@ export const sandboxSkill = {
     "Run code, scripts, and shell commands in the conversation's Computer (a sandboxed Linux environment).",
   agentFacingDescription:
     "Execute code and commands in an isolated Linux sandbox. Useful to parse lengthy tool outputs, run code, " +
-    "process data, install packages, manipulate files, or perform any task requiring shell access. " +
+    "process data, manipulate files, or perform any task requiring shell access. " +
     "You must enable this skill proactively as soon as the user uploads files or you need to work with files, " +
     "including PDFs, spreadsheets, archives, or generated artifacts. Use it to extract text from files, " +
     "parse lengthy tool outputs, run code and shell commands, process data, manipulate files, or perform " +
@@ -332,13 +397,14 @@ export const sandboxSkill = {
       agentLoopData,
     }: { spaceIds: string[]; agentLoopData?: AgentLoopExecutionData }
   ) => {
+    const providerId = agentLoopData?.model.providerId;
     const flags = await getFeatureFlags(auth);
     const hasDsbxTools = isComputerFeatureEnabled(flags);
     const isProject = agentLoopData?.conversation
       ? isPodConversation(agentLoopData.conversation)
       : false;
 
-    return buildSandboxInstructions(auth, {
+    return buildSandboxInstructions(auth, providerId, {
       hasDsbxTools,
       isProject,
     });

@@ -480,6 +480,7 @@ SHELLEOF`,
     name: DSBX_TOOL_NAME,
     description: "Dust CLI",
     runtime: "system",
+    isDustTool: true,
   })
   .runCmd("mkdir -p /skills && chmod 755 /skills", { user: "root" })
   .runCmd(
@@ -498,6 +499,7 @@ SHELLEOF`,
       "apply_patch '*** Begin Patch\\n*** Update File: <path>\\n@@ [context]\\n-old\\n+new\\n*** End Patch'",
     returns: "Summary of applied changes (A/M/D per file)",
     runtime: "system",
+    isDustTool: true,
     profile: "openai",
   })
   .runCmd(
@@ -679,6 +681,7 @@ SHELLEOF`,
     returns:
       "Header with line range + numbered lines (format: '  N\\tcontent')",
     runtime: "system",
+    isDustTool: true,
     profile: ["anthropic", "openai"],
   })
   .registerTool({
@@ -689,6 +692,7 @@ SHELLEOF`,
     returns:
       "Header with line range + numbered lines (format: '  N\\tcontent')",
     runtime: "system",
+    isDustTool: true,
     profile: "gemini",
   })
   .registerTool({
@@ -698,6 +702,7 @@ SHELLEOF`,
     usage: "write_file <path> <content>",
     returns: "'Wrote <path> (<bytes> bytes)' on success",
     runtime: "system",
+    isDustTool: true,
     profile: ["anthropic", "gemini"],
   })
   .registerTool({
@@ -707,6 +712,7 @@ SHELLEOF`,
     usage: "edit_file [--replace-all] <old_text> <new_text> <path>",
     returns: "'Edited <path>' on success, unified diff on stderr",
     runtime: "system",
+    isDustTool: true,
     profile: ["anthropic", "gemini"],
   })
   // --- grep_files: anthropic has extra flags ---
@@ -718,6 +724,7 @@ SHELLEOF`,
       "grep_files <pattern> [--glob GLOB] [--path PATH] [--max-results N] [--max-per-file N] [--context N] [--offset N] [--output-mode content|files|count] [--case-insensitive] [--max-line-length N]",
     returns: "file:line:content format with match count footer",
     runtime: "system",
+    isDustTool: true,
     profile: "anthropic",
   })
   .registerTool({
@@ -728,6 +735,7 @@ SHELLEOF`,
       "grep_files <pattern> [--glob GLOB] [--path PATH] [--max-results N] [--max-per-file N] [--context N] [--offset N]",
     returns: "file:line:content format with match count footer",
     runtime: "system",
+    isDustTool: true,
     profile: ["openai", "gemini"],
   })
   // --- glob: uniform with pagination ---
@@ -737,6 +745,7 @@ SHELLEOF`,
     usage: "glob <pattern> [--path PATH] [--offset N] [--limit N]",
     returns: "Sorted file paths with pagination hint",
     runtime: "system",
+    isDustTool: true,
   })
   // --- list_dir: uniform with type suffixes and pagination ---
   .registerTool({
@@ -747,6 +756,7 @@ SHELLEOF`,
     returns: "Sorted paths with type suffixes and pagination hint",
     profile: ["openai", "gemini"],
     runtime: "system",
+    isDustTool: true,
   })
   // --- xlsx_inspect: structural inspection of .xlsx workbooks ---
   .registerTool({
@@ -758,6 +768,7 @@ SHELLEOF`,
     returns:
       "Workbook overview, or one cell per line: '<address>  <formula or value>  [cached result]  numFmt: <fmt>  [font: <color>]  [fill: <color>]'. Empty cells skipped",
     runtime: "system",
+    isDustTool: true,
   })
   // --- pptx_inspect: structural inspection of .pptx decks ---
   .registerTool({
@@ -769,6 +780,7 @@ SHELLEOF`,
     returns:
       "A per-mode text report: deck overview, or per-slide shapes with [!] blockers / [i] advisories, or layouts / text / media listings. --qa and --render publish JPEGs and print their files__cat scoped paths; --compare ends in a [QA: PASS/FAIL] verdict. See --help for field-level detail.",
     runtime: "system",
+    isDustTool: true,
   })
   // --- pptx_slides: safe slide-level structural edits ---
   .registerTool({
@@ -779,6 +791,7 @@ SHELLEOF`,
       "pptx_slides <file> (--duplicate N[,N,...] [--count K] [--after M] | --move N --to M | --delete N[,N,...])",
     returns: "A one-line summary of the change and the deck's new slide count",
     runtime: "system",
+    isDustTool: true,
   })
   // --- pptx_slides: safe slide-level structural edits ---
   .registerTool({
@@ -789,6 +802,7 @@ SHELLEOF`,
       "pptx_slides <file> (--duplicate N[,N,...] [--count K] [--after M] | --move N --to M | --delete N[,N,...])",
     returns: "A one-line summary of the change and the deck's new slide count",
     runtime: "system",
+    isDustTool: true,
   })
   // --- docx_inspect: structural inspection of .docx documents ---
   .registerTool({
@@ -800,6 +814,7 @@ SHELLEOF`,
     returns:
       "Document overview with theme + default typography and heading outline, or one paragraph/style/section/table/change/field per line. Render mode publishes each page and prints its scoped path (files__cat-readable)",
     runtime: "system",
+    isDustTool: true,
   })
   .withCapability("gcsfuse")
   .withResources({ vcpu: 2, memoryMb: 2048 })

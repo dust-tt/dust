@@ -6,7 +6,7 @@ import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { describe, expect, it } from "vitest";
 
 describe("sandboxSkill", () => {
-  it("points to the on-demand toolset description instead of inlining it", async () => {
+  it("inlines a compact toolset and points to detailed help", async () => {
     const { authenticator: auth } = await createResourceTest({});
 
     const instructions = await sandboxSkill.fetchInstructions(auth, {
@@ -14,7 +14,34 @@ describe("sandboxSkill", () => {
     });
 
     expect(instructions).toContain("dsbx tools");
+    const systemTools = instructions
+      .split("\n")
+      .find((line) => line.startsWith("- System:"));
+    expect(systemTools).toContain("git");
+    expect(systemTools).toContain("curl");
+    expect(systemTools).toContain("xlsx_inspect");
+    expect(instructions).not.toContain("- Dust:");
+    const pythonTools = instructions
+      .split("\n")
+      .find((line) => line.startsWith("- Python:"));
+    expect(pythonTools).toContain("python");
+    expect(pythonTools).toContain("pandas 3.0.1");
+    const nodeTools = instructions
+      .split("\n")
+      .find((line) => line.startsWith("- Node:"));
+    expect(nodeTools).toContain("typescript");
+    expect(nodeTools).toContain("tsx");
     expect(instructions).toContain("`describe_toolset`");
+    expect(instructions).toContain("Dust tool details:");
+    expect(instructions).toContain("- `apply_patch`:");
+    expect(instructions).toContain("- `dsbx`: Dust CLI");
+    expect(instructions.indexOf("- `apply_patch`:")).toBeLessThan(
+      instructions.indexOf("- `dsbx`:")
+    );
+    expect(instructions).toContain(
+      "- `pptx_slides`: Duplicate, move, or delete .pptx slides without corrupting"
+    );
+    expect(instructions).toContain("`<command> --help`");
     expect(instructions).not.toContain("name: dsbx");
     expect(instructions).not.toContain("```yaml");
   });
@@ -29,6 +56,12 @@ describe("sandboxSkill", () => {
     });
 
     expect(instructions).not.toContain("dsbx tools");
+    const systemTools = instructions
+      .split("\n")
+      .find((line) => line.startsWith("- System:"));
+    expect(systemTools).toBeDefined();
+    expect(systemTools).not.toContain("dsbx");
+    expect(instructions).not.toContain("- `dsbx`: Dust CLI");
   });
 
   it("instructs the model to analyze mounted tabular files with code", async () => {

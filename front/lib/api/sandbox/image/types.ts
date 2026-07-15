@@ -54,6 +54,7 @@ export interface ToolEntry {
   readonly usage?: string;
   readonly returns?: string;
   readonly runtime: ToolRuntime;
+  readonly isDustTool?: boolean;
   readonly profile?: ToolProfile | readonly ToolProfile[];
 }
 
