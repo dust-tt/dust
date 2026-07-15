@@ -184,6 +184,7 @@ export type SandboxFunctionRunContext = {
 };
 
 export type AgentLoopListToolsContext = {
+  contextType: "agent_loop";
   agentConfiguration: AgentConfigurationWithoutModelType;
   agentActionConfiguration: MCPServerConfigurationType;
   clientSideActionConfigurations?: ClientSideMCPServerConfigurationType[];
@@ -193,11 +194,6 @@ export type AgentLoopListToolsContext = {
 
 export type SandboxFunctionListToolsContext = {
   contextType: "sandbox_function";
-  agentConfiguration?: never;
-  agentActionConfiguration?: never;
-  clientSideActionConfigurations?: never;
-  conversation?: never;
-  agentMessage?: never;
 };
 
 export type ToolListToolsContext =
@@ -223,17 +219,13 @@ export function isAgentLoopRunContext(
 export function isSandboxFunctionListToolsContext(
   value: ToolListToolsContext | undefined
 ): value is SandboxFunctionListToolsContext {
-  return (
-    value !== undefined &&
-    "contextType" in value &&
-    value.contextType === "sandbox_function"
-  );
+  return value?.contextType === "sandbox_function";
 }
 
 export function isAgentLoopListToolsContext(
   value: ToolListToolsContext | undefined
 ): value is AgentLoopListToolsContext {
-  return value !== undefined && !isSandboxFunctionListToolsContext(value);
+  return value?.contextType === "agent_loop";
 }
 
 export type ToolContext =

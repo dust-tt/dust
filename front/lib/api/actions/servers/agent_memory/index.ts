@@ -1,6 +1,10 @@
 import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/utils";
 import { registerTool } from "@app/lib/actions/mcp_internal_actions/wrappers";
-import type { ToolContext } from "@app/lib/actions/types";
+import {
+  isSandboxFunctionListToolsContext,
+  isSandboxFunctionRunContext,
+  type ToolContext,
+} from "@app/lib/actions/types";
 import { AGENT_MEMORY_SERVER_NAME } from "@app/lib/api/actions/servers/agent_memory/metadata";
 import { TOOLS } from "@app/lib/api/actions/servers/agent_memory/tools";
 import type { Authenticator } from "@app/lib/auth";
@@ -11,6 +15,13 @@ function createServer(
   toolContext?: ToolContext
 ): McpServer {
   const server = makeInternalMCPServer(AGENT_MEMORY_SERVER_NAME);
+
+  if (
+    isSandboxFunctionListToolsContext(toolContext?.listToolsContext) ||
+    isSandboxFunctionRunContext(toolContext?.runContext)
+  ) {
+    return server;
+  }
 
   // For now we only support user-scoped memory, the code below allows to support agent-level memory
   // which is somewhat dangerous as it can leak data across users while use cases are not completely

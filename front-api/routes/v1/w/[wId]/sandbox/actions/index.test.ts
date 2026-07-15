@@ -76,6 +76,11 @@ describe("GET /api/v1/w/[wId]/sandbox/actions", () => {
       useCase: null,
     });
     await MCPServerViewFactory.create(workspace, agentMemory.id, globalSpace);
+    const runDustApp = await InternalMCPServerInMemoryResource.makeNew(auth, {
+      name: "run_dust_app",
+      useCase: null,
+    });
+    await MCPServerViewFactory.create(workspace, runDustApp.id, globalSpace);
     const remoteServer = await RemoteMCPServerFactory.create(workspace, {
       name: "remote_server",
     });

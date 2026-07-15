@@ -12,6 +12,9 @@ import { removeNulls } from "@app/types/shared/utils/general";
 import type { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { ErrorCode, McpError } from "@modelcontextprotocol/sdk/types.js";
 
+// Internal MCP servers are in-memory, but workspaces can expose many views at once.
+const SANDBOX_FUNCTION_TOOL_LISTING_CONCURRENCY = 8;
+
 /**
  * Returns the tools a sandbox function can call from a server view.
  *
@@ -29,23 +32,22 @@ export async function listSandboxFunctionToolsForMCPServerView(
     case "remote":
       return new Ok(viewJSON.server.tools);
     case "internal": {
-      let mcpClient: Client | undefined;
-      try {
-        const connectionResult = await connectToMCPServer(auth, {
-          params: {
-            type: "mcpServerId",
-            mcpServerId: view.mcpServerId,
-            oAuthUseCase: viewJSON.oAuthUseCase,
-          },
-          toolContext: {
-            listToolsContext: { contextType: "sandbox_function" },
-          },
-        });
-        if (connectionResult.isErr()) {
-          return new Err(connectionResult.error);
-        }
+      const connectionResult = await connectToMCPServer(auth, {
+        params: {
+          type: "mcpServerId",
+          mcpServerId: view.mcpServerId,
+          oAuthUseCase: viewJSON.oAuthUseCase,
+        },
+        toolContext: {
+          listToolsContext: { contextType: "sandbox_function" },
+        },
+      });
+      if (connectionResult.isErr()) {
+        return new Err(connectionResult.error);
+      }
 
-        mcpClient = connectionResult.value;
+      const mcpClient: Client = connectionResult.value;
+      try {
         const toolsResult = await mcpClient.listTools();
         const availableToolNames = new Set(
           toolsResult.tools.map((tool) => tool.name)
@@ -67,19 +69,17 @@ export async function listSandboxFunctionToolsForMCPServerView(
         }
         return new Err(normalizeError(error));
       } finally {
-        if (mcpClient) {
-          try {
-            await mcpClient.close();
-          } catch (error) {
-            logger.warn(
-              {
-                err: normalizeError(error),
-                mcpServerId: view.mcpServerId,
-                mcpServerViewId: view.sId,
-              },
-              "Failed to close sandbox function MCP listing client"
-            );
-          }
+        try {
+          await mcpClient.close();
+        } catch (error) {
+          logger.warn(
+            {
+              err: normalizeError(error),
+              mcpServerId: view.mcpServerId,
+              mcpServerViewId: view.sId,
+            },
+            "Failed to close sandbox function MCP listing client"
+          );
         }
       }
     }
@@ -131,7 +131,7 @@ export async function listSandboxFunctionMCPServerViews(
         },
       };
     },
-    { concurrency: 8 }
+    { concurrency: SANDBOX_FUNCTION_TOOL_LISTING_CONCURRENCY }
   );
 
   return removeNulls(serverViews);

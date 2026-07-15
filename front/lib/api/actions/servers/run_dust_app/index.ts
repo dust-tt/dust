@@ -11,6 +11,7 @@ import {
   isAgentLoopListToolsContext,
   isAgentLoopRunContext,
   isSandboxFunctionListToolsContext,
+  isSandboxFunctionRunContext,
   type ToolContext,
 } from "@app/lib/actions/types";
 import {
@@ -58,7 +59,10 @@ export default async function createServer(
   const server = makeInternalMCPServer("run_dust_app");
   const owner = auth.getNonNullableWorkspace();
 
-  if (isSandboxFunctionListToolsContext(toolContext?.listToolsContext)) {
+  if (
+    isSandboxFunctionListToolsContext(toolContext?.listToolsContext) ||
+    isSandboxFunctionRunContext(toolContext?.runContext)
+  ) {
     return server;
   }
 

@@ -1,6 +1,7 @@
 import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/utils";
 import { registerTool } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import {
+  isAgentLoopListToolsContext,
   isAgentLoopRunContext,
   type ToolContext,
 } from "@app/lib/actions/types";
@@ -21,7 +22,10 @@ async function createServer(
   const conversation =
     (isAgentLoopRunContext(toolContext?.runContext)
       ? toolContext.runContext.conversation
-      : null) ?? toolContext?.listToolsContext?.conversation;
+      : null) ??
+    (isAgentLoopListToolsContext(toolContext?.listToolsContext)
+      ? toolContext.listToolsContext.conversation
+      : null);
   const useFileSystem = conversation?.metadata?.useFileSystem === true;
 
   for (const tool of useFileSystem ? TOOLS_WITH_FILESYSTEM : TOOLS) {

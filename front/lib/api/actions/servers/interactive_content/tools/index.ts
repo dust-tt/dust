@@ -6,6 +6,7 @@ import type {
 } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import {
+  isAgentLoopListToolsContext,
   isAgentLoopRunContext,
   type ToolContext,
 } from "@app/lib/actions/types";
@@ -467,7 +468,9 @@ export async function createInteractiveContentTools(
   const { runContext } = toolContext ?? {};
   const conversation = isAgentLoopRunContext(runContext)
     ? runContext.conversation
-    : toolContext?.listToolsContext?.conversation;
+    : isAgentLoopListToolsContext(toolContext?.listToolsContext)
+      ? toolContext.listToolsContext.conversation
+      : null;
   if (conversation?.metadata?.useFileSystem === true) {
     return tools.filter(
       (tool) => tool.name !== EDIT_INTERACTIVE_CONTENT_FILE_TOOL_NAME

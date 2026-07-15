@@ -894,7 +894,7 @@ function makeClientSideMCPConnectionParams(
 
 type AgentLoopListToolsContextWithoutConfigurationType = Omit<
   AgentLoopListToolsContext,
-  "agentActionConfiguration"
+  "agentActionConfiguration" | "contextType"
 >;
 
 /**
@@ -1109,6 +1109,7 @@ export async function tryListMCPTools(
           action,
           {
             ...agentLoopListToolsContext,
+            contextType: "agent_loop",
             agentActionConfiguration: action,
           },
           connectionParams
