@@ -94,6 +94,10 @@ interface PhaseForm {
   startAt: string;
   minSeats: number;
   maxSeats?: number;
+  // Whether this phase already exists on the server. Saved phases have their
+  // start locked and can't be removed (their effective-dated Metronome update
+  // is already programmed). Travels with the phase so it survives re-sorting.
+  saved: boolean;
 }
 
 interface ScheduleFormValues {
@@ -159,6 +163,7 @@ function phasesForSeatType(
     startAt: toUTCInput(phase.startAt),
     minSeats: phase.minSeats,
     maxSeats: phase.maxSeats ?? undefined,
+    saved: true,
   }));
 }
 
@@ -255,11 +260,15 @@ function ScheduleEditor({
   const selectedName =
     seatTypeOptions.find((o) => o.seatType === seatType)?.name ?? seatType;
 
-  // Phases already saved to the server. They can't be removed here: a deletion
-  // would not retract the effective-dated update already programmed into
-  // Metronome. Only unsaved (newly added) phases — always appended after the
-  // saved ones — can be removed before saving.
-  const savedPhaseCount = (schedule[seatType] ?? []).length;
+  // Display order: always sorted by start date (UTC-input strings sort
+  // chronologically), so a newly inserted phase lands in its right position.
+  const orderedIndices = fields
+    .map((_, index) => index)
+    .sort((a, b) =>
+      (phaseValues?.[a]?.startAt ?? "").localeCompare(
+        phaseValues?.[b]?.startAt ?? ""
+      )
+    );
 
   const onSelectSeatType = (next: MembershipSeatType) => {
     if (next === seatType) {
@@ -274,13 +283,17 @@ function ScheduleEditor({
   const handleAddPhase = () => {
     const current = form.getValues("phases");
     // First phase starts now (floored to the hour); each later phase defaults
-    // to the day after the previous one. End dates are derived server-side, so
-    // there is nothing else to keep in sync here.
+    // to the day after the latest existing one. The row is re-sorted into
+    // position by start date, and its start can then be edited freely.
+    const latestStart = current.reduce(
+      (max, phase) => (phase.startAt > max ? phase.startAt : max),
+      ""
+    );
     const startAt =
       current.length === 0
         ? toUTCInput(new Date().toISOString())
-        : addOneDayUTCInput(current[current.length - 1].startAt);
-    replace([...current, { startAt, minSeats: 0 }]);
+        : addOneDayUTCInput(latestStart);
+    replace([...current, { startAt, minSeats: 0, saved: false }]);
   };
 
   const handleRemovePhase = (index: number) => {
@@ -389,62 +402,63 @@ function ScheduleEditor({
                   Max
                 </div>
                 <div />
-                {fields.map((field, index) => (
-                  <Fragment key={field.id}>
-                    <div>
+                {orderedIndices.map((index) => {
+                  const saved = phaseValues?.[index]?.saved ?? false;
+                  return (
+                    <Fragment key={fields[index].id}>
+                      <div>
+                        <InputField
+                          control={form.control}
+                          name={`phases.${index}.startAt`}
+                          hideLabel
+                          type="datetime-local"
+                          step={3600}
+                          transformValue={floorToHour}
+                          // A saved phase's start is locked: moving it would
+                          // strand the effective-dated update already sent to
+                          // Metronome. Commitment / max stay editable (a re-sync
+                          // re-programs the same segment).
+                          disabled={saved}
+                        />
+                        {utcInputToLocalLabel(
+                          phaseValues?.[index]?.startAt ?? ""
+                        ) && (
+                          <p className="mt-1 text-xs text-muted-foreground">
+                            Local:{" "}
+                            {utcInputToLocalLabel(
+                              phaseValues?.[index]?.startAt ?? ""
+                            )}
+                          </p>
+                        )}
+                      </div>
                       <InputField
                         control={form.control}
-                        name={`phases.${index}.startAt`}
+                        name={`phases.${index}.minSeats`}
                         hideLabel
-                        type="datetime-local"
-                        step={3600}
-                        transformValue={floorToHour}
-                        // A saved phase's start is locked: moving it would strand
-                        // the effective-dated update already sent to Metronome.
-                        // Commitment / max stay editable (a re-sync re-programs
-                        // the same segment).
-                        disabled={index < savedPhaseCount}
+                        type="number"
+                        min="0"
                       />
-                      {utcInputToLocalLabel(
-                        phaseValues?.[index]?.startAt ?? ""
-                      ) && (
-                        <p className="mt-1 text-xs text-muted-foreground">
-                          Local:{" "}
-                          {utcInputToLocalLabel(
-                            phaseValues?.[index]?.startAt ?? ""
-                          )}
-                        </p>
-                      )}
-                    </div>
-                    <InputField
-                      control={form.control}
-                      name={`phases.${index}.minSeats`}
-                      hideLabel
-                      type="number"
-                      min="0"
-                    />
-                    <InputField
-                      control={form.control}
-                      name={`phases.${index}.maxSeats`}
-                      hideLabel
-                      type="number"
-                      min="1"
-                      placeholder="∞"
-                    />
-                    <IconButton
-                      icon={Trash01}
-                      size="xs"
-                      variant="outline"
-                      disabled={index < savedPhaseCount}
-                      tooltip={
-                        index < savedPhaseCount
-                          ? "Saved phases can't be removed"
-                          : undefined
-                      }
-                      onClick={() => handleRemovePhase(index)}
-                    />
-                  </Fragment>
-                ))}
+                      <InputField
+                        control={form.control}
+                        name={`phases.${index}.maxSeats`}
+                        hideLabel
+                        type="number"
+                        min="1"
+                        placeholder="∞"
+                      />
+                      <IconButton
+                        icon={Trash01}
+                        size="xs"
+                        variant="outline"
+                        disabled={saved}
+                        tooltip={
+                          saved ? "Saved phases can't be removed" : undefined
+                        }
+                        onClick={() => handleRemovePhase(index)}
+                      />
+                    </Fragment>
+                  );
+                })}
               </div>
             )}
 
