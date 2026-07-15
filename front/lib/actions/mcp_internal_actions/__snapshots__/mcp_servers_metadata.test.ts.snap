@@ -1790,6 +1790,10 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool billing info ac
       "freeUsage": true,
       "toolCostCategory": "basic",
     },
+    "set_pinned_frame": {
+      "freeUsage": true,
+      "toolCostCategory": "basic",
+    },
     "update_members": {
       "freeUsage": true,
       "toolCostCategory": "basic",
@@ -3074,6 +3078,7 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool stakes across a
     "remove_content_node": "low",
     "retrieve_recent_documents": "never_ask",
     "semantic_search": "never_ask",
+    "set_pinned_frame": "never_ask",
     "update_members": "low",
   },
   "pod_tasks": {
