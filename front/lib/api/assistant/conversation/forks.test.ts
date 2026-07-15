@@ -519,7 +519,7 @@ describe("createConversationFork", () => {
 
     expect(childConversation.title).toBeNull();
     expect(childConversation.spaceId).toBe(globalSpace.sId);
-    expect(childConversation.depth).toBe(parentConversation.depth + 1);
+    expect(childConversation.depth).toBe(0);
     expect(childConversation.forkingData).toEqual({
       forkedFrom: {
         parentConversationId: parentConversation.sId,

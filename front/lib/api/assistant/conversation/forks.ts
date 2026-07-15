@@ -628,7 +628,7 @@ export async function createConversationFork(
         sId: generateRandomModelSId(),
         title: null,
         visibility: parentConversation.visibility,
-        depth: parentConversation.depth + 1,
+        depth: 0,
         triggerId: null,
         spaceId: parentConversation.space?.id ?? null,
         requestedSpaceIds: [...parentConversation.requestedSpaceIds],
