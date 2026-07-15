@@ -51,19 +51,19 @@ export default function SeatLimitScheduleDialog({
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         <Button
-          label="📅 Edit seat-limit schedule"
+          label="📅 Edit seat commitments and limit"
           variant="outline"
           size="xs"
         />
       </DialogTrigger>
       <DialogContent size="xl">
         <DialogHeader>
-          <DialogTitle>Seat-limit schedule</DialogTitle>
+          <DialogTitle>Seat commitments and limit</DialogTitle>
           <DialogDescription>
-            Configure the committed min / max seats over time for a seat type.
-            Each line is a phase; leave the end date blank for the final,
-            open-ended phase. Scheduled phases are programmed into Metronome
-            ahead of time.
+            Configure the seat commitment (billed floor) and max limit over time
+            for a seat type. Each line is a phase; leave the end date blank for
+            the final, open-ended phase. Scheduled phases are programmed into
+            Metronome ahead of time.
           </DialogDescription>
         </DialogHeader>
         {open && isLoading ? (
@@ -200,9 +200,54 @@ function ScheduleEditor({
       });
     }
 
+    // Guard against overlaps and multiple open-ended phases so at most one
+    // phase is ever active at a time for this seat type (mirrors the
+    // server-side check, for immediate feedback).
+    const sorted = [...phases].sort(
+      (a, b) => new Date(a.startAt).getTime() - new Date(b.startAt).getTime()
+    );
+    for (let i = 0; i < sorted.length; i++) {
+      const phase = sorted[i];
+      if (
+        phase.endAt !== null &&
+        new Date(phase.endAt) <= new Date(phase.startAt)
+      ) {
+        sendNotification({
+          title: "Invalid schedule",
+          type: "error",
+          description: "Each phase's end must be after its start.",
+        });
+        return;
+      }
+      if (phase.endAt === null && i !== sorted.length - 1) {
+        sendNotification({
+          title: "Invalid schedule",
+          type: "error",
+          description:
+            "Only the last phase can be open-ended (blank end date).",
+        });
+        return;
+      }
+      if (i > 0) {
+        const previous = sorted[i - 1];
+        if (
+          previous.endAt === null ||
+          new Date(previous.endAt) > new Date(phase.startAt)
+        ) {
+          sendNotification({
+            title: "Invalid schedule",
+            type: "error",
+            description:
+              "Phases overlap — two phases would be active at the same time.",
+          });
+          return;
+        }
+      }
+    }
+
     setIsSubmitting(true);
     try {
-      const ok = await updateSchedule({ seatType, phases });
+      const ok = await updateSchedule({ seatType, phases: sorted });
       if (ok) {
         await onSaved();
       }
@@ -224,7 +269,12 @@ function ScheduleEditor({
               <div className="text-sm font-semibold">Seat type</div>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="outline" label={selectedName} isSelect />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    label={selectedName}
+                    isSelect
+                  />
                 </DropdownMenuTrigger>
                 <DropdownMenuContent>
                   {seatTypeOptions.map((option) => (
@@ -265,11 +315,11 @@ function ScheduleEditor({
                       type="datetime-local"
                     />
                   </div>
-                  <div className="w-24">
+                  <div className="w-28">
                     <InputField
                       control={form.control}
                       name={`phases.${index}.minSeats`}
-                      title="Min"
+                      title="Commitment"
                       type="number"
                       min="0"
                     />
@@ -284,6 +334,7 @@ function ScheduleEditor({
                     />
                   </div>
                   <Button
+                    type="button"
                     variant="warning"
                     size="xs"
                     label="Remove"
@@ -295,6 +346,7 @@ function ScheduleEditor({
 
             <div>
               <Button
+                type="button"
                 variant="outline"
                 size="xs"
                 label="Add phase"

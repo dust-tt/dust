@@ -324,7 +324,7 @@ function SeatCommitmentsSection({
             <PokeTableRow key={seatType}>
               <PokeTableCell>{info.name}</PokeTableCell>
               <PokeTableCell>
-                {info.minSeats} min / {info.maxSeats ?? "∞"} max /{" "}
+                {info.minSeats} commitment / {info.maxSeats ?? "∞"} max /{" "}
                 {info.assignedCount} used
               </PokeTableCell>
             </PokeTableRow>
