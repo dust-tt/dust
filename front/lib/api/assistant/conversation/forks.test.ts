@@ -481,12 +481,13 @@ function mockContentNodeAttachments(nodeDataSourceViewId: number) {
 }
 
 describe("createConversationFork", () => {
-  it("creates the child conversation, sole participant, and lineage row", async () => {
+  it("creates the child at root depth with sole participant and lineage row", async () => {
     const { auth, globalSpace, user } = await createPrivateApiMockRequest();
 
     const parentConversation = await createConversation(auth, {
       title: "Parent conversation",
       visibility: "unlisted",
+      depth: 1,
       spaceId: globalSpace.id,
     });
 
