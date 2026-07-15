@@ -1094,7 +1094,7 @@ function MosaicQuoteCard({
 function SocialProofMosaicSection() {
   return (
     <section className="w-full">
-      <H1 mono className="mb-12 text-left text-3xl md:text-4xl lg:text-5xl">
+      <H1 mono className="mb-12 text-center text-3xl md:text-4xl lg:text-5xl">
         Don't take our word for it
       </H1>
       <div className="grid auto-rows-auto grid-cols-1 gap-4 md:grid-cols-3">

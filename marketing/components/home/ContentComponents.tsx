@@ -57,11 +57,11 @@ export const FullWidthSection = ({
 );
 
 const hClasses = {
-  h1: "heading-5xl md:heading-6xl lg:heading-8xl py-2 text-left",
-  h2: "heading-3xl lg:heading-4xl xl:heading-5xl py-2 text-left",
-  h3: "heading-xl lg:heading-2xl xl:heading-3xl py-1 text-left",
-  h4: "heading-lg lg:heading-xl xl:heading-2xl text-left",
-  h5: "heading-lg lg:heading-xl xl:heading-xl text-left",
+  h1: "heading-5xl md:heading-6xl lg:heading-8xl py-2",
+  h2: "heading-3xl lg:heading-4xl xl:heading-5xl py-2",
+  h3: "heading-xl lg:heading-2xl xl:heading-3xl py-1",
+  h4: "heading-lg lg:heading-xl xl:heading-2xl",
+  h5: "heading-lg lg:heading-xl xl:heading-xl",
 };
 
 interface ContentProps {
@@ -96,7 +96,7 @@ const createHeadingComponent = (Tag: TagName) => {
         )
       : classNames(hClasses[Tag], "font-sans");
     return (
-      <Tag id={id} className={classNames(className, baseClasses)} style={style}>
+      <Tag id={id} className={classNames(baseClasses, className)} style={style}>
         {children}
       </Tag>
     );
@@ -248,7 +248,7 @@ export function CloudConnectorsSection() {
 export function SecurityComplianceSection() {
   return (
     <div>
-      <H2 className="mb-6 text-left">Security & compliance</H2>
+      <H2 className="mb-6">Security & compliance</H2>
       <div className="grid gap-6 sm:gap-8 md:grid-cols-3">
         <div className="rounded-2xl bg-gray-50 p-6">
           <div className="mb-6 flex h-12 w-12 items-center justify-center">
