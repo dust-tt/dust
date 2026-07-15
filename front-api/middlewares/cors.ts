@@ -4,12 +4,18 @@ import {
   isAllowedOrigin,
 } from "@app/config/cors";
 import logger from "@app/logger/logger";
+import { DUST_FILE_ID_HEADER } from "@app/types/files";
 import { isDevelopment } from "@app/types/shared/env";
 import type { MiddlewareHandler } from "hono";
 
 const ALLOW_METHODS = "GET, POST, PUT, PATCH, DELETE, OPTIONS";
-const EXPOSE_HEADERS =
-  "X-Reload-Required, WWW-Authenticate, mcp-session-id, mcp-protocol-version";
+const EXPOSE_HEADERS = [
+  "X-Reload-Required",
+  "WWW-Authenticate",
+  "mcp-session-id",
+  "mcp-protocol-version",
+  DUST_FILE_ID_HEADER,
+].join(", ");
 
 /**
  * Adds the cross-origin headers expected by browser clients to every
