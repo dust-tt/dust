@@ -50,8 +50,9 @@ const SCOPED_PATH_HINT =
 
 const FILE_PREVIEW_DIRECTIVE_HINT =
   "To show a previewable file citation for a scoped file path in a final response, " +
-  `output the markdown directive \`${FILE_PREVIEW_DIRECTIVE_EXAMPLE}\`; include \`contentType\` when known. ` +
-  "The rendered citation opens the file preview, where the user can download the file. " +
+  `output the markdown directive \`${FILE_PREVIEW_DIRECTIVE_EXAMPLE}\`. ` +
+  "Always include `contentType` exactly as returned by this server; it is required to open Frame files in the side panel. " +
+  "The rendered citation opens Frame files in the side panel and other files in the file preview, where the user can download them. " +
   "Use the scoped path exactly as returned by this server and never invent an app URL for it.";
 
 const LIST_SCOPE_SCHEMA = z.discriminatedUnion("type", [
