@@ -231,14 +231,16 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
     return new this(this.model, invocation.get(), { sandboxFunction });
   }
 
-  static async createAndPublish(
+  static async createAndStartExecution(
     auth: Authenticator,
     {
       sandboxFunction,
+      body,
     }: {
       sandboxFunction: SandboxFunctionResource;
+      body: PostSandboxFunctionInvocationRequestBody;
     }
-  ): Promise<SandboxFunctionInvocationResource> {
+  ): Promise<Result<SandboxFunctionInvocationResource, Error>> {
     const invocation = await this.makeNew(auth, { sandboxFunction });
     await publishSandboxFunctionInvocationEvent(
       {
@@ -249,7 +251,13 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
       { invocationId: invocation.sId }
     );
 
-    return invocation;
+    const executionResult = await invocation.execute(auth, body);
+    if (executionResult.isErr()) {
+      await invocation.fail(executionResult.error);
+      return new Err(executionResult.error);
+    }
+
+    return new Ok(invocation);
   }
 
   private static async baseFetch(

@@ -58,15 +58,15 @@ export async function callSandboxFunction(
   sandboxFunction: SandboxFunctionResource,
   input: unknown
 ): Promise<Result<SandboxFunctionCallOutcome, Error>> {
-  const invocation = await SandboxFunctionInvocationResource.createAndPublish(
-    auth,
-    { sandboxFunction }
-  );
-  const executionResult = await invocation.execute(auth, { input });
-  if (executionResult.isErr()) {
-    await invocation.fail(executionResult.error);
-    return executionResult;
+  const invocationResult =
+    await SandboxFunctionInvocationResource.createAndStartExecution(auth, {
+      sandboxFunction,
+      body: { input },
+    });
+  if (invocationResult.isErr()) {
+    return invocationResult;
   }
+  const invocation = invocationResult.value;
   const { sId: invocationId } = invocation;
 
   for await (const { data } of getSandboxFunctionInvocationEvents({

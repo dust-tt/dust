@@ -113,16 +113,12 @@ app.post(
       });
     }
 
-    const invocation = await SandboxFunctionInvocationResource.createAndPublish(
-      auth,
-      {
+    const invocationResult =
+      await SandboxFunctionInvocationResource.createAndStartExecution(auth, {
         sandboxFunction,
-      }
-    );
-
-    const executionResult = await invocation.execute(auth, body);
-    if (executionResult.isErr()) {
-      await invocation.fail(executionResult.error);
+        body,
+      });
+    if (invocationResult.isErr()) {
       return apiError(
         ctx,
         {
@@ -132,13 +128,13 @@ app.post(
             message: "Sandbox function invocation failed.",
           },
         },
-        executionResult.error
+        invocationResult.error
       );
     }
 
     return ctx.json(
       {
-        invocation: invocation.toJSON(),
+        invocation: invocationResult.value.toJSON(),
       },
       201
     );
