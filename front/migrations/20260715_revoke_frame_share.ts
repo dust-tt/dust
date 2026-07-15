@@ -12,18 +12,20 @@ makeScript(
     tokenId: {
       type: "string",
       demandOption: true,
-      describe: "shareable_files.token (UUID) identifying the Frame share to update",
+      describe:
+        "shareable_files.token (UUID) identifying the Frame share to update",
     },
     scope: {
       type: "string",
       default: DEFAULT_SCOPE,
       choices: fileShareScopeSchema.options,
       describe:
-        "Target share scope for the Frame. Defaults to the most restrictive scope (emails_only).",
+        "Target share scope for the Frame. Defaults to the most " +
+        "restrictive scope (emails_only).",
     },
   },
   async ({ tokenId, scope, execute }, logger) => {
-    const targetScope = scope as FileShareScope;
+    const targetScope = fileShareScopeSchema.parse(scope);
 
     const share = await ShareableFileModel.findOne({
       where: { token: tokenId },
@@ -52,8 +54,8 @@ makeScript(
 
     if (!execute) {
       logger.info(
-        `Dry run: would update scope "${share.shareScope}" -> "${targetScope}" for token ${tokenId}. ` +
-          "Pass --execute to apply."
+        `Dry run: would update scope "${share.shareScope}" -> ` +
+          `"${targetScope}" for token ${tokenId}. Pass --execute to apply.`
       );
       return;
     }
@@ -61,7 +63,8 @@ makeScript(
     await share.update({ shareScope: targetScope });
 
     logger.info(
-      `Updated scope "${share.shareScope}" -> "${targetScope}" for token ${tokenId}`
+      `Updated scope "${share.shareScope}" -> "${targetScope}" for token ` +
+        tokenId
     );
   }
 );
