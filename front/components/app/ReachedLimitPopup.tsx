@@ -1,4 +1,7 @@
-import { FairUsageModal } from "@app/components/FairUsageModal";
+import {
+  FairUsageModal,
+  fairUseSeatLimitFromPlan,
+} from "@app/components/FairUsageModal";
 import { isFreeTrialPhonePlan } from "@app/lib/plans/plan_codes";
 import type { AppRouter } from "@app/lib/platform";
 import { useAppRouter } from "@app/lib/platform";
@@ -385,10 +388,7 @@ export function ReachedLimitPopup({
       <FairUsageModal
         isOpened={isFairUsageModalOpened}
         onClose={() => setIsFairUsageModalOpened(false)}
-        creditLimit={subscription.plan.limits.assistant.maxAwuCredits}
-        creditLimitTimeframe={
-          subscription.plan.limits.assistant.maxAwuCreditsTimeframe
-        }
+        seatLimit={fairUseSeatLimitFromPlan(subscription.plan)}
       />
       <Dialog
         open={isOpened}

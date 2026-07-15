@@ -8,9 +8,9 @@ export function formatCredits(credits: number): string {
   return credits.toLocaleString("en-US", { maximumFractionDigits: 1 });
 }
 
-// Short recurring-period label for a fair-use credit timeframe (e.g. "per day").
+// Short recurring-period label for a fair-use timeframe (e.g. "per day").
 // Returns an empty string for the "lifetime" sentinel, which has no period.
-export function formatCreditsTimeframe(
+export function formatFairUseTimeframe(
   timeframe: MaxAwuCreditsTimeframeType
 ): string {
   switch (timeframe) {

@@ -1,5 +1,10 @@
-import { formatCredits, formatCreditsTimeframe } from "@app/lib/client/credits";
-import type { MaxAwuCreditsTimeframeType } from "@app/types/plan";
+import { formatCredits, formatFairUseTimeframe } from "@app/lib/client/credits";
+import type {
+  MaxAwuCreditsTimeframeType,
+  MaxMessagesTimeframeType,
+  PlanType,
+} from "@app/types/plan";
+import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import {
   Attachment01,
   Icon,
@@ -11,43 +16,82 @@ import {
   SheetTitle,
 } from "@dust-tt/sparkle";
 
+// The per-seat fair-use limit that applies to a plan. Credit-priced plans budget
+// per-user credits; other (Pro/Enterprise) plans still cap per-seat messages.
+export type FairUseSeatLimit =
+  | { kind: "credits"; limit: number; timeframe: MaxAwuCreditsTimeframeType }
+  | { kind: "messages"; limit: number; timeframe: MaxMessagesTimeframeType };
+
+// Resolve the fair-use limit that applies to a plan, or undefined when none is
+// configured (both limits are the -1 unlimited sentinel).
+export function fairUseSeatLimitFromPlan(
+  plan: PlanType
+): FairUseSeatLimit | undefined {
+  const {
+    maxAwuCredits,
+    maxAwuCreditsTimeframe,
+    maxMessages,
+    maxMessagesTimeframe,
+  } = plan.limits.assistant;
+
+  if (maxAwuCredits !== -1) {
+    return {
+      kind: "credits",
+      limit: maxAwuCredits,
+      timeframe: maxAwuCreditsTimeframe,
+    };
+  }
+  if (maxMessages !== -1) {
+    return {
+      kind: "messages",
+      limit: maxMessages,
+      timeframe: maxMessagesTimeframe,
+    };
+  }
+  return undefined;
+}
+
 interface FairUsageModalProps {
   isOpened: boolean;
   onClose: () => void;
-  // When known, the fair-use credit limit and its recurring timeframe for the
-  // current plan are rendered in the policy. Omitted on generic surfaces (e.g.
-  // the pricing page) where no single plan is in context.
-  creditLimit?: number;
-  creditLimitTimeframe?: MaxAwuCreditsTimeframeType;
+  // The fair-use limit for the current plan, when known. Omitted on generic
+  // surfaces (e.g. the pricing page) where no single plan is in context.
+  seatLimit?: FairUseSeatLimit;
 }
 
-function getFairUseContent(
-  creditLimit?: number,
-  creditLimitTimeframe?: MaxAwuCreditsTimeframeType
-): string {
-  const hasDynamicLimit =
-    creditLimit !== undefined &&
-    creditLimit > 0 &&
-    creditLimitTimeframe !== undefined;
-
-  const timeframeLabel = hasDynamicLimit
-    ? formatCreditsTimeframe(creditLimitTimeframe)
-    : "";
-
-  const limitLine = hasDynamicLimit
-    ? `On your current plan, a limit of **${formatCredits(creditLimit)} credits${
+function getFairUseContent(seatLimit?: FairUseSeatLimit): string {
+  let limitLine: string;
+  switch (seatLimit?.kind) {
+    case "credits": {
+      const timeframeLabel = formatFairUseTimeframe(seatLimit.timeframe);
+      limitLine = `On your current plan, that is **${formatCredits(seatLimit.limit)} credits${
         timeframeLabel ? ` ${timeframeLabel}` : ""
-      }** applies to each user seat.`
-    : `The credit limit that applies to each user seat depends on your plan.`;
+      }**.`;
+      break;
+    }
+    case "messages": {
+      const timeframeLabel = formatFairUseTimeframe(seatLimit.timeframe);
+      limitLine = `On your current plan, that is **${seatLimit.limit} messages${
+        timeframeLabel ? ` ${timeframeLabel}` : ""
+      }**.`;
+      break;
+    }
+    case undefined:
+      limitLine = `The exact limit depends on your plan.`;
+      break;
+    default:
+      assertNeverAndIgnore(seatLimit);
+      limitLine = `The exact limit depends on your plan.`;
+  }
 
   return `
 # **Fair use principles for user seats**
 
 Each user seat at Dust is tied to a specific human user, and is destined to be used by that person only, for the purposes of typing and sending messages manually (as opposed to using programmatic methods such as scripts, API calls, etc. which is covered separately).
 
-To prevent abuse, a "fair use" limit on credit consumption applies to each user seat. ${limitLine}
+To prevent abuse, a "fair use" limit applies to each user seat. ${limitLine}
 
-This limit should be understood as a way to prevent abuse, not as an allowed quota of credits. In particular, it is considered unfair to share a single seat between multiple people.
+This limit should be understood as a way to prevent abuse, not as an allowed quota. In particular, it is considered unfair to share a single seat between multiple people.
 
 ___
 # **Can messages be sent programmatically with Dust?**
@@ -62,8 +106,7 @@ Dust plans already include monthly credits for programmatic usage, and more cred
 export function FairUsageModal({
   isOpened,
   onClose,
-  creditLimit,
-  creditLimitTimeframe,
+  seatLimit,
 }: FairUsageModalProps) {
   return (
     <Sheet
@@ -81,7 +124,7 @@ export function FairUsageModal({
         <SheetContainer>
           <Icon visual={Attachment01} size="lg" className="text-success-500" />
           <Markdown
-            content={getFairUseContent(creditLimit, creditLimitTimeframe)}
+            content={getFairUseContent(seatLimit)}
             forcedTextSize="text-sm"
           />
         </SheetContainer>

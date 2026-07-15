@@ -1,5 +1,5 @@
 import { FairUsageModal } from "@app/components/FairUsageModal";
-import { formatCredits, formatCreditsTimeframe } from "@app/lib/client/credits";
+import { formatCredits, formatFairUseTimeframe } from "@app/lib/client/credits";
 import { AGENT_MESSAGE_COMPLETED_EVENT } from "@app/lib/notifications/events";
 import { useFairUseCredits } from "@app/lib/swr/fair_use_credits";
 import { cn, Hoverable } from "@dust-tt/sparkle";
@@ -62,15 +62,14 @@ export function FairUseCreditsUsage({ workspaceId }: FairUseCreditsUsageProps) {
   }
 
   const isCritical = percentage >= CREDITS_USAGE_CRITICAL_THRESHOLD;
-  const timeframeLabel = formatCreditsTimeframe(timeframe);
+  const timeframeLabel = formatFairUseTimeframe(timeframe);
 
   return (
     <>
       <FairUsageModal
         isOpened={isFairUsageModalOpened}
         onClose={() => setIsFairUsageModalOpened(false)}
-        creditLimit={limit}
-        creditLimitTimeframe={timeframe}
+        seatLimit={{ kind: "credits", limit, timeframe }}
       />
       <div
         className={cn(
