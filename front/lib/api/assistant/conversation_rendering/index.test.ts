@@ -790,7 +790,7 @@ describe("renderConversationForModel", () => {
   it("prepends leading messages", async () => {
     const leadingMessage = {
       role: "user" as const,
-      name: "user",
+      name: "system",
       content: [{ type: "text" as const, text: "preface" }],
     };
 
@@ -828,8 +828,39 @@ describe("renderConversationForModel", () => {
     ]);
   });
 
+  it("rejects leading messages that are not system user messages", async () => {
+    const leadingMessage = userMessage("preface");
+
+    vi.mocked(renderAllMessages).mockResolvedValue([userMessage("rendered")]);
+    mockTokenCounter({
+      byContains: {
+        preface: 10,
+        rendered: 10,
+      },
+    });
+
+    await expect(
+      renderConversationForModel(auth, {
+        conversation: createConversation(),
+        model,
+        prompt: "PROMPT",
+        enabledSkills: [],
+        tools: "TOOLS",
+        allowedTokenCount: computeAllowedTokenCount({
+          promptTokens: 10,
+          toolsTokens: 10,
+          interactionTokens: 20,
+          availableDelta: 100,
+        }),
+        leadingMessages: [leadingMessage],
+      })
+    ).rejects.toThrow(
+      "Expected every leading message to be a system user message."
+    );
+  });
+
   it("never drops leading messages when pruning old interactions", async () => {
-    const leadingMessage = userMessage("equipped_skills");
+    const leadingMessage = userMessage("equipped_skills", "system");
     vi.mocked(renderAllMessages).mockResolvedValue([
       userMessage("old_user_1"),
       assistantMessage("old_assistant_1"),

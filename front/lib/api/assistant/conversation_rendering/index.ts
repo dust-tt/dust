@@ -194,6 +194,16 @@ export async function renderConversationForModel(
     0,
     leadingMessages.length
   );
+  if (
+    leadingMessagesWithTokens.length !== leadingMessages.length ||
+    leadingMessagesWithTokens.some(
+      (message) => message.role !== "user" || message.name !== "system"
+    )
+  ) {
+    throw new Error(
+      "Expected every leading message to be a system user message."
+    );
+  }
   const renderedMessagesWithTokens = messagesWithTokens.slice(
     leadingMessages.length
   );
