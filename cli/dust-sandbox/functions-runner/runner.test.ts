@@ -42,6 +42,33 @@ describe("runner run", () => {
     expect(code).toBe(2);
     expect(JSON.parse(stdout).error.code).toBe("bad_input");
   });
+
+  test("returns invalid_input when schema.input validation throws", async () => {
+    const { stdout, code } = await run(
+      ["run", fx("throwing-schema.ts")],
+      JSON.stringify({ body: "{}" })
+    );
+    expect(code).toBe(1);
+    expect(JSON.parse(stdout).error.code).toBe("invalid_input");
+  });
+
+  test("returns invalid_output when parsed output cannot be serialized", async () => {
+    const { stdout, code } = await run(
+      ["run", fx("unserializable-output.ts")],
+      JSON.stringify({})
+    );
+    expect(code).toBe(1);
+    expect(JSON.parse(stdout).error.code).toBe("invalid_output");
+  });
+
+  test("returns invalid_output when schema.output validation throws", async () => {
+    const { stdout, code } = await run(
+      ["run", fx("throwing-output-schema.ts")],
+      JSON.stringify({})
+    );
+    expect(code).toBe(1);
+    expect(JSON.parse(stdout).error.code).toBe("invalid_output");
+  });
 });
 
 describe("runner get", () => {

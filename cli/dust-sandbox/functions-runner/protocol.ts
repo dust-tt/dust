@@ -1,5 +1,5 @@
 // Wire protocol for the function runner: JSON shapes exchanged on stdin/stdout
-// and helpers translating request/response bodies to and from bytes.
+// and the helper translating request bodies to bytes.
 
 export type Encoding = "utf8" | "base64";
 
@@ -20,11 +20,11 @@ export type ErrorCode =
   | "http_error"
   | "invalid_output";
 
-export interface InvocationError {
-  code: ErrorCode;
-  message: string;
-  status?: number;
-}
+export type NonHttpErrorCode = Exclude<ErrorCode, "http_error">;
+
+export type InvocationError =
+  | { code: NonHttpErrorCode; message: string }
+  | { code: "http_error"; message: string; status: number };
 
 export type Output =
   | { ok: true; output: unknown }
