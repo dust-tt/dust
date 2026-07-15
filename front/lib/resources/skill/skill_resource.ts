@@ -655,21 +655,26 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         "skillConfigurationId"
       );
 
-      const fileAttachmentModels = await SkillFileAttachmentModel.findAll({
-        where: {
-          workspaceId: workspace.id,
-          skillConfigurationId: {
-            [Op.in]: allowedCustomSkillIds,
-          },
-        },
-        transaction,
-      });
+      const shouldFetchFileAttachments = withInstructions || withTools;
+      const fileAttachmentModels = shouldFetchFileAttachments
+        ? await SkillFileAttachmentModel.findAll({
+            where: {
+              workspaceId: workspace.id,
+              skillConfigurationId: {
+                [Op.in]: allowedCustomSkillIds,
+              },
+            },
+            transaction,
+          })
+        : [];
 
-      const allFileResources = await FileResource.fetchByModelIdsWithAuth(
-        auth,
-        fileAttachmentModels.map((a) => a.fileId),
-        transaction
-      );
+      const allFileResources = shouldFetchFileAttachments
+        ? await FileResource.fetchByModelIdsWithAuth(
+            auth,
+            fileAttachmentModels.map((a) => a.fileId),
+            transaction
+          )
+        : [];
 
       const fileResourceById = new Map(allFileResources.map((f) => [f.id, f]));
 
