@@ -186,8 +186,10 @@ export async function renderConversationForModel(
   const messagesWithTokens = messagesWithTokensRes.value;
   const [promptCount, toolDefinitionsCount] = promptToolsRes.value;
 
-  // Leading messages include equipped skills. Keep them outside the prunable interactions while
-  // still charging their tokens against both the hard ceiling and the proactive pruning target.
+  // The leading messages contain the list of equipped skills available to the model. Keep them
+  // outside the prunable interactions so the model always sees that list and can enable a skill
+  // at any point in the conversation. Their tokens still count against both the hard ceiling and
+  // the proactive pruning target.
   const leadingMessagesWithTokens = messagesWithTokens.slice(
     0,
     leadingMessages.length
