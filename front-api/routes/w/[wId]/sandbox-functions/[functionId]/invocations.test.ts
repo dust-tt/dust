@@ -34,6 +34,9 @@ vi.mock("@app/temporal/agent_loop/client", async (importOriginal) => {
     await importOriginal<typeof import("@app/temporal/agent_loop/client")>();
   return {
     ...mod,
+    launchSandboxFunctionInvocationWorkflow: vi.fn(
+      async () => new Ok(undefined)
+    ),
     launchSandboxFunctionToolWorkflow: vi.fn(async () => new Ok(undefined)),
   };
 });
@@ -49,7 +52,10 @@ vi.mock("@app/lib/actions/tool_status", async (importOriginal) => {
 
 import { setUserAlwaysApprovedTool } from "@app/lib/actions/tool_status";
 import { publishSandboxFunctionInvocationEvent } from "@app/lib/api/sandbox_functions/events";
-import { launchSandboxFunctionToolWorkflow } from "@app/temporal/agent_loop/client";
+import {
+  launchSandboxFunctionInvocationWorkflow,
+  launchSandboxFunctionToolWorkflow,
+} from "@app/temporal/agent_loop/client";
 
 const inputSchema: JSONSchema = {
   type: "object",
@@ -67,10 +73,6 @@ const outputSchema: JSONSchema = {
 
 beforeEach(() => {
   vi.clearAllMocks();
-  vi.spyOn(
-    SandboxFunctionInvocationResource.prototype,
-    "execute"
-  ).mockResolvedValue(new Ok(undefined));
 });
 
 afterEach(() => {
@@ -210,7 +212,7 @@ function postInvocation({
 }
 
 describe("POST /api/w/:wId/sandbox-functions/:functionIdOrSlug/invocations", () => {
-  it("creates and executes an invocation", async () => {
+  it("creates an invocation and starts its workflow", async () => {
     const { workspace, sandboxFunction } = await setupSandboxFunction();
 
     const response = await postInvocation({
@@ -232,11 +234,16 @@ describe("POST /api/w/:wId/sandbox-functions/:functionIdOrSlug/invocations", () 
       }),
     });
     const invocation = body.invocation;
-    expect(
-      SandboxFunctionInvocationResource.prototype.execute
-    ).toHaveBeenCalledWith(expect.anything(), {
-      input: { message: "hello" },
-    });
+    expect(launchSandboxFunctionInvocationWorkflow).toHaveBeenCalledWith(
+      expect.anything(),
+      {
+        sandboxFunction: expect.objectContaining({ id: sandboxFunction.id }),
+        invocation: expect.objectContaining({ sId: invocation.sId }),
+        body: {
+          input: { message: "hello" },
+        },
+      }
+    );
     expect(publishSandboxFunctionInvocationEvent).toHaveBeenCalledWith(
       {
         type: "sandbox_function_invocation_created",
@@ -259,11 +266,13 @@ describe("POST /api/w/:wId/sandbox-functions/:functionIdOrSlug/invocations", () 
     });
 
     expect(response.status).toBe(201);
-    expect(
-      SandboxFunctionInvocationResource.prototype.execute
-    ).toHaveBeenCalledWith(expect.anything(), {
-      input: { message: "hello" },
-    });
+    expect(launchSandboxFunctionInvocationWorkflow).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        sandboxFunction: expect.objectContaining({ id: sandboxFunction.id }),
+        body: { input: { message: "hello" } },
+      })
+    );
   });
 
   it("returns 404 when the user cannot access the function space", async () => {
@@ -293,12 +302,12 @@ describe("POST /api/w/:wId/sandbox-functions/:functionIdOrSlug/invocations", () 
     expect(response.status).toBe(201);
   });
 
-  it("returns 500 when invocation execution fails", async () => {
+  it("returns 500 when starting the invocation workflow fails", async () => {
     const { workspace, sandboxFunction, adminAuth } =
       await setupSandboxFunction();
-    vi.mocked(
-      SandboxFunctionInvocationResource.prototype.execute
-    ).mockResolvedValueOnce(new Err(new Error("sandbox unavailable")));
+    vi.mocked(launchSandboxFunctionInvocationWorkflow).mockResolvedValueOnce(
+      new Err(new Error("temporal unavailable"))
+    );
 
     const response = await postInvocation({
       workspaceId: workspace.sId,
@@ -317,7 +326,7 @@ describe("POST /api/w/:wId/sandbox-functions/:functionIdOrSlug/invocations", () 
         type: "sandbox_function_invocation_error",
         invocationId: expect.stringMatching(/^sfi_/),
         functionId: sandboxFunction.sId,
-        message: "sandbox unavailable",
+        message: "temporal unavailable",
       }),
       { invocationId: expect.stringMatching(/^sfi_/) }
     );

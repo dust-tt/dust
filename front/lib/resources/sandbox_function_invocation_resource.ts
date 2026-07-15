@@ -27,6 +27,7 @@ import type { ResourceFindOptions } from "@app/lib/resources/types";
 import { concurrentExecutor, withRetry } from "@app/lib/utils/async_utils";
 import { withTransaction } from "@app/lib/utils/sql_utils";
 import logger from "@app/logger/logger";
+import { launchSandboxFunctionInvocationWorkflow } from "@app/temporal/agent_loop/client";
 import type {
   PostSandboxFunctionInvocationRequestBody,
   SandboxFunctionInvocationType,
@@ -398,10 +399,14 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
       { invocationId: invocation.sId }
     );
 
-    const executionResult = await invocation.execute(auth, body);
-    if (executionResult.isErr()) {
-      await invocation.fail(executionResult.error);
-      return new Err(executionResult.error);
+    const launchResult = await launchSandboxFunctionInvocationWorkflow(auth, {
+      sandboxFunction,
+      invocation,
+      body,
+    });
+    if (launchResult.isErr()) {
+      await invocation.fail(launchResult.error);
+      return new Err(launchResult.error);
     }
 
     return new Ok(invocation);
