@@ -260,11 +260,13 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
       return null;
     }
 
-    return new SandboxFunctionInvocationResource(
-      SandboxFunctionInvocationModel,
-      invocation.get(),
-      { sandboxFunction }
-    );
+    return SandboxFunctionInvocationResource.fetchById(auth, {
+      sandboxFunction,
+      invocationId: SandboxFunctionInvocationResource.modelIdToSId({
+        id: invocation.id,
+        workspaceId: invocation.workspaceId,
+      }),
+    });
   }
 
   static async listBySpace(

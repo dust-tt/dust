@@ -1,10 +1,12 @@
 import { generateSandboxFunctionInvocationToken } from "@app/lib/api/sandbox/access_tokens";
 import { ensurePodSandboxReady } from "@app/lib/api/sandbox/lifecycle";
+import { publishSandboxFunctionInvocationEvent } from "@app/lib/api/sandbox_functions/events";
 import { SandboxFunctionInvocationResource } from "@app/lib/resources/sandbox_function_invocation_resource";
 import { SandboxFunctionResource } from "@app/lib/resources/sandbox_function_resource";
 import { SandboxResource } from "@app/lib/resources/sandbox_resource";
 import { FileFactory } from "@app/tests/utils/FileFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
+import { fileStorageMock } from "@app/tests/utils/mocks/file_storage";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { sandboxFunctionContentType } from "@app/types/files";
 import { Ok } from "@app/types/shared/result";
@@ -22,6 +24,18 @@ vi.mock("@app/lib/api/sandbox/access_tokens", async (importOriginal) => {
   return {
     ...actual,
     generateSandboxFunctionInvocationToken: vi.fn(),
+  };
+});
+
+vi.mock("@app/lib/api/sandbox_functions/events", async (importOriginal) => {
+  const actual =
+    await importOriginal<
+      typeof import("@app/lib/api/sandbox_functions/events")
+    >();
+
+  return {
+    ...actual,
+    publishSandboxFunctionInvocationEvent: vi.fn(),
   };
 });
 
@@ -43,6 +57,7 @@ const outputSchema: JSONSchema = {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  fileStorageMock.reset();
 });
 
 async function setupExecutionTest() {
@@ -80,7 +95,7 @@ async function setupExecutionTest() {
   );
   const invocation = await SandboxFunctionInvocationResource.makeNew(
     authenticator,
-    { sandboxFunction }
+    { sandboxFunction, input: { message: "hello" } }
   );
 
   return {
@@ -94,6 +109,78 @@ async function setupExecutionTest() {
 }
 
 describe("SandboxFunctionInvocationResource", () => {
+  it("stores and reloads its input from GCS", async () => {
+    const { authenticator, sandboxFunction, invocation } =
+      await setupExecutionTest();
+
+    expect(invocation.gcsPath).toBe(
+      `w/${authenticator.getNonNullableWorkspace().sId}/sandbox_functions/${sandboxFunction.sId}/invocations/${invocation.sId}`
+    );
+    expect(invocation.input).toEqual({ message: "hello" });
+    expect(invocation.result).toBeUndefined();
+    expect(invocation.error).toBeUndefined();
+    expect(fileStorageMock.getObject(invocation.gcsPath!)).toBe(
+      JSON.stringify({ input: { message: "hello" } })
+    );
+
+    const refetched = await SandboxFunctionInvocationResource.fetchById(
+      authenticator,
+      { sandboxFunction, invocationId: invocation.sId }
+    );
+    expect(refetched?.input).toEqual({ message: "hello" });
+  });
+
+  it("stores and reloads its result from GCS on success", async () => {
+    const { authenticator, sandboxFunction, invocation } =
+      await setupExecutionTest();
+    const result = { commentId: "comment-123" };
+
+    await invocation.succeed(result);
+
+    expect(invocation.status).toBe("succeeded");
+    expect(invocation.result).toEqual(result);
+    expect(invocation.error).toBeUndefined();
+    const refetched = await SandboxFunctionInvocationResource.fetchById(
+      authenticator,
+      { sandboxFunction, invocationId: invocation.sId }
+    );
+    expect(refetched?.result).toEqual(result);
+    expect(refetched?.error).toBeUndefined();
+    expect(publishSandboxFunctionInvocationEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: "sandbox_function_invocation_result",
+        invocationId: invocation.sId,
+        result,
+      }),
+      { invocationId: invocation.sId }
+    );
+  });
+
+  it("stores and reloads its error from GCS on failure", async () => {
+    const { authenticator, sandboxFunction, invocation } =
+      await setupExecutionTest();
+
+    await invocation.fail(new Error("sandbox unavailable"));
+
+    expect(invocation.status).toBe("errored");
+    expect(invocation.result).toBeUndefined();
+    expect(invocation.error).toBe("sandbox unavailable");
+    const refetched = await SandboxFunctionInvocationResource.fetchById(
+      authenticator,
+      { sandboxFunction, invocationId: invocation.sId }
+    );
+    expect(refetched?.result).toBeUndefined();
+    expect(refetched?.error).toBe("sandbox unavailable");
+    expect(publishSandboxFunctionInvocationEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: "sandbox_function_invocation_error",
+        invocationId: invocation.sId,
+        message: "sandbox unavailable",
+      }),
+      { invocationId: invocation.sId }
+    );
+  });
+
   it("executes an invocation on the pod sandbox", async () => {
     const { authenticator, space, file, sandboxFunction, sandbox, invocation } =
       await setupExecutionTest();

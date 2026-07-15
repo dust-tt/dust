@@ -1,5 +1,8 @@
 import { frontSequelize } from "@app/lib/resources/storage";
-import { DataTypes } from "@app/lib/resources/storage/data_types";
+import {
+  DANGEROUSLY_UNBOUNDED_TEXT,
+  DataTypes,
+} from "@app/lib/resources/storage/data_types";
 import { FileModel } from "@app/lib/resources/storage/models/files";
 import { SpaceModel } from "@app/lib/resources/storage/models/spaces";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
@@ -52,6 +55,7 @@ export class SandboxFunctionInvocationModel extends WorkspaceAwareModel<SandboxF
 
   declare sandboxFunctionId: ForeignKey<SandboxFunctionModel["id"]>;
   declare status: SandboxFunctionInvocationStatus;
+  declare gcsPath: string | null;
 
   declare sandboxFunction: NonAttribute<SandboxFunctionModel>;
 }
@@ -173,6 +177,11 @@ SandboxFunctionInvocationModel.init(
       validate: {
         isIn: [SANDBOX_FUNCTION_INVOCATION_STATUSES],
       },
+    },
+    gcsPath: {
+      type: DANGEROUSLY_UNBOUNDED_TEXT,
+      allowNull: true,
+      defaultValue: null,
     },
   },
   {

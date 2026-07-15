@@ -118,7 +118,7 @@ describe("GET /api/v1/w/[wId]/sandbox/actions/[aId] (function invocation)", () =
     // An action of another invocation of the same function is not visible.
     const otherInvocation = await SandboxFunctionInvocationResource.makeNew(
       auth,
-      { sandboxFunction }
+      { sandboxFunction, input: undefined }
     );
     const otherAction = await SandboxFunctionMCPActionFactory.create(auth, {
       invocation: otherInvocation,

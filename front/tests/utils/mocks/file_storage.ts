@@ -184,8 +184,14 @@ class FileStorageMock {
           });
           return new PassThrough();
         }),
-      delete: vi.fn().mockResolvedValue(undefined),
-      download: vi.fn().mockResolvedValue([Buffer.from("", "utf-8")]),
+      delete: vi.fn().mockImplementation(() => {
+        this._objectStore.delete(filePath ?? "unknown");
+        return Promise.resolve(undefined);
+      }),
+      download: vi.fn().mockImplementation(() => {
+        const content = this._objectStore.get(filePath ?? "unknown") ?? "";
+        return Promise.resolve([Buffer.from(content, "utf-8")]);
+      }),
       exists: vi.fn(() =>
         Promise.resolve([this._existsPredicate(filePath ?? "")])
       ),
@@ -214,6 +220,7 @@ class FileStorageMock {
               content,
               contentType: opts?.contentType,
             });
+            this._objectStore.set(path, content.toString());
             return Promise.resolve(undefined);
           }
         ),
