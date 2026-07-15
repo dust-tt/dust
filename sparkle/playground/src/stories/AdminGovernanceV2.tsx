@@ -15,6 +15,8 @@ import {
   CreditCard01,
   DataTable,
   Dialog,
+  DialogClose,
+  DialogContainer,
   DialogContent,
   DialogFooter,
   DialogHeader,
@@ -796,7 +798,7 @@ function MemberPickerSheet({
         <SheetHeader>
           <SheetTitle>{title}</SheetTitle>
         </SheetHeader>
-        <div className="s-flex s-flex-col s-flex-1 s-overflow-hidden s-px-6 s-gap-4 s-py-4">
+        <div className="flex flex-col flex-1 overflow-hidden px-6 gap-4 py-4">
           <Page.Vertical gap="xs">
             <Label>Add members</Label>
             <SearchInput
@@ -806,44 +808,47 @@ function MemberPickerSheet({
               onChange={setSearch}
             />
           </Page.Vertical>
-          <div className="s-flex-1 s-overflow-auto">
-            <table className="s-w-full">
+          <div className="flex-1 overflow-auto">
+            <table className="w-full">
               <thead>
-                <tr className="s-border-b s-border-border dark:s-border-border-night">
-                  <th className="s-py-2 s-pr-4 s-text-left s-w-8">
+                <tr className="border-b border-border dark:border-border-night">
+                  <th className="py-2 pr-4 text-left w-8">
                     <Checkbox
                       checked={allChecked}
                       onCheckedChange={toggleAll}
                     />
                   </th>
-                  <th className="s-py-2 s-text-left s-text-xs s-font-semibold s-text-foreground dark:s-text-foreground-night s-w-full">
-                    <div className="s-flex s-items-center s-gap-1">Name ↓</div>
+                  <th className="py-2 text-left text-xs font-semibold text-foreground dark:text-foreground-night w-full">
+                    <div className="flex items-center gap-1">Name ↓</div>
                   </th>
-                  <th className="s-py-2 s-w-24" />
+                  <th className="py-2 w-24" />
                 </tr>
               </thead>
               <tbody>
                 {filtered.map((m) => (
                   <tr
                     key={m.id}
-                    className="s-border-b s-border-border dark:s-border-border-night last:s-border-0 s-cursor-pointer hover:s-bg-muted-background dark:hover:s-bg-muted-background-night"
+                    className="border-b border-border dark:border-border-night last:border-0 cursor-pointer hover:bg-muted-background dark:hover:bg-muted-background-night"
                     onClick={() => toggle(m.id)}
                   >
-                    <td className="s-py-3 s-pr-4">
+                    <td
+                      className="py-3 pr-4"
+                      onClick={(e) => e.stopPropagation()}
+                    >
                       <Checkbox
                         checked={selected.includes(m.id)}
                         onCheckedChange={() => toggle(m.id)}
                       />
                     </td>
-                    <td className="s-py-3">
-                      <div className="s-flex s-items-center s-gap-2">
+                    <td className="py-3">
+                      <div className="flex items-center gap-2">
                         <Avatar size="sm" name={m.name} />
-                        <span className="s-text-sm s-font-medium s-text-foreground dark:s-text-foreground-night">
+                        <span className="text-sm font-medium text-foreground dark:text-foreground-night">
                           {m.name}
                         </span>
                       </div>
                     </td>
-                    <td className="s-py-3 s-text-right">
+                    <td className="py-3 text-right">
                       <Chip
                         color={
                           ROLE_DISPLAY[(m as MemberRow).role ?? "member"].color
@@ -880,6 +885,177 @@ function MemberPickerSheet({
   );
 }
 
+// ─── Group Edit Dialog ────────────────────────────────────────────────────────
+
+function GroupEditDialog({
+  group,
+  members,
+  onSave,
+  onDelete,
+  onClose,
+}: {
+  group: GroupRow;
+  members: MemberRow[];
+  onSave: (name: string, selectedIds: string[]) => void;
+  onDelete: () => void;
+  onClose: () => void;
+}) {
+  const [groupName, setGroupName] = useState(group.name);
+  const [search, setSearch] = useState("");
+  const [selected, setSelected] = useState<string[]>(
+    members.slice(0, 3).map((m) => m.id)
+  );
+  const [confirmDelete, setConfirmDelete] = useState(false);
+
+  const filtered = members.filter(
+    (m) =>
+      !search ||
+      m.name.toLowerCase().includes(search.toLowerCase()) ||
+      m.email.toLowerCase().includes(search.toLowerCase())
+  );
+
+  const toggle = (id: string) =>
+    setSelected((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
+    );
+
+  const allChecked =
+    filtered.length > 0 && filtered.every((m) => selected.includes(m.id));
+  const toggleAll = () =>
+    setSelected(
+      allChecked
+        ? selected.filter((id) => !filtered.some((m) => m.id === id))
+        : [...new Set([...selected, ...filtered.map((m) => m.id)])]
+    );
+
+  return (
+    <>
+      <Dialog open={!confirmDelete} onOpenChange={(o) => !o && onClose()}>
+        <DialogContent size="lg">
+          <DialogHeader>
+            <DialogTitle>{group.name}</DialogTitle>
+          </DialogHeader>
+          <DialogContainer
+            fixedContent={
+              <div className="flex flex-col gap-4">
+                <Page.Vertical gap="xs">
+                  <Label>Group name</Label>
+                  <Input
+                    name="group-name"
+                    placeholder="e.g. Engineering Team"
+                    value={groupName}
+                    onChange={(e) => setGroupName(e.target.value)}
+                    containerClassName="w-full"
+                  />
+                </Page.Vertical>
+                <SearchInput
+                  name="group-member-search"
+                  placeholder="Search users..."
+                  value={search}
+                  onChange={setSearch}
+                />
+              </div>
+            }
+          >
+            <table className="w-full">
+              <thead>
+                <tr className="border-b border-border dark:border-border-night">
+                  <th className="py-2 pr-4 text-left w-8">
+                    <Checkbox
+                      checked={allChecked}
+                      onCheckedChange={toggleAll}
+                    />
+                  </th>
+                  <th className="py-2 text-left text-xs font-semibold text-foreground dark:text-foreground-night w-full">
+                    Name
+                  </th>
+                  <th className="py-2 w-24" />
+                </tr>
+              </thead>
+              <tbody>
+                {filtered.map((m) => (
+                  <tr
+                    key={m.id}
+                    className="border-b border-border dark:border-border-night last:border-0 cursor-pointer hover:bg-muted-background dark:hover:bg-muted-background-night"
+                    onClick={() => toggle(m.id)}
+                  >
+                    <td
+                      className="py-3 pr-4"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <Checkbox
+                        checked={selected.includes(m.id)}
+                        onCheckedChange={() => toggle(m.id)}
+                      />
+                    </td>
+                    <td className="py-3">
+                      <div className="flex items-center gap-2">
+                        <Avatar size="sm" name={m.name} />
+                        <span className="text-sm font-medium text-foreground dark:text-foreground-night">
+                          {m.name}
+                        </span>
+                      </div>
+                    </td>
+                    <td className="py-3 text-right">
+                      <Chip
+                        color={ROLE_DISPLAY[m.role ?? "member"].color}
+                        label={ROLE_DISPLAY[m.role ?? "member"].label}
+                        size="sm"
+                      />
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </DialogContainer>
+          <DialogFooter
+            leftButtonProps={{
+              label: "Delete group",
+              icon: Trash01,
+              variant: "warning",
+              onClick: () => setConfirmDelete(true),
+            }}
+            rightButtonProps={{
+              label: "Save",
+              variant: "primary",
+              onClick: () => onSave(groupName, selected),
+              disabled: !groupName.trim(),
+            }}
+          />
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={confirmDelete}
+        onOpenChange={(o) => !o && setConfirmDelete(false)}
+      >
+        <DialogContent size="md">
+          <DialogHeader>
+            <DialogTitle>Delete {group.name}?</DialogTitle>
+          </DialogHeader>
+          <DialogContainer>
+            <Page.P variant="secondary" size="sm">
+              This group will be permanently deleted. Members won't be affected.
+            </Page.P>
+          </DialogContainer>
+          <DialogFooter
+            leftButtonProps={{
+              label: "Cancel",
+              variant: "outline",
+              onClick: () => setConfirmDelete(false),
+            }}
+            rightButtonProps={{
+              label: "Delete",
+              variant: "warning",
+              onClick: onDelete,
+            }}
+          />
+        </DialogContent>
+      </Dialog>
+    </>
+  );
+}
+
 // ─── People Page ──────────────────────────────────────────────────────────────
 
 function PeoplePage({
@@ -901,7 +1077,7 @@ function PeoplePage({
   onNavigate: (page: AdminPage) => void;
   defaultTab?: "members" | "groups";
   onTabChange?: (tab: "members" | "groups") => void;
-  onCreateGroup: () => void;
+  onCreateGroup: (onCreated?: (group: GroupRow) => void) => void;
 }) {
   const [sub, setSub] = useState<"members" | "groups">(defaultTab ?? "members");
   const [search, setSearch] = useState("");
@@ -927,23 +1103,23 @@ function PeoplePage({
       {
         accessorKey: "name",
         header: "Name",
-        meta: { className: "s-w-full" },
+        meta: { className: "w-full" },
         cell: (info) => {
           const row = info.row.original;
           return (
             <DataTable.CellContent>
-              <div className="s-flex s-items-center s-gap-3">
+              <div className="flex items-center gap-3">
                 <Avatar
                   size="sm"
                   name={row.name}
                   visual={row.visual}
                   isRounded
                 />
-                <div className="s-flex s-flex-col">
-                  <span className="s-text-sm s-font-semibold s-text-foreground dark:s-text-foreground-night leading-snug">
+                <div className="flex flex-col">
+                  <span className="text-sm font-semibold text-foreground dark:text-foreground-night leading-snug">
                     {row.name}
                   </span>
-                  <span className="s-text-xs s-text-muted-foreground dark:s-text-muted-foreground-night">
+                  <span className="text-xs text-muted-foreground dark:text-muted-foreground-night">
                     {row.email}
                   </span>
                 </div>
@@ -955,7 +1131,7 @@ function PeoplePage({
       {
         accessorKey: "role",
         header: "Role",
-        meta: { className: "s-w-32" },
+        meta: { className: "w-32" },
         cell: (info) => {
           const role = info.getValue() as MemberRole;
           return (
@@ -972,17 +1148,17 @@ function PeoplePage({
       {
         accessorKey: "seat",
         header: "Seat",
-        meta: { className: "s-w-20" },
+        meta: { className: "w-20" },
         cell: (info) => {
           const seat = info.getValue() as MemberRow["seat"];
           const seatColors: Record<MemberRow["seat"], string> = {
-            max: "s-text-amber-500",
-            pro: "s-text-blue-500",
-            free: "s-text-slate-400",
+            max: "text-amber-500",
+            pro: "text-blue-500",
+            free: "text-slate-400",
           };
           return (
             <DataTable.CellContent>
-              <span className={`s-text-sm s-font-semibold ${seatColors[seat]}`}>
+              <span className={`text-sm font-semibold ${seatColors[seat]}`}>
                 {seat.charAt(0).toUpperCase() + seat.slice(1)}
               </span>
             </DataTable.CellContent>
@@ -992,10 +1168,10 @@ function PeoplePage({
       {
         accessorKey: "status",
         header: "Status",
-        meta: { className: "s-w-40" },
+        meta: { className: "w-40" },
         cell: (info) => (
           <DataTable.CellContent>
-            <span className="s-text-sm s-text-foreground dark:s-text-foreground-night">
+            <span className="text-sm text-foreground dark:text-foreground-night">
               {STATUS_LABELS[info.getValue() as MemberRow["status"]]}
             </span>
           </DataTable.CellContent>
@@ -1004,12 +1180,12 @@ function PeoplePage({
       {
         accessorKey: "groupCount",
         header: "Groups",
-        meta: { className: "s-w-24" },
+        meta: { className: "w-24" },
         cell: (info) => {
           const count = info.getValue() as number;
           return (
             <DataTable.CellContent>
-              <span className="s-text-sm s-text-foreground dark:s-text-foreground-night">
+              <span className="text-sm text-foreground dark:text-foreground-night">
                 {count > 0 ? `${count} group${count > 1 ? "s" : ""}` : "—"}
               </span>
             </DataTable.CellContent>
@@ -1019,7 +1195,7 @@ function PeoplePage({
       {
         id: "actions",
         header: "",
-        meta: { className: "s-w-10" },
+        meta: { className: "w-10" },
         cell: () => (
           <DataTable.CellContent>
             <DropdownMenu>
@@ -1044,17 +1220,17 @@ function PeoplePage({
       {
         accessorKey: "name",
         header: "Name",
-        meta: { className: "s-w-full" },
+        meta: { className: "w-full" },
         cell: (info) => {
           const row = info.row.original;
           return (
             <DataTable.CellContent>
-              <div className="s-flex s-items-center s-gap-3">
-                <Users01 className="s-h-5 s-w-5 s-shrink-0 s-text-muted-foreground dark:s-text-muted-foreground-night" />
-                <span className="s-text-sm s-font-semibold s-text-foreground dark:s-text-foreground-night">
+              <div className="flex items-center gap-3">
+                <Users01 className="h-5 w-5 shrink-0 text-muted-foreground dark:text-muted-foreground-night" />
+                <span className="text-sm font-semibold text-foreground dark:text-foreground-night">
                   {row.name}
                 </span>
-                <span className="s-text-sm s-text-muted-foreground dark:s-text-muted-foreground-night">
+                <span className="text-sm text-muted-foreground dark:text-muted-foreground-night">
                   {row.memberCount} members
                 </span>
               </div>
@@ -1065,13 +1241,13 @@ function PeoplePage({
       {
         accessorKey: "type",
         header: "Type",
-        meta: { className: "s-w-32" },
+        meta: { className: "w-32" },
         cell: (info) => {
           const type = info.getValue() as GroupRow["type"];
           return (
             <DataTable.CellContent>
               <Chip
-                color={type === "provisioned" ? "green" : "blue"}
+                color={type === "provisioned" ? "success" : "info"}
                 label={type === "provisioned" ? "Provisioned" : "Manual"}
                 size="sm"
               />
@@ -1115,7 +1291,7 @@ function PeoplePage({
 
   const groupsWithClick = filteredGroups.map((g) => ({
     ...g,
-    onClick: () => setSelectedGroup(g),
+    onClick: g.type === "manual" ? () => setSelectedGroup(g) : undefined,
   }));
 
   const handleInvite = () => {
@@ -1152,13 +1328,21 @@ function PeoplePage({
     setInviteOpen(false);
   };
 
-  const handleSaveGroup = (selected: string[]) => {
+  const handleSaveGroup = (name: string, selected: string[]) => {
     if (!selectedGroup) return;
     setGroups(
       groups.map((g) =>
-        g.id === selectedGroup.id ? { ...g, memberCount: selected.length } : g
+        g.id === selectedGroup.id
+          ? { ...g, name: name.trim(), memberCount: selected.length }
+          : g
       )
     );
+    setSelectedGroup(null);
+  };
+
+  const handleDeleteGroup = () => {
+    if (!selectedGroup) return;
+    setGroups(groups.filter((g) => g.id !== selectedGroup.id));
     setSelectedGroup(null);
   };
 
@@ -1182,16 +1366,16 @@ function PeoplePage({
         </TabsList>
 
         <TabsContent value="members">
-          <div className="s-mt-4">
+          <div className="mt-4">
             <Page.Vertical gap="md">
               {/* Search + invite row */}
-              <div className="s-flex s-w-full s-items-center s-gap-2">
+              <div className="flex w-full items-center gap-2">
                 <SearchInput
                   name="member-search"
                   placeholder="Search"
                   value={search}
                   onChange={setSearch}
-                  className="s-flex-1"
+                  className="flex-1"
                 />
                 {canEdit && (
                   <span className="ag-btn-press">
@@ -1206,13 +1390,13 @@ function PeoplePage({
                 )}
               </div>
               {/* Sub-filter row */}
-              <div className="s-flex s-w-full s-items-center s-justify-between s-gap-4">
+              <div className="flex w-full items-center justify-between gap-4">
                 <ButtonsSwitchList size="sm" defaultValue="members">
                   <ButtonsSwitch value="members" label="Members" />
                   <ButtonsSwitch value="invitations" label="Invitations" />
                 </ButtonsSwitchList>
-                <div className="s-flex s-items-center s-gap-2">
-                  <span className="s-text-xs s-text-muted-foreground dark:s-text-muted-foreground-night">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-muted-foreground dark:text-muted-foreground-night">
                     Filter by
                   </span>
                   <Button
@@ -1235,27 +1419,27 @@ function PeoplePage({
         </TabsContent>
 
         <TabsContent value="groups">
-          <div className="s-mt-4">
+          <div className="mt-4">
             <Page.Vertical gap="md">
-              <div className="s-w-full s-rounded-xl s-bg-muted-background dark:s-bg-muted-background-night s-px-4 s-py-3">
+              <div className="w-full rounded-xl bg-muted-background dark:bg-muted-background-night px-4 py-3">
                 <Page.P variant="secondary" size="sm">
                   User provisioning is configured in{" "}
                   <button
                     type="button"
-                    className="s-underline s-font-medium s-text-foreground dark:s-text-foreground-night"
+                    className="underline font-medium text-foreground dark:text-foreground-night"
                     onClick={() => onNavigate("identity" as AdminPage)}
                   >
                     Identity &amp; Provisioning → User provisioning
                   </button>
                 </Page.P>
               </div>
-              <div className="s-flex s-w-full s-items-center s-gap-2">
+              <div className="flex w-full items-center gap-2">
                 <SearchInput
                   name="group-search"
                   placeholder="Search"
                   value={search}
                   onChange={setSearch}
-                  className="s-flex-1"
+                  className="flex-1"
                 />
                 {canEdit && (
                   <span className="ag-btn-press">
@@ -1281,17 +1465,17 @@ function PeoplePage({
           <DialogHeader>
             <DialogTitle>Invite new users</DialogTitle>
           </DialogHeader>
-          <div className="s-flex s-flex-col s-gap-5 s-px-5 s-py-4">
+          <DialogContainer>
             {/* Email input */}
             <Page.Vertical gap="xs">
               <Label>Email addresses</Label>
-              <div className="s-w-full">
+              <div className="w-full">
                 <Input
                   placeholder="Email addresses, comma separated"
                   value={inviteEmails}
                   onChange={(e) => setInviteEmails(e.target.value)}
                   name="invite-emails"
-                  className="s-w-full"
+                  className="w-full"
                 />
               </div>
             </Page.Vertical>
@@ -1305,7 +1489,7 @@ function PeoplePage({
                   icon={Users01}
                   isSelect
                   size="sm"
-                  className="s-self-start"
+                  className="self-start"
                 />
               </DropdownMenuTrigger>
               <DropdownMenuContent>
@@ -1336,14 +1520,14 @@ function PeoplePage({
               size="sm"
               defaultValue="monthly"
               onValueChange={(v) => setInviteBilling(v as "monthly" | "yearly")}
-              className="s-self-start"
+              className="self-start"
             >
               <ButtonsSwitch value="monthly" label="Monthly" />
               <ButtonsSwitch value="yearly" label="Yearly" />
             </ButtonsSwitchList>
 
             {/* Plan cards */}
-            <div className="s-flex s-flex-col s-gap-2">
+            <div className="flex flex-col gap-2">
               {(
                 [
                   {
@@ -1378,31 +1562,31 @@ function PeoplePage({
                   key={plan.id}
                   type="button"
                   onClick={() => setInvitePlan(plan.id)}
-                  className={`s-w-full s-flex s-items-center s-justify-between s-rounded-xl s-border s-px-4 s-py-3 s-text-left s-transition-colors ${
+                  className={`w-full flex items-center justify-between rounded-xl border px-4 py-3 text-left transition-colors ${
                     invitePlan === plan.id
-                      ? "s-border-highlight-500 s-bg-highlight-50 dark:s-bg-highlight-900/20"
-                      : "s-border-border dark:s-border-border-night hover:s-bg-muted-background dark:hover:s-bg-muted-background-night"
+                      ? "border-highlight-500 bg-highlight-50 dark:bg-highlight-900/20"
+                      : "border-border dark:border-border-night hover:bg-muted-background dark:hover:bg-muted-background-night"
                   }`}
                 >
-                  <div className="s-flex s-items-center s-gap-3">
-                    <plan.Icon className="s-h-5 s-w-5 s-shrink-0 s-text-muted-foreground dark:s-text-muted-foreground-night" />
-                    <div className="s-flex s-flex-col s-gap-0.5">
-                      <span className="s-text-sm s-font-semibold s-text-foreground dark:s-text-foreground-night">
+                  <div className="flex items-center gap-3">
+                    <plan.Icon className="h-5 w-5 shrink-0 text-muted-foreground dark:text-muted-foreground-night" />
+                    <div className="flex flex-col gap-0.5">
+                      <span className="text-sm font-semibold text-foreground dark:text-foreground-night">
                         {plan.label}
                       </span>
-                      <span className="s-text-xs s-text-muted-foreground dark:s-text-muted-foreground-night">
+                      <span className="text-xs text-muted-foreground dark:text-muted-foreground-night">
                         {plan.credits}
                       </span>
                     </div>
                   </div>
-                  <div className="s-flex s-items-center s-gap-2">
+                  <div className="flex items-center gap-2">
                     {plan.available !== null && (
-                      <span className="s-text-xs s-text-muted-foreground dark:s-text-muted-foreground-night">
+                      <span className="text-xs text-muted-foreground dark:text-muted-foreground-night">
                         {plan.available} Available
                       </span>
                     )}
                     {plan.price && (
-                      <span className="s-text-sm s-font-semibold s-text-foreground dark:s-text-foreground-night">
+                      <span className="text-sm font-semibold text-foreground dark:text-foreground-night">
                         {plan.price}
                       </span>
                     )}
@@ -1410,7 +1594,7 @@ function PeoplePage({
                 </button>
               ))}
             </div>
-          </div>
+          </DialogContainer>
           <DialogFooter
             leftButtonProps={{
               label: "Cancel",
@@ -1426,16 +1610,16 @@ function PeoplePage({
         </DialogContent>
       </Dialog>
 
-      {/* Edit group sheet */}
-      <MemberPickerSheet
-        title={selectedGroup?.name ?? ""}
-        open={!!selectedGroup}
-        onClose={() => setSelectedGroup(null)}
-        primaryLabel="Save"
-        onPrimary={handleSaveGroup}
-        preSelected={members.slice(0, 3).map((m) => m.id)}
-        members={members}
-      />
+      {/* Edit group modal (manual groups only) */}
+      {selectedGroup && (
+        <GroupEditDialog
+          group={selectedGroup}
+          members={members}
+          onSave={handleSaveGroup}
+          onDelete={handleDeleteGroup}
+          onClose={() => setSelectedGroup(null)}
+        />
+      )}
 
       {/* Super Admin confirmation dialog */}
       <Dialog
@@ -1448,13 +1632,13 @@ function PeoplePage({
           <DialogHeader>
             <DialogTitle>Assign Super Admin role?</DialogTitle>
           </DialogHeader>
-          <div className="s-px-5 s-py-2">
+          <DialogContainer>
             <Page.P variant="secondary" size="sm">
               Super Admin grants full access to all workspace settings including
               SSO, billing, and audit logs. This is a sensitive action — are you
               sure you want to grant this role?
             </Page.P>
-          </div>
+          </DialogContainer>
           <DialogFooter
             leftButtonProps={{
               label: "Cancel",
@@ -1483,9 +1667,9 @@ function PeoplePage({
             <DialogHeader>
               <DialogTitle>Edit member</DialogTitle>
             </DialogHeader>
-            <div className="s-flex s-flex-col s-gap-5 s-px-5 s-py-4">
+            <DialogContainer>
               {/* Member identity */}
-              <div className="s-flex s-items-center s-gap-3">
+              <div className="flex items-center gap-3">
                 <Avatar
                   size="lg"
                   name={selectedMember.name}
@@ -1493,17 +1677,17 @@ function PeoplePage({
                   isRounded
                 />
                 <div>
-                  <div className="s-text-base s-font-semibold s-text-foreground dark:s-text-foreground-night">
+                  <div className="text-base font-semibold text-foreground dark:text-foreground-night">
                     {selectedMember.name}
                   </div>
-                  <div className="s-text-sm s-text-muted-foreground dark:s-text-muted-foreground-night">
+                  <div className="text-sm text-muted-foreground dark:text-muted-foreground-night">
                     {selectedMember.email}
                   </div>
                 </div>
               </div>
 
               {/* Role picker */}
-              <div className="s-flex s-flex-col s-gap-2">
+              <div className="flex flex-col gap-2">
                 <Label>Role</Label>
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
@@ -1512,7 +1696,7 @@ function PeoplePage({
                       label={ROLE_DISPLAY[memberPlan].label}
                       isSelect
                       size="sm"
-                      className="s-self-start"
+                      className="self-start"
                     />
                   </DropdownMenuTrigger>
                   <DropdownMenuContent>
@@ -1537,9 +1721,9 @@ function PeoplePage({
               </div>
 
               {/* Seat type */}
-              <div className="s-flex s-flex-col s-gap-2">
+              <div className="flex flex-col gap-2">
                 <Label>Seat type</Label>
-                <div className="s-flex s-flex-col s-gap-2">
+                <div className="flex flex-col gap-2">
                   {(
                     [
                       {
@@ -1570,25 +1754,25 @@ function PeoplePage({
                         key={plan.id}
                         type="button"
                         onClick={() => setEditSeat(plan.id)}
-                        className={`s-w-full s-flex s-items-center s-justify-between s-rounded-xl s-border s-px-4 s-py-3 s-text-left s-transition-colors ${
+                        className={`w-full flex items-center justify-between rounded-xl border px-4 py-3 text-left transition-colors ${
                           editSeat === plan.id
-                            ? "s-border-highlight-500 s-bg-highlight-50 dark:s-bg-highlight-900/20"
-                            : "s-border-border dark:s-border-border-night hover:s-bg-muted-background dark:hover:s-bg-muted-background-night"
+                            ? "border-highlight-500 bg-highlight-50 dark:bg-highlight-900/20"
+                            : "border-border dark:border-border-night hover:bg-muted-background dark:hover:bg-muted-background-night"
                         }`}
                       >
-                        <div className="s-flex s-items-center s-gap-3">
-                          <plan.Icon className="s-h-5 s-w-5 s-shrink-0 s-text-muted-foreground dark:s-text-muted-foreground-night" />
-                          <div className="s-flex s-flex-col s-gap-0.5">
-                            <span className="s-text-sm s-font-semibold s-text-foreground dark:s-text-foreground-night">
+                        <div className="flex items-center gap-3">
+                          <plan.Icon className="h-5 w-5 shrink-0 text-muted-foreground dark:text-muted-foreground-night" />
+                          <div className="flex flex-col gap-0.5">
+                            <span className="text-sm font-semibold text-foreground dark:text-foreground-night">
                               {plan.label}
                             </span>
-                            <span className="s-text-xs s-text-muted-foreground dark:s-text-muted-foreground-night">
+                            <span className="text-xs text-muted-foreground dark:text-muted-foreground-night">
                               {plan.credits}
                             </span>
                           </div>
                         </div>
                         {plan.price && (
-                          <span className="s-text-sm s-font-semibold s-text-foreground dark:s-text-foreground-night">
+                          <span className="text-sm font-semibold text-foreground dark:text-foreground-night">
                             {plan.price}
                           </span>
                         )}
@@ -1599,19 +1783,19 @@ function PeoplePage({
               </div>
 
               {/* Danger zone */}
-              <div className="s-flex s-flex-col s-gap-2">
+              <div className="flex flex-col gap-2">
                 <Button
                   variant="warning"
                   label="Remove member access"
                   size="sm"
-                  className="s-self-start"
+                  className="self-start"
                 />
                 <Page.P variant="secondary" size="sm">
                   This will permanently remove {selectedMember.name}'s access to
                   the company workspace.
                 </Page.P>
               </div>
-            </div>
+            </DialogContainer>
             <DialogFooter
               leftButtonProps={{
                 label: "Cancel",
@@ -1659,20 +1843,20 @@ function PeoplePage({
           <DialogHeader>
             <DialogTitle>Confirm seat upgrade</DialogTitle>
           </DialogHeader>
-          <div className="s-px-5 s-py-4">
+          <DialogContainer>
             <Page.P variant="secondary">
               Upgrading{" "}
-              <span className="s-font-semibold s-text-foreground dark:s-text-foreground-night">
+              <span className="font-semibold text-foreground dark:text-foreground-night">
                 {selectedMember?.name}
               </span>{" "}
               to a{" "}
-              <span className="s-font-semibold s-text-foreground dark:s-text-foreground-night">
+              <span className="font-semibold text-foreground dark:text-foreground-night">
                 {confirmSeatUpgrade === "pro" ? "Pro" : "Max"}
               </span>{" "}
               seat will add a recurring charge to your company's subscription.
               Are you sure you want to proceed?
             </Page.P>
-          </div>
+          </DialogContainer>
           <DialogFooter
             leftButtonProps={{
               label: "Cancel",
@@ -1705,16 +1889,23 @@ function PeoplePage({
 
 // ─── Identity & Provisioning Page ─────────────────────────────────────────────
 
-function IdentityPage({ role }: { role: Role }) {
+function IdentityPage({
+  role,
+  auditLogsEnabled,
+}: {
+  role: Role;
+  auditLogsEnabled: boolean;
+}) {
   const canEdit = role === "super_admin";
-  const showAuditLogs = role === "security_admin";
+  const showAuditLogs =
+    (role === "security_admin" || role === "super_admin") && auditLogsEnabled;
 
   const domainColumns = useMemo<ColumnDef<DomainRow>[]>(
     () => [
       {
         accessorKey: "domain",
         header: "Domain",
-        meta: { className: "s-w-full" },
+        meta: { className: "w-full" },
         cell: (info) => (
           <DataTable.BasicCellContent label={info.getValue() as string} />
         ),
@@ -1722,7 +1913,7 @@ function IdentityPage({ role }: { role: Role }) {
       {
         accessorKey: "status",
         header: "Status",
-        meta: { className: "s-w-40" },
+        meta: { className: "w-40" },
         cell: (info) => {
           const status = info.getValue() as DomainRow["status"];
           return (
@@ -1766,8 +1957,8 @@ function IdentityPage({ role }: { role: Role }) {
 
       <Page.Vertical gap="sm">
         <Page.SectionHeader title="Authentication and access" />
-        <div className="s-flex s-flex-col s-items-start  s-rounded-xl s-border s-border-border dark:s-border-border-night s-divide-y s-divide-border dark:s-divide-border-night">
-          <div className="s-flex s-items-start s-gap-4 s-p-4">
+        <div className="flex flex-col items-start  rounded-xl border border-border dark:border-border-night divide-y divide-border dark:divide-border-night">
+          <div className="flex items-start gap-4 p-4">
             <Page.Vertical gap="xs" sizing="grow">
               <Page.Horizontal gap="sm">
                 <Page.H variant="h6">Single Sign-On (SSO)</Page.H>
@@ -1786,7 +1977,7 @@ function IdentityPage({ role }: { role: Role }) {
               <Button variant="outline" label="Deactivate SSO" size="sm" />
             )}
           </div>
-          <div className="s-flex s-items-start s-gap-4 s-p-4">
+          <div className="flex items-start gap-4 p-4">
             <Page.Vertical gap="xs" sizing="grow">
               <Page.H variant="h6">Auto-join Workspace</Page.H>
               <Page.P variant="secondary" size="sm">
@@ -1805,7 +1996,7 @@ function IdentityPage({ role }: { role: Role }) {
 
       <Page.Vertical gap="sm">
         <Page.SectionHeader title="User provisioning" />
-        <div className="s-flex s-items-start s-gap-4 s-rounded-xl s-border s-border-border dark:s-border-border-night s-p-4">
+        <div className="flex w-full items-start gap-4 rounded-xl border border-border dark:border-border-night p-4">
           <Page.Vertical gap="xs" sizing="grow">
             <Page.Horizontal gap="sm">
               <Page.H variant="h6">Directory sync</Page.H>
@@ -1859,7 +2050,7 @@ function GovernanceRow({
   canEdit: boolean;
   onChange: (s: GovernanceSetting) => void;
   groups: GroupRow[];
-  onCreateGroup: () => void;
+  onCreateGroup: (onCreated?: (group: GroupRow) => void) => void;
   groupsOnly?: boolean;
   disabledLabel?: string;
 }) {
@@ -1871,8 +2062,8 @@ function GovernanceRow({
   );
 
   return (
-    <div className="ag-governance-row s-w-full s-flex s-flex-col s-gap-3 s-p-4">
-      <div className="s-flex s-w-full s-items-center s-justify-between s-gap-4">
+    <div className="ag-governance-row w-full flex flex-col gap-3 p-4">
+      <div className="flex w-full items-center justify-between gap-4">
         <Page.Vertical gap="xs" sizing="grow">
           <Page.H variant="h6">{setting.label}</Page.H>
           <Page.P variant="secondary" size="sm">
@@ -1896,7 +2087,7 @@ function GovernanceRow({
         )}
       </div>
       {(groupsOnly || setting.scope === "groups") && (
-        <div className="ag-section-in s-flex s-items-center s-gap-2 s-flex-wrap">
+        <div className="ag-section-in flex items-center gap-2 flex-wrap">
           {canEdit && (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -1925,7 +2116,7 @@ function GovernanceRow({
                         label={
                           g.type === "provisioned" ? "Provisioned" : "Manual"
                         }
-                        color={g.type === "provisioned" ? "green" : "blue"}
+                        color={g.type === "provisioned" ? "success" : "info"}
                         size="xs"
                       />
                     }
@@ -1947,7 +2138,14 @@ function GovernanceRow({
                 <DropdownMenuItem
                   label="Create a group"
                   icon={Plus}
-                  onClick={onCreateGroup}
+                  onClick={() =>
+                    onCreateGroup((newGroup) =>
+                      onChange({
+                        ...setting,
+                        groups: [...setting.groups, newGroup.name],
+                      })
+                    )
+                  }
                 />
               </DropdownMenuContent>
             </DropdownMenu>
@@ -1997,13 +2195,13 @@ function ModelGovernanceRow({
   );
 
   return (
-    <div className="s-flex s-w-full s-flex-col s-gap-3 s-px-5 s-py-4">
-      <div className="s-flex s-w-full s-items-center s-justify-between s-gap-4">
-        <div className="s-flex s-min-w-0 s-flex-1 s-items-center s-gap-2.5">
-          <provider.Logo className="s-h-5 s-w-5 s-shrink-0" />
-          <div className="s-flex s-min-w-0 s-flex-1 s-flex-col s-gap-0.5">
-            <div className="s-flex s-items-center s-gap-1.5">
-              <span className="s-text-sm s-font-semibold s-text-foreground dark:s-text-foreground-night">
+    <div className="flex w-full flex-col gap-3 px-5 py-4">
+      <div className="flex w-full items-center justify-between gap-4">
+        <div className="flex min-w-0 flex-1 items-center gap-2.5">
+          <provider.Logo className="h-5 w-5 shrink-0" />
+          <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+            <div className="flex items-center gap-1.5">
+              <span className="text-sm font-semibold text-foreground dark:text-foreground-night">
                 {model.name}
               </span>
             </div>
@@ -2027,7 +2225,7 @@ function ModelGovernanceRow({
         </ButtonsSwitchList>
       </div>
       {model.access === "groups" && (
-        <div className="ag-section-in s-flex s-items-center s-gap-2 s-flex-wrap s-pl-7">
+        <div className="ag-section-in flex items-center gap-2 flex-wrap pl-7">
           {canEdit && (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -2137,7 +2335,7 @@ function FrameSharingGovernanceRow({
   canEdit: boolean;
   onChange: (updated: FrameVisibilitySetting[]) => void;
   groups: GroupRow[];
-  onCreateGroup: () => void;
+  onCreateGroup: (onCreated?: (group: GroupRow) => void) => void;
   disabledLabel?: string;
   access: FrameSharingAccess;
   onAccessChange: (v: FrameSharingAccess) => void;
@@ -2163,14 +2361,14 @@ function FrameSharingGovernanceRow({
   });
 
   return (
-    <div className="s-w-full s-rounded-xl s-border s-border-border dark:s-border-border-night s-divide-y s-divide-border dark:s-divide-border-night">
+    <div className="w-full rounded-xl border border-border dark:border-border-night divide-y divide-border dark:divide-border-night">
       {showSelector && (
-        <div className="s-flex s-items-center s-justify-between s-gap-4 s-px-4 s-py-3">
-          <div className="s-flex s-flex-col s-gap-0.5">
-            <span className="s-heading-base s-text-foreground dark:s-text-foreground-night">
+        <div className="flex items-center justify-between gap-4 px-4 py-3">
+          <div className="flex flex-col gap-0.5">
+            <span className="heading-base text-foreground dark:text-foreground-night">
               Who can access Frames
             </span>
-            <span className="s-text-sm s-text-muted-foreground dark:s-text-muted-foreground-night">
+            <span className="text-sm text-muted-foreground dark:text-muted-foreground-night">
               Control the level of access for Frames in this workspace.
             </span>
           </div>
@@ -2215,9 +2413,9 @@ function FrameSharingGovernanceRow({
         return (
           <div
             key={s.level}
-            className="ag-governance-row s-w-full s-flex s-flex-col s-gap-3 s-p-4"
+            className="ag-governance-row w-full flex flex-col gap-3 p-4"
           >
-            <div className="s-flex s-w-full s-items-center s-justify-between s-gap-4">
+            <div className="flex w-full items-center justify-between gap-4">
               <Page.Vertical gap="xs" sizing="grow">
                 <Page.H variant="h6">{s.label}</Page.H>
                 <Page.P variant="secondary" size="sm">
@@ -2239,7 +2437,7 @@ function FrameSharingGovernanceRow({
               </ButtonsSwitchList>
             </div>
             {s.scope === "groups" && (
-              <div className="ag-section-in s-flex s-items-center s-gap-2 s-flex-wrap">
+              <div className="ag-section-in flex items-center gap-2 flex-wrap">
                 {canEdit && (
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
@@ -2276,7 +2474,7 @@ function FrameSharingGovernanceRow({
                                   : "Manual"
                               }
                               color={
-                                g.type === "provisioned" ? "green" : "blue"
+                                g.type === "provisioned" ? "success" : "info"
                               }
                               size="xs"
                             />
@@ -2298,7 +2496,14 @@ function FrameSharingGovernanceRow({
                       <DropdownMenuItem
                         label="Create a group"
                         icon={Plus}
-                        onClick={onCreateGroup}
+                        onClick={() =>
+                          onCreateGroup((newGroup) =>
+                            update({
+                              ...s,
+                              groups: [...s.groups, newGroup.name],
+                            })
+                          )
+                        }
                       />
                     </DropdownMenuContent>
                   </DropdownMenu>
@@ -2339,15 +2544,19 @@ function GovernancePage({
   onCreateGroup,
   frameSharing,
   setFrameSharing,
+  auditLogsEnabled,
+  setAuditLogsEnabled,
 }: {
   role: Role;
   settings: GovernanceSetting[];
   setSettings: (s: GovernanceSetting[]) => void;
   groups: GroupRow[];
   onNavigateToGroups: () => void;
-  onCreateGroup: () => void;
+  onCreateGroup: (onCreated?: (group: GroupRow) => void) => void;
   frameSharing: FrameVisibilitySetting[];
   setFrameSharing: (s: FrameVisibilitySetting[]) => void;
+  auditLogsEnabled: boolean;
+  setAuditLogsEnabled: (v: boolean) => void;
 }) {
   const canEdit = role === "super_admin" || role === "admin";
   const canEditAudit = role === "super_admin";
@@ -2415,9 +2624,9 @@ function GovernancePage({
         icon={Toggle01Left}
       />
       {/* Workspace Name */}
-      <div className="s-flex s-w-full s-flex-col s-gap-2">
-        <div className="s-flex s-items-center s-justify-between">
-          <div className="s-flex s-flex-col s-gap-0.5">
+      <div className="flex w-full flex-col gap-2">
+        <div className="flex items-center justify-between">
+          <div className="flex flex-col gap-0.5">
             <Page.H variant="h5">Workspace Name</Page.H>
             {!editingName && (
               <Page.P variant="secondary" size="sm">
@@ -2436,7 +2645,7 @@ function GovernancePage({
           )}
         </div>
         {editingName && (
-          <div className="s-flex s-items-center s-gap-2">
+          <div className="flex items-center gap-2">
             <Input
               name="workspace-name"
               value={workspaceName}
@@ -2458,25 +2667,25 @@ function GovernancePage({
           </div>
         )}
       </div>
-      <div className="s-w-full s-rounded-xl s-bg-muted-background dark:s-bg-muted-background-night s-px-4 s-py-3">
+      <div className="w-full rounded-xl bg-muted-background dark:bg-muted-background-night px-4 py-3">
         <Page.P variant="secondary" size="sm">
           Groups assigned here are managed in{" "}
           <button
             type="button"
-            className="s-underline s-font-medium s-text-foreground dark:s-text-foreground-night"
+            className="underline font-medium text-foreground dark:text-foreground-night"
             onClick={onNavigateToGroups}
           >
             People → Groups
           </button>
         </Page.P>
       </div>
-      <div className="s-flex s-w-full s-flex-col s-gap-8">
-        <div className="s-flex s-w-full s-flex-col s-gap-4">
-          <div className="s-flex s-items-center s-gap-2">
-            <Robot className="s-h-5 s-w-5 s-shrink-0 s-text-muted-foreground dark:s-text-muted-foreground-night" />
+      <div className="flex w-full flex-col gap-8">
+        <div className="flex w-full flex-col gap-4">
+          <div className="flex items-center gap-2">
+            <Robot className="h-5 w-5 shrink-0 text-muted-foreground dark:text-muted-foreground-night" />
             <Page.H variant="h5">Agents</Page.H>
           </div>
-          <div className="s-w-full s-rounded-xl s-border s-border-border dark:s-border-border-night s-divide-y s-divide-border dark:s-divide-border-night">
+          <div className="w-full rounded-xl border border-border dark:border-border-night divide-y divide-border dark:divide-border-night">
             {settings
               .filter((s) => s.id.includes("agent"))
               .map((s) => (
@@ -2492,12 +2701,12 @@ function GovernancePage({
               ))}
           </div>
         </div>
-        <div className="s-flex s-w-full s-flex-col s-gap-4">
-          <div className="s-flex s-items-center s-gap-2">
-            <PuzzlePiece01 className="s-h-5 s-w-5 s-shrink-0 s-text-muted-foreground dark:s-text-muted-foreground-night" />
+        <div className="flex w-full flex-col gap-4">
+          <div className="flex items-center gap-2">
+            <PuzzlePiece01 className="h-5 w-5 shrink-0 text-muted-foreground dark:text-muted-foreground-night" />
             <Page.H variant="h5">Skills</Page.H>
           </div>
-          <div className="s-w-full s-rounded-xl s-border s-border-border dark:s-border-border-night s-divide-y s-divide-border dark:s-divide-border-night">
+          <div className="w-full rounded-xl border border-border dark:border-border-night divide-y divide-border dark:divide-border-night">
             {settings
               .filter((s) => s.id.includes("skill"))
               .map((s) => (
@@ -2514,9 +2723,9 @@ function GovernancePage({
           </div>
         </div>
         {!(role === "admin" && frameSharingAccess === "members_only") && (
-          <div className="s-flex s-w-full s-flex-col s-gap-4">
-            <div className="s-flex s-items-center s-gap-2">
-              <ActionFrame className="s-h-5 s-w-5 s-shrink-0 s-text-muted-foreground dark:s-text-muted-foreground-night" />
+          <div className="flex w-full flex-col gap-4">
+            <div className="flex items-center gap-2">
+              <ActionFrame className="h-5 w-5 shrink-0 text-muted-foreground dark:text-muted-foreground-night" />
               <Page.H variant="h5">Frame sharing</Page.H>
             </div>
             <FrameSharingGovernanceRow
@@ -2534,12 +2743,12 @@ function GovernancePage({
           </div>
         )}
         {role === "super_admin" && (
-          <div className="s-flex s-w-full s-flex-col s-gap-4">
-            <div className="s-flex s-items-center s-gap-2">
-              <Lock01 className="s-h-5 s-w-5 s-shrink-0 s-text-muted-foreground dark:s-text-muted-foreground-night" />
+          <div className="flex w-full flex-col gap-4">
+            <div className="flex items-center gap-2">
+              <Lock01 className="h-5 w-5 shrink-0 text-muted-foreground dark:text-muted-foreground-night" />
               <Page.H variant="h5">Billing and security</Page.H>
             </div>
-            <div className="s-w-full s-rounded-xl s-border s-border-border dark:s-border-border-night s-divide-y s-divide-border dark:s-divide-border-night">
+            <div className="w-full rounded-xl border border-border dark:border-border-night divide-y divide-border dark:divide-border-night">
               {settings
                 .filter(
                   (s) => s.id === "billing_access" || s.id === "security_access"
@@ -2559,31 +2768,25 @@ function GovernancePage({
           </div>
         )}
         {/* Pods */}
-        <div className="s-flex s-w-full s-flex-col s-gap-4">
-          <div className="s-flex s-items-center s-gap-2">
-            <IntersectDust className="s-h-5 s-w-5 s-shrink-0 s-text-muted-foreground dark:s-text-muted-foreground-night" />
+        <div className="flex w-full flex-col gap-4">
+          <div className="flex items-center gap-2">
+            <IntersectDust className="h-5 w-5 shrink-0 text-muted-foreground dark:text-muted-foreground-night" />
             <Page.H variant="h5">Pods</Page.H>
           </div>
-          <div className="s-w-full s-rounded-xl s-border s-border-border dark:s-border-border-night s-divide-y s-divide-border dark:s-divide-border-night">
-            <div className="s-flex s-items-center s-justify-between s-gap-4 s-px-4 s-py-3">
-              <div className="s-flex s-items-center s-gap-3">
-                <IntersectDust className="s-h-4 s-w-4 s-shrink-0 s-text-muted-foreground dark:s-text-muted-foreground-night" />
-                <div className="s-flex s-flex-col s-gap-0.5">
-                  <span className="s-text-sm s-font-semibold s-text-foreground dark:s-text-foreground-night">
-                    Pod access policy
-                  </span>
-                  <span className="s-text-sm s-text-muted-foreground dark:s-text-muted-foreground-night">
-                    Control whether Pods can be restricted only or restricted
-                    and open.
-                  </span>
-                </div>
-              </div>
+          <div className="w-full rounded-xl border border-border dark:border-border-night divide-y divide-border dark:divide-border-night">
+            <div className="flex items-center justify-between gap-4 px-4 py-3">
+              <Page.Vertical gap="xs" sizing="grow">
+                <Page.H variant="h6">Pod access policy</Page.H>
+                <Page.P variant="secondary" size="sm">
+                  Control whether Pods can be restricted only or restricted and
+                  open.
+                </Page.P>
+              </Page.Vertical>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button
                     variant="outline"
                     size="sm"
-                    icon={IntersectDust}
                     label={
                       podAccessOptions.find((o) => o.value === podAccess)!.label
                     }
@@ -2602,24 +2805,18 @@ function GovernancePage({
                 </DropdownMenuContent>
               </DropdownMenu>
             </div>
-            <div className="s-flex s-items-center s-justify-between s-gap-4 s-px-4 s-py-3">
-              <div className="s-flex s-items-center s-gap-3">
-                <Folder className="s-h-4 s-w-4 s-shrink-0 s-text-muted-foreground dark:s-text-muted-foreground-night" />
-                <div className="s-flex s-flex-col s-gap-0.5">
-                  <span className="s-text-sm s-font-semibold s-text-foreground dark:s-text-foreground-night">
-                    Pod files policy
-                  </span>
-                  <span className="s-text-sm s-text-muted-foreground dark:s-text-muted-foreground-night">
-                    Control whether members can manually add files to Pods.
-                  </span>
-                </div>
-              </div>
+            <div className="flex items-center justify-between gap-4 px-4 py-3">
+              <Page.Vertical gap="xs" sizing="grow">
+                <Page.H variant="h6">Pod files policy</Page.H>
+                <Page.P variant="secondary" size="sm">
+                  Control whether members can manually add files to Pods.
+                </Page.P>
+              </Page.Vertical>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button
                     variant="outline"
                     size="sm"
-                    icon={Folder}
                     label={
                       podFilesOptions.find((o) => o.value === podFiles)!.label
                     }
@@ -2641,12 +2838,12 @@ function GovernancePage({
           </div>
         </div>
         {/* Capabilities */}
-        <div className="s-flex s-w-full s-flex-col s-gap-4">
-          <div className="s-flex s-items-center s-gap-2">
-            <ShapesPlus className="s-h-5 s-w-5 s-shrink-0 s-text-muted-foreground dark:s-text-muted-foreground-night" />
+        <div className="flex w-full flex-col gap-4">
+          <div className="flex items-center gap-2">
+            <ShapesPlus className="h-5 w-5 shrink-0 text-muted-foreground dark:text-muted-foreground-night" />
             <Page.H variant="h5">Feature policies</Page.H>
           </div>
-          <div className="s-w-full s-rounded-xl s-border s-border-border dark:s-border-border-night s-divide-y s-divide-border dark:s-divide-border-night">
+          <div className="w-full rounded-xl border border-border dark:border-border-night divide-y divide-border dark:divide-border-night">
             {WORKSPACE_CAPABILITIES.filter(
               (cap) => cap.id !== "audit_logs"
             ).map((cap) => {
@@ -2654,24 +2851,19 @@ function GovernancePage({
               return (
                 <div
                   key={cap.id}
-                  className="s-flex s-items-center s-justify-between s-gap-4 s-px-4 s-py-3"
+                  className="flex items-center justify-between gap-4 px-4 py-3"
                 >
-                  <div className="s-flex s-items-center s-gap-3">
-                    <Icon className="s-h-4 s-w-4 s-shrink-0 s-text-muted-foreground dark:s-text-muted-foreground-night" />
-                    <div className="s-flex s-flex-col s-gap-0.5">
-                      <div className="s-flex s-items-center s-gap-2">
-                        <span className="s-text-sm s-font-semibold s-text-foreground dark:s-text-foreground-night">
-                          {cap.label}
-                        </span>
-                        {"beta" in cap && cap.beta && (
-                          <Chip label="Beta" size="xs" color="warning" />
-                        )}
-                      </div>
-                      <span className="s-text-sm s-text-muted-foreground dark:s-text-muted-foreground-night">
-                        {cap.description}
-                      </span>
+                  <Page.Vertical gap="xs" sizing="grow">
+                    <div className="flex items-center gap-2">
+                      <Page.H variant="h6">{cap.label}</Page.H>
+                      {"beta" in cap && cap.beta && (
+                        <Chip label="Beta" size="xs" color="warning" />
+                      )}
                     </div>
-                  </div>
+                    <Page.P variant="secondary" size="sm">
+                      {cap.description}
+                    </Page.P>
+                  </Page.Vertical>
                   <SliderToggle
                     selected={workspaceCapabilities[cap.id]}
                     onClick={() =>
@@ -2685,38 +2877,30 @@ function GovernancePage({
                 </div>
               );
             })}
-            <div className="s-flex s-items-center s-justify-between s-gap-4 s-px-4 s-py-3">
-              <div className="s-flex s-items-center s-gap-3">
-                <Lock01 className="s-h-4 s-w-4 s-shrink-0 s-text-muted-foreground dark:s-text-muted-foreground-night" />
-                <div className="s-flex s-flex-col s-gap-0.5">
-                  <span className="s-text-sm s-font-semibold s-text-foreground dark:s-text-foreground-night">
-                    Private conversation URLs by default
-                  </span>
-                  <span className="s-text-sm s-text-muted-foreground dark:s-text-muted-foreground-night">
-                    Enforce private conversation URLs by default, limiting
-                    access to participants only.
-                  </span>
-                </div>
-              </div>
+            <div className="flex items-center justify-between gap-4 px-4 py-3">
+              <Page.Vertical gap="xs" sizing="grow">
+                <Page.H variant="h6">
+                  Private conversation URLs by default
+                </Page.H>
+                <Page.P variant="secondary" size="sm">
+                  Enforce private conversation URLs by default, limiting access
+                  to participants only.
+                </Page.P>
+              </Page.Vertical>
               <SliderToggle
                 selected={privateUrls}
                 onClick={() => canEdit && setPrivateUrls(!privateUrls)}
               />
             </div>
-            <div className="s-flex s-items-center s-justify-between s-gap-4 s-px-4 s-py-3">
-              <div className="s-flex s-items-center s-gap-3">
-                <Server01 className="s-h-4 s-w-4 s-shrink-0 s-text-muted-foreground dark:s-text-muted-foreground-night" />
-                <div className="s-flex s-flex-col s-gap-0.5">
-                  <span className="s-text-sm s-font-semibold s-text-foreground dark:s-text-foreground-night">
-                    MCP server
-                  </span>
-                  <span className="s-text-sm s-text-muted-foreground dark:s-text-muted-foreground-night">
-                    Control whether external MCP clients can connect to this
-                    workspace.
-                  </span>
-                </div>
-              </div>
-              <div className="s-flex s-shrink-0 s-items-center s-gap-2">
+            <div className="flex items-center justify-between gap-4 px-4 py-3">
+              <Page.Vertical gap="xs" sizing="grow">
+                <Page.H variant="h6">MCP server</Page.H>
+                <Page.P variant="secondary" size="sm">
+                  Control whether external MCP clients can connect to this
+                  workspace.
+                </Page.P>
+              </Page.Vertical>
+              <div className="flex shrink-0 items-center gap-2">
                 <Button
                   variant="outline"
                   size="sm"
@@ -2730,19 +2914,14 @@ function GovernancePage({
                 />
               </div>
             </div>
-            <div className="s-flex s-items-center s-justify-between s-gap-4 s-px-4 s-py-3">
-              <div className="s-flex s-items-center s-gap-3">
-                <SlackLogo className="s-h-4 s-w-4 s-shrink-0" />
-                <div className="s-flex s-flex-col s-gap-0.5">
-                  <span className="s-text-sm s-font-semibold s-text-foreground dark:s-text-foreground-night">
-                    "Sent via Agent" Slack footer
-                  </span>
-                  <span className="s-text-sm s-text-muted-foreground dark:s-text-muted-foreground-night">
-                    Control whether agents can suppress the attribution footer
-                    on Slack messages posted with user credentials.
-                  </span>
-                </div>
-              </div>
+            <div className="flex items-center justify-between gap-4 px-4 py-3">
+              <Page.Vertical gap="xs" sizing="grow">
+                <Page.H variant="h6">"Sent via Agent" Slack footer</Page.H>
+                <Page.P variant="secondary" size="sm">
+                  Control whether agents can suppress the attribution footer on
+                  Slack messages posted with user credentials.
+                </Page.P>
+              </Page.Vertical>
               <SliderToggle
                 selected={subSettings["slack_footer"]}
                 onClick={() =>
@@ -2757,29 +2936,24 @@ function GovernancePage({
           </div>
         </div>
         {/* Integrations */}
-        <div className="s-flex s-w-full s-flex-col s-gap-4">
-          <div className="s-flex s-items-center s-gap-2">
-            <CloudArrowLeftRight className="s-h-5 s-w-5 s-shrink-0 s-text-muted-foreground dark:s-text-muted-foreground-night" />
+        <div className="flex w-full flex-col gap-4">
+          <div className="flex items-center gap-2">
+            <CloudArrowLeftRight className="h-5 w-5 shrink-0 text-muted-foreground dark:text-muted-foreground-night" />
             <Page.H variant="h5">Messaging app policies</Page.H>
           </div>
-          <div className="s-w-full s-rounded-xl s-border s-border-border dark:s-border-border-night s-divide-y s-divide-border dark:s-divide-border-night">
+          <div className="w-full rounded-xl border border-border dark:border-border-night divide-y divide-border dark:divide-border-night">
             {integrations.map((integration) => (
               <div
                 key={integration.id}
-                className="s-flex s-items-center s-justify-between s-gap-4 s-px-4 s-py-3"
+                className="flex items-center justify-between gap-4 px-4 py-3"
               >
-                <div className="s-flex s-items-center s-gap-3">
-                  <integration.Logo className="s-h-5 s-w-5 s-shrink-0" />
-                  <div className="s-flex s-flex-col s-gap-0.5">
-                    <span className="s-text-sm s-font-semibold s-text-foreground dark:s-text-foreground-night">
-                      {integration.label}
-                    </span>
-                    <span className="s-text-sm s-text-muted-foreground dark:s-text-muted-foreground-night">
-                      {integration.description}
-                    </span>
-                  </div>
-                </div>
-                <div className="s-flex s-shrink-0 s-items-center s-gap-2">
+                <Page.Vertical gap="xs" sizing="grow">
+                  <Page.H variant="h6">{integration.label}</Page.H>
+                  <Page.P variant="secondary" size="sm">
+                    {integration.description}
+                  </Page.P>
+                </Page.Vertical>
+                <div className="flex shrink-0 items-center gap-2">
                   {integration.connected && (
                     <Button
                       variant="outline"
@@ -2808,43 +2982,24 @@ function GovernancePage({
         </div>
         {/* Audit — super_admin only */}
         {canEditAudit && (
-          <div className="s-flex s-w-full s-flex-col s-gap-4">
-            <div className="s-flex s-items-center s-gap-2">
-              <LayerSingle className="s-h-5 s-w-5 s-shrink-0 s-text-muted-foreground dark:s-text-muted-foreground-night" />
+          <div className="flex w-full flex-col gap-4">
+            <div className="flex items-center gap-2">
+              <LayerSingle className="h-5 w-5 shrink-0 text-muted-foreground dark:text-muted-foreground-night" />
               <Page.H variant="h5">Audit</Page.H>
             </div>
-            <div className="s-w-full s-rounded-xl s-border s-border-border dark:s-border-border-night">
-              <div className="s-flex s-items-start s-justify-between s-gap-4 s-px-4 s-py-3">
-                <div className="s-flex s-items-start s-gap-3">
-                  <LayerSingle className="s-mt-0.5 s-h-4 s-w-4 s-shrink-0 s-text-muted-foreground dark:s-text-muted-foreground-night" />
-                  <div className="s-flex s-flex-col s-gap-1.5">
-                    <span className="s-text-sm s-font-semibold s-text-foreground dark:s-text-foreground-night">
-                      Audit Logs
-                    </span>
-                    <span className="s-text-sm s-text-muted-foreground dark:s-text-muted-foreground-night">
-                      View workspace activity logs or configure export to your
-                      security information and event management (SIEM) system.
-                    </span>
-                    {workspaceCapabilities["audit_logs"] && (
-                      <div className="s-flex s-gap-2">
-                        <Button variant="outline" size="sm" label="View Logs" />
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          label="Configure Export"
-                        />
-                      </div>
-                    )}
-                  </div>
-                </div>
+            <div className="w-full rounded-xl border border-border dark:border-border-night">
+              <div className="flex items-start justify-between gap-4 px-4 py-3">
+                <Page.Vertical gap="xs" sizing="grow">
+                  <Page.H variant="h6">Audit Logs</Page.H>
+                  <Page.P variant="secondary" size="sm">
+                    Emit audit events and expose the audit logs section in IT &
+                    Security.
+                  </Page.P>
+                </Page.Vertical>
                 <SliderToggle
-                  selected={workspaceCapabilities["audit_logs"]}
+                  selected={auditLogsEnabled}
                   onClick={() =>
-                    canEditAudit &&
-                    setWorkspaceCapabilities((prev) => ({
-                      ...prev,
-                      audit_logs: !prev["audit_logs"],
-                    }))
+                    canEditAudit && setAuditLogsEnabled(!auditLogsEnabled)
                   }
                 />
               </div>
@@ -2878,14 +3033,14 @@ function ModelProvidersPage({
         icon={Brain}
       />
       {providers.map((provider) => (
-        <div key={provider.id} className="s-flex s-w-full s-flex-col s-gap-3">
-          <div className="s-flex s-items-center s-gap-2">
-            <provider.Logo className="s-h-5 s-w-5 s-shrink-0" />
-            <span className="s-text-sm s-font-semibold s-text-foreground dark:s-text-foreground-night">
+        <div key={provider.id} className="flex w-full flex-col gap-3">
+          <div className="flex items-center gap-2">
+            <provider.Logo className="h-5 w-5 shrink-0" />
+            <span className="text-sm font-semibold text-foreground dark:text-foreground-night">
               {provider.name}
             </span>
           </div>
-          <div className="s-w-full s-rounded-xl s-border s-border-border dark:s-border-border-night s-divide-y s-divide-border dark:s-divide-border-night">
+          <div className="w-full rounded-xl border border-border dark:border-border-night divide-y divide-border dark:divide-border-night">
             {provider.models.map((model) => (
               <ModelGovernanceRow
                 key={`${provider.id}:${model.name}`}
@@ -2930,15 +3085,15 @@ function BillingPage() {
       />
 
       {/* Current plan card */}
-      <div className="s-flex s-flex-col s-gap-4 s-rounded-[20px] s-border s-border-border dark:s-border-border-night s-p-5">
-        <div className="s-flex s-items-center s-justify-between s-gap-3">
-          <div className="s-flex s-items-center s-gap-2">
+      <div className="flex flex-col gap-4 rounded-[20px] border border-border dark:border-border-night p-5">
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2">
             <Page.H variant="h4">Business</Page.H>
             <Chip color="blue" label="Current" size="xs" />
           </div>
           <Button variant="outline" label="Cancel subscription" size="sm" />
         </div>
-        <div className="s-flex s-flex-col s-gap-1">
+        <div className="flex flex-col gap-1">
           <Page.P variant="secondary" size="sm">
             Frequency: Monthly
           </Page.P>
@@ -2946,10 +3101,10 @@ function BillingPage() {
             Next billing date: October, 14, 2026
           </Page.P>
           <Page.P size="sm">
-            Amount: <span className="s-font-semibold">$15,000</span>
+            Amount: <span className="font-semibold">$15,000</span>
           </Page.P>
         </div>
-        <div className="s-flex s-items-center s-justify-between s-rounded-xl s-border s-border-border dark:s-border-border-night s-px-4 s-py-3">
+        <div className="flex items-center justify-between rounded-xl border border-border dark:border-border-night px-4 py-3">
           <Page.P variant="secondary" size="sm">
             Switch to yearly to save $XXX per year
           </Page.P>
@@ -2958,7 +3113,7 @@ function BillingPage() {
       </div>
 
       {/* Plan breakdown */}
-      <div className="s-grid s-grid-cols-2 s-gap-4">
+      <div className="grid grid-cols-2 gap-4">
         {[
           {
             name: "Pro plan",
@@ -2977,20 +3132,20 @@ function BillingPage() {
         ].map((plan) => (
           <div
             key={plan.name}
-            className="s-flex s-flex-col s-gap-3 s-rounded-[20px] s-border s-border-border dark:s-border-border-night s-p-5"
+            className="flex flex-col gap-3 rounded-[20px] border border-border dark:border-border-night p-5"
           >
             <div>
               <Page.H variant="h5">{plan.name}</Page.H>
-              <div className="s-flex s-items-baseline s-gap-1 s-mt-1">
-                <span className="s-text-2xl s-font-bold s-text-foreground dark:s-text-foreground-night s-tabular-nums">
+              <div className="flex items-baseline gap-1 mt-1">
+                <span className="text-2xl font-bold text-foreground dark:text-foreground-night tabular-nums">
                   {plan.price}
                 </span>
-                <span className="s-text-sm s-text-muted-foreground dark:s-text-muted-foreground-night">
+                <span className="text-sm text-muted-foreground dark:text-muted-foreground-night">
                   {plan.unit}
                 </span>
               </div>
             </div>
-            <div className="s-border-t s-border-border dark:s-border-border-night" />
+            <div className="border-t border-border dark:border-border-night" />
             <Page.Vertical gap="xs">
               <Page.P variant="secondary" size="sm">
                 {plan.seats}
@@ -3008,8 +3163,8 @@ function BillingPage() {
       {/* Billing information */}
       <Page.Vertical gap="sm">
         <Page.SectionHeader title="Billing information" />
-        <div className="s-rounded-[20px] s-border s-border-border dark:s-border-border-night s-divide-y s-divide-border dark:s-divide-border-night">
-          <div className="s-flex s-items-start s-justify-between s-gap-4 s-p-5">
+        <div className="rounded-[20px] border border-border dark:border-border-night divide-y divide-border dark:divide-border-night">
+          <div className="flex items-start justify-between gap-4 p-5">
             <Page.Vertical gap="xs">
               <Page.H variant="h6">Billing address</Page.H>
               <Page.P variant="secondary" size="sm">
@@ -3024,9 +3179,9 @@ function BillingPage() {
             </Page.Vertical>
             <Button variant="outline" label="Change" size="sm" />
           </div>
-          <div className="s-flex s-items-center s-justify-between s-gap-4 s-p-5">
-            <div className="s-flex s-items-center s-gap-3">
-              <div className="s-rounded s-border s-border-border dark:s-border-border-night s-px-2 s-py-0.5 s-text-xs s-font-bold s-text-blue-700">
+          <div className="flex items-center justify-between gap-4 p-5">
+            <div className="flex items-center gap-3">
+              <div className="rounded border border-border dark:border-border-night px-2 py-0.5 text-xs font-bold text-blue-700">
                 VISA
               </div>
               <Page.P size="sm">•••• •••• •••• 1234</Page.P>
@@ -3041,7 +3196,7 @@ function BillingPage() {
       {/* Invoices */}
       <Page.Vertical gap="sm">
         <Page.SectionHeader title="Invoices" />
-        <div className="s-rounded-[20px] s-border s-border-border dark:s-border-border-night s-divide-y s-divide-border dark:s-divide-border-night">
+        <div className="rounded-[20px] border border-border dark:border-border-night divide-y divide-border dark:divide-border-night">
           {[
             {
               label: "Monthly payment",
@@ -3059,17 +3214,14 @@ function BillingPage() {
               amount: "$4,300",
             },
           ].map((inv, i) => (
-            <div
-              key={i}
-              className="s-flex s-items-center s-gap-4 s-px-5 s-py-3"
-            >
-              <span className="s-flex-1 s-text-sm s-text-foreground dark:s-text-foreground-night">
+            <div key={i} className="flex items-center gap-4 px-5 py-3">
+              <span className="flex-1 text-sm text-foreground dark:text-foreground-night">
                 {inv.label}
               </span>
-              <span className="s-w-32 s-text-sm s-text-muted-foreground dark:s-text-muted-foreground-night">
+              <span className="w-32 text-sm text-muted-foreground dark:text-muted-foreground-night">
                 {inv.date}
               </span>
-              <span className="s-w-16 s-text-right s-text-sm s-font-medium s-text-foreground dark:s-text-foreground-night">
+              <span className="w-16 text-right text-sm font-medium text-foreground dark:text-foreground-night">
                 {inv.amount}
               </span>
               <Button variant="ghost" label="See invoice" size="sm" />
@@ -3135,9 +3287,9 @@ function UsagePage({
   };
 
   const seatColors: Record<MemberRow["seat"], string> = {
-    max: "s-text-amber-500",
-    pro: "s-text-blue-500",
-    free: "s-text-slate-400",
+    max: "text-amber-500",
+    pro: "text-blue-500",
+    free: "text-slate-400",
   };
 
   const usageColumns = useMemo<ColumnDef<MemberRow>[]>(
@@ -3145,18 +3297,18 @@ function UsagePage({
       {
         accessorKey: "name",
         header: "Name",
-        meta: { className: "s-w-full" },
+        meta: { className: "w-full" },
         cell: (info) => {
           const row = info.row.original;
           return (
             <DataTable.CellContent>
-              <div className="s-flex s-items-center s-gap-3">
+              <div className="flex items-center gap-3">
                 <Avatar size="sm" name={row.name} />
                 <div>
-                  <div className="s-text-sm s-font-semibold s-text-foreground dark:s-text-foreground-night">
+                  <div className="text-sm font-semibold text-foreground dark:text-foreground-night">
                     {row.name}
                   </div>
-                  <div className="s-text-xs s-text-muted-foreground dark:s-text-muted-foreground-night">
+                  <div className="text-xs text-muted-foreground dark:text-muted-foreground-night">
                     {row.email}
                   </div>
                 </div>
@@ -3168,12 +3320,12 @@ function UsagePage({
       {
         accessorKey: "seat",
         header: "Seat",
-        meta: { className: "s-w-20" },
+        meta: { className: "w-20" },
         cell: (info) => {
           const seat = info.getValue() as MemberRow["seat"];
           return (
             <DataTable.CellContent>
-              <span className={`s-text-sm s-font-semibold ${seatColors[seat]}`}>
+              <span className={`text-sm font-semibold ${seatColors[seat]}`}>
                 {seat.charAt(0).toUpperCase() + seat.slice(1)}
               </span>
             </DataTable.CellContent>
@@ -3183,7 +3335,7 @@ function UsagePage({
       {
         accessorKey: "role",
         header: "Role",
-        meta: { className: "s-w-32" },
+        meta: { className: "w-32" },
         cell: (info) => {
           const r = info.getValue() as MemberRole;
           return (
@@ -3200,7 +3352,7 @@ function UsagePage({
       {
         id: "creditsUsage",
         header: "Credits Usage",
-        meta: { className: "s-w-56" },
+        meta: { className: "w-56" },
         cell: (info) => {
           const row = info.row.original;
           const usage = row.usage ?? 0;
@@ -3208,24 +3360,24 @@ function UsagePage({
           const pct = limit ? Math.min(100, (usage / limit) * 100) : 0;
           return (
             <DataTable.CellContent>
-              <div className="s-flex s-items-center s-gap-2">
-                <span className="s-text-sm s-tabular-nums s-text-foreground dark:s-text-foreground-night s-w-14 s-text-right">
+              <div className="flex items-center gap-2">
+                <span className="text-sm tabular-nums text-foreground dark:text-foreground-night w-14 text-right">
                   {usage.toLocaleString()}
                 </span>
                 {limit ? (
-                  <div className="s-flex s-flex-1 s-flex-col s-gap-0.5">
-                    <div className="s-h-1 s-w-full s-rounded-full s-bg-muted-background dark:s-bg-muted-background-night">
+                  <div className="flex flex-1 flex-col gap-0.5">
+                    <div className="h-1 w-full rounded-full bg-muted-background dark:bg-muted-background-night">
                       <div
-                        className="s-h-full s-rounded-full s-bg-primary-500"
+                        className="h-full rounded-full bg-primary-500"
                         style={{ width: `${pct}%` }}
                       />
                     </div>
-                    <span className="s-text-xs s-tabular-nums s-text-muted-foreground dark:s-text-muted-foreground-night s-text-right">
+                    <span className="text-xs tabular-nums text-muted-foreground dark:text-muted-foreground-night text-right">
                       {limit.toLocaleString()}
                     </span>
                   </div>
                 ) : (
-                  <span className="s-text-xs s-text-muted-foreground dark:s-text-muted-foreground-night">
+                  <span className="text-xs text-muted-foreground dark:text-muted-foreground-night">
                     —
                   </span>
                 )}
@@ -3237,7 +3389,7 @@ function UsagePage({
       {
         id: "actions",
         header: "",
-        meta: { className: "s-w-10" },
+        meta: { className: "w-10" },
         cell: () => (
           <DataTable.CellContent>
             <DropdownMenu>
@@ -3265,7 +3417,7 @@ function UsagePage({
         icon={PieChart01}
       />
 
-      <div className="s-flex s-flex-col s-items-start s-gap-3 s-rounded-xl s-border s-border-border dark:s-border-border-night s-p-4">
+      <div className="flex flex-col items-start gap-3 rounded-xl border border-border dark:border-border-night p-4">
         <Page.Horizontal gap="md">
           <Page.Vertical gap="xs" sizing="grow">
             <Page.H variant="h5">Credit pool</Page.H>
@@ -3278,23 +3430,23 @@ function UsagePage({
             <Button variant="ghost" label="Top up" size="sm" />
           </Page.Horizontal>
         </Page.Horizontal>
-        <div className="s-h-2 s-rounded-full s-overflow-hidden s-flex s-gap-px">
-          <div className="s-h-full s-bg-amber-400" style={{ width: "30%" }} />
-          <div className="s-h-full s-bg-purple-400" style={{ width: "20%" }} />
-          <div className="s-h-full s-bg-pink-400" style={{ width: "5%" }} />
-          <div className="s-h-full s-flex-1 s-bg-muted-background dark:s-bg-muted-background-night" />
+        <div className="h-2 rounded-full overflow-hidden flex gap-px">
+          <div className="h-full bg-amber-400" style={{ width: "30%" }} />
+          <div className="h-full bg-purple-400" style={{ width: "20%" }} />
+          <div className="h-full bg-pink-400" style={{ width: "5%" }} />
+          <div className="h-full flex-1 bg-muted-background dark:bg-muted-background-night" />
         </div>
         <Page.Horizontal gap="md">
-          <span className="s-flex s-items-center s-gap-1 s-text-sm s-text-foreground dark:s-text-foreground-night">
-            <span className="s-inline-block s-h-2 s-w-2 s-rounded-full s-bg-amber-400" />{" "}
+          <span className="flex items-center gap-1 text-sm text-foreground dark:text-foreground-night">
+            <span className="inline-block h-2 w-2 rounded-full bg-amber-400" />{" "}
             Users
           </span>
-          <span className="s-flex s-items-center s-gap-1 s-text-sm s-text-foreground dark:s-text-foreground-night">
-            <span className="s-inline-block s-h-2 s-w-2 s-rounded-full s-bg-purple-400" />{" "}
+          <span className="flex items-center gap-1 text-sm text-foreground dark:text-foreground-night">
+            <span className="inline-block h-2 w-2 rounded-full bg-purple-400" />{" "}
             Programmatic Usage
           </span>
-          <span className="s-flex s-items-center s-gap-1 s-text-sm s-text-foreground dark:s-text-foreground-night">
-            <span className="s-inline-block s-h-2 s-w-2 s-rounded-full s-bg-pink-400" />{" "}
+          <span className="flex items-center gap-1 text-sm text-foreground dark:text-foreground-night">
+            <span className="inline-block h-2 w-2 rounded-full bg-pink-400" />{" "}
             Advanced features
           </span>
         </Page.Horizontal>
@@ -3322,16 +3474,16 @@ function UsagePage({
           <DialogHeader>
             <DialogTitle>Invite new users</DialogTitle>
           </DialogHeader>
-          <div className="s-flex s-flex-col s-gap-5 s-px-5 s-py-4">
+          <DialogContainer>
             <Page.Vertical gap="xs">
               <Label>Email addresses</Label>
-              <div className="s-w-full">
+              <div className="w-full">
                 <Input
                   placeholder="Email addresses, comma separated"
                   value={inviteEmails}
                   onChange={(e) => setInviteEmails(e.target.value)}
                   name="invite-emails-usage"
-                  className="s-w-full"
+                  className="w-full"
                 />
               </div>
             </Page.Vertical>
@@ -3343,7 +3495,7 @@ function UsagePage({
                   icon={Users01}
                   isSelect
                   size="sm"
-                  className="s-self-start"
+                  className="self-start"
                 />
               </DropdownMenuTrigger>
               <DropdownMenuContent>
@@ -3372,12 +3524,12 @@ function UsagePage({
               size="sm"
               defaultValue="monthly"
               onValueChange={(v) => setInviteBilling(v as "monthly" | "yearly")}
-              className="s-self-start"
+              className="self-start"
             >
               <ButtonsSwitch value="monthly" label="Monthly" />
               <ButtonsSwitch value="yearly" label="Yearly" />
             </ButtonsSwitchList>
-            <div className="s-flex s-flex-col s-gap-2">
+            <div className="flex flex-col gap-2">
               {(
                 [
                   {
@@ -3412,31 +3564,31 @@ function UsagePage({
                   key={plan.id}
                   type="button"
                   onClick={() => setInvitePlan(plan.id)}
-                  className={`s-w-full s-flex s-items-center s-justify-between s-rounded-xl s-border s-px-4 s-py-3 s-text-left s-transition-colors ${
+                  className={`w-full flex items-center justify-between rounded-xl border px-4 py-3 text-left transition-colors ${
                     invitePlan === plan.id
-                      ? "s-border-highlight-500 s-bg-highlight-50 dark:s-bg-highlight-900/20"
-                      : "s-border-border dark:s-border-border-night hover:s-bg-muted-background dark:hover:s-bg-muted-background-night"
+                      ? "border-highlight-500 bg-highlight-50 dark:bg-highlight-900/20"
+                      : "border-border dark:border-border-night hover:bg-muted-background dark:hover:bg-muted-background-night"
                   }`}
                 >
-                  <div className="s-flex s-items-center s-gap-3">
-                    <plan.Icon className="s-h-5 s-w-5 s-shrink-0 s-text-muted-foreground dark:s-text-muted-foreground-night" />
-                    <div className="s-flex s-flex-col s-gap-0.5">
-                      <span className="s-text-sm s-font-semibold s-text-foreground dark:s-text-foreground-night">
+                  <div className="flex items-center gap-3">
+                    <plan.Icon className="h-5 w-5 shrink-0 text-muted-foreground dark:text-muted-foreground-night" />
+                    <div className="flex flex-col gap-0.5">
+                      <span className="text-sm font-semibold text-foreground dark:text-foreground-night">
                         {plan.label}
                       </span>
-                      <span className="s-text-xs s-text-muted-foreground dark:s-text-muted-foreground-night">
+                      <span className="text-xs text-muted-foreground dark:text-muted-foreground-night">
                         {plan.credits}
                       </span>
                     </div>
                   </div>
-                  <div className="s-flex s-items-center s-gap-2">
+                  <div className="flex items-center gap-2">
                     {plan.available !== null && (
-                      <span className="s-text-xs s-text-muted-foreground dark:s-text-muted-foreground-night">
+                      <span className="text-xs text-muted-foreground dark:text-muted-foreground-night">
                         {plan.available} Available
                       </span>
                     )}
                     {plan.price && (
-                      <span className="s-text-sm s-font-semibold s-text-foreground dark:s-text-foreground-night">
+                      <span className="text-sm font-semibold text-foreground dark:text-foreground-night">
                         {plan.price}
                       </span>
                     )}
@@ -3444,7 +3596,7 @@ function UsagePage({
                 </button>
               ))}
             </div>
-          </div>
+          </DialogContainer>
           <DialogFooter
             leftButtonProps={{
               label: "Cancel",
@@ -3615,9 +3767,9 @@ function SpaceSettingsSheet({
         <SheetHeader>
           <SheetTitle>Space Settings - {name}</SheetTitle>
         </SheetHeader>
-        <div className="s-flex s-w-full s-flex-1 s-flex-col s-gap-5 s-overflow-hidden s-px-6 s-py-4">
+        <div className="flex w-full flex-1 flex-col gap-5 overflow-hidden px-6 py-4">
           {/* Name */}
-          <div className="s-flex s-w-full s-flex-col s-gap-2">
+          <div className="flex w-full flex-col gap-2">
             <Label>Name</Label>
             <Input
               value={spaceName}
@@ -3626,7 +3778,7 @@ function SpaceSettingsSheet({
             <Page.P variant="secondary" size="sm">
               Space name must be unique
             </Page.P>
-            <div className="s-flex s-justify-end">
+            <div className="flex justify-end">
               <Button
                 variant="warning"
                 icon={Trash01}
@@ -3637,9 +3789,9 @@ function SpaceSettingsSheet({
           </div>
           <Page.Separator />
           {/* Restricted Access */}
-          <div className="s-flex s-w-full s-flex-col s-gap-3">
-            <div className="s-flex s-items-center s-justify-between">
-              <span className="s-text-base s-font-semibold s-text-foreground dark:s-text-foreground-night">
+          <div className="flex w-full flex-col gap-3">
+            <div className="flex items-center justify-between">
+              <span className="text-base font-semibold text-foreground dark:text-foreground-night">
                 Restricted Access
               </span>
               <SliderToggle
@@ -3652,7 +3804,7 @@ function SpaceSettingsSheet({
                 <Page.P variant="secondary" size="sm">
                   Restricted access is active.
                 </Page.P>
-                <div className="s-w-fit">
+                <div className="w-fit">
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                       <Button
@@ -3679,24 +3831,24 @@ function SpaceSettingsSheet({
                   </DropdownMenu>
                 </div>
                 {accessMode === "manual" && (
-                  <div className="s-flex s-w-full s-flex-1 s-flex-col s-gap-2 s-overflow-hidden">
+                  <div className="flex w-full flex-1 flex-col gap-2 overflow-hidden">
                     <SearchInput
                       name="space-member-search"
                       placeholder="Search users..."
                       value={memberSearch}
                       onChange={setMemberSearch}
                     />
-                    <div className="s-flex-1 s-overflow-auto">
-                      <table className="s-w-full">
+                    <div className="flex-1 overflow-auto">
+                      <table className="w-full">
                         <thead>
-                          <tr className="s-border-b s-border-border dark:s-border-border-night">
-                            <th className="s-w-8 s-py-2 s-pr-4">
+                          <tr className="border-b border-border dark:border-border-night">
+                            <th className="w-8 py-2 pr-4">
                               <Checkbox
                                 checked={allChecked}
                                 onCheckedChange={toggleAll}
                               />
                             </th>
-                            <th className="s-w-full s-py-2 s-text-left s-text-xs s-font-semibold s-text-foreground dark:s-text-foreground-night">
+                            <th className="w-full py-2 text-left text-xs font-semibold text-foreground dark:text-foreground-night">
                               Name
                             </th>
                           </tr>
@@ -3705,27 +3857,30 @@ function SpaceSettingsSheet({
                           {filteredMembers.map((m) => (
                             <tr
                               key={m.id}
-                              className="s-cursor-pointer s-border-b s-border-border dark:s-border-border-night last:s-border-0 hover:s-bg-muted-background dark:hover:s-bg-muted-background-night"
+                              className="cursor-pointer border-b border-border dark:border-border-night last:border-0 hover:bg-muted-background dark:hover:bg-muted-background-night"
                               onClick={() => toggle(m.id)}
                             >
-                              <td className="s-py-3 s-pr-4">
+                              <td
+                                className="py-3 pr-4"
+                                onClick={(e) => e.stopPropagation()}
+                              >
                                 <Checkbox
                                   checked={selectedMembers.includes(m.id)}
                                   onCheckedChange={() => toggle(m.id)}
                                 />
                               </td>
-                              <td className="s-py-3">
-                                <div className="s-flex s-items-center s-gap-2">
+                              <td className="py-3">
+                                <div className="flex items-center gap-2">
                                   <Avatar
                                     size="sm"
                                     name={m.name}
                                     visual={m.visual}
                                   />
-                                  <div className="s-flex s-flex-col">
-                                    <span className="s-text-sm s-font-medium s-text-foreground dark:s-text-foreground-night">
+                                  <div className="flex flex-col">
+                                    <span className="text-sm font-medium text-foreground dark:text-foreground-night">
                                       {m.name}
                                     </span>
-                                    <span className="s-text-xs s-text-muted-foreground dark:s-text-muted-foreground-night">
+                                    <span className="text-xs text-muted-foreground dark:text-muted-foreground-night">
                                       {m.email}
                                     </span>
                                   </div>
@@ -3739,27 +3894,27 @@ function SpaceSettingsSheet({
                   </div>
                 )}
                 {accessMode === "group" && (
-                  <div className="s-flex s-w-full s-flex-1 s-flex-col s-gap-2 s-overflow-hidden">
+                  <div className="flex w-full flex-1 flex-col gap-2 overflow-hidden">
                     <SearchInput
                       name="space-group-search"
                       placeholder="Search groups..."
                       value={groupSearch}
                       onChange={setGroupSearch}
                     />
-                    <div className="s-flex-1 s-overflow-auto">
-                      <table className="s-w-full">
+                    <div className="flex-1 overflow-auto">
+                      <table className="w-full">
                         <thead>
-                          <tr className="s-border-b s-border-border dark:s-border-border-night">
-                            <th className="s-w-8 s-py-2 s-pr-4">
+                          <tr className="border-b border-border dark:border-border-night">
+                            <th className="w-8 py-2 pr-4">
                               <Checkbox
                                 checked={allGroupsChecked}
                                 onCheckedChange={toggleAllGroups}
                               />
                             </th>
-                            <th className="s-w-full s-py-2 s-text-left s-text-xs s-font-semibold s-text-foreground dark:s-text-foreground-night">
+                            <th className="w-full py-2 text-left text-xs font-semibold text-foreground dark:text-foreground-night">
                               Name
                             </th>
-                            <th className="s-w-28 s-py-2 s-text-left s-text-xs s-font-semibold s-text-foreground dark:s-text-foreground-night">
+                            <th className="w-28 py-2 text-left text-xs font-semibold text-foreground dark:text-foreground-night">
                               Type
                             </th>
                           </tr>
@@ -3768,31 +3923,36 @@ function SpaceSettingsSheet({
                           {filteredGroups.map((g) => (
                             <tr
                               key={g.id}
-                              className="s-cursor-pointer s-border-b s-border-border dark:s-border-border-night last:s-border-0 hover:s-bg-muted-background dark:hover:s-bg-muted-background-night"
+                              className="cursor-pointer border-b border-border dark:border-border-night last:border-0 hover:bg-muted-background dark:hover:bg-muted-background-night"
                               onClick={() => toggleGroup(g.id)}
                             >
-                              <td className="s-py-3 s-pr-4">
+                              <td
+                                className="py-3 pr-4"
+                                onClick={(e) => e.stopPropagation()}
+                              >
                                 <Checkbox
                                   checked={selectedGroupIds.includes(g.id)}
                                   onCheckedChange={() => toggleGroup(g.id)}
                                 />
                               </td>
-                              <td className="s-py-3">
-                                <div className="s-flex s-items-center s-gap-2">
-                                  <Users01 className="s-h-4 s-w-4 s-shrink-0 s-text-muted-foreground dark:s-text-muted-foreground-night" />
-                                  <span className="s-text-sm s-font-semibold s-text-foreground dark:s-text-foreground-night">
+                              <td className="py-3">
+                                <div className="flex items-center gap-2">
+                                  <Users01 className="h-4 w-4 shrink-0 text-muted-foreground dark:text-muted-foreground-night" />
+                                  <span className="text-sm font-semibold text-foreground dark:text-foreground-night">
                                     {g.name}
                                   </span>
-                                  <span className="s-text-sm s-text-muted-foreground dark:s-text-muted-foreground-night">
+                                  <span className="text-sm text-muted-foreground dark:text-muted-foreground-night">
                                     {g.memberCount} members
                                   </span>
                                 </div>
                               </td>
-                              <td className="s-py-3">
+                              <td className="py-3">
                                 <Chip
                                   size="xs"
                                   color={
-                                    g.type === "provisioned" ? "green" : "blue"
+                                    g.type === "provisioned"
+                                      ? "success"
+                                      : "info"
                                   }
                                   label={
                                     g.type === "provisioned"
@@ -3858,18 +4018,18 @@ function SpacePage({
       {
         accessorKey: "name",
         header: "Name",
-        meta: { className: "s-w-full" },
+        meta: { className: "w-full" },
         cell: (info) => {
           const row = info.row.original;
           const Icon = row.icon;
           return (
             <DataTable.CellContent>
-              <div className="s-flex s-items-center s-gap-2">
-                <Icon className="s-h-4 s-w-4 s-shrink-0 s-text-muted-foreground dark:s-text-muted-foreground-night" />
-                <span className="s-font-medium s-text-foreground dark:s-text-foreground-night">
+              <div className="flex items-center gap-2">
+                <Icon className="h-4 w-4 shrink-0 text-muted-foreground dark:text-muted-foreground-night" />
+                <span className="font-medium text-foreground dark:text-foreground-night">
                   {row.name}
                 </span>
-                <span className="s-text-muted-foreground dark:s-text-muted-foreground-night">
+                <span className="text-muted-foreground dark:text-muted-foreground-night">
                   ({row.count})
                 </span>
               </div>
@@ -3880,15 +4040,15 @@ function SpacePage({
       {
         accessorKey: "usedBy",
         header: "Used By",
-        meta: { className: "s-w-40" },
+        meta: { className: "w-40" },
         cell: (info) => {
           const row = info.row.original;
           return (
             <DataTable.CellContent>
-              <div className="s-flex s-items-center s-gap-1.5 s-text-muted-foreground dark:s-text-muted-foreground-night">
-                <Users01 className="s-h-3.5 s-w-3.5 s-shrink-0" />
-                <span className="s-text-sm">{row.usedBy}</span>
-                <ChevronRight className="s-h-3.5 s-w-3.5 s-shrink-0" />
+              <div className="flex items-center gap-1.5 text-muted-foreground dark:text-muted-foreground-night">
+                <Users01 className="h-3.5 w-3.5 shrink-0" />
+                <span className="text-sm">{row.usedBy}</span>
+                <ChevronRight className="h-3.5 w-3.5 shrink-0" />
               </div>
             </DataTable.CellContent>
           );
@@ -3909,12 +4069,12 @@ function SpacePage({
         value={search}
         onChange={setSearch}
       />
-      <div className="s-flex s-items-center s-justify-between">
-        <div className="s-flex s-items-center s-gap-2">
-          <SpaceIcon className="s-h-5 s-w-5 s-text-primary-400 dark:s-text-primary-500" />
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <SpaceIcon className="h-5 w-5 text-primary-400 dark:text-primary-500" />
           <Page.H variant="h3">{name}</Page.H>
         </div>
-        <div className="s-flex s-items-center s-gap-2">
+        <div className="flex items-center gap-2">
           <Button
             icon={Settings01}
             label="Space settings"
@@ -4025,7 +4185,7 @@ function PlaceholderPage({
   return (
     <Page>
       <Page.Header title={title} description={description} icon={icon} />
-      <div className="s-flex s-items-center s-justify-center s-rounded-xl s-border s-border-dashed s-border-border dark:s-border-border-night s-p-12">
+      <div className="flex items-center justify-center rounded-xl border border-dashed border-border dark:border-border-night p-12">
         <Page.P variant="secondary">Content coming soon</Page.P>
       </div>
     </Page>
@@ -4036,8 +4196,8 @@ function LockedSpacePage({ title }: { title: string }) {
   return (
     <Page>
       <Page.Header title={title} icon={Lock01} />
-      <div className="s-flex s-flex-col s-items-center s-justify-center s-gap-3 s-rounded-xl s-border s-border-dashed s-border-border dark:s-border-border-night s-p-12">
-        <Lock01 className="s-h-8 s-w-8 s-text-muted-foreground dark:s-text-muted-foreground-night" />
+      <div className="flex flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-border dark:border-border-night p-12">
+        <Lock01 className="h-8 w-8 text-muted-foreground dark:text-muted-foreground-night" />
         <Page.P variant="secondary" size="sm">
           This section requires Super Admin access.
         </Page.P>
@@ -4069,7 +4229,7 @@ function LineChart({
     return `${x},${y}`;
   });
   return (
-    <svg viewBox={`0 0 ${w} ${height}`} className="s-w-full" style={{ height }}>
+    <svg viewBox={`0 0 ${w} ${height}`} className="w-full" style={{ height }}>
       <polyline
         className="ag-chart-line"
         fill="none"
@@ -4089,26 +4249,26 @@ function DistributionBar({
   segments: { label: string; pct: number; color: string }[];
 }) {
   return (
-    <div className="s-flex s-flex-col s-gap-2">
-      <div className="s-flex s-h-8 s-w-full s-overflow-hidden s-rounded-lg">
+    <div className="flex flex-col gap-2">
+      <div className="flex h-8 w-full overflow-hidden rounded-lg">
         {segments.map((s, i) => (
           <div
             key={i}
             style={{ width: `${s.pct}%`, backgroundColor: s.color }}
-            className="s-flex s-items-center s-justify-center s-text-xs s-font-semibold s-text-white"
+            className="flex items-center justify-center text-xs font-semibold text-white"
           >
             {s.pct}%
           </div>
         ))}
       </div>
-      <div className="s-flex s-flex-wrap s-gap-3">
+      <div className="flex flex-wrap gap-3">
         {segments.map((s, i) => (
-          <div key={i} className="s-flex s-items-center s-gap-1.5">
+          <div key={i} className="flex items-center gap-1.5">
             <div
-              className="s-h-2 s-w-2 s-rounded-full s-shrink-0"
+              className="h-2 w-2 rounded-full shrink-0"
               style={{ backgroundColor: s.color }}
             />
-            <span className="s-text-xs s-text-muted-foreground dark:s-text-muted-foreground-night">
+            <span className="text-xs text-muted-foreground dark:text-muted-foreground-night">
               {s.label}
             </span>
           </div>
@@ -4192,7 +4352,7 @@ function AnalyticsPage() {
 
   return (
     <Page>
-      <div className="s-flex s-items-start s-justify-between">
+      <div className="flex items-start justify-between">
         <Page.Header
           title="Analytics"
           description="Track how your team uses Dust."
@@ -4202,28 +4362,28 @@ function AnalyticsPage() {
       </div>
 
       {/* Stat cards */}
-      <div className="s-flex s-gap-4">
-        <div className="s-flex-1 s-rounded-xl s-border s-border-border dark:s-border-border-night s-p-4">
+      <div className="flex gap-4">
+        <div className="flex-1 rounded-xl border border-border dark:border-border-night p-4">
           <Page.P variant="secondary" size="sm">
             Total members
           </Page.P>
-          <p className="s-text-3xl s-font-semibold s-text-foreground dark:s-text-foreground-night s-mt-1 s-tabular-nums">
+          <p className="text-3xl font-semibold text-foreground dark:text-foreground-night mt-1 tabular-nums">
             1,234
           </p>
         </div>
-        <div className="s-flex-1 s-rounded-xl s-border s-border-border dark:s-border-border-night s-p-4">
+        <div className="flex-1 rounded-xl border border-border dark:border-border-night p-4">
           <Page.P variant="secondary" size="sm">
             Active users (last 30 days)
           </Page.P>
-          <p className="s-text-3xl s-font-semibold s-text-foreground dark:s-text-foreground-night s-mt-1 s-tabular-nums">
+          <p className="text-3xl font-semibold text-foreground dark:text-foreground-night mt-1 tabular-nums">
             456
           </p>
         </div>
       </div>
 
       {/* Activity chart */}
-      <div className="s-rounded-xl s-border s-border-border dark:s-border-border-night s-p-4 s-flex s-flex-col s-gap-3">
-        <div className="s-flex s-items-center s-justify-between">
+      <div className="rounded-xl border border-border dark:border-border-night p-4 flex flex-col gap-3">
+        <div className="flex items-center justify-between">
           <div>
             <Page.H variant="h5">Activity</Page.H>
             <Page.P variant="secondary" size="sm">
@@ -4239,23 +4399,23 @@ function AnalyticsPage() {
             <ButtonsSwitch value="users" label="Users" />
           </ButtonsSwitchList>
         </div>
-        <div className="s-relative">
+        <div className="relative">
           <LineChart data={MESSAGES_DATA} color="#3B82F6" height={120} />
-          <div className="s-absolute s-inset-0 s-pointer-events-none">
+          <div className="absolute inset-0 pointer-events-none">
             <LineChart data={CONV_DATA} color="#10B981" height={120} />
           </div>
         </div>
-        <div className="s-flex s-items-center s-gap-4 s-text-xs s-text-muted-foreground dark:s-text-muted-foreground-night">
-          <span className="s-flex s-items-center s-gap-1">
+        <div className="flex items-center gap-4 text-xs text-muted-foreground dark:text-muted-foreground-night">
+          <span className="flex items-center gap-1">
             <span
-              className="s-h-2 s-w-4 s-rounded-sm s-inline-block"
+              className="h-2 w-4 rounded-sm inline-block"
               style={{ backgroundColor: "#3B82F6" }}
             />{" "}
             Messages
           </span>
-          <span className="s-flex s-items-center s-gap-1">
+          <span className="flex items-center gap-1">
             <span
-              className="s-h-2 s-w-4 s-rounded-sm s-inline-block"
+              className="h-2 w-4 rounded-sm inline-block"
               style={{ backgroundColor: "#10B981" }}
             />{" "}
             Conversations
@@ -4264,7 +4424,7 @@ function AnalyticsPage() {
       </div>
 
       {/* Source */}
-      <div className="s-rounded-xl s-border s-border-border dark:s-border-border-night s-p-4 s-flex s-flex-col s-gap-3">
+      <div className="rounded-xl border border-border dark:border-border-night p-4 flex flex-col gap-3">
         <div>
           <Page.H variant="h5">Source</Page.H>
           <Page.P variant="secondary" size="sm">
@@ -4283,15 +4443,15 @@ function AnalyticsPage() {
       </div>
 
       {/* Tool usage */}
-      <div className="s-rounded-xl s-border s-border-border dark:s-border-border-night s-p-4 s-flex s-flex-col s-gap-3">
-        <div className="s-flex s-items-center s-justify-between">
+      <div className="rounded-xl border border-border dark:border-border-night p-4 flex flex-col gap-3">
+        <div className="flex items-center justify-between">
           <div>
             <Page.H variant="h5">Tool usage</Page.H>
             <Page.P variant="secondary" size="sm">
               Tool usage across your workspace over the last 30 days.
             </Page.P>
           </div>
-          <div className="s-flex s-items-center s-gap-2">
+          <div className="flex items-center gap-2">
             <Button variant="outline" size="xs" label="3 tools" isSelect />
             <ButtonsSwitchList size="xs" defaultValue="executions">
               <ButtonsSwitch value="executions" label="Executions" />
@@ -4299,35 +4459,35 @@ function AnalyticsPage() {
             </ButtonsSwitchList>
           </div>
         </div>
-        <div className="s-relative s-h-28">
-          <div className="s-absolute s-inset-0">
+        <div className="relative h-28">
+          <div className="absolute inset-0">
             <LineChart data={WEBSEARCH_DATA} color="#3B82F6" height={112} />
           </div>
-          <div className="s-absolute s-inset-0">
+          <div className="absolute inset-0">
             <LineChart data={CODEEXEC_DATA} color="#F59E0B" height={112} />
           </div>
-          <div className="s-absolute s-inset-0">
+          <div className="absolute inset-0">
             <LineChart data={FILEREADER_DATA} color="#10B981" height={112} />
           </div>
         </div>
-        <div className="s-flex s-items-center s-gap-4 s-text-xs s-text-muted-foreground dark:s-text-muted-foreground-night">
-          <span className="s-flex s-items-center s-gap-1">
+        <div className="flex items-center gap-4 text-xs text-muted-foreground dark:text-muted-foreground-night">
+          <span className="flex items-center gap-1">
             <span
-              className="s-h-2 s-w-4 s-rounded-sm s-inline-block"
+              className="h-2 w-4 rounded-sm inline-block"
               style={{ backgroundColor: "#3B82F6" }}
             />{" "}
             Web search
           </span>
-          <span className="s-flex s-items-center s-gap-1">
+          <span className="flex items-center gap-1">
             <span
-              className="s-h-2 s-w-4 s-rounded-sm s-inline-block"
+              className="h-2 w-4 rounded-sm inline-block"
               style={{ backgroundColor: "#F59E0B" }}
             />{" "}
             Code exec
           </span>
-          <span className="s-flex s-items-center s-gap-1">
+          <span className="flex items-center gap-1">
             <span
-              className="s-h-2 s-w-4 s-rounded-sm s-inline-block"
+              className="h-2 w-4 rounded-sm inline-block"
               style={{ backgroundColor: "#10B981" }}
             />{" "}
             File reader
@@ -4336,21 +4496,21 @@ function AnalyticsPage() {
       </div>
 
       {/* Top users */}
-      <div className="s-rounded-xl s-border s-border-border dark:s-border-border-night s-p-4 s-flex s-flex-col s-gap-3">
+      <div className="rounded-xl border border-border dark:border-border-night p-4 flex flex-col gap-3">
         <Page.H variant="h5">Top users</Page.H>
         <Page.P variant="secondary" size="sm">
           Top 100 users with the most messages over the last 30 days.
         </Page.P>
-        <table className="s-w-full">
+        <table className="w-full">
           <thead>
-            <tr className="s-border-b s-border-border dark:s-border-border-night">
-              <th className="s-py-2 s-pr-4 s-text-left s-text-xs s-font-semibold s-text-foreground dark:s-text-foreground-night s-w-full">
-                <div className="s-flex s-items-center s-gap-1">User ↓</div>
+            <tr className="border-b border-border dark:border-border-night">
+              <th className="py-2 pr-4 text-left text-xs font-semibold text-foreground dark:text-foreground-night w-full">
+                <div className="flex items-center gap-1">User ↓</div>
               </th>
-              <th className="s-py-2 s-pr-4 s-text-left s-text-xs s-font-semibold s-text-foreground dark:s-text-foreground-night s-w-32">
+              <th className="py-2 pr-4 text-left text-xs font-semibold text-foreground dark:text-foreground-night w-32">
                 Messages
               </th>
-              <th className="s-py-2 s-text-left s-text-xs s-font-semibold s-text-foreground dark:s-text-foreground-night s-w-28">
+              <th className="py-2 text-left text-xs font-semibold text-foreground dark:text-foreground-night w-28">
                 Agent Used
               </th>
             </tr>
@@ -4359,20 +4519,20 @@ function AnalyticsPage() {
             {topUsers.map((u) => (
               <tr
                 key={u.name}
-                className="s-border-b s-border-border dark:s-border-border-night last:s-border-0"
+                className="border-b border-border dark:border-border-night last:border-0"
               >
-                <td className="s-py-3 s-pr-4">
-                  <div className="s-flex s-items-center s-gap-2">
+                <td className="py-3 pr-4">
+                  <div className="flex items-center gap-2">
                     <Avatar size="sm" name={u.name} />
-                    <span className="s-text-sm s-font-medium s-text-foreground dark:s-text-foreground-night">
+                    <span className="text-sm font-medium text-foreground dark:text-foreground-night">
                       {u.name}
                     </span>
                   </div>
                 </td>
-                <td className="s-py-3 s-pr-4 s-text-sm s-text-foreground dark:s-text-foreground-night">
+                <td className="py-3 pr-4 text-sm text-foreground dark:text-foreground-night">
                   {u.messages}
                 </td>
-                <td className="s-py-3 s-text-sm s-text-foreground dark:s-text-foreground-night">
+                <td className="py-3 text-sm text-foreground dark:text-foreground-night">
                   {u.agents}
                 </td>
               </tr>
@@ -4382,7 +4542,7 @@ function AnalyticsPage() {
       </div>
 
       {/* Spend distribution */}
-      <div className="s-rounded-xl s-border s-border-border dark:s-border-border-night s-p-4 s-flex s-flex-col s-gap-3">
+      <div className="rounded-xl border border-border dark:border-border-night p-4 flex flex-col gap-3">
         <Page.H variant="h5">Spend distribution by model</Page.H>
         <Page.P variant="secondary" size="sm">
           How your credit pool is distributed across models.
@@ -4400,24 +4560,24 @@ function AnalyticsPage() {
       </div>
 
       {/* Top agents */}
-      <div className="s-rounded-xl s-border s-border-border dark:s-border-border-night s-p-4 s-flex s-flex-col s-gap-3">
+      <div className="rounded-xl border border-border dark:border-border-night p-4 flex flex-col gap-3">
         <Page.H variant="h5">Top agents</Page.H>
         <Page.P variant="secondary" size="sm">
           Top 100 agents with the most messages over the last 30 days.
         </Page.P>
-        <table className="s-w-full">
+        <table className="w-full">
           <thead>
-            <tr className="s-border-b s-border-border dark:s-border-border-night">
-              <th className="s-py-2 s-pr-4 s-text-left s-text-xs s-font-semibold s-text-foreground dark:s-text-foreground-night s-w-full">
+            <tr className="border-b border-border dark:border-border-night">
+              <th className="py-2 pr-4 text-left text-xs font-semibold text-foreground dark:text-foreground-night w-full">
                 User ↓
               </th>
-              <th className="s-py-2 s-pr-4 s-text-left s-text-xs s-font-semibold s-text-foreground dark:s-text-foreground-night s-w-28">
+              <th className="py-2 pr-4 text-left text-xs font-semibold text-foreground dark:text-foreground-night w-28">
                 Messages
               </th>
-              <th className="s-py-2 s-pr-4 s-text-left s-text-xs s-font-semibold s-text-foreground dark:s-text-foreground-night s-w-20">
+              <th className="py-2 pr-4 text-left text-xs font-semibold text-foreground dark:text-foreground-night w-20">
                 Users
               </th>
-              <th className="s-py-2 s-text-left s-text-xs s-font-semibold s-text-foreground dark:s-text-foreground-night s-w-40">
+              <th className="py-2 text-left text-xs font-semibold text-foreground dark:text-foreground-night w-40">
                 Model
               </th>
             </tr>
@@ -4426,23 +4586,23 @@ function AnalyticsPage() {
             {topAgents.map((a) => (
               <tr
                 key={a.name}
-                className="s-border-b s-border-border dark:s-border-border-night last:s-border-0"
+                className="border-b border-border dark:border-border-night last:border-0"
               >
-                <td className="s-py-3 s-pr-4">
-                  <div className="s-flex s-items-center s-gap-2">
-                    <span className="s-text-lg">{a.icon}</span>
-                    <span className="s-text-sm s-font-medium s-text-foreground dark:s-text-foreground-night">
+                <td className="py-3 pr-4">
+                  <div className="flex items-center gap-2">
+                    <span className="text-lg">{a.icon}</span>
+                    <span className="text-sm font-medium text-foreground dark:text-foreground-night">
                       {a.name}
                     </span>
                   </div>
                 </td>
-                <td className="s-py-3 s-pr-4 s-text-sm s-text-foreground dark:s-text-foreground-night">
+                <td className="py-3 pr-4 text-sm text-foreground dark:text-foreground-night">
                   {a.messages}
                 </td>
-                <td className="s-py-3 s-pr-4 s-text-sm s-text-foreground dark:s-text-foreground-night">
+                <td className="py-3 pr-4 text-sm text-foreground dark:text-foreground-night">
                   {a.users}
                 </td>
-                <td className="s-py-3 s-text-sm s-text-muted-foreground dark:s-text-muted-foreground-night">
+                <td className="py-3 text-sm text-muted-foreground dark:text-muted-foreground-night">
                   {a.model}
                 </td>
               </tr>
@@ -4689,9 +4849,9 @@ function SpacesSidebarNav({
   role: Role;
 }) {
   return (
-    <ScrollArea className="s-flex-1">
+    <ScrollArea className="flex-1">
       <ScrollBar orientation="vertical" size="minimal" />
-      <NavigationList className="s-px-2 s-py-2">
+      <NavigationList className="px-2 py-2">
         <NavigationListCollapsibleSection label="Administration" defaultOpen>
           {(
             [
@@ -4712,7 +4872,7 @@ function SpacesSidebarNav({
             return (
               <div
                 key={item.label}
-                className={locked ? "s-opacity-40" : undefined}
+                className={locked ? "opacity-40" : undefined}
               >
                 <NavigationListItem
                   icon={locked ? Lock01 : item.icon}
@@ -4748,7 +4908,7 @@ function SpacesSidebarNav({
           ))}
           {role === "super_admin" &&
             RESTRICTED_SPACES_NO_ACCESS.map((s) => (
-              <div key={s} className="s-opacity-50">
+              <div key={s} className="opacity-50">
                 <NavigationListItem
                   icon={Lock01}
                   label={s}
@@ -4817,9 +4977,9 @@ function ManageConnectionSheet({
         <SheetHeader>
           <SheetTitle>Manage {connection.name} connection</SheetTitle>
         </SheetHeader>
-        <div className="s-flex s-flex-col s-gap-6 s-px-6 s-py-4 s-flex-1 s-overflow-auto">
+        <div className="flex flex-col gap-6 px-6 py-4 flex-1 overflow-auto">
           {/* Edit / Delete */}
-          <div className="s-flex s-gap-2">
+          <div className="flex gap-2">
             <Button variant="outline" size="sm" label="Edit connection" />
             <Button variant="warning" size="sm" label="Delete connection" />
           </div>
@@ -4827,12 +4987,12 @@ function ManageConnectionSheet({
           {/* Connection options */}
           <Page.Vertical gap="sm">
             <Page.SectionHeader title="Connection options" />
-            <div className="s-flex s-w-full s-items-center s-justify-between s-rounded-xl s-border s-border-border dark:s-border-border-night s-p-4">
-              <div className="s-flex s-flex-col s-gap-0.5">
-                <span className="s-text-sm s-font-semibold s-text-foreground dark:s-text-foreground-night">
+            <div className="flex w-full items-center justify-between rounded-xl border border-border dark:border-border-night p-4">
+              <div className="flex flex-col gap-0.5">
+                <span className="text-sm font-semibold text-foreground dark:text-foreground-night">
                   Use descriptions
                 </span>
-                <span className="s-text-xs s-text-muted-foreground dark:s-text-muted-foreground-night">
+                <span className="text-xs text-muted-foreground dark:text-muted-foreground-night">
                   Your tables and columns description set in {connection.name}{" "}
                   will be used to describe the schemas to Agents.
                 </span>
@@ -4853,14 +5013,14 @@ function ManageConnectionSheet({
                 placeholder="Search by name or email"
                 value={delegateSearch}
                 onChange={setDelegateSearch}
-                className="s-w-full"
+                className="w-full"
               />
               {filteredAdmins.length === 0 ? (
-                <p className="s-text-sm s-text-muted-foreground dark:s-text-muted-foreground-night s-py-2">
+                <p className="text-sm text-muted-foreground dark:text-muted-foreground-night py-2">
                   No managers found
                 </p>
               ) : (
-                <ListGroup className="s-w-full">
+                <ListGroup className="w-full">
                   {filteredAdmins.map((m, i) => (
                     <ListItem
                       key={m.id}
@@ -4868,21 +5028,23 @@ function ManageConnectionSheet({
                       hasSeparator={i < filteredAdmins.length - 1}
                       itemsAlignment="center"
                     >
-                      <Checkbox
-                        checked={selectedIds.includes(m.id)}
-                        onCheckedChange={() => toggle(m.id)}
-                      />
+                      <span onClick={(e) => e.stopPropagation()}>
+                        <Checkbox
+                          checked={selectedIds.includes(m.id)}
+                          onCheckedChange={() => toggle(m.id)}
+                        />
+                      </span>
                       <Avatar
                         size="sm"
                         name={m.name}
                         visual={m.visual}
                         isRounded
                       />
-                      <div className="s-flex s-min-w-0 s-flex-1 s-flex-col">
-                        <span className="s-text-sm s-font-semibold s-text-foreground dark:s-text-foreground-night">
+                      <div className="flex min-w-0 flex-1 flex-col">
+                        <span className="text-sm font-semibold text-foreground dark:text-foreground-night">
                           {m.name}
                         </span>
-                        <span className="s-text-xs s-text-muted-foreground dark:s-text-muted-foreground-night">
+                        <span className="text-xs text-muted-foreground dark:text-muted-foreground-night">
                           {m.email}
                         </span>
                       </div>
@@ -4901,14 +5063,11 @@ function ManageConnectionSheet({
           {/* Select tables */}
           <Page.Vertical gap="sm">
             <Page.SectionHeader title="Select tables" />
-            <div className="s-w-full s-rounded-xl s-border s-border-border dark:s-border-border-night s-divide-y s-divide-border dark:s-divide-border-night">
+            <div className="w-full rounded-xl border border-border dark:border-border-night divide-y divide-border dark:divide-border-night">
               {["or1g1n-186209", "dust-dev"].map((table, i) => (
-                <div
-                  key={table}
-                  className="s-flex s-items-center s-gap-3 s-px-4 s-py-3"
-                >
+                <div key={table} className="flex items-center gap-3 px-4 py-3">
                   <Checkbox checked={i === 1} onCheckedChange={() => {}} />
-                  <span className="s-text-sm s-text-foreground dark:s-text-foreground-night">
+                  <span className="text-sm text-foreground dark:text-foreground-night">
                     {table}
                   </span>
                 </div>
@@ -4954,17 +5113,17 @@ function ConnectionsPage({
       {
         accessorKey: "name",
         header: "Name",
-        meta: { className: "s-w-full" },
+        meta: { className: "w-full" },
         cell: (info) => {
           const row = info.row.original;
           const Logo = row.logo;
           return (
             <DataTable.CellContent>
-              <div className="s-flex s-items-center s-gap-3">
-                <div className="s-h-6 s-w-6 s-shrink-0">
-                  <Logo className="s-h-6 s-w-6" />
+              <div className="flex items-center gap-3">
+                <div className="h-6 w-6 shrink-0">
+                  <Logo className="h-6 w-6" />
                 </div>
-                <span className="s-font-semibold s-text-foreground dark:s-text-foreground-night">
+                <span className="font-semibold text-foreground dark:text-foreground-night">
                   {row.name}
                 </span>
               </div>
@@ -4975,12 +5134,12 @@ function ConnectionsPage({
       {
         accessorKey: "usedBy",
         header: "Used By",
-        meta: { className: "s-w-28" },
+        meta: { className: "w-28" },
         cell: (info) => {
           return (
             <DataTable.CellContent>
-              <div className="s-flex s-items-center s-gap-1 s-text-muted-foreground dark:s-text-muted-foreground-night">
-                <Users01 className="s-h-3.5 s-w-3.5" />
+              <div className="flex items-center gap-1 text-muted-foreground dark:text-muted-foreground-night">
+                <Users01 className="h-3.5 w-3.5" />
                 <span>{info.getValue() as number}</span>
               </div>
             </DataTable.CellContent>
@@ -4990,7 +5149,7 @@ function ConnectionsPage({
       {
         accessorKey: "managedByAvatar",
         header: "Managed By",
-        meta: { className: "s-w-28" },
+        meta: { className: "w-28" },
         cell: (info) => {
           return (
             <DataTable.CellContent>
@@ -5002,11 +5161,11 @@ function ConnectionsPage({
       {
         accessorKey: "lastSync",
         header: "Last Sync",
-        meta: { className: "s-w-32" },
+        meta: { className: "w-32" },
         cell: (info) => {
           return (
             <DataTable.CellContent>
-              <span className="s-text-muted-foreground dark:s-text-muted-foreground-night s-whitespace-nowrap">
+              <span className="text-muted-foreground dark:text-muted-foreground-night whitespace-nowrap">
                 {info.getValue() as string}
               </span>
             </DataTable.CellContent>
@@ -5016,7 +5175,7 @@ function ConnectionsPage({
       {
         id: "action",
         header: "",
-        meta: { className: "s-w-36" },
+        meta: { className: "w-36" },
         cell: (info: { row: { original: ConnectionRow } }) => {
           const row = info.row.original;
           return (
@@ -5062,9 +5221,9 @@ function ConnectionsPage({
     }));
 
   return (
-    <div className="s-flex s-flex-col s-h-full">
+    <div className="flex flex-col h-full">
       <Page>
-        <div className="s-w-full">
+        <div className="w-full">
           <SearchInput
             name="search-connections"
             placeholder="Search in Connections"
@@ -5072,15 +5231,15 @@ function ConnectionsPage({
             onChange={setSearch}
           />
         </div>
-        <div className="s-flex s-w-full s-items-center s-justify-between">
-          <div className="s-flex s-items-center s-gap-2">
-            <CloudArrowLeftRight className="s-h-4 s-w-4 s-text-foreground dark:s-text-foreground-night" />
-            <span className="s-heading-base s-text-foreground dark:s-text-foreground-night">
+        <div className="flex w-full items-center justify-between">
+          <div className="flex items-center gap-2">
+            <CloudArrowLeftRight className="h-4 w-4 text-foreground dark:text-foreground-night" />
+            <span className="heading-base text-foreground dark:text-foreground-night">
               Connections
             </span>
           </div>
         </div>
-        <DataTable data={rows} columns={columns} className="s-w-full" />
+        <DataTable data={rows} columns={columns} className="w-full" />
       </Page>
 
       {/* Configure Connection Sheet */}
@@ -5096,23 +5255,23 @@ function ConnectionsPage({
               Configure{configureTarget ? ` ${configureTarget.name}` : ""}
             </SheetTitle>
           </SheetHeader>
-          <div className="s-flex s-flex-col s-gap-5 s-px-6 s-py-4">
+          <div className="flex flex-col gap-5 px-6 py-4">
             {configureTarget && (
-              <div className="s-flex s-items-center s-gap-3 s-rounded-xl s-bg-muted-background dark:s-bg-muted-background-night s-p-4">
-                <configureTarget.logo className="s-h-8 s-w-8 s-shrink-0" />
-                <div className="s-flex s-flex-col">
-                  <span className="s-heading-sm s-text-foreground dark:s-text-foreground-night">
+              <div className="flex items-center gap-3 rounded-xl bg-muted-background dark:bg-muted-background-night p-4">
+                <configureTarget.logo className="h-8 w-8 shrink-0" />
+                <div className="flex flex-col">
+                  <span className="heading-sm text-foreground dark:text-foreground-night">
                     {configureTarget.name}
                   </span>
-                  <span className="s-text-sm s-text-muted-foreground dark:s-text-muted-foreground-night">
+                  <span className="text-sm text-muted-foreground dark:text-muted-foreground-night">
                     Not configured yet
                   </span>
                 </div>
               </div>
             )}
-            <div className="s-flex s-items-start s-justify-between s-gap-4 s-rounded-xl s-border s-border-border dark:s-border-border-night s-p-4">
-              <div className="s-flex s-flex-col s-gap-1">
-                <span className="s-text-sm s-font-semibold s-text-foreground dark:s-text-foreground-night">
+            <div className="flex items-start justify-between gap-4 rounded-xl border border-border dark:border-border-night p-4">
+              <div className="flex flex-col gap-1">
+                <span className="text-sm font-semibold text-foreground dark:text-foreground-night">
                   Set up yourself
                 </span>
                 <Page.P variant="secondary" size="sm">
@@ -5191,12 +5350,12 @@ function ConnectionDetailPage({
       {
         accessorKey: "name",
         header: "Name",
-        meta: { className: "s-w-full" },
+        meta: { className: "w-full" },
         cell: (info) => (
           <DataTable.CellContent>
-            <div className="s-flex s-items-center s-gap-2">
-              <Folder className="s-h-4 s-w-4 s-text-muted-foreground dark:s-text-muted-foreground-night" />
-              <span className="s-font-medium s-text-foreground dark:s-text-foreground-night">
+            <div className="flex items-center gap-2">
+              <Folder className="h-4 w-4 text-muted-foreground dark:text-muted-foreground-night" />
+              <span className="font-medium text-foreground dark:text-foreground-night">
                 {info.getValue() as string}
               </span>
             </div>
@@ -5206,10 +5365,10 @@ function ConnectionDetailPage({
       {
         accessorKey: "lastUpdated",
         header: "Last Updated",
-        meta: { className: "s-w-40" },
+        meta: { className: "w-40" },
         cell: (info) => (
           <DataTable.CellContent>
-            <span className="s-text-muted-foreground dark:s-text-muted-foreground-night">
+            <span className="text-muted-foreground dark:text-muted-foreground-night">
               {info.getValue() as string}
             </span>
           </DataTable.CellContent>
@@ -5223,22 +5382,22 @@ function ConnectionDetailPage({
     <>
       <Page>
         {/* Breadcrumb */}
-        <div className="s-flex s-items-center s-gap-1.5 s-text-sm s-text-muted-foreground dark:s-text-muted-foreground-night">
+        <div className="flex items-center gap-1.5 text-sm text-muted-foreground dark:text-muted-foreground-night">
           <button
             type="button"
-            className="s-hover:underline s-cursor-pointer"
+            className="hover:underline cursor-pointer"
             onClick={onBack}
           >
             Connections
           </button>
           <span>/</span>
-          <div className="s-flex s-items-center s-gap-1.5 s-font-medium s-text-foreground dark:s-text-foreground-night">
-            <Logo className="s-h-4 s-w-4" />
+          <div className="flex items-center gap-1.5 font-medium text-foreground dark:text-foreground-night">
+            <Logo className="h-4 w-4" />
             <span>{connection.name}</span>
           </div>
         </div>
 
-        <div className="s-flex s-items-center s-justify-between">
+        <div className="flex items-center justify-between">
           <Page.SectionHeader title={connection.name} />
           {canManage && (
             <Button
@@ -5251,11 +5410,7 @@ function ConnectionDetailPage({
           )}
         </div>
 
-        <DataTable
-          data={folders}
-          columns={folderColumns}
-          className="s-w-full"
-        />
+        <DataTable data={folders} columns={folderColumns} className="w-full" />
       </Page>
       <ManageConnectionSheet
         connection={managingConn}
@@ -5416,21 +5571,21 @@ function ToolsPage({ role }: { role: Role }) {
       {
         accessorKey: "name",
         header: "Name",
-        meta: { className: "s-w-full" },
+        meta: { className: "w-full" },
         cell: (info) => {
           const row = info.row.original;
           return (
             <DataTable.CellContent>
-              <div className="s-flex s-items-center s-gap-3">
+              <div className="flex items-center gap-3">
                 <div
-                  className="s-flex s-h-6 s-w-6 s-shrink-0 s-items-center s-justify-center s-rounded-md s-text-white s-text-xs"
+                  className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-white text-xs"
                   style={{ backgroundColor: row.color }}
                 />
-                <div className="s-flex s-min-w-0 s-flex-col">
-                  <span className="s-text-sm s-font-semibold s-text-foreground dark:s-text-foreground-night">
+                <div className="flex min-w-0 flex-col">
+                  <span className="text-sm font-semibold text-foreground dark:text-foreground-night">
                     {row.name}
                   </span>
-                  <span className="s-truncate s-text-xs s-text-muted-foreground dark:s-text-muted-foreground-night">
+                  <span className="truncate text-xs text-muted-foreground dark:text-muted-foreground-night">
                     {row.description}
                   </span>
                 </div>
@@ -5442,11 +5597,11 @@ function ToolsPage({ role }: { role: Role }) {
       {
         accessorKey: "usedBy",
         header: "Used By",
-        meta: { className: "s-w-28" },
+        meta: { className: "w-28" },
         cell: (info) => (
           <DataTable.CellContent>
-            <div className="s-flex s-items-center s-gap-1 s-text-sm s-text-muted-foreground dark:s-text-muted-foreground-night">
-              <Users01 className="s-h-4 s-w-4" />
+            <div className="flex items-center gap-1 text-sm text-muted-foreground dark:text-muted-foreground-night">
+              <Users01 className="h-4 w-4" />
               <span>{info.getValue() as number}</span>
             </div>
           </DataTable.CellContent>
@@ -5455,10 +5610,10 @@ function ToolsPage({ role }: { role: Role }) {
       {
         accessorKey: "availability",
         header: "Availability",
-        meta: { className: "s-w-32" },
+        meta: { className: "w-32" },
         cell: (info) => (
           <DataTable.CellContent>
-            <span className="s-text-sm s-text-muted-foreground dark:s-text-muted-foreground-night">
+            <span className="text-sm text-muted-foreground dark:text-muted-foreground-night">
               {info.getValue() as string}
             </span>
           </DataTable.CellContent>
@@ -5467,10 +5622,10 @@ function ToolsPage({ role }: { role: Role }) {
       {
         accessorKey: "account",
         header: "Account",
-        meta: { className: "s-w-40" },
+        meta: { className: "w-40" },
         cell: (info) => (
           <DataTable.CellContent>
-            <span className="s-text-sm s-text-muted-foreground dark:s-text-muted-foreground-night">
+            <span className="text-sm text-muted-foreground dark:text-muted-foreground-night">
               {(info.getValue() as string | undefined) ?? ""}
             </span>
           </DataTable.CellContent>
@@ -5479,7 +5634,7 @@ function ToolsPage({ role }: { role: Role }) {
       {
         accessorKey: "byName",
         header: "By",
-        meta: { className: "s-w-12" },
+        meta: { className: "w-12" },
         cell: (info) => {
           const row = info.row.original;
           return (
@@ -5497,10 +5652,10 @@ function ToolsPage({ role }: { role: Role }) {
       {
         accessorKey: "lastUpdated",
         header: "Last Updated",
-        meta: { className: "s-w-32" },
+        meta: { className: "w-32" },
         cell: (info) => (
           <DataTable.CellContent>
-            <span className="s-text-sm s-text-muted-foreground dark:s-text-muted-foreground-night">
+            <span className="text-sm text-muted-foreground dark:text-muted-foreground-night">
               {info.getValue() as string}
             </span>
           </DataTable.CellContent>
@@ -5512,7 +5667,7 @@ function ToolsPage({ role }: { role: Role }) {
   const canAddMcp = role === "super_admin" || role === "admin";
   return (
     <Page>
-      <div className="s-w-full">
+      <div className="w-full">
         <SearchInput
           name="search-tools"
           placeholder="Search in Tools"
@@ -5520,10 +5675,10 @@ function ToolsPage({ role }: { role: Role }) {
           onChange={setSearch}
         />
       </div>
-      <div className="s-flex s-w-full s-items-center s-justify-between">
-        <div className="s-flex s-items-center s-gap-2">
-          <ShapesPlus className="s-h-4 s-w-4 s-text-foreground dark:s-text-foreground-night" />
-          <span className="s-heading-base s-text-foreground dark:s-text-foreground-night">
+      <div className="flex w-full items-center justify-between">
+        <div className="flex items-center gap-2">
+          <ShapesPlus className="h-4 w-4 text-foreground dark:text-foreground-night" />
+          <span className="heading-base text-foreground dark:text-foreground-night">
             Tools
           </span>
         </div>
@@ -5537,10 +5692,10 @@ function ToolsPage({ role }: { role: Role }) {
           </DropdownMenuTrigger>
           <DropdownMenuContent
             align="end"
-            className="s-w-[420px]"
+            className="w-[420px]"
             dropdownHeaders={
-              <div className="s-flex s-items-center s-gap-2 s-p-2 s-border-b s-border-border dark:s-border-border-night">
-                <div className="s-flex-1">
+              <div className="flex items-center gap-2 p-2 border-b border-border dark:border-border-night">
+                <div className="flex-1">
                   <SearchInput
                     name="tools-search"
                     placeholder="Search tools..."
@@ -5568,12 +5723,12 @@ function ToolsPage({ role }: { role: Role }) {
                 key={tool.name}
                 label={tool.name}
                 icon={
-                  <div className="s-flex s-h-10 s-w-10 s-shrink-0 s-items-center s-justify-center s-overflow-hidden s-rounded-xl s-border s-border-border dark:s-border-border-night">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-border dark:border-border-night">
                     {tool.logo ? (
-                      <tool.logo className="s-h-8 s-w-8" />
+                      <tool.logo className="h-8 w-8" />
                     ) : (
                       <div
-                        className="s-h-10 s-w-10 s-rounded-xl"
+                        className="h-10 w-10 rounded-xl"
                         style={{ backgroundColor: tool.color ?? "#888" }}
                       />
                     )}
@@ -5582,7 +5737,7 @@ function ToolsPage({ role }: { role: Role }) {
               />
             ))}
             {filteredAddTools.length === 0 && (
-              <div className="s-px-3 s-py-4 s-text-center s-text-sm s-text-muted-foreground dark:s-text-muted-foreground-night">
+              <div className="px-3 py-4 text-center text-sm text-muted-foreground dark:text-muted-foreground-night">
                 No tools found
               </div>
             )}
@@ -5687,7 +5842,7 @@ function TriggersPage({ role }: { role: Role }) {
       {
         accessorKey: "name",
         header: "Name",
-        meta: { className: "s-w-full" },
+        meta: { className: "w-full" },
         cell: (info) => {
           const row = info.row.original;
           const ProviderLogo =
@@ -5698,20 +5853,20 @@ function TriggersPage({ role }: { role: Role }) {
                 : null;
           return (
             <DataTable.CellContent>
-              <div className="s-flex s-items-center s-gap-3">
-                <div className="s-flex s-h-6 s-w-6 s-shrink-0 s-items-center s-justify-center s-rounded-full s-border s-border-border dark:s-border-border-night s-bg-muted-background dark:s-bg-muted-background-night">
+              <div className="flex items-center gap-3">
+                <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-border dark:border-border-night bg-muted-background dark:bg-muted-background-night">
                   {ProviderLogo ? (
-                    <ProviderLogo className="s-h-4 s-w-4" />
+                    <ProviderLogo className="h-4 w-4" />
                   ) : (
-                    <Globe01 className="s-h-3.5 s-w-3.5 s-text-muted-foreground dark:s-text-muted-foreground-night" />
+                    <Globe01 className="h-3.5 w-3.5 text-muted-foreground dark:text-muted-foreground-night" />
                   )}
                 </div>
-                <div className="s-flex s-min-w-0 s-flex-col">
-                  <span className="s-text-sm s-font-semibold s-text-foreground dark:s-text-foreground-night">
+                <div className="flex min-w-0 flex-col">
+                  <span className="text-sm font-semibold text-foreground dark:text-foreground-night">
                     {row.name}
                   </span>
                   {row.description && (
-                    <span className="s-truncate s-text-xs s-text-muted-foreground dark:s-text-muted-foreground-night">
+                    <span className="truncate text-xs text-muted-foreground dark:text-muted-foreground-night">
                       {row.description}
                     </span>
                   )}
@@ -5724,10 +5879,10 @@ function TriggersPage({ role }: { role: Role }) {
       {
         accessorKey: "provider",
         header: "Provider",
-        meta: { className: "s-w-24" },
+        meta: { className: "w-24" },
         cell: (info) => (
           <DataTable.CellContent>
-            <span className="s-text-sm s-text-muted-foreground dark:s-text-muted-foreground-night">
+            <span className="text-sm text-muted-foreground dark:text-muted-foreground-night">
               {info.getValue() as string}
             </span>
           </DataTable.CellContent>
@@ -5736,11 +5891,11 @@ function TriggersPage({ role }: { role: Role }) {
       {
         accessorKey: "usedBy",
         header: "Used By",
-        meta: { className: "s-w-24" },
+        meta: { className: "w-24" },
         cell: (info) => (
           <DataTable.CellContent>
-            <div className="s-flex s-items-center s-gap-1 s-text-sm s-text-muted-foreground dark:s-text-muted-foreground-night">
-              <Users01 className="s-h-4 s-w-4" />
+            <div className="flex items-center gap-1 text-sm text-muted-foreground dark:text-muted-foreground-night">
+              <Users01 className="h-4 w-4" />
               <span>{info.getValue() as number}</span>
             </div>
           </DataTable.CellContent>
@@ -5749,10 +5904,10 @@ function TriggersPage({ role }: { role: Role }) {
       {
         accessorKey: "access",
         header: "Access",
-        meta: { className: "s-w-32" },
+        meta: { className: "w-32" },
         cell: (info) => (
           <DataTable.CellContent>
-            <span className="s-text-sm s-text-muted-foreground dark:s-text-muted-foreground-night">
+            <span className="text-sm text-muted-foreground dark:text-muted-foreground-night">
               {info.getValue() as string}
             </span>
           </DataTable.CellContent>
@@ -5761,7 +5916,7 @@ function TriggersPage({ role }: { role: Role }) {
       {
         accessorKey: "byName",
         header: "By",
-        meta: { className: "s-w-12" },
+        meta: { className: "w-12" },
         cell: (info) => {
           const row = info.row.original;
           return (
@@ -5779,10 +5934,10 @@ function TriggersPage({ role }: { role: Role }) {
       {
         accessorKey: "lastUpdated",
         header: "Last Updated",
-        meta: { className: "s-w-32" },
+        meta: { className: "w-32" },
         cell: (info) => (
           <DataTable.CellContent>
-            <span className="s-text-sm s-text-muted-foreground dark:s-text-muted-foreground-night">
+            <span className="text-sm text-muted-foreground dark:text-muted-foreground-night">
               {info.getValue() as string}
             </span>
           </DataTable.CellContent>
@@ -5793,7 +5948,7 @@ function TriggersPage({ role }: { role: Role }) {
   );
   return (
     <Page>
-      <div className="s-w-full">
+      <div className="w-full">
         <SearchInput
           name="search-triggers"
           placeholder="Search in Triggers"
@@ -5801,10 +5956,10 @@ function TriggersPage({ role }: { role: Role }) {
           onChange={setSearch}
         />
       </div>
-      <div className="s-flex s-w-full s-items-center s-justify-between">
-        <div className="s-flex s-items-center s-gap-2">
-          <Lightning01 className="s-h-4 s-w-4 s-text-foreground dark:s-text-foreground-night" />
-          <span className="s-heading-base s-text-foreground dark:s-text-foreground-night">
+      <div className="flex w-full items-center justify-between">
+        <div className="flex items-center gap-2">
+          <Lightning01 className="h-4 w-4 text-foreground dark:text-foreground-night" />
+          <span className="heading-base text-foreground dark:text-foreground-night">
             Triggers
           </span>
         </div>
@@ -5846,9 +6001,9 @@ function TriggersPage({ role }: { role: Role }) {
 function LockedPage({ pageLabel, role }: { pageLabel: string; role: Role }) {
   return (
     <Page>
-      <div className="s-flex s-flex-col s-items-center s-justify-center s-py-24 s-text-center s-gap-5 s-max-w-sm s-mx-auto">
-        <div className="s-rounded-full s-bg-muted-background dark:s-bg-muted-background-night s-p-5">
-          <Lock01 className="s-h-8 s-w-8 s-text-muted-foreground dark:s-text-muted-foreground-night" />
+      <div className="flex flex-col items-center justify-center py-24 text-center gap-5 max-w-sm mx-auto">
+        <div className="rounded-full bg-muted-background dark:bg-muted-background-night p-5">
+          <Lock01 className="h-8 w-8 text-muted-foreground dark:text-muted-foreground-night" />
         </div>
         <Page.Vertical gap="xs" align="center">
           <Page.H variant="h4">{pageLabel} is managed by Super Admin</Page.H>
@@ -5923,20 +6078,64 @@ export default function AdminGovernanceV2() {
   const [groups, setGroups] = useState<GroupRow[]>(GROUPS);
   const [createGroupOpen, setCreateGroupOpen] = useState(false);
   const [newGroupName, setNewGroupName] = useState("");
+  const [newGroupSearch, setNewGroupSearch] = useState("");
+  const [newGroupSelected, setNewGroupSelected] = useState<string[]>([]);
+  const pendingGroupCallback = useRef<((group: GroupRow) => void) | null>(null);
+  const newGroupFiltered = members.filter(
+    (m) =>
+      !newGroupSearch ||
+      m.name.toLowerCase().includes(newGroupSearch.toLowerCase()) ||
+      m.email.toLowerCase().includes(newGroupSearch.toLowerCase())
+  );
+  const newGroupAllChecked =
+    newGroupFiltered.length > 0 &&
+    newGroupFiltered.every((m) => newGroupSelected.includes(m.id));
+  const toggleNewGroupMember = (id: string) =>
+    setNewGroupSelected((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
+    );
+  const toggleAllNewGroup = () =>
+    setNewGroupSelected(
+      newGroupAllChecked
+        ? newGroupSelected.filter(
+            (id) => !newGroupFiltered.some((m) => m.id === id)
+          )
+        : [
+            ...new Set([
+              ...newGroupSelected,
+              ...newGroupFiltered.map((m) => m.id),
+            ]),
+          ]
+    );
+  const resetCreateGroup = () => {
+    setNewGroupName("");
+    setNewGroupSearch("");
+    setNewGroupSelected([]);
+  };
   const handleCreateGroup = () => {
     if (!newGroupName.trim()) return;
-    setGroups([
-      ...groups,
-      {
-        id: `g${Date.now()}`,
-        name: newGroupName.trim(),
-        memberCount: 0,
-        type: "manual" as const,
-      },
-    ]);
-    setNewGroupName("");
+    const newGroup: GroupRow = {
+      id: `g${Date.now()}`,
+      name: newGroupName.trim(),
+      memberCount: newGroupSelected.length,
+      type: "manual",
+    };
+    setGroups([...groups, newGroup]);
+    pendingGroupCallback.current?.(newGroup);
+    pendingGroupCallback.current = null;
+    resetCreateGroup();
     setCreateGroupOpen(false);
   };
+  const handleCloseCreateGroup = () => {
+    pendingGroupCallback.current = null;
+    resetCreateGroup();
+    setCreateGroupOpen(false);
+  };
+  const openCreateGroup = (onCreated?: (group: GroupRow) => void) => {
+    pendingGroupCallback.current = onCreated ?? null;
+    setCreateGroupOpen(true);
+  };
+  const [auditLogsEnabled, setAuditLogsEnabled] = useState(true);
   const [governance, setGovernance] =
     useState<GovernanceSetting[]>(INITIAL_GOVERNANCE);
   const [frameSharing, setFrameSharing] = useState<FrameVisibilitySetting[]>(
@@ -5958,16 +6157,16 @@ export default function AdminGovernanceV2() {
     : (access[0] ?? "people");
 
   const sidebar = (
-    <div className="s-flex s-h-full s-flex-col s-border-r s-border-border s-bg-app-background dark:s-border-border-night dark:s-bg-app-background-night">
+    <div className="flex h-full flex-col border-r border-border bg-app-background dark:border-border-night dark:bg-app-background-night">
       <NavTabPill
         value={activeTab}
         onValueChange={(v) => {
           setActiveTab(v as typeof activeTab);
           if (v === "spaces") setSpacesPage("space");
         }}
-        className="s-flex s-min-h-0 s-flex-1 s-flex-col"
+        className="flex min-h-0 flex-1 flex-col"
       >
-        <NavTabPillList className="s-px-3 s-pt-3 s-pb-1">
+        <NavTabPillList className="px-3 pt-3 pb-1">
           <NavTabPillTrigger value="chat" icon={IntersectDust}>
             Chat
           </NavTabPillTrigger>
@@ -5977,7 +6176,7 @@ export default function AdminGovernanceV2() {
           <NavTabPillTrigger value="admin" icon={Settings01}>
             Admin
           </NavTabPillTrigger>
-          <div className="s-flex s-flex-grow s-justify-end">
+          <div className="flex flex-grow justify-end">
             <NavTabPillTrigger
               value="collapse"
               icon={LayoutLeft}
@@ -5989,7 +6188,7 @@ export default function AdminGovernanceV2() {
         {/* Spaces sidebar */}
         <NavTabPillContent
           value="spaces"
-          className="data-[state=active]:s-flex s-min-h-0 s-flex-1 s-flex-col"
+          className="data-[state=active]:flex min-h-0 flex-1 flex-col"
         >
           <SpacesSidebarNav
             role={role}
@@ -6031,11 +6230,11 @@ export default function AdminGovernanceV2() {
         {/* Admin sidebar */}
         <NavTabPillContent
           value="admin"
-          className="data-[state=active]:s-flex s-min-h-0 s-flex-1 s-flex-col"
+          className="data-[state=active]:flex min-h-0 flex-1 flex-col"
         >
-          <ScrollArea className="s-flex-1">
+          <ScrollArea className="flex-1">
             <ScrollBar orientation="vertical" size="minimal" />
-            <NavigationList className="s-px-2 s-py-2">
+            <NavigationList className="px-2 py-2">
               {NAV_SECTIONS.map((section) => (
                 <NavigationListCollapsibleSection
                   key={section.title}
@@ -6047,7 +6246,7 @@ export default function AdminGovernanceV2() {
                     return (
                       <div
                         key={item.id}
-                        className={`ag-nav-item${!accessible ? " s-opacity-40" : ""}`}
+                        className={`ag-nav-item${!accessible ? " opacity-40" : ""}`}
                       >
                         <NavigationListItem
                           icon={accessible ? item.icon : Lock01}
@@ -6081,24 +6280,20 @@ export default function AdminGovernanceV2() {
         {/* Chat sidebar (empty) */}
         <NavTabPillContent
           value="chat"
-          className="data-[state=active]:s-flex s-min-h-0 s-flex-1 s-flex-col"
+          className="data-[state=active]:flex min-h-0 flex-1 flex-col"
         />
       </NavTabPill>
 
       {/* Bottom bar — matches Projects.tsx exactly */}
-      <div className="s-flex s-h-14 s-items-center s-justify-between s-gap-2 s-border-t s-border-border s-pl-1 s-pr-2 dark:s-border-border-night">
-        <Card
-          size="xs"
-          className="s-p-1"
-          containerClassName="s-flex-1 s-min-w-0"
-        >
-          <div className="s-flex s-min-w-0 s-items-center s-gap-2 s-pr-1">
+      <div className="flex h-14 items-center justify-between gap-2 border-t border-border pl-1 pr-2 dark:border-border-night">
+        <Card size="xs" className="p-1" containerClassName="flex-1 min-w-0">
+          <div className="flex min-w-0 items-center gap-2 pr-1">
             <Avatar name="Thomas Schmidt" size="sm" isRounded />
-            <div className="s-flex s-min-w-0 s-grow s-flex-col s-text-sm s-text-foreground dark:s-text-foreground-night">
-              <span className="s-heading-sm s-min-w-0 s-overflow-hidden s-text-ellipsis s-whitespace-nowrap">
+            <div className="flex min-w-0 grow flex-col text-sm text-foreground dark:text-foreground-night">
+              <span className="heading-sm min-w-0 overflow-hidden text-ellipsis whitespace-nowrap">
                 Thomas Schmidt
               </span>
-              <span className="-s-mt-0.5 s-min-w-0 s-overflow-hidden s-text-ellipsis s-whitespace-nowrap s-text-xs s-text-muted-foreground dark:s-text-muted-foreground-night">
+              <span className="-mt-0.5 min-w-0 overflow-hidden text-ellipsis whitespace-nowrap text-xs text-muted-foreground dark:text-muted-foreground-night">
                 ACME
               </span>
             </div>
@@ -6128,7 +6323,7 @@ export default function AdminGovernanceV2() {
   );
 
   const content = (
-    <ScrollArea className="s-h-full s-bg-background dark:s-bg-background-night">
+    <ScrollArea className="h-full bg-background dark:bg-background-night">
       <ScrollBar orientation="vertical" size="minimal" />
       <div
         key={
@@ -6194,7 +6389,7 @@ export default function AdminGovernanceV2() {
             onNavigate={(page) => setActivePage(page as AdminPage)}
             defaultTab="members"
             onTabChange={() => {}}
-            onCreateGroup={() => setCreateGroupOpen(true)}
+            onCreateGroup={openCreateGroup}
           />
         ) : effectivePage === "capabilities" ? (
           <GovernancePage
@@ -6203,9 +6398,11 @@ export default function AdminGovernanceV2() {
             setSettings={setGovernance}
             groups={groups}
             onNavigateToGroups={() => setActivePage("people" as AdminPage)}
-            onCreateGroup={() => setCreateGroupOpen(true)}
+            onCreateGroup={openCreateGroup}
             frameSharing={frameSharing}
             setFrameSharing={setFrameSharing}
+            auditLogsEnabled={auditLogsEnabled}
+            setAuditLogsEnabled={setAuditLogsEnabled}
           />
         ) : effectivePage === "model_providers" ? (
           <ModelProvidersPage
@@ -6215,7 +6412,7 @@ export default function AdminGovernanceV2() {
             groups={groups}
           />
         ) : effectivePage === "identity" ? (
-          <IdentityPage role={role} />
+          <IdentityPage role={role} auditLogsEnabled={auditLogsEnabled} />
         ) : effectivePage === "analytics" ? (
           <AnalyticsPage />
         ) : effectivePage === "billing" ? (
@@ -6279,10 +6476,10 @@ export default function AdminGovernanceV2() {
           <DialogHeader>
             <DialogTitle>{lockedItem?.label}</DialogTitle>
           </DialogHeader>
-          <div className="s-flex s-flex-col s-gap-3 s-px-5 s-py-4">
+          <DialogContainer>
             <Page.P size="sm">
               You need to be{" "}
-              <span className="s-font-semibold s-text-foreground dark:s-text-foreground-night">
+              <span className="font-semibold text-foreground dark:text-foreground-night">
                 {lockedItem?.requiredRoles.join(" or ")}
               </span>{" "}
               to access this section.
@@ -6290,7 +6487,7 @@ export default function AdminGovernanceV2() {
             <Page.P variant="secondary" size="sm">
               Contact your Super Admin to get the required permissions.
             </Page.P>
-          </div>
+          </DialogContainer>
           <DialogFooter
             rightButtonProps={{
               label: "Got it",
@@ -6300,7 +6497,7 @@ export default function AdminGovernanceV2() {
           />
         </DialogContent>
       </Dialog>
-      <div className="s-flex s-h-screen s-w-full s-bg-background dark:s-bg-background-night">
+      <div className="flex h-screen w-full bg-background dark:bg-background-night">
         <SidebarLayout
           ref={sidebarRef}
           sidebar={sidebar}
@@ -6310,34 +6507,102 @@ export default function AdminGovernanceV2() {
           maxSidebarWidth={340}
         />
       </div>
-      <Sheet open={createGroupOpen} onOpenChange={setCreateGroupOpen}>
-        <SheetContent side="right" size="lg">
-          <SheetHeader>
-            <SheetTitle>New group</SheetTitle>
-          </SheetHeader>
-          <div className="s-flex s-flex-col s-gap-4 s-flex-1 s-overflow-auto s-px-6 s-py-4">
-            <Page.Vertical gap="xs">
-              <Label>Group name</Label>
-              <Input
-                placeholder="e.g. Engineering Team"
-                value={newGroupName}
-                onChange={(e) => setNewGroupName(e.target.value)}
-              />
-            </Page.Vertical>
-            <Page.Vertical gap="xs">
-              <Label>Add members</Label>
-              <SearchInput
-                name="search"
-                placeholder="Search by name or email"
-                value=""
-                onChange={() => {}}
-              />
-            </Page.Vertical>
-          </div>
-          <SheetFooter
+      {/* Create group modal */}
+      <Dialog
+        open={createGroupOpen}
+        onOpenChange={(o) => !o && handleCloseCreateGroup()}
+      >
+        <DialogContent size="lg">
+          <DialogHeader>
+            <DialogTitle>New group</DialogTitle>
+          </DialogHeader>
+          <DialogContainer
+            fixedContent={
+              <div className="flex flex-col gap-4">
+                <Page.Vertical gap="xs">
+                  <Label>Group name</Label>
+                  <Input
+                    placeholder="e.g. Engineering Team"
+                    value={newGroupName}
+                    onChange={(e) => setNewGroupName(e.target.value)}
+                    name="new-group-name"
+                    containerClassName="w-full"
+                  />
+                </Page.Vertical>
+                <div className="flex items-center justify-between">
+                  <Label>
+                    Members
+                    {newGroupSelected.length > 0 && (
+                      <span className="ml-1 text-muted-foreground font-normal">
+                        ({newGroupSelected.length} selected)
+                      </span>
+                    )}
+                  </Label>
+                </div>
+                <SearchInput
+                  name="new-group-member-search"
+                  placeholder="Search users..."
+                  value={newGroupSearch}
+                  onChange={setNewGroupSearch}
+                />
+              </div>
+            }
+          >
+            <table className="w-full">
+              <thead>
+                <tr className="border-b border-border dark:border-border-night">
+                  <th className="py-2 pr-4 text-left w-8">
+                    <Checkbox
+                      checked={newGroupAllChecked}
+                      onCheckedChange={toggleAllNewGroup}
+                    />
+                  </th>
+                  <th className="py-2 text-left text-xs font-semibold text-foreground dark:text-foreground-night w-full">
+                    Name
+                  </th>
+                  <th className="py-2 w-24" />
+                </tr>
+              </thead>
+              <tbody>
+                {newGroupFiltered.map((m) => (
+                  <tr
+                    key={m.id}
+                    className="border-b border-border dark:border-border-night last:border-0 cursor-pointer hover:bg-muted-background dark:hover:bg-muted-background-night"
+                    onClick={() => toggleNewGroupMember(m.id)}
+                  >
+                    <td
+                      className="py-3 pr-4"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <Checkbox
+                        checked={newGroupSelected.includes(m.id)}
+                        onCheckedChange={() => toggleNewGroupMember(m.id)}
+                      />
+                    </td>
+                    <td className="py-3">
+                      <div className="flex items-center gap-2">
+                        <Avatar size="xs" name={m.name} />
+                        <span className="text-sm font-medium text-foreground dark:text-foreground-night">
+                          {m.name}
+                        </span>
+                      </div>
+                    </td>
+                    <td className="py-3 text-right">
+                      <Chip
+                        color={ROLE_DISPLAY[m.role ?? "member"].color}
+                        label={ROLE_DISPLAY[m.role ?? "member"].label}
+                        size="sm"
+                      />
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </DialogContainer>
+          <DialogFooter
             leftButtonProps={{
               label: "Cancel",
-              onClick: () => setCreateGroupOpen(false),
+              onClick: handleCloseCreateGroup,
               variant: "outline",
             }}
             rightButtonProps={{
@@ -6347,8 +6612,8 @@ export default function AdminGovernanceV2() {
               disabled: !newGroupName.trim(),
             }}
           />
-        </SheetContent>
-      </Sheet>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }

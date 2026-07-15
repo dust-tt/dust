@@ -574,43 +574,43 @@
   font-size: var(--text-xs);
   line-height: var(--text-xs--line-height);
   letter-spacing: var(--text-xs--letter-spacing);
-  font-weight: 550;
+  font-weight: 500;
 }
 @utility heading-sm {
   font-size: var(--text-sm);
   line-height: var(--text-sm--line-height);
   letter-spacing: var(--text-sm--letter-spacing);
-  font-weight: 550;
+  font-weight: 500;
 }
 @utility heading-base {
   font-size: var(--text-base);
   line-height: var(--text-base--line-height);
   letter-spacing: var(--text-base--letter-spacing);
-  font-weight: 550;
+  font-weight: 500;
 }
 @utility heading-lg {
   font-size: var(--text-lg);
   line-height: var(--text-lg--line-height);
   letter-spacing: var(--text-lg--letter-spacing);
-  font-weight: 550;
+  font-weight: 500;
 }
 @utility heading-xl {
   font-size: var(--text-xl);
   line-height: var(--text-xl--line-height);
   letter-spacing: var(--text-xl--letter-spacing);
-  font-weight: 550;
+  font-weight: 500;
 }
 @utility heading-2xl {
   font-size: var(--text-2xl);
   line-height: var(--text-2xl--line-height);
   letter-spacing: var(--text-2xl--letter-spacing);
-  font-weight: 550;
+  font-weight: 500;
 }
 @utility heading-3xl {
   font-size: var(--text-3xl);
   line-height: var(--text-3xl--line-height);
   letter-spacing: var(--text-3xl--letter-spacing);
-  font-weight: 550;
+  font-weight: 500;
 }
 @utility heading-4xl {
   font-size: var(--text-4xl);
