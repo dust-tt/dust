@@ -20,37 +20,31 @@ const ResizablePanelGroupContext = React.createContext<{
   setIsDragging: (isDragging: boolean) => void;
 } | null>(null);
 
-type ResizablePanelGroupRef = React.ElementRef<
-  typeof ResizablePrimitive.PanelGroup
->;
-
-const ResizablePanelGroup: React.ForwardRefExoticComponent<
-  ResizablePanelGroupProps & React.RefAttributes<ResizablePanelGroupRef>
-> = React.forwardRef<ResizablePanelGroupRef, ResizablePanelGroupProps>(
+const ResizablePanelGroup = React.forwardRef<
+  React.ElementRef<typeof ResizablePrimitive.PanelGroup>,
+  ResizablePanelGroupProps
+>(
   (
     { animateLayoutChanges = false, className, direction, id, ...props },
     forwardedRef
   ) => {
-    const panelGroupRef = React.useRef<ResizablePanelGroupRef | null>(null);
+    const panelGroupRef =
+      React.useRef<React.ElementRef<typeof ResizablePrimitive.PanelGroup>>(
+        null
+      );
     const [isDragging, setIsDragging] = React.useState(false);
     const [panelGroupSizePx, setPanelGroupSizePx] = React.useState<
       number | undefined
     >();
 
-    const setPanelGroupRef = React.useCallback(
-      (node: ResizablePanelGroupRef | null) => {
-        panelGroupRef.current = node;
-
-        if (typeof forwardedRef === "function") {
-          forwardedRef(node);
-        } else if (forwardedRef) {
-          forwardedRef.current = node;
-        }
-      },
-      [forwardedRef]
-    );
+    React.useImperativeHandle(forwardedRef, () => panelGroupRef.current!);
 
     React.useLayoutEffect(() => {
+      if (!animateLayoutChanges) {
+        setPanelGroupSizePx(undefined);
+        return;
+      }
+
       const panelGroupId = id ?? panelGroupRef.current?.getId();
       const panelGroupElement = panelGroupId
         ? ResizablePrimitive.getPanelGroupElement(panelGroupId)
@@ -85,7 +79,7 @@ const ResizablePanelGroup: React.ForwardRefExoticComponent<
       return () => {
         resizeObserver.disconnect();
       };
-    }, [direction, id]);
+    }, [animateLayoutChanges, direction, id]);
 
     const contextValue = React.useMemo(
       () => ({
@@ -101,7 +95,7 @@ const ResizablePanelGroup: React.ForwardRefExoticComponent<
     return (
       <ResizablePanelGroupContext.Provider value={contextValue}>
         <ResizablePrimitive.PanelGroup
-          ref={setPanelGroupRef}
+          ref={panelGroupRef}
           id={id}
           direction={direction}
           className={cn(
@@ -189,18 +183,13 @@ const ResizablePanel = React.forwardRef<
     >();
     const contentPanelSize = lastNonZeroPanelSize ?? fallbackContentPanelSize;
 
-    const updateContentPanelSize = (panelSize: number | undefined) => {
-      if (!preserveContentLayout || !panelSize || panelSize <= 0) {
-        return;
-      }
-
-      setLastNonZeroPanelSize(panelSize);
-    };
-
     const handleResize: NonNullable<
       React.ComponentProps<typeof ResizablePrimitive.Panel>["onResize"]
     > = (size, previousSize) => {
-      updateContentPanelSize(size);
+      if (preserveContentLayout && size > 0) {
+        setLastNonZeroPanelSize(size);
+      }
+
       onResize?.(size, previousSize);
     };
 
@@ -208,7 +197,7 @@ const ResizablePanel = React.forwardRef<
       <ResizablePrimitive.Panel
         ref={forwardedRef}
         defaultSize={defaultSize}
-        onResize={handleResize}
+        onResize={preserveContentLayout ? handleResize : onResize}
         className={cn(
           panelGroupContext?.animateLayoutChanges &&
             "motion-reduce:duration-75",
@@ -243,7 +232,10 @@ const ResizableHandle = ({
   const panelGroupContext = React.useContext(ResizablePanelGroupContext);
 
   const handleDragging = (isDragging: boolean) => {
-    panelGroupContext?.setIsDragging(isDragging);
+    if (panelGroupContext?.animateLayoutChanges) {
+      panelGroupContext.setIsDragging(isDragging);
+    }
+
     onDragging?.(isDragging);
   };
 

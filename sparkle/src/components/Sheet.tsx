@@ -27,9 +27,7 @@ const SheetOverlay = React.forwardRef<
       "bg-muted-foreground/75 dark:bg-muted-background/75",
       "data-[state=open]:animate-in data-[state=closed]:animate-out",
       "data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
-      "data-[state=open]:duration-300 data-[state=closed]:duration-300",
-      "data-[state=open]:ease-out-quint data-[state=closed]:ease-out-quint",
-      "motion-reduce:animate-none",
+      "duration-300 ease-out-quint motion-reduce:animate-none",
       className
     )}
     {...props}
@@ -65,20 +63,20 @@ const sheetVariants = cva(
     variants: {
       side: {
         top: cn(
-          "inset-x-0 top-0 border-b border-border",
-          "data-[state=open]:slide-in-from-top-full data-[state=closed]:slide-out-to-top-full"
+          "inset-x-0 top-0 data-[state=closed]:slide-out-to-top data-[state=open]:slide-in-from-top",
+          "border-b border-border"
         ),
         bottom: cn(
-          "inset-x-0 bottom-0 border-t border-border",
-          "data-[state=open]:slide-in-from-bottom-full data-[state=closed]:slide-out-to-bottom-full"
+          "inset-x-0 bottom-0 data-[state=closed]:slide-out-to-bottom data-[state=open]:slide-in-from-bottom",
+          "border-t border-border"
         ),
         left: cn(
-          "inset-y-0 left-0 border-r border-border",
-          "data-[state=open]:slide-in-from-left-full data-[state=closed]:slide-out-to-left-full"
+          "inset-y-0 left-0 data-[state=closed]:slide-out-to-left data-[state=open]:slide-in-from-left",
+          "border-r border-border"
         ),
         right: cn(
-          "inset-y-0 right-0 border-l border-border",
-          "data-[state=open]:slide-in-from-right-full data-[state=closed]:slide-out-to-right-full"
+          "inset-y-0 right-0 data-[state=closed]:slide-out-to-right data-[state=open]:slide-in-from-right",
+          "border-l border-border"
         ),
       },
       size: sizeClasses,
