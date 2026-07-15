@@ -99,7 +99,7 @@ import type {
   Transaction,
   WhereOptions,
 } from "sequelize";
-import { Op } from "sequelize";
+import { Op, Sequelize } from "sequelize";
 
 export type SkillMCPServerConfiguration = {
   view: MCPServerViewResource;
@@ -568,15 +568,29 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       ...otherOptions
     } = options;
 
+    const customSkillModelIdsFilter =
+      where && !Array.isArray(where) && "id" in where && Array.isArray(where.id)
+        ? where.id
+        : null;
     const customSkills = await this.model.findAll({
       ...otherOptions,
       where: {
         // Fetch active by default, unless explicitly overridden by the caller.
         status: "active",
         ...omit(where, "sId"),
+        ...(customSkillModelIdsFilter
+          ? {
+              id: {
+                [Op.any]: Sequelize.literal("$customSkillModelIds::bigint[]"),
+              },
+            }
+          : {}),
         workspaceId: workspace.id,
       },
       include: includes,
+      bind: customSkillModelIdsFilter
+        ? { customSkillModelIds: customSkillModelIdsFilter }
+        : undefined,
       transaction,
     });
 
@@ -605,7 +619,10 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         )
       )
     );
-    const allowedCustomSkillIds = allowedCustomSkills.map((skill) => skill.id);
+    const customSkillModelIds = customSkills.map((skill) => skill.id);
+    const allowedCustomSkillModelIds = allowedCustomSkills.map(
+      (skill) => skill.id
+    );
 
     let allowedCustomSkillsRes: SkillResource[] = [];
     if (allowedCustomSkills.length > 0) {
@@ -618,7 +635,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
             where: {
               workspaceId: workspace.id,
               skillConfigurationId: {
-                [Op.in]: allowedCustomSkillIds,
+                [Op.in]: allowedCustomSkillModelIds,
               },
             },
             transaction,
@@ -644,9 +661,10 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
           where: {
             workspaceId: workspace.id,
             skillConfigurationId: {
-              [Op.in]: customSkills.map((c) => c.id),
+              [Op.any]: Sequelize.literal("$customSkillModelIds::bigint[]"),
             },
           },
+          bind: { customSkillModelIds },
           transaction,
         });
 
@@ -659,9 +677,12 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         where: {
           workspaceId: workspace.id,
           skillConfigurationId: {
-            [Op.in]: allowedCustomSkillIds,
+            [Op.any]: Sequelize.literal(
+              "$allowedCustomSkillModelIds::bigint[]"
+            ),
           },
         },
+        bind: { allowedCustomSkillModelIds },
         transaction,
       });
 
@@ -685,11 +706,14 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       const editorGroupSkills = await GroupSkillModel.findAll({
         where: {
           skillConfigurationId: {
-            [Op.in]: allowedCustomSkillIds,
+            [Op.any]: Sequelize.literal(
+              "$allowedCustomSkillModelIds::bigint[]"
+            ),
           },
           workspaceId: workspace.id,
         },
         attributes: ["groupId", "skillConfigurationId"],
+        bind: { allowedCustomSkillModelIds },
         transaction,
       });
 
@@ -839,9 +863,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
   ): Promise<SkillResource[]> {
     return this.baseFetch(auth, {
       where: {
-        id: {
-          [Op.in]: ids,
-        },
+        id: ids,
       },
       onlyCustom: true,
       withTools,
@@ -954,7 +976,12 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       attributes: ["childCustomSkillId", "childGlobalSkillId", "parentSkillId"],
       where: {
         workspaceId: workspace.id,
-        parentSkillId: customParentSkills.map((skill) => skill.id),
+        parentSkillId: {
+          [Op.any]: Sequelize.literal("$parentSkillModelIds::bigint[]"),
+        },
+      },
+      bind: {
+        parentSkillModelIds: customParentSkills.map((skill) => skill.id),
       },
     });
 
@@ -2176,12 +2203,24 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         workspaceId: workspace.id,
         [Op.or]: removeNulls([
           customSkillIds.length > 0
-            ? { customSkillId: { [Op.in]: customSkillIds } }
+            ? {
+                customSkillId: {
+                  [Op.any]: Sequelize.literal("$customSkillIds::bigint[]"),
+                },
+              }
             : null,
           globalSkillIds.length > 0
-            ? { globalSkillId: { [Op.in]: globalSkillIds } }
+            ? {
+                globalSkillId: {
+                  [Op.any]: Sequelize.literal("$globalSkillIds::text[]"),
+                },
+              }
             : null,
         ]),
+      },
+      bind: {
+        customSkillIds,
+        globalSkillIds,
       },
     });
 
@@ -2195,9 +2234,14 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     ];
     const agentConfigs = await AgentConfigurationModel.findAll({
       where: {
-        id: { [Op.in]: uniqueAgentConfigIds },
+        id: {
+          [Op.any]: Sequelize.literal("$agentConfigurationIds::bigint[]"),
+        },
         workspaceId: workspace.id,
         status: "active",
+      },
+      bind: {
+        agentConfigurationIds: uniqueAgentConfigIds,
       },
     });
 
@@ -2279,15 +2323,19 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         [Op.or]: [
           {
             childCustomSkillId: {
-              [Op.in]: customSkills.map((skill) => skill.id),
+              [Op.any]: Sequelize.literal("$customSkillModelIds::bigint[]"),
             },
           },
           {
             childGlobalSkillId: {
-              [Op.in]: globalSkills.map((skill) => skill.sId),
+              [Op.any]: Sequelize.literal("$globalSkillIds::text[]"),
             },
           },
         ],
+      },
+      bind: {
+        customSkillModelIds: customSkills.map((skill) => skill.id),
+        globalSkillIds: globalSkills.map((skill) => skill.sId),
       },
     });
 
