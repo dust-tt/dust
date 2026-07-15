@@ -1,8 +1,15 @@
-import { SANDBOX_FUNCTIONS_SERVER_NAME } from "@app/lib/api/actions/servers/sandbox_functions/metadata";
+import { getPrefixedToolName } from "@app/lib/actions/tool_name_utils";
+import {
+  SANDBOX_FUNCTIONS_SERVER_NAME,
+  type SANDBOX_FUNCTIONS_TOOLS_METADATA,
+} from "@app/lib/api/actions/servers/sandbox_functions/metadata";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
 import type { GlobalSkillDefinition } from "@app/lib/resources/skill/code_defined/shared";
 import { isPodConversation } from "@app/types/assistant/conversation";
+
+const toolName = (name: keyof typeof SANDBOX_FUNCTIONS_TOOLS_METADATA) =>
+  getPrefixedToolName(SANDBOX_FUNCTIONS_SERVER_NAME, name);
 
 export const podFunctionsSkill = {
   sId: "pod_functions",
@@ -81,7 +88,7 @@ Functions of the same Pod can share durable SQLite databases (via \`drizzle-orm\
   function imports its table objects from it (never hand-write tables in a function file), so
   functions sharing a database must live in the same source directory.
 - **Name functions that use this db.ts by writting a comment a the top** 
-- **Apply the schema file with \`sandbox_functions__db_reconcile\`**; it creates the database and
+- **Apply the schema file with \`${toolName("db_reconcile")}\`**; it creates the database and
   applies additive DDL after edits, and enforces the rules below. Publishing does not touch
   databases; an unreconciled database does not exist at runtime.
 - **At runtime open a database with \`db(name)\` from \`@dust/pod\`** and query it with the imported
@@ -136,23 +143,23 @@ servers and tools before writing the function.
 
 #### Publishing, discovering, and invoking
 
-Once the source is on the Pod, use \`sandbox_functions__publish\` to build it. Publishing bundles and
+Once the source is on the Pod, use \`${toolName("publish")}\` to build it. Publishing bundles and
 type-checks the source on the Computer and extracts the input and output JSON schemas from the
 \`schema\` export. Publishing again under the same name replaces the previous version. The stored
 bundle is owned by the platform and runs from a read-only mount, so a published function can be
 executed but never overwritten from within the Computer.
 
-Use \`sandbox_functions__list\` and \`sandbox_functions__get\` to see what the Pod has already
+Use \`${toolName("list")}\` and \`${toolName("get")}\` to see what the Pod has already
 published and to inspect a function's contract before relying on it or publishing a near-duplicate.
 
-Call a published function directly from this conversation with \`sandbox_functions__call\`, passing
+Call a published function directly from this conversation with \`${toolName("call")}\`, passing
 its slug and an input payload matching its \`get\`-reported input schema. Call it yourself whenever
 you need the result now rather than asking a Frame to fetch it for you.
 
-The live databases have their own tools: \`sandbox_functions__db_list\` (sizes),
-\`sandbox_functions__db_schema\` (live storage types only; column modes exist only in the authored
-file), \`sandbox_functions__db_query\` (one SQL statement; no schema changes; a result too large to
-return inline is written to a pod file whose path it reports), and \`sandbox_functions__db_reconcile\`
+The live databases have their own tools: \`${toolName("db_list")}\` (sizes),
+\`${toolName("db_schema")}\` (live storage types only; column modes exist only in the authored
+file), \`${toolName("db_query")}\` (one SQL statement; no schema changes; a result too large to
+return inline is written to a pod file whose path it reports), and \`${toolName("db_reconcile")}\`
 (apply an edited \`databases/{db}.db.ts\`). See each tool's description for its arguments.
 
 #### Calling a function from a Frame

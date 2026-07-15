@@ -147,8 +147,8 @@ export const SANDBOX_FUNCTIONS_TOOLS_METADATA = createToolsRecord({
         .string()
         .min(1)
         .describe(
-          "One SQL statement (SELECT or INSERT/UPDATE/DELETE). Multiple statements are " +
-            "rejected."
+          "A SINGLE SQL statement (SELECT or INSERT/UPDATE/DELETE); multiple statements " +
+            "are rejected, issue one call per statement."
         ),
     },
     stake: "never_ask",
@@ -175,7 +175,7 @@ export const SANDBOX_FUNCTIONS_TOOLS_METADATA = createToolsRecord({
             "files tools (e.g. `pod-<id>/databases/chat.db.ts`)."
         ),
     },
-    stake: "low",
+    stake: "never_ask",
     displayLabels: {
       running: "Reconciling pod database...",
       done: "Reconciled pod database",
