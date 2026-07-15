@@ -58,7 +58,7 @@ export function toolManifestToCompactText(manifest: ToolManifest): string {
     );
     const label = runtime.charAt(0).toUpperCase() + runtime.slice(1);
 
-    return [`- ${label}: ${[...entries].join(", ")}`];
+    return [`- ${label}: ${[...entries].sort().join(", ")}`];
   }).join("\n");
 }
 

@@ -122,21 +122,21 @@ describe("toolManifestToJSON()", () => {
 describe("toolManifestToCompactText()", () => {
   test("lists names and versions on one line per runtime", () => {
     const tools: ToolEntry[] = [
-      { name: "curl", description: "HTTP client", runtime: "system" },
       {
         name: "read_file",
         description: "File reader",
         runtime: "system",
         isDustTool: true,
       },
+      { name: "curl", description: "HTTP client", runtime: "system" },
       {
         name: "pandas",
         version: "2.2.3",
         description: "Data analysis",
         runtime: "python",
       },
-      { name: "tsx", description: "TypeScript executor", runtime: "node" },
       { name: "curl", description: "HTTP client", runtime: "system" },
+      { name: "tsx", description: "TypeScript executor", runtime: "node" },
     ];
     const manifest = createToolManifest(tools);
 

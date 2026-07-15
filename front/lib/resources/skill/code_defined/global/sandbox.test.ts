@@ -17,14 +17,27 @@ describe("sandboxSkill", () => {
     const systemTools = instructions
       .split("\n")
       .find((line) => line.startsWith("- System:"));
-    expect(systemTools).toContain("git, curl");
+    expect(systemTools).toContain("git");
+    expect(systemTools).toContain("curl");
     expect(systemTools).toContain("xlsx_inspect");
     expect(instructions).not.toContain("- Dust:");
-    expect(instructions).toContain("- Python: python, pandas 3.0.1");
-    expect(instructions).toContain("- Node: typescript, tsx");
+    const pythonTools = instructions
+      .split("\n")
+      .find((line) => line.startsWith("- Python:"));
+    expect(pythonTools).toContain("python");
+    expect(pythonTools).toContain("pandas 3.0.1");
+    const nodeTools = instructions
+      .split("\n")
+      .find((line) => line.startsWith("- Node:"));
+    expect(nodeTools).toContain("typescript");
+    expect(nodeTools).toContain("tsx");
     expect(instructions).toContain("`describe_toolset`");
     expect(instructions).toContain("Dust tool details:");
+    expect(instructions).toContain("- `apply_patch`:");
     expect(instructions).toContain("- `dsbx`: Dust CLI");
+    expect(instructions.indexOf("- `apply_patch`:")).toBeLessThan(
+      instructions.indexOf("- `dsbx`:")
+    );
     expect(instructions).toContain(
       "- `pptx_slides`: Duplicate, move, or delete .pptx slides without corrupting"
     );

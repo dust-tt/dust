@@ -301,6 +301,7 @@ function buildToolDetailsSection(
   }
 
   const descriptions = [...tools.values()]
+    .sort((a, b) => a.name.localeCompare(b.name))
     .map((tool) => {
       const summary = tool.description.match(/^.*?\.(?=\s|$)/)?.[0];
       return `- \`${tool.name}\`: ${summary ?? tool.description}`;
