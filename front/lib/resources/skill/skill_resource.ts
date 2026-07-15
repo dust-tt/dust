@@ -565,6 +565,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       onlyCustom,
       withInstructions = true,
       withTools = true,
+      withFileAttachments = true,
       ...otherOptions
     } = options;
 
@@ -655,8 +656,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         "skillConfigurationId"
       );
 
-      const shouldFetchFileAttachments = withInstructions || withTools;
-      const fileAttachmentModels = shouldFetchFileAttachments
+      const fileAttachmentModels = withFileAttachments
         ? await SkillFileAttachmentModel.findAll({
             where: {
               workspaceId: workspace.id,
@@ -668,7 +668,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
           })
         : [];
 
-      const allFileResources = shouldFetchFileAttachments
+      const allFileResources = withFileAttachments
         ? await FileResource.fetchByModelIdsWithAuth(
             auth,
             fileAttachmentModels.map((a) => a.fileId),
@@ -975,7 +975,11 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         customSkillId: reference.childCustomSkillId,
         globalSkillId: reference.childGlobalSkillId,
       })),
-      { withInstructions: false, withTools: false }
+      {
+        withInstructions: false,
+        withTools: false,
+        withFileAttachments: false,
+      }
     );
     const childSkillsById = new Map(
       childSkills.map((skill) => [skill.sId, skill])
@@ -1044,12 +1048,14 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       transaction,
       withInstructions,
       withTools,
+      withFileAttachments,
     }: {
       agentLoopData?: AgentLoopExecutionData;
       status?: SkillStatus | SkillStatus[];
       transaction?: Transaction;
       withInstructions?: boolean;
       withTools?: boolean;
+      withFileAttachments?: boolean;
     } = {}
   ): Promise<SkillResource[]> {
     const customSkillModelIds = removeNulls(refs.map((r) => r.customSkillId));
@@ -1065,6 +1071,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         },
         withInstructions,
         withTools,
+        withFileAttachments,
       },
       { agentLoopData, transaction }
     );
@@ -1241,6 +1248,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       reinforcementNotOff,
       withInstructions = true,
       withTools = true,
+      withFileAttachments = true,
     }: {
       status?: SkillStatus | SkillStatus[];
       limit?: number;
@@ -1251,6 +1259,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       reinforcementNotOff?: boolean;
       withInstructions?: boolean;
       withTools?: boolean;
+      withFileAttachments?: boolean;
     } = {}
   ): Promise<SkillResource[]> {
     const skills = await this.baseFetch(auth, {
@@ -1264,6 +1273,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       onlyCustom,
       withInstructions,
       withTools,
+      withFileAttachments,
     });
 
     if (globalSpaceOnly) {
@@ -1571,6 +1581,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
           agentLoopData,
           withInstructions: false,
           withTools: false,
+          withFileAttachments: false,
         })
       : [];
 

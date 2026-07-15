@@ -201,6 +201,7 @@ export const joinActivationPodPlugin = createPlugin({
       globalSpaceOnly: true,
       withInstructions: false,
       withTools: false,
+      withFileAttachments: false,
     });
 
     return new Ok({
