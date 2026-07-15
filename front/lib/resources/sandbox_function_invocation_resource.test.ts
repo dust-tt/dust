@@ -1,6 +1,7 @@
 import { generateSandboxFunctionInvocationToken } from "@app/lib/api/sandbox/access_tokens";
 import { ensurePodSandboxReady } from "@app/lib/api/sandbox/lifecycle";
 import { publishSandboxFunctionInvocationEvent } from "@app/lib/api/sandbox_functions/events";
+import { getPrivateUploadBucket } from "@app/lib/file_storage";
 import { SandboxFunctionInvocationResource } from "@app/lib/resources/sandbox_function_invocation_resource";
 import { SandboxFunctionResource } from "@app/lib/resources/sandbox_function_resource";
 import { SandboxResource } from "@app/lib/resources/sandbox_resource";
@@ -120,7 +121,7 @@ describe("SandboxFunctionInvocationResource", () => {
     expect(invocation.result).toBeUndefined();
     expect(invocation.error).toBeUndefined();
     expect(fileStorageMock.getObject(invocation.gcsPath!)).toBe(
-      JSON.stringify({ input: { message: "hello" } })
+      JSON.stringify({ version: 1, input: { message: "hello" } })
     );
 
     const refetched = await SandboxFunctionInvocationResource.fetchById(
@@ -128,6 +129,22 @@ describe("SandboxFunctionInvocationResource", () => {
       { sandboxFunction, invocationId: invocation.sId }
     );
     expect(refetched?.input).toEqual({ message: "hello" });
+  });
+
+  it("rejects unsupported stored data versions", async () => {
+    const { authenticator, sandboxFunction, invocation } =
+      await setupExecutionTest();
+
+    await getPrivateUploadBucket()
+      .file(invocation.gcsPath!)
+      .save(Buffer.from(JSON.stringify({ version: 2 }), "utf-8"));
+
+    await expect(
+      SandboxFunctionInvocationResource.fetchById(authenticator, {
+        sandboxFunction,
+        invocationId: invocation.sId,
+      })
+    ).rejects.toThrow("Invalid sandbox function invocation data");
   });
 
   it("stores and reloads its result from GCS on success", async () => {

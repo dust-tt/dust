@@ -80,7 +80,7 @@ makeScript(
           if (execute) {
             try {
               await bucket.uploadSmallRawContentToBucketAsNewFile({
-                content: "{}",
+                content: JSON.stringify({ version: 1 }),
                 contentType: "application/json",
                 filePath: gcsPath,
               });

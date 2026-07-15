@@ -37,6 +37,7 @@ import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { truncate } from "@app/types/shared/utils/string_utils";
 import type { Attributes, Transaction } from "sequelize";
 import { Op } from "sequelize";
+import { z } from "zod";
 
 const SANDBOX_FUNCTION_WORKING_DIRECTORY = "/home/agent";
 const SANDBOX_FUNCTION_EXEC_TIMEOUT_MS = 2 * 60 * 1000;
@@ -46,33 +47,32 @@ const DSBX_BIN_PATH = "/opt/bin/dsbx";
 const SANDBOX_FUNCTION_ERROR_DETAIL_MAX_CHARS = 2_048;
 const SANDBOX_FUNCTION_ERROR_LOG_MAX_CHARS = 16_384;
 const GCS_CONCURRENCY = 4;
+const SANDBOX_FUNCTION_INVOCATION_DATA_VERSION = 1;
 
-type SandboxFunctionInvocationData = {
-  input?: unknown;
-  result?: unknown;
-  error?: string;
-};
+const SandboxFunctionInvocationDataSchema = z.object({
+  version: z.literal(SANDBOX_FUNCTION_INVOCATION_DATA_VERSION),
+  input: z.unknown().optional(),
+  result: z.unknown().optional(),
+  error: z.string().optional(),
+});
 
-function isSandboxFunctionInvocationData(
-  data: unknown
-): data is SandboxFunctionInvocationData {
-  return (
-    typeof data === "object" &&
-    data !== null &&
-    !Array.isArray(data) &&
-    (!("error" in data) || typeof data.error === "string")
-  );
-}
+type SandboxFunctionInvocationData = z.infer<
+  typeof SandboxFunctionInvocationDataSchema
+>;
 
 function parseSandboxFunctionInvocationData(
   content: string
 ): SandboxFunctionInvocationData {
-  const data: unknown = JSON.parse(content);
-  if (!isSandboxFunctionInvocationData(data)) {
-    throw new Error("Invalid sandbox function invocation data.");
+  const result = SandboxFunctionInvocationDataSchema.safeParse(
+    JSON.parse(content)
+  );
+  if (!result.success) {
+    throw new Error(
+      `Invalid sandbox function invocation data: ${result.error.message}`
+    );
   }
 
-  return data;
+  return result.data;
 }
 
 function gcsPathForInvocation(
@@ -151,7 +151,11 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
   }
 
   async fail(error: Error): Promise<void> {
-    const data = { input: this.input, error: error.message };
+    const data: SandboxFunctionInvocationData = {
+      version: SANDBOX_FUNCTION_INVOCATION_DATA_VERSION,
+      input: this.input,
+      error: error.message,
+    };
     await SandboxFunctionInvocationResource.writeDataToGcs(this.gcsPath, data);
     this.data = data;
     await this.update({ status: "errored" });
@@ -168,7 +172,11 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
   }
 
   async succeed(result: unknown): Promise<void> {
-    const data = { input: this.input, result };
+    const data: SandboxFunctionInvocationData = {
+      version: SANDBOX_FUNCTION_INVOCATION_DATA_VERSION,
+      input: this.input,
+      result,
+    };
     await SandboxFunctionInvocationResource.writeDataToGcs(this.gcsPath, data);
     this.data = data;
     await this.update({ status: "succeeded" });
@@ -295,7 +303,10 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
     // TODO: Remove null support after running
     // `20260715_backfill_sandbox_function_invocation_gcs_paths.ts`.
     if (!gcsPath) {
-      return { input: undefined };
+      return {
+        version: SANDBOX_FUNCTION_INVOCATION_DATA_VERSION,
+        input: undefined,
+      };
     }
 
     const downloadResult = await withRetry(() =>
@@ -368,7 +379,10 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
       { transaction }
     );
 
-    const data = { input };
+    const data: SandboxFunctionInvocationData = {
+      version: SANDBOX_FUNCTION_INVOCATION_DATA_VERSION,
+      input,
+    };
     const resource = new this(this.model, invocation.get(), {
       sandboxFunction,
       data,
