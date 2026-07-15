@@ -3,10 +3,10 @@ import { GroupSelector } from "@app/components/pages/workspace/governance/GroupS
 import {
   type GovernancePermission,
   type GovernancePermissionConfiguration,
+  type GrantType,
   type GroupPermissionResourceType,
   isValidPermissionConfigurationScope,
   type PermissionConfigurationScope,
-  type PermissionType,
 } from "@app/types/group_permissions";
 import type { GroupType } from "@app/types/groups";
 import {
@@ -24,7 +24,7 @@ type GovernanceSettingMetadata = {
 
 const GOVERNANCE_SETTING_METADATA: Partial<
   Record<
-    `${PermissionType}:${GroupPermissionResourceType}`,
+    `${GrantType}:${GroupPermissionResourceType}`,
     GovernanceSettingMetadata
   >
 > = {
@@ -81,7 +81,7 @@ function getGovernancePermissionMetadata(
 ): GovernanceSettingMetadata | null {
   const metadata =
     GOVERNANCE_SETTING_METADATA[
-      `${permissions.permissionType}:${permissions.resourceType}`
+      `${permissions.grantType}:${permissions.resourceType}`
     ];
 
   if (!metadata) {

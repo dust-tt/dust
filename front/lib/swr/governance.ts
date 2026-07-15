@@ -3,42 +3,42 @@ import type { LightWorkspaceType } from "@app/types/user";
 
 const TEST_GOVERNANCE_PERMISSIONS: GovernancePermission[] = [
   {
-    permissionType: "create",
+    grantType: "create",
     resourceType: "agent",
     configuration: { scope: "everyone" },
   },
   {
-    permissionType: "publish",
+    grantType: "publish",
     resourceType: "agent",
     configuration: { scope: "everyone" },
   },
   {
-    permissionType: "create",
+    grantType: "create",
     resourceType: "skill",
     configuration: { scope: "everyone" },
   },
   {
-    permissionType: "publish",
+    grantType: "publish",
     resourceType: "skill",
     configuration: { scope: "everyone" },
   },
   {
-    permissionType: "invite",
+    grantType: "invite",
     resourceType: "frame",
     configuration: { scope: "admins_only" },
   },
   {
-    permissionType: "publish",
+    grantType: "publish",
     resourceType: "frame",
     configuration: { scope: "admins_only" },
   },
   {
-    permissionType: "admin",
+    grantType: "admin",
     resourceType: "billing",
     configuration: { scope: "admins_only" },
   },
   {
-    permissionType: "admin",
+    grantType: "admin",
     resourceType: "identity",
     configuration: { scope: "admins_only" },
   },

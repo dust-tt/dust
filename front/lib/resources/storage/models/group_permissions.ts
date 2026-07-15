@@ -3,8 +3,8 @@ import { DataTypes } from "@app/lib/resources/storage/data_types";
 import { GroupModel } from "@app/lib/resources/storage/models/groups";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
 import type {
+  GrantType,
   GroupPermissionResourceType,
-  PermissionType,
 } from "@app/types/group_permissions";
 import type { CreationOptional, ForeignKey } from "sequelize";
 
@@ -16,7 +16,7 @@ export class GroupPermissionModel extends WorkspaceAwareModel<GroupPermissionMod
   declare updatedAt: CreationOptional<Date>;
 
   declare groupId: ForeignKey<GroupModel["id"]>;
-  declare permissionType: PermissionType;
+  declare grantType: GrantType;
   declare resourceType: GroupPermissionResourceType;
   // Resource ModelId, or -1 (WHOLE_TYPE_RESOURCE_ID) for "the type as a whole".
   declare resourceId: number;
@@ -44,7 +44,7 @@ GroupPermissionModel.init(
       type: DataTypes.BIGINT,
       allowNull: false,
     },
-    permissionType: {
+    grantType: {
       type: DataTypes.STRING(256),
       allowNull: false,
     },
@@ -67,9 +67,9 @@ GroupPermissionModel.init(
       // here. Its leading groupId also serves as the FK index (BACK13) for group deletion.
       // Explicit name kept in sync with the migration so schema diffing stays clean.
       {
-        name: "group_permissions_group_ptype_rtype_rid_unique",
+        name: "group_permissions_group_gtype_rtype_rid_unique",
         unique: true,
-        fields: ["groupId", "permissionType", "resourceType", "resourceId"],
+        fields: ["groupId", "grantType", "resourceType", "resourceId"],
       },
       // "who can act on resource X" direction.
       {

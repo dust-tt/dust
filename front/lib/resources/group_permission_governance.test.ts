@@ -9,7 +9,7 @@ import type { Transaction } from "sequelize";
 import { beforeEach, describe, expect, it } from "vitest";
 
 // A concrete capability used across the governance-state tests.
-const CAPABILITY = { permissionType: "create", resourceType: "agent" } as const;
+const CAPABILITY = { grantType: "create", resourceType: "agent" } as const;
 
 describe("GroupPermissionResource — governance state (reads)", () => {
   let workspace: Awaited<ReturnType<typeof WorkspaceFactory.basic>>;
@@ -35,7 +35,7 @@ describe("GroupPermissionResource — governance state (reads)", () => {
   const stateOf = async (capability: typeof CAPABILITY) =>
     (
       await GroupPermissionResource.getCapabilitiesState(auth, [capability])
-    ).get(`${capability.permissionType}:${capability.resourceType}`);
+    ).get(`${capability.grantType}:${capability.resourceType}`);
 
   it("reports disabled when there is no -1 row", async () => {
     expect(await stateOf(CAPABILITY)).toEqual({ scope: "disabled" });
@@ -65,15 +65,15 @@ describe("GroupPermissionResource — governance state (reads)", () => {
 
   it("resolves multiple capabilities in one call", async () => {
     const everyoneCap = {
-      permissionType: "publish",
+      grantType: "publish",
       resourceType: "agent",
     } as const;
     const groupsCap = {
-      permissionType: "create",
+      grantType: "create",
       resourceType: "skill",
     } as const;
     const disabledCap = {
-      permissionType: "admin",
+      grantType: "admin",
       resourceType: "billing",
     } as const;
     await GroupPermissionResource.grantTypeWide(auth, {

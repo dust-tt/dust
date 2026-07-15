@@ -110,7 +110,7 @@ export class ModelsTierResource {
     return GroupPermissionModel.findAll({
       where: {
         workspaceId: auth.getNonNullableWorkspace().id,
-        permissionType: MODELS_TIER_PERMISSION_TYPE,
+        grantType: MODELS_TIER_PERMISSION_TYPE,
         resourceType: MODELS_TIER_RESOURCE_TYPE,
         resourceId: { [Op.gt]: 0 },
       },
@@ -133,7 +133,7 @@ export class ModelsTierResource {
   ): Promise<void> {
     for (const tierName of MODELS_TIER_NAMES) {
       await GroupPermissionResource.revokeFromEverybody(auth, {
-        permissionType: MODELS_TIER_PERMISSION_TYPE,
+        grantType: MODELS_TIER_PERMISSION_TYPE,
         resourceType: MODELS_TIER_RESOURCE_TYPE,
         resourceId: this.getTierResourceId(tierName),
       });
@@ -177,7 +177,7 @@ export class ModelsTierResource {
 
     const grants = await GroupPermissionResource.listForGroups(auth, {
       groupModelIds: [globalGroup.id],
-      permissionType: MODELS_TIER_PERMISSION_TYPE,
+      grantType: MODELS_TIER_PERMISSION_TYPE,
       resourceType: MODELS_TIER_RESOURCE_TYPE,
     });
 
@@ -193,7 +193,7 @@ export class ModelsTierResource {
   ): Promise<Result<undefined, Error>> {
     return GroupPermissionResource.grantToUser(auth, {
       user,
-      permissionType: MODELS_TIER_PERMISSION_TYPE,
+      grantType: MODELS_TIER_PERMISSION_TYPE,
       resourceType: MODELS_TIER_RESOURCE_TYPE,
       resourceId: this.getTierResourceId(tierName),
       transaction,
@@ -206,7 +206,7 @@ export class ModelsTierResource {
   ): Promise<Result<undefined, Error>> {
     return GroupPermissionResource.revokeFromUser(auth, {
       user,
-      permissionType: MODELS_TIER_PERMISSION_TYPE,
+      grantType: MODELS_TIER_PERMISSION_TYPE,
       resourceType: MODELS_TIER_RESOURCE_TYPE,
       resourceId: this.getTierResourceId(tierName),
       transaction,
@@ -219,7 +219,7 @@ export class ModelsTierResource {
   ): Promise<void> {
     await GroupPermissionResource.grant(auth, {
       group,
-      permissionType: MODELS_TIER_PERMISSION_TYPE,
+      grantType: MODELS_TIER_PERMISSION_TYPE,
       resourceType: MODELS_TIER_RESOURCE_TYPE,
       resourceId: this.getTierResourceId(tierName),
       transaction,
@@ -232,7 +232,7 @@ export class ModelsTierResource {
   ): Promise<void> {
     await GroupPermissionResource.revoke(auth, {
       group,
-      permissionType: MODELS_TIER_PERMISSION_TYPE,
+      grantType: MODELS_TIER_PERMISSION_TYPE,
       resourceType: MODELS_TIER_RESOURCE_TYPE,
       resourceId: this.getTierResourceId(tierName),
       transaction,
@@ -414,7 +414,7 @@ export class ModelsTierResource {
 
     if (maxTierName !== DEFAULT_MAX_MODEL_TIER) {
       await GroupPermissionResource.grantToEverybody(auth, {
-        permissionType: MODELS_TIER_PERMISSION_TYPE,
+        grantType: MODELS_TIER_PERMISSION_TYPE,
         resourceType: MODELS_TIER_RESOURCE_TYPE,
         resourceId: this.getTierResourceId(maxTierName),
       });
@@ -614,7 +614,7 @@ export class ModelsTierResource {
 
     const grants = await GroupPermissionResource.listForGroups(auth, {
       groupModelIds,
-      permissionType: MODELS_TIER_PERMISSION_TYPE,
+      grantType: MODELS_TIER_PERMISSION_TYPE,
       resourceType: MODELS_TIER_RESOURCE_TYPE,
     });
 

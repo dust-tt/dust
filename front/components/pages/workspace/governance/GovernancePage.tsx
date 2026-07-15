@@ -20,8 +20,8 @@ import { useGovernancePermissions } from "@app/lib/swr/governance";
 import { useGroups } from "@app/lib/swr/groups";
 import type {
   GovernancePermission,
+  GrantType,
   GroupPermissionResourceType,
-  PermissionType,
 } from "@app/types/group_permissions";
 import type {
   LightWorkspaceType,
@@ -52,10 +52,10 @@ function useUpdateGovernancePermission(owner: LightWorkspaceType) {
 // enables the underlying capability: email invites require external email sharing, and public
 // links require unrestricted sharing.
 function isFrameCapabilityEnabled(
-  permissionType: PermissionType,
+  grantType: GrantType,
   sharingPolicy: WorkspaceSharingPolicy
 ): boolean {
-  switch (permissionType) {
+  switch (grantType) {
     case "invite":
       return (
         sharingPolicy === "workspace_and_emails" ||
@@ -96,7 +96,7 @@ export const GovernancePage = () => {
 
   const framePermissions = (governancePermissionsMap.frame ?? []).filter(
     (permission) =>
-      isFrameCapabilityEnabled(permission.permissionType, sharingPolicy)
+      isFrameCapabilityEnabled(permission.grantType, sharingPolicy)
   );
 
   const sections: {
@@ -177,7 +177,7 @@ export const GovernancePage = () => {
             {governancePermissions.map((governancePermission) => (
               <GovernanceSettingRow
                 key={
-                  governancePermission.permissionType +
+                  governancePermission.grantType +
                   ":" +
                   governancePermission.resourceType
                 }
@@ -185,7 +185,7 @@ export const GovernancePage = () => {
                 groups={groups}
                 onChange={(newConfiguration) =>
                   onPermissionChange({
-                    permissionType: governancePermission.permissionType,
+                    grantType: governancePermission.grantType,
                     resourceType: governancePermission.resourceType,
                     configuration: newConfiguration,
                   })
