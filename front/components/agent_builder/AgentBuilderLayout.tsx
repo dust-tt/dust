@@ -99,7 +99,9 @@ export function AgentBuilderLayout({
                     onExpand={handlePanelExpand}
                     className="overflow-hidden"
                   >
-                    {rightPanel}
+                    <div className="h-full w-full overflow-y-auto">
+                      {rightPanel}
+                    </div>
                   </ResizablePanel>
                 </ResizablePanelGroup>
               )}

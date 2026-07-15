@@ -49,10 +49,16 @@ export const AnimatedCollapsible = () => {
   const [isOpen, setIsOpen] = React.useState(true);
 
   const togglePanel = () => {
-    if (panelRef.current?.isCollapsed()) {
-      panelRef.current.expand();
+    const panel = panelRef.current;
+
+    if (!panel) {
+      return;
+    }
+
+    if (panel.isCollapsed()) {
+      panel.expand();
     } else {
-      panelRef.current?.collapse();
+      panel.collapse();
     }
   };
 
@@ -89,7 +95,8 @@ export const AnimatedCollapsible = () => {
           <div className="flex h-full flex-col gap-2 bg-muted-background p-6">
             <span className="font-semibold">Stable panel content</span>
             <span>
-              This copy keeps its target layout while the panel animates.
+              This copy keeps its latest non-zero layout while the panel
+              animates.
             </span>
           </div>
         </ResizablePanel>

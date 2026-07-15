@@ -74,6 +74,7 @@ export default function ConversationSidePanelContainer({
           disabled={!currentPanel || isFullScreen}
           className="z-50"
           onDragging={(isDragging) => {
+            // Pointer resizing skips transitions, so release completes a drag collapse.
             if (!isDragging && panelRef.current?.isCollapsed()) {
               onPanelClosed();
             }
@@ -86,6 +87,7 @@ export default function ConversationSidePanelContainer({
         minSize={20}
         defaultSize={0}
         onTransitionEnd={(event) => {
+          // Programmatic and keyboard collapses keep content until motion completes.
           if (
             event.target === event.currentTarget &&
             event.propertyName === "flex-grow" &&
