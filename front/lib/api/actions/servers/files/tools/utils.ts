@@ -21,7 +21,11 @@ import { getPrivateUploadBucket } from "@app/lib/file_storage";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import { isPodConversation } from "@app/types/assistant/conversation";
-import { stripMimeParameters } from "@app/types/files";
+import {
+  frameContentType,
+  frameSlideshowContentType,
+  stripMimeParameters,
+} from "@app/types/files";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
@@ -183,10 +187,12 @@ export function isReadableAsText(contentType: string): boolean {
       "application/javascript",
       "application/json",
       "application/typescript",
-      "application/vnd.dust.frame",
+      "application/vnd.d",
       "application/x-ndjson",
       "application/xml",
       "application/yaml",
+      frameContentType,
+      frameSlideshowContentType,
     ].includes(mime)
   );
 }
