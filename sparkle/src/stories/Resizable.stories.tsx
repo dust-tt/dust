@@ -21,7 +21,7 @@ const meta = {
 
 **Guidelines**
 - Give each **ResizablePanel** a \`defaultSize\` (percentages within a group) so the initial split is predictable.
-- Set \`animateLayoutChanges\` on the group and \`preserveContentLayout\` on a panel when programmatic collapse or expand should not reflow content through intermediate widths.
+- Set \`animateLayoutChanges\` on the group and \`preserveContentLayout\` on a panel that fully collapses to zero when programmatic collapse or expand should not reflow content through intermediate widths.
 - Nest a **ResizablePanelGroup** inside a panel to combine horizontal and vertical splits.`,
       },
     },
