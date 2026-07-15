@@ -10,6 +10,7 @@ import type { MembershipOriginType, MembershipSeatType } from "./memberships";
 import type { ModelId } from "./shared/model_id";
 import { DbModelIdSchema } from "./shared/model_id";
 import { assertNever } from "./shared/utils/assert_never";
+import { toLatin1SafeHeaderValue } from "./shared/utils/http_headers";
 
 export type WorkspaceSegmentationType = "interesting" | null;
 
@@ -370,6 +371,6 @@ export function getHeaderFromUserEmail(email: string | undefined) {
   }
 
   return {
-    [DustUserEmailHeader]: email,
+    [DustUserEmailHeader]: toLatin1SafeHeaderValue(email),
   };
 }

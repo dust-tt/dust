@@ -16,6 +16,13 @@ export function sanitizeHeadersArray(rows: HeaderRow[]): HeaderRow[] {
     .filter(({ key, value }) => key.length > 0 && value.length > 0);
 }
 
+// HTTP header values must fit in ISO-8859-1: fetch throws on any code point above
+// 0xFF, and Node rejects control characters. Replace offending characters so
+// attribution values such as API key names or user emails never fail the request.
+export function toLatin1SafeHeaderValue(value: string): string {
+  return value.replace(/[^\x20-\x7e\x80-\xff]/gu, "?");
+}
+
 export function headersArrayToRecord(
   rows: HeaderRow[] | null | undefined
 ): Record<string, string> {

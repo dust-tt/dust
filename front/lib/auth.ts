@@ -62,6 +62,7 @@ import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { isString, removeNulls } from "@app/types/shared/utils/general";
+import { toLatin1SafeHeaderValue } from "@app/types/shared/utils/http_headers";
 import type {
   LightWorkspaceType,
   RoleType,
@@ -1871,6 +1872,6 @@ export function getApiKeyNameHeader(auth: Authenticator) {
   }
 
   return {
-    [DustApiKeyNameHeader]: name,
+    [DustApiKeyNameHeader]: toLatin1SafeHeaderValue(name),
   };
 }
