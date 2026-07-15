@@ -42,6 +42,7 @@ app.post(
       newSeatType: seatType,
       author: auth.user()?.toJSON() ?? "no-author",
       immediate: true,
+      allowReturningMemberFreeSeat: true,
     });
 
     if (updateRes.isErr()) {

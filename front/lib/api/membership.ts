@@ -664,6 +664,7 @@ export async function updateMembershipSeatAndTrack({
   author,
   immediate = false,
   isDirectSync = false,
+  allowReturningMemberFreeSeat = false,
 }: {
   user: UserResource;
   workspace: LightWorkspaceType;
@@ -672,6 +673,11 @@ export async function updateMembershipSeatAndTrack({
   // When true, skip billing-period scheduling and apply the change right now.
   immediate?: boolean;
   isDirectSync?: boolean;
+  // When true, skip the one-shot "returning member" guard on `free`. Reserved
+  // for admin-driven poke overrides: `grantFreeSeatCredits`'s uniqueness key
+  // (`free-seat-credit:{workspaceId}:{userId}`) still prevents a second AWU
+  // grant, so this only re-opens the seat assignment, never the credit.
+  allowReturningMemberFreeSeat?: boolean;
 }): Promise<
   Result<
     {
@@ -704,17 +710,22 @@ export async function updateMembershipSeatAndTrack({
   // never held a real seat in this workspace. `none` is not a real seat:
   // a user whose active seat is `none` and who has no prior real-seat history
   // is still eligible for `free`. A free→free noop is unaffected.
-  if (newSeatType === "free" && previousSeatType === "none") {
-    const hasPreviousMembership =
-      await MembershipResource.hasAnyMembershipOfUserInWorkspace({
-        user,
-        workspace,
-      });
-    if (hasPreviousMembership) {
+  // `allowReturningMemberFreeSeat` lets an admin (poke) override this for a
+  // returning member; the free-credit grant stays one-shot regardless (see
+  // `grantFreeSeatCredits`'s uniqueness key), so this cannot re-grant credits.
+  if (!allowReturningMemberFreeSeat) {
+    if (newSeatType === "free" && previousSeatType === "none") {
+      const hasPreviousMembership =
+        await MembershipResource.hasAnyMembershipOfUserInWorkspace({
+          user,
+          workspace,
+        });
+      if (hasPreviousMembership) {
+        return new Err({ type: "free_seat_not_allowed" });
+      }
+    } else if (newSeatType === "free" && previousSeatType !== "free") {
       return new Err({ type: "free_seat_not_allowed" });
     }
-  } else if (newSeatType === "free" && previousSeatType !== "free") {
-    return new Err({ type: "free_seat_not_allowed" });
   }
 
   if (isPaidSeatType(newSeatType) && newSeatType !== previousSeatType) {
