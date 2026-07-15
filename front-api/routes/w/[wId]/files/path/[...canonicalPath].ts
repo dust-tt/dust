@@ -4,6 +4,7 @@ import type { DustFileSystemError } from "@app/lib/api/file_system/types";
 import {
   convertCanonicalFileToPdf,
   deleteCanonicalFile,
+  fetchLinkedFileResource,
   moveCanonicalFile,
   renameCanonicalFile,
   streamThumbnail,
@@ -11,6 +12,7 @@ import {
   WriteCanonicalFileContentError,
   writeCanonicalFileContent,
 } from "@app/lib/api/files/file_system_ops";
+import { DUST_FILE_ID_HEADER } from "@app/types/files";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { readableToReadableStream } from "@app/types/shared/utils/streams";
 import type { WorkspaceAwareCtx } from "@front-api/middlewares/ctx";
@@ -112,6 +114,7 @@ async function handleHeadRequest(
   ctx: Context<WorkspaceAwareCtx>,
   canonicalPath: string
 ) {
+  const auth = ctx.get("auth");
   const { fs: dustFs, err } = await resolveFs(ctx, canonicalPath);
   if (err) {
     return err;
@@ -128,12 +131,22 @@ async function handleHeadRequest(
     });
   }
 
+  const linkedFileResource = await fetchLinkedFileResource(
+    auth,
+    dustFs,
+    canonicalPath
+  );
+  const headers: Record<string, string> = {
+    "Content-Type": statResult.value.contentType,
+    "Content-Length": String(statResult.value.sizeBytes),
+  };
+  if (linkedFileResource) {
+    headers[DUST_FILE_ID_HEADER] = linkedFileResource.sId;
+  }
+
   return new Response(null, {
     status: 200,
-    headers: {
-      "Content-Type": statResult.value.contentType,
-      "Content-Length": String(statResult.value.sizeBytes),
-    },
+    headers,
   });
 }
 
