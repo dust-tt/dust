@@ -39,6 +39,8 @@ export function CreateGroupDialog({
     onOpenChange(false);
   };
 
+  const shouldDisableButton = name.trim().length === 0 || selectedMemberIds.size === 0;
+
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent size="xl" height="lg">
@@ -68,7 +70,7 @@ export function CreateGroupDialog({
             label: "Create",
             variant: "primary",
             onClick: handleCreate,
-            disabled: name.trim().length === 0,
+            disabled: shouldDisableButton,
           }}
         />
       </DialogContent>
