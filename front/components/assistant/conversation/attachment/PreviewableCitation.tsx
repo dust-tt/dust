@@ -3,9 +3,15 @@ import type {
   FileCitationCardSize,
 } from "@app/components/assistant/conversation/attachment/FileCitationCard";
 import { FileCitationCard } from "@app/components/assistant/conversation/attachment/FileCitationCard";
+import { ConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
 import { useFilePreviewContext } from "@app/components/assistant/conversation/FilePreviewContext";
+import { useSendNotification } from "@app/hooks/useNotification";
 import { getFileTypeIcon } from "@app/lib/file_icon_utils";
-import { isSupportedImageContentType } from "@app/types/files";
+import {
+  isInteractiveContentType,
+  isSupportedImageContentType,
+} from "@app/types/files";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
 import {
   Citation,
   CitationImage,
@@ -14,6 +20,7 @@ import {
   Tooltip,
 } from "@dust-tt/sparkle";
 import type React from "react";
+import { useContext } from "react";
 
 interface PreviewableCitationProps {
   containerClassName?: string;
@@ -52,10 +59,36 @@ export function PreviewableCitation({
   tooltipLabel,
   variant = "card",
 }: PreviewableCitationProps) {
-  const { openFilePreview } = useFilePreviewContext();
+  const { openFilePreview, resolveFileIdFromPath } = useFilePreviewContext();
+  const sendNotification = useSendNotification();
+  const sidePanel = useContext(ConversationSidePanelContext);
 
-  const handleClick = () =>
+  const handleClick = async () => {
+    if (isInteractiveContentType(contentType) && sidePanel) {
+      try {
+        const resolvedFileId =
+          fileId ?? (filePath ? await resolveFileIdFromPath(filePath) : null);
+
+        if (!resolvedFileId) {
+          throw new Error("No linked file was found for this Frame.");
+        }
+
+        sidePanel.openPanel({
+          type: "interactive_content",
+          fileId: resolvedFileId,
+        });
+      } catch (error) {
+        sendNotification({
+          type: "error",
+          title: "Failed to open Frame",
+          description: normalizeError(error).message,
+        });
+      }
+      return;
+    }
+
     openFilePreview({ fileId, filePath, title, contentType });
+  };
 
   if (variant === "inline") {
     const FileIcon = getFileTypeIcon(contentType, title);
