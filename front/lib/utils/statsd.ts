@@ -1,6 +1,5 @@
-import { StatsD } from "hot-shots";
-
 import logger from "@app/logger/logger";
+import { StatsD } from "hot-shots";
 
 let statsDClient: StatsD | undefined = undefined;
 
