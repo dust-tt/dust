@@ -16,6 +16,12 @@ interface ConversationSidePanelContainerProps {
   owner: LightWorkspaceType;
 }
 
+const isHorizontalResizeKey = (key: string) =>
+  key === "ArrowLeft" ||
+  key === "ArrowRight" ||
+  key === "End" ||
+  key === "Home";
+
 export default function ConversationSidePanelContainer({
   conversation,
   owner,
@@ -81,6 +87,16 @@ export default function ConversationSidePanelContainer({
               onPanelClosed();
             }
           }}
+          onKeyDown={(event) => {
+            if (
+              event.defaultPrevented &&
+              isHorizontalResizeKey(event.key) &&
+              panelRef.current?.isCollapsed() &&
+              !window.matchMedia?.("(prefers-reduced-motion: reduce)").matches
+            ) {
+              onPanelClosed();
+            }
+          }}
         />
       )}
       {/* Panel Container - either Interactive Content or Actions */}
@@ -113,7 +129,6 @@ export default function ConversationSidePanelContainer({
         preserveContentLayout
         initialContentSize={DEFAULT_RIGHT_PANEL_SIZE}
         className={cn(
-          // Smooth transition animation similar to sidebar
           "flex-0 overflow-hidden",
           !currentPanel && "hidden w-0 md:block",
           // On mobile: overlay full screen with absolute positioning.

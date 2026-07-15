@@ -97,7 +97,6 @@ export function AgentBuilderLayout({
                     collapsible={true}
                     onCollapse={handlePanelCollapse}
                     onExpand={handlePanelExpand}
-                    preserveContentLayout
                     className="overflow-hidden"
                   >
                     {rightPanel}
