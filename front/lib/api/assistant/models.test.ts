@@ -12,7 +12,6 @@ import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import {
-  CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG,
   CLAUDE_OPUS_4_8_DEFAULT_MODEL_CONFIG,
   CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG,
 } from "@app/types/assistant/models/anthropic";
@@ -444,16 +443,16 @@ describe("pickPreferredLargeModel", () => {
     expect(selected.modelId).toBe(GPT_5_5_MODEL_CONFIG.modelId);
   });
 
-  it("picks a cost-effective model when only cost-effective models are available", () => {
-    // Mirrors a cost_efficient tier cap, where the large picks are filtered out
-    // and only cost-effective models remain selectable.
+  it("prefers Sonnet 4.6 as the cost-effective pick under a cost_efficient cap", () => {
+    // Under a cost_efficient tier cap, Sonnet 4.6 (at light reasoning) remains
+    // the preferred selectable model over other cost-effective options.
     const selected = pickPreferredLargeModel([
       GPT_5_4_MINI_MODEL_CONFIG,
-      CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG,
+      CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG,
     ]);
 
     expect(selected.modelId).toBe(
-      CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG.modelId
+      CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG.modelId
     );
   });
 
