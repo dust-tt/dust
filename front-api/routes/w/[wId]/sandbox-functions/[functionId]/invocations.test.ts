@@ -218,7 +218,6 @@ describe("POST /api/w/:wId/sandbox-functions/:functionIdOrSlug/invocations", () 
       functionIdOrSlug: sandboxFunction.sId,
       body: {
         input: { message: "hello" },
-        context: { frameFileId: sandboxFunction.file.sId },
       },
     });
 
@@ -237,7 +236,6 @@ describe("POST /api/w/:wId/sandbox-functions/:functionIdOrSlug/invocations", () 
       SandboxFunctionInvocationResource.prototype.execute
     ).toHaveBeenCalledWith(expect.anything(), {
       input: { message: "hello" },
-      context: { frameFileId: sandboxFunction.file.sId },
     });
     expect(publishSandboxFunctionInvocationEvent).toHaveBeenCalledWith(
       {

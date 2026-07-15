@@ -31,12 +31,6 @@ const ValidateActionBodySchema = z
 const PostSandboxFunctionInvocationBodySchema = z
   .object({
     input: z.unknown().optional(),
-    context: z
-      .object({
-        frameFileId: z.string().optional(),
-      })
-      .strict()
-      .optional(),
   })
   .strict();
 
