@@ -107,7 +107,7 @@ export function FairUseCreditsUsage({ workspaceId }: FairUseCreditsUsageProps) {
         </div>
         <div className="mt-2 text-xs">
           <Hoverable
-            variant="primary"
+            variant="highlight"
             onClick={() => setIsFairUsageModalOpened(true)}
           >
             Fair Use policy

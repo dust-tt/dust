@@ -16,14 +16,14 @@ import {
   SheetTitle,
 } from "@dust-tt/sparkle";
 
-// The per-seat fair-use limit that applies to a plan. Credit-priced plans budget
-// per-user credits; other (Pro/Enterprise) plans still cap per-seat messages.
+// The per-seat fair-use limit for a plan: if the plan sets maxAwuCredits it's a
+// credit limit, otherwise it's a max number of messages.
 export type FairUseSeatLimit =
   | { kind: "credits"; limit: number; timeframe: MaxAwuCreditsTimeframeType }
   | { kind: "messages"; limit: number; timeframe: MaxMessagesTimeframeType };
 
-// Resolve the fair-use limit that applies to a plan, or undefined when none is
-// configured (both limits are the -1 unlimited sentinel).
+// If the plan has maxAwuCredits, it's an AWU credit limit; otherwise it's a max
+// number of messages. Undefined when neither is set (both are the -1 sentinel).
 export function fairUseSeatLimitFromPlan(
   plan: PlanType
 ): FairUseSeatLimit | undefined {
