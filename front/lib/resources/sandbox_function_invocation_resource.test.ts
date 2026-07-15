@@ -303,7 +303,7 @@ describe("SandboxFunctionInvocationResource", () => {
       expect.objectContaining({
         type: "sandbox_function_invocation_error",
         invocationId: invocation.sId,
-        message: "sandbox unavailable",
+        error: { code: "invocation_failed", message: "sandbox unavailable" },
       }),
       { invocationId: invocation.sId }
     );

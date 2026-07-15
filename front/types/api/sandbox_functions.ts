@@ -32,6 +32,33 @@ export type SandboxFunctionInvocationType = {
   createdAt: string;
 };
 
+export const SANDBOX_FUNCTION_RUNNER_ERROR_CODES = [
+  "bad_input",
+  "invalid_input",
+  "import_failed",
+  "threw",
+  "bad_return",
+  "http_error",
+  "invalid_output",
+] as const;
+
+export const SANDBOX_FUNCTION_CALL_ERROR_CODES = [
+  ...SANDBOX_FUNCTION_RUNNER_ERROR_CODES,
+  "function_not_found",
+  "invocation_failed",
+  "transport_error",
+  "not_supported",
+] as const;
+
+export type SandboxFunctionCallErrorCode =
+  (typeof SANDBOX_FUNCTION_CALL_ERROR_CODES)[number];
+
+export type SandboxFunctionCallError = {
+  code: SandboxFunctionCallErrorCode;
+  message: string;
+  status?: number;
+};
+
 export type SandboxFunctionMCPActionType = {
   sId: string;
   createdAt: number;
@@ -58,14 +85,14 @@ export type SandboxFunctionInvocationResultEvent = {
   result: unknown;
 };
 
-// Published when the invocation failed before producing a result, so listeners settle instead of
+// Published when the invocation cannot produce a valid result, so listeners settle instead of
 // waiting forever.
 export type SandboxFunctionInvocationErrorEvent = {
   type: "sandbox_function_invocation_error";
   created: number;
   invocationId: string;
   functionId: string;
-  message: string;
+  error: SandboxFunctionCallError;
 };
 
 export type SandboxFunctionInvocationEvent =
