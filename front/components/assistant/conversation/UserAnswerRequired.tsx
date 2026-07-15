@@ -7,7 +7,7 @@ import { canCurrentUserRespondToParentUserMessage } from "@app/lib/api/assistant
 import { useAuth } from "@app/lib/auth/AuthContext";
 import type { LightWorkspaceType, UserType } from "@app/types/user";
 import { ArrowUp, Button, cn, OptionCard, Spinner } from "@dust-tt/sparkle";
-import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
+import { useReducedMotion } from "framer-motion";
 import type { KeyboardEvent } from "react";
 import { useEffect, useRef, useState } from "react";
 
@@ -275,31 +275,24 @@ export function UserAnswerRequired({
   }
 
   return (
-    <motion.div
+    <div
       ref={containerRef}
       tabIndex={0}
       aria-busy={isSubmitting}
       onKeyDownCapture={handleContainerKeyDownCapture}
       onKeyDown={handleContainerKeyDown}
       onMouseMove={() => setIsKeyboardNavigating(false)}
-      initial={shouldReduceMotion ? false : { opacity: 0, scale: 0.985, y: 8 }}
-      animate={
-        isCompleted
-          ? { opacity: 0, scale: 0.985, y: -6 }
-          : { opacity: 1, scale: 1, y: 0 }
-      }
-      transition={{
-        duration: shouldReduceMotion ? 0 : isCompleted ? 0.16 : 0.2,
-        ease: "easeOut",
-      }}
-      onAnimationComplete={() => {
-        if (isCompleted) {
+      onAnimationEnd={(event) => {
+        if (isCompleted && event.currentTarget === event.target) {
           removeCompletedAction(blockedAction.actionId);
         }
       }}
       className={cn(
         "flex flex-col gap-4 rounded-2xl border border-dark bg-background p-5 outline-hidden",
-        "",
+        "ease-enter motion-reduce:animate-none",
+        isCompleted
+          ? "animate-out fade-out-0 zoom-out-[98.5%] slide-out-to-top-[6px] duration-exit"
+          : "animate-in fade-in-0 zoom-in-[98.5%] slide-in-from-bottom-2 duration-enter",
         isKeyboardNavigating && "cursor-none"
       )}
     >
@@ -307,18 +300,14 @@ export function UserAnswerRequired({
         {question.question}
       </div>
       <div className="relative min-h-16">
-        <motion.div
+        <div
           aria-hidden={isSubmitting}
-          animate={
+          className={cn(
+            "flex flex-col gap-2 transition-[opacity,transform] ease-enter motion-reduce:transition-none",
             isSubmitting
-              ? { opacity: 0, scale: 0.985 }
-              : { opacity: 1, scale: 1 }
-          }
-          transition={{
-            duration: shouldReduceMotion ? 0 : 0.15,
-            ease: "easeOut",
-          }}
-          className="flex flex-col gap-2"
+              ? "scale-[.985] opacity-0 duration-exit"
+              : "scale-100 opacity-100 duration-enter"
+          )}
         >
           {question.options.map((option, index) => (
             <OptionCard
@@ -362,25 +351,20 @@ export function UserAnswerRequired({
             onChange={(value) => answerDraft.updateCustomResponse(value)}
             onKeyDown={handleCustomResponseKeyDown}
           />
-        </motion.div>
-        <AnimatePresence initial={false}>
-          {isSubmitting && (
-            <motion.div
-              role="status"
-              className="absolute inset-0 flex items-center justify-center"
-              initial={shouldReduceMotion ? false : { opacity: 0, scale: 0.96 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.96 }}
-              transition={{
-                duration: shouldReduceMotion ? 0 : 0.15,
-                ease: "easeOut",
-              }}
-            >
-              <Spinner size="lg" />
-              <span className="sr-only">Submitting answer</span>
-            </motion.div>
+        </div>
+        <div
+          role={isSubmitting ? "status" : undefined}
+          aria-hidden={!isSubmitting}
+          className={cn(
+            "absolute inset-0 flex items-center justify-center transition-[opacity,transform] ease-enter motion-reduce:transition-none",
+            isSubmitting
+              ? "scale-100 opacity-100 duration-enter"
+              : "pointer-events-none scale-[.96] opacity-0 duration-exit"
           )}
-        </AnimatePresence>
+        >
+          <Spinner size="lg" />
+          <span className="sr-only">Submitting answer</span>
+        </div>
       </div>
       {errorMessage && (
         <div className="text-sm font-medium text-warning-800">
@@ -405,6 +389,6 @@ export function UserAnswerRequired({
           aria-label="Send answer"
         />
       </div>
-    </motion.div>
+    </div>
   );
 }

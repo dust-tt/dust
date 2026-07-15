@@ -256,6 +256,19 @@ function getKeyboardContainer(container: HTMLElement) {
   return element;
 }
 
+async function finishExitAnimation(container: HTMLElement) {
+  const keyboardContainer = getKeyboardContainer(container);
+
+  await waitFor(() => {
+    expect(keyboardContainer).toHaveClass(
+      "animate-out",
+      "duration-exit",
+      "ease-enter"
+    );
+  });
+  fireEvent.animationEnd(keyboardContainer);
+}
+
 describe("UserAnswerRequired", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -338,9 +351,8 @@ describe("UserAnswerRequired", () => {
         answer: { selectedOptions: [1] },
       });
     });
-    await waitFor(() => {
-      expect(removeCompletedActionMock).toHaveBeenCalledWith("action_1");
-    });
+    await finishExitAnimation(container);
+    expect(removeCompletedActionMock).toHaveBeenCalledWith("action_1");
   });
 
   it("keeps the submission state visible until the agent retry completes", async () => {
@@ -353,7 +365,7 @@ describe("UserAnswerRequired", () => {
         })
     );
 
-    render(
+    const { container } = render(
       <UserAnswerRequired
         blockedAction={makeBlockedAction()}
         triggeringUser={null}
@@ -365,18 +377,17 @@ describe("UserAnswerRequired", () => {
     await user.click(screen.getByRole("button", { name: /Alpha/i }));
 
     await waitFor(() => {
-      expect(screen.getByText("Loading")).toBeInTheDocument();
+      expect(screen.getByRole("status")).toBeInTheDocument();
     });
     expect(
       screen.queryByRole("button", { name: /Alpha/i })
     ).not.toBeInTheDocument();
     expect(removeCompletedActionMock).not.toHaveBeenCalled();
 
-    resolveRetry();
+    await act(async () => resolveRetry());
 
-    await waitFor(() => {
-      expect(removeCompletedActionMock).toHaveBeenCalledWith("action_1");
-    });
+    await finishExitAnimation(container);
+    expect(removeCompletedActionMock).toHaveBeenCalledWith("action_1");
   });
 
   it("removes immediately after retry when motion is reduced", async () => {
@@ -402,7 +413,7 @@ describe("UserAnswerRequired", () => {
     await user.click(screen.getByRole("button", { name: /Alpha/i }));
 
     await waitFor(() => {
-      expect(screen.getByText("Loading")).toBeInTheDocument();
+      expect(screen.getByRole("status")).toBeInTheDocument();
     });
 
     await act(async () => resolveRetry());
@@ -433,9 +444,8 @@ describe("UserAnswerRequired", () => {
         answer: { selectedOptions: [] },
       });
     });
-    await waitFor(() => {
-      expect(removeCompletedActionMock).toHaveBeenCalledWith("action_1");
-    });
+    await finishExitAnimation(container);
+    expect(removeCompletedActionMock).toHaveBeenCalledWith("action_1");
   });
 
   it("toggles options with Space and Enter, then submits with Cmd+Enter in multi-select mode", async () => {
