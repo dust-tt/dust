@@ -33,6 +33,7 @@ export interface MockFileVersion {
  */
 class FileStorageMock {
   private _writeStreamCalls: WriteStreamCall[] = [];
+  private _readStreamCalls: string[] = [];
   private _saveFileCalls: SaveFileCall[] = [];
   private _objectStore = new Map<string, string>();
   private _fetchNotFoundPredicate: (filePath: string) => boolean = () => false;
@@ -49,6 +50,10 @@ class FileStorageMock {
 
   get writeStreamCalls(): readonly WriteStreamCall[] {
     return this._writeStreamCalls;
+  }
+
+  get readStreamCalls(): readonly string[] {
+    return this._readStreamCalls;
   }
 
   get saveFileCalls(): readonly SaveFileCall[] {
@@ -132,6 +137,7 @@ class FileStorageMock {
 
   reset(): void {
     this._writeStreamCalls.length = 0;
+    this._readStreamCalls.length = 0;
     this._saveFileCalls.length = 0;
     this._objectStore.clear();
     this._fetchNotFoundPredicate = () => false;
@@ -169,6 +175,7 @@ class FileStorageMock {
     return {
       copy: vi.fn().mockResolvedValue(undefined),
       createReadStream: vi.fn(() => {
+        this._readStreamCalls.push(filePath ?? "unknown");
         const content = this._contentForPath(filePath ?? "");
         if (content !== null) {
           return Readable.from([Buffer.from(content, "utf8")]);
@@ -286,6 +293,9 @@ class FileStorageMock {
         return Promise.resolve(undefined);
       }),
       deleteFiles: vi.fn().mockResolvedValue(undefined),
+      getAllFilesByPrefix: vi
+        .fn()
+        .mockResolvedValue({ files: [], pageFetchCount: 1 }),
       getSortedFileVersions: vi.fn(({ filePath }: { filePath: string }) =>
         Promise.resolve(new Ok(this._sortedFileVersions(filePath) ?? []))
       ),

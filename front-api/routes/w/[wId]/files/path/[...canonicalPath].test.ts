@@ -3,6 +3,8 @@ import { getPrivateUploadBucket } from "@app/lib/file_storage";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { FileFactory } from "@app/tests/utils/FileFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
+import { fileStorageMock } from "@app/tests/utils/mocks/file_storage";
+import { DUST_FILE_ID_HEADER, frameContentType } from "@app/types/files";
 import { honoApp } from "@front-api/app";
 import { PassThrough } from "stream";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -15,47 +17,28 @@ function makeReadStream() {
   return new PassThrough();
 }
 
-function makeBucket(
-  overrides: Partial<{
-    existingFilePathSuffixes: string[];
-    getMetadata: ReturnType<typeof vi.fn>;
-    createReadStream: ReturnType<typeof vi.fn>;
-    copyFile: ReturnType<typeof vi.fn>;
-    delete: ReturnType<typeof vi.fn>;
-    fileDelete: ReturnType<typeof vi.fn>;
-    getAllFilesByPrefix: ReturnType<typeof vi.fn>;
-    save: ReturnType<typeof vi.fn>;
-  }> = {}
+function setExistingFiles(
+  suffixes: string[],
+  metadata: { contentType: string; size: string } = {
+    contentType: "text/plain",
+    size: "42",
+  }
 ) {
-  const existingFilePathSuffixes = overrides.existingFilePathSuffixes ?? [];
-  const getMetadata =
-    overrides.getMetadata ??
-    vi.fn().mockResolvedValue([{ contentType: "text/plain", size: "42" }]);
-  const createReadStream =
-    overrides.createReadStream ?? vi.fn().mockReturnValue(makeReadStream());
-  const fileDelete =
-    overrides.fileDelete ?? vi.fn().mockResolvedValue(undefined);
-  const save = overrides.save ?? vi.fn().mockResolvedValue(undefined);
-
-  return {
-    file: vi.fn((filePath: string) => ({
-      exists: vi
-        .fn()
-        .mockResolvedValue([
-          existingFilePathSuffixes.some((suffix) => filePath.endsWith(suffix)),
-        ]),
-      getMetadata,
-      createReadStream,
-      delete: fileDelete,
-      save,
-    })),
-    copyFile: overrides.copyFile ?? vi.fn().mockResolvedValue(undefined),
-    delete: overrides.delete ?? vi.fn().mockResolvedValue(undefined),
-    getAllFilesByPrefix:
-      overrides.getAllFilesByPrefix ??
-      vi.fn().mockResolvedValue({ files: [], pageFetchCount: 1 }),
-  };
+  fileStorageMock.setFileExists((filePath) =>
+    suffixes.some((suffix) => filePath.endsWith(suffix))
+  );
+  fileStorageMock.setFileMetadata(() => metadata);
 }
+
+function getInspectablePrivateUploadBucket() {
+  const bucket = getPrivateUploadBucket();
+  vi.mocked(getPrivateUploadBucket).mockReturnValue(bucket);
+  return bucket;
+}
+
+beforeEach(() => {
+  fileStorageMock.setFileExists(() => false);
+});
 
 async function setup() {
   const { workspace, auth } = await createPrivateApiMockRequest({
@@ -98,9 +81,6 @@ describe("GET /api/w/:wId/files/path/:canonicalPath", () => {
   it("returns 404 when conversation does not exist", async () => {
     const { workspace } = await setup();
 
-    const bucket = makeBucket();
-    vi.mocked(getPrivateUploadBucket).mockReturnValue(bucket as any);
-
     const response = await request(
       workspace,
       "conversation-doesnotexist/file.txt"
@@ -112,9 +92,6 @@ describe("GET /api/w/:wId/files/path/:canonicalPath", () => {
 
   it("returns 404 when file does not exist in GCS", async () => {
     const { workspace, conversation } = await setup();
-
-    const bucket = makeBucket();
-    vi.mocked(getPrivateUploadBucket).mockReturnValue(bucket as any);
 
     const response = await request(
       workspace,
@@ -128,13 +105,10 @@ describe("GET /api/w/:wId/files/path/:canonicalPath", () => {
   it("streams the file with the correct content type", async () => {
     const { workspace, conversation } = await setup();
 
-    const bucket = makeBucket({
-      existingFilePathSuffixes: ["/files/report.pdf"],
-      getMetadata: vi
-        .fn()
-        .mockResolvedValue([{ contentType: "application/pdf", size: "1024" }]),
+    setExistingFiles(["/files/report.pdf"], {
+      contentType: "application/pdf",
+      size: "1024",
     });
-    vi.mocked(getPrivateUploadBucket).mockReturnValue(bucket as any);
 
     const response = await request(
       workspace,
@@ -149,10 +123,7 @@ describe("GET /api/w/:wId/files/path/:canonicalPath", () => {
   it("sets Content-Disposition when ?download=1", async () => {
     const { workspace, conversation } = await setup();
 
-    const bucket = makeBucket({
-      existingFilePathSuffixes: ["/files/report.txt"],
-    });
-    vi.mocked(getPrivateUploadBucket).mockReturnValue(bucket as any);
+    setExistingFiles(["/files/report.txt"]);
 
     const segments = `conversation-${conversation.sId}/report.txt`
       .split("/")
@@ -177,13 +148,10 @@ describe("GET /api/w/:wId/files/path/:canonicalPath?thumbnail=1", () => {
   it("streams the thumbnail from FileResource when one is linked", async () => {
     const { workspace, auth, conversation } = await setup();
 
-    const bucket = makeBucket({
-      existingFilePathSuffixes: ["/files/photo.png"],
-      getMetadata: vi
-        .fn()
-        .mockResolvedValue([{ contentType: "image/png", size: "2048" }]),
+    setExistingFiles(["/files/photo.png"], {
+      contentType: "image/png",
+      size: "2048",
     });
-    vi.mocked(getPrivateUploadBucket).mockReturnValue(bucket as any);
 
     const file = await FileFactory.create(auth, auth.getNonNullableUser(), {
       contentType: "image/png",
@@ -215,13 +183,10 @@ describe("GET /api/w/:wId/files/path/:canonicalPath?thumbnail=1", () => {
   it("returns 400 for a non-image file", async () => {
     const { workspace, conversation } = await setup();
 
-    const bucket = makeBucket({
-      existingFilePathSuffixes: ["/files/data.csv"],
-      getMetadata: vi
-        .fn()
-        .mockResolvedValue([{ contentType: "text/plain", size: "100" }]),
+    setExistingFiles(["/files/data.csv"], {
+      contentType: "text/plain",
+      size: "100",
     });
-    vi.mocked(getPrivateUploadBucket).mockReturnValue(bucket as any);
 
     const segments = `conversation-${conversation.sId}/data.csv`
       .split("/")
@@ -243,16 +208,10 @@ describe("HEAD /api/w/:wId/files/path/:canonicalPath", () => {
 
   it("returns metadata headers without a body", async () => {
     const { workspace, conversation } = await setup();
-    const createReadStream = vi.fn().mockReturnValue(makeReadStream());
-
-    const bucket = makeBucket({
-      existingFilePathSuffixes: ["/files/data.csv"],
-      getMetadata: vi
-        .fn()
-        .mockResolvedValue([{ contentType: "text/csv", size: "512" }]),
-      createReadStream,
+    setExistingFiles(["/files/data.csv"], {
+      contentType: "text/csv",
+      size: "512",
     });
-    vi.mocked(getPrivateUploadBucket).mockReturnValue(bucket as any);
 
     const segments = `conversation-${conversation.sId}/data.csv`
       .split("/")
@@ -265,14 +224,46 @@ describe("HEAD /api/w/:wId/files/path/:canonicalPath", () => {
 
     expect(response.status).toBe(200);
     expect(response.headers.get("Content-Type")).toBe("text/csv");
-    expect(createReadStream).not.toHaveBeenCalled();
+    expect(fileStorageMock.readStreamCalls).toHaveLength(0);
+  });
+
+  it("returns the linked file id header when a FileResource exists", async () => {
+    const { workspace, auth, conversation } = await setup();
+
+    setExistingFiles(["/files/frame.tsx"], {
+      contentType: frameContentType,
+      size: "2048",
+    });
+
+    const file = await FileFactory.create(auth, auth.getNonNullableUser(), {
+      contentType: frameContentType,
+      fileName: "frame.tsx",
+      fileSize: 2048,
+      status: "ready",
+      useCase: "conversation",
+    });
+    await file.setUseCaseMetadata(auth, { conversationId: conversation.sId });
+    const linkedFile = await FileResource.fetchById(auth, file.sId);
+    expect(linkedFile?.mountFilePath).toBe(
+      `w/${workspace.sId}/conversations/${conversation.sId}/files/frame.tsx`
+    );
+
+    const segments = `conversation-${conversation.sId}/frame.tsx`
+      .split("/")
+      .map(encodeURIComponent)
+      .join("/");
+    const response = await honoApp.request(
+      `/api/w/${workspace.sId}/files/path/${segments}`,
+      { method: "HEAD" }
+    );
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get("Content-Type")).toBe(frameContentType);
+    expect(response.headers.get(DUST_FILE_ID_HEADER)).toBe(file.sId);
   });
 
   it("returns 404 when file does not exist", async () => {
     const { workspace, conversation } = await setup();
-
-    const bucket = makeBucket();
-    vi.mocked(getPrivateUploadBucket).mockReturnValue(bucket as any);
 
     const segments = `conversation-${conversation.sId}/missing.txt`
       .split("/")
@@ -311,11 +302,8 @@ describe("PATCH /api/w/:wId/files/path/:canonicalPath", () => {
 
   it("renames a file", async () => {
     const { workspace, conversation } = await setup();
-
-    const bucket = makeBucket({
-      existingFilePathSuffixes: ["/files/old.txt"],
-    });
-    vi.mocked(getPrivateUploadBucket).mockReturnValue(bucket as any);
+    setExistingFiles(["/files/old.txt"]);
+    const bucket = getInspectablePrivateUploadBucket();
 
     const response = await request(
       workspace,
@@ -333,11 +321,8 @@ describe("PATCH /api/w/:wId/files/path/:canonicalPath", () => {
 
   it("moves a file to another path", async () => {
     const { workspace, conversation } = await setup();
-
-    const bucket = makeBucket({
-      existingFilePathSuffixes: ["/files/old.txt"],
-    });
-    vi.mocked(getPrivateUploadBucket).mockReturnValue(bucket as any);
+    setExistingFiles(["/files/old.txt"]);
+    const bucket = getInspectablePrivateUploadBucket();
 
     const dest = `conversation-${conversation.sId}/archive/old.txt`;
 
@@ -378,10 +363,6 @@ describe("PUT /api/w/:wId/files/path/:canonicalPath", () => {
   it("creates a new file and returns 201", async () => {
     const { workspace, conversation } = await setup();
 
-    const save = vi.fn().mockResolvedValue(undefined);
-    const bucket = makeBucket({ save });
-    vi.mocked(getPrivateUploadBucket).mockReturnValue(bucket as any);
-
     const response = await request(
       workspace,
       `conversation-${conversation.sId}/notes.md`,
@@ -393,23 +374,19 @@ describe("PUT /api/w/:wId/files/path/:canonicalPath", () => {
     );
 
     expect(response.status).toBe(201);
-    expect(save).toHaveBeenCalledWith(Buffer.from("# Hello"), {
+    expect(fileStorageMock.saveFileCalls).toContainEqual({
+      filePath: `w/${workspace.sId}/conversations/${conversation.sId}/files/notes.md`,
+      content: Buffer.from("# Hello"),
       contentType: "text/markdown",
     });
   });
 
   it("updates an existing file and returns 200", async () => {
     const { workspace, conversation } = await setup();
-
-    const save = vi.fn().mockResolvedValue(undefined);
-    const bucket = makeBucket({
-      existingFilePathSuffixes: ["/files/notes.md"],
-      getMetadata: vi
-        .fn()
-        .mockResolvedValue([{ contentType: "text/markdown", size: "7" }]),
-      save,
+    setExistingFiles(["/files/notes.md"], {
+      contentType: "text/markdown",
+      size: "7",
     });
-    vi.mocked(getPrivateUploadBucket).mockReturnValue(bucket as any);
 
     const response = await request(
       workspace,
@@ -422,23 +399,19 @@ describe("PUT /api/w/:wId/files/path/:canonicalPath", () => {
     );
 
     expect(response.status).toBe(200);
-    expect(save).toHaveBeenCalledWith(Buffer.from("# Updated"), {
+    expect(fileStorageMock.saveFileCalls).toContainEqual({
+      filePath: `w/${workspace.sId}/conversations/${conversation.sId}/files/notes.md`,
+      content: Buffer.from("# Updated"),
       contentType: "text/markdown",
     });
   });
 
   it("returns 400 when updating a binary file type", async () => {
     const { workspace, conversation } = await setup();
-
-    const save = vi.fn().mockResolvedValue(undefined);
-    const bucket = makeBucket({
-      existingFilePathSuffixes: ["/files/report.pdf"],
-      getMetadata: vi
-        .fn()
-        .mockResolvedValue([{ contentType: "application/pdf", size: "1024" }]),
-      save,
+    setExistingFiles(["/files/report.pdf"], {
+      contentType: "application/pdf",
+      size: "1024",
     });
-    vi.mocked(getPrivateUploadBucket).mockReturnValue(bucket as any);
 
     const response = await request(
       workspace,
@@ -451,14 +424,11 @@ describe("PUT /api/w/:wId/files/path/:canonicalPath", () => {
     );
 
     expect(response.status).toBe(400);
-    expect(save).not.toHaveBeenCalled();
+    expect(fileStorageMock.saveFileCalls).toHaveLength(0);
   });
 
   it("returns 413 when content exceeds the size limit", async () => {
     const { workspace, conversation } = await setup();
-
-    const bucket = makeBucket();
-    vi.mocked(getPrivateUploadBucket).mockReturnValue(bucket as any);
 
     const response = await request(
       workspace,
@@ -476,9 +446,6 @@ describe("PUT /api/w/:wId/files/path/:canonicalPath", () => {
 
   it("returns 413 when Content-Length exceeds the size limit", async () => {
     const { workspace, conversation } = await setup();
-
-    const bucket = makeBucket();
-    vi.mocked(getPrivateUploadBucket).mockReturnValue(bucket as any);
 
     const response = await request(
       workspace,
@@ -505,11 +472,8 @@ describe("DELETE /api/w/:wId/files/path/:canonicalPath", () => {
 
   it("deletes a file and returns 204", async () => {
     const { workspace, conversation } = await setup();
-
-    const bucket = makeBucket({
-      existingFilePathSuffixes: ["/files/file.txt"],
-    });
-    vi.mocked(getPrivateUploadBucket).mockReturnValue(bucket as any);
+    setExistingFiles(["/files/file.txt"]);
+    const bucket = getInspectablePrivateUploadBucket();
 
     const response = await request(
       workspace,
@@ -523,9 +487,6 @@ describe("DELETE /api/w/:wId/files/path/:canonicalPath", () => {
 
   it("deletes the linked FileResource when one exists", async () => {
     const { workspace, auth, conversation } = await setup();
-
-    const bucket = makeBucket();
-    vi.mocked(getPrivateUploadBucket).mockReturnValue(bucket as any);
 
     const file = await FileFactory.create(auth, auth.getNonNullableUser(), {
       contentType: "text/plain",
@@ -548,13 +509,6 @@ describe("DELETE /api/w/:wId/files/path/:canonicalPath", () => {
 
   it("returns 404 when file does not exist", async () => {
     const { workspace, conversation } = await setup();
-
-    const bucket = makeBucket({
-      getAllFilesByPrefix: vi
-        .fn()
-        .mockResolvedValue({ files: [], pageFetchCount: 1 }),
-    });
-    vi.mocked(getPrivateUploadBucket).mockReturnValue(bucket as any);
 
     const response = await request(
       workspace,
