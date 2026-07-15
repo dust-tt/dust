@@ -650,6 +650,7 @@ export async function runModel(
           agentConfiguration,
           leadingMessages,
           enabledSkills,
+          metricsCaller: "agent_loop",
         })
       )
   );
