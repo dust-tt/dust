@@ -1,4 +1,3 @@
-import type { CommandResultMap } from "@viz/app/types";
 import type {
   SupportedEventType,
   SupportedMessage,
@@ -12,10 +11,7 @@ export interface VisualizationDataAPI {
   /**
    * Call a sandbox function.
    */
-  callFunction(
-    functionId: string,
-    input?: unknown
-  ): Promise<CommandResultMap["callFunction"]>;
+  callFunction(functionId: string, input?: unknown): Promise<unknown>;
 
   /**
    * Fetch a file by ID.

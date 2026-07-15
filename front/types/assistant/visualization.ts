@@ -134,7 +134,7 @@ export type VisualizationRPCRequestMap = {
 
 // Command results.
 export interface CommandResultMap {
-  callFunction: { result: unknown; error?: string };
+  callFunction: unknown;
   getCodeToExecute: { code: string };
   getFile: { fileBlob: Blob | null };
   downloadFileRequest: { blob: Blob; filename?: string };

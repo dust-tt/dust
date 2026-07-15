@@ -180,14 +180,15 @@ the mount-path form \`pod-<podId>/<slug>\` resolves from a Frame.
 \`\`\`ts
 import { callFunction } from "@dust/react-hooks";
 
-const { result, error } = await callFunction("<podId>/<slug>", input);
+const output = await callFunction("<podId>/<slug>", input);
 \`\`\`
 
-\`input\` must match the function's declared input schema (see \`get\`). Check \`error\` and render
-loading/error state, since this is a network call like any other in the Frame. \`result\` is
-currently the raw sandbox runner envelope (\`{ ok, response: { status, body, encoding, ... } }\`)
-rather than the parsed \`schema.output\`, so parse \`response.body\` yourself. Pod functions are
-only reachable from authenticated Pod Frames, not from public or shared Frames.`,
+\`input\` must match the function's declared input schema (see \`get\`). The promise resolves to
+the parsed and validated \`schema.output\`. It rejects with a \`SandboxFunctionCallError\` (also
+exported by \`@dust/react-hooks\`) whose \`code\` distinguishes missing functions, invalid
+input/output, handler failures, HTTP errors, and transport failures; render loading and error
+states like for any other network call. Pod functions are only reachable from authenticated
+Pod Frames, not from public or shared Frames.`,
   mcpServers: [{ name: SANDBOX_FUNCTIONS_SERVER_NAME }],
   version: 3,
   icon: "PuzzleIcon",
