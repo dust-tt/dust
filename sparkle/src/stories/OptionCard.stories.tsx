@@ -18,11 +18,18 @@ const meta = {
 - Provide \`onClick\` to make the card interactive; without it the card is display-only.
 - Use \`counterValue\` to convey ordering or quantity, and \`selected\` to reflect the current choice (it sets \`aria-pressed\`).
 - Use \`selectionIndicator="radio"\` for single-select lists and \`selectionIndicator="checkbox"\` for multi-select lists, so the selection mode is visually unambiguous.
+- Set \`type="input"\` for a free-text "type something else" option; OptionCard renders the field itself (pass \`value\`/\`onChange\`) and keeps the same chrome and counter.
 - Stack multiple cards in a column; for one-tap suggested prompts that send immediately, use **QuickReplyBlock** instead.`,
       },
     },
   },
   tags: ["autodocs"],
+} satisfies Meta<typeof OptionCard>;
+
+export default meta;
+type Story = StoryObj<typeof meta>;
+
+export const Playground: Story = {
   args: {
     label: "Summarize today's emails",
     description:
@@ -31,38 +38,76 @@ const meta = {
     selected: false,
     disabled: false,
   },
-} satisfies Meta<typeof OptionCard>;
-
-export default meta;
-type Story = StoryObj<typeof meta>;
-
-export const Playground: Story = {};
-
-export const GenericQuestion: Story = {
-  render: () => (
-    <div className="flex w-full max-w-sm flex-col gap-2">
-      <OptionCard
-        label="Unread emails"
-        description="Only conversations you have not opened yet."
-        counterValue={1}
-        selected
-      />
-      <OptionCard
-        label="Slack mentions"
-        description="Messages where you were directly tagged."
-        counterValue={2}
-        selected
-      />
-      <OptionCard
-        label="Calendar conflicts"
-        description="Events that overlap with your focus blocks."
-        counterValue={3}
-      />
-    </div>
-  ),
 };
 
-export const DisabledOption: Story = {
+// type="option", default state.
+export const Default: Story = {
+  args: {
+    label: "Unread emails",
+    description: "Only conversations you have not opened yet.",
+    counterValue: 1,
+    selected: false,
+  },
+};
+
+// type="option", selected state.
+export const Selected: Story = {
+  args: {
+    label: "Unread emails",
+    description: "Only conversations you have not opened yet.",
+    counterValue: 1,
+    selected: true,
+  },
+};
+
+// type="input": a free-text "type something else" option.
+export const Input: StoryObj = {
+  render: () => {
+    const [custom, setCustom] = React.useState("");
+    return (
+      <div className="w-full max-w-sm">
+        <OptionCard
+          type="input"
+          counterValue={3}
+          placeholder="Type something else"
+          value={custom}
+          onChange={setCustom}
+        />
+      </div>
+    );
+  },
+};
+
+// The three states stacked the way they appear in a question.
+export const AllStates: StoryObj = {
+  render: () => {
+    const [custom, setCustom] = React.useState("");
+    return (
+      <div className="flex w-full max-w-sm flex-col gap-2">
+        <OptionCard
+          label="Unread emails"
+          description="Only conversations you have not opened yet."
+          counterValue={1}
+          selected
+        />
+        <OptionCard
+          label="Slack mentions"
+          description="Messages where you were directly tagged."
+          counterValue={2}
+        />
+        <OptionCard
+          type="input"
+          counterValue={3}
+          placeholder="Type something else"
+          value={custom}
+          onChange={setCustom}
+        />
+      </div>
+    );
+  },
+};
+
+export const DisabledOption: StoryObj = {
   render: () => (
     <div className="flex w-full max-w-sm flex-col gap-2">
       <OptionCard
@@ -80,7 +125,7 @@ export const DisabledOption: Story = {
   ),
 };
 
-export const SingleSelect: Story = {
+export const SingleSelect: StoryObj = {
   render: () => (
     <div className="flex w-full max-w-sm flex-col gap-2">
       <OptionCard
@@ -106,7 +151,7 @@ export const SingleSelect: Story = {
   ),
 };
 
-export const MultiSelect: Story = {
+export const MultiSelect: StoryObj = {
   render: () => (
     <div className="flex w-full max-w-sm flex-col gap-2">
       <OptionCard

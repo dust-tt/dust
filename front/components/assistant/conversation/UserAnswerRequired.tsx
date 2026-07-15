@@ -6,16 +6,7 @@ import type { UserQuestionAnswer } from "@app/lib/actions/types";
 import { canCurrentUserRespondToParentUserMessage } from "@app/lib/api/assistant/conversation/can_current_user_respond";
 import { useAuth } from "@app/lib/auth/AuthContext";
 import type { LightWorkspaceType, UserType } from "@app/types/user";
-import {
-  ArrowUp,
-  Button,
-  Card,
-  Counter,
-  cn,
-  Input,
-  OptionCard,
-  Spinner,
-} from "@dust-tt/sparkle";
+import { ArrowUp, Button, cn, OptionCard, Spinner } from "@dust-tt/sparkle";
 import type { KeyboardEvent } from "react";
 import { useEffect, useRef, useState } from "react";
 
@@ -310,49 +301,26 @@ export function UserAnswerRequired({
               disabled={isAnswerSubmitting}
             />
           ))}
-          <Card
-            variant="tertiary"
-            className={cn(
-              "w-full items-center gap-2 transition-colors",
-              isCustomResponseActive
-                ? "bg-primary-100"
-                : [
-                    "bg-background",
-                    !isKeyboardNavigating && "hover:bg-primary-100",
-                  ]
-            )}
-          >
-            <Counter
-              value={question.options.length + 1}
-              size="sm"
-              variant="ghost"
-              className="shrink-0 bg-border-darker"
-            />
-            <Input
-              ref={customResponseInputRef}
-              id={`custom-response-${blockedAction.actionId}`}
-              containerClassName="flex-1"
-              className={cn(
-                "h-auto w-full rounded-none border-transparent bg-transparent",
-                "px-0 py-0 text-sm shadow-none",
-                "",
-                "focus-visible:border-transparent focus-visible:ring-0",
-                "",
-                isKeyboardNavigating && "cursor-none"
-              )}
-              placeholder="Type something else"
-              value={answerDraft.customResponse}
-              onFocus={() => {
-                setIsCustomResponseFocused(true);
-                answerDraft.selectCustomResponse();
-              }}
-              onBlur={() => setIsCustomResponseFocused(false)}
-              onChange={(e) => answerDraft.updateCustomResponse(e.target.value)}
-              onKeyDown={handleCustomResponseKeyDown}
-              name="custom-response"
-              disabled={isSubmitting}
-            />
-          </Card>
+          <OptionCard
+            type="input"
+            counterValue={question.options.length + 1}
+            selected={isCustomResponseActive}
+            disableHover={isKeyboardNavigating}
+            className={cn(isKeyboardNavigating && "cursor-none")}
+            inputRef={customResponseInputRef}
+            id={`custom-response-${blockedAction.actionId}`}
+            name="custom-response"
+            placeholder="Type something else"
+            value={answerDraft.customResponse}
+            disabled={isSubmitting}
+            onFocus={() => {
+              setIsCustomResponseFocused(true);
+              answerDraft.selectCustomResponse();
+            }}
+            onBlur={() => setIsCustomResponseFocused(false)}
+            onChange={(value) => answerDraft.updateCustomResponse(value)}
+            onKeyDown={handleCustomResponseKeyDown}
+          />
         </div>
       )}
       {errorMessage && (
