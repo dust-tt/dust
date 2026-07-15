@@ -29,7 +29,7 @@ import {
   DropdownMenuTrigger,
   Spinner,
 } from "@dust-tt/sparkle";
-import { useState } from "react";
+import { Fragment, useState } from "react";
 import { useFieldArray, useForm } from "react-hook-form";
 
 interface SeatLimitScheduleDialogProps {
@@ -312,65 +312,73 @@ function ScheduleEditor({
               </DropdownMenu>
             </div>
 
-            <div className="flex flex-col gap-3">
-              {fields.length === 0 && (
-                <div className="text-sm text-muted-foreground">
-                  No phases configured for this seat type.
+            {fields.length === 0 ? (
+              <div className="text-sm text-muted-foreground">
+                No phases configured for this seat type.
+              </div>
+            ) : (
+              // Table-like grid: one header row, then a row per phase. Cells are
+              // top-aligned so the Start field's local-time hint hangs below
+              // without pushing the other columns down.
+              <div className="grid grid-cols-[minmax(0,1fr)_7rem_7rem_auto] items-start gap-x-3 gap-y-2">
+                <div className="text-xs font-semibold text-muted-foreground">
+                  Start (UTC)
                 </div>
-              )}
-              {fields.map((field, index) => (
-                <div
-                  key={field.id}
-                  className="flex items-end gap-2 rounded-lg border p-3"
-                >
-                  <div className="w-52">
-                    <InputField
-                      control={form.control}
-                      name={`phases.${index}.startAt`}
-                      title="Start (UTC)"
-                      type="datetime-local"
-                      step={3600}
-                      transformValue={floorToHour}
-                    />
-                    {utcInputToLocalLabel(
-                      phaseValues?.[index]?.startAt ?? ""
-                    ) && (
-                      <p className="mt-1 text-xs text-muted-foreground">
-                        Local:{" "}
-                        {utcInputToLocalLabel(
-                          phaseValues?.[index]?.startAt ?? ""
-                        )}
-                      </p>
-                    )}
-                  </div>
-                  <div className="w-28">
+                <div className="text-xs font-semibold text-muted-foreground">
+                  Commitment
+                </div>
+                <div className="text-xs font-semibold text-muted-foreground">
+                  Max
+                </div>
+                <div />
+                {fields.map((field, index) => (
+                  <Fragment key={field.id}>
+                    <div>
+                      <InputField
+                        control={form.control}
+                        name={`phases.${index}.startAt`}
+                        hideLabel
+                        type="datetime-local"
+                        step={3600}
+                        transformValue={floorToHour}
+                      />
+                      {utcInputToLocalLabel(
+                        phaseValues?.[index]?.startAt ?? ""
+                      ) && (
+                        <p className="mt-1 text-xs text-muted-foreground">
+                          Local:{" "}
+                          {utcInputToLocalLabel(
+                            phaseValues?.[index]?.startAt ?? ""
+                          )}
+                        </p>
+                      )}
+                    </div>
                     <InputField
                       control={form.control}
                       name={`phases.${index}.minSeats`}
-                      title="Commitment"
+                      hideLabel
                       type="number"
                       min="0"
                     />
-                  </div>
-                  <div className="w-24">
                     <InputField
                       control={form.control}
                       name={`phases.${index}.maxSeats`}
-                      title="Max (blank = ∞)"
+                      hideLabel
                       type="number"
                       min="1"
+                      placeholder="∞"
                     />
-                  </div>
-                  <Button
-                    type="button"
-                    variant="warning"
-                    size="xs"
-                    label="Remove"
-                    onClick={() => handleRemovePhase(index)}
-                  />
-                </div>
-              ))}
-            </div>
+                    <Button
+                      type="button"
+                      variant="warning"
+                      size="xs"
+                      label="Remove"
+                      onClick={() => handleRemovePhase(index)}
+                    />
+                  </Fragment>
+                ))}
+              </div>
+            )}
 
             <div>
               <Button
