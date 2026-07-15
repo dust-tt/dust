@@ -47,12 +47,50 @@ describe("buildAgentAnalyticsBaseQuery", () => {
     });
   });
 
+  it("adds an agent_tag_ids terms filter when several tag ids are provided", () => {
+    expect(
+      buildAgentAnalyticsBaseQuery({
+        workspaceId: "w1",
+        agentTagIds: ["tag_1", "tag_2"],
+        startDate: "2026-01-01",
+        endDate: "2026-01-31",
+      })
+    ).toEqual({
+      bool: {
+        filter: [
+          { term: { workspace_id: "w1" } },
+          { terms: { agent_tag_ids: ["tag_1", "tag_2"] } },
+          { range: { timestamp: { gte: "2026-01-01", lte: "2026-01-31" } } },
+        ],
+      },
+    });
+  });
+
+  it("adds an agent_tag_ids term filter for a single tag id", () => {
+    expect(
+      buildAgentAnalyticsBaseQuery({
+        workspaceId: "w1",
+        agentTagIds: ["tag_1"],
+        days: 30,
+      })
+    ).toEqual({
+      bool: {
+        filter: [
+          { term: { workspace_id: "w1" } },
+          { term: { agent_tag_ids: "tag_1" } },
+          { range: { timestamp: { gte: "now-30d/d" } } },
+        ],
+      },
+    });
+  });
+
   it("omits empty array filters", () => {
     expect(
       buildAgentAnalyticsBaseQuery({
         workspaceId: "w1",
         agentIds: [],
         userIds: [],
+        agentTagIds: [],
       })
     ).toEqual({ bool: { filter: [{ term: { workspace_id: "w1" } }] } });
   });
