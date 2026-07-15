@@ -93,12 +93,11 @@ export function useInputBarSlashCommandCapabilities({
     [excludeSkillId, query, selectedMCPServerViewIdsRef, serverViews, skills]
   );
 
-  const isToolsLoading = isSpacesLoading || isServerViewsLoading;
-
   return {
     capabilityItems,
     isLoading:
-      isSkillsLoading || (isToolsLoading && capabilityItems.length === 0),
+      capabilityItems.length === 0 &&
+      (isSkillsLoading || isSpacesLoading || isServerViewsLoading),
   };
 }
 
