@@ -1,5 +1,6 @@
 import { GroupResource } from "@app/lib/resources/group_resource";
 import type {
+  DeleteGroupResponseBody,
   GetGroupResponseBody,
   PatchGroupResponseBody,
 } from "@app/types/api/groups/manage";
@@ -196,6 +197,85 @@ app.patch(
       group: group.toJSON(),
       members: members.map((member) => member.toJSON()),
     });
+  }
+);
+
+/** @ignoreswagger */
+app.delete(
+  "/",
+  ensureIsBusinessAdmin(),
+  validate("param", ParamsSchema),
+  async (ctx): HandlerResult<DeleteGroupResponseBody> => {
+    const auth = ctx.get("auth");
+    const { groupId } = ctx.req.valid("param");
+
+    const groupRes = await GroupResource.fetchById(auth, groupId);
+    if (groupRes.isErr()) {
+      switch (groupRes.error.code) {
+        case "invalid_id":
+          return apiError(ctx, {
+            status_code: 400,
+            api_error: {
+              type: "invalid_request_error",
+              message: groupRes.error.message,
+            },
+          });
+        case "unauthorized":
+          return apiError(ctx, {
+            status_code: 403,
+            api_error: {
+              type: "workspace_auth_error",
+              message: groupRes.error.message,
+            },
+          });
+        case "group_not_found":
+          return apiError(ctx, {
+            status_code: 404,
+            api_error: {
+              type: "group_not_found",
+              message: groupRes.error.message,
+            },
+          });
+        default:
+          assertNever(groupRes.error.code);
+      }
+    }
+
+    const group = groupRes.value;
+
+    const deleteRes = await group.deleteRegularManualGroup(auth);
+    if (deleteRes.isErr()) {
+      switch (deleteRes.error.code) {
+        case "unauthorized":
+          return apiError(ctx, {
+            status_code: 403,
+            api_error: {
+              type: "workspace_auth_error",
+              message: deleteRes.error.message,
+            },
+          });
+        case "group_not_found":
+          return apiError(ctx, {
+            status_code: 404,
+            api_error: {
+              type: "group_not_found",
+              message: deleteRes.error.message,
+            },
+          });
+        case "internal_error":
+          return apiError(ctx, {
+            status_code: 500,
+            api_error: {
+              type: "internal_server_error",
+              message: deleteRes.error.message,
+            },
+          });
+        default:
+          assertNever(deleteRes.error.code);
+      }
+    }
+
+    return ctx.json({ success: true });
   }
 );
 
