@@ -568,29 +568,15 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       ...otherOptions
     } = options;
 
-    const customSkillModelIdsFilter =
-      where && !Array.isArray(where) && "id" in where && Array.isArray(where.id)
-        ? where.id
-        : null;
     const customSkills = await this.model.findAll({
       ...otherOptions,
       where: {
         // Fetch active by default, unless explicitly overridden by the caller.
         status: "active",
         ...omit(where, "sId"),
-        ...(customSkillModelIdsFilter
-          ? {
-              id: {
-                [Op.any]: Sequelize.literal("$customSkillModelIds::bigint[]"),
-              },
-            }
-          : {}),
         workspaceId: workspace.id,
       },
       include: includes,
-      bind: customSkillModelIdsFilter
-        ? { customSkillModelIds: customSkillModelIdsFilter }
-        : undefined,
       transaction,
     });
 
@@ -863,7 +849,9 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
   ): Promise<SkillResource[]> {
     return this.baseFetch(auth, {
       where: {
-        id: ids,
+        id: {
+          [Op.in]: ids,
+        },
       },
       onlyCustom: true,
       withTools,
