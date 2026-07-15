@@ -344,7 +344,7 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
     },
     transaction?: Transaction
   ): Promise<SandboxFunctionInvocationResource> {
-    return withTransaction(async (t) => {
+    const resource = await withTransaction(async (t) => {
       const invocation = await this.model.create(
         {
           workspaceId: auth.getNonNullableWorkspace().id,
@@ -367,10 +367,12 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
       });
       const gcsPath = resource.buildGcsPath(auth);
       await resource.update({ gcsPath }, t);
-      await resource.writeDataToGcs();
 
       return resource;
     }, transaction);
+
+    await resource.writeDataToGcs();
+    return resource;
   }
 
   static async createAndStartExecution(
