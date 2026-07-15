@@ -4,7 +4,6 @@ import type { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import type { SandboxFunctionInvocationResource } from "@app/lib/resources/sandbox_function_invocation_resource";
 import type { SandboxFunctionMCPActionResource } from "@app/lib/resources/sandbox_function_mcp_action_resource";
-import type { SandboxFunctionResource } from "@app/lib/resources/sandbox_function_resource";
 import { getTemporalClientForAgentNamespace } from "@app/lib/temporal";
 import logger from "@app/logger/logger";
 import { logAgentLoopStart } from "@app/temporal/agent_loop/activities/instrumentation";
@@ -15,7 +14,6 @@ import {
   makeSandboxFunctionInvocationWorkflowId,
   makeSandboxFunctionToolWorkflowId,
 } from "@app/temporal/agent_loop/lib/workflow_ids";
-import type { PostSandboxFunctionInvocationRequestBody } from "@app/types/api/sandbox_functions";
 import type {
   AgentLoopArgs,
   AgentLoopArgsWithTiming,
@@ -306,13 +304,9 @@ export async function launchSandboxFunctionToolWorkflow(
 export async function launchSandboxFunctionInvocationWorkflow(
   auth: Authenticator,
   {
-    sandboxFunction,
     invocation,
-    body,
   }: {
-    sandboxFunction: SandboxFunctionResource;
     invocation: SandboxFunctionInvocationResource;
-    body: PostSandboxFunctionInvocationRequestBody;
   }
 ): Promise<Result<undefined, Error>> {
   const authType = auth.toJSON();
@@ -325,21 +319,13 @@ export async function launchSandboxFunctionInvocationWorkflow(
   try {
     const client = await getTemporalClientForAgentNamespace();
     await client.workflow.start(runSandboxFunctionInvocationWorkflow, {
-      args: [
-        authType,
-        {
-          sandboxFunctionId: sandboxFunction.sId,
-          invocationId: invocation.sId,
-          body,
-        },
-      ],
+      args: [{ authType, invocationId: invocation.sId }],
       taskQueue: QUEUE_NAME,
       workflowId,
       searchAttributes: {
         workspaceId: [workspaceId],
       },
       memo: {
-        sandboxFunctionId: sandboxFunction.sId,
         invocationId: invocation.sId,
         workspaceId,
       },

@@ -191,10 +191,7 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
     );
   }
 
-  async execute(
-    auth: Authenticator,
-    body: PostSandboxFunctionInvocationRequestBody
-  ): Promise<Result<undefined, Error>> {
+  async execute(auth: Authenticator): Promise<Result<undefined, Error>> {
     try {
       const { sandboxFunction } = this;
       const ensureResult = await ensurePodSandboxReady(
@@ -224,9 +221,9 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
           "x-dust-sandbox-function-id": sandboxFunction.sId,
           "x-dust-sandbox-function-invocation-id": this.sId,
         },
-        ...(body.input === undefined
+        ...(this.input === undefined
           ? {}
-          : { body: JSON.stringify(body.input) }),
+          : { body: JSON.stringify(this.input) }),
         encoding: "utf8",
       };
 
@@ -400,9 +397,7 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
     );
 
     const launchResult = await launchSandboxFunctionInvocationWorkflow(auth, {
-      sandboxFunction,
       invocation,
-      body,
     });
     if (launchResult.isErr()) {
       await invocation.fail(launchResult.error);

@@ -1,41 +1,25 @@
 import type { AuthenticatorType } from "@app/lib/auth";
 import { Authenticator } from "@app/lib/auth";
-import { SandboxFunctionInvocationResource } from "@app/lib/resources/sandbox_function_invocation_resource";
 import { SandboxFunctionResource } from "@app/lib/resources/sandbox_function_resource";
-import type { PostSandboxFunctionInvocationRequestBody } from "@app/types/api/sandbox_functions";
 
 export type RunSandboxFunctionInvocationActivityArgs = {
-  sandboxFunctionId: string;
   invocationId: string;
-  body: PostSandboxFunctionInvocationRequestBody;
 };
 
 export async function runSandboxFunctionInvocationActivity(
   authType: AuthenticatorType,
-  {
-    sandboxFunctionId,
-    invocationId,
-    body,
-  }: RunSandboxFunctionInvocationActivityArgs
+  { invocationId }: RunSandboxFunctionInvocationActivityArgs
 ): Promise<void> {
   const auth = await Authenticator.fromJsonWithRefrehedGroups(authType);
-  const sandboxFunction = await SandboxFunctionResource.fetchById(
+  const invocation = await SandboxFunctionResource.fetchInvocationById(
     auth,
-    sandboxFunctionId
+    invocationId
   );
-  if (!sandboxFunction) {
-    throw new Error(`Sandbox function not found: ${sandboxFunctionId}`);
-  }
-
-  const invocation = await SandboxFunctionInvocationResource.fetchById(auth, {
-    sandboxFunction,
-    invocationId,
-  });
   if (!invocation) {
     throw new Error(`Sandbox function invocation not found: ${invocationId}`);
   }
 
-  const executionResult = await invocation.execute(auth, body);
+  const executionResult = await invocation.execute(auth);
   if (executionResult.isErr()) {
     await invocation.fail(executionResult.error);
     throw executionResult.error;

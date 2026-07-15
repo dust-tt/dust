@@ -237,11 +237,7 @@ describe("POST /api/w/:wId/sandbox-functions/:functionIdOrSlug/invocations", () 
     expect(launchSandboxFunctionInvocationWorkflow).toHaveBeenCalledWith(
       expect.anything(),
       {
-        sandboxFunction: expect.objectContaining({ id: sandboxFunction.id }),
         invocation: expect.objectContaining({ sId: invocation.sId }),
-        body: {
-          input: { message: "hello" },
-        },
       }
     );
     expect(publishSandboxFunctionInvocationEvent).toHaveBeenCalledWith(
@@ -269,8 +265,9 @@ describe("POST /api/w/:wId/sandbox-functions/:functionIdOrSlug/invocations", () 
     expect(launchSandboxFunctionInvocationWorkflow).toHaveBeenCalledWith(
       expect.anything(),
       expect.objectContaining({
-        sandboxFunction: expect.objectContaining({ id: sandboxFunction.id }),
-        body: { input: { message: "hello" } },
+        invocation: expect.objectContaining({
+          sId: expect.stringMatching(/^sfi_/),
+        }),
       })
     );
   });

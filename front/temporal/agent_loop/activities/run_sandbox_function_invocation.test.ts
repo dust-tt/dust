@@ -46,7 +46,7 @@ async function setup() {
   });
   const invocation = await SandboxFunctionInvocationResource.makeNew(
     authenticator,
-    { sandboxFunction }
+    { sandboxFunction, input: { message: "hello" } }
   );
 
   return { authenticator, sandboxFunction, invocation };
@@ -62,19 +62,21 @@ afterEach(() => {
 
 describe("runSandboxFunctionInvocationActivity", () => {
   it("executes the existing invocation", async () => {
-    const { authenticator, sandboxFunction, invocation } = await setup();
+    const { authenticator, invocation } = await setup();
     const executeSpy = vi
       .spyOn(SandboxFunctionInvocationResource.prototype, "execute")
-      .mockResolvedValue(new Ok(undefined));
-    const body = { input: { message: "hello" } };
+      .mockImplementation(async function (
+        this: SandboxFunctionInvocationResource
+      ) {
+        expect(this.input).toEqual({ message: "hello" });
+        return new Ok(undefined);
+      });
 
     await runSandboxFunctionInvocationActivity(authenticator.toJSON(), {
-      sandboxFunctionId: sandboxFunction.sId,
       invocationId: invocation.sId,
-      body,
     });
 
-    expect(executeSpy).toHaveBeenCalledWith(expect.anything(), body);
+    expect(executeSpy).toHaveBeenCalledWith(expect.anything());
   });
 
   it("fails the invocation when execution fails", async () => {
@@ -86,9 +88,7 @@ describe("runSandboxFunctionInvocationActivity", () => {
 
     await expect(
       runSandboxFunctionInvocationActivity(authenticator.toJSON(), {
-        sandboxFunctionId: sandboxFunction.sId,
         invocationId: invocation.sId,
-        body: {},
       })
     ).rejects.toThrow("sandbox unavailable");
 
