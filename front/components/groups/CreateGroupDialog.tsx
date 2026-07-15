@@ -39,7 +39,8 @@ export function CreateGroupDialog({
     onOpenChange(false);
   };
 
-  const shouldDisableButton = name.trim().length === 0 || selectedMemberIds.size === 0;
+  const shouldDisableButton =
+    name.trim().length === 0 || selectedMemberIds.size === 0;
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
