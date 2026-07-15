@@ -21,7 +21,8 @@ describe("sandboxSkill", () => {
     expect(instructions).toContain("- Python: python, pandas 3.0.1");
     expect(instructions).toContain("- Node: typescript, tsx");
     expect(instructions).toContain("`describe_toolset`");
-    expect(instructions).toContain("Notable Dust helpers:");
+    expect(instructions).toContain("Dust tool details:");
+    expect(instructions).toContain("- `dsbx`: Dust CLI");
     expect(instructions).toContain(
       "- `pptx_slides`: Duplicate, move, or delete .pptx slides without corrupting"
     );
@@ -45,6 +46,7 @@ describe("sandboxSkill", () => {
       .find((line) => line.startsWith("- Dust:"));
     expect(dustTools).toBeDefined();
     expect(dustTools).not.toContain("dsbx");
+    expect(instructions).not.toContain("- `dsbx`: Dust CLI");
   });
 
   it("instructs the model to analyze mounted tabular files with code", async () => {

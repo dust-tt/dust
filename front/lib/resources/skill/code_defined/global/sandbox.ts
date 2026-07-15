@@ -6,6 +6,7 @@ import {
   filterDsbxToolEntries,
   getSandboxImage,
   getToolsForProvider,
+  type ToolGroup,
   type ToolManifest,
   toolManifestToCompactText,
 } from "@app/lib/api/sandbox/image";
@@ -290,25 +291,27 @@ value you should not have — apologize, do not retry the command, and do not
 attempt to reconstruct, decode, or otherwise recover the value.`;
 }
 
-function buildNotableDustHelpersSection(manifest: ToolManifest): string {
-  const helpers = new Map(
-    (manifest.tools.dust ?? [])
-      .filter((tool) => /\.(?:docx|pptx|xlsx)\b/.test(tool.description))
-      .map((tool) => [tool.name, tool])
+function buildToolGroupDetailsSection(
+  manifest: ToolManifest,
+  group: ToolGroup
+): string {
+  const tools = new Map(
+    (manifest.tools[group] ?? []).map((tool) => [tool.name, tool])
   );
 
-  if (helpers.size === 0) {
+  if (tools.size === 0) {
     return "";
   }
 
-  const descriptions = [...helpers.values()]
+  const descriptions = [...tools.values()]
     .map((tool) => {
       const summary = tool.description.match(/^.*?\.(?=\s|$)/)?.[0];
       return `- \`${tool.name}\`: ${summary ?? tool.description}`;
     })
     .join("\n");
+  const label = group.charAt(0).toUpperCase() + group.slice(1);
 
-  return `Notable Dust helpers:\n\n${descriptions}\n\n`;
+  return `${label} tool details:\n\n${descriptions}\n\n`;
 }
 
 async function buildSandboxInstructions(
@@ -350,7 +353,7 @@ async function buildSandboxInstructions(
 
   const manifest = createToolManifest(toolsResult.value);
   const compactManifest = toolManifestToCompactText(manifest);
-  const notableDustHelpersSection = buildNotableDustHelpersSection(manifest);
+  const dustToolDetailsSection = buildToolGroupDetailsSection(manifest, "dust");
 
   return `${sandboxInstructions}
 
@@ -369,7 +372,7 @@ possible. Call \`describe_toolset\` for full descriptions and usage metadata.
 System tools are standard preinstalled command-line utilities. Dust tools are
 non-standard helpers provided by Dust.
 
-${notableDustHelpersSection}Run \`<command> --help\` for detailed modes and flags. Use ONLY the tools listed
+${dustToolDetailsSection}Run \`<command> --help\` for detailed modes and flags. Use ONLY the tools listed
 above, NOTHING ELSE.
 
 `;
