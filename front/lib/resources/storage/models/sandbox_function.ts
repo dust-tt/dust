@@ -55,7 +55,7 @@ export class SandboxFunctionInvocationModel extends WorkspaceAwareModel<SandboxF
 
   declare sandboxFunctionId: ForeignKey<SandboxFunctionModel["id"]>;
   declare status: SandboxFunctionInvocationStatus;
-  declare gcsPath: string | null;
+  declare gcsPath: string;
 
   declare sandboxFunction: NonAttribute<SandboxFunctionModel>;
 }
@@ -180,8 +180,7 @@ SandboxFunctionInvocationModel.init(
     },
     gcsPath: {
       type: DANGEROUSLY_UNBOUNDED_TEXT,
-      allowNull: true,
-      defaultValue: null,
+      allowNull: false,
     },
   },
   {

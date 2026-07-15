@@ -25,6 +25,7 @@ import {
 } from "@app/lib/resources/string_ids";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
 import { concurrentExecutor, withRetry } from "@app/lib/utils/async_utils";
+import { withTransaction } from "@app/lib/utils/sql_utils";
 import logger from "@app/logger/logger";
 import type {
   PostSandboxFunctionInvocationRequestBody,
@@ -36,7 +37,6 @@ import { Err, Ok, type Result } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { truncate } from "@app/types/shared/utils/string_utils";
 import type { Attributes, Transaction } from "sequelize";
-import { Op } from "sequelize";
 import { z } from "zod";
 
 const SANDBOX_FUNCTION_WORKING_DIRECTORY = "/home/agent";
@@ -296,19 +296,8 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
   }
 
   private async loadDataFromGcs(): Promise<void> {
-    // TODO: Remove null support after running
-    // `20260715_backfill_sandbox_function_invocation_gcs_paths.ts`.
-    const { gcsPath } = this;
-    if (!gcsPath) {
-      this.data = {
-        version: SANDBOX_FUNCTION_INVOCATION_DATA_VERSION,
-        input: undefined,
-      };
-      return;
-    }
-
     const downloadResult = await withRetry(() =>
-      getPrivateUploadBucket().file(gcsPath).download()
+      getPrivateUploadBucket().file(this.gcsPath).download()
     );
     if (downloadResult.isErr()) {
       throw downloadResult.error;
@@ -319,16 +308,9 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
   }
 
   private async writeDataToGcs(): Promise<void> {
-    // TODO: Remove null support after running
-    // `20260715_backfill_sandbox_function_invocation_gcs_paths.ts`.
-    const { gcsPath } = this;
-    if (!gcsPath) {
-      return;
-    }
-
     const writeResult = await withRetry(() =>
       getPrivateUploadBucket()
-        .file(gcsPath)
+        .file(this.gcsPath)
         .save(Buffer.from(JSON.stringify(this.data), "utf-8"), {
           contentType: "application/json",
         })
@@ -365,29 +347,33 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
     },
     transaction?: Transaction
   ): Promise<SandboxFunctionInvocationResource> {
-    const invocation = await this.model.create(
-      {
-        workspaceId: auth.getNonNullableWorkspace().id,
-        sandboxFunctionId: sandboxFunction.id,
-        status: "created",
-        gcsPath: null,
-      },
-      { transaction }
-    );
+    return withTransaction(async (t) => {
+      const invocation = await this.model.create(
+        {
+          workspaceId: auth.getNonNullableWorkspace().id,
+          sandboxFunctionId: sandboxFunction.id,
+          status: "created",
+          // The final path contains the database-generated invocation sId. This placeholder is
+          // replaced in the same transaction before the row becomes visible.
+          gcsPath: "",
+        },
+        { transaction: t }
+      );
 
-    const data: SandboxFunctionInvocationData = {
-      version: SANDBOX_FUNCTION_INVOCATION_DATA_VERSION,
-      input,
-    };
-    const resource = new this(this.model, invocation.get(), {
-      sandboxFunction,
-      data,
-    });
-    const gcsPath = resource.buildGcsPath(auth);
-    await resource.update({ gcsPath }, transaction);
-    await resource.writeDataToGcs();
+      const data: SandboxFunctionInvocationData = {
+        version: SANDBOX_FUNCTION_INVOCATION_DATA_VERSION,
+        input,
+      };
+      const resource = new this(this.model, invocation.get(), {
+        sandboxFunction,
+        data,
+      });
+      const gcsPath = resource.buildGcsPath(auth);
+      await resource.update({ gcsPath }, t);
+      await resource.writeDataToGcs();
 
-    return resource;
+      return resource;
+    }, transaction);
   }
 
   static async createAndStartExecution(
@@ -495,15 +481,10 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
     };
     const invocations = await this.model.findAll({
       attributes: ["gcsPath"],
-      where: {
-        ...where,
-        gcsPath: { [Op.ne]: null },
-      },
+      where,
       transaction,
     });
-    const gcsPaths = invocations.flatMap(({ gcsPath }) =>
-      gcsPath ? [gcsPath] : []
-    );
+    const gcsPaths = invocations.map(({ gcsPath }) => gcsPath);
 
     // MCP actions FK invocations with RESTRICT: delete them (rows + output GCS objects) first.
     await SandboxFunctionMCPActionResource.deleteAllForSandboxFunction(
@@ -537,11 +518,7 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
         },
         transaction,
       });
-      if (this.gcsPath) {
-        await SandboxFunctionInvocationResource.deleteDataFromGcs([
-          this.gcsPath,
-        ]);
-      }
+      await SandboxFunctionInvocationResource.deleteDataFromGcs([this.gcsPath]);
 
       return new Ok(undefined);
     } catch (error) {
