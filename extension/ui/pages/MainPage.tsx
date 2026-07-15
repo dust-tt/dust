@@ -11,7 +11,6 @@ import { useSetupNotifications } from "@app/hooks/useSetupNotifications";
 import { useAuth } from "@app/lib/auth/AuthContext";
 import { getPodRoute } from "@app/lib/utils/router";
 import { Attachment01, Button, DotsHorizontal } from "@dust-tt/sparkle";
-import { useMcpServer } from "@extension/shared/hooks/useMcpServer";
 import { ConversationLayout } from "@extension/ui/components/conversation/ConversationLayout";
 import { UserDropdownMenu } from "@extension/ui/components/navigation/UserDropdownMenu";
 import { useMemo } from "react";
@@ -19,7 +18,6 @@ import { ConversationContainer } from "../components/conversation/ConversationCo
 
 export const MainPage = () => {
   const { user, workspace, subscription } = useAuth();
-  const { serverId } = useMcpServer();
   useSetupNotifications();
   const isMac = /macintosh|mac os x/i.test(navigator.userAgent);
   const shortcut = isMac ? "⇧⌘E" : "⇧+Ctrl+E";
@@ -109,7 +107,6 @@ export const MainPage = () => {
             subscription={subscription}
             conversationId={conversationId}
             conversation={conversation}
-            serverId={serverId}
           />
         </GenerationContextProvider>
       </BlockedActionsProvider>

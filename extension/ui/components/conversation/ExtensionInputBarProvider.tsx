@@ -2,6 +2,7 @@ import {
   InputBarContext,
   InputBarContextProvider,
 } from "@app/components/assistant/conversation/input_bar/InputBarContext";
+import { useActiveConversationId } from "@app/hooks/useActiveConversationId";
 import { useAgentConfiguration } from "@app/lib/swr/assistants";
 import { toRichAgentMentionType } from "@app/types/assistant/mentions";
 import type { LightWorkspaceType } from "@app/types/user";
@@ -15,17 +16,21 @@ import { useCallback, useContext, useEffect, useState } from "react";
 
 interface ExtensionInputBarProviderProps {
   workspace: LightWorkspaceType;
-  conversationId?: string | null;
   children: ReactNode;
 }
 
+/**
+ * Mounted once above the router's page routes (see `ProtectedRoute`), so the
+ * input bar context — including the deferred first message — survives
+ * navigation between the pod and conversation routes.
+ */
 export function ExtensionInputBarProvider({
   workspace,
-  conversationId = null,
   children,
 }: ExtensionInputBarProviderProps) {
   const platform = usePlatform();
   const quickActions = useExtensionQuickActions();
+  const conversationId = useActiveConversationId();
   const fileUploaderService = useFileUploaderService(
     platform.capture,
     conversationId

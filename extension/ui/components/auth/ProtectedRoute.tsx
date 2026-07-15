@@ -2,6 +2,8 @@ import { cn, Spinner } from "@dust-tt/sparkle";
 import { usePlatform } from "@extension/shared/context/PlatformContext";
 import type { RouteChangeMesssage } from "@extension/shared/messages";
 import { useExtensionAuth } from "@extension/ui/components/auth/AuthProvider";
+import { ExtensionClientSideMCPServerProvider } from "@extension/ui/components/conversation/ExtensionClientSideMCPServerProvider";
+import { ExtensionInputBarProvider } from "@extension/ui/components/conversation/ExtensionInputBarProvider";
 import { ExtensionQuickActionsProvider } from "@extension/ui/components/quick_actions/ExtensionQuickActionsProvider";
 import { useEffect } from "react";
 import { Outlet, useNavigate } from "react-router-dom";
@@ -59,7 +61,11 @@ export const ProtectedRoute = () => {
       )}
     >
       <ExtensionQuickActionsProvider owner={workspace}>
-        <Outlet />
+        <ExtensionClientSideMCPServerProvider>
+          <ExtensionInputBarProvider workspace={workspace}>
+            <Outlet />
+          </ExtensionInputBarProvider>
+        </ExtensionClientSideMCPServerProvider>
       </ExtensionQuickActionsProvider>
     </div>
   );
