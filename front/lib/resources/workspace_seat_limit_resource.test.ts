@@ -1,12 +1,18 @@
 import { WorkspaceSeatLimitResource } from "@app/lib/resources/workspace_seat_limit_resource";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
 import type { LightWorkspaceType } from "@app/types/user";
+import type { Transaction } from "sequelize";
 import { beforeEach, describe, expect, it } from "vitest";
 
 describe("WorkspaceSeatLimitResource", () => {
   let workspace: LightWorkspaceType;
+  // Captured so scheduleChange can nest under the test-isolation transaction as
+  // a SAVEPOINT; without it, scheduleChange opens a second DB connection that
+  // cannot see the workspace created inside the (uncommitted) test transaction.
+  let outerTransaction: Transaction;
 
-  beforeEach(async () => {
+  beforeEach(async (ctx) => {
+    outerTransaction = (ctx as any)["transaction"] as Transaction;
     workspace = await WorkspaceFactory.basic();
   });
 
@@ -160,5 +166,316 @@ describe("WorkspaceSeatLimitResource", () => {
       workspace,
     });
     expect(limits.size).toBe(0);
+  });
+
+  it("schedules a change: current value now, new value from the start date", async () => {
+    await WorkspaceSeatLimitResource.upsert({
+      workspace,
+      seatType: "pro",
+      minSeats: 5,
+      maxSeats: 10,
+    });
+
+    const startAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+    const result = await WorkspaceSeatLimitResource.setScheduledLimit({
+      workspace,
+      seatType: "pro",
+      minSeats: 8,
+      maxSeats: 20,
+      startAt,
+      transaction: outerTransaction,
+    });
+    expect(result.isOk()).toBe(true);
+
+    // Now: still the current value.
+    const nowLimits = await WorkspaceSeatLimitResource.fetchByWorkspace({
+      workspace,
+    });
+    expect(nowLimits.get("pro")).toEqual({ minSeats: 5, maxSeats: 10 });
+
+    // Just before the start date: still the current value.
+    const beforeLimits = await WorkspaceSeatLimitResource.fetchByWorkspace({
+      workspace,
+      at: new Date(startAt.getTime() - 1000),
+    });
+    expect(beforeLimits.get("pro")).toEqual({ minSeats: 5, maxSeats: 10 });
+
+    // From the start date onwards: the scheduled value.
+    const afterLimits = await WorkspaceSeatLimitResource.fetchByWorkspace({
+      workspace,
+      at: new Date(startAt.getTime() + 1000),
+    });
+    expect(afterLimits.get("pro")).toEqual({ minSeats: 8, maxSeats: 20 });
+  });
+
+  it("schedules a first-ever change with no current configuration", async () => {
+    const startAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+    const result = await WorkspaceSeatLimitResource.setScheduledLimit({
+      workspace,
+      seatType: "pro",
+      minSeats: 4,
+      startAt,
+      transaction: outerTransaction,
+    });
+    expect(result.isOk()).toBe(true);
+
+    // No floor applies before the start date.
+    const nowLimits = await WorkspaceSeatLimitResource.fetchByWorkspace({
+      workspace,
+    });
+    expect(nowLimits.has("pro")).toBe(false);
+
+    const afterLimits = await WorkspaceSeatLimitResource.fetchByWorkspace({
+      workspace,
+      at: new Date(startAt.getTime() + 1000),
+    });
+    expect(afterLimits.get("pro")).toEqual({ minSeats: 4, maxSeats: null });
+  });
+
+  it("applies a bounded window: limit active only between start and end", async () => {
+    const startAt = new Date(Date.now() + 10 * 24 * 60 * 60 * 1000);
+    const endAt = new Date(Date.now() + 40 * 24 * 60 * 60 * 1000);
+    const result = await WorkspaceSeatLimitResource.setScheduledLimit({
+      workspace,
+      seatType: "pro",
+      minSeats: 7,
+      startAt,
+      endAt,
+      transaction: outerTransaction,
+    });
+    expect(result.isOk()).toBe(true);
+
+    // Before the window: no limit.
+    const before = await WorkspaceSeatLimitResource.fetchByWorkspace({
+      workspace,
+    });
+    expect(before.has("pro")).toBe(false);
+
+    // Inside the window: the configured limit.
+    const during = await WorkspaceSeatLimitResource.fetchByWorkspace({
+      workspace,
+      at: new Date(startAt.getTime() + 1000),
+    });
+    expect(during.get("pro")).toEqual({ minSeats: 7, maxSeats: null });
+
+    // After the window: no limit again.
+    const after = await WorkspaceSeatLimitResource.fetchByWorkspace({
+      workspace,
+      at: new Date(endAt.getTime() + 1000),
+    });
+    expect(after.has("pro")).toBe(false);
+  });
+
+  it("rejects a window whose endAt is not after startAt", async () => {
+    const startAt = new Date(Date.now() + 10 * 24 * 60 * 60 * 1000);
+    const result = await WorkspaceSeatLimitResource.setScheduledLimit({
+      workspace,
+      seatType: "pro",
+      minSeats: 4,
+      startAt,
+      endAt: startAt,
+      transaction: outerTransaction,
+    });
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error.message).toMatch(/endAt.*startAt/);
+    }
+  });
+
+  it("rejects a scheduled limit with maxSeats < minSeats", async () => {
+    const result = await WorkspaceSeatLimitResource.setScheduledLimit({
+      workspace,
+      seatType: "pro",
+      minSeats: 10,
+      maxSeats: 5,
+      startAt: new Date(Date.now() + 1000),
+      transaction: outerTransaction,
+    });
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error.message).toMatch(/maxSeats.*minSeats/);
+    }
+  });
+
+  it("supersedes a later scheduled change when a new one is set earlier", async () => {
+    const laterStart = new Date(Date.now() + 40 * 24 * 60 * 60 * 1000);
+    await WorkspaceSeatLimitResource.setScheduledLimit({
+      workspace,
+      seatType: "pro",
+      minSeats: 8,
+      startAt: laterStart,
+      transaction: outerTransaction,
+    });
+
+    const earlierStart = new Date(Date.now() + 20 * 24 * 60 * 60 * 1000);
+    await WorkspaceSeatLimitResource.setScheduledLimit({
+      workspace,
+      seatType: "pro",
+      minSeats: 6,
+      startAt: earlierStart,
+      transaction: outerTransaction,
+    });
+
+    // The later (superseded) schedule no longer applies; the earlier one holds
+    // open-ended.
+    const afterLater = await WorkspaceSeatLimitResource.fetchByWorkspace({
+      workspace,
+      at: new Date(laterStart.getTime() + 1000),
+    });
+    expect(afterLater.get("pro")).toEqual({ minSeats: 6, maxSeats: null });
+  });
+
+  it("upsert after a scheduled change updates the open-ended (future) row", async () => {
+    await WorkspaceSeatLimitResource.upsert({
+      workspace,
+      seatType: "pro",
+      minSeats: 5,
+    });
+    const startAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+    await WorkspaceSeatLimitResource.setScheduledLimit({
+      workspace,
+      seatType: "pro",
+      minSeats: 8,
+      startAt,
+      transaction: outerTransaction,
+    });
+
+    // Upsert targets the open-ended (scheduled) row, not the currently active one.
+    await WorkspaceSeatLimitResource.upsert({
+      workspace,
+      seatType: "pro",
+      minSeats: 9,
+    });
+
+    const nowLimits = await WorkspaceSeatLimitResource.fetchByWorkspace({
+      workspace,
+    });
+    expect(nowLimits.get("pro")).toEqual({ minSeats: 5, maxSeats: null });
+
+    const afterLimits = await WorkspaceSeatLimitResource.fetchByWorkspace({
+      workspace,
+      at: new Date(startAt.getTime() + 1000),
+    });
+    expect(afterLimits.get("pro")).toEqual({ minSeats: 9, maxSeats: null });
+  });
+
+  it("replaces the full schedule for a seat type", async () => {
+    // Seed a limit that the replace must wipe.
+    await WorkspaceSeatLimitResource.upsert({
+      workspace,
+      seatType: "pro",
+      minSeats: 99,
+    });
+
+    const phase1Start = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    const phase2Start = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+    const result = await WorkspaceSeatLimitResource.setScheduleForSeatType({
+      workspace,
+      seatType: "pro",
+      phases: [
+        { minSeats: 3, maxSeats: 10, startAt: phase1Start, endAt: phase2Start },
+        { minSeats: 6, maxSeats: null, startAt: phase2Start, endAt: null },
+      ],
+      transaction: outerTransaction,
+    });
+    expect(result.isOk()).toBe(true);
+
+    // Now falls in phase 1.
+    const nowLimits = await WorkspaceSeatLimitResource.fetchByWorkspace({
+      workspace,
+    });
+    expect(nowLimits.get("pro")).toEqual({ minSeats: 3, maxSeats: 10 });
+
+    // After phase 2 start, phase 2 applies.
+    const afterLimits = await WorkspaceSeatLimitResource.fetchByWorkspace({
+      workspace,
+      at: new Date(phase2Start.getTime() + 1000),
+    });
+    expect(afterLimits.get("pro")).toEqual({ minSeats: 6, maxSeats: null });
+  });
+
+  it("clears a seat type when replacing with an empty schedule", async () => {
+    await WorkspaceSeatLimitResource.upsert({
+      workspace,
+      seatType: "pro",
+      minSeats: 5,
+    });
+
+    const result = await WorkspaceSeatLimitResource.setScheduleForSeatType({
+      workspace,
+      seatType: "pro",
+      phases: [],
+      transaction: outerTransaction,
+    });
+    expect(result.isOk()).toBe(true);
+
+    const limits = await WorkspaceSeatLimitResource.fetchByWorkspace({
+      workspace,
+    });
+    expect(limits.has("pro")).toBe(false);
+  });
+
+  it("rejects a schedule with overlapping phases", async () => {
+    const start1 = new Date(Date.now() + 10 * 24 * 60 * 60 * 1000);
+    const start2 = new Date(Date.now() + 20 * 24 * 60 * 60 * 1000);
+    const end1 = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+    const result = await WorkspaceSeatLimitResource.setScheduleForSeatType({
+      workspace,
+      seatType: "pro",
+      phases: [
+        { minSeats: 3, maxSeats: null, startAt: start1, endAt: end1 },
+        { minSeats: 6, maxSeats: null, startAt: start2, endAt: null },
+      ],
+      transaction: outerTransaction,
+    });
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error.message).toMatch(/overlap/);
+    }
+  });
+
+  it("rejects a schedule with more than one open-ended phase", async () => {
+    const start1 = new Date(Date.now() + 10 * 24 * 60 * 60 * 1000);
+    const start2 = new Date(Date.now() + 20 * 24 * 60 * 60 * 1000);
+    const result = await WorkspaceSeatLimitResource.setScheduleForSeatType({
+      workspace,
+      seatType: "pro",
+      phases: [
+        { minSeats: 3, maxSeats: null, startAt: start1, endAt: null },
+        { minSeats: 6, maxSeats: null, startAt: start2, endAt: null },
+      ],
+      transaction: outerTransaction,
+    });
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error.message).toMatch(/open-ended/);
+    }
+  });
+
+  it("removes all rows (current and scheduled) for a seat type", async () => {
+    await WorkspaceSeatLimitResource.upsert({
+      workspace,
+      seatType: "pro",
+      minSeats: 5,
+    });
+    await WorkspaceSeatLimitResource.setScheduledLimit({
+      workspace,
+      seatType: "pro",
+      minSeats: 8,
+      startAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+      transaction: outerTransaction,
+    });
+
+    const removed = await WorkspaceSeatLimitResource.remove({
+      workspace,
+      seatType: "pro",
+    });
+    expect(removed).toBe(true);
+
+    const futureLimits = await WorkspaceSeatLimitResource.fetchByWorkspace({
+      workspace,
+      at: new Date(Date.now() + 60 * 24 * 60 * 60 * 1000),
+    });
+    expect(futureLimits.has("pro")).toBe(false);
   });
 });

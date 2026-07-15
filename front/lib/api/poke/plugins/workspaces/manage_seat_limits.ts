@@ -7,9 +7,30 @@ import {
 } from "@app/types/memberships";
 import { isCreditPricedPlan } from "@app/types/plan";
 import { mapToEnumValues } from "@app/types/poke/plugins";
+import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { z } from "zod";
 import { fromError } from "zod-validation-error";
+
+// Poke date args arrive as strings (empty when unset). Parse to a Date or
+// null, surfacing a readable error for an unparseable value.
+function parseOptionalDate(
+  value: unknown,
+  label: string
+): Result<Date | null, Error> {
+  if (typeof value !== "string" || value.trim() === "") {
+    return new Ok(null);
+  }
+  const date = new Date(value);
+  if (isNaN(date.getTime())) {
+    return new Err(new Error(`Invalid ${label}.`));
+  }
+  return new Ok(date);
+}
+
+function toDateLabel(date: Date): string {
+  return date.toISOString().slice(0, 10);
+}
 
 const SeatLimitArgsSchema = z.object({
   minSeats: z
@@ -70,6 +91,23 @@ export const manageSeatLimitsPlugin = createPlugin({
           "Hard cap — maximum seats assignable for this type. Leave blank for no cap.",
         dependsOn: { field: "enabled", value: true },
       },
+      startDate: {
+        type: "date",
+        label: "Start date (optional)",
+        description:
+          "When these limits take effect. Leave blank to apply immediately. " +
+          "A future date schedules the change (it is programmed into Metronome " +
+          "ahead of time and supersedes any later scheduled change).",
+        dependsOn: { field: "enabled", value: true },
+      },
+      endDate: {
+        type: "date",
+        label: "End date (optional)",
+        description:
+          "When these limits stop applying (no floor/cap afterwards). Leave " +
+          "blank for open-ended.",
+        dependsOn: { field: "enabled", value: true },
+      },
     },
     requiredRoles: ["billing"],
   },
@@ -106,17 +144,48 @@ export const manageSeatLimitsPlugin = createPlugin({
       }
 
       const { minSeats, maxSeats } = parseResult.data;
-      const upsertResult = await WorkspaceSeatLimitResource.upsert({
-        workspace,
-        seatType,
-        minSeats,
-        maxSeats: maxSeats ?? null,
-      });
-      if (upsertResult.isErr()) {
-        return new Err(upsertResult.error);
+
+      const startAtResult = parseOptionalDate(args.startDate, "start date");
+      if (startAtResult.isErr()) {
+        return new Err(startAtResult.error);
+      }
+      const endAtResult = parseOptionalDate(args.endDate, "end date");
+      if (endAtResult.isErr()) {
+        return new Err(endAtResult.error);
+      }
+      const startAt = startAtResult.value;
+      const endAt = endAtResult.value;
+
+      // No dates: keep the simple "apply now" upsert (in place, leaving any
+      // pending scheduled change untouched). Any date given routes through the
+      // windowed scheduling primitive.
+      const saveResult =
+        startAt === null && endAt === null
+          ? await WorkspaceSeatLimitResource.upsert({
+              workspace,
+              seatType,
+              minSeats,
+              maxSeats: maxSeats ?? null,
+            })
+          : await WorkspaceSeatLimitResource.setScheduledLimit({
+              workspace,
+              seatType,
+              minSeats,
+              maxSeats: maxSeats ?? null,
+              startAt: startAt ?? new Date(),
+              endAt,
+            });
+      if (saveResult.isErr()) {
+        return new Err(saveResult.error);
       }
       const maxDesc = maxSeats !== undefined ? `, max ${maxSeats}` : ", no cap";
-      message = `Seat limits for '${seatType}' saved: min ${minSeats}${maxDesc}.`;
+      const windowDesc =
+        startAt || endAt
+          ? ` (effective ${startAt ? toDateLabel(startAt) : "now"}${
+              endAt ? ` until ${toDateLabel(endAt)}` : ""
+            })`
+          : "";
+      message = `Seat limits for '${seatType}' saved: min ${minSeats}${maxDesc}${windowDesc}.`;
     }
 
     // Re-sync seats to Metronome so the new limits are reflected immediately.

@@ -10,6 +10,7 @@ import { makeColumnsForSubscriptions } from "@app/components/poke/subscriptions/
 import DowngradeToNoPlanButton from "@app/components/poke/subscriptions/DowngradeToNoPlanButton";
 import EnterpriseUpgradeDialog from "@app/components/poke/subscriptions/EnterpriseUpgradeDialog";
 import FreePlanUpgradeDialog from "@app/components/poke/subscriptions/FreePlanUpgradeDialog";
+import SeatLimitScheduleDialog from "@app/components/poke/subscriptions/SeatLimitScheduleDialog";
 import SwitchContractDialog from "@app/components/poke/subscriptions/SwitchContractDialog";
 import type { SeatPlanResponseBody } from "@app/lib/api/credits/seat_plan";
 import { useSubmitFunction } from "@app/lib/client/utils";
@@ -303,8 +304,10 @@ function CancelPendingSubscriptionButton({
 }
 
 function SeatCommitmentsSection({
+  owner,
   seatPlan,
 }: {
+  owner: WorkspaceType;
   seatPlan: SeatPlanResponseBody | null;
 }) {
   const entries = Object.entries(seatPlan ?? {});
@@ -328,6 +331,9 @@ function SeatCommitmentsSection({
           ))}
         </PokeTableBody>
       </PokeTable>
+      <div className="pt-2">
+        <SeatLimitScheduleDialog owner={owner} seatPlan={seatPlan} />
+      </div>
     </>
   );
 }
@@ -407,7 +413,7 @@ export function ActiveSubscriptionTable({
             subscription={subscription}
             metronomeCustomerId={metronomeCustomerId}
           />
-          <SeatCommitmentsSection seatPlan={seatPlan} />
+          <SeatCommitmentsSection owner={owner} seatPlan={seatPlan} />
         </div>
       </div>
       {pendingSubscription && (
