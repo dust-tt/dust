@@ -187,7 +187,6 @@ export function isReadableAsText(contentType: string): boolean {
       "application/javascript",
       "application/json",
       "application/typescript",
-      "application/vnd.d",
       "application/x-ndjson",
       "application/xml",
       "application/yaml",
