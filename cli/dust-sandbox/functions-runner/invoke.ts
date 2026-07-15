@@ -1,10 +1,9 @@
-// Import a function handler, optionally validate the request body against its
-// declared schema, call its default fetch, and serialize the Response.
+// Import a function handler, validate its input and output, and call its default fetch.
 
 import {
   decodeRequestBody,
-  type ErrorCode,
   type InvocationError,
+  type NonHttpErrorCode,
   type Output,
   type RequestInput,
 } from "./protocol.ts";
@@ -17,32 +16,54 @@ interface ZodLike {
     | { success: false; error: { issues: unknown } };
 }
 
+interface FunctionHandler {
+  fetch(request: Request): unknown;
+}
+
 function isValidator(value: unknown): value is ZodLike {
   return (
     typeof value === "object" &&
     value !== null &&
-    typeof (value as { safeParse?: unknown }).safeParse === "function"
+    "safeParse" in value &&
+    typeof value.safeParse === "function"
   );
+}
+
+function isFunctionHandler(value: unknown): value is FunctionHandler {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    "fetch" in value &&
+    typeof value.fetch === "function"
+  );
+}
+
+function getProperty(value: unknown, property: string): unknown {
+  if (typeof value !== "object" || value === null || !(property in value)) {
+    return undefined;
+  }
+  return value[property];
 }
 
 export async function invoke(
   handlerPath: string,
   input: RequestInput
 ): Promise<Output> {
-  let handler: { fetch?: unknown };
+  let handler: FunctionHandler;
   let schemaInput: unknown;
   let schemaOutput: unknown;
   try {
-    const mod = await import(handlerPath);
-    const def = mod.default;
-    if (typeof def?.fetch !== "function") {
+    const mod: unknown = await import(handlerPath);
+    const def = getProperty(mod, "default");
+    if (!isFunctionHandler(def)) {
       throw new Error(
         "function must `export default { fetch(req) {...} }` with a fetch function"
       );
     }
     handler = def;
-    schemaInput = (mod.schema as { input?: unknown } | undefined)?.input;
-    schemaOutput = (mod.schema as { output?: unknown } | undefined)?.output;
+    const schema = getProperty(mod, "schema");
+    schemaInput = getProperty(schema, "input");
+    schemaOutput = getProperty(schema, "output");
   } catch (e) {
     return fail("import_failed", e);
   }
@@ -64,7 +85,7 @@ export async function invoke(
 
   let response: unknown;
   try {
-    response = await (handler.fetch as (req: Request) => unknown)(request);
+    response = await handler.fetch(request);
   } catch (e) {
     return fail("threw", e);
   }
@@ -92,14 +113,21 @@ function validateBody(
       };
     }
   }
-  const parsed = schema.safeParse(data);
-  if (parsed.success) {
-    return null;
+  try {
+    const parsed = schema.safeParse(data);
+    if (parsed.success) {
+      return null;
+    }
+    return {
+      code: "invalid_input",
+      message: `Function input does not match schema.input: ${JSON.stringify(parsed.error.issues)}`,
+    };
+  } catch (error) {
+    return makeError(
+      "invalid_input",
+      new Error(`schema.input validation threw: ${errorMessage(error)}`)
+    );
   }
-  return {
-    code: "invalid_input",
-    message: `Function input does not match schema.input: ${JSON.stringify(parsed.error.issues)}`,
-  };
 }
 
 async function parseOutput(
@@ -108,8 +136,7 @@ async function parseOutput(
 ): Promise<Output> {
   const body = await response.text();
   if (!response.ok) {
-    return fail(
-      "http_error",
+    return failHttp(
       new Error(
         `Function returned HTTP ${response.status}${body ? `: ${body}` : "."}`
       ),
@@ -128,31 +155,63 @@ async function parseOutput(
   }
 
   if (isValidator(schemaOutput)) {
-    const parsed = schemaOutput.safeParse(output);
-    if (!parsed.success) {
+    try {
+      const parsed = schemaOutput.safeParse(output);
+      if (!parsed.success) {
+        return fail(
+          "invalid_output",
+          new Error(
+            `Function output does not match schema.output: ${JSON.stringify(parsed.error.issues)}`
+          )
+        );
+      }
+      output = parsed.data;
+    } catch (error) {
       return fail(
         "invalid_output",
-        new Error(
-          `Function output does not match schema.output: ${JSON.stringify(parsed.error.issues)}`
-        )
+        new Error(`schema.output validation threw: ${errorMessage(error)}`)
       );
     }
-    output = parsed.data;
   }
 
-  return { ok: true, output };
+  let serializedOutput: string | undefined;
+  try {
+    serializedOutput = JSON.stringify(output);
+  } catch (error) {
+    return fail(
+      "invalid_output",
+      new Error(
+        `Function output is not JSON-serializable: ${errorMessage(error)}`
+      )
+    );
+  }
+  if (serializedOutput === undefined) {
+    return fail(
+      "invalid_output",
+      new Error("Function output is not JSON-serializable.")
+    );
+  }
+
+  return { ok: true, output: JSON.parse(serializedOutput) };
 }
 
-function fail(code: ErrorCode, e: unknown, status?: number): Output {
-  const err = e instanceof Error ? e : new Error(String(e));
+function makeError(code: NonHttpErrorCode, error: unknown): InvocationError {
+  return { code, message: errorMessage(error) };
+}
+
+function fail(code: NonHttpErrorCode, error: unknown): Output {
+  return { ok: false, error: makeError(code, error) };
+}
+
+function failHttp(error: unknown, status: number): Output {
   return {
     ok: false,
-    error: {
-      code,
-      message: err.message,
-      ...(status !== undefined ? { status } : {}),
-    },
+    error: { code: "http_error", message: errorMessage(error), status },
   };
+}
+
+function errorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
 }
 
 function typeOf(v: unknown): string {
