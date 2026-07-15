@@ -95,9 +95,7 @@ export function useInputBarSlashCommandCapabilities({
 
   return {
     capabilityItems,
-    isLoading:
-      capabilityItems.length === 0 &&
-      (isSkillsLoading || isSpacesLoading || isServerViewsLoading),
+    isLoading: isSkillsLoading && (isSpacesLoading || isServerViewsLoading),
   };
 }
 
