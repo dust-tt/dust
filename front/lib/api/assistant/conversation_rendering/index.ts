@@ -1,4 +1,12 @@
 import { groupMessagesIntoInteractions } from "@app/lib/api/assistant/conversation/interactions";
+import type {
+  ConversationPruningStats,
+  ConversationRenderingMetricsCaller,
+} from "@app/lib/api/assistant/conversation_rendering/instrumentation";
+import {
+  emitConversationRenderingError,
+  emitConversationRenderingMetrics,
+} from "@app/lib/api/assistant/conversation_rendering/instrumentation";
 import { renderAllMessages } from "@app/lib/api/assistant/conversation_rendering/message_rendering";
 import type { EnabledSkill } from "@app/lib/api/assistant/skills_rendering";
 import { getTextContentFromMessage } from "@app/lib/api/assistant/utils";
@@ -74,13 +82,34 @@ function pruneConversationToBudget(
     logDetails: Record<string, unknown>;
   }
 ): Result<
-  { interactions: InteractionWithTokens[]; prunedContext: boolean },
+  {
+    interactions: InteractionWithTokens[];
+    prunedContext: boolean;
+    stats: ConversationPruningStats;
+  },
   Error
 > {
   // An empty conversation trivially fits, and the layers below assume at least one interaction.
   if (interactions.length === 0) {
-    return new Ok({ interactions, prunedContext: false });
+    return new Ok({
+      interactions,
+      prunedContext: false,
+      stats: {
+        totalTokensBefore: 0,
+        totalTokensAfterPruning: 0,
+        totalTokensAfterDropping: 0,
+        totalTokensAfterFloorPruning: 0,
+        totalTokensAfterFloorDropping: 0,
+        interactionsBefore: 0,
+        interactionsAfterDropping: 0,
+        interactionsAfterFloorDropping: 0,
+        pruningBudget,
+        budgetForInteractions,
+      },
+    });
   }
+
+  const totalTokensBefore = sumInteractionTokens(interactions);
 
   // Layer 1: proactive pruning, within the protected floor, up to pruningBudget.
   let pruned = pruneToolResults(interactions, {
@@ -89,6 +118,7 @@ function pruneConversationToBudget(
   });
   let prunedContext = pruned !== interactions;
   let totalTokens = sumInteractionTokens(pruned);
+  const totalTokensAfterPruning = totalTokens;
 
   // Layer 2: drop whole previous interactions, oldest first. The last
   // PREVIOUS_INTERACTIONS_TO_PRESERVE of them are protected, and the current one always survives.
@@ -107,6 +137,8 @@ function pruneConversationToBudget(
       totalTokens = sumInteractionTokens(pruned);
     }
   }
+  const totalTokensAfterDropping = totalTokens;
+  const interactionsAfterDropping = pruned.length;
 
   // Layer 3: reaching here means layer 2 dropped every previous interaction it was allowed to,
   // and what remains (the last PREVIOUS_INTERACTIONS_TO_PRESERVE plus the current interaction)
@@ -126,6 +158,7 @@ function pruneConversationToBudget(
     }
     totalTokens = sumInteractionTokens(pruned);
   }
+  const totalTokensAfterFloorPruning = totalTokens;
 
   // Layer 4: still over budget with every tool result already at placeholder size. Drop previous
   // interactions past PREVIOUS_INTERACTIONS_TO_PRESERVE, down to the current interaction alone
@@ -167,7 +200,22 @@ function pruneConversationToBudget(
     );
   }
 
-  return new Ok({ interactions: pruned, prunedContext });
+  return new Ok({
+    interactions: pruned,
+    prunedContext,
+    stats: {
+      totalTokensBefore,
+      totalTokensAfterPruning,
+      totalTokensAfterDropping,
+      totalTokensAfterFloorPruning,
+      totalTokensAfterFloorDropping: totalTokens,
+      interactionsBefore: interactions.length,
+      interactionsAfterDropping,
+      interactionsAfterFloorDropping: pruned.length,
+      pruningBudget,
+      budgetForInteractions,
+    },
+  });
 }
 
 export async function renderConversationForModel(
@@ -184,6 +232,7 @@ export async function renderConversationForModel(
     onMissingAction = "inject-placeholder",
     agentConfiguration,
     enabledSkills,
+    metricsCaller,
   }: {
     leadingMessages?: ModelMessageTypeMultiActionsWithoutContentFragment[];
     conversation: ConversationType;
@@ -197,6 +246,10 @@ export async function renderConversationForModel(
     enablePreviousInteractionsPruning?: boolean;
     agentConfiguration?: AgentLoopExecutionData["agentConfiguration"];
     enabledSkills: EnabledSkill[];
+    // Opt-in StatsD emission. This function has callers with very different budgets (Dust app
+    // history injection, reinforcement batches, scripts) whose renders would skew the pruning
+    // dashboards, so only callers that name themselves are measured.
+    metricsCaller?: ConversationRenderingMetricsCaller;
   }
 ): Promise<
   Result<
@@ -316,9 +369,21 @@ export async function renderConversationForModel(
     logDetails,
   });
   if (pruneRes.isErr()) {
+    if (metricsCaller) {
+      emitConversationRenderingError({
+        kind: "context_overflow",
+        caller: metricsCaller,
+        providerId: model.providerId,
+        modelId: model.modelId,
+      });
+    }
     return pruneRes;
   }
-  const { interactions: prunedInteractions, prunedContext } = pruneRes.value;
+  const {
+    interactions: prunedInteractions,
+    prunedContext,
+    stats: pruningStats,
+  } = pruneRes.value;
   const totalTokens = sumInteractionTokens(prunedInteractions);
 
   const selected: MessageWithTokens[] = prunedInteractions.flatMap(
@@ -367,6 +432,14 @@ export async function renderConversationForModel(
       },
       "Render Conversation V2: conversation has no messages to render."
     );
+    if (metricsCaller) {
+      emitConversationRenderingError({
+        kind: "no_messages",
+        caller: metricsCaller,
+        providerId: model.providerId,
+        modelId: model.modelId,
+      });
+    }
     return new Err(
       new Error("Conversation contains no messages: at least one is required")
     );
@@ -385,6 +458,17 @@ export async function renderConversationForModel(
     );
 
   const pruneSelectAndFinalizeMs = Date.now() - stepStart;
+
+  if (metricsCaller) {
+    emitConversationRenderingMetrics({
+      stats: pruningStats,
+      caller: metricsCaller,
+      providerId: model.providerId,
+      modelId: model.modelId,
+      contextSize: model.contextSize,
+      tokensUsed,
+    });
+  }
 
   logger.info(
     {

@@ -18,6 +18,7 @@ import type {
   LLMStreamParameters,
 } from "@app/lib/api/llm/types/options";
 import { normalizePrompt } from "@app/lib/api/llm/types/options";
+import { emitTokenUsageMetrics } from "@app/lib/api/llm/usage_metrics";
 import {
   extractEncryptedContentFromMetadata,
   parseReasoningMetadata,
@@ -503,6 +504,10 @@ async function* convertToOldEvents(
   metadata: LLMClientMetadata
 ): AsyncGenerator<LLMEvent> {
   for await (const event of newEvents) {
+    // Providers yield exactly one token_usage per response, so this fires once per model call.
+    if (event.type === "token_usage") {
+      emitTokenUsageMetrics(event.content, metadata, "stream");
+    }
     yield convertToOldEvent(event, metadata);
   }
 }
@@ -515,6 +520,11 @@ function convertBatchEventsToOld(
   events: NonDeltaResponseEvent[],
   metadata: LLMClientMetadata
 ): LLMEvent[] {
+  for (const event of events) {
+    if (event.type === "token_usage") {
+      emitTokenUsageMetrics(event.content, metadata, "batch");
+    }
+  }
   return events.map((event) => convertToOldEvent(event, metadata));
 }
 

@@ -24,6 +24,13 @@ vi.mock(
   })
 );
 
+vi.mock("@app/lib/utils/statsd", () => ({
+  getStatsDClient: () => ({
+    distribution: vi.fn(),
+    increment: vi.fn(),
+  }),
+}));
+
 vi.mock("@app/lib/api/provider_credentials", () => ({
   getLlmCredentials: vi.fn(),
 }));
