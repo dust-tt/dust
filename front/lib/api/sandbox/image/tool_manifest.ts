@@ -1,14 +1,20 @@
 import type {
   ManifestToolEntry,
   ToolEntry,
+  ToolGroup,
   ToolManifest,
-  ToolRuntime,
 } from "@app/lib/api/sandbox/image/types";
-import { TOOL_RUNTIMES } from "@app/lib/api/sandbox/image/types";
 import * as yaml from "js-yaml";
 
+const TOOL_GROUPS = [
+  "system",
+  "dust",
+  "python",
+  "node",
+] as const satisfies readonly ToolGroup[];
+
 export function createToolManifest(tools: readonly ToolEntry[]): ToolManifest {
-  const toolsByRuntime: Record<ToolRuntime, ManifestToolEntry[]> = {
+  const toolsByGroup: Record<ToolGroup, ManifestToolEntry[]> = {
     system: [],
     dust: [],
     python: [],
@@ -23,15 +29,15 @@ export function createToolManifest(tools: readonly ToolEntry[]): ToolManifest {
       ...(tool.usage && { usage: tool.usage }),
       ...(tool.returns && { returns: tool.returns }),
     };
-    toolsByRuntime[tool.runtime].push(entry);
+    toolsByGroup[tool.group ?? tool.runtime].push(entry);
   }
 
   const filteredTools: Partial<
-    Record<ToolRuntime, readonly ManifestToolEntry[]>
+    Record<ToolGroup, readonly ManifestToolEntry[]>
   > = {};
-  for (const runtime of TOOL_RUNTIMES) {
-    if (toolsByRuntime[runtime].length > 0) {
-      filteredTools[runtime] = toolsByRuntime[runtime];
+  for (const group of TOOL_GROUPS) {
+    if (toolsByGroup[group].length > 0) {
+      filteredTools[group] = toolsByGroup[group];
     }
   }
 
@@ -46,8 +52,8 @@ export function toolManifestToJSON(manifest: ToolManifest): string {
 }
 
 export function toolManifestToCompactText(manifest: ToolManifest): string {
-  return TOOL_RUNTIMES.flatMap((runtime) => {
-    const tools = manifest.tools[runtime];
+  return TOOL_GROUPS.flatMap((group) => {
+    const tools = manifest.tools[group];
     if (!tools) {
       return [];
     }
@@ -57,7 +63,7 @@ export function toolManifestToCompactText(manifest: ToolManifest): string {
         tool.version ? `${tool.name} ${tool.version}` : tool.name
       )
     );
-    const label = runtime.charAt(0).toUpperCase() + runtime.slice(1);
+    const label = group.charAt(0).toUpperCase() + group.slice(1);
 
     return [`- ${label}: ${[...entries].join(", ")}`];
   }).join("\n");

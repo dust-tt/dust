@@ -107,6 +107,7 @@ export type {
   SandboxImageId,
   SandboxResources,
   ToolEntry,
+  ToolGroup,
   ToolManifest,
   ToolProfile,
   ToolRuntime,

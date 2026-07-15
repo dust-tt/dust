@@ -479,7 +479,8 @@ SHELLEOF`,
   .registerTool({
     name: DSBX_TOOL_NAME,
     description: "Dust CLI",
-    runtime: "dust",
+    runtime: "system",
+    group: "dust",
   })
   .runCmd("mkdir -p /skills && chmod 755 /skills", { user: "root" })
   .runCmd(
@@ -497,7 +498,8 @@ SHELLEOF`,
     usage:
       "apply_patch '*** Begin Patch\\n*** Update File: <path>\\n@@ [context]\\n-old\\n+new\\n*** End Patch'",
     returns: "Summary of applied changes (A/M/D per file)",
-    runtime: "dust",
+    runtime: "system",
+    group: "dust",
     profile: "openai",
   })
   .runCmd(
@@ -678,7 +680,8 @@ SHELLEOF`,
     usage: "read_file <path> [offset] [limit]",
     returns:
       "Header with line range + numbered lines (format: '  N\\tcontent')",
-    runtime: "dust",
+    runtime: "system",
+    group: "dust",
     profile: ["anthropic", "openai"],
   })
   .registerTool({
@@ -688,7 +691,8 @@ SHELLEOF`,
     usage: "read_file <path> [start] [end]",
     returns:
       "Header with line range + numbered lines (format: '  N\\tcontent')",
-    runtime: "dust",
+    runtime: "system",
+    group: "dust",
     profile: "gemini",
   })
   .registerTool({
@@ -697,7 +701,8 @@ SHELLEOF`,
       "Write content to file (atomic write, creates parent directories)",
     usage: "write_file <path> <content>",
     returns: "'Wrote <path> (<bytes> bytes)' on success",
-    runtime: "dust",
+    runtime: "system",
+    group: "dust",
     profile: ["anthropic", "gemini"],
   })
   .registerTool({
@@ -706,7 +711,8 @@ SHELLEOF`,
       "Replace exact text in a single file. Supports --replace-all and returns unified diff",
     usage: "edit_file [--replace-all] <old_text> <new_text> <path>",
     returns: "'Edited <path>' on success, unified diff on stderr",
-    runtime: "dust",
+    runtime: "system",
+    group: "dust",
     profile: ["anthropic", "gemini"],
   })
   // --- grep_files: anthropic has extra flags ---
@@ -717,7 +723,8 @@ SHELLEOF`,
     usage:
       "grep_files <pattern> [--glob GLOB] [--path PATH] [--max-results N] [--max-per-file N] [--context N] [--offset N] [--output-mode content|files|count] [--case-insensitive] [--max-line-length N]",
     returns: "file:line:content format with match count footer",
-    runtime: "dust",
+    runtime: "system",
+    group: "dust",
     profile: "anthropic",
   })
   .registerTool({
@@ -727,7 +734,8 @@ SHELLEOF`,
     usage:
       "grep_files <pattern> [--glob GLOB] [--path PATH] [--max-results N] [--max-per-file N] [--context N] [--offset N]",
     returns: "file:line:content format with match count footer",
-    runtime: "dust",
+    runtime: "system",
+    group: "dust",
     profile: ["openai", "gemini"],
   })
   // --- glob: uniform with pagination ---
@@ -736,7 +744,8 @@ SHELLEOF`,
     description: "Find files by glob pattern. Sorted, paginated output",
     usage: "glob <pattern> [--path PATH] [--offset N] [--limit N]",
     returns: "Sorted file paths with pagination hint",
-    runtime: "dust",
+    runtime: "system",
+    group: "dust",
   })
   // --- list_dir: uniform with type suffixes and pagination ---
   .registerTool({
@@ -746,7 +755,8 @@ SHELLEOF`,
     usage: "list_dir [path] [--depth N] [--offset N] [--limit N]",
     returns: "Sorted paths with type suffixes and pagination hint",
     profile: ["openai", "gemini"],
-    runtime: "dust",
+    runtime: "system",
+    group: "dust",
   })
   // --- xlsx_inspect: structural inspection of .xlsx workbooks ---
   .registerTool({
@@ -757,7 +767,8 @@ SHELLEOF`,
       "xlsx_inspect <file> [--sheet NAME] [--range A1:Z50] [--grep PATTERN [--regex] [--meta]] [--names] [--limit N] [--offset N]",
     returns:
       "Workbook overview, or one cell per line: '<address>  <formula or value>  [cached result]  numFmt: <fmt>  [font: <color>]  [fill: <color>]'. Empty cells skipped",
-    runtime: "dust",
+    runtime: "system",
+    group: "dust",
   })
   // --- pptx_inspect: structural inspection of .pptx decks ---
   .registerTool({
@@ -768,7 +779,8 @@ SHELLEOF`,
       "pptx_inspect <file> [--qa N[,N,...]] [--slide N[,N,...]] [--layouts] [--text] [--media] [--render] [--render-dir DIR] [--compare FILE] [--max-shapes N] [--offset N] (see --help)",
     returns:
       "A per-mode text report: deck overview, or per-slide shapes with [!] blockers / [i] advisories, or layouts / text / media listings. --qa and --render publish JPEGs and print their files__cat scoped paths; --compare ends in a [QA: PASS/FAIL] verdict. See --help for field-level detail.",
-    runtime: "dust",
+    runtime: "system",
+    group: "dust",
   })
   // --- pptx_slides: safe slide-level structural edits ---
   .registerTool({
@@ -778,7 +790,8 @@ SHELLEOF`,
     usage:
       "pptx_slides <file> (--duplicate N[,N,...] [--count K] [--after M] | --move N --to M | --delete N[,N,...])",
     returns: "A one-line summary of the change and the deck's new slide count",
-    runtime: "dust",
+    runtime: "system",
+    group: "dust",
   })
   // --- pptx_slides: safe slide-level structural edits ---
   .registerTool({
@@ -788,7 +801,8 @@ SHELLEOF`,
     usage:
       "pptx_slides <file> (--duplicate N[,N,...] [--count K] [--after M] | --move N --to M | --delete N[,N,...])",
     returns: "A one-line summary of the change and the deck's new slide count",
-    runtime: "dust",
+    runtime: "system",
+    group: "dust",
   })
   // --- docx_inspect: structural inspection of .docx documents ---
   .registerTool({
@@ -799,7 +813,8 @@ SHELLEOF`,
       "docx_inspect <file> [--styles] [--paragraphs] [--text] [--tables] [--sections] [--changes] [--fields] [--media] [--render] [--render-dir DIR] [--offset N] [--max N] [--page N]",
     returns:
       "Document overview with theme + default typography and heading outline, or one paragraph/style/section/table/change/field per line. Render mode publishes each page and prints its scoped path (files__cat-readable)",
-    runtime: "dust",
+    runtime: "system",
+    group: "dust",
   })
   .withCapability("gcsfuse")
   .withResources({ vcpu: 2, memoryMb: 2048 })

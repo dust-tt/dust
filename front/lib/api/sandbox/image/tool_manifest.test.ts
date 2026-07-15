@@ -120,13 +120,14 @@ describe("toolManifestToJSON()", () => {
 });
 
 describe("toolManifestToCompactText()", () => {
-  test("lists names and versions on one line per runtime", () => {
+  test("lists names and versions on one line per group", () => {
     const tools: ToolEntry[] = [
       { name: "curl", description: "HTTP client", runtime: "system" },
       {
         name: "read_file",
         description: "File reader",
-        runtime: "dust",
+        runtime: "system",
+        group: "dust",
       },
       {
         name: "pandas",
