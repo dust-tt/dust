@@ -71,7 +71,7 @@ export function CapabilitySection() {
   return (
     <div className="w-full">
       <HomeRevealStyles />
-      <div className="mx-auto w-full max-w-[1180px] px-6">
+      <div className="mx-auto w-full max-w-[1180px] lg:px-6">
         <HomeReveal>
           <div className="relative flex w-full flex-col items-center gap-12 overflow-hidden rounded-2xl bg-[#1c91ff] pt-16 md:pt-24">
             <img
