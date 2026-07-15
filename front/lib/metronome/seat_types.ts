@@ -168,19 +168,20 @@ function canAssignFreeSeat({
  *
  * The seat is chosen in three phases:
  *
- *  1. **Committed seats** — iterate `pro`, `pro_yearly`, `workspace`, and
- *     `workspace_yearly` seat types ordered by AWU allowance ascending. For each
- *     type that has a committed allocation (`seatLimits.minSeats > 0`) with
- *     remaining slots (`assignedCount < minSeats`), assign it. `max` /
- *     `max_yearly` are never auto-assigned; they must be set manually.
- *
- *  2. **Free seat** — if `free` is on the contract and all of the following
+ *  1. **Free seat** — if `free` is on the contract and all of the following
  *     hold, assign `free`:
  *       - `isReturningMember` is false (`free` is a one-shot starter tier).
  *       - Active free-seat cap not exceeded.
  *       - Lifetime free-seat cap not exceeded.
  *
- *  3. **None** — all committed slots are taken and `free` is unavailable:
+ *  2. **Committed seats** — if `free` is unavailable, iterate `pro`,
+ *     `pro_yearly`, `workspace`, and `workspace_yearly` seat types ordered by
+ *     AWU allowance ascending. For each type that has a committed allocation
+ *     (`seatLimits.minSeats > 0`) with remaining slots
+ *     (`assignedCount < minSeats`), assign it. `max` / `max_yearly` are never
+ *     auto-assigned; they must be set manually.
+ *
+ *  3. **None** — `free` is unavailable and all committed slots are taken:
  *     return `"none"` (no-seat tier).
  *
  * Legacy contracts that carry no seat subscriptions return `"workspace"` early
@@ -208,6 +209,20 @@ export function getDefaultSeatTypeForContract(
   if (seatTypesOnContract.length === 0) {
     return "none";
   }
+
+  // Phase 1: try "free" first if it's on the contract and the
+  // caller/workspace conditions allow it.
+  if (
+    canAssignFreeSeat({
+      seatTypesOnContract,
+      isReturningMember,
+      freeSeatCounts,
+      freeSeatLimits,
+    })
+  ) {
+    return "free";
+  }
+
   const ordered = seatTypesOnContract
     .map((seatType) => ({
       seatType,
@@ -225,9 +240,9 @@ export function getDefaultSeatTypeForContract(
     "workspace_yearly",
   ]);
 
-  // Phase 1: assign to the cheapest committed seat type with remaining slots.
-  // A seat type is committed if seatLimits.minSeats > 0. The commitment is
-  // exhausted once assignedCount >= minSeats.
+  // Phase 2: "free" unavailable — assign to the cheapest committed seat type
+  // with remaining slots. A seat type is committed if seatLimits.minSeats > 0.
+  // The commitment is exhausted once assignedCount >= minSeats.
   for (const { seatType } of ordered) {
     if (!AUTO_ASSIGNABLE.has(seatType)) {
       continue;
@@ -242,20 +257,7 @@ export function getDefaultSeatTypeForContract(
     }
   }
 
-  // Phase 2: committed seats exhausted — try "free" if on the contract and
-  // the caller/workspace conditions allow it.
-  if (
-    canAssignFreeSeat({
-      seatTypesOnContract,
-      isReturningMember,
-      freeSeatCounts,
-      freeSeatLimits,
-    })
-  ) {
-    return "free";
-  }
-
-  // Phase 3: no committed seat or free available.
+  // Phase 3: no free seat and no committed seat available.
   return "none";
 }
 
