@@ -55,6 +55,14 @@ export class DustMcpServerTransport implements Transport {
     // Setup heartbeat to keep the server registration alive.
     this.setupHeartbeat(serverId);
 
+    // If an SSE stream was already open (re-registration after a lost
+    // heartbeat), it is still subscribed to the previous serverId's channel.
+    // Reconnect to the new serverId's channel and drop the stale lastEventId.
+    if (this.eventSource) {
+      this.lastEventId = null;
+      await this.connectToRequestsStream();
+    }
+
     return true;
   }
 
