@@ -1,5 +1,4 @@
 import { MCP_VALIDATION_OUTPUTS } from "@app/lib/actions/constants";
-import { publishSandboxFunctionInvocationEvent } from "@app/lib/api/sandbox_functions/events";
 import { validateSandboxFunctionAction } from "@app/lib/api/sandbox_functions/validate_action";
 import { SandboxFunctionResource } from "@app/lib/resources/sandbox_function_resource";
 import type {
@@ -128,18 +127,9 @@ app.post(
       );
     }
 
-    await publishSandboxFunctionInvocationEvent(
-      {
-        type: "sandbox_function_invocation_created",
-        created: Date.parse(invocationResult.value.createdAt),
-        invocation: invocationResult.value,
-      },
-      { invocationId: invocationResult.value.sId }
-    );
-
     return ctx.json(
       {
-        invocation: invocationResult.value,
+        invocation: invocationResult.value.toJSON(),
       },
       201
     );

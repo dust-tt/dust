@@ -25,7 +25,7 @@ const resultEnvelopeSchema = z.discriminatedUnion("ok", [
   }),
 ]);
 
-// Safety ceiling on waiting for the result event (delivered over the stream, not invoke()'s
+// Safety ceiling on waiting for the result event (delivered over the stream, not execute()'s
 // return). Under blocking exec it is already in history when we subscribe, so this rarely bites.
 const CALL_RESULT_WAIT_TIMEOUT_MS = 2 * 60 * 1_000;
 
@@ -61,7 +61,8 @@ export async function callSandboxFunction(
   if (invocationResult.isErr()) {
     return invocationResult;
   }
-  const { sId: invocationId } = invocationResult.value;
+  const invocation = invocationResult.value;
+  const { sId: invocationId } = invocation;
 
   for await (const { data } of getSandboxFunctionInvocationEvents({
     invocationId,
