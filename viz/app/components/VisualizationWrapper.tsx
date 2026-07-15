@@ -3,6 +3,7 @@
 import { EditableFrame } from "@viz/app/components/EditableFrame";
 import { ErrorBoundary } from "@viz/app/components/ErrorBoundary";
 import { VizContext } from "@viz/app/components/VizContext";
+import { SandboxFunctionCallError } from "@viz/app/lib/data-apis/sandbox-function-call-error";
 import { extractFileRefs } from "@viz/app/lib/parseFileRefs";
 import { transformEditableText } from "@viz/app/lib/transformEditableText";
 import type {
@@ -439,6 +440,7 @@ export function VisualizationWrapper({
           "@dust/slideshow/v1": dustSlideshowV1,
           "@dust/slideshow/v2": dustSlideshowV2,
           "@dust/react-hooks": {
+            SandboxFunctionCallError,
             callFunction: (functionId: string, input?: unknown) =>
               api.data.callFunction(functionId, input),
             captureScreenshot: handleScreenshotDownload,

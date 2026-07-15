@@ -1,3 +1,4 @@
+import { normalizeSandboxFunctionCallError } from "@viz/app/lib/data-apis/sandbox-function-call-error";
 import type { VisualizationDataAPI } from "@viz/app/lib/visualization-api";
 import type {
   CommandResultMap,
@@ -24,23 +25,14 @@ export class RPCDataAPI implements VisualizationDataAPI {
     this.sendMessage = sendMessage;
   }
 
-  async callFunction(functionId: string, input?: unknown) {
+  async callFunction(functionId: string, input?: unknown): Promise<unknown> {
     try {
-      const result = await this.sendMessage("callFunction", {
+      return await this.sendMessage("callFunction", {
         functionIdOrSlug: functionId,
         input,
       });
-
-      return result;
     } catch (error) {
-      console.error(`Failed to call sandbox function ${functionId}:`, error);
-      return {
-        result: null,
-        error:
-          error instanceof Error
-            ? error.message
-            : "Failed to call sandbox function.",
-      };
+      throw normalizeSandboxFunctionCallError(error);
     }
   }
 

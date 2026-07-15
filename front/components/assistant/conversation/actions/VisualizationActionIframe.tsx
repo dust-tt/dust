@@ -13,6 +13,7 @@ import datadogLogger from "@app/logger/datadogLogger";
 import type {
   PostSandboxFunctionInvocationRequestBody,
   PostSandboxFunctionInvocationResponseBody,
+  SandboxFunctionCallError,
   SandboxFunctionInvocationEvent,
   SandboxFunctionInvocationType,
 } from "@app/types/api/sandbox_functions";
@@ -89,6 +90,22 @@ const sendResponseToIframe = <T extends VisualizationRPCCommand>(
   );
 };
 
+const sendErrorToIframe = (
+  request: { command: "callFunction" } & VisualizationRPCRequest,
+  error: SandboxFunctionCallError,
+  target: MessageEventSource
+) => {
+  target.postMessage(
+    {
+      command: "answer",
+      messageUniqueId: request.messageUniqueId,
+      identifier: request.identifier,
+      error,
+    },
+    { targetOrigin: "*" }
+  );
+};
+
 const getExtensionFromBlob = (blob: Blob): string => {
   const mimeToExt: Record<string, string> = {
     "image/png": "png",
@@ -105,7 +122,7 @@ interface SandboxFunctionInvocationProps {
   invocationId: string;
   onSettle: (
     invocationId: string,
-    response: CommandResultMap["callFunction"]
+    result: Result<unknown, SandboxFunctionCallError>
   ) => void;
 }
 
@@ -180,13 +197,10 @@ function SandboxFunctionInvocation({
             // NO-OP
             break;
           case "sandbox_function_invocation_result":
-            onSettle(invocationId, { result: eventPayload.data.result });
+            onSettle(invocationId, new Ok(eventPayload.data.result));
             break;
           case "sandbox_function_invocation_error":
-            onSettle(invocationId, {
-              result: null,
-              error: eventPayload.data.error.message,
-            });
+            onSettle(invocationId, new Err(eventPayload.data.error));
             break;
           case "tool_approve_execution":
           case "tool_personal_auth_required":
@@ -196,22 +210,28 @@ function SandboxFunctionInvocation({
             assertNeverAndIgnore(eventPayload.data);
         }
       } catch (error) {
-        onSettle(invocationId, {
-          result: null,
-          error:
-            "Failed to parse function invocation event: " +
-            normalizeError(error).message,
-        });
+        onSettle(
+          invocationId,
+          new Err({
+            code: "transport_error",
+            message:
+              "Failed to parse function invocation event: " +
+              normalizeError(error).message,
+          })
+        );
       }
     },
     [invocationId, onSettle, enqueueBlockedAction]
   );
 
   const onTerminalError = useCallback(() => {
-    onSettle(invocationId, {
-      result: null,
-      error: "Failed to listen to function invocation events.",
-    });
+    onSettle(
+      invocationId,
+      new Err({
+        code: "transport_error",
+        message: "Failed to listen to function invocation events.",
+      })
+    );
   }, [invocationId, onSettle]);
 
   useEventSource(
@@ -277,7 +297,7 @@ function useVisualizationDataHandler({
   createSandboxFunctionInvocation: (
     functionIdOrSlug: string,
     input?: unknown
-  ) => Promise<Result<SandboxFunctionInvocationType, Error>>;
+  ) => Promise<Result<SandboxFunctionInvocationType, SandboxFunctionCallError>>;
   getFileBlob: (fileId: string) => Promise<Blob | null>;
   onEditText?: EditTextFn;
   setCodeDrawerOpened: (v: SetStateAction<boolean>) => void;
@@ -288,7 +308,7 @@ function useVisualizationDataHandler({
   waitForSandboxFunctionInvocationResult: (params: {
     functionId: string;
     invocationId: string;
-  }) => Promise<CommandResultMap["callFunction"]>;
+  }) => Promise<Result<unknown, SandboxFunctionCallError>>;
 }) {
   const sendNotification = useSendNotification();
   const { code } = visualization;
@@ -352,15 +372,7 @@ function useVisualizationDataHandler({
           );
 
           if (invocationRes.isErr()) {
-            sendResponseToIframe(
-              data,
-              {
-                result: null,
-                error:
-                  "Failed to call function: " + invocationRes.error.message,
-              },
-              event.source
-            );
+            sendErrorToIframe(data, invocationRes.error, event.source);
             break;
           }
 
@@ -369,7 +381,11 @@ function useVisualizationDataHandler({
             invocationId: invocationRes.value.sId,
           });
 
-          sendResponseToIframe(data, result, event.source);
+          if (result.isErr()) {
+            sendErrorToIframe(data, result.error, event.source);
+          } else {
+            sendResponseToIframe(data, result.value, event.source);
+          }
           break;
         }
 
@@ -515,7 +531,7 @@ export const VisualizationActionIframe = forwardRef<
   >([]);
   const invocationResolversRef = useRef<Map<
     string,
-    (response: CommandResultMap["callFunction"]) => void
+    (result: Result<unknown, SandboxFunctionCallError>) => void
   > | null>(null);
   if (invocationResolversRef.current === null) {
     invocationResolversRef.current = new Map();
@@ -530,7 +546,7 @@ export const VisualizationActionIframe = forwardRef<
       functionId: string;
       invocationId: string;
     }) =>
-      new Promise<CommandResultMap["callFunction"]>((resolve) => {
+      new Promise<Result<unknown, SandboxFunctionCallError>>((resolve) => {
         invocationResolvers.set(invocationId, resolve);
         setActiveInvocations((prev) => [...prev, { functionId, invocationId }]);
       }),
@@ -538,13 +554,16 @@ export const VisualizationActionIframe = forwardRef<
   );
 
   const settleSandboxFunctionInvocation = useCallback(
-    (invocationId: string, response: CommandResultMap["callFunction"]) => {
+    (
+      invocationId: string,
+      result: Result<unknown, SandboxFunctionCallError>
+    ) => {
       const resolve = invocationResolvers.get(invocationId);
       invocationResolvers.delete(invocationId);
       setActiveInvocations((prev) =>
         prev.filter((invocation) => invocation.invocationId !== invocationId)
       );
-      resolve?.(response);
+      resolve?.(result);
     },
     [invocationResolvers]
   );
@@ -624,10 +643,15 @@ export const VisualizationActionIframe = forwardRef<
     async (
       functionIdOrSlug: string,
       input?: unknown
-    ): Promise<Result<SandboxFunctionInvocationType, Error>> => {
+    ): Promise<
+      Result<SandboxFunctionInvocationType, SandboxFunctionCallError>
+    > => {
       try {
         if (frameAccess === "public-anonymous") {
-          throw new Error("Pod functions are not supported in shared frames.");
+          return new Err({
+            code: "not_supported",
+            message: "Pod functions are not supported in shared frames.",
+          });
         }
 
         const body: PostSandboxFunctionInvocationRequestBody = {
@@ -648,7 +672,14 @@ export const VisualizationActionIframe = forwardRef<
 
         if (!response.ok) {
           const error = await getErrorFromResponse(response);
-          throw new Error(error.message);
+          return new Err({
+            code:
+              "type" in error && error.type === "sandbox_function_not_found"
+                ? "function_not_found"
+                : "invocation_failed",
+            message: error.message,
+            status: response.status,
+          });
         }
 
         const result: PostSandboxFunctionInvocationResponseBody =
@@ -656,7 +687,10 @@ export const VisualizationActionIframe = forwardRef<
 
         return new Ok(result.invocation);
       } catch (error) {
-        return new Err(normalizeError(error));
+        return new Err({
+          code: "transport_error",
+          message: normalizeError(error).message,
+        });
       }
     },
     [frameAccess, workspaceId]

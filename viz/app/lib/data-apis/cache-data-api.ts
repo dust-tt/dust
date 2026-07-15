@@ -1,3 +1,4 @@
+import { SandboxFunctionCallError } from "@viz/app/lib/data-apis/sandbox-function-call-error";
 import type { VisualizationDataAPI } from "@viz/app/lib/visualization-api";
 
 export interface PreFetchedFile {
@@ -41,14 +42,11 @@ export class CacheDataAPI implements VisualizationDataAPI {
     }
   }
 
-  async callFunction(functionId: string) {
-    console.error(
-      `Sandbox function ${functionId} is not supported in public frames.`
-    );
-    return {
-      result: null,
-      error: "Sandbox functions are not supported in public frames.",
-    };
+  async callFunction(functionId: string): Promise<unknown> {
+    throw new SandboxFunctionCallError({
+      code: "not_supported",
+      message: `Sandbox function ${functionId} is not supported in public frames.`,
+    });
   }
 
   async fetchFile(fileId: string): Promise<File | null> {
