@@ -146,7 +146,6 @@ const ResizablePanelContent = ({
   );
 };
 
-type ResizablePanelRef = React.ElementRef<typeof ResizablePrimitive.Panel>;
 type ResizablePanelProps = React.ComponentProps<
   typeof ResizablePrimitive.Panel
 > & {
@@ -162,7 +161,10 @@ type ResizablePanelProps = React.ComponentProps<
   initialContentSize?: number;
 };
 
-const ResizablePanel = React.forwardRef<ResizablePanelRef, ResizablePanelProps>(
+const ResizablePanel = React.forwardRef<
+  React.ElementRef<typeof ResizablePrimitive.Panel>,
+  ResizablePanelProps
+>(
   (
     {
       children,
