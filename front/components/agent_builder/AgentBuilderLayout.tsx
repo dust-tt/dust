@@ -67,7 +67,7 @@ export function AgentBuilderLayout({
                 leftPanel
               ) : (
                 <ResizablePanelGroup
-                  animated
+                  animateLayoutChanges
                   id="agent-builder-layout"
                   autoSaveId="agent-builder-layout"
                   direction="horizontal"
@@ -97,7 +97,7 @@ export function AgentBuilderLayout({
                     collapsible={true}
                     onCollapse={handlePanelCollapse}
                     onExpand={handlePanelExpand}
-                    stableContent
+                    preserveContentLayout
                     className="overflow-hidden"
                   >
                     {rightPanel}

@@ -110,8 +110,8 @@ export default function ConversationSidePanelContainer({
         }}
         collapsible
         collapsedSize={0}
-        stableContent
-        stableContentSize={DEFAULT_RIGHT_PANEL_SIZE}
+        preserveContentLayout
+        initialContentSize={DEFAULT_RIGHT_PANEL_SIZE}
         className={cn(
           // Smooth transition animation similar to sidebar
           "flex-0 overflow-hidden",
