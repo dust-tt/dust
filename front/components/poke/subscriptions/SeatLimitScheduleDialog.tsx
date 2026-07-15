@@ -162,6 +162,36 @@ function phasesForSeatType(
   }));
 }
 
+function phasesEqual(a: PhaseForm[], b: PhaseForm[]): boolean {
+  return JSON.stringify(a) === JSON.stringify(b);
+}
+
+// Convert the form's phases for one seat type into the API payload, validating
+// as we go. Returns either the payload or a human-readable error.
+function buildInputPhases(
+  phases: PhaseForm[]
+): { phases: SeatLimitScheduleInputPhase[] } | { error: string } {
+  const result: SeatLimitScheduleInputPhase[] = [];
+  for (const phase of phases) {
+    if (!phase.startAt) {
+      return { error: "Every phase needs a start date." };
+    }
+    result.push({
+      minSeats: Number(phase.minSeats) || 0,
+      maxSeats:
+        phase.maxSeats === undefined || Number.isNaN(phase.maxSeats)
+          ? null
+          : Number(phase.maxSeats),
+      startAt: utcInputToISO(phase.startAt),
+    });
+  }
+  // Two phases can't share a start (end dates are derived from the ordering).
+  if (new Set(result.map((phase) => phase.startAt)).size !== result.length) {
+    return { error: "Two phases can't start at the same time." };
+  }
+  return { phases: result };
+}
+
 interface ScheduleEditorProps {
   owner: WorkspaceType;
   seatPlan: SeatPlanResponseBody | null;
@@ -190,10 +220,18 @@ function ScheduleEditor({
     seatTypeOptions[0]?.seatType ?? null
   );
   const [isSubmitting, setIsSubmitting] = useState(false);
+  // In-progress edits per seat type, kept while switching between seat types so
+  // nothing is lost until the whole schedule is saved.
+  const [drafts, setDrafts] = useState<
+    Partial<Record<MembershipSeatType, PhaseForm[]>>
+  >({});
+
+  const phasesFor = (type: MembershipSeatType): PhaseForm[] =>
+    drafts[type] ?? phasesForSeatType(schedule, type);
 
   const form = useForm<ScheduleFormValues>({
     defaultValues: {
-      phases: seatType ? phasesForSeatType(schedule, seatType) : [],
+      phases: seatType ? phasesFor(seatType) : [],
     },
   });
   const { fields, replace } = useFieldArray({
@@ -218,8 +256,13 @@ function ScheduleEditor({
     seatTypeOptions.find((o) => o.seatType === seatType)?.name ?? seatType;
 
   const onSelectSeatType = (next: MembershipSeatType) => {
+    if (next === seatType) {
+      return;
+    }
+    // Stash the current seat type's edits before loading the next one.
+    setDrafts((prev) => ({ ...prev, [seatType]: form.getValues("phases") }));
+    replace(phasesFor(next));
     setSeatType(next);
-    replace(phasesForSeatType(schedule, next));
   };
 
   const handleAddPhase = () => {
@@ -240,43 +283,50 @@ function ScheduleEditor({
   };
 
   const onSubmit = async (values: ScheduleFormValues) => {
-    const phases: SeatLimitScheduleInputPhase[] = [];
-    for (const phase of values.phases) {
-      if (!phase.startAt) {
+    // Merge the seat type currently being edited into the stashed drafts, then
+    // save every seat type whose schedule actually changed from the server.
+    const allDrafts: Partial<Record<MembershipSeatType, PhaseForm[]>> = {
+      ...drafts,
+      [seatType]: values.phases,
+    };
+    const toSave: {
+      seatType: MembershipSeatType;
+      phases: SeatLimitScheduleInputPhase[];
+    }[] = [];
+    for (const [type, phases] of Object.entries(allDrafts)) {
+      if (!isMembershipSeatType(type) || !phases) {
+        continue;
+      }
+      if (phasesEqual(phases, phasesForSeatType(schedule, type))) {
+        continue;
+      }
+      const built = buildInputPhases(phases);
+      if ("error" in built) {
         sendNotification({
-          title: "Invalid schedule",
+          title: `Invalid schedule for '${type}'`,
           type: "error",
-          description: "Every phase needs a start date.",
+          description: built.error,
         });
         return;
       }
-      phases.push({
-        minSeats: Number(phase.minSeats) || 0,
-        maxSeats:
-          phase.maxSeats === undefined || Number.isNaN(phase.maxSeats)
-            ? null
-            : Number(phase.maxSeats),
-        startAt: utcInputToISO(phase.startAt),
-      });
+      toSave.push({ seatType: type, phases: built.phases });
     }
 
-    // Two phases can't share a start (end dates are derived from the ordering).
-    const starts = new Set(phases.map((phase) => phase.startAt));
-    if (starts.size !== phases.length) {
-      sendNotification({
-        title: "Invalid schedule",
-        type: "error",
-        description: "Two phases can't start at the same time.",
-      });
+    if (toSave.length === 0) {
+      await onSaved();
       return;
     }
 
     setIsSubmitting(true);
     try {
-      const ok = await updateSchedule({ seatType, phases });
-      if (ok) {
-        await onSaved();
+      for (const entry of toSave) {
+        const ok = await updateSchedule(entry);
+        if (!ok) {
+          // The hook already surfaced the error; stop so nothing is lost.
+          return;
+        }
       }
+      await onSaved();
     } finally {
       setIsSubmitting(false);
     }
