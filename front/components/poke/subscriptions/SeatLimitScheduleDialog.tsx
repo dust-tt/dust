@@ -27,7 +27,9 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  IconButton,
   Spinner,
+  Trash01,
 } from "@dust-tt/sparkle";
 import { Fragment, useState } from "react";
 import { useFieldArray, useForm } from "react-hook-form";
@@ -368,11 +370,10 @@ function ScheduleEditor({
                       min="1"
                       placeholder="∞"
                     />
-                    <Button
-                      type="button"
-                      variant="warning"
+                    <IconButton
+                      icon={Trash01}
                       size="xs"
-                      label="Remove"
+                      variant="outline"
                       onClick={() => handleRemovePhase(index)}
                     />
                   </Fragment>
