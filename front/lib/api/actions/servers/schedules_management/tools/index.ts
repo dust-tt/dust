@@ -212,7 +212,7 @@ export function createSchedulesManagementTools(
       }
 
       // Resolve Pod names for schedules attached to a Pod (single batch query).
-      const podSIds = [
+      const podIds = [
         ...new Set(
           schedules
             .map((s) => s.spaceId)
@@ -220,14 +220,14 @@ export function createSchedulesManagementTools(
         ),
       ];
       const pods =
-        podSIds.length > 0 ? await SpaceResource.fetchByIds(auth, podSIds) : [];
-      const podNameBySId = new Map(pods.map((p) => [p.sId, p.name]));
+        podIds.length > 0 ? await SpaceResource.fetchByIds(auth, podIds) : [];
+      const podNameById = new Map(pods.map((p) => [p.sId, p.name]));
 
       const scheduleList = schedules
         .map((schedule) =>
           renderSchedule(
             schedule,
-            schedule.spaceId ? podNameBySId.get(schedule.spaceId) : null
+            schedule.spaceId ? podNameById.get(schedule.spaceId) : null
           )
         )
         .join("\n\n");
