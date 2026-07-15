@@ -11,6 +11,9 @@ export const anthropicConfigSchema = inputConfigSchema.extend({
       ]),
     })
     .optional(),
+  // Prompt-cache diagnostics (Claude API only): undefined = off, null = on
+  // (first call), string = previous response id to diagnose against.
+  previousMessageId: z.string().nullable().optional(),
 });
 
 export type AnthropicInputConfig = z.infer<typeof anthropicConfigSchema>;

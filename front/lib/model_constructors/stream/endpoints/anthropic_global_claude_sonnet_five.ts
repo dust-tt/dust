@@ -1,7 +1,5 @@
-import type {
-  MessageCreateParamsNonStreaming,
-  RawMessageStreamEvent,
-} from "@anthropic-ai/sdk/resources";
+import type { MessageCreateParamsNonStreaming } from "@anthropic-ai/sdk/resources";
+import type { BetaRawMessageStreamEvent } from "@anthropic-ai/sdk/resources/beta/messages/messages";
 import {
   type ClaudeSonnetFive,
   WithAnthropicClaudeSonnetFiveConfig,
@@ -34,6 +32,6 @@ export class AnthropicGlobalClaudeSonnetFiveStream extends WithAnthropicClaudeSo
 
 AnthropicGlobalClaudeSonnetFiveStream satisfies StreamEndpointConstructor<
   MessageCreateParamsNonStreaming,
-  RawMessageStreamEvent,
+  BetaRawMessageStreamEvent,
   ClaudeSonnetFive
 >;

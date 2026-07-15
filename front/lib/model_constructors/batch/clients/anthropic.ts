@@ -1,5 +1,5 @@
 import AnthropicClient from "@anthropic-ai/sdk";
-import type { MessageBatchResult } from "@anthropic-ai/sdk/resources/messages/batches";
+import type { BetaMessageBatchResult } from "@anthropic-ai/sdk/resources/beta/messages/batches";
 import type { MessageCreateParamsNonStreaming } from "@anthropic-ai/sdk/resources/messages/messages";
 import {
   BatchEndpoint,
@@ -30,7 +30,7 @@ export abstract class AnthropicBatch extends WithAnthropicAIInputConverter(
   WithAnthropicAIOutputConverter(
     BatchEndpoint<
       MessageCreateParamsNonStreaming,
-      MessageBatchResult,
+      BetaMessageBatchResult,
       AnthropicInputConfig
     >
   )
@@ -47,7 +47,9 @@ export abstract class AnthropicBatch extends WithAnthropicAIInputConverter(
     });
   }
 
-  rawBatchOutputToEvents(result: MessageBatchResult): NonDeltaResponseEvent[] {
+  rawBatchOutputToEvents(
+    result: BetaMessageBatchResult
+  ): NonDeltaResponseEvent[] {
     return batchResultToEvents(result, this.metadata(), this);
   }
 
@@ -63,21 +65,21 @@ export abstract class AnthropicBatch extends WithAnthropicAIInputConverter(
       { concurrency: BUILD_PAYLOAD_CONCURRENCY }
     );
 
-    const batch = await this.client.messages.batches.create({
+    const batch = await this.client.beta.messages.batches.create({
       requests: batchRequests,
     });
     return batch.id;
   }
 
   async getBatchStatus(batchId: string): Promise<BatchStatus> {
-    const batch = await this.client.messages.batches.retrieve(batchId);
+    const batch = await this.client.beta.messages.batches.retrieve(batchId);
     return batch.processing_status === "ended" ? "ready" : "computing";
   }
 
   async getBatchResult(
     batchId: string
   ): Promise<Map<string, NonDeltaResponseEvent[]>> {
-    const results = await this.client.messages.batches.results(batchId);
+    const results = await this.client.beta.messages.batches.results(batchId);
 
     const batchResult = new Map<string, NonDeltaResponseEvent[]>();
     for await (const item of results) {
@@ -87,7 +89,7 @@ export abstract class AnthropicBatch extends WithAnthropicAIInputConverter(
   }
 
   async deleteBatch(batchId: string): Promise<boolean> {
-    await this.client.messages.batches.delete(batchId);
+    await this.client.beta.messages.batches.delete(batchId);
     return true;
   }
 }
