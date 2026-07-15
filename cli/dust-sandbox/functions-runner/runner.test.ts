@@ -25,7 +25,7 @@ describe("runner run", () => {
     );
     expect(code).toBe(0);
     const out = JSON.parse(stdout);
-    expect(JSON.parse(out.response.body)).toEqual({ hello: "r" });
+    expect(out.output).toEqual({ hello: "r" });
   });
 
   test("exits 1 with ok:false when handler throws", async () => {
@@ -34,13 +34,13 @@ describe("runner run", () => {
       JSON.stringify({ url: "http://localhost/" })
     );
     expect(code).toBe(1);
-    expect(JSON.parse(stdout).error.kind).toBe("threw");
+    expect(JSON.parse(stdout).error.code).toBe("threw");
   });
 
   test("exits 2 with bad_input when stdin is malformed JSON", async () => {
     const { stdout, code } = await run(["run", fx("hello.ts")], "not json");
     expect(code).toBe(2);
-    expect(JSON.parse(stdout).error.kind).toBe("bad_input");
+    expect(JSON.parse(stdout).error.code).toBe("bad_input");
   });
 });
 

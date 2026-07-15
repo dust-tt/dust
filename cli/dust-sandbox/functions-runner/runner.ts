@@ -26,7 +26,7 @@ async function runHandler(handlerPath: string): Promise<number> {
   } catch (e) {
     const message = e instanceof BadInputError ? e.message : String(e);
     process.stdout.write(
-      `${JSON.stringify({ ok: false, error: { kind: "bad_input", message } })}\n`
+      `${JSON.stringify({ ok: false, error: { code: "bad_input", message } })}\n`
     );
     return 2;
   }

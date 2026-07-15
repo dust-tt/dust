@@ -11,23 +11,23 @@ export interface RequestInput {
   encoding: Encoding;
 }
 
-export interface ResponseOutput {
-  status: number;
-  headers: Record<string, string>;
-  body: string | null;
-  encoding: Encoding;
-}
-
-export type ErrorKind = "bad_input" | "import_failed" | "threw" | "bad_return";
+export type ErrorCode =
+  | "bad_input"
+  | "invalid_input"
+  | "import_failed"
+  | "threw"
+  | "bad_return"
+  | "http_error"
+  | "invalid_output";
 
 export interface InvocationError {
-  kind: ErrorKind;
+  code: ErrorCode;
   message: string;
-  stack?: string;
+  status?: number;
 }
 
 export type Output =
-  | { ok: true; response: ResponseOutput }
+  | { ok: true; output: unknown }
   | { ok: false; error: InvocationError };
 
 export class BadInputError extends Error {}
@@ -84,16 +84,4 @@ export function decodeRequestBody(input: RequestInput): Uint8Array | undefined {
     return new Uint8Array(Buffer.from(input.body, "base64"));
   }
   return new TextEncoder().encode(input.body);
-}
-
-export function encodeResponseBody(bytes: Uint8Array): {
-  body: string | null;
-  encoding: Encoding;
-} {
-  try {
-    const text = new TextDecoder("utf-8", { fatal: true }).decode(bytes);
-    return { body: text, encoding: "utf8" };
-  } catch {
-    return { body: Buffer.from(bytes).toString("base64"), encoding: "base64" };
-  }
 }
