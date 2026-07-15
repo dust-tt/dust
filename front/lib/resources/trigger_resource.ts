@@ -207,22 +207,6 @@ export class TriggerResource extends BaseResource<TriggerModel> {
     return new Ok(triggers);
   }
 
-  // Lists all triggers owned by the given editors, across all Pods.
-  static async listByEditors(
-    auth: Authenticator,
-    { editorIds }: { editorIds: ModelId[] }
-  ): Promise<Result<TriggerResource[], Error>> {
-    if (editorIds.length === 0) {
-      return new Ok([]);
-    }
-    const triggers = await this.baseFetch(auth, {
-      where: {
-        editor: { [Op.in]: editorIds },
-      },
-    });
-    return new Ok(triggers);
-  }
-
   static listByWorkspace(auth: Authenticator) {
     return this.baseFetch(auth);
   }

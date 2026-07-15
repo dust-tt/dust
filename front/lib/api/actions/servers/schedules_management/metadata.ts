@@ -49,7 +49,7 @@ export const SCHEDULES_MANAGEMENT_TOOLS_METADATA = createToolsRecord({
   },
   list_schedules: {
     description:
-      "List all of the current user's schedules. Each entry shows the Pod it is attached to, if any.",
+      "List all schedules for this agent and the current user. Each entry shows the Pod it is attached to, if any.",
     schema: {},
     stake: "never_ask",
     displayLabels: {

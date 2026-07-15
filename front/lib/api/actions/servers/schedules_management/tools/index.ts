@@ -179,16 +179,23 @@ export function createSchedulesManagementTools(
       const owner = auth.getNonNullableWorkspace();
       const userId = auth.getNonNullableUser().id;
 
-      const schedulesResult = await TriggerResource.listByEditors(auth, {
-        editorIds: [userId],
-      });
+      const { agentConfiguration } = toolContext.runContext;
+
+      const schedulesResult =
+        await TriggerResource.listByAgentConfigurationIdAndEditors(auth, {
+          agentConfigurationId: agentConfiguration.sId,
+          editorIds: [userId],
+        });
 
       if (schedulesResult.isErr()) {
-        return new Err(new MCPError("Error while fetching schedules"));
+        return new Err(
+          new MCPError("Error while fetching schedules for this agent")
+        );
       }
 
       getStatsDClient().increment("tools.schedules_management.listed", 1, [
         `workspace_id:${owner.sId}`,
+        `agent_id:${agentConfiguration.sId}`,
       ]);
 
       const schedules = schedulesResult.value
@@ -199,7 +206,7 @@ export function createSchedulesManagementTools(
         return new Ok([
           {
             type: "text" as const,
-            text: "You have no schedules.",
+            text: "No schedules configured for this agent.",
           },
         ]);
       }
@@ -228,7 +235,7 @@ export function createSchedulesManagementTools(
       return new Ok([
         {
           type: "text" as const,
-          text: `Your schedules:\n\n${scheduleList}`,
+          text: `Schedules for this agent:\n\n${scheduleList}`,
         },
       ]);
     },
@@ -242,13 +249,20 @@ export function createSchedulesManagementTools(
       const owner = auth.getNonNullableWorkspace();
       const userId = auth.getNonNullableUser().id;
 
-      // Disable by id; only the schedule's own editor may disable it.
-      const schedule = await TriggerResource.fetchById(auth, scheduleId);
-      if (
-        !schedule ||
-        schedule.kind !== "schedule" ||
-        schedule.editor !== userId
-      ) {
+      const { agentConfiguration } = toolContext.runContext;
+
+      const triggersResult =
+        await TriggerResource.listByAgentConfigurationIdAndEditors(auth, {
+          agentConfigurationId: agentConfiguration.sId,
+          editorIds: [userId],
+        });
+      if (triggersResult.isErr()) {
+        return new Err(new MCPError("Error fetching schedules"));
+      }
+      const schedule = triggersResult.value.find(
+        (t) => t.kind === "schedule" && t.sId === scheduleId
+      );
+      if (!schedule) {
         return new Err(new MCPError("Schedule not found"));
       }
 
@@ -263,6 +277,7 @@ export function createSchedulesManagementTools(
 
       getStatsDClient().increment("tools.schedules_management.disabled", 1, [
         `workspace_id:${owner.sId}`,
+        `agent_id:${agentConfiguration.sId}`,
       ]);
 
       return new Ok([
