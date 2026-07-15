@@ -3150,7 +3150,7 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool stakes across a
     "call": "low",
     "db_list": "never_ask",
     "db_query": "never_ask",
-    "db_reconcile": "low",
+    "db_reconcile": "never_ask",
     "db_schema": "never_ask",
     "get": "never_ask",
     "list": "never_ask",
