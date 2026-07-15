@@ -127,15 +127,15 @@ const ANIMATION_CSS = `
   }
 
   @keyframes ag-page-in {
-    from { opacity: 0; transform: translateY(6px); }
-    to   { opacity: 1; transform: translateY(0); }
+    from { opacity: 0; transform: translateY(6px); filter: blur(3px); }
+    to   { opacity: 1; transform: translateY(0);   filter: blur(0px); }
   }
   @keyframes ag-fade-in {
     from { opacity: 0; }
     to   { opacity: 1; }
   }
   @keyframes ag-chip-in {
-    from { opacity: 0; transform: scale(0.82); }
+    from { opacity: 0; transform: scale(0.92); }
     to   { opacity: 1; transform: scale(1); }
   }
   @keyframes ag-section-in {
@@ -147,10 +147,19 @@ const ANIMATION_CSS = `
     to   { stroke-dashoffset: 0; }
   }
 
-  .ag-page-in    { animation: ag-page-in    200ms var(--ease-out-cubic) both; }
+  .ag-page-in    { animation: ag-page-in    180ms var(--ease-out-cubic) both; }
   .ag-fade-in    { animation: ag-fade-in    150ms var(--ease-out-cubic) both; }
-  .ag-chip-in    { animation: ag-chip-in    150ms var(--ease-out-quart) both; }
+  .ag-chip-in    { animation: ag-chip-in    140ms var(--ease-out-quart) both; }
   .ag-section-in { animation: ag-section-in 180ms var(--ease-out-cubic) both; }
+
+  /* Chip stagger — each nth chip delays slightly so groups cascade in */
+  .ag-chip-in:nth-child(2) { animation-delay: 20ms; }
+  .ag-chip-in:nth-child(3) { animation-delay: 40ms; }
+  .ag-chip-in:nth-child(4) { animation-delay: 60ms; }
+  .ag-chip-in:nth-child(5) { animation-delay: 80ms; }
+  .ag-chip-in:nth-child(6) { animation-delay: 100ms; }
+  .ag-chip-in:nth-child(7) { animation-delay: 120ms; }
+  .ag-chip-in:nth-child(n+8) { animation-delay: 140ms; }
 
   /* Button press feedback */
   .ag-btn-press:active { transform: scale(0.97); }
@@ -166,14 +175,14 @@ const ANIMATION_CSS = `
     transition: background-color 120ms ease;
   }
   @media (hover: hover) and (pointer: fine) {
-    .ag-model-row:hover { background-color: var(--muted); }
+    .ag-model-row:hover { background-color: var(--color-muted); }
   }
 
-  /* Toggle row hover */
-  @media (hover: hover) and (pointer: fine) {
-    .ag-governance-row:hover { background-color: rgba(0,0,0,0.015); }
-  }
+  /* Toggle row hover — themed so it works in dark mode */
   .ag-governance-row { transition: background-color 120ms ease; }
+  @media (hover: hover) and (pointer: fine) {
+    .ag-governance-row:hover { background-color: var(--color-muted); }
+  }
 
   /* Chart line draw */
   .ag-chart-line {
@@ -182,16 +191,18 @@ const ANIMATION_CSS = `
     animation: ag-chart-draw 900ms var(--ease-out-cubic) both;
   }
 
-  /* Reduced motion: disable everything */
+  /* Reduced motion: crossfade fallback instead of hard cut */
   @media (prefers-reduced-motion: reduce) {
-    .ag-page-in, .ag-fade-in, .ag-chip-in, .ag-section-in {
-      animation: none !important;
-    }
-    .ag-btn-press { transition: none !important; }
-    .ag-nav-item  { transition: none !important; }
-    .ag-model-row { transition: none !important; }
-    .ag-governance-row { transition: none !important; }
-    .ag-chart-line { animation: none !important; }
+    .ag-page-in    { animation: ag-fade-in 100ms ease both; }
+    .ag-section-in { animation: ag-fade-in 100ms ease both; }
+    .ag-chip-in    { animation: ag-fade-in 100ms ease both; }
+    .ag-fade-in    { animation: ag-fade-in 100ms ease both; }
+    .ag-chip-in:nth-child(n) { animation-delay: 0ms; }
+    .ag-btn-press { transition: none; }
+    .ag-nav-item  { transition: none; }
+    .ag-model-row { transition: none; }
+    .ag-governance-row { transition: none; }
+    .ag-chart-line { animation: none; }
   }
 `;
 
