@@ -1,6 +1,6 @@
 import { CreateGroupDialog } from "@app/components/groups/CreateGroupDialog";
 import { useGroups } from "@app/lib/swr/groups";
-import type { GroupKind } from "@app/types/groups";
+import { type GroupKind, MANAGEABLE_GROUP_KINDS } from "@app/types/groups";
 import { pluralize } from "@app/types/shared/utils/string_utils";
 import type { WorkspaceType } from "@app/types/user";
 import {
@@ -15,9 +15,6 @@ import {
 } from "@dust-tt/sparkle";
 import type { CellContext, ColumnDef } from "@tanstack/react-table";
 import { useMemo, useState } from "react";
-
-// Only provisioned groups are surfaced in the workspace Groups tab for now.
-const GROUP_KINDS: GroupKind[] = ["provisioned"];
 
 type ChipColor = NonNullable<React.ComponentProps<typeof Chip>["color"]>;
 
@@ -83,7 +80,7 @@ const columns: ColumnDef<GroupRowData>[] = [
 export function WorkspaceGroupsList({ owner }: WorkspaceGroupsListProps) {
   const { groups, isGroupsLoading } = useGroups({
     owner,
-    kinds: GROUP_KINDS,
+    kinds: MANAGEABLE_GROUP_KINDS,
   });
 
   const [searchTerm, setSearchTerm] = useState("");

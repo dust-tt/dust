@@ -18,7 +18,7 @@ export function useGroups({
   disabled,
 }: {
   owner: LightWorkspaceType;
-  kinds?: GroupKind[];
+  kinds?: readonly GroupKind[];
   spaceId?: string;
   disabled?: boolean;
 }) {
