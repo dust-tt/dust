@@ -48,6 +48,9 @@ export interface ToolDefinition<
 > {
   name: TName;
   enableAlerting?: boolean;
+  // Tools that rely on conversation, agent, or message state are not exposed to sandbox
+  // functions, which run without an agent loop.
+  agentLoopContextRequired?: true;
   // When true, the tool is kept in the cached tools prefix (loaded upfront)
   // instead of being deferred behind tool search. Defaults to deferred.
   eager?: boolean;
@@ -131,12 +134,15 @@ export function buildClientTools<T extends Record<string, ClientToolMeta>>(
 
 export function buildTools<T extends Record<string, ToolMeta>>(
   metadata: T,
-  handlers: ToolHandlers<T>
+  handlers: ToolHandlers<T>,
+  { agentLoopContextRequired }: { agentLoopContextRequired?: true } = {}
 ): ToolDefinition[] {
   return (Object.keys(metadata) as (keyof T & string)[]).map(
     (key) =>
       ({
         ...metadata[key],
+        agentLoopContextRequired:
+          metadata[key].agentLoopContextRequired ?? agentLoopContextRequired,
         handler: handlers[key],
       }) as unknown as ToolDefinition
   );

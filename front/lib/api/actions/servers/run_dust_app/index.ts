@@ -8,7 +8,9 @@ import type { ToolDefinition } from "@app/lib/actions/mcp_internal_actions/tool_
 import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/utils";
 import { registerTool } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import {
+  isAgentLoopListToolsContext,
   isAgentLoopRunContext,
+  isSandboxFunctionListToolsContext,
   type ToolContext,
 } from "@app/lib/actions/types";
 import {
@@ -56,7 +58,11 @@ export default async function createServer(
   const server = makeInternalMCPServer("run_dust_app");
   const owner = auth.getNonNullableWorkspace();
 
-  if (toolContext?.listToolsContext) {
+  if (isSandboxFunctionListToolsContext(toolContext?.listToolsContext)) {
+    return server;
+  }
+
+  if (isAgentLoopListToolsContext(toolContext?.listToolsContext)) {
     // Context: Listing tools for an agent
     const { agentActionConfiguration } = toolContext.listToolsContext;
     if (

@@ -1,7 +1,9 @@
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import type { ToolDefinition } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import {
+  isAgentLoopListToolsContext,
   isAgentLoopRunContext,
+  isSandboxFunctionListToolsContext,
   type ToolContext,
 } from "@app/lib/actions/types";
 import { Err, Ok } from "@app/types/shared/result";
@@ -15,10 +17,16 @@ const MAX_ATTEMPTED_ACTION_NAME_LENGTH = 256;
 export function createMissingActionCatcherTools(
   agentLoopContext?: ToolContext
 ): ToolDefinition[] {
+  if (isSandboxFunctionListToolsContext(agentLoopContext?.listToolsContext)) {
+    return [];
+  }
+
   if (agentLoopContext) {
     const actionName = agentLoopContext.runContext
       ? agentLoopContext.runContext.toolConfiguration.name
-      : agentLoopContext.listToolsContext?.agentActionConfiguration.name;
+      : isAgentLoopListToolsContext(agentLoopContext.listToolsContext)
+        ? agentLoopContext.listToolsContext.agentActionConfiguration.name
+        : null;
 
     if (!actionName) {
       throw new Error("No action name found");

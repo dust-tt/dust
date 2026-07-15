@@ -128,6 +128,7 @@ export const DATA_WAREHOUSES_TOOLS_METADATA = createToolsRecord({
     freeUsage: false,
   },
   query: {
+    agentLoopContextRequired: true,
     description:
       "Run, execute, or write SQL queries on selected data warehouse tables to calculate metrics, aggregate results, analyze revenue, or answer business questions. " +
       "You MUST call describe_tables at least once before attempting to query tables to understand their structure. The query must respect the SQL dialect " +

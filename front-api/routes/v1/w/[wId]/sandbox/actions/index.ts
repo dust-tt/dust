@@ -10,6 +10,7 @@ import {
   isSandboxExecTokenPayload,
   isSandboxFunctionInvocationTokenPayload,
 } from "@app/lib/api/sandbox/access_tokens";
+import { listSandboxFunctionMCPServerViews } from "@app/lib/api/sandbox_functions/list_tools";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { sandboxApp } from "@front-api/middlewares/ctx";
 import { sandboxAuth } from "@front-api/middlewares/sandbox_auth";
@@ -68,19 +69,11 @@ app.get("/", async (ctx): HandlerResult<GetSandboxToolsResponseType> => {
   const claims = ctx.get("sandboxClaims");
 
   // Sandbox function invocations have no agent configuration or conversation: they see the
-  // servers of their pod space (+ global space). Tools that require an agent-loop context error
-  // at execution based on the run context.
+  // compatible tools from their pod space (+ global space).
   if (isSandboxFunctionInvocationTokenPayload(claims)) {
-    // Deliberately not the EnsuringAutoViews variant: token read paths must not write. Auto
-    // views not yet materialized in the global space stay invisible until another surface
-    // hydrates them.
-    const views = await MCPServerViewResource.listBySpaceIds(
-      auth,
-      [claims.spaceId],
-      { includeGlobalSpace: true }
-    );
-
-    const serverViews = views.map((view) => view.toJSON());
+    const serverViews = await listSandboxFunctionMCPServerViews(auth, {
+      spaceId: claims.spaceId,
+    });
 
     return ctx.json(
       { serverViews: filterServerViews(serverViews, ctx.req.query()) },

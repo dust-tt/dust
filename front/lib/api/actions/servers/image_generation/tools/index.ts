@@ -181,5 +181,7 @@ export function createImageGenerationTools(
     },
   };
 
-  return buildTools(IMAGE_GENERATION_TOOLS_METADATA, handlers);
+  return buildTools(IMAGE_GENERATION_TOOLS_METADATA, handlers, {
+    agentLoopContextRequired: true,
+  });
 }

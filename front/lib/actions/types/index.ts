@@ -191,6 +191,19 @@ export type AgentLoopListToolsContext = {
   agentMessage: AgentMessageType;
 };
 
+export type SandboxFunctionListToolsContext = {
+  contextType: "sandbox_function";
+  agentConfiguration?: never;
+  agentActionConfiguration?: never;
+  clientSideActionConfigurations?: never;
+  conversation?: never;
+  agentMessage?: never;
+};
+
+export type ToolListToolsContext =
+  | AgentLoopListToolsContext
+  | SandboxFunctionListToolsContext;
+
 // Context available to tool handlers at execution time: tools only ever run on a connection
 // established with a run context, never on a listing-phase connection.
 export type ToolRunContext = AgentLoopRunContext | SandboxFunctionRunContext;
@@ -207,6 +220,22 @@ export function isAgentLoopRunContext(
   return value?.contextType === "agent_loop";
 }
 
+export function isSandboxFunctionListToolsContext(
+  value: ToolListToolsContext | undefined
+): value is SandboxFunctionListToolsContext {
+  return (
+    value !== undefined &&
+    "contextType" in value &&
+    value.contextType === "sandbox_function"
+  );
+}
+
+export function isAgentLoopListToolsContext(
+  value: ToolListToolsContext | undefined
+): value is AgentLoopListToolsContext {
+  return value !== undefined && !isSandboxFunctionListToolsContext(value);
+}
+
 export type ToolContext =
   | {
       runContext: ToolRunContext;
@@ -214,5 +243,5 @@ export type ToolContext =
     }
   | {
       runContext?: never;
-      listToolsContext: AgentLoopListToolsContext;
+      listToolsContext: ToolListToolsContext;
     };

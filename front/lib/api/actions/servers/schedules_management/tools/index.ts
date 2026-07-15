@@ -249,5 +249,7 @@ export function createSchedulesManagementTools(
     },
   };
 
-  return buildTools(SCHEDULES_MANAGEMENT_TOOLS_METADATA, handlers);
+  return buildTools(SCHEDULES_MANAGEMENT_TOOLS_METADATA, handlers, {
+    agentLoopContextRequired: true,
+  });
 }

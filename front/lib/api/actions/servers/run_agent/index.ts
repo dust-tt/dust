@@ -21,6 +21,7 @@ import {
 } from "@app/lib/actions/tool_interruptions";
 import {
   type ActionGeneratedFileType,
+  isAgentLoopListToolsContext,
   isAgentLoopRunContext,
   type ToolContext,
 } from "@app/lib/actions/types";
@@ -762,7 +763,7 @@ function isRunAgentHandoffMode(toolContext?: ToolContext): boolean {
   }
 
   // Check if we're in the listToolsContext (when presenting tools to the model).
-  if (toolContext.listToolsContext) {
+  if (isAgentLoopListToolsContext(toolContext.listToolsContext)) {
     const agentActionConfig =
       toolContext.listToolsContext.agentActionConfiguration;
     if (
@@ -852,7 +853,7 @@ async function createServer(
   let childAgentId: string | null = null;
 
   if (
-    toolContext?.listToolsContext &&
+    isAgentLoopListToolsContext(toolContext?.listToolsContext) &&
     isServerSideMCPServerConfiguration(
       toolContext.listToolsContext.agentActionConfiguration
     ) &&
@@ -889,6 +890,7 @@ async function createServer(
       server,
       {
         name: "run_agent_tool_not_available",
+        agentLoopContextRequired: true,
         description:
           "No child agent configured for this tool, as the child agent was probably archived. " +
           "Do not attempt to run the tool and warn the user instead.",
@@ -942,6 +944,7 @@ async function createServer(
 
   const toolDefinition: ToolDefinition = {
     name: toolName,
+    agentLoopContextRequired: true,
     description: toolDescription,
     schema: schema,
     stake: "never_ask",

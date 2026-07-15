@@ -1,6 +1,9 @@
 import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
 import { ADVANCED_SEARCH_SWITCH } from "@app/lib/actions/mcp_internal_actions/constants";
-import type { ToolContext } from "@app/lib/actions/types";
+import {
+  isAgentLoopListToolsContext,
+  type ToolContext,
+} from "@app/lib/actions/types";
 import {
   isLightServerSideMCPToolConfiguration,
   isServerSideMCPServerConfiguration,
@@ -103,7 +106,7 @@ function isAdvancedSearchMode(toolContext?: ToolContext) {
         ADVANCED_SEARCH_SWITCH
         // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       ] === true) ||
-    (toolContext?.listToolsContext &&
+    (isAgentLoopListToolsContext(toolContext?.listToolsContext) &&
       isServerSideMCPServerConfiguration(
         toolContext.listToolsContext.agentActionConfiguration
       ) &&

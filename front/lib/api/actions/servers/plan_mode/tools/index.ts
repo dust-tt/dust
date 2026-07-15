@@ -165,4 +165,6 @@ const handlers: ToolHandlers<typeof PLAN_MODE_TOOLS_METADATA> = {
   },
 };
 
-export const TOOLS = buildTools(PLAN_MODE_TOOLS_METADATA, handlers);
+export const TOOLS = buildTools(PLAN_MODE_TOOLS_METADATA, handlers, {
+  agentLoopContextRequired: true,
+});

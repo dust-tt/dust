@@ -236,30 +236,36 @@ describe("POST /api/v1/w/[wId]/sandbox/actions/call (function invocation)", () =
     );
   });
 
-  it("creates actions for conversation-coupled servers too", async () => {
-    // No creation-time gating on the server: tools that require an agent-loop context error at
-    // execution based on the run context.
+  it("rejects tools that require an agent loop", async () => {
     const context =
       await createPersistedSandboxFunctionInvocationTokenTestContext();
-    const search = await InternalMCPServerInMemoryResource.makeNew(
+    const agentMemory = await InternalMCPServerInMemoryResource.makeNew(
       context.auth,
-      { name: "search", useCase: null }
+      { name: "agent_memory", useCase: null }
     );
     const view = await MCPServerViewFactory.create(
       context.workspace,
-      search.id,
+      agentMemory.id,
       context.globalSpace
     );
 
     const response = await callSandboxTool(context.workspace, context.token, {
       serverViewId: view.sId,
-      toolName: "semantic_search",
+      toolName: "retrieve",
       arguments: {},
     });
 
-    expect(response.status).toBe(202);
-    const body = await response.json();
-    expect(body.status).toBe("pending");
+    expect(response.status).toBe(400);
+    expect(await response.json()).toEqual({
+      error: {
+        type: "invalid_request_error",
+        message: "Tool retrieve not found on server agent_memory.",
+      },
+    });
+    expect(vi.mocked(launchSandboxFunctionToolWorkflow)).not.toHaveBeenCalled();
+    expect(
+      vi.mocked(publishSandboxFunctionInvocationEvent)
+    ).not.toHaveBeenCalled();
   });
 
   it("rejects unknown tools on an allowed server", async () => {

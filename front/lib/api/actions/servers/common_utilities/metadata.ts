@@ -104,6 +104,7 @@ export const COMMON_UTILITIES_TOOLS_METADATA = createToolsRecord({
     freeUsage: true,
   },
   [SET_CONVERSATION_TITLE_TOOL_NAME]: {
+    agentLoopContextRequired: true,
     description:
       "Update the title of the current conversation. Use this to give the conversation a descriptive name that summarizes its topic.",
     schema: {

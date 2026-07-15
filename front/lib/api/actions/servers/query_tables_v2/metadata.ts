@@ -64,6 +64,7 @@ export const QUERY_TABLES_V2_TOOLS_METADATA = createToolsRecord({
     freeUsage: false,
   },
   [EXECUTE_DATABASE_QUERY_TOOL_NAME]: {
+    agentLoopContextRequired: true,
     description:
       "Run and execute SQL against selected agent-configured structured data tables to analyze, aggregate, filter, join, or export result rows. " +
       "Before using this tool, the agent should have already called get_database_schema for every involved table URI and should use that inspected table structure to write the SQL. " +

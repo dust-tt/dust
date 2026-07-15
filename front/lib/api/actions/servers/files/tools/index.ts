@@ -39,4 +39,6 @@ const HANDLERS = {
   [FILES_RESOLVE_ACTION_NAME]: resolveHandler,
 };
 
-export const TOOLS = buildTools(FILES_TOOLS_METADATA, HANDLERS);
+export const TOOLS = buildTools(FILES_TOOLS_METADATA, HANDLERS, {
+  agentLoopContextRequired: true,
+});

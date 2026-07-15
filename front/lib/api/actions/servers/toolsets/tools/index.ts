@@ -147,4 +147,6 @@ const handlers: ToolHandlers<typeof TOOLSETS_TOOLS_METADATA> = {
   },
 };
 
-export const TOOLS = buildTools(TOOLSETS_TOOLS_METADATA, handlers);
+export const TOOLS = buildTools(TOOLSETS_TOOLS_METADATA, handlers, {
+  agentLoopContextRequired: true,
+});

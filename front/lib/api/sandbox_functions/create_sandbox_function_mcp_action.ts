@@ -6,6 +6,7 @@ import { validateToolInputs } from "@app/lib/actions/mcp_utils";
 import { makeMCPApproveExecutionEventBase } from "@app/lib/actions/tool_approval_events";
 import { getExecutionStatusFromConfig } from "@app/lib/actions/tool_status";
 import { publishSandboxFunctionInvocationEvent } from "@app/lib/api/sandbox_functions/events";
+import { listSandboxFunctionToolsForMCPServerView } from "@app/lib/api/sandbox_functions/list_tools";
 import type { Authenticator } from "@app/lib/auth";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { SandboxFunctionInvocationResource } from "@app/lib/resources/sandbox_function_invocation_resource";
@@ -31,8 +32,8 @@ export class SandboxFunctionMCPActionError extends Error {
   }
 }
 
-// Resolves a tool for execution from a sandbox function invocation. The tool must exist and be
-// enabled. Tools that need an agent-loop context error at execution based on the run context.
+// Resolves a tool for execution from a sandbox function invocation. The tool must be compatible
+// with a conversation-free function context and enabled on the view.
 async function resolveSandboxFunctionTool(
   auth: Authenticator,
   view: MCPServerViewResource,
@@ -41,7 +42,20 @@ async function resolveSandboxFunctionTool(
   Result<ServerSideMCPToolConfigurationType, SandboxFunctionMCPActionError>
 > {
   const viewJSON = view.toJSON();
-  const tool = viewJSON.server.tools.find((t) => t.name === toolName);
+  const toolsResult = await listSandboxFunctionToolsForMCPServerView(
+    auth,
+    view
+  );
+  if (toolsResult.isErr()) {
+    return new Err(
+      new SandboxFunctionMCPActionError(
+        "tool_not_available",
+        `Could not list tools on server ${viewJSON.server.name}.`
+      )
+    );
+  }
+
+  const tool = toolsResult.value.find((t) => t.name === toolName);
   if (!tool) {
     return new Err(
       new SandboxFunctionMCPActionError(

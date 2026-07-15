@@ -1,4 +1,5 @@
 import {
+  isAgentLoopListToolsContext,
   isAgentLoopRunContext,
   type ToolContext,
 } from "@app/lib/actions/types";
@@ -45,8 +46,11 @@ export function getSidekickMetadataFromContext(
 ): SidekickMetadata | null {
   const metadata =
     (isAgentLoopRunContext(toolContext?.runContext)
-      ? toolContext?.runContext?.conversation.metadata
-      : null) ?? toolContext?.listToolsContext?.conversation.metadata;
+      ? toolContext.runContext.conversation.metadata
+      : null) ??
+    (isAgentLoopListToolsContext(toolContext?.listToolsContext)
+      ? toolContext.listToolsContext.conversation.metadata
+      : null);
 
   return metadata ? extractSidekickMetadata(metadata) : null;
 }

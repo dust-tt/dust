@@ -61,4 +61,6 @@ const handlers: ToolHandlers<typeof ASK_USER_QUESTION_TOOLS_METADATA> = {
   },
 };
 
-export const TOOLS = buildTools(ASK_USER_QUESTION_TOOLS_METADATA, handlers);
+export const TOOLS = buildTools(ASK_USER_QUESTION_TOOLS_METADATA, handlers, {
+  agentLoopContextRequired: true,
+});

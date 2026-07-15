@@ -332,5 +332,7 @@ export function createWakeupsTools(
     },
   };
 
-  return buildTools(WAKEUPS_TOOLS_METADATA, handlers);
+  return buildTools(WAKEUPS_TOOLS_METADATA, handlers, {
+    agentLoopContextRequired: true,
+  });
 }

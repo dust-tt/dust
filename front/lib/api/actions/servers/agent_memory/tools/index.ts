@@ -164,4 +164,6 @@ const handlers: ToolHandlers<typeof AGENT_MEMORY_TOOLS_METADATA> = {
   },
 };
 
-export const TOOLS = buildTools(AGENT_MEMORY_TOOLS_METADATA, handlers);
+export const TOOLS = buildTools(AGENT_MEMORY_TOOLS_METADATA, handlers, {
+  agentLoopContextRequired: true,
+});

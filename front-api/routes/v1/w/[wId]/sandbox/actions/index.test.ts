@@ -28,6 +28,13 @@ describe("GET /api/v1/w/[wId]/sandbox/actions", () => {
     for (const serverView of body.serverViews) {
       expect(serverView.server.availability).not.toBe("manual");
     }
+    const commonUtilities = body.serverViews.find(
+      (serverView: { server: { name: string } }) =>
+        serverView.server.name === "common_utilities"
+    );
+    expect(
+      commonUtilities.server.tools.map((tool: { name: string }) => tool.name)
+    ).toContain("set_conversation_title");
   });
 
   it("returns 403 when Computer is disabled", async () => {
@@ -64,6 +71,11 @@ describe("GET /api/v1/w/[wId]/sandbox/actions", () => {
       useCase: null,
     });
     await MCPServerViewFactory.create(workspace, search.id, globalSpace);
+    const agentMemory = await InternalMCPServerInMemoryResource.makeNew(auth, {
+      name: "agent_memory",
+      useCase: null,
+    });
+    await MCPServerViewFactory.create(workspace, agentMemory.id, globalSpace);
     const remoteServer = await RemoteMCPServerFactory.create(workspace, {
       name: "remote_server",
     });
@@ -78,5 +90,15 @@ describe("GET /api/v1/w/[wId]/sandbox/actions", () => {
         .map((sv: { server: { name: string } }) => sv.server.name)
         .sort()
     ).toEqual(["common_utilities", "remote_server", "search"]);
+
+    const commonUtilitiesView = body.serverViews.find(
+      (sv: { server: { name: string } }) =>
+        sv.server.name === "common_utilities"
+    );
+    const commonUtilitiesToolNames = commonUtilitiesView.server.tools.map(
+      (tool: { name: string }) => tool.name
+    );
+    expect(commonUtilitiesToolNames).toContain("generate_random_number");
+    expect(commonUtilitiesToolNames).not.toContain("set_conversation_title");
   });
 });

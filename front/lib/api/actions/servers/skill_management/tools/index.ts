@@ -170,4 +170,6 @@ const handlers: ToolHandlers<typeof SKILL_MANAGEMENT_TOOLS_METADATA> = {
   },
 };
 
-export const TOOLS = buildTools(SKILL_MANAGEMENT_TOOLS_METADATA, handlers);
+export const TOOLS = buildTools(SKILL_MANAGEMENT_TOOLS_METADATA, handlers, {
+  agentLoopContextRequired: true,
+});

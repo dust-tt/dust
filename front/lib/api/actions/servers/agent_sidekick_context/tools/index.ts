@@ -1815,5 +1815,6 @@ const handlers: ToolHandlers<typeof AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA> = {
 
 export const TOOLS = buildTools(
   AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA,
-  handlers
+  handlers,
+  { agentLoopContextRequired: true }
 );

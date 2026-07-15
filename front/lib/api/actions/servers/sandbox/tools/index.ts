@@ -243,7 +243,9 @@ export async function createSandboxTools(
     [ADD_EGRESS_DOMAIN_TOOL_NAME]: addEgressDomainTool,
   };
 
-  const tools = buildTools(SANDBOX_TOOLS_METADATA, handlers);
+  const tools = buildTools(SANDBOX_TOOLS_METADATA, handlers, {
+    agentLoopContextRequired: true,
+  });
 
   // The add_egress_domain tool requires Computer access and the
   // per-workspace setting that admins toggle on top of it.

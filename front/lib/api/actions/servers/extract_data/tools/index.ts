@@ -5,6 +5,7 @@ import type { ToolHandlers } from "@app/lib/actions/mcp_internal_actions/tool_de
 import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { shouldAutoGenerateTags } from "@app/lib/actions/mcp_internal_actions/tools/tags/utils";
 import {
+  isAgentLoopListToolsContext,
   isAgentLoopRunContext,
   type ToolContext,
 } from "@app/lib/actions/types";
@@ -37,7 +38,7 @@ import type { JSONSchema7 as JSONSchema } from "json-schema";
 
 function getServerSideConfiguration(toolContext?: ToolContext) {
   if (
-    toolContext?.listToolsContext &&
+    isAgentLoopListToolsContext(toolContext?.listToolsContext) &&
     isServerSideMCPServerConfiguration(
       toolContext.listToolsContext.agentActionConfiguration
     )
@@ -224,7 +225,9 @@ export function createExtractDataTools(
         return extractFunction(params);
       },
     };
-    return buildTools(toolsMetadata, handlers);
+    return buildTools(toolsMetadata, handlers, {
+      agentLoopContextRequired: true,
+    });
   }
 
   const toolsMetadata = makeExtractDataToolsWithTagsMetadata({
@@ -241,5 +244,7 @@ export function createExtractDataTools(
       return executeFindTags(auth, query, dataSources);
     },
   };
-  return buildTools(toolsMetadata, handlers);
+  return buildTools(toolsMetadata, handlers, {
+    agentLoopContextRequired: true,
+  });
 }

@@ -42,6 +42,7 @@ export const FRAME_RECREATE_WASTE_RATIONALE =
 
 export const INTERACTIVE_CONTENT_TOOLS_METADATA = createToolsRecord({
   [CREATE_INTERACTIVE_CONTENT_FILE_TOOL_NAME]: {
+    agentLoopContextRequired: true,
     description:
       "Create a new Frame: interactive content such as a dashboard, data visualization, or slideshow " +
       "presentation that users can run and interact with, beyond static viewing. Choose 'template' " +
@@ -158,6 +159,7 @@ export const INTERACTIVE_CONTENT_TOOLS_METADATA = createToolsRecord({
     freeUsage: false,
   },
   [REVERT_INTERACTIVE_CONTENT_FILE_TOOL_NAME]: {
+    agentLoopContextRequired: true,
     description:
       "Revert a Frame to its previous version. " +
       "Each revert goes back one version in the file's history. ",

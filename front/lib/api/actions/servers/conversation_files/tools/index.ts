@@ -398,7 +398,9 @@ async function getFileFromConversation(
   });
 }
 
-export const TOOLS = buildTools(CONVERSATION_FILES_TOOLS_METADATA, handlers);
+export const TOOLS = buildTools(CONVERSATION_FILES_TOOLS_METADATA, handlers, {
+  agentLoopContextRequired: true,
+});
 
 const handlersWithFilesystem: ToolHandlers<
   typeof CONVERSATION_FILES_TOOLS_METADATA_WITH_FILESYSTEM
@@ -411,5 +413,6 @@ const handlersWithFilesystem: ToolHandlers<
 
 export const TOOLS_WITH_FILESYSTEM = buildTools(
   CONVERSATION_FILES_TOOLS_METADATA_WITH_FILESYSTEM,
-  handlersWithFilesystem
+  handlersWithFilesystem,
+  { agentLoopContextRequired: true }
 );
