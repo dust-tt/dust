@@ -32,7 +32,7 @@ interface ServerSideSearchEnumSelectProps {
   label?: string;
   // When true, allows selecting several values; the popover stays open on
   // select and previously selected values are toggled on/off.
-  multiple?: boolean;
+  allowMultiple?: boolean;
   onValuesChange: (values: string[]) => void;
   placeholder?: string;
   staticOptions?: readonly EnumValue[];
@@ -42,7 +42,7 @@ interface ServerSideSearchEnumSelectProps {
 
 export function ServerSideSearchEnumSelect({
   label,
-  multiple = false,
+  allowMultiple = false,
   onValuesChange,
   placeholder = "Select value",
   staticOptions = [],
@@ -109,7 +109,7 @@ export function ServerSideSearchEnumSelect({
 
   const handleSelect = React.useCallback(
     (value: string) => {
-      if (multiple) {
+      if (allowMultiple) {
         const next = selectedValuesSet.has(value)
           ? selectedValues.filter((v) => v !== value)
           : [...selectedValues, value];
@@ -120,7 +120,7 @@ export function ServerSideSearchEnumSelect({
       onValuesChange([value]);
       setOpen(false);
     },
-    [multiple, onValuesChange, selectedValues, selectedValuesSet]
+    [allowMultiple, onValuesChange, selectedValues, selectedValuesSet]
   );
 
   const title =
