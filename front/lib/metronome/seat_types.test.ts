@@ -34,7 +34,7 @@ describe("getDefaultSeatTypeForContract — committed seats", () => {
     ],
   });
 
-  it("assigns a committed seat when slots remain", () => {
+  it("assigns free even when a committed seat has open slots", () => {
     const seatLimits = new Map<MembershipSeatType, SeatLimit>([
       ["pro", { minSeats: 5, maxSeats: null }],
     ]);
@@ -43,22 +43,23 @@ describe("getDefaultSeatTypeForContract — committed seats", () => {
         seatLimits,
         seatCounts: { pro: 3 },
       })
-    ).toBe("pro");
+    ).toBe("free");
   });
 
-  it("falls through to free when all committed slots are taken", () => {
+  it("falls back to a committed seat when free is blocked (returning member)", () => {
     const seatLimits = new Map<MembershipSeatType, SeatLimit>([
       ["pro", { minSeats: 5, maxSeats: null }],
     ]);
     expect(
       getDefaultSeatTypeForContract(contract, productSeatTypes, {
+        isReturningMember: true,
         seatLimits,
-        seatCounts: { pro: 5 },
+        seatCounts: { pro: 3 },
       })
-    ).toBe("free");
+    ).toBe("pro");
   });
 
-  it("returns none when committed exhausted and free blocked (returning member)", () => {
+  it("returns none when free is blocked and committed slots are exhausted", () => {
     const seatLimits = new Map<MembershipSeatType, SeatLimit>([
       ["pro", { minSeats: 5, maxSeats: null }],
     ]);
@@ -85,7 +86,7 @@ describe("getDefaultSeatTypeForContract — committed seats", () => {
     );
   });
 
-  it("skips max even when it has committed slots, falls through to free", () => {
+  it("skips max even when it has committed slots, falls through to none when free is blocked", () => {
     const { contract: maxContract, productSeatTypes: maxProductSeatTypes } =
       buildCachedContractMock({
         seats: [
@@ -98,13 +99,14 @@ describe("getDefaultSeatTypeForContract — committed seats", () => {
     ]);
     expect(
       getDefaultSeatTypeForContract(maxContract, maxProductSeatTypes, {
+        isReturningMember: true,
         seatLimits,
         seatCounts: { max: 0 },
       })
-    ).toBe("free");
+    ).toBe("none");
   });
 
-  it("auto-assigns workspace_yearly when committed slots remain (pooled enterprise)", () => {
+  it("auto-assigns workspace_yearly when committed slots remain and free is blocked (pooled enterprise)", () => {
     const { contract: wsContract, productSeatTypes: wsProductSeatTypes } =
       buildCachedContractMock({
         seats: [
@@ -117,13 +119,14 @@ describe("getDefaultSeatTypeForContract — committed seats", () => {
     ]);
     expect(
       getDefaultSeatTypeForContract(wsContract, wsProductSeatTypes, {
+        isReturningMember: true,
         seatLimits,
         seatCounts: { workspace_yearly: 4 },
       })
     ).toBe("workspace_yearly");
   });
 
-  it("falls through to free once workspace_yearly committed slots are taken", () => {
+  it("returns none once workspace_yearly committed slots are taken and free is blocked", () => {
     const { contract: wsContract, productSeatTypes: wsProductSeatTypes } =
       buildCachedContractMock({
         seats: [
@@ -136,10 +139,11 @@ describe("getDefaultSeatTypeForContract — committed seats", () => {
     ]);
     expect(
       getDefaultSeatTypeForContract(wsContract, wsProductSeatTypes, {
+        isReturningMember: true,
         seatLimits,
         seatCounts: { workspace_yearly: 10 },
       })
-    ).toBe("free");
+    ).toBe("none");
   });
 
   it("legacy: no-seat-subscription contract returns none", () => {

@@ -68,13 +68,14 @@ import type { Transaction } from "sequelize";
  *
  * On non-free plans, the assignment follows three phases:
  *
- *  1. **Committed seats** — the cheapest seat tier whose committed allocation
- *     (`workspace_seat_limits.minSeats`) still has unassigned slots is picked.
- *  2. **Free seat** — if no committed slot is available and `free` is on the
- *     contract, it is assigned unless any of the following are true:
+ *  1. **Free seat** — if `free` is on the contract, it is assigned unless any
+ *     of the following are true:
  *       - `isReturningMember` is true (one-shot: returning members cannot get `free`).
  *       - `plan.limits.users.maxFreeUsers` reached.
  *       - `plan.limits.users.maxLifetimeFreeUsers` reached.
+ *  2. **Committed seats** — if `free` is unavailable, the cheapest seat tier
+ *     whose committed allocation (`workspace_seat_limits.minSeats`) still has
+ *     unassigned slots is picked.
  *  3. **None** — if both phases are exhausted the member is assigned `"none"`
  *     (no-seat tier; cannot send messages).
  *
