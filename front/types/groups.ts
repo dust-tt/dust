@@ -59,7 +59,10 @@ export function isCapEligibleGroupKind(kind: GroupKind): boolean {
 // Group kinds that represent user-managed membership collections and are
 // surfaced in workspace admin UIs (Groups tab, governance). Excludes internal
 // system/permission groups.
-export const MANAGEABLE_GROUP_KINDS = ["provisioned"] as const;
+export const MANAGEABLE_GROUP_KINDS = [
+  "provisioned",
+  "regular_manual",
+] as const;
 
 export function isManageableGroupKind(kind: GroupKind): boolean {
   return MANAGEABLE_GROUP_KINDS.some((k) => k === kind);
