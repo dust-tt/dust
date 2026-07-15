@@ -52,9 +52,14 @@ function toMCPError(error: SandboxFunctionError): MCPError {
     case "build_failed":
     case "schema_extraction_failed":
     case "invalid_contract":
+    // Another publish holds the pod's lock; the model can simply retry.
+    case "publish_conflict":
+    // Publish never reconciles, but the shared error union carries the db-tool codes.
+    case "reconcile_blocked":
       // The model controls the path and the function source, so surface the detail to let it fix.
       return new MCPError(error.message, { tracked: false });
     case "sandbox_unavailable":
+    case "reconcile_failed":
     case "internal":
       return new MCPError(error.message);
     default:

@@ -67,6 +67,7 @@ import {
 } from "@app/types/assistant/conversation";
 import { isAgentMention } from "@app/types/assistant/mentions";
 import { isModelProviderId } from "@app/types/assistant/models/providers";
+import { getAvailableReasoningEfforts } from "@app/types/assistant/models/types";
 import type { ContentFragmentType } from "@app/types/content_fragment";
 import { isContentFragmentType } from "@app/types/content_fragment";
 import { CoreAPI } from "@app/types/core/core_api";
@@ -1133,16 +1134,33 @@ const handlers: ToolHandlers<typeof AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA> = {
 
   suggest_model: async (params, { auth, runContext }) => {
     const availableModels = await getAvailableModelsForWorkspace(auth);
-    const availableModelIds = availableModels.map((m) => m.modelId);
 
-    const { modelId } = params.suggestion;
-    if (!availableModelIds.includes(modelId)) {
+    const { modelId, reasoningEffort } = params.suggestion;
+    const modelConfiguration = availableModels.find(
+      (m) => m.modelId === modelId
+    );
+    if (!modelConfiguration) {
       return new Err(
         new MCPError(
           `Invalid model ID: ${modelId}. Check <workspace_context> for valid model IDs.`,
           { tracked: false }
         )
       );
+    }
+
+    if (reasoningEffort) {
+      const supportedReasoningEfforts = getAvailableReasoningEfforts(
+        modelConfiguration.supportedReasoningEfforts
+      );
+      if (!supportedReasoningEfforts.includes(reasoningEffort)) {
+        return new Err(
+          new MCPError(
+            `Invalid reasoning effort "${reasoningEffort}" for model ${modelId}. ` +
+              `Supported reasoning efforts for this model: ${supportedReasoningEfforts.join(", ")}.`,
+            { tracked: false }
+          )
+        );
+      }
     }
 
     const agentConfigurationId = getAgentConfigurationIdFromContext({

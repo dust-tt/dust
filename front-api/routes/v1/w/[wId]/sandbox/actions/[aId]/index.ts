@@ -84,6 +84,7 @@ app.get(
 
       switch (action.status) {
         case "running":
+        case "blocked_authentication_required":
         case "blocked_validation_required":
           return ctx.json({ status: "pending", actionId: action.sId }, 202);
         case "succeeded":

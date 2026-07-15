@@ -58,6 +58,9 @@ import {
   _getDustNextMediumGlobalAgent,
   _getDustOaiGlobalAgent,
   _getDustOaiHighGlobalAgent,
+  _getDustOaiLunaGlobalAgent,
+  _getDustOaiLunaHighGlobalAgent,
+  _getDustOaiLunaMediumGlobalAgent,
   _getDustOaiMediumGlobalAgent,
   _getDustOaiNanoHighGlobalAgent,
   _getDustOmittedGlobalAgent,
@@ -671,6 +674,33 @@ function getGlobalAgent({
         featureFlags,
       });
       break;
+    case GLOBAL_AGENTS_SID.DUST_OAI_LUNA:
+      agentConfiguration = _getDustOaiLunaGlobalAgent(auth, {
+        settings,
+        preFetchedDataSources,
+        mcpServerViews,
+        hasDeepDive,
+        featureFlags,
+      });
+      break;
+    case GLOBAL_AGENTS_SID.DUST_OAI_LUNA_MEDIUM:
+      agentConfiguration = _getDustOaiLunaMediumGlobalAgent(auth, {
+        settings,
+        preFetchedDataSources,
+        mcpServerViews,
+        hasDeepDive,
+        featureFlags,
+      });
+      break;
+    case GLOBAL_AGENTS_SID.DUST_OAI_LUNA_HIGH:
+      agentConfiguration = _getDustOaiLunaHighGlobalAgent(auth, {
+        settings,
+        preFetchedDataSources,
+        mcpServerViews,
+        hasDeepDive,
+        featureFlags,
+      });
+      break;
     case GLOBAL_AGENTS_SID.DUST_OAI_NANO_HIGH:
       agentConfiguration = _getDustOaiNanoHighGlobalAgent(auth, {
         settings,
@@ -1053,6 +1083,9 @@ export async function getGlobalAgents(
     GLOBAL_AGENTS_SID.DUST_OAI,
     GLOBAL_AGENTS_SID.DUST_OAI_MEDIUM,
     GLOBAL_AGENTS_SID.DUST_OAI_HIGH,
+    GLOBAL_AGENTS_SID.DUST_OAI_LUNA,
+    GLOBAL_AGENTS_SID.DUST_OAI_LUNA_MEDIUM,
+    GLOBAL_AGENTS_SID.DUST_OAI_LUNA_HIGH,
     GLOBAL_AGENTS_SID.DUST_OAI_NANO_HIGH,
     GLOBAL_AGENTS_SID.DUST_GOOG,
     GLOBAL_AGENTS_SID.DUST_GOOG_MEDIUM,

@@ -25,7 +25,6 @@ import { validate } from "@front-api/middlewares/validator";
 import { workspaceAuth } from "@front-api/middlewares/workspace_auth";
 import { escape } from "html-escaper";
 import { z } from "zod";
-import advancedModels from "./advanced_models";
 import analytics from "./analytics";
 import assistant from "./assistant";
 import auditLogs from "./audit-logs";
@@ -56,6 +55,7 @@ import mcp from "./mcp";
 import me from "./me";
 import members from "./members";
 import metronome from "./metronome";
+import modelTiers from "./model_tiers";
 import models from "./models";
 import oauthSetup from "./oauth/[provider]/setup";
 import pods from "./pods";
@@ -773,7 +773,7 @@ app.post(
 // Sub-apps using the catch-all default + the partial-subtree exception
 // targets declared above.
 app.route("/analytics", analytics);
-app.route("/advanced_models", advancedModels);
+app.route("/model_tiers", modelTiers);
 app.route("/assistant", assistant);
 app.route("/audit-logs", auditLogs);
 app.route("/billing", billing);

@@ -110,17 +110,20 @@ export async function createSandboxChildAction(
     conversation,
     attachments: [],
   });
-  const skillServers = await resolveSkillMCPServers(auth, {
-    agentConfiguration,
-    conversation,
-  });
+  const { skillServers, systemSkillServers } = await resolveSkillMCPServers(
+    auth,
+    {
+      agentConfiguration,
+      conversation,
+    }
+  );
 
   const serverConfigs = await disambiguateServerNamesBySpace(
     auth,
     deduplicateMCPServerConfigurations({
       agentActions: agentConfiguration.actions,
       clientSideActions: [],
-      skillServers,
+      skillServers: [...systemSkillServers, ...skillServers],
       jitServers,
     })
   );
@@ -182,7 +185,6 @@ export async function createSandboxChildAction(
     actionConfiguration: fullToolConfiguration,
     skipToolsValidation: agentMessage.skipToolsValidation,
     context: {
-      agentId: agentConfiguration.sId,
       toolInputs: rawInputs,
     },
   });

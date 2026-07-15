@@ -17,6 +17,7 @@ import { AnthropicGlobalClaudeSonnetFourDotSixStream } from "@app/lib/model_cons
 import { FireworksGlobalDeepSeekV4ProStream } from "@app/lib/model_constructors/stream/endpoints/fireworks_global_deepseek_v4_pro";
 import { FireworksGlobalGlmFiveDotTwoStream } from "@app/lib/model_constructors/stream/endpoints/fireworks_global_glm_five_dot_two";
 import { FireworksGlobalKimiK2Dot5Stream } from "@app/lib/model_constructors/stream/endpoints/fireworks_global_kimi_k2_dot_five";
+import { FireworksGlobalKimiK2Dot6Stream } from "@app/lib/model_constructors/stream/endpoints/fireworks_global_kimi_k2_dot_six";
 import { GoogleAiStudioGlobalGeminiThreeDotOneProStream } from "@app/lib/model_constructors/stream/endpoints/google_ai_studio_global_gemini_3_1_pro";
 import { MistralEuropeCodestralStream } from "@app/lib/model_constructors/stream/endpoints/mistral_eu_codestral";
 import { MistralEuropeMistralLargeStream } from "@app/lib/model_constructors/stream/endpoints/mistral_eu_mistral_large";
@@ -76,6 +77,7 @@ export const STREAM_ENDPOINTS = {
   [FireworksGlobalDeepSeekV4ProStream.id]: FireworksGlobalDeepSeekV4ProStream,
   [FireworksGlobalGlmFiveDotTwoStream.id]: FireworksGlobalGlmFiveDotTwoStream,
   [FireworksGlobalKimiK2Dot5Stream.id]: FireworksGlobalKimiK2Dot5Stream,
+  [FireworksGlobalKimiK2Dot6Stream.id]: FireworksGlobalKimiK2Dot6Stream,
   [GoogleAiStudioGlobalGeminiThreeDotOneProStream.id]:
     GoogleAiStudioGlobalGeminiThreeDotOneProStream,
   [MistralEuropeCodestralStream.id]: MistralEuropeCodestralStream,

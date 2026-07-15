@@ -8,9 +8,11 @@ import type {
   MCPServerAvailability,
 } from "@app/lib/actions/mcp_internal_actions/constants";
 import type {
+  AgentLoopEventScope,
   AgentLoopMCPApproveExecutionEvent,
   AgentLoopToolExecution,
   MCPApproveExecutionEvent,
+  SandboxFunctionEventScope,
   SandboxFunctionToolExecution,
   ToolAskUserQuestionEvent,
   ToolFileAuthRequiredEvent,
@@ -67,8 +69,8 @@ export type ServerSideMCPToolType = Omit<
   toolServerId: string;
   timeoutMs?: number;
   retryPolicy: MCPToolRetryPolicyType;
-  // For "medium" stake tools: defines which arguments require per-agent approval.
-  // When present, the user must approve the specific (agent, tool, argument values) combination.
+  // For "medium" stake tools: defines which argument values scope the approval.
+  // The user must approve each specific combination of values.
   argumentsRequiringApproval?: string[];
   displayLabels?: ToolDisplayLabels;
   // When true, the tool is loaded upfront in the cached tools prefix instead of
@@ -85,8 +87,8 @@ export type ClientSideMCPToolType = Omit<
   toolServerId: string;
   type: "mcp_configuration";
   timeoutMs?: number;
-  // For "medium" stake tools: defines which arguments require per-agent approval.
-  // When present, the user must approve the specific (agent, tool, argument values) combination.
+  // For "medium" stake tools: defines which argument values scope the approval.
+  // The user must approve each specific combination of values.
   argumentsRequiringApproval?: string[];
   displayLabels?: ToolDisplayLabels;
   // When true, the tool is loaded upfront in the cached tools prefix instead of
@@ -283,12 +285,6 @@ export type ToolNotificationEvent =
   | AgentLoopToolNotificationEvent
   | SandboxFunctionToolNotificationEvent;
 
-export function isAgentLoopToolNotificationEvent(
-  event: ToolNotificationEvent
-): event is AgentLoopToolNotificationEvent {
-  return "messageId" in event;
-}
-
 // AgentActionRunningEvents are events related action execution within an agent loop.
 export type AgentActionRunningEvents =
   | AgentLoopToolParamsEvent
@@ -340,6 +336,18 @@ export function isToolPersonalAuthRequiredEvent(
     "type" in event &&
     event.type === "tool_personal_auth_required"
   );
+}
+
+export function isSandboxFunctionToolEvent<
+  T extends AgentLoopEventScope | SandboxFunctionEventScope,
+>(event: T): event is Extract<T, SandboxFunctionEventScope> {
+  return "sandboxFunctionId" in event;
+}
+
+export function isAgentLoopToolEvent<
+  T extends AgentLoopEventScope | SandboxFunctionEventScope,
+>(event: T): event is Extract<T, AgentLoopEventScope> {
+  return "conversationId" in event;
 }
 
 export function isToolFileAuthRequiredEvent(

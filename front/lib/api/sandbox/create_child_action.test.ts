@@ -248,7 +248,7 @@ describe("createSandboxChildAction", () => {
     );
   });
 
-  it("auto-approves medium-stake tools when an approval recorded on a direct call exists", async () => {
+  it("auto-approves medium-stake tools when a direct-call approval exists", async () => {
     await setToolPermission("medium");
 
     // Approvals are keyed on the prefixed function-call name; this is what a
@@ -257,7 +257,6 @@ describe("createSandboxChildAction", () => {
     await auth.getNonNullableUser().createToolApproval(auth, {
       mcpServerId: serverId,
       toolName: directCallToolName,
-      agentId: agentConfig.sId,
       argsAndValues: {},
     });
 
@@ -351,7 +350,6 @@ describe("createSandboxChildAction", () => {
     await auth.getNonNullableUser().createToolApproval(auth, {
       mcpServerId: serverId,
       toolName: disambiguatedKey,
-      agentId: agentConfig.sId,
       argsAndValues: {},
     });
 

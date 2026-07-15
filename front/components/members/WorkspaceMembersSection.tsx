@@ -153,6 +153,7 @@ function WorkspaceMembersList({
     pageIndex: 0,
     pageSize: DEFAULT_PAGE_SIZE,
   });
+  const [prevSearchTerm, setPrevSearchTerm] = useState(searchTerm);
 
   const [selectedMember, setSelectedMember] =
     useState<UserTypeWithWorkspace | null>(null);
@@ -164,6 +165,11 @@ function WorkspaceMembersList({
     pageSize: DEFAULT_PAGE_SIZE,
     groupKind: isProvisioningEnabled ? "provisioned" : undefined,
   });
+
+  if (searchTerm !== prevSearchTerm) {
+    setPrevSearchTerm(searchTerm);
+    setPagination({ pageIndex: 0, pageSize: DEFAULT_PAGE_SIZE });
+  }
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   const resetSelectedMember = useCallback(() => {

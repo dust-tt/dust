@@ -157,6 +157,85 @@ describe("POST /api/v1/w/[wId]/sandbox/actions/call (function invocation)", () =
     );
   });
 
+  it("reuses medium-stake approvals for matching tool inputs", async () => {
+    const context =
+      await createPersistedSandboxFunctionInvocationTokenTestContext();
+    const gmail = await InternalMCPServerInMemoryResource.makeNew(
+      context.auth,
+      { name: "gmail", useCase: null }
+    );
+    const view = await MCPServerViewFactory.create(
+      context.workspace,
+      gmail.id,
+      context.globalSpace
+    );
+    await context.auth.getNonNullableUser().createToolApproval(context.auth, {
+      mcpServerId: view.mcpServerId,
+      toolName: "create_draft",
+      argsAndValues: { to: "approved@dust.tt" },
+    });
+
+    const approvedResponse = await callSandboxTool(
+      context.workspace,
+      context.token,
+      {
+        serverViewId: view.sId,
+        toolName: "create_draft",
+        arguments: {
+          to: ["approved@dust.tt"],
+          subject: "Approved recipient",
+          contentType: "text/plain",
+          body: "Hello",
+        },
+      }
+    );
+
+    expect(approvedResponse.status).toBe(202);
+    const approvedBody = await approvedResponse.json();
+    const approvedAction = await SandboxFunctionMCPActionResource.fetchById(
+      context.auth,
+      approvedBody.actionId
+    );
+    expect(approvedAction?.toolConfiguration.permission).toBe("medium");
+    expect(approvedAction?.status).toBe("running");
+    expect(vi.mocked(launchSandboxFunctionToolWorkflow)).toHaveBeenCalledTimes(
+      1
+    );
+
+    const blockedResponse = await callSandboxTool(
+      context.workspace,
+      context.token,
+      {
+        serverViewId: view.sId,
+        toolName: "create_draft",
+        arguments: {
+          to: ["unapproved@dust.tt"],
+          subject: "Unapproved recipient",
+          contentType: "text/plain",
+          body: "Hello",
+        },
+      }
+    );
+
+    expect(blockedResponse.status).toBe(202);
+    const blockedBody = await blockedResponse.json();
+    const blockedAction = await SandboxFunctionMCPActionResource.fetchById(
+      context.auth,
+      blockedBody.actionId
+    );
+    expect(blockedAction?.status).toBe("blocked_validation_required");
+    expect(
+      vi.mocked(publishSandboxFunctionInvocationEvent)
+    ).toHaveBeenCalledWith(
+      expect.objectContaining({
+        actionId: blockedAction?.sId,
+        stake: "medium",
+        argumentsRequiringApproval: ["to"],
+      }),
+      { invocationId: context.invocation.sId }
+    );
+  });
+
   it("creates actions for conversation-coupled servers too", async () => {
     // No creation-time gating on the server: tools that require an agent-loop context error at
     // execution based on the run context.

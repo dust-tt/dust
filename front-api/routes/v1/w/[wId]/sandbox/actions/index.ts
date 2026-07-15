@@ -139,14 +139,17 @@ app.get("/", async (ctx): HandlerResult<GetSandboxToolsResponseType> => {
     conversation,
     attachments,
   });
-  const skillServers = await resolveSkillMCPServers(auth, {
-    agentConfiguration: agentConfig,
-    conversation,
-  });
+  const { systemSkillServers, skillServers } = await resolveSkillMCPServers(
+    auth,
+    {
+      agentConfiguration: agentConfig,
+      conversation,
+    }
+  );
   for (const srv of jitServers) {
     viewIds.add(srv.mcpServerViewId);
   }
-  for (const srv of skillServers) {
+  for (const srv of [...systemSkillServers, ...skillServers]) {
     if (isServerSideMCPServerConfiguration(srv)) {
       viewIds.add(srv.mcpServerViewId);
     }

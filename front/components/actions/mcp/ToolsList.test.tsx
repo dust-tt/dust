@@ -119,6 +119,24 @@ const readOnlyMcpServerView = MCPServerViewTypeFactory.build({
   },
 });
 
+const unscopedMediumMcpServerView = MCPServerViewTypeFactory.build({
+  server: {
+    tools: [
+      {
+        name: TOOL_NAME_WITH_UNDERSCORE,
+        description: "Get messages",
+      },
+    ],
+  },
+  toolsMetadata: [
+    {
+      toolName: TOOL_NAME_WITH_UNDERSCORE,
+      enabled: true,
+      permission: "medium",
+    },
+  ],
+});
+
 function renderToolsList({
   view = mcpServerView,
   keepDirtyValues = false,
@@ -161,6 +179,21 @@ function renderToolsList({
 }
 
 describe("ToolsList", () => {
+  it("keeps persisted medium selected but hides it from unscoped options", () => {
+    const defaults = getMCPServerFormDefaults(unscopedMediumMcpServerView);
+    expect(
+      defaults.toolSettings[encodeMCPToolNameForForm(TOOL_NAME_WITH_UNDERSCORE)]
+        .permission
+    ).toBe("medium");
+
+    renderToolsList({ view: unscopedMediumMcpServerView });
+    expect(
+      screen.getAllByRole("button", {
+        name: "Medium (allows input-scoped confirmation save)",
+      })
+    ).toHaveLength(1);
+  });
+
   it("keeps form state flat and validates when a tool name contains a dot", async () => {
     const { form } = renderToolsList();
 

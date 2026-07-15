@@ -261,14 +261,11 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
 
   private static async _fetchActiveByWorkspaceModelIdUncached(
     workspaceModelId: ModelId
-  ): Promise<CachedSubscription | null> {
+  ): Promise<CachedSubscription> {
     const res = await SubscriptionResource.fetchActiveByWorkspacesModelId([
       workspaceModelId,
     ]);
     const subscription = res[workspaceModelId];
-    if (!subscription) {
-      return null;
-    }
     return {
       id: subscription.id,
       planId: subscription.planId,
@@ -379,7 +376,7 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
   static async fetchActiveByWorkspaceModelId(
     workspaceModelId: ModelId,
     transaction?: Transaction
-  ): Promise<SubscriptionResource | null> {
+  ): Promise<SubscriptionResource> {
     // Bypass cache when transaction is provided for transactional consistency
     if (transaction) {
       logger.info(
@@ -393,14 +390,11 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
         [workspaceModelId],
         transaction
       );
-      return res[workspaceModelId] ?? null;
+      return res[workspaceModelId];
     }
 
     const cached =
       await this.fetchActiveByWorkspaceModelIdCached(workspaceModelId);
-    if (!cached) {
-      return null;
-    }
 
     return this.fromCachedData(workspaceModelId, cached);
   }

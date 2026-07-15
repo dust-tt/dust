@@ -127,7 +127,7 @@ export async function writeWorkspacePolicy(
     );
   }
 
-  void invalidateWorkspacePolicyCache(auth);
+  await invalidateWorkspacePolicyCache(auth);
 
   return new Ok(normalizedPolicy.value);
 }
@@ -147,7 +147,7 @@ export async function deleteWorkspacePolicy(
       ignoreNotFound: true,
     });
 
-    void invalidateWorkspacePolicyCache(auth);
+    await invalidateWorkspacePolicyCache(auth);
 
     return new Ok(undefined);
   } catch (error) {
@@ -184,6 +184,40 @@ export async function readOwnerPolicy(
   return new Ok(policy.value ?? EMPTY_EGRESS_POLICY);
 }
 
+// Replaces an owner's whole allowlist. The admin-facing write for pod
+// (Shared Computer) policies: like the workspace policy — and unlike the
+// agent tool's exact-domain appends — wildcard entries such as
+// `*.github.com` are supported, and there is no domain-count cap (also
+// mirroring the workspace policy). Note the asymmetry with
+// addOwnerPolicyDomain, which caps at SANDBOX_POLICY_MAX_DOMAINS and writes
+// the same pod files (tool approvals from a Pod's conversations are
+// Pod-scoped): an admin list over the cap makes every tool append in that
+// Pod fail its cap check.
+export async function writeOwnerPolicy(
+  auth: Authenticator,
+  { ownerId, policy }: { ownerId: string; policy: EgressPolicy }
+): Promise<Result<EgressPolicy, Error>> {
+  const normalizedPolicyRes = normalizeEgressPolicy(policy);
+
+  if (normalizedPolicyRes.isErr()) {
+    return normalizedPolicyRes;
+  }
+
+  try {
+    await getPolicyBucket().uploadRawContentToBucket({
+      content: JSON.stringify(normalizedPolicyRes.value),
+      contentType: "application/json",
+      filePath: getOwnerPolicyPath(auth, ownerId),
+    });
+
+    await invalidateOwnerPolicyCache(auth, ownerId);
+
+    return new Ok(normalizedPolicyRes.value);
+  } catch (error) {
+    return new Err(normalizeError(error));
+  }
+}
+
 export async function addOwnerPolicyDomain(
   auth: Authenticator,
   { ownerId, domain }: { ownerId: string; domain: string }
@@ -200,13 +234,12 @@ export async function addOwnerPolicyDomain(
     return new Err(currentPolicy.error);
   }
 
-  // Exact-string membership is enough today: this function is the only
-  // writer of conversation owner files, and it only ever appends exact
-  // domains. If another writer starts putting wildcard entries in a file the
-  // tool also appends to (e.g. enabling the add_egress_domain tool on pod
-  // sandboxes, whose files are admin-managed), this check must become
-  // wildcard-aware or users will be prompted for domains a wildcard already
-  // covers.
+  // Exact-string membership on purpose. Pod files mix writers (admin-managed
+  // entries, possibly wildcards, plus tool appends from the Pod's
+  // conversations), so a domain covered by an admin wildcard still re-prompts
+  // for approval and lands as a redundant exact entry. Accepted: it matches
+  // the existing behavior for workspace-wildcard-covered domains in normal
+  // conversations, and a redundant exact entry is harmless.
   const alreadyAllowed = currentPolicy.value.allowedDomains.includes(
     parsedDomain.value
   );
@@ -233,7 +266,7 @@ export async function addOwnerPolicyDomain(
       filePath: getOwnerPolicyPath(auth, ownerId),
     });
 
-    void invalidateOwnerPolicyCache(auth, ownerId);
+    await invalidateOwnerPolicyCache(auth, ownerId);
 
     return new Ok({ policy, addedDomain });
   } catch (error) {
@@ -273,7 +306,7 @@ export async function deleteOwnerPolicy(
       ignoreNotFound: true,
     });
 
-    void invalidateOwnerPolicyCache(auth, ownerId);
+    await invalidateOwnerPolicyCache(auth, ownerId);
 
     return new Ok(undefined);
   } catch (error) {
@@ -281,6 +314,8 @@ export async function deleteOwnerPolicy(
   }
 }
 
+// Best-effort proxy cache bust, bounded by INVALIDATION_TIMEOUT_MS. Never
+// throws (failures are logged); awaited at call sites so no promise escapes.
 async function invalidateWorkspacePolicyCache(
   auth: Authenticator
 ): Promise<void> {
@@ -316,6 +351,7 @@ async function invalidateWorkspacePolicyCache(
   }
 }
 
+// Same contract as invalidateWorkspacePolicyCache: never throws, bounded.
 async function invalidateOwnerPolicyCache(
   auth: Authenticator,
   ownerId: string

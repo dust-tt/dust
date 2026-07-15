@@ -177,6 +177,35 @@ export class UserProjectPreferencesResource extends BaseResource<UserProjectPref
     return new this(this.model, entry.get(), { user });
   }
 
+  static async setStarredForUsers(
+    auth: Authenticator,
+    {
+      spaceModelId,
+      userModelIds,
+      isStarred,
+    }: {
+      spaceModelId: ModelId;
+      userModelIds: ModelId[];
+      isStarred: boolean;
+    }
+  ): Promise<void> {
+    if (userModelIds.length === 0) {
+      return;
+    }
+
+    const workspace = auth.getNonNullableWorkspace();
+
+    await UserProjectPreferencesModel.bulkCreate(
+      userModelIds.map((userId) => ({
+        workspaceId: workspace.id,
+        userId,
+        spaceId: spaceModelId,
+        isStarred,
+      })),
+      { updateOnDuplicate: ["isStarred"] }
+    );
+  }
+
   static async deleteAllBySpace(
     auth: Authenticator,
     spaceModelId: ModelId

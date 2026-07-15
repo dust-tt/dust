@@ -235,7 +235,7 @@ export function SkillInfoTab({
 
       {shouldLoadSpaces ? (
         <div className="flex flex-col gap-4">
-          <div className="heading-lg text-foreground">Spaces</div>
+          <div className="heading-lg text-foreground">Spaces and Pods</div>
           {isSpacesLoading ? (
             <div className="flex flex-row items-center gap-2">
               <Spinner size="xs" />

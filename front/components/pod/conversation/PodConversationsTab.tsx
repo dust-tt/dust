@@ -21,6 +21,7 @@ import type { GetSpaceResponseBody } from "@app/types/api/spaces";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import { getConversationDisplayTitle } from "@app/types/assistant/conversation";
 import type { RichMention } from "@app/types/assistant/mentions";
+import type { ModelSelectionType } from "@app/types/assistant/models/types";
 import type { ContentFragmentsType } from "@app/types/content_fragment";
 import type { Result } from "@app/types/shared/result";
 import {
@@ -69,7 +70,8 @@ interface PodConversationsTabProps {
     input: string,
     mentions: RichMention[],
     contentFragments: ContentFragmentsType,
-    selectedMCPServerViewIds?: string[]
+    selectedMCPServerViewIds?: string[],
+    modelSelection?: ModelSelectionType
   ) => Promise<Result<undefined, any>>;
   onNavigateToTasks: () => void;
 }

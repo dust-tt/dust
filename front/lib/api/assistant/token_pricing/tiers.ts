@@ -1,6 +1,7 @@
 import { STATIC_MODEL_SUPPORTED_REASONING_EFFORTS } from "@app/lib/api/assistant/token_pricing/static_model_reasoning_efforts";
 import type { StaticModelIdType } from "@app/types/assistant/models/models";
 import type {
+  ModelIdType,
   ModelProviderIdType,
   ReasoningEffort,
   ReasoningEffortSupport,
@@ -14,8 +15,12 @@ export const MODELS_TIER_NAMES = [
 
 export type ModelsTierName = (typeof MODELS_TIER_NAMES)[number];
 
+export function isModelsTierName(value: unknown): value is ModelsTierName {
+  return MODELS_TIER_NAMES.includes(value as ModelsTierName);
+}
+
 export type ModelTierSelection = {
-  modelId: StaticModelIdType;
+  modelId: ModelIdType;
   providerId: ModelProviderIdType;
   reasoningEffort: ReasoningEffort;
 };
@@ -77,22 +82,22 @@ export const STATIC_MODEL_TIERS: StaticModelTiersLookup = {
     none: "cost_efficient",
   },
   "gpt-4-turbo": {
-    none: "balanced",
+    none: "cost_efficient",
   },
   "gpt-4o": {
-    none: "balanced",
+    none: "cost_efficient",
   },
   "gpt-4.1-2025-04-14": {
-    none: "balanced",
+    none: "cost_efficient",
   },
   "gpt-4.1-mini-2025-04-14": {
-    none: "balanced",
+    none: "cost_efficient",
   },
   "gpt-4o-2024-08-06": {
-    none: "balanced",
+    none: "cost_efficient",
   },
   "gpt-4o-mini": {
-    none: "balanced",
+    none: "cost_efficient",
   },
   "gpt-5.1": {
     none: "balanced",
@@ -109,8 +114,8 @@ export const STATIC_MODEL_TIERS: StaticModelTiersLookup = {
   "gpt-5.4-mini": {
     none: "cost_efficient",
     light: "cost_efficient",
-    medium: "balanced",
-    high: "balanced",
+    medium: "cost_efficient",
+    high: "cost_efficient",
   },
   "gpt-5.4": {
     none: "balanced",
@@ -145,7 +150,7 @@ export const STATIC_MODEL_TIERS: StaticModelTiersLookup = {
   "gpt-5.4-nano": {
     none: "cost_efficient",
     light: "cost_efficient",
-    medium: "balanced",
+    medium: "cost_efficient",
     high: "cost_efficient",
   },
   "gpt-5": {
@@ -155,13 +160,13 @@ export const STATIC_MODEL_TIERS: StaticModelTiersLookup = {
   },
   "gpt-5-mini": {
     light: "cost_efficient",
-    medium: "balanced",
-    high: "balanced",
+    medium: "cost_efficient",
+    high: "cost_efficient",
   },
   "gpt-5-nano": {
     light: "cost_efficient",
-    medium: "balanced",
-    high: "balanced",
+    medium: "cost_efficient",
+    high: "cost_efficient",
   },
   o1: {
     none: "balanced",
@@ -251,8 +256,8 @@ export const STATIC_MODEL_TIERS: StaticModelTiersLookup = {
   },
   "claude-haiku-4-5-20251001": {
     light: "cost_efficient",
-    medium: "balanced",
-    high: "balanced",
+    medium: "cost_efficient",
+    high: "cost_efficient",
   },
   "mistral-large-latest": {
     none: "balanced",
@@ -328,6 +333,12 @@ export const STATIC_MODEL_TIERS: StaticModelTiersLookup = {
     light: "balanced",
   },
   "accounts/fireworks/models/kimi-k2p5": {
+    none: "balanced",
+    light: "balanced",
+    medium: "balanced",
+    high: "balanced",
+  },
+  "accounts/fireworks/models/kimi-k2p6": {
     none: "balanced",
     light: "balanced",
     medium: "balanced",

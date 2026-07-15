@@ -4,7 +4,7 @@
 import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { Err, Ok, type Result } from "../result.ts";
+import { Err, Ok, type Result } from "#result.ts";
 import { DbCommandError } from "./common.ts";
 
 export function generateSchemaFileText(
@@ -23,9 +23,18 @@ export function generateSchemaFileText(
   // keeps a stray drizzle.config in the caller's CWD from being picked up.
   const outDir = mkdtempSync(join(tmpdir(), "dsbx-schema-"));
   try {
+    // Run the drizzle-kit CLI *under bun* rather than invoking it directly: its bin carries a
+    // `#!/usr/bin/env node` shebang, and the sandbox image ships bun but no `node`, so a bare
+    // spawn dies with "env: 'node': No such file or directory". Passing the resolved bin as a
+    // bun argument bypasses the shebang (reconcile avoids this by using drizzle-kit's JS API).
+    const drizzleKitBin = drizzleKitBinPath();
+    if (drizzleKitBin.isErr()) {
+      return drizzleKitBin;
+    }
     const pull = Bun.spawnSync(
       [
-        "drizzle-kit",
+        "bun",
+        drizzleKitBin.value,
         "pull",
         "--dialect=sqlite",
         `--out=${outDir}`,
@@ -65,4 +74,16 @@ export function generateSchemaFileText(
 function drizzleKitEnv(): Record<string, string | undefined> {
   const localBin = join(import.meta.dir, "..", "node_modules", ".bin");
   return { ...process.env, PATH: `${localBin}:${process.env.PATH ?? ""}` };
+}
+
+// Resolve the drizzle-kit bin against the same PATH the spawn uses (global install on the
+// sandbox, local .bin in tests), so it can be handed to bun as a script path.
+function drizzleKitBinPath(): Result<string, DbCommandError> {
+  const bin = Bun.which("drizzle-kit", { PATH: drizzleKitEnv().PATH });
+  if (!bin) {
+    return new Err(
+      new DbCommandError("internal", "drizzle-kit not found on PATH")
+    );
+  }
+  return new Ok(bin);
 }

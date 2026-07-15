@@ -11,6 +11,7 @@ import {
   remapMembershipSeatTypesForContract,
   syncSeatCount,
 } from "@app/lib/metronome/seats";
+import { isProPlanPrefix } from "@app/lib/plans/plan_codes";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import logger from "@app/logger/logger";
@@ -62,6 +63,9 @@ export async function syncMetronomeSeatCountForWorkspace({
     });
   }
 
+  const activeSubscription =
+    await SubscriptionResource.fetchActiveByWorkspaceModelId(workspace.id);
+
   // When the workspace has a scheduled future contract switch (e.g. a
   // legacy→Business migration in its window), also stage the PENDING contract:
   // members added/changed mid-window must be seated on the contract that will
@@ -71,10 +75,11 @@ export async function syncMetronomeSeatCountForWorkspace({
   // contract stays correct across adds, revokes, and seat changes alike. This
   // is independent of, and in addition to, reconciling the active contract
   // below (whose seats a legacy shadow contract still bills / finalizes).
-  const stagedPending = await stagePendingContractSeats(workspace);
+  const stagedPending = await stagePendingContractSeats({
+    workspace,
+    currentPlanCode: activeSubscription?.getPlan().code ?? null,
+  });
 
-  const activeSubscription =
-    await SubscriptionResource.fetchActiveByWorkspaceModelId(workspace.id);
   const activeContract = activeSubscription?.metronomeContractId
     ? await getActiveContract(workspace.sId)
     : null;
@@ -165,8 +170,13 @@ export async function syncMetronomeSeatCountForWorkspace({
  * Schedules a future-dated seat change per member onto the pending contract
  * (`remapMembershipSeatTypesForContract` with `swapAt: "next-hour"`), then
  * pre-provisions the seat counts (`syncSeatCount` with the pending start).
- * Legacy plans only carry `workspace`/`none` seats, which Business doesn't bill,
- * so they are promoted to `pro` (the migration's target seat).
+ * A legacy Pro plan only carries `workspace`/`none` seats, which Business
+ * doesn't bill, so — ONLY when the workspace is currently on a legacy Pro plan
+ * (mid legacy→Business migration) — seat-less members are force-promoted to
+ * `pro` (the migration's target seat). Any other pending contract switch (a
+ * manual Enterprise/Business switch, etc.) falls through to the ordinary
+ * committed-spare-seat promotion instead — forcing `pro` there would put
+ * members on a seat type their new contract may not even entitle.
  *
  * Skips the live-balance credit reconcile: the contract isn't active yet, so
  * that runs at `contract.start` (and on the next sync once it is active).
@@ -174,9 +184,13 @@ export async function syncMetronomeSeatCountForWorkspace({
  *
  * Returns whether the pending contract was staged.
  */
-async function stagePendingContractSeats(
-  workspace: LightWorkspaceType
-): Promise<boolean> {
+async function stagePendingContractSeats({
+  workspace,
+  currentPlanCode,
+}: {
+  workspace: LightWorkspaceType;
+  currentPlanCode: string | null;
+}): Promise<boolean> {
   if (!workspace.metronomeCustomerId) {
     return false;
   }
@@ -200,7 +214,11 @@ async function stagePendingContractSeats(
   // Schedule each member's future-dated seat change onto the pending contract.
   // `promoteNoneSeatType: "pro"` maps legacy `workspace`/`none` members onto
   // Business's `pro` seat (Business has no committed seats, so they'd otherwise
-  // stay `none`). Fixed to `"pro"` for the current legacy→Business migration.
+  // stay `none`) — but only when this workspace is actually mid legacy Pro →
+  // Business migration. Any other pending switch omits it, so seat-less
+  // members fall through to the ordinary committed-spare-seat promotion.
+  const promoteNoneSeatType =
+    currentPlanCode && isProPlanPrefix(currentPlanCode) ? "pro" : undefined;
   const remapResult = await remapMembershipSeatTypesForContract({
     metronomeCustomerId: workspace.metronomeCustomerId,
     contractId: pendingSubscription.metronomeContractId,
@@ -208,7 +226,7 @@ async function stagePendingContractSeats(
     swapAt: "next-hour",
     startingAt: new Date(pendingContract.starting_at),
     contract: pendingContract,
-    promoteNoneSeatType: "pro",
+    promoteNoneSeatType,
   });
   if (remapResult.isErr()) {
     logger.warn(

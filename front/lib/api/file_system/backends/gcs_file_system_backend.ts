@@ -13,6 +13,7 @@ import {
 import { TOOL_OUTPUTS_FOLDER_NAME } from "@app/lib/api/files/mount_path";
 import { getPrivateUploadBucket } from "@app/lib/file_storage";
 import fileStorageConfig from "@app/lib/file_storage/config";
+import { getCachedPrivateUploadSignedUrl } from "@app/lib/file_storage/signed_url_cache";
 import logger from "@app/logger/logger";
 import type {
   FileSystemDirectoryEntry,
@@ -592,7 +593,7 @@ export class GCSFileSystemBackend implements FileSystemBackend {
     }
 
     try {
-      const url = await getPrivateUploadBucket().getSignedUrl(gcsPath);
+      const url = await getCachedPrivateUploadSignedUrl(gcsPath);
 
       return new Ok(url);
     } catch (err) {

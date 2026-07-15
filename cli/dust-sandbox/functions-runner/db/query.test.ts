@@ -1,11 +1,11 @@
 import { Database } from "bun:sqlite";
 import { describe, expect, test } from "bun:test";
-import { readFileSync } from "node:fs";
+import { mkdirSync, readFileSync } from "node:fs";
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import type { Result } from "../result.ts";
-import type { DbErrorKind } from "../types/db.ts";
+import type { Result } from "#result.ts";
+import type { DbErrorKind } from "#types/db.ts";
 import { DbCommandError, POD_DATABASE_MAX_SIZE_BYTES_ENV } from "./common.ts";
 import {
   QUERY_INLINE_PAYLOAD_CAP_BYTES,
@@ -212,25 +212,37 @@ describe("db query", () => {
     });
   });
 
-  test("refuses DDL, PRAGMA, ATTACH and transaction control with a typed error", async () => {
+  test("refuses DDL by rolling back any schema change", async () => {
     await withDir(async (dir) => {
       const dbPath = await seeded(dir);
       for (const sql of [
         "CREATE TABLE sneaky (id INTEGER)",
         "DROP TABLE users",
         "ALTER TABLE users ADD sneaky TEXT",
-        "PRAGMA journal_mode = DELETE",
-        "ATTACH DATABASE '/tmp/other.db' AS other",
-        "BEGIN",
-        "VACUUM",
       ]) {
         await expectDbError(
           () => runQuery(dbPath, sql),
           "disallowed_statement",
-          /only SELECT and DML/
+          /changed the database schema/
         );
       }
-      // The schema and the WAL journal mode are untouched.
+      expect(tableNames(dbPath)).toEqual(["messages", "settings", "users"]);
+    });
+  });
+
+  // VACUUM, BEGIN and PRAGMA journal_mode all error "...within a transaction" because every
+  // statement runs inside BEGIN IMMEDIATE — that wrapper, not a keyword gate, is what keeps a
+  // query from checkpointing away the WAL or nesting a transaction.
+  test("statements that can't run in a transaction fail, leaving schema and WAL intact", async () => {
+    await withDir(async (dir) => {
+      const dbPath = await seeded(dir);
+      for (const sql of ["VACUUM", "BEGIN", "PRAGMA journal_mode = DELETE"]) {
+        await expectDbError(
+          () => runQuery(dbPath, sql),
+          "query_failed",
+          /transaction/i
+        );
+      }
       expect(tableNames(dbPath)).toEqual(["messages", "settings", "users"]);
       expect(journalMode(dbPath)).toBe("wal");
     });
@@ -253,6 +265,24 @@ describe("db query", () => {
         )
       );
       expect(trailing.rows).toEqual([{ n: 2 }]);
+    });
+  });
+
+  // ATTACH is not keyword-blocked (SQLite allows it inside a transaction), but it can't reach
+  // another database: a lone ATTACH detaches when the connection closes, and pairing it with a
+  // query that reads the attached db trips the single-statement guard before the ATTACH runs.
+  test("ATTACH cannot reach another database — the follow-up statement is rejected", async () => {
+    await withDir(async (dir) => {
+      const dbPath = await seeded(dir);
+      await expectDbError(
+        () =>
+          runQuery(
+            dbPath,
+            "ATTACH DATABASE '/tmp/other.db' AS other; SELECT * FROM other.secret"
+          ),
+        "query_failed",
+        /multiple SQL statements/
+      );
     });
   });
 
@@ -292,6 +322,25 @@ describe("db query", () => {
         expect(lines.length).toBe(3);
         await rm(result.results_file, { force: true });
       }
+    });
+  });
+
+  test("writes the spill file into the provided spill directory", async () => {
+    await withDir(async (dir) => {
+      const dbPath = join(dir, "notes.db");
+      unwrap(await reconcile(dbPath, fx("notes.db.ts")));
+      const db = new Database(dbPath);
+      db.prepare("INSERT INTO notes (label) VALUES (?)").run(
+        "x".repeat(QUERY_INLINE_PAYLOAD_CAP_BYTES + 1)
+      );
+      db.close();
+
+      const spillDir = join(dir, "pod-files");
+      mkdirSync(spillDir);
+      const result = unwrap(
+        runQuery(dbPath, "SELECT label FROM notes", undefined, spillDir)
+      );
+      expect(result.results_file?.startsWith(`${spillDir}/`)).toBe(true);
     });
   });
 
