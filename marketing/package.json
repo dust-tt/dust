@@ -33,6 +33,7 @@
     "date-fns": "^3.6.0",
     "embla-carousel-react": "^8.0.1",
     "framer-motion": "^12.7.3",
+    "lottie-react": "^2.4.0",
     "lucide-react": "^0.363.0",
     "motion": "^12.7.3",
     "next": "^14.2.35",

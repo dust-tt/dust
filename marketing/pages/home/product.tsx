@@ -4,7 +4,7 @@ import { HomeQuotesSection } from "@marketing/components/home/content/Product/Ho
 import { InteractiveFeaturesSection } from "@marketing/components/home/content/Product/InteractiveFeaturesSection";
 import { ProductIntroSection } from "@marketing/components/home/content/Product/ProductIntroSection";
 import { SecurityFeaturesSection } from "@marketing/components/home/content/Product/SecurityFeaturesSection";
-import { FunctionsSection } from "@marketing/components/home/FunctionsSection";
+import { HomeTeamUsageSection } from "@marketing/components/home/content/Product/HomeTeamUsageSection";
 import type { LandingLayoutProps } from "@marketing/components/home/LandingLayout";
 import LandingLayout from "@marketing/components/home/LandingLayout";
 import { PageMetadata } from "@marketing/components/home/PageMetadata";
@@ -52,25 +52,21 @@ export function Landing() {
         description="Discover how Dust AI agents access your company knowledge, integrate with your tools, and help teams work smarter. Secure, customizable, and enterprise-ready."
         pathname={router.asPath}
       />
-      <ProductIntroSection />
-      <div className="mt-16">
-        <CapabilitySection />
-      </div>
-      <div className="mt-16">
-        <InteractiveFeaturesSection />
-      </div>
-      <div className="mt-16">
-        <SecurityFeaturesSection />
-      </div>
-      <div className="relative left-1/2 right-1/2 -ml-[50vw] -mr-[50vw] mt-16 w-screen">
-        <HomeQuotesSection quotes={QUOTES} />
-      </div>
-      <div className="mt-16">
-        <FunctionsSection />
-      </div>
-      <div className="relative left-1/2 right-1/2 -ml-[50vw] -mr-[50vw] mt-16 w-screen">
-        <HomeAIOperatorsCTASection />
-      </div>
+      {/* Single section child: keeps the LandingLayout container gap from
+          stacking between every block (same structure as the homepage). */}
+      <section className="w-full">
+        <div className="flex flex-col">
+          <ProductIntroSection />
+          <CapabilitySection />
+          <InteractiveFeaturesSection />
+          <SecurityFeaturesSection />
+          <div className="relative left-1/2 right-1/2 -ml-[50vw] -mr-[50vw] flex w-screen flex-col">
+            <HomeQuotesSection quotes={QUOTES} />
+            <HomeTeamUsageSection />
+            <HomeAIOperatorsCTASection />
+          </div>
+        </div>
+      </section>
     </>
   );
 }

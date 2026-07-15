@@ -9,6 +9,8 @@ interface CapabilityBlock {
   description: React.ReactNode;
   imageSrc: string;
   imageAlt: string;
+  // When set, an autoplaying looped video replaces the image.
+  videoSrc?: string;
   panelBg: string;
   // true = image on the left, text on the right (homepage layout).
   reverse: boolean;
@@ -16,16 +18,17 @@ interface CapabilityBlock {
 
 const BLOCKS: CapabilityBlock[] = [
   {
-    title: "Give every agent your full company context",
+    title: "Multiplayer AI, built for your whole team.",
     description: (
       <>
-        Connect Notion, Slack, Salesforce, Google Drive and more. Every agent
-        knows what your company knows, and acts on it in real time.
+        Knowledge, skills, agents and memory compound across your organization.
+        Humans and agents coordinate complex, cross-functional work, with shared
+        intelligence that grows over time.
       </>
     ),
-    imageSrc: "/static/landing/product/agents2.svg",
-    imageAlt: "Agents",
-    panelBg: "bg-rose-50",
+    imageSrc: "/static/landing/product/model.svg",
+    imageAlt: "Models",
+    panelBg: "bg-golden-50",
     reverse: false,
   },
   {
@@ -43,22 +46,9 @@ const BLOCKS: CapabilityBlock[] = [
     ),
     imageSrc: "/static/landing/product/connectors.svg",
     imageAlt: "Connectors",
-    panelBg: "bg-green-50",
+    videoSrc: "/static/landing/home/features/best-model.mp4",
+    panelBg: "bg-blue-50",
     reverse: true,
-  },
-  {
-    title: "Multiplayer AI, built for your whole team.",
-    description: (
-      <>
-        Knowledge, skills, agents and memory compound across your organization.
-        Humans and agents coordinate complex, cross-functional work, with shared
-        intelligence that grows over time.
-      </>
-    ),
-    imageSrc: "/static/landing/product/model.svg",
-    imageAlt: "Models",
-    panelBg: "bg-golden-50",
-    reverse: false,
   },
   {
     title: "Govern AI usage across your entire org",
@@ -70,10 +60,10 @@ const BLOCKS: CapabilityBlock[] = [
         intelligence.
       </>
     ),
-    imageSrc: "/static/landing/product/analytics.svg",
-    imageAlt: "Analytics",
+    imageSrc: "/static/landing/product/govern-ai-usage.svg",
+    imageAlt: "Agent analytics panel",
     panelBg: "bg-blue-50",
-    reverse: true,
+    reverse: false,
   },
 ];
 
@@ -81,20 +71,37 @@ export function CapabilitySection() {
   return (
     <div className="w-full">
       <HomeRevealStyles />
-      <div className="mx-auto flex max-w-4xl flex-col items-center gap-6 text-center sm:gap-2 lg:px-8">
+      <div className="mx-auto w-full max-w-[1180px] px-6">
         <HomeReveal>
-          <H2
-            className="text-center text-3xl font-medium md:text-4xl xl:text-5xl"
-            style={{ textAlign: "center" }}
-          >
-            The AI system built for your whole organization
-          </H2>
-        </HomeReveal>
-        <HomeReveal delay={80}>
-          <P size="lg" className="text-base text-muted-foreground sm:text-lg">
-            From individual contributors to enterprise teams, Dust compounds
-            your organizational intelligence over time.
-          </P>
+          <div className="relative flex w-full flex-col items-center gap-12 overflow-hidden rounded-2xl bg-[#1c91ff] pt-16 md:pt-24">
+            <img
+              src="/static/landing/product/ai-system-panel-pattern.png"
+              alt=""
+              aria-hidden="true"
+              className="absolute inset-0 h-full w-full object-contain"
+            />
+            <img
+              src="/static/landing/product/ai-system-panel-texture.png"
+              alt=""
+              aria-hidden="true"
+              className="absolute inset-0 h-full w-full object-cover"
+            />
+            <div className="relative z-10 flex w-full flex-col items-center gap-8 px-6">
+              <H2
+                className="text-center text-3xl font-medium text-white md:text-4xl xl:text-5xl"
+                style={{ textAlign: "center" }}
+              >
+                The AI system built for
+                <br />
+                your whole organization
+              </H2>
+              <img
+                src="/static/landing/product/Product%20screen%201.svg"
+                alt="Dust chat interface with conversation history, projects, and an agent ready to help"
+                className="w-full max-w-[800px]"
+              />
+            </div>
+          </div>
         </HomeReveal>
       </div>
 
@@ -131,13 +138,25 @@ export function CapabilitySection() {
                 className="flex w-full justify-center self-stretch lg:w-1/2"
               >
                 <div
-                  className={`flex w-full max-w-[520px] items-center justify-center self-stretch rounded-3xl p-8 ${block.panelBg}`}
+                  className={`relative aspect-square w-full max-w-[520px] overflow-hidden rounded-3xl ${block.panelBg}`}
                 >
-                  <img
-                    src={block.imageSrc}
-                    alt={block.imageAlt}
-                    className="m-auto h-auto w-full max-w-[420px] object-contain"
-                  />
+                  {block.videoSrc ? (
+                    <video
+                      src={block.videoSrc}
+                      autoPlay
+                      muted
+                      loop
+                      playsInline
+                      preload="metadata"
+                      className="h-full w-full object-cover"
+                    />
+                  ) : (
+                    <img
+                      src={block.imageSrc}
+                      alt={block.imageAlt}
+                      className="h-full w-full object-cover"
+                    />
+                  )}
                 </div>
               </HomeReveal>
             </div>
