@@ -1,6 +1,5 @@
 import { getSandboxFunctionInvocationEvents } from "@app/lib/api/sandbox_functions/events";
 import type { Authenticator } from "@app/lib/auth";
-import { SandboxFunctionInvocationResource } from "@app/lib/resources/sandbox_function_invocation_resource";
 import type { SandboxFunctionResource } from "@app/lib/resources/sandbox_function_resource";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -58,11 +57,7 @@ export async function callSandboxFunction(
   sandboxFunction: SandboxFunctionResource,
   input: unknown
 ): Promise<Result<SandboxFunctionCallOutcome, Error>> {
-  const invocationResult =
-    await SandboxFunctionInvocationResource.createAndStartExecution(auth, {
-      sandboxFunction,
-      body: { input },
-    });
+  const invocationResult = await sandboxFunction.invoke(auth, { input });
   if (invocationResult.isErr()) {
     return invocationResult;
   }

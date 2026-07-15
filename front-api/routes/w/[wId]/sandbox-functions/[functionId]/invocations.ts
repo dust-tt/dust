@@ -1,6 +1,5 @@
 import { MCP_VALIDATION_OUTPUTS } from "@app/lib/actions/constants";
 import { validateSandboxFunctionAction } from "@app/lib/api/sandbox_functions/validate_action";
-import { SandboxFunctionInvocationResource } from "@app/lib/resources/sandbox_function_invocation_resource";
 import { SandboxFunctionResource } from "@app/lib/resources/sandbox_function_resource";
 import type {
   PostSandboxFunctionInvocationRequestBody,
@@ -113,11 +112,7 @@ app.post(
       });
     }
 
-    const invocationResult =
-      await SandboxFunctionInvocationResource.createAndStartExecution(auth, {
-        sandboxFunction,
-        body,
-      });
+    const invocationResult = await sandboxFunction.invoke(auth, body);
     if (invocationResult.isErr()) {
       return apiError(
         ctx,

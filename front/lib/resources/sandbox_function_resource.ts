@@ -16,6 +16,7 @@ import {
   makeSId,
 } from "@app/lib/resources/string_ids";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
+import type { PostSandboxFunctionInvocationRequestBody } from "@app/types/api/sandbox_functions";
 import { isValidSandboxFunctionSlug } from "@app/types/api/sandbox_functions";
 import { sandboxFunctionContentType } from "@app/types/files";
 import type { ModelId } from "@app/types/shared/model_id";
@@ -335,6 +336,16 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
     }
 
     return new Ok(sandboxFunctions.length);
+  }
+
+  async invoke(
+    auth: Authenticator,
+    body: PostSandboxFunctionInvocationRequestBody
+  ): Promise<Result<SandboxFunctionInvocationResource, Error>> {
+    return SandboxFunctionInvocationResource.createAndStartExecution(auth, {
+      sandboxFunction: this,
+      body,
+    });
   }
 
   async delete(auth: Authenticator): Promise<Result<undefined, Error>> {
