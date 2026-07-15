@@ -31,6 +31,7 @@ import {
   CAP_ELIGIBLE_GROUP_KINDS,
   GROUP_KINDS,
   isAgentEditorGroupKind,
+  isRegularManualGroupKind,
   isSkillEditorGroupKind,
 } from "@app/types/groups";
 import type { ResourcePermission } from "@app/types/resource_permissions";
@@ -634,13 +635,9 @@ export class GroupResource extends BaseResource<GroupModel> {
   // Use with care as this gives access to all groups in the workspace.
   static async internalFetchAllWorkspaceGroups({
     workspaceId,
-    groupKinds = [
-      "global",
-      "regular_auto",
-      "space_editors",
-      "system",
-      "provisioned",
-    ],
+    groupKinds = GROUP_KINDS.filter(
+      (k) => !isAgentEditorGroupKind(k) && !isSkillEditorGroupKind(k)
+    ),
     transaction,
   }: {
     workspaceId: ModelId;
@@ -1511,6 +1508,7 @@ export class GroupResource extends BaseResource<GroupModel> {
   > {
     assert(
       this.isRegularAuto() ||
+        this.isRegularManual() ||
         this.kind === "space_editors" ||
         this.kind === "agent_editors" ||
         this.kind === "skill_editors" ||
@@ -1550,24 +1548,6 @@ export class GroupResource extends BaseResource<GroupModel> {
           userIds.length === 1
             ? "Cannot add: user is not a member of the workspace"
             : "Cannot add: users are not members of the workspace"
-        )
-      );
-    }
-
-    // Users can only be added to regular_auto, space_editors, agent_editors, skill_editors or provisioned groups.
-    if (
-      ![
-        "regular_auto",
-        "space_editors",
-        "agent_editors",
-        "skill_editors",
-        "provisioned",
-      ].includes(this.kind)
-    ) {
-      return new Err(
-        new DustError(
-          "system_or_global_group",
-          "Users can only be added to regular, space_editors, agent_editors, skill_editors or provisioned groups."
         )
       );
     }
@@ -1688,6 +1668,7 @@ export class GroupResource extends BaseResource<GroupModel> {
   > {
     assert(
       this.isRegularAuto() ||
+        this.isRegularManual() ||
         this.kind === "space_editors" ||
         this.kind === "agent_editors" ||
         this.kind === "skill_editors" ||
@@ -1721,24 +1702,6 @@ export class GroupResource extends BaseResource<GroupModel> {
           userIds.length === 1
             ? "Cannot remove: user is not a member of the workspace"
             : "Cannot remove: users are not members of the workspace"
-        )
-      );
-    }
-
-    // Users can only be removed from regular_auto, space_editors, agent_editors, skill_editors or provisioned groups.
-    if (
-      ![
-        "regular_auto",
-        "space_editors",
-        "agent_editors",
-        "skill_editors",
-        "provisioned",
-      ].includes(this.kind)
-    ) {
-      return new Err(
-        new DustError(
-          "system_or_global_group",
-          "Users can only be removed from regular, space_editors, agent_editors, skill_editors or provisioned groups."
         )
       );
     }
@@ -2337,6 +2300,24 @@ export class GroupResource extends BaseResource<GroupModel> {
       ];
     }
 
+    if (this.isRegularManual()) {
+      return [
+        {
+          groups: [
+            {
+              id: this.id,
+              permissions: ["read"],
+            },
+          ],
+          roles: [
+            { role: "admin", permissions: ["read", "write", "admin"] },
+            { role: "business_admin", permissions: ["read", "write", "admin"] },
+          ],
+          workspaceId: this.workspaceId,
+        },
+      ];
+    }
+
     return [
       {
         groups: [
@@ -2373,6 +2354,10 @@ export class GroupResource extends BaseResource<GroupModel> {
 
   isRegularAuto(): boolean {
     return this.kind === "regular_auto";
+  }
+
+  isRegularManual(): boolean {
+    return isRegularManualGroupKind(this.kind);
   }
 
   isSpaceEditor(): boolean {
