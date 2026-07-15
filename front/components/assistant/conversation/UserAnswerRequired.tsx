@@ -291,8 +291,8 @@ export function UserAnswerRequired({
         "flex flex-col gap-4 rounded-2xl border border-dark bg-background p-5 outline-hidden",
         "ease-enter motion-reduce:animate-none",
         isCompleted
-          ? "animate-out fill-mode-forwards fade-out-0 zoom-out-95 duration-exit"
-          : "animate-in fade-in-0 zoom-in-95 duration-enter",
+          ? "animate-out fill-mode-forwards fade-out-0 duration-exit"
+          : "animate-in fade-in-0 duration-enter",
         isKeyboardNavigating && "cursor-none"
       )}
     >
