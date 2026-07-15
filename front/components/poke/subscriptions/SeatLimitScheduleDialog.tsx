@@ -99,13 +99,23 @@ interface ScheduleFormValues {
   phases: PhaseForm[];
 }
 
+// Metronome effective dates are whole hours, so the schedule editor works at
+// hour granularity: minutes are always "00".
 function toLocalInput(iso: string): string {
   const date = new Date(iso);
   const pad = (n: number) => String(n).padStart(2, "0");
   return (
     `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}` +
-    `T${pad(date.getHours())}:${pad(date.getMinutes())}`
+    `T${pad(date.getHours())}:00`
   );
+}
+
+// Floor a `datetime-local` value ("YYYY-MM-DDTHH:mm") to the top of the hour.
+function floorToHour(value: string): string {
+  if (!value) {
+    return "";
+  }
+  return `${value.slice(0, 13)}:00`;
 }
 
 function phasesForSeatType(
@@ -305,6 +315,8 @@ function ScheduleEditor({
                       name={`phases.${index}.startAt`}
                       title="Start"
                       type="datetime-local"
+                      step={3600}
+                      transformValue={floorToHour}
                       // Keep phases contiguous: editing a phase's start moves
                       // the previous phase's end to match.
                       onValueChange={(value) => {
@@ -323,6 +335,8 @@ function ScheduleEditor({
                       name={`phases.${index}.endAt`}
                       title="End (blank = open-ended)"
                       type="datetime-local"
+                      step={3600}
+                      transformValue={floorToHour}
                       // Keep phases contiguous: editing a phase's end moves the
                       // next phase's start to match.
                       onValueChange={(value) => {

@@ -8,6 +8,12 @@ ADD COLUMN "startAt" timestamp with time zone NOT NULL DEFAULT NOW();
 ALTER TABLE "public"."workspace_seat_limits"
 ADD COLUMN "endAt" timestamp with time zone DEFAULT NULL;
 
+-- Seat-limit windows are whole-hour aligned (Metronome effective dates are
+-- whole hours), so floor the backfilled startAt to the top of the hour.
+UPDATE "public"."workspace_seat_limits"
+SET
+  "startAt" = date_trunc('hour', "startAt");
+
 -- Relax the old one-row-per-(workspace, seat type) unique constraint and replace
 -- it with a partial unique index scoped to open-ended rows, so that scheduled
 -- and historical rows (endAt IS NOT NULL) can coexist for the same seat type.
