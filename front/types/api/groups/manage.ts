@@ -17,3 +17,15 @@ export type GetGroupResponseBody = {
   group: GroupType;
   members: UserType[];
 };
+
+export const PatchGroupBodySchema = z.object({
+  name: z.string().min(1).optional(),
+  memberIds: z.array(z.string()).optional(),
+});
+
+export type PatchGroupBodyType = z.infer<typeof PatchGroupBodySchema>;
+
+export type PatchGroupResponseBody = {
+  group: GroupType;
+  members: UserType[];
+};
