@@ -1,3 +1,4 @@
+import { GovernanceSettingRowLayout } from "@app/components/pages/workspace/governance/GovernanceSettingRowLayout";
 import { GroupSelector } from "@app/components/pages/workspace/governance/GroupSelector";
 import {
   type GovernancePermission,
@@ -12,7 +13,6 @@ import {
   ButtonsSwitch,
   ButtonsSwitchList,
   ContentMessage,
-  Page,
 } from "@dust-tt/sparkle";
 import { useState } from "react";
 
@@ -154,15 +154,11 @@ export const GovernanceSettingRow = ({
   }
 
   return (
-    <div className="w-full flex flex-col gap-3 p-4">
-      <div className="flex w-full items-center gap-4 justify-between">
-        <Page.Vertical gap="xs" sizing="grow">
-          <Page.H variant="h6">{metadata.label}</Page.H>
-          <Page.P variant="secondary" size="sm">
-            {metadata.description}
-          </Page.P>
-        </Page.Vertical>
-        {!metadata.isGroupsOnly && (
+    <GovernanceSettingRowLayout
+      label={metadata.label}
+      description={metadata.description}
+      action={
+        !metadata.isGroupsOnly ? (
           <ButtonsSwitchList
             size="xs"
             defaultValue={configuration.scope}
@@ -172,8 +168,9 @@ export const GovernanceSettingRow = ({
               <ButtonsSwitch key={value} value={value} label={label} />
             ))}
           </ButtonsSwitchList>
-        )}
-      </div>
+        ) : undefined
+      }
+    >
       {(metadata.isGroupsOnly || configuration.scope === "groups") && (
         <GroupSelector
           selectedGroups={selectedGroups}
@@ -183,6 +180,6 @@ export const GovernanceSettingRow = ({
           }
         />
       )}
-    </div>
+    </GovernanceSettingRowLayout>
   );
 };

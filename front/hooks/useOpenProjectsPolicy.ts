@@ -4,18 +4,18 @@ import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { LightWorkspaceType } from "@app/types/user";
 import { useState } from "react";
 
-interface UseOpenProjectsPolicyProps {
+interface UseOpenPodsPolicyProps {
   owner: LightWorkspaceType;
 }
 
-export function useOpenProjectsPolicy({ owner }: UseOpenProjectsPolicyProps) {
+export function useOpenPodsPolicy({ owner }: UseOpenPodsPolicyProps) {
   const [isChanging, setIsChanging] = useState(false);
   const sendNotification = useSendNotification();
-  const [allowOpenProjects, setAllowOpenProjects] = useState(
+  const [allowOpenPods, setAllowOpenPods] = useState(
     owner.metadata?.allowOpenProjects !== false
   );
 
-  const doUpdateOpenProjectsPolicy = async (nextValue: boolean) => {
+  const doUpdateOpenPodsPolicy = async (nextValue: boolean) => {
     setIsChanging(true);
     try {
       const res = await clientFetch(`/api/w/${owner.sId}`, {
@@ -32,7 +32,7 @@ export function useOpenProjectsPolicy({ owner }: UseOpenProjectsPolicyProps) {
         throw new Error("Failed to update Pod visibility policy.");
       }
 
-      setAllowOpenProjects(nextValue);
+      setAllowOpenPods(nextValue);
     } catch (error) {
       sendNotification({
         type: "error",
@@ -48,8 +48,8 @@ export function useOpenProjectsPolicy({ owner }: UseOpenProjectsPolicyProps) {
   };
 
   return {
-    allowOpenProjects,
+    allowOpenPods,
     isChanging,
-    doUpdateOpenProjectsPolicy,
+    doUpdateOpenPodsPolicy,
   };
 }

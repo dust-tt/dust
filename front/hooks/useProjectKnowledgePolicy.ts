@@ -4,21 +4,19 @@ import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { LightWorkspaceType } from "@app/types/user";
 import { useState } from "react";
 
-interface UseProjectKnowledgePolicyProps {
+interface UsePodKnowledgePolicyProps {
   owner: LightWorkspaceType;
 }
 
-export function useProjectKnowledgePolicy({
-  owner,
-}: UseProjectKnowledgePolicyProps) {
+export function usePodKnowledgePolicy({ owner }: UsePodKnowledgePolicyProps) {
   const [isChanging, setIsChanging] = useState(false);
   const sendNotification = useSendNotification();
   const [
-    allowManualProjectKnowledgeManagement,
-    setAllowManualProjectKnowledgeManagement,
+    allowManualPodKnowledgeManagement,
+    setAllowManualPodKnowledgeManagement,
   ] = useState(owner.metadata?.allowManualProjectKnowledgeManagement !== false);
 
-  const doUpdateProjectKnowledgePolicy = async (nextValue: boolean) => {
+  const doUpdatePodKnowledgePolicy = async (nextValue: boolean) => {
     setIsChanging(true);
     try {
       const res = await clientFetch(`/api/w/${owner.sId}`, {
@@ -35,7 +33,7 @@ export function useProjectKnowledgePolicy({
         throw new Error("Failed to update Pod knowledge policy.");
       }
 
-      setAllowManualProjectKnowledgeManagement(nextValue);
+      setAllowManualPodKnowledgeManagement(nextValue);
     } catch (error) {
       sendNotification({
         type: "error",
@@ -51,8 +49,8 @@ export function useProjectKnowledgePolicy({
   };
 
   return {
-    allowManualProjectKnowledgeManagement,
+    allowManualPodKnowledgeManagement,
     isChanging,
-    doUpdateProjectKnowledgePolicy,
+    doUpdatePodKnowledgePolicy,
   };
 }
