@@ -8,7 +8,10 @@ import {
 import { SCHEDULES_MANAGEMENT_TOOLS_METADATA } from "@app/lib/api/actions/servers/schedules_management/metadata";
 import { generateScheduleRule } from "@app/lib/api/assistant/configuration/triggers";
 import type { Authenticator } from "@app/lib/auth";
-import { TriggerResource } from "@app/lib/resources/trigger_resource";
+import {
+  resolveTriggerSpaceId,
+  TriggerResource,
+} from "@app/lib/resources/trigger_resource";
 import { describeScheduleConfig } from "@app/lib/utils/schedule_description";
 import { getStatsDClient } from "@app/lib/utils/statsd";
 import logger from "@app/logger/logger";
@@ -63,7 +66,18 @@ export function createSchedulesManagementTools(
       const owner = auth.getNonNullableWorkspace();
       const user = auth.getNonNullableUser();
 
-      const { agentConfiguration } = toolContext.runContext;
+      const { agentConfiguration, conversation } = toolContext.runContext;
+
+      // When the schedule is created inside a Pod, attach its trigger to that
+      // Pod so the scheduled run lands in the Pod (where the pinned view lives).
+      const spaceIdRes = await resolveTriggerSpaceId(
+        auth,
+        conversation.spaceId
+      );
+      if (spaceIdRes.isErr()) {
+        return new Err(new MCPError(spaceIdRes.error));
+      }
+      const spaceId = spaceIdRes.value;
 
       const resolvedTimezone = timezone ?? getUserTimezone(toolContext);
 
@@ -109,6 +123,7 @@ export function createSchedulesManagementTools(
           executionPerDayLimitOverride: null,
           executionMode: "fair_use",
           origin: "agent",
+          spaceId,
         });
 
         if (result.isErr()) {
@@ -143,7 +158,9 @@ export function createSchedulesManagementTools(
             `Created schedule "${name}"!\n\n` +
             `Schedule: ${schedule}\n` +
             `Configuration: ${configDesc} (${scheduleConfig.timezone})\n\n` +
-            `The agent will execute "${prompt}" according to this schedule.\n\n` +
+            `The agent will execute "${prompt}" according to this schedule.` +
+            (spaceId !== null ? " Its runs will land in this Pod." : "") +
+            `\n\n` +
             renderSchedule(trigger),
         },
       ]);
@@ -158,17 +175,37 @@ export function createSchedulesManagementTools(
       const owner = auth.getNonNullableWorkspace();
       const userId = auth.getNonNullableUser().id;
 
-      const { agentConfiguration } = toolContext.runContext;
+      const { agentConfiguration, conversation } = toolContext.runContext;
+
+      // Inside a Pod, list all of the user's schedules scoped to that Pod
+      // (across agents). Otherwise, fall back to this agent's schedules.
+      const spaceIdRes = await resolveTriggerSpaceId(
+        auth,
+        conversation.spaceId
+      );
+      if (spaceIdRes.isErr()) {
+        return new Err(new MCPError(spaceIdRes.error));
+      }
+      const spaceId = spaceIdRes.value;
 
       const schedulesResult =
-        await TriggerResource.listByAgentConfigurationIdAndEditors(auth, {
-          agentConfigurationId: agentConfiguration.sId,
-          editorIds: [userId],
-        });
+        spaceId !== null
+          ? await TriggerResource.listBySpaceAndEditors(auth, {
+              spaceModelId: spaceId,
+              editorIds: [userId],
+            })
+          : await TriggerResource.listByAgentConfigurationIdAndEditors(auth, {
+              agentConfigurationId: agentConfiguration.sId,
+              editorIds: [userId],
+            });
 
       if (schedulesResult.isErr()) {
         return new Err(
-          new MCPError("Error while fetching schedules for this agent")
+          new MCPError(
+            spaceId !== null
+              ? "Error while fetching schedules for this Pod"
+              : "Error while fetching schedules for this agent"
+          )
         );
       }
 
@@ -177,11 +214,13 @@ export function createSchedulesManagementTools(
         `agent_id:${agentConfiguration.sId}`,
       ]);
 
+      const scope = spaceId !== null ? "Pod" : "agent";
+
       if (schedulesResult.value.length === 0) {
         return new Ok([
           {
             type: "text" as const,
-            text: "No schedules configured for this agent.",
+            text: `No schedules configured for this ${scope}.`,
           },
         ]);
       }
@@ -195,7 +234,7 @@ export function createSchedulesManagementTools(
       return new Ok([
         {
           type: "text" as const,
-          text: `Schedules for this agent:\n\n${scheduleList}`,
+          text: `Schedules for this ${scope}:\n\n${scheduleList}`,
         },
       ]);
     },
@@ -209,13 +248,29 @@ export function createSchedulesManagementTools(
       const owner = auth.getNonNullableWorkspace();
       const userId = auth.getNonNullableUser().id;
 
-      const { agentConfiguration } = toolContext.runContext;
+      const { agentConfiguration, conversation } = toolContext.runContext;
+
+      // Match the scope used by list_schedules so any schedule the user can see
+      // in this context can also be disabled.
+      const spaceIdRes = await resolveTriggerSpaceId(
+        auth,
+        conversation.spaceId
+      );
+      if (spaceIdRes.isErr()) {
+        return new Err(new MCPError(spaceIdRes.error));
+      }
+      const spaceId = spaceIdRes.value;
 
       const triggersResult =
-        await TriggerResource.listByAgentConfigurationIdAndEditors(auth, {
-          agentConfigurationId: agentConfiguration.sId,
-          editorIds: [userId],
-        });
+        spaceId !== null
+          ? await TriggerResource.listBySpaceAndEditors(auth, {
+              spaceModelId: spaceId,
+              editorIds: [userId],
+            })
+          : await TriggerResource.listByAgentConfigurationIdAndEditors(auth, {
+              agentConfigurationId: agentConfiguration.sId,
+              editorIds: [userId],
+            });
       if (triggersResult.isErr()) {
         return new Err(new MCPError("Error fetching schedules"));
       }

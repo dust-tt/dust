@@ -207,6 +207,28 @@ export class TriggerResource extends BaseResource<TriggerModel> {
     return new Ok(triggers);
   }
 
+  static async listBySpaceAndEditors(
+    auth: Authenticator,
+    {
+      spaceModelId,
+      editorIds,
+    }: {
+      spaceModelId: ModelId;
+      editorIds: ModelId[];
+    }
+  ): Promise<Result<TriggerResource[], Error>> {
+    if (editorIds.length === 0) {
+      return new Ok([]);
+    }
+    const triggers = await this.baseFetch(auth, {
+      where: {
+        spaceId: spaceModelId,
+        editor: { [Op.in]: editorIds },
+      },
+    });
+    return new Ok(triggers);
+  }
+
   static listByWorkspace(auth: Authenticator) {
     return this.baseFetch(auth);
   }

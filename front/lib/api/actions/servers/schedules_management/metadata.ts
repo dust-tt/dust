@@ -7,7 +7,7 @@ import { zodToJsonSchema } from "zod-to-json-schema";
 export const SCHEDULES_MANAGEMENT_TOOLS_METADATA = createToolsRecord({
   create_schedule: {
     description:
-      "Create a schedule that runs this agent at specified times. Schedules are user-specific: each user can only view and manage their own schedules. When the schedule triggers, it runs this agent with the specified prompt. Limit: 20 schedule creations per user per day.",
+      "Create a schedule that runs this agent at specified times. Schedules are user-specific: each user can only view and manage their own schedules. When the schedule triggers, it runs this agent with the specified prompt. When created inside a Pod, the schedule is attached to that Pod and its runs land there. Limit: 20 schedule creations per user per day.",
     schema: {
       name: z
         .string()
@@ -43,7 +43,7 @@ export const SCHEDULES_MANAGEMENT_TOOLS_METADATA = createToolsRecord({
   },
   list_schedules: {
     description:
-      "List all schedules created for this agent and for the current user.",
+      "List the current user's schedules. Inside a Pod, lists all of your schedules attached to that Pod (across agents); otherwise lists your schedules for this agent.",
     schema: {},
     stake: "never_ask",
     displayLabels: {
