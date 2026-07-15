@@ -1,17 +1,14 @@
 // biome-ignore-all lint/plugin/noNextImports: Next.js-specific file
 import { H1, P } from "@marketing/components/home/ContentComponents";
-import { HeroVisual } from "@marketing/components/home/content/Product/HeroVisual";
 import {
   HomeReveal,
   HomeRevealStyles,
 } from "@marketing/components/home/content/Product/HomeReveal";
-import TrustedBy from "@marketing/components/home/TrustedBy";
-import { LegacyButton as Button, Rocket02 } from "@dust-tt/sparkle";
+import { HomeTrustedSection } from "@marketing/components/home/content/Product/HomeTrustedSection";
+import { Button, Rocket02 } from "@dust-tt/sparkle";
 import Link from "next/link";
-import { useState } from "react";
 
 export function ProductIntroSection() {
-  const [showHeroVideo, setShowHeroVideo] = useState(false);
   return (
     <div className="sm:pt-18 w-full pt-12 lg:pt-36">
       <HomeRevealStyles />
@@ -52,14 +49,8 @@ export function ProductIntroSection() {
             </div>
           </HomeReveal>
         </div>
-        <HomeReveal variant="photo" delay={120}>
-          <HeroVisual
-            showVideo={showHeroVideo}
-            onWatch={() => setShowHeroVideo(true)}
-          />
-        </HomeReveal>
-        <div className="mt-16">
-          <TrustedBy />
+        <div className="relative left-1/2 right-1/2 -ml-[50vw] -mr-[50vw] mt-16 w-screen">
+          <HomeTrustedSection />
         </div>
       </div>
     </div>

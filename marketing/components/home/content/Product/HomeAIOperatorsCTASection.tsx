@@ -2,7 +2,7 @@
 import { HomeReveal } from "@marketing/components/home/content/Product/HomeReveal";
 import { useSignUpModal } from "@marketing/hooks/useSignUpModal";
 import { TRACKING_AREAS, withTracking } from "@marketing/lib/tracking";
-import { LegacyButton as Button } from "@dust-tt/sparkle";
+import { Button } from "@dust-tt/sparkle";
 import Link from "next/link";
 
 type CTAStatAccent = "blue" | "golden" | "green";

@@ -38,7 +38,7 @@ export function SecurityFeaturesSection() {
   const [activeFeature, setActiveFeature] = useState<string>("ingest");
 
   return (
-    <div className="w-full">
+    <div className="w-full pt-16">
       <div className="mx-auto flex max-w-4xl flex-col items-center gap-6 text-center sm:gap-2 lg:px-8">
         <HomeReveal>
           <H2
@@ -67,7 +67,7 @@ export function SecurityFeaturesSection() {
           className="order-1 w-full lg:order-1 lg:w-1/2"
         >
           <div
-            className={`relative flex aspect-[4/3] items-center justify-center overflow-hidden rounded-2xl ${
+            className={`relative flex aspect-square items-center justify-center overflow-hidden rounded-2xl ${
               activeFeature === "ingest"
                 ? "bg-rose-50"
                 : activeFeature === "models"
@@ -82,21 +82,21 @@ export function SecurityFeaturesSection() {
                 <img
                   src="/static/landing/product/data.svg"
                   alt="Data Control"
-                  className="absolute inset-0 h-full w-full object-contain"
+                  className="absolute inset-0 h-full w-full object-cover"
                 />
               )}
               {activeFeature === "models" && (
                 <img
-                  src="/static/landing/product/model.svg"
+                  src="/static/landing/home/team-sport-collab.svg"
                   alt="Model Selection"
-                  className="absolute inset-0 h-full w-full object-contain"
+                  className="absolute inset-0 h-full w-full object-cover"
                 />
               )}
               {activeFeature === "access" && (
                 <img
                   src="/static/landing/product/member.svg"
                   alt="Access Control"
-                  className="absolute inset-0 h-full w-full object-contain"
+                  className="absolute inset-0 h-full w-full object-cover"
                 />
               )}
             </div>

@@ -6,7 +6,7 @@ import { mountFloorScene } from "@marketing/components/home/content/Product/hero
 import type { TeamMember } from "@marketing/components/home/content/shared/team";
 import { useSignUpModal } from "@marketing/hooks/useSignUpModal";
 import { TRACKING_AREAS, withTracking } from "@marketing/lib/tracking";
-import { LegacyButton as Button } from "@dust-tt/sparkle";
+import { Button } from "@dust-tt/sparkle";
 import Link from "next/link";
 import { useEffect, useRef } from "react";
 
