@@ -1,25 +1,18 @@
 import type {
   ManifestToolEntry,
   ToolEntry,
-  ToolGroup,
   ToolManifest,
+  ToolRuntime,
 } from "@app/lib/api/sandbox/image/types";
 import * as yaml from "js-yaml";
 
-const TOOL_GROUPS = [
-  "system",
-  "dust",
-  "python",
-  "node",
-] as const satisfies readonly ToolGroup[];
-
 export function createToolManifest(tools: readonly ToolEntry[]): ToolManifest {
-  const toolsByGroup: Record<ToolGroup, ManifestToolEntry[]> = {
+  const toolsByRuntime: Record<ToolRuntime, ManifestToolEntry[]> = {
     system: [],
-    dust: [],
     python: [],
     node: [],
   };
+  const dustTools: ManifestToolEntry[] = [];
 
   for (const tool of tools) {
     const entry: ManifestToolEntry = {
@@ -29,21 +22,25 @@ export function createToolManifest(tools: readonly ToolEntry[]): ToolManifest {
       ...(tool.usage && { usage: tool.usage }),
       ...(tool.returns && { returns: tool.returns }),
     };
-    toolsByGroup[tool.group ?? tool.runtime].push(entry);
-  }
-
-  const filteredTools: Partial<
-    Record<ToolGroup, readonly ManifestToolEntry[]>
-  > = {};
-  for (const group of TOOL_GROUPS) {
-    if (toolsByGroup[group].length > 0) {
-      filteredTools[group] = toolsByGroup[group];
+    if (tool.isDustTool) {
+      dustTools.push(entry);
+    } else {
+      toolsByRuntime[tool.runtime].push(entry);
     }
   }
 
   return {
     version: "1.0",
-    tools: filteredTools,
+    tools: {
+      ...(toolsByRuntime.system.length > 0 && {
+        system: toolsByRuntime.system,
+      }),
+      ...(dustTools.length > 0 && { dust: dustTools }),
+      ...(toolsByRuntime.python.length > 0 && {
+        python: toolsByRuntime.python,
+      }),
+      ...(toolsByRuntime.node.length > 0 && { node: toolsByRuntime.node }),
+    },
   };
 }
 
@@ -52,21 +49,29 @@ export function toolManifestToJSON(manifest: ToolManifest): string {
 }
 
 export function toolManifestToCompactText(manifest: ToolManifest): string {
-  return TOOL_GROUPS.flatMap((group) => {
-    const tools = manifest.tools[group];
+  const formatTools = (
+    label: string,
+    tools: readonly ManifestToolEntry[] | undefined
+  ): string | null => {
     if (!tools) {
-      return [];
+      return null;
     }
-
     const entries = new Set(
       tools.map((tool) =>
         tool.version ? `${tool.name} ${tool.version}` : tool.name
       )
     );
-    const label = group.charAt(0).toUpperCase() + group.slice(1);
+    return `- ${label}: ${[...entries].join(", ")}`;
+  };
 
-    return [`- ${label}: ${[...entries].join(", ")}`];
-  }).join("\n");
+  return [
+    formatTools("System", manifest.tools.system),
+    formatTools("Dust", manifest.tools.dust),
+    formatTools("Python", manifest.tools.python),
+    formatTools("Node", manifest.tools.node),
+  ]
+    .filter((line): line is string => line !== null)
+    .join("\n");
 }
 
 export function toolManifestToYAML(manifest: ToolManifest): string {

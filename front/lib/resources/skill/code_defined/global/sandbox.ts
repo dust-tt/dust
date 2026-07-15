@@ -6,10 +6,9 @@ import {
   filterDsbxToolEntries,
   getSandboxImage,
   getToolsForProvider,
-  type ToolGroup,
-  type ToolManifest,
   toolManifestToCompactText,
 } from "@app/lib/api/sandbox/image";
+import type { ManifestToolEntry } from "@app/lib/api/sandbox/image/types";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
 import type { GlobalSkillDefinition } from "@app/lib/resources/skill/code_defined/shared";
@@ -291,13 +290,11 @@ value you should not have — apologize, do not retry the command, and do not
 attempt to reconstruct, decode, or otherwise recover the value.`;
 }
 
-function buildToolGroupDetailsSection(
-  manifest: ToolManifest,
-  group: ToolGroup
+function buildToolDetailsSection(
+  label: string,
+  entries: readonly ManifestToolEntry[]
 ): string {
-  const tools = new Map(
-    (manifest.tools[group] ?? []).map((tool) => [tool.name, tool])
-  );
+  const tools = new Map(entries.map((tool) => [tool.name, tool]));
 
   if (tools.size === 0) {
     return "";
@@ -309,8 +306,6 @@ function buildToolGroupDetailsSection(
       return `- \`${tool.name}\`: ${summary ?? tool.description}`;
     })
     .join("\n");
-  const label = group.charAt(0).toUpperCase() + group.slice(1);
-
   return `${label} tool details:\n\n${descriptions}\n\n`;
 }
 
@@ -353,7 +348,10 @@ async function buildSandboxInstructions(
 
   const manifest = createToolManifest(toolsResult.value);
   const compactManifest = toolManifestToCompactText(manifest);
-  const dustToolDetailsSection = buildToolGroupDetailsSection(manifest, "dust");
+  const dustToolDetailsSection = buildToolDetailsSection(
+    "Dust",
+    manifest.tools.dust ?? []
+  );
 
   return `${sandboxInstructions}
 

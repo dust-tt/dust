@@ -39,7 +39,6 @@ export const SANDBOX_UNTRUSTED_UIDS = [SANDBOX_AGENT_PROXIED_UID] as const;
 
 export const TOOL_RUNTIMES = ["system", "python", "node"] as const;
 export type ToolRuntime = (typeof TOOL_RUNTIMES)[number];
-export type ToolGroup = ToolRuntime | "dust";
 
 export const TOOL_PROFILES = ["openai", "anthropic", "gemini"] as const;
 export type ToolProfile = (typeof TOOL_PROFILES)[number];
@@ -55,7 +54,7 @@ export interface ToolEntry {
   readonly usage?: string;
   readonly returns?: string;
   readonly runtime: ToolRuntime;
-  readonly group?: ToolGroup;
+  readonly isDustTool?: boolean;
   readonly profile?: ToolProfile | readonly ToolProfile[];
 }
 
@@ -144,7 +143,9 @@ export interface ManifestToolEntry {
 export interface ToolManifest {
   readonly version: "1.0";
   readonly tools: Readonly<
-    Partial<Record<ToolGroup, readonly ManifestToolEntry[]>>
+    Partial<Record<ToolRuntime, readonly ManifestToolEntry[]>> & {
+      readonly dust?: readonly ManifestToolEntry[];
+    }
   >;
 }
 
