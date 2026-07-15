@@ -1323,7 +1323,15 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool billing info ac
       "freeUsage": false,
       "toolCostCategory": "advanced",
     },
+    "create_folder": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
     "get_file_content": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "get_item_from_url": {
       "freeUsage": false,
       "toolCostCategory": "advanced",
     },
@@ -2943,7 +2951,9 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool stakes across a
   },
   "microsoft_drive": {
     "copy_file": "never_ask",
+    "create_folder": "low",
     "get_file_content": "never_ask",
+    "get_item_from_url": "never_ask",
     "list_drive_items": "never_ask",
     "rename_drive_item": "low",
     "search_drive_items": "never_ask",
