@@ -6,13 +6,15 @@ import { validateToolInputs } from "@app/lib/actions/mcp_utils";
 import { makeMCPApproveExecutionEventBase } from "@app/lib/actions/tool_approval_events";
 import { getExecutionStatusFromConfig } from "@app/lib/actions/tool_status";
 import { publishSandboxFunctionInvocationEvent } from "@app/lib/api/sandbox_functions/events";
-import { listSandboxFunctionToolsForMCPServerView } from "@app/lib/api/sandbox_functions/list_tools";
+import {
+  listSandboxFunctionToolsForMCPServerView,
+  makeSandboxFunctionMCPServerConfiguration,
+} from "@app/lib/api/sandbox_functions/list_tools";
 import type { Authenticator } from "@app/lib/auth";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { SandboxFunctionInvocationResource } from "@app/lib/resources/sandbox_function_invocation_resource";
 import { SandboxFunctionMCPActionResource } from "@app/lib/resources/sandbox_function_mcp_action_resource";
 import { SandboxFunctionResource } from "@app/lib/resources/sandbox_function_resource";
-import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
 import { launchSandboxFunctionToolWorkflow } from "@app/temporal/agent_loop/client";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -65,30 +67,11 @@ async function resolveSandboxFunctionTool(
     );
   }
 
-  // View-default server configuration: there is no agent configuration to inject settings from
-  // (same synthesized shape as JIT servers, see `jit/common_utilities.ts`).
+  // View-default server configuration: there is no agent configuration to inject settings from.
   const toolConfigurationsRes = await buildToolConfigurationsFromRawTools(
     auth,
     view.mcpServerId,
-    {
-      id: -1,
-      sId: generateRandomModelSId(),
-      type: "mcp_server_configuration",
-      name: viewJSON.name ?? viewJSON.server.name,
-      description: viewJSON.description ?? viewJSON.server.description,
-      dataSources: null,
-      tables: null,
-      childAgentId: null,
-      timeFrame: null,
-      jsonSchema: null,
-      additionalConfiguration: {},
-      mcpServerViewId: viewJSON.sId,
-      dustAppConfiguration: null,
-      secretName: null,
-      dustProject: null,
-      // Null for remote servers, matching the agent path (see `configuration/actions.ts`).
-      internalMCPServerId: view.internalMCPServerId,
-    },
+    makeSandboxFunctionMCPServerConfiguration(view),
     [{ name: tool.name, description: tool.description }]
   );
   if (toolConfigurationsRes.isErr()) {

@@ -108,9 +108,11 @@ import { slugify } from "@app/types/shared/utils/string_utils";
 // biome-ignore lint/plugin/enforceClientTypesInPublicApi: existing usage
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import type { Client } from "@modelcontextprotocol/sdk/client/index.js";
-import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import {
+  type CallToolResult,
   CallToolResultSchema,
+  ErrorCode,
+  McpError,
   ProgressNotificationSchema,
 } from "@modelcontextprotocol/sdk/types.js";
 import { Context, heartbeat } from "@temporalio/activity";
@@ -730,7 +732,7 @@ export async function* tryCallMCPTool(
   }
 }
 
-function makeServerSideMCPConnectionParams(
+export function makeServerSideMCPConnectionParams(
   mcpServerView: MCPServerViewResource
 ): ServerSideMCPConnectionParams {
   return {
@@ -894,7 +896,7 @@ function makeClientSideMCPConnectionParams(
 
 type AgentLoopListToolsContextWithoutConfigurationType = Omit<
   AgentLoopListToolsContext,
-  "agentActionConfiguration" | "contextType"
+  "agentActionConfiguration"
 >;
 
 /**
@@ -1109,7 +1111,6 @@ export async function tryListMCPTools(
           action,
           {
             ...agentLoopListToolsContext,
-            contextType: "agent_loop",
             agentActionConfiguration: action,
           },
           connectionParams
@@ -1395,16 +1396,45 @@ export async function buildToolConfigurationsFromRawTools(
   return new Ok(serverSideToolConfigs);
 }
 
-async function listMCPServerToolsAndServerInstructions(
+export async function listMCPServerToolsAndServerInstructions(
   auth: Authenticator,
   config: MCPServerConfigurationType,
-  agentLoopListToolsContext: AgentLoopListToolsContext,
-  connectionParams: MCPConnectionParams
+  agentLoopListToolsContext: AgentLoopListToolsContext | null,
+  connectionParams: MCPConnectionParams,
+  { cachedTools }: { cachedTools?: MCPToolType[] } = {}
 ): Promise<
   Result<{ instructions?: string; tools: MCPToolConfigurationType[] }, Error>
 > {
   const owner = auth.getNonNullableWorkspace();
   let mcpClient;
+
+  // A sandbox function has no agent loop in which to handle remote authentication or rate
+  // limits. Keep the normal listing pipeline, but use the view's cached remote tools in that
+  // context instead of making a third-party request.
+  if (agentLoopListToolsContext === null && cachedTools) {
+    assert(
+      isConnectViaMCPServerId(connectionParams) &&
+        isServerSideMCPServerConfiguration(config),
+      "Cached tools require a server-side MCP configuration."
+    );
+    const toolsRes = await buildToolConfigurationsFromRawTools(
+      auth,
+      connectionParams.mcpServerId,
+      config,
+      cachedTools
+    );
+    if (toolsRes.isErr()) {
+      return toolsRes;
+    }
+    return new Ok({ instructions: undefined, tools: toolsRes.value });
+  }
+
+  const agentLoopLogContext = agentLoopListToolsContext
+    ? {
+        conversationId: agentLoopListToolsContext.conversation.sId,
+        messageId: agentLoopListToolsContext.agentMessage.sId,
+      }
+    : {};
 
   try {
     // Connect to the MCP server.
@@ -1489,8 +1519,7 @@ async function listMCPServerToolsAndServerInstructions(
     logger.debug(
       {
         workspaceId: owner.sId,
-        conversationId: agentLoopListToolsContext.conversation.sId,
-        messageId: agentLoopListToolsContext.agentMessage.sId,
+        ...agentLoopLogContext,
         toolCount: toolsFromServer.length,
       },
       `Retrieved ${toolsFromServer.length} tools from MCP server`
@@ -1499,11 +1528,19 @@ async function listMCPServerToolsAndServerInstructions(
     // Return server instructions and the tools from this server.
     return new Ok({ instructions: serverInstructions, tools: toolsFromServer });
   } catch (error) {
+    // McpServer installs the tools/list handler only after its first tool is registered. It is
+    // valid for a context without an agent loop to filter every tool from an internal server.
+    if (
+      agentLoopListToolsContext === null &&
+      error instanceof McpError &&
+      error.code === ErrorCode.MethodNotFound
+    ) {
+      return new Ok({ instructions: undefined, tools: [] });
+    }
     logger.error(
       {
         workspaceId: owner.sId,
-        conversationId: agentLoopListToolsContext.conversation.sId,
-        messageId: agentLoopListToolsContext.agentMessage.sId,
+        ...agentLoopLogContext,
         error,
       },
       `Error listing tools from MCP server: ${normalizeError(error)}`
@@ -1518,8 +1555,7 @@ async function listMCPServerToolsAndServerInstructions(
         logger.warn(
           {
             workspaceId: owner.sId,
-            conversationId: agentLoopListToolsContext.conversation.sId,
-            messageId: agentLoopListToolsContext.agentMessage.sId,
+            ...agentLoopLogContext,
             error: closeError,
           },
           "Error closing MCP client connection"

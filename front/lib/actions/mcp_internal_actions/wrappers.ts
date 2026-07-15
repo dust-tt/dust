@@ -5,7 +5,6 @@ import type {
 } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import {
   isAgentLoopRunContext,
-  isSandboxFunctionListToolsContext,
   isSandboxFunctionRunContext,
   type ToolContext,
   type ToolRunContext,
@@ -37,7 +36,7 @@ export function registerTool(
 ): void {
   const isSandboxFunctionContext =
     isSandboxFunctionRunContext(toolContext?.runContext) ||
-    isSandboxFunctionListToolsContext(toolContext?.listToolsContext);
+    toolContext?.listToolsContext === null;
   if (isSandboxFunctionContext && tool.agentLoopContextRequired) {
     return;
   }

@@ -1,91 +1,78 @@
-import { connectToMCPServer } from "@app/lib/actions/mcp_metadata";
+import type { ServerSideMCPServerConfigurationType } from "@app/lib/actions/mcp";
+import {
+  listMCPServerToolsAndServerInstructions,
+  makeServerSideMCPConnectionParams,
+} from "@app/lib/actions/mcp_actions";
 import type { MCPServerViewType, MCPToolType } from "@app/lib/api/mcp";
 import type { Authenticator } from "@app/lib/auth";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
+import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import type { Result } from "@app/types/shared/result";
-import { Err, Ok } from "@app/types/shared/result";
-import { assertNever } from "@app/types/shared/utils/assert_never";
-import { normalizeError } from "@app/types/shared/utils/error_utils";
+import { Ok } from "@app/types/shared/result";
 import { removeNulls } from "@app/types/shared/utils/general";
-import type { Client } from "@modelcontextprotocol/sdk/client/index.js";
-import { ErrorCode, McpError } from "@modelcontextprotocol/sdk/types.js";
 
 // Internal MCP servers are in-memory, but workspaces can expose many views at once.
 const SANDBOX_FUNCTION_TOOL_LISTING_CONCURRENCY = 8;
 
+export function makeSandboxFunctionMCPServerConfiguration(
+  view: MCPServerViewResource
+): ServerSideMCPServerConfigurationType {
+  const viewJSON = view.toJSON();
+
+  return {
+    id: -1,
+    sId: generateRandomModelSId(),
+    type: "mcp_server_configuration",
+    name: viewJSON.name ?? viewJSON.server.name,
+    description: viewJSON.description ?? viewJSON.server.description,
+    dataSources: null,
+    tables: null,
+    childAgentId: null,
+    timeFrame: null,
+    jsonSchema: null,
+    additionalConfiguration: {},
+    mcpServerViewId: view.sId,
+    dustAppConfiguration: null,
+    secretName: null,
+    dustProject: null,
+    internalMCPServerId: view.internalMCPServerId,
+  };
+}
+
 /**
  * Returns the tools a sandbox function can call from a server view.
  *
- * Remote server tools stay on their cached view metadata so listing functions never fan out to
- * third-party servers. Internal servers are listed live with a conversation-free context, which
- * lets their normal registration path remove tools that require an agent loop.
+ * This uses the same MCP listing path as the agent loop. Passing no agent-loop context makes
+ * internal servers omit context-dependent tools and makes remote servers use cached view tools.
  */
 export async function listSandboxFunctionToolsForMCPServerView(
   auth: Authenticator,
   view: MCPServerViewResource
 ): Promise<Result<MCPToolType[], Error>> {
   const viewJSON = view.toJSON();
-
-  switch (view.serverType) {
-    case "remote":
-      return new Ok(viewJSON.server.tools);
-    case "internal": {
-      const connectionResult = await connectToMCPServer(auth, {
-        params: {
-          type: "mcpServerId",
-          mcpServerId: view.mcpServerId,
-          oAuthUseCase: viewJSON.oAuthUseCase,
-        },
-        toolContext: {
-          listToolsContext: { contextType: "sandbox_function" },
-        },
-      });
-      if (connectionResult.isErr()) {
-        return new Err(connectionResult.error);
-      }
-
-      const mcpClient: Client = connectionResult.value;
-      try {
-        const toolsResult = await mcpClient.listTools();
-        const availableToolNames = new Set(
-          toolsResult.tools.map((tool) => tool.name)
-        );
-
-        return new Ok(
-          viewJSON.server.tools.filter((tool) =>
-            availableToolNames.has(tool.name)
-          )
-        );
-      } catch (error) {
-        // McpServer only installs the tools/list handler once at least one tool is registered.
-        // A sandbox-function context can legitimately filter every tool from an internal server.
-        if (
-          error instanceof McpError &&
-          error.code === ErrorCode.MethodNotFound
-        ) {
-          return new Ok([]);
-        }
-        return new Err(normalizeError(error));
-      } finally {
-        try {
-          await mcpClient.close();
-        } catch (error) {
-          logger.warn(
-            {
-              err: normalizeError(error),
-              mcpServerId: view.mcpServerId,
-              mcpServerViewId: view.sId,
-            },
-            "Failed to close sandbox function MCP listing client"
-          );
-        }
-      }
+  const config = makeSandboxFunctionMCPServerConfiguration(view);
+  const toolsResult = await listMCPServerToolsAndServerInstructions(
+    auth,
+    config,
+    null,
+    makeServerSideMCPConnectionParams(view),
+    {
+      cachedTools:
+        view.serverType === "remote" ? viewJSON.server.tools : undefined,
     }
-    default:
-      return assertNever(view.serverType);
+  );
+  if (toolsResult.isErr()) {
+    return toolsResult;
   }
+
+  const availableToolNames = new Set(
+    toolsResult.value.tools.map((tool) => tool.originalName)
+  );
+  return new Ok(
+    viewJSON.server.tools.filter((tool) => availableToolNames.has(tool.name))
+  );
 }
 
 export async function listSandboxFunctionMCPServerViews(

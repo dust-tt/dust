@@ -10,7 +10,6 @@ import { registerTool } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import {
   isAgentLoopListToolsContext,
   isAgentLoopRunContext,
-  isSandboxFunctionListToolsContext,
   isSandboxFunctionRunContext,
   type ToolContext,
 } from "@app/lib/actions/types";
@@ -60,7 +59,7 @@ export default async function createServer(
   const owner = auth.getNonNullableWorkspace();
 
   if (
-    isSandboxFunctionListToolsContext(toolContext?.listToolsContext) ||
+    toolContext?.listToolsContext === null ||
     isSandboxFunctionRunContext(toolContext?.runContext)
   ) {
     return server;

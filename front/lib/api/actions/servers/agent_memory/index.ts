@@ -1,7 +1,6 @@
 import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/utils";
 import { registerTool } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import {
-  isSandboxFunctionListToolsContext,
   isSandboxFunctionRunContext,
   type ToolContext,
 } from "@app/lib/actions/types";
@@ -17,7 +16,7 @@ function createServer(
   const server = makeInternalMCPServer(AGENT_MEMORY_SERVER_NAME);
 
   if (
-    isSandboxFunctionListToolsContext(toolContext?.listToolsContext) ||
+    toolContext?.listToolsContext === null ||
     isSandboxFunctionRunContext(toolContext?.runContext)
   ) {
     return server;
