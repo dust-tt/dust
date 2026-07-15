@@ -30,6 +30,7 @@ import logger from "@app/logger/logger";
 import { launchSandboxFunctionInvocationWorkflow } from "@app/temporal/sandbox_functions/client";
 import type {
   PostSandboxFunctionInvocationRequestBody,
+  SandboxFunctionCallError,
   SandboxFunctionInvocationStatus,
   SandboxFunctionInvocationType,
 } from "@app/types/api/sandbox_functions";
@@ -153,11 +154,15 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
     return this.data.error;
   }
 
-  async fail(error: Error): Promise<void> {
+  async fail(error: Error | SandboxFunctionCallError): Promise<void> {
+    const callError: SandboxFunctionCallError =
+      error instanceof Error
+        ? { code: "invocation_failed", message: error.message }
+        : error;
     this.data = {
       version: SANDBOX_FUNCTION_INVOCATION_DATA_VERSION,
       input: this.input,
-      error: error.message,
+      error: callError.message,
     };
     await this.writeDataToGcs();
     await this.update({ status: "errored" });
@@ -167,7 +172,7 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
         created: Date.now(),
         invocationId: this.sId,
         functionId: this.sandboxFunction.sId,
-        message: error.message,
+        error: callError,
       },
       { invocationId: this.sId }
     );

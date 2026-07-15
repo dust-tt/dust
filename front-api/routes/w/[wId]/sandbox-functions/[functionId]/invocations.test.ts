@@ -386,7 +386,10 @@ describe("POST /api/w/:wId/sandbox-functions/:functionIdOrSlug/invocations", () 
         type: "sandbox_function_invocation_error",
         invocationId: expect.stringMatching(/^sfi_/),
         functionId: sandboxFunction.sId,
-        message: "temporal unavailable",
+        error: {
+          code: "invocation_failed",
+          message: "temporal unavailable",
+        },
       }),
       { invocationId: expect.stringMatching(/^sfi_/) }
     );

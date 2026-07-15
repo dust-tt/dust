@@ -185,7 +185,7 @@ function SandboxFunctionInvocation({
           case "sandbox_function_invocation_error":
             onSettle(invocationId, {
               result: null,
-              error: eventPayload.data.message,
+              error: eventPayload.data.error.message,
             });
             break;
           case "tool_approve_execution":

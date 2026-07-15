@@ -32,16 +32,13 @@ export async function callHandler(
 
   const result = await callSandboxFunction(auth, sandboxFunction, input);
   if (result.isErr()) {
-    return new Err(new MCPError(result.error.message));
-  }
-
-  const outcome = result.value;
-  if (!outcome.ok) {
-    // The function ran but returned an error: model- or builder-correctable, not internal.
+    const { code, message } = result.error;
     return new Err(
       new MCPError(
-        `Pod function "${slug}" returned an error (${outcome.errorKind}): ${outcome.message}`,
-        { tracked: false }
+        `Pod function "${slug}" returned an error (${code}): ${message}`,
+        {
+          tracked: code === "invocation_failed" || code === "transport_error",
+        }
       )
     );
   }
@@ -49,12 +46,7 @@ export async function callHandler(
   return new Ok([
     {
       type: "text",
-      text: [
-        `HTTP ${outcome.status}`,
-        "",
-        "Response Body:",
-        outcome.output,
-      ].join("\n"),
+      text: JSON.stringify(result.value, null, 2) ?? "null",
     },
   ]);
 }

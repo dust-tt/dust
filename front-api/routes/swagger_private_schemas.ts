@@ -1479,10 +1479,10 @@
  *         functionId:
  *           type: string
  *         result:
- *           description: Result returned by the sandbox function.
+ *           description: Parsed result validated against the sandbox function output schema.
  *     PrivateSandboxFunctionInvocationErrorEvent:
  *       type: object
- *       required: [type, created, invocationId, functionId, message]
+ *       required: [type, created, invocationId, functionId, error]
  *       properties:
  *         type:
  *           type: string
@@ -1493,9 +1493,18 @@
  *           type: string
  *         functionId:
  *           type: string
- *         message:
- *           type: string
- *           description: Why the invocation failed before producing a result.
+ *         error:
+ *           type: object
+ *           required: [code, message]
+ *           properties:
+ *             code:
+ *               type: string
+ *               enum: [bad_input, invalid_input, import_failed, threw, bad_return, http_error, invalid_output, function_not_found, invocation_failed, transport_error, not_supported]
+ *             message:
+ *               type: string
+ *             status:
+ *               type: integer
+ *           description: A structured error describing why the invocation failed.
  *     PrivateAgentMessageEvent:
  *       type: object
  *       description: Server-Sent Event for agent message streaming. Discriminated on the `type` field. Each event also includes a `step` integer.
