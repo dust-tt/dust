@@ -222,7 +222,8 @@ export function getFilePreviewDirectiveInstruction({
     "Always place the previewable file directive inline within the sentence that mentions the file, " +
     "rather than as a standalone element at the end of the response. " +
     `For example: "Here is your file ${getFilePreviewMarkdownDirective({ contentType, path, title })}"\n` +
-    "The rendered link opens the file preview, where the user can download the file. " +
+    "The rendered link opens the appropriate file view: Frame files open in the side panel, " +
+    "and other files open the file preview where the user can download them. " +
     "Do not invent a URL for this file."
   );
 }
