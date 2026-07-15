@@ -117,12 +117,11 @@ app.post(
     const invocation = await SandboxFunctionInvocationResource.makeNew(auth, {
       sandboxFunction,
     });
-    const invocationType = invocation.toJSON();
     await publishSandboxFunctionInvocationEvent(
       {
         type: "sandbox_function_invocation_created",
         created: invocation.createdAt.getTime(),
-        invocation: invocationType,
+        invocation: invocation.toJSON(),
       },
       { invocationId: invocation.sId }
     );
@@ -145,7 +144,7 @@ app.post(
 
     return ctx.json(
       {
-        invocation: invocationType,
+        invocation: invocation.toJSON(),
       },
       201
     );
