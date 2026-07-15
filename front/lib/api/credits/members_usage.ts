@@ -907,6 +907,7 @@ export async function getMemberUsage({
     GroupResource.listGroupNamesByUserModelIdInWorkspace({
       workspace,
       userModelIds: [userResource.id],
+      groupKinds: [...CAP_ELIGIBLE_GROUP_KINDS],
     }),
     GroupResource.listMaxPoolCapAwuCreditsByUserModelIdInWorkspace({
       workspace,
