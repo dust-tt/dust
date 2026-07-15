@@ -1,4 +1,9 @@
-import { registerMCPServer } from "@app/lib/api/actions/mcp/client_side_registry";
+import {
+  getMCPRegisterRateLimitKey,
+  MCP_REGISTER_RATE_LIMIT,
+  MCP_REGISTER_RATE_LIMIT_ERROR,
+  registerMCPServer,
+} from "@app/lib/api/actions/mcp/client_side_registry";
 import { rateLimiter } from "@app/lib/utils/rate_limiter";
 import logger from "@app/logger/logger";
 import type { RegisterMCPResponseType } from "@dust-tt/client";
@@ -84,9 +89,8 @@ app.post(
 
     const userId = auth.getNonNullableUser().id;
     const remaining = await rateLimiter({
-      key: `mcp:register:${userId}`,
-      maxPerTimeframe: 100,
-      timeframeSeconds: 60,
+      key: getMCPRegisterRateLimitKey(userId),
+      ...MCP_REGISTER_RATE_LIMIT,
       logger,
     });
     if (remaining <= 0) {
@@ -94,7 +98,7 @@ app.post(
         status_code: 429,
         api_error: {
           type: "rate_limit_error",
-          message: "Too many MCP server registrations. Please try again later.",
+          message: MCP_REGISTER_RATE_LIMIT_ERROR,
         },
       });
     }

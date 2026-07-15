@@ -14,6 +14,16 @@ const MCP_SERVER_REGISTRATION_TTL_SECONDS = 10 * 60;
 // characters, so a collision is virtually impossible
 const MAX_REGISTRATION_ATTEMPTS = 3;
 
+export const MCP_REGISTER_RATE_LIMIT = {
+  maxPerTimeframe: 100,
+  timeframeSeconds: 60,
+} as const;
+export const MCP_REGISTER_RATE_LIMIT_ERROR =
+  "Too many MCP server registrations. Please try again later.";
+export function getMCPRegisterRateLimitKey(userId: number): string {
+  return `mcp:register:${userId}`;
+}
+
 /**
  * Generate a Redis key for MCP server registration.
  */
