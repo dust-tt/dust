@@ -12,11 +12,12 @@ import { z } from "zod";
 
 export type { PokeSeatLimitScheduleResponseBody };
 
+// End dates are derived server-side (phases are contiguous), so the client
+// only submits each phase's start.
 const PhaseSchema = z.object({
   minSeats: z.number().int().min(0),
   maxSeats: z.number().int().min(1).nullable(),
   startAt: z.coerce.date(),
-  endAt: z.coerce.date().nullable(),
 });
 
 const PostSeatLimitScheduleBodySchema = z.object({

@@ -1,7 +1,7 @@
 import { useSendNotification } from "@app/hooks/useNotification";
 import type {
   PokeSeatLimitScheduleResponseBody,
-  SeatLimitSchedulePhase,
+  SeatLimitScheduleInputPhase,
 } from "@app/lib/api/poke/seat_limits_schedule";
 import { clientFetch } from "@app/lib/egress/client";
 import { useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
@@ -42,7 +42,7 @@ export function useUpdatePokeSeatLimitSchedule({
     phases,
   }: {
     seatType: MembershipSeatType;
-    phases: SeatLimitSchedulePhase[];
+    phases: SeatLimitScheduleInputPhase[];
   }): Promise<boolean> => {
     const r = await clientFetch(
       `/api/poke/workspaces/${owner.sId}/seat_limits_schedule`,

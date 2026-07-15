@@ -4,7 +4,7 @@ import { useSendNotification } from "@app/hooks/useNotification";
 import type { SeatPlanResponseBody } from "@app/lib/api/credits/seat_plan";
 import type {
   PokeSeatLimitScheduleResponseBody,
-  SeatLimitSchedulePhase,
+  SeatLimitScheduleInputPhase,
 } from "@app/lib/api/poke/seat_limits_schedule";
 import {
   usePokeSeatLimitSchedule,
@@ -61,9 +61,9 @@ export default function SeatLimitScheduleDialog({
           <DialogTitle>Seat commitments and limit</DialogTitle>
           <DialogDescription>
             Configure the seat commitment (billed floor) and max limit over time
-            for a seat type. Each line is a phase; leave the end date blank for
-            the final, open-ended phase. Scheduled phases are programmed into
-            Metronome ahead of time.
+            for a seat type. Each line is a phase that runs from its start until
+            the next phase begins; the last phase is open-ended. Scheduled
+            phases are programmed into Metronome ahead of time.
           </DialogDescription>
         </DialogHeader>
         {open && isLoading ? (
@@ -90,7 +90,6 @@ export default function SeatLimitScheduleDialog({
 
 interface PhaseForm {
   startAt: string;
-  endAt: string;
   minSeats: number;
   maxSeats?: number;
 }
@@ -156,7 +155,6 @@ function phasesForSeatType(
   const phases = schedule[seatType] ?? [];
   return phases.map((phase) => ({
     startAt: toUTCInput(phase.startAt),
-    endAt: phase.endAt ? toUTCInput(phase.endAt) : "",
     minSeats: phase.minSeats,
     maxSeats: phase.maxSeats ?? undefined,
   }));
@@ -224,45 +222,23 @@ function ScheduleEditor({
 
   const handleAddPhase = () => {
     const current = form.getValues("phases");
-    // First phase: starts now (floored to the hour), open-ended.
-    if (current.length === 0) {
-      replace([
-        {
-          startAt: toUTCInput(new Date().toISOString()),
-          endAt: "",
-          minSeats: 0,
-        },
-      ]);
-      return;
-    }
-    // Otherwise the new phase starts the day after the previous phase, and the
-    // previous (until-now open-ended) phase is closed at that moment.
-    const previous = current[current.length - 1];
-    const newStart = addOneDayUTCInput(previous.startAt);
-    const closedPrevious = current.map((phase, i) =>
-      i === current.length - 1 ? { ...phase, endAt: newStart } : phase
-    );
-    replace([...closedPrevious, { startAt: newStart, endAt: "", minSeats: 0 }]);
+    // First phase starts now (floored to the hour); each later phase defaults
+    // to the day after the previous one. End dates are derived server-side, so
+    // there is nothing else to keep in sync here.
+    const startAt =
+      current.length === 0
+        ? toUTCInput(new Date().toISOString())
+        : addOneDayUTCInput(current[current.length - 1].startAt);
+    replace([...current, { startAt, minSeats: 0 }]);
   };
 
   const handleRemovePhase = (index: number) => {
     const current = form.getValues("phases");
-    const remaining = current.filter((_, i) => i !== index);
-    // Keep the timeline contiguous after a removal: the phase before the
-    // removed one now runs up to the following phase's start — or becomes
-    // open-ended (blank end) when the removed phase was the last one.
-    const realigned = remaining.map((phase, i) => {
-      if (index === 0 || i !== index - 1) {
-        return phase;
-      }
-      const following = remaining[index];
-      return { ...phase, endAt: following ? following.startAt : "" };
-    });
-    replace(realigned);
+    replace(current.filter((_, i) => i !== index));
   };
 
   const onSubmit = async (values: ScheduleFormValues) => {
-    const phases: SeatLimitSchedulePhase[] = [];
+    const phases: SeatLimitScheduleInputPhase[] = [];
     for (const phase of values.phases) {
       if (!phase.startAt) {
         sendNotification({
@@ -279,58 +255,23 @@ function ScheduleEditor({
             ? null
             : Number(phase.maxSeats),
         startAt: utcInputToISO(phase.startAt),
-        endAt: phase.endAt ? utcInputToISO(phase.endAt) : null,
       });
     }
 
-    // Guard against overlaps and multiple open-ended phases so at most one
-    // phase is ever active at a time for this seat type (mirrors the
-    // server-side check, for immediate feedback).
-    const sorted = [...phases].sort(
-      (a, b) => new Date(a.startAt).getTime() - new Date(b.startAt).getTime()
-    );
-    for (let i = 0; i < sorted.length; i++) {
-      const phase = sorted[i];
-      if (
-        phase.endAt !== null &&
-        new Date(phase.endAt) <= new Date(phase.startAt)
-      ) {
-        sendNotification({
-          title: "Invalid schedule",
-          type: "error",
-          description: "Each phase's end must be after its start.",
-        });
-        return;
-      }
-      if (phase.endAt === null && i !== sorted.length - 1) {
-        sendNotification({
-          title: "Invalid schedule",
-          type: "error",
-          description:
-            "Only the last phase can be open-ended (blank end date).",
-        });
-        return;
-      }
-      if (i > 0) {
-        const previous = sorted[i - 1];
-        if (
-          previous.endAt === null ||
-          new Date(previous.endAt) > new Date(phase.startAt)
-        ) {
-          sendNotification({
-            title: "Invalid schedule",
-            type: "error",
-            description:
-              "Phases overlap — two phases would be active at the same time.",
-          });
-          return;
-        }
-      }
+    // Two phases can't share a start (end dates are derived from the ordering).
+    const starts = new Set(phases.map((phase) => phase.startAt));
+    if (starts.size !== phases.length) {
+      sendNotification({
+        title: "Invalid schedule",
+        type: "error",
+        description: "Two phases can't start at the same time.",
+      });
+      return;
     }
 
     setIsSubmitting(true);
     try {
-      const ok = await updateSchedule({ seatType, phases: sorted });
+      const ok = await updateSchedule({ seatType, phases });
       if (ok) {
         await onSaved();
       }
@@ -390,16 +331,6 @@ function ScheduleEditor({
                       type="datetime-local"
                       step={3600}
                       transformValue={floorToHour}
-                      // Keep phases contiguous: editing a phase's start moves
-                      // the previous phase's end to match.
-                      onValueChange={(value) => {
-                        if (index > 0) {
-                          form.setValue(
-                            `phases.${index - 1}.endAt`,
-                            String(value)
-                          );
-                        }
-                      }}
                     />
                     {utcInputToLocalLabel(
                       phaseValues?.[index]?.startAt ?? ""
@@ -408,40 +339,6 @@ function ScheduleEditor({
                         Local:{" "}
                         {utcInputToLocalLabel(
                           phaseValues?.[index]?.startAt ?? ""
-                        )}
-                      </p>
-                    )}
-                  </div>
-                  <div className="w-52">
-                    <InputField
-                      control={form.control}
-                      name={`phases.${index}.endAt`}
-                      title="End (UTC, blank = open-ended)"
-                      type="datetime-local"
-                      step={3600}
-                      // The last phase is always open-ended: its end is not
-                      // editable and stays blank.
-                      disabled={index === fields.length - 1}
-                      placeholder="open-ended"
-                      transformValue={floorToHour}
-                      // Keep phases contiguous: editing a phase's end moves the
-                      // next phase's start to match.
-                      onValueChange={(value) => {
-                        if (index < fields.length - 1) {
-                          form.setValue(
-                            `phases.${index + 1}.startAt`,
-                            String(value)
-                          );
-                        }
-                      }}
-                    />
-                    {utcInputToLocalLabel(
-                      phaseValues?.[index]?.endAt ?? ""
-                    ) && (
-                      <p className="mt-1 text-xs text-muted-foreground">
-                        Local:{" "}
-                        {utcInputToLocalLabel(
-                          phaseValues?.[index]?.endAt ?? ""
                         )}
                       </p>
                     )}

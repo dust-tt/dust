@@ -286,14 +286,16 @@ export class WorkspaceSeatLimitResource extends BaseResource<WorkspaceSeatLimitM
   /**
    * Replace the entire schedule of phases for a single (workspace, seat type)
    * in one shot. This is the primitive behind the poke "edit seat-limit
-   * schedule" dialog, which submits the full list of phases for the selected
-   * seat type. An empty `phases` array clears the seat type.
+   * schedule" dialog, which submits the phases (each defined only by its start
+   * date) for the selected seat type. An empty `phases` array clears the seat
+   * type.
    *
-   * The phases are validated as a coherent timeline before anything is written:
-   * each phase's `maxSeats` must be `>= minSeats`, `minSeats` a non-negative
-   * integer, `endAt` (when set) after `startAt`, phases must not overlap once
-   * sorted by `startAt`, and at most one phase may be open-ended (`endAt` null)
-   * — which must be the last one, matching the single-open-ended DB invariant.
+   * Phases are treated as a contiguous timeline: end dates are DERIVED here —
+   * each phase runs until the next phase's start, and the last (latest) phase
+   * is always open-ended. This guarantees no gaps, no overlaps and no bounded
+   * trailing phase by construction; callers cannot pass an inconsistent set of
+   * windows. Each phase's `maxSeats` must be `>= minSeats`, `minSeats` a
+   * non-negative integer, and no two phases may share the same start.
    */
   static async setScheduleForSeatType({
     workspace,
@@ -307,7 +309,6 @@ export class WorkspaceSeatLimitResource extends BaseResource<WorkspaceSeatLimitM
       minSeats: number;
       maxSeats: number | null;
       startAt: Date;
-      endAt: Date | null;
     }>;
     transaction?: Transaction;
   }): Promise<Result<void, Error>> {
@@ -326,23 +327,11 @@ export class WorkspaceSeatLimitResource extends BaseResource<WorkspaceSeatLimitM
       if (!Number.isInteger(phase.minSeats) || phase.minSeats < 0) {
         return new Err(new Error("minSeats must be a non-negative integer."));
       }
-      if (phase.endAt !== null && phase.endAt <= phase.startAt) {
-        return new Err(
-          new Error("Each phase's end date must be after its start date.")
-        );
-      }
-      if (phase.endAt === null && i !== sorted.length - 1) {
-        return new Err(
-          new Error("Only the last (latest) phase may be open-ended.")
-        );
-      }
-      if (i > 0) {
-        const previous = sorted[i - 1];
-        // `previous.endAt` is non-null here: a null `endAt` is only allowed on
-        // the last phase (guarded above), so any earlier phase is bounded.
-        if (previous.endAt === null || previous.endAt > phase.startAt) {
-          return new Err(new Error("Phases must not overlap."));
-        }
+      if (
+        i > 0 &&
+        sorted[i - 1].startAt.getTime() === phase.startAt.getTime()
+      ) {
+        return new Err(new Error("Phases must have distinct start dates."));
       }
     }
     const txOptions = transaction ? { transaction } : {};
@@ -353,13 +342,15 @@ export class WorkspaceSeatLimitResource extends BaseResource<WorkspaceSeatLimitM
       });
       if (sorted.length > 0) {
         await this.model.bulkCreate(
-          sorted.map((phase) => ({
+          sorted.map((phase, i) => ({
             workspaceId: workspace.id,
             seatType,
             minSeats: phase.minSeats,
             maxSeats: phase.maxSeats,
             startAt: phase.startAt,
-            endAt: phase.endAt,
+            // Derived: a phase runs until the next one starts; the last phase
+            // is open-ended.
+            endAt: i < sorted.length - 1 ? sorted[i + 1].startAt : null,
           })),
           { transaction: t }
         );

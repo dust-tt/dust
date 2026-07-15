@@ -369,12 +369,13 @@ describe("WorkspaceSeatLimitResource", () => {
 
     const phase1Start = new Date(Date.now() - 24 * 60 * 60 * 1000);
     const phase2Start = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+    // Only starts are provided; the resource derives phase 1's end from phase 2.
     const result = await WorkspaceSeatLimitResource.setScheduleForSeatType({
       workspace,
       seatType: "pro",
       phases: [
-        { minSeats: 3, maxSeats: 10, startAt: phase1Start, endAt: phase2Start },
-        { minSeats: 6, maxSeats: null, startAt: phase2Start, endAt: null },
+        { minSeats: 3, maxSeats: 10, startAt: phase1Start },
+        { minSeats: 6, maxSeats: null, startAt: phase2Start },
       ],
       transaction: outerTransaction,
     });
@@ -386,7 +387,14 @@ describe("WorkspaceSeatLimitResource", () => {
     });
     expect(nowLimits.get("pro")).toEqual({ minSeats: 3, maxSeats: 10 });
 
-    // After phase 2 start, phase 2 applies.
+    // Just before phase 2 starts, phase 1 still applies (derived end).
+    const beforeLimits = await WorkspaceSeatLimitResource.fetchByWorkspace({
+      workspace,
+      at: new Date(phase2Start.getTime() - 1000),
+    });
+    expect(beforeLimits.get("pro")).toEqual({ minSeats: 3, maxSeats: 10 });
+
+    // From phase 2 start, phase 2 applies open-ended.
     const afterLimits = await WorkspaceSeatLimitResource.fetchByWorkspace({
       workspace,
       at: new Date(phase2Start.getTime() + 1000),
@@ -415,40 +423,49 @@ describe("WorkspaceSeatLimitResource", () => {
     expect(limits.has("pro")).toBe(false);
   });
 
-  it("rejects a schedule with overlapping phases", async () => {
+  it("derives contiguous windows and an open-ended last phase from starts", async () => {
     const start1 = new Date(Date.now() + 10 * 24 * 60 * 60 * 1000);
     const start2 = new Date(Date.now() + 20 * 24 * 60 * 60 * 1000);
-    const end1 = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
     const result = await WorkspaceSeatLimitResource.setScheduleForSeatType({
       workspace,
       seatType: "pro",
+      // Deliberately out of order to check the resource sorts by start.
       phases: [
-        { minSeats: 3, maxSeats: null, startAt: start1, endAt: end1 },
-        { minSeats: 6, maxSeats: null, startAt: start2, endAt: null },
+        { minSeats: 6, maxSeats: null, startAt: start2 },
+        { minSeats: 3, maxSeats: null, startAt: start1 },
       ],
       transaction: outerTransaction,
     });
-    expect(result.isErr()).toBe(true);
-    if (result.isErr()) {
-      expect(result.error.message).toMatch(/overlap/);
-    }
+    expect(result.isOk()).toBe(true);
+
+    const schedule = await WorkspaceSeatLimitResource.fetchScheduleByWorkspace({
+      workspace,
+      // Read from before the first phase so both phases are returned.
+      at: new Date(Date.now() + 1000),
+    });
+    const proPhases = schedule.get("pro") ?? [];
+    expect(proPhases).toHaveLength(2);
+    // Phase 1 ends exactly when phase 2 starts (derived); phase 2 is open-ended.
+    expect(proPhases[0].minSeats).toBe(3);
+    expect(proPhases[0].endAt?.getTime()).toBe(start2.getTime());
+    expect(proPhases[1].minSeats).toBe(6);
+    expect(proPhases[1].endAt).toBeNull();
   });
 
-  it("rejects a schedule with more than one open-ended phase", async () => {
-    const start1 = new Date(Date.now() + 10 * 24 * 60 * 60 * 1000);
-    const start2 = new Date(Date.now() + 20 * 24 * 60 * 60 * 1000);
+  it("rejects a schedule with two phases sharing a start", async () => {
+    const start = new Date(Date.now() + 10 * 24 * 60 * 60 * 1000);
     const result = await WorkspaceSeatLimitResource.setScheduleForSeatType({
       workspace,
       seatType: "pro",
       phases: [
-        { minSeats: 3, maxSeats: null, startAt: start1, endAt: null },
-        { minSeats: 6, maxSeats: null, startAt: start2, endAt: null },
+        { minSeats: 3, maxSeats: null, startAt: start },
+        { minSeats: 6, maxSeats: null, startAt: new Date(start.getTime()) },
       ],
       transaction: outerTransaction,
     });
     expect(result.isErr()).toBe(true);
     if (result.isErr()) {
-      expect(result.error.message).toMatch(/open-ended/);
+      expect(result.error.message).toMatch(/distinct start/);
     }
   });
 

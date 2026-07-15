@@ -5,9 +5,10 @@ import type { MembershipSeatType } from "@app/types/memberships";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 
-// A single scheduled phase of a seat-limit configuration, over the window
-// `[startAt, endAt)`. Dates are ISO strings for transport; `endAt` null means
-// the phase is open-ended (the current/final configuration).
+// A single scheduled phase of a seat-limit configuration, as returned by the
+// read path. Dates are ISO strings for transport; `endAt` (derived server-side)
+// is null for the open-ended final phase. Phases are contiguous: a phase's
+// `endAt` equals the next phase's `startAt`.
 export type SeatLimitSchedulePhase = {
   minSeats: number;
   maxSeats: number | null;
@@ -15,16 +16,23 @@ export type SeatLimitSchedulePhase = {
   endAt: string | null;
 };
 
+// A phase as submitted by the client (write path): only the start matters —
+// end dates are derived server-side to keep the timeline contiguous.
+export type SeatLimitScheduleInputPhase = {
+  minSeats: number;
+  maxSeats: number | null;
+  startAt: string;
+};
+
 export type PokeSeatLimitScheduleResponseBody = {
   schedule: Partial<Record<MembershipSeatType, SeatLimitSchedulePhase[]>>;
 };
 
-// Phase with parsed dates, as accepted by the write path.
+// Phase with a parsed date, as accepted by the write path.
 type SeatLimitSchedulePhaseInput = {
   minSeats: number;
   maxSeats: number | null;
   startAt: Date;
-  endAt: Date | null;
 };
 
 // Read the current + scheduled-future seat-limit schedule for a workspace,
