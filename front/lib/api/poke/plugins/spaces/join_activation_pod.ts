@@ -44,15 +44,6 @@ function activationPodNameForCreator(
   return `${label}${ACTIVATION_POD_NAME_PREFIX}`;
 }
 
-function parseUserIds(rawUserIds: string): string[] {
-  const ids = rawUserIds
-    .split(",")
-    .map((id) => id.trim())
-    .filter((id) => id.length > 0);
-
-  return [...new Set(ids)];
-}
-
 async function markPodAsActivation(
   auth: Authenticator,
   pod: SpaceResource
@@ -159,15 +150,32 @@ export const joinActivationPodPlugin = createPlugin({
     id: "join-activation-pod",
     name: "Join Activation Pod",
     description:
-      "Create an Activation Pod and add one or more workspace members to it as editors.",
+      "Create an Activation Pod with a chosen editor and optional additional members.",
     resourceTypes: ["workspaces"],
     args: {
-      userIds: {
-        type: "string",
-        label: "User ID(s)",
+      editorUserId: {
+        type: "enum",
+        label: "Pod editor",
         description:
-          "Comma-separated sId(s) of the workspace member(s) to add to the " +
+          "Search by name or email. This member becomes the Pod editor, and " +
+          "the Pod is named after them by default.",
+        // Options are loaded from the workspace member search API as the user
+        // types; no static values are needed.
+        async: true,
+        values: [],
+        multiple: false,
+        serverSideSearch: true,
+      },
+      memberUserIds: {
+        type: "enum",
+        label: "Additional members",
+        description:
+          "Optional. Search and select more workspace members to add to the " +
           "Activation Pod as members.",
+        async: true,
+        values: [],
+        multiple: true,
+        serverSideSearch: true,
       },
       podName: {
         type: "string",
@@ -216,18 +224,35 @@ export const joinActivationPodPlugin = createPlugin({
   execute: async (
     auth,
     _resource,
-    { userIds, podName: podNameInput, defaultSkillIds, agentsMdInstructions }
-  ) => {
-    const requestedUserIds = parseUserIds(userIds);
-    if (requestedUserIds.length === 0) {
-      return new Err(new Error("At least one user ID is required."));
+    {
+      editorUserId,
+      memberUserIds,
+      podName: podNameInput,
+      defaultSkillIds,
+      agentsMdInstructions,
     }
+  ) => {
+    const editorId = editorUserId?.[0]?.trim();
+    if (!editorId) {
+      return new Err(new Error("A Pod editor is required."));
+    }
+
+    // Additional members, deduped and never including the editor (who is added
+    // separately as the Pod creator/editor).
+    const memberIds = [
+      ...new Set(
+        (memberUserIds ?? [])
+          .map((id) => id.trim())
+          .filter((id) => id.length > 0 && id !== editorId)
+      ),
+    ];
 
     const selectedSkillIds = defaultSkillIds ?? [];
     const agentsMd = agentsMdInstructions ?? "";
 
     const workspace = auth.getNonNullableWorkspace();
 
+    const requestedUserIds = [editorId, ...memberIds];
     const users = await UserResource.fetchByIds(requestedUserIds);
     const foundUserIds = new Set(users.map((u) => u.sId));
     const missingUserIds = requestedUserIds.filter(
@@ -254,7 +279,13 @@ export const joinActivationPodPlugin = createPlugin({
       );
     }
 
-    const [creator, ...otherUsers] = users;
+    // The editor is the Pod creator (added as editor on creation and used for
+    // naming); everyone else is added as a member.
+    const creator = users.find((u) => u.sId === editorId);
+    if (!creator) {
+      return new Err(new Error(`Pod editor not found: ${editorId}.`));
+    }
+    const otherUsers = users.filter((u) => u.sId !== editorId);
     const trimmedPodName = podNameInput?.trim();
     const podName =
       trimmedPodName && trimmedPodName.length > 0
@@ -378,7 +409,8 @@ export const joinActivationPodPlugin = createPlugin({
     return new Ok({
       display: "textWithLink",
       value:
-        `Created Activation Pod with 1 editor and ${otherUsers.length} member(s).` +
+        `Created Activation Pod "${podName}" with ${creator.fullName()} as editor ` +
+        `and ${otherUsers.length} additional member(s).` +
         formatDefaultSkillsSuffix(skillsResult.value.skillNames) +
         formatAgentsMdSuffix(agentsMdResult.value.written) +
         " Triggered the activation conversation.",
