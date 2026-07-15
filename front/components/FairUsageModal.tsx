@@ -30,13 +30,14 @@ function getFairUseContent(
     creditLimit > 0 &&
     creditLimitTimeframe !== undefined;
 
+  const timeframeLabel = hasDynamicLimit
+    ? formatCreditsTimeframe(creditLimitTimeframe)
+    : "";
+
   const limitLine = hasDynamicLimit
-    ? (() => {
-        const timeframeLabel = formatCreditsTimeframe(creditLimitTimeframe);
-        return `On your current plan, a limit of **${formatCredits(creditLimit)} credits${
-          timeframeLabel ? ` ${timeframeLabel}` : ""
-        }** applies to each user seat.`;
-      })()
+    ? `On your current plan, a limit of **${formatCredits(creditLimit)} credits${
+        timeframeLabel ? ` ${timeframeLabel}` : ""
+      }** applies to each user seat.`
     : `The credit limit that applies to each user seat depends on your plan.`;
 
   return `
