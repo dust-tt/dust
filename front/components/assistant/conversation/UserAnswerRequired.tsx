@@ -41,14 +41,14 @@ export function UserAnswerRequired({
 }: UserAnswerRequiredProps) {
   const { user } = useAuth();
   const { removeCompletedAction } = useBlockedActionsContext();
-  const { answerQuestion, isSubmitting, errorMessage } = useAnswerUserQuestion({
-    owner,
-  });
+  const { answerQuestion, errorMessage } = useAnswerUserQuestion({ owner });
 
   const answerDraft = useUserAnswerDraft({
     multiSelect: blockedAction.question.multiSelect,
   });
-  const [isSkipPending, setIsSkipPending] = useState(false);
+  const [pendingSubmission, setPendingSubmission] = useState<
+    "answer" | "skip" | null
+  >(null);
   const [activeOptionIndex, setActiveOptionIndex] = useState(0);
   const [isCustomResponseFocused, setIsCustomResponseFocused] = useState(false);
   const [isKeyboardNavigating, setIsKeyboardNavigating] = useState(false);
@@ -65,8 +65,9 @@ export function UserAnswerRequired({
     isCustomResponseFocused ||
     answerDraft.answerToSubmit?.customResponse !== undefined;
 
-  const isAnswerSubmitting = isSubmitting && !isSkipPending;
-  const isSkipSubmitting = isSubmitting && isSkipPending;
+  const isSubmitting = pendingSubmission !== null;
+  const isAnswerSubmitting = pendingSubmission === "answer";
+  const isSkipSubmitting = pendingSubmission === "skip";
 
   // Reset the keyboard cursor and focus when a new blocked action replaces the current one.
   // biome-ignore lint/correctness/useExhaustiveDependencies: blockedAction.actionId is an intentional reset trigger
@@ -81,7 +82,7 @@ export function UserAnswerRequired({
     answer: UserQuestionAnswer,
     { isSkip = false }: { isSkip?: boolean } = {}
   ) {
-    setIsSkipPending(isSkip);
+    setPendingSubmission(isSkip ? "skip" : "answer");
     // Submit against the action's own conversation/message: for a sub-agent
     // question these are the child's ids (the action lives in the child
     // conversation). For a direct question they equal the current conversation.
@@ -95,11 +96,15 @@ export function UserAnswerRequired({
     if (result.success) {
       // Resume the agent run. For a sub-agent question this also relaunches the
       // blocked parent run (the child retry is a no-op once the answer is in).
-      await retryHandler();
-      removeCompletedAction(blockedAction.actionId);
+      try {
+        await retryHandler();
+        removeCompletedAction(blockedAction.actionId);
+      } finally {
+        setPendingSubmission(null);
+      }
+    } else {
+      setPendingSubmission(null);
     }
-
-    setIsSkipPending(false);
   }
 
   function activateOption(index: number) {

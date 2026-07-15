@@ -330,6 +330,42 @@ describe("UserAnswerRequired", () => {
     expect(removeCompletedActionMock).toHaveBeenCalledWith("action_1");
   });
 
+  it("keeps the submission state visible until the agent retry completes", async () => {
+    const user = userEvent.setup();
+    let resolveRetry = () => {};
+    retryHandlerMock.mockImplementationOnce(
+      () =>
+        new Promise<void>((resolve) => {
+          resolveRetry = resolve;
+        })
+    );
+
+    render(
+      <UserAnswerRequired
+        blockedAction={makeBlockedAction()}
+        triggeringUser={null}
+        owner={owner}
+        retryHandler={retryHandlerMock}
+      />
+    );
+
+    await user.click(screen.getByRole("button", { name: /Alpha/i }));
+
+    await waitFor(() => {
+      expect(screen.getByText("Loading")).toBeInTheDocument();
+    });
+    expect(
+      screen.queryByRole("button", { name: /Alpha/i })
+    ).not.toBeInTheDocument();
+    expect(removeCompletedActionMock).not.toHaveBeenCalled();
+
+    resolveRetry();
+
+    await waitFor(() => {
+      expect(removeCompletedActionMock).toHaveBeenCalledWith("action_1");
+    });
+  });
+
   it("skips when Escape is pressed while the component is focused", async () => {
     const { container } = render(
       <UserAnswerRequired
