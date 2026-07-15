@@ -35,8 +35,8 @@ function renderSchedule(
     `- **${schedule.name}** (ID: ${schedule.sId})`,
     `  Schedule: ${scheduleInfo}`,
   ];
-  if (podName) {
-    lines.push(`  Pod: ${podName}`);
+  if (podName && schedule.spaceId) {
+    lines.push(`  Pod: ${podName} (${schedule.spaceId})`);
   }
   if (schedule.customPrompt) {
     lines.push(`  Prompt: ${schedule.customPrompt}`);
