@@ -1,4 +1,5 @@
 import type { GroupType } from "@app/types/groups";
+import type { UserType } from "@app/types/user";
 import { z } from "zod";
 
 export const CreateGroupBodySchema = z.object({
@@ -10,4 +11,9 @@ export type CreateGroupBodyType = z.infer<typeof CreateGroupBodySchema>;
 
 export type PostGroupResponseBody = {
   group: GroupType;
+};
+
+export type GetGroupResponseBody = {
+  group: GroupType;
+  members: UserType[];
 };
