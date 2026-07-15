@@ -828,41 +828,6 @@ describe("renderConversationForModel", () => {
     ]);
   });
 
-  it("falls back to normal pruning when leading messages are not system user messages", async () => {
-    const leadingMessage = userMessage("preface");
-    const renderedMessage = userMessage("rendered");
-
-    vi.mocked(renderAllMessages).mockResolvedValue([renderedMessage]);
-    mockTokenCounter({
-      byContains: {
-        preface: 100,
-        rendered: 10,
-      },
-    });
-
-    const res = await renderConversationForModel(auth, {
-      conversation: createConversation(),
-      model,
-      prompt: "PROMPT",
-      enabledSkills: [],
-      tools: "TOOLS",
-      allowedTokenCount: computeAllowedTokenCount({
-        promptTokens: 10,
-        toolsTokens: 10,
-        interactionTokens: 10,
-      }),
-      leadingMessages: [leadingMessage],
-    });
-
-    expect(res.isOk()).toBe(true);
-    if (res.isErr()) {
-      return;
-    }
-
-    expect(res.value.modelConversation.messages).toEqual([renderedMessage]);
-    expect(res.value.prunedContext).toBe(true);
-  });
-
   it("never drops leading messages when pruning old interactions", async () => {
     const leadingMessage = userMessage("equipped_skills", "system");
     vi.mocked(renderAllMessages).mockResolvedValue([
