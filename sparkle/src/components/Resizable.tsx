@@ -34,6 +34,7 @@ const ResizablePanelGroup = ({
     number | undefined
   >();
 
+  // Measure before paint so preserved content starts at its stable size.
   React.useLayoutEffect(() => {
     if (!animateLayoutChanges) {
       return;
