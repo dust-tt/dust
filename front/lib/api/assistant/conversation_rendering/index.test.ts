@@ -828,35 +828,39 @@ describe("renderConversationForModel", () => {
     ]);
   });
 
-  it("rejects leading messages that are not system user messages", async () => {
+  it("falls back to normal pruning when leading messages are not system user messages", async () => {
     const leadingMessage = userMessage("preface");
+    const renderedMessage = userMessage("rendered");
 
-    vi.mocked(renderAllMessages).mockResolvedValue([userMessage("rendered")]);
+    vi.mocked(renderAllMessages).mockResolvedValue([renderedMessage]);
     mockTokenCounter({
       byContains: {
-        preface: 10,
+        preface: 100,
         rendered: 10,
       },
     });
 
-    await expect(
-      renderConversationForModel(auth, {
-        conversation: createConversation(),
-        model,
-        prompt: "PROMPT",
-        enabledSkills: [],
-        tools: "TOOLS",
-        allowedTokenCount: computeAllowedTokenCount({
-          promptTokens: 10,
-          toolsTokens: 10,
-          interactionTokens: 20,
-          availableDelta: 100,
-        }),
-        leadingMessages: [leadingMessage],
-      })
-    ).rejects.toThrow(
-      "Expected every leading message to be a system user message."
-    );
+    const res = await renderConversationForModel(auth, {
+      conversation: createConversation(),
+      model,
+      prompt: "PROMPT",
+      enabledSkills: [],
+      tools: "TOOLS",
+      allowedTokenCount: computeAllowedTokenCount({
+        promptTokens: 10,
+        toolsTokens: 10,
+        interactionTokens: 10,
+      }),
+      leadingMessages: [leadingMessage],
+    });
+
+    expect(res.isOk()).toBe(true);
+    if (res.isErr()) {
+      return;
+    }
+
+    expect(res.value.modelConversation.messages).toEqual([renderedMessage]);
+    expect(res.value.prunedContext).toBe(true);
   });
 
   it("never drops leading messages when pruning old interactions", async () => {

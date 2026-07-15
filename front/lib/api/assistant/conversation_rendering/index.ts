@@ -194,20 +194,32 @@ export async function renderConversationForModel(
     0,
     leadingMessages.length
   );
-  if (
-    leadingMessagesWithTokens.length !== leadingMessages.length ||
-    leadingMessagesWithTokens.some(
-      (message) => message.role !== "user" || message.name !== "system"
-    )
-  ) {
-    throw new Error(
-      "Expected every leading message to be a system user message."
+  const shouldProtectLeadingMessages =
+    leadingMessagesWithTokens.length === leadingMessages.length &&
+    leadingMessagesWithTokens.every(
+      (message) => message.role === "user" && message.name === "system"
+    );
+  if (!shouldProtectLeadingMessages) {
+    logger.warn(
+      {
+        workspaceId: conversation.owner.sId,
+        conversationId: conversation.sId,
+        leadingMessagesCount: leadingMessages.length,
+        tokenizedLeadingMessages: leadingMessagesWithTokens.map((message) => ({
+          role: message.role,
+          name: "name" in message ? message.name : undefined,
+        })),
+      },
+      "Leading messages did not match the expected system user messages; falling back to normal conversation pruning."
     );
   }
-  const renderedMessagesWithTokens = messagesWithTokens.slice(
-    leadingMessages.length
-  );
-  const leadingMessagesTokenCount = leadingMessagesWithTokens.reduce(
+  const protectedLeadingMessagesWithTokens = shouldProtectLeadingMessages
+    ? leadingMessagesWithTokens
+    : [];
+  const renderedMessagesWithTokens = shouldProtectLeadingMessages
+    ? messagesWithTokens.slice(leadingMessages.length)
+    : messagesWithTokens;
+  const leadingMessagesTokenCount = protectedLeadingMessagesWithTokens.reduce(
     (sum, message) => sum + message.tokenCount,
     0
   );
@@ -289,7 +301,7 @@ export async function renderConversationForModel(
     leadingMessagesTokenCount + sumInteractionTokens(prunedInteractions);
 
   const selected: MessageWithTokens[] = [
-    ...leadingMessagesWithTokens,
+    ...protectedLeadingMessagesWithTokens,
     ...prunedInteractions.flatMap((interaction) => interaction.messages),
   ];
   const tokensUsed = baseTokens + totalTokens;
