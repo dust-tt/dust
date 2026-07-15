@@ -350,6 +350,7 @@ const InputBarContainer = ({
   const [isToolbarOpen, setIsToolbarOpen] = useState(false);
   const plusButtonRef = useRef<HTMLDivElement>(null);
   const clientType = useClientType();
+  const isWidthConstrained = isMobile || clientType === "extension";
   const shouldEnableSlashSuggestion = actions.includes("capabilities");
 
   const [selectedNode, setSelectedNode] =
@@ -1647,7 +1648,7 @@ const InputBarContainer = ({
                   <div
                     className={cn(
                       "flex items-center",
-                      isMobile ? "gap-0.5" : "gap-1"
+                      isWidthConstrained ? "gap-0.5" : "gap-1"
                     )}
                   >
                     <InputBarButtons
@@ -1693,7 +1694,7 @@ const InputBarContainer = ({
                 <div
                   className={cn(
                     "flex items-center",
-                    isMobile ? "gap-1" : "gap-1.5"
+                    isWidthConstrained ? "gap-1" : "gap-1.5"
                   )}
                 >
                   {clientType === "extension" && (
@@ -1809,7 +1810,7 @@ const InputBarContainer = ({
                   <div
                     className={cn(
                       "flex items-center",
-                      isMobile ? "gap-0.5" : "gap-1"
+                      isWidthConstrained ? "gap-0.5" : "gap-1"
                     )}
                   >
                     {conversation && (
@@ -1830,7 +1831,7 @@ const InputBarContainer = ({
                           onRecordStart={activeVoiceService.startRecording}
                           onRecordStop={activeVoiceService.stopRecording}
                           size={buttonSize}
-                          showStopLabel={!isMobile}
+                          showStopLabel={!isWidthConstrained}
                           disabled={disableInput}
                         />
                       )}
