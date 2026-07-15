@@ -3,7 +3,8 @@
 
 import {
   decodeRequestBody,
-  encodeResponseBody,
+  type ErrorCode,
+  type InvocationError,
   type Output,
   type RequestInput,
 } from "./protocol.ts";
@@ -11,7 +12,9 @@ import {
 interface ZodLike {
   safeParse(
     data: unknown
-  ): { success: true } | { success: false; error: { issues: unknown } };
+  ):
+    | { success: true; data: unknown }
+    | { success: false; error: { issues: unknown } };
 }
 
 function isValidator(value: unknown): value is ZodLike {
@@ -28,6 +31,7 @@ export async function invoke(
 ): Promise<Output> {
   let handler: { fetch?: unknown };
   let schemaInput: unknown;
+  let schemaOutput: unknown;
   try {
     const mod = await import(handlerPath);
     const def = mod.default;
@@ -38,6 +42,7 @@ export async function invoke(
     }
     handler = def;
     schemaInput = (mod.schema as { input?: unknown } | undefined)?.input;
+    schemaOutput = (mod.schema as { output?: unknown } | undefined)?.output;
   } catch (e) {
     return fail("import_failed", e);
   }
@@ -45,9 +50,9 @@ export async function invoke(
   const body = decodeRequestBody(input);
 
   if (isValidator(schemaInput)) {
-    const rejection = validateBody(body, schemaInput);
-    if (rejection) {
-      return serialize(rejection);
+    const validationError = validateBody(body, schemaInput);
+    if (validationError) {
+      return { ok: false, error: validationError };
     }
   }
 
@@ -69,57 +74,85 @@ export async function invoke(
       new Error(`function returned ${typeOf(response)}, expected a Response`)
     );
   }
-  return serialize(response);
+  return parseOutput(response, schemaOutput);
 }
 
 function validateBody(
   body: Uint8Array | undefined,
   schema: ZodLike
-): Response | null {
+): InvocationError | null {
   let data: unknown;
   if (body !== undefined) {
     try {
       data = JSON.parse(new TextDecoder().decode(body));
     } catch {
-      return Response.json(
-        {
-          error: "invalid input",
-          issues: [{ message: "body is not valid JSON" }],
-        },
-        { status: 400 }
-      );
+      return {
+        code: "invalid_input",
+        message: "Function input is not valid JSON.",
+      };
     }
   }
   const parsed = schema.safeParse(data);
   if (parsed.success) {
     return null;
   }
-  return Response.json(
-    { error: "invalid input", issues: parsed.error.issues },
-    { status: 400 }
-  );
-}
-
-async function serialize(response: Response): Promise<Output> {
-  const bytes = new Uint8Array(await response.arrayBuffer());
-  const { body, encoding } = encodeResponseBody(bytes);
   return {
-    ok: true,
-    response: {
-      status: response.status,
-      headers: Object.fromEntries(response.headers),
-      body,
-      encoding,
-    },
+    code: "invalid_input",
+    message: `Function input does not match schema.input: ${JSON.stringify(parsed.error.issues)}`,
   };
 }
 
-function fail(
-  kind: "import_failed" | "threw" | "bad_return",
-  e: unknown
-): Output {
+async function parseOutput(
+  response: Response,
+  schemaOutput: unknown
+): Promise<Output> {
+  const body = await response.text();
+  if (!response.ok) {
+    return fail(
+      "http_error",
+      new Error(
+        `Function returned HTTP ${response.status}${body ? `: ${body}` : "."}`
+      ),
+      response.status
+    );
+  }
+
+  let output: unknown;
+  try {
+    output = JSON.parse(body);
+  } catch {
+    return fail(
+      "invalid_output",
+      new Error("Function response body is not valid JSON.")
+    );
+  }
+
+  if (isValidator(schemaOutput)) {
+    const parsed = schemaOutput.safeParse(output);
+    if (!parsed.success) {
+      return fail(
+        "invalid_output",
+        new Error(
+          `Function output does not match schema.output: ${JSON.stringify(parsed.error.issues)}`
+        )
+      );
+    }
+    output = parsed.data;
+  }
+
+  return { ok: true, output };
+}
+
+function fail(code: ErrorCode, e: unknown, status?: number): Output {
   const err = e instanceof Error ? e : new Error(String(e));
-  return { ok: false, error: { kind, message: err.message, stack: err.stack } };
+  return {
+    ok: false,
+    error: {
+      code,
+      message: err.message,
+      ...(status !== undefined ? { status } : {}),
+    },
+  };
 }
 
 function typeOf(v: unknown): string {
