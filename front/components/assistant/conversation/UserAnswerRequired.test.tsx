@@ -262,6 +262,7 @@ async function finishExitAnimation(container: HTMLElement) {
   await waitFor(() => {
     expect(keyboardContainer).toHaveClass(
       "animate-out",
+      "fill-mode-forwards",
       "duration-exit",
       "ease-enter"
     );
