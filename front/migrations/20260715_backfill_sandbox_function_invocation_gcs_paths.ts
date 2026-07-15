@@ -46,6 +46,7 @@ makeScript(
     for (;;) {
       const invocations: SandboxFunctionInvocationModel[] =
         await SandboxFunctionInvocationModel.findAll({
+          // @ts-expect-error This migration intentionally queries rows from before the constraint.
           where: {
             workspaceId: workspace.id,
             gcsPath: null,
@@ -94,6 +95,7 @@ makeScript(
             await SandboxFunctionInvocationModel.update(
               { gcsPath },
               {
+                // @ts-expect-error This migration intentionally updates rows from before the constraint.
                 where: {
                   id: invocation.id,
                   workspaceId: workspace.id,
