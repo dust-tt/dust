@@ -14,7 +14,7 @@ import type {
   ModelConfigurationType,
   ReasoningEffortSupport,
 } from "@app/types/assistant/models/types";
-import { getMinimumReasoningEffort } from "@app/types/assistant/models/types";
+import { getMaximumReasoningEffort } from "@app/types/assistant/models/types";
 
 function isTieredModelId(
   modelId: string
@@ -55,7 +55,7 @@ function restrictModelConfigToAllowedTiers(
     model.defaultReasoningEffort
   ]
     ? model.defaultReasoningEffort
-    : getMinimumReasoningEffort(supportedReasoningEfforts);
+    : getMaximumReasoningEffort(supportedReasoningEfforts);
 
   return {
     ...model,

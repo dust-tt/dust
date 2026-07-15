@@ -12,11 +12,15 @@ import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import {
+  CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG,
   CLAUDE_OPUS_4_8_DEFAULT_MODEL_CONFIG,
   CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG,
 } from "@app/types/assistant/models/anthropic";
 import { AUTO_MODEL_ID } from "@app/types/assistant/models/auto";
-import { GPT_5_5_MODEL_CONFIG } from "@app/types/assistant/models/openai";
+import {
+  GPT_5_4_MINI_MODEL_CONFIG,
+  GPT_5_5_MODEL_CONFIG,
+} from "@app/types/assistant/models/openai";
 import { MODEL_PROVIDER_IDS } from "@app/types/assistant/models/providers";
 import type {
   ModelConfigurationType,
@@ -438,6 +442,19 @@ describe("pickPreferredLargeModel", () => {
     const selected = pickPreferredLargeModel([GPT_5_5_MODEL_CONFIG]);
 
     expect(selected.modelId).toBe(GPT_5_5_MODEL_CONFIG.modelId);
+  });
+
+  it("picks a cost-effective model when only cost-effective models are available", () => {
+    // Mirrors a cost_efficient tier cap, where the large picks are filtered out
+    // and only cost-effective models remain selectable.
+    const selected = pickPreferredLargeModel([
+      GPT_5_4_MINI_MODEL_CONFIG,
+      CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG,
+    ]);
+
+    expect(selected.modelId).toBe(
+      CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG.modelId
+    );
   });
 
   it("falls back to the hardcoded default when no models are available", () => {
