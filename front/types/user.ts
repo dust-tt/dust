@@ -28,6 +28,8 @@ export const ACTIVE_ROLES = [
 ] as const;
 export const ANONYMOUS_USER_IMAGE_URL = "/static/humanavatar/anonymous.png";
 
+export const BUSINESS_ADMIN_ROLE_NAME = "business admin";
+
 function keyObject<T extends readonly string[]>(
   arr: T
 ): { [K in T[number]]: null } {
