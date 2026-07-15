@@ -11,14 +11,17 @@ export interface RequestInput {
   encoding: Encoding;
 }
 
-export type ErrorCode =
-  | "bad_input"
-  | "invalid_input"
-  | "import_failed"
-  | "threw"
-  | "bad_return"
-  | "http_error"
-  | "invalid_output";
+export const RUNNER_ERROR_CODES = [
+  "bad_input",
+  "invalid_input",
+  "import_failed",
+  "threw",
+  "bad_return",
+  "http_error",
+  "invalid_output",
+] as const;
+
+export type ErrorCode = (typeof RUNNER_ERROR_CODES)[number];
 
 export type NonHttpErrorCode = Exclude<ErrorCode, "http_error">;
 
