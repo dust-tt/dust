@@ -7,6 +7,7 @@ import { canCurrentUserRespondToParentUserMessage } from "@app/lib/api/assistant
 import { useAuth } from "@app/lib/auth/AuthContext";
 import type { LightWorkspaceType, UserType } from "@app/types/user";
 import { ArrowUp, Button, cn, OptionCard, Spinner } from "@dust-tt/sparkle";
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import type { KeyboardEvent } from "react";
 import { useEffect, useRef, useState } from "react";
 
@@ -49,11 +50,13 @@ export function UserAnswerRequired({
   const [pendingSubmission, setPendingSubmission] = useState<
     "answer" | "skip" | null
   >(null);
+  const [isCompleted, setIsCompleted] = useState(false);
   const [activeOptionIndex, setActiveOptionIndex] = useState(0);
   const [isCustomResponseFocused, setIsCustomResponseFocused] = useState(false);
   const [isKeyboardNavigating, setIsKeyboardNavigating] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const customResponseInputRef = useRef<HTMLInputElement>(null);
+  const shouldReduceMotion = useReducedMotion();
 
   const { question } = blockedAction;
   const canCurrentUserRespond = canCurrentUserRespondToParentUserMessage({
@@ -82,6 +85,7 @@ export function UserAnswerRequired({
     answer: UserQuestionAnswer,
     { isSkip = false }: { isSkip?: boolean } = {}
   ) {
+    containerRef.current?.focus({ preventScroll: true });
     setPendingSubmission(isSkip ? "skip" : "answer");
     // Submit against the action's own conversation/message: for a sub-agent
     // question these are the child's ids (the action lives in the child
@@ -96,11 +100,19 @@ export function UserAnswerRequired({
     if (result.success) {
       // Resume the agent run. For a sub-agent question this also relaunches the
       // blocked parent run (the child retry is a no-op once the answer is in).
+      let shouldWaitForExitAnimation = false;
       try {
         await retryHandler();
-        removeCompletedAction(blockedAction.actionId);
+        if (shouldReduceMotion) {
+          removeCompletedAction(blockedAction.actionId);
+        } else {
+          shouldWaitForExitAnimation = true;
+          setIsCompleted(true);
+        }
       } finally {
-        setPendingSubmission(null);
+        if (!shouldWaitForExitAnimation) {
+          setPendingSubmission(null);
+        }
       }
     } else {
       setPendingSubmission(null);
@@ -263,12 +275,28 @@ export function UserAnswerRequired({
   }
 
   return (
-    <div
+    <motion.div
       ref={containerRef}
       tabIndex={0}
+      aria-busy={isSubmitting}
       onKeyDownCapture={handleContainerKeyDownCapture}
       onKeyDown={handleContainerKeyDown}
       onMouseMove={() => setIsKeyboardNavigating(false)}
+      initial={shouldReduceMotion ? false : { opacity: 0, scale: 0.985, y: 8 }}
+      animate={
+        isCompleted
+          ? { opacity: 0, scale: 0.985, y: -6 }
+          : { opacity: 1, scale: 1, y: 0 }
+      }
+      transition={{
+        duration: shouldReduceMotion ? 0 : isCompleted ? 0.16 : 0.2,
+        ease: "easeOut",
+      }}
+      onAnimationComplete={() => {
+        if (isCompleted) {
+          removeCompletedAction(blockedAction.actionId);
+        }
+      }}
       className={cn(
         "flex flex-col gap-4 rounded-2xl border border-dark bg-background p-5 outline-hidden",
         "",
@@ -278,12 +306,20 @@ export function UserAnswerRequired({
       <div className="text-base font-medium leading-tight text-foreground">
         {question.question}
       </div>
-      {isAnswerSubmitting ? (
-        <div className="flex min-h-64 items-center justify-center">
-          <Spinner size="lg" />
-        </div>
-      ) : (
-        <div className="flex flex-col gap-2">
+      <div className="relative min-h-16">
+        <motion.div
+          aria-hidden={isSubmitting}
+          animate={
+            isSubmitting
+              ? { opacity: 0, scale: 0.985 }
+              : { opacity: 1, scale: 1 }
+          }
+          transition={{
+            duration: shouldReduceMotion ? 0 : 0.15,
+            ease: "easeOut",
+          }}
+          className="flex flex-col gap-2"
+        >
           {question.options.map((option, index) => (
             <OptionCard
               key={index}
@@ -326,8 +362,26 @@ export function UserAnswerRequired({
             onChange={(value) => answerDraft.updateCustomResponse(value)}
             onKeyDown={handleCustomResponseKeyDown}
           />
-        </div>
-      )}
+        </motion.div>
+        <AnimatePresence initial={false}>
+          {isSubmitting && (
+            <motion.div
+              role="status"
+              className="absolute inset-0 flex items-center justify-center"
+              initial={shouldReduceMotion ? false : { opacity: 0, scale: 0.96 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.96 }}
+              transition={{
+                duration: shouldReduceMotion ? 0 : 0.15,
+                ease: "easeOut",
+              }}
+            >
+              <Spinner size="lg" />
+              <span className="sr-only">Submitting answer</span>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
       {errorMessage && (
         <div className="text-sm font-medium text-warning-800">
           {errorMessage}
@@ -351,6 +405,6 @@ export function UserAnswerRequired({
           aria-label="Send answer"
         />
       </div>
-    </div>
+    </motion.div>
   );
 }
