@@ -79,6 +79,12 @@ export const usageFilterSchema = {
     .array(z.string())
     .optional()
     .describe("Restrict to messages from these user sIds."),
+  tagIds: z
+    .array(z.string())
+    .optional()
+    .describe(
+      "Restrict to messages from agents carrying any of these tag sIds."
+    ),
 };
 
 export type TimeWindowInput = z.input<typeof timeWindowInputSchema>;

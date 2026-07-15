@@ -33,6 +33,7 @@ import {
   resolveServerDisplayNames,
 } from "@app/lib/api/assistant/observability/tool_usage";
 import { fetchTopAgents } from "@app/lib/api/assistant/observability/top_agents";
+import { fetchTopTags } from "@app/lib/api/assistant/observability/top_tags";
 import { fetchTopUsers } from "@app/lib/api/assistant/observability/top_users";
 import { buildAgentAnalyticsBaseQuery } from "@app/lib/api/assistant/observability/utils";
 import type { Authenticator } from "@app/lib/auth";
@@ -48,7 +49,13 @@ function scopedBaseQuery(
     source,
     agentIds,
     userIds,
-  }: { source?: string; agentIds?: string[]; userIds?: string[] }
+    tagIds,
+  }: {
+    source?: string;
+    agentIds?: string[];
+    userIds?: string[];
+    tagIds?: string[];
+  }
 ) {
   return buildAgentAnalyticsBaseQuery({
     workspaceId: auth.getNonNullableWorkspace().sId,
@@ -57,6 +64,7 @@ function scopedBaseQuery(
     contextOrigin: source,
     agentIds,
     userIds,
+    agentTagIds: tagIds,
   });
 }
 
@@ -100,7 +108,17 @@ function renderExecutionSeries<
 
 const handlers: ToolHandlers<typeof WORKSPACE_ANALYTICS_TOOLS_METADATA> = {
   get_top_agents: async (
-    { limit, period, startDate, endDate, timezone, source, agentIds, userIds },
+    {
+      limit,
+      period,
+      startDate,
+      endDate,
+      timezone,
+      source,
+      agentIds,
+      userIds,
+      tagIds,
+    },
     { auth }
   ) => {
     const denied = workspaceAdminGuard(auth);
@@ -120,6 +138,7 @@ const handlers: ToolHandlers<typeof WORKSPACE_ANALYTICS_TOOLS_METADATA> = {
       contextOrigin: source,
       agentIds,
       userIds,
+      agentTagIds: tagIds,
     });
 
     if (result.isErr()) {
@@ -156,7 +175,17 @@ const handlers: ToolHandlers<typeof WORKSPACE_ANALYTICS_TOOLS_METADATA> = {
   },
 
   get_top_users: async (
-    { limit, period, startDate, endDate, timezone, source, agentIds, userIds },
+    {
+      limit,
+      period,
+      startDate,
+      endDate,
+      timezone,
+      source,
+      agentIds,
+      userIds,
+      tagIds,
+    },
     { auth }
   ) => {
     const denied = workspaceAdminGuard(auth);
@@ -176,6 +205,7 @@ const handlers: ToolHandlers<typeof WORKSPACE_ANALYTICS_TOOLS_METADATA> = {
       contextOrigin: source,
       agentIds,
       userIds,
+      agentTagIds: tagIds,
     });
 
     if (result.isErr()) {
@@ -206,6 +236,73 @@ const handlers: ToolHandlers<typeof WORKSPACE_ANALYTICS_TOOLS_METADATA> = {
         type: "text" as const,
         text:
           `Top users for ${label} (${tz}), most active first:\n` +
+          lines.join("\n"),
+      },
+    ]);
+  },
+
+  get_top_tags: async (
+    {
+      limit,
+      period,
+      startDate,
+      endDate,
+      timezone,
+      source,
+      agentIds,
+      userIds,
+      tagIds,
+    },
+    { auth }
+  ) => {
+    const denied = workspaceAdminGuard(auth);
+    if (denied) {
+      return new Err(denied);
+    }
+
+    const window = resolveTimeWindow({ period, startDate, endDate, timezone });
+    if (window.isErr()) {
+      return new Err(new MCPError(window.error, { tracked: false }));
+    }
+
+    const result = await fetchTopTags(auth, {
+      startDate: window.value.startDate,
+      endDate: window.value.endDate,
+      limit: limit ?? DEFAULT_RESULTS,
+      contextOrigin: source,
+      agentIds,
+      userIds,
+      agentTagIds: tagIds,
+    });
+
+    if (result.isErr()) {
+      return new Err(
+        new MCPError(`Failed to retrieve top tags: ${result.error.message}`)
+      );
+    }
+
+    const { label, timezone: tz } = window.value;
+
+    if (result.value.length === 0) {
+      return new Ok([
+        {
+          type: "text" as const,
+          text: `No agent tag activity recorded for ${label} (${tz}).`,
+        },
+      ]);
+    }
+
+    const lines = result.value.map(
+      (tag, index) =>
+        `${index + 1}. ${tag.name} [${tag.tagId}] — ` +
+        `${tag.messageCount} messages, ${tag.agentCount} agents`
+    );
+
+    return new Ok([
+      {
+        type: "text" as const,
+        text:
+          `Top agent tags for ${label} (${tz}), most used first:\n` +
           lines.join("\n"),
       },
     ]);
@@ -269,7 +366,17 @@ const handlers: ToolHandlers<typeof WORKSPACE_ANALYTICS_TOOLS_METADATA> = {
   },
 
   get_top_skills: async (
-    { limit, period, startDate, endDate, timezone, source, agentIds, userIds },
+    {
+      limit,
+      period,
+      startDate,
+      endDate,
+      timezone,
+      source,
+      agentIds,
+      userIds,
+      tagIds,
+    },
     { auth }
   ) => {
     const denied = workspaceAdminGuard(auth);
@@ -286,6 +393,7 @@ const handlers: ToolHandlers<typeof WORKSPACE_ANALYTICS_TOOLS_METADATA> = {
       source,
       agentIds,
       userIds,
+      tagIds,
     });
 
     const result = await fetchAvailableSkills(baseQuery);
@@ -323,7 +431,17 @@ const handlers: ToolHandlers<typeof WORKSPACE_ANALYTICS_TOOLS_METADATA> = {
   },
 
   get_top_tools: async (
-    { limit, period, startDate, endDate, timezone, source, agentIds, userIds },
+    {
+      limit,
+      period,
+      startDate,
+      endDate,
+      timezone,
+      source,
+      agentIds,
+      userIds,
+      tagIds,
+    },
     { auth }
   ) => {
     const denied = workspaceAdminGuard(auth);
@@ -340,6 +458,7 @@ const handlers: ToolHandlers<typeof WORKSPACE_ANALYTICS_TOOLS_METADATA> = {
       source,
       agentIds,
       userIds,
+      tagIds,
     });
 
     const result = await fetchAvailableTools(baseQuery);
@@ -386,7 +505,7 @@ const handlers: ToolHandlers<typeof WORKSPACE_ANALYTICS_TOOLS_METADATA> = {
   },
 
   get_source_breakdown: async (
-    { period, startDate, endDate, timezone, agentIds, userIds },
+    { period, startDate, endDate, timezone, agentIds, userIds, tagIds },
     { auth }
   ) => {
     const denied = workspaceAdminGuard(auth);
@@ -402,6 +521,7 @@ const handlers: ToolHandlers<typeof WORKSPACE_ANALYTICS_TOOLS_METADATA> = {
     const baseQuery = scopedBaseQuery(auth, window.value, {
       agentIds,
       userIds,
+      tagIds,
     });
 
     const result = await fetchContextOriginBreakdown(baseQuery);
@@ -452,6 +572,7 @@ const handlers: ToolHandlers<typeof WORKSPACE_ANALYTICS_TOOLS_METADATA> = {
       source,
       agentIds,
       userIds,
+      tagIds,
     },
     { auth }
   ) => {
@@ -474,6 +595,7 @@ const handlers: ToolHandlers<typeof WORKSPACE_ANALYTICS_TOOLS_METADATA> = {
       contextOrigin: source,
       agentIds,
       userIds,
+      agentTagIds: tagIds,
     });
 
     if (result.isErr()) {
@@ -531,6 +653,7 @@ const handlers: ToolHandlers<typeof WORKSPACE_ANALYTICS_TOOLS_METADATA> = {
       source,
       agentIds,
       userIds,
+      tagIds,
     },
     { auth }
   ) => {
@@ -564,6 +687,7 @@ const handlers: ToolHandlers<typeof WORKSPACE_ANALYTICS_TOOLS_METADATA> = {
         contextOrigin: source,
         agentIds,
         userIds,
+        agentTagIds: tagIds,
       });
 
       if (result.isErr()) {
@@ -616,6 +740,7 @@ const handlers: ToolHandlers<typeof WORKSPACE_ANALYTICS_TOOLS_METADATA> = {
       contextOrigin: source,
       agentIds,
       userIds,
+      agentTagIds: tagIds,
     });
 
     if (result.isErr()) {
@@ -661,6 +786,7 @@ const handlers: ToolHandlers<typeof WORKSPACE_ANALYTICS_TOOLS_METADATA> = {
       source,
       agentIds,
       userIds,
+      tagIds,
     },
     { auth }
   ) => {
@@ -681,6 +807,7 @@ const handlers: ToolHandlers<typeof WORKSPACE_ANALYTICS_TOOLS_METADATA> = {
       source,
       agentIds,
       userIds,
+      tagIds,
     });
     const { label, timezone: tz } = window.value;
     const selectedMetric = metric ?? "messages";
