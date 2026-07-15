@@ -84,8 +84,7 @@ export const POD_MANAGER_TOOLS_METADATA = createToolsRecord({
     description:
       "Edit Pod information: title, description, and/or access. " +
       "Provide at least one field to update. Descriptions must be plain text only (no markdown, HTML, or formatting). " +
-      "Access can be set to open or restricted; open Pods are subject to workspace policy. " +
-      `To pin or unpin the Pod banner frame, use \`${SET_PINNED_FRAME_TOOL_NAME}\` instead.`,
+      "Access can be set to open or restricted; open Pods are subject to workspace policy.",
     schema: {
       title: z.string().optional().describe("New Pod title"),
       description: z
