@@ -57,7 +57,7 @@ export function createSchedulesManagementTools(
   toolContext?: ToolContext
 ) {
   const handlers: ToolHandlers<typeof SCHEDULES_MANAGEMENT_TOOLS_METADATA> = {
-    create_schedule: async ({ name, schedule, prompt, timezone }) => {
+    create_schedule: async ({ name, schedule, prompt, timezone, podId }) => {
       assert(
         isAgentLoopRunContext(toolContext?.runContext),
         "AgentLoopRunContext expected"
@@ -66,14 +66,11 @@ export function createSchedulesManagementTools(
       const owner = auth.getNonNullableWorkspace();
       const user = auth.getNonNullableUser();
 
-      const { agentConfiguration, conversation } = toolContext.runContext;
+      const { agentConfiguration } = toolContext.runContext;
 
-      // When the schedule is created inside a Pod, attach its trigger to that
-      // Pod so the scheduled run lands in the Pod (where the pinned view lives).
-      const spaceIdRes = await resolveTriggerSpaceId(
-        auth,
-        conversation.spaceId
-      );
+      // When a podId is provided, attach the trigger to that Pod so the
+      // scheduled run lands in the Pod (where the pinned view lives).
+      const spaceIdRes = await resolveTriggerSpaceId(auth, podId);
       if (spaceIdRes.isErr()) {
         return new Err(new MCPError(spaceIdRes.error));
       }
@@ -159,14 +156,14 @@ export function createSchedulesManagementTools(
             `Schedule: ${schedule}\n` +
             `Configuration: ${configDesc} (${scheduleConfig.timezone})\n\n` +
             `The agent will execute "${prompt}" according to this schedule.` +
-            (spaceId !== null ? " Its runs will land in this Pod." : "") +
+            (spaceId !== null ? " Its runs will land in the Pod." : "") +
             `\n\n` +
             renderSchedule(trigger),
         },
       ]);
     },
 
-    list_schedules: async () => {
+    list_schedules: async ({ podId }) => {
       assert(
         isAgentLoopRunContext(toolContext?.runContext),
         "AgentLoopRunContext expected"
@@ -175,14 +172,11 @@ export function createSchedulesManagementTools(
       const owner = auth.getNonNullableWorkspace();
       const userId = auth.getNonNullableUser().id;
 
-      const { agentConfiguration, conversation } = toolContext.runContext;
+      const { agentConfiguration } = toolContext.runContext;
 
-      // Inside a Pod, list all of the user's schedules scoped to that Pod
-      // (across agents). Otherwise, fall back to this agent's schedules.
-      const spaceIdRes = await resolveTriggerSpaceId(
-        auth,
-        conversation.spaceId
-      );
+      // When a podId is provided, list all of the user's schedules scoped to
+      // that Pod (across agents). Otherwise, list this agent's schedules.
+      const spaceIdRes = await resolveTriggerSpaceId(auth, podId);
       if (spaceIdRes.isErr()) {
         return new Err(new MCPError(spaceIdRes.error));
       }
@@ -239,7 +233,7 @@ export function createSchedulesManagementTools(
       ]);
     },
 
-    disable_schedule: async ({ scheduleId }) => {
+    disable_schedule: async ({ scheduleId, podId }) => {
       assert(
         isAgentLoopRunContext(toolContext?.runContext),
         "AgentLoopRunContext expected"
@@ -248,14 +242,11 @@ export function createSchedulesManagementTools(
       const owner = auth.getNonNullableWorkspace();
       const userId = auth.getNonNullableUser().id;
 
-      const { agentConfiguration, conversation } = toolContext.runContext;
+      const { agentConfiguration } = toolContext.runContext;
 
       // Match the scope used by list_schedules so any schedule the user can see
-      // in this context can also be disabled.
-      const spaceIdRes = await resolveTriggerSpaceId(
-        auth,
-        conversation.spaceId
-      );
+      // there can also be disabled: pass the same podId.
+      const spaceIdRes = await resolveTriggerSpaceId(auth, podId);
       if (spaceIdRes.isErr()) {
         return new Err(new MCPError(spaceIdRes.error));
       }

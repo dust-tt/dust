@@ -7,13 +7,19 @@ import { zodToJsonSchema } from "zod-to-json-schema";
 export const SCHEDULES_MANAGEMENT_TOOLS_METADATA = createToolsRecord({
   create_schedule: {
     description:
-      "Create a schedule that runs this agent at specified times. Schedules are user-specific: each user can only view and manage their own schedules. When the schedule triggers, it runs this agent with the specified prompt. When created inside a Pod, the schedule is attached to that Pod and its runs land there. Limit: 20 schedule creations per user per day.",
+      "Create a schedule that runs this agent at specified times. Schedules are user-specific: each user can only view and manage their own schedules. When the schedule triggers, it runs this agent with the specified prompt. Pass podId to attach the schedule to a Pod so its runs land there. Limit: 20 schedule creations per user per day.",
     schema: {
       name: z
         .string()
         .max(255)
         .describe(
           "A short, descriptive name for the schedule (max 255 chars). Examples: 'Daily email summary', 'Weekly PR review', 'Morning standup prep'. Schedule name MUST be unique."
+        ),
+      podId: z
+        .string()
+        .optional()
+        .describe(
+          "Optional Pod ID (sId) to attach this schedule to, so its runs land in that Pod. Omit for a schedule not tied to a Pod."
         ),
       schedule: z
         .string()
@@ -43,8 +49,15 @@ export const SCHEDULES_MANAGEMENT_TOOLS_METADATA = createToolsRecord({
   },
   list_schedules: {
     description:
-      "List the current user's schedules. Inside a Pod, lists all of your schedules attached to that Pod (across agents); otherwise lists your schedules for this agent.",
-    schema: {},
+      "List the current user's schedules. Pass podId to list all of your schedules attached to that Pod (across agents); otherwise lists your schedules for this agent.",
+    schema: {
+      podId: z
+        .string()
+        .optional()
+        .describe(
+          "Optional Pod ID (sId) to list schedules for. Omit to list this agent's schedules."
+        ),
+    },
     stake: "never_ask",
     displayLabels: {
       running: "Listing schedules",
@@ -59,6 +72,12 @@ export const SCHEDULES_MANAGEMENT_TOOLS_METADATA = createToolsRecord({
       scheduleId: z
         .string()
         .describe("The schedule ID (get this from list_schedules)"),
+      podId: z
+        .string()
+        .optional()
+        .describe(
+          "Optional Pod ID (sId) the schedule belongs to. Pass the same podId used with list_schedules."
+        ),
     },
     stake: "high",
     displayLabels: {
