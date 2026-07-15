@@ -75,13 +75,6 @@ function parseSandboxFunctionInvocationData(
   return result.data;
 }
 
-function gcsPathForInvocation(
-  auth: Authenticator,
-  invocation: SandboxFunctionInvocationResource
-): string {
-  return `w/${auth.getNonNullableWorkspace().sId}/sandbox_functions/${invocation.sandboxFunction.sId}/invocations/${invocation.sId}`;
-}
-
 function dustAPIBaseUrlForSandbox(): string {
   return isDevelopment() && config.getSandboxDevFrontHostName()
     ? `https://${config.getSandboxDevFrontHostName()}`
@@ -111,10 +104,13 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
     blob: Attributes<SandboxFunctionInvocationModel>,
     {
       sandboxFunction,
-      data,
+      data = {
+        version: SANDBOX_FUNCTION_INVOCATION_DATA_VERSION,
+        input: undefined,
+      },
     }: {
       sandboxFunction: SandboxFunctionResource;
-      data: SandboxFunctionInvocationData;
+      data?: SandboxFunctionInvocationData;
     }
   ) {
     super(model, blob);
@@ -127,6 +123,10 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
       id: this.id,
       workspaceId: this.workspaceId,
     });
+  }
+
+  private buildGcsPath(auth: Authenticator): string {
+    return `w/${auth.getNonNullableWorkspace().sId}/sandbox_functions/${this.sandboxFunction.sId}/invocations/${this.sId}`;
   }
 
   get input(): unknown {
@@ -151,13 +151,12 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
   }
 
   async fail(error: Error): Promise<void> {
-    const data: SandboxFunctionInvocationData = {
+    this.data = {
       version: SANDBOX_FUNCTION_INVOCATION_DATA_VERSION,
       input: this.input,
       error: error.message,
     };
-    await SandboxFunctionInvocationResource.writeDataToGcs(this.gcsPath, data);
-    this.data = data;
+    await this.writeDataToGcs();
     await this.update({ status: "errored" });
     await publishSandboxFunctionInvocationEvent(
       {
@@ -172,13 +171,12 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
   }
 
   async succeed(result: unknown): Promise<void> {
-    const data: SandboxFunctionInvocationData = {
+    this.data = {
       version: SANDBOX_FUNCTION_INVOCATION_DATA_VERSION,
       input: this.input,
       result,
     };
-    await SandboxFunctionInvocationResource.writeDataToGcs(this.gcsPath, data);
-    this.data = data;
+    await this.writeDataToGcs();
     await this.update({ status: "succeeded" });
     await publishSandboxFunctionInvocationEvent(
       {
@@ -297,16 +295,16 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
     return makeSId("sandbox_function_invocation", { id, workspaceId });
   }
 
-  private static async loadDataFromGcs(
-    gcsPath: string | null
-  ): Promise<SandboxFunctionInvocationData> {
+  private async loadDataFromGcs(): Promise<void> {
     // TODO: Remove null support after running
     // `20260715_backfill_sandbox_function_invocation_gcs_paths.ts`.
+    const { gcsPath } = this;
     if (!gcsPath) {
-      return {
+      this.data = {
         version: SANDBOX_FUNCTION_INVOCATION_DATA_VERSION,
         input: undefined,
       };
+      return;
     }
 
     const downloadResult = await withRetry(() =>
@@ -317,15 +315,13 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
     }
 
     const [buffer] = downloadResult.value;
-    return parseSandboxFunctionInvocationData(buffer.toString("utf-8"));
+    this.data = parseSandboxFunctionInvocationData(buffer.toString("utf-8"));
   }
 
-  private static async writeDataToGcs(
-    gcsPath: string | null,
-    data: SandboxFunctionInvocationData
-  ): Promise<void> {
+  private async writeDataToGcs(): Promise<void> {
     // TODO: Remove null support after running
     // `20260715_backfill_sandbox_function_invocation_gcs_paths.ts`.
+    const { gcsPath } = this;
     if (!gcsPath) {
       return;
     }
@@ -333,7 +329,7 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
     const writeResult = await withRetry(() =>
       getPrivateUploadBucket()
         .file(gcsPath)
-        .save(Buffer.from(JSON.stringify(data), "utf-8"), {
+        .save(Buffer.from(JSON.stringify(this.data), "utf-8"), {
           contentType: "application/json",
         })
     );
@@ -387,9 +383,9 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
       sandboxFunction,
       data,
     });
-    const gcsPath = gcsPathForInvocation(auth, resource);
-    await this.writeDataToGcs(gcsPath, data);
+    const gcsPath = resource.buildGcsPath(auth);
     await resource.update({ gcsPath }, transaction);
+    await resource.writeDataToGcs();
 
     return resource;
   }
@@ -449,8 +445,9 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
       invocations,
       async (invocation) => {
         const blob = invocation.get();
-        const data = await this.loadDataFromGcs(blob.gcsPath);
-        return new this(this.model, blob, { sandboxFunction, data });
+        const resource = new this(this.model, blob, { sandboxFunction });
+        await resource.loadDataFromGcs();
+        return resource;
       },
       { concurrency: GCS_CONCURRENCY }
     );
