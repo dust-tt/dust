@@ -37,12 +37,12 @@ export const MICROSOFT_DRIVE_TOOLS_METADATA = createToolsRecord({
   },
   search_drive_items: {
     description:
-      "Find and locate a file or document by its name or title in Microsoft OneDrive and SharePoint, returned in relevance order. Use when you know the file name and want to look it up, such as a specific Word, Excel, or PowerPoint document.",
+      "Find and locate a file, folder, or document by its name or title in Microsoft OneDrive and SharePoint, returned in relevance order. Use when you know the item's name and want to look it up, such as a specific Word, Excel, or PowerPoint document, or a folder to upload into.",
     schema: {
       query: z
         .string()
         .describe(
-          "Search query matching the name or title of files in OneDrive and SharePoint."
+          "Search query matching the name or title of items in OneDrive and SharePoint."
         ),
     },
     stake: "never_ask",
@@ -100,6 +100,24 @@ export const MICROSOFT_DRIVE_TOOLS_METADATA = createToolsRecord({
     displayLabels: {
       running: "Listing OneDrive/SharePoint items",
       done: "List OneDrive/SharePoint items",
+    },
+    toolCostCategory: "advanced",
+    freeUsage: false,
+  },
+  get_item_from_url: {
+    description:
+      "Resolve a Microsoft OneDrive or SharePoint URL (file, folder, or sharing link) to its drive item. Returns the item's id, driveId, name, type, and webUrl.",
+    schema: {
+      url: z
+        .string()
+        .describe(
+          "The URL to resolve. Accepts direct URLs and sharing links (e.g. 'https://contoso.sharepoint.com/:f:/s/...')."
+        ),
+    },
+    stake: "never_ask",
+    displayLabels: {
+      running: "Resolving OneDrive/SharePoint URL",
+      done: "Resolve OneDrive/SharePoint URL",
     },
     toolCostCategory: "advanced",
     freeUsage: false,
@@ -181,9 +199,41 @@ export const MICROSOFT_DRIVE_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "advanced",
     freeUsage: false,
   },
+  create_folder: {
+    description:
+      "Create a new folder in Microsoft OneDrive or SharePoint under a parent folder, or at the root of the drive. Uses driveId if provided, otherwise falls back to siteId. Returns the new folder's id.",
+    schema: {
+      name: z.string().describe("The name of the new folder."),
+      driveId: z
+        .string()
+        .optional()
+        .describe(
+          "The ID of the drive to create the folder in. Takes priority over siteId if provided."
+        ),
+      siteId: z
+        .string()
+        .optional()
+        .describe(
+          "The ID of the SharePoint site to create the folder in. Used if driveId is not provided."
+        ),
+      parentFolderId: z
+        .string()
+        .optional()
+        .describe(
+          "Optional ID of the parent folder to create the folder in. Use get_item_from_url when the user provides a folder URL, or list_drive_items to browse. If not provided, creates at the root of the drive."
+        ),
+    },
+    stake: "low",
+    displayLabels: {
+      running: "Creating OneDrive/SharePoint folder",
+      done: "Create OneDrive/SharePoint folder",
+    },
+    toolCostCategory: "advanced",
+    freeUsage: false,
+  },
   upload_file: {
     description:
-      "Upload a file from the Dust conversation to Microsoft OneDrive or SharePoint. Supports files up to 250MB using the simple upload API. Uses driveId if provided, otherwise falls back to siteId. Automatically creates folders if they don't exist.",
+      "Upload a file from the Dust conversation to Microsoft OneDrive or SharePoint. Supports files up to 250MB using the simple upload API. Uses driveId if provided, otherwise falls back to siteId.",
     schema: {
       fileId: z
         .string()
@@ -202,11 +252,11 @@ export const MICROSOFT_DRIVE_TOOLS_METADATA = createToolsRecord({
         .describe(
           "The ID of the SharePoint site to upload to. Used if driveId is not provided."
         ),
-      folderPath: z
+      parentFolderId: z
         .string()
         .optional()
         .describe(
-          "Optional path to folder where the file should be uploaded (e.g., 'Documents/Projects'). Folders will be created automatically if they don't exist. If not provided, uploads to the root of the drive."
+          "Optional ID of the folder to upload into. Use get_item_from_url when the user provides a folder URL, or list_drive_items to browse. If not provided, uploads to the root of the drive."
         ),
       fileName: z
         .string()

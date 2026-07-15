@@ -154,7 +154,7 @@ const QUERIES: LabeledQuery[] = [
   {
     query: "list files in my onedrive folder",
     expected: "microsoft_drive.list_drive_items",
-    maxRank: 3,
+    maxRank: 4, // get_item_from_url + create_folder dilute shared-token IDF
   },
   {
     query: "browse my sharepoint site",
