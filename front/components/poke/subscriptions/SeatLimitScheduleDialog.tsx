@@ -99,15 +99,22 @@ interface ScheduleFormValues {
   phases: PhaseForm[];
 }
 
-// Metronome effective dates are whole hours, so the schedule editor works at
-// hour granularity: minutes are always "00".
-function toLocalInput(iso: string): string {
+// Metronome effective dates are whole UTC hours, so the editor's datetime
+// fields hold UTC wall-clock time at hour granularity (minutes always "00").
+// Convert an ISO instant to the UTC wall-clock value shown in the field.
+function toUTCInput(iso: string): string {
   const date = new Date(iso);
   const pad = (n: number) => String(n).padStart(2, "0");
   return (
-    `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}` +
-    `T${pad(date.getHours())}:00`
+    `${date.getUTCFullYear()}-${pad(date.getUTCMonth() + 1)}-${pad(date.getUTCDate())}` +
+    `T${pad(date.getUTCHours())}:00`
   );
+}
+
+// Interpret a UTC wall-clock field value ("YYYY-MM-DDTHH:mm") as a UTC instant
+// and return its ISO string.
+function utcInputToISO(value: string): string {
+  return new Date(`${value}:00Z`).toISOString();
 }
 
 // Floor a `datetime-local` value ("YYYY-MM-DDTHH:mm") to the top of the hour.
@@ -118,14 +125,30 @@ function floorToHour(value: string): string {
   return `${value.slice(0, 13)}:00`;
 }
 
+// Render a UTC field value in the operator's local time — shown as a hint next
+// to each field so the UTC input is unambiguous.
+function utcInputToLocalLabel(value: string): string | null {
+  if (!value) {
+    return null;
+  }
+  const date = new Date(`${value}:00Z`);
+  if (isNaN(date.getTime())) {
+    return null;
+  }
+  return date.toLocaleString(undefined, {
+    dateStyle: "medium",
+    timeStyle: "short",
+  });
+}
+
 function phasesForSeatType(
   schedule: PokeSeatLimitScheduleResponseBody["schedule"],
   seatType: MembershipSeatType
 ): PhaseForm[] {
   const phases = schedule[seatType] ?? [];
   return phases.map((phase) => ({
-    startAt: toLocalInput(phase.startAt),
-    endAt: phase.endAt ? toLocalInput(phase.endAt) : "",
+    startAt: toUTCInput(phase.startAt),
+    endAt: phase.endAt ? toUTCInput(phase.endAt) : "",
     minSeats: phase.minSeats,
     maxSeats: phase.maxSeats ?? undefined,
   }));
@@ -169,6 +192,9 @@ function ScheduleEditor({
     control: form.control,
     name: "phases",
   });
+  // Live values (useFieldArray `fields` only holds the initial snapshot) so the
+  // local-time hints track edits.
+  const phaseValues = form.watch("phases");
 
   if (seatTypeOptions.length === 0 || !seatType) {
     return (
@@ -205,8 +231,8 @@ function ScheduleEditor({
           phase.maxSeats === undefined || Number.isNaN(phase.maxSeats)
             ? null
             : Number(phase.maxSeats),
-        startAt: new Date(phase.startAt).toISOString(),
-        endAt: phase.endAt ? new Date(phase.endAt).toISOString() : null,
+        startAt: utcInputToISO(phase.startAt),
+        endAt: phase.endAt ? utcInputToISO(phase.endAt) : null,
       });
     }
 
@@ -313,7 +339,7 @@ function ScheduleEditor({
                     <InputField
                       control={form.control}
                       name={`phases.${index}.startAt`}
-                      title="Start"
+                      title="Start (UTC)"
                       type="datetime-local"
                       step={3600}
                       transformValue={floorToHour}
@@ -328,12 +354,22 @@ function ScheduleEditor({
                         }
                       }}
                     />
+                    {utcInputToLocalLabel(
+                      phaseValues?.[index]?.startAt ?? ""
+                    ) && (
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        Local:{" "}
+                        {utcInputToLocalLabel(
+                          phaseValues?.[index]?.startAt ?? ""
+                        )}
+                      </p>
+                    )}
                   </div>
                   <div className="w-52">
                     <InputField
                       control={form.control}
                       name={`phases.${index}.endAt`}
-                      title="End (blank = open-ended)"
+                      title="End (UTC, blank = open-ended)"
                       type="datetime-local"
                       step={3600}
                       transformValue={floorToHour}
@@ -348,6 +384,16 @@ function ScheduleEditor({
                         }
                       }}
                     />
+                    {utcInputToLocalLabel(
+                      phaseValues?.[index]?.endAt ?? ""
+                    ) && (
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        Local:{" "}
+                        {utcInputToLocalLabel(
+                          phaseValues?.[index]?.endAt ?? ""
+                        )}
+                      </p>
+                    )}
                   </div>
                   <div className="w-28">
                     <InputField
@@ -386,7 +432,7 @@ function ScheduleEditor({
                 label="Add phase"
                 onClick={() =>
                   append({
-                    startAt: toLocalInput(new Date().toISOString()),
+                    startAt: toUTCInput(new Date().toISOString()),
                     endAt: "",
                     minSeats: 0,
                   })
