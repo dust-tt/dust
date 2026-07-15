@@ -65,8 +65,6 @@ async function setupActivityRun() {
     mcpServerView: view,
   });
 
-  fileStorageMock.reset();
-
   return { auth, workspace, action };
 }
 
