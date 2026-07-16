@@ -28,20 +28,28 @@ vi.mock(
 function createGaxiosError(
   code: number,
   message: string,
-  reason?: string
+  reason?: string | string[]
 ): Common.GaxiosError {
   const mockConfig = {
     url: "https://test.example.com",
     method: "GET",
   };
 
+  const reasons = reason === undefined ? [] : [reason].flat();
   const mockResponse = {
     status: code,
     statusText: message,
     config: mockConfig,
-    data: reason
-      ? { error: { code, message, errors: [{ reason, message }] } }
-      : {},
+    data:
+      reasons.length > 0
+        ? {
+            error: {
+              code,
+              message,
+              errors: reasons.map((r) => ({ reason: r, message })),
+            },
+          }
+        : {},
     headers: {},
     request: { responseURL: "https://test.example.com" },
   };
@@ -287,6 +295,25 @@ describe("handleFileAccessError", () => {
         "The user has not granted the app access to the file",
         "appNotAuthorizedToFile"
       ),
+      "test-file-id",
+      createMockExtra("my-connection")
+    );
+
+    expect(result.isOk()).toBe(true);
+    if (result.isOk()) {
+      const item = result.value[0] as any;
+      expect(item.resource.type).toBe("tool_file_auth_required");
+    }
+  });
+
+  it("should prefer the file picker when appNotAuthorizedToFile appears alongside a permission reason", async () => {
+    // An explicit missing app grant is fixable by the picker even if Google
+    // also reports a user-level permission reason in the same error body.
+    const result = await handleFileAccessError(
+      createGaxiosError(403, "The user has not granted the app access", [
+        "insufficientFilePermissions",
+        "appNotAuthorizedToFile",
+      ]),
       "test-file-id",
       createMockExtra("my-connection")
     );

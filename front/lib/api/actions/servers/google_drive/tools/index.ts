@@ -314,17 +314,18 @@ export async function handleFileAccessError(
     }
 
     // The file picker only helps when the app is missing a drive.file grant
-    // on the file. When Google explicitly reports a user-level permission
-    // denial, re-picking the file cannot help: skip the picker and let the
-    // 403 classification below report the permission error.
+    // on the file, which Google reports as appNotAuthorizedToFile. When
+    // Google instead reports a user-level permission denial, re-picking the
+    // file cannot help: veto the message-keyword heuristic and let the 403
+    // classification below report the permission error.
     const reasons = extractGoogleErrorReasons(err);
     if (
       (status === "403" || status === "404") &&
-      !reasons.some((reason) => PERMISSION_403_REASONS.has(reason)) &&
       (reasons.includes("appNotAuthorizedToFile") ||
-        message.includes("caller does not have permission") ||
-        message.includes("has not granted") ||
-        message.includes("write access"))
+        (!reasons.some((reason) => PERMISSION_403_REASONS.has(reason)) &&
+          (message.includes("caller does not have permission") ||
+            message.includes("has not granted") ||
+            message.includes("write access"))))
     ) {
       const connectionId = runContext.toolConfiguration.toolServerId;
 
