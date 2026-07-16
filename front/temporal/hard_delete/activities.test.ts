@@ -1,17 +1,24 @@
 import { createPendingAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
+import {
+  MentionModel,
+  MessageModel,
+} from "@app/lib/models/agent/conversation";
 import { GroupAgentModel } from "@app/lib/models/agent/group_agent";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { SkillSuggestionResource } from "@app/lib/resources/skill_suggestion_resource";
 import {
+  purgeExpiredDraftAgentsActivity,
   purgeExpiredPendingAgentsActivity,
   purgeExpiredSyntheticSkillSuggestionsActivity,
 } from "@app/temporal/hard_delete/activities";
 import {
+  DRAFT_AGENTS_RETENTION_DAYS,
   PENDING_AGENTS_RETENTION_HOURS,
   SYNTHETIC_SUGGESTIONS_RETENTION_DAYS,
 } from "@app/temporal/hard_delete/utils";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
+import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import { SkillSuggestionFactory } from "@app/tests/utils/SkillSuggestionFactory";
@@ -225,6 +232,150 @@ describe("purgeExpiredPendingAgentsActivity", () => {
     expect(
       await GroupResource.fetchByModelIds(authenticator, [activeGroupId])
     ).toHaveLength(1);
+  });
+});
+
+const PAST_DRAFT_THRESHOLD_MS =
+  (DRAFT_AGENTS_RETENTION_DAYS + 1) * 24 * 3600 * 1000;
+
+describe("purgeExpiredDraftAgentsActivity", () => {
+  it("deletes draft agents older than threshold", async () => {
+    const { authenticator, workspace } = await createResourceTest({
+      role: "admin",
+    });
+
+    const draft = await AgentConfigurationFactory.createTestAgent(
+      authenticator,
+      { name: "Old Draft", status: "draft" }
+    );
+
+    vi.advanceTimersByTime(PAST_DRAFT_THRESHOLD_MS);
+
+    await purgeExpiredDraftAgentsActivity();
+
+    const draftAfter = await AgentConfigurationModel.findOne({
+      where: { sId: draft.sId, workspaceId: workspace.id },
+    });
+    expect(draftAfter).toBeNull();
+  });
+
+  it("does not delete draft agents younger than threshold", async () => {
+    const { authenticator, workspace } = await createResourceTest({
+      role: "admin",
+    });
+
+    const draft = await AgentConfigurationFactory.createTestAgent(
+      authenticator,
+      { name: "Fresh Draft", status: "draft" }
+    );
+
+    await purgeExpiredDraftAgentsActivity();
+
+    const draftAfter = await AgentConfigurationModel.findOne({
+      where: { sId: draft.sId, workspaceId: workspace.id },
+    });
+    expect(draftAfter).not.toBeNull();
+    expect(draftAfter!.status).toBe("draft");
+  });
+
+  it("does not delete draft agents referenced by a mention", async () => {
+    const { authenticator, workspace } = await createResourceTest({
+      role: "admin",
+    });
+
+    const draft = await AgentConfigurationFactory.createTestAgent(
+      authenticator,
+      { name: "Used Draft", status: "draft" }
+    );
+
+    const conversation = await ConversationFactory.create(authenticator, {
+      agentConfigurationId: draft.sId,
+      messagesCreatedAt: [new Date()],
+    });
+    const message = await MessageModel.findOne({
+      where: { conversationId: conversation.id, workspaceId: workspace.id },
+    });
+    expect(message).not.toBeNull();
+    await MentionModel.create({
+      workspaceId: workspace.id,
+      messageId: message!.id,
+      agentConfigurationId: draft.sId,
+      status: "approved",
+    });
+
+    vi.advanceTimersByTime(PAST_DRAFT_THRESHOLD_MS);
+
+    await purgeExpiredDraftAgentsActivity();
+
+    const draftAfter = await AgentConfigurationModel.findOne({
+      where: { sId: draft.sId, workspaceId: workspace.id },
+    });
+    expect(draftAfter).not.toBeNull();
+  });
+
+  it("does not delete active agents", async () => {
+    const { authenticator, workspace } = await createResourceTest({
+      role: "admin",
+    });
+
+    await AgentConfigurationFactory.createTestAgent(authenticator, {
+      name: "Active Survivor",
+    });
+
+    vi.advanceTimersByTime(PAST_DRAFT_THRESHOLD_MS);
+
+    await purgeExpiredDraftAgentsActivity();
+
+    const agents = await AgentConfigurationModel.findAll({
+      where: { name: "Active Survivor", workspaceId: workspace.id },
+    });
+    expect(agents).toHaveLength(1);
+    expect(agents[0].status).toBe("active");
+  });
+
+  it("deletes all expired drafts across multiple batches, skipping mentioned ones", async () => {
+    const { authenticator, workspace } = await createResourceTest({
+      role: "admin",
+    });
+
+    const drafts = [];
+    for (let i = 0; i < 3; i++) {
+      drafts.push(
+        await AgentConfigurationFactory.createTestAgent(authenticator, {
+          name: `Draft ${i}`,
+          status: "draft",
+        })
+      );
+    }
+
+    // Mention the middle draft so it must survive.
+    const conversation = await ConversationFactory.create(authenticator, {
+      agentConfigurationId: drafts[1].sId,
+      messagesCreatedAt: [new Date()],
+    });
+    const message = await MessageModel.findOne({
+      where: { conversationId: conversation.id, workspaceId: workspace.id },
+    });
+    await MentionModel.create({
+      workspaceId: workspace.id,
+      messageId: message!.id,
+      agentConfigurationId: drafts[1].sId,
+      status: "approved",
+    });
+
+    vi.advanceTimersByTime(PAST_DRAFT_THRESHOLD_MS);
+
+    // Use batchSize=1 to force multiple pagination loops.
+    await purgeExpiredDraftAgentsActivity(1);
+
+    const remaining = await AgentConfigurationModel.findAll({
+      where: {
+        sId: drafts.map((d) => d.sId),
+        workspaceId: workspace.id,
+      },
+    });
+    expect(remaining).toHaveLength(1);
+    expect(remaining[0].sId).toBe(drafts[1].sId);
   });
 });
 

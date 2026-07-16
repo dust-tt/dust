@@ -1,6 +1,9 @@
 import { createAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import type { Authenticator } from "@app/lib/auth";
-import type { AgentConfigurationType } from "@app/types/assistant/agent";
+import type {
+  AgentConfigurationType,
+  AgentStatus,
+} from "@app/types/assistant/agent";
 import type {
   ModelIdType,
   ModelProviderIdType,
@@ -15,6 +18,7 @@ export class AgentConfigurationFactory {
       name: string;
       description: string;
       scope: Exclude<AgentConfigurationType["scope"], "global">;
+      status: AgentStatus;
       model: {
         providerId: ModelProviderIdType;
         modelId: ModelIdType;
@@ -26,6 +30,7 @@ export class AgentConfigurationFactory {
     const name = overrides.name ?? "Test Agent";
     const description = overrides.description ?? "Test Agent Description";
     const scope = overrides.scope ?? "visible";
+    const status = overrides.status ?? "active";
     const providerId = overrides.model?.providerId ?? "openai";
     const modelId = overrides.model?.modelId ?? "gpt-4-turbo";
     const temperature = overrides.model?.temperature ?? 0.7;
@@ -40,7 +45,7 @@ export class AgentConfigurationFactory {
       instructions: "Test Instructions",
       instructionsHtml: null,
       pictureUrl: "https://dust.tt/static/systemavatar/test_avatar_1.png",
-      status: "active",
+      status,
       scope,
       model: {
         providerId,
