@@ -218,6 +218,54 @@ export function useUpdateGroup({
   return { doUpdateGroup, isUpdating };
 }
 
+export function useDeleteGroup({ owner }: { owner: LightWorkspaceType }) {
+  const sendNotification = useSendNotification();
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  const doDeleteGroup = useCallback(
+    async ({
+      groupId,
+      groupName,
+    }: {
+      groupId: string;
+      groupName: string;
+    }): Promise<boolean> => {
+      setIsDeleting(true);
+      try {
+        const res = await clientFetch(`/api/w/${owner.sId}/groups/${groupId}`, {
+          method: "DELETE",
+        });
+
+        if (!res.ok) {
+          const error = await res.json();
+          sendNotification({
+            type: "error",
+            title: "Failed to delete group",
+            description:
+              error?.error?.message ?? "An unexpected error occurred.",
+          });
+          return false;
+        }
+
+        sendNotification({
+          type: "success",
+          title: "Group deleted",
+          description: `${groupName} has been deleted.`,
+        });
+
+        await invalidateWorkspaceGroups(owner.sId);
+
+        return true;
+      } finally {
+        setIsDeleting(false);
+      }
+    },
+    [owner.sId, sendNotification]
+  );
+
+  return { doDeleteGroup, isDeleting };
+}
+
 export function useUpdateGroupSpendLimit({
   workspaceId,
 }: {
