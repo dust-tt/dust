@@ -92,6 +92,19 @@ export function isManaged(ds: DataSource): ds is DataSource & WithConnector {
   );
 }
 
+// Counts toward the plan's connected data sources limit (limits.connections.count):
+// managed content connectors the user explicitly adds. Excludes bot integrations,
+// the web crawler, and the system-created project connector (dust_project).
+export function doesConnectorProviderCountTowardConnectionsLimit(
+  connectorProvider: ConnectorProvider
+): boolean {
+  return (
+    isManagedConnectorProvider(connectorProvider) &&
+    !isBotIntegration(connectorProvider) &&
+    connectorProvider !== "dust_project"
+  );
+}
+
 export function isRemoteDatabase(ds: DataSource): ds is DataSource &
   WithConnector & {
     connectorProvider: "snowflake" | "bigquery";

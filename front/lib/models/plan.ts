@@ -59,6 +59,7 @@ export class PlanModel extends BaseModel<PlanModel> {
   declare isByok: boolean;
   declare hasAdvancedModelAccess: boolean;
   declare maxDataSourcesCount: number;
+  declare maxConnectionsCount: number;
   declare maxDataSourcesDocumentsCount: number;
   declare maxDataSourcesDocumentsSizeMb: number;
 }
@@ -199,6 +200,11 @@ PlanModel.init(
       defaultValue: false,
     },
     maxDataSourcesCount: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      defaultValue: -1,
+    },
+    maxConnectionsCount: {
       type: DataTypes.INTEGER,
       allowNull: false,
       defaultValue: -1,

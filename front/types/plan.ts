@@ -30,6 +30,7 @@ export function isMaxAwuCreditsTimeframeType(
  * Any positive number enforces the limit, -1 means no limit.
  * */
 export type ManageDataSourcesLimitsType = {
+  count: number;
   isConfluenceAllowed: boolean;
   isSlackAllowed: boolean;
   isNotionAllowed: boolean;
