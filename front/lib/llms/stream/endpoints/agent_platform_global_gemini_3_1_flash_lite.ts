@@ -8,4 +8,6 @@ export class DustAgentPlatformGlobalGeminiThreeDotOneFlashLiteStream extends Wit
   static readonly endpointFilter = {};
 }
 
-defineDustStreamEndpoint(DustAgentPlatformGlobalGeminiThreeDotOneFlashLiteStream);
+defineDustStreamEndpoint(
+  DustAgentPlatformGlobalGeminiThreeDotOneFlashLiteStream
+);
