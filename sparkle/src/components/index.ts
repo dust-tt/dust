@@ -213,6 +213,10 @@ export {
   NavTabPillList,
   NavTabPillTrigger,
 } from "./NavTabPill";
+export {
+  NewContentMessage,
+  NewContentMessageAction,
+} from "./NewContentMessage";
 export type { NotificationType } from "./Notification";
 export { Notification, useSendNotification } from "./Notification";
 export { NotificationButton } from "./NotificationButton";
