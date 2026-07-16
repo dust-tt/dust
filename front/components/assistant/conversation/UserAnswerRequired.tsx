@@ -71,9 +71,6 @@ export function UserAnswerRequired({
     answerDraft.answerToSubmit?.customResponse !== undefined;
 
   const isSubmitting = submission !== null;
-  const isExiting = submission?.phase === "exiting";
-  const isAnswerSubmitting = submission?.kind === "answer";
-  const isSkipSubmitting = submission?.kind === "skip";
 
   // Reset the keyboard cursor and focus when a new blocked action replaces the current one.
   // biome-ignore lint/correctness/useExhaustiveDependencies: blockedAction.actionId is an intentional reset trigger
@@ -283,14 +280,17 @@ export function UserAnswerRequired({
       onKeyDown={handleContainerKeyDown}
       onMouseMove={() => setIsKeyboardNavigating(false)}
       onAnimationEnd={(event) => {
-        if (isExiting && event.currentTarget === event.target) {
+        if (
+          submission?.phase === "exiting" &&
+          event.currentTarget === event.target
+        ) {
           removeCompletedAction(blockedAction.actionId);
         }
       }}
       className={cn(
         "flex flex-col gap-4 rounded-2xl border border-dark bg-background p-5 outline-hidden",
         "ease-enter motion-reduce:animate-none",
-        isExiting
+        submission?.phase === "exiting"
           ? "animate-out fill-mode-forwards fade-out-0 duration-exit"
           : "animate-in fade-in-0 duration-enter",
         isKeyboardNavigating && "cursor-none"
@@ -364,7 +364,9 @@ export function UserAnswerRequired({
         >
           <Spinner size="lg" />
           <span className="sr-only">
-            {isSkipSubmitting ? "Skipping question" : "Submitting answer"}
+            {submission?.kind === "skip"
+              ? "Skipping question"
+              : "Submitting answer"}
           </span>
         </div>
       </div>
@@ -379,14 +381,14 @@ export function UserAnswerRequired({
           variant="outline"
           size="sm"
           onClick={handleSkip}
-          isLoading={isSkipSubmitting}
+          isLoading={submission?.kind === "skip"}
           disabled={isSubmitting}
         />
         <Button
           icon={ArrowUp}
           variant="highlight"
           size="sm"
-          isLoading={isAnswerSubmitting}
+          isLoading={submission?.kind === "answer"}
           disabled={isSubmitting || answerDraft.answerToSubmit === null}
           onClick={handleSubmit}
           aria-label="Send answer"
