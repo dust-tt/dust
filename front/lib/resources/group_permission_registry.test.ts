@@ -4,26 +4,27 @@ import {
 } from "@app/lib/resources/group_permission_registry";
 import {
   GRANT_TYPES,
+  GRANT_VERBS,
   WHOLE_TYPE_RESOURCE_ID,
 } from "@app/types/group_permissions";
 import { describe, expect, it } from "vitest";
 
 describe("assertValidGrant", () => {
   describe("accepts valid combinations", () => {
-    it("instance-level grant with a real resourceId", () => {
+    it("instance-level role (reader) with a real resourceId", () => {
       expect(() =>
         assertValidGrant({
-          grantType: "read",
+          grantType: "reader",
           resourceType: "space",
           resourceId: 5,
         })
       ).not.toThrow();
     });
 
-    it("instance-level write on an agent (editor role)", () => {
+    it("instance-level role (editor) on an agent", () => {
       expect(() =>
         assertValidGrant({
-          grantType: "write",
+          grantType: "editor",
           resourceType: "agent",
           resourceId: 7,
         })
@@ -40,7 +41,7 @@ describe("assertValidGrant", () => {
       ).not.toThrow();
     });
 
-    it("type-level verb (create) with -1", () => {
+    it("type-level capability (create) with -1", () => {
       expect(() =>
         assertValidGrant({
           grantType: "create",
@@ -82,7 +83,7 @@ describe("assertValidGrant", () => {
   });
 
   describe("rejects invalid combinations", () => {
-    it("verb not allowed on the resource type", () => {
+    it("grant type not a role on the resource type", () => {
       expect(() =>
         assertValidGrant({
           grantType: "invite",
@@ -102,7 +103,7 @@ describe("assertValidGrant", () => {
       ).toThrow(/type-level/);
     });
 
-    it("real resourceId on a type-level verb (create)", () => {
+    it("real resourceId on a type-level capability (create)", () => {
       expect(() =>
         assertValidGrant({
           grantType: "create",
@@ -125,7 +126,7 @@ describe("assertValidGrant", () => {
     it("zero resourceId (neither a real id nor the sentinel)", () => {
       expect(() =>
         assertValidGrant({
-          grantType: "read",
+          grantType: "reader",
           resourceType: "space",
           resourceId: 0,
         })
@@ -152,10 +153,10 @@ describe("assertValidGrant", () => {
       ).toThrow(/type-level/);
     });
 
-    it("type-wide write on an agent (editor is instance-only)", () => {
+    it("type-wide editor on an agent (editor is instance-only)", () => {
       expect(() =>
         assertValidGrant({
-          grantType: "write",
+          grantType: "editor",
           resourceType: "agent",
           resourceId: WHOLE_TYPE_RESOURCE_ID,
         })
@@ -165,7 +166,7 @@ describe("assertValidGrant", () => {
     it("type-wide grant on a space (space roles are instance-only)", () => {
       expect(() =>
         assertValidGrant({
-          grantType: "read",
+          grantType: "reader",
           resourceType: "space",
           resourceId: WHOLE_TYPE_RESOURCE_ID,
         })
@@ -195,11 +196,8 @@ describe("ROLE_REGISTRY invariants", () => {
         }
       }
     }
-    // Every concrete verb in the vocabulary ("*" excluded) must be granted by some role.
-    for (const verb of GRANT_TYPES) {
-      if (verb !== "*") {
-        expect(reachable.has(verb)).toBe(true);
-      }
+    for (const verb of GRANT_VERBS) {
+      expect(reachable.has(verb)).toBe(true);
     }
   });
 
@@ -210,6 +208,24 @@ describe("ROLE_REGISTRY invariants", () => {
           expect(role.verbs).toHaveLength(1);
           expect(name).toBe(role.verbs[0]);
         }
+      }
+    }
+  });
+
+  it("keeps the flat GRANT_TYPES vocabulary in sync with the role names", () => {
+    const roleNames = new Set<string>();
+    for (const roles of roleMaps) {
+      for (const name of Object.keys(roles)) {
+        roleNames.add(name);
+      }
+    }
+    // Every role name is a declared grant type, and every grant type ("*" aside) is a real role.
+    for (const name of roleNames) {
+      expect(GRANT_TYPES).toContain(name);
+    }
+    for (const grantType of GRANT_TYPES) {
+      if (grantType !== "*") {
+        expect(roleNames.has(grantType)).toBe(true);
       }
     }
   });

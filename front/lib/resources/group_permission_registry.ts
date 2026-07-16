@@ -1,5 +1,6 @@
 import type {
   GrantType,
+  GrantVerb,
   GroupPermissionResourceType,
 } from "@app/types/group_permissions";
 import { WHOLE_TYPE_RESOURCE_ID } from "@app/types/group_permissions";
@@ -24,7 +25,6 @@ import assert from "assert";
 
 // Concrete (non-wildcard) vocabulary — the registry describes these.
 type ConcreteResourceType = Exclude<GroupPermissionResourceType, "*">;
-type GrantVerb = Exclude<GrantType, "*">;
 
 // A grant applies either to a specific resource instance (resourceId > 0) or to the whole type
 // (resourceId = -1). A role declares the levels at which it can be granted.
@@ -72,23 +72,6 @@ export const ROLE_REGISTRY: Record<
   },
 };
 
-// Verbs grantable at a level on a resource type = the union of the verbs of the roles valid at that
-// level. Derived (never stored) so the roles stay the single source of truth.
-function verbsForLevel(
-  resourceType: ConcreteResourceType,
-  level: GrantLevel
-): GrantVerb[] {
-  const verbs = new Set<GrantVerb>();
-  for (const role of Object.values(ROLE_REGISTRY[resourceType])) {
-    if (role.levels.includes(level)) {
-      for (const verb of role.verbs) {
-        verbs.add(verb);
-      }
-    }
-  }
-  return [...verbs];
-}
-
 interface GrantSpec {
   grantType: GrantType;
   resourceType: GroupPermissionResourceType;
@@ -111,22 +94,17 @@ export function assertValidGrant({
     return;
   }
 
-  const allowedOnInstance = verbsForLevel(resourceType, "instance").some(
-    (verb) => verb === grantType
-  );
-  const allowedTypeWide = verbsForLevel(resourceType, "type").some(
-    (verb) => verb === grantType
-  );
+  const role = ROLE_REGISTRY[resourceType][grantType];
   assert(
-    allowedOnInstance || allowedTypeWide,
-    `Permission "${grantType}" is not allowed on resource type "${resourceType}".`
+    role,
+    `Grant type "${grantType}" is not allowed on resource type "${resourceType}".`
   );
 
   // Type-wide grant (all resources of the type / an instance-less domain).
   if (resourceId === WHOLE_TYPE_RESOURCE_ID) {
     assert(
-      allowedTypeWide,
-      `Permission "${grantType}" cannot be granted type-wide on "${resourceType}".`
+      role.levels.includes("type"),
+      `Grant type "${grantType}" cannot be granted type-wide on "${resourceType}".`
     );
     return;
   }
@@ -137,7 +115,7 @@ export function assertValidGrant({
     `Instance-level grant on "${resourceType}" requires a positive resourceId or ${WHOLE_TYPE_RESOURCE_ID}, got ${resourceId}.`
   );
   assert(
-    allowedOnInstance,
-    `Permission "${grantType}" on "${resourceType}" is type-level and requires resourceId = ${WHOLE_TYPE_RESOURCE_ID}.`
+    role.levels.includes("instance"),
+    `Grant type "${grantType}" on "${resourceType}" is type-level and requires resourceId = ${WHOLE_TYPE_RESOURCE_ID}.`
   );
 }
