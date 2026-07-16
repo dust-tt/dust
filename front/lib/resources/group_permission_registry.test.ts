@@ -175,13 +175,11 @@ describe("assertValidGrant", () => {
 });
 
 describe("ROLE_REGISTRY invariants", () => {
-  const resourceTypes = Object.keys(ROLE_REGISTRY) as Array<
-    keyof typeof ROLE_REGISTRY
-  >;
+  const roleMaps = Object.values(ROLE_REGISTRY);
 
   it("has no two roles with an identical verb set within a resource type", () => {
-    for (const resourceType of resourceTypes) {
-      const verbSets = Object.values(ROLE_REGISTRY[resourceType]).map((role) =>
+    for (const roles of roleMaps) {
+      const verbSets = Object.values(roles).map((role) =>
         [...role.verbs].sort().join(",")
       );
       expect(new Set(verbSets).size).toBe(verbSets.length);
@@ -190,8 +188,8 @@ describe("ROLE_REGISTRY invariants", () => {
 
   it("makes every grant verb reachable via at least one role", () => {
     const reachable = new Set<string>();
-    for (const resourceType of resourceTypes) {
-      for (const role of Object.values(ROLE_REGISTRY[resourceType])) {
+    for (const roles of roleMaps) {
+      for (const role of Object.values(roles)) {
         for (const verb of role.verbs) {
           reachable.add(verb);
         }
@@ -205,11 +203,12 @@ describe("ROLE_REGISTRY invariants", () => {
     }
   });
 
-  it("keeps every type-level role a singleton", () => {
-    for (const resourceType of resourceTypes) {
-      for (const role of Object.values(ROLE_REGISTRY[resourceType])) {
+  it("keeps every type-level role a singleton whose name is its verb", () => {
+    for (const roles of roleMaps) {
+      for (const [name, role] of Object.entries(roles)) {
         if (role.levels.includes("type")) {
           expect(role.verbs).toHaveLength(1);
+          expect(name).toBe(role.verbs[0]);
         }
       }
     }
