@@ -65,6 +65,17 @@ function createGaxiosError(
   return error;
 }
 
+function isTextBlock(block: unknown): block is { type: "text"; text: string } {
+  return (
+    typeof block === "object" &&
+    block !== null &&
+    "type" in block &&
+    block.type === "text" &&
+    "text" in block &&
+    typeof block.text === "string"
+  );
+}
+
 describe("handleFileAccessError", () => {
   const createMockExtra = (toolServerId: string): ToolHandlerExtra =>
     ({
@@ -91,16 +102,16 @@ describe("handleFileAccessError", () => {
 
     expect(result.isOk()).toBe(true);
     if (result.isOk()) {
-      const content = result.value;
-      expect(content).toHaveLength(1);
-      const item = content[0] as any;
-      expect(item.type).toBe("resource");
-      expect(item.resource).toMatchObject({
-        mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.AGENT_PAUSE_TOOL_OUTPUT,
-        type: "tool_file_auth_required",
-        fileId: "test-file-id",
-        fileName: "test-file.txt",
-        connectionId: "my-connection",
+      expect(result.value).toHaveLength(1);
+      expect(result.value[0]).toMatchObject({
+        type: "resource",
+        resource: {
+          mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.AGENT_PAUSE_TOOL_OUTPUT,
+          type: "tool_file_auth_required",
+          fileId: "test-file-id",
+          fileName: "test-file.txt",
+          connectionId: "my-connection",
+        },
       });
     }
   });
@@ -114,12 +125,12 @@ describe("handleFileAccessError", () => {
 
     expect(result.isOk()).toBe(true);
     if (result.isOk()) {
-      const content = result.value;
-      const item = content[0] as any;
-      expect(item.type).toBe("resource");
-      expect(item.resource).toMatchObject({
-        fileName: "test-file-id",
-        fileId: "test-file-id",
+      expect(result.value[0]).toMatchObject({
+        type: "resource",
+        resource: {
+          fileName: "test-file-id",
+          fileId: "test-file-id",
+        },
       });
     }
   });
@@ -133,11 +144,11 @@ describe("handleFileAccessError", () => {
 
     expect(result.isOk()).toBe(true);
     if (result.isOk()) {
-      const content = result.value;
-      const item = content[0] as any;
-      expect(item.type).toBe("resource");
-      expect(item.resource).toMatchObject({
-        connectionId: "my-connection",
+      expect(result.value[0]).toMatchObject({
+        type: "resource",
+        resource: {
+          connectionId: "my-connection",
+        },
       });
     }
   });
@@ -165,11 +176,11 @@ describe("handleFileAccessError", () => {
 
     expect(result.isOk()).toBe(true);
     if (result.isOk()) {
-      const content = result.value;
-      expect(content).toHaveLength(1);
-      const item = content[0] as any;
-      expect(item.type).toBe("resource");
-      expect(item.resource.type).toBe("tool_personal_auth_required");
+      expect(result.value).toHaveLength(1);
+      expect(result.value[0]).toMatchObject({
+        type: "resource",
+        resource: { type: "tool_personal_auth_required" },
+      });
     }
   });
 
@@ -249,8 +260,10 @@ describe("handleFileAccessError", () => {
 
     expect(result.isOk()).toBe(true);
     if (result.isOk()) {
-      const item = result.value[0] as any;
-      expect(item.resource.type).toBe("tool_personal_auth_required");
+      expect(result.value[0]).toMatchObject({
+        type: "resource",
+        resource: { type: "tool_personal_auth_required" },
+      });
     }
   });
 
@@ -263,9 +276,10 @@ describe("handleFileAccessError", () => {
 
     expect(result.isOk()).toBe(true);
     if (result.isOk()) {
-      const item = result.value[0] as any;
-      expect(item.type).toBe("resource");
-      expect(item.resource.type).toBe("tool_personal_auth_required");
+      expect(result.value[0]).toMatchObject({
+        type: "resource",
+        resource: { type: "tool_personal_auth_required" },
+      });
     }
   });
 
@@ -301,8 +315,10 @@ describe("handleFileAccessError", () => {
 
     expect(result.isOk()).toBe(true);
     if (result.isOk()) {
-      const item = result.value[0] as any;
-      expect(item.resource.type).toBe("tool_file_auth_required");
+      expect(result.value[0]).toMatchObject({
+        type: "resource",
+        resource: { type: "tool_file_auth_required" },
+      });
     }
   });
 
@@ -320,8 +336,10 @@ describe("handleFileAccessError", () => {
 
     expect(result.isOk()).toBe(true);
     if (result.isOk()) {
-      const item = result.value[0] as any;
-      expect(item.resource.type).toBe("tool_file_auth_required");
+      expect(result.value[0]).toMatchObject({
+        type: "resource",
+        resource: { type: "tool_file_auth_required" },
+      });
     }
   });
 
@@ -389,8 +407,10 @@ describe("parent folder permission checks", () => {
   ) {
     expect(result.isOk()).toBe(true);
     if (result.isOk()) {
-      const item = result.value[0] as any;
-      expect(item.type).toBe("text");
+      const item = result.value[0];
+      if (!isTextBlock(item)) {
+        throw new Error("Expected the first block to be a text block");
+      }
       expect(JSON.parse(item.text).error).toContain(
         "permission to add files to this folder"
       );
@@ -446,7 +466,10 @@ describe("parent folder permission checks", () => {
     expect(filesCopy).not.toHaveBeenCalled();
     expect(result.isOk()).toBe(true);
     if (result.isOk()) {
-      const item = result.value[0] as any;
+      const item = result.value[0];
+      if (!isTextBlock(item)) {
+        throw new Error("Expected the first block to be a text block");
+      }
       expect(JSON.parse(item.text).error).toContain(
         "permission to copy this file"
       );
@@ -490,7 +513,10 @@ describe("parent folder permission checks", () => {
     expect(filesCreate).toHaveBeenCalled();
     expect(result.isOk()).toBe(true);
     if (result.isOk()) {
-      const item = result.value[0] as any;
+      const item = result.value[0];
+      if (!isTextBlock(item)) {
+        throw new Error("Expected the first block to be a text block");
+      }
       expect(JSON.parse(item.text).documentId).toBe("new-doc");
     }
   });
@@ -567,19 +593,6 @@ describe("get_file_content", () => {
     authInfo: undefined,
     runContext: undefined,
   } as unknown as ToolHandlerExtra;
-
-  function isTextBlock(
-    block: unknown
-  ): block is { type: "text"; text: string } {
-    return (
-      typeof block === "object" &&
-      block !== null &&
-      "type" in block &&
-      block.type === "text" &&
-      "text" in block &&
-      typeof block.text === "string"
-    );
-  }
 
   function isBinaryFileResourceBlock(
     block: unknown
