@@ -9,7 +9,7 @@ import type {
   PostGroupResponseBody,
 } from "@app/types/api/groups/manage";
 import type { PutGroupSpendLimitResponseBody } from "@app/types/api/groups/spend_limit";
-import type { GroupKind, GroupType } from "@app/types/groups";
+import { type GroupKind, MANAGEABLE_GROUP_KINDS } from "@app/types/groups";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import type { LightWorkspaceType, UserType } from "@app/types/user";
 import { useCallback, useMemo, useState } from "react";
@@ -46,8 +46,14 @@ export function useGroups({
     disabled,
   });
 
+  const groups = useMemo(
+    () =>
+      data ? [...data.groups].sort((a, b) => a.name.localeCompare(b.name)) : [],
+    [data]
+  );
+
   return {
-    groups: data ? data.groups : emptyArray<GroupType>(),
+    groups,
     isGroupsLoading: !error && !data && !disabled,
     isGroupsError: !!error,
     mutateGroups: mutate,
@@ -106,6 +112,11 @@ async function invalidateWorkspaceGroups(workspaceId: string): Promise<void> {
 export function useCreateGroup({ owner }: { owner: LightWorkspaceType }) {
   const sendNotification = useSendNotification();
   const [isCreating, setIsCreating] = useState(false);
+  const { mutateGroups } = useGroups({
+    owner,
+    kinds: MANAGEABLE_GROUP_KINDS,
+    disabled: true,
+  });
 
   const doCreateGroup = useCallback(
     async ({
@@ -142,14 +153,20 @@ export function useCreateGroup({ owner }: { owner: LightWorkspaceType }) {
           description: `${name} has been created.`,
         });
 
-        await invalidateWorkspaceGroups(owner.sId);
+        await mutateGroups(
+          (previous) =>
+            previous
+              ? { ...previous, groups: [body.group, ...previous.groups] }
+              : previous,
+          { revalidate: false }
+        );
 
         return body;
       } finally {
         setIsCreating(false);
       }
     },
-    [owner.sId, sendNotification]
+    [owner.sId, mutateGroups, sendNotification]
   );
 
   return { doCreateGroup, isCreating };
@@ -165,6 +182,11 @@ export function useUpdateGroup({
   const sendNotification = useSendNotification();
   const [isUpdating, setIsUpdating] = useState(false);
   const { mutateGroup } = useGroup({ owner, groupId, disabled: true });
+  const { mutateGroups } = useGroups({
+    owner,
+    kinds: MANAGEABLE_GROUP_KINDS,
+    disabled: true,
+  });
 
   const doUpdateGroup = useCallback(
     async ({
@@ -205,14 +227,25 @@ export function useUpdateGroup({
         });
 
         await mutateGroup(body, { revalidate: false });
-        await invalidateWorkspaceGroups(owner.sId);
+        await mutateGroups(
+          (previous) =>
+            previous
+              ? {
+                  ...previous,
+                  groups: previous.groups.map((g) =>
+                    g.sId === body.group.sId ? body.group : g
+                  ),
+                }
+              : previous,
+          { revalidate: false }
+        );
 
         return body;
       } finally {
         setIsUpdating(false);
       }
     },
-    [owner.sId, groupId, mutateGroup, sendNotification]
+    [owner.sId, groupId, mutateGroup, mutateGroups, sendNotification]
   );
 
   return { doUpdateGroup, isUpdating };
@@ -221,6 +254,11 @@ export function useUpdateGroup({
 export function useDeleteGroup({ owner }: { owner: LightWorkspaceType }) {
   const sendNotification = useSendNotification();
   const [isDeleting, setIsDeleting] = useState(false);
+  const { mutateGroups } = useGroups({
+    owner,
+    kinds: MANAGEABLE_GROUP_KINDS,
+    disabled: true,
+  });
 
   const doDeleteGroup = useCallback(
     async ({
@@ -253,14 +291,23 @@ export function useDeleteGroup({ owner }: { owner: LightWorkspaceType }) {
           description: `${groupName} has been deleted.`,
         });
 
-        await invalidateWorkspaceGroups(owner.sId);
+        await mutateGroups(
+          (previous) =>
+            previous
+              ? {
+                  ...previous,
+                  groups: previous.groups.filter((g) => g.sId !== groupId),
+                }
+              : previous,
+          { revalidate: false }
+        );
 
         return true;
       } finally {
         setIsDeleting(false);
       }
     },
-    [owner.sId, sendNotification]
+    [owner.sId, mutateGroups, sendNotification]
   );
 
   return { doDeleteGroup, isDeleting };

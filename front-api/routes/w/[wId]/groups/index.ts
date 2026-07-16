@@ -112,8 +112,9 @@ app.post(
           assertNever(groupRes.error.code);
       }
     }
+    const group = await groupRes.value.toJSONWithMemberCount(auth);
 
-    return ctx.json({ group: groupRes.value.toJSON() });
+    return ctx.json({ group });
   }
 );
 

@@ -41,7 +41,7 @@ function getGroupKindChip(kind: GroupKind): {
     case "provisioned":
       return { label: "Provisioned", color: "success" };
     default:
-      return { label: kind, color: "primary" };
+      return { label: "Manual", color: "info" };
   }
 }
 
