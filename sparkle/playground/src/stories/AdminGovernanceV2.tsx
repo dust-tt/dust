@@ -178,11 +178,7 @@ const ANIMATION_CSS = `
     .ag-model-row:hover { background-color: var(--color-muted); }
   }
 
-  /* Toggle row hover — themed so it works in dark mode */
-  .ag-governance-row { transition: background-color 120ms ease; }
-  @media (hover: hover) and (pointer: fine) {
-    .ag-governance-row:hover { background-color: var(--color-muted); }
-  }
+  .ag-governance-row { }
 
   /* Chart line draw */
   .ag-chart-line {
@@ -266,6 +262,13 @@ interface DomainRow {
   domain: string;
   status: "verified" | "pending" | "failed";
   onClick?: () => void;
+}
+
+interface InvitationRow {
+  id: string;
+  email: string;
+  role: MemberRole;
+  invitedAt: string;
 }
 
 interface GovernanceSetting {
@@ -487,6 +490,39 @@ const DOMAINS: DomainRow[] = [
   { id: "d1", domain: "@dust.us", status: "verified" },
   { id: "d2", domain: "@dust.com", status: "pending" },
   { id: "d3", domain: "@dust.tt", status: "failed" },
+];
+
+const INITIAL_INVITATIONS: InvitationRow[] = [
+  {
+    id: "inv1",
+    email: "alex.martin@newco.io",
+    role: "member",
+    invitedAt: "2025-07-14",
+  },
+  {
+    id: "inv2",
+    email: "priya.sharma@newco.io",
+    role: "admin",
+    invitedAt: "2025-07-13",
+  },
+  {
+    id: "inv3",
+    email: "tom.okafor@newco.io",
+    role: "member",
+    invitedAt: "2025-07-12",
+  },
+  {
+    id: "inv4",
+    email: "celine.dubois@newco.io",
+    role: "billing_admin",
+    invitedAt: "2025-07-10",
+  },
+  {
+    id: "inv5",
+    email: "jake.wu@newco.io",
+    role: "member",
+    invitedAt: "2025-07-08",
+  },
 ];
 
 const INITIAL_GOVERNANCE: GovernanceSetting[] = [
@@ -1091,6 +1127,11 @@ function PeoplePage({
   onCreateGroup: (onCreated?: (group: GroupRow) => void) => void;
 }) {
   const [sub, setSub] = useState<"members" | "groups">(defaultTab ?? "members");
+  const [memberSubTab, setMemberSubTab] = useState<"members" | "invitations">(
+    "members"
+  );
+  const [invitations, setInvitations] =
+    useState<InvitationRow[]>(INITIAL_INVITATIONS);
   const [search, setSearch] = useState("");
   const [inviteOpen, setInviteOpen] = useState(false);
   const [inviteEmails, setInviteEmails] = useState("");
@@ -1221,6 +1262,89 @@ function PeoplePage({
             </DropdownMenu>
           </DataTable.CellContent>
         ),
+      },
+    ],
+    []
+  );
+
+  const ROLE_LABELS: Record<MemberRole, string> = {
+    super_admin: "Super Admin",
+    admin: "Manager",
+    security_admin: "Security Admin",
+    billing_admin: "Billing Admin",
+    member: "Member",
+  };
+
+  const invitationColumns = useMemo<ColumnDef<InvitationRow>[]>(
+    () => [
+      {
+        accessorKey: "email",
+        header: "Email",
+        meta: { className: "w-full" },
+        cell: (info) => (
+          <DataTable.CellContent>
+            <span className="text-sm text-foreground dark:text-foreground-night">
+              {info.getValue() as string}
+            </span>
+          </DataTable.CellContent>
+        ),
+      },
+      {
+        accessorKey: "role",
+        header: "Role",
+        meta: { className: "w-40" },
+        cell: (info) => (
+          <DataTable.CellContent>
+            <span className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+              {ROLE_LABELS[info.getValue() as MemberRole]}
+            </span>
+          </DataTable.CellContent>
+        ),
+      },
+      {
+        accessorKey: "invitedAt",
+        header: "Invited",
+        meta: { className: "w-36" },
+        cell: (info) => (
+          <DataTable.CellContent>
+            <span className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+              {new Date(info.getValue() as string).toLocaleDateString("en-US", {
+                month: "short",
+                day: "numeric",
+                year: "numeric",
+              })}
+            </span>
+          </DataTable.CellContent>
+        ),
+      },
+      {
+        id: "actions",
+        header: "",
+        meta: { className: "w-10" },
+        cell: (info) => {
+          const row = info.row.original;
+          return (
+            <DataTable.CellContent>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button icon={DotsHorizontal} variant="ghost" size="xs" />
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem label="Resend invitation" />
+                  <DropdownMenuItem
+                    label="Revoke invitation"
+                    variant="warning"
+                    onClick={() =>
+                      setInvitations((prev) =>
+                        prev.filter((i) => i.id !== row.id)
+                      )
+                    }
+                  />
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </DataTable.CellContent>
+          );
+        },
       },
     ],
     []
@@ -1402,29 +1526,41 @@ function PeoplePage({
               </div>
               {/* Sub-filter row */}
               <div className="flex w-full items-center justify-between gap-4">
-                <ButtonsSwitchList size="sm" defaultValue="members">
+                <ButtonsSwitchList
+                  size="sm"
+                  defaultValue="members"
+                  onValueChange={(v) =>
+                    setMemberSubTab(v as "members" | "invitations")
+                  }
+                >
                   <ButtonsSwitch value="members" label="Members" />
                   <ButtonsSwitch value="invitations" label="Invitations" />
                 </ButtonsSwitchList>
-                <div className="flex items-center gap-2">
-                  <span className="text-xs text-muted-foreground dark:text-muted-foreground-night">
-                    Filter by
-                  </span>
-                  <Button
-                    variant="outline"
-                    size="xs"
-                    label="Any role"
-                    isSelect
-                  />
-                  <Button
-                    variant="outline"
-                    size="xs"
-                    label="Any group"
-                    isSelect
-                  />
-                </div>
+                {memberSubTab === "members" && (
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-muted-foreground dark:text-muted-foreground-night">
+                      Filter by
+                    </span>
+                    <Button
+                      variant="outline"
+                      size="xs"
+                      label="Any role"
+                      isSelect
+                    />
+                    <Button
+                      variant="outline"
+                      size="xs"
+                      label="Any group"
+                      isSelect
+                    />
+                  </div>
+                )}
               </div>
-              <DataTable data={filteredMembers} columns={memberColumns} />
+              {memberSubTab === "members" ? (
+                <DataTable data={filteredMembers} columns={memberColumns} />
+              ) : (
+                <DataTable data={invitations} columns={invitationColumns} />
+              )}
             </Page.Vertical>
           </div>
         </TabsContent>
@@ -2377,10 +2513,10 @@ function FrameSharingGovernanceRow({
         <div className="flex items-center justify-between gap-4 px-4 py-3">
           <div className="flex flex-col gap-0.5">
             <span className="heading-base text-foreground dark:text-foreground-night">
-              Who can access Frames
+              Frame access
             </span>
             <span className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-              Control the level of access for Frames in this workspace.
+              Controls who can access Frames in this workspace.
             </span>
           </div>
           <DropdownMenu>
@@ -2737,7 +2873,7 @@ function GovernancePage({
           <div className="flex w-full flex-col gap-4">
             <div className="flex items-center gap-2">
               <ActionFrame className="h-5 w-5 shrink-0 text-muted-foreground dark:text-muted-foreground-night" />
-              <Page.H variant="h5">Frame sharing</Page.H>
+              <Page.H variant="h5">Frames</Page.H>
             </div>
             <FrameSharingGovernanceRow
               settings={frameSharing}
@@ -2787,10 +2923,10 @@ function GovernancePage({
           <div className="w-full rounded-xl border border-border dark:border-border-night divide-y divide-border dark:divide-border-night">
             <div className="flex items-center justify-between gap-4 px-4 py-3">
               <Page.Vertical gap="xs" sizing="grow">
-                <Page.H variant="h6">Pod access policy</Page.H>
+                <Page.H variant="h6">Pod access</Page.H>
                 <Page.P variant="secondary" size="sm">
-                  Control whether Pods can be restricted only or restricted and
-                  open.
+                  Controls whether the workspace allows restricted Pods only, or
+                  both restricted and open Pods.
                 </Page.P>
               </Page.Vertical>
               <DropdownMenu>
@@ -2818,9 +2954,9 @@ function GovernancePage({
             </div>
             <div className="flex items-center justify-between gap-4 px-4 py-3">
               <Page.Vertical gap="xs" sizing="grow">
-                <Page.H variant="h6">Pod files policy</Page.H>
+                <Page.H variant="h6">Pod files</Page.H>
                 <Page.P variant="secondary" size="sm">
-                  Control whether members can manually add files to Pods.
+                  Controls whether members can manually add files to Pods.
                 </Page.P>
               </Page.Vertical>
               <DropdownMenu>
@@ -2852,7 +2988,7 @@ function GovernancePage({
         <div className="flex w-full flex-col gap-4">
           <div className="flex items-center gap-2">
             <ShapesPlus className="h-5 w-5 shrink-0 text-muted-foreground dark:text-muted-foreground-night" />
-            <Page.H variant="h5">Feature policies</Page.H>
+            <Page.H variant="h5">Features</Page.H>
           </div>
           <div className="w-full rounded-xl border border-border dark:border-border-night divide-y divide-border dark:divide-border-night">
             {WORKSPACE_CAPABILITIES.filter(
@@ -2894,8 +3030,8 @@ function GovernancePage({
                   Private conversation URLs by default
                 </Page.H>
                 <Page.P variant="secondary" size="sm">
-                  Enforce private conversation URLs by default, limiting access
-                  to participants only.
+                  Controls whether conversation URLs are private by default,
+                  limiting access to participants.
                 </Page.P>
               </Page.Vertical>
               <SliderToggle
@@ -2907,7 +3043,7 @@ function GovernancePage({
               <Page.Vertical gap="xs" sizing="grow">
                 <Page.H variant="h6">MCP server</Page.H>
                 <Page.P variant="secondary" size="sm">
-                  Control whether external MCP clients can connect to this
+                  Controls whether external MCP clients can connect to this
                   workspace.
                 </Page.P>
               </Page.Vertical>
@@ -2929,8 +3065,8 @@ function GovernancePage({
               <Page.Vertical gap="xs" sizing="grow">
                 <Page.H variant="h6">"Sent via Agent" Slack footer</Page.H>
                 <Page.P variant="secondary" size="sm">
-                  Control whether agents can suppress the attribution footer on
-                  Slack messages posted with user credentials.
+                  Controls whether Slack messages posted with user credentials
+                  show the "Sent via Agent" footer.
                 </Page.P>
               </Page.Vertical>
               <SliderToggle
@@ -2950,7 +3086,7 @@ function GovernancePage({
         <div className="flex w-full flex-col gap-4">
           <div className="flex items-center gap-2">
             <CloudArrowLeftRight className="h-5 w-5 shrink-0 text-muted-foreground dark:text-muted-foreground-night" />
-            <Page.H variant="h5">Messaging app policies</Page.H>
+            <Page.H variant="h5">Messaging apps</Page.H>
           </div>
           <div className="w-full rounded-xl border border-border dark:border-border-night divide-y divide-border dark:divide-border-night">
             {integrations.map((integration) => (
@@ -4136,14 +4272,14 @@ const WORKSPACE_CAPABILITIES = [
     icon: Microphone01,
     label: "Voice transcription",
     description:
-      "Control whether workspace members can use voice transcription in conversations.",
+      "Controls whether members can use voice transcription in conversations.",
   },
   {
     id: "email_agents",
     icon: Mail01,
     label: "Email agents",
     description:
-      "Control whether members can reach agents by email at AGENT_NAME@dust.team.",
+      "Controls whether members can reach agents by email at AGENT_NAME@dust.team.",
     beta: true,
   },
   {
@@ -4151,7 +4287,7 @@ const WORKSPACE_CAPABILITIES = [
     icon: LayerSingle,
     label: "Audit Logs",
     description:
-      "Emit audit events to WorkOS and expose the audit logs section in workspace access. Turning this off stops emission and hides the section.",
+      "Controls whether audit events are recorded and shown in IT & Security.",
   },
 ] as const;
 
@@ -4159,7 +4295,7 @@ const INITIAL_INTEGRATIONS: IntegrationRow[] = [
   {
     id: "slack",
     label: "Slack Bot",
-    description: "Control whether the Dust Bot can be used in Slack.",
+    description: "Controls whether the Dust Bot can be used in Slack.",
     Logo: SlackLogo,
     connected: true,
     enabled: true,
@@ -4167,7 +4303,8 @@ const INITIAL_INTEGRATIONS: IntegrationRow[] = [
   {
     id: "teams",
     label: "Microsoft Teams Bot",
-    description: "Control whether the Dust Bot can be used in Microsoft Teams.",
+    description:
+      "Controls whether the Dust Bot can be used in Microsoft Teams.",
     Logo: MicrosoftTeamsLogo,
     connected: false,
     enabled: false,
@@ -4175,7 +4312,7 @@ const INITIAL_INTEGRATIONS: IntegrationRow[] = [
   {
     id: "discord",
     label: "Discord Bot",
-    description: "Control whether the Dust Bot can be used in Discord.",
+    description: "Controls whether the Dust Bot can be used in Discord.",
     Logo: DiscordLogo,
     connected: true,
     enabled: true,
