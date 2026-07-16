@@ -25,7 +25,11 @@ vi.mock(
 );
 
 // Helper to create a mock GaxiosError
-function createGaxiosError(code: number, message: string): Common.GaxiosError {
+function createGaxiosError(
+  code: number,
+  message: string,
+  reason?: string
+): Common.GaxiosError {
   const mockConfig = {
     url: "https://test.example.com",
     method: "GET",
@@ -35,7 +39,9 @@ function createGaxiosError(code: number, message: string): Common.GaxiosError {
     status: code,
     statusText: message,
     config: mockConfig,
-    data: {},
+    data: reason
+      ? { error: { code, message, errors: [{ reason, message }] } }
+      : {},
     headers: {},
     request: { responseURL: "https://test.example.com" },
   };
@@ -61,6 +67,11 @@ describe("handleFileAccessError", () => {
         },
       },
     }) as ToolHandlerExtra;
+
+  beforeEach(() => {
+    // Default: no drive client, so the token-validity probe reports invalid.
+    vi.mocked(getDriveClient).mockReset();
+  });
 
   it("should return file authorization error for 403 with 'has not granted' message", async () => {
     const result = await handleFileAccessError(
@@ -136,7 +147,8 @@ describe("handleFileAccessError", () => {
     }
   });
 
-  it("should return OAuth re-auth for general 403 errors without permission keywords", async () => {
+  it("should return OAuth re-auth for general 403 errors when the token is invalid", async () => {
+    // getDriveClient resolves to undefined, so the token-validity probe fails.
     const result = await handleFileAccessError(
       createGaxiosError(403, "Forbidden"),
       "test-file-id",
@@ -150,6 +162,139 @@ describe("handleFileAccessError", () => {
       const item = content[0] as any;
       expect(item.type).toBe("resource");
       expect(item.resource.type).toBe("tool_personal_auth_required");
+    }
+  });
+
+  it("should return a permission error for general 403 errors when the token is valid", async () => {
+    const aboutGet = vi.fn().mockResolvedValue({ data: { user: {} } });
+    vi.mocked(getDriveClient).mockResolvedValue({
+      about: { get: aboutGet },
+    } as unknown as Awaited<ReturnType<typeof getDriveClient>>);
+
+    const result = await handleFileAccessError(
+      createGaxiosError(403, "Forbidden"),
+      "test-file-id",
+      createMockExtra("my-connection")
+    );
+
+    expect(aboutGet).toHaveBeenCalled();
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error.message).toContain("does not have permission");
+    }
+  });
+
+  it("should return a rate-limit error for 403 with a rate-limit reason", async () => {
+    const result = await handleFileAccessError(
+      createGaxiosError(
+        403,
+        "User rate limit exceeded.",
+        "userRateLimitExceeded"
+      ),
+      "test-file-id",
+      createMockExtra("my-connection")
+    );
+
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error.message).toContain("rate limiting");
+    }
+  });
+
+  it("should return a permission error for 403 with a permission reason without probing the token", async () => {
+    const aboutGet = vi.fn().mockResolvedValue({ data: { user: {} } });
+    vi.mocked(getDriveClient).mockResolvedValue({
+      about: { get: aboutGet },
+    } as unknown as Awaited<ReturnType<typeof getDriveClient>>);
+
+    const result = await handleFileAccessError(
+      createGaxiosError(
+        403,
+        "Insufficient permissions for the specified parent",
+        "insufficientParentPermissions"
+      ),
+      "test-file-id",
+      createMockExtra("my-connection")
+    );
+
+    expect(aboutGet).not.toHaveBeenCalled();
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error.message).toContain("does not have permission");
+    }
+  });
+
+  it("should return OAuth re-auth for 403 with an insufficient-scope reason even when the token is valid", async () => {
+    vi.mocked(getDriveClient).mockResolvedValue({
+      about: { get: vi.fn().mockResolvedValue({ data: { user: {} } }) },
+    } as unknown as Awaited<ReturnType<typeof getDriveClient>>);
+
+    const result = await handleFileAccessError(
+      createGaxiosError(
+        403,
+        "Insufficient Permission: Request had insufficient authentication scopes.",
+        "insufficientPermissions"
+      ),
+      "test-file-id",
+      createMockExtra("my-connection")
+    );
+
+    expect(result.isOk()).toBe(true);
+    if (result.isOk()) {
+      const item = result.value[0] as any;
+      expect(item.resource.type).toBe("tool_personal_auth_required");
+    }
+  });
+
+  it("should return OAuth re-auth for 401 errors", async () => {
+    const result = await handleFileAccessError(
+      createGaxiosError(401, "Invalid Credentials", "authError"),
+      "test-file-id",
+      createMockExtra("my-connection")
+    );
+
+    expect(result.isOk()).toBe(true);
+    if (result.isOk()) {
+      const item = result.value[0] as any;
+      expect(item.type).toBe("resource");
+      expect(item.resource.type).toBe("tool_personal_auth_required");
+    }
+  });
+
+  it("should skip the file picker and return a permission error when Google reports a user-level permission denial", async () => {
+    // Message matches the picker keywords, but the structured reason says the
+    // user lacks rights on the file: re-picking cannot help.
+    const result = await handleFileAccessError(
+      createGaxiosError(
+        403,
+        "The caller does not have permission",
+        "insufficientFilePermissions"
+      ),
+      "test-file-id",
+      createMockExtra("my-connection")
+    );
+
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error.message).toContain("does not have permission");
+    }
+  });
+
+  it("should return file authorization error for 403 with the appNotAuthorizedToFile reason", async () => {
+    const result = await handleFileAccessError(
+      createGaxiosError(
+        403,
+        "The user has not granted the app access to the file",
+        "appNotAuthorizedToFile"
+      ),
+      "test-file-id",
+      createMockExtra("my-connection")
+    );
+
+    expect(result.isOk()).toBe(true);
+    if (result.isOk()) {
+      const item = result.value[0] as any;
+      expect(item.resource.type).toBe("tool_file_auth_required");
     }
   });
 
@@ -195,6 +340,150 @@ describe("handleFileAccessError", () => {
     if (result.isErr()) {
       expect(result.error.message).toBe("Failed to access file");
     }
+  });
+});
+
+describe("parent folder permission checks", () => {
+  const extra = {
+    authInfo: undefined,
+    runContext: undefined,
+  } as unknown as ToolHandlerExtra;
+
+  function getTool(name: string) {
+    const tool = TOOLS.find((t) => t.name === name);
+    if (!tool) {
+      throw new Error(`${name} tool not found`);
+    }
+    return tool;
+  }
+
+  function expectPermissionError(
+    result: Awaited<ReturnType<ReturnType<typeof getTool>["handler"]>>
+  ) {
+    expect(result.isOk()).toBe(true);
+    if (result.isOk()) {
+      const item = result.value[0] as any;
+      expect(item.type).toBe("text");
+      expect(JSON.parse(item.text).error).toContain(
+        "permission to add files to this folder"
+      );
+    }
+  }
+
+  beforeEach(() => {
+    vi.mocked(getDriveClient).mockReset();
+  });
+
+  it("copy_file returns a permission error when the destination folder is not writable", async () => {
+    const filesGet = vi.fn().mockResolvedValue({
+      data: { capabilities: { canAddChildren: false } },
+    });
+    const filesCopy = vi.fn();
+    vi.mocked(getDriveClient).mockResolvedValue({
+      files: { get: filesGet, copy: filesCopy },
+    } as unknown as Awaited<ReturnType<typeof getDriveClient>>);
+
+    const result = await getTool("copy_file").handler(
+      {
+        fileId: "src-file",
+        parentId: "restricted-folder",
+        capabilities: { canCopy: true },
+      },
+      extra
+    );
+
+    expect(filesGet).toHaveBeenCalledWith(
+      expect.objectContaining({
+        fileId: "restricted-folder",
+        fields: "capabilities/canAddChildren",
+      })
+    );
+    expect(filesCopy).not.toHaveBeenCalled();
+    expectPermissionError(result);
+  });
+
+  it("copy_file returns a permission error when the source file cannot be copied", async () => {
+    const filesGet = vi.fn().mockResolvedValue({
+      data: { capabilities: { canCopy: false } },
+    });
+    const filesCopy = vi.fn();
+    vi.mocked(getDriveClient).mockResolvedValue({
+      files: { get: filesGet, copy: filesCopy },
+    } as unknown as Awaited<ReturnType<typeof getDriveClient>>);
+
+    const result = await getTool("copy_file").handler(
+      { fileId: "src-file" },
+      extra
+    );
+
+    expect(filesCopy).not.toHaveBeenCalled();
+    expect(result.isOk()).toBe(true);
+    if (result.isOk()) {
+      const item = result.value[0] as any;
+      expect(JSON.parse(item.text).error).toContain(
+        "permission to copy this file"
+      );
+    }
+  });
+
+  it("create_document returns a permission error when the parent folder is not writable", async () => {
+    const filesGet = vi.fn().mockResolvedValue({
+      data: { capabilities: { canAddChildren: false } },
+    });
+    const filesCreate = vi.fn();
+    vi.mocked(getDriveClient).mockResolvedValue({
+      files: { get: filesGet, create: filesCreate },
+    } as unknown as Awaited<ReturnType<typeof getDriveClient>>);
+
+    const result = await getTool("create_document").handler(
+      { title: "Doc", parentId: "restricted-folder" },
+      extra
+    );
+
+    expect(filesCreate).not.toHaveBeenCalled();
+    expectPermissionError(result);
+  });
+
+  it("create_document proceeds when the parent folder is writable", async () => {
+    const filesGet = vi.fn().mockResolvedValue({
+      data: { capabilities: { canAddChildren: true } },
+    });
+    const filesCreate = vi.fn().mockResolvedValue({
+      data: { id: "new-doc", name: "Doc", webViewLink: "https://link" },
+    });
+    vi.mocked(getDriveClient).mockResolvedValue({
+      files: { get: filesGet, create: filesCreate },
+    } as unknown as Awaited<ReturnType<typeof getDriveClient>>);
+
+    const result = await getTool("create_document").handler(
+      { title: "Doc", parentId: "writable-folder" },
+      extra
+    );
+
+    expect(filesCreate).toHaveBeenCalled();
+    expect(result.isOk()).toBe(true);
+    if (result.isOk()) {
+      const item = result.value[0] as any;
+      expect(JSON.parse(item.text).documentId).toBe("new-doc");
+    }
+  });
+
+  it("create_document skips the folder check when no parent is given", async () => {
+    const filesGet = vi.fn();
+    const filesCreate = vi.fn().mockResolvedValue({
+      data: { id: "new-doc", name: "Doc", webViewLink: "https://link" },
+    });
+    vi.mocked(getDriveClient).mockResolvedValue({
+      files: { get: filesGet, create: filesCreate },
+    } as unknown as Awaited<ReturnType<typeof getDriveClient>>);
+
+    const result = await getTool("create_document").handler(
+      { title: "Doc" },
+      extra
+    );
+
+    expect(filesGet).not.toHaveBeenCalled();
+    expect(result.isOk()).toBe(true);
   });
 });
 
