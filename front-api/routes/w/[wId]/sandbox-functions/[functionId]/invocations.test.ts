@@ -715,7 +715,7 @@ describe("POST /api/w/:wId/sandbox-functions/:functionIdOrSlug/invocations/:invo
       });
     const otherInvocation = await SandboxFunctionInvocationResource.makeNew(
       adminAuth,
-      { sandboxFunction }
+      { sandboxFunction, input: undefined }
     );
 
     const response = await postResolveAuthentication({
