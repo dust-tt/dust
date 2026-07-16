@@ -3175,6 +3175,7 @@ export const PublicFrameResponseBodySchema = z.object({
   conversationUrl: z.string().nullable(),
   projectUrl: z.string().nullable(),
   file: FileTypeSchema,
+  isAuthenticatedMember: z.boolean().optional(),
 });
 
 export type PublicFrameResponseBodyType = z.infer<

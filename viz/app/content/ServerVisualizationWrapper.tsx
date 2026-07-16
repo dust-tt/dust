@@ -97,6 +97,7 @@ interface ServerSideVisualizationWrapperProps {
   identifier: string;
   isFullHeight?: boolean;
   isPdfMode?: boolean;
+  isAuthenticatedMember?: boolean;
 }
 
 /**
@@ -116,6 +117,7 @@ export async function ServerSideVisualizationWrapper({
   identifier,
   isFullHeight = false,
   isPdfMode = false,
+  isAuthenticatedMember = false,
 }: ServerSideVisualizationWrapperProps) {
   let prefetchedCode: string | undefined;
   let preFetchedFiles: PreFetchedFile[] = [];
@@ -168,6 +170,7 @@ export async function ServerSideVisualizationWrapper({
       isPdfMode={isPdfMode}
       prefetchedCode={prefetchedCode}
       prefetchedFiles={preFetchedFiles}
+      isAuthenticatedMember={isAuthenticatedMember}
     />
   );
 }
