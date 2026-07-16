@@ -66,9 +66,9 @@ import {
 } from "@app/lib/models/skill/conversation_skill";
 import { GroupSkillModel } from "@app/lib/models/skill/group_skill";
 import { SelfImprovingSkillsUsageModel } from "@app/lib/models/skill/self_improving_skills_usage";
-import { SkillFavoriteModel } from "@app/lib/models/skill/skill_favorite";
 import { SkillReferenceModel } from "@app/lib/models/skill/skill_reference";
 import { SkillSuggestionModel } from "@app/lib/models/skill/skill_suggestion";
+import { SkillUserFavoriteModel } from "@app/lib/models/skill/skill_user_favorite";
 import { TagModel } from "@app/lib/models/tags";
 import { WorkspaceSensitivityLabelConfigModel } from "@app/lib/models/workspace_sensitivity_label_config";
 import { AcademyChapterVisitModel } from "@app/lib/resources/storage/models/academy_chapter_visit";
@@ -256,7 +256,7 @@ export function loadAllModels() {
     AgentSkillModel,
     ConversationSkillModel,
     AgentMessageSkillModel,
-    SkillFavoriteModel,
+    SkillUserFavoriteModel,
     SkillMCPServerConfigurationModel,
     SkillFileAttachmentModel,
     SkillSuggestionModel,

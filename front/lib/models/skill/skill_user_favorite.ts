@@ -4,7 +4,7 @@ import { UserModel } from "@app/lib/resources/storage/models/user";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
 import type { CreationOptional, ForeignKey } from "sequelize";
 
-export class SkillFavoriteModel extends WorkspaceAwareModel<SkillFavoriteModel> {
+export class SkillUserFavoriteModel extends WorkspaceAwareModel<SkillUserFavoriteModel> {
   declare id: CreationOptional<number>;
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
@@ -13,7 +13,7 @@ export class SkillFavoriteModel extends WorkspaceAwareModel<SkillFavoriteModel> 
   declare skillIds: string[];
 }
 
-SkillFavoriteModel.init(
+SkillUserFavoriteModel.init(
   {
     id: {
       type: DataTypes.BIGINT,
@@ -45,29 +45,29 @@ SkillFavoriteModel.init(
     },
   },
   {
-    modelName: "skill_favorites",
+    modelName: "skill_user_favorites",
     sequelize: frontSequelize,
     indexes: [
       {
         unique: true,
         fields: ["workspaceId", "userId"],
-        name: "skill_favorites_workspace_user",
+        name: "skill_user_favorites_workspace_user",
         concurrently: true,
       },
       {
         fields: ["userId"],
-        name: "skill_favorites_user_id",
+        name: "skill_user_favorites_user_id",
         concurrently: true,
       },
     ],
   }
 );
 
-UserModel.hasMany(SkillFavoriteModel, {
+UserModel.hasMany(SkillUserFavoriteModel, {
   foreignKey: { name: "userId", allowNull: false },
   onDelete: "RESTRICT",
 });
-SkillFavoriteModel.belongsTo(UserModel, {
+SkillUserFavoriteModel.belongsTo(UserModel, {
   foreignKey: { name: "userId", allowNull: false },
   as: "user",
 });
