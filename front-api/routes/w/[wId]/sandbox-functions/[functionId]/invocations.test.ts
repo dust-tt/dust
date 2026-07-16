@@ -130,8 +130,12 @@ async function setupSandboxFunction({
 // approval-requiring tools (created without a workflow launch).
 async function setupBlockedAction({
   permission = "high",
+  blockedStatus = "blocked_validation_required",
 }: {
   permission?: MCPToolStakeLevelType;
+  blockedStatus?:
+    | "blocked_validation_required"
+    | "blocked_authentication_required";
 } = {}) {
   const { workspace, sandboxFunction, adminAuth, space } =
     await setupSandboxFunction();
@@ -157,7 +161,7 @@ async function setupBlockedAction({
     permission,
   });
   const [blockedCount] = await action.updateStatusFromExpected(adminAuth, {
-    status: "blocked_validation_required",
+    status: blockedStatus,
     expectedStatus: "running",
   });
   expect(blockedCount).toBe(1);
@@ -180,6 +184,29 @@ function postValidate({
 }) {
   return honoApp.request(
     `/api/w/${workspaceId}/sandbox-functions/${encodeURIComponent(functionIdOrSlug)}/invocations/${invocationId}/actions/${actionId}/validate-action`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    }
+  );
+}
+
+function postResolveAuthentication({
+  workspaceId,
+  functionIdOrSlug,
+  invocationId,
+  actionId,
+  body,
+}: {
+  workspaceId: string;
+  functionIdOrSlug: string;
+  invocationId: string;
+  actionId: string;
+  body: unknown;
+}) {
+  return honoApp.request(
+    `/api/w/${workspaceId}/sandbox-functions/${encodeURIComponent(functionIdOrSlug)}/invocations/${invocationId}/actions/${actionId}/resolve-authentication`,
     {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -550,6 +577,150 @@ describe("POST /api/w/:wId/sandbox-functions/:functionIdOrSlug/invocations/:invo
     expect(response.status).toBe(400);
     expect(await response.json()).toMatchObject({
       error: { type: "action_not_blocked" },
+    });
+  });
+});
+
+describe("POST /api/w/:wId/sandbox-functions/:functionIdOrSlug/invocations/:invocationId/actions/:actionId/resolve-authentication", () => {
+  it("completes authentication and relaunches the workflow", async () => {
+    const { workspace, sandboxFunction, invocation, action, adminAuth } =
+      await setupBlockedAction({
+        blockedStatus: "blocked_authentication_required",
+      });
+    const removeEventSpy = vi
+      .spyOn(getRedisHybridManager(), "removeEvent")
+      .mockResolvedValue(undefined);
+
+    const response = await postResolveAuthentication({
+      workspaceId: workspace.sId,
+      functionIdOrSlug: sandboxFunction.sId,
+      invocationId: invocation.sId,
+      actionId: action.sId,
+      body: { outcome: "completed" },
+    });
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({ success: true });
+
+    const refetched =
+      await SandboxFunctionMCPActionResource.fetchByModelIdWithAuth(
+        adminAuth,
+        action.id
+      );
+    expect(refetched?.status).toBe("running");
+    expect(vi.mocked(launchSandboxFunctionToolWorkflow)).toHaveBeenCalledWith(
+      expect.anything(),
+      { action: expect.objectContaining({ sId: action.sId }) }
+    );
+    expect(removeEventSpy).toHaveBeenCalledWith(
+      expect.any(Function),
+      `sandbox-function-invocation-${invocation.sId}`
+    );
+  });
+
+  it("denies authentication without relaunching the workflow", async () => {
+    const { workspace, sandboxFunction, invocation, action, adminAuth } =
+      await setupBlockedAction({
+        blockedStatus: "blocked_authentication_required",
+      });
+    vi.spyOn(getRedisHybridManager(), "removeEvent").mockResolvedValue(
+      undefined
+    );
+
+    const response = await postResolveAuthentication({
+      workspaceId: workspace.sId,
+      functionIdOrSlug: sandboxFunction.sId,
+      invocationId: invocation.sId,
+      actionId: action.sId,
+      body: { outcome: "denied" },
+    });
+
+    expect(response.status).toBe(200);
+
+    const refetched =
+      await SandboxFunctionMCPActionResource.fetchByModelIdWithAuth(
+        adminAuth,
+        action.id
+      );
+    // The poll endpoint surfaces `denied` as a 403 rejection to the in-sandbox caller.
+    expect(refetched?.status).toBe("denied");
+    expect(vi.mocked(launchSandboxFunctionToolWorkflow)).not.toHaveBeenCalled();
+  });
+
+  it("marks the action errored when the workflow relaunch throws", async () => {
+    const { workspace, sandboxFunction, invocation, action, adminAuth } =
+      await setupBlockedAction({
+        blockedStatus: "blocked_authentication_required",
+      });
+    vi.spyOn(getRedisHybridManager(), "removeEvent").mockResolvedValue(
+      undefined
+    );
+    vi.mocked(launchSandboxFunctionToolWorkflow).mockRejectedValueOnce(
+      new Error("temporal unavailable")
+    );
+
+    const response = await postResolveAuthentication({
+      workspaceId: workspace.sId,
+      functionIdOrSlug: sandboxFunction.sId,
+      invocationId: invocation.sId,
+      actionId: action.sId,
+      body: { outcome: "completed" },
+    });
+
+    expect(response.status).toBe(500);
+
+    // Compensated to a terminal status instead of hanging `running` with no workflow.
+    const refetched =
+      await SandboxFunctionMCPActionResource.fetchByModelIdWithAuth(
+        adminAuth,
+        action.id
+      );
+    expect(refetched?.status).toBe("errored");
+  });
+
+  it("returns action_not_blocked when the action is not awaiting authentication", async () => {
+    // A validation-blocked action is not an authentication block.
+    const { workspace, sandboxFunction, invocation, action } =
+      await setupBlockedAction();
+    vi.spyOn(getRedisHybridManager(), "removeEvent").mockResolvedValue(
+      undefined
+    );
+
+    const response = await postResolveAuthentication({
+      workspaceId: workspace.sId,
+      functionIdOrSlug: sandboxFunction.sId,
+      invocationId: invocation.sId,
+      actionId: action.sId,
+      body: { outcome: "completed" },
+    });
+
+    expect(response.status).toBe(400);
+    expect(await response.json()).toMatchObject({
+      error: { type: "action_not_blocked" },
+    });
+  });
+
+  it("scopes actions to the invocation in the path", async () => {
+    const { workspace, sandboxFunction, action, adminAuth } =
+      await setupBlockedAction({
+        blockedStatus: "blocked_authentication_required",
+      });
+    const otherInvocation = await SandboxFunctionInvocationResource.makeNew(
+      adminAuth,
+      { sandboxFunction }
+    );
+
+    const response = await postResolveAuthentication({
+      workspaceId: workspace.sId,
+      functionIdOrSlug: sandboxFunction.sId,
+      invocationId: otherInvocation.sId,
+      actionId: action.sId,
+      body: { outcome: "completed" },
+    });
+
+    expect(response.status).toBe(404);
+    expect(await response.json()).toMatchObject({
+      error: { type: "action_not_found" },
     });
   });
 });

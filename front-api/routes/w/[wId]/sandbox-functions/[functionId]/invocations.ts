@@ -1,4 +1,5 @@
 import { MCP_VALIDATION_OUTPUTS } from "@app/lib/actions/constants";
+import { resolveSandboxFunctionActionAuthentication } from "@app/lib/api/sandbox_functions/resolve_authentication";
 import { validateSandboxFunctionAction } from "@app/lib/api/sandbox_functions/validate_action";
 import { SandboxFunctionResource } from "@app/lib/resources/sandbox_function_resource";
 import type {
@@ -16,7 +17,8 @@ const ParamsSchema = z.object({
   functionIdOrSlug: z.string().min(1),
 });
 
-const ValidateActionParamsSchema = z.object({
+// Shared by the two action-resolution routes (validate-action, resolve-authentication).
+const ActionResolutionParamsSchema = z.object({
   functionIdOrSlug: z.string().min(1),
   invocationId: z.string().min(1),
   actionId: z.string().min(1),
@@ -25,6 +27,12 @@ const ValidateActionParamsSchema = z.object({
 const ValidateActionBodySchema = z
   .object({
     approved: z.enum(MCP_VALIDATION_OUTPUTS),
+  })
+  .strict();
+
+const ResolveAuthenticationBodySchema = z
+  .object({
+    outcome: z.enum(["completed", "denied"]),
   })
   .strict();
 
@@ -133,7 +141,7 @@ app.post(
 /** @ignoreswagger */
 app.post(
   "/:invocationId/actions/:actionId/validate-action",
-  validate("param", ValidateActionParamsSchema),
+  validate("param", ActionResolutionParamsSchema),
   validate("json", ValidateActionBodySchema),
   async (ctx): HandlerResult<{ success: boolean }> => {
     const auth = ctx.get("auth");
@@ -172,6 +180,65 @@ app.post(
           });
         case "action_not_blocked":
           // The client treats this error type as an already-successful validation (multi-client
+          // races).
+          return apiError(ctx, {
+            status_code: 400,
+            api_error: {
+              type: "action_not_blocked",
+              message: result.error.message,
+            },
+          });
+        default:
+          return assertNever(result.error.type);
+      }
+    }
+
+    return ctx.json({ success: true });
+  }
+);
+
+/** @ignoreswagger */
+app.post(
+  "/:invocationId/actions/:actionId/resolve-authentication",
+  validate("param", ActionResolutionParamsSchema),
+  validate("json", ResolveAuthenticationBodySchema),
+  async (ctx): HandlerResult<{ success: boolean }> => {
+    const auth = ctx.get("auth");
+    const { functionIdOrSlug, invocationId, actionId } = ctx.req.valid("param");
+    const { outcome } = ctx.req.valid("json");
+
+    const sandboxFunction = await SandboxFunctionResource.fetchByIdOrSlug(
+      auth,
+      functionIdOrSlug
+    );
+    if (!sandboxFunction) {
+      return apiError(ctx, {
+        status_code: 404,
+        api_error: {
+          type: "sandbox_function_not_found",
+          message: "Sandbox function not found.",
+        },
+      });
+    }
+
+    const result = await resolveSandboxFunctionActionAuthentication(auth, {
+      sandboxFunction,
+      invocationId,
+      actionId,
+      outcome,
+    });
+    if (result.isErr()) {
+      switch (result.error.type) {
+        case "action_not_found":
+          return apiError(ctx, {
+            status_code: 404,
+            api_error: {
+              type: "action_not_found",
+              message: result.error.message,
+            },
+          });
+        case "action_not_blocked":
+          // The client treats this error type as an already-resolved authentication (multi-client
           // races).
           return apiError(ctx, {
             status_code: 400,
