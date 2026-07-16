@@ -23,6 +23,7 @@ import {
   isConnectorProviderAssistantDefaultSelected,
   isValidConnectorSuffix,
 } from "@app/lib/connector_providers";
+import { doesConnectorProviderCountTowardConnectionsLimit } from "@app/lib/data_sources";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
@@ -229,6 +230,28 @@ async function handleDataSourceWithProvider({
         message: "Your plan does not allow you to create managed data sources.",
       },
     });
+  }
+
+  if (
+    plan.limits.connections.count !== -1 &&
+    doesConnectorProviderCountTowardConnectionsLimit(provider)
+  ) {
+    const dataSources = await DataSourceResource.listByWorkspace(auth);
+    const connectionsCount = dataSources.filter(
+      (ds) =>
+        ds.connectorProvider !== null &&
+        doesConnectorProviderCountTowardConnectionsLimit(ds.connectorProvider)
+    ).length;
+    if (connectionsCount >= plan.limits.connections.count) {
+      return apiError(ctx, {
+        status_code: 401,
+        api_error: {
+          type: "plan_limit_error",
+          message:
+            "Your plan does not allow you to create more connected data sources.",
+        },
+      });
+    }
   }
 
   // System spaces only for managed data sources; webcrawler is regular-only.
