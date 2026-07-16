@@ -6,66 +6,88 @@ import { WHOLE_TYPE_RESOURCE_ID } from "@app/types/group_permissions";
 import assert from "assert";
 
 /**
- * Static source of truth for `group_permissions` validity.
+ * Static source of truth for `group_permissions` validity, expressed as roles.
  *
- * The table is polymorphic, so its representable space is larger than its valid space. Every write
- * path in `GroupPermissionResource` validates against this registry and throws on violation — invalid
- * writes are programmer errors, so we fail fast rather than returning a `Result`. The DB CHECK only
- * covers the coarse instance-less-domain rule; finer per-verb rules (e.g. `create` ⇒ `-1` only) live
- * here.
+ * A role is a named bundle of verbs, valid at one or more levels. Instance-level roles bundle the
+ * verbs the product grants and revokes as a unit (e.g. a space `member` is `read` + `write`).
+ * Type-level capability roles are singletons — their name equals their single verb — because the
+ * Governance page toggles capabilities one verb at a time; a multi-verb type-level role would make
+ * a single toggle revoke verbs it did not touch.
  *
- * The `"*"` wildcards in the vocabulary are intentionally not part of the per-type table: a wildcard
+ * The stored grant value is still a plain verb today (see `@app/types/group_permissions`); this
+ * registry therefore currently serves to derive the set of valid verbs per (resourceType, level).
+ * When grants move to storing the role name, the same definitions drive verb→role expansion.
+ *
+ * The `"*"` wildcards in the vocabulary are intentionally not part of this registry: a wildcard
  * grant applies to the whole type (or all types) and is only ever a type-level (`-1`) grant.
  */
 
 // Concrete (non-wildcard) vocabulary — the registry describes these.
 type ConcreteResourceType = Exclude<GroupPermissionResourceType, "*">;
-type ConcreteGrantType = Exclude<GrantType, "*">;
+type GrantVerb = Exclude<GrantType, "*">;
 
-interface ResourceTypeRule {
-  // Verbs grantable on a specific instance (resourceId > 0).
-  instanceLevelPermissions: ConcreteGrantType[];
-  // Verbs grantable type-wide (resourceId = -1). For types with instances this includes the
-  // instance verbs (a -1 grant covers all resources) plus type-only verbs like "create"; the two
-  // lists therefore overlap. Instance-less domains have an empty instanceLevelPermissions and list
-  // their verbs here only.
-  typeLevelPermissions: ConcreteGrantType[];
+// A grant applies either to a specific resource instance (resourceId > 0) or to the whole type
+// (resourceId = -1). A role declares the levels at which it can be granted.
+type GrantLevel = "instance" | "type";
+
+interface RoleDefinition {
+  verbs: GrantVerb[];
+  levels: GrantLevel[];
 }
 
-const REGISTRY: Record<ConcreteResourceType, ResourceTypeRule> = {
+export const ROLE_REGISTRY: Record<
+  ConcreteResourceType,
+  Record<string, RoleDefinition>
+> = {
   space: {
-    instanceLevelPermissions: ["read", "write", "admin"],
-    typeLevelPermissions: ["read", "write", "admin"],
+    reader: { verbs: ["read"], levels: ["instance"] },
+    member: { verbs: ["read", "write"], levels: ["instance"] },
+    admin: { verbs: ["read", "write", "admin"], levels: ["instance"] },
   },
   agent: {
-    instanceLevelPermissions: ["read", "write", "publish"],
-    typeLevelPermissions: ["read", "write", "publish", "create"],
+    editor: { verbs: ["read", "write"], levels: ["instance"] },
+    create: { verbs: ["create"], levels: ["type"] },
+    publish: { verbs: ["publish"], levels: ["type"] },
   },
   skill: {
-    instanceLevelPermissions: ["read", "write", "publish"],
-    typeLevelPermissions: ["read", "write", "publish", "create"],
+    editor: { verbs: ["read", "write"], levels: ["instance"] },
+    create: { verbs: ["create"], levels: ["type"] },
+    publish: { verbs: ["publish"], levels: ["type"] },
   },
   frame: {
-    instanceLevelPermissions: [],
-    typeLevelPermissions: ["invite", "publish"],
+    invite: { verbs: ["invite"], levels: ["type"] },
+    publish: { verbs: ["publish"], levels: ["type"] },
   },
   billing: {
-    instanceLevelPermissions: [],
-    typeLevelPermissions: ["admin"],
+    admin: { verbs: ["admin"], levels: ["type"] },
   },
   identity: {
-    instanceLevelPermissions: [],
-    typeLevelPermissions: ["admin"],
+    admin: { verbs: ["admin"], levels: ["type"] },
   },
   audit_log: {
-    instanceLevelPermissions: [],
-    typeLevelPermissions: ["read"],
+    read: { verbs: ["read"], levels: ["type"] },
   },
   models_tier: {
-    instanceLevelPermissions: ["use"],
-    typeLevelPermissions: [],
+    use: { verbs: ["use"], levels: ["instance"] },
   },
 };
+
+// Verbs grantable at a level on a resource type = the union of the verbs of the roles valid at that
+// level. Derived (never stored) so the roles stay the single source of truth.
+function verbsForLevel(
+  resourceType: ConcreteResourceType,
+  level: GrantLevel
+): GrantVerb[] {
+  const verbs = new Set<GrantVerb>();
+  for (const role of Object.values(ROLE_REGISTRY[resourceType])) {
+    if (role.levels.includes(level)) {
+      for (const verb of role.verbs) {
+        verbs.add(verb);
+      }
+    }
+  }
+  return [...verbs];
+}
 
 interface GrantSpec {
   grantType: GrantType;
@@ -89,9 +111,12 @@ export function assertValidGrant({
     return;
   }
 
-  const rule = REGISTRY[resourceType];
-  const allowedOnInstance = rule.instanceLevelPermissions.includes(grantType);
-  const allowedTypeWide = rule.typeLevelPermissions.includes(grantType);
+  const allowedOnInstance = verbsForLevel(resourceType, "instance").some(
+    (verb) => verb === grantType
+  );
+  const allowedTypeWide = verbsForLevel(resourceType, "type").some(
+    (verb) => verb === grantType
+  );
   assert(
     allowedOnInstance || allowedTypeWide,
     `Permission "${grantType}" is not allowed on resource type "${resourceType}".`
