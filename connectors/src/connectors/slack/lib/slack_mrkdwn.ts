@@ -66,6 +66,7 @@ const SLACK_EXTENSIONS: TokenizerAndRendererExtension[] = [
     "slackMailto",
     "<mailto:",
     /^<mailto:([^|>]+)(?:\|([^>]+))?>/,
+    // group 1 is mandatory in the regex; the `?? ""` only satisfies noUncheckedIndexedAccess
     (m) => m[2] ?? m[1] ?? ""
   ),
   // <https://url|label> -> label (https://url) ; <https://url> -> https://url.
@@ -73,6 +74,7 @@ const SLACK_EXTENSIONS: TokenizerAndRendererExtension[] = [
     "slackLink",
     "<http",
     /^<(https?:\/\/[^|>]+)(?:\|([^>]+))?>/,
+    // group 1 is mandatory in the regex; the `?? ""` only satisfies noUncheckedIndexedAccess
     (m) => (m[2] ? `${m[2]} (${m[1]})` : m[1]) ?? ""
   ),
 ];
