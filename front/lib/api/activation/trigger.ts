@@ -158,11 +158,13 @@ export async function createActivationTrigger(
   return new Ok({ triggerId: triggerRes.value.sId });
 }
 
-// Fires the activation trigger for a single pod by emitting an internal webhook event.
+// Fires the activation trigger for a single pod by emitting an internal webhook
+// event. Returns the sId of the pod's activation trigger, if the event matched
+// it (a pod has at most one activation trigger, via `activationTriggerFilter`).
 export async function emitActivationEvent(
   auth: Authenticator,
   pod: SpaceResource
-): Promise<Result<void, Error>> {
+): Promise<Result<{ triggerId: string | null }, Error>> {
   const source = await WebhookSourceResource.fetchByName(
     auth,
     ACTIVATION_WEBHOOK_SOURCE_NAME
@@ -199,5 +201,5 @@ export async function emitActivationEvent(
     return result;
   }
 
-  return new Ok(undefined);
+  return new Ok({ triggerId: result.value.triggerIds[0] ?? null });
 }
