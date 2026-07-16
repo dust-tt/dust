@@ -78,6 +78,10 @@ export async function resolveSandboxFunctionActionAuthentication(
     );
   }
 
+  // TODO(2026-07-16 SECURITY): enforce resolver == initiating user here. The invocation does not
+  // yet persist an initiating user; a follow-up adds a userId to the invocation model, then this
+  // gates via canCurrentUserRespondToParentUserMessage so the tool cannot re-run under another
+  // member's personal connection.
   const [updatedCount] = await action.updateStatusFromExpected(auth, {
     status: outcome === "completed" ? "running" : "denied",
     expectedStatus: "blocked_authentication_required",
