@@ -38,6 +38,8 @@ export const TOOL_RESULTS_TO_PRESERVE = 10;
 
 export type MessageWithTokens = ModelMessageTypeMultiActions & {
   tokenCount: number;
+  // Protected messages keep both their own content and the interaction containing them.
+  isProtectedFromPruning?: boolean;
 };
 
 export type InteractionWithTokens = Interaction<MessageWithTokens>;
@@ -140,7 +142,10 @@ function pruneToolResultsFlat(
 
   const functionIndices: number[] = [];
   for (let i = 0; i < n; i++) {
-    if (messages[i].role === "function") {
+    if (
+      messages[i].role === "function" &&
+      !messages[i].isProtectedFromPruning
+    ) {
       functionIndices.push(i);
     }
   }
@@ -242,6 +247,7 @@ export function pruneToolResults(
  *
  * Never drops into the last interactionsToPreserve. A caller still over budget after that can
  * retry with a smaller floor, or force pruneToolResults deeper.
+ * Interactions containing a protected message never count toward that floor and are never dropped.
  *
  * batchToCheckpoint decides how much to drop beyond the strict minimum.
  *
@@ -276,26 +282,42 @@ export function dropInteractionsToFit(
     batchToCheckpoint: boolean;
   }
 ): InteractionWithTokens[] {
-  const n = interactions.length;
+  const protectedTokenCount = interactions.reduce(
+    (sum, interaction) =>
+      interaction.messages.some((message) => message.isProtectedFromPruning)
+        ? sum + getInteractionTokenCount(interaction)
+        : sum,
+    0
+  );
+  const droppableInteractions = interactions.filter(
+    (interaction) =>
+      !interaction.messages.some((message) => message.isProtectedFromPruning)
+  );
+  const maxTokensForDroppableInteractions = maxTokens - protectedTokenCount;
+  const n = droppableInteractions.length;
   const floorStart = Math.max(n - interactionsToPreserve, 0);
 
   // Prefix sum over interactions, from the start of the conversation.
   const prefixSum: number[] = [];
   let running = 0;
-  for (const interaction of interactions) {
+  for (const interaction of droppableInteractions) {
     running += getInteractionTokenCount(interaction);
     prefixSum.push(running);
   }
 
-  if (n === 0 || prefixSum[n - 1] <= maxTokens) {
+  if (n === 0 || prefixSum[n - 1] <= maxTokensForDroppableInteractions) {
     return interactions;
   }
 
   // Minimal drop needed: walk oldest-to-newest until the remaining total fits.
   let remaining = prefixSum[n - 1];
   let dropUpToIndex = -1;
-  for (let i = 0; i < floorStart && remaining > maxTokens; i++) {
-    remaining -= getInteractionTokenCount(interactions[i]);
+  for (
+    let i = 0;
+    i < floorStart && remaining > maxTokensForDroppableInteractions;
+    i++
+  ) {
+    remaining -= getInteractionTokenCount(droppableInteractions[i]);
     dropUpToIndex = i;
   }
   if (dropUpToIndex < 0) {
@@ -319,5 +341,14 @@ export function dropInteractionsToFit(
     }
   }
 
-  return interactions.slice(dropUpToIndex + 1);
+  let droppableIndex = 0;
+  return interactions.filter((interaction) => {
+    if (
+      interaction.messages.some((message) => message.isProtectedFromPruning)
+    ) {
+      return true;
+    }
+
+    return droppableIndex++ > dropUpToIndex;
+  });
 }

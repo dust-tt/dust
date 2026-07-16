@@ -186,10 +186,8 @@ export async function renderConversationForModel(
   const messagesWithTokens = messagesWithTokensRes.value;
   const [promptCount, toolDefinitionsCount] = promptToolsRes.value;
 
-  // The leading messages contain the list of equipped skills available to the model. Keep them
-  // outside the prunable interactions so the model always sees that list and can enable a skill
-  // at any point in the conversation. Their tokens still count against both the hard ceiling and
-  // the proactive pruning target.
+  // The leading messages contain the list of equipped skills available to the model. Protect them
+  // so the model always sees that list and can enable a skill at any point in the conversation.
   const leadingMessagesWithTokens = messagesWithTokens.slice(
     0,
     leadingMessages.length
@@ -213,16 +211,13 @@ export async function renderConversationForModel(
       "Leading messages did not match the expected system user messages; falling back to normal conversation pruning."
     );
   }
-  const protectedLeadingMessagesWithTokens = shouldProtectLeadingMessages
-    ? leadingMessagesWithTokens
-    : [];
-  const renderedMessagesWithTokens = shouldProtectLeadingMessages
-    ? messagesWithTokens.slice(leadingMessages.length)
+  const messagesWithPruningProtection = shouldProtectLeadingMessages
+    ? messagesWithTokens.map((message, index) =>
+        index < leadingMessages.length
+          ? { ...message, isProtectedFromPruning: true }
+          : message
+      )
     : messagesWithTokens;
-  const leadingMessagesTokenCount = protectedLeadingMessagesWithTokens.reduce(
-    (sum, message) => sum + message.tokenCount,
-    0
-  );
 
   // Calculate base token usage.
   const baseTokens =
@@ -233,21 +228,18 @@ export async function renderConversationForModel(
     TOKENS_MARGIN;
 
   const interactions = groupMessagesIntoInteractions(
-    renderedMessagesWithTokens
+    messagesWithPruningProtection
   );
 
   // Hard ceiling shared by every interaction combined: previous history plus the current,
   // still-in-progress turn.
-  const budgetForInteractions =
-    allowedTokenCount - baseTokens - leadingMessagesTokenCount;
+  const budgetForInteractions = allowedTokenCount - baseTokens;
 
   // Only applied when positive: a small-context model with a large prompt/tools footprint can
   // push baseTokens past the target alone, and a negative value would make the floor prune by
   // default instead of as a last resort.
   const pruningTargetCeiling =
-    model.contextSize * PRUNING_TARGET_CONTEXT_UTILIZATION -
-    baseTokens -
-    leadingMessagesTokenCount;
+    model.contextSize * PRUNING_TARGET_CONTEXT_UTILIZATION - baseTokens;
   const pruningBudget =
     pruningTargetCeiling > 0
       ? Math.min(budgetForInteractions, pruningTargetCeiling)
@@ -267,7 +259,6 @@ export async function renderConversationForModel(
       tokenizer: model.tokenizer,
     },
     baseTokens,
-    leadingMessagesTokenCount,
     promptCount,
     toolDefinitionsCount,
     tokensMargin: TOKENS_MARGIN,
@@ -297,13 +288,11 @@ export async function renderConversationForModel(
     prunedContext,
     stats: pruningStats,
   } = pruneRes.value;
-  const totalTokens =
-    leadingMessagesTokenCount + sumInteractionTokens(prunedInteractions);
+  const totalTokens = sumInteractionTokens(prunedInteractions);
 
-  const selected: MessageWithTokens[] = [
-    ...protectedLeadingMessagesWithTokens,
-    ...prunedInteractions.flatMap((interaction) => interaction.messages),
-  ];
+  const selected: MessageWithTokens[] = prunedInteractions.flatMap(
+    (interaction) => interaction.messages
+  );
   const tokensUsed = baseTokens + totalTokens;
 
   // Merge content fragments into user messages.
@@ -362,7 +351,13 @@ export async function renderConversationForModel(
 
   // Remove tokenCount from final messages and remove content fragments from return type
   const finalMessages = selected
-    .map(({ tokenCount: _tokenCount, ...msg }) => msg)
+    .map(
+      ({
+        tokenCount: _tokenCount,
+        isProtectedFromPruning: _isProtectedFromPruning,
+        ...msg
+      }) => msg
+    )
     // There should be no content fragments as they have been merged into user messages
     // TODO: refactor how we define the selected array
     .filter(
