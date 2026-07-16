@@ -1522,7 +1522,7 @@ export class FileResource extends BaseResource<FileModel> {
 
   // Authorized file access logic.
 
-  private async resolveFrameContextForAuthorizedAccess(
+  async resolveFrameScopedPathContext(
     auth: Authenticator
   ): Promise<FrameScopedPathContext> {
     const conversationId =
@@ -1781,8 +1781,7 @@ export class FileResource extends BaseResource<FileModel> {
     auth: Authenticator,
     { frameContent }: { frameContent: string }
   ): Promise<ComputedAuthorizedFileAccess> {
-    const frameContext =
-      await this.resolveFrameContextForAuthorizedAccess(auth);
+    const frameContext = await this.resolveFrameScopedPathContext(auth);
     const { refs, unverifiableRefs } =
       await this.collectVerifiedAuthorizedFileRefs(auth, {
         frameContent,
