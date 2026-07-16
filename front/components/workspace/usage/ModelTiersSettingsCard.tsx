@@ -12,11 +12,13 @@ import { Page, SettingsList } from "@dust-tt/sparkle";
 interface ModelTiersSettingsCardProps {
   owner: LightWorkspaceType;
   readOnly: boolean;
+  showHeader?: boolean;
 }
 
 export function ModelTiersSettingsCard({
   owner,
   readOnly,
+  showHeader = true,
 }: ModelTiersSettingsCardProps) {
   const {
     maxTierName: workspaceMaxTierName,
@@ -29,9 +31,11 @@ export function ModelTiersSettingsCard({
 
   return (
     <Page.Vertical gap="sm" align="stretch">
-      <span className="heading-base text-foreground dark:text-foreground-night">
-        Models tier
-      </span>
+      {showHeader && (
+        <span className="heading-base text-foreground dark:text-foreground-night">
+          Models tier
+        </span>
+      )}
       <SettingsList>
         <SettingsList.Row
           title="Workspace access"
