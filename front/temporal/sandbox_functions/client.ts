@@ -23,7 +23,6 @@ export async function launchSandboxFunctionToolWorkflow(
 ): Promise<Result<undefined, Error>> {
   const authType = auth.toJSON();
   const { workspaceId } = authType;
-  const client = await getTemporalClientForAgentNamespace();
 
   const workflowId = makeSandboxFunctionToolWorkflowId({
     workspaceId,
@@ -31,6 +30,7 @@ export async function launchSandboxFunctionToolWorkflow(
   });
 
   try {
+    const client = await getTemporalClientForAgentNamespace();
     await client.workflow.start(runSandboxFunctionToolWorkflow, {
       args: [{ authType, actionModelId: action.id }],
       taskQueue: QUEUE_NAME,
@@ -47,7 +47,7 @@ export async function launchSandboxFunctionToolWorkflow(
       // Idempotent: another caller already kicked it off for this action.
       return new Ok(undefined);
     }
-    throw error;
+    return new Err(normalizeError(error));
   }
 
   return new Ok(undefined);

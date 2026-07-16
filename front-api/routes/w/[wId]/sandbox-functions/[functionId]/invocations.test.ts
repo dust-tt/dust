@@ -462,14 +462,14 @@ describe("POST /api/w/:wId/sandbox-functions/:functionIdOrSlug/invocations/:invo
     expect(vi.mocked(launchSandboxFunctionToolWorkflow)).not.toHaveBeenCalled();
   });
 
-  it("marks the action errored when the workflow launch throws", async () => {
+  it("marks the action errored when the workflow launch fails", async () => {
     const { workspace, sandboxFunction, invocation, action, adminAuth } =
       await setupBlockedAction();
     vi.spyOn(getRedisHybridManager(), "removeEvent").mockResolvedValue(
       undefined
     );
-    vi.mocked(launchSandboxFunctionToolWorkflow).mockRejectedValueOnce(
-      new Error("temporal unavailable")
+    vi.mocked(launchSandboxFunctionToolWorkflow).mockResolvedValueOnce(
+      new Err(new Error("temporal unavailable"))
     );
 
     const response = await postValidate({
@@ -657,7 +657,7 @@ describe("POST /api/w/:wId/sandbox-functions/:functionIdOrSlug/invocations/:invo
     expect(vi.mocked(launchSandboxFunctionToolWorkflow)).not.toHaveBeenCalled();
   });
 
-  it("marks the action errored when the workflow relaunch throws", async () => {
+  it("marks the action errored when the workflow relaunch fails", async () => {
     const { workspace, sandboxFunction, invocation, action, adminAuth } =
       await setupBlockedAction({
         blockedStatus: "blocked_authentication_required",
@@ -665,8 +665,8 @@ describe("POST /api/w/:wId/sandbox-functions/:functionIdOrSlug/invocations/:invo
     vi.spyOn(getRedisHybridManager(), "removeEvent").mockResolvedValue(
       undefined
     );
-    vi.mocked(launchSandboxFunctionToolWorkflow).mockRejectedValueOnce(
-      new Error("temporal unavailable")
+    vi.mocked(launchSandboxFunctionToolWorkflow).mockResolvedValueOnce(
+      new Err(new Error("temporal unavailable"))
     );
 
     const response = await postResolveAuthentication({

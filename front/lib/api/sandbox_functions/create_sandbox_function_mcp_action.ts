@@ -217,9 +217,19 @@ export async function createSandboxFunctionMCPAction(
   });
 
   switch (actionStatus) {
-    case "running":
-      await launchSandboxFunctionToolWorkflow(auth, { action });
+    case "running": {
+      const launchResult = await launchSandboxFunctionToolWorkflow(auth, {
+        action,
+      });
+      if (launchResult.isErr()) {
+        await action.updateStatusFromExpected(auth, {
+          status: "errored",
+          expectedStatus: "running",
+        });
+        throw launchResult.error;
+      }
       break;
+    }
     case "blocked_validation_required": {
       const approvalEventBase = await makeMCPApproveExecutionEventBase(auth, {
         actionId: action.sId,

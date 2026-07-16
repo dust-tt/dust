@@ -144,17 +144,18 @@ export async function validateSandboxFunctionAction(
   );
 
   if (approvalState !== "rejected") {
-    try {
-      await launchSandboxFunctionToolWorkflow(auth, { action });
-    } catch (err) {
+    const launchResult = await launchSandboxFunctionToolWorkflow(auth, {
+      action,
+    });
+    if (launchResult.isErr()) {
       // The action is already `running`; a failed launch would otherwise leave the poll hanging
       // until token expiry with no workflow. Compensate to a terminal `errored` (CAS-guarded so a
-      // workflow that did start and already moved the status is not clobbered), then rethrow.
+      // workflow that did start and already moved the status is not clobbered), then propagate.
       await action.updateStatusFromExpected(auth, {
         status: "errored",
         expectedStatus: "running",
       });
-      throw err;
+      throw launchResult.error;
     }
   }
 
