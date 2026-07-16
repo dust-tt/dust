@@ -264,13 +264,14 @@ export const DataSourceBuilderSelector = ({
 
   const breadcrumbItems: BreadcrumbsItem[] = useMemo(() => {
     if (shouldShowSearch && currentSpace) {
-      // When searching in space scope, show only up to space level
+      // Space-scope search still filters by currentCategory, so keep it in the breadcrumb.
       if (searchScope === "space") {
         const spaceIndex = navigationHistory.findIndex(
           (entry) => entry.type === "space"
         );
+        const lastIndex = currentCategory ? spaceIndex + 1 : spaceIndex;
         const spaceNavigation =
-          spaceIndex >= 0 ? navigationHistory.slice(0, spaceIndex + 1) : [];
+          spaceIndex >= 0 ? navigationHistory.slice(0, lastIndex + 1) : [];
 
         return spaceNavigation.map((entry, index) => ({
           ...getBreadcrumbConfig(entry),
@@ -299,6 +300,7 @@ export const DataSourceBuilderSelector = ({
     shouldShowSearch,
     currentSpace,
     searchScope,
+    currentCategory,
   ]);
 
   if (filteredSpaces.length === 0) {
