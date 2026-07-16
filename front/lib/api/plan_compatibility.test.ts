@@ -51,12 +51,24 @@ describe("checkWorkspaceFitsPlanLimits - connections limit", () => {
     expect(res.fits).toBe(true);
   });
 
-  it("does not count folders or the web crawler toward the connections limit", async () => {
+  it("does not count folders, the web crawler, bots or project connectors toward the connections limit", async () => {
     await DataSourceViewFactory.folder(workspace, globalSpace, user);
     await DataSourceViewFactory.fromConnector(
       workspace,
       globalSpace,
       "webcrawler",
+      user
+    );
+    await DataSourceViewFactory.fromConnector(
+      workspace,
+      globalSpace,
+      "slack_bot",
+      user
+    );
+    await DataSourceViewFactory.fromConnector(
+      workspace,
+      globalSpace,
+      "dust_project",
       user
     );
     await DataSourceViewFactory.fromConnector(

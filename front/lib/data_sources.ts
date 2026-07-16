@@ -93,13 +93,15 @@ export function isManaged(ds: DataSource): ds is DataSource & WithConnector {
 }
 
 // Counts toward the plan's connected data sources limit (limits.connections.count):
-// managed content connectors only, excluding bot integrations and the web crawler.
+// managed content connectors the user explicitly adds. Excludes bot integrations,
+// the web crawler, and the system-created project connector (dust_project).
 export function doesConnectorProviderCountTowardConnectionsLimit(
   connectorProvider: ConnectorProvider
 ): boolean {
   return (
     isManagedConnectorProvider(connectorProvider) &&
-    !isBotIntegration(connectorProvider)
+    !isBotIntegration(connectorProvider) &&
+    connectorProvider !== "dust_project"
   );
 }
 
