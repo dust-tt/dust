@@ -360,12 +360,6 @@ export function useUpdateSkillFavorite({
       status: "active",
       disabled: true,
     });
-  const { mutateSkillsWithRelations: mutateArchivedSkillsWithRelations } =
-    useSkillsWithRelations({
-      owner,
-      status: "archived",
-      disabled: true,
-    });
 
   const updateSkillFavorite = useCallback(
     async (
@@ -379,7 +373,6 @@ export function useUpdateSkillFavorite({
 
         void mutateActiveSkills();
         void mutateActiveSkillsWithRelations();
-        void mutateArchivedSkillsWithRelations();
         return true;
       } catch (err) {
         sendNotification({
@@ -396,7 +389,6 @@ export function useUpdateSkillFavorite({
       fetcher,
       mutateActiveSkills,
       mutateActiveSkillsWithRelations,
-      mutateArchivedSkillsWithRelations,
       owner.sId,
       sendNotification,
     ]

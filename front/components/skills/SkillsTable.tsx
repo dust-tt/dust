@@ -298,9 +298,7 @@ export function SkillsTable({
         updatedAt: skill.updatedAt,
         createdAt: skill.createdAt,
         isFavorite: skill.isFavorite ?? false,
-        canToggleFavorite:
-          showFavoriteControls &&
-          (skill.status === "active" || (skill.isFavorite ?? false)),
+        canToggleFavorite: showFavoriteControls && skill.status === "active",
         onClick: () => {
           // During batch edition the DataTable itself toggles the row selection on
           // click; don't open the details panel on top of it.
