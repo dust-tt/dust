@@ -157,7 +157,8 @@ export const WORKSPACE_ANALYTICS_TOOLS_METADATA = createToolsRecord({
       "the tag's id. Use this to enumerate which agent tags exist and obtain " +
       "their ids, then supply those ids as the agentTagIds filter on the " +
       "other analytics tools. Because an agent can bear several tags, per-tag " +
-      "counts overlap and may exceed the workspace total. Admin-only.",
+      "counts overlap and may exceed the workspace total. Tags are fetched " +
+      "based on historical message data and may not reflect current agent tags. Admin-only.",
     schema: getTopAgentTagsSchema,
     stake: "never_ask",
     displayLabels: {
