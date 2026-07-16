@@ -76,7 +76,7 @@ app.get(
     const members = await group.getActiveMembers(auth);
 
     return ctx.json({
-      group: group.toJSON(),
+      group: { ...group.toJSON(), memberCount: members.length },
       members: members.map((member) => member.toJSON()),
     });
   }
@@ -194,7 +194,7 @@ app.patch(
     const members = await group.getActiveMembers(auth);
 
     return ctx.json({
-      group: group.toJSON(),
+      group: { ...group.toJSON(), memberCount: members.length },
       members: members.map((member) => member.toJSON()),
     });
   }
