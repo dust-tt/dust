@@ -124,6 +124,11 @@ describe("getFileFromConversationAttachment", () => {
         new Ok({
           stat: vi.fn().mockResolvedValue(new Ok(null)),
           read: vi.fn(),
+          toMountFilePath: vi
+            .fn()
+            .mockReturnValue(
+              `w/unknown/conversations/${conversation.sId}/files/missing.pdf`
+            ),
         })
       );
 
@@ -138,6 +143,57 @@ describe("getFileFromConversationAttachment", () => {
         return;
       }
       expect(result.error).toContain("not found");
+    });
+
+    it("falls back to the FileResource when the GCS mount object is missing", async () => {
+      const { authenticator: auth } = await createResourceTest({
+        role: "admin",
+      });
+
+      const conversation = await createConversation(auth, {
+        title: "Test",
+        visibility: "unlisted",
+        spaceId: null,
+      });
+
+      // A ready conversation file claims its mount path on creation, but the GCS object at
+      // that path may be missing (user uploads are stored at the FileResource canonical key).
+      const file = await FileFactory.create(auth, auth.getNonNullableUser(), {
+        contentType: "application/pdf",
+        fileName: "report.pdf",
+        fileSize: 100,
+        status: "ready",
+        useCase: "conversation",
+        useCaseMetadata: { conversationId: conversation.sId },
+      });
+      expect(file.mountFilePath).not.toBeNull();
+
+      mockFromScopedPath.mockResolvedValue(
+        new Ok({
+          stat: vi.fn().mockResolvedValue(new Ok(null)),
+          read: vi.fn(),
+          toMountFilePath: vi.fn().mockReturnValue(file.mountFilePath),
+        })
+      );
+
+      const expectedContent = "pdf bytes";
+      vi.spyOn(FileResource.prototype, "getReadStream").mockReturnValue(
+        makeReadableStream(expectedContent)
+      );
+
+      const result = await getFileFromConversationAttachment(
+        auth,
+        `conversation-${conversation.sId}/report.pdf`,
+        makeToolContext({ ...conversation, content: [] })
+      );
+
+      expect(result.isOk()).toBe(true);
+      if (!result.isOk()) {
+        return;
+      }
+      expect(result.value.buffer.toString()).toBe(expectedContent);
+      expect(result.value.contentType).toBe("application/pdf");
+      expect(result.value.filename).toBe("report.pdf");
     });
 
     it("returns Err when fromScopedPath fails", async () => {
@@ -419,6 +475,11 @@ describe("resolveConversationFileRef", () => {
       mockFromScopedPath.mockResolvedValue(
         new Ok({
           stat: vi.fn().mockResolvedValue(new Ok(null)),
+          toMountFilePath: vi
+            .fn()
+            .mockReturnValue(
+              `w/unknown/conversations/${conversation.sId}/files/missing.png`
+            ),
         })
       );
 
@@ -433,6 +494,51 @@ describe("resolveConversationFileRef", () => {
         return;
       }
       expect(result.error).toContain("not found");
+    });
+
+    it("falls back to the FileResource when the GCS mount object is missing", async () => {
+      const { authenticator: auth } = await createResourceTest({
+        role: "admin",
+      });
+
+      const conversation = await createConversation(auth, {
+        title: "Test",
+        visibility: "unlisted",
+        spaceId: null,
+      });
+
+      const file = await FileFactory.create(auth, auth.getNonNullableUser(), {
+        contentType: "image/png",
+        fileName: "photo.png",
+        fileSize: 512,
+        status: "ready",
+        useCase: "conversation",
+        useCaseMetadata: { conversationId: conversation.sId },
+      });
+      expect(file.mountFilePath).not.toBeNull();
+
+      mockFromScopedPath.mockResolvedValue(
+        new Ok({
+          stat: vi.fn().mockResolvedValue(new Ok(null)),
+          toMountFilePath: vi.fn().mockReturnValue(file.mountFilePath),
+        })
+      );
+
+      const result = await resolveConversationFileRef(
+        auth,
+        `conversation-${conversation.sId}/photo.png`,
+        undefined // canonical paths do not need toolContext
+      );
+
+      expect(result.isOk()).toBe(true);
+      if (!result.isOk()) {
+        return;
+      }
+      expect(result.value.contentType).toBe("image/png");
+      expect(result.value.sizeBytes).toBe(512);
+      expect(result.value.fileName).toBe("photo.png");
+      expect(typeof result.value.getSignedUrl).toBe("function");
+      expect(typeof result.value.createReadStream).toBe("function");
     });
   });
 

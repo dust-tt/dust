@@ -44,6 +44,55 @@ export type ConversationFileRef = {
 };
 
 /**
+ * Fallback resolution for canonical scoped paths whose GCS mount object is missing.
+ *
+ * User-uploaded conversation files are stored at their FileResource canonical key
+ * (files/w/{wId}/{fileId}/...) and may never have been copied to the deterministic mount path
+ * DustFileSystem reads from, even though the model was shown the canonical scoped path (it is
+ * rendered from `FileResource.mountFilePath`). Map the scoped path back to the FileResource
+ * through its claimed mount path so content can be served from the original version.
+ */
+async function findFileForCanonicalScopedPath(
+  auth: Authenticator,
+  fs: DustFileSystem,
+  scopedPath: string
+): Promise<FileResource | null> {
+  const mountFilePath = fs.toMountFilePath(scopedPath);
+  if (!mountFilePath) {
+    return null;
+  }
+
+  // Stored mount paths may differ in Unicode normalization from what the model echoes back
+  // (see resolveFile). Try the path as-is, then NFC, then NFD.
+  const candidates = [
+    ...new Set([
+      mountFilePath,
+      mountFilePath.normalize("NFC"),
+      mountFilePath.normalize("NFD"),
+    ]),
+  ];
+
+  const files = await FileResource.fetchByMountFilePaths(auth, candidates);
+  return (
+    files.find((f) => f.mountFilePath === mountFilePath) ?? files[0] ?? null
+  );
+}
+
+function makeFileRefFromResource(
+  auth: Authenticator,
+  fileResource: FileResource
+): ConversationFileRef {
+  return {
+    contentType: fileResource.contentType,
+    sizeBytes: fileResource.fileSize,
+    fileName: sanitizeFilename(fileResource.fileName),
+    getSignedUrl: () => fileResource.getSignedUrlForDownload(auth, "original"),
+    createReadStream: () =>
+      fileResource.getReadStream({ auth, version: "original" }),
+  };
+}
+
+/**
  * Resolve a conversation file (scoped path or legacy fileId) to its metadata
  * and lazy GCS accessors, without reading its content.
  *
@@ -69,7 +118,16 @@ export async function resolveConversationFileRef(
       return new Err(statResult.error.message);
     }
     if (!statResult.value) {
-      return new Err(`File not found: \`${fileId}\`.`);
+      const fileResource = await findFileForCanonicalScopedPath(
+        auth,
+        fs,
+        fileId
+      );
+      if (!fileResource) {
+        return new Err(`File not found: \`${fileId}\`.`);
+      }
+
+      return new Ok(makeFileRefFromResource(auth, fileResource));
     }
 
     const { contentType, sizeBytes } = statResult.value;
@@ -137,14 +195,7 @@ export async function resolveConversationFileRef(
     return new Err(`File ${fileId} does not belong to this conversation`);
   }
 
-  return new Ok({
-    contentType: fileResource.contentType,
-    sizeBytes: fileResource.fileSize,
-    fileName: sanitizeFilename(fileResource.fileName),
-    getSignedUrl: () => fileResource.getSignedUrlForDownload(auth, "original"),
-    createReadStream: () =>
-      fileResource.getReadStream({ auth, version: "original" }),
-  });
+  return new Ok(makeFileRefFromResource(auth, fileResource));
 }
 
 /**
@@ -190,7 +241,27 @@ export async function getFileFromConversationAttachment(
       return new Err(statResult.error.message);
     }
     if (!statResult.value) {
-      return new Err(`File not found: \`${fileId}\`.`);
+      const fileResource = await findFileForCanonicalScopedPath(
+        auth,
+        fs,
+        fileId
+      );
+      if (!fileResource) {
+        return new Err(`File not found: \`${fileId}\`.`);
+      }
+
+      const bufferResult = await streamToBuffer(
+        fileResource.getReadStream({ auth, version: "original" })
+      );
+      if (bufferResult.isErr()) {
+        return new Err(bufferResult.error);
+      }
+
+      return new Ok({
+        buffer: bufferResult.value,
+        filename: sanitizeFilename(fileResource.fileName),
+        contentType: fileResource.contentType,
+      });
     }
 
     const readResult = await fs.read(fileId);
