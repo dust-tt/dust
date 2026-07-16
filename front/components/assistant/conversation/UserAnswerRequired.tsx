@@ -20,6 +20,11 @@ interface UserAnswerRequiredProps {
   retryHandler: () => Promise<void>;
 }
 
+type SubmissionState = {
+  kind: "answer" | "skip";
+  phase: "pending" | "exiting";
+} | null;
+
 function isPrintableKey(e: KeyboardEvent<HTMLDivElement>) {
   return (
     e.key.length === 1 && e.key !== " " && !e.altKey && !e.ctrlKey && !e.metaKey
@@ -47,10 +52,7 @@ export function UserAnswerRequired({
   const answerDraft = useUserAnswerDraft({
     multiSelect: blockedAction.question.multiSelect,
   });
-  const [pendingSubmission, setPendingSubmission] = useState<
-    "answer" | "skip" | null
-  >(null);
-  const [isExiting, setIsExiting] = useState(false);
+  const [submission, setSubmission] = useState<SubmissionState>(null);
   const [activeOptionIndex, setActiveOptionIndex] = useState(0);
   const [isCustomResponseFocused, setIsCustomResponseFocused] = useState(false);
   const [isKeyboardNavigating, setIsKeyboardNavigating] = useState(false);
@@ -68,9 +70,10 @@ export function UserAnswerRequired({
     isCustomResponseFocused ||
     answerDraft.answerToSubmit?.customResponse !== undefined;
 
-  const isSubmitting = pendingSubmission !== null;
-  const isAnswerSubmitting = pendingSubmission === "answer";
-  const isSkipSubmitting = pendingSubmission === "skip";
+  const isSubmitting = submission !== null;
+  const isExiting = submission?.phase === "exiting";
+  const isAnswerSubmitting = submission?.kind === "answer";
+  const isSkipSubmitting = submission?.kind === "skip";
 
   // Reset the keyboard cursor and focus when a new blocked action replaces the current one.
   // biome-ignore lint/correctness/useExhaustiveDependencies: blockedAction.actionId is an intentional reset trigger
@@ -87,38 +90,33 @@ export function UserAnswerRequired({
   ) {
     // Move focus out of the controls before disabling and hiding them.
     containerRef.current?.focus({ preventScroll: true });
-    setPendingSubmission(isSkip ? "skip" : "answer");
-    try {
-      // Submit against the action's own conversation/message: for a sub-agent
-      // question these are the child's ids (the action lives in the child
-      // conversation). For a direct question they equal the current conversation.
-      const result = await answerQuestion({
-        conversationId: blockedAction.conversationId,
-        messageId: blockedAction.messageId,
-        actionId: blockedAction.actionId,
-        answer,
-      });
+    const submissionKind = isSkip ? "skip" : "answer";
+    setSubmission({ kind: submissionKind, phase: "pending" });
 
-      if (!result.success) {
-        setPendingSubmission(null);
-        return;
-      }
+    // Submit against the action's own conversation/message: for a sub-agent
+    // question these are the child's ids (the action lives in the child
+    // conversation). For a direct question they equal the current conversation.
+    const result = await answerQuestion({
+      conversationId: blockedAction.conversationId,
+      messageId: blockedAction.messageId,
+      actionId: blockedAction.actionId,
+      answer,
+    });
 
+    if (result.success) {
       // Resume the agent run. For a sub-agent question this also relaunches the
       // blocked parent run (the child retry is a no-op once the answer is in).
       await retryHandler();
-    } catch (error) {
-      setPendingSubmission(null);
-      throw error;
-    }
 
-    if (shouldReduceMotion) {
-      removeCompletedAction(blockedAction.actionId);
-      return;
+      if (shouldReduceMotion) {
+        removeCompletedAction(blockedAction.actionId);
+      } else {
+        // Keep the submission state visible until the exit animation removes the card.
+        setSubmission({ kind: submissionKind, phase: "exiting" });
+      }
+    } else {
+      setSubmission(null);
     }
-
-    // Keep the submission state visible until the exit animation removes the card.
-    setIsExiting(true);
   }
 
   function activateOption(index: number) {
