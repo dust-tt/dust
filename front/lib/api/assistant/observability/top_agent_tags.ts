@@ -1,38 +1,37 @@
-import type { WorkspaceTopUserRow } from "@app/lib/api/analytics/workspace_analytics";
 import { buildAgentAnalyticsBaseQuery } from "@app/lib/api/assistant/observability/utils";
 import type { ElasticsearchError } from "@app/lib/api/elasticsearch";
 import { bucketsToArray, searchAnalytics } from "@app/lib/api/elasticsearch";
 import type { Authenticator } from "@app/lib/auth";
-import { UserResource } from "@app/lib/resources/user_resource";
+import { TagResource } from "@app/lib/resources/tags_resource";
 import type { Result } from "@app/types/shared/result";
 import { Ok } from "@app/types/shared/result";
 import type { estypes } from "@elastic/elasticsearch";
 
-type TopUserBucket = {
+export type TopAgentTagRow = {
+  tagId: string;
+  name: string;
+  messageCount: number;
+  agentCount: number;
+};
+
+type TopAgentTagBucket = {
   key: string;
   doc_count: number;
   unique_agents?: estypes.AggregationsCardinalityAggregate;
 };
 
-type TopUsersAggs = {
-  by_user?: estypes.AggregationsMultiBucketAggregateBase<TopUserBucket>;
+type TopAgentTagsAggs = {
+  by_agent_tag?: estypes.AggregationsMultiBucketAggregateBase<TopAgentTagBucket>;
 };
 
-function getUserDisplayName(user: UserResource | undefined): string {
-  if (!user) {
-    return "Programmatic usage";
-  }
-  const fullName = user.fullName();
-  if (fullName) {
-    return fullName;
-  }
-  if (user.username) {
-    return user.username;
-  }
-  return user.email || "Programmatic usage";
-}
-
-export async function fetchTopUsers(
+// Ranks agent tags by message count over a time window, with the count of
+// distinct agents carrying each tag.
+// Backs the top-agent-tags analytics endpoint.
+// Either `days` or `startDate`/`endDate` bounds the window; source/agent/user
+// filters are optional.
+// Since agents can have multiple tags, counts overlap and can sum to more than
+// the total message volume.
+export async function fetchTopAgentTags(
   auth: Authenticator,
   {
     days,
@@ -53,7 +52,7 @@ export async function fetchTopUsers(
     userIds?: string[];
     agentTagIds?: string[];
   }
-): Promise<Result<WorkspaceTopUserRow[], ElasticsearchError>> {
+): Promise<Result<TopAgentTagRow[], ElasticsearchError>> {
   const owner = auth.getNonNullableWorkspace();
 
   const baseQuery = buildAgentAnalyticsBaseQuery({
@@ -67,16 +66,16 @@ export async function fetchTopUsers(
     agentTagIds,
   });
 
-  const result = await searchAnalytics<never, TopUsersAggs>(
+  const result = await searchAnalytics<never, TopAgentTagsAggs>(
     {
       bool: {
-        filter: [baseQuery, { exists: { field: "user_id" } }],
+        filter: [baseQuery, { exists: { field: "agent_tag_ids" } }],
       },
     },
     {
       aggregations: {
-        by_user: {
-          terms: { field: "user_id", size: limit },
+        by_agent_tag: {
+          terms: { field: "agent_tag_ids", size: limit },
           aggs: {
             unique_agents: { cardinality: { field: "agent_id" } },
           },
@@ -90,24 +89,25 @@ export async function fetchTopUsers(
     return result;
   }
 
-  const buckets = bucketsToArray<TopUserBucket>(
-    result.value.aggregations?.by_user?.buckets
+  const buckets = bucketsToArray<TopAgentTagBucket>(
+    result.value.aggregations?.by_agent_tag?.buckets
   );
 
-  const bucketUserIds = buckets.map((bucket) => String(bucket.key));
-  const users =
-    bucketUserIds.length > 0
-      ? await UserResource.fetchByIds(bucketUserIds)
-      : [];
-  const usersById = new Map(users.map((user) => [user.sId, user]));
+  const tagIds = buckets.map((bucket) => String(bucket.key));
+  if (tagIds.length === 0) {
+    return new Ok([]);
+  }
+
+  const tags = await TagResource.fetchByIds(auth, tagIds);
+  const nameById = new Map(tags.map((tag) => [tag.sId, tag.name]));
 
   const rows = buckets.map((bucket) => {
-    const userId = String(bucket.key);
-    const user = usersById.get(userId);
+    const tagId = String(bucket.key);
     return {
-      userId,
-      name: getUserDisplayName(user),
-      imageUrl: user?.imageUrl ?? null,
+      tagId,
+      // A tag may have been deleted after messages were indexed; fall back to
+      // the raw id so the row is still actionable.
+      name: nameById.get(tagId) ?? tagId,
       messageCount: bucket.doc_count ?? 0,
       agentCount: Math.round(bucket.unique_agents?.value ?? 0),
     };

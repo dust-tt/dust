@@ -31,11 +31,13 @@ const getTopAgentsSchema = topListSchema("agents");
 const getTopUsersSchema = topListSchema("users");
 const getTopSkillsSchema = topListSchema("skills");
 const getTopToolsSchema = topListSchema("tools");
+const getTopAgentTagsSchema = topListSchema("agent tags");
 
 const getSourceBreakdownSchema = {
   ...timeWindowSchemaShape,
   agentIds: usageFilterSchema.agentIds,
   userIds: usageFilterSchema.userIds,
+  agentTagIds: usageFilterSchema.agentTagIds,
 };
 
 const getAgentDetailsSchema = {
@@ -147,6 +149,25 @@ export const WORKSPACE_ANALYTICS_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "basic",
     freeUsage: false,
   },
+  get_top_agent_tags: {
+    description:
+      "List the agent tags applied across the workspace over a time window " +
+      "(defaults to the current calendar month), ranked by message volume, " +
+      "with the number of distinct agents bearing each tag. Each row includes " +
+      "the tag's id. Use this to enumerate which agent tags exist and obtain " +
+      "their ids, then supply those ids as the agentTagIds filter on the " +
+      "other analytics tools. Because an agent can bear several tags, per-tag " +
+      "counts overlap and may exceed the workspace total. Tags are fetched " +
+      "based on historical message data and may not reflect current agent tags. Admin-only.",
+    schema: getTopAgentTagsSchema,
+    stake: "never_ask",
+    displayLabels: {
+      running: "Retrieving top agent tags",
+      done: "Retrieved top agent tags",
+    },
+    toolCostCategory: "basic",
+    freeUsage: false,
+  },
   get_agent_details: {
     description:
       "Return an agent's full configuration: name, description, scope, model, " +
@@ -166,8 +187,8 @@ export const WORKSPACE_ANALYTICS_TOOLS_METADATA = createToolsRecord({
     description:
       "Return the workspace's most-used skills over a time window (defaults " +
       "to the current calendar month), ranked by execution count. Optionally " +
-      "filter by source (context_origin), agent, or user. Use this to answer " +
-      "which skills are used most. Admin-only.",
+      "filter by source (context_origin), agent, user, or tag. Use this to " +
+      "answer which skills are used most. Admin-only.",
     schema: getTopSkillsSchema,
     stake: "never_ask",
     displayLabels: {
@@ -182,8 +203,8 @@ export const WORKSPACE_ANALYTICS_TOOLS_METADATA = createToolsRecord({
       "Return the workspace's most-used MCP tools and integrations over a " +
       "time window (defaults to the current calendar month), ranked by " +
       "execution count. Shows which MCP server tools are called most. Optionally " +
-      "filter by source (context_origin), agent, or user. Use this to answer " +
-      "which tools are used most or which integrations agents " +
+      "filter by source (context_origin), agent, user, or tag. Use this to " +
+      "answer which tools are used most or which integrations agents " +
       "rely on. Admin-only.",
     schema: getTopToolsSchema,
     stake: "never_ask",
@@ -204,8 +225,8 @@ export const WORKSPACE_ANALYTICS_TOOLS_METADATA = createToolsRecord({
       "dashboard. Use this to discover and compare which channels or " +
       "integrations drive usage (including programmatic ones like API and " +
       "triggers) — the source filter on the other tools only narrows to one " +
-      "source, this enumerates them all. Optionally filter by agent or user. " +
-      "Admin-only.",
+      "source, this enumerates them all. Optionally filter by agent, user, or " +
+      "tag. Admin-only.",
     schema: getSourceBreakdownSchema,
     stake: "never_ask",
     displayLabels: {
@@ -223,8 +244,9 @@ export const WORKSPACE_ANALYTICS_TOOLS_METADATA = createToolsRecord({
       "billing computes them. IMPORTANT: these figures are ESTIMATES derived " +
       "from usage logs — always tell the user they are approximate and point " +
       "them to the workspace Usage page for exact, billed credit amounts. " +
-      "Optionally filter by source (context_origin), agent, or user. " +
-      "Admin-only.",
+      "Optionally filter by source (context_origin), agent, user, or tag — " +
+      "e.g. filter by tag to attribute credits to all agents with a given " +
+      "tag. Admin-only.",
     schema: getCreditUsageSchema,
     stake: "never_ask",
     displayLabels: {
@@ -245,7 +267,7 @@ export const WORKSPACE_ANALYTICS_TOOLS_METADATA = createToolsRecord({
       "these figures are ESTIMATES — always tell the user they are approximate " +
       "and point them to the workspace Usage page for exact, billed credit " +
       "amounts. Chart the result. Optionally filter by source (context_origin), " +
-      "agent, or user. Admin-only.",
+      "agent, user, or tag. Admin-only.",
     schema: getCreditTimeseriesSchema,
     stake: "never_ask",
     displayLabels: {

@@ -1057,6 +1057,10 @@ const QUERIES: LabeledQuery[] = [
     expected: "workspace_analytics.get_top_users",
   },
   {
+    query: "list the agent tags",
+    expected: "workspace_analytics.get_top_agent_tags",
+  },
+  {
     query:
       "what does the support agent actually do - show its configuration and prompt",
     expected: "workspace_analytics.get_agent_details",
