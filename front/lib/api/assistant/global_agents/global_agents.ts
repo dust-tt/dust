@@ -1079,11 +1079,6 @@ export async function getGlobalAgents(
     );
   }
 
-  // When the in-conversation model picker is enabled, model-only global agents
-  // (e.g. GPT-5.5, Claude Haiku) are redundant with picking the model directly,
-  // so we hide them from the default agent listings. We only filter the default
-  // listing (no explicit ids requested) so past conversations that reference
-  // these agents still resolve when fetched by id.
   if (agentIds === undefined && flags.includes("models_picker")) {
     agentsIdsToFetch = agentsIdsToFetch.filter(
       (sId) =>
