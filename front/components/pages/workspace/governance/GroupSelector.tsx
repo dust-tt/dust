@@ -57,7 +57,7 @@ export const GroupSelector = ({
                   label={
                     group.kind === "provisioned" ? "Provisioned" : "Manual"
                   }
-                  color={group.kind === "provisioned" ? "primary" : "highlight"}
+                  color={group.kind === "provisioned" ? "success" : "info"}
                   size="xs"
                 />
               }

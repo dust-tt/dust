@@ -1,4 +1,7 @@
 import { CreateGroupDialog } from "@app/components/groups/CreateGroupDialog";
+import { LinkedSectionNotice } from "@app/components/workspace/LinkedSectionNotice";
+import { useAuth } from "@app/lib/auth/AuthContext";
+import { useAppRouter } from "@app/lib/platform";
 import { useGroups } from "@app/lib/swr/groups";
 import { type GroupKind, MANAGEABLE_GROUP_KINDS } from "@app/types/groups";
 import { pluralize } from "@app/types/shared/utils/string_utils";
@@ -83,6 +86,9 @@ export function WorkspaceGroupsList({ owner }: WorkspaceGroupsListProps) {
     kinds: MANAGEABLE_GROUP_KINDS,
   });
 
+  const router = useAppRouter();
+  const { subscription } = useAuth();
+  const isScimAllowed = subscription.plan.limits.users.isSCIMAllowed;
   const [searchTerm, setSearchTerm] = useState("");
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
 
@@ -97,6 +103,15 @@ export function WorkspaceGroupsList({ owner }: WorkspaceGroupsListProps) {
 
   return (
     <div className="flex flex-col gap-4">
+      {isScimAllowed && (
+        <LinkedSectionNotice
+          description="User provisioning is configured in"
+          linkLabel="IT & Security → User provisioning"
+          onLinkClick={() =>
+            void router.push(`/w/${owner.sId}/identity-and-provisioning`)
+          }
+        />
+      )}
       {isGroupsLoading && (
         <div className="flex items-center justify-center py-8">
           <Spinner size="lg" />

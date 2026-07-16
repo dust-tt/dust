@@ -1,5 +1,6 @@
 import { WorkspaceGroupsList } from "@app/components/groups/WorkspaceGroupsList";
 import { WorkspaceMembersSection } from "@app/components/members/WorkspaceMembersSection";
+import { useQueryParams } from "@app/hooks/useQueryParams";
 import {
   useAuth,
   useFeatureFlags,
@@ -28,6 +29,9 @@ export function MembersPage() {
   const owner = useWorkspace();
   const { subscription, user } = useAuth();
   const plan = subscription.plan;
+
+  const { tab } = useQueryParams(["tab"]);
+  const activeTab = tab.value === "groups" ? "groups" : "members";
 
   const { verifiedDomains, isVerifiedDomainsLoading } =
     useWorkspaceVerifiedDomains({ workspaceId: owner.sId });
@@ -77,7 +81,10 @@ export function MembersPage() {
           description="Manage team members and their roles."
         />
         {isAdminGovernanceEnabled ? (
-          <Tabs defaultValue="members">
+          <Tabs
+            value={activeTab}
+            onValueChange={(value) => tab.setParam(value)}
+          >
             <TabsList className="mb-6">
               <TabsTrigger value="members" label="Members" />
               <TabsTrigger value="groups" label="Groups" />

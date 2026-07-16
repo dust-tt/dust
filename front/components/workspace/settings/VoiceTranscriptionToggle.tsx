@@ -1,16 +1,21 @@
 import { GovernanceSettingRowLayout } from "@app/components/pages/workspace/governance/GovernanceSettingRowLayout";
 import { useVoiceTranscriptionToggle } from "@app/hooks/useVoiceTranscriptionToggle";
-import { useFeatureFlags } from "@app/lib/auth/AuthContext";
+import { useAuth, useFeatureFlags } from "@app/lib/auth/AuthContext";
 import type { WorkspaceType } from "@app/types/user";
 import { ContextItem, Microphone01, SliderToggle } from "@dust-tt/sparkle";
 
 export function VoiceTranscriptionToggle({ owner }: { owner: WorkspaceType }) {
   const { isEnabled, isChanging, doToggleVoiceTranscription } =
     useVoiceTranscriptionToggle({ owner });
+  const { subscription } = useAuth();
   const { hasFeature } = useFeatureFlags();
 
   const label = "Voice transcription";
   const description = "Allow voice transcription in Dust conversations";
+
+  if (subscription.plan.isByok) {
+    return null;
+  }
 
   if (hasFeature("admin_governance")) {
     return (
