@@ -3,6 +3,7 @@ import { DustFileSystem } from "@app/lib/api/file_system/dust_file_system";
 import { uploadFileFromUrlToFileSystem } from "@app/lib/api/file_system/upload_from_url";
 import { untrustedFetch } from "@app/lib/egress/server";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
+import { isString } from "@app/types/shared/utils/general";
 import { Readable } from "stream";
 import { describe, expect, it, vi } from "vitest";
 
@@ -36,7 +37,7 @@ function mockFetchResponse({
   statusText?: string;
   contentType?: string;
   contentLength?: string;
-  body?: string;
+  body?: string | Readable;
 }) {
   const headers = new Headers({ "content-type": contentType });
   if (contentLength !== undefined) {
@@ -49,7 +50,10 @@ function mockFetchResponse({
       status,
       statusText,
       headers,
-      body: body === undefined ? null : Readable.toWeb(Readable.from([body])),
+      body:
+        body === undefined
+          ? null
+          : Readable.toWeb(isString(body) ? Readable.from([body]) : body),
     })
   );
 }
@@ -168,6 +172,44 @@ describe("uploadFileFromUrlToFileSystem", () => {
     expect(result.isErr()).toBe(true);
     if (result.isErr()) {
       expect(result.error.message).toContain("maximum supported size");
+    }
+  });
+
+  it("returns an error when the download aborts mid-stream", async () => {
+    const { authenticator: auth } = await createResourceTest({ role: "admin" });
+    const conversation = await createConversation(auth, {
+      title: "Test",
+      visibility: "unlisted",
+      spaceId: null,
+    });
+
+    async function* abortedBodyChunks() {
+      yield "partial content";
+      throw new DOMException(
+        "The operation was aborted due to timeout",
+        "TimeoutError"
+      );
+    }
+
+    mockFetchResponse({
+      contentType: "text/plain",
+      body: Readable.from(abortedBodyChunks()),
+    });
+
+    const fsResult = await DustFileSystem.forConversation(auth, conversation);
+    expect(fsResult.isOk()).toBe(true);
+    if (!fsResult.isOk()) {
+      return;
+    }
+
+    const result = await uploadFileFromUrlToFileSystem(fsResult.value, {
+      path: `conversation-${conversation.sId}/aborted.txt`,
+      url: "https://example.com/aborted.txt",
+    });
+
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error.message).toContain("Failed to fetch URL");
     }
   });
 
