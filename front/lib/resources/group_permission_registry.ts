@@ -15,9 +15,10 @@ import assert from "assert";
  * Governance page toggles capabilities one verb at a time; a multi-verb type-level role would make
  * a single toggle revoke verbs it did not touch.
  *
- * The stored grant value is still a plain verb today (see `@app/types/group_permissions`); this
- * registry therefore currently serves to derive the set of valid verbs per (resourceType, level).
- * When grants move to storing the role name, the same definitions drive verb→role expansion.
+ * A grant row stores the role name (see `@app/types/group_permissions`); `assertValidGrant` checks
+ * a grant type is a role defined for its resource type at the required level. Translating a
+ * capability question (a verb) into the roles that grant it — verb→role expansion — is deferred
+ * until an instance-level, multi-verb capability check needs it.
  *
  * The `"*"` wildcards in the vocabulary are intentionally not part of this registry: a wildcard
  * grant applies to the whole type (or all types) and is only ever a type-level (`-1`) grant.
