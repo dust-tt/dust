@@ -11,6 +11,7 @@ interface GroupsUsageTableProps {
   owner: LightWorkspaceType;
   readOnly: boolean;
   showModelTiersColumn?: boolean;
+  showSpendLimitColumn?: boolean;
 }
 
 type GroupRowData = {
@@ -77,6 +78,7 @@ export function GroupsUsageTable({
   owner,
   readOnly,
   showModelTiersColumn = false,
+  showSpendLimitColumn = true,
 }: GroupsUsageTableProps) {
   const { groups, isGroupsLoading } = useGroups({
     owner,
@@ -122,25 +124,29 @@ export function GroupsUsageTable({
         ),
         enableSorting: false,
       },
-      {
-        id: "cap",
-        header: "Spend limit",
-        meta: { className: "w-64" },
-        cell: (info: GroupInfo) => (
-          <GroupCapCell
-            group={info.row.original}
-            readOnly={readOnly}
-            onSave={async (group, limit) => {
-              await doUpdateGroupSpendLimit({
-                groupId: group.groupId,
-                groupName: group.name,
-                limit,
-              });
-            }}
-          />
-        ),
-        enableSorting: false,
-      },
+      ...(showSpendLimitColumn
+        ? [
+            {
+              id: "cap",
+              header: "Spend limit",
+              meta: { className: "w-64" },
+              cell: (info: GroupInfo) => (
+                <GroupCapCell
+                  group={info.row.original}
+                  readOnly={readOnly}
+                  onSave={async (group, limit) => {
+                    await doUpdateGroupSpendLimit({
+                      groupId: group.groupId,
+                      groupName: group.name,
+                      limit,
+                    });
+                  }}
+                />
+              ),
+              enableSorting: false,
+            } satisfies ColumnDef<GroupRowData, string>,
+          ]
+        : []),
       ...(showModelTiersColumn
         ? [
             {
@@ -159,7 +165,13 @@ export function GroupsUsageTable({
           ]
         : []),
     ],
-    [owner, readOnly, showModelTiersColumn, doUpdateGroupSpendLimit]
+    [
+      owner,
+      readOnly,
+      showModelTiersColumn,
+      showSpendLimitColumn,
+      doUpdateGroupSpendLimit,
+    ]
   );
 
   if (isGroupsLoading) {
@@ -172,10 +184,12 @@ export function GroupsUsageTable({
 
   return (
     <div className="flex flex-col gap-3">
-      <span className="copy-sm text-muted-foreground">
-        A group's monthly spend limit applies to each of its members. When a
-        member belongs to several groups, the highest limit is used.
-      </span>
+      {showSpendLimitColumn && (
+        <span className="copy-sm text-muted-foreground">
+          A group's monthly spend limit applies to each of its members. When a
+          member belongs to several groups, the highest limit is used.
+        </span>
+      )}
       <DataTable
         filterColumn="name"
         data={rows}

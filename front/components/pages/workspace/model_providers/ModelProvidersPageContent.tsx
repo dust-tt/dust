@@ -4,6 +4,7 @@ import { ProvidersConfigurationList } from "@app/components/pages/workspace/mode
 import { ProvidersToggleList } from "@app/components/pages/workspace/model_providers/ProvidersToggleList";
 import { RegionalModelsOnlyToggle } from "@app/components/pages/workspace/model_providers/RegionalModelsOnlyToggle";
 import { USED_MODEL_CONFIGS } from "@app/components/providers/types";
+import { AllowedModelsSection } from "@app/components/workspace/AllowedModelsSection";
 import { isModelAvailable } from "@app/lib/assistant";
 import { useAuth, useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { useRegionContext } from "@app/lib/auth/RegionContext";
@@ -14,6 +15,7 @@ import type {
 } from "@app/types/assistant/models/types";
 import type { ProvidersSelection } from "@app/types/provider_selection";
 import type { WorkspaceType } from "@app/types/user";
+import { isAdmin } from "@app/types/user";
 import groupBy from "lodash/groupBy";
 import mapValues from "lodash/mapValues";
 import uniqBy from "lodash/uniqBy";
@@ -35,8 +37,10 @@ export function ModelProvidersPageContent({
 }: ModelProvidersPageContentProps) {
   const { subscription } = useAuth();
   const { plan } = subscription;
-  const { featureFlags } = useFeatureFlags();
+  const { featureFlags, hasFeature } = useFeatureFlags();
   const { regionInfo } = useRegionContext();
+
+  const modelsPickerEnabled = hasFeature("models_picker") && isAdmin(workspace);
 
   // Filter models based on feature flags and build modelProviders dynamically
   const filteredModels = uniqBy(USED_MODEL_CONFIGS, (m) => m.modelId).filter(
@@ -82,6 +86,7 @@ export function ModelProvidersPageContent({
         </>
       )}
       <EmbeddingModelSelect workspace={workspace} />
+      {modelsPickerEnabled && <AllowedModelsSection owner={workspace} />}
     </div>
   );
 }
