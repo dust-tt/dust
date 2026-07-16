@@ -1,9 +1,13 @@
-import { CreateGroupDialog } from "@app/components/groups/CreateGroupDialog";
+import { GroupDialog } from "@app/components/groups/GroupDialog";
 import { LinkedSectionNotice } from "@app/components/workspace/LinkedSectionNotice";
 import { useAuth } from "@app/lib/auth/AuthContext";
 import { useAppRouter } from "@app/lib/platform";
 import { useGroups } from "@app/lib/swr/groups";
-import { type GroupKind, MANAGEABLE_GROUP_KINDS } from "@app/types/groups";
+import {
+  type GroupKind,
+  isRegularManualGroupKind,
+  MANAGEABLE_GROUP_KINDS,
+} from "@app/types/groups";
 import { pluralize } from "@app/types/shared/utils/string_utils";
 import type { WorkspaceType } from "@app/types/user";
 import {
@@ -90,7 +94,13 @@ export function WorkspaceGroupsList({ owner }: WorkspaceGroupsListProps) {
   const { subscription } = useAuth();
   const isScimAllowed = subscription.plan.limits.users.isSCIMAllowed;
   const [searchTerm, setSearchTerm] = useState("");
-  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [editedGroupId, setEditedGroupId] = useState<string | null>(null);
+
+  const openCreateDialog = () => {
+    setEditedGroupId(null);
+    setIsDialogOpen(true);
+  };
 
   const rows = useMemo<GroupRowData[]>(() => {
     return groups.map((group) => ({
@@ -98,6 +108,12 @@ export function WorkspaceGroupsList({ owner }: WorkspaceGroupsListProps) {
       name: group.name,
       memberCount: group.memberCount,
       kind: group.kind,
+      onClick: isRegularManualGroupKind(group.kind)
+        ? () => {
+            setEditedGroupId(group.sId);
+            setIsDialogOpen(true);
+          }
+        : undefined,
     }));
   }, [groups]);
 
@@ -131,7 +147,7 @@ export function WorkspaceGroupsList({ owner }: WorkspaceGroupsListProps) {
               <Button
                 icon={Plus}
                 label="Create group"
-                onClick={() => setIsCreateDialogOpen(true)}
+                onClick={openCreateDialog}
               />
             </div>
             <DataTable
@@ -147,16 +163,17 @@ export function WorkspaceGroupsList({ owner }: WorkspaceGroupsListProps) {
               <Button
                 icon={Plus}
                 label="Create group"
-                onClick={() => setIsCreateDialogOpen(true)}
+                onClick={openCreateDialog}
               />
             }
             message="You don’t have any groups yet."
           />
         ))}
-      <CreateGroupDialog
+      <GroupDialog
         owner={owner}
-        isOpen={isCreateDialogOpen}
-        onOpenChange={setIsCreateDialogOpen}
+        isOpen={isDialogOpen}
+        onOpenChange={setIsDialogOpen}
+        groupId={editedGroupId}
       />
     </div>
   );
