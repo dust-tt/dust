@@ -271,7 +271,6 @@ export function CapabilitiesPicker({
   const { skills, isSkillsLoading } = useSkills({
     owner,
     status: "active",
-    globalSpaceOnly: true,
     disabled: !shouldFetchToolsData,
   });
 
