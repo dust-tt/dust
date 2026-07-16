@@ -31,10 +31,6 @@ import { FileResource } from "@app/lib/resources/file_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
-import {
-  createResourcePermissionsFromSpacesWithMap,
-  createSpaceIdToGroupsMap,
-} from "@app/lib/resources/permission_utils";
 import { ProjectMetadataResource } from "@app/lib/resources/project_metadata_resource";
 import { GlobalSkillsRegistry } from "@app/lib/resources/skill/code_defined/global_registry";
 import type { SkillDefinition } from "@app/lib/resources/skill/code_defined/shared";
@@ -581,7 +577,6 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       transaction,
     });
 
-    // Check if the user has access to skill requested spaces.
     const uniqueRequestedSpaceIds = uniq(
       customSkills.flatMap((c) => c.requestedSpaceIds)
     );
@@ -591,7 +586,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
             transaction,
           })
         : [];
-    const spaceIdToGroupsMap = createSpaceIdToGroupsMap(auth, spaces);
+    const spaceById = new Map(spaces.map((s) => [s.id, s]));
     const foundSpaceIds = new Set(spaces.map((s) => s.id));
 
     const validCustomSkills = customSkills.filter((skill) =>
@@ -599,11 +594,8 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     );
 
     const allowedCustomSkills = validCustomSkills.filter((skill) =>
-      auth.canRead(
-        createResourcePermissionsFromSpacesWithMap(
-          spaceIdToGroupsMap,
-          skill.requestedSpaceIds
-        )
+      skill.requestedSpaceIds.every(
+        (spaceModelId) => spaceById.get(spaceModelId)?.isMember(auth) ?? false
       )
     );
     const allowedCustomSkillIds = allowedCustomSkills.map((skill) => skill.id);

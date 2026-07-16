@@ -20,9 +20,11 @@ import { GroupSpaceFactory } from "@app/tests/utils/GroupSpaceFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { KeyFactory } from "@app/tests/utils/KeyFactory";
 import { MCPServerViewFactory } from "@app/tests/utils/MCPServerViewFactory";
+import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { RemoteMCPServerFactory } from "@app/tests/utils/RemoteMCPServerFactory";
 import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
+import { UserFactory } from "@app/tests/utils/UserFactory";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 describe("SkillResource", () => {
@@ -61,6 +63,77 @@ describe("SkillResource", () => {
 
       expect(skill.canWrite(readOnlyAuth)).toBe(false);
       expect(skill.canAdministrate(readOnlyAuth)).toBe(false);
+    });
+  });
+
+  describe("space restriction visibility", () => {
+    async function nonMemberAuth() {
+      const outsider = await UserFactory.basic();
+      await MembershipFactory.associate(testContext.workspace, outsider, {
+        role: "user",
+      });
+      return Authenticator.fromUserIdAndWorkspaceId(
+        outsider.sId,
+        testContext.workspace.sId
+      );
+    }
+
+    async function listSeesSkill(auth: Authenticator, skillSId: string) {
+      const list = await SkillResource.listByWorkspace(auth, {
+        onlyCustom: true,
+      });
+      return list.some((s) => s.sId === skillSId);
+    }
+
+    it("hides a skill restricted to an open Pod from non-members", async () => {
+      const pod = await SpaceFactory.project(
+        testContext.workspace,
+        testContext.user.id
+      );
+      await GroupSpaceFactory.associate(pod, testContext.globalGroup);
+      await testContext.authenticator.refresh();
+
+      const skill = await SkillFactory.create(testContext.authenticator, {
+        name: "Open Pod Restricted Skill",
+        requestedSpaceIds: [pod.id],
+      });
+
+      expect(await listSeesSkill(testContext.authenticator, skill.sId)).toBe(
+        true
+      );
+
+      expect(await listSeesSkill(await nonMemberAuth(), skill.sId)).toBe(false);
+    });
+
+    it("hides a skill restricted to a restricted space from non-members", async () => {
+      const space = await SpaceFactory.regular(testContext.workspace);
+      await space.addMembers(testContext.authenticator, {
+        userIds: [testContext.user.sId],
+      });
+      await testContext.authenticator.refresh();
+
+      const skill = await SkillFactory.create(testContext.authenticator, {
+        name: "Restricted Space Skill",
+        requestedSpaceIds: [space.id],
+      });
+
+      expect(await listSeesSkill(testContext.authenticator, skill.sId)).toBe(
+        true
+      );
+      expect(await listSeesSkill(await nonMemberAuth(), skill.sId)).toBe(false);
+    });
+
+    it("keeps a skill restricted to an open regular space visible to all members", async () => {
+      const space = await SpaceFactory.regular(testContext.workspace);
+      await GroupSpaceFactory.associate(space, testContext.globalGroup);
+      await testContext.authenticator.refresh();
+
+      const skill = await SkillFactory.create(testContext.authenticator, {
+        name: "Open Regular Space Skill",
+        requestedSpaceIds: [space.id],
+      });
+
+      expect(await listSeesSkill(await nonMemberAuth(), skill.sId)).toBe(true);
     });
   });
 
