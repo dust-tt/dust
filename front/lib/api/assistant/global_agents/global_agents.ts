@@ -980,12 +980,6 @@ const RETIRED_GLOBAL_AGENTS_SID = [
   GLOBAL_AGENTS_SID.DUST_CHALOM_HIGH,
 ];
 
-// Global agents that only expose a raw provider model (e.g. GPT-5.5, Claude
-// Haiku, Gemini Pro) without any Dust-specific tooling or instructions. When
-// the in-conversation model picker is enabled these are redundant — a user can
-// pick the model directly — so we hide them from the default agent listings.
-// They remain resolvable when fetched explicitly by id so past conversations
-// that referenced them keep rendering.
 const MODEL_ONLY_GLOBAL_AGENTS_SID: readonly GLOBAL_AGENTS_SID[] = [
   GLOBAL_AGENTS_SID.GPT35_TURBO,
   GLOBAL_AGENTS_SID.GPT4,
