@@ -1054,9 +1054,12 @@ async function emptyOriginSeatCreditsForTransfers({
   allocationBySeatType: Map<MembershipSeatType, number>;
   desiredSeatByUser: Map<string, MembershipSeatType>;
 }): Promise<SeatCreditTransfer[]> {
+  // Queried by explicit seatIds: an unfiltered listMetronomeSeatBalances call
+  // silently omits most seats on contracts with a few hundred+ seats.
   const balancesRes = await listMetronomeSeatBalances({
     metronomeCustomerId,
     metronomeContractId: contractId,
+    seatIds: [...desiredSeatByUser.keys()],
   });
   if (balancesRes.isErr()) {
     logger.error(
@@ -1256,11 +1259,14 @@ async function carryConsumptionToNewSeatCredits({
     }
 
     // Read the seat's current balance on the new credit at the adjustment time,
-    // then compute the delta to reach `allocation − consumed`.
+    // then compute the delta to reach `allocation − consumed`. Queried by
+    // explicit seatIds: an unfiltered call silently omits most seats on
+    // contracts with a few hundred+ seats.
     const balancesRes = await listMetronomeSeatBalances({
       metronomeCustomerId,
       metronomeContractId: contractId,
       coveringDate: timestamp,
+      seatIds: [t.userSId],
     });
     if (balancesRes.isErr()) {
       logger.error(

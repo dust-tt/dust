@@ -56,6 +56,7 @@ import type {
   UserCreditState,
 } from "@app/types/memberships";
 import {
+  hasMetronomeSeatBalance,
   MEMBERSHIP_SEAT_TYPES,
   NORMALIZED_POOL_LIMIT_SEAT_TYPES,
   normalizeToPoolLimitSeatType,
@@ -458,20 +459,25 @@ async function fetchSeatDataForMembersTable({
 // Live per-seat AWU balance remaining for paid (seat-managed) seats, keyed by
 // userId. This is the expensive read (`listMetronomeSeatBalances`) gated to poke
 // — free seats are handled separately by `fetchFreeSeatCreditsForMembersTable`.
+// Always queried by explicit `seatIds`: Metronome's unfiltered seat-balances
+// list silently omits most seats on contracts with a few hundred+ seats.
 // Degrades to an empty map on any read failure so the table still renders.
 async function fetchSeatBalancesForMembersTable({
   metronomeCustomerId,
   metronomeContractId,
+  userIds,
 }: {
   metronomeCustomerId: string | null;
   metronomeContractId: string | null;
+  userIds: string[];
 }): Promise<Map<string, number>> {
-  if (!metronomeCustomerId || !metronomeContractId) {
+  if (!metronomeCustomerId || !metronomeContractId || userIds.length === 0) {
     return new Map();
   }
   const result = await listMetronomeSeatBalances({
     metronomeCustomerId,
     metronomeContractId,
+    seatIds: userIds,
   });
   const balanceByUserId = new Map<string, number>();
   if (result.isErr()) {
@@ -1297,6 +1303,14 @@ export async function getMembersUsage({
   const freeSeatUserIds = users.flatMap((u) =>
     membershipByUserId.get(u.id)?.seatType === "free" ? [u.sId] : []
   );
+  // Only pro/max (and their _yearly variants) carry an individual Metronome
+  // seat balance — querying free/none/workspace users too would just waste
+  // calls on ids Metronome will report as not found.
+  const seatBalanceEligibleUserIds = users.flatMap((u) =>
+    hasMetronomeSeatBalance(membershipByUserId.get(u.id)?.seatType)
+      ? [u.sId]
+      : []
+  );
 
   // Fetch Metronome data and consumed credits in parallel for the current page.
   const [
@@ -1323,6 +1337,7 @@ export async function getMembersUsage({
       ? fetchSeatBalancesForMembersTable({
           metronomeCustomerId: metronomeCustomerId ?? null,
           metronomeContractId,
+          userIds: seatBalanceEligibleUserIds,
         })
       : Promise.resolve(new Map<string, number>()),
     // Free-seat per-user credit balance + granted total. Needed on every surface
