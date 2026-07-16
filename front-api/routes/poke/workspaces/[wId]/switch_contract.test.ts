@@ -270,7 +270,17 @@ beforeEach(() => {
   vi.mocked(remapMembershipSeatTypesForContract).mockResolvedValue(
     new Ok(undefined)
   );
-  vi.mocked(syncSeatCount).mockResolvedValue(new Ok(undefined));
+  vi.mocked(syncSeatCount).mockResolvedValue(
+    new Ok({
+      seatSubscriptionCount: 0,
+      distinctTimestampCount: 0,
+      reconcileSegmentCallCount: 0,
+      transferCount: 0,
+      freeUserCount: 0,
+      didMutateSeatData: false,
+      durationMs: 0,
+    })
+  );
 });
 
 describe("POST /api/poke/workspaces/[wId]/switch_contract — Enterprise", () => {
