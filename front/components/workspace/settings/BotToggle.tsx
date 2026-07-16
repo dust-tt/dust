@@ -125,73 +125,76 @@ export function BotToggle({
     setIsChangingBot(false);
   };
 
-  const actionNode = (
-    <div className="flex flex-row items-center gap-2">
-      {isBotEnabled && botDataSource && (
-        <Button
-          variant="outline"
-          label="Reconnect"
-          size="xs"
-          icon={RefreshCw02}
-          onClick={async () => {
-            const cRes = await setupOAuthConnection({
-              owner,
-              provider: oauth.provider,
-              useCase: oauth.useCase ?? "connection",
-              extraConfig: oauth.extraConfig,
-              regionInfo: regionContext.regionInfo,
-            });
-            if (!cRes.isOk()) {
-              sendNotification({
-                type: "error",
-                title: `Failed to reconnect ${name}.`,
-                description: `Could not reconnect the Dust ${name}.`,
-              });
-            } else {
-              const updateRes = await updateConnectorConnectionId(
-                cRes.value.connection_id,
-                oauth.extraConfig,
-                connectorProvider,
-                botDataSource,
-                owner
-              );
+  const handleReconnect = async () => {
+    if (!botDataSource) {
+      return;
+    }
+    const cRes = await setupOAuthConnection({
+      owner,
+      provider: oauth.provider,
+      useCase: oauth.useCase ?? "connection",
+      extraConfig: oauth.extraConfig,
+      regionInfo: regionContext.regionInfo,
+    });
+    if (!cRes.isOk()) {
+      sendNotification({
+        type: "error",
+        title: `Failed to reconnect ${name}.`,
+        description: `Could not reconnect the Dust ${name}.`,
+      });
+    } else {
+      const updateRes = await updateConnectorConnectionId(
+        cRes.value.connection_id,
+        oauth.extraConfig,
+        connectorProvider,
+        botDataSource,
+        owner
+      );
 
-              if (updateRes.error) {
-                sendNotification({
-                  type: "error",
-                  title: `Failed to update the ${name} connection`,
-                  description: updateRes.error,
-                });
-              } else {
-                sendNotification({
-                  type: "success",
-                  title: `Successfully updated ${name} connection`,
-                  description: "The connection was successfully updated.",
-                });
-              }
-            }
-          }}
-        />
-      )}
-      <SliderToggle
-        selected={
-          // When changing and initially enabled, show disabled, and vice versa.
-          isBotEnabled !== isChangingBot
-        }
-        disabled={isChangingBot}
-        onClick={() => {
-          void toggleBot();
-        }}
-      />
-    </div>
-  );
+      if (updateRes.error) {
+        sendNotification({
+          type: "error",
+          title: `Failed to update the ${name} connection`,
+          description: updateRes.error,
+        });
+      } else {
+        sendNotification({
+          type: "success",
+          title: `Successfully updated ${name} connection`,
+          description: "The connection was successfully updated.",
+        });
+      }
+    }
+  };
 
   if (hasFeature("admin_governance")) {
     return (
       <GovernanceSettingRowLayout
         label={name}
         description={description}
-        action={actionNode}
+        action={
+          <div className="flex flex-row items-center gap-2">
+            {isBotEnabled && botDataSource && (
+              <Button
+                variant="outline"
+                label="Reconnect"
+                size="xs"
+                icon={RefreshCw02}
+                onClick={handleReconnect}
+              />
+            )}
+            <SliderToggle
+              selected={
+                // When changing and initially enabled, show disabled, and vice versa.
+                isBotEnabled !== isChangingBot
+              }
+              disabled={isChangingBot}
+              onClick={() => {
+                void toggleBot();
+              }}
+            />
+          </div>
+        }
         documentationUrl={documentationUrl}
       />
     );
@@ -218,7 +221,29 @@ export function BotToggle({
       visual={visual}
       truncateSubElement={true}
       hasSeparatorIfLast={true}
-      action={actionNode}
+      action={
+        <div className="flex flex-row items-center gap-2">
+          {isBotEnabled && botDataSource && (
+            <Button
+              variant="outline"
+              label="Reconnect"
+              size="xs"
+              icon={RefreshCw02}
+              onClick={handleReconnect}
+            />
+          )}
+          <SliderToggle
+            selected={
+              // When changing and initially enabled, show disabled, and vice versa.
+              isBotEnabled !== isChangingBot
+            }
+            disabled={isChangingBot}
+            onClick={() => {
+              void toggleBot();
+            }}
+          />
+        </div>
+      }
     />
   );
 }
