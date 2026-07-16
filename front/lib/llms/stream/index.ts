@@ -7,6 +7,9 @@ import { DustAgentPlatformEuropeClaudeSonnetFiveStream } from "@app/lib/llms/str
 import { DustAgentPlatformEuropeClaudeSonnetFourDotSixStream } from "@app/lib/llms/stream/endpoints/agent_platform_eu_claude_sonnet_four_dot_six";
 import { DustAgentPlatformEuropeGeminiThreeDotOneFlashLiteStream } from "@app/lib/llms/stream/endpoints/agent_platform_eu_gemini_3_1_flash_lite";
 import { DustAgentPlatformEuropeGeminiThreeDotFiveFlashStream } from "@app/lib/llms/stream/endpoints/agent_platform_eu_gemini_3_5_flash";
+import { DustAgentPlatformGlobalGeminiThreeDotOneFlashLiteStream } from "@app/lib/llms/stream/endpoints/agent_platform_global_gemini_3_1_flash_lite";
+import { DustAgentPlatformGlobalGeminiThreeDotOneProStream } from "@app/lib/llms/stream/endpoints/agent_platform_global_gemini_3_1_pro";
+import { DustAgentPlatformGlobalGeminiThreeDotFiveFlashStream } from "@app/lib/llms/stream/endpoints/agent_platform_global_gemini_3_5_flash";
 import { DustAnthropicGlobalClaudeFableFiveStream } from "@app/lib/llms/stream/endpoints/anthropic_global_claude_fable_five";
 import { DustAnthropicGlobalClaudeHaikuFourDotFiveStream } from "@app/lib/llms/stream/endpoints/anthropic_global_claude_haiku_four_dot_five";
 import { DustAnthropicGlobalClaudeOpusFourDotEightStream } from "@app/lib/llms/stream/endpoints/anthropic_global_claude_opus_four_dot_eight";
@@ -69,6 +72,12 @@ export const DUST_STREAM_ENDPOINTS = {
     DustAgentPlatformEuropeGeminiThreeDotFiveFlashStream,
   [DustAgentPlatformEuropeGeminiThreeDotOneFlashLiteStream.id]:
     DustAgentPlatformEuropeGeminiThreeDotOneFlashLiteStream,
+  [DustAgentPlatformGlobalGeminiThreeDotFiveFlashStream.id]:
+    DustAgentPlatformGlobalGeminiThreeDotFiveFlashStream,
+  [DustAgentPlatformGlobalGeminiThreeDotOneFlashLiteStream.id]:
+    DustAgentPlatformGlobalGeminiThreeDotOneFlashLiteStream,
+  [DustAgentPlatformGlobalGeminiThreeDotOneProStream.id]:
+    DustAgentPlatformGlobalGeminiThreeDotOneProStream,
   [DustAnthropicGlobalClaudeFableFiveStream.id]:
     DustAnthropicGlobalClaudeFableFiveStream,
   [DustAnthropicGlobalClaudeHaikuFourDotFiveStream.id]:
