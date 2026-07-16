@@ -32,7 +32,7 @@ import { gfmFromMarkdown, gfmToMarkdown } from "mdast-util-gfm";
 import { toMarkdown } from "mdast-util-to-markdown";
 import { gfm } from "micromark-extension-gfm";
 
-const MAX_CSV_SIZE = 50 * 1024 * 1024;
+export const MAX_CSV_SIZE = 50 * 1024 * 1024;
 
 function isTimeoutError(e: unknown): boolean {
   return (
