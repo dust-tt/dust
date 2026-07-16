@@ -2,7 +2,9 @@ import type { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
 import type { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
+import type { SandboxFunctionInvocationResource } from "@app/lib/resources/sandbox_function_invocation_resource";
 import type { SandboxFunctionMCPActionResource } from "@app/lib/resources/sandbox_function_mcp_action_resource";
+import type { SandboxFunctionResource } from "@app/lib/resources/sandbox_function_resource";
 import { getTemporalClientForAgentNamespace } from "@app/lib/temporal";
 import logger from "@app/logger/logger";
 import { logAgentLoopStart } from "@app/temporal/agent_loop/activities/instrumentation";
@@ -10,6 +12,7 @@ import {
   makeAgentLoopWorkflowId,
   makeCompactionWorkflowId,
   makeSandboxChildToolWorkflowId,
+  makeSandboxFunctionInvocationWorkflowId,
   makeSandboxFunctionToolWorkflowId,
 } from "@app/temporal/agent_loop/lib/workflow_ids";
 import type {
@@ -20,12 +23,14 @@ import type { CompactionSourceConversation } from "@app/types/assistant/compacti
 import type { SupportedModel } from "@app/types/assistant/models/types";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { WorkflowExecutionAlreadyStartedError } from "@temporalio/client";
 import { QUEUE_NAME } from "./config";
 import {
   agentLoopWorkflow,
   compactionWorkflow,
   runSandboxChildToolWorkflow,
+  runSandboxFunctionInvocationWorkflow,
   runSandboxFunctionToolWorkflow,
 } from "./workflows";
 
@@ -292,6 +297,54 @@ export async function launchSandboxFunctionToolWorkflow(
       return new Ok(undefined);
     }
     throw error;
+  }
+
+  return new Ok(undefined);
+}
+
+export async function launchSandboxFunctionInvocationWorkflow(
+  auth: Authenticator,
+  {
+    sandboxFunction,
+    invocation,
+  }: {
+    sandboxFunction: SandboxFunctionResource;
+    invocation: SandboxFunctionInvocationResource;
+  }
+): Promise<Result<undefined, Error>> {
+  const authType = auth.toJSON();
+  const { workspaceId } = authType;
+  const workflowId = makeSandboxFunctionInvocationWorkflowId({
+    workspaceId,
+    invocationId: invocation.sId,
+  });
+
+  try {
+    const client = await getTemporalClientForAgentNamespace();
+    await client.workflow.start(runSandboxFunctionInvocationWorkflow, {
+      args: [
+        {
+          authType,
+          sandboxFunctionId: sandboxFunction.sId,
+          invocationId: invocation.sId,
+        },
+      ],
+      taskQueue: QUEUE_NAME,
+      workflowId,
+      searchAttributes: {
+        workspaceId: [workspaceId],
+      },
+      memo: {
+        sandboxFunctionId: sandboxFunction.sId,
+        invocationId: invocation.sId,
+        workspaceId,
+      },
+    });
+  } catch (error) {
+    if (error instanceof WorkflowExecutionAlreadyStartedError) {
+      return new Ok(undefined);
+    }
+    return new Err(normalizeError(error));
   }
 
   return new Ok(undefined);

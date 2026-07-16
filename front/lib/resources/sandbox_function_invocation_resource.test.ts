@@ -216,9 +216,7 @@ describe("SandboxFunctionInvocationResource", () => {
     expect(invocation.sId).toMatch(/^sfi_/);
     expect(Date.parse(invocation.toJSON().createdAt)).not.toBeNaN();
 
-    const executionResult = await invocation.execute(authenticator, {
-      input: { message: "hello" },
-    });
+    const executionResult = await invocation.execute(authenticator);
     if (executionResult.isErr()) {
       throw executionResult.error;
     }
@@ -286,9 +284,7 @@ describe("SandboxFunctionInvocationResource", () => {
       })
     );
 
-    const result = await invocation.execute(authenticator, {
-      input: { message: "hello" },
-    });
+    const result = await invocation.execute(authenticator);
 
     expect(result.isErr()).toBe(true);
     if (result.isOk()) {
@@ -310,9 +306,7 @@ describe("SandboxFunctionInvocationResource", () => {
       })
     );
 
-    const result = await invocation.execute(authenticator, {
-      input: { message: "hello" },
-    });
+    const result = await invocation.execute(authenticator);
 
     expect(result.isErr()).toBe(true);
     if (result.isOk()) {

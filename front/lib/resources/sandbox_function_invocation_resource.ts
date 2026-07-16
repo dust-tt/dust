@@ -27,6 +27,7 @@ import type { ResourceFindOptions } from "@app/lib/resources/types";
 import { concurrentExecutor, withRetry } from "@app/lib/utils/async_utils";
 import { withTransaction } from "@app/lib/utils/sql_utils";
 import logger from "@app/logger/logger";
+import { launchSandboxFunctionInvocationWorkflow } from "@app/temporal/agent_loop/client";
 import type {
   PostSandboxFunctionInvocationRequestBody,
   SandboxFunctionInvocationType,
@@ -190,10 +191,7 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
     );
   }
 
-  async execute(
-    auth: Authenticator,
-    body: PostSandboxFunctionInvocationRequestBody
-  ): Promise<Result<undefined, Error>> {
+  async execute(auth: Authenticator): Promise<Result<undefined, Error>> {
     try {
       const { sandboxFunction } = this;
       const ensureResult = await ensurePodSandboxReady(
@@ -223,9 +221,9 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
           "x-dust-sandbox-function-id": sandboxFunction.sId,
           "x-dust-sandbox-function-invocation-id": this.sId,
         },
-        ...(body.input === undefined
+        ...(this.input === undefined
           ? {}
-          : { body: JSON.stringify(body.input) }),
+          : { body: JSON.stringify(this.input) }),
         encoding: "utf8",
       };
 
@@ -398,10 +396,13 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
       { invocationId: invocation.sId }
     );
 
-    const executionResult = await invocation.execute(auth, body);
-    if (executionResult.isErr()) {
-      await invocation.fail(executionResult.error);
-      return new Err(executionResult.error);
+    const launchResult = await launchSandboxFunctionInvocationWorkflow(auth, {
+      sandboxFunction,
+      invocation,
+    });
+    if (launchResult.isErr()) {
+      await invocation.fail(launchResult.error);
+      return new Err(launchResult.error);
     }
 
     return new Ok(invocation);
