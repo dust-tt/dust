@@ -12,8 +12,6 @@ interface UseCreditCostMenuItemProps {
   subAgentCredits: number | null | undefined;
 }
 
-// Returns the credit-cost dropdown item, or null when there is no cost to show
-// yet (e.g. total is zero or the authoritative value is still being fetched).
 export function useCreditCostMenuItem({
   credits,
   subAgentCredits,
