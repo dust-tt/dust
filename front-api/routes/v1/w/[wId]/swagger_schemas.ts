@@ -406,6 +406,33 @@
  *             $ref: '#/components/schemas/Mention'
  *         context:
  *           $ref: '#/components/schemas/Context'
+ *         modelSelection:
+ *           $ref: '#/components/schemas/ModelSelection'
+ *     ModelSelection:
+ *       type: object
+ *       description: |
+ *         Optional per-message model and reasoning-effort override applied to the
+ *         mentioned agent(s). When omitted, each agent runs its configured model.
+ *         If the requested model is not available to the workspace, the agent's
+ *         configured model is used instead. An unknown provider, model, or
+ *         reasoning effort results in a 400.
+ *       required:
+ *         - providerId
+ *         - modelId
+ *       properties:
+ *         providerId:
+ *           type: string
+ *           description: The model provider id (e.g. "anthropic", "openai", "google_ai_studio").
+ *           example: "anthropic"
+ *         modelId:
+ *           type: string
+ *           description: The model id to run (e.g. "claude-sonnet-4-20250514").
+ *           example: "claude-sonnet-4-20250514"
+ *         reasoningEffort:
+ *           type: string
+ *           enum: [none, light, medium, high]
+ *           description: Optional reasoning effort. Honored only if the resolved model supports it.
+ *           example: "medium"
  *     ContentFragment:
  *       type: object
  *       required:

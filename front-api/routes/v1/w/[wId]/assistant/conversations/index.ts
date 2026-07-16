@@ -40,6 +40,8 @@ import type {
   UserMessageType,
 } from "@app/types/assistant/conversation";
 import { ConversationError } from "@app/types/assistant/conversation";
+import type { ModelSelectionType } from "@app/types/assistant/models/types";
+import { ModelSelectionSchema } from "@app/types/assistant/models/types";
 import type { ContentFragmentType } from "@app/types/content_fragment";
 import {
   isInteractiveContentType,
@@ -57,6 +59,7 @@ import { publicApiApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
+import { fromError } from "zod-validation-error";
 import conversation from "./[cId]";
 
 // Mounted at /api/v1/w/:wId/assistant/conversations.
@@ -433,6 +436,26 @@ app.post(
       const agenticMessageData: AgenticMessageData | undefined =
         message.agenticMessageData ?? undefined;
 
+      // The public schema accepts model selections loosely (flexible enums); we
+      // re-validate against the concrete internal schema so unknown providers,
+      // models, or reasoning efforts are rejected with a clear 400 rather than
+      // silently ignored. A valid-but-not-enabled model still falls back to the
+      // agent's configured model server-side (see resolveModel).
+      let modelSelection: ModelSelectionType | undefined;
+      if (message.modelSelection) {
+        const parsed = ModelSelectionSchema.safeParse(message.modelSelection);
+        if (!parsed.success) {
+          return apiError(ctx, {
+            status_code: 400,
+            api_error: {
+              type: "invalid_request_error",
+              message: `Invalid modelSelection: ${fromError(parsed.error).toString()}`,
+            },
+          });
+        }
+        modelSelection = parsed.data;
+      }
+
       // If tools are enabled, we need to add the MCP server views to the conversation before posting the message.
       if (message.context.selectedMCPServerViewIds) {
         if (!auth.user()) {
@@ -497,6 +520,7 @@ app.post(
               agenticMessageData,
               conversation,
               mentions: message.mentions,
+              modelSelection,
               skipToolsValidation: skipToolsValidation ?? false,
             })
           : await postUserMessage(auth, {
@@ -505,6 +529,7 @@ app.post(
               agenticMessageData,
               conversation,
               mentions: message.mentions,
+              modelSelection,
               skipToolsValidation: skipToolsValidation ?? false,
             });
 
