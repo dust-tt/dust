@@ -12,7 +12,7 @@ import { SandboxFunctionInvocationResource } from "@app/lib/resources/sandbox_fu
 import { SandboxFunctionMCPActionResource } from "@app/lib/resources/sandbox_function_mcp_action_resource";
 import { SandboxFunctionResource } from "@app/lib/resources/sandbox_function_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
-import { launchSandboxFunctionToolWorkflow } from "@app/temporal/agent_loop/client";
+import { launchSandboxFunctionToolWorkflow } from "@app/temporal/sandbox_functions/client";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";

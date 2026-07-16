@@ -6,7 +6,7 @@ import { SandboxFunctionInvocationResource } from "@app/lib/resources/sandbox_fu
 import { SandboxFunctionMCPActionResource } from "@app/lib/resources/sandbox_function_mcp_action_resource";
 import type { SandboxFunctionResource } from "@app/lib/resources/sandbox_function_resource";
 import logger from "@app/logger/logger";
-import { launchSandboxFunctionToolWorkflow } from "@app/temporal/agent_loop/client";
+import { launchSandboxFunctionToolWorkflow } from "@app/temporal/sandbox_functions/client";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 

@@ -27,7 +27,7 @@ import type { ResourceFindOptions } from "@app/lib/resources/types";
 import { concurrentExecutor, withRetry } from "@app/lib/utils/async_utils";
 import { withTransaction } from "@app/lib/utils/sql_utils";
 import logger from "@app/logger/logger";
-import { launchSandboxFunctionInvocationWorkflow } from "@app/temporal/agent_loop/client";
+import { launchSandboxFunctionInvocationWorkflow } from "@app/temporal/sandbox_functions/client";
 import type {
   PostSandboxFunctionInvocationRequestBody,
   SandboxFunctionInvocationStatus,

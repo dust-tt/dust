@@ -1,7 +1,7 @@
 import { tryCallMCPTool } from "@app/lib/actions/mcp_actions";
 import { InternalMCPServerInMemoryResource } from "@app/lib/resources/internal_mcp_server_in_memory_resource";
 import { SandboxFunctionMCPActionResource } from "@app/lib/resources/sandbox_function_mcp_action_resource";
-import { runSandboxFunctionToolActivity } from "@app/temporal/agent_loop/activities/run_sandbox_function_tool";
+import { runSandboxFunctionToolActivity } from "@app/temporal/sandbox_functions/activities/run_sandbox_function_tool";
 import { MCPServerViewFactory } from "@app/tests/utils/MCPServerViewFactory";
 import { fileStorageMock } from "@app/tests/utils/mocks/file_storage";
 import { SandboxFunctionMCPActionFactory } from "@app/tests/utils/SandboxFunctionMCPActionFactory";

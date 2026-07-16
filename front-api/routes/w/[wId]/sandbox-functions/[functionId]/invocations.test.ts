@@ -29,9 +29,11 @@ vi.mock("@app/lib/api/sandbox_functions/events", async (importOriginal) => {
   };
 });
 
-vi.mock("@app/temporal/agent_loop/client", async (importOriginal) => {
+vi.mock("@app/temporal/sandbox_functions/client", async (importOriginal) => {
   const mod =
-    await importOriginal<typeof import("@app/temporal/agent_loop/client")>();
+    await importOriginal<
+      typeof import("@app/temporal/sandbox_functions/client")
+    >();
   return {
     ...mod,
     launchSandboxFunctionInvocationWorkflow: vi.fn(
@@ -55,7 +57,7 @@ import { publishSandboxFunctionInvocationEvent } from "@app/lib/api/sandbox_func
 import {
   launchSandboxFunctionInvocationWorkflow,
   launchSandboxFunctionToolWorkflow,
-} from "@app/temporal/agent_loop/client";
+} from "@app/temporal/sandbox_functions/client";
 
 const inputSchema: JSONSchema = {
   type: "object",

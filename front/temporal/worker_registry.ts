@@ -18,6 +18,7 @@ import { runProjectTaskWorker } from "@app/temporal/project_task/worker";
 import { runReinforcementWorker } from "@app/temporal/reinforcement/worker";
 import { runRelocationWorker } from "@app/temporal/relocation/worker";
 import { runRemoteToolsSyncWorker } from "@app/temporal/remote_tools/worker";
+import { runSandboxFunctionsWorker } from "@app/temporal/sandbox_functions/worker";
 import { runSandboxReaperWorker } from "@app/temporal/sandbox_reaper/worker";
 import { runScrubWorkspaceQueueWorker } from "@app/temporal/scrub_workspace/worker";
 import { runAgentTriggerWorker } from "@app/temporal/triggers/worker";
@@ -49,6 +50,7 @@ export type WorkerName =
   | "production_checks"
   | "reinforcement"
   | "relocation"
+  | "sandbox_functions"
   | "sandbox_reaper"
   | "remote_tools_sync"
   | "scrub_workspace_queue"
@@ -78,6 +80,7 @@ export const workerFunctions: Record<WorkerName, () => Promise<void>> = {
   reinforcement: runReinforcementWorker,
   project_task: runProjectTaskWorker,
   relocation: runRelocationWorker,
+  sandbox_functions: runSandboxFunctionsWorker,
   sandbox_reaper: runSandboxReaperWorker,
   remote_tools_sync: runRemoteToolsSyncWorker,
   scrub_workspace_queue: runScrubWorkspaceQueueWorker,
