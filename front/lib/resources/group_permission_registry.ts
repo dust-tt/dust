@@ -1,6 +1,6 @@
 import type {
+  GrantType,
   GroupPermissionResourceType,
-  PermissionType,
 } from "@app/types/group_permissions";
 import { WHOLE_TYPE_RESOURCE_ID } from "@app/types/group_permissions";
 import assert from "assert";
@@ -20,16 +20,16 @@ import assert from "assert";
 
 // Concrete (non-wildcard) vocabulary — the registry describes these.
 type ConcreteResourceType = Exclude<GroupPermissionResourceType, "*">;
-type ConcretePermissionType = Exclude<PermissionType, "*">;
+type ConcreteGrantType = Exclude<GrantType, "*">;
 
 interface ResourceTypeRule {
   // Verbs grantable on a specific instance (resourceId > 0).
-  instanceLevelPermissions: ConcretePermissionType[];
+  instanceLevelPermissions: ConcreteGrantType[];
   // Verbs grantable type-wide (resourceId = -1). For types with instances this includes the
   // instance verbs (a -1 grant covers all resources) plus type-only verbs like "create"; the two
   // lists therefore overlap. Instance-less domains have an empty instanceLevelPermissions and list
   // their verbs here only.
-  typeLevelPermissions: ConcretePermissionType[];
+  typeLevelPermissions: ConcreteGrantType[];
 }
 
 const REGISTRY: Record<ConcreteResourceType, ResourceTypeRule> = {
@@ -68,41 +68,40 @@ const REGISTRY: Record<ConcreteResourceType, ResourceTypeRule> = {
 };
 
 interface GrantSpec {
-  permissionType: PermissionType;
+  grantType: GrantType;
   resourceType: GroupPermissionResourceType;
   resourceId: number;
 }
 
-// Throws when the (permissionType, resourceType, resourceId) combination is not representable in the
+// Throws when the (grantType, resourceType, resourceId) combination is not representable in the
 // governance model. Fail-fast: callers pass programmatic values, not user input.
 export function assertValidGrant({
-  permissionType,
+  grantType,
   resourceType,
   resourceId,
 }: GrantSpec): void {
   // A wildcard on either axis applies to the whole type / all types and is always type-level.
-  if (permissionType === "*" || resourceType === "*") {
+  if (grantType === "*" || resourceType === "*") {
     assert(
       resourceId === WHOLE_TYPE_RESOURCE_ID,
-      `Wildcard grant (${permissionType} on ${resourceType}) requires resourceId = ${WHOLE_TYPE_RESOURCE_ID}.`
+      `Wildcard grant (${grantType} on ${resourceType}) requires resourceId = ${WHOLE_TYPE_RESOURCE_ID}.`
     );
     return;
   }
 
   const rule = REGISTRY[resourceType];
-  const allowedOnInstance =
-    rule.instanceLevelPermissions.includes(permissionType);
-  const allowedTypeWide = rule.typeLevelPermissions.includes(permissionType);
+  const allowedOnInstance = rule.instanceLevelPermissions.includes(grantType);
+  const allowedTypeWide = rule.typeLevelPermissions.includes(grantType);
   assert(
     allowedOnInstance || allowedTypeWide,
-    `Permission "${permissionType}" is not allowed on resource type "${resourceType}".`
+    `Permission "${grantType}" is not allowed on resource type "${resourceType}".`
   );
 
   // Type-wide grant (all resources of the type / an instance-less domain).
   if (resourceId === WHOLE_TYPE_RESOURCE_ID) {
     assert(
       allowedTypeWide,
-      `Permission "${permissionType}" cannot be granted type-wide on "${resourceType}".`
+      `Permission "${grantType}" cannot be granted type-wide on "${resourceType}".`
     );
     return;
   }
@@ -114,6 +113,6 @@ export function assertValidGrant({
   );
   assert(
     allowedOnInstance,
-    `Permission "${permissionType}" on "${resourceType}" is type-level and requires resourceId = ${WHOLE_TYPE_RESOURCE_ID}.`
+    `Permission "${grantType}" on "${resourceType}" is type-level and requires resourceId = ${WHOLE_TYPE_RESOURCE_ID}.`
   );
 }

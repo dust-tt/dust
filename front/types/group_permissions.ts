@@ -3,14 +3,14 @@
  *
  * All permission grants — resource-level access (spaces, agents, skills) and workspace-level
  * capabilities (billing, identity, …) — live in a single table keyed by a plain-verb
- * `permissionType`, a `resourceType`, and a numeric `resourceId`. The validity of a given
- * (permissionType, resourceType, resourceId) combination is enforced by the registry in
+ * `grantType`, a `resourceType`, and a numeric `resourceId`. The validity of a given
+ * (grantType, resourceType, resourceId) combination is enforced by the registry in
  * `@app/lib/resources/group_permission_registry`; this file only defines the raw vocabulary and
  * the "whole type" sentinel.
  */
 
 // Plain verbs. "*" means "all verbs".
-export const PERMISSION_TYPES = [
+export const GRANT_TYPES = [
   "read",
   "write",
   "admin",
@@ -20,7 +20,7 @@ export const PERMISSION_TYPES = [
   "use",
   "*",
 ] as const;
-export type PermissionType = (typeof PERMISSION_TYPES)[number];
+export type GrantType = (typeof GRANT_TYPES)[number];
 
 // Resource domains. "*" means "all resource types".
 export const GROUP_PERMISSION_RESOURCE_TYPES = [
@@ -42,8 +42,8 @@ export type GroupPermissionResourceType =
 // NULL anywhere — one meaning, one representation — and the unique index dedupes wildcard rows.
 export const WHOLE_TYPE_RESOURCE_ID = -1;
 
-export function isPermissionType(value: unknown): value is PermissionType {
-  return PERMISSION_TYPES.some((permission) => permission === value);
+export function isGrantType(value: unknown): value is GrantType {
+  return GRANT_TYPES.some((permission) => permission === value);
 }
 
 export function isGroupPermissionResourceType(
@@ -81,7 +81,7 @@ export type GovernancePermissionConfiguration =
     };
 
 export type GovernancePermission = {
-  permissionType: PermissionType;
+  grantType: GrantType;
   resourceType: GroupPermissionResourceType;
   configuration: GovernancePermissionConfiguration;
 };
