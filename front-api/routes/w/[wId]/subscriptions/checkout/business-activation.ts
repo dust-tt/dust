@@ -6,6 +6,7 @@ import {
   type PostBusinessActivationResponseBody,
   processBusinessActivation,
 } from "@app/lib/api/checkout/business_activation";
+import { isMetronomeBillingEnabled } from "@app/lib/api/subscription";
 import { wakeLock } from "@app/lib/wake_lock";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { workspaceApp } from "@front-api/middlewares/ctx";
@@ -22,6 +23,19 @@ app.get(
   ensureIsAdmin(),
   async (ctx): HandlerResult<GetBusinessActivationResponseBody> => {
     const auth = ctx.get("auth");
+
+    // Business activation is a credit-priced (Metronome) checkout flow: gate it
+    // on Metronome billing being enabled, consistently with the POST handler.
+    const metronomeBillingEnabled = await isMetronomeBillingEnabled(auth);
+    if (!metronomeBillingEnabled) {
+      return apiError(ctx, {
+        status_code: 403,
+        api_error: {
+          type: "workspace_auth_error",
+          message: "Metronome billing is not enabled for this workspace.",
+        },
+      });
+    }
 
     // The record can be looked up by contract id or by Stripe setup session id.
     // The polling UI uses the session id so it can poll from the first step,
