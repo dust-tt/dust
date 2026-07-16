@@ -5,7 +5,7 @@ import type { SkillStatus } from "@app/types/assistant/skill_configuration";
 // Constrained find options include both global and custom skills.
 export type AllSkillConfigurationFindOptions = Omit<
   ResourceFindOptions<SkillConfigurationModel>,
-  "attributes" | "limit" | "offset" | "where"
+  "limit" | "offset" | "where"
 > & {
   where?: {
     name?: string | string[];
@@ -21,16 +21,16 @@ export type AllSkillConfigurationFindOptions = Omit<
 };
 
 // Full find options only custom skills from database.
-type CustomSkillConfigurationFindOptions = Omit<
-  ResourceFindOptions<SkillConfigurationModel>,
-  "attributes"
-> & {
-  onlyCustom: true; // Explicit: only custom skills.
-  withTools?: boolean;
-  withInstructions?: boolean;
-  withFileAttachments?: boolean;
-};
+type CustomSkillConfigurationFindOptions =
+  ResourceFindOptions<SkillConfigurationModel> & {
+    onlyCustom: true; // Explicit: only custom skills.
+    withTools?: boolean;
+    withInstructions?: boolean;
+    withFileAttachments?: boolean;
+  };
 
+// baseFetch controls the selected model attributes based on hydration options
+// such as withInstructions.
 export type SkillConfigurationFindOptions =
-  | AllSkillConfigurationFindOptions
-  | CustomSkillConfigurationFindOptions;
+  | Omit<AllSkillConfigurationFindOptions, "attributes">
+  | Omit<CustomSkillConfigurationFindOptions, "attributes">;
