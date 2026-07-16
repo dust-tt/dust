@@ -24,7 +24,7 @@ import { GoogleGenAI } from "@google/genai";
 // the same place — it passes no location, so `@google/genai` defaults to
 // `global`. Extend with a specific region (e.g. `europe-west1`) once these
 // models become available there.
-export type GoogleAgentPlatformLocation = "global";
+export type GoogleAgentPlatformLocation = "global" | "eu";
 
 // Gemini-on-Vertex transport. Same @google/genai SDK and converters as the AI
 // Studio client; only the client construction differs (Vertex project +

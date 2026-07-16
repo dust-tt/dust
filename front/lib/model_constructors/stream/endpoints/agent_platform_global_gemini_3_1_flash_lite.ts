@@ -1,24 +1,24 @@
 import { WithGoogleAiStudioGeminiThreeDotOneFlashLiteConfig } from "@app/lib/model_constructors/providers/google_ai_studio/models/gemini_3_1_flash_lite";
 import { GoogleAgentPlatformStream } from "@app/lib/model_constructors/stream/clients/google_agent_platform";
 import type { StreamEndpointConstructor } from "@app/lib/model_constructors/stream/configuration";
-import { EUROPE } from "@app/lib/model_constructors/types/regions";
+import { GLOBAL } from "@app/lib/model_constructors/types/regions";
 
-export class AgentPlatformEuropeGeminiThreeDotOneFlashLiteStream extends WithGoogleAiStudioGeminiThreeDotOneFlashLiteConfig(
+export class AgentPlatformGlobalGeminiThreeDotOneFlashLiteStream extends WithGoogleAiStudioGeminiThreeDotOneFlashLiteConfig(
   GoogleAgentPlatformStream
 ) {
-  // Agent platform bills 10% more in multi-region.
+  // Global endpoint bills at base rate (non-global adds 10%).
   static readonly tokenPricing = {
     // Gemini uses implicit caching; cache creation is not charged.
     cacheCreated: 0,
-    cacheHit: 0.0275,
-    standardInput: 0.275,
-    standardOutput: 1.65,
+    cacheHit: 0.025,
+    standardInput: 0.25,
+    standardOutput: 1.5,
   };
 
-  static readonly region = EUROPE;
-  static readonly regionalEndpoint = "eu";
+  static readonly region = GLOBAL;
+  static readonly regionalEndpoint = "global";
 
   static readonly id = this.buildId();
 }
 
-AgentPlatformEuropeGeminiThreeDotOneFlashLiteStream satisfies StreamEndpointConstructor;
+AgentPlatformGlobalGeminiThreeDotOneFlashLiteStream satisfies StreamEndpointConstructor;

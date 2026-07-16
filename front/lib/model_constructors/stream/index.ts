@@ -7,6 +7,9 @@ import { AgentPlatformEuropeClaudeSonnetFiveStream } from "@app/lib/model_constr
 import { AgentPlatformEuropeClaudeSonnetFourDotSixStream } from "@app/lib/model_constructors/stream/endpoints/agent_platform_eu_claude_sonnet_four_dot_six";
 import { AgentPlatformEuropeGeminiThreeDotOneFlashLiteStream } from "@app/lib/model_constructors/stream/endpoints/agent_platform_eu_gemini_3_1_flash_lite";
 import { AgentPlatformEuropeGeminiThreeDotFiveFlashStream } from "@app/lib/model_constructors/stream/endpoints/agent_platform_eu_gemini_3_5_flash";
+import { AgentPlatformGlobalGeminiThreeDotOneFlashLiteStream } from "@app/lib/model_constructors/stream/endpoints/agent_platform_global_gemini_3_1_flash_lite";
+import { AgentPlatformGlobalGeminiThreeDotOneProStream } from "@app/lib/model_constructors/stream/endpoints/agent_platform_global_gemini_3_1_pro";
+import { AgentPlatformGlobalGeminiThreeDotFiveFlashStream } from "@app/lib/model_constructors/stream/endpoints/agent_platform_global_gemini_3_5_flash";
 import { AnthropicGlobalClaudeFableFiveStream } from "@app/lib/model_constructors/stream/endpoints/anthropic_global_claude_fable_five";
 import { AnthropicGlobalClaudeHaikuFourDotFiveStream } from "@app/lib/model_constructors/stream/endpoints/anthropic_global_claude_haiku_four_dot_five";
 import { AnthropicGlobalClaudeOpusFourDotEightStream } from "@app/lib/model_constructors/stream/endpoints/anthropic_global_claude_opus_four_dot_eight";
@@ -18,7 +21,9 @@ import { FireworksGlobalDeepSeekV4ProStream } from "@app/lib/model_constructors/
 import { FireworksGlobalGlmFiveDotTwoStream } from "@app/lib/model_constructors/stream/endpoints/fireworks_global_glm_five_dot_two";
 import { FireworksGlobalKimiK2Dot5Stream } from "@app/lib/model_constructors/stream/endpoints/fireworks_global_kimi_k2_dot_five";
 import { FireworksGlobalKimiK2Dot6Stream } from "@app/lib/model_constructors/stream/endpoints/fireworks_global_kimi_k2_dot_six";
+import { GoogleAiStudioGlobalGeminiThreeDotOneFlashLiteStream } from "@app/lib/model_constructors/stream/endpoints/google_ai_studio_global_gemini_3_1_flash_lite";
 import { GoogleAiStudioGlobalGeminiThreeDotOneProStream } from "@app/lib/model_constructors/stream/endpoints/google_ai_studio_global_gemini_3_1_pro";
+import { GoogleAiStudioGlobalGeminiThreeDotFiveFlashStream } from "@app/lib/model_constructors/stream/endpoints/google_ai_studio_global_gemini_3_5_flash";
 import { MistralEuropeCodestralStream } from "@app/lib/model_constructors/stream/endpoints/mistral_eu_codestral";
 import { MistralEuropeMistralLargeStream } from "@app/lib/model_constructors/stream/endpoints/mistral_eu_mistral_large";
 import { MistralEuropeMistralMedium35Stream } from "@app/lib/model_constructors/stream/endpoints/mistral_eu_mistral_medium_3_5";
@@ -66,6 +71,12 @@ export const STREAM_ENDPOINTS = {
     AgentPlatformEuropeGeminiThreeDotFiveFlashStream,
   [AgentPlatformEuropeGeminiThreeDotOneFlashLiteStream.id]:
     AgentPlatformEuropeGeminiThreeDotOneFlashLiteStream,
+  [AgentPlatformGlobalGeminiThreeDotFiveFlashStream.id]:
+    AgentPlatformGlobalGeminiThreeDotFiveFlashStream,
+  [AgentPlatformGlobalGeminiThreeDotOneFlashLiteStream.id]:
+    AgentPlatformGlobalGeminiThreeDotOneFlashLiteStream,
+  [AgentPlatformGlobalGeminiThreeDotOneProStream.id]:
+    AgentPlatformGlobalGeminiThreeDotOneProStream,
   [AnthropicGlobalClaudeFableFiveStream.id]:
     AnthropicGlobalClaudeFableFiveStream,
   [AnthropicGlobalClaudeHaikuFourDotFiveStream.id]:
@@ -84,8 +95,12 @@ export const STREAM_ENDPOINTS = {
   [FireworksGlobalGlmFiveDotTwoStream.id]: FireworksGlobalGlmFiveDotTwoStream,
   [FireworksGlobalKimiK2Dot5Stream.id]: FireworksGlobalKimiK2Dot5Stream,
   [FireworksGlobalKimiK2Dot6Stream.id]: FireworksGlobalKimiK2Dot6Stream,
+  [GoogleAiStudioGlobalGeminiThreeDotOneFlashLiteStream.id]:
+    GoogleAiStudioGlobalGeminiThreeDotOneFlashLiteStream,
   [GoogleAiStudioGlobalGeminiThreeDotOneProStream.id]:
     GoogleAiStudioGlobalGeminiThreeDotOneProStream,
+  [GoogleAiStudioGlobalGeminiThreeDotFiveFlashStream.id]:
+    GoogleAiStudioGlobalGeminiThreeDotFiveFlashStream,
   [MistralEuropeCodestralStream.id]: MistralEuropeCodestralStream,
   [MistralEuropeMistralLargeStream.id]: MistralEuropeMistralLargeStream,
   [MistralEuropeMistralMedium35Stream.id]: MistralEuropeMistralMedium35Stream,

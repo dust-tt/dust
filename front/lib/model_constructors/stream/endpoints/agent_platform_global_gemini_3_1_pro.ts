@@ -1,12 +1,12 @@
 import { WithGoogleAiStudioGeminiThreeDotOneProConfig } from "@app/lib/model_constructors/providers/google_ai_studio/models/gemini_3_1_pro";
-import { GoogleAiStudioStream } from "@app/lib/model_constructors/stream/clients/google_ai_studio";
+import { GoogleAgentPlatformStream } from "@app/lib/model_constructors/stream/clients/google_agent_platform";
 import type { StreamEndpointConstructor } from "@app/lib/model_constructors/stream/configuration";
 import { GLOBAL } from "@app/lib/model_constructors/types/regions";
 
-export class GoogleAiStudioGlobalGeminiThreeDotOneProStream extends WithGoogleAiStudioGeminiThreeDotOneProConfig(
-  GoogleAiStudioStream
+export class AgentPlatformGlobalGeminiThreeDotOneProStream extends WithGoogleAiStudioGeminiThreeDotOneProConfig(
+  GoogleAgentPlatformStream
 ) {
-  //TODO(new-llm): implement progressive token billing
+  // Global endpoint bills at base rate (non-global adds 10%).
   static readonly tokenPricing = {
     // Gemini uses implicit caching; cache creation is not charged.
     cacheCreated: 0,
@@ -16,8 +16,9 @@ export class GoogleAiStudioGlobalGeminiThreeDotOneProStream extends WithGoogleAi
   };
 
   static readonly region = GLOBAL;
+  static readonly regionalEndpoint = "global";
 
   static readonly id = this.buildId();
 }
 
-GoogleAiStudioGlobalGeminiThreeDotOneProStream satisfies StreamEndpointConstructor;
+AgentPlatformGlobalGeminiThreeDotOneProStream satisfies StreamEndpointConstructor;
