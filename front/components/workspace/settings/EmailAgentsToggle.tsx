@@ -47,6 +47,7 @@ export function EmailAgentsToggle({ owner }: EmailAgentsToggleProps) {
 
   const label = "Email agents";
   const description = `Allow workspace members to email agents at AGENT_NAME@${ASSISTANT_EMAIL_SUBDOMAIN}`;
+  const documentationUrl = "https://docs.dust.tt/docs/email-agents";
 
   return (
     <>
@@ -54,6 +55,7 @@ export function EmailAgentsToggle({ owner }: EmailAgentsToggleProps) {
         <GovernanceSettingRowLayout
           label={label}
           description={description}
+          documentationUrl={documentationUrl}
           action={
             <SliderToggle
               selected={isEnabled}
@@ -74,7 +76,7 @@ export function EmailAgentsToggle({ owner }: EmailAgentsToggleProps) {
                 <code>AGENT_NAME@{ASSISTANT_EMAIL_SUBDOMAIN}</code>
               </span>
               <a
-                href="https://docs.dust.tt/docs/email-agents"
+                href={documentationUrl}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-action-400 hover:text-action-500 text-sm"
