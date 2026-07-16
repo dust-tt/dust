@@ -980,6 +980,38 @@ const RETIRED_GLOBAL_AGENTS_SID = [
   GLOBAL_AGENTS_SID.DUST_CHALOM_HIGH,
 ];
 
+// Global agents that only expose a raw provider model (e.g. GPT-5.5, Claude
+// Haiku, Gemini Pro) without any Dust-specific tooling or instructions. When
+// the in-conversation model picker is enabled these are redundant — a user can
+// pick the model directly — so we hide them from the default agent listings.
+// They remain resolvable when fetched explicitly by id so past conversations
+// that referenced them keep rendering.
+const MODEL_ONLY_GLOBAL_AGENTS_SID: readonly GLOBAL_AGENTS_SID[] = [
+  GLOBAL_AGENTS_SID.GPT35_TURBO,
+  GLOBAL_AGENTS_SID.GPT4,
+  GLOBAL_AGENTS_SID.GPT5,
+  GLOBAL_AGENTS_SID.GPT5_THINKING,
+  GLOBAL_AGENTS_SID.GPT5_NANO,
+  GLOBAL_AGENTS_SID.GPT5_MINI,
+  GLOBAL_AGENTS_SID.O1,
+  GLOBAL_AGENTS_SID.O1_MINI,
+  GLOBAL_AGENTS_SID.O1_HIGH_REASONING,
+  GLOBAL_AGENTS_SID.O3_MINI,
+  GLOBAL_AGENTS_SID.O3,
+  GLOBAL_AGENTS_SID.CLAUDE_5_SONNET,
+  GLOBAL_AGENTS_SID.CLAUDE_4_5_SONNET,
+  GLOBAL_AGENTS_SID.CLAUDE_4_5_HAIKU,
+  GLOBAL_AGENTS_SID.CLAUDE_4_SONNET,
+  GLOBAL_AGENTS_SID.CLAUDE_3_OPUS,
+  GLOBAL_AGENTS_SID.CLAUDE_3_SONNET,
+  GLOBAL_AGENTS_SID.CLAUDE_3_HAIKU,
+  GLOBAL_AGENTS_SID.CLAUDE_3_7_SONNET,
+  GLOBAL_AGENTS_SID.MISTRAL_LARGE,
+  GLOBAL_AGENTS_SID.MISTRAL_MEDIUM,
+  GLOBAL_AGENTS_SID.MISTRAL_SMALL,
+  GLOBAL_AGENTS_SID.GEMINI_PRO,
+];
+
 function getCustomModelIndexForGlobalAgent(sId: string): number | null {
   if (!isGlobalAgentId(sId)) {
     return null;
@@ -1050,6 +1082,18 @@ export async function getGlobalAgents(
   if (!isWorkspaceAnalyticsEnabled(owner)) {
     agentsIdsToFetch = agentsIdsToFetch.filter(
       (sId) => sId !== GLOBAL_AGENTS_SID.ANALYST
+    );
+  }
+
+  // When the in-conversation model picker is enabled, model-only global agents
+  // (e.g. GPT-5.5, Claude Haiku) are redundant with picking the model directly,
+  // so we hide them from the default agent listings. We only filter the default
+  // listing (no explicit ids requested) so past conversations that reference
+  // these agents still resolve when fetched by id.
+  if (agentIds === undefined && flags.includes("models_picker")) {
+    agentsIdsToFetch = agentsIdsToFetch.filter(
+      (sId) =>
+        !isGlobalAgentId(sId) || !MODEL_ONLY_GLOBAL_AGENTS_SID.includes(sId)
     );
   }
   const DUST_INTERNAL_AGENTS: readonly GLOBAL_AGENTS_SID[] = [
