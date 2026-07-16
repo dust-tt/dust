@@ -529,28 +529,28 @@ const INITIAL_GOVERNANCE: GovernanceSetting[] = [
   {
     id: "create_agents",
     label: "Create agents",
-    description: "Controls who can build agents in the Agent Builder.",
+    description: "Control who can build agents in the Agent Builder.",
     scope: "groups",
     groups: ["Design Team", "Engineering Team"],
   },
   {
     id: "publish_agents",
     label: "Publish agents",
-    description: "Controls who can publish agents to the whole workspace.",
+    description: "Control who can publish agents to the whole workspace.",
     scope: "everyone",
     groups: [],
   },
   {
     id: "create_skills",
     label: "Create Skills",
-    description: "Controls who can build custom Skills.",
+    description: "Control who can build custom Skills.",
     scope: "everyone",
     groups: [],
   },
   {
     id: "publish_skills",
     label: "Publish Skills",
-    description: "Controls who can publish Skills to the whole workspace.",
+    description: "Control who can publish Skills to the whole workspace.",
     scope: "disabled",
     groups: [],
   },
@@ -558,7 +558,7 @@ const INITIAL_GOVERNANCE: GovernanceSetting[] = [
     id: "billing_access",
     label: "Billing access",
     description:
-      "Controls who can manage billing settings, invoices, and payment methods.",
+      "Control who can manage billing settings, invoices, and payment methods.",
     scope: "groups",
     groups: ["Managers"],
   },
@@ -566,7 +566,7 @@ const INITIAL_GOVERNANCE: GovernanceSetting[] = [
     id: "security_access",
     label: "Security access",
     description:
-      "Controls who can manage user access, identities, and provisioning.",
+      "Control who can manage user access, identities, and provisioning.",
     scope: "groups",
     groups: ["Managers"],
   },
@@ -2452,14 +2452,14 @@ const FRAME_VISIBILITY_OPTIONS: Omit<
   {
     level: "workspace_only",
     label: "Share by public link",
-    description: "Controls who can create public links to Frames.",
+    description: "Control who can create public links to Frames.",
     icon: Globe01,
   },
   {
     level: "email_invite",
     label: "Invite people by email",
     description:
-      "Controls who can share Frames by email with people outside your organization.",
+      "Control who can share Frames by email with people outside your organization.",
     icon: Mail01,
   },
 ];
@@ -2516,7 +2516,7 @@ function FrameSharingGovernanceRow({
               Frame access
             </span>
             <span className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-              Controls who can access Frames in this workspace.
+              Control who can access Frames in this workspace.
             </span>
           </div>
           <DropdownMenu>
@@ -2925,7 +2925,7 @@ function GovernancePage({
               <Page.Vertical gap="xs" sizing="grow">
                 <Page.H variant="h6">Pod access</Page.H>
                 <Page.P variant="secondary" size="sm">
-                  Controls whether the workspace allows restricted Pods only, or
+                  Control whether the workspace allows restricted Pods only, or
                   both restricted and open Pods.
                 </Page.P>
               </Page.Vertical>
@@ -2956,7 +2956,7 @@ function GovernancePage({
               <Page.Vertical gap="xs" sizing="grow">
                 <Page.H variant="h6">Pod files</Page.H>
                 <Page.P variant="secondary" size="sm">
-                  Controls whether members can manually add files to Pods.
+                  Control whether members can manually add files to Pods.
                 </Page.P>
               </Page.Vertical>
               <DropdownMenu>
@@ -3030,7 +3030,7 @@ function GovernancePage({
                   Private conversation URLs by default
                 </Page.H>
                 <Page.P variant="secondary" size="sm">
-                  Controls whether conversation URLs are private by default,
+                  Control whether conversation URLs are private by default,
                   limiting access to participants.
                 </Page.P>
               </Page.Vertical>
@@ -3043,7 +3043,7 @@ function GovernancePage({
               <Page.Vertical gap="xs" sizing="grow">
                 <Page.H variant="h6">MCP server</Page.H>
                 <Page.P variant="secondary" size="sm">
-                  Controls whether external MCP clients can connect to this
+                  Control whether external MCP clients can connect to this
                   workspace.
                 </Page.P>
               </Page.Vertical>
@@ -3065,7 +3065,7 @@ function GovernancePage({
               <Page.Vertical gap="xs" sizing="grow">
                 <Page.H variant="h6">"Sent via Agent" Slack footer</Page.H>
                 <Page.P variant="secondary" size="sm">
-                  Controls whether Slack messages posted with user credentials
+                  Control whether Slack messages posted with user credentials
                   show the "Sent via Agent" footer.
                 </Page.P>
               </Page.Vertical>
@@ -4272,14 +4272,14 @@ const WORKSPACE_CAPABILITIES = [
     icon: Microphone01,
     label: "Voice transcription",
     description:
-      "Controls whether members can use voice transcription in conversations.",
+      "Control whether members can use voice transcription in conversations.",
   },
   {
     id: "email_agents",
     icon: Mail01,
     label: "Email agents",
     description:
-      "Controls whether members can reach agents by email at AGENT_NAME@dust.team.",
+      "Control whether members can reach agents by email at AGENT_NAME@dust.team.",
     beta: true,
   },
   {
@@ -4287,7 +4287,7 @@ const WORKSPACE_CAPABILITIES = [
     icon: LayerSingle,
     label: "Audit Logs",
     description:
-      "Controls whether audit events are recorded and shown in IT & Security.",
+      "Control whether audit events are recorded and shown in IT & Security.",
   },
 ] as const;
 
@@ -4295,7 +4295,7 @@ const INITIAL_INTEGRATIONS: IntegrationRow[] = [
   {
     id: "slack",
     label: "Slack Bot",
-    description: "Controls whether the Dust Bot can be used in Slack.",
+    description: "Control whether the Dust Bot can be used in Slack.",
     Logo: SlackLogo,
     connected: true,
     enabled: true,
@@ -4303,8 +4303,7 @@ const INITIAL_INTEGRATIONS: IntegrationRow[] = [
   {
     id: "teams",
     label: "Microsoft Teams Bot",
-    description:
-      "Controls whether the Dust Bot can be used in Microsoft Teams.",
+    description: "Control whether the Dust Bot can be used in Microsoft Teams.",
     Logo: MicrosoftTeamsLogo,
     connected: false,
     enabled: false,
@@ -4312,7 +4311,7 @@ const INITIAL_INTEGRATIONS: IntegrationRow[] = [
   {
     id: "discord",
     label: "Discord Bot",
-    description: "Controls whether the Dust Bot can be used in Discord.",
+    description: "Control whether the Dust Bot can be used in Discord.",
     Logo: DiscordLogo,
     connected: true,
     enabled: true,
