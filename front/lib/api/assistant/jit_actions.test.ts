@@ -217,13 +217,13 @@ describe("getJITServers", () => {
 
         const { equippedSkills } = await SkillResource.listForAgentLoop(auth, {
           agentConfiguration: agentConfig,
-          conversation,
+          conversation: { ...conversation, spaceId: conversationsSpace.sId },
         });
         expect(equippedSkills.map((s) => s.sId)).not.toContain(skill.sId);
 
         const jitServers = await getJITServers(auth, {
           agentConfiguration: agentConfig,
-          conversation,
+          conversation: { ...conversation, spaceId: conversationsSpace.sId },
           attachments: [],
         });
 
@@ -244,13 +244,13 @@ describe("getJITServers", () => {
 
         const { equippedSkills } = await SkillResource.listForAgentLoop(auth, {
           agentConfiguration: agentConfig,
-          conversation,
+          conversation: { ...conversation, spaceId: conversationsSpace.sId },
         });
         expect(equippedSkills.map((s) => s.sId)).toContain(skill.sId);
 
         const jitServers = await getJITServers(auth, {
           agentConfiguration: agentConfig,
-          conversation,
+          conversation: { ...conversation, spaceId: conversationsSpace.sId },
           attachments: [],
         });
 
