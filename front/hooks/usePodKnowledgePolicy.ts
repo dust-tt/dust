@@ -4,18 +4,19 @@ import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { LightWorkspaceType } from "@app/types/user";
 import { useState } from "react";
 
-interface UseOpenProjectsPolicyProps {
+interface UsePodKnowledgePolicyProps {
   owner: LightWorkspaceType;
 }
 
-export function useOpenProjectsPolicy({ owner }: UseOpenProjectsPolicyProps) {
+export function usePodKnowledgePolicy({ owner }: UsePodKnowledgePolicyProps) {
   const [isChanging, setIsChanging] = useState(false);
   const sendNotification = useSendNotification();
-  const [allowOpenProjects, setAllowOpenProjects] = useState(
-    owner.metadata?.allowOpenProjects !== false
-  );
+  const [
+    allowManualPodKnowledgeManagement,
+    setAllowManualPodKnowledgeManagement,
+  ] = useState(owner.metadata?.allowManualProjectKnowledgeManagement !== false);
 
-  const doUpdateOpenProjectsPolicy = async (nextValue: boolean) => {
+  const doUpdatePodKnowledgePolicy = async (nextValue: boolean) => {
     setIsChanging(true);
     try {
       const res = await clientFetch(`/api/w/${owner.sId}`, {
@@ -24,19 +25,19 @@ export function useOpenProjectsPolicy({ owner }: UseOpenProjectsPolicyProps) {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          allowOpenProjects: nextValue,
+          allowManualProjectKnowledgeManagement: nextValue,
         }),
       });
 
       if (!res.ok) {
-        throw new Error("Failed to update Pod visibility policy.");
+        throw new Error("Failed to update Pod knowledge policy.");
       }
 
-      setAllowOpenProjects(nextValue);
+      setAllowManualPodKnowledgeManagement(nextValue);
     } catch (error) {
       sendNotification({
         type: "error",
-        title: "Failed to update Pod visibility policy",
+        title: "Failed to update Pod knowledge policy",
         description: normalizeError(error).message,
       });
       return false;
@@ -48,8 +49,8 @@ export function useOpenProjectsPolicy({ owner }: UseOpenProjectsPolicyProps) {
   };
 
   return {
-    allowOpenProjects,
+    allowManualPodKnowledgeManagement,
     isChanging,
-    doUpdateOpenProjectsPolicy,
+    doUpdatePodKnowledgePolicy,
   };
 }

@@ -1,10 +1,11 @@
+import { GovernanceSettingRowLayout } from "@app/components/pages/workspace/governance/GovernanceSettingRowLayout";
 import { useEmailAgentsToggle } from "@app/hooks/useEmailAgentsToggle";
 import { ASSISTANT_EMAIL_SUBDOMAIN } from "@app/lib/api/assistant/email/constants";
+import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import type { WorkspaceType } from "@app/types/user";
 import {
   BookOpen01,
   Button,
-  Chip,
   ContextItem,
   Dialog,
   DialogContent,
@@ -31,6 +32,7 @@ export function EmailAgentsToggle({ owner }: EmailAgentsToggleProps) {
   const { isEnabled, isChanging, doToggleEmailAgents } = useEmailAgentsToggle({
     owner,
   });
+  const { hasFeature } = useFeatureFlags();
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
 
   const confirmDialogTitle = isEnabled
@@ -43,43 +45,57 @@ export function EmailAgentsToggle({ owner }: EmailAgentsToggleProps) {
     ? "Disable email agents"
     : "Enable email agents";
 
+  const label = "Email agents";
+  const description = `Allow workspace members to email agents at AGENT_NAME@${ASSISTANT_EMAIL_SUBDOMAIN}`;
+
   return (
     <>
-      <ContextItem
-        title={
-          <div className="flex items-center gap-2">
-            <span>Email agents</span>
-            <Chip size="xs" color="info" label="Beta" />
-          </div>
-        }
-        subElement={
-          <div className="flex flex-row items-center gap-2">
-            <span>
-              Allow workspace members to email agents at{" "}
-              <code>AGENT_NAME@{ASSISTANT_EMAIL_SUBDOMAIN}</code>
-            </span>
-            <a
-              href="https://docs.dust.tt/docs/email-agents"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-action-400 hover:text-action-500 text-sm"
-            >
-              <BookOpen01 className="h-4 w-4" />
-            </a>
-          </div>
-        }
-        visual={<Mail02 className="h-6 w-6" />}
-        hasSeparatorIfLast={true}
-        action={
-          <SliderToggle
-            selected={isEnabled}
-            disabled={isChanging}
-            onClick={() => {
-              setIsConfirmOpen(true);
-            }}
-          />
-        }
-      />
+      {hasFeature("admin_governance") ? (
+        <GovernanceSettingRowLayout
+          label={label}
+          description={description}
+          action={
+            <SliderToggle
+              selected={isEnabled}
+              disabled={isChanging}
+              onClick={() => {
+                setIsConfirmOpen(true);
+              }}
+            />
+          }
+        />
+      ) : (
+        <ContextItem
+          title={label}
+          subElement={
+            <div className="flex flex-row items-center gap-2">
+              <span>
+                Allow workspace members to email agents at{" "}
+                <code>AGENT_NAME@{ASSISTANT_EMAIL_SUBDOMAIN}</code>
+              </span>
+              <a
+                href="https://docs.dust.tt/docs/email-agents"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-action-400 hover:text-action-500 text-sm"
+              >
+                <BookOpen01 className="h-4 w-4" />
+              </a>
+            </div>
+          }
+          visual={<Mail02 className="h-6 w-6" />}
+          hasSeparatorIfLast={true}
+          action={
+            <SliderToggle
+              selected={isEnabled}
+              disabled={isChanging}
+              onClick={() => {
+                setIsConfirmOpen(true);
+              }}
+            />
+          }
+        />
+      )}
       <Dialog
         open={isConfirmOpen}
         onOpenChange={(open) => {

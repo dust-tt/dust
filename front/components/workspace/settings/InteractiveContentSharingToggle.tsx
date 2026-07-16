@@ -1,3 +1,4 @@
+import { GovernanceSettingRowLayout } from "@app/components/pages/workspace/governance/GovernanceSettingRowLayout";
 import { useFrameSharingToggle } from "@app/hooks/useFrameSharingToggle";
 import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import type { WorkspaceSharingPolicy, WorkspaceType } from "@app/types/user";
@@ -18,7 +19,6 @@ import {
   DropdownMenuTrigger,
   Globe01,
   Lock01,
-  Page,
   Users01,
 } from "@dust-tt/sparkle";
 import { useState } from "react";
@@ -109,20 +109,18 @@ export function InteractiveContentSharing({
   return (
     <>
       {hasFeature("admin_governance") ? (
-        <div className="flex w-full items-center gap-4 p-4 justify-between">
-          <Page.Vertical gap="xs" sizing="grow">
-            <Page.H variant="h6">Frame sharing policy</Page.H>
-            <Page.P variant="secondary" size="sm">
-              Control how frames can be shared in this workspace
-            </Page.P>
-          </Page.Vertical>
-          <InteractiveContentSharingDropdown
-            selectedOption={selectedOption}
-            onPolicyChange={handlePolicyChange}
-            isChanging={isChanging}
-            sharingPolicy={sharingPolicy}
-          />
-        </div>
+        <GovernanceSettingRowLayout
+          label="Frame sharing policy"
+          description="Control how frames can be shared in this workspace"
+          action={
+            <InteractiveContentSharingDropdown
+              selectedOption={selectedOption}
+              onPolicyChange={handlePolicyChange}
+              isChanging={isChanging}
+              sharingPolicy={sharingPolicy}
+            />
+          }
+        />
       ) : (
         <ContextItem
           title="Frame sharing policy"

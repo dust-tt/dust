@@ -2,9 +2,9 @@ import { AuditLogsToggle } from "@app/components/workspace/settings/AuditLogsTog
 import { DustMcpServerSettingsItem } from "@app/components/workspace/settings/DustMcpServerSettingsItem";
 import { EmailAgentsToggle } from "@app/components/workspace/settings/EmailAgentsToggle";
 import { InteractiveContentSharingToggle } from "@app/components/workspace/settings/InteractiveContentSharingToggle";
-import { OpenProjectsPolicy } from "@app/components/workspace/settings/OpenProjectsPolicy";
+import { OpenPodPolicy } from "@app/components/workspace/settings/OpenProjectsPolicy";
+import { PodKnowledgePolicy } from "@app/components/workspace/settings/PodKnowledgePolicy";
 import { PrivateConversationUrlsToggle } from "@app/components/workspace/settings/PrivateConversationUrlsToggle";
-import { ProjectKnowledgePolicy } from "@app/components/workspace/settings/ProjectKnowledgePolicy";
 import { RestrictAgentsPublishingCapability } from "@app/components/workspace/settings/RestrictAgentsPublishingCapability";
 import { SlackPersonalFooterRemovalToggle } from "@app/components/workspace/settings/SlackPersonalFooterRemovalToggle";
 import { VoiceTranscriptionToggle } from "@app/components/workspace/settings/VoiceTranscriptionToggle";
@@ -26,25 +26,27 @@ export function CapabilitiesSection({
   const { hasFeature } = useFeatureFlags();
   const isAdminGovernanceEnabled = hasFeature("admin_governance");
 
+  if (isAdminGovernanceEnabled) {
+    return null;
+  }
+
   return (
     <Page.Vertical align="stretch" gap="md">
       <Page.H variant="h4">Capabilities</Page.H>
       <ContextItem.List>
         <div className="h-full border-b border-border" />
-        {!isAdminGovernanceEnabled && (
-          <InteractiveContentSharingToggle owner={owner} />
-        )}
+        <InteractiveContentSharingToggle owner={owner} />
         {!subscription.plan.isByok && (
           <VoiceTranscriptionToggle owner={owner} />
         )}
-        <OpenProjectsPolicy owner={owner} />
-        <ProjectKnowledgePolicy owner={owner} />
+        <OpenPodPolicy owner={owner} />
+        <PodKnowledgePolicy owner={owner} />
         <EmailAgentsToggle owner={owner} />
         <PrivateConversationUrlsToggle owner={owner} />
         <SlackPersonalFooterRemovalToggle owner={owner} />
         <WorkspaceAnalyticsToggle owner={owner} />
         <DustMcpServerSettingsItem owner={owner} />
-        {!isAdminGovernanceEnabled && <AuditLogsToggle owner={owner} />}
+        <AuditLogsToggle owner={owner} />
         {publishingRestrictionMessage && (
           <RestrictAgentsPublishingCapability
             subElement={publishingRestrictionMessage}

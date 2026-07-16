@@ -1,6 +1,15 @@
+import { GovernanceSettingRow } from "@app/components/pages/workspace/governance/GovernanceSettingRow";
 import { GovernanceSettingSection } from "@app/components/pages/workspace/governance/GovernanceSettingSection";
 import { AuditLogsToggle } from "@app/components/workspace/settings/AuditLogsToggle";
+import { DustMcpServerSettingsItem } from "@app/components/workspace/settings/DustMcpServerSettingsItem";
+import { EmailAgentsToggle } from "@app/components/workspace/settings/EmailAgentsToggle";
 import { InteractiveContentSharing } from "@app/components/workspace/settings/InteractiveContentSharingToggle";
+import { OpenPodPolicy } from "@app/components/workspace/settings/OpenProjectsPolicy";
+import { PodKnowledgePolicy } from "@app/components/workspace/settings/PodKnowledgePolicy";
+import { PrivateConversationUrlsToggle } from "@app/components/workspace/settings/PrivateConversationUrlsToggle";
+import { SlackPersonalFooterRemovalToggle } from "@app/components/workspace/settings/SlackPersonalFooterRemovalToggle";
+import { VoiceTranscriptionToggle } from "@app/components/workspace/settings/VoiceTranscriptionToggle";
+import { WorkspaceAnalyticsToggle } from "@app/components/workspace/settings/WorkspaceAnalyticsToggle";
 import { useFrameSharingToggle } from "@app/hooks/useFrameSharingToggle";
 import {
   useAuth,
@@ -21,7 +30,8 @@ import type {
 import {
   ActionFrame,
   ContentMessage,
-  Icon,
+  File04,
+  IntersectDust,
   Lock01,
   Page,
   PuzzlePiece01,
@@ -63,7 +73,7 @@ export const GovernancePage = () => {
   const hasAdminGovernanceFeature = hasFeature("admin_governance");
 
   const owner = useWorkspace();
-  const { isAdmin } = useAuth();
+  const { isAdmin, subscription } = useAuth();
   const { groups, isGroupsLoading } = useGroups({
     owner,
     kinds: ["provisioned"],
@@ -90,23 +100,27 @@ export const GovernancePage = () => {
   );
 
   const sections: {
+    id: "agents" | "skills" | "frame" | "billing";
     label: string;
     icon: ComponentType;
     governancePermissions: GovernancePermission[];
   }[] = [
     {
+      id: "agents",
       label: "Agents",
       icon: Robot,
       governancePermissions: governancePermissionsMap.agent ?? [],
     },
     {
+      id: "skills",
       label: "Skills",
       icon: PuzzlePiece01,
       governancePermissions: governancePermissionsMap.skill ?? [],
     },
-    ...(framePermissions.length > 0
+    ...(framePermissions.length > 0 || isAdmin
       ? [
           {
+            id: "frame" as const,
             label: "Frame sharing",
             icon: ActionFrame,
             governancePermissions: framePermissions,
@@ -116,6 +130,7 @@ export const GovernancePage = () => {
     ...(isAdmin
       ? [
           {
+            id: "billing" as const,
             label: "Billing and security",
             icon: Lock01,
             governancePermissions: [
@@ -150,30 +165,55 @@ export const GovernancePage = () => {
         This page is WIP. Do not change unless you know what you are doing.
       </ContentMessage>
       <div className="flex w-full flex-col gap-8">
-        {sections.map((section) => (
-          <GovernanceSettingSection
-            key={section.label}
-            label={section.label}
-            icon={section.icon}
-            governancePermissions={section.governancePermissions}
-            groups={groups}
-            onPermissionChange={onPermissionChange}
-          />
-        ))}
-        {isAdmin && (
-          <>
-            <div className="flex items-center gap-2">
-              <Icon visual={ShapesPlus} className="text-muted-foreground" />
-              <Page.H variant="h5">Capabilities</Page.H>
-            </div>
-            <div className="w-full rounded-xl border border-border">
+        {sections.map(({ id, label, icon, governancePermissions }) => (
+          <GovernanceSettingSection key={id} label={label} icon={icon}>
+            {id === "frame" && isAdmin && (
               <InteractiveContentSharing
                 sharingPolicy={sharingPolicy}
                 doUpdateSharingPolicy={doUpdateSharingPolicy}
                 isChanging={isChanging}
               />
+            )}
+            {governancePermissions.map((governancePermission) => (
+              <GovernanceSettingRow
+                key={
+                  governancePermission.permissionType +
+                  ":" +
+                  governancePermission.resourceType
+                }
+                governancePermission={governancePermission}
+                groups={groups}
+                onChange={(newConfiguration) =>
+                  onPermissionChange({
+                    permissionType: governancePermission.permissionType,
+                    resourceType: governancePermission.resourceType,
+                    configuration: newConfiguration,
+                  })
+                }
+              />
+            ))}
+          </GovernanceSettingSection>
+        ))}
+
+        {isAdmin && (
+          <>
+            <GovernanceSettingSection label="Pods" icon={IntersectDust}>
+              <OpenPodPolicy owner={owner} />
+              <PodKnowledgePolicy owner={owner} />
+            </GovernanceSettingSection>
+            <GovernanceSettingSection label="Capabilities" icon={ShapesPlus}>
+              {!subscription.plan.isByok && (
+                <VoiceTranscriptionToggle owner={owner} />
+              )}
+              <EmailAgentsToggle owner={owner} />
+              <PrivateConversationUrlsToggle owner={owner} />
+              <DustMcpServerSettingsItem owner={owner} />
+              <SlackPersonalFooterRemovalToggle owner={owner} />
+              <WorkspaceAnalyticsToggle owner={owner} />
+            </GovernanceSettingSection>
+            <GovernanceSettingSection label="Audit" icon={File04}>
               <AuditLogsToggle owner={owner} />
-            </div>
+            </GovernanceSettingSection>
           </>
         )}
       </div>
