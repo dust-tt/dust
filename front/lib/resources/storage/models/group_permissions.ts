@@ -47,6 +47,10 @@ GroupPermissionModel.init(
     grantType: {
       type: DataTypes.STRING(256),
       allowNull: false,
+      // Physical column stays "permissionType": renaming it would break the live model-tier
+      // resolution path (ModelsTierResource) during the deploy window. The physical rename is
+      // deferred to a later expand/contract migration; the code vocabulary is "grantType".
+      field: "permissionType",
     },
     resourceType: {
       type: DataTypes.STRING(256),
@@ -65,11 +69,11 @@ GroupPermissionModel.init(
       // Dedupes grants and covers the "does this group have this grant" direction. A group belongs
       // to a single workspace, so groupId already scopes the workspace — no need for workspaceId
       // here. Its leading groupId also serves as the FK index (BACK13) for group deletion.
-      // Explicit name kept in sync with the migration so schema diffing stays clean.
+      // Fields use the physical column name "permissionType" (see the grantType field mapping).
       {
-        name: "group_permissions_group_gtype_rtype_rid_unique",
+        name: "group_permissions_group_ptype_rtype_rid_unique",
         unique: true,
-        fields: ["groupId", "grantType", "resourceType", "resourceId"],
+        fields: ["groupId", "permissionType", "resourceType", "resourceId"],
       },
       // "who can act on resource X" direction.
       {
