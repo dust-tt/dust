@@ -15,8 +15,16 @@ const VIRTUAL_FRAME_ROOT = "/__dust_frame__";
 const VIRTUAL_DUST_REACT_HOOKS_PATH = `${VIRTUAL_FRAME_ROOT}/node_modules/@dust/react-hooks/index.d.ts`;
 const SOURCE_EXTENSIONS = [".tsx", ".ts", ".jsx", ".js"] as const;
 const RESOLVE_EXTENSIONS = ["", ".tsx", ".ts", ".jsx", ".js"] as const;
-const INPUT_DIAGNOSTIC_CODES = new Set([2322, 2345, 2353, 2741]);
-const CALL_DIAGNOSTIC_CODES = new Set([2554, 2769]);
+const INPUT_DIAGNOSTIC_CODES = new Set([
+  2322, // Type is not assignable to the expected input type.
+  2345, // Argument is not assignable to the input parameter.
+  2353, // Object literal contains an unknown property.
+  2741, // Input is missing a required property.
+]);
+const CALL_DIAGNOSTIC_CODES = new Set([
+  2554, // Call has the wrong number of arguments.
+  2769, // No overload accepts the provided arguments.
+]);
 
 export type FramePodFunctionValidationErrorCode =
   | "invalid_pod_function_input"
@@ -476,6 +484,12 @@ async function validateCallFunctionTypes({
   return new Ok(undefined);
 }
 
+/**
+ * Statically checks Pod function references and the structure of their inputs.
+ * Pod contracts are authored in Zod, but this check uses their extracted JSON Schema. Runtime-only
+ * refinements and value constraints are not always expressible as TypeScript types, so an input can
+ * pass here and still fail the authoritative Zod validation when the function runs.
+ */
 export async function validateFramePodFunctionReferences(
   auth: Authenticator,
   {
