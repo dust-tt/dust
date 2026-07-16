@@ -203,7 +203,7 @@ async function copyConversationSkills(
   const upsertResult = await SkillResource.upsertConversationSkills(
     auth,
     {
-      conversationId: childConversation.id,
+      conversation: childConversation,
       skills: parentSkills,
       enabled: true,
     },
