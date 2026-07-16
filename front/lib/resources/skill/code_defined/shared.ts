@@ -28,6 +28,9 @@ interface BaseSkillDefinition<
   readonly version: number;
   readonly icon: string;
   readonly mcpServers?: MCPServerDefinition[];
+  // Files that ship with the skill and are loaded into the conversation file
+  // system when the skill is enabled, exactly like custom-skill attachments.
+  readonly files?: readonly CodeDefinedSkillFile[];
   readonly inheritAgentConfigurationDataSources?: boolean;
   // When true, the skill's instructions are exposed to the front-end so builders
   // can read them in the skill details panel and build on top of the skill.
@@ -47,6 +50,13 @@ interface BaseSkillDefinition<
     agentLoopData: AgentLoopExecutionData
   ) => boolean;
 }
+
+export type CodeDefinedSkillFile = {
+  // Unique within the skill; becomes the file name under `skills/<skillName>/`.
+  readonly fileName: string;
+  readonly contentType: string;
+  readonly content: string;
+};
 
 type WithStaticInstructions<T extends BaseSkillDefinition> = T & {
   readonly instructions: string;
