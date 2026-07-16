@@ -55,6 +55,7 @@ import {
 import logger from "@app/logger/logger";
 import type { MembershipSeatType } from "@app/types/memberships";
 import {
+  hasMetronomeSeatBalance,
   isMembershipSeatType,
   isPaidSeatType,
   SEAT_TYPE_ORDER,
@@ -1054,12 +1055,17 @@ async function emptyOriginSeatCreditsForTransfers({
   allocationBySeatType: Map<MembershipSeatType, number>;
   desiredSeatByUser: Map<string, MembershipSeatType>;
 }): Promise<SeatCreditTransfer[]> {
-  // Queried by explicit seatIds: an unfiltered listMetronomeSeatBalances call
-  // silently omits most seats on contracts with a few hundred+ seats.
+  // Only pro/max (and their _yearly variants) carry an individual Metronome
+  // seat balance — `desiredSeatByUser` includes every active membership
+  // (e.g. "none"/"free"), so querying its keys unfiltered would waste calls
+  // on ids Metronome will report as not found.
+  const seatBalanceEligibleUserIds = [...desiredSeatByUser.entries()].flatMap(
+    ([userId, seatType]) => (hasMetronomeSeatBalance(seatType) ? [userId] : [])
+  );
   const balancesRes = await listMetronomeSeatBalances({
     metronomeCustomerId,
     metronomeContractId: contractId,
-    seatIds: [...desiredSeatByUser.keys()],
+    seatIds: seatBalanceEligibleUserIds,
   });
   if (balancesRes.isErr()) {
     logger.error(
