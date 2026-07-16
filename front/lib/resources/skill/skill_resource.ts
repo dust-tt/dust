@@ -571,6 +571,9 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
 
     const customSkills = await this.model.findAll({
       ...otherOptions,
+      ...(withInstructions
+        ? {}
+        : { attributes: { exclude: ["instructions", "instructionsHtml"] } }),
       where: {
         // Fetch active by default, unless explicitly overridden by the caller.
         status: "active",
@@ -725,6 +728,12 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       }
 
       allowedCustomSkillsRes = allowedCustomSkills.map((customSkill) => {
+        const customSkillAttributes = {
+          ...customSkill.get(),
+          ...(withInstructions
+            ? {}
+            : { instructions: "", instructionsHtml: null }),
+        };
         const skillMCPServerViewIds = skillMCPServerConfigsBySkillId[
           customSkill.id
         ]?.map((skillConfig) => skillConfig.mcpServerViewId);
@@ -738,7 +747,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
           )
         );
 
-        return new this(this.model, customSkill.get(), {
+        return new this(this.model, customSkillAttributes, {
           mcpServerConfigurations: skillMCPServerViews.map((view) => ({
             view,
           })),
