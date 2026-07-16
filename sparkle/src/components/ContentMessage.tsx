@@ -18,18 +18,14 @@ const CONTENT_MESSAGE_SIZES = ["sm", "xs"] as const;
 
 type ContentMessageSizeType = (typeof CONTENT_MESSAGE_SIZES)[number];
 
-// success-100 and highlight-100 are semantic tokens that remap automatically in
-// dark mode (tokens.css .dark {}). red, orange, gray have no semantic alias so
-// we pair them with explicit dark: variants following the same inversion pattern
-// (100 → 900 for bg, 800 → 200 for text).
 const containerVariants = cva("flex flex-col", {
   variants: {
     variant: {
-      error: "bg-red-100 dark:bg-red-900",
+      error: "bg-warning-100",
       success: "bg-success-100",
       info: "bg-highlight-100",
-      warning: "bg-orange-100 dark:bg-orange-900",
-      gray: "bg-gray-100 dark:bg-gray-900",
+      warning: "bg-info-100",
+      gray: "bg-muted-background",
     },
     size: {
       sm: "gap-3 p-4 rounded-2xl",
@@ -45,11 +41,11 @@ const containerVariants = cva("flex flex-col", {
 const colorVariants = cva("", {
   variants: {
     variant: {
-      error: "text-red-800 dark:text-red-200",
-      success: "text-success-800",
-      info: "text-highlight-800",
-      warning: "text-orange-800 dark:text-orange-200",
-      gray: "text-gray-800 dark:text-gray-200",
+      error: "text-warning-900",
+      success: "text-success-900",
+      info: "text-highlight-900",
+      warning: "text-info-900",
+      gray: "text-muted-foreground",
     },
   },
 });
