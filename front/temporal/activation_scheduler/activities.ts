@@ -1,7 +1,9 @@
 import { emitActivationEvent } from "@app/lib/api/activation/trigger";
 import { Authenticator } from "@app/lib/auth";
+import { ActivationNudgeResource } from "@app/lib/resources/activation_nudge_resource";
 import { ProjectMetadataResource } from "@app/lib/resources/project_metadata_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
+import { TriggerResource } from "@app/lib/resources/trigger_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 
@@ -42,7 +44,28 @@ export async function runActivationForWorkspaceActivity({
           { workspaceId, spaceId: pod.sId, error: result.error },
           "[ActivationScheduler] Failed to emit activation event for pod."
         );
+        return;
       }
+
+      const { triggerId } = result.value;
+      if (!triggerId) {
+        logger.warn(
+          { workspaceId, spaceId: pod.sId },
+          "[ActivationScheduler] Activation event did not match the pod's trigger."
+        );
+        return;
+      }
+
+      const trigger = await TriggerResource.fetchById(auth, triggerId);
+      if (!trigger) {
+        logger.error(
+          { workspaceId, spaceId: pod.sId, triggerId },
+          "[ActivationScheduler] Activation trigger not found after firing."
+        );
+        return;
+      }
+
+      await ActivationNudgeResource.makeNew(auth, { pod, trigger });
     },
     { concurrency: ACTIVATION_PODS_CONCURRENCY }
   );
