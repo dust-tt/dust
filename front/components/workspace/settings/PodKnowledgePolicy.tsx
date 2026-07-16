@@ -1,5 +1,5 @@
 import { GovernanceSettingRowLayout } from "@app/components/pages/workspace/governance/GovernanceSettingRowLayout";
-import { usePodKnowledgePolicy } from "@app/hooks/useProjectKnowledgePolicy";
+import { usePodKnowledgePolicy } from "@app/hooks/usePodKnowledgePolicy";
 import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import type { WorkspaceType } from "@app/types/user";
 import {
