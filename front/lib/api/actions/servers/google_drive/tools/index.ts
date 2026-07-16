@@ -311,7 +311,12 @@ function addAgentAttribution(
  * If the capability is true or confirmed via API, returns null to proceed.
  */
 async function ensureCapability(
-  capabilityName: "canEdit" | "canComment" | "canShare" | "canCopy",
+  capabilityName:
+    | "canEdit"
+    | "canComment"
+    | "canShare"
+    | "canCopy"
+    | "canAddChildren",
   capabilityValue: boolean | undefined,
   fileId: string,
   authInfo: ToolHandlerExtra["authInfo"]
@@ -347,6 +352,8 @@ async function ensureCapability(
         "You don't have permission to manage sharing for this file. The file owner may have restricted sharing to owners only.",
       canCopy:
         "You don't have permission to copy this file. The file owner may have restricted copying.",
+      canAddChildren:
+        "You don't have permission to add files to this destination folder. You need at least contributor access to that folder.",
     };
     return new Ok([
       {
@@ -830,6 +837,21 @@ const readOnlyTools = buildTools(GOOGLE_DRIVE_TOOLS_METADATA, handlers);
 
 const writeHandlers: ToolHandlers<typeof GOOGLE_DRIVE_WRITE_TOOLS_METADATA> = {
   create_document: async ({ title, parentId }, { authInfo }) => {
+    // A brand-new file is normally auto-authorized under the drive.file scope, but
+    // creating it inside a specific shared folder still requires write access to that
+    // folder. Check that upfront so a destination-permission problem doesn't surface
+    // as a generic Drive error that gets misread as an authentication issue.
+    if (parentId) {
+      const destinationAccessError = await ensureCapability(
+        "canAddChildren",
+        undefined,
+        parentId,
+        authInfo
+      );
+      if (destinationAccessError) {
+        return destinationAccessError;
+      }
+    }
     const drive = await getDriveClient(authInfo);
     if (!drive) {
       return new Err(new MCPError("Failed to authenticate with Google Drive"));
@@ -977,6 +999,22 @@ const writeHandlers: ToolHandlers<typeof GOOGLE_DRIVE_WRITE_TOOLS_METADATA> = {
     );
     if (accessError) {
       return accessError;
+    }
+    // `canCopy` above only tells us whether the source file can be copied. If a
+    // destination folder is specified, the copy still needs to land somewhere the
+    // caller can actually write to: check that separately so a destination-only
+    // permission problem surfaces as a clear message instead of a generic Drive
+    // error that gets misread as an authentication issue.
+    if (parentId) {
+      const destinationAccessError = await ensureCapability(
+        "canAddChildren",
+        undefined,
+        parentId,
+        authInfo
+      );
+      if (destinationAccessError) {
+        return destinationAccessError;
+      }
     }
     const drive = await getDriveClient(authInfo);
     if (!drive) {
