@@ -5,7 +5,6 @@ import type { WorkspaceType } from "@app/types/user";
 import {
   Button,
   ContextItem,
-  Cube01,
   CubeOutline,
   DropdownMenu,
   DropdownMenuContent,
@@ -19,14 +18,12 @@ const OPEN_PODS_POLICIES = [
     value: "private_and_open",
     label: "Restricted and open Pods",
     description: "Members can create either restricted or open Pods.",
-    icon: Cube01,
     allowOpenProjects: true,
   },
   {
     value: "private_only",
     label: "Restricted Pods only",
     description: "Members can only create restricted Pods.",
-    icon: CubeOutline,
     allowOpenProjects: false,
   },
 ] as const;
@@ -98,7 +95,6 @@ const OpenPodPolicyDropdown = ({
           size="sm"
           isSelect
           label={selectedPolicy?.label}
-          icon={selectedPolicy?.icon}
           disabled={isChanging}
           className="grid grid-cols-[auto_1fr_auto] truncate"
         />
@@ -111,7 +107,6 @@ const OpenPodPolicyDropdown = ({
               value={policy.value}
               label={policy.label}
               description={policy.description}
-              icon={policy.icon}
               onClick={() =>
                 void doUpdateOpenPodsPolicy(policy.allowOpenProjects)
               }

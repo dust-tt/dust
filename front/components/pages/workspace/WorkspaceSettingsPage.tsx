@@ -4,33 +4,14 @@ import { PreferencesSection } from "@app/components/workspace/settings/Preferenc
 import { WorkspaceNameEditor } from "@app/components/workspace/settings/WorkspaceNameEditor";
 import { getPublishingRestrictionMessage } from "@app/lib/api/assistant/publishing_restrictions";
 import { useFeatureFlags, useWorkspace } from "@app/lib/auth/AuthContext";
-import { useBotDataSources } from "@app/lib/swr/data_sources";
-import { useSystemSpace } from "@app/lib/swr/spaces";
-import { Building04, Page, Spinner } from "@dust-tt/sparkle";
+import { Building04, Page } from "@dust-tt/sparkle";
 
 export function WorkspaceSettingsPage() {
   const owner = useWorkspace();
-  const { featureFlags } = useFeatureFlags();
-  const { systemSpace, isSystemSpaceLoading } = useSystemSpace({
-    workspaceId: owner.sId,
-  });
-  const {
-    slackBotDataSource,
-    microsoftBotDataSource,
-    discordBotDataSource,
-    isBotDataSourcesLoading,
-  } = useBotDataSources({ workspaceId: owner.sId });
+  const { featureFlags, hasFeature } = useFeatureFlags();
 
-  const isDiscordBotAvailable = featureFlags.includes("discord_bot");
-
-  const isLoading = isSystemSpaceLoading || isBotDataSourcesLoading;
-
-  if (isLoading || !systemSpace) {
-    return (
-      <div className="flex h-full items-center justify-center">
-        <Spinner size="lg" />
-      </div>
-    );
+  if (hasFeature("admin_governance")) {
+    return null;
   }
 
   return (
@@ -46,14 +27,7 @@ export function WorkspaceSettingsPage() {
           featureFlags
         )}
       />
-      <IntegrationsSection
-        owner={owner}
-        systemSpace={systemSpace}
-        slackBotDataSource={slackBotDataSource}
-        microsoftBotDataSource={microsoftBotDataSource}
-        discordBotDataSource={discordBotDataSource}
-        isDiscordBotAvailable={isDiscordBotAvailable}
-      />
+      <IntegrationsSection owner={owner} />
     </Page.Vertical>
   );
 }

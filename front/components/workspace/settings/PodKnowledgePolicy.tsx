@@ -11,7 +11,6 @@ import {
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
   DropdownMenuTrigger,
-  Lock01,
 } from "@dust-tt/sparkle";
 
 const POD_KNOWLEDGE_POLICIES = [
@@ -19,14 +18,12 @@ const POD_KNOWLEDGE_POLICIES = [
     value: "enabled",
     label: "Manual updates allowed",
     description: "Members can manually add files to Pod.",
-    icon: BookOpen01,
     allowManualProjectKnowledgeManagement: true,
   },
   {
     value: "disabled",
     label: "Manual updates disabled",
     description: "Members cannot manually add files to Pod.",
-    icon: Lock01,
     allowManualProjectKnowledgeManagement: false,
   },
 ] as const;
@@ -104,7 +101,6 @@ const PodKnowledgePolicyDropdown = ({
           size="sm"
           isSelect
           label={selectedPolicy?.label}
-          icon={selectedPolicy?.icon}
           disabled={isChanging}
           className="grid grid-cols-[auto_1fr_auto] truncate"
         />
@@ -117,7 +113,6 @@ const PodKnowledgePolicyDropdown = ({
               value={policy.value}
               label={policy.label}
               description={policy.description}
-              icon={policy.icon}
               onClick={() =>
                 void doUpdatePodKnowledgePolicy(
                   policy.allowManualProjectKnowledgeManagement

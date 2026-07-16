@@ -17,33 +17,26 @@ import {
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
   DropdownMenuTrigger,
-  Globe01,
-  Lock01,
-  Users01,
 } from "@dust-tt/sparkle";
 import { useState } from "react";
 
 const SHARING_POLICY_OPTIONS: {
   description: string;
-  icon: typeof Lock01;
   label: string;
   value: WorkspaceSharingPolicy;
 }[] = [
   {
-    icon: Lock01,
     label: "Workspace members only",
     description: "Frames can only be viewed by workspace members",
     value: "workspace_only",
   },
   {
-    icon: Users01,
     label: "Members + email invites",
     description:
       "Frames can be shared with workspace members or via email invite",
     value: "workspace_and_emails",
   },
   {
-    icon: Globe01,
     label: "No restrictions",
     description:
       "Members can share Frames publicly, with the workspace, or via email invite",
@@ -198,7 +191,6 @@ export function InteractiveContentSharing({
 
 interface InteractiveContentSharingDropdownProps {
   selectedOption?: {
-    icon: typeof Lock01;
     label: string;
   };
   isChanging: boolean;
@@ -220,7 +212,6 @@ const InteractiveContentSharingDropdown = ({
           size="sm"
           isSelect
           label={selectedOption?.label}
-          icon={selectedOption?.icon}
           disabled={isChanging}
           className="grid grid-cols-[auto_1fr_auto] truncate"
         />
@@ -233,7 +224,6 @@ const InteractiveContentSharingDropdown = ({
               value={option.value}
               label={option.label}
               description={option.description}
-              icon={option.icon}
               onClick={() => onPolicyChange(option.value)}
             />
           ))}

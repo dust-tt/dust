@@ -2,10 +2,11 @@ import { GovernanceSettingRow } from "@app/components/pages/workspace/governance
 import { GovernanceSettingSection } from "@app/components/pages/workspace/governance/GovernanceSettingSection";
 import { ExtensionMcpToolsSection } from "@app/components/workspace/ExtensionMcpToolsSection";
 import { LinkedSectionNotice } from "@app/components/workspace/LinkedSectionNotice";
-import { AuditLogsToggle } from "@app/components/workspace/settings/AuditLogsToggle";
+import { AuditLogsGovernanceSection } from "@app/components/workspace/settings/AuditLogsToggle";
 import { DustMcpServerSettingsItem } from "@app/components/workspace/settings/DustMcpServerSettingsItem";
 import { EmailAgentsToggle } from "@app/components/workspace/settings/EmailAgentsToggle";
 import { InteractiveContentSharing } from "@app/components/workspace/settings/InteractiveContentSharingToggle";
+import { MessagingAppToggles } from "@app/components/workspace/settings/MessagingAppToggles";
 import { OpenPodPolicy } from "@app/components/workspace/settings/OpenProjectsPolicy";
 import { PodKnowledgePolicy } from "@app/components/workspace/settings/PodKnowledgePolicy";
 import { PrivateConversationUrlsToggle } from "@app/components/workspace/settings/PrivateConversationUrlsToggle";
@@ -34,9 +35,9 @@ import type {
 } from "@app/types/user";
 import {
   ActionFrame,
+  CloudArrowLeftRight,
   ContentMessage,
-  File04,
-  IntersectDust,
+  Cube01,
   Lock01,
   Page,
   PuzzlePiece01,
@@ -213,11 +214,14 @@ export const GovernancePage = () => {
 
         {isAdmin && (
           <>
-            <GovernanceSettingSection label="Pods" icon={IntersectDust}>
+            <GovernanceSettingSection label="Pods" icon={Cube01}>
               <OpenPodPolicy owner={owner} />
               <PodKnowledgePolicy owner={owner} />
             </GovernanceSettingSection>
-            <GovernanceSettingSection label="Capabilities" icon={ShapesPlus}>
+            <GovernanceSettingSection
+              label="Feature policies"
+              icon={ShapesPlus}
+            >
               <VoiceTranscriptionToggle owner={owner} />
               <EmailAgentsToggle owner={owner} />
               <PrivateConversationUrlsToggle owner={owner} />
@@ -226,9 +230,13 @@ export const GovernancePage = () => {
               <SlackPersonalFooterRemovalToggle owner={owner} />
               <WorkspaceAnalyticsToggle owner={owner} />
             </GovernanceSettingSection>
-            <GovernanceSettingSection label="Audit" icon={File04}>
-              <AuditLogsToggle owner={owner} />
+            <GovernanceSettingSection
+              label="Messaging app policies"
+              icon={CloudArrowLeftRight}
+            >
+              <MessagingAppToggles owner={owner} />
             </GovernanceSettingSection>
+            <AuditLogsGovernanceSection owner={owner} />
           </>
         )}
       </div>

@@ -270,6 +270,7 @@ export const subNavigationAdmin = ({
 
   const hasAdminRole = isAdmin(owner);
   const hasBusinessAdminRole = isBusinessAdmin(owner);
+  const isAdminGovernanceEnabled = featureFlags.includes("admin_governance");
 
   nav.push({
     id: "workspace",
@@ -285,7 +286,7 @@ export const subNavigationAdmin = ({
       },
       {
         id: "identity_and_provisioning",
-        label: featureFlags.includes("admin_governance")
+        label: isAdminGovernanceEnabled
           ? "IT & Security"
           : "Identity & Provisioning",
         icon: Fingerprint04,
@@ -293,15 +294,7 @@ export const subNavigationAdmin = ({
         current: isCurrent("identity_and_provisioning"),
         disabled: !hasAdminRole,
       },
-      {
-        id: "workspace",
-        label: "Workspace Settings",
-        icon: Building04,
-        href: `/w/${owner.sId}/workspace`,
-        current: isCurrent("workspace"),
-        disabled: !hasAdminRole,
-      },
-      ...(featureFlags.includes("admin_governance")
+      ...(isAdminGovernanceEnabled
         ? [
             {
               id: "governance" as const,
@@ -312,7 +305,16 @@ export const subNavigationAdmin = ({
               disabled: !hasBusinessAdminRole,
             },
           ]
-        : []),
+        : [
+            {
+              id: "workspace" as const,
+              label: "Workspace Settings",
+              icon: Building04,
+              href: `/w/${owner.sId}/workspace`,
+              current: isCurrent("workspace"),
+              disabled: !hasAdminRole,
+            },
+          ]),
       ...(featureFlags.includes("whitelabel_frames")
         ? [
             {
