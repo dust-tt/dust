@@ -2487,6 +2487,11 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       }
     );
 
+    // Bump `updatedAt` like the completed-run path does: the sidebar list is paginated by
+    // `updatedAt` and a blocked conversation would otherwise keep its creation-time position
+    // (and stay read), so it would never surface in the inbox while waiting on user input.
+    await this.markAsUpdated(auth, { conversation });
+
     return new Ok(updated);
   }
 

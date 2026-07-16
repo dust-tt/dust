@@ -38,8 +38,7 @@ type GroupLabel =
   | "Last 12 Months"
   | "Older";
 
-// We treat the conversations as unread if they are unread or have an action required
-// (note that action required conversations are never marked as unread).
+// We treat the conversations as unread if they are unread or have an action required.
 // Unread reinforced-skill-notification conversations are split out into their own bucket so
 // the sidebar can show them in a dedicated "Skill suggestions" section above the Inbox; once
 // read they fall back into the date-grouped Conversations list like any other read conversation.
