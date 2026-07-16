@@ -7,6 +7,7 @@ import { canCurrentUserRespondToParentUserMessage } from "@app/lib/api/assistant
 import { useAuth } from "@app/lib/auth/AuthContext";
 import type { LightWorkspaceType, UserType } from "@app/types/user";
 import { ArrowUp, Button, cn, OptionCard, Spinner } from "@dust-tt/sparkle";
+import { useReducedMotion } from "framer-motion";
 import type { KeyboardEvent } from "react";
 import { useEffect, useRef, useState } from "react";
 
@@ -18,6 +19,11 @@ interface UserAnswerRequiredProps {
   owner: LightWorkspaceType;
   retryHandler: () => Promise<void>;
 }
+
+type SubmissionState = {
+  kind: "answer" | "skip";
+  phase: "pending" | "exiting";
+} | null;
 
 function isPrintableKey(e: KeyboardEvent<HTMLDivElement>) {
   return (
@@ -41,19 +47,18 @@ export function UserAnswerRequired({
 }: UserAnswerRequiredProps) {
   const { user } = useAuth();
   const { removeCompletedAction } = useBlockedActionsContext();
-  const { answerQuestion, isSubmitting, errorMessage } = useAnswerUserQuestion({
-    owner,
-  });
+  const { answerQuestion, errorMessage } = useAnswerUserQuestion({ owner });
 
   const answerDraft = useUserAnswerDraft({
     multiSelect: blockedAction.question.multiSelect,
   });
-  const [isSkipPending, setIsSkipPending] = useState(false);
+  const [submission, setSubmission] = useState<SubmissionState>(null);
   const [activeOptionIndex, setActiveOptionIndex] = useState(0);
   const [isCustomResponseFocused, setIsCustomResponseFocused] = useState(false);
   const [isKeyboardNavigating, setIsKeyboardNavigating] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const customResponseInputRef = useRef<HTMLInputElement>(null);
+  const shouldReduceMotion = useReducedMotion();
 
   const { question } = blockedAction;
   const canCurrentUserRespond = canCurrentUserRespondToParentUserMessage({
@@ -65,8 +70,7 @@ export function UserAnswerRequired({
     isCustomResponseFocused ||
     answerDraft.answerToSubmit?.customResponse !== undefined;
 
-  const isAnswerSubmitting = isSubmitting && !isSkipPending;
-  const isSkipSubmitting = isSubmitting && isSkipPending;
+  const isSubmitting = submission !== null;
 
   // Reset the keyboard cursor and focus when a new blocked action replaces the current one.
   // biome-ignore lint/correctness/useExhaustiveDependencies: blockedAction.actionId is an intentional reset trigger
@@ -81,7 +85,11 @@ export function UserAnswerRequired({
     answer: UserQuestionAnswer,
     { isSkip = false }: { isSkip?: boolean } = {}
   ) {
-    setIsSkipPending(isSkip);
+    // Move focus out of the controls before disabling and hiding them.
+    containerRef.current?.focus({ preventScroll: true });
+    const submissionKind = isSkip ? "skip" : "answer";
+    setSubmission({ kind: submissionKind, phase: "pending" });
+
     // Submit against the action's own conversation/message: for a sub-agent
     // question these are the child's ids (the action lives in the child
     // conversation). For a direct question they equal the current conversation.
@@ -96,10 +104,16 @@ export function UserAnswerRequired({
       // Resume the agent run. For a sub-agent question this also relaunches the
       // blocked parent run (the child retry is a no-op once the answer is in).
       await retryHandler();
-      removeCompletedAction(blockedAction.actionId);
-    }
 
-    setIsSkipPending(false);
+      if (shouldReduceMotion) {
+        removeCompletedAction(blockedAction.actionId);
+      } else {
+        // Keep the submission state visible until the exit animation removes the card.
+        setSubmission({ kind: submissionKind, phase: "exiting" });
+      }
+    } else {
+      setSubmission(null);
+    }
   }
 
   function activateOption(index: number) {
@@ -261,24 +275,40 @@ export function UserAnswerRequired({
     <div
       ref={containerRef}
       tabIndex={0}
+      aria-busy={isSubmitting}
       onKeyDownCapture={handleContainerKeyDownCapture}
       onKeyDown={handleContainerKeyDown}
       onMouseMove={() => setIsKeyboardNavigating(false)}
+      onAnimationEnd={(event) => {
+        if (
+          submission?.phase === "exiting" &&
+          event.currentTarget === event.target
+        ) {
+          removeCompletedAction(blockedAction.actionId);
+        }
+      }}
       className={cn(
         "flex flex-col gap-4 rounded-2xl border border-dark bg-background p-5 outline-hidden",
-        "",
+        "ease-enter motion-reduce:animate-none",
+        submission?.phase === "exiting"
+          ? "animate-out fill-mode-forwards fade-out-0 duration-exit"
+          : "animate-in fade-in-0 duration-enter",
         isKeyboardNavigating && "cursor-none"
       )}
     >
       <div className="text-base font-medium leading-tight text-foreground">
         {question.question}
       </div>
-      {isAnswerSubmitting ? (
-        <div className="flex min-h-64 items-center justify-center">
-          <Spinner size="lg" />
-        </div>
-      ) : (
-        <div className="flex flex-col gap-2">
+      <div className="relative min-h-16">
+        <div
+          aria-hidden={isSubmitting}
+          className={cn(
+            "flex flex-col gap-2 transition-opacity ease-enter motion-reduce:transition-none",
+            isSubmitting
+              ? "opacity-0 duration-exit"
+              : "opacity-100 duration-enter"
+          )}
+        >
           {question.options.map((option, index) => (
             <OptionCard
               key={index}
@@ -298,7 +328,7 @@ export function UserAnswerRequired({
                 isKeyboardNavigating && "cursor-none"
               )}
               onClick={() => handleOptionClick(index)}
-              disabled={isAnswerSubmitting}
+              disabled={isSubmitting}
             />
           ))}
           <OptionCard
@@ -322,7 +352,24 @@ export function UserAnswerRequired({
             onKeyDown={handleCustomResponseKeyDown}
           />
         </div>
-      )}
+        <div
+          role={isSubmitting ? "status" : undefined}
+          aria-hidden={!isSubmitting}
+          className={cn(
+            "absolute inset-0 flex items-center justify-center transition-opacity ease-enter motion-reduce:transition-none",
+            isSubmitting
+              ? "opacity-100 duration-exit"
+              : "pointer-events-none opacity-0 duration-enter"
+          )}
+        >
+          <Spinner size="lg" />
+          <span className="sr-only">
+            {submission?.kind === "skip"
+              ? "Skipping question"
+              : "Submitting answer"}
+          </span>
+        </div>
+      </div>
       {errorMessage && (
         <div className="text-sm font-medium text-warning-800">
           {errorMessage}
@@ -334,14 +381,15 @@ export function UserAnswerRequired({
           variant="outline"
           size="sm"
           onClick={handleSkip}
-          isLoading={isSkipSubmitting}
+          isLoading={submission?.kind === "skip"}
+          disabled={isSubmitting}
         />
         <Button
           icon={ArrowUp}
           variant="highlight"
           size="sm"
-          isLoading={isAnswerSubmitting}
-          disabled={answerDraft.answerToSubmit === null}
+          isLoading={submission?.kind === "answer"}
+          disabled={isSubmitting || answerDraft.answerToSubmit === null}
           onClick={handleSubmit}
           aria-label="Send answer"
         />

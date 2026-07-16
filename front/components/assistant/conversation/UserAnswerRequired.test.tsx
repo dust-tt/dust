@@ -16,6 +16,16 @@ import { UserAnswerRequired } from "./UserAnswerRequired";
 const removeCompletedActionMock = vi.fn();
 const answerQuestionMock = vi.fn();
 const retryHandlerMock = vi.fn().mockResolvedValue(undefined);
+let shouldReduceMotionMock = false;
+
+vi.mock("framer-motion", async (importOriginal) => {
+  const original = await importOriginal<typeof import("framer-motion")>();
+
+  return {
+    ...original,
+    useReducedMotion: () => shouldReduceMotionMock,
+  };
+});
 
 vi.mock("@app/lib/auth/AuthContext", () => ({
   useAuth: () => ({
@@ -246,9 +256,24 @@ function getKeyboardContainer(container: HTMLElement) {
   return element;
 }
 
+async function finishExitAnimation(container: HTMLElement) {
+  const keyboardContainer = getKeyboardContainer(container);
+
+  await waitFor(() => {
+    expect(keyboardContainer).toHaveClass(
+      "animate-out",
+      "fill-mode-forwards",
+      "duration-exit",
+      "ease-enter"
+    );
+  });
+  fireEvent.animationEnd(keyboardContainer);
+}
+
 describe("UserAnswerRequired", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    shouldReduceMotionMock = false;
     answerQuestionMock.mockResolvedValue({ success: true });
   });
 
@@ -327,10 +352,85 @@ describe("UserAnswerRequired", () => {
         answer: { selectedOptions: [1] },
       });
     });
+    await finishExitAnimation(container);
     expect(removeCompletedActionMock).toHaveBeenCalledWith("action_1");
   });
 
-  it("skips when Escape is pressed while the component is focused", async () => {
+  it("keeps the submission state visible until the agent retry completes", async () => {
+    const user = userEvent.setup();
+    let resolveRetry = () => {};
+    retryHandlerMock.mockImplementationOnce(
+      () =>
+        new Promise<void>((resolve) => {
+          resolveRetry = resolve;
+        })
+    );
+
+    const { container } = render(
+      <UserAnswerRequired
+        blockedAction={makeBlockedAction()}
+        triggeringUser={null}
+        owner={owner}
+        retryHandler={retryHandlerMock}
+      />
+    );
+
+    await user.click(screen.getByRole("button", { name: /Alpha/i }));
+
+    await waitFor(() => {
+      expect(screen.getByRole("status")).toBeInTheDocument();
+    });
+    expect(
+      screen.queryByRole("button", { name: /Alpha/i })
+    ).not.toBeInTheDocument();
+    expect(removeCompletedActionMock).not.toHaveBeenCalled();
+
+    await act(async () => resolveRetry());
+
+    await finishExitAnimation(container);
+    expect(removeCompletedActionMock).toHaveBeenCalledWith("action_1");
+  });
+
+  it("removes immediately after retry when motion is reduced", async () => {
+    const user = userEvent.setup();
+    let resolveRetry = () => {};
+    shouldReduceMotionMock = true;
+    retryHandlerMock.mockImplementationOnce(
+      () =>
+        new Promise<void>((resolve) => {
+          resolveRetry = resolve;
+        })
+    );
+
+    render(
+      <UserAnswerRequired
+        blockedAction={makeBlockedAction()}
+        triggeringUser={null}
+        owner={owner}
+        retryHandler={retryHandlerMock}
+      />
+    );
+
+    await user.click(screen.getByRole("button", { name: /Alpha/i }));
+
+    await waitFor(() => {
+      expect(screen.getByRole("status")).toBeInTheDocument();
+    });
+
+    await act(async () => resolveRetry());
+
+    expect(removeCompletedActionMock).toHaveBeenCalledWith("action_1");
+  });
+
+  it("disables controls and skips when Escape is pressed", async () => {
+    let resolveAnswer = (_result: { success: boolean }) => {};
+    answerQuestionMock.mockImplementationOnce(
+      () =>
+        new Promise<{ success: boolean }>((resolve) => {
+          resolveAnswer = resolve;
+        })
+    );
+
     const { container } = render(
       <UserAnswerRequired
         blockedAction={makeBlockedAction()}
@@ -353,6 +453,22 @@ describe("UserAnswerRequired", () => {
         answer: { selectedOptions: [] },
       });
     });
+
+    const status = await screen.findByRole("status");
+    const hiddenOption = screen.getByRole("button", {
+      name: /Alpha/i,
+      hidden: true,
+    });
+
+    expect(status).toHaveTextContent("Skipping question");
+    expect(status).toHaveClass("duration-exit");
+    expect(hiddenOption.parentElement).toHaveClass("duration-exit");
+    expect(hiddenOption).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Skip" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Send answer" })).toBeDisabled();
+
+    await act(async () => resolveAnswer({ success: true }));
+    await finishExitAnimation(container);
     expect(removeCompletedActionMock).toHaveBeenCalledWith("action_1");
   });
 
