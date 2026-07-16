@@ -1,4 +1,3 @@
-import { updateConversationRequirementsForSkills } from "@app/lib/api/assistant/conversation/skill_permissions";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import logger from "@app/logger/logger";
@@ -83,7 +82,7 @@ app.post(
     }
 
     const r = await SkillResource.upsertConversationSkills(auth, {
-      conversationId: conversationWithoutContent.id,
+      conversation: conversationWithoutContent,
       skills: [skillRes],
       enabled: action === "add",
     });
@@ -104,13 +103,6 @@ app.post(
           type: "internal_server_error",
           message: "Failed to add skill to conversation",
         },
-      });
-    }
-
-    if (action === "add") {
-      await updateConversationRequirementsForSkills(auth, {
-        skills: [skillRes],
-        conversation: conversationWithoutContent,
       });
     }
 

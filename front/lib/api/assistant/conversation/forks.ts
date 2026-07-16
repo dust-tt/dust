@@ -6,7 +6,6 @@ import {
 import { compactConversation } from "@app/lib/api/assistant/conversation/compaction";
 import { replaceStandaloneAttachmentIds } from "@app/lib/api/assistant/conversation/compaction_attachment_id_replacements";
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
-import { updateConversationRequirementsForSkills } from "@app/lib/api/assistant/conversation/skill_permissions";
 import { listAttachments } from "@app/lib/api/assistant/jit_utils";
 import { getSmallWhitelistedModel } from "@app/lib/api/assistant/models";
 import { getOrCreateConversationDataSourceFromFile } from "@app/lib/api/data_sources";
@@ -204,7 +203,7 @@ async function copyConversationSkills(
   const upsertResult = await SkillResource.upsertConversationSkills(
     auth,
     {
-      conversationId: childConversation.id,
+      conversation: childConversation,
       skills: parentSkills,
       enabled: true,
     },
@@ -219,14 +218,6 @@ async function copyConversationSkills(
       )
     );
   }
-
-  // Carry over the skills' space requirements onto the forked conversation so access
-  // stays gated on those spaces.
-  await updateConversationRequirementsForSkills(auth, {
-    skills: parentSkills,
-    conversation: childConversation,
-    t: transaction,
-  });
 
   return new Ok(undefined);
 }
