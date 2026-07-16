@@ -4,6 +4,13 @@ import type { LightWorkspaceType } from "@app/types/user";
 import type { Transaction } from "sequelize";
 import { beforeEach, describe, expect, it } from "vitest";
 
+// Seat-limit windows are floored to the whole UTC hour, so tests that assert on
+// exact boundaries use hour-aligned dates (flooring is then a no-op).
+const HOUR_MS = 60 * 60 * 1000;
+function hourAligned(ms: number): Date {
+  return new Date(Math.floor(ms / HOUR_MS) * HOUR_MS);
+}
+
 describe("WorkspaceSeatLimitResource", () => {
   let workspace: LightWorkspaceType;
   // Captured so scheduleChange can nest under the test-isolation transaction as
@@ -176,7 +183,7 @@ describe("WorkspaceSeatLimitResource", () => {
       maxSeats: 10,
     });
 
-    const startAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+    const startAt = hourAligned(Date.now() + 30 * 24 * 60 * 60 * 1000);
     const result = await WorkspaceSeatLimitResource.setScheduledLimit({
       workspace,
       seatType: "pro",
@@ -367,8 +374,8 @@ describe("WorkspaceSeatLimitResource", () => {
       minSeats: 99,
     });
 
-    const phase1Start = new Date(Date.now() - 24 * 60 * 60 * 1000);
-    const phase2Start = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+    const phase1Start = hourAligned(Date.now() - 24 * 60 * 60 * 1000);
+    const phase2Start = hourAligned(Date.now() + 30 * 24 * 60 * 60 * 1000);
     // Only starts are provided; the resource derives phase 1's end from phase 2.
     const result = await WorkspaceSeatLimitResource.setScheduleForSeatType({
       workspace,
@@ -424,8 +431,8 @@ describe("WorkspaceSeatLimitResource", () => {
   });
 
   it("derives contiguous windows and an open-ended last phase from starts", async () => {
-    const start1 = new Date(Date.now() + 10 * 24 * 60 * 60 * 1000);
-    const start2 = new Date(Date.now() + 20 * 24 * 60 * 60 * 1000);
+    const start1 = hourAligned(Date.now() + 10 * 24 * 60 * 60 * 1000);
+    const start2 = hourAligned(Date.now() + 20 * 24 * 60 * 60 * 1000);
     const result = await WorkspaceSeatLimitResource.setScheduleForSeatType({
       workspace,
       seatType: "pro",
@@ -494,5 +501,61 @@ describe("WorkspaceSeatLimitResource", () => {
       at: new Date(Date.now() + 60 * 24 * 60 * 60 * 1000),
     });
     expect(futureLimits.has("pro")).toBe(false);
+  });
+
+  it("floors setScheduledLimit dates to the whole UTC hour", async () => {
+    const startAt = new Date("2026-08-01T14:37:42.000Z");
+    const endAt = new Date("2026-09-01T09:15:00.000Z");
+    const result = await WorkspaceSeatLimitResource.setScheduledLimit({
+      workspace,
+      seatType: "pro",
+      minSeats: 4,
+      startAt,
+      endAt,
+      transaction: outerTransaction,
+    });
+    expect(result.isOk()).toBe(true);
+
+    const schedule = await WorkspaceSeatLimitResource.fetchScheduleByWorkspace({
+      workspace,
+      at: new Date("2026-07-01T00:00:00.000Z"),
+    });
+    const proPhases = schedule.get("pro") ?? [];
+    expect(proPhases).toHaveLength(1);
+    expect(proPhases[0].startAt.toISOString()).toBe("2026-08-01T14:00:00.000Z");
+    expect(proPhases[0].endAt?.toISOString()).toBe("2026-09-01T09:00:00.000Z");
+  });
+
+  it("floors setScheduleForSeatType phase starts to the whole UTC hour", async () => {
+    const result = await WorkspaceSeatLimitResource.setScheduleForSeatType({
+      workspace,
+      seatType: "pro",
+      phases: [
+        {
+          minSeats: 3,
+          maxSeats: null,
+          startAt: new Date("2026-08-01T10:59:59.000Z"),
+        },
+        {
+          minSeats: 6,
+          maxSeats: null,
+          startAt: new Date("2026-09-01T00:30:00.000Z"),
+        },
+      ],
+      transaction: outerTransaction,
+    });
+    expect(result.isOk()).toBe(true);
+
+    const schedule = await WorkspaceSeatLimitResource.fetchScheduleByWorkspace({
+      workspace,
+      at: new Date("2026-07-01T00:00:00.000Z"),
+    });
+    const proPhases = schedule.get("pro") ?? [];
+    expect(proPhases).toHaveLength(2);
+    expect(proPhases[0].startAt.toISOString()).toBe("2026-08-01T10:00:00.000Z");
+    // Derived end of phase 1 equals the floored start of phase 2.
+    expect(proPhases[0].endAt?.toISOString()).toBe("2026-09-01T00:00:00.000Z");
+    expect(proPhases[1].startAt.toISOString()).toBe("2026-09-01T00:00:00.000Z");
+    expect(proPhases[1].endAt).toBeNull();
   });
 });
