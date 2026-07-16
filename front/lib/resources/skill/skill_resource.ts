@@ -1785,17 +1785,18 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     );
 
     let discoverableSkills: SkillResource[] = [];
+    let favoriteSkills: SkillResource[] = [];
     if (allAgentSkills.some((s) => s.globalSId === "discover_skills")) {
       discoverableSkills = await this.listDiscoverable(auth, {
         agentLoopData,
         effectiveSpaceIds,
       });
+      favoriteSkills = (await hasFeatureFlag(auth, "skill_favorites"))
+        ? await this.listFavoritesForCurrentUser(auth, {
+            agentLoopData,
+          })
+        : [];
     }
-    const favoriteSkills = (await hasFeatureFlag(auth, "skill_favorites"))
-      ? await this.listFavoritesForCurrentUser(auth, {
-          agentLoopData,
-        })
-      : [];
 
     const sortByName = (a: SkillResource, b: SkillResource) =>
       a.name.localeCompare(b.name);
