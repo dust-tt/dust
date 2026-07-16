@@ -1,4 +1,5 @@
 import { MemberSelectionTable } from "@app/components/members/MemberSelectionTable";
+import { useCreateGroup } from "@app/lib/swr/groups";
 import type { WorkspaceType } from "@app/types/user";
 import {
   Dialog,
@@ -27,6 +28,8 @@ export function CreateGroupDialog({
     () => new Set()
   );
 
+  const { doCreateGroup, isCreating } = useCreateGroup({ owner });
+
   useEffect(() => {
     if (isOpen) {
       setName("");
@@ -34,13 +37,18 @@ export function CreateGroupDialog({
     }
   }, [isOpen]);
 
-  const handleCreate = () => {
-    // TODO: wire backend
-    onOpenChange(false);
+  const handleCreate = async () => {
+    const result = await doCreateGroup({
+      name: name.trim(),
+      memberIds: Array.from(selectedMemberIds),
+    });
+    if (result) {
+      onOpenChange(false);
+    }
   };
 
   const shouldDisableButton =
-    name.trim().length === 0 || selectedMemberIds.size === 0;
+    isCreating || name.trim().length === 0 || selectedMemberIds.size === 0;
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
@@ -72,6 +80,7 @@ export function CreateGroupDialog({
             variant: "primary",
             onClick: handleCreate,
             disabled: shouldDisableButton,
+            isLoading: isCreating,
           }}
         />
       </DialogContent>

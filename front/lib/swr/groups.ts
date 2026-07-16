@@ -3,11 +3,12 @@ import { clientFetch } from "@app/lib/egress/client";
 import { invalidateMembersUsage } from "@app/lib/swr/memberships";
 import { emptyArray, useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type { GetGroupsResponseBody } from "@app/types/api/groups";
+import type { PostGroupResponseBody } from "@app/types/api/groups/manage";
 import type { PutGroupSpendLimitResponseBody } from "@app/types/api/groups/spend_limit";
 import type { GroupKind, GroupType } from "@app/types/groups";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import type { LightWorkspaceType } from "@app/types/user";
-import { useCallback, useMemo } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { type Fetcher, mutate } from "swr";
 import { z } from "zod";
 
@@ -67,6 +68,58 @@ async function invalidateWorkspaceGroups(workspaceId: string): Promise<void> {
     (key) =>
       typeof key === "string" && key.startsWith(`/api/w/${workspaceId}/groups`)
   );
+}
+
+export function useCreateGroup({ owner }: { owner: LightWorkspaceType }) {
+  const sendNotification = useSendNotification();
+  const [isCreating, setIsCreating] = useState(false);
+
+  const doCreateGroup = useCallback(
+    async ({
+      name,
+      memberIds,
+    }: {
+      name: string;
+      memberIds: string[];
+    }): Promise<PostGroupResponseBody | null> => {
+      setIsCreating(true);
+      try {
+        const res = await clientFetch(`/api/w/${owner.sId}/groups`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ name, memberIds }),
+        });
+
+        if (!res.ok) {
+          const error = await res.json();
+          sendNotification({
+            type: "error",
+            title: "Failed to create group",
+            description:
+              error?.error?.message ?? "An unexpected error occurred.",
+          });
+          return null;
+        }
+
+        const body: PostGroupResponseBody = await res.json();
+
+        sendNotification({
+          type: "success",
+          title: "Group created",
+          description: `${name} has been created.`,
+        });
+
+        await invalidateWorkspaceGroups(owner.sId);
+
+        return body;
+      } finally {
+        setIsCreating(false);
+      }
+    },
+    [owner.sId, sendNotification]
+  );
+
+  return { doCreateGroup, isCreating };
 }
 
 export function useUpdateGroupSpendLimit({
