@@ -349,6 +349,9 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
         {
           workspaceId: auth.getNonNullableWorkspace().id,
           sandboxFunctionId: sandboxFunction.id,
+          // Null when the invocation has no human origin (e.g. public API key runs, slack/email
+          // bot messages). Scheduled triggers carry their editor's user, so they are not null.
+          userId: auth.user()?.id ?? null,
           status: "created",
           // The final path contains the database-generated invocation sId. This placeholder is
           // replaced in the same transaction before the row becomes visible.

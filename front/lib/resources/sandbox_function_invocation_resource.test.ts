@@ -2,6 +2,7 @@ import { formatSandboxFunctionInvocations } from "@app/lib/api/actions/servers/s
 import { generateSandboxFunctionInvocationToken } from "@app/lib/api/sandbox/access_tokens";
 import { ensurePodSandboxReady } from "@app/lib/api/sandbox/lifecycle";
 import { publishSandboxFunctionInvocationEvent } from "@app/lib/api/sandbox_functions/events";
+import { Authenticator } from "@app/lib/auth";
 import { getPrivateUploadBucket } from "@app/lib/file_storage";
 import { SandboxFunctionInvocationResource } from "@app/lib/resources/sandbox_function_invocation_resource";
 import { SandboxFunctionResource } from "@app/lib/resources/sandbox_function_resource";
@@ -210,6 +211,35 @@ describe("SandboxFunctionInvocationResource", () => {
       { sandboxFunction, invocationId: invocation.sId }
     );
     expect(refetched?.input).toEqual({ message: "hello" });
+  });
+
+  it("records the initiating user", async () => {
+    const { authenticator, sandboxFunction, invocation } =
+      await setupExecutionTest();
+
+    expect(invocation.userId).toBe(authenticator.user()?.id);
+
+    const refetched = await SandboxFunctionInvocationResource.fetchById(
+      authenticator,
+      { sandboxFunction, invocationId: invocation.sId }
+    );
+    expect(refetched?.userId).toBe(authenticator.user()?.id);
+  });
+
+  it("stores a null user for userless origins", async () => {
+    const { authenticator, sandboxFunction } = await setupExecutionTest();
+
+    // A userless workspace auth (e.g. public API key run) has no user to attribute.
+    const userlessAuth = await Authenticator.internalAdminForWorkspace(
+      authenticator.getNonNullableWorkspace().sId
+    );
+    expect(userlessAuth.user()).toBeNull();
+
+    const invocation = await SandboxFunctionInvocationResource.makeNew(
+      userlessAuth,
+      { sandboxFunction, input: undefined }
+    );
+    expect(invocation.userId).toBeNull();
   });
 
   it("rejects unsupported stored data versions", async () => {
