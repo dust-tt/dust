@@ -42,6 +42,7 @@ export function ModelTierPickerDropdown({
           size="sm"
           isSelect
           label={label}
+          isLoading={isMutating}
           disabled={readOnly || isMutating}
           className={className ?? "min-w-48 justify-between"}
         />
