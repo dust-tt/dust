@@ -319,14 +319,14 @@ export function AgentMessage({
   });
   const refreshedAgentMessage =
     refreshedMessage?.type === "agent_message" ? refreshedMessage : null;
-  const { creditCostItem, isCreditPriced } = useCreditCostMenuItem({
+  const creditCostItem = useCreditCostMenuItem({
     credits: refreshedAgentMessage?.costCredits ?? agentMessage.costCredits,
     subAgentCredits:
       refreshedAgentMessage?.subAgentCostCredits ??
       agentMessage.subAgentCostCredits,
   });
-  // On a credit-priced plan, keep the cost section visible while the fetch is
-  // in flight (showing a loader) rather than popping it in once it resolves.
+  // Keep the cost section visible while the fetch is in flight (showing a
+  // loader) rather than popping it in once it resolves.
   const isCreditCostLoading = needsCostFetch && isMessageLoading;
   const sendNotification = useSendNotification();
   const confirm = useContext(ConfirmContext);
@@ -963,7 +963,7 @@ export function AgentMessage({
               // post-event). Revalidate the authoritative value once per
               // completion so the total (e.g. summed across an `ask_user`
               // resume) is correct without a page refresh.
-              if (isCreditPriced && pendingCostRevalidationRef.current) {
+              if (pendingCostRevalidationRef.current) {
                 pendingCostRevalidationRef.current = false;
                 void mutateMessage();
               }
@@ -979,7 +979,7 @@ export function AgentMessage({
             />
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
-            {isCreditPriced && (creditCostItem || isCreditCostLoading) && (
+            {(creditCostItem || isCreditCostLoading) && (
               <>
                 {creditCostItem ? (
                   <DropdownMenuItem {...creditCostItem} />
