@@ -65,6 +65,8 @@ Workspaces vary wildly — some have many skills and agents, some have only tool
 
 ### The Frame Specification
 
+The pinned Frame must be a rendered Frame (\`application/vnd.dust.frame\`), created via \`create_interactive_content_file\` and moved into the Pod file system.
+
 - One Frame
 - Two swipeable slides (prev/next arrows + dot indicators + touch swipe + keyboard left/right arrow keys, with the frame focusable so arrows work on click or tab focus)
 - Hard height budget: 300px is the absolute maximum. Never rely on vertical scrolling.
