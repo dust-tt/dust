@@ -3,11 +3,15 @@ import { clientFetch } from "@app/lib/egress/client";
 import { invalidateMembersUsage } from "@app/lib/swr/memberships";
 import { emptyArray, useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type { GetGroupsResponseBody } from "@app/types/api/groups";
-import type { PostGroupResponseBody } from "@app/types/api/groups/manage";
+import type {
+  GetGroupResponseBody,
+  PatchGroupResponseBody,
+  PostGroupResponseBody,
+} from "@app/types/api/groups/manage";
 import type { PutGroupSpendLimitResponseBody } from "@app/types/api/groups/spend_limit";
 import type { GroupKind, GroupType } from "@app/types/groups";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
-import type { LightWorkspaceType } from "@app/types/user";
+import type { LightWorkspaceType, UserType } from "@app/types/user";
 import { useCallback, useMemo, useState } from "react";
 import { type Fetcher, mutate } from "swr";
 import { z } from "zod";
@@ -47,6 +51,35 @@ export function useGroups({
     isGroupsLoading: !error && !data && !disabled,
     isGroupsError: !!error,
     mutateGroups: mutate,
+  };
+}
+
+export function useGroup({
+  owner,
+  groupId,
+  disabled,
+}: {
+  owner: LightWorkspaceType;
+  groupId: string | null;
+  disabled?: boolean;
+}) {
+  const { fetcher } = useFetcher();
+  const groupFetcher: Fetcher<GetGroupResponseBody> = fetcher;
+
+  const { data, error, mutate } = useSWRWithDefaults(
+    `/api/w/${owner.sId}/groups/${groupId}`,
+    groupFetcher,
+    {
+      disabled: disabled || !groupId,
+    }
+  );
+
+  return {
+    group: data?.group ?? null,
+    members: data ? data.members : emptyArray<UserType>(),
+    isGroupLoading: !error && !data && !disabled && !!groupId,
+    isGroupError: !!error,
+    mutateGroup: mutate,
   };
 }
 
@@ -120,6 +153,69 @@ export function useCreateGroup({ owner }: { owner: LightWorkspaceType }) {
   );
 
   return { doCreateGroup, isCreating };
+}
+
+export function useUpdateGroup({
+  owner,
+  groupId,
+}: {
+  owner: LightWorkspaceType;
+  groupId: string | null;
+}) {
+  const sendNotification = useSendNotification();
+  const [isUpdating, setIsUpdating] = useState(false);
+  const { mutateGroup } = useGroup({ owner, groupId, disabled: true });
+
+  const doUpdateGroup = useCallback(
+    async ({
+      name,
+      memberIds,
+    }: {
+      name?: string;
+      memberIds?: string[];
+    }): Promise<PatchGroupResponseBody | null> => {
+      if (!groupId) {
+        return null;
+      }
+      setIsUpdating(true);
+      try {
+        const res = await clientFetch(`/api/w/${owner.sId}/groups/${groupId}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ name, memberIds }),
+        });
+
+        if (!res.ok) {
+          const error = await res.json();
+          sendNotification({
+            type: "error",
+            title: "Failed to update group",
+            description:
+              error?.error?.message ?? "An unexpected error occurred.",
+          });
+          return null;
+        }
+
+        const body: PatchGroupResponseBody = await res.json();
+
+        sendNotification({
+          type: "success",
+          title: "Group updated",
+          description: `${body.group.name} has been updated.`,
+        });
+
+        await mutateGroup(body, { revalidate: false });
+        await invalidateWorkspaceGroups(owner.sId);
+
+        return body;
+      } finally {
+        setIsUpdating(false);
+      }
+    },
+    [owner.sId, groupId, mutateGroup, sendNotification]
+  );
+
+  return { doUpdateGroup, isUpdating };
 }
 
 export function useUpdateGroupSpendLimit({
