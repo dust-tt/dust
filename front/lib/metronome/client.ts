@@ -3669,13 +3669,13 @@ const MAX_SEAT_IDS_PER_SEAT_BALANCES_QUERY = 100;
  * Returns one entry per seat_id (user sId), with balance (remaining) and
  * starting_balance (full allocation for the period).
  *
- * Always pass `seatIds` when the caller knows which seats it needs. The
- * unfiltered call (no `seat_ids`) has been observed in production to
- * silently omit the large majority of seats on contracts with a few hundred+
- * seats — pagination itself terminates correctly (`next_page` legitimately
- * goes null), the underlying list is just incomplete. Filtering by
- * `seat_ids` reliably returns the seat's balance, so `seatIds` is chunked
- * here and queried explicitly rather than relying on the full list.
+ * `seatIds` is mandatory: the unfiltered call (no `seat_ids`) has been
+ * observed in production to silently omit the large majority of seats on
+ * contracts with a few hundred+ seats — pagination itself terminates
+ * correctly (`next_page` legitimately goes null), the underlying list is
+ * just incomplete. Filtering by `seat_ids` reliably returns the seat's
+ * balance, so `seatIds` is chunked here and queried explicitly. Pass an
+ * empty array if there's nothing to look up — no request is made.
  */
 export async function listMetronomeSeatBalances({
   metronomeCustomerId,
@@ -3686,7 +3686,7 @@ export async function listMetronomeSeatBalances({
   metronomeCustomerId: string;
   metronomeContractId: string;
   coveringDate?: Date;
-  seatIds?: string[];
+  seatIds: string[];
 }): Promise<Result<MetronomeSeatBalance[], Error>> {
   if (!config.getMetronomeApiKey()) {
     return new Ok([]);
@@ -3701,7 +3701,7 @@ export async function listMetronomeSeatBalances({
     };
 
     const fetchSeatIdsChunk = async (
-      seatIdsChunk: string[] | undefined
+      seatIdsChunk: string[]
     ): Promise<MetronomeSeatBalance[]> => {
       const chunkBalances: MetronomeSeatBalance[] = [];
       let nextPage: string | null | undefined = undefined;
@@ -3716,7 +3716,7 @@ export async function listMetronomeSeatBalances({
                 include_credits_and_commits: true,
                 covering_date: coveringDate.toISOString(),
                 limit: 100,
-                ...(seatIdsChunk ? { seat_ids: seatIdsChunk } : {}),
+                seat_ids: seatIdsChunk,
                 ...(nextPage ? { cursor: nextPage } : {}),
               },
             }
@@ -3767,12 +3767,8 @@ export async function listMetronomeSeatBalances({
     //     non-deterministically omit a valid, balance-holding seat. Those
     //     are retried individually once; if still missing, they're skipped.
     const fetchSeatIdsChunkResilient = async (
-      seatIdsChunk: string[] | undefined
+      seatIdsChunk: string[]
     ): Promise<MetronomeSeatBalance[]> => {
-      if (!seatIdsChunk) {
-        return fetchSeatIdsChunk(undefined);
-      }
-
       let balances: MetronomeSeatBalance[];
       try {
         balances = await fetchSeatIdsChunk(seatIdsChunk);
@@ -3807,9 +3803,7 @@ export async function listMetronomeSeatBalances({
       return balances;
     };
 
-    const seatIdsChunks = seatIds
-      ? chunk(seatIds, MAX_SEAT_IDS_PER_SEAT_BALANCES_QUERY)
-      : [undefined];
+    const seatIdsChunks = chunk(seatIds, MAX_SEAT_IDS_PER_SEAT_BALANCES_QUERY);
     const allBalances: MetronomeSeatBalance[] = [];
     for (const seatIdsChunk of seatIdsChunks) {
       allBalances.push(...(await fetchSeatIdsChunkResilient(seatIdsChunk)));
