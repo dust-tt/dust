@@ -1,3 +1,4 @@
+import { GovernancePageSkeleton } from "@app/components/pages/workspace/governance/GovernancePageSkeleton";
 import { GovernanceSettingRow } from "@app/components/pages/workspace/governance/GovernanceSettingRow";
 import { GovernanceSettingSection } from "@app/components/pages/workspace/governance/GovernanceSettingSection";
 import { ExtensionMcpToolsSection } from "@app/components/workspace/ExtensionMcpToolsSection";
@@ -158,11 +159,7 @@ export const GovernancePage = () => {
   }
 
   if (isLoading) {
-    return (
-      <Page>
-        <Page.Header title="Workspace & Governance" description="Loading..." />
-      </Page>
-    );
+    return <GovernancePageSkeleton />;
   }
 
   return (
