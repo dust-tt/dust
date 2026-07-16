@@ -5,6 +5,7 @@ import {
   postUserMessage,
 } from "@app/lib/api/assistant/conversation";
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
+import { updateConversationRequirementsForSkills } from "@app/lib/api/assistant/conversation/skill_permissions";
 import { getPaginationParams } from "@app/lib/api/pagination";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
@@ -374,6 +375,11 @@ app.post(
             },
           });
         }
+
+        await updateConversationRequirementsForSkills(auth, {
+          skills,
+          conversation: newConversation,
+        });
       }
 
       if (message.content.length === 0 && message.mentions.length === 0) {

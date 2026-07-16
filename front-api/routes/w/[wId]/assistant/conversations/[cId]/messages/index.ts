@@ -2,6 +2,7 @@ import { validateMCPServerAccess } from "@app/lib/api/actions/mcp/client_side_re
 import { isSidekickConversation } from "@app/lib/api/actions/servers/helpers";
 import { postUserMessage } from "@app/lib/api/assistant/conversation";
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
+import { updateConversationRequirementsForSkills } from "@app/lib/api/assistant/conversation/skill_permissions";
 import { fetchConversationMessages } from "@app/lib/api/assistant/messages";
 import { getPaginationParams } from "@app/lib/api/pagination";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
@@ -348,6 +349,11 @@ app.post(
           },
         });
       }
+
+      await updateConversationRequirementsForSkills(auth, {
+        skills,
+        conversation,
+      });
     }
 
     // Find all the contentFragments that are above the user message.

@@ -25,6 +25,10 @@ vi.mock("@app/lib/api/skills/conversation_files", () => ({
   loadSkillFilesToConversation: mockLoadSkillFilesToConversation,
 }));
 
+vi.mock("@app/lib/api/assistant/conversation/skill_permissions", () => ({
+  updateConversationRequirementsForSkills: vi.fn().mockResolvedValue(undefined),
+}));
+
 vi.mock("@app/lib/resources/skill/skill_resource", () => ({
   SkillResource: {
     batchFetchUsedBySkills: mockBatchFetchUsedBySkills,
