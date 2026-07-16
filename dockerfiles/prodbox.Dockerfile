@@ -14,8 +14,9 @@ RUN npm install -g npm@11.11.0
 
 COPY . .
 
-# Install dependencies
-RUN --mount=type=cache,id=npm-cache,target=/root/.npm npm ci
+# Install dependencies, including devDependencies (e.g. tsx, needed to run
+# scripts/db/run-migrate.cjs against uncompiled TypeScript).
+RUN --mount=type=cache,id=npm-cache,target=/root/.npm npm ci --include=dev
 
 RUN cd sdks/js && npm run build
 
