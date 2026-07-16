@@ -10,8 +10,8 @@ import { isDataSourceNameValid } from "@app/types/data_source";
 import type { SpaceType } from "@app/types/space";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
-  Button,
   Input,
+  NewButton,
   Page,
   Sheet,
   SheetContainer,
@@ -183,7 +183,7 @@ export default function SpaceFolderModal({
                     isOpen={showDeleteConfirmDialog}
                     onClose={() => setShowDeleteConfirmDialog(false)}
                   />
-                  <Button
+                  <NewButton
                     size="sm"
                     label="Delete Folder"
                     variant="warning"

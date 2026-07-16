@@ -14,7 +14,6 @@ import { getFileTypeIcon } from "@app/lib/file_icon_utils";
 import { writeFileContentByPath } from "@app/lib/swr/files";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
-  Button,
   ChevronLeft,
   ChevronRight,
   cn,
@@ -25,6 +24,7 @@ import {
   DialogTitle,
   Download01,
   Icon,
+  NewButton,
 } from "@dust-tt/sparkle";
 import { useEffect, useRef, useState } from "react";
 import { useSWRConfig } from "swr";
@@ -334,7 +334,7 @@ export function FilePreviewDialog({
         <DialogFooter className="px-4">
           <div className="flex w-full items-center justify-between">
             <div className="flex items-center gap-1">
-              <Button
+              <NewButton
                 variant="outline"
                 size="sm"
                 icon={ChevronLeft}
@@ -342,7 +342,7 @@ export function FilePreviewDialog({
                 disabled={!onPrev}
                 tooltip="Previous"
               />
-              <Button
+              <NewButton
                 variant="outline"
                 size="sm"
                 icon={ChevronRight}
@@ -353,7 +353,7 @@ export function FilePreviewDialog({
             </div>
             {canEditMarkdown ? (
               <div className="flex items-center gap-2">
-                <Button
+                <NewButton
                   label="Save"
                   variant="highlight"
                   size="sm"
@@ -361,14 +361,14 @@ export function FilePreviewDialog({
                   disabled={!isMarkdownDirty || isMarkdownSaving}
                   onClick={() => void handleMarkdownSave()}
                 />
-                <Button
+                <NewButton
                   label="Revert"
                   variant="outline"
                   size="sm"
                   disabled={!isMarkdownDirty || isMarkdownSaving}
                   onClick={handleMarkdownRevert}
                 />
-                <Button
+                <NewButton
                   variant="outline"
                   size="sm"
                   icon={Download01}
@@ -378,7 +378,7 @@ export function FilePreviewDialog({
                 />
               </div>
             ) : (
-              <Button
+              <NewButton
                 variant="outline"
                 size="sm"
                 icon={Download01}

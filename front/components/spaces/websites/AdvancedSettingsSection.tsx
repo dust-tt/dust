@@ -1,12 +1,12 @@
 import { WebCrawlerHeaderRedactedValue } from "@app/types/connectors/webcrawler";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
-  Button,
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
   Input,
   Label,
+  NewButton,
   XClose,
 } from "@dust-tt/sparkle";
 
@@ -73,7 +73,7 @@ export function AdvancedSettingsSection({
                       className="flex-1"
                     />
                   </div>
-                  <Button
+                  <NewButton
                     variant="outline"
                     icon={XClose}
                     onClick={() => removeHeader(index)}
@@ -81,7 +81,11 @@ export function AdvancedSettingsSection({
                 </div>
               ))}
             </div>
-            <Button variant="outline" label="Add Header" onClick={addHeader} />
+            <NewButton
+              variant="outline"
+              label="Add Header"
+              onClick={addHeader}
+            />
           </div>
         </div>
       </CollapsibleContent>

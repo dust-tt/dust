@@ -9,7 +9,6 @@ import {
 } from "@app/components/editor/extensions/shared/slash_suggestion/slashSuggestionUtils";
 import {
   ArrowLeft,
-  Button,
   cn,
   DotsHorizontal,
   DropdownMenu,
@@ -19,6 +18,7 @@ import {
   DropdownMenuShortcut,
   DropdownMenuTrigger,
   DropdownTooltipTrigger,
+  NewButton,
   Spinner,
 } from "@dust-tt/sparkle";
 import type { SuggestionProps } from "@tiptap/suggestion";
@@ -351,10 +351,10 @@ export const SlashCommandDropdown = forwardRef<
                         truncateText
                         endComponent={
                           canShowDetails ? (
-                            <Button
+                            <NewButton
                               icon={DotsHorizontal}
                               variant="outline"
-                              size="mini"
+                              size="xs"
                               className={cn(
                                 "opacity-0 group-focus-within:opacity-100",
                                 index === selectedIndex && "opacity-100"
@@ -443,10 +443,10 @@ export const SlashCommandDropdown = forwardRef<
                       truncateText
                       endComponent={
                         canShowDetails ? (
-                          <Button
+                          <NewButton
                             icon={DotsHorizontal}
                             variant="outline"
-                            size="mini"
+                            size="xs"
                             className={cn(
                               "opacity-0 group-focus-within:opacity-100",
                               entryIndex === selectedIndex && "opacity-100"

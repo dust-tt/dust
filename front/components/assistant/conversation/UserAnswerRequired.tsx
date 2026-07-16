@@ -8,11 +8,11 @@ import { useAuth } from "@app/lib/auth/AuthContext";
 import type { LightWorkspaceType, UserType } from "@app/types/user";
 import {
   ArrowUp,
-  Button,
   Card,
   Counter,
   cn,
   Input,
+  NewButton,
   OptionCard,
   Spinner,
 } from "@dust-tt/sparkle";
@@ -360,14 +360,14 @@ export function UserAnswerRequired({
         </div>
       )}
       <div className="flex items-center justify-between gap-3">
-        <Button
+        <NewButton
           label="Skip"
           variant="outline"
           size="sm"
           onClick={handleSkip}
           isLoading={isSkipSubmitting}
         />
-        <Button
+        <NewButton
           icon={ArrowUp}
           variant="highlight"
           size="sm"

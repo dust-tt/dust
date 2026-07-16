@@ -9,7 +9,6 @@ import {
 import type { LightWorkspaceType } from "@app/types/user";
 import { isBuilder } from "@app/types/user";
 import {
-  Button,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -18,6 +17,7 @@ import {
   File02,
   FolderOpen,
   MagicWand02,
+  NewButton,
   Plus,
   PuzzlePiece01,
   Spinner,
@@ -43,7 +43,7 @@ export const CreateDropdown = ({
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button
+        <NewButton
           variant="primary"
           icon={Plus}
           label="Create"

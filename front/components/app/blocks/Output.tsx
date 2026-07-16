@@ -2,7 +2,7 @@ import { useRunBlock } from "@app/lib/swr/apps";
 import type { AppType, SpecificationBlockType } from "@app/types/app";
 import type { TraceType } from "@app/types/run";
 import type { WorkspaceType } from "@app/types/user";
-import { Button, Clipboard, Hoverable } from "@dust-tt/sparkle";
+import { Clipboard, Hoverable, NewButton } from "@dust-tt/sparkle";
 import {
   CheckCircleIcon,
   ChevronDownIcon,
@@ -347,11 +347,11 @@ const JsonCopyLink = ({ value }: { value: string }) => {
       {copied ? (
         <div className="text-sm text-primary-500">Copied!</div>
       ) : (
-        <Button
+        <NewButton
           onClick={handleClick}
           tooltip="Copy JSON to clipboard"
           icon={Clipboard}
-          size="icon"
+          size="sm"
           variant="ghost-secondary"
         />
       )}

@@ -20,11 +20,11 @@ import {
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
-  Button,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  NewButton,
   SettingsList,
   SliderToggle,
 } from "@dust-tt/sparkle";
@@ -225,7 +225,7 @@ export function NotificationPreferences({
         action={
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button
+              <NewButton
                 variant="outline"
                 size="sm"
                 isSelect
@@ -291,7 +291,7 @@ export function NotificationPreferences({
         action={
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button
+              <NewButton
                 variant="outline"
                 size="sm"
                 isSelect

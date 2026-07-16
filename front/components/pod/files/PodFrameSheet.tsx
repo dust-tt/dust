@@ -6,7 +6,7 @@ import { useAuth } from "@app/lib/auth/AuthContext";
 import { useFileContent, useFileMetadata } from "@app/lib/swr/files";
 import type { WorkspaceType } from "@app/types/user";
 import {
-  Button,
+  NewButton,
   Sheet,
   SheetClose,
   SheetContent,
@@ -86,7 +86,7 @@ export function PodFrameSheet({
               </div>
             )}
             <SheetClose asChild>
-              <Button icon={XClose} variant="ghost" size="sm" />
+              <NewButton icon={XClose} variant="ghost" size="sm" />
             </SheetClose>
           </div>
         </SheetHeader>

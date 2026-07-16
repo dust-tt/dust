@@ -14,7 +14,7 @@ import {
 } from "@app/lib/swr/mcp_servers";
 import type { MCPOAuthUseCase } from "@app/types/oauth/lib";
 import type { LightWorkspaceType } from "@app/types/user";
-import { Button, Chip, LogIn01, XClose } from "@dust-tt/sparkle";
+import { Chip, LogIn01, NewButton, XClose } from "@dust-tt/sparkle";
 import { useMemo, useState } from "react";
 
 interface MCPServerSettingsProps {
@@ -100,14 +100,14 @@ export function MCPServerSettings({
               ))}
           </div>
           {connection ? (
-            <Button
+            <NewButton
               label="Deactivate"
               icon={XClose}
               variant="outline"
               onClick={handleDeleteConnection}
             />
           ) : (
-            <Button
+            <NewButton
               label="Activate"
               icon={LogIn01}
               variant="primary"

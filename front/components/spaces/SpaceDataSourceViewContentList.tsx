@@ -45,13 +45,13 @@ import type { SpaceType } from "@app/types/space";
 import type { LightWorkspaceType, WorkspaceType } from "@app/types/user";
 import type { MenuItem } from "@dust-tt/sparkle";
 import {
-  Button,
   cn,
   DataTable,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  NewButton,
   Settings01,
   Spinner,
   Tooltip,
@@ -512,7 +512,7 @@ export const SpaceDataSourceViewContentList = ({
   const emptySpaceContent =
     isManaged(dataSourceView.dataSource) && space.kind !== "system" ? (
       isAdmin ? (
-        <Button
+        <NewButton
           label="Manage Data"
           icon={Settings01}
           onClick={() => {
@@ -548,7 +548,7 @@ export const SpaceDataSourceViewContentList = ({
             (viewType === "document" && hasTables)) && (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button
+                <NewButton
                   size="sm"
                   label={viewType === "document" ? "document" : "table"}
                   variant="outline"

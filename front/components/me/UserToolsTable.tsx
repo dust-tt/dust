@@ -16,7 +16,6 @@ import { useDeleteToolApproval, useUserApprovals } from "@app/lib/swr/user";
 import { classNames } from "@app/lib/utils";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
-  Button,
   Chip,
   DataTable,
   DotsHorizontal,
@@ -26,6 +25,7 @@ import {
   DropdownMenuItem,
   DropdownMenuPortal,
   DropdownMenuTrigger,
+  NewButton,
   SearchInput,
   Spinner,
 } from "@dust-tt/sparkle";
@@ -175,9 +175,9 @@ export function UserToolsTable({ owner }: UserToolsTableProps) {
         cell: ({ row }) => (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button
+              <NewButton
                 icon={DotsHorizontal}
-                size="icon"
+                size="sm"
                 variant="ghost-secondary"
                 onClick={(e) => e.stopPropagation()}
               />

@@ -8,9 +8,9 @@ import { useUpdateSpace } from "@app/lib/swr/spaces";
 import type { SpaceType } from "@app/types/space";
 import type { LightWorkspaceType, SpaceUserType } from "@app/types/user";
 import {
-  Button,
   Check,
   DataTable,
+  NewButton,
   Sheet,
   SheetContainer,
   SheetContent,
@@ -185,7 +185,7 @@ export function ManageUsersPanel(props: ManageUsersPanelProps) {
 
           return (
             <DataTable.CellContent>
-              <Button
+              <NewButton
                 size="xs"
                 variant={isEditor ? "highlight" : "outline"}
                 label={isEditor ? "Editor" : "Set as editor"}

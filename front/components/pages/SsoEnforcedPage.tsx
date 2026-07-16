@@ -2,7 +2,7 @@ import Custom404 from "@app/components/pages/Custom404";
 import config from "@app/lib/api/config";
 import { useSearchParam } from "@app/lib/platform";
 import { useUser } from "@app/lib/swr/user";
-import { Button, Logo } from "@dust-tt/sparkle";
+import { Logo, NewButton } from "@dust-tt/sparkle";
 import { useMemo } from "react";
 
 export function SsoEnforcedPage() {
@@ -54,7 +54,7 @@ export function SsoEnforcedPage() {
               Access requires Single Sign-On (SSO) authentication. Use your SSO
               provider to sign in.{" "}
             </p>
-            <Button
+            <NewButton
               variant="highlight"
               label="Connect with SSO"
               size="md"

@@ -24,12 +24,12 @@ import { FULL_SCREEN_HASH_PARAM } from "@app/types/conversation_side_panel";
 import { normalizeAsInternalDustError } from "@app/types/shared/utils/error_utils";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
-  Button,
   CheckCircle,
   CodeBlock,
   Eye,
   Maximize01,
   Minimize01,
+  NewButton,
   RefreshCw01,
   ReverseLeft,
   Spinner,
@@ -364,7 +364,7 @@ export function FrameRenderer({
     <div className="flex h-panel flex-col">
       <ConversationSidePanelHeader onClose={onClosePanel}>
         <div className="flex w-full items-center justify-between">
-          <Button
+          <NewButton
             icon={showCode ? Eye : Terminal}
             onClick={() => setShowCode(!showCode)}
             tooltip={showCode ? "Switch to Rendering" : "Switch to Code"}
@@ -394,7 +394,7 @@ export function FrameRenderer({
               hidden={!isFrameInPod}
             />
             {projectSaveState === "saved" && (
-              <Button
+              <NewButton
                 icon={CheckCircle}
                 variant="ghost"
                 disabled={true}
@@ -403,7 +403,7 @@ export function FrameRenderer({
               />
             )}
             {projectSaveState === "supported" && (
-              <Button
+              <NewButton
                 icon={UploadCloud02}
                 variant="ghost"
                 label={
@@ -500,7 +500,7 @@ function PreviewActionButtons({
           side="left"
           tooltipTriggerAsChild
           trigger={
-            <Button
+            <NewButton
               icon={isFullScreen ? Minimize01 : Maximize01}
               variant="ghost"
               size="xs"
@@ -519,7 +519,7 @@ function PreviewActionButtons({
           side="left"
           tooltipTriggerAsChild
           trigger={
-            <Button
+            <NewButton
               variant="ghost"
               disabled={!hasPreviousVersion}
               size="xs"
@@ -534,7 +534,7 @@ function PreviewActionButtons({
         side="left"
         tooltipTriggerAsChild
         trigger={
-          <Button
+          <NewButton
             icon={RefreshCw01}
             variant="ghost"
             size="xs"

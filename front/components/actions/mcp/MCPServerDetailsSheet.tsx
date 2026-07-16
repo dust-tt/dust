@@ -14,9 +14,9 @@ import { useDeleteMCPServer } from "@app/lib/swr/mcp_servers";
 import type { SpaceType } from "@app/types/space";
 import type { WorkspaceType } from "@app/types/user";
 import {
-  Button,
   InfoCircle,
   Lock01,
+  NewButton,
   Sheet,
   SheetContainer,
   SheetContent,
@@ -157,7 +157,7 @@ export function MCPServerDetailsSheet({
                   <>
                     <div className="grow" />
                     <div className="flex h-full flex-row items-center">
-                      <Button
+                      <NewButton
                         icon={Trash01}
                         variant="warning"
                         label={isDeleting ? "Removing..." : "Remove"}
@@ -226,14 +226,14 @@ export function MCPServerDetailsSheet({
         {!readOnly && (
           <div className="mt-2">
             <div className="flex flex-row gap-2 border-t border-border px-3 py-3">
-              <Button
+              <NewButton
                 label="Cancel"
                 variant="outline"
                 disabled={isSaving || form.formState.isSubmitting}
                 onClick={() => handleOpenChange(false)}
               />
               <div className="flex-grow" />
-              <Button
+              <NewButton
                 label={
                   isSaving || form.formState.isSubmitting ? "Saving..." : "Save"
                 }

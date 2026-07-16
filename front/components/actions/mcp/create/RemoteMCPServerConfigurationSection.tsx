@@ -3,7 +3,6 @@ import type { DefaultRemoteMCPServerConfig } from "@app/lib/actions/mcp_internal
 import type { AuthorizationInfo } from "@app/lib/actions/mcp_metadata_extraction";
 import { finalizeUriForProvider } from "@app/lib/api/oauth/utils";
 import {
-  Button,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuRadioGroup,
@@ -13,6 +12,7 @@ import {
   InfoCircle,
   Input,
   Label,
+  NewButton,
   Tooltip,
 } from "@dust-tt/sparkle";
 import { useController, useFormContext } from "react-hook-form";
@@ -139,7 +139,7 @@ export function RemoteMCPServerConfigurationSection({
             </div>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="outline" isSelect label={authMethodLabel} />
+                <NewButton variant="outline" isSelect label={authMethodLabel} />
               </DropdownMenuTrigger>
               <DropdownMenuContent>
                 <DropdownMenuRadioGroup value={authMethod}>

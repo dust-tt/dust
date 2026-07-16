@@ -1,6 +1,6 @@
 import { clientFetch } from "@app/lib/egress/client";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
-import { Button, Spinner } from "@dust-tt/sparkle";
+import { NewButton, Spinner } from "@dust-tt/sparkle";
 import { useCallback, useEffect, useReducer, useRef, useState } from "react";
 import { Document, Page, pdfjs } from "react-pdf";
 import "react-pdf/dist/Page/AnnotationLayer.css";
@@ -241,7 +241,7 @@ export function PDFViewer({ url, isFullWidth = false }: PDFViewerProps) {
               </span>
               {!isFullWidth && (
                 <div className="flex items-center gap-1">
-                  <Button
+                  <NewButton
                     variant="ghost"
                     size="sm"
                     label="-"
@@ -252,7 +252,7 @@ export function PDFViewer({ url, isFullWidth = false }: PDFViewerProps) {
                   <span className="w-10 text-center text-xs text-muted-foreground">
                     {Math.round(zoom * 100)}%
                   </span>
-                  <Button
+                  <NewButton
                     variant="ghost"
                     size="sm"
                     label="+"

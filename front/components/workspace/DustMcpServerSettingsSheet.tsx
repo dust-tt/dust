@@ -5,9 +5,9 @@ import {
 } from "@app/lib/api/mcp_server/dust_mcp_server_settings";
 import { useAuth } from "@app/lib/auth/AuthContext";
 import {
-  Button,
   ContentMessage,
   Input,
+  NewButton,
   Page,
   Plus,
   RadioGroup,
@@ -218,7 +218,7 @@ export function DustMcpServerSettingsSheet({
                       disabled={!isAdmin || isSaving}
                     />
                   </div>
-                  <Button
+                  <NewButton
                     type="submit"
                     label="Add URI"
                     icon={Plus}
@@ -242,9 +242,9 @@ export function DustMcpServerSettingsSheet({
                         >
                           {uri}
                         </pre>
-                        <Button
+                        <NewButton
                           variant="warning"
-                          size="mini"
+                          size="xs"
                           icon={Trash01}
                           tooltip={`Remove ${uri}`}
                           disabled={!isAdmin || isSaving}

@@ -17,7 +17,7 @@ import {
 import type { OAuthProvider } from "@app/types/oauth/lib";
 import { getOverridablePersonalAuthInputs } from "@app/types/oauth/lib";
 import type { LightWorkspaceType, UserType } from "@app/types/user";
-import { ActionCardBlock, Button, Check, XClose } from "@dust-tt/sparkle";
+import { ActionCardBlock, Check, NewButton, XClose } from "@dust-tt/sparkle";
 import { useMemo, useRef, useState } from "react";
 
 interface MCPServerPersonalAuthenticationRequiredProps {
@@ -211,7 +211,7 @@ export function MCPServerPersonalAuthenticationRequired({
   const actions =
     canCurrentUserRespond && !isConnected && mcpServer ? (
       <div className="flex justify-end gap-3">
-        <Button
+        <NewButton
           variant="outline"
           size="xs"
           label="Skip"
@@ -221,7 +221,7 @@ export function MCPServerPersonalAuthenticationRequired({
           disabled={isResolving}
           onClick={() => void onSkipClick()}
         />
-        <Button
+        <NewButton
           variant="highlight"
           size="xs"
           label={connectionError ? "Retry" : "Connect"}

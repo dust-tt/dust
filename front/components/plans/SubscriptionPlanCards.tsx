@@ -8,7 +8,7 @@ import {
 import { isWhitelistedBusinessPlan } from "@app/lib/plans/plan_codes";
 import type { BillingPeriod } from "@app/types/plan";
 import type { WorkspaceType } from "@app/types/user";
-import { Button, Check, Icon } from "@dust-tt/sparkle";
+import { Check, Icon, NewButton } from "@dust-tt/sparkle";
 
 const PRO_FEATURES = [
   "From 1 user",
@@ -93,7 +93,7 @@ export function SubscriptionPlanCards({
           ))}
         </ul>
         <div className="mt-6">
-          <Button
+          <NewButton
             variant="highlight"
             size="md"
             label={
@@ -135,7 +135,7 @@ export function SubscriptionPlanCards({
           ))}
         </ul>
         <div className="mt-6">
-          <Button
+          <NewButton
             variant="outline"
             size="md"
             label="Contact sales"

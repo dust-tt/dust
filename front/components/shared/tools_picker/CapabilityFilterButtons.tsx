@@ -1,5 +1,5 @@
 import type { CapabilityFilterType } from "@app/components/shared/tools_picker/types";
-import { Button } from "@dust-tt/sparkle";
+import { NewButton } from "@dust-tt/sparkle";
 
 interface CapabilityFilterButtonsProps {
   filter: CapabilityFilterType;
@@ -14,19 +14,19 @@ export function CapabilityFilterButtons({
 }: CapabilityFilterButtonsProps) {
   return (
     <div className="flex gap-2">
-      <Button
+      <NewButton
         label="All"
         variant={filter === "all" ? "primary" : "outline"}
         size={size}
         onClick={() => setFilter("all")}
       />
-      <Button
+      <NewButton
         label="Skills"
         variant={filter === "skills" ? "primary" : "outline"}
         size={size}
         onClick={() => setFilter("skills")}
       />
-      <Button
+      <NewButton
         label="Tools"
         variant={filter === "tools" ? "primary" : "outline"}
         size={size}

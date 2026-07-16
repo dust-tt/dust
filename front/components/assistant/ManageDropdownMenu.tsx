@@ -6,12 +6,12 @@ import {
 } from "@app/lib/utils/router";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
-  Button,
   ContactsRobot,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  NewButton,
   Robot,
 } from "@dust-tt/sparkle";
 import { useState } from "react";
@@ -27,7 +27,7 @@ export const ManageDropdownMenu = ({ owner }: ManageDropdownMenuProps) => {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button
+        <NewButton
           variant="primary"
           label="Manage"
           icon={ContactsRobot}

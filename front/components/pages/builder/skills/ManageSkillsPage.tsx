@@ -18,12 +18,12 @@ import { getSkillBuilderRoute } from "@app/lib/utils/router";
 import type { SkillWithoutInstructionsAndToolsWithRelationsType } from "@app/types/assistant/skill_configuration";
 import { isEmptyString } from "@app/types/shared/utils/general";
 import {
-  Button,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
   FolderOpen,
+  NewButton,
   Page,
   Plus,
   SearchInput,
@@ -289,7 +289,7 @@ export function ManageSkillsPage() {
             />
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button label="Create skill" icon={Plus} isSelect />
+                <NewButton label="Create skill" icon={Plus} isSelect />
               </DropdownMenuTrigger>
               <DropdownMenuContent>
                 <DropdownMenuItem

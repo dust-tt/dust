@@ -11,7 +11,6 @@ import {
   POD_TASK_PERIOD_SCOPES,
 } from "@app/types/project_task";
 import {
-  Button,
   ButtonsSwitch,
   ButtonsSwitchList,
   DropdownMenu,
@@ -20,6 +19,7 @@ import {
   DropdownMenuRadioItem,
   DropdownMenuTrigger,
   Eye,
+  NewButton,
 } from "@dust-tt/sparkle";
 
 export function PodTaskScopeFilter() {
@@ -52,7 +52,7 @@ export function PodTaskScopeFilter() {
 
       <DropdownMenu modal={false}>
         <DropdownMenuTrigger asChild>
-          <Button
+          <NewButton
             type="button"
             size="sm"
             variant="outline"

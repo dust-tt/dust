@@ -6,7 +6,6 @@ import { JOB_TYPE_OPTIONS } from "@app/types/job_type";
 import { asDisplayName } from "@app/types/shared/utils/string_utils";
 import type { WorkspaceType } from "@app/types/user";
 import {
-  Button,
   Card,
   Chip,
   ConfluenceLogo,
@@ -19,6 +18,7 @@ import {
   Input,
   JiraLogo,
   MicrosoftOutlookLogo,
+  NewButton,
   NotionLogo,
   Page,
   SlackLogo,
@@ -172,7 +172,7 @@ export function UserProfileStep({
         )}
       </div>
       <div className="flex justify-end">
-        <Button label="Next" size="md" onClick={onNext} />
+        <NewButton label="Next" size="md" onClick={onNext} />
       </div>
     </div>
   );
@@ -221,7 +221,7 @@ export function FavoritePlatformsStep({
         })}
       </div>
       <div className="flex justify-end">
-        <Button
+        <NewButton
           label="Next"
           isLoading={isSubmitting}
           disabled={isSubmitting}

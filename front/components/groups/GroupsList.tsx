@@ -1,6 +1,12 @@
 import assert from "@app/lib/utils/assert";
 import type { GroupType } from "@app/types/groups";
-import { Button, DataTable, Spinner, Users01, XClose } from "@dust-tt/sparkle";
+import {
+  DataTable,
+  NewButton,
+  Spinner,
+  Users01,
+  XClose,
+} from "@dust-tt/sparkle";
 import type { CellContext, PaginationState } from "@tanstack/react-table";
 import { useMemo } from "react";
 
@@ -46,7 +52,7 @@ const groupColumns = [
     cell: (info: GroupInfo) => {
       return (
         <DataTable.CellContent>
-          <Button
+          <NewButton
             icon={XClose}
             size="xs"
             variant="ghost-secondary"

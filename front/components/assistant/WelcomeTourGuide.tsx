@@ -8,11 +8,11 @@ import {
   AnchoredPopover,
   Avatar,
   Brain,
-  Button,
   ConfettiBackground,
   cn,
   Globe01,
   Image01,
+  NewButton,
   Scan,
   SearchMd,
   Table,
@@ -375,7 +375,7 @@ export function WelcomeTourGuide({
       {body}
       <div className="flex justify-end gap-2 p-2 pt-4">
         {!isLastStep && (
-          <Button
+          <NewButton
             variant="outline"
             label="Dismiss"
             onClick={() => {
@@ -384,7 +384,7 @@ export function WelcomeTourGuide({
             }}
           />
         )}
-        <Button
+        <NewButton
           variant="highlight"
           label={isFirstStep ? "Start Tour" : isLastStep ? "Done" : "Next"}
           onClick={() => {

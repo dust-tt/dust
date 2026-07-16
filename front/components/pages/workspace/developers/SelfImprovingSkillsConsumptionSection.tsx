@@ -15,11 +15,11 @@ import {
 } from "@app/lib/swr/useSelfImprovingSkillsSettings";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
-  Button,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  NewButton,
   Page,
   Spinner,
 } from "@dust-tt/sparkle";
@@ -268,7 +268,7 @@ function SelfImprovingSpendChart({
       additionalControls={
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button
+            <NewButton
               label={
                 DISPLAY_MODE_OPTIONS.find((o) => o.value === displayMode)
                   ?.label ?? "Cumulative"

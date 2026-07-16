@@ -23,7 +23,7 @@ import {
 import { GLOBAL_SPACE_NAME } from "@app/types/groups";
 import { asDisplayToolName } from "@app/types/shared/utils/string_utils";
 import type { WorkspaceType } from "@app/types/user";
-import { Button, ContentMessage } from "@dust-tt/sparkle";
+import { ContentMessage, NewButton } from "@dust-tt/sparkle";
 // biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
 import React, { useMemo, useState } from "react";
 
@@ -185,7 +185,7 @@ export function ToolSetupCard({
           <div className="flex justify-between gap-2">
             <div>
               {matchingMCPServer.documentationUrl && (
-                <Button
+                <NewButton
                   variant="outline"
                   size="sm"
                   label="About"
@@ -194,7 +194,7 @@ export function ToolSetupCard({
                 />
               )}
             </div>
-            <Button
+            <NewButton
               variant="highlight"
               size="sm"
               label={getButtonLabel()}

@@ -8,7 +8,6 @@ import {
   SOUND_NOTIFICATION_OPTIONS,
 } from "@app/types/notification_preferences";
 import {
-  Button,
   Check,
   cn,
   DropdownMenu,
@@ -16,6 +15,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
   Icon,
+  NewButton,
   SettingsList,
   SliderToggle,
 } from "@dust-tt/sparkle";
@@ -169,7 +169,7 @@ export function SoundNotificationPreferences({
           <div className="flex items-center gap-2">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button
+                <NewButton
                   variant="outline"
                   size="sm"
                   label={soundField.value}
@@ -196,7 +196,7 @@ export function SoundNotificationPreferences({
                 ))}
               </DropdownMenuContent>
             </DropdownMenu>
-            <Button
+            <NewButton
               variant="ghost"
               size="sm"
               label="Play"

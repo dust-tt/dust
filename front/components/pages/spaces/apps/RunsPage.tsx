@@ -8,7 +8,7 @@ import {
 import { useApp, useRuns } from "@app/lib/swr/apps";
 import { classNames, timeAgoFrom } from "@app/lib/utils";
 import type { RunRunType, RunStatus } from "@app/types/run";
-import { Button, Spinner } from "@dust-tt/sparkle";
+import { NewButton, Spinner } from "@dust-tt/sparkle";
 import { useEffect, useState } from "react";
 
 const TABS = [
@@ -112,7 +112,7 @@ export function RunsPage() {
         <div className="flex flex-1"></div>
         <div className="flex flex-initial">
           <div className="flex">
-            <Button
+            <NewButton
               variant="outline"
               size="xs"
               disabled={offset < limit}
@@ -127,7 +127,7 @@ export function RunsPage() {
             />
           </div>
           <div className="ml-2 flex">
-            <Button
+            <NewButton
               variant="outline"
               size="xs"
               disabled={offset + limit >= total}

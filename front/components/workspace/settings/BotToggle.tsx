@@ -12,8 +12,8 @@ import type { SpaceType } from "@app/types/space";
 import type { WorkspaceType } from "@app/types/user";
 import {
   BookOpen01,
-  Button,
   ContextItem,
+  NewButton,
   RefreshCw02,
   SliderToggle,
 } from "@dust-tt/sparkle";
@@ -145,7 +145,7 @@ export function BotToggle({
       action={
         <div className="flex flex-row items-center gap-2">
           {isBotEnabled && botDataSource && (
-            <Button
+            <NewButton
               variant="outline"
               label="Reconnect"
               size="xs"

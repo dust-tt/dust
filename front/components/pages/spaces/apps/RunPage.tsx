@@ -7,7 +7,7 @@ import { clientFetch } from "@app/lib/egress/client";
 import { useRequiredPathParam } from "@app/lib/platform";
 import { cleanSpecificationFromCore } from "@app/lib/specification";
 import { useApp, useRunWithSpec } from "@app/lib/swr/apps";
-import { Button, CheckCircle, Clock, Spinner } from "@dust-tt/sparkle";
+import { CheckCircle, Clock, NewButton, Spinner } from "@dust-tt/sparkle";
 import { useContext, useState } from "react";
 
 export function RunPage() {
@@ -127,14 +127,14 @@ export function RunPage() {
           </div>
           <p className="flex items-center gap-x-2 text-xs text-muted-foreground">
             {savedRunId !== run.run_id ? (
-              <Button
+              <NewButton
                 onClick={restore}
                 disabled={isLoading}
                 icon={Clock}
                 label={isLoading ? "Restoring..." : "Restore"}
               />
             ) : (
-              <Button
+              <NewButton
                 disabled={true}
                 icon={CheckCircle}
                 label="Latest version"

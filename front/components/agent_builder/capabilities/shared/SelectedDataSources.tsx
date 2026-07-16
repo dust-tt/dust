@@ -21,7 +21,6 @@ import { getDisplayTitleForDataSourceViewContentNode } from "@app/lib/providers/
 import type { DataSourceViewType } from "@app/types/data_source_view";
 import { asDisplayName, pluralize } from "@app/types/shared/utils/string_utils";
 import {
-  Button,
   ContentMessage,
   File02,
   File04,
@@ -29,6 +28,7 @@ import {
   LayersThree01,
   Lock01,
   MessageChatSquare,
+  NewButton,
   Tree,
 } from "@dust-tt/sparkle";
 import { useMemo } from "react";
@@ -249,7 +249,7 @@ export function SelectedDataSources() {
             selection. Add {isTableOrWarehouseServer ? "tables" : "documents"}{" "}
             to enable "{asDisplayName(mcpServerView?.server.name)}".
           </span>
-          <Button
+          <NewButton
             label="Select data sources"
             variant="outline"
             size="xs"
@@ -270,7 +270,7 @@ export function SelectedDataSources() {
         </h3>
 
         <div className="flex flex-row items-center space-x-2">
-          <Button
+          <NewButton
             label="Manage selection"
             onClick={() =>
               setSheetPageId(CONFIGURATION_SHEET_PAGE_IDS.DATA_SOURCE_SELECTION)

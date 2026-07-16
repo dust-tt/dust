@@ -11,8 +11,8 @@ import type { LightWorkspaceType, UserType } from "@app/types/user";
 import {
   ActionCardBlock,
   Avatar,
-  Button,
   MessageChatSquare,
+  NewButton,
 } from "@dust-tt/sparkle";
 import { useMemo, useState } from "react";
 
@@ -104,14 +104,14 @@ export function MentionValidationRequired({
         description={description}
         actions={
           <div className="flex flex-wrap justify-end gap-2">
-            <Button
+            <NewButton
               variant="outline"
               size="sm"
               label="Decline"
               disabled={isSubmitting}
               onClick={handleReject}
             />
-            <Button
+            <NewButton
               variant="highlight"
               size="sm"
               label={isProjectMembership ? "Add to Pod" : "Invite"}

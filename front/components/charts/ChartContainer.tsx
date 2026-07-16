@@ -2,8 +2,8 @@ import { CHART_HEIGHT } from "@app/components/agent_builder/observability/consta
 import type { LegendItem } from "@app/components/charts/ChartLegend";
 import { ChartLegend } from "@app/components/charts/ChartLegend";
 import {
-  Button,
   Maximize01,
+  NewButton,
   Sheet,
   SheetContainer,
   SheetContent,
@@ -57,7 +57,7 @@ export function ChartContainer({
           <div className="flex items-center gap-3">
             {additionalControls}
             {isAllowFullScreen && (
-              <Button
+              <NewButton
                 icon={Maximize01}
                 variant="ghost"
                 size="xs"

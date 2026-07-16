@@ -1,5 +1,5 @@
 import { classNames } from "@app/lib/utils";
-import { Button, LinkWrapper } from "@dust-tt/sparkle";
+import { LinkWrapper, NewButton } from "@dust-tt/sparkle";
 import type { ComponentType, MouseEvent } from "react";
 // biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
 import React from "react";
@@ -18,7 +18,7 @@ export function EmptyCallToAction({
   onClick?: (event: MouseEvent<HTMLButtonElement>) => void;
 }) {
   const button = (
-    <Button
+    <NewButton
       disabled={disabled}
       size="sm"
       label={label}

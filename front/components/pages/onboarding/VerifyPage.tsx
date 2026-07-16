@@ -16,9 +16,9 @@ import { useAuthContext, useVerifyData } from "@app/lib/swr/workspaces";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import {
   ActionSparklesIcon,
-  Button,
   DustLogoSquare,
   Icon,
+  NewButton,
   Page,
   Spinner,
 } from "@dust-tt/sparkle";
@@ -503,7 +503,7 @@ function PhoneInputStep({
               </div>
 
               <div className="flex justify-end">
-                <Button
+                <NewButton
                   onClick={onSubmit}
                   variant="primary"
                   label={isLoading ? "Sending..." : "Send code"}
@@ -580,14 +580,14 @@ function CodeVerificationStep({
               </div>
 
               <div className="flex items-center justify-between">
-                <Button
+                <NewButton
                   variant="ghost"
                   label="Back"
                   onClick={onBack}
                   disabled={isLoading}
                 />
                 <div className="flex gap-3">
-                  <Button
+                  <NewButton
                     variant="outline"
                     label={
                       resendCooldown > 0
@@ -597,7 +597,7 @@ function CodeVerificationStep({
                     onClick={onResend}
                     disabled={resendCooldown > 0 || isLoading}
                   />
-                  <Button
+                  <NewButton
                     variant="primary"
                     label={isLoading ? "Verifying..." : "Verify now"}
                     onClick={onVerify}
@@ -682,7 +682,7 @@ function StartTrialStep({ error, isLoading, onActivate }: StartTrialStepProps) {
               </p>
             </div>
             <p className="min-h-5 text-sm text-red-500">{error}</p>
-            <Button
+            <NewButton
               onClick={onActivate}
               variant="primary"
               label={isLoading ? "Activating..." : "Activate trial"}
@@ -721,7 +721,7 @@ function WelcomeStep({ credits, onStartBuilding }: WelcomeStepProps) {
             to explore, they never expire, so take your time. Let's put them to
             work.
           </p>
-          <Button
+          <NewButton
             variant="highlight"
             size="md"
             label="Start building"

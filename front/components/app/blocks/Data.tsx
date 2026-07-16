@@ -7,7 +7,7 @@ import type {
 } from "@app/types/app";
 import type { BlockType, RunType } from "@app/types/run";
 import type { WorkspaceType } from "@app/types/user";
-import { Button, Edit04, Label } from "@dust-tt/sparkle";
+import { Edit04, Label, NewButton } from "@dust-tt/sparkle";
 
 import Block from "./Block";
 
@@ -86,7 +86,7 @@ export default function Data({
             />
           )}
           {block.spec.dataset && (
-            <Button
+            <NewButton
               variant="outline"
               onClick={() => {
                 window.location.href = `/w/${owner.sId}/spaces/${app.space.sId}/apps/${app.sId}/datasets/${block.spec.dataset}`;

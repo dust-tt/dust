@@ -46,11 +46,11 @@ import type { LightWorkspaceType } from "@app/types/user";
 import {
   AttachmentChip,
   Avatar,
-  Button,
   CitationGrid,
   ContentMessage,
   LinkExternal01,
   Markdown,
+  NewButton,
   Robot,
 } from "@dust-tt/sparkle";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -395,7 +395,7 @@ function MCPRunAgentActionDetailsDisplay({
                       @{childAgent.name}'s Answer
                     </span>
                     {conversationUrl && (
-                      <Button
+                      <NewButton
                         icon={LinkExternal01}
                         label="View full conversation"
                         variant="outline"

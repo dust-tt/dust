@@ -7,10 +7,10 @@ import type { DataSourceType } from "@app/types/data_source";
 import { safeParseJSON } from "@app/types/shared/utils/json_utils";
 import type { WorkspaceType } from "@app/types/user";
 import {
-  Button,
   Chip,
   ContextItem,
   Input,
+  NewButton,
   Tooltip,
   ZendeskLogo,
   ZendeskWhiteLogo,
@@ -231,7 +231,7 @@ export function ZendeskCustomFieldFilters({
                 placeholder="Enter custom field ID"
                 disabled={loading}
               />
-              <Button
+              <NewButton
                 size="sm"
                 onClick={handleSave}
                 disabled={loading || !inputValue.trim()}

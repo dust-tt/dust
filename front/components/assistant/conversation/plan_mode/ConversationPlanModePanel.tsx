@@ -7,7 +7,7 @@ import { AppLayoutTitle } from "@app/components/sparkle/AppLayoutTitle";
 import { usePlanFile } from "@app/hooks/conversations/usePlanFile";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import type { LightWorkspaceType } from "@app/types/user";
-import { Button, Markdown, Spinner, XClose } from "@dust-tt/sparkle";
+import { Markdown, NewButton, Spinner, XClose } from "@dust-tt/sparkle";
 import { useMemo } from "react";
 
 interface ConversationPlanModePanelProps {
@@ -40,7 +40,7 @@ export function ConversationPlanModePanel({
               Plan: {title}
             </span>
           </div>
-          <Button
+          <NewButton
             variant="ghost"
             size="sm"
             onClick={closePanel}

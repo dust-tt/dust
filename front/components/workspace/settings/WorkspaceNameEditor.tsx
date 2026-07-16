@@ -1,9 +1,9 @@
 import { clientFetch } from "@app/lib/egress/client";
 import type { WorkspaceType } from "@app/types/user";
 import {
-  Button,
   Edit04,
   Input,
+  NewButton,
   Page,
   Sheet,
   SheetContainer,
@@ -84,7 +84,7 @@ export function WorkspaceNameEditor({ owner }: { owner: WorkspaceType }) {
       </div>
       <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
         <SheetTrigger asChild>
-          <Button variant="outline" label="Edit" icon={Edit04} />
+          <NewButton variant="outline" label="Edit" icon={Edit04} />
         </SheetTrigger>
         <SheetContent>
           <SheetHeader>

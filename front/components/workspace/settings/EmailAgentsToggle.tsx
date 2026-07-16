@@ -3,7 +3,6 @@ import { ASSISTANT_EMAIL_SUBDOMAIN } from "@app/lib/api/assistant/email/constant
 import type { WorkspaceType } from "@app/types/user";
 import {
   BookOpen01,
-  Button,
   Chip,
   ContextItem,
   Dialog,
@@ -13,6 +12,7 @@ import {
   DialogHeader,
   DialogTitle,
   Mail02,
+  NewButton,
   SliderToggle,
 } from "@dust-tt/sparkle";
 import { useState } from "react";
@@ -100,7 +100,7 @@ export function EmailAgentsToggle({ owner }: EmailAgentsToggleProps) {
               variant: "outline",
             }}
           >
-            <Button
+            <NewButton
               label={confirmButtonLabel}
               disabled={isChanging}
               variant={isEnabled ? "warning" : "primary"}

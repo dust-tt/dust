@@ -4,11 +4,11 @@ import { ConfigurationSectionContainer } from "@app/components/agent_builder/cap
 import { useDustAppSecrets } from "@app/lib/swr/apps";
 import type { DustAppSecretType } from "@app/types/dust_app_secret";
 import {
-  Button,
   Card,
   ContentMessage,
   DataTable,
   InfoCircle,
+  NewButton,
   Spinner,
 } from "@dust-tt/sparkle";
 import { KeyIcon, PencilIcon } from "@heroicons/react/20/solid";
@@ -143,7 +143,7 @@ export function SecretSection({
                   <div className="text-sm font-medium">{field.value}</div>
                 </div>
               </div>
-              <Button
+              <NewButton
                 variant="outline"
                 size="sm"
                 icon={PencilIcon}

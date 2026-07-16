@@ -7,7 +7,6 @@ import { useSpaces } from "@app/lib/swr/spaces";
 import type { PodType } from "@app/types/space";
 import { isProjectType } from "@app/types/space";
 import {
-  Button,
   ContentMessage,
   DropdownMenu,
   DropdownMenuContent,
@@ -15,6 +14,7 @@ import {
   DropdownMenuSearchbar,
   DropdownMenuTrigger,
   InfoCircle,
+  NewButton,
   Spinner,
 } from "@dust-tt/sparkle";
 // biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
@@ -138,7 +138,7 @@ export function ProjectSection() {
         <div className="inline-flex">
           <DropdownMenu open={searchOpen} onOpenChange={setSearchOpen}>
             <DropdownMenuTrigger asChild>
-              <Button
+              <NewButton
                 label={selectedProject?.name ?? "Select Pod..."}
                 icon={
                   selectedProject ? getSpaceIcon(selectedProject) : undefined

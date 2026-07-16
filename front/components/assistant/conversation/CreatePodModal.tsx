@@ -5,7 +5,6 @@ import { areOpenPodsAllowed } from "@app/lib/workspace_policies";
 import type { SpaceType } from "@app/types/space";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
-  Button,
   ButtonsSwitch,
   ButtonsSwitchList,
   Dialog,
@@ -18,6 +17,7 @@ import {
   Input,
   Label,
   Lock01,
+  NewButton,
   Tooltip,
 } from "@dust-tt/sparkle";
 import { useCallback, useEffect, useState } from "react";
@@ -176,8 +176,8 @@ export function CreatePodModal({
           </div>
         </DialogContainer>
         <DialogFooter>
-          <Button label="Cancel" variant="outline" onClick={handleClose} />
-          <Button
+          <NewButton label="Cancel" variant="outline" onClick={handleClose} />
+          <NewButton
             label={isSaving ? "Creating..." : "Create"}
             onClick={onSave}
             disabled={

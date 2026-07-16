@@ -1,5 +1,5 @@
 import type { LabsTranscriptsConfigurationType } from "@app/types/labs";
-import { Button, CloudArrowLeftRight, Page, XClose } from "@dust-tt/sparkle";
+import { CloudArrowLeftRight, NewButton, Page, XClose } from "@dust-tt/sparkle";
 
 interface GoogleDriveConnectionProps {
   transcriptsConfiguration: LabsTranscriptsConfigurationType | null;
@@ -16,13 +16,13 @@ export function GoogleDriveConnection({
     <Page.Layout direction="vertical">
       {transcriptsConfiguration ? (
         <Page.Layout direction="horizontal">
-          <Button
+          <NewButton
             label="Google connected"
             size="sm"
             icon={CloudArrowLeftRight}
             disabled={true}
           />
-          <Button
+          <NewButton
             label="Disconnect"
             icon={XClose}
             size="sm"
@@ -37,7 +37,7 @@ export function GoogleDriveConnection({
             meeting transcripts are stored.
           </Page.P>
           <div>
-            <Button
+            <NewButton
               label="Connect Google"
               size="sm"
               icon={CloudArrowLeftRight}

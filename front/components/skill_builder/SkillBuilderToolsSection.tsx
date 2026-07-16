@@ -9,9 +9,9 @@ import type { SkillBuilderFormData } from "@app/components/skill_builder/SkillBu
 import { useSkillVersionComparisonContext } from "@app/components/skill_builder/SkillBuilderVersionContext";
 import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import {
-  Button,
   CardGrid,
   EmptyCTA,
+  NewButton,
   ReverseLeft,
   ShapesPlus,
   Spinner,
@@ -80,7 +80,7 @@ export function SkillBuilderToolsSection() {
   };
 
   const headerActions = !isDiffMode && fields.length > 0 && (
-    <Button
+    <NewButton
       type="button"
       onClick={handleOpenSheet}
       label="Add tools"
@@ -97,7 +97,7 @@ export function SkillBuilderToolsSection() {
         </div>
         <div className="flex items-center gap-2">
           {toolsDiffer && (
-            <Button
+            <NewButton
               variant="outline"
               size="sm"
               icon={ReverseLeft}
@@ -118,7 +118,7 @@ export function SkillBuilderToolsSection() {
           isDiffMode ? null : (
             <EmptyCTA
               action={
-                <Button
+                <NewButton
                   type="button"
                   onClick={handleOpenSheet}
                   label="Add tools"

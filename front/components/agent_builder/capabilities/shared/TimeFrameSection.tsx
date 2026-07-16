@@ -1,7 +1,6 @@
 import type { CapabilityFormData } from "@app/components/agent_builder/types";
 import type { TimeFrame } from "@app/types/shared/utils/time_frame";
 import {
-  Button,
   Checkbox,
   cn,
   DropdownMenu,
@@ -9,6 +8,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
   Input,
+  NewButton,
 } from "@dust-tt/sparkle";
 import { useController, useFormContext } from "react-hook-form";
 
@@ -100,7 +100,7 @@ export function TimeFrameSection({ actionType }: TimeFrameSectionProps) {
         />
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button
+            <NewButton
               isSelect
               label={
                 TIME_FRAME_UNIT_TO_LABEL[timeFrameField.value?.unit ?? "day"]

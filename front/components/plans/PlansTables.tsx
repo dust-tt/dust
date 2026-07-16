@@ -15,8 +15,8 @@ import { classNames } from "@app/lib/utils";
 import type { BillingPeriod, PlanType } from "@app/types/plan";
 import type { WorkspaceType } from "@app/types/user";
 import {
-  Button,
   Hoverable,
+  NewButton,
   PriceTable,
   Rocket02,
   Tabs,
@@ -262,7 +262,7 @@ function SeatBasedPriceTable({
       >
         {onClick && showButton && (
           <PriceTable.ActionContainer position="top">
-            <Button
+            <NewButton
               variant="highlight"
               size={biggerButtonSize}
               label={
@@ -382,7 +382,7 @@ function EnterprisePriceTable({
       magnified={false}
     >
       <PriceTable.ActionContainer position="top">
-        <Button
+        <NewButton
           href="/home/contact"
           variant="highlight"
           size={biggerButtonSize}

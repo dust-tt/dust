@@ -21,11 +21,11 @@ import type { WorkspaceType } from "@app/types/user";
 import { isConnectorsAPIError } from "@dust-tt/client";
 import {
   BookOpen01,
-  Button,
   ContentMessage,
   Icon,
   InfoCircle,
   Label,
+  NewButton,
   Page,
   RadioGroup,
   RadioGroupCustomItem,
@@ -326,7 +326,7 @@ export function CreateOrUpdateConnectionBigQueryModal({
         <SheetContainer>
           <div className="flex flex-col gap-6">
             <div className="flex flex-col gap-4">
-              <Button
+              <NewButton
                 label="Read our guide"
                 size="sm"
                 href={connectorUIConfiguration.guideLink ?? ""}

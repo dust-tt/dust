@@ -20,7 +20,7 @@ import type { SpaceType } from "@app/types/space";
 import type { WorkspaceType } from "@app/types/user";
 import type { WebsiteFormAction, WebsiteFormState } from "@app/types/website";
 import {
-  Button,
+  NewButton,
   Sheet,
   SheetContainer,
   SheetContent,
@@ -361,7 +361,7 @@ function DeleteSection({
 }: DeleteSectionProps) {
   return (
     <div className="flex justify-end">
-      <Button
+      <NewButton
         variant="warning"
         icon={Trash01}
         label="Delete this website"

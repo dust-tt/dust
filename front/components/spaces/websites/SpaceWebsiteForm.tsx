@@ -10,7 +10,6 @@ import type { WebsiteFormAction, WebsiteFormState } from "@app/types/website";
 import { DEPTH_DISPLAY_TEXT, FREQUENCY_DISPLAY_TEXT } from "@app/types/website";
 import {
   AlertCircle,
-  Button,
   ContentMessage,
   DropdownMenu,
   DropdownMenuContent,
@@ -20,6 +19,7 @@ import {
   InfoCircle,
   Input,
   Label,
+  NewButton,
   Page,
   RadioGroup,
   RadioGroupItem,
@@ -124,7 +124,7 @@ export function SpaceWebsiteForm({
           />
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button
+              <NewButton
                 variant="outline"
                 label={FREQUENCY_DISPLAY_TEXT[state.crawlFrequency]}
                 isSelect
@@ -161,7 +161,7 @@ export function SpaceWebsiteForm({
           />
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button
+              <NewButton
                 variant="outline"
                 label={DEPTH_DISPLAY_TEXT[state.depth]}
                 isSelect

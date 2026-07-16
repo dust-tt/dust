@@ -9,7 +9,6 @@ import {
 } from "@app/types/project_task";
 import {
   Avatar,
-  Button,
   cn,
   DotsHorizontal,
   DropdownMenu,
@@ -22,6 +21,7 @@ import {
   DropdownMenuSubContent,
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
+  NewButton,
   Trash01,
   User01,
 } from "@dust-tt/sparkle";
@@ -80,7 +80,7 @@ export function TaskOverflowMenu({ task }: TaskOverflowMenuProps) {
       }}
     >
       <DropdownMenuTrigger asChild>
-        <Button
+        <NewButton
           aria-label="Task actions"
           icon={DotsHorizontal}
           size="xs"

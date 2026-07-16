@@ -24,11 +24,11 @@ import {
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import {
   AlertCircle,
-  Button,
   CodeBlock,
   ContentMessage,
   cn,
   Markdown,
+  NewButton,
   Sheet,
   SheetContainer,
   SheetContent,
@@ -686,7 +686,7 @@ export const VisualizationActionIframe = forwardRef<
                     )}
 
                     {canRetry && (
-                      <Button
+                      <NewButton
                         variant="outline"
                         label="Ask agent to fix"
                         onClick={handleRetryClick}

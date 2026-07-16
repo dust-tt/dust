@@ -5,7 +5,6 @@ import { CURRENCY_SYMBOLS, isSupportedCurrency } from "@app/types/currency";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { StripePricingData } from "@app/types/stripe/pricing";
 import {
-  Button,
   Checkbox,
   CheckCircle,
   ContentMessage,
@@ -21,6 +20,7 @@ import {
   InfoCircle,
   Input,
   LinkExternal01,
+  NewButton,
   Spinner,
   XCircle,
 } from "@dust-tt/sparkle";
@@ -461,12 +461,12 @@ export function BuyCreditDialog({
       default:
         return (
           <DialogFooter>
-            <Button
+            <NewButton
               label="Cancel"
               variant="outline"
               onClick={resetModalStateAndClose}
             />
-            <Button
+            <NewButton
               label="Purchase credits"
               variant="primary"
               onClick={handlePurchase}
@@ -499,7 +499,7 @@ export function BuyCreditDialog({
                 plan. If you need credits during your trial, please contact our
                 support team.
               </p>
-              <Button
+              <NewButton
                 label={`Contact ${SUPPORT_EMAIL}`}
                 variant="outline"
                 onClick={() =>
@@ -545,7 +545,7 @@ export function BuyCreditDialog({
                 method is up to date. If you need assistance, please contact our
                 support team.
               </p>
-              <Button
+              <NewButton
                 label={`Contact ${SUPPORT_EMAIL}`}
                 variant="outline"
                 onClick={() =>
@@ -641,7 +641,7 @@ export function BuyCreditDialog({
                 billing cycle. If you need additional credits before then,
                 please contact our support team.
               </p>
-              <Button
+              <NewButton
                 label={`Contact ${SUPPORT_EMAIL}`}
                 variant="outline"
                 onClick={() =>

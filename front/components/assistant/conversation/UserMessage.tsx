@@ -34,7 +34,6 @@ import { pluralize } from "@app/types/shared/utils/string_utils";
 import type { WorkspaceType } from "@app/types/user";
 import {
   Avatar,
-  Button,
   Clock,
   ConversationMessageContainer,
   ConversationMessageContent,
@@ -48,6 +47,7 @@ import {
   Edit04,
   Icon,
   Link01,
+  NewButton,
   Toolbar,
   Tooltip,
   Trash01,
@@ -107,13 +107,13 @@ function UserMessageEditor({
       </BubbleMenu>
 
       <div className="flex justify-end gap-2">
-        <Button
+        <NewButton
           variant="ghost-secondary"
           size="xs"
           onClick={() => setShouldShowEditor(false)}
           label="Cancel"
         />
-        <Button
+        <NewButton
           variant="highlight"
           size="xs"
           onClick={onSave}
@@ -674,9 +674,9 @@ function ActionMenu({
               onOpenChange={(open) => setIsMenuOpen(open)}
             >
               <DropdownMenuTrigger asChild>
-                <Button
+                <NewButton
                   icon={DotsHorizontal}
-                  size="icon-xs"
+                  size="xs"
                   variant="outline"
                   aria-label="Message actions"
                 />

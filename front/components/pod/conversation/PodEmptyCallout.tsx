@@ -1,6 +1,6 @@
 import { useSeedInitialPodTasks } from "@app/lib/swr/pods";
 import type { LightWorkspaceType } from "@app/types/user";
-import { Button, MagicWand02 } from "@dust-tt/sparkle";
+import { MagicWand02, NewButton } from "@dust-tt/sparkle";
 
 interface PodEmptyCalloutProps {
   owner: LightWorkspaceType;
@@ -38,7 +38,7 @@ export function PodEmptyCallout({
         Your Pod is ready but empty! Let us help you invite people, add key
         data, and more.
       </div>
-      <Button
+      <NewButton
         label="Let's go"
         icon={MagicWand02}
         isPulsing

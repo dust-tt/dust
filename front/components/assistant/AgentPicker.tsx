@@ -6,7 +6,6 @@ import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
   Avatar,
-  Button,
   DotsHorizontal,
   DropdownMenu,
   DropdownMenuContent,
@@ -14,6 +13,7 @@ import {
   DropdownMenuSearchbar,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
+  NewButton,
   Robot,
 } from "@dust-tt/sparkle";
 import { useState } from "react";
@@ -73,7 +73,7 @@ export function AgentPicker({
           {pickerButton ? (
             pickerButton
           ) : (
-            <Button
+            <NewButton
               icon={Robot}
               variant="ghost-secondary"
               isSelect={showDropdownArrow}
@@ -123,10 +123,10 @@ export function AgentPicker({
               className="group py-1 notranslate"
               endComponent={
                 onAgentDetailsClick && clientType !== "extension" ? (
-                  <Button
+                  <NewButton
                     icon={DotsHorizontal}
                     variant="outline"
-                    size="mini"
+                    size="xs"
                     className="opacity-0 group-hover:opacity-100"
                     onClick={(e) => {
                       e.stopPropagation();

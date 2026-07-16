@@ -8,9 +8,9 @@ import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { SpaceType } from "@app/types/space";
 import type { WorkspaceType } from "@app/types/user";
 import {
-  Button,
   Clipboard,
   Hoverable,
+  NewButton,
   Page,
   Sheet,
   SheetContainer,
@@ -135,7 +135,7 @@ export function ViewFolderAPIModal({
                 }}
               />
               <div className="mt-2 flex w-full justify-end">
-                <Button
+                <NewButton
                   variant="outline"
                   onClick={() => handleCopyClick("upsert")}
                   label={copyUpsertButtonText}
@@ -168,7 +168,7 @@ export function ViewFolderAPIModal({
                 }}
               />
               <div className="mt-2 flex w-full justify-end">
-                <Button
+                <NewButton
                   variant="outline"
                   onClick={() => handleCopyClick("search")}
                   label={copySearchButtonText}

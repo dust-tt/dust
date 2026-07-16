@@ -8,11 +8,11 @@ import logger from "@app/logger/logger";
 import type { SpaceType } from "@app/types/space";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
-  Button,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  NewButton,
   Plus,
   Sheet,
   SheetContainer,
@@ -88,7 +88,7 @@ export function RequestActionsModal({ owner, space }: RequestActionsModal) {
   return (
     <Sheet>
       <SheetTrigger asChild>
-        <Button label="Request Tool" icon={Plus} />
+        <NewButton label="Request Tool" icon={Plus} />
       </SheetTrigger>
       <SheetContent size="lg">
         <SheetHeader>
@@ -122,7 +122,7 @@ export function RequestActionsModal({ owner, space }: RequestActionsModal) {
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
                         {selectedMcpServer ? (
-                          <Button
+                          <NewButton
                             variant="outline"
                             label={getMcpServerDisplayName(
                               selectedMcpServer.server
@@ -132,7 +132,7 @@ export function RequestActionsModal({ owner, space }: RequestActionsModal) {
                             }
                           />
                         ) : (
-                          <Button
+                          <NewButton
                             label="Pick Tools"
                             variant="outline"
                             size="sm"

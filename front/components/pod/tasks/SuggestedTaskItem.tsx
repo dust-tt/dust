@@ -8,9 +8,9 @@ import type { PodTaskType } from "@app/types/project_task";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
   AnimatedText,
-  Button,
   Checkbox,
   cn,
+  NewButton,
   TypingAnimation,
 } from "@dust-tt/sparkle";
 import { memo, useState } from "react";
@@ -102,7 +102,7 @@ export const SuggestedTaskItem = memo(function SuggestedTaskItem({
             "[@media(hover:hover)_and_(pointer:fine)]:opacity-0 group-hover/suggestion-item:opacity-100 group-focus-within/suggestion-item:opacity-100"
           )}
         >
-          <Button
+          <NewButton
             label="Accept"
             size="sm"
             variant="outline"

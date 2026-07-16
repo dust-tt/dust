@@ -5,8 +5,8 @@ import {
 import { CONTEXT_USAGE_PERCENT_THRESHOLDS } from "@app/hooks/conversations/useConversationContextUsage";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
-  Button,
   LinkWrapper,
+  NewButton,
   PopoverContent,
   PopoverRoot,
   PopoverTrigger,
@@ -100,7 +100,7 @@ export function ContextUsageIndicator({
     <div className="hidden md:block" onClick={(e) => e.stopPropagation()}>
       <PopoverRoot>
         <PopoverTrigger asChild>
-          <Button
+          <NewButton
             variant="ghost-secondary"
             size={buttonSize}
             icon={
@@ -127,7 +127,7 @@ export function ContextUsageIndicator({
             </span>
             {contextUsagePercentage >
               CONTEXT_USAGE_PERCENT_THRESHOLDS["enable_compaction"] && (
-              <Button
+              <NewButton
                 variant="outline"
                 size="xs"
                 label={isCompacting ? "Compacting" : "Compact now"}

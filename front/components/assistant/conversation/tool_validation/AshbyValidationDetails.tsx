@@ -1,9 +1,9 @@
 import {
-  Button,
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
   LinkExternal01,
+  NewButton,
 } from "@dust-tt/sparkle";
 
 function formatFieldValue(value: string | number | boolean): string {
@@ -59,7 +59,7 @@ export function AshbyJobPostingUpdateDetails({
         immediately and visible to candidates.
       </p>
 
-      <Button
+      <NewButton
         variant="outline"
         size="xs"
         label="View on Ashby"

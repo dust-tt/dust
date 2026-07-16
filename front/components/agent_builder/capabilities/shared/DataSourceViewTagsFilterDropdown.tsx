@@ -11,7 +11,7 @@ import type {
   TagsFilterMode,
 } from "@app/types/data_source_view";
 import {
-  Button,
+  NewButton,
   Page,
   PopoverContent,
   PopoverRoot,
@@ -187,7 +187,7 @@ export function DataSourceViewTagsFilterDropdown() {
   return (
     <PopoverRoot>
       <PopoverTrigger asChild>
-        <Button label="Filters" variant="outline" isSelect />
+        <NewButton label="Filters" variant="outline" isSelect />
       </PopoverTrigger>
 
       <PopoverContent

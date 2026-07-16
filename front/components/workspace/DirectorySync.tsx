@@ -10,7 +10,6 @@ import type { PlanType } from "@app/types/plan";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import type { LightWorkspaceType, WorkspaceType } from "@app/types/user";
 import {
-  Button,
   Chip,
   Dialog,
   DialogContainer,
@@ -19,6 +18,7 @@ import {
   DialogHeader,
   DialogTitle,
   LoadingBlock,
+  NewButton,
   Page,
   Separator,
   Sheet,
@@ -112,13 +112,13 @@ function DirectorySyncStatus({
               </Page.P>
             </div>
             <div className="flex justify-end gap-2">
-              <Button
+              <NewButton
                 label="Configure Directory sync"
                 size="sm"
                 variant="outline"
                 onClick={onSetupClick}
               />
-              <Button
+              <NewButton
                 label="De-activate Directory sync"
                 size="sm"
                 variant="outline"
@@ -142,7 +142,7 @@ function DirectorySyncStatus({
               </Page.P>
             </div>
             <div className="flex justify-end">
-              <Button
+              <NewButton
                 label="Setup Directory sync"
                 size="sm"
                 variant="primary"
@@ -167,7 +167,7 @@ function DirectorySyncStatus({
               </Page.P>
             </div>
             <div className="flex justify-end">
-              <Button
+              <NewButton
                 label="Continue setup Directory Sync"
                 size="sm"
                 variant="primary"
@@ -322,7 +322,7 @@ function WorkspaceGroupButtonWithModal({
       }}
     >
       <SheetTrigger asChild>
-        <Button icon={Users01} label="View groups" />
+        <NewButton icon={Users01} label="View groups" />
       </SheetTrigger>
       <SheetContent size="lg">
         <SheetHeader>

@@ -19,11 +19,11 @@ import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { slugify } from "@app/types/shared/utils/string_utils";
 import type { WorkspaceType } from "@app/types/user";
 import {
-  Button,
   Eye,
   EyeOff,
   FilePlus03,
   Input,
+  NewButton,
   Page,
   Plus,
   Sheet,
@@ -535,7 +535,7 @@ export const DocumentUploadOrEditModal = ({
                                   />
                                 </div>
                                 <div className="flex">
-                                  <Button
+                                  <NewButton
                                     tooltip="Remove"
                                     icon={Trash01}
                                     variant="warning"

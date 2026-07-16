@@ -22,7 +22,6 @@ import { getBillingCycleFromDay } from "@app/lib/client/subscription";
 import { clientFetch } from "@app/lib/egress/client";
 import { useWorkspaceProgrammaticCost } from "@app/lib/swr/workspaces";
 import {
-  Button,
   ChevronLeft,
   ChevronRight,
   Chip,
@@ -31,6 +30,7 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  NewButton,
 } from "@dust-tt/sparkle";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
@@ -585,7 +585,7 @@ export function BaseProgrammaticCostChart({
       title={
         <div className="flex items-center gap-2">
           <span>Usage cost graph</span>
-          <Button
+          <NewButton
             icon={ChevronLeft}
             size="xs"
             variant="ghost"
@@ -595,7 +595,7 @@ export function BaseProgrammaticCostChart({
 
           <span className="text-sm text-muted-foreground">{periodLabel}</span>
           {canGoNext && (
-            <Button
+            <NewButton
               icon={ChevronRight}
               size="xs"
               variant="ghost"
@@ -603,7 +603,7 @@ export function BaseProgrammaticCostChart({
               tooltip="Next period"
             />
           )}
-          <Button
+          <NewButton
             icon={Download01}
             size="xs"
             variant="ghost"
@@ -626,7 +626,7 @@ export function BaseProgrammaticCostChart({
       additionalControls={
         <div className="flex items-center gap-2">
           {hasFilters && (
-            <Button
+            <NewButton
               label="Clear filters"
               size="xs"
               variant="ghost"
@@ -635,7 +635,7 @@ export function BaseProgrammaticCostChart({
           )}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button
+              <NewButton
                 label={
                   DISPLAY_MODE_OPTIONS.find((opt) => opt.value === displayMode)
                     ?.label ?? "Cumulative"
@@ -657,7 +657,7 @@ export function BaseProgrammaticCostChart({
           </DropdownMenu>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button
+              <NewButton
                 label={
                   groupBy
                     ? GROUP_BY_OPTIONS.find((opt) => opt.value === groupBy)
@@ -686,7 +686,7 @@ export function BaseProgrammaticCostChart({
           {groupBy && (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button
+                <NewButton
                   label={
                     TOP_K_OPTIONS.find((opt) => opt.value === groupByCount)
                       ?.label ?? "Top 5"

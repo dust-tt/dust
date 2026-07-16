@@ -7,11 +7,11 @@ import {
   useTagClick,
 } from "@app/components/assistant/conversation/agent_browser/shared";
 import {
-  Button,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  NewButton,
   Spinner,
 } from "@dust-tt/sparkle";
 
@@ -44,7 +44,7 @@ export function MobileOrExtensionAgentBrowser({
       <div className="w-full flex flex-row gap-2">
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button
+            <NewButton
               isSelect
               variant="outline"
               label={

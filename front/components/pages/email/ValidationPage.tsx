@@ -1,6 +1,12 @@
 import config from "@app/lib/api/config";
 import { useSearchParam } from "@app/lib/platform";
-import { Button, DustLogoSquare, Icon, Page, Spinner } from "@dust-tt/sparkle";
+import {
+  DustLogoSquare,
+  Icon,
+  NewButton,
+  Page,
+  Spinner,
+} from "@dust-tt/sparkle";
 import { useEffect, useRef, useState } from "react";
 
 const VALIDATION_STATUSES = [
@@ -165,14 +171,14 @@ function ResultView({ status, conversationId, workspaceId }: ResultViewProps) {
                   target="_blank"
                   rel="noopener noreferrer"
                 >
-                  <Button
+                  <NewButton
                     variant="primary"
                     label="View Conversation"
                     size="sm"
                   />
                 </a>
               )}
-              <Button
+              <NewButton
                 variant="outline"
                 label="Close"
                 size="sm"
@@ -211,7 +217,7 @@ function ErrorView({ errorType }: ErrorViewProps) {
               <p className="text-base text-primary-100">{message}</p>
             </div>
             <a href="/">
-              <Button variant="outline" label="Back to Dust" size="sm" />
+              <NewButton variant="outline" label="Back to Dust" size="sm" />
             </a>
           </div>
         </div>

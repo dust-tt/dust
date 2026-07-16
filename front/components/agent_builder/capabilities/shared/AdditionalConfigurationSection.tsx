@@ -3,7 +3,6 @@ import { ConfigurationSectionContainer } from "@app/components/agent_builder/cap
 import type { MCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import { asDisplayName } from "@app/types/shared/utils/string_utils";
 import {
-  Button,
   Checkbox,
   DropdownMenu,
   DropdownMenuContent,
@@ -12,6 +11,7 @@ import {
   Icon,
   Input,
   Label,
+  NewButton,
   SearchInput,
   Tooltip,
 } from "@dust-tt/sparkle";
@@ -290,7 +290,7 @@ function EnumConfigurationInput({
         <div className="flex-1">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button
+              <NewButton
                 isSelect
                 label={currentLabel}
                 size="sm"

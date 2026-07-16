@@ -12,7 +12,6 @@ import type {
 import { isActiveRoleType, isAdmin } from "@app/types/user";
 import {
   Avatar,
-  Button,
   Dialog,
   DialogContainer,
   DialogContent,
@@ -20,6 +19,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
+  NewButton,
   Page,
   Sheet,
   SheetContainer,
@@ -140,7 +140,7 @@ export function ChangeMemberModal({
                     <div className="flex-none">
                       <Dialog>
                         <DialogTrigger asChild>
-                          <Button
+                          <NewButton
                             variant="warning"
                             label="Revoke member access"
                             size="sm"

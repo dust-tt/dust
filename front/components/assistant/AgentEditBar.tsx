@@ -5,7 +5,6 @@ import type { TagType } from "@app/types/tag";
 import type { WorkspaceType } from "@app/types/user";
 import { isBuilder } from "@app/types/user";
 import {
-  Button,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuSearchbar,
@@ -13,6 +12,7 @@ import {
   DropdownMenuTagItem,
   DropdownMenuTagList,
   DropdownMenuTrigger,
+  NewButton,
   Spinner,
   Tag01,
   XClose,
@@ -64,7 +64,7 @@ export const AgentEditBar = ({
   return (
     <>
       <div className="border-1 mb-2 flex flex-row items-center gap-2 rounded-xl bg-muted-background p-2">
-        <Button
+        <NewButton
           size="xs"
           variant="outline"
           disabled={isLoading}
@@ -76,7 +76,7 @@ export const AgentEditBar = ({
         <div className="flex-1" />
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button
+            <NewButton
               size="xs"
               variant="outline"
               isSelect

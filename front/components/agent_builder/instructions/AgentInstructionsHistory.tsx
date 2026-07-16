@@ -2,7 +2,6 @@ import { useMembersLookup } from "@app/lib/swr/memberships";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
-  Button,
   ClockRewind,
   DropdownMenu,
   DropdownMenuContent,
@@ -11,6 +10,7 @@ import {
   DropdownMenuRadioItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
+  NewButton,
   Spinner,
 } from "@dust-tt/sparkle";
 import { compareDesc } from "date-fns";
@@ -112,10 +112,10 @@ export function AgentInstructionsHistory({
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button
+        <NewButton
           variant="ghost-secondary"
           icon={ClockRewind}
-          size="icon"
+          size="sm"
           tooltip="Compare with previous versions"
           isSelect
         />

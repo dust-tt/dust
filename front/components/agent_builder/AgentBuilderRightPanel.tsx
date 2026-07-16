@@ -9,8 +9,8 @@ import { TRACKING_AREAS, withTracking } from "@app/lib/tracking";
 import {
   BarChart01,
   Beaker02,
-  Button,
   LayoutRight,
+  NewButton,
   ScrollArea,
   Sidekick,
   Tabs,
@@ -43,7 +43,7 @@ function PanelHeader({
           <ScrollArea aria-orientation="horizontal" className="flex-1">
             <Tabs value={selectedTab} className="w-full">
               <TabsList>
-                <Button
+                <NewButton
                   icon={LayoutRight}
                   size="sm"
                   variant="ghost-secondary"
@@ -80,7 +80,7 @@ function PanelHeader({
         </div>
       ) : (
         <div className="flex h-full w-full items-end justify-center pb-3.5">
-          <Button
+          <NewButton
             icon={LayoutRight}
             size="sm"
             variant="ghost-secondary"
@@ -105,7 +105,7 @@ function CollapsedTabs({
   return (
     <div className="flex flex-1 flex-col items-center justify-center gap-4">
       {!isSidekickDisabled && (
-        <Button
+        <NewButton
           icon={Sidekick}
           variant="ghost"
           size="sm"
@@ -113,14 +113,14 @@ function CollapsedTabs({
           onClick={() => onTabSelect("sidekick")}
         />
       )}
-      <Button
+      <NewButton
         icon={Beaker02}
         variant="ghost"
         size="sm"
         tooltip="Preview"
         onClick={() => onTabSelect("preview")}
       />
-      <Button
+      <NewButton
         icon={BarChart01}
         variant="ghost"
         size="sm"

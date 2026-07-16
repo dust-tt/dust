@@ -4,11 +4,11 @@ import { CsvDownloadButton } from "@app/components/workspace/analytics/CsvDownlo
 import { WorkspaceAnalyticsTimeRangeSelector } from "@app/components/workspace/analytics/WorkspaceAnalyticsTimeRangeSelector";
 import { useDownloadCsv } from "@app/hooks/useDownloadCsv";
 import {
-  Button,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  NewButton,
 } from "@dust-tt/sparkle";
 import { useState } from "react";
 
@@ -84,7 +84,7 @@ export function AnalyticsExportPanel({
           />
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button
+              <NewButton
                 label={selectedLabel}
                 size="xs"
                 variant="outline"

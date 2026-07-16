@@ -2,12 +2,12 @@ import { useDatasets } from "@app/lib/swr/datasets";
 import type { AppType } from "@app/types/app";
 import type { WorkspaceType } from "@app/types/user";
 import {
-  Button,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
+  NewButton,
 } from "@dust-tt/sparkle";
 
 export default function DatasetPicker({
@@ -47,7 +47,7 @@ export default function DatasetPicker({
   return (
     <div className="flex items-center rounded-md px-2">
       {datasets.length === 0 && !dataset && !readOnly ? (
-        <Button
+        <NewButton
           href={createDatasetUrl}
           label={isDatasetsLoading ? "Loading..." : "Create dataset"}
           size="xs"
@@ -55,7 +55,7 @@ export default function DatasetPicker({
       ) : (
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button
+            <NewButton
               isSelect
               variant="outline"
               disabled={readOnly}

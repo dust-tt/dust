@@ -23,8 +23,8 @@ import type { APIErrorResponse } from "@app/types/error";
 import type { BlockType } from "@app/types/run";
 import {
   Brackets,
-  Button,
   File04,
+  NewButton,
   Play,
   Spinner,
   Stop,
@@ -371,7 +371,7 @@ export function AppViewPage() {
             small={false}
           />
           {run?.status.run === "running" && showCancelButton ? (
-            <Button
+            <NewButton
               variant="outline"
               disabled={cancelRequested}
               label={cancelRequested ? "Canceling..." : "Cancel"}
@@ -379,7 +379,7 @@ export function AppViewPage() {
               icon={Stop}
             />
           ) : (
-            <Button
+            <NewButton
               variant="outline"
               disabled={
                 !runnable || runRequested || run?.status.run == "running"
@@ -406,7 +406,7 @@ export function AppViewPage() {
           <div className="flex-1"></div>
           {!readOnly ? (
             <div className="hidden flex-initial space-x-2 sm:block">
-              <Button
+              <NewButton
                 variant="outline"
                 icon={Brackets}
                 label="Secrets"
@@ -414,7 +414,7 @@ export function AppViewPage() {
                   void router.push(`/w/${owner.sId}/developers/dev-secrets`);
                 }}
               />
-              <Button
+              <NewButton
                 variant="ghost"
                 icon={File04}
                 label="Documentation"
@@ -460,7 +460,7 @@ export function AppViewPage() {
             <p>Welcome to your new Dust app.</p>
             <p className="mt-4">To get started, add your first block or:</p>
             <p className="mt-4">
-              <Button
+              <NewButton
                 variant="ghost"
                 icon={File04}
                 label="Follow the QuickStart Guide"
@@ -489,7 +489,7 @@ export function AppViewPage() {
             </div>
             <div className="flex">
               {run?.status.run === "running" && showCancelButton ? (
-                <Button
+                <NewButton
                   variant="outline"
                   disabled={cancelRequested}
                   label={cancelRequested ? "Canceling..." : "Cancel"}
@@ -497,7 +497,7 @@ export function AppViewPage() {
                   icon={Stop}
                 />
               ) : (
-                <Button
+                <NewButton
                   variant="outline"
                   disabled={
                     !runnable || runRequested || run?.status.run == "running"

@@ -3,9 +3,9 @@ import type { ConnectorProviderConfiguration } from "@app/lib/connector_provider
 import { CONNECTOR_UI_CONFIGURATIONS } from "@app/lib/connector_providers_ui";
 import {
   BookOpen01,
-  Button,
   CloudArrowLeftRight,
   Hoverable,
+  NewButton,
   Page,
   Sheet,
   SheetContainer,
@@ -67,7 +67,7 @@ export function CreateConnectionOAuthModal({
                 title={`Connecting ${connectorProviderConfiguration.name}`}
                 icon={connectorUIConfiguration.getLogoComponent(isDark)}
               />
-              <Button
+              <NewButton
                 label="Read our guide"
                 size="xs"
                 variant="outline"
@@ -135,7 +135,7 @@ export function CreateConnectionOAuthModal({
 
               <div className="flex justify-center pt-2">
                 <div className="flex gap-2">
-                  <Button
+                  <NewButton
                     variant="highlight"
                     size="md"
                     icon={CloudArrowLeftRight}

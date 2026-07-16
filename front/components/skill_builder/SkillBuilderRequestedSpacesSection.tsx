@@ -12,7 +12,7 @@ import type {
 import { useSpaceProjectsLookup } from "@app/lib/swr/spaces";
 import { removeNulls } from "@app/types/shared/utils/general";
 import type { SpaceType } from "@app/types/space";
-import { Button, ContentMessage, Planet } from "@dust-tt/sparkle";
+import { ContentMessage, NewButton, Planet } from "@dust-tt/sparkle";
 import { useEffect, useMemo, useState } from "react";
 import { useController, useFormContext, useWatch } from "react-hook-form";
 
@@ -241,7 +241,7 @@ export function SkillBuilderRequestedSpacesSection({
             all selected spaces and Pods can use it.
           </p>
         </div>
-        <Button
+        <NewButton
           label="Manage"
           icon={Planet}
           variant="outline"

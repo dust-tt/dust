@@ -8,12 +8,12 @@ import type {
 import type { BlockType, RunType } from "@app/types/run";
 import type { WorkspaceType } from "@app/types/user";
 import {
-  Button,
   ChevronDown,
   ChevronUp,
   Chip,
   Input,
   LayersThree01,
+  NewButton,
   RefreshCw02,
   Spinner,
   Trash01,
@@ -114,14 +114,14 @@ export default function Block({
 
           <div className="flex flex-row items-start gap-1">
             {!readOnly && canUseCache && (
-              <Button
+              <NewButton
                 tooltip={
                   block.config && block.config.use_cache
                     ? "Results are cached (faster)"
                     : "Results are computed at each run"
                 }
                 variant="ghost-secondary"
-                size="icon"
+                size="sm"
                 icon={
                   block.config && block.config.use_cache
                     ? LayersThree01
@@ -139,23 +139,23 @@ export default function Block({
                   spec={spec}
                   small={true}
                 />
-                <Button
+                <NewButton
                   variant="ghost-secondary"
                   icon={ChevronUp}
                   onClick={onBlockUp}
-                  size="icon"
+                  size="sm"
                 />
-                <Button
+                <NewButton
                   variant="ghost-secondary"
                   icon={ChevronDown}
                   onClick={onBlockDown}
-                  size="icon"
+                  size="sm"
                 />
-                <Button
+                <NewButton
                   variant="ghost-secondary"
                   icon={Trash01}
                   onClick={onBlockDelete}
-                  size="icon"
+                  size="sm"
                 />
               </>
             )}

@@ -1,11 +1,11 @@
 import {
-  Button,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
   DropdownMenuTrigger,
   Input,
+  NewButton,
 } from "@dust-tt/sparkle";
 import React from "react";
 import type { Country } from "react-phone-number-input";
@@ -34,7 +34,7 @@ const CountrySelectComponent = ({
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild disabled={disabled ?? readOnly}>
-        <Button
+        <NewButton
           variant="outline"
           className="rounded-r-none border-r-0 px-3"
           isSelect={true}

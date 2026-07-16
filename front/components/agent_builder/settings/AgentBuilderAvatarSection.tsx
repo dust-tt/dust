@@ -15,7 +15,7 @@ import type { BuilderEmojiSuggestionsType } from "@app/types/api/assistant";
 import type { APIError } from "@app/types/error";
 import type { Result } from "@app/types/shared/result";
 import type { WorkspaceType } from "@app/types/user";
-import { Avatar, Button, Edit04 } from "@dust-tt/sparkle";
+import { Avatar, Edit04, NewButton } from "@dust-tt/sparkle";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useController, useWatch } from "react-hook-form";
 
@@ -128,7 +128,7 @@ export function AgentBuilderAvatarSection({
       />
       <div className="group relative">
         <Avatar size="lg" visual={field.value ?? null} />
-        <Button
+        <NewButton
           variant="outline"
           size="sm"
           icon={Edit04}

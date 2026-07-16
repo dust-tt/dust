@@ -11,9 +11,9 @@ import type {
 } from "@app/types/assistant/skill_configuration";
 import type { UserType, WorkspaceType } from "@app/types/user";
 import {
-  Button,
   ContentMessage,
   InfoCircle,
+  NewButton,
   RefreshCw02,
   Sheet,
   SheetContainer,
@@ -192,7 +192,7 @@ const DescriptionSection = ({
             It is no longer active and cannot be used.
             {skill.canWrite && (
               <div className="mt-2">
-                <Button
+                <NewButton
                   variant="outline"
                   label="Restore"
                   onClick={() => {

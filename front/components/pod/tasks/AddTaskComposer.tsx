@@ -8,7 +8,6 @@ import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import type { SpaceUserType } from "@app/types/user";
 import {
   Avatar,
-  Button,
   DropdownMenu,
   DropdownMenuCheckboxItem,
   DropdownMenuContent,
@@ -16,6 +15,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
   Input,
+  NewButton,
   User01,
 } from "@dust-tt/sparkle";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -117,10 +117,9 @@ function TaskRowAssigneeMenu({
       }}
     >
       <DropdownMenuTrigger asChild>
-        <Button
+        <NewButton
           variant="ghost"
-          size="icon"
-          isRounded
+          size="sm"
           disabled={disabled}
           tooltip={tooltip}
           icon={
@@ -286,7 +285,7 @@ export function AddTaskComposer({
           }
         }}
       />
-      <Button
+      <NewButton
         size="sm"
         variant="highlight"
         label="Add"

@@ -17,9 +17,9 @@ import type { CreditDisplayData, CreditType } from "@app/types/credits";
 import type { SubscriptionType } from "@app/types/plan";
 import {
   AlertCircle,
-  Button,
   ContentMessage,
   Hoverable,
+  NewButton,
   Page,
   Zap,
 } from "@dust-tt/sparkle";
@@ -194,7 +194,7 @@ function UsageSection({
           )}
           action={
             !subscription.trialing && (
-              <Button
+              <NewButton
                 label="Buy credits"
                 variant="outline"
                 size="xs"
@@ -365,7 +365,7 @@ export function CreditsUsagePage() {
           >
             <div className="flex items-end justify-between">
               <p>Add credits to ensure uninterrupted usage.</p>
-              <Button
+              <NewButton
                 label="Buy credits"
                 variant="primary"
                 onClick={() => setShowBuyCreditDialog(true)}
@@ -414,7 +414,7 @@ export function CreditsUsagePage() {
               >
                 <div className="flex items-end justify-between">
                   <p>Complete your payment to activate your credits.</p>
-                  <Button
+                  <NewButton
                     label={isSingle ? "Complete payment" : "Manage invoices"}
                     variant="primary"
                     onClick={() => {

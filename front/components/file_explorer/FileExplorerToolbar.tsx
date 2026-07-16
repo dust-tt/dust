@@ -4,7 +4,6 @@ import { useIsMobile } from "@app/lib/swr/useIsMobile";
 import {
   ArrowDown,
   ArrowUp,
-  Button,
   CheckDone01,
   Clock,
   DropdownMenu,
@@ -12,6 +11,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
   List,
+  NewButton,
   SearchInput,
 } from "@dust-tt/sparkle";
 import type { ReactNode } from "react";
@@ -34,7 +34,7 @@ function ViewToggle({ value, onValueChange }: ViewToggleProps) {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button
+        <NewButton
           variant="outline"
           size="sm"
           icon={value === "grid" ? List : CheckDone01}
@@ -60,7 +60,7 @@ function SortDropdown({ value, onValueChange }: SortDropdownProps) {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button
+        <NewButton
           variant="outline"
           size="sm"
           icon={current.icon}

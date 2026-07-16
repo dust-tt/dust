@@ -24,11 +24,11 @@ import { useAuth } from "@app/lib/auth/AuthContext";
 import { asDisplayName } from "@app/types/shared/utils/string_utils";
 import type { LightWorkspaceType, UserType } from "@app/types/user";
 import {
-  Button,
   Check,
   Checkbox,
   ContentMessage,
   Label,
+  NewButton,
   XClose,
 } from "@dust-tt/sparkle";
 import { useMemo, useState } from "react";
@@ -321,7 +321,7 @@ export function MCPToolValidationRequired({
             )}
             <div className="hidden sm:block sm:flex-grow" />
             <div className="flex flex-row gap-3 self-end">
-              <Button
+              <NewButton
                 label="Decline"
                 variant="outline"
                 size="xs"
@@ -330,7 +330,7 @@ export function MCPToolValidationRequired({
                 isPulsing={isPulsing}
                 onClick={() => void handleValidation("rejected")}
               />
-              <Button
+              <NewButton
                 label="Allow"
                 variant="highlight"
                 size="xs"

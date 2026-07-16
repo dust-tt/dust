@@ -9,7 +9,6 @@ import type { WorkOSConnectionSyncStatus } from "@app/lib/types/workos";
 import type { PlanType } from "@app/types/plan";
 import type { WorkspaceType } from "@app/types/user";
 import {
-  Button,
   Checkbox,
   Chip,
   Dialog,
@@ -21,6 +20,7 @@ import {
   Label,
   LoadingBlock,
   Lock01,
+  NewButton,
   Page,
 } from "@dust-tt/sparkle";
 import type { Organization } from "@workos-inc/node";
@@ -79,7 +79,7 @@ export default function WorkOSSSOConnection({
             <LoadingBlock className="h-8 w-32 rounded-xl" />
           ) : isSSOConfigured ? (
             <>
-              <Button
+              <NewButton
                 label="Configure SSO"
                 size="sm"
                 variant="outline"
@@ -88,7 +88,7 @@ export default function WorkOSSSOConnection({
                 }}
               />
 
-              <Button
+              <NewButton
                 label="De-activate SSO"
                 size="sm"
                 variant="outline"
@@ -98,7 +98,7 @@ export default function WorkOSSSOConnection({
               />
             </>
           ) : (
-            <Button
+            <NewButton
               label="Activate SSO"
               size="sm"
               variant="primary"

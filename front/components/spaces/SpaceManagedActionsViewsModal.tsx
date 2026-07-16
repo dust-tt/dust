@@ -6,12 +6,12 @@ import { useAvailableMCPServers } from "@app/lib/swr/mcp_servers";
 import type { SpaceType } from "@app/types/space";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
-  Button,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSearchbar,
   DropdownMenuTrigger,
+  NewButton,
   Plus,
   Spinner,
 } from "@dust-tt/sparkle";
@@ -61,7 +61,7 @@ export default function SpaceManagedActionsViewsModel({
       }}
     >
       <DropdownMenuTrigger asChild>
-        <Button label="Add Tools" variant="primary" icon={Plus} size="sm" />
+        <NewButton label="Add Tools" variant="primary" icon={Plus} size="sm" />
       </DropdownMenuTrigger>
 
       <DropdownMenuContent

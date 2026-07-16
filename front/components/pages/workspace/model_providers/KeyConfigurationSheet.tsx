@@ -3,11 +3,11 @@ import type { ByokModelProviderIdType } from "@app/types/assistant/models/types"
 import { PRETTIFIED_PROVIDER_NAMES } from "@app/types/provider_selection";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
-  Button,
   ContextItem,
   Hoverable,
   Icon,
   Input,
+  NewButton,
   Page,
   Sheet,
   SheetContainer,
@@ -121,13 +121,13 @@ export function KeyConfigurationSheet({
         </SheetContainer>
         <div className="flex flex-none flex-col gap-2">
           <div className="flex items-center justify-between border-t border-border p-3">
-            <Button
+            <NewButton
               label="Cancel"
               variant="outline"
               onClick={() => handleOpenChange(false)}
               disabled={isSaving}
             />
-            <Button
+            <NewButton
               label="Save"
               onClick={handleSave}
               disabled={!apiKey.trim() || isSaving}

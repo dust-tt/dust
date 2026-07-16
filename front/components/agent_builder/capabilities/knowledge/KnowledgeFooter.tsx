@@ -14,13 +14,13 @@ import type { DataSourceViewContentNode } from "@app/types/data_source_view";
 import { removeNulls } from "@app/types/shared/utils/general";
 import { pluralize } from "@app/types/shared/utils/string_utils";
 import {
-  Button,
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
   ContextItem,
   Icon,
   LoadingBlock,
+  NewButton,
   XClose,
 } from "@dust-tt/sparkle";
 import { useState } from "react";
@@ -84,8 +84,8 @@ function KnowledgeFooterItem({
       truncateSubElement
       visual={<Icon size="sm" visual={VisualComponent} />}
       action={
-        <Button
-          size="icon"
+        <NewButton
+          size="sm"
           variant="ghost"
           icon={XClose}
           onClick={() => removeNodeWithPath(item)}

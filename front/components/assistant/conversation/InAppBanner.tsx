@@ -1,5 +1,5 @@
 import { TRACKING_AREAS, withTracking } from "@app/lib/tracking";
-import { Button, Plus, XClose } from "@dust-tt/sparkle";
+import { NewButton, Plus, XClose } from "@dust-tt/sparkle";
 import { AnimatePresence, motion } from "framer-motion";
 import { useState } from "react";
 
@@ -48,10 +48,10 @@ function PodBanner({
           height={98}
           className="h-[98px] w-[300px] border-b border-border-dark object-cover"
         />
-        <Button
+        <NewButton
           variant="outline"
           icon={XClose}
-          size="icon-xs"
+          size="xs"
           className="absolute right-1 top-1"
           onClick={onDismiss}
         />
@@ -65,7 +65,7 @@ function PodBanner({
           context, tools and goals to move faster on complex work
         </h4>
         <div className="flex flex-wrap items-center gap-2">
-          <Button
+          <NewButton
             variant="highlight"
             size="xs"
             icon={Plus}
@@ -76,7 +76,7 @@ function PodBanner({
               onCreatePod
             )}
           />
-          <Button
+          <NewButton
             variant="outline"
             size="xs"
             label="Learn more"

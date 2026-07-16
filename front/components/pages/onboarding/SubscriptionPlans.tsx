@@ -20,7 +20,6 @@ import { TRACKING_AREAS, withTracking } from "@app/lib/tracking";
 import type { MembershipSeatType } from "@app/types/memberships";
 import type { BillingPeriod } from "@app/types/plan";
 import {
-  Button,
   ButtonsSwitch,
   ButtonsSwitchList,
   Check,
@@ -30,6 +29,7 @@ import {
   LayerSingle,
   LayersThree01,
   LayersTwo01,
+  NewButton,
 } from "@dust-tt/sparkle";
 import type React from "react";
 
@@ -175,7 +175,7 @@ export function FreePlanCard({ onStartFree }: FreePlanCardProps) {
       features={["Credits never reset", "Full access to every Dust feature"]}
       footnote="One-time phone verification required"
       action={
-        <Button
+        <NewButton
           className="w-full"
           variant="outline"
           label="Start Free"
@@ -221,7 +221,7 @@ export function PaidPlanCards({
         priceLabel={`${getPriceAsString({ currency, priceInCents: proSeatCost * 100 })}/seat/mo · billed ${period}`}
         features={["Refills every month", "Full access to every Dust feature"]}
         action={
-          <Button
+          <NewButton
             className="w-full"
             variant="highlight"
             label="Subscribe to Pro"
@@ -245,7 +245,7 @@ export function PaidPlanCards({
         priceLabel={`${getPriceAsString({ currency, priceInCents: maxSeatCost * 100 })}/seat/mo · billed ${period}`}
         features={["Refills every month", "Full access to every Dust feature"]}
         action={
-          <Button
+          <NewButton
             className="w-full"
             variant="outline"
             label="Subscribe to Max"

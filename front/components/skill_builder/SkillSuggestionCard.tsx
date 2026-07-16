@@ -8,7 +8,7 @@ import type {
   SkillSuggestionType,
   SkillToolEditItemType,
 } from "@app/types/suggestions/skill_suggestion";
-import { Button, Card, Chip, DiffBlock, Hoverable } from "@dust-tt/sparkle";
+import { Card, Chip, DiffBlock, Hoverable, NewButton } from "@dust-tt/sparkle";
 import { EditorContent, useEditor } from "@tiptap/react";
 import { useMemo } from "react";
 
@@ -259,14 +259,14 @@ export function SkillSuggestionCard({
           </span>
           {hasActions && (
             <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
-              <Button
+              <NewButton
                 variant="outline"
                 size="sm"
                 label="Decline"
                 onClick={() => onDecline(suggestion)}
                 disabled={disabled}
               />
-              <Button
+              <NewButton
                 variant="highlight"
                 size="sm"
                 label="Accept"

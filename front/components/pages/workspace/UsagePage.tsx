@@ -85,7 +85,6 @@ import { isAdmin } from "@app/types/user";
 import {
   AlertCircle,
   ArrowUp,
-  Button,
   ButtonsSwitch,
   ButtonsSwitchList,
   ContentMessage,
@@ -94,6 +93,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
   Icon,
+  NewButton,
   Page,
   PieChart01,
   SearchInput,
@@ -752,7 +752,7 @@ export function UsagePage() {
   const seatFilterDropdown = (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button
+        <NewButton
           variant="outline"
           label={
             seatTypeFilter === "none"
@@ -802,7 +802,7 @@ export function UsagePage() {
   const groupsFilterDropdown = pricingGroupsEnabled && groups.length > 0 && (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button
+        <NewButton
           variant="outline"
           label={selectedGroupName ?? "All groups"}
           size="sm"
@@ -887,7 +887,7 @@ export function UsagePage() {
         <div className="flex items-center justify-between">
           <Page.Header title="Usage" icon={PieChart01} />
           {!isReadOnly && usageSettings.topUpEnabled && isWorkspaceAdmin && (
-            <Button
+            <NewButton
               label="Top up"
               icon={ArrowUp}
               size="sm"
@@ -900,7 +900,7 @@ export function UsagePage() {
         {!isReadOnly && isCreditPricedFreePlan(subscription.plan.code) && (
           <FreePlanUpgradeSection
             action={
-              <Button
+              <NewButton
                 label="Change my seat"
                 variant="highlight"
                 size="sm"
@@ -1020,7 +1020,7 @@ export function UsagePage() {
                     <div className="flex flex-row items-center gap-2">
                       {groupsFilterDropdown}
                       {modelsPickerEnabled && groupFilter && (
-                        <Button
+                        <NewButton
                           label="Edit group advanced models"
                           variant="outline"
                           size="sm"

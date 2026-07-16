@@ -32,9 +32,9 @@ import { removeNulls } from "@app/types/shared/utils/general";
 import { asDisplayToolName } from "@app/types/shared/utils/string_utils";
 import type { SpaceType } from "@app/types/space";
 import type { LightWorkspaceType } from "@app/types/user";
+import type { NewButtonVariantType } from "@dust-tt/sparkle";
 import {
   Attachment01,
-  Button,
   ChevronRight,
   DoubleIcon,
   DropdownMenu,
@@ -51,11 +51,11 @@ import {
   Icon,
   Input,
   LoadingBlock,
+  NewButton,
   SearchMd,
   Spinner,
   UploadCloud02,
 } from "@dust-tt/sparkle";
-import type { ButtonVariantType } from "@dust-tt/sparkle/dist/esm/components/Button";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 const SEARCH_RESULTS_PLACEHOLDER_COUNT = 5;
@@ -94,7 +94,7 @@ interface InputBarAttachmentsPickerProps {
   type: "dropdown" | "subdropdown";
   isLoading?: boolean;
   buttonLabel?: string;
-  buttonVariant?: ButtonVariantType;
+  buttonVariant?: NewButtonVariantType;
   disabled?: boolean;
   buttonSize?: "xs" | "sm" | "md";
   // Will be used to upload files found via tools and not the connected datasources.
@@ -561,7 +561,7 @@ export const InputBarAttachmentsPicker = ({
     >
       {type === "dropdown" && !isExternallyControlled ? (
         <DropdownMenuTrigger asChild>
-          <Button
+          <NewButton
             variant={buttonVariant}
             icon={Attachment01}
             size={buttonSize}
@@ -650,7 +650,7 @@ export const InputBarAttachmentsPicker = ({
                 }
               }}
               button={
-                <Button
+                <NewButton
                   icon={UploadCloud02}
                   label="Upload File"
                   onClick={() => fileInputRef.current?.click()}

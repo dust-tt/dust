@@ -2,7 +2,7 @@ import SpaceWebsiteModal from "@app/components/spaces/websites/SpaceWebsiteModal
 import type { DataSourceViewType } from "@app/types/data_source_view";
 import type { SpaceType } from "@app/types/space";
 import type { WorkspaceType } from "@app/types/user";
-import { Button, Settings01 } from "@dust-tt/sparkle";
+import { NewButton, Settings01 } from "@dust-tt/sparkle";
 import { useState } from "react";
 
 type WebsitesHeaderMenuProps = {
@@ -32,7 +32,7 @@ export const WebsitesHeaderMenu = ({
         dataSourceView={dataSourceView}
         canWriteInSpace={canWriteInSpace}
       />
-      <Button
+      <NewButton
         size="sm"
         label="Edit Website"
         icon={Settings01}

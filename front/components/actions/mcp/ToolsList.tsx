@@ -13,7 +13,6 @@ import { asDisplayName } from "@app/types/shared/utils/string_utils";
 import type { LightWorkspaceType } from "@app/types/user";
 import { isAdmin } from "@app/types/user";
 import {
-  Button,
   Card,
   Checkbox,
   Collapsible,
@@ -25,6 +24,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
   InfoCircle,
+  NewButton,
 } from "@dust-tt/sparkle";
 import { memo } from "react";
 import { Controller, useFormContext } from "react-hook-form";
@@ -98,7 +98,7 @@ function ToolItem({
                 asChild
                 disabled={!mayUpdate || !toolEnabled}
               >
-                <Button
+                <NewButton
                   variant="outline"
                   label={toolPermissionLabel[toolPermission]}
                   isSelect

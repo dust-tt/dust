@@ -1,5 +1,5 @@
 import type { MetaRow } from "@app/types/shared/utils/http_headers";
-import { Button, Input, XClose } from "@dust-tt/sparkle";
+import { Input, NewButton, XClose } from "@dust-tt/sparkle";
 import { useFieldArray, useFormContext } from "react-hook-form";
 
 type FormWithMetaFields = {
@@ -37,7 +37,7 @@ export function MCPServerMetaFields() {
                 />
               </div>
             </div>
-            <Button
+            <NewButton
               variant="outline"
               icon={XClose}
               onClick={() => remove(index)}
@@ -45,7 +45,7 @@ export function MCPServerMetaFields() {
           </div>
         ))}
       </div>
-      <Button
+      <NewButton
         className="mt-4"
         variant="outline"
         label="Add Meta Field"

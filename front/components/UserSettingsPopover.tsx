@@ -33,7 +33,6 @@ import {
   Avatar,
   BarChart01,
   Bell01,
-  Button,
   ContentMessageInline,
   Dialog,
   DialogClose,
@@ -51,6 +50,7 @@ import {
   Moon01,
   NavigationList,
   NavigationListItem,
+  NewButton,
   Page,
   Separator,
   Settings01,
@@ -263,7 +263,7 @@ function UsageSection({ owner, onClose, visible }: UsageSectionProps) {
               Access and download your invoices
             </span>
           </div>
-          <Button
+          <NewButton
             variant="outline"
             size="xs"
             label="Billing"
@@ -362,7 +362,7 @@ function PersonalInfoSection({ owner }: { owner: WorkspaceType }) {
     <SectionContent
       title="Personal Informations"
       footer={
-        <Button
+        <NewButton
           label="Save"
           variant="primary"
           type="button"
@@ -383,7 +383,7 @@ function PersonalInfoSection({ owner }: { owner: WorkspaceType }) {
 
         <div className="group relative w-fit">
           <Avatar size="lg" visual={currentImageUrl} isRounded />
-          <Button
+          <NewButton
             variant="outline"
             size="sm"
             icon={Edit04}
@@ -484,7 +484,7 @@ function CustomizationSection() {
     <SectionContent
       title="Customization"
       footer={
-        <Button
+        <NewButton
           label="Save"
           variant="primary"
           type="button"
@@ -500,7 +500,7 @@ function CustomizationSection() {
           </div>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button
+              <NewButton
                 variant="outline"
                 icon={
                   localTheme === "light"
@@ -548,7 +548,7 @@ function CustomizationSection() {
             <DropdownMenuTrigger asChild>
               <div className="copy-sm flex items-center gap-2 text-foreground">
                 Send message:
-                <Button
+                <NewButton
                   variant="outline"
                   label={submitKey === "enter" ? "Enter (↵)" : modEnterLabel}
                   isSelect
@@ -615,7 +615,7 @@ function NotificationsSection({ owner }: { owner: WorkspaceType }) {
       title="Notifications"
       description="Control how and when Dust notifies you"
       footer={
-        <Button
+        <NewButton
           label="Save"
           variant="primary"
           type="button"
@@ -775,7 +775,7 @@ export function UserSettingsPopover({
           <div className="flex flex-shrink-0 flex-col border-b border-border dark:border-border-dark sm:hidden">
             <div className="flex flex-shrink-0 items-center justify-end p-2">
               <DialogClose asChild>
-                <Button variant="ghost" size="mini" icon={XClose} />
+                <NewButton variant="ghost" size="xs" icon={XClose} />
               </DialogClose>
             </div>
             <Tabs
@@ -805,7 +805,7 @@ export function UserSettingsPopover({
           <div className="hidden w-64 flex-shrink-0 flex-col border-r border-border dark:border-border-dark sm:flex">
             <div className="flex-shrink-0 p-2">
               <DialogClose asChild>
-                <Button variant="ghost" size="mini" icon={XClose} />
+                <NewButton variant="ghost" size="xs" icon={XClose} />
               </DialogClose>
             </div>
             <NavigationList className="flex-1 px-2 pb-3">

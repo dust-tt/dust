@@ -9,13 +9,13 @@ import type {
 import type { BlockType, RunType } from "@app/types/run";
 import type { WorkspaceType } from "@app/types/user";
 import {
-  Button,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
   Input,
   Label,
+  NewButton,
 } from "@dust-tt/sparkle";
 
 import Block from "./Block";
@@ -123,7 +123,7 @@ export default function Search({
               <div className="px-2">
                 {searchProviders?.length === 0 &&
                   (isAdmin ? (
-                    <Button
+                    <NewButton
                       variant="outline"
                       href={`/w/${owner.sId}/developers/providers?t=providers`}
                       label="Setup provider"
@@ -146,7 +146,7 @@ export default function Search({
           {!isProvidersLoading && !readOnly && searchProviders?.length > 0 && (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button
+                <NewButton
                   isSelect
                   variant="outline"
                   label={currentProvider?.providerId ?? "Select provider"}

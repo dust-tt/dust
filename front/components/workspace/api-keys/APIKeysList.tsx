@@ -5,7 +5,7 @@ import type { KeyType } from "@app/types/key";
 import type { ModelId } from "@app/types/shared/model_id";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import type { RoleType } from "@app/types/user";
-import { Button, cn } from "@dust-tt/sparkle";
+import { cn, NewButton } from "@dust-tt/sparkle";
 import sortBy from "lodash/sortBy";
 // biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
 import React from "react";
@@ -189,14 +189,14 @@ export const APIKeysList = ({
               {key.status === "active" ? (
                 <div className="flex gap-2">
                   {(showLegacyUsdMonthlyCap || showCreditMonthlyCap) && (
-                    <Button
+                    <NewButton
                       variant="outline"
                       disabled={isRevoking || isGenerating}
                       onClick={() => onEditCap(key)}
                       label="Edit cap"
                     />
                   )}
-                  <Button
+                  <NewButton
                     variant="warning"
                     disabled={isRevoking || isGenerating}
                     onClick={async () => {

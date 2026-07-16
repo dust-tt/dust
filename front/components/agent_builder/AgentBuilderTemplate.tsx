@@ -7,7 +7,6 @@ import type {
 } from "@app/types/assistant/templates";
 import {
   BookOpen01,
-  Button,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -15,6 +14,7 @@ import {
   Edit04,
   ListAdd,
   Markdown,
+  NewButton,
   Page,
   Separator,
 } from "@dust-tt/sparkle";
@@ -103,7 +103,7 @@ function TemplateButtons({ assistantTemplate }: TemplateButtonsProps) {
     <div className="flex items-center justify-end">
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button label="Reset" size="sm" variant="outline" isSelect />
+          <NewButton label="Reset" size="sm" variant="outline" isSelect />
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
           <DropdownMenuItem
@@ -167,7 +167,7 @@ function TemplatePresetActions({
         <div className="flex flex-col gap-2" key={index}>
           <div className="text-sm text-foreground">{presetAction.help}</div>
           <div>
-            <Button
+            <NewButton
               label={getActionLabel(presetAction.type)}
               icon={getActionIcon(presetAction.type)}
               size="sm"

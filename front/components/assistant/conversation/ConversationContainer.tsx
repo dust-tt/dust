@@ -38,9 +38,9 @@ import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import type { UserType, WorkspaceType } from "@app/types/user";
 import { getWorkspaceDefaultAgentId, isAdmin } from "@app/types/user";
 import {
-  Button,
   Card,
   Lightbulb04,
+  NewButton,
   Page,
   ScrollArea,
   XClose,
@@ -298,7 +298,7 @@ export function ConversationContainerVirtuoso({
                     <Lightbulb04 className="text-highlight-600 h-5 w-5" />
                     <div className="w-full">{suggestion.title}</div>
                     <div className="opacity-0 transition-opacity group-hover:opacity-100">
-                      <Button
+                      <NewButton
                         variant="ghost"
                         size="xs"
                         icon={XClose}

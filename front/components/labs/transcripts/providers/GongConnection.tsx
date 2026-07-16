@@ -1,5 +1,5 @@
 import type { LabsTranscriptsConfigurationType } from "@app/types/labs";
-import { Button, CloudArrowLeftRight, Page, XClose } from "@dust-tt/sparkle";
+import { CloudArrowLeftRight, NewButton, Page, XClose } from "@dust-tt/sparkle";
 
 interface GongConnectionProps {
   transcriptsConfiguration: LabsTranscriptsConfigurationType | null;
@@ -20,13 +20,13 @@ export function GongConnection({
         <>
           {transcriptsConfiguration ? (
             <Page.Layout direction="horizontal">
-              <Button
+              <NewButton
                 label="Gong connected"
                 size="sm"
                 icon={CloudArrowLeftRight}
                 disabled={true}
               />
-              <Button
+              <NewButton
                 label="Disconnect"
                 icon={XClose}
                 size="sm"
@@ -38,7 +38,7 @@ export function GongConnection({
             <>
               <Page.P>The Gong connection is active on your workspace.</Page.P>
               <div>
-                <Button
+                <NewButton
                   label="Process your Gong transcripts"
                   size="sm"
                   icon={CloudArrowLeftRight}

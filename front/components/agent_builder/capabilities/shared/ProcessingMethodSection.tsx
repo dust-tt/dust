@@ -21,13 +21,13 @@ import { TABLE_QUERY_V2_SERVER_NAME } from "@app/lib/api/actions/servers/query_t
 import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { isRemoteDatabase } from "@app/lib/data_sources";
 import {
-  Button,
   ContentMessage,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
   Hoverable,
+  NewButton,
 } from "@dust-tt/sparkle";
 import type React from "react";
 import { useEffect, useMemo } from "react";
@@ -187,7 +187,7 @@ export function ProcessingMethodSection() {
       <div>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button
+            <NewButton
               isLoading={isMCPServerViewsLoading}
               label={
                 mcpServerView

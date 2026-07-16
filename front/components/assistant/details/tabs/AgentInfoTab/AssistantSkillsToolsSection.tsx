@@ -27,7 +27,7 @@ import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import { removeNulls } from "@app/types/shared/utils/general";
 import { asDisplayName } from "@app/types/shared/utils/string_utils";
 import type { LightWorkspaceType } from "@app/types/user";
-import { Avatar, Button, Command, Spinner, Tooltip } from "@dust-tt/sparkle";
+import { Avatar, Command, NewButton, Spinner, Tooltip } from "@dust-tt/sparkle";
 import sortBy from "lodash/sortBy";
 import uniqBy from "lodash/uniqBy";
 import type { ReactNode } from "react";
@@ -193,7 +193,7 @@ export function AssistantSkillsToolsSection({
           </div>
           {hasMore && (
             <div className="flex w-full justify-center">
-              <Button
+              <NewButton
                 label={`Show all ${allTools.length} tools`}
                 variant="outline"
                 size="xs"

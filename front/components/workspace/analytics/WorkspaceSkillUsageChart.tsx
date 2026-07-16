@@ -15,7 +15,6 @@ import {
 } from "@app/lib/swr/workspaces";
 import { formatShortDate } from "@app/lib/utils/timestamps";
 import {
-  Button,
   ButtonsSwitch,
   ButtonsSwitchList,
   cn,
@@ -24,6 +23,7 @@ import {
   DropdownMenuContent,
   DropdownMenuLabel,
   DropdownMenuTrigger,
+  NewButton,
 } from "@dust-tt/sparkle";
 import { useEffect, useMemo, useState } from "react";
 import {
@@ -277,7 +277,7 @@ export function WorkspaceSkillUsageChart({
   const skillSelector = (
     <DropdownMenu modal={false}>
       <DropdownMenuTrigger asChild>
-        <Button
+        <NewButton
           label={getSkillSelectorLabel(selectedSkills)}
           size="xs"
           variant="outline"

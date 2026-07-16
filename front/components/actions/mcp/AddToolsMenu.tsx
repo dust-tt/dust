@@ -8,12 +8,12 @@ import { useAvailableMCPServers } from "@app/lib/swr/mcp_servers";
 import { TRACKING_AREAS, withTracking } from "@app/lib/tracking";
 import type { WorkspaceType } from "@app/types/user";
 import {
-  Button,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSearchbar,
   DropdownMenuTrigger,
+  NewButton,
   Plus,
   Spinner,
 } from "@dust-tt/sparkle";
@@ -55,7 +55,7 @@ export const AddToolsMenu = ({
   return (
     <DropdownMenu modal={false}>
       <DropdownMenuTrigger asChild>
-        <Button
+        <NewButton
           label="Add Tools"
           variant={buttonVariant}
           icon={Plus}
@@ -76,7 +76,7 @@ export const AddToolsMenu = ({
             onChange={setSearchText}
             disabled={isAvailableMCPServersLoading}
             button={
-              <Button
+              <NewButton
                 icon={Plus}
                 label="Add MCP Server"
                 // Empty call is required given onClick passes a MouseEvent

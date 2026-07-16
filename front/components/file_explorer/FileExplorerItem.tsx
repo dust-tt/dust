@@ -20,7 +20,6 @@ import { getConnectorProviderLogoWithFallback } from "@app/lib/connector_provide
 import { getFileTypeIcon } from "@app/lib/file_icon_utils";
 import type { FileSystemFileEntry } from "@app/types/api/file_system/types";
 import {
-  Button,
   CloudArrowLeftRight,
   DotsHorizontal,
   Download01,
@@ -31,6 +30,7 @@ import {
   Folder,
   FolderOpen,
   Icon,
+  NewButton,
   Spinner,
   Tooltip,
 } from "@dust-tt/sparkle";
@@ -116,7 +116,7 @@ export function FileExplorerItem(props: FileExplorerItemProps) {
       }}
     >
       <DropdownMenuTrigger asChild>
-        <Button
+        <NewButton
           variant="ghost"
           size="xs"
           icon={DotsHorizontal}

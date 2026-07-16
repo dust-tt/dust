@@ -1,4 +1,4 @@
-import { Button } from "@dust-tt/sparkle";
+import { NewButton } from "@dust-tt/sparkle";
 import {
   AmericanExpressFlatIcon,
   DinersClubFlatIcon,
@@ -95,7 +95,7 @@ export function PaymentMethodRow({
             : `IBAN •••• ${paymentMethod.last4}`}
         </span>
       </div>
-      <Button label="Change" variant="ghost" size="sm" onClick={onRestart} />
+      <NewButton label="Change" variant="ghost" size="sm" onClick={onRestart} />
     </div>
   );
 }

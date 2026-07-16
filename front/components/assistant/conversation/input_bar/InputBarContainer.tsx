@@ -77,7 +77,6 @@ import type { UserType, WorkspaceType } from "@app/types/user";
 import {
   ArrowUp,
   Attachment01,
-  Button,
   Camera01,
   Chip,
   cn,
@@ -88,6 +87,7 @@ import {
   DropdownMenuTrigger,
   FilePlus03,
   Globe01,
+  NewButton,
   Plus,
   Toolbar,
   TooltipContent,
@@ -1633,7 +1633,7 @@ const InputBarContainer = ({
               >
                 {!isRecording && (
                   <div className="flex items-center">
-                    <Button
+                    <NewButton
                       variant="ghost-secondary"
                       icon={Type01}
                       size={buttonSize}
@@ -1693,7 +1693,7 @@ const InputBarContainer = ({
                     onOpenChange={setIsCaptureDropdownOpen}
                   >
                     <DropdownMenuTrigger asChild>
-                      <Button
+                      <NewButton
                         variant="ghost-secondary"
                         icon={Plus}
                         size={buttonSize}
@@ -1836,7 +1836,7 @@ const InputBarContainer = ({
                     setIsBlockTooltipOpen(false);
                   }}
                 >
-                  <Button
+                  <NewButton
                     size={buttonSize}
                     isLoading={
                       isSubmitting &&

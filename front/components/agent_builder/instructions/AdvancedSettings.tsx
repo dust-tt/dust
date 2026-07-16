@@ -8,7 +8,6 @@ import { useModels } from "@app/lib/swr/models";
 import { isSupportingResponseFormat } from "@app/types/assistant/assistant";
 import { validateResponseFormat } from "@app/types/assistant/models/utils";
 import {
-  Button,
   cn,
   Dialog,
   DialogContainer,
@@ -22,6 +21,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
   File04,
+  NewButton,
 } from "@dust-tt/sparkle";
 import React from "react";
 import { useController } from "react-hook-form";
@@ -89,7 +89,7 @@ export function AdvancedSettings() {
     <>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button label="Advanced" variant="outline" size="sm" isSelect />
+          <NewButton label="Advanced" variant="outline" size="sm" isSelect />
         </DropdownMenuTrigger>
         <DropdownMenuContent align="start">
           <ModelSelectionSubmenu models={models} />

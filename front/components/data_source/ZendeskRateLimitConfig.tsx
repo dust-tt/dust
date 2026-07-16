@@ -6,9 +6,9 @@ import { useConnectorConfig } from "@app/lib/swr/connectors";
 import type { DataSourceType } from "@app/types/data_source";
 import type { WorkspaceType } from "@app/types/user";
 import {
-  Button,
   ContextItem,
   Input,
+  NewButton,
   ZendeskLogo,
   ZendeskWhiteLogo,
 } from "@dust-tt/sparkle";
@@ -135,7 +135,7 @@ export function ZendeskRateLimitConfig({
             <span className="text-sm text-muted-foreground">
               transactions per second
             </span>
-            <Button
+            <NewButton
               size="sm"
               onClick={handleSave}
               disabled={

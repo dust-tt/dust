@@ -1,4 +1,4 @@
-import { Button, Download01 } from "@dust-tt/sparkle";
+import { Download01, NewButton } from "@dust-tt/sparkle";
 
 interface CsvDownloadButtonProps {
   isDownloading: boolean;
@@ -12,7 +12,7 @@ export function CsvDownloadButton({
   handleDownload,
 }: CsvDownloadButtonProps) {
   return (
-    <Button
+    <NewButton
       icon={Download01}
       variant="outline"
       size="xs"

@@ -24,12 +24,12 @@ import type { BillingPeriod } from "@app/types/plan";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
-  Button,
   CheckCircle,
   Chip,
   DustLogoSquare,
   Icon,
   Input,
+  NewButton,
   Spinner,
   Tag01,
   XCircle,
@@ -488,7 +488,7 @@ export function CheckoutPage() {
                         disabled={isApplyingCoupon}
                         className="flex-1"
                       />
-                      <Button
+                      <NewButton
                         label={isApplyingCoupon ? "Applying…" : "Apply"}
                         disabled={isApplyingCoupon || !couponCodeValue.trim()}
                         onClick={handleApplyCoupon}
@@ -666,14 +666,14 @@ function CheckoutSuccessPage({
       </div>
       <div className="flex gap-4">
         {receiptUrl && (
-          <Button
+          <NewButton
             label="View receipt"
             variant="outline"
             size="md"
             onClick={() => window.open(receiptUrl, "_blank")}
           />
         )}
-        <Button
+        <NewButton
           label="Start building"
           size="md"
           onClick={() => void router.replace(`/w/${owner.sId}`)}
@@ -785,7 +785,7 @@ function RightPane({
                   onRestart={onChangePaymentMethod}
                 />
               ) : null}
-              <Button
+              <NewButton
                 label="Confirm payment"
                 onClick={onConfirmPayment}
                 size="md"
@@ -894,7 +894,7 @@ function CheckoutError({ title, description, onRetry }: CheckoutErrorProps) {
         <h2 className="text-2xl font-semibold text-foreground">{title}</h2>
         <p className="text-sm text-muted-foreground">{description}</p>
       </div>
-      {onRetry && <Button label="Try again" onClick={onRetry} />}
+      {onRetry && <NewButton label="Try again" onClick={onRetry} />}
     </div>
   );
 }

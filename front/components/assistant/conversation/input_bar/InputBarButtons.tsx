@@ -22,10 +22,10 @@ import { isProjectType } from "@app/types/space";
 import type { UserType, WorkspaceType } from "@app/types/user";
 import {
   Avatar,
-  Button,
   cn,
   Icon,
   InfoCircle,
+  NewButton,
   Robot,
   Tooltip,
   XClose,
@@ -183,7 +183,7 @@ export const InputBarButtons = React.memo(function InputBarButtons({
             </button>
           </div>
         ) : (
-          <Button
+          <NewButton
             variant="ghost-secondary"
             size={buttonSize}
             icon={Robot}

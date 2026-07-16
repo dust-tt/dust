@@ -1,9 +1,9 @@
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import {
-  Button,
   cn,
   EmojiPicker,
   FaceSmile,
+  NewButton,
   PopoverContent,
   PopoverRoot,
   PopoverTrigger,
@@ -30,11 +30,11 @@ export function MessageEmojiPicker({
   return (
     <PopoverRoot modal={false} onOpenChange={onOpenChange}>
       <PopoverTrigger asChild>
-        <Button
+        <NewButton
           key="emoji-picker-button"
           tooltip="Add reaction"
           variant="outline"
-          size="xmini"
+          size="xs"
           icon={FaceSmile}
           isSelect
           className={cn("text-muted-foreground", className)}

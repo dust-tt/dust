@@ -1,12 +1,12 @@
 import type { GroupType } from "@app/types/groups";
 import {
-  Button,
   Chip,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSearchbar,
   DropdownMenuTrigger,
+  NewButton,
   Plus,
 } from "@dust-tt/sparkle";
 import { useState } from "react";
@@ -32,7 +32,7 @@ export const GroupSelector = ({
     <div className="flex items-center gap-2 flex-wrap">
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button
+          <NewButton
             variant="outline"
             size="xs"
             icon={Plus}

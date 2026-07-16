@@ -6,10 +6,10 @@ import type {
   MembershipUpgradeRequestType,
 } from "@app/types/memberships";
 import {
-  Button,
   Check,
   DataTable,
   LoadingBlock,
+  NewButton,
   Spinner,
   X,
 } from "@dust-tt/sparkle";
@@ -113,23 +113,23 @@ function buildActionsColumn({
       const canUpgradePlan = canUpgrade(request.requester.seatType, seatPlans);
       return (
         <div className="flex w-full items-center justify-end gap-2">
-          <Button
+          <NewButton
             size="sm"
-            variant="warning-secondary"
+            variant="warning-ghost"
             icon={X}
             label="Deny"
             onClick={() => onDeny(request)}
           />
           {canUpgradePlan && (
-            <Button
+            <NewButton
               size="sm"
-              variant="highlight-secondary"
+              variant="highlight-ghost"
               icon={Check}
               label="Upgrade plan"
               onClick={() => onUpgradePlan(request)}
             />
           )}
-          <Button
+          <NewButton
             size="sm"
             variant="outline"
             label="Edit limit"

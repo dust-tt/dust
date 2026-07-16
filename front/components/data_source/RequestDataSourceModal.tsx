@@ -6,11 +6,11 @@ import { sendRequestDataSourceEmail } from "@app/lib/email";
 import type { DataSourceType } from "@app/types/data_source";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
-  Button,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  NewButton,
   Plus,
   Sheet,
   SheetContainer,
@@ -94,7 +94,7 @@ export function RequestDataSourceModal({
   return (
     <Sheet>
       <SheetTrigger asChild>
-        <Button label="Request" icon={Plus} />
+        <NewButton label="Request" icon={Plus} />
       </SheetTrigger>
       <SheetContent size="lg">
         <SheetHeader>
@@ -118,7 +118,7 @@ export function RequestDataSourceModal({
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                       {selectedDataSource && isManaged(selectedDataSource) ? (
-                        <Button
+                        <NewButton
                           variant="outline"
                           label={getDisplayNameForDataSource(
                             selectedDataSource
@@ -129,7 +129,7 @@ export function RequestDataSourceModal({
                           })}
                         />
                       ) : (
-                        <Button
+                        <NewButton
                           label="Pick your platform"
                           variant="outline"
                           size="sm"

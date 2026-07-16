@@ -7,7 +7,6 @@ import type { DustAppSecretType } from "@app/types/dust_app_secret";
 import {
   BookOpen01,
   Brackets,
-  Button,
   Clipboard,
   Dialog,
   DialogContainer,
@@ -16,6 +15,7 @@ import {
   DialogHeader,
   DialogTitle,
   Input,
+  NewButton,
   Page,
   Plus,
   Trash01,
@@ -201,7 +201,7 @@ export function SecretsPage() {
         <Page.Vertical align="stretch" gap="md">
           <Page.Horizontal align="stretch">
             <div className="w-full" />
-            <Button
+            <NewButton
               label="Read the API reference"
               size="sm"
               variant="outline"
@@ -214,7 +214,7 @@ export function SecretsPage() {
               }}
             />
             {isAdmin && (
-              <Button
+              <NewButton
                 label="Create Secret"
                 variant="primary"
                 onClick={async () => {
@@ -240,7 +240,7 @@ export function SecretsPage() {
                       <pre className="rounded bg-muted-background p-2 text-sm text-foreground">
                         env.secrets.{secret.name}
                       </pre>
-                      <Button
+                      <NewButton
                         variant="outline"
                         icon={Clipboard}
                         onClick={() => {
@@ -258,7 +258,7 @@ export function SecretsPage() {
                     {isAdmin && (
                       <>
                         <div className="flex-none px-2">
-                          <Button
+                          <NewButton
                             variant="outline"
                             disabled={isRevoking || isGenerating}
                             onClick={async () => {
@@ -268,7 +268,7 @@ export function SecretsPage() {
                           />
                         </div>
                         <div className="flex-none">
-                          <Button
+                          <NewButton
                             variant="warning"
                             disabled={isRevoking || isGenerating}
                             onClick={async () => {

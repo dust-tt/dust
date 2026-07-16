@@ -32,7 +32,6 @@ import { asDisplayName } from "@app/types/shared/utils/string_utils";
 import type { UserType, WorkspaceType } from "@app/types/user";
 import type { DropdownMenuItemProps } from "@dust-tt/sparkle";
 import {
-  Button,
   Chip,
   DotsHorizontal,
   DropdownMenu,
@@ -42,6 +41,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
   LoadingBlock,
+  NewButton,
   ShapesPlus,
 } from "@dust-tt/sparkle";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -120,10 +120,10 @@ function CapabilitiesPickerItemsList({
           item.kind === "uninstalled_tool" ? (
             <Chip size="xs" color="info" label="Configure" />
           ) : (
-            <Button
+            <NewButton
               icon={DotsHorizontal}
               variant="outline"
-              size="mini"
+              size="xs"
               className="opacity-0 group-data-[highlighted]:opacity-100 group-focus-within:opacity-100"
               onClick={(e) => {
                 e.stopPropagation();
@@ -466,7 +466,7 @@ export function CapabilitiesPicker({
         }}
       >
         <DropdownMenuTrigger asChild>
-          <Button
+          <NewButton
             icon={ShapesPlus}
             variant="ghost-secondary"
             size={buttonSize}

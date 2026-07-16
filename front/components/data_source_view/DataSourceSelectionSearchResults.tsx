@@ -25,12 +25,12 @@ import type { SpaceType } from "@app/types/space";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
   AnimatedText,
-  Button,
   Checkbox,
   ContentMessage,
   cn,
   Icon,
   InfoCircle,
+  NewButton,
   Separator,
   Spinner,
   useSheetViewport,
@@ -370,7 +370,7 @@ export function DataSourceSelectionSearchResults({
         )}
       </span>
       {displaySelectAllButton && onSelectAll && loadedCount > 0 && (
-        <Button
+        <NewButton
           variant="ghost"
           size="xs"
           label="Select all"

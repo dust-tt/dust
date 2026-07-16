@@ -48,11 +48,11 @@ import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import type { SpaceType } from "@app/types/space";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
-  Button,
   CloudArrowLeftRight,
   NavigationList,
   NavigationListItem,
   NavigationListLabel,
+  NewButton,
   Plus,
   ShapesPlus,
   Terminal,
@@ -168,7 +168,7 @@ export default function SpaceSideBarMenu({
                   {sectionDetails.displayCreateSpaceButton &&
                     isAdmin &&
                     openSpaceCreationModal && (
-                      <Button
+                      <NewButton
                         className="mt-1"
                         size="xs"
                         variant="ghost"

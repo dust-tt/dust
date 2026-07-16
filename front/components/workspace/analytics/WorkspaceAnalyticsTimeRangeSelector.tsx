@@ -1,11 +1,11 @@
 import type { ObservabilityTimeRangeType } from "@app/components/agent_builder/observability/constants";
 import { OBSERVABILITY_TIME_RANGE } from "@app/components/agent_builder/observability/constants";
 import {
-  Button,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  NewButton,
 } from "@dust-tt/sparkle";
 
 interface WorkspaceAnalyticsTimeRangeSelectorProps {
@@ -20,7 +20,12 @@ export function WorkspaceAnalyticsTimeRangeSelector({
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button label={`${period} days`} size="xs" variant="outline" isSelect />
+        <NewButton
+          label={`${period} days`}
+          size="xs"
+          variant="outline"
+          isSelect
+        />
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
         {OBSERVABILITY_TIME_RANGE.map((p) => (

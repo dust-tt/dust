@@ -1,5 +1,5 @@
 import { LinkWrapper, useSearchParam } from "@app/lib/platform";
-import { Button, DustLogoSquare, Icon, Page } from "@dust-tt/sparkle";
+import { DustLogoSquare, Icon, NewButton, Page } from "@dust-tt/sparkle";
 
 const defaultErrorMessageClassName = "text-base text-primary-100";
 
@@ -99,7 +99,7 @@ export function MaintenancePage() {
               {maintenancePageInfo.message}
             </div>
             {maintenancePageInfo.buttonAction ? (
-              <Button
+              <NewButton
                 variant="outline"
                 label={maintenancePageInfo.buttonLabel}
                 size="sm"
@@ -107,7 +107,7 @@ export function MaintenancePage() {
               />
             ) : (
               <LinkWrapper href={maintenancePageInfo.buttonUrl}>
-                <Button
+                <NewButton
                   variant="outline"
                   label={maintenancePageInfo.buttonLabel}
                   size="sm"

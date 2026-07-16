@@ -30,11 +30,11 @@ import {
   BarChart01,
   Bell01,
   Brain,
-  Button,
   Chip,
   ContentMessage,
   InfoCircle,
   Lock01,
+  NewButton,
   RefreshCw02,
   Sheet,
   SheetContainer,
@@ -275,7 +275,7 @@ export function AgentDetailsSheet({
               It is no longer active and cannot be used.
               <br />
               <div className="mt-2">
-                <Button
+                <NewButton
                   variant="outline"
                   label="Restore"
                   onClick={() => {
@@ -469,7 +469,7 @@ function TriggerEditView({
   return (
     <>
       <div className="flex flex-row items-center gap-2 p-5 text-sm text-foreground">
-        <Button
+        <NewButton
           icon={ArrowLeft}
           variant="ghost"
           size="sm"
@@ -512,7 +512,7 @@ function TriggerEditView({
       </FormProvider>
       {!isOnSelectionPage && (
         <div className="flex flex-none justify-end gap-2 border-t border-border p-3">
-          <Button
+          <NewButton
             label="Cancel"
             variant="outline"
             onClick={() => {
@@ -520,7 +520,7 @@ function TriggerEditView({
               onClose();
             }}
           />
-          <Button
+          <NewButton
             label="Save"
             variant="primary"
             onClick={form.handleSubmit(handleFormSubmit)}

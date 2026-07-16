@@ -3,7 +3,7 @@ import { useAppRouter, useSearchParam } from "@app/lib/platform";
 import { useAuthContext, useCheckoutStatus } from "@app/lib/swr/workspaces";
 import { getConversationRoute } from "@app/lib/utils/router";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
-import { BarHeader, Button, Page, Spinner } from "@dust-tt/sparkle";
+import { BarHeader, NewButton, Page, Spinner } from "@dust-tt/sparkle";
 import { useEffect, useRef, useState } from "react";
 
 const MAX_CHECKOUT_POLL_ATTEMPTS = 15;
@@ -71,7 +71,7 @@ export function PaymentProcessingPage() {
               <Page.P>
                 Something went wrong while setting up your subscription: {error}
               </Page.P>
-              <Button
+              <NewButton
                 label="Back to subscribe"
                 onClick={() => void router.replace(`/w/${owner.sId}/subscribe`)}
               />

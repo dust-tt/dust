@@ -3,7 +3,6 @@ import { useObservabilityContext } from "@app/components/agent_builder/observabi
 import type { AgentVersionMarker } from "@app/lib/api/assistant/observability/version_markers";
 import { useAgentVersionMarkers } from "@app/lib/swr/assistants";
 import {
-  Button,
   ButtonsSwitch,
   ButtonsSwitchList,
   DropdownMenu,
@@ -11,6 +10,7 @@ import {
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuTrigger,
+  NewButton,
 } from "@dust-tt/sparkle";
 import { useEffect } from "react";
 
@@ -104,7 +104,7 @@ export function ObservabilityPeriodSelector({
     return (
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button
+          <NewButton
             label={
               selectedVersion
                 ? getVersionValue(selectedVersion)
@@ -135,7 +135,7 @@ export function ObservabilityPeriodSelector({
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button
+        <NewButton
           label={`Last ${period} days`}
           size="xs"
           variant="outline"

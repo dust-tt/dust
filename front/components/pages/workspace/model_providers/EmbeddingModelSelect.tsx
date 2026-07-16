@@ -3,11 +3,11 @@ import type { ModelProviderIdType } from "@app/types/assistant/models/types";
 import { PRETTIFIED_PROVIDER_NAMES } from "@app/types/provider_selection";
 import type { WorkspaceType } from "@app/types/user";
 import {
-  Button,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  NewButton,
 } from "@dust-tt/sparkle";
 import { useEffect, useState } from "react";
 
@@ -33,7 +33,7 @@ export function EmbeddingModelSelect({ workspace }: EmbeddingModelSelectProps) {
         <div className="font-semibold">Embedding Provider:</div>
         <DropdownMenu>
           <DropdownMenuTrigger asChild disabled>
-            <Button
+            <NewButton
               disabled
               tooltip="Please contact us if you want to change this setting."
               isSelect

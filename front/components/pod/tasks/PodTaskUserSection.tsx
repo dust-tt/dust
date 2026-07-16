@@ -6,7 +6,7 @@ import {
   type PodTaskAssigneeType,
   type PodTaskType,
 } from "@app/types/project_task";
-import { Avatar, Button, Card, Icon, Stars02 } from "@dust-tt/sparkle";
+import { Avatar, Card, Icon, NewButton, Stars02 } from "@dust-tt/sparkle";
 import { useState } from "react";
 
 interface PodTaskUserSectionProps {
@@ -102,7 +102,7 @@ export function PodTaskUserSection({
             </div>
             {showBulkActions && (
               <div className="flex items-center justify-start gap-2">
-                <Button
+                <NewButton
                   label="Dismiss all"
                   size="sm"
                   variant="outline"
@@ -113,10 +113,10 @@ export function PodTaskUserSection({
                     void runBulk("reject");
                   }}
                 />
-                <Button
+                <NewButton
                   label="Accept all"
                   size="sm"
-                  variant="highlight-secondary"
+                  variant="highlight-ghost"
                   isLoading={bulkAction === "approve"}
                   disabled={bulkAction !== null}
                   onClick={(e) => {

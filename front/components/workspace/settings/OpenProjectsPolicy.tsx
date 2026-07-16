@@ -1,7 +1,6 @@
 import { useOpenProjectsPolicy } from "@app/hooks/useOpenProjectsPolicy";
 import type { WorkspaceType } from "@app/types/user";
 import {
-  Button,
   ContextItem,
   Cube01,
   CubeOutline,
@@ -10,6 +9,7 @@ import {
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
   DropdownMenuTrigger,
+  NewButton,
 } from "@dust-tt/sparkle";
 
 const OPEN_PROJECTS_POLICIES = [
@@ -46,7 +46,7 @@ export function OpenProjectsPolicy({ owner }: { owner: WorkspaceType }) {
       action={
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button
+            <NewButton
               variant="outline"
               size="sm"
               isSelect

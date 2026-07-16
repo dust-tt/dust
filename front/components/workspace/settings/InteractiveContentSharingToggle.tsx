@@ -2,7 +2,6 @@ import { useFrameSharingToggle } from "@app/hooks/useFrameSharingToggle";
 import type { WorkspaceSharingPolicy, WorkspaceType } from "@app/types/user";
 import {
   ActionFrame,
-  Button,
   ContextItem,
   Dialog,
   DialogContent,
@@ -17,6 +16,7 @@ import {
   DropdownMenuTrigger,
   Globe01,
   Lock01,
+  NewButton,
   Users01,
 } from "@dust-tt/sparkle";
 import { useState } from "react";
@@ -92,7 +92,7 @@ export function InteractiveContentSharingToggle({
         action={
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button
+              <NewButton
                 variant="outline"
                 size="sm"
                 isSelect

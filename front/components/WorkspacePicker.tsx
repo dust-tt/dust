@@ -6,13 +6,13 @@ import type {
   UserTypeWithWorkspaces,
 } from "@app/types/user";
 import {
-  Button,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
   DropdownMenuTrigger,
   Label,
+  NewButton,
 } from "@dust-tt/sparkle";
 
 interface WorkspacePickerRadioGroupProps {
@@ -96,7 +96,7 @@ export default function WorkspacePicker({
       <Label className="text-xs text-muted-foreground">Workspace:</Label>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button
+          <NewButton
             label={workspace ? workspace.name : "Select workspace"}
             variant="ghost"
             size="xs"

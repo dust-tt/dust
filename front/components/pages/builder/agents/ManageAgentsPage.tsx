@@ -27,10 +27,10 @@ import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import type { TagType } from "@app/types/tag";
 import { isAdmin } from "@app/types/user";
 import {
-  Button,
   Chip,
   ContactsRobot,
   ListSelect,
+  NewButton,
   Page,
   Plus,
   SearchInput,
@@ -272,7 +272,7 @@ export function ManageAgentsPage() {
                 {!isBatchEdit && (
                   <div className="flex gap-2">
                     {isAdmin(owner) && (
-                      <Button
+                      <NewButton
                         variant="outline"
                         icon={ListSelect}
                         label="Batch edit"

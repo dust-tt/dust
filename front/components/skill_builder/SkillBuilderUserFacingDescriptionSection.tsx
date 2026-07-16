@@ -9,7 +9,7 @@ import { getSkillDescriptionSuggestion } from "@app/components/skill_builder/uti
 import { useAutoGenerateOnBlur } from "@app/hooks/useAutoGenerateOnBlur";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { isEmptyString } from "@app/types/shared/utils/general";
-import { Button, Input, Spinner, Stars02 } from "@dust-tt/sparkle";
+import { Input, NewButton, Spinner, Stars02 } from "@dust-tt/sparkle";
 import { useMemo, useState } from "react";
 import { useController, useWatch } from "react-hook-form";
 
@@ -125,7 +125,7 @@ export function SkillBuilderUserFacingDescriptionSection() {
               className="pr-10"
               {...registerProps}
             />
-            <Button
+            <NewButton
               icon={isGenerating ? () => <Spinner size="xs" /> : Stars02}
               variant="outline"
               size="xs"

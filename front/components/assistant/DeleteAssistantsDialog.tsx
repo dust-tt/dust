@@ -3,7 +3,6 @@ import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import { pluralize } from "@app/types/shared/utils/string_utils";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
-  Button,
   Dialog,
   DialogContainer,
   DialogContent,
@@ -12,6 +11,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
+  NewButton,
   Trash01,
 } from "@dust-tt/sparkle";
 import { useState } from "react";
@@ -43,7 +43,7 @@ export function DeleteAssistantsDialog({
   return (
     <Dialog>
       <DialogTrigger asChild>
-        <Button
+        <NewButton
           size="xs"
           variant="warning"
           icon={Trash01}

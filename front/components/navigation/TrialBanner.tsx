@@ -5,7 +5,7 @@ import {
 import { useAppRouter } from "@app/lib/platform";
 import type { SubscriptionType } from "@app/types/plan";
 import { isCreditPricedPlan } from "@app/types/plan";
-import { Button, cn } from "@dust-tt/sparkle";
+import { cn, NewButton } from "@dust-tt/sparkle";
 import { useEffect, useMemo, useRef } from "react";
 
 const SUBSCRIPTION_BANNER_DISPLAY_THRESHOLD_DAYS = 30;
@@ -124,7 +124,7 @@ export function SubscriptionEndBanner({
         <p className="text-sky-800 hidden md:inline-block">{description}</p>
       </div>
       {isAdmin && !isEnterprise && (
-        <Button
+        <NewButton
           href={ctaHref}
           label={isTrial ? "Subscribe to Dust" : "Resume subscription"}
           className="hover:opacity-90 hover:bg-transparent"

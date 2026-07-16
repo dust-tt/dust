@@ -8,11 +8,11 @@ import logger from "@app/logger/logger";
 import type { RichSpaceType } from "@app/types/api/spaces";
 import type { WorkspaceType } from "@app/types/user";
 import {
-  Button,
   cn,
   EyeOff,
   Maximize01,
   Minimize01,
+  NewButton,
   Pin02,
 } from "@dust-tt/sparkle";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -86,7 +86,7 @@ function PodPinnedBannerControls({
       )}
     >
       <div className="pointer-events-auto flex items-center gap-0.5 rounded-lg border border-border/60 bg-background/95 p-0.5 shadow-sm backdrop-blur-sm">
-        <Button
+        <NewButton
           icon={EyeOff}
           variant="ghost"
           size="xs"
@@ -94,7 +94,7 @@ function PodPinnedBannerControls({
           onClick={onHide}
         />
         {isEditor && (
-          <Button
+          <NewButton
             icon={Pin02}
             variant="ghost"
             size="xs"
@@ -102,7 +102,7 @@ function PodPinnedBannerControls({
             onClick={onUnpin}
           />
         )}
-        <Button
+        <NewButton
           icon={isFullscreen ? Minimize01 : Maximize01}
           variant="ghost"
           size="xs"
@@ -136,9 +136,9 @@ function PodPinnedBannerCollapsedAffordance({
       <span aria-hidden className="shrink-0 text-muted-foreground/50">
         ·
       </span>
-      <Button label="Show" variant="ghost" size="xs" onClick={onShow} />
+      <NewButton label="Show" variant="ghost" size="xs" onClick={onShow} />
       <div className="ml-auto flex items-center gap-0.5">
-        <Button
+        <NewButton
           icon={Maximize01}
           variant="ghost"
           size="xs"

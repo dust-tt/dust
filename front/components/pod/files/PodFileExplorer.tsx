@@ -46,7 +46,6 @@ import {
 import type { PodType } from "@app/types/space";
 import type { WorkspaceType } from "@app/types/user";
 import {
-  Button,
   CloudArrowLeftRight,
   Dialog,
   DialogContainer,
@@ -60,6 +59,7 @@ import {
   DropdownMenuTrigger,
   EmptyCTA,
   Folder,
+  NewButton,
   Pin02,
   Tooltip,
   UploadCloud02,
@@ -95,7 +95,7 @@ function AttachKnowledgeDropdown({
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button
+        <NewButton
           label={buttonLabel}
           isSelect
           variant="highlight"

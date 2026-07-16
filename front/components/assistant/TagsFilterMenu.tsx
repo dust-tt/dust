@@ -3,13 +3,13 @@ import type { TagType } from "@app/types/tag";
 import type { WorkspaceType } from "@app/types/user";
 import { isAdmin } from "@app/types/user";
 import {
-  Button,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuSearchbar,
   DropdownMenuTagItem,
   DropdownMenuTagList,
   DropdownMenuTrigger,
+  NewButton,
   Tag01,
 } from "@dust-tt/sparkle";
 import { useState } from "react";
@@ -58,7 +58,7 @@ export const TagsFilterMenu = ({
       />
       <DropdownMenu open={isDropdownOpen} onOpenChange={setDropdownOpen}>
         <DropdownMenuTrigger asChild>
-          <Button
+          <NewButton
             variant="outline"
             icon={Tag01}
             label="Tags"
@@ -76,7 +76,7 @@ export const TagsFilterMenu = ({
               onChange={setTagSearch}
               button={
                 isAdmin(owner) ? (
-                  <Button
+                  <NewButton
                     variant="primary"
                     label="Manage tags"
                     onClick={() => {

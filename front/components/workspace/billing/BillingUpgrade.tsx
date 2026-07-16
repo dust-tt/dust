@@ -4,7 +4,7 @@ import {
   CREDIT_PRICED_FREE_PLAN_CODE,
   isEnterprisePlanPrefix,
 } from "@app/lib/plans/plan_codes";
-import { Button } from "@dust-tt/sparkle";
+import { NewButton } from "@dust-tt/sparkle";
 import { useSubscriptionContext } from "./SubscriptionContext";
 
 export function BillingUpgrade() {
@@ -55,7 +55,7 @@ export function BillingUpgrade() {
           <div className="truncate text-base font-semibold text-foreground">
             {planName}
           </div>
-          <Button size="sm" {...buttonProps} />
+          <NewButton size="sm" {...buttonProps} />
         </div>
         <div className="flex flex-col gap-2 text-xs text-muted-foreground">
           {features.map((feature) => (

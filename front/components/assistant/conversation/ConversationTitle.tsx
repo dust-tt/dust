@@ -19,11 +19,11 @@ import {
   ArrowLeft,
   Breadcrumbs,
   type BreadcrumbsItem,
-  Button,
   Chip,
   DotsHorizontal,
   Folder,
   GitBranch01,
+  NewButton,
   Tooltip,
 } from "@dust-tt/sparkle";
 import { useState } from "react";
@@ -169,7 +169,7 @@ export function ConversationTitle({ owner }: { owner: WorkspaceType }) {
           currentTitle={currentTitle}
         />
         <div className="flex items-center gap-2">
-          <Button
+          <NewButton
             size="sm"
             label={isMobile ? undefined : "Files"}
             icon={Folder}
@@ -181,7 +181,7 @@ export function ConversationTitle({ owner }: { owner: WorkspaceType }) {
             conversation={conversation}
             owner={owner}
             trigger={({ isPendingAction }) => (
-              <Button
+              <NewButton
                 size="sm"
                 variant="ghost"
                 icon={DotsHorizontal}

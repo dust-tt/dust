@@ -4,7 +4,6 @@ import type { TagType } from "@app/types/tag";
 import type { WorkspaceType } from "@app/types/user";
 import { isAdmin, isBuilder } from "@app/types/user";
 import {
-  Button,
   Chip,
   DropdownMenu,
   DropdownMenuCheckboxItem,
@@ -14,6 +13,7 @@ import {
   DropdownMenuSearchbar,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
+  NewButton,
   Plus,
   Spinner,
 } from "@dust-tt/sparkle";
@@ -143,7 +143,7 @@ export const TagsSelector = ({
           modal={false}
         >
           <DropdownMenuTrigger asChild>
-            <Button
+            <NewButton
               icon={Plus}
               variant="outline"
               label="Add"

@@ -10,9 +10,9 @@ import { isPodConversation } from "@app/types/assistant/conversation";
 import type { LightWorkspaceType, UserType } from "@app/types/user";
 import {
   AlertCircle,
-  Button,
   ContentMessage,
   Icon,
+  NewButton,
   XClose,
 } from "@dust-tt/sparkle";
 import { useMemo, useState } from "react";
@@ -87,7 +87,7 @@ export function MentionInvalid({
               <span className="font-semibold">{mention.label}</span> {message}
             </div>
             <div className="ml-auto">
-              <Button
+              <NewButton
                 label="Dismiss"
                 variant="outline"
                 size="xs"
@@ -113,7 +113,7 @@ export function MentionInvalid({
               spaces.
             </div>
             <div className="ml-auto">
-              <Button
+              <NewButton
                 label="Dismiss"
                 variant="outline"
                 size="xs"

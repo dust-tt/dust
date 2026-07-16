@@ -5,11 +5,11 @@ import { useAgentConfigurations } from "@app/lib/swr/assistants";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import {
   Avatar,
-  Button,
   Card,
   ContentMessage,
   DataTable,
   InfoCircle,
+  NewButton,
   SearchInput,
   Spinner,
 } from "@dust-tt/sparkle";
@@ -193,7 +193,7 @@ export function ChildAgentSection() {
               </div>
             </div>
             <div className="ml-4 self-start">
-              <Button
+              <NewButton
                 variant="outline"
                 size="sm"
                 icon={PencilIcon}

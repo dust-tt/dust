@@ -3,7 +3,7 @@ import {
   TRACKING_AREAS,
   trackEvent,
 } from "@app/lib/tracking";
-import { Button, MessageChatSquare } from "@dust-tt/sparkle";
+import { MessageChatSquare, NewButton } from "@dust-tt/sparkle";
 // biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
 import React, { useState } from "react";
 import { visit } from "unist-util-visit";
@@ -43,7 +43,7 @@ export function QuickReplyBlock({
 
   return (
     <span className="float-left clear-left my-0.5">
-      <Button
+      <NewButton
         size="sm"
         variant="outline"
         label={label}
@@ -51,7 +51,7 @@ export function QuickReplyBlock({
         onClick={handleClick}
         disabled={disabled || isSending}
         isLoading={isSending}
-        className="h-auto whitespace-normal py-1.5 text-left" // Prevent whitespace-nowrap from Button: here we want to go on multiple lines if needed.
+        className="h-auto whitespace-normal py-1.5 text-left" // Prevent whitespace-nowrap from NewButton: here we want to go on multiple lines if needed.
       />
     </span>
   );

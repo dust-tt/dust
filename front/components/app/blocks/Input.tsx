@@ -13,10 +13,10 @@ import type { DatasetType } from "@app/types/dataset";
 import type { BlockType, RunType } from "@app/types/run";
 import type { WorkspaceType } from "@app/types/user";
 import {
-  Button,
   Edit04,
   Eye,
   Label,
+  NewButton,
   Sheet,
   SheetContainer,
   SheetContent,
@@ -137,7 +137,7 @@ export default function Input({
                   readOnly={readOnly}
                 />
                 {block.config?.dataset ? (
-                  <Button
+                  <NewButton
                     variant="outline"
                     onClick={() => setIsDatasetModalOpen(true)}
                     icon={readOnly ? Eye : Edit04}
@@ -161,7 +161,7 @@ export default function Input({
                   </SheetHeader>
                   <SheetContainer>
                     {!readOnly && (
-                      <Button
+                      <NewButton
                         className="mb-4 ml-1"
                         variant="outline"
                         onClick={() => {

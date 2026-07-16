@@ -3,13 +3,13 @@ import { getSkillBuilderRoute } from "@app/lib/utils/router";
 import type { SkillWithoutInstructionsAndToolsWithRelationsType } from "@app/types/assistant/skill_configuration";
 import type { WorkspaceType } from "@app/types/user";
 import {
-  Button,
   DotsHorizontal,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
   Edit04,
+  NewButton,
   Trash01,
 } from "@dust-tt/sparkle";
 import { useState } from "react";
@@ -44,7 +44,7 @@ export function SkillDetailsButtonBar({
       />
       <div className="flex flex-row items-center gap-2 px-1.5">
         {skill.canWrite && (
-          <Button
+          <NewButton
             size="sm"
             tooltip="Edit skill"
             href={getSkillBuilderRoute(owner.sId, skill.sId)}
@@ -54,7 +54,7 @@ export function SkillDetailsButtonBar({
         )}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button icon={DotsHorizontal} size="sm" variant="ghost" />
+            <NewButton icon={DotsHorizontal} size="sm" variant="ghost" />
           </DropdownMenuTrigger>
           <DropdownMenuContent>
             {skill.canWrite && (

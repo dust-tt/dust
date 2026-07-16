@@ -1,5 +1,5 @@
 import { LinkWrapper } from "@app/lib/platform";
-import { AlertCircle, Button, Icon } from "@dust-tt/sparkle";
+import { AlertCircle, Icon, NewButton } from "@dust-tt/sparkle";
 import type { ComponentType } from "react";
 
 interface CustomErrorPageProps {
@@ -30,7 +30,7 @@ export default function CustomErrorPage({
           </p>
         </div>
         <LinkWrapper href={href}>
-          <Button variant="outline" label={label} icon={icon} />
+          <NewButton variant="outline" label={label} icon={icon} />
         </LinkWrapper>
       </div>
     </div>

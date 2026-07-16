@@ -5,12 +5,12 @@ import { GLOBAL_SPACE_NAME } from "@app/types/groups";
 import type { SpaceType } from "@app/types/space";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
-  Button,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
   File04,
+  NewButton,
   Plus,
   Settings01,
   Table,
@@ -99,7 +99,7 @@ const AddDataDropDownButton = ({
   return (
     <DropdownMenu modal={false}>
       <DropdownMenuTrigger asChild>
-        <Button
+        <NewButton
           size="sm"
           label="Add data"
           icon={Plus}
@@ -163,7 +163,7 @@ const EditFolderButton = ({
         space={space}
         dataSourceViewId={folder.sId}
       />
-      <Button
+      <NewButton
         size="sm"
         label="Edit folder"
         icon={Settings01}

@@ -5,7 +5,6 @@ import { getConversationRoute } from "@app/lib/utils/router";
 import type { PodType } from "@app/types/space";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
-  Button,
   Dialog,
   DialogContainer,
   DialogContent,
@@ -14,6 +13,7 @@ import {
   DialogTitle,
   DialogTrigger,
   Input,
+  NewButton,
   Spinner,
   Trash01,
 } from "@dust-tt/sparkle";
@@ -54,7 +54,7 @@ export function DeletePodDialog({ owner, pod }: DeletePodDialogProps) {
     >
       <DialogTrigger asChild>
         <div className="flex w-full flex-col items-start">
-          <Button icon={Trash01} variant="warning" label="Delete Pod" />
+          <NewButton icon={Trash01} variant="warning" label="Delete Pod" />
         </div>
       </DialogTrigger>
       <DialogContent size="md">

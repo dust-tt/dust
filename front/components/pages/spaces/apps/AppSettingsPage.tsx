@@ -9,7 +9,7 @@ import { useSpaceInfo } from "@app/lib/swr/spaces";
 import { MODELS_STRING_MAX_LENGTH } from "@app/lib/utils";
 import { APP_NAME_REGEXP } from "@app/types/app";
 import type { APIError } from "@app/types/error";
-import { Button, Input, Label, Spinner } from "@dust-tt/sparkle";
+import { Input, Label, NewButton, Spinner } from "@dust-tt/sparkle";
 import { useContext, useEffect, useState } from "react";
 
 export function AppSettingsPage() {
@@ -188,12 +188,12 @@ export function AppSettingsPage() {
           </div>
         </div>
         <div className="flex justify-between py-6">
-          <Button
+          <NewButton
             disabled={disable || isUpdating || isDeleting}
             onClick={handleUpdate}
             label={isUpdating ? "Updating..." : "Update"}
           />
-          <Button
+          <NewButton
             variant="warning"
             onClick={handleDelete}
             disabled={isDeleting || isUpdating}

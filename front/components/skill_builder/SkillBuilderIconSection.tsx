@@ -2,9 +2,9 @@ import type { SkillBuilderFormData } from "@app/components/skill_builder/SkillBu
 import {
   ActionIcons,
   Avatar,
-  Button,
   Edit04,
   IconPicker,
+  NewButton,
   Plus,
   PopoverContent,
   PopoverRoot,
@@ -41,7 +41,7 @@ export function SkillBuilderIconSection() {
             size="lg"
             visual={<IconComponent className="h-8 w-8 text-muted-foreground" />}
           />
-          <Button
+          <NewButton
             variant="outline"
             size="sm"
             icon={Edit04}

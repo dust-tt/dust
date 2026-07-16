@@ -7,7 +7,12 @@ import type { WebhookProvider } from "@app/types/triggers/webhooks";
 import { WEBHOOK_PRESETS } from "@app/types/triggers/webhooks";
 import { CLIENT_SIDE_WEBHOOK_PRESETS } from "@app/types/triggers/webhooks_client_side";
 import type { LightWorkspaceType } from "@app/types/user";
-import { Button, CloudArrowLeftRight, Label, Spinner } from "@dust-tt/sparkle";
+import {
+  CloudArrowLeftRight,
+  Label,
+  NewButton,
+  Spinner,
+} from "@dust-tt/sparkle";
 import { useState } from "react";
 
 type CreateWebhookSourceWithProviderFormProps = {
@@ -108,7 +113,7 @@ export function CreateWebhookSourceWithProviderForm({
         )}
 
         <div className="mt-2 flex items-center gap-2">
-          <Button
+          <NewButton
             variant={"outline"}
             label={buttonLabel}
             icon={CloudArrowLeftRight}

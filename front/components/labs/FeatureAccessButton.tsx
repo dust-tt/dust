@@ -1,7 +1,7 @@
 import type { DataSourceViewType } from "@app/types/data_source_view";
 import type { SpaceType } from "@app/types/space";
 import type { LightWorkspaceType } from "@app/types/user";
-import { Button, Lock01, Settings01 } from "@dust-tt/sparkle";
+import { Lock01, NewButton, Settings01 } from "@dust-tt/sparkle";
 
 import { RequestFeatureAccessModal } from "./modals/RequestFeatureAccessModal";
 
@@ -37,7 +37,7 @@ export function FeatureAccessButton({
 
   if (!canManage) {
     return (
-      <Button
+      <NewButton
         label="Manage"
         tooltip="Only admins can manage this feature."
         icon={Lock01}
@@ -47,7 +47,7 @@ export function FeatureAccessButton({
     );
   }
   return (
-    <Button
+    <NewButton
       label="Manage"
       icon={Settings01}
       variant="outline"

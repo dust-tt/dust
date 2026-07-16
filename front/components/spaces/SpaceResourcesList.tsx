@@ -38,7 +38,6 @@ import type { SpaceType } from "@app/types/space";
 import type { UserType, WorkspaceType } from "@app/types/user";
 import { ANONYMOUS_USER_IMAGE_URL } from "@app/types/user";
 import {
-  Button,
   Chip,
   CloudArrowLeftRight,
   Cube01,
@@ -46,6 +45,7 @@ import {
   DataTable,
   Edit04,
   type MenuItem,
+  NewButton,
   Settings01,
   Spinner,
   Trash01,
@@ -188,7 +188,7 @@ function getTableColumns(
       if (!connector) {
         return (
           <DataTable.CellContent>
-            <Button
+            <NewButton
               variant="primary"
               size="xs"
               icon={CloudArrowLeftRight}
@@ -201,7 +201,7 @@ function getTableColumns(
       }
       return (
         <DataTable.CellContent>
-          <Button
+          <NewButton
             variant="outline"
             icon={Settings01}
             disabled={disabled}

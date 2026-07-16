@@ -26,7 +26,6 @@ import {
   assertNeverAndIgnore,
 } from "@app/types/shared/utils/assert_never";
 import {
-  Button,
   CheckCircle,
   Dialog,
   DialogContainer,
@@ -37,6 +36,7 @@ import {
   DialogTitle,
   Icon,
   Input,
+  NewButton,
   Spinner,
   Tabs,
   TabsContent,
@@ -310,7 +310,7 @@ function UseCouponTab({
                       </span>
                     )}
                   </div>
-                  <Button
+                  <NewButton
                     label="Check"
                     variant="outline"
                     size="sm"
@@ -356,8 +356,8 @@ function UseCouponTab({
             </div>
           </DialogContainer>
           <DialogFooter>
-            <Button label="Cancel" variant="outline" onClick={onClose} />
-            <Button
+            <NewButton label="Cancel" variant="outline" onClick={onClose} />
+            <NewButton
               label="Apply coupon"
               variant="primary"
               onClick={handleRedeemCoupon}
@@ -606,7 +606,7 @@ export function BuyAwuCreditsDialog({
                   )}
                   <div className="ml-auto flex gap-2">
                     {QUICK_SELECT_AMOUNTS.map((amount) => (
-                      <Button
+                      <NewButton
                         key={amount}
                         label={`${currencySymbol}${amount}`}
                         variant="outline"
@@ -684,7 +684,7 @@ export function BuyAwuCreditsDialog({
                           )}
                         </span>
                       </div>
-                      <Button
+                      <NewButton
                         label="Change"
                         variant="ghost"
                         size="sm"
@@ -747,12 +747,12 @@ export function BuyAwuCreditsDialog({
       default:
         return (
           <DialogFooter>
-            <Button
+            <NewButton
               label="Cancel"
               variant="outline"
               onClick={resetModalStateAndClose}
             />
-            <Button
+            <NewButton
               label={`Add ${formatCredits(addedCredits)} credits`}
               variant="primary"
               onClick={handlePurchase}
