@@ -324,6 +324,10 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "Enable the Activation skill for agentic user activation pods",
     stage: "dust_only",
   },
+  activation_scheduler: {
+    description: "Enable the per-workspace Activation scheduler workflow",
+    stage: "dust_only",
+  },
   group_permissions_shadow: {
     description:
       "Admin Governance: evaluate the new group_permissions checks alongside the legacy ones and log mismatches (shadow mode). Serves the legacy result; safe to toggle.",

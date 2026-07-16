@@ -83,6 +83,7 @@ import { WorkspaceVerificationAttemptResource } from "@app/lib/resources/workspa
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
+import { deleteActivationWorkspaceSchedule } from "@app/temporal/activation_scheduler/client";
 import { deleteAllConversations } from "@app/temporal/scrub_workspace/activities";
 import { CoreAPI } from "@app/types/core/core_api";
 import assert from "assert";
@@ -771,6 +772,7 @@ export async function deleteWorkspaceActivity({
     },
   });
   await TriggerResource.deleteAllForWorkspace(auth);
+  await deleteActivationWorkspaceSchedule({ workspaceId });
   await FileResource.deleteAllForWorkspace(auth);
   await RunResource.deleteAllForWorkspace(auth);
   await MembershipResource.deleteAllForWorkspace(auth);
