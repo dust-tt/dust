@@ -7,6 +7,7 @@ import { getAvatar } from "@app/lib/actions/mcp_icons";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import type { MCPServerConnectionType } from "@app/lib/resources/mcp_server_connection_resource";
 import {
+  useCreatePersonalConnection,
   useDeleteMCPServerConnection,
   useManualMCPServerViewsFromSpaces,
   useMCPServerConnections,
@@ -18,6 +19,7 @@ import type { LightWorkspaceType } from "@app/types/user";
 import {
   Button,
   Chip,
+  CloudArrowLeftRight,
   DataTable,
   DotsHorizontal,
   DropdownMenu,
@@ -39,6 +41,8 @@ interface UserTableRow {
   description: string;
   serverView: MCPServerViewType;
   connection: MCPServerConnectionType | undefined;
+  canConnect: boolean;
+  hasApproval: boolean;
   visual: React.JSX.Element;
   onClick?: () => void;
 }
@@ -91,6 +95,41 @@ export function UserToolsTable({ owner }: UserToolsTableProps) {
     owner,
   });
 
+  const { createPersonalConnection } = useCreatePersonalConnection(owner);
+  const [connectingServerId, setConnectingServerId] = useState<string | null>(
+    null
+  );
+
+  const handleConnect = useCallback(
+    async (serverView: MCPServerViewType) => {
+      const { authorization } = serverView.server;
+      if (!authorization) {
+        return;
+      }
+      setConnectingServerId(serverView.server.sId);
+      try {
+        const result = await createPersonalConnection({
+          mcpServerId: serverView.server.sId,
+          mcpServerDisplayName: getMcpServerViewDisplayName(serverView),
+          authorization,
+          provider: authorization.provider,
+          useCase: "personal_actions",
+          scope: authorization.scope,
+        });
+        if (!result.success && result.error) {
+          sendNotification({
+            type: "error",
+            title: "Failed to connect provider",
+            description: result.error,
+          });
+        }
+      } finally {
+        setConnectingServerId(null);
+      }
+    },
+    [createPersonalConnection, sendNotification]
+  );
+
   // Prepare data for the actions table
   const actionsTableData = useMemo(() => {
     if (!serverViews) {
@@ -106,12 +145,17 @@ export function UserToolsTable({ owner }: UserToolsTableProps) {
       approvals.map((approval) => approval.mcpServerId)
     );
 
+    const isConnectable = (serverView: MCPServerViewType) =>
+      serverView.oAuthUseCase === "personal_actions" &&
+      !!serverView.server.authorization;
+
     return serverViews
       .filter((serverView) => {
-        // Only include servers that have approvals OR have connections
+        // Include servers that have approvals, connections, or that the user
+        // could connect to (personal-auth tools available in the workspace).
         const hasConnection = !!connectionsByServerId[serverView.server.sId];
         const hasApproval = approvalServerIds.has(serverView.server.sId);
-        return hasConnection || hasApproval;
+        return hasConnection || hasApproval || isConnectable(serverView);
       })
       .filter(
         (serverView) =>
@@ -128,6 +172,8 @@ export function UserToolsTable({ owner }: UserToolsTableProps) {
         description: getMcpServerViewDescription(serverView),
         serverView: serverView,
         connection: connectionsByServerId[serverView.server.sId],
+        canConnect: isConnectable(serverView),
+        hasApproval: approvalServerIds.has(serverView.server.sId),
         visual: getAvatar(serverView.server),
         onClick: () => {},
       }));
@@ -162,6 +208,22 @@ export function UserToolsTable({ owner }: UserToolsTableProps) {
                   Connected
                 </Chip>
               )}
+              {!row.original.connection && row.original.canConnect && (
+                <Button
+                  icon={CloudArrowLeftRight}
+                  size="xs"
+                  variant="outline"
+                  label="Connect"
+                  disabled={connectingServerId !== null}
+                  isLoading={
+                    connectingServerId === row.original.serverView.server.sId
+                  }
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    void handleConnect(row.original.serverView);
+                  }}
+                />
+              )}
             </div>
           </DataTable.CellContent>
         ),
@@ -172,49 +234,57 @@ export function UserToolsTable({ owner }: UserToolsTableProps) {
       {
         header: "",
         accessorKey: "actions",
-        cell: ({ row }) => (
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                icon={DotsHorizontal}
-                size="icon"
-                variant="ghost-secondary"
-                onClick={(e) => e.stopPropagation()}
-              />
-            </DropdownMenuTrigger>
-            <DropdownMenuPortal>
-              <DropdownMenuContent align="end">
-                <DropdownMenuGroup>
-                  <DropdownMenuItem
-                    label="Clear confirmation preferences"
-                    onClick={() =>
-                      handleDeleteToolMetadata(
-                        row.original.serverView.server.sId
-                      )
-                    }
-                  />
-                  {row.original.connection && (
-                    <DropdownMenuItem
-                      label="Disconnect"
-                      onClick={() =>
-                        deleteMCPServerConnection({
-                          connection: row.original.connection!,
-                          mcpServer: row.original.serverView.server,
-                        })
-                      }
-                    />
-                  )}
-                </DropdownMenuGroup>
-              </DropdownMenuContent>
-            </DropdownMenuPortal>
-          </DropdownMenu>
-        ),
+        cell: ({ row }) =>
+          (row.original.hasApproval || row.original.connection) && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  icon={DotsHorizontal}
+                  size="icon"
+                  variant="ghost-secondary"
+                  onClick={(e) => e.stopPropagation()}
+                />
+              </DropdownMenuTrigger>
+              <DropdownMenuPortal>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuGroup>
+                    {row.original.hasApproval && (
+                      <DropdownMenuItem
+                        label="Clear confirmation preferences"
+                        onClick={() =>
+                          handleDeleteToolMetadata(
+                            row.original.serverView.server.sId
+                          )
+                        }
+                      />
+                    )}
+                    {row.original.connection && (
+                      <DropdownMenuItem
+                        label="Disconnect"
+                        onClick={() =>
+                          deleteMCPServerConnection({
+                            connection: row.original.connection!,
+                            mcpServer: row.original.serverView.server,
+                          })
+                        }
+                      />
+                    )}
+                  </DropdownMenuGroup>
+                </DropdownMenuContent>
+              </DropdownMenuPortal>
+            </DropdownMenu>
+          ),
         meta: {
           className: "w-12",
         },
       },
     ],
-    [deleteMCPServerConnection, handleDeleteToolMetadata]
+    [
+      deleteMCPServerConnection,
+      handleDeleteToolMetadata,
+      handleConnect,
+      connectingServerId,
+    ]
   );
 
   return (
@@ -240,9 +310,7 @@ export function UserToolsTable({ owner }: UserToolsTableProps) {
         />
       ) : (
         <p className="py-8 text-center text-muted-foreground">
-          {searchQuery
-            ? "No matching tools found"
-            : "You don't have any tool-specific settings yet."}
+          {searchQuery ? "No matching tools found" : "No tools available yet."}
         </p>
       )}
     </>
