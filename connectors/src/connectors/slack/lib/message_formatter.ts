@@ -328,9 +328,8 @@ export interface FormattedSlackMessage {
   files: string;
 }
 
-// A rendered section with no content is filled with this placeholder so labeled
-// renderings (e.g. `renderFormattedMessage`) stay unambiguous. Consumers that
-// concatenate sections use it to skip the empty ones.
+// A rendered section with no content is filled with this placeholder. Consumers
+// that concatenate sections use it to skip the empty ones.
 export const EMPTY_SECTION = "(empty)";
 
 function renderSection(rawLines: string[]): string {
@@ -339,16 +338,6 @@ function renderSection(rawLines: string[]): string {
     .map((line) => slackMrkdwnToText(line).trim())
     .filter((line) => line.length > 0);
   return cleaned.length > 0 ? cleaned.join("\n") : EMPTY_SECTION;
-}
-
-// Flattens a FormattedSlackMessage into a single labeled string for tools that emit text.
-export function renderFormattedMessage(m: FormattedSlackMessage): string {
-  return [
-    `Text: ${m.text}`,
-    `Blocks: ${m.blocks}`,
-    `Attachments: ${m.attachments}`,
-    `Files: ${m.files}`,
-  ].join("\n\n");
 }
 
 export function formatSlackMessageForLLM(

@@ -2,6 +2,7 @@ import {
   getBotOrUserName,
   getUserInfo,
 } from "@connectors/connectors/slack/lib/bot_user_helpers";
+import { splitSlackAttachments } from "@connectors/connectors/slack/lib/message_attachments";
 import {
   EMPTY_SECTION,
   formatSlackMessageForLLM,
@@ -13,10 +14,6 @@ import type { DataSourceConfig, ModelId } from "@connectors/types";
 import { safeSubstring } from "@connectors/types";
 import type { WebClient } from "@slack/web-api";
 import type { MessageElement } from "@slack/web-api/dist/types/response/ConversationsRepliesResponse";
-import {
-  formatSlackMessageUnfurlAttachments,
-  isUnfurlAttachment,
-} from "./message_attachments";
 
 async function processMessageForMentions(
   message: string,
@@ -81,9 +78,8 @@ export async function formatMessagesForUpsert({
       const messageDate = new Date(parseInt(message.ts as string, 10) * 1000);
       const messageDateStr = formatDateForUpsert(messageDate);
 
-      const nonUnfurlAttachments = message.attachments?.filter(
-        (a) => !isUnfurlAttachment(a)
-      );
+      const { nonUnfurlAttachments, forwardedMessagesText } =
+        splitSlackAttachments(message.attachments);
 
       const formatted = formatSlackMessageForLLM({
         text,
@@ -91,11 +87,6 @@ export async function formatMessagesForUpsert({
         attachments: nonUnfurlAttachments,
         files: message.files,
       });
-
-      // Slack renders forwarded/shared messages as message unfurl attachments.
-      const forwardedMessagesText = formatSlackMessageUnfurlAttachments(
-        message.attachments
-      );
 
       const forwardedMessagesInfo = forwardedMessagesText
         ? `\n${forwardedMessagesText}`
