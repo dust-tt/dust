@@ -633,7 +633,7 @@ export const SpaceDataSourceViewContentList = ({
       <DropzoneContainer
         description="Drag and drop your files here."
         title="Add Files"
-        disabled={!canWriteInSpace}
+        disabled={!canWriteInSpace || !isFolder(dataSourceView.dataSource)}
       >
         {isEmpty && (
           <div
