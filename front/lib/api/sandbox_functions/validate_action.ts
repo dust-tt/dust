@@ -1,6 +1,7 @@
 import type { MCPValidationOutputType } from "@app/lib/actions/constants";
 import { isMCPApproveExecutionEvent } from "@app/lib/actions/mcp";
 import { setUserAlwaysApprovedTool } from "@app/lib/actions/tool_status";
+import { canCurrentUserRespondToParentUserMessage } from "@app/lib/api/assistant/conversation/can_current_user_respond";
 import { getRedisHybridManager } from "@app/lib/api/redis-hybrid-manager";
 import { getSandboxFunctionInvocationChannelId } from "@app/lib/api/sandbox_functions/events";
 import type { Authenticator } from "@app/lib/auth";
@@ -15,7 +16,7 @@ import { assertNever } from "@app/types/shared/utils/assert_never";
 
 export class SandboxFunctionActionValidationError extends Error {
   constructor(
-    readonly type: "action_not_found" | "action_not_blocked",
+    readonly type: "action_not_found" | "action_not_blocked" | "unauthorized",
     message: string
   ) {
     super(message);
@@ -65,6 +66,22 @@ export async function validateSandboxFunctionAction(
       new SandboxFunctionActionValidationError(
         "action_not_found",
         "Action not found."
+      )
+    );
+  }
+
+  // Only the invocation's initiating user may approve or reject its tools (mirrors the agent loop).
+  // A null initiating user (e.g. API key origin) allows any authenticated resolver.
+  if (
+    !canCurrentUserRespondToParentUserMessage({
+      parentUserId: invocation.userId,
+      currentUserId: auth.user()?.id,
+    })
+  ) {
+    return new Err(
+      new SandboxFunctionActionValidationError(
+        "unauthorized",
+        "Only the user who initiated the invocation can validate its tools."
       )
     );
   }
