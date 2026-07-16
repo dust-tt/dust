@@ -7,31 +7,31 @@ import type { Result } from "@app/types/shared/result";
 import { Ok } from "@app/types/shared/result";
 import type { estypes } from "@elastic/elasticsearch";
 
-export type TopTagRow = {
+export type TopAgentTagRow = {
   tagId: string;
   name: string;
   messageCount: number;
   agentCount: number;
 };
 
-type TopTagBucket = {
+type TopAgentTagBucket = {
   key: string;
   doc_count: number;
   unique_agents?: estypes.AggregationsCardinalityAggregate;
 };
 
-type TopTagsAggs = {
-  by_tag?: estypes.AggregationsMultiBucketAggregateBase<TopTagBucket>;
+type TopAgentTagsAggs = {
+  by_agent_tag?: estypes.AggregationsMultiBucketAggregateBase<TopAgentTagBucket>;
 };
 
 // Ranks agent tags by message count over a time window, with the count of
 // distinct agents carrying each tag.
-// Backs the top-tags analytics endpoint.
+// Backs the top-agent-tags analytics endpoint.
 // Either `days` or `startDate`/`endDate` bounds the window; source/agent/user
 // filters are optional.
 // Since agents can have multiple tags, counts overlap and can sum to more than
 // the total message volume.
-export async function fetchTopTags(
+export async function fetchTopAgentTags(
   auth: Authenticator,
   {
     days,
@@ -52,7 +52,7 @@ export async function fetchTopTags(
     userIds?: string[];
     agentTagIds?: string[];
   }
-): Promise<Result<TopTagRow[], ElasticsearchError>> {
+): Promise<Result<TopAgentTagRow[], ElasticsearchError>> {
   const owner = auth.getNonNullableWorkspace();
 
   const baseQuery = buildAgentAnalyticsBaseQuery({
@@ -66,7 +66,7 @@ export async function fetchTopTags(
     agentTagIds,
   });
 
-  const result = await searchAnalytics<never, TopTagsAggs>(
+  const result = await searchAnalytics<never, TopAgentTagsAggs>(
     {
       bool: {
         filter: [baseQuery, { exists: { field: "agent_tag_ids" } }],
@@ -74,7 +74,7 @@ export async function fetchTopTags(
     },
     {
       aggregations: {
-        by_tag: {
+        by_agent_tag: {
           terms: { field: "agent_tag_ids", size: limit },
           aggs: {
             unique_agents: { cardinality: { field: "agent_id" } },
@@ -89,8 +89,8 @@ export async function fetchTopTags(
     return result;
   }
 
-  const buckets = bucketsToArray<TopTagBucket>(
-    result.value.aggregations?.by_tag?.buckets
+  const buckets = bucketsToArray<TopAgentTagBucket>(
+    result.value.aggregations?.by_agent_tag?.buckets
   );
 
   const tagIds = buckets.map((bucket) => String(bucket.key));

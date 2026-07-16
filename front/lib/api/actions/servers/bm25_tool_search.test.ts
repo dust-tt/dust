@@ -1058,7 +1058,7 @@ const QUERIES: LabeledQuery[] = [
   },
   {
     query: "list the agent tags",
-    expected: "workspace_analytics.get_top_tags",
+    expected: "workspace_analytics.get_top_agent_tags",
   },
   {
     query:

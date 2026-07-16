@@ -79,11 +79,12 @@ export const usageFilterSchema = {
     .array(z.string())
     .optional()
     .describe("Restrict to messages from these user sIds."),
-  tagIds: z
+  agentTagIds: z
     .array(z.string())
     .optional()
     .describe(
-      "Restrict to messages from agents carrying any of these tag sIds."
+      "Restrict to messages from agents carrying any of these agent tag " +
+        "sIds, as returned by get_top_agent_tags."
     ),
 };
 

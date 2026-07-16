@@ -31,13 +31,13 @@ const getTopAgentsSchema = topListSchema("agents");
 const getTopUsersSchema = topListSchema("users");
 const getTopSkillsSchema = topListSchema("skills");
 const getTopToolsSchema = topListSchema("tools");
-const getTopTagsSchema = topListSchema("tags");
+const getTopAgentTagsSchema = topListSchema("agent tags");
 
 const getSourceBreakdownSchema = {
   ...timeWindowSchemaShape,
   agentIds: usageFilterSchema.agentIds,
   userIds: usageFilterSchema.userIds,
-  tagIds: usageFilterSchema.tagIds,
+  agentTagIds: usageFilterSchema.agentTagIds,
 };
 
 const getAgentDetailsSchema = {
@@ -149,20 +149,20 @@ export const WORKSPACE_ANALYTICS_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "basic",
     freeUsage: false,
   },
-  get_top_tags: {
+  get_top_agent_tags: {
     description:
       "List the agent tags applied across the workspace over a time window " +
       "(defaults to the current calendar month), ranked by message volume, " +
       "with the number of distinct agents bearing each tag. Each row includes " +
-      "the tag's id. Use this to enumerate which tags exist and obtain their " +
-      "ids, then supply those ids as the tag filter on the other analytics " +
-      "tools. Because an agent can bear several tags, per-tag counts overlap " +
-      "and may exceed the workspace total. Admin-only.",
-    schema: getTopTagsSchema,
+      "the tag's id. Use this to enumerate which agent tags exist and obtain " +
+      "their ids, then supply those ids as the agentTagIds filter on the " +
+      "other analytics tools. Because an agent can bear several tags, per-tag " +
+      "counts overlap and may exceed the workspace total. Admin-only.",
+    schema: getTopAgentTagsSchema,
     stake: "never_ask",
     displayLabels: {
-      running: "Retrieving top tags",
-      done: "Retrieved top tags",
+      running: "Retrieving top agent tags",
+      done: "Retrieved top agent tags",
     },
     toolCostCategory: "basic",
     freeUsage: false,

@@ -32,8 +32,8 @@ import {
   fetchToolUsageMetrics,
   resolveServerDisplayNames,
 } from "@app/lib/api/assistant/observability/tool_usage";
+import { fetchTopAgentTags } from "@app/lib/api/assistant/observability/top_agent_tags";
 import { fetchTopAgents } from "@app/lib/api/assistant/observability/top_agents";
-import { fetchTopTags } from "@app/lib/api/assistant/observability/top_tags";
 import { fetchTopUsers } from "@app/lib/api/assistant/observability/top_users";
 import { buildAgentAnalyticsBaseQuery } from "@app/lib/api/assistant/observability/utils";
 import type { Authenticator } from "@app/lib/auth";
@@ -49,12 +49,12 @@ function scopedBaseQuery(
     source,
     agentIds,
     userIds,
-    tagIds,
+    agentTagIds,
   }: {
     source?: string;
     agentIds?: string[];
     userIds?: string[];
-    tagIds?: string[];
+    agentTagIds?: string[];
   }
 ) {
   return buildAgentAnalyticsBaseQuery({
@@ -64,7 +64,7 @@ function scopedBaseQuery(
     contextOrigin: source,
     agentIds,
     userIds,
-    agentTagIds: tagIds,
+    agentTagIds,
   });
 }
 
@@ -117,7 +117,7 @@ const handlers: ToolHandlers<typeof WORKSPACE_ANALYTICS_TOOLS_METADATA> = {
       source,
       agentIds,
       userIds,
-      tagIds,
+      agentTagIds,
     },
     { auth }
   ) => {
@@ -138,7 +138,7 @@ const handlers: ToolHandlers<typeof WORKSPACE_ANALYTICS_TOOLS_METADATA> = {
       contextOrigin: source,
       agentIds,
       userIds,
-      agentTagIds: tagIds,
+      agentTagIds,
     });
 
     if (result.isErr()) {
@@ -184,7 +184,7 @@ const handlers: ToolHandlers<typeof WORKSPACE_ANALYTICS_TOOLS_METADATA> = {
       source,
       agentIds,
       userIds,
-      tagIds,
+      agentTagIds,
     },
     { auth }
   ) => {
@@ -205,7 +205,7 @@ const handlers: ToolHandlers<typeof WORKSPACE_ANALYTICS_TOOLS_METADATA> = {
       contextOrigin: source,
       agentIds,
       userIds,
-      agentTagIds: tagIds,
+      agentTagIds,
     });
 
     if (result.isErr()) {
@@ -241,7 +241,7 @@ const handlers: ToolHandlers<typeof WORKSPACE_ANALYTICS_TOOLS_METADATA> = {
     ]);
   },
 
-  get_top_tags: async (
+  get_top_agent_tags: async (
     {
       limit,
       period,
@@ -251,7 +251,7 @@ const handlers: ToolHandlers<typeof WORKSPACE_ANALYTICS_TOOLS_METADATA> = {
       source,
       agentIds,
       userIds,
-      tagIds,
+      agentTagIds,
     },
     { auth }
   ) => {
@@ -265,14 +265,14 @@ const handlers: ToolHandlers<typeof WORKSPACE_ANALYTICS_TOOLS_METADATA> = {
       return new Err(new MCPError(window.error, { tracked: false }));
     }
 
-    const result = await fetchTopTags(auth, {
+    const result = await fetchTopAgentTags(auth, {
       startDate: window.value.startDate,
       endDate: window.value.endDate,
       limit: limit ?? DEFAULT_RESULTS,
       contextOrigin: source,
       agentIds,
       userIds,
-      agentTagIds: tagIds,
+      agentTagIds,
     });
 
     if (result.isErr()) {
@@ -375,7 +375,7 @@ const handlers: ToolHandlers<typeof WORKSPACE_ANALYTICS_TOOLS_METADATA> = {
       source,
       agentIds,
       userIds,
-      tagIds,
+      agentTagIds,
     },
     { auth }
   ) => {
@@ -393,7 +393,7 @@ const handlers: ToolHandlers<typeof WORKSPACE_ANALYTICS_TOOLS_METADATA> = {
       source,
       agentIds,
       userIds,
-      tagIds,
+      agentTagIds,
     });
 
     const result = await fetchAvailableSkills(baseQuery);
@@ -440,7 +440,7 @@ const handlers: ToolHandlers<typeof WORKSPACE_ANALYTICS_TOOLS_METADATA> = {
       source,
       agentIds,
       userIds,
-      tagIds,
+      agentTagIds,
     },
     { auth }
   ) => {
@@ -458,7 +458,7 @@ const handlers: ToolHandlers<typeof WORKSPACE_ANALYTICS_TOOLS_METADATA> = {
       source,
       agentIds,
       userIds,
-      tagIds,
+      agentTagIds,
     });
 
     const result = await fetchAvailableTools(baseQuery);
@@ -505,7 +505,7 @@ const handlers: ToolHandlers<typeof WORKSPACE_ANALYTICS_TOOLS_METADATA> = {
   },
 
   get_source_breakdown: async (
-    { period, startDate, endDate, timezone, agentIds, userIds, tagIds },
+    { period, startDate, endDate, timezone, agentIds, userIds, agentTagIds },
     { auth }
   ) => {
     const denied = workspaceAdminGuard(auth);
@@ -521,7 +521,7 @@ const handlers: ToolHandlers<typeof WORKSPACE_ANALYTICS_TOOLS_METADATA> = {
     const baseQuery = scopedBaseQuery(auth, window.value, {
       agentIds,
       userIds,
-      tagIds,
+      agentTagIds,
     });
 
     const result = await fetchContextOriginBreakdown(baseQuery);
@@ -572,7 +572,7 @@ const handlers: ToolHandlers<typeof WORKSPACE_ANALYTICS_TOOLS_METADATA> = {
       source,
       agentIds,
       userIds,
-      tagIds,
+      agentTagIds,
     },
     { auth }
   ) => {
@@ -595,7 +595,7 @@ const handlers: ToolHandlers<typeof WORKSPACE_ANALYTICS_TOOLS_METADATA> = {
       contextOrigin: source,
       agentIds,
       userIds,
-      agentTagIds: tagIds,
+      agentTagIds,
     });
 
     if (result.isErr()) {
@@ -653,7 +653,7 @@ const handlers: ToolHandlers<typeof WORKSPACE_ANALYTICS_TOOLS_METADATA> = {
       source,
       agentIds,
       userIds,
-      tagIds,
+      agentTagIds,
     },
     { auth }
   ) => {
@@ -687,7 +687,7 @@ const handlers: ToolHandlers<typeof WORKSPACE_ANALYTICS_TOOLS_METADATA> = {
         contextOrigin: source,
         agentIds,
         userIds,
-        agentTagIds: tagIds,
+        agentTagIds,
       });
 
       if (result.isErr()) {
@@ -740,7 +740,7 @@ const handlers: ToolHandlers<typeof WORKSPACE_ANALYTICS_TOOLS_METADATA> = {
       contextOrigin: source,
       agentIds,
       userIds,
-      agentTagIds: tagIds,
+      agentTagIds,
     });
 
     if (result.isErr()) {
@@ -786,7 +786,7 @@ const handlers: ToolHandlers<typeof WORKSPACE_ANALYTICS_TOOLS_METADATA> = {
       source,
       agentIds,
       userIds,
-      tagIds,
+      agentTagIds,
     },
     { auth }
   ) => {
@@ -807,7 +807,7 @@ const handlers: ToolHandlers<typeof WORKSPACE_ANALYTICS_TOOLS_METADATA> = {
       source,
       agentIds,
       userIds,
-      tagIds,
+      agentTagIds,
     });
     const { label, timezone: tz } = window.value;
     const selectedMetric = metric ?? "messages";
