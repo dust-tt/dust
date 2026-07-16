@@ -9,7 +9,7 @@ import { RestrictAgentsPublishingCapability } from "@app/components/workspace/se
 import { SlackPersonalFooterRemovalToggle } from "@app/components/workspace/settings/SlackPersonalFooterRemovalToggle";
 import { VoiceTranscriptionToggle } from "@app/components/workspace/settings/VoiceTranscriptionToggle";
 import { WorkspaceAnalyticsToggle } from "@app/components/workspace/settings/WorkspaceAnalyticsToggle";
-import { useAuth, useFeatureFlags } from "@app/lib/auth/AuthContext";
+import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import type { WorkspaceType } from "@app/types/user";
 import { ContextItem, Page } from "@dust-tt/sparkle";
 
@@ -22,7 +22,6 @@ export function CapabilitiesSection({
   owner,
   publishingRestrictionMessage,
 }: CapabilitiesSectionProps) {
-  const { subscription } = useAuth();
   const { hasFeature } = useFeatureFlags();
   const isAdminGovernanceEnabled = hasFeature("admin_governance");
 
@@ -36,9 +35,7 @@ export function CapabilitiesSection({
       <ContextItem.List>
         <div className="h-full border-b border-border" />
         <InteractiveContentSharingToggle owner={owner} />
-        {!subscription.plan.isByok && (
-          <VoiceTranscriptionToggle owner={owner} />
-        )}
+        <VoiceTranscriptionToggle owner={owner} />
         <OpenPodPolicy owner={owner} />
         <PodKnowledgePolicy owner={owner} />
         <EmailAgentsToggle owner={owner} />

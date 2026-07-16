@@ -51,7 +51,9 @@ export default function WorkspaceAccessPanel({
     plan.isAuditLogsAllowed || hasFeature("audit_logs");
   const showAuditLogs =
     hasAuditLogsAccess && workspace.metadata?.disableAuditLogs !== true;
-  const showExtensionMcpTools = hasFeature("browser_extension_mcp_tools");
+  const showExtensionMcpTools =
+    !hasFeature("admin_governance") &&
+    hasFeature("browser_extension_mcp_tools");
 
   return (
     <div className="flex flex-col gap-6">

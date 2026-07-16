@@ -1,5 +1,7 @@
 import { GovernanceSettingRow } from "@app/components/pages/workspace/governance/GovernanceSettingRow";
 import { GovernanceSettingSection } from "@app/components/pages/workspace/governance/GovernanceSettingSection";
+import { ExtensionMcpToolsSection } from "@app/components/workspace/ExtensionMcpToolsSection";
+import { LinkedSectionNotice } from "@app/components/workspace/LinkedSectionNotice";
 import { AuditLogsToggle } from "@app/components/workspace/settings/AuditLogsToggle";
 import { DustMcpServerSettingsItem } from "@app/components/workspace/settings/DustMcpServerSettingsItem";
 import { EmailAgentsToggle } from "@app/components/workspace/settings/EmailAgentsToggle";
@@ -10,12 +12,14 @@ import { PrivateConversationUrlsToggle } from "@app/components/workspace/setting
 import { SlackPersonalFooterRemovalToggle } from "@app/components/workspace/settings/SlackPersonalFooterRemovalToggle";
 import { VoiceTranscriptionToggle } from "@app/components/workspace/settings/VoiceTranscriptionToggle";
 import { WorkspaceAnalyticsToggle } from "@app/components/workspace/settings/WorkspaceAnalyticsToggle";
+import { WorkspaceNameEditor } from "@app/components/workspace/settings/WorkspaceNameEditor";
 import { useFrameSharingToggle } from "@app/hooks/useFrameSharingToggle";
 import {
   useAuth,
   useFeatureFlags,
   useWorkspace,
 } from "@app/lib/auth/AuthContext";
+import { useAppRouter } from "@app/lib/platform";
 import { useGovernancePermissions } from "@app/lib/swr/governance";
 import { useGroups } from "@app/lib/swr/groups";
 import type {
@@ -23,6 +27,7 @@ import type {
   GrantType,
   GroupPermissionResourceType,
 } from "@app/types/group_permissions";
+import { MANAGEABLE_GROUP_KINDS } from "@app/types/groups";
 import type {
   LightWorkspaceType,
   WorkspaceSharingPolicy,
@@ -73,10 +78,10 @@ export const GovernancePage = () => {
   const hasAdminGovernanceFeature = hasFeature("admin_governance");
 
   const owner = useWorkspace();
-  const { isAdmin, subscription } = useAuth();
+  const { isAdmin } = useAuth();
   const { groups, isGroupsLoading } = useGroups({
     owner,
-    kinds: ["provisioned"],
+    kinds: MANAGEABLE_GROUP_KINDS,
   });
   const { governancePermissions, isLoading: isGovernancePermissionsLoading } =
     useGovernancePermissions(owner);
@@ -98,6 +103,11 @@ export const GovernancePage = () => {
     (permission) =>
       isFrameCapabilityEnabled(permission.grantType, sharingPolicy)
   );
+
+  const router = useAppRouter();
+  const handleNavigateToGroups = () => {
+    void router.push(`/w/${owner.sId}/members?tab=groups`);
+  };
 
   const sections: {
     id: "agents" | "skills" | "frame" | "billing";
@@ -149,7 +159,7 @@ export const GovernancePage = () => {
   if (isLoading) {
     return (
       <Page>
-        <Page.Header title="Governance" description="Loading..." />
+        <Page.Header title="Workspace & Governance" description="Loading..." />
       </Page>
     );
   }
@@ -157,13 +167,19 @@ export const GovernancePage = () => {
   return (
     <Page>
       <Page.Header
-        title="Governance"
+        title="Workspace & Governance"
         description="Manage what members can do in your workspace."
         icon={Toggle01Left}
       />
       <ContentMessage>
         This page is WIP. Do not change unless you know what you are doing.
       </ContentMessage>
+      <WorkspaceNameEditor owner={owner} />
+      <LinkedSectionNotice
+        description="Groups assigned here are managed in"
+        linkLabel="People → Groups"
+        onLinkClick={handleNavigateToGroups}
+      />
       <div className="flex w-full flex-col gap-8">
         {sections.map(({ id, label, icon, governancePermissions }) => (
           <GovernanceSettingSection key={id} label={label} icon={icon}>
@@ -202,12 +218,11 @@ export const GovernancePage = () => {
               <PodKnowledgePolicy owner={owner} />
             </GovernanceSettingSection>
             <GovernanceSettingSection label="Capabilities" icon={ShapesPlus}>
-              {!subscription.plan.isByok && (
-                <VoiceTranscriptionToggle owner={owner} />
-              )}
+              <VoiceTranscriptionToggle owner={owner} />
               <EmailAgentsToggle owner={owner} />
               <PrivateConversationUrlsToggle owner={owner} />
               <DustMcpServerSettingsItem owner={owner} />
+              <ExtensionMcpToolsSection owner={owner} />
               <SlackPersonalFooterRemovalToggle owner={owner} />
               <WorkspaceAnalyticsToggle owner={owner} />
             </GovernanceSettingSection>
