@@ -21,10 +21,28 @@ export function AvatarNameCell({
   );
 }
 
-export function CreditsCell({ credits }: { credits: number }) {
+export function CreditsCell({
+  credits,
+  messageCount,
+}: {
+  credits: number;
+  // When provided (and > 0), the tooltip also shows the average cost per
+  // message (credits / messageCount).
+  messageCount?: number;
+}) {
+  const showAvg = messageCount !== undefined && messageCount > 0;
   return (
     <Tooltip
-      label={`${formatCredits(credits)} credits`}
+      label={
+        <div className="flex flex-col">
+          <span>{formatCredits(credits)} credits</span>
+          {showAvg && (
+            <span>
+              {formatCredits(credits / messageCount)} credits / message
+            </span>
+          )}
+        </div>
+      }
       tooltipTriggerAsChild
       trigger={<span className="text-sm">{formatCreditsCompact(credits)}</span>}
     />
