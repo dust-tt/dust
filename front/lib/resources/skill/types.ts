@@ -15,22 +15,21 @@ export type AllSkillConfigurationFindOptions = Omit<
     isDefault?: boolean;
   };
   onlyCustom?: false; // Default: include global skills.
-  withTools?: boolean;
-  withInstructions?: boolean;
-  withFileAttachments?: boolean;
 };
 
 // Full find options only custom skills from database.
 type CustomSkillConfigurationFindOptions =
   ResourceFindOptions<SkillConfigurationModel> & {
     onlyCustom: true; // Explicit: only custom skills.
-    withTools?: boolean;
-    withInstructions?: boolean;
-    withFileAttachments?: boolean;
   };
 
 // baseFetch controls the selected model attributes based on hydration options
 // such as withInstructions.
-export type SkillConfigurationFindOptions =
+export type SkillConfigurationFindOptions = (
   | Omit<AllSkillConfigurationFindOptions, "attributes">
-  | Omit<CustomSkillConfigurationFindOptions, "attributes">;
+  | Omit<CustomSkillConfigurationFindOptions, "attributes">
+) & {
+  withTools?: boolean;
+  withInstructions?: boolean;
+  withFileAttachments?: boolean;
+};
