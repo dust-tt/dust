@@ -2,9 +2,14 @@ import type { SkillConfigurationModel } from "@app/lib/models/skill";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
 import type { SkillStatus } from "@app/types/assistant/skill_configuration";
 
+type SkillResourceFindOptions = Omit<
+  ResourceFindOptions<SkillConfigurationModel>,
+  "attributes"
+>;
+
 // Constrained find options include both global and custom skills.
 export type AllSkillConfigurationFindOptions = Omit<
-  ResourceFindOptions<SkillConfigurationModel>,
+  SkillResourceFindOptions,
   "limit" | "offset" | "where"
 > & {
   where?: {
@@ -21,13 +26,12 @@ export type AllSkillConfigurationFindOptions = Omit<
 };
 
 // Full find options only custom skills from database.
-type CustomSkillConfigurationFindOptions =
-  ResourceFindOptions<SkillConfigurationModel> & {
-    onlyCustom: true; // Explicit: only custom skills.
-    withTools?: boolean;
-    withInstructions?: boolean;
-    withFileAttachments?: boolean;
-  };
+type CustomSkillConfigurationFindOptions = SkillResourceFindOptions & {
+  onlyCustom: true; // Explicit: only custom skills.
+  withTools?: boolean;
+  withInstructions?: boolean;
+  withFileAttachments?: boolean;
+};
 
 export type SkillConfigurationFindOptions =
   | AllSkillConfigurationFindOptions
