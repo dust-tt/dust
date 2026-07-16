@@ -42,6 +42,8 @@ vi.mock("@app/lib/api/file_system", async (importOriginal) => {
     DustFileSystem: {
       ...actual.DustFileSystem,
       fromScopedPath: mockFromScopedPath,
+      // Class statics are non-enumerable, so the spread above does not carry them over.
+      normalizeScopedPath: actual.DustFileSystem.normalizeScopedPath,
     },
   };
 });
@@ -110,7 +112,7 @@ describe("getFileFromConversationAttachment", () => {
     });
 
     it("returns Err when the file is not found", async () => {
-      const { authenticator: auth } = await createResourceTest({
+      const { authenticator: auth, workspace } = await createResourceTest({
         role: "admin",
       });
 
@@ -127,7 +129,7 @@ describe("getFileFromConversationAttachment", () => {
           toMountFilePath: vi
             .fn()
             .mockReturnValue(
-              `w/unknown/conversations/${conversation.sId}/files/missing.pdf`
+              `w/${workspace.sId}/conversations/${conversation.sId}/files/missing.pdf`
             ),
         })
       );
@@ -462,7 +464,7 @@ describe("resolveConversationFileRef", () => {
     });
 
     it("returns Err when the file is not found", async () => {
-      const { authenticator: auth } = await createResourceTest({
+      const { authenticator: auth, workspace } = await createResourceTest({
         role: "admin",
       });
 
@@ -478,7 +480,7 @@ describe("resolveConversationFileRef", () => {
           toMountFilePath: vi
             .fn()
             .mockReturnValue(
-              `w/unknown/conversations/${conversation.sId}/files/missing.png`
+              `w/${workspace.sId}/conversations/${conversation.sId}/files/missing.png`
             ),
         })
       );
@@ -539,6 +541,41 @@ describe("resolveConversationFileRef", () => {
       expect(result.value.fileName).toBe("photo.png");
       expect(typeof result.value.getSignedUrl).toBe("function");
       expect(typeof result.value.createReadStream).toBe("function");
+    });
+
+    it("normalizes the scoped path before mapping it to a mount file path", async () => {
+      const { authenticator: auth, workspace } = await createResourceTest({
+        role: "admin",
+      });
+
+      const conversation = await createConversation(auth, {
+        title: "Test",
+        visibility: "unlisted",
+        spaceId: null,
+      });
+
+      const toMountFilePath = vi
+        .fn()
+        .mockReturnValue(
+          `w/${workspace.sId}/conversations/${conversation.sId}/files/missing.png`
+        );
+      mockFromScopedPath.mockResolvedValue(
+        new Ok({
+          stat: vi.fn().mockResolvedValue(new Ok(null)),
+          toMountFilePath,
+        })
+      );
+
+      const result = await resolveConversationFileRef(
+        auth,
+        `conversation-${conversation.sId}/dir/../missing.png`,
+        undefined
+      );
+
+      expect(result.isErr()).toBe(true);
+      expect(toMountFilePath).toHaveBeenCalledWith(
+        `conversation-${conversation.sId}/missing.png`
+      );
     });
   });
 

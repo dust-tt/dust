@@ -24,6 +24,7 @@ import { isContentFragmentType } from "@app/types/content_fragment";
 import type { Result } from "@dust-tt/client";
 import { Err, Ok } from "@dust-tt/client";
 import assert from "assert";
+import minBy from "lodash/minBy";
 import { PassThrough } from "stream";
 
 export function sanitizeFilename(filename: string): string {
@@ -51,13 +52,23 @@ export type ConversationFileRef = {
  * DustFileSystem reads from, even though the model was shown the canonical scoped path (it is
  * rendered from `FileResource.mountFilePath`). Map the scoped path back to the FileResource
  * through its claimed mount path so content can be served from the original version.
+ *
+ * A mount copy deleted via the files tool also resolves here (the FileResource row keeps its
+ * mount path), matching how legacy fileId references behave after such a deletion.
  */
+// TODO(FILE SYSTEM MIGRATION): Revisit once FileResource is decoupled from mount paths (this
+// relies on toMountFilePath, which is slated for removal).
 async function findFileForCanonicalScopedPath(
   auth: Authenticator,
   fs: DustFileSystem,
   scopedPath: string
 ): Promise<FileResource | null> {
-  const mountFilePath = fs.toMountFilePath(scopedPath);
+  // stat() resolves the normalized path; translate the same shape so both lookups agree on
+  // inputs containing `.` or `..` segments.
+  const normalizedPath =
+    DustFileSystem.normalizeScopedPath(scopedPath) ?? scopedPath;
+
+  const mountFilePath = fs.toMountFilePath(normalizedPath);
   if (!mountFilePath) {
     return null;
   }
@@ -72,10 +83,19 @@ async function findFileForCanonicalScopedPath(
     ]),
   ];
 
-  const files = await FileResource.fetchByMountFilePaths(auth, candidates);
-  return (
-    files.find((f) => f.mountFilePath === mountFilePath) ?? files[0] ?? null
-  );
+  // A file that never finished uploading may have claimed a mount path without its original
+  // version being written; only ready files are servable.
+  const files = (
+    await FileResource.fetchByMountFilePaths(auth, candidates)
+  ).filter((f) => f.isReady);
+
+  const exactMatch = files.find((f) => f.mountFilePath === mountFilePath);
+  if (exactMatch) {
+    return exactMatch;
+  }
+
+  // Only a normalization variant matched; pick deterministically.
+  return minBy(files, (f) => f.id) ?? null;
 }
 
 function makeFileRefFromResource(
