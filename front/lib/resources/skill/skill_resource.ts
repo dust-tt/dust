@@ -566,14 +566,32 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       withInstructions = true,
       withTools = true,
       withFileAttachments = true,
+      attributes,
       ...otherOptions
     } = options;
 
+    const instructionAttributes = ["instructions", "instructionsHtml"];
+    const isInstructionAttribute = (attribute: unknown) =>
+      instructionAttributes.some(
+        (instructionAttribute) => instructionAttribute === attribute
+      );
+    const attributesWithoutInstructions = Array.isArray(attributes)
+      ? attributes.filter((attribute) => !isInstructionAttribute(attribute))
+      : {
+          ...attributes,
+          exclude: [...(attributes?.exclude ?? []), ...instructionAttributes],
+          ...(attributes?.include
+            ? {
+                include: attributes.include.filter(
+                  (attribute) => !isInstructionAttribute(attribute)
+                ),
+              }
+            : {}),
+        };
+
     const customSkills = await this.model.findAll({
       ...otherOptions,
-      ...(withInstructions
-        ? {}
-        : { attributes: { exclude: ["instructions", "instructionsHtml"] } }),
+      attributes: withInstructions ? attributes : attributesWithoutInstructions,
       where: {
         // Fetch active by default, unless explicitly overridden by the caller.
         status: "active",
