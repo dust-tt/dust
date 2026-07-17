@@ -10,7 +10,6 @@ import {
   getSupportedModelConfigs,
 } from "@app/lib/llms/model_configurations";
 import { makeScript } from "@app/scripts/helpers";
-import { getModelMaxInputTokens } from "@app/types/assistant/models/utils";
 
 makeScript(
   {
@@ -70,7 +69,7 @@ makeScript(
     console.time("Rendering conversation");
 
     await renderConversationForModel(auth, {
-      allowedTokenCount: getModelMaxInputTokens(model),
+      allowedTokenCount: model.contextSize - model.generationTokensCount,
       conversation: conversationRes.value,
       model,
       // Ignore tool and prompt contributions for this profiling.

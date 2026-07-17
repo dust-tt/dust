@@ -35,7 +35,6 @@ import {
 } from "@app/types/assistant/conversation";
 import type { ModelMessageTypeMultiActionsWithoutContentFragment } from "@app/types/assistant/generation";
 import { isTextContent } from "@app/types/assistant/generation";
-import { getModelMaxInputTokens } from "@app/types/assistant/models/utils";
 import type { ModelId } from "@app/types/shared/model_id";
 import { Err, Ok, type Result } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
@@ -342,7 +341,8 @@ export async function sendBatchCallToLlm(
       enabledSkills: enabledSkills ?? [],
       prompt: promptText,
       tools,
-      allowedTokenCount: getModelMaxInputTokens(modelConfig),
+      allowedTokenCount:
+        modelConfig.contextSize - modelConfig.generationTokensCount,
     });
 
     if (modelConversationRes.isErr()) {
