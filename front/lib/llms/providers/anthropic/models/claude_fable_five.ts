@@ -1,3 +1,5 @@
+import { dropTemperature } from "@app/lib/llms/stream/types/configuration";
+
 export function WithDustClaudeFableFiveConfig<
   TBase extends abstract new (
     ...args: any[]
@@ -13,6 +15,8 @@ export function WithDustClaudeFableFiveConfig<
     // Dust caps output at 64k; the model itself supports 128k.
     static readonly maxOutputTokens = 64_000;
     static readonly byok = true;
+    // Anthropic rejects an explicit temperature for this model.
+    static readonly parseConfig = dropTemperature;
   }
 
   return DustClaudeFableFive;

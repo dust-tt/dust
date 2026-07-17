@@ -1,3 +1,5 @@
+import { dropTemperatureWhenReasoning } from "@app/lib/llms/stream/types/configuration";
+
 export function WithDustClaudeSonnetFourDotSixConfig<
   TBase extends abstract new (
     ...args: any[]
@@ -13,6 +15,8 @@ export function WithDustClaudeSonnetFourDotSixConfig<
     // Dust caps output at 64k; the model itself supports 128k.
     static readonly maxOutputTokens = 64_000;
     static readonly byok = true;
+    // Anthropic rejects a non-default temperature while thinking is active.
+    static readonly parseConfig = dropTemperatureWhenReasoning;
   }
 
   return DustClaudeSonnetFourDotSix;
