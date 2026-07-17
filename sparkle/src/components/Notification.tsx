@@ -6,6 +6,7 @@ import {
   XCircle,
   XClose,
 } from "@sparkle/icons/v2-stroke";
+import { assertNever } from "@sparkle/lib/internal_utils";
 import { cn } from "@sparkle/lib/utils";
 import React from "react";
 import { Toaster, toast } from "sonner";
@@ -24,21 +25,39 @@ const NotificationsContext = React.createContext<(n: NotificationType) => void>(
   (n) => n
 );
 
-const iconMap: Record<NotificationType["type"], React.FC> = {
-  success: CheckCircle,
-  error: XCircle,
-  info: InfoCircle,
-  warning: AlertCircle,
-  hello: Bell01,
-};
+function resolveIcon(type: NotificationType["type"]): React.FC {
+  switch (type) {
+    case "success":
+      return CheckCircle;
+    case "error":
+      return XCircle;
+    case "info":
+      return InfoCircle;
+    case "warning":
+      return AlertCircle;
+    case "hello":
+      return Bell01;
+    default:
+      return assertNever(type);
+  }
+}
 
-const iconColorMap: Record<NotificationType["type"], string> = {
-  success: "text-success-500",
-  error: "text-warning-500",
-  info: "text-info-700",
-  warning: "text-amber-500",
-  hello: "text-primary-500",
-};
+function resolveIconColor(type: NotificationType["type"]): string {
+  switch (type) {
+    case "success":
+      return "text-success-500";
+    case "error":
+      return "text-warning-500";
+    case "info":
+      return "text-info-700";
+    case "warning":
+      return "text-amber-500";
+    case "hello":
+      return "text-primary-500";
+    default:
+      return assertNever(type);
+  }
+}
 
 export function NotificationContent({
   type,
@@ -46,8 +65,8 @@ export function NotificationContent({
   description,
   onDismiss,
 }: NotificationType & { onDismiss?: () => void }) {
-  const icon = iconMap[type];
-  const iconColor = iconColorMap[type];
+  const icon = resolveIcon(type);
+  const iconColor = resolveIconColor(type);
 
   return (
     <div
