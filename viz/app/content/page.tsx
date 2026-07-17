@@ -7,7 +7,6 @@ interface RenderVisualizationSearchParams {
   fullHeight?: string;
   identifier?: string;
   pdfMode?: string;
-  isAuthenticated?: string;
 }
 
 const { ALLOWED_VISUALIZATION_ORIGIN } = process.env;
@@ -21,14 +20,8 @@ export default function RenderVisualization({
     ? ALLOWED_VISUALIZATION_ORIGIN.split(",").map((s) => s.trim())
     : [];
 
-  const {
-    accessToken,
-    editable,
-    fullHeight,
-    identifier,
-    pdfMode,
-    isAuthenticated,
-  } = searchParams;
+  const { accessToken, editable, fullHeight, identifier, pdfMode } =
+    searchParams;
 
   const isEditable = editable === "true";
   const isFullHeight = fullHeight === "true";
@@ -44,7 +37,6 @@ export default function RenderVisualization({
         identifier={identifier!}
         isFullHeight={isFullHeight}
         isPdfMode={isPdfMode}
-        isAuthenticatedMember={isAuthenticated === "true"}
       />
     );
   }

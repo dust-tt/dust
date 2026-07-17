@@ -3186,6 +3186,7 @@ export const PublicVizContentResponseBodySchema = z.object({
   content: z.string(),
   contentType: z.string(),
   metadata: z.record(z.unknown()).optional(),
+  isAuthenticatedMember: z.boolean().optional(),
 });
 
 export type PublicVizContentResponseBodyType = z.infer<

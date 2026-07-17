@@ -721,12 +721,8 @@ export const VisualizationActionIframe = forwardRef<
       params.set("editable", "true");
     }
 
-    if (frameAccess === "public-member") {
-      params.set("isAuthenticated", "true");
-    }
-
     return `${props.vizUrl.replace(/\/$/, "")}/content?${params.toString()}`;
-  }, [visualization, isInDrawer, isEditable, props.vizUrl, frameAccess]);
+  }, [visualization, isInDrawer, isEditable, props.vizUrl]);
 
   return (
     <div className={cn("relative flex flex-col", isInDrawer && "h-full")}>
