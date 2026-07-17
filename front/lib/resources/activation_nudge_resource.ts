@@ -47,14 +47,29 @@ export class ActivationNudgeResource extends BaseResource<ActivationNudgeModel> 
     auth: Authenticator,
     { pod, trigger }: { pod: SpaceResource; trigger: TriggerResource }
   ): Promise<ActivationNudgeResource> {
-    const nudge = await this.model.create({
-      workspaceId: auth.getNonNullableWorkspace().id,
-      spaceId: pod.id,
-      triggerId: trigger.id,
-      userId: trigger.editor,
-    });
+    const [nudge] = await this.bulkCreate(auth, [{ pod, trigger }]);
+    return nudge;
+  }
 
-    return new this(this.model, nudge.get());
+  // Records that a batch of pods' activation triggers fired, in a single
+  // insert (avoids one query per pod when the scheduler processes many pods).
+  static async bulkCreate(
+    auth: Authenticator,
+    nudges: { pod: SpaceResource; trigger: TriggerResource }[]
+  ): Promise<ActivationNudgeResource[]> {
+    const workspaceId = auth.getNonNullableWorkspace().id;
+
+    const created = await this.model.bulkCreate(
+      nudges.map(({ pod, trigger }) => ({
+        workspaceId,
+        spaceId: pod.id,
+        triggerId: trigger.id,
+        userId: trigger.editor,
+      })),
+      { returning: true }
+    );
+
+    return created.map((nudge) => new this(this.model, nudge.get()));
   }
 
   // Fetches the most recent nudge recorded for a pod, if any.

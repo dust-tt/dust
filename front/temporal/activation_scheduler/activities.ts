@@ -36,10 +36,18 @@ export async function runActivationForWorkspaceActivity({
     activationPodsMetadata.map((metadata) => metadata.spaceId)
   );
 
+  // Collected across pods so the trigger lookup and the nudge inserts below
+  // can each run as a single batched query instead of one per pod.
+  const firedTriggersByPod: { pod: SpaceResource; triggerId: string }[] = [];
+
   await concurrentExecutor(
     pods,
     async (pod) => {
       if (!(await isEligibleForNudge(auth, pod))) {
+        logger.info(
+          { workspaceId, spaceId: pod.sId },
+          "[ActivationScheduler] Pod is within the nudge frequency cap, skipping."
+        );
         return;
       }
 
@@ -56,22 +64,40 @@ export async function runActivationForWorkspaceActivity({
       if (!triggerId) {
         logger.warn(
           { workspaceId, spaceId: pod.sId },
-          "[ActivationScheduler] Activation event did not match the pod's trigger."
+          "[ActivationScheduler] Activation event did not fire the pod's trigger."
         );
         return;
       }
 
-      const trigger = await TriggerResource.fetchById(auth, triggerId);
-      if (!trigger) {
-        logger.error(
-          { workspaceId, spaceId: pod.sId, triggerId },
-          "[ActivationScheduler] Activation trigger not found after firing."
-        );
-        return;
-      }
-
-      await ActivationNudgeResource.makeNew(auth, { pod, trigger });
+      firedTriggersByPod.push({ pod, triggerId });
     },
     { concurrency: ACTIVATION_PODS_CONCURRENCY }
   );
+
+  if (firedTriggersByPod.length === 0) {
+    return;
+  }
+
+  const triggers = await TriggerResource.fetchByIds(
+    auth,
+    firedTriggersByPod.map(({ triggerId }) => triggerId)
+  );
+  const triggerById = new Map(
+    triggers.map((trigger) => [trigger.sId, trigger])
+  );
+
+  const nudges: { pod: SpaceResource; trigger: TriggerResource }[] = [];
+  for (const { pod, triggerId } of firedTriggersByPod) {
+    const trigger = triggerById.get(triggerId);
+    if (!trigger) {
+      logger.error(
+        { workspaceId, spaceId: pod.sId, triggerId },
+        "[ActivationScheduler] Activation trigger not found after firing."
+      );
+      continue;
+    }
+    nudges.push({ pod, trigger });
+  }
+
+  await ActivationNudgeResource.bulkCreate(auth, nudges);
 }
