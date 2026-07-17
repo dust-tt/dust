@@ -1,9 +1,6 @@
 import type { BaseEndpointConfiguration } from "@app/lib/model_constructors/configuration";
 import { ANTHROPIC_SUPPORTED_NON_NULL_REASONING_EFFORTS } from "@app/lib/model_constructors/providers/anthropic/reasoning_efforts";
-import {
-  inputConfigSchema,
-  temperatureSchema,
-} from "@app/lib/model_constructors/types/input/configuration";
+import { inputConfigSchema } from "@app/lib/model_constructors/types/input/configuration";
 import { CLAUDE_SONNET_5_MODEL_ID } from "@app/lib/model_constructors/types/model_ids";
 
 import { z } from "zod";
@@ -14,6 +11,7 @@ const MAX_OUTPUT_TOKENS = 64_000;
 
 const baseConfig = inputConfigSchema.extend({
   cacheKey: z.undefined(),
+  temperature: z.undefined(),
 });
 
 const configSchema = z.union([
@@ -24,11 +22,9 @@ const configSchema = z.union([
       })
       .default({ effort: DEFAULT_REASONING_EFFORT }),
     forceTool: z.undefined(),
-    temperature: temperatureSchema.optional().transform(() => undefined),
   }),
   baseConfig.extend({
     reasoning: z.object({ effort: z.literal("none") }),
-    temperature: temperatureSchema.optional().transform(() => undefined),
   }),
 ]);
 
@@ -36,9 +32,7 @@ export type ClaudeSonnetFive = z.infer<typeof configSchema>;
 
 // Mixin carrying shared config; runtime base differs per surface.
 export function WithAnthropicClaudeSonnetFiveConfig<
-  TBase extends abstract new (
-    ...args: any[]
-  ) => object,
+  TBase extends abstract new (...args: any[]) => object,
 >(Base: TBase) {
   abstract class AnthropicClaudeSonnetFive extends Base {
     // Narrow `Client`'s `["constructor"]` to this model's precise config so the
