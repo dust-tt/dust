@@ -2283,9 +2283,11 @@ impl Store for PostgresStore {
             _ => unreachable!(),
         };
 
-        // Data source documents can be numerous so we want to avoid any transaction that could
-        // potentially hurt the performance of the database. Also we delete documents in small
-        // batches to avoid long running operations.
+        // Deletion is not transactional and takes no explicit row locks: concurrent scrubs of
+        // the same data source delete batches optimistically, and any conflict surfaces as a
+        // transient error that is safe to retry, resuming where the failed attempt stopped.
+        // Documents can be numerous so we delete them in small batches to keep each statement
+        // short.
         let deletion_batch_size: u64 = 512;
         let mut total_deleted_rows: u64 = 0;
 
@@ -2299,17 +2301,7 @@ impl Store for PostgresStore {
             .await?;
 
         let stmt_documents = c
-            .prepare(
-                "WITH documents_to_delete AS (
-                   SELECT id FROM data_sources_documents
-                   WHERE id = ANY($1)
-                   ORDER BY id
-                   FOR UPDATE
-                 )
-                 DELETE FROM data_sources_documents
-                 USING documents_to_delete
-                 WHERE data_sources_documents.id = documents_to_delete.id",
-            )
+            .prepare("DELETE FROM data_sources_documents WHERE id = ANY($1)")
             .await?;
 
         // First remove active documents, which are linked to a node
@@ -2331,19 +2323,11 @@ impl Store for PostgresStore {
             }
         }
 
-        // Then remove all remaining documents
         let stmt = c
             .prepare(
-                "WITH documents_to_delete AS (
-                   SELECT id FROM data_sources_documents
-                   WHERE data_source = $1
-                   ORDER BY id
-                   LIMIT $2
-                   FOR UPDATE
-                 )
-                 DELETE FROM data_sources_documents
-                 USING documents_to_delete
-                 WHERE data_sources_documents.id = documents_to_delete.id",
+                "DELETE FROM data_sources_documents WHERE id IN (
+                   SELECT id FROM data_sources_documents WHERE data_source = $1 LIMIT $2
+                 )",
             )
             .await?;
 
