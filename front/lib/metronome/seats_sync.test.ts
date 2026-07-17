@@ -20,7 +20,6 @@ const {
   mockUpsertPerUserCreditAlerts,
   mockClearPerUserCreditAlerts,
   mockListSeatBalances,
-  mockGetAssignedSeatIds,
 } = vi.hoisted(() => ({
   mockGetProductSeatTypes: vi.fn(),
   mockUpdateSubscriptionQuantity: vi.fn(),
@@ -36,7 +35,6 @@ const {
   mockUpsertPerUserCreditAlerts: vi.fn(),
   mockClearPerUserCreditAlerts: vi.fn(),
   mockListSeatBalances: vi.fn(),
-  mockGetAssignedSeatIds: vi.fn(),
 }));
 
 vi.mock("@app/lib/metronome/client", () => ({
@@ -44,7 +42,6 @@ vi.mock("@app/lib/metronome/client", () => ({
   updateSubscriptionQuantity: mockUpdateSubscriptionQuantity,
   updateSubscriptionSeats: mockUpdateSubscriptionSeats,
   getMetronomeSubscriptionSeatState: mockGetSeatState,
-  getMetronomeSubscriptionAssignedSeatIds: mockGetAssignedSeatIds,
   listCustomerPerUserCreditUserIds: mockListPerUserCreditUserIds,
   listCustomerPerUserCreditBalances: mockListPerUserCreditBalances,
   addPerUserCreditToCustomer: mockAddPerUserCredit,
@@ -129,7 +126,6 @@ describe("syncSeatCount min clamping", () => {
     // No seat balances / assignments ⇒ the credit-transfer reconciliation
     // finds nothing to move (the focus of these tests is seat-count sync).
     mockListSeatBalances.mockResolvedValue(new Ok([]));
-    mockGetAssignedSeatIds.mockResolvedValue(new Ok([]));
   });
 
   it("clamps a QUANTITY_ONLY count up to the configured minSeats", async () => {
