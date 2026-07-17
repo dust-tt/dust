@@ -1,3 +1,5 @@
+import { GroupDialog } from "@app/components/groups/GroupDialog";
+import { useWorkspace } from "@app/lib/auth/AuthContext";
 import type { GroupType } from "@app/types/groups";
 import {
   Button,
@@ -6,6 +8,7 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSearchbar,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
   Plus,
 } from "@dust-tt/sparkle";
@@ -24,7 +27,9 @@ export const GroupSelector = ({
   disabled,
   onSelectionChange,
 }: GroupSelectorProps) => {
+  const owner = useWorkspace();
   const [groupSearch, setGroupSearch] = useState("");
+  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const filteredGroups = selectableGroups.filter((g) =>
     g.name.toLowerCase().includes(groupSearch.toLowerCase())
   );
@@ -76,6 +81,13 @@ export const GroupSelector = ({
               disabled
             />
           )}
+          <DropdownMenuSeparator />
+          <DropdownMenuItem
+            icon={Plus}
+            label="Create a group"
+            disabled={disabled}
+            onClick={() => setIsCreateDialogOpen(true)}
+          />
         </DropdownMenuContent>
       </DropdownMenu>
       {selectedGroups.map((group) => (
@@ -95,6 +107,14 @@ export const GroupSelector = ({
           }}
         />
       ))}
+      <GroupDialog
+        owner={owner}
+        isOpen={isCreateDialogOpen}
+        onOpenChange={setIsCreateDialogOpen}
+        onCreated={(group) =>
+          onSelectionChange([...selectedGroupIds, group.sId])
+        }
+      />
     </div>
   );
 };
