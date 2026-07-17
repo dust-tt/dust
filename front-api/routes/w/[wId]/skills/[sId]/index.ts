@@ -15,6 +15,7 @@ import type {
   GetSkillResponseBody,
   GetSkillWithRelationsResponseBody,
   PatchSkillResponseBody,
+  SkillUserFavoriteState,
 } from "@app/types/api/skills";
 import type { SkillWithRelationsType } from "@app/types/assistant/skill_configuration";
 import {
@@ -32,6 +33,7 @@ import uniq from "lodash/uniq";
 import { z } from "zod";
 
 import editors from "./editors";
+import favorite from "./favorite";
 import filesRoute from "./files/[fileId]/content";
 import history from "./history";
 import reinforcement from "./reinforcement";
@@ -93,6 +95,7 @@ const app = workspaceApp();
 
 // Sub-routes for this skill.
 app.route("/editors", editors);
+app.route("/favorite", favorite);
 app.route("/history", history);
 app.route("/reinforcement", reinforcement);
 app.route("/restore", restore);
@@ -117,6 +120,12 @@ app.get(
     const { skill } = loaded;
 
     const withRelations = ctx.req.query("withRelations");
+
+    let favoriteState: SkillUserFavoriteState = {};
+    if (await hasFeatureFlag(auth, "skill_favorites")) {
+      const isFavorite = await skill.isFavoriteForCurrentUser(auth);
+      favoriteState = { isFavorite };
+    }
 
     const serializedSkill = skill.toJSON(auth);
 
@@ -153,9 +162,13 @@ app.get(
         },
       };
 
-      return ctx.json({ skill: skillWithRelations });
+      return ctx.json({
+        skill: { ...skillWithRelations, ...favoriteState },
+      } satisfies GetSkillWithRelationsResponseBody);
     }
-    return ctx.json({ skill: serializedSkill });
+    return ctx.json({
+      skill: { ...serializedSkill, ...favoriteState },
+    } satisfies GetSkillResponseBody);
   }
 );
 

@@ -13,6 +13,9 @@ import type {
   GetSkillsResponseBody,
   GetSkillsWithRelationsResponseBody,
   PostSkillResponseBody,
+  SkillListItemResponseType,
+  SkillListItemWithRelationsResponseType,
+  SkillUserFavoriteState,
 } from "@app/types/api/skills";
 import {
   availabilityFromIsDefault,
@@ -20,7 +23,6 @@ import {
   SKILL_AVAILABILITIES,
   SKILL_REINFORCEMENT_MODES,
   type SkillAvailability,
-  type SkillWithoutInstructionsAndToolsWithRelationsType,
 } from "@app/types/assistant/skill_configuration";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { ensureHasWorkspacePermission } from "@front-api/middlewares/ensure_role";
@@ -189,6 +191,14 @@ app.get(
       withTools: false,
       withFileAttachments: false,
     });
+    const hasSkillFavorites = await hasFeatureFlag(auth, "skill_favorites");
+    const favoriteSkillIds = hasSkillFavorites
+      ? new Set(
+          (await SkillResource.listFavoritesForCurrentUser(auth)).map(
+            (skill) => skill.sId
+          )
+        )
+      : new Set<string>();
 
     const canCreateSkill = await auth.hasWorkspacePermission("create", "skill");
 
@@ -224,6 +234,9 @@ app.get(
       );
 
       const skillsWithRelations = skills.map((sc) => {
+        const favoriteState: SkillUserFavoriteState = hasSkillFavorites
+          ? { isFavorite: favoriteSkillIds.has(sc.sId) }
+          : {};
         const {
           instructions,
           instructionsHtml,
@@ -260,7 +273,8 @@ app.get(
               }
             ),
           },
-        } satisfies SkillWithoutInstructionsAndToolsWithRelationsType;
+          ...favoriteState,
+        } satisfies SkillListItemWithRelationsResponseType;
       });
 
       return ctx.json({ skills: skillsWithRelations });
@@ -268,6 +282,9 @@ app.get(
 
     return ctx.json({
       skills: skills.map((sc) => {
+        const favoriteState: SkillUserFavoriteState = hasSkillFavorites
+          ? { isFavorite: favoriteSkillIds.has(sc.sId) }
+          : {};
         const {
           instructions,
           instructionsHtml,
@@ -275,7 +292,10 @@ app.get(
           ...skillWithoutInstructionsAndTools
         } = sc.toJSON(auth);
 
-        return skillWithoutInstructionsAndTools;
+        return {
+          ...skillWithoutInstructionsAndTools,
+          ...favoriteState,
+        } satisfies SkillListItemResponseType;
       }),
     });
   }
