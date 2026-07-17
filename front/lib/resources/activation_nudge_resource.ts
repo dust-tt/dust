@@ -57,6 +57,22 @@ export class ActivationNudgeResource extends BaseResource<ActivationNudgeModel> 
     return new this(this.model, nudge.get());
   }
 
+  // Fetches the most recent nudge recorded for a pod, if any.
+  static async fetchLatestForSpace(
+    auth: Authenticator,
+    { pod }: { pod: SpaceResource }
+  ): Promise<ActivationNudgeResource | null> {
+    const nudge = await this.model.findOne({
+      where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
+        spaceId: pod.id,
+      },
+      order: [["createdAt", "DESC"]],
+    });
+
+    return nudge ? new this(this.model, nudge.get()) : null;
+  }
+
   async delete(
     auth: Authenticator,
     { transaction }: { transaction?: Transaction } = {}

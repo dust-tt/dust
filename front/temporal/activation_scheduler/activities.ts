@@ -1,3 +1,4 @@
+import { isEligibleForNudge } from "@app/lib/api/activation/nudge";
 import { emitActivationEvent } from "@app/lib/api/activation/trigger";
 import { Authenticator } from "@app/lib/auth";
 import { ActivationNudgeResource } from "@app/lib/resources/activation_nudge_resource";
@@ -38,6 +39,10 @@ export async function runActivationForWorkspaceActivity({
   await concurrentExecutor(
     pods,
     async (pod) => {
+      if (!(await isEligibleForNudge(auth, pod))) {
+        return;
+      }
+
       const result = await emitActivationEvent(auth, pod);
       if (result.isErr()) {
         logger.error(
