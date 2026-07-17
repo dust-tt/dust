@@ -142,12 +142,12 @@ async function buildDustReactHooksDeclaration(
   const declarations: string[] = [];
   const entries: string[] = [];
 
-  try {
-    for (const [index, contract] of functionContracts.entries()) {
-      const namespace = `PodFunctionContract${index}`;
-      const typeName = "Input";
-      // The converter supports draft 7 but exposes a draft 4 input type.
-      const schema = contract.inputSchema as JSONSchema4;
+  for (const [index, contract] of functionContracts.entries()) {
+    const namespace = `PodFunctionContract${index}`;
+    const typeName = "Input";
+    // The converter supports draft 7 but exposes a draft 4 input type.
+    const schema = contract.inputSchema as JSONSchema4;
+    try {
       const typeDeclaration = await compile(schema, typeName, {
         // Function schemas only need internal references.
         $refOptions: {
@@ -163,21 +163,23 @@ async function buildDustReactHooksDeclaration(
         ignoreMinAndMaxItems: true,
         unknownAny: true,
       });
+
       declarations.push(
         `export namespace ${namespace} {\n${typeDeclaration}\n}`
       );
-      entries.push(
-        ...contract.functionReferences.map(
-          (functionReference) =>
-            `  ${JSON.stringify(functionReference)}: ${namespace}.${typeName};`
+    } catch (error) {
+      return new Err(
+        new FramePodFunctionValidationError(
+          "pod_function_schema_invalid",
+          `Failed to convert a Pod function input schema to TypeScript: ${normalizeError(error).message}`
         )
       );
     }
-  } catch (error) {
-    return new Err(
-      new FramePodFunctionValidationError(
-        "pod_function_schema_invalid",
-        `Failed to convert a Pod function input schema to TypeScript: ${normalizeError(error).message}`
+
+    entries.push(
+      ...contract.functionReferences.map(
+        (functionReference) =>
+          `  ${JSON.stringify(functionReference)}: ${namespace}.${typeName};`
       )
     );
   }
