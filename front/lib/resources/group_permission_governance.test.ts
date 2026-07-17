@@ -38,7 +38,7 @@ describe("GroupPermissionResource — governance state (reads)", () => {
     ).get(`${capability.grantType}:${capability.resourceType}`);
 
   it("reports disabled when there is no -1 row", async () => {
-    expect(await stateOf(CAPABILITY)).toEqual({ scope: "disabled" });
+    expect(await stateOf(CAPABILITY)).toEqual({ scope: "admins_only" });
   });
 
   it("reports everyone when the global group holds the -1 row", async () => {
@@ -91,7 +91,7 @@ describe("GroupPermissionResource — governance state (reads)", () => {
       disabledCap,
     ]);
     expect(states.get("publish:agent")).toEqual({ scope: "everyone" });
-    expect(states.get("admin:billing")).toEqual({ scope: "disabled" });
+    expect(states.get("admin:billing")).toEqual({ scope: "admins_only" });
     const groupsState = states.get("create:skill");
     assert(groupsState?.scope === "groups", "expected groups scope");
     expect(groupsState.groups.map((g) => g.id)).toEqual([groupA.id]);
@@ -157,7 +157,7 @@ describe("GroupPermissionResource — governance state (reads)", () => {
       });
       await GroupPermissionResource.disable(auth, CAPABILITY, { transaction });
 
-      expect(await stateOf(CAPABILITY)).toEqual({ scope: "disabled" });
+      expect(await stateOf(CAPABILITY)).toEqual({ scope: "admins_only" });
     });
 
     it("setGroups([]) disables the capability", async () => {
@@ -168,7 +168,7 @@ describe("GroupPermissionResource — governance state (reads)", () => {
         transaction,
       });
 
-      expect(await stateOf(CAPABILITY)).toEqual({ scope: "disabled" });
+      expect(await stateOf(CAPABILITY)).toEqual({ scope: "admins_only" });
     });
 
     it("setGroups rejects the system group", async () => {
