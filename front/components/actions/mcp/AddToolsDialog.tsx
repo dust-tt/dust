@@ -63,7 +63,7 @@ const AddToolCard = ({ mcpServer, isPending, onClick }: AddToolCardProps) => {
       canAdd={false}
       disabled={isPending}
       onClick={onClick}
-      cardContainerClassName="h-32"
+      cardContainerClassName="h-28"
       descriptionLineClamp={3}
     />
   );
@@ -173,7 +173,7 @@ export const AddToolsDialog = ({
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogContent
-        size="2xl"
+        size="xl"
         height="xl"
         onOpenAutoFocus={(e) => {
           e.preventDefault();
@@ -226,7 +226,7 @@ export const AddToolsDialog = ({
                 </div>
               </div>
             ) : (
-              <div className="grid grid-cols-2 gap-3 lg:grid-cols-3">
+              <div className="grid grid-cols-2 gap-2 lg:grid-cols-3">
                 {filteredMCPServers.map((mcpServer) => (
                   <AddToolCard
                     key={mcpServer.sId}

@@ -67,7 +67,7 @@ export function MCPServerCard({
         isSelected={isSelected}
         canAdd={canAdd}
         onClick={onClick}
-        cardContainerClassName="h-36"
+        cardContainerClassName="h-30"
         mountPortal
         // eslint-disable-next-line react-hooks/refs, @typescript-eslint/prefer-nullish-coalescing
         mountPortalContainer={containerRef.current || undefined}
