@@ -15,6 +15,7 @@ import { EventError } from "@app/lib/api/llm/types/events";
 import type {
   LLMClientMetadata,
   LLMParameters,
+  LLMStreamMetadata,
   LLMStreamParameters,
 } from "@app/lib/api/llm/types/options";
 import { normalizePrompt } from "@app/lib/api/llm/types/options";
@@ -54,7 +55,10 @@ import type {
   ToolCallEvent as NewToolCallEvent,
   NonDeltaResponseEvent,
 } from "@app/lib/model_constructors/types/output/events";
-import { AGENT_PLATFORM_API } from "@app/lib/model_constructors/types/provider_apis";
+import {
+  AGENT_PLATFORM_API,
+  OPENAI_RESPONSES_API,
+} from "@app/lib/model_constructors/types/provider_apis";
 import { NOOP_PROVIDER_ID } from "@app/lib/model_constructors/types/provider_ids";
 import { isCacheMissReason } from "@app/lib/model_constructors/utils/cache_miss_reason";
 import type { RunUsageType } from "@app/lib/resources/run_resource";
@@ -651,7 +655,11 @@ abstract class BaseTransition extends LLM {
     // identity). Some schemas reject provider-invalid combinations (e.g.
     // Anthropic requires temperature=1 with thinking), so the fix must land
     // before `parse`, not after.
-    parseConfig: (config: InputConfig) => InputConfig = (config) => config
+    parseConfig: (config: InputConfig) => InputConfig = (config) => config,
+    // Prompt cache key, forwarded only by surfaces whose config schema accepts
+    // it (OpenAI Responses). Left undefined elsewhere so the provider schemas
+    // that guard `cacheKey` to `undefined` still parse.
+    cacheKey?: string
   ): InputConfig {
     const {
       specifications,
@@ -677,6 +685,7 @@ abstract class BaseTransition extends LLM {
         this.responseFormat,
         this.metadata.clientId
       ),
+      cacheKey,
     };
 
     return configSchema.parse({
@@ -713,17 +722,26 @@ export class StreamEndpointTransition extends BaseTransition {
     };
   }
 
-  protected buildStreamRequestPayload(streamParameters: LLMStreamParameters) {
+  protected buildStreamRequestPayload(
+    streamParameters: LLMStreamParameters,
+    metadata?: LLMStreamMetadata
+  ) {
+    const { api } = this.model.metadata();
     // Agent-platform (Vertex) has no request-level automatic cache_control, so it
     // needs an explicit breakpoint on the conversation tail (legacy's isLast).
-    const explicitTailBreakpoint =
-      this.model.metadata().api === AGENT_PLATFORM_API;
+    const explicitTailBreakpoint = api === AGENT_PLATFORM_API;
+    // Only OpenAI Responses consumes a prompt cache key (as `prompt_cache_key`);
+    // legacy sent the conversationId. Other surfaces guard `cacheKey` to
+    // undefined, so leave it unset for them.
+    const cacheKey =
+      api === OPENAI_RESPONSES_API ? metadata?.conversationId : undefined;
     return this.model.buildRequestPayload(
       this.buildPayload(streamParameters, { explicitTailBreakpoint }),
       this.buildConfig(
         streamParameters,
         this.model.constructor.configSchema,
-        this.endpointConstructor.parseConfig
+        this.endpointConstructor.parseConfig,
+        cacheKey
       )
     );
   }
