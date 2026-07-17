@@ -1628,6 +1628,53 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     return result;
   }
 
+  /**
+   * Returns the timestamps of messages authored by `userId` in conversations
+   * created by any of `triggerIds`, created at or after `since`. Used by the
+   * activation scheduler to determine whether a user replied following a
+   * nudge (each nudge fires a trigger, which creates its own conversation).
+   */
+  static async listUserMessageTimestampsForTriggers(
+    auth: Authenticator,
+    {
+      triggerIds,
+      userId,
+      since,
+    }: {
+      triggerIds: ModelId[];
+      userId: ModelId;
+      since: Date;
+    }
+  ): Promise<Date[]> {
+    const workspaceId = auth.getNonNullableWorkspace().id;
+
+    const messages = await MessageModel.findAll({
+      attributes: ["createdAt"],
+      where: {
+        workspaceId,
+        createdAt: { [Op.gte]: since },
+      },
+      include: [
+        {
+          model: UserMessageModel,
+          as: "userMessage",
+          required: true,
+          attributes: [],
+          where: { userId },
+        },
+        {
+          model: ConversationModel,
+          as: "conversation",
+          required: true,
+          attributes: [],
+          where: { triggerId: { [Op.in]: triggerIds } },
+        },
+      ],
+    });
+
+    return messages.map((m) => m.createdAt);
+  }
+
   static async fetchConversationWithoutContent(
     auth: Authenticator,
     sId: string,

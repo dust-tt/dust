@@ -77,15 +77,25 @@ export class ActivationNudgeResource extends BaseResource<ActivationNudgeModel> 
     auth: Authenticator,
     { pod }: { pod: SpaceResource }
   ): Promise<ActivationNudgeResource | null> {
-    const nudge = await this.model.findOne({
+    const [latest] = await this.listRecentForSpace(auth, { pod, limit: 1 });
+    return latest ?? null;
+  }
+
+  // Fetches the `limit` most recent nudges recorded for a pod, newest first.
+  static async listRecentForSpace(
+    auth: Authenticator,
+    { pod, limit }: { pod: SpaceResource; limit: number }
+  ): Promise<ActivationNudgeResource[]> {
+    const nudges = await this.model.findAll({
       where: {
         workspaceId: auth.getNonNullableWorkspace().id,
         spaceId: pod.id,
       },
       order: [["createdAt", "DESC"]],
+      limit,
     });
 
-    return nudge ? new this(this.model, nudge.get()) : null;
+    return nudges.map((nudge) => new this(this.model, nudge.get()));
   }
 
   async delete(
