@@ -75,7 +75,7 @@ export function NotificationContent({
         "rounded-xl border border-border bg-background p-2",
         "shadow-[0px_0.5px_1px_0px_rgba(0,0,0,0.04),0px_1px_1px_0px_rgba(0,0,0,0.06),inset_2px_-2px_7px_0px_rgba(0,0,0,0.01),inset_0px_4px_4px_0px_rgba(255,255,255,0.08)]",
         "dark:shadow-[0px_2px_8px_0px_rgba(0,0,0,0.45),inset_0px_-1px_0px_0px_rgba(255,255,255,0.08)]",
-        "dark:border-border-dark",
+        "dark:border-stone-800/60",
         "animate-in fade-in-0 zoom-in-95 duration-200 ease-emphasized",
         "origin-bottom-right motion-reduce:animate-none"
       )}
