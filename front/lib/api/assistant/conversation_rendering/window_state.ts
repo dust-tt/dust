@@ -232,7 +232,7 @@ export class ConversationWindowState {
       maxTokens:
         this.softCleanupTarget() - getInteractionTokenCount(currentInteraction),
       interactionsToPreserve: 0,
-      batchToCheckpoint: true,
+      batchToCheckpoint: false,
     });
     if (previousAfter === previousBefore) {
       return;
