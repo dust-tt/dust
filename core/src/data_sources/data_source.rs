@@ -14,7 +14,6 @@ use crate::search_stores::search_store::{Indexable, NodeItem, SearchStore};
 use crate::stores::store::{DocumentCreateParams, Store};
 use crate::utils;
 use anyhow::{anyhow, Result};
-use futures::future::try_join_all;
 use futures::StreamExt;
 use futures::TryStreamExt;
 use itertools::Itertools;
@@ -2145,24 +2144,17 @@ impl DataSource {
             "Deleting tables"
         );
 
-        // Process tables deletion in chunks to avoid too much concurrency
-        for (batch_index, chunk) in tables.chunks(100).enumerate() {
-            info!(
-                data_source_internal_id = self.internal_id(),
-                batch_index = batch_index,
-                batch_size = chunk.len(),
-                "Deleting table batch"
-            );
-
-            try_join_all(
-                chunk
-                    .iter()
-                    // not deleting from search index here, as it's done more efficiently in the
-                    // full-nodes deletion below
-                    .map(|t| t.delete(store.clone(), databases_store.clone(), None)),
-            )
-            .await?;
-        }
+        // Process tables deletion with bounded concurrency to avoid monopolizing the SQL pool.
+        stream::iter(tables.into_iter().map(|t| {
+            let store = store.clone();
+            let databases_store = databases_store.clone();
+            // not deleting from search index here, as it's done more efficiently in the
+            // full-nodes deletion below
+            async move { t.delete(store, databases_store, None).await }
+        }))
+        .buffer_unordered(16)
+        .try_collect::<Vec<_>>()
+        .await?;
 
         info!(
             data_source_internal_id = self.internal_id(),
@@ -2170,19 +2162,26 @@ impl DataSource {
             "Deleted tables"
         );
 
-        // Delete folders (concurrently).
+        // Delete folders with bounded concurrency.
         let (folders, total) = store
             .list_data_source_folders(&self.project, &self.data_source_id, &None, &None, None)
             .await?;
 
-        try_join_all(folders.iter().map(|f| {
-            store.delete_data_source_folder(&self.project, &self.data_source_id, &f.folder_id())
+        stream::iter(folders.into_iter().map(|f| {
+            let store = store.clone();
+            async move {
+                store
+                    .delete_data_source_folder(&self.project, &self.data_source_id, &f.folder_id())
+                    .await
+            }
         }))
+        .buffer_unordered(16)
+        .try_collect::<Vec<_>>()
         .await?;
 
         info!(
             data_source_internal_id = self.internal_id(),
-            table_count = total,
+            folder_count = total,
             "Deleted folders"
         );
 
