@@ -6,7 +6,7 @@ export function WithDustGptFiveDotSixTerraConfig<
   abstract class DustGptFiveDotSixTerra extends Base {
     static readonly displayName = "GPT-5.6 Terra";
     static readonly description =
-      "OpenAI's balanced GPT-5.6 model for strong reasoning and tool use (1M context).";
+      "OpenAI's balanced GPT-5.6 model for strong reasoning and tool use (272k context).";
     static readonly defaultReasoningEffort = "medium";
     static readonly byok = true;
   }
