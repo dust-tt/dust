@@ -1,7 +1,14 @@
+import { evaluateActivation } from "@app/lib/api/activation/evaluator";
+import { emitActivationEvent } from "@app/lib/api/activation/trigger";
 import { Authenticator } from "@app/lib/auth";
 import { ProjectMetadataResource } from "@app/lib/resources/project_metadata_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import type { UserResource } from "@app/lib/resources/user_resource";
+import { concurrentExecutor } from "@app/lib/utils/async_utils";
+import logger from "@app/logger/logger";
+import type { ModelId } from "@app/types/shared/model_id";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
 
 export type NudgePlan = {
   podId: string;
@@ -22,14 +29,11 @@ export type OrchestratorResult = {
 /**
  * Determines which users are eligible for activation based on the workspace and user filter
  */
-export async function determineEligibleActivationUsers({
-  workspaceId,
-  userId,
-}: {
-  workspaceId: string;
-  userId: string | null;
-}): Promise<OrchestratorResult> {
-  const auth = await Authenticator.internalAdminForWorkspace(workspaceId);
+export async function determineEligibleActivationUsers(
+  auth: Authenticator,
+  { userId, asOf }: { userId: string | null; asOf?: Date }
+): Promise<Result<OrchestratorResult, Error>> {
+  const workspaceId = auth.getNonNullableWorkspace().sId;
 
   const pods = await ProjectMetadataResource.fetchActivationPods(auth);
 
@@ -38,45 +42,154 @@ export async function determineEligibleActivationUsers({
     pods.map((p) => p.spaceId)
   );
   const spaceByModelId = new Map(spaces.map((space) => [space.id, space]));
-  const membersBySpaceModelId =
-    await SpaceResource.fetchDistinctActiveManualGroupMembersBySpaces(
-      auth,
-      spaces
-    );
 
-  const eligible: NudgePlan[] = [];
-  const skipped: SkippedUser[] = [];
+  // We only consider pod editors (not all pod members)
+  const editorsBySpaceModelId = new Map<ModelId, UserResource[]>();
+  await concurrentExecutor(
+    spaces,
+    async (space) => {
+      editorsBySpaceModelId.set(
+        space.id,
+        await space.fetchActiveEditorUsers(auth)
+      );
+    },
+    { concurrency: 3 }
+  );
 
+  // Build the candidate (pod, editor) list and the deduped set of user sIds to
+  // evaluate in a single batch.
+  const candidates: { podId: string; spaceId: string; userId: string }[] = [];
+  const userSIds = new Set<string>();
   for (const pod of pods) {
     const space = spaceByModelId.get(pod.spaceId);
     if (!space) {
       continue;
     }
-
-    const members = membersBySpaceModelId.get(pod.spaceId) ?? [];
-
-    for (const member of members) {
-      if (userId !== null && member.sId !== userId) {
+    const editors = editorsBySpaceModelId.get(pod.spaceId) ?? [];
+    for (const editor of editors) {
+      if (userId !== null && editor.sId !== userId) {
         continue;
       }
-
-      if (!isEligibleForActivation(member)) {
-        skipped.push({ userId: member.sId, podId: pod.sId });
-        continue;
-      }
-
-      eligible.push({
+      candidates.push({
         podId: pod.sId,
         spaceId: space.sId,
-        targetUserId: member.sId,
+        userId: editor.sId,
       });
+      userSIds.add(editor.sId);
     }
   }
 
-  return { eligible, skipped };
+  if (candidates.length === 0) {
+    return new Ok({ eligible: [], skipped: [] });
+  }
+
+  const activationResult = await evaluateActivation(auth, {
+    workspaceId,
+    userIds: [...userSIds],
+    asOf,
+  });
+  if (activationResult.isErr()) {
+    return new Err(activationResult.error);
+  }
+  const byUser = activationResult.value;
+
+  const eligible: NudgePlan[] = [];
+  const skipped: SkippedUser[] = [];
+  for (const candidate of candidates) {
+    const result = byUser.get(candidate.userId);
+    if (result) {
+      logger.info(
+        {
+          workspaceId,
+          userId: candidate.userId,
+          podId: candidate.podId,
+          activated: result.activated,
+          hvucDays: result.hvucDays,
+          hvucWeeks: result.hvucWeeks,
+          qualifyingDays: result.evidence.qualifyingDays,
+          qualifyingWeeks: result.evidence.qualifyingWeeks,
+          categories: result.evidence.categories,
+        },
+        "[Activation] Evaluation result"
+      );
+    }
+    if (result?.activated) {
+      skipped.push({
+        userId: candidate.userId,
+        podId: candidate.podId,
+      });
+      continue;
+    }
+    eligible.push({
+      podId: candidate.podId,
+      spaceId: candidate.spaceId,
+      targetUserId: candidate.userId,
+    });
+  }
+
+  return new Ok({ eligible, skipped });
 }
 
-// TODO: This is a placeholder for the actual eligibility logic
-function isEligibleForActivation(user: UserResource): boolean {
-  return true;
+export async function runActivationForWorkspace({
+  workspaceId,
+  userId = null,
+  dryRun,
+  asOf,
+}: {
+  workspaceId: string;
+  userId?: string | null;
+  dryRun: boolean;
+  asOf?: Date;
+}): Promise<Result<OrchestratorResult, Error>> {
+  // Activation conversations live in Pods, which are restricted spaces: request
+  // all groups so admin auth can read/write them.
+  const auth = await Authenticator.internalAdminForWorkspace(workspaceId, {
+    dangerouslyRequestAllGroups: true,
+  });
+
+  const planResult = await determineEligibleActivationUsers(auth, {
+    userId,
+    asOf,
+  });
+  if (planResult.isErr()) {
+    return planResult;
+  }
+  const plan = planResult.value;
+
+  if (dryRun) {
+    return new Ok(plan);
+  }
+
+  // Emit one activation event per eligible (pod, user), carrying the target
+  // user's sId so only that user's pod trigger matches and fires.
+  if (plan.eligible.length === 0) {
+    return new Ok(plan);
+  }
+  const uniqueSpaceIds = [...new Set(plan.eligible.map((p) => p.spaceId))];
+  const pods = await SpaceResource.fetchByIds(auth, uniqueSpaceIds);
+  const podBySId = new Map(pods.map((pod) => [pod.sId, pod]));
+
+  await concurrentExecutor(
+    plan.eligible,
+    async ({ spaceId, targetUserId }) => {
+      const pod = podBySId.get(spaceId);
+      if (!pod) {
+        logger.error(
+          { workspaceId, spaceId },
+          "[Activation] pod space not found, skipping event"
+        );
+        return;
+      }
+      const result = await emitActivationEvent(auth, pod, targetUserId);
+      if (result.isErr()) {
+        logger.error(
+          { workspaceId, spaceId, userId: targetUserId, error: result.error },
+          "[Activation] Failed to emit activation event for user."
+        );
+      }
+    },
+    { concurrency: 3 }
+  );
+
+  return new Ok(plan);
 }

@@ -1,7 +1,4 @@
-import { determineEligibleActivationUsers } from "@app/lib/api/activation/orchestrator";
-import { emitActivationEvent } from "@app/lib/api/activation/trigger";
-import { Authenticator } from "@app/lib/auth";
-import { SpaceResource } from "@app/lib/resources/space_resource";
+import { runActivationForWorkspace } from "@app/lib/api/activation/orchestrator";
 import logger from "@app/logger/logger";
 import parseArgs from "minimist";
 
@@ -44,20 +41,19 @@ const main = async () => {
 
   cliLogger.info({ workspaceId, userId, dryRun }, "starting run");
 
-  const { eligible, skipped } = await determineEligibleActivationUsers({
+  const planResult = await runActivationForWorkspace({
     workspaceId,
     userId,
+    dryRun,
   });
-
-  cliLogger.info(
-    {
-      workspaceId,
-      userId,
-      eligibleCount: eligible.length,
-      skippedCount: skipped.length,
-    },
-    "Nudge plan"
-  );
+  if (planResult.isErr()) {
+    cliLogger.error(
+      { workspaceId, userId, error: planResult.error.message },
+      "failed to run activation orchestration"
+    );
+    process.exit(1);
+  }
+  const { eligible, skipped } = planResult.value;
 
   for (const plan of eligible) {
     cliLogger.info(
@@ -67,41 +63,12 @@ const main = async () => {
   }
   for (const s of skipped) {
     cliLogger.info(
-      { userId: s.userId, podId: s.podId },
+      {
+        userId: s.userId,
+        podId: s.podId,
+      },
       "User skipped for nudge"
     );
-  }
-
-  if (dryRun) {
-    cliLogger.info("dry run — no activation events sent");
-    return;
-  }
-
-  const auth = await Authenticator.internalAdminForWorkspace(workspaceId);
-
-  // Deduping because we only need to emit one activation event per pod.
-  // The configured triggers will determine which users are nudged.
-  const uniqueSpaceIds = [...new Set(eligible.map((plan) => plan.spaceId))];
-  const pods = await SpaceResource.fetchByIds(auth, uniqueSpaceIds);
-  const podBySId = new Map(pods.map((pod) => [pod.sId, pod]));
-
-  for (const spaceId of uniqueSpaceIds) {
-    const pod = podBySId.get(spaceId);
-    if (!pod) {
-      cliLogger.error({ spaceId }, "pod space not found, skipping event");
-      continue;
-    }
-
-    const result = await emitActivationEvent(auth, pod);
-    if (result.isErr()) {
-      cliLogger.error(
-        { spaceId, error: result.error.message },
-        "failed to send activation event"
-      );
-      continue;
-    }
-
-    cliLogger.info({ spaceId }, "activation event sent");
   }
 };
 

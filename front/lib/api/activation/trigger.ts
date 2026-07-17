@@ -19,14 +19,23 @@ import { randomUUID } from "crypto";
 // A single workspace-level webhook source is shared by all Activation Pods.
 const ACTIVATION_WEBHOOK_SOURCE_NAME = "Activation";
 const ACTIVATION_POD_ID_FIELD = "podId";
+const ACTIVATION_USER_ID_FIELD = "userId";
 const ACTIVATION_TRIGGER_CUSTOM_PROMPT = `Run the activation workflow.
 `;
-function activationTriggerFilter(podSId: string): string {
-  return `(eq "${ACTIVATION_POD_ID_FIELD}" "${podSId}")`;
+// Filtering on both podId and userId ensures a given event only fires the target user.
+// Note, these filter values are visible to the user in the trigger's configuration.
+function activationTriggerFilter(podSId: string, userId: string): string {
+  return `(and (eq "${ACTIVATION_POD_ID_FIELD}" "${podSId}") (eq "${ACTIVATION_USER_ID_FIELD}" "${userId}"))`;
 }
 
-function activationEventBody(podSId: string): Record<string, unknown> {
-  return { [ACTIVATION_POD_ID_FIELD]: podSId };
+function activationEventBody(
+  podSId: string,
+  userId: string
+): Record<string, unknown> {
+  return {
+    [ACTIVATION_POD_ID_FIELD]: podSId,
+    [ACTIVATION_USER_ID_FIELD]: userId,
+  };
 }
 
 // Fetches the shared Activation webhook source, creating it if it does not yet
@@ -135,7 +144,7 @@ export async function createActivationTrigger(
     status: "enabled",
     configuration: {
       includePayload: false,
-      filter: activationTriggerFilter(pod.sId),
+      filter: activationTriggerFilter(pod.sId, creator.sId),
     },
     naturalLanguageDescription: null,
     customPrompt: ACTIVATION_TRIGGER_CUSTOM_PROMPT,
@@ -163,7 +172,8 @@ export async function createActivationTrigger(
 // it (a pod has at most one activation trigger, via `activationTriggerFilter`).
 export async function emitActivationEvent(
   auth: Authenticator,
-  pod: SpaceResource
+  pod: SpaceResource,
+  userId: string
 ): Promise<Result<{ triggerId: string | null }, Error>> {
   const source = await WebhookSourceResource.fetchByName(
     auth,
@@ -173,7 +183,7 @@ export async function emitActivationEvent(
     return new Err(new Error("Activation webhook source not found."));
   }
 
-  const body = activationEventBody(pod.sId);
+  const body = activationEventBody(pod.sId, userId);
 
   const webhookRequest = await WebhookRequestResource.makeNew({
     workspaceId: auth.getNonNullableWorkspace().id,
@@ -193,6 +203,7 @@ export async function emitActivationEvent(
     logger.error(
       {
         spaceId: pod.sId,
+        userId,
         workspaceId: auth.getNonNullableWorkspace().sId,
         error: result.error.message,
       },
