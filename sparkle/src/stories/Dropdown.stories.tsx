@@ -861,7 +861,7 @@ export const WithTags: Story = {
                   disabled={isLoading}
                   icon={
                     isLoading
-                      ? () => <Spinner size="xs" variant="color" />
+                      ? () => <Spinner size="xs" />
                       : undefined
                   }
                 />

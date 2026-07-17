@@ -371,7 +371,7 @@ export const DocumentUploadOrEditModal = ({
         <SheetContainer>
           {isDocumentLoading ? (
             <div className="flex justify-center py-4">
-              <Spinner variant="color" size="xs" />
+              <Spinner size="xs" />
             </div>
           ) : (
             <Page.Vertical align="stretch">
