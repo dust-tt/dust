@@ -142,13 +142,13 @@ export const AddToolsDialog = ({
   const filteredMCPServers = useMemo(
     () =>
       availableMCPServers
-        .filter((mcpServer) => mcpServer.availability === "manual")
         .filter(
           (mcpServer) =>
-            mcpServer.allowMultipleInstances ||
-            !enabledServerNames.has(mcpServer.name)
+            mcpServer.availability === "manual" &&
+            (mcpServer.allowMultipleInstances ||
+              !enabledServerNames.has(mcpServer.name)) &&
+            filterMCPServer(mcpServer, searchText)
         )
-        .filter((mcpServer) => filterMCPServer(mcpServer, searchText))
         .sort((a, b) =>
           getMcpServerDisplayName(a).localeCompare(getMcpServerDisplayName(b))
         ),
