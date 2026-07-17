@@ -26,6 +26,7 @@ import {
 import { GroupSkillModel } from "@app/lib/models/skill/group_skill";
 import { SkillReferenceModel } from "@app/lib/models/skill/skill_reference";
 import { SkillSuggestionModel } from "@app/lib/models/skill/skill_suggestion";
+import { SkillUserFavoriteModel } from "@app/lib/models/skill/skill_user_favorite";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
@@ -1113,6 +1114,100 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     return this.globalSId
       ? { globalSkillId: this.globalSId }
       : { customSkillId: this.id };
+  }
+
+  static async listFavoritesForCurrentUser(
+    auth: Authenticator,
+    {
+      agentLoopData,
+    }: {
+      agentLoopData?: AgentLoopExecutionData;
+    } = {}
+  ): Promise<SkillResource[]> {
+    const user = auth.user();
+    if (!user) {
+      return [];
+    }
+
+    const workspace = auth.getNonNullableWorkspace();
+    const favorites = await SkillUserFavoriteModel.findOne({
+      attributes: ["skillIds"],
+      where: {
+        workspaceId: workspace.id,
+        userId: user.id,
+      },
+    });
+
+    if (!favorites || favorites.skillIds.length === 0) {
+      return [];
+    }
+
+    return this.fetchByIds(auth, favorites.skillIds, {
+      agentLoopData,
+      onlyActive: true,
+    });
+  }
+
+  async isFavoriteForCurrentUser(auth: Authenticator): Promise<boolean> {
+    const favoriteSkills =
+      await SkillResource.listFavoritesForCurrentUser(auth);
+
+    return favoriteSkills.some((skill) => skill.sId === this.sId);
+  }
+
+  async setFavorite(
+    auth: Authenticator,
+    isFavorite: boolean
+  ): Promise<Result<undefined, Error>> {
+    const user = auth.user();
+    if (!user) {
+      return new Err(new Error("User must be authenticated"));
+    }
+
+    if (this.status !== "active") {
+      return new Err(
+        new Error("Only active skills can update favorite state.")
+      );
+    }
+
+    const workspace = auth.getNonNullableWorkspace();
+    const favorites = await SkillUserFavoriteModel.findOne({
+      where: {
+        workspaceId: workspace.id,
+        userId: user.id,
+      },
+    });
+
+    const wasFavorite = favorites?.skillIds.includes(this.sId) ?? false;
+    if (wasFavorite === isFavorite) {
+      return new Ok(undefined);
+    }
+
+    if (favorites) {
+      await favorites.update({
+        skillIds: isFavorite
+          ? [...favorites.skillIds, this.sId]
+          : favorites.skillIds.filter((skillId) => skillId !== this.sId),
+      });
+    } else {
+      await SkillUserFavoriteModel.create({
+        workspaceId: workspace.id,
+        userId: user.id,
+        skillIds: [this.sId],
+      });
+    }
+
+    if (!this.globalSId) {
+      await this.model.increment("favoriteCount", {
+        by: isFavorite ? 1 : -1,
+        where: {
+          id: this.id,
+          workspaceId: workspace.id,
+        },
+      });
+    }
+
+    return new Ok(undefined);
   }
 
   static async listByAgentConfiguration(
