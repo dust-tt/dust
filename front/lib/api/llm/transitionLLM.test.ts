@@ -4,10 +4,10 @@ import {
   toBaseMessages,
   withMessageCacheBreakpoints,
 } from "@app/lib/api/llm/transitionLLM";
-import type { BaseMessage } from "@app/lib/model_constructors/types/input/messages";
 import type { LLMClientMetadata } from "@app/lib/api/llm/types/options";
 import { assistantReasoningMessageToInputItems } from "@app/lib/model_constructors/sdk/openai_responses/converters/input/utils";
 import type { EndpointMetadata } from "@app/lib/model_constructors/types/endpoint_metadata";
+import type { BaseMessage } from "@app/lib/model_constructors/types/input/messages";
 import type { ProviderPassthroughEvent } from "@app/lib/model_constructors/types/output/events";
 import type { ModelMessageTypeMultiActionsWithoutContentFragment } from "@app/types/assistant/generation";
 import type { ModelProviderIdType } from "@app/types/assistant/models/types";
@@ -105,7 +105,7 @@ describe("withMessageCacheBreakpoints", () => {
       equippedSkillsMessage,
       {
         explicitTailBreakpoint: false,
-      },
+      }
     );
 
     expect(cacheOf(result[0])).toBe("short");
@@ -119,7 +119,7 @@ describe("withMessageCacheBreakpoints", () => {
       equippedSkillsMessage,
       {
         explicitTailBreakpoint: true,
-      },
+      }
     );
 
     expect(cacheOf(result[0])).toBe("short");
@@ -159,7 +159,7 @@ describe("toBaseMessages — reasoning signatures", () => {
       reasoningMessage({
         provider: "anthropic",
         metadata: JSON.stringify({ encrypted_content: "anthropic-sig" }),
-      }),
+      })
     );
     expect(result).toEqual([
       {
@@ -176,7 +176,7 @@ describe("toBaseMessages — reasoning signatures", () => {
       reasoningMessage({
         provider: "google_ai_studio",
         metadata: JSON.stringify({ encrypted_content: "gemini-thought-sig" }),
-      }),
+      })
     );
     expect(result).toEqual([
       {
@@ -196,7 +196,7 @@ describe("toBaseMessages — reasoning signatures", () => {
           id: "rs_123",
           encrypted_content: "gAAAA-encrypted-blob",
         }),
-      }),
+      })
     );
     expect(result).toEqual([
       {
@@ -219,7 +219,7 @@ describe("OpenAI reasoning round-trip — persisted metadata to Responses input"
           id: "rs_123",
           encrypted_content: "gAAAA-encrypted-blob",
         }),
-      }),
+      })
     );
     if (baseMessage.type !== "reasoning") {
       throw new Error("Expected a reasoning BaseMessage.");
@@ -252,8 +252,8 @@ describe("convertToOldEvent — token_usage", () => {
           },
           metadata: endpointMetadata,
         },
-        llmMetadata,
-      ),
+        llmMetadata
+      )
     ).toEqual({
       type: "token_usage",
       content: {
@@ -287,8 +287,8 @@ describe("convertToOldEvent — token_usage", () => {
           },
           metadata: endpointMetadata,
         },
-        llmMetadata,
-      ),
+        llmMetadata
+      )
     ).toEqual({
       type: "token_usage",
       content: {
@@ -336,8 +336,8 @@ describe("convertToOldEvent", () => {
             },
           },
         },
-        llmMetadata,
-      ),
+        llmMetadata
+      )
     ).toEqual({
       type: "interaction_id",
       content: {
@@ -356,8 +356,8 @@ describe("convertToOldEvent", () => {
           content: { responseId: "msg_123" },
           metadata: endpointMetadata,
         },
-        llmMetadata,
-      ),
+        llmMetadata
+      )
     ).toEqual({
       type: "interaction_id",
       content: { modelInteractionId: "msg_123", cacheMissReason: undefined },
@@ -372,13 +372,13 @@ describe("reasoningContentToLegacyMetadata — persistence write path", () => {
       reasoningContentToLegacyMetadata({
         id: "rs_123",
         encryptedContent: "gAAAA-encrypted-blob",
-      }),
+      })
     ).toEqual({ id: "rs_123", encrypted_content: "gAAAA-encrypted-blob" });
   });
 
   it("lifts an Anthropic/Gemini signature to top-level encrypted_content", () => {
     expect(
-      reasoningContentToLegacyMetadata({ signature: "anthropic-sig" }),
+      reasoningContentToLegacyMetadata({ signature: "anthropic-sig" })
     ).toEqual({ encrypted_content: "anthropic-sig" });
   });
 

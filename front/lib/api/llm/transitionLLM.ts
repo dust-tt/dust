@@ -74,7 +74,7 @@ import { isString } from "@app/types/shared/utils/general";
  */
 function mapReasoningEffort(
   effort: ReasoningEffort | null,
-  useNativeLightReasoning: boolean,
+  useNativeLightReasoning: boolean
 ): "none" | "low" | "medium" | "high" | "maximal" {
   switch (effort) {
     case null:
@@ -99,7 +99,7 @@ function mapReasoningEffort(
  * Converts an old-system message to new BaseMessage(s).
  */
 export function toBaseMessages(
-  message: ModelMessageTypeMultiActionsWithoutContentFragment,
+  message: ModelMessageTypeMultiActionsWithoutContentFragment
 ): BaseMessage[] {
   switch (message.role) {
     case "user":
@@ -124,7 +124,7 @@ export function toBaseMessages(
           : message.content.map((c) =>
               c.type === "text"
                 ? { type: "text", text: c.text }
-                : { type: "image_url", url: c.image_url.url },
+                : { type: "image_url", url: c.image_url.url }
             );
       return [
         {
@@ -146,7 +146,7 @@ export function toBaseMessages(
             | AgentTextContentType
             | AgentReasoningContentType
             | AgentFunctionCallContentType
-            | AgentProviderPassthroughContentType,
+            | AgentProviderPassthroughContentType
         ): BaseMessage[] => {
           switch (c.type) {
             case "text_content":
@@ -172,13 +172,13 @@ export function toBaseMessages(
                     type: "reasoning",
                     content: { value: c.value.reasoning },
                     signature: extractEncryptedContentFromMetadata(
-                      c.value.metadata,
+                      c.value.metadata
                     ),
                   },
                 ];
               }
               const { id, encryptedContent } = parseReasoningMetadata(
-                c.value.metadata,
+                c.value.metadata
               );
               return [
                 {
@@ -217,7 +217,7 @@ export function toBaseMessages(
             default:
               assertNever(c);
           }
-        },
+        }
       );
     case "compaction":
       return [
@@ -248,7 +248,7 @@ export function toBaseMessages(
 export function withMessageCacheBreakpoints(
   baseMessages: BaseMessage[],
   firstMessage: ModelMessageTypeMultiActionsWithoutContentFragment | undefined,
-  { explicitTailBreakpoint }: { explicitTailBreakpoint: boolean },
+  { explicitTailBreakpoint }: { explicitTailBreakpoint: boolean }
 ): BaseMessage[] {
   const result = [...baseMessages];
 
@@ -278,7 +278,7 @@ export function withMessageCacheBreakpoints(
 // the legacy top-level shape (`id` / `encrypted_content`) the replay path reads,
 // matching what the old router writes.
 export function reasoningContentToLegacyMetadata(
-  content: Record<string, unknown> | undefined,
+  content: Record<string, unknown> | undefined
 ): { id?: string; encrypted_content?: string } {
   const id = isString(content?.id) ? content.id : undefined;
   const encryptedContent = content?.encryptedContent ?? content?.signature;
@@ -295,7 +295,7 @@ export function reasoningContentToLegacyMetadata(
  */
 function convertAggregatedItem(
   item: NewTextEvent | NewReasoningEvent | NewToolCallEvent,
-  metadata: LLMClientMetadata,
+  metadata: LLMClientMetadata
 ): LLMOutputItem {
   switch (item.type) {
     case "text":
@@ -381,7 +381,7 @@ function mapErrorType(errorType: ErrorType): {
  */
 export function convertToOldEvent(
   event: ModelResponseEvent,
-  metadata: LLMClientMetadata,
+  metadata: LLMClientMetadata
 ): LLMEvent {
   switch (event.type) {
     case "response_id": {
@@ -498,17 +498,17 @@ export function convertToOldEvent(
 
     case "success": {
       const aggregated = event.content.aggregated.map((item) =>
-        convertAggregatedItem(item, metadata),
+        convertAggregatedItem(item, metadata)
       );
       const textGenerated = aggregated.find(
-        (item): item is TextGeneratedEvent => item.type === "text_generated",
+        (item): item is TextGeneratedEvent => item.type === "text_generated"
       );
       const reasoningGenerated = aggregated.find(
         (item): item is ReasoningGeneratedEvent =>
-          item.type === "reasoning_generated",
+          item.type === "reasoning_generated"
       );
       const toolCalls = aggregated.filter(
-        (item): item is OldToolCallEvent => item.type === "tool_call",
+        (item): item is OldToolCallEvent => item.type === "tool_call"
       );
       return {
         type: "success",
@@ -536,7 +536,7 @@ export function convertToOldEvent(
           isRetryable,
           originalError: event.content.originalError,
         },
-        metadata,
+        metadata
       );
     }
 
@@ -550,7 +550,7 @@ export function convertToOldEvent(
  */
 async function* convertToOldEvents(
   newEvents: AsyncGenerator<ModelResponseEvent>,
-  metadata: LLMClientMetadata,
+  metadata: LLMClientMetadata
 ): AsyncGenerator<LLMEvent> {
   for await (const event of newEvents) {
     yield convertToOldEvent(event, metadata);
@@ -563,7 +563,7 @@ async function* convertToOldEvents(
  */
 function convertBatchEventsToOld(
   events: NonDeltaResponseEvent[],
-  metadata: LLMClientMetadata,
+  metadata: LLMClientMetadata
 ): LLMEvent[] {
   return events.map((event) => convertToOldEvent(event, metadata));
 }
@@ -591,14 +591,14 @@ abstract class BaseTransition extends LLM {
     streamParameters: LLMStreamParameters,
     {
       explicitTailBreakpoint = false,
-    }: { explicitTailBreakpoint?: boolean } = {},
+    }: { explicitTailBreakpoint?: boolean } = {}
   ): Payload {
     const { conversation, prompt } = streamParameters;
 
     const baseMessages = withMessageCacheBreakpoints(
       conversation.messages.flatMap(toBaseMessages),
       conversation.messages[0],
-      { explicitTailBreakpoint },
+      { explicitTailBreakpoint }
     );
 
     const { instructions, sharedContext, ephemeralContext } =
@@ -651,7 +651,7 @@ abstract class BaseTransition extends LLM {
     // identity). Some schemas reject provider-invalid combinations (e.g.
     // Anthropic requires temperature=1 with thinking), so the fix must land
     // before `parse`, not after.
-    parseConfig: (config: InputConfig) => InputConfig = (config) => config,
+    parseConfig: (config: InputConfig) => InputConfig = (config) => config
   ): InputConfig {
     const {
       specifications,
@@ -667,7 +667,7 @@ abstract class BaseTransition extends LLM {
       reasoning: {
         effort: mapReasoningEffort(
           this.reasoningEffort,
-          this.modelConfig.useNativeLightReasoning ?? false,
+          this.modelConfig.useNativeLightReasoning ?? false
         ),
       },
       forceTool: forceToolCall,
@@ -675,7 +675,7 @@ abstract class BaseTransition extends LLM {
       toolSearchEnabled,
       outputFormat: parseResponseFormatSchema(
         this.responseFormat,
-        this.metadata.clientId,
+        this.metadata.clientId
       ),
     };
 
@@ -699,7 +699,7 @@ export class StreamEndpointTransition extends BaseTransition {
   constructor(
     auth: Authenticator,
     llmParameters: LLMParameters,
-    modelConstructor: DustStreamEndpointConstructor,
+    modelConstructor: DustStreamEndpointConstructor
   ) {
     super(auth, modelConstructor.providerId, llmParameters);
     this.endpointConstructor = modelConstructor;
@@ -723,8 +723,8 @@ export class StreamEndpointTransition extends BaseTransition {
       this.buildConfig(
         streamParameters,
         this.model.constructor.configSchema,
-        this.endpointConstructor.parseConfig,
-      ),
+        this.endpointConstructor.parseConfig
+      )
     );
   }
 
@@ -757,17 +757,17 @@ export class NoopStreamTransition extends StreamEndpointTransition {
   constructor(
     auth: Authenticator,
     llmParameters: LLMParameters,
-    modelConstructor: DustStreamEndpointConstructor,
+    modelConstructor: DustStreamEndpointConstructor
   ) {
     super(auth, llmParameters, modelConstructor);
     this.noopMetaData = llmParameters.metaData;
   }
 
   protected override buildStreamRequestPayload(
-    streamParameters: LLMStreamParameters,
+    streamParameters: LLMStreamParameters
   ): NoopRequest {
     const request = this.noopModel.buildRequestPayload(
-      this.buildPayload(streamParameters),
+      this.buildPayload(streamParameters)
     );
 
     const staticResponse =
@@ -815,7 +815,7 @@ export class BatchEndpointTransition extends BaseTransition {
   constructor(
     auth: Authenticator,
     llmParameters: LLMParameters,
-    modelConstructor: BatchEndpointConstructor,
+    modelConstructor: BatchEndpointConstructor
   ) {
     super(auth, modelConstructor.providerId, llmParameters);
     this.model = new modelConstructor(llmParameters.credentials);
@@ -826,18 +826,18 @@ export class BatchEndpointTransition extends BaseTransition {
   protected buildStreamRequestPayload(streamParameters: LLMStreamParameters) {
     return this.model.buildRequestPayload(
       this.buildPayload(streamParameters),
-      this.buildConfig(streamParameters, this.model.constructor.configSchema),
+      this.buildConfig(streamParameters, this.model.constructor.configSchema)
     );
   }
 
   protected async *sendRequest(): AsyncGenerator<LLMEvent> {
     throw new Error(
-      "Streaming is not supported on a batch transition LLM; use getStreamLLM instead.",
+      "Streaming is not supported on a batch transition LLM; use getStreamLLM instead."
     );
   }
 
   protected override async internalSendBatchProcessing(
-    conversations: Map<string, LLMStreamParameters>,
+    conversations: Map<string, LLMStreamParameters>
   ): Promise<string> {
     const requests = new Map<string, BatchRequest>();
     for (const [customId, streamParameters] of conversations) {
@@ -845,7 +845,7 @@ export class BatchEndpointTransition extends BaseTransition {
         payload: this.buildPayload(streamParameters),
         config: this.buildConfig(
           streamParameters,
-          this.model.constructor.configSchema,
+          this.model.constructor.configSchema
         ),
       });
     }
@@ -858,7 +858,7 @@ export class BatchEndpointTransition extends BaseTransition {
   }
 
   protected override async internalGetBatchResult(
-    batchId: string,
+    batchId: string
   ): Promise<BatchResult> {
     const results = await this.model.getBatchResult(batchId);
 
