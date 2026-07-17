@@ -526,6 +526,13 @@ export const InputBar = React.memo(function InputBar({
               )
         )}
       >
+        {/* Bottom-edge inner vignette, matching sparkle Composer.tsx's floating variant (light only). */}
+        {!effectiveIsCompact && isFloating && (
+          <div
+            aria-hidden
+            className="pointer-events-none absolute inset-[-1px] hidden rounded-[inherit] shadow-[inset_0px_-3px_29px_2px_rgba(0,0,0,0.01)] md:block dark:hidden"
+          />
+        )}
         <div
           className={classNames(
             "relative flex flex-col",
