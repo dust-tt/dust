@@ -32,12 +32,6 @@ import {
   markAwuPurchaseAttemptFailed,
   markAwuPurchaseAttemptSucceeded,
 } from "@app/lib/credits/awu_purchase_status";
-import {
-  calculateFreeCreditAmountMicroUsd,
-  countEligibleUsersForFreeCredits,
-  grantFreeCreditFromMetronomeSegment,
-  YEARLY_MULTIPLIER,
-} from "@app/lib/credits/free";
 import { resolvePerUserCreditAlertUserId } from "@app/lib/metronome/alerts/per_user_credit_balance";
 import {
   CRITICAL_BALANCE_OFFSET,
@@ -56,7 +50,6 @@ import {
   listMetronomeContracts,
   setMetronomeCommitCustomFields,
   setMetronomeContractCreditCustomFields,
-  updateMetronomeCreditSegmentAmount,
 } from "@app/lib/metronome/client";
 import {
   CONTRACT_CREDIT_TYPE_CUSTOM_FIELD_KEY,
@@ -78,7 +71,6 @@ import { invalidateContractCache } from "@app/lib/metronome/plan_type";
 import type { ProgrammaticCreditEvent } from "@app/lib/metronome/programmatic_credit_state_machine";
 import { carryOverContractBalancesOnRenewal } from "@app/lib/metronome/renewal_carry_over";
 import { getSeatAllowancesByNormalizedSeatType } from "@app/lib/metronome/seat_types";
-import { isMetronomeFreeCredit } from "@app/lib/metronome/types";
 import { setUserNearLimit } from "@app/lib/metronome/user_block";
 import type { MetronomeWebhookEvent } from "@app/lib/metronome/webhook_events";
 import { PlanModel } from "@app/lib/models/plan";
@@ -86,7 +78,6 @@ import { notifyUserAwuCapReached } from "@app/lib/notifications/workflows/user-a
 import { CreditUsageConfigurationResource } from "@app/lib/resources/credit_usage_configuration_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
-import { ProgrammaticUsageConfigurationResource } from "@app/lib/resources/programmatic_usage_configuration_resource";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import type { WorkspaceResource } from "@app/lib/resources/workspace_resource";
@@ -350,205 +341,6 @@ async function reconcilePoolStateFromSegmentEvent({
       metronomeCustomerId,
     });
   }
-}
-
-// Handle the managed free monthly/yearly credit grant for a contract-bound
-// `credit.segment.start` event. The webhook payload doesn't carry the credit's
-// product or recurring-credit definition, so we fetch the contract to identify
-// whether the segment belongs to the free credit we manage. When it does,
-// Metronome is the source of truth: we update the segment amount there, then
-// ensure the matching DB credit (linked by metronomeCreditId) exists. Segments
-// that aren't the managed free credit are ignored.
-export async function handleFreeCreditSegmentGrant({
-  workspace,
-  metronomeCustomerId,
-  contractId,
-  creditId,
-  segmentId,
-}: {
-  workspace: WorkspaceResource;
-  metronomeCustomerId: string;
-  contractId: string;
-  creditId: string;
-  segmentId: string;
-}): Promise<Result<void, ProcessMetronomeWebhookError>> {
-  const contractResult = await getMetronomeContractById({
-    metronomeCustomerId,
-    metronomeContractId: contractId,
-  });
-  if (contractResult.isErr()) {
-    logger.error(
-      {
-        workspaceId: workspace.sId,
-        metronomeCustomerId,
-        contractId,
-        creditId,
-        error: contractResult.error,
-      },
-      "[Metronome Webhook] credit.segment.start: failed to fetch contract"
-    );
-    return new Err(
-      new ProcessMetronomeWebhookError(
-        "processing_failed",
-        `Error fetching contract: ${contractResult.error.message}`
-      )
-    );
-  }
-
-  const credit = contractResult.value.credits?.find((c) => c.id === creditId);
-  if (!credit) {
-    logger.info(
-      { workspaceId: workspace.sId, metronomeCustomerId, contractId, creditId },
-      "[Metronome Webhook] credit.segment.start: credit not found on contract, ignoring"
-    );
-    return new Ok(undefined);
-  }
-
-  if (!isMetronomeFreeCredit(credit)) {
-    logger.info(
-      {
-        workspaceId: workspace.sId,
-        metronomeCustomerId,
-        creditId,
-        productId: credit.product.id,
-        creditTypeId: credit.access_schedule?.credit_type?.id,
-      },
-      "[Metronome Webhook] credit.segment.start: ignoring non-free-credit segment"
-    );
-    return new Ok(undefined);
-  }
-
-  // Detect whether this credit comes from an annual recurring credit
-  // (annual contracts) so we grant a yearly amount instead of monthly.
-  const recurringCredit = credit.recurring_credit_id
-    ? contractResult.value.recurring_credits?.find(
-        (rc) => rc.id === credit.recurring_credit_id
-      )
-    : undefined;
-  const isAnnual = recurringCredit?.recurrence_frequency === "ANNUAL";
-
-  // ProgrammaticUsageConfiguration.freeCreditMicroUsd, if set,
-  // overrides the brackets-based calculation. Same convention as
-  // grantFreeCreditsFromSubscriptionStateChange{,Yearly}: the
-  // configured amount is the full-period amount (monthly or yearly
-  // matching the recurring credit cadence) and is used as-is.
-  const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
-  const programmaticConfig =
-    await ProgrammaticUsageConfigurationResource.fetchByWorkspaceId(auth);
-
-  let amountMicroUsd: number;
-  let userCount: number | undefined;
-  if (programmaticConfig && programmaticConfig.freeCreditMicroUsd !== null) {
-    amountMicroUsd = programmaticConfig.freeCreditMicroUsd;
-  } else {
-    userCount = await countEligibleUsersForFreeCredits(workspace);
-    const monthlyAmountMicroUsd = calculateFreeCreditAmountMicroUsd(userCount);
-    amountMicroUsd = isAnnual
-      ? monthlyAmountMicroUsd * YEARLY_MULTIPLIER
-      : monthlyAmountMicroUsd;
-  }
-  const amount = amountMicroUsd / 1_000_000;
-
-  const updateResult = await updateMetronomeCreditSegmentAmount({
-    metronomeCustomerId,
-    contractId,
-    creditId,
-    segmentId,
-    amount,
-  });
-
-  if (updateResult.isErr()) {
-    logger.error(
-      {
-        metronomeCustomerId,
-        contractId,
-        creditId,
-        segmentId,
-        error: updateResult.error,
-        workspaceId: workspace.sId,
-      },
-      "[Metronome Webhook] credit.segment.start: failed to update free credit amount"
-    );
-    return new Err(
-      new ProcessMetronomeWebhookError(
-        "processing_failed",
-        `Error updating free credit amount: ${updateResult.error.message}`
-      )
-    );
-  }
-
-  // Metronome is the source of truth for the recurring free credit:
-  // create + start the matching DB credit linked by metronomeCreditId.
-  // The Stripe webhook will dedup against this when it fires.
-  const segment = credit.access_schedule?.schedule_items.find(
-    (s) => s.id === segmentId
-  );
-  if (!segment) {
-    logger.warn(
-      {
-        metronomeCustomerId,
-        contractId,
-        creditId,
-        segmentId,
-        workspaceId: workspace.sId,
-      },
-      "[Metronome Webhook] credit.segment.start: segment not found in access_schedule, skipping DB credit creation"
-    );
-    return new Ok(undefined);
-  }
-  const periodStart = new Date(segment.starting_at);
-  const periodEnd = new Date(segment.ending_before);
-
-  const grantResult = await grantFreeCreditFromMetronomeSegment({
-    auth,
-    metronomeCreditId: creditId,
-    contractId,
-    segmentId,
-    isAnnual,
-    amountMicroUsd,
-    periodStart,
-    periodEnd,
-  });
-
-  if (grantResult.isErr()) {
-    // The grant helper has already logged the failure with `panic`;
-    // ack the webhook so Metronome doesn't retry-storm — operators
-    // will reconcile from logs / the sync script.
-    logger.error(
-      {
-        metronomeCustomerId,
-        contractId,
-        creditId,
-        segmentId,
-        error: grantResult.error,
-        workspaceId: workspace.sId,
-      },
-      "[Metronome Webhook] credit.segment.start: failed to ensure DB credit"
-    );
-    return new Ok(undefined);
-  }
-
-  logger.info(
-    {
-      metronomeCustomerId,
-      contractId,
-      creditId,
-      segmentId,
-      amountMicroUsd,
-      userCount,
-      isAnnual,
-      usedProgrammaticOverride: programmaticConfig?.freeCreditMicroUsd != null,
-      dbCreditId: grantResult.value.credit.id,
-      dbCreditCreated: grantResult.value.created,
-      dbCreditAlreadyExisted: grantResult.value.alreadyExisted,
-      periodStart,
-      periodEnd,
-      workspaceId: workspace.sId,
-    },
-    "[Metronome Webhook] credit.segment.start: free credit amount updated and DB credit ensured"
-  );
-
-  return new Ok(undefined);
 }
 
 type SpendThresholdEvent = Extract<
