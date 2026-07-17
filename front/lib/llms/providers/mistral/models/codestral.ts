@@ -9,6 +9,8 @@ export function WithDustMistralCodestralConfig<
       "Mistral's `codestral` model, specifically designed and optimized for code generation tasks.";
     // Codestral is a non-reasoning model.
     static readonly defaultReasoningEffort = "none";
+    // Legacy product value; the model has no separate output cap.
+    static readonly maxOutputTokens = 2_048;
     static readonly byok = true;
   }
 
