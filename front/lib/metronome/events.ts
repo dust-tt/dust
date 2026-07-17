@@ -9,6 +9,7 @@ import type { RunUsageType } from "@app/lib/resources/run_resource";
 import type { UserMessageOrigin } from "@app/types/assistant/conversation";
 import { createHash } from "crypto";
 
+import { getMetronomeIngestAlias } from "./client";
 import {
   toFreeMetronomeUserId,
   USAGE_TYPE_FREE,
@@ -344,7 +345,7 @@ export function buildLlmUsageEvents({
 
   return [...groups.values()].map((group) => ({
     transaction_id: `llm3-${workspaceId}-${conversationId}-${agentMessageId}-${runKey}-${group.providerId}-${group.modelId}`,
-    customer_id: workspaceId,
+    customer_id: getMetronomeIngestAlias(workspaceId),
     event_type: "llm_usage_v3",
     timestamp,
     properties: {
@@ -471,7 +472,7 @@ export function buildToolUseEvents({
       transaction_id: truncateTransactionId(
         `tool3-${workspaceId}-${conversationId}-${agentMessageId}-${runKey}-${action.toolName}-${action.mcpServerId ?? ""}-${action.status}`
       ),
-      customer_id: workspaceId,
+      customer_id: getMetronomeIngestAlias(workspaceId),
       event_type: "tool_use_v3",
       timestamp,
       properties: {

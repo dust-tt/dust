@@ -171,6 +171,24 @@ export async function ingestMetronomeEvents(
 // ---------------------------------------------------------------------------
 
 /**
+ * The Metronome ingest alias for a workspace. Normally just the workspace
+ * sId, so usage events with `customer_id: workspaceId` match the customer
+ * created with that alias.
+ *
+ * In dev environments, it's possible to override it and extend with a
+ * custom suffix.
+ */
+export function getMetronomeIngestAlias(workspaceId: string): string {
+  const devEnvName = config.getDevEnvName();
+  return devEnvName ? `${workspaceId}-${devEnvName}` : workspaceId;
+}
+
+export function getMetronomeCustomerName(workspaceName: string): string {
+  const devEnvName = config.getDevEnvName();
+  return devEnvName ? `${workspaceName} (${devEnvName})` : workspaceName;
+}
+
+/**
  * Resolves how to address the Stripe billing-provider delivery method on a
  * customer config. When the Metronome org has multiple Stripe
  * DIRECT_TO_BILLING_PROVIDER connections, Metronome rejects the bare
@@ -191,8 +209,8 @@ function stripeDeliveryMethod():
 
 /**
  * Create a customer in Metronome, linked to an existing Stripe customer.
- * The workspace sId is set as an ingest alias so that usage events
- * with `customer_id: workspaceId` are automatically matched.
+ * The workspace's ingest alias (see `getMetronomeIngestAlias`) is set so that
+ * usage events with a matching `customer_id` are automatically matched.
  *
  * Handles 409 conflict by extracting the existing customer's ID.
  */
@@ -209,8 +227,8 @@ export async function createMetronomeCustomer({
 }): Promise<Result<{ metronomeCustomerId: string }, Error>> {
   try {
     const response = await getMetronomeClient().v1.customers.create({
-      name: workspaceName,
-      ingest_aliases: [workspaceId],
+      name: getMetronomeCustomerName(workspaceName),
+      ingest_aliases: [getMetronomeIngestAlias(workspaceId)],
       ...(stripeCustomerId
         ? {
             customer_billing_provider_configurations: [
@@ -396,7 +414,7 @@ export async function ensureMetronomeStripeBillingConfig({
 }
 
 /**
- * Find a Metronome customer by ingest alias (workspace sId).
+ * Find a Metronome customer by ingest alias (see `getMetronomeIngestAlias`).
  * Returns the Metronome customer ID if found, null if not.
  */
 export async function findMetronomeCustomerByAlias(
@@ -404,7 +422,7 @@ export async function findMetronomeCustomerByAlias(
 ): Promise<Result<string | null, Error>> {
   try {
     const page = await getMetronomeClient().v1.customers.list({
-      ingest_alias: workspaceId,
+      ingest_alias: getMetronomeIngestAlias(workspaceId),
     });
     const first = page.data[0];
     return new Ok(first?.id ?? null);
