@@ -1,7 +1,6 @@
 import { getModelConfigByModelId } from "@app/lib/llms/model_configurations";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import type { SupportedModel } from "@app/types/assistant/models/types";
-import { getModelMaxInputTokens } from "@app/types/assistant/models/utils";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
@@ -75,7 +74,7 @@ app.get("/", validate("param", ParamsSchema), async (ctx) => {
         modelId: maxUsage.modelId,
       },
       contextUsage: maxUsage.completionTokens,
-      contextSize: modelConfig ? getModelMaxInputTokens(modelConfig) : 0,
+      contextSize: modelConfig?.contextSize ?? 0,
     });
   }
 
@@ -113,7 +112,7 @@ app.get("/", validate("param", ParamsSchema), async (ctx) => {
       modelId: maxUsage.modelId,
     },
     contextUsage: maxUsage.promptTokens,
-    contextSize: modelConfig ? getModelMaxInputTokens(modelConfig) : 0,
+    contextSize: modelConfig?.contextSize ?? 0,
   });
 });
 
