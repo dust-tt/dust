@@ -2,6 +2,7 @@ import { getGlobalAgents } from "@app/lib/api/assistant/global_agents/global_age
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
+import { CLAUDE_SONNET_5_MODEL_ID } from "@app/types/assistant/models/anthropic";
 import {
   GPT_5_6_LUNA_MODEL_ID,
   GPT_5_6_SOL_MODEL_ID,
@@ -243,6 +244,45 @@ describe("getGlobalAgents custom model agents", () => {
 });
 
 describe("getGlobalAgents OpenAI Dust agents", () => {
+  it("uses GPT 5.6 Luna with high reasoning as the flagged Dust default", async () => {
+    const auth = await createAuthenticatorWithFlags([
+      "dust_agent_gpt_5_6_luna_default",
+    ]);
+
+    const agents = await getGlobalAgents(
+      auth,
+      [GLOBAL_AGENTS_SID.DUST],
+      "light"
+    );
+
+    expect(agents).toHaveLength(1);
+    expect(agents[0].model).toMatchObject({
+      providerId: "openai",
+      modelId: GPT_5_6_LUNA_MODEL_ID,
+      reasoningEffort: "high",
+    });
+  });
+
+  it("keeps Sonnet 5 at medium reasoning when both default flags are set", async () => {
+    const auth = await createAuthenticatorWithFlags([
+      "dust_agent_gpt_5_6_luna_default",
+      "dust_agent_sonnet_5_default",
+    ]);
+
+    const agents = await getGlobalAgents(
+      auth,
+      [GLOBAL_AGENTS_SID.DUST],
+      "light"
+    );
+
+    expect(agents).toHaveLength(1);
+    expect(agents[0].model).toMatchObject({
+      providerId: "anthropic",
+      modelId: CLAUDE_SONNET_5_MODEL_ID,
+      reasoningEffort: "medium",
+    });
+  });
+
   it("hides Luna variants without the internal global agents feature flag", async () => {
     const auth = await createAuthenticatorWithFlags([]);
 

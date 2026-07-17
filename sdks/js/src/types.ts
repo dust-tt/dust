@@ -742,7 +742,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "disallow_agent_creation_to_users"
   | "discord_bot"
   | "dummy_feature_for_flag_testing"
-  | "dust_agent_gpt_5_5_default"
+  | "dust_agent_gpt_5_6_luna_default"
   | "dust_agent_sonnet_5_default"
   | "dust_internal_global_agents"
   | "fireworks_new_model_feature"
