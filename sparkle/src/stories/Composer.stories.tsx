@@ -8,25 +8,36 @@ import {
   ArrowUp,
   Attachment01,
   Command,
+  File01,
+  Folder,
   Globe01,
   Image01,
   Robot,
+  SearchMd,
   ShapesPlus,
   Table,
+  UploadCloud02,
 } from "@sparkle/icons/v2-stroke";
 
 import {
-  AttachmentChip,
   Avatar,
   Button,
   Chip,
+  Citation,
+  CitationClose,
+  CitationIcons,
+  CitationImage,
+  CitationTitle,
   cn,
   DropdownMenu,
+  DropdownMenuCheckboxItem,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSearchbar,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
+  Icon,
+  Tooltip,
   VoicePicker,
   type VoicePickerStatus,
 } from "../index_with_tw_base";
@@ -103,11 +114,20 @@ const MOCK_TOOLS: MockTool[] = [
   },
 ];
 
-interface MockFile {
+interface MockAttachment {
   id: string;
-  name: string;
+  title: string;
   isUploading: boolean;
+  /** Object URL for image files — rendered as a preview card like in the product. */
+  previewUrl?: string;
+  icon: React.ComponentType<React.SVGProps<SVGSVGElement>>;
 }
+
+const MOCK_KNOWLEDGE_NODES = [
+  { id: "notion-roadmap", title: "Product Roadmap", source: "Notion" },
+  { id: "drive-metrics", title: "Q3 Metrics", source: "Google Drive" },
+  { id: "slack-design", title: "#design", source: "Slack" },
+];
 
 // ---------------------------------------------------------------------------
 // Mock voice service (mirrors useVoiceTranscriberService statuses)
@@ -164,12 +184,14 @@ function ComposerDemo({
   const [text, setText] = useState("");
   const [selectedAgent, setSelectedAgent] = useState<MockAgent | null>(null);
   const [selectedTools, setSelectedTools] = useState<MockTool[]>([]);
-  const [attachedFiles, setAttachedFiles] = useState<MockFile[]>([]);
+  const [attachments, setAttachments] = useState<MockAttachment[]>([]);
   const [messages, setMessages] = useState<string[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isFocused, setIsFocused] = useState(false);
   const [agentSearch, setAgentSearch] = useState("");
   const [toolSearch, setToolSearch] = useState("");
+  const [knowledgeSearch, setKnowledgeSearch] = useState("");
+  const [isAttachmentsOpen, setIsAttachmentsOpen] = useState(false);
 
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -189,24 +211,48 @@ function ComposerDemo({
   const handleFileChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
       const files = Array.from(e.target.files ?? []);
-      const newFiles = files.map((f, i) => ({
+      const newAttachments = files.map<MockAttachment>((f, i) => ({
         id: `${f.name}-${i}-${f.lastModified}`,
-        name: f.name,
+        title: f.name,
         isUploading: true,
+        previewUrl: f.type.startsWith("image/")
+          ? URL.createObjectURL(f)
+          : undefined,
+        icon: File01,
       }));
-      setAttachedFiles((prev) => [...prev, ...newFiles]);
+      setAttachments((prev) => [...prev, ...newAttachments]);
       // Mock upload completion.
-      newFiles.forEach((file) => {
+      newAttachments.forEach((attachment) => {
         window.setTimeout(() => {
-          setAttachedFiles((prev) =>
-            prev.map((f) =>
-              f.id === file.id ? { ...f, isUploading: false } : f
+          setAttachments((prev) =>
+            prev.map((a) =>
+              a.id === attachment.id ? { ...a, isUploading: false } : a
             )
           );
         }, 1200);
       });
       e.target.value = "";
+      setIsAttachmentsOpen(false);
       inputRef.current?.focus();
+    },
+    []
+  );
+
+  const addKnowledgeNode = useCallback(
+    (node: (typeof MOCK_KNOWLEDGE_NODES)[number]) => {
+      setAttachments((prev) =>
+        prev.some((a) => a.id === node.id)
+          ? prev.filter((a) => a.id !== node.id)
+          : [
+              ...prev,
+              {
+                id: node.id,
+                title: node.title,
+                isUploading: false,
+                icon: Folder,
+              },
+            ]
+      );
     },
     []
   );
@@ -229,7 +275,7 @@ function ComposerDemo({
         text.trim() || `(empty message to @${selectedAgent?.name})`,
       ]);
       setText("");
-      setAttachedFiles([]);
+      setAttachments([]);
       setIsSubmitting(false);
       inputRef.current?.focus();
     }, 900);
@@ -363,6 +409,13 @@ function ComposerDemo({
     </DropdownMenu>
   );
 
+  const filteredKnowledgeNodes = MOCK_KNOWLEDGE_NODES.filter((n) =>
+    n.title.toLowerCase().includes(knowledgeSearch.toLowerCase())
+  );
+  const attachedIds = new Set(attachments.map((a) => a.id));
+
+  // Mirrors InputBarAttachmentsPicker: searchbar + "Upload File" button in the
+  // header, knowledge search results as checkbox items, empty state otherwise.
   const attachmentsPicker = (
     <>
       <input
@@ -372,13 +425,69 @@ function ComposerDemo({
         style={{ display: "none" }}
         onChange={handleFileChange}
       />
-      <Button
-        variant="ghost-secondary"
-        size="xs"
-        icon={Attachment01}
-        tooltip="Attach a file"
-        onClick={() => fileInputRef.current?.click()}
-      />
+      <DropdownMenu
+        open={isAttachmentsOpen}
+        onOpenChange={(open) => {
+          setIsAttachmentsOpen(open);
+          if (open) {
+            setKnowledgeSearch("");
+          }
+        }}
+      >
+        <DropdownMenuTrigger asChild>
+          <Button
+            variant="ghost-secondary"
+            size="xs"
+            icon={Attachment01}
+            tooltip="Attach knowledge"
+          />
+        </DropdownMenuTrigger>
+        <DropdownMenuContent
+          align="start"
+          collisionPadding={15}
+          className="h-80 w-80 xs:h-96 xs:w-96 [&_[data-radix-scroll-area-viewport]>div]:h-full"
+          dropdownHeaders={
+            <>
+              <DropdownMenuSearchbar
+                autoFocus
+                name="search-files"
+                placeholder="Search"
+                value={knowledgeSearch}
+                onChange={setKnowledgeSearch}
+                button={
+                  <Button
+                    icon={UploadCloud02}
+                    label="Upload File"
+                    className="ml-4"
+                    onClick={() => fileInputRef.current?.click()}
+                  />
+                }
+              />
+              <DropdownMenuSeparator />
+            </>
+          }
+        >
+          {knowledgeSearch ? (
+            filteredKnowledgeNodes.map((node) => (
+              <DropdownMenuCheckboxItem
+                key={node.id}
+                checked={attachedIds.has(node.id)}
+                icon={Folder}
+                label={node.title}
+                description={node.source}
+                onCheckedChange={() => addKnowledgeNode(node)}
+              />
+            ))
+          ) : (
+            <div className="flex h-full w-full items-center justify-center">
+              <div className="flex flex-col items-center justify-center gap-0 text-center text-base font-semibold text-primary-400">
+                <Icon visual={SearchMd} size="sm" />
+                Search knowledge
+              </div>
+            </div>
+          )}
+        </DropdownMenuContent>
+      </DropdownMenu>
     </>
   );
 
@@ -404,20 +513,52 @@ function ComposerDemo({
         isFocused={isFocused}
         onContentClick={() => inputRef.current?.focus()}
         attachments={
-          attachedFiles.length > 0
-            ? attachedFiles.map((file) => (
-                <AttachmentChip
-                  key={file.id}
-                  label={file.name}
-                  icon={{ visual: Attachment01 }}
-                  isBusy={file.isUploading}
-                  onRemove={() =>
-                    setAttachedFiles((prev) =>
-                      prev.filter((f) => f.id !== file.id)
-                    )
-                  }
-                />
-              ))
+          attachments.length > 0
+            ? attachments.map((attachment) => {
+                const removeAttachment = () =>
+                  setAttachments((prev) =>
+                    prev.filter((a) => a.id !== attachment.id)
+                  );
+                // Same rendering as the product's AttachmentCitation: image
+                // files get a preview card, other attachments a citation card.
+                return (
+                  <Tooltip
+                    key={attachment.id}
+                    label={attachment.title}
+                    trigger={
+                      attachment.previewUrl ? (
+                        <Citation
+                          compact
+                          isLoading={attachment.isUploading}
+                          containerClassName="h-full min-h-24"
+                        >
+                          <CitationImage
+                            imgSrc={attachment.previewUrl}
+                            title={attachment.title}
+                            isLoading={attachment.isUploading}
+                            onClose={removeAttachment}
+                          />
+                        </Citation>
+                      ) : (
+                        <Citation
+                          compact
+                          className="h-full"
+                          isLoading={attachment.isUploading}
+                          loadingLabel="Uploading"
+                          action={<CitationClose onClick={removeAttachment} />}
+                        >
+                          <CitationIcons>
+                            <Icon visual={attachment.icon} size="sm" />
+                          </CitationIcons>
+                          <CitationTitle className="truncate text-ellipsis">
+                            {attachment.title}
+                          </CitationTitle>
+                        </Citation>
+                      )
+                    }
+                  />
+                );
+              })
             : undefined
         }
         chips={
@@ -477,9 +618,7 @@ function ComposerDemo({
           onSubmit={handleSubmit}
           onFocus={() => setIsFocused(true)}
           onBlur={() => setIsFocused(false)}
-          placeholder={
-            selectedAgent ? `Message @${selectedAgent.name}` : "Get work done"
-          }
+          placeholder="Get work done"
           suggestions={[
             {
               trigger: "/",

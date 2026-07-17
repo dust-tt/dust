@@ -1,6 +1,8 @@
 import { cn } from "@sparkle/lib/utils";
 import React from "react";
 
+import { CitationGrid } from "./Citation";
+
 export const COMPOSER_VARIANTS = ["floating", "flat"] as const;
 export type ComposerVariantType = (typeof COMPOSER_VARIANTS)[number];
 
@@ -56,9 +58,9 @@ export function Composer({
       )}
 
       {attachments != null && (
-        <div className="flex flex-wrap items-center gap-1.5 border-b border-separator px-3 pb-3 pt-3">
+        <CitationGrid className="border-b border-separator px-3 pb-3 pt-3">
           {attachments}
-        </div>
+        </CitationGrid>
       )}
 
       <div
@@ -79,8 +81,9 @@ export function Composer({
         )}
       </div>
 
+      {/* px-2: with ghost buttons' own px-2 padding, labels/icons line up with the input text (pl-4). */}
       {(leftActions != null || rightActions != null) && (
-        <div className="flex items-center justify-between pb-3 pl-3 pr-2 pt-2">
+        <div className="flex items-center justify-between px-2 pb-3 pt-2">
           <div className="flex items-center gap-1">{leftActions}</div>
           <div className="flex items-center gap-1.5">{rightActions}</div>
         </div>
