@@ -148,11 +148,6 @@ export type RemoteMCPServerType = MCPServerType & {
   allowMultipleInstances: true;
 };
 
-export type MCPServerDefinitionType = Omit<
-  MCPServerType,
-  "tools" | "sId" | "availability" | "allowMultipleInstances"
->;
-
 export type InternalMCPServerDefinitionType = Omit<
   MCPServerType,
   "tools" | "sId" | "availability" | "allowMultipleInstances"

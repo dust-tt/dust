@@ -1256,7 +1256,7 @@ type InternalMCPServerEntryCommon = {
 
 type InternalMCPServerEntryWithMetadata<K extends InternalMCPServerNameType> =
   InternalMCPServerEntryCommon & {
-    metadata: ServerMetadata<K>;
+    metadata: ServerMetadata;
     serverInfo?: InternalMCPServerDefinitionType & { name: K };
   };
 
