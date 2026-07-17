@@ -3,13 +3,16 @@ import {
   getModelKey,
   getModelsCategorization,
 } from "@app/components/agent_builder/instructions/utils";
-import { getModelProviderLogo } from "@app/components/providers/types";
+import { getModelMakerLogo } from "@app/components/providers/types";
 import { RegionalFlag } from "@app/components/shared/RegionalFlag";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { useAuth, useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { useRegionContext } from "@app/lib/auth/RegionContext";
 import type { EnabledModelConfigurationType } from "@app/types/api/assistant/models";
-import { getProviderDisplayName } from "@app/types/assistant/models/providers";
+import {
+  getModelMaker,
+  getModelMakerDisplayName,
+} from "@app/types/assistant/models/providers";
 import {
   DropdownMenuLabel,
   DropdownMenuPortal,
@@ -47,7 +50,7 @@ function ModelRadioItem({
   return (
     <DropdownMenuRadioItem
       value={modelConfig.modelId}
-      icon={getModelProviderLogo(modelConfig.providerId, isDark)}
+      icon={getModelMakerLogo(getModelMaker(modelConfig), isDark)}
       description={
         !modelConfig.isSelectable && isSelected
           ? NOT_SELECTABLE_MODEL_DESCRIPTION
@@ -85,7 +88,7 @@ export function ModelSelectionSubmenu({ models }: ModelSelectionSubmenuProps) {
   const showRegionalFlag =
     hasFeature("use_vertex_for_supported_models") && !subscription.plan.isByok;
 
-  const { bestGeneralModels, providerGroups } = getModelsCategorization(models);
+  const { bestGeneralModels, makerGroups } = getModelsCategorization(models);
 
   const currentModelKey = modelField.value?.modelId;
 
@@ -165,14 +168,14 @@ export function ModelSelectionSubmenu({ models }: ModelSelectionSubmenuProps) {
           </DropdownMenuRadioGroup>
 
           <DropdownMenuLabel label="Other models" />
-          {Array.from(providerGroups.entries()).map(([providerId, models]) => {
-            const providerDisplayName = getProviderDisplayName(providerId);
+          {Array.from(makerGroups.entries()).map(([makerId, models]) => {
+            const makerDisplayName = getModelMakerDisplayName(makerId);
             const hasRecentModels = models.recent.length > 0;
             const hasOlderModels = models.older.length > 0;
 
             return (
-              <DropdownMenuSub key={providerId}>
-                <DropdownMenuSubTrigger label={`From ${providerDisplayName}`} />
+              <DropdownMenuSub key={makerId}>
+                <DropdownMenuSubTrigger label={`From ${makerDisplayName}`} />
                 <DropdownMenuPortal>
                   <DropdownMenuSubContent className="w-80">
                     {hasRecentModels && (

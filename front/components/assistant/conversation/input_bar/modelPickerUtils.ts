@@ -5,6 +5,7 @@ import { AUTO_MODEL_ID } from "@app/types/assistant/models/auto";
 import { GPT_5_6_TERRA_MODEL_ID } from "@app/types/assistant/models/openai";
 import type {
   ModelConfigurationType,
+  ModelMakerIdType,
   ModelProviderIdType,
   ModelSelectionType,
   ReasoningEffort,
@@ -75,8 +76,8 @@ export interface SuggestedModelWithReasoningEffort
   recommendation: string;
 }
 
-export interface ProviderGroup {
-  providerId: ModelProviderIdType;
+export interface MakerGroup {
+  makerId: ModelMakerIdType;
   models: { model: ModelConfigurationType; efforts: ReasoningEffort[] }[];
 }
 
@@ -118,7 +119,7 @@ export type ModelPickerListState =
       kind: "browse";
       agentDefault: ModelWithReasoningEffort | null;
       suggested: SuggestedModelWithReasoningEffort[];
-      moreByProvider: ProviderGroup[];
+      moreByMaker: MakerGroup[];
     };
 
 export function getSelectableReasoningEfforts(
