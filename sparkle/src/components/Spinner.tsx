@@ -306,28 +306,8 @@ const Spinner: React.FC<SpinnerProps> = ({
     if (variant === "dark") {
       return <ShapesSpinnerSVG size={size} color={SCHEME.dark.arcColor} />;
     }
-    const lightColor =
-      variant === "mono"
-        ? SCHEME.monoOnLight.arcColor
-        : SCHEME.monoOnDark.arcColor;
-    const darkColor =
-      variant === "mono"
-        ? SCHEME.monoOnDark.arcColor
-        : SCHEME.monoOnLight.arcColor;
-    return (
-      <>
-        <ShapesSpinnerSVG
-          size={size}
-          color={lightColor}
-          className="s-block dark:s-hidden"
-        />
-        <ShapesSpinnerSVG
-          size={size}
-          color={darkColor}
-          className="s-hidden dark:s-block"
-        />
-      </>
-    );
+    // mono/revert: arcColor is identical in both themes (no track), single render.
+    return <ShapesSpinnerSVG size={size} color={SCHEME.monoOnLight.arcColor} />;
   }
 
   // type === "worm" (default)
@@ -383,14 +363,14 @@ const Spinner: React.FC<SpinnerProps> = ({
         trackColor={lightScheme.trackColor}
         arcColor={lightScheme.arcColor}
         trackOpacity={lightScheme.trackOpacity}
-        className="s-block dark:s-hidden"
+        className="block dark:hidden"
       />
       <WormSpinnerSVG
         size={size}
         trackColor={darkScheme.trackColor}
         arcColor={darkScheme.arcColor}
         trackOpacity={darkScheme.trackOpacity}
-        className="s-hidden dark:s-block"
+        className="hidden dark:block"
       />
     </>
   );
