@@ -2,7 +2,7 @@ import type { Authenticator } from "@app/lib/auth";
 import type { SandboxFunctionInvocationResource } from "@app/lib/resources/sandbox_function_invocation_resource";
 import type { SandboxFunctionMCPActionResource } from "@app/lib/resources/sandbox_function_mcp_action_resource";
 import type { SandboxFunctionResource } from "@app/lib/resources/sandbox_function_resource";
-import { getTemporalClientForAgentNamespace } from "@app/lib/temporal";
+import { getTemporalClientForFrontNamespace } from "@app/lib/temporal";
 import { QUEUE_NAME } from "@app/temporal/sandbox_functions/config";
 import {
   makeSandboxFunctionInvocationWorkflowId,
@@ -30,7 +30,7 @@ export async function launchSandboxFunctionToolWorkflow(
   });
 
   try {
-    const client = await getTemporalClientForAgentNamespace();
+    const client = await getTemporalClientForFrontNamespace();
     await client.workflow.start(runSandboxFunctionToolWorkflow, {
       args: [{ authType, actionModelId: action.id }],
       taskQueue: QUEUE_NAME,
@@ -71,7 +71,7 @@ export async function launchSandboxFunctionInvocationWorkflow(
   });
 
   try {
-    const client = await getTemporalClientForAgentNamespace();
+    const client = await getTemporalClientForFrontNamespace();
     await client.workflow.start(runSandboxFunctionInvocationWorkflow, {
       args: [
         {

@@ -1,5 +1,5 @@
 import {
-  getTemporalAgentWorkerConnection,
+  getTemporalWorkerConnection,
   TEMPORAL_MAXED_CACHED_WORKFLOWS,
 } from "@app/lib/temporal";
 import { ActivityInboundLogInterceptor } from "@app/lib/temporal_monitoring";
@@ -16,7 +16,7 @@ import TsconfigPathsPlugin from "tsconfig-paths-webpack-plugin";
 const SHUTDOWN_GRACE_TIME_MS = 70 * 1_000;
 
 export async function runSandboxFunctionsWorker() {
-  const { connection, namespace } = await getTemporalAgentWorkerConnection();
+  const { connection, namespace } = await getTemporalWorkerConnection();
 
   const worker = await Worker.create({
     ...getWorkflowConfig({
