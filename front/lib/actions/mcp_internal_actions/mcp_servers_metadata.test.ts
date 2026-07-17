@@ -33,7 +33,6 @@ import {
 } from "@app/lib/actions/mcp_internal_actions/constants";
 import { InMemoryWithAuthTransport } from "@app/lib/actions/mcp_internal_actions/in_memory_with_auth_transport";
 import { getInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/servers";
-import type { InternalMCPToolType } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { extractMetadataFromTools } from "@app/lib/actions/mcp_metadata";
 import type { MCPToolType, ToolCostCategory } from "@app/lib/api/mcp";
 import type { Authenticator } from "@app/lib/auth";
@@ -270,8 +269,7 @@ describe("MCP Servers Metadata Snapshot", () => {
     const allBilling: Record<string, Record<string, ToolBillingSnapshot>> = {};
 
     for (const serverName of [...AVAILABLE_INTERNAL_MCP_SERVER_NAMES].sort()) {
-      const tools = getInternalMCPServerMetadata(serverName)
-        .tools as InternalMCPToolType[];
+      const tools = getInternalMCPServerMetadata(serverName).tools;
 
       const toolSnapshots: Record<string, ToolBillingSnapshot> = {};
       for (const tool of [...tools].sort((a, b) =>
