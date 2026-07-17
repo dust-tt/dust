@@ -1,5 +1,7 @@
-import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import { createToolsRecord } from "@app/lib/actions/mcp_internal_actions/tool_definition";
+import type {
+  InternalMCPToolType,
+  ServerMetadata,
+} from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import {
   MAX_PENDING_INSTRUCTIONS_SUGGESTIONS,
   MAX_PENDING_KNOWLEDGE_SUGGESTIONS,
@@ -18,9 +20,7 @@ import {
   AGENT_SUGGESTION_STATES,
   INSTRUCTIONS_ROOT_TARGET_BLOCK_ID,
 } from "@app/types/suggestions/agent_suggestion";
-import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { z } from "zod";
-import { zodToJsonSchema } from "zod-to-json-schema";
 
 export const AGENT_SIDEKICK_CONTEXT_TOOL_NAME =
   "agent_sidekick_context" as const;
@@ -104,8 +104,9 @@ const ModelSuggestionSchema = z.object({
     .describe("Optional reasoning effort level"),
 });
 
-export const AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA = createToolsRecord({
-  get_available_models: {
+export const AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA = [
+  {
+    name: "get_available_models",
     description:
       "Get the list of available models. Can optionally filter by provider.",
     schema: {
@@ -125,7 +126,8 @@ export const AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "basic",
     freeUsage: true,
   },
-  get_available_skills: {
+  {
+    name: "get_available_skills",
     description:
       "Get the list of available skills that can be added to agents. Returns skills accessible to the current user across all spaces they have access to.",
     schema: {},
@@ -138,7 +140,8 @@ export const AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "basic",
     freeUsage: true,
   },
-  get_available_tools: {
+  {
+    name: "get_available_tools",
     description:
       "Get the list of available tools (MCP servers) that can be added to agents. Returns tools accessible to the current user.",
     schema: {},
@@ -151,7 +154,8 @@ export const AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "basic",
     freeUsage: true,
   },
-  [DESCRIBE_MCP_TOOL_NAME]: {
+  {
+    name: DESCRIBE_MCP_TOOL_NAME,
     description:
       "Get detailed information about a specific MCP server: its description, and each tool's name, description, and input parameters.",
     schema: {
@@ -166,7 +170,8 @@ export const AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "basic",
     freeUsage: true,
   },
-  [DESCRIBE_SKILL_TOOL_NAME]: {
+  {
+    name: DESCRIBE_SKILL_TOOL_NAME,
     description:
       "Get detailed information about a skill: its name, description, instructions, and configured tools.",
     schema: {
@@ -181,7 +186,8 @@ export const AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "basic",
     freeUsage: true,
   },
-  get_available_agents: {
+  {
+    name: "get_available_agents",
     description:
       "Get the list of available agents that can be used as sub-agents. Returns active agents accessible to the current user, excluding global agents.",
     schema: {
@@ -206,7 +212,8 @@ export const AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "basic",
     freeUsage: true,
   },
-  inspect_available_agent: {
+  {
+    name: "inspect_available_agent",
     description:
       "Get detailed information about a specific agent by its ID. Returns the agent's name, description, prompt/instructions, list of tool IDs, and list of skill IDs.",
     schema: {
@@ -221,7 +228,8 @@ export const AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "basic",
     freeUsage: true,
   },
-  get_agent_feedback: {
+  {
+    name: "get_agent_feedback",
     description: "Get user feedback for the agent.",
     schema: {
       limit: z
@@ -253,7 +261,8 @@ export const AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "basic",
     freeUsage: true,
   },
-  get_agent_insights: {
+  {
+    name: "get_agent_insights",
     description:
       "Get insight and analytics data for the agent, including the number of active users, " +
       "the conversation and message counts, and the feedback statistics.",
@@ -274,7 +283,8 @@ export const AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA = createToolsRecord({
     freeUsage: true,
   },
   // Suggestion tools
-  suggest_prompt_edits: {
+  {
+    name: "suggest_prompt_edits",
     description:
       "Create suggestions to modify the agent's instructions/prompt using block-based targeting. " +
       "The instructions HTML contains blocks with data-block-id attributes (e.g., 'a3f1b20e'). " +
@@ -299,7 +309,8 @@ export const AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "basic",
     freeUsage: true,
   },
-  suggest_tools: {
+  {
+    name: "suggest_tools",
     description:
       "Suggest adding or removing tools from the agent's configuration. " +
       "This tool does not support sub_agent suggestions - use `suggest_sub_agent` instead for that purpose. " +
@@ -329,7 +340,8 @@ export const AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "basic",
     freeUsage: true,
   },
-  suggest_sub_agent: {
+  {
+    name: "suggest_sub_agent",
     description:
       "Suggest adding or removing a sub-agent from the agent's configuration. A sub-agent allows the main agent to delegate tasks to a child agent. " +
       "If a pending suggestion for the same sub-agent already exists, it will be automatically marked as outdated. " +
@@ -358,7 +370,8 @@ export const AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "basic",
     freeUsage: true,
   },
-  suggest_skills: {
+  {
+    name: "suggest_skills",
     description:
       "Suggest adding or removing skills from the agent's configuration. " +
       "If a pending suggestion for the same skill already exists, it will be automatically marked as outdated. " +
@@ -387,7 +400,8 @@ export const AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "basic",
     freeUsage: true,
   },
-  suggest_model: {
+  {
+    name: "suggest_model",
     description:
       "Suggest changing the agent's LLM model configuration. IMPORTANT: Include the tool output verbatim in your response - it renders as interactive card.",
     schema: {
@@ -408,7 +422,8 @@ export const AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "basic",
     freeUsage: true,
   },
-  search_knowledge: {
+  {
+    name: "search_knowledge",
     description:
       "Browse or search workspace knowledge sources. " +
       "Without a query: lists all available data source views. " +
@@ -446,7 +461,8 @@ export const AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "basic",
     freeUsage: true,
   },
-  suggest_knowledge: {
+  {
+    name: "suggest_knowledge",
     description:
       "Suggest adding or removing knowledge. Get sources from \`search_knowledge\` (call without a query to list all); each source has a knowledgeMethod field — use that as the method here. " +
       "method 'search': semantic search over documents, folders, websites. method 'query_tables': SQL over Snowflake/BigQuery warehouses. " +
@@ -471,7 +487,8 @@ export const AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "basic",
     freeUsage: true,
   },
-  list_suggestions: {
+  {
+    name: "list_suggestions",
     description:
       "List existing suggestions for the agent's configuration changes.",
     schema: {
@@ -506,7 +523,8 @@ export const AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "basic",
     freeUsage: true,
   },
-  update_suggestions_state: {
+  {
+    name: "update_suggestions_state",
     description:
       "Update the state of one or more suggestions. Use this to reject or mark suggestions as outdated.",
     schema: {
@@ -534,7 +552,8 @@ export const AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "basic",
     freeUsage: true,
   },
-  inspect_conversation: {
+  {
+    name: "inspect_conversation",
     description:
       "Inspect a conversation to get its shape and summary. Returns the conversation title, " +
       "a timeline of messages with user messages (content and mentions) and agent messages " +
@@ -561,7 +580,8 @@ export const AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "basic",
     freeUsage: true,
   },
-  inspect_message: {
+  {
+    name: "inspect_message",
     description:
       "Inspect a specific message in a conversation. Returns detailed information about " +
       "a user message (content, mentions, context, content fragments) or an agent message " +
@@ -579,7 +599,7 @@ export const AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "basic",
     freeUsage: true,
   },
-});
+] as const satisfies readonly InternalMCPToolType[];
 
 export const AGENT_SIDEKICK_CONTEXT_SERVER = {
   serverInfo: {
@@ -591,13 +611,5 @@ export const AGENT_SIDEKICK_CONTEXT_SERVER = {
     icon: "ActionRobotIcon",
     documentationUrl: null,
   },
-  tools: Object.values(AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA).map((t) => ({
-    name: t.name,
-    description: t.description,
-    inputSchema: zodToJsonSchema(z.object(t.schema)) as JSONSchema,
-    displayLabels: t.displayLabels,
-    toolCostCategory: t.toolCostCategory,
-    freeUsage: t.freeUsage,
-    stake: t.stake,
-  })),
+  tools: AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA,
 } as const satisfies ServerMetadata;

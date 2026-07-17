@@ -1,12 +1,12 @@
-import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import { createToolsRecord } from "@app/lib/actions/mcp_internal_actions/tool_definition";
+import type {
+  InternalMCPToolType,
+  ServerMetadata,
+} from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { UserQuestionSchema } from "@app/lib/actions/types";
-import type { JSONSchema7 as JSONSchema } from "json-schema";
-import { z } from "zod";
-import { zodToJsonSchema } from "zod-to-json-schema";
 
-export const ASK_USER_QUESTION_TOOLS_METADATA = createToolsRecord({
-  ask_user_question: {
+export const ASK_USER_QUESTION_TOOLS_METADATA = [
+  {
+    name: "ask_user_question",
     description:
       "Ask the user a question during execution.\n\n" +
       "This tool can serve multiple purposes:\n" +
@@ -42,7 +42,7 @@ export const ASK_USER_QUESTION_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "basic",
     freeUsage: true,
   },
-});
+] as const satisfies readonly InternalMCPToolType[];
 
 export const ASK_USER_QUESTION_SERVER = {
   serverInfo: {
@@ -53,13 +53,5 @@ export const ASK_USER_QUESTION_SERVER = {
     authorization: null,
     documentationUrl: null,
   },
-  tools: Object.values(ASK_USER_QUESTION_TOOLS_METADATA).map((t) => ({
-    name: t.name,
-    description: t.description,
-    inputSchema: zodToJsonSchema(z.object(t.schema)) as JSONSchema,
-    displayLabels: t.displayLabels,
-    toolCostCategory: t.toolCostCategory,
-    freeUsage: t.freeUsage,
-    stake: t.stake,
-  })),
+  tools: ASK_USER_QUESTION_TOOLS_METADATA,
 } as const satisfies ServerMetadata;

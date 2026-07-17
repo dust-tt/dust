@@ -1,13 +1,14 @@
-import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import { createToolsRecord } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import type { JSONSchema7 as JSONSchema } from "json-schema";
+import type {
+  InternalMCPToolType,
+  ServerMetadata,
+} from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { z } from "zod";
-import { zodToJsonSchema } from "zod-to-json-schema";
 
 export const GMAIL_TOOL_NAME = "gmail" as const;
 
-export const GMAIL_TOOLS_METADATA = createToolsRecord({
-  get_drafts: {
+export const GMAIL_TOOLS_METADATA = [
+  {
+    name: "get_drafts",
     description:
       "Get and list saved, unsent email drafts from Gmail. Returns existing drafts only.",
     schema: {
@@ -30,7 +31,8 @@ export const GMAIL_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "advanced",
     freeUsage: false,
   },
-  create_draft: {
+  {
+    name: "create_draft",
     description: `Create a new email draft in Gmail, or a reply draft to an existing message.
 - The draft will be saved in the user's Gmail account and can be reviewed and sent later.
 - The draft will include proper email headers and formatting.`,
@@ -94,7 +96,8 @@ export const GMAIL_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "advanced",
     freeUsage: false,
   },
-  delete_draft: {
+  {
+    name: "delete_draft",
     description: "Delete a draft email from Gmail.",
     schema: {
       draftId: z.string().describe("The ID of the draft to delete"),
@@ -109,7 +112,8 @@ export const GMAIL_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "advanced",
     freeUsage: false,
   },
-  get_messages: {
+  {
+    name: "get_messages",
     description:
       "Get messages from Gmail inbox. Supports Gmail search queries to filter messages.",
     schema: {
@@ -144,7 +148,8 @@ export const GMAIL_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "advanced",
     freeUsage: false,
   },
-  get_attachment: {
+  {
+    name: "get_attachment",
     description:
       "Download an attached file from a Gmail email message. Fetches the content of a specific attachment, which is then uploaded and made available in the conversation.",
     schema: {
@@ -183,7 +188,8 @@ export const GMAIL_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "advanced",
     freeUsage: false,
   },
-  get_labels: {
+  {
+    name: "get_labels",
     description:
       "Retrieve all Gmail labels, including system labels and user-created labels.",
     schema: {},
@@ -195,7 +201,8 @@ export const GMAIL_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "advanced",
     freeUsage: false,
   },
-  set_message_labels: {
+  {
+    name: "set_message_labels",
     description: `Modify the labels on a Gmail message to mark it read or unread, star it, archive it, or move it into or out of the inbox. Adds and removes label IDs on the message. System label IDs can be used directly (INBOX, SPAM, TRASH, UNREAD, STARRED, IMPORTANT, ...). User labels should be retrieved first via get_labels to get their IDs.`,
     schema: {
       messageId: z.string().describe("The ID of the message to modify."),
@@ -213,7 +220,8 @@ export const GMAIL_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "advanced",
     freeUsage: false,
   },
-  send_mail: {
+  {
+    name: "send_mail",
     description: `Send an email directly via Gmail.
 - The email will be sent immediately without creating a draft.
 - Use this to send emails when you have all the required information.
@@ -278,7 +286,8 @@ export const GMAIL_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "advanced",
     freeUsage: false,
   },
-  get_thread: {
+  {
+    name: "get_thread",
     description: "Get all messages in a Gmail thread/conversation.",
     schema: {
       threadId: z
@@ -295,7 +304,7 @@ export const GMAIL_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "advanced",
     freeUsage: false,
   },
-});
+] as const satisfies readonly InternalMCPToolType[];
 
 export const GMAIL_SERVER = {
   serverInfo: {
@@ -312,13 +321,5 @@ export const GMAIL_SERVER = {
     icon: "GmailLogo",
     documentationUrl: "https://docs.dust.tt/docs/gmail",
   },
-  tools: Object.values(GMAIL_TOOLS_METADATA).map((t) => ({
-    name: t.name,
-    description: t.description,
-    inputSchema: zodToJsonSchema(z.object(t.schema)) as JSONSchema,
-    displayLabels: t.displayLabels,
-    toolCostCategory: t.toolCostCategory,
-    freeUsage: t.freeUsage,
-    stake: t.stake,
-  })),
+  tools: GMAIL_TOOLS_METADATA,
 } as const satisfies ServerMetadata;

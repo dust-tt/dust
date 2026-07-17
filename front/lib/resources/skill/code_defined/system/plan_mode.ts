@@ -1,4 +1,3 @@
-import { ASK_USER_QUESTION_TOOLS_METADATA } from "@app/lib/api/actions/servers/ask_user_question/metadata";
 import {
   CLOSE_PLAN_TOOL_NAME,
   CREATE_PLAN_TOOL_NAME,
@@ -9,8 +8,7 @@ import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
 import type { SystemSkillDefinition } from "@app/lib/resources/skill/code_defined/shared";
 
-const ASK_USER_QUESTION_TOOL_NAME =
-  ASK_USER_QUESTION_TOOLS_METADATA.ask_user_question.name;
+const ASK_USER_QUESTION_TOOL_NAME = "ask_user_question";
 
 const PLAN_MODE_INSTRUCTIONS = `
 Plan Mode lets you maintain a live \`plan.md\` the user can follow as you work. Think of it as a shared progress view, not just an approval gate. Using it is delightful UX: the user sees what you're doing without having to ask.

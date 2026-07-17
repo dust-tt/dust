@@ -1,11 +1,11 @@
-import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import { createToolsRecord } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import type { JSONSchema7 as JSONSchema } from "json-schema";
-import { z } from "zod";
-import { zodToJsonSchema } from "zod-to-json-schema";
+import type {
+  InternalMCPToolType,
+  ServerMetadata,
+} from "@app/lib/actions/mcp_internal_actions/tool_definition";
 
-export const DATABRICKS_TOOLS_METADATA = createToolsRecord({
-  list_warehouses: {
+export const DATABRICKS_TOOLS_METADATA = [
+  {
+    name: "list_warehouses",
     description:
       "List all SQL warehouses available in the Databricks workspace.",
     schema: {},
@@ -17,7 +17,7 @@ export const DATABRICKS_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "advanced",
     freeUsage: false,
   },
-});
+] as const satisfies readonly InternalMCPToolType[];
 
 export const DATABRICKS_SERVER = {
   serverInfo: {
@@ -31,13 +31,5 @@ export const DATABRICKS_SERVER = {
     icon: "ActionTableIcon",
     documentationUrl: "https://docs.dust.tt/docs/databricks",
   },
-  tools: Object.values(DATABRICKS_TOOLS_METADATA).map((t) => ({
-    name: t.name,
-    description: t.description,
-    inputSchema: zodToJsonSchema(z.object(t.schema)) as JSONSchema,
-    displayLabels: t.displayLabels,
-    toolCostCategory: t.toolCostCategory,
-    freeUsage: t.freeUsage,
-    stake: t.stake,
-  })),
+  tools: DATABRICKS_TOOLS_METADATA,
 } as const satisfies ServerMetadata;

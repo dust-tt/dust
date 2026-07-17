@@ -1,8 +1,8 @@
-import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import { createToolsRecord } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import type { JSONSchema7 as JSONSchema } from "json-schema";
+import type {
+  InternalMCPToolType,
+  ServerMetadata,
+} from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { z } from "zod";
-import { zodToJsonSchema } from "zod-to-json-schema";
 
 export const FILE_GENERATION_TOOL_NAME = "file_generation" as const;
 
@@ -37,8 +37,9 @@ export const BINARY_FORMATS: OutputFormatType[] = [
   "webp",
 ];
 
-export const FILE_GENERATION_TOOLS_METADATA = createToolsRecord({
-  get_supported_source_formats_for_output_format: {
+export const FILE_GENERATION_TOOLS_METADATA = [
+  {
+    name: "get_supported_source_formats_for_output_format",
     description:
       "List which input source formats can be converted into a given target output format.",
     schema: {
@@ -52,7 +53,8 @@ export const FILE_GENERATION_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "advanced",
     freeUsage: false,
   },
-  convert_file_format: {
+  {
+    name: "convert_file_format",
     description:
       "Convert an existing conversation file into another format, for example turn a document into a PDF.",
     schema: {
@@ -83,7 +85,8 @@ export const FILE_GENERATION_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "advanced",
     freeUsage: false,
   },
-  generate_file: {
+  {
+    name: "generate_file",
     description:
       "Generate a new file by writing provided text or content out as a document.",
     schema: {
@@ -114,7 +117,7 @@ export const FILE_GENERATION_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "advanced",
     freeUsage: false,
   },
-});
+] as const satisfies readonly InternalMCPToolType[];
 
 export const FILE_GENERATION_SERVER = {
   serverInfo: {
@@ -125,13 +128,5 @@ export const FILE_GENERATION_SERVER = {
     icon: "ActionDocumentTextIcon" as const,
     documentationUrl: null,
   },
-  tools: Object.values(FILE_GENERATION_TOOLS_METADATA).map((t) => ({
-    name: t.name,
-    description: t.description,
-    inputSchema: zodToJsonSchema(z.object(t.schema)) as JSONSchema,
-    displayLabels: t.displayLabels,
-    toolCostCategory: t.toolCostCategory,
-    freeUsage: t.freeUsage,
-    stake: t.stake,
-  })),
+  tools: FILE_GENERATION_TOOLS_METADATA,
 } as const satisfies ServerMetadata;

@@ -1,8 +1,8 @@
-import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import { createToolsRecord } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import type { JSONSchema7 as JSONSchema } from "json-schema";
+import type {
+  InternalMCPToolType,
+  ServerMetadata,
+} from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { z } from "zod";
-import { zodToJsonSchema } from "zod-to-json-schema";
 
 const sharedEventFields = {
   transparency: z
@@ -41,8 +41,9 @@ const sharedEventFields = {
     ),
 };
 
-export const GOOGLE_CALENDAR_TOOLS_METADATA = createToolsRecord({
-  list_calendars: {
+export const GOOGLE_CALENDAR_TOOLS_METADATA = [
+  {
+    name: "list_calendars",
     description:
       "List all Google Calendars accessible by the user. Supports pagination via pageToken.",
     schema: {
@@ -60,7 +61,8 @@ export const GOOGLE_CALENDAR_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "advanced",
     freeUsage: false,
   },
-  list_events: {
+  {
+    name: "list_events",
     description:
       "List, search, or browse the events and agenda on a Google Calendar for a given day, week, or date range. If 'q' is provided, performs a free-text search of events.",
     schema: {
@@ -94,7 +96,8 @@ export const GOOGLE_CALENDAR_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "advanced",
     freeUsage: false,
   },
-  get_event: {
+  {
+    name: "get_event",
     description:
       "Get the full details of a single event from a Google Calendar by its event ID.",
     schema: {
@@ -112,7 +115,8 @@ export const GOOGLE_CALENDAR_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "advanced",
     freeUsage: false,
   },
-  create_event: {
+  {
+    name: "create_event",
     description:
       "Create a new event on a Google Calendar to schedule a meeting or appointment. By default: (1) add the calling user as both organizer and attendee, (2) call check_availability to verify attendee availability beforehand, (3) call get_user_timezones first to determine attendee timezones for accurate scheduling.",
     schema: {
@@ -161,7 +165,8 @@ export const GOOGLE_CALENDAR_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "advanced",
     freeUsage: false,
   },
-  update_event: {
+  {
+    name: "update_event",
     description:
       "Update or reschedule an existing event on a Google Calendar to a new time, location, or set of attendees.",
     schema: {
@@ -207,7 +212,8 @@ export const GOOGLE_CALENDAR_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "advanced",
     freeUsage: false,
   },
-  delete_event: {
+  {
+    name: "delete_event",
     description: "Delete, cancel, or remove an event from a Google Calendar.",
     schema: {
       calendarId: z
@@ -224,7 +230,8 @@ export const GOOGLE_CALENDAR_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "advanced",
     freeUsage: false,
   },
-  check_availability: {
+  {
+    name: "check_availability",
     description:
       "Find free time slots when participants are all available to meet, computing combined free/busy availability across multiple attendees within a date range using Google Calendar.",
     schema: {
@@ -293,7 +300,8 @@ export const GOOGLE_CALENDAR_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "advanced",
     freeUsage: false,
   },
-  get_user_timezones: {
+  {
+    name: "get_user_timezones",
     description:
       "Get the timezone of attendees by looking up timezone settings for multiple users from their Google Calendar configuration. Only works for calendars shared with you.",
     schema: {
@@ -310,7 +318,7 @@ export const GOOGLE_CALENDAR_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "advanced",
     freeUsage: false,
   },
-});
+] as const satisfies readonly InternalMCPToolType[];
 
 export const GOOGLE_CALENDAR_SERVER = {
   serverInfo: {
@@ -327,13 +335,5 @@ export const GOOGLE_CALENDAR_SERVER = {
     icon: "GcalLogo",
     documentationUrl: "https://docs.dust.tt/docs/google-calendar",
   },
-  tools: Object.values(GOOGLE_CALENDAR_TOOLS_METADATA).map((t) => ({
-    name: t.name,
-    description: t.description,
-    inputSchema: zodToJsonSchema(z.object(t.schema)) as JSONSchema,
-    displayLabels: t.displayLabels,
-    toolCostCategory: t.toolCostCategory,
-    freeUsage: t.freeUsage,
-    stake: t.stake,
-  })),
+  tools: GOOGLE_CALENDAR_TOOLS_METADATA,
 } as const satisfies ServerMetadata;

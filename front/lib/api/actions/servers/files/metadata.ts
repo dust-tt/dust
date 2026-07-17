@@ -1,5 +1,7 @@
-import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import { createToolsRecord } from "@app/lib/actions/mcp_internal_actions/tool_definition";
+import type {
+  InternalMCPToolType,
+  ServerMetadata,
+} from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { getPrefixedToolName } from "@app/lib/actions/tool_name_utils";
 import {
   CREATE_INTERACTIVE_CONTENT_FILE_TOOL_NAME,
@@ -9,9 +11,7 @@ import {
 } from "@app/lib/api/actions/servers/interactive_content/metadata";
 import { FILE_PREVIEW_DIRECTIVE_EXAMPLE } from "@app/lib/markdown/file_preview";
 import { frameContentType, frameSlideshowContentType } from "@app/types/files";
-import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { z } from "zod";
-import { zodToJsonSchema } from "zod-to-json-schema";
 
 export const FILES_SERVER_NAME = "files" as const;
 export const FILES_LIST_ACTION_NAME = "list" as const;
@@ -162,10 +162,9 @@ const MOVE_TOOL = {
   freeUsage: true,
 };
 
-// Stake levels in this record are typed via `as const` so the object can be spread into
-// `createToolsRecord`, which expects the narrowed `MCPToolStakeLevelType` literal.
-const FILES_TOOLS_COMMON_METADATA = {
-  [FILES_RESOLVE_ACTION_NAME]: {
+const FILES_TOOLS_COMMON_METADATA = [
+  {
+    name: FILES_RESOLVE_ACTION_NAME,
     description:
       "Resolve a file ID (e.g. `fil_abc123`) to its scoped file system path " +
       "(e.g. `conversation-<id>/report.pdf` or `pod-<id>/data.csv`). " +
@@ -190,7 +189,8 @@ const FILES_TOOLS_COMMON_METADATA = {
     toolCostCategory: "basic" as const,
     freeUsage: true,
   },
-  [FILES_CAT_ACTION_NAME]: {
+  {
+    name: FILES_CAT_ACTION_NAME,
     description:
       "Read the content of a file. " +
       "For text files, returns lines with their line numbers." +
@@ -230,7 +230,8 @@ const FILES_TOOLS_COMMON_METADATA = {
     toolCostCategory: "basic" as const,
     freeUsage: true,
   },
-  [FILES_GREP_ACTION_NAME]: {
+  {
+    name: FILES_GREP_ACTION_NAME,
     description:
       "Search a text file for lines matching a regular expression pattern. " +
       "Returns each matching line with its number, which you can pass to " +
@@ -256,7 +257,8 @@ const FILES_TOOLS_COMMON_METADATA = {
     toolCostCategory: "basic" as const,
     freeUsage: true,
   },
-  [FILES_CREATE_ACTION_NAME]: {
+  {
+    name: FILES_CREATE_ACTION_NAME,
     description:
       "Create or overwrite a file in a conversation or Pod file system. " +
       "Accepts UTF-8 text content only. Binary files cannot be created via this tool. " +
@@ -294,7 +296,8 @@ const FILES_TOOLS_COMMON_METADATA = {
     toolCostCategory: "basic" as const,
     freeUsage: true,
   },
-  [FILES_UPLOAD_FROM_URL_ACTION_NAME]: {
+  {
+    name: FILES_UPLOAD_FROM_URL_ACTION_NAME,
     description:
       "Download a file from a public HTTPS URL and store it in a conversation or Pod file system. " +
       "Use this for binary files (PDF, images, spreadsheets, etc.) that cannot be created with " +
@@ -330,7 +333,8 @@ const FILES_TOOLS_COMMON_METADATA = {
     toolCostCategory: "basic" as const,
     freeUsage: true,
   },
-  [FILES_DELETE_ACTION_NAME]: {
+  {
+    name: FILES_DELETE_ACTION_NAME,
     description:
       "Delete a file from a conversation or Pod file system. " +
       "Returns an error if the file does not exist. Deletion is permanent.",
@@ -349,7 +353,7 @@ const FILES_TOOLS_COMMON_METADATA = {
     toolCostCategory: "basic" as const,
     freeUsage: true,
   },
-};
+] as const satisfies readonly InternalMCPToolType[];
 
 const EDIT_TOOL = {
   description:
@@ -423,14 +427,14 @@ const EXTRACT_TEXT_TOOL = {
   freeUsage: true,
 };
 
-export const FILES_TOOLS_METADATA = createToolsRecord({
-  [FILES_LIST_ACTION_NAME]: LIST_TOOL,
+export const FILES_TOOLS_METADATA = [
+  { name: FILES_LIST_ACTION_NAME, ...LIST_TOOL },
   ...FILES_TOOLS_COMMON_METADATA,
-  [FILES_EDIT_ACTION_NAME]: EDIT_TOOL,
-  [FILES_EXTRACT_TEXT_ACTION_NAME]: EXTRACT_TEXT_TOOL,
-  [FILES_COPY_ACTION_NAME]: COPY_TOOL,
-  [FILES_MOVE_ACTION_NAME]: MOVE_TOOL,
-});
+  { name: FILES_EDIT_ACTION_NAME, ...EDIT_TOOL },
+  { name: FILES_EXTRACT_TEXT_ACTION_NAME, ...EXTRACT_TEXT_TOOL },
+  { name: FILES_COPY_ACTION_NAME, ...COPY_TOOL },
+  { name: FILES_MOVE_ACTION_NAME, ...MOVE_TOOL },
+] as const satisfies readonly InternalMCPToolType[];
 
 export const FILES_SERVER = {
   serverInfo: {
@@ -447,13 +451,5 @@ export const FILES_SERVER = {
     icon: "ActionDocumentTextIcon" as const,
     documentationUrl: null,
   },
-  tools: Object.values(FILES_TOOLS_METADATA).map((t) => ({
-    name: t.name,
-    description: t.description,
-    inputSchema: zodToJsonSchema(z.object(t.schema)) as JSONSchema,
-    displayLabels: t.displayLabels,
-    toolCostCategory: t.toolCostCategory,
-    freeUsage: t.freeUsage,
-    stake: t.stake,
-  })),
+  tools: FILES_TOOLS_METADATA,
 } as const satisfies ServerMetadata;

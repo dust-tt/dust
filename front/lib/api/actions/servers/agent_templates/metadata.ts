@@ -1,13 +1,14 @@
-import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import { createToolsRecord } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import type { JSONSchema7 as JSONSchema } from "json-schema";
+import type {
+  InternalMCPToolType,
+  ServerMetadata,
+} from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { z } from "zod";
-import { zodToJsonSchema } from "zod-to-json-schema";
 
 export const AGENT_TEMPLATES_SERVER_NAME = "agent_templates" as const;
 
-export const AGENT_TEMPLATES_TOOLS_METADATA = createToolsRecord({
-  search_agent_templates: {
+export const AGENT_TEMPLATES_TOOLS_METADATA = [
+  {
+    name: "search_agent_templates",
     description:
       "Search published agent templates. Use jobType for tag-based filtering or query for semantic search. Returns template details including instructions.",
     schema: {
@@ -32,7 +33,8 @@ export const AGENT_TEMPLATES_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "basic",
     freeUsage: true,
   },
-  get_agent_template: {
+  {
+    name: "get_agent_template",
     description:
       "Fetch the full details of an agent template by id, including its instructions and guidance.",
     schema: {
@@ -46,7 +48,7 @@ export const AGENT_TEMPLATES_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "basic",
     freeUsage: true,
   },
-});
+] as const satisfies readonly InternalMCPToolType[];
 
 export const AGENT_TEMPLATES_SERVER = {
   serverInfo: {
@@ -57,13 +59,5 @@ export const AGENT_TEMPLATES_SERVER = {
     icon: "ActionDocumentTextIcon",
     documentationUrl: null,
   },
-  tools: Object.values(AGENT_TEMPLATES_TOOLS_METADATA).map((t) => ({
-    name: t.name,
-    description: t.description,
-    inputSchema: zodToJsonSchema(z.object(t.schema)) as JSONSchema,
-    displayLabels: t.displayLabels,
-    toolCostCategory: t.toolCostCategory,
-    freeUsage: t.freeUsage,
-    stake: t.stake,
-  })),
+  tools: AGENT_TEMPLATES_TOOLS_METADATA,
 } as const satisfies ServerMetadata;

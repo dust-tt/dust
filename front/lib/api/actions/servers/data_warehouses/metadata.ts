@@ -1,10 +1,10 @@
 import { ConfigurableToolInputSchemas } from "@app/lib/actions/mcp_internal_actions/input_schemas";
-import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import { createToolsRecord } from "@app/lib/actions/mcp_internal_actions/tool_definition";
+import type {
+  InternalMCPToolType,
+  ServerMetadata,
+} from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
-import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { z } from "zod";
-import { zodToJsonSchema } from "zod-to-json-schema";
 
 // Constants
 const DEFAULT_LIMIT = 50;
@@ -15,8 +15,9 @@ const dataSourcesSchema =
   ConfigurableToolInputSchemas[INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_WAREHOUSE];
 
 // Tools metadata
-export const DATA_WAREHOUSES_TOOLS_METADATA = createToolsRecord({
-  list: {
+export const DATA_WAREHOUSES_TOOLS_METADATA = [
+  {
+    name: "list",
     description:
       "Browse and list the direct contents inside a warehouse, database, or schema: child databases, schemas, nested schemas, and tables. " +
       "Use this to explore or navigate the tables hierarchy, like 'ls' in Unix. If no nodeId is provided, shows " +
@@ -55,7 +56,8 @@ export const DATA_WAREHOUSES_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "advanced",
     freeUsage: false,
   },
-  find: {
+  {
+    name: "find",
     description:
       "Find, search, or locate tables, schemas, and databases by name starting from a specific node in the warehouse hierarchy. " +
       "Use this for table-name lookup when you know a full or partial table, schema, or database name. " +
@@ -102,7 +104,8 @@ export const DATA_WAREHOUSES_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "advanced",
     freeUsage: false,
   },
-  describe_tables: {
+  {
+    name: "describe_tables",
     description:
       "Describe known warehouse tables by retrieving their schema details: columns, types, DBML definitions, " +
       "SQL dialect-specific query guidelines, and example rows. All tables must be from the same " +
@@ -127,7 +130,8 @@ export const DATA_WAREHOUSES_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "advanced",
     freeUsage: false,
   },
-  query: {
+  {
+    name: "query",
     description:
       "Run, execute, or write SQL queries on selected data warehouse tables to calculate metrics, aggregate results, analyze revenue, or answer business questions. " +
       "You MUST call describe_tables at least once before attempting to query tables to understand their structure. The query must respect the SQL dialect " +
@@ -165,7 +169,7 @@ export const DATA_WAREHOUSES_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "advanced",
     freeUsage: false,
   },
-});
+] as const satisfies readonly InternalMCPToolType[];
 
 // Server metadata - used in constants.ts
 export const DATA_WAREHOUSES_SERVER = {
@@ -177,13 +181,5 @@ export const DATA_WAREHOUSES_SERVER = {
     icon: "ActionTableIcon",
     documentationUrl: null,
   },
-  tools: Object.values(DATA_WAREHOUSES_TOOLS_METADATA).map((t) => ({
-    name: t.name,
-    description: t.description,
-    inputSchema: zodToJsonSchema(z.object(t.schema)) as JSONSchema,
-    displayLabels: t.displayLabels,
-    toolCostCategory: t.toolCostCategory,
-    freeUsage: t.freeUsage,
-    stake: t.stake,
-  })),
+  tools: DATA_WAREHOUSES_TOOLS_METADATA,
 } as const satisfies ServerMetadata;

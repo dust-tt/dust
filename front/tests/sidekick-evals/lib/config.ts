@@ -10,6 +10,9 @@ import {
 import { Authenticator, getFeatureFlags } from "@app/lib/auth";
 import type { SidekickConfig } from "@app/tests/sidekick-evals/lib/types";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
+import type { JSONSchema7 as JSONSchema } from "json-schema";
+import { z } from "zod";
+import { zodToJsonSchema } from "zod-to-json-schema";
 
 export const RUN_SIDEKICK_EVAL = process.env.RUN_SIDEKICK_EVAL === "true";
 export const JUDGE_RUNS = parseInt(process.env.JUDGE_RUNS ?? "3", 10);
@@ -114,13 +117,11 @@ export async function getSidekickConfig(): Promise<{
 
   for (const server of SIDEKICK_MCP_SERVERS) {
     for (const tool of server.tools) {
-      if (tool.inputSchema) {
-        tools.push({
-          name: tool.name,
-          description: tool.description,
-          inputSchema: tool.inputSchema,
-        });
-      }
+      tools.push({
+        name: tool.name,
+        description: tool.description,
+        inputSchema: zodToJsonSchema(z.object(tool.schema)) as JSONSchema,
+      });
     }
   }
 

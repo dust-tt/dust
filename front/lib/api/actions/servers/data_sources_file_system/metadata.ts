@@ -1,5 +1,7 @@
-import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import { createToolsRecord } from "@app/lib/actions/mcp_internal_actions/tool_definition";
+import type {
+  InternalMCPToolType,
+  ServerMetadata,
+} from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import {
   DataSourceFilesystemCatInputSchema,
   DataSourceFilesystemFindInputSchema,
@@ -12,9 +14,6 @@ import {
   FIND_TAGS_BASE_DESCRIPTION,
   findTagsSchema,
 } from "@app/lib/api/actions/tools/find_tags/metadata";
-import type { JSONSchema7 as JSONSchema } from "json-schema";
-import { z } from "zod";
-import { zodToJsonSchema } from "zod-to-json-schema";
 
 export const FIND_TAGS_TOOL_NAME = "find_tags";
 export const FILESYSTEM_SEARCH_TOOL_NAME = "semantic_search";
@@ -23,8 +22,9 @@ export const FILESYSTEM_FIND_TOOL_NAME = "find";
 export const FILESYSTEM_LOCATE_IN_TREE_TOOL_NAME = "locate_in_tree";
 export const FILESYSTEM_LIST_TOOL_NAME = "list";
 
-export const DATA_SOURCES_FILE_SYSTEM_TOOLS_METADATA = createToolsRecord({
-  [FILESYSTEM_CAT_TOOL_NAME]: {
+export const DATA_SOURCES_FILE_SYSTEM_TOOLS_METADATA = [
+  {
+    name: FILESYSTEM_CAT_TOOL_NAME,
     description:
       "Read the full text content of a connected data source document or page by its nodeId (like 'cat' in Unix). " +
       `Use to open, view, or read a specific data source file after locating it via '${FILESYSTEM_FIND_TOOL_NAME}', '${FILESYSTEM_LIST_TOOL_NAME}', or '${FILESYSTEM_SEARCH_TOOL_NAME}'. ` +
@@ -41,7 +41,8 @@ export const DATA_SOURCES_FILE_SYSTEM_TOOLS_METADATA = createToolsRecord({
     freeUsage: false,
     enableAlerting: true,
   },
-  [FILESYSTEM_LIST_TOOL_NAME]: {
+  {
+    name: FILESYSTEM_LIST_TOOL_NAME,
     description:
       "Browse or explore the direct contents of a folder, section, or container node (like 'ls' in Unix). " +
       "Use to navigate the data source structure, see what documents or sub-folders are available, " +
@@ -57,7 +58,8 @@ export const DATA_SOURCES_FILE_SYSTEM_TOOLS_METADATA = createToolsRecord({
     freeUsage: false,
     enableAlerting: true,
   },
-  [FILESYSTEM_SEARCH_TOOL_NAME]: {
+  {
+    name: FILESYSTEM_SEARCH_TOOL_NAME,
     description:
       "Search semantically for information, documents, or content by topic, concept, or meaning within a connected data source. " +
       "Use to find relevant passages, answer questions, look up knowledge, or retrieve content from " +
@@ -74,7 +76,8 @@ export const DATA_SOURCES_FILE_SYSTEM_TOOLS_METADATA = createToolsRecord({
     freeUsage: false,
     enableAlerting: true,
   },
-  [FILESYSTEM_FIND_TOOL_NAME]: {
+  {
+    name: FILESYSTEM_FIND_TOOL_NAME,
     description:
       "Locate a document, page, or folder by searching its title (like 'find' in Unix). " +
       "Use to find a specific file or wiki page by name when you know (part of) its title — partial matches are supported. " +
@@ -90,7 +93,8 @@ export const DATA_SOURCES_FILE_SYSTEM_TOOLS_METADATA = createToolsRecord({
     freeUsage: false,
     enableAlerting: true,
   },
-  [FILESYSTEM_LOCATE_IN_TREE_TOOL_NAME]: {
+  {
+    name: FILESYSTEM_LOCATE_IN_TREE_TOOL_NAME,
     description:
       "Show the full breadcrumb path from a node back to the root of the data source (like 'pwd' in Unix). " +
       "Use to understand where a document lives in the folder hierarchy, navigate to parent sections, " +
@@ -106,46 +110,60 @@ export const DATA_SOURCES_FILE_SYSTEM_TOOLS_METADATA = createToolsRecord({
     freeUsage: false,
     enableAlerting: true,
   },
-});
+] as const satisfies readonly InternalMCPToolType[];
+
+const [
+  dataSourceFilesystemCatTool,
+  dataSourceFilesystemListTool,
+  dataSourceFilesystemSearchTool,
+  dataSourceFilesystemFindTool,
+  dataSourceFilesystemLocateInTreeTool,
+] = DATA_SOURCES_FILE_SYSTEM_TOOLS_METADATA;
 
 // Tool metadata with tags support for search and find tools
-export const DATA_SOURCES_FILE_SYSTEM_TOOLS_WITH_TAGS_METADATA =
-  createToolsRecord({
-    [FILESYSTEM_CAT_TOOL_NAME]:
-      DATA_SOURCES_FILE_SYSTEM_TOOLS_METADATA[FILESYSTEM_CAT_TOOL_NAME],
-    [FILESYSTEM_LIST_TOOL_NAME]:
-      DATA_SOURCES_FILE_SYSTEM_TOOLS_METADATA[FILESYSTEM_LIST_TOOL_NAME],
-    [FILESYSTEM_SEARCH_TOOL_NAME]: {
-      ...DATA_SOURCES_FILE_SYSTEM_TOOLS_METADATA[FILESYSTEM_SEARCH_TOOL_NAME],
-      schema: {
-        ...SearchWithNodesInputSchema.shape,
-        ...TagsInputSchema.shape,
-      },
+export const DATA_SOURCES_FILE_SYSTEM_TOOLS_WITH_TAGS_METADATA = [
+  {
+    ...dataSourceFilesystemCatTool,
+    name: FILESYSTEM_CAT_TOOL_NAME,
+  },
+  {
+    ...dataSourceFilesystemListTool,
+    name: FILESYSTEM_LIST_TOOL_NAME,
+  },
+  {
+    ...dataSourceFilesystemSearchTool,
+    name: FILESYSTEM_SEARCH_TOOL_NAME,
+    schema: {
+      ...SearchWithNodesInputSchema.shape,
+      ...TagsInputSchema.shape,
     },
-    [FILESYSTEM_FIND_TOOL_NAME]: {
-      ...DATA_SOURCES_FILE_SYSTEM_TOOLS_METADATA[FILESYSTEM_FIND_TOOL_NAME],
-      schema: {
-        ...DataSourceFilesystemFindInputSchema.shape,
-        ...TagsInputSchema.shape,
-      },
+  },
+  {
+    ...dataSourceFilesystemFindTool,
+    name: FILESYSTEM_FIND_TOOL_NAME,
+    schema: {
+      ...DataSourceFilesystemFindInputSchema.shape,
+      ...TagsInputSchema.shape,
     },
-    [FILESYSTEM_LOCATE_IN_TREE_TOOL_NAME]:
-      DATA_SOURCES_FILE_SYSTEM_TOOLS_METADATA[
-        FILESYSTEM_LOCATE_IN_TREE_TOOL_NAME
-      ],
-    [FIND_TAGS_TOOL_NAME]: {
-      description: FIND_TAGS_BASE_DESCRIPTION,
-      schema: findTagsSchema,
-      stake: "never_ask",
-      displayLabels: {
-        running: "Finding tags",
-        done: "Find tags",
-      },
-      toolCostCategory: "advanced",
-      freeUsage: false,
-      enableAlerting: true,
+  },
+  {
+    ...dataSourceFilesystemLocateInTreeTool,
+    name: FILESYSTEM_LOCATE_IN_TREE_TOOL_NAME,
+  },
+  {
+    name: FIND_TAGS_TOOL_NAME,
+    description: FIND_TAGS_BASE_DESCRIPTION,
+    schema: findTagsSchema,
+    stake: "never_ask",
+    displayLabels: {
+      running: "Finding tags",
+      done: "Find tags",
     },
-  });
+    toolCostCategory: "advanced",
+    freeUsage: false,
+    enableAlerting: true,
+  },
+] as const satisfies readonly InternalMCPToolType[];
 
 export const DATA_SOURCES_FILE_SYSTEM_SERVER = {
   serverInfo: {
@@ -156,13 +174,5 @@ export const DATA_SOURCES_FILE_SYSTEM_SERVER = {
     icon: "ActionDocumentTextIcon",
     documentationUrl: null,
   },
-  tools: Object.values(DATA_SOURCES_FILE_SYSTEM_TOOLS_METADATA).map((t) => ({
-    name: t.name,
-    description: t.description,
-    inputSchema: zodToJsonSchema(z.object(t.schema)) as JSONSchema,
-    displayLabels: t.displayLabels,
-    toolCostCategory: t.toolCostCategory,
-    freeUsage: t.freeUsage,
-    stake: t.stake,
-  })),
+  tools: DATA_SOURCES_FILE_SYSTEM_TOOLS_METADATA,
 } as const satisfies ServerMetadata;

@@ -1,13 +1,14 @@
-import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import { createToolsRecord } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import type { JSONSchema7 as JSONSchema } from "json-schema";
+import type {
+  InternalMCPToolType,
+  ServerMetadata,
+} from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { z } from "zod";
-import { zodToJsonSchema } from "zod-to-json-schema";
 
 export const CONFLUENCE_TOOL_NAME = "confluence" as const;
 
-export const CONFLUENCE_TOOLS_METADATA = createToolsRecord({
-  get_current_user: {
+export const CONFLUENCE_TOOLS_METADATA = [
+  {
+    name: "get_current_user",
     description:
       "Get the currently authenticated Confluence user: who you are, your own account ID, display name, and email.",
     schema: {},
@@ -19,7 +20,8 @@ export const CONFLUENCE_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "advanced",
     freeUsage: false,
   },
-  get_spaces: {
+  {
+    name: "get_spaces",
     description:
       "Get a list of Confluence spaces. Returns a list of spaces with their IDs, keys, names, types, and statuses.",
     schema: {},
@@ -31,7 +33,8 @@ export const CONFLUENCE_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "advanced",
     freeUsage: false,
   },
-  get_pages: {
+  {
+    name: "get_pages",
     description:
       "Search Confluence to find and locate pages across spaces by keyword, title, label, or space, using CQL (Confluence Query Language). Use this to find a page when you only know its title or topic and not its ID. Only returns page objects. " +
       "Text matching operators: '~' contains, '!~' not contains, '=' exact match. " +
@@ -60,7 +63,8 @@ export const CONFLUENCE_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "advanced",
     freeUsage: false,
   },
-  get_page: {
+  {
+    name: "get_page",
     description:
       "Retrieve and read a single Confluence page by its ID, returning its metadata and body content. Use this when you already know the page ID.",
     schema: {
@@ -81,7 +85,8 @@ export const CONFLUENCE_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "advanced",
     freeUsage: false,
   },
-  create_page: {
+  {
+    name: "create_page",
     description:
       "Create a new Confluence page in a space, optionally nested under a parent page.",
     schema: {
@@ -118,7 +123,8 @@ export const CONFLUENCE_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "advanced",
     freeUsage: false,
   },
-  update_page: {
+  {
+    name: "update_page",
     description:
       "Update an existing Confluence page. You can update the title, content, status, space, or parent. The version number must be incremented from the current version.",
     schema: {
@@ -169,7 +175,7 @@ export const CONFLUENCE_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "advanced",
     freeUsage: false,
   },
-});
+] as const satisfies readonly InternalMCPToolType[];
 
 export const CONFLUENCE_SERVER = {
   serverInfo: {
@@ -183,13 +189,5 @@ export const CONFLUENCE_SERVER = {
     icon: "ConfluenceLogo",
     documentationUrl: "https://docs.dust.tt/docs/confluence-tool",
   },
-  tools: Object.values(CONFLUENCE_TOOLS_METADATA).map((t) => ({
-    name: t.name,
-    description: t.description,
-    inputSchema: zodToJsonSchema(z.object(t.schema)) as JSONSchema,
-    displayLabels: t.displayLabels,
-    toolCostCategory: t.toolCostCategory,
-    freeUsage: t.freeUsage,
-    stake: t.stake,
-  })),
+  tools: CONFLUENCE_TOOLS_METADATA,
 } as const satisfies ServerMetadata;
