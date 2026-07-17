@@ -105,6 +105,7 @@ export function NotificationContent({
         </div>
         {onDismiss && (
           <button
+            type="button"
             onClick={onDismiss}
             className="mt-[2px] shrink-0 cursor-pointer text-muted-foreground transition-colors hover:text-foreground"
             aria-label="Dismiss notification"
