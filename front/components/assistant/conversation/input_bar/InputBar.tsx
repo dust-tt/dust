@@ -501,15 +501,17 @@ export const InputBar = React.memo(function InputBar({
                 isFloating &&
                   classNames(
                     "md:border-white/90",
-                    "md:bg-[#fbfbfb] md:shadow-[0px_-0.5px_1px_1px_rgba(0,0,0,0.02),0px_8px_10px_-6px_rgba(0,0,0,0.1),0px_20px_25px_-5px_rgba(0,0,0,0.1),0px_0px_1px_0px_rgba(0,0,0,0.07)]",
-                    // Crossfade the focus state instead of snapping (background-color + box-shadow only).
+                    "md:bg-[#fbfbfb]",
+                    // Same shadow strength at default and focus — Figma (11174:21613) softens it on
+                    // focus, but that reads as flat/washed-out on a light page background.
+                    "md:shadow-[0px_-0.5px_1px_1px_rgba(0,0,0,0.02),0px_8px_10px_-6px_rgba(0,0,0,0.1),0px_20px_25px_-5px_rgba(0,0,0,0.1),0px_0px_1px_0px_rgba(0,0,0,0.07)]",
+                    // Crossfade the focus state instead of snapping (background-color only).
                     "md:transition-[background-color,box-shadow] md:duration-200 md:ease-[cubic-bezier(0.23,1,0.32,1)]",
-                    // Focus state (Figma 11174:21613): white surface, softened drop shadows only —
+                    // Focus state (Figma 11174:21613): white surface only —
                     // border-white/90 is already the base color at every state, don't re-toggle it
                     // here (an unscoped focus:border rule would win over dark:border-transparent by
                     // source order and show a light border in dark mode on focus).
                     "md:has-[.tiptap:focus]:bg-white",
-                    "md:has-[.tiptap:focus]:shadow-[0px_-0.5px_1px_1px_rgba(0,0,0,0.02),0px_8px_10px_-6px_rgba(0,0,0,0.07),0px_20px_25px_-5px_rgba(0,0,0,0.07),0px_0px_1px_0px_rgba(0,0,0,0.07)]",
                     // Dark (Figma 12333:27502): Surface/4 background + Surfaces/Dark/4 effect set
                     // (desktop only — the flat variant relies on border-border/bg-background
                     // tokens, which already flip in dark mode).
