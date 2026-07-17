@@ -1,7 +1,6 @@
 import {
   type InputConfig,
   inputConfigSchema,
-  temperatureSchema,
 } from "@app/lib/model_constructors/types/input/configuration";
 import { GPT_5_NANO_MODEL_ID } from "@app/lib/model_constructors/types/model_ids";
 

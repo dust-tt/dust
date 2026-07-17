@@ -1,7 +1,6 @@
 import {
   type InputConfig,
   inputConfigSchema,
-  temperatureSchema,
 } from "@app/lib/model_constructors/types/input/configuration";
 import { GPT_5_MODEL_ID } from "@app/lib/model_constructors/types/model_ids";
 
@@ -12,12 +11,7 @@ const CONTEXT_SIZE = 400_000;
 const MAX_OUTPUT_TOKENS = 128_000;
 const DEFAULT_REASONING_EFFORT = "medium";
 
-const GPT_5_REASONING_EFFORTS = [
-  "minimal",
-  "low",
-  "medium",
-  "high",
-] as const;
+const GPT_5_REASONING_EFFORTS = ["minimal", "low", "medium", "high"] as const;
 
 const configSchema = inputConfigSchema.extend({
   reasoning: z

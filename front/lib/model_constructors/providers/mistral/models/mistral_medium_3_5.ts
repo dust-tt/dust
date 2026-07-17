@@ -1,8 +1,5 @@
 import { MISTRAL_SUPPORTED_REASONING_EFFORTS } from "@app/lib/model_constructors/providers/mistral/reasoning_efforts";
-import {
-  inputConfigSchema,
-  temperatureSchema,
-} from "@app/lib/model_constructors/types/input/configuration";
+import { inputConfigSchema } from "@app/lib/model_constructors/types/input/configuration";
 import { MISTRAL_MEDIUM_3_5_MODEL_ID } from "@app/lib/model_constructors/types/model_ids";
 
 import { z } from "zod";
