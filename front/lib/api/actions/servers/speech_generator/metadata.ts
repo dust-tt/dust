@@ -1,8 +1,8 @@
-import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import { createToolsRecord } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import type { JSONSchema7 as JSONSchema } from "json-schema";
+import type {
+  InternalMCPToolType,
+  ServerMetadata,
+} from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { z } from "zod";
-import { zodToJsonSchema } from "zod-to-json-schema";
 
 export const VOICE_GENDERS = ["female", "male"] as const;
 
@@ -108,8 +108,9 @@ export function isAllowedAudioUrl(url: string): boolean {
   }
 }
 
-export const SPEECH_GENERATOR_TOOLS_METADATA = createToolsRecord({
-  speech_to_text: {
+export const SPEECH_GENERATOR_TOOLS_METADATA = [
+  {
+    name: "speech_to_text",
     description:
       "Transcribe speech from an audio or video file into text. " +
       "Supported formats: MP3, WAV, OGG, FLAC, AAC, MP4, MOV, WEBM, MKV, and most " +
@@ -150,7 +151,8 @@ export const SPEECH_GENERATOR_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "advanced",
     freeUsage: false,
   },
-  text_to_speech: {
+  {
+    name: "text_to_speech",
     description: "Generate speech audio from a text prompt with desired voice.",
     schema: {
       text: z
@@ -194,7 +196,8 @@ export const SPEECH_GENERATOR_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "advanced",
     freeUsage: false,
   },
-  text_to_dialogue: {
+  {
+    name: "text_to_dialogue",
     description: "Generate dialogue audio from multiple lines with speakers.",
     schema: {
       dialogues: z
@@ -236,7 +239,7 @@ export const SPEECH_GENERATOR_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "advanced",
     freeUsage: false,
   },
-});
+] as const satisfies readonly InternalMCPToolType[];
 
 export const SPEECH_GENERATOR_SERVER = {
   serverInfo: {
@@ -247,13 +250,5 @@ export const SPEECH_GENERATOR_SERVER = {
     icon: "ActionSpeakIcon",
     documentationUrl: null,
   },
-  tools: Object.values(SPEECH_GENERATOR_TOOLS_METADATA).map((t) => ({
-    name: t.name,
-    description: t.description,
-    inputSchema: zodToJsonSchema(z.object(t.schema)) as JSONSchema,
-    displayLabels: t.displayLabels,
-    toolCostCategory: t.toolCostCategory,
-    freeUsage: t.freeUsage,
-    stake: t.stake,
-  })),
+  tools: SPEECH_GENERATOR_TOOLS_METADATA,
 } as const satisfies ServerMetadata;

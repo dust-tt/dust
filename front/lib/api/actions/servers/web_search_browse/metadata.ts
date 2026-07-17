@@ -1,20 +1,20 @@
-import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import { createToolsRecord } from "@app/lib/actions/mcp_internal_actions/tool_definition";
+import type {
+  InternalMCPToolType,
+  ServerMetadata,
+} from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import {
   MAX_BROWSE_URLS,
   WebbrowseInputSchema,
   WebsearchInputSchema,
 } from "@app/lib/actions/mcp_internal_actions/types";
-import type { JSONSchema7 as JSONSchema } from "json-schema";
-import { z } from "zod";
-import { zodToJsonSchema } from "zod-to-json-schema";
 
 export const WEB_SEARCH_BROWSE_SERVER_NAME = "web_search_&_browse" as const;
 export const WEB_SEARCH_BROWSE_ACTION_DESCRIPTION =
   "Agent can search (Google) and retrieve information from specific websites.";
 
-export const WEB_SEARCH_BROWSE_TOOLS_METADATA = createToolsRecord({
-  websearch: {
+export const WEB_SEARCH_BROWSE_TOOLS_METADATA = [
+  {
+    name: "websearch",
     description:
       "Search Google for web results, news, and current online information. " +
       "Look up any topic on the internet using a search query.",
@@ -29,7 +29,8 @@ export const WEB_SEARCH_BROWSE_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "basic",
     freeUsage: false,
   },
-  webbrowser: {
+  {
+    name: "webbrowser",
     description:
       `Fetch and read the content of web pages and webpages from given URLs. ` +
       `Open and browse websites to extract text, or take a viewport or ` +
@@ -45,7 +46,7 @@ export const WEB_SEARCH_BROWSE_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "basic",
     freeUsage: false,
   },
-});
+] as const satisfies readonly InternalMCPToolType[];
 
 export const WEB_SEARCH_BROWSE_SERVER = {
   serverInfo: {
@@ -56,13 +57,5 @@ export const WEB_SEARCH_BROWSE_SERVER = {
     icon: "ActionGlobeAltIcon" as const,
     documentationUrl: null,
   },
-  tools: Object.values(WEB_SEARCH_BROWSE_TOOLS_METADATA).map((t) => ({
-    name: t.name,
-    description: t.description,
-    inputSchema: zodToJsonSchema(z.object(t.schema)) as JSONSchema,
-    displayLabels: t.displayLabels,
-    toolCostCategory: t.toolCostCategory,
-    freeUsage: t.freeUsage,
-    stake: t.stake,
-  })),
+  tools: WEB_SEARCH_BROWSE_TOOLS_METADATA,
 } as const satisfies ServerMetadata;

@@ -1,16 +1,17 @@
-import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import { createToolsRecord } from "@app/lib/actions/mcp_internal_actions/tool_definition";
+import type {
+  InternalMCPToolType,
+  ServerMetadata,
+} from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { timeWindowSchemaShape } from "@app/lib/api/actions/servers/workspace_analytics/query_input";
 import { MIN_USERS_FOR_ANONYMITY } from "@app/lib/api/assistant/observability/anonymity";
 import { JOB_TYPES } from "@app/types/job_type";
-import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { z } from "zod";
-import { zodToJsonSchema } from "zod-to-json-schema";
 
 export const USER_ANALYTICS_SERVER_NAME = "user_analytics" as const;
 
-export const USER_ANALYTICS_TOOLS_METADATA = createToolsRecord({
-  get_personal_usage: {
+export const USER_ANALYTICS_TOOLS_METADATA = [
+  {
+    name: "get_personal_usage",
     description:
       "Get the authenticated user's personal usage over a time window " +
       "(defaults to the last 30 days): top agents, top skills, and top tools " +
@@ -39,7 +40,8 @@ export const USER_ANALYTICS_TOOLS_METADATA = createToolsRecord({
       done: "Fetched your usage",
     },
   },
-  get_workspace_activity: {
+  {
+    name: "get_workspace_activity",
     description:
       "Get anonymized workspace-wide activity over the last 30 days: " +
       "most popular agents by usage rank and trending skills. No individual " +
@@ -55,7 +57,7 @@ export const USER_ANALYTICS_TOOLS_METADATA = createToolsRecord({
       done: "Fetched workspace activity",
     },
   },
-});
+] as const satisfies readonly InternalMCPToolType[];
 
 export const USER_ANALYTICS_SERVER = {
   serverInfo: {
@@ -67,13 +69,5 @@ export const USER_ANALYTICS_SERVER = {
     icon: "ActionPieChartIcon",
     documentationUrl: null,
   },
-  tools: Object.values(USER_ANALYTICS_TOOLS_METADATA).map((t) => ({
-    name: t.name,
-    description: t.description,
-    inputSchema: zodToJsonSchema(z.object(t.schema)) as JSONSchema,
-    displayLabels: t.displayLabels,
-    toolCostCategory: t.toolCostCategory,
-    freeUsage: t.freeUsage,
-    stake: t.stake,
-  })),
+  tools: USER_ANALYTICS_TOOLS_METADATA,
 } as const satisfies ServerMetadata;

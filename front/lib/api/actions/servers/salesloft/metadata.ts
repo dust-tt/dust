@@ -1,11 +1,12 @@
-import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import { createToolsRecord } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import type { JSONSchema7 as JSONSchema } from "json-schema";
+import type {
+  InternalMCPToolType,
+  ServerMetadata,
+} from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { z } from "zod";
-import { zodToJsonSchema } from "zod-to-json-schema";
 
-export const SALESLOFT_TOOLS_METADATA = createToolsRecord({
-  get_actions: {
+export const SALESLOFT_TOOLS_METADATA = [
+  {
+    name: "get_actions",
     description:
       "Get actions owned by the current user with complete related information for full context. " +
       "By default, returns only currently due or overdue actions, but can be configured to return all actions. " +
@@ -31,7 +32,7 @@ export const SALESLOFT_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "advanced",
     freeUsage: false,
   },
-});
+] as const satisfies readonly InternalMCPToolType[];
 
 export const SALESLOFT_SERVER = {
   serverInfo: {
@@ -43,13 +44,5 @@ export const SALESLOFT_SERVER = {
     icon: "SalesloftLogo",
     documentationUrl: "https://docs.dust.tt/docs/salesloft-mcp",
   },
-  tools: Object.values(SALESLOFT_TOOLS_METADATA).map((t) => ({
-    name: t.name,
-    description: t.description,
-    inputSchema: zodToJsonSchema(z.object(t.schema)) as JSONSchema,
-    displayLabels: t.displayLabels,
-    toolCostCategory: t.toolCostCategory,
-    freeUsage: t.freeUsage,
-    stake: t.stake,
-  })),
+  tools: SALESLOFT_TOOLS_METADATA,
 } as const satisfies ServerMetadata;

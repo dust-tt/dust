@@ -1,8 +1,8 @@
-import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import { createToolsRecord } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import type { JSONSchema7 as JSONSchema } from "json-schema";
+import type {
+  InternalMCPToolType,
+  ServerMetadata,
+} from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { z } from "zod";
-import { zodToJsonSchema } from "zod-to-json-schema";
 
 export const SANDBOX_TOOL_NAME = "sandbox" as const;
 
@@ -31,8 +31,9 @@ const SANDBOX_MCP_TIMEOUT_BUFFER_MS = 30000;
 export const SANDBOX_MCP_REQUEST_TIMEOUT_MS =
   SANDBOX_MAX_COMMAND_TIMEOUT_MS + SANDBOX_MCP_TIMEOUT_BUFFER_MS;
 
-export const SANDBOX_TOOLS_METADATA = createToolsRecord({
-  bash: {
+export const SANDBOX_TOOLS_METADATA = [
+  {
+    name: "bash",
     description:
       "Execute a shell command in an isolated sandbox environment. " +
       "The sandbox is a Linux container with common tools pre-installed. " +
@@ -72,7 +73,8 @@ export const SANDBOX_TOOLS_METADATA = createToolsRecord({
     freeUsage: true,
     enableAlerting: true,
   },
-  describe_toolset: {
+  {
+    name: "describe_toolset",
     description:
       "Describe the sandbox environment and list available CLI binaries and language libraries.",
     schema: {
@@ -89,7 +91,8 @@ export const SANDBOX_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "basic",
     freeUsage: true,
   },
-  add_egress_domain: {
+  {
+    name: "add_egress_domain",
     description:
       "Request user approval to add a single domain to the current " +
       "sandbox's network allowlist. Each call adds one exact domain " +
@@ -130,7 +133,7 @@ export const SANDBOX_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "basic",
     freeUsage: true,
   },
-});
+] as const satisfies readonly InternalMCPToolType[];
 
 export const SANDBOX_SERVER = {
   serverInfo: {
@@ -142,15 +145,5 @@ export const SANDBOX_SERVER = {
     icon: "CommandLineIcon",
     documentationUrl: null,
   },
-  // Note: The `as JSONSchema` cast is standard pattern across all metadata files.
-  // zodToJsonSchema returns a compatible type but TypeScript can't verify it statically.
-  tools: Object.values(SANDBOX_TOOLS_METADATA).map((t) => ({
-    name: t.name,
-    description: t.description,
-    inputSchema: zodToJsonSchema(z.object(t.schema)) as JSONSchema,
-    displayLabels: t.displayLabels,
-    toolCostCategory: t.toolCostCategory,
-    freeUsage: t.freeUsage,
-    stake: t.stake,
-  })),
+  tools: SANDBOX_TOOLS_METADATA,
 } as const satisfies ServerMetadata;

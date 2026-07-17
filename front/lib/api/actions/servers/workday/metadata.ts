@@ -1,11 +1,12 @@
-import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import { createToolsRecord } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import type { JSONSchema7 as JSONSchema } from "json-schema";
+import type {
+  InternalMCPToolType,
+  ServerMetadata,
+} from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { z } from "zod";
-import { zodToJsonSchema } from "zod-to-json-schema";
 
-export const WORKDAY_TOOLS_METADATA = createToolsRecord({
-  get_workers: {
+export const WORKDAY_TOOLS_METADATA = [
+  {
+    name: "get_workers",
     description:
       "List workers from Workday. Returns each worker's name and ID along with the total count.",
     schema: {
@@ -25,7 +26,7 @@ export const WORKDAY_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "advanced",
     freeUsage: false,
   },
-});
+] as const satisfies readonly InternalMCPToolType[];
 
 export const WORKDAY_SERVER = {
   serverInfo: {
@@ -40,13 +41,5 @@ export const WORKDAY_SERVER = {
     icon: "ActionTableIcon",
     documentationUrl: "https://docs.dust.tt/docs/workday",
   },
-  tools: Object.values(WORKDAY_TOOLS_METADATA).map((t) => ({
-    name: t.name,
-    description: t.description,
-    inputSchema: zodToJsonSchema(z.object(t.schema)) as JSONSchema,
-    displayLabels: t.displayLabels,
-    toolCostCategory: t.toolCostCategory,
-    freeUsage: t.freeUsage,
-    stake: t.stake,
-  })),
+  tools: WORKDAY_TOOLS_METADATA,
 } as const satisfies ServerMetadata;

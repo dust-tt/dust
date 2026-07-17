@@ -2,12 +2,12 @@ import {
   ConfigurableToolInputSchemas,
   TABLE_CONFIGURATION_URI_PATTERN,
 } from "@app/lib/actions/mcp_internal_actions/input_schemas";
-import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import { createToolsRecord } from "@app/lib/actions/mcp_internal_actions/tool_definition";
+import type {
+  InternalMCPToolType,
+  ServerMetadata,
+} from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
-import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { z } from "zod";
-import { zodToJsonSchema } from "zod-to-json-schema";
 
 export const TABLE_QUERY_V2_SERVER_NAME = "query_tables_v2" as const; // Do not change the name until we fixed the extension
 export const LIST_TABLES_TOOL_NAME = "list_tables";
@@ -29,8 +29,9 @@ const tableUrisSchema = z
     "Table URIs to retrieve schema for. Use URIs returned by list_tables."
   );
 
-export const QUERY_TABLES_V2_TOOLS_METADATA = createToolsRecord({
-  [LIST_TABLES_TOOL_NAME]: {
+export const QUERY_TABLES_V2_TOOLS_METADATA = [
+  {
+    name: LIST_TABLES_TOOL_NAME,
     description:
       "List and discover the agent-configured structured data tables, datasets, and table URIs available to this agent. " +
       "Returns lightweight table metadata and URIs. Call this first to find available agent tables, then pass selected URIs to get_database_schema.",
@@ -47,7 +48,8 @@ export const QUERY_TABLES_V2_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "advanced",
     freeUsage: false,
   },
-  [GET_DATABASE_SCHEMA_TOOL_NAME]: {
+  {
+    name: GET_DATABASE_SCHEMA_TOOL_NAME,
     description:
       "Inspect the schema and structure for selected agent-configured tables before SQL. Use this to answer which columns, fields, column names, sample rows, and relationships exist in tables selected from list_tables. " +
       "You MUST call list_tables first, then call this tool with the URIs of the tables you need before running SQL.",
@@ -63,7 +65,8 @@ export const QUERY_TABLES_V2_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "advanced",
     freeUsage: false,
   },
-  [EXECUTE_DATABASE_QUERY_TOOL_NAME]: {
+  {
+    name: EXECUTE_DATABASE_QUERY_TOOL_NAME,
     description:
       "Run and execute SQL against selected agent-configured structured data tables to analyze, aggregate, filter, join, or export result rows. " +
       "Before using this tool, the agent should have already called get_database_schema for every involved table URI and should use that inspected table structure to write the SQL. " +
@@ -95,7 +98,7 @@ export const QUERY_TABLES_V2_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "advanced",
     freeUsage: false,
   },
-});
+] as const satisfies readonly InternalMCPToolType[];
 
 export const QUERY_TABLES_V2_SERVER = {
   serverInfo: {
@@ -108,13 +111,5 @@ export const QUERY_TABLES_V2_SERVER = {
     authorization: null,
     documentationUrl: null,
   },
-  tools: Object.values(QUERY_TABLES_V2_TOOLS_METADATA).map((t) => ({
-    name: t.name,
-    description: t.description,
-    inputSchema: zodToJsonSchema(z.object(t.schema)) as JSONSchema,
-    displayLabels: t.displayLabels,
-    toolCostCategory: t.toolCostCategory,
-    freeUsage: t.freeUsage,
-    stake: t.stake,
-  })),
+  tools: QUERY_TABLES_V2_TOOLS_METADATA,
 } as const satisfies ServerMetadata;

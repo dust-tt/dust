@@ -1,11 +1,12 @@
-import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import { createToolsRecord } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import type { JSONSchema7 as JSONSchema } from "json-schema";
+import type {
+  InternalMCPToolType,
+  ServerMetadata,
+} from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { z } from "zod";
-import { zodToJsonSchema } from "zod-to-json-schema";
 
-export const SCHEDULES_MANAGEMENT_TOOLS_METADATA = createToolsRecord({
-  create_schedule: {
+export const SCHEDULES_MANAGEMENT_TOOLS_METADATA = [
+  {
+    name: "create_schedule",
     description:
       "Create a schedule that runs this agent at specified times. Schedules are user-specific: each user can only view and manage their own schedules. When the schedule triggers, it runs this agent with the specified prompt. Pass podId to attach the schedule to a Pod so its runs land there. Limit: 20 schedule creations per user per day.",
     schema: {
@@ -47,7 +48,8 @@ export const SCHEDULES_MANAGEMENT_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "basic",
     freeUsage: false,
   },
-  list_schedules: {
+  {
+    name: "list_schedules",
     description:
       "List all schedules for this agent and the current user. Each entry shows the Pod it is attached to, if any.",
     schema: {},
@@ -59,7 +61,8 @@ export const SCHEDULES_MANAGEMENT_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "basic",
     freeUsage: true,
   },
-  disable_schedule: {
+  {
+    name: "disable_schedule",
     description: "Disable a schedule.",
     schema: {
       scheduleId: z
@@ -74,10 +77,7 @@ export const SCHEDULES_MANAGEMENT_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "basic",
     freeUsage: true,
   },
-});
-
-type SchedulesManagementToolKey =
-  keyof typeof SCHEDULES_MANAGEMENT_TOOLS_METADATA;
+] as const satisfies readonly InternalMCPToolType[];
 
 export const SCHEDULES_MANAGEMENT_SERVER = {
   serverInfo: {
@@ -88,19 +88,5 @@ export const SCHEDULES_MANAGEMENT_SERVER = {
     icon: "ActionTimeIcon" as const,
     documentationUrl: null,
   },
-  tools: (
-    Object.keys(
-      SCHEDULES_MANAGEMENT_TOOLS_METADATA
-    ) as SchedulesManagementToolKey[]
-  ).map((key) => ({
-    name: SCHEDULES_MANAGEMENT_TOOLS_METADATA[key].name,
-    description: SCHEDULES_MANAGEMENT_TOOLS_METADATA[key].description,
-    inputSchema: zodToJsonSchema(
-      z.object(SCHEDULES_MANAGEMENT_TOOLS_METADATA[key].schema)
-    ) as JSONSchema,
-    displayLabels: SCHEDULES_MANAGEMENT_TOOLS_METADATA[key].displayLabels,
-    toolCostCategory: SCHEDULES_MANAGEMENT_TOOLS_METADATA[key].toolCostCategory,
-    freeUsage: SCHEDULES_MANAGEMENT_TOOLS_METADATA[key].freeUsage,
-    stake: SCHEDULES_MANAGEMENT_TOOLS_METADATA[key].stake,
-  })),
+  tools: SCHEDULES_MANAGEMENT_TOOLS_METADATA,
 } as const satisfies ServerMetadata;

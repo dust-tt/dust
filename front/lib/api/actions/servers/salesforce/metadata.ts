@@ -1,11 +1,12 @@
-import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import { createToolsRecord } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import type { JSONSchema7 as JSONSchema } from "json-schema";
+import type {
+  InternalMCPToolType,
+  ServerMetadata,
+} from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { z } from "zod";
-import { zodToJsonSchema } from "zod-to-json-schema";
 
-export const SALESFORCE_TOOLS_METADATA = createToolsRecord({
-  execute_read_query: {
+export const SALESFORCE_TOOLS_METADATA = [
+  {
+    name: "execute_read_query",
     description:
       "Run a read-only SOQL query on Salesforce to retrieve or discover data. It never writes. " +
       "Use this for SOQL SELECT queries that search, filter, count, or retrieve Salesforce records, such as querying Salesforce Accounts by Industry. " +
@@ -25,7 +26,8 @@ export const SALESFORCE_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "advanced",
     freeUsage: false,
   },
-  list_objects: {
+  {
+    name: "list_objects",
     description:
       "List Salesforce objects (standard, custom, or all). Use it to find an object's exact API name before describing or querying it. " +
       "Use this to discover which objects exist and to see object labels before creating or updating records.",
@@ -44,7 +46,8 @@ export const SALESFORCE_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "advanced",
     freeUsage: false,
   },
-  describe_object: {
+  {
+    name: "describe_object",
     description:
       "Get detailed metadata for a Salesforce object from its API name (e.g. Account, Lead, MyCustomObject__c): fields with names, labels, types, and other properties; child relationship names for subqueries; record types; and other object-level properties. " +
       "This is the reliable way to confirm field and relationship names before an execute_read_query. " +
@@ -61,7 +64,8 @@ export const SALESFORCE_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "advanced",
     freeUsage: false,
   },
-  create_object: {
+  {
+    name: "create_object",
     description:
       "Create one or more records in Salesforce. " +
       "Use this to insert or add new records for an object such as Account, Contact, Lead, Opportunity, or a custom object; not to update existing records.",
@@ -89,7 +93,8 @@ export const SALESFORCE_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "advanced",
     freeUsage: false,
   },
-  update_object: {
+  {
+    name: "update_object",
     description:
       "Update one or more records in Salesforce. " +
       "Use this to edit or modify existing records by Id for an object such as Account, Contact, Lead, Opportunity, or a custom object; not to create new records.",
@@ -123,7 +128,8 @@ export const SALESFORCE_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "advanced",
     freeUsage: false,
   },
-  list_attachments: {
+  {
+    name: "list_attachments",
     description:
       "List all attachments and files for a Salesforce record. " +
       "Use this to find attachment IDs, file IDs, filenames, and metadata before reading or downloading a PDF, document, image, or uploaded file.",
@@ -138,7 +144,8 @@ export const SALESFORCE_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "advanced",
     freeUsage: false,
   },
-  read_attachment: {
+  {
+    name: "read_attachment",
     description:
       "Read content from any attachment or file on a Salesforce record. " +
       "Use this after list_attachments when you know the attachment ID or file ID and need to read or download its text or binary file.",
@@ -156,7 +163,7 @@ export const SALESFORCE_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "advanced",
     freeUsage: false,
   },
-});
+] as const satisfies readonly InternalMCPToolType[];
 
 export const SALESFORCE_SERVER = {
   serverInfo: {
@@ -170,13 +177,5 @@ export const SALESFORCE_SERVER = {
     icon: "SalesforceLogo",
     documentationUrl: "https://docs.dust.tt/docs/salesforce",
   },
-  tools: Object.values(SALESFORCE_TOOLS_METADATA).map((t) => ({
-    name: t.name,
-    description: t.description,
-    inputSchema: zodToJsonSchema(z.object(t.schema)) as JSONSchema,
-    displayLabels: t.displayLabels,
-    toolCostCategory: t.toolCostCategory,
-    freeUsage: t.freeUsage,
-    stake: t.stake,
-  })),
+  tools: SALESFORCE_TOOLS_METADATA,
 } as const satisfies ServerMetadata;
