@@ -9,7 +9,7 @@ export const MessageDateIndicator = ({
 }) => {
   return (
     <div className="mb-3 mt-1 select-none text-center">
-      <span className="rounded px-4 text-xs text-faint">
+      <span className="rounded px-4 text-xs text-muted-foreground">
         {formatCalendarDate(getMessageDate(message))}
       </span>
     </div>
