@@ -1468,7 +1468,9 @@ export function getInternalMCPServerToolStakes(
 ): Record<string, MCPToolStakeLevelType> {
   const server: InternalMCPServerEntry = INTERNAL_MCP_SERVERS[name];
 
-  return server.metadata.tools_stakes;
+  return Object.fromEntries(
+    Object.values(server.metadata.tools).map((t) => [t.name, t.stake])
+  );
 }
 
 export function getInternalMCPServerToolArgumentsRequiringApproval(
