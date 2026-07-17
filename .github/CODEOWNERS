@@ -11,3 +11,6 @@
 /front/migrations/db/                 @dust-tt/data-model-owners
 
 /front/lib/api/llm/                   @dust-tt/llm-router-owners
+/front/lib/llms/                      @dust-tt/llm-router-owners
+/front/lib/model_constructors/        @dust-tt/llm-router-owners
+/front/types/assistant/models/        @dust-tt/llm-router-owners
