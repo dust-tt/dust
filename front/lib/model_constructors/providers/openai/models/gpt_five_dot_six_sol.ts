@@ -8,7 +8,7 @@ import { GPT_5_6_SOL_MODEL_ID } from "@app/lib/model_constructors/types/model_id
 import { z } from "zod";
 
 // https://developers.openai.com/api/docs/models/gpt-5.6-sol
-const CONTEXT_SIZE = 1_050_000;
+const CONTEXT_SIZE = 272_000;
 const MAX_OUTPUT_TOKENS = 128_000;
 const DEFAULT_REASONING_EFFORT = "medium";
 
