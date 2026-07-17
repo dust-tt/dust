@@ -59,6 +59,7 @@ import {
   isPaidSeatType,
   SEAT_TYPE_ORDER,
 } from "@app/types/memberships";
+import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
@@ -538,12 +539,6 @@ export async function remapMembershipSeatTypesForContract({
     return new Ok(undefined);
   }
 
-  const [users, seatLimits] = await Promise.all([
-    UserResource.fetchByModelIds(memberships.map((m) => m.userId)),
-    WorkspaceSeatLimitResource.fetchByWorkspace({ workspace }),
-  ]);
-  const userByModelId = new Map(users.map((u) => [u.id, u]));
-
   // Apply immediately when the contract already started — either the operator
   // swapped at the current hour, or backdated the start to the past. Scheduling
   // a seat change at a past timestamp would retroactively close the current row
@@ -552,6 +547,25 @@ export async function remapMembershipSeatTypesForContract({
   // the only case that schedules.
   const applyImmediately =
     swapAt === "current-hour" || startingAt.getTime() <= Date.now();
+
+  // When scheduling (not applying immediately), a member already correctly
+  // scheduled from a previous call must be detected here: `scheduleSeatChange`
+  // never touches the *active* row's `seatType` (it only closes that row and
+  // creates a separate future-dated one), so comparing against the active
+  // row alone can never see a prior schedule — every not-yet-migrated member
+  // would otherwise be re-scheduled (a full destroy+update+create) on every
+  // single call to this function, for as long as their change stays pending.
+  const [users, seatLimits, scheduledByUserId] = await Promise.all([
+    UserResource.fetchByModelIds(memberships.map((m) => m.userId)),
+    WorkspaceSeatLimitResource.fetchByWorkspace({ workspace }),
+    applyImmediately
+      ? Promise.resolve(new Map<ModelId, MembershipResource>())
+      : MembershipResource.getScheduledMembershipsByUserIdInWorkspace({
+          workspace,
+          userIds: memberships.map((m) => m.userId),
+        }),
+  ]);
+  const userByModelId = new Map(users.map((u) => [u.id, u]));
 
   const remapTargets = memberships.flatMap((membership) => {
     const user = userByModelId.get(membership.userId);
@@ -593,7 +607,12 @@ export async function remapMembershipSeatTypesForContract({
     { membership, user, baseTarget },
   ] of remapTargets.entries()) {
     const target = promotedTargets[index];
-    if (target === membership.seatType) {
+    const existingSchedule = scheduledByUserId.get(membership.userId);
+    const alreadyScheduled =
+      !applyImmediately &&
+      existingSchedule?.seatType === target &&
+      existingSchedule.startAt.getTime() === startingAt.getTime();
+    if (target === membership.seatType || alreadyScheduled) {
       logger.info(
         {
           workspaceId: workspace.sId,
@@ -601,6 +620,7 @@ export async function remapMembershipSeatTypesForContract({
           userId: user.sId,
           currentSeatType: membership.seatType,
           target,
+          alreadyScheduled,
         },
         "[Metronome][remap] No seat-type change for membership"
       );
@@ -1488,25 +1508,46 @@ export async function syncSeatCount({
     }
 
     type ScheduledChange = {
-      userSId: string;
+      userId: string;
       newSeatType: MembershipSeatType;
       at: Date;
     };
     const scheduledChanges: ScheduledChange[] = [];
     for (const m of futureMemberships) {
-      const userSId = m.user?.sId;
+      const userId = m.user?.sId;
       // Same `firstUsedAt` filter as the current-seat map above: a scheduled
       // change carries the current row's `firstUsedAt` (see `scheduleSeatChange`),
       // so provisioned-but-never-used members (SCIM on enterprise contracts) are
       // scheduled by contract switches / migrations yet must stay uncounted, just
       // like Stripe. Without this the future segment would re-introduce them.
-      if (userSId && m.firstUsedAt !== null) {
+      if (userId && m.firstUsedAt !== null) {
         scheduledChanges.push({
-          userSId,
+          userId,
           newSeatType: m.seatType,
           at: m.startAt,
         });
       }
+    }
+
+    // Grouped by user so `seatTypeAt` below doesn't rescan every scheduled
+    // change in the workspace for every user at every timestamp — with
+    // `seatSubscriptions.length * effectiveTimestampsMs.length` calls each
+    // walking all `users`, an unindexed scan over all `scheduledChanges` made
+    // the whole reconcile loop O(subs * timestamps * users * scheduledChanges),
+    // quadratic in workspace size whenever most users have a pending change
+    // (e.g. mid-migration). Sorted ascending per user so `seatTypeAt` can walk
+    // forward and stop at the first change past `tMs`.
+    const scheduledChangesByUserId = new Map<string, ScheduledChange[]>();
+    for (const change of scheduledChanges) {
+      const existing = scheduledChangesByUserId.get(change.userId);
+      if (existing) {
+        existing.push(change);
+      } else {
+        scheduledChangesByUserId.set(change.userId, [change]);
+      }
+    }
+    for (const changes of scheduledChangesByUserId.values()) {
+      changes.sort((a, b) => a.at.getTime() - b.at.getTime());
     }
 
     // Surface memberships whose seat type has no matching entitled subscription
@@ -1603,14 +1644,19 @@ export async function syncSeatCount({
     };
 
     // Compute the desired seat type per user at a given timestamp, by walking
-    // scheduled changes from earliest up to (and including) `tMs`.
+    // that user's own scheduled changes (ascending) from earliest up to (and
+    // including) `tMs`.
     const seatTypeAt = (
       userSId: string,
       tMs: number
     ): MembershipSeatType | undefined => {
       let seatType = currentSeatByUserSId.get(userSId);
-      for (const c of scheduledChanges) {
-        if (c.userSId === userSId && c.at.getTime() <= tMs) {
+      const changes = scheduledChangesByUserId.get(userSId);
+      if (changes) {
+        for (const c of changes) {
+          if (c.at.getTime() > tMs) {
+            break;
+          }
           seatType = c.newSeatType;
         }
       }
@@ -1623,7 +1669,7 @@ export async function syncSeatCount({
     // themselves onto it.
     const allUserSIds = new Set<string>([
       ...currentSeatByUserSId.keys(),
-      ...scheduledChanges.map((c) => c.userSId),
+      ...scheduledChanges.map((c) => c.userId),
     ]);
     const desiredSIdsAt = (
       subSeatType: MembershipSeatType,

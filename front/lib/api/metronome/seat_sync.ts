@@ -269,10 +269,6 @@ async function stagePendingContractSeats({
   const pendingSubscription =
     await SubscriptionResource.fetchPendingByWorkspaceModelId(workspace.id);
   if (!pendingSubscription?.metronomeContractId) {
-    logger.info(
-      { workspaceId },
-      "[SeatSync] stagePendingContractSeats — no pending subscription, skipping"
-    );
     return false;
   }
   const pendingContractResult = await getMetronomeContractById({
@@ -283,10 +279,6 @@ async function stagePendingContractSeats({
     pendingContractResult.isErr() ||
     !(await hasContractSeatSubscription(pendingContractResult.value))
   ) {
-    logger.info(
-      { workspaceId },
-      "[SeatSync] stagePendingContractSeats — pending contract has no seat subscription, skipping"
-    );
     return false;
   }
   const pendingContract = pendingContractResult.value;
