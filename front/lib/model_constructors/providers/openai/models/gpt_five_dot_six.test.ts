@@ -13,7 +13,8 @@ import {
 import { describe, expect, it } from "vitest";
 
 const EXPECTED_CONTEXT_SIZE = 272_000;
-const EXPECTED_MAX_OUTPUT_TOKENS = 128_000;
+const EXPECTED_MAX_OUTPUT_TOKENS = 64_000;
+const EXPECTED_MAX_INPUT_TOKENS = 208_000;
 
 const GPT_5_6_CONFIGURATIONS = [
   {
@@ -51,6 +52,9 @@ describe("GPT 5.6 model configurations", () => {
   }) => {
     expect(legacy.contextSize).toBe(EXPECTED_CONTEXT_SIZE);
     expect(legacy.generationTokensCount).toBe(EXPECTED_MAX_OUTPUT_TOKENS);
+    expect(legacy.contextSize - legacy.generationTokensCount).toBe(
+      EXPECTED_MAX_INPUT_TOKENS
+    );
     expect(getModelConfigByModelId(legacy.modelId)?.contextSize).toBe(
       EXPECTED_CONTEXT_SIZE
     );
