@@ -10,6 +10,7 @@ export const OPENAI_SUPPORTED_REASONING_EFFORTS = [
   "medium",
   "high",
   "xhigh",
+  "maximal",
 ] as const satisfies readonly ReasoningEffort[];
 
 export type OpenAISupportedReasoningEffort =

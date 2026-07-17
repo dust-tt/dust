@@ -1,23 +1,35 @@
-import { CreateGroupDialog } from "@app/components/groups/CreateGroupDialog";
+import { ConfirmContext } from "@app/components/Confirm";
+import { GroupDialog } from "@app/components/groups/GroupDialog";
 import { LinkedSectionNotice } from "@app/components/workspace/LinkedSectionNotice";
 import { useAuth } from "@app/lib/auth/AuthContext";
 import { useAppRouter } from "@app/lib/platform";
-import { useGroups } from "@app/lib/swr/groups";
-import { type GroupKind, MANAGEABLE_GROUP_KINDS } from "@app/types/groups";
+import { useDeleteGroup, useGroups } from "@app/lib/swr/groups";
+import {
+  type GroupKind,
+  isRegularManualGroupKind,
+  MANAGEABLE_GROUP_KINDS,
+} from "@app/types/groups";
 import { pluralize } from "@app/types/shared/utils/string_utils";
 import type { WorkspaceType } from "@app/types/user";
 import {
   Button,
   Chip,
   DataTable,
+  DotsHorizontal,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuPortal,
+  DropdownMenuTrigger,
   EmptyCTA,
   Plus,
   SearchInput,
   Spinner,
+  Trash01,
   Users01,
 } from "@dust-tt/sparkle";
-import type { CellContext, ColumnDef } from "@tanstack/react-table";
-import { useMemo, useState } from "react";
+import type { ColumnDef } from "@tanstack/react-table";
+import { useCallback, useContext, useMemo, useState } from "react";
 
 type ChipColor = NonNullable<React.ComponentProps<typeof Chip>["color"]>;
 
@@ -29,7 +41,7 @@ function getGroupKindChip(kind: GroupKind): {
     case "provisioned":
       return { label: "Provisioned", color: "success" };
     default:
-      return { label: kind, color: "primary" };
+      return { label: "Manual", color: "info" };
   }
 }
 
@@ -39,9 +51,8 @@ type GroupRowData = {
   memberCount: number;
   kind: GroupKind;
   onClick?: () => void;
+  onDelete?: () => void;
 };
-
-type GroupInfo = CellContext<GroupRowData, unknown>;
 
 interface WorkspaceGroupsListProps {
   owner: WorkspaceType;
@@ -53,8 +64,8 @@ const columns: ColumnDef<GroupRowData>[] = [
     accessorKey: "name",
     header: "Name",
     meta: { className: "w-full" },
-    cell: (info: GroupInfo) => {
-      const { name, memberCount } = info.row.original;
+    cell: ({ row }) => {
+      const { name, memberCount } = row.original;
       return (
         <DataTable.CellContent
           icon={Users01}
@@ -69,11 +80,49 @@ const columns: ColumnDef<GroupRowData>[] = [
     id: "kind",
     header: "",
     meta: { className: "w-[160px]" },
-    cell: (info: GroupInfo) => {
-      const { label, color } = getGroupKindChip(info.row.original.kind);
+    cell: ({ row }) => {
+      const { label, color } = getGroupKindChip(row.original.kind);
       return (
         <DataTable.CellContent>
           <Chip size="xs" color={color} label={label} />
+        </DataTable.CellContent>
+      );
+    },
+  },
+  {
+    id: "actions",
+    header: "",
+    meta: { className: "w-12" },
+    cell: ({ row }) => {
+      const { onDelete } = row.original;
+      if (!onDelete) {
+        return null;
+      }
+      return (
+        <DataTable.CellContent>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                icon={DotsHorizontal}
+                size="mini"
+                variant="ghost-secondary"
+                onClick={(e) => e.stopPropagation()}
+              />
+            </DropdownMenuTrigger>
+            <DropdownMenuPortal>
+              <DropdownMenuContent
+                align="end"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <DropdownMenuItem
+                  label="Delete"
+                  icon={Trash01}
+                  variant="warning"
+                  onClick={onDelete}
+                />
+              </DropdownMenuContent>
+            </DropdownMenuPortal>
+          </DropdownMenu>
         </DataTable.CellContent>
       );
     },
@@ -90,16 +139,53 @@ export function WorkspaceGroupsList({ owner }: WorkspaceGroupsListProps) {
   const { subscription } = useAuth();
   const isScimAllowed = subscription.plan.limits.users.isSCIMAllowed;
   const [searchTerm, setSearchTerm] = useState("");
-  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [editedGroupId, setEditedGroupId] = useState<string | null>(null);
+
+  const confirm = useContext(ConfirmContext);
+  const { doDeleteGroup } = useDeleteGroup({ owner });
+
+  const openCreateDialog = () => {
+    setEditedGroupId(null);
+    setIsDialogOpen(true);
+  };
+
+  const handleDeleteGroup = useCallback(
+    async (groupId: string, groupName: string) => {
+      const confirmed = await confirm({
+        title: "Delete group",
+        message: `Are you sure you want to delete ${groupName}? This action cannot be undone.`,
+        validateLabel: "Delete",
+        validateVariant: "warning",
+      });
+      if (confirmed) {
+        await doDeleteGroup({ groupId, groupName });
+      }
+    },
+    [confirm, doDeleteGroup]
+  );
 
   const rows = useMemo<GroupRowData[]>(() => {
-    return groups.map((group) => ({
-      groupId: group.sId,
-      name: group.name,
-      memberCount: group.memberCount,
-      kind: group.kind,
-    }));
-  }, [groups]);
+    return groups.map((group) => {
+      // Only manually-managed groups can be edited or deleted.
+      const isManual = isRegularManualGroupKind(group.kind);
+      return {
+        groupId: group.sId,
+        name: group.name,
+        memberCount: group.memberCount,
+        kind: group.kind,
+        onClick: isManual
+          ? () => {
+              setEditedGroupId(group.sId);
+              setIsDialogOpen(true);
+            }
+          : undefined,
+        onDelete: isManual
+          ? () => handleDeleteGroup(group.sId, group.name)
+          : undefined,
+      };
+    });
+  }, [groups, handleDeleteGroup]);
 
   return (
     <div className="flex flex-col gap-4">
@@ -131,7 +217,7 @@ export function WorkspaceGroupsList({ owner }: WorkspaceGroupsListProps) {
               <Button
                 icon={Plus}
                 label="Create group"
-                onClick={() => setIsCreateDialogOpen(true)}
+                onClick={openCreateDialog}
               />
             </div>
             <DataTable
@@ -147,16 +233,17 @@ export function WorkspaceGroupsList({ owner }: WorkspaceGroupsListProps) {
               <Button
                 icon={Plus}
                 label="Create group"
-                onClick={() => setIsCreateDialogOpen(true)}
+                onClick={openCreateDialog}
               />
             }
             message="You don’t have any groups yet."
           />
         ))}
-      <CreateGroupDialog
+      <GroupDialog
         owner={owner}
-        isOpen={isCreateDialogOpen}
-        onOpenChange={setIsCreateDialogOpen}
+        isOpen={isDialogOpen}
+        onOpenChange={setIsDialogOpen}
+        groupId={editedGroupId}
       />
     </div>
   );

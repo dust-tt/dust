@@ -53,6 +53,7 @@ import {
   PublicPostConversationsRequestBodySchema,
 } from "@dust-tt/client";
 import { apiErrorForConversation } from "@front-api/lib/api/assistant/conversation/helper";
+import { validatePublicModelSelection } from "@front-api/lib/api/assistant/conversation/model_selection";
 import { publicApiApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
@@ -433,6 +434,15 @@ app.post(
       const agenticMessageData: AgenticMessageData | undefined =
         message.agenticMessageData ?? undefined;
 
+      const modelSelectionRes = await validatePublicModelSelection(
+        auth,
+        message.modelSelection
+      );
+      if (modelSelectionRes.isErr()) {
+        return apiError(ctx, modelSelectionRes.error);
+      }
+      const modelSelection = modelSelectionRes.value;
+
       // If tools are enabled, we need to add the MCP server views to the conversation before posting the message.
       if (message.context.selectedMCPServerViewIds) {
         if (!auth.user()) {
@@ -497,6 +507,7 @@ app.post(
               agenticMessageData,
               conversation,
               mentions: message.mentions,
+              modelSelection,
               skipToolsValidation: skipToolsValidation ?? false,
             })
           : await postUserMessage(auth, {
@@ -505,6 +516,7 @@ app.post(
               agenticMessageData,
               conversation,
               mentions: message.mentions,
+              modelSelection,
               skipToolsValidation: skipToolsValidation ?? false,
             });
 

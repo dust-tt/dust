@@ -35,6 +35,14 @@ export type SeatLimitSegment = SeatLimit & {
   endAt: Date | null;
 };
 
+// Metronome effective dates must land on a whole UTC hour, so every scheduled
+// seat-limit window is floored to the top of the hour here — regardless of what
+// callers pass. Flooring epoch ms to an hour boundary yields a whole UTC hour.
+const HOUR_MS = 3_600_000;
+function floorToHourUTC(date: Date): Date {
+  return new Date(Math.floor(date.getTime() / HOUR_MS) * HOUR_MS);
+}
+
 function validateMaxSeats({
   minSeats,
   maxSeats,
@@ -242,7 +250,10 @@ export class WorkspaceSeatLimitResource extends BaseResource<WorkspaceSeatLimitM
     if (validation.isErr()) {
       return validation;
     }
-    if (endAt !== null && endAt <= startAt) {
+    // Whole-hour UTC alignment for Metronome effective dates.
+    const flooredStartAt = floorToHourUTC(startAt);
+    const flooredEndAt = endAt === null ? null : floorToHourUTC(endAt);
+    if (flooredEndAt !== null && flooredEndAt <= flooredStartAt) {
       return new Err(new Error("endAt must be after startAt."));
     }
     // Nest under the caller's transaction when provided (SAVEPOINT) so the
@@ -255,7 +266,7 @@ export class WorkspaceSeatLimitResource extends BaseResource<WorkspaceSeatLimitM
         where: {
           workspaceId: workspace.id,
           seatType,
-          startAt: { [Op.gte]: startAt },
+          startAt: { [Op.gte]: flooredStartAt },
         },
         transaction: t,
       });
@@ -265,8 +276,8 @@ export class WorkspaceSeatLimitResource extends BaseResource<WorkspaceSeatLimitM
         where: { workspaceId: workspace.id, seatType, endAt: null },
         transaction: t,
       });
-      if (current && current.startAt < startAt) {
-        await current.update({ endAt: startAt }, { transaction: t });
+      if (current && current.startAt < flooredStartAt) {
+        await current.update({ endAt: flooredStartAt }, { transaction: t });
       }
       await this.model.create(
         {
@@ -274,8 +285,8 @@ export class WorkspaceSeatLimitResource extends BaseResource<WorkspaceSeatLimitM
           seatType,
           minSeats,
           maxSeats: maxSeats ?? null,
-          startAt,
-          endAt,
+          startAt: flooredStartAt,
+          endAt: flooredEndAt,
         },
         { transaction: t }
       );
@@ -312,9 +323,11 @@ export class WorkspaceSeatLimitResource extends BaseResource<WorkspaceSeatLimitM
     }>;
     transaction?: Transaction;
   }): Promise<Result<void, Error>> {
-    const sorted = [...phases].sort(
-      (a, b) => a.startAt.getTime() - b.startAt.getTime()
-    );
+    // Floor every start to the top of the UTC hour (Metronome parity), then
+    // order by start.
+    const sorted = phases
+      .map((phase) => ({ ...phase, startAt: floorToHourUTC(phase.startAt) }))
+      .sort((a, b) => a.startAt.getTime() - b.startAt.getTime());
     for (let i = 0; i < sorted.length; i++) {
       const phase = sorted[i];
       const validation = validateMaxSeats({

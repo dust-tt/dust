@@ -180,7 +180,6 @@ export function PodSettingsTab({
   const { skills } = useSkills({
     owner,
     status: "active",
-    globalSpaceOnly: true,
     disabled: !isDefaultSkillsEnabled,
   });
   const [skillSearchText, setSkillSearchText] = useState("");

@@ -854,7 +854,7 @@ describe("createConversationFork", () => {
     });
 
     const upsertResult = await SkillResource.upsertConversationSkills(auth, {
-      conversationId: parentConversation.id,
+      conversation: parentConversation,
       skills: [enabledSkill],
       enabled: true,
     });

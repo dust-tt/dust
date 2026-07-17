@@ -9,7 +9,6 @@ import { RestrictAgentsPublishingCapability } from "@app/components/workspace/se
 import { SlackPersonalFooterRemovalToggle } from "@app/components/workspace/settings/SlackPersonalFooterRemovalToggle";
 import { VoiceTranscriptionToggle } from "@app/components/workspace/settings/VoiceTranscriptionToggle";
 import { WorkspaceAnalyticsToggle } from "@app/components/workspace/settings/WorkspaceAnalyticsToggle";
-import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import type { WorkspaceType } from "@app/types/user";
 import { ContextItem, Page } from "@dust-tt/sparkle";
 
@@ -22,13 +21,6 @@ export function CapabilitiesSection({
   owner,
   publishingRestrictionMessage,
 }: CapabilitiesSectionProps) {
-  const { hasFeature } = useFeatureFlags();
-  const isAdminGovernanceEnabled = hasFeature("admin_governance");
-
-  if (isAdminGovernanceEnabled) {
-    return null;
-  }
-
   return (
     <Page.Vertical align="stretch" gap="md">
       <Page.H variant="h4">Capabilities</Page.H>

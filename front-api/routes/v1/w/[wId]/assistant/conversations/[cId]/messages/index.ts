@@ -17,6 +17,7 @@ import {
   PublicPostMessagesRequestBodySchema,
 } from "@dust-tt/client";
 import { apiErrorForConversation } from "@front-api/lib/api/assistant/conversation/helper";
+import { validatePublicModelSelection } from "@front-api/lib/api/assistant/conversation/model_selection";
 import { publicApiApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
@@ -102,9 +103,19 @@ app.post(
       blocking,
       skipToolsValidation,
       agenticMessageData,
+      modelSelection: rawModelSelection,
     } = ctx.req.valid("json");
 
     const origin = context.origin ?? "api";
+
+    const modelSelectionRes = await validatePublicModelSelection(
+      auth,
+      rawModelSelection
+    );
+    if (modelSelectionRes.isErr()) {
+      return apiError(ctx, modelSelectionRes.error);
+    }
+    const modelSelection = modelSelectionRes.value;
 
     if (isEmptyString(context.username)) {
       return apiError(ctx, {
@@ -231,6 +242,7 @@ app.post(
             agenticMessageData,
             conversation,
             mentions,
+            modelSelection,
             skipToolsValidation: skipToolsValidation ?? false,
           })
         : await postUserMessage(auth, {
@@ -239,6 +251,7 @@ app.post(
             agenticMessageData,
             conversation,
             mentions,
+            modelSelection,
             skipToolsValidation: skipToolsValidation ?? false,
           });
     if (messageRes.isErr()) {

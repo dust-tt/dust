@@ -9,6 +9,7 @@ import { getActiveContract } from "@app/lib/metronome/plan_type";
 import {
   hasContractSeatSubscription,
   remapMembershipSeatTypesForContract,
+  type SyncSeatCountSummary,
   syncSeatCount,
 } from "@app/lib/metronome/seats";
 import { isProPlanPrefix } from "@app/lib/plans/plan_codes";
@@ -23,10 +24,17 @@ import type { LightWorkspaceType } from "@app/types/user";
  * Outcome of `syncMetronomeSeatCountForWorkspace`. `synced` means the
  * reconciliation ran; `skipped` means there was nothing to sync (not on
  * Metronome, no active contract, or no seat subscription) — with a
- * human-readable `reason`.
+ * human-readable `reason`. `activeContractSummary` is `null` only when
+ * nothing ran for the active contract (e.g. a pending contract was staged
+ * but there's no active contract to sync yet).
  */
 export type SeatSyncOutcome =
-  | { status: "synced" }
+  | {
+      status: "synced";
+      stagedPendingContract: boolean;
+      activeContractSummary: SyncSeatCountSummary | null;
+      workspaceUserCreditStatesReconciled: boolean;
+    }
   | { status: "skipped"; reason: string };
 
 /**
@@ -48,14 +56,22 @@ export type SeatSyncOutcome =
  * user (e.g. an auto-upgrade unblocking one member mid-flow) and skips the
  * workspace-wide cap-alert sync. The seat-count push itself is always
  * workspace-wide. When omitted, the whole workspace is reconciled.
+ *
+ * `forceFreeCreditRevokeCheck` runs the ex-free-seat credit revoke check
+ * unconditionally instead of only when the cheap gate signals a change (see
+ * `syncSeatCount`). Set by the poke plugin, where an operator explicitly
+ * asked for a thorough pass; left unset on the automatic/debounced path.
  */
 export async function syncMetronomeSeatCountForWorkspace({
   workspace,
   reconcileUserId,
+  forceFreeCreditRevokeCheck,
 }: {
   workspace: LightWorkspaceType;
   reconcileUserId?: string;
+  forceFreeCreditRevokeCheck?: boolean;
 }): Promise<Result<SeatSyncOutcome, Error>> {
+  const workspaceId = workspace.sId;
   if (!workspace.metronomeCustomerId) {
     return new Ok({
       status: "skipped",
@@ -75,10 +91,19 @@ export async function syncMetronomeSeatCountForWorkspace({
   // contract stays correct across adds, revokes, and seat changes alike. This
   // is independent of, and in addition to, reconciling the active contract
   // below (whose seats a legacy shadow contract still bills / finalizes).
+  const stagePendingStartedAt = Date.now();
   const stagedPending = await stagePendingContractSeats({
     workspace,
     currentPlanCode: activeSubscription?.getPlan().code ?? null,
   });
+  logger.info(
+    {
+      workspaceId,
+      stagedPending,
+      durationMs: Date.now() - stagePendingStartedAt,
+    },
+    "[SeatSync] stagePendingContractSeats done"
+  );
 
   const activeContract = activeSubscription?.metronomeContractId
     ? await getActiveContract(workspace.sId)
@@ -89,15 +114,26 @@ export async function syncMetronomeSeatCountForWorkspace({
     !activeContract ||
     !(await hasContractSeatSubscription(activeContract))
   ) {
-    return new Ok(
-      stagedPending
-        ? { status: "synced" }
-        : {
-            status: "skipped",
-            reason:
-              "no active or pending contract with a seat subscription to sync",
-          }
+    if (stagedPending) {
+      logger.info(
+        { workspaceId },
+        "[SeatSync] Done — only the pending contract was staged, no active contract to sync"
+      );
+      return new Ok({
+        status: "synced",
+        stagedPendingContract: true,
+        activeContractSummary: null,
+        workspaceUserCreditStatesReconciled: false,
+      });
+    }
+    logger.info(
+      { workspaceId },
+      "[SeatSync] Skipped — no active or pending contract with a seat subscription to sync"
     );
+    return new Ok({
+      status: "skipped",
+      reason: "no active or pending contract with a seat subscription to sync",
+    });
   }
 
   const result = await syncSeatCount({
@@ -106,10 +142,16 @@ export async function syncMetronomeSeatCountForWorkspace({
     workspace,
     planCode: activeSubscription.getPlan().code,
     contract: activeContract,
+    forceFreeCreditRevokeCheck,
   });
   if (result.isErr()) {
+    logger.error(
+      { workspaceId, err: result.error.message },
+      "[SeatSync] syncSeatCount failed"
+    );
     return new Err(result.error);
   }
+  const activeContractSummary = result.value;
 
   // Single-user scope: reconcile just this user from the live balances now that
   // their seat credits are assigned. Skips the whole-workspace reconcile and the
@@ -128,7 +170,7 @@ export async function syncMetronomeSeatCountForWorkspace({
       if (userReconcile.isErr()) {
         logger.warn(
           {
-            workspaceId: workspace.sId,
+            workspaceId,
             userId: reconcileUserId,
             err: userReconcile.error.message,
           },
@@ -136,31 +178,60 @@ export async function syncMetronomeSeatCountForWorkspace({
         );
       }
     }
-    return new Ok({ status: "synced" });
+    logger.info(
+      { workspaceId, reconcileUserId },
+      "[SeatSync] Done — single-user scope"
+    );
+    return new Ok({
+      status: "synced",
+      stagedPendingContract: stagedPending,
+      activeContractSummary,
+      workspaceUserCreditStatesReconciled: false,
+    });
   }
 
   // Now that per-user seat credits are assigned, reconcile each seated user's
   // credit state from the live balances — this is what moves a freshly-created
   // or just-upgraded seat user into the correct seat↔pool state. Never throws;
   // a downstream reconcile issue must not fail (and retry) the seat sync.
+  const reconcileStartedAt = Date.now();
   await reconcileWorkspaceUserCreditStates({
     workspace,
     metronomeCustomerId: workspace.metronomeCustomerId,
     metronomeContractId: activeSubscription.metronomeContractId,
     planCode: activeSubscription.getPlan().code,
   });
+  logger.info(
+    { workspaceId, durationMs: Date.now() - reconcileStartedAt },
+    "[SeatSync] reconcileWorkspaceUserCreditStates done"
+  );
 
   // Ensure per-seat-type cap alerts exist with the current default pool limit.
   // Best-effort: a failure here must not fail the seat sync.
+  const alertSyncStartedAt = Date.now();
   const alertSyncResult = await syncDefaultPoolCapAlertsForWorkspace(workspace);
   if (alertSyncResult.isErr()) {
     logger.warn(
-      { workspaceId: workspace.sId, err: alertSyncResult.error.message },
+      { workspaceId, err: alertSyncResult.error.message },
       "[SeatSync] Failed to sync default pool cap alerts; continuing"
+    );
+  } else {
+    logger.info(
+      { workspaceId, durationMs: Date.now() - alertSyncStartedAt },
+      "[SeatSync] syncDefaultPoolCapAlertsForWorkspace done"
     );
   }
 
-  return new Ok({ status: "synced" });
+  logger.info(
+    { workspaceId },
+    "[SeatSync] syncMetronomeSeatCountForWorkspace done"
+  );
+  return new Ok({
+    status: "synced",
+    stagedPendingContract: stagedPending,
+    activeContractSummary,
+    workspaceUserCreditStatesReconciled: true,
+  });
 }
 
 /**
@@ -191,12 +262,17 @@ async function stagePendingContractSeats({
   workspace: LightWorkspaceType;
   currentPlanCode: string | null;
 }): Promise<boolean> {
+  const workspaceId = workspace.sId;
   if (!workspace.metronomeCustomerId) {
     return false;
   }
   const pendingSubscription =
     await SubscriptionResource.fetchPendingByWorkspaceModelId(workspace.id);
   if (!pendingSubscription?.metronomeContractId) {
+    logger.info(
+      { workspaceId },
+      "[SeatSync] stagePendingContractSeats — no pending subscription, skipping"
+    );
     return false;
   }
   const pendingContractResult = await getMetronomeContractById({
@@ -207,6 +283,10 @@ async function stagePendingContractSeats({
     pendingContractResult.isErr() ||
     !(await hasContractSeatSubscription(pendingContractResult.value))
   ) {
+    logger.info(
+      { workspaceId },
+      "[SeatSync] stagePendingContractSeats — pending contract has no seat subscription, skipping"
+    );
     return false;
   }
   const pendingContract = pendingContractResult.value;
@@ -219,6 +299,7 @@ async function stagePendingContractSeats({
   // members fall through to the ordinary committed-spare-seat promotion.
   const promoteNoneSeatType =
     currentPlanCode && isProPlanPrefix(currentPlanCode) ? "pro" : undefined;
+  const remapStartedAt = Date.now();
   const remapResult = await remapMembershipSeatTypesForContract({
     metronomeCustomerId: workspace.metronomeCustomerId,
     contractId: pendingSubscription.metronomeContractId,
@@ -228,14 +309,23 @@ async function stagePendingContractSeats({
     contract: pendingContract,
     promoteNoneSeatType,
   });
+  logger.info(
+    {
+      workspaceId,
+      isErr: remapResult.isErr(),
+      durationMs: Date.now() - remapStartedAt,
+    },
+    "[SeatSync] remapMembershipSeatTypesForContract done"
+  );
   if (remapResult.isErr()) {
     logger.warn(
-      { workspaceId: workspace.sId, err: remapResult.error.message },
+      { workspaceId, err: remapResult.error.message },
       "[SeatSync] Failed to remap seats onto pending contract; continuing"
     );
     return false;
   }
 
+  const pendingSyncStartedAt = Date.now();
   const syncResult = await syncSeatCount({
     metronomeCustomerId: workspace.metronomeCustomerId,
     contractId: pendingSubscription.metronomeContractId,
@@ -244,9 +334,17 @@ async function stagePendingContractSeats({
     contract: pendingContract,
     startingAt: pendingContract.starting_at,
   });
+  logger.info(
+    {
+      workspaceId,
+      isErr: syncResult.isErr(),
+      durationMs: Date.now() - pendingSyncStartedAt,
+    },
+    "[SeatSync] Pending-contract syncSeatCount done"
+  );
   if (syncResult.isErr()) {
     logger.warn(
-      { workspaceId: workspace.sId, err: syncResult.error.message },
+      { workspaceId, err: syncResult.error.message },
       "[SeatSync] Failed to pre-provision pending contract seats; continuing"
     );
     return false;

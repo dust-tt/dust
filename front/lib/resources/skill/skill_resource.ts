@@ -2,6 +2,7 @@ import { fetchMCPServerActionConfigurations } from "@app/lib/actions/configurati
 import type { MCPServerConfigurationType } from "@app/lib/actions/mcp";
 import { autoInternalMCPServerNameToSId } from "@app/lib/actions/mcp_helper";
 import { updateAgentRequirements } from "@app/lib/api/assistant/configuration/agent_requirements";
+import { updateConversationRequirementsForSkills } from "@app/lib/api/assistant/conversation/skill_permissions";
 import { getAgentConfigurationRequirementsFromCapabilities } from "@app/lib/api/assistant/permissions";
 import {
   filterUsersWithSharedMembership,
@@ -1686,11 +1687,11 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
   static async upsertConversationSkills(
     auth: Authenticator,
     {
-      conversationId,
+      conversation,
       skills,
       enabled,
     }: {
-      conversationId: ModelId;
+      conversation: ConversationWithoutContentType;
       skills: SkillResource[];
       enabled: boolean;
     },
@@ -1700,7 +1701,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       const result = await skill.upsertToConversation(
         auth,
         {
-          conversationId,
+          conversationId: conversation.id,
           enabled,
         },
         { transaction }
@@ -1709,6 +1710,16 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       if (result.isErr()) {
         return result;
       }
+    }
+
+    // When enabling skills, append their space requirements to the conversation so access is
+    // gated on those spaces (no-op for project conversations).
+    if (enabled) {
+      await updateConversationRequirementsForSkills(auth, {
+        skills,
+        conversation,
+        t: transaction,
+      });
     }
 
     return new Ok(undefined);
@@ -1799,6 +1810,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         source: null,
         sourceMetadata: null,
         isDefault: !SystemSkillsRegistry.isSystemSkill(def.sId),
+        favoriteCount: 0,
         reinforcement: "auto",
         lastReinforcementAnalysisAt: null,
         selfImprovementCostsCapMicroUsd: null,
@@ -2084,6 +2096,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
           source: versionModel.source,
           sourceMetadata: versionModel.sourceMetadata,
           isDefault: versionModel.isDefault,
+          favoriteCount: this.favoriteCount,
           reinforcement: "auto",
           lastReinforcementAnalysisAt: null,
           selfImprovementCostsCapMicroUsd:
@@ -3381,6 +3394,13 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     }
 
     await ConversationSkillModel.create(conversationSkillBlob);
+
+    // Append the skill's space requirements to the conversation so access is gated on those
+    // spaces (no-op for project conversations).
+    await updateConversationRequirementsForSkills(auth, {
+      skills: [this],
+      conversation,
+    });
 
     return { wasAlreadyEnabled: false };
   }

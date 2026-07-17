@@ -80,7 +80,7 @@ export async function callSandboxFunction(
     const parsed = resultEnvelopeSchema.safeParse(data.result);
     if (!parsed.success) {
       return new Err(
-        new Error("Sandbox function returned an unexpected result envelope.")
+        new Error("Pod function returned an unexpected result envelope.")
       );
     }
     if (!parsed.data.ok) {
@@ -101,7 +101,5 @@ export async function callSandboxFunction(
     });
   }
 
-  return new Err(
-    new Error("Sandbox function did not return a result in time.")
-  );
+  return new Err(new Error("Pod function did not return a result in time."));
 }

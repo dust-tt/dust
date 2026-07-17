@@ -31,7 +31,7 @@ export async function getHandler(
   );
   if (!sandboxFunction) {
     return new Err(
-      new MCPError(`No sandbox function with slug "${slug}" in this pod.`, {
+      new MCPError(`No pod function with slug "${slug}" in this pod.`, {
         tracked: false,
       })
     );

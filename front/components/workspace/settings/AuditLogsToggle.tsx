@@ -1,8 +1,14 @@
 import { GovernanceSettingRowLayout } from "@app/components/pages/workspace/governance/GovernanceSettingRowLayout";
+import { GovernanceSettingSection } from "@app/components/pages/workspace/governance/GovernanceSettingSection";
 import { useAuditLogsToggle } from "@app/hooks/useAuditLogsToggle";
 import { useAuth, useFeatureFlags } from "@app/lib/auth/AuthContext";
 import type { WorkspaceType } from "@app/types/user";
-import { ContextItem, File04, SliderToggle } from "@dust-tt/sparkle";
+import {
+  ContextItem,
+  File04,
+  LayerSingle,
+  SliderToggle,
+} from "@dust-tt/sparkle";
 
 interface AuditLogsToggleProps {
   owner: WorkspaceType;
@@ -22,22 +28,6 @@ export function AuditLogsToggle({ owner }: AuditLogsToggleProps) {
     return null;
   }
 
-  if (hasFeature("admin_governance")) {
-    return (
-      <GovernanceSettingRowLayout
-        label="Audit logs"
-        description="Emit audit events to WorkOS and expose the audit logs section in IT & Security."
-        action={
-          <SliderToggle
-            selected={isEnabled}
-            disabled={isChanging}
-            onClick={doToggleAuditLogs}
-          />
-        }
-      />
-    );
-  }
-
   return (
     <ContextItem
       title="Audit Logs"
@@ -52,5 +42,36 @@ export function AuditLogsToggle({ owner }: AuditLogsToggleProps) {
         />
       }
     />
+  );
+}
+
+export function AuditLogsGovernanceSection({ owner }: AuditLogsToggleProps) {
+  const { subscription } = useAuth();
+  const { isEnabled, isChanging, doToggleAuditLogs } = useAuditLogsToggle({
+    owner,
+  });
+  const { hasFeature } = useFeatureFlags();
+
+  const hasAuditLogsAccess =
+    subscription.plan.isAuditLogsAllowed || hasFeature("audit_logs");
+
+  if (!hasAuditLogsAccess) {
+    return null;
+  }
+
+  return (
+    <GovernanceSettingSection label="Audit" icon={LayerSingle}>
+      <GovernanceSettingRowLayout
+        label="Audit logs"
+        description="Emit audit events to WorkOS and expose the audit logs section in IT & Security."
+        action={
+          <SliderToggle
+            selected={isEnabled}
+            disabled={isChanging}
+            onClick={doToggleAuditLogs}
+          />
+        }
+      />
+    </GovernanceSettingSection>
   );
 }

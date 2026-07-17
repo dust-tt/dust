@@ -1,6 +1,10 @@
 import type { InternalAllowedIconType } from "@app/components/resources/resources_icons";
-import { INTERNAL_MCP_SERVERS } from "@app/lib/actions/mcp_internal_actions/constants";
+import {
+  AVAILABLE_INTERNAL_MCP_SERVER_NAMES,
+  INTERNAL_MCP_SERVERS,
+} from "@app/lib/actions/mcp_internal_actions/constants";
 import { DEFAULT_REMOTE_MCP_SERVERS } from "@app/lib/actions/mcp_internal_actions/remote_servers";
+import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
 import { CONNECTOR_UI_CONFIGURATIONS } from "@app/lib/connector_providers_ui";
 import type { ConnectorProvider } from "@app/types/data_source";
@@ -234,41 +238,20 @@ function formatToolName(name: string): string {
 }
 
 function extractToolsFromServer(
-  serverKey: string
+  serverMetadata: ServerMetadata
 ): { tools: IntegrationTool[]; icon: InternalAllowedIconType } | null {
-  const server = INTERNAL_MCP_SERVERS[
-    serverKey as keyof typeof INTERNAL_MCP_SERVERS
-  ] as
-    | {
-        metadata?: {
-          serverInfo: { icon: string; description: string };
-          tools_stakes: Record<string, string>;
-        };
-        tools_stakes?: Record<string, string>;
-        serverInfo?: { icon: string; description: string };
-      }
-    | undefined;
-
-  // serverInfo and tools_stakes can be at top level or inside metadata
-  const serverInfo = server?.metadata?.serverInfo ?? server?.serverInfo;
-  if (!serverInfo) {
-    return null;
-  }
-
-  const stakes = server?.tools_stakes ?? server?.metadata?.tools_stakes ?? {};
-
-  const tools: IntegrationTool[] = Object.entries(stakes).map(
-    ([name, level]) => ({
+  const tools: IntegrationTool[] = serverMetadata.tools.map(
+    ({ name, stake }) => ({
       name,
       displayName: formatToolName(name),
       description: "",
-      isWriteAction: level !== "never_ask",
+      isWriteAction: stake !== "never_ask",
     })
   );
 
   return {
     tools,
-    icon: serverInfo.icon as InternalAllowedIconType,
+    icon: serverMetadata.serverInfo.icon,
   };
 }
 
@@ -307,35 +290,19 @@ export function buildPublicIntegrationRegistry(): IntegrationBase[] {
   // Add MCP servers
   // Note: For marketing/SEO pages, we include servers that are behind feature flags
   // (isRestricted) or in preview since they are still valid integrations to advertise.
-  for (const [name, serverRaw] of Object.entries(INTERNAL_MCP_SERVERS)) {
+  for (const name of AVAILABLE_INTERNAL_MCP_SERVER_NAMES) {
     // Only include user-facing (manual) servers, skip auto/internal ones
-    const entry = serverRaw as { availability: string };
-    if (entry.availability !== "manual" || EXCLUDED_MCP_SERVERS.has(name)) {
+    const server = INTERNAL_MCP_SERVERS[name];
+    if (server.availability !== "manual" || EXCLUDED_MCP_SERVERS.has(name)) {
       continue;
     }
 
-    // serverInfo can be at top level or inside metadata
-    const server = serverRaw as {
-      metadata?: {
-        serverInfo: {
-          description: string;
-          documentationUrl: string | null;
-          authorization: unknown;
-        };
-      };
-      serverInfo?: {
-        description: string;
-        documentationUrl: string | null;
-        authorization: unknown;
-      };
-    };
-
-    const serverInfo = server.metadata?.serverInfo ?? server.serverInfo;
+    const serverInfo = server.metadata.serverInfo;
     if (!serverInfo) {
       continue;
     }
 
-    const extracted = extractToolsFromServer(name);
+    const extracted = extractToolsFromServer(server.metadata);
     if (!extracted) {
       continue;
     }

@@ -8,6 +8,12 @@ import {
   emitConversationRenderingMetrics,
 } from "@app/lib/api/assistant/conversation_rendering/instrumentation";
 import { renderAllMessages } from "@app/lib/api/assistant/conversation_rendering/message_rendering";
+import type {
+  InteractionWithTokens,
+  MessageWithTokens,
+} from "@app/lib/api/assistant/conversation_rendering/pruning";
+import { sumInteractionTokens } from "@app/lib/api/assistant/conversation_rendering/pruning";
+import { ConversationWindowState } from "@app/lib/api/assistant/conversation_rendering/window_state";
 import type { EnabledSkill } from "@app/lib/api/assistant/skills_rendering";
 import { getTextContentFromMessage } from "@app/lib/api/assistant/utils";
 import { getLlmCredentials } from "@app/lib/api/provider_credentials";
@@ -31,11 +37,8 @@ import type { CredentialsType } from "@app/types/provider";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
-import type { InteractionWithTokens, MessageWithTokens } from "./pruning";
-import { sumInteractionTokens } from "./pruning";
-import { ConversationWindowState } from "./window_state";
 
-export { PREVIOUS_INTERACTIONS_TO_PRESERVE } from "./window_state";
+export { PREVIOUS_INTERACTIONS_TO_PRESERVE } from "@app/lib/api/assistant/conversation_rendering/window_state";
 
 // Fixed number of tokens assumed for image contents
 const IMAGE_CONTENT_TOKEN_COUNT = 3100;
@@ -49,17 +52,11 @@ export const TOKENS_MARGIN = 1024;
 export const PRUNING_TARGET_CONTEXT_UTILIZATION = 0.6;
 
 /**
- * Escalates through pruning and dropping until the conversation fits budgetForInteractions, or
- * returns an error if even the last resort isn't enough. Four layers, each tried only if the
- * previous one left the conversation over budget: prune tool results proactively (up to
- * pruningBudget), drop old interactions entirely (never the current one), force pruning into the
- * protected floor, then force dropping past the protected floor.
- *
- * pruneToolResults and dropInteractionsToFit each run twice, first with their normal floor and
- * then with a floor of 0. The second call never conflicts with the first. An already-pruned
- * message sits at placeholder size, so re-pruning it saves nothing and the eligibility check
- * skips it. An already-dropped interaction is gone from the array, so there is nothing left to
- * reconsider. The second call can only ever reach further than the first.
+ * Replays the conversation chronologically so cleanup decisions are deterministic for every
+ * interaction prefix. Old tool results are pruned before interactions are dropped. Soft drops
+ * preserve the latest three interactions. Hard-budget pressure can drop every previous
+ * interaction. The current interaction is never dropped and its latest tool result is never
+ * pruned.
  */
 function pruneConversationToBudget(
   interactions: InteractionWithTokens[],
@@ -80,11 +77,17 @@ function pruneConversationToBudget(
   },
   Error
 > {
-  return ConversationWindowState.fromSnapshot(interactions, {
+  const state = ConversationWindowState.empty({
     pruningBudget,
     budgetForInteractions,
     logDetails,
-  }).fit();
+  });
+
+  for (const interaction of interactions) {
+    state.append(interaction);
+  }
+
+  return state.fit();
 }
 
 export async function renderConversationForModel(

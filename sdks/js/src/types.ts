@@ -107,6 +107,26 @@ const ModelLLMIdSchema = FlexibleEnumSchema<KnownModelLLMId>() as z.ZodType<
   KnownModelLLMId | (string & {})
 >;
 
+// Flexible so the SDK does not need updating when new efforts are added; the
+// server re-validates against the concrete set and rejects unknown values.
+// copied from reasoning.ts to avoid circular dependency
+const ReasoningEffortSchema = FlexibleEnumSchema<
+  "none" | "light" | "medium" | "high"
+>();
+
+// Explicit per-message model + reasoning-effort selection. Providing it makes
+// the mentioned agent(s) run this model instead of their configured one, when
+// it is available to the workspace (otherwise the server falls back). Uses the
+// flexible enums above so unknown-but-syntactically-valid values reach the
+// server, which validates them and returns a 400 on truly unknown ids.
+export const PublicModelSelectionSchema = z.object({
+  providerId: ModelProviderIdSchema,
+  modelId: ModelLLMIdSchema,
+  reasoningEffort: ReasoningEffortSchema.optional(),
+});
+
+export type PublicModelSelection = z.infer<typeof PublicModelSelectionSchema>;
+
 const EmbeddingProviderIdSchema = FlexibleEnumSchema<"openai" | "mistral">();
 
 const ConnectorsAPIErrorTypeSchema = FlexibleEnumSchema<
@@ -700,6 +720,7 @@ export type RetrievalDocumentPublicType = z.infer<
 >;
 
 const WhitelistableFeaturesSchema = FlexibleEnumSchema<
+  | "activation_scheduler"
   | "activation_skill"
   | "advanced_notion_management"
   | "allow_sso"
@@ -2319,6 +2340,9 @@ export const PublicPostMessagesRequestBodySchema = z.intersection(
       clientSideMCPServerIds: z.array(z.string()).optional().nullable(),
     }),
     agenticMessageData: AgenticMessageDataSchema.optional(),
+    // Optional per-message model + reasoning-effort override applied to the
+    // mentioned agent(s). Omitted means each agent runs its configured model.
+    modelSelection: PublicModelSelectionSchema.optional(),
   }),
   z
     .object({
@@ -2419,6 +2443,10 @@ export const PublicPostConversationsRequestBodySchema = z.intersection(
           mentions: z.array(MentionSchema),
           context: UserMessageContextSchema,
           agenticMessageData: AgenticMessageDataSchema.optional(),
+          // Optional per-message model + reasoning-effort override applied to
+          // the mentioned agent(s). Omitted means each agent runs its
+          // configured model.
+          modelSelection: PublicModelSelectionSchema.optional(),
         }),
         z
           .object({

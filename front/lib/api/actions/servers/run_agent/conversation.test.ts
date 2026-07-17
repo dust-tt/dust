@@ -1,6 +1,7 @@
 import type { AgentLoopRunContext } from "@app/lib/actions/types";
 import { getOrCreateConversation } from "@app/lib/api/actions/servers/run_agent/conversation";
 import type { Authenticator } from "@app/lib/auth";
+import { getApiKeyNameHeader } from "@app/lib/auth";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
 import type { AgentConfigurationType } from "@app/types/assistant/agent";
 import type {
@@ -9,9 +10,12 @@ import type {
   UserMessageType,
 } from "@app/types/assistant/conversation";
 import { Ok } from "@app/types/shared/result";
-import type { ConversationPublicType, DustAPI } from "@dust-tt/client";
+import { decodeUtf8HeaderValue } from "@app/types/shared/utils/http_headers";
+import { getHeaderFromUserEmail } from "@app/types/user";
+import type { ConversationPublicType } from "@dust-tt/client";
+import { DustAPI } from "@dust-tt/client";
 import assert from "assert";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 function buildRunAgentFixtures({ spaceId }: { spaceId: string | null }): {
   mainConversation: ConversationType;
@@ -200,5 +204,131 @@ describe("getOrCreateConversation", () => {
         spaceId: undefined,
       })
     );
+  });
+
+  describe("attribution headers", () => {
+    afterEach(() => {
+      vi.unstubAllGlobals();
+    });
+
+    it("creates the sub-conversation when the API key name and user email contain non-Latin-1 characters", async () => {
+      const { mainConversation, originMessage, mainAgent, agentLoopContext } =
+        buildRunAgentFixtures({ spaceId: null });
+
+      // Typed against the two methods getApiKeyNameHeader exercises; the cast
+      // to Authenticator only widens to the class type.
+      const auth = {
+        attributionKey: () => ({ id: 1, name: "Clé 🔑 złoty smørrebrød" }),
+        key: () => null,
+      } satisfies Pick<
+        Authenticator,
+        "attributionKey" | "key"
+      > as unknown as Authenticator;
+
+      const cannedOwner = {
+        id: 1,
+        sId: generateRandomModelSId(),
+        name: "workspace",
+        role: "user",
+        segmentation: null,
+        whiteListedProviders: null,
+        defaultEmbeddingProvider: null,
+        regionalModelsOnly: false,
+      };
+      const cannedResponseBody = {
+        conversation: {
+          id: 1,
+          created: Date.now(),
+          unread: false,
+          actionRequired: false,
+          owner: cannedOwner,
+          sId: generateRandomModelSId(),
+          title: null,
+          visibility: "unlisted",
+          content: [],
+          url: "http://front.test/conversation",
+        },
+        message: {
+          id: 1,
+          created: Date.now(),
+          type: "user_message",
+          sId: generateRandomModelSId(),
+          visibility: "visible",
+          version: 0,
+          user: null,
+          mentions: [],
+          content: "hello",
+          context: {
+            username: "MainAgent",
+            timezone: "UTC",
+            origin: "api",
+          },
+        },
+      };
+
+      const capturedRequests: Request[] = [];
+      vi.stubGlobal(
+        "fetch",
+        vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+          // The Request constructor applies the same header validation as a real
+          // fetch: unsanitized non-Latin-1 header values throw a TypeError here.
+          const request = new Request(input, init);
+          capturedRequests.push(request);
+          return new Response(JSON.stringify(cannedResponseBody), {
+            status: 200,
+            headers: { "content-type": "application/json" },
+          });
+        })
+      );
+
+      // Built the same way the run_agent tool handler builds its DustAPI.
+      const api = new DustAPI(
+        { url: "http://front.test" },
+        {
+          apiKey: "sk-test",
+          workspaceId: generateRandomModelSId(),
+          extraHeaders: {
+            ...getHeaderFromUserEmail("jérôme.łukasz@example.com"),
+            ...getApiKeyNameHeader(auth),
+          },
+        },
+        { error: vi.fn(), info: vi.fn(), trace: vi.fn(), warn: vi.fn() }
+      );
+
+      const result = await getOrCreateConversation(
+        api,
+        auth,
+        agentLoopContext,
+        {
+          childAgentBlob: { name: "ChildAgent", description: "A child agent" },
+          childAgentId: generateRandomModelSId(),
+          mainAgent,
+          originMessage,
+          mainConversation,
+          query: "Do something",
+          toolsetsToAdd: null,
+          fileOrContentFragmentIds: null,
+          filePaths: null,
+          conversationId: null,
+        }
+      );
+
+      assert(result.isOk());
+      expect(capturedRequests).toHaveLength(1);
+      const headers = capturedRequests[0].headers;
+      // Values with characters above 0xFF (ł, emoji) travel as an RFC 2047
+      // encoded-word and round-trip losslessly through the header.
+      const keyNameHeader = headers.get("x-dust-api-key-name");
+      assert(keyNameHeader);
+      expect(keyNameHeader).toMatch(/^=\?utf-8\?B\?/);
+      expect(decodeUtf8HeaderValue(keyNameHeader)).toBe(
+        "Clé 🔑 złoty smørrebrød"
+      );
+      const emailHeader = headers.get("x-api-user-email");
+      assert(emailHeader);
+      expect(decodeUtf8HeaderValue(emailHeader)).toBe(
+        "jérôme.łukasz@example.com"
+      );
+    });
   });
 });

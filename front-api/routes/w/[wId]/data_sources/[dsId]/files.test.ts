@@ -185,6 +185,78 @@ describe("POST /api/w/:wId/data_sources/:dsId/files", () => {
     expect(response.status).toBe(403);
   });
 
+  it("returns 403 when the data source is managed by a connector", async () => {
+    const { auth, workspace, globalSpace, user } =
+      await createPrivateApiMockRequest({ method: "POST", role: "admin" });
+
+    const dataSourceView = await DataSourceViewFactory.fromConnector(
+      workspace,
+      globalSpace,
+      "notion"
+    );
+    const file = await FileFactory.csv(auth, user, {
+      useCase: "upsert_table",
+    });
+
+    mockFileContent.setContent("foo,bar,baz\n1,2,3\n4,5,6");
+
+    const response = await post(workspace, dataSourceView.dataSource.sId, {
+      fileId: file.sId,
+      upsertArgs: {
+        tableId: "test-table",
+        name: "Test Table",
+        title: "Test Title",
+        description: "Test Description",
+        tags: ["test"],
+        useAppForHeaderDetection: true,
+      },
+    });
+
+    expect(response.status).toBe(403);
+    expect(await response.json()).toEqual({
+      error: {
+        type: "data_source_auth_error",
+        message: "You cannot upload a file to a managed data source.",
+      },
+    });
+  });
+
+  it("returns 403 when the data source is a website", async () => {
+    const { auth, workspace, globalSpace, user } =
+      await createPrivateApiMockRequest({ method: "POST", role: "admin" });
+
+    const dataSourceView = await DataSourceViewFactory.fromConnector(
+      workspace,
+      globalSpace,
+      "webcrawler"
+    );
+    const file = await FileFactory.csv(auth, user, {
+      useCase: "upsert_table",
+    });
+
+    mockFileContent.setContent("foo,bar,baz\n1,2,3\n4,5,6");
+
+    const response = await post(workspace, dataSourceView.dataSource.sId, {
+      fileId: file.sId,
+      upsertArgs: {
+        tableId: "test-table",
+        name: "Test Table",
+        title: "Test Title",
+        description: "Test Description",
+        tags: ["test"],
+        useAppForHeaderDetection: true,
+      },
+    });
+
+    expect(response.status).toBe(403);
+    expect(await response.json()).toEqual({
+      error: {
+        type: "data_source_auth_error",
+        message: "You cannot upload a file to a managed data source.",
+      },
+    });
+  });
+
   it("successfully upserts file to data source with the right arguments", async () => {
     const { auth, workspace, globalSpace, user } =
       await createPrivateApiMockRequest({ method: "POST", role: "admin" });

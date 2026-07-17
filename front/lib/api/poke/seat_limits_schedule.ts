@@ -1,0 +1,97 @@
+import type { Authenticator } from "@app/lib/auth";
+import { WorkspaceSeatLimitResource } from "@app/lib/resources/workspace_seat_limit_resource";
+import { launchMetronomeSeatCountSyncWorkflow } from "@app/temporal/usage_queue/client";
+import type { MembershipSeatType } from "@app/types/memberships";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
+
+// A single scheduled phase of a seat-limit configuration, as returned by the
+// read path. Dates are ISO strings for transport; `endAt` (derived server-side)
+// is null for the open-ended final phase. Phases are contiguous: a phase's
+// `endAt` equals the next phase's `startAt`.
+export type SeatLimitSchedulePhase = {
+  minSeats: number;
+  maxSeats: number | null;
+  startAt: string;
+  endAt: string | null;
+};
+
+// A phase as submitted by the client (write path): only the start matters —
+// end dates are derived server-side to keep the timeline contiguous.
+export type SeatLimitScheduleInputPhase = {
+  minSeats: number;
+  maxSeats: number | null;
+  startAt: string;
+};
+
+export type PokeSeatLimitScheduleResponseBody = {
+  schedule: Partial<Record<MembershipSeatType, SeatLimitSchedulePhase[]>>;
+};
+
+// Phase with a parsed date, as accepted by the write path.
+type SeatLimitSchedulePhaseInput = {
+  minSeats: number;
+  maxSeats: number | null;
+  startAt: Date;
+};
+
+// Read the current + scheduled-future seat-limit schedule for a workspace,
+// serialized for the poke UI. Historical (already-ended) phases are omitted.
+export async function getSeatLimitSchedule(
+  auth: Authenticator
+): Promise<PokeSeatLimitScheduleResponseBody> {
+  const workspace = auth.getNonNullableWorkspace();
+  const schedule = await WorkspaceSeatLimitResource.fetchScheduleByWorkspace({
+    workspace,
+  });
+
+  const result: PokeSeatLimitScheduleResponseBody["schedule"] = {};
+  for (const [seatType, segments] of schedule) {
+    result[seatType] = segments.map((segment) => ({
+      minSeats: segment.minSeats,
+      maxSeats: segment.maxSeats,
+      startAt: segment.startAt.toISOString(),
+      endAt: segment.endAt?.toISOString() ?? null,
+    }));
+  }
+  return { schedule: result };
+}
+
+// Replace the full schedule of phases for a single seat type, then re-launch
+// the Metronome seat sync so the change (and any future-dated phases) are
+// programmed into Metronome immediately.
+export async function setSeatLimitScheduleForSeatType(
+  auth: Authenticator,
+  {
+    seatType,
+    phases,
+  }: {
+    seatType: MembershipSeatType;
+    phases: SeatLimitSchedulePhaseInput[];
+  }
+): Promise<Result<void, Error>> {
+  const workspace = auth.getNonNullableWorkspace();
+
+  const saveResult = await WorkspaceSeatLimitResource.setScheduleForSeatType({
+    workspace,
+    seatType,
+    phases,
+  });
+  if (saveResult.isErr()) {
+    return saveResult;
+  }
+
+  const syncResult = await launchMetronomeSeatCountSyncWorkflow({
+    workspaceId: workspace.sId,
+  });
+  if (syncResult.isErr()) {
+    return new Err(
+      new Error(
+        "Seat-limit schedule saved, but the Metronome seat sync failed to " +
+          `launch: ${syncResult.error.message}. Re-run once resolved.`
+      )
+    );
+  }
+
+  return new Ok(undefined);
+}

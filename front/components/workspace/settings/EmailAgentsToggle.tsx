@@ -24,6 +24,10 @@ const ENABLE_EMAIL_AGENTS_CONFIRMATION_MESSAGE =
   "from untrusted sources, since those are exposed to security risks such as " +
   "prompt injection.";
 
+const LABEL = "Email agents";
+const DESCRIPTION = `Allow workspace members to email agents at AGENT_NAME@${ASSISTANT_EMAIL_SUBDOMAIN}`;
+const DOCUMENTATION_URL = "https://docs.dust.tt/docs/email-agents";
+
 interface EmailAgentsToggleProps {
   owner: WorkspaceType;
 }
@@ -45,15 +49,13 @@ export function EmailAgentsToggle({ owner }: EmailAgentsToggleProps) {
     ? "Disable email agents"
     : "Enable email agents";
 
-  const label = "Email agents";
-  const description = `Allow workspace members to email agents at AGENT_NAME@${ASSISTANT_EMAIL_SUBDOMAIN}`;
-
   return (
     <>
       {hasFeature("admin_governance") ? (
         <GovernanceSettingRowLayout
-          label={label}
-          description={description}
+          label={LABEL}
+          description={DESCRIPTION}
+          documentationUrl={DOCUMENTATION_URL}
           action={
             <SliderToggle
               selected={isEnabled}
@@ -66,7 +68,7 @@ export function EmailAgentsToggle({ owner }: EmailAgentsToggleProps) {
         />
       ) : (
         <ContextItem
-          title={label}
+          title={LABEL}
           subElement={
             <div className="flex flex-row items-center gap-2">
               <span>
@@ -74,7 +76,7 @@ export function EmailAgentsToggle({ owner }: EmailAgentsToggleProps) {
                 <code>AGENT_NAME@{ASSISTANT_EMAIL_SUBDOMAIN}</code>
               </span>
               <a
-                href="https://docs.dust.tt/docs/email-agents"
+                href={DOCUMENTATION_URL}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-action-400 hover:text-action-500 text-sm"

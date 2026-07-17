@@ -1,11 +1,14 @@
+import { GovernancePageLayout } from "@app/components/pages/workspace/governance/GovernancePageLayout";
+import { GovernancePageSkeleton } from "@app/components/pages/workspace/governance/GovernancePageSkeleton";
 import { GovernanceSettingRow } from "@app/components/pages/workspace/governance/GovernanceSettingRow";
 import { GovernanceSettingSection } from "@app/components/pages/workspace/governance/GovernanceSettingSection";
 import { ExtensionMcpToolsSection } from "@app/components/workspace/ExtensionMcpToolsSection";
 import { LinkedSectionNotice } from "@app/components/workspace/LinkedSectionNotice";
-import { AuditLogsToggle } from "@app/components/workspace/settings/AuditLogsToggle";
+import { AuditLogsGovernanceSection } from "@app/components/workspace/settings/AuditLogsToggle";
 import { DustMcpServerSettingsItem } from "@app/components/workspace/settings/DustMcpServerSettingsItem";
 import { EmailAgentsToggle } from "@app/components/workspace/settings/EmailAgentsToggle";
 import { InteractiveContentSharing } from "@app/components/workspace/settings/InteractiveContentSharingToggle";
+import { MessagingAppToggles } from "@app/components/workspace/settings/MessagingAppToggles";
 import { OpenPodPolicy } from "@app/components/workspace/settings/OpenProjectsPolicy";
 import { PodKnowledgePolicy } from "@app/components/workspace/settings/PodKnowledgePolicy";
 import { PrivateConversationUrlsToggle } from "@app/components/workspace/settings/PrivateConversationUrlsToggle";
@@ -22,29 +25,33 @@ import {
 import { useAppRouter } from "@app/lib/platform";
 import { useGovernancePermissions } from "@app/lib/swr/governance";
 import { useGroups } from "@app/lib/swr/groups";
+import type { GovernancePermissionsByKey } from "@app/types/api/governance";
 import type {
+  CapabilitySpec,
   GovernancePermission,
   GrantType,
-  GroupPermissionResourceType,
+} from "@app/types/group_permissions";
+import {
+  capabilityKey,
+  GOVERNANCE_CAPABILITIES,
 } from "@app/types/group_permissions";
 import { MANAGEABLE_GROUP_KINDS } from "@app/types/groups";
+import { removeNulls } from "@app/types/shared/utils/general";
 import type {
   LightWorkspaceType,
   WorkspaceSharingPolicy,
 } from "@app/types/user";
 import {
   ActionFrame,
+  CloudArrowLeftRight,
   ContentMessage,
-  File04,
-  IntersectDust,
+  Cube01,
+  InfoCircle,
   Lock01,
-  Page,
   PuzzlePiece01,
   Robot,
   ShapesPlus,
-  Toggle01Left,
 } from "@dust-tt/sparkle";
-import groupBy from "lodash/groupBy";
 import type { ComponentType } from "react";
 
 function useUpdateGovernancePermission(owner: LightWorkspaceType) {
@@ -73,35 +80,59 @@ function isFrameCapabilityEnabled(
   }
 }
 
+// Split the keyed permission map into the page's four sections. Each section pulls its capabilities
+// from the map in catalog (display) order, dropping any the current user's role isn't allowed to
+// see (absent from the map). Frame filtering by sharing policy is applied by the caller, which has
+// the runtime policy.
+function groupGovernancePermissionsBySection(
+  governancePermissions: GovernancePermissionsByKey
+): {
+  agents: GovernancePermission[];
+  skills: GovernancePermission[];
+  frames: GovernancePermission[];
+  billingAndSecurity: GovernancePermission[];
+} {
+  const resolve = (specs: CapabilitySpec[]): GovernancePermission[] =>
+    removeNulls(
+      specs.map((spec) => governancePermissions[capabilityKey(spec)])
+    );
+
+  return {
+    agents: resolve(GOVERNANCE_CAPABILITIES.agent),
+    skills: resolve(GOVERNANCE_CAPABILITIES.skill),
+    frames: resolve(GOVERNANCE_CAPABILITIES.frame),
+    billingAndSecurity: resolve(GOVERNANCE_CAPABILITIES.billingAndSecurity),
+  };
+}
+
 export const GovernancePage = () => {
   const { hasFeature } = useFeatureFlags();
   const hasAdminGovernanceFeature = hasFeature("admin_governance");
 
   const owner = useWorkspace();
   const { isAdmin } = useAuth();
-  const { groups, isGroupsLoading } = useGroups({
+  const { groups, isGroupsLoading, isGroupsError } = useGroups({
     owner,
     kinds: MANAGEABLE_GROUP_KINDS,
   });
-  const { governancePermissions, isLoading: isGovernancePermissionsLoading } =
-    useGovernancePermissions(owner);
+  const {
+    governancePermissions,
+    isLoading: isGovernancePermissionsLoading,
+    isGovernancePermissionsError,
+  } = useGovernancePermissions(owner);
   const onPermissionChange = useUpdateGovernancePermission(owner);
 
   const { sharingPolicy, doUpdateSharingPolicy, isChanging } =
     useFrameSharingToggle({ owner });
 
   const isLoading = isGroupsLoading || isGovernancePermissionsLoading;
+  const isError = isGroupsError || isGovernancePermissionsError;
 
-  const governancePermissionsMap: Partial<
-    Record<GroupPermissionResourceType, GovernancePermission[]>
-  > = groupBy(governancePermissions, "resourceType");
+  const { agents, skills, frames, billingAndSecurity } =
+    groupGovernancePermissionsBySection(governancePermissions);
 
-  const billingPermissions = governancePermissionsMap.billing ?? [];
-  const identityPermissions = governancePermissionsMap.identity ?? [];
-
-  const framePermissions = (governancePermissionsMap.frame ?? []).filter(
-    (permission) =>
-      isFrameCapabilityEnabled(permission.grantType, sharingPolicy)
+  const framePermissions = frames.filter((permission) =>
+    isFrameCapabilityEnabled(permission.grantType, sharingPolicy)
   );
 
   const router = useAppRouter();
@@ -119,13 +150,13 @@ export const GovernancePage = () => {
       id: "agents",
       label: "Agents",
       icon: Robot,
-      governancePermissions: governancePermissionsMap.agent ?? [],
+      governancePermissions: agents,
     },
     {
       id: "skills",
       label: "Skills",
       icon: PuzzlePiece01,
-      governancePermissions: governancePermissionsMap.skill ?? [],
+      governancePermissions: skills,
     },
     ...(framePermissions.length > 0 || isAdmin
       ? [
@@ -143,10 +174,7 @@ export const GovernancePage = () => {
             id: "billing" as const,
             label: "Billing and security",
             icon: Lock01,
-            governancePermissions: [
-              ...billingPermissions,
-              ...identityPermissions,
-            ],
+            governancePermissions: billingAndSecurity,
           },
         ]
       : []),
@@ -157,20 +185,26 @@ export const GovernancePage = () => {
   }
 
   if (isLoading) {
+    return <GovernancePageSkeleton />;
+  }
+
+  if (isError) {
     return (
-      <Page>
-        <Page.Header title="Workspace & Governance" description="Loading..." />
-      </Page>
+      <GovernancePageLayout>
+        <ContentMessage
+          variant="warning"
+          icon={InfoCircle}
+          size="lg"
+          title="Failed to load"
+        >
+          Governance settings could not be loaded.
+        </ContentMessage>
+      </GovernancePageLayout>
     );
   }
 
   return (
-    <Page>
-      <Page.Header
-        title="Workspace & Governance"
-        description="Manage what members can do in your workspace."
-        icon={Toggle01Left}
-      />
+    <GovernancePageLayout>
       <ContentMessage>
         This page is WIP. Do not change unless you know what you are doing.
       </ContentMessage>
@@ -192,11 +226,7 @@ export const GovernancePage = () => {
             )}
             {governancePermissions.map((governancePermission) => (
               <GovernanceSettingRow
-                key={
-                  governancePermission.grantType +
-                  ":" +
-                  governancePermission.resourceType
-                }
+                key={capabilityKey(governancePermission)}
                 governancePermission={governancePermission}
                 groups={groups}
                 onChange={(newConfiguration) =>
@@ -213,11 +243,14 @@ export const GovernancePage = () => {
 
         {isAdmin && (
           <>
-            <GovernanceSettingSection label="Pods" icon={IntersectDust}>
+            <GovernanceSettingSection label="Pods" icon={Cube01}>
               <OpenPodPolicy owner={owner} />
               <PodKnowledgePolicy owner={owner} />
             </GovernanceSettingSection>
-            <GovernanceSettingSection label="Capabilities" icon={ShapesPlus}>
+            <GovernanceSettingSection
+              label="Feature policies"
+              icon={ShapesPlus}
+            >
               <VoiceTranscriptionToggle owner={owner} />
               <EmailAgentsToggle owner={owner} />
               <PrivateConversationUrlsToggle owner={owner} />
@@ -226,12 +259,16 @@ export const GovernancePage = () => {
               <SlackPersonalFooterRemovalToggle owner={owner} />
               <WorkspaceAnalyticsToggle owner={owner} />
             </GovernanceSettingSection>
-            <GovernanceSettingSection label="Audit" icon={File04}>
-              <AuditLogsToggle owner={owner} />
+            <GovernanceSettingSection
+              label="Messaging app policies"
+              icon={CloudArrowLeftRight}
+            >
+              <MessagingAppToggles owner={owner} />
             </GovernanceSettingSection>
+            <AuditLogsGovernanceSection owner={owner} />
           </>
         )}
       </div>
-    </Page>
+    </GovernancePageLayout>
   );
 };

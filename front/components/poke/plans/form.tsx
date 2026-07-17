@@ -23,6 +23,7 @@ import { useCallback, useState } from "react";
 
 export type EditingPlanType = {
   code: string;
+  connectionsCount: string | number;
   dataSourcesCount: string | number;
   dataSourcesDocumentsCount: string | number;
   dataSourcesDocumentsSizeMb: string | number;
@@ -68,6 +69,7 @@ export const fromPlanType = (plan: PlanType): EditingPlanType => {
     isIntercomAllowed: plan.limits.connections.isIntercomAllowed,
     isWebCrawlerAllowed: plan.limits.connections.isWebCrawlerAllowed,
     isSalesforceAllowed: plan.limits.connections.isSalesforceAllowed,
+    connectionsCount: plan.limits.connections.count,
     isSSOAllowed: plan.limits.users.isSSOAllowed,
     isSCIMAllowed: plan.limits.users.isSCIMAllowed,
     isByok: plan.isByok,
@@ -117,6 +119,7 @@ export const toPlanType = (editingPlan: EditingPlanType): PlanType => {
         isDeepDiveAllowed: editingPlan.isDeepDiveAllowed,
       },
       connections: {
+        count: parseMaybeNumber(editingPlan.connectionsCount),
         isConfluenceAllowed: editingPlan.isConfluenceAllowed,
         isSlackAllowed: editingPlan.isSlackAllowed,
         isNotionAllowed: editingPlan.isNotionAllowed,
@@ -161,6 +164,7 @@ export const toPlanType = (editingPlan: EditingPlanType): PlanType => {
 
 const getEmptyPlan = (): EditingPlanType => ({
   code: "",
+  connectionsCount: "",
   dataSourcesCount: "",
   dataSourcesDocumentsCount: "",
   dataSourcesDocumentsSizeMb: "",
@@ -313,6 +317,12 @@ export const PLAN_FIELDS = {
     type: "boolean",
     width: "tiny",
     title: "Deep",
+  },
+  connectionsCount: {
+    type: "number",
+    width: "small",
+    title: "# Conn",
+    error: (plan: EditingPlanType) => errorCheckNumber(plan.connectionsCount),
   },
   dataSourcesCount: {
     type: "number",

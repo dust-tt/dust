@@ -41,7 +41,7 @@ export async function publishHandler(
   return new Ok([
     {
       type: "text",
-      text: `Published sandbox function "${result.value.slug}".`,
+      text: `Published pod function "${result.value.slug}".`,
     },
   ]);
 }

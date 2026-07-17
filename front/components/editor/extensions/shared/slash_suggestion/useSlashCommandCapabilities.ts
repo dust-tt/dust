@@ -72,7 +72,6 @@ export function useInputBarSlashCommandCapabilities({
   const { skills, isSkillsLoading } = useSkills({
     owner,
     status: "active",
-    globalSpaceOnly: true,
   });
   const { serverViews, isLoading: isServerViewsLoading } =
     useMCPServerViewsFromSpaces(owner, globalSpaces);

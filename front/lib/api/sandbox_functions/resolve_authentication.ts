@@ -6,7 +6,7 @@ import { SandboxFunctionInvocationResource } from "@app/lib/resources/sandbox_fu
 import { SandboxFunctionMCPActionResource } from "@app/lib/resources/sandbox_function_mcp_action_resource";
 import type { SandboxFunctionResource } from "@app/lib/resources/sandbox_function_resource";
 import logger from "@app/logger/logger";
-import { launchSandboxFunctionToolWorkflow } from "@app/temporal/agent_loop/client";
+import { launchSandboxFunctionToolWorkflow } from "@app/temporal/sandbox_functions/client";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 
@@ -115,17 +115,18 @@ export async function resolveSandboxFunctionActionAuthentication(
   );
 
   if (outcome === "completed") {
-    try {
-      await launchSandboxFunctionToolWorkflow(auth, { action });
-    } catch (err) {
+    const launchResult = await launchSandboxFunctionToolWorkflow(auth, {
+      action,
+    });
+    if (launchResult.isErr()) {
       // The action is already `running`; a failed launch would otherwise leave the poll hanging
       // until token expiry with no workflow. Compensate to a terminal `errored` (CAS-guarded so a
-      // workflow that did start and already moved the status is not clobbered), then rethrow.
+      // workflow that did start and already moved the status is not clobbered), then propagate.
       await action.updateStatusFromExpected(auth, {
         status: "errored",
         expectedStatus: "running",
       });
-      throw err;
+      throw launchResult.error;
     }
   }
 

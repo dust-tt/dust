@@ -48,7 +48,7 @@ async function makeFunction(
 describe("formatSandboxFunctionsList", () => {
   it("returns an explicit empty message when there are none", () => {
     expect(formatSandboxFunctionsList([])).toBe(
-      "No sandbox functions published in this pod."
+      "No pod functions published in this pod."
     );
   });
 
@@ -64,7 +64,7 @@ describe("formatSandboxFunctionsList", () => {
 
     const out = formatSandboxFunctionsList([fn]);
 
-    expect(out).toContain("Sandbox functions:");
+    expect(out).toContain("Pod functions:");
     expect(out).toContain("- greet: Greet a user by name.");
     expect(out).toContain("Use the get tool");
     // The verbose schemas live behind the get tool, not the list.

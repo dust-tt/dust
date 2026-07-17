@@ -12,7 +12,7 @@ import { SandboxFunctionInvocationResource } from "@app/lib/resources/sandbox_fu
 import { SandboxFunctionMCPActionResource } from "@app/lib/resources/sandbox_function_mcp_action_resource";
 import { SandboxFunctionResource } from "@app/lib/resources/sandbox_function_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
-import { launchSandboxFunctionToolWorkflow } from "@app/temporal/agent_loop/client";
+import { launchSandboxFunctionToolWorkflow } from "@app/temporal/sandbox_functions/client";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
@@ -166,7 +166,7 @@ export async function createSandboxFunctionMCPAction(
     return new Err(
       new SandboxFunctionMCPActionError(
         "invocation_not_found",
-        "Sandbox function not found."
+        "Pod function not found."
       )
     );
   }
@@ -179,7 +179,7 @@ export async function createSandboxFunctionMCPAction(
     return new Err(
       new SandboxFunctionMCPActionError(
         "invocation_not_found",
-        "Sandbox function invocation not found."
+        "Pod function invocation not found."
       )
     );
   }
@@ -217,9 +217,19 @@ export async function createSandboxFunctionMCPAction(
   });
 
   switch (actionStatus) {
-    case "running":
-      await launchSandboxFunctionToolWorkflow(auth, { action });
+    case "running": {
+      const launchResult = await launchSandboxFunctionToolWorkflow(auth, {
+        action,
+      });
+      if (launchResult.isErr()) {
+        await action.updateStatusFromExpected(auth, {
+          status: "errored",
+          expectedStatus: "running",
+        });
+        throw launchResult.error;
+      }
       break;
+    }
     case "blocked_validation_required": {
       const approvalEventBase = await makeMCPApproveExecutionEventBase(auth, {
         actionId: action.sId,

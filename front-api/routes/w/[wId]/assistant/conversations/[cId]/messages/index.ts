@@ -334,7 +334,7 @@ app.post(
       const skills = await SkillResource.fetchByIds(auth, selectedSkillIds);
 
       const r = await SkillResource.upsertConversationSkills(auth, {
-        conversationId: conversation.id,
+        conversation,
         skills,
         enabled: true,
       });

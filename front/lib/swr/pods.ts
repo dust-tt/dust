@@ -1114,7 +1114,6 @@ export function usePodDefaultSkills({
   const { skills, isSkillsLoading } = useSkills({
     owner,
     status: "active",
-    globalSpaceOnly: true,
     disabled: !enabled,
   });
 

@@ -62,6 +62,7 @@ import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { isString, removeNulls } from "@app/types/shared/utils/general";
+import { decodeUtf8HeaderValue } from "@app/types/shared/utils/http_headers";
 import type {
   LightWorkspaceType,
   RoleType,
@@ -1099,7 +1100,7 @@ export class Authenticator {
    * Whether the caller holds a workspace-level capability. A capability is a
    * (grantType, resourceType) pair whose grants live on the type-wide (-1) group_permissions
    * rows. Admins bypass unconditionally (billing/security are admin-by-default). Otherwise we look
-   * for a -1 grant on any of the caller's groups; "*" grants match any verb / type.
+   * for a -1 grant on any of the caller's groups; "*" grants match any grant type / resource type.
    *
    * Cold path: a query per check is fine — no caching yet (pending auth-resolution decision).
    */
@@ -1854,7 +1855,7 @@ export function getApiKeyNameFromHeaders(headers: {
 }) {
   const apiKeyName = headers[DustApiKeyNameHeader];
   if (isString(apiKeyName)) {
-    return apiKeyName;
+    return decodeUtf8HeaderValue(apiKeyName);
   }
   return undefined;
 }
@@ -1869,6 +1870,8 @@ export function getApiKeyNameHeader(auth: Authenticator) {
     return undefined;
   }
 
+  // The name may exceed Latin-1 (emoji, non-Latin scripts); DustAPI encodes
+  // extra header values on the wire (see @dust-tt/client baseHeaders).
   return {
     [DustApiKeyNameHeader]: name,
   };

@@ -27,9 +27,10 @@ import type { ResourceFindOptions } from "@app/lib/resources/types";
 import { concurrentExecutor, withRetry } from "@app/lib/utils/async_utils";
 import { withTransaction } from "@app/lib/utils/sql_utils";
 import logger from "@app/logger/logger";
-import { launchSandboxFunctionInvocationWorkflow } from "@app/temporal/agent_loop/client";
+import { launchSandboxFunctionInvocationWorkflow } from "@app/temporal/sandbox_functions/client";
 import type {
   PostSandboxFunctionInvocationRequestBody,
+  SandboxFunctionInvocationStatus,
   SandboxFunctionInvocationType,
 } from "@app/types/api/sandbox_functions";
 import { isDevelopment } from "@app/types/shared/env";
@@ -60,6 +61,16 @@ const SandboxFunctionInvocationDataSchema = z.object({
 type SandboxFunctionInvocationData = z.infer<
   typeof SandboxFunctionInvocationDataSchema
 >;
+
+export interface SandboxFunctionInvocationForLLM {
+  createdAt: string;
+  error?: string;
+  input: unknown;
+  invocationId: string;
+  result?: unknown;
+  status: SandboxFunctionInvocationStatus;
+  updatedAt: string;
+}
 
 function parseSandboxFunctionInvocationData(
   content: string
@@ -140,15 +151,6 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
 
   get error(): string | undefined {
     return this.data.error;
-  }
-
-  toJSON(): SandboxFunctionInvocationType {
-    return {
-      sId: this.sId,
-      functionId: this.sandboxFunction.sId,
-      status: this.status,
-      createdAt: this.createdAt.toISOString(),
-    };
   }
 
   async fail(error: Error): Promise<void> {
@@ -267,7 +269,7 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
         ).trim();
         return new Err(
           new Error(
-            `Sandbox function invocation failed with exit code ${exitCode}${
+            `Pod function invocation failed with exit code ${exitCode}${
               detail ? `:\n${detail}` : "."
             }`
           )
@@ -471,6 +473,29 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
     return invocation ?? null;
   }
 
+  static async listRecent(
+    auth: Authenticator,
+    {
+      sandboxFunction,
+      limit,
+    }: {
+      sandboxFunction: SandboxFunctionResource;
+      limit: number;
+    }
+  ): Promise<SandboxFunctionInvocationResource[]> {
+    return this.baseFetch(
+      auth,
+      { sandboxFunction },
+      {
+        order: [
+          ["createdAt", "DESC"],
+          ["id", "DESC"],
+        ],
+        limit,
+      }
+    );
+  }
+
   static async deleteAllForSandboxFunction(
     sandboxFunction: SandboxFunctionResource,
     { transaction }: { transaction?: Transaction } = {}
@@ -524,5 +549,26 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
     } catch (error) {
       return new Err(normalizeError(error));
     }
+  }
+
+  toJSON(): SandboxFunctionInvocationType {
+    return {
+      sId: this.sId,
+      functionId: this.sandboxFunction.sId,
+      status: this.status,
+      createdAt: this.createdAt.toISOString(),
+    };
+  }
+
+  toJSONForLLM(): SandboxFunctionInvocationForLLM {
+    return {
+      createdAt: this.createdAt.toISOString(),
+      input: this.input,
+      invocationId: this.sId,
+      status: this.status,
+      updatedAt: this.updatedAt.toISOString(),
+      ...(this.result !== undefined ? { result: this.result } : {}),
+      ...(this.error !== undefined ? { error: this.error } : {}),
+    };
   }
 }

@@ -2,6 +2,11 @@ import {
   getBotOrUserName,
   getUserInfo,
 } from "@connectors/connectors/slack/lib/bot_user_helpers";
+import { splitSlackAttachments } from "@connectors/connectors/slack/lib/message_attachments";
+import {
+  EMPTY_SECTION,
+  formatSlackMessageForLLM,
+} from "@connectors/connectors/slack/lib/message_formatter";
 import type { CoreAPIDataSourceDocumentSection } from "@connectors/lib/data_sources";
 import { renderDocumentTitleAndContent } from "@connectors/lib/data_sources";
 import { formatDateForUpsert } from "@connectors/lib/formatting";
@@ -9,8 +14,6 @@ import type { DataSourceConfig, ModelId } from "@connectors/types";
 import { safeSubstring } from "@connectors/types";
 import type { WebClient } from "@slack/web-api";
 import type { MessageElement } from "@slack/web-api/dist/types/response/ConversationsRepliesResponse";
-
-import { formatSlackMessageUnfurlAttachments } from "./message_attachments";
 
 async function processMessageForMentions(
   message: string,
@@ -38,6 +41,45 @@ async function processMessageForMentions(
   return message;
 }
 
+// Single entry point to turn a Slack message into its upsert body text: resolves
+// mentions, splits forwarded (unfurl) attachments from regular ones, reconstructs
+// the content from text/blocks/attachments/files, and appends forwarded messages.
+async function formatSlackMessageBody(
+  message: MessageElement,
+  connectorId: ModelId,
+  slackClient: WebClient
+): Promise<string> {
+  const text = await processMessageForMentions(
+    message.text ?? "",
+    connectorId,
+    slackClient
+  );
+
+  const { nonUnfurlAttachments, forwardedMessagesText } = splitSlackAttachments(
+    message.attachments
+  );
+
+  const formatted = formatSlackMessageForLLM({
+    text,
+    blocks: message.blocks,
+    attachments: nonUnfurlAttachments,
+    files: message.files,
+  });
+
+  // `content` has a single text slot, so flatten the reconstructed sections into
+  // one string, dropping the ones the formatter marked empty.
+  const body = [
+    formatted.text,
+    formatted.blocks,
+    formatted.attachments,
+    formatted.files,
+  ]
+    .filter((s) => s !== EMPTY_SECTION)
+    .join("\n");
+
+  return forwardedMessagesText ? `${body}\n${forwardedMessagesText}` : body;
+}
+
 export async function formatMessagesForUpsert({
   dataSourceConfig,
   channelName,
@@ -55,12 +97,6 @@ export async function formatMessagesForUpsert({
 }): Promise<CoreAPIDataSourceDocumentSection> {
   const data = await Promise.all(
     messages.map(async (message) => {
-      const text = await processMessageForMentions(
-        message.text as string,
-        connectorId,
-        slackClient
-      );
-
       let authorName: string | null;
       let authorEmail: string | null = null;
       if (message.bot_id) {
@@ -75,32 +111,18 @@ export async function formatMessagesForUpsert({
       const messageDate = new Date(parseInt(message.ts as string, 10) * 1000);
       const messageDateStr = formatDateForUpsert(messageDate);
 
-      const filesInfo = message.files
-        ? "\n" +
-          message.files
-            .map((file) => {
-              return `Attached file : ${file.name} ( ${file.mimetype} )`;
-            })
-            .join("\n")
-        : "";
-
-      // Slack renders forwarded/shared messages as message unfurl attachments.
-      const forwardedMessagesText = formatSlackMessageUnfurlAttachments(
-        message.attachments
+      const text = await formatSlackMessageBody(
+        message,
+        connectorId,
+        slackClient
       );
-
-      const forwardedMessagesInfo = forwardedMessagesText
-        ? `\n${forwardedMessagesText}`
-        : "";
 
       return {
         messageDate,
         dateStr: messageDateStr,
         authorName,
         authorEmail,
-        text: text + filesInfo + forwardedMessagesInfo,
-        content: text + forwardedMessagesInfo + "\n",
-        sections: [],
+        text,
       };
     })
   );

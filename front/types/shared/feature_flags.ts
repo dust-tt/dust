@@ -207,7 +207,7 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     stage: "on_demand",
   },
   sandbox_functions: {
-    description: "Enable Sandbox Function invocation endpoints",
+    description: "Enable Pod Function invocation endpoints",
     stage: "dust_only",
   },
   run_tools_from_prompt: {
@@ -322,6 +322,10 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
   },
   activation_skill: {
     description: "Enable the Activation skill for agentic user activation pods",
+    stage: "dust_only",
+  },
+  activation_scheduler: {
+    description: "Enable the per-workspace Activation scheduler workflow",
     stage: "dust_only",
   },
   group_permissions_shadow: {

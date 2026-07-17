@@ -61,6 +61,7 @@ const EXTENSION_SUBSCRIPTION: SubscriptionType = {
         isDeepDiveAllowed: false,
       },
       connections: {
+        count: -1,
         isConfluenceAllowed: false,
         isSlackAllowed: false,
         isNotionAllowed: false,
