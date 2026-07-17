@@ -1442,16 +1442,6 @@ export function getInternalMCPServerDisplayedAs(
   return server.metadata.serverInfo.displayedAs;
 }
 
-export function getInternalMCPServerToolStakes(
-  name: InternalMCPServerNameType
-): Record<string, MCPToolStakeLevelType> {
-  const server: InternalMCPServerEntry = INTERNAL_MCP_SERVERS[name];
-
-  return Object.fromEntries(
-    Object.values(server.metadata.tools).map((t) => [t.name, t.stake])
-  );
-}
-
 export function getInternalMCPServerToolArgumentsRequiringApproval(
   name: InternalMCPServerNameType,
   toolName: string
