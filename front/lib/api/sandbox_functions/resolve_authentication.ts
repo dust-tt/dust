@@ -1,5 +1,4 @@
 import { isToolPersonalAuthRequiredEvent } from "@app/lib/actions/mcp";
-import { canCurrentUserRespondToParentUserMessage } from "@app/lib/api/assistant/conversation/can_current_user_respond";
 import { getRedisHybridManager } from "@app/lib/api/redis-hybrid-manager";
 import { getSandboxFunctionInvocationChannelId } from "@app/lib/api/sandbox_functions/events";
 import type { Authenticator } from "@app/lib/auth";
@@ -70,17 +69,11 @@ export async function resolveSandboxFunctionActionAuthentication(
     );
   }
 
-  // Only the initiating user may resolve authentication, and a null initiating user is rejected
-  // (unlike validate-action / the agent loop): a userless invocation can still reach a personal-auth
-  // block via a stake-gated personal_actions tool, and we will not run a personal-OAuth tool under
-  // whichever member happens to resolve it. Fail closed.
-  if (
-    invocation.userId == null ||
-    !canCurrentUserRespondToParentUserMessage({
-      parentUserId: invocation.userId,
-      currentUserId: auth.user()?.id,
-    })
-  ) {
+  // Only the initiating user may resolve authentication. Strict equality also rejects a null
+  // initiating user (userless origins): a userless invocation can still reach a personal-auth block
+  // via a stake-gated personal_actions tool, and we will not run a personal-OAuth tool under
+  // whichever member happens to resolve it.
+  if (invocation.userId !== auth.user()?.id) {
     return new Err(
       new SandboxFunctionActionAuthenticationError(
         "unauthorized",

@@ -1,7 +1,6 @@
 import type { MCPValidationOutputType } from "@app/lib/actions/constants";
 import { isMCPApproveExecutionEvent } from "@app/lib/actions/mcp";
 import { setUserAlwaysApprovedTool } from "@app/lib/actions/tool_status";
-import { canCurrentUserRespondToParentUserMessage } from "@app/lib/api/assistant/conversation/can_current_user_respond";
 import { getRedisHybridManager } from "@app/lib/api/redis-hybrid-manager";
 import { getSandboxFunctionInvocationChannelId } from "@app/lib/api/sandbox_functions/events";
 import type { Authenticator } from "@app/lib/auth";
@@ -70,14 +69,9 @@ export async function validateSandboxFunctionAction(
     );
   }
 
-  // Only the invocation's initiating user may approve or reject its tools (mirrors the agent loop).
-  // A null initiating user (e.g. API key origin) allows any authenticated resolver.
-  if (
-    !canCurrentUserRespondToParentUserMessage({
-      parentUserId: invocation.userId,
-      currentUserId: auth.user()?.id,
-    })
-  ) {
+  // Only the invocation's initiating user may approve or reject its tools. Strict equality also
+  // rejects a null initiating user (userless origins have no legitimate interactive approver).
+  if (invocation.userId !== auth.user()?.id) {
     return new Err(
       new SandboxFunctionActionValidationError(
         "unauthorized",

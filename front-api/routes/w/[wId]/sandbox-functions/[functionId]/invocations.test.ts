@@ -638,13 +638,10 @@ describe("POST /api/w/:wId/sandbox-functions/:functionIdOrSlug/invocations/:invo
     expect(vi.mocked(launchSandboxFunctionToolWorkflow)).not.toHaveBeenCalled();
   });
 
-  it("allows validation when the invocation has no initiating user", async () => {
+  it("rejects validation when the invocation has no initiating user", async () => {
     const { workspace, sandboxFunction, invocation, action } =
       await setupBlockedAction({ invocationOwnerless: true });
     expect(invocation.userId).toBeNull();
-    vi.spyOn(getRedisHybridManager(), "removeEvent").mockResolvedValue(
-      undefined
-    );
 
     const response = await postValidate({
       workspaceId: workspace.sId,
@@ -654,8 +651,11 @@ describe("POST /api/w/:wId/sandbox-functions/:functionIdOrSlug/invocations/:invo
       body: { approved: "approved" },
     });
 
-    expect(response.status).toBe(200);
-    expect(vi.mocked(launchSandboxFunctionToolWorkflow)).toHaveBeenCalled();
+    expect(response.status).toBe(403);
+    expect(await response.json()).toMatchObject({
+      error: { type: "invalid_request_error" },
+    });
+    expect(vi.mocked(launchSandboxFunctionToolWorkflow)).not.toHaveBeenCalled();
   });
 });
 
