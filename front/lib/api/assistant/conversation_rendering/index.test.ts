@@ -215,10 +215,7 @@ describe("renderConversationForModel", () => {
     expect(res.value.prunedContext).toBe(false);
   });
 
-  it("prunes old tool outputs beyond TOOL_RESULTS_TO_PRESERVE but keeps the most recent ones, across separate interactions", async () => {
-    // 12 interactions (TOOL_RESULTS_TO_PRESERVE is 10), each with one tool call: the first 2 are
-    // outside the preserved window and must be pruned. The last 10 are the protected floor and
-    // must survive untouched, regardless of budget-driven checkpoint search.
+  it("prunes old tool outputs globally across separate interactions", async () => {
     const messages = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].flatMap((i) => [
       userMessage(`u_${i}`),
       assistantMessage(`a_${i}`),
@@ -241,9 +238,8 @@ describe("renderConversationForModel", () => {
       prompt: "PROMPT",
       enabledSkills: [],
       tools: "TOOLS",
-      // Total unpruned: 12 * 5020 = 60_240. Pruning the 2 eligible tool results (outside the
-      // floor of 10) saves 2 * (5000 - 24) = 9_952, bringing it to 50_288, comfortably under
-      // this budget. Nothing else needs to be touched.
+      // The hard limit is 51k. Chronological replay prunes old results in stable batches while
+      // preserving the latest result of whichever interaction is current at each prefix.
       allowedTokenCount: computeAllowedTokenCount({
         promptTokens: 10,
         toolsTokens: 10,
@@ -264,9 +260,13 @@ describe("renderConversationForModel", () => {
       res.value.modelConversation.messages,
       "tool_2"
     );
-    const tool3 = getFunctionMessage(
+    const tool4 = getFunctionMessage(
       res.value.modelConversation.messages,
-      "tool_3"
+      "tool_4"
+    );
+    const tool5 = getFunctionMessage(
+      res.value.modelConversation.messages,
+      "tool_5"
     );
     const tool12 = getFunctionMessage(
       res.value.modelConversation.messages,
@@ -274,15 +274,13 @@ describe("renderConversationForModel", () => {
     );
     expect(tool1.content).toContain("This tool result is no longer available");
     expect(tool2.content).toContain("This tool result is no longer available");
-    expect(tool3.content).toBe("result_3");
+    expect(tool4.content).toContain("This tool result is no longer available");
+    expect(tool5.content).toContain("This tool result is no longer available");
     expect(tool12.content).toBe("result_12");
     expect(res.value.prunedContext).toBe(true);
   });
 
-  it("prunes a single turn's OWN earlier tool-call steps once it makes many tool calls, since the current turn gets no special exemption", async () => {
-    // ONE continuous interaction: a single user question answered via 12 tool-call steps before
-    // the final reply. Nothing here is a "previous interaction", it's all the current turn, yet
-    // its own earliest steps (beyond TOOL_RESULTS_TO_PRESERVE=10) still get pruned.
+  it("prunes a long current turn in a checkpoint and preserves its latest result", async () => {
     const indices = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
     const steps = indices.flatMap((i) => [
       assistantMessage(`thinking_${i}`),
@@ -310,8 +308,8 @@ describe("renderConversationForModel", () => {
       prompt: "PROMPT",
       enabledSkills: [],
       tools: "TOOLS",
-      // Total unpruned: 10 (question) + 12*(10+5000) + 10 (answer) = 60_140. Pruning the 2
-      // steps outside the floor of 10 saves 2 * (5000-24) = 9_952 -> 50_188, under this budget.
+      // Total unpruned is 60_140. Crossing the 51k soft limit targets 31k, so pruning advances
+      // through the 40k prefix checkpoint while the latest result remains intact.
       allowedTokenCount: computeAllowedTokenCount({
         promptTokens: 10,
         toolsTokens: 10,
@@ -332,9 +330,13 @@ describe("renderConversationForModel", () => {
       res.value.modelConversation.messages,
       "step_2"
     );
-    const step3 = getFunctionMessage(
+    const step8 = getFunctionMessage(
       res.value.modelConversation.messages,
-      "step_3"
+      "step_8"
+    );
+    const step9 = getFunctionMessage(
+      res.value.modelConversation.messages,
+      "step_9"
     );
     const step12 = getFunctionMessage(
       res.value.modelConversation.messages,
@@ -342,17 +344,16 @@ describe("renderConversationForModel", () => {
     );
     expect(step1.content).toContain("This tool result is no longer available");
     expect(step2.content).toContain("This tool result is no longer available");
-    expect(step3.content).toBe("step_3_result_big");
+    expect(step8.content).toContain("This tool result is no longer available");
+    expect(step9.content).toBe("step_9_result_big");
     expect(step12.content).toBe("step_12_result_big");
     expect(res.value.prunedContext).toBe(true);
   });
 
   it("proactively prunes once the conversation crosses PRUNING_TARGET_CONTEXT_UTILIZATION of contextSize, even though allowedTokenCount alone would comfortably fit it", async () => {
-    // 12 small interactions (TOOL_RESULTS_TO_PRESERVE=10, so 2 fall outside the floor). contextSize
-    // 4_000 gives a proactive target of 1_359 tokens (baseTokens=1041, so 4_000*0.6 - 1041):
-    // comfortably above the 1_288 tokens left after pruning the 2 eligible tool results, but
-    // well below the 1_440 unpruned total, so the proactive target is what forces the
-    // pruning, not the real ceiling, which is set far higher below.
+    // The old interaction prefix contains more than one 20k checkpoint of prunable payload.
+    // contextSize 55_000 gives a proactive target of 31_959 tokens after base tokens, below the
+    // 36_240-token full history but well below the hard ceiling configured below.
     const messages = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].flatMap((i) => [
       userMessage(`u_${i}`),
       assistantMessage(`a_${i}`),
@@ -364,23 +365,23 @@ describe("renderConversationForModel", () => {
         [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].flatMap((i) => [
           [`u_${i}`, 10],
           [`a_${i}`, 10],
-          [`result_${i}`, 100],
+          [`result_${i}`, 3_000],
         ])
       ),
     });
 
     const res = await renderConversationForModel(auth, {
       conversation: createConversation(),
-      model: { ...model, contextSize: 4_000 },
+      model: { ...model, contextSize: 55_000 },
       prompt: "PROMPT",
       enabledSkills: [],
       tools: "TOOLS",
-      // Real ceiling comfortably fits everything (1_440) in full: proves pruning is driven by
-      // the proactive target, not by running out of the real budget.
+      // The real ceiling comfortably fits everything in full, proving that the soft target is
+      // what triggers pruning.
       allowedTokenCount: computeAllowedTokenCount({
         promptTokens: 10,
         toolsTokens: 10,
-        interactionTokens: 20_000,
+        interactionTokens: 50_000,
       }),
     });
 
@@ -745,17 +746,8 @@ describe("renderConversationForModel", () => {
       },
     });
 
-    // Each interaction is 90 tokens (30 + 30 + 30), well within TOOL_RESULTS_TO_PRESERVE (10 tool
-    // results total here), so Layer 1 (pruning) can't touch any of them at all, this is meant
-    // to exercise Layer 2 (drop-entirely) in isolation, not cascade into Layer 3's force-pruning.
-    //
-    // Hand-verified: total unpruned = 8 * 90 = 720. Layer 2's target for the 7 previous
-    // interactions is budgetForInteractions(400) - current's cost(90) = 310. With
-    // PREVIOUS_INTERACTIONS_TO_PRESERVE=3, i1-i4 (4 * 90 = 360) can be dropped, leaving the
-    // protected floor i5-i7 (3 * 90 = 270) plus current i8 (90) = 360 <= 400: Layer 2 alone gets
-    // under budget, so Layer 3/4 never fire and i5-i8 survive WITH THEIR REAL, UNPRUNED CONTENT.
-    // An earlier version of this test only checked message names, which stay the same whether
-    // a tool result is pruned or not, and so couldn't actually tell the difference.
+    // The latest three interactions are protected from soft dropping, not from tool-result
+    // pruning. Older interactions are removed whole. Only the latest current result stays full.
     const res = await renderConversationForModel(auth, {
       conversation: createConversation(),
       model,
@@ -783,11 +775,10 @@ describe("renderConversationForModel", () => {
     expect(names).not.toContain("tool_03");
     expect(names).not.toContain("tool_04");
 
-    // The surviving tool results carry their REAL content, not a pruning placeholder,
-    // confirming Layer 2 (drop) alone was enough, and Layer 3 (force-prune) never fired.
-    for (const [i, name] of ["f_05", "f_06", "f_07", "f_08"].entries()) {
-      expect(functionMessages[i].content).toBe(name);
+    for (const message of functionMessages.slice(0, -1)) {
+      expect(message.content).toContain("no longer available");
     }
+    expect(functionMessages.at(-1)?.content).toBe("f_08");
   });
 
   it("prepends leading messages", async () => {
@@ -829,5 +820,88 @@ describe("renderConversationForModel", () => {
       leadingMessage,
       userMessage("rendered"),
     ]);
+  });
+
+  it("never restores interactions dropped for an earlier conversation prefix", async () => {
+    const nonPrunableHistory = Array.from(
+      { length: 4 },
+      (_, index) => index + 1
+    ).flatMap((i) => [
+      userMessage(`old_user_${i}`),
+      assistantMessage(`old_assistant_${i}`),
+    ]);
+    const initiallyProtectedHistory = Array.from(
+      { length: 3 },
+      (_, index) => index + 5
+    ).flatMap((i) => [
+      userMessage(`old_user_${i}`),
+      assistantMessage(`old_assistant_${i}`),
+      functionMessage(`old_tool_${i}`, `old_result_${i}`),
+    ]);
+    const history = [...nonPrunableHistory, ...initiallyProtectedHistory];
+    const extendedHistory = [
+      ...history,
+      ...Array.from({ length: 3 }, (_, index) => index + 1).flatMap((i) => [
+        userMessage(`new_user_${i}`),
+        assistantMessage(`new_assistant_${i}`),
+        functionMessage(`new_tool_${i}`, `new_result_${i}`),
+      ]),
+    ];
+
+    vi.mocked(renderAllMessages)
+      .mockResolvedValueOnce(history)
+      .mockResolvedValueOnce(extendedHistory);
+    mockTokenCounter({
+      byContains: Object.fromEntries([
+        ...Array.from({ length: 4 }, (_, index) => index + 1).flatMap((i) => [
+          [`old_user_${i}`, 5_000],
+          [`old_assistant_${i}`, 5_000],
+        ]),
+        ...Array.from({ length: 3 }, (_, index) => index + 5).flatMap((i) => [
+          [`old_user_${i}`, 5],
+          [`old_assistant_${i}`, 5],
+          [`old_result_${i}`, 5_000],
+        ]),
+        ...Array.from({ length: 3 }, (_, index) => index + 1).flatMap((i) => [
+          [`new_user_${i}`, 5],
+          [`new_assistant_${i}`, 5],
+          [`new_result_${i}`, 100],
+        ]),
+      ]),
+    });
+
+    const render = () =>
+      renderConversationForModel(auth, {
+        conversation: createConversation(),
+        model,
+        prompt: "PROMPT",
+        enabledSkills: [],
+        tools: "TOOLS",
+        allowedTokenCount: computeAllowedTokenCount({
+          promptTokens: 10,
+          toolsTokens: 10,
+          interactionTokens: 15_500,
+        }),
+      });
+
+    const first = await render();
+    const second = await render();
+
+    expect(first.isOk()).toBe(true);
+    expect(second.isOk()).toBe(true);
+    if (first.isErr() || second.isErr()) {
+      return;
+    }
+
+    const firstUserTexts = first.value.modelConversation.messages
+      .filter(isUserMessage)
+      .map((message) => textOf(message.content[0]));
+    const secondUserTexts = second.value.modelConversation.messages
+      .filter(isUserMessage)
+      .map((message) => textOf(message.content[0]));
+
+    expect(firstUserTexts).not.toContain("old_user_1");
+    expect(secondUserTexts).not.toContain("old_user_1");
+    expect(secondUserTexts).toContain("new_user_3");
   });
 });

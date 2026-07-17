@@ -6,7 +6,8 @@
  *   message stays in place, so tool_use/tool_result pairing is never broken.
  * - "drop" (dropInteractionsToFit): remove whole interactions entirely, oldest first.
  *
- * index.ts owns the policy of when to apply which. This module owns the mechanisms.
+ * ConversationWindowState owns the policy of when to apply which. This module owns the
+ * mechanisms.
  */
 import type { Interaction } from "@app/lib/api/assistant/conversation/interactions";
 import type { ModelMessageTypeMultiActions } from "@app/types/assistant/generation";
@@ -29,12 +30,6 @@ export const PRUNING_CHECKPOINT_TOKENS = 20_000;
 // A drop invalidates the cache from the very first message, pruning only from its frontier, so
 // a drop miss costs more and may deserve a larger batch. Tune independently.
 export const DROP_CHECKPOINT_TOKENS = 20_000;
-
-// How many of the most recent tool results pruneToolResults never prunes, regardless of budget.
-// Counted in tool results, not turns: a single turn's own long tool-call chain is eligible for
-// pruning past this window exactly like an older turn's would be. Starting point, tune against
-// production metrics.
-export const TOOL_RESULTS_TO_PRESERVE = 10;
 
 export type MessageWithTokens = ModelMessageTypeMultiActions & {
   tokenCount: number;
@@ -70,6 +65,13 @@ export function sumInteractionTokens(
   );
 }
 
+/** Tokens removed by replacing a tool result with the pruning placeholder. */
+export function getToolResultTokenSavings(message: MessageWithTokens): number {
+  return message.role === "function"
+    ? Math.max(message.tokenCount - PRUNED_TOOL_RESULT_TOKENS, 0)
+    : 0;
+}
+
 /**
  * Re-slices a flat message array back into template's interaction boundaries. Safe because
  * pruneToolResultsFlat never adds, removes, or reorders messages. Throws if that's ever violated.
@@ -102,11 +104,13 @@ function sliceIntoInteractions(
 function pruneToolResultsFlat(
   messages: MessageWithTokens[],
   {
+    batchToCheckpoint,
     maxTokens,
-    toolResultsToPreserve,
+    eligibleToolResultCount,
   }: {
+    batchToCheckpoint: boolean;
     maxTokens: number;
-    toolResultsToPreserve: number;
+    eligibleToolResultCount: number;
   }
 ): MessageWithTokens[] {
   const n = messages.length;
@@ -145,18 +149,11 @@ function pruneToolResultsFlat(
     }
   }
 
-  // Last toolResultsToPreserve tool results: never pruned, regardless of budget.
-  const floorStart = Math.max(
-    functionIndices.length - toolResultsToPreserve,
-    0
-  );
-  // Excludes results already smaller than the placeholder (e.g. "ok"). Pruning one would grow
-  // it, not shrink it, breaking the budget guarantee below.
-  //
-  // eligible holds indices into messages. The frontier variables below are indices into eligible
-  // itself (its k-th entry), not into messages.
+  // Eligibility is policy supplied by ConversationWindowState. This mechanism only transforms
+  // the explicitly eligible oldest tool results. Results smaller than the placeholder are
+  // excluded because replacing them would increase the token count.
   const eligible = functionIndices
-    .slice(0, floorStart)
+    .slice(0, eligibleToolResultCount)
     .filter((idx) => prunedTokens[idx] < originalTokens[idx]);
 
   // Minimal pruning needed: walk oldest-to-newest until the running total fits.
@@ -172,23 +169,25 @@ function pruneToolResultsFlat(
     return messages;
   }
 
-  // Round forward to the next checkpoint (a prefix-sum multiple of PRUNING_CHECKPOINT_TOKENS) so
-  // the same boundary keeps holding for several turns instead of creeping forward on every one.
-  // If no checkpoint exists in the remaining eligible range, the frontier runs to the end of it:
-  // over-pruning is acceptable, undershooting the budget is not.
   let effectiveFrontier = neededFrontier;
-  for (let k = neededFrontier; k < eligible.length; k++) {
-    effectiveFrontier = k;
-    const idx = eligible[k];
-    if (idx === 0) {
-      break; // Start of conversation is trivially a checkpoint.
-    }
-    const bucketAtIdx = Math.floor(prefixSum[idx] / PRUNING_CHECKPOINT_TOKENS);
-    const bucketBefore = Math.floor(
-      prefixSum[idx - 1] / PRUNING_CHECKPOINT_TOKENS
-    );
-    if (bucketAtIdx !== bucketBefore) {
-      break;
+  if (batchToCheckpoint) {
+    // Round forward to the next checkpoint so the same boundary keeps holding across turns. If
+    // none exists in the eligible range, prune through the end of that range.
+    for (let k = neededFrontier; k < eligible.length; k++) {
+      effectiveFrontier = k;
+      const idx = eligible[k];
+      if (idx === 0) {
+        break;
+      }
+      const bucketAtIdx = Math.floor(
+        prefixSum[idx] / PRUNING_CHECKPOINT_TOKENS
+      );
+      const bucketBefore = Math.floor(
+        prefixSum[idx - 1] / PRUNING_CHECKPOINT_TOKENS
+      );
+      if (bucketAtIdx !== bucketBefore) {
+        break;
+      }
     }
   }
 
@@ -200,10 +199,8 @@ function pruneToolResultsFlat(
 }
 
 /**
- * Prunes tool results across the whole conversation, previous interactions and the current,
- * in-progress one combined, as one flat sequence, oldest eligible first. No exemption for the
- * current turn: a long tool-call chain within it becomes eligible past toolResultsToPreserve
- * exactly like an older turn's would.
+ * Prunes the explicitly eligible oldest tool results, oldest first. The caller owns the policy
+ * that determines eligibleToolResultCount.
  *
  * Takes and returns `InteractionWithTokens[]`, flattening and re-slicing internally so callers
  * never juggle a flat view and an interaction view themselves. Only ever replaces a function
@@ -223,8 +220,9 @@ function pruneToolResultsFlat(
 export function pruneToolResults(
   interactions: InteractionWithTokens[],
   opts: {
+    batchToCheckpoint: boolean;
+    eligibleToolResultCount: number;
     maxTokens: number;
-    toolResultsToPreserve: number;
   }
 ): InteractionWithTokens[] {
   const messages = interactions.flatMap((interaction) => interaction.messages);
@@ -232,6 +230,7 @@ export function pruneToolResults(
   if (pruned === messages) {
     return interactions; // No-op: same reference, same as dropInteractionsToFit below.
   }
+
   return sliceIntoInteractions(interactions, pruned);
 }
 
