@@ -36,6 +36,7 @@ export const GroupSelector = ({
         <DropdownMenuTrigger asChild>
           <Button
             variant="outline"
+            className="animate-in fade-in duration-75"
             size="xs"
             icon={Plus}
             label="Add a group"
@@ -80,7 +81,7 @@ export const GroupSelector = ({
       {selectedGroups.map((group) => (
         <Chip
           key={group.sId}
-          className="animate-in fade-in zoom-in-95 duration-200"
+          className="animate-in fade-in duration-75"
           label={group.name}
           size="xs"
           color="highlight"
