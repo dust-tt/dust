@@ -35,14 +35,13 @@ export function Composer({
   return (
     <div
       className={cn(
-        "relative flex w-full flex-col items-stretch rounded-3xl",
-        // Figma corner smoothing (radius 24, smoothing 100%). CSS squircle hugs corners tighter
-        // than Figma's smoothing, so the radius is bumped to 40px to match — only when
-        // corner-shape is supported; otherwise plain 24px rounded corners.
-        "[corner-shape:squircle]",
-        "supports-[corner-shape:squircle]:rounded-[40px]",
+        // Figma corner smoothing (radius 24, smoothing 100%): CSS squircle flattens the curve
+        // relative to Figma's smoothing at the same radius, so the radius is bumped to compensate.
+        "relative flex w-full flex-col items-stretch rounded-[40px] [corner-shape:squircle]",
         variant === "floating" && [
           "border border-white/90",
+          // Crossfade the focus state instead of snapping (background-color + box-shadow only).
+          "transition-[background-color,box-shadow] duration-200 ease-[cubic-bezier(0.23,1,0.32,1)]",
           // Focus (Figma 11174:21613): white surface, softened drop shadows.
           isFocused
             ? "bg-white shadow-[0px_-0.5px_1px_1px_rgba(0,0,0,0.02),0px_8px_10px_-6px_rgba(0,0,0,0.07),0px_20px_25px_-5px_rgba(0,0,0,0.07),0px_0px_1px_0px_rgba(0,0,0,0.07)]"

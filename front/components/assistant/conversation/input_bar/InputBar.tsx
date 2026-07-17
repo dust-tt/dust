@@ -485,11 +485,11 @@ export const InputBar = React.memo(function InputBar({
               )
             : // Preview test: sparkle Composer floating card styling (see sparkle/src/components/Composer.tsx).
               classNames(
-                // Figma corner smoothing (radius 24, smoothing 100%): squircle at 40px when
-                // corner-shape is supported, plain 24px rounded corners otherwise.
-                "w-full rounded-3xl [corner-shape:squircle]",
-                "supports-[corner-shape:squircle]:rounded-[40px]",
+                // Figma corner smoothing (radius 24, smoothing 100%), see sparkle Composer.tsx.
+                "w-full rounded-[40px] [corner-shape:squircle]",
                 "border border-white/90",
+                // Crossfade the focus state instead of snapping (background-color + box-shadow only).
+                "transition-[background-color,box-shadow] duration-200 ease-[cubic-bezier(0.23,1,0.32,1)]",
                 "bg-[#fbfbfb] shadow-[0px_-0.5px_1px_1px_rgba(0,0,0,0.02),0px_8px_10px_-6px_rgba(0,0,0,0.1),0px_20px_25px_-5px_rgba(0,0,0,0.1),0px_0px_1px_0px_rgba(0,0,0,0.07)]",
                 // Focus state (Figma 11174:21613): white surface, softened drop shadows.
                 "has-[.tiptap:focus]:bg-white",
