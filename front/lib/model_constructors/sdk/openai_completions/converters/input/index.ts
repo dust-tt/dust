@@ -17,7 +17,7 @@ import {
 import type { InputConfig } from "@app/lib/model_constructors/types/input/configuration";
 import { toToolChoiceInput } from "@app/lib/model_constructors/types/input/configuration";
 import type { Payload } from "@app/lib/model_constructors/types/input/messages";
-import type { ChatCompletionCreateParamsNonStreaming } from "openai/resources/chat/completions";
+import type { ChatCompletionCreateParams } from "openai/resources/chat/completions";
 
 type AbstractConstructor<T> = abstract new (...args: any[]) => T;
 
@@ -40,10 +40,12 @@ export function WithOpenAICompletionsInputConverter<
     assistantReasoningMessageToMessage = assistantReasoningMessageToMessage;
     assistantToolCallRequestToMessage = assistantToolCallRequestToMessage;
 
+    // Returns the union (not `NonStreaming`) so streaming clients can override
+    // this and add `stream`/`stream_options` while still calling `super`.
     buildRequestPayload(
       payload: Payload,
       config: InputConfig
-    ): ChatCompletionCreateParamsNonStreaming {
+    ): ChatCompletionCreateParams {
       const { conversation } = payload;
       const { tools = [], temperature, reasoning, outputFormat } = config;
 
