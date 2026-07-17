@@ -94,7 +94,9 @@ function getGovernancePermissionMetadata(
 interface GovernanceSettingRowProps {
   governancePermission: GovernancePermission;
   groups: GroupType[];
-  onChange: (permission: GovernancePermissionConfiguration) => void;
+  onChange: (
+    configuration: GovernancePermissionConfiguration
+  ) => Promise<boolean>;
 }
 
 export const GovernanceSettingRow = ({
@@ -106,6 +108,7 @@ export const GovernanceSettingRow = ({
     useState<GovernancePermissionConfiguration>(
       governancePermission.configuration
     );
+  const [isSaving, setIsSaving] = useState(false);
 
   const metadata = getGovernancePermissionMetadata(governancePermission);
 
@@ -117,7 +120,7 @@ export const GovernanceSettingRow = ({
 
   const hasMissingGroups = selectedGroups.length !== selectedGroupIds.size;
 
-  const handlePermissionChange = ({
+  const handlePermissionChange = async ({
     scope,
     groupIds,
   }: {
@@ -130,8 +133,23 @@ export const GovernanceSettingRow = ({
 
     const newConfiguration: GovernancePermissionConfiguration =
       scope === "groups" ? { scope, groupIds: groupIds ?? [] } : { scope };
+
+    // Apply optimistically, then persist. The optimistic update is the loading feedback (the
+    // switch moves immediately). We intentionally do NOT re-sync from the server on success: the
+    // backend normalizes an empty "groups" selection to admins_only, and snapping back would make
+    // it impossible to reach the transient "groups, no ids yet" state the user needs to open the
+    // selector and add a group.
+    const previousConfiguration = configuration;
     setConfiguration(newConfiguration);
-    onChange(newConfiguration);
+    setIsSaving(true);
+    try {
+      const ok = await onChange(newConfiguration);
+      if (!ok) {
+        setConfiguration(previousConfiguration);
+      }
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   if (!metadata) {
@@ -161,8 +179,10 @@ export const GovernanceSettingRow = ({
         !metadata.isGroupsOnly ? (
           <ButtonsSwitchList
             size="xs"
-            defaultValue={configuration.scope}
-            onValueChange={(value) => handlePermissionChange({ scope: value })}
+            value={configuration.scope}
+            onValueChange={(value) =>
+              void handlePermissionChange({ scope: value })
+            }
           >
             {PERMISSION_SCOPE_OPTIONS.map(({ value, label }) => (
               <ButtonsSwitch key={value} value={value} label={label} />
@@ -175,8 +195,9 @@ export const GovernanceSettingRow = ({
         <GroupSelector
           selectedGroups={selectedGroups}
           selectableGroups={selectableGroups}
+          disabled={isSaving}
           onSelectionChange={(groupIds) =>
-            handlePermissionChange({ scope: "groups", groupIds })
+            void handlePermissionChange({ scope: "groups", groupIds })
           }
         />
       )}
