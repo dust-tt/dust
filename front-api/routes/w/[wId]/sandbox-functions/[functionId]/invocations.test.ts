@@ -1,5 +1,6 @@
 import type { MCPToolStakeLevelType } from "@app/lib/actions/constants";
 import { getRedisHybridManager } from "@app/lib/api/redis-hybrid-manager";
+import { Authenticator } from "@app/lib/auth";
 import { InternalMCPServerInMemoryResource } from "@app/lib/resources/internal_mcp_server_in_memory_resource";
 import { SandboxFunctionInvocationResource } from "@app/lib/resources/sandbox_function_invocation_resource";
 import { SandboxFunctionMCPActionResource } from "@app/lib/resources/sandbox_function_mcp_action_resource";
@@ -10,8 +11,10 @@ import { FileFactory } from "@app/tests/utils/FileFactory";
 import { GroupFactory } from "@app/tests/utils/GroupFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { MCPServerViewFactory } from "@app/tests/utils/MCPServerViewFactory";
+import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { SandboxFunctionMCPActionFactory } from "@app/tests/utils/SandboxFunctionMCPActionFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
+import { UserFactory } from "@app/tests/utils/UserFactory";
 import { sandboxFunctionContentType } from "@app/types/files";
 import { Err, Ok } from "@app/types/shared/result";
 import { honoApp } from "@front-api/app";
@@ -113,6 +116,7 @@ async function setupSandboxFunction({
     outputSchema,
   });
 
+  // The second mock request wins the session mock, so requests authenticate as this member.
   const { user } = await createPrivateApiMockRequest({
     role: "user",
     workspace,
@@ -126,8 +130,12 @@ async function setupSandboxFunction({
     );
     expect(addMemberResult.isOk()).toBe(true);
   }
+  const callerAuth = await Authenticator.fromUserIdAndWorkspaceId(
+    user.sId,
+    workspace.sId
+  );
 
-  return { workspace, sandboxFunction, adminAuth, space };
+  return { workspace, sandboxFunction, adminAuth, callerAuth, space };
 }
 
 // Builds a blocked action awaiting validation, the state spolu's creation gate produces for
@@ -135,13 +143,17 @@ async function setupSandboxFunction({
 async function setupBlockedAction({
   permission = "high",
   blockedStatus = "blocked_validation_required",
+  invocationOwnedByOtherMember = false,
+  invocationOwnerless = false,
 }: {
   permission?: MCPToolStakeLevelType;
   blockedStatus?:
     | "blocked_validation_required"
     | "blocked_authentication_required";
+  invocationOwnedByOtherMember?: boolean;
+  invocationOwnerless?: boolean;
 } = {}) {
-  const { workspace, sandboxFunction, adminAuth, space } =
+  const { workspace, sandboxFunction, adminAuth, callerAuth, space } =
     await setupSandboxFunction();
 
   const { globalGroup, systemGroup } = await GroupFactory.defaults(workspace);
@@ -155,8 +167,25 @@ async function setupBlockedAction({
   });
   const view = await MCPServerViewFactory.create(workspace, server.id, space);
 
+  // By default the invocation is owned by the request's caller (resolver == initiating user).
+  // Owning it by another member exercises the resolver != initiating-user path; a userless owner
+  // (internal admin auth) exercises the null initiating-user path.
+  let invocationOwnerAuth = callerAuth;
+  if (invocationOwnerless) {
+    invocationOwnerAuth = await Authenticator.internalAdminForWorkspace(
+      workspace.sId
+    );
+  } else if (invocationOwnedByOtherMember) {
+    const otherUser = await UserFactory.basic();
+    await MembershipFactory.associate(workspace, otherUser, { role: "user" });
+    invocationOwnerAuth = await Authenticator.fromUserIdAndWorkspaceId(
+      otherUser.sId,
+      workspace.sId
+    );
+  }
+
   const invocation = await SandboxFunctionInvocationResource.makeNew(
-    adminAuth,
+    invocationOwnerAuth,
     { sandboxFunction, input: undefined }
   );
   const action = await SandboxFunctionMCPActionFactory.create(adminAuth, {
@@ -589,6 +618,45 @@ describe("POST /api/w/:wId/sandbox-functions/:functionIdOrSlug/invocations/:invo
       error: { type: "action_not_blocked" },
     });
   });
+
+  it("rejects validation from a user who did not initiate the invocation", async () => {
+    const { workspace, sandboxFunction, invocation, action } =
+      await setupBlockedAction({ invocationOwnedByOtherMember: true });
+
+    const response = await postValidate({
+      workspaceId: workspace.sId,
+      functionIdOrSlug: sandboxFunction.sId,
+      invocationId: invocation.sId,
+      actionId: action.sId,
+      body: { approved: "approved" },
+    });
+
+    expect(response.status).toBe(403);
+    expect(await response.json()).toMatchObject({
+      error: { type: "invalid_request_error" },
+    });
+    expect(vi.mocked(launchSandboxFunctionToolWorkflow)).not.toHaveBeenCalled();
+  });
+
+  it("rejects validation when the invocation has no initiating user", async () => {
+    const { workspace, sandboxFunction, invocation, action } =
+      await setupBlockedAction({ invocationOwnerless: true });
+    expect(invocation.userId).toBeNull();
+
+    const response = await postValidate({
+      workspaceId: workspace.sId,
+      functionIdOrSlug: sandboxFunction.sId,
+      invocationId: invocation.sId,
+      actionId: action.sId,
+      body: { approved: "approved" },
+    });
+
+    expect(response.status).toBe(403);
+    expect(await response.json()).toMatchObject({
+      error: { type: "invalid_request_error" },
+    });
+    expect(vi.mocked(launchSandboxFunctionToolWorkflow)).not.toHaveBeenCalled();
+  });
 });
 
 describe("POST /api/w/:wId/sandbox-functions/:functionIdOrSlug/invocations/:invocationId/actions/:actionId/resolve-authentication", () => {
@@ -732,5 +800,50 @@ describe("POST /api/w/:wId/sandbox-functions/:functionIdOrSlug/invocations/:invo
     expect(await response.json()).toMatchObject({
       error: { type: "action_not_found" },
     });
+  });
+
+  it("rejects authentication resolution from a user who did not initiate the invocation", async () => {
+    const { workspace, sandboxFunction, invocation, action } =
+      await setupBlockedAction({
+        blockedStatus: "blocked_authentication_required",
+        invocationOwnedByOtherMember: true,
+      });
+
+    const response = await postResolveAuthentication({
+      workspaceId: workspace.sId,
+      functionIdOrSlug: sandboxFunction.sId,
+      invocationId: invocation.sId,
+      actionId: action.sId,
+      body: { outcome: "completed" },
+    });
+
+    expect(response.status).toBe(403);
+    expect(await response.json()).toMatchObject({
+      error: { type: "invalid_request_error" },
+    });
+    expect(vi.mocked(launchSandboxFunctionToolWorkflow)).not.toHaveBeenCalled();
+  });
+
+  it("rejects authentication resolution when the invocation has no initiating user", async () => {
+    const { workspace, sandboxFunction, invocation, action } =
+      await setupBlockedAction({
+        blockedStatus: "blocked_authentication_required",
+        invocationOwnerless: true,
+      });
+    expect(invocation.userId).toBeNull();
+
+    const response = await postResolveAuthentication({
+      workspaceId: workspace.sId,
+      functionIdOrSlug: sandboxFunction.sId,
+      invocationId: invocation.sId,
+      actionId: action.sId,
+      body: { outcome: "completed" },
+    });
+
+    expect(response.status).toBe(403);
+    expect(await response.json()).toMatchObject({
+      error: { type: "invalid_request_error" },
+    });
+    expect(vi.mocked(launchSandboxFunctionToolWorkflow)).not.toHaveBeenCalled();
   });
 });
