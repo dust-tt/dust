@@ -15,7 +15,6 @@ import type {
   GetSkillResponseBody,
   GetSkillWithRelationsResponseBody,
   PatchSkillResponseBody,
-  SkillUserFavoriteState,
 } from "@app/types/api/skills";
 import type { SkillWithRelationsType } from "@app/types/assistant/skill_configuration";
 import {
@@ -121,7 +120,7 @@ app.get(
 
     const withRelations = ctx.req.query("withRelations");
 
-    let favoriteState: SkillUserFavoriteState = {};
+    let favoriteState: { isFavorite?: boolean } = {};
     if (await hasFeatureFlag(auth, "skill_favorites")) {
       const isFavorite = await skill.isFavoriteForCurrentUser(auth);
       favoriteState = { isFavorite };

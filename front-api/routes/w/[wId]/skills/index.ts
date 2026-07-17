@@ -13,9 +13,6 @@ import type {
   GetSkillsResponseBody,
   GetSkillsWithRelationsResponseBody,
   PostSkillResponseBody,
-  SkillListItemResponseType,
-  SkillListItemWithRelationsResponseType,
-  SkillUserFavoriteState,
 } from "@app/types/api/skills";
 import {
   availabilityFromIsDefault,
@@ -234,7 +231,7 @@ app.get(
       );
 
       const skillsWithRelations = skills.map((sc) => {
-        const favoriteState: SkillUserFavoriteState = hasSkillFavorites
+        const favoriteState: { isFavorite?: boolean } = hasSkillFavorites
           ? { isFavorite: favoriteSkillIds.has(sc.sId) }
           : {};
         const {
@@ -274,7 +271,7 @@ app.get(
             ),
           },
           ...favoriteState,
-        } satisfies SkillListItemWithRelationsResponseType;
+        } satisfies GetSkillsWithRelationsResponseBody["skills"][number];
       });
 
       return ctx.json({ skills: skillsWithRelations });
@@ -282,7 +279,7 @@ app.get(
 
     return ctx.json({
       skills: skills.map((sc) => {
-        const favoriteState: SkillUserFavoriteState = hasSkillFavorites
+        const favoriteState: { isFavorite?: boolean } = hasSkillFavorites
           ? { isFavorite: favoriteSkillIds.has(sc.sId) }
           : {};
         const {
@@ -295,7 +292,7 @@ app.get(
         return {
           ...skillWithoutInstructionsAndTools,
           ...favoriteState,
-        } satisfies SkillListItemResponseType;
+        } satisfies GetSkillsResponseBody["skills"][number];
       }),
     });
   }

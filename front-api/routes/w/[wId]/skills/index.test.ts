@@ -20,8 +20,8 @@ import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import type {
-  SkillListItemResponseType,
-  SkillListItemWithRelationsResponseType,
+  GetSkillsResponseBody,
+  GetSkillsWithRelationsResponseBody,
 } from "@app/types/api/skills";
 import type {
   SkillWithoutInstructionsAndToolsType,
@@ -30,6 +30,10 @@ import type {
 import type { MembershipRoleType } from "@app/types/memberships";
 import { honoApp } from "@front-api/app";
 import { describe, expect, it, vi } from "vitest";
+
+type SkillListItemResponseType = GetSkillsResponseBody["skills"][number];
+type SkillListItemWithRelationsResponseType =
+  GetSkillsWithRelationsResponseBody["skills"][number];
 
 async function setupTest(role: MembershipRoleType = "builder") {
   return createPrivateApiMockRequest({ role });

@@ -5,28 +5,18 @@ import type {
   SkillWithRelationsType,
 } from "@app/types/assistant/skill_configuration";
 
-// User-specific state appended only at the private skill API response boundary.
-export type SkillUserFavoriteState =
-  | { isFavorite: boolean }
-  | { isFavorite?: never };
-
-export type SkillResponseType = SkillType & SkillUserFavoriteState;
-
-export type SkillWithRelationsResponseType = SkillWithRelationsType &
-  SkillUserFavoriteState;
-
-export type SkillListItemResponseType = SkillWithoutInstructionsAndToolsType &
-  SkillUserFavoriteState;
-
-export type SkillListItemWithRelationsResponseType =
-  SkillWithoutInstructionsAndToolsWithRelationsType & SkillUserFavoriteState;
-
 export type GetSkillsResponseBody = {
-  skills: SkillListItemResponseType[];
+  skills: Array<
+    SkillWithoutInstructionsAndToolsType & { isFavorite?: boolean }
+  >;
 };
 
 export type GetSkillsWithRelationsResponseBody = {
-  skills: SkillListItemWithRelationsResponseType[];
+  skills: Array<
+    SkillWithoutInstructionsAndToolsWithRelationsType & {
+      isFavorite?: boolean;
+    }
+  >;
 };
 
 export type PostSkillResponseBody = {
@@ -44,11 +34,11 @@ export type GetReinforcementDailySpendResponseBody = {
 };
 
 export type GetSkillResponseBody = {
-  skill: SkillResponseType;
+  skill: SkillType & { isFavorite?: boolean };
 };
 
 export type GetSkillWithRelationsResponseBody = {
-  skill: SkillWithRelationsResponseType;
+  skill: SkillWithRelationsType & { isFavorite?: boolean };
 };
 
 export type PatchSkillResponseBody = {
