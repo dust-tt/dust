@@ -248,7 +248,7 @@ function TriSpinnerLottie({
     if (hex) {
       // Clone before recoloring so the shared imported animation is untouched.
       const animationData = replaceColors(
-        JSON.parse(JSON.stringify(lightAnimForSize(size))),
+        structuredClone(lightAnimForSize(size)),
         hexToRgba(hex)
       );
       return (
