@@ -18,13 +18,13 @@ import type {
   LLMStreamParameters,
 } from "@app/lib/api/llm/types/options";
 import { normalizePrompt } from "@app/lib/api/llm/types/options";
-import type { DustStreamEndpointConstructor } from "@app/lib/llms/stream/dust_stream_endpoint";
 import {
   extractEncryptedContentFromMetadata,
   parseReasoningMetadata,
   parseResponseFormatSchema,
 } from "@app/lib/api/llm/utils";
 import type { Authenticator } from "@app/lib/auth";
+import type { DustStreamEndpointConstructor } from "@app/lib/llms/stream/dust_stream_endpoint";
 import type { BatchEndpointConstructor } from "@app/lib/model_constructors/batch/configuration";
 import type {
   BatchEndpoint,
