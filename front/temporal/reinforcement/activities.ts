@@ -91,6 +91,7 @@ import {
 } from "@app/temporal/agent_loop/activities/usage_tracking";
 import { ensureReinforcementWorkspaceSchedules } from "@app/temporal/reinforcement/client";
 import type { AgentLoopArgs } from "@app/types/assistant/agent_run";
+import { getModelMaxInputTokens } from "@app/types/assistant/models/utils";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { ApplicationFailure } from "@temporalio/common";
 import { Op } from "sequelize";
@@ -277,8 +278,7 @@ async function runReinforcedSkillsStep({
     prompt: systemPrompt,
     enabledSkills: [],
     tools: toolsJson,
-    allowedTokenCount:
-      modelConfig.contextSize - modelConfig.generationTokensCount,
+    allowedTokenCount: getModelMaxInputTokens(modelConfig),
   });
   if (renderResult.isErr()) {
     throw renderResult.error;

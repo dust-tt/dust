@@ -1,6 +1,12 @@
 import { describe, expect, it } from "vitest";
 
-import { validateResponseFormat } from "./utils";
+import {
+  GPT_5_5_MODEL_CONFIG,
+  GPT_5_6_LUNA_MODEL_CONFIG,
+  GPT_5_6_SOL_MODEL_CONFIG,
+  GPT_5_6_TERRA_MODEL_CONFIG,
+} from "./openai";
+import { getModelMaxInputTokens, validateResponseFormat } from "./utils";
 
 const VALID_RESPONSE_FORMAT = JSON.stringify({
   type: "json_schema",
@@ -16,6 +22,20 @@ const VALID_RESPONSE_FORMAT = JSON.stringify({
       additionalProperties: false,
     },
   },
+});
+
+describe("getModelMaxInputTokens", () => {
+  it.each([
+    GPT_5_6_SOL_MODEL_CONFIG,
+    GPT_5_6_TERRA_MODEL_CONFIG,
+    GPT_5_6_LUNA_MODEL_CONFIG,
+  ])("uses the $displayName context size as its input cap", (model) => {
+    expect(getModelMaxInputTokens(model)).toBe(272_000);
+  });
+
+  it("keeps reserving output tokens for other models", () => {
+    expect(getModelMaxInputTokens(GPT_5_5_MODEL_CONFIG)).toBe(872_000);
+  });
 });
 
 describe("validateResponseFormat", () => {

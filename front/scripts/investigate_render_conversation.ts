@@ -21,6 +21,7 @@ import type {
   UserMessageType,
 } from "@app/types/assistant/conversation";
 import { isUserMessageType } from "@app/types/assistant/conversation";
+import { getModelMaxInputTokens } from "@app/types/assistant/models/utils";
 import { removeNulls } from "@app/types/shared/utils/general";
 
 makeScript(
@@ -208,7 +209,7 @@ makeScript(
 
     allowedTokenCount = allowedTokenCount
       ? allowedTokenCount
-      : Math.max(0, model.contextSize - model.generationTokensCount);
+      : getModelMaxInputTokens(model);
 
     const convoRes = await renderConversationForModel(auth, {
       conversation,
