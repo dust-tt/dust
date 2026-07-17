@@ -1810,6 +1810,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         source: null,
         sourceMetadata: null,
         isDefault: !SystemSkillsRegistry.isSystemSkill(def.sId),
+        favoriteCount: 0,
         reinforcement: "auto",
         lastReinforcementAnalysisAt: null,
         selfImprovementCostsCapMicroUsd: null,
@@ -2095,6 +2096,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
           source: versionModel.source,
           sourceMetadata: versionModel.sourceMetadata,
           isDefault: versionModel.isDefault,
+          favoriteCount: this.favoriteCount,
           reinforcement: "auto",
           lastReinforcementAnalysisAt: null,
           selfImprovementCostsCapMicroUsd:
