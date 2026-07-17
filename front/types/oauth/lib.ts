@@ -52,6 +52,7 @@ export const OAUTH_PROVIDERS = [
   "microsoft_tools",
   "zendesk",
   "salesforce",
+  "servicenow",
   "hubspot",
   "ukg_ready",
   "mcp", // MCP is a special provider for MCP servers.
@@ -83,6 +84,7 @@ export const OAUTH_PROVIDER_NAMES: Record<OAuthProvider, string> = {
   microsoft_tools: "Microsoft Tools",
   zendesk: "Zendesk",
   salesforce: "Salesforce",
+  servicenow: "ServiceNow",
   hubspot: "Hubspot",
   ukg_ready: "UKG Ready",
   mcp: "MCP",
@@ -106,6 +108,7 @@ const SUPPORTED_OAUTH_CREDENTIALS = [
   "freshworks_org_url",
   "zendesk_subdomain",
   "databricks_workspace_url",
+  "servicenow_instance_url",
   "snowflake_account",
   "snowflake_role",
   "snowflake_warehouse",
@@ -275,6 +278,32 @@ export function getProviderRequiredOAuthCredentialInputs({
             label: "OAuth Client Secret",
             value: undefined,
             helpMessage: "The client secret from your Databricks OAuth app.",
+            validator: isValidClientIdOrSecret,
+          },
+        };
+        return result;
+      }
+      return null;
+    case "servicenow":
+      if (useCase === "personal_actions" || useCase === "platform_actions") {
+        const result: OAuthCredentialInputs = {
+          servicenow_instance_url: {
+            label: "ServiceNow Instance URL",
+            value: undefined,
+            helpMessage:
+              "Your ServiceNow instance URL (e.g., https://your-instance.service-now.com).",
+            validator: isValidUrl,
+          },
+          client_id: {
+            label: "OAuth Client ID",
+            value: undefined,
+            helpMessage: "The client ID from your ServiceNow OAuth app.",
+            validator: isValidClientIdOrSecret,
+          },
+          client_secret: {
+            label: "OAuth Client Secret",
+            value: undefined,
+            helpMessage: "The client secret from your ServiceNow OAuth app.",
             validator: isValidClientIdOrSecret,
           },
         };

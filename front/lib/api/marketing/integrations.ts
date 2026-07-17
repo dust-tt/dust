@@ -131,6 +131,7 @@ const MCP_CATEGORY_MAP: Record<string, IntegrationCategory> = {
   // Support
   zendesk: "support",
   freshservice: "support",
+  servicenow: "support",
   front: "support",
   // Recruiting
   ukg_ready: "recruiting",
@@ -215,6 +216,7 @@ const MCP_DISPLAY_NAMES: Record<string, string> = {
   val_town: "Val Town",
   front: "Front",
   databricks: "Databricks",
+  servicenow: "ServiceNow",
   productboard: "Productboard",
 };
 

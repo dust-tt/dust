@@ -163,6 +163,7 @@ pub mod oauth {
         pub mod notion;
         pub mod productboard;
         pub mod salesforce;
+        pub mod servicenow;
         pub mod slack;
         pub mod slack_tools;
         pub mod snowflake;

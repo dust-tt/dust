@@ -1661,6 +1661,16 @@ const QUERIES: LabeledQuery[] = [
     expected: "ukg_ready.get_accrual_balances",
   },
 
+  // --- servicenow ---
+  {
+    query: "list open incidents in ServiceNow",
+    expected: "servicenow.list_incidents",
+  },
+  {
+    query: "show me my ServiceNow tickets",
+    expected: "servicenow.list_incidents",
+  },
+
   // --- slab ---
   {
     query: "search Slab posts by keyword",
