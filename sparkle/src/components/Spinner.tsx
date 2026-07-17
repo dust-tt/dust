@@ -1,4 +1,9 @@
 import { customColors } from "@sparkle/lib/colors";
+import animDark from "@sparkle/lottie/spinnerDark";
+import animDarkXS from "@sparkle/lottie/spinnerDarkXS";
+import animLight from "@sparkle/lottie/spinnerLight";
+import animLightXS from "@sparkle/lottie/spinnerLightXS";
+import Lottie from "lottie-react";
 import React from "react";
 
 const SPINNER_SIZES = ["xs", "sm", "md", "lg"] as const;
@@ -177,56 +182,125 @@ function ShapesSpinnerSVG({
   );
 }
 
-// ─── Tri spinner (triangle ↔ square, continuous rotation) ────────────────────
+// ─── Tri spinner (legacy Lottie animation) ───────────────────────────────────
+// The original Dust spinner, kept available under type="tri". It renders the
+// pre-CSS Lottie worm animation (spinnerLight / spinnerDark), recoloring the
+// stroke for custom color variants.
 
-const TRI_CSS = `
-  @keyframes sst-morph {
-    0%   { d: path('${SQ}'); animation-timing-function: cubic-bezier(0.77, 0, 0.175, 1); }
-    50%  { d: path('${TR}'); animation-timing-function: cubic-bezier(0.77, 0, 0.175, 1); }
-    100% { d: path('${SQ}'); }
-  }
-  @keyframes sst-rotate { to { transform: rotate(360deg); } }
-  .sst-g { animation: sst-rotate 3.6s linear infinite; transform-origin: 12px 12px; }
-  .sst-p { animation: sst-morph 1.8s linear infinite; }
-  @media (prefers-reduced-motion: reduce) {
-    .sst-g, .sst-p { animation: none; }
-  }
-`;
+type LottieColorType = [number, number, number, number];
 
-function TriSpinnerSVG({
+// Convert a hex color (e.g. "#fecdd3") to the [r, g, b, a] array Lottie uses.
+const hexToRgba = (hex: string): LottieColorType => {
+  const r = parseInt(hex.slice(1, 3), 16) / 255;
+  const g = parseInt(hex.slice(3, 5), 16) / 255;
+  const b = parseInt(hex.slice(5, 7), 16) / 255;
+  return [r, g, b, 1];
+};
+
+const isColorArray = (arr: unknown): arr is LottieColorType => {
+  return (
+    Array.isArray(arr) &&
+    arr.length === 4 &&
+    arr.every((n) => typeof n === "number")
+  );
+};
+
+// Recursively replace color arrays within a (freshly cloned) Lottie object.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const replaceColors = (obj: any, newColor: LottieColorType): any => {
+  if (Array.isArray(obj)) {
+    return obj.map((item) => replaceColors(item, newColor));
+  } else if (obj !== null && typeof obj === "object") {
+    for (const key in obj) {
+      if (isColorArray(obj[key])) {
+        obj[key] = newColor;
+      } else {
+        obj[key] = replaceColors(obj[key], newColor);
+      }
+    }
+  }
+  return obj;
+};
+
+// xs/sm/md use the small (XS) animation; lg uses the standard one.
+const lightAnimForSize = (size: SpinnerSizeType) =>
+  size === "lg" ? animLight : animLightXS;
+const darkAnimForSize = (size: SpinnerSizeType) =>
+  size === "lg" ? animDark : animDarkXS;
+
+function TriSpinnerLottie({
   size,
-  color,
-  className,
+  variant,
 }: {
   size: SpinnerSizeType;
-  color: string;
-  className?: string;
+  variant: SpinnerVariant;
 }) {
   const px = pxSizeMap[size];
-  const sw = strokeWidthMap[size];
+  const style = { width: `${px}px`, height: `${px}px` };
+
+  if (
+    variant !== "mono" &&
+    variant !== "revert" &&
+    variant !== "light" &&
+    variant !== "dark"
+  ) {
+    const hex = getCustomHex(variant);
+    if (hex) {
+      // Clone before recoloring so the shared imported animation is untouched.
+      const animationData = replaceColors(
+        JSON.parse(JSON.stringify(lightAnimForSize(size))),
+        hexToRgba(hex)
+      );
+      return (
+        <Lottie animationData={animationData} style={style} loop autoplay />
+      );
+    }
+  }
+
+  if (variant === "light") {
+    return (
+      <Lottie
+        animationData={lightAnimForSize(size)}
+        style={style}
+        loop
+        autoplay
+      />
+    );
+  }
+
+  if (variant === "dark") {
+    return (
+      <Lottie
+        animationData={darkAnimForSize(size)}
+        style={style}
+        loop
+        autoplay
+      />
+    );
+  }
+
+  // mono / revert: render both theme animations and toggle with dark: classes.
+  // mono shows the dark-colored spinner on a light background (and vice versa);
+  // revert is the opposite.
+  const lightAnim = lightAnimForSize(size);
+  const darkAnim = darkAnimForSize(size);
   return (
-    <svg
-      width={px}
-      height={px}
-      viewBox="0 0 24 24"
-      fill="none"
-      role="status"
-      aria-label="Loading"
-      shapeRendering="geometricPrecision"
-      className={className}
-    >
-      <style>{TRI_CSS}</style>
-      <g className="sst-g">
-        <path
-          d={SQ}
-          stroke={color}
-          strokeWidth={sw}
-          strokeLinejoin="round"
-          strokeLinecap="round"
-          className="sst-p"
-        />
-      </g>
-    </svg>
+    <>
+      <Lottie
+        animationData={variant === "mono" ? darkAnim : lightAnim}
+        className="block dark:hidden"
+        style={style}
+        loop
+        autoplay
+      />
+      <Lottie
+        animationData={variant === "mono" ? lightAnim : darkAnim}
+        className="hidden dark:block"
+        style={style}
+        loop
+        autoplay
+      />
+    </>
   );
 }
 
@@ -263,25 +337,7 @@ const Spinner: React.FC<SpinnerProps> = ({
   type = "worm",
 }) => {
   if (type === "tri") {
-    if (
-      variant !== "mono" &&
-      variant !== "revert" &&
-      variant !== "light" &&
-      variant !== "dark"
-    ) {
-      const hex = getCustomHex(variant);
-      if (hex) {
-        return <TriSpinnerSVG size={size} color={hex} />;
-      }
-    }
-    if (variant === "light") {
-      return <TriSpinnerSVG size={size} color={SCHEME.light.arcColor} />;
-    }
-    if (variant === "dark") {
-      return <TriSpinnerSVG size={size} color={SCHEME.dark.arcColor} />;
-    }
-    // mono/revert: arcColor is identical in both themes (no track), single render.
-    return <TriSpinnerSVG size={size} color={SCHEME.monoOnLight.arcColor} />;
+    return <TriSpinnerLottie size={size} variant={variant} />;
   }
 
   if (type === "shapes") {

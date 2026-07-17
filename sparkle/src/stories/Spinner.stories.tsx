@@ -45,7 +45,7 @@ const meta = {
       options: SPINNER_TYPES,
       control: { type: "select" },
       description:
-        "Animation style — worm is the arc/dash spinner; shapes morphs through square → circle → triangle; tri alternates between square and triangle with continuous rotation",
+        "Animation style — worm is the arc/dash spinner; shapes morphs through square → circle → triangle; tri is the legacy Dust Lottie spinner",
     },
     variant: {
       options: SPINNER_VARIANTS,
@@ -122,7 +122,7 @@ export const ShapesVariant: Story = {
 };
 
 export const TriVariant: Story = {
-  name: "Tri type (triangle ↔ square)",
+  name: "Tri type (legacy Lottie)",
   render: () => (
     <div className="flex flex-col gap-6">
       <div className="flex items-end gap-6">
