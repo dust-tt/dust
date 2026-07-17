@@ -37,10 +37,10 @@ export function Composer({
       className={cn(
         "relative flex w-full flex-col items-stretch rounded-3xl",
         // Figma corner smoothing (radius 24, smoothing 100%). CSS squircle hugs corners tighter
-        // than Figma's smoothing, so the radius is bumped to 36px to match — only when
+        // than Figma's smoothing, so the radius is bumped to 40px to match — only when
         // corner-shape is supported; otherwise plain 24px rounded corners.
         "[corner-shape:squircle]",
-        "supports-[corner-shape:squircle]:rounded-[36px]",
+        "supports-[corner-shape:squircle]:rounded-[40px]",
         variant === "floating" && [
           "border border-white/90",
           // Focus (Figma 11174:21613): white surface, softened drop shadows.
