@@ -12,10 +12,10 @@ const CONTEXT_SIZE = 1_050_000;
 const MAX_OUTPUT_TOKENS = 128_000;
 const DEFAULT_REASONING_EFFORT = "none";
 
-// gpt-5.4 accepts none/low/medium/high (matching the legacy router). "minimal",
-// "xhigh" and the universal "maximal" are unsupported and surface as an input
+// gpt-5.4 accepts none/low/medium/high/xhigh. "minimal" and the top "max" tier
+// (Dust's universal "maximal") are unsupported and surface as an input
 // configuration error.
-const GPT_5_4_REASONING_EFFORTS = ["low", "medium", "high"] as const;
+const GPT_5_4_REASONING_EFFORTS = ["low", "medium", "high", "xhigh"] as const;
 
 const configSchema = z.union([
   // Reasoning off is the default; the Responses API then allows a temperature.
