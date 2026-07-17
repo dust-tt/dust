@@ -557,6 +557,7 @@ function ComposerDemo({
                       ) : (
                         <Citation
                           compact
+                          containerClassName="h-full min-h-24"
                           className="h-full"
                           isLoading={attachment.isUploading}
                           loadingLabel="Uploading"

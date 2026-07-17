@@ -103,7 +103,9 @@ export const InputBar = React.memo(function InputBar({
   disableAutoFocus = false,
   disableUserMentions,
   isAgentBuilder = false,
-  isFloating = true,
+  // Unused while previewing the sparkle Composer card styling (see shell classes below).
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  isFloating: _isFloating = true,
   isSubmitting = false,
   disableInput = false,
   submitBlockMessage = null,
@@ -481,20 +483,13 @@ export const InputBar = React.memo(function InputBar({
                 INPUT_BAR_COMPACT_ENTER_ANIMATION_CLASSES,
                 !disableInput && "cursor-pointer"
               )
-            : classNames(
-                "w-full rounded-2xl",
-                "bg-muted-background",
-                "border",
-                "border-border-dark",
-                "md:border-border-dark/50 md:has-[.tiptap:focus]:border-border-dark",
-                "md:has-[.tiptap:focus]:border-border-dark",
-                isFloating
-                  ? classNames(
-                      "has-[.tiptap:focus]:ring-1",
-                      "has-[.tiptap:focus]:ring-highlight/30",
-                      "md:has-[.tiptap:focus]:ring-2"
-                    )
-                  : classNames("has-[.tiptap:focus]:border-highlight-300")
+            : // Preview test: sparkle Composer floating card styling (see sparkle/src/components/Composer.tsx).
+              classNames(
+                "w-full rounded-3xl",
+                "border border-white/90 bg-[#fbfbfb]",
+                "shadow-[0px_-0.5px_1px_1px_rgba(0,0,0,0.02),0px_8px_10px_-6px_rgba(0,0,0,0.1),0px_20px_25px_-5px_rgba(0,0,0,0.1),0px_0px_1px_0px_rgba(0,0,0,0.07)]",
+                "dark:border-transparent dark:bg-stone-800",
+                "dark:shadow-[inset_0px_0px_0px_1px_rgba(255,255,255,0.04),inset_0px_1px_0px_0px_rgba(255,255,255,0.02),0px_0px_0px_1px_rgba(0,0,0,0.14),0px_1px_1px_-0.5px_rgba(0,0,0,0.18),0px_3px_3px_-1.5px_rgba(0,0,0,0.18),0px_6px_6px_-3px_rgba(0,0,0,0.18)]"
               )
         )}
       >
