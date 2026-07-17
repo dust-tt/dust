@@ -109,6 +109,7 @@ const ModelLLMIdSchema = FlexibleEnumSchema<KnownModelLLMId>() as z.ZodType<
 
 // Flexible so the SDK does not need updating when new efforts are added; the
 // server re-validates against the concrete set and rejects unknown values.
+// copied from reasoning.ts to avoid circular dependency
 const ReasoningEffortSchema = FlexibleEnumSchema<
   "none" | "light" | "medium" | "high"
 >();
