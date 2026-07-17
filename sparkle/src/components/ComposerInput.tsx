@@ -251,7 +251,7 @@ export const ComposerInput = React.forwardRef<
           placeholder={placeholder}
           rows={1}
           className={cn(
-            "block w-full resize-none bg-transparent",
+            "block w-full resize-none bg-transparent p-0",
             "max-h-[40vh] min-h-14 overflow-y-auto md:min-h-16",
             "text-base leading-6 tracking-[-0.02em]",
             "text-foreground placeholder:text-muted-foreground",
