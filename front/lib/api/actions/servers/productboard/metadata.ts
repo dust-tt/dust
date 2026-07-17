@@ -1,11 +1,12 @@
-import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import { createToolsRecord } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import type { JSONSchema7 as JSONSchema } from "json-schema";
+import type {
+  InternalMCPToolType,
+  ServerMetadata,
+} from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { z } from "zod";
-import { zodToJsonSchema } from "zod-to-json-schema";
 
-export const PRODUCTBOARD_TOOLS_METADATA = createToolsRecord({
-  create_note: {
+export const PRODUCTBOARD_TOOLS_METADATA = [
+  {
+    name: "create_note",
     description:
       "Create a note in Productboard to capture customer feedback, insights, or support conversations.",
     schema: {
@@ -41,7 +42,8 @@ export const PRODUCTBOARD_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "advanced",
     freeUsage: false,
   },
-  update_note: {
+  {
+    name: "update_note",
     description:
       "Update an existing note in Productboard. Use the fields object for simple updates or the patch array for granular operations.",
     schema: {
@@ -78,7 +80,8 @@ export const PRODUCTBOARD_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "advanced",
     freeUsage: false,
   },
-  get_note: {
+  {
+    name: "get_note",
     description:
       "Retrieve details of a specific note by ID. Use field selection to optimize response size and avoid large returns. By default, returns all non-null fields.",
     schema: {
@@ -96,7 +99,8 @@ export const PRODUCTBOARD_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "advanced",
     freeUsage: false,
   },
-  query_notes: {
+  {
+    name: "query_notes",
     description:
       "Search for notes in your Productboard workspace. Notes are sorted by creation date, newest first.",
     schema: {
@@ -172,7 +176,8 @@ export const PRODUCTBOARD_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "advanced",
     freeUsage: false,
   },
-  query_entities: {
+  {
+    name: "query_entities",
     description:
       "Search for entities in Productboard, including products, companies, features, users, etc.",
     schema: {
@@ -234,7 +239,8 @@ export const PRODUCTBOARD_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "advanced",
     freeUsage: false,
   },
-  create_entity: {
+  {
+    name: "create_entity",
     description:
       "Create an entity in Productboard (products, components, features, initiatives, etc.)",
     schema: {
@@ -285,7 +291,8 @@ export const PRODUCTBOARD_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "advanced",
     freeUsage: false,
   },
-  update_entity: {
+  {
+    name: "update_entity",
     description:
       "Update an existing entity in Productboard. Use the fields object for simple updates or the patch array for granular operations.",
     schema: {
@@ -322,7 +329,8 @@ export const PRODUCTBOARD_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "advanced",
     freeUsage: false,
   },
-  get_relationships: {
+  {
+    name: "get_relationships",
     description:
       "Get relationships for an entity (parent, children, linked notes, etc.).\n\nUse to understand how entities are connected in the product hierarchy.",
     schema: {
@@ -343,7 +351,8 @@ export const PRODUCTBOARD_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "advanced",
     freeUsage: false,
   },
-  get_configuration: {
+  {
+    name: "get_configuration",
     description:
       "Get configuration for a specific entity type in this workspace. This is REQUIRED before creating or updating any entity or note. Returns available fields, required vs optional fields, field types, constraints, and allowed operations.",
     schema: {
@@ -375,7 +384,7 @@ export const PRODUCTBOARD_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "advanced",
     freeUsage: false,
   },
-});
+] as const satisfies readonly InternalMCPToolType[];
 
 export const PRODUCTBOARD_SERVER = {
   serverInfo: {
@@ -390,13 +399,5 @@ export const PRODUCTBOARD_SERVER = {
     icon: "ProductboardLogo",
     documentationUrl: "https://docs.dust.tt/docs/productboard",
   },
-  tools: Object.values(PRODUCTBOARD_TOOLS_METADATA).map((t) => ({
-    name: t.name,
-    description: t.description,
-    inputSchema: zodToJsonSchema(z.object(t.schema)) as JSONSchema,
-    displayLabels: t.displayLabels,
-    toolCostCategory: t.toolCostCategory,
-    freeUsage: t.freeUsage,
-    stake: t.stake,
-  })),
+  tools: PRODUCTBOARD_TOOLS_METADATA,
 } as const satisfies ServerMetadata;

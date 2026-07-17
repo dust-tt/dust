@@ -1,13 +1,14 @@
-import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import { createToolsRecord } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import type { JSONSchema7 as JSONSchema } from "json-schema";
+import type {
+  InternalMCPToolType,
+  ServerMetadata,
+} from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { z } from "zod";
-import { zodToJsonSchema } from "zod-to-json-schema";
 
 export const MICROSOFT_TEAMS_SERVER_NAME = "microsoft_teams" as const;
 
-export const MICROSOFT_TEAMS_TOOLS_METADATA = createToolsRecord({
-  search_messages_content: {
+export const MICROSOFT_TEAMS_TOOLS_METADATA = [
+  {
+    name: "search_messages_content",
     description:
       "Search Microsoft Teams messages by full-text keyword. Returns matching messages ranked by relevance. Use this to find a message by its words, not to browse or enumerate a conversation.",
     schema: {
@@ -23,7 +24,8 @@ export const MICROSOFT_TEAMS_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "advanced",
     freeUsage: false,
   },
-  list_teams: {
+  {
+    name: "list_teams",
     description:
       "List all Teams that the authenticated user has joined. Returns team details including name, description, and team ID.",
     schema: {},
@@ -35,7 +37,8 @@ export const MICROSOFT_TEAMS_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "advanced",
     freeUsage: false,
   },
-  list_users: {
+  {
+    name: "list_users",
     description:
       "List people in the Microsoft Teams organization directory. Returns each user's display name, email, and user ID. Use this to look up who is in the organization.",
     schema: {
@@ -57,7 +60,8 @@ export const MICROSOFT_TEAMS_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "advanced",
     freeUsage: false,
   },
-  list_channels: {
+  {
+    name: "list_channels",
     description:
       "List all channels in a specific Microsoft Teams team. Returns channel details including name, description, and channel ID. Can be filtered by channel name.",
     schema: {
@@ -77,7 +81,8 @@ export const MICROSOFT_TEAMS_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "advanced",
     freeUsage: false,
   },
-  list_chats: {
+  {
+    name: "list_chats",
     description:
       "List all Microsoft Teams chats (one-on-one or group chats) for the authenticated user. Returns chat details including chat ID, topic, and participants. Can be filtered by chat type and chat topic.",
     schema: {
@@ -107,7 +112,8 @@ export const MICROSOFT_TEAMS_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "advanced",
     freeUsage: false,
   },
-  list_messages: {
+  {
+    name: "list_messages",
     description:
       "List messages from a Teams channel or chat (1:1, group, or meeting chat). Provide either chatId (for chats) or both teamId + channelId (for channels). For channels, returns top-level messages only; to read a full thread, call again with a messageId. messageId is supported for channels only, not for chats. For chats, returns all messages. Supports pagination and date range filtering.",
     schema: {
@@ -154,7 +160,8 @@ export const MICROSOFT_TEAMS_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "advanced",
     freeUsage: false,
   },
-  post_message: {
+  {
+    name: "post_message",
     description:
       "Post a message to a Teams channel, chat, or as a reply in a thread. Can send messages to channels, direct chats, or as threaded replies. For direct messages, you can provide userIds instead of chatId to automatically create a chat if it doesn't exist (one-on-one for 1 user, group chat for multiple users). By default (if no chat, channel or users are provided), the message will be sent to the current user's self-chat.",
     schema: {
@@ -230,7 +237,8 @@ export const MICROSOFT_TEAMS_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "advanced",
     freeUsage: false,
   },
-  list_meetings: {
+  {
+    name: "list_meetings",
     description:
       "List the authenticated user's Microsoft Teams meetings (online meetings on their calendar) within a date range. Returns each meeting's subject, organizer, attendees, times, and join URL. Filter by subject or participant.",
     schema: {
@@ -261,7 +269,8 @@ export const MICROSOFT_TEAMS_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "advanced",
     freeUsage: false,
   },
-  get_transcript_content: {
+  {
+    name: "get_transcript_content",
     description:
       "Get the transcript (the spoken text) of a recorded Microsoft Teams meeting, identified by its join URL. Returns the transcript text if one is available.",
     schema: {
@@ -279,7 +288,7 @@ export const MICROSOFT_TEAMS_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "advanced",
     freeUsage: false,
   },
-});
+] as const satisfies readonly InternalMCPToolType[];
 
 export const MICROSOFT_TEAMS_SERVER = {
   serverInfo: {
@@ -368,13 +377,5 @@ export const MICROSOFT_TEAMS_SERVER = {
     },
     documentationUrl: "https://docs.dust.tt/docs/microsoft-teams-tool-setup",
   },
-  tools: Object.values(MICROSOFT_TEAMS_TOOLS_METADATA).map((t) => ({
-    name: t.name,
-    description: t.description,
-    inputSchema: zodToJsonSchema(z.object(t.schema)) as JSONSchema,
-    displayLabels: t.displayLabels,
-    toolCostCategory: t.toolCostCategory,
-    freeUsage: t.freeUsage,
-    stake: t.stake,
-  })),
+  tools: MICROSOFT_TEAMS_TOOLS_METADATA,
 } as const satisfies ServerMetadata;

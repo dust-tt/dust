@@ -1,5 +1,7 @@
-import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import { createToolsRecord } from "@app/lib/actions/mcp_internal_actions/tool_definition";
+import type {
+  InternalMCPToolType,
+  ServerMetadata,
+} from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import {
   IncludeInputSchema,
   TagsInputSchema,
@@ -8,9 +10,6 @@ import {
   FIND_TAGS_BASE_DESCRIPTION,
   findTagsSchema,
 } from "@app/lib/api/actions/tools/find_tags/metadata";
-import type { JSONSchema7 as JSONSchema } from "json-schema";
-import { z } from "zod";
-import { zodToJsonSchema } from "zod-to-json-schema";
 
 const RETRIEVE_RECENT_DOCUMENTS_DESCRIPTION =
   "Load and include full document content, documents, or docs from selected data sources or the company knowledge base as conversation context. " +
@@ -18,8 +17,9 @@ const RETRIEVE_RECENT_DOCUMENTS_DESCRIPTION =
   "so the latest pre-configured information is included when the agent needs broad full-context data or all available recent content.";
 
 // Base tool without tags support
-export const INCLUDE_DATA_BASE_TOOLS_METADATA = createToolsRecord({
-  retrieve_recent_documents: {
+export const INCLUDE_DATA_BASE_TOOLS_METADATA = [
+  {
+    name: "retrieve_recent_documents",
     description: RETRIEVE_RECENT_DOCUMENTS_DESCRIPTION,
     schema: IncludeInputSchema.shape,
     stake: "never_ask",
@@ -30,7 +30,7 @@ export const INCLUDE_DATA_BASE_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "advanced",
     freeUsage: false,
   },
-});
+] as const satisfies readonly InternalMCPToolType[];
 
 // Extended schema with tags support (used when tags are dynamic)
 const includeWithTagsSchema = {
@@ -38,8 +38,9 @@ const includeWithTagsSchema = {
   ...TagsInputSchema.shape,
 };
 
-export const INCLUDE_DATA_WITH_TAGS_TOOLS_METADATA = createToolsRecord({
-  retrieve_recent_documents: {
+export const INCLUDE_DATA_WITH_TAGS_TOOLS_METADATA = [
+  {
+    name: "retrieve_recent_documents",
     description: RETRIEVE_RECENT_DOCUMENTS_DESCRIPTION,
     schema: includeWithTagsSchema,
     stake: "never_ask",
@@ -50,7 +51,8 @@ export const INCLUDE_DATA_WITH_TAGS_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "advanced",
     freeUsage: false,
   },
-  find_tags: {
+  {
+    name: "find_tags",
     description:
       FIND_TAGS_BASE_DESCRIPTION +
       " This tool is meant to be used before the retrieve_recent_documents tool.",
@@ -63,7 +65,7 @@ export const INCLUDE_DATA_WITH_TAGS_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "advanced",
     freeUsage: false,
   },
-});
+] as const satisfies readonly InternalMCPToolType[];
 
 // For the server metadata, we use the base schema
 export const INCLUDE_DATA_SERVER = {
@@ -76,13 +78,5 @@ export const INCLUDE_DATA_SERVER = {
     authorization: null,
     documentationUrl: null,
   },
-  tools: Object.values(INCLUDE_DATA_BASE_TOOLS_METADATA).map((t) => ({
-    name: t.name,
-    description: t.description,
-    inputSchema: zodToJsonSchema(z.object(t.schema)) as JSONSchema,
-    displayLabels: t.displayLabels,
-    toolCostCategory: t.toolCostCategory,
-    freeUsage: t.freeUsage,
-    stake: t.stake,
-  })),
+  tools: INCLUDE_DATA_BASE_TOOLS_METADATA,
 } as const satisfies ServerMetadata;

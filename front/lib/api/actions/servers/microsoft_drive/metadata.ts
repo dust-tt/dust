@@ -1,15 +1,16 @@
-import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import { createToolsRecord } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import type { JSONSchema7 as JSONSchema } from "json-schema";
+import type {
+  InternalMCPToolType,
+  ServerMetadata,
+} from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { z } from "zod";
-import { zodToJsonSchema } from "zod-to-json-schema";
 
 export const MICROSOFT_DRIVE_SERVER_NAME = "microsoft_drive" as const;
 
 const MAX_CONTENT_SIZE = 32000; // Max characters to return for file content
 
-export const MICROSOFT_DRIVE_TOOLS_METADATA = createToolsRecord({
-  search_in_files: {
+export const MICROSOFT_DRIVE_TOOLS_METADATA = [
+  {
+    name: "search_in_files",
     description:
       "Search the content inside Microsoft OneDrive and SharePoint files using semantic retrieval. Answers questions from what documents contain by finding relevant passages and information within Word, Excel, PowerPoint, and other files, including external items indexed in Microsoft Graph.",
     schema: {
@@ -35,7 +36,8 @@ export const MICROSOFT_DRIVE_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "advanced",
     freeUsage: false,
   },
-  search_drive_items: {
+  {
+    name: "search_drive_items",
     description:
       "Find and locate a file, folder, or document by its name or title in Microsoft OneDrive and SharePoint, returned in relevance order. Use when you know the item's name and want to look it up, such as a specific Word, Excel, or PowerPoint document, or a folder to upload into.",
     schema: {
@@ -53,7 +55,8 @@ export const MICROSOFT_DRIVE_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "advanced",
     freeUsage: false,
   },
-  list_drive_items: {
+  {
+    name: "list_drive_items",
     description:
       "Browse and list items (folders and/or files) in a Microsoft OneDrive or SharePoint drive, SharePoint site, or under a specific parent folder. Use parentFolderId to drill into a specific folder; otherwise lists items at the root of the drive/site. Filter the result with itemType. Supports pagination via skipToken.",
     schema: {
@@ -104,7 +107,8 @@ export const MICROSOFT_DRIVE_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "advanced",
     freeUsage: false,
   },
-  get_item_from_url: {
+  {
+    name: "get_item_from_url",
     description:
       "Resolve a Microsoft OneDrive or SharePoint URL (file, folder, or sharing link) to its drive item. Returns the item's id, driveId, name, type, and webUrl.",
     schema: {
@@ -122,7 +126,8 @@ export const MICROSOFT_DRIVE_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "advanced",
     freeUsage: false,
   },
-  update_word_document: {
+  {
+    name: "update_word_document",
     description:
       "Edit and update an existing Microsoft Word document on OneDrive or SharePoint by providing new document.xml content. Uses driveId if provided, otherwise falls back to siteId.",
     schema: {
@@ -153,7 +158,8 @@ export const MICROSOFT_DRIVE_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "advanced",
     freeUsage: false,
   },
-  get_file_content: {
+  {
+    name: "get_file_content",
     description:
       "Read, open, and retrieve the content of a file or document from Microsoft OneDrive or SharePoint (PowerPoint, Word, Excel, PDF, etc.). Uses driveId if provided, otherwise falls back to siteId.",
     schema: {
@@ -199,7 +205,8 @@ export const MICROSOFT_DRIVE_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "advanced",
     freeUsage: false,
   },
-  create_folder: {
+  {
+    name: "create_folder",
     description:
       "Create a new folder in Microsoft OneDrive or SharePoint under a parent folder, or at the root of the drive. Uses driveId if provided, otherwise falls back to siteId. Returns the new folder's id.",
     schema: {
@@ -231,7 +238,8 @@ export const MICROSOFT_DRIVE_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "advanced",
     freeUsage: false,
   },
-  upload_file: {
+  {
+    name: "upload_file",
     description:
       "Upload a file from the Dust conversation to Microsoft OneDrive or SharePoint. Supports files up to 250MB using the simple upload API. Uses driveId if provided, otherwise falls back to siteId.",
     schema: {
@@ -273,7 +281,8 @@ export const MICROSOFT_DRIVE_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "advanced",
     freeUsage: false,
   },
-  rename_drive_item: {
+  {
+    name: "rename_drive_item",
     description:
       "Rename a file or folder in Microsoft OneDrive or SharePoint. Uses driveId if provided, otherwise falls back to siteId.",
     schema: {
@@ -300,7 +309,8 @@ export const MICROSOFT_DRIVE_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "advanced",
     freeUsage: false,
   },
-  copy_file: {
+  {
+    name: "copy_file",
     description:
       "Copy, clone, or duplicate a file or folder to a new location in Microsoft OneDrive or SharePoint.",
     schema: {
@@ -338,7 +348,7 @@ export const MICROSOFT_DRIVE_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "advanced",
     freeUsage: false,
   },
-});
+] as const satisfies readonly InternalMCPToolType[];
 
 export const MICROSOFT_DRIVE_SERVER = {
   serverInfo: {
@@ -394,13 +404,5 @@ export const MICROSOFT_DRIVE_SERVER = {
     },
     documentationUrl: "https://docs.dust.tt/docs/microsoft-drive-tool-setup",
   },
-  tools: Object.values(MICROSOFT_DRIVE_TOOLS_METADATA).map((t) => ({
-    name: t.name,
-    description: t.description,
-    inputSchema: zodToJsonSchema(z.object(t.schema)) as JSONSchema,
-    displayLabels: t.displayLabels,
-    toolCostCategory: t.toolCostCategory,
-    freeUsage: t.freeUsage,
-    stake: t.stake,
-  })),
+  tools: MICROSOFT_DRIVE_TOOLS_METADATA,
 } as const satisfies ServerMetadata;

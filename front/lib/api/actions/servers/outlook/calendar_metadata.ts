@@ -1,11 +1,12 @@
-import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import { createToolsRecord } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import type { JSONSchema7 as JSONSchema } from "json-schema";
+import type {
+  InternalMCPToolType,
+  ServerMetadata,
+} from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { z } from "zod";
-import { zodToJsonSchema } from "zod-to-json-schema";
 
-export const OUTLOOK_CALENDAR_TOOLS_METADATA = createToolsRecord({
-  get_user_timezone: {
+export const OUTLOOK_CALENDAR_TOOLS_METADATA = [
+  {
+    name: "get_user_timezone",
     description:
       "Get the user's configured timezone from their Outlook mailbox settings. This should be called before creating, updating, or searching for events to ensure proper timezone handling.",
     schema: {},
@@ -17,7 +18,8 @@ export const OUTLOOK_CALENDAR_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "advanced",
     freeUsage: false,
   },
-  list_calendars: {
+  {
+    name: "list_calendars",
     description: "List all calendars accessible by the user in Outlook.",
     schema: {
       top: z
@@ -43,7 +45,8 @@ export const OUTLOOK_CALENDAR_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "advanced",
     freeUsage: false,
   },
-  list_events: {
+  {
+    name: "list_events",
     description:
       "List or search events from an Outlook Calendar. Supports filtering and searching. For accurate timezone handling, first call get_user_timezone and pass the timezone parameter.",
     schema: {
@@ -90,7 +93,8 @@ export const OUTLOOK_CALENDAR_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "advanced",
     freeUsage: false,
   },
-  get_event: {
+  {
+    name: "get_event",
     description: "Get a single event from an Outlook Calendar by event ID.",
     schema: {
       calendarId: z
@@ -115,7 +119,8 @@ export const OUTLOOK_CALENDAR_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "advanced",
     freeUsage: false,
   },
-  create_event: {
+  {
+    name: "create_event",
     description:
       "Create a new event in an Outlook Calendar. Call get_user_timezone first and pass the userTimezone parameter for proper timezone handling.",
     schema: {
@@ -181,7 +186,8 @@ export const OUTLOOK_CALENDAR_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "advanced",
     freeUsage: false,
   },
-  update_event: {
+  {
+    name: "update_event",
     description:
       "Update an existing event in an Outlook Calendar. Call get_user_timezone first and pass the userTimezone parameter for proper timezone handling.",
     schema: {
@@ -233,7 +239,8 @@ export const OUTLOOK_CALENDAR_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "advanced",
     freeUsage: false,
   },
-  delete_event: {
+  {
+    name: "delete_event",
     description: "Delete an event from an Outlook Calendar.",
     schema: {
       calendarId: z
@@ -258,7 +265,8 @@ export const OUTLOOK_CALENDAR_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "advanced",
     freeUsage: false,
   },
-  check_availability: {
+  {
+    name: "check_availability",
     description:
       "Check the calendar availability of specific people for a given time slot using Outlook Calendar.",
     schema: {
@@ -294,7 +302,8 @@ export const OUTLOOK_CALENDAR_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "advanced",
     freeUsage: false,
   },
-  check_self_availability: {
+  {
+    name: "check_self_availability",
     description:
       "Check if the authenticated user is available during a specific time slot in Outlook Calendar. " +
       "An event is considered blocking if its showAs status is 'busy', " +
@@ -331,7 +340,7 @@ export const OUTLOOK_CALENDAR_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "advanced",
     freeUsage: false,
   },
-});
+] as const satisfies readonly InternalMCPToolType[];
 
 export const OUTLOOK_CALENDAR_SERVER = {
   serverInfo: {
@@ -381,13 +390,5 @@ export const OUTLOOK_CALENDAR_SERVER = {
     icon: "MicrosoftOutlookLogo",
     documentationUrl: "https://docs.dust.tt/docs/outlook-tool-setup",
   },
-  tools: Object.values(OUTLOOK_CALENDAR_TOOLS_METADATA).map((t) => ({
-    name: t.name,
-    description: t.description,
-    inputSchema: zodToJsonSchema(z.object(t.schema)) as JSONSchema,
-    displayLabels: t.displayLabels,
-    toolCostCategory: t.toolCostCategory,
-    freeUsage: t.freeUsage,
-    stake: t.stake,
-  })),
+  tools: OUTLOOK_CALENDAR_TOOLS_METADATA,
 } as const satisfies ServerMetadata;

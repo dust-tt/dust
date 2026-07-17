@@ -1,16 +1,17 @@
-import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import { createToolsRecord } from "@app/lib/actions/mcp_internal_actions/tool_definition";
+import type {
+  InternalMCPToolType,
+  ServerMetadata,
+} from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import {
   LumaApprovalStatusSchema,
   LumaGuestStatusActionSchema,
   LumaVisibilitySchema,
 } from "@app/lib/api/actions/servers/luma/types";
-import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { z } from "zod";
-import { zodToJsonSchema } from "zod-to-json-schema";
 
-export const LUMA_TOOLS_METADATA = createToolsRecord({
-  get_authenticated_user: {
+export const LUMA_TOOLS_METADATA = [
+  {
+    name: "get_authenticated_user",
     description:
       "Get the name, email, and ID of the Luma account owner whose API key is configured. " +
       "Useful to confirm which calendar the tools operate on.",
@@ -23,7 +24,8 @@ export const LUMA_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "advanced",
     freeUsage: false,
   },
-  get_event: {
+  {
+    name: "get_event",
     description:
       "Get the full details of a specific Luma event by its event ID.",
     schema: {
@@ -37,7 +39,8 @@ export const LUMA_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "advanced",
     freeUsage: false,
   },
-  list_events: {
+  {
+    name: "list_events",
     description:
       "List events from the Luma calendar. " +
       "Optionally filter by date range using ISO 8601 datetime strings.",
@@ -59,7 +62,8 @@ export const LUMA_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "advanced",
     freeUsage: false,
   },
-  create_event: {
+  {
+    name: "create_event",
     description:
       "Create a new event on Luma. " +
       "Requires at minimum a name and start datetime. " +
@@ -107,7 +111,8 @@ export const LUMA_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "advanced",
     freeUsage: false,
   },
-  update_event: {
+  {
+    name: "update_event",
     description:
       "Update an existing Luma event: edit or reschedule its name, start time, " +
       "capacity, or visibility. " +
@@ -160,7 +165,8 @@ export const LUMA_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "advanced",
     freeUsage: false,
   },
-  list_guests: {
+  {
+    name: "list_guests",
     description:
       "List guests for a specific Luma event. " +
       "Supports filtering by approval status and pagination via cursor.",
@@ -202,7 +208,8 @@ export const LUMA_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "advanced",
     freeUsage: false,
   },
-  get_guest: {
+  {
+    name: "get_guest",
     description:
       "Get the registration record of a single guest who signed up for a Luma event.",
     schema: {
@@ -217,7 +224,8 @@ export const LUMA_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "advanced",
     freeUsage: false,
   },
-  update_guest_status: {
+  {
+    name: "update_guest_status",
     description:
       "Approve or decline a single guest on a Luma event, including pending guests. " +
       "Use should_refund when declining guests who paid for registration.",
@@ -244,7 +252,8 @@ export const LUMA_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "advanced",
     freeUsage: false,
   },
-  add_guests: {
+  {
+    name: "add_guests",
     description:
       "Add one or more guests to a Luma event by email. " +
       "Guests will be added with their specified name and email.",
@@ -269,7 +278,8 @@ export const LUMA_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "advanced",
     freeUsage: false,
   },
-  send_invites: {
+  {
+    name: "send_invites",
     description:
       "Send event invitations to a list of email addresses. " +
       "Recipients will receive an email invitation to the event.",
@@ -289,7 +299,8 @@ export const LUMA_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "advanced",
     freeUsage: false,
   },
-  search_guests: {
+  {
+    name: "search_guests",
     description:
       "Find a specific attendee by name or email across all registrations of a Luma event. " +
       "Fetches all guests internally and filters by the query string (case-insensitive partial match). " +
@@ -312,7 +323,8 @@ export const LUMA_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "advanced",
     freeUsage: false,
   },
-  get_event_insights: {
+  {
+    name: "get_event_insights",
     description:
       "Get total registrations, approval status breakdown, check-in rate, " +
       "registration timeline, and ticket type breakdown for an event. " +
@@ -331,7 +343,7 @@ export const LUMA_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "advanced",
     freeUsage: false,
   },
-});
+] as const satisfies readonly InternalMCPToolType[];
 
 export const LUMA_SERVER = {
   serverInfo: {
@@ -342,13 +354,5 @@ export const LUMA_SERVER = {
     icon: "LumaLogo",
     documentationUrl: null,
   },
-  tools: Object.values(LUMA_TOOLS_METADATA).map((t) => ({
-    name: t.name,
-    description: t.description,
-    inputSchema: zodToJsonSchema(z.object(t.schema)) as JSONSchema,
-    displayLabels: t.displayLabels,
-    toolCostCategory: t.toolCostCategory,
-    freeUsage: t.freeUsage,
-    stake: t.stake,
-  })),
+  tools: LUMA_TOOLS_METADATA,
 } as const satisfies ServerMetadata;

@@ -1,11 +1,12 @@
-import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import { createToolsRecord } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import type { JSONSchema7 as JSONSchema } from "json-schema";
+import type {
+  InternalMCPToolType,
+  ServerMetadata,
+} from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { z } from "zod";
-import { zodToJsonSchema } from "zod-to-json-schema";
 
-export const MONDAY_TOOLS_METADATA = createToolsRecord({
-  get_boards: {
+export const MONDAY_TOOLS_METADATA = [
+  {
+    name: "get_boards",
     description:
       "List all accessible boards in Monday.com workspace. Returns up to 100 boards.",
     schema: {},
@@ -17,7 +18,8 @@ export const MONDAY_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "advanced",
     freeUsage: false,
   },
-  get_board_items: {
+  {
+    name: "get_board_items",
     description:
       "Retrieve items from a specific Monday.com board. Returns up to 100 items.",
     schema: {
@@ -31,7 +33,8 @@ export const MONDAY_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "advanced",
     freeUsage: false,
   },
-  get_item_details: {
+  {
+    name: "get_item_details",
     description:
       "Retrieve detailed information about a specific Monday.com item",
     schema: {
@@ -45,7 +48,8 @@ export const MONDAY_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "advanced",
     freeUsage: false,
   },
-  search_items: {
+  {
+    name: "search_items",
     description:
       "Search for items in Monday.com with advanced filtering options. Returns up to 100 items.",
     schema: {
@@ -85,7 +89,8 @@ export const MONDAY_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "advanced",
     freeUsage: false,
   },
-  get_items_by_column_value: {
+  {
+    name: "get_items_by_column_value",
     description: "Retrieve items from a board by column value",
     schema: {
       boardId: z.string().describe("The board ID to search in"),
@@ -100,7 +105,8 @@ export const MONDAY_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "advanced",
     freeUsage: false,
   },
-  find_user_by_name: {
+  {
+    name: "find_user_by_name",
     description: "Find a Monday.com user by name",
     schema: {
       name: z.string().describe("The name of the user to find"),
@@ -113,7 +119,8 @@ export const MONDAY_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "advanced",
     freeUsage: false,
   },
-  get_board_values: {
+  {
+    name: "get_board_values",
     description:
       "Retrieve detailed information about a Monday.com board including columns and groups",
     schema: {
@@ -127,7 +134,8 @@ export const MONDAY_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "advanced",
     freeUsage: false,
   },
-  get_column_values: {
+  {
+    name: "get_column_values",
     description: "Retrieve column values for a specific item and column",
     schema: {
       boardId: z.string().describe("The board ID containing the item"),
@@ -142,7 +150,8 @@ export const MONDAY_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "advanced",
     freeUsage: false,
   },
-  get_file_column_values: {
+  {
+    name: "get_file_column_values",
     description: "Retrieve file column values for a specific item and column",
     schema: {
       itemId: z.string().describe("The item ID to get file column values from"),
@@ -158,7 +167,8 @@ export const MONDAY_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "advanced",
     freeUsage: false,
   },
-  get_group_details: {
+  {
+    name: "get_group_details",
     description:
       "Retrieve details about a specific group in a Monday.com board",
     schema: {
@@ -173,7 +183,8 @@ export const MONDAY_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "advanced",
     freeUsage: false,
   },
-  get_subitem_values: {
+  {
+    name: "get_subitem_values",
     description: "Retrieve subitems for a specific Monday.com item",
     schema: {
       itemId: z.string().describe("The item ID to retrieve subitems for"),
@@ -186,7 +197,8 @@ export const MONDAY_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "advanced",
     freeUsage: false,
   },
-  get_user_details: {
+  {
+    name: "get_user_details",
     description: "Retrieve details about a specific Monday.com user",
     schema: {
       userId: z.string().describe("The user ID to retrieve details for"),
@@ -199,7 +211,8 @@ export const MONDAY_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "advanced",
     freeUsage: false,
   },
-  get_activity_logs: {
+  {
+    name: "get_activity_logs",
     description:
       "Retrieve activity logs for a board. Useful for tracking pipeline velocity and user actions.",
     schema: {
@@ -227,7 +240,8 @@ export const MONDAY_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "advanced",
     freeUsage: false,
   },
-  get_board_analytics: {
+  {
+    name: "get_board_analytics",
     description:
       "Retrieve analytics and statistics for a board including item counts by status, group, and assignee. Useful for CRM reporting.",
     schema: {
@@ -241,7 +255,8 @@ export const MONDAY_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "advanced",
     freeUsage: false,
   },
-  create_item: {
+  {
+    name: "create_item",
     description: "Create a new item in a Monday.com board",
     schema: {
       boardId: z.string().describe("The board ID to create the item in"),
@@ -265,7 +280,8 @@ export const MONDAY_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "advanced",
     freeUsage: false,
   },
-  update_item: {
+  {
+    name: "update_item",
     description: "Update column values of an existing Monday.com item",
     schema: {
       itemId: z.string().describe("The item ID to update"),
@@ -283,7 +299,8 @@ export const MONDAY_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "advanced",
     freeUsage: false,
   },
-  update_item_name: {
+  {
+    name: "update_item_name",
     description: "Update the name of a Monday.com item",
     schema: {
       itemId: z.string().describe("The item ID to update"),
@@ -297,7 +314,8 @@ export const MONDAY_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "advanced",
     freeUsage: false,
   },
-  create_update: {
+  {
+    name: "create_update",
     description: "Add an update (comment) to a Monday.com item",
     schema: {
       itemId: z.string().describe("The item ID to add the update to"),
@@ -311,7 +329,8 @@ export const MONDAY_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "advanced",
     freeUsage: false,
   },
-  create_board: {
+  {
+    name: "create_board",
     description: "Create a new board in Monday.com",
     schema: {
       boardName: z.string().describe("The name of the new board"),
@@ -336,7 +355,8 @@ export const MONDAY_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "advanced",
     freeUsage: false,
   },
-  create_column: {
+  {
+    name: "create_column",
     description: "Create a new column in a Monday.com board",
     schema: {
       boardId: z.string().describe("The board ID to create the column in"),
@@ -357,7 +377,8 @@ export const MONDAY_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "advanced",
     freeUsage: false,
   },
-  create_group: {
+  {
+    name: "create_group",
     description: "Create a new group in a Monday.com board",
     schema: {
       boardId: z.string().describe("The board ID to create the group in"),
@@ -375,7 +396,8 @@ export const MONDAY_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "advanced",
     freeUsage: false,
   },
-  create_subitem: {
+  {
+    name: "create_subitem",
     description: "Create a new subitem for a Monday.com item",
     schema: {
       parentItemId: z.string().describe("The parent item ID"),
@@ -393,7 +415,8 @@ export const MONDAY_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "advanced",
     freeUsage: false,
   },
-  update_subitem: {
+  {
+    name: "update_subitem",
     description: "Update column values of a Monday.com subitem",
     schema: {
       subitemId: z.string().describe("The subitem ID to update"),
@@ -409,7 +432,8 @@ export const MONDAY_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "advanced",
     freeUsage: false,
   },
-  duplicate_group: {
+  {
+    name: "duplicate_group",
     description: "Duplicate a group in a Monday.com board",
     schema: {
       boardId: z.string().describe("The board ID containing the group"),
@@ -431,7 +455,8 @@ export const MONDAY_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "advanced",
     freeUsage: false,
   },
-  upload_file_to_column: {
+  {
+    name: "upload_file_to_column",
     description: "Upload a file to a Monday.com column",
     schema: {
       itemId: z.string().describe("The item ID to upload the file to"),
@@ -446,7 +471,8 @@ export const MONDAY_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "advanced",
     freeUsage: false,
   },
-  delete_item: {
+  {
+    name: "delete_item",
     description: "Delete a Monday.com item",
     schema: {
       itemId: z.string().describe("The item ID to delete"),
@@ -459,7 +485,8 @@ export const MONDAY_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "advanced",
     freeUsage: false,
   },
-  delete_group: {
+  {
+    name: "delete_group",
     description: "Delete a group from a Monday.com board",
     schema: {
       boardId: z.string().describe("The board ID containing the group"),
@@ -473,7 +500,8 @@ export const MONDAY_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "advanced",
     freeUsage: false,
   },
-  move_item_to_board: {
+  {
+    name: "move_item_to_board",
     description:
       "Move an item from one board to another. Useful for converting leads to opportunities in CRM workflows.",
     schema: {
@@ -504,7 +532,8 @@ export const MONDAY_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "advanced",
     freeUsage: false,
   },
-  create_multiple_items: {
+  {
+    name: "create_multiple_items",
     description:
       "Create multiple items in one or more boards in a single operation. Useful for bulk importing leads or opportunities.",
     schema: {
@@ -533,7 +562,7 @@ export const MONDAY_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "advanced",
     freeUsage: false,
   },
-});
+] as const satisfies readonly InternalMCPToolType[];
 
 export const MONDAY_SERVER = {
   serverInfo: {
@@ -548,13 +577,5 @@ export const MONDAY_SERVER = {
     icon: "MondayLogo",
     documentationUrl: "https://docs.dust.tt/docs/monday",
   },
-  tools: Object.values(MONDAY_TOOLS_METADATA).map((t) => ({
-    name: t.name,
-    description: t.description,
-    inputSchema: zodToJsonSchema(z.object(t.schema)) as JSONSchema,
-    displayLabels: t.displayLabels,
-    toolCostCategory: t.toolCostCategory,
-    freeUsage: t.freeUsage,
-    stake: t.stake,
-  })),
+  tools: MONDAY_TOOLS_METADATA,
 } as const satisfies ServerMetadata;

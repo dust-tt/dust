@@ -1,8 +1,8 @@
-import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import { createToolsRecord } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import type { JSONSchema7 as JSONSchema } from "json-schema";
+import type {
+  InternalMCPToolType,
+  ServerMetadata,
+} from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { z } from "zod";
-import { zodToJsonSchema } from "zod-to-json-schema";
 
 export const IMAGE_GENERATION_SERVER_NAME = "image_generation" as const;
 
@@ -64,8 +64,9 @@ export type ImageGenerationToolInput = z.infer<
   typeof imageGenerationToolInputSchema
 >;
 
-export const IMAGE_GENERATION_TOOLS_METADATA = createToolsRecord({
-  generate_image: {
+export const IMAGE_GENERATION_TOOLS_METADATA = [
+  {
+    name: "generate_image",
     description:
       "Generate, create, draw, or edit images from text prompts and optional reference images. " +
       "Use to produce illustrations, artwork, photos, graphics, diagrams, logos, portraits, " +
@@ -81,7 +82,7 @@ export const IMAGE_GENERATION_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "advanced",
     freeUsage: false,
   },
-});
+] as const satisfies readonly InternalMCPToolType[];
 
 export const IMAGE_GENERATION_SERVER = {
   serverInfo: {
@@ -93,13 +94,5 @@ export const IMAGE_GENERATION_SERVER = {
     icon: "ActionImageIcon",
     documentationUrl: null,
   },
-  tools: Object.values(IMAGE_GENERATION_TOOLS_METADATA).map((t) => ({
-    name: t.name,
-    description: t.description,
-    inputSchema: zodToJsonSchema(z.object(t.schema)) as JSONSchema,
-    displayLabels: t.displayLabels,
-    toolCostCategory: t.toolCostCategory,
-    freeUsage: t.freeUsage,
-    stake: t.stake,
-  })),
+  tools: IMAGE_GENERATION_TOOLS_METADATA,
 } as const satisfies ServerMetadata;
