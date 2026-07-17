@@ -32,6 +32,8 @@ function getWorkerDirectory(workerName: WorkerName): string | null {
   const baseDir = path.join(__dirname, "../../");
 
   switch (workerName) {
+    case "activation_scheduler":
+      return path.join(baseDir, "temporal/activation_scheduler");
     case "agent_loop":
       return path.join(baseDir, "temporal/agent_loop");
     case "agent_schedule":

@@ -1,4 +1,5 @@
 import { runPokeWorker } from "@app/poke/temporal/worker";
+import { runActivationSchedulerWorker } from "@app/temporal/activation_scheduler/worker";
 import { runAgentLoopWorker } from "@app/temporal/agent_loop/worker";
 import { runAnalyticsWorker } from "@app/temporal/analytics_queue/worker";
 import { runConversationForkQueueWorker } from "@app/temporal/conversation_fork_queue/worker";
@@ -27,6 +28,7 @@ import { runUpdateWorkspaceUsageWorker } from "@app/temporal/usage_queue/worker"
 import { runWorkOSEventsWorker } from "@app/temporal/workos_events_queue/worker";
 
 export type WorkerName =
+  | "activation_scheduler"
   | "agent_loop"
   | "agent_schedule"
   | "agent_trigger_webhook"
@@ -56,6 +58,7 @@ export type WorkerName =
   | "workos_events_queue";
 
 export const workerFunctions: Record<WorkerName, () => Promise<void>> = {
+  activation_scheduler: runActivationSchedulerWorker,
   agent_loop: runAgentLoopWorker,
   agent_schedule: runAgentTriggerWorker,
   agent_trigger_webhook: runAgentTriggerWebhookWorker,
