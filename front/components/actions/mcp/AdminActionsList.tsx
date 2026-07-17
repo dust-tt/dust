@@ -1,4 +1,7 @@
-import { AddToolsMenu } from "@app/components/actions/mcp/AddToolsMenu";
+import {
+  AddToolsButton,
+  AddToolsDialog,
+} from "@app/components/actions/mcp/AddToolsDialog";
 import { CreateMCPServerDialog } from "@app/components/actions/mcp/create/CreateMCPServerDialog";
 import { AgentDetailsSheet } from "@app/components/assistant/details/AgentDetailsSheet";
 import { ACTION_BUTTONS_CONTAINER_ID } from "@app/components/spaces/SpacePageHeaders";
@@ -92,6 +95,7 @@ export const AdminActionsList = ({
   setMcpServerToShow,
 }: AdminActionsListProps) => {
   const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [isAddToolsOpen, setIsAddToolsOpen] = useState(false);
   const [internalMCPServerToCreate, setInternalMCPServerToCreate] = useState<
     MCPServerType | undefined
   >();
@@ -390,15 +394,17 @@ export const AdminActionsList = ({
         defaultServerConfig={defaultServerConfig}
         existingViewNames={existingViewNames}
       />
+      <AddToolsDialog
+        owner={owner}
+        isOpen={isAddToolsOpen}
+        setIsOpen={setIsAddToolsOpen}
+        enabledMCPServers={mcpServers}
+        createRemoteMCPServer={onCreateRemoteMCPServer}
+        createInternalMCPServer={onCreateInternalMCPServer}
+      />
       {rows.length > 0 &&
         portalToHeader(
-          <AddToolsMenu
-            owner={owner}
-            enabledMCPServers={mcpServers}
-            setIsLoading={setIsLoading}
-            createRemoteMCPServer={onCreateRemoteMCPServer}
-            createInternalMCPServer={onCreateInternalMCPServer}
-          />
+          <AddToolsButton onClick={() => setIsAddToolsOpen(true)} />
         )}
 
       {showLoader && (
@@ -412,13 +418,9 @@ export const AdminActionsList = ({
           <EmptyCTA
             message="You don’t have any tools yet."
             action={
-              <AddToolsMenu
-                buttonVariant="outline"
-                owner={owner}
-                enabledMCPServers={mcpServers}
-                setIsLoading={setIsLoading}
-                createRemoteMCPServer={onCreateRemoteMCPServer}
-                createInternalMCPServer={onCreateInternalMCPServer}
+              <AddToolsButton
+                variant="outline"
+                onClick={() => setIsAddToolsOpen(true)}
               />
             }
           />
