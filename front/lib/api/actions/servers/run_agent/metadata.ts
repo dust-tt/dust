@@ -1,8 +1,5 @@
 import { ConfigurableToolInputSchemas } from "@app/lib/actions/mcp_internal_actions/input_schemas";
-import type {
-  InternalMCPToolType,
-  ServerMetadata,
-} from "@app/lib/actions/mcp_internal_actions/tool_definition";
+import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { getPrefixedToolName } from "@app/lib/actions/tool_name_utils";
 import {
   FILES_LIST_ACTION_NAME,
@@ -138,24 +135,6 @@ export const RUN_AGENT_TOOL_SCHEMA = {
     .nullable(),
 };
 
-export const RUN_AGENT_TOOLS_METADATA = [
-  {
-    name: RUN_AGENT_PLACEHOLDER_TOOL_NAME,
-    description: "Run a child agent (agent as tool).",
-    schema: {
-      ...RUN_AGENT_TOOL_SCHEMA,
-      ...RUN_AGENT_CONFIGURABLE_PROPERTIES,
-    },
-    displayLabels: {
-      running: "Running agent",
-      done: "Run agent",
-    },
-    toolCostCategory: "basic",
-    freeUsage: false,
-    stake: "never_ask",
-  },
-] as const satisfies readonly InternalMCPToolType[];
-
 export const RUN_AGENT_SERVER = {
   serverInfo: {
     name: "run_agent",
@@ -168,5 +147,21 @@ export const RUN_AGENT_SERVER = {
   // The actual tool name is dynamic, but we need a placeholder tool
   // with the configurable properties schema so that the UI can detect that this server
   // requires child agent configuration before being added.
-  tools: RUN_AGENT_TOOLS_METADATA,
+  tools: [
+    {
+      name: RUN_AGENT_PLACEHOLDER_TOOL_NAME,
+      description: "Run a child agent (agent as tool).",
+      schema: {
+        ...RUN_AGENT_TOOL_SCHEMA,
+        ...RUN_AGENT_CONFIGURABLE_PROPERTIES,
+      },
+      displayLabels: {
+        running: "Running agent",
+        done: "Run agent",
+      },
+      toolCostCategory: "basic",
+      freeUsage: false,
+      stake: "never_ask",
+    },
+  ],
 } as const satisfies ServerMetadata;
