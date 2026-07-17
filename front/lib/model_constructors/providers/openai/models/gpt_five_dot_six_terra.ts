@@ -9,7 +9,7 @@ import { z } from "zod";
 
 // https://developers.openai.com/api/docs/models/gpt-5.6-terra
 const CONTEXT_SIZE = 272_000;
-const MAX_OUTPUT_TOKENS = 128_000;
+const MAX_OUTPUT_TOKENS = 64_000;
 const DEFAULT_REASONING_EFFORT = "medium";
 
 // gpt-5.6 accepts none/low/medium/high/xhigh/max. Our universal "maximal" maps

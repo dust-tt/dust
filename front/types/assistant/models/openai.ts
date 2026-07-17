@@ -446,7 +446,7 @@ export const GPT_5_6_SOL_MODEL_CONFIG: ModelConfigurationType = {
   shortDescription: "OpenAI's latest flagship model.",
   isLegacy: false,
   isLatest: true,
-  generationTokensCount: 128_000,
+  generationTokensCount: 64_000,
   supportsVision: true,
   supportedReasoningEfforts: {
     none: true,
@@ -482,7 +482,7 @@ export const GPT_5_6_TERRA_MODEL_CONFIG: ModelConfigurationType = {
   shortDescription: "OpenAI's latest balanced model.",
   isLegacy: false,
   isLatest: true,
-  generationTokensCount: 128_000,
+  generationTokensCount: 64_000,
   supportsVision: true,
   supportedReasoningEfforts: {
     none: true,
@@ -518,7 +518,7 @@ export const GPT_5_6_LUNA_MODEL_CONFIG: ModelConfigurationType = {
   shortDescription: "OpenAI's fastest, most cost-efficient model.",
   isLegacy: false,
   isLatest: true,
-  generationTokensCount: 128_000,
+  generationTokensCount: 64_000,
   supportsVision: true,
   supportedReasoningEfforts: {
     none: true,
