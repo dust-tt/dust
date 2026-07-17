@@ -1,4 +1,5 @@
 import type { Authenticator } from "@app/lib/auth";
+import { isUserBlocked } from "@app/lib/metronome/user_block";
 import { ActivationNudgeResource } from "@app/lib/resources/activation_nudge_resource";
 import { ActivationPodResource } from "@app/lib/resources/activation_pod_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
@@ -6,6 +7,7 @@ import { MembershipResource } from "@app/lib/resources/membership_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { TriggerResource } from "@app/lib/resources/trigger_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
+import { renderLightWorkspaceType } from "@app/lib/workspace";
 import {
   DEFAULT_ACTIVATION_NUDGE_FREQUENCY_CAP_DAYS,
   DEFAULT_ACTIVATION_NUDGE_MAX_UNANSWERED_COUNT,
@@ -108,16 +110,19 @@ async function isPodDead(
   return activeMembership === null;
 }
 
-// Gates re-nudging a pod on four conditions:
+// Gates re-nudging a pod on five conditions:
 // - Opted out: was the trigger disabled by the user?
 // - Dead: is the pod archived, or has its target user left the workspace?
+// - Credit gate: is the pod's user blocked (workspace credit pool exhausted
+//   or their per-user cap reached)?
 // - Frequency cap: was the pod nudged within the workspace's configured cap
 //   window?
 // - Unanswered cap: have the pod's most recent nudges gone unanswered (no
 //   user message since they fired), up to the workspace's configured max?
 export async function isEligibleForNudge(
   auth: Authenticator,
-  pod: SpaceResource
+  pod: SpaceResource,
+  { user }: { user: UserResource | null }
 ): Promise<boolean> {
   const activationPod = await ActivationPodResource.fetchBySpace(auth, pod);
   if (!activationPod || activationPod.triggerId === null) {
@@ -133,6 +138,15 @@ export async function isEligibleForNudge(
 
   if (await isPodDead(auth, pod, trigger)) {
     return false;
+  }
+
+  if (user) {
+    const workspace = renderLightWorkspaceType({
+      workspace: auth.getNonNullableWorkspace(),
+    });
+    if (await isUserBlocked(workspace, user)) {
+      return false;
+    }
   }
 
   const latestNudge = await ActivationNudgeResource.fetchLatestForActivationPod(
