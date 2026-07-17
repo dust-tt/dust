@@ -95,12 +95,6 @@ export const SCHEDULES_MANAGEMENT_SERVER = {
     displayLabels: SCHEDULES_MANAGEMENT_TOOLS_METADATA[key].displayLabels,
     toolCostCategory: SCHEDULES_MANAGEMENT_TOOLS_METADATA[key].toolCostCategory,
     freeUsage: SCHEDULES_MANAGEMENT_TOOLS_METADATA[key].freeUsage,
+    stake: SCHEDULES_MANAGEMENT_TOOLS_METADATA[key].stake,
   })),
-  tools_stakes: Object.fromEntries(
-    (
-      Object.keys(
-        SCHEDULES_MANAGEMENT_TOOLS_METADATA
-      ) as SchedulesManagementToolKey[]
-    ).map((key) => [key, SCHEDULES_MANAGEMENT_TOOLS_METADATA[key].stake])
-  ),
 } as const satisfies ServerMetadata;

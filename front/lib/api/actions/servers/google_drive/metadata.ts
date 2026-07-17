@@ -685,10 +685,8 @@ export function getGoogleDriveServerMetadata() {
       displayLabels: t.displayLabels,
       toolCostCategory: t.toolCostCategory,
       freeUsage: t.freeUsage,
+      stake: t.stake,
     })),
-    tools_stakes: Object.fromEntries(
-      Object.values(ALL_TOOLS_METADATA).map((t) => [t.name, t.stake])
-    ),
   } as const satisfies ServerMetadata;
 }
 
