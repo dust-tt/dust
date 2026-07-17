@@ -28,6 +28,7 @@ import {
   withErrorHandling,
 } from "@app/lib/api/actions/servers/pod_manager/helpers";
 import {
+  DEFAULT_AGENT_TOOL_NAME,
   EDIT_INFORMATION_TOOL_NAME,
   LIST_MEMBERS_TOOL_NAME,
   MOVE_CONVERSATION_TOOL_NAME,
@@ -38,7 +39,10 @@ import {
 } from "@app/lib/api/actions/servers/pod_manager/metadata";
 import { partitionMembersToAdd } from "@app/lib/api/actions/servers/pod_manager/types";
 import { searchFunction } from "@app/lib/api/actions/servers/search/tools";
-import { resolveAgentConfigurationIdByName } from "@app/lib/api/assistant/configuration/agent";
+import {
+  getAgentConfiguration,
+  resolveAgentConfigurationIdByName,
+} from "@app/lib/api/assistant/configuration/agent";
 import {
   createConversation,
   postUserMessage,
@@ -60,6 +64,7 @@ import { listPodsForScope } from "@app/lib/api/projects/list";
 import { validatePinnedFramePath } from "@app/lib/api/projects/pinned_frame";
 import { createSpaceAndGroup } from "@app/lib/api/spaces";
 import type { Authenticator } from "@app/lib/auth";
+import { getFeatureFlags } from "@app/lib/auth";
 import { notifyPodMembersAdded } from "@app/lib/notifications/workflows/pod-added-as-member";
 import { seedInitialPodTasks } from "@app/lib/project_task/seed_initial_pod_tasks";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
@@ -409,6 +414,84 @@ export function createProjectManagerTools(
       }, "Failed to set Pod pinned frame");
     },
 
+    [DEFAULT_AGENT_TOOL_NAME]: async (params) => {
+      return withErrorHandling(async () => {
+        const contextRes = await getPod(auth, {
+          toolContext,
+          dustPod: params.dustPod,
+        });
+        if (contextRes.isErr()) {
+          return contextRes;
+        }
+
+        const { pod } = contextRes.value;
+
+        if (!pod.canAdministrate(auth)) {
+          return new Err(
+            new MCPError(
+              "You do not have permission to edit this Pod's default agent",
+              { tracked: false }
+            )
+          );
+        }
+
+        const featureFlags = await getFeatureFlags(auth);
+        if (!featureFlags.includes("pod_default_agent")) {
+          return new Err(
+            new MCPError(
+              "Setting a Pod default agent is not enabled for this workspace.",
+              { tracked: false }
+            )
+          );
+        }
+
+        // Resolve the agent by name. A null agentName clears the default so new
+        // conversations fall back to the workspace default / @dust.
+        let defaultAgentId: string | null = null;
+        let defaultAgentName: string | null = null;
+        if (params.agentName !== null) {
+          const resolvedAgentId = await resolveAgentConfigurationIdByName(
+            auth,
+            params.agentName
+          );
+          if (!resolvedAgentId) {
+            return new Err(
+              new MCPError(`No agent found matching "${params.agentName}".`, {
+                tracked: false,
+              })
+            );
+          }
+          defaultAgentId = resolvedAgentId;
+          const agent = await getAgentConfiguration(auth, {
+            agentId: resolvedAgentId,
+            variant: "extra_light",
+          });
+          defaultAgentName = agent?.name ?? null;
+        }
+
+        let metadata = await ProjectMetadataResource.fetchBySpace(auth, pod);
+        if (!metadata) {
+          metadata = await ProjectMetadataResource.makeNew(auth, pod, {
+            defaultAgentId,
+          });
+        } else {
+          await metadata.updateDefaultAgentId(defaultAgentId);
+        }
+
+        return new Ok(
+          makeSuccessResponse({
+            success: true,
+            defaultAgentId,
+            message: defaultAgentId
+              ? `Pod default agent set to ${
+                  defaultAgentName ? `@${defaultAgentName}` : defaultAgentId
+                }.`
+              : "Pod default agent reset to the default (@dust).",
+          })
+        );
+      }, "Failed to set Pod default agent");
+    },
+
     [UPDATE_MEMBERS_TOOL_NAME]: async (params) => {
       return withErrorHandling(async () => {
         const contextRes = await getPod(auth, {
@@ -603,6 +686,18 @@ export function createProjectManagerTools(
           (e) => !e.isDirectory
         ).length;
 
+        let defaultAgent: { id: string; name: string | null } | null = null;
+        if (metadata?.defaultAgentId) {
+          const agent = await getAgentConfiguration(auth, {
+            agentId: metadata.defaultAgentId,
+            variant: "extra_light",
+          });
+          defaultAgent = {
+            id: metadata.defaultAgentId,
+            name: agent?.name ?? null,
+          };
+        }
+
         // Construct project URL
         const projectPath = getPodRoute(owner.sId, pod.sId);
         const projectUrl = `${config.getAppUrl()}${projectPath}`;
@@ -617,6 +712,7 @@ export function createProjectManagerTools(
               access: pod.isOpen() ? "open" : "restricted",
               description: metadata?.description ?? null,
               pinnedFramePath: metadata?.pinnedFramePath ?? null,
+              defaultAgent,
               contentNodes,
               files: {
                 count: projectFileCount,
