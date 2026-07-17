@@ -557,7 +557,8 @@ const INITIAL_GOVERNANCE: GovernanceSetting[] = [
   {
     id: "create_data",
     label: "Create folders and add websites",
-    description: "Control who can add these data sources to open spaces.",
+    description:
+      "Control who can create folders and add websites in shared company spaces.",
     scope: "everyone",
     groups: [],
   },
