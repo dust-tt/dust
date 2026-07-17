@@ -3,10 +3,8 @@ import { emitActivationEvent } from "@app/lib/api/activation/trigger";
 import { Authenticator } from "@app/lib/auth";
 import { ProjectMetadataResource } from "@app/lib/resources/project_metadata_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
-import type { UserResource } from "@app/lib/resources/user_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
-import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 
@@ -42,21 +40,13 @@ export async function determineEligibleActivationUsers(
     pods.map((p) => p.spaceId)
   );
   const spaceByModelId = new Map(spaces.map((space) => [space.id, space]));
+  const membersBySpaceModelId =
+    await SpaceResource.fetchDistinctActiveManualGroupMembersBySpaces(
+      auth,
+      spaces
+    );
 
-  // We only consider pod editors (not all pod members)
-  const editorsBySpaceModelId = new Map<ModelId, UserResource[]>();
-  await concurrentExecutor(
-    spaces,
-    async (space) => {
-      editorsBySpaceModelId.set(
-        space.id,
-        await space.fetchActiveEditorUsers(auth)
-      );
-    },
-    { concurrency: 3 }
-  );
-
-  // Build the candidate (pod, editor) list and the deduped set of user sIds to
+  // Build the candidate (pod, member) list and the deduped set of user sIds to
   // evaluate in a single batch.
   const candidates: { podId: string; spaceId: string; userId: string }[] = [];
   const userSIds = new Set<string>();
@@ -65,17 +55,17 @@ export async function determineEligibleActivationUsers(
     if (!space) {
       continue;
     }
-    const editors = editorsBySpaceModelId.get(pod.spaceId) ?? [];
-    for (const editor of editors) {
-      if (userId !== null && editor.sId !== userId) {
+    const members = membersBySpaceModelId.get(pod.spaceId) ?? [];
+    for (const member of members) {
+      if (userId !== null && member.sId !== userId) {
         continue;
       }
       candidates.push({
         podId: pod.sId,
         spaceId: space.sId,
-        userId: editor.sId,
+        userId: member.sId,
       });
-      userSIds.add(editor.sId);
+      userSIds.add(member.sId);
     }
   }
 
@@ -108,7 +98,6 @@ export async function determineEligibleActivationUsers(
           hvucWeeks: result.hvucWeeks,
           qualifyingDays: result.evidence.qualifyingDays,
           qualifyingWeeks: result.evidence.qualifyingWeeks,
-          categories: result.evidence.categories,
         },
         "[Activation] Evaluation result"
       );

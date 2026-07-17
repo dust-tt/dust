@@ -1,5 +1,4 @@
 import {
-  type ActivationCategory,
   computeActivationFromCells,
   MIN_DISTINCT_WEEKS,
   MIN_HVUC_DAYS,
@@ -13,12 +12,9 @@ const dayMs = (day: number) => Date.UTC(2026, 5, day);
 
 function cell(
   day: number,
-  {
-    isDau = true,
-    categories = ["IS_STAKE"] as ActivationCategory[],
-  }: { isDau?: boolean; categories?: ActivationCategory[] } = {}
+  { isDau = true, isHvuc = true }: { isDau?: boolean; isHvuc?: boolean } = {}
 ): UserDayCell {
-  return { userId: "u1", dayMs: dayMs(day), isDau, categories };
+  return { userId: "u1", dayMs: dayMs(day), isDau, isHvuc };
 }
 
 describe("computeActivationFromCells", () => {
@@ -68,14 +64,14 @@ describe("computeActivationFromCells", () => {
     expect(result.activated).toBe(false);
   });
 
-  it("ignores non-DAU days (a high-value signal without a human message)", () => {
+  it("ignores non-DAU days (an HVUC signal without a human message)", () => {
     const cells = [
       cell(1),
       cell(2),
       cell(8),
       cell(9),
       cell(15),
-      cell(16, { isDau: false }), // staked/frame/etc but not a DAU day → excluded.
+      cell(16, { isDau: false }), // HVUC signal but not a DAU day → excluded.
     ];
 
     const result = computeActivationFromCells(cells);
@@ -84,36 +80,19 @@ describe("computeActivationFromCells", () => {
     expect(result.activated).toBe(false);
   });
 
-  it("ignores DAU days without any high-value signal", () => {
+  it("ignores DAU days without an HVUC signal", () => {
     const cells = [
       cell(1),
       cell(2),
       cell(8),
       cell(9),
       cell(15),
-      // DAU but no staked/frame/orchestration/unsupervised → excluded.
-      cell(16, { categories: [] }),
+      cell(16, { isHvuc: false }), // DAU but no HVUC signal → excluded.
     ];
 
     const result = computeActivationFromCells(cells);
 
     expect(result.hvucDays).toBe(5);
     expect(result.activated).toBe(false);
-  });
-
-  it("collects distinct high-value categories", () => {
-    const cells = [
-      cell(1, { categories: ["IS_STAKE"] }),
-      cell(8, { categories: ["IS_ORCHESTRATION"] }),
-      cell(15, { categories: ["IS_UNSUPERVISED", "IS_STAKE"] }),
-    ];
-
-    const result = computeActivationFromCells(cells);
-
-    expect(result.evidence.categories.sort()).toEqual([
-      "IS_ORCHESTRATION",
-      "IS_STAKE",
-      "IS_UNSUPERVISED",
-    ]);
   });
 });
