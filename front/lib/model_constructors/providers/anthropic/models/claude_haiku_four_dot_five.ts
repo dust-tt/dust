@@ -56,7 +56,8 @@ export function WithAnthropicClaudeHaikuFourDotFiveConfig<
 
     // Typed as `number` (not the literal) so the Dust layer can cap it.
     static readonly contextSize: number = CONTEXT_SIZE;
-    static readonly maxOutputTokens = MAX_OUTPUT_TOKENS;
+    // Typed as `number` (not the literal) so the Dust layer can cap it.
+    static readonly maxOutputTokens: number = MAX_OUTPUT_TOKENS;
 
     // Haiku 4.5 has extended thinking but not adaptive thinking, so it overrides
     // the converter's default (adaptive) thinking leaf.

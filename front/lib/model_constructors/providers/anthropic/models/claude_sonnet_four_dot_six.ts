@@ -1,5 +1,4 @@
 import type { BaseEndpointConfiguration } from "@app/lib/model_constructors/configuration";
-import { ANTHROPIC_SUPPORTED_NON_NULL_REASONING_EFFORTS } from "@app/lib/model_constructors/providers/anthropic/reasoning_efforts";
 import {
   inputConfigSchema,
   temperatureSchema,
@@ -57,7 +56,8 @@ export function WithAnthropicClaudeSonnetFourDotSixConfig<
 
     // Typed as `number` (not the literal) so the Dust layer can cap it.
     static readonly contextSize: number = CONTEXT_SIZE;
-    static readonly maxOutputTokens = MAX_OUTPUT_TOKENS;
+    // Typed as `number` (not the literal) so the Dust layer can cap it.
+    static readonly maxOutputTokens: number = MAX_OUTPUT_TOKENS;
   }
 
   return AnthropicClaudeSonnetFourDotSix;

@@ -62,7 +62,8 @@ export function withAnthropicOpusConfig<const M extends ModelId>(modelId: M) {
 
       // Typed as `number` (not the literal) so the Dust layer can cap it.
       static readonly contextSize: number = OPUS_CONTEXT_SIZE;
-      static readonly maxOutputTokens = OPUS_MAX_OUTPUT_TOKENS;
+      // Typed as `number` (not the literal) so the Dust layer can cap it.
+      static readonly maxOutputTokens: number = OPUS_MAX_OUTPUT_TOKENS;
     }
 
     return AnthropicClaudeOpus;

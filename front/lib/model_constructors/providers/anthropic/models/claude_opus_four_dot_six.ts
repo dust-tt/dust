@@ -54,7 +54,8 @@ export function WithAnthropicClaudeOpusFourDotSixConfig<
 
     // Typed as `number` (not the literal) so the Dust layer can cap it.
     static readonly contextSize: number = CONTEXT_SIZE;
-    static readonly maxOutputTokens = MAX_OUTPUT_TOKENS;
+    // Typed as `number` (not the literal) so the Dust layer can cap it.
+    static readonly maxOutputTokens: number = MAX_OUTPUT_TOKENS;
   }
 
   return AnthropicClaudeOpusFourDotSix;

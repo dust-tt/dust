@@ -10,6 +10,8 @@ export function WithDustClaudeSonnetFourDotSixConfig<
     static readonly defaultReasoningEffort = "medium";
     // Dust caps usable context at 250k; the model itself supports 1M.
     static readonly contextSize = 250_000;
+    // Dust caps output at 64k; the model itself supports 128k.
+    static readonly maxOutputTokens = 64_000;
     static readonly byok = true;
   }
 
