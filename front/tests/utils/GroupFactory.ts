@@ -24,6 +24,15 @@ export class GroupFactory {
     });
   }
 
+  static async provisioned(workspace: WorkspaceType, name: string) {
+    return GroupResource.makeNew({
+      name,
+      kind: "provisioned",
+      workspaceId: workspace.id,
+      workOSGroupId: `workos-group-${name}`,
+    });
+  }
+
   static async withMembers(
     auth: Authenticator,
     group: GroupResource,
