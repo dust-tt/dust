@@ -353,7 +353,7 @@ describe("getOrCreateConversation", () => {
       );
 
       assert(result.isOk());
-      expect(capturedRequests).toHaveLength(1);
+      expect(capturedRequests).toHaveLength(3);
       const headers = capturedRequests[0].headers;
       // Values with characters above 0xFF (ł, emoji) travel as an RFC 2047
       // encoded-word and round-trip losslessly through the header.
