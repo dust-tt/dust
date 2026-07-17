@@ -1,7 +1,7 @@
 import type { MessageCreateParamsNonStreaming } from "@anthropic-ai/sdk/resources";
 import type { BetaRawMessageStreamEvent } from "@anthropic-ai/sdk/resources/beta/messages/messages";
+import type { ClaudeOpusFourDotSix } from "@app/lib/model_constructors/providers/anthropic/models/claude_opus_four_dot_six";
 import { WithAnthropicClaudeOpusFourDotSixConfig } from "@app/lib/model_constructors/providers/anthropic/models/claude_opus_four_dot_six";
-import type { AnthropicOpusInputConfig } from "@app/lib/model_constructors/providers/anthropic/models/claude_opus_four_shared_config";
 import { AnthropicStream } from "@app/lib/model_constructors/stream/clients/anthropic";
 import type { StreamEndpointConstructor } from "@app/lib/model_constructors/stream/configuration";
 import { GLOBAL } from "@app/lib/model_constructors/types/regions";
@@ -27,5 +27,5 @@ export class AnthropicGlobalClaudeOpusFourDotSixStream extends WithAnthropicClau
 AnthropicGlobalClaudeOpusFourDotSixStream satisfies StreamEndpointConstructor<
   MessageCreateParamsNonStreaming,
   BetaRawMessageStreamEvent,
-  AnthropicOpusInputConfig
+  ClaudeOpusFourDotSix
 >;
