@@ -555,6 +555,13 @@ const INITIAL_GOVERNANCE: GovernanceSetting[] = [
     groups: [],
   },
   {
+    id: "create_data",
+    label: "Create folders and add websites",
+    description: "Control who can add these data sources to open spaces.",
+    scope: "everyone",
+    groups: [],
+  },
+  {
     id: "billing_access",
     label: "Billing access",
     description:
@@ -742,7 +749,7 @@ const ROLE_ACCESS: Record<Role, AdminPage[]> = {
     "billing",
     "usage",
   ],
-  admin: ["people", "capabilities", "model_providers", "analytics", "usage"],
+  admin: ["people", "capabilities", "analytics", "usage"],
   security_admin: ["people", "identity"],
   billing_admin: ["billing", "usage"],
 };
@@ -953,6 +960,7 @@ function GroupEditDialog({
     members.slice(0, 3).map((m) => m.id)
   );
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const transitioningToConfirm = useRef(false);
 
   const filtered = members.filter(
     (m) =>
@@ -977,7 +985,13 @@ function GroupEditDialog({
 
   return (
     <>
-      <Dialog open={!confirmDelete} onOpenChange={(o) => !o && onClose()}>
+      <Dialog
+        open={!confirmDelete}
+        onOpenChange={(o) => {
+          if (!o && !transitioningToConfirm.current) onClose();
+          transitioningToConfirm.current = false;
+        }}
+      >
         <DialogContent size="lg">
           <DialogHeader>
             <DialogTitle>{group.name}</DialogTitle>
@@ -1060,7 +1074,10 @@ function GroupEditDialog({
               label: "Delete group",
               icon: Trash01,
               variant: "warning",
-              onClick: () => setConfirmDelete(true),
+              onClick: () => {
+                transitioningToConfirm.current = true;
+                setConfirmDelete(true);
+              },
             }}
             rightButtonProps={{
               label: "Save",
@@ -1390,8 +1407,38 @@ function PeoplePage({
           );
         },
       },
+      {
+        id: "actions",
+        header: "",
+        meta: { className: "w-10" },
+        cell: (info) => {
+          const row = info.row.original;
+          if (row.type !== "manual") return null;
+          return (
+            <DataTable.CellContent>
+              <div onClick={(e) => e.stopPropagation()}>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button icon={DotsHorizontal} variant="ghost" size="xs" />
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem
+                      label="Delete"
+                      icon={Trash01}
+                      variant="warning"
+                      onClick={() => {
+                        setGroups(groups.filter((g) => g.id !== row.id));
+                      }}
+                    />
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
+            </DataTable.CellContent>
+          );
+        },
+      },
     ],
-    []
+    [groups, setGroups]
   );
 
   const filteredMembers = useMemo(
@@ -1443,11 +1490,7 @@ function PeoplePage({
         ? "super_admin"
         : inviteRole === "Manager"
           ? "admin"
-          : inviteRole === "Security Admin"
-            ? "security_admin"
-            : inviteRole === "Billing Admin"
-              ? "billing_admin"
-              : "member";
+          : "member";
     const newMembers: MemberRow[] = emails.map((email, i) => ({
       id: `invited-${Date.now()}-${i}`,
       name: email.split("@")[0],
@@ -1595,7 +1638,7 @@ function PeoplePage({
                       label="Create group"
                       variant="primary"
                       size="sm"
-                      onClick={onCreateGroup}
+                      onClick={() => onCreateGroup()}
                     />
                   </span>
                 )}
@@ -1640,15 +1683,7 @@ function PeoplePage({
                 />
               </DropdownMenuTrigger>
               <DropdownMenuContent>
-                {(
-                  [
-                    "Super Admin",
-                    "Manager",
-                    "Security Admin",
-                    "Billing Admin",
-                    "Member",
-                  ] as const
-                )
+                {(["Super Admin", "Manager", "Member"] as const)
                   .filter(
                     (r) => !(role !== "super_admin" && r === "Super Admin")
                   )
@@ -2524,7 +2559,6 @@ function FrameSharingGovernanceRow({
               <Button
                 variant="outline"
                 size="sm"
-                icon={accessOptions.find((o) => o.value === access)!.icon}
                 label={accessOptions.find((o) => o.value === access)!.label}
                 isSelect
                 disabled={!canEdit}
@@ -2541,7 +2575,6 @@ function FrameSharingGovernanceRow({
                     value={o.value}
                     label={o.label}
                     description={o.description}
-                    icon={o.icon}
                   />
                 ))}
               </DropdownMenuRadioGroup>
@@ -2856,6 +2889,27 @@ function GovernancePage({
           <div className="w-full rounded-xl border border-border dark:border-border-night divide-y divide-border dark:divide-border-night">
             {settings
               .filter((s) => s.id.includes("skill"))
+              .map((s) => (
+                <GovernanceRow
+                  key={s.id}
+                  setting={s}
+                  canEdit={canEdit}
+                  onChange={update}
+                  groups={groups}
+                  onCreateGroup={onCreateGroup}
+                  disabledLabel="Admins only"
+                />
+              ))}
+          </div>
+        </div>
+        <div className="flex w-full flex-col gap-4">
+          <div className="flex items-center gap-2">
+            <CloudArrowLeftRight className="h-5 w-5 shrink-0 text-muted-foreground dark:text-muted-foreground-night" />
+            <Page.H variant="h5">Data</Page.H>
+          </div>
+          <div className="w-full rounded-xl border border-border dark:border-border-night divide-y divide-border dark:divide-border-night">
+            {settings
+              .filter((s) => s.id === "create_data")
               .map((s) => (
                 <GovernanceRow
                   key={s.id}
@@ -3413,11 +3467,7 @@ function UsagePage({
         ? "super_admin"
         : inviteRole === "Manager"
           ? "admin"
-          : inviteRole === "Security Admin"
-            ? "security_admin"
-            : inviteRole === "Billing Admin"
-              ? "billing_admin"
-              : "member";
+          : "member";
     const newMembers: MemberRow[] = emails.map((email, i) => ({
       id: `invited-${Date.now()}-${i}`,
       name: email.split("@")[0],
@@ -3646,15 +3696,7 @@ function UsagePage({
                 />
               </DropdownMenuTrigger>
               <DropdownMenuContent>
-                {(
-                  [
-                    "Super Admin",
-                    "Manager",
-                    "Security Admin",
-                    "Billing Admin",
-                    "Member",
-                  ] as const
-                )
+                {(["Super Admin", "Manager", "Member"] as const)
                   .filter(
                     (r) => !(role !== "super_admin" && r === "Super Admin")
                   )
