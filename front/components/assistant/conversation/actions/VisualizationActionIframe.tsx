@@ -249,12 +249,13 @@ function SandboxFunctionInvocation({
       blockedActionCard = null;
   }
 
-  // Covers the frame while the tool is blocked on user input; positioned within the component's
-  // relative root, same layering approach as the loading spinner overlay. Cards are keyed by the
-  // delivery eventId so consecutive events of the same type never reuse local card state.
+  // Overlays the frame while the tool is blocked on user input. Cards are keyed by the delivery
+  // eventId so consecutive events of the same type never reuse local card state.
   return (
-    <div className="absolute inset-0 z-10 flex items-center justify-center overflow-auto bg-panel-background p-4">
-      <div className="w-full max-w-xl">{blockedActionCard}</div>
+    <div className="absolute inset-0 z-10 flex items-center justify-center overflow-auto bg-muted-foreground/75 p-4 dark:bg-muted-background/75">
+      <div className="flex w-full max-w-xl justify-center">
+        {blockedActionCard}
+      </div>
     </div>
   );
 }
