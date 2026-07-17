@@ -17,7 +17,7 @@ import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { randomUUID } from "crypto";
 
 // A single workspace-level webhook source is shared by all Activation Pods.
-const ACTIVATION_WEBHOOK_SOURCE_NAME = "Activation";
+export const ACTIVATION_WEBHOOK_SOURCE_NAME = "Activation";
 const ACTIVATION_POD_ID_FIELD = "podId";
 const ACTIVATION_USER_ID_FIELD = "userId";
 const ACTIVATION_TRIGGER_CUSTOM_PROMPT = `Run the activation workflow.
@@ -165,6 +165,41 @@ export async function createActivationTrigger(
   }
 
   return new Ok({ triggerId: triggerRes.value.sId });
+}
+
+// Finds the pod's activation trigger: the trigger on the pod's own view of
+// the shared Activation webhook source (see
+// `getOrCreateActivationWebhookSourceView`). Filtering on `webhookSourceViewId`
+// rather than just `kind === "webhook"` matters because a pod's space can hold
+// other, unrelated webhook triggers. There is at most one activation trigger
+// per pod, since `createActivationTrigger` provisions exactly one per pod view.
+export async function findActivationTrigger(
+  auth: Authenticator,
+  pod: SpaceResource
+): Promise<TriggerResource | null> {
+  const source = await WebhookSourceResource.fetchByName(
+    auth,
+    ACTIVATION_WEBHOOK_SOURCE_NAME
+  );
+  if (!source) {
+    return null;
+  }
+
+  // `includeDeleted` so this still resolves for archived pods: eligibility
+  // gating needs to find the trigger first to then determine the pod is dead.
+  const podViews = await WebhookSourcesViewResource.listBySpace(auth, pod, {
+    includeDeleted: true,
+  });
+  const podView = podViews.find((v) => v.webhookSourceId === source.id);
+  if (!podView) {
+    return null;
+  }
+
+  const triggers = await TriggerResource.listByWebhookSourceViewId(
+    auth,
+    podView.id
+  );
+  return triggers[0] ?? null;
 }
 
 // Fires the activation trigger for a single pod by emitting an internal webhook

@@ -1,7 +1,11 @@
+import { findActivationTrigger } from "@app/lib/api/activation/trigger";
 import type { Authenticator } from "@app/lib/auth";
 import { ActivationNudgeResource } from "@app/lib/resources/activation_nudge_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
+import { MembershipResource } from "@app/lib/resources/membership_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
+import type { TriggerResource } from "@app/lib/resources/trigger_resource";
+import { UserResource } from "@app/lib/resources/user_resource";
 import {
   DEFAULT_ACTIVATION_NUDGE_FREQUENCY_CAP_DAYS,
   DEFAULT_ACTIVATION_NUDGE_MAX_UNANSWERED_COUNT,
@@ -78,7 +82,35 @@ async function countUnansweredNudgeStreak(
   return streak;
 }
 
-// Gates re-nudging a pod on two conditions:
+// A pod is "dead" once it can no longer receive nudges for reasons unrelated
+// to nudge history: it was archived, or its target user was removed from or
+// left the workspace.
+async function isPodDead(
+  auth: Authenticator,
+  pod: SpaceResource,
+  trigger: TriggerResource
+): Promise<boolean> {
+  if (pod.deletedAt !== null) {
+    return true;
+  }
+
+  const [targetUser] = await UserResource.fetchByModelIds([trigger.editor]);
+  if (!targetUser) {
+    return true;
+  }
+
+  const activeMembership =
+    await MembershipResource.getActiveMembershipOfUserInWorkspace({
+      user: targetUser,
+      workspace: auth.getNonNullableWorkspace(),
+    });
+
+  return activeMembership === null;
+}
+
+// Gates re-nudging a pod on four conditions:
+// - Opted out: was the trigger disabled by the user?
+// - Dead: is the pod archived, or has its target user left the workspace?
 // - Frequency cap: was the pod nudged within the workspace's configured cap
 //   window?
 // - Unanswered cap: have the pod's most recent nudges gone unanswered (no
@@ -87,6 +119,15 @@ export async function isEligibleForNudge(
   auth: Authenticator,
   pod: SpaceResource
 ): Promise<boolean> {
+  const trigger = await findActivationTrigger(auth, pod);
+  if (!trigger || trigger.status !== "enabled") {
+    return false;
+  }
+
+  if (await isPodDead(auth, pod, trigger)) {
+    return false;
+  }
+
   const latestNudge = await ActivationNudgeResource.fetchLatestForSpace(auth, {
     pod,
   });

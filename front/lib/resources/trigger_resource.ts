@@ -211,6 +211,17 @@ export class TriggerResource extends BaseResource<TriggerModel> {
     return this.baseFetch(auth);
   }
 
+  static async listBySpace(
+    auth: Authenticator,
+    spaceId: ModelId
+  ): Promise<TriggerResource[]> {
+    return this.baseFetch(auth, {
+      where: {
+        spaceId,
+      },
+    });
+  }
+
   static async listByWebhookSourceViewId(
     auth: Authenticator,
     webhookSourceViewId: ModelId
