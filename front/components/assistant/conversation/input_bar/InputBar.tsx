@@ -489,10 +489,17 @@ export const InputBar = React.memo(function InputBar({
                 // Shared by both variants.
                 "w-full rounded-[40px] [corner-shape:squircle]",
 
-                // "flat" variant: plain border, no floating shadow. Always active on mobile; the
-                // only styling at all when isFloating is false.
+                // "flat" variant: plain border, no floating shadow. Active below md when isFloating
+                // is true (floating owns md+ below), or at every breakpoint when isFloating is
+                // false. Scoped with max-md: in the former case — an unprefixed
+                // has-[.tiptap:focus] rule has higher specificity than a plain md: rule (the
+                // :has() pseudo-class counts as an extra class in the selector), so without this
+                // scoping the mobile focus border would win over md:border-white/90 even on
+                // desktop.
                 "border bg-background",
-                "border-border has-[.tiptap:focus]:border-border-dark",
+                isFloating
+                  ? "max-md:border-border max-md:has-[.tiptap:focus]:border-border-dark"
+                  : "border-border has-[.tiptap:focus]:border-border-dark",
                 "transition-colors duration-200 ease-[cubic-bezier(0.23,1,0.32,1)]",
 
                 // "floating" variant (md+): layered shadow card. Opt out entirely via isFloating={false}.
