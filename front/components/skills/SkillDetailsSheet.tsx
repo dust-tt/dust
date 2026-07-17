@@ -8,10 +8,10 @@ import {
   isDustProvidedSkill,
 } from "@app/lib/skill";
 import { useSkill } from "@app/lib/swr/skill_configurations";
+import type { SkillListItemWithRelationsResponseType } from "@app/types/api/skills";
 import type {
   SkillRelations,
   SkillType,
-  SkillWithoutInstructionsAndToolsWithRelationsType,
 } from "@app/types/assistant/skill_configuration";
 import type { UserType, WorkspaceType } from "@app/types/user";
 import {
@@ -35,10 +35,10 @@ import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
 import { useState } from "react";
 
 type SkillDetailsProps = {
-  skill: SkillWithoutInstructionsAndToolsWithRelationsType | null;
+  skill: SkillListItemWithRelationsResponseType | null;
   onClose: () => void;
   onFavoriteChange?: (
-    skill: SkillWithoutInstructionsAndToolsWithRelationsType,
+    skill: SkillListItemWithRelationsResponseType,
     isFavorite: boolean
   ) => void;
   owner: WorkspaceType;
@@ -153,12 +153,12 @@ function SkillDetailsSheetContent({
 }
 
 type DescriptionSectionProps = {
-  skill: SkillWithoutInstructionsAndToolsWithRelationsType;
+  skill: SkillListItemWithRelationsResponseType;
   owner: WorkspaceType;
   onClose: () => void;
   replaceOnEdit?: boolean;
   onFavoriteChange?: (
-    skill: SkillWithoutInstructionsAndToolsWithRelationsType,
+    skill: SkillListItemWithRelationsResponseType,
     isFavorite: boolean
   ) => void;
 };

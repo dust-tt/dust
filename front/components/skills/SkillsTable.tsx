@@ -6,11 +6,11 @@ import { useAppRouter } from "@app/lib/platform";
 import { getSkillAvatarIcon, isDustProvidedSkill } from "@app/lib/skill";
 import { formatTimestampToFriendlyDate } from "@app/lib/utils";
 import { getSkillBuilderRoute } from "@app/lib/utils/router";
+import type { SkillListItemWithRelationsResponseType } from "@app/types/api/skills";
 import { DUST_AVATAR_URL } from "@app/types/assistant/avatar";
 import type {
   SkillAvailability,
   SkillUsageType,
-  SkillWithoutInstructionsAndToolsWithRelationsType,
 } from "@app/types/assistant/skill_configuration";
 import type { LightWorkspaceType, UserType } from "@app/types/user";
 import type { MenuItem } from "@dust-tt/sparkle";
@@ -233,16 +233,14 @@ const getTableColumns = ({
 };
 
 type SkillsTableProps = {
-  skills: SkillWithoutInstructionsAndToolsWithRelationsType[];
+  skills: SkillListItemWithRelationsResponseType[];
   owner: LightWorkspaceType;
   showFavoriteControls: boolean;
-  onSkillClick: (
-    skill: SkillWithoutInstructionsAndToolsWithRelationsType
-  ) => void;
+  onSkillClick: (skill: SkillListItemWithRelationsResponseType) => void;
   onAgentClick: (agentId: string) => void;
   onUsedBySkillClick: (skillId: string) => void;
   onFavoriteChange: (
-    skill: SkillWithoutInstructionsAndToolsWithRelationsType,
+    skill: SkillListItemWithRelationsResponseType,
     isFavorite: boolean
   ) => void;
   canMakeSkillAutoDiscoverable?: boolean;
@@ -267,7 +265,7 @@ export function SkillsTable({
   routerRef.current = router;
   const { pagination, setPagination } = usePaginationFromUrl({});
   const [skillToArchive, setSkillToArchive] =
-    useState<SkillWithoutInstructionsAndToolsWithRelationsType | null>(null);
+    useState<SkillListItemWithRelationsResponseType | null>(null);
 
   const isSelectionEnabled = rowSelection !== undefined;
 

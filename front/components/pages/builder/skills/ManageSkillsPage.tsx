@@ -42,10 +42,8 @@ import {
   useUpdateSkillsAvailability,
 } from "@app/lib/swr/skill_configurations";
 import { getSkillBuilderRoute } from "@app/lib/utils/router";
-import type {
-  SkillAvailability,
-  SkillWithoutInstructionsAndToolsWithRelationsType,
-} from "@app/types/assistant/skill_configuration";
+import type { SkillListItemWithRelationsResponseType } from "@app/types/api/skills";
+import type { SkillAvailability } from "@app/types/assistant/skill_configuration";
 import { isEmptyString } from "@app/types/shared/utils/general";
 import {
   Button,
@@ -76,7 +74,7 @@ export function ManageSkillsPage() {
   const { hasFeature } = useFeatureFlags();
   const hasSkillFavorites = hasFeature("skill_favorites");
   const [optimisticSelectedSkill, setOptimisticSelectedSkill] =
-    useState<SkillWithoutInstructionsAndToolsWithRelationsType | null>(null);
+    useState<SkillListItemWithRelationsResponseType | null>(null);
   const [agentId, setAgentId] = useState<string | null>(null);
   const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
   const [selectedTab, setSelectedTab] = useHashParam("selectedTab", "active");
@@ -172,7 +170,6 @@ export function ManageSkillsPage() {
     >
   >(() => {
     const searchLower = skillSearch.toLowerCase();
-
     const editableByMeSkills = sortedActiveSkills.filter((s) =>
       s.relations.editors?.some((e) => e.sId === user?.sId)
     );
@@ -206,7 +203,7 @@ export function ManageSkillsPage() {
   const isLoading = isActiveLoading || isArchivedLoading || isSuggestedLoading;
 
   const handleSkillSelect = useCallback(
-    (skill: SkillWithoutInstructionsAndToolsWithRelationsType | null) => {
+    (skill: SkillListItemWithRelationsResponseType | null) => {
       setOptimisticSelectedSkill(skill);
       setSkillIdParam(skill?.sId);
     },
@@ -256,7 +253,7 @@ export function ManageSkillsPage() {
 
   const handleFavoriteChange = useCallback(
     async (
-      skill: SkillWithoutInstructionsAndToolsWithRelationsType,
+      skill: SkillListItemWithRelationsResponseType,
       isFavorite: boolean
     ) => {
       const didUpdate = await updateSkillFavorite(skill, isFavorite);
@@ -272,10 +269,7 @@ export function ManageSkillsPage() {
   );
 
   const handleFavoriteChangeClick = useCallback(
-    (
-      skill: SkillWithoutInstructionsAndToolsWithRelationsType,
-      isFavorite: boolean
-    ) => {
+    (skill: SkillListItemWithRelationsResponseType, isFavorite: boolean) => {
       void handleFavoriteChange(skill, isFavorite);
     },
     [handleFavoriteChange]

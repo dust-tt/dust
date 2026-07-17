@@ -11,8 +11,12 @@ import { emptyArray, useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type { GetSkillHistoryResponseBody } from "@app/types/api/assistant/skills/history";
 import type {
   GetSkillResponseBody,
+  GetSkillsResponseBody,
   GetSkillsWithRelationsResponseBody,
   GetSkillWithRelationsResponseBody,
+  SkillListItemResponseType,
+  SkillResponseType,
+  SkillWithRelationsResponseType,
 } from "@app/types/api/skills";
 import type { GetSimilarSkillsResponseBody } from "@app/types/api/skills/existing_skill_checker";
 import type {
@@ -21,7 +25,6 @@ import type {
   SkillStatus,
   SkillType,
   SkillWithoutInstructionsAndToolsType,
-  SkillWithRelationsType,
 } from "@app/types/assistant/skill_configuration";
 import { isAPIErrorResponse } from "@app/types/error";
 import { Ok } from "@app/types/shared/result";
@@ -40,7 +43,7 @@ export function useSkill(options: {
   withRelations: true;
   disabled?: boolean;
 }): {
-  skill: SkillWithRelationsType | null;
+  skill: SkillWithRelationsResponseType | null;
   isSkillLoading: boolean;
   isSkillError: boolean;
   mutateSkill: () => void;
@@ -51,7 +54,7 @@ export function useSkill(options: {
   withRelations?: false;
   disabled?: boolean;
 }): {
-  skill: SkillType | null;
+  skill: SkillResponseType | null;
   isSkillLoading: boolean;
   isSkillError: boolean;
   mutateSkill: () => void;
@@ -67,7 +70,7 @@ export function useSkill({
   withRelations?: boolean;
   disabled?: boolean;
 }): {
-  skill: SkillType | SkillWithRelationsType | null;
+  skill: SkillResponseType | SkillWithRelationsResponseType | null;
   isSkillLoading: boolean;
   isSkillError: boolean;
   mutateSkill: () => void;
@@ -114,7 +117,7 @@ export function useSkills({
   bypassEditorVisibility?: boolean;
   swrOptions?: SWRConfiguration;
 }): {
-  skills: SkillWithoutInstructionsAndToolsType[];
+  skills: SkillListItemResponseType[];
   isSkillsError: boolean;
   isSkillsLoading: boolean;
   mutateSkills: () => void;
@@ -141,14 +144,15 @@ export function useSkills({
   }
   const queryString = queryParams.toString();
 
+  const skillsFetcher: Fetcher<GetSkillsResponseBody> = fetcher;
   const { data, error, isLoading, mutate } = useSWRWithDefaults(
     `/api/w/${owner.sId}/skills${queryString ? `?${queryString}` : ""}`,
-    fetcher,
+    skillsFetcher,
     { ...swrOptions, disabled }
   );
 
   return {
-    skills: data?.skills ?? emptyArray<SkillWithoutInstructionsAndToolsType>(),
+    skills: data?.skills ?? emptyArray<SkillListItemResponseType>(),
     isSkillsError: !!error,
     isSkillsLoading: isLoading,
     mutateSkills: mutate,
