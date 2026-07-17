@@ -11,20 +11,18 @@ import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import type { UserMessageContext } from "@app/types/assistant/conversation";
-import type { ModelSelectionType } from "@app/types/assistant/models/types";
-import { ModelSelectionSchema } from "@app/types/assistant/models/types";
 import { isEmptyString } from "@app/types/shared/utils/general";
 import {
   type PostMessagesResponseBody,
   PublicPostMessagesRequestBodySchema,
 } from "@dust-tt/client";
 import { apiErrorForConversation } from "@front-api/lib/api/assistant/conversation/helper";
+import { validatePublicModelSelection } from "@front-api/lib/api/assistant/conversation/model_selection";
 import { publicApiApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import { z } from "zod";
-import { fromError } from "zod-validation-error";
 
 import message from "./[mId]";
 
@@ -110,25 +108,14 @@ app.post(
 
     const origin = context.origin ?? "api";
 
-    // The public schema accepts model selections loosely (flexible enums); we
-    // re-validate against the concrete internal schema so unknown providers,
-    // models, or reasoning efforts are rejected with a clear 400 rather than
-    // silently ignored. A valid-but-not-enabled model still falls back to the
-    // agent's configured model server-side (see resolveModel).
-    let modelSelection: ModelSelectionType | undefined;
-    if (rawModelSelection) {
-      const parsed = ModelSelectionSchema.safeParse(rawModelSelection);
-      if (!parsed.success) {
-        return apiError(ctx, {
-          status_code: 400,
-          api_error: {
-            type: "invalid_request_error",
-            message: `Invalid modelSelection: ${fromError(parsed.error).toString()}`,
-          },
-        });
-      }
-      modelSelection = parsed.data;
+    const modelSelectionRes = await validatePublicModelSelection(
+      auth,
+      rawModelSelection
+    );
+    if (modelSelectionRes.isErr()) {
+      return apiError(ctx, modelSelectionRes.error);
     }
+    const modelSelection = modelSelectionRes.value;
 
     if (isEmptyString(context.username)) {
       return apiError(ctx, {
