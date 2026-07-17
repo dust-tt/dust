@@ -7,8 +7,10 @@ import {
   hasRelations,
   isDustProvidedSkill,
 } from "@app/lib/skill";
-import { useSkill } from "@app/lib/swr/skill_configurations";
-import type { SkillListItemWithRelationsResponseType } from "@app/types/api/skills";
+import {
+  type SkillListItemWithRelationsResponseType,
+  useSkill,
+} from "@app/lib/swr/skill_configurations";
 import type {
   SkillRelations,
   SkillType,

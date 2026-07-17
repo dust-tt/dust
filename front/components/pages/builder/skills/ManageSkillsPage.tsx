@@ -37,12 +37,12 @@ import {
 import { SKILL_ICON } from "@app/lib/skill";
 import { useWorkspacePermissions } from "@app/lib/swr/permissions";
 import {
+  type SkillListItemWithRelationsResponseType,
   useSkillsWithRelations,
   useUpdateSkillFavorite,
   useUpdateSkillsAvailability,
 } from "@app/lib/swr/skill_configurations";
 import { getSkillBuilderRoute } from "@app/lib/utils/router";
-import type { SkillListItemWithRelationsResponseType } from "@app/types/api/skills";
 import type { SkillAvailability } from "@app/types/assistant/skill_configuration";
 import { isEmptyString } from "@app/types/shared/utils/general";
 import {

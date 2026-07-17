@@ -14,9 +14,6 @@ import type {
   GetSkillsResponseBody,
   GetSkillsWithRelationsResponseBody,
   GetSkillWithRelationsResponseBody,
-  SkillListItemResponseType,
-  SkillResponseType,
-  SkillWithRelationsResponseType,
 } from "@app/types/api/skills";
 import type { GetSimilarSkillsResponseBody } from "@app/types/api/skills/existing_skill_checker";
 import type {
@@ -36,6 +33,13 @@ import type { SWRMutationConfiguration } from "swr/mutation";
 import useSWRMutation from "swr/mutation";
 
 const DETECT_SKILLS_DEBOUNCE_MS = 1_000;
+
+export type SkillResponseType = GetSkillResponseBody["skill"];
+export type SkillWithRelationsResponseType =
+  GetSkillWithRelationsResponseBody["skill"];
+export type SkillListItemResponseType = GetSkillsResponseBody["skills"][number];
+export type SkillListItemWithRelationsResponseType =
+  GetSkillsWithRelationsResponseBody["skills"][number];
 
 export function useSkill(options: {
   workspaceId: string;

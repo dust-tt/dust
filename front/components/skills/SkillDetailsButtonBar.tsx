@@ -1,7 +1,7 @@
 import { ArchiveSkillDialog } from "@app/components/skills/ArchiveSkillDialog";
 import { SkillFavoriteButton } from "@app/components/skills/SkillFavoriteButton";
+import type { SkillListItemWithRelationsResponseType } from "@app/lib/swr/skill_configurations";
 import { getSkillBuilderRoute } from "@app/lib/utils/router";
-import type { SkillListItemWithRelationsResponseType } from "@app/types/api/skills";
 import type { WorkspaceType } from "@app/types/user";
 import {
   Button,

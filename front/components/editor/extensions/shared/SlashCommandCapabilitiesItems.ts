@@ -6,8 +6,8 @@ import {
 import { getAvatar } from "@app/lib/actions/mcp_icons";
 import type { MCPServerViewLightType } from "@app/lib/api/mcp";
 import { getSkillAvatarIcon } from "@app/lib/skill";
+import type { SkillListItemResponseType } from "@app/lib/swr/skill_configurations";
 import { compareForAutocompleteSort, subFilter } from "@app/lib/utils";
-import type { SkillListItemResponseType } from "@app/types/api/skills";
 import React from "react";
 
 export const SELECT_SKILL_SLASH_COMMAND_ACTION = "select-skill";
