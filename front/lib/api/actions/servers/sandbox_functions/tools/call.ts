@@ -24,7 +24,7 @@ export async function callHandler(
   );
   if (!sandboxFunction) {
     return new Err(
-      new MCPError(`No sandbox function with slug "${slug}" in this pod.`, {
+      new MCPError(`No pod function with slug "${slug}" in this pod.`, {
         tracked: false,
       })
     );
@@ -40,7 +40,7 @@ export async function callHandler(
     // The function ran but returned an error: model- or builder-correctable, not internal.
     return new Err(
       new MCPError(
-        `Sandbox function "${slug}" returned an error (${outcome.errorKind}): ${outcome.message}`,
+        `Pod function "${slug}" returned an error (${outcome.errorKind}): ${outcome.message}`,
         { tracked: false }
       )
     );

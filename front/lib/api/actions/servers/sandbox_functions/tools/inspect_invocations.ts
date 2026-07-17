@@ -4,19 +4,30 @@ import type {
   ToolHandlerResult,
 } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { getPod } from "@app/lib/api/actions/servers/pod_manager/helpers";
+import { SandboxFunctionInvocationResource } from "@app/lib/resources/sandbox_function_invocation_resource";
 import { SandboxFunctionResource } from "@app/lib/resources/sandbox_function_resource";
 import { Err, Ok } from "@app/types/shared/result";
 
-export function formatSandboxFunction(fn: SandboxFunctionResource): string {
+export function formatSandboxFunctionInvocations(
+  slug: string,
+  invocations: SandboxFunctionInvocationResource[]
+): string {
+  if (invocations.length === 0) {
+    return `No invocations found for pod function "${slug}".`;
+  }
+
+  const serializedInvocations = invocations.map((invocation) =>
+    invocation.toJSONForLLM()
+  );
+
   return [
-    `${fn.slug}: ${fn.description}`,
-    `input: ${JSON.stringify(fn.inputSchema)}`,
-    `output: ${JSON.stringify(fn.outputSchema)}`,
+    `Recent invocations for pod function "${slug}" (newest first):`,
+    JSON.stringify(serializedInvocations, null, 2),
   ].join("\n");
 }
 
-export async function getHandler(
-  { slug }: { slug: string },
+export async function inspectInvocationsHandler(
+  { slug, limit }: { slug: string; limit: number },
   { auth, runContext }: ToolHandlerExtra
 ): Promise<ToolHandlerResult> {
   const podResult = await getPod(auth, { toolContext: { runContext } });
@@ -37,7 +48,15 @@ export async function getHandler(
     );
   }
 
+  const invocations = await SandboxFunctionInvocationResource.listRecent(auth, {
+    sandboxFunction,
+    limit,
+  });
+
   return new Ok([
-    { type: "text", text: formatSandboxFunction(sandboxFunction) },
+    {
+      type: "text",
+      text: formatSandboxFunctionInvocations(slug, invocations),
+    },
   ]);
 }

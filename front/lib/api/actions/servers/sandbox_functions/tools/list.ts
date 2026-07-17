@@ -10,13 +10,13 @@ export function formatSandboxFunctionsList(
   sandboxFunctions: SandboxFunctionResource[]
 ): string {
   if (sandboxFunctions.length === 0) {
-    return "No sandbox functions published in this pod.";
+    return "No pod functions published in this pod.";
   }
 
   const lines = sandboxFunctions.map((fn) => `- ${fn.slug}: ${fn.description}`);
 
   return (
-    `Sandbox functions:\n${lines.join("\n")}\n\n` +
+    `Pod functions:\n${lines.join("\n")}\n\n` +
     "Use the get tool with a function's slug to see its input and output schemas."
   );
 }

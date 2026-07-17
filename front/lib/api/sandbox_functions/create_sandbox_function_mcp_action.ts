@@ -166,7 +166,7 @@ export async function createSandboxFunctionMCPAction(
     return new Err(
       new SandboxFunctionMCPActionError(
         "invocation_not_found",
-        "Sandbox function not found."
+        "Pod function not found."
       )
     );
   }
@@ -179,7 +179,7 @@ export async function createSandboxFunctionMCPAction(
     return new Err(
       new SandboxFunctionMCPActionError(
         "invocation_not_found",
-        "Sandbox function invocation not found."
+        "Pod function invocation not found."
       )
     );
   }

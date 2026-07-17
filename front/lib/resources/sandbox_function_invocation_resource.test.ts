@@ -1,3 +1,4 @@
+import { formatSandboxFunctionInvocations } from "@app/lib/api/actions/servers/sandbox_functions/tools/inspect_invocations";
 import { generateSandboxFunctionInvocationToken } from "@app/lib/api/sandbox/access_tokens";
 import { ensurePodSandboxReady } from "@app/lib/api/sandbox/lifecycle";
 import { publishSandboxFunctionInvocationEvent } from "@app/lib/api/sandbox_functions/events";
@@ -109,6 +110,87 @@ async function setupExecutionTest() {
 }
 
 describe("SandboxFunctionInvocationResource", () => {
+  it("lists the most recent invocations for one function", async () => {
+    const { authenticator, space, sandboxFunction, invocation } =
+      await setupExecutionTest();
+    await invocation.succeed({ commentId: "comment-1" });
+
+    const secondInvocation = await SandboxFunctionInvocationResource.makeNew(
+      authenticator,
+      { sandboxFunction, input: { message: "second" } }
+    );
+    await secondInvocation.fail(new Error("second invocation failed"));
+
+    const thirdInvocation = await SandboxFunctionInvocationResource.makeNew(
+      authenticator,
+      { sandboxFunction, input: { message: "third" } }
+    );
+    await thirdInvocation.succeed({ commentId: "comment-3" });
+
+    const otherFile = await FileFactory.create(authenticator, null, {
+      contentType: sandboxFunctionContentType,
+      fileName: "other.ts",
+      fileSize: 100,
+      status: "created",
+      useCase: "project_context",
+      useCaseMetadata: { spaceId: space.sId },
+    });
+    const otherFunction = await SandboxFunctionResource.makeNew(authenticator, {
+      space,
+      file: otherFile,
+      slug: "other-function",
+      description: "Run another function.",
+      inputSchema,
+      outputSchema,
+    });
+    await SandboxFunctionInvocationResource.makeNew(authenticator, {
+      sandboxFunction: otherFunction,
+      input: { message: "other" },
+    });
+
+    const recentInvocations =
+      await SandboxFunctionInvocationResource.listRecent(authenticator, {
+        sandboxFunction,
+        limit: 2,
+      });
+
+    expect(recentInvocations.map((item) => item.sId)).toEqual([
+      thirdInvocation.sId,
+      secondInvocation.sId,
+    ]);
+    expect(recentInvocations[0]?.result).toEqual({ commentId: "comment-3" });
+    expect(recentInvocations[1]?.error).toBe("second invocation failed");
+    expect(recentInvocations[0]?.toJSONForLLM()).toMatchObject({
+      invocationId: thirdInvocation.sId,
+      status: "succeeded",
+      input: { message: "third" },
+      result: { commentId: "comment-3" },
+    });
+    expect(recentInvocations[1]?.toJSONForLLM()).toMatchObject({
+      invocationId: secondInvocation.sId,
+      status: "errored",
+      input: { message: "second" },
+      error: "second invocation failed",
+    });
+
+    const formatted = formatSandboxFunctionInvocations(
+      sandboxFunction.slug,
+      recentInvocations
+    );
+    expect(formatted).toContain('"status": "succeeded"');
+    expect(formatted).toContain('"input": {');
+    expect(formatted).toContain('"result": {');
+    expect(formatted).toContain('"error": "second invocation failed"');
+    expect(formatted).toContain('"createdAt":');
+    expect(formatted).toContain('"updatedAt":');
+  });
+
+  it("formats an explicit message when a function has no invocations", () => {
+    expect(formatSandboxFunctionInvocations("never-called", [])).toBe(
+      'No invocations found for pod function "never-called".'
+    );
+  });
+
   it("stores and reloads its input from GCS", async () => {
     const { authenticator, sandboxFunction, invocation } =
       await setupExecutionTest();

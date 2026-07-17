@@ -622,9 +622,7 @@ export const VisualizationActionIframe = forwardRef<
     ): Promise<Result<SandboxFunctionInvocationType, Error>> => {
       try {
         if (isPublic) {
-          throw new Error(
-            "Sandbox functions are not supported in shared frames."
-          );
+          throw new Error("Pod functions are not supported in shared frames.");
         }
 
         const body: PostSandboxFunctionInvocationRequestBody = {
