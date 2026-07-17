@@ -207,7 +207,7 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     stage: "on_demand",
   },
   sandbox_functions: {
-    description: "Enable Sandbox Function invocation endpoints",
+    description: "Enable Pod Function invocation endpoints",
     stage: "dust_only",
   },
   run_tools_from_prompt: {

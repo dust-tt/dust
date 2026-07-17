@@ -2052,6 +2052,10 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool billing info ac
       "freeUsage": true,
       "toolCostCategory": "basic",
     },
+    "inspect_invocations": {
+      "freeUsage": true,
+      "toolCostCategory": "basic",
+    },
     "list": {
       "freeUsage": false,
       "toolCostCategory": "advanced",
@@ -3172,6 +3176,7 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool stakes across a
     "db_reconcile": "never_ask",
     "db_schema": "never_ask",
     "get": "never_ask",
+    "inspect_invocations": "never_ask",
     "list": "never_ask",
     "publish": "low",
   },

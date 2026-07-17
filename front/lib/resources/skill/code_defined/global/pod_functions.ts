@@ -156,6 +156,9 @@ Call a published function directly from this conversation with \`${toolName("cal
 its slug and an input payload matching its \`get\`-reported input schema. Call it yourself whenever
 you need the result now rather than asking a Frame to fetch it for you.
 
+To debug a function, use \`${toolName("inspect_invocations")}\` to inspect its most recent inputs,
+results, errors, statuses, and timestamps.
+
 The live databases have their own tools: \`${toolName("db_list")}\` (sizes),
 \`${toolName("db_schema")}\` (live storage types only; column modes exist only in the authored
 file), \`${toolName("db_query")}\` (one SQL statement; no schema changes; a result too large to
@@ -180,10 +183,10 @@ const { result, error } = await callFunction("<podId>/<slug>", input);
 \`input\` must match the function's declared input schema (see \`get\`). Check \`error\` and render
 loading/error state, since this is a network call like any other in the Frame. \`result\` is
 currently the raw sandbox runner envelope (\`{ ok, response: { status, body, encoding, ... } }\`)
-rather than the parsed \`schema.output\`, so parse \`response.body\` yourself. Sandbox functions are
+rather than the parsed \`schema.output\`, so parse \`response.body\` yourself. Pod functions are
 only reachable from authenticated Pod Frames, not from public or shared Frames.`,
   mcpServers: [{ name: SANDBOX_FUNCTIONS_SERVER_NAME }],
-  version: 2,
+  version: 3,
   icon: "PuzzleIcon",
   isRestricted: async (auth: Authenticator) => {
     const flags = await getFeatureFlags(auth);
