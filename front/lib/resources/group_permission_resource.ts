@@ -47,11 +47,11 @@ interface TypeWideGrantSpec {
   transaction?: Transaction;
 }
 
-// The state of a governance capability. "everyone" and "disabled" carry no groups; "groups" lists
-// the specific (non-global) groups it is granted to. Scope values match the governance page's
-// PermissionConfigurationScope.
+// The state of a governance capability. "everyone" and "admins_only" carry no groups; "groups"
+// lists the specific (non-global) groups it is granted to. Scope values match the governance
+// page's PermissionConfigurationScope.
 export type CapabilityState =
-  | { scope: "disabled" }
+  | { scope: "admins_only" }
   | { scope: "everyone" }
   | { scope: "groups"; groups: GroupResource[] };
 
@@ -605,7 +605,7 @@ export class GroupPermissionResource extends BaseResource<GroupPermissionModel> 
       const key = capabilityKey(capability);
 
       if (capabilityRows.length === 0) {
-        result.set(key, { scope: "disabled" });
+        result.set(key, { scope: "admins_only" });
       } else if (capabilityRows.some((row) => row.groupId === globalGroup.id)) {
         result.set(key, { scope: "everyone" });
       } else {

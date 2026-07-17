@@ -123,19 +123,21 @@ export function capabilityKey({
  * Catalog of the governance capabilities the Workspace & Governance page manages, grouped by the
  * section they belong to.
  */
-export const AGENT_GOVERNANCE_CAPABILITIES: CapabilitySpec[] = [
-  { grantType: "create", resourceType: "agent" },
-  { grantType: "publish", resourceType: "agent" },
-];
-export const SKILL_GOVERNANCE_CAPABILITIES: CapabilitySpec[] = [
-  { grantType: "create", resourceType: "skill" },
-  { grantType: "publish", resourceType: "skill" },
-];
-export const FRAME_GOVERNANCE_CAPABILITIES: CapabilitySpec[] = [
-  { grantType: "invite", resourceType: "frame" },
-  { grantType: "publish", resourceType: "frame" },
-];
-export const BILLING_AND_SECURITY_GOVERNANCE_CAPABILITIES: CapabilitySpec[] = [
-  { grantType: "admin", resourceType: "billing" },
-  { grantType: "admin", resourceType: "identity" },
-];
+export const GOVERNANCE_CAPABILITIES = {
+  agent: [
+    { grantType: "create", resourceType: "agent" },
+    { grantType: "publish", resourceType: "agent" },
+  ],
+  skill: [
+    { grantType: "create", resourceType: "skill" },
+    { grantType: "publish", resourceType: "skill" },
+  ],
+  frame: [
+    { grantType: "invite", resourceType: "frame" },
+    { grantType: "publish", resourceType: "frame" },
+  ],
+  billingAndSecurity: [
+    { grantType: "admin", resourceType: "billing" },
+    { grantType: "admin", resourceType: "identity" },
+  ],
+} satisfies Record<string, CapabilitySpec[]>;

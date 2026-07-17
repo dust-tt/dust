@@ -1,3 +1,4 @@
+import { GovernancePageLayout } from "@app/components/pages/workspace/governance/GovernancePageLayout";
 import { GovernancePageSkeleton } from "@app/components/pages/workspace/governance/GovernancePageSkeleton";
 import { GovernanceSettingRow } from "@app/components/pages/workspace/governance/GovernanceSettingRow";
 import { GovernanceSettingSection } from "@app/components/pages/workspace/governance/GovernanceSettingSection";
@@ -31,11 +32,8 @@ import type {
   GrantType,
 } from "@app/types/group_permissions";
 import {
-  AGENT_GOVERNANCE_CAPABILITIES,
-  BILLING_AND_SECURITY_GOVERNANCE_CAPABILITIES,
   capabilityKey,
-  FRAME_GOVERNANCE_CAPABILITIES,
-  SKILL_GOVERNANCE_CAPABILITIES,
+  GOVERNANCE_CAPABILITIES,
 } from "@app/types/group_permissions";
 import { MANAGEABLE_GROUP_KINDS } from "@app/types/groups";
 import { removeNulls } from "@app/types/shared/utils/general";
@@ -48,12 +46,11 @@ import {
   CloudArrowLeftRight,
   ContentMessage,
   Cube01,
+  InfoCircle,
   Lock01,
-  Page,
   PuzzlePiece01,
   Robot,
   ShapesPlus,
-  Toggle01Left,
 } from "@dust-tt/sparkle";
 import type { ComponentType } from "react";
 
@@ -101,10 +98,10 @@ function groupGovernancePermissionsBySection(
     );
 
   return {
-    agents: resolve(AGENT_GOVERNANCE_CAPABILITIES),
-    skills: resolve(SKILL_GOVERNANCE_CAPABILITIES),
-    frames: resolve(FRAME_GOVERNANCE_CAPABILITIES),
-    billingAndSecurity: resolve(BILLING_AND_SECURITY_GOVERNANCE_CAPABILITIES),
+    agents: resolve(GOVERNANCE_CAPABILITIES.agent),
+    skills: resolve(GOVERNANCE_CAPABILITIES.skill),
+    frames: resolve(GOVERNANCE_CAPABILITIES.frame),
+    billingAndSecurity: resolve(GOVERNANCE_CAPABILITIES.billingAndSecurity),
   };
 }
 
@@ -114,18 +111,22 @@ export const GovernancePage = () => {
 
   const owner = useWorkspace();
   const { isAdmin } = useAuth();
-  const { groups, isGroupsLoading } = useGroups({
+  const { groups, isGroupsLoading, isGroupsError } = useGroups({
     owner,
     kinds: MANAGEABLE_GROUP_KINDS,
   });
-  const { governancePermissions, isLoading: isGovernancePermissionsLoading } =
-    useGovernancePermissions(owner);
+  const {
+    governancePermissions,
+    isLoading: isGovernancePermissionsLoading,
+    isGovernancePermissionsError,
+  } = useGovernancePermissions(owner);
   const onPermissionChange = useUpdateGovernancePermission(owner);
 
   const { sharingPolicy, doUpdateSharingPolicy, isChanging } =
     useFrameSharingToggle({ owner });
 
   const isLoading = isGroupsLoading || isGovernancePermissionsLoading;
+  const isError = isGroupsError || isGovernancePermissionsError;
 
   const { agents, skills, frames, billingAndSecurity } =
     groupGovernancePermissionsBySection(governancePermissions);
@@ -187,13 +188,23 @@ export const GovernancePage = () => {
     return <GovernancePageSkeleton />;
   }
 
+  if (isError) {
+    return (
+      <GovernancePageLayout>
+        <ContentMessage
+          variant="warning"
+          icon={InfoCircle}
+          size="lg"
+          title="Failed to load"
+        >
+          Governance settings could not be loaded.
+        </ContentMessage>
+      </GovernancePageLayout>
+    );
+  }
+
   return (
-    <div className="flex flex-col gap-6">
-      <Page.Header
-        title="Workspace & Governance"
-        description="Manage what members can do in your workspace."
-        icon={Toggle01Left}
-      />
+    <GovernancePageLayout>
       <ContentMessage>
         This page is WIP. Do not change unless you know what you are doing.
       </ContentMessage>
@@ -258,6 +269,6 @@ export const GovernancePage = () => {
           </>
         )}
       </div>
-    </div>
+    </GovernancePageLayout>
   );
 };

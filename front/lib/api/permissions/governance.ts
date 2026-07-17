@@ -7,33 +7,30 @@ import type {
   GovernancePermissionConfiguration,
 } from "@app/types/group_permissions";
 import {
-  AGENT_GOVERNANCE_CAPABILITIES,
-  BILLING_AND_SECURITY_GOVERNANCE_CAPABILITIES,
   capabilityKey,
-  FRAME_GOVERNANCE_CAPABILITIES,
-  SKILL_GOVERNANCE_CAPABILITIES,
+  GOVERNANCE_CAPABILITIES,
 } from "@app/types/group_permissions";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import assert from "assert";
 
 // Capabilities every business admin (and admin) can manage.
 const BUSINESS_ADMIN_CAPABILITIES: CapabilitySpec[] = [
-  ...AGENT_GOVERNANCE_CAPABILITIES,
-  ...SKILL_GOVERNANCE_CAPABILITIES,
-  ...FRAME_GOVERNANCE_CAPABILITIES,
+  ...GOVERNANCE_CAPABILITIES.agent,
+  ...GOVERNANCE_CAPABILITIES.skill,
+  ...GOVERNANCE_CAPABILITIES.frame,
 ];
 
 // Capabilities every admin can manage.
 const ADMIN_CAPABILITIES: CapabilitySpec[] = [
   ...BUSINESS_ADMIN_CAPABILITIES,
-  ...BILLING_AND_SECURITY_GOVERNANCE_CAPABILITIES,
+  ...GOVERNANCE_CAPABILITIES.billingAndSecurity,
 ];
 
 function toConfiguration(
   state: CapabilityState
 ): GovernancePermissionConfiguration {
   switch (state.scope) {
-    case "disabled":
+    case "admins_only":
       return { scope: "admins_only" };
     case "everyone":
       return { scope: "everyone" };
