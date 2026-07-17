@@ -22,6 +22,7 @@ import type {
   UserMessageType,
 } from "@app/types/assistant/conversation";
 import { isUserMessageType } from "@app/types/assistant/conversation";
+import { getModelMaxInputTokens } from "@app/types/assistant/models/utils";
 import { removeNulls } from "@app/types/shared/utils/general";
 import { pokeApp } from "@front-api/middlewares/ctx";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
@@ -235,10 +236,7 @@ app.post(
       typeof contextSizeOverride === "number" && contextSizeOverride > 0
         ? contextSizeOverride
         : model.contextSize;
-    const allowedTokenCount = Math.max(
-      0,
-      contextSize - model.generationTokensCount
-    );
+    const allowedTokenCount = getModelMaxInputTokens(model, contextSize);
 
     const convoRes = await renderConversationForModel(auth, {
       conversation,
