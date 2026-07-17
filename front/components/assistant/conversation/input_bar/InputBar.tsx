@@ -502,9 +502,11 @@ export const InputBar = React.memo(function InputBar({
                   classNames(
                     "md:border-white/90",
                     "md:bg-[#fbfbfb]",
-                    // Same shadow strength at default and focus — Figma (11174:21613) softens it on
-                    // focus, but that reads as flat/washed-out on a light page background.
-                    "md:shadow-[0px_-0.5px_1px_1px_rgba(0,0,0,0.02),0px_8px_10px_-6px_rgba(0,0,0,0.1),0px_20px_25px_-5px_rgba(0,0,0,0.1),0px_0px_1px_0px_rgba(0,0,0,0.07)]",
+                    // Same tight shadow "strength" as dark mode (ring + 3 close drop shadows)
+                    // instead of the Figma light spec's large soft blur, which reads as
+                    // flat/washed-out. Constant across focus states too — only the background
+                    // color changes on focus.
+                    "md:shadow-[0px_0px_0px_1px_rgba(0,0,0,0.05),0px_1px_1px_-0.5px_rgba(0,0,0,0.1),0px_3px_3px_-1.5px_rgba(0,0,0,0.1),0px_6px_6px_-3px_rgba(0,0,0,0.1)]",
                     // Crossfade the focus state instead of snapping (background-color only).
                     "md:transition-[background-color,box-shadow] md:duration-200 md:ease-[cubic-bezier(0.23,1,0.32,1)]",
                     // Focus state (Figma 11174:21613): white surface only —

@@ -42,9 +42,13 @@ export function Composer({
           "border border-white/90",
           // Crossfade the focus state instead of snapping (background-color + box-shadow only).
           "transition-[background-color,box-shadow] duration-200 ease-[cubic-bezier(0.23,1,0.32,1)]",
-          // Focus: white surface. Keep the same shadow strength as default — the Figma spec
-          // (11174:21613) softens it, but that reads as flat/washed-out on a light page background.
-          "shadow-[0px_-0.5px_1px_1px_rgba(0,0,0,0.02),0px_8px_10px_-6px_rgba(0,0,0,0.1),0px_20px_25px_-5px_rgba(0,0,0,0.1),0px_0px_1px_0px_rgba(0,0,0,0.07)]",
+          // Same tight shadow "strength" as dark mode (ring + 3 close drop shadows) instead of the
+          // Figma light spec's large soft blur, which reads as flat/washed-out. Alphas lightened
+          // relative to dark's (ring 0.14 -> 0.05, drops 0.18 -> 0.1): light already has a real
+          // border-white/90 for the edge (the ring is just a faint assist), and black shadows read
+          // darker on a light page than the same alpha does on a dark one. Constant across focus
+          // states too — only the background color changes on focus.
+          "shadow-[0px_0px_0px_1px_rgba(0,0,0,0.05),0px_1px_1px_-0.5px_rgba(0,0,0,0.1),0px_3px_3px_-1.5px_rgba(0,0,0,0.1),0px_6px_6px_-3px_rgba(0,0,0,0.1)]",
           isFocused ? "bg-white" : "bg-[#fbfbfb]",
           // Dark (Figma 12333:27502): Surface/4 background + Surfaces/Dark/4 effect set.
           "dark:border-transparent dark:bg-[#2e2c28]",
