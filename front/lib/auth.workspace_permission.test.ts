@@ -111,9 +111,9 @@ describe("Authenticator.hasWorkspacePermission", () => {
   });
 
   it("rejects an invalid capability query, even for admins", async () => {
-    // `write` is not a valid verb on `billing`; a wildcard grant must not satisfy it.
+    // `create` is not a valid grant type on `billing`; a wildcard grant must not satisfy it.
     await expect(
-      adminAuth.hasWorkspacePermission("write", "billing")
+      adminAuth.hasWorkspacePermission("create", "billing")
     ).rejects.toThrow(/not allowed/);
   });
 });

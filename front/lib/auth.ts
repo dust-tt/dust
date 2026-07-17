@@ -1100,7 +1100,7 @@ export class Authenticator {
    * Whether the caller holds a workspace-level capability. A capability is a
    * (grantType, resourceType) pair whose grants live on the type-wide (-1) group_permissions
    * rows. Admins bypass unconditionally (billing/security are admin-by-default). Otherwise we look
-   * for a -1 grant on any of the caller's groups; "*" grants match any verb / type.
+   * for a -1 grant on any of the caller's groups; "*" grants match any grant type / resource type.
    *
    * Cold path: a query per check is fine — no caching yet (pending auth-resolution decision).
    */

@@ -1,22 +1,37 @@
 /**
  * Vocabulary for the `group_permissions` table (Admin Governance §1A).
  *
- * All permission grants — resource-level access (spaces, agents, skills) and workspace-level
- * capabilities (billing, identity, …) — live in a single table keyed by a plain-verb
- * `grantType`, a `resourceType`, and a numeric `resourceId`. The validity of a given
- * (grantType, resourceType, resourceId) combination is enforced by the registry in
- * `@app/lib/resources/group_permission_registry`; this file only defines the raw vocabulary and
- * the "whole type" sentinel.
+ * A grant row stores a registry-defined *grant type* — a role such as `member`/`editor`, or a
+ * singleton capability such as `create`/`use` — for a `resourceType` and a numeric `resourceId`.
+ * Which roles are valid for a (grantType, resourceType, resourceId) combination, and the verbs each
+ * role grants, are defined by the registry in `@app/lib/resources/group_permission_registry`. This
+ * file defines the raw vocabulary and the "whole type" sentinel.
  */
 
-// Plain verbs. "*" means "all verbs".
-export const GRANT_TYPES = [
+// Verbs are the granular capabilities a role grants. They are never stored — roles map to them in
+// the registry, and capability questions are expressed in verbs.
+export const GRANT_VERBS = [
   "read",
   "write",
   "admin",
   "create",
   "publish",
   "invite",
+  "use",
+] as const;
+export type GrantVerb = (typeof GRANT_VERBS)[number];
+
+// Grant types are the registry-defined role names stored in a grant row. "*" means "all grant
+// types". Each role's verbs and levels live in the registry.
+export const GRANT_TYPES = [
+  "reader",
+  "member",
+  "admin",
+  "editor",
+  "create",
+  "publish",
+  "invite",
+  "read",
   "use",
   "*",
 ] as const;
@@ -37,9 +52,10 @@ export const GROUP_PERMISSION_RESOURCE_TYPES = [
 export type GroupPermissionResourceType =
   (typeof GROUP_PERMISSION_RESOURCE_TYPES)[number];
 
-// `resourceId = -1` means "the type as a whole": for instance-level verbs, all resources of the
-// type; for type-level verbs (e.g. "create"), the only sensible value. There is deliberately no
-// NULL anywhere — one meaning, one representation — and the unique index dedupes wildcard rows.
+// `resourceId = -1` means "the type as a whole": for instance-level roles, all resources of the
+// type; for type-level roles (e.g. the `create` capability), the only sensible value. There is
+// deliberately no NULL anywhere — one meaning, one representation — and the unique index dedupes
+// wildcard rows.
 export const WHOLE_TYPE_RESOURCE_ID = -1;
 
 export function isGrantType(value: unknown): value is GrantType {
