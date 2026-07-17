@@ -47,8 +47,16 @@ app.get(
 
     const userRoles = ctx.get("pokeRoles");
 
-    const pluginList = plugins
-      .filter((p) => !resourceId || p.isApplicableTo(auth, resource))
+    // Resolve applicability first since `isApplicableTo` may be async. The plugin list
+    // per resource type is small and bounded, so a sequential pass is fine here.
+    const applicablePlugins = [];
+    for (const p of plugins) {
+      if (!resourceId || (await p.isApplicableTo(auth, resource))) {
+        applicablePlugins.push(p);
+      }
+    }
+
+    const pluginList = applicablePlugins
       .filter((p) => !p.manifest.isHidden)
       // During maintenance, only show readonly plugins.
       .filter((p) => !maintenance || p.manifest.readonly)
