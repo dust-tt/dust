@@ -18,6 +18,7 @@ import type {
   LLMStreamParameters,
 } from "@app/lib/api/llm/types/options";
 import { normalizePrompt } from "@app/lib/api/llm/types/options";
+import type { DustStreamEndpointConstructor } from "@app/lib/llms/stream/dust_stream_endpoint";
 import {
   extractEncryptedContentFromMetadata,
   parseReasoningMetadata,
@@ -31,7 +32,6 @@ import type {
   BatchStatus,
 } from "@app/lib/model_constructors/batch/endpoint";
 import type { BaseEndpointConfiguration } from "@app/lib/model_constructors/configuration";
-import type { StreamEndpointConstructor } from "@app/lib/model_constructors/stream/configuration";
 import type { StreamEndpoint } from "@app/lib/model_constructors/stream/endpoint";
 import type { NoopRequest } from "@app/lib/model_constructors/stream/endpoints/noop_global_noop";
 import { NoopGlobalNoopStream } from "@app/lib/model_constructors/stream/endpoints/noop_global_noop";
@@ -601,7 +601,12 @@ abstract class BaseTransition extends LLM {
   // own `configSchema` (stream and batch own theirs independently).
   protected buildConfig(
     streamParameters: LLMStreamParameters,
-    configSchema: BaseEndpointConfiguration["configSchema"]
+    configSchema: BaseEndpointConfiguration["configSchema"],
+    // Per-endpoint adjustment applied before schema validation (defaults to
+    // identity). Some schemas reject provider-invalid combinations (e.g.
+    // Anthropic requires temperature=1 with thinking), so the fix must land
+    // before `parse`, not after.
+    parseConfig: (config: InputConfig) => InputConfig = (config) => config
   ): InputConfig {
     const {
       specifications,
@@ -611,7 +616,7 @@ abstract class BaseTransition extends LLM {
       previousMessageId,
     } = streamParameters;
 
-    return configSchema.parse({
+    const config: InputConfig = {
       tools: specifications as ToolSpecification[],
       temperature: this.temperature ?? undefined,
       reasoning: {
@@ -627,6 +632,10 @@ abstract class BaseTransition extends LLM {
         this.responseFormat,
         this.metadata.clientId
       ),
+    };
+
+    return configSchema.parse({
+      ...parseConfig(config),
       // Prompt-cache diagnostics opt-in. Kept only by the Anthropic (direct)
       // config schema; other surfaces' schemas strip this unknown key.
       previousMessageId,
@@ -640,13 +649,15 @@ abstract class BaseTransition extends LLM {
  */
 export class StreamEndpointTransition extends BaseTransition {
   private model: StreamEndpoint;
+  private endpointConstructor: DustStreamEndpointConstructor;
 
   constructor(
     auth: Authenticator,
     llmParameters: LLMParameters,
-    modelConstructor: StreamEndpointConstructor
+    modelConstructor: DustStreamEndpointConstructor
   ) {
     super(auth, modelConstructor.providerId, llmParameters);
+    this.endpointConstructor = modelConstructor;
     this.model = new modelConstructor(llmParameters.credentials);
 
     const { api, region } = this.model.metadata();
@@ -660,7 +671,11 @@ export class StreamEndpointTransition extends BaseTransition {
   protected buildStreamRequestPayload(streamParameters: LLMStreamParameters) {
     return this.model.buildRequestPayload(
       this.buildPayload(streamParameters),
-      this.buildConfig(streamParameters, this.model.constructor.configSchema)
+      this.buildConfig(
+        streamParameters,
+        this.model.constructor.configSchema,
+        this.endpointConstructor.parseConfig
+      )
     );
   }
 
@@ -693,7 +708,7 @@ export class NoopStreamTransition extends StreamEndpointTransition {
   constructor(
     auth: Authenticator,
     llmParameters: LLMParameters,
-    modelConstructor: StreamEndpointConstructor
+    modelConstructor: DustStreamEndpointConstructor
   ) {
     super(auth, llmParameters, modelConstructor);
     this.noopMetaData = llmParameters.metaData;
