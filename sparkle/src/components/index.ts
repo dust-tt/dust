@@ -57,6 +57,14 @@ export {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "./Collapsible";
+export type { ComposerVariantType } from "./Composer";
+export { COMPOSER_VARIANTS, Composer } from "./Composer";
+export type {
+  ComposerSuggestionItem,
+  ComposerSuggestionSource,
+  ComposerSuggestionTriggerType,
+} from "./ComposerInput";
+export { COMPOSER_SUGGESTION_TRIGGERS, ComposerInput } from "./ComposerInput";
 export { ConfettiBackground } from "./ConfettiBackground";
 export { Container } from "./Container";
 export {
