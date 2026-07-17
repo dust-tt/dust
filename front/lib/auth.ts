@@ -62,6 +62,7 @@ import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { isString, removeNulls } from "@app/types/shared/utils/general";
+import { decodeUtf8HeaderValue } from "@app/types/shared/utils/http_headers";
 import type {
   LightWorkspaceType,
   RoleType,
@@ -1854,7 +1855,7 @@ export function getApiKeyNameFromHeaders(headers: {
 }) {
   const apiKeyName = headers[DustApiKeyNameHeader];
   if (isString(apiKeyName)) {
-    return apiKeyName;
+    return decodeUtf8HeaderValue(apiKeyName);
   }
   return undefined;
 }
@@ -1869,6 +1870,8 @@ export function getApiKeyNameHeader(auth: Authenticator) {
     return undefined;
   }
 
+  // The name may exceed Latin-1 (emoji, non-Latin scripts); DustAPI encodes
+  // extra header values on the wire (see @dust-tt/client baseHeaders).
   return {
     [DustApiKeyNameHeader]: name,
   };
