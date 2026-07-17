@@ -6,12 +6,10 @@ import type { NotificationCondition } from "@app/types/notification_preferences"
 import type { ModelId } from "@app/types/shared/model_id";
 import { Err, Ok, type Result } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
-import type { Attributes } from "sequelize";
 import { Op } from "sequelize";
 import { SpaceResource } from "./space_resource";
 import { UserProjectPreferencesModel } from "./storage/models/user_project_preferences";
 import { makeSId } from "./string_ids";
-import type { UserResource } from "./user_resource";
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export interface UserProjectPreferencesResource
@@ -21,18 +19,6 @@ export interface UserProjectPreferencesResource
 export class UserProjectPreferencesResource extends BaseResource<UserProjectPreferencesModel> {
   static model: typeof UserProjectPreferencesModel =
     UserProjectPreferencesModel;
-
-  readonly user: UserResource;
-
-  constructor(
-    model: typeof UserProjectPreferencesModel,
-    blob: Attributes<UserProjectPreferencesModel>,
-    { user }: { user: UserResource }
-  ) {
-    super(UserProjectPreferencesModel, blob);
-
-    this.user = user;
-  }
 
   get sId(): string {
     return UserProjectPreferencesResource.modelIdToSId({
@@ -59,7 +45,6 @@ export class UserProjectPreferencesResource extends BaseResource<UserProjectPref
     options: ResourceFindOptions<UserProjectPreferencesModel> = {}
   ): Promise<UserProjectPreferencesResource[]> {
     const { where, ...otherOptions } = options;
-    const user = auth.getNonNullableUser();
 
     const results = await UserProjectPreferencesModel.findAll({
       where: {
@@ -69,7 +54,7 @@ export class UserProjectPreferencesResource extends BaseResource<UserProjectPref
       ...otherOptions,
     });
 
-    return results.map((r) => new this(this.model, r.get(), { user }));
+    return results.map((r) => new this(this.model, r.get()));
   }
 
   static async fetchNotificationPreferenceMap(
@@ -151,7 +136,7 @@ export class UserProjectPreferencesResource extends BaseResource<UserProjectPref
       notificationPreference,
     });
 
-    return new this(this.model, entry.get(), { user });
+    return new this(this.model, entry.get());
   }
 
   static async setStarred(
@@ -174,7 +159,7 @@ export class UserProjectPreferencesResource extends BaseResource<UserProjectPref
       isStarred,
     });
 
-    return new this(this.model, entry.get(), { user });
+    return new this(this.model, entry.get());
   }
 
   static async setStarredForUsers(
@@ -246,7 +231,6 @@ export class UserProjectPreferencesResource extends BaseResource<UserProjectPref
         id: this.spaceId,
         workspaceId: this.workspaceId,
       }),
-      userId: this.user.sId,
       notificationPreference: this.notificationPreference,
       isStarred: this.isStarred === true,
     };
