@@ -1,6 +1,6 @@
 import type { BaseEndpointConfiguration } from "@app/lib/model_constructors/configuration";
+import { anthropicBaseConfigSchema } from "@app/lib/model_constructors/providers/anthropic/inputConfig";
 import { ANTHROPIC_SUPPORTED_NON_NULL_REASONING_EFFORTS } from "@app/lib/model_constructors/providers/anthropic/reasoning_efforts";
-import { inputConfigSchema } from "@app/lib/model_constructors/types/input/configuration";
 import type { ModelId } from "@app/lib/model_constructors/types/model_ids";
 
 import { z } from "zod";
@@ -17,8 +17,7 @@ const OPUS_MAX_OUTPUT_TOKENS = 128_000;
 
 const DEFAULT_REASONING_EFFORT = "high";
 
-const baseConfig = inputConfigSchema.extend({
-  cacheKey: z.undefined(),
+const baseConfig = anthropicBaseConfigSchema.extend({
   temperature: z.undefined(),
 });
 

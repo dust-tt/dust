@@ -1,8 +1,6 @@
 import type { BaseEndpointConfiguration } from "@app/lib/model_constructors/configuration";
-import {
-  inputConfigSchema,
-  temperatureSchema,
-} from "@app/lib/model_constructors/types/input/configuration";
+import { anthropicBaseConfigSchema } from "@app/lib/model_constructors/providers/anthropic/inputConfig";
+import { temperatureSchema } from "@app/lib/model_constructors/types/input/configuration";
 import { CLAUDE_SONNET_4_6_MODEL_ID } from "@app/lib/model_constructors/types/model_ids";
 
 import { z } from "zod";
@@ -12,9 +10,7 @@ const CONTEXT_SIZE = 1_000_000;
 const DEFAULT_REASONING_EFFORT = "high";
 const MAX_OUTPUT_TOKENS = 128_000;
 
-const baseConfig = inputConfigSchema.extend({
-  cacheKey: z.undefined(),
-});
+const baseConfig = anthropicBaseConfigSchema;
 
 const configSchema = z.union([
   baseConfig.extend({

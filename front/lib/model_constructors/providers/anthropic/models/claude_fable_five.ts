@@ -1,6 +1,6 @@
 import type { BaseEndpointConfiguration } from "@app/lib/model_constructors/configuration";
+import { anthropicBaseConfigSchema } from "@app/lib/model_constructors/providers/anthropic/inputConfig";
 import { ANTHROPIC_SUPPORTED_NON_NULL_REASONING_EFFORTS } from "@app/lib/model_constructors/providers/anthropic/reasoning_efforts";
-import { inputConfigSchema } from "@app/lib/model_constructors/types/input/configuration";
 import { CLAUDE_FABLE_5_MODEL_ID } from "@app/lib/model_constructors/types/model_ids";
 
 import { z } from "zod";
@@ -16,8 +16,7 @@ const reasoningSchema = z
   })
   .default({ effort: DEFAULT_REASONING_EFFORT });
 
-const configSchema = inputConfigSchema.extend({
-  cacheKey: z.undefined(),
+const configSchema = anthropicBaseConfigSchema.extend({
   reasoning: reasoningSchema,
   temperature: z.undefined(),
 });

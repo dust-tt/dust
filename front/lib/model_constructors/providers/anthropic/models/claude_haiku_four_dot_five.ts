@@ -1,9 +1,7 @@
 import type { BaseEndpointConfiguration } from "@app/lib/model_constructors/configuration";
+import { anthropicBaseConfigSchema } from "@app/lib/model_constructors/providers/anthropic/inputConfig";
 import { reasoningToExtendedThinkingConfig } from "@app/lib/model_constructors/sdk/anthropic_ai/converters/input/utils";
-import {
-  inputConfigSchema,
-  temperatureSchema,
-} from "@app/lib/model_constructors/types/input/configuration";
+import { temperatureSchema } from "@app/lib/model_constructors/types/input/configuration";
 import { CLAUDE_HAIKU_4_5_MODEL_ID } from "@app/lib/model_constructors/types/model_ids";
 
 import { z } from "zod";
@@ -12,9 +10,7 @@ const CONTEXT_SIZE = 200_000;
 const DEFAULT_REASONING_EFFORT = "low";
 const MAX_OUTPUT_TOKENS = 64_000;
 
-const baseConfig = inputConfigSchema.extend({
-  cacheKey: z.undefined(),
-});
+const baseConfig = anthropicBaseConfigSchema;
 
 const configSchema = z.union([
   baseConfig.extend({
