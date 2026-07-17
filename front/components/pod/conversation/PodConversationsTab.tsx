@@ -223,6 +223,7 @@ export function PodConversationsTab({
                 draftKey={`space-${podInfo.sId}-new-conversation`}
                 space={podInfo}
                 disableAutoFocus={false}
+                isFloating={false}
                 placeholder={`Get work done in ${podInfo.name}`}
                 defaultAgentId={defaultAgentId}
                 isDefaultAgentLoading={isPodMetadataLoading}
