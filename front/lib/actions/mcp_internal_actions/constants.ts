@@ -108,6 +108,9 @@ import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
+import type { JSONSchema7 as JSONSchema } from "json-schema";
+import { z } from "zod";
+import { zodToJsonSchema } from "zod-to-json-schema";
 
 export const ADVANCED_SEARCH_SWITCH = "advanced_search";
 export const USE_SUMMARY_SWITCH = "useSummary";
@@ -243,7 +246,35 @@ export const MCP_SERVER_AVAILABILITY = [
 ] as const;
 export type MCPServerAvailability = (typeof MCP_SERVER_AVAILABILITY)[number];
 
-export const INTERNAL_MCP_SERVERS = {
+type HasUniqueNames<
+  T extends readonly { name: string }[],
+  Seen extends string = never,
+> = T extends readonly [
+  infer Head extends { name: string },
+  ...infer Tail extends readonly { name: string }[],
+]
+  ? Head["name"] extends Seen
+    ? false
+    : HasUniqueNames<Tail, Seen | Head["name"]>
+  : true;
+
+function ensureUniqueToolNames<
+  const T extends {
+    [K in InternalMCPServerNameType]: InternalMCPServerEntry<K>;
+  },
+>(
+  servers: T & {
+    [K in InternalMCPServerNameType]: HasUniqueNames<
+      T[K]["metadata"]["tools"]
+    > extends true
+      ? unknown
+      : { __duplicateToolNames: never };
+  }
+): T {
+  return servers;
+}
+
+export const INTERNAL_MCP_SERVERS = ensureUniqueToolNames({
   // Note:
   // ids should be stable, do not change them when moving internal servers to production as it would break existing agents.
 
@@ -1204,7 +1235,7 @@ export const INTERNAL_MCP_SERVERS = {
   // Using satisfies here instead of: type to avoid TypeScript widening the type and breaking the type inference for AutoInternalMCPServerNameType.
 } satisfies {
   [K in InternalMCPServerNameType]: InternalMCPServerEntry<K>;
-};
+});
 
 type IsRestrictedCallback = (params: {
   plan: PlanType;
@@ -1508,12 +1539,17 @@ export function matchesInternalMCPServerName(
   return false;
 }
 
-export function getInternalMCPServerMetadata<
-  N extends InternalMCPServerNameType,
->(name: N): (typeof INTERNAL_MCP_SERVERS)[N]["metadata"] {
-  const server = INTERNAL_MCP_SERVERS[name];
+export function getInternalMCPServerMetadata(name: InternalMCPServerNameType) {
+  const { serverInfo, tools }: ServerMetadata =
+    INTERNAL_MCP_SERVERS[name].metadata;
 
-  return server.metadata;
+  return {
+    serverInfo,
+    tools: tools.map(({ schema, ...tool }) => ({
+      ...tool,
+      inputSchema: zodToJsonSchema(z.object(schema)) as JSONSchema,
+    })),
+  };
 }
 
 const SENSITIVITY_LABEL_PROVIDER_BY_SERVER: Partial<
