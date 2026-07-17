@@ -8,7 +8,7 @@ import { OpenAIResponsesLLM } from "@app/lib/api/llm/clients/openai";
 import { isOpenAIResponsesWhitelistedModelId } from "@app/lib/api/llm/clients/openai/types";
 import type { LLM } from "@app/lib/api/llm/llm";
 import type { Authenticator } from "@app/lib/auth";
-import type { StreamEndpointConstructor } from "@app/lib/model_constructors/stream/configuration";
+import type { DustStreamEndpointConstructor } from "@app/lib/llms/stream/dust_stream_endpoint";
 import type { ProviderId } from "@app/lib/model_constructors/types/provider_ids";
 import type { Region } from "@app/lib/model_constructors/types/regions";
 import { isModelId } from "@app/types/assistant/models/models";
@@ -37,7 +37,7 @@ export interface LegacyBuildParams {
 
 /** The static surface we read off a registered stream endpoint constructor. */
 export interface EndpointInfo {
-  ctor: StreamEndpointConstructor;
+  ctor: DustStreamEndpointConstructor;
   id: string;
   providerId: ProviderId;
   region: Region;
@@ -45,7 +45,7 @@ export interface EndpointInfo {
 }
 
 export function readEndpointInfo(
-  ctor: StreamEndpointConstructor
+  ctor: DustStreamEndpointConstructor
 ): EndpointInfo {
   return {
     ctor,
