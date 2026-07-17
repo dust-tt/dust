@@ -6,8 +6,10 @@ export function WithDustClaudeSonnetFourDotSixConfig<
   abstract class DustClaudeSonnetFourDotSix extends Base {
     static readonly displayName = "Claude Sonnet 4.6";
     static readonly description =
-      "Anthropic's Claude Sonnet 4.6 model, balancing power and efficiency with enhanced reasoning capabilities (200k context).";
+      "Anthropic's Claude Sonnet 4.6 model, balancing power and efficiency with enhanced reasoning capabilities (250k context).";
     static readonly defaultReasoningEffort = "medium";
+    // Dust caps usable context at 250k; the model itself supports 1M.
+    static readonly contextSize = 250_000;
     static readonly byok = true;
   }
 
