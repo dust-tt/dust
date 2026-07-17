@@ -485,11 +485,21 @@ export const InputBar = React.memo(function InputBar({
               )
             : // Preview test: sparkle Composer floating card styling (see sparkle/src/components/Composer.tsx).
               classNames(
-                "w-full rounded-3xl",
-                "border border-white/90 bg-[#fbfbfb]",
-                "shadow-[0px_-0.5px_1px_1px_rgba(0,0,0,0.02),0px_8px_10px_-6px_rgba(0,0,0,0.1),0px_20px_25px_-5px_rgba(0,0,0,0.1),0px_0px_1px_0px_rgba(0,0,0,0.07)]",
-                "dark:border-transparent dark:bg-stone-800",
-                "dark:shadow-[inset_0px_0px_0px_1px_rgba(255,255,255,0.04),inset_0px_1px_0px_0px_rgba(255,255,255,0.02),0px_0px_0px_1px_rgba(0,0,0,0.14),0px_1px_1px_-0.5px_rgba(0,0,0,0.18),0px_3px_3px_-1.5px_rgba(0,0,0,0.18),0px_6px_6px_-3px_rgba(0,0,0,0.18)]"
+                // Figma corner smoothing (radius 24, smoothing 100%): squircle at 36px when
+                // corner-shape is supported, plain 24px rounded corners otherwise.
+                "w-full rounded-3xl [corner-shape:squircle]",
+                "supports-[corner-shape:squircle]:rounded-[36px]",
+                "border border-white/90",
+                "bg-[#fbfbfb] shadow-[0px_-0.5px_1px_1px_rgba(0,0,0,0.02),0px_8px_10px_-6px_rgba(0,0,0,0.1),0px_20px_25px_-5px_rgba(0,0,0,0.1),0px_0px_1px_0px_rgba(0,0,0,0.07)]",
+                // Focus state (Figma 11174:21613): white surface, softened drop shadows.
+                "has-[.tiptap:focus]:bg-white",
+                "has-[.tiptap:focus]:shadow-[0px_-0.5px_1px_1px_rgba(0,0,0,0.02),0px_8px_10px_-6px_rgba(0,0,0,0.07),0px_20px_25px_-5px_rgba(0,0,0,0.07),0px_0px_1px_0px_rgba(0,0,0,0.07)]",
+                // Dark (Figma 12333:27502): Surface/4 background + Surfaces/Dark/4 effect set.
+                "dark:border-transparent dark:bg-[#2e2c28]",
+                "dark:shadow-[inset_0px_1px_0px_0px_rgba(255,255,255,0.02),inset_0px_0px_0px_1px_rgba(255,255,255,0.04),0px_0px_0px_1px_rgba(0,0,0,0.14),0px_1px_1px_-0.5px_rgba(0,0,0,0.18),0px_3px_3px_-1.5px_rgba(0,0,0,0.18),0px_6px_6px_-3px_rgba(0,0,0,0.18)]",
+                // Dark has no distinct focus treatment: re-assert the dark surface + shadows over the light focus overrides.
+                "dark:has-[.tiptap:focus]:bg-[#2e2c28]",
+                "dark:has-[.tiptap:focus]:shadow-[inset_0px_1px_0px_0px_rgba(255,255,255,0.02),inset_0px_0px_0px_1px_rgba(255,255,255,0.04),0px_0px_0px_1px_rgba(0,0,0,0.14),0px_1px_1px_-0.5px_rgba(0,0,0,0.18),0px_3px_3px_-1.5px_rgba(0,0,0,0.18),0px_6px_6px_-3px_rgba(0,0,0,0.18)]"
               )
         )}
       >
