@@ -36,7 +36,7 @@ export function PokeWorkspacePage({ children }: PokeLayoutProps) {
   if (!isAuthenticated || !authContext) {
     return (
       <div className="flex h-screen w-full items-center justify-center">
-        <Spinner size="xl" />
+        <Spinner size="lg" />
       </div>
     );
   }

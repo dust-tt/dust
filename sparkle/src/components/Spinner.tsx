@@ -1,7 +1,7 @@
 import { customColors } from "@sparkle/lib/colors";
 import React from "react";
 
-const SPINNER_SIZES = ["xs", "sm", "md", "lg", "xl", "2xl"] as const;
+const SPINNER_SIZES = ["xs", "sm", "md", "lg"] as const;
 type SpinnerSizeType = (typeof SPINNER_SIZES)[number];
 
 const SPINNER_TYPES = ["worm", "shapes", "tri"] as const;
@@ -27,8 +27,6 @@ const pxSizeMap: Record<SpinnerSizeType, number> = {
   sm: 20,
   md: 24,
   lg: 32,
-  xl: 128,
-  "2xl": 192,
 };
 
 // All sizes target 2px physical stroke (strokeWidth = 2 * 24 / renderedPx).
@@ -39,8 +37,6 @@ const strokeWidthMap: Record<SpinnerSizeType, number> = {
   sm: 2.4, // 2px physical @ 20px
   md: 2, // 2px physical @ 24px
   lg: 1.5, // 2px physical @ 32px
-  xl: 1, // 5.3px physical @ 128px
-  "2xl": 1, // 8px physical @ 192px
 };
 
 // ─── Worm spinner ─────────────────────────────────────────────────────────────

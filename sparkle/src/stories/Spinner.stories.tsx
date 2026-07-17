@@ -3,7 +3,7 @@ import React from "react";
 
 import { Spinner } from "../index_with_tw_base";
 
-const SPINNER_SIZES = ["xs", "sm", "md", "lg", "xl", "2xl"] as const;
+const SPINNER_SIZES = ["xs", "sm", "md", "lg"] as const;
 const SPINNER_TYPES = ["worm", "shapes", "tri"] as const;
 const SPINNER_VARIANTS = [
   "mono",
@@ -82,12 +82,8 @@ export const Display: Story = {
   render: () => (
     <div className="flex items-end gap-12">
       <div className="flex flex-col items-center gap-3">
-        <Spinner size="xl" variant="mono" />
+        <Spinner size="lg" variant="mono" />
         <span className="text-xs text-muted-foreground">xl — 128px</span>
-      </div>
-      <div className="flex flex-col items-center gap-3">
-        <Spinner size="2xl" variant="mono" />
-        <span className="text-xs text-muted-foreground">2xl — 192px</span>
       </div>
     </div>
   ),
@@ -104,7 +100,7 @@ export const ShapesVariant: Story = {
   render: () => (
     <div className="flex flex-col gap-6">
       <div className="flex items-end gap-6">
-        {(["xs", "sm", "md", "lg", "xl"] as const).map((size) => (
+        {(["xs", "sm", "md", "lg"] as const).map((size) => (
           <div key={size} className="flex flex-col items-center gap-2">
             <Spinner size={size} type="shapes" variant="mono" />
             <span className="text-xs text-muted-foreground">{size}</span>
@@ -130,7 +126,7 @@ export const TriVariant: Story = {
   render: () => (
     <div className="flex flex-col gap-6">
       <div className="flex items-end gap-6">
-        {(["xs", "sm", "md", "lg", "xl"] as const).map((size) => (
+        {(["xs", "sm", "md", "lg"] as const).map((size) => (
           <div key={size} className="flex flex-col items-center gap-2">
             <Spinner size={size} type="tri" variant="mono" />
             <span className="text-xs text-muted-foreground">{size}</span>
@@ -210,7 +206,7 @@ export const PageLoading: Story = {
   render: () => (
     <div className="flex h-96 w-full items-center justify-center rounded-xl bg-background">
       <div className="flex flex-col items-center gap-4">
-        <Spinner size="xl" variant="mono" />
+        <Spinner size="lg" variant="mono" />
         <span className="text-base text-muted-foreground">
           Loading workspace…
         </span>

@@ -57,7 +57,7 @@ export function OAuthSetupRedirectPage() {
   if (!wId || !providerParam) {
     return (
       <div className="flex h-64 items-center justify-center">
-        <Spinner size="xl" />
+        <Spinner size="lg" />
       </div>
     );
   }
@@ -80,7 +80,7 @@ export function OAuthSetupRedirectPage() {
   // Loading or redirecting
   return (
     <div className="flex h-64 items-center justify-center">
-      <Spinner size="xl" />
+      <Spinner size="lg" />
     </div>
   );
 }
