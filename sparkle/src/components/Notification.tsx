@@ -1,14 +1,15 @@
 import {
+  AlertCircle,
   Bell01,
   CheckCircle,
   InfoCircle,
   XCircle,
+  XClose,
 } from "@sparkle/icons/v2-stroke";
-import { assertNever } from "@sparkle/lib/internal_utils";
 import { cn } from "@sparkle/lib/utils";
-import { cva } from "class-variance-authority";
 import React from "react";
 import { Toaster, toast } from "sonner";
+
 import { Icon } from "./Icon";
 
 const NOTIFICATION_DELAY_MS = 5000;
@@ -16,37 +17,28 @@ const NOTIFICATION_DELAY_MS = 5000;
 export type NotificationType = {
   title?: string;
   description?: string;
-  type: "success" | "error" | "info" | "hello";
+  type: "success" | "error" | "info" | "warning" | "hello";
 };
 
 const NotificationsContext = React.createContext<(n: NotificationType) => void>(
   (n) => n
 );
 
-const notificationVariants = cva("", {
-  variants: {
-    type: {
-      success: "text-success-600",
-      error: "text-warning-600",
-      info: "text-info-700",
-      hello: "text-primary-700",
-    },
-  },
-});
+const iconMap: Record<NotificationType["type"], React.FC> = {
+  success: CheckCircle,
+  error: XCircle,
+  info: InfoCircle,
+  warning: AlertCircle,
+  hello: Bell01,
+};
 
-const notificationIconBgVariants = cva(
-  "h-8 w-8 flex items-center justify-center rounded-lg shrink-0",
-  {
-    variants: {
-      type: {
-        success: "bg-success-100",
-        error: "bg-warning-100",
-        info: "bg-info-100",
-        hello: "bg-primary-100",
-      },
-    },
-  }
-);
+const iconColorMap: Record<NotificationType["type"], string> = {
+  success: "text-success-500",
+  error: "text-warning-500",
+  info: "text-info-700",
+  warning: "text-amber-500",
+  hello: "text-primary-500",
+};
 
 export function NotificationContent({
   type,
@@ -54,58 +46,48 @@ export function NotificationContent({
   description,
   onDismiss,
 }: NotificationType & { onDismiss?: () => void }) {
-  const icon = (() => {
-    switch (type) {
-      case "success":
-        return CheckCircle;
-      case "error":
-        return XCircle;
-      case "info":
-        return InfoCircle;
-      case "hello":
-        return Bell01;
-      default:
-        assertNever(type);
-    }
-  })();
+  const icon = iconMap[type];
+  const iconColor = iconColorMap[type];
 
   return (
     <div
       className={cn(
-        "pointer-events-auto flex max-w-[400px] flex-row items-start gap-2 rounded-2xl border",
-        "border-border",
-        "bg-background shadow-md backdrop-blur-sm",
-        "cursor-pointer p-2 pb-3 pr-3 transition-colors hover:bg-muted/50 border-border/50"
+        "pointer-events-auto relative flex w-[246px] flex-col overflow-clip",
+        "rounded-xl border border-border bg-background p-2",
+        "shadow-[0px_0.5px_1px_0px_rgba(0,0,0,0.04),0px_1px_1px_0px_rgba(0,0,0,0.06),inset_2px_-2px_7px_0px_rgba(0,0,0,0.01),inset_0px_4px_4px_0px_rgba(255,255,255,0.08)]"
       )}
-      onClick={onDismiss}
     >
-      <div className={notificationIconBgVariants({ type })}>
-        <Icon
-          size="sm"
-          visual={icon}
-          className={notificationVariants({ type })}
-          aria-hidden="true"
-        />
-      </div>
-
-      <div className="flex min-w-0 flex-grow flex-col">
-        <div
-          className={cn(
-            "heading-base line-clamp-1 pt-1",
-            notificationVariants({ type })
-          )}
-        >
-          {title || type}
-        </div>
-        {description && (
-          <div
-            className={cn(
-              "text-muted-foreground",
-              "line-clamp-3 text-sm font-normal"
-            )}
-          >
-            {description}
+      <div className="flex items-start justify-between gap-1">
+        <div className="flex min-w-0 flex-1 items-start gap-1">
+          <div className="mt-[2px] shrink-0">
+            <Icon
+              visual={icon}
+              size="xs"
+              className={iconColor}
+              aria-hidden="true"
+            />
           </div>
+          <div className="flex min-w-0 flex-col">
+            {title && (
+              <span className="text-sm font-medium leading-5 tracking-[-0.02em] text-foreground">
+                {title}
+              </span>
+            )}
+            {description && (
+              <span className="text-xs leading-4 text-muted-foreground">
+                {description}
+              </span>
+            )}
+          </div>
+        </div>
+        {onDismiss && (
+          <button
+            onClick={onDismiss}
+            className="mt-[2px] shrink-0 cursor-pointer text-muted-foreground transition-colors hover:text-foreground"
+            aria-label="Dismiss notification"
+          >
+            <Icon visual={XClose} size="xs" />
+          </button>
         )}
       </div>
     </div>
@@ -137,23 +119,17 @@ export const Notification = {
       <NotificationsContext.Provider value={sendNotification}>
         {children}
         <Toaster
-          toastOptions={{
-            className: cn(
-              "transition-all duration-300 select-none",
-              "data-[state=open]:animate-in data-[state=closed]:animate-out",
-              "data-[swipe=move]:translate-x-[var(--toast-swipe-move-x)]",
-              "data-[swipe=move]:translate-y-[var(--toast-swipe-move-y)]",
-              "data-[state=closed]:fade-out-80 data-[state=closed]:slide-out-to-right-full",
-              "data-[state=open]:slide-in-from-right-full"
-            ),
-          }}
           className="flex flex-col items-end"
           duration={NOTIFICATION_DELAY_MS}
-          visibleToasts={9}
+          visibleToasts={5}
           closeButton={false}
           expand={false}
           invert={false}
           swipeDirections={["right"]}
+          toastOptions={{
+            unstyled: true,
+            className: "w-fit select-none",
+          }}
         />
       </NotificationsContext.Provider>
     );
