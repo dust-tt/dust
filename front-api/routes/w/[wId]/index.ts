@@ -47,6 +47,7 @@ import featureFlags from "./feature-flags";
 import files from "./files";
 import googleDrivePickerToken from "./google_drive/picker_token";
 import googleDriveSearchForAuthorization from "./google_drive/search_for_authorization";
+import governancePermissions from "./governance-permissions";
 import groups from "./groups";
 import invitations from "./invitations";
 import keys from "./keys";
@@ -795,6 +796,7 @@ app.route(
   "/google_drive/search_for_authorization",
   googleDriveSearchForAuthorization
 );
+app.route("/governance-permissions", governancePermissions);
 app.route("/groups", groups);
 app.route("/invitations", invitations);
 app.route("/keys", keys);

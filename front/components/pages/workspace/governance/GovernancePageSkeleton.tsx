@@ -1,4 +1,5 @@
-import { cn, LoadingBlock, Page, Toggle01Left } from "@dust-tt/sparkle";
+import { GovernancePageLayout } from "@app/components/pages/workspace/governance/GovernancePageLayout";
+import { cn, LoadingBlock } from "@dust-tt/sparkle";
 
 function SkeletonRow() {
   return (
@@ -35,12 +36,7 @@ function SkeletonSection({ labelWidth, rows }: SkeletonSectionProps) {
 
 export function GovernancePageSkeleton() {
   return (
-    <Page>
-      <Page.Header
-        title="Workspace & Governance"
-        description="Manage what members can do in your workspace."
-        icon={Toggle01Left}
-      />
+    <GovernancePageLayout>
       <div className="flex items-center justify-between">
         <div className="flex flex-1 flex-col gap-2">
           <LoadingBlock className="h-6 w-40" />
@@ -57,6 +53,6 @@ export function GovernancePageSkeleton() {
         <SkeletonSection labelWidth="w-32" rows={2} />
         <SkeletonSection labelWidth="w-44" rows={2} />
       </div>
-    </Page>
+    </GovernancePageLayout>
   );
 }
