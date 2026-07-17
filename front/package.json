@@ -167,6 +167,7 @@
     "isomorphic-dompurify": "^2.32.0",
     "jsdom": "^26.0.0",
     "jsforce": "^3.8.2",
+    "json-schema-to-typescript": "^15.0.4",
     "jsonwebtoken": "^9.0.0",
     "jszip": "^3.10.1",
     "jwks-rsa": "^3.1.0",
