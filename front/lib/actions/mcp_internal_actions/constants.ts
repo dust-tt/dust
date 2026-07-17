@@ -604,13 +604,6 @@ export const INTERNAL_MCP_SERVERS = {
     allowMultipleInstances: true,
     isRestricted: undefined,
     isPreview: false,
-    tools_stakes: {
-      search_in_files: "never_ask",
-      search_drive_items: "never_ask",
-      update_word_document: "high",
-      get_file_content: "never_ask",
-      upload_file: "high",
-    },
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
@@ -622,15 +615,6 @@ export const INTERNAL_MCP_SERVERS = {
     allowMultipleInstances: true,
     isRestricted: undefined,
     isPreview: false,
-    tools_stakes: {
-      search_messages_content: "never_ask",
-      list_teams: "never_ask",
-      list_users: "never_ask",
-      list_channels: "never_ask",
-      list_chats: "never_ask",
-      list_messages: "never_ask",
-      post_message: "medium",
-    },
     tools_arguments_requiring_approval: {
       post_message: ["channelId"],
     },
@@ -668,11 +652,6 @@ export const INTERNAL_MCP_SERVERS = {
       return !featureFlags.includes("http_client_tool");
     },
     isPreview: true,
-    tools_stakes: {
-      send_request: "low",
-      websearch: "never_ask",
-      webbrowser: "never_ask",
-    },
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
