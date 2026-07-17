@@ -95,7 +95,6 @@ import {
   type ModelConversationTypeMultiActions,
 } from "@app/types/assistant/generation";
 import { isByokProviderId } from "@app/types/assistant/models/providers";
-import { getModelMaxInputTokens } from "@app/types/assistant/models/utils";
 import { isComputerFeatureEnabled } from "@app/types/shared/feature_flags";
 import type { ModelId } from "@app/types/shared/model_id";
 import { assertNever } from "@app/types/shared/utils/assert_never";
@@ -647,7 +646,7 @@ export async function runModel(
           model,
           prompt: promptText,
           tools,
-          allowedTokenCount: getModelMaxInputTokens(model),
+          allowedTokenCount: model.contextSize - model.generationTokensCount,
           agentConfiguration,
           leadingMessages,
           enabledSkills,
