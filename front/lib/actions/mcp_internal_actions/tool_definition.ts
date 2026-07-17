@@ -151,6 +151,7 @@ export type InternalMCPToolType<TName extends string = string> = Omit<
   displayLabels: ToolDisplayLabels;
   toolCostCategory: ToolCostCategory;
   freeUsage: boolean;
+  stake: MCPToolStakeLevelType;
 };
 
 export type ServerMetadata<
@@ -160,5 +161,4 @@ export type ServerMetadata<
 > = {
   serverInfo: InternalMCPServerDefinitionType & { name: TServerName };
   tools: InternalMCPToolType<TToolName>[];
-  tools_stakes: Record<TToolName, MCPToolStakeLevelType>;
 };
