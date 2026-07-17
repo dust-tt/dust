@@ -7,6 +7,7 @@ import { USED_MODEL_CONFIGS } from "@app/components/providers/types";
 import { isModelAvailable } from "@app/lib/assistant";
 import { useAuth, useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { useRegionContext } from "@app/lib/auth/RegionContext";
+import { useAppRouter } from "@app/lib/platform";
 import { AUTO_MODEL_ID } from "@app/types/assistant/models/auto";
 import type {
   ModelConfigurationType,
@@ -14,6 +15,7 @@ import type {
 } from "@app/types/assistant/models/types";
 import type { ProvidersSelection } from "@app/types/provider_selection";
 import type { WorkspaceType } from "@app/types/user";
+import { ArrowRight, Button } from "@dust-tt/sparkle";
 import groupBy from "lodash/groupBy";
 import mapValues from "lodash/mapValues";
 import uniqBy from "lodash/uniqBy";
@@ -35,8 +37,9 @@ export function ModelProvidersPageContent({
 }: ModelProvidersPageContentProps) {
   const { subscription } = useAuth();
   const { plan } = subscription;
-  const { featureFlags } = useFeatureFlags();
+  const { featureFlags, hasFeature } = useFeatureFlags();
   const { regionInfo } = useRegionContext();
+  const router = useAppRouter();
 
   // Filter models based on feature flags and build modelProviders dynamically
   const filteredModels = uniqBy(USED_MODEL_CONFIGS, (m) => m.modelId).filter(
@@ -82,6 +85,26 @@ export function ModelProvidersPageContent({
         </>
       )}
       <EmbeddingModelSelect workspace={workspace} />
+      {hasFeature("models_picker") && (
+        <div className="flex flex-col gap-2 p-3">
+          <div className="font-semibold">Model access tiers</div>
+          <div className="flex items-center justify-between gap-4">
+            <div className="text-sm text-muted-foreground">
+              Model access tiers let members use models up to their highest
+              allowed tier — set per workspace, group, or member.
+            </div>
+            <Button
+              label="Manage in Usage"
+              variant="highlight-ghost"
+              size="sm"
+              iconRight={ArrowRight}
+              onClick={() => {
+                void router.push(`/w/${workspace.sId}/usage`);
+              }}
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 }
