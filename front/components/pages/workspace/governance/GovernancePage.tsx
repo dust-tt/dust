@@ -24,12 +24,21 @@ import {
 import { useAppRouter } from "@app/lib/platform";
 import { useGovernancePermissions } from "@app/lib/swr/governance";
 import { useGroups } from "@app/lib/swr/groups";
+import type { GovernancePermissionsByKey } from "@app/types/api/governance";
 import type {
+  CapabilitySpec,
   GovernancePermission,
   GrantType,
-  GroupPermissionResourceType,
+} from "@app/types/group_permissions";
+import {
+  AGENT_GOVERNANCE_CAPABILITIES,
+  BILLING_AND_SECURITY_GOVERNANCE_CAPABILITIES,
+  capabilityKey,
+  FRAME_GOVERNANCE_CAPABILITIES,
+  SKILL_GOVERNANCE_CAPABILITIES,
 } from "@app/types/group_permissions";
 import { MANAGEABLE_GROUP_KINDS } from "@app/types/groups";
+import { removeNulls } from "@app/types/shared/utils/general";
 import type {
   LightWorkspaceType,
   WorkspaceSharingPolicy,
@@ -46,7 +55,6 @@ import {
   ShapesPlus,
   Toggle01Left,
 } from "@dust-tt/sparkle";
-import groupBy from "lodash/groupBy";
 import type { ComponentType } from "react";
 
 function useUpdateGovernancePermission(owner: LightWorkspaceType) {
@@ -75,6 +83,31 @@ function isFrameCapabilityEnabled(
   }
 }
 
+// Split the keyed permission map into the page's four sections. Each section pulls its capabilities
+// from the map in catalog (display) order, dropping any the current user's role isn't allowed to
+// see (absent from the map). Frame filtering by sharing policy is applied by the caller, which has
+// the runtime policy.
+function groupGovernancePermissionsBySection(
+  governancePermissions: GovernancePermissionsByKey
+): {
+  agents: GovernancePermission[];
+  skills: GovernancePermission[];
+  frames: GovernancePermission[];
+  billingAndSecurity: GovernancePermission[];
+} {
+  const resolve = (specs: CapabilitySpec[]): GovernancePermission[] =>
+    removeNulls(
+      specs.map((spec) => governancePermissions[capabilityKey(spec)])
+    );
+
+  return {
+    agents: resolve(AGENT_GOVERNANCE_CAPABILITIES),
+    skills: resolve(SKILL_GOVERNANCE_CAPABILITIES),
+    frames: resolve(FRAME_GOVERNANCE_CAPABILITIES),
+    billingAndSecurity: resolve(BILLING_AND_SECURITY_GOVERNANCE_CAPABILITIES),
+  };
+}
+
 export const GovernancePage = () => {
   const { hasFeature } = useFeatureFlags();
   const hasAdminGovernanceFeature = hasFeature("admin_governance");
@@ -94,16 +127,11 @@ export const GovernancePage = () => {
 
   const isLoading = isGroupsLoading || isGovernancePermissionsLoading;
 
-  const governancePermissionsMap: Partial<
-    Record<GroupPermissionResourceType, GovernancePermission[]>
-  > = groupBy(governancePermissions, "resourceType");
+  const { agents, skills, frames, billingAndSecurity } =
+    groupGovernancePermissionsBySection(governancePermissions);
 
-  const billingPermissions = governancePermissionsMap.billing ?? [];
-  const identityPermissions = governancePermissionsMap.identity ?? [];
-
-  const framePermissions = (governancePermissionsMap.frame ?? []).filter(
-    (permission) =>
-      isFrameCapabilityEnabled(permission.grantType, sharingPolicy)
+  const framePermissions = frames.filter((permission) =>
+    isFrameCapabilityEnabled(permission.grantType, sharingPolicy)
   );
 
   const router = useAppRouter();
@@ -121,13 +149,13 @@ export const GovernancePage = () => {
       id: "agents",
       label: "Agents",
       icon: Robot,
-      governancePermissions: governancePermissionsMap.agent ?? [],
+      governancePermissions: agents,
     },
     {
       id: "skills",
       label: "Skills",
       icon: PuzzlePiece01,
-      governancePermissions: governancePermissionsMap.skill ?? [],
+      governancePermissions: skills,
     },
     ...(framePermissions.length > 0 || isAdmin
       ? [
@@ -145,10 +173,7 @@ export const GovernancePage = () => {
             id: "billing" as const,
             label: "Billing and security",
             icon: Lock01,
-            governancePermissions: [
-              ...billingPermissions,
-              ...identityPermissions,
-            ],
+            governancePermissions: billingAndSecurity,
           },
         ]
       : []),
@@ -163,7 +188,7 @@ export const GovernancePage = () => {
   }
 
   return (
-    <Page>
+    <div className="flex flex-col gap-6">
       <Page.Header
         title="Workspace & Governance"
         description="Manage what members can do in your workspace."
@@ -190,11 +215,7 @@ export const GovernancePage = () => {
             )}
             {governancePermissions.map((governancePermission) => (
               <GovernanceSettingRow
-                key={
-                  governancePermission.grantType +
-                  ":" +
-                  governancePermission.resourceType
-                }
+                key={capabilityKey(governancePermission)}
                 governancePermission={governancePermission}
                 groups={groups}
                 onChange={(newConfiguration) =>
@@ -237,6 +258,6 @@ export const GovernancePage = () => {
           </>
         )}
       </div>
-    </Page>
+    </div>
   );
 };

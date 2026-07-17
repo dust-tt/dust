@@ -8,10 +8,14 @@ import { GroupPermissionModel } from "@app/lib/resources/storage/models/group_pe
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import { withTransaction } from "@app/lib/utils/sql_utils";
 import type {
+  CapabilitySpec,
   GrantType,
   GroupPermissionResourceType,
 } from "@app/types/group_permissions";
-import { WHOLE_TYPE_RESOURCE_ID } from "@app/types/group_permissions";
+import {
+  capabilityKey,
+  WHOLE_TYPE_RESOURCE_ID,
+} from "@app/types/group_permissions";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Ok } from "@app/types/shared/result";
@@ -43,11 +47,6 @@ interface TypeWideGrantSpec {
   transaction?: Transaction;
 }
 
-interface CapabilitySpec {
-  grantType: GrantType;
-  resourceType: GroupPermissionResourceType;
-}
-
 // The state of a governance capability. "everyone" and "disabled" carry no groups; "groups" lists
 // the specific (non-global) groups it is granted to. Scope values match the governance page's
 // PermissionConfigurationScope.
@@ -55,10 +54,6 @@ export type CapabilityState =
   | { scope: "disabled" }
   | { scope: "everyone" }
   | { scope: "groups"; groups: GroupResource[] };
-
-function capabilityKey({ grantType, resourceType }: CapabilitySpec): string {
-  return `${grantType}:${resourceType}`;
-}
 
 interface ListForGroupsSpec {
   groupModelIds: ModelId[];

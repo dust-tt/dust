@@ -35,7 +35,7 @@ function SkeletonSection({ labelWidth, rows }: SkeletonSectionProps) {
 
 export function GovernancePageSkeleton() {
   return (
-    <Page>
+    <div className="flex flex-col gap-6">
       <Page.Header
         title="Workspace & Governance"
         description="Manage what members can do in your workspace."
@@ -57,6 +57,6 @@ export function GovernancePageSkeleton() {
         <SkeletonSection labelWidth="w-32" rows={2} />
         <SkeletonSection labelWidth="w-44" rows={2} />
       </div>
-    </Page>
+    </div>
   );
 }

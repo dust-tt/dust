@@ -101,3 +101,41 @@ export type GovernancePermission = {
   resourceType: GroupPermissionResourceType;
   configuration: GovernancePermissionConfiguration;
 };
+
+// A governance capability: a (grantType, resourceType) pair, without its configuration.
+export type CapabilitySpec = Pick<
+  GovernancePermission,
+  "grantType" | "resourceType"
+>;
+
+// Stable string key for a governance capability.
+export type CapabilityKey = `${GrantType}:${GroupPermissionResourceType}`;
+
+// The single source of truth for the capability-key format; used to key capability-state maps.
+export function capabilityKey({
+  grantType,
+  resourceType,
+}: CapabilitySpec): CapabilityKey {
+  return `${grantType}:${resourceType}`;
+}
+
+/**
+ * Catalog of the governance capabilities the Workspace & Governance page manages, grouped by the
+ * section they belong to.
+ */
+export const AGENT_GOVERNANCE_CAPABILITIES: CapabilitySpec[] = [
+  { grantType: "create", resourceType: "agent" },
+  { grantType: "publish", resourceType: "agent" },
+];
+export const SKILL_GOVERNANCE_CAPABILITIES: CapabilitySpec[] = [
+  { grantType: "create", resourceType: "skill" },
+  { grantType: "publish", resourceType: "skill" },
+];
+export const FRAME_GOVERNANCE_CAPABILITIES: CapabilitySpec[] = [
+  { grantType: "invite", resourceType: "frame" },
+  { grantType: "publish", resourceType: "frame" },
+];
+export const BILLING_AND_SECURITY_GOVERNANCE_CAPABILITIES: CapabilitySpec[] = [
+  { grantType: "admin", resourceType: "billing" },
+  { grantType: "admin", resourceType: "identity" },
+];
