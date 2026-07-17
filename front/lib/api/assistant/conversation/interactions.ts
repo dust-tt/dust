@@ -1,7 +1,13 @@
-import type {
-  Interaction,
-  MinimalMessageType,
-} from "@app/lib/api/assistant/conversation_rendering/pruning";
+// The minimal shape groupMessagesIntoInteractions needs to slice a conversation into
+// interactions. Consumers that need more (e.g. token counts for pruning) instantiate
+// Interaction<T> with a richer message type.
+export type MinimalMessageType = {
+  role: string;
+};
+
+export type Interaction<T extends MinimalMessageType> = {
+  messages: T[];
+};
 
 /**
  * Group messages into interactions (user turn + agent responses), using turn type

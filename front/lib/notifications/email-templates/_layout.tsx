@@ -52,13 +52,13 @@ export const EmailLayout = ({
         >
           <div>This is an automated email. Please do not reply.</div>
           <div>
-            Manage your notifications in{" "}
+            You can manage your notification preferences from{" "}
             <a
-              href={`${config.getAppUrl()}/w/${workspace.id}/me`}
+              href={`${config.getAppUrl()}/w/${workspace.id}`}
               target="_blank"
               style={{ color: "#1C91FF" }}
             >
-              your profile settings
+              your workspace
             </a>
             .
           </div>

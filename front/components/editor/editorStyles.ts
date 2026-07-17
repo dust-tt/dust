@@ -3,7 +3,7 @@ import { cva } from "class-variance-authority";
 export const editorVariants = cva(
   [
     "overflow-auto border rounded-xl px-3 pt-2 pb-8 resize-y",
-    "transition-all duration-200",
+    "transition-[background-color,border-color,box-shadow,outline-color,opacity] duration-200 motion-reduce:transition-none",
     "bg-muted-background",
   ],
   {

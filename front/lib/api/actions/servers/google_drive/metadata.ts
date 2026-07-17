@@ -441,7 +441,7 @@ export const GOOGLE_DRIVE_WRITE_TOOLS_METADATA = createToolsRecord({
         "An array of operations to apply to the document. Operations are resolved server-side from the current document state."
       ),
     },
-    stake: "medium",
+    stake: "low",
     displayLabels: {
       running: "Updating Google document",
       done: "Update Google document",
@@ -478,7 +478,7 @@ export const GOOGLE_DRIVE_WRITE_TOOLS_METADATA = createToolsRecord({
         .default("INSERT_ROWS")
         .describe("How the input data should be inserted."),
     },
-    stake: "medium",
+    stake: "low",
     displayLabels: {
       running: "Appending to Google spreadsheet",
       done: "Append to Google spreadsheet",
@@ -498,7 +498,7 @@ export const GOOGLE_DRIVE_WRITE_TOOLS_METADATA = createToolsRecord({
         "An array of operations to apply to the spreadsheet. Operations are resolved server-side from the current spreadsheet state."
       ),
     },
-    stake: "medium",
+    stake: "low",
     displayLabels: {
       running: "Updating Google spreadsheet",
       done: "Update Google spreadsheet",
@@ -518,7 +518,7 @@ export const GOOGLE_DRIVE_WRITE_TOOLS_METADATA = createToolsRecord({
         "An array of operations to apply to the presentation. Operations are resolved server-side from the current presentation state."
       ),
     },
-    stake: "medium",
+    stake: "low",
     displayLabels: {
       running: "Updating Google presentation",
       done: "Update Google presentation",
@@ -569,7 +569,7 @@ export const GOOGLE_DRIVE_WRITE_TOOLS_METADATA = createToolsRecord({
         .describe("A custom message to include in the notification email."),
       capabilities: capabilitiesSchema,
     },
-    stake: "medium",
+    stake: "low",
     displayLabels: {
       running: "Sharing Google Drive file",
       done: "Share Google Drive file",
@@ -592,7 +592,7 @@ export const GOOGLE_DRIVE_WRITE_TOOLS_METADATA = createToolsRecord({
         .describe("The new access level to set."),
       capabilities: capabilitiesSchema,
     },
-    stake: "medium",
+    stake: "low",
     displayLabels: {
       running: "Updating file permission",
       done: "Update file permission",
@@ -614,7 +614,7 @@ export const GOOGLE_DRIVE_WRITE_TOOLS_METADATA = createToolsRecord({
         ),
       capabilities: capabilitiesSchema,
     },
-    stake: "medium",
+    stake: "low",
     displayLabels: {
       running: "Removing file access",
       done: "Remove file access",

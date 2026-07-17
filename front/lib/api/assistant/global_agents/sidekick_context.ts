@@ -13,6 +13,7 @@ import type { Authenticator } from "@app/lib/auth";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import type { ModelConfigurationType } from "@app/types/assistant/models/types";
+import { getAvailableReasoningEfforts } from "@app/types/assistant/models/types";
 import type { FavoritePlatform } from "@app/types/favorite_platforms";
 import { isFavoritePlatform } from "@app/types/favorite_platforms";
 import type { JobType } from "@app/types/job_type";
@@ -45,10 +46,16 @@ export function formatAvailableModels(
   const sections = Array.from(byProvider.entries()).map(
     ([provider, providerModels]) => {
       const modelLines = providerModels
-        .map(
-          (m) =>
-            `- **${m.displayName}** (modelId: ${m.modelId}): ${m.description}${m.supportsVision ? " (vision)" : " (no vision)"}`
-        )
+        .map((m) => {
+          const reasoningEfforts = getAvailableReasoningEfforts(
+            m.supportedReasoningEfforts
+          );
+          const reasoningInfo =
+            reasoningEfforts.length > 1
+              ? ` (supported reasoning efforts: ${reasoningEfforts.join(", ")})`
+              : "";
+          return `- **${m.displayName}** (modelId: ${m.modelId}): ${m.description}${m.supportsVision ? " (vision)" : " (no vision)"}${reasoningInfo}`;
+        })
         .join("\n");
       return `<provider id="${provider}">\n${modelLines}\n</provider>`;
     }

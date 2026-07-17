@@ -4,6 +4,9 @@
   "private": true,
   "description": "Embedded Bun runner for dsbx function run/get.",
   "type": "module",
+  "imports": {
+    "#*": "./*"
+  },
   "scripts": {
     "test": "bun test",
     "build": "bun build runner.ts --bundle --target=bun --external drizzle-kit --outfile runner.js"

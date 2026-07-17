@@ -1,4 +1,3 @@
-import * as enabledModels from "@app/lib/advanced_models/enabled_models";
 import { pickPreferredLargeModel } from "@app/lib/api/assistant/model_preferences";
 import {
   getWhitelistedProviders,
@@ -7,6 +6,7 @@ import {
 import { resolveModel } from "@app/lib/api/assistant/resolve_model";
 import { config as regionConfig } from "@app/lib/api/regions/config";
 import { Authenticator } from "@app/lib/auth";
+import * as enabledModels from "@app/lib/model_tiers/enabled_models";
 import { ProviderCredentialResource } from "@app/lib/resources/provider_credential_resource";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";

@@ -364,6 +364,12 @@ export const STATIC_MODEL_SUPPORTED_REASONING_EFFORTS = {
     medium: true,
     high: true,
   },
+  "accounts/fireworks/models/kimi-k2p6": {
+    none: true,
+    light: true,
+    medium: true,
+    high: true,
+  },
   "accounts/fireworks/models/minimax-m2p5": {
     none: false,
     light: true,

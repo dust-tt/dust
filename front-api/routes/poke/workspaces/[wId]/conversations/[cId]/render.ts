@@ -132,9 +132,10 @@ app.post(
         conversation,
       });
 
-    const skillServers = await getSkillServers(auth, {
+    const { skillServers, systemSkillServers } = await getSkillServers(auth, {
       agentConfiguration,
-      skills: [...systemSkills, ...enabledSkills],
+      systemSkills,
+      enabledSkills,
     });
 
     const clientSideMCPActionConfigurations =
@@ -181,7 +182,7 @@ app.post(
         agentMessage: placeholderAgentMessage,
         clientSideActionConfigurations: clientSideMCPActionConfigurations,
       },
-      { jitServers, skillServers }
+      { jitServers, skillServers, systemSkillServers }
     );
 
     const availableActions = serverToolsAndInstructions.flatMap((s) => s.tools);

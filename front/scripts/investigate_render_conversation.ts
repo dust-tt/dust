@@ -107,9 +107,10 @@ makeScript(
         conversation,
       });
 
-    const skillServers = await getSkillServers(auth, {
+    const { skillServers, systemSkillServers } = await getSkillServers(auth, {
       agentConfiguration,
-      skills: [...systemSkills, ...enabledSkills],
+      enabledSkills,
+      systemSkills,
     });
 
     const clientSideMCPActionConfigurations =
@@ -156,7 +157,7 @@ makeScript(
         agentMessage: placeholderAgentMessage,
         clientSideActionConfigurations: clientSideMCPActionConfigurations,
       },
-      { jitServers, skillServers }
+      { jitServers, skillServers, systemSkillServers }
     );
 
     const availableActions = serverToolsAndInstructions.flatMap((s) => s.tools);

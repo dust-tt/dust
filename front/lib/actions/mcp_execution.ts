@@ -71,6 +71,20 @@ function getFileName(resource: { uri: string }): string {
     : (resource.uri.split("/").pop() ?? "generated-file");
 }
 
+/**
+ * Builds the model-visible snippet for a content block whose full text was offloaded to the
+ * file system by persistToolOutput. The scoped path pointer is what lets the model read the
+ * rest of the content back, so it must always be present.
+ */
+function makeOffloadedSnippet(text: string, scopedPath: string): string {
+  const head = text.substring(0, FILE_OFFLOAD_SNIPPET_LENGTH);
+  // The offload threshold is in bytes while the snippet cut is in characters, so multibyte
+  // content can be offloaded without losing any character here — only claim truncation when
+  // characters were actually dropped.
+  const truncatedSuffix = head.length < text.length ? "... (truncated)" : "";
+  return `${head}${truncatedSuffix}\n[Full content archived at ${scopedPath}]`;
+}
+
 export async function processToolNotification(
   auth: Authenticator,
   notification: MCPProgressNotificationType,
@@ -209,9 +223,10 @@ export async function processToolResults(
           // If persistToolOutput wrote this block to DustFileSystem (too large), return a resource
           // block pointing at the scoped path. The model reads it via the `cat` tool.
           if (res.value !== null) {
-            const snippet =
-              block.text.substring(0, FILE_OFFLOAD_SNIPPET_LENGTH) +
-              "... (truncated)";
+            const snippet = makeOffloadedSnippet(
+              block.text,
+              res.value.scopedPath
+            );
             return {
               content: {
                 type: "resource",
@@ -399,8 +414,7 @@ export async function processToolResults(
           if (res.value !== null) {
             const snippet =
               text !== null
-                ? text.substring(0, FILE_OFFLOAD_SNIPPET_LENGTH) +
-                  "... (truncated)"
+                ? makeOffloadedSnippet(text, res.value.scopedPath)
                 : "";
             return {
               content: {
@@ -413,6 +427,18 @@ export async function processToolResults(
               file: null,
             };
           }
+
+          localLogger.info(
+            {
+              mimeType: block.resource.mimeType ?? null,
+              toolName: toolConfiguration.name,
+              serverName: toolConfiguration.mcpServerName,
+              blobBytes: isBlobResource(block)
+                ? Buffer.byteLength(block.resource.blob, "utf8")
+                : 0,
+            },
+            "MCP tool returned an embedded resource with an unsupported or missing mimeType; storing it inline in the conversation."
+          );
 
           return {
             content: {

@@ -41,6 +41,7 @@ import {
   DropdownMenuSearchbar,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
+  DropdownTooltipTrigger,
   LoadingBlock,
   ShapesPlus,
 } from "@dust-tt/sparkle";
@@ -92,11 +93,11 @@ interface CapabilitiesPickerItemsListProps {
   emptyMessage: string;
   items: CapabilityPickerItem[];
   onItemSelect: (item: CapabilityPickerItem) => void;
-  onSkillDetails: (skillId: string) => void;
-  onToolDetails: (serverView: MCPServerViewType) => void;
+  onSkillDetails?: (skillId: string) => void;
+  onToolDetails?: (serverView: MCPServerViewType) => void;
 }
 
-function CapabilitiesPickerItemsList({
+export function CapabilitiesPickerItemsList({
   emptyMessage,
   items,
   onItemSelect,
@@ -119,7 +120,7 @@ function CapabilitiesPickerItemsList({
         const endComponent =
           item.kind === "uninstalled_tool" ? (
             <Chip size="xs" color="info" label="Configure" />
-          ) : (
+          ) : onSkillDetails && onToolDetails ? (
             <Button
               icon={DotsHorizontal}
               variant="outline"
@@ -136,9 +137,9 @@ function CapabilitiesPickerItemsList({
                 }
               }}
             />
-          );
+          ) : undefined;
 
-        return (
+        const menuItem = (
           <DropdownMenuItem
             key={item.id}
             icon={item.icon}
@@ -150,6 +151,19 @@ function CapabilitiesPickerItemsList({
             className="group"
             onClick={() => onItemSelect(item)}
           />
+        );
+
+        return item.kind === "skill" && item.description ? (
+          <DropdownTooltipTrigger
+            key={item.id}
+            description={item.description}
+            side="right"
+            sideOffset={8}
+          >
+            {menuItem}
+          </DropdownTooltipTrigger>
+        ) : (
+          menuItem
         );
       })}
     </div>

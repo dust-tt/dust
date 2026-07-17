@@ -1,9 +1,11 @@
-import { publishSandboxFunctionInvocationEvent } from "@app/lib/api/sandbox_functions/events";
+import { MCP_VALIDATION_OUTPUTS } from "@app/lib/actions/constants";
+import { validateSandboxFunctionAction } from "@app/lib/api/sandbox_functions/validate_action";
 import { SandboxFunctionResource } from "@app/lib/resources/sandbox_function_resource";
 import type {
   PostSandboxFunctionInvocationRequestBody,
   PostSandboxFunctionInvocationResponseBody,
 } from "@app/types/api/sandbox_functions";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 import { redirectToSse } from "@front-api/lib/api/sse/redirect";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
@@ -13,6 +15,18 @@ import { z } from "zod";
 const ParamsSchema = z.object({
   functionIdOrSlug: z.string().min(1),
 });
+
+const ValidateActionParamsSchema = z.object({
+  functionIdOrSlug: z.string().min(1),
+  invocationId: z.string().min(1),
+  actionId: z.string().min(1),
+});
+
+const ValidateActionBodySchema = z
+  .object({
+    approved: z.enum(MCP_VALIDATION_OUTPUTS),
+  })
+  .strict();
 
 const PostSandboxFunctionInvocationBodySchema = z
   .object({
@@ -113,21 +127,71 @@ app.post(
       );
     }
 
-    await publishSandboxFunctionInvocationEvent(
-      {
-        type: "sandbox_function_invocation_created",
-        created: Date.parse(invocationResult.value.createdAt),
-        invocation: invocationResult.value,
-      },
-      { invocationId: invocationResult.value.sId }
-    );
-
     return ctx.json(
       {
-        invocation: invocationResult.value,
+        invocation: invocationResult.value.toJSON(),
       },
       201
     );
+  }
+);
+
+/** @ignoreswagger */
+app.post(
+  "/:invocationId/actions/:actionId/validate-action",
+  validate("param", ValidateActionParamsSchema),
+  validate("json", ValidateActionBodySchema),
+  async (ctx): HandlerResult<{ success: boolean }> => {
+    const auth = ctx.get("auth");
+    const { functionIdOrSlug, invocationId, actionId } = ctx.req.valid("param");
+    const { approved } = ctx.req.valid("json");
+
+    const sandboxFunction = await SandboxFunctionResource.fetchByIdOrSlug(
+      auth,
+      functionIdOrSlug
+    );
+    if (!sandboxFunction) {
+      return apiError(ctx, {
+        status_code: 404,
+        api_error: {
+          type: "sandbox_function_not_found",
+          message: "Sandbox function not found.",
+        },
+      });
+    }
+
+    const result = await validateSandboxFunctionAction(auth, {
+      sandboxFunction,
+      invocationId,
+      actionId,
+      approvalState: approved,
+    });
+    if (result.isErr()) {
+      switch (result.error.type) {
+        case "action_not_found":
+          return apiError(ctx, {
+            status_code: 404,
+            api_error: {
+              type: "action_not_found",
+              message: result.error.message,
+            },
+          });
+        case "action_not_blocked":
+          // The client treats this error type as an already-successful validation (multi-client
+          // races).
+          return apiError(ctx, {
+            status_code: 400,
+            api_error: {
+              type: "action_not_blocked",
+              message: result.error.message,
+            },
+          });
+        default:
+          return assertNever(result.error.type);
+      }
+    }
+
+    return ctx.json({ success: true });
   }
 );
 

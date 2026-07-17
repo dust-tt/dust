@@ -2,6 +2,7 @@ import type { AgentMessageWithStreaming } from "@app/components/assistant/conver
 import type { UserMessageType } from "@app/types/assistant/conversation";
 import type { RichMention } from "@app/types/assistant/mentions";
 import { toMentionType } from "@app/types/assistant/mentions";
+import type { ModelSelectionType } from "@app/types/assistant/models/types";
 import type {
   ContentFragmentsType,
   ContentFragmentType,
@@ -17,6 +18,7 @@ export function createPlaceholderUserMessage({
   rank,
   branchId,
   contentFragments,
+  requestedModel,
 }: {
   input: string;
   mentions: RichMention[];
@@ -24,6 +26,7 @@ export function createPlaceholderUserMessage({
   rank: number;
   branchId: string | null;
   contentFragments?: ContentFragmentsType;
+  requestedModel?: ModelSelectionType | null;
 }): UserMessageType & { contentFragments: ContentFragmentType[] } {
   const createdAt = new Date().getTime();
   const { email, fullName, image, username } = user;
@@ -54,7 +57,7 @@ export function createPlaceholderUserMessage({
       origin: "web",
     },
     reactions: [],
-    requestedModel: null, // TODO(models_picker): add the requested model
+    requestedModel: requestedModel ?? null,
     contentFragments: [
       ...(contentFragments?.uploaded ?? []).map(
         (cf) =>

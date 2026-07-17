@@ -21,6 +21,7 @@ import type {
   LLMStreamMetadata,
   LLMStreamParameters,
 } from "@app/lib/api/llm/types/options";
+import { emitTokenUsageMetrics } from "@app/lib/api/llm/usage_metrics";
 import type { Authenticator } from "@app/lib/auth";
 import { getSupportedModelConfig } from "@app/lib/llms/model_configurations";
 import type { RunUsageType } from "@app/lib/resources/run_resource";
@@ -226,6 +227,15 @@ export abstract class LLM<TPayload = unknown> {
         }
         currentEvent = event;
         buffer.addEvent(currentEvent);
+
+        // Providers report usage exactly once per response, at end of stream. Emitting here in
+        // the base class covers both the new router and the legacy clients.
+        if (currentEvent.type === "token_usage") {
+          emitTokenUsageMetrics(currentEvent.content, [
+            ...metricTags,
+            "surface:stream",
+          ]);
+        }
 
         if (currentEvent.type === "interaction_id") {
           const { modelInteractionId, cacheMissReason } = currentEvent.content;
@@ -603,6 +613,13 @@ export abstract class LLM<TPayload = unknown> {
       let hasError = false;
       for (const event of events) {
         buffer.addEvent(event);
+
+        if (event.type === "token_usage") {
+          emitTokenUsageMetrics(event.content, [
+            ...metricTags,
+            "surface:batch",
+          ]);
+        }
 
         if (event.type === "error") {
           hasError = true;

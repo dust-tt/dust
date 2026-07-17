@@ -11,8 +11,15 @@ import { isRoleType } from "./user";
  * global group: Contains all users from the workspace. Has access to the global
  * Space which holds all existing datasource created before spaces.
  *
- * regular group: Contains specific users added by workspace admins. Has access
- * to the list of spaces configured by workspace admins.
+ * "regular" groups are groups for which users are selected one by one (as opposed
+ * to provisioned groups whose membership is synced from an external identity
+ * provider). They come in two flavors depending on how the group was created:
+ *
+ * regular_auto group: Created implicitly by Dust (e.g. agent editors, space
+ * members).
+ *
+ * regular_manual group: Created manually by the user via the UI. They can be used
+ * to grant specific permissions to users.
  *
  * agent_editors group: Group specific to represent agent editors, tied to an
  *  agent. Has special permissions: not restricted only to admins. Users can
@@ -26,6 +33,7 @@ import { isRoleType } from "./user";
  */
 export const GROUP_KINDS = [
   "regular_auto",
+  "regular_manual",
   // space_editors is used to know if a member of a manual group can edit the group
   "space_editors",
   "global",
@@ -38,8 +46,11 @@ export type GroupKind = (typeof GROUP_KINDS)[number];
 
 // Group kinds that can carry a per-group usage spend limit and be surfaced in
 // the Usage > Groups admin table. Only "provisioned" (SSO/SCIM directory)
-// groups.
-export const CAP_ELIGIBLE_GROUP_KINDS = ["provisioned"] as const;
+// and regular_manual groups.
+export const CAP_ELIGIBLE_GROUP_KINDS = [
+  "provisioned",
+  "regular_manual",
+] as const;
 
 export function isCapEligibleGroupKind(kind: GroupKind): boolean {
   return CAP_ELIGIBLE_GROUP_KINDS.some((k) => k === kind);
@@ -53,6 +64,10 @@ export function isSystemGroupKind(value: GroupKind): boolean {
 }
 export function isGlobalGroupKind(value: GroupKind): boolean {
   return value === "global";
+}
+
+export function isRegularManualGroupKind(value: GroupKind): boolean {
+  return value === "regular_manual";
 }
 
 export function isAgentEditorGroupKind(value: GroupKind): boolean {
@@ -78,6 +93,7 @@ export type GroupType = {
 export const GroupKindCodec = z.enum([
   "global",
   "regular_auto",
+  "regular_manual",
   "space_editors",
   "agent_editors",
   "skill_editors",

@@ -10,6 +10,7 @@ import {
   requiresBearerTokenConfiguration,
 } from "@app/lib/actions/mcp_helper";
 import {
+  getInternalMCPServerToolArgumentsRequiringApproval,
   getInternalMCPServerToolStakes,
   INTERNAL_MCP_SERVERS,
   isInternalMCPServerName,
@@ -116,6 +117,20 @@ export function getDefaultInternalToolStakeLevel(
   return serverConfig.availability === "manual"
     ? FALLBACK_MCP_TOOL_STAKE_LEVEL
     : FALLBACK_INTERNAL_AUTO_SERVERS_TOOL_STAKE_LEVEL;
+}
+
+export function canToolUseMediumStakeLevel(
+  server: MCPServerViewType["server"],
+  toolName: string
+): boolean {
+  if (isRemoteMCPServerType(server) || !isInternalMCPServerName(server.name)) {
+    return false;
+  }
+
+  return Boolean(
+    getInternalMCPServerToolArgumentsRequiringApproval(server.name, toolName)
+      ?.length
+  );
 }
 
 export function getMCPServerFormDefaults(

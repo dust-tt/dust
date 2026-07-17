@@ -285,6 +285,7 @@ const FILES_TOOLS_COMMON_METADATA = {
         ),
     },
     stake: "never_ask" as const,
+    eager: true,
     displayLabels: {
       running: "Writing file",
       done: "Write file",
@@ -339,7 +340,7 @@ const FILES_TOOLS_COMMON_METADATA = {
           `Scoped file path as returned by \`${getPrefixedToolName(FILES_SERVER_NAME, FILES_LIST_ACTION_NAME)}\` (e.g. \`conversation-<id>/output.json\`)`
         ),
     },
-    stake: "medium" as const,
+    stake: "low" as const,
     displayLabels: {
       running: "Deleting file",
       done: "Deleted file",
@@ -412,6 +413,7 @@ const EXTRACT_TEXT_TOOL = {
       ),
   },
   stake: "never_ask" as const,
+  eager: true,
   displayLabels: {
     running: "Extracting text from document",
     done: "Extracted text from document",

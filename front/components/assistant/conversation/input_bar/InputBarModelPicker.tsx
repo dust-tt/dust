@@ -19,9 +19,11 @@ import {
 import { getModelProviderLogo } from "@app/components/providers/types";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { useFeatureFlags } from "@app/lib/auth/AuthContext";
+import { useClientType } from "@app/lib/context/clientType";
 import { useModels } from "@app/lib/swr/models";
 import { useIsMobile } from "@app/lib/swr/useIsMobile";
 import type { AgentModelConfigurationType } from "@app/types/assistant/agent";
+import { AUTO_MODEL_ID } from "@app/types/assistant/models/auto";
 import { getProviderDisplayName } from "@app/types/assistant/models/providers";
 import type {
   ModelConfigurationType,
@@ -62,6 +64,8 @@ export function InputBarModelPicker({
   const hasModelsPicker = hasFeature("models_picker");
   const { isDark } = useTheme();
   const isMobile = useIsMobile();
+  const clientType = useClientType();
+  const isWidthConstrained = isMobile || clientType === "extension";
 
   const [isOpen, setIsOpen] = useState(false);
   const [search, setSearch] = useState("");
@@ -126,12 +130,14 @@ export function InputBarModelPicker({
 
   const allModelsWithEfforts = useMemo<ModelWithReasoningEffort[]>(
     () =>
-      models.flatMap((model) =>
-        getSelectableReasoningEfforts(model).map((effort) => ({
-          model,
-          effort,
-        }))
-      ),
+      models
+        .filter((model) => model.modelId !== AUTO_MODEL_ID)
+        .flatMap((model) =>
+          getSelectableReasoningEfforts(model).map((effort) => ({
+            model,
+            effort,
+          }))
+        ),
     [models]
   );
 
@@ -202,15 +208,11 @@ export function InputBarModelPicker({
       ? { model: selection.model, effort: selection.effort }
       : null;
   }, [agentModel, models]);
-  // Drop the agent default from Suggested
+  // Hide the Suggested section entirely when the agent has a configured
+  // default: the default already surfaces the recommended pick, so the
+  // suggestions would be redundant.
   const suggested = useMemo(
-    () =>
-      suggestedModelsWithEfforts.filter(
-        (s) =>
-          agentDefault?.effort !== s.effort ||
-          agentDefault?.model.modelId !== s.model.modelId ||
-          agentDefault?.model.providerId !== s.model.providerId
-      ),
+    () => (agentDefault ? [] : suggestedModelsWithEfforts),
     [suggestedModelsWithEfforts, agentDefault]
   );
 
@@ -276,17 +278,18 @@ export function InputBarModelPicker({
 
   const auto = showAuto ? { isOn: isAutoOn } : null;
 
-  const label = isMobile
+  const label = isWidthConstrained
     ? "Model"
     : `Model: ${getModelWithReasoningEffortLabel(shown)}`;
 
   const buttonIcon =
-    isMobile && shown.kind !== "auto"
+    isWidthConstrained && shown.kind !== "auto"
       ? getModelProviderLogo(shown.model.providerId, isDark)
       : undefined;
 
   const toggleAuto = () => {
     if (isAutoOn) {
+      setUserOverride(null);
       setExpanded(true);
     } else {
       commitSelection({ kind: "auto", toSend: AUTO_MODEL_SELECTION });
@@ -312,6 +315,7 @@ export function InputBarModelPicker({
     >
       <DropdownMenuTrigger asChild>
         <Button
+          className="px-2"
           variant="ghost-secondary"
           size={buttonSize}
           label={label}

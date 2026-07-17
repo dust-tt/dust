@@ -643,50 +643,6 @@ describe("UserResource", () => {
         expect(hasApproval).toBe(false);
       });
 
-      it("should create medium-stake tool approval with agentId", async () => {
-        const mcpServerId = "server-456";
-        const toolName = "agent-tool";
-        const agentId = "agent-123";
-
-        await user.createToolApproval(auth, {
-          mcpServerId,
-          toolName,
-          agentId,
-        });
-
-        const hasApproval = await user.hasApprovedTool(auth, {
-          mcpServerId,
-          toolName,
-          agentId,
-        });
-        expect(hasApproval).toBe(true);
-      });
-
-      it("should differentiate approvals by agentId", async () => {
-        const mcpServerId = "server-789";
-        const toolName = "scoped-tool";
-
-        await user.createToolApproval(auth, {
-          mcpServerId,
-          toolName,
-          agentId: "agent-a",
-        });
-
-        const hasApprovalA = await user.hasApprovedTool(auth, {
-          mcpServerId,
-          toolName,
-          agentId: "agent-a",
-        });
-        const hasApprovalB = await user.hasApprovedTool(auth, {
-          mcpServerId,
-          toolName,
-          agentId: "agent-b",
-        });
-
-        expect(hasApprovalA).toBe(true);
-        expect(hasApprovalB).toBe(false);
-      });
-
       it("should create approval with argsAndValues", async () => {
         const mcpServerId = "server-args";
         const toolName = "args-tool";
@@ -704,6 +660,32 @@ describe("UserResource", () => {
           argsAndValues,
         });
         expect(hasApproval).toBe(true);
+      });
+
+      it("should differentiate approvals by argsAndValues", async () => {
+        const mcpServerId = "server-scoped-args";
+        const toolName = "scoped-tool";
+
+        await user.createToolApproval(auth, {
+          mcpServerId,
+          toolName,
+          argsAndValues: { objectName: "Contact" },
+        });
+
+        expect(
+          await user.hasApprovedTool(auth, {
+            mcpServerId,
+            toolName,
+            argsAndValues: { objectName: "Contact" },
+          })
+        ).toBe(true);
+        expect(
+          await user.hasApprovedTool(auth, {
+            mcpServerId,
+            toolName,
+            argsAndValues: { objectName: "Account" },
+          })
+        ).toBe(false);
       });
 
       it("should sort argsAndValues keys for consistent matching", async () => {

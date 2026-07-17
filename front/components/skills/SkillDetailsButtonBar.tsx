@@ -52,7 +52,12 @@ export function SkillDetailsButtonBar({
         />
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button icon={DotsHorizontal} size="sm" variant="ghost" />
+            <Button
+              icon={DotsHorizontal}
+              size="sm"
+              variant="ghost"
+              tooltip="Skill options"
+            />
           </DropdownMenuTrigger>
           <DropdownMenuContent>
             <DropdownMenuItem

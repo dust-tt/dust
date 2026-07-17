@@ -170,7 +170,7 @@ describe("ensureConversationSandboxReady", () => {
     expect(mockPrepareSandboxEgressBeforeMount).toHaveBeenCalledWith(
       auth,
       sandbox,
-      { runtimeOwner: conversationOwner }
+      { runtimeOwner: conversationOwner, egressPolicyOwnerId: conversation.sId }
     );
     expect(mockStartTelemetry).toHaveBeenCalledWith(
       auth,
@@ -182,12 +182,40 @@ describe("ensureConversationSandboxReady", () => {
     expect(mockRefreshSandboxMount).not.toHaveBeenCalled();
     expect(mockEnsureSandboxEgressOnExec).toHaveBeenCalledWith(auth, sandbox, {
       runtimeOwner: conversationOwner,
+      egressPolicyOwnerId: conversation.sId,
       wokeFromSleep: false,
     });
 
     expect(mockSetupSandboxMount.mock.invocationCallOrder[0]).toBeLessThan(
       mockEnsureSandboxEgressOnExec.mock.invocationCallOrder[0]
     );
+  });
+
+  it("scopes egress policy to the Pod for conversations inside a Pod", async () => {
+    mockEnsureSandboxActive.mockResolvedValue(
+      new Ok({ freshlyCreated: true, sandbox, wokeFromSleep: false })
+    );
+    const podConversation = { sId: "conversation-id", spaceId: "space-id" };
+
+    const result = await ensureConversationSandboxReady(
+      auth as never,
+      podConversation as never
+    );
+
+    expect(result.isOk()).toBe(true);
+    // runtimeOwner stays the conversation (env vars, logs, file system)...
+    expect(mockPrepareSandboxEgressBeforeMount).toHaveBeenCalledWith(
+      auth,
+      sandbox,
+      // ...but the egress policy is scoped to the Pod's shared file.
+      { runtimeOwner: conversationOwner, egressPolicyOwnerId: "space-id" }
+    );
+    expect(mockEnsureSandboxEgressOnExec).toHaveBeenCalledWith(auth, sandbox, {
+      runtimeOwner: conversationOwner,
+      egressPolicyOwnerId: "space-id",
+      wokeFromSleep: false,
+    });
+    expect(mockForConversation).toHaveBeenCalledWith(auth, podConversation);
   });
 
   it("starts GCS mount before initial egress prep resolves", async () => {
@@ -238,6 +266,7 @@ describe("ensureConversationSandboxReady", () => {
     expect(mockRefreshSandboxMount).toHaveBeenCalledWith(sandbox, image);
     expect(mockEnsureSandboxEgressOnExec).toHaveBeenCalledWith(auth, sandbox, {
       runtimeOwner: conversationOwner,
+      egressPolicyOwnerId: conversation.sId,
       wokeFromSleep: true,
     });
   });
@@ -291,7 +320,7 @@ describe("ensureConversationSandboxReady", () => {
     expect(mockPrepareSandboxEgressBeforeMount).toHaveBeenCalledWith(
       auth,
       sandbox,
-      { runtimeOwner: podOwner }
+      { runtimeOwner: podOwner, egressPolicyOwnerId: pod.sId }
     );
     expect(mockStartTelemetry).toHaveBeenCalledWith(auth, sandbox, podOwner);
     expect(mockSetupSandboxMount).toHaveBeenCalledWith(sandbox, image);
@@ -305,6 +334,7 @@ describe("ensureConversationSandboxReady", () => {
     ).toBeLessThan(mockEnsureSandboxEgressOnExec.mock.invocationCallOrder[0]);
     expect(mockEnsureSandboxEgressOnExec).toHaveBeenCalledWith(auth, sandbox, {
       runtimeOwner: podOwner,
+      egressPolicyOwnerId: pod.sId,
       wokeFromSleep: false,
     });
   });

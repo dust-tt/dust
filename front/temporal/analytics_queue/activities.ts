@@ -19,7 +19,7 @@ import { isLLMTraceId } from "@app/lib/api/llm/traces/buffer";
 import type { AuthenticatorType } from "@app/lib/auth";
 import { Authenticator } from "@app/lib/auth";
 import {
-  intelligenceAwuFromRunUsages,
+  intelligenceAwuFromRunUsagesGroupedByRunKey,
   toolAwuFromAction,
 } from "@app/lib/metronome/events";
 import type { AgentMessageFeedbackModel } from "@app/lib/models/agent/conversation";
@@ -45,6 +45,7 @@ import type { SkillDefinition } from "@app/lib/resources/skill/code_defined/shar
 import { SystemSkillsRegistry } from "@app/lib/resources/skill/code_defined/system_registry";
 import { UserModel } from "@app/lib/resources/storage/models/user";
 import { makeSId } from "@app/lib/resources/string_ids";
+import { TagResource } from "@app/lib/resources/tags_resource";
 import logger from "@app/logger/logger";
 import type {
   AgentLoopArgs,
@@ -206,7 +207,14 @@ export async function storeAgentAnalytics(
     contextOrigin
   );
 
-  const llmAwu = intelligenceAwuFromRunUsages(runUsages, contextOrigin);
+  // Collect the agent's tag ids at message time.
+  // NOTE: may not be stable over time, see `collectAgentTagIds` for details.
+  const agentTagIds = await collectAgentTagIds(auth, agentAgentMessageRow);
+
+  const llmAwu = intelligenceAwuFromRunUsagesGroupedByRunKey(
+    runUsages,
+    contextOrigin
+  );
   const toolAwu = toolsUsed.reduce((sum, tool) => sum + tool.cost_awu, 0);
   const cost = {
     full_awu: llmAwu + toolAwu,
@@ -245,6 +253,7 @@ export async function storeAgentAnalytics(
   const document: AgentMessageAnalyticsData = {
     agent_id: agentAgentMessageRow.agentConfigurationId,
     agent_version: agentAgentMessageRow.agentConfigurationVersion.toString(),
+    agent_tag_ids: agentTagIds,
     ancestor_message_ids: ancestorMessageIds,
     conversation_id: conversationRow.sId,
     cost,
@@ -284,12 +293,15 @@ export async function storeAgentAnalytics(
 }
 
 /**
- * Fetch the run usages for all runs associated with this agent message.
+ * Fetch the run usages for all runs associated with this agent message,
+ * tagged with the runKey of the agent-loop execution they belong to (so
+ * intelligence cost can be ceiled per execution, matching the billed
+ * Metronome events).
  */
 async function fetchRunUsagesForMessage(
   auth: Authenticator,
   agentMessage: AgentMessageModel
-): Promise<RunUsageType[]> {
+): Promise<(RunUsageType & { runKey: string | null })[]> {
   if (!agentMessage.runIds || agentMessage.runIds.length === 0) {
     return [];
   }
@@ -395,6 +407,40 @@ async function collectToolUsageFromMessage(
       cost_awu,
     };
   });
+}
+
+/**
+ * Collect the tag ids attached to the agent configuration version that
+ * produced this message. Tags are stored per agent-configuration version, so we
+ * resolve the exact version to capture the agent's tags at message time. Global
+ * agents are code-defined and have no DB-backed tags.
+ *
+ * NOTE: there are several ways to edit agent tags, which creates a discrepancy:
+ *  - if a tag is added/removed through the route `w/{Id}/assistant/agent_configurations/{sId}/tags`,
+ *    the tag_agents model is updated and no new agent_configuration version is created.
+ *  - if a tag is added/removed through the route `w/{Id}/assistant/agent_configurations/{sId}`,
+ *    the agent_configuration version is bumped and the tag_agents model is updated.
+ * It results that we can loose the history of tags for a given agent_configuration version if the first
+ * route is used.
+ */
+async function collectAgentTagIds(
+  auth: Authenticator,
+  agentAgentMessageRow: AgentMessageModel
+): Promise<string[]> {
+  const { agentConfigurationId, agentConfigurationVersion } =
+    agentAgentMessageRow;
+
+  if (isGlobalAgentId(agentConfigurationId)) {
+    return [];
+  }
+
+  const tags = await TagResource.listForAgentVersion(
+    auth,
+    agentConfigurationId,
+    agentConfigurationVersion
+  );
+
+  return tags.map((tag) => tag.sId);
 }
 
 /**

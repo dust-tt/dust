@@ -110,6 +110,32 @@ export function getPodSandboxFunctionsMountPoint(podId: string): string {
 export const POD_SANDBOX_DATABASES_DIR = "/pod-state/databases";
 
 /**
+ * Per-database size quota in bytes (1 GiB). The other half of the paths-env.v1 contract: like
+ * the databases dir, front owns this value and passes it per exec as
+ * `DUST_POD_DATABASE_MAX_SIZE_BYTES`; both `@dust/pod`'s `db()` and the `dsbx db query` runner
+ * require it and carry no fallback (see `cli/dust-sandbox/pod/db.ts`). A single source here
+ * keeps the quota the workload writes against identical to the one `db_query` enforces.
+ */
+export const POD_SANDBOX_DATABASE_MAX_SIZE_BYTES = 1024 * 1024 * 1024;
+
+/**
+ * The env vars every pod-database exec (`dsbx function run` and every `dsbx db` subcommand)
+ * must carry so the bun child resolves the databases dir and the size quota. Returned as a
+ * fresh object so callers can spread it into their own env without sharing a reference.
+ */
+export function podDatabaseExecEnvVars(): {
+  DUST_POD_DATABASES_DIR: string;
+  DUST_POD_DATABASE_MAX_SIZE_BYTES: string;
+} {
+  return {
+    DUST_POD_DATABASES_DIR: POD_SANDBOX_DATABASES_DIR,
+    DUST_POD_DATABASE_MAX_SIZE_BYTES: String(
+      POD_SANDBOX_DATABASE_MAX_SIZE_BYTES
+    ),
+  };
+}
+
+/**
  * Prefix for the pod's Litestream state replica (LTX chains for the pod's SQLite databases). The
  * sandbox's litestream daemon is the only writer, through the dust-state-only gcsfuse mount at
  * /pod-state/replica. Never mounted under /files, never a FileResource: cleanup is a wholesale

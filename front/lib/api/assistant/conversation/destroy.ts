@@ -29,7 +29,6 @@ import {
   ProjectTaskSourceModel,
 } from "@app/lib/resources/storage/models/project_task";
 import { WakeUpResource } from "@app/lib/resources/wakeup_resource";
-import logger from "@app/logger/logger";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
@@ -187,18 +186,20 @@ export async function destroyConversation(
 ): Promise<Result<void, Error>> {
   const owner = auth.getNonNullableWorkspace();
 
-  // Best-effort scrub of the conversation's sandbox egress allowlist file
-  // (owner-keyed, so it is not deleted with individual sandboxes). A failure
-  // logs but does not block the destroy.
-  const deleteOwnerPolicyRes = await deleteOwnerPolicy(auth, conversation.sId);
-  if (deleteOwnerPolicyRes.isErr()) {
-    logger.warn(
-      {
-        err: deleteOwnerPolicyRes.error,
-        conversationId: conversation.sId,
-      },
-      "Failed to delete conversation egress policy file on destroy."
+  // Delete the conversation's sandbox egress allowlist file (owner-keyed, so
+  // it is not deleted with individual sandboxes). Pod conversations never own
+  // a file (they share the Pod's policy file, which is scrubbed by
+  // hardDeleteSpace) so skip them. A GCS failure aborts the destroy before
+  // any row is touched; callers run in Temporal activities, whose retry
+  // policy retries the whole destroy.
+  if (conversation.spaceId === null) {
+    const deleteOwnerPolicyRes = await deleteOwnerPolicy(
+      auth,
+      conversation.sId
     );
+    if (deleteOwnerPolicyRes.isErr()) {
+      return deleteOwnerPolicyRes;
+    }
   }
 
   await ConversationForkResource.deleteForConversationModelId(auth, {

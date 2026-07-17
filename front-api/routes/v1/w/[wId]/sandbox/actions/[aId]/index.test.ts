@@ -78,6 +78,19 @@ describe("GET /api/v1/w/[wId]/sandbox/actions/[aId] (function invocation)", () =
     });
   });
 
+  it("returns pending while the action awaits authentication", async () => {
+    const { token, workspace, action } = await setupWithAction();
+    await action.updateStatus("blocked_authentication_required");
+
+    const response = await getSandboxAction(workspace, token, action.sId);
+
+    expect(response.status).toBe(202);
+    expect(await response.json()).toEqual({
+      status: "pending",
+      actionId: action.sId,
+    });
+  });
+
   it("returns the output once the action succeeded", async () => {
     const { auth, token, workspace, action } = await setupWithAction();
 

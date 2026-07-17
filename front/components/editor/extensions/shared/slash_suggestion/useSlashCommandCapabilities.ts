@@ -95,7 +95,11 @@ export function useInputBarSlashCommandCapabilities({
 
   return {
     capabilityItems,
-    isLoading: isSkillsLoading || isSpacesLoading || isServerViewsLoading,
+    // Every workspace has at least one global skill and one tool, so stop loading
+    // as soon as either source returns a matching capability.
+    isLoading:
+      capabilityItems.length === 0 &&
+      (isSkillsLoading || isSpacesLoading || isServerViewsLoading),
   };
 }
 

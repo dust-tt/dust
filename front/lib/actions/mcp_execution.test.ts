@@ -11,7 +11,10 @@ import {
   getAugmentedInputs,
   processToolResults,
 } from "@app/lib/actions/mcp_execution";
-import type { DataSourceNodeContentType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
+import type {
+  BrowseResultResourceType,
+  DataSourceNodeContentType,
+} from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import type { ToolContext } from "@app/lib/actions/types";
 import { TOOL_OUTPUTS_FOLDER_NAME } from "@app/lib/api/files/mount_path";
 import { Authenticator } from "@app/lib/auth";
@@ -35,6 +38,19 @@ import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { assert, describe, expect, it, vi } from "vitest";
+
+// Cushion over FILE_OFFLOAD_SNIPPET_LENGTH for the "... (truncated)" marker and the
+// "[Full content archived at {scopedPath}]" pointer line appended to offload snippets.
+const SNIPPET_SUFFIX_CUSHION_LENGTH = 256;
+
+// Repeats `chunk` until the result exceeds FILE_OFFLOAD_TEXT_SIZE_BYTES (ASCII only:
+// 1 character = 1 byte) — and therefore also FILE_OFFLOAD_SNIPPET_LENGTH characters — so the
+// block qualifies for size-based offloading and its snippet gets the truncation marker.
+function makeTextAboveOffloadThreshold(chunk: string): string {
+  return chunk.repeat(
+    Math.ceil((FILE_OFFLOAD_TEXT_SIZE_BYTES + 1) / chunk.length)
+  );
+}
 
 // Mock file storage to avoid cloud storage interactions.
 vi.mock("@app/lib/api/files/processing", async (importOriginal) => {
@@ -273,13 +289,20 @@ describe("processToolResults", () => {
     expect(outputItems).toHaveLength(1);
     const stored = outputItems[0].content;
 
-    // The large text block should be converted to a resource with a truncated snippet.
+    // The large text block should be converted to a resource with a truncated snippet
+    // pointing at the offloaded file.
     expect(stored.type).toBe("resource");
     if (stored.type === "resource" && "text" in stored.resource) {
       expect(stored.resource.text.length).toBeLessThanOrEqual(
-        FILE_OFFLOAD_SNIPPET_LENGTH + 50
+        FILE_OFFLOAD_SNIPPET_LENGTH + SNIPPET_SUFFIX_CUSHION_LENGTH
       );
       expect(stored.resource.text).toContain("... (truncated)");
+      expect(stored.resource.text).toContain(
+        `[Full content archived at ${stored.resource.uri}]`
+      );
+      expect(stored.resource.uri).toMatch(
+        new RegExp(`${TOOL_OUTPUTS_FOLDER_NAME}/`)
+      );
     }
 
     // Offloaded to DustFileSystem, so generatedFiles is empty.
@@ -309,9 +332,14 @@ describe("processToolResults", () => {
     expect(stored.type).toBe("resource");
     if (stored.type === "resource" && "text" in stored.resource) {
       expect(stored.resource.text.length).toBeLessThanOrEqual(
-        FILE_OFFLOAD_SNIPPET_LENGTH + 50
+        FILE_OFFLOAD_SNIPPET_LENGTH + SNIPPET_SUFFIX_CUSHION_LENGTH
       );
       expect(stored.resource.text).toContain("... (truncated)");
+      expect(stored.resource.text).toMatch(
+        new RegExp(
+          `\\[Full content archived at .*${TOOL_OUTPUTS_FOLDER_NAME}/.*\\]`
+        )
+      );
     }
 
     // Offloaded to DustFileSystem, so generatedFiles is empty.
@@ -474,6 +502,101 @@ describe("processToolResults", () => {
     expect(toolOutputWrite?.content).toEqual(
       Buffer.from("# My Notion Page\n\nSome content here.")
     );
+  });
+
+  it("should offload small BROWSE_RESULT block keeping its full text in the snippet", async () => {
+    const { auth, toolContext } = await setupTest();
+
+    fileStorageMock.reset();
+
+    const pageText = "A short web page.";
+    const browseResult: BrowseResultResourceType = {
+      mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.BROWSE_RESULT,
+      requestedUrl: "https://example.com/short",
+      uri: "https://example.com/short",
+      text: pageText,
+      title: "Short Page",
+      responseCode: "200",
+    };
+
+    const { outputItems } = await processToolResults(auth, {
+      localLogger: logger.child({ test: true }),
+      toolContext,
+      toolCallResultContent: [{ type: "resource", resource: browseResult }],
+    });
+
+    const toolOutputWrite = fileStorageMock.saveFileCalls.find((call) =>
+      call.filePath.includes(`${TOOL_OUTPUTS_FOLDER_NAME}/`)
+    );
+    expect(toolOutputWrite).toBeDefined();
+    expect(toolOutputWrite?.content).toEqual(Buffer.from(pageText));
+
+    expect(outputItems).toHaveLength(1);
+    const stored = outputItems[0].content;
+    expect(stored.type).toBe("resource");
+    if (stored.type === "resource" && "text" in stored.resource) {
+      expect(stored.resource.text).toContain(pageText);
+      // Nothing was dropped, so no truncation marker — only the archive pointer.
+      expect(stored.resource.text).not.toContain("... (truncated)");
+      expect(stored.resource.text).toMatch(
+        new RegExp(
+          `\\[Full content archived at .*${TOOL_OUTPUTS_FOLDER_NAME}/\\d+_short_page\\.md\\]`
+        )
+      );
+    }
+  });
+
+  it(`should offload large BROWSE_RESULT block to ${TOOL_OUTPUTS_FOLDER_NAME}/ with a snippet pointing at the archived file`, async () => {
+    const { auth, toolContext } = await setupTest();
+
+    fileStorageMock.reset();
+
+    const pageText = makeTextAboveOffloadThreshold(
+      "Interesting web page content. "
+    );
+    const browseResult: BrowseResultResourceType = {
+      mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.BROWSE_RESULT,
+      requestedUrl: "https://example.com/long",
+      uri: "https://example.com/long",
+      text: pageText,
+      title: "Long Page",
+      responseCode: "200",
+    };
+
+    const { outputItems } = await processToolResults(auth, {
+      localLogger: logger.child({ test: true }),
+      toolContext,
+      toolCallResultContent: [{ type: "resource", resource: browseResult }],
+    });
+
+    const toolOutputWrite = fileStorageMock.saveFileCalls.find((call) =>
+      call.filePath.includes(`${TOOL_OUTPUTS_FOLDER_NAME}/`)
+    );
+    expect(toolOutputWrite).toBeDefined();
+    expect(toolOutputWrite?.filePath).toMatch(
+      new RegExp(`${TOOL_OUTPUTS_FOLDER_NAME}/\\d+_long_page\\.md$`)
+    );
+    expect(toolOutputWrite?.content).toEqual(Buffer.from(pageText));
+
+    expect(outputItems).toHaveLength(1);
+    const stored = outputItems[0].content;
+    expect(stored.type).toBe("resource");
+    if (stored.type === "resource" && "text" in stored.resource) {
+      expect(stored.resource.text.length).toBeLessThanOrEqual(
+        FILE_OFFLOAD_SNIPPET_LENGTH + SNIPPET_SUFFIX_CUSHION_LENGTH
+      );
+      expect(stored.resource.text).toContain("... (truncated)");
+      // The snippet must point at the archived file so the model can read the full page.
+      expect(stored.resource.text).toMatch(
+        new RegExp(
+          `\\[Full content archived at .*${TOOL_OUTPUTS_FOLDER_NAME}/\\d+_long_page\\.md\\]`
+        )
+      );
+      // The browse resource keeps the browsed url as its uri.
+      if ("uri" in stored.resource) {
+        expect(stored.resource.uri).toBe("https://example.com/long");
+      }
+    }
   });
 
   it(`should persist large plain text block to ${TOOL_OUTPUTS_FOLDER_NAME}/ as .txt`, async () => {

@@ -37,7 +37,7 @@ import type {
   SubscriptionPerSeatPricing,
   SubscriptionType,
 } from "@app/types/plan";
-import { isSubscriptionMetronomeBilled } from "@app/types/plan";
+import { isCreditPricedPlan } from "@app/types/plan";
 import {
   Button,
   Chip,
@@ -288,12 +288,12 @@ export function SubscriptionPage() {
   const isLoading =
     isTrialInfoLoading || isSeatsCountLoading || isPerSeatPricingLoading;
 
-  const isMetronome = isSubscriptionMetronomeBilled(subscription);
+  const isCreditPriced = isCreditPricedPlan(subscription.plan);
   useEffect(() => {
-    if (isMetronome) {
+    if (isCreditPriced) {
       void router.replace(`/w/${owner.sId}/billing`);
     }
-  }, [isMetronome, owner.sId, router]);
+  }, [isCreditPriced, owner.sId, router]);
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   useEffect(() => {
@@ -463,7 +463,7 @@ export function SubscriptionPage() {
     workspaceId: owner.sId,
   });
 
-  if (isMetronome) {
+  if (isCreditPriced) {
     return null;
   }
 

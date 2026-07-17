@@ -1,5 +1,6 @@
 import { isDustLikeAgent } from "@app/lib/api/assistant/global_agents/prompt_context";
 import {
+  type CacheDiagnosticsKey,
   getPreviousMessageId,
   setPreviousMessageId,
 } from "@app/lib/api/llm/cache_diagnostics";
@@ -279,10 +280,12 @@ export async function getOutputFromLLMStream(
   // can report why the cache prefix diverged. Keyed by conversation and agent in
   // Redis so the chain survives across steps and user turns. `null` (no prior, or
   // expired) is still a valid opt-in value. `undefined` keeps the feature off.
-  const cacheDiagnosticsKey = {
+  const cacheDiagnosticsKey: CacheDiagnosticsKey = {
     conversationId: conversation.sId,
     agentConfigurationId: agentConfiguration.sId,
+    providerId: model.providerId,
   };
+
   const previousMessageId = cacheDiagnosticsEnabled
     ? await getPreviousMessageId(cacheDiagnosticsKey)
     : undefined;

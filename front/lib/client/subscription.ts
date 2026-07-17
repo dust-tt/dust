@@ -5,7 +5,7 @@ import { useAppRouter } from "@app/lib/platform";
 import type { KillSwitchType } from "@app/lib/poke/types";
 import { useGeolocation } from "@app/lib/swr/geo";
 import type { SupportedCurrency } from "@app/types/currency";
-import { isSubscriptionMetronomeBilled } from "@app/types/plan";
+import { isCreditPricedPlan } from "@app/types/plan";
 import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
 import { useEffect, useState } from "react";
 import { useKillSwitches } from "../swr/kill";
@@ -292,7 +292,7 @@ export function useRedirectAwayFromCheckoutIfAlreadyPaid(): boolean {
 
   useEffect(() => {
     if (wasAlreadyOnPaidPlan) {
-      const adminTarget = isSubscriptionMetronomeBilled(subscription)
+      const adminTarget = isCreditPricedPlan(subscription.plan)
         ? `/w/${workspace.sId}/billing`
         : `/w/${workspace.sId}/subscription`;
       void router.replace(isAdmin ? adminTarget : `/w/${workspace.sId}`);

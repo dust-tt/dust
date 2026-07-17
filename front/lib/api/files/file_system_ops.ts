@@ -203,7 +203,7 @@ export async function enrichListWithFileResourceIds(
 // FileResource lookup helpers
 // ---------------------------------------------------------------------------
 
-async function fetchLinkedFileResource(
+export async function fetchLinkedFileResource(
   auth: Authenticator,
   dustFs: DustFileSystem,
   scopedPath: string

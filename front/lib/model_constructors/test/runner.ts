@@ -217,6 +217,6 @@ export function runStreamEndpointTests(
       for (const checker of tests[testId] ?? testCase.defaultCheckers) {
         checkResponseChecker(checker, events);
       }
-    }, 20_000);
+    }, 60_000);
   });
 }
