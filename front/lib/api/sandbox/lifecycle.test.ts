@@ -262,6 +262,11 @@ describe("ensureConversationSandboxReady", () => {
     expect(result.isOk()).toBe(true);
     expect(mockPrepareSandboxEgressBeforeMount).not.toHaveBeenCalled();
     expect(mockSetupSandboxMount).not.toHaveBeenCalled();
+    expect(mockStartTelemetry).toHaveBeenCalledWith(
+      auth,
+      sandbox,
+      conversationOwner
+    );
     expect(mockForConversation).toHaveBeenCalledWith(auth, conversation);
     expect(mockRefreshSandboxMount).toHaveBeenCalledWith(sandbox, image);
     expect(mockEnsureSandboxEgressOnExec).toHaveBeenCalledWith(auth, sandbox, {
@@ -280,6 +285,7 @@ describe("ensureConversationSandboxReady", () => {
     expect(result.isOk()).toBe(true);
     expect(mockPrepareSandboxEgressBeforeMount).not.toHaveBeenCalled();
     expect(mockSetupSandboxMount).not.toHaveBeenCalled();
+    expect(mockStartTelemetry).not.toHaveBeenCalled();
     expect(mockForConversation).toHaveBeenCalledWith(auth, conversation);
     expect(mockRefreshSandboxMount).toHaveBeenCalledWith(sandbox, image);
     expect(mockRefreshSandboxMount.mock.invocationCallOrder[0]).toBeLessThan(
