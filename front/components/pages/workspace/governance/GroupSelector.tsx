@@ -80,6 +80,7 @@ export const GroupSelector = ({
       {selectedGroups.map((group) => (
         <Chip
           key={group.sId}
+          className="animate-in fade-in zoom-in-95 duration-200"
           label={group.name}
           size="xs"
           color="highlight"

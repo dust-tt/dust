@@ -6,6 +6,11 @@ import { Page, PuzzlePiece01, SliderToggle } from "@dust-tt/sparkle";
 
 import { WorkspaceSection } from "./WorkspaceSection";
 
+const LABEL = "Browser Extension Tools";
+const DESCRIPTION =
+  "Control whether the Dust browser extension can use MCP tools such as " +
+  "listing and reading browser tabs.";
+
 interface ExtensionMcpToolsSectionProps {
   owner: LightWorkspaceType;
 }
@@ -17,11 +22,6 @@ export function ExtensionMcpToolsSection({
     useExtensionMcpToolsToggle({ owner });
   const { hasFeature } = useFeatureFlags();
 
-  const label = "Browser Extension Tools";
-  const description =
-    "Allow the Dust browser extension to use MCP tools such as listing and " +
-    "reading browser tabs.";
-
   if (!hasFeature("browser_extension_mcp_tools")) {
     return null;
   }
@@ -29,8 +29,8 @@ export function ExtensionMcpToolsSection({
   if (hasFeature("admin_governance")) {
     return (
       <GovernanceSettingRowLayout
-        label={label}
-        description={description}
+        label={LABEL}
+        description={DESCRIPTION}
         action={
           <SliderToggle
             selected={isEnabled}
@@ -43,7 +43,7 @@ export function ExtensionMcpToolsSection({
   }
 
   return (
-    <WorkspaceSection title={label} icon={PuzzlePiece01}>
+    <WorkspaceSection title={LABEL} icon={PuzzlePiece01}>
       <div className="flex w-full flex-row items-center gap-2">
         <div className="flex-1">
           <Page.P variant="secondary">

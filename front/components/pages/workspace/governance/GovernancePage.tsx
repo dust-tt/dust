@@ -9,7 +9,7 @@ import { DustMcpServerSettingsItem } from "@app/components/workspace/settings/Du
 import { EmailAgentsToggle } from "@app/components/workspace/settings/EmailAgentsToggle";
 import { InteractiveContentSharing } from "@app/components/workspace/settings/InteractiveContentSharingToggle";
 import { MessagingAppToggles } from "@app/components/workspace/settings/MessagingAppToggles";
-import { OpenPodPolicy } from "@app/components/workspace/settings/OpenProjectsPolicy";
+import { OpenPodPolicy } from "@app/components/workspace/settings/OpenPodsPolicy";
 import { PodKnowledgePolicy } from "@app/components/workspace/settings/PodKnowledgePolicy";
 import { PrivateConversationUrlsToggle } from "@app/components/workspace/settings/PrivateConversationUrlsToggle";
 import { SlackPersonalFooterRemovalToggle } from "@app/components/workspace/settings/SlackPersonalFooterRemovalToggle";
@@ -156,7 +156,7 @@ export const GovernancePage = () => {
       ? [
           {
             id: "frame" as const,
-            label: "Frame sharing",
+            label: "Frames",
             icon: ActionFrame,
             governancePermissions: framePermissions,
           },
@@ -241,10 +241,7 @@ export const GovernancePage = () => {
               <OpenPodPolicy owner={owner} />
               <PodKnowledgePolicy owner={owner} />
             </GovernanceSettingSection>
-            <GovernanceSettingSection
-              label="Feature policies"
-              icon={ShapesPlus}
-            >
+            <GovernanceSettingSection label="Features" icon={ShapesPlus}>
               <VoiceTranscriptionToggle owner={owner} />
               <EmailAgentsToggle owner={owner} />
               <PrivateConversationUrlsToggle owner={owner} />
@@ -254,7 +251,7 @@ export const GovernancePage = () => {
               <WorkspaceAnalyticsToggle owner={owner} />
             </GovernanceSettingSection>
             <GovernanceSettingSection
-              label="Messaging app policies"
+              label="Messaging apps"
               icon={CloudArrowLeftRight}
             >
               <MessagingAppToggles owner={owner} />

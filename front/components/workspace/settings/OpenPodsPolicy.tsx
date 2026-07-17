@@ -28,6 +28,10 @@ const OPEN_PODS_POLICIES = [
   },
 ] as const;
 
+const LABEL = "Pod access";
+const DESCRIPTION =
+  "Control whether Pods can be restricted only or restricted and open.";
+
 type OpenPodPolicy = (typeof OPEN_PODS_POLICIES)[number];
 
 export function OpenPodPolicy({ owner }: { owner: WorkspaceType }) {
@@ -39,15 +43,11 @@ export function OpenPodPolicy({ owner }: { owner: WorkspaceType }) {
     (policy) => policy.allowOpenProjects === allowOpenPods
   );
 
-  const label = "Pod access policy";
-  const description =
-    "Control whether Pods can be restricted only or restricted and open.";
-
   if (hasFeature("admin_governance")) {
     return (
       <GovernanceSettingRowLayout
-        label={label}
-        description={description}
+        label={LABEL}
+        description={DESCRIPTION}
         action={
           <OpenPodPolicyDropdown
             selectedPolicy={selectedPolicy}
@@ -61,8 +61,8 @@ export function OpenPodPolicy({ owner }: { owner: WorkspaceType }) {
 
   return (
     <ContextItem
-      title={label}
-      subElement={description}
+      title={LABEL}
+      subElement={DESCRIPTION}
       visual={<CubeOutline className="h-6 w-6" />}
       hasSeparatorIfLast={true}
       action={
