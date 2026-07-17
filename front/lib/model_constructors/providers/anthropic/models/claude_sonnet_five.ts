@@ -5,9 +5,10 @@ import { CLAUDE_SONNET_5_MODEL_ID } from "@app/lib/model_constructors/types/mode
 
 import { z } from "zod";
 
-const CONTEXT_SIZE = 250_000;
+// Real model spec. The Dust product cap (250k) is applied in the llms layer.
+const CONTEXT_SIZE = 1_000_000;
 const DEFAULT_REASONING_EFFORT = "high";
-const MAX_OUTPUT_TOKENS = 64_000;
+const MAX_OUTPUT_TOKENS = 128_000;
 
 const baseConfig = inputConfigSchema.extend({
   cacheKey: z.undefined(),
@@ -32,7 +33,9 @@ export type ClaudeSonnetFive = z.infer<typeof configSchema>;
 
 // Mixin carrying shared config; runtime base differs per surface.
 export function WithAnthropicClaudeSonnetFiveConfig<
-  TBase extends abstract new (...args: any[]) => object,
+  TBase extends abstract new (
+    ...args: any[]
+  ) => object,
 >(Base: TBase) {
   abstract class AnthropicClaudeSonnetFive extends Base {
     // Narrow `Client`'s `["constructor"]` to this model's precise config so the
@@ -47,7 +50,8 @@ export function WithAnthropicClaudeSonnetFiveConfig<
       unknown
     > = configSchema;
 
-    static readonly contextSize = CONTEXT_SIZE;
+    // Typed as `number` (not the literal) so the Dust layer can cap it.
+    static readonly contextSize: number = CONTEXT_SIZE;
     static readonly maxOutputTokens = MAX_OUTPUT_TOKENS;
   }
 
