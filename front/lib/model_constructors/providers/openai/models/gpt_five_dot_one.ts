@@ -23,7 +23,7 @@ const configSchema = inputConfigSchema.extend({
     .object({ effort: z.enum(GPT_5_1_REASONING_EFFORTS) })
     .default({ effort: DEFAULT_REASONING_EFFORT }),
   // The Responses API rejects temperature for gpt-5.1 regardless of reasoning effort.
-  temperature: temperatureSchema.optional().transform(() => undefined),
+  temperature: z.undefined(),
 });
 
 // Mixin carrying shared config; runtime base differs per surface.

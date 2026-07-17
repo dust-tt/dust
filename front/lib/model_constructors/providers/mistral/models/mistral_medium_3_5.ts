@@ -25,7 +25,7 @@ const configSchema = inputConfigSchema.extend({
       effort: z.enum([...MISTRAL_SUPPORTED_REASONING_EFFORTS]),
     })
     .default({ effort: DEFAULT_REASONING_EFFORT }),
-  temperature: temperatureSchema.optional().transform(() => undefined),
+  temperature: z.undefined(),
   // Mistral has no explicit prompt-cache key.
   cacheKey: z.undefined(),
 });
