@@ -110,7 +110,10 @@ export const ComposerInput = React.forwardRef<
   ref
 ) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-  useImperativeHandle(ref, () => textareaRef.current as HTMLTextAreaElement);
+  useImperativeHandle<HTMLTextAreaElement | null, HTMLTextAreaElement | null>(
+    ref,
+    () => textareaRef.current
+  );
 
   const [active, setActive] = useState<ActiveSuggestionState | null>(null);
 

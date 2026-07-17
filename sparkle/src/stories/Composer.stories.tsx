@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react";
-import React, { useCallback, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 
 import { Composer } from "@sparkle/components/Composer";
 import type { ComposerSuggestionItem } from "@sparkle/components/ComposerInput";
@@ -48,7 +48,7 @@ const meta: Meta<typeof Composer> = {
   parameters: {
     docs: {
       description: {
-        component: `The message composer shell. Mirrors the product input bar: agent picker, capabilities picker, attachments, voice recording and send — all built from Sparkle primitives (\`Button\`, \`VoicePicker\`, \`DropdownMenu\`, \`Chip\`, \`AttachmentChip\`). The text input supports \`/\` (commands) and \`@\` (agents) suggestions.`,
+        component: `The message composer shell. Mirrors the product input bar: agent picker, capabilities picker, attachments, voice recording and send — all built from Sparkle primitives (\`Button\`, \`VoicePicker\`, \`DropdownMenu\`, \`Chip\`, \`Citation\`). The text input supports \`/\` (commands) and \`@\` (agents) suggestions.`,
       },
     },
   },
@@ -169,7 +169,16 @@ function useMockVoiceService(onTranscript: (text: string) => void) {
     timersRef.current.push(transcribeTimer);
   }, [clearTimers, onTranscript]);
 
+  // Clear pending timers if the story unmounts mid-recording.
+  useEffect(() => clearTimers, [clearTimers]);
+
   return { status, level, elapsedSeconds, startRecording, stopRecording };
+}
+
+function revokeAttachmentPreview(attachment: MockAttachment) {
+  if (attachment.previewUrl) {
+    URL.revokeObjectURL(attachment.previewUrl);
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -275,7 +284,10 @@ function ComposerDemo({
         text.trim() || `(empty message to @${selectedAgent?.name})`,
       ]);
       setText("");
-      setAttachments([]);
+      setAttachments((prev) => {
+        prev.forEach(revokeAttachmentPreview);
+        return [];
+      });
       setIsSubmitting(false);
       inputRef.current?.focus();
     }, 900);
@@ -515,16 +527,19 @@ function ComposerDemo({
         attachments={
           attachments.length > 0
             ? attachments.map((attachment) => {
-                const removeAttachment = () =>
+                const removeAttachment = () => {
+                  revokeAttachmentPreview(attachment);
                   setAttachments((prev) =>
                     prev.filter((a) => a.id !== attachment.id)
                   );
+                };
                 // Same rendering as the product's AttachmentCitation: image
                 // files get a preview card, other attachments a citation card.
                 return (
                   <Tooltip
                     key={attachment.id}
                     label={attachment.title}
+                    tooltipTriggerAsChild
                     trigger={
                       attachment.previewUrl ? (
                         <Citation
