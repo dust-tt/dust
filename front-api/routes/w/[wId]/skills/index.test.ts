@@ -235,6 +235,32 @@ describe("GET /api/w/:wId/skills", () => {
     expect(skillNames).toContain("Skill In Restricted Space");
   });
 
+  it("includes accessible restricted skills by default but excludes them when globalSpaceOnly=true", async () => {
+    const { workspace, user, auth } = await setupTest("admin");
+
+    await SpaceFactory.defaults(auth);
+
+    const restrictedSpace = await SpaceFactory.regular(workspace);
+    await restrictedSpace.addMembers(auth, { userIds: [user.sId] });
+
+    await SkillFactory.create(auth, {
+      name: "Member Restricted Skill",
+      requestedSpaceIds: [restrictedSpace.id],
+    });
+
+    const defaultRes = await getSkills(workspace);
+    const defaultNames = (await defaultRes.json()).skills.map(
+      (s: SkillWithoutInstructionsAndToolsType) => s.name
+    );
+    expect(defaultNames).toContain("Member Restricted Skill");
+
+    const globalRes = await getSkills(workspace, { globalSpaceOnly: "true" });
+    const globalNames = (await globalRes.json()).skills.map(
+      (s: SkillWithoutInstructionsAndToolsType) => s.name
+    );
+    expect(globalNames).not.toContain("Member Restricted Skill");
+  });
+
   it("should not return instructions or tools in skill list", async () => {
     const { workspace, auth, user } = await setupTest();
 
@@ -767,6 +793,29 @@ describe("POST /api/w/:wId/skills", () => {
         message: `User does not have access to the following spaces: ${restrictedSpace.sId}`,
       },
     });
+  });
+
+  it("allows restricting a skill to an open Pod the user can access", async () => {
+    const { workspace, globalGroup } = await setupTest("builder");
+
+    const openPod = await SpaceFactory.project(workspace);
+    await GroupSpaceFactory.associate(openPod, globalGroup);
+
+    const response = await postSkill(workspace, {
+      name: "Skill Restricted To Open Pod",
+      agentFacingDescription: "To use with an open Pod",
+      userFacingDescription: "A skill with a selected Pod",
+      instructions: "Simple instructions",
+      icon: "PuzzleIcon",
+      tools: [],
+      attachedKnowledge: [],
+      instructionsHtml: null,
+      additionalRequestedSpaceIds: [openPod.sId],
+    });
+
+    expect(response.status).toBe(200);
+    const responseData = await response.json();
+    expect(responseData.skill.requestedSpaceIds).toContain(openPod.sId);
   });
 
   it("creates a skill configuration with 2 tools", async () => {
