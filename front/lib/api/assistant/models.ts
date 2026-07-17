@@ -19,6 +19,7 @@ import { isReasoningEffort } from "@app/types/assistant/models/reasoning";
 import type {
   ModelConfigurationType,
   ModelProviderIdType,
+  ModelSelectionType,
   ReasoningEffort,
   ResolvedRequestedModel,
 } from "@app/types/assistant/models/types";
@@ -184,6 +185,33 @@ function _getLargeWhitelistedModel(
         isModelEnabled(m, context) && (!hasBatch || m.supportsBatchProcessing)
     ) ?? null
   );
+}
+
+// Parses an untyped model selection (as received on the public API, where model
+// and provider ids are plain strings) into a ModelSelectionType, or null when
+// any field is not a known value.
+export function parseModelSelection({
+  providerId,
+  modelId,
+  reasoningEffort,
+}: {
+  providerId: string;
+  modelId: string;
+  reasoningEffort?: string;
+}): ModelSelectionType | null {
+  if (!isModelProviderId(providerId) || !isModelId(modelId)) {
+    return null;
+  }
+
+  if (reasoningEffort === undefined) {
+    return { providerId, modelId };
+  }
+
+  if (!isReasoningEffort(reasoningEffort)) {
+    return null;
+  }
+
+  return { providerId, modelId, reasoningEffort };
 }
 
 function isResolvedModel(m: {

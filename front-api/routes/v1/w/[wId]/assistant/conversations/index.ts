@@ -9,6 +9,7 @@ import { MAX_CONVERSATION_DEPTH } from "@app/lib/api/assistant/conversation/cons
 import { toFileContentFragment } from "@app/lib/api/assistant/conversation/content_fragment";
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import { isUserMessageContextOverflowing } from "@app/lib/api/assistant/conversation/helper";
+import { parseModelSelection } from "@app/lib/api/assistant/models";
 import { postUserMessageAndWaitForCompletion } from "@app/lib/api/assistant/streaming/blocking";
 import {
   checkProgrammaticUsageLimits,
@@ -19,6 +20,7 @@ import {
   addBackwardCompatibleConversationWithoutContentFields,
   normalizeConversationVisibility,
 } from "@app/lib/api/v1/backward_compatibility";
+import { getFeatureFlags } from "@app/lib/auth";
 import { isApiKeyCapped } from "@app/lib/metronome/api_key_block";
 import {
   isApiBlocked,
@@ -40,6 +42,7 @@ import type {
   UserMessageType,
 } from "@app/types/assistant/conversation";
 import { ConversationError } from "@app/types/assistant/conversation";
+import type { ModelSelectionType } from "@app/types/assistant/models/types";
 import type { ContentFragmentType } from "@app/types/content_fragment";
 import {
   isInteractiveContentType,
@@ -146,6 +149,8 @@ app.post(
 
     const origin = message?.context.origin ?? "api";
 
+    let requestedModelSelection: ModelSelectionType | undefined;
+
     if (message) {
       // Keep this before createConversation to avoid creating an empty conversation when the
       // initial programmatic message is blocked. Credit-priced plans gate on the workspace
@@ -227,6 +232,35 @@ app.post(
             message: "The message.context.username must be a non-empty string.",
           },
         });
+      }
+
+      if (message.modelSelection) {
+        const featureFlags = await getFeatureFlags(auth);
+        if (!featureFlags.includes("models_picker")) {
+          return apiError(ctx, {
+            status_code: 400,
+            api_error: {
+              type: "invalid_request_error",
+              message:
+                "message.modelSelection requires the models picker feature to be enabled " +
+                "on the workspace.",
+            },
+          });
+        }
+
+        requestedModelSelection =
+          parseModelSelection(message.modelSelection) ?? undefined;
+        if (!requestedModelSelection) {
+          return apiError(ctx, {
+            status_code: 400,
+            api_error: {
+              type: "invalid_request_error",
+              message:
+                "The message.modelSelection providerId, modelId or reasoningEffort is not " +
+                "a known value.",
+            },
+          });
+        }
       }
 
       // Local MCP servers are only available to authenticated users (not API keys).
@@ -498,6 +532,7 @@ app.post(
               conversation,
               mentions: message.mentions,
               skipToolsValidation: skipToolsValidation ?? false,
+              modelSelection: requestedModelSelection,
             })
           : await postUserMessage(auth, {
               content: message.content,
@@ -506,6 +541,7 @@ app.post(
               conversation,
               mentions: message.mentions,
               skipToolsValidation: skipToolsValidation ?? false,
+              modelSelection: requestedModelSelection,
             });
 
       if (messageRes.isErr()) {

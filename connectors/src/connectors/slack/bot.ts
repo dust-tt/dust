@@ -61,8 +61,10 @@ import type {
   AgentMessageSuccessEvent,
   AnswerUserQuestionResponseType,
   APIError,
+  AvailableModelType,
   ConversationPublicType,
   LightAgentConfigurationType,
+  PublicModelSelectionType,
   PublicPostContentFragmentRequestBody,
   PublicPostMessagesRequestBody,
   Result,
@@ -1025,6 +1027,7 @@ async function answerMessage(
   }
 
   let mention: MentionMatch | undefined;
+  let modelSelection: PublicModelSelectionType | undefined;
 
   // Extract all ~mentions and +mentions that appear right after the bot mention.
   let mentionCandidate: string | null = null;
@@ -1074,16 +1077,38 @@ async function answerMessage(
       agentName: agentConfig.name,
     };
   } else {
+    // Mentions can also target a specific model (e.g. `+gpt-5.6-luna-high`) when the
+    // workspace has the models picker feature enabled; the endpoint returns an empty
+    // list otherwise. Only fetched when there is a candidate to resolve.
+    let availableModels: AvailableModelType[] = [];
+    if (mentionCandidate) {
+      const availableModelsRes = await dustAPI.getAvailableModels();
+      if (availableModelsRes.isErr()) {
+        logger.warn(
+          {
+            error: availableModelsRes.error,
+            connectorId: connector.id,
+            slackTeamId,
+          },
+          "Failed to fetch available models, skipping model mention resolution."
+        );
+      } else {
+        availableModels = availableModelsRes.value;
+      }
+    }
+
     const mentionResult = processMentions({
       message,
       activeAgentConfigurations,
       mentionCandidate,
+      availableModels,
     });
     if (mentionResult.isErr()) {
       return new Err(new SlackExternalUserError(mentionResult.error.message));
     }
 
     mention = mentionResult.value.mention;
+    modelSelection = mentionResult.value.modelSelection;
     message = mentionResult.value.processedMessage;
   }
 
@@ -1238,6 +1263,7 @@ async function answerMessage(
   const messageReqBody: PublicPostMessagesRequestBody = {
     content: message,
     mentions: [{ configurationId: mention.agentId }],
+    modelSelection,
     context: {
       timezone: slackChatBotMessage.slackTimezone || "Europe/Paris",
       username: slackChatBotMessage.slackUserName,

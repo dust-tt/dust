@@ -406,6 +406,25 @@
  *             $ref: '#/components/schemas/Mention'
  *         context:
  *           $ref: '#/components/schemas/Context'
+ *         modelSelection:
+ *           type: object
+ *           description: Optional per-message model override. Requires the models picker feature to be enabled on the workspace.
+ *           required:
+ *             - providerId
+ *             - modelId
+ *           properties:
+ *             providerId:
+ *               type: string
+ *               description: The provider id of the requested model
+ *               example: "openai"
+ *             modelId:
+ *               type: string
+ *               description: The model id of the requested model
+ *               example: "gpt-5.6-luna"
+ *             reasoningEffort:
+ *               type: string
+ *               enum: [none, light, medium, high]
+ *               description: The reasoning effort to run the requested model with (optional, defaults to the model's default reasoning effort)
  *     ContentFragment:
  *       type: object
  *       required:

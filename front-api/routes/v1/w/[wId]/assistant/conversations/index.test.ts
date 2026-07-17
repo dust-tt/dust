@@ -1,3 +1,4 @@
+import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { createPublicApiMockRequest } from "@app/tests/utils/generic_public_api_tests";
 import { honoApp } from "@front-api/app";
 import { describe, expect, it, vi } from "vitest";
@@ -85,5 +86,70 @@ describe("POST /api/v1/w/[wId]/assistant/conversations", () => {
 
     expect(response.status).toBe(400);
     expect((await response.json()).error.type).toBe("invalid_request_error");
+  });
+
+  it("returns 400 when modelSelection is sent without the models picker feature", async () => {
+    const { workspace, key } = await createPublicApiMockRequest();
+
+    const response = await postConversations(workspace, key, {
+      title: "Test conversation",
+      message: {
+        content: "Hello",
+        mentions: [],
+        context: {
+          username: "tester",
+          timezone: "Europe/Paris",
+          origin: "api",
+        },
+        modelSelection: {
+          providerId: "openai",
+          modelId: "gpt-5",
+          reasoningEffort: "high",
+        },
+      },
+    });
+
+    expect(response.status).toBe(400);
+    expect(await response.json()).toEqual({
+      error: {
+        type: "invalid_request_error",
+        message:
+          "message.modelSelection requires the models picker feature to be enabled " +
+          "on the workspace.",
+      },
+    });
+  });
+
+  it("returns 400 when modelSelection references an unknown model", async () => {
+    const { workspace, key, auth } = await createPublicApiMockRequest();
+
+    await FeatureFlagFactory.basic(auth, "models_picker");
+
+    const response = await postConversations(workspace, key, {
+      title: "Test conversation",
+      message: {
+        content: "Hello",
+        mentions: [],
+        context: {
+          username: "tester",
+          timezone: "Europe/Paris",
+          origin: "api",
+        },
+        modelSelection: {
+          providerId: "openai",
+          modelId: "not-a-model",
+        },
+      },
+    });
+
+    expect(response.status).toBe(400);
+    expect(await response.json()).toEqual({
+      error: {
+        type: "invalid_request_error",
+        message:
+          "The message.modelSelection providerId, modelId or reasoningEffort is not " +
+          "a known value.",
+      },
+    });
   });
 });
