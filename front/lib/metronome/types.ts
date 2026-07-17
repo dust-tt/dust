@@ -8,7 +8,6 @@
 
 import {
   getCreditTypeProgrammaticUsdId,
-  getProductExcessCreditsId,
   getProductFreeCreditId,
   type USAGE_TYPE_FREE,
   type USAGE_TYPE_PROGRAMMATIC,
@@ -135,13 +134,6 @@ export const EXCESS_CREDIT_NAME = "Excess Credits";
 // toggled at runtime (see lib/metronome/payg_excess_credits.ts).
 export const DEFAULT_AWU_EXCESS_RECURRING_AMOUNT = 5_000;
 export const DEFAULT_PROGRAMMATIC_USD_EXCESS_RECURRING_AMOUNT = 50;
-
-// Excess credits are an internal accounting mechanism — they should not be
-// surfaced to end users or in the Poke UI. Discriminated by product ID since
-// the excess recurring credit has its own dedicated FIXED product.
-export function isMetronomeExcessCredit(entry: MetronomeBalance): boolean {
-  return entry.product.id === getProductExcessCreditsId();
-}
 
 // True for the recurring free credits granted to programmatic-usage workspaces
 // (monthly or annual cadence). The "excess" credit is excluded — it has its
