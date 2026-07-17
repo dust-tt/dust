@@ -47,16 +47,6 @@ export function ModelPickerContent({
 
   return (
     <DropdownMenuContent className="w-72" align="start" side={side}>
-      <div className="sticky top-0 z-10 bg-overlay-background pb-1">
-        <DropdownMenuSearchbar
-          autoFocus={!isMobile}
-          name="search-models"
-          placeholder="Search models"
-          value={search}
-          onChange={onSearchChange}
-        />
-      </div>
-
       {auto && (
         <ModelPickerRowTooltip description={AUTO_TOOLTIP} isMobile={isMobile}>
           <DropdownMenuItem
@@ -66,6 +56,18 @@ export function ModelPickerContent({
             onSelect={(e) => e.preventDefault()}
           />
         </ModelPickerRowTooltip>
+      )}
+
+      {!auto?.isOn && (
+        <div className="sticky top-0 z-10 bg-overlay-background pt-2">
+          <DropdownMenuSearchbar
+            autoFocus={!isMobile}
+            name="search-models"
+            placeholder="Search models"
+            value={search}
+            onChange={onSearchChange}
+          />
+        </div>
       )}
 
       <ModelPickerList
