@@ -10,3 +10,7 @@ export type GovernancePermissionsByKey = Partial<
 export type GetGovernancePermissionsResponseBody = {
   governancePermissions: GovernancePermissionsByKey;
 };
+
+export type PatchGovernancePermissionResponseBody = {
+  governancePermission: GovernancePermission;
+};

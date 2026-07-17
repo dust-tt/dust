@@ -23,7 +23,10 @@ import {
   useWorkspace,
 } from "@app/lib/auth/AuthContext";
 import { useAppRouter } from "@app/lib/platform";
-import { useGovernancePermissions } from "@app/lib/swr/governance";
+import {
+  useGovernancePermissions,
+  useUpdateGovernancePermission,
+} from "@app/lib/swr/governance";
 import { useGroups } from "@app/lib/swr/groups";
 import type { GovernancePermissionsByKey } from "@app/types/api/governance";
 import type {
@@ -37,10 +40,7 @@ import {
 } from "@app/types/group_permissions";
 import { MANAGEABLE_GROUP_KINDS } from "@app/types/groups";
 import { removeNulls } from "@app/types/shared/utils/general";
-import type {
-  LightWorkspaceType,
-  WorkspaceSharingPolicy,
-} from "@app/types/user";
+import type { WorkspaceSharingPolicy } from "@app/types/user";
 import {
   ActionFrame,
   CloudArrowLeftRight,
@@ -53,12 +53,6 @@ import {
   ShapesPlus,
 } from "@dust-tt/sparkle";
 import type { ComponentType } from "react";
-
-function useUpdateGovernancePermission(owner: LightWorkspaceType) {
-  return (input: GovernancePermission) => {
-    return true;
-  };
-}
 
 // Frame governance permissions are only relevant when the workspace sharing policy actually
 // enables the underlying capability: email invites require external email sharing, and public
