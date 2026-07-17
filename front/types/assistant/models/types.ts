@@ -73,9 +73,6 @@ const CustomAvailabilityConditionSchema = z.object({
 // This is the source of truth for the structure of ModelConfigurationType.
 export const ModelConfigurationSchema = z.object({
   providerId: z.string(),
-  // The lab that created the model, when it differs from the serving
-  // `providerId` (e.g. Z.ai's GLM served through Fireworks). Defaults to
-  // `providerId` when unset — see `getModelMaker`.
   modelMaker: z.enum(MODEL_MAKER_IDS).optional(),
   modelId: z.string(),
   displayName: z.string(),

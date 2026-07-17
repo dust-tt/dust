@@ -55,13 +55,7 @@ export function getProviderDisplayName(
   }
 }
 /**
- * MODEL MAKERS
- *
- * The "maker" is the lab that actually created a model, as opposed to the
- * serving `providerId`. For native providers these coincide (an OpenAI model is
- * served by OpenAI), so a config only sets `modelMaker` when the two diverge —
- * e.g. Z.ai's GLM or Moonshot AI's Kimi served through Fireworks. Makers reuse
- * provider ids for the shared cases plus a few lab-only ids.
+ * MODEL MAKERS IDS
  */
 
 export const MODEL_MAKER_ONLY_IDS = ["zai", "moonshot", "minimax"] as const;
