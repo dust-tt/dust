@@ -889,7 +889,7 @@ export async function deleteWorkspaceUserMetadataActivity({
     "Deleted workspace-scoped user metadata"
   );
 
-  const deleteCountApproval = await destroyForWorkspaceInBatches(
+  const deletedApprovalCount = await destroyForWorkspaceInBatches(
     UserToolApprovalModel,
     {
       workspaceId: workspace.id,
@@ -897,7 +897,7 @@ export async function deleteWorkspaceUserMetadataActivity({
   );
 
   logger.info(
-    { workspaceId, deleteCountApproval },
+    { workspaceId, deletedApprovalCount },
     "Deleted workspace-scoped user tool approvals"
   );
 }
