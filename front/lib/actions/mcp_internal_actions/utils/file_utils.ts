@@ -10,6 +10,7 @@ import {
   makeFileAttachment,
 } from "@app/lib/api/assistant/conversation/attachments";
 import { DustFileSystem } from "@app/lib/api/file_system";
+import { fetchLinkedFileResource } from "@app/lib/api/files/file_system_ops";
 import {
   isCanonicalScopedPath,
   parseScopedFilePath,
@@ -24,7 +25,6 @@ import { isContentFragmentType } from "@app/types/content_fragment";
 import type { Result } from "@dust-tt/client";
 import { Err, Ok } from "@dust-tt/client";
 import assert from "assert";
-import minBy from "lodash/minBy";
 import { PassThrough } from "stream";
 
 export function sanitizeFilename(filename: string): string {
@@ -50,52 +50,27 @@ export type ConversationFileRef = {
  * User-uploaded conversation files are stored at their FileResource canonical key
  * (files/w/{wId}/{fileId}/...) and may never have been copied to the deterministic mount path
  * DustFileSystem reads from, even though the model was shown the canonical scoped path (it is
- * rendered from `FileResource.mountFilePath`). Map the scoped path back to the FileResource
- * through its claimed mount path so content can be served from the original version.
+ * rendered from `FileResource.mountFilePath`). Serve such files from the linked FileResource's
+ * original version.
  *
- * A mount copy deleted via the files tool also resolves here (the FileResource row keeps its
- * mount path), matching how legacy fileId references behave after such a deletion.
+ * A file whose mount copy was deleted also resolves here — it is still a live conversation
+ * attachment, referenced and servable through its legacy fileId.
  */
-// TODO(FILE SYSTEM MIGRATION): Revisit once FileResource is decoupled from mount paths (this
-// relies on toMountFilePath, which is slated for removal).
 async function findFileForCanonicalScopedPath(
   auth: Authenticator,
   fs: DustFileSystem,
   scopedPath: string
 ): Promise<FileResource | null> {
-  // stat() resolves the normalized path; translate the same shape so both lookups agree on
-  // inputs containing `.` or `..` segments.
+  // stat() resolves the normalized path; look up the same shape so inputs containing `.` or
+  // `..` segments cannot diverge between the two lookups.
   const normalizedPath =
     DustFileSystem.normalizeScopedPath(scopedPath) ?? scopedPath;
 
-  const mountFilePath = fs.toMountFilePath(normalizedPath);
-  if (!mountFilePath) {
-    return null;
-  }
-
-  // Stored mount paths may differ in Unicode normalization from what the model echoes back
-  // (see resolveFile). Try the path as-is, then NFC, then NFD.
-  const candidates = [
-    ...new Set([
-      mountFilePath,
-      mountFilePath.normalize("NFC"),
-      mountFilePath.normalize("NFD"),
-    ]),
-  ];
+  const linkedFile = await fetchLinkedFileResource(auth, fs, normalizedPath);
 
   // A file that never finished uploading may have claimed a mount path without its original
   // version being written; only ready files are servable.
-  const files = (
-    await FileResource.fetchByMountFilePaths(auth, candidates)
-  ).filter((f) => f.isReady);
-
-  const exactMatch = files.find((f) => f.mountFilePath === mountFilePath);
-  if (exactMatch) {
-    return exactMatch;
-  }
-
-  // Only a normalization variant matched; pick deterministically.
-  return minBy(files, (f) => f.id) ?? null;
+  return linkedFile?.isReady ? linkedFile : null;
 }
 
 function makeFileRefFromResource(
