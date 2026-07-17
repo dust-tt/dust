@@ -122,8 +122,6 @@ export const PROCESS_TOOL_NAME = "extract_information_from_documents";
 export const WEBSEARCH_TOOL_NAME = "websearch";
 export const WEBBROWSER_TOOL_NAME = "webbrowser";
 
-export const CREATE_AGENT_TOOL_NAME = "create_agent";
-
 export const DATA_WAREHOUSES_LIST_TOOL_NAME = "list";
 export const DATA_WAREHOUSES_FIND_TOOL_NAME = "find";
 export const DATA_WAREHOUSES_DESCRIBE_TABLES_TOOL_NAME = "describe_tables";
@@ -136,8 +134,6 @@ export const SKILL_MANAGEMENT_SERVER_NAME = "skill_management";
 export const SKILL_AUTHORING_SERVER_NAME = "skill_authoring";
 
 export const GENERATE_IMAGE_TOOL_NAME = "generate_image";
-// Kept for backward compatibility with existing actions in conversations.
-export const EDIT_IMAGE_TOOL_NAME = "edit_image";
 
 export const SEARCH_SERVER_NAME = "search";
 
@@ -1283,7 +1279,6 @@ type InternalMCPServerEntryWithMetadata<K extends InternalMCPServerNameType> =
   InternalMCPServerEntryCommon & {
     metadata: ServerMetadata<K>;
     serverInfo?: InternalMCPServerDefinitionType & { name: K };
-    tools_stakes?: Record<string, MCPToolStakeLevelType>;
   };
 
 type InternalMCPServerEntryWithoutMetadata<
@@ -1291,7 +1286,6 @@ type InternalMCPServerEntryWithoutMetadata<
 > = InternalMCPServerEntryCommon & {
   metadata?: undefined;
   serverInfo: InternalMCPServerDefinitionType & { name: K };
-  tools_stakes: Record<string, MCPToolStakeLevelType> | undefined;
 };
 
 type InternalMCPServerEntryBase<K extends InternalMCPServerNameType> =
@@ -1370,7 +1364,7 @@ export function allowsMultipleInstancesOfInternalMCPServerById(
   if (r.isErr()) {
     return false;
   }
-  return !!INTERNAL_MCP_SERVERS[r.value.name].allowMultipleInstances;
+  return INTERNAL_MCP_SERVERS[r.value.name].allowMultipleInstances;
 }
 
 export function getInternalMCPServerNameAndWorkspaceId(sId: string): Result<
