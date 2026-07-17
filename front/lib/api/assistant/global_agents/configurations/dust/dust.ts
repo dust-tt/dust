@@ -86,9 +86,9 @@ interface DustLikeGlobalAgentArgs {
   // Workspace feature flags, forwarded to model selection so it runs the exact
   // same model availability check that is enforced when a message is posted.
   featureFlags: WhitelistableFeature[];
-  // When set, the @dust agent defaults to GPT 5.5 (medium reasoning) instead of
-  // Claude Sonnet 4.6. Gated by the `dust_agent_gpt_5_5_default` feature flag.
-  preferGpt55DefaultModel?: boolean;
+  // When set, the @dust agent defaults to GPT 5.6 Luna (high reasoning) instead
+  // of Claude Sonnet 4.6. Gated by the `dust_agent_gpt_5_6_luna_default` flag.
+  preferGpt56LunaDefaultModel?: boolean;
   // When set, the @dust agent defaults to Claude Sonnet 5 instead of Claude
   // Sonnet 4.6. Gated by the `dust_agent_sonnet_5_default` feature flag.
   preferSonnet5DefaultModel?: boolean;
@@ -472,10 +472,13 @@ export function _getDustGlobalAgent(
     name: "dust",
     preferredModelConfiguration: args.preferSonnet5DefaultModel
       ? CLAUDE_SONNET_5_DEFAULT_MODEL_CONFIG
-      : args.preferGpt55DefaultModel
-        ? GPT_5_5_MODEL_CONFIG
+      : args.preferGpt56LunaDefaultModel
+        ? GPT_5_6_LUNA_MODEL_CONFIG
         : CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG,
-    preferredReasoningEffort: "medium",
+    preferredReasoningEffort:
+      args.preferGpt56LunaDefaultModel && !args.preferSonnet5DefaultModel
+        ? "high"
+        : "medium",
   });
 }
 
