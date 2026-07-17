@@ -3,7 +3,11 @@ import {
   getActivationNudgeMaxUnansweredCount,
   isEligibleForNudge,
 } from "@app/lib/api/activation/nudge";
+import { ACTIVATION_WEBHOOK_SOURCE_NAME } from "@app/lib/api/activation/trigger";
 import { Authenticator } from "@app/lib/auth";
+import { MembershipResource } from "@app/lib/resources/membership_resource";
+import { SpaceResource } from "@app/lib/resources/space_resource";
+import { frontSequelize } from "@app/lib/resources/storage";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import {
   DEFAULT_ACTIVATION_NUDGE_FREQUENCY_CAP_DAYS,
@@ -13,10 +17,39 @@ import { ActivationNudgeFactory } from "@app/tests/utils/ActivationNudgeFactory"
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { TriggerFactory } from "@app/tests/utils/TriggerFactory";
+import { WebhookSourceFactory } from "@app/tests/utils/WebhookSourceFactory";
+import { WebhookSourceViewFactory } from "@app/tests/utils/WebhookSourceViewFactory";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
+import type { TriggerStatus } from "@app/types/assistant/triggers";
 import { describe, expect, it } from "vitest";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
+
+// Wires a trigger the same way `createActivationTrigger` does in production:
+// on the pod's own view of the shared Activation webhook source. This is
+// required for `isEligibleForNudge` to find it via `findActivationTrigger`,
+// which pinpoints the trigger by `webhookSourceViewId` rather than just
+// `kind === "webhook"` (a pod's space can hold other webhook triggers).
+async function createPodActivationTrigger(
+  auth: Authenticator,
+  pod: SpaceResource,
+  options: { status?: TriggerStatus } = {}
+) {
+  const workspace = auth.getNonNullableWorkspace();
+  const source = await new WebhookSourceFactory(workspace).create({
+    name: ACTIVATION_WEBHOOK_SOURCE_NAME,
+  });
+  const podView = await new WebhookSourceViewFactory(workspace).create(pod, {
+    webhookSourceId: source.sId,
+  });
+
+  return TriggerFactory.webhook(auth, {
+    agentConfigurationId: GLOBAL_AGENTS_SID.DUST,
+    status: options.status ?? "enabled",
+    spaceId: pod.id,
+    webhookSourceViewId: podView.id,
+  });
+}
 
 describe("getActivationNudgeFrequencyCapDays", () => {
   it("falls back to the default when the workspace has no override", async () => {
@@ -63,6 +96,7 @@ describe("isEligibleForNudge", () => {
     const { authenticator, globalSpace } = await createResourceTest({
       role: "admin",
     });
+    await createPodActivationTrigger(authenticator, globalSpace);
 
     expect(await isEligibleForNudge(authenticator, globalSpace)).toBe(true);
   });
@@ -71,9 +105,10 @@ describe("isEligibleForNudge", () => {
     const { authenticator, globalSpace } = await createResourceTest({
       role: "admin",
     });
-    const trigger = await TriggerFactory.webhook(authenticator, {
-      agentConfigurationId: GLOBAL_AGENTS_SID.DUST,
-    });
+    const trigger = await createPodActivationTrigger(
+      authenticator,
+      globalSpace
+    );
     await ActivationNudgeFactory.create(authenticator, {
       pod: globalSpace,
       trigger,
@@ -93,9 +128,10 @@ describe("isEligibleForNudge", () => {
       user.sId,
       workspace.sId
     );
-    const trigger = await TriggerFactory.webhook(refreshedAuth, {
-      agentConfigurationId: GLOBAL_AGENTS_SID.DUST,
-    });
+    const trigger = await createPodActivationTrigger(
+      refreshedAuth,
+      globalSpace
+    );
 
     // Two nudges, both outside the frequency cap window, with no reply.
     await ActivationNudgeFactory.create(refreshedAuth, {
@@ -123,9 +159,10 @@ describe("isEligibleForNudge", () => {
       user.sId,
       workspace.sId
     );
-    const trigger = await TriggerFactory.webhook(refreshedAuth, {
-      agentConfigurationId: GLOBAL_AGENTS_SID.DUST,
-    });
+    const trigger = await createPodActivationTrigger(
+      refreshedAuth,
+      globalSpace
+    );
 
     await ActivationNudgeFactory.create(refreshedAuth, {
       pod: globalSpace,
@@ -151,6 +188,69 @@ describe("isEligibleForNudge", () => {
     );
 
     expect(await isEligibleForNudge(refreshedAuth, globalSpace)).toBe(true);
+  });
+
+  it("is not eligible when the trigger was disabled by the user (opted out)", async () => {
+    const { authenticator, globalSpace } = await createResourceTest({
+      role: "admin",
+    });
+    await createPodActivationTrigger(authenticator, globalSpace, {
+      status: "disabled",
+    });
+
+    expect(await isEligibleForNudge(authenticator, globalSpace)).toBe(false);
+  });
+
+  it("is not eligible when the pod has no activation trigger", async () => {
+    const { authenticator, globalSpace } = await createResourceTest({
+      role: "admin",
+    });
+
+    expect(await isEligibleForNudge(authenticator, globalSpace)).toBe(false);
+  });
+
+  it("is not eligible when the pod is archived (dead)", async () => {
+    const { authenticator, globalSpace } = await createResourceTest({
+      role: "admin",
+    });
+    await createPodActivationTrigger(authenticator, globalSpace);
+
+    // biome-ignore lint/plugin/noRawSql: only way to backdate a paranoid model's deletedAt in tests.
+    await frontSequelize.query(
+      `UPDATE vaults SET "deletedAt" = :deletedAt WHERE id = :id AND "workspaceId" = :workspaceId`,
+      {
+        replacements: {
+          deletedAt: new Date().toISOString(),
+          id: globalSpace.id,
+          workspaceId: authenticator.getNonNullableWorkspace().id,
+        },
+      }
+    );
+    const archivedPod = await SpaceResource.fetchById(
+      authenticator,
+      globalSpace.sId,
+      { includeDeleted: true }
+    );
+    if (!archivedPod) {
+      throw new Error("Expected the archived pod to still be fetchable.");
+    }
+
+    expect(await isEligibleForNudge(authenticator, archivedPod)).toBe(false);
+  });
+
+  it("is not eligible when the target user left the workspace (dead)", async () => {
+    const { workspace, user, globalSpace } = await createResourceTest({
+      role: "user",
+    });
+    const authenticator = await Authenticator.fromUserIdAndWorkspaceId(
+      user.sId,
+      workspace.sId
+    );
+    await createPodActivationTrigger(authenticator, globalSpace);
+
+    await MembershipResource.revokeMembership({ user, workspace });
+
+    expect(await isEligibleForNudge(authenticator, globalSpace)).toBe(false);
   });
 });
 
