@@ -20,7 +20,6 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-  Hoverable,
   Plus,
   SearchInput,
   Spinner,
@@ -33,41 +32,18 @@ interface AddToolCardProps {
   onClick: () => void;
 }
 
-const AddToolCard = ({ mcpServer, isPending, onClick }: AddToolCardProps) => {
-  let description: React.ReactNode;
-  if (mcpServer.documentationUrl) {
-    description = (
-      <>
-        {mcpServer.description} Find documentation{" "}
-        <Hoverable
-          href={mcpServer.documentationUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          variant="primary"
-          onClick={(e) => e.stopPropagation()}
-        >
-          here
-        </Hoverable>
-        .
-      </>
-    );
-  } else {
-    description = mcpServer.description;
-  }
-
-  return (
-    <ActionCard
-      icon={getIcon(mcpServer.icon)}
-      label={getMcpServerDisplayName(mcpServer)}
-      description={description}
-      canAdd={false}
-      disabled={isPending}
-      onClick={onClick}
-      cardContainerClassName="h-28"
-      descriptionLineClamp={3}
-    />
-  );
-};
+const AddToolCard = ({ mcpServer, isPending, onClick }: AddToolCardProps) => (
+  <ActionCard
+    icon={getIcon(mcpServer.icon)}
+    label={getMcpServerDisplayName(mcpServer)}
+    description={mcpServer.description}
+    canAdd={false}
+    disabled={isPending}
+    onClick={onClick}
+    cardContainerClassName="h-28"
+    descriptionLineClamp={3}
+  />
+);
 
 interface AddToolsButtonProps {
   onClick: () => void;
