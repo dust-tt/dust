@@ -705,11 +705,13 @@ async function grantFreeSeatCredits({
   metronomeCustomerId,
   workspaceId,
   userIds,
+  alreadyAssignedFreeUserIds,
   startingAt,
 }: {
   metronomeCustomerId: string;
   workspaceId: string;
   userIds: string[];
+  alreadyAssignedFreeUserIds: Set<string>;
   startingAt: Date;
 }): Promise<void> {
   if (userIds.length === 0) {
@@ -769,14 +771,20 @@ async function grantFreeSeatCredits({
     { concurrency: 4 }
   );
 
-  // Ensure the per-user credit-balance alerts for EVERY current free user, not
-  // just the ones granted above — they drive each user's low-balance / capped
-  // transitions as they deplete the credit (the seat-balance alert can't, since
-  // this isn't a seat balance). Idempotent upsert run each sync, so users
-  // granted before this existed are backfilled. Best-effort: a failure is
-  // logged and retried next sync.
+  // Ensure the per-user credit-balance alerts for newly-free users — they
+  // drive each user's low-balance / capped transitions as they deplete the
+  // credit (the seat-balance alert can't, since this isn't a seat balance).
+  // Scoped to users Metronome doesn't already show as assigned to the free
+  // subscription: checking every current free user on every sync (this runs
+  // on every membership change) doesn't scale, and — like the ex-free-seat
+  // revoke check — a user whose alert setup was missed here is low-stakes and
+  // self-corrects (e.g. the next time their seat type actually changes).
+  // Best-effort: a failure is logged but not retried until the next sync.
+  const newlyFreeUserIds = userIds.filter(
+    (userId) => !alreadyAssignedFreeUserIds.has(userId)
+  );
   await concurrentExecutor(
-    userIds,
+    newlyFreeUserIds,
     async (userId) => {
       const alertResult = await upsertPerUserCreditBalanceAlerts({
         metronomeCustomerId,
@@ -1948,58 +1956,98 @@ export async function syncSeatCount({
     }
 
     // Per-user AWU grant/revoke for free members. Driven off DB membership
-    // state (`desiredSIdsAt`), NOT off a Metronome free-seat subscription: free
-    // seats are never billed and may not be an entitled SEAT_BASED subscription
-    // on the contract, so this runs independently of the seat-subscription loop
+    // state, NOT off a Metronome free-seat subscription: free seats are never
+    // billed and may not be an entitled SEAT_BASED subscription on the
+    // contract, so this runs independently of the seat-subscription loop
     // above. Best-effort and idempotent. Grant deduped by the grant's uniqueness
     // key; revoke archives the credit + drops alerts for users who left the free
     // seat (the uniqueness key stays claimed, so they can't re-claim).
+    //
+    // Skipped entirely on a legacy contract: `free` is a CP/AWU-era seat type
+    // that a legacy contract never entitles (see `canAssignFreeSeat`), and the
+    // invariant that no membership on a legacy contract ever has
+    // `seatType === "free"` holds — so there is nothing to grant, alert, or
+    // revoke here, and no need to even compute `currentFreeUserIds`.
     const freeSeatStartedAt = Date.now();
-    const currentFreeUserIds = new Set(desiredSIdsAt("free", baseMs));
-    await grantFreeSeatCredits({
-      metronomeCustomerId,
-      workspaceId: workspace.sId,
-      userIds: [...currentFreeUserIds],
-      startingAt: new Date(baseMs),
-    });
-
-    // Revoking a stale free-seat credit is low-stakes (a user can only ever
-    // have earned one by actually holding a free seat) — unlike the grant, it
-    // isn't worth an unconditional Metronome credit-listing call on every
-    // sync (this runs on every membership change). Instead, use the "free"
-    // subscription's already-fetched seat assignment (Metronome's actual
-    // current state) to see who's assigned to free there but no longer
-    // desired as free in our DB, and only call the (expensive) revoke check
-    // when that set is non-empty. If we don't have that data (contract
-    // doesn't have "free" entitled, or this is the pending-contract
-    // pre-provision pass), skip the check entirely rather than falling back
-    // to the always-expensive path.
-    const freeSubscriptionId = seatSubscriptions.find(
-      ({ seatType }) => seatType === "free"
-    )?.sub.id;
-    const freeSeatState = freeSubscriptionId
-      ? seatStateBySubscriptionId.get(freeSubscriptionId)
-      : undefined;
-    const movedAwayFromFree = freeSeatState
-      ? freeSeatState.assignedSeatIds.filter(
-          (id) => !currentFreeUserIds.has(id)
-        )
-      : [];
-    if (movedAwayFromFree.length > 0 || forceFreeCreditRevokeCheck) {
-      logger.info(
-        { workspaceId: workspace.sId, contractId, forceFreeCreditRevokeCheck },
-        "[Metronome] Running ex-free-seat credit revoke check"
-      );
-      await revokeFreeSeatCreditsForExFreeUsers({
-        metronomeCustomerId,
-        workspaceId: workspace.sId,
-        currentFreeUserIds,
-      });
-    } else {
+    let currentFreeUserIds = new Set<string>();
+    if (legacy) {
       logger.info(
         { workspaceId: workspace.sId, contractId },
-        "[Metronome] No users moved away from a free seat — skipping free-credit revoke check"
+        "[Metronome] Legacy contract — skipping free-seat credit grant/revoke entirely"
       );
+    } else {
+      // Computed directly from `seatTypeAt`, NOT via `desiredSIdsAt`:
+      // `desiredSIdsAt` folds every user in on a legacy contract (`|| legacy`,
+      // for billing "none"/legacy Platform Seat members under the one
+      // "workspace" subscription) — irrelevant here since this whole branch
+      // is skipped when `legacy` is true, but kept explicit for clarity.
+      currentFreeUserIds = new Set(
+        [...allUserSIds].filter(
+          (userId) => seatTypeAt(userId, baseMs) === "free"
+        )
+      );
+
+      // Metronome's actual "free" subscription assignment (already fetched
+      // above, alongside every other subscription's "now" state) — used to
+      // scope both the alert-upsert step below and the revoke check further
+      // down to only the users who actually changed, instead of reprocessing
+      // everyone free on every single sync. Undefined when the contract
+      // doesn't have "free" entitled, or this is the pending-contract
+      // pre-provision pass (no live state to compare against yet).
+      const freeSubscriptionId = seatSubscriptions.find(
+        ({ seatType }) => seatType === "free"
+      )?.sub.id;
+      const freeSeatState = freeSubscriptionId
+        ? seatStateBySubscriptionId.get(freeSubscriptionId)
+        : undefined;
+      const alreadyAssignedFreeUserIds = new Set(
+        freeSeatState?.assignedSeatIds ?? []
+      );
+
+      await grantFreeSeatCredits({
+        metronomeCustomerId,
+        workspaceId: workspace.sId,
+        userIds: [...currentFreeUserIds],
+        alreadyAssignedFreeUserIds,
+        startingAt: new Date(baseMs),
+      });
+
+      // Revoking a stale free-seat credit is low-stakes (a user can only ever
+      // have earned one by actually holding a free seat) — unlike the grant, it
+      // isn't worth an unconditional Metronome credit-listing call on every
+      // sync (this runs on every membership change). Instead, use the "free"
+      // subscription's already-fetched seat assignment (Metronome's actual
+      // current state) to see who's assigned to free there but no longer
+      // desired as free in our DB, and only call the (expensive) revoke check
+      // when that set is non-empty. If we don't have that data (contract
+      // doesn't have "free" entitled, or this is the pending-contract
+      // pre-provision pass), skip the check entirely rather than falling back
+      // to the always-expensive path.
+      const movedAwayFromFree = freeSeatState
+        ? freeSeatState.assignedSeatIds.filter(
+            (id) => !currentFreeUserIds.has(id)
+          )
+        : [];
+      if (movedAwayFromFree.length > 0 || forceFreeCreditRevokeCheck) {
+        logger.info(
+          {
+            workspaceId: workspace.sId,
+            contractId,
+            forceFreeCreditRevokeCheck,
+          },
+          "[Metronome] Running ex-free-seat credit revoke check"
+        );
+        await revokeFreeSeatCreditsForExFreeUsers({
+          metronomeCustomerId,
+          workspaceId: workspace.sId,
+          currentFreeUserIds,
+        });
+      } else {
+        logger.info(
+          { workspaceId: workspace.sId, contractId },
+          "[Metronome] No users moved away from a free seat — skipping free-credit revoke check"
+        );
+      }
     }
     const summary: SyncSeatCountSummary = {
       seatSubscriptionCount: seatSubscriptions.length,
