@@ -14,8 +14,24 @@ import {
   sameNodePosition,
 } from "@sparkle/components/markdown/utils";
 import { Stars02, Terminal } from "@sparkle/icons/v2-stroke";
+import { cssColorToHex } from "@sparkle/lib/colors";
 import { cn } from "@sparkle/lib/utils";
 import React, { memo, useContext, useEffect, useRef, useState } from "react";
+import colors from "tailwindcss/colors";
+
+const {
+  amber,
+  blue,
+  gray,
+  green,
+  indigo,
+  purple,
+  red,
+  rose,
+  sky,
+  violet,
+  yellow,
+} = colors;
 
 const PRETTY_JSON_PREFERENCE_KEY = "pretty-json-preference";
 
@@ -53,63 +69,62 @@ const setPrettyJsonPreference = (value: boolean) => {
   }
 };
 
-// Mermaid's color parser does not support the OKLCH values exported by Tailwind v4.
-const palette = {
+const getMermaidPalette = () => ({
   gray: {
-    50: "#f9fafb", // background, labelBoxBkgColor, groupBkgColor, edgeLabelBackground
-    100: "#f3f4f6", // primaryColor
-    200: "#e5e7eb", // tertiaryBorderColor, clusterBorder, labelBoxBorderColor, groupBorderColor, pieOuterStrokeColor
-    400: "#9ca3af", // lineColor, signalColor
-    600: "#4b5563", // tertiaryTextColor, sequenceNumberColor
-    700: "#374151", // signalTextColor, labelTextColor, loopTextColor, messageTextColor, groupTextColor, pieSectionTextColor
-    800: "#1f2937", // textColor, titleColor, nodeTextColor, pieTitleTextColor, pieLegendTextColor
+    50: cssColorToHex(gray[50]), // background, labelBoxBkgColor, groupBkgColor, edgeLabelBackground
+    100: cssColorToHex(gray[100]), // primaryColor
+    200: cssColorToHex(gray[200]), // tertiaryBorderColor, clusterBorder, labelBoxBorderColor, groupBorderColor, pieOuterStrokeColor
+    400: cssColorToHex(gray[400]), // lineColor, signalColor
+    600: cssColorToHex(gray[600]), // tertiaryTextColor, sequenceNumberColor
+    700: cssColorToHex(gray[700]), // signalTextColor, labelTextColor, loopTextColor, messageTextColor, groupTextColor, pieSectionTextColor
+    800: cssColorToHex(gray[800]), // textColor, titleColor, nodeTextColor, pieTitleTextColor, pieLegendTextColor
   },
   sky: {
-    100: "#e0f2fe", // primaryColor, nodeBorder, actorBkg, activationBkgColor
-    200: "#bae6fd", // actorBorder, activationBorderColor
-    300: "#7dd3fc", // actorLineColor, pie1
-    800: "#075985", // primaryTextColor, nodeTextColor, actorTextColor, defaultLinkColor
+    100: cssColorToHex(sky[100]), // primaryColor, nodeBorder, actorBkg, activationBkgColor
+    200: cssColorToHex(sky[200]), // actorBorder, activationBorderColor
+    300: cssColorToHex(sky[300]), // actorLineColor, pie1
+    800: cssColorToHex(sky[800]), // primaryTextColor, nodeTextColor, actorTextColor, defaultLinkColor
   },
   green: {
-    100: "#dcfce7", // secondaryColor
-    200: "#bbf7d0", // secondaryBorderColor
-    300: "#86efac", // pie3
-    800: "#166534", // secondaryTextColor
+    100: cssColorToHex(green[100]), // secondaryColor
+    200: cssColorToHex(green[200]), // secondaryBorderColor
+    300: cssColorToHex(green[300]), // pie3
+    800: cssColorToHex(green[800]), // secondaryTextColor
   },
   amber: {
-    50: "#fffbeb", // noteBkgColor
-    200: "#fde68a", // noteBorderColor
-    300: "#fcd34d", // pie4
+    50: cssColorToHex(amber[50]), // noteBkgColor
+    200: cssColorToHex(amber[200]), // noteBorderColor
+    300: cssColorToHex(amber[300]), // pie4
   },
   red: {
-    100: "#fee2e2", // errorBkgColor
-    300: "#fca5a5", // pie8
-    800: "#991b1b", // errorTextColor
+    100: cssColorToHex(red[100]), // errorBkgColor
+    300: cssColorToHex(red[300]), // pie8
+    800: cssColorToHex(red[800]), // errorTextColor
   },
   blue: {
-    300: "#93c5fd", // pie2
+    300: cssColorToHex(blue[300]), // pie2
   },
   purple: {
-    400: "#c084fc", // pie5
+    400: cssColorToHex(purple[400]), // pie5
   },
   yellow: {
-    300: "#fde047", // pie7
+    300: cssColorToHex(yellow[300]), // pie7
   },
   rose: {
-    300: "#fda4af", // pie10
+    300: cssColorToHex(rose[300]), // pie10
   },
   violet: {
-    300: "#c4b5fd", // pie11
+    300: cssColorToHex(violet[300]), // pie11
   },
   indigo: {
-    300: "#a5b4fc", // pie12
+    300: cssColorToHex(indigo[300]), // pie12
   },
-} as const;
+});
 
 const mermaidStyles = `
   /* Base diagram styles */
   .mermaid {
-    background: ${palette.gray[100]};
+    background: ${gray[100]};
     cursor: default;
   }
 
@@ -124,8 +139,8 @@ const mermaidStyles = `
     rx: 8px;
     ry: 8px;
     stroke-width: 1px;
-    fill: ${palette.gray["100"]};
-    stroke: ${palette.gray["200"]};
+    fill: ${gray["100"]};
+    stroke: ${gray["200"]};
   }
 
   /* Section styles */
@@ -155,6 +170,7 @@ const MermaidGraph: React.FC<{ chart: string }> = ({ chart }) => {
         return;
       }
 
+      const palette = getMermaidPalette();
       const mermaid = (await import("mermaid")).default;
 
       mermaid.initialize({
