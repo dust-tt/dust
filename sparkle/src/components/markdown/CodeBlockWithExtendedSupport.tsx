@@ -28,7 +28,7 @@ const getPrettyJsonPreference = () => {
 
   try {
     const prettyJsonPreference = localStorage.getItem(
-      PRETTY_JSON_PREFERENCE_KEY,
+      PRETTY_JSON_PREFERENCE_KEY
     );
     // Default to Pretty view when preference is not yet set.
     if (prettyJsonPreference === null) {
@@ -272,7 +272,7 @@ const MermaidGraph: React.FC<{ chart: string }> = ({ chart }) => {
         className={cn(
           "mermaid",
           "w-full",
-          "rounded-2xl transition-all duration-200",
+          "rounded-2xl transition-all duration-200"
         )}
       />
     </>
@@ -454,6 +454,6 @@ export const CodeBlockWithExtendedSupport = memo(
   (prev, next) =>
     sameNodePosition(prev.node, next.node) &&
     prev.className === next.className &&
-    prev.inline === next.inline,
+    prev.inline === next.inline
 );
 CodeBlockWithExtendedSupport.displayName = "CodeBlockWithExtendedSupport";
