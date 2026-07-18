@@ -16,21 +16,6 @@ import {
 import { Stars02, Terminal } from "@sparkle/icons/v2-stroke";
 import { cn } from "@sparkle/lib/utils";
 import React, { memo, useContext, useEffect, useRef, useState } from "react";
-import colors from "tailwindcss/colors";
-
-const {
-  amber,
-  blue,
-  gray,
-  green,
-  indigo,
-  purple,
-  red,
-  rose,
-  sky,
-  violet,
-  yellow,
-} = colors;
 
 const PRETTY_JSON_PREFERENCE_KEY = "pretty-json-preference";
 
@@ -43,7 +28,7 @@ const getPrettyJsonPreference = () => {
 
   try {
     const prettyJsonPreference = localStorage.getItem(
-      PRETTY_JSON_PREFERENCE_KEY
+      PRETTY_JSON_PREFERENCE_KEY,
     );
     // Default to Pretty view when preference is not yet set.
     if (prettyJsonPreference === null) {
@@ -68,71 +53,56 @@ const setPrettyJsonPreference = (value: boolean) => {
   }
 };
 
-// Helper function to ensure we get hex values
-const toHex = (color: string) => {
-  if (color.startsWith("#")) {
-    return color;
-  }
-  // For handling rgb/rgba values if they exist
-  if (color.startsWith("rgb")) {
-    const matches = color.match(/\d+/g);
-    if (matches && matches.length >= 3) {
-      const [r, g, b] = matches.map(Number);
-      return `#${[r, g, b].map((x) => x.toString(16).padStart(2, "0")).join("")}`;
-    }
-  }
-  return color;
-};
-
+// Mermaid's color parser does not support the OKLCH values exported by Tailwind v4.
 const palette = {
   gray: {
-    50: toHex(gray[50]), // background, labelBoxBkgColor, groupBkgColor, edgeLabelBackground
-    100: toHex(gray[100]), // primaryColor
-    200: toHex(gray[200]), // tertiaryBorderColor, clusterBorder, labelBoxBorderColor, groupBorderColor, pieOuterStrokeColor
-    400: toHex(gray[400]), // lineColor, signalColor
-    600: toHex(gray[600]), // tertiaryTextColor, sequenceNumberColor
-    700: toHex(gray[700]), // signalTextColor, labelTextColor, loopTextColor, messageTextColor, groupTextColor, pieSectionTextColor
-    800: toHex(gray[800]), // textColor, titleColor, nodeTextColor, pieTitleTextColor, pieLegendTextColor
+    50: "#f9fafb", // background, labelBoxBkgColor, groupBkgColor, edgeLabelBackground
+    100: "#f3f4f6", // primaryColor
+    200: "#e5e7eb", // tertiaryBorderColor, clusterBorder, labelBoxBorderColor, groupBorderColor, pieOuterStrokeColor
+    400: "#9ca3af", // lineColor, signalColor
+    600: "#4b5563", // tertiaryTextColor, sequenceNumberColor
+    700: "#374151", // signalTextColor, labelTextColor, loopTextColor, messageTextColor, groupTextColor, pieSectionTextColor
+    800: "#1f2937", // textColor, titleColor, nodeTextColor, pieTitleTextColor, pieLegendTextColor
   },
   sky: {
-    100: toHex(sky[100]), // primaryColor, nodeBorder, actorBkg, activationBkgColor
-    200: toHex(sky[200]), // actorBorder, activationBorderColor
-    300: toHex(sky[300]), // actorLineColor, pie1
-    800: toHex(sky[800]), // primaryTextColor, nodeTextColor, actorTextColor, defaultLinkColor
+    100: "#e0f2fe", // primaryColor, nodeBorder, actorBkg, activationBkgColor
+    200: "#bae6fd", // actorBorder, activationBorderColor
+    300: "#7dd3fc", // actorLineColor, pie1
+    800: "#075985", // primaryTextColor, nodeTextColor, actorTextColor, defaultLinkColor
   },
   green: {
-    100: toHex(green[100]), // secondaryColor
-    200: toHex(green[200]), // secondaryBorderColor
-    300: toHex(green[300]), // pie3
-    800: toHex(green[800]), // secondaryTextColor
+    100: "#dcfce7", // secondaryColor
+    200: "#bbf7d0", // secondaryBorderColor
+    300: "#86efac", // pie3
+    800: "#166534", // secondaryTextColor
   },
   amber: {
-    50: toHex(amber[50]), // noteBkgColor
-    200: toHex(amber[200]), // noteBorderColor
-    300: toHex(amber[300]), // pie4
+    50: "#fffbeb", // noteBkgColor
+    200: "#fde68a", // noteBorderColor
+    300: "#fcd34d", // pie4
   },
   red: {
-    100: toHex(red[100]), // errorBkgColor
-    300: toHex(red[300]), // pie8
-    800: toHex(red[800]), // errorTextColor
+    100: "#fee2e2", // errorBkgColor
+    300: "#fca5a5", // pie8
+    800: "#991b1b", // errorTextColor
   },
   blue: {
-    300: toHex(blue[300]), // pie2
+    300: "#93c5fd", // pie2
   },
   purple: {
-    400: toHex(purple[400]), // pie5
+    400: "#c084fc", // pie5
   },
   yellow: {
-    300: toHex(yellow[300]), // pie7
+    300: "#fde047", // pie7
   },
   rose: {
-    300: toHex(rose[300]), // pie10
+    300: "#fda4af", // pie10
   },
   violet: {
-    300: toHex(violet[300]), // pie11
+    300: "#c4b5fd", // pie11
   },
   indigo: {
-    300: toHex(indigo[300]), // pie12
+    300: "#a5b4fc", // pie12
   },
 } as const;
 
@@ -302,7 +272,7 @@ const MermaidGraph: React.FC<{ chart: string }> = ({ chart }) => {
         className={cn(
           "mermaid",
           "w-full",
-          "rounded-2xl transition-all duration-200"
+          "rounded-2xl transition-all duration-200",
         )}
       />
     </>
@@ -484,6 +454,6 @@ export const CodeBlockWithExtendedSupport = memo(
   (prev, next) =>
     sameNodePosition(prev.node, next.node) &&
     prev.className === next.className &&
-    prev.inline === next.inline
+    prev.inline === next.inline,
 );
 CodeBlockWithExtendedSupport.displayName = "CodeBlockWithExtendedSupport";
