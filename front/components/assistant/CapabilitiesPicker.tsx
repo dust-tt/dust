@@ -182,12 +182,10 @@ export function CapabilitiesPicker({
   const isMobile = useIsMobile();
   const [searchText, setSearchText] = useState("");
   const [isOpen, setIsOpen] = useState(false);
-  const [isClosing, setIsClosing] = useState(false);
   const [setupSheetServer, setSetupSheetServer] =
     useState<MCPServerType | null>(null);
   const [setupSheetRemoteServerConfig, setSetupSheetRemoteServerConfig] =
     useState<DefaultRemoteMCPServerConfig | null>(null);
-  const [isSettingUpServer, setIsSettingUpServer] = useState(false);
   const [pendingServerToAdd, setPendingServerToAdd] =
     useState<MCPServerType | null>(null);
 
@@ -197,13 +195,10 @@ export function CapabilitiesPicker({
   const [selectedServerViewForDetails, setSelectedServerViewForDetails] =
     useState<MCPServerViewType | null>(null);
 
-  const shouldFetchToolsData =
-    isOpen || isClosing || isSettingUpServer || !!pendingServerToAdd;
-
+  // Load capabilities when the picker mounts so the picker and slash menu share a warm SWR cache.
   const { spaces: globalSpaces } = useSpaces({
     workspaceId: owner.sId,
     kinds: ["global"],
-    disabled: !shouldFetchToolsData,
   });
 
   const isAdmin = owner.role === "admin";
@@ -212,9 +207,7 @@ export function CapabilitiesPicker({
     serverViews,
     isLoading: isServerViewsLoading,
     mutateServerViews,
-  } = useMCPServerViewsFromSpaces(owner, globalSpaces, {
-    disabled: !shouldFetchToolsData,
-  });
+  } = useMCPServerViewsFromSpaces(owner, globalSpaces);
 
   const normalizedSearchText = searchText.trim().toLowerCase();
 
@@ -238,7 +231,6 @@ export function CapabilitiesPicker({
         });
         onSelect(newServerView);
         setPendingServerToAdd(null);
-        setIsSettingUpServer(false);
       }
     }
   }, [serverViews, pendingServerToAdd, onSelect]);
@@ -251,18 +243,17 @@ export function CapabilitiesPicker({
   const { availableMCPServers, isAvailableMCPServersLoading } =
     useAvailableMCPServers({
       owner,
-      disabled: !shouldFetchToolsData,
+      disabled: !isAdmin,
     });
 
   const { skills, isSkillsLoading } = useSkills({
     owner,
     status: "active",
-    disabled: !shouldFetchToolsData,
   });
 
   const isSkillsDataReady = !isSkillsLoading;
   const isToolsDataReady =
-    !isServerViewsLoading && !isAvailableMCPServersLoading;
+    !isServerViewsLoading && (!isAdmin || !isAvailableMCPServersLoading);
 
   const shouldShowSetupSheet =
     !!setupSheetServer || !!setupSheetRemoteServerConfig;
@@ -313,7 +304,6 @@ export function CapabilitiesPicker({
       setSetupSheetRemoteServerConfig(null);
     }
 
-    setIsSettingUpServer(true);
     setIsOpen(false);
   };
 
@@ -391,7 +381,7 @@ export function CapabilitiesPicker({
       }
     }
 
-    if (isAdmin && isToolsDataReady && shouldFetchToolsData) {
+    if (isAdmin && isToolsDataReady) {
       const installedServerNames = new Set(
         serverViews.map((v) => v.server.name)
       );
@@ -452,15 +442,12 @@ export function CapabilitiesPicker({
           setIsOpen(open);
           onOpenChange?.(open);
           if (open) {
-            setIsClosing(false);
             trackEvent({
               area: TRACKING_AREAS.TOOLS,
               object: "tool_picker",
               action: TRACKING_ACTIONS.OPEN,
             });
             setSearchText("");
-          } else {
-            setIsClosing(true);
           }
         }}
       >
@@ -476,11 +463,6 @@ export function CapabilitiesPicker({
         <DropdownMenuContent
           className="w-80"
           align="start"
-          onAnimationEnd={() => {
-            if (!isOpen) {
-              setIsClosing(false);
-            }
-          }}
           dropdownHeaders={
             <>
               <DropdownMenuSearchbar
@@ -545,7 +527,6 @@ export function CapabilitiesPicker({
                 },
               });
               onSelect(newServerView);
-              setIsSettingUpServer(false);
             } else {
               setPendingServerToAdd(createdServer);
             }
@@ -560,7 +541,6 @@ export function CapabilitiesPicker({
               setSetupSheetServer(null);
               setSetupSheetRemoteServerConfig(null);
               setPendingServerToAdd(null);
-              setIsSettingUpServer(false);
             }
           }}
         />
