@@ -3,11 +3,13 @@ import { buildToolsetsContext } from "@app/lib/api/assistant/global_agents/confi
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
+import { ACTIVATION_POD_FRAME_TEMPLATE } from "@app/lib/resources/skill/code_defined/global/static_files/activation_pod_frame_template";
 import type { GlobalSkillDefinition } from "@app/lib/resources/skill/code_defined/shared";
 import logger from "@app/logger/logger";
 import type { AgentLoopExecutionData } from "@app/types/assistant/agent_run";
 import { isPodConversation } from "@app/types/assistant/conversation";
 import { isFavoritePlatform } from "@app/types/favorite_platforms";
+import { frameContentType } from "@app/types/files";
 import { isJobType, JOB_TYPE_LABELS } from "@app/types/job_type";
 import { isStringArray } from "@app/types/shared/utils/general";
 import { safeParseJSON } from "@app/types/shared/utils/json_utils";
@@ -70,66 +72,33 @@ ALWAYS check the sources below to get an understanding of the workspace and user
 3. If a Pod ID is present, call \`list_conversations\` with \`includeMessages=false\` to scan recent Pod conversations. The conversation titles will help indicate what the user is currently working on. Avoid calling with \`includeMessages=true\` unless there is a specific reason to do so as this will bloat the context window.
 4. Only if you are creating the new Frame, use \`/Exa People And Company\` look up the user by name + company to source the public profile facts. This will allow to get a broader understanding of the user experience and job. 
 
-### Pod Frame
+### Pod Overview Frame
 
-#### Design
-- One Frame
-- Two swipeable slides (prev/next arrows + dot indicators + touch swipe + keyboard left/right arrow keys, with the frame focusable so arrows work on click or tab focus)
-- Hard height budget: 300px is the absolute maximum. Never rely on vertical scrolling.
-- Fill the space: content stretches to 100% of the frame width and uses the full height budget; large blank regions are a rendering defect.
-- Title it something non-technical, i.e. "Your Dust Use Cases".
-- Sleek, restrained, small type (7–12px)
-- Structural neutrals plus one accent color per audience tab
-- A second accent reserved for recommendations.
-- Real data only
+You have access to a template at \`skills/Activation/pod_frame_template.tsx\`. ALWAYS build the pod overview Frame from this template — never write Frame code from scratch.
+This is provided as a strong guideline for structure, but you are free to customize it if there as a clear reason for this use case.
 
-##### Slide 1
-- Two-line header: Description of the Pod/Frame, what data was used to build it.
-- Directly under the header, a slim identity strip: name, role/user type, one source pill
-- What we noticed section on the left: 2–3 most relevant work patterns as plain sentences in the user's own vocabulary ("you rebuild a pipeline summary from HubSpot most Mondays"), each with a source pill (your usage / workspace activity / public profile). This is the evidence layer that makes the recommendations credible.
-- Next steps section on the right: the 2–3 evidence-backed recommendations with a one-line payoff naming the concrete outcome ("→ your Monday summary, ready before you sit down")
-
-##### Slide 2 (The Use-Case Map)
-
-One dense grid answering "what is Dust used for — by me, by people like me, by my company?". Everything relevant is visible at once: no click-to-reveal, no hidden content, no scrolling. Two levels of data:
-- Areas — 3-10 most relevant/impactful areas of work (e.g. "Pipeline & forecasting", "Hiring"), each a group in the grid.
-- Use cases — the concrete recurring jobs inside each area (e.g. "Weekly pipeline digest"), each a chip inside its group. Merge near-duplicate use cases into one chip rather than listing variants.
-
-Whose usage the map shows is controlled by the audience tab. Each tab has its own accent color and its own data source:
-
-- You — from get_personal_usage: cluster the user's ranked skills and tools into areas and use cases.
-- People like you — the standard use cases for the user's job type, from the provided templates and search_agent_templates, enriched with workspace trending skills that match. This tab must NEVER be empty or a placeholder: when no personal or workspace signal exists, build the full grid from the agent template results alone.
-- Your company — from get_workspace_activity: real use cases carrying their 30-day message counts, grouped into areas inferred from their names; label the grouping as inferred.
-
-Layout blueprint — follow exactly, do not improvise:
-- Header line: the slide's one-line explainer on the left (12px, muted); the audience tab on the right as a compact segmented control (11px, three options, no full-width track). Switching tabs re-renders the grid and rewrites the explainer ("What you use Dust for" / "What people in your role use Dust for" / "What your company uses Dust for").
-- The map is a responsive CSS grid of area groups: \`grid-template-columns: repeat(auto-fill, minmax(220px, 1fr))\`, 12px gap, filling 100% of the frame width. Area groups flow into as many columns as fit. Large empty regions and full-width single-column rows are rendering defects.
-- An area group = a label row + wrapping chips. Label row: area name in 10px uppercase 600-weight muted text with a 2px left tick in the active tab's accent, followed by the use-case count in a 9px neutral badge. Chips wrap below with 4px gaps.
-- A use-case chip = one compact pill: 11px text, 3px 8px padding, 6px radius, 1px neutral border, white background, inline-flex. Truncate with ellipsis past ~30 characters; put the full text in the title attribute.
-- What powers a use case renders inside the chip as a muted 9px suffix after the name — "· @agentname" (agent), "· skill" (saved Skill), "· Mon 9am" with a tiny clock glyph (scheduled), "· 214 msgs" (company tab counts). Plain words only, never abbreviations or jargon like "AUTO". No separate badge elements.
-- Color: chips stay neutral; the active tab's accent appears only on the area ticks and the tab itself. At most two accents on screen.
-- Interaction is minimal by design: tabs switch audience; chips and labels have no click behavior (a subtle hover emphasis is enough). A static grid that always renders correctly beats a clever one.
-
-Density rules — the map must show everything relevant inside the height budget:
-- Fit by tightening, in this order: more grid columns → smaller gaps (12→8px, 4→3px) → 10px chip text.
-- Only when a tab's content physically cannot fit, keep the most relevant chips per area and end the group with a "+N more" chip. Never silently drop anything, and never drop the user's own skills or anything scheduled.
+For data to use:
+* Pick 2-5 agents and or skills from the user job type and the larger workspace. ALWAYS include one-line descriptions of what each does. Do not necessarily just show the most used, but rather the most relevant to the user. Never show Dust default agents. 
+* The recommendations are generated from the logic described in the Stage 1 section below.
 
 #### Frame Management
-- If no Frame is pinned yet, ALWAYS create the frame and pin it to the pod.
-- If the Frame exists, ALWAYS refresh the existing frame with the data acquired during research.
+- If no Frame is pinned yet, ALWAYS create it from the template (above) and pin it to the pod.
+- If the Frame exists, ALWAYS refresh its data block with what you learned during research, using targeted edits — never rebuild it.
 - At the start of any conversation, ALWAYS open the pinned frame in the side panel by emitting the file-preview directive. Example of directive: \`:preview_file{path="<the Pod's pinned frame path>" title="Your Dust Use Cases" contentType="application/vnd.dust.frame"}\`
 
 ### First Ever Pod Message
 
-If this is not the case, move to Stage 1 prior to giving a customer response.
+Sent only on the first session in a new Pod. If this is not the case, move to Stage 1 prior to giving a customer response.
+It is possible the user has existing recommendations from other Pods, but you should still start fresh.
 
-Sent only on the first session in a new Pod. It is possible the user has existing recommendations from other Pods, but you should still start fresh.
 The turn arrives with zero context on the user's side — they did not ask for this, and a recommendation dropped in cold is disorienting. This one message MUST be extremely friendly and welcoming, and flow in this order:
-1. A warm welcome — greet the user by name, in plain human language, zero jargon and zero pressure: this space works for them, you looked at how they and their workspace use Dust, and you're here to help them get more out of it. Nothing is required of them.
-2. Explain what a Dust "Frame" is in plain words
-3. ALWAYS end the message with 3 \`:quickReply\` directives (not \`askQuestion\`):
-   - 2 quickReply options that represent real recommendations. Both generated with the same logic define in the Stage 1 section below.
-   - 1 quickReply option asking if the user wants the agent to Scan their personal data. Leads into the Scan path. Make this friendly and avoid making this sound jarring from a security perspective.
+1. Greet the user with the mention directive :mention_user[name]{sId=xxx}.
+2. Explain all the related Dust concepts, especially the Pod and Frame, in a way that is easy to understand and not jargon-heavy. Use the Dust Support skill to generate the content.
+3. Tell the user in a clear way that you are here to help them get more value from Dust. You don't know their day-to-day work or working habits yet, but you are excited to learn them. To start, you've taken a first guess at a use case relevant to their role (explain where that guess came from). If it's relevant accept the action card. Otherwise, select the option below to go through a quick Q/A session to help you understand their work better. If you would like, we can scan your connected sources (typically Slack, Gmail, Calendar) to find their real repetitive automatically.
+4. Generate one action card with the recommendation from the Stage 1 section below.
+5. Use the quick reply format (":quickReply[Label]{message="message to send"}") to provide the following options: 
+   - :quickReply[Ask me questions to learn more about my work]{message="Ask me questions to learn more about my work"}
+   - :quickReply[Scan my connected sources to find my real repetitive work]{message="Scan my connected sources to find my real repetitive work"}
 
 ## Stage 1 — Recommend
 
@@ -385,7 +354,14 @@ export const activationSkill = {
     { name: "pod_manager" },
     { name: "exa_people_and_company" },
   ],
-  version: 2,
+  files: [
+    {
+      fileName: "pod_frame_template.tsx",
+      contentType: frameContentType,
+      content: ACTIVATION_POD_FRAME_TEMPLATE,
+    },
+  ],
+  version: 3,
   icon: "ActionRocketIcon",
   isRestricted: async (auth) => {
     const flags = await getFeatureFlags(auth);
