@@ -11,7 +11,10 @@ import { useSpaces } from "@app/lib/swr/spaces";
 import type { LightWorkspaceType } from "@app/types/user";
 import { type RefObject, useMemo } from "react";
 
-import { buildCapabilitySlashCommandItems } from "./buildSlashCommandItems";
+import {
+  buildCapabilitySlashCommandIndex,
+  searchCapabilitySlashCommandIndex,
+} from "./buildSlashCommandItems";
 
 function getSkillBuilderSlashCommandTools({
   serverViews,
@@ -76,20 +79,24 @@ export function useInputBarSlashCommandCapabilities({
   const { serverViews, isLoading: isServerViewsLoading } =
     useMCPServerViewsFromSpaces(owner, globalSpaces);
 
-  const capabilityItems = useMemo(
+  const capabilityIndex = useMemo(
     () =>
-      buildCapabilitySlashCommandItems({
+      buildCapabilitySlashCommandIndex({
         excludeSkillId,
-        query,
         skills,
         tools: serverViews,
-        toolFilter: (serverView) =>
-          isJITMCPServerView(serverView) &&
-          !(selectedMCPServerViewIdsRef?.current ?? new Set()).has(
-            serverView.sId
-          ),
+        toolFilter: isJITMCPServerView,
       }),
-    [excludeSkillId, query, selectedMCPServerViewIdsRef, serverViews, skills]
+    [excludeSkillId, serverViews, skills]
+  );
+  const capabilityItems = useMemo(
+    () =>
+      searchCapabilitySlashCommandIndex({
+        excludedToolIds: selectedMCPServerViewIdsRef?.current ?? undefined,
+        index: capabilityIndex,
+        query,
+      }),
+    [capabilityIndex, query, selectedMCPServerViewIdsRef]
   );
 
   return {
@@ -127,17 +134,18 @@ export function useSkillBuilderSlashCommandCapabilities({
     [serverViews, spaces]
   );
 
-  const capabilityItems = useMemo(
+  const capabilityIndex = useMemo(
     () =>
-      buildCapabilitySlashCommandItems({
+      buildCapabilitySlashCommandIndex({
         excludeSkillId,
-        query,
         skills,
         tools,
-        toolFilter: (serverView) =>
-          getMCPServerRequirements(serverView).noRequirement,
       }),
-    [excludeSkillId, query, skills, tools]
+    [excludeSkillId, skills, tools]
+  );
+  const capabilityItems = useMemo(
+    () => searchCapabilitySlashCommandIndex({ index: capabilityIndex, query }),
+    [capabilityIndex, query]
   );
 
   return {
