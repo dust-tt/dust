@@ -96,16 +96,19 @@ export const MentionDropdown = forwardRef<
           agent,
         ])
       );
-      const activeAgents: RichAgentMentionInConversation[] = agentConfigurations
-        .filter((agent) => agent.status === "active")
-        .map((agent) => {
-          const participant = participantAgentsById.get(agent.sId);
-          return {
-            ...toRichAgentMentionType(agent),
-            isParticipant: participant !== undefined,
-            lastActivityAt: participant?.lastActivityAt,
-          };
+      const activeAgents: RichAgentMentionInConversation[] = [];
+      for (const agent of agentConfigurations) {
+        if (agent.status !== "active") {
+          continue;
+        }
+
+        const participant = participantAgentsById.get(agent.sId);
+        activeAgents.push({
+          ...toRichAgentMentionType(agent),
+          isParticipant: participant !== undefined,
+          lastActivityAt: participant?.lastActivityAt,
         });
+      }
 
       const sidekickParticipant = participantAgentsById.get(
         GLOBAL_AGENTS_SID.SIDEKICK
