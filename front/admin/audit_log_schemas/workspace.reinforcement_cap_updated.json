@@ -1,0 +1,8 @@
+{
+  "action": "workspace.reinforcement_cap_updated",
+  "targets": [{ "type": "workspace" }],
+  "metadata": {
+    "cap_micro_usd": "string",
+    "cap_awu_credits": "string"
+  }
+}

@@ -1,0 +1,8 @@
+{
+  "action": "workspace.domain_auto_join_updated",
+  "targets": [{ "type": "workspace" }],
+  "metadata": {
+    "domain": "string",
+    "enabled": "string"
+  }
+}

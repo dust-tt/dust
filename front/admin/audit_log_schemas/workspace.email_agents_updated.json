@@ -1,0 +1,7 @@
+{
+  "action": "workspace.email_agents_updated",
+  "targets": [{ "type": "workspace" }],
+  "metadata": {
+    "enabled": "string"
+  }
+}
