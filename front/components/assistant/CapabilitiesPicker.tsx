@@ -41,7 +41,6 @@ import {
   DropdownMenuSearchbar,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-  DropdownTooltipTrigger,
   LoadingBlock,
   ShapesPlus,
 } from "@dust-tt/sparkle";
@@ -139,7 +138,7 @@ export function CapabilitiesPickerItemsList({
             />
           ) : undefined;
 
-        const menuItem = (
+        return (
           <DropdownMenuItem
             key={item.id}
             icon={item.icon}
@@ -151,19 +150,6 @@ export function CapabilitiesPickerItemsList({
             className="group"
             onClick={() => onItemSelect(item)}
           />
-        );
-
-        return item.kind === "skill" && item.description ? (
-          <DropdownTooltipTrigger
-            key={item.id}
-            description={item.description}
-            side="right"
-            sideOffset={8}
-          >
-            {menuItem}
-          </DropdownTooltipTrigger>
-        ) : (
-          menuItem
         );
       })}
     </div>
