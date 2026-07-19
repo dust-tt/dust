@@ -1,0 +1,41 @@
+front/admin/audit_log_schemas/workspace.manual_project_knowledge_management_updated.json
+  s_f438dc9db1ec5f::t_1bb04d77da7da7 1-7
+front/admin/audit_log_schemas/workspace.email_agents_updated.json
+  s_f438dc9db1ec5f::t_1bb04d77da7da7 1-7
+front/admin/audit_log_schemas/workspace.regional_models_only_updated.json
+  s_f438dc9db1ec5f::t_1bb04d77da7da7 1-7
+front/admin/audit_log_schemas/workspace.voice_transcription_updated.json
+  s_f438dc9db1ec5f::t_1bb04d77da7da7 1-7
+front/admin/audit_log_schemas/workspace.open_projects_updated.json
+  s_f438dc9db1ec5f::t_1bb04d77da7da7 1-7
+front-api/routes/w/[wId]/index.ts
+  s_f438dc9db1ec5f::t_1bb04d77da7da7 397-406,431-440,452-461,476-485,494-503,512-521,566-575,632-641,651-660,803-812
+front/admin/audit_log_schemas/workspace.extension_mcp_tools_updated.json
+  s_f438dc9db1ec5f::t_1bb04d77da7da7 1-7
+front/admin/audit_log_schemas/workspace.slack_personal_footer_removal_updated.json
+  s_f438dc9db1ec5f::t_1bb04d77da7da7 1-7
+front/admin/audit_log_schemas/workspace.sharing_policy_updated.json
+  s_f438dc9db1ec5f::t_1bb04d77da7da7 1-7
+front/lib/api/audit/workos_audit.ts
+  s_f438dc9db1ec5f::t_1bb04d77da7da7 87-92,94-97
+front/admin/audit_log_schemas/workspace.interactive_content_sharing_updated.json
+  s_f438dc9db1ec5f::t_1bb04d77da7da7 1-7
+front/admin/audit_log_schemas/workspace.private_conversation_urls_updated.json
+  s_f438dc9db1ec5f::t_1bb04d77da7da7 1-7
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "867c3fa74d743beeb1473ac56d7ee9aeec34b1b8",
+  "prompts": {},
+  "sessions": {
+    "s_f438dc9db1ec5f": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f71b5-f0a6-7e30-8938-673c024aa397",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Zeid Marouf <4321056+zmarouf@users.noreply.github.com>"
+    }
+  }
+}
