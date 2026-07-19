@@ -26,7 +26,7 @@ import { Ok } from "@app/types/shared/result";
 import { pluralize } from "@app/types/shared/utils/string_utils";
 import type { LightWorkspaceType } from "@app/types/user";
 import { useCallback, useRef, useState } from "react";
-import type { Fetcher } from "swr";
+import type { Fetcher, SWRConfiguration } from "swr";
 import type { SWRMutationConfiguration } from "swr/mutation";
 import useSWRMutation from "swr/mutation";
 
@@ -99,12 +99,14 @@ export function useSkills({
   status,
   globalSpaceOnly,
   isDefault,
+  swrOptions,
 }: {
   owner: LightWorkspaceType;
   disabled?: boolean;
   status?: SkillStatus;
   globalSpaceOnly?: boolean;
   isDefault?: boolean;
+  swrOptions?: SWRConfiguration;
 }): {
   skills: SkillWithoutInstructionsAndToolsType[];
   isSkillsError: boolean;
@@ -128,7 +130,7 @@ export function useSkills({
   const { data, error, isLoading, mutate } = useSWRWithDefaults(
     `/api/w/${owner.sId}/skills${queryString ? `?${queryString}` : ""}`,
     fetcher,
-    { disabled }
+    { ...swrOptions, disabled }
   );
 
   return {

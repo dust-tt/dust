@@ -130,10 +130,12 @@ export function useAvailableMCPServers({
   owner,
   space,
   disabled = false,
+  swrOptions,
 }: {
   owner: LightWorkspaceType;
   space?: SpaceType;
   disabled?: boolean;
+  swrOptions?: SWRConfiguration;
 }) {
   const { fetcher } = useFetcher();
   const configFetcher: Fetcher<GetMCPServersResponseBody> = fetcher;
@@ -143,6 +145,7 @@ export function useAvailableMCPServers({
     : `/api/w/${owner.sId}/mcp/available`;
 
   const { data, error, mutate } = useSWRWithDefaults(url, configFetcher, {
+    ...swrOptions,
     disabled,
   });
 

@@ -14,6 +14,7 @@ import { getDefaultRemoteMCPServerByName } from "@app/lib/actions/mcp_internal_a
 import { isJITMCPServerView } from "@app/lib/actions/mcp_internal_actions/utils";
 import type { MCPServerType, MCPServerViewType } from "@app/lib/api/mcp";
 import { getSkillAvatarIcon } from "@app/lib/skill";
+import { CAPABILITIES_SWR_OPTIONS } from "@app/lib/swr/capabilities";
 import {
   useAvailableMCPServers,
   useMCPServerViewsFromSpaces,
@@ -202,6 +203,7 @@ export function CapabilitiesPicker({
   const { spaces: globalSpaces } = useSpaces({
     workspaceId: owner.sId,
     kinds: ["global"],
+    swrOptions: CAPABILITIES_SWR_OPTIONS,
   });
 
   const isAdmin = owner.role === "admin";
@@ -210,7 +212,11 @@ export function CapabilitiesPicker({
     serverViews,
     isLoading: isServerViewsLoading,
     mutateServerViews,
-  } = useMCPServerViewsFromSpaces(owner, globalSpaces);
+  } = useMCPServerViewsFromSpaces(
+    owner,
+    globalSpaces,
+    CAPABILITIES_SWR_OPTIONS
+  );
 
   const normalizedSearchText = searchText.trim().toLowerCase();
 
@@ -247,11 +253,13 @@ export function CapabilitiesPicker({
     useAvailableMCPServers({
       owner,
       disabled: !isAdmin,
+      swrOptions: CAPABILITIES_SWR_OPTIONS,
     });
 
   const { skills, isSkillsLoading } = useSkills({
     owner,
     status: "active",
+    swrOptions: CAPABILITIES_SWR_OPTIONS,
   });
 
   const isSkillsDataReady = !isSkillsLoading;
