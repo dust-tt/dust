@@ -53,7 +53,9 @@ vi.mock("@dust-tt/sparkle", () => {
     cn: (...classes: Array<string | false | undefined>) =>
       classes.filter(Boolean).join(" "),
     DropdownMenu: Container,
-    DropdownMenuContent: Container,
+    DropdownMenuContent: ({ children }: { children: ReactNode }) => (
+      <div data-testid="mention-dropdown-content">{children}</div>
+    ),
     DropdownMenuItem,
     DropdownMenuTrigger: Container,
     Spinner: () => <div data-testid="spinner" />,
@@ -108,8 +110,8 @@ const userSuggestion: RichMention = {
   description: "alice@dust.tt",
 };
 
-function renderDropdown(query: string) {
-  return render(
+function dropdown(query: string) {
+  return (
     <MentionDropdown
       query={query}
       owner={owner}
@@ -119,6 +121,10 @@ function renderDropdown(query: string) {
       select={{ agents: true, users: true }}
     />
   );
+}
+
+function renderDropdown(query: string) {
+  return render(dropdown(query));
 }
 
 describe("MentionDropdown", () => {
@@ -163,5 +169,37 @@ describe("MentionDropdown", () => {
 
     expect(screen.getByText("Code Agent")).toBeInTheDocument();
     expect(screen.queryByTestId("spinner")).toBeNull();
+  });
+
+  it("keeps the dropdown content mounted while local results update", () => {
+    useUnifiedAgentConfigurationsMock.mockReturnValue({
+      agentConfigurations: [
+        agentConfiguration,
+        {
+          ...agentConfiguration,
+          id: 2,
+          sId: "agent_writing",
+          name: "Writing Agent",
+        },
+      ],
+      isLoading: false,
+    });
+    useConversationParticipantsMock.mockReturnValue({
+      conversationParticipants: undefined,
+    });
+    useMentionSuggestionsMock.mockReturnValue({
+      suggestions: [],
+      isLoading: false,
+      isSearching: false,
+    });
+
+    const { rerender } = renderDropdown("");
+    const content = screen.getByTestId("mention-dropdown-content");
+
+    rerender(dropdown("code"));
+
+    expect(screen.getByTestId("mention-dropdown-content")).toBe(content);
+    expect(screen.getByText("Code Agent")).toBeInTheDocument();
+    expect(screen.queryByText("Writing Agent")).toBeNull();
   });
 });

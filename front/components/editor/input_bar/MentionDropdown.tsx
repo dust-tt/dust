@@ -223,14 +223,6 @@ export const MentionDropdown = forwardRef<
       return null;
     }
 
-    // Generate a key based on content state to force remount when content size changes significantly.
-    // This ensures Radix UI recalculates collision detection and positioning.
-    const contentKey = isLoading
-      ? "loading"
-      : suggestions.length === 0
-        ? "empty"
-        : `results-${suggestions.length}`;
-
     // Don't render the dropdown if there are no results
     if (suggestions.length === 0 && !isLoading) {
       return null;
@@ -262,7 +254,6 @@ export const MentionDropdown = forwardRef<
           <div style={virtualTriggerStyle} />
         </DropdownMenuTrigger>
         <DropdownMenuContent
-          key={contentKey}
           className="w-72"
           align="start"
           side="bottom"
