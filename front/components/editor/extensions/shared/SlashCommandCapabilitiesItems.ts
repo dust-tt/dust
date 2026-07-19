@@ -151,9 +151,6 @@ export function getSkillSlashCommandItem(
     icon: () => React.createElement(getSkillAvatarIcon(skill)),
     id: skill.sId,
     label: skill.name,
-    tooltip: skill.userFacingDescription
-      ? { description: skill.userFacingDescription }
-      : undefined,
   };
 }
 
