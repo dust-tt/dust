@@ -2,7 +2,20 @@ import type {
   MentionDropdownOnKeyDown,
   MentionDropdownProps,
 } from "@app/components/editor/input_bar/types";
+import { useConversationParticipants } from "@app/hooks/conversations/useConversationParticipants";
+import {
+  filterAndSortEditorSuggestionAgents,
+  filterEditorSuggestionUsers,
+  interleaveMentionsPreservingAgentOrder,
+} from "@app/lib/mentions/editor/suggestion";
+import { useUnifiedAgentConfigurations } from "@app/lib/swr/assistants";
 import { useMentionSuggestions } from "@app/lib/swr/mentions";
+import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
+import type { RichAgentMentionInConversation } from "@app/types/assistant/mentions";
+import {
+  isRichUserMention,
+  toRichAgentMentionType,
+} from "@app/types/assistant/mentions";
 import {
   Avatar,
   Chip,
@@ -18,6 +31,7 @@ import {
   forwardRef,
   useEffect,
   useImperativeHandle,
+  useMemo,
   useRef,
   useState,
 } from "react";
@@ -46,16 +60,104 @@ export const MentionDropdown = forwardRef<
     // This avoids caching stale coordinates that may be invalid (0,0) when typing @ quickly after refresh.
     const triggerRect = clientRect?.();
 
-    // Fetch suggestions from server using the query.
-    // Backend handles all prioritization logic (participants, preferred agent, etc.)
-    const { suggestions, isLoading } = useMentionSuggestions({
+    const { agentConfigurations, isLoading: areAgentsLoading } =
+      useUnifiedAgentConfigurations({
+        workspaceId: owner.sId,
+        disabled: !select.agents,
+      });
+    const { conversationParticipants } = useConversationParticipants({
+      workspaceId: owner.sId,
+      conversationId,
+      options: { disabled: !select.agents || !conversationId },
+    });
+    const {
+      suggestions: serverSuggestions,
+      isLoading: areUsersLoading,
+      isSearching: isUserSearchInProgress,
+    } = useMentionSuggestions({
       workspaceId: owner.sId,
       conversationId,
       spaceId,
       query,
-      select,
+      select: { agents: false, users: select.users },
       includeCurrentUser,
+      disabled: !select.users,
     });
+
+    const lowerCaseQuery = query.toLowerCase();
+    const agentSuggestions = useMemo(() => {
+      if (!select.agents) {
+        return [];
+      }
+
+      const participantAgentsById = new Map(
+        (conversationParticipants?.agents ?? []).map((agent) => [
+          agent.configurationId,
+          agent,
+        ])
+      );
+      const activeAgents: RichAgentMentionInConversation[] = agentConfigurations
+        .filter((agent) => agent.status === "active")
+        .map((agent) => {
+          const participant = participantAgentsById.get(agent.sId);
+          return {
+            ...toRichAgentMentionType(agent),
+            isParticipant: participant !== undefined,
+            lastActivityAt: participant?.lastActivityAt,
+          };
+        });
+
+      const sidekickParticipant = participantAgentsById.get(
+        GLOBAL_AGENTS_SID.SIDEKICK
+      );
+      const candidates =
+        sidekickParticipant &&
+        !activeAgents.some((agent) => agent.id === GLOBAL_AGENTS_SID.SIDEKICK)
+          ? [
+              ...activeAgents,
+              {
+                type: "agent" as const,
+                id: sidekickParticipant.configurationId,
+                label: sidekickParticipant.name,
+                pictureUrl: sidekickParticipant.pictureUrl,
+                description: "",
+                isParticipant: true,
+                lastActivityAt: sidekickParticipant.lastActivityAt,
+              },
+            ]
+          : activeAgents;
+
+      return filterAndSortEditorSuggestionAgents(lowerCaseQuery, candidates);
+    }, [
+      agentConfigurations,
+      conversationParticipants?.agents,
+      lowerCaseQuery,
+      select.agents,
+    ]);
+    const userSuggestions = useMemo(
+      () =>
+        filterEditorSuggestionUsers(
+          lowerCaseQuery,
+          serverSuggestions.filter(isRichUserMention)
+        ),
+      [lowerCaseQuery, serverSuggestions]
+    );
+    const suggestions = useMemo(
+      () =>
+        interleaveMentionsPreservingAgentOrder(
+          agentSuggestions,
+          userSuggestions,
+          lowerCaseQuery,
+          null,
+          conversationId
+        ),
+      [agentSuggestions, conversationId, lowerCaseQuery, userSuggestions]
+    );
+    const isLoading =
+      suggestions.length === 0 &&
+      ((areAgentsLoading && agentConfigurations.length === 0) ||
+        areUsersLoading ||
+        isUserSearchInProgress);
 
     const selectedItemRef = useRef<HTMLDivElement>(null);
 

@@ -75,21 +75,26 @@ export function useMentionSuggestions({
       : `/api/w/${workspaceId}/assistant/mentions/suggestions`) +
     `?${searchParams.toString()}`;
 
-  const { data, error, mutate } = useSWRWithDefaults(url, suggestionsFetcher, {
-    // Keep previous data while fetching new suggestions for better UX
-    keepPreviousData: true,
-    // We don't revalidate on focus to avoid unnecessary requests
-    revalidateOnFocus: false,
-    // Don't revalidate on reconnect for better performance
-    revalidateOnReconnect: false,
-    // Cache suggestions for 5 minutes
-    dedupingInterval: 5 * 60 * 1000,
-    disabled,
-  });
+  const { data, error, isValidating, mutate } = useSWRWithDefaults(
+    url,
+    suggestionsFetcher,
+    {
+      // Keep previous data while fetching new suggestions for better UX
+      keepPreviousData: true,
+      // We don't revalidate on focus to avoid unnecessary requests
+      revalidateOnFocus: false,
+      // Don't revalidate on reconnect for better performance
+      revalidateOnReconnect: false,
+      // Cache suggestions for 5 minutes
+      dedupingInterval: 5 * 60 * 1000,
+      disabled,
+    }
+  );
 
   return {
     suggestions: data?.suggestions ?? [],
-    isLoading: !error && !data,
+    isLoading: !error && !data && !disabled,
+    isSearching: !disabled && (query !== debouncedSearchQuery || isValidating),
     isError: !!error,
     mutate,
   };
