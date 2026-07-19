@@ -1,7 +1,7 @@
 import { CreateMCPServerDialog } from "@app/components/actions/mcp/create/CreateMCPServerDialog";
 import {
-  matchesSlashCommandCapabilityQuery,
-  sortSlashCommandCapabilityMatches,
+  type CapabilitySearchIndexItem,
+  searchCapabilityIndex,
 } from "@app/components/editor/extensions/shared/SlashCommandCapabilitiesItems";
 import { CapabilityDetailsSheets } from "@app/components/shared/CapabilityDetailsSheets";
 import {
@@ -27,7 +27,10 @@ import {
   trackEvent,
 } from "@app/lib/tracking";
 import type { SkillWithoutInstructionsAndToolsType } from "@app/types/assistant/skill_configuration";
-import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
+import {
+  assertNever,
+  assertNeverAndIgnore,
+} from "@app/types/shared/utils/assert_never";
 import { asDisplayName } from "@app/types/shared/utils/string_utils";
 import type { UserType, WorkspaceType } from "@app/types/user";
 import type { DropdownMenuItemProps } from "@dust-tt/sparkle";
@@ -44,17 +47,15 @@ import {
   LoadingBlock,
   ShapesPlus,
 } from "@dust-tt/sparkle";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
-interface CapabilityPickerItemBase {
+interface CapabilityPickerItemBase extends CapabilitySearchIndexItem {
   description?: string;
-  icon: DropdownMenuItemProps["icon"];
   id: string;
   label: string;
-  sortName: string;
 }
 
-type CapabilityPickerItem = CapabilityPickerItemBase &
+type CapabilityPickerSearchItem = CapabilityPickerItemBase &
   (
     | {
         kind: "skill";
@@ -69,6 +70,10 @@ type CapabilityPickerItem = CapabilityPickerItemBase &
         server: MCPServerType;
       }
   );
+
+type CapabilityPickerItem = CapabilityPickerSearchItem & {
+  icon: DropdownMenuItemProps["icon"];
+};
 
 function CapabilitiesPickerLoading({ count = 5 }: { count?: number }) {
   return (
@@ -103,8 +108,6 @@ export function CapabilitiesPickerItemsList({
   onSkillDetails,
   onToolDetails,
 }: CapabilitiesPickerItemsListProps) {
-  const listRef = useRef<HTMLDivElement>(null);
-
   if (items.length === 0) {
     return (
       <div className="px-2 py-4 text-center text-sm text-muted-foreground">
@@ -114,7 +117,7 @@ export function CapabilitiesPickerItemsList({
   }
 
   return (
-    <div ref={listRef}>
+    <div>
       {items.map((item) => {
         const endComponent =
           item.kind === "uninstalled_tool" ? (
@@ -320,8 +323,8 @@ export function CapabilitiesPicker({
     }
   };
 
-  const capabilityPickerItems = (() => {
-    const items: CapabilityPickerItem[] = [];
+  const capabilityPickerIndex = useMemo(() => {
+    const items: CapabilityPickerSearchItem[] = [];
     const selectedMCPServerViewIds = new Set(
       selectedMCPServerViews.map((v) => v.sId)
     );
@@ -330,26 +333,14 @@ export function CapabilitiesPicker({
       for (const skill of skills) {
         const description = skill.userFacingDescription;
 
-        if (
-          !matchesSlashCommandCapabilityQuery({
-            description,
-            label: skill.name,
-            query: normalizedSearchText,
-          })
-        ) {
-          continue;
-        }
-
-        const SkillAvatar = getSkillAvatarIcon(skill);
-
         items.push({
           kind: "skill",
           skill,
           id: `skills-picker-${skill.sId}`,
-          icon: <SkillAvatar size="xs" />,
           label: skill.name,
           sortName: skill.name.toLowerCase(),
           description,
+          normalizedDescription: description?.toLowerCase(),
         });
       }
 
@@ -359,12 +350,7 @@ export function CapabilitiesPicker({
 
         if (
           !isJITMCPServerView(serverView) ||
-          selectedMCPServerViewIds.has(serverView.sId) ||
-          !matchesSlashCommandCapabilityQuery({
-            description,
-            label,
-            query: normalizedSearchText,
-          })
+          selectedMCPServerViewIds.has(serverView.sId)
         ) {
           continue;
         }
@@ -373,10 +359,10 @@ export function CapabilitiesPicker({
           kind: "tool",
           serverView,
           id: `capabilities-picker-${serverView.sId}`,
-          icon: getAvatar(serverView.server, "xs"),
           label,
           sortName: label.toLowerCase(),
           description,
+          normalizedDescription: description?.toLowerCase(),
         });
       }
     }
@@ -392,12 +378,7 @@ export function CapabilitiesPicker({
 
         if (
           installedServerNames.has(server.name) ||
-          server.availability !== "manual" ||
-          !matchesSlashCommandCapabilityQuery({
-            description,
-            label,
-            query: normalizedSearchText,
-          })
+          server.availability !== "manual"
         ) {
           continue;
         }
@@ -406,27 +387,53 @@ export function CapabilitiesPicker({
           kind: "uninstalled_tool",
           server,
           id: `tools-to-install-${server.sId}`,
-          icon: getAvatar(server, "xs"),
           label,
           sortName: label.toLowerCase(),
+          sortGroup: 1,
           description,
+          normalizedDescription: description?.toLowerCase(),
         });
       }
     }
 
-    const installedItems = items.filter((i) => i.kind !== "uninstalled_tool");
-    const uninstalledItems = items.filter((i) => i.kind === "uninstalled_tool");
-    return [
-      ...sortSlashCommandCapabilityMatches({
-        items: installedItems,
-        normalizedQuery: normalizedSearchText,
+    return items;
+  }, [
+    availableMCPServers,
+    isAdmin,
+    isSkillsDataReady,
+    isToolsDataReady,
+    selectedMCPServerViews,
+    serverViews,
+    skills,
+  ]);
+
+  const capabilityPickerSearchResults = useMemo(
+    () =>
+      searchCapabilityIndex({
+        items: capabilityPickerIndex,
+        query: normalizedSearchText,
       }),
-      ...sortSlashCommandCapabilityMatches({
-        items: uninstalledItems,
-        normalizedQuery: normalizedSearchText,
+    [capabilityPickerIndex, normalizedSearchText]
+  );
+
+  const capabilityPickerItems = useMemo(
+    () =>
+      capabilityPickerSearchResults.map((item) => {
+        switch (item.kind) {
+          case "skill": {
+            const SkillAvatar = getSkillAvatarIcon(item.skill);
+            return { ...item, icon: <SkillAvatar size="xs" /> };
+          }
+          case "tool":
+            return { ...item, icon: getAvatar(item.serverView.server, "xs") };
+          case "uninstalled_tool":
+            return { ...item, icon: getAvatar(item.server, "xs") };
+          default:
+            return assertNever(item);
+        }
       }),
-    ];
-  })();
+    [capabilityPickerSearchResults]
+  );
 
   const hasNoVisibleItems =
     isSkillsDataReady && isToolsDataReady && capabilityPickerItems.length === 0;
