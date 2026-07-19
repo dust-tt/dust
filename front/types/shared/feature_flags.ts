@@ -333,6 +333,11 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
       "Admin Governance: evaluate the new group_permissions checks alongside the legacy ones and log mismatches (shadow mode). Serves the legacy result; safe to toggle.",
     stage: "dust_only",
   },
+  headroom_compression: {
+    description:
+      "Compress conversation messages through the local headroom-ai proxy before sending them to the LLM (new router, streaming path only).",
+    stage: "dust_only",
+  },
 } as const satisfies Record<string, FeatureFlag>;
 
 export type FeatureFlagStage = "dust_only" | "rolling_out" | "on_demand";
