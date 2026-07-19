@@ -213,6 +213,7 @@ function UsageSection({ owner, onClose, visible }: UsageSectionProps) {
                       Your Credits
                     </span>
                     {nextCreditResetAt &&
+                      myUsage?.seatType !== "free" &&
                       (() => {
                         const d = new Date(nextCreditResetAt);
                         const month = d.toLocaleDateString("en-US", {

@@ -121,13 +121,24 @@ export function ChangeSeatModal({
   // Default the active tab to the frequency of the user's current seat — falls
   // back to the first frequency that has any seats to show. The effect below
   // resets the selection when a different member opens the modal.
+  //
+  // Only trust the current seat's own frequency if it's actually one of the
+  // selectable buckets: a "free" member's billing frequency (e.g. "monthly")
+  // may not match any *other* seat type's frequency, since "free" itself is
+  // filtered out of `seatTypes`/`seatTypesByFrequency` above — trusting it
+  // blindly could land on an empty bucket with nothing to render and no
+  // Monthly/Yearly switch to escape it (that switch only shows when more than
+  // one bucket is populated).
   const currentFrequency =
     currentSeatType && seatPlans[currentSeatType]
       ? seatPlans[currentSeatType].billingFrequency
       : null;
-  const [activeFrequency, setActiveFrequency] = useState<SeatBillingFrequency>(
-    currentFrequency ?? availableFrequencies[0] ?? "monthly"
-  );
+  const initialFrequency: SeatBillingFrequency =
+    (currentFrequency && seatTypesByFrequency[currentFrequency].length > 0
+      ? currentFrequency
+      : availableFrequencies[0]) ?? "monthly";
+  const [activeFrequency, setActiveFrequency] =
+    useState<SeatBillingFrequency>(initialFrequency);
 
   // Reset transient state when the dialog closes and initialize the selected
   // seat + active tab once per member open. Do not re-run on seat plan
@@ -149,19 +160,14 @@ export function ChangeSeatModal({
     }
 
     setSelectedSeat(nextSelectedSeat);
-    if (currentFrequency) {
-      setActiveFrequency(currentFrequency);
-    } else if (availableFrequencies[0]) {
-      setActiveFrequency(availableFrequencies[0]);
-    }
+    setActiveFrequency(initialFrequency);
     initializedMemberIdRef.current = displayedMemberId;
     setIsSaving(false);
   }, [
-    availableFrequencies,
-    currentFrequency,
     displayedMemberId,
     displayedMemberSeatType,
     firstSeatType,
+    initialFrequency,
     isOpen,
   ]);
 
