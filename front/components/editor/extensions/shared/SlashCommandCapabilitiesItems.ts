@@ -30,7 +30,7 @@ export function searchCapabilityIndex<T extends CapabilitySearchIndexItem>({
   items: T[];
   query: string;
   limit?: number;
-}): { items: T[]; totalMatches: number } {
+}): T[] {
   const normalizedQuery = query.trim().toLowerCase();
   const matches: { item: T; titleMatches: boolean }[] = [];
 
@@ -74,10 +74,7 @@ export function searchCapabilityIndex<T extends CapabilitySearchIndexItem>({
     return a.item.sortName.localeCompare(b.item.sortName);
   });
 
-  return {
-    items: sortedMatches.slice(0, limit).map(({ item }) => item),
-    totalMatches: sortedMatches.length,
-  };
+  return sortedMatches.slice(0, limit).map(({ item }) => item);
 }
 
 export type SlashCommandSkillSuggestion = Pick<

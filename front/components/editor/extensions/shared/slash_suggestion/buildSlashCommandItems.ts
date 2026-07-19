@@ -1,5 +1,4 @@
 import {
-  type CapabilitySearchIndexItem,
   getSkillSlashCommandItem,
   getToolSlashCommandItem,
   getToolSlashCommandLabel,
@@ -29,80 +28,46 @@ export function filterSlashCommandItems(
   );
 }
 
-type CapabilitySlashCommandSearchItem = CapabilitySearchIndexItem &
-  (
-    | {
-        kind: "skill";
-        skill: SlashCommandSkillSuggestion;
-      }
-    | {
-        kind: "tool";
-        tool: SlashCommandToolSuggestion;
-      }
-  );
-
-export function buildCapabilitySlashCommandIndex({
+export function buildCapabilitySlashCommandItems({
   excludeSkillId,
+  query,
   skillFilter,
   skills,
   toolFilter,
   tools,
 }: {
   excludeSkillId?: string | null;
+  query: string;
   skillFilter?: (skill: SlashCommandSkillSuggestion) => boolean;
   skills: SlashCommandSkillSuggestion[];
   toolFilter?: (tool: SlashCommandToolSuggestion) => boolean;
   tools: SlashCommandToolSuggestion[];
-}): CapabilitySlashCommandSearchItem[] {
-  const index: CapabilitySlashCommandSearchItem[] = [];
-
-  for (const skill of skills) {
-    if (skill.sId === excludeSkillId || !(skillFilter?.(skill) ?? true)) {
-      continue;
-    }
-
-    index.push({
-      kind: "skill",
-      normalizedDescription: skill.userFacingDescription?.toLowerCase(),
-      skill,
-      sortName: skill.name.toLowerCase(),
-    });
-  }
-
-  for (const tool of tools) {
-    if (!(toolFilter?.(tool) ?? true)) {
-      continue;
-    }
-
-    index.push({
-      kind: "tool",
-      normalizedDescription: getMcpServerViewDescription(tool)?.toLowerCase(),
-      tool,
-      sortName: getToolSlashCommandLabel(tool).toLowerCase(),
-    });
-  }
-
-  return index;
-}
-
-export function searchCapabilitySlashCommandIndex({
-  excludedToolIds,
-  index,
-  query,
-}: {
-  excludedToolIds?: ReadonlySet<string>;
-  index: CapabilitySlashCommandSearchItem[];
-  query: string;
 }): SlashCommand[] {
-  const searchableIndex = excludedToolIds
-    ? index.filter(
-        (item) => item.kind !== "tool" || !excludedToolIds.has(item.tool.sId)
-      )
-    : index;
+  const normalizedQuery = query.trim().toLowerCase();
+
   const matches = searchCapabilityIndex({
-    items: searchableIndex,
-    query,
-  }).items;
+    query: normalizedQuery,
+    items: [
+      ...skills
+        .filter((skill) => skill.sId !== excludeSkillId)
+        .filter((skill) => skillFilter?.(skill) ?? true)
+        .map((skill) => ({
+          kind: "skill" as const,
+          normalizedDescription: skill.userFacingDescription?.toLowerCase(),
+          skill,
+          sortName: skill.name.toLowerCase(),
+        })),
+      ...tools
+        .filter((tool) => toolFilter?.(tool) ?? true)
+        .map((tool) => ({
+          kind: "tool" as const,
+          normalizedDescription:
+            getMcpServerViewDescription(tool)?.toLowerCase(),
+          tool,
+          sortName: getToolSlashCommandLabel(tool).toLowerCase(),
+        })),
+    ],
+  });
 
   return matches.map((match) => {
     switch (match.kind) {

@@ -120,7 +120,7 @@ describe("searchCapabilityIndex ranking", () => {
       query: "",
     });
 
-    expect(result.items.map((item) => item.id)).toEqual(["a", "z"]);
+    expect(result.map((item) => item.id)).toEqual(["a", "z"]);
   });
 
   it("breaks fuzzy ties alphabetically when a query is provided", () => {
@@ -132,10 +132,7 @@ describe("searchCapabilityIndex ranking", () => {
       query: "test",
     });
 
-    expect(result.items.map((item) => item.id)).toEqual([
-      "longtest",
-      "testlonger",
-    ]);
+    expect(result.map((item) => item.id)).toEqual(["longtest", "testlonger"]);
   });
 
   it("ranks title matches above description-only matches", () => {
@@ -155,10 +152,7 @@ describe("searchCapabilityIndex ranking", () => {
       query: "docs",
     });
 
-    expect(result.items.map((item) => item.id)).toEqual([
-      "title-match",
-      "desc-only",
-    ]);
+    expect(result.map((item) => item.id)).toEqual(["title-match", "desc-only"]);
   });
 });
 
@@ -175,10 +169,9 @@ describe("searchCapabilityIndex", () => {
       query: "",
     });
 
-    expect(result.totalMatches).toBe(MAX_RENDERED_CAPABILITY_ITEMS + 10);
-    expect(result.items).toHaveLength(MAX_RENDERED_CAPABILITY_ITEMS);
-    expect(result.items[0]?.id).toBe(0);
-    expect(result.items.at(-1)?.id).toBe(MAX_RENDERED_CAPABILITY_ITEMS - 1);
+    expect(result).toHaveLength(MAX_RENDERED_CAPABILITY_ITEMS);
+    expect(result[0]?.id).toBe(0);
+    expect(result.at(-1)?.id).toBe(MAX_RENDERED_CAPABILITY_ITEMS - 1);
   });
 
   it("searches normalized descriptions and preserves group ordering", () => {
@@ -199,7 +192,7 @@ describe("searchCapabilityIndex", () => {
       query: "docs",
     });
 
-    expect(result.items.map((item) => item.id)).toEqual([
+    expect(result.map((item) => item.id)).toEqual([
       "installed-description-match",
       "uninstalled-title-match",
     ]);

@@ -1,7 +1,6 @@
 import { CreateMCPServerDialog } from "@app/components/actions/mcp/create/CreateMCPServerDialog";
 import {
   type CapabilitySearchIndexItem,
-  MAX_RENDERED_CAPABILITY_ITEMS,
   searchCapabilityIndex,
 } from "@app/components/editor/extensions/shared/SlashCommandCapabilitiesItems";
 import { CapabilityDetailsSheets } from "@app/components/shared/CapabilityDetailsSheets";
@@ -96,7 +95,6 @@ function CapabilitiesPickerLoading({ count = 5 }: { count?: number }) {
 
 interface CapabilitiesPickerItemsListProps {
   emptyMessage: string;
-  hasMoreItems?: boolean;
   items: CapabilityPickerItem[];
   onItemSelect: (item: CapabilityPickerItem) => void;
   onSkillDetails?: (skillId: string) => void;
@@ -105,7 +103,6 @@ interface CapabilitiesPickerItemsListProps {
 
 export function CapabilitiesPickerItemsList({
   emptyMessage,
-  hasMoreItems = false,
   items,
   onItemSelect,
   onSkillDetails,
@@ -158,12 +155,6 @@ export function CapabilitiesPickerItemsList({
           />
         );
       })}
-      {hasMoreItems && (
-        <div className="px-3 py-2 text-center text-xs text-muted-foreground">
-          Showing the first {MAX_RENDERED_CAPABILITY_ITEMS} results. Keep typing
-          to narrow the list.
-        </div>
-      )}
     </div>
   );
 }
@@ -427,7 +418,7 @@ export function CapabilitiesPicker({
 
   const capabilityPickerItems = useMemo(
     () =>
-      capabilityPickerSearchResults.items.map((item) => {
+      capabilityPickerSearchResults.map((item) => {
         switch (item.kind) {
           case "skill": {
             const SkillAvatar = getSkillAvatarIcon(item.skill);
@@ -441,11 +432,8 @@ export function CapabilitiesPicker({
             return assertNever(item);
         }
       }),
-    [capabilityPickerSearchResults.items]
+    [capabilityPickerSearchResults]
   );
-
-  const hasMoreCapabilityPickerItems =
-    capabilityPickerSearchResults.totalMatches > capabilityPickerItems.length;
 
   const hasNoVisibleItems =
     isSkillsDataReady && isToolsDataReady && capabilityPickerItems.length === 0;
@@ -506,7 +494,6 @@ export function CapabilitiesPicker({
                   ? "No capabilities found"
                   : "No more capabilities to select"
               }
-              hasMoreItems={hasMoreCapabilityPickerItems}
               items={capabilityPickerItems}
               onItemSelect={selectCapabilityPickerItem}
               onSkillDetails={(skillId) => {
