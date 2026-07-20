@@ -51,6 +51,7 @@ import { useAuth, useFeatureFlags } from "@app/lib/auth/AuthContext";
 import type { NodeCandidate, UrlCandidate } from "@app/lib/connectors";
 import { isNodeCandidate } from "@app/lib/connectors";
 import { useClientType } from "@app/lib/context/clientType";
+import { getSpaceIcon } from "@app/lib/spaces";
 import { useSpaces, useSpacesSearch } from "@app/lib/swr/spaces";
 import { useIsMobile } from "@app/lib/swr/useIsMobile";
 import { classNames } from "@app/lib/utils";
@@ -93,7 +94,6 @@ import {
   DropdownMenuTrigger,
   FilePlus03,
   Globe01,
-  Lock01,
   Plus,
   Toolbar,
   TooltipContent,
@@ -423,8 +423,11 @@ const InputBarContainer = ({
   const [selectedServerViewForDetails, setSelectedServerViewForDetails] =
     useState<MCPServerViewType | null>(null);
   selectedMCPServerViewIdsRef.current = selectedMCPServerViewIds;
-  selectedSpaceIdsRef.current = selectedSpaceIds;
   shouldEnableSlashSuggestionRef.current = shouldEnableSlashSuggestion;
+
+  useEffect(() => {
+    selectedSpaceIdsRef.current = selectedSpaceIds;
+  }, [selectedSpaceIds]);
 
   const selectableSpacesById = useMemo(
     () => new Map(selectableSpaces.map((space) => [space.sId, space])),
@@ -1724,7 +1727,7 @@ const InputBarContainer = ({
                   key={selectedSpace.sId}
                   size="xs"
                   label={selectedSpace.name}
-                  icon={Lock01}
+                  icon={getSpaceIcon(selectedSpace)}
                   className="m-0.5 bg-background text-foreground dark:bg-background-night dark:text-foreground-night"
                   onRemove={
                     conversation?.sId
