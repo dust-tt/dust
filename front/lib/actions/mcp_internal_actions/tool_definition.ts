@@ -63,10 +63,13 @@ export interface ToolDefinition<
   displayLabels: ToolDisplayLabels;
   toolCostCategory: ToolCostCategory;
   freeUsage: boolean;
-  handler: (
+  // Method syntax keeps a handler typed for its specific schema assignable after
+  // ToolDefinition widens the schema to ZodRawShape. ToolHandlers still enforces
+  // the exact schema-handler pairing when the tool is built.
+  handler(
     params: z.infer<z.ZodObject<TSchema>>,
     extra: ToolHandlerExtra
-  ) => Promise<ToolHandlerResult>;
+  ): Promise<ToolHandlerResult>;
 }
 
 interface ClientToolDefinition<
