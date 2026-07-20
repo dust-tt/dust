@@ -291,6 +291,12 @@ export async function addSelectedConversationSpaces(
   return result;
 }
 
+/**
+ * An agent's configured Spaces are only its default scope. A conversation can
+ * add other Spaces, so runtime skill and tool resolution must combine both
+ * sources after revalidating the conversation selections. Centralizing that
+ * merge keeps every runtime consumer on the same authorization-safe scope.
+ */
 export async function getEffectiveSpaceIdsForAgentRun(
   auth: Authenticator,
   {
