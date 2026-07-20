@@ -4,7 +4,13 @@ import { useSkillVersionComparisonContext } from "@app/components/skill_builder/
 import { Button, ReverseLeft, Separator } from "@dust-tt/sparkle";
 import { useFormContext } from "react-hook-form";
 
-export function SkillBuilderVersionComparisonFooter() {
+interface SkillBuilderVersionComparisonFooterProps {
+  isReadOnly: boolean;
+}
+
+export function SkillBuilderVersionComparisonFooter({
+  isReadOnly,
+}: SkillBuilderVersionComparisonFooterProps) {
   const { compareVersion, exitDiffMode } = useSkillVersionComparisonContext();
   const { setValue } = useFormContext<SkillBuilderFormData>();
 
@@ -13,6 +19,10 @@ export function SkillBuilderVersionComparisonFooter() {
   }
 
   const restoreAll = () => {
+    if (isReadOnly) {
+      return;
+    }
+
     setValue("instructions", compareVersion.instructions ?? "", {
       shouldDirty: true,
     });
@@ -41,6 +51,7 @@ export function SkillBuilderVersionComparisonFooter() {
           icon={ReverseLeft}
           onClick={restoreAll}
           label="Restore all fields from this version"
+          disabled={isReadOnly}
         />
       </div>
     </div>

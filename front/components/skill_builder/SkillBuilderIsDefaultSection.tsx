@@ -32,6 +32,10 @@ export function SkillBuilderIsDefaultSection({
     agentFacingDescription.trim().length < MIN_DISCOVERABLE_DESCRIPTION_LENGTH;
 
   const handleToggle = () => {
+    if (isReadOnly) {
+      return;
+    }
+
     if (!isDefault) {
       setShowConfirmDialog(true);
     } else {
@@ -40,6 +44,10 @@ export function SkillBuilderIsDefaultSection({
   };
 
   const handleConfirm = () => {
+    if (isReadOnly) {
+      return;
+    }
+
     setValue("isDefault", true, { shouldDirty: true });
     setShowConfirmDialog(false);
   };

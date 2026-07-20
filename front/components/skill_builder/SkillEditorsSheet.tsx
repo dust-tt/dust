@@ -7,12 +7,14 @@ import { useState } from "react";
 import { useController } from "react-hook-form";
 
 interface SkillEditorsSheetProps {
+  isReadOnly: boolean;
   isEditorGateVisible: boolean;
   isAddingSelfAsEditor: boolean;
   onAddSelfAsEditor: () => void;
 }
 
 export function SkillEditorsSheet({
+  isReadOnly,
   isEditorGateVisible,
   isAddingSelfAsEditor,
   onAddSelfAsEditor,
@@ -42,18 +44,21 @@ export function SkillEditorsSheet({
         size="sm"
         icon={Users01}
         label="Editors"
+        disabled={isReadOnly}
         onClick={() => setIsOpen(true)}
         type="button"
       />
-      <ManageUsersPanel
-        isOpen={isOpen}
-        setIsOpen={setIsOpen}
-        owner={owner}
-        mode="editors-only"
-        editors={editors || []}
-        onEditorsChange={onChange}
-        buildersOnly
-      />
+      {!isReadOnly && (
+        <ManageUsersPanel
+          isOpen={isOpen}
+          setIsOpen={setIsOpen}
+          owner={owner}
+          mode="editors-only"
+          editors={editors || []}
+          onEditorsChange={onChange}
+          buildersOnly
+        />
+      )}
     </>
   );
 }

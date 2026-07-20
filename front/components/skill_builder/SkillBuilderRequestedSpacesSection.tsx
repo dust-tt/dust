@@ -18,10 +18,12 @@ import { useController, useFormContext, useWatch } from "react-hook-form";
 
 interface SkillBuilderRequestedSpacesSectionProps {
   initialRequestedSpaceIds?: string[];
+  isReadOnly: boolean;
 }
 
 export function SkillBuilderRequestedSpacesSection({
   initialRequestedSpaceIds,
+  isReadOnly,
 }: SkillBuilderRequestedSpacesSectionProps) {
   const { resetField } = useFormContext<SkillBuilderFormData>();
 
@@ -174,7 +176,7 @@ export function SkillBuilderRequestedSpacesSection({
   }, [additionalSpaceIds, allSpaces, spaceIdsUsedBySkill]);
 
   const handleRemoveSpace = async (space: SpaceType) => {
-    if (!areSpaceRequirementsReady) {
+    if (isReadOnly || !areSpaceRequirementsReady) {
       return;
     }
 
@@ -198,7 +200,7 @@ export function SkillBuilderRequestedSpacesSection({
   };
 
   const handleOpenSheet = () => {
-    if (!areSpaceRequirementsReady) {
+    if (isReadOnly || !areSpaceRequirementsReady) {
       return;
     }
 
@@ -216,6 +218,10 @@ export function SkillBuilderRequestedSpacesSection({
   };
 
   const handleSaveSpaces = () => {
+    if (isReadOnly) {
+      return;
+    }
+
     additionalSpacesField.onChange(draftSelectedSpaces);
     handleCloseSheet();
   };
@@ -245,7 +251,7 @@ export function SkillBuilderRequestedSpacesSection({
           label="Manage"
           icon={Planet}
           variant="outline"
-          disabled={!areSpaceRequirementsReady}
+          disabled={isReadOnly || !areSpaceRequirementsReady}
           onClick={handleOpenSheet}
         />
       </div>
@@ -264,18 +270,24 @@ export function SkillBuilderRequestedSpacesSection({
           </ContentMessage>
         </div>
       )}
-      <SpaceChips spaces={spacesToDisplay} onRemoveSpace={handleRemoveSpace} />
-
-      <SpaceSelectionSheet
-        alreadyRequestedSpaceIds={spaceIdsUsedBySkill}
-        entityName="skill"
-        missingSpaceIds={missingSpaceIds}
-        onClose={handleCloseSheet}
-        onSave={handleSaveSpaces}
-        open={isSheetOpen}
-        selectedSpaces={draftSelectedSpaces}
-        setSelectedSpaces={setDraftSelectedSpaces}
+      <SpaceChips
+        spaces={spacesToDisplay}
+        onRemoveSpace={handleRemoveSpace}
+        disabled={isReadOnly}
       />
+
+      {!isReadOnly && (
+        <SpaceSelectionSheet
+          alreadyRequestedSpaceIds={spaceIdsUsedBySkill}
+          entityName="skill"
+          missingSpaceIds={missingSpaceIds}
+          onClose={handleCloseSheet}
+          onSave={handleSaveSpaces}
+          open={isSheetOpen}
+          selectedSpaces={draftSelectedSpaces}
+          setSelectedSpaces={setDraftSelectedSpaces}
+        />
+      )}
     </div>
   );
 }

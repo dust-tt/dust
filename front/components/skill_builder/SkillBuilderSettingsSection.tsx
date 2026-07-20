@@ -57,9 +57,9 @@ export function SkillBuilderSettingsSection({
       </div>
       <div className="flex items-end gap-8">
         <div className="flex-grow">
-          <SkillBuilderNameSection />
+          <SkillBuilderNameSection isReadOnly={isReadOnly} />
         </div>
-        <SkillBuilderIconSection />
+        <SkillBuilderIconSection isReadOnly={isReadOnly} />
       </div>
       <SkillBuilderUserFacingDescriptionSection isReadOnly={isReadOnly} />
       <div className="flex flex-col space-y-3">
@@ -68,6 +68,7 @@ export function SkillBuilderSettingsSection({
         </Label>
         <div className="mt-2 flex w-full flex-row flex-wrap items-center gap-2">
           <SkillEditorsSheet
+            isReadOnly={isReadOnly}
             isEditorGateVisible={isEditorGateVisible}
             isAddingSelfAsEditor={isAddingSelfAsEditor}
             onAddSelfAsEditor={onAddSelfAsEditor}

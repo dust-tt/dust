@@ -33,7 +33,7 @@ export function SkillBuilderInstructionsSection({
     compareVersion && compareVersion.instructions !== currentInstructions;
 
   const restoreInstructions = () => {
-    if (!compareVersion) {
+    if (!compareVersion || isReadOnly) {
       return;
     }
 
@@ -69,6 +69,7 @@ export function SkillBuilderInstructionsSection({
               icon={ReverseLeft}
               onClick={restoreInstructions}
               label="Restore instructions"
+              disabled={isReadOnly}
             />
           )}
           {!compareVersion && (
@@ -77,7 +78,7 @@ export function SkillBuilderInstructionsSection({
               label="Attach knowledge"
               icon={BookOpen01}
               onClick={addKnowledge ?? undefined}
-              disabled={!addKnowledge}
+              disabled={isReadOnly || !addKnowledge}
             />
           )}
         </div>

@@ -127,6 +127,7 @@ export function SkillBuilderUserFacingDescriptionSection({
                 markAsUserEdited();
                 onChange(e);
               }}
+              disabled={isReadOnly}
               isError={hasError}
               className="pr-10"
               {...registerProps}

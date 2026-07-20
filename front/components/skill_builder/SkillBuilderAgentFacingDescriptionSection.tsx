@@ -52,7 +52,7 @@ export function SkillBuilderAgentFacingDescriptionSection({
     compareVersion.agentFacingDescription !== descriptionField.value;
 
   const restoreDescription = () => {
-    if (!compareVersion) {
+    if (!compareVersion || isReadOnly) {
       return;
     }
     setValue(FIELD_NAME, compareVersion.agentFacingDescription, {
@@ -210,6 +210,7 @@ export function SkillBuilderAgentFacingDescriptionSection({
             icon={ReverseLeft}
             onClick={restoreDescription}
             label="Restore description"
+            disabled={isReadOnly}
           />
         )}
       </div>

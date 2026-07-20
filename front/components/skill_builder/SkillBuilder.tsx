@@ -292,18 +292,16 @@ export default function SkillBuilder({ skill, onSaved }: SkillBuilderProps) {
               specific needs before saving.
             </ContentMessage>
           )}
-          <fieldset
-            className="min-w-0 space-y-10 border-0 p-0"
-            disabled={isEditorLocked}
-          >
+          <div className="space-y-10">
             <SkillBuilderAgentFacingDescriptionSection
               isReadOnly={isEditorLocked}
             />
             <SkillBuilderInstructionsSection isReadOnly={isEditorLocked} />
             <SkillBuilderRequestedSpacesSection
               initialRequestedSpaceIds={skill?.requestedSpaceIds}
+              isReadOnly={isEditorLocked}
             />
-            <SkillBuilderFilesSection disableUpload={isEditorLocked} />
+            <SkillBuilderFilesSection isReadOnly={isEditorLocked} />
             <SkillBuilderSettingsOrComparisonFooter
               skill={skill}
               hasSelfImprovingSkills={hasSelfImprovingSkills}
@@ -314,7 +312,7 @@ export default function SkillBuilder({ skill, onSaved }: SkillBuilderProps) {
                 void handleAddSelfAsEditor();
               }}
             />
-          </fieldset>
+          </div>
         </div>
       </ScrollArea>
       <BarFooter
@@ -333,7 +331,7 @@ export default function SkillBuilder({ skill, onSaved }: SkillBuilderProps) {
             variant="highlight"
             label={isSaving ? "Saving..." : "Save"}
             onClick={handleSave}
-            disabled={isSaving}
+            disabled={isSaving || isEditorLocked}
           />
         }
       />
@@ -399,7 +397,7 @@ function SkillBuilderSettingsOrComparisonFooter({
   const { compareVersion } = useSkillVersionComparisonContext();
 
   if (compareVersion) {
-    return <SkillBuilderVersionComparisonFooter />;
+    return <SkillBuilderVersionComparisonFooter isReadOnly={isReadOnly} />;
   }
 
   return (
