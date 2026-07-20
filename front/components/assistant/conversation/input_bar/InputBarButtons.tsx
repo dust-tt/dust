@@ -146,8 +146,6 @@ export const InputBarButtons = React.memo(function InputBarButtons({
             aria-disabled={isInputDisabled}
             className={cn(
               "inline-flex box-border items-center rounded-lg h-7 heading-xs px-2 gap-1.5 border-border text-primary-900 transition-colors duration-200",
-              // bg-muted-background (stone-900) is nearly as dark as the composer's own dark
-              // surface, so the pill loses contrast. Match Figma's Surface/6 (#3c3934) instead.
               "bg-muted-background dark:bg-[#3c3934]",
               isWidthConstrained && "pl-1",
               isInputDisabled

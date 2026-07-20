@@ -481,59 +481,28 @@ export const InputBar = React.memo(function InputBar({
                 INPUT_BAR_COMPACT_ENTER_ANIMATION_CLASSES,
                 !disableInput && "cursor-pointer"
               )
-            : // Preview test: sparkle Composer card styling (see sparkle/src/components/Composer.tsx).
-              // isFloating (default true, used in conversation): flat on mobile, floating on desktop (md+).
-              // isFloating={false} (e.g. Pods): flat at every breakpoint.
-              classNames(
-                // Figma corner smoothing (radius 24, smoothing 100%), see sparkle Composer.tsx.
-                // Shared by both variants.
+            : classNames(
                 "w-full rounded-[40px] [corner-shape:squircle]",
-
-                // "flat" variant: plain border, no floating shadow. Active below md when isFloating
-                // is true (floating owns md+ below), or at every breakpoint when isFloating is
-                // false. Scoped with max-md: in the former case — an unprefixed
-                // has-[.tiptap:focus] rule has higher specificity than a plain md: rule (the
-                // :has() pseudo-class counts as an extra class in the selector), so without this
-                // scoping the mobile focus border would win over md:border-white/90 even on
-                // desktop.
                 "border bg-background",
                 isFloating
                   ? "max-md:border-border max-md:has-[.tiptap:focus]:border-border-dark"
                   : "border-border has-[.tiptap:focus]:border-border-dark",
                 "transition-colors duration-200 ease-[cubic-bezier(0.23,1,0.32,1)]",
-
-                // "floating" variant (md+): layered shadow card. Opt out entirely via isFloating={false}.
-                // `classNames` (lib/utils.ts) only joins strings/booleans, not nested arrays — wrap
-                // this block in its own classNames(...) call rather than passing an array literal.
                 isFloating &&
                   classNames(
                     "md:border-white/90",
                     "md:bg-[#fbfbfb]",
-                    // Same tight shadow "strength" as dark mode (ring + 3 close drop shadows)
-                    // instead of the Figma light spec's large soft blur, which reads as
-                    // flat/washed-out. Constant across focus states too — only the background
-                    // color changes on focus.
                     "md:shadow-[0px_0px_0px_1px_rgba(0,0,0,0.05),0px_1px_1px_-0.5px_rgba(0,0,0,0.1),0px_3px_3px_-1.5px_rgba(0,0,0,0.1),0px_6px_6px_-3px_rgba(0,0,0,0.1)]",
-                    // Crossfade the focus state instead of snapping (background-color only).
                     "md:transition-[background-color,box-shadow] md:duration-200 md:ease-[cubic-bezier(0.23,1,0.32,1)]",
-                    // Focus state (Figma 11174:21613): white surface only —
-                    // border-white/90 is already the base color at every state, don't re-toggle it
-                    // here (an unscoped focus:border rule would win over dark:border-transparent by
-                    // source order and show a light border in dark mode on focus).
                     "md:has-[.tiptap:focus]:bg-white",
-                    // Dark (Figma 12333:27502): Surface/4 background + Surfaces/Dark/4 effect set
-                    // (desktop only — the flat variant relies on border-border/bg-background
-                    // tokens, which already flip in dark mode).
                     "md:dark:border-transparent md:dark:bg-[#2e2c28]",
                     "md:dark:shadow-[inset_0px_1px_0px_0px_rgba(255,255,255,0.02),inset_0px_0px_0px_1px_rgba(255,255,255,0.04),0px_0px_0px_1px_rgba(0,0,0,0.14),0px_1px_1px_-0.5px_rgba(0,0,0,0.18),0px_3px_3px_-1.5px_rgba(0,0,0,0.18),0px_6px_6px_-3px_rgba(0,0,0,0.18)]",
-                    // Dark has no distinct focus treatment: re-assert the dark surface + shadows over the light focus overrides.
-                    "md:dark:has-[.tiptap:focus]:bg-[#2e2c28]",
+                    "md:dark:has-[.tiptap:focus]:bg-[#323029]",
                     "md:dark:has-[.tiptap:focus]:shadow-[inset_0px_1px_0px_0px_rgba(255,255,255,0.02),inset_0px_0px_0px_1px_rgba(255,255,255,0.04),0px_0px_0px_1px_rgba(0,0,0,0.14),0px_1px_1px_-0.5px_rgba(0,0,0,0.18),0px_3px_3px_-1.5px_rgba(0,0,0,0.18),0px_6px_6px_-3px_rgba(0,0,0,0.18)]"
                   )
               )
         )}
       >
-        {/* Bottom-edge inner vignette, matching sparkle Composer.tsx's floating variant (light only). */}
         {!effectiveIsCompact && isFloating && (
           <div
             aria-hidden

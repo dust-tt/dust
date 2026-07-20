@@ -21,7 +21,6 @@ export interface ComposerSuggestionItem {
   label: string;
   description?: string;
   icon?: React.ComponentType<React.SVGProps<SVGSVGElement>>;
-  /** Avatar image URL — takes precedence over `icon`. */
   visual?: string;
 }
 
@@ -40,7 +39,6 @@ interface ComposerInputProps {
   placeholder?: string;
   disabled?: boolean;
   autoFocus?: boolean;
-  /** Suggestion sources opened by their trigger character (e.g. "/" for commands, "@" for agents). */
   suggestions?: ComposerSuggestionSource[];
   className?: string;
 }
@@ -51,14 +49,14 @@ interface ActiveSuggestionState {
   selectedIndex: number;
 }
 
+const EMPTY_SUGGESTIONS: ComposerSuggestionSource[] = [];
+
 function isSuggestionTrigger(
   char: string
 ): char is ComposerSuggestionTriggerType {
   return COMPOSER_SUGGESTION_TRIGGERS.some((t) => t === char);
 }
 
-// Find an active "<trigger><query>" sequence right before the cursor. The
-// trigger must be at the start of the text or preceded by whitespace.
 function getActiveSuggestion(
   value: string,
   cursorPos: number
@@ -71,7 +69,6 @@ function getActiveSuggestion(
   return { trigger: match[2], query: match[3] };
 }
 
-// Remove the active "<trigger><query>" sequence before the cursor.
 function removeActiveSuggestion(value: string, cursorPos: number): string {
   const before = value.slice(0, cursorPos);
   const after = value.slice(cursorPos);
@@ -104,7 +101,7 @@ export const ComposerInput = React.forwardRef<
     placeholder = "Get work done",
     disabled = false,
     autoFocus = false,
-    suggestions = [],
+    suggestions = EMPTY_SUGGESTIONS,
     className,
   },
   ref
@@ -117,8 +114,7 @@ export const ComposerInput = React.forwardRef<
 
   const [active, setActive] = useState<ActiveSuggestionState | null>(null);
 
-  // Auto-grow with the content; max height is capped via CSS (scrolls beyond).
-  // biome-ignore lint/correctness/useExhaustiveDependencies: `value` drives the resize — the textarea content changes with it, including external updates (voice transcription).
+  // biome-ignore lint/correctness/useExhaustiveDependencies: value drives the resize.
   useLayoutEffect(() => {
     const el = textareaRef.current;
     if (!el) {
@@ -158,7 +154,6 @@ export const ComposerInput = React.forwardRef<
       onChange(removeActiveSuggestion(value, cursorPos));
       activeSource.onSelect(item, active.query);
       closeSuggestions();
-      // Re-focus after the popover closes.
       requestAnimationFrame(() => el.focus());
     },
     [active, activeSource, value, onChange, closeSuggestions]
@@ -239,6 +234,20 @@ export const ComposerInput = React.forwardRef<
 
   const isOpen = active != null && filteredItems.length > 0;
 
+  const textareaClassName = useMemo(
+    () =>
+      cn(
+        "block w-full resize-none bg-transparent p-0",
+        "max-h-[40vh] min-h-14 overflow-y-auto md:min-h-16",
+        "text-base leading-6 tracking-[-0.02em]",
+        "text-foreground placeholder:text-muted-foreground",
+        "border-none outline-none focus:outline-none focus:ring-0",
+        "disabled:cursor-not-allowed disabled:opacity-50",
+        className
+      ),
+    [className]
+  );
+
   return (
     <PopoverRoot open={isOpen}>
       <PopoverAnchor asChild>
@@ -253,15 +262,7 @@ export const ComposerInput = React.forwardRef<
           autoFocus={autoFocus}
           placeholder={placeholder}
           rows={1}
-          className={cn(
-            "block w-full resize-none bg-transparent p-0",
-            "max-h-[40vh] min-h-14 overflow-y-auto md:min-h-16",
-            "text-base leading-6 tracking-[-0.02em]",
-            "text-foreground placeholder:text-muted-foreground",
-            "border-none outline-none focus:outline-none focus:ring-0",
-            "disabled:cursor-not-allowed disabled:opacity-50",
-            className
-          )}
+          className={textareaClassName}
         />
       </PopoverAnchor>
       <PopoverContent
@@ -278,7 +279,6 @@ export const ComposerInput = React.forwardRef<
                 key={item.id}
                 type="button"
                 onMouseDown={(e) => {
-                  // Keep focus in the textarea while selecting.
                   e.preventDefault();
                   selectItem(item);
                 }}

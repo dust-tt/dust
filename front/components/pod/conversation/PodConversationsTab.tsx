@@ -201,6 +201,7 @@ export function PodConversationsTab({
                   "heading-2xl text-foreground",
                   podInfo.archivedAt && "text-muted-foreground"
                 )}
+                style={{ fontWeight: 500 }}
               >
                 {greeting}
               </h2>

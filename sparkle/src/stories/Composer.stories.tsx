@@ -57,10 +57,6 @@ const meta: Meta<typeof Composer> = {
 export default meta;
 type Story = StoryObj<typeof Composer>;
 
-// ---------------------------------------------------------------------------
-// Mock data
-// ---------------------------------------------------------------------------
-
 interface MockAgent {
   id: string;
   name: string;
@@ -118,7 +114,6 @@ interface MockAttachment {
   id: string;
   title: string;
   isUploading: boolean;
-  /** Object URL for image files — rendered as a preview card like in the product. */
   previewUrl?: string;
   icon: React.ComponentType<React.SVGProps<SVGSVGElement>>;
 }
@@ -128,10 +123,6 @@ const MOCK_KNOWLEDGE_NODES = [
   { id: "drive-metrics", title: "Q3 Metrics", source: "Google Drive" },
   { id: "slack-design", title: "#design", source: "Slack" },
 ];
-
-// ---------------------------------------------------------------------------
-// Mock voice service (mirrors useVoiceTranscriberService statuses)
-// ---------------------------------------------------------------------------
 
 function useMockVoiceService(onTranscript: (text: string) => void) {
   const [status, setStatus] = useState<VoicePickerStatus>("idle");
@@ -169,7 +160,6 @@ function useMockVoiceService(onTranscript: (text: string) => void) {
     timersRef.current.push(transcribeTimer);
   }, [clearTimers, onTranscript]);
 
-  // Clear pending timers if the story unmounts mid-recording.
   useEffect(() => clearTimers, [clearTimers]);
 
   return { status, level, elapsedSeconds, startRecording, stopRecording };
@@ -181,10 +171,6 @@ function revokeAttachmentPreview(attachment: MockAttachment) {
   }
 }
 
-// ---------------------------------------------------------------------------
-// Interactive demo — reproduces the production input bar behaviors
-// ---------------------------------------------------------------------------
-
 function ComposerDemo({
   variant = "floating",
 }: {
@@ -194,7 +180,7 @@ function ComposerDemo({
   const [selectedAgent, setSelectedAgent] = useState<MockAgent | null>(null);
   const [selectedTools, setSelectedTools] = useState<MockTool[]>([]);
   const [attachments, setAttachments] = useState<MockAttachment[]>([]);
-  const [messages, setMessages] = useState<string[]>([]);
+  const [messages, setMessages] = useState<{ id: string; text: string }[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isFocused, setIsFocused] = useState(false);
   const [agentSearch, setAgentSearch] = useState("");
@@ -204,6 +190,7 @@ function ComposerDemo({
 
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const nextMessageId = useRef(0);
 
   const voice = useMockVoiceService(
     useCallback((transcript: string) => {
@@ -230,7 +217,6 @@ function ComposerDemo({
         icon: File01,
       }));
       setAttachments((prev) => [...prev, ...newAttachments]);
-      // Mock upload completion.
       newAttachments.forEach((attachment) => {
         window.setTimeout(() => {
           setAttachments((prev) =>
@@ -277,11 +263,13 @@ function ComposerDemo({
       return;
     }
     setIsSubmitting(true);
-    // Mock network submit.
     window.setTimeout(() => {
       setMessages((prev) => [
         ...prev,
-        text.trim() || `(empty message to @${selectedAgent?.name})`,
+        {
+          id: `msg-${nextMessageId.current++}`,
+          text: text.trim() || `(empty message to @${selectedAgent?.name})`,
+        },
       ]);
       setText("");
       setAttachments((prev) => {
@@ -426,8 +414,6 @@ function ComposerDemo({
   );
   const attachedIds = new Set(attachments.map((a) => a.id));
 
-  // Mirrors InputBarAttachmentsPicker: searchbar + "Upload File" button in the
-  // header, knowledge search results as checkbox items, empty state otherwise.
   const attachmentsPicker = (
     <>
       <input
@@ -507,14 +493,14 @@ function ComposerDemo({
     <div className="flex w-full max-w-[680px] flex-col gap-4">
       {messages.length > 0 && (
         <div className="flex flex-col gap-2 rounded-xl bg-muted-background p-3">
-          {messages.map((message, i) => (
-            <div key={i} className="flex items-start gap-2">
+          {messages.map((message) => (
+            <div key={message.id} className="flex items-start gap-2">
               <Avatar
                 size="xs"
                 name={selectedAgent?.name ?? "You"}
                 visual={selectedAgent?.pictureUrl}
               />
-              <p className="text-sm text-foreground">{message}</p>
+              <p className="text-sm text-foreground">{message.text}</p>
             </div>
           ))}
         </div>
@@ -533,8 +519,6 @@ function ComposerDemo({
                     prev.filter((a) => a.id !== attachment.id)
                   );
                 };
-                // Same rendering as the product's AttachmentCitation: image
-                // files get a preview card, other attachments a citation card.
                 return (
                   <Tooltip
                     key={attachment.id}
@@ -671,10 +655,6 @@ function ComposerDemo({
     </div>
   );
 }
-
-// ---------------------------------------------------------------------------
-// Stories
-// ---------------------------------------------------------------------------
 
 export const Floating: Story = {
   name: "Floating (default)",
