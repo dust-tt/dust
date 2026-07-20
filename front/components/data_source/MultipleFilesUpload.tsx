@@ -78,7 +78,6 @@ export const MultipleFilesUpload = ({
 
   // Used for creating document files, with text extraction post-processing
   const documentUploaderService = useFileUploaderService({
-    hasSandboxTools: false,
     owner,
     useCase: useCaseForDocument,
     useCaseMetadata: {
@@ -88,7 +87,6 @@ export const MultipleFilesUpload = ({
 
   // Used for creating table files (CSV, XLS, XLSX) with structured data processing
   const tableUploaderService = useFileUploaderService({
-    hasSandboxTools: false,
     owner,
     useCase: "upsert_table",
     useCaseMetadata: {

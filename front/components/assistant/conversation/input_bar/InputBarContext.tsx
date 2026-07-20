@@ -251,7 +251,6 @@ export function InputBarProvider({ children }: InputBarProviderProps) {
   }, [conversationId]);
 
   const fileUploaderService = useFileUploaderService({
-    hasSandboxTools: true,
     owner: workspace,
     useCase: "conversation",
     useCaseMetadata,

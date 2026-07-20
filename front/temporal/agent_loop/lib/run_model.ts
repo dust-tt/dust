@@ -607,7 +607,7 @@ export async function runModel(
     workspaceContext,
     projectContext,
     isNewFileExplorer,
-    hasSandboxTools: true,
+    hasComputerTool: true,
     disableFormattingPrompt,
   });
   const leadingMessages = removeNulls([

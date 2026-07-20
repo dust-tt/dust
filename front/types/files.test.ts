@@ -14,53 +14,34 @@ import {
 import { describe, expect, it } from "vitest";
 
 describe("allowsSandboxRawUpload", () => {
-  it("allows delimited conversation files only when sandbox tools are present", () => {
+  it("allows delimited conversation files", () => {
     expect(
       allowsSandboxRawUpload({
         category: "delimited",
-        hasSandboxTools: true,
         useCase: "conversation",
       })
     ).toBe(true);
-
-    expect(
-      allowsSandboxRawUpload({
-        category: "delimited",
-        hasSandboxTools: false,
-        useCase: "conversation",
-      })
-    ).toBe(false);
   });
 
-  it("does not apply to non-delimited categories in sandbox conversations", () => {
+  it("does not apply to non-delimited conversation files", () => {
     for (const category of ["image", "data", "code", "audio"] as const) {
       expect(
         allowsSandboxRawUpload({
           category,
-          hasSandboxTools: true,
           useCase: "conversation",
         })
       ).toBe(false);
     }
   });
 
-  it("allows delimited and data skill attachments only when sandbox tools are present", () => {
+  it("allows delimited and data skill attachments", () => {
     for (const category of ["delimited", "data"] as const) {
       expect(
         allowsSandboxRawUpload({
           category,
-          hasSandboxTools: true,
           useCase: "skill_attachment",
         })
       ).toBe(true);
-
-      expect(
-        allowsSandboxRawUpload({
-          category,
-          hasSandboxTools: false,
-          useCase: "skill_attachment",
-        })
-      ).toBe(false);
     }
   });
 
@@ -69,7 +50,6 @@ describe("allowsSandboxRawUpload", () => {
       expect(
         allowsSandboxRawUpload({
           category,
-          hasSandboxTools: true,
           useCase: "skill_attachment",
         })
       ).toBe(false);
@@ -80,7 +60,6 @@ describe("allowsSandboxRawUpload", () => {
     expect(
       allowsSandboxRawUpload({
         category: "delimited",
-        hasSandboxTools: true,
         useCase: "upsert_table",
       })
     ).toBe(false);
@@ -88,24 +67,15 @@ describe("allowsSandboxRawUpload", () => {
 });
 
 describe("resolveMaxFileSizes", () => {
-  it("raises the delimited limit only for sandbox conversations", () => {
+  it("raises the delimited limit only for conversations", () => {
     expect(
       resolveMaxFileSizes({
-        hasSandboxTools: true,
         useCase: "conversation",
       }).delimited
     ).toBe(350 * 1024 * 1024);
 
     expect(
       resolveMaxFileSizes({
-        hasSandboxTools: false,
-        useCase: "conversation",
-      }).delimited
-    ).toBe(50 * 1024 * 1024);
-
-    expect(
-      resolveMaxFileSizes({
-        hasSandboxTools: true,
         useCase: "upsert_table",
       }).delimited
     ).toBe(50 * 1024 * 1024);
@@ -113,15 +83,13 @@ describe("resolveMaxFileSizes", () => {
     // Only delimited is raised: other categories keep the default even in a sandbox conversation.
     expect(
       resolveMaxFileSizes({
-        hasSandboxTools: true,
         useCase: "conversation",
       }).code
     ).toBe(50 * 1024 * 1024);
   });
 
-  it("raises delimited and data limits for skill attachments with sandbox tools", () => {
+  it("raises delimited and data limits for skill attachments", () => {
     const sizes = resolveMaxFileSizes({
-      hasSandboxTools: true,
       useCase: "skill_attachment",
     });
 
@@ -132,27 +100,15 @@ describe("resolveMaxFileSizes", () => {
     expect(sizes.image).toBe(20 * 1024 * 1024);
   });
 
-  it("keeps skill attachments at the default limit without sandbox tools", () => {
-    const sizes = resolveMaxFileSizes({
-      hasSandboxTools: false,
-      useCase: "skill_attachment",
-    });
-
-    expect(sizes.delimited).toBe(50 * 1024 * 1024);
-    expect(sizes.data).toBe(50 * 1024 * 1024);
-  });
-
   it("enforces the resolved per-file limit", () => {
     expect(
       ensureFileSize("text/csv", 60 * 1024 * 1024, {
-        hasSandboxTools: true,
         useCase: "conversation",
       })
     ).toBe(true);
 
     expect(
       ensureFileSize("text/csv", 60 * 1024 * 1024, {
-        hasSandboxTools: true,
         useCase: "upsert_table",
       })
     ).toBe(false);
