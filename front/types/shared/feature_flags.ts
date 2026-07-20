@@ -28,6 +28,11 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
       "Defer non-default (cold) MCP tools via Anthropic's tool search tool so mid-run tool additions append inline instead of mutating the cached prefix",
     stage: "dust_only",
   },
+  checkpointed_conversation_window: {
+    description:
+      "Use checkpoint-buffered tool-result pruning without dropping complete interactions",
+    stage: "dust_only",
+  },
   use_vertex_for_supported_models: {
     description:
       "Route LLM calls through Vertex AI when supported instead of the direct provider's API",

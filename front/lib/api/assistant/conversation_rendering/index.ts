@@ -1,8 +1,6 @@
 import { groupMessagesIntoInteractions } from "@app/lib/api/assistant/conversation/interactions";
-import type {
-  ConversationPruningStats,
-  ConversationRenderingMetricsCaller,
-} from "@app/lib/api/assistant/conversation_rendering/instrumentation";
+import { CheckpointedConversationWindowState } from "@app/lib/api/assistant/conversation_rendering/checkpointed_window_state";
+import type { ConversationRenderingMetricsCaller } from "@app/lib/api/assistant/conversation_rendering/instrumentation";
 import {
   emitConversationRenderingError,
   emitConversationRenderingMetrics,
@@ -14,6 +12,10 @@ import type {
 } from "@app/lib/api/assistant/conversation_rendering/pruning";
 import { sumInteractionTokens } from "@app/lib/api/assistant/conversation_rendering/pruning";
 import { ConversationWindowState } from "@app/lib/api/assistant/conversation_rendering/window_state";
+import type {
+  ConversationPruningStats,
+  ConversationWindowStrategy,
+} from "@app/lib/api/assistant/conversation_rendering/window_types";
 import type { EnabledSkill } from "@app/lib/api/assistant/skills_rendering";
 import { getTextContentFromMessage } from "@app/lib/api/assistant/utils";
 import { getLlmCredentials } from "@app/lib/api/provider_credentials";
@@ -51,12 +53,13 @@ export const TOKENS_MARGIN = 1024;
 // conversation, current interaction included. No separate, looser budget for it.
 export const PRUNING_TARGET_CONTEXT_UTILIZATION = 0.6;
 
+export type { ConversationWindowStrategy } from "@app/lib/api/assistant/conversation_rendering/window_types";
+
 /**
  * Replays the conversation chronologically so cleanup decisions are deterministic for every
- * interaction prefix. Old tool results are pruned before interactions are dropped. Soft drops
- * preserve the latest three interactions. Hard-budget pressure can drop every previous
- * interaction. The current interaction is never dropped and its latest tool result is never
- * pruned.
+ * interaction prefix. The legacy strategy can drop interactions after pruning. The checkpointed
+ * strategy only prunes consumed tool results and keeps serving intact history past the nominal
+ * budget.
  */
 function pruneConversationToBudget(
   interactions: InteractionWithTokens[],
@@ -64,10 +67,12 @@ function pruneConversationToBudget(
     pruningBudget,
     budgetForInteractions,
     logDetails,
+    windowStrategy,
   }: {
     pruningBudget: number;
     budgetForInteractions: number;
     logDetails: Record<string, unknown>;
+    windowStrategy: ConversationWindowStrategy;
   }
 ): Result<
   {
@@ -77,11 +82,17 @@ function pruneConversationToBudget(
   },
   Error
 > {
-  const state = ConversationWindowState.empty({
-    pruningBudget,
-    budgetForInteractions,
-    logDetails,
-  });
+  const options = { pruningBudget, budgetForInteractions, logDetails };
+  const state = (() => {
+    switch (windowStrategy) {
+      case "legacy":
+        return ConversationWindowState.empty(options);
+      case "checkpointed":
+        return CheckpointedConversationWindowState.empty(options);
+      default:
+        return assertNever(windowStrategy);
+    }
+  })();
 
   for (const interaction of interactions) {
     state.append(interaction);
@@ -105,6 +116,7 @@ export async function renderConversationForModel(
     agentConfiguration,
     enabledSkills,
     metricsCaller,
+    windowStrategy = "legacy",
   }: {
     leadingMessages?: ModelMessageTypeMultiActionsWithoutContentFragment[];
     conversation: ConversationType;
@@ -122,6 +134,7 @@ export async function renderConversationForModel(
     // history injection, reinforcement batches, scripts) whose renders would skew the pruning
     // dashboards, so only callers that name themselves are measured.
     metricsCaller?: ConversationRenderingMetricsCaller;
+    windowStrategy?: ConversationWindowStrategy;
   }
 ): Promise<
   Result<
@@ -239,6 +252,7 @@ export async function renderConversationForModel(
     pruningBudget,
     budgetForInteractions,
     logDetails,
+    windowStrategy,
   });
   if (pruneRes.isErr()) {
     if (metricsCaller) {
@@ -247,6 +261,7 @@ export async function renderConversationForModel(
         caller: metricsCaller,
         providerId: model.providerId,
         modelId: model.modelId,
+        windowStrategy,
       });
     }
     return pruneRes;
@@ -310,6 +325,7 @@ export async function renderConversationForModel(
         caller: metricsCaller,
         providerId: model.providerId,
         modelId: model.modelId,
+        windowStrategy,
       });
     }
     return new Err(
@@ -339,6 +355,7 @@ export async function renderConversationForModel(
       modelId: model.modelId,
       contextSize: model.contextSize,
       tokensUsed,
+      windowStrategy,
     });
   }
 
