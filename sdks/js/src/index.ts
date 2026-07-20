@@ -1,7 +1,7 @@
 import { createParser } from "eventsource-parser";
 import type { z } from "zod";
 
-import { normalizeError } from "./error_utils";
+import { errorToString, normalizeError } from "./error_utils";
 import { AgentsAPI } from "./high_level/agents";
 import { ConversationsAPI } from "./high_level/conversations";
 import { FilesAPI } from "./high_level/files";
@@ -144,6 +144,31 @@ function isStreamTerminationError(e: unknown): boolean {
   }
   return patterns.some((p) => p.test(msg));
 }
+
+// Detects a fetch() rejection caused by the connection dying before any response
+// bytes were received (typically a pooled keep-alive socket the server closed while
+// our request was in flight). Distinct from isStreamTerminationError, which covers
+// mid-stream/post-response failures and includes aborts (never retryable here).
+function isConnectionClosedError(e: unknown): boolean {
+  if (!(e instanceof TypeError)) {
+    return false;
+  }
+  const cause = "cause" in e ? e.cause : undefined;
+  if (!(cause instanceof Error)) {
+    return false;
+  }
+  const code = "code" in cause ? cause.code : undefined;
+  return (
+    code === "UND_ERR_SOCKET" ||
+    code === "ECONNRESET" ||
+    code === "EPIPE" ||
+    /other side closed|socket hang up/i.test(cause.message)
+  );
+}
+
+// Delay before the single retry in _fetchWithError — yields a full event-loop
+// turn so undici processes pending FINs and evicts stale pooled sockets first.
+const CONNECTION_CLOSED_RETRY_DELAY_MS = 100;
 
 function isTransientHttpStatus(status: number): boolean {
   // Only retry on explicit transient statuses; do NOT retry on 5xx.
@@ -2261,13 +2286,28 @@ export class DustAPI {
     } = {}
   ): Promise<Result<{ response: DustResponse; duration: number }, APIError>> {
     const now = Date.now();
+    const init = { method, headers, body, signal };
     try {
-      const res = await fetch(url, {
-        method,
-        headers,
-        body,
-        signal,
-      });
+      let res: Response;
+      try {
+        res = await fetch(url, init);
+      } catch (e) {
+        // Single retry when the connection died before any response bytes were
+        // received (stale keep-alive socket closed by the server). fetch() can
+        // only reject before response headers, so the server cannot have started
+        // responding and the string body is safe to re-send.
+        if (!isConnectionClosedError(e) || signal?.aborted) {
+          throw e;
+        }
+        this._logger.warn(
+          { url, method, error: e },
+          "DustAPI retrying fetch after connection closed before response"
+        );
+        await new Promise((resolve) =>
+          setTimeout(resolve, CONNECTION_CLOSED_RETRY_DELAY_MS)
+        );
+        res = await fetch(url, init);
+      }
 
       const responseBody = stream && res.body ? res.body : await res.text();
 
@@ -2283,7 +2323,7 @@ export class DustAPI {
       const duration = Date.now() - now;
       const err: APIError = {
         type: "unexpected_network_error",
-        message: `Unexpected network error from DustAPI: ${e}`,
+        message: `Unexpected network error from DustAPI: ${errorToString(e)}`,
       };
       this._logger.error(
         {
