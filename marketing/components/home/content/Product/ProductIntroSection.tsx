@@ -35,21 +35,21 @@ export function ProductIntroSection() {
           </HomeReveal>
           <HomeReveal delay={160}>
             <div className="mt-4 flex flex-row justify-center gap-4">
+              <Link href="/home/contact" shallow={true}>
+                <Button variant="highlight" size="md" label="Contact Sales" />
+              </Link>
               <Link href="/home/pricing" shallow={true}>
                 <Button
-                  variant="highlight"
+                  variant="outline"
                   size="md"
                   label="Try Dust Now"
                   icon={Rocket02}
                 />
               </Link>
-              <Link href="/home/contact" shallow={true}>
-                <Button variant="outline" size="md" label="Contact Sales" />
-              </Link>
             </div>
           </HomeReveal>
         </div>
-        <div className="relative left-1/2 right-1/2 -ml-[50vw] -mr-[50vw] mt-16 w-screen">
+        <div className="relative left-1/2 right-1/2 -ml-[50vw] -mr-[50vw] w-screen">
           <HomeTrustedSection />
         </div>
       </div>

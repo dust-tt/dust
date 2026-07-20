@@ -21,9 +21,10 @@ const features: FeatureItem[] = [
     description:
       "Persistent shared workspace where humans and agents collaborate around any topic, project, or initiative. Shared conversations, tasks, files and agents, all in one place.",
     panelGradient: "linear-gradient(125deg, #FFF1F7 0.54%, #FFC3DF 100%)",
-    imageSrc: "/static/landing/product/Pods.svg",
+    videoSrc: "/static/landing/product/PODS_Website-asset%201.mp4",
     ctaLabel: "Learn more",
-    ctaHref: "/home/contact",
+    ctaHref:
+      "https://docs.dust.tt/changelog/pods-a-shared-workspace-for-your-team-and-your-agents",
   },
   {
     id: "skill",
@@ -33,7 +34,8 @@ const features: FeatureItem[] = [
     panelGradient: "linear-gradient(125deg, #E9F7FF 0.54%, #9FDBFF 100%)",
     videoSrc: "/static/landing/product/Self-improving%20Skills.mp4",
     ctaLabel: "Learn more",
-    ctaHref: "/home/contact",
+    ctaHref:
+      "https://dust.tt/blog/introducing-self-improving-skills-reusable-ai-capabilities",
   },
 ];
 

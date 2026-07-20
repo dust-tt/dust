@@ -26,7 +26,7 @@ const BLOCKS: CapabilityBlock[] = [
         intelligence that grows over time.
       </>
     ),
-    imageSrc: "/static/landing/product/model.svg",
+    imageSrc: "/static/landing/product/models.svg",
     imageAlt: "Models",
     panelBg: "bg-golden-50",
     reverse: false,
