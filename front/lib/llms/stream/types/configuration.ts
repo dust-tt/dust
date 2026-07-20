@@ -30,7 +30,7 @@ export type DustStreamEndpointConfiguration<C extends InputConfig> =
 // specific value (e.g. Anthropic's temperature=1) re-apply it via their schema
 // default. Temperature is preserved when reasoning is off.
 export function dropTemperatureWhenReasoning<C extends InputConfig>(
-  config: C
+  config: C,
 ): C {
   const effort = config.reasoning?.effort;
   if (effort && effort !== "none") {
@@ -44,4 +44,10 @@ export function dropTemperatureWhenReasoning<C extends InputConfig>(
 // / gpt-5.1 Responses models). Always drop it.
 export function dropTemperature<C extends InputConfig>(config: C): C {
   return { ...config, temperature: undefined };
+}
+
+// `parseConfig` helper: non-reasoning models reject `reasoning_effort`, so drop
+// the reasoning field before validation (their schemas require it undefined).
+export function dropReasoning<C extends InputConfig>(config: C): C {
+  return { ...config, reasoning: undefined };
 }
