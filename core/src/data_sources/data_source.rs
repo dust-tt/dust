@@ -17,9 +17,9 @@ use anyhow::{anyhow, Result};
 use futures::StreamExt;
 use futures::TryStreamExt;
 use itertools::Itertools;
-use qdrant_client::qdrant::vector_output::Vector;
+use qdrant_client::qdrant::vectors_output::VectorsOptions;
 use qdrant_client::qdrant::{PointId, RetrievedPoint, ScoredPoint};
-use qdrant_client::{qdrant, Payload};
+use qdrant_client::{prelude::Payload, qdrant};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use std::collections::HashMap;
@@ -927,8 +927,10 @@ impl DataSource {
                     if let Some(qdrant::value::Kind::StringValue(chunk_text)) =
                         result.payload.get("text").and_then(|t| t.kind.as_ref())
                     {
-                        if let Some(Vector::Dense(v)) =
-                            result.vectors.as_ref().and_then(|v| v.get_vector())
+                        if let Some(VectorsOptions::Vector(v)) = result
+                            .vectors
+                            .as_ref()
+                            .and_then(|v| v.vectors_options.as_ref())
                         {
                             let text_hash = format!(
                                 "{}",
@@ -942,7 +944,7 @@ impl DataSource {
                                 text_hash,
                                 EmbedderVector {
                                     created: document.created,
-                                    vector: v.data.into_iter().map(|v| v as f64).collect(),
+                                    vector: v.data.iter().map(|&v| v as f64).collect(),
                                     model: embedder_config.model_id.clone(),
                                     provider: embedder_config.provider_id.to_string(),
                                 },

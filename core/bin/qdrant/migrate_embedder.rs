@@ -5,7 +5,7 @@ use dust::{
         data_source::{
             make_document_id_hash, DataSource, EmbedderConfig, EmbedderDataSourceConfig,
         },
-        qdrant::{vectors_output_to_vectors, QdrantClients},
+        qdrant::QdrantClients,
     },
     providers::{
         embedder::{EmbedderRequest, EmbedderVector, SupportedEmbedderModels},
@@ -19,8 +19,8 @@ use dust::{
 use futures::StreamExt;
 use futures::TryStreamExt;
 use qdrant_client::{
+    prelude::Payload,
     qdrant::{self, point_id, value, PointId},
-    Payload,
 };
 use serde::{Deserialize, Serialize};
 use std::{collections::HashMap, fs::File};
@@ -332,7 +332,7 @@ fn get_qdrant_point_id_as_string(point_id: &PointId) -> Option<String> {
 struct ChunkInfoFromPoints {
     hash: String,
     text: String,
-    payload: HashMap<String, qdrant_client::qdrant::Value>,
+    payload: HashMap<String, qdrant_client::prelude::Value>,
 }
 
 async fn execute_embedder_with_retry(
@@ -440,18 +440,13 @@ async fn migrate_shadow_embedder(
             .result
             .into_iter()
             .map(|r| {
-                let id =
-                    r.id.ok_or_else(|| anyhow!("expected an id on scrolled point"))?;
-                let vectors = r
-                    .vectors
-                    .ok_or_else(|| anyhow!("expected vectors on scrolled point"))?;
-                Ok(qdrant::PointStruct::new(
-                    id,
-                    vectors_output_to_vectors(vectors)?,
+                qdrant::PointStruct::new(
+                    r.id.unwrap(),
+                    r.vectors.unwrap(),
                     Payload::from(r.payload),
-                ))
+                )
             })
-            .collect::<Result<Vec<_>>>()?;
+            .collect::<Vec<_>>();
 
         // Empty upserts trigger errors.
         if count > 0 {
@@ -650,7 +645,6 @@ async fn refresh_chunk_count_for_updated_documents(
                 &Some(filter.clone()),
                 &None,
                 Some((batch_size, offset)),
-                false,
             )
             .await?;
 
