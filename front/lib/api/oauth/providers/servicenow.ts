@@ -173,11 +173,17 @@ export class ServiceNowOAuthProvider implements BaseOAuthStrategyProvider {
       useCase: OAuthUseCase;
     }
   ): Promise<ExtraConfigType> {
+    // client_secret must never be persisted in connection metadata (stored unencrypted,
+    // unlike credential content) or end up in logs, so strip it unconditionally before
+    // any branch below has a chance to forward it through untouched.
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars -- we filter out the client_secret from the extraConfig.
+    const { client_secret, ...safeConfig } = extraConfig;
+
     if (useCase === "personal_actions") {
       // For personal actions we reuse the existing connection credential id from the existing
       // workspace connection (setup by admin) if we have it, otherwise we fallback to assuming
       // we have client_secret (initial admin setup).
-      const { mcp_server_id, ...restConfig } = extraConfig;
+      const { mcp_server_id, ...restConfig } = safeConfig;
 
       if (mcp_server_id) {
         const oauthConnectionIdRes =
@@ -205,9 +211,6 @@ export class ServiceNowOAuthProvider implements BaseOAuthStrategyProvider {
       }
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars -- we filter out the client_secret from the extraConfig.
-    const { client_secret, ...restConfig } = extraConfig;
-
-    return restConfig;
+    return safeConfig;
   }
 }
