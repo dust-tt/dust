@@ -1,15 +1,17 @@
 use anyhow::{anyhow, Result};
 use clap::{Parser, Subcommand};
 use dust::{
-    data_sources::qdrant::{QdrantClients, QdrantCluster, QdrantDataSourceConfig},
+    data_sources::qdrant::{
+        vectors_output_to_vectors, QdrantClients, QdrantCluster, QdrantDataSourceConfig,
+    },
     stores::{postgres, store::Store},
     utils,
 };
 use futures::StreamExt;
 use futures::TryStreamExt;
 use qdrant_client::{
-    prelude::Payload,
     qdrant::{self, PointId},
+    Payload,
 };
 use serde::{Deserialize, Serialize};
 use std::fs::File;
@@ -330,7 +332,7 @@ async fn migrate_shadow_write(
             .map(|r| {
                 qdrant::PointStruct::new(
                     r.id.unwrap(),
-                    r.vectors.unwrap(),
+                    vectors_output_to_vectors(r.vectors.unwrap()),
                     Payload::from(r.payload),
                 )
             })

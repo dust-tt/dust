@@ -8,12 +8,11 @@ use std::sync::Arc;
 use parking_lot::Mutex;
 use qdrant_client::{
     config::QdrantConfig,
-    prelude::Payload,
     qdrant::{
-        self, shard_key, CountPointsBuilder, DeletePointsBuilder, ScrollPointsBuilder,
-        SearchPointsBuilder, SetPayloadPointsBuilder, UpsertPointsBuilder,
+        self, shard_key, vector_output, CountPointsBuilder, DeletePointsBuilder,
+        ScrollPointsBuilder, SearchPointsBuilder, SetPayloadPointsBuilder, UpsertPointsBuilder,
     },
-    Qdrant,
+    Payload, Qdrant,
 };
 use serde::{Deserialize, Serialize};
 
@@ -52,6 +51,17 @@ pub fn env_var_prefix_for_cluster(cluster: QdrantCluster) -> &'static str {
     match cluster {
         QdrantCluster::Cluster0 => "QDRANT_CLUSTER_0",
     }
+}
+
+// qdrant-client 1.17 removed `From<VectorsOutput> for Vectors`; our collections only hold single
+// unnamed vectors so we convert through the dedicated vector type.
+pub fn vectors_output_to_vectors(vectors: qdrant::VectorsOutput) -> qdrant::Vectors {
+    let vector: qdrant::Vector = match vectors.get_vector().expect("expected an unnamed vector") {
+        vector_output::Vector::Dense(v) => v.into(),
+        vector_output::Vector::Sparse(v) => v.into(),
+        vector_output::Vector::MultiDense(v) => v.into(),
+    };
+    vector.into()
 }
 
 #[derive(Clone)]
