@@ -10,6 +10,7 @@ import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 
+import githubConnection from "./github-connection";
 import upload from "./upload";
 
 export type { ImportSkillsRequestBody, ImportSkillsResponseBody };
@@ -17,6 +18,7 @@ export type { ImportSkillsRequestBody, ImportSkillsResponseBody };
 // Mounted at /api/w/:wId/skills/import.
 const app = workspaceApp();
 
+app.route("/github-connection", githubConnection);
 app.route("/upload", upload);
 
 /** @ignoreswagger */

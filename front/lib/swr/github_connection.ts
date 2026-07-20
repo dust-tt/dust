@@ -1,10 +1,73 @@
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useRegionContext } from "@app/lib/auth/RegionContext";
-import { useFetcher } from "@app/lib/swr/swr";
+import type { GetGitHubConnectionResponseBody } from "@app/lib/skill_detection";
+import { useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import { isAPIErrorResponse } from "@app/types/error";
 import { setupOAuthConnection } from "@app/types/oauth/client/setup";
 import type { LightWorkspaceType } from "@app/types/user";
 import { useCallback, useState } from "react";
+import type { Fetcher } from "swr";
+
+export function useWorkspaceGitHubConnection({
+  owner,
+  disabled,
+}: {
+  owner: LightWorkspaceType;
+  disabled?: boolean;
+}) {
+  const { fetcher } = useFetcher();
+  const connectionFetcher: Fetcher<GetGitHubConnectionResponseBody> = fetcher;
+
+  const { data, error, mutate } = useSWRWithDefaults(
+    `/api/w/${owner.sId}/skills/import/github-connection`,
+    connectionFetcher,
+    { disabled }
+  );
+
+  return {
+    connection: data?.connection ?? null,
+    isConnectionLoading: !error && !data && !disabled,
+    isConnectionError: error,
+    mutateConnection: mutate,
+  };
+}
+
+export function useDisconnectWorkspaceGitHub({
+  owner,
+}: {
+  owner: LightWorkspaceType;
+}) {
+  const { fetcher } = useFetcher();
+  const sendNotification = useSendNotification();
+  const [isDisconnectingGitHub, setIsDisconnectingGitHub] = useState(false);
+
+  const disconnectGitHub = useCallback(async (): Promise<boolean> => {
+    setIsDisconnectingGitHub(true);
+    try {
+      await fetcher(`/api/w/${owner.sId}/skills/import/github-connection`, {
+        method: "DELETE",
+      });
+      sendNotification({
+        type: "success",
+        title: "GitHub disconnected",
+      });
+      return true;
+    } catch (err) {
+      sendNotification({
+        type: "error",
+        title: "Failed to disconnect GitHub",
+        description: isAPIErrorResponse(err)
+          ? err.error.message
+          : "Could not disconnect the GitHub connection.",
+      });
+      return false;
+    } finally {
+      setIsDisconnectingGitHub(false);
+    }
+  }, [fetcher, owner, sendNotification]);
+
+  return { disconnectGitHub, isDisconnectingGitHub };
+}
 
 export function useConnectWorkspaceGitHub({
   owner,
@@ -36,7 +99,7 @@ export function useConnectWorkspaceGitHub({
       }
 
       try {
-        await fetcher(`/api/w/${owner.sId}/skills/github-connection`, {
+        await fetcher(`/api/w/${owner.sId}/skills/import/github-connection`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({

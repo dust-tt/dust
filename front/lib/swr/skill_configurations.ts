@@ -493,12 +493,21 @@ export function useDetectSkillsFromRepo({
     { delayMs: DETECT_SKILLS_DEBOUNCE_MS }
   );
 
+  const retryDetect = useCallback(
+    (repoUrl: string) => {
+      lastDetectedUrl.current = null;
+      triggerDetect(repoUrl);
+    },
+    [triggerDetect]
+  );
+
   return {
     detectedSkills,
     isDetecting,
     detectError,
     repositoryNotFound,
     triggerDetect,
+    retryDetect,
   };
 }
 

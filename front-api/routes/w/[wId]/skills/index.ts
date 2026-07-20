@@ -27,7 +27,6 @@ import uniq from "lodash/uniq";
 import { z } from "zod";
 import skill from "./[sId]";
 import detect from "./detect";
-import githubConnection from "./github-connection";
 import importRoute from "./import";
 import reinforcementDailySpend from "./reinforcement_daily_spend";
 import reinforcementSpend from "./reinforcement_spend";
@@ -81,7 +80,6 @@ const app = workspaceApp();
 
 // Static sub-paths must be registered before the param sub-app.
 app.route("/detect", detect);
-app.route("/github-connection", githubConnection);
 app.route("/import", importRoute);
 app.route("/reinforcement_daily_spend", reinforcementDailySpend);
 app.route("/reinforcement_spend", reinforcementSpend);
