@@ -50,9 +50,9 @@ export function readEndpointInfo(
   return {
     ctor,
     id: ctor.id,
-    providerId: ctor.providerId,
+    providerId: ctor.lab,
     region: ctor.region,
-    modelId: ctor.modelId,
+    modelId: ctor.model,
   };
 }
 

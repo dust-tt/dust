@@ -90,7 +90,7 @@ export abstract class MistralBatch extends WithMistralAIInputConverter(
     );
 
     const job = await this.client.batch.jobs.create({
-      model: this.constructor.modelId,
+      model: this.constructor.model,
       endpoint: ApiEndpoint.RootV1ChatCompletions,
       requests: batchRequests,
     });

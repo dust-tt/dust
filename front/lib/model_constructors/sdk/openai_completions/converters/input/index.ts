@@ -62,7 +62,7 @@ export function WithOpenAICompletionsInputConverter<
       // only sent when non-empty. No explicit max-output cap is sent, matching
       // the legacy client.
       return {
-        model: this.modelToHostModel(this.constructor.modelId),
+        model: this.modelToHostModel(this.constructor.model),
         messages: conversationToOpenAICompletionsMessages(conversation, this),
         temperature,
         tool_choice: forceToolNameToToolChoice(

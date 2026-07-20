@@ -100,7 +100,7 @@ export abstract class GoogleAiStudioBatch extends WithGoogleGenAIInputConverter(
         const { contents, config: requestConfig } =
           await this.buildRequestPayload(payload, config);
         return {
-          model: this.constructor.modelId,
+          model: this.constructor.model,
           contents,
           config: requestConfig,
           metadata: { [CUSTOM_ID_METADATA_KEY]: customId },
@@ -110,7 +110,7 @@ export abstract class GoogleAiStudioBatch extends WithGoogleGenAIInputConverter(
     );
 
     const batch = await this.client.batches.create({
-      model: this.constructor.modelId,
+      model: this.constructor.model,
       src: inlinedRequests,
     });
 

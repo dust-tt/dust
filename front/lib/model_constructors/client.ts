@@ -13,10 +13,10 @@ export abstract class Client<C extends InputConfig = InputConfig> {
 
   metadata(): EndpointMetadata {
     return {
-      lab: this.constructor.providerId,
-      host: this.constructor.api,
+      lab: this.constructor.lab,
+      host: this.constructor.host,
       region: this.constructor.region,
-      model: this.constructor.modelId,
+      model: this.constructor.model,
     };
   }
 

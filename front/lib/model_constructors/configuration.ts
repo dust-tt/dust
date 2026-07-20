@@ -9,9 +9,9 @@ import type { z } from "zod";
 export type BaseEndpointConfiguration<C extends InputConfig = InputConfig> = {
   // Identity
   id: `${Lab}/${Model}/${Region}/${Host}`;
-  providerId: Lab;
-  api: Host;
-  modelId: Model;
+  lab: Lab;
+  host: Host;
+  model: Model;
   region: Region;
 
   // Capabilities

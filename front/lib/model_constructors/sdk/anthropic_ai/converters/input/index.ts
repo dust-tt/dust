@@ -108,7 +108,7 @@ export function WithAnthropicAIInputConverter<
       });
 
       return {
-        model: this.modelToHostModel(this.constructor.modelId),
+        model: this.modelToHostModel(this.constructor.model),
         max_tokens: this.constructor.maxOutputTokens,
         messages,
         system: includesToolSearchTool(anthropicTools)

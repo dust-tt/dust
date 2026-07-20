@@ -717,7 +717,7 @@ export class StreamEndpointTransition extends BaseTransition {
     llmParameters: LLMParameters,
     modelConstructor: DustStreamEndpointConstructor
   ) {
-    super(auth, modelConstructor.providerId, llmParameters);
+    super(auth, modelConstructor.lab, llmParameters);
     this.endpointConstructor = modelConstructor;
     this.model = new modelConstructor(llmParameters.credentials);
 
@@ -842,7 +842,7 @@ export class BatchEndpointTransition extends BaseTransition {
     llmParameters: LLMParameters,
     modelConstructor: BatchEndpointConstructor
   ) {
-    super(auth, modelConstructor.providerId, llmParameters);
+    super(auth, modelConstructor.lab, llmParameters);
     this.model = new modelConstructor(llmParameters.credentials);
   }
 
