@@ -274,7 +274,7 @@ describe("/api/v1/viz/content endpoint tests", () => {
       isAuthenticatedMember: false,
     });
   });
-  
+
   it("should return isAuthenticatedMember: true when the token carries a userId", async () => {
     const frameFile = await FileFactory.create(auth, null, {
       contentType: frameContentType,
