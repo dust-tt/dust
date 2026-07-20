@@ -202,10 +202,7 @@ export function useFilePreviewContent({
   const { category } = getFilePreviewConfig(mimeType);
 
   const needsTextContent =
-    category === "code" ||
-    category === "markdown" ||
-    category === "text" ||
-    category === "delimited";
+    category === "code" || category === "markdown" || category === "delimited";
 
   const { fileContent, isNotFound, isFileContentLoading, fileContentError } =
     useFileContentByUrl({
@@ -220,7 +217,7 @@ export function useFilePreviewContent({
   const truncatedContent = fileContent?.slice(0, MAX_TEXT_CHARS) ?? null;
 
   const processedContent =
-    (category === "markdown" || category === "text") && truncatedContent
+    category === "markdown" && truncatedContent
       ? processFileContent(truncatedContent, mimeType)
       : null;
 
@@ -329,16 +326,6 @@ export function FilePreviewContent({
       }
       return null;
 
-    case "text":
-      if (processedContent) {
-        return (
-          <div className="rounded-lg bg-muted-background p-4 dark:bg-muted-background-night">
-            <Markdown content={processedContent.text} isStreaming={false} />
-          </div>
-        );
-      }
-      return null;
-
     case "markdown":
       if (
         processedContent &&
@@ -377,6 +364,9 @@ export function FilePreviewContent({
         </div>
       );
     }
+
+    case "unsupported":
+      return null;
 
     default:
       assertNeverAndIgnore(category);
