@@ -13,13 +13,14 @@ vi.mock("@app/lib/api/audit/workos_audit", async (importOriginal) => {
 
 import {
   addSelectedConversationSpaces,
-  listSelectableRestrictedSpaces,
+  listSelectableSpaces,
   type SelectedConversationSpacesError,
-  validateSelectableRestrictedSpaces,
+  validateSelectableSpaces,
 } from "@app/lib/api/assistant/conversation/selected_spaces";
 import { Authenticator } from "@app/lib/auth";
 import { ConversationSelectedSpaceResource } from "@app/lib/resources/conversation_selected_space_resource";
-import type { SpaceResource } from "@app/lib/resources/space_resource";
+import { GroupResource } from "@app/lib/resources/group_resource";
+import { SpaceResource } from "@app/lib/resources/space_resource";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
@@ -48,6 +49,7 @@ function expectErrCode<T>(
 
 describe("selected conversation Spaces", () => {
   let auth: Authenticator;
+  let globalGroup: GroupResource;
   let globalSpace: SpaceResource;
   let user: UserType;
   let workspace: WorkspaceType;
@@ -55,6 +57,7 @@ describe("selected conversation Spaces", () => {
   beforeEach(async () => {
     const setup = await createResourceTest({});
     auth = setup.authenticator;
+    globalGroup = setup.globalGroup;
     globalSpace = setup.globalSpace;
     user = setup.user.toJSON();
     workspace = auth.getNonNullableWorkspace();
@@ -89,6 +92,22 @@ describe("selected conversation Spaces", () => {
     return space;
   }
 
+  async function memberOpenSpace() {
+    const memberGroup = await GroupResource.makeNew({
+      name: "Open Space members",
+      workspaceId: workspace.id,
+      kind: "regular_auto",
+    });
+    return SpaceResource.makeNew(
+      {
+        name: "Open Space",
+        kind: "regular",
+        workspaceId: workspace.id,
+      },
+      { members: [memberGroup, globalGroup] }
+    );
+  }
+
   async function conversation() {
     return ConversationFactory.create(auth, {
       agentConfigurationId: "test-agent",
@@ -101,7 +120,7 @@ describe("selected conversation Spaces", () => {
     const restrictedSpace = await memberRestrictedSpace();
 
     expectErrCode(
-      await validateSelectableRestrictedSpaces(auth, {
+      await validateSelectableSpaces(auth, {
         spaceIds: [restrictedSpace.sId],
       }),
       "feature_flag_not_found"
@@ -129,17 +148,18 @@ describe("selected conversation Spaces", () => {
       "conversation_not_mutable"
     );
     expectErrCode(
-      await listSelectableRestrictedSpaces(auth, {
+      await listSelectableSpaces(auth, {
         conversation: projectConversation,
       }),
       "conversation_not_mutable"
     );
   });
 
-  it("lists selectable restricted regular Spaces and marks selected ones", async () => {
+  it("lists selectable regular Spaces and marks selected ones", async () => {
     await enableFeature();
     const selectedSpace = await memberRestrictedSpace();
     const selectableSpace = await memberRestrictedSpace();
+    const openSpace = await memberOpenSpace();
     const inaccessibleSpace = await SpaceFactory.regular(workspace);
     const projectSpace = await SpaceFactory.project(workspace, user.id);
     const conv = await conversation();
@@ -151,13 +171,14 @@ describe("selected conversation Spaces", () => {
     });
 
     const selectableSpaces = unwrapResult(
-      await listSelectableRestrictedSpaces(auth, { conversation: conv })
+      await listSelectableSpaces(auth, { conversation: conv })
     );
-    expect(selectableSpaces).toHaveLength(2);
+    expect(selectableSpaces).toHaveLength(3);
     expect(selectableSpaces).toEqual(
       expect.arrayContaining([
         expect.objectContaining({ sId: selectedSpace.sId, selected: true }),
         expect.objectContaining({ sId: selectableSpace.sId, selected: false }),
+        expect.objectContaining({ sId: openSpace.sId, selected: false }),
       ])
     );
     expect(selectableSpaces.map((space) => space.sId)).not.toEqual(
@@ -169,27 +190,35 @@ describe("selected conversation Spaces", () => {
     );
   });
 
-  it("rejects inaccessible and non-restricted Spaces", async () => {
+  it("accepts open Spaces and rejects inaccessible or non-regular Spaces", async () => {
     await enableFeature();
     const inaccessibleSpace = await SpaceFactory.regular(workspace);
+    const openSpace = await memberOpenSpace();
 
     expectErrCode(
-      await validateSelectableRestrictedSpaces(auth, {
+      await validateSelectableSpaces(auth, {
         spaceIds: [inaccessibleSpace.sId],
       }),
       "space_not_found"
     );
+    expect(
+      (
+        await validateSelectableSpaces(auth, {
+          spaceIds: [openSpace.sId],
+        })
+      ).isOk()
+    ).toBe(true);
     expectErrCode(
-      await validateSelectableRestrictedSpaces(auth, {
+      await validateSelectableSpaces(auth, {
         spaceIds: [globalSpace.sId],
       }),
-      "space_not_restricted"
+      "space_not_selectable"
     );
   });
 
   it("materializes selected Spaces, dedupes input, and emits audit events", async () => {
     await enableFeature();
-    const selectedSpace = await memberRestrictedSpace();
+    const selectedSpace = await memberOpenSpace();
     const conv = await conversation();
 
     const result = unwrapResult(
@@ -207,7 +236,7 @@ describe("selected conversation Spaces", () => {
     expect(mockEmitAuditLogEvent).toHaveBeenCalledTimes(1);
     expect(mockEmitAuditLogEvent).toHaveBeenCalledWith(
       expect.objectContaining({
-        action: "conversation.restricted_space_selected",
+        action: "conversation.space_selected",
         metadata: {
           conversation_id: conv.sId,
           origin: "input_bar",

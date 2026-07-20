@@ -1,5 +1,5 @@
 {
-  "action": "conversation.restricted_space_selected",
+  "action": "conversation.space_selected",
   "targets": [
     {
       "type": "workspace"
