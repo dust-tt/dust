@@ -506,7 +506,7 @@ export const InputBar = React.memo(function InputBar({
         {!effectiveIsCompact && isFloating && (
           <div
             aria-hidden
-            className="pointer-events-none absolute inset-[-1px] hidden rounded-[inherit] shadow-[inset_0px_-3px_29px_2px_rgba(0,0,0,0.01)] md:block dark:hidden"
+            className="pointer-events-none absolute inset-[-1px] hidden rounded-[inherit] [corner-shape:inherit] shadow-[inset_0px_-3px_29px_2px_rgba(0,0,0,0.01)] md:block dark:hidden"
           />
         )}
         <div

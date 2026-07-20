@@ -56,7 +56,7 @@ export function Composer({
       {variant === "floating" && (
         <div
           aria-hidden
-          className="pointer-events-none absolute inset-[-1px] rounded-[inherit] shadow-[inset_0px_-3px_29px_2px_rgba(0,0,0,0.01)] dark:hidden"
+          className="pointer-events-none absolute inset-[-1px] rounded-[inherit] [corner-shape:inherit] shadow-[inset_0px_-3px_29px_2px_rgba(0,0,0,0.01)] dark:hidden"
         />
       )}
 
