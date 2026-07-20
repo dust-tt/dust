@@ -3,7 +3,7 @@ import type { BatchEndpointConstructor } from "@app/lib/model_constructors/batch
 import { WithOpenAIGptFiveDotFiveConfig } from "@app/lib/model_constructors/providers/openai/models/gpt_five_dot_five";
 import { GLOBAL } from "@app/lib/model_constructors/types/regions";
 
-export class OpenAIResponsesGlobalGptFiveDotFiveBatch extends WithOpenAIGptFiveDotFiveConfig(
+export class OpenAIGptFiveDotFiveGlobalOpenAIResponsesBatch extends WithOpenAIGptFiveDotFiveConfig(
   OpenAIResponsesBatch
 ) {
   // Batch pricing is half the standard OpenAI rate.
@@ -17,4 +17,4 @@ export class OpenAIResponsesGlobalGptFiveDotFiveBatch extends WithOpenAIGptFiveD
   static readonly id = this.buildId();
 }
 
-OpenAIResponsesGlobalGptFiveDotFiveBatch satisfies BatchEndpointConstructor;
+OpenAIGptFiveDotFiveGlobalOpenAIResponsesBatch satisfies BatchEndpointConstructor;

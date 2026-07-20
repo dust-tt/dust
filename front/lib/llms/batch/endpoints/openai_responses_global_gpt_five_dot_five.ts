@@ -1,7 +1,7 @@
 import { defineDustBatchEndpoint } from "@app/lib/llms/batch/dust_batch_endpoint";
-import { OpenAIResponsesGlobalGptFiveDotFiveBatch } from "@app/lib/model_constructors/batch/endpoints/openai_responses_global_gpt_five_dot_five";
+import { OpenAIGptFiveDotFiveGlobalOpenAIResponsesBatch } from "@app/lib/model_constructors/batch/endpoints/openai_gpt_five_dot_five_global_openai_responses";
 
-export class DustOpenAIResponsesGlobalGptFiveDotFiveBatch extends OpenAIResponsesGlobalGptFiveDotFiveBatch {
+export class DustOpenAIResponsesGlobalGptFiveDotFiveBatch extends OpenAIGptFiveDotFiveGlobalOpenAIResponsesBatch {
   static readonly endpointFilter = {};
 }
 

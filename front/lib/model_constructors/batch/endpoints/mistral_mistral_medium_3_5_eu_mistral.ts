@@ -3,7 +3,7 @@ import type { BatchEndpointConstructor } from "@app/lib/model_constructors/batch
 import { WithMistralMedium35Config } from "@app/lib/model_constructors/providers/mistral/models/mistral_medium_3_5";
 import { EUROPE } from "@app/lib/model_constructors/types/regions";
 
-export class MistralEuropeMistralMedium35Batch extends WithMistralMedium35Config(
+export class MistralMistralMedium35EuropeMistralBatch extends WithMistralMedium35Config(
   MistralBatch
 ) {
   // Batch pricing is half the standard Mistral rate.
@@ -18,4 +18,4 @@ export class MistralEuropeMistralMedium35Batch extends WithMistralMedium35Config
   static readonly id = this.buildId();
 }
 
-MistralEuropeMistralMedium35Batch satisfies BatchEndpointConstructor;
+MistralMistralMedium35EuropeMistralBatch satisfies BatchEndpointConstructor;

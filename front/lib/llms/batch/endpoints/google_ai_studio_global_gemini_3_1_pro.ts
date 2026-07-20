@@ -1,7 +1,7 @@
 import { defineDustBatchEndpoint } from "@app/lib/llms/batch/dust_batch_endpoint";
-import { GoogleAiStudioGlobalGeminiThreeDotOneProBatch } from "@app/lib/model_constructors/batch/endpoints/google_ai_studio_global_gemini_3_1_pro";
+import { GoogleAiStudioGeminiThreeDotOneProGlobalGoogleAiStudioBatch } from "@app/lib/model_constructors/batch/endpoints/google_ai_studio_gemini_3_1_pro_global_google_ai_studio";
 
-export class DustGoogleAiStudioGlobalGeminiThreeDotOneProBatch extends GoogleAiStudioGlobalGeminiThreeDotOneProBatch {
+export class DustGoogleAiStudioGlobalGeminiThreeDotOneProBatch extends GoogleAiStudioGeminiThreeDotOneProGlobalGoogleAiStudioBatch {
   static readonly endpointFilter = {};
 }
 

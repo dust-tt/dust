@@ -18,7 +18,7 @@ export const batchConfigSchema = inputConfigSchema.extend({
   cacheKey: z.undefined(),
 });
 
-export class AnthropicGlobalClaudeSonnetFourDotSixBatch extends WithAnthropicClaudeSonnetFourDotSixConfig(
+export class AnthropicClaudeSonnetFourDotSixGlobalAnthropicBatch extends WithAnthropicClaudeSonnetFourDotSixConfig(
   AnthropicBatch
 ) {
   static readonly configSchema = batchConfigSchema;
@@ -34,4 +34,4 @@ export class AnthropicGlobalClaudeSonnetFourDotSixBatch extends WithAnthropicCla
   static readonly id = this.buildId();
 }
 
-AnthropicGlobalClaudeSonnetFourDotSixBatch satisfies BatchEndpointConstructor;
+AnthropicClaudeSonnetFourDotSixGlobalAnthropicBatch satisfies BatchEndpointConstructor;
