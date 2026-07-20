@@ -1,7 +1,4 @@
-import {
-  bucketsToArray,
-  searchAnalytics,
-} from "@app/lib/api/elasticsearch";
+import { bucketsToArray, searchAnalytics } from "@app/lib/api/elasticsearch";
 import type { Authenticator } from "@app/lib/auth";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import type { Result } from "@app/types/shared/result";

@@ -1,8 +1,9 @@
-import { searchAnalytics } from "@app/lib/api/elasticsearch";
 import { fetchPodUsageBreakdown } from "@app/lib/api/assistant/observability/pod_usage";
+import { searchAnalytics } from "@app/lib/api/elasticsearch";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { Ok } from "@app/types/shared/result";
+import type { estypes } from "@elastic/elasticsearch";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 // Keep the DB and resources real; only stub the Elasticsearch boundary.
@@ -13,11 +14,14 @@ vi.mock("@app/lib/api/elasticsearch", async (importActual) => {
 });
 
 function stubEsBuckets(buckets: { key: string; doc_count: number }[]) {
-  vi.mocked(searchAnalytics).mockResolvedValue(
-    new Ok({
-      aggregations: { by_space: { buckets } },
-    } as never)
-  );
+  const response: estypes.SearchResponse<never> = {
+    took: 1,
+    timed_out: false,
+    _shards: { total: 1, successful: 1, failed: 0, skipped: 0 },
+    hits: { hits: [] },
+    aggregations: { by_space: { buckets } },
+  };
+  vi.mocked(searchAnalytics).mockResolvedValue(new Ok(response));
 }
 
 describe("fetchPodUsageBreakdown", () => {
