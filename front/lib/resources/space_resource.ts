@@ -263,8 +263,13 @@ export class SpaceResource extends BaseResource<SpaceModel> {
     return spaces;
   }
 
-  static async listWorkspaceSpacesAsMember(auth: Authenticator) {
-    const spaces = await this.baseFetch(auth);
+  static async listWorkspaceSpacesAsMember(
+    auth: Authenticator,
+    options?: { kinds?: SpaceKind[] }
+  ) {
+    const spaces = await this.baseFetch(auth, {
+      where: options?.kinds ? { kind: { [Op.in]: options.kinds } } : undefined,
+    });
 
     // TODO(projects): we might want to filter early on the groups membership to avoid fetching all spaces and then filtering.
     return spaces.filter((s) => s.isMember(auth));

@@ -14,11 +14,12 @@ import type {
 } from "@app/types/api/spaces";
 import { PostSpaceRequestBodySchema } from "@app/types/api/spaces";
 import { assertNever } from "@app/types/shared/utils/assert_never";
-import type { PodType, SpaceType } from "@app/types/space";
+import { type PodType, SPACE_KINDS, type SpaceType } from "@app/types/space";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
+import { z } from "zod";
 import spaceId from "./[spaceId]";
 import checkName from "./check-name";
 import projectsLookup from "./projects-lookup";
@@ -33,6 +34,11 @@ export type {
 // Mounted under /api/w/:wId/spaces. workspaceAuth is applied by the parent
 // workspace sub-app, so ctx.get("auth") is always available here.
 const app = workspaceApp();
+
+const GetSpacesQuerySchema = z.object({
+  role: z.string().optional(),
+  kind: z.union([z.enum(SPACE_KINDS), z.array(z.enum(SPACE_KINDS))]).optional(),
+});
 
 /**
  * @swagger
@@ -58,9 +64,14 @@ const app = workspaceApp();
  *       - in: query
  *         name: kind
  *         required: false
- *         description: Filter by space kind (e.g. system)
+ *         description: Filter by one or more space kinds. Repeat the parameter to include several kinds.
+ *         style: form
+ *         explode: true
  *         schema:
- *           type: string
+ *           type: array
+ *           items:
+ *             type: string
+ *             enum: [global, system, conversations, regular, project]
  *     security:
  *       - BearerAuth: []
  *     responses:
@@ -139,37 +150,49 @@ const app = workspaceApp();
  *         description: Unauthorized
  */
 
-app.get("/", async (ctx): HandlerResult<GetSpacesResponseBody> => {
-  const auth = ctx.get("auth");
-  const role = ctx.req.query("role");
-  const kind = ctx.req.query("kind");
+app.get(
+  "/",
+  validate("query", GetSpacesQuerySchema),
+  async (ctx): HandlerResult<GetSpacesResponseBody> => {
+    const auth = ctx.get("auth");
+    const { role, kind } = ctx.req.valid("query");
+    const kinds = kind
+      ? Array.isArray(kind)
+        ? Array.from(new Set(kind))
+        : [kind]
+      : undefined;
 
-  let spaces: SpaceResource[] = [];
-  if (role === "admin") {
-    if (kind === "system") {
-      const systemSpace = await SpaceResource.fetchWorkspaceSystemSpace(auth);
-      spaces = systemSpace ? [systemSpace] : [];
+    let spaces: SpaceResource[] = [];
+    if (role === "admin") {
+      if (kind === "system") {
+        const systemSpace = await SpaceResource.fetchWorkspaceSystemSpace(auth);
+        spaces = systemSpace ? [systemSpace] : [];
+      } else {
+        spaces = await SpaceResource.listWorkspaceSpaces(auth);
+      }
     } else {
-      spaces = await SpaceResource.listWorkspaceSpaces(auth);
+      spaces = await SpaceResource.listWorkspaceSpacesAsMember(auth, {
+        kinds,
+      });
     }
-  } else {
-    spaces = await SpaceResource.listWorkspaceSpacesAsMember(auth);
+
+    spaces = spaces.filter((s) => s.kind !== "conversations");
+    const nonProjectSpaces = spaces.filter((s) => s.kind !== "project");
+    const projectSpaces = spaces.filter((s) => s.kind === "project");
+
+    const nonProjectsJson: SpaceType[] = nonProjectSpaces.map((s) =>
+      s.toJSON()
+    );
+    const projectsJson: PodType[] =
+      projectSpaces.length > 0
+        ? await enrichProjectsWithMetadata(auth, projectSpaces)
+        : [];
+
+    return ctx.json({
+      spaces: [...nonProjectsJson, ...projectsJson],
+    });
   }
-
-  spaces = spaces.filter((s) => s.kind !== "conversations");
-  const nonProjectSpaces = spaces.filter((s) => s.kind !== "project");
-  const projectSpaces = spaces.filter((s) => s.kind === "project");
-
-  const nonProjectsJson: SpaceType[] = nonProjectSpaces.map((s) => s.toJSON());
-  const projectsJson: PodType[] = await enrichProjectsWithMetadata(
-    auth,
-    projectSpaces
-  );
-
-  return ctx.json({
-    spaces: [...nonProjectsJson, ...projectsJson],
-  });
-});
+);
 
 app.post(
   "/",

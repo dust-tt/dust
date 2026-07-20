@@ -36,7 +36,6 @@ import type { ContentNodesViewType } from "@app/types/connectors/content_nodes";
 import type { SearchWarningCode } from "@app/types/core/core_api";
 import { MIN_SEARCH_QUERY_SIZE } from "@app/types/core/utils";
 import type { DataSourceViewType } from "@app/types/data_source_view";
-import { isString } from "@app/types/shared/utils/general";
 import type { PodType, SpaceKind, SpaceType } from "@app/types/space";
 import type { LightWorkspaceType, SpaceUserType } from "@app/types/user";
 import { useCallback, useMemo } from "react";
@@ -55,9 +54,16 @@ export function useSpaces({
 }) {
   const { fetcher } = useFetcher();
   const spacesFetcher: Fetcher<GetSpacesResponseBody> = fetcher;
+  const queryParams =
+    kinds === "all"
+      ? ""
+      : `?${kinds
+          .toSorted()
+          .map((kind) => `kind=${encodeURIComponent(kind)}`)
+          .join("&")}`;
 
-  const { data, error, mutate } = useSWRWithDefaults(
-    `/api/w/${workspaceId}/spaces`,
+  const { data, error, mutateRegardlessOfQueryParams } = useSWRWithDefaults(
+    `/api/w/${workspaceId}/spaces${queryParams}`,
     spacesFetcher,
     { ...swrOptions, disabled }
   );
@@ -70,13 +76,13 @@ export function useSpaces({
     );
     // Serialize the kinds array to a string to avoid unnecessary re-renders
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [data?.spaces, isString(kinds) ? kinds : kinds.toSorted().join(",")]);
+  }, [data?.spaces, kinds === "all" ? kinds : kinds.toSorted().join(",")]);
 
   return {
     spaces,
     isSpacesLoading: !error && !data && !disabled,
     isSpacesError: error,
-    mutate,
+    mutate: mutateRegardlessOfQueryParams,
   };
 }
 
