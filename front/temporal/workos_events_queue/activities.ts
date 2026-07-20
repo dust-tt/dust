@@ -30,7 +30,11 @@ import {
   createOrUpdateUser,
   WORKOS_METADATA_KEY_PREFIX,
 } from "@app/lib/iam/users";
-import { GroupResource } from "@app/lib/resources/group_resource";
+import {
+  ADMIN_GROUP_NAME,
+  BUILDER_GROUP_NAME,
+  GroupResource,
+} from "@app/lib/resources/group_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
@@ -67,9 +71,6 @@ const logger = mainLogger.child(
     msgPrefix: "[WorkOS Event] ",
   }
 );
-
-const ADMIN_GROUP_NAME = "dust-admins";
-const BUILDER_GROUP_NAME = "dust-builders";
 
 // Grace window for treating a user_added event as stale when the user was
 // revoked around the same time. Covers races where WorkOS emits both events
@@ -250,6 +251,12 @@ async function handleRoleAssignmentForGroup(
         );
       }
 
+      await GroupResource.syncBuilderGroupMembership({
+        workspace,
+        user,
+        isBuilder: newRole === "builder",
+      });
+
       logger.info(
         {
           userId: user.sId,
@@ -297,6 +304,12 @@ async function handleRoleAssignmentForGroup(
           `Failed to downgrade user role for ${user.sId}: ${updateResult.error.type}`
         );
       }
+
+      await GroupResource.syncBuilderGroupMembership({
+        workspace,
+        user,
+        isBuilder: newRole === "builder",
+      });
 
       logger.info(
         {

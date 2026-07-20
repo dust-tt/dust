@@ -296,6 +296,14 @@ export async function createAndTrackMembership({
     }
   }
 
+  // After the restore above, so the group reflects the new role rather than the pre-revoke
+  // one (builder role deprecation).
+  await GroupResource.syncBuilderGroupMembership({
+    workspace: w,
+    user,
+    isBuilder: role === "builder",
+  });
+
   void ServerSideTracking.trackCreateMembership({
     user: user.toJSON(),
     workspace: w,
@@ -374,6 +382,12 @@ export async function revokeAndTrackMembership(
   });
 
   if (revokeResult.isOk()) {
+    await GroupResource.syncBuilderGroupMembership({
+      workspace,
+      user,
+      isBuilder: false,
+    });
+
     const deleteTriggerResult = await TriggerResource.deleteAllForUser(
       auth,
       user
@@ -504,6 +518,12 @@ export async function updateMembershipRoleAndTrack({
   });
 
   if (updateRes.isOk()) {
+    await GroupResource.syncBuilderGroupMembership({
+      workspace,
+      user,
+      isBuilder: newRole === "builder",
+    });
+
     void ServerSideTracking.trackUpdateMembershipRole({
       user: user.toJSON(),
       workspace,

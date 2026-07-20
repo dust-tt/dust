@@ -104,6 +104,11 @@ export const applyGroupRoles = createPlugin({
             `Failed to update role for user ${user.sId}: ${updateResult.error.type}`
           );
         } else {
+          await GroupResource.syncBuilderGroupMembership({
+            workspace,
+            user,
+            isBuilder: expectedRole === "builder",
+          });
           updatedCount++;
         }
       }

@@ -53,7 +53,7 @@ import type {
   Transaction,
   WhereOptions,
 } from "sequelize";
-import { col, fn, Op, QueryTypes } from "sequelize";
+import { col, fn, Op, QueryTypes, UniqueConstraintError } from "sequelize";
 
 export const ADMIN_GROUP_NAME = "dust-admins";
 export const BUILDER_GROUP_NAME = "dust-builders";
@@ -2575,6 +2575,111 @@ export class GroupResource extends BaseResource<GroupModel> {
     });
 
     return provisionedGroups;
+  }
+
+  /**
+   * Transitional — builder role deprecation, see
+   * https://github.com/dust-tt/tasks/issues/9459.
+   *
+   * Keeps a per-workspace "dust-builders" group in sync with the `builder` role so that when
+   * the role is removed, the group can be granted the builders' governance capabilities
+   * (create agents / skills) and former builders keep their rights. Until then the role is
+   * the source of truth: the group is created lazily with kind `regular_auto`, which keeps it
+   * out of user-facing group management. Once the role is removed, membership will be managed
+   * through the members UI in place of role assignment — no new "dust-builders" groups are
+   * meant to be created past that point.
+   *
+   * Idempotent ensure-state semantics: after the call, the user's active membership in the
+   * group matches `isBuilder`. Workspaces where "dust-builders" is a provisioned group are
+   * skipped: the IdP group is then synced via SCIM and is itself what grants the builder
+   * role.
+   *
+   * Callers must invoke this after every membership write that can involve the builder role
+   * (role change, membership creation, revocation) — see the `lib/api/membership.ts`
+   * wrappers.
+   */
+  static async syncBuilderGroupMembership({
+    workspace,
+    user,
+    isBuilder,
+  }: {
+    workspace: LightWorkspaceType;
+    user: UserResource;
+    isBuilder: boolean;
+  }): Promise<void> {
+    let group = await GroupModel.findOne({
+      where: { workspaceId: workspace.id, name: BUILDER_GROUP_NAME },
+    });
+
+    if (!group) {
+      if (!isBuilder) {
+        return;
+      }
+      try {
+        await GroupResource.makeNew(
+          {
+            name: BUILDER_GROUP_NAME,
+            kind: "regular_auto",
+            workspaceId: workspace.id,
+          },
+          { memberIds: [user.id] }
+        );
+        return;
+      } catch (err) {
+        // Two concurrent membership writes can race on the group creation; the
+        // (workspaceId, name) unique index makes the loser land here. Fall through to the
+        // membership sync against the winner's group.
+        if (!(err instanceof UniqueConstraintError)) {
+          throw err;
+        }
+        group = await GroupModel.findOne({
+          where: { workspaceId: workspace.id, name: BUILDER_GROUP_NAME },
+        });
+        assert(group, "dust-builders group missing after unique constraint error");
+      }
+    }
+
+    if (group.kind === "provisioned") {
+      return;
+    }
+
+    const now = new Date();
+    // Single row expected; served by the (userId, groupId) index.
+    const activeMembership = await GroupMembershipModel.findOne({
+      where: {
+        groupId: group.id,
+        userId: user.id,
+        workspaceId: workspace.id,
+        status: "active",
+        startAt: { [Op.lte]: now },
+        [Op.or]: [{ endAt: null }, { endAt: { [Op.gt]: now } }],
+      },
+    });
+
+    if (isBuilder) {
+      if (activeMembership) {
+        return;
+      }
+      await GroupMembershipModel.create({
+        groupId: group.id,
+        userId: user.id,
+        workspaceId: workspace.id,
+        startAt: now,
+        status: "active",
+      });
+    } else {
+      if (!activeMembership) {
+        return;
+      }
+      await GroupMembershipModel.update(
+        { endAt: now },
+        { where: { id: activeMembership.id, workspaceId: workspace.id } }
+      );
+    }
+
+    await GroupResource.batchInvalidateGroupIdsCacheForUsers([
+      [{ user: { id: user.id }, workspace: { id: workspace.id } }],
+    ]);
   }
 
   /**
