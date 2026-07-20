@@ -2481,6 +2481,26 @@ export class GroupResource extends BaseResource<GroupModel> {
       ];
     }
 
+    // Provisioned groups are directory-synced (SCIM), so membership is not editable in-app:
+    // business admins get read (e.g. to grant them governance capabilities) but not write/admin.
+    if (this.isProvisioned()) {
+      return [
+        {
+          groups: [
+            {
+              id: this.id,
+              permissions: ["read"],
+            },
+          ],
+          roles: [
+            { role: "admin", permissions: ["read", "write", "admin"] },
+            { role: "business_admin", permissions: ["read"] },
+          ],
+          workspaceId: this.workspaceId,
+        },
+      ];
+    }
+
     return [
       {
         groups: [
