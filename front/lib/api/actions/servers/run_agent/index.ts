@@ -1,3 +1,7 @@
+import {
+  FILE_OFFLOAD_SNIPPET_LENGTH,
+  FILE_OFFLOAD_TEXT_SIZE_BYTES,
+} from "@app/lib/actions/action_output_limits";
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import { AGENT_CONFIGURATION_URI_PATTERN } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import type {
@@ -50,6 +54,8 @@ import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agen
 import { getGlobalAgentMetadata } from "@app/lib/api/assistant/global_agents/global_agent_metadata";
 import { cancelAgentLoop } from "@app/lib/api/assistant/pubsub";
 import config from "@app/lib/api/config";
+import { writeToToolOutputsFolder } from "@app/lib/api/files/action_output_fs";
+import { makeFileName } from "@app/lib/api/files/action_output_fs/naming";
 import type { Authenticator } from "@app/lib/auth";
 import { getApiKeyNameHeader, prodAPICredentialsForOwner } from "@app/lib/auth";
 import { serializeMention } from "@app/lib/mentions/format";
@@ -485,7 +491,7 @@ const runAgent = async (
   }
 
   // Helper to build the success content payload consistently (citations + files).
-  const buildSuccessContent = ({
+  const buildSuccessContent = async ({
     conversationId,
     finalContent,
     chainOfThought,
@@ -499,6 +505,33 @@ const runAgent = async (
     files: ActionGeneratedFileType[];
   }) => {
     let text = finalContent;
+
+    // Archive an oversized chain of thought instead of keeping it inline in the conversation.
+    let chainOfThoughtForOutput = chainOfThought;
+    const runContext = toolContext?.runContext;
+    if (
+      runContext &&
+      Buffer.byteLength(chainOfThought, "utf8") > FILE_OFFLOAD_TEXT_SIZE_BYTES
+    ) {
+      const fileName = makeFileName({
+        name: `${childAgentBlob.name}-chain-of-thought`,
+        ext: ".txt",
+      });
+      const writeResult = await writeToToolOutputsFolder(auth, runContext, {
+        fileName,
+        content: chainOfThought,
+        contentType: "text/plain",
+      });
+      // A failed archive must not fail the tool: keep the chain of thought inline.
+      if (writeResult.isOk()) {
+        chainOfThoughtForOutput = `${chainOfThought.substring(0, FILE_OFFLOAD_SNIPPET_LENGTH)}... (truncated)\n[Full content archived at ${writeResult.value}]`;
+      } else {
+        logger.error(
+          { error: writeResult.error, fileName },
+          "Failed to offload run_agent chain of thought"
+        );
+      }
+    }
 
     const convoUrl = getConversationRoute(
       auth.getNonNullableWorkspace().sId,
@@ -547,8 +580,8 @@ const runAgent = async (
           conversationId,
           text,
           chainOfThought:
-            chainOfThought && chainOfThought.length > 0
-              ? chainOfThought
+            chainOfThoughtForOutput && chainOfThoughtForOutput.length > 0
+              ? chainOfThoughtForOutput
               : undefined,
           uri: convoUrl,
           refs: Object.keys(newRefs).length > 0 ? newRefs : undefined,
@@ -585,7 +618,7 @@ const runAgent = async (
       getFinishedContent(agentMessage);
     return finalizeAndReturn(
       new Ok(
-        buildSuccessContent({
+        await buildSuccessContent({
           conversationId: conversation.sId,
           finalContent: finalText,
           chainOfThought: cot,
@@ -707,7 +740,7 @@ const runAgent = async (
         /* eslint-disable-next-line @typescript-eslint/return-await */
         return await finalizeAndReturn(
           new Ok(
-            buildSuccessContent({
+            await buildSuccessContent({
               conversationId: conv2.sId,
               finalContent: finalText,
               chainOfThought: cot,
@@ -745,7 +778,7 @@ const runAgent = async (
 
   return finalizeAndReturn(
     new Ok(
-      buildSuccessContent({
+      await buildSuccessContent({
         conversationId: conversation.sId,
         finalContent,
         chainOfThought,
