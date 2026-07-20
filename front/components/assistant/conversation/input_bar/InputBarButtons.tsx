@@ -151,7 +151,7 @@ export const InputBarButtons = React.memo(function InputBarButtons({
               isWidthConstrained && "pl-1",
               isInputDisabled
                 ? "opacity-50 pointer-events-none"
-                : "cursor-pointer hover:bg-primary-100"
+                : "cursor-pointer hover:bg-primary-100 dark:hover:bg-[#4a453e]"
             )}
           >
             <Avatar size="xxs" visual={selectedAgent.pictureUrl} />
