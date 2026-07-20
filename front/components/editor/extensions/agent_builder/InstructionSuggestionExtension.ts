@@ -46,12 +46,12 @@ export const SUGGESTION_ID_ATTRIBUTE = "data-suggestion-id";
 
 const CLASSES = {
   remove:
-    "suggestion-deletion rounded line-through bg-red-100 text-red-800 cursor-default",
+    "suggestion-deletion rounded line-through bg-warning-100 text-warning-800 cursor-default",
   removeDimmed:
-    "suggestion-deletion rounded line-through bg-red-50 text-muted-foreground cursor-default",
-  add: "suggestion-addition rounded bg-blue-100 text-blue-800 cursor-default",
+    "suggestion-deletion rounded line-through bg-warning-50 text-muted-foreground cursor-default",
+  add: "suggestion-addition rounded bg-highlight-100 text-highlight-800 cursor-default",
   addDimmed:
-    "suggestion-addition rounded bg-blue-50 text-muted-foreground cursor-default",
+    "suggestion-addition rounded bg-highlight-50 text-muted-foreground cursor-default",
   blockHighlightDimmed: "suggestion-highlight rounded bg-muted cursor-default",
 };
 
