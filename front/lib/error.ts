@@ -68,10 +68,7 @@ export type DustErrorCode =
   | "workspace_not_found"
   | "plan_not_found"
   | "metronome_error"
-  | "coupon_redemption_error"
-  // Governance permission errors
-  | "capability_not_managed"
-  | "invalid_groups";
+  | "coupon_redemption_error";
 
 export class DustError<T extends DustErrorCode = DustErrorCode> extends Error {
   constructor(

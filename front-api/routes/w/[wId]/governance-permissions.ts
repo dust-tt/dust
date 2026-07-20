@@ -58,7 +58,7 @@ app.patch(
 
     if (result.isErr()) {
       switch (result.error.code) {
-        case "capability_not_managed":
+        case "unauthorized":
           return apiError(ctx, {
             status_code: 403,
             api_error: {
@@ -66,7 +66,15 @@ app.patch(
               message: result.error.message,
             },
           });
-        case "invalid_groups":
+        case "group_not_found":
+          return apiError(ctx, {
+            status_code: 404,
+            api_error: {
+              type: "group_not_found",
+              message: result.error.message,
+            },
+          });
+        case "invalid_id":
           return apiError(ctx, {
             status_code: 400,
             api_error: {

@@ -101,7 +101,7 @@ export async function setWorkspaceGovernancePermission(
 ): Promise<
   Result<
     GovernancePermission,
-    DustError<"capability_not_managed" | "invalid_groups">
+    DustError<"group_not_found" | "invalid_id" | "unauthorized">
   >
 > {
   const capability: CapabilitySpec = { grantType, resourceType };
@@ -112,7 +112,7 @@ export async function setWorkspaceGovernancePermission(
   if (!canManage) {
     return new Err(
       new DustError(
-        "capability_not_managed",
+        "unauthorized",
         "You cannot manage this governance permission."
       )
     );
@@ -139,12 +139,7 @@ export async function setWorkspaceGovernancePermission(
         configuration.groupIds
       );
       if (groupsRes.isErr()) {
-        return new Err(
-          new DustError(
-            "invalid_groups",
-            "The groups configuration references unknown groups."
-          )
-        );
+        return groupsRes;
       }
       // Only user-managed groups can be granted a governance capability; system/global and other
       // internal kinds are never assignable here.
@@ -153,7 +148,7 @@ export async function setWorkspaceGovernancePermission(
       ) {
         return new Err(
           new DustError(
-            "invalid_groups",
+            "invalid_id",
             "The groups configuration references groups that cannot be managed."
           )
         );
