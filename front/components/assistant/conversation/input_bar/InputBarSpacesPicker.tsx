@@ -1,3 +1,4 @@
+import { getSpaceIcon } from "@app/lib/spaces";
 import type { SelectableConversationSpaceType } from "@app/types/assistant/conversation";
 import {
   Button,
@@ -92,6 +93,7 @@ export function InputBarSpacesPicker({
                 <DropdownMenuCheckboxItem
                   key={space.sId}
                   label={space.name}
+                  icon={getSpaceIcon(space)}
                   checked={checked}
                   disabled={checked && !canDeselectSelectedSpaces}
                   onCheckedChange={(nextChecked) =>
