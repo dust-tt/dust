@@ -2631,66 +2631,26 @@ export async function addPerUserCreditToCustomer({
 }
 
 /**
- * Return the set of seat user sIds that already have a per-user customer credit
- * named `creditName`. Includes archived/expired credits so past grants are not
- * re-issued — the uniqueness key also enforces this server-side.
+ * Shared core for listing a customer's per-user credits of a given
+ * `contractCreditType`, keyed by user sId (from the `DUST_PER_USER_CREDIT_USER`
+ * custom field — old plain-sId and new free-prefixed formats collapse to the
+ * same key). Includes archived/expired credits so a past grant is never
+ * mistaken for missing, and a fully-consumed credit still appears (balance 0)
+ * rather than being absent.
+ *
+ * `includeBalances: false` skips requesting `include_balance` from Metronome,
+ * which otherwise computes a live balance for every credit and makes the
+ * call meaningfully heavier — `balanceAwu` is meaningless (always 0) in that
+ * case; only pass `true` when a caller actually reads it.
  */
-export async function listCustomerPerUserCreditUserIds({
+async function listCustomerPerUserCreditEntries({
   metronomeCustomerId,
   contractCreditType,
+  includeBalances,
 }: {
   metronomeCustomerId: string;
   contractCreditType: ContractCreditType;
-}): Promise<Result<Set<string>, Error>> {
-  if (!config.getMetronomeApiKey()) {
-    return new Ok(new Set());
-  }
-
-  const client = getMetronomeClient();
-
-  try {
-    const userIds = new Set<string>();
-    for await (const entry of client.v1.customers.credits.list({
-      customer_id: metronomeCustomerId,
-      include_balance: false,
-      include_archived: true,
-    })) {
-      if (
-        entry.contract ||
-        entry.custom_fields?.[CONTRACT_CREDIT_TYPE_CUSTOM_FIELD_KEY] !==
-          contractCreditType
-      ) {
-        continue;
-      }
-      for (const specifier of entry.specifiers ?? []) {
-        const userId = specifier.presentation_group_values?.user_id;
-        if (userId) {
-          userIds.add(userId);
-        }
-      }
-    }
-    return new Ok(userIds);
-  } catch (err) {
-    const error = normalizeError(err);
-    logger.error(
-      { error, metronomeCustomerId },
-      "[Metronome] Failed to list per-user customer credits"
-    );
-    return new Err(error);
-  }
-}
-
-/**
- * Return the live AWU balance of each free-seat per-user customer credit, keyed
- * by user sId (from the `DUST_PER_USER_CREDIT_USER` custom field). Only active
- * (not yet expired or archived) credits are included.
- */
-export async function listCustomerPerUserCreditBalances({
-  metronomeCustomerId,
-  contractCreditType,
-}: {
-  metronomeCustomerId: string;
-  contractCreditType: ContractCreditType;
+  includeBalances: boolean;
 }): Promise<
   Result<
     Map<
@@ -2713,9 +2673,7 @@ export async function listCustomerPerUserCreditBalances({
     >();
     for await (const entry of client.v1.customers.credits.list({
       customer_id: metronomeCustomerId,
-      include_balance: true,
-      // Include archived (exhausted) credits so fully-consumed free-seat
-      // credits appear with balance 0 rather than being absent from the map.
+      include_balance: includeBalances,
       include_archived: true,
     })) {
       if (entry.contract) {
@@ -2732,9 +2690,6 @@ export async function listCustomerPerUserCreditBalances({
       ) {
         continue;
       }
-      // Strip the "free-" prefix so the map is keyed by plain sId. All
-      // callers look up by membership.user.sId; old-format credits without
-      // the prefix keep their raw value as the key.
       const userId = fromFreeMetronomeUserId(rawUserId) ?? rawUserId;
       const startingBalanceAwu = (
         entry.access_schedule?.schedule_items ?? []
@@ -2752,10 +2707,89 @@ export async function listCustomerPerUserCreditBalances({
     const error = normalizeError(err);
     logger.error(
       { error, metronomeCustomerId },
-      "[Metronome] Failed to list per-user customer credit balances"
+      "[Metronome] Failed to list per-user customer credits"
     );
     return new Err(error);
   }
+}
+
+/**
+ * Return each per-user customer credit's id(s), keyed by user sId — without
+ * requesting balances. Use this instead of `listCustomerPerUserCreditBalances`
+ * wherever a caller only needs to know which users have a credit and its
+ * id(s) to act on (e.g. revoke), not the balance itself.
+ */
+export async function listCustomerPerUserCreditIds({
+  metronomeCustomerId,
+  contractCreditType,
+}: {
+  metronomeCustomerId: string;
+  contractCreditType: ContractCreditType;
+}): Promise<Result<Map<string, string[]>, Error>> {
+  const result = await listCustomerPerUserCreditEntries({
+    metronomeCustomerId,
+    contractCreditType,
+    includeBalances: false,
+  });
+  if (result.isErr()) {
+    return result;
+  }
+  return new Ok(
+    new Map(
+      [...result.value].map(([userId, entry]) => [userId, entry.creditIds])
+    )
+  );
+}
+
+/**
+ * Return the set of (plain-sId, normalized) users that already have a
+ * per-user customer credit of `contractCreditType`. Includes archived/expired
+ * credits so past grants are not re-issued — the uniqueness key also
+ * enforces this server-side. Thin wrapper over `listCustomerPerUserCreditIds`
+ * for callers that only need to test membership, not the credit id(s).
+ */
+export async function listCustomerPerUserCreditUserIds({
+  metronomeCustomerId,
+  contractCreditType,
+}: {
+  metronomeCustomerId: string;
+  contractCreditType: ContractCreditType;
+}): Promise<Result<Set<string>, Error>> {
+  const result = await listCustomerPerUserCreditIds({
+    metronomeCustomerId,
+    contractCreditType,
+  });
+  if (result.isErr()) {
+    return result;
+  }
+  return new Ok(new Set(result.value.keys()));
+}
+
+/**
+ * Return the live AWU balance of each free-seat per-user customer credit, keyed
+ * by user sId (from the `DUST_PER_USER_CREDIT_USER` custom field). Only active
+ * (not yet expired or archived) credits are included.
+ */
+export async function listCustomerPerUserCreditBalances({
+  metronomeCustomerId,
+  contractCreditType,
+}: {
+  metronomeCustomerId: string;
+  contractCreditType: ContractCreditType;
+}): Promise<
+  Result<
+    Map<
+      string,
+      { creditIds: string[]; balanceAwu: number; startingBalanceAwu: number }
+    >,
+    Error
+  >
+> {
+  return listCustomerPerUserCreditEntries({
+    metronomeCustomerId,
+    contractCreditType,
+    includeBalances: true,
+  });
 }
 
 /**

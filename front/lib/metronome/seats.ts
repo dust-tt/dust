@@ -9,7 +9,7 @@ import {
   getMetronomeContractById,
   getMetronomeSeatActiveSince,
   getMetronomeSubscriptionSeatState,
-  listCustomerPerUserCreditBalances,
+  listCustomerPerUserCreditIds,
   listCustomerPerUserCreditUserIds,
   listMetronomeSeatBalances,
   revokePerUserCustomerCredit,
@@ -21,7 +21,6 @@ import {
   AWU_PRIORITY_FREE_SEAT_CREDIT,
   CONTRACT_CREDIT_TYPE_FREE_SEAT,
   FREE_SEAT_LIFETIME_AWU_CREDITS,
-  fromFreeMetronomeUserId,
   getCreditTypeAwuId,
   getProductSeatSubscriptionCreditsId,
   toFreeMetronomeUserId,
@@ -531,7 +530,7 @@ export async function remapMembershipSeatTypesForContract({
       workspaceId: workspace.sId,
       contractId,
       membershipCount: memberships.length,
-      currentSeatTypes: memberships.map((m) => m.seatType),
+      currentSeatTypes: [...new Set(memberships.map((m) => m.seatType))],
     },
     "[Metronome][remap] Active memberships to consider"
   );
@@ -613,17 +612,6 @@ export async function remapMembershipSeatTypesForContract({
       existingSchedule?.seatType === target &&
       existingSchedule.startAt.getTime() === startingAt.getTime();
     if (target === membership.seatType || alreadyScheduled) {
-      logger.info(
-        {
-          workspaceId: workspace.sId,
-          contractId,
-          userId: user.sId,
-          currentSeatType: membership.seatType,
-          target,
-          alreadyScheduled,
-        },
-        "[Metronome][remap] No seat-type change for membership"
-      );
       continue;
     }
     logger.info(
@@ -734,11 +722,9 @@ async function grantFreeSeatCredits({
   const grantedUserIds = alreadyGranted.isOk()
     ? alreadyGranted.value
     : new Set<string>();
-  // Credits are stored in Metronome with the free-prefixed user id; compare
-  // against the same form so already-granted users are skipped correctly.
-  const toGrant = userIds.filter(
-    (userId) => !grantedUserIds.has(toFreeMetronomeUserId(userId))
-  );
+  // `listCustomerPerUserCreditUserIds` returns plain (normalized) sIds, so
+  // compare directly — no need to re-derive the free-prefixed form.
+  const toGrant = userIds.filter((userId) => !grantedUserIds.has(userId));
 
   // Grant the credit only for users that don't have one yet.
   await concurrentExecutor(
@@ -817,7 +803,10 @@ async function revokeFreeSeatCreditsForExFreeUsers({
   workspaceId: string;
   currentFreeUserIds: Set<string>;
 }): Promise<void> {
-  const activeCreditsResult = await listCustomerPerUserCreditBalances({
+  // Only credit ids are needed here (to revoke) — not balances, which
+  // Metronome computes for every credit and makes the listing meaningfully
+  // heavier.
+  const activeCreditsResult = await listCustomerPerUserCreditIds({
     metronomeCustomerId,
     contractCreditType: CONTRACT_CREDIT_TYPE_FREE_SEAT,
   });
@@ -828,13 +817,14 @@ async function revokeFreeSeatCreditsForExFreeUsers({
     );
     return;
   }
-  // Only process new-format credits (keyed by "free-<sId>"); old-format credits
-  // (plain sId) are ignored — they will eventually expire naturally.
+  // `activeCreditsResult` is already keyed by the plain sId regardless of
+  // whether the credit was stored under the old (plain) or new
+  // (free-prefixed) format — `listCustomerPerUserCreditIds` normalizes both,
+  // and it was already scoped to `CONTRACT_CREDIT_TYPE_FREE_SEAT`, so every
+  // entry here is a free-seat credit. Anyone not in `currentFreeUserIds` is
+  // no longer free and should be revoked.
   const toRevoke = [...activeCreditsResult.value.entries()].filter(
-    ([metronomeUserId]) => {
-      const rawUserId = fromFreeMetronomeUserId(metronomeUserId);
-      return rawUserId !== null && !currentFreeUserIds.has(rawUserId);
-    }
+    ([userId]) => !currentFreeUserIds.has(userId)
   );
   if (toRevoke.length === 0) {
     return;
@@ -842,7 +832,7 @@ async function revokeFreeSeatCreditsForExFreeUsers({
 
   await concurrentExecutor(
     toRevoke,
-    async ([userId, { creditIds }]) => {
+    async ([userId, creditIds]) => {
       for (const creditId of creditIds) {
         const revokeResult = await revokePerUserCustomerCredit({
           metronomeCustomerId,
@@ -855,10 +845,14 @@ async function revokeFreeSeatCreditsForExFreeUsers({
           );
         }
       }
+      // Alerts are created with the free-prefixed user id (see
+      // `grantFreeSeatCredits`'s `upsertPerUserCreditBalanceAlerts` call) —
+      // must clear with the same form or `clearMetronomeAlert` targets a
+      // uniqueness key that was never created.
       const clearResult = await clearPerUserCreditBalanceAlerts({
         metronomeCustomerId,
         workspaceId,
-        userId,
+        userId: toFreeMetronomeUserId(userId),
       });
       if (clearResult.isErr()) {
         logger.error(
