@@ -11,6 +11,7 @@ interface CapabilityDetailsSheetsProps {
   selectedMCPServerView: MCPServerViewType | null;
   onCloseSkill: () => void;
   onCloseTool: () => void;
+  replaceOnSkillEdit?: boolean;
 }
 
 export function CapabilityDetailsSheets({
@@ -20,6 +21,7 @@ export function CapabilityDetailsSheets({
   selectedMCPServerView,
   onCloseSkill,
   onCloseTool,
+  replaceOnSkillEdit,
 }: CapabilityDetailsSheetsProps) {
   const { skill } = useSkill({
     workspaceId: owner.sId,
@@ -36,6 +38,7 @@ export function CapabilityDetailsSheets({
           owner={owner}
           user={user}
           onClose={onCloseSkill}
+          replaceOnEdit={replaceOnSkillEdit}
         />
       )}
 

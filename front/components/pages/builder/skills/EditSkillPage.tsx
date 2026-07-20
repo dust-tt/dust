@@ -38,7 +38,12 @@ export function EditSkillPage() {
   }
 
   return (
-    <SkillBuilderProvider owner={owner} user={user} skillId={skill.sId}>
+    <SkillBuilderProvider
+      key={skill.sId}
+      owner={owner}
+      user={user}
+      skillId={skill.sId}
+    >
       <SkillBuilder skill={skill} onSaved={mutateSkill} />
     </SkillBuilderProvider>
   );

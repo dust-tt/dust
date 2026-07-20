@@ -35,6 +35,7 @@ type SkillDetailsProps = {
   onClose: () => void;
   owner: WorkspaceType;
   user: UserType;
+  replaceOnEdit?: boolean;
 };
 
 export function SkillDetailsSheet({
@@ -42,6 +43,7 @@ export function SkillDetailsSheet({
   onClose,
   user,
   owner,
+  replaceOnEdit,
 }: SkillDetailsProps) {
   // Fetch the full skill (with instructions/tools) for the content section,
   // since the list endpoint may not include them.
@@ -64,6 +66,7 @@ export function SkillDetailsSheet({
                 skill={skill}
                 owner={owner}
                 onClose={onClose}
+                replaceOnEdit={replaceOnEdit}
               />
             </SheetHeader>
             <SheetContainer className="pb-4">
@@ -139,12 +142,14 @@ type DescriptionSectionProps = {
   skill: SkillWithoutInstructionsAndToolsWithRelationsType;
   owner: WorkspaceType;
   onClose: () => void;
+  replaceOnEdit?: boolean;
 };
 
 const DescriptionSection = ({
   skill,
   owner,
   onClose,
+  replaceOnEdit,
 }: DescriptionSectionProps) => {
   const [showRestoreModal, setShowRestoreModal] = useState(false);
   const { editedByUser } = skill.relations;
@@ -178,7 +183,12 @@ const DescriptionSection = ({
       </div>
 
       {skill.status === "active" && (
-        <SkillDetailsButtonBar owner={owner} skill={skill} onClose={onClose} />
+        <SkillDetailsButtonBar
+          owner={owner}
+          skill={skill}
+          onClose={onClose}
+          replaceOnEdit={replaceOnEdit}
+        />
       )}
 
       {skill.status === "archived" && (
