@@ -7,14 +7,12 @@ import { useState } from "react";
 import { useController } from "react-hook-form";
 
 interface SkillEditorsSheetProps {
-  isReadOnly: boolean;
   isEditorGateVisible: boolean;
   isAddingSelfAsEditor: boolean;
   onAddSelfAsEditor: () => void;
 }
 
 export function SkillEditorsSheet({
-  isReadOnly,
   isEditorGateVisible,
   isAddingSelfAsEditor,
   onAddSelfAsEditor,
@@ -22,11 +20,13 @@ export function SkillEditorsSheet({
   const { owner } = useSkillBuilderContext();
   const [isOpen, setIsOpen] = useState(false);
 
-  const {
-    field: { value: editors, onChange },
-  } = useController<SkillBuilderFormData, "editors">({
+  const { field: editorsField } = useController<
+    SkillBuilderFormData,
+    "editors"
+  >({
     name: "editors",
   });
+  const isReadOnly = editorsField.disabled ?? false;
 
   if (isEditorGateVisible) {
     return (
@@ -54,8 +54,8 @@ export function SkillEditorsSheet({
           setIsOpen={setIsOpen}
           owner={owner}
           mode="editors-only"
-          editors={editors || []}
-          onEditorsChange={onChange}
+          editors={editorsField.value || []}
+          onEditorsChange={editorsField.onChange}
           buildersOnly
         />
       )}

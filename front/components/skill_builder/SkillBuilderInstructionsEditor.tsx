@@ -229,12 +229,10 @@ const INSTRUCTIONS_EDITOR_REFERENCE_SUMMARY_SIZE =
   "h-full min-h-0 max-h-none resize-none rounded-b-none border-b-0 pb-44";
 
 interface SkillBuilderInstructionsEditorProps {
-  isReadOnly: boolean;
   onAddKnowledge?: (addKnowledge: () => void) => void;
 }
 
 export function SkillBuilderInstructionsEditor({
-  isReadOnly,
   onAddKnowledge,
 }: SkillBuilderInstructionsEditorProps) {
   const { compareVersion, isDiffMode } = useSkillVersionComparisonContext();
@@ -465,6 +463,7 @@ export function SkillBuilderInstructionsEditor({
   });
 
   const hasSuggestions = suggestions.length > 0;
+  const isReadOnly = instructionsField.disabled ?? false;
   const isInstructionsReadOnly = isReadOnly || hasSuggestions;
 
   const { editor, isContentReady } = useSkillInstructionsEditor({

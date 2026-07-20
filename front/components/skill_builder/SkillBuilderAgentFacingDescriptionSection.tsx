@@ -23,13 +23,7 @@ const DEBOUNCE_DELAY_MS = 250;
 const MIN_DESCRIPTION_LENGTH = 10;
 const DESCRIPTION_EDITOR_SIZE = "h-40 max-h-96";
 
-interface SkillBuilderAgentFacingDescriptionSectionProps {
-  isReadOnly: boolean;
-}
-
-export function SkillBuilderAgentFacingDescriptionSection({
-  isReadOnly,
-}: SkillBuilderAgentFacingDescriptionSectionProps) {
+export function SkillBuilderAgentFacingDescriptionSection() {
   const { owner, skillId } = useSkillBuilderContext();
   const { setValue } = useFormContext<SkillBuilderFormData>();
   const { compareVersion, isDiffMode } = useSkillVersionComparisonContext();
@@ -38,6 +32,7 @@ export function SkillBuilderAgentFacingDescriptionSection({
     useController<SkillBuilderFormData, typeof FIELD_NAME>({
       name: FIELD_NAME,
     });
+  const isReadOnly = descriptionField.disabled ?? false;
 
   const { getSimilarSkills } = useSimilarSkills({ owner });
   const { skills } = useSkills({ owner });

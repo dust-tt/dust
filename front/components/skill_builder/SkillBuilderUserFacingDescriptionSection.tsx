@@ -16,13 +16,7 @@ import { useController, useWatch } from "react-hook-form";
 const USER_FACING_DESCRIPTION_FIELD_NAME = "userFacingDescription";
 const MIN_INSTRUCTIONS_LENGTH = 20;
 
-interface SkillBuilderUserFacingDescriptionSectionProps {
-  isReadOnly: boolean;
-}
-
-export function SkillBuilderUserFacingDescriptionSection({
-  isReadOnly,
-}: SkillBuilderUserFacingDescriptionSectionProps) {
+export function SkillBuilderUserFacingDescriptionSection() {
   const { owner } = useSkillBuilderContext();
   const sendNotification = useSendNotification();
   const [isGenerating, setIsGenerating] = useState(false);
@@ -33,6 +27,7 @@ export function SkillBuilderUserFacingDescriptionSection({
   >({
     name: USER_FACING_DESCRIPTION_FIELD_NAME,
   });
+  const isReadOnly = field.disabled ?? false;
 
   const instructions = useWatch<SkillBuilderFormData, "instructions">({
     name: "instructions",

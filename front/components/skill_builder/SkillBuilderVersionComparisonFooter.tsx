@@ -2,17 +2,12 @@ import { getDefaultMCPAction } from "@app/components/agent_builder/types";
 import type { SkillBuilderFormData } from "@app/components/skill_builder/SkillBuilderFormContext";
 import { useSkillVersionComparisonContext } from "@app/components/skill_builder/SkillBuilderVersionContext";
 import { Button, ReverseLeft, Separator } from "@dust-tt/sparkle";
-import { useFormContext } from "react-hook-form";
+import { useFormContext, useFormState } from "react-hook-form";
 
-interface SkillBuilderVersionComparisonFooterProps {
-  isReadOnly: boolean;
-}
-
-export function SkillBuilderVersionComparisonFooter({
-  isReadOnly,
-}: SkillBuilderVersionComparisonFooterProps) {
+export function SkillBuilderVersionComparisonFooter() {
   const { compareVersion, exitDiffMode } = useSkillVersionComparisonContext();
   const { setValue } = useFormContext<SkillBuilderFormData>();
+  const { disabled: isReadOnly } = useFormState<SkillBuilderFormData>();
 
   if (!compareVersion) {
     return null;

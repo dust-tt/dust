@@ -1,23 +1,22 @@
 import { useSkillBuilderContext } from "@app/components/skill_builder/SkillBuilderContext";
 import type { SkillBuilderFormData } from "@app/components/skill_builder/SkillBuilderFormContext";
 import { InfoCircle, SliderToggle, Tooltip } from "@dust-tt/sparkle";
-import { useFormContext } from "react-hook-form";
+import { useFormContext, useFormState } from "react-hook-form";
 
 interface SkillBuilderEnableSuggestionsSectionProps {
-  isReadOnly: boolean;
   selfImprovementLock: boolean;
 }
 
 export function SkillBuilderEnableSuggestionsSection({
-  isReadOnly,
   selfImprovementLock,
 }: SkillBuilderEnableSuggestionsSectionProps) {
   const { owner } = useSkillBuilderContext();
+  const { watch, setValue } = useFormContext<SkillBuilderFormData>();
+  const { disabled: isReadOnly } = useFormState<SkillBuilderFormData>();
   const isAllowedByWorkspace = owner.metadata?.allowReinforcement === true;
   const isUnavailable = !isAllowedByWorkspace || selfImprovementLock;
   const isDisabled = isReadOnly || isUnavailable;
 
-  const { watch, setValue } = useFormContext<SkillBuilderFormData>();
   const reinforcement = watch("reinforcement");
   const enabled = reinforcement !== "off";
 

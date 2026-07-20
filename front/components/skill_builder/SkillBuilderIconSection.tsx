@@ -15,17 +15,12 @@ import { useController } from "react-hook-form";
 
 const DEFAULT_ICON = Plus;
 
-interface SkillBuilderIconSectionProps {
-  isReadOnly: boolean;
-}
-
-export function SkillBuilderIconSection({
-  isReadOnly,
-}: SkillBuilderIconSectionProps) {
+export function SkillBuilderIconSection() {
   const [isPopoverOpen, setIsPopoverOpen] = useState(false);
   const { field: iconField } = useController<SkillBuilderFormData, "icon">({
     name: "icon",
   });
+  const isReadOnly = iconField.disabled ?? false;
 
   const toActionIconKey = (v?: string | null) =>
     v && v in ActionIcons ? (v as keyof typeof ActionIcons) : undefined;

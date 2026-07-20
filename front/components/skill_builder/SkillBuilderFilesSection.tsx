@@ -17,19 +17,14 @@ import {
   XClose,
 } from "@dust-tt/sparkle";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useFieldArray, useFormContext } from "react-hook-form";
+import { useFieldArray, useFormContext, useFormState } from "react-hook-form";
 
-interface SkillBuilderFilesSectionProps {
-  isReadOnly: boolean;
-}
-
-export function SkillBuilderFilesSection({
-  isReadOnly,
-}: SkillBuilderFilesSectionProps) {
+export function SkillBuilderFilesSection() {
   const { owner, skillId } = useSkillBuilderContext();
   const sendNotification = useSendNotification();
   const { featureFlags } = useFeatureFlags();
   const { setValue } = useFormContext<SkillBuilderFormData>();
+  const { disabled: isReadOnly } = useFormState<SkillBuilderFormData>();
   const { compareVersion, isDiffMode } = useSkillVersionComparisonContext();
   const [canScrollFilesDown, setCanScrollFilesDown] = useState(false);
 

@@ -19,7 +19,6 @@ import {
 interface SkillBuilderSettingsSectionProps {
   skill?: SkillType;
   hasSelfImprovingSkills: boolean;
-  isReadOnly: boolean;
   isEditorGateVisible: boolean;
   isAddingSelfAsEditor: boolean;
   onAddSelfAsEditor: () => void;
@@ -28,7 +27,6 @@ interface SkillBuilderSettingsSectionProps {
 export function SkillBuilderSettingsSection({
   skill,
   hasSelfImprovingSkills,
-  isReadOnly,
   isEditorGateVisible,
   isAddingSelfAsEditor,
   onAddSelfAsEditor,
@@ -57,18 +55,17 @@ export function SkillBuilderSettingsSection({
       </div>
       <div className="flex items-end gap-8">
         <div className="flex-grow">
-          <SkillBuilderNameSection isReadOnly={isReadOnly} />
+          <SkillBuilderNameSection />
         </div>
-        <SkillBuilderIconSection isReadOnly={isReadOnly} />
+        <SkillBuilderIconSection />
       </div>
-      <SkillBuilderUserFacingDescriptionSection isReadOnly={isReadOnly} />
+      <SkillBuilderUserFacingDescriptionSection />
       <div className="flex flex-col space-y-3">
         <Label className="text-base font-semibold text-foreground">
           Editors
         </Label>
         <div className="mt-2 flex w-full flex-row flex-wrap items-center gap-2">
           <SkillEditorsSheet
-            isReadOnly={isReadOnly}
             isEditorGateVisible={isEditorGateVisible}
             isAddingSelfAsEditor={isAddingSelfAsEditor}
             onAddSelfAsEditor={onAddSelfAsEditor}
@@ -81,7 +78,6 @@ export function SkillBuilderSettingsSection({
             Self Improvement
           </Label>
           <SkillBuilderEnableSuggestionsSection
-            isReadOnly={isReadOnly}
             selfImprovementLock={skill?.selfImprovementLock ?? false}
           />
         </div>
@@ -94,7 +90,7 @@ export function SkillBuilderSettingsSection({
             </CollapsibleTrigger>
             <CollapsibleContent>
               <div className="space-y-3 pt-3">
-                <SkillBuilderIsDefaultSection isReadOnly={isReadOnly} />
+                <SkillBuilderIsDefaultSection />
               </div>
             </CollapsibleContent>
           </Collapsible>

@@ -97,6 +97,17 @@ export default function SkillBuilder({ skill, onSaved }: SkillBuilderProps) {
 
   const hasPendingSuggestions = suggestions.length > 0;
 
+  const isAdminExistingSkill = !!skill && isAdmin(owner);
+  const isCurrentUserEditor = editors.some((editor) => editor.sId === user.sId);
+  const isAdminNonEditor =
+    isAdminExistingSkill &&
+    !isEditorsLoading &&
+    !isEditorsError &&
+    !isCurrentUserEditor;
+  const isEditorLocked =
+    isAdminExistingSkill &&
+    (isEditorsLoading || isEditorsError || !isCurrentUserEditor);
+
   const defaultValues = useMemo(() => {
     if (skill) {
       return transformSkillTypeToFormData(skill);
@@ -108,6 +119,7 @@ export default function SkillBuilder({ skill, onSaved }: SkillBuilderProps) {
   }, [skill, user]);
 
   const form = useForm<SkillBuilderFormData>({
+    disabled: isEditorLocked,
     resolver: zodResolver(skillBuilderFormSchema),
     defaultValues,
     resetOptions: {
@@ -128,17 +140,6 @@ export default function SkillBuilder({ skill, onSaved }: SkillBuilderProps) {
 
   const isCreatingNew = !skill;
   const { isDirty } = form.formState;
-
-  const isAdminExistingSkill = !!skill && isAdmin(owner);
-  const isCurrentUserEditor = editors.some((editor) => editor.sId === user.sId);
-  const isAdminNonEditor =
-    isAdminExistingSkill &&
-    !isEditorsLoading &&
-    !isEditorsError &&
-    !isCurrentUserEditor;
-  const isEditorLocked =
-    isAdminExistingSkill &&
-    (isEditorsLoading || isEditorsError || !isCurrentUserEditor);
 
   useNavigationLock(isDirty && !isSaving);
 
@@ -293,19 +294,15 @@ export default function SkillBuilder({ skill, onSaved }: SkillBuilderProps) {
             </ContentMessage>
           )}
           <div className="space-y-10">
-            <SkillBuilderAgentFacingDescriptionSection
-              isReadOnly={isEditorLocked}
-            />
-            <SkillBuilderInstructionsSection isReadOnly={isEditorLocked} />
+            <SkillBuilderAgentFacingDescriptionSection />
+            <SkillBuilderInstructionsSection />
             <SkillBuilderRequestedSpacesSection
               initialRequestedSpaceIds={skill?.requestedSpaceIds}
-              isReadOnly={isEditorLocked}
             />
-            <SkillBuilderFilesSection isReadOnly={isEditorLocked} />
+            <SkillBuilderFilesSection />
             <SkillBuilderSettingsOrComparisonFooter
               skill={skill}
               hasSelfImprovingSkills={hasSelfImprovingSkills}
-              isReadOnly={isEditorLocked}
               isEditorGateVisible={isAdminNonEditor}
               isAddingSelfAsEditor={isAddingSelfAsEditor}
               onAddSelfAsEditor={() => {
@@ -382,14 +379,12 @@ export default function SkillBuilder({ skill, onSaved }: SkillBuilderProps) {
 function SkillBuilderSettingsOrComparisonFooter({
   skill,
   hasSelfImprovingSkills,
-  isReadOnly,
   isEditorGateVisible,
   isAddingSelfAsEditor,
   onAddSelfAsEditor,
 }: {
   skill?: SkillType;
   hasSelfImprovingSkills: boolean;
-  isReadOnly: boolean;
   isEditorGateVisible: boolean;
   isAddingSelfAsEditor: boolean;
   onAddSelfAsEditor: () => void;
@@ -397,14 +392,13 @@ function SkillBuilderSettingsOrComparisonFooter({
   const { compareVersion } = useSkillVersionComparisonContext();
 
   if (compareVersion) {
-    return <SkillBuilderVersionComparisonFooter isReadOnly={isReadOnly} />;
+    return <SkillBuilderVersionComparisonFooter />;
   }
 
   return (
     <SkillBuilderSettingsSection
       skill={skill}
       hasSelfImprovingSkills={hasSelfImprovingSkills}
-      isReadOnly={isReadOnly}
       isEditorGateVisible={isEditorGateVisible}
       isAddingSelfAsEditor={isAddingSelfAsEditor}
       onAddSelfAsEditor={onAddSelfAsEditor}

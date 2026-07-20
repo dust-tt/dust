@@ -1,15 +1,13 @@
 import { BaseFormFieldSection } from "@app/components/shared/BaseFormFieldSection";
+import type { SkillBuilderFormData } from "@app/components/skill_builder/SkillBuilderFormContext";
 import { Input } from "@dust-tt/sparkle";
+import { useFormState } from "react-hook-form";
 
 const NAME_FIELD_NAME = "name";
 
-interface SkillBuilderNameSectionProps {
-  isReadOnly: boolean;
-}
+export function SkillBuilderNameSection() {
+  const { disabled: isReadOnly } = useFormState<SkillBuilderFormData>();
 
-export function SkillBuilderNameSection({
-  isReadOnly,
-}: SkillBuilderNameSectionProps) {
   return (
     <BaseFormFieldSection
       title="Name"

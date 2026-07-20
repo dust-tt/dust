@@ -18,12 +18,10 @@ import { useController, useFormContext, useWatch } from "react-hook-form";
 
 interface SkillBuilderRequestedSpacesSectionProps {
   initialRequestedSpaceIds?: string[];
-  isReadOnly: boolean;
 }
 
 export function SkillBuilderRequestedSpacesSection({
   initialRequestedSpaceIds,
-  isReadOnly,
 }: SkillBuilderRequestedSpacesSectionProps) {
   const { resetField } = useFormContext<SkillBuilderFormData>();
 
@@ -43,6 +41,7 @@ export function SkillBuilderRequestedSpacesSection({
   } = useController<SkillBuilderFormData, "additionalSpaces">({
     name: "additionalSpaces",
   });
+  const isReadOnly = additionalSpacesField.disabled ?? false;
   const selectedAdditionalSpaces = additionalSpacesField.value ?? [];
 
   const { mcpServerViews, isMCPServerViewsLoading } =
