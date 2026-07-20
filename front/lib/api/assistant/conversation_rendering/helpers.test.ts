@@ -276,14 +276,12 @@ The following skills were set as favorites by the user and are also available fo
           functionCallId: "toolu_send_mail",
           internalMCPServerName: "gmail",
           toolName: "send_mail",
-          params: { subject: "New subject" },
+          params: { subject: "Old subject" },
           userEditedInputs: { subject: "New subject" },
           status: "succeeded",
           output: "Email sent.",
         },
       ],
-      // The function call the model emitted still carries the original inputs; only the action
-      // params reflect the user's edit.
       contents: [
         {
           step: 0,
