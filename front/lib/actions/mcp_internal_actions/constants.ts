@@ -246,35 +246,7 @@ export const MCP_SERVER_AVAILABILITY = [
 ] as const;
 export type MCPServerAvailability = (typeof MCP_SERVER_AVAILABILITY)[number];
 
-type HasUniqueNames<
-  T extends readonly { name: string }[],
-  Seen extends string = never,
-> = T extends readonly [
-  infer Head extends { name: string },
-  ...infer Tail extends readonly { name: string }[],
-]
-  ? Head["name"] extends Seen
-    ? false
-    : HasUniqueNames<Tail, Seen | Head["name"]>
-  : true;
-
-function ensureUniqueToolNames<
-  const T extends {
-    [K in InternalMCPServerNameType]: InternalMCPServerEntry<K>;
-  },
->(
-  servers: T & {
-    [K in InternalMCPServerNameType]: HasUniqueNames<
-      T[K]["metadata"]["tools"]
-    > extends true
-      ? unknown
-      : { __duplicateToolNames: never };
-  }
-): T {
-  return servers;
-}
-
-export const INTERNAL_MCP_SERVERS = ensureUniqueToolNames({
+export const INTERNAL_MCP_SERVERS = {
   // Note:
   // ids should be stable, do not change them when moving internal servers to production as it would break existing agents.
 
@@ -1235,7 +1207,7 @@ export const INTERNAL_MCP_SERVERS = ensureUniqueToolNames({
   // Using satisfies here instead of: type to avoid TypeScript widening the type and breaking the type inference for AutoInternalMCPServerNameType.
 } satisfies {
   [K in InternalMCPServerNameType]: InternalMCPServerEntry<K>;
-});
+};
 
 type IsRestrictedCallback = (params: {
   plan: PlanType;
