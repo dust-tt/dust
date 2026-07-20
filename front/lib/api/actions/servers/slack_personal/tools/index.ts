@@ -873,8 +873,15 @@ export function createSlackPersonalTools(
         content: (match) => match.renderedText,
       });
 
+      // Archive oversized chunk payloads instead of keeping them inline in the conversation.
+      const offloadedResults = await offloadLargeSearchResultChunks(
+        auth,
+        toolContext.runContext,
+        searchResults
+      );
+
       return new Ok(
-        searchResults.map((result) => ({
+        offloadedResults.map((result) => ({
           type: "resource" as const,
           resource: result,
         }))
