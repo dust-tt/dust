@@ -6,11 +6,14 @@ import {
   buildFileSystemTree,
   buildFolderTree,
   findTreeNodeByPath,
+  getCategoryFromContentType,
   getChildrenAtFolderPath,
   getExplorerRelativePath,
   getFileExplorerSearchResultTitle,
+  getFilePreviewConfig,
   getVirtualScopeRootNodes,
   isFileExplorerMovableFile,
+  isFilePreviewableContentType,
   withVirtualExplorerPath,
 } from "@app/components/file_explorer/utils";
 import type { FileSystemEntry } from "@app/types/api/file_system/types";
@@ -69,6 +72,35 @@ function makeFileEntry(contentType: string): FileEntry {
     thumbnailUrl: null,
   };
 }
+
+describe("file preview configuration", () => {
+  it.each([
+    "application/zip",
+    "application/octet-stream",
+    "application/x-tar",
+    "font/woff",
+  ])("marks %s as download-only", (contentType) => {
+    expect(getFilePreviewConfig(contentType).category).toBe("unsupported");
+    expect(isFilePreviewableContentType(contentType)).toBe(false);
+    expect(getCategoryFromContentType(contentType)).toBe("other");
+  });
+
+  it.each([
+    "text/plain; charset=utf-8",
+    "text/x-diff",
+    "application/javascript",
+    "application/json",
+    "application/problem+json",
+    "application/pdf",
+    "image/png",
+    "audio/mpeg",
+    "text/csv",
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  ])("keeps %s previewable", (contentType) => {
+    expect(getFilePreviewConfig(contentType).category).not.toBe("unsupported");
+    expect(isFilePreviewableContentType(contentType)).toBe(true);
+  });
+});
 
 describe("isFileExplorerMovableFile", () => {
   it("returns false for fileId-backed frames and slideshows", () => {

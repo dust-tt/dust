@@ -1,5 +1,6 @@
 import { FilePreviewDialog } from "@app/components/file_explorer/FilePreviewDialog";
 import type { FileEntry } from "@app/components/file_explorer/types";
+import { isFilePreviewableContentType } from "@app/components/file_explorer/utils";
 import {
   fetchFileIdFromPath,
   getFileDownloadUrl,
@@ -64,6 +65,11 @@ export function FilePreviewProvider({
           : null;
 
       if (!fileUrl || !downloadUrl) {
+        return;
+      }
+
+      if (!isFilePreviewableContentType(file.contentType)) {
+        window.open(downloadUrl, "_blank");
         return;
       }
 

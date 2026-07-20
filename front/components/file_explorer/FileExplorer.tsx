@@ -25,6 +25,7 @@ import {
   getFolderBreadcrumbSegments,
   getScopedRelativePath,
   isFileExplorerMovableFile,
+  isFilePreviewableContentType,
 } from "@app/components/file_explorer/utils";
 import { isInteractiveContentType } from "@app/types/files";
 import { Err, type Result } from "@app/types/shared/result";
@@ -251,6 +252,10 @@ export function FileExplorer({
     if (onOpenInPanel?.(entry)) {
       return;
     }
+    if (!isFilePreviewableContentType(entry.contentType)) {
+      void onFileDownload(entry);
+      return;
+    }
     setPreviewFile(entry);
     setShowPreviewSheet(true);
   };
@@ -262,9 +267,9 @@ export function FileExplorer({
   };
 
   // Only file entries participate in prev/next navigation.
-  const fileEntriesAtLevel = filesAtLevel.filter(
-    (e): e is FileEntry => e.kind === "file"
-  );
+  const fileEntriesAtLevel = filesAtLevel
+    .filter((e): e is FileEntry => e.kind === "file")
+    .filter((entry) => isFilePreviewableContentType(entry.contentType));
   const previewIndex = previewFile
     ? fileEntriesAtLevel.findIndex((f) => f.path === previewFile.path)
     : -1;

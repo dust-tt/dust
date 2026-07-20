@@ -42,10 +42,11 @@ export function getFilePanelCategory(
     case "code":
     case "viewer":
     case "markdown":
-    case "text":
       return "document";
     case "frame":
       return "frame";
+    case "unsupported":
+      return "other";
     default:
       return "other";
   }
