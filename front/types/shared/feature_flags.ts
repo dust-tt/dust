@@ -273,7 +273,7 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
   },
   restricted_spaces_in_input_bar: {
     description:
-      "Allow users to explicitly select restricted Spaces from the conversation input bar.",
+      "Allow users to explicitly select Spaces from the conversation input bar.",
     stage: "dust_only",
   },
   disable_formatting_prompt: {

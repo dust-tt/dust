@@ -28,7 +28,6 @@ export class SelectedConversationSpacesError extends Error {
       | "conversation_not_mutable"
       | "feature_flag_not_found"
       | "space_not_found"
-      | "space_not_restricted"
       | "space_not_selectable",
     message: string
   ) {
@@ -36,7 +35,7 @@ export class SelectedConversationSpacesError extends Error {
   }
 }
 
-export async function listSelectableRestrictedSpaces(
+export async function listSelectableSpaces(
   auth: Authenticator,
   {
     conversation,
@@ -50,7 +49,7 @@ export async function listSelectableRestrictedSpaces(
     return new Err(
       new SelectedConversationSpacesError(
         "conversation_not_mutable",
-        "Restricted Spaces cannot be selected from the input bar in pod conversations."
+        "Spaces cannot be selected from the input bar in pod conversations."
       )
     );
   }
@@ -60,7 +59,7 @@ export async function listSelectableRestrictedSpaces(
     return new Err(
       new SelectedConversationSpacesError(
         "feature_flag_not_found",
-        "Restricted Spaces in the input bar is not enabled for this workspace."
+        "Space selection in the input bar is not enabled for this workspace."
       )
     );
   }
@@ -76,7 +75,7 @@ export async function listSelectableRestrictedSpaces(
   );
 
   const selectableSpaces = spaces
-    .filter((space) => space.isRegularAndRestricted())
+    .filter((space) => space.isRegular())
     .sort((a, b) => a.name.localeCompare(b.name))
     .map((space) => ({
       ...space.toJSON(),
@@ -86,7 +85,7 @@ export async function listSelectableRestrictedSpaces(
   return new Ok(selectableSpaces);
 }
 
-export async function validateSelectableRestrictedSpaces(
+export async function validateSelectableSpaces(
   auth: Authenticator,
   {
     spaceIds,
@@ -101,7 +100,7 @@ export async function validateSelectableRestrictedSpaces(
     return new Err(
       new SelectedConversationSpacesError(
         "feature_flag_not_found",
-        "Restricted Spaces in the input bar is not enabled for this workspace."
+        "Space selection in the input bar is not enabled for this workspace."
       )
     );
   }
@@ -130,11 +129,11 @@ export async function validateSelectableRestrictedSpaces(
     );
   }
 
-  if (spaces.some((space) => !space.isRegularAndRestricted())) {
+  if (spaces.some((space) => !space.isRegular())) {
     return new Err(
       new SelectedConversationSpacesError(
-        "space_not_restricted",
-        "Only restricted regular Spaces can be selected from the input bar."
+        "space_not_selectable",
+        "Only regular Spaces can be selected from the input bar."
       )
     );
   }
@@ -190,18 +189,15 @@ export async function addSelectedConversationSpaces(
       return new Err(
         new SelectedConversationSpacesError(
           "conversation_not_mutable",
-          "Restricted Spaces cannot be selected from the input bar in pod conversations."
+          "Spaces cannot be selected from the input bar in pod conversations."
         )
       );
     }
 
-    const selectableSpacesResult = await validateSelectableRestrictedSpaces(
-      auth,
-      {
-        spaceIds: dedupedSpaceIds,
-        transaction: t,
-      }
-    );
+    const selectableSpacesResult = await validateSelectableSpaces(auth, {
+      spaceIds: dedupedSpaceIds,
+      transaction: t,
+    });
     if (selectableSpacesResult.isErr()) {
       return selectableSpacesResult;
     }
@@ -269,7 +265,7 @@ export async function addSelectedConversationSpaces(
     for (const space of newlyActiveSpaces) {
       void emitAuditLogEvent({
         auth,
-        action: "conversation.restricted_space_selected",
+        action: "conversation.space_selected",
         targets: [
           buildAuditLogTarget("workspace", auth.getNonNullableWorkspace()),
           buildAuditLogTarget("conversation", {
