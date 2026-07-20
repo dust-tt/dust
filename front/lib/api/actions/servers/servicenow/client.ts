@@ -39,16 +39,21 @@ async function servicenowApiCall<T extends z.ZodTypeAny>(
     accessToken: string;
     instanceUrl: string;
   },
-  schema: T
+  schema: T,
+  options: {
+    method?: "GET" | "POST" | "PATCH";
+    body?: Record<string, unknown>;
+  } = {}
 ): Promise<Result<z.infer<T>, MCPError>> {
   const url = `${instanceUrl}${endpoint}`;
 
   const response = await untrustedFetch(url, {
-    method: "GET",
+    method: options.method ?? "GET",
     headers: {
       Authorization: `Bearer ${accessToken}`,
       "Content-Type": "application/json",
     },
+    ...(options.body && { body: JSON.stringify(options.body) }),
   });
 
   if (!response.ok) {
@@ -56,7 +61,11 @@ async function servicenowApiCall<T extends z.ZodTypeAny>(
     let errorMessage = `ServiceNow API error: ${response.status} ${response.statusText}`;
     try {
       const errorJson = JSON.parse(errorBody);
-      errorMessage = errorJson.error?.message ?? errorMessage;
+      const message = errorJson.error?.message;
+      const detail = errorJson.error?.detail;
+      if (message) {
+        errorMessage = detail ? `${message}: ${detail}` : message;
+      }
     } catch {
       errorMessage = `${errorMessage} - ${errorBody}`;
     }
@@ -102,6 +111,107 @@ export async function listIncidents(
       instanceUrl,
     },
     z.object({ result: z.array(IncidentSchema) })
+  );
+
+  if (result.isErr()) {
+    return result;
+  }
+
+  return new Ok(result.value.result);
+}
+
+export async function getIncidentByNumber(
+  accessToken: string,
+  instanceUrl: string,
+  incidentNumber: string
+): Promise<Result<Incident | null, MCPError>> {
+  // ServiceNow's encoded query syntax treats "^" as a condition separator (and
+  // "=" as an operator), so passing it through unescaped would let a caller
+  // turn this exact-number lookup into an arbitrary compound query.
+  if (/[\^=]/.test(incidentNumber)) {
+    return new Err(
+      new MCPError(
+        `Invalid incident number: "${incidentNumber}". Expected a plain incident number, e.g. "INC0010001".`
+      )
+    );
+  }
+
+  const params = new URLSearchParams();
+  params.set("sysparm_query", `number=${incidentNumber}`);
+  params.set("sysparm_limit", "1");
+  params.set("sysparm_display_value", "true");
+
+  const result = await servicenowApiCall(
+    {
+      endpoint: `/api/now/table/incident?${params.toString()}`,
+      accessToken,
+      instanceUrl,
+    },
+    z.object({ result: z.array(IncidentSchema) })
+  );
+
+  if (result.isErr()) {
+    return result;
+  }
+
+  return new Ok(result.value.result[0] ?? null);
+}
+
+// Fields writable via the incident CRUD tools, keyed by the ServiceNow
+// field name. Passing sysparm_input_display_value=true on write lets callers
+// use human-readable choice labels (e.g. "Resolved", "1 - Critical") instead
+// of ServiceNow's internal numeric codes.
+export type WritableIncidentFields = {
+  short_description?: string;
+  description?: string;
+  urgency?: string;
+  impact?: string;
+  priority?: string;
+  state?: string;
+  category?: string;
+  assignment_group?: string;
+  work_notes?: string;
+  close_notes?: string;
+  close_code?: string;
+};
+
+export async function createIncident(
+  accessToken: string,
+  instanceUrl: string,
+  fields: WritableIncidentFields
+): Promise<Result<Incident, MCPError>> {
+  const result = await servicenowApiCall(
+    {
+      endpoint:
+        "/api/now/table/incident?sysparm_display_value=true&sysparm_input_display_value=true",
+      accessToken,
+      instanceUrl,
+    },
+    z.object({ result: IncidentSchema }),
+    { method: "POST", body: fields }
+  );
+
+  if (result.isErr()) {
+    return result;
+  }
+
+  return new Ok(result.value.result);
+}
+
+export async function updateIncident(
+  accessToken: string,
+  instanceUrl: string,
+  sysId: string,
+  fields: WritableIncidentFields
+): Promise<Result<Incident, MCPError>> {
+  const result = await servicenowApiCall(
+    {
+      endpoint: `/api/now/table/incident/${encodeURIComponent(sysId)}?sysparm_display_value=true&sysparm_input_display_value=true`,
+      accessToken,
+      instanceUrl,
+    },
+    z.object({ result: IncidentSchema }),
+    { method: "PATCH", body: fields }
   );
 
   if (result.isErr()) {
