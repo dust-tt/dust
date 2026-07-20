@@ -4,7 +4,7 @@ import {
   Button,
   CloudArrowLeftRight,
   ContentMessage,
-  GithubLogo,
+  GithubMonoLogo,
 } from "@dust-tt/sparkle";
 
 interface ConnectWorkspaceGitHubMessageProps {
@@ -31,24 +31,28 @@ export function ConnectWorkspaceGitHubMessage({
     <ContentMessage
       variant="primary"
       size="lg"
-      icon={GithubLogo}
+      icon={GithubMonoLogo}
       title="Connect GitHub to import from private repositories"
-      action={
-        <Button
-          variant="highlight"
-          size="sm"
-          icon={CloudArrowLeftRight}
-          label="Connect GitHub"
-          isLoading={isConnectingGitHub}
-          disabled={isConnectingGitHub}
-          onClick={() => {
-            void handleConnect();
-          }}
-        />
-      }
     >
-      For private repos, connect a GitHub account that has access. All workspace
-      members will share this connection.
+      <div className="flex flex-col gap-3">
+        <span>
+          Connect a GitHub account to grant access. All workspace members will
+          share this connection.
+        </span>
+        <div className="flex justify-end">
+          <Button
+            variant="highlight"
+            size="sm"
+            icon={CloudArrowLeftRight}
+            label="Connect GitHub"
+            isLoading={isConnectingGitHub}
+            disabled={isConnectingGitHub}
+            onClick={() => {
+              void handleConnect();
+            }}
+          />
+        </div>
+      </div>
     </ContentMessage>
   );
 }
