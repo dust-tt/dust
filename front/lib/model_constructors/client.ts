@@ -33,7 +33,7 @@ export abstract class Client<C extends InputConfig = InputConfig> {
     api: A;
     region: R;
     modelId: M;
-  }): `${P}/${A}/${R}/${M}` {
-    return `${this.providerId}/${this.api}/${this.region}/${this.modelId}`;
+  }): `${P}/${M}/${R}/${A}` {
+    return `${this.providerId}/${this.modelId}/${this.region}/${this.api}`;
   }
 }
