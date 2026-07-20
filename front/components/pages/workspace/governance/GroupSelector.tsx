@@ -14,12 +14,14 @@ import { useState } from "react";
 interface GroupSelectorProps {
   selectedGroups: GroupType[];
   selectableGroups: GroupType[];
+  disabled?: boolean;
   onSelectionChange: (groupIds: string[]) => void;
 }
 
 export const GroupSelector = ({
   selectedGroups,
   selectableGroups,
+  disabled,
   onSelectionChange,
 }: GroupSelectorProps) => {
   const [groupSearch, setGroupSearch] = useState("");
@@ -52,6 +54,7 @@ export const GroupSelector = ({
             <DropdownMenuItem
               key={group.sId}
               label={group.name}
+              disabled={disabled}
               endComponent={
                 <Chip
                   label={
@@ -80,9 +83,14 @@ export const GroupSelector = ({
           label={group.name}
           size="xs"
           color="highlight"
-          onRemove={() =>
-            onSelectionChange(selectedGroupIds.filter((id) => id !== group.sId))
-          }
+          onRemove={() => {
+            if (disabled) {
+              return;
+            }
+            onSelectionChange(
+              selectedGroupIds.filter((id) => id !== group.sId)
+            );
+          }}
         />
       ))}
     </div>
