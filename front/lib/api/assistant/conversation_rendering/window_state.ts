@@ -1,4 +1,3 @@
-import type { ConversationPruningStats } from "@app/lib/api/assistant/conversation_rendering/instrumentation";
 import type { InteractionWithTokens } from "@app/lib/api/assistant/conversation_rendering/pruning";
 import {
   DROP_CHECKPOINT_TOKENS,
@@ -9,6 +8,7 @@ import {
   pruneToolResults,
   sumInteractionTokens,
 } from "@app/lib/api/assistant/conversation_rendering/pruning";
+import type { ConversationWindowResult } from "@app/lib/api/assistant/conversation_rendering/window_types";
 import logger from "@app/logger/logger";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -19,12 +19,6 @@ import { assertNever } from "@app/types/shared/utils/assert_never";
 export const PREVIOUS_INTERACTIONS_TO_PRESERVE = 3;
 
 const INTERACTIONS_TO_PRESERVE_AT_SOFT_LIMIT = 3;
-
-type ConversationWindowResult = {
-  interactions: InteractionWithTokens[];
-  prunedContext: boolean;
-  stats: ConversationPruningStats;
-};
 
 /**
  * Deterministically replays an append-only sequence of interactions into a bounded model context.

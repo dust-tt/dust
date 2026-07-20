@@ -4,6 +4,11 @@
  * the only file here that talks to StatsD, so the decision logic stays free of I/O and tests can
  * assert on data instead of mocking a metrics client.
  */
+
+import type {
+  ConversationPruningStats,
+  ConversationWindowStrategy,
+} from "@app/lib/api/assistant/conversation_rendering/window_types";
 import { getStatsDClient } from "@app/lib/utils/statsd";
 import type {
   ModelIdType,
@@ -12,18 +17,7 @@ import type {
 
 // Token totals and interaction counts snapshotted after each escalation layer, plus the budgets
 // the layers ran against. Layers that did nothing leave their snapshot equal to the previous one.
-export type ConversationPruningStats = {
-  totalTokensBefore: number;
-  totalTokensAfterPruning: number;
-  totalTokensAfterDropping: number;
-  totalTokensAfterFloorPruning: number;
-  totalTokensAfterFloorDropping: number;
-  interactionsBefore: number;
-  interactionsAfterDropping: number;
-  interactionsAfterFloorDropping: number;
-  pruningBudget: number;
-  budgetForInteractions: number;
-};
+export type { ConversationPruningStats } from "@app/lib/api/assistant/conversation_rendering/window_types";
 
 export type ConversationRenderingOutcome =
   | "fits"
@@ -35,10 +29,12 @@ export type ConversationRenderingOutcome =
 export type ConversationRenderingMetrics = {
   // The deepest escalation layer that changed anything.
   outcome: ConversationRenderingOutcome;
-  // True when pruning ran out of eligible tool results while still over its budget. Those
-  // renders sit in the regime where every new tool step slides the preserved window and rewrites
-  // bytes, the population the quantized-floor follow-up would fix.
+  // True when the rendered context remains above the proactive pruning budget. This can happen
+  // because the remaining tool results are pending, less than one pruning checkpoint is eligible,
+  // or non-tool history alone exceeds the budget.
   saturated: boolean;
+  overBudget: boolean;
+  tokensOverBudget: number;
   prunedTokens: number;
   floorPrunedTokens: number;
   droppedTokens: number;
@@ -64,6 +60,10 @@ export function computeConversationRenderingMetrics(
     stats.interactionsBefore - stats.interactionsAfterDropping;
   const floorDroppedInteractions =
     stats.interactionsAfterDropping - stats.interactionsAfterFloorDropping;
+  const tokensOverBudget = Math.max(
+    stats.totalTokensAfterFloorDropping - stats.budgetForInteractions,
+    0
+  );
 
   let outcome: ConversationRenderingOutcome = "fits";
   if (prunedTokens > 0) {
@@ -82,6 +82,8 @@ export function computeConversationRenderingMetrics(
   return {
     outcome,
     saturated: stats.totalTokensAfterPruning > stats.pruningBudget,
+    overBudget: tokensOverBudget > 0,
+    tokensOverBudget,
     prunedTokens,
     floorPrunedTokens,
     droppedTokens,
@@ -108,6 +110,7 @@ export function emitConversationRenderingMetrics({
   modelId,
   contextSize,
   tokensUsed,
+  windowStrategy,
 }: {
   stats: ConversationPruningStats;
   caller: ConversationRenderingMetricsCaller;
@@ -115,6 +118,7 @@ export function emitConversationRenderingMetrics({
   modelId: ModelIdType;
   contextSize: number;
   tokensUsed: number;
+  windowStrategy: ConversationWindowStrategy;
 }): void {
   const metrics = computeConversationRenderingMetrics(stats);
   const statsD = getStatsDClient();
@@ -122,6 +126,8 @@ export function emitConversationRenderingMetrics({
     `client_id:${providerId}`,
     `model_id:${modelId}`,
     `caller:${caller}`,
+    `window_strategy:${windowStrategy}`,
+    `over_budget:${metrics.overBudget}`,
   ];
 
   statsD.increment("conversation_rendering.renders", 1, [
@@ -183,6 +189,13 @@ export function emitConversationRenderingMetrics({
       baseTags
     );
   }
+  if (metrics.tokensOverBudget > 0) {
+    statsD.distribution(
+      "conversation_rendering.tokens_over_budget",
+      metrics.tokensOverBudget,
+      baseTags
+    );
+  }
 }
 
 // Renders that fail never reach the success emission above, so without this counter the metric
@@ -194,16 +207,19 @@ export function emitConversationRenderingError({
   caller,
   providerId,
   modelId,
+  windowStrategy,
 }: {
   kind: "context_overflow" | "no_messages";
   caller: ConversationRenderingMetricsCaller;
   providerId: ModelProviderIdType;
   modelId: ModelIdType;
+  windowStrategy: ConversationWindowStrategy;
 }): void {
   getStatsDClient().increment("conversation_rendering.errors", 1, [
     `client_id:${providerId}`,
     `model_id:${modelId}`,
     `caller:${caller}`,
     `kind:${kind}`,
+    `window_strategy:${windowStrategy}`,
   ]);
 }

@@ -6,8 +6,8 @@
  *   message stays in place, so tool_use/tool_result pairing is never broken.
  * - "drop" (dropInteractionsToFit): remove whole interactions entirely, oldest first.
  *
- * ConversationWindowState owns the policy of when to apply which. This module owns the
- * mechanisms.
+ * The conversation window state implementations own the policy of when to apply which. This
+ * module owns the mechanisms.
  */
 import type { Interaction } from "@app/lib/api/assistant/conversation/interactions";
 import type { ModelMessageTypeMultiActions } from "@app/types/assistant/generation";
@@ -38,7 +38,7 @@ export type MessageWithTokens = ModelMessageTypeMultiActions & {
 export type InteractionWithTokens = Interaction<MessageWithTokens>;
 
 /** Turns a function-role message into the pruned placeholder. */
-function pruneToolResultMessage(
+export function pruneToolResultMessage(
   message: Extract<MessageWithTokens, { role: "function" }>
 ): Extract<MessageWithTokens, { role: "function" }> {
   return {

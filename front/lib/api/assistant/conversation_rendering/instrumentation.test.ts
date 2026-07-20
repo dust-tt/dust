@@ -26,6 +26,8 @@ describe("computeConversationRenderingMetrics", () => {
 
     expect(metrics.outcome).toBe("fits");
     expect(metrics.saturated).toBe(false);
+    expect(metrics.overBudget).toBe(false);
+    expect(metrics.tokensOverBudget).toBe(0);
     expect(metrics.prunedTokens).toBe(0);
     expect(metrics.droppedTokens).toBe(0);
     expect(metrics.dropSlackTokens).toBeNull();
@@ -62,6 +64,20 @@ describe("computeConversationRenderingMetrics", () => {
 
     expect(metrics.outcome).toBe("pruned");
     expect(metrics.saturated).toBe(true);
+  });
+
+  it("measures context served beyond the nominal interaction budget", () => {
+    const metrics = computeConversationRenderingMetrics({
+      ...statsWhereNothingHappened(),
+      totalTokensBefore: 175_000,
+      totalTokensAfterPruning: 175_000,
+      totalTokensAfterDropping: 175_000,
+      totalTokensAfterFloorPruning: 175_000,
+      totalTokensAfterFloorDropping: 175_000,
+    });
+
+    expect(metrics.overBudget).toBe(true);
+    expect(metrics.tokensOverBudget).toBe(15_000);
   });
 
   it("measures drop slack, the headroom that predicts when the next full cache miss comes", () => {
