@@ -595,7 +595,7 @@ describe("constructPromptMultiActions - system prompt stability", () => {
       enabledSkills: [],
       equippedSkills: [],
       isNewFileExplorer: true,
-      hasComputerTool: true,
+      hasSandboxTools: true,
     };
 
     const sections = constructPromptMultiActions(authenticator1, params);
@@ -620,7 +620,7 @@ describe("constructPromptMultiActions - system prompt stability", () => {
       enabledSkills: [],
       equippedSkills: [],
       isNewFileExplorer: false,
-      hasComputerTool: true,
+      hasSandboxTools: true,
     };
 
     const sections = constructPromptMultiActions(authenticator1, params);
@@ -644,7 +644,7 @@ describe("constructPromptMultiActions - system prompt stability", () => {
       enabledSkills: [],
       equippedSkills: [],
       isNewFileExplorer: true,
-      hasComputerTool: false,
+      hasSandboxTools: false,
     };
 
     const sections = constructPromptMultiActions(authenticator1, params);

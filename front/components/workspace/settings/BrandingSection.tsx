@@ -39,6 +39,7 @@ function BrandingAssetUploader({
   const [isBusy, setIsBusy] = useState(false);
 
   const fileUploaderService = useFileUploaderService({
+    hasSandboxTools: false,
     owner,
     useCase: "workspace_branding",
     useCaseMetadata: { asset },

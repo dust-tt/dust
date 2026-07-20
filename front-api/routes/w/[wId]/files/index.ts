@@ -189,7 +189,12 @@ app.post("/", validate("json", FileUploadUrlRequestSchema), async (ctx) => {
     });
   }
 
-  if (!ensureFileSize(contentType, fileSize, { useCase })) {
+  if (
+    !ensureFileSize(contentType, fileSize, {
+      hasSandboxTools: true,
+      useCase,
+    })
+  ) {
     return apiError(ctx, {
       status_code: 400,
       api_error: {
@@ -209,6 +214,7 @@ app.post("/", validate("json", FileUploadUrlRequestSchema), async (ctx) => {
     useCaseMetadata: buildEffectiveUseCaseMetadata({
       contentType,
       fileName,
+      flags: { hasSandboxTools: true },
       providedMetadata: useCaseMetadata,
       useCase,
     }),
