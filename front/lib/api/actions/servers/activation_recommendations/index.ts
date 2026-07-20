@@ -18,17 +18,14 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 
 const handlers: ToolHandlers<typeof ACTIVATION_RECOMMENDATIONS_TOOLS_METADATA> =
   {
-    create_recommendation: async (
-      { content, rationale },
-      { auth, runContext }
-    ) => {
+    create_recommendation: async ({ title, content }, { auth, runContext }) => {
       const conversationId = isAgentLoopRunContext(runContext)
         ? runContext.conversation.id
         : null;
 
       const rec = await ActivationRecommendationResource.makeNew(auth, {
+        title,
         content,
-        rationale,
         conversationId,
       });
 

@@ -12,15 +12,17 @@ export const ACTIVATION_RECOMMENDATIONS_TOOLS_METADATA = [
       "Call this immediately after surfacing a recommendation so it is tracked. " +
       "Returns a recommendationId to reference in update_recommendation.",
     schema: {
-      content: z
-        .string()
-        .max(4096)
-        .describe("The recommendation text shown to the user (1-3 sentences)."),
-      rationale: z
+      title: z
         .string()
         .max(4096)
         .describe(
-          "Internal reasoning for why this recommendation was selected."
+          "Short title for the recommendation, shown in the 'Your next steps' surface (5-10 words)."
+        ),
+      content: z
+        .string()
+        .max(4096)
+        .describe(
+          "One-sentence description of what the recommendation involves, shown as subtitle."
         ),
     },
     stake: "never_ask",

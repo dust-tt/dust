@@ -22,7 +22,7 @@ CREATE TABLE "public"."activation_recommendations" (
 	"userId" bigint NOT NULL,
 	"status" character varying(50) NOT NULL,
 	"content" character varying(4096) NOT NULL,
-	"rationale" character varying(4096) NOT NULL,
+	"title" character varying(4096) NOT NULL DEFAULT '',
 	"conversationId" bigint,
 	"createdSkillId" bigint,
 	"createdTriggerId" bigint,
