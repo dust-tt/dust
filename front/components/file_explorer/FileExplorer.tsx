@@ -263,9 +263,10 @@ export function FileExplorer({
   };
 
   // Only file entries participate in prev/next navigation.
-  const fileEntriesAtLevel = filesAtLevel
-    .filter((e): e is FileEntry => e.kind === "file")
-    .filter((entry) => isFilePreviewableContentType(entry.contentType));
+  const fileEntriesAtLevel = filesAtLevel.filter(
+    (entry): entry is FileEntry =>
+      entry.kind === "file" && isFilePreviewableContentType(entry.contentType)
+  );
   const previewIndex = previewFile
     ? fileEntriesAtLevel.findIndex((f) => f.path === previewFile.path)
     : -1;
