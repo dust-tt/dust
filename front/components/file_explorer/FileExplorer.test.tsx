@@ -44,7 +44,13 @@ describe("FileExplorer file opening", () => {
       fileName: "archive.zip",
       lastModifiedMs: 1,
     });
-    const onFileDownload = vi.fn().mockResolvedValue(undefined);
+    let finishDownload: (() => void) | undefined;
+    const onFileDownload = vi.fn(
+      () =>
+        new Promise<void>((resolve) => {
+          finishDownload = resolve;
+        })
+    );
 
     render(
       <FileExplorer
@@ -56,7 +62,8 @@ describe("FileExplorer file opening", () => {
       />
     );
 
-    fireEvent.click(screen.getByText("archive.zip"));
+    const archiveTitle = screen.getByText("archive.zip");
+    fireEvent.click(archiveTitle);
 
     await waitFor(() =>
       expect(onFileDownload).toHaveBeenCalledWith({
@@ -64,8 +71,22 @@ describe("FileExplorer file opening", () => {
         kind: "file",
       })
     );
+    expect(archiveTitle.closest("[aria-busy]")).toHaveAttribute(
+      "aria-busy",
+      "true"
+    );
+    fireEvent.click(archiveTitle);
+    expect(onFileDownload).toHaveBeenCalledTimes(1);
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
     expect(mockClientFetch).not.toHaveBeenCalled();
+
+    finishDownload?.();
+    await waitFor(() =>
+      expect(archiveTitle.closest("[aria-busy]")).toHaveAttribute(
+        "aria-busy",
+        "false"
+      )
+    );
   });
 
   it("skips binary files in preview navigation", async () => {
