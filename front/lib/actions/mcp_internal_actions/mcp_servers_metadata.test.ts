@@ -269,7 +269,7 @@ describe("MCP Servers Metadata Snapshot", () => {
     const allBilling: Record<string, Record<string, ToolBillingSnapshot>> = {};
 
     for (const serverName of [...AVAILABLE_INTERNAL_MCP_SERVER_NAMES].sort()) {
-      const tools = getInternalMCPServerMetadata(serverName).tools;
+      const { tools } = getInternalMCPServerMetadata(serverName);
 
       const toolSnapshots: Record<string, ToolBillingSnapshot> = {};
       for (const tool of [...tools].sort((a, b) =>
