@@ -16,6 +16,7 @@ export function useSavePageToPod({ owner }: { owner: LightWorkspaceType }) {
 
   const { handleFilesUpload, isProcessingFiles, resetUpload } =
     useFrontFileUploaderService({
+      hasSandboxTools: false,
       owner,
       useCase: "project_context",
     });
