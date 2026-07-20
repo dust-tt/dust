@@ -1,8 +1,5 @@
 import { ENABLE_SKILL_TOOL_NAME } from "@app/lib/actions/constants";
-import type {
-  InternalMCPToolType,
-  ServerMetadata,
-} from "@app/lib/actions/mcp_internal_actions/tool_definition";
+import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { z } from "zod";
 
 export const SKILL_MANAGEMENT_TOOLS_METADATA = [

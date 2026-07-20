@@ -1,7 +1,4 @@
-import type {
-  InternalMCPToolType,
-  ServerMetadata,
-} from "@app/lib/actions/mcp_internal_actions/tool_definition";
+import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { AGENT_FACING_DESCRIPTION_MAX_LENGTH } from "@app/lib/skills/labels";
 import { z } from "zod";
 

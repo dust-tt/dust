@@ -1,7 +1,4 @@
-import type {
-  InternalMCPToolType,
-  ServerMetadata,
-} from "@app/lib/actions/mcp_internal_actions/tool_definition";
+import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { DocumentOperationsArraySchema } from "@app/lib/api/actions/servers/google_drive/resolution/docs_resolver";
 import { SpreadsheetOperationsArraySchema } from "@app/lib/api/actions/servers/google_drive/resolution/sheets_resolver";
 import { PresentationOperationsArraySchema } from "@app/lib/api/actions/servers/google_drive/resolution/slides_resolver";

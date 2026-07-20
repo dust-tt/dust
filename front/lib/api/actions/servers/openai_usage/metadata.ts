@@ -1,7 +1,4 @@
-import type {
-  InternalMCPToolType,
-  ServerMetadata,
-} from "@app/lib/actions/mcp_internal_actions/tool_definition";
+import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { z } from "zod";
 
 export const OPENAI_USAGE_TOOLS_METADATA = [

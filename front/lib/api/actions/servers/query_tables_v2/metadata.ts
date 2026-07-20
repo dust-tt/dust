@@ -2,10 +2,7 @@ import {
   ConfigurableToolInputSchemas,
   TABLE_CONFIGURATION_URI_PATTERN,
 } from "@app/lib/actions/mcp_internal_actions/input_schemas";
-import type {
-  InternalMCPToolType,
-  ServerMetadata,
-} from "@app/lib/actions/mcp_internal_actions/tool_definition";
+import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import { z } from "zod";
 

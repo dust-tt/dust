@@ -1,8 +1,5 @@
 import { ConfigurableToolInputSchemas } from "@app/lib/actions/mcp_internal_actions/input_schemas";
-import type {
-  InternalMCPToolType,
-  ServerMetadata,
-} from "@app/lib/actions/mcp_internal_actions/tool_definition";
+import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { TagsInputSchema } from "@app/lib/actions/mcp_internal_actions/types";
 import {
   FIND_TAGS_BASE_DESCRIPTION,

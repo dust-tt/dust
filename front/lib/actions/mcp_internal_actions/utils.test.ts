@@ -1,7 +1,6 @@
 import { InMemoryWithAuthTransport } from "@app/lib/actions/mcp_internal_actions/in_memory_with_auth_transport";
 import {
   buildTools,
-  type InternalMCPToolType,
   type ToolHandlers,
 } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { workspaceAdminGuard } from "@app/lib/actions/mcp_internal_actions/utils";

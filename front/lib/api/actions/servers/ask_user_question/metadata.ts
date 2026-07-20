@@ -1,7 +1,4 @@
-import type {
-  InternalMCPToolType,
-  ServerMetadata,
-} from "@app/lib/actions/mcp_internal_actions/tool_definition";
+import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { UserQuestionSchema } from "@app/lib/actions/types";
 
 export const ASK_USER_QUESTION_TOOLS_METADATA = [

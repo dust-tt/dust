@@ -1,7 +1,4 @@
-import type {
-  InternalMCPToolType,
-  ServerMetadata,
-} from "@app/lib/actions/mcp_internal_actions/tool_definition";
+import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { AshbyCreateReferralInputSchema } from "@app/lib/api/actions/servers/ashby/types";
 import { z } from "zod";
 
