@@ -3,7 +3,7 @@ import {
   inputConfigSchema,
   temperatureSchema,
 } from "@app/lib/model_constructors/types/input/configuration";
-import { GPT_5_4 } from "@app/lib/model_constructors/types/model_ids";
+import { GPT_5_4 } from "@app/lib/model_constructors/types/models";
 
 import { z } from "zod";
 
@@ -39,7 +39,7 @@ export function WithOpenAIGptFiveDotFourConfig<
   ) => object,
 >(Base: TBase) {
   abstract class OpenAIGptFiveDotFour extends Base {
-    static readonly modelId = GPT_5_4;
+    static readonly model = GPT_5_4;
 
     static readonly configSchema: z.ZodType<InputConfig> = configSchema;
 

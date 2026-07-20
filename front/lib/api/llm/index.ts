@@ -41,16 +41,13 @@ import type {
 } from "@app/lib/llms/types/filter";
 import { sortEndpointsByPreferredRegion } from "@app/lib/llms/utils/sort_endpoints";
 import { FIREWORKS_MODEL_PREFIX } from "@app/lib/model_constructors/stream/clients/fireworks";
+import { GOOGLE_AI_STUDIO_HOST } from "@app/lib/model_constructors/types/hosts";
+import { isLab, type Lab } from "@app/lib/model_constructors/types/labs";
 import {
   isModel,
   type Model,
   NOOP_MODEL,
-} from "@app/lib/model_constructors/types/model_ids";
-import { GOOGLE_AI_STUDIO_HOST } from "@app/lib/model_constructors/types/provider_apis";
-import {
-  isLab,
-  type Lab,
-} from "@app/lib/model_constructors/types/provider_ids";
+} from "@app/lib/model_constructors/types/models";
 import {
   EUROPE,
   GLOBAL,
@@ -335,10 +332,10 @@ export function getWorkspaceFilter(auth: Authenticator): Where<EndpointConfig> {
   const byok = auth.getNonNullablePlan().isByok;
 
   return {
-    providerId: getProviderIdFilter(auth),
+    lab: getProviderIdFilter(auth),
     region: getRegionFilter(auth),
     // We route all non-byok gemini requests to agent platform.
-    ...(byok ? {} : { not: { api: { eq: GOOGLE_AI_STUDIO_HOST } } }),
+    ...(byok ? {} : { not: { host: { eq: GOOGLE_AI_STUDIO_HOST } } }),
   };
 }
 
@@ -388,7 +385,7 @@ function selectPreferredEndpoint<T extends { region: Region }>(
     },
     {
       ...workspaceFilter,
-      modelId: {
+      model: {
         eq: modelId,
       },
     }
@@ -422,7 +419,7 @@ function getStreamEndpointLLM(
 
   // The noop model needs a dedicated transition to preserve its static-response
   // and simulated-credit behaviors, which the generic transition drops.
-  if (endpoint.modelId === NOOP_MODEL) {
+  if (endpoint.model === NOOP_MODEL) {
     return new NoopStreamTransition(auth, llmParameters, endpoint);
   }
 

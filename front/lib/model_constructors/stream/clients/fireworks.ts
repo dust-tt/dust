@@ -6,11 +6,11 @@ import { WithOpenAICompletionsInputConverter } from "@app/lib/model_constructors
 import { rawOutputToEvents } from "@app/lib/model_constructors/sdk/openai_completions/converters/output/utils";
 import { StreamEndpoint } from "@app/lib/model_constructors/stream/endpoint";
 import type { Credentials } from "@app/lib/model_constructors/types/credentials";
+import { FIREWORKS_HOST } from "@app/lib/model_constructors/types/hosts";
 import type { Payload } from "@app/lib/model_constructors/types/input/messages";
-import type { Model } from "@app/lib/model_constructors/types/model_ids";
+import { FIREWORKS_LAB } from "@app/lib/model_constructors/types/labs";
+import type { Model } from "@app/lib/model_constructors/types/models";
 import type { ModelResponseEvent } from "@app/lib/model_constructors/types/output/events";
-import { FIREWORKS_HOST } from "@app/lib/model_constructors/types/provider_apis";
-import { FIREWORKS_LAB } from "@app/lib/model_constructors/types/provider_ids";
 import OpenAI from "openai";
 import type {
   ChatCompletionChunk,
@@ -30,8 +30,8 @@ export abstract class FireworksStream extends WithOpenAICompletionsInputConverte
     FireworksInputConfig
   >
 ) {
-  static readonly providerId = FIREWORKS_LAB;
-  static readonly api = FIREWORKS_HOST;
+  static readonly lab = FIREWORKS_LAB;
+  static readonly host = FIREWORKS_HOST;
 
   static readonly configSchema = fireworksConfigSchema;
 

@@ -1,6 +1,6 @@
 import type { BaseEndpointConfiguration } from "@app/lib/model_constructors/configuration";
 import { anthropicBaseConfigSchema } from "@app/lib/model_constructors/providers/anthropic/inputConfig";
-import { CLAUDE_OPUS_4_6 } from "@app/lib/model_constructors/types/model_ids";
+import { CLAUDE_OPUS_4_6 } from "@app/lib/model_constructors/types/models";
 
 import { z } from "zod";
 
@@ -42,7 +42,7 @@ export function WithAnthropicClaudeOpusFourDotSixConfig<
     // instance type carries `ClaudeOpusFourDotSix` (not the wide `InputConfig`).
     declare ["constructor"]: BaseEndpointConfiguration<ClaudeOpusFourDotSix>;
 
-    static readonly modelId = CLAUDE_OPUS_4_6;
+    static readonly model = CLAUDE_OPUS_4_6;
 
     static readonly configSchema: z.ZodType<
       ClaudeOpusFourDotSix,

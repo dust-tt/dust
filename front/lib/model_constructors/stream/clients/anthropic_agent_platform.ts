@@ -16,14 +16,14 @@ import { WithAnthropicAIOutputConverter } from "@app/lib/model_constructors/sdk/
 import { rawOutputToEvents } from "@app/lib/model_constructors/sdk/anthropic_ai/converters/output/utils";
 import { StreamEndpoint } from "@app/lib/model_constructors/stream/endpoint";
 import type { Credentials } from "@app/lib/model_constructors/types/credentials";
+import { AGENT_PLATFORM_HOST } from "@app/lib/model_constructors/types/hosts";
 import { inputConfigSchema } from "@app/lib/model_constructors/types/input/configuration";
+import { ANTHROPIC_PROVIDER_LAB } from "@app/lib/model_constructors/types/labs";
 import {
   CLAUDE_HAIKU_4_5,
   type Model,
-} from "@app/lib/model_constructors/types/model_ids";
+} from "@app/lib/model_constructors/types/models";
 import type { ModelResponseEvent } from "@app/lib/model_constructors/types/output/events";
-import { AGENT_PLATFORM_HOST } from "@app/lib/model_constructors/types/provider_apis";
-import { ANTHROPIC_PROVIDER_LAB } from "@app/lib/model_constructors/types/provider_ids";
 
 import { z } from "zod";
 
@@ -59,8 +59,8 @@ export abstract class AnthropicAgentPlatformStream extends WithAnthropicAIInputC
     regionalEndpoint: AgentPlatformRegionalEndpoint;
   };
 
-  static readonly providerId = ANTHROPIC_PROVIDER_LAB;
-  static readonly api = AGENT_PLATFORM_HOST;
+  static readonly lab = ANTHROPIC_PROVIDER_LAB;
+  static readonly host = AGENT_PLATFORM_HOST;
 
   static readonly regionalEndpoint: AgentPlatformRegionalEndpoint;
 

@@ -1,5 +1,5 @@
 import { mistralNonReasoningConfigSchema } from "@app/lib/model_constructors/providers/mistral/inputConfig";
-import { MISTRAL_CODESTRAL } from "@app/lib/model_constructors/types/model_ids";
+import { MISTRAL_CODESTRAL } from "@app/lib/model_constructors/types/models";
 
 // Verified against https://docs.mistral.ai/getting-started/models/models_overview
 // (2026-06-18): Codestral has a 128k-token context window. It is a code model
@@ -17,7 +17,7 @@ export function WithMistralCodestralConfig<
   ) => object,
 >(Base: TBase) {
   abstract class MistralCodestral extends Base {
-    static readonly modelId = MISTRAL_CODESTRAL;
+    static readonly model = MISTRAL_CODESTRAL;
 
     // Non-reasoning model: the API rejects `reasoning_effort`.
     static readonly configSchema = mistralNonReasoningConfigSchema;

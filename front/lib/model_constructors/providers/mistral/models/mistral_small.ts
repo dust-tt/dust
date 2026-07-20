@@ -1,5 +1,5 @@
 import { mistralNonReasoningConfigSchema } from "@app/lib/model_constructors/providers/mistral/inputConfig";
-import { MISTRAL_SMALL } from "@app/lib/model_constructors/types/model_ids";
+import { MISTRAL_SMALL } from "@app/lib/model_constructors/types/models";
 
 // Verified against https://docs.mistral.ai/getting-started/models/models_overview
 // (2026-06-18): Mistral Small has a 128k-token context window.
@@ -16,7 +16,7 @@ export function WithMistralSmallConfig<
   ) => object,
 >(Base: TBase) {
   abstract class MistralSmall extends Base {
-    static readonly modelId = MISTRAL_SMALL;
+    static readonly model = MISTRAL_SMALL;
 
     // Non-reasoning model: the API rejects `reasoning_effort`.
     static readonly configSchema = mistralNonReasoningConfigSchema;

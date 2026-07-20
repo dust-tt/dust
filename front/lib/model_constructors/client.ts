@@ -1,9 +1,9 @@
 import type { BaseEndpointConfiguration } from "@app/lib/model_constructors/configuration";
 import type { EndpointMetadata } from "@app/lib/model_constructors/types/endpoint_metadata";
+import type { Host } from "@app/lib/model_constructors/types/hosts";
 import type { InputConfig } from "@app/lib/model_constructors/types/input/configuration";
-import type { Model } from "@app/lib/model_constructors/types/model_ids";
-import type { Host } from "@app/lib/model_constructors/types/provider_apis";
-import type { Lab } from "@app/lib/model_constructors/types/provider_ids";
+import type { Lab } from "@app/lib/model_constructors/types/labs";
+import type { Model } from "@app/lib/model_constructors/types/models";
 import type { Region } from "@app/lib/model_constructors/types/regions";
 
 export abstract class Client<C extends InputConfig = InputConfig> {
@@ -29,11 +29,11 @@ export abstract class Client<C extends InputConfig = InputConfig> {
     R extends Region,
     M extends Model,
   >(this: {
-    providerId: P;
-    api: A;
+    lab: P;
+    host: A;
     region: R;
-    modelId: M;
+    model: M;
   }): `${P}/${M}/${R}/${A}` {
-    return `${this.providerId}/${this.modelId}/${this.region}/${this.api}`;
+    return `${this.lab}/${this.model}/${this.region}/${this.host}`;
   }
 }

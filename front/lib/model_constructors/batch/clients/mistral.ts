@@ -10,9 +10,9 @@ import {
 import { WithMistralAIInputConverter } from "@app/lib/model_constructors/sdk/mistralai/converters/input";
 import { responseToEvents } from "@app/lib/model_constructors/sdk/mistralai/converters/output/utils";
 import type { Credentials } from "@app/lib/model_constructors/types/credentials";
+import { MISTRAL_HOST } from "@app/lib/model_constructors/types/hosts";
+import { MISTRAL_LAB } from "@app/lib/model_constructors/types/labs";
 import type { NonDeltaResponseEvent } from "@app/lib/model_constructors/types/output/events";
-import { MISTRAL_HOST } from "@app/lib/model_constructors/types/provider_apis";
-import { MISTRAL_LAB } from "@app/lib/model_constructors/types/provider_ids";
 import { buildErrorEvent } from "@app/lib/model_constructors/utils/build_error_event";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { Mistral } from "@mistralai/mistralai";
@@ -55,8 +55,8 @@ export abstract class MistralBatch extends WithMistralAIInputConverter(
     MistralInputConfig
   >
 ) {
-  static readonly providerId = MISTRAL_LAB;
-  static readonly api = MISTRAL_HOST;
+  static readonly lab = MISTRAL_LAB;
+  static readonly host = MISTRAL_HOST;
 
   static readonly configSchema = mistralConfigSchema;
 
