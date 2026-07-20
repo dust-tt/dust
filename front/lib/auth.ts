@@ -45,6 +45,7 @@ import type {
   GroupPermissionResourceType,
 } from "@app/types/group_permissions";
 import { WHOLE_TYPE_RESOURCE_ID } from "@app/types/group_permissions";
+import type { GroupKind } from "@app/types/groups";
 import type { PlanType, SubscriptionType } from "@app/types/plan";
 import type { ProvidersHealth } from "@app/types/provider_credential";
 import type {
@@ -933,6 +934,9 @@ export class Authenticator {
     workspaceId: string,
     options?: {
       dangerouslyRequestAllGroups: boolean;
+      // Only applies when dangerouslyRequestAllGroups is true. Overrides the group kinds fetched,
+      // e.g. to include editor groups that are excluded by default.
+      groupKinds?: GroupKind[];
     }
   ): Promise<Authenticator> {
     const workspace = await WorkspaceResource.fetchById(workspaceId);
@@ -945,6 +949,7 @@ export class Authenticator {
         if (options?.dangerouslyRequestAllGroups) {
           return GroupResource.internalFetchAllWorkspaceGroups({
             workspaceId: workspace.id,
+            ...(options.groupKinds ? { groupKinds: options.groupKinds } : {}),
           });
         } else {
           const globalGroup =

@@ -2,6 +2,7 @@ import { Authenticator } from "@app/lib/auth";
 import type { ExploratoryToolCallInfo } from "@app/lib/reinforcement/types";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import type { ModelMessageTypeMultiActionsWithoutContentFragment } from "@app/types/assistant/generation";
+import { GROUP_KINDS, isAgentEditorGroupKind } from "@app/types/groups";
 import { ApplicationFailure } from "@temporalio/common";
 
 export async function getAuthForWorkspace(
@@ -13,9 +14,11 @@ export async function getAuthForWorkspace(
       `Workspace not found: ${workspaceId}`
     );
   }
-  // The auth needs access to all groups to access conversations in projects.
+  // The auth needs access to all groups to access conversations in projects, including
+  // skill_editors groups (excluded by default) to create skill suggestions.
   return Authenticator.internalAdminForWorkspace(workspaceId, {
     dangerouslyRequestAllGroups: true,
+    groupKinds: GROUP_KINDS.filter((k) => !isAgentEditorGroupKind(k)),
   });
 }
 
