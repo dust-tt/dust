@@ -580,7 +580,7 @@ export class GCSFileSystemBackend implements FileSystemBackend {
 
   async getDownloadUrl(
     scopedPath: string,
-    _opts?: { expiresInMs?: number; fileName?: string }
+    opts?: { expiresInMs?: number; fileName?: string }
   ): Promise<Result<string, DustFileSystemError>> {
     const gcsPath = this.toGCSPath(scopedPath);
     if (!gcsPath) {
@@ -593,7 +593,9 @@ export class GCSFileSystemBackend implements FileSystemBackend {
     }
 
     try {
-      const url = await getCachedPrivateUploadSignedUrl(gcsPath);
+      const url = await getCachedPrivateUploadSignedUrl(gcsPath, {
+        expirationDelayMs: opts?.expiresInMs,
+      });
 
       return new Ok(url);
     } catch (err) {

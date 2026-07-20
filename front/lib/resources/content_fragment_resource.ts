@@ -20,7 +20,10 @@ import {
 import { getFileContent } from "@app/lib/api/files/utils";
 import type { Authenticator } from "@app/lib/auth";
 import { getPrivateUploadBucket } from "@app/lib/file_storage";
-import { getCachedPrivateUploadSignedUrl } from "@app/lib/file_storage/signed_url_cache";
+import {
+  getCachedPrivateUploadSignedUrl,
+  MODEL_INPUT_SIGNED_URL_EXPIRATION_DELAY_MS,
+} from "@app/lib/file_storage/signed_url_cache";
 import { isPastedFile } from "@app/lib/files";
 import type { MessageModel } from "@app/lib/models/agent/conversation";
 import { BaseResource } from "@app/lib/resources/base_resource";
@@ -1040,7 +1043,9 @@ async function getSignedUrlForVersion(
     version,
   });
 
-  return getCachedPrivateUploadSignedUrl(fileCloudStoragePath);
+  return getCachedPrivateUploadSignedUrl(fileCloudStoragePath, {
+    expirationDelayMs: MODEL_INPUT_SIGNED_URL_EXPIRATION_DELAY_MS,
+  });
 }
 
 export async function getContentFragmentFromAttachmentFile(

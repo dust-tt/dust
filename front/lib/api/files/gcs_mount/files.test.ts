@@ -9,10 +9,8 @@ import {
   renameGCSMountFile,
 } from "@app/lib/api/files/gcs_mount/files";
 import type { Authenticator } from "@app/lib/auth";
-import {
-  DEFAULT_SIGNED_URL_EXPIRATION_DELAY_MS,
-  getPrivateUploadBucket,
-} from "@app/lib/file_storage";
+import { getPrivateUploadBucket } from "@app/lib/file_storage";
+import { MODEL_INPUT_SIGNED_URL_EXPIRATION_DELAY_MS } from "@app/lib/file_storage/signed_url_cache";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
@@ -66,7 +64,7 @@ describe("getConversationFileMountSignedUrl", () => {
       expect(result.value).toBe("https://signed.example.com/photo.png");
     }
     expect(getSignedUrlMock).toHaveBeenCalledWith(gcsPath, {
-      expirationDelayMs: DEFAULT_SIGNED_URL_EXPIRATION_DELAY_MS,
+      expirationDelayMs: MODEL_INPUT_SIGNED_URL_EXPIRATION_DELAY_MS,
     });
   });
 
