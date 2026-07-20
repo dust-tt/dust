@@ -124,36 +124,35 @@ async function printEnvironmentLifecycleStatus(envName: string): Promise<void> {
   }
   const enrollment = configResult.value.environments[envName];
   if (!enrollment) {
-    console.log(`${envName}: disabled`);
+    logger.info(`${envName}: disabled`);
     return;
   }
   const policyResult = resolveLifecyclePolicy(configResult.value, enrollment);
   if (!policyResult.ok) {
-    console.log(`${envName}: ${policyResult.error.message}`);
+    logger.info(`${envName}: ${policyResult.error.message}`);
     return;
   }
   const env = await getEnvironment(envName);
   if (!env) {
-    console.log(`${envName}: missing`);
+    logger.info(`${envName}: missing`);
     return;
   }
   const stateInfo = await getStateInfo(env);
   const lifecycleState = await loadLifecycleState(envName);
   const policy = policyResult.value;
 
-  console.log();
-  console.log(`Environment: ${envName}`);
-  console.log(`State: ${stateInfo.state}`);
-  console.log(`Profile: ${enrollment.profile}`);
-  console.log(`Warm to cold: ${formatDurationSeconds(policy.coldAfterSeconds)}`);
-  console.log(`Cold to stopped: ${formatDurationSeconds(policy.stopAfterSeconds)}`);
-  console.log(`Stopped to archived: ${formatDurationSeconds(policy.deleteAfterSeconds)}`);
-  console.log(`Last activity: ${lifecycleState?.lastActivityAt ?? "not observed yet"}`);
+  logger.info(`Environment: ${envName}`);
+  logger.info(`State: ${stateInfo.state}`);
+  logger.info(`Profile: ${enrollment.profile}`);
+  logger.info(`Warm to cold: ${formatDurationSeconds(policy.coldAfterSeconds)}`);
+  logger.info(`Cold to stopped: ${formatDurationSeconds(policy.stopAfterSeconds)}`);
+  logger.info(`Stopped to archived: ${formatDurationSeconds(policy.deleteAfterSeconds)}`);
+  logger.info(`Last activity: ${lifecycleState?.lastActivityAt ?? "not observed yet"}`);
   if (lifecycleState) {
-    console.log(`Activity source: ${lifecycleState.lastActivitySource}`);
+    logger.info(`Activity source: ${lifecycleState.lastActivitySource}`);
   }
   if (lifecycleState?.blockedReason) {
-    console.log(`Blocked: ${lifecycleState.blockedReason}`);
+    logger.warn(`Blocked: ${lifecycleState.blockedReason}`);
   }
 }
 
@@ -163,9 +162,9 @@ export async function lifecycleStatusCommand(name?: string): Promise<Result<void
     return configResult;
   }
   const pid = await getLifecycleDaemonPid();
-  console.log(`Lifecycle daemon: ${pid === null ? "stopped" : `running (PID: ${pid})`}`);
-  console.log(`Config: ${LIFECYCLE_CONFIG_PATH}`);
-  console.log(`Log: ${LIFECYCLE_LOG_PATH}`);
+  logger.info(`Lifecycle daemon: ${pid === null ? "stopped" : `running (PID: ${pid})`}`);
+  logger.info(`Config: ${LIFECYCLE_CONFIG_PATH}`);
+  logger.info(`Log: ${LIFECYCLE_LOG_PATH}`);
 
   if (name) {
     await printEnvironmentLifecycleStatus(name);
@@ -173,13 +172,12 @@ export async function lifecycleStatusCommand(name?: string): Promise<Result<void
   }
   const envNames = Object.keys(configResult.value.environments).sort();
   if (envNames.length === 0) {
-    console.log("No environments have lifecycle management enabled.");
+    logger.info("No environments have lifecycle management enabled.");
     return Ok(undefined);
   }
   for (const envName of envNames) {
     await printEnvironmentLifecycleStatus(envName);
   }
-  console.log();
   return Ok(undefined);
 }
 

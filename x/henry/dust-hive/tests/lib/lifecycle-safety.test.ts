@@ -15,6 +15,16 @@ import { calculatePorts } from "../../src/lib/ports";
 
 const cleanupPaths: string[] = [];
 
+function createDeferred(): { promise: Promise<void>; resolve: () => void } {
+  let resolve = (): void => {
+    throw new Error("Deferred promise was not initialized");
+  };
+  const promise = new Promise<void>((resolvePromise) => {
+    resolve = resolvePromise;
+  });
+  return { promise, resolve };
+}
+
 afterEach(async () => {
   await Promise.all(
     cleanupPaths.splice(0).map((path) => rm(path, { recursive: true, force: true }))
@@ -39,15 +49,9 @@ describe("lifecycle safety", () => {
     const transitionLock = await acquireLifecycleLock(envName);
     expect(transitionLock).not.toBeNull();
 
-    let releaseCommand!: () => void;
-    const commandCanFinish = new Promise<void>((resolve) => {
-      releaseCommand = resolve;
-    });
-    let commandStarted!: () => void;
+    const { promise: commandCanFinish, resolve: releaseCommand } = createDeferred();
     let hasCommandStarted = false;
-    const commandDidStart = new Promise<void>((resolve) => {
-      commandStarted = resolve;
-    });
+    const { promise: commandDidStart, resolve: commandStarted } = createDeferred();
 
     const command = withLifecycleActivityLease(envName, "test", async () => {
       hasCommandStarted = true;
@@ -79,22 +83,10 @@ describe("lifecycle safety", () => {
     cleanupPaths.push(envDir);
     await mkdir(envDir, { recursive: true });
 
-    let releaseFirst!: () => void;
-    const firstCanFinish = new Promise<void>((resolve) => {
-      releaseFirst = resolve;
-    });
-    let releaseSecond!: () => void;
-    const secondCanFinish = new Promise<void>((resolve) => {
-      releaseSecond = resolve;
-    });
-    let markFirstStarted!: () => void;
-    const firstStarted = new Promise<void>((resolve) => {
-      markFirstStarted = resolve;
-    });
-    let markSecondStarted!: () => void;
-    const secondStarted = new Promise<void>((resolve) => {
-      markSecondStarted = resolve;
-    });
+    const { promise: firstCanFinish, resolve: releaseFirst } = createDeferred();
+    const { promise: secondCanFinish, resolve: releaseSecond } = createDeferred();
+    const { promise: firstStarted, resolve: markFirstStarted } = createDeferred();
+    const { promise: secondStarted, resolve: markSecondStarted } = createDeferred();
     const first = withLifecycleActivityLease(envName, "test", async () => {
       markFirstStarted();
       await firstCanFinish;

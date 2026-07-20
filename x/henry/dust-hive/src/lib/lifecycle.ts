@@ -41,6 +41,10 @@ function timestampMs(value: string): number {
   return new Date(value).getTime();
 }
 
+function assertNever(value: never): never {
+  throw new Error(`Unexpected lifecycle value: ${String(value)}`);
+}
+
 export function getEligibleLifecycleTransition(
   state: LifecycleState,
   policy: LifecyclePolicy,
@@ -65,6 +69,8 @@ export function getEligibleLifecycleTransition(
       return policy.deleteAfterSeconds !== null && idleDurationSeconds >= policy.deleteAfterSeconds
         ? "delete"
         : null;
+    default:
+      return assertNever(state.observedState);
   }
 }
 
@@ -221,6 +227,8 @@ async function applyTransition(
       await removeEnrollment(env.name);
       return Ok("deleted");
     }
+    default:
+      return assertNever(transition);
   }
 }
 

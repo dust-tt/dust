@@ -1,5 +1,6 @@
 import { mkdir, rm, stat } from "node:fs/promises";
 import { join } from "node:path";
+import { z } from "zod";
 import { isErrnoException } from "./errors";
 import { getLifecycleLockPath } from "./paths";
 import { isProcessRunning } from "./process";
@@ -7,21 +8,15 @@ import { isProcessRunning } from "./process";
 const LOCK_OWNER_FILE = "owner.json";
 const INCOMPLETE_LOCK_GRACE_MS = 5_000;
 
-interface LockOwner {
-  pid: number;
-  token: string;
-}
+const LockOwnerSchema = z.object({
+  pid: z.number().int().positive(),
+  token: z.string(),
+});
+
+type LockOwner = z.infer<typeof LockOwnerSchema>;
 
 export interface LifecycleLock {
   release: () => Promise<void>;
-}
-
-function isLockOwner(value: unknown): value is LockOwner {
-  if (!value || typeof value !== "object") {
-    return false;
-  }
-  const owner = value as Record<string, unknown>;
-  return typeof owner["pid"] === "number" && typeof owner["token"] === "string";
 }
 
 async function removeAbandonedLock(lockPath: string): Promise<boolean> {
@@ -29,7 +24,8 @@ async function removeAbandonedLock(lockPath: string): Promise<boolean> {
   if (await ownerFile.exists()) {
     try {
       const owner: unknown = await ownerFile.json();
-      if (isLockOwner(owner) && isProcessRunning(owner.pid)) {
+      const parsed = LockOwnerSchema.safeParse(owner);
+      if (parsed.success && isProcessRunning(parsed.data.pid)) {
         return false;
       }
       await rm(lockPath, { recursive: true, force: true });
@@ -79,7 +75,8 @@ export async function acquireLifecycleLock(
             return;
           }
           const currentOwner: unknown = await ownerFile.json();
-          if (isLockOwner(currentOwner) && currentOwner.token === token) {
+          const parsed = LockOwnerSchema.safeParse(currentOwner);
+          if (parsed.success && parsed.data.token === token) {
             await rm(lockPath, { recursive: true, force: true });
           }
         },
