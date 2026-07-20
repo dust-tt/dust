@@ -65,6 +65,7 @@ import { default as sandboxServer } from "@app/lib/api/actions/servers/sandbox";
 import { default as sandboxFunctionsServer } from "@app/lib/api/actions/servers/sandbox_functions";
 import { default as schedulesManagementServer } from "@app/lib/api/actions/servers/schedules_management";
 import { default as searchServer } from "@app/lib/api/actions/servers/search";
+import { default as servicenowServer } from "@app/lib/api/actions/servers/servicenow";
 import { default as skillAuthoringServer } from "@app/lib/api/actions/servers/skill_authoring";
 import { default as skillManagementServer } from "@app/lib/api/actions/servers/skill_management";
 import { default as slabServer } from "@app/lib/api/actions/servers/slab";
@@ -200,6 +201,8 @@ export async function getInternalMCPServer(
       return filesServer(auth, toolContext);
     case "databricks":
       return databricksServer(auth, toolContext);
+    case "servicenow":
+      return servicenowServer(auth, toolContext);
     case "jira":
       return jiraServer(auth, toolContext);
     case "luma":
