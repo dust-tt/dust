@@ -163,6 +163,7 @@ const mermaidStyles = `
 
 const MermaidGraph: React.FC<{ chart: string }> = ({ chart }) => {
   const graphRef = useRef<HTMLDivElement | null>(null);
+  const graphId = `mermaid-${React.useId().replaceAll(":", "")}`;
 
   useEffect(() => {
     const renderMermaid = async () => {
@@ -273,12 +274,13 @@ const MermaidGraph: React.FC<{ chart: string }> = ({ chart }) => {
         },
       });
 
-      graphRef.current.textContent = chart;
-      await mermaid.run(undefined);
+      const { bindFunctions, svg } = await mermaid.render(graphId, chart);
+      graphRef.current.innerHTML = svg;
+      bindFunctions?.(graphRef.current);
     };
 
     void renderMermaid();
-  }, [chart]);
+  }, [chart, graphId]);
 
   return (
     <>
