@@ -614,7 +614,7 @@ export async function runModel(
     workspaceContext,
     projectContext,
     isNewFileExplorer,
-    hasSandboxTools: true,
+    hasComputerTool: true,
     disableFormattingPrompt,
     hasSelectedSpacesOutsideAgentScope,
   });

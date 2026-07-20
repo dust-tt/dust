@@ -152,12 +152,7 @@ app.post(
       });
     }
 
-    if (
-      !ensureFileSize(contentType, fileSize, {
-        hasSandboxTools: true,
-        useCase,
-      })
-    ) {
+    if (!ensureFileSize(contentType, fileSize, { useCase })) {
       return apiError(ctx, {
         status_code: 400,
         api_error: {
@@ -177,7 +172,6 @@ app.post(
       useCaseMetadata: buildEffectiveUseCaseMetadata({
         contentType,
         fileName,
-        flags: { hasSandboxTools: true },
         providedMetadata: useCaseMetadata,
         useCase,
       }),
