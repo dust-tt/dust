@@ -95,12 +95,8 @@ describe("matchesWhere", () => {
     };
 
     it("eq matches the lab and region", () => {
-      expect(matchesWhere(endpoint, { lab: { eq: "anthropic" } })).toBe(
-        true
-      );
-      expect(matchesWhere(endpoint, { lab: { eq: "openai" } })).toBe(
-        false
-      );
+      expect(matchesWhere(endpoint, { lab: { eq: "anthropic" } })).toBe(true);
+      expect(matchesWhere(endpoint, { lab: { eq: "openai" } })).toBe(false);
       expect(matchesWhere(endpoint, { region: { eq: "global" } })).toBe(true);
       expect(matchesWhere(endpoint, { region: { eq: "eu" } })).toBe(false);
     });
