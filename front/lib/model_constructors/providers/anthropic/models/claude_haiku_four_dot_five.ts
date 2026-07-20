@@ -2,7 +2,7 @@ import type { BaseEndpointConfiguration } from "@app/lib/model_constructors/conf
 import { anthropicBaseConfigSchema } from "@app/lib/model_constructors/providers/anthropic/inputConfig";
 import { reasoningToExtendedThinkingConfig } from "@app/lib/model_constructors/sdk/anthropic_ai/converters/input/utils";
 import { temperatureSchema } from "@app/lib/model_constructors/types/input/configuration";
-import { CLAUDE_HAIKU_4_5_MODEL_ID } from "@app/lib/model_constructors/types/model_ids";
+import { CLAUDE_HAIKU_4_5 } from "@app/lib/model_constructors/types/model_ids";
 
 import { z } from "zod";
 
@@ -42,7 +42,7 @@ export function WithAnthropicClaudeHaikuFourDotFiveConfig<
     // instance type carries `ClaudeHaikuFourDotFive` (not the wide `InputConfig`).
     declare ["constructor"]: BaseEndpointConfiguration<ClaudeHaikuFourDotFive>;
 
-    static readonly modelId = CLAUDE_HAIKU_4_5_MODEL_ID;
+    static readonly modelId = CLAUDE_HAIKU_4_5;
 
     static readonly configSchema: z.ZodType<
       ClaudeHaikuFourDotFive,

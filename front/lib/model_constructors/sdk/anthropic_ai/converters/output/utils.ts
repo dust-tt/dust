@@ -330,7 +330,7 @@ export function serverToolBlockToProviderPassthroughEvent(
 ): ProviderPassthroughEvent {
   return {
     type: "provider_passthrough",
-    content: { provider: metadata.providerId, block },
+    content: { provider: metadata.lab, block },
     metadata,
   };
 }
@@ -473,7 +473,7 @@ function apiErrorToErrorEvent(
       return buildErrorEvent({
         metadata,
         type: "rate_limit_error",
-        message: `Rate limit exceeded for Anthropic/${metadata.modelId}: ${error.message}`,
+        message: `Rate limit exceeded for Anthropic/${metadata.model}: ${error.message}`,
         originalError: error,
       });
     case 503:
@@ -517,7 +517,7 @@ export function streamErrorToErrorEvent(
       return buildErrorEvent({
         metadata,
         type: "model_output_error",
-        message: `Model generated invalid tool call JSON for ${metadata.modelId}.`,
+        message: `Model generated invalid tool call JSON for ${metadata.model}.`,
         originalError: error,
       });
     case "connection":
@@ -568,7 +568,7 @@ function bareStreamErrorToErrorEvent(
   ) {
     return build(
       "rate_limit_error",
-      `Rate limit exceeded for Anthropic/${metadata.modelId}: ${message}`
+      `Rate limit exceeded for Anthropic/${metadata.model}: ${message}`
     );
   }
   if (
@@ -586,7 +586,7 @@ function bareStreamErrorToErrorEvent(
   ) {
     return build(
       "invalid_request_error",
-      `Context length exceeded for Anthropic/${metadata.modelId}: ${message}`
+      `Context length exceeded for Anthropic/${metadata.model}: ${message}`
     );
   }
   if (
@@ -890,9 +890,9 @@ export function contentBlockStopToEvents(
 // search log lines.
 function toolSearchLogFields(metadata: EndpointMetadata) {
   return {
-    providerId: metadata.providerId,
-    api: metadata.api,
-    modelId: metadata.modelId,
+    providerId: metadata.lab,
+    api: metadata.host,
+    modelId: metadata.model,
   };
 }
 
@@ -916,9 +916,9 @@ export function messageDeltaToEvents(
     if (stopReason === "pause_turn") {
       logger.warn(
         {
-          providerId: metadata.providerId,
-          api: metadata.api,
-          modelId: metadata.modelId,
+          providerId: metadata.lab,
+          api: metadata.host,
+          modelId: metadata.model,
         },
         "Anthropic pause_turn stop reason, turn ended with partial content"
       );
@@ -1031,9 +1031,9 @@ export async function* rawOutputToEvents(
             rawInput: blockState.accumulator,
             toolName: blockState.toolName,
             tags: [
-              `provider_id:${metadata.providerId}`,
-              `api:${metadata.api}`,
-              `model_id:${metadata.modelId}`,
+              `provider_id:${metadata.lab}`,
+              `api:${metadata.host}`,
+              `model_id:${metadata.model}`,
             ],
             logFields: toolSearchLogFields(metadata),
           });

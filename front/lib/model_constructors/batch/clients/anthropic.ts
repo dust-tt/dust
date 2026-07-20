@@ -12,8 +12,8 @@ import { WithAnthropicAIOutputConverter } from "@app/lib/model_constructors/sdk/
 import { batchResultToEvents } from "@app/lib/model_constructors/sdk/anthropic_ai/converters/output/utils";
 import type { Credentials } from "@app/lib/model_constructors/types/credentials";
 import type { NonDeltaResponseEvent } from "@app/lib/model_constructors/types/output/events";
-import { ANTHROPIC_API } from "@app/lib/model_constructors/types/provider_apis";
-import { ANTHROPIC_PROVIDER_ID } from "@app/lib/model_constructors/types/provider_ids";
+import { ANTHROPIC_HOST } from "@app/lib/model_constructors/types/provider_apis";
+import { ANTHROPIC_PROVIDER_LAB } from "@app/lib/model_constructors/types/provider_ids";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 
 const BUILD_PAYLOAD_CONCURRENCY = 8;
@@ -35,8 +35,8 @@ export abstract class AnthropicBatch extends WithAnthropicAIInputConverter(
     >
   )
 ) {
-  static readonly providerId = ANTHROPIC_PROVIDER_ID;
-  static readonly api = ANTHROPIC_API;
+  static readonly providerId = ANTHROPIC_PROVIDER_LAB;
+  static readonly api = ANTHROPIC_HOST;
 
   private readonly client: AnthropicClient;
 

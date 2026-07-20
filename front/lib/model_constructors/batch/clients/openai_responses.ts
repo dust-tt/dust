@@ -9,8 +9,8 @@ import { responseToEvents } from "@app/lib/model_constructors/sdk/openai_respons
 import type { Credentials } from "@app/lib/model_constructors/types/credentials";
 import type { InputConfig } from "@app/lib/model_constructors/types/input/configuration";
 import type { NonDeltaResponseEvent } from "@app/lib/model_constructors/types/output/events";
-import { OPENAI_RESPONSES_API } from "@app/lib/model_constructors/types/provider_apis";
-import { OPENAI_PROVIDER_ID } from "@app/lib/model_constructors/types/provider_ids";
+import { OPENAI_RESPONSES_HOST } from "@app/lib/model_constructors/types/provider_apis";
+import { OPENAI_LAB } from "@app/lib/model_constructors/types/provider_ids";
 import { buildErrorEvent } from "@app/lib/model_constructors/utils/build_error_event";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import { OpenAI, toFile } from "openai";
@@ -52,8 +52,8 @@ export abstract class OpenAIResponsesBatch extends WithOpenAIResponsesInputConve
     BatchEndpoint<ResponseCreateParamsNonStreaming, OpenAIResponse>
   )
 ) {
-  static readonly providerId = OPENAI_PROVIDER_ID;
-  static readonly api = OPENAI_RESPONSES_API;
+  static readonly providerId = OPENAI_LAB;
+  static readonly api = OPENAI_RESPONSES_HOST;
 
   private readonly client: OpenAI;
 

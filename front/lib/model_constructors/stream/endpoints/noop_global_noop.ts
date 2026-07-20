@@ -3,13 +3,13 @@ import { StreamEndpoint } from "@app/lib/model_constructors/stream/endpoint";
 import type { InputConfig } from "@app/lib/model_constructors/types/input/configuration";
 import { inputConfigSchema } from "@app/lib/model_constructors/types/input/configuration";
 import type { Payload } from "@app/lib/model_constructors/types/input/messages";
-import { NOOP_MODEL_ID } from "@app/lib/model_constructors/types/model_ids";
+import { NOOP_MODEL } from "@app/lib/model_constructors/types/model_ids";
 import type {
   ModelResponseEvent,
   TextEvent,
 } from "@app/lib/model_constructors/types/output/events";
-import { NOOP_API } from "@app/lib/model_constructors/types/provider_apis";
-import { NOOP_PROVIDER_ID } from "@app/lib/model_constructors/types/provider_ids";
+import { NOOP_HOST } from "@app/lib/model_constructors/types/provider_apis";
+import { NOOP_LAB } from "@app/lib/model_constructors/types/provider_ids";
 import { GLOBAL } from "@app/lib/model_constructors/types/regions";
 
 // Resolved request for the noop endpoint. `staticResponse` is not present in the
@@ -58,9 +58,9 @@ export class NoopGlobalNoopStream extends StreamEndpoint<
   string,
   InputConfig
 > {
-  static readonly providerId = NOOP_PROVIDER_ID;
-  static readonly api = NOOP_API;
-  static readonly modelId = NOOP_MODEL_ID;
+  static readonly providerId = NOOP_LAB;
+  static readonly api = NOOP_HOST;
+  static readonly modelId = NOOP_MODEL;
   static readonly region = GLOBAL;
 
   // The noop model ignores every config knob; accept the widest input.

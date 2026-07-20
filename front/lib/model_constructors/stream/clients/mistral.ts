@@ -7,8 +7,8 @@ import { rawOutputToEvents } from "@app/lib/model_constructors/sdk/mistralai/con
 import { StreamEndpoint } from "@app/lib/model_constructors/stream/endpoint";
 import type { Credentials } from "@app/lib/model_constructors/types/credentials";
 import type { ModelResponseEvent } from "@app/lib/model_constructors/types/output/events";
-import { MISTRAL_API } from "@app/lib/model_constructors/types/provider_apis";
-import { MISTRAL_PROVIDER_ID } from "@app/lib/model_constructors/types/provider_ids";
+import { MISTRAL_HOST } from "@app/lib/model_constructors/types/provider_apis";
+import { MISTRAL_LAB } from "@app/lib/model_constructors/types/provider_ids";
 import { Mistral } from "@mistralai/mistralai";
 import type {
   ChatCompletionStreamRequest,
@@ -22,8 +22,8 @@ export abstract class MistralStream extends WithMistralAIInputConverter(
     MistralInputConfig
   >
 ) {
-  static readonly providerId = MISTRAL_PROVIDER_ID;
-  static readonly api = MISTRAL_API;
+  static readonly providerId = MISTRAL_LAB;
+  static readonly api = MISTRAL_HOST;
 
   static readonly configSchema = mistralConfigSchema;
 

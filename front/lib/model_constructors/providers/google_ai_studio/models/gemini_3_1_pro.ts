@@ -4,7 +4,7 @@ import {
   GEMINI_3_MAX_OUTPUT_TOKENS,
 } from "@app/lib/model_constructors/providers/google_ai_studio/models/shared";
 import { GEMINI_PRO_SUPPORTED_REASONING_EFFORTS } from "@app/lib/model_constructors/providers/google_ai_studio/reasoning_efforts";
-import { GEMINI_3_1_PRO_MODEL_ID } from "@app/lib/model_constructors/types/model_ids";
+import { GEMINI_3_1_PRO } from "@app/lib/model_constructors/types/model_ids";
 
 import { z } from "zod";
 
@@ -31,7 +31,7 @@ export function WithGoogleAiStudioGeminiThreeDotOneProConfig<
   ) => object,
 >(Base: TBase) {
   abstract class GoogleAiStudioGeminiThreeDotOnePro extends Base {
-    static readonly modelId = GEMINI_3_1_PRO_MODEL_ID;
+    static readonly modelId = GEMINI_3_1_PRO;
 
     static readonly configSchema = configSchema;
 

@@ -41,13 +41,13 @@ import type {
 } from "@app/lib/llms/types/filter";
 import { sortEndpointsByPreferredRegion } from "@app/lib/llms/utils/sort_endpoints";
 import {
-  isModelId,
-  NOOP_MODEL_ID,
+  isModel,
+  NOOP_MODEL,
 } from "@app/lib/model_constructors/types/model_ids";
-import { GOOGLE_AI_STUDIO_API } from "@app/lib/model_constructors/types/provider_apis";
+import { GOOGLE_AI_STUDIO_HOST } from "@app/lib/model_constructors/types/provider_apis";
 import {
-  isProviderId,
-  type ProviderId,
+  isLab,
+  type Lab,
 } from "@app/lib/model_constructors/types/provider_ids";
 import {
   EUROPE,
@@ -316,9 +316,9 @@ function getRegionFilter(auth: Authenticator): ValueFilter<Region> | undefined {
   return { eq: EUROPE };
 }
 
-function getProviderIdFilter(auth: Authenticator): ValueFilter<ProviderId> {
+function getProviderIdFilter(auth: Authenticator): ValueFilter<Lab> {
   const whitelistedProviderIds = [...getWhitelistedProviders(auth)].filter(
-    isProviderId
+    isLab
   );
   const byok = auth.getNonNullablePlan().isByok;
   const providerIds = byok
@@ -336,7 +336,7 @@ export function getWorkspaceFilter(auth: Authenticator): Where<EndpointConfig> {
     providerId: getProviderIdFilter(auth),
     region: getRegionFilter(auth),
     // We route all non-byok gemini requests to agent platform.
-    ...(byok ? {} : { not: { api: { eq: GOOGLE_AI_STUDIO_API } } }),
+    ...(byok ? {} : { not: { api: { eq: GOOGLE_AI_STUDIO_HOST } } }),
   };
 }
 
@@ -358,7 +358,7 @@ function selectPreferredEndpoint<T extends { region: Region }>(
   ) => T[]
 ): T | null {
   // llmParameters.modelId is ModelIdType — narrow before filtering.
-  if (!isModelId(llmParameters.modelId)) {
+  if (!isModel(llmParameters.modelId)) {
     return null;
   }
 
@@ -407,7 +407,7 @@ function getStreamEndpointLLM(
 
   // The noop model needs a dedicated transition to preserve its static-response
   // and simulated-credit behaviors, which the generic transition drops.
-  if (endpoint.modelId === NOOP_MODEL_ID) {
+  if (endpoint.modelId === NOOP_MODEL) {
     return new NoopStreamTransition(auth, llmParameters, endpoint);
   }
 

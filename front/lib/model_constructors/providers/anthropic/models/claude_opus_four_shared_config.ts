@@ -1,7 +1,7 @@
 import type { BaseEndpointConfiguration } from "@app/lib/model_constructors/configuration";
 import { anthropicBaseConfigSchema } from "@app/lib/model_constructors/providers/anthropic/inputConfig";
 import { ANTHROPIC_SUPPORTED_NON_NULL_REASONING_EFFORTS } from "@app/lib/model_constructors/providers/anthropic/reasoning_efforts";
-import type { ModelId } from "@app/lib/model_constructors/types/model_ids";
+import type { Model } from "@app/lib/model_constructors/types/model_ids";
 
 import { z } from "zod";
 
@@ -40,7 +40,7 @@ export type AnthropicOpusInputConfig = z.infer<typeof opusConfigSchema>;
 // Builds the config mixin shared by Claude Opus 4.7 and 4.8. The models differ
 // only by `modelId`; everything else (schema, context window, output cap) is
 // identical, so each model file is a one-line binding of this factory.
-export function withAnthropicOpusConfig<const M extends ModelId>(modelId: M) {
+export function withAnthropicOpusConfig<const M extends Model>(modelId: M) {
   return function WithAnthropicOpusConfig<
     TBase extends abstract new (
       ...args: any[]

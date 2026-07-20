@@ -6,8 +6,8 @@ import { StreamEndpoint } from "@app/lib/model_constructors/stream/endpoint";
 import type { Credentials } from "@app/lib/model_constructors/types/credentials";
 import { inputConfigSchema } from "@app/lib/model_constructors/types/input/configuration";
 import type { ModelResponseEvent } from "@app/lib/model_constructors/types/output/events";
-import { OPENAI_RESPONSES_API } from "@app/lib/model_constructors/types/provider_apis";
-import { OPENAI_PROVIDER_ID } from "@app/lib/model_constructors/types/provider_ids";
+import { OPENAI_RESPONSES_HOST } from "@app/lib/model_constructors/types/provider_apis";
+import { OPENAI_LAB } from "@app/lib/model_constructors/types/provider_ids";
 import OpenAI from "openai";
 import type {
   ResponseCreateParamsNonStreaming,
@@ -31,8 +31,8 @@ export abstract class OpenAIResponsesStream extends WithOpenAIResponsesInputConv
     StreamEndpoint<ResponseCreateParamsNonStreaming, ResponseStreamEvent>
   )
 ) {
-  static readonly providerId = OPENAI_PROVIDER_ID;
-  static readonly api = OPENAI_RESPONSES_API;
+  static readonly providerId = OPENAI_LAB;
+  static readonly api = OPENAI_RESPONSES_HOST;
 
   static readonly configSchema: z.ZodType<OpenAIInputConfig> = configSchema;
 

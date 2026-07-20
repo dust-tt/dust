@@ -44,10 +44,10 @@ import type { ModelResponseEvent } from "@app/lib/model_constructors/types/outpu
 import { describe, expect, it, vi } from "vitest";
 
 const metadata: EndpointMetadata = {
-  providerId: "anthropic",
-  api: "anthropic",
+  lab: "anthropic",
+  host: "anthropic",
   region: "us",
-  modelId: "claude-sonnet-4-6",
+  model: "claude-sonnet-4-6",
 };
 
 // The real leaf converters, bundled into the interface the composites consume.

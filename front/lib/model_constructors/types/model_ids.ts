@@ -1,112 +1,110 @@
-export const GPT_5_6_SOL_MODEL_ID = "gpt-5.6-sol" as const;
-export const GPT_5_6_TERRA_MODEL_ID = "gpt-5.6-terra" as const;
-export const GPT_5_6_LUNA_MODEL_ID = "gpt-5.6-luna" as const;
-export const GPT_5_5_MODEL_ID = "gpt-5.5" as const;
-export const GPT_5_4_MODEL_ID = "gpt-5.4" as const;
-export const GPT_5_4_MINI_MODEL_ID = "gpt-5.4-mini" as const;
-export const GPT_5_4_NANO_MODEL_ID = "gpt-5.4-nano" as const;
-export const GPT_5_2_MODEL_ID = "gpt-5.2" as const;
-export const GPT_5_MODEL_ID = "gpt-5" as const;
-export const GPT_5_1_MODEL_ID = "gpt-5.1" as const;
-export const GPT_5_MINI_MODEL_ID = "gpt-5-mini" as const;
-export const GPT_5_NANO_MODEL_ID = "gpt-5-nano" as const;
+export const GPT_5_6_SOL = "gpt-5.6-sol" as const;
+export const GPT_5_6_TERRA = "gpt-5.6-terra" as const;
+export const GPT_5_6_LUNA = "gpt-5.6-luna" as const;
+export const GPT_5_5 = "gpt-5.5" as const;
+export const GPT_5_4 = "gpt-5.4" as const;
+export const GPT_5_4_MINI = "gpt-5.4-mini" as const;
+export const GPT_5_4_NANO = "gpt-5.4-nano" as const;
+export const GPT_5_2 = "gpt-5.2" as const;
+export const GPT_5 = "gpt-5" as const;
+export const GPT_5_1 = "gpt-5.1" as const;
+export const GPT_5_MINI = "gpt-5-mini" as const;
+export const GPT_5_NANO = "gpt-5-nano" as const;
 
-export const CLAUDE_SONNET_4_6_MODEL_ID = "claude-sonnet-4-6" as const;
-export const CLAUDE_SONNET_5_MODEL_ID = "claude-sonnet-5" as const;
-export const CLAUDE_FABLE_5_MODEL_ID = "claude-fable-5" as const;
-export const CLAUDE_OPUS_4_6_MODEL_ID = "claude-opus-4-6" as const;
-export const CLAUDE_OPUS_4_7_MODEL_ID = "claude-opus-4-7" as const;
-export const CLAUDE_OPUS_4_8_MODEL_ID = "claude-opus-4-8" as const;
-export const CLAUDE_HAIKU_4_5_MODEL_ID = "claude-haiku-4-5-20251001" as const;
+export const CLAUDE_SONNET_4_6 = "claude-sonnet-4-6" as const;
+export const CLAUDE_SONNET_5 = "claude-sonnet-5" as const;
+export const CLAUDE_FABLE_5 = "claude-fable-5" as const;
+export const CLAUDE_OPUS_4_6 = "claude-opus-4-6" as const;
+export const CLAUDE_OPUS_4_7 = "claude-opus-4-7" as const;
+export const CLAUDE_OPUS_4_8 = "claude-opus-4-8" as const;
+export const CLAUDE_HAIKU_4_5 = "claude-haiku-4-5-20251001" as const;
 
-export const GEMINI_3_1_PRO_MODEL_ID = "gemini-3.1-pro-preview" as const;
-export const GEMINI_3_5_FLASH_MODEL_ID = "gemini-3.5-flash" as const;
-export const GEMINI_3_1_FLASH_LITE_MODEL_ID = "gemini-3.1-flash-lite" as const;
+export const GEMINI_3_1_PRO = "gemini-3.1-pro-preview" as const;
+export const GEMINI_3_5_FLASH = "gemini-3.5-flash" as const;
+export const GEMINI_3_1_FLASH_LITE = "gemini-3.1-flash-lite" as const;
 
-export const MISTRAL_LARGE_MODEL_ID = "mistral-large-latest" as const;
-export const MISTRAL_MEDIUM_3_5_MODEL_ID = "mistral-medium-3-5" as const;
-export const MISTRAL_SMALL_MODEL_ID = "mistral-small-latest" as const;
-export const MISTRAL_CODESTRAL_MODEL_ID = "codestral-latest" as const;
+export const MISTRAL_LARGE = "mistral-large-latest" as const;
+export const MISTRAL_MEDIUM_3_5 = "mistral-medium-3-5" as const;
+export const MISTRAL_SMALL = "mistral-small-latest" as const;
+export const MISTRAL_CODESTRAL = "codestral-latest" as const;
 
 // Fireworks-served models keep their full Fireworks model path as the id.
-export const FIREWORKS_DEEPSEEK_V3P2_MODEL_ID =
+export const FIREWORKS_DEEPSEEK_V3P2 =
   "accounts/fireworks/models/deepseek-v3p2" as const;
-export const FIREWORKS_DEEPSEEK_V4_PRO_MODEL_ID =
+export const FIREWORKS_DEEPSEEK_V4_PRO =
   "accounts/fireworks/models/deepseek-v4-pro" as const;
-export const FIREWORKS_KIMI_K2_INSTRUCT_MODEL_ID =
+export const FIREWORKS_KIMI_K2_INSTRUCT =
   "accounts/fireworks/models/kimi-k2-instruct-0905" as const;
-export const FIREWORKS_KIMI_K2P5_MODEL_ID =
+export const FIREWORKS_KIMI_K2P5 =
   "accounts/fireworks/models/kimi-k2p5" as const;
-export const FIREWORKS_KIMI_K2P6_MODEL_ID =
+export const FIREWORKS_KIMI_K2P6 =
   "accounts/fireworks/models/kimi-k2p6" as const;
-export const FIREWORKS_MINIMAX_M2P5_MODEL_ID =
+export const FIREWORKS_MINIMAX_M2P5 =
   "accounts/fireworks/models/minimax-m2p5" as const;
-export const FIREWORKS_GLM_5_MODEL_ID =
-  "accounts/fireworks/models/glm-5" as const;
-export const FIREWORKS_GLM_5P2_MODEL_ID =
-  "accounts/fireworks/models/glm-5p2" as const;
+export const FIREWORKS_GLM_5 = "accounts/fireworks/models/glm-5" as const;
+export const FIREWORKS_GLM_5P2 = "accounts/fireworks/models/glm-5p2" as const;
 
 // Dummy model used for local/dev testing (static replies, simulated credit
 // consumption). Served by the in-process noop endpoint, not an external API.
-export const NOOP_MODEL_ID = "noop" as const;
+export const NOOP_MODEL = "noop" as const;
 
 // Include a few examples for now
-export const MODEL_IDS = [
-  GPT_5_6_SOL_MODEL_ID,
-  GPT_5_6_TERRA_MODEL_ID,
-  GPT_5_6_LUNA_MODEL_ID,
-  GPT_5_5_MODEL_ID,
-  GPT_5_4_MODEL_ID,
-  GPT_5_4_MINI_MODEL_ID,
-  GPT_5_4_NANO_MODEL_ID,
-  GPT_5_2_MODEL_ID,
-  GPT_5_MODEL_ID,
-  GPT_5_1_MODEL_ID,
-  GPT_5_MINI_MODEL_ID,
-  GPT_5_NANO_MODEL_ID,
-  CLAUDE_SONNET_4_6_MODEL_ID,
-  CLAUDE_SONNET_5_MODEL_ID,
-  CLAUDE_FABLE_5_MODEL_ID,
-  CLAUDE_OPUS_4_6_MODEL_ID,
-  CLAUDE_OPUS_4_7_MODEL_ID,
-  CLAUDE_OPUS_4_8_MODEL_ID,
-  CLAUDE_HAIKU_4_5_MODEL_ID,
-  GEMINI_3_1_PRO_MODEL_ID,
-  GEMINI_3_5_FLASH_MODEL_ID,
-  GEMINI_3_1_FLASH_LITE_MODEL_ID,
-  MISTRAL_LARGE_MODEL_ID,
-  MISTRAL_MEDIUM_3_5_MODEL_ID,
-  MISTRAL_SMALL_MODEL_ID,
-  MISTRAL_CODESTRAL_MODEL_ID,
-  FIREWORKS_DEEPSEEK_V3P2_MODEL_ID,
-  FIREWORKS_DEEPSEEK_V4_PRO_MODEL_ID,
-  FIREWORKS_KIMI_K2_INSTRUCT_MODEL_ID,
-  FIREWORKS_KIMI_K2P5_MODEL_ID,
-  FIREWORKS_KIMI_K2P6_MODEL_ID,
-  FIREWORKS_MINIMAX_M2P5_MODEL_ID,
-  FIREWORKS_GLM_5_MODEL_ID,
-  FIREWORKS_GLM_5P2_MODEL_ID,
-  NOOP_MODEL_ID,
+export const MODELS = [
+  GPT_5_6_SOL,
+  GPT_5_6_TERRA,
+  GPT_5_6_LUNA,
+  GPT_5_5,
+  GPT_5_4,
+  GPT_5_4_MINI,
+  GPT_5_4_NANO,
+  GPT_5_2,
+  GPT_5,
+  GPT_5_1,
+  GPT_5_MINI,
+  GPT_5_NANO,
+  CLAUDE_SONNET_4_6,
+  CLAUDE_SONNET_5,
+  CLAUDE_FABLE_5,
+  CLAUDE_OPUS_4_6,
+  CLAUDE_OPUS_4_7,
+  CLAUDE_OPUS_4_8,
+  CLAUDE_HAIKU_4_5,
+  GEMINI_3_1_PRO,
+  GEMINI_3_5_FLASH,
+  GEMINI_3_1_FLASH_LITE,
+  MISTRAL_LARGE,
+  MISTRAL_MEDIUM_3_5,
+  MISTRAL_SMALL,
+  MISTRAL_CODESTRAL,
+  FIREWORKS_DEEPSEEK_V3P2,
+  FIREWORKS_DEEPSEEK_V4_PRO,
+  FIREWORKS_KIMI_K2_INSTRUCT,
+  FIREWORKS_KIMI_K2P5,
+  FIREWORKS_KIMI_K2P6,
+  FIREWORKS_MINIMAX_M2P5,
+  FIREWORKS_GLM_5,
+  FIREWORKS_GLM_5P2,
+  NOOP_MODEL,
 ] as const;
 
-export type ModelId = (typeof MODEL_IDS)[number];
+export type Model = (typeof MODELS)[number];
 
-export function isModelId(value: string): value is ModelId {
-  return (MODEL_IDS as readonly string[]).includes(value);
+export function isModel(value: string): value is Model {
+  return (MODELS as readonly string[]).includes(value);
 }
 
-export const ORDERED_LARGE_MODEL_IDS = [
-  CLAUDE_FABLE_5_MODEL_ID,
-  CLAUDE_OPUS_4_8_MODEL_ID,
-  CLAUDE_OPUS_4_7_MODEL_ID,
-  CLAUDE_OPUS_4_6_MODEL_ID,
-  CLAUDE_SONNET_5_MODEL_ID,
-  CLAUDE_SONNET_4_6_MODEL_ID,
-  GPT_5_6_SOL_MODEL_ID,
-  GPT_5_5_MODEL_ID,
-  GPT_5_4_MODEL_ID,
-  GPT_5_2_MODEL_ID,
-  GPT_5_MODEL_ID,
-  GPT_5_1_MODEL_ID,
-  GEMINI_3_1_PRO_MODEL_ID,
+export const ORDERED_LARGE_MODELS = [
+  CLAUDE_FABLE_5,
+  CLAUDE_OPUS_4_8,
+  CLAUDE_OPUS_4_7,
+  CLAUDE_OPUS_4_6,
+  CLAUDE_SONNET_5,
+  CLAUDE_SONNET_4_6,
+  GPT_5_6_SOL,
+  GPT_5_5,
+  GPT_5_4,
+  GPT_5_2,
+  GPT_5,
+  GPT_5_1,
+  GEMINI_3_1_PRO,
 ];

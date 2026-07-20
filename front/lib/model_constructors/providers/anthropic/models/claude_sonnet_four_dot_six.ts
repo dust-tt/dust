@@ -1,7 +1,7 @@
 import type { BaseEndpointConfiguration } from "@app/lib/model_constructors/configuration";
 import { anthropicBaseConfigSchema } from "@app/lib/model_constructors/providers/anthropic/inputConfig";
 import { temperatureSchema } from "@app/lib/model_constructors/types/input/configuration";
-import { CLAUDE_SONNET_4_6_MODEL_ID } from "@app/lib/model_constructors/types/model_ids";
+import { CLAUDE_SONNET_4_6 } from "@app/lib/model_constructors/types/model_ids";
 
 import { z } from "zod";
 
@@ -42,7 +42,7 @@ export function WithAnthropicClaudeSonnetFourDotSixConfig<
     // instance type carries `ClaudeSonnetFourDotSix` (not the wide `InputConfig`).
     declare ["constructor"]: BaseEndpointConfiguration<ClaudeSonnetFourDotSix>;
 
-    static readonly modelId = CLAUDE_SONNET_4_6_MODEL_ID;
+    static readonly modelId = CLAUDE_SONNET_4_6;
 
     static readonly configSchema: z.ZodType<
       ClaudeSonnetFourDotSix,

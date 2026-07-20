@@ -29,7 +29,7 @@ import {
 import { StreamEndpointTransition } from "@app/lib/api/llm/transitionLLM";
 import type { LLMParameters } from "@app/lib/api/llm/types/options";
 import { DUST_STREAM_ENDPOINTS } from "@app/lib/llms/stream";
-import { NOOP_PROVIDER_ID } from "@app/lib/model_constructors/types/provider_ids";
+import { NOOP_LAB } from "@app/lib/model_constructors/types/provider_ids";
 import { GLOBAL } from "@app/lib/model_constructors/types/regions";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { describe, expect, it, vi } from "vitest";
@@ -137,8 +137,7 @@ const ENDPOINTS = Object.values(DUST_STREAM_ENDPOINTS)
   // The noop endpoint synthesizes its stream in-process; there is no provider
   // SDK request to compare against, so it is out of scope for router parity.
   .filter(
-    (endpoint) =>
-      endpoint.region === GLOBAL && endpoint.providerId !== NOOP_PROVIDER_ID
+    (endpoint) => endpoint.region === GLOBAL && endpoint.providerId !== NOOP_LAB
   );
 const MATRIX = buildParityMatrix();
 

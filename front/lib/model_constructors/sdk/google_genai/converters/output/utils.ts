@@ -206,7 +206,7 @@ export function finishReasonToErrorEvent(
       return buildErrorEvent({
         metadata,
         type: "model_output_error",
-        message: `Model generated an invalid tool call for ${metadata.modelId}.`,
+        message: `Model generated an invalid tool call for ${metadata.model}.`,
       });
     // Any other finish reason (OTHER, NO_IMAGE, unspecified, future values, ...)
     // is surfaced as an unknown error.
@@ -263,7 +263,7 @@ function apiErrorToErrorEvent(
       return buildErrorEvent({
         metadata,
         type: "rate_limit_error",
-        message: `Rate limit exceeded for Google/${metadata.modelId}: ${error.message}`,
+        message: `Rate limit exceeded for Google/${metadata.model}: ${error.message}`,
         originalError: error,
       });
     case 503:

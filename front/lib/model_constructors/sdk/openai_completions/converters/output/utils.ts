@@ -98,7 +98,7 @@ export function streamErrorToErrorEvent(
         return buildErrorEvent({
           metadata,
           type: "rate_limit_error",
-          message: `Rate limit exceeded for Fireworks/${metadata.modelId}: ${error.message}`,
+          message: `Rate limit exceeded for Fireworks/${metadata.model}: ${error.message}`,
           originalError: error,
         });
       default:

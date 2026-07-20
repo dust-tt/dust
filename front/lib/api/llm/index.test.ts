@@ -3,12 +3,12 @@ import { Authenticator, getFeatureFlags } from "@app/lib/auth";
 import { getStreamEndpoints } from "@app/lib/llms/stream";
 import type { WorkspaceConfig } from "@app/lib/llms/types/filter";
 import {
-  GEMINI_3_1_PRO_MODEL_ID,
-  GEMINI_3_5_FLASH_MODEL_ID,
+  GEMINI_3_1_PRO,
+  GEMINI_3_5_FLASH,
 } from "@app/lib/model_constructors/types/model_ids";
 import {
-  AGENT_PLATFORM_API,
-  GOOGLE_AI_STUDIO_API,
+  AGENT_PLATFORM_HOST,
+  GOOGLE_AI_STUDIO_HOST,
 } from "@app/lib/model_constructors/types/provider_apis";
 import {
   isCreditPricedPlanPrefix,
@@ -40,18 +40,18 @@ describe("getWorkspaceFilter", () => {
 
     const flashEndpoints = getStreamEndpoints(workspaceConfig, {
       ...filter,
-      modelId: { eq: GEMINI_3_5_FLASH_MODEL_ID },
+      modelId: { eq: GEMINI_3_5_FLASH },
     });
     expect(flashEndpoints.length).toBeGreaterThan(0);
-    expect(flashEndpoints.every((e) => e.api === AGENT_PLATFORM_API)).toBe(
+    expect(flashEndpoints.every((e) => e.api === AGENT_PLATFORM_HOST)).toBe(
       true
     );
 
     const proEndpoints = getStreamEndpoints(workspaceConfig, {
       ...filter,
-      modelId: { eq: GEMINI_3_1_PRO_MODEL_ID },
+      modelId: { eq: GEMINI_3_1_PRO },
     });
-    expect(proEndpoints.every((e) => e.api !== GOOGLE_AI_STUDIO_API)).toBe(
+    expect(proEndpoints.every((e) => e.api !== GOOGLE_AI_STUDIO_HOST)).toBe(
       true
     );
   });
@@ -66,8 +66,10 @@ describe("getWorkspaceFilter", () => {
 
     const proEndpoints = getStreamEndpoints(workspaceConfig, {
       ...filter,
-      modelId: { eq: GEMINI_3_1_PRO_MODEL_ID },
+      modelId: { eq: GEMINI_3_1_PRO },
     });
-    expect(proEndpoints.some((e) => e.api === GOOGLE_AI_STUDIO_API)).toBe(true);
+    expect(proEndpoints.some((e) => e.api === GOOGLE_AI_STUDIO_HOST)).toBe(
+      true
+    );
   });
 });

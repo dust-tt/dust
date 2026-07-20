@@ -50,7 +50,7 @@ import type {
   SystemTextMessage,
   ToolCallResultPart,
 } from "@app/lib/model_constructors/types/input/messages";
-import { NOOP_MODEL_ID } from "@app/lib/model_constructors/types/model_ids";
+import { NOOP_MODEL } from "@app/lib/model_constructors/types/model_ids";
 import type {
   ErrorType,
   ModelResponseEvent,
@@ -60,10 +60,10 @@ import type {
   NonDeltaResponseEvent,
 } from "@app/lib/model_constructors/types/output/events";
 import {
-  AGENT_PLATFORM_API,
-  OPENAI_RESPONSES_API,
+  AGENT_PLATFORM_HOST,
+  OPENAI_RESPONSES_HOST,
 } from "@app/lib/model_constructors/types/provider_apis";
-import { NOOP_PROVIDER_ID } from "@app/lib/model_constructors/types/provider_ids";
+import { NOOP_LAB } from "@app/lib/model_constructors/types/provider_ids";
 import { isCacheMissReason } from "@app/lib/model_constructors/utils/cache_miss_reason";
 import type { RunUsageType } from "@app/lib/resources/run_resource";
 import type {
@@ -721,7 +721,7 @@ export class StreamEndpointTransition extends BaseTransition {
     this.endpointConstructor = modelConstructor;
     this.model = new modelConstructor(llmParameters.credentials);
 
-    const { api, region } = this.model.metadata();
+    const { host: api, region } = this.model.metadata();
     this.metadata = {
       ...this.metadata,
       inferenceProvider: api,
@@ -733,15 +733,15 @@ export class StreamEndpointTransition extends BaseTransition {
     streamParameters: LLMStreamParameters,
     metadata?: LLMStreamMetadata
   ) {
-    const { api } = this.model.metadata();
+    const { host: api } = this.model.metadata();
     // Agent-platform (Vertex) has no request-level automatic cache_control, so it
     // needs an explicit breakpoint on the conversation tail (legacy's isLast).
-    const explicitTailBreakpoint = api === AGENT_PLATFORM_API;
+    const explicitTailBreakpoint = api === AGENT_PLATFORM_HOST;
     // Only OpenAI Responses consumes a prompt cache key (as `prompt_cache_key`);
     // legacy sent the conversationId. Other surfaces guard `cacheKey` to
     // undefined, so leave it unset for them.
     const cacheKey =
-      api === OPENAI_RESPONSES_API ? metadata?.conversationId : undefined;
+      api === OPENAI_RESPONSES_HOST ? metadata?.conversationId : undefined;
     return this.model.buildRequestPayload(
       this.buildPayload(streamParameters, { explicitTailBreakpoint }),
       this.buildConfig(
@@ -808,8 +808,8 @@ export class NoopStreamTransition extends StreamEndpointTransition {
       const costMicroUsd = Math.round(parseFloat(consumeMatch[1]) * 1_000_000);
       this.simulatedRunUsages = [
         {
-          providerId: NOOP_PROVIDER_ID,
-          modelId: NOOP_MODEL_ID,
+          providerId: NOOP_LAB,
+          modelId: NOOP_MODEL,
           promptTokens: 0,
           completionTokens: 0,
           cachedTokens: null,

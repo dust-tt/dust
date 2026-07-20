@@ -1,27 +1,27 @@
 import type { ModelProviderIdType } from "@app/types/assistant/models/types";
 
-export const OPENAI_PROVIDER_ID = "openai" as const;
-export const ANTHROPIC_PROVIDER_ID = "anthropic" as const;
-export const GOOGLE_AI_STUDIO_PROVIDER_ID = "google_ai_studio" as const;
-export const MISTRAL_PROVIDER_ID = "mistral" as const;
-export const FIREWORKS_PROVIDER_ID = "fireworks" as const;
-export const NOOP_PROVIDER_ID = "noop" as const;
+export const OPENAI_LAB = "openai" as const;
+export const ANTHROPIC_PROVIDER_LAB = "anthropic" as const;
+export const GOOGLE_LAB = "google_ai_studio" as const;
+export const MISTRAL_LAB = "mistral" as const;
+export const FIREWORKS_LAB = "fireworks" as const;
+export const NOOP_LAB = "noop" as const;
 
 // `satisfies readonly ModelProviderIdType[]` guarantees every new-system
 // provider id is also a legacy `ModelProviderIdType`. This keeps `ProviderId`
 // a true subset, so narrowing helpers like `isProviderId` filter the legacy
 // union without silently dropping ids on a naming drift (e.g. the previous
 // "google-ai-studio" vs "google_ai_studio" mismatch).
-const PROVIDER_IDS = [
-  OPENAI_PROVIDER_ID,
-  ANTHROPIC_PROVIDER_ID,
-  GOOGLE_AI_STUDIO_PROVIDER_ID,
-  MISTRAL_PROVIDER_ID,
-  FIREWORKS_PROVIDER_ID,
-  NOOP_PROVIDER_ID,
+const LABS = [
+  OPENAI_LAB,
+  ANTHROPIC_PROVIDER_LAB,
+  GOOGLE_LAB,
+  MISTRAL_LAB,
+  FIREWORKS_LAB,
+  NOOP_LAB,
 ] as const satisfies readonly ModelProviderIdType[];
-export type ProviderId = (typeof PROVIDER_IDS)[number];
+export type Lab = (typeof LABS)[number];
 
-export function isProviderId(value: string): value is ProviderId {
-  return (PROVIDER_IDS as readonly string[]).includes(value);
+export function isLab(value: string): value is Lab {
+  return (LABS as readonly string[]).includes(value);
 }

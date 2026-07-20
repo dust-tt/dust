@@ -9,8 +9,8 @@ import { WithGoogleGenAIOutputConverter } from "@app/lib/model_constructors/sdk/
 import { responseToEvents } from "@app/lib/model_constructors/sdk/google_genai/converters/output/utils";
 import type { Credentials } from "@app/lib/model_constructors/types/credentials";
 import type { NonDeltaResponseEvent } from "@app/lib/model_constructors/types/output/events";
-import { GOOGLE_AI_STUDIO_API } from "@app/lib/model_constructors/types/provider_apis";
-import { GOOGLE_AI_STUDIO_PROVIDER_ID } from "@app/lib/model_constructors/types/provider_ids";
+import { GOOGLE_AI_STUDIO_HOST } from "@app/lib/model_constructors/types/provider_apis";
+import { GOOGLE_LAB } from "@app/lib/model_constructors/types/provider_ids";
 import { buildErrorEvent } from "@app/lib/model_constructors/utils/build_error_event";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import type {
@@ -55,8 +55,8 @@ export abstract class GoogleAiStudioBatch extends WithGoogleGenAIInputConverter(
     >
   )
 ) {
-  static readonly providerId = GOOGLE_AI_STUDIO_PROVIDER_ID;
-  static readonly api = GOOGLE_AI_STUDIO_API;
+  static readonly providerId = GOOGLE_LAB;
+  static readonly api = GOOGLE_AI_STUDIO_HOST;
 
   private readonly client: GoogleGenAI;
 

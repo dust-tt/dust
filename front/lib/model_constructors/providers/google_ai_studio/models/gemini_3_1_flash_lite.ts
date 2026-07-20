@@ -1,6 +1,6 @@
 import { googleAiStudioConfigSchema } from "@app/lib/model_constructors/providers/google_ai_studio/inputConfig";
 import { GEMINI_FLASH_LITE_SUPPORTED_REASONING_EFFORTS } from "@app/lib/model_constructors/providers/google_ai_studio/reasoning_efforts";
-import { GEMINI_3_1_FLASH_LITE_MODEL_ID } from "@app/lib/model_constructors/types/model_ids";
+import { GEMINI_3_1_FLASH_LITE } from "@app/lib/model_constructors/types/model_ids";
 import { z } from "zod";
 
 export const CONTEXT_SIZE = 1_000_000;
@@ -24,7 +24,7 @@ export function WithGoogleAiStudioGeminiThreeDotOneFlashLiteConfig<
   ) => object,
 >(Base: TBase) {
   abstract class GoogleAiStudioGeminiThreeDotOneFlashLite extends Base {
-    static readonly modelId = GEMINI_3_1_FLASH_LITE_MODEL_ID;
+    static readonly modelId = GEMINI_3_1_FLASH_LITE;
 
     static readonly configSchema = configSchema;
 

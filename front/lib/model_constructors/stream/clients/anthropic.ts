@@ -24,8 +24,8 @@ import type {
   ModelResponseEvent,
   ResponseIdEvent,
 } from "@app/lib/model_constructors/types/output/events";
-import { ANTHROPIC_API } from "@app/lib/model_constructors/types/provider_apis";
-import { ANTHROPIC_PROVIDER_ID } from "@app/lib/model_constructors/types/provider_ids";
+import { ANTHROPIC_HOST } from "@app/lib/model_constructors/types/provider_apis";
+import { ANTHROPIC_PROVIDER_LAB } from "@app/lib/model_constructors/types/provider_ids";
 import type { CacheMissReason } from "@app/lib/model_constructors/utils/cache_miss_reason";
 
 // Opts into prompt-cache diagnostics (Claude API only, not Vertex/agent).
@@ -66,8 +66,8 @@ export abstract class AnthropicStream extends WithAnthropicAIInputConverter(
     >
   )
 ) {
-  static readonly providerId = ANTHROPIC_PROVIDER_ID;
-  static readonly api = ANTHROPIC_API;
+  static readonly providerId = ANTHROPIC_PROVIDER_LAB;
+  static readonly api = ANTHROPIC_HOST;
 
   static readonly configSchema = anthropicConfigSchema;
 

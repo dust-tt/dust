@@ -9,7 +9,7 @@ import { isOpenAIResponsesWhitelistedModelId } from "@app/lib/api/llm/clients/op
 import type { LLM } from "@app/lib/api/llm/llm";
 import type { Authenticator } from "@app/lib/auth";
 import type { DustStreamEndpointConstructor } from "@app/lib/llms/stream/dust_stream_endpoint";
-import type { ProviderId } from "@app/lib/model_constructors/types/provider_ids";
+import type { Lab } from "@app/lib/model_constructors/types/provider_ids";
 import type { Region } from "@app/lib/model_constructors/types/regions";
 import { isModelId } from "@app/types/assistant/models/models";
 import type {
@@ -39,7 +39,7 @@ export interface LegacyBuildParams {
 export interface EndpointInfo {
   ctor: DustStreamEndpointConstructor;
   id: string;
-  providerId: ProviderId;
+  providerId: Lab;
   region: Region;
   modelId: string;
 }
@@ -246,14 +246,14 @@ const fireworksProvider: ParityProvider = {
   },
 };
 
-const PARITY_PROVIDERS: Partial<Record<ProviderId, ParityProvider>> = {
+const PARITY_PROVIDERS: Partial<Record<Lab, ParityProvider>> = {
   anthropic: anthropicProvider,
   google_ai_studio: googleProvider,
   openai: openaiProvider,
   fireworks: fireworksProvider,
 };
 
-export function getParityProvider(providerId: ProviderId): ParityProvider {
+export function getParityProvider(providerId: Lab): ParityProvider {
   const provider = PARITY_PROVIDERS[providerId];
   if (!provider) {
     throw new Error(
