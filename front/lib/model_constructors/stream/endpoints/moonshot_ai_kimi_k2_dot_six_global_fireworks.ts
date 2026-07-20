@@ -1,6 +1,7 @@
 import { WithMoonshotAiKimiK2Dot6Config } from "@app/lib/model_constructors/providers/fireworks/models/kimi_k2_dot_six";
 import { FireworksStream } from "@app/lib/model_constructors/stream/clients/fireworks";
 import type { StreamEndpointConstructor } from "@app/lib/model_constructors/stream/configuration";
+import { MOONSHOT_AI_LAB } from "@app/lib/model_constructors/types/labs";
 import { GLOBAL } from "@app/lib/model_constructors/types/regions";
 
 export class MoonshotAiKimiK2Dot6GlobalFireworksStream extends WithMoonshotAiKimiK2Dot6Config(
@@ -12,6 +13,7 @@ export class MoonshotAiKimiK2Dot6GlobalFireworksStream extends WithMoonshotAiKim
     standardInput: 0.95,
     standardOutput: 4.0,
   };
+  static readonly lab = MOONSHOT_AI_LAB;
   static readonly region = GLOBAL;
   static readonly id = this.buildId();
 }

@@ -8,7 +8,6 @@ import { StreamEndpoint } from "@app/lib/model_constructors/stream/endpoint";
 import type { Credentials } from "@app/lib/model_constructors/types/credentials";
 import { FIREWORKS_HOST } from "@app/lib/model_constructors/types/hosts";
 import type { Payload } from "@app/lib/model_constructors/types/input/messages";
-import { FIREWORKS_LAB } from "@app/lib/model_constructors/types/labs";
 import type { Model } from "@app/lib/model_constructors/types/models";
 import type { ModelResponseEvent } from "@app/lib/model_constructors/types/output/events";
 import OpenAI from "openai";
@@ -30,7 +29,6 @@ export abstract class FireworksStream extends WithOpenAICompletionsInputConverte
     FireworksInputConfig
   >
 ) {
-  static readonly lab = FIREWORKS_LAB;
   static readonly host = FIREWORKS_HOST;
 
   static readonly configSchema = fireworksConfigSchema;

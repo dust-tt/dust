@@ -1,6 +1,7 @@
 import { WithZAiGlm52Config } from "@app/lib/model_constructors/providers/fireworks/models/glm_five_dot_two";
 import { FireworksStream } from "@app/lib/model_constructors/stream/clients/fireworks";
 import type { StreamEndpointConstructor } from "@app/lib/model_constructors/stream/configuration";
+import { Z_AI_LAB } from "@app/lib/model_constructors/types/labs";
 import { GLOBAL } from "@app/lib/model_constructors/types/regions";
 
 export class ZAiGlmFiveDotTwoGlobalFireworksStream extends WithZAiGlm52Config(
@@ -12,6 +13,8 @@ export class ZAiGlmFiveDotTwoGlobalFireworksStream extends WithZAiGlm52Config(
     standardInput: 1.4,
     standardOutput: 4.4,
   };
+
+  static readonly lab = Z_AI_LAB;
 
   static readonly region = GLOBAL;
 

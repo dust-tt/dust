@@ -41,8 +41,11 @@ import type {
 } from "@app/lib/llms/types/filter";
 import { sortEndpointsByPreferredRegion } from "@app/lib/llms/utils/sort_endpoints";
 import { FIREWORKS_MODEL_PREFIX } from "@app/lib/model_constructors/stream/clients/fireworks";
-import { GOOGLE_AI_STUDIO_HOST } from "@app/lib/model_constructors/types/hosts";
-import { isLab, type Lab } from "@app/lib/model_constructors/types/labs";
+import {
+  GOOGLE_AI_STUDIO_HOST,
+  type Host,
+} from "@app/lib/model_constructors/types/hosts";
+import type { Lab } from "@app/lib/model_constructors/types/labs";
 import {
   isModel,
   type Model,
@@ -59,10 +62,14 @@ import {
 } from "@app/lib/plans/plan_codes";
 import logger from "@app/logger/logger";
 import { BYOK_MODEL_PROVIDER_IDS } from "@app/types/assistant/models/providers";
-import type { ModelIdType } from "@app/types/assistant/models/types";
+import type {
+  ModelIdType,
+  ModelProviderIdType,
+} from "@app/types/assistant/models/types";
 import type { LLMCredentialsType } from "@app/types/provider_credential";
 import type { RegionType } from "@app/types/region";
 import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
+import compact from "lodash/compact";
 import intersection from "lodash/intersection";
 
 // EAP (Early Access Program) models are served through a dedicated Anthropic
@@ -315,24 +322,71 @@ function getRegionFilter(auth: Authenticator): ValueFilter<Region> | undefined {
   return { eq: EUROPE };
 }
 
-function getProviderIdFilter(auth: Authenticator): ValueFilter<Lab> {
-  const whitelistedProviderIds = [...getWhitelistedProviders(auth)].filter(
-    isLab
-  );
+function getWhitelistedProviderIds(auth: Authenticator): ModelProviderIdType[] {
+  const whitelistedProviderIds = [...getWhitelistedProviders(auth)];
   const byok = auth.getNonNullablePlan().isByok;
-  const providerIds = byok
+
+  return byok
     ? intersection(whitelistedProviderIds, BYOK_MODEL_PROVIDER_IDS)
     : whitelistedProviderIds;
+}
 
-  return { in: providerIds };
+const PROVIDER_ID_TO_LAB: Record<ModelProviderIdType, Lab | null> = {
+  openai: "openai",
+  anthropic: "anthropic",
+  mistral: "mistral",
+  google_ai_studio: "google",
+  deepseek: "deepseek",
+  fireworks: null,
+  xai: "z_ai",
+  noop: "noop",
+  auto: null,
+};
+
+const PROVIDER_ID_TO_HOST: Record<ModelProviderIdType, Host | null> = {
+  openai: null,
+  anthropic: null,
+  mistral: null,
+  google_ai_studio: null,
+  deepseek: null,
+  fireworks: "fireworks",
+  xai: null,
+  noop: null,
+  auto: null,
+};
+
+// Whitelisting is keyed on the legacy provider id, which conflates a model's
+// lab (its developer) and its serving host — e.g. "fireworks" is really a host,
+// not a lab. When "fireworks" is whitelisted we match on host so its
+// lab-attributed models (deepseek/moonshot_ai/z_ai) surface; every other
+// provider id maps to a lab. This is a known domain naming error to be fixed
+// later.
+function getLabAndHostFilter(
+  providerIds: ModelProviderIdType[]
+): Where<EndpointConfig> {
+  const whitelistedLabs = compact(
+    providerIds.map((id) => PROVIDER_ID_TO_LAB[id])
+  );
+  const labFilter: Where<EndpointConfig> = {
+    lab: { in: whitelistedLabs },
+  };
+  const whitelistedHosts = compact(
+    providerIds.map((id) => PROVIDER_ID_TO_HOST[id])
+  );
+  const hostFilter: Where<EndpointConfig> = {
+    host: { in: whitelistedHosts },
+  };
+
+  return { or: [labFilter, hostFilter] };
 }
 
 // Temporary helper while we have both systems
 export function getWorkspaceFilter(auth: Authenticator): Where<EndpointConfig> {
   const byok = auth.getNonNullablePlan().isByok;
+  const providerIds = getWhitelistedProviderIds(auth);
 
   return {
-    lab: getProviderIdFilter(auth),
+    ...getLabAndHostFilter(providerIds),
     region: getRegionFilter(auth),
     // We route all non-byok gemini requests to agent platform.
     ...(byok ? {} : { not: { host: { eq: GOOGLE_AI_STUDIO_HOST } } }),
