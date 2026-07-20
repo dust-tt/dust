@@ -26,11 +26,11 @@ export type ToolHandlerExtra = RequestHandlerExtra<
 
 export type ToolHandlerResult = Result<CallToolResult["content"], MCPError>;
 
-export type ToolHandlers<T extends readonly ToolMeta[]> = {
-  [ToolName in T[number]["name"]]: (
+export type ToolHandlers<ToolsList extends readonly ToolMeta[]> = {
+  [ToolName in ToolsList[number]["name"]]: (
     // Type the params with the type inferred from the zod schema (z.ZodObject because it's a zod shape, not a schema).
     params: z.infer<
-      z.ZodObject<Extract<T[number], { name: ToolName }>["schema"]>
+      z.ZodObject<Extract<ToolsList[number], { name: ToolName }>["schema"]>
     >,
     extra: ToolHandlerExtra
   ) => Promise<ToolHandlerResult>;
