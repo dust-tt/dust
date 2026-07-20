@@ -2081,20 +2081,6 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool billing info ac
       "toolCostCategory": "basic",
     },
   },
-  "schedules_management": {
-    "create_schedule": {
-      "freeUsage": false,
-      "toolCostCategory": "basic",
-    },
-    "disable_schedule": {
-      "freeUsage": true,
-      "toolCostCategory": "basic",
-    },
-    "list_schedules": {
-      "freeUsage": true,
-      "toolCostCategory": "basic",
-    },
-  },
   "search": {
     "semantic_search": {
       "freeUsage": false,
@@ -2351,6 +2337,28 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool billing info ac
       "toolCostCategory": "basic",
     },
     "list": {
+      "freeUsage": true,
+      "toolCostCategory": "basic",
+    },
+  },
+  "triggers_management": {
+    "create_event_trigger": {
+      "freeUsage": false,
+      "toolCostCategory": "basic",
+    },
+    "create_schedule": {
+      "freeUsage": false,
+      "toolCostCategory": "basic",
+    },
+    "disable_trigger": {
+      "freeUsage": true,
+      "toolCostCategory": "basic",
+    },
+    "list_event_sources": {
+      "freeUsage": true,
+      "toolCostCategory": "basic",
+    },
+    "list_triggers": {
       "freeUsage": true,
       "toolCostCategory": "basic",
     },
@@ -3232,11 +3240,6 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool stakes across a
     "publish": "low",
     "unpublish": "high",
   },
-  "schedules_management": {
-    "create_schedule": "high",
-    "disable_schedule": "high",
-    "list_schedules": "never_ask",
-  },
   "search": {
     "semantic_search": "never_ask",
   },
@@ -3319,6 +3322,13 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool stakes across a
   "toolsets": {
     "enable": "never_ask",
     "list": "never_ask",
+  },
+  "triggers_management": {
+    "create_event_trigger": "high",
+    "create_schedule": "high",
+    "disable_trigger": "high",
+    "list_event_sources": "never_ask",
+    "list_triggers": "never_ask",
   },
   "ukg_ready": {
     "create_pto_request": "low",
