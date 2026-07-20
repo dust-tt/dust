@@ -1,9 +1,9 @@
-import { WithFireworksDeepSeekV4ProConfig } from "@app/lib/model_constructors/providers/fireworks/models/deepseek_v4_pro";
+import { WithDeepSeekDeepSeekV4ProConfig } from "@app/lib/model_constructors/providers/fireworks/models/deepseek_v4_pro";
 import { FireworksStream } from "@app/lib/model_constructors/stream/clients/fireworks";
 import type { StreamEndpointConstructor } from "@app/lib/model_constructors/stream/configuration";
 import { GLOBAL } from "@app/lib/model_constructors/types/regions";
 
-export class FireworksDeepSeekV4ProGlobalFireworksStream extends WithFireworksDeepSeekV4ProConfig(
+export class DeepSeekDeepSeekV4ProGlobalFireworksStream extends WithDeepSeekDeepSeekV4ProConfig(
   FireworksStream
 ) {
   // https://fireworks.ai/models/fireworks/deepseek-v4-pro
@@ -15,4 +15,4 @@ export class FireworksDeepSeekV4ProGlobalFireworksStream extends WithFireworksDe
   static readonly region = GLOBAL;
   static readonly id = this.buildId();
 }
-FireworksDeepSeekV4ProGlobalFireworksStream satisfies StreamEndpointConstructor;
+DeepSeekDeepSeekV4ProGlobalFireworksStream satisfies StreamEndpointConstructor;

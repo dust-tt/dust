@@ -15,12 +15,12 @@ const configSchema = fireworksConfigSchema.extend({
     .default({ effort: "high" }),
 });
 
-export function WithFireworksDeepSeekV4ProConfig<
+export function WithDeepSeekDeepSeekV4ProConfig<
   TBase extends abstract new (
     ...args: any[]
   ) => object,
 >(Base: TBase) {
-  abstract class FireworksDeepSeekV4Pro extends Base {
+  abstract class DeepSeekDeepSeekV4Pro extends Base {
     static readonly modelId = FIREWORKS_DEEPSEEK_V4_PRO;
 
     static readonly configSchema = configSchema;
@@ -29,5 +29,5 @@ export function WithFireworksDeepSeekV4ProConfig<
     static readonly maxOutputTokens = MAX_OUTPUT_TOKENS;
   }
 
-  return FireworksDeepSeekV4Pro;
+  return DeepSeekDeepSeekV4Pro;
 }

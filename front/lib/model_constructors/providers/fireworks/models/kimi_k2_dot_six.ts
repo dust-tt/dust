@@ -14,12 +14,12 @@ const configSchema = fireworksConfigSchema.extend({
     .default({ effort: DEFAULT_REASONING_EFFORT }),
 });
 
-export function WithFireworksKimiK2Dot6Config<
+export function WithMoonshotAiKimiK2Dot6Config<
   TBase extends abstract new (
     ...args: any[]
   ) => object,
 >(Base: TBase) {
-  abstract class FireworksKimiK2Dot6 extends Base {
+  abstract class MoonshotAiKimiK2Dot6 extends Base {
     static readonly modelId = FIREWORKS_KIMI_K2P6;
 
     static readonly configSchema = configSchema;
@@ -28,5 +28,5 @@ export function WithFireworksKimiK2Dot6Config<
     static readonly maxOutputTokens = MAX_OUTPUT_TOKENS;
   }
 
-  return FireworksKimiK2Dot6;
+  return MoonshotAiKimiK2Dot6;
 }

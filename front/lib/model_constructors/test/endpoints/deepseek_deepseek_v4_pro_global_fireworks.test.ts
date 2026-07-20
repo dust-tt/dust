@@ -1,13 +1,13 @@
 // @vitest-environment node
 
-import { FireworksGlmFiveDotTwoGlobalFireworksStream } from "@app/lib/model_constructors/stream/endpoints/fireworks_glm_five_dot_two_global_fireworks";
+import { DeepSeekDeepSeekV4ProGlobalFireworksStream } from "@app/lib/model_constructors/stream/endpoints/deepseek_deepseek_v4_pro_global_fireworks";
 import { INPUT_CONFIGURATION_ERROR } from "@app/lib/model_constructors/test/cases";
 import { runStreamEndpointTests } from "@app/lib/model_constructors/test/runner";
 import type { StreamSetup } from "@app/lib/model_constructors/test/setup";
 
-export const FireworksGlmFiveDotTwoGlobalFireworksStreamSetup: StreamSetup = {
+export const DeepSeekDeepSeekV4ProGlobalFireworksStreamSetup: StreamSetup = {
   createInstance: () =>
-    new FireworksGlmFiveDotTwoGlobalFireworksStream({
+    new DeepSeekDeepSeekV4ProGlobalFireworksStream({
       FIREWORKS_API_KEY: process.env.DUST_MANAGED_FIREWORKS_API_KEY ?? "",
     }),
   tests: {
@@ -60,8 +60,8 @@ export const FireworksGlmFiveDotTwoGlobalFireworksStreamSetup: StreamSetup = {
   },
 };
 
-// NODE_ENV=test RUN_LLM_TEST=true npm run test -- --config lib/model_constructors/test/vite.config.js --bail 1 lib/model_constructors/test/endpoints/fireworks_glm_five_dot_two_global_fireworks.test.ts
+// NODE_ENV=test RUN_LLM_TEST=true npm run test -- --config lib/model_constructors/test/vite.config.js --bail 1 lib/model_constructors/test/endpoints/deepseek_deepseek_v4_pro_global_fireworks.test.ts
 runStreamEndpointTests(
-  FireworksGlmFiveDotTwoGlobalFireworksStream,
-  FireworksGlmFiveDotTwoGlobalFireworksStreamSetup
+  DeepSeekDeepSeekV4ProGlobalFireworksStream,
+  DeepSeekDeepSeekV4ProGlobalFireworksStreamSetup
 );

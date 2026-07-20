@@ -1,9 +1,9 @@
-import { WithFireworksGlm52Config } from "@app/lib/model_constructors/providers/fireworks/models/glm_five_dot_two";
+import { WithZAiGlm52Config } from "@app/lib/model_constructors/providers/fireworks/models/glm_five_dot_two";
 import { FireworksStream } from "@app/lib/model_constructors/stream/clients/fireworks";
 import type { StreamEndpointConstructor } from "@app/lib/model_constructors/stream/configuration";
 import { GLOBAL } from "@app/lib/model_constructors/types/regions";
 
-export class FireworksGlmFiveDotTwoGlobalFireworksStream extends WithFireworksGlm52Config(
+export class ZAiGlmFiveDotTwoGlobalFireworksStream extends WithZAiGlm52Config(
   FireworksStream
 ) {
   // https://fireworks.ai/models/fireworks/glm-5p2
@@ -18,4 +18,4 @@ export class FireworksGlmFiveDotTwoGlobalFireworksStream extends WithFireworksGl
   static readonly id = this.buildId();
 }
 
-FireworksGlmFiveDotTwoGlobalFireworksStream satisfies StreamEndpointConstructor;
+ZAiGlmFiveDotTwoGlobalFireworksStream satisfies StreamEndpointConstructor;

@@ -1,16 +1,13 @@
 // @vitest-environment node
 
-import { FireworksKimiK2Dot5GlobalFireworksStream } from "@app/lib/model_constructors/stream/endpoints/fireworks_kimi_k2_dot_five_global_fireworks";
-import {
-  HAS_REASONING,
-  INPUT_CONFIGURATION_ERROR,
-} from "@app/lib/model_constructors/test/cases";
+import { MoonshotAiKimiK2Dot6GlobalFireworksStream } from "@app/lib/model_constructors/stream/endpoints/moonshot_ai_kimi_k2_dot_six_global_fireworks";
+import { INPUT_CONFIGURATION_ERROR } from "@app/lib/model_constructors/test/cases";
 import { runStreamEndpointTests } from "@app/lib/model_constructors/test/runner";
 import type { StreamSetup } from "@app/lib/model_constructors/test/setup";
 
-export const FireworksKimiK2Dot5GlobalFireworksStreamSetup: StreamSetup = {
+export const MoonshotAiKimiK2Dot6GlobalFireworksStreamSetup: StreamSetup = {
   createInstance: () =>
-    new FireworksKimiK2Dot5GlobalFireworksStream({
+    new MoonshotAiKimiK2Dot6GlobalFireworksStream({
       FIREWORKS_API_KEY: process.env.DUST_MANAGED_FIREWORKS_API_KEY ?? "",
     }),
   tests: {
@@ -51,8 +48,7 @@ export const FireworksKimiK2Dot5GlobalFireworksStreamSetup: StreamSetup = {
     "calc/calc/t-default/r-default/force-tool": null,
     "calc/calc/t-default/r-none/force-tool": null,
 
-    // Kimi K2.5 always reasons, so `none` still yields reasoning content.
-    "reasoning/no-tools/t-default/r-none": [HAS_REASONING],
+    "reasoning/no-tools/t-default/r-none": null,
     "reasoning/no-tools/t-default/r-low": null,
 
     "output-format/json-schema/t-default/r-none": null,
@@ -64,8 +60,8 @@ export const FireworksKimiK2Dot5GlobalFireworksStreamSetup: StreamSetup = {
   },
 };
 
-// NODE_ENV=test RUN_LLM_TEST=true npm run test -- --config lib/model_constructors/test/vite.config.js --bail 1 lib/model_constructors/test/endpoints/fireworks_kimi_k2_dot_five_global_fireworks.test.ts
+// NODE_ENV=test RUN_LLM_TEST=true npm run test -- --config lib/model_constructors/test/vite.config.js --bail 1 lib/model_constructors/test/endpoints/moonshot_ai_kimi_k2_dot_six_global_fireworks.test.ts
 runStreamEndpointTests(
-  FireworksKimiK2Dot5GlobalFireworksStream,
-  FireworksKimiK2Dot5GlobalFireworksStreamSetup
+  MoonshotAiKimiK2Dot6GlobalFireworksStream,
+  MoonshotAiKimiK2Dot6GlobalFireworksStreamSetup
 );
