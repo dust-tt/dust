@@ -1203,7 +1203,7 @@ export const INTERNAL_MCP_SERVERS = {
   },
   // Using satisfies here instead of: type to avoid TypeScript widening the type and breaking the type inference for AutoInternalMCPServerNameType.
 } satisfies {
-  [K in InternalMCPServerNameType]: InternalMCPServerEntryBase<K>;
+  [K in InternalMCPServerNameType]: InternalMCPServerEntry<K>;
 };
 
 type IsRestrictedCallback = (params: {
@@ -1223,7 +1223,9 @@ type RuntimeToolStakeLevelCallback = (
   params: RuntimeToolStakeLevelCallbackParams
 ) => MCPToolStakeLevelType;
 
-type InternalMCPServerEntryCommon = {
+type InternalMCPServerEntry<
+  K extends InternalMCPServerNameType = InternalMCPServerNameType,
+> = {
   id: number;
   availability: MCPServerAvailability;
   allowMultipleInstances: boolean;
@@ -1239,6 +1241,9 @@ type InternalMCPServerEntryCommon = {
   sensitivityLabelProvider?: string;
   // When false, the server is hidden from direct execution contexts (e.g. sandbox CLI).
   // Defaults to true.
+  metadata: ServerMetadata & {
+    serverInfo: InternalMCPServerDefinitionType & { name: K };
+  };
 } & (
   | {
       // A restricted server is not necessarily in preview (can be restricted based on the plan for instance).
@@ -1248,26 +1253,6 @@ type InternalMCPServerEntryCommon = {
   // Non restricted server cannot be in preview
   | { isPreview: false; isRestricted: undefined }
 );
-
-type InternalMCPServerEntryWithMetadata<K extends InternalMCPServerNameType> =
-  InternalMCPServerEntryCommon & {
-    metadata: ServerMetadata<K>;
-    serverInfo?: InternalMCPServerDefinitionType & { name: K };
-  };
-
-type InternalMCPServerEntryWithoutMetadata<
-  K extends InternalMCPServerNameType,
-> = InternalMCPServerEntryCommon & {
-  metadata?: undefined;
-  serverInfo: InternalMCPServerDefinitionType & { name: K };
-};
-
-type InternalMCPServerEntryBase<K extends InternalMCPServerNameType> =
-  | InternalMCPServerEntryWithMetadata<K>
-  | InternalMCPServerEntryWithoutMetadata<K>;
-
-type InternalMCPServerEntry =
-  InternalMCPServerEntryBase<InternalMCPServerNameType>;
 
 export type InternalMCPServerNameType =
   (typeof AVAILABLE_INTERNAL_MCP_SERVER_NAMES)[number];
@@ -1458,9 +1443,9 @@ export function resolveInternalMCPServerToolStakeLevel(
   );
 }
 
-export function getInternalMCPServerToolDisplayLabels<
-  N extends InternalMCPServerNameType,
->(name: N): Record<string, ToolDisplayLabels> | null {
+export function getInternalMCPServerToolDisplayLabels(
+  name: InternalMCPServerNameType
+): Record<string, ToolDisplayLabels> | null {
   const server = INTERNAL_MCP_SERVERS[name];
   const displayLabelsByTool: Record<string, ToolDisplayLabels> = {};
   let hasDisplayLabels = false;

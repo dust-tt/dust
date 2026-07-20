@@ -29,8 +29,8 @@ import type { EditedByUser } from "@app/types/user";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
 import type { z } from "zod";
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const MCP_TOOL_RETRY_POLICY_TYPES = ["retry_on_interrupt", "no_retry"] as const;
+
 export type MCPToolRetryPolicyType =
   (typeof MCP_TOOL_RETRY_POLICY_TYPES)[number];
 
@@ -147,11 +147,6 @@ export type RemoteMCPServerType = MCPServerType & {
   availability: "manual";
   allowMultipleInstances: true;
 };
-
-export type MCPServerDefinitionType = Omit<
-  MCPServerType,
-  "tools" | "sId" | "availability" | "allowMultipleInstances"
->;
 
 export type InternalMCPServerDefinitionType = Omit<
   MCPServerType,
