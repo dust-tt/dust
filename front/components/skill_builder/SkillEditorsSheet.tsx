@@ -20,13 +20,12 @@ export function SkillEditorsSheet({
   const { owner } = useSkillBuilderContext();
   const [isOpen, setIsOpen] = useState(false);
 
-  const { field: editorsField } = useController<
-    SkillBuilderFormData,
-    "editors"
-  >({
+  const {
+    field: { value: editors, onChange, disabled },
+  } = useController<SkillBuilderFormData, "editors">({
     name: "editors",
   });
-  const isReadOnly = editorsField.disabled ?? false;
+  const isReadOnly = disabled ?? false;
 
   if (isEditorGateVisible) {
     return (
@@ -48,17 +47,15 @@ export function SkillEditorsSheet({
         onClick={() => setIsOpen(true)}
         type="button"
       />
-      {!isReadOnly && (
-        <ManageUsersPanel
-          isOpen={isOpen}
-          setIsOpen={setIsOpen}
-          owner={owner}
-          mode="editors-only"
-          editors={editorsField.value || []}
-          onEditorsChange={editorsField.onChange}
-          buildersOnly
-        />
-      )}
+      <ManageUsersPanel
+        isOpen={isOpen && !isReadOnly}
+        setIsOpen={setIsOpen}
+        owner={owner}
+        mode="editors-only"
+        editors={editors || []}
+        onEditorsChange={onChange}
+        buildersOnly
+      />
     </>
   );
 }

@@ -746,8 +746,10 @@ export function SkillBuilderInstructionsEditor({
           preprocessMarkdownForEditor(compareText),
           preprocessMarkdownForEditor(currentText)
         );
+        editor.setEditable(false);
       } else if (editor.storage.agentInstructionDiff?.isDiffMode) {
         editor.commands.exitDiff();
+        editor.setEditable(!isInstructionsReadOnly);
 
         if (instructionsHtmlField.value) {
           editor.commands.setContent(instructionsHtmlField.value, {
@@ -763,8 +765,6 @@ export function SkillBuilderInstructionsEditor({
           );
         }
       }
-
-      editor.setEditable(!compareVersion && !isInstructionsReadOnly);
     });
 
     return () => {

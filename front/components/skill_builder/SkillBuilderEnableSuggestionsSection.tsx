@@ -11,17 +11,16 @@ export function SkillBuilderEnableSuggestionsSection({
   selfImprovementLock,
 }: SkillBuilderEnableSuggestionsSectionProps) {
   const { owner } = useSkillBuilderContext();
+  const isAllowedByWorkspace = owner.metadata?.allowReinforcement === true;
+  const isDisabled = !isAllowedByWorkspace || selfImprovementLock;
+
   const { watch, setValue } = useFormContext<SkillBuilderFormData>();
   const { disabled: isReadOnly } = useFormState<SkillBuilderFormData>();
-  const isAllowedByWorkspace = owner.metadata?.allowReinforcement === true;
-  const isUnavailable = !isAllowedByWorkspace || selfImprovementLock;
-  const isDisabled = isReadOnly || isUnavailable;
-
   const reinforcement = watch("reinforcement");
   const enabled = reinforcement !== "off";
 
   const handleToggle = () => {
-    if (isDisabled) {
+    if (isReadOnly || isDisabled) {
       return;
     }
     setValue("reinforcement", enabled ? "off" : "on", { shouldDirty: true });
@@ -29,7 +28,7 @@ export function SkillBuilderEnableSuggestionsSection({
 
   return (
     <div className="flex flex-col gap-2">
-      {isUnavailable && (
+      {isDisabled && (
         <div className="flex items-start gap-1.5 text-xs text-muted-foreground">
           <InfoCircle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
           <span>
@@ -40,11 +39,11 @@ export function SkillBuilderEnableSuggestionsSection({
         </div>
       )}
       <div
-        className={`flex items-center gap-2 ${isDisabled ? "cursor-not-allowed opacity-50" : ""}`}
+        className={`flex items-center gap-2 ${isReadOnly || isDisabled ? "cursor-not-allowed opacity-50" : ""}`}
       >
         <SliderToggle
-          disabled={isDisabled}
-          selected={enabled && !isUnavailable}
+          disabled={isReadOnly || isDisabled}
+          selected={enabled && !isDisabled}
           onClick={handleToggle}
         />
         <span className="text-sm text-foreground">Self-improve</span>

@@ -62,10 +62,6 @@ export function SkillBuilderIconSection() {
           icons={ActionIcons}
           selectedIcon={selectedIconName}
           onIconSelect={(iconName: string) => {
-            if (isReadOnly) {
-              return;
-            }
-
             iconField.onChange(iconName);
             closePopover();
           }}

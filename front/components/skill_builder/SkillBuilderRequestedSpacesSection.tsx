@@ -175,7 +175,7 @@ export function SkillBuilderRequestedSpacesSection({
   }, [additionalSpaceIds, allSpaces, spaceIdsUsedBySkill]);
 
   const handleRemoveSpace = async (space: SpaceType) => {
-    if (isReadOnly || !areSpaceRequirementsReady) {
+    if (!areSpaceRequirementsReady) {
       return;
     }
 
@@ -199,7 +199,7 @@ export function SkillBuilderRequestedSpacesSection({
   };
 
   const handleOpenSheet = () => {
-    if (isReadOnly || !areSpaceRequirementsReady) {
+    if (!areSpaceRequirementsReady) {
       return;
     }
 
@@ -217,10 +217,6 @@ export function SkillBuilderRequestedSpacesSection({
   };
 
   const handleSaveSpaces = () => {
-    if (isReadOnly) {
-      return;
-    }
-
     additionalSpacesField.onChange(draftSelectedSpaces);
     handleCloseSheet();
   };
@@ -271,22 +267,19 @@ export function SkillBuilderRequestedSpacesSection({
       )}
       <SpaceChips
         spaces={spacesToDisplay}
-        onRemoveSpace={handleRemoveSpace}
-        disabled={isReadOnly}
+        onRemoveSpace={isReadOnly ? undefined : handleRemoveSpace}
       />
 
-      {!isReadOnly && (
-        <SpaceSelectionSheet
-          alreadyRequestedSpaceIds={spaceIdsUsedBySkill}
-          entityName="skill"
-          missingSpaceIds={missingSpaceIds}
-          onClose={handleCloseSheet}
-          onSave={handleSaveSpaces}
-          open={isSheetOpen}
-          selectedSpaces={draftSelectedSpaces}
-          setSelectedSpaces={setDraftSelectedSpaces}
-        />
-      )}
+      <SpaceSelectionSheet
+        alreadyRequestedSpaceIds={spaceIdsUsedBySkill}
+        entityName="skill"
+        missingSpaceIds={missingSpaceIds}
+        onClose={handleCloseSheet}
+        onSave={handleSaveSpaces}
+        open={isSheetOpen && !isReadOnly}
+        selectedSpaces={draftSelectedSpaces}
+        setSelectedSpaces={setDraftSelectedSpaces}
+      />
     </div>
   );
 }

@@ -28,7 +28,7 @@ export function SkillBuilderInstructionsSection() {
     compareVersion && compareVersion.instructions !== currentInstructions;
 
   const restoreInstructions = () => {
-    if (!compareVersion || isReadOnly) {
+    if (!compareVersion) {
       return;
     }
 

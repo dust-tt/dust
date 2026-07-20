@@ -47,7 +47,7 @@ export function SkillBuilderAgentFacingDescriptionSection() {
     compareVersion.agentFacingDescription !== descriptionField.value;
 
   const restoreDescription = () => {
-    if (!compareVersion || isReadOnly) {
+    if (!compareVersion) {
       return;
     }
     setValue(FIELD_NAME, compareVersion.agentFacingDescription, {

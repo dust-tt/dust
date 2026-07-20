@@ -24,7 +24,7 @@ export function SkillBuilderFilesSection() {
   const sendNotification = useSendNotification();
   const { featureFlags } = useFeatureFlags();
   const { setValue } = useFormContext<SkillBuilderFormData>();
-  const { disabled: isReadOnly } = useFormState<SkillBuilderFormData>();
+  const { disabled: disableUpload } = useFormState<SkillBuilderFormData>();
   const { compareVersion, isDiffMode } = useSkillVersionComparisonContext();
   const [canScrollFilesDown, setCanScrollFilesDown] = useState(false);
 
@@ -103,7 +103,7 @@ export function SkillBuilderFilesSection() {
   }, [hasFileAttachments]);
 
   const restoreFiles = () => {
-    if (!compareVersion || isReadOnly) {
+    if (!compareVersion) {
       return;
     }
     setValue("fileAttachments", compareVersion.fileAttachments, {
@@ -112,7 +112,7 @@ export function SkillBuilderFilesSection() {
   };
 
   const onUploadClick = () => {
-    if (isReadOnly) {
+    if (disableUpload) {
       return;
     }
 
@@ -121,7 +121,7 @@ export function SkillBuilderFilesSection() {
 
   const onFileInputChange = useCallback(
     async (e: React.ChangeEvent<HTMLInputElement>) => {
-      if (isReadOnly) {
+      if (disableUpload) {
         e.target.value = "";
         return;
       }
@@ -157,7 +157,13 @@ export function SkillBuilderFilesSection() {
       // Reset input so re-uploading the same file triggers onChange.
       e.target.value = "";
     },
-    [isReadOnly, handleFilesUpload, append, existingFileNames, sendNotification]
+    [
+      disableUpload,
+      handleFilesUpload,
+      append,
+      existingFileNames,
+      sendNotification,
+    ]
   );
 
   const headerActions = !isDiffMode && hasFileAttachments && (
@@ -167,7 +173,7 @@ export function SkillBuilderFilesSection() {
       label="Upload files"
       icon={isProcessingFiles ? Spinner : Plus}
       variant="outline"
-      disabled={isReadOnly || isProcessingFiles}
+      disabled={disableUpload || isProcessingFiles}
     />
   );
 
@@ -189,14 +195,14 @@ export function SkillBuilderFilesSection() {
               icon={ReverseLeft}
               onClick={restoreFiles}
               label="Restore files"
-              disabled={isReadOnly}
+              disabled={disableUpload}
             />
           )}
           {headerActions}
         </div>
       </div>
 
-      {!isDiffMode && !isReadOnly && (
+      {!isDiffMode && !disableUpload && (
         <input
           ref={fileInputRef}
           type="file"
@@ -220,7 +226,7 @@ export function SkillBuilderFilesSection() {
                 label="Upload files"
                 icon={Plus}
                 variant="outline"
-                disabled={isReadOnly || isProcessingFiles}
+                disabled={disableUpload || isProcessingFiles}
               />
             }
             className="py-8"
@@ -249,9 +255,9 @@ export function SkillBuilderFilesSection() {
                       </span>
                     }
                     visual={<ContextItem.Visual visual={File02} />}
-                    hoverAction={!isDiffMode && !isReadOnly}
+                    hoverAction={!isDiffMode && !disableUpload}
                     action={
-                      !isDiffMode && !isReadOnly ? (
+                      !isDiffMode && !disableUpload ? (
                         <Button
                           type="button"
                           variant="ghost"

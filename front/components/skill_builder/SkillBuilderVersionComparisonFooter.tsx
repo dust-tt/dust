@@ -14,10 +14,6 @@ export function SkillBuilderVersionComparisonFooter() {
   }
 
   const restoreAll = () => {
-    if (isReadOnly) {
-      return;
-    }
-
     setValue("instructions", compareVersion.instructions ?? "", {
       shouldDirty: true,
     });
