@@ -98,6 +98,25 @@ vi.mock("@app/lib/plans/stripe", async () => {
   };
 });
 
+// These tests exercise the production behavior of switchContract, where the
+// Metronome webhook is configured and drives the subscription swap
+// (`contract.start`) asynchronously. Stub a webhook secret so
+// `stepImmediateSubscriptionSwapWithoutWebhook` no-ops here, same as in a
+// real deployment — otherwise it would run inline against the unmocked
+// Metronome client.
+vi.mock("@app/lib/api/config", async () => {
+  const actual = await vi.importActual<typeof import("@app/lib/api/config")>(
+    "@app/lib/api/config"
+  );
+  return {
+    ...actual,
+    default: {
+      ...actual.default,
+      getMetronomeWebhookSecret: vi.fn().mockReturnValue("test-secret"),
+    },
+  };
+});
+
 const METRONOME_CUSTOMER_ID = "cust_test_xxx";
 const EXISTING_CONTRACT_ID = "contract_existing_xxx";
 const NEW_CONTRACT_ID = "contract_new_yyy";

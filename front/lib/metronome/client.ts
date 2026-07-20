@@ -2955,6 +2955,7 @@ export async function createMetronomeCredit({
   idempotencyKey,
   applicableProductTags,
   priority,
+  customFields,
 }: {
   metronomeCustomerId: string;
   productId: string;
@@ -2966,6 +2967,7 @@ export async function createMetronomeCredit({
   idempotencyKey: string;
   applicableProductTags?: string[];
   priority: number;
+  customFields?: Record<string, string>;
 }): Promise<Result<{ id: string } | null, Error>> {
   // Metronome requires dates on hour boundaries — round down start, round up end.
   const roundedStartingAt = floorToHourISO(new Date(startingAt));
@@ -2980,6 +2982,7 @@ export async function createMetronomeCredit({
       ...(applicableProductTags
         ? { applicable_product_tags: applicableProductTags }
         : {}),
+      ...(customFields ? { custom_fields: customFields } : {}),
       access_schedule: {
         credit_type_id: creditTypeId,
         schedule_items: [

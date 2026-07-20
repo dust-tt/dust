@@ -228,6 +228,9 @@ export const grantAwuCreditsPlugin = createPlugin({
         idempotencyKey,
         priority: AWU_PRIORITY_PURCHASED_COMMIT,
         applicableProductTags: ["usage"],
+        customFields: {
+          [CONTRACT_CREDIT_TYPE_CUSTOM_FIELD_KEY]: CONTRACT_CREDIT_TYPE_POOL,
+        },
       });
 
       if (result.isErr()) {
