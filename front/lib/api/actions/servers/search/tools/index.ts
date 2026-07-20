@@ -8,6 +8,7 @@ import {
   applyNodeIdsFilterToCoreSearchArgs,
   getCoreSearchArgs,
 } from "@app/lib/actions/mcp_internal_actions/tools/utils";
+import { offloadLargeSearchResultChunks } from "@app/lib/actions/mcp_internal_actions/utils/search_result_offload";
 import {
   isAgentLoopRunContext,
   type ToolContext,
@@ -186,8 +187,17 @@ export async function searchFunction(
     }
   );
 
+  // Archive oversized chunk payloads instead of keeping them inline in the conversation.
+  const offloadedResults = toolContext?.runContext
+    ? await offloadLargeSearchResultChunks(
+        auth,
+        toolContext.runContext,
+        results
+      )
+    : results;
+
   return new Ok(
-    results.map((result) => ({
+    offloadedResults.map((result) => ({
       type: "resource" as const,
       resource: result,
     }))
