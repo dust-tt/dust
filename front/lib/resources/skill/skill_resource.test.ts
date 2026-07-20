@@ -101,6 +101,9 @@ describe("SkillResource", () => {
 
       await skillA.setFavorite(testContext.authenticator, false);
       expect(
+        await skillA.isFavoriteForCurrentUser(testContext.authenticator)
+      ).toBe(false);
+      expect(
         await SkillUserFavoriteModel.count({
           where: {
             workspaceId: testContext.workspace.id,
@@ -112,6 +115,12 @@ describe("SkillResource", () => {
       await skillA.setFavorite(testContext.authenticator, true);
       await skillA.setFavorite(testContext.authenticator, true);
       await skillB.setFavorite(testContext.authenticator, true);
+      expect(
+        await skillA.isFavoriteForCurrentUser(testContext.authenticator)
+      ).toBe(true);
+      expect(
+        await skillB.isFavoriteForCurrentUser(testContext.authenticator)
+      ).toBe(true);
 
       const favoriteRows = await SkillUserFavoriteModel.findAll({
         where: {
@@ -127,6 +136,9 @@ describe("SkillResource", () => {
 
       await favoriteRows[0].reload();
       expect(favoriteRows[0].skillIds).toEqual([skillB.sId]);
+      expect(
+        await skillA.isFavoriteForCurrentUser(testContext.authenticator)
+      ).toBe(false);
 
       const [skillAModel, skillBModel] = await SkillConfigurationModel.findAll({
         where: {

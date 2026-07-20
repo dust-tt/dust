@@ -1149,10 +1149,22 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
   }
 
   async isFavoriteForCurrentUser(auth: Authenticator): Promise<boolean> {
-    const favoriteSkills =
-      await SkillResource.listFavoritesForCurrentUser(auth);
+    const user = auth.user();
+    if (!user) {
+      return false;
+    }
 
-    return favoriteSkills.some((skill) => skill.sId === this.sId);
+    const workspace = auth.getNonNullableWorkspace();
+    const favorite = await SkillUserFavoriteModel.findOne({
+      attributes: ["id"],
+      where: {
+        workspaceId: workspace.id,
+        userId: user.id,
+        skillIds: { [Op.contains]: [this.sId] },
+      },
+    });
+
+    return favorite !== null;
   }
 
   async setFavorite(
