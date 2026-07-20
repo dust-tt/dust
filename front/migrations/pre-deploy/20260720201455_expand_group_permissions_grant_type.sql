@@ -50,10 +50,15 @@ UPDATE "public"."group_permissions" SET "grantType" = "permissionType" WHERE "gr
 
 /*
 Statement 3: new unique index on "grantType", mirroring the existing one on "permissionType". Built
-CONCURRENTLY so it does not lock writes. Generous statement_timeout because a concurrent build can
-run long on large tables; this table is small today.
+CONCURRENTLY so it does not lock writes. A failed concurrent build leaves an INVALID index behind;
+"CREATE ... IF NOT EXISTS" would then skip it on retry and leave uniqueness unenforced (which the
+contract step would compound by dropping the legacy index). So drop any leftover first and create
+unconditionally — Postgres' recommended recovery for a failed concurrent build. During this window
+the legacy "permissionType" unique index still enforces uniqueness. Generous statement_timeout
+because a concurrent build can run long on large tables; this table is small today.
 */
 SET SESSION statement_timeout = 300000;
 SET SESSION lock_timeout = 5000;
-CREATE UNIQUE INDEX CONCURRENTLY IF NOT EXISTS "group_permissions_group_gtype_rtype_rid_unique"
+DROP INDEX CONCURRENTLY IF EXISTS "group_permissions_group_gtype_rtype_rid_unique";
+CREATE UNIQUE INDEX CONCURRENTLY "group_permissions_group_gtype_rtype_rid_unique"
   ON "public"."group_permissions" ("groupId", "grantType", "resourceType", "resourceId");
