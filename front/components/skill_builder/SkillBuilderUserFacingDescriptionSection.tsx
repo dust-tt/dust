@@ -16,7 +16,13 @@ import { useController, useWatch } from "react-hook-form";
 const USER_FACING_DESCRIPTION_FIELD_NAME = "userFacingDescription";
 const MIN_INSTRUCTIONS_LENGTH = 20;
 
-export function SkillBuilderUserFacingDescriptionSection() {
+interface SkillBuilderUserFacingDescriptionSectionProps {
+  isReadOnly: boolean;
+}
+
+export function SkillBuilderUserFacingDescriptionSection({
+  isReadOnly,
+}: SkillBuilderUserFacingDescriptionSectionProps) {
   const { owner } = useSkillBuilderContext();
   const sendNotification = useSendNotification();
   const [isGenerating, setIsGenerating] = useState(false);
@@ -51,7 +57,7 @@ export function SkillBuilderUserFacingDescriptionSection() {
   );
 
   const generateDescription = async (): Promise<boolean> => {
-    if (isGenerating || !canGenerate) {
+    if (isReadOnly || isGenerating || !canGenerate) {
       return false;
     }
 
@@ -130,7 +136,7 @@ export function SkillBuilderUserFacingDescriptionSection() {
               variant="outline"
               size="xs"
               className="absolute right-0 top-1/2 mr-1 h-7 w-7 -translate-y-1/2 rounded-lg p-0"
-              disabled={isGenerating || !canGenerate}
+              disabled={isReadOnly || isGenerating || !canGenerate}
               onClick={generate}
               tooltip={getTooltip()}
             />

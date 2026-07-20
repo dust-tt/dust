@@ -229,10 +229,12 @@ const INSTRUCTIONS_EDITOR_REFERENCE_SUMMARY_SIZE =
   "h-full min-h-0 max-h-none resize-none rounded-b-none border-b-0 pb-44";
 
 interface SkillBuilderInstructionsEditorProps {
+  isReadOnly: boolean;
   onAddKnowledge?: (addKnowledge: () => void) => void;
 }
 
 export function SkillBuilderInstructionsEditor({
+  isReadOnly,
   onAddKnowledge,
 }: SkillBuilderInstructionsEditorProps) {
   const { compareVersion, isDiffMode } = useSkillVersionComparisonContext();
@@ -463,11 +465,12 @@ export function SkillBuilderInstructionsEditor({
   });
 
   const hasSuggestions = suggestions.length > 0;
+  const isInstructionsReadOnly = isReadOnly || hasSuggestions;
 
   const { editor, isContentReady } = useSkillInstructionsEditor({
     content: instructionsField.value ?? "",
     htmlContent: instructionsHtmlField.value ?? undefined,
-    isReadOnly: hasSuggestions,
+    isReadOnly: isInstructionsReadOnly,
     skillReferences: {
       currentSkillId: skillId,
       onSkillDetails: handleSkillDetails,
@@ -644,9 +647,9 @@ export function SkillBuilderInstructionsEditor({
       });
     }
 
-    // Make the editor read-only while suggestion diffs are displayed.
+    // Keep the editor read-only for pending suggestions or non-editors.
     if (!isDiffMode) {
-      editor.setEditable(!hasSuggestions);
+      editor.setEditable(!isInstructionsReadOnly);
     }
   }, [
     editor,
@@ -655,7 +658,7 @@ export function SkillBuilderInstructionsEditor({
     isSuggestionsLoading,
     selectedSuggestionId,
     isDiffMode,
-    hasSuggestions,
+    isInstructionsReadOnly,
   ]);
 
   useEffect(() => {
@@ -676,8 +679,8 @@ export function SkillBuilderInstructionsEditor({
           class: cn(
             editorVariants({
               error: displayError,
-              disabled: isDiffMode,
-              readOnly: hasSuggestions,
+              disabled: isDiffMode || isReadOnly,
+              readOnly: isInstructionsReadOnly,
             }),
             INSTRUCTIONS_EDITOR_SIZE,
             hasInstructionReferenceSummary &&
@@ -690,7 +693,8 @@ export function SkillBuilderInstructionsEditor({
     editor,
     displayError,
     isDiffMode,
-    hasSuggestions,
+    isInstructionsReadOnly,
+    isReadOnly,
     hasInstructionReferenceSummary,
   ]);
 
@@ -743,10 +747,8 @@ export function SkillBuilderInstructionsEditor({
           preprocessMarkdownForEditor(compareText),
           preprocessMarkdownForEditor(currentText)
         );
-        editor.setEditable(false);
       } else if (editor.storage.agentInstructionDiff?.isDiffMode) {
         editor.commands.exitDiff();
-        editor.setEditable(true);
 
         if (instructionsHtmlField.value) {
           editor.commands.setContent(instructionsHtmlField.value, {
@@ -762,6 +764,8 @@ export function SkillBuilderInstructionsEditor({
           );
         }
       }
+
+      editor.setEditable(!compareVersion && !isInstructionsReadOnly);
     });
 
     return () => {
@@ -772,6 +776,7 @@ export function SkillBuilderInstructionsEditor({
   }, [
     compareVersion,
     editor,
+    isInstructionsReadOnly,
     instructionsField.value,
     instructionsHtmlField.value,
   ]);
@@ -790,7 +795,7 @@ export function SkillBuilderInstructionsEditor({
           <SkillInstructionsEditorContent
             className={hasInstructionReferenceSummary ? "h-full" : undefined}
             editor={editor}
-            isReadOnly={hasSuggestions}
+            isReadOnly={isInstructionsReadOnly}
           />
           <SkillBuilderInstructionsReferenceSummary
             attachedKnowledge={attachedKnowledgeField.value}

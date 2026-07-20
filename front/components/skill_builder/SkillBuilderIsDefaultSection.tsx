@@ -17,7 +17,13 @@ import { useFormContext } from "react-hook-form";
 
 const MIN_DISCOVERABLE_DESCRIPTION_LENGTH = 150;
 
-export function SkillBuilderIsDefaultSection() {
+interface SkillBuilderIsDefaultSectionProps {
+  isReadOnly: boolean;
+}
+
+export function SkillBuilderIsDefaultSection({
+  isReadOnly,
+}: SkillBuilderIsDefaultSectionProps) {
   const { watch, setValue } = useFormContext<SkillBuilderFormData>();
   const isDefault = watch("isDefault");
   const agentFacingDescription = watch("agentFacingDescription");
@@ -41,7 +47,11 @@ export function SkillBuilderIsDefaultSection() {
   return (
     <>
       <div className="flex items-center gap-2">
-        <SliderToggle selected={isDefault} onClick={handleToggle} />
+        <SliderToggle
+          disabled={isReadOnly}
+          selected={isDefault}
+          onClick={handleToggle}
+        />
         <span className="text-sm text-foreground">
           Allow agents to discover this skill
         </span>

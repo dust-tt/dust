@@ -23,7 +23,13 @@ const DEBOUNCE_DELAY_MS = 250;
 const MIN_DESCRIPTION_LENGTH = 10;
 const DESCRIPTION_EDITOR_SIZE = "h-40 max-h-96";
 
-export function SkillBuilderAgentFacingDescriptionSection() {
+interface SkillBuilderAgentFacingDescriptionSectionProps {
+  isReadOnly: boolean;
+}
+
+export function SkillBuilderAgentFacingDescriptionSection({
+  isReadOnly,
+}: SkillBuilderAgentFacingDescriptionSectionProps) {
   const { owner, skillId } = useSkillBuilderContext();
   const { setValue } = useFormContext<SkillBuilderFormData>();
   const { compareVersion, isDiffMode } = useSkillVersionComparisonContext();
@@ -134,14 +140,14 @@ export function SkillBuilderAgentFacingDescriptionSection() {
           class: cn(
             editorVariants({
               error: !!descriptionFieldState.error,
-              disabled: isDiffMode,
+              disabled: isDiffMode || isReadOnly,
             }),
             DESCRIPTION_EDITOR_SIZE
           ),
         },
       },
     });
-  }, [editor, descriptionFieldState.error, isDiffMode]);
+  }, [editor, descriptionFieldState.error, isDiffMode, isReadOnly]);
 
   // Sync external changes to the editor content.
   useEffect(() => {
@@ -179,12 +185,12 @@ export function SkillBuilderAgentFacingDescriptionSection() {
         emitUpdate: false,
       });
       editor.commands.applyDiff(compareText, currentText);
-      editor.setEditable(false);
     } else if (editor.storage.agentInstructionDiff?.isDiffMode) {
       editor.commands.exitDiff();
-      editor.setEditable(true);
     }
-  }, [compareVersion, editor, descriptionField.value]);
+
+    editor.setEditable(!compareVersion && !isReadOnly);
+  }, [compareVersion, editor, descriptionField.value, isReadOnly]);
 
   return (
     <section className="space-y-4">

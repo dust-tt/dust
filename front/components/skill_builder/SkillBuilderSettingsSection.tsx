@@ -19,6 +19,7 @@ import {
 interface SkillBuilderSettingsSectionProps {
   skill?: SkillType;
   hasSelfImprovingSkills: boolean;
+  isReadOnly: boolean;
   isEditorGateVisible: boolean;
   isAddingSelfAsEditor: boolean;
   onAddSelfAsEditor: () => void;
@@ -27,6 +28,7 @@ interface SkillBuilderSettingsSectionProps {
 export function SkillBuilderSettingsSection({
   skill,
   hasSelfImprovingSkills,
+  isReadOnly,
   isEditorGateVisible,
   isAddingSelfAsEditor,
   onAddSelfAsEditor,
@@ -59,7 +61,7 @@ export function SkillBuilderSettingsSection({
         </div>
         <SkillBuilderIconSection />
       </div>
-      <SkillBuilderUserFacingDescriptionSection />
+      <SkillBuilderUserFacingDescriptionSection isReadOnly={isReadOnly} />
       <div className="flex flex-col space-y-3">
         <Label className="text-base font-semibold text-foreground">
           Editors
@@ -78,6 +80,7 @@ export function SkillBuilderSettingsSection({
             Self Improvement
           </Label>
           <SkillBuilderEnableSuggestionsSection
+            isReadOnly={isReadOnly}
             selfImprovementLock={skill?.selfImprovementLock ?? false}
           />
         </div>
@@ -90,7 +93,7 @@ export function SkillBuilderSettingsSection({
             </CollapsibleTrigger>
             <CollapsibleContent>
               <div className="space-y-3 pt-3">
-                <SkillBuilderIsDefaultSection />
+                <SkillBuilderIsDefaultSection isReadOnly={isReadOnly} />
               </div>
             </CollapsibleContent>
           </Collapsible>

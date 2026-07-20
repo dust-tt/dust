@@ -17,7 +17,13 @@ const LARGE_INSTRUCTIONS_CHARACTER_THRESHOLD = 40_000;
 const INSTRUCTIONS_FIELD_NAME = "instructions";
 const INSTRUCTIONS_HTML_FIELD_NAME = "instructionsHtml";
 
-export function SkillBuilderInstructionsSection() {
+interface SkillBuilderInstructionsSectionProps {
+  isReadOnly: boolean;
+}
+
+export function SkillBuilderInstructionsSection({
+  isReadOnly,
+}: SkillBuilderInstructionsSectionProps) {
   const { setValue, watch } = useFormContext<SkillBuilderFormData>();
   const { compareVersion, exitDiffMode } = useSkillVersionComparisonContext();
   const [addKnowledge, setAddKnowledge] = useState<(() => void) | null>(null);
@@ -89,6 +95,7 @@ export function SkillBuilderInstructionsSection() {
         </ContentMessage>
       )}
       <SkillBuilderInstructionsEditor
+        isReadOnly={isReadOnly}
         onAddKnowledge={(fn) => setAddKnowledge(() => fn)}
       />
     </section>

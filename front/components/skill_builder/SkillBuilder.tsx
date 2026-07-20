@@ -292,21 +292,29 @@ export default function SkillBuilder({ skill, onSaved }: SkillBuilderProps) {
               specific needs before saving.
             </ContentMessage>
           )}
-          <SkillBuilderAgentFacingDescriptionSection />
-          <SkillBuilderInstructionsSection />
-          <SkillBuilderRequestedSpacesSection
-            initialRequestedSpaceIds={skill?.requestedSpaceIds}
-          />
-          <SkillBuilderFilesSection disableUpload={isEditorLocked} />
-          <SkillBuilderSettingsOrComparisonFooter
-            skill={skill}
-            hasSelfImprovingSkills={hasSelfImprovingSkills}
-            isEditorGateVisible={isAdminNonEditor}
-            isAddingSelfAsEditor={isAddingSelfAsEditor}
-            onAddSelfAsEditor={() => {
-              void handleAddSelfAsEditor();
-            }}
-          />
+          <fieldset
+            className="min-w-0 space-y-10 border-0 p-0"
+            disabled={isEditorLocked}
+          >
+            <SkillBuilderAgentFacingDescriptionSection
+              isReadOnly={isEditorLocked}
+            />
+            <SkillBuilderInstructionsSection isReadOnly={isEditorLocked} />
+            <SkillBuilderRequestedSpacesSection
+              initialRequestedSpaceIds={skill?.requestedSpaceIds}
+            />
+            <SkillBuilderFilesSection disableUpload={isEditorLocked} />
+            <SkillBuilderSettingsOrComparisonFooter
+              skill={skill}
+              hasSelfImprovingSkills={hasSelfImprovingSkills}
+              isReadOnly={isEditorLocked}
+              isEditorGateVisible={isAdminNonEditor}
+              isAddingSelfAsEditor={isAddingSelfAsEditor}
+              onAddSelfAsEditor={() => {
+                void handleAddSelfAsEditor();
+              }}
+            />
+          </fieldset>
         </div>
       </ScrollArea>
       <BarFooter
@@ -376,12 +384,14 @@ export default function SkillBuilder({ skill, onSaved }: SkillBuilderProps) {
 function SkillBuilderSettingsOrComparisonFooter({
   skill,
   hasSelfImprovingSkills,
+  isReadOnly,
   isEditorGateVisible,
   isAddingSelfAsEditor,
   onAddSelfAsEditor,
 }: {
   skill?: SkillType;
   hasSelfImprovingSkills: boolean;
+  isReadOnly: boolean;
   isEditorGateVisible: boolean;
   isAddingSelfAsEditor: boolean;
   onAddSelfAsEditor: () => void;
@@ -396,6 +406,7 @@ function SkillBuilderSettingsOrComparisonFooter({
     <SkillBuilderSettingsSection
       skill={skill}
       hasSelfImprovingSkills={hasSelfImprovingSkills}
+      isReadOnly={isReadOnly}
       isEditorGateVisible={isEditorGateVisible}
       isAddingSelfAsEditor={isAddingSelfAsEditor}
       onAddSelfAsEditor={onAddSelfAsEditor}

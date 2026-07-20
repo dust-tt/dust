@@ -4,15 +4,18 @@ import { InfoCircle, SliderToggle, Tooltip } from "@dust-tt/sparkle";
 import { useFormContext } from "react-hook-form";
 
 interface SkillBuilderEnableSuggestionsSectionProps {
+  isReadOnly: boolean;
   selfImprovementLock: boolean;
 }
 
 export function SkillBuilderEnableSuggestionsSection({
+  isReadOnly,
   selfImprovementLock,
 }: SkillBuilderEnableSuggestionsSectionProps) {
   const { owner } = useSkillBuilderContext();
   const isAllowedByWorkspace = owner.metadata?.allowReinforcement === true;
-  const isDisabled = !isAllowedByWorkspace || selfImprovementLock;
+  const isUnavailable = !isAllowedByWorkspace || selfImprovementLock;
+  const isDisabled = isReadOnly || isUnavailable;
 
   const { watch, setValue } = useFormContext<SkillBuilderFormData>();
   const reinforcement = watch("reinforcement");
@@ -27,7 +30,7 @@ export function SkillBuilderEnableSuggestionsSection({
 
   return (
     <div className="flex flex-col gap-2">
-      {isDisabled && (
+      {isUnavailable && (
         <div className="flex items-start gap-1.5 text-xs text-muted-foreground">
           <InfoCircle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
           <span>
@@ -41,7 +44,8 @@ export function SkillBuilderEnableSuggestionsSection({
         className={`flex items-center gap-2 ${isDisabled ? "cursor-not-allowed opacity-50" : ""}`}
       >
         <SliderToggle
-          selected={enabled && !isDisabled}
+          disabled={isDisabled}
+          selected={enabled && !isUnavailable}
           onClick={handleToggle}
         />
         <span className="text-sm text-foreground">Self-improve</span>
