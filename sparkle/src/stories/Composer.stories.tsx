@@ -332,6 +332,7 @@ function ComposerDemo({
               size="xxs"
               name={selectedAgent.name}
               visual={selectedAgent.pictureUrl}
+              className="h-4 w-4"
             />
             <span className="grow truncate">{selectedAgent.name}</span>
           </button>

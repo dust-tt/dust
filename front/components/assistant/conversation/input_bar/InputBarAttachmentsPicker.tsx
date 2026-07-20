@@ -569,8 +569,6 @@ export const InputBarAttachmentsPicker = ({
             isLoading={isLoading || isAnyToolFileUploading}
             label={buttonLabel}
             onClick={() => setIsOpen(!isOpen)}
-            isRounded
-            className="border border-transparent hover:border-border-dark hover:bg-primary-100 dark:hover:border-white/10"
           />
         </DropdownMenuTrigger>
       ) : type === "dropdown" && isExternallyControlled ? (
