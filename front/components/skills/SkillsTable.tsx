@@ -29,7 +29,7 @@ import type {
   Row,
   RowSelectionState,
 } from "@tanstack/react-table";
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 type RowData = {
   sId: string;
@@ -262,7 +262,9 @@ export function SkillsTable({
 }: SkillsTableProps) {
   const router = useAppRouter();
   const routerRef = useRef(router);
-  routerRef.current = router;
+  useEffect(() => {
+    routerRef.current = router;
+  }, [router]);
   const { pagination, setPagination } = usePaginationFromUrl({});
   const [skillToArchive, setSkillToArchive] =
     useState<SkillListItemWithRelationsResponseType | null>(null);
