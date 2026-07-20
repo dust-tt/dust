@@ -2,7 +2,10 @@ import type {
   BetaMessageStreamParams,
   BetaRawMessageStreamEvent,
 } from "@anthropic-ai/sdk/resources/beta/messages/messages";
-import type { MessageCreateParamsNonStreaming } from "@anthropic-ai/sdk/resources/messages/messages";
+import type {
+  Model as HostModel,
+  MessageCreateParamsNonStreaming,
+} from "@anthropic-ai/sdk/resources/messages/messages";
 import AnthropicVertex from "@anthropic-ai/vertex-sdk";
 import type { BaseEndpointConfiguration } from "@app/lib/model_constructors/configuration";
 import type { AnthropicInputConfig } from "@app/lib/model_constructors/providers/anthropic/inputConfig";
@@ -38,7 +41,7 @@ export const anthropicAgentPlatformConfigSchema = inputConfigSchema.extend({
     .optional(),
 });
 
-const MODEL_MAPPING: Partial<Record<Model, Model>> = {
+const MODEL_MAPPING: Partial<Record<Model, HostModel>> = {
   [CLAUDE_HAIKU_4_5]: "claude-haiku-4-5@20251001",
 };
 
@@ -75,7 +78,7 @@ export abstract class AnthropicAgentPlatformStream extends WithAnthropicAIInputC
     });
   }
 
-  modelIdToApiModelId = (modelId: Model): Model =>
+  modelToHostModel = (modelId: Model): HostModel =>
     MODEL_MAPPING[modelId] ?? modelId;
 
   // Vertex AI rejects URL image sources, so inline images as base64.

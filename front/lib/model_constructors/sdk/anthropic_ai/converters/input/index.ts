@@ -1,4 +1,5 @@
 import type {
+  Model as HostModel,
   MessageCreateParamsNonStreaming,
   MessageParam,
   TextBlockParam,
@@ -57,7 +58,7 @@ export function WithAnthropicAIInputConverter<
     assistantProviderPassthroughMessageToBlocks =
       assistantProviderPassthroughMessageToBlocks;
     reasoningToThinkingConfig = reasoningToThinkingConfig;
-    modelIdToApiModelId = (modelId: Model): Model => modelId;
+    modelToHostModel = (modelId: Model): HostModel => modelId;
 
     conversationToMessages(
       conversation: Payload["conversation"]
@@ -107,7 +108,7 @@ export function WithAnthropicAIInputConverter<
       });
 
       return {
-        model: this.modelIdToApiModelId(this.constructor.modelId),
+        model: this.modelToHostModel(this.constructor.modelId),
         max_tokens: this.constructor.maxOutputTokens,
         messages,
         system: includesToolSearchTool(anthropicTools)
