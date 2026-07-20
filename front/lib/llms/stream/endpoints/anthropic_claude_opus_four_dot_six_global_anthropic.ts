@@ -8,4 +8,6 @@ export class DustAnthropicClaudeOpusFourDotSixGlobalAnthropicStream extends With
   static readonly endpointFilter = {};
 }
 
-defineDustStreamEndpoint(DustAnthropicClaudeOpusFourDotSixGlobalAnthropicStream);
+defineDustStreamEndpoint(
+  DustAnthropicClaudeOpusFourDotSixGlobalAnthropicStream
+);

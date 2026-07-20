@@ -8,4 +8,6 @@ export class DustGoogleAiStudioGeminiThreeDotFiveFlashGlobalAgentPlatformStream 
   static readonly endpointFilter = {};
 }
 
-defineDustStreamEndpoint(DustGoogleAiStudioGeminiThreeDotFiveFlashGlobalAgentPlatformStream);
+defineDustStreamEndpoint(
+  DustGoogleAiStudioGeminiThreeDotFiveFlashGlobalAgentPlatformStream
+);

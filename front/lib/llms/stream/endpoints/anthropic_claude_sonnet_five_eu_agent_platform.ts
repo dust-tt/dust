@@ -15,4 +15,6 @@ export class DustAnthropicClaudeSonnetFiveEuropeAgentPlatformStream extends With
   };
 }
 
-defineDustStreamEndpoint(DustAnthropicClaudeSonnetFiveEuropeAgentPlatformStream);
+defineDustStreamEndpoint(
+  DustAnthropicClaudeSonnetFiveEuropeAgentPlatformStream
+);

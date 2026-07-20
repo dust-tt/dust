@@ -8,4 +8,6 @@ export class DustOpenAIGptFiveDotFourNanoEuropeOpenAIResponsesStream extends Wit
   static readonly endpointFilter = {};
 }
 
-defineDustStreamEndpoint(DustOpenAIGptFiveDotFourNanoEuropeOpenAIResponsesStream);
+defineDustStreamEndpoint(
+  DustOpenAIGptFiveDotFourNanoEuropeOpenAIResponsesStream
+);

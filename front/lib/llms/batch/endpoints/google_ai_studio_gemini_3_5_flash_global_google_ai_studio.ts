@@ -5,4 +5,6 @@ export class DustGoogleAiStudioGeminiThreeDotFiveFlashGlobalGoogleAiStudioBatch 
   static readonly endpointFilter = {};
 }
 
-defineDustBatchEndpoint(DustGoogleAiStudioGeminiThreeDotFiveFlashGlobalGoogleAiStudioBatch);
+defineDustBatchEndpoint(
+  DustGoogleAiStudioGeminiThreeDotFiveFlashGlobalGoogleAiStudioBatch
+);

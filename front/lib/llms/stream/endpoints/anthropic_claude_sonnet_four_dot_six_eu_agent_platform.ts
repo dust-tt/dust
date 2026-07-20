@@ -15,4 +15,6 @@ export class DustAnthropicClaudeSonnetFourDotSixEuropeAgentPlatformStream extend
   };
 }
 
-defineDustStreamEndpoint(DustAnthropicClaudeSonnetFourDotSixEuropeAgentPlatformStream);
+defineDustStreamEndpoint(
+  DustAnthropicClaudeSonnetFourDotSixEuropeAgentPlatformStream
+);

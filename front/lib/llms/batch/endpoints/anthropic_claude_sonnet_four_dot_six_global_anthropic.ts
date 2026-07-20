@@ -5,4 +5,6 @@ export class DustAnthropicClaudeSonnetFourDotSixGlobalAnthropicBatch extends Ant
   static readonly endpointFilter = {};
 }
 
-defineDustBatchEndpoint(DustAnthropicClaudeSonnetFourDotSixGlobalAnthropicBatch);
+defineDustBatchEndpoint(
+  DustAnthropicClaudeSonnetFourDotSixGlobalAnthropicBatch
+);
