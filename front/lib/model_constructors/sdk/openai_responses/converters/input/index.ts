@@ -18,6 +18,7 @@ import {
 import type { InputConfig } from "@app/lib/model_constructors/types/input/configuration";
 import { toToolChoiceInput } from "@app/lib/model_constructors/types/input/configuration";
 import type {
+  BaseUserTextMessage,
   Payload,
   SystemTextMessage,
 } from "@app/lib/model_constructors/types/input/messages";
@@ -39,7 +40,8 @@ export function WithOpenAIResponsesInputConverter<
     implements MessageItemConverters
   {
     systemMessageToInputItem = systemMessageToInputItem;
-    userTextMessageToInputItem = userTextMessageToInputItem;
+    userTextMessageToInputItem = (message: BaseUserTextMessage) =>
+      userTextMessageToInputItem(message, this.metadata());
     userImageMessageToInputItem = userImageMessageToInputItem;
     toolCallResultMessageToInputItem = toolCallResultMessageToInputItem;
     assistantTextMessageToInputItem = assistantTextMessageToInputItem;
