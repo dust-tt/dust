@@ -1231,7 +1231,9 @@ type RuntimeToolStakeLevelCallback = (
   params: RuntimeToolStakeLevelCallbackParams
 ) => MCPToolStakeLevelType;
 
-type InternalMCPServerEntryCommon = {
+type InternalMCPServerEntry<
+  K extends InternalMCPServerNameType = InternalMCPServerNameType,
+> = {
   id: number;
   availability: MCPServerAvailability;
   allowMultipleInstances: boolean;
@@ -1247,6 +1249,9 @@ type InternalMCPServerEntryCommon = {
   sensitivityLabelProvider?: string;
   // When false, the server is hidden from direct execution contexts (e.g. sandbox CLI).
   // Defaults to true.
+  metadata: ServerMetadata & {
+    serverInfo: InternalMCPServerDefinitionType & { name: K };
+  };
 } & (
   | {
       // A restricted server is not necessarily in preview (can be restricted based on the plan for instance).
@@ -1256,14 +1261,6 @@ type InternalMCPServerEntryCommon = {
   // Non restricted server cannot be in preview
   | { isPreview: false; isRestricted: undefined }
 );
-
-type InternalMCPServerEntry<
-  K extends InternalMCPServerNameType = InternalMCPServerNameType,
-> = InternalMCPServerEntryCommon & {
-  metadata: ServerMetadata & {
-    serverInfo: InternalMCPServerDefinitionType & { name: K };
-  };
-};
 
 type StaticInternalMCPToolNameType<N extends InternalMCPServerNameType> =
   (typeof INTERNAL_MCP_SERVERS)[N]["metadata"]["tools"][number]["name"];
