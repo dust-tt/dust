@@ -104,6 +104,7 @@ const NEW_CONTRACT_ID = "contract_new_yyy";
 const ENT_PACKAGE_ID = "pkg_ent_usd";
 const PRO_PACKAGE_ID = "pkg_pro_usd";
 const BUSINESS_PACKAGE_ID = "pkg_business_usd";
+const BUSINESS_EUR_PACKAGE_ID = "pkg_business_eur";
 const ENT_PLAN_CODE = "ENT_TEST_PLAN";
 const STRIPE_CUSTOMER_ID = "cus_test_xxx";
 
@@ -259,6 +260,15 @@ beforeEach(() => {
         aliases: ["business"],
         tier: "business",
         currency: "usd",
+        seats: [],
+        billingAnchor: "contract_start_date" as const,
+      },
+      {
+        id: BUSINESS_EUR_PACKAGE_ID,
+        name: "Business EUR",
+        aliases: ["business-eur"],
+        tier: "business",
+        currency: "eur",
         seats: [],
         billingAnchor: "contract_start_date" as const,
       },
@@ -710,5 +720,51 @@ describe("POST /api/poke/workspaces/[wId]/switch_contract — PAYG", () => {
       await CreditUsageConfigurationResource.fetchByWorkspaceId(adminAuth);
     expect(config?.paygEnabled).toBe(false);
     expect(config?.usageCapCredits).toBe(100_000);
+  });
+});
+
+describe("POST /api/poke/workspaces/[wId]/switch_contract — no Stripe customer", () => {
+  it("provisions a contract with no Stripe billing config when stripeCustomerId is blank", async () => {
+    const { workspace } = await createPrivateApiMockRequest({
+      isSuperUser: true,
+    });
+    await makeSubscriptionMetronomeBilled(workspace, EXISTING_CONTRACT_ID);
+
+    const response = await postSwitchContract(
+      workspace.sId,
+      proBody({ stripeCustomerId: "" })
+    );
+
+    expect(response.status).toBe(200);
+    expect(getStripeCustomer).not.toHaveBeenCalled();
+    expect(provisionMetronomeContract).toHaveBeenCalledWith(
+      expect.objectContaining({
+        packageAlias: "legacy-pro-monthly",
+        enableStripeBilling: false,
+      })
+    );
+  });
+
+  it("accepts a package in any currency when stripeCustomerId is blank", async () => {
+    const { workspace } = await createPrivateApiMockRequest({
+      isSuperUser: true,
+    });
+    await makeSubscriptionMetronomeBilled(workspace, EXISTING_CONTRACT_ID);
+
+    const response = await postSwitchContract(
+      workspace.sId,
+      businessBody({
+        stripeCustomerId: "",
+        metronomePackageId: BUSINESS_EUR_PACKAGE_ID,
+      })
+    );
+
+    expect(response.status).toBe(200);
+    expect(provisionMetronomeContract).toHaveBeenCalledWith(
+      expect.objectContaining({
+        packageAlias: "business-eur",
+        enableStripeBilling: false,
+      })
+    );
   });
 });

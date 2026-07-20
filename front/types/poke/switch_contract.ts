@@ -94,8 +94,14 @@ export const SwitchContractBodySchema = z.object({
     .min(0, "Net payment terms must be ≥ 0")
     .max(365, "Net payment terms must be ≤ 365")
     .optional(),
-  // Every contract switch must be wired to a Stripe customer.
-  stripeCustomerId: z.string().min(1, "Required"),
+  // Optional. Wires the contract to a Stripe customer for billing. Left
+  // blank, the contract is created with no Stripe billing provider
+  // configured — Metronome still raises invoices for `initialCredits`,
+  // `scheduledCharge`, and any seat `commitmentPrice` as usual, they simply
+  // aren't pushed to Stripe (nothing is auto-charged; reconcile manually).
+  // Any package currency may be picked in that case, since there's no Stripe
+  // customer currency to match against.
+  stripeCustomerId: z.string().default(""),
   // How Metronome collects Stripe invoices for this customer. Only takes
   // effect when a Stripe customer is wired in. `charge_automatically` charges
   // the card on file; `send_invoice` emails the invoice for manual payment.
