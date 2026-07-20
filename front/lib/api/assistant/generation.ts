@@ -465,8 +465,10 @@ export function constructPromptMultiActions(
     // Structured form with 3 cache tiers, ordered from most stable to most volatile.
     //
     // Instructions (long cache): stable per agent config, covering agent instructions, skills,
-    // format docs, and guidelines. If selected conversation Spaces are active, skill
-    // instructions can depend on per-conversation scope and must stay out of this tier.
+    // format docs, and guidelines. Code-defined system skills can derive their instructions from
+    // the effective Space IDs. For example, Discover Tools lists toolsets in that scope. When a
+    // conversation adds Spaces beyond the agent's configured scope, the skill instructions can
+    // change without the agent configuration changing and must stay out of this tier.
     //
     // Shared context (short cache): workspace-scoped data shared across users, covering tool-use
     // directives, date, toolsets, and workspace info. A cache breakpoint here lets different
