@@ -1,6 +1,6 @@
 import { fireworksConfigSchema } from "@app/lib/model_constructors/providers/fireworks/inputConfig";
 import { FIREWORKS_SUPPORTED_REASONING_EFFORTS } from "@app/lib/model_constructors/providers/fireworks/reasoning_efforts";
-import { FIREWORKS_GLM_5P2 } from "@app/lib/model_constructors/types/model_ids";
+import { GLM_5P2 } from "@app/lib/model_constructors/types/model_ids";
 import { z } from "zod";
 
 const CONTEXT_SIZE = 1_000_000;
@@ -22,7 +22,7 @@ export function WithZAiGlm52Config<
   ) => object,
 >(Base: TBase) {
   abstract class ZAiGlm52 extends Base {
-    static readonly modelId = FIREWORKS_GLM_5P2;
+    static readonly modelId = GLM_5P2;
 
     static readonly configSchema = configSchema;
 

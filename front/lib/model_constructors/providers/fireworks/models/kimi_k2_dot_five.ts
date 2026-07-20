@@ -1,5 +1,5 @@
 import { fireworksConfigSchema } from "@app/lib/model_constructors/providers/fireworks/inputConfig";
-import { FIREWORKS_KIMI_K2P5 } from "@app/lib/model_constructors/types/model_ids";
+import { KIMI_K2P5 } from "@app/lib/model_constructors/types/model_ids";
 import { z } from "zod";
 
 const CONTEXT_SIZE = 262_100;
@@ -21,7 +21,7 @@ export function WithMoonshotAiKimiK2Dot5Config<
   ) => object,
 >(Base: TBase) {
   abstract class MoonshotAiKimiK2Dot5 extends Base {
-    static readonly modelId = FIREWORKS_KIMI_K2P5;
+    static readonly modelId = KIMI_K2P5;
 
     static readonly configSchema = configSchema;
 

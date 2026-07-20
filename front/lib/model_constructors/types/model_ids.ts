@@ -28,21 +28,14 @@ export const MISTRAL_MEDIUM_3_5 = "mistral-medium-3-5" as const;
 export const MISTRAL_SMALL = "mistral-small-latest" as const;
 export const MISTRAL_CODESTRAL = "codestral-latest" as const;
 
-// Fireworks-served models keep their full Fireworks model path as the id.
-export const FIREWORKS_DEEPSEEK_V3P2 =
-  "accounts/fireworks/models/deepseek-v3p2" as const;
-export const FIREWORKS_DEEPSEEK_V4_PRO =
-  "accounts/fireworks/models/deepseek-v4-pro" as const;
-export const FIREWORKS_KIMI_K2_INSTRUCT =
-  "accounts/fireworks/models/kimi-k2-instruct-0905" as const;
-export const FIREWORKS_KIMI_K2P5 =
-  "accounts/fireworks/models/kimi-k2p5" as const;
-export const FIREWORKS_KIMI_K2P6 =
-  "accounts/fireworks/models/kimi-k2p6" as const;
-export const FIREWORKS_MINIMAX_M2P5 =
-  "accounts/fireworks/models/minimax-m2p5" as const;
-export const FIREWORKS_GLM_5 = "accounts/fireworks/models/glm-5" as const;
-export const FIREWORKS_GLM_5P2 = "accounts/fireworks/models/glm-5p2" as const;
+export const DEEPSEEK_V3P2 = "deepseek-v3p2" as const;
+export const DEEPSEEK_V4_PRO = "deepseek-v4-pro" as const;
+export const KIMI_K2_INSTRUCT = "kimi-k2-instruct-0905" as const;
+export const KIMI_K2P5 = "kimi-k2p5" as const;
+export const KIMI_K2P6 = "kimi-k2p6" as const;
+export const MINIMAX_M2P5 = "minimax-m2p5" as const;
+export const GLM_5 = "glm-5" as const;
+export const GLM_5P2 = "glm-5p2" as const;
 
 // Dummy model used for local/dev testing (static replies, simulated credit
 // consumption). Served by the in-process noop endpoint, not an external API.
@@ -76,14 +69,14 @@ export const MODELS = [
   MISTRAL_MEDIUM_3_5,
   MISTRAL_SMALL,
   MISTRAL_CODESTRAL,
-  FIREWORKS_DEEPSEEK_V3P2,
-  FIREWORKS_DEEPSEEK_V4_PRO,
-  FIREWORKS_KIMI_K2_INSTRUCT,
-  FIREWORKS_KIMI_K2P5,
-  FIREWORKS_KIMI_K2P6,
-  FIREWORKS_MINIMAX_M2P5,
-  FIREWORKS_GLM_5,
-  FIREWORKS_GLM_5P2,
+  DEEPSEEK_V3P2,
+  DEEPSEEK_V4_PRO,
+  KIMI_K2_INSTRUCT,
+  KIMI_K2P5,
+  KIMI_K2P6,
+  MINIMAX_M2P5,
+  GLM_5,
+  GLM_5P2,
   NOOP_MODEL,
 ] as const;
 

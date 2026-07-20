@@ -40,8 +40,10 @@ import type {
   WorkspaceConfig,
 } from "@app/lib/llms/types/filter";
 import { sortEndpointsByPreferredRegion } from "@app/lib/llms/utils/sort_endpoints";
+import { FIREWORKS_MODEL_PREFIX } from "@app/lib/model_constructors/stream/clients/fireworks";
 import {
   isModel,
+  type Model,
   NOOP_MODEL,
 } from "@app/lib/model_constructors/types/model_ids";
 import { GOOGLE_AI_STUDIO_HOST } from "@app/lib/model_constructors/types/provider_apis";
@@ -345,6 +347,17 @@ const REGION_MAPPING: Record<RegionType, Region> = {
   "us-central1": GLOBAL,
 };
 
+// Maps a legacy `ModelIdType` (Fireworks ids still carry the
+// `accounts/fireworks/models/` prefix) to the bare `Model` id the router keys
+// endpoints by. Returns null for unknown ids.
+export function legacyModelIdToModel(modelId: string): Model | null {
+  const bare = modelId.startsWith(FIREWORKS_MODEL_PREFIX)
+    ? modelId.slice(FIREWORKS_MODEL_PREFIX.length)
+    : modelId;
+
+  return isModel(bare) ? bare : null;
+}
+
 // Selects the endpoint best matching the current region for the given model,
 // shared by the stream and batch resolvers. The only thing that varies between
 // the two surfaces is which registry of endpoints we filter over.
@@ -357,8 +370,10 @@ function selectPreferredEndpoint<T extends { region: Region }>(
     inputCondition: Where<EndpointConfig>
   ) => T[]
 ): T | null {
-  // llmParameters.modelId is ModelIdType — narrow before filtering.
-  if (!isModel(llmParameters.modelId)) {
+  // llmParameters.modelId is a legacy ModelIdType (Fireworks ids still carry the
+  // `accounts/fireworks/models/` prefix); map it to the bare router Model id.
+  const modelId = legacyModelIdToModel(llmParameters.modelId);
+  if (!modelId) {
     return null;
   }
 
@@ -374,7 +389,7 @@ function selectPreferredEndpoint<T extends { region: Region }>(
     {
       ...workspaceFilter,
       modelId: {
-        eq: llmParameters.modelId,
+        eq: modelId,
       },
     }
   );

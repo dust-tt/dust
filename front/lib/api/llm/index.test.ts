@@ -1,10 +1,11 @@
-import { getWorkspaceFilter } from "@app/lib/api/llm";
+import { getWorkspaceFilter, legacyModelIdToModel } from "@app/lib/api/llm";
 import { Authenticator, getFeatureFlags } from "@app/lib/auth";
 import { getStreamEndpoints } from "@app/lib/llms/stream";
 import type { WorkspaceConfig } from "@app/lib/llms/types/filter";
 import {
   GEMINI_3_1_PRO,
   GEMINI_3_5_FLASH,
+  GLM_5P2,
 } from "@app/lib/model_constructors/types/model_ids";
 import {
   AGENT_PLATFORM_HOST,
@@ -71,5 +72,24 @@ describe("getWorkspaceFilter", () => {
     expect(proEndpoints.some((e) => e.api === GOOGLE_AI_STUDIO_HOST)).toBe(
       true
     );
+  });
+});
+
+describe("legacyModelIdToModel", () => {
+  it("strips the Fireworks prefix from legacy ids", () => {
+    expect(legacyModelIdToModel("accounts/fireworks/models/glm-5p2")).toBe(
+      GLM_5P2
+    );
+  });
+
+  it("passes through non-Fireworks ids unchanged", () => {
+    expect(legacyModelIdToModel("claude-sonnet-4-6")).toBe("claude-sonnet-4-6");
+  });
+
+  it("returns null for unknown ids", () => {
+    expect(legacyModelIdToModel("accounts/fireworks/models/not-a-model")).toBe(
+      null
+    );
+    expect(legacyModelIdToModel("bogus")).toBe(null);
   });
 });

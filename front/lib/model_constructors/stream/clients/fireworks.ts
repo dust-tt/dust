@@ -7,6 +7,7 @@ import { rawOutputToEvents } from "@app/lib/model_constructors/sdk/openai_comple
 import { StreamEndpoint } from "@app/lib/model_constructors/stream/endpoint";
 import type { Credentials } from "@app/lib/model_constructors/types/credentials";
 import type { Payload } from "@app/lib/model_constructors/types/input/messages";
+import type { Model } from "@app/lib/model_constructors/types/model_ids";
 import type { ModelResponseEvent } from "@app/lib/model_constructors/types/output/events";
 import { FIREWORKS_HOST } from "@app/lib/model_constructors/types/provider_apis";
 import { FIREWORKS_LAB } from "@app/lib/model_constructors/types/provider_ids";
@@ -17,6 +18,10 @@ import type {
 } from "openai/resources/chat/completions";
 
 const FIREWORKS_BASE_URL = "https://api.fireworks.ai/inference/v1";
+
+// Fireworks model ids are stored bare (e.g. `glm-5p2`) but legacy `ModelIdType`
+// and the Fireworks API both use the full account-scoped path.
+export const FIREWORKS_MODEL_PREFIX = "accounts/fireworks/models/";
 
 export abstract class FireworksStream extends WithOpenAICompletionsInputConverter(
   StreamEndpoint<
@@ -39,6 +44,11 @@ export abstract class FireworksStream extends WithOpenAICompletionsInputConverte
       baseURL: FIREWORKS_BASE_URL,
     });
   }
+
+  // Model ids are stored bare (e.g. `glm-5p2`); Fireworks' API expects the full
+  // account-scoped model path.
+  modelToHostModel = (modelId: Model): string =>
+    `${FIREWORKS_MODEL_PREFIX}${modelId}`;
 
   // Fireworks always streams, so opt into `stream`/`stream_options` here rather
   // than in `streamRaw`, keeping the request payload self-contained.
