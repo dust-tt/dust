@@ -18,12 +18,14 @@ interface SkillDetailsButtonBarProps {
   skill: SkillWithoutInstructionsAndToolsWithRelationsType;
   owner: WorkspaceType;
   onClose: () => void;
+  replaceOnEdit?: boolean;
 }
 
 export function SkillDetailsButtonBar({
   skill,
   owner,
   onClose,
+  replaceOnEdit,
 }: SkillDetailsButtonBarProps) {
   const [showArchiveDialog, setShowArchiveDialog] = useState(false);
 
@@ -47,6 +49,7 @@ export function SkillDetailsButtonBar({
           size="sm"
           tooltip="Edit skill"
           href={getSkillBuilderRoute(owner.sId, skill.sId)}
+          replace={replaceOnEdit}
           variant="outline"
           icon={Edit04}
         />

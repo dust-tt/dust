@@ -816,6 +816,7 @@ export function SkillBuilderInstructionsEditor({
         selectedMCPServerView={selectedServerViewForDetails}
         onCloseSkill={() => setSelectedSkillIdForDetails(null)}
         onCloseTool={() => setSelectedServerViewForDetails(null)}
+        replaceOnSkillEdit
       />
     </>
   );
