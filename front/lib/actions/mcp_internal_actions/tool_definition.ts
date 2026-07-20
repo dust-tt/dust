@@ -127,15 +127,15 @@ export function buildClientTools<T extends Record<string, ClientToolMeta>>(
   );
 }
 
-export function buildTools<T extends readonly ToolMeta[]>(
-  metadata: T,
-  handlers: ToolHandlers<T>
-): ToolDefinition[] {
+export function buildTools<
+  const TName extends string,
+  const T extends readonly ToolMeta<TName>[],
+>(metadata: T, handlers: ToolHandlers<T, TName>): ToolDefinition[] {
   return metadata.map(
     (tool) =>
       ({
         ...tool,
-        handler: handlers[tool.name as keyof ToolHandlers<T>],
+        handler: handlers[tool.name],
       }) as unknown as ToolDefinition
   );
 }
