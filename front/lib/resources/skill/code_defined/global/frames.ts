@@ -1,13 +1,10 @@
 import {
   INTERACTIVE_CONTENT_INSTRUCTIONS,
   INTERACTIVE_CONTENT_INSTRUCTIONS_COMPUTER_FIRST,
-  INTERACTIVE_CONTENT_INSTRUCTIONS_FILES_FIRST,
 } from "@app/lib/api/actions/servers/interactive_content/instructions";
 import type { Authenticator } from "@app/lib/auth";
-import { getFeatureFlags } from "@app/lib/auth";
 import type { GlobalSkillDefinition } from "@app/lib/resources/skill/code_defined/shared";
 import type { AgentLoopExecutionData } from "@app/types/assistant/agent_run";
-import { isComputerFeatureEnabled } from "@app/types/shared/feature_flags";
 
 export const framesSkill = {
   sId: "frames",
@@ -29,7 +26,7 @@ export const framesSkill = {
   // on) keep the retrieve and file-id edit flow. Without a conversation at hand, assume the
   // file system is on since every new conversation has it.
   fetchInstructions: async (
-    auth: Authenticator,
+    _auth: Authenticator,
     params: { spaceIds: string[]; agentLoopData?: AgentLoopExecutionData }
   ) => {
     const conversation = params.agentLoopData?.conversation;
@@ -37,10 +34,7 @@ export const framesSkill = {
       return INTERACTIVE_CONTENT_INSTRUCTIONS;
     }
 
-    const flags = await getFeatureFlags(auth);
-    return isComputerFeatureEnabled(flags)
-      ? INTERACTIVE_CONTENT_INSTRUCTIONS_COMPUTER_FIRST
-      : INTERACTIVE_CONTENT_INSTRUCTIONS_FILES_FIRST;
+    return INTERACTIVE_CONTENT_INSTRUCTIONS_COMPUTER_FIRST;
   },
   mcpServers: [{ name: "interactive_content" }],
   version: 3,

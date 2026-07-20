@@ -13,7 +13,6 @@ import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { DataSourceViewFactory } from "@app/tests/utils/DataSourceViewFactory";
-import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { FileFactory } from "@app/tests/utils/FileFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { SkillFactory } from "@app/tests/utils/SkillFactory";
@@ -183,47 +182,6 @@ describe("getJITServers", () => {
       expect(skillManagementServer?.description).toBe(
         "Enable skills for the conversation."
       );
-    });
-
-    describe("when no auto-equipped skills", () => {
-      beforeEach(async () => {
-        await FeatureFlagFactory.basic(auth, "disable_computer_feature");
-      });
-
-      it("should not include skill_management server when agent has no skills", async () => {
-        await MCPServerViewResource.ensureAllAutoToolsAreCreated(auth);
-
-        const jitServers = await getJITServers(auth, {
-          agentConfiguration: agentConfig,
-          conversation: { ...conversation, spaceId: conversationsSpace.sId },
-          attachments: [],
-        });
-
-        const skillManagementServer = jitServers.find(
-          (server) => server.name === "skill_management"
-        );
-
-        expect(skillManagementServer).toBeUndefined();
-      });
-
-      it("should not include skill_management server when agent only has system skills", async () => {
-        await MCPServerViewResource.ensureAllAutoToolsAreCreated(auth);
-        await SkillFactory.linkGlobalSkillToAgent(auth, {
-          globalSkillId: "discover_tools",
-          agentConfigurationId: agentConfig.id,
-        });
-        const jitServers = await getJITServers(auth, {
-          agentConfiguration: agentConfig,
-          conversation: { ...conversation, spaceId: conversationsSpace.sId },
-          attachments: [],
-        });
-
-        const skillManagementServer = jitServers.find(
-          (server) => server.name === "skill_management"
-        );
-
-        expect(skillManagementServer).toBeUndefined();
-      });
     });
 
     it("keeps configured custom skills equipped after enabling them, but not system skills", async () => {
@@ -712,7 +670,7 @@ describe("getJITServers", () => {
   });
 
   describe("sandbox (Computer) availability", () => {
-    it("auto-equips the sandbox skill for any agent when Computer is enabled", async () => {
+    it("auto-equips the sandbox skill for any agent", async () => {
       await MCPServerViewResource.ensureAllAutoToolsAreCreated(auth);
 
       // The test agent does not list the sandbox skill in its configuration.
@@ -727,20 +685,6 @@ describe("getJITServers", () => {
       const computerSkill = equippedSkills.find((s) => s.sId === "sandbox");
       expect(computerSkill).toBeDefined();
       expect(computerSkill?.instructions).toBe("");
-    });
-
-    it("does not equip or enable the sandbox skill when Computer is disabled", async () => {
-      await FeatureFlagFactory.basic(auth, "disable_computer_feature");
-
-      const { enabledSkills, systemSkills, equippedSkills } =
-        await SkillResource.listForAgentLoop(auth, {
-          agentConfiguration: agentConfig,
-          conversation,
-        });
-
-      expect(systemSkills.some((s) => s.sId === "sandbox")).toBe(false);
-      expect(enabledSkills.some((s) => s.sId === "sandbox")).toBe(false);
-      expect(equippedSkills.some((s) => s.sId === "sandbox")).toBe(false);
     });
 
     it("keeps the sandbox skill available for nested sub-agent conversations", async () => {
