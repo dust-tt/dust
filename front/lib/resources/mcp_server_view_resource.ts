@@ -176,11 +176,9 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
       }
       resource.remoteMCPServer = remoteServer;
     } else if (blob.internalMCPServerId) {
-      const systemSpace = await SpaceResource.fetchWorkspaceSystemSpace(auth);
       const internalServer = await InternalMCPServerInMemoryResource.fetchById(
         auth,
-        blob.internalMCPServerId,
-        systemSpace
+        blob.internalMCPServerId
       );
       if (!internalServer) {
         throw new DustError(
@@ -424,11 +422,6 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
     if (options.includeDeleted) {
       filteredViews.push(...views);
     } else {
-      const systemSpace = await SpaceResource.fetchWorkspaceSystemSpace(
-        auth,
-        transaction
-      );
-
       const remoteServers = await RemoteMCPServerResource.fetchByModelIds(
         auth,
         removeNulls(views.map((v) => v.remoteMCPServerId)),
@@ -439,8 +432,7 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
       const internalServers =
         await InternalMCPServerInMemoryResource.fetchByIds(
           auth,
-          removeNulls(views.map((v) => v.internalMCPServerId)),
-          systemSpace
+          removeNulls(views.map((v) => v.internalMCPServerId))
         );
       const internalServerMap = new Map(internalServers.map((s) => [s.id, s]));
 

@@ -18,7 +18,6 @@ import { InternalMCPServerInMemoryResource } from "@app/lib/resources/internal_m
 import { MCPServerConnectionResource } from "@app/lib/resources/mcp_server_connection_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { RemoteMCPServerResource } from "@app/lib/resources/remote_mcp_servers_resource";
-import { SpaceResource } from "@app/lib/resources/space_resource";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { headersArrayToRecord } from "@app/types/shared/utils/http_headers";
 import { workspaceApp } from "@front-api/middlewares/ctx";
@@ -51,11 +50,9 @@ app.get(
     const { serverType, id } = getServerTypeAndIdFromSId(serverId);
     switch (serverType) {
       case "internal": {
-        const systemSpace = await SpaceResource.fetchWorkspaceSystemSpace(auth);
         const server = await InternalMCPServerInMemoryResource.fetchById(
           auth,
-          serverId,
-          systemSpace
+          serverId
         );
 
         if (!server) {
@@ -120,11 +117,9 @@ app.patch(
       return handleRemotePatch(ctx, auth, remoteServer, body);
     }
 
-    const systemSpace = await SpaceResource.fetchWorkspaceSystemSpace(auth);
     const internalServer = await InternalMCPServerInMemoryResource.fetchById(
       auth,
-      serverId,
-      systemSpace
+      serverId
     );
     if (!internalServer) {
       return apiError(ctx, {
@@ -149,16 +144,10 @@ app.delete(
 
     const { serverType } = getServerTypeAndIdFromSId(serverId);
 
-    const systemSpace = await SpaceResource.fetchWorkspaceSystemSpace(auth);
-
     const server =
       serverType === "remote"
         ? await RemoteMCPServerResource.fetchById(auth, serverId)
-        : await InternalMCPServerInMemoryResource.fetchById(
-            auth,
-            serverId,
-            systemSpace
-          );
+        : await InternalMCPServerInMemoryResource.fetchById(auth, serverId);
 
     if (!server) {
       return apiError(ctx, {

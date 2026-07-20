@@ -298,20 +298,15 @@ export class InternalMCPServerInMemoryResource {
     return new Ok(1);
   }
 
-  static async fetchById(
-    auth: Authenticator,
-    id: string,
-    systemSpace: SpaceResource
-  ) {
-    const results = await this.fetchByIds(auth, [id], systemSpace);
+  static async fetchById(auth: Authenticator, id: string) {
+    const results = await this.fetchByIds(auth, [id]);
 
     return results[0] ?? null;
   }
 
   static async fetchByIds(
     auth: Authenticator,
-    ids: string[],
-    systemSpace: SpaceResource
+    ids: string[]
   ): Promise<InternalMCPServerInMemoryResource[]> {
     if (ids.length === 0) {
       return [];
@@ -328,15 +323,29 @@ export class InternalMCPServerInMemoryResource {
       (id) => getAvailabilityOfInternalMCPServerById(id) === "manual"
     );
 
-    const servers = await MCPServerViewModel.findAll({
-      attributes: ["internalMCPServerId"],
-      where: {
-        serverType: "internal",
-        internalMCPServerId: { [Op.in]: manualIds },
-        workspaceId: auth.getNonNullableWorkspace().id,
-        vaultId: systemSpace.id,
-      },
-    });
+    const workspaceId = auth.getNonNullableWorkspace().id;
+    const servers =
+      manualIds.length > 0
+        ? await MCPServerViewModel.findAll({
+            attributes: ["internalMCPServerId"],
+            include: [
+              {
+                model: SpaceResource.model,
+                attributes: [],
+                required: true,
+                where: {
+                  kind: "system",
+                  workspaceId,
+                },
+              },
+            ],
+            where: {
+              serverType: "internal",
+              internalMCPServerId: { [Op.in]: manualIds },
+              workspaceId,
+            },
+          })
+        : [];
     validIds.push(...removeNulls(servers.map((s) => s.internalMCPServerId)));
 
     const availableIds = [...new Set(validIds)];
