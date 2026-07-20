@@ -1,9 +1,9 @@
 import { WithDustClaudeSonnetFiveConfig } from "@app/lib/llms/providers/anthropic/models/claude_sonnet_five";
 import { defineDustStreamEndpoint } from "@app/lib/llms/stream/dust_stream_endpoint";
-import { AgentPlatformEuropeClaudeSonnetFiveStream } from "@app/lib/model_constructors/stream/endpoints/agent_platform_eu_claude_sonnet_five";
+import { AnthropicClaudeSonnetFiveEuropeAgentPlatformStream } from "@app/lib/model_constructors/stream/endpoints/anthropic_claude_sonnet_five_eu_agent_platform";
 
 export class DustAgentPlatformEuropeClaudeSonnetFiveStream extends WithDustClaudeSonnetFiveConfig(
-  AgentPlatformEuropeClaudeSonnetFiveStream
+  AnthropicClaudeSonnetFiveEuropeAgentPlatformStream
 ) {
   static readonly endpointFilter = {
     or: [

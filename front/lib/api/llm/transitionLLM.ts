@@ -38,8 +38,8 @@ import type {
 } from "@app/lib/model_constructors/batch/endpoint";
 import type { BaseEndpointConfiguration } from "@app/lib/model_constructors/configuration";
 import type { StreamEndpoint } from "@app/lib/model_constructors/stream/endpoint";
-import type { NoopRequest } from "@app/lib/model_constructors/stream/endpoints/noop_global_noop";
-import { NoopGlobalNoopStream } from "@app/lib/model_constructors/stream/endpoints/noop_global_noop";
+import type { NoopRequest } from "@app/lib/model_constructors/stream/endpoints/noop_noop_global_noop";
+import { NoopNoopGlobalNoopStream } from "@app/lib/model_constructors/stream/endpoints/noop_noop_global_noop";
 import type {
   InputConfig,
   ToolSpecification,
@@ -775,7 +775,7 @@ export class StreamEndpointTransition extends BaseTransition {
  *   base `getSimulatedRunUsages` hook.
  */
 export class NoopStreamTransition extends StreamEndpointTransition {
-  private readonly noopModel = new NoopGlobalNoopStream(undefined);
+  private readonly noopModel = new NoopNoopGlobalNoopStream(undefined);
   private readonly noopMetaData?: Record<string, unknown>;
   private simulatedRunUsages: RunUsageType[] | null = null;
 

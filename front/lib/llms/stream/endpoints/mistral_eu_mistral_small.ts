@@ -1,9 +1,9 @@
 import { WithDustMistralSmallConfig } from "@app/lib/llms/providers/mistral/models/mistral_small";
 import { defineDustStreamEndpoint } from "@app/lib/llms/stream/dust_stream_endpoint";
-import { MistralEuropeMistralSmallStream } from "@app/lib/model_constructors/stream/endpoints/mistral_eu_mistral_small";
+import { MistralMistralSmallEuropeMistralStream } from "@app/lib/model_constructors/stream/endpoints/mistral_mistral_small_eu_mistral";
 
 export class DustMistralEuropeMistralSmallStream extends WithDustMistralSmallConfig(
-  MistralEuropeMistralSmallStream
+  MistralMistralSmallEuropeMistralStream
 ) {
   static readonly endpointFilter = {};
 }

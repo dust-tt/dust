@@ -1,9 +1,9 @@
 import { WithDustClaudeOpusFourDotSevenConfig } from "@app/lib/llms/providers/anthropic/models/claude_opus_four_dot_seven";
 import { defineDustStreamEndpoint } from "@app/lib/llms/stream/dust_stream_endpoint";
-import { AgentPlatformEuropeClaudeOpusFourDotSevenStream } from "@app/lib/model_constructors/stream/endpoints/agent_platform_eu_claude_opus_four_dot_seven";
+import { AnthropicClaudeOpusFourDotSevenEuropeAgentPlatformStream } from "@app/lib/model_constructors/stream/endpoints/anthropic_claude_opus_four_dot_seven_eu_agent_platform";
 
 export class DustAgentPlatformEuropeClaudeOpusFourDotSevenStream extends WithDustClaudeOpusFourDotSevenConfig(
-  AgentPlatformEuropeClaudeOpusFourDotSevenStream
+  AnthropicClaudeOpusFourDotSevenEuropeAgentPlatformStream
 ) {
   static readonly endpointFilter = {
     or: [

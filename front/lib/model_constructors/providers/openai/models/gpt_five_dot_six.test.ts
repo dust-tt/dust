@@ -1,10 +1,10 @@
 import { getModelConfigByModelId } from "@app/lib/llms/model_configurations";
-import { OpenAIResponsesEuropeGptFiveDotSixLunaStream } from "@app/lib/model_constructors/stream/endpoints/openai_responses_eu_gpt_five_dot_six_luna";
-import { OpenAIResponsesEuropeGptFiveDotSixSolStream } from "@app/lib/model_constructors/stream/endpoints/openai_responses_eu_gpt_five_dot_six_sol";
-import { OpenAIResponsesEuropeGptFiveDotSixTerraStream } from "@app/lib/model_constructors/stream/endpoints/openai_responses_eu_gpt_five_dot_six_terra";
-import { OpenAIResponsesGlobalGptFiveDotSixLunaStream } from "@app/lib/model_constructors/stream/endpoints/openai_responses_global_gpt_five_dot_six_luna";
-import { OpenAIResponsesGlobalGptFiveDotSixSolStream } from "@app/lib/model_constructors/stream/endpoints/openai_responses_global_gpt_five_dot_six_sol";
-import { OpenAIResponsesGlobalGptFiveDotSixTerraStream } from "@app/lib/model_constructors/stream/endpoints/openai_responses_global_gpt_five_dot_six_terra";
+import { OpenAIGptFiveDotSixLunaEuropeOpenAIResponsesStream } from "@app/lib/model_constructors/stream/endpoints/openai_gpt_five_dot_six_luna_eu_openai_responses";
+import { OpenAIGptFiveDotSixLunaGlobalOpenAIResponsesStream } from "@app/lib/model_constructors/stream/endpoints/openai_gpt_five_dot_six_luna_global_openai_responses";
+import { OpenAIGptFiveDotSixSolEuropeOpenAIResponsesStream } from "@app/lib/model_constructors/stream/endpoints/openai_gpt_five_dot_six_sol_eu_openai_responses";
+import { OpenAIGptFiveDotSixSolGlobalOpenAIResponsesStream } from "@app/lib/model_constructors/stream/endpoints/openai_gpt_five_dot_six_sol_global_openai_responses";
+import { OpenAIGptFiveDotSixTerraEuropeOpenAIResponsesStream } from "@app/lib/model_constructors/stream/endpoints/openai_gpt_five_dot_six_terra_eu_openai_responses";
+import { OpenAIGptFiveDotSixTerraGlobalOpenAIResponsesStream } from "@app/lib/model_constructors/stream/endpoints/openai_gpt_five_dot_six_terra_global_openai_responses";
 import {
   GPT_5_6_LUNA_MODEL_CONFIG,
   GPT_5_6_SOL_MODEL_CONFIG,
@@ -21,24 +21,24 @@ const GPT_5_6_CONFIGURATIONS = [
     name: "Sol",
     legacy: GPT_5_6_SOL_MODEL_CONFIG,
     endpoints: [
-      OpenAIResponsesGlobalGptFiveDotSixSolStream,
-      OpenAIResponsesEuropeGptFiveDotSixSolStream,
+      OpenAIGptFiveDotSixSolGlobalOpenAIResponsesStream,
+      OpenAIGptFiveDotSixSolEuropeOpenAIResponsesStream,
     ],
   },
   {
     name: "Terra",
     legacy: GPT_5_6_TERRA_MODEL_CONFIG,
     endpoints: [
-      OpenAIResponsesGlobalGptFiveDotSixTerraStream,
-      OpenAIResponsesEuropeGptFiveDotSixTerraStream,
+      OpenAIGptFiveDotSixTerraGlobalOpenAIResponsesStream,
+      OpenAIGptFiveDotSixTerraEuropeOpenAIResponsesStream,
     ],
   },
   {
     name: "Luna",
     legacy: GPT_5_6_LUNA_MODEL_CONFIG,
     endpoints: [
-      OpenAIResponsesGlobalGptFiveDotSixLunaStream,
-      OpenAIResponsesEuropeGptFiveDotSixLunaStream,
+      OpenAIGptFiveDotSixLunaGlobalOpenAIResponsesStream,
+      OpenAIGptFiveDotSixLunaEuropeOpenAIResponsesStream,
     ],
   },
 ] as const;

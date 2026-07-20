@@ -1,9 +1,9 @@
 import { WithDustGptFiveDotTwoConfig } from "@app/lib/llms/providers/openai/models/gpt_five_dot_two";
 import { defineDustStreamEndpoint } from "@app/lib/llms/stream/dust_stream_endpoint";
-import { OpenAIResponsesEuropeGptFiveDotTwoStream } from "@app/lib/model_constructors/stream/endpoints/openai_responses_eu_gpt_five_dot_two";
+import { OpenAIGptFiveDotTwoEuropeOpenAIResponsesStream } from "@app/lib/model_constructors/stream/endpoints/openai_gpt_five_dot_two_eu_openai_responses";
 
 export class DustOpenAIResponsesEuropeGptFiveDotTwoStream extends WithDustGptFiveDotTwoConfig(
-  OpenAIResponsesEuropeGptFiveDotTwoStream
+  OpenAIGptFiveDotTwoEuropeOpenAIResponsesStream
 ) {
   static readonly endpointFilter = {};
 }

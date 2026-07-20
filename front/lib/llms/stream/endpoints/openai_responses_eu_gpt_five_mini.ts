@@ -1,9 +1,9 @@
 import { WithDustGptFiveMiniConfig } from "@app/lib/llms/providers/openai/models/gpt_five_mini";
 import { defineDustStreamEndpoint } from "@app/lib/llms/stream/dust_stream_endpoint";
-import { OpenAIResponsesEuropeGptFiveMiniStream } from "@app/lib/model_constructors/stream/endpoints/openai_responses_eu_gpt_five_mini";
+import { OpenAIGptFiveMiniEuropeOpenAIResponsesStream } from "@app/lib/model_constructors/stream/endpoints/openai_gpt_five_mini_eu_openai_responses";
 
 export class DustOpenAIResponsesEuropeGptFiveMiniStream extends WithDustGptFiveMiniConfig(
-  OpenAIResponsesEuropeGptFiveMiniStream
+  OpenAIGptFiveMiniEuropeOpenAIResponsesStream
 ) {
   static readonly endpointFilter = {};
 }
