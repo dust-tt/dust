@@ -44,6 +44,9 @@ const SHARING_POLICY_OPTIONS: {
   },
 ];
 
+const LABEL = "Frame access";
+const DESCRIPTION = "Control who can access frames in this workspace.";
+
 interface InteractiveContentSharingToggleProps {
   owner: WorkspaceType;
 }
@@ -103,8 +106,8 @@ export function InteractiveContentSharing({
     <>
       {hasFeature("admin_governance") ? (
         <GovernanceSettingRowLayout
-          label="Frame sharing policy"
-          description="Control how frames can be shared in this workspace"
+          label={LABEL}
+          description={DESCRIPTION}
           action={
             <InteractiveContentSharingDropdown
               selectedOption={selectedOption}

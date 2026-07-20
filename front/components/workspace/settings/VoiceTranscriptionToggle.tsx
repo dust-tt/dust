@@ -4,14 +4,15 @@ import { useAuth, useFeatureFlags } from "@app/lib/auth/AuthContext";
 import type { WorkspaceType } from "@app/types/user";
 import { ContextItem, Microphone01, SliderToggle } from "@dust-tt/sparkle";
 
+const LABEL = "Voice transcription";
+const DESCRIPTION =
+  "Control whether members can use voice transcription in conversations.";
+
 export function VoiceTranscriptionToggle({ owner }: { owner: WorkspaceType }) {
   const { isEnabled, isChanging, doToggleVoiceTranscription } =
     useVoiceTranscriptionToggle({ owner });
   const { subscription } = useAuth();
   const { hasFeature } = useFeatureFlags();
-
-  const label = "Voice transcription";
-  const description = "Allow voice transcription in Dust conversations";
 
   if (subscription.plan.isByok) {
     return null;
@@ -20,8 +21,8 @@ export function VoiceTranscriptionToggle({ owner }: { owner: WorkspaceType }) {
   if (hasFeature("admin_governance")) {
     return (
       <GovernanceSettingRowLayout
-        label={label}
-        description={description}
+        label={LABEL}
+        description={DESCRIPTION}
         action={
           <SliderToggle
             selected={isEnabled}
@@ -35,8 +36,8 @@ export function VoiceTranscriptionToggle({ owner }: { owner: WorkspaceType }) {
 
   return (
     <ContextItem
-      title={label}
-      subElement={description}
+      title={LABEL}
+      subElement="Allow voice transcription in Dust conversations"
       visual={<Microphone01 className="h-6 w-6" />}
       hasSeparatorIfLast={true}
       action={
