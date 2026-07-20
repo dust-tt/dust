@@ -33,7 +33,12 @@ import {
   getModel,
 } from "@app/lib/api/llm/clients/anthropic/utils/vertex";
 import { LLM } from "@app/lib/api/llm/llm";
-import type { BatchResult, BatchStatus } from "@app/lib/api/llm/types/batch";
+import type {
+  BatchDeletionOutcome,
+  BatchResult,
+  BatchStatus,
+} from "@app/lib/api/llm/types/batch";
+import { isBatchNotFoundError } from "@app/lib/api/llm/types/batch";
 import { handleGenericError } from "@app/lib/api/llm/types/errors";
 import type { LLMEvent } from "@app/lib/api/llm/types/events";
 import type {
@@ -51,6 +56,9 @@ import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import type { ReasoningEffort } from "@app/types/assistant/models/types";
 import { getMinimumReasoningEffort } from "@app/types/assistant/models/types";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
 import assert from "assert";
 
 const MESSAGE_CONVERSION_CONCURRENCY = 10;
@@ -385,9 +393,18 @@ export class AnthropicLLM extends LLM<BetaMessageStreamParams> {
     return batch.id;
   }
 
-  override async deleteBatch(batchId: string): Promise<boolean> {
-    await this.client.messages.batches.delete(batchId);
-    return true;
+  override async deleteBatch(
+    batchId: string
+  ): Promise<Result<BatchDeletionOutcome, Error>> {
+    try {
+      await this.client.messages.batches.delete(batchId);
+      return new Ok("deleted");
+    } catch (err) {
+      if (isBatchNotFoundError(err)) {
+        return new Ok("do_not_exist");
+      }
+      return new Err(normalizeError(err));
+    }
   }
 
   override async getBatchStatus(batchId: string): Promise<BatchStatus> {

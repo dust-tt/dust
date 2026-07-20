@@ -1062,6 +1062,62 @@ export async function checkBatchStatusActivity({
   return llm.getBatchStatus(batchId);
 }
 
+/**
+ * Delete a batch's data on the provider once its results have been consumed.
+ * Idempotent: a batch that no longer exists is treated as already deleted, so
+ * the activity can be safely retried.
+ */
+export async function deleteBatchActivity({
+  workspaceId,
+  batchId,
+}: {
+  workspaceId: string;
+  batchId: string;
+}): Promise<void> {
+  const auth = await getAuthForWorkspace(workspaceId);
+
+  const llm = await getReinforcedSkillsLLM(
+    auth,
+    "reinforcement_analyze_conversation"
+  );
+  if (!llm) {
+    throw ApplicationFailure.nonRetryable(
+      "ReinforcedSkills: no LLM available for batch deletion"
+    );
+  }
+
+  const result = await llm.deleteBatch(batchId);
+  if (result.isErr()) {
+    throw result.error;
+  }
+
+  switch (result.value) {
+    case "deleted":
+      return;
+    case "do_not_exist":
+      logger.info(
+        { workspaceId, batchId },
+        "ReinforcedSkills: batch to delete not found, it may already be deleted"
+      );
+      return;
+    case "unsupported": {
+      const metadata = llm.getMetadata();
+      logger.warn(
+        {
+          workspaceId,
+          providerId: metadata.clientId,
+          modelId: metadata.modelId,
+          batchId,
+        },
+        "ReinforcedSkills: batch deletion not supported by provider"
+      );
+      return;
+    }
+    default:
+      assertNever(result.value);
+  }
+}
+
 export interface ConversationContinuationInfo {
   analysedConversationId: string;
   reinforcementConversationId: string;

@@ -223,8 +223,48 @@ export async function ensureReinforcementWorkspaceSchedules(): Promise<{
     { concurrency: CONCURRENCY }
   );
 
+  // Migrate existing schedules that point at an outdated task queue: the task
+  // queue is baked into the schedule action at creation time, so a
+  // QUEUE_VERSION bump would otherwise strand them on the old queue forever.
+  const toCheck = [...runningWorkspaceIds].filter((id) =>
+    reinforcedWorkspaceIds.has(id)
+  );
+  const updated = await concurrentExecutor(
+    toCheck,
+    async (workspaceId) => {
+      const handle = client.schedule.getHandle(
+        makeWorkspaceWorkflowId(workspaceId)
+      );
+      const description = await handle.describe();
+      if (
+        description.action.type !== "startWorkflow" ||
+        description.action.taskQueue === QUEUE_NAME
+      ) {
+        return null;
+      }
+      logger.info(
+        { workspaceId, previousTaskQueue: description.action.taskQueue },
+        "[Reinforcement] Updating schedule to current task queue."
+      );
+      await handle.update((previous) => ({
+        ...previous,
+        action: {
+          ...previous.action,
+          taskQueue: QUEUE_NAME,
+        },
+      }));
+      return workspaceId;
+    },
+    { concurrency: CONCURRENCY }
+  );
+  const updatedCount = updated.filter((id) => id !== null).length;
+
   logger.info(
-    { startedCount: started.length, stoppedCount: stopped.length },
+    {
+      startedCount: started.length,
+      stoppedCount: stopped.length,
+      updatedCount,
+    },
     "[Reinforcement] Ensured reinforcement workspace schedules."
   );
 

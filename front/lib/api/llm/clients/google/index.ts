@@ -18,7 +18,12 @@ import {
   toToolConfigParam,
 } from "@app/lib/api/llm/clients/google/utils/to_thinking";
 import { LLM } from "@app/lib/api/llm/llm";
-import type { BatchResult, BatchStatus } from "@app/lib/api/llm/types/batch";
+import type {
+  BatchDeletionOutcome,
+  BatchResult,
+  BatchStatus,
+} from "@app/lib/api/llm/types/batch";
+import { isBatchNotFoundError } from "@app/lib/api/llm/types/batch";
 import { handleGenericError } from "@app/lib/api/llm/types/errors";
 import type { LLMEvent } from "@app/lib/api/llm/types/events";
 import { EventError } from "@app/lib/api/llm/types/events";
@@ -30,7 +35,10 @@ import type {
 import { systemPromptToText } from "@app/lib/api/llm/types/options";
 import type { Authenticator } from "@app/lib/auth";
 import logger from "@app/logger/logger";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { ApiError, GoogleGenAI, JobState } from "@google/genai";
 import assert from "assert";
 import { z } from "zod";
@@ -216,10 +224,19 @@ export class GoogleLLM extends LLM<GoogleGenerateContentRequestParams> {
     return GoogleLLM.encodeBatchId(batch.name, customIds);
   }
 
-  override async deleteBatch(batchId: string): Promise<boolean> {
-    const { batchName } = GoogleLLM.decodeBatchId(batchId);
-    await this.client.batches.delete({ name: batchName });
-    return true;
+  override async deleteBatch(
+    batchId: string
+  ): Promise<Result<BatchDeletionOutcome, Error>> {
+    try {
+      const { batchName } = GoogleLLM.decodeBatchId(batchId);
+      await this.client.batches.delete({ name: batchName });
+      return new Ok("deleted");
+    } catch (err) {
+      if (isBatchNotFoundError(err)) {
+        return new Ok("do_not_exist");
+      }
+      return new Err(normalizeError(err));
+    }
   }
 
   override async getBatchStatus(batchId: string): Promise<BatchStatus> {

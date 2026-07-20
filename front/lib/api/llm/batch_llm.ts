@@ -388,6 +388,11 @@ export interface BatchDownloadResult {
 /**
  * Download batch results from the LLM and store them as agent messages in the
  * corresponding conversations.
+ *
+ * Note: the batch is NOT deleted here. Deleting it inside this function would make callers
+ * non-idempotent (a retry after a downstream failure would 404 on getBatchResult). Callers are
+ * responsible for guaranteeing deletion once the results are consumed (e.g. via a dedicated
+ * Temporal activity in a workflow-level finally block).
  */
 export async function downloadBatchResultFromLlm(
   auth: Authenticator,
@@ -425,20 +430,6 @@ export async function downloadBatchResultFromLlm(
       { runIds: [dustRunId] }
     );
     storedResultInfo.set(conversationId, info);
-  }
-
-  const deleted = await llm.deleteBatch(batchId);
-  if (!deleted) {
-    const metadata = llm.getMetadata();
-    logger.warn(
-      {
-        workspaceId: auth.getNonNullableWorkspace().sId,
-        providerId: metadata.clientId,
-        modelId: metadata.modelId,
-        batchId,
-      },
-      "Failed to delete batch after downloading results"
-    );
   }
 
   return { events, storedResultInfo };

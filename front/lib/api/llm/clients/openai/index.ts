@@ -4,7 +4,12 @@ import {
   overwriteLLMParameters,
 } from "@app/lib/api/llm/clients/openai/types";
 import { LLM } from "@app/lib/api/llm/llm";
-import type { BatchResult, BatchStatus } from "@app/lib/api/llm/types/batch";
+import type {
+  BatchDeletionOutcome,
+  BatchResult,
+  BatchStatus,
+} from "@app/lib/api/llm/types/batch";
+import { isBatchNotFoundError } from "@app/lib/api/llm/types/batch";
 import { handleGenericError } from "@app/lib/api/llm/types/errors";
 import type { LLMEvent } from "@app/lib/api/llm/types/events";
 import { EventError } from "@app/lib/api/llm/types/events";
@@ -28,7 +33,10 @@ import {
 } from "@app/lib/api/llm/utils/openai_like/responses/openai_to_events";
 import type { Authenticator } from "@app/lib/auth";
 import logger from "@app/logger/logger";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
 import assert from "assert";
 import { APIError, OpenAI, toFile } from "openai";
 import type {
@@ -183,19 +191,30 @@ export class OpenAIResponsesLLM extends LLM<ResponseCreateParamsStreaming> {
     return batch.id;
   }
 
-  override async deleteBatch(batchId: string): Promise<boolean> {
-    const batch = await this.client.batches.retrieve(batchId);
+  override async deleteBatch(
+    batchId: string
+  ): Promise<Result<BatchDeletionOutcome, Error>> {
+    try {
+      const batch = await this.client.batches.retrieve(batchId);
 
-    const fileIds = [batch.input_file_id, batch.output_file_id].filter(
-      (id): id is string => !!id
-    );
+      const fileIds = [batch.input_file_id, batch.output_file_id].filter(
+        (id): id is string => !!id
+      );
 
-    // At most 2 elements (input + output files).
-    const results = await Promise.all(
-      fileIds.map((fileId) => this.client.files.delete(fileId))
-    );
+      // At most 2 elements (input + output files).
+      const results = await Promise.all(
+        fileIds.map((fileId) => this.client.files.delete(fileId))
+      );
 
-    return results.every((result) => result.deleted);
+      return results.every((result) => result.deleted)
+        ? new Ok("deleted")
+        : new Err(new Error(`Failed to delete batch files for ${batchId}`));
+    } catch (err) {
+      if (isBatchNotFoundError(err)) {
+        return new Ok("do_not_exist");
+      }
+      return new Err(normalizeError(err));
+    }
   }
 
   override async getBatchStatus(batchId: string): Promise<BatchStatus> {
