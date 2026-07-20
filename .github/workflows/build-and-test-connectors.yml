@@ -24,6 +24,8 @@ jobs:
           node-version: "24.14.0"
       - name: Typecheck
         run: npm -w connectors run tsgo -- --version && npm -w connectors run tsgo
+      - name: Test SDK
+        run: npm -w sdks/js run test
       - name: Build Temporal Bundles
         working-directory: connectors
         env:

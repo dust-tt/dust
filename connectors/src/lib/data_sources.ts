@@ -45,8 +45,9 @@ function isTimeoutError(e: unknown): boolean {
 
 const axiosWithTimeout = axios.create({
   timeout: 60000,
-  // Ensure client timeout is lower than the target server timeout.
-  // See --keepAliveTimeout in next start command from front.
+  // Keep-alive disabled: front's HTTP server closes idle connections (see
+  // KEEP_ALIVE_TIMEOUT_MS in front-api/server.ts) and axios has no safe
+  // stale-socket retry, so never reuse sockets.
   httpAgent: new http.Agent({ keepAlive: false }),
   httpsAgent: new https.Agent({ keepAlive: false }),
 });
@@ -520,7 +521,8 @@ export async function renderPrefixSection({
   };
 }
 
-// At 5mn, likeliness of connection close increases significantly. The timeout is set at 4mn30.
+// Client-side guard for slow tokenize calls on very large payloads; unrelated
+// to connection keep-alive.
 const TOKENIZE_TIMEOUT_MS = 270000;
 
 async function tokenize(text: string, ds: DataSourceConfig) {
