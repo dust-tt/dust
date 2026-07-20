@@ -14,7 +14,6 @@ import { FileModel } from "@app/lib/resources/storage/models/files";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
 import { validateJsonSchema } from "@app/lib/utils/json_schemas";
 import type { CitationType } from "@app/types/assistant/conversation";
-import type { AllSupportedFileContentType } from "@app/types/files";
 import type { TimeFrame } from "@app/types/shared/utils/time_frame";
 import { isTimeFrame } from "@app/types/shared/utils/time_frame";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
@@ -348,7 +347,7 @@ export class AgentMCPActionOutputItemModel extends WorkspaceAwareModel<AgentMCPA
   declare fileId: ForeignKey<FileModel["id"]> | null;
   declare citations: Record<string, CitationType> | null;
   declare generatedFilePath: string | null;
-  declare generatedFileContentType: AllSupportedFileContentType | null;
+  declare generatedFileContentType: string | null;
 
   declare file: NonAttribute<FileModel>;
 }
