@@ -41,8 +41,10 @@ export function Composer({
             : "shadow-[0px_0px_0px_1px_rgba(0,0,0,0.04),0px_1px_1px_-0.5px_rgba(0,0,0,0.06),0px_3px_3px_-1.5px_rgba(0,0,0,0.05),0px_6px_6px_-3px_rgba(0,0,0,0.04)]",
           isFocused ? "bg-[#fdfdfc]" : "bg-[#fbfbfb]",
           "dark:border-transparent",
-          isFocused ? "dark:bg-[#302e29]" : "dark:bg-[#2e2c28]",
-          "dark:shadow-[inset_0px_1px_0px_0px_rgba(255,255,255,0.02),inset_0px_0px_0px_1px_rgba(255,255,255,0.04),0px_0px_0px_1px_rgba(0,0,0,0.14),0px_1px_1px_-0.5px_rgba(0,0,0,0.18),0px_3px_3px_-1.5px_rgba(0,0,0,0.18),0px_6px_6px_-3px_rgba(0,0,0,0.18)]",
+          isFocused ? "dark:bg-[#322f2a]" : "dark:bg-[#2e2c28]",
+          isFocused
+            ? "dark:shadow-[inset_0px_1px_0px_0px_rgba(255,255,255,0.035),inset_0px_0px_0px_1px_rgba(255,255,255,0.055),0px_0px_0px_1px_rgba(0,0,0,0.14),0px_1px_1px_-0.5px_rgba(0,0,0,0.18),0px_3px_3px_-1.5px_rgba(0,0,0,0.18),0px_6px_6px_-3px_rgba(0,0,0,0.18)]"
+            : "dark:shadow-[inset_0px_1px_0px_0px_rgba(255,255,255,0.02),inset_0px_0px_0px_1px_rgba(255,255,255,0.04),0px_0px_0px_1px_rgba(0,0,0,0.14),0px_1px_1px_-0.5px_rgba(0,0,0,0.18),0px_3px_3px_-1.5px_rgba(0,0,0,0.18),0px_6px_6px_-3px_rgba(0,0,0,0.18)]",
         ],
         variant === "flat" && [
           "border bg-background",
