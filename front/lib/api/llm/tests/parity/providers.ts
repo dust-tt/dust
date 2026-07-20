@@ -9,6 +9,7 @@ import { isOpenAIResponsesWhitelistedModelId } from "@app/lib/api/llm/clients/op
 import type { LLM } from "@app/lib/api/llm/llm";
 import type { Authenticator } from "@app/lib/auth";
 import type { DustStreamEndpointConstructor } from "@app/lib/llms/stream/dust_stream_endpoint";
+import { FIREWORKS_MODEL_PREFIX } from "@app/lib/model_constructors/stream/clients/fireworks";
 import {
   ANTHROPIC_HOST,
   FIREWORKS_HOST,
@@ -217,25 +218,33 @@ const openaiProvider: ParityProvider = {
   },
 };
 
+// The new router stores Fireworks model ids bare (e.g. `deepseek-v4-pro`),
+// whereas the legacy `ModelIdType` and Fireworks API use the account-scoped
+// path. Re-attach the prefix before checking the legacy whitelist.
+function toLegacyFireworksModelId(raw: string): string {
+  return raw.startsWith(FIREWORKS_MODEL_PREFIX)
+    ? raw
+    : `${FIREWORKS_MODEL_PREFIX}${raw}`;
+}
+
 const fireworksProvider: ParityProvider = {
   toModelId(raw) {
-    if (!isModelId(raw) || !isFireworksWhitelistedModelId(raw)) {
+    const modelId = toLegacyFireworksModelId(raw);
+    if (!isModelId(modelId) || !isFireworksWhitelistedModelId(modelId)) {
       throw new Error(`${raw} is not a whitelisted Fireworks model.`);
     }
-    return raw;
+    return modelId;
   },
   buildLegacyLLM(auth, _endpoint, params) {
-    if (
-      !isModelId(params.modelId) ||
-      !isFireworksWhitelistedModelId(params.modelId)
-    ) {
+    const modelId = toLegacyFireworksModelId(params.modelId);
+    if (!isModelId(modelId) || !isFireworksWhitelistedModelId(modelId)) {
       throw new Error(
         `${params.modelId} is not a whitelisted Fireworks model.`
       );
     }
     return new FireworksLLM(auth, {
       credentials: PARITY_CREDENTIALS,
-      modelId: params.modelId,
+      modelId,
       temperature: params.temperature,
       reasoningEffort: params.reasoningEffort,
       responseFormat: params.responseFormat,
