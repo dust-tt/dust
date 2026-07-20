@@ -19,10 +19,13 @@ const VIEWER_CONTENT_TYPES = new Set<string>([
   "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
 ]);
 
-const TEXT_PREVIEW_CONTENT_TYPES = new Set<string>([
+const CODE_PREVIEW_CONTENT_TYPES = new Set<string>([
   "application/javascript",
-  "application/json",
   "application/typescript",
+]);
+
+const TEXT_PREVIEW_CONTENT_TYPES = new Set<string>([
+  "application/json",
   "application/vnd.dust.section.json",
   "application/x-ndjson",
   "application/xml",
@@ -37,6 +40,7 @@ function isViewerCompatible(contentType: string): boolean {
 export type FilePreviewCategory =
   | "frame"
   | "code"
+  | "text"
   | "pdf"
   | "viewer"
   | "audio"
@@ -106,10 +110,19 @@ export function getFilePreviewConfig(
   if (
     category === "code" ||
     isSandboxFunctionContentType(contentType) ||
-    isTextPreviewContentType(contentType)
+    CODE_PREVIEW_CONTENT_TYPES.has(contentType)
   ) {
     return {
       category: "code",
+      needsProcessedVersion: false,
+      supportsExternalViewer: false,
+      supportsCopyContent: true,
+    };
+  }
+
+  if (isTextPreviewContentType(contentType)) {
+    return {
+      category: "text",
       needsProcessedVersion: false,
       supportsExternalViewer: false,
       supportsCopyContent: true,
@@ -215,6 +228,9 @@ export function getFileExplorerBucket(
 
     case "code":
       return "code";
+
+    case "text":
+      return "texts";
 
     case "delimited":
       return "tables";
@@ -345,6 +361,7 @@ export function getCategoryFromContentType(
     case "delimited":
       return "table";
     case "code":
+    case "text":
     case "viewer":
     case "markdown":
       return "document";

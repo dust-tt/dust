@@ -202,7 +202,10 @@ export function useFilePreviewContent({
   const { category } = getFilePreviewConfig(mimeType);
 
   const needsTextContent =
-    category === "code" || category === "markdown" || category === "delimited";
+    category === "code" ||
+    category === "text" ||
+    category === "markdown" ||
+    category === "delimited";
 
   const { fileContent, isNotFound, isFileContentLoading, fileContentError } =
     useFileContentByUrl({
@@ -345,7 +348,8 @@ export function FilePreviewContent({
       }
       return null;
 
-    case "code": {
+    case "code":
+    case "text": {
       const lang = getCodeLanguage(entry.fileName);
       const raw = fileContent?.slice(0, MAX_TEXT_CHARS) ?? "";
       let displayContent = raw;

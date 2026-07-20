@@ -9,6 +9,7 @@ import {
   getCategoryFromContentType,
   getChildrenAtFolderPath,
   getExplorerRelativePath,
+  getFileExplorerBucket,
   getFileExplorerSearchResultTitle,
   getFilePreviewConfig,
   getVirtualScopeRootNodes,
@@ -99,6 +100,42 @@ describe("file preview configuration", () => {
   ])("keeps %s previewable", (contentType) => {
     expect(getFilePreviewConfig(contentType).category).not.toBe("unsupported");
     expect(isFilePreviewableContentType(contentType)).toBe(true);
+  });
+
+  it.each([
+    "text/javascript",
+    "application/javascript",
+    "text/typescript",
+  ])("classifies %s as code", (contentType) => {
+    expect(getFilePreviewConfig(contentType).category).toBe("code");
+  });
+
+  it.each([
+    "text/plain",
+    "text/x-diff",
+    "application/json",
+    "application/problem+json",
+  ])("classifies %s as text", (contentType) => {
+    expect(getFilePreviewConfig(contentType).category).toBe("text");
+  });
+
+  it("keeps code and text in separate explorer filters", () => {
+    const node: FileSystemTreeNode = {
+      name: "file",
+      path: "file",
+      isDirectory: false,
+      contentType: "text/javascript",
+      fileId: "file-1",
+      children: [],
+    };
+
+    expect(getFileExplorerBucket(node)).toBe("code");
+    expect(
+      getFileExplorerBucket({
+        ...node,
+        contentType: "text/plain",
+      })
+    ).toBe("texts");
   });
 });
 
