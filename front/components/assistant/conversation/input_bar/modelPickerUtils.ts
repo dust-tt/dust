@@ -186,31 +186,51 @@ function findAgentModel(
   );
 }
 
+function resolveRequestedSelection(
+  models: ModelConfigurationType[],
+  selection: ModelSelectionType | null | undefined
+): Selection | null {
+  const requestedModel = selection
+    ? findAvailableModel(models, selection)
+    : undefined;
+  if (!requestedModel) {
+    return null;
+  }
+  if (requestedModel.modelId === AUTO_MODEL_ID) {
+    return { kind: "auto", toSend: AUTO_MODEL_SELECTION };
+  }
+  const effort =
+    selection?.reasoningEffort ?? requestedModel.defaultReasoningEffort;
+  return {
+    kind: "model",
+    model: requestedModel,
+    effort,
+    toSend: buildModelSelection(requestedModel, effort),
+  };
+}
+
 export function resolveDefaultSelection({
   agentModel,
   lastRequestedModel,
+  sessionSticky,
   models,
 }: {
   agentModel: AgentModelConfigurationType | null;
   lastRequestedModel: ModelSelectionType | null;
+  sessionSticky?: ModelSelectionType | null;
   models: ModelConfigurationType[];
 }): Selection {
-  const requestedModel = lastRequestedModel
-    ? findAvailableModel(models, lastRequestedModel)
-    : undefined;
-  if (requestedModel) {
-    if (requestedModel.modelId === AUTO_MODEL_ID) {
-      return { kind: "auto", toSend: AUTO_MODEL_SELECTION };
-    }
-    const effort =
-      lastRequestedModel?.reasoningEffort ??
-      requestedModel.defaultReasoningEffort;
-    return {
-      kind: "model",
-      model: requestedModel,
-      effort,
-      toSend: buildModelSelection(requestedModel, effort),
-    };
+  const fromLastRequested = resolveRequestedSelection(
+    models,
+    lastRequestedModel
+  );
+  if (fromLastRequested) {
+    return fromLastRequested;
+  }
+
+  const fromSticky = resolveRequestedSelection(models, sessionSticky);
+  if (fromSticky) {
+    return fromSticky;
   }
 
   const agentDefaultModel = agentModel

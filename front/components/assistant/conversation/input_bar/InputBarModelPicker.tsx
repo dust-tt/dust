@@ -1,3 +1,4 @@
+import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
 import { ModelPickerContent } from "@app/components/assistant/conversation/input_bar/ModelPickerContent";
 import type {
   MakerGroup,
@@ -37,7 +38,7 @@ import type {
 import { getAvailableReasoningEfforts } from "@app/types/assistant/models/types";
 import type { LightWorkspaceType } from "@app/types/user";
 import { Button, DropdownMenu, DropdownMenuTrigger } from "@dust-tt/sparkle";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useContext, useEffect, useMemo, useRef, useState } from "react";
 
 interface InputBarModelPickerProps {
   agentModel: AgentModelConfigurationType | null;
@@ -65,6 +66,8 @@ export function InputBarModelPicker({
 }: InputBarModelPickerProps) {
   const { hasFeature } = useFeatureFlags();
   const hasModelsPicker = hasFeature("models_picker");
+  const { stickyModelOverride, setStickyModelOverride } =
+    useContext(InputBarContext);
   const { isDark } = useTheme();
   const isMobile = useIsMobile();
   const clientType = useClientType();
@@ -95,11 +98,13 @@ export function InputBarModelPicker({
       selection.effort === agentModel?.reasoningEffort;
 
     if ((isSelectionAuto && isDefaultAuto) || isSelectionSameModelAsAgent) {
-      // show default
+      // show default and clear override
       setUserOverride(null);
+      setStickyModelOverride(undefined);
       return;
     }
     setUserOverride(selection);
+    setStickyModelOverride(selection.toSend);
   };
 
   // Clear the manual override when the user switches which agent they address
@@ -116,8 +121,14 @@ export function InputBarModelPicker({
   });
 
   const defaultSelection = useMemo(
-    () => resolveDefaultSelection({ agentModel, lastRequestedModel, models }),
-    [agentModel, lastRequestedModel, models]
+    () =>
+      resolveDefaultSelection({
+        agentModel,
+        lastRequestedModel,
+        sessionSticky: stickyModelOverride,
+        models,
+      }),
+    [agentModel, lastRequestedModel, stickyModelOverride, models]
   );
 
   const shown: Selection = userOverride ?? defaultSelection;
