@@ -35,7 +35,7 @@ export function Composer({
         "relative flex w-full flex-col items-stretch rounded-[40px] [corner-shape:squircle]",
         variant === "floating" && [
           "border border-white/90",
-          "transition-[background-color,box-shadow] duration-200 ease-[cubic-bezier(0.23,1,0.32,1)]",
+          "transition-[background-color,box-shadow] duration-200 ease-emphasized",
           "shadow-[0px_0px_0px_1px_rgba(0,0,0,0.05),0px_1px_1px_-0.5px_rgba(0,0,0,0.1),0px_3px_3px_-1.5px_rgba(0,0,0,0.1),0px_6px_6px_-3px_rgba(0,0,0,0.1)]",
           isFocused ? "bg-white" : "bg-[#fbfbfb]",
           "dark:border-transparent",
@@ -56,7 +56,7 @@ export function Composer({
       {variant === "floating" && (
         <div
           aria-hidden
-          className="pointer-events-none absolute inset-[-1px] rounded-[inherit] [corner-shape:inherit] shadow-[inset_0px_-3px_29px_2px_rgba(0,0,0,0.01)] dark:hidden"
+          className="pointer-events-none absolute -inset-px rounded-[inherit] [corner-shape:inherit] shadow-[inset_0px_-3px_29px_2px_rgba(0,0,0,0.01)] dark:hidden"
         />
       )}
 
