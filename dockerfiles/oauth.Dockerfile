@@ -1,5 +1,7 @@
 # Build stage — full Rust toolchain + cmake (needed for sentencepiece)
-FROM rust:1.94.1 AS builder
+# Keep the builder on bookworm: the runtime stage is bookworm-slim and binaries must not link
+# against a newer glibc than the runtime provides.
+FROM rust:1.94.1-bookworm AS builder
 
 RUN apt-get update && apt-get install -y cmake && rm -rf /var/lib/apt/lists/*
 
