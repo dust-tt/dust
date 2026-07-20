@@ -1,9 +1,10 @@
 /** @ignoreswagger */
 import Anthropic from "@anthropic-ai/sdk";
 import config from "@app/lib/api/config";
-import { CLAUDE_SONNET_4_6_MODEL_ID } from "@app/lib/model_constructors/types/model_ids";
+
 import { rateLimiter } from "@app/lib/utils/rate_limiter";
 import logger from "@app/logger/logger";
+import { CLAUDE_SONNET_4_6_MODEL_ID } from "@app/types/assistant/models/anthropic";
 import { streamEvents } from "@front-api/lib/api/sse/stream_events";
 import { getClientIpFromContext } from "@front-api/lib/request";
 import { unauthedApp } from "@front-api/middlewares/ctx";
