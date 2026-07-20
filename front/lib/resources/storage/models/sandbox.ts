@@ -19,6 +19,7 @@ export class SandboxModel extends WorkspaceAwareModel<SandboxModel> {
   declare status: SandboxStatus;
   declare statusChangedAt: CreationOptional<Date>;
   declare lastActivityAt: Date;
+  declare lastRuntimeRefreshAt: CreationOptional<Date | null>;
   declare baseImage: CreationOptional<string | null>;
   declare version: CreationOptional<string | null>;
   declare killRequestedAt: CreationOptional<Date | null>;
@@ -53,6 +54,10 @@ SandboxModel.init(
       type: DataTypes.DATE,
       allowNull: false,
       defaultValue: DataTypes.NOW,
+    },
+    lastRuntimeRefreshAt: {
+      type: DataTypes.DATE,
+      allowNull: true,
     },
     baseImage: {
       type: DataTypes.STRING,

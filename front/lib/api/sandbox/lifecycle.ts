@@ -24,6 +24,8 @@ import logger from "@app/logger/logger";
 import type { ConversationType } from "@app/types/assistant/conversation";
 import { Ok, type Result } from "@app/types/shared/result";
 
+const SANDBOX_RUNTIME_REFRESH_INTERVAL_MS = 5 * 60 * 1000;
+
 export interface EnsureSandboxReadyResult {
   sandbox: SandboxResource;
   freshlyCreated: boolean;
@@ -71,6 +73,23 @@ async function ensureOwnerSandboxReady(
       const { sandbox, freshlyCreated, wokeFromSleep } = ensureResult.value;
       cold = freshlyCreated;
 
+      const shouldRefreshRuntime =
+        freshlyCreated ||
+        wokeFromSleep ||
+        !sandbox.lastRuntimeRefreshAt ||
+        Date.now() - sandbox.lastRuntimeRefreshAt.getTime() >=
+          SANDBOX_RUNTIME_REFRESH_INTERVAL_MS;
+
+      if (freshlyCreated || wokeFromSleep) {
+        void startTelemetry(auth, sandbox, runtimeOwner).catch((err) =>
+          logger.error({ err }, "Telemetry start failed (fire-and-forget)")
+        );
+      }
+
+      if (!shouldRefreshRuntime) {
+        return new Ok({ sandbox, freshlyCreated });
+      }
+
       // Synchronous and cheap: not worth a span (it would always read ~0ms).
       const imageResult = getSandboxImage(auth);
       if (imageResult.isErr()) {
@@ -82,12 +101,6 @@ async function ensureOwnerSandboxReady(
         return imageResult;
       }
       const image = imageResult.value;
-
-      if (freshlyCreated || wokeFromSleep) {
-        void startTelemetry(auth, sandbox, runtimeOwner).catch((err) =>
-          logger.error({ err }, "Telemetry start failed (fire-and-forget)")
-        );
-      }
 
       // Only mount on first creation. e2b preserves the FUSE mount and the
       // token server across betaPause + connect (verified empirically), so on
@@ -179,6 +192,8 @@ async function ensureOwnerSandboxReady(
         status = "error";
         return ensureEgressResult;
       }
+
+      await sandbox.updateLastRuntimeRefreshAt(new Date());
 
       return new Ok({ sandbox, freshlyCreated });
     });
