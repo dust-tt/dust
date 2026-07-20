@@ -140,7 +140,6 @@ export type Step = {
   actions: {
     call: FunctionCallType;
     result: FunctionMessageTypeModel;
-    toolInputEditMessages: UserMessageTypeModel[];
     enabledSkillMessages: UserMessageTypeModel[];
   }[];
 };
@@ -149,32 +148,21 @@ function formatToolInputValueForModel(value: unknown): string {
   return JSON.stringify(value);
 }
 
-function renderToolInputEditMessagesForAction(
+function renderUserEditedInputsNote(
   action: AgentMCPActionWithOutputType
-): UserMessageTypeModel[] {
+): string | null {
   if (!action.userEditedInputs) {
-    return [];
+    return null;
   }
 
-  const editedInputLines = Object.entries(action.userEditedInputs).map(
-    ([key, value]) => `- ${key}: ${formatToolInputValueForModel(value)}`
-  );
+  const editedInputLines = Object.entries(action.userEditedInputs)
+    .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
+    .map(([key, value]) => `- ${key}: ${formatToolInputValueForModel(value)}`);
   if (editedInputLines.length === 0) {
-    return [];
+    return null;
   }
 
-  return [
-    {
-      role: "user",
-      name: "system",
-      content: [
-        {
-          type: "text",
-          text: `<dust_system>\nThe user edited the inputs of this pending tool call before approving it.\n\nThe tool was executed with these user-edited input values:\n${editedInputLines.join("\n")}\n\nThe tool result above corresponds to the edited inputs.\n</dust_system>`,
-        },
-      ],
-    },
-  ];
+  return `The tool was executed with these user-edited input values:\n${editedInputLines.join("\n")}.`;
 }
 
 function renderEnabledSkillMessagesForAction(
@@ -231,6 +219,10 @@ async function renderActionForMultiActionsModel(
     action.output?.map(rewriteContentForModel) ?? []
   );
 
+  // When the user edited the tool inputs before approving, the result is prepended with a note so
+  // the model knows which input values the tool actually ran with.
+  const editedInputsNote = renderUserEditedInputsNote(action);
+
   // Vision-capable models receive images as a structured payload with the text interleaved. This is
   // the one case that needs async signed URLs, so it stays here rather than in the shared text view.
   // Every other case delegates to renderToolResultForModelAsText below.
@@ -238,7 +230,9 @@ async function renderActionForMultiActionsModel(
     model.supportsVision &&
     outputItems.some((item) => isModelVisionImage(item))
   ) {
-    const contentArray: Content[] = [];
+    const contentArray: Content[] = editedInputsNote
+      ? [{ type: "text", text: editedInputsNote }]
+      : [];
     for (const item of outputItems) {
       if (isTextContent(item)) {
         contentArray.push({ type: "text", text: item.text });
@@ -279,11 +273,15 @@ async function renderActionForMultiActionsModel(
     };
   }
 
+  const resultText = renderToolResultForModelAsText(action);
+
   return {
     role: "function" as const,
     name: action.functionCallName,
     function_call_id: action.functionCallId,
-    content: renderToolResultForModelAsText(action),
+    content: editedInputsNote
+      ? `${editedInputsNote}\n${resultText}`
+      : resultText,
   };
 }
 
@@ -331,7 +329,6 @@ export async function getSteps(
       result: await renderActionForMultiActionsModel(auth, action, model, {
         conversationId,
       }),
-      toolInputEditMessages: renderToolInputEditMessagesForAction(action),
       enabledSkillMessages: renderEnabledSkillMessagesForAction(action, {
         enabledSkillById,
       }),
@@ -339,12 +336,7 @@ export async function getSteps(
     { concurrency: RENDER_ACTIONS_CONCURRENCY }
   );
 
-  for (const {
-    action,
-    result,
-    toolInputEditMessages,
-    enabledSkillMessages,
-  } of renderedActions) {
+  for (const { action, result, enabledSkillMessages } of renderedActions) {
     const stepIndex = action.step;
     stepByStepIndex[stepIndex] = stepByStepIndex[stepIndex] || emptyStep();
     stepByStepIndex[stepIndex].actions.push({
@@ -354,7 +346,6 @@ export async function getSteps(
         arguments: JSON.stringify(action.params),
       },
       result,
-      toolInputEditMessages,
       enabledSkillMessages,
     });
   }
@@ -426,7 +417,6 @@ export async function getSteps(
                   function_call_id: functionCall.id,
                   content: "Error: tool execution failed",
                 },
-                toolInputEditMessages: [],
                 enabledSkillMessages: [],
               });
             }

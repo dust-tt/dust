@@ -387,7 +387,6 @@ describe("renderAllMessages", () => {
                 function_call_id: "toolu_123",
                 content: "result",
               },
-              toolInputEditMessages: [],
               enabledSkillMessages: [],
             },
           ],
@@ -442,7 +441,6 @@ describe("renderAllMessages", () => {
                 function_call_id: "toolu_123",
                 content: "result",
               },
-              toolInputEditMessages: [],
               enabledSkillMessages: [],
             },
           ],
@@ -466,7 +464,7 @@ describe("renderAllMessages", () => {
     });
   });
 
-  it("renders tool input edit messages and enabled skill messages after tool results", async () => {
+  it("renders enabled skill messages after tool results", async () => {
     const conversation = createConversation([
       { type: "agent", visibility: "visible" },
     ]);
@@ -490,18 +488,6 @@ describe("renderAllMessages", () => {
               name: "skill_management__enable_skill",
               arguments: '{"skillName":"commit"}',
             },
-            toolInputEditMessages: [
-              {
-                role: "user",
-                name: "system",
-                content: [
-                  {
-                    type: "text",
-                    text: "<dust_system>Tool input edit</dust_system>",
-                  },
-                ],
-              },
-            ],
             enabledSkillMessages: [
               {
                 role: "user",
@@ -536,19 +522,8 @@ describe("renderAllMessages", () => {
       "assistant",
       "function",
       "user",
-      "user",
     ]);
-    const toolInputEditMessage = result[2];
-    expect(toolInputEditMessage?.role).toBe("user");
-    if (!toolInputEditMessage || toolInputEditMessage.role !== "user") {
-      throw new Error("Expected a tool input edit message.");
-    }
-    expect(toolInputEditMessage.content[0]).toEqual({
-      type: "text",
-      text: "<dust_system>Tool input edit</dust_system>",
-    });
-
-    const enabledSkillMessage = result[3];
+    const enabledSkillMessage = result[2];
     expect(enabledSkillMessage?.role).toBe("user");
     if (!enabledSkillMessage || enabledSkillMessage.role !== "user") {
       throw new Error("Expected a follow-up user message.");

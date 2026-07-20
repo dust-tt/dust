@@ -1477,6 +1477,7 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
       toolName,
       mcpServerId,
       params: this.augmentedInputs,
+      userEditedInputs: this.userEditedInputs,
       status: this.status,
       step: this.stepContent.step,
       executionDurationMs: this.executionDurationMs,

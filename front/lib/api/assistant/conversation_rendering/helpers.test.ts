@@ -256,7 +256,7 @@ The following skills were set as favorites by the user and are also available fo
     });
   });
 
-  it("renders user-edited tool inputs as user messages", async () => {
+  it("folds user-edited tool inputs into the tool result content", async () => {
     const { authenticator } = await createResourceTest({ role: "admin" });
     const agentConfig = await AgentConfigurationFactory.createTestAgent(
       authenticator,
@@ -276,23 +276,17 @@ The following skills were set as favorites by the user and are also available fo
           functionCallId: "toolu_send_mail",
           internalMCPServerName: "gmail",
           toolName: "send_mail",
-          params: { subject: "Old subject" },
-          userEditedInputs: { subject: "New subject" },
+          params: {
+            to: "recipient@example.com",
+            subject: "Old subject",
+            body: "Old body",
+          },
+          userEditedInputs: {
+            subject: "New subject",
+            body: "New body",
+          },
           status: "succeeded",
           output: "Email sent.",
-        },
-      ],
-      contents: [
-        {
-          step: 0,
-          content: {
-            type: "function_call",
-            value: {
-              id: "toolu_send_mail",
-              name: "gmail__send_mail",
-              arguments: '{"subject":"Old subject"}',
-            },
-          },
         },
       ],
     });
@@ -308,18 +302,9 @@ The following skills were set as favorites by the user and are also available fo
 
     expect(steps).toHaveLength(1);
     expect(steps[0].actions).toHaveLength(1);
-    expect(steps[0].actions[0].toolInputEditMessages).toEqual([
-      {
-        role: "user",
-        name: "system",
-        content: [
-          {
-            type: "text",
-            text: `<dust_system>\nThe user edited the inputs of this pending tool call before approving it.\n\nThe tool was executed with these user-edited input values:\n- subject: "New subject"\n\nThe tool result above corresponds to the edited inputs.\n</dust_system>`,
-          },
-        ],
-      },
-    ]);
+    expect(steps[0].actions[0].result.content).toBe(
+      `The tool was executed with these user-edited input values:\n- body: "New body"\n- subject: "New subject".\nEmail sent.`
+    );
   });
 
   it("renders enabled skills as user messages", async () => {
