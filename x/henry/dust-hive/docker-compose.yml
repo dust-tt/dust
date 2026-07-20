@@ -24,7 +24,7 @@ services:
       retries: 5
 
   qdrant:
-    image: "qdrant/qdrant:v1.13.0"
+    image: "qdrant/qdrant:v1.18.3"
     ulimits:
       nofile:
         soft: 64000
