@@ -196,6 +196,7 @@ vi.mock("@app/lib/api/internal_fetch", () => ({
 
 // Mock Temporal - must be at module level
 vi.mock("@app/lib/temporal", () => ({
+  heartbeat: vi.fn().mockResolvedValue(undefined),
   getTemporalClientForAgentNamespace: vi.fn().mockResolvedValue({
     schedule: {
       getHandle: vi.fn().mockReturnValue({
