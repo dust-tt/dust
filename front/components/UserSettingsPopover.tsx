@@ -12,19 +12,26 @@ import { UserToolsTable } from "@app/components/me/UserToolsTable";
 import { FormProvider } from "@app/components/sparkle/FormProvider";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { MyAwuUsageFromAnalyticsChart } from "@app/components/workspace/AwuUsageFromAnalyticsChart";
+import { CreditsCell } from "@app/components/workspace/analytics/creditsTableCells";
 import { AwuUsageBar } from "@app/components/workspace/MembersUsageTable";
 import { useFileUploaderService } from "@app/hooks/useFileUploaderService";
 import { useIsMac } from "@app/hooks/useKeyboardShortcutLabel";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useAuth } from "@app/lib/auth/AuthContext";
 import { isSubmitMessageKey } from "@app/lib/keymaps";
-import { useMyUsage, useSeatPlan } from "@app/lib/swr/credits";
+import { useAppRouter } from "@app/lib/platform";
+import {
+  useMyTopConversations,
+  useMyUsage,
+  useSeatPlan,
+} from "@app/lib/swr/credits";
 import {
   usePatchUser,
   usePendingInvitations,
   useUser,
   useWorkspaceUsageStatus,
 } from "@app/lib/swr/user";
+import { getConversationRoute } from "@app/lib/utils/router";
 import type { PendingInvitationOption } from "@app/types/membership_invitation";
 import { isCreditPricedPlan } from "@app/types/plan";
 import type { WorkspaceType } from "@app/types/user";
@@ -62,6 +69,7 @@ import {
   TabsContent,
   TabsList,
   TabsTrigger,
+  Tooltip,
   User01,
   XClose,
   Zap,
@@ -136,6 +144,67 @@ function ordinalDay(day: number): string {
             ? "rd"
             : "th";
   return `${day}${suffix}`;
+}
+
+interface MyTopConversationsSectionProps {
+  owner: WorkspaceType;
+  onClose: () => void;
+  visible: boolean;
+}
+
+// Conversations ranked by the user's own credit consumption over the last 30
+// days. Hidden when there is no consumption to show.
+function MyTopConversationsSection({
+  owner,
+  onClose,
+  visible,
+}: MyTopConversationsSectionProps) {
+  const router = useAppRouter();
+  const { topConversations, isTopConversationsLoading } = useMyTopConversations(
+    {
+      workspaceId: owner.sId,
+      disabled: !visible,
+    }
+  );
+
+  if (!isTopConversationsLoading && topConversations.length === 0) {
+    return null;
+  }
+
+  return (
+    <section className="flex flex-col gap-2">
+      <div className="flex items-center gap-1.5">
+        <span className="text-sm font-semibold text-foreground">
+          Most expensive recent conversations
+        </span>
+        <Tooltip
+          label="Conversations with your highest credit consumption over the last 30 days. Costs only reflect your own messages, not the whole conversation's cost."
+          trigger={<InfoCircle className="h-4 w-4 text-muted-foreground" />}
+        />
+      </div>
+      {isTopConversationsLoading ? (
+        <div className="flex justify-center py-2">
+          <Spinner size="sm" />
+        </div>
+      ) : (
+        <NavigationList>
+          {topConversations.map((conversation) => (
+            <NavigationListItem
+              key={conversation.conversationId}
+              label={conversation.title ?? "Untitled conversation"}
+              onClick={() => {
+                onClose();
+                void router.push(
+                  getConversationRoute(owner.sId, conversation.conversationId)
+                );
+              }}
+              suffix={<CreditsCell credits={conversation.totalCredits} />}
+            />
+          ))}
+        </NavigationList>
+      )}
+    </section>
+  );
 }
 
 interface UsageSectionProps {
@@ -250,6 +319,12 @@ function UsageSection({ owner, onClose, visible }: UsageSectionProps) {
       <MyAwuUsageFromAnalyticsChart
         workspaceId={owner.sId}
         disabled={!visible}
+      />
+
+      <MyTopConversationsSection
+        owner={owner}
+        onClose={onClose}
+        visible={visible}
       />
 
       {isAdmin && (
