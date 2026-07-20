@@ -29,7 +29,7 @@ import {
 import { StreamEndpointTransition } from "@app/lib/api/llm/transitionLLM";
 import type { LLMParameters } from "@app/lib/api/llm/types/options";
 import { DUST_STREAM_ENDPOINTS } from "@app/lib/llms/stream";
-import { NOOP_LAB } from "@app/lib/model_constructors/types/provider_ids";
+import { NOOP_LAB } from "@app/lib/model_constructors/types/labs";
 import { GLOBAL } from "@app/lib/model_constructors/types/regions";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { describe, expect, it, vi } from "vitest";

@@ -40,6 +40,10 @@ import type { BaseEndpointConfiguration } from "@app/lib/model_constructors/conf
 import type { StreamEndpoint } from "@app/lib/model_constructors/stream/endpoint";
 import type { NoopRequest } from "@app/lib/model_constructors/stream/endpoints/noop_noop_global_noop";
 import { NoopNoopGlobalNoopStream } from "@app/lib/model_constructors/stream/endpoints/noop_noop_global_noop";
+import {
+  AGENT_PLATFORM_HOST,
+  OPENAI_RESPONSES_HOST,
+} from "@app/lib/model_constructors/types/hosts";
 import type {
   InputConfig,
   ToolSpecification,
@@ -50,7 +54,8 @@ import type {
   SystemTextMessage,
   ToolCallResultPart,
 } from "@app/lib/model_constructors/types/input/messages";
-import { NOOP_MODEL } from "@app/lib/model_constructors/types/model_ids";
+import { NOOP_LAB } from "@app/lib/model_constructors/types/labs";
+import { NOOP_MODEL } from "@app/lib/model_constructors/types/models";
 import type {
   ErrorType,
   ModelResponseEvent,
@@ -59,11 +64,6 @@ import type {
   ToolCallEvent as NewToolCallEvent,
   NonDeltaResponseEvent,
 } from "@app/lib/model_constructors/types/output/events";
-import {
-  AGENT_PLATFORM_HOST,
-  OPENAI_RESPONSES_HOST,
-} from "@app/lib/model_constructors/types/provider_apis";
-import { NOOP_LAB } from "@app/lib/model_constructors/types/provider_ids";
 import { isCacheMissReason } from "@app/lib/model_constructors/utils/cache_miss_reason";
 import type { RunUsageType } from "@app/lib/resources/run_resource";
 import type {

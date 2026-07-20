@@ -1,4 +1,4 @@
-import type { Lab } from "@app/lib/model_constructors/types/provider_ids";
+import type { Lab } from "@app/lib/model_constructors/types/labs";
 import { isRecord } from "@app/types/shared/utils/general";
 
 /**

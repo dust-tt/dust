@@ -32,7 +32,7 @@ import type {
   Payload,
   SystemTextMessage,
 } from "@app/lib/model_constructors/types/input/messages";
-import type { Model } from "@app/lib/model_constructors/types/model_ids";
+import type { Model } from "@app/lib/model_constructors/types/models";
 
 type AbstractConstructor<T> = abstract new (...args: any[]) => T;
 

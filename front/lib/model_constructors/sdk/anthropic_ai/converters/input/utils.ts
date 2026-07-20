@@ -39,7 +39,7 @@ import type {
   CacheOption,
   SystemTextMessage,
 } from "@app/lib/model_constructors/types/input/messages";
-import { ANTHROPIC_PROVIDER_LAB } from "@app/lib/model_constructors/types/provider_ids";
+import { ANTHROPIC_PROVIDER_LAB } from "@app/lib/model_constructors/types/labs";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import { assertNever } from "@app/types/shared/utils/assert_never";

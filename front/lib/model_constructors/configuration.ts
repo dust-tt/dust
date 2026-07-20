@@ -1,7 +1,7 @@
+import type { Host } from "@app/lib/model_constructors/types/hosts";
 import type { InputConfig } from "@app/lib/model_constructors/types/input/configuration";
-import type { Model } from "@app/lib/model_constructors/types/model_ids";
-import type { Host } from "@app/lib/model_constructors/types/provider_apis";
-import type { Lab } from "@app/lib/model_constructors/types/provider_ids";
+import type { Lab } from "@app/lib/model_constructors/types/labs";
+import type { Model } from "@app/lib/model_constructors/types/models";
 import type { Region } from "@app/lib/model_constructors/types/regions";
 import type { TokenPricing } from "@app/lib/model_constructors/types/token_pricing";
 import type { z } from "zod";

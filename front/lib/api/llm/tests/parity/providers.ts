@@ -9,7 +9,7 @@ import { isOpenAIResponsesWhitelistedModelId } from "@app/lib/api/llm/clients/op
 import type { LLM } from "@app/lib/api/llm/llm";
 import type { Authenticator } from "@app/lib/auth";
 import type { DustStreamEndpointConstructor } from "@app/lib/llms/stream/dust_stream_endpoint";
-import type { Lab } from "@app/lib/model_constructors/types/provider_ids";
+import type { Lab } from "@app/lib/model_constructors/types/labs";
 import type { Region } from "@app/lib/model_constructors/types/regions";
 import { isModelId } from "@app/types/assistant/models/models";
 import type {
