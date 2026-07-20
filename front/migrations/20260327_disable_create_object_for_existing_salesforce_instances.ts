@@ -16,7 +16,8 @@ import type { LightWorkspaceType } from "@app/types/user";
 import type { Logger } from "@app/logger/logger";
 
 const DEFAULT_CUTOFF_DATE = new Date("2026-03-27T00:00:00Z");
-const TOOL_NAME: keyof typeof SALESFORCE_TOOLS_METADATA = "create_object";
+const TOOL_NAME: (typeof SALESFORCE_TOOLS_METADATA)[number]["name"] =
+  "create_object";
 const INTERNAL_MCP_SERVER_NAME: InternalMCPServerNameType = "salesforce";
 const PERMISSION_LEVEL: MCPToolStakeLevelType = "medium";
 

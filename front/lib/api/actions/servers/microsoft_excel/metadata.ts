@@ -1,13 +1,11 @@
 import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import { createToolsRecord } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { z } from "zod";
-import { zodToJsonSchema } from "zod-to-json-schema";
 
 export const MICROSOFT_EXCEL_SERVER_NAME = "microsoft_excel" as const;
 
-export const MICROSOFT_EXCEL_TOOLS_METADATA = createToolsRecord({
-  list_excel_files: {
+export const MICROSOFT_EXCEL_TOOLS_METADATA = [
+  {
+    name: "list_excel_files",
     description:
       "List and find Excel files (.xlsx, .xlsm) accessible in your organization.",
     schema: {
@@ -23,7 +21,8 @@ export const MICROSOFT_EXCEL_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "advanced",
     freeUsage: false,
   },
-  get_worksheets: {
+  {
+    name: "get_worksheets",
     description:
       "Get a list of all worksheets (sheets/tabs) in an Excel workbook.",
     schema: {
@@ -51,7 +50,8 @@ export const MICROSOFT_EXCEL_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "advanced",
     freeUsage: false,
   },
-  read_worksheet: {
+  {
+    name: "read_worksheet",
     description:
       "Read cell values from an Excel worksheet. Returns data as CSV. Reads the used range by default; use the range parameter to read a specific subset.",
     schema: {
@@ -86,7 +86,8 @@ export const MICROSOFT_EXCEL_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "advanced",
     freeUsage: false,
   },
-  write_worksheet: {
+  {
+    name: "write_worksheet",
     description: "Write data to a specific range in an Excel worksheet.",
     schema: {
       itemId: z.string().describe("The ID of the Excel file to write to."),
@@ -126,7 +127,8 @@ export const MICROSOFT_EXCEL_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "advanced",
     freeUsage: false,
   },
-  create_worksheet: {
+  {
+    name: "create_worksheet",
     description: "Create a new worksheet (sheet/tab) in an Excel workbook.",
     schema: {
       itemId: z
@@ -156,7 +158,8 @@ export const MICROSOFT_EXCEL_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "advanced",
     freeUsage: false,
   },
-  clear_range: {
+  {
+    name: "clear_range",
     description: "Clear data from a specific range in an Excel worksheet.",
     schema: {
       itemId: z
@@ -195,7 +198,7 @@ export const MICROSOFT_EXCEL_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "advanced",
     freeUsage: false,
   },
-});
+] as const;
 
 export const MICROSOFT_EXCEL_SERVER = {
   serverInfo: {
@@ -244,13 +247,5 @@ export const MICROSOFT_EXCEL_SERVER = {
     },
     documentationUrl: null,
   },
-  tools: Object.values(MICROSOFT_EXCEL_TOOLS_METADATA).map((t) => ({
-    name: t.name,
-    description: t.description,
-    inputSchema: zodToJsonSchema(z.object(t.schema)) as JSONSchema,
-    displayLabels: t.displayLabels,
-    toolCostCategory: t.toolCostCategory,
-    freeUsage: t.freeUsage,
-    stake: t.stake,
-  })),
+  tools: MICROSOFT_EXCEL_TOOLS_METADATA,
 } as const satisfies ServerMetadata;

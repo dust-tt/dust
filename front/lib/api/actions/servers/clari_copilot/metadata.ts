@@ -1,11 +1,9 @@
 import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import { createToolsRecord } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { z } from "zod";
-import { zodToJsonSchema } from "zod-to-json-schema";
 
-export const CLARI_COPILOT_TOOLS_METADATA = createToolsRecord({
-  search_calls: {
+export const CLARI_COPILOT_TOOLS_METADATA = [
+  {
+    name: "search_calls",
     description:
       "Search and list Clari Copilot sales calls, filtering by account or company " +
       "name, participant email, or date range. " +
@@ -58,7 +56,8 @@ export const CLARI_COPILOT_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "advanced",
     freeUsage: false,
   },
-  get_call_details: {
+  {
+    name: "get_call_details",
     description:
       "Retrieve details for a specific Clari Copilot call, including the AI summary, " +
       "topics discussed, action items, competitor mentions, and the turn-by-turn transcript. " +
@@ -86,7 +85,7 @@ export const CLARI_COPILOT_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "advanced",
     freeUsage: false,
   },
-});
+] as const;
 
 export const CLARI_COPILOT_SERVER = {
   serverInfo: {
@@ -98,13 +97,5 @@ export const CLARI_COPILOT_SERVER = {
     icon: "ClariLogo",
     documentationUrl: null,
   },
-  tools: Object.values(CLARI_COPILOT_TOOLS_METADATA).map((t) => ({
-    name: t.name,
-    description: t.description,
-    inputSchema: zodToJsonSchema(z.object(t.schema)) as JSONSchema,
-    displayLabels: t.displayLabels,
-    toolCostCategory: t.toolCostCategory,
-    freeUsage: t.freeUsage,
-    stake: t.stake,
-  })),
+  tools: CLARI_COPILOT_TOOLS_METADATA,
 } as const satisfies ServerMetadata;

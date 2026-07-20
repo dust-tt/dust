@@ -1,11 +1,9 @@
 import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import { createToolsRecord } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { z } from "zod";
-import { zodToJsonSchema } from "zod-to-json-schema";
 
-export const SLACK_BOT_TOOLS_METADATA = createToolsRecord({
-  post_message: {
+export const SLACK_BOT_TOOLS_METADATA = [
+  {
+    name: "post_message",
     description:
       "Post a message to a Slack channel as the workspace bot/app (not as the user). Posts to channels only. You MUST ONLY post to channels that were explicitly specified by the user in their request. NEVER post to alternative channels if the requested channel is not found. If you cannot find the exact channel requested by the user, you MUST ask the user for clarification instead of choosing a different channel.",
     schema: {
@@ -63,7 +61,8 @@ export const SLACK_BOT_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "advanced",
     freeUsage: false,
   },
-  edit_message: {
+  {
+    name: "edit_message",
     description:
       "Edit a message previously posted in a Slack channel by providing its timestamp and channel.",
     schema: {
@@ -98,7 +97,8 @@ export const SLACK_BOT_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "advanced",
     freeUsage: false,
   },
-  search_user: {
+  {
+    name: "search_user",
     description: `Search for a Slack user by user ID or email address.
 
 Query parameter accepts:
@@ -126,7 +126,8 @@ The search_all parameter should only be set to true if the user explicitly reque
     toolCostCategory: "advanced",
     freeUsage: false,
   },
-  list_public_channels: {
+  {
+    name: "list_public_channels",
     description: "List all public Slack channels in the workspace",
     schema: {
       nameFilter: z
@@ -142,7 +143,8 @@ The search_all parameter should only be set to true if the user explicitly reque
     toolCostCategory: "advanced",
     freeUsage: false,
   },
-  read_channel_history: {
+  {
+    name: "read_channel_history",
     description:
       "Read messages from a specific channel with pagination support. The slack bot must be added to the channel before it can read messages.",
     schema: {
@@ -174,7 +176,8 @@ The search_all parameter should only be set to true if the user explicitly reque
     toolCostCategory: "advanced",
     freeUsage: false,
   },
-  read_thread_messages: {
+  {
+    name: "read_thread_messages",
     description:
       "Read all messages in a specific Slack thread (in channels the workspace bot belongs to) with pagination support",
     schema: {
@@ -209,7 +212,8 @@ The search_all parameter should only be set to true if the user explicitly reque
     toolCostCategory: "advanced",
     freeUsage: false,
   },
-  add_reaction: {
+  {
+    name: "add_reaction",
     description: "Add a reaction emoji to a Slack message as the workspace bot",
     schema: {
       channel: z.string().describe("The channel where the message is located"),
@@ -230,7 +234,8 @@ The search_all parameter should only be set to true if the user explicitly reque
     toolCostCategory: "advanced",
     freeUsage: false,
   },
-  remove_reaction: {
+  {
+    name: "remove_reaction",
     description:
       "Remove a reaction emoji from a Slack message as the workspace bot",
     schema: {
@@ -252,7 +257,7 @@ The search_all parameter should only be set to true if the user explicitly reque
     toolCostCategory: "advanced",
     freeUsage: false,
   },
-});
+] as const;
 
 export const SLACK_BOT_SERVER = {
   serverInfo: {
@@ -267,13 +272,5 @@ export const SLACK_BOT_SERVER = {
     icon: "SlackLogo",
     documentationUrl: null,
   },
-  tools: Object.values(SLACK_BOT_TOOLS_METADATA).map((t) => ({
-    name: t.name,
-    description: t.description,
-    inputSchema: zodToJsonSchema(z.object(t.schema)) as JSONSchema,
-    displayLabels: t.displayLabels,
-    toolCostCategory: t.toolCostCategory,
-    freeUsage: t.freeUsage,
-    stake: t.stake,
-  })),
+  tools: SLACK_BOT_TOOLS_METADATA,
 } as const satisfies ServerMetadata;

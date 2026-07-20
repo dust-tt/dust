@@ -3,7 +3,10 @@ import {
   type MCPToolStakeLevelType,
   RUN_AGENT_CALL_TOOL_TIMEOUT_MS,
 } from "@app/lib/actions/constants";
-import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_definition";
+import type {
+  ServerMetadata,
+  ToolMeta,
+} from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { ACTIVATION_RECOMMENDATIONS_SERVER } from "@app/lib/api/actions/servers/activation_recommendations/metadata";
 import { AGENT_MEMORY_SERVER } from "@app/lib/api/actions/servers/agent_memory/metadata";
 import {
@@ -111,6 +114,9 @@ import {
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
+import type { JSONSchema7 as JSONSchema } from "json-schema";
+import { z } from "zod";
+import { zodToJsonSchema } from "zod-to-json-schema";
 
 export const ADVANCED_SEARCH_SWITCH = "advanced_search";
 export const USE_SUMMARY_SWITCH = "useSummary";
@@ -246,7 +252,41 @@ export const MCP_SERVER_AVAILABILITY = [
 ] as const;
 export type MCPServerAvailability = (typeof MCP_SERVER_AVAILABILITY)[number];
 
-export const INTERNAL_MCP_SERVERS = {
+type HasUniqueNames<Tools extends readonly ToolMeta[]> = {
+  // Loop over each item in the array.
+  [I in keyof Tools]: {
+    // Only check the "name" property.
+    [Key in keyof Tools[I]]: Key extends "name"
+      ? Tools[I][Key] extends {
+          // Build an array of all the other names.
+          [J in keyof Tools]: J extends I ? never : Tools[J];
+        }[number]["name"]
+        ? // The current name (Tools[I][Key]) matches another name: we error.
+          `ERROR: Duplicate tool name detected: ${Tools[I][Key] & string}`
+        : // No match, we just fall through.
+          Tools[I][Key]
+      : // Property other than the name: we just fall through as well.
+        Tools[I][Key];
+  };
+};
+
+function ensureUniqueToolNames<
+  const T extends {
+    [K in InternalMCPServerNameType]: InternalMCPServerEntry<K>;
+  },
+>(
+  servers: T & {
+    [ServerName in InternalMCPServerNameType]: {
+      metadata: {
+        tools: HasUniqueNames<T[ServerName]["metadata"]["tools"]>;
+      };
+    };
+  }
+): T {
+  return servers;
+}
+
+export const INTERNAL_MCP_SERVERS = ensureUniqueToolNames({
   // Note:
   // ids should be stable, do not change them when moving internal servers to production as it would break existing agents.
 
@@ -1209,7 +1249,7 @@ export const INTERNAL_MCP_SERVERS = {
   // Using satisfies here instead of: type to avoid TypeScript widening the type and breaking the type inference for AutoInternalMCPServerNameType.
 } satisfies {
   [K in InternalMCPServerNameType]: InternalMCPServerEntry<K>;
-};
+});
 
 type IsRestrictedCallback = (params: {
   plan: PlanType;
@@ -1513,12 +1553,19 @@ export function matchesInternalMCPServerName(
   return false;
 }
 
-export function getInternalMCPServerMetadata<
-  N extends InternalMCPServerNameType,
->(name: N): (typeof INTERNAL_MCP_SERVERS)[N]["metadata"] {
-  const server = INTERNAL_MCP_SERVERS[name];
+export function getInternalMCPServerMetadata(name: InternalMCPServerNameType) {
+  const { serverInfo, tools }: ServerMetadata =
+    INTERNAL_MCP_SERVERS[name].metadata;
 
-  return server.metadata;
+  return {
+    serverInfo,
+    tools: tools.map(({ schema, ...tool }) => ({
+      ...tool,
+      // For the input schema we store a zod schema on the tool metadata, it's what's easier to use in the code because
+      // we can infer a type from it, but tool specifications expect a JSON schema.
+      inputSchema: zodToJsonSchema(z.object(schema)) as JSONSchema,
+    })),
+  };
 }
 
 const SENSITIVITY_LABEL_PROVIDER_BY_SERVER: Partial<

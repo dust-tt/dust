@@ -1,11 +1,9 @@
 import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import { createToolsRecord } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { z } from "zod";
-import { zodToJsonSchema } from "zod-to-json-schema";
 
-export const ZENDESK_TOOLS_METADATA = createToolsRecord({
-  get_ticket: {
+export const ZENDESK_TOOLS_METADATA = [
+  {
+    name: "get_ticket",
     description:
       "Look up and retrieve a Zendesk support ticket by its ID. Returns subject, description, status, priority, assignee, and other metadata. Optionally include ticket metrics, the full conversation of comments, and file attachments.",
     schema: {
@@ -39,7 +37,8 @@ export const ZENDESK_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "advanced",
     freeUsage: false,
   },
-  search_tickets: {
+  {
+    name: "search_tickets",
     description:
       "Search and find Zendesk tickets using query syntax. Returns matching tickets with their details. Filter by status (open, pending, solved), priority (low, medium, high), type, assignee, tags, dates, and text fields.",
     schema: {
@@ -67,7 +66,8 @@ export const ZENDESK_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "advanced",
     freeUsage: false,
   },
-  list_ticket_fields: {
+  {
+    name: "list_ticket_fields",
     description:
       "List and enumerate all Zendesk ticket field definitions — built-in fields (Subject, Priority, Status) and custom fields — with their id, title, type, and active state. Use this to discover what fields exist on a ticket.",
     schema: {
@@ -84,7 +84,8 @@ export const ZENDESK_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "advanced",
     freeUsage: false,
   },
-  draft_reply: {
+  {
+    name: "draft_reply",
     description:
       "Draft a reply to a Zendesk ticket. Creates a private comment (not visible to the end user) " +
       "that can be edited before being published. This is useful for preparing responses before " +
@@ -105,7 +106,8 @@ export const ZENDESK_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "advanced",
     freeUsage: false,
   },
-  post_reply: {
+  {
+    name: "post_reply",
     description:
       "Post or send a public reply (response) on a Zendesk ticket, visible to the end user (the customer).",
     schema: {
@@ -124,7 +126,8 @@ export const ZENDESK_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "advanced",
     freeUsage: false,
   },
-  update_ticket_tags: {
+  {
+    name: "update_ticket_tags",
     description:
       "Add tags to a Zendesk ticket, or replace all of its tags. By default (override=false) the provided tags are added to the existing ones. With override=true they replace the full list (omitted tags are removed).",
     schema: {
@@ -154,7 +157,7 @@ export const ZENDESK_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "advanced",
     freeUsage: false,
   },
-});
+] as const;
 
 export const ZENDESK_SERVER = {
   serverInfo: {
@@ -169,13 +172,5 @@ export const ZENDESK_SERVER = {
     icon: "ZendeskLogo",
     documentationUrl: null,
   },
-  tools: Object.values(ZENDESK_TOOLS_METADATA).map((t) => ({
-    name: t.name,
-    description: t.description,
-    inputSchema: zodToJsonSchema(z.object(t.schema)) as JSONSchema,
-    displayLabels: t.displayLabels,
-    toolCostCategory: t.toolCostCategory,
-    freeUsage: t.freeUsage,
-    stake: t.stake,
-  })),
+  tools: ZENDESK_TOOLS_METADATA,
 } as const satisfies ServerMetadata;

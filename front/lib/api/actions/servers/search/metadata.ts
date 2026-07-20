@@ -1,12 +1,9 @@
 import { ConfigurableToolInputSchemas } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import { createToolsRecord } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { SearchWithDataSourcesInputSchema } from "@app/lib/actions/mcp_internal_actions/types";
 import { FIND_TAGS_TOOL_NAME } from "@app/lib/api/actions/servers/data_sources_file_system/metadata";
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
-import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { z } from "zod";
-import { zodToJsonSchema } from "zod-to-json-schema";
 
 // Define constants locally to avoid circular dependency with constants.ts
 export const SEARCH_SERVER_NAME = "search";
@@ -17,8 +14,9 @@ export const SEARCH_TOOL_DESCRIPTION =
   " The search is based on semantic similarity between the query and chunks of information" +
   " from the data sources.";
 
-export const SEARCH_TOOLS_METADATA = createToolsRecord({
-  [SEARCH_TOOL_NAME]: {
+export const SEARCH_TOOLS_METADATA = [
+  {
+    name: SEARCH_TOOL_NAME,
     description: SEARCH_TOOL_DESCRIPTION,
     schema: SearchWithDataSourcesInputSchema.shape,
     stake: "never_ask" as const,
@@ -29,11 +27,12 @@ export const SEARCH_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "advanced",
     freeUsage: false,
   },
-});
+] as const;
 
-export const SEARCH_TOOL_METADATA_WITH_TAGS = createToolsRecord({
+export const SEARCH_TOOL_METADATA_WITH_TAGS = [
   ...SEARCH_TOOLS_METADATA,
-  [FIND_TAGS_TOOL_NAME]: {
+  {
+    name: FIND_TAGS_TOOL_NAME,
     description:
       "Discover available tags/labels that can be used to filter content. Returns tags " +
       "with their usage counts. Only available when dynamic tags are enabled.",
@@ -60,7 +59,7 @@ export const SEARCH_TOOL_METADATA_WITH_TAGS = createToolsRecord({
     freeUsage: false,
     enableAlerting: true,
   },
-});
+] as const;
 
 export const SEARCH_SERVER = {
   serverInfo: {
@@ -72,13 +71,5 @@ export const SEARCH_SERVER = {
     authorization: null,
     documentationUrl: null,
   },
-  tools: Object.values(SEARCH_TOOLS_METADATA).map((t) => ({
-    name: t.name,
-    description: t.description,
-    inputSchema: zodToJsonSchema(z.object(t.schema)) as JSONSchema,
-    displayLabels: t.displayLabels,
-    toolCostCategory: t.toolCostCategory,
-    freeUsage: t.freeUsage,
-    stake: t.stake,
-  })),
+  tools: SEARCH_TOOLS_METADATA,
 } as const satisfies ServerMetadata;

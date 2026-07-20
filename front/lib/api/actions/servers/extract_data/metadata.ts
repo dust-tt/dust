@@ -1,15 +1,12 @@
 import { ConfigurableToolInputSchemas } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import { createToolsRecord } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { TagsInputSchema } from "@app/lib/actions/mcp_internal_actions/types";
 import {
   FIND_TAGS_BASE_DESCRIPTION,
   findTagsSchema,
 } from "@app/lib/api/actions/tools/find_tags/metadata";
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
-import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { z } from "zod";
-import { zodToJsonSchema } from "zod-to-json-schema";
 
 export const EXTRACT_DATA_MAIN_TOOL_NAME =
   "extract_information_from_documents" as const;
@@ -100,8 +97,9 @@ export function makeExtractDataBaseToolsMetadata({
     isTimeFrameConfigured,
   });
 
-  return createToolsRecord({
-    [EXTRACT_DATA_MAIN_TOOL_NAME]: {
+  return [
+    {
+      name: EXTRACT_DATA_MAIN_TOOL_NAME,
       description: TOOL_DESCRIPTION,
       schema,
       stake: "never_ask",
@@ -112,7 +110,7 @@ export function makeExtractDataBaseToolsMetadata({
       toolCostCategory: "advanced",
       freeUsage: false,
     },
-  });
+  ] as const;
 }
 
 export function makeExtractDataToolsWithTagsMetadata({
@@ -126,11 +124,12 @@ export function makeExtractDataToolsWithTagsMetadata({
     isJsonSchemaConfigured,
     isTimeFrameConfigured,
   });
-  const baseToolMetadata = baseMetadata[EXTRACT_DATA_MAIN_TOOL_NAME];
+  const [baseToolMetadata] = baseMetadata;
 
-  return createToolsRecord({
-    [EXTRACT_DATA_MAIN_TOOL_NAME]: {
+  return [
+    {
       ...baseToolMetadata,
+      name: EXTRACT_DATA_MAIN_TOOL_NAME,
       schema: {
         ...makeBaseExtractSchema({
           isJsonSchemaConfigured,
@@ -139,7 +138,8 @@ export function makeExtractDataToolsWithTagsMetadata({
         ...TagsInputSchema.shape,
       },
     },
-    find_tags: {
+    {
+      name: "find_tags",
       description:
         FIND_TAGS_BASE_DESCRIPTION +
         ` This tool is meant to be used before the ${EXTRACT_DATA_MAIN_TOOL_NAME} tool.`,
@@ -152,7 +152,7 @@ export function makeExtractDataToolsWithTagsMetadata({
       toolCostCategory: "advanced",
       freeUsage: false,
     },
-  });
+  ] as const;
 }
 
 export function makeExtractDataToolsMetadata({
@@ -192,13 +192,5 @@ export const EXTRACT_DATA_SERVER = {
     authorization: null,
     documentationUrl: null,
   },
-  tools: Object.values(EXTRACT_DATA_BASE_TOOLS_METADATA).map((t) => ({
-    name: t.name,
-    description: t.description,
-    inputSchema: zodToJsonSchema(z.object(t.schema)) as JSONSchema,
-    displayLabels: t.displayLabels,
-    toolCostCategory: t.toolCostCategory,
-    freeUsage: t.freeUsage,
-    stake: t.stake,
-  })),
+  tools: EXTRACT_DATA_BASE_TOOLS_METADATA,
 } as const satisfies ServerMetadata;

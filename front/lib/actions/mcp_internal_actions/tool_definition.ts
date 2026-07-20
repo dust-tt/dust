@@ -3,7 +3,6 @@ import type { MCPError } from "@app/lib/actions/mcp_errors";
 import type { ToolRunContext } from "@app/lib/actions/types";
 import type {
   InternalMCPServerDefinitionType,
-  MCPToolType,
   ToolCostCategory,
   ToolDisplayLabels,
 } from "@app/lib/api/mcp";
@@ -27,9 +26,12 @@ export type ToolHandlerExtra = RequestHandlerExtra<
 
 export type ToolHandlerResult = Result<CallToolResult["content"], MCPError>;
 
-export type ToolHandlers<T extends Record<string, { schema: ZodRawShape }>> = {
-  [K in keyof T]: (
-    params: z.infer<z.ZodObject<T[K]["schema"]>>,
+export type ToolHandlers<ToolsList extends readonly ToolMeta[]> = {
+  [ToolName in ToolsList[number]["name"]]: (
+    // Type the params with the type inferred from the zod schema (z.ZodObject because it's a zod shape, not a schema).
+    params: z.infer<
+      z.ZodObject<Extract<ToolsList[number], { name: ToolName }>["schema"]>
+    >,
     extra: ToolHandlerExtra
   ) => Promise<ToolHandlerResult>;
 };
@@ -93,14 +95,6 @@ export type ClientToolMeta<
   TSchema extends ZodRawShape = ZodRawShape,
 > = Omit<ClientToolDefinition<TName, TSchema>, "handler">;
 
-export function createToolsRecord<
-  T extends Record<string, Omit<ToolMeta, "name">>,
->(tools: T): { [K in keyof T]: T[K] & { name: K } } {
-  return Object.fromEntries(
-    Object.entries(tools).map(([key, value]) => [key, { ...value, name: key }])
-  ) as { [K in keyof T]: T[K] & { name: K } };
-}
-
 export function createClientToolsRecord<
   T extends {
     [K in keyof T]: T[K] extends { schema: infer S extends ZodRawShape }
@@ -129,28 +123,20 @@ export function buildClientTools<T extends Record<string, ClientToolMeta>>(
   );
 }
 
-export function buildTools<T extends Record<string, ToolMeta>>(
+export function buildTools<T extends readonly ToolMeta[]>(
   metadata: T,
   handlers: ToolHandlers<T>
 ): ToolDefinition[] {
-  return (Object.keys(metadata) as (keyof T & string)[]).map(
-    (key) =>
+  return metadata.map(
+    (tool) =>
       ({
-        ...metadata[key],
-        handler: handlers[key],
+        ...tool,
+        handler: handlers[tool.name as keyof ToolHandlers<T>],
       }) as unknown as ToolDefinition
   );
 }
 
-// Internal MCP server tools must have displayLabels (unlike remote servers).
-export type InternalMCPToolType = Omit<MCPToolType, "displayLabels"> & {
-  displayLabels: ToolDisplayLabels;
-  toolCostCategory: ToolCostCategory;
-  freeUsage: boolean;
-  stake: MCPToolStakeLevelType;
-};
-
 export type ServerMetadata = {
   serverInfo: InternalMCPServerDefinitionType;
-  tools: InternalMCPToolType[];
+  tools: readonly ToolMeta[];
 };

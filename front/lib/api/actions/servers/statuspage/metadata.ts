@@ -1,16 +1,14 @@
 import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import { createToolsRecord } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import {
   ComponentStatusSchema,
   IncidentImpactSchema,
   RealTimeIncidentStatusSchema,
 } from "@app/lib/api/actions/servers/statuspage/types";
-import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { z } from "zod";
-import { zodToJsonSchema } from "zod-to-json-schema";
 
-export const STATUSPAGE_TOOLS_METADATA = createToolsRecord({
-  list_pages: {
+export const STATUSPAGE_TOOLS_METADATA = [
+  {
+    name: "list_pages",
     description:
       "List all status pages accessible with the configured API key. " +
       "Use this to discover available page IDs before using other tools.",
@@ -23,7 +21,8 @@ export const STATUSPAGE_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "advanced",
     freeUsage: false,
   },
-  list_components: {
+  {
+    name: "list_components",
     description:
       "List all components for a status page. " +
       "Components represent the services or systems displayed on the status page.",
@@ -42,7 +41,8 @@ export const STATUSPAGE_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "advanced",
     freeUsage: false,
   },
-  list_incidents: {
+  {
+    name: "list_incidents",
     description:
       "List incidents for a status page. " +
       "By default, returns unresolved incidents. " +
@@ -69,7 +69,8 @@ export const STATUSPAGE_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "advanced",
     freeUsage: false,
   },
-  get_incident: {
+  {
+    name: "get_incident",
     description:
       "Get detailed information about a specific incident, " +
       "including the full update history and affected components.",
@@ -93,7 +94,8 @@ export const STATUSPAGE_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "advanced",
     freeUsage: false,
   },
-  create_incident: {
+  {
+    name: "create_incident",
     description:
       "Create a new real-time incident on a status page. " +
       "Notifications will automatically be sent to subscribers. " +
@@ -133,7 +135,8 @@ export const STATUSPAGE_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "advanced",
     freeUsage: false,
   },
-  update_incident: {
+  {
+    name: "update_incident",
     description:
       "Update an existing incident on a status page. " +
       "Notifications will automatically be sent to subscribers. " +
@@ -174,7 +177,7 @@ export const STATUSPAGE_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "advanced",
     freeUsage: false,
   },
-});
+] as const;
 
 export const STATUSPAGE_SERVER = {
   serverInfo: {
@@ -185,13 +188,5 @@ export const STATUSPAGE_SERVER = {
     icon: "StatuspageLogo",
     documentationUrl: "https://docs.dust.tt/docs/statuspage-mcp",
   },
-  tools: Object.values(STATUSPAGE_TOOLS_METADATA).map((t) => ({
-    name: t.name,
-    description: t.description,
-    inputSchema: zodToJsonSchema(z.object(t.schema)) as JSONSchema,
-    displayLabels: t.displayLabels,
-    toolCostCategory: t.toolCostCategory,
-    freeUsage: t.freeUsage,
-    stake: t.stake,
-  })),
+  tools: STATUSPAGE_TOOLS_METADATA,
 } as const satisfies ServerMetadata;

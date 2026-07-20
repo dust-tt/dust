@@ -1,16 +1,14 @@
 import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import { createToolsRecord } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { WEB_SEARCH_BROWSE_TOOLS_METADATA } from "@app/lib/api/actions/servers/web_search_browse/metadata";
-import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { z } from "zod";
-import { zodToJsonSchema } from "zod-to-json-schema";
 
 export const HTTP_CLIENT_TOOL_NAME = "http_client" as const;
 
 export const DEFAULT_TIMEOUT_MS = 30_000;
 
-export const HTTP_CLIENT_TOOLS_METADATA = createToolsRecord({
-  send_request: {
+export const HTTP_CLIENT_TOOLS_METADATA = [
+  {
+    name: "send_request",
     description:
       "Send an HTTP request to an external REST API and get back the status, headers, and body. " +
       "Only text-based responses are returned (binary is omitted) and bodies are truncated at ~1MB. " +
@@ -60,13 +58,13 @@ export const HTTP_CLIENT_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "advanced",
     freeUsage: false,
   },
-});
+] as const;
 
 // Combine http_client tools with web tools for metadata
-const ALL_HTTP_CLIENT_TOOLS_METADATA = {
+const ALL_HTTP_CLIENT_TOOLS_METADATA = [
   ...HTTP_CLIENT_TOOLS_METADATA,
   ...WEB_SEARCH_BROWSE_TOOLS_METADATA,
-};
+] as const;
 
 export const HTTP_CLIENT_SERVER = {
   serverInfo: {
@@ -81,13 +79,5 @@ export const HTTP_CLIENT_SERVER = {
     developerSecretSelectionDescription:
       "This is optional. If set, this secret will be used as a default Bearer token (Authorization header) for HTTP requests.",
   },
-  tools: Object.values(ALL_HTTP_CLIENT_TOOLS_METADATA).map((t) => ({
-    name: t.name,
-    description: t.description,
-    inputSchema: zodToJsonSchema(z.object(t.schema)) as JSONSchema,
-    displayLabels: t.displayLabels,
-    toolCostCategory: t.toolCostCategory,
-    freeUsage: t.freeUsage,
-    stake: t.stake,
-  })),
+  tools: ALL_HTTP_CLIENT_TOOLS_METADATA,
 } as const satisfies ServerMetadata;

@@ -1,3 +1,4 @@
+import type { ToolMeta } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { AGENT_MEMORY_SERVER } from "@app/lib/api/actions/servers/agent_memory/metadata";
 import { ASHBY_SERVER } from "@app/lib/api/actions/servers/ashby";
 import type { ServerEntry } from "@app/lib/api/actions/servers/bm25";
@@ -74,14 +75,14 @@ export interface LabeledQuery {
   maxRank?: number;
 }
 
-const RUN_AGENT_SAMPLE_TOOL_SCHEMA = zodToJsonSchema(
-  z.object({
-    ...RUN_AGENT_TOOL_SCHEMA,
-    ...RUN_AGENT_CONFIGURABLE_PROPERTIES,
-  })
-) as JSONSchema7;
+const RUN_AGENT_SAMPLE_TOOL_SCHEMA = {
+  ...RUN_AGENT_TOOL_SCHEMA,
+  ...RUN_AGENT_CONFIGURABLE_PROPERTIES,
+};
 
-const RUN_AGENT_SAMPLE_TOOLS: ServerEntry["tools"] = [
+type ToolSource = Pick<ToolMeta, "name" | "description" | "schema">;
+
+const RUN_AGENT_SAMPLE_TOOLS = [
   {
     name: "run_ResearchAnalyst",
     description: getRunAgentToolDescription({
@@ -90,7 +91,7 @@ const RUN_AGENT_SAMPLE_TOOLS: ServerEntry["tools"] = [
       childAgentDescription:
         "Competitive market and customer research specialist for pricing, positioning, and source gathering.",
     }),
-    inputSchema: RUN_AGENT_SAMPLE_TOOL_SCHEMA,
+    schema: RUN_AGENT_SAMPLE_TOOL_SCHEMA,
   },
   {
     name: "run_SupportTriage",
@@ -100,7 +101,7 @@ const RUN_AGENT_SAMPLE_TOOLS: ServerEntry["tools"] = [
       childAgentDescription:
         "Customer support specialist that investigates tickets, refunds, escalations, and account issues.",
     }),
-    inputSchema: RUN_AGENT_SAMPLE_TOOL_SCHEMA,
+    schema: RUN_AGENT_SAMPLE_TOOL_SCHEMA,
   },
   {
     name: "run_CodeReviewer",
@@ -110,11 +111,14 @@ const RUN_AGENT_SAMPLE_TOOLS: ServerEntry["tools"] = [
       childAgentDescription:
         "Engineering reviewer for pull requests, regressions, implementation risks, and test coverage.",
     }),
-    inputSchema: RUN_AGENT_SAMPLE_TOOL_SCHEMA,
+    schema: RUN_AGENT_SAMPLE_TOOL_SCHEMA,
   },
-];
+] as const satisfies readonly ToolSource[];
 
-export const SERVERS: ServerEntry[] = [
+const SERVER_SOURCES: Array<{
+  name: string;
+  tools: readonly ToolSource[];
+}> = [
   { name: "agent_memory", tools: AGENT_MEMORY_SERVER.tools },
   { name: "conversation_files", tools: CONVERSATION_FILES_SERVER.tools },
   { name: "google_drive", tools: GOOGLE_DRIVE_SERVER.tools },
@@ -195,3 +199,12 @@ export const SERVERS: ServerEntry[] = [
     tools: DATA_SOURCES_FILE_SYSTEM_SERVER.tools,
   },
 ];
+
+export const SERVERS: ServerEntry[] = SERVER_SOURCES.map(({ name, tools }) => ({
+  name,
+  tools: tools.map((tool) => ({
+    name: tool.name,
+    description: tool.description,
+    inputSchema: zodToJsonSchema(z.object(tool.schema)) as JSONSchema7,
+  })),
+}));

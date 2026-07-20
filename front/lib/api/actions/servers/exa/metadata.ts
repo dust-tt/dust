@@ -1,11 +1,9 @@
 import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import { createToolsRecord } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { z } from "zod";
-import { zodToJsonSchema } from "zod-to-json-schema";
 
-export const EXA_TOOLS_METADATA = createToolsRecord({
-  search_people: {
+export const EXA_TOOLS_METADATA = [
+  {
+    name: "search_people",
     description:
       "Find a person by name, job title, or employer using Exa's people directory. Looks up an individual's LinkedIn profile, professional background, and career history, or identifies who holds a given role at a specific company (e.g. 'CTO of Stripe', 'VP of Sales at French SaaS startups').",
     schema: {
@@ -42,7 +40,8 @@ export const EXA_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "advanced",
     freeUsage: false,
   },
-  search_companies: {
+  {
+    name: "search_companies",
     description:
       "Find a company, business, or startup by name, industry, or criteria using Exa's company directory. Looks up company profiles, identifies competitors, and surfaces firms matching a sector or market (e.g. 'French fintech startups', 'competitors of Notion').",
     schema: {
@@ -79,7 +78,7 @@ export const EXA_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "advanced",
     freeUsage: false,
   },
-});
+] as const;
 
 export const EXA_SERVER_NAME = "exa_people_and_company" as const;
 
@@ -93,13 +92,5 @@ export const EXA_SERVER = {
     icon: "ActionMagnifyingGlassIcon",
     documentationUrl: null,
   },
-  tools: Object.values(EXA_TOOLS_METADATA).map((t) => ({
-    name: t.name,
-    description: t.description,
-    inputSchema: zodToJsonSchema(z.object(t.schema)) as JSONSchema,
-    displayLabels: t.displayLabels,
-    toolCostCategory: t.toolCostCategory,
-    freeUsage: t.freeUsage,
-    stake: t.stake,
-  })),
+  tools: EXA_TOOLS_METADATA,
 } as const satisfies ServerMetadata;

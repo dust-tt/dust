@@ -1,13 +1,11 @@
 import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import { createToolsRecord } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { z } from "zod";
-import { zodToJsonSchema } from "zod-to-json-schema";
 
 export const SOUND_STUDIO_SERVER_NAME = "sound_studio" as const;
 
-export const SOUND_STUDIO_TOOLS_METADATA = createToolsRecord({
-  generate_sound_effects: {
+export const SOUND_STUDIO_TOOLS_METADATA = [
+  {
+    name: "generate_sound_effects",
     description: "Generate a short sound effect from a text prompt.",
     schema: {
       prompt: z
@@ -46,7 +44,7 @@ export const SOUND_STUDIO_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "advanced",
     freeUsage: false,
   },
-});
+] as const;
 
 export const SOUND_STUDIO_SERVER = {
   serverInfo: {
@@ -57,13 +55,5 @@ export const SOUND_STUDIO_SERVER = {
     icon: "ActionNoiseIcon",
     documentationUrl: null,
   },
-  tools: Object.values(SOUND_STUDIO_TOOLS_METADATA).map((t) => ({
-    name: t.name,
-    description: t.description,
-    inputSchema: zodToJsonSchema(z.object(t.schema)) as JSONSchema,
-    displayLabels: t.displayLabels,
-    toolCostCategory: t.toolCostCategory,
-    freeUsage: t.freeUsage,
-    stake: t.stake,
-  })),
+  tools: SOUND_STUDIO_TOOLS_METADATA,
 } as const satisfies ServerMetadata;

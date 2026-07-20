@@ -8,10 +8,7 @@ import {
   ConfigurableToolInputJSONSchemas,
   ConfigurableToolInputSchemas,
 } from "@app/lib/actions/mcp_internal_actions/input_schemas";
-import {
-  EXTRACT_DATA_MAIN_TOOL_NAME,
-  makeExtractDataToolsMetadata,
-} from "@app/lib/api/actions/servers/extract_data/metadata";
+import { makeExtractDataToolsMetadata } from "@app/lib/api/actions/servers/extract_data/metadata";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
 import { isJSONSchemaObject } from "@app/lib/utils/json_schemas";
@@ -1106,7 +1103,7 @@ describe("extract_data configured inputs", () => {
       isTimeFrameConfigured: true,
     });
     const inputSchema = zodToJsonSchema(
-      z.object(metadata[EXTRACT_DATA_MAIN_TOOL_NAME].schema)
+      z.object(metadata[0].schema)
     ) as JSONSchema;
 
     const hiddenSchema = hideInternalConfiguration(inputSchema);
@@ -1151,7 +1148,7 @@ describe("extract_data configured inputs", () => {
       isTimeFrameConfigured: false,
     });
     const inputSchema = zodToJsonSchema(
-      z.object(metadata[EXTRACT_DATA_MAIN_TOOL_NAME].schema)
+      z.object(metadata[0].schema)
     ) as JSONSchema;
 
     const hiddenSchema = hideInternalConfiguration(inputSchema);

@@ -1,5 +1,4 @@
 import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import { createToolsRecord } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import {
   DEFAULT_CREDIT_GROUPS,
   DEFAULT_RESULTS,
@@ -8,9 +7,7 @@ import {
   timeWindowSchemaShape,
   usageFilterSchema,
 } from "@app/lib/api/actions/servers/workspace_analytics/query_input";
-import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { z } from "zod";
-import { zodToJsonSchema } from "zod-to-json-schema";
 
 const topListSchema = (entityPlural: string) => ({
   ...timeWindowSchemaShape,
@@ -116,8 +113,9 @@ const getUsageTimeseriesSchema = {
     ),
 };
 
-export const WORKSPACE_ANALYTICS_TOOLS_METADATA = createToolsRecord({
-  get_top_agents: {
+export const WORKSPACE_ANALYTICS_TOOLS_METADATA = [
+  {
+    name: "get_top_agents",
     description:
       "Return the workspace's most-used and most active agents over a time " +
       "window (defaults to the current calendar month), ranked by message " +
@@ -133,7 +131,8 @@ export const WORKSPACE_ANALYTICS_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "basic",
     freeUsage: false,
   },
-  get_top_users: {
+  {
+    name: "get_top_users",
     description:
       "Return the workspace's most active users and members over a time " +
       "window (defaults to the current calendar month), ranked by number of " +
@@ -149,7 +148,8 @@ export const WORKSPACE_ANALYTICS_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "basic",
     freeUsage: false,
   },
-  get_top_agent_tags: {
+  {
+    name: "get_top_agent_tags",
     description:
       "List the agent tags applied across the workspace over a time window " +
       "(defaults to the current calendar month), ranked by message volume, " +
@@ -168,7 +168,8 @@ export const WORKSPACE_ANALYTICS_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "basic",
     freeUsage: false,
   },
-  get_agent_details: {
+  {
+    name: "get_agent_details",
     description:
       "Return an agent's full configuration: name, description, scope, model, " +
       "equipped skills and capabilities, and its complete system prompt and " +
@@ -183,7 +184,8 @@ export const WORKSPACE_ANALYTICS_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "basic",
     freeUsage: false,
   },
-  get_top_skills: {
+  {
+    name: "get_top_skills",
     description:
       "Return the workspace's most-used skills over a time window (defaults " +
       "to the current calendar month), ranked by execution count. Optionally " +
@@ -198,7 +200,8 @@ export const WORKSPACE_ANALYTICS_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "basic",
     freeUsage: false,
   },
-  get_top_tools: {
+  {
+    name: "get_top_tools",
     description:
       "Return the workspace's most-used MCP tools and integrations over a " +
       "time window (defaults to the current calendar month), ranked by " +
@@ -215,7 +218,8 @@ export const WORKSPACE_ANALYTICS_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "basic",
     freeUsage: false,
   },
-  get_source_breakdown: {
+  {
+    name: "get_source_breakdown",
     description:
       "Return the workspace's message volume broken down by source — where " +
       "messages originate (Conversation, Slack, API, Trigger, extension, and " +
@@ -236,7 +240,8 @@ export const WORKSPACE_ANALYTICS_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "basic",
     freeUsage: false,
   },
-  get_credit_usage: {
+  {
+    name: "get_credit_usage",
     description:
       "Estimate AWU credit consumption over a time window (defaults to the " +
       "current calendar month), optionally broken down by the top agents or " +
@@ -256,7 +261,8 @@ export const WORKSPACE_ANALYTICS_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "basic",
     freeUsage: false,
   },
-  get_credit_timeseries: {
+  {
+    name: "get_credit_timeseries",
     description:
       "Return estimated AWU credit consumption as a time series over a window " +
       "(defaults to the last 30 days), bucketed by day, week, or month. Set " +
@@ -277,7 +283,8 @@ export const WORKSPACE_ANALYTICS_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "basic",
     freeUsage: false,
   },
-  get_usage_timeseries: {
+  {
+    name: "get_usage_timeseries",
     description:
       "Return a usage time series over a window (defaults to the last 30 " +
       "days). Plot message volume (messages, conversations, active users), " +
@@ -293,7 +300,7 @@ export const WORKSPACE_ANALYTICS_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "basic",
     freeUsage: false,
   },
-});
+] as const;
 
 export const WORKSPACE_ANALYTICS_SERVER = {
   serverInfo: {
@@ -306,13 +313,5 @@ export const WORKSPACE_ANALYTICS_SERVER = {
     authorization: null,
     documentationUrl: null,
   },
-  tools: Object.values(WORKSPACE_ANALYTICS_TOOLS_METADATA).map((t) => ({
-    name: t.name,
-    description: t.description,
-    inputSchema: zodToJsonSchema(z.object(t.schema)) as JSONSchema,
-    displayLabels: t.displayLabels,
-    toolCostCategory: t.toolCostCategory,
-    freeUsage: t.freeUsage,
-    stake: t.stake,
-  })),
+  tools: WORKSPACE_ANALYTICS_TOOLS_METADATA,
 } as const satisfies ServerMetadata;

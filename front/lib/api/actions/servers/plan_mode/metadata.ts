@@ -1,8 +1,5 @@
 import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import { createToolsRecord } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { z } from "zod";
-import { zodToJsonSchema } from "zod-to-json-schema";
 
 export const PLAN_MODE_SKELETON = `# <plan title>
 
@@ -21,8 +18,9 @@ export const CLOSE_PLAN_TOOL_NAME = "close_plan" as const;
 
 export const PLAN_FILE_NAME = "plan.md" as const;
 
-export const PLAN_MODE_TOOLS_METADATA = createToolsRecord({
-  create_plan: {
+export const PLAN_MODE_TOOLS_METADATA = [
+  {
+    name: "create_plan",
     description:
       `Create the conversation's \`${PLAN_FILE_NAME}\` with the markdown you pass as \`content\`. Write the ` +
       "full plan directly; do not create an empty plan and then edit it. Exactly one active " +
@@ -49,7 +47,8 @@ export const PLAN_MODE_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "basic",
     freeUsage: false,
   },
-  edit_plan: {
+  {
+    name: "edit_plan",
     description:
       `Edit the active \`${PLAN_FILE_NAME}\` by replacing \`old_string\` with \`new_string\`. The full updated ` +
       `contents of ${PLAN_FILE_NAME} are returned so you can see your change.\n\n` +
@@ -77,7 +76,8 @@ export const PLAN_MODE_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "basic",
     freeUsage: true,
   },
-  close_plan: {
+  {
+    name: "close_plan",
     description:
       `Retire the current plan. After ${CLOSE_PLAN_TOOL_NAME}, the plan is hidden from the UI and this ` +
       `skill will not reference it again. You can call \`${CREATE_PLAN_TOOL_NAME}\` to start a fresh plan ` +
@@ -100,7 +100,7 @@ export const PLAN_MODE_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "basic",
     freeUsage: true,
   },
-});
+] as const;
 
 export const PLAN_MODE_SERVER = {
   serverInfo: {
@@ -114,13 +114,5 @@ export const PLAN_MODE_SERVER = {
     authorization: null,
     documentationUrl: null,
   },
-  tools: Object.values(PLAN_MODE_TOOLS_METADATA).map((t) => ({
-    name: t.name,
-    description: t.description,
-    inputSchema: zodToJsonSchema(z.object(t.schema)) as JSONSchema,
-    displayLabels: t.displayLabels,
-    toolCostCategory: t.toolCostCategory,
-    freeUsage: t.freeUsage,
-    stake: t.stake,
-  })),
+  tools: PLAN_MODE_TOOLS_METADATA,
 } as const satisfies ServerMetadata;

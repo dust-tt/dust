@@ -1,11 +1,9 @@
 import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import { createToolsRecord } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { z } from "zod";
-import { zodToJsonSchema } from "zod-to-json-schema";
 
-export const GONG_TOOLS_METADATA = createToolsRecord({
-  list_calls: {
+export const GONG_TOOLS_METADATA = [
+  {
+    name: "list_calls",
     description:
       "List calls recorded in Gong within a date range. Returns call metadata including title, participants, duration, and timing. " +
       "Dates should be in ISO-8601 format (e.g., '2024-01-01T00:00:00Z' or '2024-01-01'). " +
@@ -36,7 +34,8 @@ export const GONG_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "advanced",
     freeUsage: false,
   },
-  get_call: {
+  {
+    name: "get_call",
     description:
       "Retrieve the details and summary of a specific Gong call by its ID. Returns comprehensive call data including " +
       "participants, topics discussed, key points, action items, the call summary, and interaction statistics.",
@@ -53,7 +52,8 @@ export const GONG_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "advanced",
     freeUsage: false,
   },
-  get_call_transcript: {
+  {
+    name: "get_call_transcript",
     description:
       "Retrieve the full transcript of a call. Returns the conversation text organized by speaker. " +
       "Useful for understanding the exact dialogue and extracting specific quotes or details from the call.",
@@ -72,7 +72,7 @@ export const GONG_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "advanced",
     freeUsage: false,
   },
-});
+] as const;
 
 export const GONG_SERVER = {
   serverInfo: {
@@ -87,13 +87,5 @@ export const GONG_SERVER = {
     icon: "GongLogo",
     documentationUrl: "https://docs.dust.tt/update/docs/gong-mcp",
   },
-  tools: Object.values(GONG_TOOLS_METADATA).map((t) => ({
-    name: t.name,
-    description: t.description,
-    inputSchema: zodToJsonSchema(z.object(t.schema)) as JSONSchema,
-    displayLabels: t.displayLabels,
-    toolCostCategory: t.toolCostCategory,
-    freeUsage: t.freeUsage,
-    stake: t.stake,
-  })),
+  tools: GONG_TOOLS_METADATA,
 } as const satisfies ServerMetadata;

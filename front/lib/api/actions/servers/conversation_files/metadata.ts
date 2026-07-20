@@ -1,10 +1,7 @@
 import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import { createToolsRecord } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { getPrefixedToolName } from "@app/lib/actions/tool_name_utils";
 import { FILES_SERVER_NAME } from "@app/lib/api/actions/servers/files/metadata";
-import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { z } from "zod";
-import { zodToJsonSchema } from "zod-to-json-schema";
 
 export const CONVERSATION_FILES_SERVER_NAME = "conversation_files" as const;
 // Legacy listing action (pre file-system mode). Lists every attachment in the conversation.
@@ -64,8 +61,9 @@ const CAT_FILE_TOOL = {
   freeUsage: false,
 };
 
-export const CONVERSATION_FILES_TOOLS_METADATA = createToolsRecord({
-  [CONVERSATION_LIST_FILES_ACTION_NAME]: {
+export const CONVERSATION_FILES_TOOLS_METADATA = [
+  {
+    name: CONVERSATION_LIST_FILES_ACTION_NAME,
     description:
       "List all files attached to the current conversation, including " +
       "available conversation file attachments, fileIds, titles, and " +
@@ -79,8 +77,9 @@ export const CONVERSATION_FILES_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "basic",
     freeUsage: true,
   },
-  [CONVERSATION_CAT_FILE_ACTION_NAME]: CAT_FILE_TOOL,
-  [CONVERSATION_SEARCH_FILES_ACTION_NAME]: {
+  { name: CONVERSATION_CAT_FILE_ACTION_NAME, ...CAT_FILE_TOOL },
+  {
+    name: CONVERSATION_SEARCH_FILES_ACTION_NAME,
     description:
       "Search conversation files and content nodes semantically to find " +
       "relevant passages by meaning-based topic, concept, or terms.",
@@ -100,39 +99,39 @@ export const CONVERSATION_FILES_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "advanced",
     freeUsage: false,
   },
-});
+] as const;
 
 // In file-system mode, regular files are accessed via the `files` MCP server. This server is
 // narrowed to listing the attachments that don't live on the file mount: content nodes
 // (Notion pages, Slack threads, etc.) and queryable tables. The `cat` tool is kept so agents
 // can read content node attachments.
-export const CONVERSATION_FILES_TOOLS_METADATA_WITH_FILESYSTEM =
-  createToolsRecord({
-    [CONVERSATION_LIST_CONTENT_NODES_AND_TABLES_ACTION_NAME]: {
-      description:
-        "List content-node references (for example Notion pages and Slack " +
-        "threads) and queryable tables available " +
-        "in the current conversation. Regular files are not listed here; " +
-        `they are accessible via the \`${FILES_SERVER_NAME}\` MCP server.`,
-      schema: {},
-      stake: "never_ask",
-      displayLabels: {
-        running: "Listing conversation attachments",
-        done: "List conversation attachments",
-      },
-      toolCostCategory: "basic",
-      freeUsage: true,
+export const CONVERSATION_FILES_TOOLS_METADATA_WITH_FILESYSTEM = [
+  {
+    name: CONVERSATION_LIST_CONTENT_NODES_AND_TABLES_ACTION_NAME,
+    description:
+      "List content-node references (for example Notion pages and Slack " +
+      "threads) and queryable tables available " +
+      "in the current conversation. Regular files are not listed here; " +
+      `they are accessible via the \`${FILES_SERVER_NAME}\` MCP server.`,
+    schema: {},
+    stake: "never_ask",
+    displayLabels: {
+      running: "Listing conversation attachments",
+      done: "List conversation attachments",
     },
-    [CONVERSATION_CAT_FILE_ACTION_NAME]: CAT_FILE_TOOL,
-  });
+    toolCostCategory: "basic",
+    freeUsage: true,
+  },
+  { name: CONVERSATION_CAT_FILE_ACTION_NAME, ...CAT_FILE_TOOL },
+] as const;
 
 // Union of the legacy and file-system-mode metadata. The runtime picks one or the other based on
 // the conversation's `useFileSystem` flag, but the static server descriptor surfaces every tool
 // name this server can register so UI discovery and monitoring labels cover both modes.
 const ALL_CONVERSATION_FILES_TOOLS = [
-  ...Object.values(CONVERSATION_FILES_TOOLS_METADATA),
-  ...Object.values(CONVERSATION_FILES_TOOLS_METADATA_WITH_FILESYSTEM),
-];
+  ...CONVERSATION_FILES_TOOLS_METADATA,
+  CONVERSATION_FILES_TOOLS_METADATA_WITH_FILESYSTEM[0],
+] as const;
 
 export const CONVERSATION_FILES_SERVER = {
   serverInfo: {
@@ -145,13 +144,5 @@ export const CONVERSATION_FILES_SERVER = {
     authorization: null,
     documentationUrl: null,
   },
-  tools: ALL_CONVERSATION_FILES_TOOLS.map((t) => ({
-    name: t.name,
-    description: t.description,
-    inputSchema: zodToJsonSchema(z.object(t.schema)) as JSONSchema,
-    displayLabels: t.displayLabels,
-    toolCostCategory: t.toolCostCategory,
-    freeUsage: t.freeUsage,
-    stake: t.stake,
-  })),
+  tools: ALL_CONVERSATION_FILES_TOOLS,
 } as const satisfies ServerMetadata;

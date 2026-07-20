@@ -1,11 +1,9 @@
 import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import { createToolsRecord } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { z } from "zod";
-import { zodToJsonSchema } from "zod-to-json-schema";
 
-export const FATHOM_TOOLS_METADATA = createToolsRecord({
-  list_meetings: {
+export const FATHOM_TOOLS_METADATA = [
+  {
+    name: "list_meetings",
     description:
       "List and browse your Fathom meeting and call recordings with optional filters for date range, team, attendee domain, recorded-by email, and CRM data. Returns each Fathom recording with its summary, action items, and metadata.",
     schema: {
@@ -81,7 +79,8 @@ export const FATHOM_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "advanced",
     freeUsage: false,
   },
-  get_transcript: {
+  {
+    name: "get_transcript",
     description:
       "Get the full word-for-word transcript of a Fathom meeting. Use recording_id from list_meetings. Large transcripts are saved as conversation files—use conversation_files__cat with offset/limit to read in chunks.",
     schema: {
@@ -98,7 +97,7 @@ export const FATHOM_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "advanced",
     freeUsage: false,
   },
-});
+] as const;
 
 export const FATHOM_SERVER = {
   serverInfo: {
@@ -113,13 +112,5 @@ export const FATHOM_SERVER = {
     icon: "FathomLogo",
     documentationUrl: null,
   },
-  tools: Object.values(FATHOM_TOOLS_METADATA).map((t) => ({
-    name: t.name,
-    description: t.description,
-    inputSchema: zodToJsonSchema(z.object(t.schema)) as JSONSchema,
-    displayLabels: t.displayLabels,
-    toolCostCategory: t.toolCostCategory,
-    freeUsage: t.freeUsage,
-    stake: t.stake,
-  })),
+  tools: FATHOM_TOOLS_METADATA,
 } as const satisfies ServerMetadata;

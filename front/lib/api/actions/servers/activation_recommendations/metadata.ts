@@ -1,14 +1,12 @@
 import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import { createToolsRecord } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { z } from "zod";
-import { zodToJsonSchema } from "zod-to-json-schema";
 
 export const ACTIVATION_RECOMMENDATIONS_SERVER_NAME =
   "activation_recommendations" as const;
 
-export const ACTIVATION_RECOMMENDATIONS_TOOLS_METADATA = createToolsRecord({
-  create_recommendation: {
+export const ACTIVATION_RECOMMENDATIONS_TOOLS_METADATA = [
+  {
+    name: "create_recommendation",
     description:
       "Record a new activation recommendation that was shown to the user. " +
       "Call this immediately after surfacing a recommendation so it is tracked. " +
@@ -33,7 +31,8 @@ export const ACTIVATION_RECOMMENDATIONS_TOOLS_METADATA = createToolsRecord({
       done: "Recommendation recorded",
     },
   },
-  update_recommendation: {
+  {
+    name: "update_recommendation",
     description:
       "Update an activation recommendation's status or link created artifacts to it. " +
       "Use status 'executed' when the user accepts and runs the recommendation, " +
@@ -66,7 +65,8 @@ export const ACTIVATION_RECOMMENDATIONS_TOOLS_METADATA = createToolsRecord({
       done: "Recommendation updated",
     },
   },
-  list_recommendations: {
+  {
+    name: "list_recommendations",
     description:
       "List past activation recommendations for this user. " +
       "Call before generating a new recommendation to avoid repeating suggestions " +
@@ -80,7 +80,7 @@ export const ACTIVATION_RECOMMENDATIONS_TOOLS_METADATA = createToolsRecord({
       done: "Recommendation history fetched",
     },
   },
-});
+] as const;
 
 export const ACTIVATION_RECOMMENDATIONS_SERVER = {
   serverInfo: {
@@ -92,13 +92,5 @@ export const ACTIVATION_RECOMMENDATIONS_SERVER = {
     icon: "ActionBrainIcon",
     documentationUrl: null,
   },
-  tools: Object.values(ACTIVATION_RECOMMENDATIONS_TOOLS_METADATA).map((t) => ({
-    name: t.name,
-    description: t.description,
-    inputSchema: zodToJsonSchema(z.object(t.schema)) as JSONSchema,
-    displayLabels: t.displayLabels,
-    toolCostCategory: t.toolCostCategory,
-    freeUsage: t.freeUsage,
-    stake: t.stake,
-  })),
+  tools: ACTIVATION_RECOMMENDATIONS_TOOLS_METADATA,
 } as const satisfies ServerMetadata;

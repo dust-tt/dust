@@ -8,8 +8,11 @@ import { getFeatureFlags } from "@app/lib/auth";
 import type { GlobalSkillDefinition } from "@app/lib/resources/skill/code_defined/shared";
 import { isPodConversation } from "@app/types/assistant/conversation";
 
-const toolName = (name: keyof typeof SANDBOX_FUNCTIONS_TOOLS_METADATA) =>
-  getPrefixedToolName(SANDBOX_FUNCTIONS_SERVER_NAME, name);
+function toolName(
+  name: (typeof SANDBOX_FUNCTIONS_TOOLS_METADATA)[number]["name"]
+): string {
+  return getPrefixedToolName(SANDBOX_FUNCTIONS_SERVER_NAME, name);
+}
 
 export const podFunctionsSkill = {
   sId: "pod_functions",

@@ -1,8 +1,5 @@
 import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import { createToolsRecord } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { z } from "zod";
-import { zodToJsonSchema } from "zod-to-json-schema";
 
 // ─── Workspace Context ───────────────────────────────────────────────────────
 
@@ -52,10 +49,11 @@ const workspaceIdSchema = {
 
 // ─── Tool Metadata ───────────────────────────────────────────────────────────
 
-export const POKE_TOOLS_METADATA = createToolsRecord({
+export const POKE_TOOLS_METADATA = [
   // ── Workspace Context ────────────────────────────────────────────────────
 
-  [GET_WORKSPACE_METADATA_TOOL_NAME]: {
+  {
+    name: GET_WORKSPACE_METADATA_TOOL_NAME,
     description:
       "Fetch metadata for a target Dust workspace. Requires Dust super user privileges.",
     schema: {
@@ -72,7 +70,8 @@ export const POKE_TOOLS_METADATA = createToolsRecord({
     freeUsage: true,
   },
 
-  [GET_WORKSPACE_PLAN_TOOL_NAME]: {
+  {
+    name: GET_WORKSPACE_PLAN_TOOL_NAME,
     description:
       "Get full plan and subscription details for a workspace: billing info, " +
       "verified domains, and creation date.",
@@ -86,7 +85,8 @@ export const POKE_TOOLS_METADATA = createToolsRecord({
     freeUsage: true,
   },
 
-  [GET_WORKSPACE_FEATURE_FLAGS_TOOL_NAME]: {
+  {
+    name: GET_WORKSPACE_FEATURE_FLAGS_TOOL_NAME,
     description: "List all feature flags currently enabled for a workspace.",
     schema: { ...workspaceIdSchema },
     stake: "low",
@@ -98,7 +98,8 @@ export const POKE_TOOLS_METADATA = createToolsRecord({
     freeUsage: true,
   },
 
-  [GET_WORKSPACE_MEMBERS_TOOL_NAME]: {
+  {
+    name: GET_WORKSPACE_MEMBERS_TOOL_NAME,
     description:
       "List workspace members with roles, email, auth provider, and pending invitations.",
     schema: { ...workspaceIdSchema },
@@ -111,7 +112,8 @@ export const POKE_TOOLS_METADATA = createToolsRecord({
     freeUsage: true,
   },
 
-  [GET_WORKSPACE_SPACES_TOOL_NAME]: {
+  {
+    name: GET_WORKSPACE_SPACES_TOOL_NAME,
     description:
       "List all spaces in a workspace with their kind, permissions, and group IDs.",
     schema: { ...workspaceIdSchema },
@@ -124,7 +126,8 @@ export const POKE_TOOLS_METADATA = createToolsRecord({
     freeUsage: true,
   },
 
-  [GET_WORKSPACE_CREDITS_TOOL_NAME]: {
+  {
+    name: GET_WORKSPACE_CREDITS_TOOL_NAME,
     description:
       "Get credit balance, usage, and excess credits for a workspace over the last 30 days.",
     schema: { ...workspaceIdSchema },
@@ -139,7 +142,8 @@ export const POKE_TOOLS_METADATA = createToolsRecord({
 
   // ── Connectors & Data Sources ────────────────────────────────────────────
 
-  [LIST_DATA_SOURCES_TOOL_NAME]: {
+  {
+    name: LIST_DATA_SOURCES_TOOL_NAME,
     description:
       "List all data sources/connectors for a workspace with status, type, and last sync time.",
     schema: { ...workspaceIdSchema },
@@ -152,7 +156,8 @@ export const POKE_TOOLS_METADATA = createToolsRecord({
     freeUsage: true,
   },
 
-  [GET_CONNECTOR_DETAILS_TOOL_NAME]: {
+  {
+    name: GET_CONNECTOR_DETAILS_TOOL_NAME,
     description:
       "Get full connector details: config, status, error state, provider, Temporal workflows, " +
       "and core data source info.",
@@ -171,7 +176,8 @@ export const POKE_TOOLS_METADATA = createToolsRecord({
     freeUsage: true,
   },
 
-  [CHECK_NOTION_PAGE_TOOL_NAME]: {
+  {
+    name: CHECK_NOTION_PAGE_TOOL_NAME,
     description:
       "Check if a Notion page/DB is synced, accessible, and its parent chain.",
     schema: {
@@ -188,7 +194,8 @@ export const POKE_TOOLS_METADATA = createToolsRecord({
     freeUsage: true,
   },
 
-  [CHECK_SLACK_CHANNEL_TOOL_NAME]: {
+  {
+    name: CHECK_SLACK_CHANNEL_TOOL_NAME,
     description:
       "Verify a Slack channel exists, is synced, and whether it is skipped.",
     schema: {
@@ -206,7 +213,8 @@ export const POKE_TOOLS_METADATA = createToolsRecord({
 
   // ── Conversations & Agents ───────────────────────────────────────────────
 
-  [GET_CONVERSATION_DETAILS_TOOL_NAME]: {
+  {
+    name: GET_CONVERSATION_DETAILS_TOOL_NAME,
     description:
       "Get the full conversation with messages, tool calls, agent actions, and errors.",
     schema: {
@@ -222,7 +230,8 @@ export const POKE_TOOLS_METADATA = createToolsRecord({
     freeUsage: true,
   },
 
-  [GET_MCP_SERVER_DETAILS_TOOL_NAME]: {
+  {
+    name: GET_MCP_SERVER_DETAILS_TOOL_NAME,
     description:
       "Get MCP server view details, or list all MCP server views in a workspace.",
     schema: {
@@ -243,7 +252,8 @@ export const POKE_TOOLS_METADATA = createToolsRecord({
 
   // ── Search ───────────────────────────────────────────────────────────────
 
-  [SEARCH_WORKSPACES_TOOL_NAME]: {
+  {
+    name: SEARCH_WORKSPACES_TOOL_NAME,
     description:
       "Search workspaces by name (exact), verified domain, or member email. " +
       "Returns matching workspaces with links to poke, WorkOS, Metronome, and health dashboards.",
@@ -266,7 +276,8 @@ export const POKE_TOOLS_METADATA = createToolsRecord({
 
   // ── Users & Cross-Reference ──────────────────────────────────────────────
 
-  [LIST_WORKSPACE_GROUPS_TOOL_NAME]: {
+  {
+    name: LIST_WORKSPACE_GROUPS_TOOL_NAME,
     description: "List groups in a workspace with their kind and member count.",
     schema: { ...workspaceIdSchema },
     stake: "low",
@@ -278,7 +289,8 @@ export const POKE_TOOLS_METADATA = createToolsRecord({
     freeUsage: true,
   },
 
-  [FIND_WORKSPACE_BY_CONNECTOR_ID_TOOL_NAME]: {
+  {
+    name: FIND_WORKSPACE_BY_CONNECTOR_ID_TOOL_NAME,
     description: "Reverse-lookup workspace from a connector ID.",
     schema: {
       ...workspaceIdSchema,
@@ -297,7 +309,8 @@ export const POKE_TOOLS_METADATA = createToolsRecord({
 
   // ── Agents & Skills ──────────────────────────────────────────────────────
 
-  [LIST_WORKSPACE_AGENTS_TOOL_NAME]: {
+  {
+    name: LIST_WORKSPACE_AGENTS_TOOL_NAME,
     description:
       "List agents in a workspace sorted by version creation date (most recent first). " +
       "Returns instructionsLength and requestedSpaceCount per agent. " +
@@ -328,7 +341,8 @@ export const POKE_TOOLS_METADATA = createToolsRecord({
     freeUsage: true,
   },
 
-  [GET_WORKSPACE_AGENT_TOOL_NAME]: {
+  {
+    name: GET_WORKSPACE_AGENT_TOOL_NAME,
     description:
       "Get full details for a single agent: instructions, tools, author, and editors.",
     schema: {
@@ -341,7 +355,8 @@ export const POKE_TOOLS_METADATA = createToolsRecord({
     freeUsage: true,
   },
 
-  [LIST_WORKSPACE_SKILLS_TOOL_NAME]: {
+  {
+    name: LIST_WORKSPACE_SKILLS_TOOL_NAME,
     description:
       "List custom skills in a workspace sorted by last update (most recent first). " +
       "Returns instructionsLength per skill. " +
@@ -372,7 +387,8 @@ export const POKE_TOOLS_METADATA = createToolsRecord({
     freeUsage: true,
   },
 
-  [GET_WORKSPACE_SKILL_TOOL_NAME]: {
+  {
+    name: GET_WORKSPACE_SKILL_TOOL_NAME,
     description:
       "Get full details for a single skill: instructions, MCP server count, and editors.",
     schema: {
@@ -384,7 +400,7 @@ export const POKE_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "basic",
     freeUsage: true,
   },
-});
+] as const;
 
 export const POKE_SERVER = {
   serverInfo: {
@@ -396,13 +412,5 @@ export const POKE_SERVER = {
     icon: "ActionLightbulbIcon",
     documentationUrl: null,
   },
-  tools: Object.values(POKE_TOOLS_METADATA).map((t) => ({
-    name: t.name,
-    description: t.description,
-    inputSchema: zodToJsonSchema(z.object(t.schema)) as JSONSchema,
-    displayLabels: t.displayLabels,
-    toolCostCategory: t.toolCostCategory,
-    freeUsage: t.freeUsage,
-    stake: t.stake,
-  })),
+  tools: POKE_TOOLS_METADATA,
 } as const satisfies ServerMetadata;
