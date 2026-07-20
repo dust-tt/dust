@@ -29,6 +29,7 @@ import {
   parseResponseFormatSchema,
 } from "@app/lib/api/llm/utils";
 import type { Authenticator } from "@app/lib/auth";
+import { getModelConfigByModelId } from "@app/lib/llms/model_configurations";
 import type { DustStreamEndpointConstructor } from "@app/lib/llms/stream/dust_stream_endpoint";
 import type { BatchEndpointConstructor } from "@app/lib/model_constructors/batch/configuration";
 import type {
@@ -73,7 +74,11 @@ import type {
   AgentTextContentType,
 } from "@app/types/assistant/agent_message_content";
 import type { ModelMessageTypeMultiActionsWithoutContentFragment } from "@app/types/assistant/generation";
-import type { ReasoningEffort } from "@app/types/assistant/models/types";
+import type {
+  ModelIdType,
+  ModelProviderIdType,
+  ReasoningEffort,
+} from "@app/types/assistant/models/types";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
@@ -579,6 +584,18 @@ function convertBatchEventsToOld(
   return events.map((event) => convertToOldEvent(event, metadata));
 }
 
+// The endpoint's `lab` is the model's developer ("deepseek" for a
+// fireworks-hosted DeepSeek model), not the legacy `ModelProviderIdType` the LLM
+// base keys its config on — that's the serving provider ("fireworks"). Resolve
+// it from the model config, which is unique by modelId.
+function legacyProviderIdForModel(modelId: ModelIdType): ModelProviderIdType {
+  const modelConfig = getModelConfigByModelId(modelId);
+  if (!modelConfig) {
+    throw new Error(`Model config not found for ${modelId}`);
+  }
+  return modelConfig.providerId;
+}
+
 /**
  * Shared base bridging the old LLM system with the new model_constructors one.
  *
@@ -717,7 +734,7 @@ export class StreamEndpointTransition extends BaseTransition {
     llmParameters: LLMParameters,
     modelConstructor: DustStreamEndpointConstructor
   ) {
-    super(auth, modelConstructor.lab, llmParameters);
+    super(auth, legacyProviderIdForModel(llmParameters.modelId), llmParameters);
     this.endpointConstructor = modelConstructor;
     this.model = new modelConstructor(llmParameters.credentials);
 
@@ -842,7 +859,7 @@ export class BatchEndpointTransition extends BaseTransition {
     llmParameters: LLMParameters,
     modelConstructor: BatchEndpointConstructor
   ) {
-    super(auth, modelConstructor.lab, llmParameters);
+    super(auth, legacyProviderIdForModel(llmParameters.modelId), llmParameters);
     this.model = new modelConstructor(llmParameters.credentials);
   }
 
