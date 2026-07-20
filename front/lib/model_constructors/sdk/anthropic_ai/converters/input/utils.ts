@@ -39,7 +39,7 @@ import type {
   CacheOption,
   SystemTextMessage,
 } from "@app/lib/model_constructors/types/input/messages";
-import { ANTHROPIC_PROVIDER_LAB } from "@app/lib/model_constructors/types/labs";
+import { ANTHROPIC_LAB } from "@app/lib/model_constructors/types/labs";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import { assertNever } from "@app/types/shared/utils/assert_never";
@@ -223,7 +223,7 @@ export function assistantProviderPassthroughMessageToBlocks(
   // Replay the provider's own tool-search blocks verbatim so interleaved
   // thinking signatures stay valid. Skip blocks tagged for another provider or
   // that fail to parse.
-  if (message.content.provider !== ANTHROPIC_PROVIDER_LAB) {
+  if (message.content.provider !== ANTHROPIC_LAB) {
     return [];
   }
 

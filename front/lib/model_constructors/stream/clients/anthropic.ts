@@ -21,7 +21,7 @@ import type { Credentials } from "@app/lib/model_constructors/types/credentials"
 import type { EndpointMetadata } from "@app/lib/model_constructors/types/endpoint_metadata";
 import { ANTHROPIC_HOST } from "@app/lib/model_constructors/types/hosts";
 import type { Payload } from "@app/lib/model_constructors/types/input/messages";
-import { ANTHROPIC_PROVIDER_LAB } from "@app/lib/model_constructors/types/labs";
+import { ANTHROPIC_LAB } from "@app/lib/model_constructors/types/labs";
 import type {
   ModelResponseEvent,
   ResponseIdEvent,
@@ -66,7 +66,7 @@ export abstract class AnthropicStream extends WithAnthropicAIInputConverter(
     >
   )
 ) {
-  static readonly lab = ANTHROPIC_PROVIDER_LAB;
+  static readonly lab = ANTHROPIC_LAB;
   static readonly host = ANTHROPIC_HOST;
 
   static readonly configSchema = anthropicConfigSchema;

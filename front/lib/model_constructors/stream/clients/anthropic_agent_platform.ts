@@ -18,7 +18,7 @@ import { StreamEndpoint } from "@app/lib/model_constructors/stream/endpoint";
 import type { Credentials } from "@app/lib/model_constructors/types/credentials";
 import { AGENT_PLATFORM_HOST } from "@app/lib/model_constructors/types/hosts";
 import { inputConfigSchema } from "@app/lib/model_constructors/types/input/configuration";
-import { ANTHROPIC_PROVIDER_LAB } from "@app/lib/model_constructors/types/labs";
+import { ANTHROPIC_LAB } from "@app/lib/model_constructors/types/labs";
 import {
   CLAUDE_HAIKU_4_5,
   type Model,
@@ -59,7 +59,7 @@ export abstract class AnthropicAgentPlatformStream extends WithAnthropicAIInputC
     regionalEndpoint: AgentPlatformRegionalEndpoint;
   };
 
-  static readonly lab = ANTHROPIC_PROVIDER_LAB;
+  static readonly lab = ANTHROPIC_LAB;
   static readonly host = AGENT_PLATFORM_HOST;
 
   static readonly regionalEndpoint: AgentPlatformRegionalEndpoint;
