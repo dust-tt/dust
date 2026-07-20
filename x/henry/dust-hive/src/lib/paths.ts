@@ -27,6 +27,11 @@ export const FORWARDER_STATE_PATH = join(DUST_HIVE_HOME, "forward.json");
 // Activity tracking (last-interacted environment)
 export const ACTIVITY_PATH = join(DUST_HIVE_HOME, "activity.json");
 
+// Opt-in environment lifecycle management
+export const LIFECYCLE_CONFIG_PATH = join(DUST_HIVE_HOME, "lifecycle.json");
+export const LIFECYCLE_PID_PATH = join(DUST_HIVE_HOME, "lifecycle.pid");
+export const LIFECYCLE_LOG_PATH = join(DUST_HIVE_HOME, "lifecycle.log");
+
 // Temporal server paths (global, not per-env)
 export const TEMPORAL_PID_PATH = join(DUST_HIVE_HOME, "temporal.pid");
 export const TEMPORAL_LOG_PATH = join(DUST_HIVE_HOME, "temporal.log");
@@ -96,6 +101,18 @@ export function getPortsPath(name: string): string {
 
 export function getInitializedMarkerPath(name: string): string {
   return join(getEnvDir(name), "initialized");
+}
+
+export function getLifecycleStatePath(name: string): string {
+  return join(getEnvDir(name), "lifecycle-state.json");
+}
+
+export function getLifecycleActivityPath(name: string, kind: string): string {
+  return join(getEnvDir(name), `lifecycle-activity-${kind}`);
+}
+
+export function getLifecycleLockPath(name: string): string {
+  return join(getEnvDir(name), "lifecycle.lock");
 }
 
 export function getPidPath(name: string, service: string): string {

@@ -1,7 +1,7 @@
 #!/usr/bin/env bun
 // HTTP proxy daemon - the public entry point for a hive env.
 //
-// Usage: bun run proxy-daemon.ts <listen-port> <front-api-port> <marketing-port>
+// Usage: bun run proxy-daemon.ts <env-name> <listen-port> <front-api-port> <marketing-port>
 //
 // Routing:
 //   /__hive/healthz → 200 ok (proxy's own health)
@@ -18,7 +18,7 @@
 // resolve both ends the same way.
 
 import type { ServerWebSocket } from "bun";
-
+import { touchLifecycleActivity } from "./lib/lifecycle-activity";
 import { logger } from "./lib/logger";
 
 type Target = "front-api" | "marketing";
@@ -46,7 +46,9 @@ export function routeFor(pathname: string): Target {
 
 function parsePort(value: string | undefined, label: string): number {
   if (value === undefined) {
-    logger.error("Usage: proxy-daemon.ts <listen-port> <front-api-port> <marketing-port>");
+    logger.error(
+      "Usage: proxy-daemon.ts <env-name> <listen-port> <front-api-port> <marketing-port>"
+    );
     process.exit(1);
   }
   const n = Number.parseInt(value, 10);
@@ -113,7 +115,26 @@ function safeClose(
   }
 }
 
-export function startProxy(listenPort: number, ports: Record<Target, number>) {
+async function recordFrontendActivityIfDue(
+  envName: string,
+  lastActivityWriteMs: number,
+  nowMs: number
+): Promise<number> {
+  if (nowMs - lastActivityWriteMs < 30_000) {
+    return lastActivityWriteMs;
+  }
+  try {
+    await touchLifecycleActivity(envName, "frontend");
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    logger.warn(`[proxy] Could not record lifecycle activity: ${message}`);
+  }
+  return nowMs;
+}
+
+export function startProxy(envName: string, listenPort: number, ports: Record<Target, number>) {
+  let lastActivityWriteMs = 0;
+
   return Bun.serve<WsClientData>({
     port: listenPort,
     hostname: "localhost",
@@ -123,6 +144,12 @@ export function startProxy(listenPort: number, ports: Record<Target, number>) {
       if (url.pathname === "/__hive/healthz") {
         return new Response("ok", { status: 200 });
       }
+
+      lastActivityWriteMs = await recordFrontendActivityIfDue(
+        envName,
+        lastActivityWriteMs,
+        Date.now()
+      );
 
       const target = routeFor(url.pathname);
       const upstreamPort = ports[target];
@@ -224,14 +251,20 @@ export function startProxy(listenPort: number, ports: Record<Target, number>) {
 }
 
 if (import.meta.main) {
-  const [listenPortArg, frontApiPortArg, marketingPortArg] = process.argv.slice(2);
+  const [envName, listenPortArg, frontApiPortArg, marketingPortArg] = process.argv.slice(2);
+  if (!envName) {
+    logger.error(
+      "Usage: proxy-daemon.ts <env-name> <listen-port> <front-api-port> <marketing-port>"
+    );
+    process.exit(1);
+  }
   const listenPort = parsePort(listenPortArg, "listen port");
   const ports: Record<Target, number> = {
     "front-api": parsePort(frontApiPortArg, "front-api port"),
     marketing: parsePort(marketingPortArg, "marketing port"),
   };
 
-  const server = startProxy(listenPort, ports);
+  const server = startProxy(envName, listenPort, ports);
 
   logger.info(
     `proxy daemon listening on http://${server.hostname}:${server.port} ` +

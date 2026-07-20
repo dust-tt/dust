@@ -1,4 +1,5 @@
 import { withEnvironments } from "../lib/commands";
+import { touchLifecycleActivity } from "../lib/lifecycle-activity";
 import { logger } from "../lib/logger";
 import { isServiceRunning } from "../lib/process";
 import { startService, waitForServiceReady } from "../lib/registry";
@@ -7,6 +8,7 @@ import { COLD_STATE_SERVICES } from "../lib/services";
 import { getStateInfo } from "../lib/state";
 
 export const startCommand = withEnvironments("start", async (env) => {
+  await touchLifecycleActivity(env.name, "command");
   const stateInfo = await getStateInfo(env);
   if (stateInfo.state !== "stopped") {
     if (stateInfo.state === "cold") {

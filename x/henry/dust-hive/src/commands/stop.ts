@@ -1,12 +1,13 @@
 import { withEnvironment } from "../lib/commands";
 import { stopDocker } from "../lib/docker";
+import type { Environment } from "../lib/environment";
 import { logger } from "../lib/logger";
 import { stopAllServices, stopService } from "../lib/process";
-import { CommandError, Err, Ok } from "../lib/result";
+import { CommandError, Err, Ok, type Result } from "../lib/result";
 import { ALL_SERVICES, isServiceName } from "../lib/services";
-import { getStateInfo, isDockerRunning } from "../lib/state";
+import { getStateInfo } from "../lib/state";
 
-export const stopCommand = withEnvironment("stop", async (env, service?: string) => {
+export async function stopEnvironment(env: Environment, service?: string): Promise<Result<void>> {
   // If a service is specified, stop just that service
   if (service !== undefined) {
     if (!isServiceName(service)) {
@@ -39,13 +40,10 @@ export const stopCommand = withEnvironment("stop", async (env, service?: string)
   await stopAllServices(env.name);
   logger.success("All services stopped");
 
-  // Stop Docker if running
-  const dockerRunning = await isDockerRunning(env.name);
-  if (dockerRunning) {
-    const dockerStopped = await stopDocker(env.name);
-    if (!dockerStopped) {
-      logger.warn("Docker containers may need manual cleanup");
-    }
+  // Remove containers even after cool stopped them.
+  const dockerStopped = await stopDocker(env.name);
+  if (!dockerStopped) {
+    logger.warn("Docker containers may need manual cleanup");
   }
 
   console.log();
@@ -57,4 +55,6 @@ export const stopCommand = withEnvironment("stop", async (env, service?: string)
   console.log();
 
   return Ok(undefined);
-});
+}
+
+export const stopCommand = withEnvironment("stop", stopEnvironment);

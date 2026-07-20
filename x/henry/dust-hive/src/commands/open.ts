@@ -1,5 +1,6 @@
 import { setLastActiveEnv } from "../lib/activity";
 import { type Environment, getEnvironment, getEnvironmentWorktreeDir } from "../lib/environment";
+import { touchLifecycleActivity } from "../lib/lifecycle-activity";
 import { logger } from "../lib/logger";
 import {
   getConfiguredMultiplexer,
@@ -33,6 +34,7 @@ export async function openCommand(
   const envResult = await resolveEnvironment(nameArg);
   if (!envResult.ok) return envResult;
   const env = envResult.value;
+  await touchLifecycleActivity(env.name, "command");
 
   const multiplexer = await getConfiguredMultiplexer();
   const worktreePath = getEnvironmentWorktreeDir(env.metadata);

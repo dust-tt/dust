@@ -1,12 +1,13 @@
 import { withEnvironments } from "../lib/commands";
 import { pauseDocker } from "../lib/docker";
+import type { Environment } from "../lib/environment";
 import { logger } from "../lib/logger";
 import { stopService } from "../lib/process";
-import { CommandError, Err, Ok } from "../lib/result";
+import { CommandError, Err, Ok, type Result } from "../lib/result";
 import { ALL_SERVICES, COLD_STATE_SERVICES } from "../lib/services";
 import { getStateInfo } from "../lib/state";
 
-export const coolCommand = withEnvironments("cool", async (env) => {
+export async function coolEnvironment(env: Environment): Promise<Result<void>> {
   // Check state
   const stateInfo = await getStateInfo(env);
   if (stateInfo.state !== "warm") {
@@ -42,4 +43,6 @@ export const coolCommand = withEnvironments("cool", async (env) => {
   console.log();
 
   return Ok(undefined);
-});
+}
+
+export const coolCommand = withEnvironments("cool", coolEnvironment);

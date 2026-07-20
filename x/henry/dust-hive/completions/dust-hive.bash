@@ -300,7 +300,7 @@ _dust_hive_complete() {
 
   # Top-level command completion
   if [[ -z "$cmd" ]]; then
-    local commands="spawn adopt open reload restart warm cool start stop up down destroy unregister list status logs url cd setup doctor cache refresh forward sync temporal seed-config feed flag help"
+    local commands="spawn adopt open reload restart warm cool start stop up down lifecycle activity destroy unregister list status logs url cd setup doctor cache refresh forward sync temporal seed-config feed flag help"
     COMPREPLY=($(compgen -W "$commands" -- "$cur"))
     return
   fi
@@ -403,6 +403,23 @@ _dust_hive_complete() {
       ;;
     down)
       COMPREPLY=($(compgen -W "-f --force" -- "$cur"))
+      ;;
+    lifecycle)
+      local subcommand="${COMP_WORDS[$((cmd_index + 1))]:-}"
+      if (( cword == cmd_index + 1 )); then
+        COMPREPLY=($(compgen -W "enable disable status run-once start stop" -- "$cur"))
+      elif [[ "$cur" == -* ]]; then
+        COMPREPLY=($(compgen -W "-p --profile --cold-after --stop-after --delete-after -n --dry-run" -- "$cur"))
+      elif [[ "$subcommand" == "enable" || "$subcommand" == "disable" || "$subcommand" == "status" ]]; then
+        COMPREPLY=($(compgen -W "$(_dust_hive_envs)" -- "$cur"))
+      fi
+      ;;
+    activity)
+      if (( cword == cmd_index + 1 )); then
+        COMPREPLY=($(compgen -W "touch run" -- "$cur"))
+      elif [[ "${COMP_WORDS[$((cmd_index + 1))]:-}" == "touch" ]]; then
+        COMPREPLY=($(compgen -W "$(_dust_hive_envs)" -- "$cur"))
+      fi
       ;;
     destroy|rm)
       case "$cur" in

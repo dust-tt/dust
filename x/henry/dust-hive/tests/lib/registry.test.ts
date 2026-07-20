@@ -204,7 +204,7 @@ describe("registry", () => {
 
     it("proxy receives all three ports as argv", () => {
       const command = SERVICE_REGISTRY.proxy.buildCommand(mockEnv);
-      expect(command).toBe("bun run src/proxy-daemon.ts 10000 10003 10004");
+      expect(command).toBe("bun run src/proxy-daemon.ts test 10000 10003 10004");
     });
 
     it("core returns cargo run --bin core-api", () => {

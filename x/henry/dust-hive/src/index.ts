@@ -1,6 +1,7 @@
 #!/usr/bin/env bun
 
 import { cac } from "cac";
+import { activityRunCommand, activityTouchCommand } from "./commands/activity";
 import { adoptCommand } from "./commands/adopt";
 import { cacheCommand } from "./commands/cache";
 import { cdCommand } from "./commands/cd";
@@ -12,6 +13,14 @@ import { envGetCommand, envListCommand, envSetCommand, envUnsetCommand } from ".
 import { feedCommand } from "./commands/feed";
 import { flagCommand } from "./commands/flag";
 import { forwardCommand, forwardStatusCommand, forwardStopCommand } from "./commands/forward";
+import {
+  lifecycleDisableCommand,
+  lifecycleEnableCommand,
+  lifecycleRunOnceCommand,
+  lifecycleStartCommand,
+  lifecycleStatusCommand,
+  lifecycleStopCommand,
+} from "./commands/lifecycle";
 import { listCommand } from "./commands/list";
 import { logsCommand } from "./commands/logs";
 import { openCommand } from "./commands/open";
@@ -30,6 +39,7 @@ import { upCommand } from "./commands/up";
 import { urlCommand } from "./commands/url";
 import { warmCommand } from "./commands/warm";
 import { ensureDirectories } from "./lib/config";
+import { ensureLifecycleDaemonRunning } from "./lib/lifecycle-daemon";
 import { logger } from "./lib/logger";
 import type { Result } from "./lib/result";
 
@@ -43,8 +53,14 @@ async function runCommand(resultPromise: Promise<Result<void>>): Promise<void> {
   process.exit(0);
 }
 
-async function prepareAndRun(resultPromise: Promise<Result<void>>): Promise<void> {
+async function prepareAndRun(
+  resultPromise: Promise<Result<void>>,
+  options: { ensureLifecycleDaemon?: boolean } = {}
+): Promise<void> {
   await ensureDirectories();
+  if (options.ensureLifecycleDaemon ?? true) {
+    await ensureLifecycleDaemonRunning();
+  }
   await runCommand(resultPromise);
 }
 
@@ -250,6 +266,78 @@ cli
   .option("-f, --force", "Skip confirmation prompt")
   .action(async (options: { force?: boolean }) => {
     await prepareAndRun(downCommand({ force: Boolean(options.force) }));
+  });
+
+cli
+  .command(
+    "lifecycle [subcommand] [name]",
+    "Manage automatic lifecycle: enable|disable|status|run-once|start|stop"
+  )
+  .option("-p, --profile <profile>", "Lifecycle profile (default: balanced)")
+  .option("--cold-after <duration>", "Override warm-to-cold delay (for example 30m or never)")
+  .option("--stop-after <duration>", "Override cold-to-stopped delay (for example 8h or never)")
+  .option(
+    "--delete-after <duration>",
+    "Override stopped-to-archived delay (for example 7d or never)"
+  )
+  .option("-n, --dry-run", "Show eligible actions without applying them")
+  .action(
+    async (
+      subcommand: string | undefined,
+      name: string | undefined,
+      options: {
+        profile?: string;
+        coldAfter?: string;
+        stopAfter?: string;
+        deleteAfter?: string;
+        dryRun?: boolean;
+      }
+    ) => {
+      switch (subcommand) {
+        case "enable":
+          await prepareAndRun(lifecycleEnableCommand(name, options), {
+            ensureLifecycleDaemon: false,
+          });
+          return;
+        case "disable":
+          await prepareAndRun(lifecycleDisableCommand(name), { ensureLifecycleDaemon: false });
+          return;
+        case "status":
+        case undefined:
+          await prepareAndRun(lifecycleStatusCommand(name), { ensureLifecycleDaemon: false });
+          return;
+        case "run-once":
+          await prepareAndRun(lifecycleRunOnceCommand(Boolean(options.dryRun)), {
+            ensureLifecycleDaemon: false,
+          });
+          return;
+        case "start":
+          await prepareAndRun(lifecycleStartCommand(), { ensureLifecycleDaemon: false });
+          return;
+        case "stop":
+          await prepareAndRun(lifecycleStopCommand(), { ensureLifecycleDaemon: false });
+          return;
+        default:
+          logger.error(`Unknown lifecycle command: ${subcommand}`);
+          process.exit(1);
+      }
+    }
+  );
+
+cli
+  .command("activity [subcommand] [...args]", "Record activity or run a command with a heartbeat")
+  .allowUnknownOptions()
+  .action(async (subcommand: string | undefined, args: string[], options: { "--"?: string[] }) => {
+    if (subcommand === "touch") {
+      await prepareAndRun(activityTouchCommand(args[0]));
+      return;
+    }
+    if (subcommand === "run") {
+      await prepareAndRun(activityRunCommand(options["--"] ?? args));
+      return;
+    }
+    logger.error("Usage: dust-hive activity touch [name] | activity run -- <command>");
+    process.exit(1);
   });
 
 cli

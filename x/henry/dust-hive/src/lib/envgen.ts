@@ -25,6 +25,7 @@ source "${CONFIG_ENV_PATH}"
 # every hive shares the same workspace and different users can spawn a hive
 # with the same name.
 export DEV_ENV_NAME=${username}-${name}
+export DUST_HIVE_ENV_NAME=${name}
 
 # === Ports (for services that read env vars) ===
 export PORT=${ports.front}                    # Next.js

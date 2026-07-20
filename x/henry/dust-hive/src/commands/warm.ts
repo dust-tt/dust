@@ -5,6 +5,7 @@ import { isInitialized, markInitialized } from "../lib/environment";
 import { startForwarder } from "../lib/forward";
 import { FORWARDER_PORTS } from "../lib/forwarderConfig";
 import { createTemporalNamespaces, runAllDbInits, runSeedScript } from "../lib/init";
+import { touchLifecycleActivity } from "../lib/lifecycle-activity";
 import { logger } from "../lib/logger";
 import { cleanupServicePorts, formatBlockedPorts } from "../lib/ports";
 import { isServiceRunning, readPid } from "../lib/process";
@@ -70,6 +71,7 @@ async function isTemporalRunning(): Promise<boolean> {
 
 // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: orchestration function with necessary complexity
 export const warmCommand = withEnvironments("warm", async (env, options: WarmOptions) => {
+  await touchLifecycleActivity(env.name, "command");
   const startTime = Date.now();
   const noForward = options.noForward ?? false;
   const forcePorts = options.forcePorts ?? false;

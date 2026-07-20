@@ -32,6 +32,11 @@ describe("envgen", () => {
       expect(content).toMatch(/export DEV_ENV_NAME=\S+-my-feature/);
     });
 
+    it("exports the Hive environment name for activity tracking", () => {
+      const content = generateEnvSh("my-feature", ports);
+      expect(content).toContain("export DUST_HIVE_ENV_NAME=my-feature");
+    });
+
     it("exports temporal namespaces", () => {
       const content = generateEnvSh("my-feature", ports);
       expect(content).toContain("export TEMPORAL_NAMESPACE=dust-hive-my-feature");

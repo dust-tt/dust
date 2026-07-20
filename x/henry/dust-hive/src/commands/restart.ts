@@ -1,5 +1,6 @@
 import * as p from "@clack/prompts";
 import { requireEnvironment } from "../lib/commands";
+import { touchLifecycleActivity } from "../lib/lifecycle-activity";
 import { logger } from "../lib/logger";
 import { stopService } from "../lib/process";
 import { restoreTerminal } from "../lib/prompt";
@@ -32,6 +33,7 @@ export async function restartCommand(
   if (!envResult.ok) return envResult;
 
   const env = envResult.value;
+  await touchLifecycleActivity(env.name, "command");
 
   // Handle service selection
   let service: ServiceName;

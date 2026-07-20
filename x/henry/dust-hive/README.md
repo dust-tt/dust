@@ -186,6 +186,11 @@ external workspace is archived.
 | `status [NAME]` | Show service health |
 | `logs [NAME] [SERVICE] [-f]` | View service logs |
 | `url [NAME]` | Print front URL |
+| `lifecycle enable [NAME]` | Opt an environment into automatic cool, stop, and archive transitions |
+| `lifecycle disable [NAME]` | Disable automatic lifecycle management |
+| `lifecycle status [NAME]` | Show policy, activity, and blocked cleanup reasons |
+| `lifecycle run-once [--dry-run]` | Run one lifecycle scan |
+| `activity run -- COMMAND...` | Run tests or another command with an activity heartbeat |
 
 ### Utilities
 
@@ -236,6 +241,90 @@ Available services for `logs` command:
 | **stopped** | Nothing running |
 | **cold** | Only SDK watch running |
 | **warm** | All services running |
+
+## Automatic lifecycle management
+
+Lifecycle management is opt-in per environment. The built-in `balanced` profile cools a warm
+environment after one idle hour, stops a cold environment after eight idle hours, and archives a
+stopped environment after seven idle days:
+
+```bash
+dust-hive lifecycle enable my-feature
+
+# Per-environment duration overrides.
+dust-hive lifecycle enable my-feature \
+  --cold-after 30m \
+  --stop-after 4h \
+  --delete-after 14d
+
+# Disable a transition without disabling the whole policy.
+dust-hive lifecycle enable my-feature --delete-after never
+
+dust-hive lifecycle status my-feature
+dust-hive lifecycle run-once --dry-run
+dust-hive lifecycle disable my-feature
+```
+
+Activity resets the timer for the environment's current state. Hive tracks:
+
+- Git changes to tracked and non-ignored untracked files.
+- Requests through the environment's frontend proxy.
+- `warm`, `start`, `open`, and `restart` commands.
+- Commands run with `dust-hive activity run`.
+
+Use the activity wrapper for tests so long-running commands maintain a heartbeat:
+
+```bash
+cd front
+NODE_ENV=test dust-hive activity run -- npm test lib/resources/user_resource.test.ts
+```
+
+Frontend tracking is conservative: polling from an open background tab also counts as activity.
+Profiles that should ignore browser traffic can set `trackFrontend` to `false`.
+
+Each stage has its own timer. An environment cooled after one idle hour must then remain idle for
+the configured cold duration before it is stopped. Activity never automatically warms or starts an
+environment.
+
+Automatic archive removes Hive services, Docker volumes, the test database, the worktree, and the
+environment registration. It refuses to archive a dirty worktree and always keeps the local Git
+branch. Externally owned worktrees are kept. Set `blockDeleteIfSessionExists` when a persistent
+multiplexer session should also block archive.
+
+The lifecycle daemon starts when an environment is enabled and is restarted by subsequent
+`dust-hive` commands if needed. Manage it directly with `dust-hive lifecycle start|stop`. Its log is
+stored at `~/.dust-hive/lifecycle.log`.
+
+### Lifecycle configuration
+
+Lifecycle profiles and enrollment are stored in `~/.dust-hive/lifecycle.json`. Duration values are
+seconds; `null` disables a transition. The file is strictly validated before the daemon performs
+any action, so unknown keys and misspelled settings block lifecycle actions.
+
+```json
+{
+  "scanIntervalSeconds": 30,
+  "dryRun": false,
+  "profiles": {
+    "aggressive": {
+      "coldAfterSeconds": 1200,
+      "stopAfterSeconds": 7200,
+      "deleteAfterSeconds": 604800,
+      "trackSourceChanges": true,
+      "trackFrontend": true,
+      "blockDeleteIfSessionExists": false
+    }
+  },
+  "environments": {
+    "my-feature": {
+      "profile": "aggressive",
+      "overrides": {
+        "deleteAfterSeconds": 1209600
+      }
+    }
+  }
+}
+```
 
 ## Port Allocation
 

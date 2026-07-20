@@ -89,7 +89,7 @@ export const SERVICE_REGISTRY: Record<ServiceName, ServiceConfig> = {
     needsNvm: false,
     needsEnvSh: false,
     buildCommand: (env) =>
-      `bun run src/proxy-daemon.ts ${env.ports.front} ${env.ports.frontApi} ${env.ports.marketing}`,
+      `bun run src/proxy-daemon.ts ${env.name} ${env.ports.front} ${env.ports.frontApi} ${env.ports.marketing}`,
     readinessCheck: {
       type: "http",
       url: (ports) => `http://localhost:${ports.front}/__hive/healthz`,

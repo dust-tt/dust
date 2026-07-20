@@ -286,6 +286,8 @@ _dust-hive() {
         'stop:Stop all services in environment'
         'up:Start managed services (temporal + test postgres + test redis)'
         'down:Stop all envs, temporal, test postgres, test redis'
+        'lifecycle:Manage automatic environment lifecycle'
+        'activity:Record activity or run a command with a heartbeat'
         'destroy:Remove environment'
         'unregister:Remove Hive resources but keep worktree'
         'list:Show all environments'
@@ -398,6 +400,23 @@ _dust-hive() {
           _arguments \
             '-f[Skip confirmation prompt]' \
             '--force[Skip confirmation prompt]'
+          ;;
+        lifecycle)
+          _arguments \
+            '1::subcommand:(enable disable status run-once start stop)' \
+            '2::name:_dust_hive_envs' \
+            '-p[Lifecycle profile]:profile:' \
+            '--profile[Lifecycle profile]:profile:' \
+            '--cold-after[Warm-to-cold delay]:duration:' \
+            '--stop-after[Cold-to-stopped delay]:duration:' \
+            '--delete-after[Stopped-to-archived delay]:duration:' \
+            '-n[Show actions without applying them]' \
+            '--dry-run[Show actions without applying them]'
+          ;;
+        activity)
+          _arguments \
+            '1::subcommand:(touch run)' \
+            '*::argument:'
           ;;
         destroy|rm)
           _arguments \
