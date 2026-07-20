@@ -249,10 +249,6 @@ export const MCP_SERVER_AVAILABILITY = [
 ] as const;
 export type MCPServerAvailability = (typeof MCP_SERVER_AVAILABILITY)[number];
 
-type InternalMCPServerRegistry = {
-  [K in InternalMCPServerNameType]: InternalMCPServerEntry<K>;
-};
-
 export const INTERNAL_MCP_SERVERS = {
   // Note:
   // ids should be stable, do not change them when moving internal servers to production as it would break existing agents.
@@ -1214,7 +1210,9 @@ export const INTERNAL_MCP_SERVERS = {
     metadata: AGENT_TEMPLATES_SERVER,
   },
   // Using satisfies here instead of: type to avoid TypeScript widening the type and breaking the type inference for AutoInternalMCPServerNameType.
-} satisfies InternalMCPServerRegistry;
+} satisfies {
+  [K in InternalMCPServerNameType]: InternalMCPServerEntry<K>;
+};
 
 type IsRestrictedCallback = (params: {
   plan: PlanType;
