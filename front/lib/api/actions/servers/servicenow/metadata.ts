@@ -117,7 +117,7 @@ export const SERVICENOW_TOOLS_METADATA = [
         .string()
         .optional()
         .describe(
-          "Resolution code. Required by ServiceNow to move state to 'Resolved' or 'Closed', e.g. 'Solved (Permanently)', 'Solved (Work Around)', 'Closed/Resolved by Caller'."
+          "Resolution code. Required by ServiceNow to move state to 'Resolved' or 'Closed'. Valid values are configured per ServiceNow instance (e.g. 'Solution provided', 'Resolved by caller') — if unsure, call list_incidents on an already-resolved incident to see a value your instance accepts."
         ),
       ...WRITABLE_INCIDENT_FIELDS_SCHEMA,
     },
