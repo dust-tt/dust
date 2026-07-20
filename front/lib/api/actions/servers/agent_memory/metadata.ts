@@ -119,7 +119,7 @@ export const AGENT_MEMORY_TOOLS_METADATA = [
     toolCostCategory: "basic",
     freeUsage: true,
   },
-] as const satisfies readonly InternalMCPToolType[];
+] as const;
 
 export const AGENT_MEMORY_SERVER = {
   serverInfo: {

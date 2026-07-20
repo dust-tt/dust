@@ -88,7 +88,7 @@ export const WAKEUPS_TOOLS_METADATA = [
     toolCostCategory: "basic",
     freeUsage: true,
   },
-] as const satisfies readonly InternalMCPToolType[];
+] as const;
 
 export const WAKEUPS_SERVER = {
   serverInfo: {

@@ -98,7 +98,7 @@ export const QUERY_TABLES_V2_TOOLS_METADATA = [
     toolCostCategory: "advanced",
     freeUsage: false,
   },
-] as const satisfies readonly InternalMCPToolType[];
+] as const;
 
 export const QUERY_TABLES_V2_SERVER = {
   serverInfo: {

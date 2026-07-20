@@ -104,7 +104,7 @@ export const PRIMITIVE_TYPES_DEBUGGER_TOOLS_METADATA = [
     toolCostCategory: "basic",
     freeUsage: true,
   },
-] as const satisfies readonly InternalMCPToolType[];
+] as const;
 
 // Server metadata - used in constants.ts
 export const PRIMITIVE_TYPES_DEBUGGER_SERVER = {

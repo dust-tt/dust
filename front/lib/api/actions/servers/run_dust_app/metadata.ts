@@ -28,7 +28,7 @@ export const RUN_DUST_APP_TOOLS_METADATA = [
     toolCostCategory: "basic",
     freeUsage: false,
   },
-] as const satisfies readonly InternalMCPToolType[];
+] as const;
 
 export const RUN_DUST_APP_SERVER = {
   serverInfo: {

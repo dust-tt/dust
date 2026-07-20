@@ -304,7 +304,7 @@ export const GMAIL_TOOLS_METADATA = [
     toolCostCategory: "advanced",
     freeUsage: false,
   },
-] as const satisfies readonly InternalMCPToolType[];
+] as const;
 
 export const GMAIL_SERVER = {
   serverInfo: {

@@ -32,7 +32,7 @@ export const SALESLOFT_TOOLS_METADATA = [
     toolCostCategory: "advanced",
     freeUsage: false,
   },
-] as const satisfies readonly InternalMCPToolType[];
+] as const;
 
 export const SALESLOFT_SERVER = {
   serverInfo: {

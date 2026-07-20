@@ -103,7 +103,7 @@ export const PLAN_MODE_TOOLS_METADATA = [
     toolCostCategory: "basic",
     freeUsage: true,
   },
-] as const satisfies readonly InternalMCPToolType[];
+] as const;
 
 export const PLAN_MODE_SERVER = {
   serverInfo: {

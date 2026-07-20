@@ -30,7 +30,7 @@ export const SEARCH_TOOLS_METADATA = [
     toolCostCategory: "advanced",
     freeUsage: false,
   },
-] as const satisfies readonly InternalMCPToolType[];
+] as const;
 
 export const SEARCH_TOOL_METADATA_WITH_TAGS = [
   ...SEARCH_TOOLS_METADATA,
@@ -62,7 +62,7 @@ export const SEARCH_TOOL_METADATA_WITH_TAGS = [
     freeUsage: false,
     enableAlerting: true,
   },
-] as const satisfies readonly InternalMCPToolType[];
+] as const;
 
 export const SEARCH_SERVER = {
   serverInfo: {

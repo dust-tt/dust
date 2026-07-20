@@ -239,7 +239,7 @@ export const SPEECH_GENERATOR_TOOLS_METADATA = [
     toolCostCategory: "advanced",
     freeUsage: false,
   },
-] as const satisfies readonly InternalMCPToolType[];
+] as const;
 
 export const SPEECH_GENERATOR_SERVER = {
   serverInfo: {

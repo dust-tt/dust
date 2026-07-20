@@ -40,7 +40,7 @@ const TEST_TOOLS_METADATA = [
     toolCostCategory: "basic" as const,
     freeUsage: false,
   },
-] as const satisfies readonly InternalMCPToolType[];
+] as const;
 
 const handlers: ToolHandlers<typeof TEST_TOOLS_METADATA> = {
   guarded_tool: async (_params, { auth }) => {

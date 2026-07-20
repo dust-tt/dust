@@ -121,7 +121,7 @@ export const POD_TASKS_TOOLS_METADATA = [
     toolCostCategory: "basic",
     freeUsage: false,
   },
-] as const satisfies readonly InternalMCPToolType[];
+] as const;
 
 export const POD_TASKS_SERVER = {
   serverInfo: {

@@ -656,7 +656,7 @@ Set search_all=true only if the user explicitly requests to search all public wo
     toolCostCategory: "advanced",
     freeUsage: false,
   },
-] as const satisfies readonly InternalMCPToolType[];
+] as const;
 
 // Server metadata for external consumption (e.g., by SDK).
 export const SLACK_PERSONAL_SERVER = {

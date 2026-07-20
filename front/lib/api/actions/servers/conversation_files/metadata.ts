@@ -102,7 +102,7 @@ export const CONVERSATION_FILES_TOOLS_METADATA = [
     toolCostCategory: "advanced",
     freeUsage: false,
   },
-] as const satisfies readonly InternalMCPToolType[];
+] as const;
 
 // In file-system mode, regular files are accessed via the `files` MCP server. This server is
 // narrowed to listing the attachments that don't live on the file mount: content nodes
@@ -126,7 +126,7 @@ export const CONVERSATION_FILES_TOOLS_METADATA_WITH_FILESYSTEM = [
     freeUsage: true,
   },
   { name: CONVERSATION_CAT_FILE_ACTION_NAME, ...CAT_FILE_TOOL },
-] as const satisfies readonly InternalMCPToolType[];
+] as const;
 
 // Union of the legacy and file-system-mode metadata. The runtime picks one or the other based on
 // the conversation's `useFileSystem` flag, but the static server descriptor surfaces every tool
@@ -134,7 +134,7 @@ export const CONVERSATION_FILES_TOOLS_METADATA_WITH_FILESYSTEM = [
 const ALL_CONVERSATION_FILES_TOOLS = [
   ...CONVERSATION_FILES_TOOLS_METADATA,
   CONVERSATION_FILES_TOOLS_METADATA_WITH_FILESYSTEM[0],
-] as const satisfies readonly InternalMCPToolType[];
+] as const;
 
 export const CONVERSATION_FILES_SERVER = {
   serverInfo: {

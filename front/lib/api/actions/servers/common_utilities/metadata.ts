@@ -126,7 +126,7 @@ export const COMMON_UTILITIES_TOOLS_METADATA = [
     toolCostCategory: "basic",
     freeUsage: true,
   },
-] as const satisfies readonly InternalMCPToolType[];
+] as const;
 
 export const COMMON_UTILITIES_SERVER = {
   serverInfo: {

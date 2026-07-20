@@ -288,7 +288,7 @@ export const MICROSOFT_TEAMS_TOOLS_METADATA = [
     toolCostCategory: "advanced",
     freeUsage: false,
   },
-] as const satisfies readonly InternalMCPToolType[];
+] as const;
 
 export const MICROSOFT_TEAMS_SERVER = {
   serverInfo: {

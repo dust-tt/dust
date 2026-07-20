@@ -42,7 +42,7 @@ export const ASK_USER_QUESTION_TOOLS_METADATA = [
     toolCostCategory: "basic",
     freeUsage: true,
   },
-] as const satisfies readonly InternalMCPToolType[];
+] as const;
 
 export const ASK_USER_QUESTION_SERVER = {
   serverInfo: {

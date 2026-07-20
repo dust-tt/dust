@@ -175,7 +175,7 @@ export const CONFLUENCE_TOOLS_METADATA = [
     toolCostCategory: "advanced",
     freeUsage: false,
   },
-] as const satisfies readonly InternalMCPToolType[];
+] as const;
 
 export const CONFLUENCE_SERVER = {
   serverInfo: {

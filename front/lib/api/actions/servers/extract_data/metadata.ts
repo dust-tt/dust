@@ -113,7 +113,7 @@ export function makeExtractDataBaseToolsMetadata({
       toolCostCategory: "advanced",
       freeUsage: false,
     },
-  ] as const satisfies readonly InternalMCPToolType[];
+  ] as const;
 }
 
 export function makeExtractDataToolsWithTagsMetadata({
@@ -155,7 +155,7 @@ export function makeExtractDataToolsWithTagsMetadata({
       toolCostCategory: "advanced",
       freeUsage: false,
     },
-  ] as const satisfies readonly InternalMCPToolType[];
+  ] as const;
 }
 
 export function makeExtractDataToolsMetadata({

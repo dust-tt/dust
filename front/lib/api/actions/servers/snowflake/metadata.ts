@@ -134,7 +134,7 @@ export const SNOWFLAKE_TOOLS_METADATA = [
     toolCostCategory: "advanced",
     freeUsage: false,
   },
-] as const satisfies readonly InternalMCPToolType[];
+] as const;
 
 export const SNOWFLAKE_SERVER = {
   serverInfo: {

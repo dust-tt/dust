@@ -403,7 +403,7 @@ export const POKE_TOOLS_METADATA = [
     toolCostCategory: "basic",
     freeUsage: true,
   },
-] as const satisfies readonly InternalMCPToolType[];
+] as const;
 
 export const POKE_SERVER = {
   serverInfo: {

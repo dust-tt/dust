@@ -574,7 +574,7 @@ export const OUTLOOK_TOOLS_METADATA = [
     toolCostCategory: "advanced",
     freeUsage: false,
   },
-] as const satisfies readonly InternalMCPToolType[];
+] as const;
 
 export const OUTLOOK_MAIL_SERVER = {
   serverInfo: {

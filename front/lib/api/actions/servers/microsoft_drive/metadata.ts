@@ -348,7 +348,7 @@ export const MICROSOFT_DRIVE_TOOLS_METADATA = [
     toolCostCategory: "advanced",
     freeUsage: false,
   },
-] as const satisfies readonly InternalMCPToolType[];
+] as const;
 
 export const MICROSOFT_DRIVE_SERVER = {
   serverInfo: {

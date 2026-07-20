@@ -81,7 +81,7 @@ export const EXA_TOOLS_METADATA = [
     toolCostCategory: "advanced",
     freeUsage: false,
   },
-] as const satisfies readonly InternalMCPToolType[];
+] as const;
 
 export const EXA_SERVER_NAME = "exa_people_and_company" as const;
 

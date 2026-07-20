@@ -169,7 +169,7 @@ export const DATA_WAREHOUSES_TOOLS_METADATA = [
     toolCostCategory: "advanced",
     freeUsage: false,
   },
-] as const satisfies readonly InternalMCPToolType[];
+] as const;
 
 // Server metadata - used in constants.ts
 export const DATA_WAREHOUSES_SERVER = {

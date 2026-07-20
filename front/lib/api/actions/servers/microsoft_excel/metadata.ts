@@ -201,7 +201,7 @@ export const MICROSOFT_EXCEL_TOOLS_METADATA = [
     toolCostCategory: "advanced",
     freeUsage: false,
   },
-] as const satisfies readonly InternalMCPToolType[];
+] as const;
 
 export const MICROSOFT_EXCEL_SERVER = {
   serverInfo: {

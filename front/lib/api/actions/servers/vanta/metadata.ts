@@ -350,7 +350,7 @@ export const VANTA_TOOLS_METADATA = [
     toolCostCategory: "advanced",
     freeUsage: false,
   },
-] as const satisfies readonly InternalMCPToolType[];
+] as const;
 
 export const VANTA_SERVER = {
   serverInfo: {

@@ -110,7 +110,7 @@ export const DATA_SOURCES_FILE_SYSTEM_TOOLS_METADATA = [
     freeUsage: false,
     enableAlerting: true,
   },
-] as const satisfies readonly InternalMCPToolType[];
+] as const;
 
 const [
   dataSourceFilesystemCatTool,
@@ -163,7 +163,7 @@ export const DATA_SOURCES_FILE_SYSTEM_TOOLS_WITH_TAGS_METADATA = [
     freeUsage: false,
     enableAlerting: true,
   },
-] as const satisfies readonly InternalMCPToolType[];
+] as const;
 
 export const DATA_SOURCES_FILE_SYSTEM_SERVER = {
   serverInfo: {

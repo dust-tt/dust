@@ -61,13 +61,13 @@ export const HTTP_CLIENT_TOOLS_METADATA = [
     toolCostCategory: "advanced",
     freeUsage: false,
   },
-] as const satisfies readonly InternalMCPToolType[];
+] as const;
 
 // Combine http_client tools with web tools for metadata
 const ALL_HTTP_CLIENT_TOOLS_METADATA = [
   ...HTTP_CLIENT_TOOLS_METADATA,
   ...WEB_SEARCH_BROWSE_TOOLS_METADATA,
-] as const satisfies readonly InternalMCPToolType[];
+] as const;
 
 export const HTTP_CLIENT_SERVER = {
   serverInfo: {

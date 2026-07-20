@@ -57,7 +57,7 @@ export const USER_ANALYTICS_TOOLS_METADATA = [
       done: "Fetched workspace activity",
     },
   },
-] as const satisfies readonly InternalMCPToolType[];
+] as const;
 
 export const USER_ANALYTICS_SERVER = {
   serverInfo: {

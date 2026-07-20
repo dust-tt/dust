@@ -260,7 +260,7 @@ The search_all parameter should only be set to true if the user explicitly reque
     toolCostCategory: "advanced",
     freeUsage: false,
   },
-] as const satisfies readonly InternalMCPToolType[];
+] as const;
 
 export const SLACK_BOT_SERVER = {
   serverInfo: {

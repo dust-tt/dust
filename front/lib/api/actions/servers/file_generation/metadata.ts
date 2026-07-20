@@ -117,7 +117,7 @@ export const FILE_GENERATION_TOOLS_METADATA = [
     toolCostCategory: "advanced",
     freeUsage: false,
   },
-] as const satisfies readonly InternalMCPToolType[];
+] as const;
 
 export const FILE_GENERATION_SERVER = {
   serverInfo: {

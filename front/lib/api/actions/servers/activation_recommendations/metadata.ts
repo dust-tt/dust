@@ -83,7 +83,7 @@ export const ACTIVATION_RECOMMENDATIONS_TOOLS_METADATA = [
       done: "Recommendation history fetched",
     },
   },
-] as const satisfies readonly InternalMCPToolType[];
+] as const;
 
 export const ACTIVATION_RECOMMENDATIONS_SERVER = {
   serverInfo: {

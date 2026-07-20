@@ -30,7 +30,7 @@ export const INCLUDE_DATA_BASE_TOOLS_METADATA = [
     toolCostCategory: "advanced",
     freeUsage: false,
   },
-] as const satisfies readonly InternalMCPToolType[];
+] as const;
 
 // Extended schema with tags support (used when tags are dynamic)
 const includeWithTagsSchema = {
@@ -65,7 +65,7 @@ export const INCLUDE_DATA_WITH_TAGS_TOOLS_METADATA = [
     toolCostCategory: "advanced",
     freeUsage: false,
   },
-] as const satisfies readonly InternalMCPToolType[];
+] as const;
 
 // For the server metadata, we use the base schema
 export const INCLUDE_DATA_SERVER = {

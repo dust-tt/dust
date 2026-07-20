@@ -303,7 +303,7 @@ export const WORKSPACE_ANALYTICS_TOOLS_METADATA = [
     toolCostCategory: "basic",
     freeUsage: false,
   },
-] as const satisfies readonly InternalMCPToolType[];
+] as const;
 
 export const WORKSPACE_ANALYTICS_SERVER = {
   serverInfo: {

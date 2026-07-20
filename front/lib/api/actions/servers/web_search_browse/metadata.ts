@@ -46,7 +46,7 @@ export const WEB_SEARCH_BROWSE_TOOLS_METADATA = [
     toolCostCategory: "basic",
     freeUsage: false,
   },
-] as const satisfies readonly InternalMCPToolType[];
+] as const;
 
 export const WEB_SEARCH_BROWSE_SERVER = {
   serverInfo: {

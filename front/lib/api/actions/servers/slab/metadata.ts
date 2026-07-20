@@ -112,7 +112,7 @@ export const SLAB_TOOLS_METADATA = [
     toolCostCategory: "advanced",
     freeUsage: false,
   },
-] as const satisfies readonly InternalMCPToolType[];
+] as const;
 
 export const SLAB_SERVER = {
   serverInfo: {

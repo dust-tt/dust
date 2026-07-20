@@ -165,7 +165,7 @@ export const SKILL_AUTHORING_TOOLS_METADATA = [
     toolCostCategory: "basic",
     freeUsage: true,
   },
-] as const satisfies readonly InternalMCPToolType[];
+] as const;
 
 export const SKILL_AUTHORING_SERVER = {
   serverInfo: {

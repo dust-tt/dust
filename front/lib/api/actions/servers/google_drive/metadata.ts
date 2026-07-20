@@ -298,7 +298,7 @@ Each key sorts ascending by default, but can be reversed with desc modified. Exa
     toolCostCategory: "advanced",
     freeUsage: false,
   },
-] as const satisfies readonly InternalMCPToolType[];
+] as const;
 
 export const GOOGLE_DRIVE_WRITE_TOOLS_METADATA = [
   {
@@ -679,12 +679,12 @@ export const GOOGLE_DRIVE_WRITE_TOOLS_METADATA = [
     toolCostCategory: "advanced",
     freeUsage: false,
   },
-] as const satisfies readonly InternalMCPToolType[];
+] as const;
 
 const ALL_TOOLS_METADATA = [
   ...GOOGLE_DRIVE_TOOLS_METADATA,
   ...GOOGLE_DRIVE_WRITE_TOOLS_METADATA,
-] as const satisfies readonly InternalMCPToolType[];
+] as const;
 
 /**
  * Returns the Google Drive server metadata with all tools including write capabilities.

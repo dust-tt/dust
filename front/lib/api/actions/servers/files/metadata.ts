@@ -353,7 +353,7 @@ const FILES_TOOLS_COMMON_METADATA = [
     toolCostCategory: "basic" as const,
     freeUsage: true,
   },
-] as const satisfies readonly InternalMCPToolType[];
+] as const;
 
 const EDIT_TOOL = {
   description:
@@ -434,7 +434,7 @@ export const FILES_TOOLS_METADATA = [
   { name: FILES_EXTRACT_TEXT_ACTION_NAME, ...EXTRACT_TEXT_TOOL },
   { name: FILES_COPY_ACTION_NAME, ...COPY_TOOL },
   { name: FILES_MOVE_ACTION_NAME, ...MOVE_TOOL },
-] as const satisfies readonly InternalMCPToolType[];
+] as const;
 
 export const FILES_SERVER = {
   serverInfo: {

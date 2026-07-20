@@ -793,7 +793,7 @@ export const FRESHSERVICE_TOOLS_METADATA = [
     toolCostCategory: "advanced",
     freeUsage: false,
   },
-] as const satisfies readonly InternalMCPToolType[];
+] as const;
 
 export const FRESHSERVICE_SERVER = {
   serverInfo: {
