@@ -12,11 +12,13 @@ import {
 export function buildEffectiveUseCaseMetadata({
   contentType,
   fileName,
+  flags,
   providedMetadata,
   useCase,
 }: {
   contentType: AllSupportedFileContentType;
   fileName: string;
+  flags: { hasSandboxTools: boolean };
   providedMetadata: FileUseCaseMetadata | undefined;
   useCase: FileUseCase;
 }): FileUseCaseMetadata | undefined {
@@ -29,6 +31,7 @@ export function buildEffectiveUseCaseMetadata({
     category !== null &&
     allowsSandboxRawUpload({
       category,
+      hasSandboxTools: flags.hasSandboxTools,
       useCase,
     });
 

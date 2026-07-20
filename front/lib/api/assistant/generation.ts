@@ -258,11 +258,11 @@ function constructComputerEnableForFilesPrompt(): string {
 
 // TODO(20260504 FILE SYSTEM): Remove in favor of constructAttachmentsSectionNewFileExplorer.
 function constructAttachmentsSection({
-  hasComputerTool,
+  hasSandboxTools,
 }: {
-  hasComputerTool: boolean;
+  hasSandboxTools: boolean;
 }): string {
-  const sandboxFilesPrompt = hasComputerTool
+  const sandboxFilesPrompt = hasSandboxTools
     ? "When using the Computer, conversation files are mounted under `/files/conversation`. " +
       `${constructComputerEnableForFilesPrompt()}\n`
     : "";
@@ -283,11 +283,11 @@ function constructAttachmentsSection({
 }
 
 function constructAttachmentsSectionNewFileExplorer({
-  hasComputerTool,
+  hasSandboxTools,
 }: {
-  hasComputerTool: boolean;
+  hasSandboxTools: boolean;
 }): string {
-  const tabularFilesLine = hasComputerTool
+  const tabularFilesLine = hasSandboxTools
     ? `- Files attached as \`<file>\` tags are mounted under \`/files/conversation\` when using the Computer. ${constructComputerEnableForFilesPrompt()} Tabular files attached as \`<attachment isQueryable="true">\` tags (for example tool-generated CSVs) remain queryable via the query tables tool;\n`
     : "- Tabular files (CSV, spreadsheets) are queryable via the query tables tool;\n";
 
@@ -392,7 +392,7 @@ export function constructPromptMultiActions(
     workspaceContext,
     projectContext,
     isNewFileExplorer = false,
-    hasComputerTool = false,
+    hasSandboxTools = false,
     disableFormattingPrompt = false,
     hasSelectedSpacesOutsideAgentScope = false,
   }: {
@@ -409,7 +409,7 @@ export function constructPromptMultiActions(
     workspaceContext?: string;
     projectContext?: string;
     isNewFileExplorer?: boolean;
-    hasComputerTool?: boolean;
+    hasSandboxTools?: boolean;
     disableFormattingPrompt?: boolean;
     hasSelectedSpacesOutsideAgentScope?: boolean;
   }
@@ -456,8 +456,8 @@ export function constructPromptMultiActions(
     systemSkills,
   });
   const attachmentsSection = isNewFileExplorer
-    ? constructAttachmentsSectionNewFileExplorer({ hasComputerTool })
-    : constructAttachmentsSection({ hasComputerTool });
+    ? constructAttachmentsSectionNewFileExplorer({ hasSandboxTools })
+    : constructAttachmentsSection({ hasSandboxTools });
   const pastedContentSection = constructPastedContentSection();
   const guidelinesSection = constructGuidelinesSection({ agentConfiguration });
 

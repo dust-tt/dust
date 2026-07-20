@@ -52,10 +52,12 @@ class FileBlobUploadError extends Error {
 }
 
 export function useFileUploaderService({
+  hasSandboxTools,
   owner,
   useCase,
   useCaseMetadata,
 }: {
+  hasSandboxTools: boolean;
   owner: LightWorkspaceType;
   useCase: FileUseCase;
   useCaseMetadata?: FileUseCaseMetadata;
@@ -67,9 +69,17 @@ export function useFileUploaderService({
 
   const sendNotification = useSendNotification();
 
+  const sizeResolverOpts = useMemo(
+    () => ({
+      hasSandboxTools,
+      useCase,
+    }),
+    [hasSandboxTools, useCase]
+  );
+
   const maxFileSizes = useMemo(
-    () => resolveMaxFileSizes({ useCase }),
-    [useCase]
+    () => resolveMaxFileSizes(sizeResolverOpts),
+    [sizeResolverOpts]
   );
 
   const resolveSelectedFileContentType = useCallback((file: File): string => {
@@ -316,9 +326,11 @@ export function useFileUploaderService({
           return { category, file };
         })
         .filter(({ category, file }) => {
-          return !ensureFileSizeByFormatCategory(category, file.size, {
-            useCase,
-          });
+          return !ensureFileSizeByFormatCategory(
+            category,
+            file.size,
+            sizeResolverOpts
+          );
         });
 
       for (const { category, file } of oversizedFiles) {
@@ -350,7 +362,7 @@ export function useFileUploaderService({
       processSelectedFiles,
       resolveSelectedFileContentType,
       sendNotification,
-      useCase,
+      sizeResolverOpts,
       uploadFiles,
     ]
   );
