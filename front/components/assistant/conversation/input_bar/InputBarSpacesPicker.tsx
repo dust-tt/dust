@@ -6,13 +6,13 @@ import {
   DropdownMenuCheckboxItem,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuLabel,
+  DropdownMenuSearchbar,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
   Planet,
   Spinner,
 } from "@dust-tt/sparkle";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 
 interface InputBarSpacesPickerProps {
   buttonSize: "xs" | "sm";
@@ -39,11 +39,22 @@ export function InputBarSpacesPicker({
     () => new Set(selectedSpaceIds),
     [selectedSpaceIds]
   );
+  const [searchText, setSearchText] = useState("");
+  const filteredSpaces = useMemo(() => {
+    const normalizedSearchText = searchText.trim().toLowerCase();
+    if (!normalizedSearchText) {
+      return spaces;
+    }
 
-  const label =
+    return spaces.filter((space) =>
+      space.name.toLowerCase().includes(normalizedSearchText)
+    );
+  }, [searchText, spaces]);
+
+  const tooltip =
     selectedSpaceIds.length > 0
-      ? `${selectedSpaceIds.length} Space${selectedSpaceIds.length > 1 ? "s" : ""}`
-      : "Spaces";
+      ? `${selectedSpaceIds.length} Space${selectedSpaceIds.length > 1 ? "s" : ""} selected`
+      : "Select Spaces";
 
   const handleSpaceCheckedChange = (spaceId: string, checked: boolean) => {
     if (!checked && !canDeselectSelectedSpaces) {
@@ -63,19 +74,41 @@ export function InputBarSpacesPicker({
   };
 
   return (
-    <DropdownMenu modal={false} onOpenChange={onOpenChange}>
+    <DropdownMenu
+      onOpenChange={(open) => {
+        if (open) {
+          setSearchText("");
+        }
+        onOpenChange?.(open);
+      }}
+    >
       <DropdownMenuTrigger asChild>
         <Button
           variant="ghost-secondary"
           size={buttonSize}
           icon={Planet}
-          label={label}
+          tooltip={tooltip}
+          aria-label={tooltip}
           disabled={disabled}
         />
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="start" className="min-w-60">
-        <DropdownMenuLabel>Spaces</DropdownMenuLabel>
-        <DropdownMenuSeparator />
+      <DropdownMenuContent
+        align="start"
+        className="w-80"
+        dropdownHeaders={
+          <>
+            <DropdownMenuSearchbar
+              autoFocus
+              name="search-spaces"
+              placeholder="Search Spaces"
+              value={searchText}
+              onChange={setSearchText}
+              disabled={isLoading}
+            />
+            <DropdownMenuSeparator />
+          </>
+        }
+      >
         {isLoading ? (
           <DropdownMenuItem
             label="Loading"
@@ -84,9 +117,11 @@ export function InputBarSpacesPicker({
           />
         ) : spaces.length === 0 ? (
           <DropdownMenuItem label="No Spaces available" disabled />
+        ) : filteredSpaces.length === 0 ? (
+          <DropdownMenuItem label="No matching Spaces" disabled />
         ) : (
-          <div className="max-h-64 overflow-auto">
-            {spaces.map((space) => {
+          <div>
+            {filteredSpaces.map((space) => {
               const checked = selectedSpaceIdsSet.has(space.sId);
 
               return (
