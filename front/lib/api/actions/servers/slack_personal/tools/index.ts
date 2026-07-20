@@ -7,6 +7,7 @@ import type {
 } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { makePersonalAuthenticationError } from "@app/lib/actions/mcp_internal_actions/utils";
+import { offloadLargeSearchResultChunks } from "@app/lib/actions/mcp_internal_actions/utils/search_result_offload";
 import {
   isAgentLoopRunContext,
   type ToolContext,
@@ -472,8 +473,15 @@ export function createSlackPersonalTools(
           }
         );
 
+        // Archive oversized chunk payloads instead of keeping them inline in the conversation.
+        const offloadedResults = await offloadLargeSearchResultChunks(
+          auth,
+          toolContext.runContext,
+          searchResults
+        );
+
         return new Ok(
-          searchResults.map((result) => ({
+          offloadedResults.map((result) => ({
             type: "resource" as const,
             resource: result,
           }))
