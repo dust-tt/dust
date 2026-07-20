@@ -1,3 +1,4 @@
+import { Context } from "@temporalio/activity";
 import type {
   ConnectionOptions,
   WorkflowClientInterceptor,
@@ -163,4 +164,19 @@ export async function checkRunningUpsertWorkflows({
   }
 
   return count;
+}
+
+// This function allows to heartbeat back to the temporal workflow, but also
+// awaits a temporal sleep(0), which allows to throw an exception if the activity should be cancelled.
+export async function heartbeat() {
+  try {
+    Context.current();
+  } catch (_error) {
+    // If we're not in a temporal context, Context.current() will throw
+    // In this case, we just return without doing anything
+    // This allows the function to be called safely outside of temporal activities
+    return;
+  }
+  Context.current().heartbeat();
+  await Context.current().sleep(0);
 }

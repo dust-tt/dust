@@ -46,6 +46,7 @@ import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import type { SeatLimit } from "@app/lib/resources/workspace_seat_limit_resource";
 import { WorkspaceSeatLimitResource } from "@app/lib/resources/workspace_seat_limit_resource";
+import { heartbeat } from "@app/lib/temporal";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import {
   bestEffortInvalidateCacheWithRedis,
@@ -646,6 +647,8 @@ export async function remapMembershipSeatTypesForContract({
         author: "no-author",
       });
     }
+
+    await heartbeat();
   }
 
   return new Ok(undefined);
@@ -753,6 +756,7 @@ async function grantFreeSeatCredits({
           "[Metronome] Failed to grant free seat credit"
         );
       }
+      await heartbeat();
     },
     { concurrency: 4 }
   );
@@ -784,6 +788,7 @@ async function grantFreeSeatCredits({
           "[Metronome] Failed to upsert per-user free credit alerts"
         );
       }
+      await heartbeat();
     },
     { concurrency: 4 }
   );
@@ -860,6 +865,7 @@ async function revokeFreeSeatCreditsForExFreeUsers({
           "[Metronome] Failed to clear ex-free-seat credit alerts"
         );
       }
+      await heartbeat();
     },
     { concurrency: 4 }
   );
@@ -1152,6 +1158,7 @@ async function emptyOriginSeatCreditsForTransfers({
   >();
   const emptied: SeatCreditTransfer[] = [];
   for (const t of transfers) {
+    await heartbeat();
     const recurringCreditId = recurringCreditIdBySeatType.get(t.oldSeatType);
     if (!recurringCreditId) {
       logger.warn(
@@ -1259,6 +1266,10 @@ async function carryConsumptionToNewSeatCredits({
     { creditId: string; segmentId: string; segmentStartingAt: string } | null
   >();
   for (const t of transfers) {
+    // Heartbeat at the top of the loop so every iteration is covered
+    // regardless of which `continue` branch below it takes — a bulk seat-type
+    // change can carry over many users' consumption in one sync.
+    await heartbeat();
     const recurringCreditId = recurringCreditIdBySeatType.get(t.newSeatType);
     const targetAllocation = allocationBySeatType.get(t.newSeatType);
     if (!recurringCreditId || targetAllocation === undefined) {
@@ -1857,6 +1868,7 @@ export async function syncSeatCount({
             },
             "[Metronome] reconcileSeatBasedSegment call done"
           );
+          await heartbeat();
           if (result.isErr()) {
             return new Err(result.error);
           }
@@ -1908,6 +1920,7 @@ export async function syncSeatCount({
             quantity,
             startingAt: segmentStartingAt,
           });
+          await heartbeat();
           if (updateResult.isErr()) {
             return new Err(updateResult.error);
           }

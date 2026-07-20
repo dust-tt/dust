@@ -41,6 +41,7 @@ import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import type { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { resolveEffectiveSpendLimitAwuCredits } from "@app/lib/spend_limits/effective";
+import { heartbeat } from "@app/lib/temporal";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
 import type {
@@ -681,6 +682,7 @@ export async function reconcileWorkspaceUserCreditStates({
         "[ReconcileCreditState] Failed to reconcile a user's credit state"
       );
     }
+    await heartbeat();
   }
 }
 
