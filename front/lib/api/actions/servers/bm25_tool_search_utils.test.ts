@@ -1,4 +1,4 @@
-import type { InternalMCPToolType } from "@app/lib/actions/mcp_internal_actions/tool_definition";
+import type { ToolMeta } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { AGENT_MEMORY_SERVER } from "@app/lib/api/actions/servers/agent_memory/metadata";
 import { ASHBY_SERVER } from "@app/lib/api/actions/servers/ashby";
 import type { ServerEntry } from "@app/lib/api/actions/servers/bm25";
@@ -80,7 +80,7 @@ const RUN_AGENT_SAMPLE_TOOL_SCHEMA = {
   ...RUN_AGENT_CONFIGURABLE_PROPERTIES,
 };
 
-type ToolSource = Pick<InternalMCPToolType, "name" | "description" | "schema">;
+type ToolSource = Pick<ToolMeta, "name" | "description" | "schema">;
 
 const RUN_AGENT_SAMPLE_TOOLS = [
   {

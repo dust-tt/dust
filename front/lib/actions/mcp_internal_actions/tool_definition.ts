@@ -136,10 +136,7 @@ export function buildTools<T extends readonly ToolMeta[]>(
   );
 }
 
-// Internal MCP server tools must have displayLabels (unlike remote servers).
-export type InternalMCPToolType = ToolMeta;
-
 export type ServerMetadata = {
   serverInfo: InternalMCPServerDefinitionType;
-  tools: readonly InternalMCPToolType[];
+  tools: readonly ToolMeta[];
 };
