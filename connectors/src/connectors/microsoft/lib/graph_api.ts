@@ -367,23 +367,61 @@ export async function getWorksheets(
   return { results: res.value };
 }
 
-export async function getWorksheetContent(
+// Scalar metadata of a worksheet's used range, without any cell content.
+export type WorkbookRangeMetadata = Pick<
+  WorkbookRange,
+  | "address"
+  | "cellCount"
+  | "columnCount"
+  | "columnIndex"
+  | "rowCount"
+  | "rowIndex"
+>;
+
+export async function getWorksheetUsedRangeMetadata(
   logger: LoggerInterface,
   client: Client,
   internalId: string
+): Promise<WorkbookRangeMetadata> {
+  const { nodeType, itemAPIPath: itemApiPath } =
+    typeAndPathFromInternalId(internalId);
+
+  if (nodeType !== "worksheet") {
+    throw new Error(
+      `Invalid node type: ${nodeType} for getWorksheetUsedRangeMetadata, expected worksheet`
+    );
+  }
+  // valuesOnly=true ignores formatting-only cells so the boundary reflects
+  // actual values. Selecting only scalar properties keeps the heavy 2D arrays
+  // (text, values, formulas) out of the response entirely.
+  const res = await clientApiGet(
+    logger,
+    client,
+    `${itemApiPath}/usedRange(valuesOnly=true)?$select=address,rowCount,columnCount,cellCount,rowIndex,columnIndex`
+  );
+  return res;
+}
+
+export async function getWorksheetRangeText(
+  logger: LoggerInterface,
+  client: Client,
+  internalId: string,
+  // Bounded A1 address, e.g. "B3:AO2502". Unbounded addresses (e.g. "A:F")
+  // make Graph return null cell properties and must not be used.
+  rangeAddress: string
 ): Promise<WorkbookRange> {
   const { nodeType, itemAPIPath: itemApiPath } =
     typeAndPathFromInternalId(internalId);
 
   if (nodeType !== "worksheet") {
     throw new Error(
-      `Invalid node type: ${nodeType} for getWorksheet content, expected worksheet`
+      `Invalid node type: ${nodeType} for getWorksheetRangeText, expected worksheet`
     );
   }
   const res = await clientApiGet(
     logger,
     client,
-    `${itemApiPath}/usedRange?$select=text`
+    `${itemApiPath}/range(address='${rangeAddress}')?$select=text`
   );
   return res;
 }
