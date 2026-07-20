@@ -44,6 +44,8 @@ type WindowInteraction = {
   messages: WindowMessageNode[];
 };
 
+export const MINIMUM_PRUNING_BATCH_TOKENS = 5_000;
+
 function makeWindowMessageNode(message: MessageWithTokens): WindowMessageNode {
   if (message.role === "function") {
     return {
@@ -60,10 +62,11 @@ function makeWindowMessageNode(message: MessageWithTokens): WindowMessageNode {
  * Builds a model-facing conversation without ever removing an interaction.
  *
  * Tool results become eligible only after a later assistant message has consumed their complete
- * batch. Cleanup runs at model-input checkpoints and waits until a full token checkpoint can be
- * reclaimed. It then attempts to return one checkpoint below the soft limit. This keeps the
- * pruning frontier stable across the model calls within a long interaction and reduces how often
- * the provider cache frontier moves.
+ * batch. Cleanup runs at model-input checkpoints and normally waits until the preferred 20k token
+ * checkpoint can be reclaimed. If the nominal hard budget is crossed, it may accept a smaller
+ * batch of at least 5k when pruning that complete batch restores fit. This keeps the pruning
+ * frontier stable during normal growth without ignoring a meaningful final batch under pressure.
+ * Preferred batches attempt to return one checkpoint below the soft limit.
  *
  * If tool-result pruning cannot keep the complete interaction history below the nominal budget,
  * the window keeps serving it and reports the excess through logs and metrics. The provider limit
@@ -197,17 +200,25 @@ export class CheckpointedConversationWindowState {
   }
 
   private applyBufferedPruning(): void {
-    if (
-      this.retainedTokens <= this.options.pruningBudget ||
-      this.eligibleToolResultTokenSavings < PRUNING_CHECKPOINT_TOKENS
-    ) {
+    if (this.retainedTokens <= this.options.pruningBudget) {
       return;
     }
 
-    const targetTokens = Math.max(
-      this.options.pruningBudget - PRUNING_CHECKPOINT_TOKENS,
-      0
-    );
+    const hasPreferredBatch =
+      this.eligibleToolResultTokenSavings >= PRUNING_CHECKPOINT_TOKENS;
+    const canRestoreNominalBudgetWithSmallerBatch =
+      this.retainedTokens > this.options.budgetForInteractions &&
+      this.eligibleToolResultTokenSavings >= MINIMUM_PRUNING_BATCH_TOKENS &&
+      this.retainedTokens - this.eligibleToolResultTokenSavings <=
+        this.options.budgetForInteractions;
+
+    if (!hasPreferredBatch && !canRestoreNominalBudgetWithSmallerBatch) {
+      return;
+    }
+
+    const targetTokens = hasPreferredBatch
+      ? Math.max(this.options.pruningBudget - PRUNING_CHECKPOINT_TOKENS, 0)
+      : this.retainedTokens - this.eligibleToolResultTokenSavings;
 
     while (
       this.retainedTokens > targetTokens &&
