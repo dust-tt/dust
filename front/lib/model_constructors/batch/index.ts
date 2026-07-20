@@ -17,7 +17,8 @@ export const BATCH_ENDPOINTS = {
     GoogleAiStudioGeminiThreeDotOneFlashLiteGlobalGoogleAiStudioBatch,
   [OpenAIGptFiveDotFiveGlobalOpenAIResponsesBatch.id]:
     OpenAIGptFiveDotFiveGlobalOpenAIResponsesBatch,
-  [MistralMistralMedium35EuropeMistralBatch.id]: MistralMistralMedium35EuropeMistralBatch,
+  [MistralMistralMedium35EuropeMistralBatch.id]:
+    MistralMistralMedium35EuropeMistralBatch,
 } as const satisfies Record<string, BatchEndpointConstructor>;
 
 export type BatchEndpointId = keyof typeof BATCH_ENDPOINTS;
