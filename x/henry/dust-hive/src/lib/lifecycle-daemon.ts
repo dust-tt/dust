@@ -2,6 +2,7 @@ import { open, rename, unlink } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { isErrnoException } from "./errors";
 import { loadLifecycleConfig } from "./lifecycle-config";
+import { logger } from "./logger";
 import { LIFECYCLE_LOG_PATH, LIFECYCLE_PID_PATH } from "./paths";
 import { getProcessCommand } from "./platform";
 import { isProcessRunning, killProcess } from "./process";
@@ -86,7 +87,10 @@ export async function ensureLifecycleDaemonRunning(): Promise<void> {
   if (!configResult.ok || Object.keys(configResult.value.environments).length === 0) {
     return;
   }
-  await startLifecycleDaemon();
+  const result = await startLifecycleDaemon();
+  if (!result.ok) {
+    logger.warn(result.error.message);
+  }
 }
 
 export async function stopLifecycleDaemon(): Promise<boolean> {

@@ -341,7 +341,8 @@ async function runEnrolledEnvironment(
 ): Promise<void> {
   const env = await getEnvironment(envName);
   if (!env) {
-    logger.warn(`[lifecycle] ${envName}: environment no longer exists`);
+    await removeEnrollment(envName);
+    logger.warn(`[lifecycle] ${envName}: removed enrollment for missing environment`);
     return;
   }
   const policyResult = resolveLifecyclePolicy(config, enrollment);
