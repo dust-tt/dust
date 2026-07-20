@@ -91,6 +91,7 @@ export function buildAgentAnalyticsBaseQuery({
   workspaceId,
   agentId,
   agentIds,
+  agentTagIds,
   userIds,
   apiKeyNames,
   contextOrigin,
@@ -101,6 +102,7 @@ export function buildAgentAnalyticsBaseQuery({
   feedbackNestedQuery,
 }: {
   workspaceId: string;
+  agentTagIds?: string[];
   userIds?: string[];
   apiKeyNames?: string[];
   contextOrigin?: string | string[];
@@ -117,6 +119,7 @@ export function buildAgentAnalyticsBaseQuery({
     { term: { workspace_id: workspaceId } },
     ...(agentId ? [{ term: { agent_id: agentId } }] : []),
     ...termFilter("agent_id", agentIds),
+    ...termFilter("agent_tag_ids", agentTagIds),
     ...termFilter("user_id", userIds),
     ...apiKeyNamesFilter(apiKeyNames),
     ...contextOriginFilter(contextOrigin),
@@ -162,6 +165,7 @@ export function buildCreditsScopeQuery(
     agentIds,
     userIds,
     apiKeyNames,
+    agentTagIds,
     extraFilters = [],
     extraMustNot = [],
   }: {
@@ -171,6 +175,7 @@ export function buildCreditsScopeQuery(
     agentIds?: string[];
     userIds?: string[];
     apiKeyNames?: string[];
+    agentTagIds?: string[];
     extraFilters?: estypes.QueryDslQueryContainer[];
     extraMustNot?: estypes.QueryDslQueryContainer[];
   }
@@ -183,6 +188,7 @@ export function buildCreditsScopeQuery(
     agentIds,
     userIds,
     apiKeyNames,
+    agentTagIds,
   });
   return {
     bool: {

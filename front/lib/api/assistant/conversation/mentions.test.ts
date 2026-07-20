@@ -1702,6 +1702,7 @@ describe("createUserMessage", () => {
             profilePictureUrl: userJson.image,
             origin: "web",
           },
+          requestedModel: null,
         },
         transaction,
       });
@@ -1779,6 +1780,7 @@ describe("createUserMessage", () => {
             profilePictureUrl: userJson.image,
             origin: "web",
           },
+          requestedModel: null,
         },
         transaction,
       });
@@ -1870,6 +1872,7 @@ describe("createUserMessage", () => {
               profilePictureUrl: userJson.image,
               origin: "web",
             },
+            requestedModel: null,
           },
           transaction,
         });

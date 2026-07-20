@@ -6,6 +6,7 @@ import {
   type PostBusinessActivationResponseBody,
   processBusinessActivation,
 } from "@app/lib/api/checkout/business_activation";
+import { isMetronomeBillingEnabled } from "@app/lib/api/subscription";
 import { wakeLock } from "@app/lib/wake_lock";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { workspaceApp } from "@front-api/middlewares/ctx";
@@ -23,19 +24,50 @@ app.get(
   async (ctx): HandlerResult<GetBusinessActivationResponseBody> => {
     const auth = ctx.get("auth");
 
-    const contractId = ctx.req.query("contract_id");
-    if (!contractId) {
+    // Business activation is a credit-priced (Metronome) checkout flow: gate it
+    // on Metronome billing being enabled, consistently with the POST handler.
+    const metronomeBillingEnabled = await isMetronomeBillingEnabled(auth);
+    if (!metronomeBillingEnabled) {
       return apiError(ctx, {
-        status_code: 400,
+        status_code: 403,
         api_error: {
-          type: "invalid_request_error",
-          message: "Missing required query parameter: contract_id.",
+          type: "workspace_auth_error",
+          message: "Metronome billing is not enabled for this workspace.",
         },
       });
     }
 
+    // The record can be looked up by contract id or by Stripe setup session id.
+    // The polling UI uses the session id so it can poll from the first step,
+    // before the contract id exists.
+    const contractId = ctx.req.query("contract_id");
+    const setupSessionId = ctx.req.query("setup_session_id");
+    const identifier = contractId
+      ? { contractId }
+      : setupSessionId
+        ? { setupSessionId }
+        : null;
+    if (!identifier) {
+      return apiError(ctx, {
+        status_code: 400,
+        api_error: {
+          type: "invalid_request_error",
+          message:
+            "Missing required query parameter: contract_id or setup_session_id.",
+        },
+      });
+    }
+
+    // The polling UI omits `receipt`; only the success screen requests the
+    // (slow) Stripe hosted invoice URL, so status polls stay fast.
+    const includeReceiptUrl = ctx.req.query("receipt") === "true";
+
     const workspace = auth.getNonNullableWorkspace();
-    return ctx.json(await getBusinessActivationStatus(workspace, contractId));
+    return ctx.json(
+      await getBusinessActivationStatus(workspace, identifier, {
+        includeReceiptUrl,
+      })
+    );
   }
 );
 

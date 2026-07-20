@@ -44,6 +44,8 @@ export interface WorkspaceContext {
   mcpDescriptions?: MockMcpDescription[];
   /** Optional knowledge nodes returned when search_knowledge is called during eval. */
   searchKnowledgeNodes?: MockSearchKnowledgeNode[];
+  /** Optional skill configs returned when describe_skill is called during eval. */
+  skillConfigs?: MockSkillConfig[];
 }
 
 function slugify(name: string): string {

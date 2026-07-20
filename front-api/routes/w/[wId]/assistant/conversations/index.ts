@@ -360,7 +360,7 @@ app.post(
         const skills = await SkillResource.fetchByIds(auth, selectedSkillIds);
 
         const r = await SkillResource.upsertConversationSkills(auth, {
-          conversationId: newConversation.id,
+          conversation: newConversation,
           skills,
           enabled: true,
         });

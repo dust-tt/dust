@@ -877,6 +877,24 @@ export class FileResource extends BaseResource<FileModel> {
       );
     }
 
+    // Keep the mount in sync with the restored canonical version. Frame edits write to the
+    // mount, so leaving it stale would make the revert invisible to source reads and resurrect
+    // the reverted content on the next publish. Best-effort like the version cleanup below:
+    // the restore copy above already created a new canonical generation, so failing the revert
+    // here would leave a state where retrying it restores the reverted-away content.
+    try {
+      await this.copyMountFiles(auth);
+    } catch (error) {
+      logger.error(
+        {
+          fileId: this.sId,
+          workspaceId: this.workspaceId,
+          error: normalizeError(error),
+        },
+        "Failed to refresh the mount copy after revert, source reads and publish may see stale content"
+      );
+    }
+
     // Delete old versions to prevent accumulation and infinite loops
     try {
       // Decrement version after deletion to ensure version counter only changes on success
@@ -1504,7 +1522,7 @@ export class FileResource extends BaseResource<FileModel> {
 
   // Authorized file access logic.
 
-  private async resolveFrameContextForAuthorizedAccess(
+  async resolveFrameScopedPathContext(
     auth: Authenticator
   ): Promise<FrameScopedPathContext> {
     const conversationId =
@@ -1763,8 +1781,7 @@ export class FileResource extends BaseResource<FileModel> {
     auth: Authenticator,
     { frameContent }: { frameContent: string }
   ): Promise<ComputedAuthorizedFileAccess> {
-    const frameContext =
-      await this.resolveFrameContextForAuthorizedAccess(auth);
+    const frameContext = await this.resolveFrameScopedPathContext(auth);
     const { refs, unverifiableRefs } =
       await this.collectVerifiedAuthorizedFileRefs(auth, {
         frameContent,

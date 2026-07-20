@@ -1,4 +1,4 @@
-import type { CreditDisplayData, CreditType } from "@app/types/credits";
+import type { CreditType } from "@app/types/credits";
 
 export type PokeCreditType = {
   id: number;
@@ -14,14 +14,7 @@ export type PokeCreditType = {
   metronomeCreditId: string | null;
 };
 
-export type PokeUnifiedCreditRow = {
-  rowKey: string;
-  internal: PokeCreditType | null;
-  metronome: CreditDisplayData | null;
-};
-
 export type PokeListCreditsResponseBody = {
-  rows: PokeUnifiedCreditRow[];
+  rows: PokeCreditType[];
   excessCreditsLast30DaysMicroUsd: number;
-  hasMetronome: boolean;
 };

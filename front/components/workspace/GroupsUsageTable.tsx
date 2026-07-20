@@ -1,3 +1,4 @@
+import { GroupModelTierPickerDropdown } from "@app/components/workspace/GroupModelTierPickerDropdown";
 import { useGroups, useUpdateGroupSpendLimit } from "@app/lib/swr/groups";
 import type { GroupSpendLimit } from "@app/types/api/groups/spend_limit";
 import { CAP_ELIGIBLE_GROUP_KINDS } from "@app/types/groups";
@@ -9,6 +10,7 @@ import { useMemo, useState } from "react";
 interface GroupsUsageTableProps {
   owner: LightWorkspaceType;
   readOnly: boolean;
+  showModelTiersColumn?: boolean;
 }
 
 type GroupRowData = {
@@ -27,8 +29,9 @@ interface GroupCapCellProps {
   onSave: (group: GroupRowData, limit: GroupSpendLimit) => Promise<void>;
 }
 
-// Per-row editable cap cell. Empty input clears the cap (unlimited); a positive
-// integer sets it. Reverts to the current value when nothing is persisted.
+// Per-row editable cap cell. Empty input clears the cap (unlimited); 0 blocks
+// the group's pool access; a positive integer sets a custom limit. Reverts to
+// the current value when nothing is persisted.
 function GroupCapCell({ group, readOnly, onSave }: GroupCapCellProps) {
   const [isEditing, setIsEditing] = useState(false);
   const current = group.poolCapAwuCredits;
@@ -43,7 +46,7 @@ function GroupCapCell({ group, readOnly, onSave }: GroupCapCellProps) {
       return;
     }
     const parsed = Number(trimmed);
-    if (!Number.isInteger(parsed) || parsed < 1 || parsed === current) {
+    if (!Number.isInteger(parsed) || parsed < 0 || parsed === current) {
       return;
     }
     await onSave(group, { kind: "limited", awuCredits: parsed });
@@ -70,7 +73,11 @@ function GroupCapCell({ group, readOnly, onSave }: GroupCapCellProps) {
   );
 }
 
-export function GroupsUsageTable({ owner, readOnly }: GroupsUsageTableProps) {
+export function GroupsUsageTable({
+  owner,
+  readOnly,
+  showModelTiersColumn = false,
+}: GroupsUsageTableProps) {
   const { groups, isGroupsLoading } = useGroups({
     owner,
     kinds: [...CAP_ELIGIBLE_GROUP_KINDS],
@@ -134,8 +141,25 @@ export function GroupsUsageTable({ owner, readOnly }: GroupsUsageTableProps) {
         ),
         enableSorting: false,
       },
+      ...(showModelTiersColumn
+        ? [
+            {
+              id: "modelTiers",
+              header: "Models tier",
+              meta: { className: "w-64" },
+              cell: (info: GroupInfo) => (
+                <GroupModelTierPickerDropdown
+                  owner={owner}
+                  groupId={info.row.original.groupId}
+                  readOnly={readOnly}
+                />
+              ),
+              enableSorting: false,
+            } satisfies ColumnDef<GroupRowData, string>,
+          ]
+        : []),
     ],
-    [readOnly, doUpdateGroupSpendLimit]
+    [owner, readOnly, showModelTiersColumn, doUpdateGroupSpendLimit]
   );
 
   if (isGroupsLoading) {

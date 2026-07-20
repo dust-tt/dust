@@ -144,9 +144,14 @@ export async function editFrameTextAtSource(
       );
     }
 
+    // Falls back to fileName for Frames published before frameEntryRelPath existed.
+    const entryRelPath =
+      file.useCaseMetadata?.frameEntryRelPath ?? file.fileName;
+
     const publishResult = await publishFrame(auth, {
       file,
       reader: createMountFrameSourceReader(dustFs, rootScopedPath),
+      entryRelPath,
       rootScopedPath,
       publishedByAgentConfigurationId: editedByAgentConfigurationId,
     });

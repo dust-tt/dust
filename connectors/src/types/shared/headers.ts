@@ -31,6 +31,8 @@ export function getHeaderFromUserEmail(email: string | undefined) {
     return undefined;
   }
 
+  // The email may exceed Latin-1 (internationalized addresses); DustAPI
+  // encodes extra header values on the wire (see @dust-tt/client baseHeaders).
   return {
     [DustUserEmailHeader]: email,
   };

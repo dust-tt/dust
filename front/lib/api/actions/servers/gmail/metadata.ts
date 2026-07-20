@@ -205,7 +205,7 @@ export const GMAIL_TOOLS_METADATA = createToolsRecord({
         .optional()
         .describe("Label IDs to remove."),
     },
-    stake: "medium",
+    stake: "low",
     displayLabels: {
       running: "Modifying Gmail message labels",
       done: "Modify Gmail message labels",
@@ -319,8 +319,6 @@ export const GMAIL_SERVER = {
     displayLabels: t.displayLabels,
     toolCostCategory: t.toolCostCategory,
     freeUsage: t.freeUsage,
+    stake: t.stake,
   })),
-  tools_stakes: Object.fromEntries(
-    Object.values(GMAIL_TOOLS_METADATA).map((t) => [t.name, t.stake])
-  ),
 } as const satisfies ServerMetadata;

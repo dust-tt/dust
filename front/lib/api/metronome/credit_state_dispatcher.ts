@@ -680,7 +680,7 @@ async function notifyAdminsProgrammaticCapAboutStatus({
         workspace.id
       );
     const monthlyCapCredits =
-      creditUsageConfig?.programmaticMonthlyCapAwuCredits ?? null;
+      creditUsageConfig?.programmaticMonthlyCapAwuCredits ?? 0;
 
     const { members: admins } = await getMembers(auth, {
       roles: ["admin"],

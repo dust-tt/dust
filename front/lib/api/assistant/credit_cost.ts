@@ -3,9 +3,12 @@ import type { ToolExecutionStatus } from "@app/lib/actions/statuses";
 import { isToolExecutionStatusFinal } from "@app/lib/actions/statuses";
 import { getToolNameFromFunctionCallName } from "@app/lib/actions/tool_display_labels";
 import { makeFairUseAwuCreditsRateLimitKeyForUser } from "@app/lib/api/assistant/rate_limits";
+import { searchAnalytics } from "@app/lib/api/elasticsearch";
+import type { ToolCostCategory } from "@app/lib/api/mcp";
 import type { Authenticator } from "@app/lib/auth";
 import {
   computeRunKey,
+  getToolBillingInfo,
   intelligenceAwuFromRunUsagesGroupedByRunKey,
   toolAwuFromActions,
 } from "@app/lib/metronome/events";
@@ -14,10 +17,14 @@ import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import type { RunUsageType } from "@app/lib/resources/run_resource";
 import { RunResource } from "@app/lib/resources/run_resource";
 import {
+  addRateLimiterCount,
   getTimeframeSecondsFromLiteral,
-  rateLimiter,
 } from "@app/lib/utils/rate_limiter";
 import logger from "@app/logger/logger";
+import type {
+  AgentMessageAnalyticsData,
+  AgentMessageAnalyticsToolUsed,
+} from "@app/types/assistant/analytics";
 import {
   AGENT_MESSAGE_STATUSES_TO_TRACK,
   type UserMessageOrigin,
@@ -27,6 +34,130 @@ interface CreditActionMinimalInput {
   toolName: string;
   internalMCPServerName: InternalMCPServerNameType | null;
   status: ToolExecutionStatus;
+}
+
+export interface AgentMessageCreditsToolBreakdown {
+  actionId: string;
+  toolName: string;
+  internalMCPServerName: InternalMCPServerNameType | null;
+  toolCostCategory: ToolCostCategory;
+  free: boolean;
+  awu: number;
+}
+
+export interface AgentMessageCreditsBreakdown {
+  llmAwu: number;
+  toolAwu: number;
+  totalAwu: number;
+  byTool: AgentMessageCreditsToolBreakdown[];
+}
+
+/**
+ * Fetches the stored analytics document for each message, keyed by messageId. Returns an empty
+ * map (rather than failing) on an Elasticsearch error, since this only feeds a poke-only
+ * auditing display, not the billing pipeline itself.
+ */
+export async function fetchAgentMessageCostAnalyticsByMessageIds(
+  auth: Authenticator,
+  { messageIds }: { messageIds: string[] }
+): Promise<Map<string, AgentMessageAnalyticsData>> {
+  if (messageIds.length === 0) {
+    return new Map();
+  }
+
+  const workspaceId = auth.getNonNullableWorkspace().sId;
+  const result = await searchAnalytics<AgentMessageAnalyticsData>(
+    {
+      bool: {
+        filter: [
+          { term: { workspace_id: workspaceId } },
+          { terms: { message_id: messageIds } },
+        ],
+      },
+    },
+    { size: messageIds.length }
+  );
+
+  if (result.isErr()) {
+    logger.error(
+      { workspaceId, error: result.error },
+      "[Credits] Failed to fetch agent message cost analytics from Elasticsearch."
+    );
+    return new Map();
+  }
+
+  return new Map(
+    result.value.hits.hits
+      .flatMap((hit) => (hit._source ? [hit._source] : []))
+      .map((doc) => [doc.message_id, doc])
+  );
+}
+
+/**
+ * Builds the LLM/tool cost split and per-tool breakdown for display (e.g. in poke) from the
+ * message's stored analytics document, rather than recomputing it live from current code: the
+ * analytics document is a frozen snapshot of the cost as computed by the billing pipeline at run
+ * time, so comparing it against the stored `costCredits` catches genuine billing bugs instead of
+ * drifting apart whenever the AWU pricing formulas are later tuned.
+ *
+ * The analytics document's `tools_used` entries carry no `actionId`, so they are matched back to
+ * `actions` by `(step, toolName)`: both lists are built from the same ordered set of actions at
+ * analytics-indexing time, so a positional match within that key is reliable in practice.
+ */
+export function buildAgentMessageCreditsBreakdownFromAnalytics({
+  analytics,
+  actions,
+}: {
+  analytics: Pick<AgentMessageAnalyticsData, "cost" | "tools_used"> | undefined;
+  actions: (CreditActionMinimalInput & { actionId: string; step: number })[];
+}): AgentMessageCreditsBreakdown | undefined {
+  // `cost` and `tools_used` were added to the analytics document after it first shipped, so
+  // older documents may be missing either (or the document itself may not exist yet for a very
+  // recently sent message) — degrade to no breakdown rather than throwing on missing data.
+  if (!analytics?.cost) {
+    return undefined;
+  }
+
+  const toolUsageQueueByKey = new Map<
+    string,
+    AgentMessageAnalyticsToolUsed[]
+  >();
+  for (const tool of analytics.tools_used ?? []) {
+    const key = `${tool.step_index}|${tool.tool_name}`;
+    const queue = toolUsageQueueByKey.get(key) ?? [];
+    queue.push(tool);
+    toolUsageQueueByKey.set(key, queue);
+  }
+
+  const byTool: AgentMessageCreditsToolBreakdown[] = [];
+  for (const action of actions) {
+    const matched = toolUsageQueueByKey
+      .get(`${action.step}|${action.toolName}`)
+      ?.shift();
+    if (!matched) {
+      continue;
+    }
+
+    const { toolCostCategory } = getToolBillingInfo(
+      action.internalMCPServerName,
+      action.toolName
+    );
+    byTool.push({
+      actionId: action.actionId,
+      toolName: action.toolName,
+      internalMCPServerName: action.internalMCPServerName,
+      toolCostCategory,
+      free: matched.cost_awu === 0 && isToolExecutionStatusFinal(action.status),
+      awu: matched.cost_awu,
+    });
+  }
+
+  return {
+    llmAwu: analytics.cost.llm_awu,
+    toolAwu: analytics.cost.tool_awu,
+    totalAwu: analytics.cost.full_awu,
+    byTool,
+  };
 }
 
 export function computeAgentMessageCredits({
@@ -141,15 +272,17 @@ export async function computeAndStoreAgentMessageCredits(
     costCredits > 0 &&
     assistantLimits.maxAwuCredits !== -1
   ) {
-    // We use rateLimiter infrastructure to enforce the fair use but ignore failure here since
-    // this is run post message execution. The next agent loop will be stopped if we dropped to 0.
-    await rateLimiter({
+    // Always record the credit cost unconditionally. The limit guard lives in
+    // isMessagesLimitReached (pre-message), which reads the count via getRateLimiterCount and
+    // blocks the next message once the total reaches maxAwuCredits. Using rateLimiter here was
+    // incorrect: its Lua script silently drops the write when count + costCredits > limit,
+    // causing the counter to stall below the limit and never trigger enforcement.
+    await addRateLimiterCount({
       key: makeFairUseAwuCreditsRateLimitKeyForUser(
         auth.getNonNullableWorkspace(),
         user.toJSON(),
         assistantLimits.maxAwuCreditsTimeframe
       ),
-      maxPerTimeframe: assistantLimits.maxAwuCredits,
       timeframeSeconds: getTimeframeSecondsFromLiteral(
         assistantLimits.maxAwuCreditsTimeframe
       ),

@@ -209,6 +209,27 @@ pub async fn batch_tokenize_async(
     Ok(r)
 }
 
+// Counts tokens per text without materializing the token strings. `batch_tokenize_async` allocates
+// an owned String per token for the whole batch at once, which blows up memory (and OOMs) when only
+// counts are needed; encoding to token ids and taking the length keeps peak memory tiny.
+pub async fn batch_count_async(
+    bpe: Arc<RwLock<CoreBPE>>,
+    texts: Vec<String>,
+) -> Result<Vec<usize>> {
+    let r = tokio::task::spawn_blocking(move || {
+        texts
+            .par_iter()
+            .map(|text| {
+                let guard = bpe.read();
+                guard.encode_with_special_tokens(text).len()
+            })
+            .collect::<Vec<usize>>()
+    })
+    .await?;
+
+    Ok(r)
+}
+
 fn _byte_pair_merge<T>(
     piece: &[u8],
     ranks: &HashMap<Vec<u8>, usize>,
@@ -982,5 +1003,26 @@ mod tests {
         ];
 
         run_tokenize_test(&japanese, expected_japanese).await;
+    }
+
+    #[tokio::test]
+    async fn batch_count_matches_tokenize_test() {
+        use crate::providers::tiktoken::tiktoken::batch_count_async;
+
+        let bpe = p50k_base_singleton();
+        let texts = vec![
+            "Un petit Soupinou".to_string(),
+            "Soupinou 🤗".to_string(),
+            "This is a test         with a lot of spaces".to_string(),
+            "".to_string(),
+        ];
+
+        let tokenized = batch_tokenize_async(bpe.clone(), texts.clone())
+            .await
+            .unwrap();
+        let counts = batch_count_async(bpe, texts).await.unwrap();
+
+        let expected: Vec<usize> = tokenized.iter().map(|tokens| tokens.len()).collect();
+        assert_eq!(counts, expected);
     }
 }

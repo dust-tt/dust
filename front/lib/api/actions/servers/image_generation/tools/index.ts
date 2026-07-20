@@ -4,7 +4,7 @@ import type {
   ToolHandlers,
 } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import type { ToolContextType } from "@app/lib/actions/types";
+import type { ToolContext } from "@app/lib/actions/types";
 import {
   checkImageGenerationRateLimit,
   computeImageGenerationCostDetails,
@@ -28,7 +28,7 @@ import { startObservation } from "@langfuse/tracing";
 
 export function createImageGenerationTools(
   auth: Authenticator,
-  toolContext?: ToolContextType
+  toolContext?: ToolContext
 ): ToolDefinition[] {
   const handlers: ToolHandlers<typeof IMAGE_GENERATION_TOOLS_METADATA> = {
     generate_image: async (

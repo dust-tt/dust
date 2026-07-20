@@ -7,6 +7,7 @@ import {
   assertNoEmptyPasswordAccounts,
   assertNoPasswordlessSudoers,
   assertNoPrivilegedGroupMembers,
+  assertPodStateDirsSafe,
   assertRootInvokedHelpersSafe,
   assertRootPathSafe,
   assertStaticRootConsumedDirsSafe,
@@ -146,19 +147,57 @@ describe("sandbox security check assertions", () => {
   test("detects unsafe root-invoked helper ownership or modes", () => {
     expect(() =>
       assertRootInvokedHelpersSafe(
-        "/opt/bin/dsbx root:root 755 -rwxr-xr-x\n/usr/local/bin/dust-install-trust-bundle root:root 755 -rwxr-xr-x"
+        "/opt/bin/dsbx root:root 755 -rwxr-xr-x\n/usr/local/bin/dust-install-trust-bundle root:root 755 -rwxr-xr-x\n/opt/bin/litestream root:root 755 -rwxr-xr-x"
       )
     ).not.toThrow();
     expect(() =>
       assertRootInvokedHelpersSafe(
-        "/opt/bin/dsbx root:root 777 -rwxrwxrwx\n/usr/local/bin/dust-install-trust-bundle root:root 755 -rwxr-xr-x"
+        "/opt/bin/dsbx root:root 777 -rwxrwxrwx\n/usr/local/bin/dust-install-trust-bundle root:root 755 -rwxr-xr-x\n/opt/bin/litestream root:root 755 -rwxr-xr-x"
       )
     ).toThrow("root-invoked helper is not root-owned");
     expect(() =>
-      assertRootInvokedHelpersSafe("/opt/bin/dsbx root:root 755 -rwxr-xr-x")
+      assertRootInvokedHelpersSafe(
+        "/opt/bin/dsbx root:root 755 -rwxr-xr-x\n/opt/bin/litestream root:root 755 -rwxr-xr-x"
+      )
     ).toThrow(
       "missing root-invoked helper audit for /usr/local/bin/dust-install-trust-bundle"
     );
+    expect(() =>
+      assertRootInvokedHelpersSafe(
+        "/opt/bin/dsbx root:root 755 -rwxr-xr-x\n/usr/local/bin/dust-install-trust-bundle root:root 755 -rwxr-xr-x"
+      )
+    ).toThrow("missing root-invoked helper audit for /opt/bin/litestream");
+  });
+
+  test("detects unsafe pod-state directory ownership or modes", () => {
+    const safeOutput = [
+      "POD_STATE_DIR=/pod-state root:root 755 drwxr-xr-x",
+      "POD_STATE_DIR=/pod-state/databases dust-state:agent 2770 drwxrws---",
+      "POD_STATE_DIR=/pod-state/replica dust-state:dust-state 700 drwx------",
+    ].join("\n");
+
+    expect(() => assertPodStateDirsSafe(safeOutput)).not.toThrow();
+    expect(() =>
+      assertPodStateDirsSafe(
+        safeOutput.replace(
+          "/pod-state/replica dust-state:dust-state 700",
+          "/pod-state/replica dust-state:dust-state 755"
+        )
+      )
+    ).toThrow("pod-state directory /pod-state/replica");
+    expect(() =>
+      assertPodStateDirsSafe(
+        safeOutput.replace(
+          "/pod-state/databases dust-state:agent 2770",
+          "/pod-state/databases agent:agent 2770"
+        )
+      )
+    ).toThrow("pod-state directory /pod-state/databases");
+    expect(() =>
+      assertPodStateDirsSafe(
+        "POD_STATE_DIR=/pod-state root:root 755 drwxr-xr-x"
+      )
+    ).toThrow("missing pod-state directory audit for /pod-state/databases");
   });
 
   test("detects root PATH entries that can resolve agent-writable binaries", () => {

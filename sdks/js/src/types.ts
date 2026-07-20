@@ -23,6 +23,7 @@ const ModelProviderIdSchema = FlexibleEnumSchema<
   | "fireworks"
   | "xai"
   | "noop"
+  | "auto"
 >();
 
 export type KnownModelLLMId =
@@ -37,6 +38,9 @@ export type KnownModelLLMId =
   | "gpt-5.2"
   | "gpt-5.4"
   | "gpt-5.5"
+  | "gpt-5.6-sol"
+  | "gpt-5.6-terra"
+  | "gpt-5.6-luna"
   | "gpt-5.4-mini"
   | "gpt-5.4-nano"
   | "gpt-5-nano"
@@ -84,6 +88,7 @@ export type KnownModelLLMId =
   | "accounts/fireworks/models/kimi-k2-instruct" // fireworks - not supported anymore
   | "accounts/fireworks/models/kimi-k2-instruct-0905" // fireworks
   | "accounts/fireworks/models/kimi-k2p5" // fireworks
+  | "accounts/fireworks/models/kimi-k2p6" // fireworks
   | "accounts/fireworks/models/minimax-m2p5" // fireworks
   | "accounts/fireworks/models/glm-5" // fireworks
   | "accounts/fireworks/models/glm-5p2" // fireworks
@@ -94,12 +99,33 @@ export type KnownModelLLMId =
   | "grok-4-fast-reasoning-latest"
   | "grok-4-1-fast-non-reasoning-latest"
   | "grok-4-1-fast-reasoning-latest"
-  | "noop"; // Noop
+  | "noop" // Noop
+  | "auto"; // Auto
 
 // Cast to allow custom/unknown model IDs while preserving autocomplete.
 const ModelLLMIdSchema = FlexibleEnumSchema<KnownModelLLMId>() as z.ZodType<
   KnownModelLLMId | (string & {})
 >;
+
+// Flexible so the SDK does not need updating when new efforts are added; the
+// server re-validates against the concrete set and rejects unknown values.
+// copied from reasoning.ts to avoid circular dependency
+const ReasoningEffortSchema = FlexibleEnumSchema<
+  "none" | "light" | "medium" | "high"
+>();
+
+// Explicit per-message model + reasoning-effort selection. Providing it makes
+// the mentioned agent(s) run this model instead of their configured one, when
+// it is available to the workspace (otherwise the server falls back). Uses the
+// flexible enums above so unknown-but-syntactically-valid values reach the
+// server, which validates them and returns a 400 on truly unknown ids.
+export const PublicModelSelectionSchema = z.object({
+  providerId: ModelProviderIdSchema,
+  modelId: ModelLLMIdSchema,
+  reasoningEffort: ReasoningEffortSchema.optional(),
+});
+
+export type PublicModelSelection = z.infer<typeof PublicModelSelectionSchema>;
 
 const EmbeddingProviderIdSchema = FlexibleEnumSchema<"openai" | "mistral">();
 
@@ -694,6 +720,7 @@ export type RetrievalDocumentPublicType = z.infer<
 >;
 
 const WhitelistableFeaturesSchema = FlexibleEnumSchema<
+  | "activation_scheduler"
   | "activation_skill"
   | "advanced_notion_management"
   | "allow_sso"
@@ -715,15 +742,18 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "disallow_agent_creation_to_users"
   | "discord_bot"
   | "dummy_feature_for_flag_testing"
-  | "dust_agent_gpt_5_5_default"
+  | "dust_agent_gpt_5_6_luna_default"
+  | "dust_agent_sonnet_5_default"
   | "dust_internal_global_agents"
   | "fireworks_new_model_feature"
   | "google_sheets_tool"
+  | "group_permissions_shadow"
   | "http_client_tool"
   | "index_private_slack_channel"
-  | "models_picker"
+  | "labs_mcp_actions_dashboard"
   | "labs_transcripts"
   | "legacy_dust_apps"
+  | "models_picker"
   | "netsuite_mcp"
   | "noop_model_feature"
   | "notion_private_integration"
@@ -733,6 +763,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "openai_usage_mcp"
   | "power_bi_mcp"
   | "reinforced_agents"
+  | "render_search_results_as_markdown"
   | "self_improvement_beta_tester"
   | "legacy_billing"
   | "plan_mode"
@@ -835,14 +866,23 @@ export const WebsearchResultSchema = z.object({
 
 export type WebsearchResultPublicType = z.infer<typeof WebsearchResultSchema>;
 
-const ActionGeneratedFileSchema = z.object({
-  fileId: z.string(),
+const ActionGeneratedFileBaseSchema = z.object({
   title: z.string(),
   contentType: ActionGeneratedFileContentTypeSchema,
   snippet: z.string().nullable(),
   hidden: z.boolean().optional(),
   isInProjectContext: z.boolean().optional(),
 });
+
+const ActionGeneratedFileSchema = z.union([
+  ActionGeneratedFileBaseSchema.extend({
+    fileId: z.string(),
+  }),
+  ActionGeneratedFileBaseSchema.extend({
+    fileId: z.null(),
+    filePath: z.string(),
+  }),
+]);
 
 export type ActionGeneratedFileType = z.infer<typeof ActionGeneratedFileSchema>;
 
@@ -1303,7 +1343,9 @@ const MCPStakeLevelSchema = z
   .optional();
 
 const MCPValidationMetadataSchema = z.object({
-  agentName: z.string(),
+  // Deprecated (2026-07-09): no longer read by clients, will stop being sent once old clients
+  // have cycled out.
+  agentName: z.string().optional(),
   icon: z
     .union([MCPInternalActionIconSchema, MCPExternalActionIconSchema])
     .optional(),
@@ -2298,6 +2340,9 @@ export const PublicPostMessagesRequestBodySchema = z.intersection(
       clientSideMCPServerIds: z.array(z.string()).optional().nullable(),
     }),
     agenticMessageData: AgenticMessageDataSchema.optional(),
+    // Optional per-message model + reasoning-effort override applied to the
+    // mentioned agent(s). Omitted means each agent runs its configured model.
+    modelSelection: PublicModelSelectionSchema.optional(),
   }),
   z
     .object({
@@ -2398,6 +2443,10 @@ export const PublicPostConversationsRequestBodySchema = z.intersection(
           mentions: z.array(MentionSchema),
           context: UserMessageContextSchema,
           agenticMessageData: AgenticMessageDataSchema.optional(),
+          // Optional per-message model + reasoning-effort override applied to
+          // the mentioned agent(s). Omitted means each agent runs its
+          // configured model.
+          modelSelection: PublicModelSelectionSchema.optional(),
         }),
         z
           .object({

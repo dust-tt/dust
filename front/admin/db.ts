@@ -46,11 +46,6 @@ import { WebhookRequestModel } from "@app/lib/models/agent/triggers/webhook_requ
 import { WebhookRequestTriggerModel } from "@app/lib/models/agent/triggers/webhook_request_trigger";
 import { WebhookSourceModel } from "@app/lib/models/agent/triggers/webhook_source";
 import { WebhookSourcesViewModel } from "@app/lib/models/agent/triggers/webhook_sources_view";
-import {
-  GroupAllowedAdvancedModel,
-  UserAllowedAdvancedModel,
-  WorkspaceAllowedAdvancedModel,
-} from "@app/lib/models/allowed_advanced_model";
 import { DustAppSecretModel } from "@app/lib/models/dust_app_secret";
 import { ExtensionConfigurationModel } from "@app/lib/models/extension";
 import { FeatureFlagModel } from "@app/lib/models/feature_flag";
@@ -73,6 +68,7 @@ import { GroupSkillModel } from "@app/lib/models/skill/group_skill";
 import { SelfImprovingSkillsUsageModel } from "@app/lib/models/skill/self_improving_skills_usage";
 import { SkillReferenceModel } from "@app/lib/models/skill/skill_reference";
 import { SkillSuggestionModel } from "@app/lib/models/skill/skill_suggestion";
+import { SkillUserFavoriteModel } from "@app/lib/models/skill/skill_user_favorite";
 import { TagModel } from "@app/lib/models/tags";
 import { WorkspaceSensitivityLabelConfigModel } from "@app/lib/models/workspace_sensitivity_label_config";
 import { AcademyChapterVisitModel } from "@app/lib/resources/storage/models/academy_chapter_visit";
@@ -207,9 +203,6 @@ export function loadAllModels() {
     PlanModel,
     SubscriptionModel,
     ProviderCredentialModel,
-    UserAllowedAdvancedModel,
-    GroupAllowedAdvancedModel,
-    WorkspaceAllowedAdvancedModel,
     TemplateModel,
     CreditModel,
     CouponModel,
@@ -263,6 +256,7 @@ export function loadAllModels() {
     AgentSkillModel,
     ConversationSkillModel,
     AgentMessageSkillModel,
+    SkillUserFavoriteModel,
     SkillMCPServerConfigurationModel,
     SkillFileAttachmentModel,
     SkillSuggestionModel,

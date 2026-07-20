@@ -2,7 +2,6 @@ import type { MCPToolStakeLevelType } from "@app/lib/actions/constants";
 import {
   FALLBACK_INTERNAL_AUTO_SERVERS_TOOL_STAKE_LEVEL,
   FALLBACK_MCP_TOOL_STAKE_LEVEL,
-  MCP_TOOL_STAKE_LEVELS,
 } from "@app/lib/actions/constants";
 import {
   getMcpServerViewDescription,
@@ -10,7 +9,7 @@ import {
   requiresBearerTokenConfiguration,
 } from "@app/lib/actions/mcp_helper";
 import {
-  getInternalMCPServerToolStakes,
+  getInternalMCPServerToolArgumentsRequiringApproval,
   INTERNAL_MCP_SERVERS,
   isInternalMCPServerName,
 } from "@app/lib/actions/mcp_internal_actions/constants";
@@ -76,25 +75,6 @@ export type MCPServerFormValues = ServerSettings & {
   sharingSettings: Record<string, boolean>;
 };
 
-function isToolStakesRecord(
-  value: unknown
-): value is Record<string, MCPToolStakeLevelType> {
-  if (typeof value !== "object" || value === null || Array.isArray(value)) {
-    return false;
-  }
-
-  return Object.values(value).every((v): v is MCPToolStakeLevelType =>
-    MCP_TOOL_STAKE_LEVELS.includes(v as MCPToolStakeLevelType)
-  );
-}
-
-function getToolStake(
-  stakes: Record<string, MCPToolStakeLevelType>,
-  toolName: string
-): MCPToolStakeLevelType | undefined {
-  return toolName in stakes ? stakes[toolName] : undefined;
-}
-
 export function getDefaultInternalToolStakeLevel(
   server: MCPServerViewType["server"],
   toolName: string
@@ -103,19 +83,31 @@ export function getDefaultInternalToolStakeLevel(
     return FALLBACK_MCP_TOOL_STAKE_LEVEL;
   }
 
-  const serverToolStakes = getInternalMCPServerToolStakes(server.name);
+  const {
+    metadata: { tools },
+    availability,
+  } = INTERNAL_MCP_SERVERS[server.name];
 
-  if (isToolStakesRecord(serverToolStakes)) {
-    const configuredStake = getToolStake(serverToolStakes, toolName);
-    if (configuredStake) {
-      return configuredStake;
-    }
+  return (
+    tools.find((tool) => tool.name === toolName)?.stake ??
+    (availability === "manual"
+      ? FALLBACK_MCP_TOOL_STAKE_LEVEL
+      : FALLBACK_INTERNAL_AUTO_SERVERS_TOOL_STAKE_LEVEL)
+  );
+}
+
+export function canToolUseMediumStakeLevel(
+  server: MCPServerViewType["server"],
+  toolName: string
+): boolean {
+  if (isRemoteMCPServerType(server) || !isInternalMCPServerName(server.name)) {
+    return false;
   }
 
-  const serverConfig = INTERNAL_MCP_SERVERS[server.name];
-  return serverConfig.availability === "manual"
-    ? FALLBACK_MCP_TOOL_STAKE_LEVEL
-    : FALLBACK_INTERNAL_AUTO_SERVERS_TOOL_STAKE_LEVEL;
+  return Boolean(
+    getInternalMCPServerToolArgumentsRequiringApproval(server.name, toolName)
+      ?.length
+  );
 }
 
 export function getMCPServerFormDefaults(

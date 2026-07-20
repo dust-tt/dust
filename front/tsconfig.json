@@ -1,7 +1,12 @@
 {
   "compilerOptions": {
+    "checkers": 1,
     "target": "es6",
-    "lib": ["dom", "dom.iterable", "esnext"],
+    "lib": [
+      "dom",
+      "dom.iterable",
+      "esnext"
+    ],
     "allowJs": true,
     "skipLibCheck": true,
     "strict": true,
@@ -17,7 +22,9 @@
     "jsx": "preserve",
     "incremental": true,
     "paths": {
-      "@app/*": ["./*"]
+      "@app/*": [
+        "./*"
+      ]
     }
   },
   "include": [
@@ -29,5 +36,9 @@
     "**/*.mjs",
     "./.eslintrc.js"
   ],
-  "exclude": ["node_modules", "dist", "app"]
+  "exclude": [
+    "node_modules",
+    "dist",
+    "app"
+  ]
 }

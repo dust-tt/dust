@@ -41,6 +41,7 @@ import { Err, Ok } from "@app/types/shared/result";
 import { decrypt, encrypt } from "@app/types/shared/utils/encryption";
 import { removeNulls } from "@app/types/shared/utils/general";
 import { redactString } from "@app/types/shared/utils/string_utils";
+import { isWorkspaceAnalyticsEnabled } from "@app/types/user";
 import { Op } from "sequelize";
 
 export class InternalMCPServerInMemoryResource {
@@ -89,6 +90,9 @@ export class InternalMCPServerInMemoryResource {
     const uniqueNames = [...new Set(names)];
     const featureFlags = await getFeatureFlags(auth);
     const isDeepDiveDisabled = await isDeepDiveDisabledByAdmin(auth);
+    const workspaceAnalyticsEnabled = isWorkspaceAnalyticsEnabled(
+      auth.getNonNullableWorkspace()
+    );
     const plan = auth.getNonNullablePlan();
 
     return new Set(
@@ -97,6 +101,7 @@ export class InternalMCPServerInMemoryResource {
           !INTERNAL_MCP_SERVERS[name].isRestricted?.({
             featureFlags,
             isDeepDiveDisabled,
+            isWorkspaceAnalyticsEnabled: workspaceAnalyticsEnabled,
             plan,
           })
       )
@@ -195,6 +200,9 @@ export class InternalMCPServerInMemoryResource {
       isEnabled = !mcpServer.isRestricted({
         featureFlags,
         isDeepDiveDisabled,
+        isWorkspaceAnalyticsEnabled: isWorkspaceAnalyticsEnabled(
+          auth.getNonNullableWorkspace()
+        ),
         plan: auth.getNonNullablePlan(),
       });
     }

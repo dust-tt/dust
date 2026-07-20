@@ -2,6 +2,7 @@ import { hardDeleteApp } from "@app/lib/api/apps";
 import { destroyConversation } from "@app/lib/api/assistant/conversation/destroy";
 import config from "@app/lib/api/config";
 import { hardDeleteDataSource } from "@app/lib/api/data_sources";
+import { deletePodStatePrefix } from "@app/lib/api/sandbox/db";
 import { hardDeleteSpace } from "@app/lib/api/spaces";
 import { deleteWebhookSource } from "@app/lib/api/webhook_source";
 import { deleteWorksOSOrganizationWithWorkspace } from "@app/lib/api/workos/organization";
@@ -82,6 +83,7 @@ import { WorkspaceVerificationAttemptResource } from "@app/lib/resources/workspa
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
+import { deleteActivationWorkspaceSchedule } from "@app/temporal/activation_scheduler/client";
 import { deleteAllConversations } from "@app/temporal/scrub_workspace/activities";
 import { CoreAPI } from "@app/types/core/core_api";
 import assert from "assert";
@@ -166,6 +168,14 @@ export async function scrubSpaceActivity({
     if (deleteSandboxFunctionsResult.isErr()) {
       throw deleteSandboxFunctionsResult.error;
     }
+
+    // Pod state (litestream replica) objects are never FileResources, so the
+    // per-function deletes above cannot reach them — scrub the whole GCS
+    // prefix or the replica chain leaks forever.
+    const deletePodStateResult = await deletePodStatePrefix(auth, space);
+    if (deletePodStateResult.isErr()) {
+      throw deletePodStateResult.error;
+    }
   }
 
   // Delete all the data sources of the spaces.
@@ -241,7 +251,10 @@ export async function scrubSpaceActivity({
 
   hardDeleteLogger.info({ space: space.sId, workspaceId }, "Deleting space");
 
-  await hardDeleteSpace(auth, space);
+  const hardDeleteRes = await hardDeleteSpace(auth, space);
+  if (hardDeleteRes.isErr()) {
+    throw hardDeleteRes.error;
+  }
 }
 
 async function deleteSpaceConversations(
@@ -759,6 +772,7 @@ export async function deleteWorkspaceActivity({
     },
   });
   await TriggerResource.deleteAllForWorkspace(auth);
+  await deleteActivationWorkspaceSchedule({ workspaceId });
   await FileResource.deleteAllForWorkspace(auth);
   await RunResource.deleteAllForWorkspace(auth);
   await MembershipResource.deleteAllForWorkspace(auth);

@@ -1,0 +1,9 @@
+{
+  "action": "skill_import_github_connection.deleted",
+  "targets": [
+    {
+      "type": "workspace"
+    }
+  ],
+  "metadata": {}
+}

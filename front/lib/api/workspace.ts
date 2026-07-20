@@ -545,6 +545,10 @@ export function isWebBrowseProvider(
 
 export interface WorkspaceMetadata {
   maintenance?: "relocation" | "relocation-done";
+  skillImportGithubConnection?: {
+    connectionId: string;
+    connectedBy: string;
+  };
   killSwitched?: WorkspaceKillSwitchValue;
   allowContentCreationFileSharing?: boolean;
   allowEmailAgents?: boolean;
@@ -562,6 +566,7 @@ export interface WorkspaceMetadata {
   dustMcpServerAcceptAllRedirectUris?: boolean;
   dustMcpServerAllowedRedirectUris?: string[];
   disableAuditLogs?: boolean;
+  disableWorkspaceAnalytics?: boolean;
   isBusiness?: boolean;
   phoneCountry?: string;
   sandboxAllowAgentEgressRequests?: boolean;

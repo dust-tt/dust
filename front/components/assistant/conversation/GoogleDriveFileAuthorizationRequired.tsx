@@ -1,9 +1,8 @@
 import { useBlockedActionsContext } from "@app/components/assistant/conversation/BlockedActionsProvider";
 import type { GooglePickerFile } from "@app/hooks/useGooglePicker";
 import { useGooglePicker } from "@app/hooks/useGooglePicker";
-import { useResolveAuthentication } from "@app/hooks/useResolveAuthentication";
 import type {
-  BlockedToolExecution,
+  AgentLoopBlockedToolExecution,
   FileAuthorizationInfo,
 } from "@app/lib/actions/mcp";
 import { canCurrentUserRespondToParentUserMessage } from "@app/lib/api/assistant/conversation/can_current_user_respond";
@@ -11,6 +10,7 @@ import { useAuth } from "@app/lib/auth/AuthContext";
 import { useRegionContext } from "@app/lib/auth/RegionContext";
 import { useClientType } from "@app/lib/context/clientType";
 import { clientFetch } from "@app/lib/egress/client";
+import { useResolveAuthentication } from "@app/lib/swr/tool_actions";
 import type { PickerTokenResponseType } from "@app/types/api/google_drive";
 import type { LightWorkspaceType, UserType } from "@app/types/user";
 import {
@@ -24,7 +24,7 @@ import {
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 interface GoogleDriveFileAuthorizationRequiredProps {
-  blockedAction: BlockedToolExecution;
+  blockedAction: AgentLoopBlockedToolExecution;
   triggeringUser: UserType | null;
   owner: LightWorkspaceType;
   fileAuthorizationInfo: FileAuthorizationInfo;
@@ -56,7 +56,6 @@ export function GoogleDriveFileAuthorizationRequired({
   const { removeCompletedAction } = useBlockedActionsContext();
   const { resolveAuthentication, isResolving } = useResolveAuthentication({
     owner,
-    kind: "file_authorization",
   });
   const isExtension = clientType === "extension";
 
@@ -161,6 +160,8 @@ export function GoogleDriveFileAuthorizationRequired({
 
   const handleSkip = useCallback(async () => {
     const denyRes = await resolveAuthentication({
+      contextType: "agent_loop",
+      kind: "file_authorization",
       outcome: "denied",
       actionId: blockedAction.actionId,
       conversationId: blockedAction.conversationId,

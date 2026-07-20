@@ -21,6 +21,7 @@ app.get(
       onlyCustom: true,
       withInstructions: false,
       withTools: false,
+      withFileAttachments: false,
     });
 
     const spentByModelId =

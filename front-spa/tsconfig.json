@@ -1,8 +1,13 @@
 {
   "compilerOptions": {
+    "checkers": 1,
     "target": "esnext",
     "useDefineForClassFields": true,
-    "lib": ["dom", "dom.iterable", "esnext"],
+    "lib": [
+      "dom",
+      "dom.iterable",
+      "esnext"
+    ],
     "allowJs": true,
     "module": "esnext",
     "skipLibCheck": true,
@@ -16,10 +21,24 @@
     "esModuleInterop": true,
     "allowSyntheticDefaultImports": true,
     "paths": {
-      "@spa/*": ["./src/*"],
-      "@dust-tt/front/*": ["../front/*"],
-      "@app/*": ["../front/*"]
+      "@spa/*": [
+        "./src/*"
+      ],
+      "@dust-tt/front/*": [
+        "../front/*"
+      ],
+      "@app/*": [
+        "../front/*"
+      ]
     }
   },
-  "include": ["src", "../front"]
+  "include": [
+    "src",
+    "../front"
+  ],
+  "exclude": [
+    "node_modules",
+    "dist",
+    "app"
+  ]
 }

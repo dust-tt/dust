@@ -7,13 +7,19 @@ import { zodToJsonSchema } from "zod-to-json-schema";
 export const SCHEDULES_MANAGEMENT_TOOLS_METADATA = createToolsRecord({
   create_schedule: {
     description:
-      "Create a schedule that runs this agent at specified times. Schedules are user-specific: each user can only view and manage their own schedules. When the schedule triggers, it runs this agent with the specified prompt. Limit: 20 schedule creations per user per day.",
+      "Create a schedule that runs this agent at specified times. Schedules are user-specific: each user can only view and manage their own schedules. When the schedule triggers, it runs this agent with the specified prompt. Pass podId to attach the schedule to a Pod so its runs land there. Limit: 20 schedule creations per user per day.",
     schema: {
       name: z
         .string()
         .max(255)
         .describe(
           "A short, descriptive name for the schedule (max 255 chars). Examples: 'Daily email summary', 'Weekly PR review', 'Morning standup prep'. Schedule name MUST be unique."
+        ),
+      podId: z
+        .string()
+        .optional()
+        .describe(
+          "Optional Pod ID (sId) to attach this schedule to, so its runs land in that Pod. Omit for a schedule not tied to a Pod."
         ),
       schedule: z
         .string()
@@ -43,7 +49,7 @@ export const SCHEDULES_MANAGEMENT_TOOLS_METADATA = createToolsRecord({
   },
   list_schedules: {
     description:
-      "List all schedules created for this agent and for the current user.",
+      "List all schedules for this agent and the current user. Each entry shows the Pod it is attached to, if any.",
     schema: {},
     stake: "never_ask",
     displayLabels: {
@@ -95,12 +101,6 @@ export const SCHEDULES_MANAGEMENT_SERVER = {
     displayLabels: SCHEDULES_MANAGEMENT_TOOLS_METADATA[key].displayLabels,
     toolCostCategory: SCHEDULES_MANAGEMENT_TOOLS_METADATA[key].toolCostCategory,
     freeUsage: SCHEDULES_MANAGEMENT_TOOLS_METADATA[key].freeUsage,
+    stake: SCHEDULES_MANAGEMENT_TOOLS_METADATA[key].stake,
   })),
-  tools_stakes: Object.fromEntries(
-    (
-      Object.keys(
-        SCHEDULES_MANAGEMENT_TOOLS_METADATA
-      ) as SchedulesManagementToolKey[]
-    ).map((key) => [key, SCHEDULES_MANAGEMENT_TOOLS_METADATA[key].stake])
-  ),
 } as const satisfies ServerMetadata;

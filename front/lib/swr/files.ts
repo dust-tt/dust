@@ -20,6 +20,7 @@ import type {
   FileTypeWithMetadata,
   SharingGrantType,
 } from "@app/types/files";
+import { DUST_FILE_ID_HEADER } from "@app/types/files";
 import { Err, Ok, type Result } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { LightWorkspaceType } from "@app/types/user";
@@ -61,6 +62,34 @@ export function getFilePathContentApiPath(
 ): string {
   const encoded = canonicalPath.split("/").map(encodeURIComponent).join("/");
   return `/api/w/${owner.sId}/files/path/${encoded}`;
+}
+
+function getFilePathMetadataApiPath(
+  owner: LightWorkspaceType,
+  canonicalPath: string
+): string {
+  return `${getFilePathContentApiPath(owner, canonicalPath)}?metadata=1`;
+}
+
+export async function fetchFileIdFromPath({
+  owner,
+  filePath,
+}: {
+  owner: LightWorkspaceType;
+  filePath: string;
+}): Promise<string | null> {
+  const response = await clientFetch(
+    getFilePathMetadataApiPath(owner, filePath),
+    { method: "HEAD" }
+  );
+  if (response.status === 404) {
+    return null;
+  }
+  if (!response.ok) {
+    throw new Error(`Failed to fetch file metadata (HTTP ${response.status}).`);
+  }
+
+  return response.headers.get(DUST_FILE_ID_HEADER);
 }
 
 type FileContentByUrlData =

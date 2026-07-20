@@ -1,12 +1,11 @@
 import {
-  BulkSpendLimitSelectionSchema,
-  resolveBulkSpendLimitUserIds,
-} from "@app/lib/api/users/bulk_spend_limit";
+  BulkMemberSelectionSchema,
+  resolveBulkMemberSelectionUserIds,
+} from "@app/lib/api/users/bulk_member_selection";
 import {
   MAX_USER_SPEND_LIMIT_AWU_CREDITS,
   MIN_USER_SPEND_LIMIT_AWU_CREDITS,
 } from "@app/lib/api/users/spend_limit";
-import { hasFeatureFlag } from "@app/lib/auth";
 import { runBulkSetUserSpendLimitWorkflow } from "@app/temporal/bulk_spend_limit/client";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { ensureIsBusinessAdmin } from "@front-api/middlewares/ensure_role";
@@ -27,7 +26,7 @@ const LimitSchema = z.discriminatedUnion("kind", [
 ]);
 
 const BodySchema = z.object({
-  selection: BulkSpendLimitSelectionSchema,
+  selection: BulkMemberSelectionSchema,
   limit: LimitSchema,
 });
 
@@ -47,16 +46,6 @@ app.post(
   async (ctx): HandlerResult<BulkSetUserSpendLimitResponseBody> => {
     const auth = ctx.get("auth");
 
-    if (!(await hasFeatureFlag(auth, "pricing_groups"))) {
-      return apiError(ctx, {
-        status_code: 403,
-        api_error: {
-          type: "feature_flag_not_found",
-          message: "The pricing_groups feature is not enabled.",
-        },
-      });
-    }
-
     if (!auth.getNonNullableSubscriptionResource().isMetronomeOnlyBilled) {
       return apiError(ctx, {
         status_code: 403,
@@ -70,7 +59,10 @@ app.post(
 
     const { selection, limit } = ctx.req.valid("json");
 
-    const userIdsResult = await resolveBulkSpendLimitUserIds(auth, selection);
+    const userIdsResult = await resolveBulkMemberSelectionUserIds(
+      auth,
+      selection
+    );
     if (userIdsResult.isErr()) {
       return apiError(ctx, {
         status_code: 500,

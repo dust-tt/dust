@@ -1,16 +1,27 @@
+import { ConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
 import { FilePreviewProvider } from "@app/components/assistant/conversation/FilePreviewContext";
 import {
   getFilePreviewDirectivePaths,
   getFilePreviewMarkdownDirective,
 } from "@app/lib/markdown/file_preview";
 import { LightWorkspaceFactory } from "@app/tests/utils/LightWorkspaceFactory";
-import { fireEvent, render, screen } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { DUST_FILE_ID_HEADER, frameContentType } from "@app/types/files";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { filePreviewDirective, getFilePreviewPlugin } from "./FilePreviewBlock";
 
 const mockOwner = LightWorkspaceFactory.build({
   sId: "w_test_ws",
+});
+
+const mockClientFetch = vi.fn();
+vi.mock("@app/lib/egress/client", () => ({
+  clientFetch: (...args: unknown[]) => mockClientFetch(...args),
+}));
+
+beforeEach(() => {
+  vi.clearAllMocks();
 });
 
 type DirectiveNode = {
@@ -140,6 +151,56 @@ describe("getFilePreviewPlugin", () => {
     expect(
       screen.getByRole("button", { name: "Download" })
     ).toBeInTheDocument();
+  });
+
+  it("opens Frame files in the interactive content side panel", async () => {
+    const FilePreview = getFilePreviewPlugin();
+    const openPanel = vi.fn();
+    mockClientFetch.mockResolvedValue(
+      new Response(null, {
+        status: 200,
+        headers: { [DUST_FILE_ID_HEADER]: "fil_frame" },
+      })
+    );
+
+    render(
+      <ConversationSidePanelContext.Provider
+        value={{
+          currentPanel: undefined,
+          openPanel,
+          togglePanel: vi.fn(),
+          closePanel: vi.fn(),
+          onPanelClosed: vi.fn(),
+          setPanelRef: vi.fn(),
+          panelRef: { current: null },
+          setVirtuosoMsg: vi.fn(),
+          virtuosoMsg: null,
+          data: undefined,
+        }}
+      >
+        <FilePreviewProvider owner={mockOwner}>
+          <FilePreview
+            path="conversation-c1/frame.tsx"
+            title="frame.tsx"
+            contentType={frameContentType}
+          />
+        </FilePreviewProvider>
+      </ConversationSidePanelContext.Provider>
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "frame.tsx" }));
+
+    await waitFor(() => {
+      expect(openPanel).toHaveBeenCalledWith({
+        type: "interactive_content",
+        fileId: "fil_frame",
+      });
+    });
+    expect(mockClientFetch).toHaveBeenCalledWith(
+      "/api/w/w_test_ws/files/path/conversation-c1/frame.tsx?metadata=1",
+      { method: "HEAD" }
+    );
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   });
 
   it("infers the file name from the scoped path when metadata is absent", () => {

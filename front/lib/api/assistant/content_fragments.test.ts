@@ -72,6 +72,7 @@ function createMockUserMessage(rank: number): UserMessageType {
       origin: "api",
     },
     reactions: [],
+    requestedModel: null,
   };
 }
 

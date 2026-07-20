@@ -14,11 +14,11 @@ function getToolByName(name: string) {
   return tool;
 }
 
-function createTestExtra(auth: Authenticator) {
+function createTestExtra(auth: Authenticator, runContext?: unknown) {
   return {
     signal: new AbortController().signal,
     auth,
-    toolContext: undefined,
+    runContext,
   } as Parameters<(typeof TOOLS)[0]["handler"]>[1];
 }
 
@@ -26,6 +26,7 @@ describe("workspace_analytics tools", () => {
   it.each([
     "get_top_agents",
     "get_top_users",
+    "get_top_agent_tags",
     "get_agent_details",
     "get_top_skills",
     "get_top_tools",

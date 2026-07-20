@@ -101,6 +101,7 @@ makeScript(
     const seatBalancesResult = await listMetronomeSeatBalances({
       metronomeCustomerId,
       metronomeContractId,
+      seatIds: [userId],
     });
     if (seatBalancesResult.isErr()) {
       logger.error(

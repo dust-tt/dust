@@ -13,7 +13,7 @@ import LandingLayout from "@marketing/components/home/LandingLayout";
 import { PageMetadata } from "@marketing/components/home/PageMetadata";
 import TrustedBy from "@marketing/components/home/TrustedBy";
 import { classNames } from "@marketing/lib/utils";
-import { Button } from "@dust-tt/sparkle";
+import { LegacyButton as Button } from "@dust-tt/sparkle";
 import { useRouter } from "next/router";
 import type { ReactElement, ReactNode } from "react";
 
@@ -217,7 +217,7 @@ function InstallationSection() {
     <div className="py-16 md:py-20">
       <div className={CONTAINER_CLASSES}>
         <div className="mb-12">
-          <H2 className="text-left text-3xl font-bold md:text-4xl lg:text-5xl">
+          <H2 className="text-center text-3xl font-bold md:text-4xl lg:text-5xl">
             Installation
           </H2>
         </div>

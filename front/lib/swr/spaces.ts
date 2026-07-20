@@ -40,16 +40,18 @@ import { isString } from "@app/types/shared/utils/general";
 import type { PodType, SpaceKind, SpaceType } from "@app/types/space";
 import type { LightWorkspaceType, SpaceUserType } from "@app/types/user";
 import { useCallback, useMemo } from "react";
-import type { Fetcher, KeyedMutator } from "swr";
+import type { Fetcher, KeyedMutator, SWRConfiguration } from "swr";
 
 export function useSpaces({
   workspaceId,
   kinds,
   disabled,
+  swrOptions,
 }: {
   workspaceId: string;
   kinds: SpaceKind[] | "all";
   disabled?: boolean;
+  swrOptions?: SWRConfiguration;
 }) {
   const { fetcher } = useFetcher();
   const spacesFetcher: Fetcher<GetSpacesResponseBody> = fetcher;
@@ -57,7 +59,7 @@ export function useSpaces({
   const { data, error, mutate } = useSWRWithDefaults(
     `/api/w/${workspaceId}/spaces`,
     spacesFetcher,
-    { disabled }
+    { ...swrOptions, disabled }
   );
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`

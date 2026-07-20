@@ -8,9 +8,13 @@ import type {
   MCPServerAvailability,
 } from "@app/lib/actions/mcp_internal_actions/constants";
 import type {
+  AgentLoopEventScope,
+  AgentLoopMCPApproveExecutionEvent,
+  AgentLoopToolExecution,
   MCPApproveExecutionEvent,
+  SandboxFunctionEventScope,
+  SandboxFunctionToolExecution,
   ToolAskUserQuestionEvent,
-  ToolExecution,
   ToolFileAuthRequiredEvent,
   ToolPersonalAuthRequiredEvent,
 } from "@app/lib/actions/mcp_internal_actions/events";
@@ -65,8 +69,8 @@ export type ServerSideMCPToolType = Omit<
   toolServerId: string;
   timeoutMs?: number;
   retryPolicy: MCPToolRetryPolicyType;
-  // For "medium" stake tools: defines which arguments require per-agent approval.
-  // When present, the user must approve the specific (agent, tool, argument values) combination.
+  // For "medium" stake tools: defines which argument values scope the approval.
+  // The user must approve each specific combination of values.
   argumentsRequiringApproval?: string[];
   displayLabels?: ToolDisplayLabels;
   // When true, the tool is loaded upfront in the cached tools prefix instead of
@@ -83,8 +87,8 @@ export type ClientSideMCPToolType = Omit<
   toolServerId: string;
   type: "mcp_configuration";
   timeoutMs?: number;
-  // For "medium" stake tools: defines which arguments require per-agent approval.
-  // When present, the user must approve the specific (agent, tool, argument values) combination.
+  // For "medium" stake tools: defines which argument values scope the approval.
+  // The user must approve each specific combination of values.
   argumentsRequiringApproval?: string[];
   displayLabels?: ToolDisplayLabels;
   // When true, the tool is loaded upfront in the cached tools prefix instead of
@@ -162,40 +166,50 @@ export type LightMCPToolConfigurationType =
 
 export type { FileAuthorizationInfo };
 
-export type BlockedToolExecution = ToolExecution &
-  (
-    | {
-        status: "blocked_validation_required";
-        authorizationInfo: AuthorizationInfo | null;
-      }
-    | {
-        status: "blocked_child_action_input_required";
-        authorizationInfo: AuthorizationInfo | null;
-        resumeState: Record<string, unknown> | null;
-        childBlockedActionsList: BlockedToolExecution[];
-      }
-    | {
-        status: "blocked_authentication_required";
-        metadata: MCPValidationMetadataType & {
-          mcpServerId: string;
-          mcpServerDisplayName: string;
-        };
-        authorizationInfo: AuthorizationInfo;
-      }
-    | {
-        status: "blocked_file_authorization_required";
-        metadata: MCPValidationMetadataType & {
-          mcpServerId: string;
-          mcpServerDisplayName: string;
-        };
-        fileAuthorizationInfo: FileAuthorizationInfo;
-      }
-    | {
-        status: "blocked_user_answer_required";
-        question: UserQuestion;
-        authorizationInfo: null;
-      }
-  );
+// Status-specific payloads of a blocked tool execution, shared by both run scopes.
+type BlockedToolExecutionVariant =
+  | {
+      status: "blocked_validation_required";
+      authorizationInfo: AuthorizationInfo | null;
+    }
+  | {
+      status: "blocked_child_action_input_required";
+      authorizationInfo: AuthorizationInfo | null;
+      resumeState: Record<string, unknown> | null;
+      // Child actions always belong to a child conversation, so they are agent-loop scoped.
+      childBlockedActionsList: AgentLoopBlockedToolExecution[];
+    }
+  | {
+      status: "blocked_authentication_required";
+      metadata: MCPValidationMetadataType & {
+        mcpServerId: string;
+        mcpServerDisplayName: string;
+      };
+      authorizationInfo: AuthorizationInfo;
+    }
+  | {
+      status: "blocked_file_authorization_required";
+      metadata: MCPValidationMetadataType & {
+        mcpServerId: string;
+        mcpServerDisplayName: string;
+      };
+      fileAuthorizationInfo: FileAuthorizationInfo;
+    }
+  | {
+      status: "blocked_user_answer_required";
+      question: UserQuestion;
+      authorizationInfo: null;
+    };
+
+export type AgentLoopBlockedToolExecution = AgentLoopToolExecution &
+  BlockedToolExecutionVariant;
+
+export type SandboxFunctionBlockedToolExecution = SandboxFunctionToolExecution &
+  BlockedToolExecutionVariant;
+
+export type BlockedToolExecution =
+  | AgentLoopBlockedToolExecution
+  | SandboxFunctionBlockedToolExecution;
 
 export function getMCPApprovalStateFromUserApprovalState(
   userApprovalState: ActionApprovalStateType
@@ -271,16 +285,10 @@ export type ToolNotificationEvent =
   | AgentLoopToolNotificationEvent
   | SandboxFunctionToolNotificationEvent;
 
-export function isAgentLoopToolNotificationEvent(
-  event: ToolNotificationEvent
-): event is AgentLoopToolNotificationEvent {
-  return "messageId" in event;
-}
-
 // AgentActionRunningEvents are events related action execution within an agent loop.
 export type AgentActionRunningEvents =
   | AgentLoopToolParamsEvent
-  | MCPApproveExecutionEvent
+  | AgentLoopMCPApproveExecutionEvent
   | AgentLoopToolNotificationEvent;
 
 const MAX_DESCRIPTION_LENGTH = 1024;
@@ -328,6 +336,18 @@ export function isToolPersonalAuthRequiredEvent(
     "type" in event &&
     event.type === "tool_personal_auth_required"
   );
+}
+
+export function isSandboxFunctionToolEvent<
+  T extends AgentLoopEventScope | SandboxFunctionEventScope,
+>(event: T): event is Extract<T, SandboxFunctionEventScope> {
+  return "sandboxFunctionId" in event;
+}
+
+export function isAgentLoopToolEvent<
+  T extends AgentLoopEventScope | SandboxFunctionEventScope,
+>(event: T): event is Extract<T, AgentLoopEventScope> {
+  return "conversationId" in event;
 }
 
 export function isToolFileAuthRequiredEvent(

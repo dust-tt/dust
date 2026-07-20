@@ -405,7 +405,7 @@ export const OUTLOOK_TOOLS_METADATA = createToolsRecord({
             "Note: the shared mailbox address must be known in advance — there is no API to auto-discover it."
         ),
     },
-    stake: "medium",
+    stake: "low",
     displayLabels: {
       running: "Moving messages",
       done: "Move messages",
@@ -634,8 +634,6 @@ export const OUTLOOK_MAIL_SERVER = {
     displayLabels: t.displayLabels,
     toolCostCategory: t.toolCostCategory,
     freeUsage: t.freeUsage,
+    stake: t.stake,
   })),
-  tools_stakes: Object.fromEntries(
-    Object.values(OUTLOOK_TOOLS_METADATA).map((t) => [t.name, t.stake])
-  ),
 } as const satisfies ServerMetadata;

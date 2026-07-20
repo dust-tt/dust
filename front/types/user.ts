@@ -10,6 +10,7 @@ import type { MembershipOriginType, MembershipSeatType } from "./memberships";
 import type { ModelId } from "./shared/model_id";
 import { DbModelIdSchema } from "./shared/model_id";
 import { assertNever } from "./shared/utils/assert_never";
+import { decodeUtf8HeaderValue } from "./shared/utils/http_headers";
 
 export type WorkspaceSegmentationType = "interesting" | null;
 
@@ -27,6 +28,8 @@ export const ACTIVE_ROLES = [
   "user",
 ] as const;
 export const ANONYMOUS_USER_IMAGE_URL = "/static/humanavatar/anonymous.png";
+
+export const BUSINESS_ADMIN_ROLE_NAME = "business admin";
 
 function keyObject<T extends readonly string[]>(
   arr: T
@@ -83,6 +86,15 @@ export function getWorkspaceDefaultAgentId(
 ): string | null {
   const value = owner.metadata?.workspaceDefaultAgentId;
   return typeof value === "string" ? value : null;
+}
+
+// The Workspace Analyst agent (and the workspace_analytics skill + MCP server it
+// relies on) are available to all workspaces by default. Admins can opt out via
+// the workspace settings, which sets `disableWorkspaceAnalytics` to true.
+export function isWorkspaceAnalyticsEnabled(
+  owner: LightWorkspaceType
+): boolean {
+  return owner.metadata?.disableWorkspaceAnalytics !== true;
 }
 
 /**
@@ -349,7 +361,7 @@ export function getUserEmailFromHeaders(headers: {
 }) {
   const email = headers[DustUserEmailHeader];
   if (typeof email === "string") {
-    return email;
+    return decodeUtf8HeaderValue(email);
   }
 
   return undefined;
@@ -360,6 +372,8 @@ export function getHeaderFromUserEmail(email: string | undefined) {
     return undefined;
   }
 
+  // The email may exceed Latin-1 (internationalized addresses); DustAPI
+  // encodes extra header values on the wire (see @dust-tt/client baseHeaders).
   return {
     [DustUserEmailHeader]: email,
   };

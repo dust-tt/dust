@@ -1,3 +1,4 @@
+import { isDustLikeAgent } from "@app/lib/api/assistant/global_agents/prompt_context";
 import { TOOL_OUTPUTS_FOLDER_NAME } from "@app/lib/api/files/mount_path";
 import { readWorkspacePolicy } from "@app/lib/api/sandbox/egress_policy";
 import {
@@ -5,8 +6,9 @@ import {
   filterDsbxToolEntries,
   getSandboxImage,
   getToolsForProvider,
-  toolManifestToYAML,
+  toolManifestToCompactText,
 } from "@app/lib/api/sandbox/image";
+import type { ManifestToolEntry } from "@app/lib/api/sandbox/image/types";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
 import type { GlobalSkillDefinition } from "@app/lib/resources/skill/code_defined/shared";
@@ -77,7 +79,7 @@ immediately visible through the other.
 Default to the sandbox, not the \`files\` MCP server. Whenever the sandbox
 is available, navigate and process conversation files and tool outputs
 with bash on \`/files/conversation\` using the standard POSIX toolchain
-plus \`jq\` / \`rg\` (see the available tools manifest below). This is
+plus \`jq\` / \`rg\` (call \`describe_toolset\` for the full list). This is
 cheaper than MCP round-trips, keeps intermediate output out of the
 conversation context, and lets you compose pipelines. Reach for the
 \`files\` MCP server only for a trivial one-shot read where spinning up a
@@ -288,6 +290,26 @@ value you should not have — apologize, do not retry the command, and do not
 attempt to reconstruct, decode, or otherwise recover the value.`;
 }
 
+function buildToolDetailsSection(
+  label: string,
+  entries: readonly ManifestToolEntry[]
+): string {
+  const tools = new Map(entries.map((tool) => [tool.name, tool]));
+
+  if (tools.size === 0) {
+    return "";
+  }
+
+  const descriptions = [...tools.values()]
+    .sort((a, b) => a.name.localeCompare(b.name))
+    .map((tool) => {
+      const summary = tool.description.match(/^.*?\.(?=\s|$)/)?.[0];
+      return `- \`${tool.name}\`: ${summary ?? tool.description}`;
+    })
+    .join("\n");
+  return `${label} tool details:\n\n${descriptions}\n\n`;
+}
+
 async function buildSandboxInstructions(
   auth: Authenticator,
   providerId: ModelProviderIdType | undefined,
@@ -326,7 +348,11 @@ async function buildSandboxInstructions(
   }
 
   const manifest = createToolManifest(toolsResult.value);
-  const manifestYaml = toolManifestToYAML(manifest);
+  const compactManifest = toolManifestToCompactText(manifest);
+  const dustToolDetailsSection = buildToolDetailsSection(
+    "Dust",
+    toolsResult.value.filter((tool) => tool.isDustTool)
+  );
 
   return `${sandboxInstructions}
 
@@ -338,13 +364,15 @@ ${environmentVariablesSection}
 
 #### Sandbox Available Tools and Libraries
 
-The following tools and libraries are pre-installed in the sandbox environment.
-Installing packages in the sandbox is NOT possible.
-CRITICAL: Use ONLY the sandbox tools listed below, NOTHING ELSE.
+${compactManifest}
 
-\`\`\`yaml
-${manifestYaml}
-\`\`\`
+Versions are shown when pinned. Installing packages in the sandbox is NOT
+possible. Call \`describe_toolset\` for full descriptions and usage metadata.
+System tools include standard preinstalled command-line utilities and
+non-standard helpers provided by Dust.
+
+${dustToolDetailsSection}Run \`<command> --help\` for detailed modes and flags. Use ONLY the tools listed
+above, NOTHING ELSE.
 
 `;
 }
@@ -357,7 +385,7 @@ export const sandboxSkill = {
     "Run code, scripts, and shell commands in the conversation's Computer (a sandboxed Linux environment).",
   agentFacingDescription:
     "Execute code and commands in an isolated Linux sandbox. Useful to parse lengthy tool outputs, run code, " +
-    "process data, install packages, manipulate files, or perform any task requiring shell access. " +
+    "process data, manipulate files, or perform any task requiring shell access. " +
     "You must enable this skill proactively as soon as the user uploads files or you need to work with files, " +
     "including PDFs, spreadsheets, archives, or generated artifacts. Use it to extract text from files, " +
     "parse lengthy tool outputs, run code and shell commands, process data, manipulate files, or perform " +
@@ -384,9 +412,13 @@ export const sandboxSkill = {
   mcpServers: [{ name: "sandbox" }],
   version: 1,
   icon: "CommandLineIcon",
-  // Auto-equipped for every agent unless the workspace has disabled the
+  // Auto-enabled for dust-like agents, which are heavy users of it.
+  // This allows adding the bash tool eagerly, as it's used for a wide variety of use cases and deferring it would
+  // increase significantly the number of tool searches ran overall.
+  // Auto-equipped for every other agent unless the workspace has disabled the
   // Computer, but not enabled until the agent decides to use it.
-  isAutoEquippedForAgentLoop: (): boolean => true,
+  getAutoEnabledOrEquippedForAgentLoop: ({ agentConfiguration }) =>
+    isDustLikeAgent(agentConfiguration.sId) ? "enabled" : "equipped",
   isRestricted: async (auth: Authenticator) => {
     const flags = await getFeatureFlags(auth);
 

@@ -992,9 +992,27 @@ describe("DELETE /api/w/:wId/skills/:sId", () => {
     expect(await response.json()).toEqual({
       error: {
         type: "app_auth_error",
-        message: "Only editors can delete this skill.",
+        message: "Only admins and editors can archive this skill.",
       },
     });
+  });
+
+  it("allows a workspace admin to archive a skill they do not edit", async () => {
+    const { workspace, requestUserAuth, skill } = await setupTest({
+      skillOwnerRole: "builder",
+      requestUserRole: "admin",
+    });
+
+    const response = await deleteSkill(workspace, skill.sId);
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({ success: true });
+
+    const archivedSkill = await SkillResource.fetchById(
+      requestUserAuth,
+      skill.sId
+    );
+    expect(archivedSkill?.status).toBe("archived");
   });
 
   it("should return 404 for non-existent skill", async () => {

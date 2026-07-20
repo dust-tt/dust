@@ -174,6 +174,32 @@ export class UserResource extends BaseResource<UserModel> {
     return users.map((user) => new UserResource(UserModel, user.get()));
   }
 
+  // Batch-reads a single user-scoped metadata value for
+  // many users in one query. Returns a Map keyed by user model id, omitting
+  // users that have no value for the key. Pass `value` to filter in the DB.
+  static async fetchUserScopedMetadataValuesByUserModelIds(
+    key: string,
+    userModelIds: ModelId[],
+    { value }: { value?: string } = {}
+  ): Promise<Map<ModelId, string>> {
+    if (userModelIds.length === 0) {
+      return new Map();
+    }
+    const where: Record<string, unknown> = {
+      key,
+      userId: { [Op.in]: userModelIds },
+      workspaceId: null,
+    };
+    if (value !== undefined) {
+      where["value"] = value;
+    }
+    const rows = await UserMetadataModel.findAll({
+      attributes: ["userId", "value"],
+      where,
+    });
+    return new Map(rows.map((row) => [row.userId, row.value]));
+  }
+
   static async listByUsername(username: string): Promise<UserResource[]> {
     const users = await UserModel.findAll({
       where: {
@@ -801,20 +827,18 @@ export class UserResource extends BaseResource<UserModel> {
   /**
    * Create a tool approval for this user.
    *
-   * For low stake (tool-level): omit agentId and argsAndValues (both default to null)
-   * For medium stake (per-agent, per-args): pass agentId and argsAndValues
+   * For low stake (tool-level): omit argsAndValues (defaults to null).
+   * For medium stake (per-args): pass argsAndValues.
    */
   async createToolApproval(
     auth: Authenticator,
     {
       mcpServerId,
       toolName,
-      agentId = null,
       argsAndValues = null,
     }: {
       mcpServerId: string;
       toolName: string;
-      agentId?: string | null;
       argsAndValues?: Record<string, string> | null;
     }
   ): Promise<void> {
@@ -830,7 +854,6 @@ export class UserResource extends BaseResource<UserModel> {
       userId: this.id,
       mcpServerId,
       toolName,
-      agentId: agentId ?? { [Op.is]: null },
       argsAndValuesMd5: argsAndValues ? argsAndValuesMd5 : { [Op.is]: null },
     };
 
@@ -838,7 +861,6 @@ export class UserResource extends BaseResource<UserModel> {
       where: findClause,
       defaults: {
         ...findClause,
-        agentId,
         argsAndValues: sortedArgsAndValues,
         argsAndValuesMd5: argsAndValues ? argsAndValuesMd5 : null,
       },
@@ -850,12 +872,10 @@ export class UserResource extends BaseResource<UserModel> {
     {
       mcpServerId,
       toolName,
-      agentId = null,
       argsAndValues = null,
     }: {
       mcpServerId: string;
       toolName: string;
-      agentId?: string | null;
       argsAndValues?: Record<string, string> | null;
     }
   ): Promise<boolean> {
@@ -863,9 +883,9 @@ export class UserResource extends BaseResource<UserModel> {
       ? fromPairs(sortBy(Object.entries(argsAndValues), ([key]) => key))
       : null;
 
-    // For low-stake tools (agentId=null, argsAndValues=null), also check for
-    // wildcard "*" approval which approves all tools for the server.
-    const isLowStake = agentId === null && argsAndValues === null;
+    // For low-stake tools (argsAndValues=null), also check for wildcard "*"
+    // approval which approves all tools for the server.
+    const isLowStake = argsAndValues === null;
 
     const approval = await UserToolApprovalModel.findOne({
       where: {
@@ -875,7 +895,6 @@ export class UserResource extends BaseResource<UserModel> {
         toolName: isLowStake
           ? { [Op.in]: [toolName, TOOLS_VALIDATION_WILDCARD] }
           : toolName,
-        agentId: agentId ?? { [Op.is]: null },
         argsAndValuesMd5: argsAndValues
           ? md5(JSON.stringify(sortedArgsAndValues))
           : { [Op.is]: null },

@@ -1,4 +1,5 @@
 import { hardDeleteDataSource } from "@app/lib/api/data_sources";
+import { deleteOwnerPolicy } from "@app/lib/api/sandbox/egress_policy";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentSuggestionModel } from "@app/lib/models/agent/agent_suggestion";
 import {
@@ -184,6 +185,22 @@ export async function destroyConversation(
   }
 ): Promise<Result<void, Error>> {
   const owner = auth.getNonNullableWorkspace();
+
+  // Delete the conversation's sandbox egress allowlist file (owner-keyed, so
+  // it is not deleted with individual sandboxes). Pod conversations never own
+  // a file (they share the Pod's policy file, which is scrubbed by
+  // hardDeleteSpace) so skip them. A GCS failure aborts the destroy before
+  // any row is touched; callers run in Temporal activities, whose retry
+  // policy retries the whole destroy.
+  if (conversation.spaceId === null) {
+    const deleteOwnerPolicyRes = await deleteOwnerPolicy(
+      auth,
+      conversation.sId
+    );
+    if (deleteOwnerPolicyRes.isErr()) {
+      return deleteOwnerPolicyRes;
+    }
+  }
 
   await ConversationForkResource.deleteForConversationModelId(auth, {
     conversationModelId: conversation.id,

@@ -53,7 +53,7 @@ import {
   FIREWORKS_DEEPSEEK_V4_PRO_MODEL_CONFIG,
   FIREWORKS_GLM_5_MODEL_CONFIG,
   FIREWORKS_GLM_5P2_MODEL_CONFIG,
-  FIREWORKS_KIMI_K2P5_MODEL_CONFIG,
+  FIREWORKS_KIMI_K2P6_MODEL_CONFIG,
   FIREWORKS_MINIMAX_M2P5_MODEL_CONFIG,
 } from "@app/types/assistant/models/fireworks";
 import {
@@ -66,6 +66,8 @@ import { NOOP_MODEL_CONFIG } from "@app/types/assistant/models/noop";
 import {
   GPT_5_4_NANO_MODEL_CONFIG,
   GPT_5_5_MODEL_CONFIG,
+  GPT_5_6_LUNA_MODEL_CONFIG,
+  GPT_5_6_SOL_MODEL_CONFIG,
 } from "@app/types/assistant/models/openai";
 import type {
   ModelConfigurationType,
@@ -84,9 +86,12 @@ interface DustLikeGlobalAgentArgs {
   // Workspace feature flags, forwarded to model selection so it runs the exact
   // same model availability check that is enforced when a message is posted.
   featureFlags: WhitelistableFeature[];
-  // When set, the @dust agent defaults to GPT 5.5 (medium reasoning) instead of
-  // Claude Sonnet 4.6. Gated by the `dust_agent_gpt_5_5_default` feature flag.
-  preferGpt55DefaultModel?: boolean;
+  // When set, the @dust agent defaults to GPT 5.6 Luna (high reasoning) instead
+  // of Claude Sonnet 4.6. Gated by the `dust_agent_gpt_5_6_luna_default` flag.
+  preferGpt56LunaDefaultModel?: boolean;
+  // When set, the @dust agent defaults to Claude Sonnet 5 instead of Claude
+  // Sonnet 4.6. Gated by the `dust_agent_sonnet_5_default` feature flag.
+  preferSonnet5DefaultModel?: boolean;
 }
 
 const INSTRUCTION_SECTIONS = {
@@ -465,10 +470,15 @@ export function _getDustGlobalAgent(
   return _getDustLikeGlobalAgent(auth, args, {
     agentId: GLOBAL_AGENTS_SID.DUST,
     name: "dust",
-    preferredModelConfiguration: args.preferGpt55DefaultModel
-      ? GPT_5_5_MODEL_CONFIG
-      : CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG,
-    preferredReasoningEffort: "medium",
+    preferredModelConfiguration: args.preferSonnet5DefaultModel
+      ? CLAUDE_SONNET_5_DEFAULT_MODEL_CONFIG
+      : args.preferGpt56LunaDefaultModel
+        ? GPT_5_6_LUNA_MODEL_CONFIG
+        : CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG,
+    preferredReasoningEffort:
+      args.preferGpt56LunaDefaultModel && !args.preferSonnet5DefaultModel
+        ? "high"
+        : "medium",
   });
 }
 
@@ -648,7 +658,7 @@ export function _getDustKimiGlobalAgent(
   return _getDustLikeGlobalAgent(auth, args, {
     agentId: GLOBAL_AGENTS_SID.DUST_KIMI,
     name: "dust-kimi",
-    preferredModelConfiguration: FIREWORKS_KIMI_K2P5_MODEL_CONFIG,
+    preferredModelConfiguration: FIREWORKS_KIMI_K2P6_MODEL_CONFIG,
     preferredReasoningEffort: "light",
   });
 }
@@ -660,7 +670,7 @@ export function _getDustKimiMediumGlobalAgent(
   return _getDustLikeGlobalAgent(auth, args, {
     agentId: GLOBAL_AGENTS_SID.DUST_KIMI_MEDIUM,
     name: "dust-kimi-medium",
-    preferredModelConfiguration: FIREWORKS_KIMI_K2P5_MODEL_CONFIG,
+    preferredModelConfiguration: FIREWORKS_KIMI_K2P6_MODEL_CONFIG,
     preferredReasoningEffort: "medium",
   });
 }
@@ -672,7 +682,7 @@ export function _getDustKimiHighGlobalAgent(
   return _getDustLikeGlobalAgent(auth, args, {
     agentId: GLOBAL_AGENTS_SID.DUST_KIMI_HIGH,
     name: "dust-kimi-high",
-    preferredModelConfiguration: FIREWORKS_KIMI_K2P5_MODEL_CONFIG,
+    preferredModelConfiguration: FIREWORKS_KIMI_K2P6_MODEL_CONFIG,
     preferredReasoningEffort: "high",
   });
 }
@@ -912,7 +922,7 @@ export function _getDustOaiGlobalAgent(
   return _getDustLikeGlobalAgent(auth, args, {
     agentId: GLOBAL_AGENTS_SID.DUST_OAI,
     name: "dust-oai",
-    preferredModelConfiguration: GPT_5_5_MODEL_CONFIG,
+    preferredModelConfiguration: GPT_5_6_SOL_MODEL_CONFIG,
     preferredReasoningEffort: "light",
   });
 }
@@ -924,7 +934,7 @@ export function _getDustOaiMediumGlobalAgent(
   return _getDustLikeGlobalAgent(auth, args, {
     agentId: GLOBAL_AGENTS_SID.DUST_OAI_MEDIUM,
     name: "dust-oai-medium",
-    preferredModelConfiguration: GPT_5_5_MODEL_CONFIG,
+    preferredModelConfiguration: GPT_5_6_SOL_MODEL_CONFIG,
     preferredReasoningEffort: "medium",
   });
 }
@@ -936,7 +946,43 @@ export function _getDustOaiHighGlobalAgent(
   return _getDustLikeGlobalAgent(auth, args, {
     agentId: GLOBAL_AGENTS_SID.DUST_OAI_HIGH,
     name: "dust-oai-high",
-    preferredModelConfiguration: GPT_5_5_MODEL_CONFIG,
+    preferredModelConfiguration: GPT_5_6_SOL_MODEL_CONFIG,
+    preferredReasoningEffort: "high",
+  });
+}
+
+export function _getDustOaiLunaGlobalAgent(
+  auth: Authenticator,
+  args: DustLikeGlobalAgentArgs
+): AgentConfigurationType | null {
+  return _getDustLikeGlobalAgent(auth, args, {
+    agentId: GLOBAL_AGENTS_SID.DUST_OAI_LUNA,
+    name: "dust-oai-luna",
+    preferredModelConfiguration: GPT_5_6_LUNA_MODEL_CONFIG,
+    preferredReasoningEffort: "light",
+  });
+}
+
+export function _getDustOaiLunaMediumGlobalAgent(
+  auth: Authenticator,
+  args: DustLikeGlobalAgentArgs
+): AgentConfigurationType | null {
+  return _getDustLikeGlobalAgent(auth, args, {
+    agentId: GLOBAL_AGENTS_SID.DUST_OAI_LUNA_MEDIUM,
+    name: "dust-oai-luna-medium",
+    preferredModelConfiguration: GPT_5_6_LUNA_MODEL_CONFIG,
+    preferredReasoningEffort: "medium",
+  });
+}
+
+export function _getDustOaiLunaHighGlobalAgent(
+  auth: Authenticator,
+  args: DustLikeGlobalAgentArgs
+): AgentConfigurationType | null {
+  return _getDustLikeGlobalAgent(auth, args, {
+    agentId: GLOBAL_AGENTS_SID.DUST_OAI_LUNA_HIGH,
+    name: "dust-oai-luna-high",
+    preferredModelConfiguration: GPT_5_6_LUNA_MODEL_CONFIG,
     preferredReasoningEffort: "high",
   });
 }

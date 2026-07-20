@@ -137,6 +137,23 @@ describe("PATCH /api/w/:wId/assistant/agent_configurations/:aId/editors", () => 
     expect(editorIds).toContain(newEditor.sId);
   });
 
+  it("admin who is not an agent editor can become an editor", async () => {
+    const { workspace, agent, agentOwner, requestUser } = await setupTest({
+      agentOwnerRole: "builder",
+      requestUserRole: "admin",
+    });
+
+    const response = await patchEditors(workspace, agent.sId, {
+      addEditorIds: [requestUser.sId],
+    });
+    expect(response.status).toBe(200);
+    const data = await response.json();
+    expect(data.editors).toHaveLength(2);
+    const editorIds = data.editors.map((e: UserType) => e.sId);
+    expect(editorIds).toContain(agentOwner.sId);
+    expect(editorIds).toContain(requestUser.sId);
+  });
+
   it("admin should successfully remove an editor", async () => {
     const { workspace, agent, agentOwner } = await setupTest({
       requestUserRole: "admin",

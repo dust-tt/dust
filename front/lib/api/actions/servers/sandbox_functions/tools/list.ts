@@ -10,22 +10,22 @@ export function formatSandboxFunctionsList(
   sandboxFunctions: SandboxFunctionResource[]
 ): string {
   if (sandboxFunctions.length === 0) {
-    return "No sandbox functions published in this pod.";
+    return "No pod functions published in this pod.";
   }
 
   const lines = sandboxFunctions.map((fn) => `- ${fn.slug}: ${fn.description}`);
 
   return (
-    `Sandbox functions:\n${lines.join("\n")}\n\n` +
+    `Pod functions:\n${lines.join("\n")}\n\n` +
     "Use the get tool with a function's slug to see its input and output schemas."
   );
 }
 
 export async function listHandler(
   _params: Record<string, never>,
-  { auth, toolContext }: ToolHandlerExtra
+  { auth, runContext }: ToolHandlerExtra
 ): Promise<ToolHandlerResult> {
-  const podResult = await getPod(auth, { toolContext });
+  const podResult = await getPod(auth, { toolContext: { runContext } });
   if (podResult.isErr()) {
     return new Err(podResult.error);
   }

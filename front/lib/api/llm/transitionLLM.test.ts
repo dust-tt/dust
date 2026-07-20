@@ -247,6 +247,51 @@ describe("convertToOldEvent", () => {
       metadata: llmMetadata,
     });
   });
+
+  it("maps response_id to interaction_id, carrying the cache miss reason", () => {
+    expect(
+      convertToOldEvent(
+        {
+          type: "response_id",
+          content: { responseId: "msg_123" },
+          metadata: {
+            ...endpointMetadata,
+            content: {
+              cacheMissReason: {
+                type: "system_changed",
+                cacheMissedInputTokens: 42,
+              },
+            },
+          },
+        },
+        llmMetadata
+      )
+    ).toEqual({
+      type: "interaction_id",
+      content: {
+        modelInteractionId: "msg_123",
+        cacheMissReason: { type: "system_changed", cacheMissedInputTokens: 42 },
+      },
+      metadata: llmMetadata,
+    });
+  });
+
+  it("maps response_id to interaction_id without a cache miss reason", () => {
+    expect(
+      convertToOldEvent(
+        {
+          type: "response_id",
+          content: { responseId: "msg_123" },
+          metadata: endpointMetadata,
+        },
+        llmMetadata
+      )
+    ).toEqual({
+      type: "interaction_id",
+      content: { modelInteractionId: "msg_123", cacheMissReason: undefined },
+      metadata: llmMetadata,
+    });
+  });
 });
 
 describe("reasoningContentToLegacyMetadata — persistence write path", () => {

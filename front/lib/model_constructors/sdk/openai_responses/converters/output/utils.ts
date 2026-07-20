@@ -405,6 +405,9 @@ export function outputItemToEvents(
     case "mcp_approval_response":
     case "custom_tool_call":
     case "custom_tool_call_output":
+    case "program":
+    case "program_output":
+    case "additional_tools":
       return [];
     default:
       assertNeverAndIgnore(item);

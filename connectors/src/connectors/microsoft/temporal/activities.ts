@@ -1291,7 +1291,9 @@ export async function syncDeltaForRootNodesInDrive({
     }
     throw error;
   }
-  const uniqueChangedItems = removeAllButLastOccurences(results);
+  // getFullDeltaResults already dedups by id (last write wins), so no extra
+  // pass is needed here; avoid an extra full copy of the delta set.
+  const uniqueChangedItems = results;
 
   const sortedChangedItems: DriveItem[] = [];
   const containsWholeDrive = rootNodeIds.some(
@@ -1661,8 +1663,10 @@ export async function fetchDeltaForRootNodesInDrive({
   // Upload the delta data to GCS
   const file = getDeltaSyncBucket().file(gcsFilePath);
 
-  // Process changes in batches of 1000
-  const uniqueChangedItems = removeAllButLastOccurences(results);
+  // Process changes in batches of 1000.
+  // getFullDeltaResults already dedups by id (last write wins), so no extra
+  // pass is needed here; avoid an extra full copy of the delta set.
+  const uniqueChangedItems = results;
   const sortedChangedItems: DriveItem[] = [];
   const containsWholeDrive = rootNodeIds.some(
     (nodeId) => typeAndPathFromInternalId(nodeId).nodeType === "drive"
@@ -1813,28 +1817,6 @@ export async function cleanupDeltaGCSFile({
     );
     // Don't throw error as this is cleanup and shouldn't fail the workflow
   }
-}
-
-/**
- *  As per recommendation, remove all but the last occurences of the same
- *  driveItem in the list
- */
-function removeAllButLastOccurences(deltaList: DriveItem[]) {
-  const uniqueDeltas = new Set<string>();
-  const resultList = [];
-  for (const driveItem of deltaList.reverse()) {
-    if (!driveItem.id) {
-      throw new Error(`DriveItem id is missing: ${driveItem}`);
-    }
-
-    if (uniqueDeltas.has(driveItem.id)) {
-      continue;
-    }
-    uniqueDeltas.add(driveItem.id);
-    resultList.push(driveItem);
-  }
-
-  return resultList;
 }
 
 /**

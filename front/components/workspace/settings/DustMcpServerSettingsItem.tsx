@@ -1,7 +1,8 @@
+import { GovernanceSettingRowLayout } from "@app/components/pages/workspace/governance/GovernanceSettingRowLayout";
 import { DustMcpServerSettingsSheet } from "@app/components/workspace/DustMcpServerSettingsSheet";
 import { useDustMcpServerSettings } from "@app/hooks/useDustMcpServerSettings";
 import { getMcpResourceServerUrlForClient } from "@app/lib/api/mcp_server/urls";
-import { useAuth } from "@app/lib/auth/AuthContext";
+import { useAuth, useFeatureFlags } from "@app/lib/auth/AuthContext";
 import type { WorkspaceType } from "@app/types/user";
 import {
   Button,
@@ -20,6 +21,7 @@ export function DustMcpServerSettingsItem({
   owner,
 }: DustMcpServerSettingsItemProps) {
   const { isAdmin } = useAuth();
+  const { hasFeature } = useFeatureFlags();
   const [isSheetOpen, setIsSheetOpen] = useState(false);
   const { settings, isSaving, saveSettings } = useDustMcpServerSettings({
     owner,
@@ -40,46 +42,72 @@ export function DustMcpServerSettingsItem({
     });
   };
 
+  const label = "MCP server";
+  const description = `Allow external MCP clients to connect to this workspace via ${mcpServerUrl}.`;
+
   return (
     <>
-      <ContextItem
-        title="MCP server"
-        subElement={
-          <>
-            Allow external MCP clients to connect to this workspace via{" "}
-            <b>{mcpServerUrl}</b>.
-          </>
-        }
-        visual={<Server01 className="h-6 w-6" />}
-        truncateSubElement={true}
-        hasSeparatorIfLast={true}
-        action={
-          <div className="flex shrink-0 items-center gap-2">
-            {isEnabled && (
-              <Button
-                label="Manage"
-                size="xs"
-                variant="outline"
-                icon={Settings01}
-                disabled={!isAdmin || isSaving}
-                tooltip={
-                  !isAdmin
-                    ? "Only workspace admins can manage MCP server settings."
-                    : undefined
-                }
-                onClick={() => setIsSheetOpen(true)}
+      {hasFeature("admin_governance") ? (
+        <GovernanceSettingRowLayout
+          label={label}
+          description={description}
+          action={
+            <div className="flex shrink-0 items-center gap-2">
+              {isEnabled && (
+                <Button
+                  label="Manage"
+                  size="xs"
+                  variant="outline"
+                  icon={Settings01}
+                  disabled={isSaving}
+                  onClick={() => setIsSheetOpen(true)}
+                />
+              )}
+              <SliderToggle
+                selected={isEnabled}
+                disabled={isSaving}
+                onClick={() => {
+                  void handleToggleEnabled();
+                }}
               />
-            )}
-            <SliderToggle
-              selected={isEnabled}
-              disabled={!isAdmin || isSaving}
-              onClick={() => {
-                void handleToggleEnabled();
-              }}
-            />
-          </div>
-        }
-      />
+            </div>
+          }
+        />
+      ) : (
+        <ContextItem
+          title={label}
+          subElement={description}
+          visual={<Server01 className="h-6 w-6" />}
+          truncateSubElement={true}
+          hasSeparatorIfLast={true}
+          action={
+            <div className="flex shrink-0 items-center gap-2">
+              {isEnabled && (
+                <Button
+                  label="Manage"
+                  size="xs"
+                  variant="outline"
+                  icon={Settings01}
+                  disabled={!isAdmin || isSaving}
+                  tooltip={
+                    !isAdmin
+                      ? "Only workspace admins can manage MCP server settings."
+                      : undefined
+                  }
+                  onClick={() => setIsSheetOpen(true)}
+                />
+              )}
+              <SliderToggle
+                selected={isEnabled}
+                disabled={!isAdmin || isSaving}
+                onClick={() => {
+                  void handleToggleEnabled();
+                }}
+              />
+            </div>
+          }
+        />
+      )}
       <DustMcpServerSettingsSheet
         isOpen={isSheetOpen}
         onOpenChange={setIsSheetOpen}

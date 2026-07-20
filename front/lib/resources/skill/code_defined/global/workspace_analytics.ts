@@ -1,6 +1,6 @@
 import type { Authenticator } from "@app/lib/auth";
-import { getFeatureFlags } from "@app/lib/auth";
 import type { GlobalSkillDefinition } from "@app/lib/resources/skill/code_defined/shared";
+import { isWorkspaceAnalyticsEnabled } from "@app/types/user";
 
 export const workspaceAnalyticsSkill = {
   sId: "workspace-analytics",
@@ -45,7 +45,6 @@ export const workspaceAnalyticsSkill = {
     if (!auth.isAdmin()) {
       return true;
     }
-    const flags = await getFeatureFlags(auth);
-    return !flags.includes("workspace_analytics");
+    return !isWorkspaceAnalyticsEnabled(auth.getNonNullableWorkspace());
   },
 } as const satisfies GlobalSkillDefinition;

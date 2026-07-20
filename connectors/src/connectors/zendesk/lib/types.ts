@@ -37,7 +37,7 @@ export const ZendeskTicketSchema = z
     type: z.string().nullable().optional(),
     requester_id: z.number().optional(),
     assignee_id: z.number().nullable().optional(),
-    group_id: z.number().nullable(),
+    group_id: z.number().nullable().optional(),
     organization_id: z.number().nullable().optional(),
     created_at: z.string(),
     updated_at: z.string(),

@@ -6,6 +6,7 @@ import {
   type RootCommand,
   renderRootCommand,
 } from "@app/lib/api/sandbox/root_command";
+import type { SandboxResource } from "@app/lib/resources/sandbox_resource";
 import { Err, Ok } from "@app/types/shared/result";
 import jwt from "jsonwebtoken";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -149,18 +150,26 @@ describe("sandbox egress helpers", () => {
   });
 
   function setup(sandbox: unknown) {
-    return setupEgressForwarder(auth, sandbox as never, { runtimeOwner });
-  }
-
-  function ensure(sandbox: unknown, opts: { wokeFromSleep: boolean }) {
-    return ensureSandboxEgressOnExec(auth, sandbox as never, {
-      ...opts,
+    return setupEgressForwarder(auth, sandbox as SandboxResource, {
       runtimeOwner,
+      egressPolicyOwnerId: "conversation-id",
     });
   }
 
-  it("mints a proxy JWT bound to the provider sandbox id", () => {
-    const token = mintEgressJwt("provider-sandbox-id", "workspace-id");
+  function ensure(sandbox: unknown, opts: { wokeFromSleep: boolean }) {
+    return ensureSandboxEgressOnExec(auth, sandbox as SandboxResource, {
+      ...opts,
+      runtimeOwner,
+      egressPolicyOwnerId: "conversation-id",
+    });
+  }
+
+  it("mints a proxy JWT bound to the provider sandbox id and owner", () => {
+    const token = mintEgressJwt({
+      providerId: "provider-sandbox-id",
+      workspaceId: "workspace-id",
+      ownerId: "owner-id",
+    });
     const payload = jwt.verify(token, "egress-secret", {
       algorithms: ["HS256"],
       audience: "dust-egress-proxy",
@@ -169,6 +178,7 @@ describe("sandbox egress helpers", () => {
 
     expect(payload.sbId).toBe("provider-sandbox-id");
     expect(payload.wId).toBe("workspace-id");
+    expect(payload.ownerId).toBe("owner-id");
     expect(payload.exp).toBeGreaterThan(payload.iat ?? 0);
   });
 

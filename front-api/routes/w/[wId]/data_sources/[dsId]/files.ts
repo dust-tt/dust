@@ -1,4 +1,5 @@
 import { processAndUpsertToDataSource } from "@app/lib/api/files/upsert";
+import { isManaged, isWebsite } from "@app/lib/data_sources";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
 import type { APIErrorType } from "@app/types/error";
@@ -67,6 +68,16 @@ app.post("/", validate("param", ParamsSchema), async (ctx) => {
       api_error: {
         type: "data_source_auth_error",
         message: "You are not authorized to upsert to this data source.",
+      },
+    });
+  }
+
+  if (isManaged(dataSource) || isWebsite(dataSource)) {
+    return apiError(ctx, {
+      status_code: 403,
+      api_error: {
+        type: "data_source_auth_error",
+        message: "You cannot upload a file to a managed data source.",
       },
     });
   }

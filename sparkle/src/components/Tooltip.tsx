@@ -39,14 +39,13 @@ const TooltipContent = React.forwardRef<
         ref={ref}
         sideOffset={sideOffset}
         className={cn(
-          "z-50 max-w-sm overflow-hidden whitespace-pre-wrap break-words rounded-md border",
-          "bg-overlay-background",
-          "text-foreground",
-          "border-border",
-          "px-3 py-1.5 text-sm shadow-md",
+          "z-50 max-w-sm overflow-hidden whitespace-pre-wrap break-words rounded-lg",
+          "bg-primary text-primary-50 text-xs",
+          "px-3 py-1.5",
+          "shadow-[inset_0px_1px_4px_0px_rgba(255,255,255,0.1)] dark:shadow-none",
           "origin-[var(--radix-tooltip-content-transform-origin)]",
-          "animate-in fade-in-0 zoom-in-95 duration-200 ease-enter",
-          "data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 data-[state=closed]:duration-150 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2",
+          "animate-in fade-in-0 zoom-in-95 duration-150 ease-emphasized",
+          "data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 data-[state=closed]:duration-100",
           "motion-reduce:animate-none",
           className || ""
         )}
@@ -88,7 +87,7 @@ const Tooltip = React.forwardRef<HTMLDivElement, TooltipProps>(
     }: TooltipProps,
     ref
   ) => (
-    <TooltipProvider delayDuration={delayDuration}>
+    <TooltipProvider delayDuration={delayDuration} skipDelayDuration={0}>
       <TooltipRoot disableHoverableContent>
         <TooltipTrigger asChild={tooltipTriggerAsChild}>
           {trigger}
@@ -96,7 +95,12 @@ const Tooltip = React.forwardRef<HTMLDivElement, TooltipProps>(
         <TooltipContent {...props} ref={ref}>
           <div className="inline-flex items-center gap-2">
             {label}
-            {shortcut && <KeyboardShortcut shortcut={shortcut} />}
+            {shortcut && (
+              <KeyboardShortcut
+                shortcut={shortcut}
+                className="text-xs text-primary-200"
+              />
+            )}
           </div>
         </TooltipContent>
       </TooltipRoot>

@@ -3,7 +3,7 @@ export type DefaultUserSpendLimit = {
 };
 
 export type GetDefaultUserSpendLimitResponseBody = {
-  awuCredits: number | null;
+  awuCredits: number;
 };
 
 export type PutDefaultUserSpendLimitResponseBody = DefaultUserSpendLimit;

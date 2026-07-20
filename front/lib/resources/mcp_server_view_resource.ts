@@ -43,7 +43,10 @@ import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { removeNulls } from "@app/types/shared/utils/general";
-import { formatUserFullName } from "@app/types/user";
+import {
+  formatUserFullName,
+  isWorkspaceAnalyticsEnabled,
+} from "@app/types/user";
 import assert from "assert";
 import uniq from "lodash/uniq";
 import type {
@@ -839,6 +842,43 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
     return map;
   }
 
+  // Matches a view by display name from a pre-fetched list (callers fetch once to avoid an N+1).
+  // System-space views are excluded since agents attach from global/regular spaces; when a server
+  // is shared to several spaces the global-space view wins, otherwise the name must be unambiguous.
+  static resolveAttachableByName(
+    auth: Authenticator,
+    views: MCPServerViewResource[],
+    name: string
+  ): Result<MCPServerViewResource, Error> {
+    const matches = views.filter((view) => {
+      if (
+        view.space.kind === "system" ||
+        !view.space.canReadOrAdministrate(auth)
+      ) {
+        return false;
+      }
+      const json = view.toJSON();
+      return (json.name ?? json.server.name) === name;
+    });
+
+    if (matches.length === 0) {
+      return new Err(new Error(`MCP server not found: ${name}`));
+    }
+
+    const globalMatches = matches.filter(
+      (view) => view.space.kind === "global"
+    );
+    const candidates = globalMatches.length > 0 ? globalMatches : matches;
+    if (candidates.length > 1) {
+      return new Err(
+        new Error(
+          `Multiple MCP servers named "${name}" found; cannot resolve unambiguously.`
+        )
+      );
+    }
+    return new Ok(candidates[0]);
+  }
+
   static async listMCPServerViewsAutoInternalForSpaces(
     auth: Authenticator,
     name: AutoInternalMCPServerNameType,
@@ -1110,10 +1150,12 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
     {
       featureFlags,
       isDeepDiveDisabled,
+      isWorkspaceAnalyticsEnabled,
       plan,
     }: {
       featureFlags: WhitelistableFeature[];
       isDeepDiveDisabled: boolean;
+      isWorkspaceAnalyticsEnabled: boolean;
       plan: PlanType;
     }
   ): string[] {
@@ -1126,6 +1168,7 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
       const isEnabled = !INTERNAL_MCP_SERVERS[name].isRestricted?.({
         featureFlags,
         isDeepDiveDisabled,
+        isWorkspaceAnalyticsEnabled,
         plan,
       });
       const availability = getAvailabilityOfInternalMCPServerByName(name);
@@ -1242,6 +1285,7 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
         this.computeEnabledAutoInternalMCPServerIds(workspace.id, {
           featureFlags,
           isDeepDiveDisabled,
+          isWorkspaceAnalyticsEnabled: isWorkspaceAnalyticsEnabled(workspace),
           plan,
         });
 

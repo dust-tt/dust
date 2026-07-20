@@ -60,9 +60,11 @@ export function AgentPicker({
   const [searchText, setSearchText] = useState("");
   const [isOpen, setIsOpen] = useState(false);
 
-  const searchedAgents = filterAndSortAgents(agents, searchText, {
-    selectedAgentId,
-  });
+  const searched = filterAndSortAgents(agents, searchText);
+  const selected = searched.find((a) => a.sId === selectedAgentId);
+  const searchedAgents = selected
+    ? [selected, ...searched.filter((a) => a.sId !== selectedAgentId)]
+    : searched;
 
   return (
     <DropdownMenu

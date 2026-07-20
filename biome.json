@@ -56,7 +56,8 @@
       "front/**",
       "front-api/**",
       "marketing/**",
-      "cli/dust-sandbox/functions-runner/**"
+      "cli/dust-sandbox/functions-runner/**",
+      "cli/dust-sandbox/pod/**"
     ],
     "rules": {
       "preset": "none",
@@ -254,7 +255,8 @@
       "front-spa/**",
       "front/**",
       "front-api/**",
-      "cli/dust-sandbox/functions-runner/**"
+      "cli/dust-sandbox/functions-runner/**",
+      "cli/dust-sandbox/pod/**"
     ],
     "enabled": true,
     "actions": {

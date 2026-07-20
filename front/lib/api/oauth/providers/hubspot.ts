@@ -44,6 +44,7 @@ export class HubspotOAuthProvider implements BaseOAuthStrategyProvider {
       "crm.objects.owners.read",
       "crm.schemas.custom.read",
       "crm.objects.custom.read",
+      "crm.objects.custom.write",
       "crm.objects.quotes.read",
       "crm.objects.line_items.read",
       "files",
@@ -54,6 +55,7 @@ export class HubspotOAuthProvider implements BaseOAuthStrategyProvider {
       "marketing-email",
       "content",
       "tickets",
+      "crm.objects.products.read",
     ];
 
     const workspaceGrantedScopes = extraConfig?.workspace_granted_scopes;

@@ -295,7 +295,7 @@ async function checkWorkspaceRateLimit({
       (await isProgrammaticApiBlocked(owner.sId))
     ) {
       errorMessage =
-        "Your workspace has reached its programmatic monthly spending cap.";
+        "Your workspace has reached its programmatic monthly spending cap. An admin can raise the cap in the workspace's usage settings.";
     }
   }
 

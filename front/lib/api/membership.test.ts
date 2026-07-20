@@ -142,8 +142,31 @@ describe("createAndTrackMembership", () => {
     expect(membership.seatType).toBe("none");
   });
 
-  it("still assigns a committed paid seat on a paid plan", async () => {
+  it("assigns free on a paid plan even when a committed pro seat has open slots", async () => {
     setupEntitledSeats(["free", "pro"]);
+
+    const workspace = await WorkspaceFactory.creditPriced();
+    const upsertResult = await WorkspaceSeatLimitResource.upsert({
+      workspace,
+      seatType: "pro",
+      minSeats: 3,
+      maxSeats: null,
+    });
+    expect(upsertResult.isOk()).toBe(true);
+
+    const user = await UserFactory.basic();
+    const membership = await createAndTrackMembership({
+      user,
+      workspace,
+      role: "user",
+      origin: "invited",
+    });
+
+    expect(membership.seatType).toBe("free");
+  });
+
+  it("falls back to a committed paid seat on a paid plan when free is not entitled", async () => {
+    setupEntitledSeats(["pro"]);
 
     const workspace = await WorkspaceFactory.creditPriced();
     const upsertResult = await WorkspaceSeatLimitResource.upsert({

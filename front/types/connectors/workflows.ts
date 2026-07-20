@@ -27,6 +27,10 @@ export function googleDriveIncrementalSyncWorkflowId(connectorId: ModelId) {
   return `googleDrive-IncrementalSync-${connectorId}`;
 }
 
+export function googleDriveGarbageCollectorWorkflowId(connectorId: ModelId) {
+  return `googleDrive-garbageCollector-${connectorId}`;
+}
+
 export function makeConfluenceSyncWorkflowId(connectorId: ModelId) {
   return `confluence-sync-${connectorId}`;
 }

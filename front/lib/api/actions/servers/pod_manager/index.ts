@@ -1,6 +1,6 @@
 import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/utils";
 import { registerTool } from "@app/lib/actions/mcp_internal_actions/wrappers";
-import type { ToolContextType } from "@app/lib/actions/types";
+import type { ToolContext } from "@app/lib/actions/types";
 import { POD_MANAGER_SERVER_NAME } from "@app/lib/api/actions/servers/pod_manager/metadata";
 import { createProjectManagerTools } from "@app/lib/api/actions/servers/pod_manager/tools";
 import type { Authenticator } from "@app/lib/auth";
@@ -13,12 +13,12 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
  * - File operations: list, add, update, and remove project knowledge files
  * - Linked data: add/remove Company Data nodes from project context
  * - Metadata operations: edit description, add/edit URLs
- * - Retrieval: recent documents from the project data source and context nodes
+ * - Retrieval: recent documents from the project data source and content nodes
  * - Semantic search: project knowledge, project conversations, or both
  */
 function createServer(
   auth: Authenticator,
-  toolContext?: ToolContextType
+  toolContext?: ToolContext
 ): McpServer {
   const server = makeInternalMCPServer(POD_MANAGER_SERVER_NAME);
 

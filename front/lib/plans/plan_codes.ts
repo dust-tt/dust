@@ -89,27 +89,49 @@ export const isFreeTrialPhonePlan = (planCode: string) =>
 export const isOldFreePlan = (planCode: string) =>
   planCode === FREE_TEST_PLAN_CODE;
 
-// Sort priority for plan-code buckets. Lower number sorts first.
-// Used by the poke workspaces list to surface enterprise / pro tenants
-// ahead of free / old-free ones when the result set is over the requested
-// limit.
-export const getPlanCodeSortPriority = (planCode: string): number => {
-  if (isEnterprisePlanPrefix(planCode)) {
-    return 1;
-  }
-  if (isFriendsAndFamilyPlan(planCode)) {
-    return 2;
-  }
-  if (isProPlanPrefix(planCode)) {
-    return 3;
-  }
-  if (isFreePlan(planCode)) {
-    return 4;
-  }
-  if (isOldFreePlan(planCode)) {
-    return 5;
-  }
-  return 6;
+// Plan-type filter buckets exposed on the poke workspaces list, split by
+// literal plan-code prefix rather than by the semantic `isXxx` helpers above:
+// - enterprise: CP_ENT_*          (current, credit-priced enterprise)
+// - legacy_enterprise: ENT_*      (legacy, pre-credit-priced enterprise)
+// - legacy_pro: PRO_*             (legacy pro plans, incl. the "business" seat tier)
+// - business: CP_BUSINESS_*       (current, credit-priced business)
+// - free: FREE_*                  (all free-tier plans, incl. old-free), except F&F below
+// - friends_and_family: FREE_FRIENDSAMILY
+// - dust: DUST_* / CP_DUST_*      (Dust's own company workspace)
+export const POKE_PLAN_TYPE_FILTERS = [
+  "enterprise",
+  "business",
+  "legacy_enterprise",
+  "legacy_pro",
+  "free",
+  "friends_and_family",
+  "dust",
+] as const;
+
+export type PokePlanTypeFilter = (typeof POKE_PLAN_TYPE_FILTERS)[number];
+
+export function isPokePlanTypeFilter(
+  value: string
+): value is PokePlanTypeFilter {
+  return POKE_PLAN_TYPE_FILTERS.some((filter) => filter === value);
+}
+
+export type PokeNonFreePlanTypeFilter = Exclude<PokePlanTypeFilter, "free">;
+
+// Single source of truth for how each non-free bucket maps to plan codes.
+// Consumed to build the SQL filter for the poke workspaces list endpoint:
+// `free` has no code pattern of its own there — it's derived as "doesn't
+// match any of these".
+export const POKE_PLAN_CODE_MATCHERS: Record<
+  PokeNonFreePlanTypeFilter,
+  { type: "prefix"; values: string[] } | { type: "exact"; values: string[] }
+> = {
+  enterprise: { type: "prefix", values: ["CP_ENT_"] },
+  legacy_enterprise: { type: "prefix", values: ["ENT_"] },
+  legacy_pro: { type: "prefix", values: ["PRO_"] },
+  business: { type: "prefix", values: ["CP_BUSINESS_"] },
+  friends_and_family: { type: "exact", values: ["FREE_FRIENDSAMILY"] },
+  dust: { type: "prefix", values: ["DUST_", "CP_DUST_"] },
 };
 
 export function isProPlan(plan?: PlanType) {

@@ -2,6 +2,7 @@ import { AgentPicker } from "@app/components/assistant/AgentPicker";
 import { CapabilitiesPicker } from "@app/components/assistant/CapabilitiesPicker";
 import { InputBarAttachmentsPicker } from "@app/components/assistant/conversation/input_bar/InputBarAttachmentsPicker";
 import type { InputBarAction } from "@app/components/assistant/conversation/input_bar/InputBarContainer";
+import { InputBarModelPicker } from "@app/components/assistant/conversation/input_bar/InputBarModelPicker";
 import type useCustomEditor from "@app/components/editor/input_bar/useCustomEditor";
 import type { FileUploaderService } from "@app/hooks/useFileUploaderService";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
@@ -15,6 +16,7 @@ import type {
   RichMention,
 } from "@app/types/assistant/mentions";
 import { toRichAgentMentionType } from "@app/types/assistant/mentions";
+import type { ModelSelectionType } from "@app/types/assistant/models/types";
 import type { SkillWithoutInstructionsAndToolsType } from "@app/types/assistant/skill_configuration";
 import type { DataSourceViewContentNode } from "@app/types/data_source_view";
 import { getSupportedFileExtensions } from "@app/types/files";
@@ -52,8 +54,12 @@ interface InputBarButtonsProps {
   // When true, disables every picker (tools, attachment) in addition to the
   // agent selector which is muted via `disableAgentSelector`.
   isInputDisabled: boolean;
+  lastRequestedModel: ModelSelectionType | null;
   onAgentRemove: () => void;
   onMCPServerViewSelect: (serverView: MCPServerViewType) => void;
+  onModelSelectionChange?: (
+    modelSelection: ModelSelectionType | undefined
+  ) => void;
   onNodeSelect: (node: DataSourceViewContentNode) => void;
   onNodeUnselect: (node: DataSourceViewContentNode) => void;
   onSkillSelect: (skill: SkillWithoutInstructionsAndToolsType) => void;
@@ -82,8 +88,10 @@ export const InputBarButtons = React.memo(function InputBarButtons({
   hideCapabilities,
   isDefaultAgentUnavailable,
   isInputDisabled,
+  lastRequestedModel,
   onAgentRemove,
   onMCPServerViewSelect,
+  onModelSelectionChange,
   onNodeSelect,
   onNodeUnselect,
   onSkillSelect,
@@ -97,7 +105,7 @@ export const InputBarButtons = React.memo(function InputBarButtons({
   onAttachmentsPickerOpenChange,
 }: InputBarButtonsProps) {
   const router = useAppRouter();
-  const isMobile = useIsMobile();
+  const isWidthConstrained = useIsMobile() || clientType === "extension";
   // Current space is taken from the conversation (if already set) or from the space prop (if provided).
   const spaceId = conversation?.spaceId ?? space?.sId ?? undefined;
 
@@ -138,13 +146,14 @@ export const InputBarButtons = React.memo(function InputBarButtons({
             aria-disabled={isInputDisabled}
             className={cn(
               "inline-flex box-border items-center rounded-lg h-7 heading-xs px-2 gap-1.5 bg-muted-background border-border text-primary-900 transition-colors duration-200",
+              isWidthConstrained && "pl-1",
               isInputDisabled
                 ? "opacity-50 pointer-events-none"
                 : "cursor-pointer hover:bg-hover"
             )}
           >
             <Avatar size="xxs" visual={selectedAgent.pictureUrl} />
-            {!isMobile && (
+            {!isWidthConstrained && (
               <span className="grow truncate notranslate">
                 {selectedAgent.label}
               </span>
@@ -176,7 +185,7 @@ export const InputBarButtons = React.memo(function InputBarButtons({
             variant="ghost-secondary"
             size={buttonSize}
             icon={Robot}
-            label="Agent"
+            label={!isWidthConstrained ? "Agent" : undefined}
             disabled={isInputDisabled}
             className={cn(disableAgentSelector && "bg-primary-150")}
           />
@@ -235,9 +244,28 @@ export const InputBarButtons = React.memo(function InputBarButtons({
       </>
     );
 
+  const selectedAgentModel =
+    (selectedAgent &&
+      allAgents.find((a) => a.sId === selectedAgent.id)?.model) ??
+    null;
+
+  const modelPickerButton = actions.includes("model-picker") && (
+    <InputBarModelPicker
+      agentModel={selectedAgentModel}
+      agentId={selectedAgent?.id ?? null}
+      lastRequestedModel={lastRequestedModel}
+      owner={owner}
+      buttonSize={buttonSize}
+      side={conversation ? "top" : "bottom"}
+      disabled={isInputDisabled}
+      onSelectionChange={onModelSelectionChange}
+    />
+  );
+
   return (
     <>
       {agentButton}
+      {modelPickerButton}
       {!hideCapabilities && toolsButton}
       {attachmentButton}
     </>

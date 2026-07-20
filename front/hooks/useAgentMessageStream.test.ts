@@ -119,6 +119,8 @@ function makeLightAgentMessage(
     citations: {},
     generatedFiles: [],
     activitySteps: [],
+    resolvedModel: null,
+    modelResolutionMethod: null,
     ...overrides,
   };
 }

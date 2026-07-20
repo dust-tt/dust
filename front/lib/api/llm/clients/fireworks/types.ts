@@ -9,6 +9,7 @@ import {
   FIREWORKS_GLM_5P2_MODEL_ID,
   FIREWORKS_KIMI_K2_INSTRUCT_MODEL_ID,
   FIREWORKS_KIMI_K2P5_MODEL_ID,
+  FIREWORKS_KIMI_K2P6_MODEL_ID,
   FIREWORKS_MINIMAX_M2P5_MODEL_ID,
 } from "@app/types/assistant/models/fireworks";
 import type { ModelIdType } from "@app/types/assistant/models/types";
@@ -20,6 +21,7 @@ export const FIREWORKS_WHITELISTED_MODEL_IDS = [
   FIREWORKS_DEEPSEEK_V4_PRO_MODEL_ID,
   FIREWORKS_KIMI_K2_INSTRUCT_MODEL_ID,
   FIREWORKS_KIMI_K2P5_MODEL_ID,
+  FIREWORKS_KIMI_K2P6_MODEL_ID,
   FIREWORKS_MINIMAX_M2P5_MODEL_ID,
   FIREWORKS_GLM_5_MODEL_ID,
   FIREWORKS_GLM_5P2_MODEL_ID,
@@ -43,6 +45,9 @@ export const FIREWORKS_MODEL_CONFIGS: Record<
     overwrites: { reasoningEffort: "none" },
   },
   [FIREWORKS_KIMI_K2P5_MODEL_ID]: {
+    overwrites: {},
+  },
+  [FIREWORKS_KIMI_K2P6_MODEL_ID]: {
     overwrites: {},
   },
   [FIREWORKS_MINIMAX_M2P5_MODEL_ID]: {

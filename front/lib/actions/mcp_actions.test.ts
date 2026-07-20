@@ -21,7 +21,7 @@ import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_ac
 import type { DataSourcesToolConfigurationType } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import type { MCPConnectionParams } from "@app/lib/actions/mcp_metadata";
 import { connectToMCPServer } from "@app/lib/actions/mcp_metadata";
-import type { AgentLoopRunContextType } from "@app/lib/actions/types";
+import type { AgentLoopRunContext } from "@app/lib/actions/types";
 import type { ServerSideMCPToolTypeWithStakeAndRetryPolicy } from "@app/lib/api/mcp";
 import { Authenticator } from "@app/lib/auth";
 import { getSupportedModelConfig } from "@app/lib/llms/model_configurations";
@@ -142,7 +142,9 @@ vi.mock("@app/lib/api/actions/servers/search/tools", async () => {
       mockSearchFunction({
         ...(params as object),
         auth: (extra as { auth?: unknown }).auth,
-        toolContext: (extra as { toolContext?: unknown }).toolContext,
+        toolContext: {
+          runContext: (extra as { runContext?: unknown }).runContext,
+        },
       }),
   };
   const handlersWithTags = {
@@ -632,6 +634,8 @@ describe("tryCallMCPTool", () => {
       branchId: messageRow.getBranchId(),
       richMentions: [],
       costCredits: null,
+      resolvedModel: null,
+      modelResolutionMethod: null,
     };
     const userMessage: UserMessageType = {
       id: -1,
@@ -655,6 +659,7 @@ describe("tryCallMCPTool", () => {
         origin: "web",
       },
       reactions: [],
+      requestedModel: null,
     };
 
     // Create tool configuration
@@ -716,7 +721,7 @@ describe("tryCallMCPTool", () => {
     }
 
     // Create agent loop run context
-    const agentLoopRunContext: AgentLoopRunContextType = {
+    const agentLoopRunContext: AgentLoopRunContext = {
       contextType: "agent_loop",
       agentConfiguration,
       model: {

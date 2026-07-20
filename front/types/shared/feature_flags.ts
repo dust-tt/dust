@@ -46,9 +46,13 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
       "Access to internal global agents (dust-edge, dust-quick, dust-oai, dust-goog, custom model agents and their variants)",
     stage: "dust_only",
   },
-  dust_agent_gpt_5_5_default: {
+  dust_agent_gpt_5_6_luna_default: {
     description:
-      "Use GPT 5.5 (medium reasoning) as the default model for the @dust agent",
+      "Use GPT 5.6 Luna (high reasoning) as the default model for the @dust agent",
+    stage: "dust_only",
+  },
+  dust_agent_sonnet_5_default: {
+    description: "Use Claude Sonnet 5 as the default model for the @dust agent",
     stage: "dust_only",
   },
   notion_private_integration: {
@@ -153,19 +157,9 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
       "API for accessing usage data (Means that any builder with an API key can access usage data of the workspace from API)",
     stage: "on_demand",
   },
-  workspace_analytics: {
-    description:
-      "Admin-only workspace usage analytics: the workspace_analytics MCP server, its skill, and the Workspace Analyst agent.",
-    stage: "on_demand",
-  },
   usage_page_read_only: {
     description:
       "Allow legacy-contract workspaces to view the Usage page in read-only mode (analytics and member spend visible; all actions disabled).",
-    stage: "on_demand",
-  },
-  pricing_groups: {
-    description:
-      "Surface org groups on the Usage page: groups column, groups filter, and bulk spend-limit editing across a selection of members.",
     stage: "on_demand",
   },
   xai_feature: {
@@ -213,7 +207,7 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     stage: "on_demand",
   },
   sandbox_functions: {
-    description: "Enable Sandbox Function invocation endpoints",
+    description: "Enable Pod Function invocation endpoints",
     stage: "dust_only",
   },
   run_tools_from_prompt: {
@@ -287,6 +281,11 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
       "Skip injecting the OpenAI formatting meta prompt entirely (no markdown/paragraph style guidance)",
     stage: "dust_only",
   },
+  render_search_results_as_markdown: {
+    description:
+      "Render semantic search results as Markdown instead of serialized JSON",
+    stage: "dust_only",
+  },
   admin_governance: {
     description:
       "Access to admin governance features, including assigning the business_admin role from the UI",
@@ -318,11 +317,20 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
   },
   models_picker: {
     description:
-      "Model picker in the conversation input bar: pick a specific model.",
+      "Model picker in the conversation input bar: keep Auto (the agent's configured model) or pick a specific model and reasoning effort.",
     stage: "dust_only",
   },
   activation_skill: {
     description: "Enable the Activation skill for agentic user activation pods",
+    stage: "dust_only",
+  },
+  activation_scheduler: {
+    description: "Enable the per-workspace Activation scheduler workflow",
+    stage: "dust_only",
+  },
+  group_permissions_shadow: {
+    description:
+      "Admin Governance: evaluate the new group_permissions checks alongside the legacy ones and log mismatches (shadow mode). Serves the legacy result; safe to toggle.",
     stage: "dust_only",
   },
 } as const satisfies Record<string, FeatureFlag>;

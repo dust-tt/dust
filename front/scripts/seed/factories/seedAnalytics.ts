@@ -120,6 +120,7 @@ export async function seedAnalytics(
     const document: AgentMessageAnalyticsData = {
       agent_id: agentMessage.agentConfigurationId,
       agent_version: agentMessage.agentConfigurationVersion.toString(),
+      agent_tag_ids: [],
       ancestor_message_ids: [],
       conversation_id: conversationId,
       cost: {

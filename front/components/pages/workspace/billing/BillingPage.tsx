@@ -10,7 +10,9 @@ import { RecentInvoices } from "@app/components/workspace/billing/RecentInvoices
 import { SubscriptionProvider } from "@app/components/workspace/billing/SubscriptionContext";
 import { useAuth } from "@app/lib/auth/AuthContext";
 import { isCreditPricedFreePlan } from "@app/lib/plans/plan_codes";
+import { useAppRouter } from "@app/lib/platform";
 import { useWorkspaceCoupons } from "@app/lib/swr/workspaces";
+import { isCreditPricedPlan } from "@app/types/plan";
 import {
   CreditCard01,
   Page,
@@ -19,10 +21,19 @@ import {
   TabsList,
   TabsTrigger,
 } from "@dust-tt/sparkle";
+import { useEffect } from "react";
 
 export function BillingPage() {
   const { workspace: owner, subscription } = useAuth();
+  const router = useAppRouter();
   const freePlan = isCreditPricedFreePlan(subscription.plan.code);
+  const isCreditPriced = isCreditPricedPlan(subscription.plan);
+
+  useEffect(() => {
+    if (!isCreditPriced) {
+      void router.replace(`/w/${owner.sId}/subscription`);
+    }
+  }, [isCreditPriced, owner.sId, router]);
 
   // The Coupons tab is only shown when the workspace has redeemed at least
   // one coupon — most workspaces never do.
@@ -31,6 +42,10 @@ export function BillingPage() {
     disabled: freePlan,
   });
   const hasCoupons = coupons.length > 0;
+
+  if (!isCreditPriced) {
+    return null;
+  }
 
   return (
     <Page.Vertical gap="xl" align="stretch">

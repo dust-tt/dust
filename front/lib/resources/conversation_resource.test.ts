@@ -40,10 +40,25 @@ import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
-import { Ok } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
 import type { LightWorkspaceType } from "@app/types/user";
 import { assert, beforeEach, describe, expect, it, vi } from "vitest";
 import { destroyConversation } from "../api/assistant/conversation/destroy";
+
+const { mockDeleteOwnerPolicy } = vi.hoisted(() => ({
+  mockDeleteOwnerPolicy: vi.fn(),
+}));
+
+vi.mock(
+  import("../../lib/api/sandbox/egress_policy"),
+  async (importOriginal) => {
+    const mod = await importOriginal();
+    return {
+      ...mod,
+      deleteOwnerPolicy: mockDeleteOwnerPolicy,
+    };
+  }
+);
 
 vi.mock(import("../../lib/api/redis"), async (importOriginal) => {
   const mod = await importOriginal();
@@ -628,6 +643,88 @@ describe("destroyConversation", () => {
 
     const agents = await setupTestAgents(workspace, user);
     agentConfigurationId = agents[0].sId;
+  });
+
+  it("scrubs the conversation's egress policy file on destroy", async () => {
+    mockDeleteOwnerPolicy.mockResolvedValue(new Ok(undefined));
+    const conversationType = await ConversationFactory.create(auth, {
+      agentConfigurationId,
+      messagesCreatedAt: [new Date()],
+    });
+    const conversation = await ConversationResource.fetchById(
+      auth,
+      conversationType.sId
+    );
+    assert(conversation, "Conversation should exist");
+
+    await destroyConversation(auth, { conversation });
+
+    expect(mockDeleteOwnerPolicy).toHaveBeenCalledWith(
+      expect.anything(),
+      conversation.sId
+    );
+  });
+
+  it("aborts the destroy when the egress policy scrub fails", async () => {
+    mockDeleteOwnerPolicy.mockResolvedValue(new Err(new Error("GCS failed")));
+    const conversationType = await ConversationFactory.create(auth, {
+      agentConfigurationId,
+      messagesCreatedAt: [new Date()],
+    });
+    const conversation = await ConversationResource.fetchById(
+      auth,
+      conversationType.sId
+    );
+    assert(conversation, "Conversation should exist");
+
+    const result = await destroyConversation(auth, { conversation });
+
+    expect(result.isErr()).toBe(true);
+    // The conversation survives: its Temporal caller retries the destroy.
+    const stillThere = await ConversationResource.fetchById(
+      auth,
+      conversationType.sId
+    );
+    expect(stillThere).not.toBeNull();
+  });
+
+  it("does not scrub the Pod's egress policy file when destroying a pod conversation", async () => {
+    mockDeleteOwnerPolicy.mockResolvedValue(new Ok(undefined));
+    const workspace = auth.getNonNullableWorkspace();
+    const user = auth.getNonNullableUser();
+    // Pod membership plumbing: admin role to manage members, explicit pod
+    // membership for canRead, refreshed auth to pick the new groups up.
+    await MembershipFactory.associate(workspace, user, { role: "admin" });
+    const adminAuth = await Authenticator.fromUserIdAndWorkspaceId(
+      user.sId,
+      workspace.sId
+    );
+    const pod = await SpaceFactory.project(workspace);
+    const addMember = await pod.addMembers(adminAuth, {
+      userIds: [user.sId],
+    });
+    assert(addMember.isOk(), "Should add the test user to the pod");
+    const podAuth = await Authenticator.fromUserIdAndWorkspaceId(
+      user.sId,
+      workspace.sId
+    );
+
+    const conversationType = await ConversationFactory.create(podAuth, {
+      agentConfigurationId,
+      messagesCreatedAt: [new Date()],
+      spaceId: pod.id,
+    });
+    const conversation = await ConversationResource.fetchById(
+      podAuth,
+      conversationType.sId
+    );
+    assert(conversation, "Conversation should exist");
+
+    await destroyConversation(podAuth, { conversation });
+
+    // Pod conversations never own a policy file — the Pod's file is scrubbed
+    // by hardDeleteSpace, not conversation destruction.
+    expect(mockDeleteOwnerPolicy).not.toHaveBeenCalled();
   });
 
   it("should delete batched message resources chunk by chunk", async () => {
@@ -3181,6 +3278,43 @@ describe("listSpaceUnreadConversationsForUser", () => {
     ].map((c) => c.sId);
     expect(spaceConversationIds).toContain(conversationIds[0]); // space conversation should be included
     expect(spaceConversationIds).not.toContain(privateConvo.sId); // private conversation should be filtered out
+  });
+
+  it("should exclude sub-conversations (depth > 0) from unread lists", async () => {
+    const subConversation = await ConversationFactory.create(adminAuth, {
+      agentConfigurationId: agents[0].sId,
+      messagesCreatedAt: [dateFromDaysAgo(1)],
+      spaceId: spaceModelIds[0],
+    });
+    await ConversationModel.update(
+      { depth: 1 },
+      {
+        where: {
+          workspaceId: workspace.id,
+          sId: subConversation.sId,
+        },
+      }
+    );
+
+    await ConversationResource.upsertParticipation(userAuth, {
+      conversation: subConversation,
+      action: "posted",
+      user: userAuth.getNonNullableUser().toJSON(),
+      lastReadAt: null,
+    });
+
+    const userConversations =
+      await ConversationResource.listSpaceUnreadConversationsAndActivityForUser(
+        userAuth,
+        spaceModelIds
+      );
+
+    const allConversationIds = [
+      ...userConversations.unreadConversations,
+      ...userConversations.nonParticipantUnreadConversations,
+    ].map((c) => c.sId);
+    expect(allConversationIds).toContain(conversationIds[0]);
+    expect(allConversationIds).not.toContain(subConversation.sId);
   });
 });
 
@@ -6436,6 +6570,32 @@ describe("ConversationResource.listConversationsInSpacePaginated", () => {
     expect(result.conversations).toHaveLength(2);
     expect(result.hasMore).toBe(true);
     expect(result.lastValue).not.toBeNull();
+  });
+
+  it("should exclude sub-conversations (depth > 0) from the list", async () => {
+    const rootConversation = await createConvoWithUpdatedAt(1);
+    const subConversation = await createConvoWithUpdatedAt(0);
+    await ConversationModel.update(
+      { depth: 1 },
+      {
+        where: {
+          workspaceId: workspace.id,
+          sId: subConversation.sId,
+        },
+      }
+    );
+
+    const result = await ConversationResource.listConversationsInSpacePaginated(
+      adminAuth,
+      {
+        spaceId: space.sId,
+        pagination: { limit: 10 },
+      }
+    );
+
+    const conversationIds = result.conversations.map((c) => c.sId);
+    expect(conversationIds).toContain(rootConversation.sId);
+    expect(conversationIds).not.toContain(subConversation.sId);
   });
 
   it("should return hasMore: false when no more results", async () => {

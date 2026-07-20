@@ -6,6 +6,7 @@ import {
 import { ensureAuthorizedFileAccessForShare } from "@app/lib/api/viz/authorized_file_access";
 import type { FrameSourceReader } from "@app/lib/api/viz/build_frame_bundle";
 import { buildFrameBundle } from "@app/lib/api/viz/build_frame_bundle";
+import { validateFramePodFunctionReferences } from "@app/lib/api/viz/validate_frame_pod_functions";
 import type { Authenticator } from "@app/lib/auth";
 import { executeWithLock } from "@app/lib/lock";
 import type { FileResource } from "@app/lib/resources/file_resource";
@@ -19,8 +20,12 @@ export type PublishFrameErrorCode =
   | "build_failed"
   | "entry_not_found"
   | "internal"
+  | "invalid_pod_function_input"
   | "invalid_syntax"
-  | "not_interactive_content";
+  | "not_interactive_content"
+  | "pod_function_not_found"
+  | "pod_function_schema_invalid"
+  | "pod_scope_not_found";
 
 export class PublishFrameError extends Error {
   constructor(
@@ -48,24 +53,29 @@ function shouldValidate(relPath: string): boolean {
  *    only files reachable from the entry are pulled from the mount. A validating wrapper checks
  *    each file as it loads: TS/JSX syntax errors are blocking, Tailwind warnings are not and are
  *    returned to the caller. Files in the mount that the frame does not import are never touched.
- * 2. Store the bundle as the processed (rendered) version and record the root in metadata, which
- *    flips {@link FileResource.getRenderableVersion} to "processed".
+ * 2. Validate Pod function references and inputs before writing.
  * 3. Refresh the canonical source from the entry so MCP retrieve and the render fallback match.
- * 4. Recompute the authorized-file allowlist against the rendered bundle.
+ * 4. Store the bundle as the processed (rendered) version and record the root and entry in
+ *    metadata, which flips {@link FileResource.getRenderableVersion} to "processed".
+ * 5. Recompute the authorized-file allowlist against the rendered bundle.
  *
  * `reader` is injected (rather than a `DustFileSystem`) so this stays unit-testable with an
- * in-memory tree. The handler wires `createMountFrameSourceReader`.
+ * in-memory tree. The handler wires `createMountFrameSourceReader`. `entryRelPath` is resolved by
+ * the caller, not derived here from `file.fileName` (see `frameEntryRelPath` on
+ * `FileUseCaseMetadata` for why).
  */
 export async function publishFrame(
   auth: Authenticator,
   {
     file,
     reader,
+    entryRelPath,
     rootScopedPath,
     publishedByAgentConfigurationId,
   }: {
     file: FileResource;
     reader: FrameSourceReader;
+    entryRelPath: string;
     rootScopedPath: string;
     publishedByAgentConfigurationId?: string;
   }
@@ -114,7 +124,7 @@ export async function publishFrame(
       };
 
       const buildResult = await buildFrameBundle({
-        entryRelPath: file.fileName,
+        entryRelPath,
         reader: validatingReader,
       });
 
@@ -150,20 +160,38 @@ export async function publishFrame(
         }
       }
 
-      // 2. Refresh the canonical source from the entry so MCP retrieve and the render fallback
+      // 2. Validate Pod function calls before writing.
+      const podFunctionValidation = await validateFramePodFunctionReferences(
+        auth,
+        {
+          file,
+          sources: cache,
+        }
+      );
+      if (podFunctionValidation.isErr()) {
+        return new Err(
+          new PublishFrameError(
+            podFunctionValidation.error.code,
+            podFunctionValidation.error.message
+          )
+        );
+      }
+
+      // 3. Refresh the canonical source from the entry so MCP retrieve and the render fallback
       //    stay in sync with what was published (the entry is always read during the build).
-      const entrySource = cache.get(file.fileName);
+      const entrySource = cache.get(entryRelPath);
       if (entrySource !== undefined) {
         await file.uploadContent(auth, entrySource);
       }
 
-      // 3. Store the bundle as the rendered version and mark the frame published.
+      // 4. Store the bundle as the rendered version and mark the frame published.
       await file.uploadProcessed(auth, buildResult.value.code);
-      // frameBundleRootPath flips rendering to the bundle, and live edits later reuse it to
-      // relocate the source tree in the mount and rebuild without a model in the loop.
+      // frameBundleRootPath and frameEntryRelPath flip rendering to the bundle and let live
+      // edits rebuild later without a model in the loop.
       await file.setUseCaseMetadata(auth, {
         ...(file.useCaseMetadata ?? {}),
         frameBundleRootPath: rootScopedPath,
+        frameEntryRelPath: entryRelPath,
         ...(publishedByAgentConfigurationId
           ? {
               lastEditedByAgentConfigurationId: publishedByAgentConfigurationId,
@@ -171,7 +199,7 @@ export async function publishFrame(
           : {}),
       });
 
-      // 4. Recompute the allowlist against the rendered bundle.
+      // 5. Recompute the allowlist against the rendered bundle.
       const allowlist = await ensureAuthorizedFileAccessForShare(auth, file);
       if (allowlist.isErr()) {
         return new Err(

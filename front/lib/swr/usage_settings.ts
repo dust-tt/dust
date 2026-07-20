@@ -22,7 +22,7 @@ import { mutate } from "swr";
 import { z } from "zod";
 
 const GetDefaultUserSpendLimitResponseSchema = z.object({
-  awuCredits: z.number().int().nullable(),
+  awuCredits: z.number().int(),
 });
 
 const PutDefaultUserSpendLimitResponseSchema = z.object({
@@ -332,7 +332,7 @@ export function useUpdateDefaultUserSpendLimit({
 // Programmatic usage limit
 
 const GetProgrammaticUsageLimitResponseSchema = z.object({
-  monthlyCapCredits: z.number().int().nullable(),
+  monthlyCapCredits: z.number().int(),
 });
 
 function programmaticUsageLimitUrl(workspaceId: string): string {
@@ -375,7 +375,7 @@ export function useUpdateProgrammaticUsageLimit({
 
   const doUpdateProgrammaticUsageLimit = useCallback(
     async (
-      monthlyCapCredits: number | null
+      monthlyCapCredits: number
     ): Promise<PutProgrammaticUsageLimitResponseBody | null> => {
       const res = await clientFetch(programmaticUsageLimitUrl(workspaceId), {
         method: "PUT",
@@ -397,7 +397,7 @@ export function useUpdateProgrammaticUsageLimit({
         await res.json()
       );
 
-      if (monthlyCapCredits === null || monthlyCapCredits === 0) {
+      if (monthlyCapCredits === 0) {
         sendNotification({
           type: "success",
           title: "Programmatic access disabled",

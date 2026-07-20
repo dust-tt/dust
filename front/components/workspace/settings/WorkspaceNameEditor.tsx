@@ -79,7 +79,7 @@ export function WorkspaceNameEditor({ owner }: { owner: WorkspaceType }) {
   return (
     <div className="flex items-center justify-between">
       <div className="flex-1">
-        <Page.H variant="h4">Workspace Name</Page.H>
+        <Page.H variant="h5">Workspace Name</Page.H>
         <Page.P variant="secondary">{owner.name}</Page.P>
       </div>
       <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>

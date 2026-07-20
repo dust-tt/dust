@@ -31,6 +31,7 @@ import {
 } from "@app/types/assistant/assistant";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import type { RichMention } from "@app/types/assistant/mentions";
+import type { ModelSelectionType } from "@app/types/assistant/models/types";
 import type { ContentFragmentsType } from "@app/types/content_fragment";
 import type { DataSourceViewContentNode } from "@app/types/data_source_view";
 import { isEqualNode } from "@app/types/data_source_view";
@@ -43,6 +44,7 @@ import React, {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from "react";
 
@@ -55,7 +57,8 @@ interface InputBarProps {
     input: string,
     mentions: RichMention[],
     contentFragments: ContentFragmentsType,
-    selectedMCPServerViewIds?: string[]
+    selectedMCPServerViewIds?: string[],
+    modelSelection?: ModelSelectionType
   ) => Promise<Result<undefined, DustError>>;
   draftKey: string;
   conversation?: ConversationWithoutContentType;
@@ -63,6 +66,7 @@ interface InputBarProps {
   stickyMentions?: RichMention[];
   defaultAgentId?: string | null;
   isDefaultAgentLoading?: boolean;
+  lastRequestedModel?: ModelSelectionType | null;
   defaultSkills?: InputBarContainerProps["defaultSkills"];
   isDefaultSkillsLoading?: boolean;
   actions?: InputBarContainerProps["actions"];
@@ -92,6 +96,7 @@ export const InputBar = React.memo(function InputBar({
   stickyMentions,
   defaultAgentId,
   isDefaultAgentLoading,
+  lastRequestedModel = null,
   defaultSkills,
   isDefaultSkillsLoading,
   actions = DEFAULT_INPUT_BAR_ACTIONS,
@@ -115,6 +120,17 @@ export const InputBar = React.memo(function InputBar({
   const [attachedNodes, setAttachedNodes] = useState<
     DataSourceViewContentNode[]
   >([]);
+
+  // Latest model-picker selection, kept in a ref so the picker's change events
+  // don't re-render the whole input bar; read at submit time. `undefined` means
+  // no override (run the agent's configured model).
+  const modelSelectionRef = useRef<ModelSelectionType | undefined>(undefined);
+  const handleModelSelectionChange = useCallback(
+    (modelSelection: ModelSelectionType | undefined) => {
+      modelSelectionRef.current = modelSelection;
+    },
+    []
+  );
 
   const {
     getAndClearSelectedAgent,
@@ -350,7 +366,8 @@ export const InputBar = React.memo(function InputBar({
           },
           // Only send the selectedMCPServerViewIds if we are creating a new conversation.
           // Once the conversation is created, the selectedMCPServerViewIds will be updated in the conversationTools hook.
-          selectedMCPServerViews.map((sv) => sv.sId)
+          selectedMCPServerViews.map((sv) => sv.sId),
+          modelSelectionRef.current
         );
 
         if (r.isOk()) {
@@ -366,17 +383,25 @@ export const InputBar = React.memo(function InputBar({
       setIsLocalSubmitting(true);
 
       try {
-        const submitPromise = onSubmit(markdown, mentions, {
-          uploaded: fileUploaderService.getFileBlobs().map((cf) => {
-            return {
-              title: cf.filename,
-              fileId: cf.fileId,
-              contentType: cf.contentType,
-              url: cf.sourceUrl,
-            };
-          }),
-          contentNodes: attachedNodes,
-        });
+        const submitPromise = onSubmit(
+          markdown,
+          mentions,
+          {
+            uploaded: fileUploaderService.getFileBlobs().map((cf) => {
+              return {
+                title: cf.filename,
+                fileId: cf.fileId,
+                contentType: cf.contentType,
+                url: cf.sourceUrl,
+              };
+            }),
+            contentNodes: attachedNodes,
+          },
+          // Existing conversation: MCP server views are synced via the
+          // conversationTools hook, so only the model selection is passed here.
+          undefined,
+          modelSelectionRef.current
+        );
 
         // Execute these operations in parallel with the submission.
         resetEditorText();
@@ -503,6 +528,7 @@ export const InputBar = React.memo(function InputBar({
             stickyMentions={stickyMentions}
             defaultAgentId={defaultAgentId}
             isDefaultAgentLoading={isDefaultAgentLoading}
+            lastRequestedModel={lastRequestedModel}
             defaultSkills={defaultSkills}
             isDefaultSkillsLoading={isDefaultSkillsLoading}
             fileUploaderService={fileUploaderService}
@@ -515,6 +541,7 @@ export const InputBar = React.memo(function InputBar({
             onNodeUnselect={handleNodesAttachmentRemove}
             selectedMCPServerViews={selectedMCPServerViews}
             onMCPServerViewSelect={handleMCPServerViewSelect}
+            onModelSelectionChange={handleModelSelectionChange}
             onMCPServerViewDeselect={handleMCPServerViewDeselect}
             onResetMCPServerViews={handleResetMCPServerViews}
             isAgentBuilder={isAgentBuilder}

@@ -25,7 +25,6 @@ import { validate } from "@front-api/middlewares/validator";
 import { workspaceAuth } from "@front-api/middlewares/workspace_auth";
 import { escape } from "html-escaper";
 import { z } from "zod";
-import advancedModels from "./advanced_models";
 import analytics from "./analytics";
 import assistant from "./assistant";
 import auditLogs from "./audit-logs";
@@ -48,6 +47,7 @@ import featureFlags from "./feature-flags";
 import files from "./files";
 import googleDrivePickerToken from "./google_drive/picker_token";
 import googleDriveSearchForAuthorization from "./google_drive/search_for_authorization";
+import governancePermissions from "./governance-permissions";
 import groups from "./groups";
 import invitations from "./invitations";
 import keys from "./keys";
@@ -56,6 +56,7 @@ import mcp from "./mcp";
 import me from "./me";
 import members from "./members";
 import metronome from "./metronome";
+import modelTiers from "./model_tiers";
 import models from "./models";
 import oauthSetup from "./oauth/[provider]/setup";
 import pods from "./pods";
@@ -200,6 +201,10 @@ const WorkspaceAuditLogsUpdateBodySchema = z.object({
   disableAuditLogs: z.boolean(),
 });
 
+const WorkspaceAnalyticsUpdateBodySchema = z.object({
+  disableWorkspaceAnalytics: z.boolean(),
+});
+
 const WorkspaceSlackPersonalFooterRemovalUpdateBodySchema = z.object({
   slackPersonalAllowFooterRemoval: z.boolean(),
 });
@@ -234,6 +239,7 @@ const PostWorkspaceRequestBodySchema = z.union([
   WorkspaceReinforcementCapAwuCreditsUpdateBodySchema,
   WorkspaceSelfImprovementCapPerSkillAwuCreditsUpdateBodySchema,
   WorkspaceAuditLogsUpdateBodySchema,
+  WorkspaceAnalyticsUpdateBodySchema,
   WorkspaceDefaultAgentUpdateBodySchema,
   WorkspaceSlackPersonalFooterRemovalUpdateBodySchema,
 ]);
@@ -656,6 +662,23 @@ app.post(
           enabled: String(!body.disableAuditLogs),
         },
       });
+    } else if ("disableWorkspaceAnalytics" in body) {
+      const previousMetadata = owner.metadata ?? {};
+      const newMetadata = {
+        ...previousMetadata,
+        disableWorkspaceAnalytics: body.disableWorkspaceAnalytics,
+      };
+      await workspace.updateWorkspaceSettings({ metadata: newMetadata });
+      owner.metadata = newMetadata;
+      void emitAuditLogEvent({
+        auth,
+        action: "workspace.analytics_updated",
+        targets: [buildAuditLogTarget("workspace", owner)],
+        context: getAuditLogContext(auth),
+        metadata: {
+          enabled: String(!body.disableWorkspaceAnalytics),
+        },
+      });
     } else if ("workspaceDefaultAgentId" in body) {
       if (!(await hasFeatureFlag(auth, "workspace_default_agent"))) {
         return apiError(ctx, {
@@ -751,7 +774,7 @@ app.post(
 // Sub-apps using the catch-all default + the partial-subtree exception
 // targets declared above.
 app.route("/analytics", analytics);
-app.route("/advanced_models", advancedModels);
+app.route("/model_tiers", modelTiers);
 app.route("/assistant", assistant);
 app.route("/audit-logs", auditLogs);
 app.route("/billing", billing);
@@ -773,6 +796,7 @@ app.route(
   "/google_drive/search_for_authorization",
   googleDriveSearchForAuthorization
 );
+app.route("/governance-permissions", governancePermissions);
 app.route("/groups", groups);
 app.route("/invitations", invitations);
 app.route("/keys", keys);

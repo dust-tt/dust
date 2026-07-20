@@ -9,7 +9,7 @@ import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definitio
 import { makePersonalAuthenticationError } from "@app/lib/actions/mcp_internal_actions/utils";
 import {
   isAgentLoopRunContext,
-  type ToolContextType,
+  type ToolContext,
 } from "@app/lib/actions/types";
 import { SLACK_SEARCH_ACTION_NUM_RESULTS } from "@app/lib/actions/utils";
 import {
@@ -24,6 +24,7 @@ import {
   executeScheduleMessage,
   executeSearchChannels,
   executeSearchUser,
+  executeSetUserStatus,
   executeWriteCanvas,
   getSlackClient,
   isSlackMissingScope,
@@ -370,7 +371,7 @@ export interface SlackPersonalToolsResult {
 export function createSlackPersonalTools(
   auth: Authenticator,
   mcpServerId: string,
-  toolContext?: ToolContextType
+  toolContext?: ToolContext
 ): SlackPersonalToolsResult {
   const allowFooterRemoval =
     auth.workspace()?.metadata?.slackPersonalAllowFooterRemoval ?? false;
@@ -1036,6 +1037,171 @@ export function createSlackPersonalTools(
         }
         return new Err(
           new MCPError(`Error archiving channel: ${normalizeError(error)}`)
+        );
+      }
+    },
+    set_user_status: async (
+      { status_text, status_emoji, status_expiration },
+      { authInfo }
+    ) => {
+      const accessToken = authInfo?.token;
+      if (!accessToken) {
+        return new Ok(makePersonalAuthenticationError("slack_tools").content);
+      }
+
+      try {
+        const result = await executeSetUserStatus({
+          accessToken,
+          statusText: status_text,
+          statusEmoji: status_emoji,
+          statusExpiration: status_expiration,
+        });
+        if (result.isErr()) {
+          if (isSlackMissingScope(result.error)) {
+            return new Ok(
+              makePersonalAuthenticationError("slack_tools").content
+            );
+          }
+          return new Err(
+            new MCPError(`Failed to set Slack status: ${result.error}`)
+          );
+        }
+        const displayText =
+          status_text || status_emoji
+            ? `Status set to ${[status_emoji, status_text].filter(Boolean).join(" ")}`
+            : "Status cleared";
+        return new Ok([{ type: "text" as const, text: displayText }]);
+      } catch (error) {
+        const authError = handleSlackAuthError(error);
+        if (authError) {
+          return authError;
+        }
+        return new Err(
+          new MCPError(`Error setting status: ${normalizeError(error)}`)
+        );
+      }
+    },
+
+    add_reaction: async ({ channel, timestamp, name }, { authInfo }) => {
+      const accessToken = authInfo?.token;
+      if (!accessToken) {
+        return new Err(new MCPError("Access token not found"));
+      }
+
+      const slackClient = await getSlackClient(accessToken);
+
+      try {
+        const response = await slackClient.reactions.add({
+          channel,
+          timestamp,
+          name,
+        });
+
+        if (!response.ok) {
+          return new Err(
+            new MCPError(`Error adding reaction: ${response.error}`)
+          );
+        }
+
+        return new Ok([
+          {
+            type: "text" as const,
+            text: `Successfully added :${name}: reaction to message`,
+          },
+        ]);
+      } catch (error) {
+        const authError = handleSlackAuthError(error);
+        if (authError) {
+          return authError;
+        }
+        return new Err(
+          new MCPError(`Error adding reaction: ${normalizeError(error)}`)
+        );
+      }
+    },
+
+    remove_reaction: async ({ channel, timestamp, name }, { authInfo }) => {
+      const accessToken = authInfo?.token;
+      if (!accessToken) {
+        return new Err(new MCPError("Access token not found"));
+      }
+
+      const slackClient = await getSlackClient(accessToken);
+
+      try {
+        const response = await slackClient.reactions.remove({
+          channel,
+          timestamp,
+          name,
+        });
+
+        if (!response.ok) {
+          return new Err(
+            new MCPError(`Error removing reaction: ${response.error}`)
+          );
+        }
+
+        return new Ok([
+          {
+            type: "text" as const,
+            text: `Successfully removed :${name}: reaction from message`,
+          },
+        ]);
+      } catch (error) {
+        const authError = handleSlackAuthError(error);
+        if (authError) {
+          return authError;
+        }
+        return new Err(
+          new MCPError(`Error removing reaction: ${normalizeError(error)}`)
+        );
+      }
+    },
+
+    get_reactions: async ({ channel, timestamp, full }, { authInfo }) => {
+      const accessToken = authInfo?.token;
+      if (!accessToken) {
+        return new Err(new MCPError("Access token not found"));
+      }
+
+      const slackClient = await getSlackClient(accessToken);
+
+      try {
+        const response = await slackClient.reactions.get({
+          channel,
+          timestamp,
+          full,
+        });
+
+        if (!response.ok) {
+          return new Err(
+            new MCPError(`Error getting reactions: ${response.error}`)
+          );
+        }
+
+        const reactions = response.message?.reactions ?? [];
+        if (reactions.length === 0) {
+          return new Ok([
+            { type: "text" as const, text: "No reactions on this message." },
+          ]);
+        }
+
+        const lines = reactions.map((r) => {
+          const count = r.count ?? 0;
+          const users = r.users?.map((u) => `<@${u}>`).join(", ") ?? "";
+          return users
+            ? `:${r.name}: ×${count} — ${users}`
+            : `:${r.name}: ×${count}`;
+        });
+
+        return new Ok([{ type: "text" as const, text: lines.join("\n") }]);
+      } catch (error) {
+        const authError = handleSlackAuthError(error);
+        if (authError) {
+          return authError;
+        }
+        return new Err(
+          new MCPError(`Error getting reactions: ${normalizeError(error)}`)
         );
       }
     },

@@ -10,6 +10,7 @@ import {
   listMetronomePackages,
   type MetronomePackageSummary,
   type PackageSeatConfig,
+  scheduleMetronomeContractEnd,
 } from "@app/lib/metronome/client";
 import {
   AWU_PRIORITY_PURCHASED_COMMIT,
@@ -17,6 +18,8 @@ import {
   CARRY_ON_RENEWAL_CUSTOM_FIELD_KEY,
   CURRENCY_TO_CREDIT_TYPE_ID,
   getCreditTypeAwuId,
+  getProductFreeCreditId,
+  getProductPlatformFeeId,
   getProductPrepaidCommitId,
   getProductSeatSubscriptionCommitId,
   HUBSPOT_DEAL_ID_CUSTOM_FIELD_KEY,
@@ -54,137 +57,24 @@ import { WorkspaceSeatLimitResource } from "@app/lib/resources/workspace_seat_li
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
 import type { SupportedCurrency } from "@app/types/currency";
+import { isMembershipSeatType } from "@app/types/memberships";
+// The request schema is defined in `types/poke/switch_contract.ts` (no
+// server-only imports) so the SwitchContractDialog SPA form can import and
+// reuse the same pieces (payment schedule, scheduled charge shape) without
+// pulling this server-only module into the client bundle. Re-exported here
+// so existing importers of this file are unaffected.
 import {
-  isMembershipSeatType,
-  type MembershipSeatType,
-} from "@app/types/memberships";
+  type SwitchContractBody,
+  SwitchContractBodySchema,
+} from "@app/types/poke/switch_contract";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { LightWorkspaceType } from "@app/types/user";
 import type { ContractEditParams } from "@metronome/sdk/resources/v2/contracts";
-import { z } from "zod";
 
-const paymentScheduleSchema = z
-  .object({
-    frequency: z
-      .enum(["one_time", "monthly", "quarterly", "semi_annually", "annually"])
-      .default("one_time"),
-    periods: z.number().int().min(2).max(60).optional(),
-  })
-  .refine(
-    (s) => s.frequency === "one_time" || s.periods !== undefined,
-    "periods is required when frequency is not one_time"
-  )
-  .default({ frequency: "one_time" });
-
-export const SwitchContractBodySchema = z.object({
-  planCode: z.string().min(1),
-  metronomePackageId: z.string().min(1),
-  // ISO timestamp. Used only for enterprise-tier switches; any moment is
-  // accepted (including the past — backdating is allowed), and it is ceiled to
-  // the next hour boundary. Omitted for Pro/Business/Free, which swap at the
-  // current hour.
-  startingAt: z.string().optional(),
-  // Optional. Net payment terms in days (e.g. 30 for "Net 30"): how many days
-  // after invoice issuance the invoice is due. Applied to the Metronome
-  // contract and only meaningful with `send_invoice`; ignored when the card on
-  // file is auto-charged. Omitted leaves Metronome's account default in place.
-  netPaymentTermsDays: z.number().int().min(0).max(365).optional(),
-  // Optional: required for paid tiers (pro/business/enterprise), omitted
-  // for free-tier switches where Metronome contracts have no Stripe link.
-  stripeCustomerId: z.string().min(1).optional(),
-  // How Metronome collects Stripe invoices for this customer. Only takes
-  // effect when a Stripe customer is wired in. `charge_automatically` charges
-  // the card on file; `send_invoice` emails the invoice for manual payment.
-  stripeCollectionMethod: z
-    .enum(["charge_automatically", "send_invoice"])
-    .default("charge_automatically"),
-  paygEnabled: z.boolean().default(false),
-  // AWU credits — written directly to `credit_usage_configuration.usageCapCredits`.
-  usageCapCredits: z
-    .number()
-    .int("Usage cap must be an integer number of credits")
-    .min(1, "Usage cap must be at least 1 credit")
-    .optional(),
-  // Optional one-off initial AWU credits granted alongside the switch as a
-  // contract-level prepaid commit (priority 300, same as purchased commits).
-  // Requires a Stripe customer so the commit can be invoiced. `invoiceAmount`
-  // is in the customer's billing currency major units (e.g. dollars / euros).
-  initialCredits: z
-    .object({
-      amountCredits: z
-        .number()
-        .int("Initial credits must be an integer number of credits")
-        .min(1, "Initial credits must be at least 1 credit"),
-      invoiceAmount: z.number().min(0, "Invoice amount must be zero or more"),
-      paymentSchedule: paymentScheduleSchema,
-    })
-    .optional(),
-  // Optional per-seat-type settings for the new contract. `minSeats` is the
-  // billing floor persisted to `workspace_seat_limits`. `rate` is the per-seat
-  // rate in the currency's MAJOR units (dollars / euros), prefilled from the
-  // package override; the server converts it to Metronome's fiat unit (cents
-  // for USD, whole units for EUR) via `metronomeAmount`. When `commitmentPrice`
-  // is set (also in major units), a contract prepaid commit is created granting
-  // `minSeats * rate` of contract credit, invoiced at `commitmentPrice` —
-  // letting the customer prepay the seat commitment at a negotiated (lower)
-  // price. Unknown seat-type keys are ignored.
-  // Optional HubSpot deal ID. Stored on the subscription and forwarded to
-  // Metronome as a custom field so contracts can be joined back to HubSpot deals
-  // for ARR reporting.
-  hubspotDealId: z.string().optional(),
-  // Optional PO number, forwarded to Metronome as a contract-level custom
-  // field for finance reconciliation against the Stripe invoices Metronome
-  // generates for this contract.
-  purchaseOrderId: z.string().optional(),
-  // Optional: when set, memberships that would otherwise stay on `none` after
-  // the seat remap (e.g. legacy members with no explicit seat) are forced onto
-  // this seat type, provided the new contract bills it — preempting the
-  // committed-spare promotion (see `promoteNoneSeatTypesForContract`). Used by
-  // the legacy → Business migration to promote every member to a paid seat
-  // (`pro` for a monthly switch, `pro_yearly` for a yearly one).
-  promoteNoneSeatsTo: z
-    .custom<MembershipSeatType>(isMembershipSeatType)
-    .optional(),
-  // Optional: when set, marks the (future-dated) contract for the legacy →
-  // Business credit migration. At `contract.start`, the webhook converts the
-  // workspace's remaining convertible legacy credits to AWU ($1 = 100 AWU) and
-  // grants this many free AWU per workspace member — computed then, so the
-  // amounts reflect the workspace's state at migration time. Stamped as the
-  // `LEGACY_CREDIT_MIGRATION_CUSTOM_FIELD_KEY` custom field on the contract.
-  legacyMigrationFreeAwuCreditsPerUser: z.number().int().min(0).optional(),
-  seats: z
-    .array(
-      z.object({
-        seatType: z.string(),
-        // Whether the seat is entitled on the new contract. `true` (the default,
-        // for backward compatibility) entitles and configures the seat; `false`
-        // disables a seat the package would otherwise sell. The dialog submits
-        // every known seat so deselections can be turned into disable overrides.
-        selected: z.boolean().default(true),
-        minSeats: z.number().int().min(0, "Min seats must be ≥ 0"),
-        rate: z.number().min(0, "Rate must be ≥ 0"),
-        commitmentPrice: z
-          .number()
-          .min(0, "Commitment price must be ≥ 0")
-          .optional(),
-        paymentSchedule: paymentScheduleSchema,
-      })
-    )
-    .optional(),
-  // Credit usage configuration — written to credit_usage_configuration before
-  // provisioning so a failure aborts cleanly.
-  defaultDiscountPercent: z.number().int().min(0).max(100).default(0),
-  balanceThresholdCredits: z.number().int().min(0).optional(),
-  defaultPoolCapCredits: z.number().int().min(0).optional(),
-  programmaticMonthlyCapCredits: z.number().int().min(0).optional(),
-  autoSeatUpgradeEnabled: z.boolean().default(false),
-  topUpEnabled: z.boolean().default(false),
-  autoInvoiceFinalizationEnabled: z.boolean().default(true),
-});
-
-export type SwitchContractBody = z.infer<typeof SwitchContractBodySchema>;
+export type { SwitchContractBody };
+export { SwitchContractBodySchema };
 
 export type SwitchContractErrorKind =
   // Bad input or precondition not met — handler should return 400.
@@ -395,13 +285,10 @@ async function checkEligibility(
 }
 
 async function resolveStripeCustomer(
-  stripeCustomerId: string | undefined
+  stripeCustomerId: string
 ): Promise<
-  Result<{ resolvedCurrency: SupportedCurrency | null }, SwitchContractError>
+  Result<{ resolvedCurrency: SupportedCurrency }, SwitchContractError>
 > {
-  if (!stripeCustomerId) {
-    return new Ok({ resolvedCurrency: null });
-  }
   const stripeCustomer = await getStripeCustomer(stripeCustomerId);
   if (!stripeCustomer) {
     return new Err(
@@ -422,12 +309,14 @@ async function resolveMetronomeCustomer({
   stripeCollectionMethod,
 }: {
   ownerLight: LightWorkspaceType;
-  stripeCustomerId: string | undefined;
+  // Empty when the contract is to be created with no Stripe billing
+  // provider — passed through as `undefined` so no billing config is set.
+  stripeCustomerId: string;
   stripeCollectionMethod: "charge_automatically" | "send_invoice";
 }): Promise<Result<{ metronomeCustomerId: string }, SwitchContractError>> {
   const result = await ensureMetronomeCustomerForWorkspace({
     workspace: ownerLight,
-    stripeCustomerId,
+    stripeCustomerId: stripeCustomerId || undefined,
     stripeCollectionMethod,
   });
   if (result.isErr()) {
@@ -443,6 +332,9 @@ async function resolveMetronomeCustomer({
 
 async function resolveAndValidatePackage(
   body: SwitchContractBody,
+  // `null` when no Stripe customer is wired in — there's no Stripe currency
+  // to match against, so the package's own currency becomes the contract's
+  // resolved currency instead of being validated against it.
   resolvedCurrency: SupportedCurrency | null
 ): Promise<
   Result<
@@ -450,6 +342,7 @@ async function resolveAndValidatePackage(
       pkg: MetronomePackageSummary;
       pkgSeatByType: Map<string, PackageSeatConfig>;
       packageAlias: string;
+      resolvedCurrency: SupportedCurrency;
     },
     SwitchContractError
   >
@@ -475,8 +368,8 @@ async function resolveAndValidatePackage(
     );
   }
   if (
+    resolvedCurrency !== null &&
     pkg.tier !== "free" &&
-    resolvedCurrency &&
     pkg.currency !== resolvedCurrency
   ) {
     return new Err(
@@ -500,42 +393,23 @@ async function resolveAndValidatePackage(
       )
     );
   }
-  if (body.initialCredits && !resolvedCurrency) {
-    return new Err(
-      new SwitchContractError(
-        "invalid_request",
-        "Initial credits require a Stripe customer to invoice — provide a stripeCustomerId."
-      )
-    );
-  }
-  const hasSeatCommitment = (body.seats ?? []).some(
-    (s) => s.commitmentPrice !== undefined && s.minSeats > 0 && s.rate > 0
-  );
-  if (hasSeatCommitment && !resolvedCurrency) {
-    return new Err(
-      new SwitchContractError(
-        "invalid_request",
-        "Seat commitments require a Stripe customer to invoice — provide a stripeCustomerId."
-      )
-    );
-  }
   const pkgSeatByType = new Map(pkg.seats.map((s) => [s.seatType, s]));
-  for (const seat of body.seats ?? []) {
-    if (!isMembershipSeatType(seat.seatType)) {
+  for (const [seatType, seat] of Object.entries(body.seats)) {
+    if (!isMembershipSeatType(seatType)) {
       continue;
     }
-    const pkgSeat = pkgSeatByType.get(seat.seatType);
+    const pkgSeat = pkgSeatByType.get(seatType);
     if (
       seat.selected &&
       pkgSeat &&
       !pkgSeat.entitled &&
-      seat.seatType !== "free" &&
+      seatType !== "free" &&
       seat.rate <= 0
     ) {
       return new Err(
         new SwitchContractError(
           "invalid_request",
-          `Seat "${seat.seatType}" is not entitled by the selected package and ` +
+          `Seat "${seatType}" is not entitled by the selected package and ` +
             "requires a rate greater than 0 to entitle it."
         )
       );
@@ -550,7 +424,12 @@ async function resolveAndValidatePackage(
       )
     );
   }
-  return new Ok({ pkg, pkgSeatByType, packageAlias });
+  return new Ok({
+    pkg,
+    pkgSeatByType,
+    packageAlias,
+    resolvedCurrency: resolvedCurrency ?? pkg.currency,
+  });
 }
 
 function resolveSwapTiming(
@@ -577,6 +456,24 @@ function resolveSwapTiming(
   });
 }
 
+function resolveContractEndDate(
+  endingAt: string | undefined
+): Result<Date | undefined, SwitchContractError> {
+  if (!endingAt) {
+    return new Ok(undefined);
+  }
+  const requestedEndMs = Date.parse(endingAt);
+  if (Number.isNaN(requestedEndMs)) {
+    return new Err(
+      new SwitchContractError(
+        "invalid_request",
+        "endingAt is not a valid ISO timestamp."
+      )
+    );
+  }
+  return new Ok(new Date(requestedEndMs));
+}
+
 // Persist the per-seat-type billing floors BEFORE provisioning. The
 // provisioning sync clamps each seat's quantity up to its configured
 // `minSeats`, so the floor must already be in `workspace_seat_limits` when
@@ -585,28 +482,28 @@ async function persistSeatFloors(
   workspace: LightWorkspaceType,
   body: SwitchContractBody
 ): Promise<Result<void, SwitchContractError>> {
-  for (const seat of body.seats ?? []) {
-    if (!isMembershipSeatType(seat.seatType)) {
+  for (const [seatType, seat] of Object.entries(body.seats)) {
+    if (!isMembershipSeatType(seatType)) {
       continue;
     }
     if (seat.selected && seat.minSeats > 0) {
       const result = await WorkspaceSeatLimitResource.upsert({
         workspace,
-        seatType: seat.seatType,
+        seatType,
         minSeats: seat.minSeats,
       });
       if (result.isErr()) {
         return new Err(
           new SwitchContractError(
             "metronome_api_error",
-            `Failed to persist seat floor for "${seat.seatType}": ${result.error.message}`
+            `Failed to persist seat floor for "${seatType}": ${result.error.message}`
           )
         );
       }
     } else {
       await WorkspaceSeatLimitResource.remove({
         workspace,
-        seatType: seat.seatType,
+        seatType,
       });
     }
   }
@@ -671,9 +568,8 @@ async function persistCreditConfig(
     paygEnabled: body.paygEnabled,
     usageCapCredits: body.usageCapCredits ?? null,
     balanceThresholdAwuCredits: body.balanceThresholdCredits ?? null,
-    defaultPoolCapAwuCredits: body.defaultPoolCapCredits ?? null,
-    programmaticMonthlyCapAwuCredits:
-      body.programmaticMonthlyCapCredits ?? null,
+    defaultPoolCapAwuCredits: body.defaultPoolCapCredits ?? 0,
+    programmaticMonthlyCapAwuCredits: body.programmaticMonthlyCapCredits ?? 0,
     autoSeatUpgradeEnabled: body.autoSeatUpgradeEnabled,
     topUpEnabled: body.topUpEnabled,
     autoInvoiceFinalizationEnabled: body.autoInvoiceFinalizationEnabled,
@@ -715,11 +611,12 @@ type PostProvisionCtx = {
   metronomeCustomerId: string;
   metronomeContractId: string;
   alignedStart: Date;
+  endingAtDate: Date | undefined;
   ownerLight: LightWorkspaceType;
   workspaceModelId: number;
   workspaceId: string;
   swapAt: "current-hour" | "next-hour";
-  resolvedCurrency: SupportedCurrency | null;
+  resolvedCurrency: SupportedCurrency;
   stripeSubscriptionId: string | null;
   pkg: MetronomePackageSummary;
   pkgSeatByType: Map<string, PackageSeatConfig>;
@@ -742,9 +639,38 @@ async function stepContractEdits({
 }: PostProvisionCtx): Promise<string | null> {
   const addCommits: NonNullable<ContractEditParams["add_commits"]> = [];
   const addOverrides: NonNullable<ContractEditParams["add_overrides"]> = [];
+  const addRecurringCredits: NonNullable<
+    ContractEditParams["add_recurring_credits"]
+  > = [];
+  const addScheduledCharges: NonNullable<
+    ContractEditParams["add_scheduled_charges"]
+  > = [];
+
+  // Optional recurring free AWU credit pool, granted directly on this
+  // contract (not baked into the package) — e.g. the Partner Demo shared
+  // monthly pool. Reuses the "Free Credits" FIXED product; won't be
+  // misclassified as a legacy free credit by `isMetronomeFreeCredit` since
+  // that additionally requires priority 1 and the programmatic-USD credit
+  // type.
+  if (body.recurringFreeCredit) {
+    addRecurringCredits.push({
+      product_id: getProductFreeCreditId(),
+      access_amount: {
+        credit_type_id: getCreditTypeAwuId(),
+        unit_price: body.recurringFreeCredit,
+        quantity: 1,
+      },
+      commit_duration: { value: 1, unit: "PERIODS" },
+      priority: AWU_PRIORITY_PURCHASED_COMMIT,
+      starting_at: floorToHourISO(alignedStart),
+      applicable_product_tags: ["usage"],
+      recurrence_frequency: "MONTHLY",
+      name: `Recurring free credit: ${body.recurringFreeCredit.toLocaleString()} AWU/month`,
+    });
+  }
 
   // Initial credits prepaid commit.
-  if (body.initialCredits && resolvedCurrency) {
+  if (body.initialCredits) {
     const invoiceAmountCents = Math.round(
       body.initialCredits.invoiceAmount * 100
     );
@@ -787,25 +713,52 @@ async function stepContractEdits({
     });
   }
 
+  // Scheduled/one-off charge — a pure invoice line item, no credit grant.
+  if (body.scheduledCharge) {
+    const chargeAmountCents = Math.round(
+      body.scheduledCharge.invoiceAmount * 100
+    );
+    const scheduleItems = buildInvoiceScheduleItems({
+      invoiceAmountCents: chargeAmountCents,
+      resolvedCurrency,
+      alignedStart,
+      paymentSchedule: body.scheduledCharge.paymentSchedule,
+    });
+    addScheduledCharges.push({
+      product_id: getProductPlatformFeeId(),
+      name:
+        body.scheduledCharge.name ??
+        `Platform fee: ${body.scheduledCharge.invoiceAmount.toLocaleString()} ${resolvedCurrency.toUpperCase()}`,
+      schedule: {
+        credit_type_id: CURRENCY_TO_CREDIT_TYPE_ID[resolvedCurrency],
+        schedule_items: scheduleItems.map((item) => ({
+          unit_price: item.unitPrice,
+          quantity: item.quantity,
+          timestamp: floorToHourISO(item.timestamp),
+        })),
+      },
+    });
+  }
+
   // Seat commitment commits and rate overrides.
-  for (const seat of body.seats ?? []) {
-    if (!isMembershipSeatType(seat.seatType)) {
+  for (const [seatType, seat] of Object.entries(body.seats)) {
+    if (!isMembershipSeatType(seatType)) {
       continue;
     }
-    const pkgSeat = pkgSeatByType.get(seat.seatType);
-    const billingFrequency = seat.seatType.endsWith("_yearly")
+    const pkgSeat = pkgSeatByType.get(seatType);
+    const billingFrequency = seatType.endsWith("_yearly")
       ? "ANNUAL"
       : "MONTHLY";
-    const rateNative = resolvedCurrency
-      ? metronomeAmount(Math.round(seat.rate * 100), resolvedCurrency)
-      : seat.rate;
+    const rateNative = metronomeAmount(
+      Math.round(seat.rate * 100),
+      resolvedCurrency
+    );
 
     if (
       seat.selected &&
       seat.commitmentPrice !== undefined &&
       seat.minSeats > 0 &&
       seat.rate > 0 &&
-      resolvedCurrency &&
       pkgSeat
     ) {
       const fiatCreditTypeId = CURRENCY_TO_CREDIT_TYPE_ID[resolvedCurrency];
@@ -856,7 +809,7 @@ async function stepContractEdits({
       pkgSeat.entitled &&
       rateNative !== pkgSeat.defaultRate;
     const needsDisable = !seat.selected && pkgSeat != null && pkgSeat.entitled;
-    if (resolvedCurrency && pkgSeat && (needsEntitle || rateChanged)) {
+    if (pkgSeat && (needsEntitle || rateChanged)) {
       addOverrides.push({
         starting_at: alignedStart.toISOString(),
         type: "OVERWRITE",
@@ -873,7 +826,7 @@ async function stepContractEdits({
           credit_type_id: CURRENCY_TO_CREDIT_TYPE_ID[resolvedCurrency],
         },
       });
-    } else if (resolvedCurrency && pkgSeat && needsDisable) {
+    } else if (pkgSeat && needsDisable) {
       addOverrides.push({
         starting_at: alignedStart.toISOString(),
         type: "OVERWRITE",
@@ -897,7 +850,9 @@ async function stepContractEdits({
   if (
     netPaymentTermsDays === undefined &&
     addCommits.length === 0 &&
-    addOverrides.length === 0
+    addOverrides.length === 0 &&
+    addRecurringCredits.length === 0 &&
+    addScheduledCharges.length === 0
   ) {
     return null;
   }
@@ -910,6 +865,12 @@ async function stepContractEdits({
       : {}),
     ...(addCommits.length > 0 ? { add_commits: addCommits } : {}),
     ...(addOverrides.length > 0 ? { add_overrides: addOverrides } : {}),
+    ...(addRecurringCredits.length > 0
+      ? { add_recurring_credits: addRecurringCredits }
+      : {}),
+    ...(addScheduledCharges.length > 0
+      ? { add_scheduled_charges: addScheduledCharges }
+      : {}),
   });
   if (result.isErr()) {
     return `contract_edits: ${result.error.message}`;
@@ -1034,6 +995,28 @@ async function stepSeatSync({
   return null;
 }
 
+// Optional fixed contract end date (exclusive) — e.g. a term-limited pilot or
+// negotiated agreement. Applied via a dedicated Metronome call
+// (`v1.contracts.updateEndDate`) since it isn't part of `v2.contracts.edit`.
+async function stepScheduleContractEnd({
+  metronomeCustomerId,
+  metronomeContractId,
+  endingAtDate,
+}: PostProvisionCtx): Promise<string | null> {
+  if (!endingAtDate) {
+    return null;
+  }
+  const result = await scheduleMetronomeContractEnd({
+    metronomeCustomerId,
+    contractId: metronomeContractId,
+    endingBefore: endingAtDate,
+  });
+  if (result.isErr()) {
+    return `contract_end_date: ${result.error.message}`;
+  }
+  return null;
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 
 /**
@@ -1051,6 +1034,7 @@ async function stepSeatSync({
  * Post-provision (best-effort — failures collected as warnings):
  *   - Net payment terms, initial credits, pending subscription
  *   - Stripe cancellation schedule, seat configuration, seat remap/sync
+ *   - Contract end date
  *
  * Best-effort fire-and-forget (failure logged, never surfaces):
  *   - PAYG state dispatcher
@@ -1076,15 +1060,19 @@ export async function switchContract({
   const creditConfig =
     await CreditUsageConfigurationResource.fetchByWorkspaceId(auth);
 
-  const stripeResult = await resolveStripeCustomer(body.stripeCustomerId);
-  if (stripeResult.isErr()) {
-    return new Err(stripeResult.error);
+  const stripeCustomerId = body.stripeCustomerId.trim();
+  let stripeResolvedCurrency: SupportedCurrency | null = null;
+  if (stripeCustomerId) {
+    const stripeResult = await resolveStripeCustomer(stripeCustomerId);
+    if (stripeResult.isErr()) {
+      return new Err(stripeResult.error);
+    }
+    stripeResolvedCurrency = stripeResult.value.resolvedCurrency;
   }
-  const { resolvedCurrency } = stripeResult.value;
 
   const customerResult = await resolveMetronomeCustomer({
     ownerLight,
-    stripeCustomerId: body.stripeCustomerId,
+    stripeCustomerId,
     stripeCollectionMethod: body.stripeCollectionMethod,
   });
   if (customerResult.isErr()) {
@@ -1092,17 +1080,27 @@ export async function switchContract({
   }
   const { metronomeCustomerId } = customerResult.value;
 
-  const packageResult = await resolveAndValidatePackage(body, resolvedCurrency);
+  const packageResult = await resolveAndValidatePackage(
+    body,
+    stripeResolvedCurrency
+  );
   if (packageResult.isErr()) {
     return new Err(packageResult.error);
   }
-  const { pkg, pkgSeatByType, packageAlias } = packageResult.value;
+  const { pkg, pkgSeatByType, packageAlias, resolvedCurrency } =
+    packageResult.value;
 
   const timingResult = resolveSwapTiming(body.startingAt);
   if (timingResult.isErr()) {
     return new Err(timingResult.error);
   }
   const { startingAtDate, swapAt } = timingResult.value;
+
+  const endDateResult = resolveContractEndDate(body.endingAt);
+  if (endDateResult.isErr()) {
+    return new Err(endDateResult.error);
+  }
+  const endingAtDate = endDateResult.value;
 
   const workosResult = await ensureWorkOSOrg(ownerLight, pkg.tier);
   if (workosResult.isErr()) {
@@ -1127,6 +1125,11 @@ export async function switchContract({
   if (cancelResult.isErr()) {
     return new Err(cancelResult.error);
   }
+
+  logger.info(
+    { workspaceId: owner.sId, body },
+    "[switch_contract] Provisioning contract with parameters"
+  );
 
   // ─── Provision ────────────────────────────────────────────────────────────
   // Disable the internal seat sync — switchContract always runs its own
@@ -1153,7 +1156,7 @@ export async function switchContract({
     packageAlias,
     startingAt: startingAtDate,
     swapAt,
-    enableStripeBilling: body.stripeCustomerId !== undefined,
+    enableStripeBilling: Boolean(stripeCustomerId),
     planCode: body.planCode,
     fromContractId: currentSubscription?.metronomeContractId ?? undefined,
     enableSeatSync: false,
@@ -1184,6 +1187,7 @@ export async function switchContract({
     metronomeCustomerId,
     metronomeContractId,
     alignedStart,
+    endingAtDate,
     ownerLight,
     workspaceModelId: owner.id,
     workspaceId: owner.sId,
@@ -1208,6 +1212,7 @@ export async function switchContract({
   warn(await stepSeatSync(ctx));
   warn(await stepPendingSubscription(ctx));
   warn(await stepStripeCancellation(ctx));
+  warn(await stepScheduleContractEnd(ctx));
 
   if (warnings.length > 0) {
     return new Err(

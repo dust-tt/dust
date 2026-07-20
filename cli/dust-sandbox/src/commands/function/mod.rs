@@ -128,6 +128,9 @@ pub(crate) async fn spawn_function(
         c.arg(&*runner).arg(subcommand).arg(&handler);
         c
     };
+    // No env_clear: the child inherits dsbx's env verbatim, so per-exec vars
+    // front sets (e.g. DUST_POD_DATABASES_DIR, read by `@dust/pod`) flow
+    // through without dsbx naming each one — pinned by the inheritance tests.
     cmd.env("NODE_PATH", harness_node_path())
         .stdin(if inherit_stdin {
             Stdio::inherit()
@@ -181,10 +184,35 @@ pub(crate) async fn spawn_function(
 /// caller-owned scratch dir. stdout is inherited so the runner's `{ok}` envelope
 /// reaches the caller.
 pub(crate) async fn spawn_build(src: &Path, out_bundle: &Path, out_schema: &Path) -> Result<i32> {
+    // The schema-extraction step imports the built bundle (running its
+    // top-level code) and inherits dsbx's env like function runs do, so a
+    // top-level `db()` call sees the same databases directory at build time.
+    spawn_runner(
+        "build",
+        &[
+            src.as_os_str(),
+            out_bundle.as_os_str(),
+            out_schema.as_os_str(),
+        ],
+        false,
+    )
+    .await
+}
+
+/// Spawn the embedded runner under `bun` for one runner subcommand (`build`, `db-*`).
+/// Dropped to `agent-proxied` via `runuser` whenever dsbx runs privileged, NODE_PATH
+/// prepended with the global npm modules (where drizzle-kit lives in the sandbox image),
+/// stdout inherited so the runner's one-line JSON envelope reaches the caller. Returns the
+/// exit code.
+pub(crate) async fn spawn_runner(
+    subcommand: &str,
+    args: &[&std::ffi::OsStr],
+    inherit_stdin: bool,
+) -> Result<i32> {
     let runner = ensure_runner()?;
     let as_agent = running_as_root();
     if as_agent {
-        // The dropped child must read the runner dsbx wrote as root.
+        // The dropped child must read the runner dsbx wrote as root (0600).
         set_mode(&runner, 0o644)
             .map_err(|e| emit_error(anyhow!("failed to prepare runner: {e}")))?;
     }
@@ -195,23 +223,20 @@ pub(crate) async fn spawn_build(src: &Path, out_bundle: &Path, out_schema: &Path
             .arg(AGENT_USER)
             .arg("--")
             .arg("bun")
-            .arg(&*runner)
-            .arg("build")
-            .arg(src)
-            .arg(out_bundle)
-            .arg(out_schema);
+            .arg(&*runner);
         c
     } else {
         let mut c = Command::new("bun");
-        c.arg(&*runner)
-            .arg("build")
-            .arg(src)
-            .arg(out_bundle)
-            .arg(out_schema);
+        c.arg(&*runner);
         c
     };
+    cmd.arg(subcommand).args(args);
     cmd.env("NODE_PATH", harness_node_path())
-        .stdin(Stdio::null())
+        .stdin(if inherit_stdin {
+            Stdio::inherit()
+        } else {
+            Stdio::null()
+        })
         .stdout(Stdio::inherit())
         .stderr(Stdio::inherit());
 
@@ -334,6 +359,9 @@ mod tests {
     use super::*;
 
     use std::sync::Mutex;
+    // The environment is process-global and `cargo test` runs tests on
+    // parallel threads within one process: any test that reads or mutates env
+    // vars must hold this lock for the whole window where it relies on them.
     static ENV_LOCK: Mutex<()> = Mutex::new(());
 
     #[test]
@@ -356,7 +384,7 @@ mod tests {
     // Run `f` with DUST_FUNCTIONS_DIR pointing at a fresh temp dir (serialized,
     // since the env var is process-global).
     fn with_functions_dir<R>(f: impl FnOnce(&std::path::Path) -> R) -> R {
-        let _guard = ENV_LOCK.lock().unwrap();
+        let _guard = ENV_LOCK.lock().expect("ENV_LOCK poisoned");
         let dir = tempfile::tempdir().expect("tempdir");
         std::env::set_var(FUNCTIONS_DIR_ENV, dir.path());
         let result = f(dir.path());
@@ -393,7 +421,7 @@ mod tests {
 
     #[test]
     fn errors_when_env_missing() {
-        let _guard = ENV_LOCK.lock().unwrap();
+        let _guard = ENV_LOCK.lock().expect("ENV_LOCK poisoned");
         std::env::remove_var(FUNCTIONS_DIR_ENV);
         assert!(resolve_existing("greet").is_err());
     }
@@ -401,14 +429,172 @@ mod tests {
     #[test]
     fn errors_on_bad_name() {
         // A bad name is rejected before the directory is even read.
-        let _guard = ENV_LOCK.lock().unwrap();
+        let _guard = ENV_LOCK.lock().expect("ENV_LOCK poisoned");
         std::env::remove_var(FUNCTIONS_DIR_ENV);
         assert!(resolve_existing("../escape").is_err());
     }
 
+    /// The pod-databases env contract: front sets it per exec, `@dust/pod`
+    /// reads it in the bun child, and dsbx passes it along by plain env
+    /// inheritance — the tests below pin that inheritance.
+    const POD_DATABASES_DIR_ENV: &str = "DUST_POD_DATABASES_DIR";
+
+    /// Restore an env var to its captured original value.
+    fn restore_env(key: &str, original: Option<std::ffi::OsString>) {
+        match original {
+            Some(value) => std::env::set_var(key, value),
+            None => std::env::remove_var(key),
+        }
+    }
+
+    /// The e2e env tests spawn the real embedded runner under `bun`; skip
+    /// gracefully where bun is unavailable (CI installs it before cargo test).
+    fn bun_available() -> bool {
+        std::process::Command::new("bun")
+            .arg("--version")
+            .output()
+            .is_ok()
+    }
+
+    /// Function fixture that turns the bun child's environment into an
+    /// observable output: its schema `description` is a template literal, so
+    /// it is evaluated *inside whichever bun process imports the module*, and
+    /// the schema text that comes back records what DUST_POD_DATABASES_DIR
+    /// looked like in that child — `unset` when absent. Asserting on the
+    /// schema output is therefore asserting on the child's env, from outside.
+    /// `zod` resolves via NODE_PATH (set by the tests to the functions-runner
+    /// package's node_modules).
+    const ENV_PROBE_FIXTURE: &str = r#"import { z } from "zod";
+export const schema = {
+  description: `pod-databases-dir=${process.env.DUST_POD_DATABASES_DIR ?? "unset"}`,
+  input: z.object({}),
+  output: z.object({}),
+};
+export default {
+  fetch() {
+    return new Response("ok");
+  },
+};
+"#;
+
+    const RUNNER_NODE_MODULES: &str =
+        concat!(env!("CARGO_MANIFEST_DIR"), "/functions-runner/node_modules");
+
+    /// End-to-end pin of the env contract's dsbx hop, through the production
+    /// `dsbx function get` path: a var present in dsbx's process env (front
+    /// sets it per exec) must reach the untrusted bun child, where
+    /// `@dust/pod`'s `db()` reads it. spawn_function has no forwarding code —
+    /// the var travels by plain inheritance — so this test is what fails if
+    /// anyone scrubs the child env later (env_clear, a runuser flag): cargo
+    /// runs bun nowhere else.
+    #[tokio::test]
+    // The spawned bun child inherits process-global env, so the env lock must
+    // span the spawn awaits; contending tests just block on the mutex (each
+    // #[tokio::test] runs its own runtime, so no deadlock is possible).
+    #[allow(clippy::await_holding_lock)]
+    async fn function_get_bun_child_inherits_pod_databases_dir() {
+        let _guard = ENV_LOCK.lock().expect("ENV_LOCK poisoned");
+        if !bun_available() {
+            eprintln!("skipping: bun not on PATH");
+            return;
+        }
+        let original_functions_dir = std::env::var_os(FUNCTIONS_DIR_ENV);
+        let original_working_dir = std::env::var_os(FUNCTION_WORKING_DIR_ENV);
+        let original_node_path = std::env::var_os("NODE_PATH");
+        let original_pod_dir = std::env::var_os(POD_DATABASES_DIR_ENV);
+
+        // Stage the probe where resolve_existing() will find it, so
+        // `spawn_function("get", "envprobe", ...)` runs the real runner
+        // against it. `get` prints the probe's schema to stdout — which is
+        // where the child's view of the env comes back out (see
+        // ENV_PROBE_FIXTURE).
+        let dir = tempfile::tempdir().expect("tempdir");
+        std::fs::write(dir.path().join("envprobe.ts"), ENV_PROBE_FIXTURE).expect("fixture");
+        std::env::set_var(FUNCTIONS_DIR_ENV, dir.path());
+        std::env::set_var(FUNCTION_WORKING_DIR_ENV, dir.path());
+        std::env::set_var("NODE_PATH", RUNNER_NODE_MODULES);
+
+        // A var set on dsbx's own process reaches the child by inheritance.
+        std::env::set_var(POD_DATABASES_DIR_ENV, "/custom/pod-databases");
+        let (code, stdout) = spawn_function("get", "envprobe", false, true)
+            .await
+            .expect("spawn get");
+        let stdout = stdout.unwrap_or_default();
+        assert_eq!(code, 0, "runner failed: {stdout}");
+        assert!(
+            stdout.contains("pod-databases-dir=/custom/pod-databases"),
+            "unexpected stdout: {stdout}"
+        );
+
+        // Absent env var: no dsbx-side default, the child sees it unset.
+        // (Empty-string normalization is `@dust/pod`'s job, tested there.)
+        std::env::remove_var(POD_DATABASES_DIR_ENV);
+        let (code, stdout) = spawn_function("get", "envprobe", false, true)
+            .await
+            .expect("spawn get");
+        let stdout = stdout.unwrap_or_default();
+        assert_eq!(code, 0, "runner failed: {stdout}");
+        assert!(
+            stdout.contains("pod-databases-dir=unset"),
+            "unexpected stdout: {stdout}"
+        );
+
+        restore_env(FUNCTIONS_DIR_ENV, original_functions_dir);
+        restore_env(FUNCTION_WORKING_DIR_ENV, original_working_dir);
+        restore_env("NODE_PATH", original_node_path);
+        restore_env(POD_DATABASES_DIR_ENV, original_pod_dir);
+    }
+
+    /// Same pin for the `dsbx function build` path: schema extraction imports
+    /// the just-built bundle in a bun child (running its top-level code), so
+    /// a function calling `db()` at top level must see the same env at build
+    /// time as at run time. Here the probe's env recording comes back through
+    /// the extracted schema file rather than stdout.
+    #[tokio::test]
+    // See function_get_bun_child_inherits_pod_databases_dir: the env lock
+    // intentionally spans the spawn await.
+    #[allow(clippy::await_holding_lock)]
+    async fn build_bun_child_inherits_pod_databases_dir() {
+        let _guard = ENV_LOCK.lock().expect("ENV_LOCK poisoned");
+        if !bun_available() {
+            eprintln!("skipping: bun not on PATH");
+            return;
+        }
+        let original_node_path = std::env::var_os("NODE_PATH");
+        let original_pod_dir = std::env::var_os(POD_DATABASES_DIR_ENV);
+
+        let src_dir = tempfile::tempdir().expect("src tempdir");
+        let src = src_dir.path().join("envprobe.ts");
+        std::fs::write(&src, ENV_PROBE_FIXTURE).expect("fixture");
+        // Outputs go to a separate directory: bun's resolver caches the src
+        // directory's entries during Bun.build, so importing a bundle written
+        // into that same directory afterwards can fail resolution (observed on
+        // macOS with bun 1.3.14).
+        let out_dir = tempfile::tempdir().expect("out tempdir");
+        let out_bundle = out_dir.path().join("out.bundle.js");
+        let out_schema = out_dir.path().join("out.schema.json");
+        std::env::set_var("NODE_PATH", RUNNER_NODE_MODULES);
+        std::env::set_var(POD_DATABASES_DIR_ENV, "/custom/pod-databases");
+
+        // Build's schema extraction imports the built bundle, so the fixture's
+        // description records the env var the build-time bun child saw.
+        let code = spawn_build(&src, &out_bundle, &out_schema)
+            .await
+            .expect("spawn build");
+        assert_eq!(code, 0);
+        let schema = std::fs::read_to_string(&out_schema).expect("schema file");
+        assert!(
+            schema.contains("pod-databases-dir=/custom/pod-databases"),
+            "unexpected schema: {schema}"
+        );
+
+        restore_env("NODE_PATH", original_node_path);
+        restore_env(POD_DATABASES_DIR_ENV, original_pod_dir);
+    }
+
     #[test]
     fn uses_default_function_working_dir() {
-        let _guard = ENV_LOCK.lock().unwrap();
+        let _guard = ENV_LOCK.lock().expect("ENV_LOCK poisoned");
         let original_working_dir = std::env::var_os(FUNCTION_WORKING_DIR_ENV);
 
         std::env::remove_var(FUNCTION_WORKING_DIR_ENV);
@@ -424,7 +610,7 @@ mod tests {
 
     #[test]
     fn allows_function_working_dir_override() {
-        let _guard = ENV_LOCK.lock().unwrap();
+        let _guard = ENV_LOCK.lock().expect("ENV_LOCK poisoned");
         let original_working_dir = std::env::var_os(FUNCTION_WORKING_DIR_ENV);
         let working_dir = tempfile::tempdir().expect("working dir tempdir");
 

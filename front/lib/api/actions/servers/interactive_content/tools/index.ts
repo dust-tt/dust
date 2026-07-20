@@ -7,10 +7,13 @@ import type {
 import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import {
   isAgentLoopRunContext,
-  type ToolContextType,
+  type ToolContext,
 } from "@app/lib/actions/types";
 import { buildInteractiveContentFileNotification } from "@app/lib/api/actions/servers/interactive_content/helpers";
-import { INTERACTIVE_CONTENT_TOOLS_METADATA } from "@app/lib/api/actions/servers/interactive_content/metadata";
+import {
+  EDIT_INTERACTIVE_CONTENT_FILE_TOOL_NAME,
+  INTERACTIVE_CONTENT_TOOLS_METADATA,
+} from "@app/lib/api/actions/servers/interactive_content/metadata";
 import { fetchTemplateContent } from "@app/lib/api/actions/servers/interactive_content/template_utils";
 import { DustFileSystem } from "@app/lib/api/file_system";
 import {
@@ -22,6 +25,7 @@ import {
   revertClientExecutableFileChanges,
 } from "@app/lib/api/files/client_executable";
 import { formatValidationWarningsForLLM } from "@app/lib/api/files/content_validation";
+import { splitFrameEntryScopedPath } from "@app/lib/api/files/mount_path";
 import { exportInteractiveContentFileAsPdf } from "@app/lib/api/files/pdf_export";
 import { screenshotInteractiveContentFile } from "@app/lib/api/files/screenshot";
 import { createMountFrameSourceReader } from "@app/lib/api/viz/build_frame_bundle";
@@ -35,7 +39,7 @@ import assert from "assert";
 
 export async function createInteractiveContentTools(
   auth: Authenticator,
-  toolContext?: ToolContextType
+  toolContext?: ToolContext
 ): Promise<ToolDefinition[]> {
   const handlers: ToolHandlers<typeof INTERACTIVE_CONTENT_TOOLS_METADATA> = {
     create_interactive_content_file: async (
@@ -394,8 +398,15 @@ export async function createInteractiveContentTools(
         );
       }
 
-      // Resolve the Computer mount that holds the Frame's source files.
-      const fsResult = await DustFileSystem.fromScopedPath(auth, path);
+      const splitResult = splitFrameEntryScopedPath(path);
+      if (splitResult.isErr()) {
+        return new Err(
+          new MCPError(splitResult.error.message, { tracked: false })
+        );
+      }
+      const { root, entryRelPath } = splitResult.value;
+
+      const fsResult = await DustFileSystem.fromScopedPath(auth, root);
       if (fsResult.isErr()) {
         return new Err(
           new MCPError(fsResult.error.message, { tracked: false })
@@ -404,8 +415,9 @@ export async function createInteractiveContentTools(
 
       const result = await publishFrame(auth, {
         file,
-        reader: createMountFrameSourceReader(fsResult.value, path),
-        rootScopedPath: path,
+        reader: createMountFrameSourceReader(fsResult.value, root),
+        entryRelPath,
+        rootScopedPath: root,
         publishedByAgentConfigurationId: agentConfiguration?.sId,
       });
       if (result.isErr()) {
@@ -440,5 +452,27 @@ export async function createInteractiveContentTools(
     },
   };
 
-  return buildTools(INTERACTIVE_CONTENT_TOOLS_METADATA, handlers);
+  const tools = buildTools(INTERACTIVE_CONTENT_TOOLS_METADATA, handlers);
+
+  // The file-id edit tool is deprecated in favor of editing the Frame's mounted source by path
+  // with the files server, then publishing. Conversations without the file system (created
+  // before it defaulted on) have no path tools, so they keep it.
+  //
+  // The file-id retrieve tool stays everywhere, including file-system conversations: unlike
+  // edit, it reads the canonical original directly by FileResource id rather than through the
+  // mount, so it still works for a Frame whose mountFilePath hasn't been resolved (e.g. one
+  // predating the mount system that has not gone through the backfill). The path-based files
+  // tools have no fallback for that case (files.resolve and the mount read both require
+  // mountFilePath to be set), so removing retrieve would leave such a Frame unreadable.
+  const { runContext } = toolContext ?? {};
+  const conversation = isAgentLoopRunContext(runContext)
+    ? runContext.conversation
+    : toolContext?.listToolsContext?.conversation;
+  if (conversation?.metadata?.useFileSystem === true) {
+    return tools.filter(
+      (tool) => tool.name !== EDIT_INTERACTIVE_CONTENT_FILE_TOOL_NAME
+    );
+  }
+
+  return tools;
 }

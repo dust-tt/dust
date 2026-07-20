@@ -1,3 +1,4 @@
+import { Ok } from "@app/types/shared/result";
 import { PassThrough, Readable } from "stream";
 import { vi } from "vitest";
 
@@ -10,6 +11,13 @@ export interface SaveFileCall {
   filePath: string;
   content: Buffer | string;
   contentType: string | undefined;
+}
+
+// Minimal duck-typed stand-in for the GCS `File` objects `getSortedFileVersions` resolves to.
+// Callers (e.g. FileResource.revert()) only ever call `.copy(dest)` and `.delete()` on them.
+export interface MockFileVersion {
+  copy: (dest: unknown) => Promise<void>;
+  delete: () => Promise<void>;
 }
 
 /**
@@ -25,16 +33,27 @@ export interface SaveFileCall {
  */
 class FileStorageMock {
   private _writeStreamCalls: WriteStreamCall[] = [];
+  private _readStreamCalls: string[] = [];
   private _saveFileCalls: SaveFileCall[] = [];
+  private _objectStore = new Map<string, string>();
+  private _fetchNotFoundPredicate: (filePath: string) => boolean = () => false;
   private _existsPredicate: (filePath: string) => boolean = () => true;
   private _saveShouldFail: (filePath: string) => boolean = () => false;
   private _metadataForPath: (
     filePath: string
   ) => { contentType: string; size: string } | null = () => null;
   private _contentForPath: (filePath: string) => string | null = () => null;
+  private _sortedFileVersions: (filePath: string) => MockFileVersion[] | null =
+    () => null;
+  private _copyFileShouldFail: (src: string, dest: string) => boolean = () =>
+    false;
 
   get writeStreamCalls(): readonly WriteStreamCall[] {
     return this._writeStreamCalls;
+  }
+
+  get readStreamCalls(): readonly string[] {
+    return this._readStreamCalls;
   }
 
   get saveFileCalls(): readonly SaveFileCall[] {
@@ -76,13 +95,58 @@ class FileStorageMock {
     this._contentForPath = fn;
   }
 
+  /**
+   * Controls what `bucket.getSortedFileVersions({ filePath })` resolves to (newest first),
+   * keyed by the file path. Return null (the default) to resolve an empty list, matching "no
+   * previous version available". Reset between tests via `reset()`.
+   */
+  setSortedFileVersions(
+    fn: (filePath: string) => MockFileVersion[] | null
+  ): void {
+    this._sortedFileVersions = fn;
+  }
+
+  /**
+   * Makes `bucket.copyFile(src, dest)` reject for (src, dest) pairs matching the predicate.
+   * Defaults to never failing. Reset between tests via `reset()`.
+   */
+  setCopyFileFails(predicate: (src: string, dest: string) => boolean): void {
+    this._copyFileShouldFail = predicate;
+  }
+
+  /**
+   * Makes `fetchFileContent(path)` throw a GCS-shaped not-found error
+   * (`{ code: 404 }`) for matching paths that were not previously written via
+   * `uploadRawContentToBucket` and have no `setFileContent` override. Enables
+   * write-then-read round-trips against the in-memory object store. Defaults
+   * to never throwing (legacy `"mock content"` fallback). Reset between tests
+   * via `reset()`.
+   */
+  setFetchFileContentNotFound(predicate: (filePath: string) => boolean): void {
+    this._fetchNotFoundPredicate = predicate;
+  }
+
+  /**
+   * Returns the content last written to `filePath` via
+   * `uploadRawContentToBucket`, or undefined if absent (never written or
+   * deleted).
+   */
+  getObject(filePath: string): string | undefined {
+    return this._objectStore.get(filePath);
+  }
+
   reset(): void {
     this._writeStreamCalls.length = 0;
+    this._readStreamCalls.length = 0;
     this._saveFileCalls.length = 0;
+    this._objectStore.clear();
+    this._fetchNotFoundPredicate = () => false;
     this._existsPredicate = () => true;
     this._saveShouldFail = () => false;
     this._metadataForPath = () => null;
     this._contentForPath = () => null;
+    this._sortedFileVersions = () => null;
+    this._copyFileShouldFail = () => false;
   }
 
   /**
@@ -97,6 +161,7 @@ class FileStorageMock {
       withRetryOnTransientGCSError: vi.fn(
         async (operation: () => Promise<unknown>) => operation()
       ),
+      getBucketInstance: vi.fn(createStorage),
       getPrivateUploadBucket: vi.fn(createStorage),
       getPublicUploadBucket: vi.fn(createStorage),
       getUpsertQueueBucket: vi.fn(createStorage),
@@ -110,6 +175,7 @@ class FileStorageMock {
     return {
       copy: vi.fn().mockResolvedValue(undefined),
       createReadStream: vi.fn(() => {
+        this._readStreamCalls.push(filePath ?? "unknown");
         const content = this._contentForPath(filePath ?? "");
         if (content !== null) {
           return Readable.from([Buffer.from(content, "utf8")]);
@@ -125,8 +191,14 @@ class FileStorageMock {
           });
           return new PassThrough();
         }),
-      delete: vi.fn().mockResolvedValue(undefined),
-      download: vi.fn().mockResolvedValue([Buffer.from("", "utf-8")]),
+      delete: vi.fn().mockImplementation(() => {
+        this._objectStore.delete(filePath ?? "unknown");
+        return Promise.resolve(undefined);
+      }),
+      download: vi.fn().mockImplementation(() => {
+        const content = this._objectStore.get(filePath ?? "unknown") ?? "";
+        return Promise.resolve([Buffer.from(content, "utf-8")]);
+      }),
       exists: vi.fn(() =>
         Promise.resolve([this._existsPredicate(filePath ?? "")])
       ),
@@ -155,6 +227,7 @@ class FileStorageMock {
               content,
               contentType: opts?.contentType,
             });
+            this._objectStore.set(path, content.toString());
             return Promise.resolve(undefined);
           }
         ),
@@ -180,15 +253,59 @@ class FileStorageMock {
           return Promise.resolve(undefined);
         }
       ),
-      uploadRawContentToBucket: vi.fn().mockResolvedValue(undefined),
+      uploadRawContentToBucket: vi.fn(
+        (args: { content: string; contentType: string; filePath: string }) => {
+          this._objectStore.set(args.filePath, args.content);
+          this._saveFileCalls.push({
+            filePath: args.filePath,
+            content: args.content,
+            contentType: args.contentType,
+          });
+          return Promise.resolve(undefined);
+        }
+      ),
       uploadSmallRawContentToBucketAsNewFile: vi
         .fn()
         .mockResolvedValue(undefined),
-      fetchFileContent: vi.fn().mockResolvedValue("mock content"),
+      fetchFileContent: vi.fn((filePath: string) => {
+        const stored = this._objectStore.get(filePath);
+        if (stored !== undefined) {
+          return Promise.resolve(stored);
+        }
+        const content = this._contentForPath(filePath);
+        if (content !== null) {
+          return Promise.resolve(content);
+        }
+        if (this._fetchNotFoundPredicate(filePath)) {
+          // Same shape isGCSNotFoundError matches on real GCS ApiErrors.
+          return Promise.reject(
+            Object.assign(new Error(`No such object: ${filePath}`), {
+              code: 404,
+            })
+          );
+        }
+        return Promise.resolve("mock content");
+      }),
       fetchFileBuffer: vi.fn().mockResolvedValue(new Uint8Array()),
-      copyFile: vi.fn().mockResolvedValue(undefined),
-      delete: vi.fn().mockResolvedValue(undefined),
+      copyFile: vi.fn((src: string, dest: string) => {
+        if (this._copyFileShouldFail(src, dest)) {
+          return Promise.reject(
+            new Error(`Simulated GCS copy failure: ${src} -> ${dest}`)
+          );
+        }
+        return Promise.resolve(undefined);
+      }),
+      delete: vi.fn((filePath: string) => {
+        this._objectStore.delete(filePath);
+        return Promise.resolve(undefined);
+      }),
       deleteFiles: vi.fn().mockResolvedValue(undefined),
+      getAllFilesByPrefix: vi
+        .fn()
+        .mockResolvedValue({ files: [], pageFetchCount: 1 }),
+      getSortedFileVersions: vi.fn(({ filePath }: { filePath: string }) =>
+        Promise.resolve(new Ok(this._sortedFileVersions(filePath) ?? []))
+      ),
     };
   }
 }

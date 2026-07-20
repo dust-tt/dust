@@ -1,0 +1,13 @@
+{
+  "action": "workspace.analytics_updated",
+  "targets": [
+    {
+      "type": "workspace"
+    }
+  ],
+  "metadata": {
+    "enabled": "string",
+    "source": "string",
+    "actor_type": "string"
+  }
+}

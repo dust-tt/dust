@@ -50,7 +50,7 @@ export function ChartContainer({
     <>
       <div className="observability-chart-container rounded-lg border border-border bg-background p-4">
         <div className="flex items-center justify-between">
-          <div className="flex items-center justify-between gap-2">
+          <div className="flex shrink-0 items-center justify-between gap-2">
             <h3 className="text-base font-medium text-foreground">{title}</h3>
             {statusChip}
           </div>

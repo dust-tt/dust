@@ -77,6 +77,7 @@ import {
   isRichAgentMention,
   toMentionType,
 } from "@app/types/assistant/mentions";
+import type { ModelSelectionType } from "@app/types/assistant/models/types";
 import { isActiveWakeUp } from "@app/types/assistant/wakeups";
 import type { ContentFragmentsType } from "@app/types/content_fragment";
 import type { Result } from "@app/types/shared/result";
@@ -290,7 +291,7 @@ function buildFirstMessagePlaceholders(
   pending: PendingConversationMessage,
   user: UserType
 ): FirstMessagePlaceholders {
-  const { input, mentions, contentFragments } = pending;
+  const { input, mentions, contentFragments, modelSelection } = pending;
 
   // Empty conversation: ranks start at 0 (no existing messages).
   let rank =
@@ -303,6 +304,7 @@ function buildFirstMessagePlaceholders(
     branchId: null,
     rank,
     contentFragments,
+    requestedModel: modelSelection ?? null,
   });
 
   const agentMessages: VirtuosoMessage[] = [];
@@ -1122,7 +1124,9 @@ export const ConversationViewer = ({
     async (
       input: string,
       mentions: RichMention[],
-      contentFragments: ContentFragmentsType
+      contentFragments: ContentFragmentsType,
+      _selectedMCPServerViewIds?: string[],
+      modelSelection?: ModelSelectionType
     ): Promise<Result<undefined, DustError>> => {
       if (!virtuosoMessageListRef?.current) {
         return new Err({
@@ -1151,6 +1155,7 @@ export const ConversationViewer = ({
             clientSideMCPServerIds ??
             agentBuilderContext?.clientSideMCPServerIds,
           skipToolsValidation: agentBuilderContext?.skipToolsValidation,
+          modelSelection,
         };
 
         const lastMessageRank = Math.max(
@@ -1174,6 +1179,7 @@ export const ConversationViewer = ({
             branchId: null, // We can't know the branch id yet, it will be set when the message is created.
             rank,
             contentFragments,
+            requestedModel: modelSelection ?? null,
           });
 
         // Skip placeholder agent messages if there's already a running agent in the conversation

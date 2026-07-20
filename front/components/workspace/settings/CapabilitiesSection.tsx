@@ -2,13 +2,13 @@ import { AuditLogsToggle } from "@app/components/workspace/settings/AuditLogsTog
 import { DustMcpServerSettingsItem } from "@app/components/workspace/settings/DustMcpServerSettingsItem";
 import { EmailAgentsToggle } from "@app/components/workspace/settings/EmailAgentsToggle";
 import { InteractiveContentSharingToggle } from "@app/components/workspace/settings/InteractiveContentSharingToggle";
-import { OpenProjectsPolicy } from "@app/components/workspace/settings/OpenProjectsPolicy";
+import { OpenPodPolicy } from "@app/components/workspace/settings/OpenProjectsPolicy";
+import { PodKnowledgePolicy } from "@app/components/workspace/settings/PodKnowledgePolicy";
 import { PrivateConversationUrlsToggle } from "@app/components/workspace/settings/PrivateConversationUrlsToggle";
-import { ProjectKnowledgePolicy } from "@app/components/workspace/settings/ProjectKnowledgePolicy";
 import { RestrictAgentsPublishingCapability } from "@app/components/workspace/settings/RestrictAgentsPublishingCapability";
 import { SlackPersonalFooterRemovalToggle } from "@app/components/workspace/settings/SlackPersonalFooterRemovalToggle";
 import { VoiceTranscriptionToggle } from "@app/components/workspace/settings/VoiceTranscriptionToggle";
-import { useAuth, useFeatureFlags } from "@app/lib/auth/AuthContext";
+import { WorkspaceAnalyticsToggle } from "@app/components/workspace/settings/WorkspaceAnalyticsToggle";
 import type { WorkspaceType } from "@app/types/user";
 import { ContextItem, Page } from "@dust-tt/sparkle";
 
@@ -21,27 +21,21 @@ export function CapabilitiesSection({
   owner,
   publishingRestrictionMessage,
 }: CapabilitiesSectionProps) {
-  const { subscription } = useAuth();
-  const { hasFeature } = useFeatureFlags();
-  const hasAuditLogsAccess =
-    subscription.plan.isAuditLogsAllowed || hasFeature("audit_logs");
-
   return (
     <Page.Vertical align="stretch" gap="md">
       <Page.H variant="h4">Capabilities</Page.H>
       <ContextItem.List>
         <div className="h-full border-b border-border" />
         <InteractiveContentSharingToggle owner={owner} />
-        {!subscription.plan.isByok && (
-          <VoiceTranscriptionToggle owner={owner} />
-        )}
-        <OpenProjectsPolicy owner={owner} />
-        <ProjectKnowledgePolicy owner={owner} />
+        <VoiceTranscriptionToggle owner={owner} />
+        <OpenPodPolicy owner={owner} />
+        <PodKnowledgePolicy owner={owner} />
         <EmailAgentsToggle owner={owner} />
         <PrivateConversationUrlsToggle owner={owner} />
         <SlackPersonalFooterRemovalToggle owner={owner} />
+        <WorkspaceAnalyticsToggle owner={owner} />
         <DustMcpServerSettingsItem owner={owner} />
-        {hasAuditLogsAccess && <AuditLogsToggle owner={owner} />}
+        <AuditLogsToggle owner={owner} />
         {publishingRestrictionMessage && (
           <RestrictAgentsPublishingCapability
             subElement={publishingRestrictionMessage}

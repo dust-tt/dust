@@ -1,18 +1,6 @@
-import type { ButtonProps } from "@sparkle/components/Button";
-import { Button, type ButtonVariantType } from "@sparkle/components/Button";
-import { cn } from "@sparkle/lib";
+import { Button, type ButtonProps } from "@sparkle/components/Button";
+import { cn } from "@sparkle/lib/utils";
 import React from "react";
-
-const flexSeparatorVariants: Record<ButtonVariantType, string> = {
-  primary: "bg-background/50",
-  highlight: "bg-background/50",
-  "highlight-secondary": "bg-separator",
-  warning: "bg-background/50",
-  "warning-secondary": "bg-separator",
-  outline: "bg-separator",
-  ghost: "bg-separator",
-  "ghost-secondary": "bg-separator",
-};
 
 export interface FlexSplitButtonProps extends Omit<ButtonProps, "size"> {
   containerClassName?: string;
@@ -34,11 +22,6 @@ const FlexSplitButton = React.forwardRef<
     },
     ref
   ) => {
-    const separatorStyle = variant
-      ? flexSeparatorVariants[variant]
-      : flexSeparatorVariants.primary;
-
-    // Clone the splitAction and disable it when main button is loading
     const clonedSplitAction = React.cloneElement(splitAction, {
       disabled: isLoading || splitAction.props.disabled,
     });
@@ -54,7 +37,9 @@ const FlexSplitButton = React.forwardRef<
           {...buttonProps}
         />
         <span className="absolute right-1 top-1 flex items-center gap-1">
-          <div className={cn("h-4 w-px", separatorStyle)} />
+          {/* Opaque divider: the main button's hover/active overlay sits behind
+              it, so a translucent line would visibly shift on hover. */}
+          <div className="h-4 w-px bg-separator" />
           {clonedSplitAction}
         </span>
       </div>

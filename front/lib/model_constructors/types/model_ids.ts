@@ -1,3 +1,6 @@
+export const GPT_5_6_SOL_MODEL_ID = "gpt-5.6-sol" as const;
+export const GPT_5_6_TERRA_MODEL_ID = "gpt-5.6-terra" as const;
+export const GPT_5_6_LUNA_MODEL_ID = "gpt-5.6-luna" as const;
 export const GPT_5_5_MODEL_ID = "gpt-5.5" as const;
 export const GPT_5_4_MODEL_ID = "gpt-5.4" as const;
 export const GPT_5_4_MINI_MODEL_ID = "gpt-5.4-mini" as const;
@@ -34,6 +37,8 @@ export const FIREWORKS_KIMI_K2_INSTRUCT_MODEL_ID =
   "accounts/fireworks/models/kimi-k2-instruct-0905" as const;
 export const FIREWORKS_KIMI_K2P5_MODEL_ID =
   "accounts/fireworks/models/kimi-k2p5" as const;
+export const FIREWORKS_KIMI_K2P6_MODEL_ID =
+  "accounts/fireworks/models/kimi-k2p6" as const;
 export const FIREWORKS_MINIMAX_M2P5_MODEL_ID =
   "accounts/fireworks/models/minimax-m2p5" as const;
 export const FIREWORKS_GLM_5_MODEL_ID =
@@ -47,6 +52,9 @@ export const NOOP_MODEL_ID = "noop" as const;
 
 // Include a few examples for now
 export const MODEL_IDS = [
+  GPT_5_6_SOL_MODEL_ID,
+  GPT_5_6_TERRA_MODEL_ID,
+  GPT_5_6_LUNA_MODEL_ID,
   GPT_5_5_MODEL_ID,
   GPT_5_4_MODEL_ID,
   GPT_5_4_MINI_MODEL_ID,
@@ -74,6 +82,7 @@ export const MODEL_IDS = [
   FIREWORKS_DEEPSEEK_V4_PRO_MODEL_ID,
   FIREWORKS_KIMI_K2_INSTRUCT_MODEL_ID,
   FIREWORKS_KIMI_K2P5_MODEL_ID,
+  FIREWORKS_KIMI_K2P6_MODEL_ID,
   FIREWORKS_MINIMAX_M2P5_MODEL_ID,
   FIREWORKS_GLM_5_MODEL_ID,
   FIREWORKS_GLM_5P2_MODEL_ID,
@@ -93,6 +102,7 @@ export const ORDERED_LARGE_MODEL_IDS = [
   CLAUDE_OPUS_4_6_MODEL_ID,
   CLAUDE_SONNET_5_MODEL_ID,
   CLAUDE_SONNET_4_6_MODEL_ID,
+  GPT_5_6_SOL_MODEL_ID,
   GPT_5_5_MODEL_ID,
   GPT_5_4_MODEL_ID,
   GPT_5_2_MODEL_ID,

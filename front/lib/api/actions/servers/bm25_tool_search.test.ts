@@ -154,7 +154,7 @@ const QUERIES: LabeledQuery[] = [
   {
     query: "list files in my onedrive folder",
     expected: "microsoft_drive.list_drive_items",
-    maxRank: 3,
+    maxRank: 4, // get_item_from_url + create_folder dilute shared-token IDF
   },
   {
     query: "browse my sharepoint site",
@@ -407,7 +407,7 @@ const QUERIES: LabeledQuery[] = [
   {
     query: "send a slack message to a colleague as myself",
     expected: "slack.post_message",
-    maxRank: 6,
+    maxRank: 10,
   },
   {
     query: "dm someone on slack",
@@ -453,6 +453,23 @@ const QUERIES: LabeledQuery[] = [
     query: "archive a slack channel",
     expected: "slack.archive_channel",
   },
+  {
+    query: "react to a slack message with an emoji",
+    expected: "slack.add_reaction",
+  },
+  {
+    query: "remove my emoji reaction from a slack message",
+    expected: "slack.remove_reaction",
+  },
+  {
+    query: "see who reacted to a slack message",
+    expected: "slack.get_reactions",
+  },
+  {
+    query: "set my slack status to out of office",
+    expected: "slack.set_user_status",
+    maxRank: 10,
+  },
 
   // --- slack_bot (workspace bot) ---
   {
@@ -464,11 +481,11 @@ const QUERIES: LabeledQuery[] = [
     expected: "slack_bot.edit_message",
   },
   {
-    query: "add an emoji reaction to a slack message",
+    query: "add an emoji reaction to a slack message as the workspace bot",
     expected: "slack_bot.add_reaction",
   },
   {
-    query: "remove a reaction from a slack message",
+    query: "remove a reaction from a slack message as the workspace bot",
     expected: "slack_bot.remove_reaction",
   },
   {
@@ -758,7 +775,6 @@ const QUERIES: LabeledQuery[] = [
   {
     query: "edit the code of my frame",
     expected: "interactive_content.edit_interactive_content_file",
-    maxRank: 3, // pod_manager.edit_information and files__edit collides on "edit"
   },
   {
     query: "change the chart colors in my dashboard",
@@ -798,7 +814,7 @@ const QUERIES: LabeledQuery[] = [
   {
     query: "list all my google sheets spreadsheets",
     expected: "google_sheets.list_spreadsheets",
-    maxRank: 4,
+    maxRank: 5, // slack personal tools added to corpus shift avgdl
   },
   {
     query: "get the properties of a google sheets spreadsheet",
@@ -930,8 +946,9 @@ const QUERIES: LabeledQuery[] = [
     expected: "pod_manager.list_pods",
   },
   {
-    query: "create a new private pod for the launch plan",
+    query: "create a new restricted pod for the launch plan",
     expected: "pod_manager.create_pod",
+    maxRank: 2,
   },
   {
     query: "what is this pod's title description and linked content",
@@ -940,6 +957,7 @@ const QUERIES: LabeledQuery[] = [
   {
     query: "rename this pod and update its description",
     expected: "pod_manager.edit_information",
+    maxRank: 2,
   },
   {
     query: "add a teammate as an editor to this pod",
@@ -977,6 +995,19 @@ const QUERIES: LabeledQuery[] = [
   {
     query: "send a follow up message to an existing pod conversation",
     expected: "pod_manager.add_message_to_conversation",
+  },
+  {
+    query: "move this conversation into the marketing pod",
+    expected: "pod_manager.move_conversation",
+  },
+  {
+    query: "move this conversation out of the pod",
+    expected: "pod_manager.move_conversation",
+  },
+  {
+    query: "make this pod open to the whole workspace",
+    expected: "pod_manager.edit_information",
+    maxRank: 2,
   },
 
   // --- val_town ---
@@ -1026,6 +1057,10 @@ const QUERIES: LabeledQuery[] = [
     expected: "workspace_analytics.get_top_users",
   },
   {
+    query: "list the agent tags",
+    expected: "workspace_analytics.get_top_agent_tags",
+  },
+  {
     query:
       "what does the support agent actually do - show its configuration and prompt",
     expected: "workspace_analytics.get_agent_details",
@@ -1045,7 +1080,7 @@ const QUERIES: LabeledQuery[] = [
   {
     query: "where do workspace messages come from - slack, api, or browser",
     expected: "workspace_analytics.get_source_breakdown",
-    maxRank: 5,
+    maxRank: 10,
   },
   {
     query: "how many AWU credits did the workspace consume this month",

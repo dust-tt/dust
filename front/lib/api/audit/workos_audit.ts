@@ -68,6 +68,9 @@ export const AUDIT_ACTIONS = [
   "dust_mcp_server.settings_updated",
   "mcp_connection.created",
   "mcp_connection.deleted",
+  // Skill import GitHub connection.
+  "skill_import_github_connection.created",
+  "skill_import_github_connection.deleted",
   // Projects.
   "project.joined",
   "project.left",
@@ -86,6 +89,7 @@ export const AUDIT_ACTIONS = [
   "sandbox_env_var.updated",
   // Workspace settings.
   "workspace.audit_logs_updated",
+  "workspace.analytics_updated",
   "workspace.advanced_model_access_updated",
   "workspace.default_user_spend_limit_updated",
   "workspace.programmatic_usage_limit_updated",

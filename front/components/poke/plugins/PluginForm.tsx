@@ -267,6 +267,7 @@ export function PluginForm({
                             workspaceId && (
                               <ServerSideSearchEnumSelect
                                 label={arg.label}
+                                allowMultiple={arg.multiple}
                                 onValuesChange={(values) =>
                                   field.onChange(values)
                                 }

@@ -7,8 +7,7 @@ import { getJITServers } from "@app/lib/api/assistant/jit_actions";
 import type { Authenticator } from "@app/lib/auth";
 import { getSupportedModelConfig } from "@app/lib/llms/model_configurations";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
-import { projectsSkill } from "@app/lib/resources/skill/code_defined/global/projects";
-import { sandboxSkill } from "@app/lib/resources/skill/code_defined/global/sandbox";
+import { ProjectMetadataResource } from "@app/lib/resources/project_metadata_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
@@ -18,15 +17,35 @@ import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { FileFactory } from "@app/tests/utils/FileFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { SkillFactory } from "@app/tests/utils/SkillFactory";
+import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import type { ConversationAttachmentType } from "@app/types/api/assistant/conversation/attachments";
 import type { AgentConfigurationType } from "@app/types/assistant/agent";
 import type { ConversationType } from "@app/types/assistant/conversation";
 import type { WorkspaceType } from "@app/types/user";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
 
-function disableAutoEquippedSkills() {
-  vi.spyOn(projectsSkill, "isAutoEquippedForAgentLoop").mockReturnValue(false);
-  vi.spyOn(sandboxSkill, "isAutoEquippedForAgentLoop").mockReturnValue(false);
+function expectSkillBuckets(
+  buckets: {
+    enabledSkills: SkillResource[];
+    systemSkills: SkillResource[];
+    equippedSkills: SkillResource[];
+  },
+  skillId: string,
+  expected: {
+    enabled: boolean;
+    system: boolean;
+    equipped: boolean;
+  }
+) {
+  expect(buckets.enabledSkills.some((s) => s.sId === skillId)).toBe(
+    expected.enabled
+  );
+  expect(buckets.systemSkills.some((s) => s.sId === skillId)).toBe(
+    expected.system
+  );
+  expect(buckets.equippedSkills.some((s) => s.sId === skillId)).toBe(
+    expected.equipped
+  );
 }
 
 describe("getJITServers", () => {
@@ -167,12 +186,8 @@ describe("getJITServers", () => {
     });
 
     describe("when no auto-equipped skills", () => {
-      beforeEach(() => {
-        disableAutoEquippedSkills();
-      });
-
-      afterEach(() => {
-        vi.restoreAllMocks();
+      beforeEach(async () => {
+        await FeatureFlagFactory.basic(auth, "disable_computer_feature");
       });
 
       it("should not include skill_management server when agent has no skills", async () => {
@@ -180,7 +195,7 @@ describe("getJITServers", () => {
 
         const jitServers = await getJITServers(auth, {
           agentConfiguration: agentConfig,
-          conversation,
+          conversation: { ...conversation, spaceId: conversationsSpace.sId },
           attachments: [],
         });
 
@@ -199,7 +214,7 @@ describe("getJITServers", () => {
         });
         const jitServers = await getJITServers(auth, {
           agentConfiguration: agentConfig,
-          conversation,
+          conversation: { ...conversation, spaceId: conversationsSpace.sId },
           attachments: [],
         });
 
@@ -211,7 +226,7 @@ describe("getJITServers", () => {
       });
     });
 
-    it("should return system skills separately from equipped skills", async () => {
+    it("keeps configured custom skills equipped after enabling them, but not system skills", async () => {
       await SkillFactory.linkGlobalSkillToAgent(auth, {
         globalSkillId: "discover_tools",
         agentConfigurationId: agentConfig.id,
@@ -224,18 +239,137 @@ describe("getJITServers", () => {
         skillId: customSkill.id,
         agentConfigurationId: agentConfig.id,
       });
+      await customSkill.enableForAgent(auth, {
+        agentConfiguration: agentConfig,
+        conversation,
+      });
 
-      const { enabledSkills, systemSkills, equippedSkills } =
-        await SkillResource.listForAgentLoop(auth, {
-          agentConfiguration: agentConfig,
-          conversation,
-        });
+      const buckets = await SkillResource.listForAgentLoop(auth, {
+        agentConfiguration: agentConfig,
+        conversation,
+      });
 
-      expect(systemSkills.map((s) => s.sId)).toContain("discover_tools");
-      expect(enabledSkills.map((s) => s.sId)).not.toContain("discover_tools");
-      expect(equippedSkills.map((s) => s.sId)).toContain(customSkill.sId);
-      expect(equippedSkills.map((s) => s.sId)).not.toContain("discover_tools");
+      expectSkillBuckets(buckets, "discover_tools", {
+        enabled: false,
+        system: true,
+        equipped: false,
+      });
+      expectSkillBuckets(buckets, customSkill.sId, {
+        enabled: true,
+        system: false,
+        equipped: true,
+      });
     });
+
+    it("keeps agent-enabled system skills only in system skills", async () => {
+      await SkillFactory.linkGlobalSkillToAgent(auth, {
+        globalSkillId: "discover_tools",
+        agentConfigurationId: agentConfig.id,
+      });
+      const [discoverToolsSkill] = await SkillResource.fetchByIds(
+        auth,
+        ["discover_tools"],
+        { onlyActive: true }
+      );
+      if (!discoverToolsSkill) {
+        throw new Error("Expected discover_tools skill to be available");
+      }
+      await discoverToolsSkill.enableForAgent(auth, {
+        agentConfiguration: agentConfig,
+        conversation,
+      });
+
+      const buckets = await SkillResource.listForAgentLoop(auth, {
+        agentConfiguration: agentConfig,
+        conversation,
+      });
+
+      expectSkillBuckets(buckets, "discover_tools", {
+        enabled: false,
+        system: true,
+        equipped: false,
+      });
+      expect(
+        buckets.systemSkills.filter((s) => s.sId === "discover_tools")
+      ).toHaveLength(1);
+    });
+
+    it("keeps conversation-enabled custom skills enabled only", async () => {
+      const skill = await SkillFactory.create(auth, {
+        name: "Conversation Enabled Skill",
+      });
+      const res = await skill.upsertToConversation(auth, {
+        conversationId: conversation.id,
+        enabled: true,
+      });
+      expect(res.isOk()).toBe(true);
+
+      const buckets = await SkillResource.listForAgentLoop(auth, {
+        agentConfiguration: agentConfig,
+        conversation,
+      });
+
+      expectSkillBuckets(buckets, skill.sId, {
+        enabled: true,
+        system: false,
+        equipped: false,
+      });
+    });
+
+    it("keeps conversation-enabled agent skills enabled and equipped", async () => {
+      const skill = await SkillFactory.create(auth, {
+        name: "Conversation Enabled Agent Skill",
+      });
+      await skill.addToAgent(auth, agentConfig);
+      const res = await skill.upsertToConversation(auth, {
+        conversationId: conversation.id,
+        enabled: true,
+      });
+      expect(res.isOk()).toBe(true);
+
+      const buckets = await SkillResource.listForAgentLoop(auth, {
+        agentConfiguration: agentConfig,
+        conversation,
+      });
+
+      expectSkillBuckets(buckets, skill.sId, {
+        enabled: true,
+        system: false,
+        equipped: true,
+      });
+    });
+
+    it("keeps conversation-enabled system skills system only", async () => {
+      await SkillFactory.linkGlobalSkillToAgent(auth, {
+        globalSkillId: "discover_tools",
+        agentConfigurationId: agentConfig.id,
+      });
+      const [discoverToolsSkill] = await SkillResource.fetchByIds(
+        auth,
+        ["discover_tools"],
+        { onlyActive: true }
+      );
+      if (!discoverToolsSkill) {
+        throw new Error("Expected discover_tools skill to be available");
+      }
+      const res = await discoverToolsSkill.upsertToConversation(auth, {
+        conversationId: conversation.id,
+        enabled: true,
+      });
+      expect(res.isOk()).toBe(true);
+
+      const buckets = await SkillResource.listForAgentLoop(auth, {
+        agentConfiguration: agentConfig,
+        conversation,
+      });
+
+      expectSkillBuckets(buckets, "discover_tools", {
+        enabled: false,
+        system: true,
+        equipped: false,
+      });
+    });
+
     it("filters discoverable skills disabled for the current agent loop", async () => {
       await SkillFactory.linkGlobalSkillToAgent(auth, {
         globalSkillId: "discover_skills",
@@ -315,16 +449,20 @@ describe("getJITServers", () => {
         spaceId: conversationsSpace.sId,
       };
 
-      const { enabledSkills, systemSkills, equippedSkills } =
-        await SkillResource.listForAgentLoop(auth, {
-          agentConfiguration: agentConfig,
-          conversation: conversationInProject,
-        });
+      const buckets = await SkillResource.listForAgentLoop(auth, {
+        agentConfiguration: agentConfig,
+        conversation: conversationInProject,
+      });
 
-      expect(enabledSkills.some((s) => s.sId === "projects")).toBe(false);
-      expect(equippedSkills.some((s) => s.sId === "projects")).toBe(false);
+      expectSkillBuckets(buckets, "projects", {
+        enabled: false,
+        system: true,
+        equipped: false,
+      });
 
-      const projectsSkill = systemSkills.find((s) => s.sId === "projects");
+      const projectsSkill = buckets.systemSkills.find(
+        (s) => s.sId === "projects"
+      );
       expect(projectsSkill).toBeDefined();
       const viewNames = projectsSkill?.mcpServerConfigurations.map((c) => {
         const json = c.view.toJSON();
@@ -333,27 +471,229 @@ describe("getJITServers", () => {
       expect(viewNames).toContain("pod_manager");
     });
 
-    it("should not auto-enable projects skill when conversation is not in a project", async () => {
-      const { enabledSkills, systemSkills } =
-        await SkillResource.listForAgentLoop(auth, {
-          agentConfiguration: agentConfig,
-          conversation,
-        });
+    it("auto-equips but does not auto-enable projects outside a project", async () => {
+      const buckets = await SkillResource.listForAgentLoop(auth, {
+        agentConfiguration: agentConfig,
+        conversation,
+      });
 
-      expect(enabledSkills.some((s) => s.sId === "projects")).toBe(false);
-      expect(systemSkills.some((s) => s.sId === "projects")).toBe(false);
+      expectSkillBuckets(buckets, "projects", {
+        enabled: false,
+        system: false,
+        equipped: true,
+      });
     });
 
-    it("auto-equips the projects skill for any agent", async () => {
-      const { enabledSkills, systemSkills, equippedSkills } =
-        await SkillResource.listForAgentLoop(auth, {
-          agentConfiguration: agentConfig,
-          conversation,
-        });
+    it("does not duplicate auto-equipped projects already configured on the agent", async () => {
+      await SkillFactory.linkGlobalSkillToAgent(auth, {
+        globalSkillId: "projects",
+        agentConfigurationId: agentConfig.id,
+      });
 
-      expect(systemSkills.some((s) => s.sId === "projects")).toBe(false);
-      expect(enabledSkills.some((s) => s.sId === "projects")).toBe(false);
-      expect(equippedSkills.some((s) => s.sId === "projects")).toBe(true);
+      const buckets = await SkillResource.listForAgentLoop(auth, {
+        agentConfiguration: agentConfig,
+        conversation,
+      });
+
+      expectSkillBuckets(buckets, "projects", {
+        enabled: false,
+        system: false,
+        equipped: true,
+      });
+      expect(
+        buckets.equippedSkills.filter((s) => s.sId === "projects")
+      ).toHaveLength(1);
+    });
+
+    it("keeps auto-equipped projects available after it is enabled", async () => {
+      const [projectSkill] = await SkillResource.fetchByIds(
+        auth,
+        ["projects"],
+        { onlyActive: true }
+      );
+      expect(projectSkill).toBeDefined();
+      await projectSkill?.enableForAgent(auth, {
+        agentConfiguration: agentConfig,
+        conversation,
+      });
+
+      const buckets = await SkillResource.listForAgentLoop(auth, {
+        agentConfiguration: agentConfig,
+        conversation,
+      });
+
+      expectSkillBuckets(buckets, "projects", {
+        enabled: true,
+        system: false,
+        equipped: true,
+      });
+    });
+
+    it("keeps auto-enabled projects out of enabled and equipped after it is enabled", async () => {
+      const conversationInProject = {
+        ...conversation,
+        spaceId: conversationsSpace.sId,
+      };
+      const [projectSkill] = await SkillResource.fetchByIds(
+        auth,
+        ["projects"],
+        { onlyActive: true }
+      );
+      expect(projectSkill).toBeDefined();
+      await projectSkill?.enableForAgent(auth, {
+        agentConfiguration: agentConfig,
+        conversation: conversationInProject,
+      });
+
+      const buckets = await SkillResource.listForAgentLoop(auth, {
+        agentConfiguration: agentConfig,
+        conversation: conversationInProject,
+      });
+
+      expectSkillBuckets(buckets, "projects", {
+        enabled: false,
+        system: true,
+        equipped: false,
+      });
+    });
+
+    it("keeps auto-enabled projects out of discoverable equipped skills in a project", async () => {
+      await SkillFactory.linkGlobalSkillToAgent(auth, {
+        globalSkillId: "discover_skills",
+        agentConfigurationId: agentConfig.id,
+      });
+
+      const buckets = await SkillResource.listForAgentLoop(auth, {
+        agentConfiguration: agentConfig,
+        conversation: {
+          ...conversation,
+          spaceId: conversationsSpace.sId,
+        },
+      });
+
+      expectSkillBuckets(buckets, "projects", {
+        enabled: false,
+        system: true,
+        equipped: false,
+      });
+      expect(
+        buckets.equippedSkills.filter((s) => s.sId === "projects")
+      ).toHaveLength(0);
+    });
+
+    it("keeps mixed system, enabled, and equipped sources in the right buckets", async () => {
+      const projectSpace = await SpaceFactory.project(
+        workspace,
+        auth.getNonNullableUser().id
+      );
+      await auth.refresh();
+      const projectConversation = await ConversationFactory.create(auth, {
+        agentConfigurationId: agentConfig.sId,
+        messagesCreatedAt: [],
+        spaceId: projectSpace.id,
+      });
+
+      const podDefaultSkill = await SkillFactory.create(auth, {
+        name: "A Pod Default Skill",
+      });
+      const enabledPodDefaultSkill = await SkillFactory.create(auth, {
+        name: "B Enabled Pod Default Skill",
+      });
+      const enabledOnlySkill = await SkillFactory.create(auth, {
+        name: "C Enabled Only Skill",
+      });
+      const agentSkill = await SkillFactory.create(auth, {
+        name: "D Agent Skill",
+      });
+
+      const metadata = await ProjectMetadataResource.makeNew(
+        auth,
+        projectSpace,
+        { description: "d" }
+      );
+      await metadata.setDefaultSkills(auth, [
+        podDefaultSkill,
+        enabledPodDefaultSkill,
+      ]);
+      await SkillFactory.linkGlobalSkillToAgent(auth, {
+        globalSkillId: "discover_tools",
+        agentConfigurationId: agentConfig.id,
+      });
+      await agentSkill.addToAgent(auth, agentConfig);
+      await enabledOnlySkill.enableForAgent(auth, {
+        agentConfiguration: agentConfig,
+        conversation: projectConversation,
+      });
+      await enabledPodDefaultSkill.enableForAgent(auth, {
+        agentConfiguration: agentConfig,
+        conversation: projectConversation,
+      });
+
+      const buckets = await SkillResource.listForAgentLoop(auth, {
+        agentConfiguration: agentConfig,
+        conversation: projectConversation,
+      });
+
+      expectSkillBuckets(buckets, "projects", {
+        enabled: false,
+        system: true,
+        equipped: false,
+      });
+      expectSkillBuckets(buckets, "discover_tools", {
+        enabled: false,
+        system: true,
+        equipped: false,
+      });
+      expectSkillBuckets(buckets, "sandbox", {
+        enabled: false,
+        system: false,
+        equipped: true,
+      });
+      expectSkillBuckets(buckets, enabledOnlySkill.sId, {
+        enabled: true,
+        system: false,
+        equipped: false,
+      });
+      expectSkillBuckets(buckets, enabledPodDefaultSkill.sId, {
+        enabled: true,
+        system: false,
+        equipped: true,
+      });
+      expectSkillBuckets(buckets, podDefaultSkill.sId, {
+        enabled: false,
+        system: false,
+        equipped: true,
+      });
+      expectSkillBuckets(buckets, agentSkill.sId, {
+        enabled: false,
+        system: false,
+        equipped: true,
+      });
+
+      expect(
+        buckets.enabledSkills
+          .map((s) => s.name)
+          .filter((name) =>
+            ["B Enabled Pod Default Skill", "C Enabled Only Skill"].includes(
+              name
+            )
+          )
+      ).toEqual(["B Enabled Pod Default Skill", "C Enabled Only Skill"]);
+      expect(
+        buckets.equippedSkills
+          .map((s) => s.name)
+          .filter((name) =>
+            [
+              "A Pod Default Skill",
+              "B Enabled Pod Default Skill",
+              "D Agent Skill",
+            ].includes(name)
+          )
+      ).toEqual([
+        "A Pod Default Skill",
+        "B Enabled Pod Default Skill",
+        "D Agent Skill",
+      ]);
     });
 
     it("includes skill_management so agents can enable the projects skill", async () => {

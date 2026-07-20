@@ -10,7 +10,12 @@ import type { LandingLayoutProps } from "@marketing/components/home/LandingLayou
 import LandingLayout from "@marketing/components/home/LandingLayout";
 import { PageMetadata } from "@marketing/components/home/PageMetadata";
 import { classNames } from "@marketing/lib/utils";
-import { ArrowRight, Button, Div3D, Hover3D } from "@dust-tt/sparkle";
+import {
+  ArrowRight,
+  LegacyButton as Button,
+  Div3D,
+  Hover3D,
+} from "@dust-tt/sparkle";
 import { useRouter } from "next/router";
 import type { ReactElement } from "react";
 

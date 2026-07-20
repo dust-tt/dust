@@ -196,7 +196,7 @@ export function SkillsTable({
                 {
                   label: "Edit",
                   icon: Edit04,
-                  disabled: !skill.canWrite,
+                  disabled: !skill.canAdministrate,
                   onClick: (e: React.MouseEvent) => {
                     e.stopPropagation();
                     void router.push(
@@ -217,7 +217,7 @@ export function SkillsTable({
                 {
                   label: "Archive",
                   icon: Trash01,
-                  disabled: !skill.canWrite,
+                  disabled: !skill.canAdministrate,
                   variant: "warning" as const,
                   onClick: (e: React.MouseEvent) => {
                     e.stopPropagation();

@@ -25,6 +25,8 @@ import type {
   ParticipantActionType,
   UserMessageOrigin,
 } from "@app/types/assistant/conversation";
+import type { ModelResolutionMethodType } from "@app/types/assistant/models/types";
+import { MODEL_RESOLUTION_METHODS } from "@app/types/assistant/models/types";
 import type { CreationOptional, ForeignKey, NonAttribute } from "sequelize";
 
 export class ConversationModel extends WorkspaceAwareModel<ConversationModel> {
@@ -292,6 +294,12 @@ export class UserMessageModel extends WorkspaceAwareModel<UserMessageModel> {
   declare agenticMessageType: "run_agent" | "agent_handover" | null;
   declare agenticOriginMessageId: string | null;
 
+  // The concrete provider/model/effort triplet requested by the user when
+  // running the agent. null when the user did not request a specific model.
+  declare requestedProviderId: string | null;
+  declare requestedModelId: string | null;
+  declare requestedReasoningEffort: string | null;
+
   declare userContextLastTriggerRunAt: Date | null;
   declare userContextApiKeyId: ForeignKey<KeyModel["id"]> | null;
   declare userContextAuthMethod: string | null;
@@ -378,6 +386,21 @@ UserMessageModel.init(
       type: DataTypes.STRING(32),
       allowNull: true,
     },
+    requestedProviderId: {
+      type: DataTypes.STRING,
+      allowNull: true,
+      defaultValue: null,
+    },
+    requestedModelId: {
+      type: DataTypes.STRING,
+      allowNull: true,
+      defaultValue: null,
+    },
+    requestedReasoningEffort: {
+      type: DataTypes.STRING,
+      allowNull: true,
+      defaultValue: null,
+    },
   },
   {
     modelName: "user_message",
@@ -459,12 +482,12 @@ export class AgentMessageModel extends WorkspaceAwareModel<AgentMessageModel> {
   declare prunedContext: boolean | null;
   declare costCredits: number | null;
 
-  // Per-message model override from the input-bar model picker: the concrete
-  // provider/model/effort triplet the user picked at send time. All null when
-  // the message runs the agent's configured model.
-  declare requestedProviderId: string | null;
-  declare requestedModelId: string | null;
-  declare requestedReasoningEffort: string | null;
+  // The concrete provider/model/effort triplet used by the message when
+  // running the agent. Legacy: null when the message runs the agent's configured model.
+  declare resolvedProviderId: string | null;
+  declare resolvedModelId: string | null;
+  declare resolvedReasoningEffort: string | null;
+  declare modelResolutionMethod: ModelResolutionMethodType | null;
 }
 
 AgentMessageModel.init(
@@ -555,20 +578,28 @@ AgentMessageModel.init(
       allowNull: true,
       defaultValue: null,
     },
-    requestedProviderId: {
+    resolvedProviderId: {
       type: DataTypes.STRING,
       allowNull: true,
       defaultValue: null,
     },
-    requestedModelId: {
+    resolvedModelId: {
       type: DataTypes.STRING,
       allowNull: true,
       defaultValue: null,
     },
-    requestedReasoningEffort: {
+    resolvedReasoningEffort: {
       type: DataTypes.STRING,
       allowNull: true,
       defaultValue: null,
+    },
+    modelResolutionMethod: {
+      type: DataTypes.STRING,
+      allowNull: true,
+      defaultValue: null,
+      validate: {
+        isIn: [MODEL_RESOLUTION_METHODS],
+      },
     },
   },
   {

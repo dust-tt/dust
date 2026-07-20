@@ -1423,7 +1423,6 @@ impl Store for PostgresStore {
         project: &Project,
         data_source_id: &str,
         document_id: &str,
-        version_hash: &Option<String>,
     ) -> Result<Option<Document>> {
         let project_id = project.project_id();
         let data_source_id = data_source_id.to_string();
@@ -1445,34 +1444,18 @@ impl Store for PostgresStore {
             _ => unreachable!(),
         };
         // TODO(Thomas-020425): Read tags from nodes table.
-        let r = match version_hash {
-            None => {
-                c.query(
-                    "SELECT dsd.id, dsd.created, dsd.timestamp, dsn.tags_array, dsn.parents, \
-                       dsn.source_url, dsd.hash, dsd.text_size, dsd.chunk_count, dsn.title, \
-                       dsn.mime_type, dsn.provider_visibility \
-                       FROM data_sources_documents dsd \
-                       INNER JOIN data_sources_nodes dsn ON dsn.document=dsd.id \
-                       WHERE dsd.data_source = $1 AND dsd.document_id = $2 \
-                       AND dsd.status='latest' LIMIT 1",
-                    &[&data_source_row_id, &document_id],
-                )
-                .await?
-            }
-            Some(version_hash) => {
-                c.query(
-                    "SELECT dsd.id, dsd.created, dsd.timestamp, dsn.tags_array, dsn.parents, \
-                       dsn.source_url, dsd.hash, dsd.text_size, dsd.chunk_count, dsn.title, \
-                       dsn.mime_type, dsn.provider_visibility \
-                       FROM data_sources_documents dsd \
-                       INNER JOIN data_sources_nodes dsn ON dsn.document=dsd.id \
-                       WHERE dsd.data_source = $1 AND dsd.document_id = $2 \
-                       AND dsd.hash = $3 LIMIT 1",
-                    &[&data_source_row_id, &document_id, &version_hash],
-                )
-                .await?
-            }
-        };
+        let r = c
+            .query(
+                "SELECT dsd.id, dsd.created, dsd.timestamp, dsn.tags_array, dsn.parents, \
+                   dsn.source_url, dsd.hash, dsd.text_size, dsd.chunk_count, dsn.title, \
+                   dsn.mime_type, dsn.provider_visibility \
+                   FROM data_sources_documents dsd \
+                   INNER JOIN data_sources_nodes dsn ON dsn.document=dsd.id \
+                   WHERE dsd.data_source = $1 AND dsd.document_id = $2 \
+                   AND dsd.status='latest' LIMIT 1",
+                &[&data_source_row_id, &document_id],
+            )
+            .await?;
 
         let d: Option<(
             i64,
@@ -1696,7 +1679,6 @@ impl Store for PostgresStore {
         document_id: &str,
         limit_offset: Option<(usize, usize)>,
         view_filter: &Option<SearchFilter>,
-        latest_hash: &Option<String>,
         include_count: bool,
     ) -> Result<(Vec<DocumentVersion>, usize)> {
         let project_id = project.project_id();
@@ -1719,46 +1701,6 @@ impl Store for PostgresStore {
             _ => unreachable!(),
         };
 
-        // The `created` timestamp of the version specified by `latest_hash`
-        // (if `latest_hash` is `None`, then this is the latest version's `created` timestamp).
-        let latest_hash_created: i64 = match latest_hash {
-            Some(latest_hash) => {
-                let stmt = c
-                    .prepare(
-                        "SELECT created FROM data_sources_documents \
-                           WHERE data_source = $1 AND document_id = $2 AND hash = $3 LIMIT 1",
-                    )
-                    .await?;
-                let r = c
-                    .query(&stmt, &[&data_source_row_id, &document_id, &latest_hash])
-                    .await?;
-                match r.len() {
-                    0 => Err(anyhow!("Unknown document hash"))?,
-                    1 => r[0].get(0),
-                    _ => unreachable!(),
-                }
-            }
-
-            // Get the latest version's created timestamp (accepting deleted versions).
-            None => {
-                let stmt = c
-                    .prepare(
-                        "SELECT created FROM data_sources_documents \
-                           WHERE data_source = $1 AND document_id = $2 \
-                           ORDER BY created DESC LIMIT 1",
-                    )
-                    .await?;
-                let r = c.query(&stmt, &[&data_source_row_id, &document_id]).await?;
-                match r.len() {
-                    // If no hash was specified and there are no versions, just return an empty
-                    // array.
-                    0 => return Ok((vec![], 0)),
-                    1 => r[0].get(0),
-                    _ => unreachable!(),
-                }
-            }
-        };
-
         let mut where_clauses: Vec<String> = vec![];
         let mut params: Vec<&(dyn ToSql + Sync)> = vec![];
 
@@ -1766,8 +1708,6 @@ impl Store for PostgresStore {
         params.push(&data_source_row_id);
         where_clauses.push("dsd.document_id = $2".to_string());
         params.push(&document_id);
-        where_clauses.push("dsd.created <= $3".to_string());
-        params.push(&latest_hash_created);
 
         let (filter_clauses, filter_params, p_idx) = Self::where_clauses_and_params_for_filter(
             view_filter,
@@ -2343,9 +2283,11 @@ impl Store for PostgresStore {
             _ => unreachable!(),
         };
 
-        // Data source documents can be numerous so we want to avoid any transaction that could
-        // potentially hurt the performance of the database. Also we delete documents in small
-        // batches to avoid long running operations.
+        // Deletion is not transactional and takes no explicit row locks: concurrent scrubs of
+        // the same data source delete batches optimistically, and any conflict surfaces as a
+        // transient error that is safe to retry, resuming where the failed attempt stopped.
+        // Documents can be numerous so we delete them in small batches to keep each statement
+        // short.
         let deletion_batch_size: u64 = 512;
         let mut total_deleted_rows: u64 = 0;
 
@@ -2359,17 +2301,7 @@ impl Store for PostgresStore {
             .await?;
 
         let stmt_documents = c
-            .prepare(
-                "WITH documents_to_delete AS (
-                   SELECT id FROM data_sources_documents
-                   WHERE id = ANY($1)
-                   ORDER BY id
-                   FOR UPDATE
-                 )
-                 DELETE FROM data_sources_documents
-                 USING documents_to_delete
-                 WHERE data_sources_documents.id = documents_to_delete.id",
-            )
+            .prepare("DELETE FROM data_sources_documents WHERE id = ANY($1)")
             .await?;
 
         // First remove active documents, which are linked to a node
@@ -2391,19 +2323,11 @@ impl Store for PostgresStore {
             }
         }
 
-        // Then remove all remaining documents
         let stmt = c
             .prepare(
-                "WITH documents_to_delete AS (
-                   SELECT id FROM data_sources_documents
-                   WHERE data_source = $1
-                   ORDER BY id
-                   LIMIT $2
-                   FOR UPDATE
-                 )
-                 DELETE FROM data_sources_documents
-                 USING documents_to_delete
-                 WHERE data_sources_documents.id = documents_to_delete.id",
+                "DELETE FROM data_sources_documents WHERE id IN (
+                   SELECT id FROM data_sources_documents WHERE data_source = $1 LIMIT $2
+                 )",
             )
             .await?;
 

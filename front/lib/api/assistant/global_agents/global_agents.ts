@@ -58,6 +58,9 @@ import {
   _getDustNextMediumGlobalAgent,
   _getDustOaiGlobalAgent,
   _getDustOaiHighGlobalAgent,
+  _getDustOaiLunaGlobalAgent,
+  _getDustOaiLunaHighGlobalAgent,
+  _getDustOaiLunaMediumGlobalAgent,
   _getDustOaiMediumGlobalAgent,
   _getDustOaiNanoHighGlobalAgent,
   _getDustOmittedGlobalAgent,
@@ -113,7 +116,7 @@ import {
   getDataSourcesAndWorkspaceIdForGlobalAgents,
   getMCPServerViewsForGlobalAgents,
 } from "@app/lib/api/assistant/global_agents/tools";
-import { isProviderWhitelisted } from "@app/lib/api/assistant/models";
+import { isProviderWhitelistedForAuth } from "@app/lib/api/assistant/models";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
 import { GlobalAgentSettingsModel } from "@app/lib/models/agent/agent";
@@ -134,529 +137,7 @@ import {
   isComputerFeatureEnabled,
   type WhitelistableFeature,
 } from "@app/types/shared/feature_flags";
-
-// Exhaustive map of flags for each global agent. This is used to control which agents inject
-// per-user dynamic content (like the user profile) into the prompt context. This approach is not
-// ideal but allows us to move dynamic content out of instructions and into context sections,
-// improving prompt cache hit rates. Will be properly refactored if we manage to improve cache hit
-// rates.
-const GLOBAL_AGENT_FLAGS: Record<
-  GLOBAL_AGENTS_SID,
-  {
-    injectsToolsets: boolean;
-    injectsUserContext: boolean;
-    injectsWorkspaceContext: boolean;
-  }
-> = {
-  [GLOBAL_AGENTS_SID.DUST]: {
-    injectsToolsets: true,
-    injectsUserContext: false,
-    injectsWorkspaceContext: false,
-  },
-  [GLOBAL_AGENTS_SID.DUST_HIGH]: {
-    injectsToolsets: true,
-    injectsUserContext: false,
-    injectsWorkspaceContext: false,
-  },
-  [GLOBAL_AGENTS_SID.DUST_OMITTED]: {
-    injectsToolsets: true,
-    injectsUserContext: false,
-    injectsWorkspaceContext: false,
-  },
-  [GLOBAL_AGENTS_SID.DUST_HIGH_OMITTED]: {
-    injectsToolsets: true,
-    injectsUserContext: false,
-    injectsWorkspaceContext: false,
-  },
-  [GLOBAL_AGENTS_SID.DUST_EDGE]: {
-    injectsToolsets: true,
-    injectsUserContext: false,
-    injectsWorkspaceContext: false,
-  },
-  [GLOBAL_AGENTS_SID.DUST_QUICK]: {
-    injectsToolsets: true,
-    injectsUserContext: false,
-    injectsWorkspaceContext: false,
-  },
-  [GLOBAL_AGENTS_SID.DUST_QUICK_MEDIUM]: {
-    injectsToolsets: true,
-    injectsUserContext: false,
-    injectsWorkspaceContext: false,
-  },
-  [GLOBAL_AGENTS_SID.DUST_OAI]: {
-    injectsToolsets: true,
-    injectsUserContext: false,
-    injectsWorkspaceContext: false,
-  },
-  [GLOBAL_AGENTS_SID.DUST_OAI_MEDIUM]: {
-    injectsToolsets: true,
-    injectsUserContext: false,
-    injectsWorkspaceContext: false,
-  },
-  [GLOBAL_AGENTS_SID.DUST_OAI_HIGH]: {
-    injectsToolsets: true,
-    injectsUserContext: false,
-    injectsWorkspaceContext: false,
-  },
-  [GLOBAL_AGENTS_SID.DUST_OAI_NANO_HIGH]: {
-    injectsToolsets: true,
-    injectsUserContext: false,
-    injectsWorkspaceContext: false,
-  },
-  [GLOBAL_AGENTS_SID.DUST_GOOG]: {
-    injectsToolsets: true,
-    injectsUserContext: false,
-    injectsWorkspaceContext: false,
-  },
-  [GLOBAL_AGENTS_SID.DUST_GOOG_MEDIUM]: {
-    injectsToolsets: true,
-    injectsUserContext: false,
-    injectsWorkspaceContext: false,
-  },
-  [GLOBAL_AGENTS_SID.DUST_GOOG_HIGH]: {
-    injectsToolsets: true,
-    injectsUserContext: false,
-    injectsWorkspaceContext: false,
-  },
-  [GLOBAL_AGENTS_SID.DUST_GOOG_LITE]: {
-    injectsToolsets: true,
-    injectsUserContext: false,
-    injectsWorkspaceContext: false,
-  },
-  [GLOBAL_AGENTS_SID.DUST_GOOG_PRO]: {
-    injectsToolsets: true,
-    injectsUserContext: false,
-    injectsWorkspaceContext: false,
-  },
-  [GLOBAL_AGENTS_SID.DUST_GOOG_PRO_MEDIUM]: {
-    injectsToolsets: true,
-    injectsUserContext: false,
-    injectsWorkspaceContext: false,
-  },
-  [GLOBAL_AGENTS_SID.DUST_GOOG_PRO_HIGH]: {
-    injectsToolsets: true,
-    injectsUserContext: false,
-    injectsWorkspaceContext: false,
-  },
-  [GLOBAL_AGENTS_SID.DUST_ANT]: {
-    injectsToolsets: true,
-    injectsUserContext: false,
-    injectsWorkspaceContext: false,
-  },
-  [GLOBAL_AGENTS_SID.DUST_ANT_MEDIUM]: {
-    injectsToolsets: true,
-    injectsUserContext: false,
-    injectsWorkspaceContext: false,
-  },
-  [GLOBAL_AGENTS_SID.DUST_ANT_HIGH]: {
-    injectsToolsets: true,
-    injectsUserContext: false,
-    injectsWorkspaceContext: false,
-  },
-  [GLOBAL_AGENTS_SID.DUST_ANT_MEDIUM_OMITTED]: {
-    injectsToolsets: true,
-    injectsUserContext: false,
-    injectsWorkspaceContext: false,
-  },
-  [GLOBAL_AGENTS_SID.DUST_ANT_HIGH_OMITTED]: {
-    injectsToolsets: true,
-    injectsUserContext: false,
-    injectsWorkspaceContext: false,
-  },
-  [GLOBAL_AGENTS_SID.DUST_ANT_SONNET_EDGE]: {
-    injectsToolsets: true,
-    injectsUserContext: false,
-    injectsWorkspaceContext: false,
-  },
-  [GLOBAL_AGENTS_SID.DUST_ANT_SONNET_EDGE_LIGHT]: {
-    injectsToolsets: true,
-    injectsUserContext: false,
-    injectsWorkspaceContext: false,
-  },
-  [GLOBAL_AGENTS_SID.DUST_HAIKU]: {
-    injectsToolsets: true,
-    injectsUserContext: false,
-    injectsWorkspaceContext: false,
-  },
-  [GLOBAL_AGENTS_SID.DUST_LIGHT]: {
-    injectsToolsets: true,
-    injectsUserContext: false,
-    injectsWorkspaceContext: false,
-  },
-  [GLOBAL_AGENTS_SID.DUST_KIMI]: {
-    injectsToolsets: true,
-    injectsUserContext: false,
-    injectsWorkspaceContext: false,
-  },
-  [GLOBAL_AGENTS_SID.DUST_KIMI_MEDIUM]: {
-    injectsToolsets: true,
-    injectsUserContext: false,
-    injectsWorkspaceContext: false,
-  },
-  [GLOBAL_AGENTS_SID.DUST_KIMI_HIGH]: {
-    injectsToolsets: true,
-    injectsUserContext: false,
-    injectsWorkspaceContext: false,
-  },
-  [GLOBAL_AGENTS_SID.DUST_GLM]: {
-    injectsToolsets: true,
-    injectsUserContext: false,
-    injectsWorkspaceContext: false,
-  },
-  [GLOBAL_AGENTS_SID.DUST_GLM_MEDIUM]: {
-    injectsToolsets: true,
-    injectsUserContext: false,
-    injectsWorkspaceContext: false,
-  },
-  [GLOBAL_AGENTS_SID.DUST_GLM_HIGH]: {
-    injectsToolsets: true,
-    injectsUserContext: false,
-    injectsWorkspaceContext: false,
-  },
-  [GLOBAL_AGENTS_SID.DUST_MINIMAX]: {
-    injectsToolsets: true,
-    injectsUserContext: false,
-    injectsWorkspaceContext: false,
-  },
-  [GLOBAL_AGENTS_SID.DUST_MINIMAX_MEDIUM]: {
-    injectsToolsets: true,
-    injectsUserContext: false,
-    injectsWorkspaceContext: false,
-  },
-  [GLOBAL_AGENTS_SID.DUST_MINIMAX_HIGH]: {
-    injectsToolsets: true,
-    injectsUserContext: false,
-    injectsWorkspaceContext: false,
-  },
-  [GLOBAL_AGENTS_SID.DUST_DEEPSEEK]: {
-    injectsToolsets: true,
-    injectsUserContext: false,
-    injectsWorkspaceContext: false,
-  },
-  [GLOBAL_AGENTS_SID.DUST_MISTRAL_MEDIUM_NONE]: {
-    injectsToolsets: true,
-    injectsUserContext: false,
-    injectsWorkspaceContext: false,
-  },
-  [GLOBAL_AGENTS_SID.DUST_MISTRAL_MEDIUM_HIGH]: {
-    injectsToolsets: true,
-    injectsUserContext: false,
-    injectsWorkspaceContext: false,
-  },
-  [GLOBAL_AGENTS_SID.DUST_NEXT]: {
-    injectsToolsets: true,
-    injectsUserContext: false,
-    injectsWorkspaceContext: false,
-  },
-  [GLOBAL_AGENTS_SID.DUST_NEXT_MEDIUM]: {
-    injectsToolsets: true,
-    injectsUserContext: false,
-    injectsWorkspaceContext: false,
-  },
-  [GLOBAL_AGENTS_SID.DUST_NEXT_HIGH]: {
-    injectsToolsets: true,
-    injectsUserContext: false,
-    injectsWorkspaceContext: false,
-  },
-  [GLOBAL_AGENTS_SID.DUST_CHAWI]: {
-    injectsToolsets: true,
-    injectsUserContext: false,
-    injectsWorkspaceContext: false,
-  },
-  [GLOBAL_AGENTS_SID.DUST_CHAWI_MEDIUM]: {
-    injectsToolsets: true,
-    injectsUserContext: false,
-    injectsWorkspaceContext: false,
-  },
-  [GLOBAL_AGENTS_SID.DUST_CHAWI_HIGH]: {
-    injectsToolsets: true,
-    injectsUserContext: false,
-    injectsWorkspaceContext: false,
-  },
-  [GLOBAL_AGENTS_SID.DUST_SOUPINOU]: {
-    injectsToolsets: true,
-    injectsUserContext: false,
-    injectsWorkspaceContext: false,
-  },
-  [GLOBAL_AGENTS_SID.DUST_SOUPINOU_MEDIUM]: {
-    injectsToolsets: true,
-    injectsUserContext: false,
-    injectsWorkspaceContext: false,
-  },
-  [GLOBAL_AGENTS_SID.DUST_SOUPINOU_HIGH]: {
-    injectsToolsets: true,
-    injectsUserContext: false,
-    injectsWorkspaceContext: false,
-  },
-  [GLOBAL_AGENTS_SID.DUST_SOUPINOU_NONE]: {
-    injectsToolsets: true,
-    injectsUserContext: false,
-    injectsWorkspaceContext: false,
-  },
-  [GLOBAL_AGENTS_SID.DUST_SUNDAE]: {
-    injectsToolsets: true,
-    injectsUserContext: false,
-    injectsWorkspaceContext: false,
-  },
-  [GLOBAL_AGENTS_SID.DUST_SUNDAE_MEDIUM]: {
-    injectsToolsets: true,
-    injectsUserContext: false,
-    injectsWorkspaceContext: false,
-  },
-  [GLOBAL_AGENTS_SID.DUST_SUNDAE_HIGH]: {
-    injectsToolsets: true,
-    injectsUserContext: false,
-    injectsWorkspaceContext: false,
-  },
-  [GLOBAL_AGENTS_SID.DUST_PISTACHE]: {
-    injectsToolsets: true,
-    injectsUserContext: false,
-    injectsWorkspaceContext: false,
-  },
-  [GLOBAL_AGENTS_SID.DUST_PISTACHE_MEDIUM]: {
-    injectsToolsets: true,
-    injectsUserContext: false,
-    injectsWorkspaceContext: false,
-  },
-  [GLOBAL_AGENTS_SID.DUST_PISTACHE_HIGH]: {
-    injectsToolsets: true,
-    injectsUserContext: false,
-    injectsWorkspaceContext: false,
-  },
-  [GLOBAL_AGENTS_SID.DUST_CHALOM]: {
-    injectsToolsets: true,
-    injectsUserContext: false,
-    injectsWorkspaceContext: false,
-  },
-  [GLOBAL_AGENTS_SID.DUST_CHALOM_MEDIUM]: {
-    injectsToolsets: true,
-    injectsUserContext: false,
-    injectsWorkspaceContext: false,
-  },
-  [GLOBAL_AGENTS_SID.DUST_CHALOM_HIGH]: {
-    injectsToolsets: true,
-    injectsUserContext: false,
-    injectsWorkspaceContext: false,
-  },
-  [GLOBAL_AGENTS_SID.DUST_LIONEL]: {
-    injectsToolsets: true,
-    injectsUserContext: false,
-    injectsWorkspaceContext: false,
-  },
-  [GLOBAL_AGENTS_SID.DUST_LIONEL_MEDIUM]: {
-    injectsToolsets: true,
-    injectsUserContext: false,
-    injectsWorkspaceContext: false,
-  },
-  [GLOBAL_AGENTS_SID.DUST_LIONEL_HIGH]: {
-    injectsToolsets: true,
-    injectsUserContext: false,
-    injectsWorkspaceContext: false,
-  },
-  [GLOBAL_AGENTS_SID.HELPER]: {
-    injectsToolsets: false,
-    injectsUserContext: false,
-    injectsWorkspaceContext: false,
-  },
-  [GLOBAL_AGENTS_SID.DEEP_DIVE]: {
-    injectsToolsets: false,
-    injectsUserContext: false,
-    injectsWorkspaceContext: false,
-  },
-  [GLOBAL_AGENTS_SID.DUST_TASK]: {
-    injectsToolsets: false,
-    injectsUserContext: false,
-    injectsWorkspaceContext: false,
-  },
-  [GLOBAL_AGENTS_SID.DUST_BROWSER_SUMMARY]: {
-    injectsToolsets: false,
-    injectsUserContext: false,
-    injectsWorkspaceContext: false,
-  },
-  [GLOBAL_AGENTS_SID.DUST_PLANNING]: {
-    injectsToolsets: false,
-    injectsUserContext: false,
-    injectsWorkspaceContext: false,
-  },
-  [GLOBAL_AGENTS_SID.SIDEKICK]: {
-    injectsToolsets: false,
-    injectsUserContext: true,
-    injectsWorkspaceContext: true,
-  },
-  [GLOBAL_AGENTS_SID.REINFORCEMENT]: {
-    injectsToolsets: false,
-    injectsUserContext: false,
-    injectsWorkspaceContext: false,
-  },
-  [GLOBAL_AGENTS_SID.ANALYST]: {
-    injectsToolsets: false,
-    injectsUserContext: false,
-    injectsWorkspaceContext: false,
-  },
-  [GLOBAL_AGENTS_SID.SLACK]: {
-    injectsToolsets: false,
-    injectsUserContext: false,
-    injectsWorkspaceContext: false,
-  },
-  [GLOBAL_AGENTS_SID.GOOGLE_DRIVE]: {
-    injectsToolsets: false,
-    injectsUserContext: false,
-    injectsWorkspaceContext: false,
-  },
-  [GLOBAL_AGENTS_SID.NOTION]: {
-    injectsToolsets: false,
-    injectsUserContext: false,
-    injectsWorkspaceContext: false,
-  },
-  [GLOBAL_AGENTS_SID.GITHUB]: {
-    injectsToolsets: false,
-    injectsUserContext: false,
-    injectsWorkspaceContext: false,
-  },
-  [GLOBAL_AGENTS_SID.INTERCOM]: {
-    injectsToolsets: false,
-    injectsUserContext: false,
-    injectsWorkspaceContext: false,
-  },
-  [GLOBAL_AGENTS_SID.GPT35_TURBO]: {
-    injectsToolsets: false,
-    injectsUserContext: false,
-    injectsWorkspaceContext: false,
-  },
-  [GLOBAL_AGENTS_SID.GPT4]: {
-    injectsToolsets: false,
-    injectsUserContext: false,
-    injectsWorkspaceContext: false,
-  },
-  [GLOBAL_AGENTS_SID.GPT5]: {
-    injectsToolsets: false,
-    injectsUserContext: false,
-    injectsWorkspaceContext: false,
-  },
-  [GLOBAL_AGENTS_SID.GPT5_THINKING]: {
-    injectsToolsets: false,
-    injectsUserContext: false,
-    injectsWorkspaceContext: false,
-  },
-  [GLOBAL_AGENTS_SID.GPT5_NANO]: {
-    injectsToolsets: false,
-    injectsUserContext: false,
-    injectsWorkspaceContext: false,
-  },
-  [GLOBAL_AGENTS_SID.GPT5_MINI]: {
-    injectsToolsets: false,
-    injectsUserContext: false,
-    injectsWorkspaceContext: false,
-  },
-  [GLOBAL_AGENTS_SID.O1]: {
-    injectsToolsets: false,
-    injectsUserContext: false,
-    injectsWorkspaceContext: false,
-  },
-  [GLOBAL_AGENTS_SID.O1_MINI]: {
-    injectsToolsets: false,
-    injectsUserContext: false,
-    injectsWorkspaceContext: false,
-  },
-  [GLOBAL_AGENTS_SID.O1_HIGH_REASONING]: {
-    injectsToolsets: false,
-    injectsUserContext: false,
-    injectsWorkspaceContext: false,
-  },
-  [GLOBAL_AGENTS_SID.O3_MINI]: {
-    injectsToolsets: false,
-    injectsUserContext: false,
-    injectsWorkspaceContext: false,
-  },
-  [GLOBAL_AGENTS_SID.O3]: {
-    injectsToolsets: false,
-    injectsUserContext: false,
-    injectsWorkspaceContext: false,
-  },
-  [GLOBAL_AGENTS_SID.CLAUDE_4_5_HAIKU]: {
-    injectsToolsets: false,
-    injectsUserContext: false,
-    injectsWorkspaceContext: false,
-  },
-  [GLOBAL_AGENTS_SID.CLAUDE_5_SONNET]: {
-    injectsToolsets: false,
-    injectsUserContext: false,
-    injectsWorkspaceContext: false,
-  },
-  [GLOBAL_AGENTS_SID.CLAUDE_4_5_SONNET]: {
-    injectsToolsets: false,
-    injectsUserContext: false,
-    injectsWorkspaceContext: false,
-  },
-  [GLOBAL_AGENTS_SID.CLAUDE_4_SONNET]: {
-    injectsToolsets: false,
-    injectsUserContext: false,
-    injectsWorkspaceContext: false,
-  },
-  [GLOBAL_AGENTS_SID.CLAUDE_3_OPUS]: {
-    injectsToolsets: false,
-    injectsUserContext: false,
-    injectsWorkspaceContext: false,
-  },
-  [GLOBAL_AGENTS_SID.CLAUDE_3_SONNET]: {
-    injectsToolsets: false,
-    injectsUserContext: false,
-    injectsWorkspaceContext: false,
-  },
-  [GLOBAL_AGENTS_SID.CLAUDE_3_HAIKU]: {
-    injectsToolsets: false,
-    injectsUserContext: false,
-    injectsWorkspaceContext: false,
-  },
-  [GLOBAL_AGENTS_SID.CLAUDE_3_7_SONNET]: {
-    injectsToolsets: false,
-    injectsUserContext: false,
-    injectsWorkspaceContext: false,
-  },
-  [GLOBAL_AGENTS_SID.MISTRAL_LARGE]: {
-    injectsToolsets: false,
-    injectsUserContext: false,
-    injectsWorkspaceContext: false,
-  },
-  [GLOBAL_AGENTS_SID.MISTRAL_MEDIUM]: {
-    injectsToolsets: false,
-    injectsUserContext: false,
-    injectsWorkspaceContext: false,
-  },
-  [GLOBAL_AGENTS_SID.MISTRAL_SMALL]: {
-    injectsToolsets: false,
-    injectsUserContext: false,
-    injectsWorkspaceContext: false,
-  },
-  [GLOBAL_AGENTS_SID.GEMINI_PRO]: {
-    injectsToolsets: false,
-    injectsUserContext: false,
-    injectsWorkspaceContext: false,
-  },
-  [GLOBAL_AGENTS_SID.NOOP]: {
-    injectsToolsets: false,
-    injectsUserContext: false,
-    injectsWorkspaceContext: false,
-  },
-};
-
-export function globalAgentInjectsToolsets(sId: string): boolean {
-  return isGlobalAgentId(sId) && GLOBAL_AGENT_FLAGS[sId].injectsToolsets;
-}
-
-export function globalAgentInjectsUserContext(sId: string): boolean {
-  return isGlobalAgentId(sId) && GLOBAL_AGENT_FLAGS[sId].injectsUserContext;
-}
-
-export function globalAgentInjectsWorkspaceContext(sId: string): boolean {
-  return (
-    isGlobalAgentId(sId) && GLOBAL_AGENT_FLAGS[sId].injectsWorkspaceContext
-  );
-}
-
-export function isDustLikeAgent(sId: string): boolean {
-  return isGlobalAgentId(sId) && GLOBAL_AGENT_FLAGS[sId].injectsToolsets;
-}
+import { isWorkspaceAnalyticsEnabled } from "@app/types/user";
 
 function getGlobalAgent({
   auth,
@@ -669,7 +150,8 @@ function getGlobalAgent({
   hasSandbox,
   globalAgentContext,
   excludeProviders,
-  preferGpt55DefaultModel,
+  preferGpt56LunaDefaultModel,
+  preferSonnet5DefaultModel,
   featureFlags,
 }: {
   auth: Authenticator;
@@ -682,7 +164,8 @@ function getGlobalAgent({
   hasSandbox: boolean;
   globalAgentContext?: GlobalAgentContext;
   excludeProviders: ReadonlySet<ModelProviderIdType>;
-  preferGpt55DefaultModel: boolean;
+  preferGpt56LunaDefaultModel: boolean;
+  preferSonnet5DefaultModel: boolean;
   featureFlags: WhitelistableFeature[];
 }): AgentConfigurationType | null {
   const settings =
@@ -896,7 +379,8 @@ function getGlobalAgent({
         featureFlags,
         globalAgentContext,
         excludeProviders,
-        preferGpt55DefaultModel,
+        preferGpt56LunaDefaultModel,
+        preferSonnet5DefaultModel,
       });
       break;
     case GLOBAL_AGENTS_SID.DUST_HIGH:
@@ -1190,6 +674,33 @@ function getGlobalAgent({
         featureFlags,
       });
       break;
+    case GLOBAL_AGENTS_SID.DUST_OAI_LUNA:
+      agentConfiguration = _getDustOaiLunaGlobalAgent(auth, {
+        settings,
+        preFetchedDataSources,
+        mcpServerViews,
+        hasDeepDive,
+        featureFlags,
+      });
+      break;
+    case GLOBAL_AGENTS_SID.DUST_OAI_LUNA_MEDIUM:
+      agentConfiguration = _getDustOaiLunaMediumGlobalAgent(auth, {
+        settings,
+        preFetchedDataSources,
+        mcpServerViews,
+        hasDeepDive,
+        featureFlags,
+      });
+      break;
+    case GLOBAL_AGENTS_SID.DUST_OAI_LUNA_HIGH:
+      agentConfiguration = _getDustOaiLunaHighGlobalAgent(auth, {
+        settings,
+        preFetchedDataSources,
+        mcpServerViews,
+        hasDeepDive,
+        featureFlags,
+      });
+      break;
     case GLOBAL_AGENTS_SID.DUST_OAI_NANO_HIGH:
       agentConfiguration = _getDustOaiNanoHighGlobalAgent(auth, {
         settings,
@@ -1469,6 +980,32 @@ const RETIRED_GLOBAL_AGENTS_SID = [
   GLOBAL_AGENTS_SID.DUST_CHALOM_HIGH,
 ];
 
+const MODEL_ONLY_GLOBAL_AGENTS_SID: readonly GLOBAL_AGENTS_SID[] = [
+  GLOBAL_AGENTS_SID.GPT35_TURBO,
+  GLOBAL_AGENTS_SID.GPT4,
+  GLOBAL_AGENTS_SID.GPT5,
+  GLOBAL_AGENTS_SID.GPT5_THINKING,
+  GLOBAL_AGENTS_SID.GPT5_NANO,
+  GLOBAL_AGENTS_SID.GPT5_MINI,
+  GLOBAL_AGENTS_SID.O1,
+  GLOBAL_AGENTS_SID.O1_MINI,
+  GLOBAL_AGENTS_SID.O1_HIGH_REASONING,
+  GLOBAL_AGENTS_SID.O3_MINI,
+  GLOBAL_AGENTS_SID.O3,
+  GLOBAL_AGENTS_SID.CLAUDE_5_SONNET,
+  GLOBAL_AGENTS_SID.CLAUDE_4_5_SONNET,
+  GLOBAL_AGENTS_SID.CLAUDE_4_5_HAIKU,
+  GLOBAL_AGENTS_SID.CLAUDE_4_SONNET,
+  GLOBAL_AGENTS_SID.CLAUDE_3_OPUS,
+  GLOBAL_AGENTS_SID.CLAUDE_3_SONNET,
+  GLOBAL_AGENTS_SID.CLAUDE_3_HAIKU,
+  GLOBAL_AGENTS_SID.CLAUDE_3_7_SONNET,
+  GLOBAL_AGENTS_SID.MISTRAL_LARGE,
+  GLOBAL_AGENTS_SID.MISTRAL_MEDIUM,
+  GLOBAL_AGENTS_SID.MISTRAL_SMALL,
+  GLOBAL_AGENTS_SID.GEMINI_PRO,
+];
+
 function getCustomModelIndexForGlobalAgent(sId: string): number | null {
   if (!isGlobalAgentId(sId)) {
     return null;
@@ -1536,9 +1073,16 @@ export async function getGlobalAgents(
 
   const flags = await getFeatureFlags(auth);
 
-  if (!flags.includes("workspace_analytics")) {
+  if (!isWorkspaceAnalyticsEnabled(owner)) {
     agentsIdsToFetch = agentsIdsToFetch.filter(
       (sId) => sId !== GLOBAL_AGENTS_SID.ANALYST
+    );
+  }
+
+  if (agentIds === undefined && flags.includes("models_picker")) {
+    agentsIdsToFetch = agentsIdsToFetch.filter(
+      (sId) =>
+        !isGlobalAgentId(sId) || !MODEL_ONLY_GLOBAL_AGENTS_SID.includes(sId)
     );
   }
   const DUST_INTERNAL_AGENTS: readonly GLOBAL_AGENTS_SID[] = [
@@ -1572,6 +1116,9 @@ export async function getGlobalAgents(
     GLOBAL_AGENTS_SID.DUST_OAI,
     GLOBAL_AGENTS_SID.DUST_OAI_MEDIUM,
     GLOBAL_AGENTS_SID.DUST_OAI_HIGH,
+    GLOBAL_AGENTS_SID.DUST_OAI_LUNA,
+    GLOBAL_AGENTS_SID.DUST_OAI_LUNA_MEDIUM,
+    GLOBAL_AGENTS_SID.DUST_OAI_LUNA_HIGH,
     GLOBAL_AGENTS_SID.DUST_OAI_NANO_HIGH,
     GLOBAL_AGENTS_SID.DUST_GOOG,
     GLOBAL_AGENTS_SID.DUST_GOOG_MEDIUM,
@@ -1655,7 +1202,10 @@ export async function getGlobalAgents(
       hasSandbox: isComputerFeatureEnabled(flags),
       globalAgentContext: options?.globalAgentContext,
       excludeProviders,
-      preferGpt55DefaultModel: flags.includes("dust_agent_gpt_5_5_default"),
+      preferGpt56LunaDefaultModel: flags.includes(
+        "dust_agent_gpt_5_6_luna_default"
+      ),
+      preferSonnet5DefaultModel: flags.includes("dust_agent_sonnet_5_default"),
       featureFlags: flags,
     })
   );
@@ -1666,7 +1216,7 @@ export async function getGlobalAgents(
     if (
       agentFetcherResult &&
       agentFetcherResult.scope === "global" &&
-      isProviderWhitelisted(auth, agentFetcherResult.model.providerId)
+      isProviderWhitelistedForAuth(auth, agentFetcherResult.model.providerId)
     ) {
       globalAgents.push(agentFetcherResult);
     }

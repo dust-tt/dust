@@ -23,6 +23,7 @@ export function providerToProfile(
     case "xai":
     case "fireworks":
     case "noop":
+    case "auto":
       return "anthropic";
     default:
       assertNever(providerId);

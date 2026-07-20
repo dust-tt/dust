@@ -37,6 +37,7 @@ export type AgentCreditRow = {
   pictureUrl: string | null;
   modelDisplayName: string;
   description: string;
+  messageCount: number;
   credits: number;
   topUsers: AgentCreditUser[];
   topSkills: AgentCreditSkill[];
@@ -53,6 +54,7 @@ type SkillBucket = {
 
 type AgentBucket = {
   key: string;
+  doc_count: number;
   credits?: estypes.AggregationsSumAggregate;
   top_users?: estypes.AggregationsMultiBucketAggregateBase<SubBucket>;
   top_skills?: {
@@ -65,8 +67,9 @@ type AgentCreditAggs = {
 };
 
 // Per-agent AWU credits (cost.full_awu) over the last `days`: the agent's
-// current model and description, its top 3 users (by cost) and top 3 skills (by
-// execution count — skills carry no per-skill cost). Ranked by credits desc.
+// current model and description, its message count, its top 3 users (by cost)
+// and top 3 skills (by execution count — skills carry no per-skill cost).
+// Ranked by credits desc.
 // Non-free scope; the programmatic "unknown" user is excluded from the top
 // users (but its usage still counts toward the agent's credits). When `search`
 // is set, the ranking is scoped to the matching agents so matches outside the
@@ -217,6 +220,7 @@ export async function fetchAgentCreditBreakdown(
       pictureUrl: label.pictureUrl,
       modelDisplayName: label.modelDisplayName,
       description: label.description,
+      messageCount: bucket.doc_count,
       credits: Math.round(bucket.credits?.value ?? 0),
       topUsers,
       topSkills,

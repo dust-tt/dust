@@ -1,7 +1,7 @@
 export type GetProgrammaticUsageLimitResponseBody = {
-  monthlyCapCredits: number | null;
+  monthlyCapCredits: number;
 };
 
 export type PutProgrammaticUsageLimitResponseBody = {
-  monthlyCapCredits: number | null;
+  monthlyCapCredits: number;
 };

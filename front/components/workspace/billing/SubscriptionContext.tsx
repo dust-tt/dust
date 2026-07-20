@@ -4,7 +4,10 @@ import {
 } from "@app/hooks/useMetronomeContractLifecycleAction";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import type { MetronomeInvoiceSummary } from "@app/lib/metronome/invoice";
-import { isBusinessPlanPrefix } from "@app/lib/plans/plan_codes";
+import {
+  isBusinessPlanPrefix,
+  isCreditPricedFreePlan,
+} from "@app/lib/plans/plan_codes";
 import { useAppRouter } from "@app/lib/platform";
 import { useMetronomeInvoice } from "@app/lib/swr/workspaces";
 import { formatTimestampToFriendlyDate } from "@app/lib/utils";
@@ -102,7 +105,8 @@ export function SubscriptionProvider({
 
   const isCancellablePlan =
     isSubscriptionMetronomeBilled(subscription) &&
-    isBusinessPlanPrefix(subscription.plan.code);
+    (isBusinessPlanPrefix(subscription.plan.code) ||
+      isCreditPricedFreePlan(subscription.plan.code));
   const isCancellationScheduled =
     subscription.endDate !== null || subscription.requestCancelAt !== null;
   const subscriptionEndsAtMs =

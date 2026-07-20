@@ -1,5 +1,11 @@
 import type { PokeListGroups } from "@app/lib/api/poke/groups";
 import { GroupResource } from "@app/lib/resources/group_resource";
+import {
+  GROUP_KINDS,
+  isAgentEditorGroupKind,
+  isSkillEditorGroupKind,
+  isSystemGroupKind,
+} from "@app/types/groups";
 import { pokeApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 
@@ -13,7 +19,12 @@ app.get("/", async (ctx): HandlerResult<PokeListGroups> => {
   const auth = ctx.get("auth");
 
   const groups = await GroupResource.listAllWorkspaceGroups(auth, {
-    groupKinds: ["global", "regular", "space_editors", "provisioned"],
+    groupKinds: GROUP_KINDS.filter(
+      (kind) =>
+        !isSystemGroupKind(kind) &&
+        !isAgentEditorGroupKind(kind) &&
+        !isSkillEditorGroupKind(kind)
+    ),
   });
 
   return ctx.json({ groups: groups.map((g) => g.toJSON()) });

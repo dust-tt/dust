@@ -1,6 +1,7 @@
+import { seedWorkspaceCapabilities } from "@app/lib/api/permissions/governance_seeding";
 import { activateCreditPricedFreePlanForWorkspace } from "@app/lib/api/subscription";
 import { getOrCreateWorkOSOrganization } from "@app/lib/api/workos/organization";
-import { Authenticator } from "@app/lib/auth";
+import { Authenticator, hasFeatureFlag } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
 import { PlanModel } from "@app/lib/models/plan";
 import {
@@ -17,6 +18,7 @@ import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import type { UTMParams } from "@app/lib/utils/utm";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
+import { startActivationWorkspaceSchedule } from "@app/temporal/activation_scheduler/client";
 
 export async function createWorkspace(
   session: SessionWithUser,
@@ -96,8 +98,23 @@ export async function createWorkspaceInternal({
     globalGroup,
   });
 
+  // Seed default governance capability state (no-op until Phase 2 capabilities register seeders).
+  await seedWorkspaceCapabilities(auth);
+
   // Ensure all auto MCP server views are created for the workspace
   await MCPServerViewResource.ensureAllAutoToolsAreCreated(auth);
+
+  if (await hasFeatureFlag(auth, "activation_scheduler")) {
+    const scheduleRes = await startActivationWorkspaceSchedule({
+      workspaceId: workspace.sId,
+    });
+    if (scheduleRes.isErr()) {
+      logger.error(
+        { workspaceId: workspace.sId, error: scheduleRes.error },
+        "Failed to start activation schedule for new workspace"
+      );
+    }
+  }
 
   if (planCode) {
     if (isCreditPricedFreePlan(planCode)) {

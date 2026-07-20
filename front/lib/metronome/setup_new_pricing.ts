@@ -618,6 +618,48 @@ export function getNewPackages(): PackageDef[] {
       ]),
       ...BILLING_CYCLE_CONFIG_FIRST_OF_MONTH,
     },
+    // Partner Demo — unlimited free Platform Seats (pooled, monthly, $0).
+    // Usage draws from the standard AWU rates with no included credits here;
+    // a workspace-specific shared pool is granted separately, as an optional
+    // recurring credit at switch-contract time (see `recurringFreeCreditAwuPerMonth`
+    // in `lib/api/poke/switch_contract.ts`) rather than baked into the
+    // package. PAYG at list price beyond the pool via the same Standard
+    // USD/EUR rate card every other non-legacy package uses.
+    // dust-tt/decisions#937.
+    {
+      name: "Partner Demo Enterprise USD",
+      aliases: [{ name: "partner-demo-enterprise-usd" }],
+      rate_card_name: "Standard USD",
+      subscriptions: [WORKSPACE_SEATS.monthly],
+      scheduled_charges_on_usage_invoices: "ALL",
+      recurring_credits: [
+        getFreeExcessRecurringCredits(
+          getCreditTypeAwuId(),
+          DEFAULT_AWU_EXCESS_RECURRING_AMOUNT
+        ),
+      ],
+      overrides: buildSeatEntitlementOverrides(CREDIT_TYPE_USD_ID, [
+        { product_name: WORKSPACE_SEAT_PRODUCT_NAME, price: 0 },
+      ]),
+      ...BILLING_CYCLE_CONFIG,
+    },
+    {
+      name: "Partner Demo Enterprise EUR",
+      aliases: [{ name: "partner-demo-enterprise-eur" }],
+      rate_card_name: "Standard EUR",
+      subscriptions: [WORKSPACE_SEATS.monthly],
+      scheduled_charges_on_usage_invoices: "ALL",
+      recurring_credits: [
+        getFreeExcessRecurringCredits(
+          getCreditTypeAwuId(),
+          DEFAULT_AWU_EXCESS_RECURRING_AMOUNT
+        ),
+      ],
+      overrides: buildSeatEntitlementOverrides(CREDIT_TYPE_EUR_ID, [
+        { product_name: WORKSPACE_SEAT_PRODUCT_NAME, price: 0 },
+      ]),
+      ...BILLING_CYCLE_CONFIG,
+    },
     {
       name: "Enterprise Seat-based USD",
       aliases: [{ name: "enterprise-seat-based-usd" }],

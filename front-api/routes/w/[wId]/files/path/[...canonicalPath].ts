@@ -4,6 +4,7 @@ import type { DustFileSystemError } from "@app/lib/api/file_system/types";
 import {
   convertCanonicalFileToPdf,
   deleteCanonicalFile,
+  fetchLinkedFileResource,
   moveCanonicalFile,
   renameCanonicalFile,
   streamThumbnail,
@@ -11,6 +12,7 @@ import {
   WriteCanonicalFileContentError,
   writeCanonicalFileContent,
 } from "@app/lib/api/files/file_system_ops";
+import { DUST_FILE_ID_HEADER } from "@app/types/files";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { readableToReadableStream } from "@app/types/shared/utils/streams";
 import type { WorkspaceAwareCtx } from "@front-api/middlewares/ctx";
@@ -108,10 +110,56 @@ async function resolveFs(
   return { fs: fsResult.value, err: null };
 }
 
+async function handleHeadRequest(
+  ctx: Context<WorkspaceAwareCtx>,
+  canonicalPath: string
+) {
+  const auth = ctx.get("auth");
+  const { fs: dustFs, err } = await resolveFs(ctx, canonicalPath);
+  if (err) {
+    return err;
+  }
+
+  const statResult = await dustFs.stat(canonicalPath);
+  if (statResult.isErr()) {
+    return apiError(ctx, mapDustFsError(statResult.error));
+  }
+  if (!statResult.value) {
+    return apiError(ctx, {
+      status_code: 404,
+      api_error: { type: "file_not_found", message: "File not found." },
+    });
+  }
+
+  const linkedFileResource = await fetchLinkedFileResource(
+    auth,
+    dustFs,
+    canonicalPath
+  );
+  const headers: Record<string, string> = {
+    "Content-Type": statResult.value.contentType,
+    "Content-Length": String(statResult.value.sizeBytes),
+  };
+  if (linkedFileResource) {
+    headers[DUST_FILE_ID_HEADER] = linkedFileResource.sId;
+  }
+
+  return new Response(null, {
+    status: 200,
+    headers,
+  });
+}
+
 /** @ignoreswagger */
 app.get("/:canonicalPath{.+}", validate("param", ParamsSchema), async (ctx) => {
-  const auth = ctx.get("auth");
   const { canonicalPath } = ctx.req.valid("param");
+
+  // Hono dispatches HEAD requests through the matching GET route.
+  if (ctx.req.method === "HEAD") {
+    return handleHeadRequest(ctx, canonicalPath);
+  }
+
+  const auth = ctx.get("auth");
   const { fs: dustFs, err } = await resolveFs(ctx, canonicalPath);
   if (err) {
     return err;
@@ -266,38 +314,6 @@ app.get("/:canonicalPath{.+}", validate("param", ParamsSchema), async (ctx) => {
     headers,
   });
 });
-
-app.on(
-  "HEAD",
-  "/:canonicalPath{.+}",
-  validate("param", ParamsSchema),
-  async (ctx) => {
-    const { canonicalPath } = ctx.req.valid("param");
-    const { fs: dustFs, err } = await resolveFs(ctx, canonicalPath);
-    if (err) {
-      return err;
-    }
-
-    const statResult = await dustFs.stat(canonicalPath);
-    if (statResult.isErr()) {
-      return apiError(ctx, mapDustFsError(statResult.error));
-    }
-    if (!statResult.value) {
-      return apiError(ctx, {
-        status_code: 404,
-        api_error: { type: "file_not_found", message: "File not found." },
-      });
-    }
-
-    return new Response(null, {
-      status: 200,
-      headers: {
-        "Content-Type": statResult.value.contentType,
-        "Content-Length": String(statResult.value.sizeBytes),
-      },
-    });
-  }
-);
 
 app.patch(
   "/:canonicalPath{.+}",

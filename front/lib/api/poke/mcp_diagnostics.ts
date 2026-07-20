@@ -16,7 +16,7 @@ import {
 } from "@app/lib/actions/mcp_metadata";
 import { getMCPConnectionAccessToken } from "@app/lib/actions/mcp_oauth_access_token";
 import { MCPOAuthProvider } from "@app/lib/actions/mcp_oauth_provider";
-import type { AgentLoopRunContextType } from "@app/lib/actions/types";
+import type { AgentLoopRunContext } from "@app/lib/actions/types";
 import config from "@app/lib/api/config";
 import {
   MCP_DIAGNOSTIC_CHECK_NAMES,
@@ -602,7 +602,7 @@ async function runConnectListToolsCheck(
 
   const toolContext =
     connectionType === "personal"
-      ? { runContext: {} as AgentLoopRunContextType }
+      ? { runContext: {} as AgentLoopRunContext }
       : undefined;
 
   const connectRes = await connectToMCPServer(auth, {

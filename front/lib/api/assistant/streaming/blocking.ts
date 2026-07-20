@@ -14,6 +14,7 @@ import type {
   UserMessageType,
 } from "@app/types/assistant/conversation";
 import type { MentionType } from "@app/types/assistant/mentions";
+import type { ModelSelectionType } from "@app/types/assistant/models/types";
 import type { PubSubError } from "@app/types/assistant/pubsub";
 import type { Result } from "@app/types/shared/result";
 import { Ok } from "@app/types/shared/result";
@@ -151,6 +152,7 @@ export async function postUserMessageAndWaitForCompletion(
     agenticMessageData,
     conversation,
     mentions,
+    modelSelection,
     skipToolsValidation,
   }: {
     content: string;
@@ -158,6 +160,7 @@ export async function postUserMessageAndWaitForCompletion(
     agenticMessageData?: AgenticMessageData;
     conversation: ConversationType;
     mentions: MentionType[];
+    modelSelection?: ModelSelectionType;
     skipToolsValidation: boolean;
   }
 ): Promise<
@@ -177,6 +180,7 @@ export async function postUserMessageAndWaitForCompletion(
         agenticMessageData,
         conversation,
         mentions,
+        modelSelection,
         skipToolsValidation,
       });
 

@@ -21,6 +21,23 @@ function enrich_message(tag, timestamp, record)
         record["status"] = gcsfuse_severity_map[gcsfuse_severity] or "info"
     end
 
+    -- litestream logs JSON via slog; level is TRACE/DEBUG/INFO/WARN/ERROR.
+    -- Tag-gated so a workload's JSON stderr with a `level` field is not
+    -- mistaken for litestream. Non-JSON daemon output (panic text) has no
+    -- level and surfaces as warn.
+    local litestream_level = nil
+    if tag == "sandbox.litestream" then
+        litestream_level = record["level"]
+        local litestream_level_map = {
+            ERROR = "error",
+            WARN = "warn",
+            INFO = "info",
+            DEBUG = "debug",
+            TRACE = "debug"
+        }
+        record["status"] = litestream_level_map[litestream_level] or "warn"
+    end
+
     local severity_map = {
         process_start = "info",
         process_exit = "info",
@@ -29,7 +46,7 @@ function enrich_message(tag, timestamp, record)
         error = "error",
         warning = "warn"
     }
-    if not gcsfuse_severity then
+    if not gcsfuse_severity and tag ~= "sandbox.litestream" then
         record["status"] = severity_map[event_type] or "info"
     end
 
@@ -65,10 +82,24 @@ function enrich_message(tag, timestamp, record)
         record["message"] = string.format("[%s] %s", event_type, msg)
     elseif gcsfuse_severity and msg then
         record["message"] = string.format("[gcsfuse:%s] %s", gcsfuse_severity, msg)
+    elseif litestream_level and msg then
+        record["message"] = string.format("[litestream:%s] %s", litestream_level, msg)
     elseif msg then
         record["message"] = msg
     elseif command then
         record["message"] = command
+    elseif tag == "sandbox.litestream" and record["MESSAGE"] then
+        -- Non-JSON daemon output (panic text): raw but still classified.
+        record["message"] = string.format("[litestream] %s", record["MESSAGE"])
+    elseif record["MESSAGE"] then
+        -- Journal entries whose MESSAGE was not parseable JSON: show it raw.
+        record["message"] = record["MESSAGE"]
+    end
+
+    -- A leftover `msg` key (e.g. litestream's slog output) shadows the
+    -- composed `message` in Datadog's message remapping.
+    if record["message"] then
+        record["msg"] = nil
     end
 
     record["timestamp_utc"] = os.date("!%Y-%m-%d %H:%M:%S", timestamp)

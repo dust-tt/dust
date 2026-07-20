@@ -5,6 +5,7 @@ import {
   getSeatCreditNameForSeatType,
   hasContractSeatSubscription,
   promoteNoneSeatTypesForContract,
+  remapMembershipSeatTypesForContract,
   resolveRemappedSeatType,
 } from "@app/lib/metronome/seats";
 import {
@@ -13,6 +14,7 @@ import {
 } from "@app/lib/metronome/setup_common";
 import type { SeatLimit } from "@app/lib/resources/workspace_seat_limit_resource";
 import type { MembershipSeatType } from "@app/types/memberships";
+import type { LightWorkspaceType } from "@app/types/user";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@app/lib/metronome/client", () => ({
@@ -34,6 +36,34 @@ vi.mock("@app/lib/metronome/seat_types", async () => {
     getProductSeatTypes: mockGetProductSeatTypes,
   };
 });
+
+// Mocks for `remapMembershipSeatTypesForContract`'s resource dependencies.
+const {
+  mockGetActiveMemberships,
+  mockGetScheduledMembershipsByUserIdInWorkspace,
+  mockFetchUsersByModelIds,
+  mockFetchSeatLimitsByWorkspace,
+} = vi.hoisted(() => ({
+  mockGetActiveMemberships: vi.fn(),
+  mockGetScheduledMembershipsByUserIdInWorkspace: vi.fn(),
+  mockFetchUsersByModelIds: vi.fn(),
+  mockFetchSeatLimitsByWorkspace: vi.fn(),
+}));
+vi.mock("@app/lib/resources/membership_resource", () => ({
+  MembershipResource: {
+    getActiveMemberships: mockGetActiveMemberships,
+    getScheduledMembershipsByUserIdInWorkspace:
+      mockGetScheduledMembershipsByUserIdInWorkspace,
+  },
+}));
+vi.mock("@app/lib/resources/user_resource", () => ({
+  UserResource: { fetchByModelIds: mockFetchUsersByModelIds },
+}));
+vi.mock("@app/lib/resources/workspace_seat_limit_resource", () => ({
+  WorkspaceSeatLimitResource: {
+    fetchByWorkspace: mockFetchSeatLimitsByWorkspace,
+  },
+}));
 
 // A single seat tier on a fixture contract.
 type SeatFixture = {
@@ -534,6 +564,139 @@ describe("promoteNoneSeatTypesForContract", () => {
         forceSeatType: "pro",
       })
     ).toEqual(["pro", "pro", "free"]);
+  });
+});
+
+describe("remapMembershipSeatTypesForContract — scheduled-remap no-op", () => {
+  const { contract, productSeatTypes } = makeContract({
+    seats: [{ seatType: "pro", awu: 8000 }],
+  });
+  const workspace = { sId: "ws_1", id: 1 } as unknown as LightWorkspaceType;
+  const startingAt = new Date("2026-08-01T00:00:00.000Z");
+
+  function makeMembership(userId: number, seatType: MembershipSeatType) {
+    return {
+      userId,
+      seatType,
+      scheduleSeatChange: vi.fn().mockResolvedValue(undefined),
+      updateMembershipSeat: vi.fn().mockResolvedValue(undefined),
+    };
+  }
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockGetProductSeatTypes.mockResolvedValue(productSeatTypes);
+    mockFetchSeatLimitsByWorkspace.mockResolvedValue(new Map());
+    mockFetchUsersByModelIds.mockResolvedValue([{ id: 1, sId: "user_1" }]);
+  });
+
+  it("schedules the change when there is no existing matching schedule", async () => {
+    const membership = makeMembership(1, "none");
+    mockGetActiveMemberships.mockResolvedValue({ memberships: [membership] });
+    mockGetScheduledMembershipsByUserIdInWorkspace.mockResolvedValue(new Map());
+
+    const result = await remapMembershipSeatTypesForContract({
+      metronomeCustomerId: "cust_1",
+      contractId: "contract_1",
+      workspace,
+      swapAt: "next-hour",
+      startingAt,
+      contract,
+      promoteNoneSeatType: "pro",
+    });
+
+    expect(result.isOk()).toBe(true);
+    expect(membership.scheduleSeatChange).toHaveBeenCalledTimes(1);
+    expect(membership.scheduleSeatChange).toHaveBeenCalledWith(
+      expect.objectContaining({ newSeatType: "pro", scheduledAt: startingAt })
+    );
+  });
+
+  it("does not re-schedule when an existing scheduled row already matches the target", async () => {
+    const membership = makeMembership(1, "none");
+    mockGetActiveMemberships.mockResolvedValue({ memberships: [membership] });
+    mockGetScheduledMembershipsByUserIdInWorkspace.mockResolvedValue(
+      new Map([[1, { seatType: "pro", startAt: startingAt }]])
+    );
+
+    const result = await remapMembershipSeatTypesForContract({
+      metronomeCustomerId: "cust_1",
+      contractId: "contract_1",
+      workspace,
+      swapAt: "next-hour",
+      startingAt,
+      contract,
+      promoteNoneSeatType: "pro",
+    });
+
+    expect(result.isOk()).toBe(true);
+    expect(membership.scheduleSeatChange).not.toHaveBeenCalled();
+  });
+
+  it("re-schedules when an existing scheduled row targets a different seat type", async () => {
+    const membership = makeMembership(1, "none");
+    mockGetActiveMemberships.mockResolvedValue({ memberships: [membership] });
+    mockGetScheduledMembershipsByUserIdInWorkspace.mockResolvedValue(
+      new Map([[1, { seatType: "max", startAt: startingAt }]])
+    );
+
+    const result = await remapMembershipSeatTypesForContract({
+      metronomeCustomerId: "cust_1",
+      contractId: "contract_1",
+      workspace,
+      swapAt: "next-hour",
+      startingAt,
+      contract,
+      promoteNoneSeatType: "pro",
+    });
+
+    expect(result.isOk()).toBe(true);
+    expect(membership.scheduleSeatChange).toHaveBeenCalledTimes(1);
+  });
+
+  it("re-schedules when an existing scheduled row matches the seat type but not the start date", async () => {
+    const membership = makeMembership(1, "none");
+    mockGetActiveMemberships.mockResolvedValue({ memberships: [membership] });
+    mockGetScheduledMembershipsByUserIdInWorkspace.mockResolvedValue(
+      new Map([
+        [1, { seatType: "pro", startAt: new Date("2026-07-01T00:00:00.000Z") }],
+      ])
+    );
+
+    const result = await remapMembershipSeatTypesForContract({
+      metronomeCustomerId: "cust_1",
+      contractId: "contract_1",
+      workspace,
+      swapAt: "next-hour",
+      startingAt,
+      contract,
+      promoteNoneSeatType: "pro",
+    });
+
+    expect(result.isOk()).toBe(true);
+    expect(membership.scheduleSeatChange).toHaveBeenCalledTimes(1);
+  });
+
+  it("applies immediately (no scheduled-row lookup) when swapAt is current-hour", async () => {
+    const membership = makeMembership(1, "none");
+    mockGetActiveMemberships.mockResolvedValue({ memberships: [membership] });
+
+    const result = await remapMembershipSeatTypesForContract({
+      metronomeCustomerId: "cust_1",
+      contractId: "contract_1",
+      workspace,
+      swapAt: "current-hour",
+      startingAt,
+      contract,
+      promoteNoneSeatType: "pro",
+    });
+
+    expect(result.isOk()).toBe(true);
+    expect(
+      mockGetScheduledMembershipsByUserIdInWorkspace
+    ).not.toHaveBeenCalled();
+    expect(membership.updateMembershipSeat).toHaveBeenCalledTimes(1);
+    expect(membership.scheduleSeatChange).not.toHaveBeenCalled();
   });
 });
 

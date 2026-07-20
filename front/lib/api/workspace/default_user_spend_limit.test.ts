@@ -123,7 +123,7 @@ describe("getDefaultUserSpendLimit", () => {
     }
   });
 
-  it("falls back to the plan-tier default when no workspace default is configured (pro plan → 0)", async () => {
+  it("returns 0 when no workspace default is configured (no plan-tier fallback, no unlimited)", async () => {
     const workspace = await WorkspaceFactory.metronome({
       metronomeCustomerId: METRONOME_CUSTOMER_ID,
     });
@@ -204,7 +204,7 @@ describe("setDefaultUserSpendLimit", () => {
     );
   });
 
-  it("records previous_awu_credits as 'unset' when no default existed", async () => {
+  it("records previous_awu_credits as '0' when no default existed", async () => {
     const workspace = await WorkspaceFactory.metronome({
       metronomeCustomerId: METRONOME_CUSTOMER_ID,
     });
@@ -218,7 +218,7 @@ describe("setDefaultUserSpendLimit", () => {
     expect(workosAudit.emitAuditLogEvent).toHaveBeenCalledWith(
       expect.objectContaining({
         metadata: {
-          previous_awu_credits: "unset",
+          previous_awu_credits: "0",
           new_awu_credits: "1000",
         },
       })

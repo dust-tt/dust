@@ -1,6 +1,7 @@
 import config from "@app/lib/api/config";
+import { getRedisCacheClient } from "@app/lib/api/redis";
 import { config as multiRegionsConfig } from "@app/lib/api/regions/config";
-import { getWorkOS } from "@app/lib/api/workos/client";
+import { getWorkOS, getWorkOSForSessionAuth } from "@app/lib/api/workos/client";
 import { invalidateWorkOSOrganizationsCacheForUserId } from "@app/lib/api/workos/organization_membership";
 import type { SessionWithUser } from "@app/lib/iam/provider";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
@@ -77,6 +78,30 @@ export async function getWorkOSSessionWithSetCookies(
   return { session: result.session, setCookies };
 }
 
+// Global (not per-session) circuit breaker: once a refresh call fails
+// unexpectedly (WorkOS unreachable), skip attempting refresh entirely for a
+// cooldown instead of every request paying for its own failed attempt.
+const WORKOS_REFRESH_CIRCUIT_BREAKER_KEY = "workos_refresh_circuit_breaker";
+const WORKOS_REFRESH_CIRCUIT_BREAKER_COOLDOWN_MS = 60 * 1000;
+
+class WorkOSRefreshCircuitOpenError extends Error {
+  constructor() {
+    super("Skipping WorkOS refresh: circuit breaker is open");
+  }
+}
+
+async function isWorkOSRefreshCircuitOpen(): Promise<boolean> {
+  const redisCli = await getRedisCacheClient({ origin: "cache_with_redis" });
+  return (await redisCli.get(WORKOS_REFRESH_CIRCUIT_BREAKER_KEY)) !== null;
+}
+
+async function openWorkOSRefreshCircuit(): Promise<void> {
+  const redisCli = await getRedisCacheClient({ origin: "cache_with_redis" });
+  await redisCli.set(WORKOS_REFRESH_CIRCUIT_BREAKER_KEY, "1", {
+    PX: WORKOS_REFRESH_CIRCUIT_BREAKER_COOLDOWN_MS,
+  });
+}
+
 export async function _getRefreshedCookie(
   workOSSessionCookie: string,
   session: ReturnType<WorkOS["userManagement"]["loadSealedSession"]>,
@@ -85,9 +110,24 @@ export async function _getRefreshedCookie(
   workspaceId: string | undefined,
   region: RegionType
 ): Promise<string | null> {
-  const r = await session.refresh({
-    cookiePassword: config.getWorkOSCookiePassword(),
-  });
+  if (await isWorkOSRefreshCircuitOpen()) {
+    throw new WorkOSRefreshCircuitOpenError();
+  }
+
+  let r;
+  try {
+    r = await session.refresh({
+      cookiePassword: config.getWorkOSCookiePassword(),
+    });
+  } catch (error) {
+    // Any error reaching here is already not one of the WorkOS-side session
+    // rejections (invalid grant, MFA required, SSO required): those are
+    // returned by `session.refresh()` as a clean `{ authenticated: false }`
+    // and never throw. So this is always an unexpected/transient failure.
+    await openWorkOSRefreshCircuit();
+    throw error;
+  }
+
   if (r.authenticated) {
     // Update the session cookie with new session data
     const sealedCookie = await sealData(
@@ -136,15 +176,21 @@ const getRefreshedCookieSkipIfLocked = cacheWithRedis(
 // Proactively refresh when less than 1 minute remains on the access token.
 const PROACTIVE_REFRESH_THRESHOLD_SECONDS = 60;
 
-function getAccessTokenExpirySeconds(accessToken: string): number | null {
+function decodeAccessTokenPayload(
+  accessToken: string
+): Record<string, unknown> | null {
   try {
-    const payload = JSON.parse(
+    return JSON.parse(
       Buffer.from(accessToken.split(".")[1], "base64").toString()
     );
-    return typeof payload.exp === "number" ? payload.exp : null;
   } catch {
     return null;
   }
+}
+
+function getAccessTokenExpirySeconds(accessToken: string): number | null {
+  const payload = decodeAccessTokenPayload(accessToken);
+  return typeof payload?.exp === "number" ? payload.exp : null;
 }
 
 /**
@@ -194,6 +240,89 @@ async function maybeProactiveRefresh({
   );
 }
 
+// How far past access-token expiry we'll still accept a session when WorkOS
+// is unreachable. Bounded on purpose: this session was never re-vouched for
+// by WorkOS during this window, so it must stay short.
+const DEGRADED_MODE_AUTH_GRACE_SECONDS = 30 * 60;
+
+/**
+ * Fallback used when `session.authenticate()` / `session.refresh()` threw
+ * (WorkOS unreachable) rather than returning a clean "not authenticated"
+ * (revoked/invalid-grant sessions never reach this path, see the `refresh()`
+ * catch above them). Accepts the session cookie we ourselves sealed with
+ * `WORKOS_COOKIE_PASSWORD` without asking WorkOS to re-vouch for it, as long
+ * as its access token expired only recently. Never extends or refreshes the
+ * cookie; the caller falls back to a normal refresh on the next request.
+ */
+async function getDegradedModeSession({
+  sessionData,
+  organizationId,
+  authenticationMethod,
+  workspaceId,
+  region,
+}: {
+  sessionData: string;
+  organizationId: string | undefined;
+  authenticationMethod: string | undefined;
+  workspaceId: string;
+  region: RegionType;
+}): Promise<SessionWithUser | null> {
+  let inner: { accessToken?: string; user?: WorkOSUser };
+  try {
+    inner = await unsealData(sessionData, {
+      password: config.getWorkOSCookiePassword(),
+    });
+  } catch {
+    return null;
+  }
+
+  const { accessToken, user } = inner;
+  if (!accessToken || !user) {
+    return null;
+  }
+
+  const expSeconds = getAccessTokenExpirySeconds(accessToken);
+  const nowSeconds = Math.floor(Date.now() / 1000);
+  const secondsPastExpiry = expSeconds ? nowSeconds - expSeconds : null;
+
+  if (
+    secondsPastExpiry === null ||
+    secondsPastExpiry > DEGRADED_MODE_AUTH_GRACE_SECONDS
+  ) {
+    return null;
+  }
+
+  const claims = decodeAccessTokenPayload(accessToken);
+  const sessionId = isString(claims?.sid) ? claims.sid : null;
+  if (!sessionId) {
+    return null;
+  }
+
+  logger.error(
+    { workspaceId, workOSUserId: user.id, secondsPastExpiry },
+    "WorkOS unreachable: accepting expired session under degraded-mode auth grace period"
+  );
+
+  return {
+    type: "workos" as const,
+    sessionId,
+    region,
+    user: {
+      email: user.email,
+      email_verified: user.emailVerified,
+      name: user.email ?? "",
+      family_name: user.lastName ?? "",
+      given_name: user.firstName ?? "",
+      nickname: getUserNicknameFromEmail(user.email) ?? "",
+      workOSUserId: user.id,
+    },
+    organizationId,
+    workspaceId,
+    isSSO: authenticationMethod?.toLowerCase() === "sso",
+    authenticationMethod,
+  };
+}
+
 export async function getWorkOSSessionFromCookie(
   workOSSessionCookie: string
 ): Promise<{
@@ -218,7 +347,7 @@ export async function getWorkOSSessionFromCookie(
     };
   }
 
-  const session = getWorkOS().userManagement.loadSealedSession({
+  const session = getWorkOSForSessionAuth().userManagement.loadSealedSession({
     sessionData,
     cookiePassword: config.getWorkOSCookiePassword(),
   });
@@ -307,12 +436,23 @@ export async function getWorkOSSessionFromCookie(
       },
     };
   } catch (error) {
-    logger.error({ error }, "Session authentication error");
+    const degradedSession = await getDegradedModeSession({
+      sessionData,
+      organizationId,
+      authenticationMethod,
+      workspaceId,
+      region,
+    });
+
+    logger.error(
+      { error, workspaceId, degradedModeAuthApplied: degradedSession !== null },
+      "Session authentication error"
+    );
 
     return {
       // In case WorkOS fails, do not clear the cookie.
       cookie: undefined,
-      session: undefined,
+      session: degradedSession ?? undefined,
     };
   }
 }

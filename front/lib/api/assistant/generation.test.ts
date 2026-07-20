@@ -2,7 +2,7 @@ import { constructPromptMultiActions } from "@app/lib/api/assistant/generation";
 import {
   globalAgentInjectsUserContext,
   globalAgentInjectsWorkspaceContext,
-} from "@app/lib/api/assistant/global_agents/global_agents";
+} from "@app/lib/api/assistant/global_agents/prompt_context";
 import {
   normalizePrompt,
   systemPromptToText,
@@ -514,6 +514,15 @@ describe("constructPromptMultiActions - system prompt stability", () => {
       "Skills are modular capabilities that extend your abilities for specific tasks."
     );
     expect(text).toContain("skill_management__enable_skill");
+    expect(text).toContain(
+      '`<knowledge id="..." title="..." ... />` tags, which point to specific workspace knowledge attached to the skill'
+    );
+    expect(text).toContain(
+      "The tag's `id` can be passed as `nodeId` to the skill's knowledge tools"
+    );
+    expect(text).toContain(
+      "`semantic_search` can search within the node and `list` can show its direct children"
+    );
     expect(text).not.toContain(
       "Create a git commit with a descriptive message."
     );

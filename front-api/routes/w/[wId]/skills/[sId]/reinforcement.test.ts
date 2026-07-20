@@ -110,6 +110,22 @@ describe("PATCH /api/w/:wId/skills/:sId/reinforcement", () => {
     expect(updated?.agentFacingDescription).toBe(skill.agentFacingDescription);
   });
 
+  it("allows a workspace admin to update reinforcement for a skill they do not edit", async () => {
+    const { workspace, skill, requestUserAuth } = await setupTest({
+      skillOwnerRole: "builder",
+      requestUserRole: "admin",
+    });
+
+    const response = await patch(workspace, skill.sId, {
+      reinforcement: "off",
+    });
+
+    expect(response.status).toBe(200);
+
+    const updated = await SkillResource.fetchById(requestUserAuth, skill.sId);
+    expect(updated?.reinforcement).toBe("off");
+  });
+
   it("accepts each valid reinforcement mode", async () => {
     for (const mode of ["auto", "on", "off"] as const) {
       const { workspace, skill, requestUserAuth } = await setupTest({
@@ -140,7 +156,7 @@ describe("PATCH /api/w/:wId/skills/:sId/reinforcement", () => {
     expect(await response.json()).toEqual({
       error: {
         type: "app_auth_error",
-        message: "Only editors can modify this skill.",
+        message: "Only admins and editors can modify this skill.",
       },
     });
   });

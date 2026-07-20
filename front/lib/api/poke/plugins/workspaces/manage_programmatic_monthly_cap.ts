@@ -9,37 +9,25 @@ import { isCreditPricedPlan } from "@app/types/plan";
 import { Err, Ok } from "@app/types/shared/result";
 import { z } from "zod";
 
-const ProgrammaticMonthlyCapSchema = z
-  .object({
-    enabled: z.boolean(),
-    monthlyCapAwu: z.number().min(1).max(10_000_000).optional(),
-  })
-  .refine(
-    (data) =>
-      !data.enabled ||
-      (data.monthlyCapAwu !== undefined && data.monthlyCapAwu >= 1),
-    { message: "monthlyCapAwu must be >= 1 when enabled" }
-  );
+const ProgrammaticMonthlyCapSchema = z.object({
+  monthlyCapAwu: z.number().int().min(0).max(10_000_000),
+});
 
 export const manageProgrammaticMonthlyCapPlugin = createPlugin({
   manifest: {
     id: "manage-programmatic-monthly-cap",
     name: "Manage Programmatic Monthly Cap",
     description:
-      "Set or remove the monthly spending cap for programmatic (API) usage.",
+      "Set the monthly spending cap for programmatic (API) usage. Set to 0 " +
+      "to block all programmatic access.",
     resourceTypes: ["workspaces"],
     args: {
-      enabled: {
-        type: "boolean",
-        label: "Enable monthly cap",
-        description: "Toggle the programmatic monthly cap on or off.",
-        async: true,
-        asyncDescription: true,
-      },
       monthlyCapAwu: {
         type: "number",
         label: "Monthly cap (AWU credits)",
-        description: "Monthly spending cap in AWU credits.",
+        description:
+          "Monthly spending cap in AWU credits. Set to 0 to block all " +
+          "programmatic access.",
         async: true,
       },
     },
@@ -56,20 +44,12 @@ export const manageProgrammaticMonthlyCapPlugin = createPlugin({
 
   populateAsyncArgs: async (auth, workspace) => {
     if (!workspace) {
-      return new Ok({
-        enabled: false,
-        enabledDescription: "No workspace found.",
-        monthlyCapAwu: 0,
-      });
+      return new Ok({ monthlyCapAwu: 0 });
     }
 
     const workspaceResource = await WorkspaceResource.fetchById(workspace.sId);
     if (!workspaceResource?.metronomeCustomerId) {
-      return new Ok({
-        enabled: false,
-        enabledDescription: "Workspace is not provisioned in Metronome.",
-        monthlyCapAwu: 0,
-      });
+      return new Ok({ monthlyCapAwu: 0 });
     }
 
     const capResult = await getProgrammaticUsageLimit(auth);
@@ -77,22 +57,7 @@ export const manageProgrammaticMonthlyCapPlugin = createPlugin({
       return new Err(capResult.error);
     }
 
-    const capCredits = capResult.value;
-    const currentState = workspaceResource.programmaticCreditState;
-
-    if (capCredits === null) {
-      return new Ok({
-        enabled: false,
-        enabledDescription: `No cap set. State: ${currentState}.`,
-        monthlyCapAwu: 0,
-      });
-    }
-
-    return new Ok({
-      enabled: true,
-      enabledDescription: `Current cap: ${capCredits} AWU. State: ${currentState}.`,
-      monthlyCapAwu: capCredits,
-    });
+    return new Ok({ monthlyCapAwu: capResult.value });
   },
 
   execute: async (auth, workspace, rawArgs) => {
@@ -128,15 +93,14 @@ export const manageProgrammaticMonthlyCapPlugin = createPlugin({
     if (!parsed.success) {
       return new Err(new Error(parsed.error.message));
     }
-    const { enabled, monthlyCapAwu } = parsed.data;
+    const { monthlyCapAwu } = parsed.data;
 
     // `syncProgrammaticUsageLimit` persists the cap (DB source of truth),
     // derives the Metronome alerts, and emits the audit event with the
-    // operator as actor. `null` clears the cap.
-    const monthlyCapCredits = enabled && monthlyCapAwu ? monthlyCapAwu : null;
+    // operator as actor. A cap of 0 blocks all programmatic access.
     const syncResult = await syncProgrammaticUsageLimit({
       auth,
-      monthlyCapCredits,
+      monthlyCapCredits: monthlyCapAwu,
     });
     if (syncResult.isErr()) {
       return new Err(syncResult.error);
@@ -148,9 +112,9 @@ export const manageProgrammaticMonthlyCapPlugin = createPlugin({
     return new Ok({
       display: "text",
       value:
-        monthlyCapCredits !== null
-          ? `Programmatic monthly cap set to ${monthlyCapCredits} AWU for workspace "${workspace.name}".`
-          : `Programmatic monthly cap removed for workspace "${workspace.name}".`,
+        monthlyCapAwu > 0
+          ? `Programmatic monthly cap set to ${monthlyCapAwu} AWU for workspace "${workspace.name}".`
+          : `Programmatic access blocked (cap set to 0) for workspace "${workspace.name}".`,
     });
   },
 });

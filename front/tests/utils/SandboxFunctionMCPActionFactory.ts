@@ -1,3 +1,4 @@
+import type { MCPToolStakeLevelType } from "@app/lib/actions/constants";
 import type { LightMCPToolConfigurationType } from "@app/lib/actions/mcp";
 import type { Authenticator } from "@app/lib/auth";
 import type { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
@@ -13,11 +14,15 @@ export class SandboxFunctionMCPActionFactory {
       mcpServerView,
       toolName = "math_operation",
       inputs = { expression: "2+2" },
+      status = "running",
+      permission = "never_ask",
     }: {
       invocation: SandboxFunctionInvocationResource;
       mcpServerView: MCPServerViewResource;
       toolName?: string;
       inputs?: Record<string, unknown>;
+      status?: "running" | "blocked_validation_required";
+      permission?: MCPToolStakeLevelType;
     }
   ): Promise<SandboxFunctionMCPActionResource> {
     const serverName = mcpServerView.toJSON().server.name;
@@ -42,7 +47,7 @@ export class SandboxFunctionMCPActionFactory {
       secretName: null,
       dustProject: null,
       availability: "manual",
-      permission: "never_ask",
+      permission,
       toolServerId: mcpServerView.mcpServerId,
       retryPolicy: "no_retry",
     };
@@ -53,6 +58,7 @@ export class SandboxFunctionMCPActionFactory {
       toolName,
       inputs,
       toolConfiguration,
+      status,
     });
   }
 }

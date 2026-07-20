@@ -55,6 +55,7 @@ import type {
   NonDeltaResponseEvent,
 } from "@app/lib/model_constructors/types/output/events";
 import { NOOP_PROVIDER_ID } from "@app/lib/model_constructors/types/provider_ids";
+import { isCacheMissReason } from "@app/lib/model_constructors/utils/cache_miss_reason";
 import type { RunUsageType } from "@app/lib/resources/run_resource";
 import type {
   AgentFunctionCallContentType,
@@ -341,12 +342,19 @@ export function convertToOldEvent(
   metadata: LLMClientMetadata
 ): LLMEvent {
   switch (event.type) {
-    case "response_id":
+    case "response_id": {
+      const cacheMissReason = event.metadata.content?.cacheMissReason;
       return {
         type: "interaction_id",
-        content: { modelInteractionId: event.content.responseId },
+        content: {
+          modelInteractionId: event.content.responseId,
+          cacheMissReason: isCacheMissReason(cacheMissReason)
+            ? cacheMissReason
+            : undefined,
+        },
         metadata,
       };
+    }
 
     case "text_delta":
       return {
@@ -595,8 +603,13 @@ abstract class BaseTransition extends LLM {
     streamParameters: LLMStreamParameters,
     configSchema: BaseEndpointConfiguration["configSchema"]
   ): InputConfig {
-    const { specifications, forceToolCall, disableToolUse, toolSearchEnabled } =
-      streamParameters;
+    const {
+      specifications,
+      forceToolCall,
+      disableToolUse,
+      toolSearchEnabled,
+      previousMessageId,
+    } = streamParameters;
 
     return configSchema.parse({
       tools: specifications as ToolSpecification[],
@@ -614,6 +627,9 @@ abstract class BaseTransition extends LLM {
         this.responseFormat,
         this.metadata.clientId
       ),
+      // Prompt-cache diagnostics opt-in. Kept only by the Anthropic (direct)
+      // config schema; other surfaces' schemas strip this unknown key.
+      previousMessageId,
     });
   }
 }

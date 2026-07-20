@@ -16,6 +16,8 @@ import { ConversationModel } from "@app/lib/models/agent/conversation";
 import { isUpgraded } from "@app/lib/plans/plan_codes";
 import { FeatureFlagResource } from "@app/lib/resources/feature_flag_resource";
 import { GlobalFeatureFlagResource } from "@app/lib/resources/global_feature_flag_resource";
+import { assertValidGrant } from "@app/lib/resources/group_permission_registry";
+import { GroupPermissionResource } from "@app/lib/resources/group_permission_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import type { KeyAuthType } from "@app/lib/resources/key_resource";
 import {
@@ -26,6 +28,7 @@ import {
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { ProviderCredentialResource } from "@app/lib/resources/provider_credential_resource";
 import { GroupSpaceModel } from "@app/lib/resources/storage/models/group_spaces";
+import { SpaceModel } from "@app/lib/resources/storage/models/spaces";
 import {
   getResourceIdFromSId,
   isResourceSId,
@@ -37,6 +40,11 @@ import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
 import tracer from "@app/logger/tracer";
 import type { APIErrorWithContentfulStatusCode } from "@app/types/error";
+import type {
+  GrantType as GroupGrantType,
+  GroupPermissionResourceType,
+} from "@app/types/group_permissions";
+import { WHOLE_TYPE_RESOURCE_ID } from "@app/types/group_permissions";
 import type { PlanType, SubscriptionType } from "@app/types/plan";
 import type { ProvidersHealth } from "@app/types/provider_credential";
 import type {
@@ -54,6 +62,7 @@ import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { isString, removeNulls } from "@app/types/shared/utils/general";
+import { decodeUtf8HeaderValue } from "@app/types/shared/utils/http_headers";
 import type {
   LightWorkspaceType,
   RoleType,
@@ -714,6 +723,18 @@ export class Authenticator {
     }
 
     const allowedSpaceIds = new Set<ModelId>([podSpaceModelId]);
+
+    // Auto internal MCP server views live in the global space: without it, a function invocation
+    // cannot list or call any tool. Group membership still applies (the groups below are
+    // intersected with the token's base groups).
+    const globalSpace = await SpaceModel.findOne({
+      attributes: ["id"],
+      where: { workspaceId, kind: "global" },
+    });
+    if (globalSpace) {
+      allowedSpaceIds.add(globalSpace.id);
+    }
+
     if (claims.cId) {
       const requestedSpaceIds =
         await this.fetchRequestedSpaceIdsForSandboxTokenAuth({
@@ -1073,6 +1094,45 @@ export class Authenticator {
 
   isAdmin(): boolean {
     return isAdmin(this.workspace());
+  }
+
+  /**
+   * Whether the caller holds a workspace-level capability. A capability is a
+   * (grantType, resourceType) pair whose grants live on the type-wide (-1) group_permissions
+   * rows. Admins bypass unconditionally (billing/security are admin-by-default). Otherwise we look
+   * for a -1 grant on any of the caller's groups; "*" grants match any grant type / resource type.
+   *
+   * Cold path: a query per check is fine — no caching yet (pending auth-resolution decision).
+   */
+  async hasWorkspacePermission(
+    grantType: GroupGrantType,
+    resourceType: GroupPermissionResourceType
+  ): Promise<boolean> {
+    // Reject invalid capability queries (e.g. write/billing) up front, so a "*" grant can't satisfy
+    // a pair the registry forbids, and so callers fail fast on a programmer error.
+    assertValidGrant({
+      grantType,
+      resourceType,
+      resourceId: WHOLE_TYPE_RESOURCE_ID,
+    });
+
+    if (this.isAdmin()) {
+      return true;
+    }
+    if (!this.workspace()) {
+      return false;
+    }
+
+    const grants = await GroupPermissionResource.listForGroups(this, {
+      groupModelIds: this._groupModelIds,
+      resourceId: WHOLE_TYPE_RESOURCE_ID,
+    });
+
+    return grants.some(
+      (grant) =>
+        (grant.resourceType === resourceType || grant.resourceType === "*") &&
+        (grant.grantType === grantType || grant.grantType === "*")
+    );
   }
 
   isSystemKey(): boolean {
@@ -1795,7 +1855,7 @@ export function getApiKeyNameFromHeaders(headers: {
 }) {
   const apiKeyName = headers[DustApiKeyNameHeader];
   if (isString(apiKeyName)) {
-    return apiKeyName;
+    return decodeUtf8HeaderValue(apiKeyName);
   }
   return undefined;
 }
@@ -1810,6 +1870,8 @@ export function getApiKeyNameHeader(auth: Authenticator) {
     return undefined;
   }
 
+  // The name may exceed Latin-1 (emoji, non-Latin scripts); DustAPI encodes
+  // extra header values on the wire (see @dust-tt/client baseHeaders).
   return {
     [DustApiKeyNameHeader]: name,
   };

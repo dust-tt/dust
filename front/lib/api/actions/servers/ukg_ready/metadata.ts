@@ -220,8 +220,6 @@ export const UKG_READY_SERVER = {
     displayLabels: t.displayLabels,
     toolCostCategory: t.toolCostCategory,
     freeUsage: t.freeUsage,
+    stake: t.stake,
   })),
-  tools_stakes: Object.fromEntries(
-    Object.values(UKG_READY_TOOLS_METADATA).map((t) => [t.name, t.stake])
-  ),
 } as const satisfies ServerMetadata;

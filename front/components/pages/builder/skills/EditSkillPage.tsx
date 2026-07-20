@@ -23,7 +23,7 @@ export function EditSkillPage() {
   const isNotFound =
     isSkillError ||
     (!isSkillLoading && !skill) ||
-    (skill && (!skill.canWrite || skill.status === "archived"));
+    (skill && (!skill.canAdministrate || skill.status === "archived"));
 
   if (isNotFound) {
     return <Custom404 />;

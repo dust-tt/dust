@@ -63,6 +63,7 @@ app.post(
       isManagedIntercomAllowed: body.limits.connections.isIntercomAllowed,
       isManagedWebCrawlerAllowed: body.limits.connections.isWebCrawlerAllowed,
       isManagedSalesforceAllowed: body.limits.connections.isSalesforceAllowed,
+      maxConnectionsCount: body.limits.connections.count,
       isSSOAllowed: body.limits.users.isSSOAllowed,
       isSCIMAllowed: body.limits.users.isSCIMAllowed,
       isAuditLogsAllowed: body.isAuditLogsAllowed,

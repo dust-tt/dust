@@ -8,7 +8,7 @@ import { cn } from "@sparkle/lib/utils";
 import { cva } from "class-variance-authority";
 import React from "react";
 
-const FADE_TRANSITION_CLASSES = "transition-opacity duration-300 ease-in-out";
+const FADE_TRANSITION_CLASSES = "transition-opacity ease-in-out";
 
 export const ACTION_CARD_DIFF_STATUSES = ["added", "removed"] as const;
 export type ActionCardDiffStatus = (typeof ACTION_CARD_DIFF_STATUSES)[number];
@@ -140,7 +140,7 @@ export const ActionCard = React.forwardRef<HTMLDivElement, ActionCardProps>(
                 <span className="truncate text-sm font-medium">{label}</span>
                 {isSelected && (
                   <Chip
-                    size="xs"
+                    size="mini"
                     color="success"
                     label="ADDED"
                     className={cn(FADE_TRANSITION_CLASSES, "opacity-100")}
@@ -173,7 +173,7 @@ export const ActionCard = React.forwardRef<HTMLDivElement, ActionCardProps>(
               </div>
             </div>
             <TruncatedText
-              className="text-sm text-muted-foreground"
+              className="text-xs text-muted-foreground"
               mountPortal={mountPortal}
               mountPortalContainer={mountPortalContainer}
               lineClamp={descriptionLineClamp}
@@ -189,7 +189,7 @@ export const ActionCard = React.forwardRef<HTMLDivElement, ActionCardProps>(
                     e.stopPropagation();
                     footer.onClick?.();
                   }}
-                  className="heading-sm cursor-pointer text-muted-foreground hover:text-highlight-light hover:underline hover:underline-offset-2"
+                  className="text-xs cursor-pointer text-muted-foreground hover:text-highlight-light hover:underline hover:underline-offset-2"
                 >
                   {footer.label}
                 </a>

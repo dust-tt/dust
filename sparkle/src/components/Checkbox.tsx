@@ -6,9 +6,9 @@ import React from "react";
 import { Label } from "./Label";
 import { Tooltip } from "./Tooltip";
 
-const checkboxStyles = cva(
+export const checkboxStyles = cva(
   cn(
-    "h-4 w-4 rounded-md relative shrink-0 peer border transition duration-200 ease-in-out motion-reduce:transition-none",
+    "h-4 w-4 rounded-md relative shrink-0 peer border transition duration-100 ease-out motion-reduce:transition-none",
     "active:scale-95",
     "border-border-dark bg-background",
     "text-foreground",
@@ -19,8 +19,15 @@ const checkboxStyles = cva(
 
 // The checked state renders a dark rounded square that fills the box's inner
 // content area; the light "ring" is the box's own border showing through.
-const checkboxIndicatorStyles = cva(
-  "absolute inset-0 flex items-center justify-center rounded-[3px]",
+// Concentric corners: inner radius = outer radius (rounded-md, 6px) minus the
+// 1px border the fill sits inside.
+export const checkboxIndicatorStyles = cva(
+  cn(
+    "absolute inset-0 flex items-center justify-center rounded-[5px]",
+    // Quick pop-in on check; unchecking unmounts instantly, which is fine —
+    // exits may be faster than entrances, and this is a high-frequency control.
+    "animate-in fade-in-0 zoom-in-90 duration-150 ease-enter motion-reduce:animate-none"
+  ),
   {
     variants: {
       isMutedAfterCheck: {

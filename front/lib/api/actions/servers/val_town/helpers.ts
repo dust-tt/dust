@@ -1,4 +1,4 @@
-import type { ToolContextType } from "@app/lib/actions/types";
+import type { ToolContext } from "@app/lib/actions/types";
 import { isLightServerSideMCPToolConfiguration } from "@app/lib/actions/types/guards";
 import type { Authenticator } from "@app/lib/auth";
 import { DustAppSecretModel } from "@app/lib/models/dust_app_secret";
@@ -20,7 +20,7 @@ export function isValTownError(error: unknown): error is ValTownError {
 
 export async function getValTownClient(
   auth: Authenticator,
-  toolContext?: ToolContextType
+  toolContext?: ToolContext
 ): Promise<ValTown | null> {
   const toolConfig = toolContext?.runContext?.toolConfiguration;
   if (

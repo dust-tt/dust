@@ -31,6 +31,7 @@ import {
   CAP_ELIGIBLE_GROUP_KINDS,
   GROUP_KINDS,
   isAgentEditorGroupKind,
+  isRegularManualGroupKind,
   isSkillEditorGroupKind,
 } from "@app/types/groups";
 import type { ResourcePermission } from "@app/types/resource_permissions";
@@ -40,6 +41,7 @@ import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { removeNulls } from "@app/types/shared/utils/general";
 import type { LightWorkspaceType, UserType } from "@app/types/user";
+import { BUSINESS_ADMIN_ROLE_NAME } from "@app/types/user";
 import type { DirectoryGroup } from "@workos-inc/node";
 import assert from "assert";
 import type {
@@ -421,6 +423,71 @@ export class GroupResource extends BaseResource<GroupModel> {
     return defaultGroup;
   }
 
+  /**
+   * Creates a new regular_manual group. These groups are created and managed
+   * manually by workspace admins and business admins from the UI to grant
+   * permissions to their members.
+   */
+  static async makeNewRegularManual(
+    auth: Authenticator,
+    { name, memberIds }: { name: string; memberIds: string[] }
+  ): Promise<
+    Result<
+      GroupResource,
+      DustError<
+        | "unauthorized"
+        | "name_conflict"
+        | "user_not_found"
+        | "user_already_member"
+        | "group_requirements_not_met"
+        | "system_or_global_group"
+      >
+    >
+  > {
+    if (!auth.isBusinessAdmin()) {
+      return new Err(
+        new DustError(
+          "unauthorized",
+          `Only workspace admins and ${BUSINESS_ADMIN_ROLE_NAME}s can create groups.`
+        )
+      );
+    }
+
+    const owner = auth.getNonNullableWorkspace();
+
+    const existing = await GroupResource.fetchByName(auth, name);
+    if (existing) {
+      return new Err(
+        new DustError(
+          "name_conflict",
+          `A group named "${name}" already exists in this workspace.`
+        )
+      );
+    }
+
+    const group = await GroupResource.makeNew({
+      name,
+      kind: "regular_manual",
+      workspaceId: owner.id,
+    });
+
+    const uniqueMemberIds = [...new Set(memberIds)];
+    const users = await UserResource.fetchByIds(uniqueMemberIds);
+    if (users.length !== uniqueMemberIds.length) {
+      return new Err(
+        new DustError("user_not_found", "Some users were not found.")
+      );
+    }
+    const addResult = await group.dangerouslyAddMembers(auth, {
+      users: users.map((u) => u.toJSON()),
+    });
+    if (addResult.isErr()) {
+      return new Err(addResult.error);
+    }
+
+    return new Ok(group);
+  }
+
   static async findAgentIdsForGroups(
     auth: Authenticator,
     groupIds: ModelId[]
@@ -634,13 +701,9 @@ export class GroupResource extends BaseResource<GroupModel> {
   // Use with care as this gives access to all groups in the workspace.
   static async internalFetchAllWorkspaceGroups({
     workspaceId,
-    groupKinds = [
-      "global",
-      "regular",
-      "space_editors",
-      "system",
-      "provisioned",
-    ],
+    groupKinds = GROUP_KINDS.filter(
+      (k) => !isAgentEditorGroupKind(k) && !isSkillEditorGroupKind(k)
+    ),
     transaction,
   }: {
     workspaceId: ModelId;
@@ -1025,7 +1088,7 @@ export class GroupResource extends BaseResource<GroupModel> {
     options: { groupKinds?: GroupKind[] } = {}
   ): Promise<GroupResource[]> {
     const {
-      groupKinds = ["global", "regular", "space_editors", "provisioned"],
+      groupKinds = ["global", "regular_auto", "space_editors", "provisioned"],
     } = options;
     const groups = await this.baseFetch(auth, {
       where: {
@@ -1190,7 +1253,7 @@ export class GroupResource extends BaseResource<GroupModel> {
   static async listGroupNamesByUserModelIdInWorkspace({
     workspace,
     userModelIds,
-    groupKinds = ["regular", "provisioned"],
+    groupKinds = ["regular_auto", "provisioned"],
   }: {
     workspace: LightWorkspaceType;
     userModelIds: ModelId[];
@@ -1510,7 +1573,8 @@ export class GroupResource extends BaseResource<GroupModel> {
     >
   > {
     assert(
-      this.kind === "regular" ||
+      this.isRegularAuto() ||
+        this.isRegularManual() ||
         this.kind === "space_editors" ||
         this.kind === "agent_editors" ||
         this.kind === "skill_editors" ||
@@ -1550,24 +1614,6 @@ export class GroupResource extends BaseResource<GroupModel> {
           userIds.length === 1
             ? "Cannot add: user is not a member of the workspace"
             : "Cannot add: users are not members of the workspace"
-        )
-      );
-    }
-
-    // Users can only be added to regular, space_editors, agent_editors, skill_editors or provisioned groups.
-    if (
-      ![
-        "regular",
-        "space_editors",
-        "agent_editors",
-        "skill_editors",
-        "provisioned",
-      ].includes(this.kind)
-    ) {
-      return new Err(
-        new DustError(
-          "system_or_global_group",
-          "Users can only be added to regular, space_editors, agent_editors, skill_editors or provisioned groups."
         )
       );
     }
@@ -1687,7 +1733,8 @@ export class GroupResource extends BaseResource<GroupModel> {
     >
   > {
     assert(
-      this.kind === "regular" ||
+      this.isRegularAuto() ||
+        this.isRegularManual() ||
         this.kind === "space_editors" ||
         this.kind === "agent_editors" ||
         this.kind === "skill_editors" ||
@@ -1721,24 +1768,6 @@ export class GroupResource extends BaseResource<GroupModel> {
           userIds.length === 1
             ? "Cannot remove: user is not a member of the workspace"
             : "Cannot remove: users are not members of the workspace"
-        )
-      );
-    }
-
-    // Users can only be removed from regular, space_editors, agent_editors, skill_editors or provisioned groups.
-    if (
-      ![
-        "regular",
-        "space_editors",
-        "agent_editors",
-        "skill_editors",
-        "provisioned",
-      ].includes(this.kind)
-    ) {
-      return new Err(
-        new DustError(
-          "system_or_global_group",
-          "Users can only be removed from regular, space_editors, agent_editors, skill_editors or provisioned groups."
         )
       );
     }
@@ -1826,7 +1855,7 @@ export class GroupResource extends BaseResource<GroupModel> {
    * Unlike removeMembers(), this method does not require admin/editor permissions.
    * Users can always remove themselves from groups they are members of.
    *
-   * Only works for "regular" and "space_editors" groups.
+   * Only works for "regular_auto" and "space_editors" groups.
    * TODO(remy): Replace this with dangerouslyRemoveMembers once available
    */
   async leaveGroup(
@@ -1838,7 +1867,7 @@ export class GroupResource extends BaseResource<GroupModel> {
     const user = auth.getNonNullableUser();
     const workspace = auth.getNonNullableWorkspace();
 
-    if (this.kind !== "regular" && this.kind !== "space_editors") {
+    if (!this.isRegularAuto() && this.kind !== "space_editors") {
       return new Err(
         new DustError(
           "system_or_global_group",
@@ -2170,6 +2199,103 @@ export class GroupResource extends BaseResource<GroupModel> {
     return new Ok(undefined);
   }
 
+  async updateRegularManualGroup(
+    auth: Authenticator,
+    { name, memberIds }: { name?: string; memberIds?: string[] }
+  ): Promise<
+    Result<
+      undefined,
+      DustError<
+        | "unauthorized"
+        | "name_conflict"
+        | "user_not_found"
+        | "user_not_member"
+        | "user_already_member"
+        | "group_not_found"
+        | "group_requirements_not_met"
+        | "system_or_global_group"
+      >
+    >
+  > {
+    if (!auth.isBusinessAdmin()) {
+      return new Err(
+        new DustError(
+          "unauthorized",
+          `Only workspace admins and ${BUSINESS_ADMIN_ROLE_NAME}s can update groups.`
+        )
+      );
+    }
+
+    if (!this.isRegularManual()) {
+      return new Err(new DustError("group_not_found", "Group not found."));
+    }
+
+    if (name !== undefined) {
+      const existing = await GroupResource.fetchByName(auth, name);
+      if (existing && existing.id !== this.id) {
+        return new Err(
+          new DustError(
+            "name_conflict",
+            `A group named "${name}" already exists in this workspace.`
+          )
+        );
+      }
+
+      const updateRes = await this.updateName(auth, name);
+      if (updateRes.isErr()) {
+        return new Err(new DustError("unauthorized", updateRes.error.message));
+      }
+    }
+
+    if (memberIds !== undefined) {
+      const uniqueMemberIds = [...new Set(memberIds)];
+      const users = await UserResource.fetchByIds(uniqueMemberIds);
+      if (users.length !== uniqueMemberIds.length) {
+        return new Err(
+          new DustError("user_not_found", "Some users were not found.")
+        );
+      }
+
+      const setResult = await this.dangerouslySetMembers(auth, {
+        users: users.map((u) => u.toJSON()),
+      });
+      if (setResult.isErr()) {
+        return new Err(setResult.error);
+      }
+    }
+
+    return new Ok(undefined);
+  }
+
+  async deleteRegularManualGroup(
+    auth: Authenticator
+  ): Promise<
+    Result<
+      undefined,
+      DustError<"unauthorized" | "group_not_found" | "internal_error">
+    >
+  > {
+    if (!auth.isBusinessAdmin()) {
+      return new Err(
+        new DustError(
+          "unauthorized",
+          `Only workspace admins and ${BUSINESS_ADMIN_ROLE_NAME}s can delete groups.`
+        )
+      );
+    }
+
+    if (!this.isRegularManual()) {
+      return new Err(new DustError("group_not_found", "Group not found."));
+    }
+
+    const deleteRes = await this.delete(auth);
+    if (deleteRes.isErr()) {
+      return new Err(new DustError("internal_error", deleteRes.error.message));
+    }
+
+    return new Ok(undefined);
+  }
+
   // Per-group usage spend limit (excluding seat allowance), applied per member.
   // Pass null to clear the cap.
   async updatePoolCap(
@@ -2283,9 +2409,11 @@ export class GroupResource extends BaseResource<GroupModel> {
    * 2. Role-based: Workspace admins get read and write access
    *
    * For agent_editors and skill_editors groups, the permissions are:
-   * 1. Group-based: The group's members get read and write access
-   * 2. Role-based: Workspace admins get read and write access. All users can
+   * 1. Group-based: The group's members get full access
+   * 2. Role-based: Workspace admins get read and admin access. All users can
    *    read "agent_editors" and "skill_editors" groups.
+   *    Admin do not have write access, they can however add themselves to
+   *    groups to gain it.
    *
    * CAUTION: if / when editing, note that for role permissions, permissions are
    * NOT inherited, i.e., if you set a permission for role "user", an "admin"
@@ -2301,11 +2429,11 @@ export class GroupResource extends BaseResource<GroupModel> {
           groups: [
             {
               id: this.id,
-              permissions: ["read", "write"],
+              permissions: ["read", "write", "admin"],
             },
           ],
           roles: [
-            { role: "admin", permissions: ["read", "write", "admin"] },
+            { role: "admin", permissions: ["read", "admin"] },
             {
               role: "user",
               permissions: ["read"],
@@ -2335,6 +2463,44 @@ export class GroupResource extends BaseResource<GroupModel> {
       ];
     }
 
+    if (this.isRegularManual()) {
+      return [
+        {
+          groups: [
+            {
+              id: this.id,
+              permissions: ["read"],
+            },
+          ],
+          roles: [
+            { role: "admin", permissions: ["read", "write", "admin"] },
+            { role: "business_admin", permissions: ["read", "write", "admin"] },
+          ],
+          workspaceId: this.workspaceId,
+        },
+      ];
+    }
+
+    // Provisioned groups are directory-synced (SCIM), so membership is not editable in-app:
+    // business admins get read (e.g. to grant them governance capabilities) but not write/admin.
+    if (this.isProvisioned()) {
+      return [
+        {
+          groups: [
+            {
+              id: this.id,
+              permissions: ["read"],
+            },
+          ],
+          roles: [
+            { role: "admin", permissions: ["read", "write", "admin"] },
+            { role: "business_admin", permissions: ["read"] },
+          ],
+          workspaceId: this.workspaceId,
+        },
+      ];
+    }
+
     return [
       {
         groups: [
@@ -2357,6 +2523,10 @@ export class GroupResource extends BaseResource<GroupModel> {
     return auth.canWrite(this.requestedPermissions());
   }
 
+  canAdministrate(auth: Authenticator): boolean {
+    return auth.canAdministrate(this.requestedPermissions());
+  }
+
   isSystem(): boolean {
     return this.kind === "system";
   }
@@ -2365,8 +2535,12 @@ export class GroupResource extends BaseResource<GroupModel> {
     return this.kind === "global";
   }
 
-  isRegular(): boolean {
-    return this.kind === "regular";
+  isRegularAuto(): boolean {
+    return this.kind === "regular_auto";
+  }
+
+  isRegularManual(): boolean {
+    return isRegularManualGroupKind(this.kind);
   }
 
   isSpaceEditor(): boolean {

@@ -1,6 +1,6 @@
 import type { MCPToolStakeLevelType } from "@app/lib/actions/constants";
 import type { MCPError } from "@app/lib/actions/mcp_errors";
-import type { ToolContextType } from "@app/lib/actions/types";
+import type { ToolRunContext } from "@app/lib/actions/types";
 import type {
   InternalMCPServerDefinitionType,
   MCPToolType,
@@ -22,7 +22,7 @@ export type ToolHandlerExtra = RequestHandlerExtra<
   ServerNotification
 > & {
   auth: Authenticator;
-  toolContext?: ToolContextType;
+  runContext: ToolRunContext;
 };
 
 export type ToolHandlerResult = Result<CallToolResult["content"], MCPError>;
@@ -151,6 +151,7 @@ export type InternalMCPToolType<TName extends string = string> = Omit<
   displayLabels: ToolDisplayLabels;
   toolCostCategory: ToolCostCategory;
   freeUsage: boolean;
+  stake: MCPToolStakeLevelType;
 };
 
 export type ServerMetadata<
@@ -160,5 +161,4 @@ export type ServerMetadata<
 > = {
   serverInfo: InternalMCPServerDefinitionType & { name: TServerName };
   tools: InternalMCPToolType<TToolName>[];
-  tools_stakes: Record<TToolName, MCPToolStakeLevelType>;
 };

@@ -6,6 +6,7 @@ import { AgentsAPI } from "./high_level/agents";
 import { ConversationsAPI } from "./high_level/conversations";
 import { FilesAPI } from "./high_level/files";
 import type { DustAPIOptions } from "./high_level/types";
+import { encodeUtf8HeaderValue } from "./http_headers";
 import type {
   AgentConfigurationViewType,
   AgentMessageEventData,
@@ -104,6 +105,7 @@ import {
 export * from "./error_utils";
 export * from "./errors/errors";
 export * from "./high_level";
+export * from "./http_headers";
 export * from "./internal_mime_types";
 export * from "./mcp_transport";
 export * from "./output_schemas";
@@ -294,11 +296,17 @@ export class DustAPI {
   }
 
   async baseHeaders() {
-    const headers: RequestInit["headers"] = {
+    const headers: Record<string, string> = {
       Authorization: `Bearer ${await this.getApiKey()}`,
     };
     if (this._credentials.extraHeaders) {
-      Object.assign(headers, this._credentials.extraHeaders);
+      // Header values must fit in ISO-8859-1 or fetch throws; non-Latin-1
+      // values are carried as RFC 2047 encoded-words (decoded server-side).
+      for (const [key, value] of Object.entries(
+        this._credentials.extraHeaders
+      )) {
+        headers[key] = encodeUtf8HeaderValue(value);
+      }
     }
     return headers;
   }

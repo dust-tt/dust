@@ -270,6 +270,7 @@ export const reasoningModelOutput: ResponseStreamEvent[] = [
         input_tokens: 6853,
         input_tokens_details: {
           cached_tokens: 0,
+          cache_write_tokens: 0,
         },
         output_tokens: 414,
         output_tokens_details: {

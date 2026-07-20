@@ -21,6 +21,7 @@ export function renderPlanFromModel({
         isDeepDiveAllowed: plan.isDeepDiveAllowed,
       },
       connections: {
+        count: plan.maxConnectionsCount,
         isConfluenceAllowed: plan.isManagedConfluenceAllowed,
         isSlackAllowed: plan.isManagedSlackAllowed,
         isNotionAllowed: plan.isManagedNotionAllowed,

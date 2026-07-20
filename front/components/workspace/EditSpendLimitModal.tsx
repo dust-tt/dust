@@ -22,7 +22,7 @@ import {
 } from "@dust-tt/sparkle";
 import { useEffect, useRef, useState } from "react";
 
-const MIN_AWU_CREDITS = 1;
+const MIN_AWU_CREDITS = 0;
 const MAX_AWU_CREDITS = 1_000_000;
 
 type SpendLimitKind = "default" | "override";
@@ -109,7 +109,7 @@ export function EditSpendLimitModal({
   }
 
   function handleCreditsChange(value: string) {
-    // Keep only digits — credits are integers and the API range starts at 1.
+    // Keep only digits — credits are integers and the API range starts at 0.
     const cleaned = value.replace(/[^\d]/g, "");
     setCreditsInput(cleaned);
     setValidationMessage(null);

@@ -2,6 +2,7 @@ import {
   AshbyJobPostingUpdateDetails,
   AshbyReferralDetails,
 } from "@app/components/assistant/conversation/tool_validation/AshbyValidationDetails";
+import { PodEditInformationValidationDetails } from "@app/components/assistant/conversation/tool_validation/PodEditInformationValidationDetails";
 import { PodMembersUpdateValidationDetails } from "@app/components/assistant/conversation/tool_validation/PodMembersUpdateValidationDetails";
 import { PodTasksCreateValidationDetails } from "@app/components/assistant/conversation/tool_validation/PodTasksCreateValidationDetails";
 import { PodTasksUpdateValidationDetails } from "@app/components/assistant/conversation/tool_validation/PodTasksUpdateValidationDetails";
@@ -16,10 +17,14 @@ import {
   isAshbyUpdateJobPostingInput,
 } from "@app/lib/api/actions/servers/ashby/types";
 import {
+  EDIT_INFORMATION_TOOL_NAME,
   POD_MANAGER_SERVER_NAME,
   UPDATE_MEMBERS_TOOL_NAME,
 } from "@app/lib/api/actions/servers/pod_manager/metadata";
-import { isPodManagerUpdateMembersInput } from "@app/lib/api/actions/servers/pod_manager/types";
+import {
+  isPodManagerEditInformationInput,
+  isPodManagerUpdateMembersInput,
+} from "@app/lib/api/actions/servers/pod_manager/types";
 import {
   CREATE_TASKS_TOOL_NAME,
   POD_TASKS_SERVER_NAME,
@@ -40,10 +45,9 @@ import {
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
+  Markdown,
 } from "@dust-tt/sparkle";
 import { useMemo } from "react";
-
-const MAX_DISPLAY_VALUE_LENGTH = 300;
 
 function humanizeFieldName(name: string): string {
   return name
@@ -57,7 +61,9 @@ function formatDisplayValue(value: unknown): string | null {
     return null;
   }
   if (typeof value === "object") {
-    return null;
+    // Render objects/arrays as formatted JSON, same as GenericActionDetails.
+    // No truncation: the container is overflow-auto.
+    return JSON.stringify(value, null, 2);
   }
   if (typeof value === "boolean") {
     return value ? "Yes" : "No";
@@ -65,19 +71,23 @@ function formatDisplayValue(value: unknown): string | null {
   if (!isString(value)) {
     return null;
   }
-  if (value.length <= MAX_DISPLAY_VALUE_LENGTH) {
-    return value;
-  }
-  return `${value.slice(0, MAX_DISPLAY_VALUE_LENGTH)}…`;
+  // Return the full string — no truncation, user needs the full payload to approve.
+  return value;
 }
 
 interface DisplayableInput {
   label: string;
   value: string;
+  // Whether `value` was produced from an object/array input (as opposed to a
+  // string that merely looks like JSON), so it can be rendered as a
+  // collapsible JSON code block.
+  isJson: boolean;
 }
 
 interface ToolValidationDetailsProps {
-  blockedAction: BlockedToolExecution;
+  // Only the display fields are needed, so both agent-loop and sandbox-function blocked tool
+  // executions can be rendered.
+  blockedAction: Pick<BlockedToolExecution, "inputs" | "metadata">;
   user: UserType;
   owner: LightWorkspaceType;
   conversationId?: string | null;
@@ -120,11 +130,12 @@ export function ToolValidationDetails({
     return Object.entries(blockedAction.inputs)
       .map(([key, value]) => {
         if (isSkillAuthoringUpdate && key === "sId") {
-          return { label: "Skill", value: resolvedSkillName };
+          return { label: "Skill", value: resolvedSkillName, isJson: false };
         }
         return {
           label: humanizeFieldName(key),
           value: formatDisplayValue(value),
+          isJson: value !== null && typeof value === "object",
         };
       })
       .filter((entry): entry is DisplayableInput => entry.value !== null);
@@ -176,7 +187,20 @@ export function ToolValidationDetails({
         input={blockedAction.inputs}
         owner={owner}
         user={user}
-        agentName={blockedAction.metadata.agentName}
+        conversationId={conversationId}
+      />
+    );
+  }
+
+  if (
+    blockedAction.metadata.mcpServerName === POD_MANAGER_SERVER_NAME &&
+    blockedAction.metadata.toolName === EDIT_INFORMATION_TOOL_NAME &&
+    isPodManagerEditInformationInput(blockedAction.inputs)
+  ) {
+    return (
+      <PodEditInformationValidationDetails
+        input={blockedAction.inputs}
+        owner={owner}
         conversationId={conversationId}
       />
     );
@@ -208,14 +232,27 @@ export function ToolValidationDetails({
       </CollapsibleTrigger>
       <CollapsibleContent>
         <div className="max-h-80 space-y-2 overflow-auto rounded-lg bg-muted p-3 text-sm">
-          {displayableInputs.map(({ label, value }) => (
-            <div key={label} className="flex flex-col gap-0.5">
-              <span className="text-xs font-medium text-muted-foreground">
-                {label}
-              </span>
-              <span className="whitespace-pre-wrap break-words">{value}</span>
-            </div>
-          ))}
+          {displayableInputs.map(({ label, value, isJson }) =>
+            isJson ? (
+              <Collapsible key={label}>
+                <CollapsibleTrigger>
+                  <span className="text-xs font-medium text-muted-foreground">
+                    {label}
+                  </span>
+                </CollapsibleTrigger>
+                <CollapsibleContent>
+                  <Markdown content={`\`\`\`json\n${value}\n\`\`\``} />
+                </CollapsibleContent>
+              </Collapsible>
+            ) : (
+              <div key={label} className="flex flex-col gap-0.5">
+                <span className="text-xs font-medium text-muted-foreground">
+                  {label}
+                </span>
+                <span className="whitespace-pre-wrap break-words">{value}</span>
+              </div>
+            )
+          )}
         </div>
       </CollapsibleContent>
     </Collapsible>

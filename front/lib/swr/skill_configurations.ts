@@ -26,7 +26,7 @@ import { Ok } from "@app/types/shared/result";
 import { pluralize } from "@app/types/shared/utils/string_utils";
 import type { LightWorkspaceType } from "@app/types/user";
 import { useCallback, useRef, useState } from "react";
-import type { Fetcher } from "swr";
+import type { Fetcher, SWRConfiguration } from "swr";
 import type { SWRMutationConfiguration } from "swr/mutation";
 import useSWRMutation from "swr/mutation";
 
@@ -99,12 +99,14 @@ export function useSkills({
   status,
   globalSpaceOnly,
   isDefault,
+  swrOptions,
 }: {
   owner: LightWorkspaceType;
   disabled?: boolean;
   status?: SkillStatus;
   globalSpaceOnly?: boolean;
   isDefault?: boolean;
+  swrOptions?: SWRConfiguration;
 }): {
   skills: SkillWithoutInstructionsAndToolsType[];
   isSkillsError: boolean;
@@ -128,7 +130,7 @@ export function useSkills({
   const { data, error, isLoading, mutate } = useSWRWithDefaults(
     `/api/w/${owner.sId}/skills${queryString ? `?${queryString}` : ""}`,
     fetcher,
-    { disabled }
+    { ...swrOptions, disabled }
   );
 
   return {
@@ -440,6 +442,7 @@ export function useDetectSkillsFromRepo({
   );
   const [isDetecting, setIsDetecting] = useState(false);
   const [detectError, setDetectError] = useState<string | null>(null);
+  const [repositoryNotFound, setRepositoryNotFound] = useState(false);
   const lastDetectedUrl = useRef<string | null>(null);
 
   const triggerDetect = useDebounceWithAbort(
@@ -447,10 +450,12 @@ export function useDetectSkillsFromRepo({
       async (repoUrl: string, signal: AbortSignal) => {
         if (repoUrl === lastDetectedUrl.current) {
           setDetectError(null);
+          setRepositoryNotFound(false);
           return;
         }
         setIsDetecting(true);
         setDetectError(null);
+        setRepositoryNotFound(false);
 
         try {
           const response: DetectSkillsResponseBody = await fetcher(
@@ -469,11 +474,14 @@ export function useDetectSkillsFromRepo({
           if (signal.aborted) {
             return;
           }
-          setDetectError(
-            isAPIErrorResponse(err)
-              ? err.error.message
-              : "Failed to detect skills from this repository."
-          );
+          if (isAPIErrorResponse(err)) {
+            setDetectError(err.error.message);
+            setRepositoryNotFound(
+              err.error.type === "skill_github_repository_not_found"
+            );
+          } else {
+            setDetectError("Failed to detect skills from this repository.");
+          }
         } finally {
           if (!signal.aborted) {
             setIsDetecting(false);
@@ -485,7 +493,22 @@ export function useDetectSkillsFromRepo({
     { delayMs: DETECT_SKILLS_DEBOUNCE_MS }
   );
 
-  return { detectedSkills, isDetecting, detectError, triggerDetect };
+  const retryDetect = useCallback(
+    (repoUrl: string) => {
+      lastDetectedUrl.current = null;
+      triggerDetect(repoUrl);
+    },
+    [triggerDetect]
+  );
+
+  return {
+    detectedSkills,
+    isDetecting,
+    detectError,
+    repositoryNotFound,
+    triggerDetect,
+    retryDetect,
+  };
 }
 
 function notifyImportResult(

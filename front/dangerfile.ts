@@ -148,10 +148,10 @@ function checkSDKLabel() {
 }
 
 function checkDeployPlanSection() {
-  const PRDescription = danger.github.pr.body;
+  const PRDescription = danger.github.pr.body ?? "";
 
   const deployPlanSectionRegex =
-    /## Deploy Plan.*?\r\n([\s\S]*?)(?=<!--|\n##|$)/;
+    /## Deploy Plan.*?\r?\n([\s\S]*?)(?=<!--|\n##|$)/;
 
   const match = PRDescription.match(deployPlanSectionRegex);
   if (!match || match[1].trim().length < 20) {
@@ -707,6 +707,7 @@ async function checkDiffFiles() {
     "front/lib/models/plan.ts",
     "front/lib/models/provider_credential.ts",
     "front/lib/resources/storage/models/group_memberships.ts",
+    "front/lib/resources/storage/models/group_permissions.ts",
     "front/lib/resources/storage/models/group_spaces.ts",
     "front/lib/resources/storage/models/groups.ts",
     "front/lib/resources/storage/models/keys.ts",

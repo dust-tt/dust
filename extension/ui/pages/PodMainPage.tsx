@@ -19,12 +19,13 @@ import {
   TabsTrigger,
 } from "@dust-tt/sparkle";
 import { ConversationLayout } from "@extension/ui/components/conversation/ConversationLayout";
-import { ExtensionInputBarProvider } from "@extension/ui/components/conversation/ExtensionInputBarProvider";
+import { useClientSideMCPServerIds } from "@extension/ui/components/conversation/ExtensionClientSideMCPServerProvider";
 import { useParams } from "react-router-dom";
 
 export const PodMainPage = () => {
   const { workspace } = useAuth();
   const { podId } = useParams<{ podId: string }>();
+  const clientSideMCPServerIds = useClientSideMCPServerIds();
 
   const {
     spaceInfo: podInfo,
@@ -114,15 +115,14 @@ export const PodMainPage = () => {
       >
         <BlockedActionsProvider owner={workspace}>
           <GenerationContextProvider>
-            <ExtensionInputBarProvider workspace={workspace}>
-              <PodPageContent
-                podInfo={podInfo}
-                onTabChange={handleTabChange}
-                podUiPreferences={podUiPreferences}
-                setPodUiPreferences={setPodUiPreferences}
-                mutatePodInfo={mutatePodInfo}
-              />
-            </ExtensionInputBarProvider>
+            <PodPageContent
+              podInfo={podInfo}
+              onTabChange={handleTabChange}
+              podUiPreferences={podUiPreferences}
+              setPodUiPreferences={setPodUiPreferences}
+              mutatePodInfo={mutatePodInfo}
+              clientSideMCPServerIds={clientSideMCPServerIds}
+            />
           </GenerationContextProvider>
         </BlockedActionsProvider>
       </ConversationLayout>

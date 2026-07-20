@@ -173,7 +173,7 @@ const NavigationListItem = React.forwardRef<
             {suffix && (
               <div
                 className={cn(
-                  "flex grow flex-shrink-0 items-center",
+                  "flex grow flex-shrink-0 items-center justify-end",
                   moreMenu &&
                     "group-focus-within/menu-item:hidden group-hover/menu-item:hidden"
                 )}

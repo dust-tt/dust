@@ -9,6 +9,7 @@ import type { UserType } from "./user";
 const uniq = <T>(arr: T[]): T[] => Array.from(new Set(arr));
 
 export const TABLE_PREFIX = "TABLE:";
+export const DUST_FILE_ID_HEADER = "X-Dust-File-Id";
 
 export type FileStatus = "created" | "failed" | "ready";
 
@@ -57,6 +58,12 @@ export type FileUseCaseMetadata = {
   // only). Set when the frame has been published: its presence means a built bundle exists
   // (stored as the processed version) and records where to re-read sources on republish.
   frameBundleRootPath?: string;
+  // Scoped path of the Frame's entry file, relative to frameBundleRootPath, as of the last
+  // successful publish. The model names the entry's full path directly when publishing (see the
+  // publish tool), so fileName has no guaranteed relationship to it: this is the only durable
+  // record of what the entry actually is. Live edits (no model in the loop, triggered by a UI
+  // click) reuse it to know what to rebuild from, rather than guessing from fileName.
+  frameEntryRelPath?: string;
 };
 
 export function isConversationFileUseCase(

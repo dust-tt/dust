@@ -1,4 +1,5 @@
 import { handleMembershipInvitations } from "@app/lib/api/invitation";
+import { getFeatureFlags } from "@app/lib/auth";
 import { MembershipInvitationResource } from "@app/lib/resources/membership_invitation_resource";
 import type {
   GetWorkspaceInvitationsResponseBody,
@@ -65,6 +66,20 @@ app.post(
           message: "You do not have permission to invite admins.",
         },
       });
+    }
+
+    if (invitationRequests.some((r) => r.role === "business_admin")) {
+      const featureFlags = await getFeatureFlags(auth);
+      if (!featureFlags.includes("admin_governance")) {
+        return apiError(ctx, {
+          status_code: 403,
+          api_error: {
+            type: "workspace_auth_error",
+            message:
+              "You cannot assign the business admin role as the feature is not enabled for this workspace.",
+          },
+        });
+      }
     }
 
     const invitationRes = await handleMembershipInvitations(auth, {

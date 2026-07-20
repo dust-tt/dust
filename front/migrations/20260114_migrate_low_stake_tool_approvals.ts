@@ -89,7 +89,6 @@ makeScript({}, async ({ execute }, logger) => {
             userId: metadata.userId,
             mcpServerId,
             toolName,
-            agentId: null,
             argsAndValues: null,
             argsAndValuesMd5: null,
           });

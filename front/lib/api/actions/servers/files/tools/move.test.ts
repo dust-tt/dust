@@ -1,5 +1,5 @@
 import type { ToolHandlerExtra } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import type { ToolContextType } from "@app/lib/actions/types";
+import type { ToolRunContext } from "@app/lib/actions/types";
 import { moveHandler } from "@app/lib/api/actions/servers/files/tools/move";
 import { createConversation } from "@app/lib/api/assistant/conversation";
 import { Authenticator } from "@app/lib/auth";
@@ -15,10 +15,11 @@ function makeExtra(
   auth: Authenticator,
   conversation: ConversationType
 ): ToolHandlerExtra {
-  const toolContext = {
-    runContext: { contextType: "agent_loop", conversation },
-  } as unknown as ToolContextType;
-  return { auth, toolContext } as unknown as ToolHandlerExtra;
+  const runContext = {
+    contextType: "agent_loop",
+    conversation,
+  } as unknown as ToolRunContext;
+  return { auth, runContext } as unknown as ToolHandlerExtra;
 }
 
 async function setupProjectConversation(

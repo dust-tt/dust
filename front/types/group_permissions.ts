@@ -1,25 +1,41 @@
 /**
  * Vocabulary for the `group_permissions` table (Admin Governance §1A).
  *
- * All permission grants — resource-level access (spaces, agents, skills) and workspace-level
- * capabilities (billing, identity, …) — live in a single table keyed by a plain-verb
- * `permissionType`, a `resourceType`, and a numeric `resourceId`. The validity of a given
- * (permissionType, resourceType, resourceId) combination is enforced by the registry in
- * `@app/lib/resources/group_permission_registry`; this file only defines the raw vocabulary and
- * the "whole type" sentinel.
+ * A grant row stores a registry-defined *grant type* — a role such as `member`/`editor`, or a
+ * singleton capability such as `create`/`use` — for a `resourceType` and a numeric `resourceId`.
+ * Which roles are valid for a (grantType, resourceType, resourceId) combination, and the verbs each
+ * role grants, are defined by the registry in `@app/lib/resources/group_permission_registry`. This
+ * file defines the raw vocabulary and the "whole type" sentinel.
  */
 
-// Plain verbs. "*" means "all verbs".
-export const PERMISSION_TYPES = [
+// Verbs are the granular capabilities a role grants. They are never stored — roles map to them in
+// the registry, and capability questions are expressed in verbs.
+export const GRANT_VERBS = [
   "read",
   "write",
   "admin",
   "create",
   "publish",
   "invite",
+  "use",
+] as const;
+export type GrantVerb = (typeof GRANT_VERBS)[number];
+
+// Grant types are the registry-defined role names stored in a grant row. "*" means "all grant
+// types". Each role's verbs and levels live in the registry.
+export const GRANT_TYPES = [
+  "reader",
+  "member",
+  "admin",
+  "editor",
+  "create",
+  "publish",
+  "invite",
+  "read",
+  "use",
   "*",
 ] as const;
-export type PermissionType = (typeof PERMISSION_TYPES)[number];
+export type GrantType = (typeof GRANT_TYPES)[number];
 
 // Resource domains. "*" means "all resource types".
 export const GROUP_PERMISSION_RESOURCE_TYPES = [
@@ -30,18 +46,20 @@ export const GROUP_PERMISSION_RESOURCE_TYPES = [
   "billing",
   "identity",
   "audit_log",
+  "models_tier",
   "*",
 ] as const;
 export type GroupPermissionResourceType =
   (typeof GROUP_PERMISSION_RESOURCE_TYPES)[number];
 
-// `resourceId = -1` means "the type as a whole": for instance-level verbs, all resources of the
-// type; for type-level verbs (e.g. "create"), the only sensible value. There is deliberately no
-// NULL anywhere — one meaning, one representation — and the unique index dedupes wildcard rows.
+// `resourceId = -1` means "the type as a whole": for instance-level roles, all resources of the
+// type; for type-level roles (e.g. the `create` capability), the only sensible value. There is
+// deliberately no NULL anywhere — one meaning, one representation — and the unique index dedupes
+// wildcard rows.
 export const WHOLE_TYPE_RESOURCE_ID = -1;
 
-export function isPermissionType(value: unknown): value is PermissionType {
-  return PERMISSION_TYPES.some((permission) => permission === value);
+export function isGrantType(value: unknown): value is GrantType {
+  return GRANT_TYPES.some((permission) => permission === value);
 }
 
 export function isGroupPermissionResourceType(
@@ -55,10 +73,10 @@ export function isGroupPermissionResourceType(
 const PERMISSION_CONFIGURATION_SCOPES = [
   "everyone",
   "groups",
-  "disabled",
+  "admins_only",
 ] as const;
 
-type PermissionConfigurationScope =
+export type PermissionConfigurationScope =
   (typeof PERMISSION_CONFIGURATION_SCOPES)[number];
 
 export const isValidPermissionConfigurationScope = (
@@ -79,7 +97,47 @@ export type GovernancePermissionConfiguration =
     };
 
 export type GovernancePermission = {
-  permissionType: PermissionType;
+  grantType: GrantType;
   resourceType: GroupPermissionResourceType;
   configuration: GovernancePermissionConfiguration;
 };
+
+// A governance capability: a (grantType, resourceType) pair, without its configuration.
+export type CapabilitySpec = Pick<
+  GovernancePermission,
+  "grantType" | "resourceType"
+>;
+
+// Stable string key for a governance capability.
+export type CapabilityKey = `${GrantType}:${GroupPermissionResourceType}`;
+
+// The single source of truth for the capability-key format; used to key capability-state maps.
+export function capabilityKey({
+  grantType,
+  resourceType,
+}: CapabilitySpec): CapabilityKey {
+  return `${grantType}:${resourceType}`;
+}
+
+/**
+ * Catalog of the governance capabilities the Workspace & Governance page manages, grouped by the
+ * section they belong to.
+ */
+export const GOVERNANCE_CAPABILITIES = {
+  agent: [
+    { grantType: "create", resourceType: "agent" },
+    { grantType: "publish", resourceType: "agent" },
+  ],
+  skill: [
+    { grantType: "create", resourceType: "skill" },
+    { grantType: "publish", resourceType: "skill" },
+  ],
+  frame: [
+    { grantType: "invite", resourceType: "frame" },
+    { grantType: "publish", resourceType: "frame" },
+  ],
+  billingAndSecurity: [
+    { grantType: "admin", resourceType: "billing" },
+    { grantType: "admin", resourceType: "identity" },
+  ],
+} satisfies Record<string, CapabilitySpec[]>;

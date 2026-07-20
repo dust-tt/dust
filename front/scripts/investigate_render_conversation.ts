@@ -107,9 +107,10 @@ makeScript(
         conversation,
       });
 
-    const skillServers = await getSkillServers(auth, {
+    const { skillServers, systemSkillServers } = await getSkillServers(auth, {
       agentConfiguration,
-      skills: [...systemSkills, ...enabledSkills],
+      enabledSkills,
+      systemSkills,
     });
 
     const clientSideMCPActionConfigurations =
@@ -144,19 +145,20 @@ makeScript(
       richMentions: [],
       reactions: [],
       costCredits: null,
+      resolvedModel: null,
+      modelResolutionMethod: null,
     };
 
-    const { serverToolsAndInstructions, error: mcpToolsListingError } =
-      await tryListMCPTools(
-        auth,
-        {
-          agentConfiguration,
-          conversation,
-          agentMessage: placeholderAgentMessage,
-          clientSideActionConfigurations: clientSideMCPActionConfigurations,
-        },
-        { jitServers, skillServers }
-      );
+    const serverToolsAndInstructions = await tryListMCPTools(
+      auth,
+      {
+        agentConfiguration,
+        conversation,
+        agentMessage: placeholderAgentMessage,
+        clientSideActionConfigurations: clientSideMCPActionConfigurations,
+      },
+      { jitServers, skillServers, systemSkillServers }
+    );
 
     const availableActions = serverToolsAndInstructions.flatMap((s) => s.tools);
 
@@ -182,7 +184,6 @@ makeScript(
         ...agentConfiguration.model,
       },
       hasAvailableActions: availableActions.length > 0,
-      errorContext: mcpToolsListingError,
       conversation,
       serverToolsAndInstructions,
       systemSkills,

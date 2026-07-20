@@ -6,4 +6,5 @@ export type EnabledModelConfigurationType = ModelConfigurationType & {
 
 export type GetEnabledModelsResponseType = {
   models: EnabledModelConfigurationType[];
+  defaultModel: EnabledModelConfigurationType;
 };

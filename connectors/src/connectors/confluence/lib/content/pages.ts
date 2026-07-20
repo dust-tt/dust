@@ -233,6 +233,9 @@ export async function confluenceCheckAndUpsertSinglePage({
   );
   if (isPageSkipped) {
     logger.info("Confluence page skipped.");
+    // Mark the page as visited so the garbage collector does not delete the
+    // row (and its skipReason) on the next full space sync.
+    await markPageHasVisited({ connectorId, pageId, spaceId, visitedAtMs });
     return true;
   }
 
