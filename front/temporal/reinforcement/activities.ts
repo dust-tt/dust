@@ -1062,15 +1062,6 @@ export async function checkBatchStatusActivity({
   return llm.getBatchStatus(batchId);
 }
 
-function isBatchNotFoundError(err: unknown): boolean {
-  return (
-    typeof err === "object" &&
-    err !== null &&
-    "status" in err &&
-    err.status === 404
-  );
-}
-
 /**
  * Delete a batch's data on the provider once its results have been consumed.
  * Idempotent: a batch that no longer exists is treated as already deleted, so
@@ -1095,9 +1086,21 @@ export async function deleteBatchActivity({
     );
   }
 
-  try {
-    const deleted = await llm.deleteBatch(batchId);
-    if (!deleted) {
+  const result = await llm.deleteBatch(batchId);
+  if (result.isErr()) {
+    throw result.error;
+  }
+
+  switch (result.value) {
+    case "deleted":
+      return;
+    case "do_not_exist":
+      logger.info(
+        { workspaceId, batchId },
+        "ReinforcedSkills: batch to delete not found, it may already be deleted"
+      );
+      return;
+    case "unsupported": {
       const metadata = llm.getMetadata();
       logger.warn(
         {
@@ -1106,19 +1109,12 @@ export async function deleteBatchActivity({
           modelId: metadata.modelId,
           batchId,
         },
-        "ReinforcedSkills: Failed to delete batch"
-      );
-    }
-  } catch (err) {
-    // The batch may already have been deleted by a previous attempt of this activity.
-    if (isBatchNotFoundError(err)) {
-      logger.info(
-        { workspaceId, batchId },
-        "ReinforcedSkills: batch to delete not found, it may already be deleted"
+        "ReinforcedSkills: batch deletion not supported by provider"
       );
       return;
     }
-    throw err;
+    default:
+      assertNever(result.value);
   }
 }
 

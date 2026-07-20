@@ -9,6 +9,7 @@ import type {
   LLMTraceCustomization,
 } from "@app/lib/api/llm/traces/types";
 import type {
+  BatchDeletionOutcome,
   BatchResult,
   BatchResultWithRunIds,
   BatchStatus,
@@ -36,6 +37,8 @@ import type {
   ModelProviderIdType,
   ReasoningEffort,
 } from "@app/types/assistant/models/types";
+import type { Result } from "@app/types/shared/result";
+import { Ok } from "@app/types/shared/result";
 import { type LangfuseGeneration, startObservation } from "@langfuse/tracing";
 import { randomUUID } from "crypto";
 import pickBy from "lodash/pickBy";
@@ -480,11 +483,13 @@ export abstract class LLM<TPayload = unknown> {
   }
 
   /**
-   * Delete a batch. Returns true if the batch was successfully deleted.
-   * By default returns false (deletion not supported).
+   * Delete a batch's data on the provider.
+   * By default the provider does not support deletion.
    */
-  async deleteBatch(_batchId: string): Promise<boolean> {
-    return false;
+  async deleteBatch(
+    _batchId: string
+  ): Promise<Result<BatchDeletionOutcome, Error>> {
+    return new Ok("unsupported");
   }
 
   /**

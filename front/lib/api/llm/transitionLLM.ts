@@ -1,5 +1,9 @@
 import { LLM } from "@app/lib/api/llm/llm";
-import type { BatchResult } from "@app/lib/api/llm/types/batch";
+import type {
+  BatchDeletionOutcome,
+  BatchResult,
+} from "@app/lib/api/llm/types/batch";
+import { isBatchNotFoundError } from "@app/lib/api/llm/types/batch";
 import {
   handleGenericError,
   type LLMErrorType,
@@ -70,7 +74,10 @@ import type {
 } from "@app/types/assistant/agent_message_content";
 import type { ModelMessageTypeMultiActionsWithoutContentFragment } from "@app/types/assistant/generation";
 import type { ReasoningEffort } from "@app/types/assistant/models/types";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { isString } from "@app/types/shared/utils/general";
 
 /**
@@ -887,7 +894,17 @@ export class BatchEndpointTransition extends BaseTransition {
     return batchResult;
   }
 
-  override async deleteBatch(batchId: string): Promise<boolean> {
-    return this.model.deleteBatch(batchId);
+  override async deleteBatch(
+    batchId: string
+  ): Promise<Result<BatchDeletionOutcome, Error>> {
+    try {
+      const deleted = await this.model.deleteBatch(batchId);
+      return new Ok(deleted ? "deleted" : "unsupported");
+    } catch (err) {
+      if (isBatchNotFoundError(err)) {
+        return new Ok("do_not_exist");
+      }
+      return new Err(normalizeError(err));
+    }
   }
 }

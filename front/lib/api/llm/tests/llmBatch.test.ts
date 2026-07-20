@@ -322,7 +322,10 @@ describe.skipIf(!RUN_LLM_BATCH_TEST || modelsWithBatchSupport.length === 0)(
           }
 
           const deleted = await llm.deleteBatch(batchId);
-          expect(deleted).toBe(true);
+          expect(deleted.isOk()).toBe(true);
+          if (deleted.isOk()) {
+            expect(deleted.value).toBe("deleted");
+          }
         },
         TEST_TIMEOUT_MS
       );
