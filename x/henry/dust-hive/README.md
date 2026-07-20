@@ -190,7 +190,7 @@ external workspace is archived.
 | `lifecycle disable [NAME]` | Disable automatic lifecycle management |
 | `lifecycle status [NAME]` | Show policy, activity, and blocked cleanup reasons |
 | `lifecycle run-once [--dry-run]` | Run one lifecycle scan |
-| `activity run -- COMMAND...` | Run tests or another command with an activity heartbeat |
+| `activity run -- COMMAND...` | Run tests or another command with an active lifecycle lease |
 
 ### Utilities
 
@@ -272,7 +272,7 @@ Activity resets the timer for the environment's current state. Hive tracks:
 - `warm`, `start`, `open`, and `restart` commands.
 - Commands run with `dust-hive activity run`.
 
-Use the activity wrapper for tests so long-running commands maintain a heartbeat:
+Use the activity wrapper for tests so long-running commands hold an active lifecycle lease:
 
 ```bash
 cd front
@@ -287,9 +287,9 @@ the configured cold duration before it is stopped. Activity never automatically 
 environment.
 
 Automatic archive removes Hive services, Docker volumes, the test database, the worktree, and the
-environment registration. It refuses to archive a dirty worktree and always keeps the local Git
-branch. Externally owned worktrees are kept. Set `blockDeleteIfSessionExists` when a persistent
-multiplexer session should also block archive.
+environment registration. It refuses to remove a dirty Hive-owned worktree and always keeps the
+local Git branch. Externally owned worktrees are kept and unregistered. Set
+`blockDeleteIfSessionExists` when a persistent multiplexer session should also block archive.
 
 The lifecycle daemon starts when an environment is enabled and is restarted by subsequent
 `dust-hive` commands if needed. Manage it directly with `dust-hive lifecycle start|stop`. Its log is

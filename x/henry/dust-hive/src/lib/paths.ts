@@ -111,6 +111,14 @@ export function getLifecycleActivityPath(name: string, kind: string): string {
   return join(getEnvDir(name), `lifecycle-activity-${kind}`);
 }
 
+export function getLifecycleLeaseDir(name: string): string {
+  return join(getEnvDir(name), "lifecycle-activity-leases");
+}
+
+export function getLifecycleLeasePath(name: string, token: string): string {
+  return join(getLifecycleLeaseDir(name), `${token}.json`);
+}
+
 export function getLifecycleLockPath(name: string): string {
   return join(getEnvDir(name), "lifecycle.lock");
 }

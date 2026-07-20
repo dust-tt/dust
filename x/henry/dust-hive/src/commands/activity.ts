@@ -1,5 +1,5 @@
 import { detectEnvironmentFromCwd, getEnvironment } from "../lib/environment";
-import { touchLifecycleActivity } from "../lib/lifecycle-activity";
+import { touchLifecycleActivity, withLifecycleActivityLease } from "../lib/lifecycle-activity";
 import { CommandError, Err, Ok, type Result } from "../lib/result";
 
 async function resolveActivityEnvironment(nameArg?: string): Promise<Result<string, CommandError>> {
@@ -31,31 +31,16 @@ export async function activityRunCommand(command: string[]): Promise<Result<void
     return envResult;
   }
 
-  await touchLifecycleActivity(envResult.value, "test");
-  const proc = Bun.spawn(command, {
-    cwd: process.cwd(),
-    env: process.env,
-    stdin: "inherit",
-    stdout: "inherit",
-    stderr: "inherit",
+  const exitCode = await withLifecycleActivityLease(envResult.value, "test", async () => {
+    const proc = Bun.spawn(command, {
+      cwd: process.cwd(),
+      env: process.env,
+      stdin: "inherit",
+      stdout: "inherit",
+      stderr: "inherit",
+    });
+    return proc.exited;
   });
-  const exited = proc.exited;
-  const heartbeat = async (): Promise<void> => {
-    while (true) {
-      const shouldContinue = await Promise.race([
-        exited.then(() => false),
-        new Promise<boolean>((resolve) => setTimeout(() => resolve(true), 15_000)),
-      ]);
-      if (!shouldContinue) {
-        return;
-      }
-      await touchLifecycleActivity(envResult.value, "test");
-    }
-  };
-  const heartbeatPromise = heartbeat();
-  const exitCode = await exited;
-  await heartbeatPromise;
-  await touchLifecycleActivity(envResult.value, "test");
   if (exitCode !== 0) {
     return Err(new CommandError(`Command exited with code ${exitCode}`));
   }

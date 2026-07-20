@@ -1,11 +1,9 @@
-import { mkdir, rmdir, stat } from "node:fs/promises";
 import { z } from "zod";
 import { coolEnvironment } from "../commands/cool";
 import { destroySingleEnvironment } from "../commands/destroy";
 import { stopEnvironment } from "../commands/stop";
 import { type Environment, getEnvironment, getEnvironmentWorktreeDir } from "./environment";
-import { isErrnoException } from "./errors";
-import { getLatestLifecycleActivity } from "./lifecycle-activity";
+import { getActiveLifecycleActivityLease, getLatestLifecycleActivity } from "./lifecycle-activity";
 import {
   type LifecycleConfig,
   type LifecycleEnrollment,
@@ -14,10 +12,11 @@ import {
   resolveLifecyclePolicy,
   saveLifecycleConfig,
 } from "./lifecycle-config";
+import { acquireLifecycleLock } from "./lifecycle-lock";
 import { getSourceFingerprint } from "./lifecycle-source";
 import { logger } from "./logger";
 import { getConfiguredMultiplexer, getSessionName } from "./multiplexer";
-import { getLifecycleLockPath, getLifecycleStatePath } from "./paths";
+import { getLifecycleStatePath } from "./paths";
 import { CommandError, Err, Ok, type Result } from "./result";
 import { loadSettings } from "./settings";
 import { type EnvironmentState, getStateInfo } from "./state";
@@ -37,10 +36,6 @@ const LifecycleStateSchema = z.object({
 
 export type LifecycleState = z.infer<typeof LifecycleStateSchema>;
 export type LifecycleTransition = "cool" | "stop" | "delete";
-
-interface EnvironmentLock {
-  release: () => Promise<void>;
-}
 
 function timestampMs(value: string): number {
   return new Date(value).getTime();
@@ -89,39 +84,6 @@ export async function loadLifecycleState(envName: string): Promise<LifecycleStat
 
 async function saveLifecycleState(envName: string, state: LifecycleState): Promise<void> {
   await Bun.write(getLifecycleStatePath(envName), JSON.stringify(state, null, 2));
-}
-
-async function acquireEnvironmentLock(envName: string): Promise<EnvironmentLock | null> {
-  const lockPath = getLifecycleLockPath(envName);
-
-  for (let attempt = 0; attempt < 2; attempt += 1) {
-    try {
-      await mkdir(lockPath);
-      return {
-        release: async () => {
-          try {
-            await rmdir(lockPath);
-          } catch (error) {
-            if (isErrnoException(error) && error.code === "ENOENT") {
-              return;
-            }
-            throw error;
-          }
-        },
-      };
-    } catch (error) {
-      if (!isErrnoException(error) || error.code !== "EEXIST") {
-        throw error;
-      }
-      const lockInfo = await stat(lockPath);
-      if (Date.now() - lockInfo.mtimeMs < 5 * 60 * 1000) {
-        return null;
-      }
-      await rmdir(lockPath);
-    }
-  }
-
-  return null;
 }
 
 function createInitialState(
@@ -187,13 +149,22 @@ async function observeActivity(
     };
   }
 
+  const activeLease = await getActiveLifecycleActivityLease(env.name);
+  if (activeLease) {
+    nextState = {
+      ...nextState,
+      lastActivityAt: now.toISOString(),
+      lastActivitySource: activeLease.kind,
+    };
+  }
+
   return {
     ...nextState,
     sourceFingerprint,
   };
 }
 
-async function getDeleteBlockReason(
+export async function getDeleteBlockReason(
   env: Environment,
   policy: LifecyclePolicy
 ): Promise<string | null> {
@@ -258,7 +229,7 @@ async function runEnvironmentLifecycle(
   policy: LifecyclePolicy,
   dryRun: boolean
 ): Promise<Result<void, CommandError>> {
-  const lock = await acquireEnvironmentLock(env.name);
+  const lock = await acquireLifecycleLock(env.name);
   if (!lock) {
     return Err(new CommandError(`Lifecycle check for '${env.name}' is already running`));
   }
@@ -338,22 +309,18 @@ async function runEnrolledEnvironment(
   enrollment: LifecycleEnrollment,
   config: LifecycleConfig,
   dryRun: boolean
-): Promise<void> {
+): Promise<Result<void, CommandError>> {
   const env = await getEnvironment(envName);
   if (!env) {
     await removeEnrollment(envName);
     logger.warn(`[lifecycle] ${envName}: removed enrollment for missing environment`);
-    return;
+    return Ok(undefined);
   }
   const policyResult = resolveLifecyclePolicy(config, enrollment);
   if (!policyResult.ok) {
-    logger.warn(`[lifecycle] ${envName}: ${policyResult.error.message}`);
-    return;
+    return policyResult;
   }
-  const result = await runEnvironmentLifecycle(env, policyResult.value, dryRun);
-  if (!result.ok) {
-    logger.warn(`[lifecycle] ${envName}: ${result.error.message}`);
-  }
+  return runEnvironmentLifecycle(env, policyResult.value, dryRun);
 }
 
 export async function runLifecycleSweep(options: { dryRun?: boolean } = {}): Promise<Result<void>> {
@@ -363,16 +330,23 @@ export async function runLifecycleSweep(options: { dryRun?: boolean } = {}): Pro
   }
   const config = configResult.value;
   const dryRun = options.dryRun ?? config.dryRun;
+  const failures: string[] = [];
 
   for (const [envName, enrollment] of Object.entries(config.environments)) {
     // One broken environment must not prevent resource reclamation for the others.
     try {
-      await runEnrolledEnvironment(envName, enrollment, config, dryRun);
+      const result = await runEnrolledEnvironment(envName, enrollment, config, dryRun);
+      if (!result.ok) {
+        failures.push(`${envName}: ${result.error.message}`);
+      }
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
-      logger.warn(`[lifecycle] ${envName}: ${message}`);
+      failures.push(`${envName}: ${message}`);
     }
   }
 
+  if (failures.length > 0) {
+    return Err(new CommandError(`Lifecycle sweep failed: ${failures.join("; ")}`));
+  }
   return Ok(undefined);
 }

@@ -325,7 +325,7 @@ cli
   );
 
 cli
-  .command("activity [subcommand] [...args]", "Record activity or run a command with a heartbeat")
+  .command("activity [subcommand] [...args]", "Record activity or run a command with a lease")
   .allowUnknownOptions()
   .action(async (subcommand: string | undefined, args: string[], options: { "--"?: string[] }) => {
     if (subcommand === "touch") {
