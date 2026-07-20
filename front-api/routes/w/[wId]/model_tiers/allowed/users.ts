@@ -1,4 +1,10 @@
+import {
+  buildAuditLogTarget,
+  emitAuditLogEvent,
+  getAuditLogContext,
+} from "@app/lib/api/audit/workos_audit";
 import { ModelsTierResource } from "@app/lib/resources/models_tier_resource";
+import { UserResource } from "@app/lib/resources/user_resource";
 import type { GetUserAllowedModelTiersResponseBody } from "@app/types/api/model_tiers";
 import {
   UserAllowedModelTierBodySchema,
@@ -42,6 +48,25 @@ app.post(
       return apiError(ctx, modelTierErrorToApiError(result.error));
     }
 
+    const user = await UserResource.fetchById(body.userId);
+    void emitAuditLogEvent({
+      auth,
+      action: "user.advanced_model_access_updated",
+      targets: [
+        buildAuditLogTarget("workspace", auth.getNonNullableWorkspace()),
+        buildAuditLogTarget("user", {
+          sId: body.userId,
+          name: user?.fullName() || body.userId,
+        }),
+      ],
+      context: getAuditLogContext(auth),
+      metadata: {
+        enabled: String(true),
+        model_id: body.tierName,
+        provider_id: "model_tier",
+      },
+    });
+
     return ctx.body(null, 201);
   }
 );
@@ -60,6 +85,25 @@ app.delete(
     if (result.isErr()) {
       return apiError(ctx, modelTierErrorToApiError(result.error));
     }
+
+    const user = await UserResource.fetchById(body.userId);
+    void emitAuditLogEvent({
+      auth,
+      action: "user.advanced_model_access_updated",
+      targets: [
+        buildAuditLogTarget("workspace", auth.getNonNullableWorkspace()),
+        buildAuditLogTarget("user", {
+          sId: body.userId,
+          name: user?.fullName() || body.userId,
+        }),
+      ],
+      context: getAuditLogContext(auth),
+      metadata: {
+        enabled: String(false),
+        model_id: "inherit",
+        provider_id: "model_tier",
+      },
+    });
 
     return ctx.body(null, 204);
   }

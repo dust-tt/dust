@@ -1,0 +1,7 @@
+{
+  "action": "workspace.open_projects_updated",
+  "targets": [{ "type": "workspace" }],
+  "metadata": {
+    "enabled": "string"
+  }
+}

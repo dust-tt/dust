@@ -1,0 +1,7 @@
+{
+  "action": "workspace.regional_models_only_updated",
+  "targets": [{ "type": "workspace" }],
+  "metadata": {
+    "enabled": "string"
+  }
+}

@@ -1,0 +1,7 @@
+{
+  "action": "workspace.manual_project_knowledge_management_updated",
+  "targets": [{ "type": "workspace" }],
+  "metadata": {
+    "enabled": "string"
+  }
+}
