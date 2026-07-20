@@ -1,5 +1,6 @@
 import { useCopyToClipboard } from "@sparkle/hooks/useCopyToClipboard";
 import { Check, Clipboard } from "@sparkle/icons/v2-stroke";
+import { cssColorToRgb, type Rgb } from "@sparkle/lib/colors";
 import { cn } from "@sparkle/lib/utils";
 import React from "react";
 
@@ -213,31 +214,6 @@ export function structuralTokens(tokens: string[]): string[] {
         !families.has(familyOf(t))
     )
     .sort();
-}
-
-type Rgb = { r: number; g: number; b: number };
-
-let sharedCanvasContext: CanvasRenderingContext2D | null | undefined;
-
-// Parse any CSS color string (hex, rgb, oklch, …) into sRGB bytes by letting the
-// browser convert it on a 1×1 canvas. Returns null when unavailable (SSR / no
-// 2d context). This is what lets us compute contrast for oklch tokens.
-export function cssColorToRgb(color: string): Rgb | null {
-  if (typeof document === "undefined" || !color) {
-    return null;
-  }
-  if (sharedCanvasContext === undefined) {
-    sharedCanvasContext = document.createElement("canvas").getContext("2d");
-  }
-  if (!sharedCanvasContext) {
-    return null;
-  }
-  sharedCanvasContext.clearRect(0, 0, 1, 1);
-  sharedCanvasContext.fillStyle = "#000";
-  sharedCanvasContext.fillStyle = color;
-  sharedCanvasContext.fillRect(0, 0, 1, 1);
-  const [r, g, b] = sharedCanvasContext.getImageData(0, 0, 1, 1).data;
-  return { r, g, b };
 }
 
 function relativeLuminance({ r, g, b }: Rgb): number {
