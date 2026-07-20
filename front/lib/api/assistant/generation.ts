@@ -394,6 +394,7 @@ export function constructPromptMultiActions(
     isNewFileExplorer = false,
     hasSandboxTools = false,
     disableFormattingPrompt = false,
+    hasSelectedSpacesOutsideAgentScope = false,
   }: {
     userMessage: AgentLoopExecutionData["userMessage"];
     agentConfiguration: AgentLoopExecutionData["agentConfiguration"];
@@ -410,6 +411,7 @@ export function constructPromptMultiActions(
     isNewFileExplorer?: boolean;
     hasSandboxTools?: boolean;
     disableFormattingPrompt?: boolean;
+    hasSelectedSpacesOutsideAgentScope?: boolean;
   }
 ): SystemPromptSections {
   const owner = auth.workspace();
@@ -463,17 +465,18 @@ export function constructPromptMultiActions(
     // Structured form with 3 cache tiers, ordered from most stable to most volatile.
     //
     // Instructions (long cache): stable per agent config, covering agent instructions, skills,
-    // format docs, and guidelines.
+    // format docs, and guidelines. If selected conversation Spaces are active, skill
+    // instructions can depend on per-conversation scope and must stay out of this tier.
     //
-    // Shared context (short cache): workspace-scoped data shared across users, covering the tools
-    // section (directives + server listing), date, toolsets, and workspace info. A cache breakpoint
-    // here lets different users in the same workspace share this prefix.
+    // Shared context (short cache): workspace-scoped data shared across users, covering tool-use
+    // directives, date, toolsets, and workspace info. A cache breakpoint here lets different
+    // users in the same workspace share this prefix.
     //
-    // Ephemeral context (no breakpoint): per-call data, covering branch lineage,
-    // platform-specific context, and user profile.
+    // Ephemeral context (no breakpoint): per-call data, covering selected-space-scoped skill
+    // instructions, branch lineage, platform-specific context, and user profile.
     const fullInstructions = [
       instructionsContent,
-      skillsSection,
+      ...(hasSelectedSpacesOutsideAgentScope ? [] : [skillsSection]),
       attachmentsSection,
       pastedContentSection,
       guidelinesSection,
@@ -481,10 +484,8 @@ export function constructPromptMultiActions(
       .filter((s) => s.trim() !== "")
       .join("\n");
 
-    // The tools section (directives + available-servers overview) lives in the shared-context
-    // (5min) tier rather than the instructions (1h) tier: its per-server listing and instructions
-    // change whenever a (conditional) JIT server is added mid-run, so keeping it out of the
-    // instructions block lets that block stay cache-stable across server additions.
+    // The tools section lives in the shared-context (5min) tier rather than the instructions (1h)
+    // tier because conversation state can change its directives between runs.
     const sharedContext: SystemPromptContext[] = [
       { role: "context" as const, content: toolsSection },
       { role: "context" as const, content: contextSection },
@@ -493,6 +494,11 @@ export function constructPromptMultiActions(
     ].filter((s) => s.content.trim() !== "");
 
     const ephemeralContext: SystemPromptContext[] = [
+      ...(hasSelectedSpacesOutsideAgentScope
+        ? ([
+            { role: "context" as const, content: skillsSection },
+          ] satisfies SystemPromptContext[])
+        : []),
       { role: "context" as const, content: branchContextSection },
       { role: "context" as const, content: platformSpecificContextSection },
       { role: "context" as const, content: userContext ?? "" },

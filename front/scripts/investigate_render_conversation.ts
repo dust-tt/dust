@@ -101,14 +101,19 @@ makeScript(
       attachments,
     });
 
-    const { enabledSkills, systemSkills, equippedSkills } =
-      await SkillResource.listForAgentLoop(auth, {
-        agentConfiguration,
-        conversation,
-      });
+    const {
+      effectiveSpaceIds,
+      enabledSkills,
+      systemSkills,
+      equippedSkills,
+      hasSelectedSpacesOutsideAgentScope,
+    } = await SkillResource.listForAgentLoop(auth, {
+      agentConfiguration,
+      conversation,
+    });
 
     const { skillServers, systemSkillServers } = await getSkillServers(auth, {
-      agentConfiguration,
+      effectiveSpaceIds,
       enabledSkills,
       systemSkills,
     });
@@ -189,6 +194,7 @@ makeScript(
       systemSkills,
       projectContext,
       isNewFileExplorer,
+      hasSelectedSpacesOutsideAgentScope,
     });
     const prompt = systemPromptToText(promptSections);
     const leadingMessages = removeNulls([

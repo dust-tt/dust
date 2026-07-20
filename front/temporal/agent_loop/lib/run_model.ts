@@ -476,6 +476,7 @@ export async function runModel(
     systemSkills,
     equippedSkills,
     serverToolsAndInstructions: mcpActions,
+    hasSelectedSpacesOutsideAgentScope,
   } = await startActiveObservation("resolve-tools", async () => {
     const attachments = await listAttachments(auth, { conversation });
     const jitServers = await getJITServers(auth, {
@@ -494,11 +495,16 @@ export async function runModel(
         clientSideMCPServerIds
       );
 
-    const { enabledSkills, systemSkills, equippedSkills } =
-      await SkillResource.listForAgentLoop(auth, runAgentData);
+    const {
+      effectiveSpaceIds,
+      enabledSkills,
+      systemSkills,
+      equippedSkills,
+      hasSelectedSpacesOutsideAgentScope,
+    } = await SkillResource.listForAgentLoop(auth, runAgentData);
 
     const { skillServers, systemSkillServers } = await getSkillServers(auth, {
-      agentConfiguration,
+      effectiveSpaceIds,
       enabledSkills,
       systemSkills,
     });
@@ -519,6 +525,7 @@ export async function runModel(
     );
 
     return {
+      hasSelectedSpacesOutsideAgentScope,
       enabledSkills,
       equippedSkills,
       systemSkills,
@@ -611,6 +618,7 @@ export async function runModel(
     isNewFileExplorer,
     hasSandboxTools,
     disableFormattingPrompt,
+    hasSelectedSpacesOutsideAgentScope,
   });
   const leadingMessages = removeNulls([
     renderEquippedSkillsUserMessage(equippedSkills),

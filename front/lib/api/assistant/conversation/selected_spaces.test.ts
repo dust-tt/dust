@@ -26,6 +26,7 @@ import { SpaceResource } from "@app/lib/resources/space_resource";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
+import { GroupSpaceFactory } from "@app/tests/utils/GroupSpaceFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import type { Result } from "@app/types/shared/result";
@@ -331,6 +332,36 @@ describe("selected conversation Spaces", () => {
         conversation: conv,
       })
     ).resolves.toEqual([globalSpace.sId, validSelectedSpace.sId]);
+  });
+
+  it("keeps a selected Space that becomes open", async () => {
+    await enableFeature();
+    const selectedSpace = await memberRestrictedSpace();
+    const agentConfiguration = await AgentConfigurationFactory.createTestAgent(
+      auth,
+      { requestedSpaceIds: [globalSpace.id] }
+    );
+    const conv = await conversation();
+
+    await ConversationSelectedSpaceResource.upsertForConversation(auth, {
+      conversation: conv,
+      origin: "input_bar",
+      spaces: [selectedSpace],
+    });
+    const globalGroupResult = await GroupResource.fetchWorkspaceGlobalGroup(
+      await Authenticator.internalAdminForWorkspace(workspace.sId)
+    );
+    if (globalGroupResult.isErr()) {
+      throw globalGroupResult.error;
+    }
+    await GroupSpaceFactory.associate(selectedSpace, globalGroupResult.value);
+
+    await expect(
+      getEffectiveSpaceIdsForAgentRun(auth, {
+        agentConfiguration,
+        conversation: conv,
+      })
+    ).resolves.toEqual([globalSpace.sId, selectedSpace.sId]);
   });
 
   it("copies valid selected Spaces to a child conversation", async () => {
