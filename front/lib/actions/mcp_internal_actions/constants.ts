@@ -3,7 +3,10 @@ import {
   type MCPToolStakeLevelType,
   RUN_AGENT_CALL_TOOL_TIMEOUT_MS,
 } from "@app/lib/actions/constants";
-import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_definition";
+import type {
+  ServerMetadata,
+  ToolMeta,
+} from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { ACTIVATION_RECOMMENDATIONS_SERVER } from "@app/lib/api/actions/servers/activation_recommendations/metadata";
 import { AGENT_MEMORY_SERVER } from "@app/lib/api/actions/servers/agent_memory/metadata";
 import {
@@ -246,7 +249,41 @@ export const MCP_SERVER_AVAILABILITY = [
 ] as const;
 export type MCPServerAvailability = (typeof MCP_SERVER_AVAILABILITY)[number];
 
-export const INTERNAL_MCP_SERVERS = {
+type HasUniqueNames<Tools extends readonly ToolMeta[]> = {
+  // Loop over each item in the array.
+  [I in keyof Tools]: {
+    // Only check the "name" property.
+    [Key in keyof Tools[I]]: Key extends "name"
+      ? Tools[I][Key] extends {
+          // Build an array of all the other names.
+          [J in keyof Tools]: J extends I ? never : Tools[J];
+        }[number]["name"]
+        ? // The current name (Tools[I][Key]) matches another name: we error.
+          `ERROR: Duplicate tool name detected: ${Tools[I][Key] & string}`
+        : // No match, we just fall through.
+          Tools[I][Key]
+      : // Property other than the name: we just fall through as well.
+        Tools[I][Key];
+  };
+};
+
+function ensureUniqueToolNames<
+  const T extends {
+    [K in InternalMCPServerNameType]: InternalMCPServerEntry<K>;
+  },
+>(
+  servers: T & {
+    [ServerName in InternalMCPServerNameType]: {
+      metadata: {
+        tools: HasUniqueNames<T[ServerName]["metadata"]["tools"]>;
+      };
+    };
+  }
+): T {
+  return servers;
+}
+
+export const INTERNAL_MCP_SERVERS = ensureUniqueToolNames({
   // Note:
   // ids should be stable, do not change them when moving internal servers to production as it would break existing agents.
 
@@ -1207,7 +1244,7 @@ export const INTERNAL_MCP_SERVERS = {
   // Using satisfies here instead of: type to avoid TypeScript widening the type and breaking the type inference for AutoInternalMCPServerNameType.
 } satisfies {
   [K in InternalMCPServerNameType]: InternalMCPServerEntry<K>;
-};
+});
 
 type IsRestrictedCallback = (params: {
   plan: PlanType;
