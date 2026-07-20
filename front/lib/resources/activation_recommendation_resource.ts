@@ -9,15 +9,12 @@ import { getResourceIdFromSId, makeSId } from "@app/lib/resources/string_ids";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
-import { removeNulls } from "@app/types/shared/utils/general";
 import type {
   Attributes,
   CreationAttributes,
   ModelStatic,
   Transaction,
-  WhereOptions,
 } from "sequelize";
-import { Op } from "sequelize";
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export interface ActivationRecommendationResource
@@ -111,62 +108,6 @@ export class ActivationRecommendationResource extends BaseResource<ActivationRec
     });
 
     return recs.map((rec) => new this(this.model, rec.get()));
-  }
-
-  // Suggested recommendations for the current user, most recent first. Used by
-  // the "Your next steps" home surface, which only shows recent, still-open
-  // recommendations (status "suggested").
-  static async listSuggestedByUser(
-    auth: Authenticator,
-    { limit = 5, sinceDaysAgo }: { limit?: number; sinceDaysAgo?: number } = {}
-  ): Promise<ActivationRecommendationResource[]> {
-    const user = auth.getNonNullableUser();
-
-    const where: WhereOptions<ActivationRecommendationModel> = {
-      userId: user.id,
-      workspaceId: auth.getNonNullableWorkspace().id,
-      status: "suggested",
-    };
-
-    if (sinceDaysAgo !== undefined) {
-      const sinceMs = Date.now() - sinceDaysAgo * 24 * 60 * 60 * 1000;
-      where.createdAt = { [Op.gte]: new Date(sinceMs) };
-    }
-
-    const recs = await this.model.findAll({
-      where,
-      order: [["createdAt", "DESC"]],
-      limit,
-    });
-
-    return recs.map((rec) => new this(this.model, rec.get()));
-  }
-
-  // Batch-dismiss recommendations by sId in a single UPDATE. Only the calling
-  // user's still-suggested recommendations are affected. Returns the number of
-  // rows updated.
-  static async dismissByIds(
-    auth: Authenticator,
-    sIds: string[]
-  ): Promise<number> {
-    const modelIds = removeNulls(sIds.map((sId) => getResourceIdFromSId(sId)));
-    if (modelIds.length === 0) {
-      return 0;
-    }
-
-    const [affected] = await this.model.update(
-      { status: "dismissed" },
-      {
-        where: {
-          id: modelIds,
-          userId: auth.getNonNullableUser().id,
-          workspaceId: auth.getNonNullableWorkspace().id,
-          status: "suggested",
-        },
-      }
-    );
-
-    return affected;
   }
 
   async updateFields(fields: {
