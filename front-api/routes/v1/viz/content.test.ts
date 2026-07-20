@@ -86,6 +86,7 @@ describe("/api/v1/viz/content endpoint tests", () => {
       metadata: {
         conversationId: "conversation-A",
       },
+      isAuthenticatedMember: false,
     });
   });
 
@@ -270,6 +271,48 @@ describe("/api/v1/viz/content endpoint tests", () => {
       metadata: {
         conversationId: "conversation-A",
       },
+      isAuthenticatedMember: false,
+    });
+  });
+  
+  it("should return isAuthenticatedMember: true when the token carries a userId", async () => {
+    const frameFile = await FileFactory.create(auth, null, {
+      contentType: frameContentType,
+      fileName: "frame.html",
+      fileSize: 1000,
+      status: "ready",
+      useCase: "conversation",
+      useCaseMetadata: { conversationId: "conversation-A" },
+    });
+
+    const frameShareInfo = await frameFile.getShareInfo();
+    const fileToken = frameShareInfo?.shareUrl.split("/").at(-1);
+    if (!fileToken) {
+      throw new Error("No file token found");
+    }
+
+    const accessToken = generateVizAccessToken({
+      contentType: frameContentType,
+      fileToken,
+      workspaceId: workspace.sId,
+      shareScope: "public",
+      userId: "user-123",
+    });
+
+    mockFetchByShareToken(frameFile);
+
+    const response = await request({
+      authorization: `Bearer ${accessToken}`,
+    });
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({
+      content: "<html><h1>Interactive Frame</h1></html>",
+      contentType: frameContentType,
+      metadata: {
+        conversationId: "conversation-A",
+      },
+      isAuthenticatedMember: true,
     });
   });
 });
