@@ -8,6 +8,7 @@ import { augmentInputsWithConfiguration } from "@app/lib/actions/mcp_internal_ac
 import type { MCPProgressNotificationType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import {
   isBlobResource,
+  isResourceContentWithText,
   isResourceWithName,
   isRunAgentQueryProgressOutput,
   isStoreResourceProgressOutput,
@@ -402,10 +403,9 @@ export async function processToolResults(
             };
           }
 
-          const text =
-            "text" in block.resource && typeof block.resource.text === "string"
-              ? toWellFormed(stripNullBytes(block.resource.text))
-              : null;
+          const text = isResourceContentWithText(block)
+            ? toWellFormed(stripNullBytes(block.resource.text))
+            : null;
 
           // Sanitize the entire resource object to remove null bytes from all string fields
           const sanitizedResource = sanitizeStringsDeep(block.resource);
