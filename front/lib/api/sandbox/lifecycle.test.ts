@@ -70,11 +70,23 @@ vi.mock("@app/lib/api/sandbox/telemetry", () => ({
   startTelemetry: mockStartTelemetry,
 }));
 
-vi.mock("@app/lib/resources/conversation_sandbox_adapter", () => ({
-  ConversationSandboxAdapter: {
-    ensureSandboxActive: mockEnsureSandboxActive,
-  },
-}));
+vi.mock(
+  "@app/lib/resources/conversation_sandbox_adapter",
+  async (importOriginal) => {
+    const actual =
+      await importOriginal<
+        typeof import("@app/lib/resources/conversation_sandbox_adapter")
+      >();
+    return {
+      ConversationSandboxAdapter: {
+        ensureSandboxActive: mockEnsureSandboxActive,
+        fetchSandbox: actual.ConversationSandboxAdapter.fetchSandbox.bind(
+          actual.ConversationSandboxAdapter
+        ),
+      },
+    };
+  }
+);
 
 vi.mock("@app/lib/resources/pod_sandbox_adapter", () => ({
   PodSandboxAdapter: {
@@ -93,6 +105,13 @@ vi.mock("@app/logger/logger", () => {
   return { default: logger };
 });
 
+import type { Authenticator } from "@app/lib/auth";
+import type { SandboxResource } from "@app/lib/resources/sandbox_resource";
+import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
+import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
+import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
+import { SandboxFactory } from "@app/tests/utils/SandboxFactory";
+import type { ConversationType } from "@app/types/assistant/conversation";
 import {
   ensureConversationSandboxReady,
   ensurePodSandboxReady,
@@ -112,11 +131,11 @@ function createDeferred<T>() {
 }
 
 describe("ensureConversationSandboxReady", () => {
-  const auth = { getNonNullableWorkspace: () => ({ sId: "workspace-id" }) };
-  const conversation = { sId: "conversation-id" };
-  const conversationOwner = {
-    kind: "conversation",
-    conversationId: conversation.sId,
+  let auth: Authenticator;
+  let conversation: ConversationType;
+  let conversationOwner: {
+    kind: "conversation";
+    conversationId: string;
   };
   const pod = { sId: "space-id" };
   const podOwner = {
@@ -124,19 +143,27 @@ describe("ensureConversationSandboxReady", () => {
     spaceId: pod.sId,
   };
   const image = { name: "dust-base" };
-  const mockRequestKill = vi.fn().mockResolvedValue(undefined);
-  const sandbox = {
-    providerId: "provider-id",
-    sId: "sandbox-id",
-    requestKill: mockRequestKill,
-  };
+  let sandbox: SandboxResource;
   const mockFs = {
     setupSandboxMount: mockSetupSandboxMount,
     refreshSandboxMount: mockRefreshSandboxMount,
   };
 
-  beforeEach(() => {
+  beforeEach(async () => {
     vi.clearAllMocks();
+    const testSetup = await createResourceTest({ role: "admin" });
+    auth = testSetup.authenticator;
+    const agentConfiguration =
+      await AgentConfigurationFactory.createTestAgent(auth);
+    conversation = await ConversationFactory.create(auth, {
+      agentConfigurationId: agentConfiguration.sId,
+      messagesCreatedAt: [new Date()],
+    });
+    conversationOwner = {
+      kind: "conversation",
+      conversationId: conversation.sId,
+    };
+    sandbox = await SandboxFactory.create(auth, conversation);
 
     mockEnsureSandboxActive.mockResolvedValue(
       new Ok({ freshlyCreated: false, sandbox, wokeFromSleep: false })
@@ -185,6 +212,7 @@ describe("ensureConversationSandboxReady", () => {
       egressPolicyOwnerId: conversation.sId,
       wokeFromSleep: false,
     });
+    expect(sandbox.lastRuntimeRefreshAt).toEqual(expect.any(Date));
 
     expect(mockSetupSandboxMount.mock.invocationCallOrder[0]).toBeLessThan(
       mockEnsureSandboxEgressOnExec.mock.invocationCallOrder[0]
@@ -195,7 +223,7 @@ describe("ensureConversationSandboxReady", () => {
     mockEnsureSandboxActive.mockResolvedValue(
       new Ok({ freshlyCreated: true, sandbox, wokeFromSleep: false })
     );
-    const podConversation = { sId: "conversation-id", spaceId: "space-id" };
+    const podConversation = { sId: conversation.sId, spaceId: "space-id" };
 
     const result = await ensureConversationSandboxReady(
       auth as never,
@@ -250,6 +278,7 @@ describe("ensureConversationSandboxReady", () => {
   });
 
   it("only refreshes the token (no remount) when the sandbox woke from sleep", async () => {
+    await sandbox.updateLastRuntimeRefreshAt(new Date());
     mockEnsureSandboxActive.mockResolvedValue(
       new Ok({ freshlyCreated: false, sandbox, wokeFromSleep: true })
     );
@@ -277,10 +306,10 @@ describe("ensureConversationSandboxReady", () => {
   });
 
   it("refreshes the GCS token for already-running sandboxes", async () => {
-    const result = await ensureConversationSandboxReady(
-      auth as never,
-      conversation as never
-    );
+    const staleRefreshAt = new Date(Date.now() - 6 * 60 * 1000);
+    await sandbox.updateLastRuntimeRefreshAt(staleRefreshAt);
+
+    const result = await ensureConversationSandboxReady(auth, conversation);
 
     expect(result.isOk()).toBe(true);
     expect(mockPrepareSandboxEgressBeforeMount).not.toHaveBeenCalled();
@@ -291,6 +320,23 @@ describe("ensureConversationSandboxReady", () => {
     expect(mockRefreshSandboxMount.mock.invocationCallOrder[0]).toBeLessThan(
       mockEnsureSandboxEgressOnExec.mock.invocationCallOrder[0]
     );
+    expect(sandbox.lastRuntimeRefreshAt?.getTime()).toBeGreaterThan(
+      staleRefreshAt.getTime()
+    );
+  });
+
+  it("skips GCS and egress refreshes for recently-refreshed sandboxes", async () => {
+    const recentRefreshAt = new Date(Date.now() - 4 * 60 * 1000);
+    await sandbox.updateLastRuntimeRefreshAt(recentRefreshAt);
+
+    const result = await ensureConversationSandboxReady(auth, conversation);
+
+    expect(result.isOk()).toBe(true);
+    expect(mockGetSandboxImage).not.toHaveBeenCalled();
+    expect(mockForConversation).not.toHaveBeenCalled();
+    expect(mockRefreshSandboxMount).not.toHaveBeenCalled();
+    expect(mockEnsureSandboxEgressOnExec).not.toHaveBeenCalled();
+    expect(sandbox.lastRuntimeRefreshAt).toEqual(recentRefreshAt);
   });
 
   it("uses pod owner plumbing and pod filesystem mounts for pod sandboxes", async () => {
@@ -372,7 +418,7 @@ describe("ensureConversationSandboxReady", () => {
     if (result.isErr()) {
       expect(result.error).toBe(podStateError);
     }
-    expect(mockRequestKill).toHaveBeenCalledTimes(1);
+    expect(sandbox.killRequestedAt).toEqual(expect.any(Date));
     expect(mockEnsureSandboxEgressOnExec).not.toHaveBeenCalled();
   });
 
@@ -497,6 +543,7 @@ describe("ensureConversationSandboxReady", () => {
 
     expect(result.isErr()).toBe(true);
     expect(mockEnsureSandboxEgressOnExec).not.toHaveBeenCalled();
+    expect(sandbox.lastRuntimeRefreshAt).toBeNull();
   });
 
   it("short-circuits when ensure-on-exec fails", async () => {
@@ -511,5 +558,6 @@ describe("ensureConversationSandboxReady", () => {
 
     expect(result.isErr()).toBe(true);
     expect(mockEnsureSandboxEgressOnExec).toHaveBeenCalledTimes(1);
+    expect(sandbox.lastRuntimeRefreshAt).toBeNull();
   });
 });

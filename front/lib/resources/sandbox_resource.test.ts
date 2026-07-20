@@ -9,6 +9,7 @@ const {
   mockProviderCreate,
   mockProviderDestroy,
   mockProviderExec,
+  mockProviderWake,
   mockRevokeAllExecTokensForSandbox,
 } = vi.hoisted(() => ({
   mockDeleteLegacySandboxPolicy: vi.fn(),
@@ -19,6 +20,7 @@ const {
   mockProviderCreate: vi.fn(),
   mockProviderDestroy: vi.fn(),
   mockProviderExec: vi.fn(),
+  mockProviderWake: vi.fn(),
   mockRevokeAllExecTokensForSandbox: vi.fn(),
 }));
 
@@ -709,6 +711,7 @@ describe("SandboxResource.ensureActive", () => {
       create: mockProviderCreate,
       destroy: mockProviderDestroy,
       exec: mockProviderExec,
+      wake: mockProviderWake,
     });
     mockGetSandboxImage.mockReturnValue(
       new Ok({
@@ -725,6 +728,7 @@ describe("SandboxResource.ensureActive", () => {
       })
     );
     mockProviderCreate.mockResolvedValue(new Ok({ providerId: "provider-id" }));
+    mockProviderWake.mockResolvedValue(new Ok(undefined));
     mockProviderExec.mockResolvedValue(
       new Ok({ exitCode: 0, stdout: "", stderr: "" })
     );
@@ -863,11 +867,12 @@ describe("SandboxResource.ensureActive", () => {
   });
 
   it("refreshes baseImage and version when recreating from a deleted row", async () => {
-    await SandboxFactory.create(authenticator, conversation, {
+    const stale = await SandboxFactory.create(authenticator, conversation, {
       status: "deleted",
       baseImage: "stale-image",
       version: "0.0.0-old",
     });
+    await stale.updateLastRuntimeRefreshAt(new Date());
 
     const result = await ConversationSandboxAdapter.ensureSandboxActive(
       authenticator,
@@ -883,7 +888,27 @@ describe("SandboxResource.ensureActive", () => {
     expect(persisted?.baseImage).toBe("test-image");
     expect(persisted?.version).toBe("0.0.1");
     expect(persisted?.providerId).toBe("provider-id");
+    expect(persisted?.lastRuntimeRefreshAt).toBeNull();
     expect(mockProviderExec).not.toHaveBeenCalled();
+  });
+
+  it("invalidates the runtime refresh timestamp after wake", async () => {
+    const sleeping = await SandboxFactory.create(authenticator, conversation, {
+      status: "sleeping",
+    });
+    await sleeping.updateLastRuntimeRefreshAt(new Date());
+
+    const result = await ConversationSandboxAdapter.ensureSandboxActive(
+      authenticator,
+      conversation
+    );
+
+    expect(result.isOk()).toBe(true);
+    const persisted = await ConversationSandboxAdapter.fetchSandbox(
+      authenticator,
+      conversation
+    );
+    expect(persisted?.lastRuntimeRefreshAt).toBeNull();
   });
 
   it("destroys and recreates when killRequestedAt is set on the existing row", async () => {

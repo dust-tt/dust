@@ -298,6 +298,12 @@ export class SandboxResource extends BaseResource<SandboxModel> {
     return this.update({ lastActivityAt: new Date() }, transaction);
   }
 
+  async updateLastRuntimeRefreshAt(
+    lastRuntimeRefreshAt: Date | null
+  ): Promise<[affectedCount: number]> {
+    return this.update({ lastRuntimeRefreshAt });
+  }
+
   /**
    * Mark this sandbox for destruction: the reaper's kill sweep destroys it,
    * and ensureActive's kill-requested branch destroys-and-recreates it on the
@@ -647,6 +653,7 @@ export class SandboxResource extends BaseResource<SandboxModel> {
             baseImage: createConfig.imageId.imageName,
             version: createConfig.imageId.tag,
             killRequestedAt: null,
+            lastRuntimeRefreshAt: null,
           });
           freshlyCreated = true;
 
@@ -662,6 +669,10 @@ export class SandboxResource extends BaseResource<SandboxModel> {
 
         default:
           assertNever(effectiveStatus);
+      }
+
+      if (wokeFromSleep) {
+        await existing.updateLastRuntimeRefreshAt(null);
       }
 
       await existing.updateStatus("running", { ctx });
@@ -1209,6 +1220,7 @@ export class SandboxResource extends BaseResource<SandboxModel> {
       providerId: this.providerId,
       status: this.status,
       lastActivityAt: this.lastActivityAt.toISOString(),
+      lastRuntimeRefreshAt: this.lastRuntimeRefreshAt?.toISOString() ?? null,
       baseImage: this.baseImage,
       version: this.version,
       killRequestedAt: this.killRequestedAt?.toISOString() ?? null,
