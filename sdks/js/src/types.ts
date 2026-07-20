@@ -3179,6 +3179,7 @@ export const PublicFrameResponseBodySchema = z.object({
   conversationUrl: z.string().nullable(),
   projectUrl: z.string().nullable(),
   file: FileTypeSchema,
+  isAuthenticatedMember: z.boolean().optional(),
 });
 
 export type PublicFrameResponseBodyType = z.infer<
@@ -3189,6 +3190,7 @@ export const PublicVizContentResponseBodySchema = z.object({
   content: z.string(),
   contentType: z.string(),
   metadata: z.record(z.unknown()).optional(),
+  isAuthenticatedMember: z.boolean().optional(),
 });
 
 export type PublicVizContentResponseBodyType = z.infer<

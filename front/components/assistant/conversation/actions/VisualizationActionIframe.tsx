@@ -71,6 +71,8 @@ type ProtectedVisualization = BaseVisualization & {
 
 export type Visualization = PublicVisualization | ProtectedVisualization;
 
+export type FrameAccess = "conversation" | "public-anonymous" | "public-member";
+
 const sendResponseToIframe = <T extends VisualizationRPCCommand>(
   request: { command: T } & VisualizationRPCRequest,
   response: CommandResultMap[T],
@@ -484,8 +486,8 @@ interface VisualizationActionIframeProps {
   conversationId: string | null;
   isEditable?: boolean;
   isInDrawer?: boolean;
-  isPublic?: boolean;
   onEditText?: EditTextFn;
+  frameAccess?: FrameAccess;
   spaceId?: string;
   visualization: Visualization;
   vizUrl: string;
@@ -567,12 +569,14 @@ export const VisualizationActionIframe = forwardRef<
     conversationId,
     isEditable = false,
     isInDrawer = false,
-    isPublic = false,
     onEditText,
     spaceId,
     visualization,
     workspaceId,
+    frameAccess = "conversation",
   } = props;
+
+  const isPublic = frameAccess !== "conversation";
 
   const getFileBlob = useCallback(
     async (fileId: string) => {
@@ -622,7 +626,7 @@ export const VisualizationActionIframe = forwardRef<
       input?: unknown
     ): Promise<Result<SandboxFunctionInvocationType, Error>> => {
       try {
-        if (isPublic) {
+        if (frameAccess === "public-anonymous") {
           throw new Error("Pod functions are not supported in shared frames.");
         }
 
@@ -655,7 +659,7 @@ export const VisualizationActionIframe = forwardRef<
         return new Err(normalizeError(error));
       }
     },
-    [isPublic, workspaceId]
+    [frameAccess, workspaceId]
   );
 
   useVisualizationDataHandler({

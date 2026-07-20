@@ -35,6 +35,7 @@ export function usePublicFrame({ shareToken }: { shareToken: string | null }) {
     projectUrl: data?.projectUrl ?? null,
     accessToken: data?.accessToken ?? null,
     isFrameLoading: !error && !data,
+    isAuthenticatedMember: data?.isAuthenticatedMember ?? false,
     error,
     mutateFrame: mutate,
   };
