@@ -20,6 +20,7 @@ import type { ResourceFindOptions } from "@app/lib/resources/types";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { withTransaction } from "@app/lib/utils/sql_utils";
+import tracer from "@app/logger/tracer";
 import type { GroupType } from "@app/types/groups";
 import {
   GLOBAL_SPACE_NAME,
@@ -241,38 +242,46 @@ export class SpaceResource extends BaseResource<SpaceModel> {
     },
     t?: Transaction
   ): Promise<SpaceResource[]> {
-    const spaces = await this.baseFetch(
-      auth,
-      {
-        includeDeleted: options?.includeDeleted,
-        where: {
-          kind: {
-            [Op.in]: [
-              "system",
-              "global",
-              "regular",
-              ...(options?.includeConversationsSpace ? ["conversations"] : []),
-              ...(options?.includeProjectSpaces ? ["project"] : []),
-            ],
+    return tracer.trace("listWorkspaceSpaces", async () => {
+      const spaces = await this.baseFetch(
+        auth,
+        {
+          includeDeleted: options?.includeDeleted,
+          where: {
+            kind: {
+              [Op.in]: [
+                "system",
+                "global",
+                "regular",
+                ...(options?.includeConversationsSpace
+                  ? ["conversations"]
+                  : []),
+                ...(options?.includeProjectSpaces ? ["project"] : []),
+              ],
+            },
           },
         },
-      },
-      t
-    );
+        t
+      );
 
-    return spaces;
+      return spaces;
+    });
   }
 
   static async listWorkspaceSpacesAsMember(
     auth: Authenticator,
     options?: { kinds?: SpaceKind[] }
   ) {
-    const spaces = await this.baseFetch(auth, {
-      where: options?.kinds ? { kind: { [Op.in]: options.kinds } } : undefined,
-    });
+    return tracer.trace("listWorkspaceSpacesAsMember", async () => {
+      const spaces = await this.baseFetch(auth, {
+        where: options?.kinds
+          ? { kind: { [Op.in]: options.kinds } }
+          : undefined,
+      });
 
-    // TODO(projects): we might want to filter early on the groups membership to avoid fetching all spaces and then filtering.
-    return spaces.filter((s) => s.isMember(auth));
+      // TODO(projects): we might want to filter early on the groups membership to avoid fetching all spaces and then filtering.
+      return spaces.filter((s) => s.isMember(auth));
+    });
   }
 
   static async listProjectSpaces(
@@ -405,48 +414,54 @@ export class SpaceResource extends BaseResource<SpaceModel> {
     auth: Authenticator,
     transaction?: Transaction
   ): Promise<SpaceResource> {
-    const [space] = await this.baseFetch(
-      auth,
-      { where: { kind: "system" } },
-      transaction
-    );
+    return tracer.trace("fetchWorkspaceSystemSpace", async () => {
+      const [space] = await this.baseFetch(
+        auth,
+        { where: { kind: "system" } },
+        transaction
+      );
 
-    if (!space) {
-      throw new Error("System space not found.");
-    }
+      if (!space) {
+        throw new Error("System space not found.");
+      }
 
-    return space;
+      return space;
+    });
   }
 
   static async fetchWorkspaceGlobalSpace(
     auth: Authenticator,
     transaction?: Transaction
   ): Promise<SpaceResource> {
-    const [space] = await this.baseFetch(
-      auth,
-      { where: { kind: "global" } },
-      transaction
-    );
+    return tracer.trace("fetchWorkspaceGlobalSpace", async () => {
+      const [space] = await this.baseFetch(
+        auth,
+        { where: { kind: "global" } },
+        transaction
+      );
 
-    if (!space) {
-      throw new Error("Global space not found.");
-    }
+      if (!space) {
+        throw new Error("Global space not found.");
+      }
 
-    return space;
+      return space;
+    });
   }
 
   static async fetchWorkspaceConversationsSpace(
     auth: Authenticator
   ): Promise<SpaceResource> {
-    const [space] = await this.baseFetch(auth, {
-      where: { kind: "conversations" },
+    return tracer.trace("fetchWorkspaceConversationsSpace", async () => {
+      const [space] = await this.baseFetch(auth, {
+        where: { kind: "conversations" },
+      });
+
+      if (!space) {
+        throw new Error("Conversations space not found.");
+      }
+
+      return space;
     });
-
-    if (!space) {
-      throw new Error("Conversations space not found.");
-    }
-
-    return space;
   }
 
   static async fetchById(
