@@ -32,7 +32,7 @@ export function Composer({
   const cardClassName = useMemo(
     () =>
       cn(
-        "relative flex w-full flex-col items-stretch overflow-hidden rounded-[48px] [corner-shape:squircle]",
+        "relative flex w-full flex-col items-stretch overflow-hidden rounded-[40px] [corner-shape:squircle]",
         variant === "floating" && [
           "border border-white/90",
           "transition-[background-color,box-shadow] duration-150 ease-emphasized",

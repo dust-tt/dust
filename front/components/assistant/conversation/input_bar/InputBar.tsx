@@ -482,7 +482,7 @@ export const InputBar = React.memo(function InputBar({
                 !disableInput && "cursor-pointer"
               )
             : classNames(
-                "w-full overflow-hidden rounded-[48px] [corner-shape:squircle]",
+                "w-full overflow-hidden rounded-[40px] [corner-shape:squircle]",
                 "border bg-background",
                 isFloating
                   ? "max-md:border-border max-md:has-[.tiptap:focus]:border-border-dark max-md:dark:has-[.tiptap:focus]:border-stone-750"
