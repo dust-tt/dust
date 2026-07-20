@@ -849,7 +849,7 @@ export const VisualizationActionIframe = forwardRef<
       </div>
       {showSpinner && (
         <div className="absolute inset-0 flex items-center justify-center bg-panel-background">
-          <Spinner size="xl" variant="color" />
+          <Spinner size="lg" />
         </div>
       )}
     </div>

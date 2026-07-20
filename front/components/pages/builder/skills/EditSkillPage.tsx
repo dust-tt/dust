@@ -32,7 +32,7 @@ export function EditSkillPage() {
   if (isSkillLoading || !skill) {
     return (
       <div className="flex h-screen items-center justify-center">
-        <Spinner size="xl" />
+        <Spinner size="lg" />
       </div>
     );
   }

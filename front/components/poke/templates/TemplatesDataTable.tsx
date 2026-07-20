@@ -147,7 +147,7 @@ export function TemplatesDataTable() {
       />
       <div className="mt-2 flex w-full flex-col items-center gap-2">
         {isAssistantTemplatesLoading ? (
-          <Spinner variant="color" />
+          <Spinner />
         ) : (
           <DataTable
             data={data}

@@ -68,7 +68,7 @@ function WorkspaceList({
 }: WorkspaceListProps) {
   return isWorkspacesLoading ? (
     <div className="flex h-44 w-80 items-center justify-center">
-      <Spinner size="lg" variant="color" />
+      <Spinner size="lg" />
     </div>
   ) : workspaces.length === 0 ? (
     <p className="text-muted-foreground">No workspaces found.</p>
