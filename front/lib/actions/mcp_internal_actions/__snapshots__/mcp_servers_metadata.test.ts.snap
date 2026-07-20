@@ -2085,6 +2085,12 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool billing info ac
       "toolCostCategory": "advanced",
     },
   },
+  "servicenow": {
+    "list_incidents": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+  },
   "skill_authoring": {
     "create_skill": {
       "freeUsage": true,
@@ -3187,6 +3193,9 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool stakes across a
   },
   "search": {
     "semantic_search": "never_ask",
+  },
+  "servicenow": {
+    "list_incidents": "never_ask",
   },
   "skill_authoring": {
     "create_skill": "high",
