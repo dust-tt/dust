@@ -1,5 +1,5 @@
 # Build stage — full Rust toolchain + cmake (needed for sentencepiece)
-FROM rust:1.85.0 AS builder
+FROM rust:1.94.1 AS builder
 
 RUN apt-get update && apt-get install -y cmake && rm -rf /var/lib/apt/lists/*
 
