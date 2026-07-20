@@ -29,7 +29,10 @@ import {
 import { StreamEndpointTransition } from "@app/lib/api/llm/transitionLLM";
 import type { LLMParameters } from "@app/lib/api/llm/types/options";
 import { DUST_STREAM_ENDPOINTS } from "@app/lib/llms/stream";
-import { NOOP_HOST } from "@app/lib/model_constructors/types/hosts";
+import {
+  AGENT_PLATFORM_HOST,
+  NOOP_HOST,
+} from "@app/lib/model_constructors/types/hosts";
 import { GLOBAL } from "@app/lib/model_constructors/types/regions";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { describe, expect, it, vi } from "vitest";
@@ -131,13 +134,17 @@ async function drain(gen: AsyncGenerator<unknown>): Promise<Error | undefined> {
 }
 
 // Local parity only exercises global endpoints — the eu/Vertex path is not run
-// locally. Global agent-platform coverage can be added here once it exists.
+// locally.
 const ENDPOINTS = Object.values(DUST_STREAM_ENDPOINTS)
   .map(readEndpointInfo)
   // The noop endpoint synthesizes its stream in-process; there is no provider
   // SDK request to compare against, so it is out of scope for router parity.
+  // agent-platform is a new host with same behavior as anthropic;
   .filter(
-    (endpoint) => endpoint.region === GLOBAL && endpoint.host !== NOOP_HOST
+    (endpoint) =>
+      endpoint.region === GLOBAL &&
+      endpoint.host !== NOOP_HOST &&
+      endpoint.host !== AGENT_PLATFORM_HOST
   );
 const MATRIX = buildParityMatrix();
 
