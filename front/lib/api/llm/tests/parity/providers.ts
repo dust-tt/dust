@@ -9,7 +9,13 @@ import { isOpenAIResponsesWhitelistedModelId } from "@app/lib/api/llm/clients/op
 import type { LLM } from "@app/lib/api/llm/llm";
 import type { Authenticator } from "@app/lib/auth";
 import type { DustStreamEndpointConstructor } from "@app/lib/llms/stream/dust_stream_endpoint";
-import type { Lab } from "@app/lib/model_constructors/types/labs";
+import {
+  ANTHROPIC_HOST,
+  FIREWORKS_HOST,
+  GOOGLE_AI_STUDIO_HOST,
+  type Host,
+  OPENAI_RESPONSES_HOST,
+} from "@app/lib/model_constructors/types/hosts";
 import type { Region } from "@app/lib/model_constructors/types/regions";
 import { isModelId } from "@app/types/assistant/models/models";
 import type {
@@ -39,7 +45,7 @@ export interface LegacyBuildParams {
 export interface EndpointInfo {
   ctor: DustStreamEndpointConstructor;
   id: string;
-  providerId: Lab;
+  host: Host;
   region: Region;
   modelId: string;
 }
@@ -50,7 +56,7 @@ export function readEndpointInfo(
   return {
     ctor,
     id: ctor.id,
-    providerId: ctor.lab,
+    host: ctor.host,
     region: ctor.region,
     modelId: ctor.model,
   };
@@ -246,18 +252,18 @@ const fireworksProvider: ParityProvider = {
   },
 };
 
-const PARITY_PROVIDERS: Partial<Record<Lab, ParityProvider>> = {
-  anthropic: anthropicProvider,
-  google_ai_studio: googleProvider,
-  openai: openaiProvider,
-  fireworks: fireworksProvider,
+const PARITY_PROVIDERS: Partial<Record<Host, ParityProvider>> = {
+  [ANTHROPIC_HOST]: anthropicProvider,
+  [GOOGLE_AI_STUDIO_HOST]: googleProvider,
+  [OPENAI_RESPONSES_HOST]: openaiProvider,
+  [FIREWORKS_HOST]: fireworksProvider,
 };
 
-export function getParityProvider(providerId: Lab): ParityProvider {
-  const provider = PARITY_PROVIDERS[providerId];
+export function getParityProvider(host: Host): ParityProvider {
+  const provider = PARITY_PROVIDERS[host];
   if (!provider) {
     throw new Error(
-      `No parity provider adapter registered for provider "${providerId}". ` +
+      `No parity provider adapter registered for host "${host}". ` +
         `Add one in tests/parity/providers.ts (plus an SDK mock and a normalizer).`
     );
   }

@@ -29,7 +29,7 @@ import {
 import { StreamEndpointTransition } from "@app/lib/api/llm/transitionLLM";
 import type { LLMParameters } from "@app/lib/api/llm/types/options";
 import { DUST_STREAM_ENDPOINTS } from "@app/lib/llms/stream";
-import { NOOP_LAB } from "@app/lib/model_constructors/types/labs";
+import { NOOP_HOST } from "@app/lib/model_constructors/types/hosts";
 import { GLOBAL } from "@app/lib/model_constructors/types/regions";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { describe, expect, it, vi } from "vitest";
@@ -137,7 +137,7 @@ const ENDPOINTS = Object.values(DUST_STREAM_ENDPOINTS)
   // The noop endpoint synthesizes its stream in-process; there is no provider
   // SDK request to compare against, so it is out of scope for router parity.
   .filter(
-    (endpoint) => endpoint.region === GLOBAL && endpoint.providerId !== NOOP_LAB
+    (endpoint) => endpoint.region === GLOBAL && endpoint.host !== NOOP_HOST
   );
 const MATRIX = buildParityMatrix();
 
@@ -145,7 +145,7 @@ describe.skipIf(process.env.RUN_LLM_TEST !== "true")(
   "LLM router request parity (legacy vs new)",
   () => {
     for (const endpoint of ENDPOINTS) {
-      const provider = getParityProvider(endpoint.providerId);
+      const provider = getParityProvider(endpoint.host);
       const modelId = provider.toModelId(endpoint.modelId);
 
       describe(endpoint.id, () => {
@@ -206,8 +206,8 @@ describe.skipIf(process.env.RUN_LLM_TEST !== "true")(
               "new router did not dispatch a request"
             ).toBeDefined();
 
-            expect(normalizeRequest(endpoint.providerId, newReq)).toEqual(
-              normalizeRequest(endpoint.providerId, oldReq)
+            expect(normalizeRequest(endpoint.host, newReq)).toEqual(
+              normalizeRequest(endpoint.host, oldReq)
             );
           });
         }
