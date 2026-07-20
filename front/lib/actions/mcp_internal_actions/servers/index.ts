@@ -1,5 +1,13 @@
-import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
-import { ADVANCED_SEARCH_SWITCH } from "@app/lib/actions/mcp_internal_actions/constants";
+import {
+  ADVANCED_SEARCH_SWITCH,
+  getInternalMCPServerInfo,
+  type InternalMCPServerNameType,
+} from "@app/lib/actions/mcp_internal_actions/constants";
+import type {
+  ToolHandlers,
+  ToolMeta,
+} from "@app/lib/actions/mcp_internal_actions/tool_definition";
+import { registerTool } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import type { ToolContext } from "@app/lib/actions/types";
 import {
   isLightServerSideMCPToolConfiguration,
@@ -87,7 +95,7 @@ import { default as workspaceAnalyticsServer } from "@app/lib/api/actions/server
 import { default as zendeskServer } from "@app/lib/api/actions/servers/zendesk";
 import type { Authenticator } from "@app/lib/auth";
 import { assertNever } from "@app/types/shared/utils/assert_never";
-import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 
 /**
  * Check if we are in advanced search mode,
@@ -110,6 +118,44 @@ function isAdvancedSearchMode(toolContext?: ToolContext) {
       toolContext.listToolsContext.agentActionConfiguration
         .additionalConfiguration[ADVANCED_SEARCH_SWITCH] === true)
   );
+}
+
+function createServer<
+  ToolName extends string,
+  T extends readonly ToolMeta<ToolName>[],
+>(
+  auth: Authenticator,
+  {
+    serverName,
+    toolMetadata,
+    toolHandlers,
+  }: {
+    serverName: InternalMCPServerNameType;
+    toolMetadata: T;
+    toolHandlers: ToolHandlers<T, ToolName>;
+  },
+  toolContext?: ToolContext
+) {
+  const serverInfo = getInternalMCPServerInfo(serverName);
+
+  const server = new McpServer(serverInfo);
+
+  for (const tool of toolMetadata) {
+    registerTool(
+      auth,
+      toolContext,
+      server,
+      {
+        ...tool,
+        handler: toolHandlers[tool.name],
+      },
+      {
+        monitoringName: serverName,
+      }
+    );
+  }
+
+  return server;
 }
 
 export async function getInternalMCPServer(
