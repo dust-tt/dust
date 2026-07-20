@@ -1,0 +1,81 @@
+front/lib/api/audit/workos_audit.ts
+  s_f438dc9db1ec5f::t_861624c91f2d99 91,93,98-99,104-105,108,110
+  s_f438dc9db1ec5f::t_1bb04d77da7da7 94-97,100-101,103,106-107,109
+front/admin/audit_log_schemas/workspace.open_projects_updated.json
+  s_f438dc9db1ec5f::t_1bb04d77da7da7 1-7
+front/admin/audit_log_schemas/workspace.reinforcement_cap_updated.json
+  s_f438dc9db1ec5f::t_861624c91f2d99 1-8
+front-api/routes/w/[wId]/model_tiers/allowed/workspace.ts
+  s_34fce8ca57d503::t_c0a34dea435606 63
+  s_f438dc9db1ec5f::t_7386ce730b64f6 1-5,50-52,56-62
+  s_f438dc9db1ec5f::t_0e93e33bac2560 53-55
+front/admin/audit_log_schemas/workspace.voice_transcription_updated.json
+  s_f438dc9db1ec5f::t_1bb04d77da7da7 1-7
+front/admin/audit_log_schemas/workspace.default_agent_updated.json
+  s_f438dc9db1ec5f::t_861624c91f2d99 1-7
+front/admin/audit_log_schemas/workspace.extension_mcp_tools_updated.json
+  s_f438dc9db1ec5f::t_1bb04d77da7da7 1-7
+front-api/routes/w/[wId]/index.ts
+  s_f438dc9db1ec5f::t_bad3d66d1d98be 4,7,361,374-384,391-400,448-454,456-458,460,464-481,730-740,750-762,771-781,791-803,848-854,856-857,927-936,970-980,997-1007
+  s_f438dc9db1ec5f::t_7e35360962d8ed 455
+  s_f438dc9db1ec5f::t_1bb04d77da7da7 428-437,492-501,513-522,537-546,555-564,573-582,627-636,693-702,712-721,945-954
+front/admin/audit_log_schemas/workspace.name_updated.json
+  s_f438dc9db1ec5f::t_861624c91f2d99 1-8
+front-api/routes/w/[wId]/model_tiers/allowed/users.ts
+  s_f438dc9db1ec5f::t_02b7733d485421 107
+  s_f438dc9db1ec5f::t_7386ce730b64f6 1-5,7,51-69,89-106
+front/admin/audit_log_schemas/workspace.manual_project_knowledge_management_updated.json
+  s_f438dc9db1ec5f::t_1bb04d77da7da7 1-7
+front/admin/audit_log_schemas/workspace.slack_personal_footer_removal_updated.json
+  s_f438dc9db1ec5f::t_1bb04d77da7da7 1-7
+front/admin/audit_log_schemas/workspace.domain_auto_join_updated.json
+  s_f438dc9db1ec5f::t_861624c91f2d99 1-8
+front/admin/audit_log_schemas/workspace.self_improvement_cap_per_skill_updated.json
+  s_f438dc9db1ec5f::t_861624c91f2d99 1-8
+front/admin/audit_log_schemas/workspace.sharing_policy_updated.json
+  s_f438dc9db1ec5f::t_1bb04d77da7da7 1-7
+front/admin/audit_log_schemas/workspace.workos_organization_updated.json
+  s_f438dc9db1ec5f::t_861624c91f2d99 1-8
+front/admin/audit_log_schemas/workspace.interactive_content_sharing_updated.json
+  s_f438dc9db1ec5f::t_1bb04d77da7da7 1-7
+front/admin/audit_log_schemas/workspace.model_provider_settings_updated.json
+  s_f438dc9db1ec5f::t_861624c91f2d99 1-8
+front/admin/audit_log_schemas/workspace.private_conversation_urls_updated.json
+  s_f438dc9db1ec5f::t_1bb04d77da7da7 1-7
+front-api/routes/w/[wId]/model_tiers/allowed/groups.ts
+  s_f438dc9db1ec5f::t_7386ce730b64f6 1-6,50,54-68,91,95-108
+  s_f438dc9db1ec5f::t_00c2d936c4cb26 51-53,92-94
+  s_34fce8ca57d503::t_eb73db492a3505 109
+front/admin/audit_log_schemas/workspace.sso_enforcement_updated.json
+  s_f438dc9db1ec5f::t_861624c91f2d99 1-7
+front/admin/audit_log_schemas/workspace.email_agents_updated.json
+  s_f438dc9db1ec5f::t_1bb04d77da7da7 1-7
+front/admin/audit_log_schemas/workspace.regional_models_only_updated.json
+  s_f438dc9db1ec5f::t_1bb04d77da7da7 1-7
+front/lib/api/audit/schema_versions.json
+  s_34fce8ca57d503::t_7b01db124f2efe 101,104-112,114-121
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "d6086fa415e388ab6bdd1be307466d3dca342cbf",
+  "prompts": {},
+  "sessions": {
+    "s_34fce8ca57d503": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "37cd81b5-9da0-425e-aad1-ca2438e9e9eb",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Zeid Marouf <4321056+zmarouf@users.noreply.github.com>"
+    },
+    "s_f438dc9db1ec5f": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f71b5-f0a6-7e30-8938-673c024aa397",
+        "model": "gpt-5.5"
+      },
+      "human_author": null
+    }
+  }
+}
