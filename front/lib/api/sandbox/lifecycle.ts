@@ -83,9 +83,11 @@ async function ensureOwnerSandboxReady(
       }
       const image = imageResult.value;
 
-      void startTelemetry(auth, sandbox, runtimeOwner).catch((err) =>
-        logger.error({ err }, "Telemetry start failed (fire-and-forget)")
-      );
+      if (freshlyCreated || wokeFromSleep) {
+        void startTelemetry(auth, sandbox, runtimeOwner).catch((err) =>
+          logger.error({ err }, "Telemetry start failed (fire-and-forget)")
+        );
+      }
 
       // Only mount on first creation. e2b preserves the FUSE mount and the
       // token server across betaPause + connect (verified empirically), so on

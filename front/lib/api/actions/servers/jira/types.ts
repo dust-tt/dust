@@ -572,9 +572,11 @@ export const JiraIssueFieldsSchema = z
     status: z.object({
       name: z.string(),
     }),
-    priority: z.object({
-      name: z.string(),
-    }),
+    priority: z
+      .object({
+        name: z.string(),
+      })
+      .nullable(),
     assignee: z
       .object({
         accountId: z.string(),

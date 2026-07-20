@@ -95,6 +95,12 @@ describe("token_pricing/tiers", () => {
     ).toBe("balanced");
   });
 
+  it("classifies sonnet with high reasoning as premium", () => {
+    expect(
+      ModelsTierResource.getTierForModel(CLAUDE_SONNET_5_MODEL_ID, "high")
+    ).toBe("premium");
+  });
+
   it("classifies large non-sonnet models with light reasoning as premium", () => {
     expect(ModelsTierResource.getTierForModel(GPT_5_5_MODEL_ID, "light")).toBe(
       "premium"

@@ -975,6 +975,7 @@ export function AgentSidebarMenu({
                     label="New"
                     href={getConversationRoute(owner.sId)}
                     icon={MessagePlusCircle}
+                    variant="highlight"
                     className="shrink-0"
                     tooltip="Create a new conversation"
                     onClick={handleNewClick}

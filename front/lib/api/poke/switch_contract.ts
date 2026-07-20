@@ -309,12 +309,14 @@ async function resolveMetronomeCustomer({
   stripeCollectionMethod,
 }: {
   ownerLight: LightWorkspaceType;
+  // Empty when the contract is to be created with no Stripe billing
+  // provider — passed through as `undefined` so no billing config is set.
   stripeCustomerId: string;
   stripeCollectionMethod: "charge_automatically" | "send_invoice";
 }): Promise<Result<{ metronomeCustomerId: string }, SwitchContractError>> {
   const result = await ensureMetronomeCustomerForWorkspace({
     workspace: ownerLight,
-    stripeCustomerId,
+    stripeCustomerId: stripeCustomerId || undefined,
     stripeCollectionMethod,
   });
   if (result.isErr()) {
@@ -330,13 +332,17 @@ async function resolveMetronomeCustomer({
 
 async function resolveAndValidatePackage(
   body: SwitchContractBody,
-  resolvedCurrency: SupportedCurrency
+  // `null` when no Stripe customer is wired in — there's no Stripe currency
+  // to match against, so the package's own currency becomes the contract's
+  // resolved currency instead of being validated against it.
+  resolvedCurrency: SupportedCurrency | null
 ): Promise<
   Result<
     {
       pkg: MetronomePackageSummary;
       pkgSeatByType: Map<string, PackageSeatConfig>;
       packageAlias: string;
+      resolvedCurrency: SupportedCurrency;
     },
     SwitchContractError
   >
@@ -361,7 +367,11 @@ async function resolveAndValidatePackage(
       )
     );
   }
-  if (pkg.tier !== "free" && pkg.currency !== resolvedCurrency) {
+  if (
+    resolvedCurrency !== null &&
+    pkg.tier !== "free" &&
+    pkg.currency !== resolvedCurrency
+  ) {
     return new Err(
       new SwitchContractError(
         "invalid_request",
@@ -414,7 +424,12 @@ async function resolveAndValidatePackage(
       )
     );
   }
-  return new Ok({ pkg, pkgSeatByType, packageAlias });
+  return new Ok({
+    pkg,
+    pkgSeatByType,
+    packageAlias,
+    resolvedCurrency: resolvedCurrency ?? pkg.currency,
+  });
 }
 
 function resolveSwapTiming(
@@ -1045,15 +1060,19 @@ export async function switchContract({
   const creditConfig =
     await CreditUsageConfigurationResource.fetchByWorkspaceId(auth);
 
-  const stripeResult = await resolveStripeCustomer(body.stripeCustomerId);
-  if (stripeResult.isErr()) {
-    return new Err(stripeResult.error);
+  const stripeCustomerId = body.stripeCustomerId.trim();
+  let stripeResolvedCurrency: SupportedCurrency | null = null;
+  if (stripeCustomerId) {
+    const stripeResult = await resolveStripeCustomer(stripeCustomerId);
+    if (stripeResult.isErr()) {
+      return new Err(stripeResult.error);
+    }
+    stripeResolvedCurrency = stripeResult.value.resolvedCurrency;
   }
-  const { resolvedCurrency } = stripeResult.value;
 
   const customerResult = await resolveMetronomeCustomer({
     ownerLight,
-    stripeCustomerId: body.stripeCustomerId,
+    stripeCustomerId,
     stripeCollectionMethod: body.stripeCollectionMethod,
   });
   if (customerResult.isErr()) {
@@ -1061,11 +1080,15 @@ export async function switchContract({
   }
   const { metronomeCustomerId } = customerResult.value;
 
-  const packageResult = await resolveAndValidatePackage(body, resolvedCurrency);
+  const packageResult = await resolveAndValidatePackage(
+    body,
+    stripeResolvedCurrency
+  );
   if (packageResult.isErr()) {
     return new Err(packageResult.error);
   }
-  const { pkg, pkgSeatByType, packageAlias } = packageResult.value;
+  const { pkg, pkgSeatByType, packageAlias, resolvedCurrency } =
+    packageResult.value;
 
   const timingResult = resolveSwapTiming(body.startingAt);
   if (timingResult.isErr()) {
@@ -1133,7 +1156,7 @@ export async function switchContract({
     packageAlias,
     startingAt: startingAtDate,
     swapAt,
-    enableStripeBilling: true,
+    enableStripeBilling: Boolean(stripeCustomerId),
     planCode: body.planCode,
     fromContractId: currentSubscription?.metronomeContractId ?? undefined,
     enableSeatSync: false,

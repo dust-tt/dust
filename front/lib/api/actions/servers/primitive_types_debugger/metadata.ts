@@ -122,11 +122,6 @@ export const PRIMITIVE_TYPES_DEBUGGER_SERVER = {
     displayLabels: t.displayLabels,
     toolCostCategory: t.toolCostCategory,
     freeUsage: t.freeUsage,
+    stake: t.stake,
   })),
-  tools_stakes: Object.fromEntries(
-    Object.values(PRIMITIVE_TYPES_DEBUGGER_TOOLS_METADATA).map((t) => [
-      t.name,
-      t.stake,
-    ])
-  ),
 } as const satisfies ServerMetadata;

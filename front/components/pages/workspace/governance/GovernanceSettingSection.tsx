@@ -1,23 +1,16 @@
-import { GovernanceSettingRow } from "@app/components/pages/workspace/governance/GovernanceSettingRow";
-import type { GovernancePermission } from "@app/types/group_permissions";
-import type { GroupType } from "@app/types/groups";
 import { Icon, Page } from "@dust-tt/sparkle";
-import type { ComponentType } from "react";
+import type { ComponentType, ReactNode } from "react";
 
 interface GovernanceSettingSectionProps {
   label: string;
   icon: ComponentType;
-  governancePermissions: GovernancePermission[];
-  groups: GroupType[];
-  onPermissionChange: (input: GovernancePermission) => void;
+  children: ReactNode;
 }
 
 export const GovernanceSettingSection = ({
   label,
   icon,
-  governancePermissions,
-  groups,
-  onPermissionChange,
+  children,
 }: GovernanceSettingSectionProps) => {
   return (
     <div className="flex w-full flex-col gap-4">
@@ -28,24 +21,7 @@ export const GovernanceSettingSection = ({
         </div>
       </div>
       <div className="w-full rounded-xl border border-border divide-y divide-border">
-        {governancePermissions.map((governancePermission) => (
-          <GovernanceSettingRow
-            key={
-              governancePermission.permissionType +
-              ":" +
-              governancePermission.resourceType
-            }
-            governancePermission={governancePermission}
-            groups={groups}
-            onChange={(newConfiguration) =>
-              onPermissionChange({
-                permissionType: governancePermission.permissionType,
-                resourceType: governancePermission.resourceType,
-                configuration: newConfiguration,
-              })
-            }
-          />
-        ))}
+        {children}
       </div>
     </div>
   );

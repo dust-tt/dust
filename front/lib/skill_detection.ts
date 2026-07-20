@@ -17,6 +17,14 @@ export type DetectSkillsResponseBody = {
   skills: DetectedSkillSummary[];
 };
 
+export type GitHubConnectionStatus = {
+  connectedBy: { fullName: string; imageUrl: string | null } | null;
+};
+
+export type GetGitHubConnectionResponseBody = {
+  connection: GitHubConnectionStatus | null;
+};
+
 export function isImportableSkillStatus(status: DetectedSkillStatus): boolean {
   return status === "ready" || status === "skill_already_exists";
 }

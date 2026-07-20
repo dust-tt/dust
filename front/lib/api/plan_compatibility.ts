@@ -1,5 +1,6 @@
 import { getDataSources } from "@app/lib/api/data_sources";
 import type { Authenticator } from "@app/lib/auth";
+import { doesConnectorProviderCountTowardConnectionsLimit } from "@app/lib/data_sources";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import type { PlanType } from "@app/types/plan";
@@ -54,6 +55,20 @@ export async function checkWorkspaceFitsPlanLimits(
     if (dataSources.length > limits.dataSources.count) {
       violations.push(
         `data sources (${dataSources.length}) exceed plan maxDataSourcesCount (${limits.dataSources.count})`
+      );
+    }
+  }
+
+  if (limits.connections.count !== -1) {
+    const dataSources = await getDataSources(auth);
+    const connectionsCount = dataSources.filter(
+      (ds) =>
+        ds.connectorProvider !== null &&
+        doesConnectorProviderCountTowardConnectionsLimit(ds.connectorProvider)
+    ).length;
+    if (connectionsCount > limits.connections.count) {
+      violations.push(
+        `connected data sources (${connectionsCount}) exceed plan maxConnectionsCount (${limits.connections.count})`
       );
     }
   }

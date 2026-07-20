@@ -72,6 +72,7 @@ async function setupSandboxFunctionInvocation({
   });
   const invocation = await SandboxFunctionInvocationResource.makeNew(auth, {
     sandboxFunction,
+    input: undefined,
   });
 
   return { workspace, sandboxFunction, invocation };

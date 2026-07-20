@@ -7,7 +7,7 @@ import { UserFactory } from "@app/tests/utils/UserFactory";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
 import { beforeEach, describe, expect, it } from "vitest";
 
-const CAPABILITY = { permissionType: "create", resourceType: "agent" } as const;
+const CAPABILITY = { grantType: "create", resourceType: "agent" } as const;
 
 describe("Authenticator.hasWorkspacePermission", () => {
   let workspace: Awaited<ReturnType<typeof WorkspaceFactory.basic>>;
@@ -41,7 +41,7 @@ describe("Authenticator.hasWorkspacePermission", () => {
     expect(adminAuth.isAdmin()).toBe(true);
     expect(
       await adminAuth.hasWorkspacePermission(
-        CAPABILITY.permissionType,
+        CAPABILITY.grantType,
         CAPABILITY.resourceType
       )
     ).toBe(true);
@@ -52,7 +52,7 @@ describe("Authenticator.hasWorkspacePermission", () => {
     expect(auth.isAdmin()).toBe(false);
     expect(
       await auth.hasWorkspacePermission(
-        CAPABILITY.permissionType,
+        CAPABILITY.grantType,
         CAPABILITY.resourceType
       )
     ).toBe(false);
@@ -68,7 +68,7 @@ describe("Authenticator.hasWorkspacePermission", () => {
 
     expect(
       await auth.hasWorkspacePermission(
-        CAPABILITY.permissionType,
+        CAPABILITY.grantType,
         CAPABILITY.resourceType
       )
     ).toBe(true);
@@ -91,7 +91,7 @@ describe("Authenticator.hasWorkspacePermission", () => {
 
     expect(
       await auth.hasWorkspacePermission(
-        CAPABILITY.permissionType,
+        CAPABILITY.grantType,
         CAPABILITY.resourceType
       )
     ).toBe(true);
@@ -101,7 +101,7 @@ describe("Authenticator.hasWorkspacePermission", () => {
     const group = await GroupFactory.regularAuto(workspace, "superadmins");
     await GroupPermissionResource.grantTypeWide(adminAuth, {
       group,
-      permissionType: "*",
+      grantType: "*",
       resourceType: "*",
     });
     const auth = await memberAuthInGroup(group);
@@ -111,9 +111,9 @@ describe("Authenticator.hasWorkspacePermission", () => {
   });
 
   it("rejects an invalid capability query, even for admins", async () => {
-    // `write` is not a valid verb on `billing`; a wildcard grant must not satisfy it.
+    // `create` is not a valid grant type on `billing`; a wildcard grant must not satisfy it.
     await expect(
-      adminAuth.hasWorkspacePermission("write", "billing")
+      adminAuth.hasWorkspacePermission("create", "billing")
     ).rejects.toThrow(/not allowed/);
   });
 });

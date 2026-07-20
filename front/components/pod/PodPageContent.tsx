@@ -34,6 +34,7 @@ interface PodPageContentProps {
   podUiPreferences: PodUiScopedPreferences;
   setPodUiPreferences: (value: PodUiScopedPreferences) => void;
   mutatePodInfo: () => Promise<unknown>;
+  clientSideMCPServerIds?: string[];
 }
 
 export function PodPageContent({
@@ -42,6 +43,7 @@ export function PodPageContent({
   podUiPreferences,
   setPodUiPreferences,
   mutatePodInfo,
+  clientSideMCPServerIds,
 }: PodPageContentProps) {
   const owner = useWorkspace();
   const { user } = useAuth();
@@ -115,6 +117,7 @@ export function PodPageContent({
           input,
           mentions: mentions.map(toMentionType),
           contentFragments,
+          clientSideMCPServerIds,
           selectedMCPServerViewIds,
           richMentions: mentions,
           modelSelection,
@@ -163,6 +166,7 @@ export function PodPageContent({
       router,
       mutateConversations,
       createConversationWithMessage,
+      clientSideMCPServerIds,
     ]
   );
 

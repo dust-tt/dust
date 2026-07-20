@@ -82,7 +82,7 @@ app.post(
     }
 
     const r = await SkillResource.upsertConversationSkills(auth, {
-      conversationId: conversationWithoutContent.id,
+      conversation: conversationWithoutContent,
       skills: [skillRes],
       enabled: action === "add",
     });

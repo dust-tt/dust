@@ -2,10 +2,9 @@ import {
   getSkillSlashCommandItem,
   getToolSlashCommandItem,
   getToolSlashCommandLabel,
-  matchesSlashCommandCapabilityQuery,
   type SlashCommandSkillSuggestion,
   type SlashCommandToolSuggestion,
-  sortSlashCommandCapabilityMatches,
+  searchCapabilityIndex,
 } from "@app/components/editor/extensions/shared/SlashCommandCapabilitiesItems";
 import type { SlashCommand } from "@app/components/editor/extensions/shared/slash_suggestion/SlashCommandDropdown";
 import { getMcpServerViewDescription } from "@app/lib/actions/mcp_helper";
@@ -46,37 +45,24 @@ export function buildCapabilitySlashCommandItems({
 }): SlashCommand[] {
   const normalizedQuery = query.trim().toLowerCase();
 
-  const matches = sortSlashCommandCapabilityMatches({
-    normalizedQuery,
+  const matches = searchCapabilityIndex({
+    query: normalizedQuery,
     items: [
       ...skills
         .filter((skill) => skill.sId !== excludeSkillId)
         .filter((skill) => skillFilter?.(skill) ?? true)
-        .filter((skill) =>
-          matchesSlashCommandCapabilityQuery({
-            description: skill.userFacingDescription,
-            label: skill.name,
-            query: normalizedQuery,
-          })
-        )
         .map((skill) => ({
-          description: skill.userFacingDescription?.toLowerCase(),
           kind: "skill" as const,
+          normalizedDescription: skill.userFacingDescription?.toLowerCase(),
           skill,
           sortName: skill.name.toLowerCase(),
         })),
       ...tools
         .filter((tool) => toolFilter?.(tool) ?? true)
-        .filter((tool) =>
-          matchesSlashCommandCapabilityQuery({
-            description: getMcpServerViewDescription(tool),
-            label: getToolSlashCommandLabel(tool),
-            query: normalizedQuery,
-          })
-        )
         .map((tool) => ({
-          description: getMcpServerViewDescription(tool)?.toLowerCase(),
           kind: "tool" as const,
+          normalizedDescription:
+            getMcpServerViewDescription(tool)?.toLowerCase(),
           tool,
           sortName: getToolSlashCommandLabel(tool).toLowerCase(),
         })),

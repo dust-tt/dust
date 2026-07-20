@@ -1,0 +1,38 @@
+import type { AuthenticatorType } from "@app/lib/auth";
+import { Authenticator } from "@app/lib/auth";
+import { SandboxFunctionInvocationResource } from "@app/lib/resources/sandbox_function_invocation_resource";
+import { SandboxFunctionResource } from "@app/lib/resources/sandbox_function_resource";
+
+export async function runSandboxFunctionInvocationActivity(
+  authType: AuthenticatorType,
+  {
+    sandboxFunctionId,
+    invocationId,
+  }: {
+    sandboxFunctionId: string;
+    invocationId: string;
+  }
+): Promise<void> {
+  const auth = await Authenticator.fromJsonWithRefrehedGroups(authType);
+  const sandboxFunction = await SandboxFunctionResource.fetchById(
+    auth,
+    sandboxFunctionId
+  );
+  if (!sandboxFunction) {
+    throw new Error(`Pod function not found: ${sandboxFunctionId}`);
+  }
+
+  const invocation = await SandboxFunctionInvocationResource.fetchById(auth, {
+    sandboxFunction,
+    invocationId,
+  });
+  if (!invocation) {
+    throw new Error(`Pod function invocation not found: ${invocationId}`);
+  }
+
+  const executionResult = await invocation.execute(auth);
+  if (executionResult.isErr()) {
+    await invocation.fail(executionResult.error);
+    throw executionResult.error;
+  }
+}

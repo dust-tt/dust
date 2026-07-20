@@ -17,6 +17,7 @@ import {
   usePokeStripeCustomerCurrency,
 } from "@app/lib/swr/poke";
 import { usePokePluginAsyncArgs } from "@app/poke/swr/plugins";
+import { SUPPORTED_CURRENCIES } from "@app/types/currency";
 import { BILLABLE_SEAT_TYPES } from "@app/types/memberships";
 import { isCreditPricedPlan } from "@app/types/plan";
 import { CreditUsageConfigurationSchema } from "@app/types/poke/credit_usage_configuration";
@@ -63,6 +64,10 @@ const SwitchContractFormSchema = SwitchContractBodySchema.omit({
   startMode: z
     .enum(["immediately", "retroactive_first_of_month", "select"])
     .default("select"),
+  // Billing currency picked directly by the operator when no Stripe customer
+  // is wired in (there's no Stripe currency to resolve). Not sent to the
+  // server — only the currency-matching package selection matters there.
+  manualCurrency: z.enum(SUPPORTED_CURRENCIES).default("usd"),
 });
 type SwitchContractFormValues = z.infer<typeof SwitchContractFormSchema>;
 
@@ -147,6 +152,7 @@ export default function SwitchContractDialog({
       purchaseOrderId: "",
       startingAt: "",
       startMode: "select",
+      manualCurrency: "usd",
       endingAt: "",
       stripeCustomerId: stripeCustomerId ?? "",
       stripeCollectionMethod: "charge_automatically",
@@ -170,14 +176,20 @@ export default function SwitchContractDialog({
 
   const watchedStripeCustomerId = form.watch("stripeCustomerId");
   const trimmedStripeCustomerId = watchedStripeCustomerId.trim() || null;
+  const hasStripeCustomer = trimmedStripeCustomerId !== null;
   const {
-    currency: resolvedCurrency,
+    currency: stripeCurrency,
     isCurrencyLoading,
     currencyError,
   } = usePokeStripeCustomerCurrency({
     stripeCustomerId: trimmedStripeCustomerId,
     disabled: !open,
   });
+  // No Stripe customer means no Stripe billing config on the contract, so
+  // there's no Stripe currency to match against — the operator picks any
+  // package currency directly instead (see `manualCurrency`).
+  const manualCurrency = form.watch("manualCurrency");
+  const resolvedCurrency = hasStripeCustomer ? stripeCurrency : manualCurrency;
 
   // Fetch the existing credit config so we pre-populate form fields with
   // current values rather than schema defaults, avoiding accidental overwrites.
@@ -681,24 +693,50 @@ export default function SwitchContractDialog({
                   {error && (
                     <div className="col-span-2 text-warning">{error}</div>
                   )}
-                  <Label className="text-sm">Stripe Customer ID</Label>
+                  <Label className="text-sm">
+                    Stripe Customer ID
+                    <span className="ml-1 text-muted-foreground">
+                      (optional)
+                    </span>
+                  </Label>
                   <InputField
                     control={form.control}
                     name="stripeCustomerId"
                     hideLabel
-                    placeholder="cus_1234567890"
+                    placeholder="cus_1234567890 — leave blank for no Stripe billing"
                   />
-                  {isCurrencyLoading && (
+                  {hasStripeCustomer && isCurrencyLoading && (
                     <div className="col-span-2 flex items-center gap-2 text-sm text-muted-foreground">
                       <Spinner size="sm" />
                       <span>Resolving customer currency...</span>
                     </div>
                   )}
-                  {currencyError && (
+                  {hasStripeCustomer && currencyError && (
                     <div className="col-span-2 text-sm text-warning">
                       Failed to resolve currency from Stripe customer:{" "}
                       {currencyError.message}
                     </div>
+                  )}
+                  {!hasStripeCustomer && (
+                    <>
+                      <Label className="text-sm">Billing currency</Label>
+                      <SelectField
+                        control={form.control}
+                        name="manualCurrency"
+                        hideLabel
+                        mountPortalContainer={portalContainer}
+                        options={SUPPORTED_CURRENCIES.map((currency) => ({
+                          value: currency,
+                          display: currency.toUpperCase(),
+                        }))}
+                      />
+                      <div className="col-span-2 text-xs text-muted-foreground">
+                        No Stripe customer: Metronome still raises invoices for
+                        initial credits, scheduled charges, and seat commitments
+                        as usual — they just won't be pushed to Stripe (nothing
+                        is auto-charged; reconcile manually).
+                      </div>
+                    </>
                   )}
                 </div>
                 {/* Nothing else renders until a Stripe customer resolves to a
@@ -731,35 +769,39 @@ export default function SwitchContractDialog({
                         hideLabel
                         placeholder="PO number"
                       />
-                      <Label className="text-sm">Collection method</Label>
-                      <SelectField
-                        control={form.control}
-                        name="stripeCollectionMethod"
-                        hideLabel
-                        mountPortalContainer={portalContainer}
-                        options={[
-                          {
-                            value: "charge_automatically",
-                            display: "Charge automatically (card on file)",
-                          },
-                          {
-                            value: "send_invoice",
-                            display: "Send invoice (manual payment)",
-                          },
-                        ]}
-                      />
-                      {stripeCollectionMethod === "send_invoice" && (
+                      {hasStripeCustomer && (
                         <>
-                          <Label className="text-sm">
-                            Net payment terms (days)
-                          </Label>
-                          <InputField
+                          <Label className="text-sm">Collection method</Label>
+                          <SelectField
                             control={form.control}
-                            name="netPaymentTermsDays"
+                            name="stripeCollectionMethod"
                             hideLabel
-                            type="number"
-                            placeholder="Metronome account default"
+                            mountPortalContainer={portalContainer}
+                            options={[
+                              {
+                                value: "charge_automatically",
+                                display: "Charge automatically (card on file)",
+                              },
+                              {
+                                value: "send_invoice",
+                                display: "Send invoice (manual payment)",
+                              },
+                            ]}
                           />
+                          {stripeCollectionMethod === "send_invoice" && (
+                            <>
+                              <Label className="text-sm">
+                                Net payment terms (days)
+                              </Label>
+                              <InputField
+                                control={form.control}
+                                name="netPaymentTermsDays"
+                                hideLabel
+                                type="number"
+                                placeholder="Metronome account default"
+                              />
+                            </>
+                          )}
                         </>
                       )}
                       {isPackagesLoading && (
@@ -1180,7 +1222,9 @@ export default function SwitchContractDialog({
                                 : {
                                     amountCredits: 0,
                                     invoiceAmount: 0,
-                                    paymentSchedule: { frequency: "one_time" },
+                                    paymentSchedule: {
+                                      frequency: "one_time",
+                                    },
                                   }
                             )
                           }
@@ -1260,7 +1304,9 @@ export default function SwitchContractDialog({
                                 : {
                                     name: undefined,
                                     invoiceAmount: 0,
-                                    paymentSchedule: { frequency: "one_time" },
+                                    paymentSchedule: {
+                                      frequency: "one_time",
+                                    },
                                   }
                             )
                           }

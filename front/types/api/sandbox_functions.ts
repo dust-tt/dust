@@ -87,9 +87,6 @@ export function isSandboxFunctionInvocationTerminalEvent(
 
 export type PostSandboxFunctionInvocationRequestBody = {
   input?: unknown;
-  context?: {
-    frameFileId?: string;
-  };
 };
 
 export type PostSandboxFunctionInvocationResponseBody = {

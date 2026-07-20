@@ -217,7 +217,7 @@ function InstallationSection() {
     <div className="py-16 md:py-20">
       <div className={CONTAINER_CLASSES}>
         <div className="mb-12">
-          <H2 className="text-left text-3xl font-bold md:text-4xl lg:text-5xl">
+          <H2 className="text-center text-3xl font-bold md:text-4xl lg:text-5xl">
             Installation
           </H2>
         </div>

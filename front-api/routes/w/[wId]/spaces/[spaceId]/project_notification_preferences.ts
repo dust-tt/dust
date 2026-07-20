@@ -149,7 +149,7 @@ app.get(
           ? {
               sId: serialized.sId,
               spaceId: serialized.spaceId,
-              userId: serialized.userId,
+              userId: auth.getNonNullableUser().sId,
               preference: serialized.notificationPreference,
             }
           : null,
@@ -193,7 +193,7 @@ app.patch(
           ? {
               sId: serialized.sId,
               spaceId: serialized.spaceId,
-              userId: serialized.userId,
+              userId: auth.getNonNullableUser().sId,
               preference: serialized.notificationPreference,
             }
           : null,

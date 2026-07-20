@@ -34,7 +34,6 @@ import {
 import {
   getAvailabilityOfInternalMCPServerById,
   getInternalMCPServerNameAndWorkspaceId,
-  getInternalMCPServerToolStakes,
   INTERNAL_MCP_SERVERS,
   resolveInternalMCPServerToolStakeLevel,
 } from "@app/lib/actions/mcp_internal_actions/constants";
@@ -170,7 +169,12 @@ export function getToolExtraFields(
       return r;
     }
     const serverName = r.value.name;
-    const defaultStakes = getInternalMCPServerToolStakes(serverName) ?? {};
+    const defaultStakes = Object.fromEntries(
+      INTERNAL_MCP_SERVERS[serverName].metadata.tools.map((t) => [
+        t.name,
+        t.stake,
+      ])
+    );
     toolsStakes = { ...defaultStakes };
     toolsRetryPolicies = INTERNAL_MCP_SERVERS[serverName].tools_retry_policies;
     serverTimeoutMs = INTERNAL_MCP_SERVERS[serverName]?.timeoutMs;

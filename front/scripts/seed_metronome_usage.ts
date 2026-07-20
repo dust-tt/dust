@@ -11,10 +11,15 @@
  *   Events are timestamped to today so they fall within the active billing period
  *   and any active pool credit window.
  *
- * The dev workspace ingest alias is "DevWkSpace".
+ * The dev workspace sId is "DevWkSpace"; the ingest alias sent to Metronome
+ * is derived from it via `getMetronomeIngestAlias` (scoped per dust-hive
+ * environment when running under dust-hive).
  */
 
-import { ingestMetronomeEvents } from "@app/lib/metronome/client";
+import {
+  getMetronomeIngestAlias,
+  ingestMetronomeEvents,
+} from "@app/lib/metronome/client";
 import type { MetronomeEvent } from "@app/lib/metronome/types";
 import { v4 as uuidv4 } from "uuid";
 
@@ -24,12 +29,13 @@ const DEV_WORKSPACE_SID = "DevWkSpace";
 
 async function seedMetronomeUsage(execute: boolean): Promise<void> {
   const now = new Date().toISOString();
+  const customerId = getMetronomeIngestAlias(DEV_WORKSPACE_SID);
 
   const events: MetronomeEvent[] = [
     // 200 AWU of programmatic usage
     {
       transaction_id: uuidv4(),
-      customer_id: DEV_WORKSPACE_SID,
+      customer_id: customerId,
       event_type: "llm_usage_v3",
       timestamp: now,
       properties: {
@@ -47,7 +53,7 @@ async function seedMetronomeUsage(execute: boolean): Promise<void> {
     // 100 AWU of user usage for a synthetic non-seat user
     {
       transaction_id: uuidv4(),
-      customer_id: DEV_WORKSPACE_SID,
+      customer_id: customerId,
       event_type: "llm_usage_v3",
       timestamp: now,
       properties: {

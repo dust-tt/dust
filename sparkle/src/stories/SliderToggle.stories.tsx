@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/react";
 import React from "react";
+import { useArgs } from "storybook/preview-api";
 
 import { Button, SliderToggle } from "../index_with_tw_base";
 
@@ -30,14 +31,43 @@ export const SliderToggleBasic: Story = {
   args: {
     selected: false,
   },
+  // The component is fully controlled; wire clicks back into the `selected`
+  // arg so the story is interactive and stays in sync with the controls panel.
+  render: function Render(args) {
+    const [{ selected }, updateArgs] = useArgs<{ selected: boolean }>();
+    return (
+      <SliderToggle
+        {...args}
+        selected={selected}
+        onClick={() => updateArgs({ selected: !selected })}
+      />
+    );
+  },
+};
+
+const InteractiveSliderToggle = ({
+  selected: initialSelected = false,
+  disabled,
+}: {
+  selected?: boolean;
+  disabled?: boolean;
+}) => {
+  const [selected, setSelected] = React.useState(initialSelected);
+  return (
+    <SliderToggle
+      selected={selected}
+      disabled={disabled}
+      onClick={() => setSelected((prev) => !prev)}
+    />
+  );
 };
 
 export const SliderExample = () => (
   <div className="flex items-center gap-2">
     <Button variant="outline" size="sm" label="Settings" />
-    <SliderToggle />
-    <SliderToggle selected />
-    <SliderToggle disabled />
-    <SliderToggle selected disabled />
+    <InteractiveSliderToggle />
+    <InteractiveSliderToggle selected />
+    <InteractiveSliderToggle disabled />
+    <InteractiveSliderToggle selected disabled />
   </div>
 );

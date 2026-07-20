@@ -33,6 +33,7 @@ const FREE_BYOK_PLAN_DATA: PlanAttributes = {
   isSSOAllowed: true,
   isSCIMAllowed: false,
   isAuditLogsAllowed: false,
+  maxConnectionsCount: -1,
   maxDataSourcesCount: -1,
   maxDataSourcesDocumentsCount: -1,
   maxDataSourcesDocumentsSizeMb: 2,

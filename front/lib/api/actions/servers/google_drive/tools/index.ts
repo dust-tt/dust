@@ -24,6 +24,7 @@ import {
   getSlidesClient,
 } from "@app/lib/api/actions/servers/google_drive/helpers";
 import {
+  GOOGLE_DRIVE_SCOPES,
   GOOGLE_DRIVE_TOOLS_METADATA,
   GOOGLE_DRIVE_WRITE_TOOLS_METADATA,
   MAX_CONTENT_SIZE,
@@ -136,11 +137,158 @@ function normalizeCode(code: string | number | undefined): string | undefined {
   return code !== undefined ? String(code) : undefined;
 }
 
+// 403 reasons that are authentication problems: the token lacks the required
+// OAuth scopes, so re-consenting does fix them.
+const REAUTH_403_REASONS = new Set([
+  "insufficientPermissions",
+  "ACCESS_TOKEN_SCOPE_INSUFFICIENT",
+]);
+
+// 403 reasons that are plain permission denials on the file or folder:
+// re-authenticating cannot fix them.
+const PERMISSION_403_REASONS = new Set([
+  "insufficientFilePermissions",
+  "insufficientParentPermissions",
+  "domainPolicy",
+]);
+
+// 403 reasons that are transient quota/rate limits: neither re-auth nor
+// different permissions help; the caller should retry later.
+const RATE_LIMIT_403_REASONS = new Set([
+  "userRateLimitExceeded",
+  "rateLimitExceeded",
+  "dailyLimitExceeded",
+  "sharingRateLimitExceeded",
+]);
+
+/**
+ * Extracts the structured Google API error reasons from a GaxiosError.
+ * Handles both the legacy error body shape (error.errors[].reason) and the
+ * google.rpc.ErrorInfo shape (error.details[].reason).
+ */
+function extractGoogleErrorReasons(err: Common.GaxiosError): string[] {
+  const data: unknown = err.response?.data;
+  if (typeof data !== "object" || data === null || !("error" in data)) {
+    return [];
+  }
+  const { error } = data;
+  if (typeof error !== "object" || error === null) {
+    return [];
+  }
+
+  const entryLists: unknown[] = [
+    "errors" in error ? error.errors : undefined,
+    "details" in error ? error.details : undefined,
+  ];
+
+  const reasons: string[] = [];
+  for (const entries of entryLists) {
+    if (!Array.isArray(entries)) {
+      continue;
+    }
+    for (const entry of entries) {
+      if (
+        typeof entry === "object" &&
+        entry !== null &&
+        "reason" in entry &&
+        typeof entry.reason === "string"
+      ) {
+        reasons.push(entry.reason);
+      }
+    }
+  }
+  return reasons;
+}
+
+/**
+ * Verifies that the OAuth token is still valid by making a cheap
+ * authenticated call. Google returns 403 both for auth-level problems and
+ * for plain permission denials on a file or folder; prompting an
+ * authenticated user to re-authenticate on the latter creates a re-auth
+ * loop that never resolves. Returns false when the check itself cannot run.
+ */
+async function isAuthTokenValid(
+  authInfo: ToolHandlerExtra["authInfo"]
+): Promise<boolean> {
+  const drive = await getDriveClient(authInfo);
+  if (!drive) {
+    return false;
+  }
+  try {
+    await drive.about.get({ fields: "user" });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Builds the re-authentication response: an admin-facing error for
+ * workspace connections, or the OAuth re-auth prompt for personal ones.
+ */
+function makeReauthenticationResult(
+  authInfo: ToolHandlerExtra["authInfo"]
+): ToolHandlerResult {
+  if (authInfo?.extra?.connectionType === "workspace") {
+    return new Err(
+      new MCPError(
+        "The workspace Google Drive credentials are invalid or expired. A workspace admin needs to re-authenticate the Google Drive connection.",
+        { tracked: false }
+      )
+    );
+  }
+  return new Ok(
+    makePersonalAuthenticationError("google_drive", GOOGLE_DRIVE_SCOPES).content
+  );
+}
+
+/**
+ * Maps a 403 to either the re-auth flow (missing OAuth scopes or invalid
+ * token) or a permission error (valid token: re-auth would not help and
+ * would loop).
+ */
+async function handleForbiddenError(
+  err: Common.GaxiosError,
+  authInfo: ToolHandlerExtra["authInfo"]
+): Promise<ToolHandlerResult> {
+  const reasons = extractGoogleErrorReasons(err);
+  logger.info(
+    { reasons, connectionType: authInfo?.extra?.connectionType },
+    "Google Drive tool call returned 403"
+  );
+
+  if (reasons.some((reason) => REAUTH_403_REASONS.has(reason))) {
+    return makeReauthenticationResult(authInfo);
+  }
+  if (reasons.some((reason) => RATE_LIMIT_403_REASONS.has(reason))) {
+    return new Err(
+      new MCPError(
+        `Google Drive is rate limiting requests; wait before retrying. Google Drive error: ${err.message ?? "rate limit exceeded"}`,
+        { tracked: false }
+      )
+    );
+  }
+  if (
+    reasons.some((reason) => PERMISSION_403_REASONS.has(reason)) ||
+    (await isAuthTokenValid(authInfo))
+  ) {
+    return new Err(
+      new MCPError(
+        `The user is authenticated but does not have permission to perform this action. Google Drive error: ${err.message ?? "permission denied"}`,
+        { tracked: false }
+      )
+    );
+  }
+  return makeReauthenticationResult(authInfo);
+}
+
 /**
  * Handles errors for operations that require per-file permissions.
  * Uses GAxios error typing for cleaner error handling.
  * - For file-specific 403/404 permission errors: triggers file picker flow
- * - For general 403 errors: triggers OAuth re-auth flow
+ * - For 401 errors: triggers OAuth re-auth flow
+ * - For general 403 errors: re-auth only if the token is invalid, otherwise
+ *   reports a permission error (re-auth cannot fix a permission denial)
  * - For 404 errors: fetches metadata to provide context about the file type
  * - For other errors: returns generic error message
  */
@@ -154,7 +302,6 @@ export async function handleFileAccessError(
     const status = normalizeCode(err.code);
     const message = err.message?.toLowerCase() ?? "";
 
-    // Check for file-specific permission issues that should trigger file picker
     // Export size limit errors are 403s but are not auth issues: Google caps
     // file exports at 10MB.
     if (status === "403" && message.includes("too large")) {
@@ -166,11 +313,19 @@ export async function handleFileAccessError(
       );
     }
 
+    // The file picker only helps when the app is missing a drive.file grant
+    // on the file, which Google reports as appNotAuthorizedToFile. When
+    // Google instead reports a user-level permission denial, re-picking the
+    // file cannot help: veto the message-keyword heuristic and let the 403
+    // classification below report the permission error.
+    const reasons = extractGoogleErrorReasons(err);
     if (
       (status === "403" || status === "404") &&
-      (message.includes("caller does not have permission") ||
-        message.includes("has not granted") ||
-        message.includes("write access"))
+      (reasons.includes("appNotAuthorizedToFile") ||
+        (!reasons.some((reason) => PERMISSION_403_REASONS.has(reason)) &&
+          (message.includes("caller does not have permission") ||
+            message.includes("has not granted") ||
+            message.includes("write access"))))
     ) {
       const connectionId = runContext.toolConfiguration.toolServerId;
 
@@ -184,22 +339,14 @@ export async function handleFileAccessError(
       );
     }
 
-    // Handle general 403 errors with OAuth re-auth
+    // 401 means the token itself is invalid or expired: re-auth is the fix.
+    if (status === "401") {
+      return makeReauthenticationResult(authInfo);
+    }
+
+    // General 403: only re-auth when the token is actually invalid.
     if (status === "403") {
-      if (authInfo?.extra?.connectionType === "workspace") {
-        return new Err(
-          new MCPError(
-            "The workspace Google Drive credentials are invalid or expired. A workspace admin needs to re-authenticate the Google Drive connection.",
-            { tracked: false }
-          )
-        );
-      }
-      return new Ok(
-        makePersonalAuthenticationError(
-          "google_drive",
-          "https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/drive.readonly"
-        ).content
-      );
+      return handleForbiddenError(err, authInfo);
     }
 
     // Handle 404 errors - try to fetch metadata for better error message
@@ -249,31 +396,24 @@ export async function handleFileAccessError(
 /**
  * Handles errors for operations that only require Drive-level OAuth (read and create tools).
  * Uses GAxios error typing for cleaner error handling.
- * Returns OAuth re-auth prompt for 403 errors, or generic error for others.
+ * Returns the OAuth re-auth prompt for 401 errors and for 403 errors with an
+ * invalid token; 403 with a valid token reports a permission error instead.
  */
-function handleDriveAccessError(
+async function handleDriveAccessError(
   err: unknown,
   authInfo?: Pick<ToolHandlerExtra, "authInfo">["authInfo"]
-): ToolHandlerResult {
+): Promise<ToolHandlerResult> {
   if (err instanceof Common.GaxiosError) {
     const status = normalizeCode(err.code);
 
-    // Handle 403 errors with OAuth re-auth
+    // 401 means the token itself is invalid or expired: re-auth is the fix.
+    if (status === "401") {
+      return makeReauthenticationResult(authInfo);
+    }
+
+    // General 403: only re-auth when the token is actually invalid.
     if (status === "403") {
-      if (authInfo?.extra?.connectionType === "workspace") {
-        return new Err(
-          new MCPError(
-            "The workspace Google Drive credentials are invalid or expired. A workspace admin needs to re-authenticate the Google Drive connection.",
-            { tracked: false }
-          )
-        );
-      }
-      return new Ok(
-        makePersonalAuthenticationError(
-          "google_drive",
-          "https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/drive.readonly"
-        ).content
-      );
+      return handleForbiddenError(err, authInfo);
     }
 
     return new Err(
@@ -311,7 +451,12 @@ function addAgentAttribution(
  * If the capability is true or confirmed via API, returns null to proceed.
  */
 async function ensureCapability(
-  capabilityName: "canEdit" | "canComment" | "canShare" | "canCopy",
+  capabilityName:
+    | "canEdit"
+    | "canComment"
+    | "canShare"
+    | "canCopy"
+    | "canAddChildren",
   capabilityValue: boolean | undefined,
   fileId: string,
   authInfo: ToolHandlerExtra["authInfo"]
@@ -347,6 +492,8 @@ async function ensureCapability(
         "You don't have permission to manage sharing for this file. The file owner may have restricted sharing to owners only.",
       canCopy:
         "You don't have permission to copy this file. The file owner may have restricted copying.",
+      canAddChildren:
+        "You don't have permission to add files to this folder. You need editor access on the folder, or you can create the file in a different location.",
     };
     return new Ok([
       {
@@ -357,6 +504,22 @@ async function ensureCapability(
   }
 
   return null;
+}
+
+/**
+ * Checks that the user can add files to the target folder before a create,
+ * upload, or copy that places a file into it. Without this check, Google's
+ * 403 would surface as a re-authentication prompt even though the user is
+ * authenticated and simply lacks write access to the folder.
+ */
+async function ensureParentFolderWritable(
+  parentId: string | undefined,
+  authInfo: ToolHandlerExtra["authInfo"]
+): Promise<ToolHandlerResult | null> {
+  if (!parentId) {
+    return null;
+  }
+  return ensureCapability("canAddChildren", undefined, parentId, authInfo);
 }
 
 const handlers: ToolHandlers<typeof GOOGLE_DRIVE_TOOLS_METADATA> = {
@@ -830,6 +993,10 @@ const readOnlyTools = buildTools(GOOGLE_DRIVE_TOOLS_METADATA, handlers);
 
 const writeHandlers: ToolHandlers<typeof GOOGLE_DRIVE_WRITE_TOOLS_METADATA> = {
   create_document: async ({ title, parentId }, { authInfo }) => {
+    const folderError = await ensureParentFolderWritable(parentId, authInfo);
+    if (folderError) {
+      return folderError;
+    }
     const drive = await getDriveClient(authInfo);
     if (!drive) {
       return new Err(new MCPError("Failed to authenticate with Google Drive"));
@@ -864,6 +1031,10 @@ const writeHandlers: ToolHandlers<typeof GOOGLE_DRIVE_WRITE_TOOLS_METADATA> = {
   },
 
   create_spreadsheet: async ({ title, parentId }, { authInfo }) => {
+    const folderError = await ensureParentFolderWritable(parentId, authInfo);
+    if (folderError) {
+      return folderError;
+    }
     const drive = await getDriveClient(authInfo);
     if (!drive) {
       return new Err(new MCPError("Failed to authenticate with Google Drive"));
@@ -898,6 +1069,10 @@ const writeHandlers: ToolHandlers<typeof GOOGLE_DRIVE_WRITE_TOOLS_METADATA> = {
   },
 
   create_presentation: async ({ title, parentId }, { authInfo }) => {
+    const folderError = await ensureParentFolderWritable(parentId, authInfo);
+    if (folderError) {
+      return folderError;
+    }
     const drive = await getDriveClient(authInfo);
     if (!drive) {
       return new Err(new MCPError("Failed to authenticate with Google Drive"));
@@ -932,6 +1107,10 @@ const writeHandlers: ToolHandlers<typeof GOOGLE_DRIVE_WRITE_TOOLS_METADATA> = {
   },
 
   create_folder: async ({ name, parentId }, { authInfo }) => {
+    const folderError = await ensureParentFolderWritable(parentId, authInfo);
+    if (folderError) {
+      return folderError;
+    }
     const drive = await getDriveClient(authInfo);
     if (!drive) {
       return new Err(new MCPError("Failed to authenticate with Google Drive"));
@@ -977,6 +1156,10 @@ const writeHandlers: ToolHandlers<typeof GOOGLE_DRIVE_WRITE_TOOLS_METADATA> = {
     );
     if (accessError) {
       return accessError;
+    }
+    const folderError = await ensureParentFolderWritable(parentId, authInfo);
+    if (folderError) {
+      return folderError;
     }
     const drive = await getDriveClient(authInfo);
     if (!drive) {
@@ -1587,6 +1770,10 @@ const writeHandlers: ToolHandlers<typeof GOOGLE_DRIVE_WRITE_TOOLS_METADATA> = {
     { fileId, parentId, fileName },
     { auth, authInfo, runContext }
   ) => {
+    const folderError = await ensureParentFolderWritable(parentId, authInfo);
+    if (folderError) {
+      return folderError;
+    }
     const drive = await getDriveClient(authInfo);
     if (!drive) {
       return new Err(new MCPError("Failed to authenticate with Google Drive"));

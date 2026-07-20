@@ -32,6 +32,7 @@ import {
   MOVE_CONVERSATION_TOOL_NAME,
   POD_MANAGER_TOOLS_METADATA,
   SEMANTIC_SEARCH_TOOL_NAME,
+  SET_PINNED_FRAME_TOOL_NAME,
   UPDATE_MEMBERS_TOOL_NAME,
 } from "@app/lib/api/actions/servers/pod_manager/metadata";
 import { partitionMembersToAdd } from "@app/lib/api/actions/servers/pod_manager/types";
@@ -263,16 +264,15 @@ export function createProjectManagerTools(
           );
         }
 
-        const { title, description, pinnedFramePath, access } = params;
+        const { title, description, access } = params;
         if (
           title === undefined &&
           description === undefined &&
-          pinnedFramePath === undefined &&
           access === undefined
         ) {
           return new Err(
             new MCPError(
-              "At least one of title, description, access, or pinnedFramePath must be provided",
+              "At least one of title, description, or access must be provided",
               { tracked: false }
             )
           );
@@ -295,22 +295,6 @@ export function createProjectManagerTools(
 
         if (description !== undefined) {
           updates.description = description;
-        }
-
-        if (pinnedFramePath !== undefined) {
-          const validation = await validatePinnedFramePath(
-            auth,
-            pod,
-            pinnedFramePath
-          );
-          if (validation.isErr()) {
-            return new Err(
-              new MCPError(validation.error.message, { tracked: false })
-            );
-          }
-
-          // Use the normalized path.
-          updates.pinnedFramePath = validation.value;
         }
 
         if (access !== undefined) {
@@ -369,6 +353,62 @@ export function createProjectManagerTools(
           })
         );
       }, "Failed to edit Pod information");
+    },
+
+    [SET_PINNED_FRAME_TOOL_NAME]: async (params) => {
+      return withErrorHandling(async () => {
+        const contextRes = await getPod(auth, {
+          toolContext,
+          dustPod: params.dustPod,
+        });
+        if (contextRes.isErr()) {
+          return contextRes;
+        }
+
+        const { pod } = contextRes.value;
+
+        if (!pod.canAdministrate(auth)) {
+          return new Err(
+            new MCPError(
+              "You do not have permission to edit this Pod's information",
+              { tracked: false }
+            )
+          );
+        }
+
+        const validation = await validatePinnedFramePath(
+          auth,
+          pod,
+          params.pinnedFramePath
+        );
+        if (validation.isErr()) {
+          return new Err(
+            new MCPError(validation.error.message, { tracked: false })
+          );
+        }
+
+        // Use the normalized path.
+        const pinnedFramePath = validation.value;
+
+        let metadata = await ProjectMetadataResource.fetchBySpace(auth, pod);
+        if (!metadata) {
+          metadata = await ProjectMetadataResource.makeNew(auth, pod, {
+            pinnedFramePath,
+          });
+        } else {
+          await metadata.updatePinnedFramePath(pinnedFramePath);
+        }
+
+        return new Ok(
+          makeSuccessResponse({
+            success: true,
+            pinnedFramePath,
+            message: pinnedFramePath
+              ? "Pinned frame updated successfully."
+              : "Pinned frame cleared successfully.",
+          })
+        );
+      }, "Failed to set Pod pinned frame");
     },
 
     [UPDATE_MEMBERS_TOOL_NAME]: async (params) => {

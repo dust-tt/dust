@@ -5,6 +5,7 @@ import {
 import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import { isJITMCPServerView } from "@app/lib/actions/mcp_internal_actions/utils";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
+import { CAPABILITIES_SWR_OPTIONS } from "@app/lib/swr/capabilities";
 import { useMCPServerViewsFromSpaces } from "@app/lib/swr/mcp_servers";
 import { useSkills } from "@app/lib/swr/skill_configurations";
 import { useSpaces } from "@app/lib/swr/spaces";
@@ -68,14 +69,15 @@ export function useInputBarSlashCommandCapabilities({
   const { spaces: globalSpaces, isSpacesLoading } = useSpaces({
     workspaceId: owner.sId,
     kinds: ["global"],
+    swrOptions: CAPABILITIES_SWR_OPTIONS,
   });
   const { skills, isSkillsLoading } = useSkills({
     owner,
     status: "active",
-    globalSpaceOnly: true,
+    swrOptions: CAPABILITIES_SWR_OPTIONS,
   });
   const { serverViews, isLoading: isServerViewsLoading } =
-    useMCPServerViewsFromSpaces(owner, globalSpaces);
+    useMCPServerViewsFromSpaces(owner, globalSpaces, CAPABILITIES_SWR_OPTIONS);
 
   const capabilityItems = useMemo(
     () =>

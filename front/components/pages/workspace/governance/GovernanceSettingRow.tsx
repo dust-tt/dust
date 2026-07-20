@@ -1,18 +1,18 @@
+import { GovernanceSettingRowLayout } from "@app/components/pages/workspace/governance/GovernanceSettingRowLayout";
 import { GroupSelector } from "@app/components/pages/workspace/governance/GroupSelector";
 import {
   type GovernancePermission,
   type GovernancePermissionConfiguration,
+  type GrantType,
   type GroupPermissionResourceType,
   isValidPermissionConfigurationScope,
   type PermissionConfigurationScope,
-  type PermissionType,
 } from "@app/types/group_permissions";
 import type { GroupType } from "@app/types/groups";
 import {
   ButtonsSwitch,
   ButtonsSwitchList,
   ContentMessage,
-  Page,
 } from "@dust-tt/sparkle";
 import { useState } from "react";
 
@@ -24,7 +24,7 @@ type GovernanceSettingMetadata = {
 
 const GOVERNANCE_SETTING_METADATA: Partial<
   Record<
-    `${PermissionType}:${GroupPermissionResourceType}`,
+    `${GrantType}:${GroupPermissionResourceType}`,
     GovernanceSettingMetadata
   >
 > = {
@@ -81,7 +81,7 @@ function getGovernancePermissionMetadata(
 ): GovernanceSettingMetadata | null {
   const metadata =
     GOVERNANCE_SETTING_METADATA[
-      `${permissions.permissionType}:${permissions.resourceType}`
+      `${permissions.grantType}:${permissions.resourceType}`
     ];
 
   if (!metadata) {
@@ -154,15 +154,11 @@ export const GovernanceSettingRow = ({
   }
 
   return (
-    <div className="w-full flex flex-col gap-3 p-4">
-      <div className="flex w-full items-center gap-4 justify-between">
-        <Page.Vertical gap="xs" sizing="grow">
-          <Page.H variant="h6">{metadata.label}</Page.H>
-          <Page.P variant="secondary" size="sm">
-            {metadata.description}
-          </Page.P>
-        </Page.Vertical>
-        {!metadata.isGroupsOnly && (
+    <GovernanceSettingRowLayout
+      label={metadata.label}
+      description={metadata.description}
+      action={
+        !metadata.isGroupsOnly ? (
           <ButtonsSwitchList
             size="xs"
             defaultValue={configuration.scope}
@@ -172,8 +168,9 @@ export const GovernanceSettingRow = ({
               <ButtonsSwitch key={value} value={value} label={label} />
             ))}
           </ButtonsSwitchList>
-        )}
-      </div>
+        ) : undefined
+      }
+    >
       {(metadata.isGroupsOnly || configuration.scope === "groups") && (
         <GroupSelector
           selectedGroups={selectedGroups}
@@ -183,6 +180,6 @@ export const GovernanceSettingRow = ({
           }
         />
       )}
-    </div>
+    </GovernanceSettingRowLayout>
   );
 };

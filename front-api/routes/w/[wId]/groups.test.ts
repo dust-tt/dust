@@ -152,6 +152,23 @@ describe("GET /api/w/:wId/groups", () => {
     expect(backendGroup).toBeDefined();
     expect(backendGroup.memberCount).toBe(1);
   });
+
+  it("lets a business admin list provisioned groups", async () => {
+    const { workspace } = await createPrivateApiMockRequest({
+      method: "GET",
+      role: "business_admin",
+    });
+
+    await GroupFactory.provisioned(workspace, "Engineering");
+
+    const response = await getGroups(workspace, { kind: "provisioned" });
+
+    expect(response.status).toBe(200);
+    const { groups } = await response.json();
+    expect(groups.map((g: { name: string }) => g.name)).toEqual([
+      "Engineering",
+    ]);
+  });
 });
 
 describe("POST /api/w/:wId/groups", () => {

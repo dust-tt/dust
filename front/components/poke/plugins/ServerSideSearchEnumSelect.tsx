@@ -19,7 +19,7 @@ import {
   PopoverRoot,
   PopoverTrigger,
 } from "@dust-tt/sparkle";
-import { Loader2 } from "lucide-react";
+import { Check, Loader2 } from "lucide-react";
 import React from "react";
 
 function formatMemberLabel(member: PokeSearchWorkspaceMember) {
@@ -30,6 +30,9 @@ function formatMemberLabel(member: PokeSearchWorkspaceMember) {
 
 interface ServerSideSearchEnumSelectProps {
   label?: string;
+  // When true, allows selecting several values; the popover stays open on
+  // select and previously selected values are toggled on/off.
+  allowMultiple?: boolean;
   onValuesChange: (values: string[]) => void;
   placeholder?: string;
   staticOptions?: readonly EnumValue[];
@@ -39,6 +42,7 @@ interface ServerSideSearchEnumSelectProps {
 
 export function ServerSideSearchEnumSelect({
   label,
+  allowMultiple = false,
   onValuesChange,
   placeholder = "Select value",
   staticOptions = [],
@@ -51,9 +55,11 @@ export function ServerSideSearchEnumSelect({
     inputValue: searchQuery,
     setValue: setSearchQuery,
   } = useDebounce("");
-  const [selectedMemberLabel, setSelectedMemberLabel] = React.useState<
-    string | null
-  >(null);
+  // Cache of value -> label so selected entries keep their label even once they
+  // scroll out of the current search results.
+  const [labelCache, setLabelCache] = React.useState<Record<string, string>>(
+    {}
+  );
 
   const {
     members: searchResults,
@@ -65,7 +71,11 @@ export function ServerSideSearchEnumSelect({
     disabled: !open,
   });
 
-  const selectedValue = values?.[0] ?? "";
+  const selectedValues = React.useMemo(() => values ?? [], [values]);
+  const selectedValuesSet = React.useMemo(
+    () => new Set(selectedValues),
+    [selectedValues]
+  );
 
   const staticOptionByValue = React.useMemo(
     () => new Map(staticOptions.map((option) => [option.value, option])),
@@ -79,29 +89,44 @@ export function ServerSideSearchEnumSelect({
   }, [open, setSearchQuery]);
 
   React.useEffect(() => {
-    if (!selectedValue) {
-      setSelectedMemberLabel(null);
-      return;
-    }
+    setLabelCache((prev) => {
+      const next = { ...prev };
+      for (const option of staticOptions) {
+        next[option.value] = option.label;
+      }
+      for (const member of searchResults) {
+        next[member.sId] = formatMemberLabel(member);
+      }
+      return next;
+    });
+  }, [searchResults, staticOptions]);
 
-    const staticOption = staticOptionByValue.get(selectedValue);
-    if (staticOption) {
-      setSelectedMemberLabel(staticOption.label);
-      return;
-    }
+  const labelForValue = React.useCallback(
+    (value: string) =>
+      labelCache[value] ?? staticOptionByValue.get(value)?.label ?? value,
+    [labelCache, staticOptionByValue]
+  );
 
-    const matchingResult = searchResults.find(
-      (member) => member.sId === selectedValue
-    );
-    if (matchingResult) {
-      setSelectedMemberLabel(formatMemberLabel(matchingResult));
-    }
-  }, [searchResults, selectedValue, staticOptionByValue]);
+  const handleSelect = React.useCallback(
+    (value: string) => {
+      if (allowMultiple) {
+        const next = selectedValuesSet.has(value)
+          ? selectedValues.filter((v) => v !== value)
+          : [...selectedValues, value];
+        onValuesChange(next);
+        return;
+      }
+
+      onValuesChange([value]);
+      setOpen(false);
+    },
+    [allowMultiple, onValuesChange, selectedValues, selectedValuesSet]
+  );
 
   const title =
-    selectedMemberLabel ??
-    staticOptionByValue.get(selectedValue)?.label ??
-    placeholder;
+    selectedValues.length === 0
+      ? placeholder
+      : selectedValues.map(labelForValue).join(", ");
 
   return (
     <PopoverRoot modal={false} open={open} onOpenChange={setOpen}>
@@ -112,7 +137,7 @@ export function ServerSideSearchEnumSelect({
             role="combobox"
             className={cn(
               "w-auto justify-between border-border-dark bg-background " + "",
-              !selectedValue && "text-muted-foreground"
+              selectedValues.length === 0 && "text-muted-foreground"
             )}
           >
             {title}
@@ -156,17 +181,19 @@ export function ServerSideSearchEnumSelect({
                 <PokeCommandEmpty>No members found.</PokeCommandEmpty>
                 <PokeCommandGroup>
                   {staticOptions.map((option) => {
-                    const isSelected = selectedValue === option.value;
+                    const isSelected = selectedValuesSet.has(option.value);
                     return (
                       <PokeCommandItem
                         value={option.label}
                         key={`static-${option.value}`}
-                        onSelect={() => {
-                          onValuesChange([option.value]);
-                          setSelectedMemberLabel(option.label);
-                          setOpen(false);
-                        }}
+                        onSelect={() => handleSelect(option.value)}
                       >
+                        <Check
+                          className={cn(
+                            "mr-2 h-4 w-4",
+                            isSelected ? "opacity-100" : "opacity-0"
+                          )}
+                        />
                         <span
                           className={cn(
                             isSelected && "font-medium",
@@ -182,18 +209,20 @@ export function ServerSideSearchEnumSelect({
                     .filter((member) => !staticOptionByValue.has(member.sId))
                     .map((member) => {
                       const memberLabel = formatMemberLabel(member);
-                      const isSelected = selectedValue === member.sId;
+                      const isSelected = selectedValuesSet.has(member.sId);
 
                       return (
                         <PokeCommandItem
                           value={memberLabel}
                           key={member.sId}
-                          onSelect={() => {
-                            onValuesChange([member.sId]);
-                            setSelectedMemberLabel(memberLabel);
-                            setOpen(false);
-                          }}
+                          onSelect={() => handleSelect(member.sId)}
                         >
+                          <Check
+                            className={cn(
+                              "mr-2 h-4 w-4",
+                              isSelected ? "opacity-100" : "opacity-0"
+                            )}
+                          />
                           <span
                             className={cn(
                               isSelected && "font-medium",

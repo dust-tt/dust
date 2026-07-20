@@ -1,35 +1,57 @@
+import { GovernancePageLayout } from "@app/components/pages/workspace/governance/GovernancePageLayout";
+import { GovernancePageSkeleton } from "@app/components/pages/workspace/governance/GovernancePageSkeleton";
+import { GovernanceSettingRow } from "@app/components/pages/workspace/governance/GovernanceSettingRow";
 import { GovernanceSettingSection } from "@app/components/pages/workspace/governance/GovernanceSettingSection";
-import { AuditLogsToggle } from "@app/components/workspace/settings/AuditLogsToggle";
+import { ExtensionMcpToolsSection } from "@app/components/workspace/ExtensionMcpToolsSection";
+import { LinkedSectionNotice } from "@app/components/workspace/LinkedSectionNotice";
+import { AuditLogsGovernanceSection } from "@app/components/workspace/settings/AuditLogsToggle";
+import { DustMcpServerSettingsItem } from "@app/components/workspace/settings/DustMcpServerSettingsItem";
+import { EmailAgentsToggle } from "@app/components/workspace/settings/EmailAgentsToggle";
 import { InteractiveContentSharing } from "@app/components/workspace/settings/InteractiveContentSharingToggle";
+import { MessagingAppToggles } from "@app/components/workspace/settings/MessagingAppToggles";
+import { OpenPodPolicy } from "@app/components/workspace/settings/OpenProjectsPolicy";
+import { PodKnowledgePolicy } from "@app/components/workspace/settings/PodKnowledgePolicy";
+import { PrivateConversationUrlsToggle } from "@app/components/workspace/settings/PrivateConversationUrlsToggle";
+import { SlackPersonalFooterRemovalToggle } from "@app/components/workspace/settings/SlackPersonalFooterRemovalToggle";
+import { VoiceTranscriptionToggle } from "@app/components/workspace/settings/VoiceTranscriptionToggle";
+import { WorkspaceAnalyticsToggle } from "@app/components/workspace/settings/WorkspaceAnalyticsToggle";
+import { WorkspaceNameEditor } from "@app/components/workspace/settings/WorkspaceNameEditor";
 import { useFrameSharingToggle } from "@app/hooks/useFrameSharingToggle";
 import {
   useAuth,
   useFeatureFlags,
   useWorkspace,
 } from "@app/lib/auth/AuthContext";
+import { useAppRouter } from "@app/lib/platform";
 import { useGovernancePermissions } from "@app/lib/swr/governance";
 import { useGroups } from "@app/lib/swr/groups";
+import type { GovernancePermissionsByKey } from "@app/types/api/governance";
 import type {
+  CapabilitySpec,
   GovernancePermission,
-  GroupPermissionResourceType,
-  PermissionType,
+  GrantType,
 } from "@app/types/group_permissions";
+import {
+  capabilityKey,
+  GOVERNANCE_CAPABILITIES,
+} from "@app/types/group_permissions";
+import { MANAGEABLE_GROUP_KINDS } from "@app/types/groups";
+import { removeNulls } from "@app/types/shared/utils/general";
 import type {
   LightWorkspaceType,
   WorkspaceSharingPolicy,
 } from "@app/types/user";
 import {
   ActionFrame,
+  CloudArrowLeftRight,
   ContentMessage,
-  Icon,
+  Cube01,
+  InfoCircle,
   Lock01,
-  Page,
   PuzzlePiece01,
   Robot,
   ShapesPlus,
-  Toggle01Left,
 } from "@dust-tt/sparkle";
-import groupBy from "lodash/groupBy";
 import type { ComponentType } from "react";
 
 function useUpdateGovernancePermission(owner: LightWorkspaceType) {
@@ -42,10 +64,10 @@ function useUpdateGovernancePermission(owner: LightWorkspaceType) {
 // enables the underlying capability: email invites require external email sharing, and public
 // links require unrestricted sharing.
 function isFrameCapabilityEnabled(
-  permissionType: PermissionType,
+  grantType: GrantType,
   sharingPolicy: WorkspaceSharingPolicy
 ): boolean {
-  switch (permissionType) {
+  switch (grantType) {
     case "invite":
       return (
         sharingPolicy === "workspace_and_emails" ||
@@ -58,55 +80,88 @@ function isFrameCapabilityEnabled(
   }
 }
 
+// Split the keyed permission map into the page's four sections. Each section pulls its capabilities
+// from the map in catalog (display) order, dropping any the current user's role isn't allowed to
+// see (absent from the map). Frame filtering by sharing policy is applied by the caller, which has
+// the runtime policy.
+function groupGovernancePermissionsBySection(
+  governancePermissions: GovernancePermissionsByKey
+): {
+  agents: GovernancePermission[];
+  skills: GovernancePermission[];
+  frames: GovernancePermission[];
+  billingAndSecurity: GovernancePermission[];
+} {
+  const resolve = (specs: CapabilitySpec[]): GovernancePermission[] =>
+    removeNulls(
+      specs.map((spec) => governancePermissions[capabilityKey(spec)])
+    );
+
+  return {
+    agents: resolve(GOVERNANCE_CAPABILITIES.agent),
+    skills: resolve(GOVERNANCE_CAPABILITIES.skill),
+    frames: resolve(GOVERNANCE_CAPABILITIES.frame),
+    billingAndSecurity: resolve(GOVERNANCE_CAPABILITIES.billingAndSecurity),
+  };
+}
+
 export const GovernancePage = () => {
   const { hasFeature } = useFeatureFlags();
   const hasAdminGovernanceFeature = hasFeature("admin_governance");
 
   const owner = useWorkspace();
   const { isAdmin } = useAuth();
-  const { groups, isGroupsLoading } = useGroups({
+  const { groups, isGroupsLoading, isGroupsError } = useGroups({
     owner,
-    kinds: ["provisioned"],
+    kinds: MANAGEABLE_GROUP_KINDS,
   });
-  const { governancePermissions, isLoading: isGovernancePermissionsLoading } =
-    useGovernancePermissions(owner);
+  const {
+    governancePermissions,
+    isLoading: isGovernancePermissionsLoading,
+    isGovernancePermissionsError,
+  } = useGovernancePermissions(owner);
   const onPermissionChange = useUpdateGovernancePermission(owner);
 
   const { sharingPolicy, doUpdateSharingPolicy, isChanging } =
     useFrameSharingToggle({ owner });
 
   const isLoading = isGroupsLoading || isGovernancePermissionsLoading;
+  const isError = isGroupsError || isGovernancePermissionsError;
 
-  const governancePermissionsMap: Partial<
-    Record<GroupPermissionResourceType, GovernancePermission[]>
-  > = groupBy(governancePermissions, "resourceType");
+  const { agents, skills, frames, billingAndSecurity } =
+    groupGovernancePermissionsBySection(governancePermissions);
 
-  const billingPermissions = governancePermissionsMap.billing ?? [];
-  const identityPermissions = governancePermissionsMap.identity ?? [];
-
-  const framePermissions = (governancePermissionsMap.frame ?? []).filter(
-    (permission) =>
-      isFrameCapabilityEnabled(permission.permissionType, sharingPolicy)
+  const framePermissions = frames.filter((permission) =>
+    isFrameCapabilityEnabled(permission.grantType, sharingPolicy)
   );
 
+  const router = useAppRouter();
+  const handleNavigateToGroups = () => {
+    void router.push(`/w/${owner.sId}/members?tab=groups`);
+  };
+
   const sections: {
+    id: "agents" | "skills" | "frame" | "billing";
     label: string;
     icon: ComponentType;
     governancePermissions: GovernancePermission[];
   }[] = [
     {
+      id: "agents",
       label: "Agents",
       icon: Robot,
-      governancePermissions: governancePermissionsMap.agent ?? [],
+      governancePermissions: agents,
     },
     {
+      id: "skills",
       label: "Skills",
       icon: PuzzlePiece01,
-      governancePermissions: governancePermissionsMap.skill ?? [],
+      governancePermissions: skills,
     },
-    ...(framePermissions.length > 0
+    ...(framePermissions.length > 0 || isAdmin
       ? [
           {
+            id: "frame" as const,
             label: "Frame sharing",
             icon: ActionFrame,
             governancePermissions: framePermissions,
@@ -116,12 +171,10 @@ export const GovernancePage = () => {
     ...(isAdmin
       ? [
           {
+            id: "billing" as const,
             label: "Billing and security",
             icon: Lock01,
-            governancePermissions: [
-              ...billingPermissions,
-              ...identityPermissions,
-            ],
+            governancePermissions: billingAndSecurity,
           },
         ]
       : []),
@@ -132,51 +185,90 @@ export const GovernancePage = () => {
   }
 
   if (isLoading) {
+    return <GovernancePageSkeleton />;
+  }
+
+  if (isError) {
     return (
-      <Page>
-        <Page.Header title="Governance" description="Loading..." />
-      </Page>
+      <GovernancePageLayout>
+        <ContentMessage
+          variant="warning"
+          icon={InfoCircle}
+          size="lg"
+          title="Failed to load"
+        >
+          Governance settings could not be loaded.
+        </ContentMessage>
+      </GovernancePageLayout>
     );
   }
 
   return (
-    <Page>
-      <Page.Header
-        title="Governance"
-        description="Manage what members can do in your workspace."
-        icon={Toggle01Left}
-      />
+    <GovernancePageLayout>
       <ContentMessage>
         This page is WIP. Do not change unless you know what you are doing.
       </ContentMessage>
+      <WorkspaceNameEditor owner={owner} />
+      <LinkedSectionNotice
+        description="Groups assigned here are managed in"
+        linkLabel="People → Groups"
+        onLinkClick={handleNavigateToGroups}
+      />
       <div className="flex w-full flex-col gap-8">
-        {sections.map((section) => (
-          <GovernanceSettingSection
-            key={section.label}
-            label={section.label}
-            icon={section.icon}
-            governancePermissions={section.governancePermissions}
-            groups={groups}
-            onPermissionChange={onPermissionChange}
-          />
-        ))}
-        {isAdmin && (
-          <>
-            <div className="flex items-center gap-2">
-              <Icon visual={ShapesPlus} className="text-muted-foreground" />
-              <Page.H variant="h5">Capabilities</Page.H>
-            </div>
-            <div className="w-full rounded-xl border border-border">
+        {sections.map(({ id, label, icon, governancePermissions }) => (
+          <GovernanceSettingSection key={id} label={label} icon={icon}>
+            {id === "frame" && isAdmin && (
               <InteractiveContentSharing
                 sharingPolicy={sharingPolicy}
                 doUpdateSharingPolicy={doUpdateSharingPolicy}
                 isChanging={isChanging}
               />
-              <AuditLogsToggle owner={owner} />
-            </div>
+            )}
+            {governancePermissions.map((governancePermission) => (
+              <GovernanceSettingRow
+                key={capabilityKey(governancePermission)}
+                governancePermission={governancePermission}
+                groups={groups}
+                onChange={(newConfiguration) =>
+                  onPermissionChange({
+                    grantType: governancePermission.grantType,
+                    resourceType: governancePermission.resourceType,
+                    configuration: newConfiguration,
+                  })
+                }
+              />
+            ))}
+          </GovernanceSettingSection>
+        ))}
+
+        {isAdmin && (
+          <>
+            <GovernanceSettingSection label="Pods" icon={Cube01}>
+              <OpenPodPolicy owner={owner} />
+              <PodKnowledgePolicy owner={owner} />
+            </GovernanceSettingSection>
+            <GovernanceSettingSection
+              label="Feature policies"
+              icon={ShapesPlus}
+            >
+              <VoiceTranscriptionToggle owner={owner} />
+              <EmailAgentsToggle owner={owner} />
+              <PrivateConversationUrlsToggle owner={owner} />
+              <DustMcpServerSettingsItem owner={owner} />
+              <ExtensionMcpToolsSection owner={owner} />
+              <SlackPersonalFooterRemovalToggle owner={owner} />
+              <WorkspaceAnalyticsToggle owner={owner} />
+            </GovernanceSettingSection>
+            <GovernanceSettingSection
+              label="Messaging app policies"
+              icon={CloudArrowLeftRight}
+            >
+              <MessagingAppToggles owner={owner} />
+            </GovernanceSettingSection>
+            <AuditLogsGovernanceSection owner={owner} />
           </>
         )}
       </div>
-    </Page>
+    </GovernancePageLayout>
   );
 };

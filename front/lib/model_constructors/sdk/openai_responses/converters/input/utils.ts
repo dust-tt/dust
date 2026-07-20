@@ -1,4 +1,3 @@
-import { isOpenAISupportedReasoningEffort } from "@app/lib/model_constructors/providers/openai/reasoning_efforts";
 import type {
   OutputFormat,
   Reasoning,
@@ -251,9 +250,10 @@ export function reasoningToOpenAIResponsesReasoning(
   if (!reasoning) {
     return undefined;
   }
-  if (!isOpenAISupportedReasoningEffort(reasoning.effort)) {
-    // "maximal" has no OpenAI equivalent; fall back to the strongest supported.
-    return { effort: "xhigh", summary: "auto" };
+
+  if (reasoning.effort === "maximal") {
+    return { effort: "max", summary: "auto" };
   }
+
   return { effort: reasoning.effort, summary: "auto" };
 }

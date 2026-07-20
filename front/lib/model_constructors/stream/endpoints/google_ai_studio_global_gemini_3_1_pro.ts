@@ -8,7 +8,8 @@ export class GoogleAiStudioGlobalGeminiThreeDotOneProStream extends WithGoogleAi
 ) {
   //TODO(new-llm): implement progressive token billing
   static readonly tokenPricing = {
-    cacheCreated: 4.5,
+    // Gemini uses implicit caching; cache creation is not charged.
+    cacheCreated: 0,
     cacheHit: 0.4,
     standardInput: 4.0,
     standardOutput: 18.0,

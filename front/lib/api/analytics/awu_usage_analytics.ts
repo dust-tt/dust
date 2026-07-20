@@ -22,7 +22,11 @@ const TERMS_GROUP_BY_KEYS = [
 // user_id. The other groupings map directly to CreditBreakdownBy.
 const ANALYTICS_GROUP_BY_KEYS = ["usage_type", ...TERMS_GROUP_BY_KEYS] as const;
 
-export const ANALYTICS_SCOPE_DIMENSIONS = TERMS_GROUP_BY_KEYS;
+// Dimensions the graph can be scoped (filtered) to. Superset of the group-by terms.
+export const ANALYTICS_SCOPE_DIMENSIONS = [
+  ...TERMS_GROUP_BY_KEYS,
+  "tag", // Filter only: a message can have multiple tags, so grouping by tag can lead to double-counting.
+] as const;
 export type AnalyticsScopeDimension =
   (typeof ANALYTICS_SCOPE_DIMENSIONS)[number];
 
@@ -97,6 +101,7 @@ export async function getAwuUsageFromAnalytics(
   const agentIds = filter?.agent;
   const contextOrigin = filter?.origin;
   const apiKeyNames = filter?.api_key;
+  const agentTagIds = filter?.tag;
 
   if (!groupBy) {
     const result = await fetchCreditTimeseries(auth, {
@@ -109,6 +114,7 @@ export async function getAwuUsageFromAnalytics(
       agentIds,
       contextOrigin,
       apiKeyNames,
+      agentTagIds,
     });
     if (result.isErr()) {
       return new Err(toError(result.error));
@@ -137,6 +143,7 @@ export async function getAwuUsageFromAnalytics(
       agentIds,
       contextOrigin,
       apiKeyNames,
+      agentTagIds,
     });
     if (result.isErr()) {
       return new Err(toError(result.error));
@@ -172,6 +179,7 @@ export async function getAwuUsageFromAnalytics(
     agentIds,
     contextOrigin,
     apiKeyNames,
+    agentTagIds,
   });
   if (result.isErr()) {
     return new Err(toError(result.error));

@@ -1,0 +1,11 @@
+{
+  "action": "skill_import_github_connection.created",
+  "targets": [
+    {
+      "type": "workspace"
+    }
+  ],
+  "metadata": {
+    "connected_by": "string"
+  }
+}

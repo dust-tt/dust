@@ -94,6 +94,7 @@ export function getSandboxImage(
 export { SandboxImage } from "@app/lib/api/sandbox/image/sandbox_image";
 export {
   createToolManifest,
+  toolManifestToCompactText,
   toolManifestToJSON,
   toolManifestToYAML,
 } from "@app/lib/api/sandbox/image/tool_manifest";

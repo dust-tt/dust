@@ -10,6 +10,7 @@ import type { MembershipOriginType, MembershipSeatType } from "./memberships";
 import type { ModelId } from "./shared/model_id";
 import { DbModelIdSchema } from "./shared/model_id";
 import { assertNever } from "./shared/utils/assert_never";
+import { decodeUtf8HeaderValue } from "./shared/utils/http_headers";
 
 export type WorkspaceSegmentationType = "interesting" | null;
 
@@ -360,7 +361,7 @@ export function getUserEmailFromHeaders(headers: {
 }) {
   const email = headers[DustUserEmailHeader];
   if (typeof email === "string") {
-    return email;
+    return decodeUtf8HeaderValue(email);
   }
 
   return undefined;
@@ -371,6 +372,8 @@ export function getHeaderFromUserEmail(email: string | undefined) {
     return undefined;
   }
 
+  // The email may exceed Latin-1 (internationalized addresses); DustAPI
+  // encodes extra header values on the wire (see @dust-tt/client baseHeaders).
   return {
     [DustUserEmailHeader]: email,
   };

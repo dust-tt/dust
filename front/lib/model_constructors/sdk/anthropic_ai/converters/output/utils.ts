@@ -3,18 +3,18 @@ import {
   APIConnectionError,
   APIError,
 } from "@anthropic-ai/sdk";
-import type { MessageBatchResult } from "@anthropic-ai/sdk/resources/messages/batches";
+import type { BetaMessageBatchResult } from "@anthropic-ai/sdk/resources/beta/messages/batches";
 import type {
-  CacheCreation,
-  Message,
-  MessageDeltaUsage,
-  RawContentBlockDeltaEvent,
-  RawContentBlockStartEvent,
-  RawContentBlockStopEvent,
-  RawMessageDeltaEvent,
-  RawMessageStartEvent,
-  RawMessageStreamEvent,
-} from "@anthropic-ai/sdk/resources/messages/messages";
+  BetaCacheCreation,
+  BetaMessage,
+  BetaMessageDeltaUsage,
+  BetaRawContentBlockDeltaEvent,
+  BetaRawContentBlockStartEvent,
+  BetaRawContentBlockStopEvent,
+  BetaRawMessageDeltaEvent,
+  BetaRawMessageStartEvent,
+  BetaRawMessageStreamEvent,
+} from "@anthropic-ai/sdk/resources/beta/messages/messages";
 import { parseToolArguments } from "@app/lib/model_constructors/sdk/anthropic_ai/converters/input/utils";
 import {
   logToolSearchQuery,
@@ -168,7 +168,7 @@ export type BlockState =
 export interface OutputEventConverters {
   messageStartToResponseIdEvent(
     metadata: EndpointMetadata,
-    event: RawMessageStartEvent
+    event: BetaRawMessageStartEvent
   ): ResponseIdEvent;
   textDeltaToTextDeltaEvent(
     metadata: EndpointMetadata,
@@ -214,8 +214,8 @@ export interface OutputEventConverters {
   ): ProviderPassthroughEvent;
   messageDeltaUsageToTokenUsageEvent(
     metadata: EndpointMetadata,
-    usage: MessageDeltaUsage,
-    cacheCreation: CacheCreation | null
+    usage: BetaMessageDeltaUsage,
+    cacheCreation: BetaCacheCreation | null
   ): TokenUsageEvent;
   stopReasonToErrorEvent(
     metadata: EndpointMetadata,
@@ -231,7 +231,7 @@ export interface OutputEventConverters {
 
 export function messageStartToResponseIdEvent(
   metadata: EndpointMetadata,
-  event: RawMessageStartEvent
+  event: BetaRawMessageStartEvent
 ): ResponseIdEvent {
   return {
     type: "response_id",
@@ -337,8 +337,8 @@ export function serverToolBlockToProviderPassthroughEvent(
 
 export function messageDeltaUsageToTokenUsageEvent(
   metadata: EndpointMetadata,
-  usage: MessageDeltaUsage,
-  cacheCreation: CacheCreation | null
+  usage: BetaMessageDeltaUsage,
+  cacheCreation: BetaCacheCreation | null
 ): TokenUsageEvent {
   const cacheHit = usage.cache_read_input_tokens ?? 0;
   const uncachedInput = usage.input_tokens ?? 0;
@@ -658,7 +658,7 @@ function bareStreamErrorToErrorEvent(
 // Returns the events to emit alongside the next block state, so the caller owns
 // the cursor instead of us mutating it in place.
 export function contentBlockStartToEvents(
-  event: RawContentBlockStartEvent,
+  event: BetaRawContentBlockStartEvent,
   state: BlockState | null,
   metadata: EndpointMetadata,
   converters: OutputEventConverters,
@@ -732,6 +732,11 @@ export function contentBlockStartToEvents(
     case "bash_code_execution_tool_result":
     case "text_editor_code_execution_tool_result":
     case "container_upload":
+    case "advisor_tool_result":
+    case "mcp_tool_use":
+    case "mcp_tool_result":
+    case "compaction":
+    case "fallback":
       return [[], state];
     default:
       // Anthropic may add new block types before we redeploy; ignore them
@@ -742,7 +747,7 @@ export function contentBlockStartToEvents(
 }
 
 export function contentBlockDeltaToEvents(
-  event: RawContentBlockDeltaEvent,
+  event: BetaRawContentBlockDeltaEvent,
   state: BlockState | null,
   metadata: EndpointMetadata,
   converters: OutputEventConverters
@@ -782,6 +787,7 @@ export function contentBlockDeltaToEvents(
       }
       return [[], state];
     case "citations_delta":
+    case "compaction_delta":
       return [[], state];
     default:
       // Anthropic may add new delta types before we redeploy; ignore them
@@ -794,7 +800,7 @@ export function contentBlockDeltaToEvents(
 // Flushes the in-progress block as an event and clears the cursor (returns the
 // next state as `null`), so the caller resets its own variable.
 export function contentBlockStopToEvents(
-  _event: RawContentBlockStopEvent,
+  _event: BetaRawContentBlockStopEvent,
   state: BlockState | null,
   metadata: EndpointMetadata,
   converters: OutputEventConverters
@@ -893,10 +899,10 @@ function toolSearchLogFields(metadata: EndpointMetadata) {
 // Returns the events to emit alongside the latest usage snapshot, so the caller
 // tracks token usage in its own variable instead of us writing into a wrapper.
 export function messageDeltaToEvents(
-  event: RawMessageDeltaEvent,
+  event: BetaRawMessageDeltaEvent,
   metadata: EndpointMetadata,
   converters: OutputEventConverters
-): [ModelResponseEvent[], MessageDeltaUsage] {
+): [ModelResponseEvent[], BetaMessageDeltaUsage] {
   const stopReason = event.delta.stop_reason;
   if (stopReason) {
     // Anthropic pauses a turn when the server-side sampling loop reaches its
@@ -928,20 +934,20 @@ export function messageDeltaToEvents(
 // -- Entry point: drive the raw stream into unified events --
 
 export async function* rawOutputToEvents(
-  stream: AsyncGenerator<RawMessageStreamEvent>,
+  stream: AsyncGenerator<BetaRawMessageStreamEvent>,
   metadata: EndpointMetadata,
   converters: OutputEventConverters
 ): AsyncGenerator<ModelResponseEvent> {
   const aggregated: (TextEvent | ReasoningEvent | ToolCallEvent)[] = [];
   let blockState: BlockState | null = null;
-  let tokenUsage: MessageDeltaUsage | null = null;
+  let tokenUsage: BetaMessageDeltaUsage | null = null;
   const toolSearchQueriesByToolUseId = new Map<string, string | undefined>();
   // The per-TTL cache-creation breakdown is only emitted on `message_start`;
   // capture it so the trailing `message_delta` usage can be split by TTL.
-  let cacheCreation: CacheCreation | null = null;
+  let cacheCreation: BetaCacheCreation | null = null;
 
   while (true) {
-    let result: IteratorResult<RawMessageStreamEvent>;
+    let result: IteratorResult<BetaRawMessageStreamEvent>;
     try {
       result = await stream.next();
     } catch (err) {
@@ -1092,7 +1098,7 @@ export async function* rawOutputToEvents(
 // Turns a completed (non-streaming) Anthropic `Message` into the unified event
 // array, mirroring `rawOutputToEvents` minus the streaming-only delta heartbeats.
 export function messageToEvents(
-  message: Message,
+  message: BetaMessage,
   metadata: EndpointMetadata,
   converters: OutputEventConverters
 ): NonDeltaResponseEvent[] {
@@ -1165,6 +1171,12 @@ export function messageToEvents(
       case "bash_code_execution_tool_result":
       case "text_editor_code_execution_tool_result":
       case "container_upload":
+      // Beta-only blocks (both clients use the beta API); also unsurfaced.
+      case "advisor_tool_result":
+      case "mcp_tool_use":
+      case "mcp_tool_result":
+      case "compaction":
+      case "fallback":
         break;
       default:
         // Anthropic may add new block types before we redeploy; ignore them
@@ -1199,7 +1211,7 @@ export function messageToEvents(
 
 // Converts a single Anthropic batch result into unified events.
 export function batchResultToEvents(
-  result: MessageBatchResult,
+  result: BetaMessageBatchResult,
   metadata: EndpointMetadata,
   converters: OutputEventConverters
 ): NonDeltaResponseEvent[] {

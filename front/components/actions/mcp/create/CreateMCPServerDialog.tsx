@@ -529,7 +529,7 @@ export function CreateMCPServerDialog({
         resetState();
       }}
     >
-      <DialogContent size="xl" onClick={(e) => e.stopPropagation()}>
+      <DialogContent size="lg" onClick={(e) => e.stopPropagation()}>
         <FormProvider form={form} asForm={false}>
           <DialogHeader>
             <DialogTitle visual={getAvatarFromIcon(toolIcon, "sm")}>

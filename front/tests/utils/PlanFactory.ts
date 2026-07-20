@@ -35,6 +35,7 @@ export class PlanFactory {
       isSSOAllowed: true,
       isSCIMAllowed: true,
       isAuditLogsAllowed: true,
+      maxConnectionsCount: -1,
       maxDataSourcesCount: -1,
       maxDataSourcesDocumentsCount: -1,
       maxDataSourcesDocumentsSizeMb: 100,

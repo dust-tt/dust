@@ -41,8 +41,8 @@ import logger from "@app/logger/logger";
 import tracer from "@app/logger/tracer";
 import type { APIErrorWithContentfulStatusCode } from "@app/types/error";
 import type {
+  GrantType as GroupGrantType,
   GroupPermissionResourceType,
-  PermissionType as GroupPermissionType,
 } from "@app/types/group_permissions";
 import { WHOLE_TYPE_RESOURCE_ID } from "@app/types/group_permissions";
 import type { PlanType, SubscriptionType } from "@app/types/plan";
@@ -62,6 +62,7 @@ import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { isString, removeNulls } from "@app/types/shared/utils/general";
+import { decodeUtf8HeaderValue } from "@app/types/shared/utils/http_headers";
 import type {
   LightWorkspaceType,
   RoleType,
@@ -1097,20 +1098,20 @@ export class Authenticator {
 
   /**
    * Whether the caller holds a workspace-level capability. A capability is a
-   * (permissionType, resourceType) pair whose grants live on the type-wide (-1) group_permissions
+   * (grantType, resourceType) pair whose grants live on the type-wide (-1) group_permissions
    * rows. Admins bypass unconditionally (billing/security are admin-by-default). Otherwise we look
-   * for a -1 grant on any of the caller's groups; "*" grants match any verb / type.
+   * for a -1 grant on any of the caller's groups; "*" grants match any grant type / resource type.
    *
    * Cold path: a query per check is fine — no caching yet (pending auth-resolution decision).
    */
   async hasWorkspacePermission(
-    permissionType: GroupPermissionType,
+    grantType: GroupGrantType,
     resourceType: GroupPermissionResourceType
   ): Promise<boolean> {
     // Reject invalid capability queries (e.g. write/billing) up front, so a "*" grant can't satisfy
     // a pair the registry forbids, and so callers fail fast on a programmer error.
     assertValidGrant({
-      permissionType,
+      grantType,
       resourceType,
       resourceId: WHOLE_TYPE_RESOURCE_ID,
     });
@@ -1130,8 +1131,7 @@ export class Authenticator {
     return grants.some(
       (grant) =>
         (grant.resourceType === resourceType || grant.resourceType === "*") &&
-        (grant.permissionType === permissionType ||
-          grant.permissionType === "*")
+        (grant.grantType === grantType || grant.grantType === "*")
     );
   }
 
@@ -1855,7 +1855,7 @@ export function getApiKeyNameFromHeaders(headers: {
 }) {
   const apiKeyName = headers[DustApiKeyNameHeader];
   if (isString(apiKeyName)) {
-    return apiKeyName;
+    return decodeUtf8HeaderValue(apiKeyName);
   }
   return undefined;
 }
@@ -1870,6 +1870,8 @@ export function getApiKeyNameHeader(auth: Authenticator) {
     return undefined;
   }
 
+  // The name may exceed Latin-1 (emoji, non-Latin scripts); DustAPI encodes
+  // extra header values on the wire (see @dust-tt/client baseHeaders).
   return {
     [DustApiKeyNameHeader]: name,
   };

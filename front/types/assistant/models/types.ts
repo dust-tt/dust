@@ -192,3 +192,9 @@ export function getMinimumReasoningEffort(
 ): ReasoningEffort {
   return ORDERED_REASONING_EFFORTS.find((effort) => support[effort]) || "none";
 }
+
+export function getMaximumReasoningEffort(
+  support: ReasoningEffortSupport
+): ReasoningEffort {
+  return getAvailableReasoningEfforts(support).at(-1) || "none";
+}

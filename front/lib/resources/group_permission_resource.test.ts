@@ -25,7 +25,7 @@ describe("GroupPermissionResource", () => {
     it("creates an instance-level grant that is readable", async () => {
       await GroupPermissionResource.grant(auth, {
         group: groupA,
-        permissionType: "read",
+        grantType: "reader",
         resourceType: "space",
         resourceId: 42,
       });
@@ -34,7 +34,7 @@ describe("GroupPermissionResource", () => {
         groupModelIds: [groupA.id],
       });
       expect(grants).toHaveLength(1);
-      expect(grants[0].permissionType).toBe("read");
+      expect(grants[0].grantType).toBe("reader");
       expect(grants[0].resourceType).toBe("space");
       expect(grants[0].resourceId).toBe(42);
     });
@@ -42,7 +42,7 @@ describe("GroupPermissionResource", () => {
     it("is idempotent (unique index dedupes)", async () => {
       const spec = {
         group: groupA,
-        permissionType: "write" as const,
+        grantType: "editor" as const,
         resourceType: "agent" as const,
         resourceId: 7,
       };
@@ -59,7 +59,7 @@ describe("GroupPermissionResource", () => {
       await expect(
         GroupPermissionResource.grant(auth, {
           group: groupA,
-          permissionType: "read",
+          grantType: "reader",
           resourceType: "space",
           resourceId: -1,
         })
@@ -70,7 +70,7 @@ describe("GroupPermissionResource", () => {
       await expect(
         GroupPermissionResource.grant(auth, {
           group: groupA,
-          permissionType: "invite",
+          grantType: "invite",
           resourceType: "space",
           resourceId: 5,
         })
@@ -88,7 +88,7 @@ describe("GroupPermissionResource", () => {
       await expect(
         GroupPermissionResource.grant(auth, {
           group: otherGroup,
-          permissionType: "read",
+          grantType: "reader",
           resourceType: "space",
           resourceId: 5,
         })
@@ -100,13 +100,13 @@ describe("GroupPermissionResource", () => {
     it("returns grants from every requested group", async () => {
       await GroupPermissionResource.grant(auth, {
         group: groupA,
-        permissionType: "read",
+        grantType: "reader",
         resourceType: "space",
         resourceId: 1,
       });
       await GroupPermissionResource.grant(auth, {
         group: groupB,
-        permissionType: "write",
+        grantType: "member",
         resourceType: "space",
         resourceId: 1,
       });
@@ -134,20 +134,20 @@ describe("GroupPermissionResource", () => {
     it("removes a specific grant only", async () => {
       await GroupPermissionResource.grant(auth, {
         group: groupA,
-        permissionType: "read",
+        grantType: "reader",
         resourceType: "space",
         resourceId: 1,
       });
       await GroupPermissionResource.grant(auth, {
         group: groupA,
-        permissionType: "write",
+        grantType: "member",
         resourceType: "space",
         resourceId: 1,
       });
 
       await GroupPermissionResource.revoke(auth, {
         group: groupA,
-        permissionType: "read",
+        grantType: "reader",
         resourceType: "space",
         resourceId: 1,
       });
@@ -156,7 +156,39 @@ describe("GroupPermissionResource", () => {
         groupModelIds: [groupA.id],
       });
       expect(grants).toHaveLength(1);
-      expect(grants[0].permissionType).toBe("write");
+      expect(grants[0].grantType).toBe("member");
+    });
+
+    it("keeps overlapping roles independent on revoke (revoke-collision regression)", async () => {
+      // `member` (read, write) and `admin` (read, write, admin) share verbs. Storing the role name
+      // keeps them as two distinct rows, so revoking `member` cannot destroy the read/write the
+      // group still holds via `admin`. (Under verb storage both roles would collapse onto shared
+      // read/write rows and revoking `member` would delete them.)
+      await GroupPermissionResource.grant(auth, {
+        group: groupA,
+        grantType: "member",
+        resourceType: "space",
+        resourceId: 1,
+      });
+      await GroupPermissionResource.grant(auth, {
+        group: groupA,
+        grantType: "admin",
+        resourceType: "space",
+        resourceId: 1,
+      });
+
+      await GroupPermissionResource.revoke(auth, {
+        group: groupA,
+        grantType: "member",
+        resourceType: "space",
+        resourceId: 1,
+      });
+
+      const grants = await GroupPermissionResource.listForGroups(auth, {
+        groupModelIds: [groupA.id],
+      });
+      expect(grants).toHaveLength(1);
+      expect(grants[0].grantType).toBe("admin");
     });
   });
 
@@ -164,20 +196,20 @@ describe("GroupPermissionResource", () => {
     it("drops every group's grants for one resource", async () => {
       await GroupPermissionResource.grant(auth, {
         group: groupA,
-        permissionType: "read",
+        grantType: "editor",
         resourceType: "agent",
         resourceId: 99,
       });
       await GroupPermissionResource.grant(auth, {
         group: groupB,
-        permissionType: "write",
+        grantType: "editor",
         resourceType: "agent",
         resourceId: 99,
       });
       // A grant on a different resource must survive.
       await GroupPermissionResource.grant(auth, {
         group: groupA,
-        permissionType: "read",
+        grantType: "editor",
         resourceType: "agent",
         resourceId: 100,
       });
@@ -209,13 +241,13 @@ describe("GroupPermissionResource", () => {
     it("drops every grant for the workspace (scrub hook)", async () => {
       await GroupPermissionResource.grant(auth, {
         group: groupA,
-        permissionType: "read",
+        grantType: "reader",
         resourceType: "space",
         resourceId: 1,
       });
       await GroupPermissionResource.grant(auth, {
         group: groupB,
-        permissionType: "write",
+        grantType: "editor",
         resourceType: "agent",
         resourceId: 2,
       });
@@ -233,12 +265,12 @@ describe("GroupPermissionResource", () => {
     it("writes a type-wide (-1) grant and dedupes on repeat", async () => {
       await GroupPermissionResource.grantTypeWide(auth, {
         group: groupA,
-        permissionType: "create",
+        grantType: "create",
         resourceType: "agent",
       });
       await GroupPermissionResource.grantTypeWide(auth, {
         group: groupA,
-        permissionType: "create",
+        grantType: "create",
         resourceType: "agent",
       });
 
@@ -249,11 +281,11 @@ describe("GroupPermissionResource", () => {
       expect(grants[0].resourceId).toBe(-1);
     });
 
-    it("rejects a verb the registry does not allow", async () => {
+    it("rejects a grant type the registry does not allow", async () => {
       await expect(
         GroupPermissionResource.grantTypeWide(auth, {
           group: groupA,
-          permissionType: "read",
+          grantType: "read",
           resourceType: "billing",
         })
       ).rejects.toThrow(/not allowed/);
@@ -262,12 +294,12 @@ describe("GroupPermissionResource", () => {
     it("revokeTypeWide removes the -1 row", async () => {
       await GroupPermissionResource.grantTypeWide(auth, {
         group: groupA,
-        permissionType: "admin",
+        grantType: "admin",
         resourceType: "billing",
       });
       await GroupPermissionResource.revokeTypeWide(auth, {
         group: groupA,
-        permissionType: "admin",
+        grantType: "admin",
         resourceType: "billing",
       });
 
@@ -282,7 +314,7 @@ describe("GroupPermissionResource", () => {
     it("grantTypeWideForGroups writes one -1 row per group", async () => {
       await GroupPermissionResource.grantTypeWideForGroups(auth, {
         groups: [groupA, groupB],
-        permissionType: "create",
+        grantType: "create",
         resourceType: "skill",
       });
 
@@ -298,19 +330,19 @@ describe("GroupPermissionResource", () => {
         grants: [
           {
             group: groupA,
-            permissionType: "read",
+            grantType: "reader",
             resourceType: "space",
             resourceId: 1,
           },
           {
             group: groupA,
-            permissionType: "read",
+            grantType: "reader",
             resourceType: "space",
             resourceId: 1,
           },
           {
             group: groupA,
-            permissionType: "read",
+            grantType: "reader",
             resourceType: "space",
             resourceId: 2,
           },
@@ -329,7 +361,7 @@ describe("GroupPermissionResource", () => {
           grants: [
             {
               group: groupA,
-              permissionType: "read",
+              grantType: "reader",
               resourceType: "space",
               resourceId: -1,
             },
@@ -346,7 +378,7 @@ describe("GroupPermissionResource", () => {
 
       const result = await GroupPermissionResource.grantToUser(auth, {
         user: user.toJSON(),
-        permissionType: "read",
+        grantType: "reader",
         resourceType: "space",
         resourceId: 42,
       });
@@ -358,7 +390,7 @@ describe("GroupPermissionResource", () => {
             groupKinds: ["regular_auto"],
           })
         ).map((group) => group.id),
-        permissionType: "read",
+        grantType: "reader",
         resourceType: "space",
         resourceId: 42,
       });
@@ -379,13 +411,13 @@ describe("GroupPermissionResource", () => {
 
       await GroupPermissionResource.grantToUser(auth, {
         user: user1.toJSON(),
-        permissionType: "write",
+        grantType: "editor",
         resourceType: "agent",
         resourceId: 7,
       });
       await GroupPermissionResource.grantToUser(auth, {
         user: user2.toJSON(),
-        permissionType: "write",
+        grantType: "editor",
         resourceType: "agent",
         resourceId: 7,
       });
@@ -397,7 +429,7 @@ describe("GroupPermissionResource", () => {
       for (const group of autoGroups) {
         const grants = await GroupPermissionResource.listForGroups(auth, {
           groupModelIds: [group.id],
-          permissionType: "write",
+          grantType: "editor",
           resourceType: "agent",
           resourceId: 7,
         });
@@ -416,14 +448,14 @@ describe("GroupPermissionResource", () => {
 
       await GroupPermissionResource.grantToUser(auth, {
         user: user.toJSON(),
-        permissionType: "read",
+        grantType: "editor",
         resourceType: "skill",
         resourceId: 99,
       });
 
       const result = await GroupPermissionResource.revokeFromUser(auth, {
         user: user.toJSON(),
-        permissionType: "read",
+        grantType: "editor",
         resourceType: "skill",
         resourceId: 99,
       });
@@ -434,7 +466,7 @@ describe("GroupPermissionResource", () => {
       });
       const grants = await GroupPermissionResource.listForGroups(auth, {
         groupModelIds: autoGroups.map((group) => group.id),
-        permissionType: "read",
+        grantType: "editor",
         resourceType: "skill",
         resourceId: 99,
       });
@@ -449,20 +481,20 @@ describe("GroupPermissionResource", () => {
 
       await GroupPermissionResource.grantToUser(auth, {
         user: user1.toJSON(),
-        permissionType: "read",
+        grantType: "reader",
         resourceType: "space",
         resourceId: 5,
       });
       await GroupPermissionResource.grantToUser(auth, {
         user: user2.toJSON(),
-        permissionType: "read",
+        grantType: "reader",
         resourceType: "space",
         resourceId: 5,
       });
 
       const result = await GroupPermissionResource.revokeFromUser(auth, {
         user: user1.toJSON(),
-        permissionType: "read",
+        grantType: "reader",
         resourceType: "space",
         resourceId: 5,
       });
@@ -474,7 +506,7 @@ describe("GroupPermissionResource", () => {
             groupKinds: ["regular_auto"],
           })
         ).map((group) => group.id),
-        permissionType: "read",
+        grantType: "reader",
         resourceType: "space",
         resourceId: 5,
       });
@@ -498,28 +530,28 @@ describe("GroupPermissionResource", () => {
       }
 
       await GroupPermissionResource.grantToEverybody(auth, {
-        permissionType: "read",
+        grantType: "reader",
         resourceType: "space",
         resourceId: 42,
       });
 
       const grants = await GroupPermissionResource.listForGroups(auth, {
         groupModelIds: [globalGroup.id],
-        permissionType: "read",
+        grantType: "reader",
         resourceType: "space",
         resourceId: 42,
       });
       expect(grants).toHaveLength(1);
 
       await GroupPermissionResource.revokeFromEverybody(auth, {
-        permissionType: "read",
+        grantType: "reader",
         resourceType: "space",
         resourceId: 42,
       });
       expect(
         await GroupPermissionResource.listForGroups(auth, {
           groupModelIds: [globalGroup.id],
-          permissionType: "read",
+          grantType: "reader",
           resourceType: "space",
           resourceId: 42,
         })
@@ -529,7 +561,7 @@ describe("GroupPermissionResource", () => {
     it("rejects type-wide grants", async () => {
       await expect(
         GroupPermissionResource.grantToEverybody(auth, {
-          permissionType: "create",
+          grantType: "create",
           resourceType: "agent",
           resourceId: -1,
         })

@@ -1,3 +1,4 @@
+import config from "@app/lib/api/config";
 import { isUpgraded } from "@app/lib/plans/plan_codes";
 import { getConnectorsPrimaryDbConnection } from "@app/lib/production_checks/utils";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
@@ -7,6 +8,8 @@ import { renderLightWorkspaceType } from "@app/lib/workspace";
 import { getNotionWorkflowId } from "@app/types/connectors/workflows";
 import type { ActionLink, CheckFunction } from "@app/types/production_checks";
 import type { ModelId } from "@app/types/shared/model_id";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
+import { removeNulls } from "@app/types/shared/utils/general";
 import type { Client, WorkflowExecutionDescription } from "@temporalio/client";
 import { WorkflowNotFoundError } from "@temporalio/client";
 import type { Logger } from "pino";
@@ -14,11 +17,47 @@ import { QueryTypes } from "sequelize";
 
 const TEMPORAL_WORKFLOW_STALLED_THRESHOLD_MS = 12 * 60 * 60 * 1000; // 12 hours.
 
+const NOTION_WORKFLOW_TYPES = [
+  "sync",
+  "garbage-collector",
+  "process-database-upsert-queue",
+] as const;
+
+type NotionWorkflowType = (typeof NOTION_WORKFLOW_TYPES)[number];
+
 interface NotionConnector {
   id: number;
   dataSourceId: string;
   workspaceId: string;
   pausedAt: Date | null;
+}
+
+interface MissingWorkflow {
+  workflowType: NotionWorkflowType;
+  workflowId: string;
+  // "not_found" when the workflow does not exist, otherwise the Temporal
+  // status name (TERMINATED, FAILED, ...).
+  reason: string;
+}
+
+interface StalledWorkflow {
+  workflowType: NotionWorkflowType;
+  workflowId: string;
+  latestEventAt: string | null;
+}
+
+interface MissingWorkflowsEntry {
+  connectorId: ModelId;
+  workspaceId: string;
+  dataSourceId: string;
+  missingWorkflows: MissingWorkflow[];
+}
+
+interface StalledWorkflowsEntry {
+  connectorId: ModelId;
+  workspaceId: string;
+  dataSourceId: string;
+  stalledWorkflows: StalledWorkflow[];
 }
 
 async function listAllNotionConnectors() {
@@ -33,43 +72,66 @@ async function listAllNotionConnectors() {
   );
 }
 
-async function getWorkflowDescriptions({
-  client,
-  logger,
-  notionConnector,
-}: {
-  client: Client;
-  logger: Logger;
-  notionConnector: NotionConnector;
-}): Promise<WorkflowExecutionDescription[] | null> {
-  try {
-    const incrementalSyncHandle = client.workflow.getHandle(
-      getNotionWorkflowId(notionConnector.id, "sync")
-    );
-    const garbageCollectorHandle = client.workflow.getHandle(
-      getNotionWorkflowId(notionConnector.id, "garbage-collector")
-    );
-    const processDatabaseUpsertQueueHandle = client.workflow.getHandle(
-      getNotionWorkflowId(notionConnector.id, "process-database-upsert-queue")
-    );
+async function getConnectorWorkflowStates(
+  client: Client,
+  notionConnector: NotionConnector,
+  logger: Logger
+): Promise<{
+  missingWorkflows: MissingWorkflow[];
+  runningWorkflows: {
+    workflowType: NotionWorkflowType;
+    description: WorkflowExecutionDescription;
+  }[];
+}> {
+  // Bounded (only three elements), Temporal-only Promise.all.
+  const states = await Promise.all(
+    NOTION_WORKFLOW_TYPES.map(async (workflowType) => {
+      const workflowId = getNotionWorkflowId(notionConnector.id, workflowType);
 
-    return await Promise.all([
-      incrementalSyncHandle.describe(),
-      garbageCollectorHandle.describe(),
-      processDatabaseUpsertQueueHandle.describe(),
-    ]);
-  } catch (error) {
-    if (!(error instanceof WorkflowNotFoundError)) {
-      logger.error(
-        {
-          error,
-        },
-        "Failed to retrieve Notion Temporal workflow descriptions."
-      );
+      try {
+        const description = await client.workflow
+          .getHandle(workflowId)
+          .describe();
+
+        return { workflowType, workflowId, description };
+      } catch (error) {
+        if (error instanceof WorkflowNotFoundError) {
+          return { workflowType, workflowId, description: null };
+        }
+
+        // Any other error (transient RPC failure, timeout, ...) is a Temporal
+        // API problem: treating it as missing would report a false positive,
+        // so rethrow and let the check fail loudly instead.
+        logger.error(
+          { workflowId, err: normalizeError(error) },
+          "Failed to describe Notion Temporal workflow."
+        );
+        throw error;
+      }
+    })
+  );
+
+  const missingWorkflows: MissingWorkflow[] = [];
+  const runningWorkflows: {
+    workflowType: NotionWorkflowType;
+    description: WorkflowExecutionDescription;
+  }[] = [];
+
+  for (const { workflowType, workflowId, description } of states) {
+    if (!description) {
+      missingWorkflows.push({ workflowType, workflowId, reason: "not_found" });
+    } else if (description.status.name !== "RUNNING") {
+      missingWorkflows.push({
+        workflowType,
+        workflowId,
+        reason: description.status.name,
+      });
+    } else {
+      runningWorkflows.push({ workflowType, description });
     }
-
-    return null;
   }
+
+  return { missingWorkflows, runningWorkflows };
 }
 
 async function getLatestWorkflowEventDate({
@@ -94,16 +156,18 @@ async function getLatestWorkflowEventDate({
       maximumPageSize: 1,
     });
   } catch (error) {
+    // A history-fetch failure is a Temporal API problem, not a stalled
+    // workflow: rethrow and let the check fail loudly instead of reporting a
+    // false positive.
     logger.error(
       {
-        error,
+        err: normalizeError(error),
         runId: description.runId,
         workflowId: description.workflowId,
       },
       "Failed to retrieve latest Notion Temporal history event."
     );
-
-    return null;
+    throw error;
   }
 
   const latestEvent = response.history?.events?.[0];
@@ -114,53 +178,11 @@ async function getLatestWorkflowEventDate({
     : null;
 }
 
-async function areTemporalWorkflowsRunning(
-  client: Client,
-  notionConnector: NotionConnector,
-  logger: Logger
-): Promise<{
-  isRunning: boolean;
-  isNotStalled: boolean;
-}> {
-  const descriptions = await getWorkflowDescriptions({
-    client,
-    notionConnector,
-    logger,
-  });
-
-  if (!descriptions) {
-    return {
-      isRunning: false,
-      isNotStalled: false,
-    };
-  }
-
-  const isRunning = descriptions.every(
-    ({ status: { name } }) => name === "RUNNING"
-  );
-
-  if (!isRunning) {
-    return {
-      isRunning,
-      isNotStalled: false,
-    };
-  }
-
-  // Bounded (only three elements), Temporal-only Promise.all.
-  const latestEventTimes = await Promise.all(
-    descriptions.map((description) =>
-      getLatestWorkflowEventDate({ client, description, logger })
-    )
-  );
-
-  const now = new Date().getTime();
-
-  return {
-    isRunning,
-    isNotStalled: latestEventTimes.every(
-      (d) => d && now - d.getTime() < TEMPORAL_WORKFLOW_STALLED_THRESHOLD_MS
-    ),
-  };
+function makePokeDataSourceUrl(entry: {
+  workspaceId: string;
+  dataSourceId: string;
+}): string {
+  return `${config.getPokeAppUrl()}/${entry.workspaceId}/data_sources/${entry.dataSourceId}`;
 }
 
 export const checkNotionActiveWorkflows: CheckFunction = async (
@@ -184,14 +206,8 @@ export const checkNotionActiveWorkflows: CheckFunction = async (
 
   logger.info(`Found ${notionConnectors.length} Notion connectors.`);
 
-  const missingActiveWorkflows: {
-    connectorId: ModelId;
-    workspaceId: string;
-  }[] = [];
-  const stalledWorkflows: {
-    connectorId: ModelId;
-    workspaceId: string;
-  }[] = [];
+  const missingActiveWorkflows: MissingWorkflowsEntry[] = [];
+  const stalledActiveWorkflows: StalledWorkflowsEntry[] = [];
 
   for (const notionConnector of notionConnectors) {
     const localLogger = logger.child({ connectorId: notionConnector.id });
@@ -208,40 +224,85 @@ export const checkNotionActiveWorkflows: CheckFunction = async (
 
     heartbeat();
 
-    const { isRunning, isNotStalled } = await areTemporalWorkflowsRunning(
-      client,
-      notionConnector,
-      localLogger
-    );
+    const { missingWorkflows, runningWorkflows } =
+      await getConnectorWorkflowStates(client, notionConnector, localLogger);
 
-    if (!isRunning) {
+    if (missingWorkflows.length > 0) {
       missingActiveWorkflows.push({
         connectorId: notionConnector.id,
         workspaceId: notionConnector.workspaceId,
+        dataSourceId: notionConnector.dataSourceId,
+        missingWorkflows,
       });
-    } else if (!isNotStalled) {
-      stalledWorkflows.push({
+      continue;
+    }
+
+    const nowMs = Date.now();
+
+    // Bounded (only three elements), Temporal-only Promise.all.
+    const stalledWorkflows = removeNulls(
+      await Promise.all(
+        runningWorkflows.map(
+          async ({
+            workflowType,
+            description,
+          }): Promise<StalledWorkflow | null> => {
+            const latestEventDate = await getLatestWorkflowEventDate({
+              client,
+              description,
+              logger: localLogger,
+            });
+
+            const isStalled =
+              !latestEventDate ||
+              nowMs - latestEventDate.getTime() >=
+                TEMPORAL_WORKFLOW_STALLED_THRESHOLD_MS;
+
+            return isStalled
+              ? {
+                  workflowType,
+                  workflowId: description.workflowId,
+                  latestEventAt: latestEventDate?.toISOString() ?? null,
+                }
+              : null;
+          }
+        )
+      )
+    );
+
+    if (stalledWorkflows.length > 0) {
+      stalledActiveWorkflows.push({
         connectorId: notionConnector.id,
         workspaceId: notionConnector.workspaceId,
+        dataSourceId: notionConnector.dataSourceId,
+        stalledWorkflows,
       });
     }
   }
 
-  if (missingActiveWorkflows.length > 0 || stalledWorkflows.length > 0) {
+  if (missingActiveWorkflows.length > 0 || stalledActiveWorkflows.length > 0) {
     const actionLinks: ActionLink[] = [
-      ...missingActiveWorkflows.map(({ connectorId }) => ({
-        label: `Missing: connector ${connectorId}`,
-        url: `/poke/connectors/${connectorId}`,
+      ...missingActiveWorkflows.map((c) => ({
+        label: `Missing ${c.missingWorkflows
+          .map((w) =>
+            w.reason === "not_found"
+              ? w.workflowType
+              : `${w.workflowType} (${w.reason})`
+          )
+          .join(", ")}: ${c.dataSourceId}`,
+        url: makePokeDataSourceUrl(c),
       })),
-      ...stalledWorkflows.map(({ connectorId }) => ({
-        label: `Stalled: connector ${connectorId}`,
-        url: `/poke/connectors/${connectorId}`,
+      ...stalledActiveWorkflows.map((c) => ({
+        label: `Stalled ${c.stalledWorkflows
+          .map((w) => w.workflowType)
+          .join(", ")}: ${c.dataSourceId}`,
+        url: makePokeDataSourceUrl(c),
       })),
     ];
     reportFailure(
       {
         missingActiveWorkflows,
-        stalledWorkflows,
+        stalledWorkflows: stalledActiveWorkflows,
         actionLinks,
       },
       "Missing or stalled Notion temporal workflows"

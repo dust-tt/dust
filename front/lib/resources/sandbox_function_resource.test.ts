@@ -451,6 +451,7 @@ describe("SandboxFunctionResource", () => {
       workspaceId: workspace.id,
       sandboxFunctionId: sandboxFunction.id,
       status: "created",
+      gcsPath: "sandbox-function-invocations/test-invocation",
     });
 
     const deleteResult = await SandboxFunctionResource.deleteAllForSpace(

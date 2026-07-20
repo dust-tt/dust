@@ -116,9 +116,9 @@ next to it. To add or remove blocks, target their parent.
 Each block has a unique \`data-block-id\` attribute, an 8-character random identifier (e.g., "7f3a2b1c").
 These IDs are persisted and stable across editing sessions.
 
-When you receive the agent instructions via \`get_agent_config\`, they will be in HTML format with block IDs:
-\`\`\`html
-<p data-block-id="7f3a2b1c">You are a helpful assistant.</p>
+When you receive the agent instructions via \`get_agent_config\`, they come as \`instructionsHtmlBlocks\`: an array of top-level HTML blocks, one per entry, each with a block ID:
+\`\`\`json
+["<p data-block-id=\\"7f3a2b1c\\">You are a helpful assistant.</p>"]
 \`\`\`
 
 <block_editing_principles>

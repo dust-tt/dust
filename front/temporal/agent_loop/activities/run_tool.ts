@@ -14,8 +14,10 @@ import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_reso
 import { AgentStepContentResource } from "@app/lib/resources/agent_step_content_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { getShutdownSignal } from "@app/lib/shutdown_signal";
+import { withPeriodicHeartbeat } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import { updateResourceAndPublishEvent } from "@app/temporal/agent_loop/activities/common";
+import { TOOL_SETUP_HEARTBEAT_INTERVAL_MS } from "@app/temporal/agent_loop/config";
 import type { ToolExecutionResult } from "@app/temporal/agent_loop/lib/deferred_events";
 import { sliceConversationForAgentMessage } from "@app/temporal/agent_loop/lib/loop_utils";
 import type {
@@ -101,25 +103,53 @@ export async function runToolActivity(
     runIds?: string[];
   }
 ): Promise<ToolExecutionResult> {
-  const auth = await Authenticator.fromJsonWithRefrehedGroups(authType);
+  // The setup phase below is DB-bound and can stall past the heartbeat timeout under
+  // connection-pool contention. Tool activities are not retried, so a missed first heartbeat
+  // kills the whole run: heartbeat immediately and periodically until setup completes.
+  heartbeat();
+
   const deferredEvents: ToolExecutionResult["deferredEvents"] = [];
 
-  const [runAgentDataRes, action] = await startActiveObservation(
-    "get-agent-loop-data",
-    () =>
-      Promise.all([
-        // Cache conversation fetches to reduce DB load when multiple tool activities run in parallel
-        // during the same step. Each tool would otherwise fetch the same conversation independently.
-        getAgentLoopDataWithAuth(auth, {
-          ...runAgentArgs,
-          caching: {
-            useCachedGetConversation: true,
-            unicitySuffix: `${runAgentArgs.agentMessageId}:${runAgentArgs.agentMessageVersion}:${step}`,
-            ttlMs: CONVERSATION_CACHE_TTL_MS,
+  const { auth, runAgentDataRes, action } = await withPeriodicHeartbeat(
+    async () => {
+      const auth = await Authenticator.fromJsonWithRefrehedGroups(authType);
+
+      const [runAgentDataRes, action] = await startActiveObservation(
+        "get-agent-loop-data",
+        () =>
+          Promise.all([
+            // Cache conversation fetches to reduce DB load when multiple tool activities run in parallel
+            // during the same step. Each tool would otherwise fetch the same conversation independently.
+            getAgentLoopDataWithAuth(auth, {
+              ...runAgentArgs,
+              caching: {
+                useCachedGetConversation: true,
+                unicitySuffix: `${runAgentArgs.agentMessageId}:${runAgentArgs.agentMessageVersion}:${step}`,
+                ttlMs: CONVERSATION_CACHE_TTL_MS,
+              },
+            }),
+            AgentMCPActionResource.fetchByModelIdWithAuth(auth, actionId),
+          ])
+      );
+
+      return { auth, runAgentDataRes, action };
+    },
+    {
+      intervalMs: TOOL_SETUP_HEARTBEAT_INTERVAL_MS,
+      heartbeatFn: () => {
+        heartbeat();
+        logger.info(
+          {
+            actionId,
+            conversationId: runAgentArgs.conversationId,
+            agentMessageId: runAgentArgs.agentMessageId,
+            step,
+            workspaceId: authType.workspaceId,
           },
-        }),
-        AgentMCPActionResource.fetchByModelIdWithAuth(auth, actionId),
-      ])
+          "MCP tool setup heartbeat"
+        );
+      },
+    }
   );
   if (runAgentDataRes.isErr()) {
     if (isAgentLoopDataSoftDeleteError(runAgentDataRes.error)) {

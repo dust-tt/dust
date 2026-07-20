@@ -15,5 +15,4 @@ export const MISSING_ACTION_CATCHER_SERVER = {
   },
   // Tools are created dynamically at runtime based on the tool context.
   tools: [],
-  tools_stakes: {},
 } as const satisfies ServerMetadata;

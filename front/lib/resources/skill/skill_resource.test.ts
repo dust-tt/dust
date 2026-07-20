@@ -64,6 +64,28 @@ describe("SkillResource", () => {
     });
   });
 
+  describe("listByWorkspace", () => {
+    it("omits custom skill instructions when they are not requested", async () => {
+      await SkillFactory.create(testContext.authenticator, {
+        instructions: "Large instructions",
+        instructionsHtml: "<p>Large instructions</p>",
+      });
+
+      const [skill] = await SkillResource.listByWorkspace(
+        testContext.authenticator,
+        {
+          onlyCustom: true,
+          withInstructions: false,
+          withTools: false,
+          withFileAttachments: false,
+        }
+      );
+
+      expect(skill.instructions).toBe("");
+      expect(skill.instructionsHtml).toBeNull();
+    });
+  });
+
   // Helper function to create real SkillDataSourceConfigurationModel instances
   async function createDataSourceConfiguration({
     dataSourceView,

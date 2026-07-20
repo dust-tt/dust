@@ -6,15 +6,17 @@ import { EUROPE } from "@app/lib/model_constructors/types/regions";
 export class AgentPlatformEuropeGeminiThreeDotFiveFlashStream extends WithGoogleAiStudioGeminiThreeDotFiveFlashConfig(
   GoogleAgentPlatformStream
 ) {
+  // Agent platform bills 10% more in multi-region.
   static readonly tokenPricing = {
-    cacheCreated: 1.0,
-    cacheHit: 0.15,
-    standardInput: 1.5,
-    standardOutput: 9.0,
+    // Gemini uses implicit caching; cache creation is not charged.
+    cacheCreated: 0,
+    cacheHit: 0.165,
+    standardInput: 1.65,
+    standardOutput: 9.9,
   };
 
   static readonly region = EUROPE;
-  static readonly regionalEndpoint = "global";
+  static readonly regionalEndpoint = "eu";
 
   static readonly id = this.buildId();
 }

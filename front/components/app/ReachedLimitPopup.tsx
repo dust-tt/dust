@@ -1,4 +1,7 @@
-import { FairUsageModal } from "@app/components/FairUsageModal";
+import {
+  FairUsageModal,
+  fairUseSeatLimitFromPlan,
+} from "@app/components/FairUsageModal";
 import { isFreeTrialPhonePlan } from "@app/lib/plans/plan_codes";
 import type { AppRouter } from "@app/lib/platform";
 import { useAppRouter } from "@app/lib/platform";
@@ -385,6 +388,7 @@ export function ReachedLimitPopup({
       <FairUsageModal
         isOpened={isFairUsageModalOpened}
         onClose={() => setIsFairUsageModalOpened(false)}
+        seatLimit={fairUseSeatLimitFromPlan(subscription.plan)}
       />
       <Dialog
         open={isOpened}
@@ -400,15 +404,21 @@ export function ReachedLimitPopup({
           </DialogHeader>
           <DialogContainer>{children}</DialogContainer>
           <DialogFooter
-            leftButtonProps={{
-              label: "Cancel",
-              variant: "outline",
-            }}
+            // When there is no distinct action (onValidate), the validate button
+            // just closes the dialog, so a separate Cancel button would be
+            // redundant — render a single button in that case.
+            leftButtonProps={
+              onValidate
+                ? {
+                    label: "Cancel",
+                    variant: "outline",
+                  }
+                : undefined
+            }
             rightButtonProps={{
               label: validateLabel,
               variant: "highlight",
-              // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-              onClick: onValidate || (() => onClose()),
+              onClick: onValidate ?? (() => onClose()),
             }}
           />
         </DialogContent>

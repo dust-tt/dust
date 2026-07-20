@@ -112,6 +112,7 @@ export class SkillConfigurationModel extends WorkspaceAwareModel<SkillConfigurat
   declare source: SkillSourceType | null;
   declare sourceMetadata: SkillSourceMetadata | null;
   declare isDefault: boolean;
+  declare favoriteCount: CreationOptional<number>;
 
   declare reinforcement: CreationOptional<SkillReinforcementMode>;
   declare lastReinforcementAnalysisAt: CreationOptional<Date | null>;
@@ -128,6 +129,11 @@ export class SkillConfigurationModel extends WorkspaceAwareModel<SkillConfigurat
 SkillConfigurationModel.init(
   {
     ...SKILL_MODEL_ATTRIBUTES,
+    favoriteCount: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      defaultValue: 0,
+    },
     reinforcement: {
       type: DataTypes.STRING,
       allowNull: false,

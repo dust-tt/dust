@@ -27,6 +27,11 @@ describe("envgen", () => {
       expect(content).toContain("export OAUTH_PORT=10006");
     });
 
+    it("exports DEV_ENV_NAME combining user and hive name", () => {
+      const content = generateEnvSh("my-feature", ports);
+      expect(content).toMatch(/export DEV_ENV_NAME=\S+-my-feature/);
+    });
+
     it("exports temporal namespaces", () => {
       const content = generateEnvSh("my-feature", ports);
       expect(content).toContain("export TEMPORAL_NAMESPACE=dust-hive-my-feature");

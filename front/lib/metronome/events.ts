@@ -9,6 +9,7 @@ import type { RunUsageType } from "@app/lib/resources/run_resource";
 import type { UserMessageOrigin } from "@app/types/assistant/conversation";
 import { createHash } from "crypto";
 
+import { getMetronomeIngestAlias } from "./client";
 import {
   toFreeMetronomeUserId,
   USAGE_TYPE_FREE,
@@ -344,7 +345,7 @@ export function buildLlmUsageEvents({
 
   return [...groups.values()].map((group) => ({
     transaction_id: `llm3-${workspaceId}-${conversationId}-${agentMessageId}-${runKey}-${group.providerId}-${group.modelId}`,
-    customer_id: workspaceId,
+    customer_id: getMetronomeIngestAlias(workspaceId),
     event_type: "llm_usage_v3",
     timestamp,
     properties: {
@@ -471,7 +472,7 @@ export function buildToolUseEvents({
       transaction_id: truncateTransactionId(
         `tool3-${workspaceId}-${conversationId}-${agentMessageId}-${runKey}-${action.toolName}-${action.mcpServerId ?? ""}-${action.status}`
       ),
-      customer_id: workspaceId,
+      customer_id: getMetronomeIngestAlias(workspaceId),
       event_type: "tool_use_v3",
       timestamp,
       properties: {
@@ -510,49 +511,4 @@ export function buildToolUseEvents({
       },
     };
   });
-}
-
-// ---------------------------------------------------------------------------
-// Workspace gauge event (daily)
-// ---------------------------------------------------------------------------
-
-/**
- * Build a single workspace gauge event carrying all daily snapshot properties.
- * One event per workspace per day — Metronome billable metrics pick the
- * property they care about.
- *
- * transaction_id pattern: workspace-gauge-{workspaceId}-{YYYY-MM-DD}
- */
-export function buildWorkspaceGaugeEvent({
-  workspaceId,
-  memberCount,
-  mau1Count,
-  mau5Count,
-  mau10Count,
-  timestamp,
-  dateKey,
-}: {
-  workspaceId: string;
-  memberCount: number;
-  mau1Count: number;
-  mau5Count: number;
-  mau10Count: number;
-  timestamp: string;
-  // YYYY-MM-DD — used as the idempotent transaction ID so re-runs on the same
-  // day are deduplicated by Metronome.
-  dateKey: string;
-}): MetronomeEvent {
-  return {
-    transaction_id: `workspace-gauge-${workspaceId}-${dateKey}`,
-    customer_id: workspaceId,
-    event_type: "workspace_gauge",
-    timestamp,
-    properties: {
-      workspace_id: workspaceId,
-      member_count: memberCount,
-      mau_1_count: mau1Count,
-      mau_5_count: mau5Count,
-      mau_10_count: mau10Count,
-    },
-  };
 }

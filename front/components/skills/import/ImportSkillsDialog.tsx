@@ -117,6 +117,7 @@ export function ImportSkillsDialog({
                   importTypeField.onChange(value);
                   selectedSkillNamesField.onChange([]);
                   setDetectedCount(0);
+                  form.setValue("repoUrl", "");
                 }
               }}
             >

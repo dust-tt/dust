@@ -75,7 +75,7 @@ app.post(
           return apiError(ctx, {
             status_code: 404,
             api_error: {
-              type: "invalid_request_error",
+              type: "skill_github_repository_not_found",
               message: error.message,
             },
           });

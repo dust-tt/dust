@@ -8,10 +8,14 @@ import { GroupPermissionModel } from "@app/lib/resources/storage/models/group_pe
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import { withTransaction } from "@app/lib/utils/sql_utils";
 import type {
+  CapabilitySpec,
+  GrantType,
   GroupPermissionResourceType,
-  PermissionType,
 } from "@app/types/group_permissions";
-import { WHOLE_TYPE_RESOURCE_ID } from "@app/types/group_permissions";
+import {
+  capabilityKey,
+  WHOLE_TYPE_RESOURCE_ID,
+} from "@app/types/group_permissions";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Ok } from "@app/types/shared/result";
@@ -30,7 +34,7 @@ import { Op } from "sequelize";
 
 interface InstanceGrantSpec {
   group: GroupResource;
-  permissionType: PermissionType;
+  grantType: GrantType;
   resourceType: GroupPermissionResourceType;
   resourceId: number;
   transaction?: Transaction;
@@ -38,63 +42,51 @@ interface InstanceGrantSpec {
 
 interface TypeWideGrantSpec {
   group: GroupResource;
-  permissionType: PermissionType;
+  grantType: GrantType;
   resourceType: GroupPermissionResourceType;
   transaction?: Transaction;
 }
 
-interface CapabilitySpec {
-  permissionType: PermissionType;
-  resourceType: GroupPermissionResourceType;
-}
-
-// The state of a governance capability. "everyone" and "disabled" carry no groups; "groups" lists
-// the specific (non-global) groups it is granted to. Scope values match the governance page's
-// PermissionConfigurationScope.
+// The state of a governance capability. "everyone" and "admins_only" carry no groups; "groups"
+// lists the specific (non-global) groups it is granted to. Scope values match the governance
+// page's PermissionConfigurationScope.
 export type CapabilityState =
-  | { scope: "disabled" }
+  | { scope: "admins_only" }
   | { scope: "everyone" }
   | { scope: "groups"; groups: GroupResource[] };
 
-function capabilityKey({
-  permissionType,
-  resourceType,
-}: CapabilitySpec): string {
-  return `${permissionType}:${resourceType}`;
-}
-
 interface ListForGroupsSpec {
   groupModelIds: ModelId[];
-  permissionType?: PermissionType;
+  grantType?: GrantType;
   resourceType?: GroupPermissionResourceType;
   resourceId?: number;
 }
 
 interface UserGrantSpec {
   user: UserType;
-  permissionType: PermissionType;
+  grantType: GrantType;
   resourceType: GroupPermissionResourceType;
   resourceId: number;
   transaction?: Transaction;
 }
 
 interface EverybodyGrantSpec {
-  permissionType: PermissionType;
+  grantType: GrantType;
   resourceType: GroupPermissionResourceType;
   resourceId: number;
   transaction?: Transaction;
 }
 
 function autoGroupName({
-  permissionType,
+  grantType,
   resourceType,
   resourceId,
 }: {
-  permissionType: PermissionType;
+  grantType: GrantType;
   resourceType: GroupPermissionResourceType;
   resourceId: number;
 }): string {
-  return `Group for permission ${permissionType} on ${resourceType} (${resourceId})`;
+  return `Group for permission ${grantType} on ${resourceType} (${resourceId})`;
 }
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
@@ -132,7 +124,7 @@ export class GroupPermissionResource extends BaseResource<GroupPermissionModel> 
     auth: Authenticator,
     {
       group,
-      permissionType,
+      grantType,
       resourceType,
       resourceId,
       transaction,
@@ -143,14 +135,14 @@ export class GroupPermissionResource extends BaseResource<GroupPermissionModel> 
       "grant() is instance-level; use a dedicated wildcard method for type-wide grants."
     );
     this.assertGroupInWorkspace(auth, group);
-    assertValidGrant({ permissionType, resourceType, resourceId });
+    assertValidGrant({ grantType, resourceType, resourceId });
 
     const workspaceId = auth.getNonNullableWorkspace().id;
     const [row] = await GroupPermissionModel.findOrCreate({
       where: {
         workspaceId,
         groupId: group.id,
-        permissionType,
+        grantType,
         resourceType,
         resourceId,
       },
@@ -161,16 +153,16 @@ export class GroupPermissionResource extends BaseResource<GroupPermissionModel> 
   }
 
   // Find the regular_auto group that already holds an instance-level grant for the given tuple.
-  // At most one such group is expected per (permissionType, resourceType, resourceId).
+  // At most one such group is expected per (grantType, resourceType, resourceId).
   private static async findRegularAutoGroupForGrant(
     auth: Authenticator,
     {
-      permissionType,
+      grantType,
       resourceType,
       resourceId,
       transaction,
     }: {
-      permissionType: PermissionType;
+      grantType: GrantType;
       resourceType: GroupPermissionResourceType;
       resourceId: number;
       transaction?: Transaction;
@@ -180,7 +172,7 @@ export class GroupPermissionResource extends BaseResource<GroupPermissionModel> 
     const grants = await GroupPermissionModel.findAll({
       where: {
         workspaceId,
-        permissionType,
+        grantType,
         resourceType,
         resourceId,
       },
@@ -203,17 +195,11 @@ export class GroupPermissionResource extends BaseResource<GroupPermissionModel> 
   // same user.
   static async grantToUser(
     auth: Authenticator,
-    {
-      user,
-      permissionType,
-      resourceType,
-      resourceId,
-      transaction,
-    }: UserGrantSpec
+    { user, grantType, resourceType, resourceId, transaction }: UserGrantSpec
   ): Promise<Result<undefined, Error>> {
     return withTransaction(async (t) => {
       let group = await this.findRegularAutoGroupForGrant(auth, {
-        permissionType,
+        grantType,
         resourceType,
         resourceId,
         transaction: t,
@@ -222,7 +208,7 @@ export class GroupPermissionResource extends BaseResource<GroupPermissionModel> 
       if (!group) {
         group = await GroupResource.makeNew(
           {
-            name: autoGroupName({ permissionType, resourceType, resourceId }),
+            name: autoGroupName({ grantType, resourceType, resourceId }),
             kind: "regular_auto",
             workspaceId: auth.getNonNullableWorkspace().id,
           },
@@ -230,7 +216,7 @@ export class GroupPermissionResource extends BaseResource<GroupPermissionModel> 
         );
         await this.grant(auth, {
           group,
-          permissionType,
+          grantType,
           resourceType,
           resourceId,
           transaction: t,
@@ -254,17 +240,11 @@ export class GroupPermissionResource extends BaseResource<GroupPermissionModel> 
   // member of the backing group.
   static async revokeFromUser(
     auth: Authenticator,
-    {
-      user,
-      permissionType,
-      resourceType,
-      resourceId,
-      transaction,
-    }: UserGrantSpec
+    { user, grantType, resourceType, resourceId, transaction }: UserGrantSpec
   ): Promise<Result<undefined, Error>> {
     return withTransaction(async (t) => {
       const group = await this.findRegularAutoGroupForGrant(auth, {
-        permissionType,
+        grantType,
         resourceType,
         resourceId,
         transaction: t,
@@ -300,7 +280,7 @@ export class GroupPermissionResource extends BaseResource<GroupPermissionModel> 
       if (memberCount === 1) {
         await this.revoke(auth, {
           group,
-          permissionType,
+          grantType,
           resourceType,
           resourceId,
           transaction: t,
@@ -319,12 +299,7 @@ export class GroupPermissionResource extends BaseResource<GroupPermissionModel> 
   // Distinct from setForEverybody, which grants a type-wide (-1) governance capability.
   static async grantToEverybody(
     auth: Authenticator,
-    {
-      permissionType,
-      resourceType,
-      resourceId,
-      transaction,
-    }: EverybodyGrantSpec
+    { grantType, resourceType, resourceId, transaction }: EverybodyGrantSpec
   ): Promise<void> {
     const globalGroup = await GroupResource.internalFetchWorkspaceGlobalGroup(
       auth.getNonNullableWorkspace().id
@@ -333,7 +308,7 @@ export class GroupPermissionResource extends BaseResource<GroupPermissionModel> 
 
     await this.grant(auth, {
       group: globalGroup,
-      permissionType,
+      grantType,
       resourceType,
       resourceId,
       transaction,
@@ -343,12 +318,7 @@ export class GroupPermissionResource extends BaseResource<GroupPermissionModel> 
   // Revoke an instance-level permission from the whole workspace (the global group). No-op if absent.
   static async revokeFromEverybody(
     auth: Authenticator,
-    {
-      permissionType,
-      resourceType,
-      resourceId,
-      transaction,
-    }: EverybodyGrantSpec
+    { grantType, resourceType, resourceId, transaction }: EverybodyGrantSpec
   ): Promise<void> {
     const globalGroup = await GroupResource.internalFetchWorkspaceGlobalGroup(
       auth.getNonNullableWorkspace().id
@@ -357,7 +327,7 @@ export class GroupPermissionResource extends BaseResource<GroupPermissionModel> 
 
     await this.revoke(auth, {
       group: globalGroup,
-      permissionType,
+      grantType,
       resourceType,
       resourceId,
       transaction,
@@ -371,7 +341,7 @@ export class GroupPermissionResource extends BaseResource<GroupPermissionModel> 
     auth: Authenticator,
     {
       group,
-      permissionType,
+      grantType,
       resourceType,
       resourceId,
       transaction,
@@ -385,7 +355,7 @@ export class GroupPermissionResource extends BaseResource<GroupPermissionModel> 
       where: {
         workspaceId: auth.getNonNullableWorkspace().id,
         groupId: group.id,
-        permissionType,
+        grantType,
         resourceType,
         resourceId,
       },
@@ -397,12 +367,7 @@ export class GroupPermissionResource extends BaseResource<GroupPermissionModel> 
   // (workspaceId, resourceType, resourceId) index backs type/resource-scoped reads.
   static async listForGroups(
     auth: Authenticator,
-    {
-      groupModelIds,
-      permissionType,
-      resourceType,
-      resourceId,
-    }: ListForGroupsSpec
+    { groupModelIds, grantType, resourceType, resourceId }: ListForGroupsSpec
   ): Promise<GroupPermissionResource[]> {
     if (groupModelIds.length === 0) {
       return [];
@@ -412,7 +377,7 @@ export class GroupPermissionResource extends BaseResource<GroupPermissionModel> 
       where: {
         workspaceId: auth.getNonNullableWorkspace().id,
         groupId: groupModelIds,
-        ...(permissionType !== undefined ? { permissionType } : {}),
+        ...(grantType !== undefined ? { grantType } : {}),
         ...(resourceType !== undefined ? { resourceType } : {}),
         ...(resourceId !== undefined ? { resourceId } : {}),
       },
@@ -464,11 +429,11 @@ export class GroupPermissionResource extends BaseResource<GroupPermissionModel> 
   // `grant`. Idempotent. Used for type-level verbs (e.g. "create") and governance capabilities.
   static async grantTypeWide(
     auth: Authenticator,
-    { group, permissionType, resourceType, transaction }: TypeWideGrantSpec
+    { group, grantType, resourceType, transaction }: TypeWideGrantSpec
   ): Promise<void> {
     await this.grantTypeWideForGroups(auth, {
       groups: [group],
-      permissionType,
+      grantType,
       resourceType,
       transaction,
     });
@@ -480,18 +445,18 @@ export class GroupPermissionResource extends BaseResource<GroupPermissionModel> 
     auth: Authenticator,
     {
       groups,
-      permissionType,
+      grantType,
       resourceType,
       transaction,
     }: {
       groups: GroupResource[];
-      permissionType: PermissionType;
+      grantType: GrantType;
       resourceType: GroupPermissionResourceType;
       transaction?: Transaction;
     }
   ): Promise<void> {
     assertValidGrant({
-      permissionType,
+      grantType,
       resourceType,
       resourceId: WHOLE_TYPE_RESOURCE_ID,
     });
@@ -505,7 +470,7 @@ export class GroupPermissionResource extends BaseResource<GroupPermissionModel> 
       groups.map((group) => ({
         workspaceId,
         groupId: group.id,
-        permissionType,
+        grantType,
         resourceType,
         resourceId: WHOLE_TYPE_RESOURCE_ID,
       })),
@@ -516,13 +481,13 @@ export class GroupPermissionResource extends BaseResource<GroupPermissionModel> 
   // Revoke a group's type-wide grant. No-op if absent.
   static async revokeTypeWide(
     auth: Authenticator,
-    { group, permissionType, resourceType, transaction }: TypeWideGrantSpec
+    { group, grantType, resourceType, transaction }: TypeWideGrantSpec
   ): Promise<void> {
     await GroupPermissionModel.destroy({
       where: {
         workspaceId: auth.getNonNullableWorkspace().id,
         groupId: group.id,
-        permissionType,
+        grantType,
         resourceType,
         resourceId: WHOLE_TYPE_RESOURCE_ID,
       },
@@ -540,7 +505,7 @@ export class GroupPermissionResource extends BaseResource<GroupPermissionModel> 
     }: {
       grants: Array<{
         group: GroupResource;
-        permissionType: PermissionType;
+        grantType: GrantType;
         resourceType: GroupPermissionResourceType;
         resourceId: number;
       }>;
@@ -550,21 +515,21 @@ export class GroupPermissionResource extends BaseResource<GroupPermissionModel> 
     if (grants.length === 0) {
       return;
     }
-    for (const { group, permissionType, resourceType, resourceId } of grants) {
+    for (const { group, grantType, resourceType, resourceId } of grants) {
       assert(
         resourceId > 0,
         "grantMany is instance-level; use the dedicated type-wide methods for -1 grants."
       );
       this.assertGroupInWorkspace(auth, group);
-      assertValidGrant({ permissionType, resourceType, resourceId });
+      assertValidGrant({ grantType, resourceType, resourceId });
     }
 
     const workspaceId = auth.getNonNullableWorkspace().id;
     await GroupPermissionModel.bulkCreate(
-      grants.map(({ group, permissionType, resourceType, resourceId }) => ({
+      grants.map(({ group, grantType, resourceType, resourceId }) => ({
         workspaceId,
         groupId: group.id,
-        permissionType,
+        grantType,
         resourceType,
         resourceId,
       })),
@@ -575,7 +540,7 @@ export class GroupPermissionResource extends BaseResource<GroupPermissionModel> 
   // ---------------------------------------------------------------------------
   // Governance-toggle state (read side).
   //
-  // A capability is a (permissionType, resourceType) pair whose grants live on the type-wide (-1)
+  // A capability is a (grantType, resourceType) pair whose grants live on the type-wide (-1)
   // rows. Each is in one of three mutually-exclusive states, by convention:
   //   - no -1 row                              => disabled
   //   - a -1 row for the workspace global group => everyone
@@ -584,7 +549,7 @@ export class GroupPermissionResource extends BaseResource<GroupPermissionModel> 
   // ---------------------------------------------------------------------------
 
   // Resolve the state of each requested capability in a single query (plus one batched group
-  // fetch), keyed by `${permissionType}:${resourceType}`. Backs the governance page, which needs
+  // fetch), keyed by `${grantType}:${resourceType}`. Backs the governance page, which needs
   // every capability at once; per-capability helpers (disabled / everyone / groups) can derive
   // from the returned state.
   static async getCapabilitiesState(
@@ -611,8 +576,8 @@ export class GroupPermissionResource extends BaseResource<GroupPermissionModel> 
       where: {
         workspaceId,
         resourceId: WHOLE_TYPE_RESOURCE_ID,
-        [Op.or]: capabilities.map(({ permissionType, resourceType }) => ({
-          permissionType,
+        [Op.or]: capabilities.map(({ grantType, resourceType }) => ({
+          grantType,
           resourceType,
         })),
       },
@@ -634,13 +599,13 @@ export class GroupPermissionResource extends BaseResource<GroupPermissionModel> 
     for (const capability of capabilities) {
       const capabilityRows = rows.filter(
         (row) =>
-          row.permissionType === capability.permissionType &&
+          row.grantType === capability.grantType &&
           row.resourceType === capability.resourceType
       );
       const key = capabilityKey(capability);
 
       if (capabilityRows.length === 0) {
-        result.set(key, { scope: "disabled" });
+        result.set(key, { scope: "admins_only" });
       } else if (capabilityRows.some((row) => row.groupId === globalGroup.id)) {
         result.set(key, { scope: "everyone" });
       } else {
@@ -666,13 +631,13 @@ export class GroupPermissionResource extends BaseResource<GroupPermissionModel> 
   // Remove every -1 row for the capability => disabled.
   static async disable(
     auth: Authenticator,
-    { permissionType, resourceType }: CapabilitySpec,
+    { grantType, resourceType }: CapabilitySpec,
     { transaction }: { transaction?: Transaction } = {}
   ): Promise<void> {
     await GroupPermissionModel.destroy({
       where: {
         workspaceId: auth.getNonNullableWorkspace().id,
-        permissionType,
+        grantType,
         resourceType,
         resourceId: WHOLE_TYPE_RESOURCE_ID,
       },
@@ -685,10 +650,10 @@ export class GroupPermissionResource extends BaseResource<GroupPermissionModel> 
   // (overgranting). The transaction-scoped advisory lock releases on commit/rollback.
   private static async getCapabilityLock(
     auth: Authenticator,
-    { permissionType, resourceType }: CapabilitySpec,
+    { grantType, resourceType }: CapabilitySpec,
     transaction: Transaction
   ): Promise<void> {
-    const key = `group_permissions:${auth.getNonNullableWorkspace().id}:${resourceType}:${permissionType}`;
+    const key = `group_permissions:${auth.getNonNullableWorkspace().id}:${resourceType}:${grantType}`;
     // biome-ignore lint/plugin/noRawSql: advisory lock requires raw SQL
     await frontSequelize.query("SELECT pg_advisory_xact_lock(hashtext(:key))", {
       replacements: { key },

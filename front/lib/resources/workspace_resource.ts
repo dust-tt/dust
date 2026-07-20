@@ -17,6 +17,8 @@ import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import { WorkspaceHasDomainModel } from "@app/lib/resources/storage/models/workspace_has_domain";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { ModelStaticWorkspaceAware } from "@app/lib/resources/storage/wrappers/workspace_models";
+import { UserResource } from "@app/lib/resources/user_resource";
+import type { GitHubConnectionStatus } from "@app/lib/skill_detection";
 import {
   cacheWithRedis,
   invalidateCacheAfterCommit,
@@ -38,7 +40,7 @@ import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
-import { isStringArray } from "@app/types/shared/utils/general";
+import { isString, isStringArray } from "@app/types/shared/utils/general";
 import type {
   WorkspaceSegmentationType,
   WorkspaceSharingPolicy,
@@ -754,6 +756,54 @@ export class WorkspaceResource extends BaseResource<WorkspaceModel> {
     metadata: Record<string, string | number | boolean | object> | null
   ): Promise<Result<void, Error>> {
     return this.updateByModelIdAndCheckExistence(id, { metadata });
+  }
+
+  async removeMetadataKeys(keys: string[]): Promise<Result<void, Error>> {
+    const keysToRemove = new Set(keys);
+    const newMetadata: Record<string, string | number | boolean | object> = {};
+    for (const [key, value] of Object.entries(this.metadata ?? {})) {
+      if (!keysToRemove.has(key) && value !== undefined) {
+        newMetadata[key] = value;
+      }
+    }
+    return WorkspaceResource.updateMetadata(this.id, newMetadata);
+  }
+
+  getSkillImportGitHubConnection(): {
+    connectionId: string;
+    connectedBy: string;
+  } | null {
+    const connection = this.metadata?.skillImportGithubConnection;
+    if (
+      typeof connection === "object" &&
+      connection !== null &&
+      "connectionId" in connection &&
+      isString(connection.connectionId) &&
+      "connectedBy" in connection &&
+      isString(connection.connectedBy)
+    ) {
+      return {
+        connectionId: connection.connectionId,
+        connectedBy: connection.connectedBy,
+      };
+    }
+    return null;
+  }
+
+  async getSkillImportGitHubConnectedByUser(): Promise<GitHubConnectionStatus | null> {
+    const connection = this.getSkillImportGitHubConnection();
+    if (!connection) {
+      return null;
+    }
+
+    const user = await UserResource.fetchById(connection.connectedBy);
+    if (!user) {
+      return { connectedBy: null };
+    }
+
+    return {
+      connectedBy: { fullName: user.fullName(), imageUrl: user.imageUrl },
+    };
   }
 
   static async updateMetronomeCustomerId(

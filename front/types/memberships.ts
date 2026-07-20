@@ -176,6 +176,35 @@ export function isSeatBased(
   }
 }
 
+/**
+ * Whether a seat type carries an individual per-seat Metronome subscription
+ * balance — queryable via `listMetronomeSeatBalances`'s `seatIds` filter.
+ * Pro/max only: free seats hold a per-user *customer* credit instead (a
+ * different Metronome object, see `listCustomerPerUserCreditBalances`), and
+ * workspace/none seats have no individual balance at all.
+ */
+export function hasMetronomeSeatBalance(
+  seatType: MembershipSeatType | null | undefined
+): boolean {
+  if (!seatType) {
+    return false;
+  }
+  switch (seatType) {
+    case "pro":
+    case "pro_yearly":
+    case "max":
+    case "max_yearly":
+      return true;
+    case "free":
+    case "none":
+    case "workspace":
+    case "workspace_yearly":
+      return false;
+    default:
+      return assertNever(seatType);
+  }
+}
+
 export function isPaidSeatType(
   seatType: MembershipSeatType
 ): seatType is PaidSeatType {

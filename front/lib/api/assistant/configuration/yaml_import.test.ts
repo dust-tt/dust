@@ -1,5 +1,8 @@
 import { createAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
-import { getExportableAgentConfiguration } from "@app/lib/api/assistant/configuration/yaml_export";
+import {
+  getAgentConfigurationAsYAMLConfig,
+  getExportableAgentConfiguration,
+} from "@app/lib/api/assistant/configuration/yaml_export";
 import { patchAgentConfigurationFromJSON } from "@app/lib/api/assistant/configuration/yaml_import";
 import type { Authenticator } from "@app/lib/auth";
 import type { GroupResource as GroupResourceType } from "@app/lib/resources/group_resource";
@@ -349,5 +352,99 @@ describe("patchAgentConfigurationFromJSON", () => {
       },
     ]);
     expect(result.value.agentConfiguration.actions).toHaveLength(0);
+  });
+
+  it("should export the view's custom display name and re-import it without skipping the action", async () => {
+    const { authenticator, globalGroup } = await createResourceTest({
+      role: "admin",
+    });
+    const workspace = authenticator.getNonNullableWorkspace();
+    const user = authenticator.getNonNullableUser();
+
+    const space = await SpaceFactory.regular(workspace);
+    await GroupSpaceFactory.associate(space, globalGroup);
+
+    const createResult = await createAgentConfiguration(authenticator, {
+      name: "YAML export test agent",
+      description: "Initial description",
+      instructions: "Initial instructions",
+      instructionsHtml: "<p>Initial instructions</p>",
+      pictureUrl: "https://dust.tt/static/systemavatar/test_avatar_1.png",
+      status: "active",
+      scope: "hidden",
+      model: {
+        providerId: "anthropic",
+        modelId: "claude-sonnet-4-5-20250929",
+        temperature: 0.5,
+      },
+      agentConfigurationId: undefined,
+      templateId: null,
+      requestedSpaceIds: [space.id],
+      tags: [],
+      editors: [user.toJSON()],
+      authorId: user.id,
+    });
+    expect(createResult.isOk()).toBe(true);
+    if (createResult.isErr()) {
+      throw createResult.error;
+    }
+
+    const agent = {
+      ...createResult.value,
+      instructionsHtml: "<p>Initial instructions</p>",
+      actions: [],
+    } satisfies AgentConfigurationType;
+
+    // Server's own name is slug-like; the view carries an admin-set display name that
+    // differs from it, mirroring a remote MCP server whose slug and display name diverge.
+    const server = await RemoteMCPServerFactory.create(workspace, {
+      name: "ulule-mcp",
+    });
+    const serverView = await MCPServerViewFactory.create(
+      workspace,
+      server.sId,
+      space
+    );
+    const renameResult = await serverView.updateNameAndDescription(
+      authenticator,
+      "Ulule MCP Prod"
+    );
+    expect(renameResult.isOk()).toBe(true);
+
+    await AgentMCPServerConfigurationFactory.create(authenticator, space, {
+      agent,
+      mcpServerView: serverView,
+    });
+
+    const yamlConfigResult = await getAgentConfigurationAsYAMLConfig(
+      authenticator,
+      agent.sId
+    );
+    expect(yamlConfigResult.isOk()).toBe(true);
+    if (yamlConfigResult.isErr()) {
+      throw new Error(yamlConfigResult.error.api_error.message);
+    }
+
+    expect(yamlConfigResult.value.toolset).toHaveLength(1);
+    expect(
+      yamlConfigResult.value.toolset[0].configuration.mcp_server_name
+    ).toBe("Ulule MCP Prod");
+
+    const patchResult = await patchAgentConfigurationFromJSON(
+      authenticator,
+      agent.sId,
+      {
+        toolset: yamlConfigResult.value.toolset,
+        spaces: yamlConfigResult.value.spaces,
+      }
+    );
+
+    expect(patchResult.isOk()).toBe(true);
+    if (patchResult.isErr()) {
+      throw new Error(patchResult.error.api_error.message);
+    }
+
+    expect(patchResult.value.skippedActions).toEqual([]);
+    expect(patchResult.value.agentConfiguration.actions).toHaveLength(1);
   });
 });

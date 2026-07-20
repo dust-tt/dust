@@ -46,9 +46,9 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
       "Access to internal global agents (dust-edge, dust-quick, dust-oai, dust-goog, custom model agents and their variants)",
     stage: "dust_only",
   },
-  dust_agent_gpt_5_5_default: {
+  dust_agent_gpt_5_6_luna_default: {
     description:
-      "Use GPT 5.5 (medium reasoning) as the default model for the @dust agent",
+      "Use GPT 5.6 Luna (high reasoning) as the default model for the @dust agent",
     stage: "dust_only",
   },
   dust_agent_sonnet_5_default: {
@@ -207,7 +207,7 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     stage: "on_demand",
   },
   sandbox_functions: {
-    description: "Enable Sandbox Function invocation endpoints",
+    description: "Enable Pod Function invocation endpoints",
     stage: "dust_only",
   },
   run_tools_from_prompt: {
@@ -322,6 +322,10 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
   },
   activation_skill: {
     description: "Enable the Activation skill for agentic user activation pods",
+    stage: "dust_only",
+  },
+  activation_scheduler: {
+    description: "Enable the per-workspace Activation scheduler workflow",
     stage: "dust_only",
   },
   group_permissions_shadow: {

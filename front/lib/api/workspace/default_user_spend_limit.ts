@@ -16,6 +16,7 @@ import {
   getSeatSubscriptionsFromContract,
 } from "@app/lib/metronome/seat_types";
 import { CreditUsageConfigurationResource } from "@app/lib/resources/credit_usage_configuration_resource";
+import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import type {
   DefaultUserSpendLimit,
@@ -31,6 +32,7 @@ import {
 } from "@app/types/memberships";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { LightWorkspaceType } from "@app/types/user";
 
@@ -127,6 +129,22 @@ export async function syncDefaultPoolCapAlertsForWorkspace(
     }
   }
 
+  // Cap + warning alerts for every seat type are independent Metronome
+  // objects (distinct uniqueness keys, no shared state) — `normalizedSeatTypes`
+  // is bounded to at most 3 (pro/max/workspace), so upsert all of them
+  // concurrently instead of one sequential round trip at a time.
+  type AlertTask =
+    | {
+        kind: "cap";
+        seatType: NormalizedPoolLimitSeatType;
+        totalThreshold: number;
+      }
+    | {
+        kind: "warning";
+        seatType: NormalizedPoolLimitSeatType;
+        totalThreshold: number;
+      };
+  const tasks: AlertTask[] = [];
   for (const seatType of normalizedSeatTypes) {
     const seatAllowance = getAwuAllocationForNormalizedSeatType(
       contract,
@@ -134,48 +152,74 @@ export async function syncDefaultPoolCapAlertsForWorkspace(
       productSeatTypes
     );
     const totalThreshold = seatAllowance + poolAwuCredits;
+    tasks.push({ kind: "cap", seatType, totalThreshold });
+    tasks.push({ kind: "warning", seatType, totalThreshold });
+  }
 
-    const upsertResult = await upsertMetronomeDefaultUserCapAlertForSeatType({
-      metronomeCustomerId,
-      workspaceId: workspace.sId,
-      seatType,
-      awuCredits: totalThreshold,
-    });
-    if (upsertResult.isErr()) {
-      logger.error(
-        {
-          workspaceId: workspace.sId,
-          seatType,
-          totalThreshold,
-          err: upsertResult.error,
-        },
-        "[DefaultUserSpendLimit] syncDefaultPoolCapAlerts: failed to upsert cap alert"
-      );
-      return new Err(
-        new DefaultUserSpendLimitError(
-          "metronome_error",
-          upsertResult.error.message
-        )
-      );
+  const results = await concurrentExecutor(
+    tasks,
+    async (task) => {
+      switch (task.kind) {
+        case "cap": {
+          const result = await upsertMetronomeDefaultUserCapAlertForSeatType({
+            metronomeCustomerId,
+            workspaceId: workspace.sId,
+            seatType: task.seatType,
+            awuCredits: task.totalThreshold,
+          });
+          return { task, result };
+        }
+        case "warning": {
+          const result =
+            await upsertMetronomeDefaultUserWarningAlertForSeatType({
+              metronomeCustomerId,
+              workspaceId: workspace.sId,
+              seatType: task.seatType,
+              capAwuCredits: task.totalThreshold,
+            });
+          return { task, result };
+        }
+        default:
+          return assertNever(task);
+      }
+    },
+    { concurrency: 8 }
+  );
+
+  for (const { task, result } of results) {
+    if (!result.isErr()) {
+      continue;
     }
-
-    const warningResult =
-      await upsertMetronomeDefaultUserWarningAlertForSeatType({
-        metronomeCustomerId,
-        workspaceId: workspace.sId,
-        seatType,
-        capAwuCredits: totalThreshold,
-      });
-    if (warningResult.isErr()) {
-      logger.warn(
-        {
-          workspaceId: workspace.sId,
-          seatType,
-          totalThreshold,
-          err: warningResult.error,
-        },
-        "[DefaultUserSpendLimit] syncDefaultPoolCapAlerts: failed to upsert warning alert; continuing"
-      );
+    switch (task.kind) {
+      case "cap":
+        logger.error(
+          {
+            workspaceId: workspace.sId,
+            seatType: task.seatType,
+            totalThreshold: task.totalThreshold,
+            err: result.error,
+          },
+          "[DefaultUserSpendLimit] syncDefaultPoolCapAlerts: failed to upsert cap alert"
+        );
+        return new Err(
+          new DefaultUserSpendLimitError(
+            "metronome_error",
+            result.error.message
+          )
+        );
+      case "warning":
+        logger.warn(
+          {
+            workspaceId: workspace.sId,
+            seatType: task.seatType,
+            totalThreshold: task.totalThreshold,
+            err: result.error,
+          },
+          "[DefaultUserSpendLimit] syncDefaultPoolCapAlerts: failed to upsert warning alert; continuing"
+        );
+        break;
+      default:
+        assertNever(task);
     }
   }
 

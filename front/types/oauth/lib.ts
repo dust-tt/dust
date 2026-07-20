@@ -230,7 +230,7 @@ export function getProviderRequiredOAuthCredentialInputs({
             label: "Freshworks Organization URL",
             value: undefined,
             helpMessage:
-              "Your Freshworks organization URL (e.g., yourcompany.myfreshworks.com).",
+              "Your Freshworks organization URL (e.g., yourcompany.myfreshservice.com).",
           },
           freshservice_domain: {
             label: "Freshservice Domain URL",
