@@ -1,4 +1,7 @@
-import { CheckpointedConversationWindowState } from "@app/lib/api/assistant/conversation_rendering/checkpointed_window_state";
+import {
+  CheckpointedConversationWindowState,
+  MINIMUM_PRUNING_BATCH_TOKENS,
+} from "@app/lib/api/assistant/conversation_rendering/checkpointed_window_state";
 import type { InteractionWithTokens } from "@app/lib/api/assistant/conversation_rendering/pruning";
 import type { ModelMessageTypeMultiActions } from "@app/types/assistant/generation";
 import { describe, expect, it } from "vitest";
@@ -193,6 +196,64 @@ describe("CheckpointedConversationWindowState", () => {
     expect(isPruned(results[0].content)).toBe(true);
     expect(isPruned(results[1].content)).toBe(true);
     expect(results[2].content).toBe("third_result");
+  });
+
+  it("accepts a smaller batch when it restores fit at the nominal budget", () => {
+    const state = makeState({
+      pruningBudget: 10_000,
+      budgetForInteractions: 20_000,
+    });
+
+    state.append(
+      interaction([
+        userMessage("question", 15_000),
+        assistantMessage("call_tool"),
+        // Pruning retains a 24-token placeholder, so this yields exactly the minimum savings.
+        functionMessage("result", MINIMUM_PRUNING_BATCH_TOKENS + 24),
+        assistantMessage("answer"),
+      ])
+    );
+    state.append(interaction([userMessage("follow_up", 10)]));
+
+    expect(isPruned(toolResults(state)[0].content)).toBe(true);
+  });
+
+  it("keeps a smaller batch intact below the minimum", () => {
+    const state = makeState({
+      pruningBudget: 10_000,
+      budgetForInteractions: 20_000,
+    });
+
+    state.append(
+      interaction([
+        userMessage("question", 15_000),
+        assistantMessage("call_tool"),
+        functionMessage("result", MINIMUM_PRUNING_BATCH_TOKENS + 24 - 1),
+        assistantMessage("answer"),
+      ])
+    );
+    state.append(interaction([userMessage("follow_up", 10)]));
+
+    expect(isPruned(toolResults(state)[0].content)).toBe(false);
+  });
+
+  it("keeps a smaller batch intact when pruning it cannot restore fit", () => {
+    const state = makeState({
+      pruningBudget: 10_000,
+      budgetForInteractions: 20_000,
+    });
+
+    state.append(
+      interaction([
+        userMessage("question", 21_000),
+        assistantMessage("call_tool"),
+        functionMessage("result", MINIMUM_PRUNING_BATCH_TOKENS + 1_000 + 24),
+        assistantMessage("answer"),
+      ])
+    );
+    state.append(interaction([userMessage("follow_up", 10)]));
+
+    expect(isPruned(toolResults(state)[0].content)).toBe(false);
   });
 
   it("replays the same pruning frontier when the conversation grows", () => {
