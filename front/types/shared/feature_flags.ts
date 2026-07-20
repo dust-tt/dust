@@ -93,10 +93,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "Disable logging of agent runs",
     stage: "dust_only",
   },
-  disable_computer_feature: {
-    description: "Disable all Computer sandbox features for this workspace",
-    stage: "on_demand",
-  },
   disallow_agent_creation_to_users: {
     description:
       "Prevent users from creating agents, allowing only admins and builders",
@@ -353,15 +349,6 @@ export type WhitelistableFeature = keyof typeof WHITELISTABLE_FEATURES_CONFIG;
 export const WHITELISTABLE_FEATURES = Object.keys(
   WHITELISTABLE_FEATURES_CONFIG
 ) as WhitelistableFeature[];
-
-export const DISABLE_COMPUTER_FEATURE =
-  "disable_computer_feature" as const satisfies WhitelistableFeature;
-
-export function isComputerFeatureEnabled(
-  featureFlags: WhitelistableFeature[]
-): boolean {
-  return !featureFlags.includes(DISABLE_COMPUTER_FEATURE);
-}
 
 export function isWhitelistableFeature(
   feature: unknown

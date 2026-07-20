@@ -10,7 +10,6 @@ import { SandboxFunctionResource } from "@app/lib/resources/sandbox_function_res
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
-import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { FileFactory } from "@app/tests/utils/FileFactory";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { SandboxFactory } from "@app/tests/utils/SandboxFactory";
@@ -22,11 +21,7 @@ import { sandboxFunctionContentType } from "@app/types/files";
 
 process.env.DUST_SANDBOX_JWT_SECRET ??= "test-sandbox-jwt-secret";
 
-export async function createSandboxTokenTestContext({
-  disableComputerFeature = false,
-}: {
-  disableComputerFeature?: boolean;
-} = {}) {
+export async function createSandboxTokenTestContext() {
   const user = await UserFactory.basic();
   const workspace = await WorkspaceFactory.basic();
   await MembershipFactory.associate(workspace, user, { role: "admin" });
@@ -36,10 +31,6 @@ export async function createSandboxTokenTestContext({
     workspace.sId
   );
   const { globalSpace } = await SpaceFactory.defaults(auth);
-
-  if (disableComputerFeature) {
-    await FeatureFlagFactory.basic(auth, "disable_computer_feature");
-  }
 
   const agentConfig = await AgentConfigurationFactory.createTestAgent(auth, {
     requestedSpaceIds: [globalSpace.id],
@@ -112,14 +103,8 @@ export async function createSandboxTokenTestContext({
   };
 }
 
-export async function createSandboxFunctionInvocationTokenTestContext({
-  disableComputerFeature = false,
-}: {
-  disableComputerFeature?: boolean;
-} = {}) {
-  const context = await createSandboxTokenTestContext({
-    disableComputerFeature,
-  });
+export async function createSandboxFunctionInvocationTokenTestContext() {
+  const context = await createSandboxTokenTestContext();
   const token = await generateSandboxFunctionInvocationToken(context.auth, {
     sandbox: context.sandbox,
     sandboxFunction: {

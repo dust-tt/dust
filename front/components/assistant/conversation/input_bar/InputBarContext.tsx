@@ -3,14 +3,13 @@ import {
   type FileUploaderService,
   useFileUploaderService,
 } from "@app/hooks/useFileUploaderService";
-import { useAuth, useFeatureFlags } from "@app/lib/auth/AuthContext";
+import { useAuth } from "@app/lib/auth/AuthContext";
 import type {
   RichAgentMention,
   RichMention,
 } from "@app/types/assistant/mentions";
 import type { ModelSelectionType } from "@app/types/assistant/models/types";
 import type { ContentFragmentsType } from "@app/types/content_fragment";
-import { isComputerFeatureEnabled } from "@app/types/shared/feature_flags";
 import {
   createContext,
   type ReactNode,
@@ -241,7 +240,6 @@ export function InputBarProvider({ children }: InputBarProviderProps) {
   const conversationId = useActiveConversationId();
 
   const { workspace } = useAuth();
-  const { featureFlags } = useFeatureFlags();
 
   const useCaseMetadata = useMemo(() => {
     if (!conversationId) {
@@ -253,7 +251,7 @@ export function InputBarProvider({ children }: InputBarProviderProps) {
   }, [conversationId]);
 
   const fileUploaderService = useFileUploaderService({
-    hasSandboxTools: isComputerFeatureEnabled(featureFlags),
+    hasSandboxTools: true,
     owner: workspace,
     useCase: "conversation",
     useCaseMetadata,

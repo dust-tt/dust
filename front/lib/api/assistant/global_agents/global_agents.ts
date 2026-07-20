@@ -133,10 +133,7 @@ import {
 } from "@app/types/assistant/assistant";
 import { CUSTOM_MODEL_CONFIGS } from "@app/types/assistant/models/custom_models.generated";
 import type { ModelProviderIdType } from "@app/types/assistant/models/types";
-import {
-  isComputerFeatureEnabled,
-  type WhitelistableFeature,
-} from "@app/types/shared/feature_flags";
+import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
 import { isWorkspaceAnalyticsEnabled } from "@app/types/user";
 
 function getGlobalAgent({
@@ -147,7 +144,6 @@ function getGlobalAgent({
   mcpServerViews,
   sidekickContext,
   hasDeepDive,
-  hasSandbox,
   globalAgentContext,
   excludeProviders,
   preferGpt56LunaDefaultModel,
@@ -161,7 +157,6 @@ function getGlobalAgent({
   mcpServerViews: MCPServerViewsForGlobalAgentsMap;
   sidekickContext: SidekickContext | null;
   hasDeepDive: boolean;
-  hasSandbox: boolean;
   globalAgentContext?: GlobalAgentContext;
   excludeProviders: ReadonlySet<ModelProviderIdType>;
   preferGpt56LunaDefaultModel: boolean;
@@ -882,7 +877,6 @@ function getGlobalAgent({
         settings,
         preFetchedDataSources,
         mcpServerViews,
-        hasSandbox,
         excludeProviders,
         featureFlags,
       });
@@ -1199,7 +1193,6 @@ export async function getGlobalAgents(
       mcpServerViews,
       sidekickContext,
       hasDeepDive: !isDeepDiveDisabled,
-      hasSandbox: isComputerFeatureEnabled(flags),
       globalAgentContext: options?.globalAgentContext,
       excludeProviders,
       preferGpt56LunaDefaultModel: flags.includes(

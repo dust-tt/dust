@@ -2,10 +2,7 @@ import { computeIsSelfImprovementAvailable } from "@app/lib/client/self_improvem
 import { getConversationRoute } from "@app/lib/utils/router";
 import type { AppType } from "@app/types/app";
 import { isCreditPricedPlan, type SubscriptionType } from "@app/types/plan";
-import {
-  isComputerFeatureEnabled,
-  type WhitelistableFeature,
-} from "@app/types/shared/feature_flags";
+import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
 import type { WorkspaceType } from "@app/types/user";
 import {
   isAdmin,
@@ -430,7 +427,7 @@ export const subNavigationAdmin = ({
         icon: Globe01,
         href: `/w/${owner.sId}/developers/sandbox`,
         current: isCurrent("sandbox"),
-        disabled: !hasAdminRole || !isComputerFeatureEnabled(featureFlags),
+        disabled: !hasAdminRole,
       },
       ...(computeIsSelfImprovementAvailable({
         owner,

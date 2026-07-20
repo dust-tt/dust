@@ -4,10 +4,7 @@ import {
   VIZ_SLIDESHOW_MIME_TYPE,
 } from "@app/lib/api/actions/servers/common/viz/instructions";
 import {
-  FILES_CAT_ACTION_NAME,
   FILES_EDIT_ACTION_NAME,
-  FILES_LIST_ACTION_NAME,
-  FILES_RESOLVE_ACTION_NAME,
   FILES_SERVER_NAME,
 } from "@app/lib/api/actions/servers/files/metadata";
 import {
@@ -30,19 +27,6 @@ const FILES_EDIT_TOOL = getPrefixedToolName(
   FILES_SERVER_NAME,
   FILES_EDIT_ACTION_NAME
 );
-const FILES_CAT_TOOL = getPrefixedToolName(
-  FILES_SERVER_NAME,
-  FILES_CAT_ACTION_NAME
-);
-const FILES_LIST_TOOL = getPrefixedToolName(
-  FILES_SERVER_NAME,
-  FILES_LIST_ACTION_NAME
-);
-const FILES_RESOLVE_TOOL = getPrefixedToolName(
-  FILES_SERVER_NAME,
-  FILES_RESOLVE_ACTION_NAME
-);
-
 const UPDATING_SECTION_LEGACY = `\
 ### Updating Existing Files:
 - To modify existing Interactive Content files, always use \`${RETRIEVE_INTERACTIVE_CONTENT_FILE_TOOL_NAME}\` first to read the current content
@@ -94,34 +78,6 @@ After a Frame is created, its source file is already mounted in the Computer at 
 2. Publish with \`${PUBLISH_INTERACTIVE_CONTENT_FILE_TOOL_NAME}\` using \`path: conversation-<conversationId>\` (the directory holding the file, not a subdirectory).
 
 If an edit fails because the text to replace is not found, the file differs from what you remember: re-read it and retry the targeted edit. Never respond to a failed match by resending the whole file.
-
-${PUBLISH_PARAGRAPH}
-`;
-
-// Files-tools variant, used when the conversation has the file system but no Computer. The
-// model edits the Frame's source through the files server, then republishes.
-const UPDATING_SECTION_FILES_FIRST = `\
-### Updating Existing Files (edit the source, then publish):
-
-After a Frame is created, its source file is available to your file tools at \`conversation-<conversationId>/<FrameName>.tsx\`. To update the Frame:
-1. Read the source with \`${FILES_CAT_TOOL}\` if you need the current content. If you are unsure of the exact path, list the directory with \`${FILES_LIST_TOOL}\` or resolve the Frame's file id with \`${FILES_RESOLVE_TOOL}\`.
-2. Make targeted edits with \`${FILES_EDIT_TOOL}\`, replacing only the text that changes. Do not rewrite the whole file for partial changes.
-3. Publish with \`${PUBLISH_INTERACTIVE_CONTENT_FILE_TOOL_NAME}\` using \`path: conversation-<conversationId>\` (the directory holding the file, not a subdirectory).
-
-If an edit fails because the text to replace is not found, the file differs from what you remember: re-read it with \`${FILES_CAT_TOOL}\` and retry the targeted edit. Never respond to a failed match by resending the whole file.
-
-Example, updating one value of an existing Frame:
-\`\`\`
-${FILES_EDIT_TOOL}({
-  path: "conversation-<conversationId>/Dashboard.tsx",
-  old_string: "const REGIONS = [\\"EMEA\\", \\"AMER\\"];",
-  new_string: "const REGIONS = [\\"EMEA\\", \\"AMER\\", \\"APAC\\"];",
-})
-${PUBLISH_INTERACTIVE_CONTENT_FILE_TOOL_NAME}({
-  file_id: "fil_abc123",
-  path: "conversation-<conversationId>",
-})
-\`\`\`
 
 ${PUBLISH_PARAGRAPH}
 `;
@@ -347,13 +303,6 @@ const buildInstructions = (variant: InstructionsVariant) =>
 export const INTERACTIVE_CONTENT_INSTRUCTIONS = buildInstructions({
   updatingSection: UPDATING_SECTION_LEGACY,
   validationFixExample: VALIDATION_FIX_EXAMPLE_LEGACY,
-});
-
-// Conversation file system available, no Computer: the model edits the source through the
-// files server and republishes.
-export const INTERACTIVE_CONTENT_INSTRUCTIONS_FILES_FIRST = buildInstructions({
-  updatingSection: UPDATING_SECTION_FILES_FIRST,
-  validationFixExample: VALIDATION_FIX_EXAMPLE_SOURCE_EDIT,
 });
 
 // Computer available: the model edits the mounted source in the Computer and republishes.

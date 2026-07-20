@@ -5,11 +5,7 @@ import {
   MAX_VALUE_BYTES,
   SANDBOX_ENV_VAR_PREFIX,
 } from "@app/lib/api/sandbox/env_vars";
-import {
-  useAuth,
-  useFeatureFlags,
-  useWorkspace,
-} from "@app/lib/auth/AuthContext";
+import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
 import {
   useDeleteWorkspaceSandboxEnvVar,
   usePatchWorkspaceSandboxEnvVar,
@@ -23,7 +19,6 @@ import {
   type WorkspaceSandboxEnvVarKind,
   type WorkspaceSandboxEnvVarType,
 } from "@app/types/sandbox/env_var";
-import { isComputerFeatureEnabled } from "@app/types/shared/feature_flags";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import {
   Button,
@@ -175,8 +170,6 @@ const DEFAULT_FORM_VALUES: FormValues = {
 export function EnvironmentSection() {
   const owner = useWorkspace();
   const { isAdmin } = useAuth();
-  const { featureFlags } = useFeatureFlags();
-  const hasSandboxAdmin = isComputerFeatureEnabled(featureFlags);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isNameLocked, setIsNameLocked] = useState(false);
   const [envVarToReplace, setEnvVarToReplace] =
@@ -193,7 +186,7 @@ export function EnvironmentSection() {
     isWorkspaceSandboxEnvVarsError,
   } = useWorkspaceSandboxEnvVars({
     owner,
-    disabled: !hasSandboxAdmin || !isAdmin,
+    disabled: !isAdmin,
   });
   const { upsertWorkspaceSandboxEnvVar, isUpsertingWorkspaceSandboxEnvVar } =
     useUpsertWorkspaceSandboxEnvVar({ owner });
@@ -420,13 +413,6 @@ export function EnvironmentSection() {
       return (
         <ContentMessage variant="info" icon={InfoCircle} size="lg">
           Only workspace admins can manage Computer environment variables.
-        </ContentMessage>
-      );
-    }
-    if (!hasSandboxAdmin) {
-      return (
-        <ContentMessage variant="info" icon={InfoCircle} size="lg">
-          Computer administration is not enabled for this workspace.
         </ContentMessage>
       );
     }
