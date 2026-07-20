@@ -13,8 +13,8 @@ import {
 import { getFilesServer } from "@app/lib/api/assistant/jit/files";
 import { getFolderSearchServers } from "@app/lib/api/assistant/jit/folder";
 import { getQueryTablesServer } from "@app/lib/api/assistant/jit/query_tables_v2";
-import { getSchedulesManagementServer } from "@app/lib/api/assistant/jit/schedules_management";
 import { getSkillManagementServer } from "@app/lib/api/assistant/jit/skills";
+import { getTriggersManagementServer } from "@app/lib/api/assistant/jit/triggers_management";
 import { isSearchableFolder } from "@app/lib/api/assistant/jit_utils";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
@@ -29,7 +29,7 @@ const ALWAYS_PREFETCHED_MCP_SERVERS: AutoInternalMCPServerNameType[] = [
   "ask_user_question",
   "common_utilities",
   "files",
-  "schedules_management",
+  "triggers_management",
   "skill_management",
 ];
 
@@ -153,14 +153,14 @@ async function getConditionalJITServers(
   );
   servers.push(...conversationServers);
 
-  // Add the schedules_management server, only applies to the onboarding conversation.
-  const schedulesManagementServer = await getSchedulesManagementServer(
+  // Add the triggers_management server, only applies to the onboarding conversation.
+  const triggersManagementServer = await getTriggersManagementServer(
     auth,
     agentConfiguration,
     conversation,
     autoInternalViews
   );
-  servers.push(schedulesManagementServer);
+  servers.push(triggersManagementServer);
 
   if (autoInternalViews.has("conversation_files")) {
     servers.push(await getConversationFilesServer(auth, autoInternalViews));

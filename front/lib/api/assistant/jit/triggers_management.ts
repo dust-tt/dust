@@ -8,10 +8,10 @@ import type { AgentLoopExecutionData } from "@app/types/assistant/agent_run";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 
 /**
- * Get the schedules_management MCP server for onboarding conversations.
+ * Get the triggers_management MCP server for onboarding conversations.
  * Only available if this is the user's onboarding conversation.
  */
-export async function getSchedulesManagementServer(
+export async function getTriggersManagementServer(
   auth: Authenticator,
   agentConfiguration: AgentLoopExecutionData["agentConfiguration"],
   conversation: ConversationWithoutContentType,
@@ -33,34 +33,34 @@ export async function getSchedulesManagementServer(
     return null;
   }
 
-  const schedulesManagementView =
-    autoInternalViews.get("schedules_management") ?? null;
+  const triggersManagementView =
+    autoInternalViews.get("triggers_management") ?? null;
 
-  if (!schedulesManagementView) {
+  if (!triggersManagementView) {
     logger.warn(
       {
         agentConfigurationId: agentConfiguration.sId,
         conversationId: conversation.sId,
       },
-      "MCP server view not found for schedules_management. Ensure auto tools are created."
+      "MCP server view not found for triggers_management. Ensure auto tools are created."
     );
     return null;
   }
 
-  const schedulesManagementViewJSON = schedulesManagementView.toJSON();
+  const triggersManagementViewJSON = triggersManagementView.toJSON();
 
   return {
     id: -1,
     sId: generateRandomModelSId(),
     type: "mcp_server_configuration",
     name:
-      schedulesManagementViewJSON.name ??
-      schedulesManagementViewJSON.server.name ??
-      "schedules_management",
+      triggersManagementViewJSON.name ??
+      triggersManagementViewJSON.server.name ??
+      "triggers_management",
     description:
-      schedulesManagementViewJSON.description ??
-      schedulesManagementViewJSON.server.description ??
-      "Create schedules to automate recurring tasks.",
+      triggersManagementViewJSON.description ??
+      triggersManagementViewJSON.server.description ??
+      "Create schedules and event triggers to automate recurring and event-driven tasks.",
     dataSources: null,
     tables: null,
     childAgentId: null,
@@ -69,8 +69,8 @@ export async function getSchedulesManagementServer(
     secretName: null,
     dustProject: null,
     additionalConfiguration: {},
-    mcpServerViewId: schedulesManagementViewJSON.sId,
+    mcpServerViewId: triggersManagementViewJSON.sId,
     dustAppConfiguration: null,
-    internalMCPServerId: schedulesManagementView.mcpServerId,
+    internalMCPServerId: triggersManagementView.mcpServerId,
   };
 }

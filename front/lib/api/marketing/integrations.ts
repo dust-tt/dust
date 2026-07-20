@@ -59,7 +59,7 @@ const EXCLUDED_MCP_SERVERS = new Set([
   "toolsets",
   "skill_authoring",
   "skill_management",
-  "schedules_management",
+  "triggers_management",
   "common_utilities",
   "project_context_management",
   "files",
