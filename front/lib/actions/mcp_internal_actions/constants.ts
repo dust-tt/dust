@@ -232,9 +232,6 @@ export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   "activation_recommendations",
 ] as const;
 
-export type InternalMCPServerNameType =
-  (typeof AVAILABLE_INTERNAL_MCP_SERVER_NAMES)[number];
-
 export const INTERNAL_SERVERS_WITH_WEBSEARCH = [
   "web_search_&_browse",
   "http_client",
@@ -1261,6 +1258,9 @@ type InternalMCPServerEntry<
   // Non restricted server cannot be in preview
   | { isPreview: false; isRestricted: undefined }
 );
+
+export type InternalMCPServerNameType =
+  (typeof AVAILABLE_INTERNAL_MCP_SERVER_NAMES)[number];
 
 type StaticInternalMCPToolNameType<N extends InternalMCPServerNameType> =
   (typeof INTERNAL_MCP_SERVERS)[N]["metadata"]["tools"][number]["name"];
