@@ -104,7 +104,10 @@ import type {
 import { isCreditPricedPlanPrefix } from "@app/lib/plans/plan_codes";
 import { getResourceNameAndIdFromSId } from "@app/lib/resources/string_ids";
 import type { PlanType } from "@app/types/plan";
-import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
+import {
+  isComputerFeatureEnabled,
+  type WhitelistableFeature,
+} from "@app/types/shared/feature_flags";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -1018,7 +1021,9 @@ export const INTERNAL_MCP_SERVERS = {
     availability: "auto_hidden_builder",
     allowMultipleInstances: false,
     isPreview: true,
-    isRestricted: () => false,
+    isRestricted: ({ featureFlags }) => {
+      return !isComputerFeatureEnabled(featureFlags);
+    },
     metadata: SANDBOX_SERVER,
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,

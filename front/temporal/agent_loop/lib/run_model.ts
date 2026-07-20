@@ -95,6 +95,7 @@ import {
   type ModelConversationTypeMultiActions,
 } from "@app/types/assistant/generation";
 import { isByokProviderId } from "@app/types/assistant/models/providers";
+import { isComputerFeatureEnabled } from "@app/types/shared/feature_flags";
 import type { ModelId } from "@app/types/shared/model_id";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { removeNulls } from "@app/types/shared/utils/general";
@@ -596,6 +597,7 @@ export async function runModel(
   });
 
   const isNewFileExplorer = conversation.metadata?.useFileSystem === true;
+  const hasSandboxTools = isComputerFeatureEnabled(featureFlags);
   const disableFormattingPrompt = featureFlags.includes(
     "disable_formatting_prompt"
   );
@@ -614,7 +616,7 @@ export async function runModel(
     workspaceContext,
     projectContext,
     isNewFileExplorer,
-    hasSandboxTools: true,
+    hasSandboxTools,
     disableFormattingPrompt,
     hasSelectedSpacesOutsideAgentScope,
   });

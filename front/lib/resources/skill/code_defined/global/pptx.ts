@@ -1,4 +1,7 @@
+import type { Authenticator } from "@app/lib/auth";
+import { getFeatureFlags } from "@app/lib/auth";
 import type { GlobalSkillDefinition } from "@app/lib/resources/skill/code_defined/shared";
+import { isComputerFeatureEnabled } from "@app/types/shared/feature_flags";
 
 const PPTX_SKILL_INSTRUCTIONS = `# Slide decks (.pptx)
 
@@ -684,4 +687,9 @@ export const pptxSkill = {
   mcpServers: [{ name: "sandbox" }],
   version: 5,
   icon: "ActionSlideshowIcon",
+  isRestricted: async (auth: Authenticator) => {
+    const flags = await getFeatureFlags(auth);
+
+    return !isComputerFeatureEnabled(flags);
+  },
 } as const satisfies GlobalSkillDefinition;

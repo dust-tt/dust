@@ -427,12 +427,14 @@ export function _getDeepDiveGlobalAgent(
     settings,
     preFetchedDataSources,
     mcpServerViews,
+    hasSandbox,
     excludeProviders,
     featureFlags,
   }: {
     settings: GlobalAgentSettingsModel | null;
     preFetchedDataSources: PrefetchedDataSourcesType | null;
     mcpServerViews: MCPServerViewsForGlobalAgentsMap;
+    hasSandbox?: boolean;
     excludeProviders: ReadonlySet<ModelProviderIdType>;
     featureFlags: WhitelistableFeature[];
   }
@@ -468,7 +470,7 @@ export function _getDeepDiveGlobalAgent(
     description: DEEP_DIVE_DESC,
     instructions: getDeepDiveInstructions({
       includeToolsetsPrompt: true,
-      hasSandbox: true,
+      hasSandbox,
     }),
     instructionsHtml: null,
     pictureUrl,
@@ -585,8 +587,9 @@ export function _getDeepDiveGlobalAgent(
     ...deepAgent,
     status,
     actions,
-    // The "sandbox" (Computer) skill is auto-equipped for all agents, so it no
-    // longer needs to be listed here.
+    // The "sandbox" (Computer) skill is auto-equipped for all agents unless
+    // the workspace has disabled Computer, so it no longer needs to be listed
+    // here.
     skills: ["frames", "discover_skills", "skill-authoring"],
     maxStepsPerRun: MAX_STEPS_USE_PER_RUN_LIMIT,
   };

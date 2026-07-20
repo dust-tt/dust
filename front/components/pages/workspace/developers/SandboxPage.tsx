@@ -1,16 +1,27 @@
 import { EnvironmentSection } from "@app/components/pages/workspace/developers/sections/EnvironmentSection";
 import { NetworkSection } from "@app/components/pages/workspace/developers/sections/NetworkSection";
-import { useAuth } from "@app/lib/auth/AuthContext";
+import { useAuth, useFeatureFlags } from "@app/lib/auth/AuthContext";
+import { isComputerFeatureEnabled } from "@app/types/shared/feature_flags";
 import { ContentMessage, Globe01, InfoCircle, Page } from "@dust-tt/sparkle";
 
 export function SandboxPage() {
   const { isAdmin } = useAuth();
+  const { featureFlags } = useFeatureFlags();
+  const hasSandboxAdmin = isComputerFeatureEnabled(featureFlags);
 
   const renderBody = () => {
     if (!isAdmin) {
       return (
         <ContentMessage variant="info" icon={InfoCircle} size="lg">
           Only workspace admins can manage Computer settings.
+        </ContentMessage>
+      );
+    }
+
+    if (!hasSandboxAdmin) {
+      return (
+        <ContentMessage variant="info" icon={InfoCircle} size="lg">
+          Computer administration is not enabled for this workspace.
         </ContentMessage>
       );
     }

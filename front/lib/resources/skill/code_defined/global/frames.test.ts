@@ -1,9 +1,15 @@
+import { getPrefixedToolName } from "@app/lib/actions/tool_name_utils";
+import {
+  FILES_EDIT_ACTION_NAME,
+  FILES_SERVER_NAME,
+} from "@app/lib/api/actions/servers/files/metadata";
 import {
   EDIT_INTERACTIVE_CONTENT_FILE_TOOL_NAME,
   PUBLISH_INTERACTIVE_CONTENT_FILE_TOOL_NAME,
   RETRIEVE_INTERACTIVE_CONTENT_FILE_TOOL_NAME,
 } from "@app/lib/api/actions/servers/interactive_content/metadata";
 import { framesSkill } from "@app/lib/resources/skill/code_defined/global/frames";
+import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import type { AgentLoopExecutionData } from "@app/types/assistant/agent_run";
 import { describe, expect, it } from "vitest";
@@ -11,6 +17,14 @@ import { describe, expect, it } from "vitest";
 // Markers unique to each variant of the updating section.
 const COMPUTER_FIRST_MARKER =
   "mounted in the Computer at `/files/conversation-";
+const FILES_FIRST_MARKER =
+  "available to your file tools at `conversation-<conversationId>";
+
+const FILES_EDIT_TOOL = getPrefixedToolName(
+  FILES_SERVER_NAME,
+  FILES_EDIT_ACTION_NAME
+);
+
 function agentLoopDataWithUseFileSystem(
   useFileSystem: boolean | undefined
 ): AgentLoopExecutionData {
@@ -35,6 +49,24 @@ describe("framesSkill.fetchInstructions", () => {
     );
   });
 
+  it("teaches the files-tools flow when the Computer is disabled", async () => {
+    const { authenticator: auth } = await createResourceTest({});
+    await FeatureFlagFactory.basic(auth, "disable_computer_feature");
+
+    const instructions = await framesSkill.fetchInstructions(auth, {
+      spaceIds: [],
+    });
+
+    expect(instructions).not.toContain(COMPUTER_FIRST_MARKER);
+    expect(instructions).toContain(FILES_FIRST_MARKER);
+    expect(instructions).toContain(FILES_EDIT_TOOL);
+    expect(instructions).toContain(PUBLISH_INTERACTIVE_CONTENT_FILE_TOOL_NAME);
+    expect(instructions).not.toContain(EDIT_INTERACTIVE_CONTENT_FILE_TOOL_NAME);
+    expect(instructions).not.toContain(
+      RETRIEVE_INTERACTIVE_CONTENT_FILE_TOOL_NAME
+    );
+  });
+
   it("keeps the retrieve and file-id edit flow for legacy conversations", async () => {
     const { authenticator: auth } = await createResourceTest({});
 
@@ -44,6 +76,7 @@ describe("framesSkill.fetchInstructions", () => {
     });
 
     expect(instructions).not.toContain(COMPUTER_FIRST_MARKER);
+    expect(instructions).not.toContain(FILES_FIRST_MARKER);
     expect(instructions).toContain(EDIT_INTERACTIVE_CONTENT_FILE_TOOL_NAME);
     expect(instructions).toContain(RETRIEVE_INTERACTIVE_CONTENT_FILE_TOOL_NAME);
   });

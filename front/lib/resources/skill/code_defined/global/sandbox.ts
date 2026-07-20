@@ -3,29 +3,41 @@ import { TOOL_OUTPUTS_FOLDER_NAME } from "@app/lib/api/files/mount_path";
 import { readWorkspacePolicy } from "@app/lib/api/sandbox/egress_policy";
 import {
   createToolManifest,
+  filterDsbxToolEntries,
   getSandboxImage,
   getToolsForProvider,
   toolManifestToCompactText,
 } from "@app/lib/api/sandbox/image";
 import type { ManifestToolEntry } from "@app/lib/api/sandbox/image/types";
 import type { Authenticator } from "@app/lib/auth";
+import { getFeatureFlags } from "@app/lib/auth";
 import type { GlobalSkillDefinition } from "@app/lib/resources/skill/code_defined/shared";
 import logger from "@app/logger/logger";
 import type { AgentLoopExecutionData } from "@app/types/assistant/agent_run";
 import { isPodConversation } from "@app/types/assistant/conversation";
 import type { ModelProviderIdType } from "@app/types/assistant/models/types";
+import { isComputerFeatureEnabled } from "@app/types/shared/feature_flags";
 import { Ok } from "@app/types/shared/result";
 
-function buildSandboxInstructionProse(): string {
+function buildSandboxInstructionProse({
+  hasDsbxTools,
+}: {
+  hasDsbxTools: boolean;
+}): string {
   const instructions = [
     'The sandbox provides an isolated Linux environment for running code, scripts, and shell commands. Always call this environment "the Computer" in any text you send to the user.',
     "Use `bash` to run commands and scripts.",
     "The sandbox persists for the conversation duration.",
-    "You can use the `dsbx` command line tool to list and run tools programmatically in the sandbox.",
-    "Use it with `dsbx tools [SERVER_NAME] [TOOL_NAME] [ARGS]...`. Run `dsbx tools --help` for more information.",
-    "For very large argument values, write the value to a file in the sandbox and pass the path with a `__file__:` prefix (e.g. `--query __file__:/tmp/q.txt`) instead of inlining the value on the command line. Any value starting with `__file__:` is read from the file (UTF-8, max 100 MB) and used as the value for that key. File contents that are a JSON object or array are parsed into structured data (e.g. `--files __file__:/tmp/files.json` for a tool expecting an array), exactly as if the same JSON had been passed inline; any other content is used as a string. The file must already exist in the sandbox filesystem.",
-    "Pass `--json` (before the server and tool names, e.g. `dsbx tools --json [SERVER_NAME] [TOOL_NAME] [ARGS]...`) to get the tool result as structured JSON (`{ content, isError }`) instead of plain text, which is easier to parse programmatically. Placed after the positional arguments it is treated as a tool argument instead.",
   ];
+
+  if (hasDsbxTools) {
+    instructions.push(
+      "You can use the `dsbx` command line tool to list and run tools programmatically in the sandbox.",
+      "Use it with `dsbx tools [SERVER_NAME] [TOOL_NAME] [ARGS]...`. Run `dsbx tools --help` for more information.",
+      "For very large argument values, write the value to a file in the sandbox and pass the path with a `__file__:` prefix (e.g. `--query __file__:/tmp/q.txt`) instead of inlining the value on the command line. Any value starting with `__file__:` is read from the file (UTF-8, max 100 MB) and used as the value for that key. File contents that are a JSON object or array are parsed into structured data (e.g. `--files __file__:/tmp/files.json` for a tool expecting an array), exactly as if the same JSON had been passed inline; any other content is used as a string. The file must already exist in the sandbox filesystem.",
+      "Pass `--json` (before the server and tool names, e.g. `dsbx tools --json [SERVER_NAME] [TOOL_NAME] [ARGS]...`) to get the tool result as structured JSON (`{ content, isError }`) instead of plain text, which is easier to parse programmatically. Placed after the positional arguments it is treated as a tool argument instead."
+    );
+  }
 
   return instructions.join(" ");
 }
@@ -116,9 +128,12 @@ function formatWorkspaceAllowlist(domains: string[]): string {
 }
 
 async function buildNetworkAccessSection(auth: Authenticator): Promise<string> {
+  const flags = await getFeatureFlags(auth);
+  const hasWorkspaceAdmin = isComputerFeatureEnabled(flags);
   const allowAgentRequests =
+    hasWorkspaceAdmin &&
     auth.getNonNullableWorkspace().metadata?.sandboxAllowAgentEgressRequests ===
-    true;
+      true;
   const policyResult = await readWorkspacePolicy(auth);
   let workspaceDomains: string[] = [];
   if (policyResult.isErr()) {
@@ -298,13 +313,13 @@ function buildToolDetailsSection(
 async function buildSandboxInstructions(
   auth: Authenticator,
   providerId: ModelProviderIdType | undefined,
-  { isProject }: { isProject: boolean }
+  { hasDsbxTools, isProject }: { hasDsbxTools: boolean; isProject: boolean }
 ): Promise<string> {
   const networkAccessSection = await buildNetworkAccessSection(auth);
   const environmentVariablesSection = buildEnvironmentVariablesSection();
   const conversationFilesSection = buildConversationFilesSection();
   const projectFilesSection = isProject ? buildProjectFilesSection() : null;
-  const sandboxInstructions = buildSandboxInstructionProse();
+  const sandboxInstructions = buildSandboxInstructionProse({ hasDsbxTools });
 
   let toolsResult;
 
@@ -313,13 +328,19 @@ async function buildSandboxInstructions(
     .join("\n\n");
 
   if (providerId) {
-    toolsResult = getToolsForProvider(auth, providerId);
+    toolsResult = getToolsForProvider(auth, providerId, {
+      includeDsbxTools: hasDsbxTools,
+    });
   } else {
     const imageResult = getSandboxImage(auth);
     if (imageResult.isErr()) {
       return `${sandboxInstructions}\n\n${filesSections}\n\n${networkAccessSection}\n\n${environmentVariablesSection}`;
     }
-    toolsResult = new Ok(imageResult.value.tools);
+    toolsResult = new Ok(
+      filterDsbxToolEntries(imageResult.value.tools, {
+        includeDsbxTools: hasDsbxTools,
+      })
+    );
   }
 
   if (toolsResult.isErr()) {
@@ -377,11 +398,14 @@ export const sandboxSkill = {
     }: { spaceIds: string[]; agentLoopData?: AgentLoopExecutionData }
   ) => {
     const providerId = agentLoopData?.model.providerId;
+    const flags = await getFeatureFlags(auth);
+    const hasDsbxTools = isComputerFeatureEnabled(flags);
     const isProject = agentLoopData?.conversation
       ? isPodConversation(agentLoopData.conversation)
       : false;
 
     return buildSandboxInstructions(auth, providerId, {
+      hasDsbxTools,
       isProject,
     });
   },
@@ -391,8 +415,13 @@ export const sandboxSkill = {
   // Auto-enabled for dust-like agents, which are heavy users of it.
   // This allows adding the bash tool eagerly, as it's used for a wide variety of use cases and deferring it would
   // increase significantly the number of tool searches ran overall.
-  // Auto-equipped for every other agent, but not enabled until the agent
-  // decides to use it.
+  // Auto-equipped for every other agent unless the workspace has disabled the
+  // Computer, but not enabled until the agent decides to use it.
   getAutoEnabledOrEquippedForAgentLoop: ({ agentConfiguration }) =>
     isDustLikeAgent(agentConfiguration.sId) ? "enabled" : "equipped",
+  isRestricted: async (auth: Authenticator) => {
+    const flags = await getFeatureFlags(auth);
+
+    return !isComputerFeatureEnabled(flags);
+  },
 } as const satisfies GlobalSkillDefinition;

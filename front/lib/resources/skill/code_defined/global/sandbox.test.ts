@@ -1,6 +1,7 @@
 import { Authenticator } from "@app/lib/auth";
 import { sandboxSkill } from "@app/lib/resources/skill/code_defined/global/sandbox";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
+import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { describe, expect, it } from "vitest";
 
@@ -43,6 +44,24 @@ describe("sandboxSkill", () => {
     expect(instructions).toContain("`<command> --help`");
     expect(instructions).not.toContain("name: dsbx");
     expect(instructions).not.toContain("```yaml");
+  });
+
+  it("hides dsbx tools instructions when computer is disabled", async () => {
+    const { authenticator: auth } = await createResourceTest({});
+
+    await FeatureFlagFactory.basic(auth, "disable_computer_feature");
+
+    const instructions = await sandboxSkill.fetchInstructions(auth, {
+      spaceIds: [],
+    });
+
+    expect(instructions).not.toContain("dsbx tools");
+    const systemTools = instructions
+      .split("\n")
+      .find((line) => line.startsWith("- System:"));
+    expect(systemTools).toBeDefined();
+    expect(systemTools).not.toContain("dsbx");
+    expect(instructions).not.toContain("- `dsbx`: Dust CLI");
   });
 
   it("instructs the model to analyze mounted tabular files with code", async () => {
